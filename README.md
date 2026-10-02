@@ -1,6 +1,6 @@
 # Retina
 
-Fabric 26.3 terrain generation with GPU Voronoi biomes, interpolated simplex heights, GPU caves, registry-derived ores, and Rust chunk/MCA assembly.
+Fabric 26.3 terrain generation with GPU Voronoi biomes, interpolated simplex heights, GPU caves, underground biomes, lakes, terracotta bands, registry-derived features and Rust chunk/MCA assembly.
 
 ## Run it
 
@@ -9,7 +9,7 @@ and packages the native library automatically.
 
 ```sh
 ./gradlew build
-./gradlew gpuTest regionTest biomeTest geologyTest previewTest
+./gradlew gpuTest regionTest biomeTest geologyTest featureTest previewTest
 ./gradlew runClient -PretinaQa
 ```
 
@@ -21,7 +21,10 @@ Create a new single-player world and select a Retina world type in the **World**
 Both generate the same biome terrain model in the overworld. Nether and End remain vanilla.
 The default biome set includes plains, forests, taiga, snowy plains, desert, savanna,
 badlands, jungle, mangrove swamp, windswept hills, jagged peaks and three oceans.
-Surfaces include grass/dirt, podzol, sand, red sand/terracotta, mud, snow and stone.
+Surfaces include grass/dirt, podzol, sand, red sand/striped terracotta, mud, snow and stone.
+Underground, GPU-selected lush caves, dripstone caves and deep dark contain moss,
+cave plants, hanging vines, spore blossoms, stalactites/stalagmites and sculk.
+Curved ravines and water/lava lakes share the native region pipeline.
 Oceans fill to the registry sea level, with ice in cold biomes; bedrock and deepslate
 form the lower layers. Grass, ferns, flowers, tall plants, bushes and biome-specific
 wood/leaves are assembled in Rust from vanilla's registered decoration recipes.
@@ -51,16 +54,19 @@ Rust performs the following work:
 2. Send one 48-byte region descriptor to the GPU. A small pass creates nearby
    Voronoi sites and samples registered climate noise; a second pass computes
    warped biome assignment, blended height parameters, simplex relief, coherent surface
-   borders and soil depth. Site data stays on the GPU. Vegetation threshold noise is included in the same pass.
+   borders, soil depth, rounded lake basins and terracotta offsets. Site data stays on the GPU. Vegetation threshold noise is included in the same pass.
    A one-chunk halo produces 544 x 544 compact column records (2.26 MiB).
    Two further GPU stages sample 3D cave fields on a global four-block lattice,
-   interpolate those fields, apply biome cave/canyon settings and pack a final
+   select underground quart biomes, interpolate those fields, apply each 3D
+   biome's cave/canyon settings and pack a final
    one-bit mask. The 384-block-high mask, including a one-block exposure halo,
    adds 12.09 MiB of readback per region. A 36 KiB surface bitset covers the
-   decoration halo to reject unsupported vegetation; the density lattice stays on the GPU.
+   decoration halo to reject unsupported vegetation. One byte per 4x4x4 biome
+   sample adds 1.69 MiB for the complete halo, in the same readback (about 16.08 MiB
+   total including columns). Density fields and ravine distance fields stay on the GPU.
 3. Plan ore veins and vegetation in parallel with global seeded anchors.
-   Expand terrain, consume the GPU cavity mask, place ore replacements and then
-   settle the sparse decoration overlay. Neighboring anchors can place trees and patches across chunk/region borders.
+   Expand terrain, consume the GPU cavity mask, place ore replacements, dress
+   cave floors/ceilings and settle the sparse surface decoration overlay. Neighboring anchors can place trees and patches across chunk/region borders.
    Assemble Minecraft 26.3 block and biome palettes, heightmaps,
    chunk metadata and zlib-compressed NBT across a persistent pool of up to 16 cores.
 4. Write a sibling temporary file, synchronize it, then atomically replace the
@@ -100,7 +106,8 @@ as required by DH's surface sampling.
 The cache retains up to **1,024 regions on disk**, using LRU eviction. Each file
 contains a full 32 x 32 region. Undecorated GPU columns are returned by that same
 native generation call and stored in a compressed sidecar for later height and
-biome queries. Only 16 regions' column arrays and file handles stay warm in memory
+height queries. Quart biome queries decode the cached MCA's biome palettes,
+without generating individual GPU chunks. Only 16 regions' column arrays and file handles stay warm in memory
 (about 32 MiB of column arrays); cold data reloads from disk without GPU work.
 Active reads/generation pin their entries until complete, so limits may be
 briefly exceeded by concurrent jobs. Files and sidecars are removed on eviction
@@ -120,9 +127,11 @@ Per-chunk world mode retains its original pipeline.
 
 Concurrent Minecraft terrain jobs call Rust through Java 25's Foreign Function
 and Memory API. A persistent `wgpu` worker batches pending GPU requests and reuses
-its device, two compute pipelines and buffers. Decorated chunk jobs request a 3 x 3
-chunk terrain tile (one descriptor, 18 KiB columns plus about 15.5 KiB cave/surface bits); height/biome queries retain
-single-chunk batching. Calling threads assemble dense
+its device, four compute pipelines and buffers. Decorated chunk jobs request a 3 x 3
+chunk terrain tile (one descriptor: 18 KiB columns, about 15.5 KiB cave/surface
+bits and 13.5 KiB quart biomes). Height/base-column queries retain single-chunk
+batching. Quart biome queries reuse the shared native mask or sample the same
+3x3 tile on a cold cache. Calling threads assemble dense
 material-index buffers in Rust. Java converts those bytes into section palettes,
 stores the GPU biome IDs, and primes heightmaps.
 
@@ -130,8 +139,10 @@ The byte layout is `((y - min_y) * 16 + z) * 16 + x`, with `0` for air and `1` f
 the registered default stone. Remaining material IDs refer to the world profile’s
 block states. Synchronous native calls return before their borrowed buffers are released.
 
-Both modes use GPU-produced column records for biome, height and base-column
-queries. Rust caches up to 8,192 chunks; Java caches up to 2,048 biome/height tiles.
+Both modes use GPU column records for surface biome, height and base-column
+queries. Underground queries use GPU quart IDs. Rust caches up to 8,192 column
+chunks and 2,048 shared cave-mask chunk entries; Java caches up to 2,048 height
+tiles and 2,048 small quart biome arrays.
 The cache includes seed, world profile, coordinates, bounds and terrain settings. There is no CPU noise implementation or CPU fallback.
 The generator codec exposes `mode` (`mca`, the default, or `chunk`), `min_y`,
 `height`, `base_height`, `amplitude`, `frequency` and `biome_source`.
@@ -154,7 +165,7 @@ warping select discrete biome IDs and matching surface recipes. Broad, ribbon an
 wisp noise bends the borders into continuous curves, without random block scatter.
 Fixed-frequency relief fields are blended, avoiding distance-dependent phase
 distortion from changing the frequency at global coordinates. All heights,
-interpolation, soil depths, snow/ice flags
+interpolation, soil depths, snow/ice flags, lake beds/waterlines, terracotta offsets
 and surface material choices are finished before readback. Rust expands those
 records into vertical layers and packs NBT; it does not generate noise or blend
 heights on the CPU.
@@ -166,8 +177,7 @@ stone/air model, and existing chunks are preserved. Use a fresh world to see all
 biome changes. New terrain meets existing terrain without retroactive blending.
 
 This approximates vanilla biome terrain; it does not implement vanilla's full
-density router, every material rule/noise condition, terracotta bands, 3D cave
-biomes or structures. Material noise
+density router, every material rule/noise condition or structures. Material noise
 conditions are evaluated at a representative zero value when extracting recipes.
 Climate octaves feed GPU simplex rather than vanilla Perlin. GPU backends may
 produce different results, as permitted for this project.
@@ -217,9 +227,11 @@ Ore recipes retain their registered vein size, count range, rarity, uniform or
 trapezoid height distribution, stone/deepslate replacement rules and air-exposure
 suppression. Nested block/tag/height predicates become compact replacement tables
 with height bands, including 26.3's height-specific host blocks. Biome membership
-preserves extra badlands gold and mountain emeralds/infested stone. Registered
-stone, dirt, gravel and tuff replacement veins are included. The default 16-biome
-set currently exports 28 ore recipes alongside its vegetation data.
+preserves extra badlands gold, mountain emeralds/infested stone and the
+underground biome's own replacement veins. Registered
+stone, dirt, gravel and tuff replacement veins are included. The default 16 surface
+biomes plus three underground biomes currently export 30 ore recipes and 194
+block states alongside their vegetation data.
 
 Rust builds ellipsoidal/scattered veins from global chunk anchors. Contained
 ellipsoids are pruned and visited voxels use a small bitset. The region's halo
@@ -227,11 +239,11 @@ includes neighboring anchors so veins cross chunk and region edges. Planning,
 mask consumption, ore placement, palettes, heightmaps and compression share the
 persistent region pool of up to 16 cores. Independent Minecraft chunk requests
 also assemble concurrently after the persistent GPU worker returns their masks.
-Assembly order is base terrain, caves, ores, then vegetation.
+Assembly order is base terrain, caves, ores, cave decorations, then surface vegetation.
 
 GPU cave fields use registered cave cheese, spaghetti, layer, roughness and pillar
 noise octaves/amplitudes. Two additional compute stages produce chambers, tunnels
-and canyon ribbons using the biome's registered carver probability, center-height
+and finite curved ravines using the biome's registered carver probability, center-height
 range, thickness and radius parameters. Interpolation and final cavity decisions
 happen on the GPU. Rust reads a bit-packed mask and replaces carved blocks with
 air, lava below 26.3's global lava boundary, or water below sea level in ocean
@@ -240,8 +252,7 @@ The GPU also emits one surface bit per halo column, so Rust skips tree and plant
 anchors over openings without reading back the halo's full cave volume.
 
 These shapes approximate vanilla carvers/noise caves; they do not replay vanilla
-random walks or the full density router/aquifer pressure model. Lush/dripstone
-cave biomes and their decorations are not included. Unsupported registry feature
+random walks or the full density router/aquifer pressure model. Unsupported registry feature
 rules are logged rather than guessed. Both MCA and per-chunk generation use the
 same geology; temporary DH MCAs contain it and promotion copies it unchanged.
 Height/base-column APIs return terrain before carving/features and do not run a
@@ -252,6 +263,59 @@ Run `./gradlew geologyTest` for real-GPU parallel ore/cave and exposure checks.
 `biomeTest` checks all 1,024 MCA chunks against independent chunk assembly and
 Minecraft's six heightmap predicates. Use a fresh world or unexplored regions
 for new geology; existing saved chunk records are preserved.
+
+## Cave biomes, ravines, lakes and badlands
+
+The world profile includes the registered lush-caves, dripstone-caves and deep-dark
+biomes as underground-only entries. They participate in `possibleBiomes`, Minecraft
+quart biome queries, F3 biome names and persisted section biome palettes, while
+surface Voronoi selection excludes them. GPU 3D humidity/continentalness/erosion
+fields use the registered climate targets and approximate depth mapping. The first
+cave pass writes packed quart IDs; the second uses those IDs to select the correct
+registered carver tables. No extra compute pass or CPU noise sampling is required.
+Ore anchors also use these underground biome IDs.
+
+Java walks the selected cave feature graphs and block-state providers once. Rust
+uses their moss/clay/plant/vine materials, dripstone height/density parameters,
+up/down taper states and sculk material. Actual replacement tags become palette
+bit tables after all ore materials are exported. This prevents cave dressing from
+replacing ores that vanilla excludes. Floors and ceilings are supported by solid
+blocks; vertical features use globally seeded column anchors and run independently
+in each chunk's assembly task. Dripstone is an approximation of vanilla clusters;
+large pillars, sculk spreading/entities, Warden spawning and ancient cities are
+not implemented.
+
+Ravines use globally anchored, finite, bent centerlines sampled once in the 2D
+part of the density lattice. Their distance field stays on the GPU; GPU voxel
+classification applies the registered canyon width/height/probability parameters,
+including openings through the surface. Chunk/region dispatch boundaries do not
+change their shape.
+
+The existing column pass shapes rounded, noise-warped water/lava basins, gives
+each lake a fixed level sampled from its banks and forms a smoothed rim. Registered
+surface lava-lake placement rarity and fluid/barrier providers drive lava lakes.
+Modern vanilla does not register general water-lake features, so water lakes use
+Retina's basin approximation with the biome's actual rainfall, seabed block and
+Overworld default fluid. Lakes are above sea level in low-relief land biomes.
+GPU cavity classification protects the top four blocks beneath lake beds.
+Lake depth/fluid flags fit in the existing eight-byte column record, so no extra
+lake buffer crosses the GPU or Java bridge. Full vanilla lake placement checks,
+underground lava-lake features and aquifer pressure are not reproduced.
+
+Badlands use the 26.3 MaterialSystem's 192-layer recipe and seven registered
+terracotta colors, with a world-seeded table built once during registry export.
+The registered clay-band noise frequency/amplitude drives spatial offsets on the
+GPU. Badlands reuse the filler byte for the signed offset; Rust and the cached
+Java base-column reader only index the resident table. Red-sand caps, colored
+walls and surrounding terrain remain continuous across generation boundaries.
+
+`./gradlew featureTest` checks all seven colors, GPU band offsets, 16-way cave
+biome/decorations requests, flat lake levels across chunk borders, solid lake
+floors after carving, cached MCA biome decoding and base-column parity. The full
+`biomeTest` additionally compares all 1,024 stored chunks, every quart biome and
+all six heightmaps against independent native chunk generation. `previewTest`
+checks temporary MCA generation, cold disk reloads, promotion, edits and LRU limits.
+These changes apply to new terrain in both modes and temporary DH regions.
 
 ## F3 metrics
 

@@ -12,6 +12,7 @@ pub struct TerrainFeatures {
 #[derive(Clone, Default, Deserialize)]
 #[serde(default)]
 pub struct CaveFeatures {
+    pub replaceable: Vec<bool>,
     pub floor: u8,
     pub clay: u8,
     pub blossom: u8,
@@ -54,6 +55,7 @@ impl TerrainFeatures {
                     .chain(&f.drip_down)
                     .any(|m| *m as usize >= p.materials.len())
                 || (!f.drip_up.is_empty() && (f.drip_up.len() != 4 || f.drip_down.len() != 4))
+                || (!f.replaceable.is_empty() && f.replaceable.len() != p.materials.len())
                 || f.drip_max > 128
                 || f.drip_min > f.drip_max
                 || f.vine_max > 128
@@ -127,36 +129,41 @@ pub fn apply(r: ChunkRequest, p: &WorldProfile, mask: Option<&CaveMask>, blocks:
                 }
                 let below = (start - 1) * COLUMNS + column;
                 let above = end * COLUMNS + column;
-                if !p.geology.carveable[blocks[below] as usize]
-                    || !p.geology.carveable[blocks[above] as usize]
-                {
-                    continue;
-                }
+                let floor_ok = f
+                    .replaceable
+                    .get(blocks[below] as usize)
+                    .copied()
+                    .unwrap_or(false);
                 let h = random(r, wx, y, wz, 4139);
-                blocks[below] = f.floor;
-                match biome.cave_kind {
-                    1 => {
-                        if f.clay != 0 && hash(h) % 19 == 0 {
-                            blocks[below] = f.clay;
-                        }
-                        if !f.plants.is_empty() && (h >> 8) as f32 / 16777216.0 < f.plant_chance {
-                            blocks[start * COLUMNS + column] = choose(&f.plants, hash(h ^ 7151));
-                        }
-                    }
-                    2 => {
-                        if (h >> 8) as f32 / 16777216.0 < f.density * 0.18 && !f.drip_up.is_empty()
-                        {
-                            let length = (f.drip_min + hash(h) % (f.drip_max - f.drip_min + 1))
-                                .min((end - start - 1) as u32)
-                                as usize;
-                            for i in 0..length {
-                                let remaining = length - i - 1;
-                                let shape = remaining.min(3);
-                                blocks[(start + i) * COLUMNS + column] = f.drip_up[shape];
+                if floor_ok {
+                    blocks[below] = f.floor;
+                    match biome.cave_kind {
+                        1 => {
+                            if f.clay != 0 && hash(h) % 19 == 0 {
+                                blocks[below] = f.clay;
+                            }
+                            if !f.plants.is_empty() && (h >> 8) as f32 / 16777216.0 < f.plant_chance
+                            {
+                                blocks[start * COLUMNS + column] =
+                                    choose(&f.plants, hash(h ^ 7151));
                             }
                         }
+                        2 => {
+                            if (h >> 8) as f32 / 16777216.0 < f.density * 0.18
+                                && !f.drip_up.is_empty()
+                            {
+                                let length = (f.drip_min + hash(h) % (f.drip_max - f.drip_min + 1))
+                                    .min((end - start - 1) as u32)
+                                    as usize;
+                                for i in 0..length {
+                                    let remaining = length - i - 1;
+                                    let shape = remaining.min(3);
+                                    blocks[(start + i) * COLUMNS + column] = f.drip_up[shape];
+                                }
+                            }
+                        }
+                        _ => {}
                     }
-                    _ => {}
                 }
                 // Use the roof's biome too: a vertical biome transition can split floor/ceiling styles.
                 let Some(id) = mask.biome(wx, r.min_y + end as i32 - 1, wz) else {
@@ -164,6 +171,14 @@ pub fn apply(r: ChunkRequest, p: &WorldProfile, mask: Option<&CaveMask>, blocks:
                 };
                 let roof = &p.biomes[id as usize];
                 let f = &roof.cave_features;
+                if !f
+                    .replaceable
+                    .get(blocks[above] as usize)
+                    .copied()
+                    .unwrap_or(false)
+                {
+                    continue;
+                }
                 let h = random(r, wx, r.min_y + end as i32, wz, 9283);
                 if roof.cave_kind == 1 && f.floor != 0 {
                     blocks[above] = f.floor;

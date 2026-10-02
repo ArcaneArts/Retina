@@ -34,7 +34,8 @@ public record BiomeTerrainProfile(int nativeId, int seaLevel, BlockState[] mater
     }
     public static BiomeTerrainProfile load(HolderLookup.Provider registry, RetinaBiomeSource source, int minY, int height, long seed) {
         source.underground(List.of(Biomes.LUSH_CAVES, Biomes.DRIPSTONE_CAVES, Biomes.DEEP_DARK).stream()
-                .map(key -> (Holder<Biome>) registry.lookupOrThrow(Registries.BIOME).getOrThrow(key)).toList());
+                .map(key -> (Holder<Biome>) registry.lookupOrThrow(Registries.BIOME).getOrThrow(key))
+                .filter(b -> !source.biomes().contains(b)).limit(Math.max(0, 255 - source.biomes().size())).toList());
         var nativeBiomes = source.nativeBiomes();
         var settings = registry.lookupOrThrow(Registries.NOISE_SETTINGS).getOrThrow(NoiseGeneratorSettings.OVERWORLD).value();
         int sea = settings.seaLevel();
@@ -110,6 +111,7 @@ public record BiomeTerrainProfile(int nativeId, int seaLevel, BlockState[] mater
         profile.add("decorations", DecorationProfile.export(registry, nativeBiomes, biomes, materials));
         TerrainFeatureProfile.export(registry, nativeBiomes, biomes, materials, profile, settings.materialRule().value(), seed);
         GeologyProfile.export(registry, nativeBiomes, biomes, materials, profile, minY, height, sea);
+        TerrainFeatureProfile.finishReplacementTables(biomes, materials);
         DecorationProfile.materialFlags(profile, materials);
         var palette = new JsonArray();
         for (var state : materials.keySet()) palette.add(BlockState.CODEC.encodeStart(JsonOps.INSTANCE, state).getOrThrow());

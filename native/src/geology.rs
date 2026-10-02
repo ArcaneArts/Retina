@@ -293,6 +293,7 @@ pub fn plan(
     profile: &WorldProfile,
     request: ChunkRequest,
     side: usize,
+    mask: Option<&CaveMask>,
 ) -> Vec<Vec<OrePlacement>> {
     let generate = |index: usize| {
         let cx = field.origin_x + (index % field.side) as i32;
@@ -311,7 +312,10 @@ pub fn plan(
                 let Some(column) = field.column(x, z) else {
                     continue;
                 };
-                if !profile.biomes[column.biome()].ores.contains(&(id as u32)) {
+                let biome = mask
+                    .and_then(|m| m.biome(x, y, z))
+                    .map_or(column.biome(), |b| b as usize);
+                if !profile.biomes[biome].ores.contains(&(id as u32)) {
                     continue;
                 }
                 vein(recipe, id as u32, x, y, z, &mut random, &mut blocks);

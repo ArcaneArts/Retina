@@ -240,7 +240,7 @@ fn generate_region_inner(
                 vec![Vec::new(); 1024]
             };
             let ores = if let Some(p) = profile.as_deref() {
-                geology::plan(&field, p, origin, 32)
+                geology::plan(&field, p, origin, 32, cave_mask.as_deref())
             } else {
                 vec![Vec::new(); 1024]
             };

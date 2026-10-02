@@ -510,7 +510,7 @@ impl TerrainEngine {
                 mask.as_deref(),
             );
             let columns = field.chunk(request.chunk_x, request.chunk_z);
-            let ores = geology::plan(&field, p, request, 1);
+            let ores = geology::plan(&field, p, request, 1, mask.as_deref());
             decoration::assemble(request, columns, Some(p), &[], blocks);
             geology::apply(request, &field, p, mask.as_deref(), &ores[0], blocks);
             features::apply(request, p, mask.as_deref(), blocks);
@@ -700,6 +700,9 @@ pub unsafe extern "C" fn retina_sample_biomes(
         }
         let r = unsafe { *request };
         r.validate()?;
+        if r.height % 4 != 0 || r.min_y.rem_euclid(4) != 0 {
+            return Err("biome queries require quart-aligned vertical bounds".into());
+        }
         if capacity != r.height as u64 * 4 {
             return Err("incorrect biome buffer capacity".into());
         }

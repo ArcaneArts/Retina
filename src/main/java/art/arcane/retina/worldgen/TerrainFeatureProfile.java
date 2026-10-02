@@ -6,6 +6,7 @@ import net.minecraft.core.*;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.*;
 import net.minecraft.util.RandomSource;
+import net.minecraft.tags.TagKey;
 import net.minecraft.world.level.biome.*;
 import net.minecraft.world.level.block.*;
 import net.minecraft.world.level.block.state.BlockState;
@@ -81,6 +82,7 @@ final class TerrainFeatureProfile {
         final LinkedHashMap<BlockState,Integer> palette;
         final LinkedHashSet<BlockState> states = new LinkedHashSet<>();
         final Set<String> visited = new HashSet<>();
+        final Set<String> replaceable = new LinkedHashSet<>();
         int dripMin = 2, dripMax = 8, vineMax = 7;
         double density = 0.5, plants = 0.12;
         boolean sculk;
@@ -107,6 +109,7 @@ final class TerrainFeatureProfile {
             var object = value.getAsJsonObject();
             var state = BlockState.CODEC.parse(JsonOps.INSTANCE, object).result();
             if (state.isPresent()) { states.add(state.get()); return; }
+            for (String key : List.of("replaceable", "replaceable_blocks")) if (object.has(key)) replacement(object.get(key));
             String type = object.has("type") ? object.get("type").getAsString() : "";
             if (type.endsWith("speleothem_cluster")) {
                 double[] heights = range(object.get("height")); dripMin = (int) heights[0]; dripMax = (int) heights[1];
@@ -115,6 +118,10 @@ final class TerrainFeatureProfile {
             if (type.endsWith("vegetation_patch") && object.has("vegetation_chance")) plants = object.get("vegetation_chance").getAsDouble();
             if (type.endsWith("sculk_patch")) sculk = true;
             for (var child : object.entrySet()) walk(child.getValue(), depth + 1);
+        }
+        void replacement(JsonElement value) {
+            if (value.isJsonPrimitive() && value.getAsJsonPrimitive().isString()) replaceable.add(value.getAsString());
+            else if (value.isJsonArray()) for (var child : value.getAsJsonArray()) replacement(child);
         }
         JsonObject finish(int kind) {
             var result = new JsonObject();
@@ -131,7 +138,8 @@ final class TerrainFeatureProfile {
                 else if (state.is(Blocks.SPORE_BLOSSOM)) result.addProperty("blossom", material(palette, state));
                 else if (state.is(Blocks.MOSS_CARPET) || state.is(Blocks.AZALEA) || state.is(Blocks.FLOWERING_AZALEA) || state.is(Blocks.SHORT_GRASS)) floorPlants.add(material(palette, state));
             }
-            if (sculk) result.addProperty("floor", material(palette, Blocks.SCULK.defaultBlockState()));
+            if (sculk) { result.addProperty("floor", material(palette, Blocks.SCULK.defaultBlockState())); replaceable.add("#minecraft:sculk_replaceable_world_gen"); }
+            var targets = new JsonArray(); for (String target : replaceable) targets.add(target); result.add("replacement_targets", targets);
             var up = new JsonArray(); var down = new JsonArray();
             if (pointed != null) for (var thickness : List.of(SpeleothemThickness.TIP, SpeleothemThickness.FRUSTUM, SpeleothemThickness.MIDDLE, SpeleothemThickness.BASE)) {
                 up.add(material(palette, pointed.setValue(SpeleothemBlock.TIP_DIRECTION, Direction.UP).setValue(SpeleothemBlock.THICKNESS, thickness)));
@@ -143,6 +151,22 @@ final class TerrainFeatureProfile {
             result.addProperty("density", kind == 2 ? Math.clamp(density, 0, 1) : 0.65);
             result.addProperty("plant_chance", Math.clamp(plants, 0.02, 0.5)); result.addProperty("vine_max", vineMax);
             return result;
+        }
+    }
+    static void finishReplacementTables(JsonArray biomes, LinkedHashMap<BlockState,Integer> palette) {
+        for (var b : biomes) {
+            var feature = b.getAsJsonObject().getAsJsonObject("cave_features");
+            var table = new JsonArray();
+            for (var state : palette.keySet()) {
+                boolean match = false;
+                for (var value : feature.getAsJsonArray("replacement_targets")) {
+                    String id = value.getAsString();
+                    match |= id.startsWith("#") ? state.is(TagKey.create(Registries.BLOCK, Identifier.parse(id.substring(1))))
+                            : net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(state.getBlock()).equals(Identifier.parse(id));
+                }
+                table.add(match);
+            }
+            feature.remove("replacement_targets"); feature.add("replaceable", table);
         }
     }
     private static BlockState providerState(HolderLookup.Provider registry, LinkedHashMap<BlockState,Integer> palette, BlockStateProvider provider) {

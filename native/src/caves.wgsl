@@ -112,6 +112,25 @@ fn cave_nodes(@builtin(global_invocation_id) id: vec3<u32>) {
     var ribbon = 0.0;
     if id.y == 0u { ribbon = ravine_distance(point.xz,seed); }
     nodes[id.y*n*n+id.x] = vec4<f32>(chambers,a,b,ribbon);
+    let width = r.padding*16u+2u;
+    let surface_width = r.tile_side*16u;
+    let quart_width = surface_width/4u;
+    let layers = u32((r.max_y-bottom+3)/4);
+    let volume_words = (width*width*u32(r.max_y-r.min_y)+31u)/32u;
+    let surface_words = (surface_width*surface_width+31u)/32u;
+    // The first stage writes quart IDs. The second can use each underground
+    // biome's own carvers, without resampling climate per voxel or adding a pass.
+    if id.y < layers && id.x < quart_width*quart_width/4u {
+        let word = id.y*(quart_width*quart_width/4u)+id.x;
+        var ids = 0u;
+        for (var b=0u;b<4u;b++) {
+            let at = id.x*4u+b;
+            let qx = (at%quart_width)*4u; let qz = (at/quart_width)*4u;
+            ids |= biome_at(qx,bottom+i32(id.y)*4,qz,column_at(qx,qz,r.tile_side),r) << (b*8u);
+        }
+        mask[volume_words+surface_words+word] = ids;
+    }
+
 }
 fn interpolate(local: vec3<f32>, n: u32) -> vec4<f32> {
     let cell = vec3<u32>(floor(local)); let t = fract(local);
@@ -127,12 +146,19 @@ fn interpolate(local: vec3<f32>, n: u32) -> vec4<f32> {
 fn column_at(x: u32, z: u32, side: u32) -> Column {
     return columns[((z/16u)*side+x/16u)*256u+(z%16u)*16u+x%16u];
 }
+fn biome_sample(x: u32, y: i32, z: u32, r: Request) -> u32 {
+    let width = r.padding*16u+2u; let surface_width = r.tile_side*16u;
+    let bottom = i32(floor(f32(r.min_y)/4.0))*4;
+    let offset = (width*width*u32(r.max_y-r.min_y)+31u)/32u+(surface_width*surface_width+31u)/32u;
+    let q = ((u32(y-bottom)/4u)*(surface_width/4u)+(z/4u))*(surface_width/4u)+x/4u;
+    return (mask[offset+q/4u] >> ((q%4u)*8u)) & 255u;
+}
 fn is_cave(x: u32, y: i32, z: u32, column: Column, r: Request) -> bool {
     if y < r.min_y+5 || y >= column.height { return false; }
     if (column.packed & (1u<<29u)) != 0u && y >= column.height-4 { return false; }
     let bottom = i32(floor(f32(r.min_y)/4.0))*4;
     let values = interpolate(vec3<f32>(f32(x),f32(y-bottom),f32(z))*0.25,r.tile_side*4u+1u);
-    let biome = column.packed & 255u;
+    let biome = biome_sample(x,y,z,r);
     var carved = false;
     for (var c=0u;c<4u;c++) {
         let settings = caves.biomes[biome].carvers[c];
@@ -168,12 +194,7 @@ fn cave_mask(@builtin(global_invocation_id) id: vec3<u32>) {
     let volume_words = (count+31u)/32u;
     let surface_width = r.tile_side*16u;
     let surface_words = (surface_width*surface_width+31u)/32u;
-    let quart_width = surface_width/4u;
-    let bottom = i32(floor(f32(r.min_y)/4.0))*4;
-    let quart_layers = u32((r.max_y-bottom+3)/4);
-    let biome_count = quart_width*quart_width*quart_layers;
-    let biome_words = (biome_count+3u)/4u;
-    if word >= max(max(volume_words,surface_words),biome_words) { return; }
+    if word >= max(volume_words,surface_words) { return; }
     if word < volume_words {
     var bits = 0u;
     for (var bit=0u; bit<32u; bit++) {
@@ -196,16 +217,5 @@ fn cave_mask(@builtin(global_invocation_id) id: vec3<u32>) {
         if is_cave(x,column.height-1,z,column,r) { surface_bits |= 1u << bit; }
     }
     mask[volume_words+word] = surface_bits;
-    }
-    // One byte per 4x4x4 biome sample, packed four per word in this same dispatch.
-    if word < biome_words {
-        var ids = 0u;
-        for (var b=0u;b<4u;b++) {
-            let index = word*4u+b; if index >= biome_count { break; }
-            let x = (index%quart_width)*4u; let z = ((index/quart_width)%quart_width)*4u;
-            let y = bottom+i32(index/(quart_width*quart_width))*4;
-            ids |= biome_at(x,y,z,column_at(x,z,r.tile_side),r) << (b*8u);
-        }
-        mask[volume_words+surface_words+word] = ids;
     }
 }

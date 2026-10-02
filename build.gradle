@@ -120,6 +120,16 @@ tasks.register('geologyTest', JavaExec) {
     jvmArgs '--enable-native-access=ALL-UNNAMED'
 }
 
+tasks.register('featureTest', JavaExec) {
+    group = 'verification'
+    description = 'Validate GPU cave biomes, native cave decorations, ravines, lake basins and terracotta bands.'
+    dependsOn 'gpuTestClasses'
+    classpath = sourceSets.gpuTest.runtimeClasspath
+    mainClass = 'art.arcane.retina.worldgen.NativeFeatureIntegrationTest'
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
+    jvmArgs '--enable-native-access=ALL-UNNAMED'
+}
+
 tasks.register('previewTest', JavaExec) {
     group = 'verification'
     description = 'Validate DH-style surface generation, temporary MCA cache sharing, eviction, promotion and cleanup.'
