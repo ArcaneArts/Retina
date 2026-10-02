@@ -43,7 +43,7 @@ final class TemporaryRegions implements AutoCloseable {
     private int users;
     private boolean closed;
     private final int stone, water, bedrock, deepslate, ice, lava;
-    private final int[] bands, biomeFlags;
+    private final int[] bands, biomeFlags, biomeFillers;
     private final Map<String,Integer> biomeIds = new HashMap<>();
 
     TemporaryRegions(TerrainRequest settings, String biome, BiomeTerrainProfile profile, GenerationMetrics metrics, int capacity) {
@@ -68,6 +68,7 @@ final class TemporaryRegions implements AutoCloseable {
         ice = ids == null ? 0 : ids.get("ice").getAsInt();
         lava = ids == null || !ids.has("lava") ? water : ids.get("lava").getAsInt();
         bands = ids == null || !ids.has("terrain_features") ? new int[0] : ids.getAsJsonObject("terrain_features").getAsJsonArray("bands").asList().stream().mapToInt(e -> e.getAsInt()).toArray();
+        biomeFillers = ids == null ? new int[0] : ids.getAsJsonArray("biomes").asList().stream().mapToInt(e -> e.getAsJsonObject().get("filler").getAsInt()).toArray();
         biomeFlags = ids == null ? new int[0] : ids.getAsJsonArray("biomes").asList().stream().mapToInt(e -> e.getAsJsonObject().get("flags").getAsInt()).toArray();
         if (profile != null) for (int i = 0; i < profile.biomes().size(); i++) biomeIds.put(profile.biomes().get(i).unwrapKey().orElseThrow().identifier().toString(), i);
     }
@@ -255,7 +256,7 @@ final class TemporaryRegions implements AutoCloseable {
             else if (y >= ground) id = y < waterline ? (lake && (packed & (1 << 28)) != 0 ? lava : !lake && (packed & (1 << 28)) != 0 && y == waterline - 1 ? ice : water) : 0;
             else if (y == ground - 1) id = (packed >>> 8) & 255;
             else if (!lake && (biomeFlags[packed & 255] & 8) != 0 && bands.length > 0 && y >= profile.seaLevel() - 16) id = bands[Math.floorMod(y + (byte) ((packed >>> 16) & 255), bands.length)];
-            else if (y >= ground - 1 - (lake ? 2 : depth)) id = (packed >>> 16) & 255;
+            else if (y >= ground - 1 - (lake ? 2 : depth)) id = !lake && (biomeFlags[packed & 255] & 8) != 0 && bands.length > 0 ? biomeFillers[packed & 255] : (packed >>> 16) & 255;
             else id = y < 0 ? deepslate : stone;
             states[layer] = materials[id];
         }

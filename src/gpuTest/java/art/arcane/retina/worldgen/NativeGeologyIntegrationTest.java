@@ -101,8 +101,8 @@ public final class NativeGeologyIntegrationTest {
         require(!canyonSettings.isEmpty(), "registered canyon recipe exists");
         canyon.getAsJsonArray("biomes").get(0).getAsJsonObject().add("carvers", canyonSettings);
         int canyonId = nativeTerrain.registerProfile(canyon.toString()); int canyonAir = 0;
-        for (int x = 0; x < 8; x++) {
-            try (var data = nativeTerrain.generate(request(canyonId, x, 0))) {
+        for (int z = -8; z < 8; z++) for (int x = -8; x < 8; x++) {
+            try (var data = nativeTerrain.generate(request(canyonId, x, z))) {
                 var bytes = data.blocks().toArray(ValueLayout.JAVA_BYTE);
                 for (int y = 64; y < 120; y++) for (int column = 0; column < 256; column++) if (y - 64 < data.heights()[column] - 8 && bytes[y * 256 + column] == 0) canyonAir++;
             }

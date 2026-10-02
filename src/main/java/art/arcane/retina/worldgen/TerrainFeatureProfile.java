@@ -88,6 +88,8 @@ final class TerrainFeatureProfile {
         void walk(JsonElement value, int depth) {
             if (depth > 24) throw new IllegalArgumentException("Recursive cave feature graph");
             if (value.isJsonPrimitive() && value.getAsJsonPrimitive().isString()) {
+                var block = BlockState.CODEC.parse(JsonOps.INSTANCE, value).result();
+                if (block.isPresent()) { states.add(block.get()); return; }
                 String id = value.getAsString();
                 if (!id.startsWith("minecraft:") || !visited.add(id)) return;
                 var key = Identifier.parse(id);
@@ -154,7 +156,7 @@ final class TerrainFeatureProfile {
         if (value.isJsonPrimitive()) return new double[]{value.getAsDouble(), value.getAsDouble()};
         var o = value.getAsJsonObject();
         return new double[]{o.has("min_inclusive") ? o.get("min_inclusive").getAsDouble() : o.has("min") ? o.get("min").getAsDouble() : 0,
-                o.has("max_inclusive") ? o.get("max_inclusive").getAsDouble() : o.has("max") ? o.get("max").getAsDouble() : 0};
+                o.has("max_inclusive") ? o.get("max_inclusive").getAsDouble() : o.has("max_exclusive") ? o.get("max_exclusive").getAsDouble() : o.has("max") ? o.get("max").getAsDouble() : 0};
     }
     private static boolean hasBands(MaterialRule rule) {
         if (rule instanceof MaterialRule.HolderHolder h) return hasBands(h.holder().value());

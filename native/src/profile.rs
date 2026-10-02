@@ -283,7 +283,7 @@ impl Column {
             return bands[(y + offset).rem_euclid(bands.len() as i32) as usize];
         }
         if y >= self.height - 1 - if lake { 2 } else { depth } {
-            return ((self.packed >> 16) & 255) as u8;
+            return if !lake && profile.biomes[self.biome()].flags & 8 != 0 && !profile.terrain_features.bands.is_empty() { profile.biomes[self.biome()].filler as u8 } else { ((self.packed >> 16) & 255) as u8 };
         }
         if y < 0 {
             profile.deepslate
