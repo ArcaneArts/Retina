@@ -1,0 +1,5 @@
+{
+  "generator.retina.gpu": "Retina GPU Simplex (MCA)",
+  "debug.entry.retina.generation": "Retina terrain generation",
+  "generator.retina.gpu_chunk": "Retina GPU Simplex (Chunks)"
+}

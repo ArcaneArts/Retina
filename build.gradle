@@ -1,0 +1,160 @@
+plugins {
+    id 'net.fabricmc.fabric-loom' version "${loom_version}"
+}
+
+loom {
+    splitEnvironmentSourceSets()
+
+    runs.configureEach {
+        vmArg '--enable-native-access=ALL-UNNAMED'
+        if (providers.gradleProperty('retinaQa').isPresent()) {
+            vmArg '-Dretina.qa=true'
+        }
+    }
+
+    mods {
+        retina {
+            sourceSet sourceSets.main
+            sourceSet sourceSets.client
+        }
+    }
+}
+
+def nativeDirectory = layout.projectDirectory.dir('native')
+def nativeTarget = layout.buildDirectory.dir('native-target')
+def nativeResources = layout.buildDirectory.dir('generated/native-resources')
+def nativeLibraryName = System.mapLibraryName('retina_worldgen')
+def nativeOsName = System.getProperty('os.name').toLowerCase(Locale.ROOT)
+def nativeOs = nativeOsName.contains('mac') ? 'macos' : nativeOsName.contains('win') ? 'windows' : 'linux'
+def nativeArchName = System.getProperty('os.arch').toLowerCase(Locale.ROOT)
+def nativeArch = ['arm64': 'aarch64', 'aarch64': 'aarch64', 'amd64': 'x86_64', 'x86_64': 'x86_64'].get(nativeArchName, nativeArchName)
+def cargoExecutable = providers.gradleProperty('cargoExecutable').orElse('cargo').get()
+def nativeInputs = fileTree(nativeDirectory) {
+    include 'Cargo.toml', 'Cargo.lock', 'src/**'
+}
+
+tasks.register('buildNative', Exec) {
+    group = 'build'
+    description = 'Build the Rust GPU terrain library for this host.'
+    workingDir nativeDirectory
+    commandLine cargoExecutable, 'build', '--release', '--locked', '--target-dir', nativeTarget.get().asFile.absolutePath
+    inputs.files nativeInputs
+    outputs.file nativeTarget.map { it.file("release/${nativeLibraryName}") }
+}
+
+tasks.register('packageNative', Copy) {
+    dependsOn 'buildNative'
+    from nativeTarget.map { it.file("release/${nativeLibraryName}") }
+    into nativeResources.map { it.dir("natives/${nativeOs}-${nativeArch}") }
+}
+
+sourceSets.main.resources.srcDir(nativeResources)
+processResources.dependsOn 'packageNative'
+
+sourceSets {
+    gpuTest {
+        compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
+        runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath
+    }
+}
+
+tasks.register('nativeUnitTest', Exec) {
+    group = 'verification'
+    dependsOn 'buildNative'
+    workingDir nativeDirectory
+    commandLine cargoExecutable, 'test', '--release', '--locked', '--lib', '--target-dir', nativeTarget.get().asFile.absolutePath
+}
+
+check.dependsOn 'nativeUnitTest'
+
+tasks.register('nativeGpuTest', Exec) {
+    group = 'verification'
+    description = 'Run concurrent chunk and height-query tests on the actual GPU.'
+    dependsOn 'buildNative'
+    mustRunAfter 'nativeUnitTest'
+    workingDir nativeDirectory
+    commandLine cargoExecutable, 'test', '--release', '--locked', '--test', 'gpu', '--target-dir', nativeTarget.get().asFile.absolutePath, '--', '--nocapture'
+}
+
+tasks.register('gpuTest', JavaExec) {
+    group = 'verification'
+    description = 'Test the GPU pipeline and Java/Rust bridge with parallel requests.'
+    dependsOn 'nativeGpuTest', 'gpuTestClasses'
+    classpath = sourceSets.gpuTest.runtimeClasspath
+    mainClass = 'art.arcane.retina.worldgen.NativeTerrainIntegrationTest'
+    javaLauncher = javaToolchains.launcherFor {
+        languageVersion = JavaLanguageVersion.of(25)
+    }
+    jvmArgs '--enable-native-access=ALL-UNNAMED'
+}
+
+tasks.register('regionTest', JavaExec) {
+    group = 'verification'
+    description = 'Generate Rust MCA files and verify them with Minecraft decoders, including existing edits.'
+    dependsOn 'gpuTestClasses'
+    classpath = sourceSets.gpuTest.runtimeClasspath
+    mainClass = 'art.arcane.retina.worldgen.NativeRegionIntegrationTest'
+    javaLauncher = javaToolchains.launcherFor {
+        languageVersion = JavaLanguageVersion.of(25)
+    }
+    jvmArgs '--enable-native-access=ALL-UNNAMED'
+}
+
+tasks.register('biomeTest', JavaExec) {
+    group = 'verification'
+    description = 'Run GPU biomes and decode a full MCA using Minecraft block and biome palettes.'
+    dependsOn 'gpuTestClasses'
+    classpath = sourceSets.gpuTest.runtimeClasspath
+    mainClass = 'art.arcane.retina.worldgen.NativeBiomeIntegrationTest'
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
+    jvmArgs '--enable-native-access=ALL-UNNAMED'
+}
+
+dependencies {
+    minecraft "com.mojang:minecraft:${project.minecraft_version}"
+    implementation "net.fabricmc:fabric-loader:${project.loader_version}"
+    implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+}
+
+processResources {
+    def properties = [
+        version: project.version,
+        minecraft_version: project.minecraft_version,
+        loader_version: project.loader_version
+    ]
+    inputs.properties(properties)
+
+    filesMatching('fabric.mod.json') {
+        expand(properties)
+    }
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(25)
+    }
+    withSourcesJar()
+}
+
+tasks.named('sourcesJar') {
+    dependsOn 'packageNative'
+    exclude 'natives/**'
+    from(nativeDirectory) {
+        include 'Cargo.toml', 'Cargo.lock', 'src/**'
+        into 'native'
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.release = 25
+    options.encoding = 'UTF-8'
+}
+
+jar {
+    def projectName = project.name
+    inputs.property 'projectName', projectName
+
+    from('LICENSE') {
+        rename { "${it}_${projectName}" }
+    }
+}

@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "id": "retina",
+  "version": "${version}",
+  "name": "Retina",
+  "description": "Retina for Minecraft 26.3.",
+  "authors": ["Arcane Arts"],
+  "contact": {
+    "sources": "https://github.com/ArcaneArts/Retina",
+    "issues": "https://github.com/ArcaneArts/Retina/issues"
+  },
+  "license": "All-Rights-Reserved",
+  "environment": "*",
+  "entrypoints": {
+    "main": ["art.arcane.retina.Retina"],
+    "client": ["art.arcane.retina.client.RetinaClient"]
+  },
+  "mixins": [
+    "retina.mixins.json",
+    {
+      "config": "retina.client.mixins.json",
+      "environment": "client"
+    }
+  ],
+  "depends": {
+    "fabricloader": ">=${loader_version}",
+    "minecraft": "~${minecraft_version}",
+    "java": ">=25",
+    "fabric-api": "*"
+  }
+}

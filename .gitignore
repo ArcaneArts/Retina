@@ -1,0 +1,30 @@
+# Gradle and generated output
+.gradle/
+build/
+out/
+classes/
+native/target/
+.qa/
+
+# Development game files
+run/
+logs/
+
+# IDE files
+.idea/
+*.iml
+*.ipr
+*.iws
+.settings/
+.vscode/
+bin/
+.classpath
+.project
+*.launch
+
+# OS and JVM diagnostics
+.DS_Store
+hs_err_*.log
+replay_*.log
+*.hprof
+*.jfr
