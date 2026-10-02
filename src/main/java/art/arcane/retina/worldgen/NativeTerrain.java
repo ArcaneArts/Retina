@@ -23,8 +23,11 @@ public final class NativeTerrain {
     private final MethodHandle generate;
     private final MethodHandle sample;
     private final MethodHandle region;
+    private final MethodHandle regionColumns;
+    private final MethodHandle publishRegionCache;
     private final MethodHandle registerProfile;
     private final MethodHandle sampleColumns;
+    private final MethodHandle sampleBiomes;
     private final MethodHandle column;
     private final MethodHandle lastError;
     private final String backend;
@@ -39,10 +42,16 @@ public final class NativeTerrain {
                 FunctionDescriptor.of(JAVA_INT, ADDRESS, ADDRESS));
         region = linker.downcallHandle(symbols.findOrThrow("retina_generate_region"),
                 FunctionDescriptor.of(JAVA_INT, ADDRESS, ADDRESS, JAVA_LONG, JAVA_INT, ADDRESS, JAVA_LONG, ADDRESS));
+        regionColumns = linker.downcallHandle(symbols.findOrThrow("retina_generate_region_columns"),
+                FunctionDescriptor.of(JAVA_INT, ADDRESS, ADDRESS, JAVA_LONG, JAVA_INT, ADDRESS, JAVA_LONG, ADDRESS, ADDRESS));
+        publishRegionCache = linker.downcallHandle(symbols.findOrThrow("retina_publish_region_cache"),
+                FunctionDescriptor.of(JAVA_INT, ADDRESS, ADDRESS, JAVA_LONG, ADDRESS, JAVA_LONG, ADDRESS));
         registerProfile = linker.downcallHandle(symbols.findOrThrow("retina_register_profile"),
                 FunctionDescriptor.of(JAVA_INT, ADDRESS, JAVA_LONG, ADDRESS));
         sampleColumns = linker.downcallHandle(symbols.findOrThrow("retina_sample_columns"),
                 FunctionDescriptor.of(JAVA_INT, ADDRESS, ADDRESS));
+        sampleBiomes = linker.downcallHandle(symbols.findOrThrow("retina_sample_biomes"),
+                FunctionDescriptor.of(JAVA_INT, ADDRESS, ADDRESS, JAVA_LONG));
         column = linker.downcallHandle(symbols.findOrThrow("retina_generate_column"),
                 FunctionDescriptor.of(JAVA_INT, ADDRESS, JAVA_INT, ADDRESS));
         lastError = linker.downcallHandle(symbols.findOrThrow("retina_last_error"),
@@ -110,6 +119,16 @@ public final class NativeTerrain {
         } catch (Throwable error) { throw failure(error); }
     }
 
+    /** Minecraft's x,z,y quart order: 4*4*(height/4) one-byte registry indices. */
+    public byte[] sampleBiomes(TerrainRequest request) {
+        try (var arena = Arena.ofConfined()) {
+            long size = request.height() * 4L;
+            var output = arena.allocate(size);
+            check((int) sampleBiomes.invokeExact(encode(arena, request), output, size));
+            return output.toArray(JAVA_BYTE);
+        } catch (Throwable error) { throw failure(error); }
+    }
+
     public byte[] column(TerrainRequest request, int index) {
         try (var arena = Arena.ofConfined()) {
             var blocks = arena.allocate(request.height());
@@ -119,9 +138,10 @@ public final class NativeTerrain {
     }
 
     private static Columns decodeColumns(MemorySegment data) {
-        var heights = new int[256];
-        var packed = new int[256];
-        for (int i = 0; i < 256; i++) {
+        int count = Math.toIntExact(data.byteSize() / 8);
+        var heights = new int[count];
+        var packed = new int[count];
+        for (int i = 0; i < count; i++) {
             heights[i] = data.get(JAVA_INT, i * 8L);
             packed[i] = data.get(JAVA_INT, i * 8L + 4);
         }
@@ -147,6 +167,35 @@ public final class NativeTerrain {
         } catch (Throwable error) {
             throw failure(error);
         }
+    }
+
+    /** Caller owns a temporary destination. Returns the same GPU columns used by the MCA writer. */
+    public RegionData generateRegionColumns(TerrainRequest request, Path destination, int dataVersion, String biome) {
+        try (var arena = Arena.ofConfined()) {
+            var pathBytes = destination.toAbsolutePath().toString().getBytes(StandardCharsets.UTF_8);
+            var biomeBytes = biome.getBytes(StandardCharsets.UTF_8);
+            var output = arena.allocate(1024L * 256 * 8, Integer.BYTES);
+            var report = arena.allocate(40, Long.BYTES);
+            check((int) regionColumns.invokeExact(encode(arena, request), arena.allocateFrom(JAVA_BYTE, pathBytes), (long) pathBytes.length,
+                    dataVersion, arena.allocateFrom(JAVA_BYTE, biomeBytes), (long) biomeBytes.length, report, output));
+            return new RegionData(new RegionReport(report.get(JAVA_INT, 0), report.get(JAVA_INT, 4),
+                    report.get(JAVA_LONG, 8), report.get(JAVA_LONG, 16), report.get(JAVA_LONG, 24), report.get(JAVA_LONG, 32)), decodeColumns(output));
+        } catch (Throwable error) { throw failure(error); }
+    }
+
+    public record RegionData(RegionReport report, Columns columns) { }
+
+    /** Copy cached compressed records into missing save slots while preserving existing chunks. */
+    public RegionReport publishCachedRegion(TerrainRequest request, Path destination, Path cached) {
+        try (var arena = Arena.ofConfined()) {
+            var pathBytes = destination.toAbsolutePath().toString().getBytes(StandardCharsets.UTF_8);
+            var cachedBytes = cached.toAbsolutePath().toString().getBytes(StandardCharsets.UTF_8);
+            var report = arena.allocate(40, Long.BYTES);
+            check((int) publishRegionCache.invokeExact(encode(arena, request), arena.allocateFrom(JAVA_BYTE, pathBytes), (long) pathBytes.length,
+                    arena.allocateFrom(JAVA_BYTE, cachedBytes), (long) cachedBytes.length, report));
+            return new RegionReport(report.get(JAVA_INT, 0), report.get(JAVA_INT, 4),
+                    report.get(JAVA_LONG, 8), report.get(JAVA_LONG, 16), report.get(JAVA_LONG, 24), report.get(JAVA_LONG, 32));
+        } catch (Throwable error) { throw failure(error); }
     }
 
     public record RegionReport(int generated, int preserved, long gpuNanos, long assemblyNanos,

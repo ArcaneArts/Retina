@@ -1,5 +1,5 @@
 use crate::{
-    COLUMNS, GpuRequest, MAX_BATCH,
+    COLUMNS, GpuRequest, MAX_BATCH, MAX_TILES,
     profile::{Column, WorldProfile},
 };
 use std::{collections::HashMap, sync::mpsc, time::Duration};
@@ -9,6 +9,11 @@ pub(crate) struct Gpu {
     device: wgpu::Device,
     queue: wgpu::Queue,
     sites_pipeline: wgpu::ComputePipeline,
+    cave_nodes_pipeline: wgpu::ComputePipeline,
+    cave_mask_pipeline: wgpu::ComputePipeline,
+    cave_layout: wgpu::BindGroupLayout,
+    cave_profiles: HashMap<u32, wgpu::Buffer>,
+    cave_buffers: Option<CaveBuffers>,
     columns_pipeline: wgpu::ComputePipeline,
     layout: wgpu::BindGroupLayout,
     profiles: HashMap<u32, (wgpu::Buffer, wgpu::BindGroup)>,
@@ -17,6 +22,18 @@ pub(crate) struct Gpu {
     sites: wgpu::Buffer,
     readback: wgpu::Buffer,
     pub(crate) backend: String,
+}
+
+pub(crate) struct GpuSample {
+    pub columns: Vec<Column>,
+    pub mask: Option<crate::geology::CaveMask>,
+}
+struct CaveBuffers {
+    nodes: wgpu::Buffer,
+    mask: wgpu::Buffer,
+    readback: wgpu::Buffer,
+    nodes_size: u64,
+    mask_size: u64,
 }
 
 impl Gpu {
@@ -36,6 +53,11 @@ impl Gpu {
         let backend = format!("{:?}: {}", info.backend, info.name);
         let (device, queue) = pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor {
             label: Some("Retina terrain device"),
+            required_limits: wgpu::Limits {
+                max_storage_buffer_binding_size: adapter.limits().max_storage_buffer_binding_size,
+                max_buffer_size: adapter.limits().max_buffer_size,
+                ..Default::default()
+            },
             ..Default::default()
         }))
         .map_err(|e| format!("cannot create the GPU compute device: {e}"))?;
@@ -75,6 +97,44 @@ impl Gpu {
                 cache: None,
             })
         };
+        let cave_shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("Retina GPU cave fields and mask"),
+            source: wgpu::ShaderSource::Wgsl(include_str!("caves.wgsl").into()),
+        });
+        let cave_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("Retina cave buffers"),
+            entries: &(0..5)
+                .map(|binding| wgpu::BindGroupLayoutEntry {
+                    binding,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage {
+                            read_only: binding < 3,
+                        },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                })
+                .collect::<Vec<_>>(),
+        });
+        let cave_pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("Retina cave stages"),
+            bind_group_layouts: &[Some(&cave_layout)],
+            immediate_size: 0,
+        });
+        let cave_pipeline = |entry| {
+            device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some(entry),
+                layout: Some(&cave_pipeline_layout),
+                module: &cave_shader,
+                entry_point: Some(entry),
+                compilation_options: Default::default(),
+                cache: None,
+            })
+        };
+        let cave_nodes_pipeline = cave_pipeline("cave_nodes");
+        let cave_mask_pipeline = cave_pipeline("cave_mask");
         let sites_pipeline = pipeline("biome_sites");
         let columns_pipeline = pipeline("main");
         let requests = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -90,7 +150,7 @@ impl Gpu {
                 mapped_at_creation: false,
             })
         };
-        let size = (MAX_BATCH * COLUMNS * std::mem::size_of::<Column>()) as u64;
+        let size = (MAX_TILES * COLUMNS * std::mem::size_of::<Column>()) as u64;
         let output = buffer(
             "Retina GPU columns",
             size,
@@ -110,6 +170,11 @@ impl Gpu {
             device,
             queue,
             sites_pipeline,
+            cave_nodes_pipeline,
+            cave_mask_pipeline,
+            cave_layout,
+            cave_profiles: HashMap::new(),
+            cave_buffers: None,
             columns_pipeline,
             layout,
             profiles: HashMap::new(),
@@ -119,7 +184,7 @@ impl Gpu {
             readback,
             backend,
         };
-        gpu.add_profile(0, &vec![0; 656]);
+        gpu.add_profile(0, &vec![0; 672]);
         Ok(gpu)
     }
 
@@ -160,7 +225,7 @@ impl Gpu {
         &mut self,
         requests: &[GpuRequest],
         profile: Option<&WorldProfile>,
-    ) -> Result<Vec<Column>, String> {
+    ) -> Result<GpuSample, String> {
         let profile_id = requests[0].profile;
         if !self.profiles.contains_key(&profile_id) {
             self.add_profile(
@@ -168,11 +233,79 @@ impl Gpu {
                 &profile.ok_or("missing GPU world profile")?.gpu_bytes(),
             );
         }
+        let cave_side = requests[0].padding;
+        let cave_width = cave_side * 16 + 2;
+        let cave_height = (requests[0].max_y - requests[0].min_y) as u32;
+        let surface_width = requests[0].tile_side * 16;
+        let volume_words =
+            (cave_width as u64 * cave_width as u64 * cave_height as u64).div_ceil(32);
+        let quart_width = surface_width as u64 / 4;
+        let quart_layers =
+            ((requests[0].max_y - requests[0].min_y.div_euclid(4) * 4 + 3) / 4) as u64;
+        let biome_words = (quart_width * quart_width * quart_layers).div_ceil(4);
+        let mask_size = (volume_words
+            + (surface_width as u64 * surface_width as u64).div_ceil(32)
+            + biome_words)
+            * 4;
+        let node_side = requests[0].tile_side * 4 + 1;
+        let node_bottom = requests[0].min_y.div_euclid(4) * 4;
+        let node_height = ((requests[0].max_y - node_bottom + 3) / 4 + 1) as u32;
+        let nodes_size = node_side as u64 * node_side as u64 * node_height as u64 * 16;
+        if cave_side > 0 {
+            if !self.cave_profiles.contains_key(&profile_id) {
+                let data = profile
+                    .ok_or("missing cave profile")?
+                    .geology
+                    .gpu_bytes(profile.unwrap());
+                self.cave_profiles.insert(
+                    profile_id,
+                    self.device
+                        .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                            label: Some("Retina resident cave profile"),
+                            contents: &data,
+                            usage: wgpu::BufferUsages::STORAGE,
+                        }),
+                );
+            }
+            if self
+                .cave_buffers
+                .as_ref()
+                .is_none_or(|b| b.nodes_size < nodes_size || b.mask_size < mask_size)
+            {
+                let buffer = |label, size, usage| {
+                    self.device.create_buffer(&wgpu::BufferDescriptor {
+                        label: Some(label),
+                        size,
+                        usage,
+                        mapped_at_creation: false,
+                    })
+                };
+                self.cave_buffers = Some(CaveBuffers {
+                    nodes: buffer(
+                        "Retina GPU-only cave lattice",
+                        nodes_size,
+                        wgpu::BufferUsages::STORAGE,
+                    ),
+                    mask: buffer(
+                        "Retina packed cave mask",
+                        mask_size,
+                        wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
+                    ),
+                    readback: buffer(
+                        "Retina cave mask readback",
+                        mask_size,
+                        wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
+                    ),
+                    nodes_size,
+                    mask_size,
+                });
+            }
+        }
         self.queue
             .write_buffer(&self.requests, 0, bytemuck::cast_slice(requests));
         let group = &self.profiles[&profile_id].1;
         let count = if requests[0].tile_side > 0 {
-            MAX_BATCH
+            (requests[0].tile_side * requests[0].tile_side) as usize
         } else {
             requests.len()
         };
@@ -199,6 +332,61 @@ impl Gpu {
             pass.set_bind_group(0, group, &[]);
             pass.dispatch_workgroups(4, count as u32, 1);
         }
+        if cave_side > 0 {
+            let buffers = self.cave_buffers.as_ref().unwrap();
+            let cave_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some("Retina cave job"),
+                layout: &self.cave_layout,
+                entries: &[
+                    wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: self.requests.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 1,
+                        resource: self.output.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 2,
+                        resource: self.cave_profiles[&profile_id].as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 3,
+                        resource: buffers.nodes.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 4,
+                        resource: buffers.mask.as_entire_binding(),
+                    },
+                ],
+            });
+            {
+                let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                    label: Some("Retina cave density pass"),
+                    timestamp_writes: None,
+                });
+                pass.set_pipeline(&self.cave_nodes_pipeline);
+                pass.set_bind_group(0, &cave_group, &[]);
+                pass.dispatch_workgroups((node_side * node_side).div_ceil(64), node_height, 1);
+            }
+            {
+                let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                    label: Some("Retina GPU interpolated cave mask"),
+                    timestamp_writes: None,
+                });
+                pass.set_pipeline(&self.cave_mask_pipeline);
+                pass.set_bind_group(0, &cave_group, &[]);
+                pass.dispatch_workgroups(
+                    256,
+                    volume_words
+                        .max((surface_width as u64 * surface_width as u64).div_ceil(32))
+                        .max(biome_words)
+                        .div_ceil(16384) as u32,
+                    1,
+                );
+            }
+            encoder.copy_buffer_to_buffer(&buffers.mask, 0, &buffers.readback, 0, mask_size);
+        }
         let size = (count * COLUMNS * std::mem::size_of::<Column>()) as u64;
         encoder.copy_buffer_to_buffer(&self.output, 0, &self.readback, 0, size);
         let submission = self.queue.submit([encoder.finish()]);
@@ -207,6 +395,17 @@ impl Gpu {
         slice.map_async(wgpu::MapMode::Read, move |result| {
             let _ = sender.send(result);
         });
+        let (mask_sender, mask_receiver) = mpsc::channel();
+        if cave_side > 0 {
+            self.cave_buffers
+                .as_ref()
+                .unwrap()
+                .readback
+                .slice(..mask_size)
+                .map_async(wgpu::MapMode::Read, move |result| {
+                    let _ = mask_sender.send(result);
+                });
+        }
         self.device
             .poll(wgpu::PollType::Wait {
                 submission_index: Some(submission),
@@ -224,6 +423,32 @@ impl Gpu {
             bytemuck::cast_slice::<u8, Column>(&mapped).to_vec()
         };
         self.readback.unmap();
-        Ok(columns)
+        let mask = if cave_side > 0 {
+            mask_receiver
+                .recv_timeout(Duration::from_secs(30))
+                .map_err(|e| format!("cave readback timed out: {e}"))?
+                .map_err(|e| format!("cave readback failed: {e}"))?;
+            let buffers = self.cave_buffers.as_ref().unwrap();
+            let words = {
+                let mapped = buffers
+                    .readback
+                    .slice(..mask_size)
+                    .get_mapped_range()
+                    .map_err(|e| e.to_string())?;
+                bytemuck::cast_slice::<u8, u32>(&mapped).to_vec()
+            };
+            buffers.readback.unmap();
+            Some(crate::geology::CaveMask {
+                origin_x: requests[0].origin_x + 15,
+                origin_z: requests[0].origin_z + 15,
+                min_y: requests[0].min_y,
+                height: cave_height,
+                width: cave_width as usize,
+                words,
+            })
+        } else {
+            None
+        };
+        Ok(GpuSample { columns, mask })
     }
 }

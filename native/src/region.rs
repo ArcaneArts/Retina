@@ -11,7 +11,7 @@ use flate2::{Compression, write::ZlibEncoder};
 use rayon::prelude::*;
 
 use crate::{
-    COLUMNS, ChunkRequest, TerrainEngine,
+    COLUMNS, ChunkRequest, TerrainEngine, decoration, geology,
     profile::{Column, WorldProfile},
 };
 
@@ -56,6 +56,51 @@ pub fn generate_region(
     data_version: i32,
     biome: &str,
 ) -> Result<RegionReport, String> {
+    generate_region_inner(engine, request, path, data_version, biome, None, None)
+}
+
+/// Preview generation also returns the undecorated GPU columns, without another dispatch.
+pub fn generate_region_columns(
+    engine: &TerrainEngine,
+    request: ChunkRequest,
+    path: &Path,
+    data_version: i32,
+    biome: &str,
+    columns: &mut [Column],
+) -> Result<RegionReport, String> {
+    if columns.len() != 1024 * COLUMNS {
+        return Err("incorrect region column buffer length".into());
+    }
+    generate_region_inner(
+        engine,
+        request,
+        path,
+        data_version,
+        biome,
+        Some(columns),
+        None,
+    )
+}
+
+/// Install cached compressed records into missing slots; existing records remain unchanged.
+pub fn publish_cached_region(
+    engine: &TerrainEngine,
+    request: ChunkRequest,
+    path: &Path,
+    cached: &Path,
+) -> Result<RegionReport, String> {
+    generate_region_inner(engine, request, path, 0, "", None, Some(cached))
+}
+
+fn generate_region_inner(
+    engine: &TerrainEngine,
+    request: ChunkRequest,
+    path: &Path,
+    data_version: i32,
+    biome: &str,
+    output: Option<&mut [Column]>,
+    cached: Option<&Path>,
+) -> Result<RegionReport, String> {
     request.validate()?;
     if request.min_y % 16 != 0
         || !request.height.is_multiple_of(16)
@@ -64,7 +109,7 @@ pub fn generate_region(
     {
         return Err("MCA sections require aligned heights with section Y in -128..127".into());
     }
-    if biome.is_empty() || biome.len() > u16::MAX as usize {
+    if cached.is_none() && (biome.is_empty() || biome.len() > u16::MAX as usize) {
         return Err("invalid MCA biome identifier".into());
     }
     let mut file = match fs::read(path) {
@@ -72,6 +117,10 @@ pub fn generate_region(
         Err(e) if e.kind() == ErrorKind::NotFound => vec![0; HEADER],
         Err(e) => return Err(format!("read region {}: {e}", path.display())),
     };
+    // Vanilla/DH can open an empty region before writing its first record.
+    if file.is_empty() {
+        file.resize(HEADER, 0);
+    }
     if file.len() < HEADER {
         return Err(format!("truncated MCA header: {}", path.display()));
     }
@@ -110,35 +159,130 @@ pub fn generate_region(
         ..Default::default()
     };
     if slots.is_empty() {
+        if let Some(output) = output {
+            output.copy_from_slice(&engine.sample_region(request)?);
+        }
         return Ok(report);
     }
 
     let start = Instant::now();
-    let columns = engine.sample_region(request)?;
-    let profile = engine.profile(request.reserved)?;
-    report.gpu_nanos = start.elapsed().as_nanos() as u64;
-    let start = Instant::now();
-    let records: Result<Vec<_>, String> = assemblers()?.install(|| {
-        requests
-            .par_iter()
-            .enumerate()
-            .map(|(index, &request)| {
-                let offset = slots[index] * COLUMNS;
-                let nbt = chunk_nbt_columns(
-                    request,
-                    &columns[offset..offset + COLUMNS],
-                    data_version,
-                    biome,
-                    profile.as_deref(),
-                );
-                let mut compressed = ZlibEncoder::new(Vec::new(), Compression::fast());
-                compressed.write_all(&nbt).map_err(|e| e.to_string())?;
-                compressed.finish().map_err(|e| e.to_string())
+    let records: Result<Vec<Vec<u8>>, String> = if let Some(cached) = cached {
+        let source =
+            fs::read(cached).map_err(|e| format!("read preview {}: {e}", cached.display()))?;
+        if source.len() < HEADER {
+            return Err("truncated cached MCA header".into());
+        }
+        slots
+            .iter()
+            .map(|slot| {
+                let location =
+                    u32::from_be_bytes(source[slot * 4..slot * 4 + 4].try_into().unwrap());
+                let offset = (location >> 8) as usize * SECTOR;
+                let length = (location & 255) as usize * SECTOR;
+                if offset < HEADER || length == 0 || offset + length > source.len() {
+                    return Err(format!("invalid cached MCA location at slot {slot}"));
+                }
+                let payload =
+                    u32::from_be_bytes(source[offset..offset + 4].try_into().unwrap()) as usize;
+                if payload < 1 || payload + 4 > length || source[offset + 4] != 2 {
+                    return Err(format!("invalid cached MCA record at slot {slot}"));
+                }
+                Ok(source[offset + 5..offset + 4 + payload].to_vec())
             })
             .collect()
-    });
+    } else {
+        let profile = engine.profile(request.reserved)?;
+        let origin = ChunkRequest {
+            chunk_x: region_x * 32,
+            chunk_z: region_z * 32,
+            ..request
+        };
+        let decorated = profile
+            .as_deref()
+            .is_some_and(|p| !p.decorations.is_empty());
+        let (field, cave_mask) = if profile
+            .as_deref()
+            .is_some_and(|p| decorated || !p.geology.ores.is_empty() || p.geology.caves_enabled(p))
+        {
+            engine.terrain_field(origin, 32)?
+        } else {
+            (
+                decoration::Field {
+                    origin_x: origin.chunk_x,
+                    origin_z: origin.chunk_z,
+                    side: 32,
+                    columns: engine.sample_region(origin)?,
+                },
+                None,
+            )
+        };
+        if let Some(output) = output {
+            for slot in 0..1024 {
+                output[slot * COLUMNS..(slot + 1) * COLUMNS].copy_from_slice(field.chunk(
+                    origin.chunk_x + (slot % 32) as i32,
+                    origin.chunk_z + (slot / 32) as i32,
+                ));
+            }
+        }
+        report.gpu_nanos = start.elapsed().as_nanos() as u64;
+        assemblers()?.install(|| {
+            let overlays = if decorated {
+                decoration::plan(
+                    &field,
+                    profile.as_deref().unwrap(),
+                    origin,
+                    origin.chunk_x,
+                    origin.chunk_z,
+                    32,
+                    cave_mask.as_deref(),
+                )
+            } else {
+                vec![Vec::new(); 1024]
+            };
+            let ores = if let Some(p) = profile.as_deref() {
+                geology::plan(&field, p, origin, 32)
+            } else {
+                vec![Vec::new(); 1024]
+            };
+            requests
+                .par_iter()
+                .enumerate()
+                .map(|(index, &request)| {
+                    let columns = field.chunk(request.chunk_x, request.chunk_z);
+                    let mut blocks = vec![0; request.block_count()];
+                    decoration::assemble(request, columns, profile.as_deref(), &[], &mut blocks);
+                    if let Some(p) = profile.as_deref() {
+                        geology::apply(
+                            request,
+                            &field,
+                            p,
+                            cave_mask.as_deref(),
+                            &ores[slots[index]],
+                            &mut blocks,
+                        );
+                    }
+                    if let Some(p) = profile.as_deref() {
+                        crate::features::apply(request, p, cave_mask.as_deref(), &mut blocks);
+                    }
+                    decoration::decorate(profile.as_deref(), &overlays[slots[index]], &mut blocks);
+                    let nbt = chunk_nbt_blocks(
+                        request,
+                        columns,
+                        &blocks,
+                        data_version,
+                        biome,
+                        profile.as_deref(),
+                        cave_mask.as_deref(),
+                    );
+                    let mut compressed = ZlibEncoder::new(Vec::new(), Compression::fast());
+                    compressed.write_all(&nbt).map_err(|e| e.to_string())?;
+                    compressed.finish().map_err(|e| e.to_string())
+                })
+                .collect()
+        })
+    };
     let records = records?;
-    report.assembly_nanos = start.elapsed().as_nanos() as u64;
+    report.assembly_nanos = (start.elapsed().as_nanos() as u64).saturating_sub(report.gpu_nanos);
     let start = Instant::now();
     file.resize(file.len().div_ceil(SECTOR) * SECTOR, 0);
     let timestamp = SystemTime::now()
@@ -264,6 +408,28 @@ pub fn chunk_nbt_columns(
     biome: &str,
     profile: Option<&WorldProfile>,
 ) -> Vec<u8> {
+    let mut blocks = vec![0; request.block_count()];
+    decoration::assemble(request, columns, profile, &[], &mut blocks);
+    chunk_nbt_blocks(
+        request,
+        columns,
+        &blocks,
+        data_version,
+        biome,
+        profile,
+        None,
+    )
+}
+
+fn chunk_nbt_blocks(
+    request: ChunkRequest,
+    columns: &[Column],
+    blocks: &[u8],
+    data_version: i32,
+    biome: &str,
+    profile: Option<&WorldProfile>,
+    cave_mask: Option<&crate::geology::CaveMask>,
+) -> Vec<u8> {
     let heights: Vec<_> = columns.iter().map(|c| c.height).collect();
     let mut nbt = Nbt(Vec::with_capacity(20_000));
     nbt.compound("");
@@ -284,16 +450,8 @@ pub fn chunk_nbt_columns(
         nbt.byte("Y", (y / 16) as i8);
         nbt.compound("block_states");
         if let Some(profile) = profile {
-            let values: Vec<_> = (0..4096)
-                .map(|index| {
-                    columns[index % COLUMNS].material(
-                        y + (index / COLUMNS) as i32,
-                        request.min_y,
-                        Some(profile),
-                    )
-                })
-                .collect();
-            let (palette, indices) = make_palette(&values);
+            let values = &blocks[section as usize * 4096..(section as usize + 1) * 4096];
+            let (palette, indices) = make_palette(values);
             nbt.list("palette", 10, palette.len());
             for id in &palette {
                 let material = &profile.materials[*id as usize];
@@ -320,8 +478,23 @@ pub fn chunk_nbt_columns(
             }
             nbt.end();
             nbt.compound("biomes");
-            // Vertically constant biome samples; palette entries use x,z,y order.
-            let values: Vec<_> = (0..64).map(|index| columns[((index % 16) / 4) * 64 + (index % 4) * 4].biome() as u8).collect();
+            // GPU quart biomes use Minecraft's x,z,y order.
+            let values: Vec<_> = (0..64)
+                .map(|index| {
+                    cave_mask
+                        .and_then(|m| {
+                            m.biome(
+                                request.chunk_x * 16 + (index % 4) * 4,
+                                y + (index / 16) * 4,
+                                request.chunk_z * 16 + ((index % 16) / 4) * 4,
+                            )
+                        })
+                        .unwrap_or(
+                            columns[((index % 16) / 4) as usize * 64 + (index % 4) as usize * 4]
+                                .biome() as u8,
+                        )
+                })
+                .collect();
             let (palette, indices) = make_palette(&values);
             nbt.list("palette", 8, palette.len());
             for id in &palette {
@@ -375,25 +548,43 @@ pub fn chunk_nbt_columns(
         .iter()
         .map(|column| (column.surface_height(profile) - request.min_y) as u32)
         .collect();
-    for name in [
+    let mut final_heights = vec![vec![0u32; COLUMNS]; 6];
+    if let Some(profile) = profile {
+        for c in 0..COLUMNS {
+            let mut pending = 63u8;
+            for layer in (0..request.height as usize).rev() {
+                let hit = profile.heightmap_masks[blocks[layer * COLUMNS + c] as usize] & pending;
+                for (kind, heights) in final_heights.iter_mut().enumerate() {
+                    if hit & (1 << kind) != 0 {
+                        heights[c] = layer as u32 + 1;
+                    }
+                }
+                pending &= !hit;
+                if pending == 0 {
+                    break;
+                }
+            }
+        }
+    }
+    for (kind, name) in [
         "WORLD_SURFACE_WG",
-        "OCEAN_FLOOR_WG",
         "WORLD_SURFACE",
+        "OCEAN_FLOOR_WG",
         "OCEAN_FLOOR",
         "MOTION_BLOCKING",
         "MOTION_BLOCKING_NO_LEAVES",
-    ] {
-        nbt.longs(
-            name,
-            &pack(
-                if name.starts_with("OCEAN_FLOOR") {
-                    &ground
-                } else {
-                    &surface
-                },
-                bits,
-            ),
-        );
+    ]
+    .iter()
+    .enumerate()
+    {
+        let values = if profile.is_some() {
+            &final_heights[kind]
+        } else if name.starts_with("OCEAN_FLOOR") {
+            &ground
+        } else {
+            &surface
+        };
+        nbt.longs(name, &pack(values, bits));
     }
     nbt.end();
     nbt.compound("structures");

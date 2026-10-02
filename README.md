@@ -1,6 +1,6 @@
 # Retina
 
-Fabric 26.3 terrain generation with GPU Voronoi biomes, interpolated simplex heights, and Rust chunk/MCA assembly.
+Fabric 26.3 terrain generation with GPU Voronoi biomes, interpolated simplex heights, GPU caves, registry-derived ores, and Rust chunk/MCA assembly.
 
 ## Run it
 
@@ -9,7 +9,7 @@ and packages the native library automatically.
 
 ```sh
 ./gradlew build
-./gradlew gpuTest regionTest biomeTest
+./gradlew gpuTest regionTest biomeTest geologyTest previewTest
 ./gradlew runClient -PretinaQa
 ```
 
@@ -23,13 +23,13 @@ The default biome set includes plains, forests, taiga, snowy plains, desert, sav
 badlands, jungle, mangrove swamp, windswept hills, jagged peaks and three oceans.
 Surfaces include grass/dirt, podzol, sand, red sand/terracotta, mud, snow and stone.
 Oceans fill to the registry sea level, with ice in cold biomes; bedrock and deepslate
-form the lower layers.
+form the lower layers. Grass, ferns, flowers, tall plants, bushes and biome-specific
+wood/leaves are assembled in Rust from vanilla's registered decoration recipes.
 Creative mode with commands enabled is useful for testing. Press **F3**, then fly
 into unexplored terrain or use `/tp @s 4096 160 4096` to trigger generation.
 
 Development files live in `run/`. The optional `-PretinaQa` logs structured
-checkpoints and validates real loaded surface blocks, GPU height queries,
-base columns and Minecraft heightmaps. Use a fresh world for the boundary checks.
+checkpoints and validates decorated Minecraft heightmaps and paired tall plants. Use a fresh world for the boundary checks.
 A plain `./gradlew runClient` omits QA checkpoints.
 
 For a fresh dedicated world, use `level-type=retina:gpu` for MCA, or
@@ -42,7 +42,8 @@ For a fresh dedicated world, use `level-type=retina:gpu` for MCA, or
 A region is 32 x 32 chunks (512 x 512 columns). The first requested chunk in a
 region coordinates generation through Minecraft's serialized chunk I/O queue.
 Other concurrent reads wait behind this job, then load the same published file.
-Height/base-column queries also request the region through this storage path.
+Height/base-column and in-memory surface requests use temporary region batches
+(described below), and do not publish terrain to the world save.
 
 Rust performs the following work:
 
@@ -50,9 +51,17 @@ Rust performs the following work:
 2. Send one 48-byte region descriptor to the GPU. A small pass creates nearby
    Voronoi sites and samples registered climate noise; a second pass computes
    warped biome assignment, blended height parameters, simplex relief, coherent surface
-   borders and soil depth. Site data stays on the GPU. One 2 MiB readback
-   contains 512 x 512 compact column records.
-3. Assemble Minecraft 26.3 block and biome palettes, heightmaps,
+   borders and soil depth. Site data stays on the GPU. Vegetation threshold noise is included in the same pass.
+   A one-chunk halo produces 544 x 544 compact column records (2.26 MiB).
+   Two further GPU stages sample 3D cave fields on a global four-block lattice,
+   interpolate those fields, apply biome cave/canyon settings and pack a final
+   one-bit mask. The 384-block-high mask, including a one-block exposure halo,
+   adds 12.09 MiB of readback per region. A 36 KiB surface bitset covers the
+   decoration halo to reject unsupported vegetation; the density lattice stays on the GPU.
+3. Plan ore veins and vegetation in parallel with global seeded anchors.
+   Expand terrain, consume the GPU cavity mask, place ore replacements and then
+   settle the sparse decoration overlay. Neighboring anchors can place trees and patches across chunk/region borders.
+   Assemble Minecraft 26.3 block and biome palettes, heightmaps,
    chunk metadata and zlib-compressed NBT across a persistent pool of up to 16 cores.
 4. Write a sibling temporary file, synchronize it, then atomically replace the
    destination MCA file in the world's `region/` folder.
@@ -69,19 +78,51 @@ Minecraft reads its normal disk format and finishes lighting, spawning and chunk
 activation. There is no dense Rust-to-Java block buffer or Java block-by-block
 conversion for these new region chunks. Minecraft still pays disk, NBT decoding,
 lighting and rendering costs. Existing unfinished protochunks can finish through
-the original terrain adapter. Actual MCA/GPU/load errors are surfaced; a failed
+the temporary MCA adapter. Actual MCA/GPU/load errors are surfaced; a failed
 read does not silently generate new terrain over an unreadable region.
 
 MCA accepts the Retina GPU biome source or a legacy fixed biome source, with
 generation bounds matching the actual dimension. Default overworld bounds are -64 through 319. Whole-region
 production generates chunks outside the current view and consumes disk space
-accordingly (about 4 MiB per region for the current biome terrain).
+accordingly (about 5 MiB per region in the decorated biome test).
+
+## Temporary MCA previews / Distant Horizons
+
+In MCA mode, generator biome/height/base-column queries and `buildTerrain` calls
+on in-memory protochunks share a per-world temporary region cache. This includes
+Distant Horizons' surface generation. The first request for a region invokes the
+same Rust GPU/decorations/MCA writer, in an OS temporary directory. Concurrent
+requests share that job. Terrain is decoded directly into Minecraft section
+palettes; there is no per-chunk GPU dispatch or dense block-buffer conversion.
+Biome and terrain futures finish synchronously on the calling generation thread,
+as required by DH's surface sampling.
+
+The cache retains up to **1,024 regions on disk**, using LRU eviction. Each file
+contains a full 32 x 32 region. Undecorated GPU columns are returned by that same
+native generation call and stored in a compressed sidecar for later height and
+biome queries. Only 16 regions' column arrays and file handles stay warm in memory
+(about 32 MiB of column arrays); cold data reloads from disk without GPU work.
+Active reads/generation pin their entries until complete, so limits may be
+briefly exceeded by concurrent jobs. Files and sidecars are removed on eviction
+and normal world close. Cache roots are isolated per world/profile/seed session.
+
+A real Minecraft chunk read still uses the world's serialized I/O queue. If a
+complete preview is cached, Rust copies its compressed chunk records into missing
+save slots without GPU dispatch, terrain assembly or NBT recompression. This
+handles absent destinations, zero-length MCA placeholders left by DH, and partial
+regions. Existing chunk records and player edits stay intact. The combined file
+is published atomically after syncing it to disk; saved edits do not alter the
+temporary snapshot. DH previews themselves do not write saved terrain; DH may
+create empty region placeholders and retain its own LOD data independently.
+Per-chunk world mode retains its original pipeline.
 
 ## Per-chunk mode
 
 Concurrent Minecraft terrain jobs call Rust through Java 25's Foreign Function
 and Memory API. A persistent `wgpu` worker batches pending GPU requests and reuses
-its device, two compute pipelines and buffers. Calling threads assemble dense
+its device, two compute pipelines and buffers. Decorated chunk jobs request a 3 x 3
+chunk terrain tile (one descriptor, 18 KiB columns plus about 15.5 KiB cave/surface bits); height/biome queries retain
+single-chunk batching. Calling threads assemble dense
 material-index buffers in Rust. Java converts those bytes into section palettes,
 stores the GPU biome IDs, and primes heightmaps.
 
@@ -126,16 +167,97 @@ biome changes. New terrain meets existing terrain without retroactive blending.
 
 This approximates vanilla biome terrain; it does not implement vanilla's full
 density router, every material rule/noise condition, terracotta bands, 3D cave
-biomes, caves, trees, ores, structures or biome decoration yet. Material noise
+biomes or structures. Material noise
 conditions are evaluated at a representative zero value when extracting recipes.
 Climate octaves feed GPU simplex rather than vanilla Perlin. GPU backends may
 produce different results, as permitted for this project.
 
+## Registry-derived surface decorations
+
+The same startup export traverses each selected biome's `VEGETAL_DECORATION`
+placed features and their feature selectors. It sends Rust the actual registered
+block-state providers, selector probabilities, placement counts/rarities, patch
+spreads, trunk dimensions, foliage dimensions, root/soil materials and supported
+tree decorator probabilities/states. Block tags
+provide vegetation substrates and heightmap predicates. This is a single profile
+upload, with no Java calls for individual decorations.
+
+Rust places grass/ferns, flowers, double-height plants, dry bushes, berry bushes,
+and oak, birch, spruce, acacia, jungle and mangrove variants. Giant jungle trees
+use vanilla-style branch heights/angles and separate smaller crowns on lateral
+branches. Jungle, blob, bush and fancy foliage use their own shape rules, including
+correct distance to 2 x 2 trunks; fancy oaks have distributed branching crowns.
+Jungles combine giant trees, smaller jungle trees, branched oaks and low bushes
+using the registered selector weights. These are procedural Rust shapes, rather
+than a fixed collection of tree templates. Other tree placers remain
+approximations parameterized by vanilla's recipes. Global anchor seeds and an
+outer terrain ring keep both assembly modes independent of request order and
+preserve crowns across boundaries. Trees settle before plants; double plants are
+placed atomically as a pair. Natural leaves carry log distances and can decay
+when logs are removed. All six stored heightmaps are calculated from the final
+blocks using Minecraft's exported predicates. Base-height/base-column APIs still
+return terrain before carvers, ores and decorations. Registered trunk vines, hanging leaf vines
+and cocoa decorators are replayed with exported attachment directions, cocoa
+ages and probabilities. Cocoa checks for jungle-log support; leaves retain their
+natural decay behavior. This adds no GPU dispatch or terrain readback.
+
+Count distributions and feature selectors are projected into mean densities;
+noise-provider plant palettes use seeded choices. Vegetation threshold noise runs
+on the GPU using simplex, rather than copying vanilla's CPU noise implementation.
+Water-adjacent bush anchors use registered water offsets. Aquatic vegetation,
+bamboo, fallen trees, cactus/block-column features, tree decorators such as
+beehives and leaf litter, and unsupported underground/placement rules are
+omitted. The export logs omitted feature kinds. Existing regions are preserved;
+use a fresh world to inspect the new decorations.
+
+## Registry-derived ores and GPU caves
+
+Java traverses the actual selected biome features and carvers once per world.
+Ore recipes retain their registered vein size, count range, rarity, uniform or
+trapezoid height distribution, stone/deepslate replacement rules and air-exposure
+suppression. Nested block/tag/height predicates become compact replacement tables
+with height bands, including 26.3's height-specific host blocks. Biome membership
+preserves extra badlands gold and mountain emeralds/infested stone. Registered
+stone, dirt, gravel and tuff replacement veins are included. The default 16-biome
+set currently exports 28 ore recipes alongside its vegetation data.
+
+Rust builds ellipsoidal/scattered veins from global chunk anchors. Contained
+ellipsoids are pruned and visited voxels use a small bitset. The region's halo
+includes neighboring anchors so veins cross chunk and region edges. Planning,
+mask consumption, ore placement, palettes, heightmaps and compression share the
+persistent region pool of up to 16 cores. Independent Minecraft chunk requests
+also assemble concurrently after the persistent GPU worker returns their masks.
+Assembly order is base terrain, caves, ores, then vegetation.
+
+GPU cave fields use registered cave cheese, spaghetti, layer, roughness and pillar
+noise octaves/amplitudes. Two additional compute stages produce chambers, tunnels
+and canyon ribbons using the biome's registered carver probability, center-height
+range, thickness and radius parameters. Interpolation and final cavity decisions
+happen on the GPU. Rust reads a bit-packed mask and replaces carved blocks with
+air, lava below 26.3's global lava boundary, or water below sea level in ocean
+biomes. Bedrock stays protected; caves can break through the ground and hillsides.
+The GPU also emits one surface bit per halo column, so Rust skips tree and plant
+anchors over openings without reading back the halo's full cave volume.
+
+These shapes approximate vanilla carvers/noise caves; they do not replay vanilla
+random walks or the full density router/aquifer pressure model. Lush/dripstone
+cave biomes and their decorations are not included. Unsupported registry feature
+rules are logged rather than guessed. Both MCA and per-chunk generation use the
+same geology; temporary DH MCAs contain it and promotion copies it unchanged.
+Height/base-column APIs return terrain before carving/features and do not run a
+3D GPU pass. Native cavity masks are shared across requests in a bounded 2,048
+chunk-entry cache; the larger temporary MCA cache remains on disk.
+
+Run `./gradlew geologyTest` for real-GPU parallel ore/cave and exposure checks.
+`biomeTest` checks all 1,024 MCA chunks against independent chunk assembly and
+Minecraft's six heightmap predicates. Use a fresh world or unexplored regions
+for new geology; existing saved chunk records are preserved.
+
 ## F3 metrics
 
 - **chunks/s (5s)**: newly produced terrain chunks over the last five seconds.
-  MCA counts all newly written slots, including chunks not yet requested by the
-  game. Disk cache hits and previously saved chunks do not count as production.
+  MCA counts all newly produced slots, including temporary preview batches and
+  chunks not yet requested by the game. Promotion does not count production twice. Disk cache hits and previously saved chunks do not count as production.
 - **ms/chunk**: weighted timings from the last 128 production jobs. In per-chunk
   mode this is request-to-completion latency, including worker queue delay. In
   MCA mode it is region generation/publication time divided by chunks produced,
@@ -143,7 +265,9 @@ produce different results, as permitted for this project.
 - **Native / Convert**: native time and Java block conversion time per produced
   chunk. MCA native time includes file processing/publication; conversion is zero
   for fresh region chunks. Minecraft's NBT decoding is subsequent work.
-- **Regions / Last region**: regions produced and the complete latest region-job
+- **Temporary regions / Cache hits / Promoted**: preview batches produced, reused
+  preview requests, and copies published by real Minecraft chunk loading.
+- **Regions / Last region**: regions published to the save and the complete latest region-job
   latency, including initialization, GPU work, CPU assembly and file publication.
 - **In flight jobs / Terrain chunks / Failed**: current jobs and lifetime counters.
 
@@ -168,15 +292,30 @@ being overwritten. Both integration commands require a compute device.
 biome chunks, checks reachable biomes/materials and distant-coordinate smoothing,
 and decodes all 1,024 chunks in a biome MCA. It compares every block, biome sample
 and heightmap against the per-chunk native output and Minecraft predicates, and
-checks negative chunk/region boundaries.
+checks negative chunk/region boundaries. It also validates registry-derived trees,
+flowers, natural leaf properties and both halves of tall plants, and checks all
+six stored heightmaps including the no-leaves map.
 
-The biome integration tests passed on Metal / Apple M4 Max. One measured full
-region took about 34 ms (1.1 ms GPU, 19 ms assembly, 13 ms publication), excluding
-Minecraft loading, lighting and rendering. These are sample measurements, not a
-controlled throughput benchmark. The prior stone/air create/explore/save/reopen
-test also passed with player edits preserved. The updated biome client passed
-loaded-block/heightmap checks, and the user confirmed that coherent borders and
-the distance distortion fix looked correct.
+`./gradlew previewTest` performs actual GPU/MCA generation through DH-style
+protochunk calls. It checks synchronous completion, exact decorated blocks,
+base-column semantics, parallel region sharing, cold sidecar reload, LRU file
+removal, promotion into absent/empty/partial regions, saved edits, mutable-section isolation, native failures,
+and world-close cleanup while region generation is still running.
+
+`./gradlew geologyTest` validates 64 parallel chunks against actual registry ore
+families, cave air and lava, biome-specific ore lists, GPU parameter changes,
+canyon-only settings, flooded ocean caves, surface entrances and ore exposure
+suppression. Rust unit tests also cover ore height distributions and unique vein
+voxels within the neighboring chunk halo.
+
+The current ore/cave/decoration tests passed on Metal / Apple M4 Max, including
+all 1,024 MCA chunks and temporary-region promotion. One sample region with
+surface entrances took about 695 ms (23.5 ms GPU, 655.8 ms assembly and 15.1 ms
+publication), excluding Minecraft loading, lighting and rendering. These are
+sample measurements, not a controlled throughput benchmark. The first geology
+client passed 30,760 loaded underground block comparisons and its heightmaps;
+the user confirmed caves/ores worked, then requested natural surface openings.
+The follow-up removes the roof cutoff and skips vegetation over entrances.
 
 `./gradlew build` runs Rust unit tests and packages the build host's native library
 in `build/libs/retina-0.1.0.jar`. Build on each target OS/architecture for its native

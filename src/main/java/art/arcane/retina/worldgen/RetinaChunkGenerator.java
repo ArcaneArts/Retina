@@ -23,6 +23,10 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.chunk.ChunkGenerator;
 import net.minecraft.world.level.chunk.ChunkGeneratorStructureState;
+import net.minecraft.world.level.chunk.PalettedContainerFactory;
+import net.minecraft.world.level.chunk.storage.SerializableChunkData;
+import net.minecraft.world.level.ChunkPos;
+import java.nio.file.Path;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.RandomState;
 import net.minecraft.world.level.levelgen.blending.Blender;
@@ -66,7 +70,8 @@ public final class RetinaChunkGenerator extends ChunkGenerator {
     private final float amplitude;
     private final float frequency;
     private final String mode;
-    private RegionCoordinator regions;
+    private volatile TemporaryRegions previews;
+    private PalettedContainerFactory containerFactory;
     private volatile BiomeTerrainProfile profile;
     private long worldSeed;
     private final GenerationMetrics metrics = new GenerationMetrics();
@@ -97,11 +102,30 @@ public final class RetinaChunkGenerator extends ChunkGenerator {
     }
 
     public void bindWorld(RegistryAccess registry, long seed) {
+        bindWorld(registry, seed, PalettedContainerFactory.create(registry));
+    }
+
+    void bindWorld(HolderLookup.Provider registry, long seed, PalettedContainerFactory factory) {
+        closePreviews();
+        heightCache.clear();
+        biomeCache.clear();
+        containerFactory = factory;
         worldSeed = seed;
         if (getBiomeSource() instanceof RetinaBiomeSource biomes) {
-            profile = BiomeTerrainProfile.load(registry, biomes, minY, height);
-            biomes.bind((x, y, z) -> biomeAt(x * 4, z * 4));
+            profile = BiomeTerrainProfile.load(registry, biomes, minY, height, seed);
+            biomes.bind((x, y, z) -> biomeAt(x * 4, y * 4, z * 4));
         }
+        if (regionMode()) previews = new TemporaryRegions(request(seed, 0, 0), regionBiome(), profile, metrics, TemporaryRegions.MAX_REGIONS);
+    }
+
+    public void closePreviews() {
+        var cache = previews;
+        if (cache != null) cache.close();
+    }
+
+    NativeTerrain.RegionReport publishPreview(ChunkPos position, Path destination) {
+        var cache = previews;
+        return cache == null ? null : cache.publishIfPresent(position, destination);
     }
 
     public BiomeTerrainProfile profile() { return profile; }
@@ -112,11 +136,35 @@ public final class RetinaChunkGenerator extends ChunkGenerator {
         return source.biomes().get(columns.biome(Math.floorMod(z, 16) * 16 + Math.floorMod(x, 16)));
     }
 
+    private final Map<HeightKey, byte[]> biomeCache = Collections.synchronizedMap(new LinkedHashMap<>(128, 0.75F, true) {
+        @Override protected boolean removeEldestEntry(Map.Entry<HeightKey, byte[]> eldest) { return size() > 2048; }
+    });
+
+    public Holder<Biome> biomeAt(int x, int y, int z) {
+        var data = biomeSamples(worldSeed, Math.floorDiv(x, 16), Math.floorDiv(z, 16));
+        int layer = Math.clamp(Math.floorDiv(y - minY, 4), 0, height / 4 - 1);
+        int index = layer * 16 + Math.floorMod(Math.floorDiv(z, 4), 4) * 4 + Math.floorMod(Math.floorDiv(x, 4), 4);
+        return profile.biomes().get(Byte.toUnsignedInt(data[index]));
+    }
+
+    private byte[] biomeSamples(long seed, int x, int z) {
+        var key = new HeightKey(seed, x, z);
+        var data = biomeCache.get(key);
+        if (data == null) {
+            var cache = previews;
+            data = cache == null ? NativeTerrain.instance().sampleBiomes(request(seed, x, z)) : cache.biomes(new ChunkPos(x, z));
+            biomeCache.put(key, data);
+        }
+        return data;
+    }
+
     private NativeTerrain.Columns columns(long seed, int chunkX, int chunkZ) {
         var key = new HeightKey(seed, chunkX, chunkZ);
         var columns = heightCache.get(key);
         if (columns == null) {
-            columns = NativeTerrain.instance().sampleColumns(request(seed, chunkX, chunkZ));
+            var cache = previews;
+            columns = cache == null ? NativeTerrain.instance().sampleColumns(request(seed, chunkX, chunkZ))
+                    : cache.columns(new ChunkPos(chunkX, chunkZ));
             heightCache.put(key, columns);
         }
         return columns;
@@ -124,20 +172,26 @@ public final class RetinaChunkGenerator extends ChunkGenerator {
 
     @Override
     public CompletableFuture<ChunkAccess> createBiomes(RandomState random, Blender blender, StructureManager structures, ChunkAccess chunk) {
-        if (profile == null) return super.createBiomes(random, blender, structures, chunk);
-        return CompletableFuture.supplyAsync(() -> {
+        if (profile == null) {
+            if (!regionMode()) return super.createBiomes(random, blender, structures, chunk);
+            var fixed = getBiomeSource().possibleBiomes().iterator().next();
+            chunk.fillBiomesFromNoise((x, y, z) -> fixed);
+            return CompletableFuture.completedFuture(chunk);
+        }
+        java.util.function.Supplier<ChunkAccess> fill = () -> {
             var position = chunk.getPos();
-            var columns = columns(seed(random), position.x(), position.z());
-            chunk.fillBiomesFromNoise((x, y, z) -> profile.biomes().get(columns.biome(Math.floorMod(z * 4, 16) * 16 + Math.floorMod(x * 4, 16))));
+            var samples = biomeSamples(seed(random), position.x(), position.z());
+            chunk.fillBiomesFromNoise((x, y, z) -> profile.biomes().get(Byte.toUnsignedInt(samples[
+                    Math.clamp(y - Math.floorDiv(minY, 4), 0, height / 4 - 1) * 16 + Math.floorMod(z, 4) * 4 + Math.floorMod(x, 4)])));
             return chunk;
-        }, WORKERS);
+        };
+        // DH runs its own thread pool and checks/consumes completed generation futures.
+        return regionMode() ? CompletableFuture.completedFuture(fill.get()) : CompletableFuture.supplyAsync(fill, WORKERS);
     }
 
     public boolean regionMode() { return mode.equals("mca"); }
 
     public String mode() { return mode; }
-
-    public void attachRegions(RegionCoordinator coordinator) { regions = coordinator; }
 
     public String regionBiome() {
         return getBiomeSource().possibleBiomes().iterator().next().unwrapKey().orElseThrow().identifier().toString();
@@ -160,6 +214,20 @@ public final class RetinaChunkGenerator extends ChunkGenerator {
     public CompletableFuture<ChunkAccess> buildTerrain(ChunkAccess chunk, Blender blender,
             RandomState randomState, StructureManager structures, BiomeManager biomes,
             WorldGenRegion carverRegion, Set<Holder<Biome>> possibleBiomes) {
+        var cache = previews;
+        if (regionMode() && cache != null) {
+            long started = System.nanoTime();
+            var saved = SerializableChunkData.parse(chunk, containerFactory, cache.read(chunk.getPos()));
+            if (saved == null) throw new IllegalStateException("Temporary MCA has no chunk status: " + chunk.getPos());
+            for (var section : saved.sectionData()) {
+                if (section.chunkSection() != null) chunk.getSections()[chunk.getSectionIndexFromSectionY(section.y())] = section.chunkSection();
+            }
+            saved.heightmaps().forEach(chunk::setHeightmap);
+            if (Boolean.getBoolean("retina.qa") && firstChunk.compareAndSet(false, true)) Retina.LOGGER.info(
+                    "QA_EVT {\"event\":\"minecraft_temporary_mca_chunk\",\"status\":\"pass\",\"context\":{\"x\":{},\"z\":{},\"ms\":{}}}",
+                    chunk.getPos().x(), chunk.getPos().z(), (System.nanoTime() - started) / 1e6);
+            return CompletableFuture.completedFuture(chunk);
+        }
         long requestedAt = System.nanoTime();
         var position = chunk.getPos();
         var request = request(seed(randomState), position.x(), position.z());
@@ -229,13 +297,15 @@ public final class RetinaChunkGenerator extends ChunkGenerator {
     public NoiseColumn getBaseColumn(int x, int z, LevelHeightAccessor bounds, RandomState state) {
         int chunkX = Math.floorDiv(x, 16);
         int chunkZ = Math.floorDiv(z, 16);
-        if (regions != null) regions.ensureRegion(chunkX, chunkZ);
-        var data = NativeTerrain.instance().column(request(seed(state), chunkX, chunkZ), Math.floorMod(z, 16) * 16 + Math.floorMod(x, 16));
+        var cache = previews;
+        int index = Math.floorMod(z, 16) * 16 + Math.floorMod(x, 16);
+        BlockState[] preview = cache == null ? null : cache.baseColumn(columns(seed(state), chunkX, chunkZ), index);
+        var data = preview == null ? NativeTerrain.instance().column(request(seed(state), chunkX, chunkZ), index) : null;
         var palette = profile == null ? new BlockState[]{Blocks.AIR.defaultBlockState(), Blocks.STONE.defaultBlockState()} : profile.materials();
         var states = new BlockState[bounds.getHeight()];
         for (int i = 0; i < states.length; i++) {
             int nativeY = bounds.getMinY() + i - minY;
-            states[i] = nativeY >= 0 && nativeY < height ? palette[Byte.toUnsignedInt(data[nativeY])] : Blocks.AIR.defaultBlockState();
+            states[i] = nativeY >= 0 && nativeY < height ? (preview == null ? palette[Byte.toUnsignedInt(data[nativeY])] : preview[nativeY]) : Blocks.AIR.defaultBlockState();
         }
         return new NoiseColumn(bounds.getMinY(), states);
     }

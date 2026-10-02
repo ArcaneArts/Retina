@@ -30,6 +30,12 @@ import java.util.List;
  */
 public record BiomeTerrainProfile(int nativeId, int seaLevel, BlockState[] materials, List<Holder<Biome>> biomes, String json) {
     public static BiomeTerrainProfile load(HolderLookup.Provider registry, RetinaBiomeSource source, int minY, int height) {
+        return load(registry, source, minY, height, 0L);
+    }
+    public static BiomeTerrainProfile load(HolderLookup.Provider registry, RetinaBiomeSource source, int minY, int height, long seed) {
+        source.underground(List.of(Biomes.LUSH_CAVES, Biomes.DRIPSTONE_CAVES, Biomes.DEEP_DARK).stream()
+                .map(key -> (Holder<Biome>) registry.lookupOrThrow(Registries.BIOME).getOrThrow(key)).toList());
+        var nativeBiomes = source.nativeBiomes();
         var settings = registry.lookupOrThrow(Registries.NOISE_SETTINGS).getOrThrow(NoiseGeneratorSettings.OVERWORLD).value();
         int sea = settings.seaLevel();
         if (sea < minY || sea > minY + height) throw new IllegalArgumentException("Registry sea level is outside Retina's generation bounds");
@@ -48,7 +54,7 @@ public record BiomeTerrainProfile(int nativeId, int seaLevel, BlockState[] mater
         var parameters = registry.lookupOrThrow(Registries.MULTI_NOISE_BIOME_SOURCE_PARAMETER_LIST)
                 .getOrThrow(MultiNoiseBiomeSourceParameterLists.OVERWORLD).value().parameters().values();
         var biomes = new JsonArray();
-        for (var biome : source.biomes()) {
+        for (var biome : nativeBiomes) {
             String id = biome.unwrapKey().orElseThrow().identifier().toString();
             var entry = new JsonObject();
             entry.addProperty("id", id);
@@ -63,7 +69,7 @@ public record BiomeTerrainProfile(int nativeId, int seaLevel, BlockState[] mater
             }
             if (count == 0) {
                 // Datapack biomes absent from the overworld climate list still use registered climate.
-                var data = Biome.DIRECT_CODEC.encodeStart(JsonOps.INSTANCE, biome.value()).getOrThrow().getAsJsonObject();
+                var data = Biome.NETWORK_CODEC.encodeStart(JsonOps.INSTANCE, biome.value()).getOrThrow().getAsJsonObject();
                 climate = new double[]{Math.clamp(biome.value().getBaseTemperature() - 0.5, -1, 1),
                         data.get("downfall").getAsDouble() * 2 - 1, 0.2, 0.0};
             } else for (int i = 0; i < 4; i++) climate[i] /= count;
@@ -79,6 +85,8 @@ public record BiomeTerrainProfile(int nativeId, int seaLevel, BlockState[] mater
             int flags = biome.value().getBaseTemperature() < 0.15F ? 1 : 0;
             if (id.contains("windswept") || id.contains("peak") || id.contains("slopes")) flags |= 2;
             if (id.contains("ocean")) flags |= 4;
+            if (id.contains("badlands")) flags |= 8;
+            if (List.of(Biomes.LUSH_CAVES, Biomes.DRIPSTONE_CAVES, Biomes.DEEP_DARK).stream().anyMatch(biome::is)) flags |= 16;
             entry.addProperty("flags", flags);
             biomes.add(entry);
         }
@@ -90,8 +98,8 @@ public record BiomeTerrainProfile(int nativeId, int seaLevel, BlockState[] mater
             var data = NormalNoise.DIRECT_CODEC.encodeStart(JsonOps.INSTANCE, noise).getOrThrow().getAsJsonObject();
             var entry = new JsonObject();
             entry.addProperty("frequency", Math.scalb(1.0, data.get("base_octave").getAsInt()));
-            entry.addProperty("amplitude", data.get("base_amplitude").getAsDouble());
-            int count = data.get("octave_count").getAsInt();
+            entry.addProperty("amplitude", (data.has("base_amplitude") ? data.get("base_amplitude").getAsDouble() : 1.0));
+            int count = data.has("octave_count") ? data.get("octave_count").getAsInt() : 1;
             var modifiers = new JsonArray();
             var supplied = data.getAsJsonArray("amplitude_modifiers");
             for (int i = 0; i < count; i++) modifiers.add(supplied != null && i < supplied.size() ? supplied.get(i).getAsDouble() : 1.0);
@@ -99,7 +107,9 @@ public record BiomeTerrainProfile(int nativeId, int seaLevel, BlockState[] mater
             noises.add(entry);
         }
         profile.add("noises", noises);
-        profile.add("decorations", DecorationProfile.export(registry, source.biomes(), biomes, materials));
+        profile.add("decorations", DecorationProfile.export(registry, nativeBiomes, biomes, materials));
+        TerrainFeatureProfile.export(registry, nativeBiomes, biomes, materials, profile, settings.materialRule().value(), seed);
+        GeologyProfile.export(registry, nativeBiomes, biomes, materials, profile, minY, height, sea);
         DecorationProfile.materialFlags(profile, materials);
         var palette = new JsonArray();
         for (var state : materials.keySet()) palette.add(BlockState.CODEC.encodeStart(JsonOps.INSTANCE, state).getOrThrow());
@@ -108,7 +118,7 @@ public record BiomeTerrainProfile(int nativeId, int seaLevel, BlockState[] mater
         int nativeId = NativeTerrain.instance().registerProfile(json);
         Retina.LOGGER.info("GPU biome profile {}: {} biomes, {} block states, sea level {}, {} bytes uploaded once", nativeId, biomes.size(), materials.size(), sea, json.length());
         if (Boolean.getBoolean("retina.qa")) Retina.LOGGER.info("QA_EVT {\"event\":\"registry_biome_profile\",\"status\":\"pass\",\"context\":{\"biomes\":{},\"materials\":{},\"profile\":{}}}", biomes.size(), materials.size(), nativeId);
-        return new BiomeTerrainProfile(nativeId, sea, materials.keySet().toArray(BlockState[]::new), source.biomes(), json);
+        return new BiomeTerrainProfile(nativeId, sea, materials.keySet().toArray(BlockState[]::new), nativeBiomes, json);
     }
 
     private static int material(LinkedHashMap<BlockState, Integer> palette, BlockState state) {

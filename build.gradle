@@ -110,6 +110,26 @@ tasks.register('biomeTest', JavaExec) {
     jvmArgs '--enable-native-access=ALL-UNNAMED'
 }
 
+tasks.register('geologyTest', JavaExec) {
+    group = 'verification'
+    description = 'Validate registry-derived parallel ores, GPU cave masks and exposure rules.'
+    dependsOn 'gpuTestClasses'
+    classpath = sourceSets.gpuTest.runtimeClasspath
+    mainClass = 'art.arcane.retina.worldgen.NativeGeologyIntegrationTest'
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
+    jvmArgs '--enable-native-access=ALL-UNNAMED'
+}
+
+tasks.register('previewTest', JavaExec) {
+    group = 'verification'
+    description = 'Validate DH-style surface generation, temporary MCA cache sharing, eviction, promotion and cleanup.'
+    dependsOn 'gpuTestClasses'
+    classpath = sourceSets.gpuTest.runtimeClasspath
+    mainClass = 'art.arcane.retina.worldgen.NativePreviewIntegrationTest'
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
+    jvmArgs '--enable-native-access=ALL-UNNAMED'
+}
+
 dependencies {
     minecraft "com.mojang:minecraft:${project.minecraft_version}"
     implementation "net.fabricmc:fabric-loader:${project.loader_version}"

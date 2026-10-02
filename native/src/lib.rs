@@ -9,8 +9,12 @@ use profile::{Column, WorldProfile};
 use std::collections::{HashMap, VecDeque};
 use std::sync::{Mutex, RwLock};
 
+pub mod decoration;
+mod features;
+pub mod geology;
 mod gpu;
 pub mod profile;
+mod tree_shapes;
 
 pub mod region;
 
@@ -19,6 +23,7 @@ pub const COLUMNS: usize = CHUNK_SIDE * CHUNK_SIDE;
 pub const AIR: u8 = 0;
 pub const STONE: u8 = 1;
 const MAX_BATCH: usize = 1024;
+const MAX_TILES: usize = 34 * 34;
 const BATCH_WAIT: Duration = Duration::from_micros(250);
 
 /// C ABI layout. reserved is the resident world-profile handle (0 = legacy stone).
@@ -106,8 +111,9 @@ impl From<ChunkRequest> for GpuRequest {
 struct Job {
     requests: Vec<ChunkRequest>,
     profile: Option<Arc<WorldProfile>>,
-    region: bool,
-    reply: mpsc::Sender<Result<Vec<Column>, String>>,
+    tile_side: u32,
+    cave_side: u32,
+    reply: mpsc::Sender<Result<gpu::GpuSample, String>>,
 }
 
 /// Concurrent callers enqueue work; one persistent device batches GPU submissions.
@@ -117,6 +123,7 @@ pub struct TerrainEngine {
     backend: String,
     profiles: RwLock<Vec<Arc<WorldProfile>>>,
     cache: Mutex<ColumnCache>,
+    caves: Mutex<CaveCache>,
 }
 
 impl TerrainEngine {
@@ -148,8 +155,8 @@ impl TerrainEngine {
                         None => break,
                     };
                     let profile_id = first.requests[0].reserved;
-                    let region = first.region;
-                    let mut count = if region {
+                    let tile_side = first.tile_side;
+                    let mut count = if tile_side != 0 {
                         MAX_BATCH
                     } else {
                         first.requests.len()
@@ -161,7 +168,7 @@ impl TerrainEngine {
                             .recv_timeout(deadline.saturating_duration_since(Instant::now()))
                         {
                             Ok(job) => {
-                                if job.region
+                                if job.tile_side != 0
                                     || job.requests[0].reserved != profile_id
                                     || count + job.requests.len() > MAX_BATCH
                                 {
@@ -178,8 +185,9 @@ impl TerrainEngine {
                         .iter()
                         .flat_map(|job| job.requests.iter().copied().map(GpuRequest::from))
                         .collect();
-                    if region {
-                        requests[0].tile_side = 32;
+                    if tile_side != 0 {
+                        requests[0].tile_side = tile_side;
+                        requests[0].padding = batch[0].cave_side;
                     }
                     let result = catch_unwind(AssertUnwindSafe(|| {
                         gpu.sample(&requests, batch[0].profile.as_deref())
@@ -189,16 +197,19 @@ impl TerrainEngine {
                         Err(_) => Err("GPU dispatch panicked; see native stderr".into()),
                     };
                     match result {
-                        Ok(heights) => {
+                        Ok(mut sample) => {
                             let mut offset = 0;
                             for job in batch {
                                 let end = offset
-                                    + if job.region {
-                                        MAX_BATCH
+                                    + if job.tile_side != 0 {
+                                        (job.tile_side * job.tile_side) as usize
                                     } else {
                                         job.requests.len()
                                     } * COLUMNS;
-                                let _ = job.reply.send(Ok(heights[offset..end].to_vec()));
+                                let _ = job.reply.send(Ok(gpu::GpuSample {
+                                    columns: sample.columns[offset..end].to_vec(),
+                                    mask: sample.mask.take(),
+                                }));
                                 offset = end;
                             }
                         }
@@ -217,6 +228,7 @@ impl TerrainEngine {
             backend,
             profiles: RwLock::new(Vec::new()),
             cache: Mutex::new(ColumnCache::default()),
+            caves: Mutex::new(CaveCache::default()),
         })
     }
 
@@ -282,7 +294,7 @@ impl TerrainEngine {
         {
             return Ok(cached);
         }
-        let result = self.dispatch(requests.to_vec(), false)?;
+        let result = self.dispatch(requests.to_vec(), 0)?;
         self.cache
             .lock()
             .map_err(|_| "column cache poisoned")?
@@ -290,17 +302,26 @@ impl TerrainEngine {
         Ok(result)
     }
 
-    /// One 48-byte descriptor for all 512 x 512 columns; two GPU stages, one readback.
-    pub fn sample_region(&self, mut request: ChunkRequest) -> Result<Vec<Column>, String> {
-        request.chunk_x = request.chunk_x.div_euclid(32) * 32;
-        request.chunk_z = request.chunk_z.div_euclid(32) * 32;
-        let requests: Vec<_> = (0..1024)
-            .map(|i| ChunkRequest {
-                chunk_x: request.chunk_x + i % 32,
-                chunk_z: request.chunk_z + i / 32,
-                ..request
+    /// One descriptor and two GPU stages for a square tile, including decoration halos.
+    pub fn sample_tile(&self, request: ChunkRequest, side: u32) -> Result<Vec<Column>, String> {
+        if !(1..=34).contains(&side) {
+            return Err("GPU tile side must be 1..34".into());
+        }
+        let requests: Vec<_> = (0..side * side)
+            .map(|i| {
+                Ok(ChunkRequest {
+                    chunk_x: request
+                        .chunk_x
+                        .checked_add((i % side) as i32)
+                        .ok_or("tile X overflows")?,
+                    chunk_z: request
+                        .chunk_z
+                        .checked_add((i / side) as i32)
+                        .ok_or("tile Z overflows")?,
+                    ..request
+                })
             })
-            .collect();
+            .collect::<Result<_, String>>()?;
         for request in &requests {
             request.validate()?;
         }
@@ -312,7 +333,7 @@ impl TerrainEngine {
         {
             return Ok(cached);
         }
-        let result = self.dispatch(vec![request], true)?;
+        let result = self.dispatch(vec![request], side)?;
         self.cache
             .lock()
             .map_err(|_| "column cache poisoned")?
@@ -320,14 +341,134 @@ impl TerrainEngine {
         Ok(result)
     }
 
-    fn dispatch(&self, requests: Vec<ChunkRequest>, region: bool) -> Result<Vec<Column>, String> {
+    pub fn sample_region(&self, mut request: ChunkRequest) -> Result<Vec<Column>, String> {
+        request.chunk_x = request.chunk_x.div_euclid(32) * 32;
+        request.chunk_z = request.chunk_z.div_euclid(32) * 32;
+        self.sample_tile(request, 32)
+    }
+
+    pub fn decoration_field(
+        &self,
+        request: ChunkRequest,
+        side: u32,
+    ) -> Result<decoration::Field, String> {
+        let origin = ChunkRequest {
+            chunk_x: request
+                .chunk_x
+                .checked_sub(1)
+                .ok_or("decoration X overflows")?,
+            chunk_z: request
+                .chunk_z
+                .checked_sub(1)
+                .ok_or("decoration Z overflows")?,
+            ..request
+        };
+        Ok(decoration::Field {
+            origin_x: origin.chunk_x,
+            origin_z: origin.chunk_z,
+            side: (side + 2) as usize,
+            columns: self.sample_tile(origin, side + 2)?,
+        })
+    }
+
+    /// Terrain generation adds GPU cavities; height/biome queries stay on the two-pass column path.
+    pub fn terrain_field(
+        &self,
+        request: ChunkRequest,
+        side: u32,
+    ) -> Result<(decoration::Field, Option<Arc<geology::CaveMask>>), String> {
+        if !(1..=32).contains(&side) {
+            return Err("terrain side must be 1..32".into());
+        }
+        request.validate()?;
+        let profile = self.profile(request.reserved)?;
+        if !profile
+            .as_deref()
+            .is_some_and(|p| p.geology.caves_enabled(p))
+        {
+            return Ok((self.decoration_field(request, side)?, None));
+        }
+        let key = CacheKey::from(request);
+        let cached = self
+            .caves
+            .lock()
+            .map_err(|_| "cave cache poisoned")?
+            .entries
+            .get(&key)
+            .cloned();
+        if side == 1 {
+            if let Some(mask) = cached {
+                return Ok((self.decoration_field(request, side)?, Some(mask)));
+            }
+        }
+        let origin = ChunkRequest {
+            chunk_x: request.chunk_x.checked_sub(1).ok_or("cave X overflows")?,
+            chunk_z: request.chunk_z.checked_sub(1).ok_or("cave Z overflows")?,
+            ..request
+        };
+        // Validate the halo as well as the target, using the same checks as height tile jobs.
+        for dz in 0..side + 2 {
+            for dx in 0..side + 2 {
+                ChunkRequest {
+                    chunk_x: origin
+                        .chunk_x
+                        .checked_add(dx as i32)
+                        .ok_or("cave X overflows")?,
+                    chunk_z: origin
+                        .chunk_z
+                        .checked_add(dz as i32)
+                        .ok_or("cave Z overflows")?,
+                    ..origin
+                }
+                .validate()?;
+            }
+        }
+        let sample = self.dispatch_full(vec![origin], side + 2, side)?;
+        let columns = sample.columns;
+        let mask = Arc::new(sample.mask.ok_or("GPU cave job returned no mask")?);
+        let requests: Vec<_> = (0..(side + 2) * (side + 2))
+            .map(|i| ChunkRequest {
+                chunk_x: origin.chunk_x + (i % (side + 2)) as i32,
+                chunk_z: origin.chunk_z + (i / (side + 2)) as i32,
+                ..origin
+            })
+            .collect();
+        self.cache
+            .lock()
+            .map_err(|_| "column cache poisoned")?
+            .insert(&requests, &columns);
+        self.caves
+            .lock()
+            .map_err(|_| "cave cache poisoned")?
+            .insert(request, side, mask.clone());
+        Ok((
+            decoration::Field {
+                origin_x: origin.chunk_x,
+                origin_z: origin.chunk_z,
+                side: (side + 2) as usize,
+                columns,
+            },
+            Some(mask),
+        ))
+    }
+
+    fn dispatch(&self, requests: Vec<ChunkRequest>, tile_side: u32) -> Result<Vec<Column>, String> {
+        Ok(self.dispatch_full(requests, tile_side, 0)?.columns)
+    }
+    fn dispatch_full(
+        &self,
+        requests: Vec<ChunkRequest>,
+        tile_side: u32,
+        cave_side: u32,
+    ) -> Result<gpu::GpuSample, String> {
         let profile = self.profile(requests[0].reserved)?;
         let (reply, receiver) = mpsc::channel();
         self.sender
             .send(Job {
                 requests,
                 profile,
-                region,
+                tile_side,
+                cave_side,
                 reply,
             })
             .map_err(|_| "GPU worker stopped".to_string())?;
@@ -355,16 +496,31 @@ impl TerrainEngine {
             return Err("incorrect block buffer length".into());
         }
         let profile = self.profile(request.reserved)?;
-        let columns = self.sample_columns(&[request])?;
-        for (layer, row) in blocks.chunks_exact_mut(COLUMNS).enumerate() {
-            for (block, column) in row.iter_mut().zip(&columns) {
-                *block = column.material(
-                    request.min_y + layer as i32,
-                    request.min_y,
-                    profile.as_deref(),
-                );
-            }
-        }
+        let columns = if let Some(p) = profile.as_deref().filter(|p| {
+            !p.decorations.is_empty() || !p.geology.ores.is_empty() || p.geology.caves_enabled(p)
+        }) {
+            let (field, mask) = self.terrain_field(request, 1)?;
+            let placements = decoration::plan(
+                &field,
+                p,
+                request,
+                request.chunk_x,
+                request.chunk_z,
+                1,
+                mask.as_deref(),
+            );
+            let columns = field.chunk(request.chunk_x, request.chunk_z);
+            let ores = geology::plan(&field, p, request, 1);
+            decoration::assemble(request, columns, Some(p), &[], blocks);
+            geology::apply(request, &field, p, mask.as_deref(), &ores[0], blocks);
+            features::apply(request, p, mask.as_deref(), blocks);
+            decoration::decorate(Some(p), &placements[0], blocks);
+            columns.to_vec()
+        } else {
+            let columns = self.sample_columns(&[request])?;
+            decoration::assemble(request, &columns, profile.as_deref(), &[], blocks);
+            columns
+        };
         columns
             .try_into()
             .map_err(|_| "incorrect GPU column count".into())
@@ -398,6 +554,33 @@ impl From<ChunkRequest> for CacheKey {
         }
     }
 }
+#[derive(Default)]
+struct CaveCache {
+    entries: HashMap<CacheKey, Arc<geology::CaveMask>>,
+    order: VecDeque<CacheKey>,
+}
+impl CaveCache {
+    fn insert(&mut self, request: ChunkRequest, side: u32, mask: Arc<geology::CaveMask>) {
+        for z in 0..side {
+            for x in 0..side {
+                let key = CacheKey::from(ChunkRequest {
+                    chunk_x: request.chunk_x + x as i32,
+                    chunk_z: request.chunk_z + z as i32,
+                    ..request
+                });
+                if self.entries.contains_key(&key) {
+                    continue;
+                }
+                self.entries.insert(key, mask.clone());
+                self.order.push_back(key);
+                if self.entries.len() > 2048 {
+                    self.entries.remove(&self.order.pop_front().unwrap());
+                }
+            }
+        }
+    }
+}
+
 #[derive(Default)]
 struct ColumnCache {
     entries: HashMap<CacheKey, Box<[Column; COLUMNS]>>,
@@ -498,6 +681,39 @@ pub unsafe extern "C" fn retina_sample_columns(
         let result = shared_engine()?.sample_columns(&[unsafe { *request }])?;
         unsafe {
             std::ptr::copy_nonoverlapping(result.as_ptr(), columns, COLUMNS);
+        }
+        Ok(())
+    })
+}
+
+/// # Safety
+/// request is readable; output has capacity bytes, exactly height*4 quart biome IDs.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn retina_sample_biomes(
+    request: *const ChunkRequest,
+    output: *mut u8,
+    capacity: u64,
+) -> i32 {
+    boundary(|| {
+        if request.is_null() || output.is_null() {
+            return Err("null biome buffer".into());
+        }
+        let r = unsafe { *request };
+        r.validate()?;
+        if capacity != r.height as u64 * 4 {
+            return Err("incorrect biome buffer capacity".into());
+        }
+        let engine = shared_engine()?;
+        let (field, mask) = engine.terrain_field(r, 1)?;
+        let out = unsafe { std::slice::from_raw_parts_mut(output, capacity as usize) };
+        for (i, value) in out.iter_mut().enumerate() {
+            let x = r.chunk_x * 16 + (i % 4) as i32 * 4;
+            let z = r.chunk_z * 16 + ((i / 4) % 4) as i32 * 4;
+            let y = r.min_y + (i / 16) as i32 * 4;
+            *value = mask
+                .as_ref()
+                .and_then(|m| m.biome(x, y, z))
+                .unwrap_or(field.column(x, z).ok_or("missing biome column")?.biome() as u8);
         }
         Ok(())
     })
@@ -636,6 +852,83 @@ pub unsafe extern "C" fn retina_generate_region(
             std::path::Path::new(path),
             data_version,
             biome,
+        )?;
+        unsafe {
+            *report = result;
+        }
+        Ok(())
+    })
+}
+
+/// # Safety
+/// Region arguments follow retina_generate_region; columns points to 1024 * 256 writable records.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn retina_generate_region_columns(
+    request: *const ChunkRequest,
+    path: *const u8,
+    path_len: u64,
+    data_version: i32,
+    biome: *const u8,
+    biome_len: u64,
+    report: *mut region::RegionReport,
+    columns: *mut Column,
+) -> i32 {
+    boundary(|| {
+        if request.is_null()
+            || path.is_null()
+            || biome.is_null()
+            || report.is_null()
+            || columns.is_null()
+        {
+            return Err("null native region column buffer".into());
+        }
+        let path =
+            std::str::from_utf8(unsafe { std::slice::from_raw_parts(path, path_len as usize) })
+                .map_err(|e| e.to_string())?;
+        let biome =
+            std::str::from_utf8(unsafe { std::slice::from_raw_parts(biome, biome_len as usize) })
+                .map_err(|e| e.to_string())?;
+        let result = region::generate_region_columns(
+            shared_engine()?,
+            unsafe { *request },
+            std::path::Path::new(path),
+            data_version,
+            biome,
+            unsafe { std::slice::from_raw_parts_mut(columns, 1024 * COLUMNS) },
+        )?;
+        unsafe {
+            *report = result;
+        }
+        Ok(())
+    })
+}
+
+/// # Safety
+/// request and report point to valid records; both paths point to their stated UTF-8 byte lengths.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn retina_publish_region_cache(
+    request: *const ChunkRequest,
+    path: *const u8,
+    path_len: u64,
+    cached: *const u8,
+    cached_len: u64,
+    report: *mut region::RegionReport,
+) -> i32 {
+    boundary(|| {
+        if request.is_null() || path.is_null() || cached.is_null() || report.is_null() {
+            return Err("null cached region buffer".into());
+        }
+        let path =
+            std::str::from_utf8(unsafe { std::slice::from_raw_parts(path, path_len as usize) })
+                .map_err(|e| e.to_string())?;
+        let cached =
+            std::str::from_utf8(unsafe { std::slice::from_raw_parts(cached, cached_len as usize) })
+                .map_err(|e| e.to_string())?;
+        let result = region::publish_cached_region(
+            shared_engine()?,
+            unsafe { *request },
+            std::path::Path::new(path),
+            std::path::Path::new(cached),
         )?;
         unsafe {
             *report = result;

@@ -10,7 +10,7 @@ public record TerrainStatsPayload(boolean active, String backend, String mode, G
     public static final StreamCodec<RegistryFriendlyByteBuf, TerrainStatsPayload> CODEC = CustomPacketPayload.codec(
             TerrainStatsPayload::write, TerrainStatsPayload::read);
     public static final TerrainStatsPayload INACTIVE = new TerrainStatsPayload(false, "", "",
-            new GenerationMetrics.Snapshot(0, 0, 0, 0, 0, 0, 0, 0, 0));
+            new GenerationMetrics.Snapshot(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0));
 
     private void write(RegistryFriendlyByteBuf buffer) {
         buffer.writeBoolean(active);
@@ -25,6 +25,9 @@ public record TerrainStatsPayload(boolean active, String backend, String mode, G
         buffer.writeVarLong(stats.failures());
         buffer.writeVarLong(stats.regions());
         buffer.writeDouble(stats.lastRegionMs());
+        buffer.writeVarLong(stats.previewRegions());
+        buffer.writeVarLong(stats.previewCacheHits());
+        buffer.writeVarLong(stats.promotions());
     }
 
     private static TerrainStatsPayload read(RegistryFriendlyByteBuf buffer) {
@@ -33,7 +36,7 @@ public record TerrainStatsPayload(boolean active, String backend, String mode, G
         String mode = buffer.readUtf(16);
         return new TerrainStatsPayload(active, backend, mode, new GenerationMetrics.Snapshot(
                 buffer.readDouble(), buffer.readDouble(), buffer.readDouble(), buffer.readDouble(),
-                buffer.readVarInt(), buffer.readVarLong(), buffer.readVarLong(), buffer.readVarLong(), buffer.readDouble()));
+                buffer.readVarInt(), buffer.readVarLong(), buffer.readVarLong(), buffer.readVarLong(), buffer.readDouble(), buffer.readVarLong(), buffer.readVarLong(), buffer.readVarLong()));
     }
 
     @Override

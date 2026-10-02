@@ -44,7 +44,15 @@ public final class NativeBiomeIntegrationTest {
         require(nativeTerrain.registerProfile(profile.json()) == profile.nativeId(), "identical profiles reuse the GPU upload");
         var seenBiomes = new HashSet<Integer>();
         var seenMaterials = new HashSet<Integer>();
+        var decorations = com.google.gson.JsonParser.parseString(profile.json()).getAsJsonObject().getAsJsonArray("decorations");
+        require(decorations.size() > 20, "exported actual registered vegetation recipes");
+        var exportedKinds = new HashSet<String>();
+        for (var recipe : decorations) exportedKinds.add(recipe.getAsJsonObject().get("kind").getAsString());
+        require(exportedKinds.containsAll(List.of("tree", "plant")), "exported trees and plants");
+        checkJungle(profile, nativeTerrain);
+        var decorationCounts = new java.util.concurrent.atomic.AtomicLongArray(5);
         var chunks = new HashMap<ChunkPos, NativeTerrain.Columns>();
+        var chunkBlocks = new HashMap<ChunkPos, byte[]>();
         try (var workers = Executors.newFixedThreadPool(16)) {
             var jobs = new ArrayList<java.util.concurrent.Future<?>>();
             for (int i = 0; i < 128; i++) {
@@ -55,6 +63,27 @@ public final class NativeBiomeIntegrationTest {
                         var query = nativeTerrain.sampleColumns(r);
                         require(Arrays.equals(query.heights(), data.heights()) && Arrays.equals(query.packed(), data.columns().packed()), "concurrent queries agree with generation");
                         var bytes = data.blocks().toArray(java.lang.foreign.ValueLayout.JAVA_BYTE);
+                        for (int blockIndex = 0; blockIndex < bytes.length; blockIndex++) {
+                            var state = profile.materials()[Byte.toUnsignedInt(bytes[blockIndex])];
+                            if (state.is(net.minecraft.tags.BlockTags.LOGS)) decorationCounts.incrementAndGet(0);
+                            if (state.is(net.minecraft.tags.BlockTags.LEAVES)) {
+                                decorationCounts.incrementAndGet(1);
+                                require(state.getValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.DISTANCE) <= 6, "leaves have a supported log distance");
+                                require(!state.getValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.PERSISTENT), "leaves can decay after chopping");
+                            }
+                            if (state.getBlock() instanceof net.minecraft.world.level.block.VegetationBlock) {
+                                decorationCounts.incrementAndGet(2);
+                                if (state.is(net.minecraft.tags.BlockTags.FLOWERS)) decorationCounts.incrementAndGet(3);
+                                if (state.getBlock() instanceof net.minecraft.world.level.block.DoublePlantBlock) {
+                                    decorationCounts.incrementAndGet(4);
+                                    var half = state.getValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.DOUBLE_BLOCK_HALF);
+                                    int otherIndex = blockIndex + (half == net.minecraft.world.level.block.state.properties.DoubleBlockHalf.LOWER ? 256 : -256);
+                                    require(otherIndex >= 0 && otherIndex < bytes.length, "plant pair fits world bounds");
+                                    var other = profile.materials()[Byte.toUnsignedInt(bytes[otherIndex])];
+                                    require(other.is(state.getBlock()) && other.getValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.DOUBLE_BLOCK_HALF) != half, "both halves of tall plants match");
+                                }
+                            }
+                        }
                         synchronized (seenBiomes) {
                             for (int packed : query.packed()) seenBiomes.add(packed & 255);
                             for (byte material : bytes) seenMaterials.add(Byte.toUnsignedInt(material));
@@ -69,6 +98,9 @@ public final class NativeBiomeIntegrationTest {
         require(seenMaterials.contains(index(profile, Blocks.SAND.defaultBlockState())), "desert/warm ocean surfaces contain registered sand");
         require(seenMaterials.contains(index(profile, Blocks.SNOW_BLOCK.defaultBlockState())), "cold land contains snow");
         System.out.println("QA_EVT {\"event\":\"parallel_registry_gpu_biomes\",\"status\":\"pass\",\"context\":{\"chunks\":128,\"biomes\":" + seenBiomes.size() + ",\"materials\":" + seenMaterials.size() + "}}");
+
+        for (int i = 0; i < 5; i++) require(decorationCounts.get(i) > 0, "generated registry decoration kind " + i);
+        System.out.println("QA_EVT {\"event\":\"registry_rust_decorations\",\"status\":\"pass\",\"context\":{\"recipes\":" + decorations.size() + ",\"logs\":" + decorationCounts.get(0) + ",\"leaves\":" + decorationCounts.get(1) + ",\"plants\":" + decorationCounts.get(2) + ",\"flowers\":" + decorationCounts.get(3) + ",\"double_plant_halves\":" + decorationCounts.get(4) + "}}");
 
         var changedNoise = com.google.gson.JsonParser.parseString(profile.json()).getAsJsonObject();
         var temperatureNoise = changedNoise.getAsJsonArray("noises").get(0).getAsJsonObject();
@@ -99,7 +131,13 @@ public final class NativeBiomeIntegrationTest {
         System.out.println("QA_EVT {\"event\":\"distant_gpu_height_interpolation\",\"status\":\"pass\",\"context\":{\"largest_step\":" + farStep + "}}");
 
         // Capture the per-chunk path before the one-descriptor region dispatch.
-        for (int z : new int[]{0, 15, 31}) for (int x : new int[]{-32, -17, -1}) chunks.put(new ChunkPos(x, z), nativeTerrain.sampleColumns(request(profile, x, z)));
+        for (int z : new int[]{0, 15, 31}) for (int x : new int[]{-32, -17, -1}) {
+            var pos = new ChunkPos(x, z);
+            try (var data = nativeTerrain.generate(request(profile, x, z))) {
+                chunks.put(pos, data.columns());
+                chunkBlocks.put(pos, data.blocks().toArray(java.lang.foreign.ValueLayout.JAVA_BYTE));
+            }
+        }
         var directory = Files.createTempDirectory("retina-biomes-mca-");
         var path = directory.resolve("r.-1.0.mca");
         Codec<PalettedContainer<BlockState>> codec = PalettedContainer.codecRW(BlockState.CODEC,
@@ -125,7 +163,9 @@ public final class NativeBiomeIntegrationTest {
                     }
                     try (var data = nativeTerrain.generate(r)) {
                         var bytes = data.blocks().toArray(java.lang.foreign.ValueLayout.JAVA_BYTE);
+                        if (chunkBlocks.containsKey(pos)) require(Arrays.equals(bytes, chunkBlocks.get(pos)), "decorations agree before and after region dispatch at " + pos);
                         var sections = tag.getListOrEmpty("sections");
+                        var biomeSamples = nativeTerrain.sampleBiomes(r);
                         var actualHeights = new int[Heightmap.Types.values().length][256];
                         for (int sectionIndex = 0; sectionIndex < 24; sectionIndex++) {
                             var section = sections.getCompound(sectionIndex).orElseThrow();
@@ -136,7 +176,7 @@ public final class NativeBiomeIntegrationTest {
                             var packedBiomes = palette.size() == 1 ? null : new SimpleBitStorage(bits, 64, biomeTag.getLongArray("data").orElseThrow());
                             for (int i = 0; i < 64; i++) {
                                 String actual = palette.getString(packedBiomes == null ? 0 : packedBiomes.get(i)).orElseThrow();
-                                String expected = biomes.get(query.biome(((i % 16) / 4) * 64 + (i % 4) * 4)).unwrapKey().orElseThrow().identifier().toString();
+                                String expected = profile.biomes().get(Byte.toUnsignedInt(biomeSamples[sectionIndex * 64 + i])).unwrapKey().orElseThrow().identifier().toString();
                                 require(actual.equals(expected), "MCA biome sample agrees with GPU");
                                 regionBiomes.add(actual);
                             }
@@ -144,13 +184,13 @@ public final class NativeBiomeIntegrationTest {
                                 int layer = sectionIndex * 16 + y;
                                 int c = localZ * 16 + localX;
                                 var state = blocks.get(localX, y, localZ);
-                                require(state.equals(profile.materials()[Byte.toUnsignedInt(bytes[layer * 256 + c])]), "MCA block states match per-chunk Rust assembly, including properties");
-                                for (var type : new Heightmap.Types[]{Heightmap.Types.WORLD_SURFACE, Heightmap.Types.OCEAN_FLOOR, Heightmap.Types.MOTION_BLOCKING}) {
+                                require(state.equals(profile.materials()[Byte.toUnsignedInt(bytes[layer * 256 + c])]), "MCA block states match per-chunk Rust assembly at " + pos + "/" + localX + "," + (layer - 64) + "," + localZ + ": mca=" + state + ", chunk=" + profile.materials()[Byte.toUnsignedInt(bytes[layer * 256 + c])]);
+                                for (var type : Heightmap.Types.values()) {
                                     if (type.isOpaque().test(state)) actualHeights[type.ordinal()][c] = layer + 1;
                                 }
                             }
                         }
-                        for (var type : new Heightmap.Types[]{Heightmap.Types.WORLD_SURFACE, Heightmap.Types.OCEAN_FLOOR, Heightmap.Types.MOTION_BLOCKING}) {
+                        for (var type : Heightmap.Types.values()) {
                             var packed = new SimpleBitStorage(9, 256, tag.getCompoundOrEmpty("Heightmaps").getLongArray(type.getSerializationKey()).orElseThrow());
                             for (int c = 0; c < 256; c++) require(packed.get(c) == actualHeights[type.ordinal()][c], "stored " + type + " heightmap matches actual materials at " + pos + "/" + c + ": stored " + packed.get(c) + ", actual " + actualHeights[type.ordinal()][c] + ", GPU " + query.heights()[c] + ", packed " + query.packed()[c]);
                         }
@@ -188,6 +228,66 @@ public final class NativeBiomeIntegrationTest {
         } finally {
             try (var paths = Files.walk(directory)) { for (var file : paths.sorted(Comparator.reverseOrder()).toList()) Files.delete(file); }
         }
+    }
+    private static void checkJungle(BiomeTerrainProfile profile, NativeTerrain nativeTerrain) throws Exception {
+        var json = com.google.gson.JsonParser.parseString(profile.json()).getAsJsonObject();
+        var jungle = json.getAsJsonArray("biomes").asList().stream().map(com.google.gson.JsonElement::getAsJsonObject)
+                .filter(b -> b.get("id").getAsString().equals("minecraft:jungle")).findFirst().orElseThrow();
+        var shapes = new HashSet<String>(); var decorators = new HashSet<String>();
+        for (var id : jungle.getAsJsonArray("decorations")) {
+            var recipe = json.getAsJsonArray("decorations").get(id.getAsInt()).getAsJsonObject();
+            if (!recipe.get("kind").getAsString().equals("tree")) continue;
+            shapes.add(recipe.get("trunk_shape").getAsString() + "/" + recipe.get("foliage_shape").getAsString());
+            for (var decorator : recipe.getAsJsonArray("decorators")) decorators.add(decorator.getAsJsonObject().get("kind").getAsString());
+        }
+        require(shapes.size() == 4 && decorators.containsAll(List.of("trunk_vine", "leaf_vine", "cocoa")), "jungle exports all four vanilla tree shapes and their decorators");
+        var onlyJungle = new com.google.gson.JsonArray(); onlyJungle.add(jungle.deepCopy()); json.add("biomes", onlyJungle);
+        int nativeId = nativeTerrain.registerProfile(json.toString());
+        var blocks = new HashMap<ChunkPos, byte[]>();
+        java.util.function.Function<ChunkPos, byte[]> load = pos -> blocks.computeIfAbsent(pos, p -> {
+            try (var data = nativeTerrain.generate(new TerrainRequest(123456789L, p.x(), p.z(), -64, 384, 64, 48, .008F, nativeId))) {
+                return data.blocks().toArray(java.lang.foreign.ValueLayout.JAVA_BYTE);
+            }
+        });
+        long[] counts = new long[6];
+        for (int z = 0; z < 4; z++) for (int x = 0; x < 4; x++) {
+            var pos = new ChunkPos(x, z); var bytes = load.apply(pos);
+            for (int i = 0; i < bytes.length; i++) {
+                var state = profile.materials()[Byte.toUnsignedInt(bytes[i])];
+                if (state.is(Blocks.JUNGLE_LOG)) counts[0]++;
+                if (state.is(Blocks.OAK_LOG)) counts[1]++;
+                if (state.is(Blocks.JUNGLE_LEAVES)) counts[2]++;
+                if (state.is(Blocks.OAK_LEAVES)) counts[3]++;
+                if (state.is(Blocks.VINE)) counts[4]++;
+                if (state.is(Blocks.COCOA)) {
+                    counts[5]++;
+                    var direction = state.getValue(net.minecraft.world.level.block.CocoaBlock.FACING);
+                    int bx = pos.getMinBlockX() + i % 16 + direction.getStepX();
+                    int bz = pos.getMinBlockZ() + (i % 256) / 16 + direction.getStepZ();
+                    var support = load.apply(new ChunkPos(Math.floorDiv(bx, 16), Math.floorDiv(bz, 16)));
+                    var supportState = profile.materials()[Byte.toUnsignedInt(support[i / 256 * 256 + Math.floorMod(bz, 16) * 16 + Math.floorMod(bx, 16)])];
+                    require(supportState.is(net.minecraft.tags.BlockTags.JUNGLE_LOGS), "cocoa faces a real jungle log, including chunk borders");
+                }
+            }
+        }
+        for (int i = 0; i < counts.length; i++) require(counts[i] > 0, "jungle produces tree/decorator category " + i);
+        var directory = Files.createTempDirectory("retina-jungle-mca-");
+        try {
+            var request = new TerrainRequest(123456789L, 0, 0, -64, 384, 64, 48, .008F, nativeId);
+            nativeTerrain.generateRegion(request, directory.resolve("r.0.0.mca"), SharedConstants.getCurrentVersion().dataVersion().version(), "minecraft:jungle");
+            var codec = PalettedContainer.codecRW(BlockState.CODEC, Strategy.createForBlockStates(Block.BLOCK_STATE_REGISTRY), Blocks.AIR.defaultBlockState());
+            try (var storage = new RegionFileStorage(new RegionStorageInfo("retina-jungle-test", Level.OVERWORLD, "chunk"), directory, false)) {
+                for (var pos : List.of(new ChunkPos(0, 0), new ChunkPos(3, 3))) {
+                    var expected = load.apply(pos); var sections = storage.read(pos).getListOrEmpty("sections");
+                    for (int section = 0; section < 24; section++) {
+                        var decoded = codec.parse(NbtOps.INSTANCE, sections.getCompound(section).orElseThrow().getCompoundOrEmpty("block_states")).getOrThrow();
+                        for (int y = 0; y < 16; y++) for (int z = 0; z < 16; z++) for (int x = 0; x < 16; x++)
+                            require(decoded.get(x, y, z).equals(profile.materials()[Byte.toUnsignedInt(expected[(section * 16 + y) * 256 + z * 16 + x])]), "jungle trees, vines and cocoa match between chunk and region assembly at " + pos);
+                    }
+                }
+            }
+        } finally { try (var paths = Files.walk(directory)) { for (var p : paths.sorted(Comparator.reverseOrder()).toList()) Files.delete(p); } }
+        System.out.println("QA_EVT {\"event\":\"registry_jungle_diversity_and_decorators\",\"status\":\"pass\",\"context\":{\"tree_shapes\":" + shapes.size() + ",\"vines\":" + counts[4] + ",\"cocoa\":" + counts[5] + "}}");
     }
     private static TerrainRequest request(BiomeTerrainProfile profile, int x, int z) { return new TerrainRequest(123456789L, x, z, -64, 384, 64, 48, 0.008F, profile.nativeId()); }
     private static int index(BiomeTerrainProfile profile, BlockState state) { return Arrays.asList(profile.materials()).indexOf(state); }

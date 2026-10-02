@@ -14,6 +14,7 @@ public final class GenerationMetrics {
     private long failures;
     private long regions;
     private double lastRegionMs;
+    private long previewRegions, previewCacheHits, promotions;
 
     public synchronized void begin() {
         inFlight++;
@@ -30,6 +31,17 @@ public final class GenerationMetrics {
         regions++;
         lastRegionMs = elapsedNanos / 1_000_000.0;
         record(chunks, elapsedNanos, elapsedNanos, 0);
+    }
+
+    public synchronized void completedPreviewRegion(int chunks, long elapsedNanos) {
+        inFlight--; previewRegions++; lastRegionMs = elapsedNanos / 1e6;
+        record(chunks, elapsedNanos, elapsedNanos, 0);
+    }
+
+    public synchronized void previewCacheHit() { previewCacheHits++; }
+
+    public synchronized void completedPromotion(long elapsedNanos) {
+        inFlight--; regions++; promotions++; lastRegionMs = elapsedNanos / 1e6;
     }
 
     private void record(int chunks, long elapsedNanos, long nativeNanos, long conversionNanos) {
@@ -64,7 +76,7 @@ public final class GenerationMetrics {
         double windowSeconds = Math.max(0.001, Math.min(WINDOW_NANOS, now - started) / 1_000_000_000.0);
         double divisor = Math.max(1, timedChunks) * 1_000_000.0;
         return new Snapshot(count / windowSeconds, elapsed / divisor, nativeTime / divisor,
-                conversion / divisor, inFlight, total, failures, regions, lastRegionMs);
+                conversion / divisor, inFlight, total, failures, regions, lastRegionMs, previewRegions, previewCacheHits, promotions);
     }
 
     private void prune(long now) {
@@ -76,5 +88,5 @@ public final class GenerationMetrics {
     private record Sample(long completedAt, int chunks, long elapsed, long nativeTime, long conversion) { }
 
     public record Snapshot(double chunksPerSecond, double msPerChunk, double nativeMs,
-                           double conversionMs, int inFlight, long total, long failures, long regions, double lastRegionMs) { }
+                           double conversionMs, int inFlight, long total, long failures, long regions, double lastRegionMs, long previewRegions, long previewCacheHits, long promotions) { }
 }

@@ -40,6 +40,7 @@ public final class TerrainDebugEntry implements DebugScreenEntry {
                 String.format(Locale.ROOT, "Retina %s: %.1f chunks/s (5s) | %.2f ms/chunk%s", payload.mode(), stats.chunksPerSecond(), stats.msPerChunk(), payload.mode().equals("mca") ? " (amortized)" : ""),
                 String.format(Locale.ROOT, "Native: %.2f ms | Convert: %.2f ms | In flight jobs: %d", stats.nativeMs(), stats.conversionMs(), stats.inFlight()),
                 String.format(Locale.ROOT, "Regions: %d | Last region: %.2f ms", stats.regions(), stats.lastRegionMs()),
+                String.format(Locale.ROOT, "Temporary regions: %d | Cache hits: %d | Promoted: %d", stats.previewRegions(), stats.previewCacheHits(), stats.promotions()),
                 "Terrain chunks: " + stats.total() + " | Failed: " + stats.failures(),
                 "GPU " + payload.backend()));
     }

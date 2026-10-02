@@ -37,6 +37,7 @@ final class DecorationProfile {
         var exporter = new DecorationProfile(registry, materials);
         for (int i = 0; i < biomes.size(); i++) {
             var selected = new JsonArray();
+            if ((profiles.get(i).getAsJsonObject().get("flags").getAsInt() & 16) != 0) { profiles.get(i).getAsJsonObject().add("decorations", selected); continue; }
             var features = biomes.get(i).value().getGenerationSettings().features();
             int step = GenerationStep.Decoration.VEGETAL_DECORATION.ordinal();
             if (features.size() > step) for (var holder : features.get(step)) {
@@ -55,9 +56,10 @@ final class DecorationProfile {
         double density = 1, lowDensity = 1, rarity = 1, tries = 1;
         int xSpread = 0, ySpread = 0, zSpread = 0;
         boolean surface = false, noiseCount = false;
+        JsonArray waterOffsets = new JsonArray();
         Placement copy() {
             var p = new Placement(); p.density = density; p.lowDensity = lowDensity; p.rarity = rarity; p.tries = tries;
-            p.xSpread = xSpread; p.ySpread = ySpread; p.zSpread = zSpread; p.surface = surface; p.noiseCount = noiseCount; return p;
+            p.xSpread = xSpread; p.ySpread = ySpread; p.zSpread = zSpread; p.surface = surface; p.noiseCount = noiseCount; p.waterOffsets = waterOffsets.deepCopy(); return p;
         }
     }
     private void placed(PlacedFeature placed, Placement previous, double chance, String path, List<Integer> selected, int depth) {
@@ -80,7 +82,8 @@ final class DecorationProfile {
                 case "rarity_filter" -> p.rarity *= json.get("chance").getAsDouble();
                 case "heightmap" -> p.surface = true;
                 case "offset" -> { p.xSpread += extent(json.get("x")); p.ySpread += extent(json.get("y")); p.zSpread += extent(json.get("z")); }
-                case "in_square", "biome", "surface_water_depth_filter", "block_predicate_filter" -> { }
+                case "block_predicate_filter" -> waterOffsets(json.getAsJsonObject("predicate"), p.waterOffsets);
+                case "in_square", "biome", "surface_water_depth_filter" -> { }
                 default -> { unsupported.add("placement:" + type(json)); return; }
             }
         }
@@ -110,6 +113,7 @@ final class DecorationProfile {
             var variants = new JsonArray();
             for (var state : states) {
                 if (!(state.state.getBlock() instanceof VegetationBlock) || state.state.getBlock() instanceof SaplingBlock) continue;
+                if (!state.state.getFluidState().isEmpty() || state.state.is(Blocks.LILY_PAD)) continue;
                 if (state.state.getBlock() instanceof MushroomBlock) continue; // Their light/underground rules need a separate adapter.
                 var variant = new JsonObject();
                 var lower = state.state;
@@ -128,12 +132,30 @@ final class DecorationProfile {
         } else unsupported.add(feature.getClass().getSimpleName());
     }
 
+    private static void waterOffsets(JsonObject predicate, JsonArray offsets) {
+        if (type(predicate).equals("all_of")) {
+            for (var child : predicate.getAsJsonArray("predicates")) waterOffsets(child.getAsJsonObject(), offsets);
+        } else if (type(predicate).equals("matching_fluids")) {
+            boolean water = false;
+            var fluids = predicate.get("fluids");
+            var choices = new JsonArray();
+            if (fluids.isJsonArray()) choices = fluids.getAsJsonArray(); else choices.add(fluids);
+            for (var fluid : choices) water |= List.of("minecraft:water", "minecraft:flowing_water", "#minecraft:water").contains(fluid.getAsString());
+            if (water) offsets.add(predicate.has("offset") ? predicate.get("offset").deepCopy() : new Gson().toJsonTree(new int[]{0, 0, 0}));
+        } else if (type(predicate).equals("any_of")) {
+            var alternatives = predicate.getAsJsonArray("predicates");
+            if (alternatives.asList().stream().allMatch(p -> type(p.getAsJsonObject()).equals("matching_fluids")))
+                for (var child : alternatives) waterOffsets(child.getAsJsonObject(), offsets);
+        }
+    }
+
     private void emit(String path, Placement p, double chance, String kind, JsonObject data, List<Integer> selected) {
         Integer id = ids.get(path);
         if (id == null) {
             id = recipes.size(); ids.put(path, id);
             data.addProperty("source", path); data.addProperty("salt", salt(path)); data.addProperty("kind", kind);
             data.addProperty("density", p.density * chance); data.addProperty("low_density", p.lowDensity * chance);
+            data.add("water_offsets", p.waterOffsets.deepCopy());
             data.addProperty("noise_count", p.noiseCount); data.addProperty("rarity", p.rarity);
             data.addProperty("tries", Math.max(1, p.tries));
             var spread = new JsonArray(); spread.add(p.xSpread); spread.add(p.ySpread); spread.add(p.zSpread); data.add("spread", spread);
@@ -176,6 +198,26 @@ final class DecorationProfile {
             var roots = provider(root.get("root_provider"), 1, 0, 0);
             result.addProperty("root", roots.isEmpty() ? 0 : material(roots.getFirst().state));
         } else { result.add("root_offset", range(null, 0)); result.addProperty("root", 0); }
+        var decorators = new JsonArray();
+        for (var element : json.getAsJsonArray("decorators")) {
+            var decorator = element.getAsJsonObject();
+            String type = type(decorator);
+            if (!List.of("trunk_vine", "leave_vine", "cocoa").contains(type)) {
+                unsupported.add("tree_decorator:" + type); continue;
+            }
+            var exported = new JsonObject();
+            exported.addProperty("kind", type.equals("leave_vine") ? "leaf_vine" : type);
+            exported.addProperty("probability", type.equals("trunk_vine") ? 2.0 / 3.0 : decorator.get("probability").getAsDouble());
+            var states = new JsonArray();
+            // Faces point from the decoration back toward its supporting tree block.
+            for (var direction : List.of(Direction.WEST, Direction.EAST, Direction.NORTH, Direction.SOUTH)) {
+                if (type.equals("cocoa")) {
+                    for (int age = 0; age < 3; age++) states.add(material(Blocks.COCOA.defaultBlockState().setValue(CocoaBlock.FACING, direction).setValue(CocoaBlock.AGE, age)));
+                } else states.add(material(Blocks.VINE.defaultBlockState().setValue(VineBlock.getPropertyForFace(direction), true)));
+            }
+            exported.add("states", states); decorators.add(exported);
+        }
+        result.add("decorators", decorators);
         return result;
     }
 
@@ -192,7 +234,7 @@ final class DecorationProfile {
         if (!json.isJsonObject()) return List.of();
         var object = json.getAsJsonObject(); var result = new ArrayList<State>();
         switch (type(object)) {
-            case "weighted_state_provider" -> { for (var e : object.getAsJsonArray("entries")) { var entry = e.getAsJsonObject(); result.addAll(provider(entry.get("data"), weight * entry.get("weight").getAsDouble(), band, depth + 1)); } }
+            case "weighted", "weighted_state_provider" -> { for (var e : object.getAsJsonArray("entries")) { var entry = e.getAsJsonObject(); result.addAll(provider(entry.get("data"), weight * entry.get("weight").getAsDouble(), band, depth + 1)); } }
             case "noise_threshold" -> {
                 var low = object.getAsJsonArray("low_states"); var high = object.getAsJsonArray("high_states");
                 for (var e : low) result.addAll(provider(e, weight / low.size(), 1, depth + 1));
@@ -203,7 +245,7 @@ final class DecorationProfile {
             case "noise_provider", "dual_noise_provider" -> { for (var e : object.getAsJsonArray("states")) result.addAll(provider(e, weight, band, depth + 1)); }
             case "rule_based" -> { for (var e : object.getAsJsonArray("rules")) result.addAll(provider(e.getAsJsonObject().get("then"), weight, band, depth + 1)); }
             case "simple_state_provider" -> result.addAll(provider(object.get("state"), weight, band, depth + 1));
-            case "randomized_int_state_provider" -> result.addAll(provider(object.get("source"), weight, band, depth + 1));
+            case "randomized_int", "randomized_int_state_provider" -> result.addAll(provider(object.get("source"), weight, band, depth + 1));
             default -> unsupported.add("provider:" + type(object));
         }
         return result;
@@ -245,6 +287,7 @@ final class DecorationProfile {
             if (state.is(BlockTags.LEAVES)) flag |= 4;
             if (state.is(BlockTags.LOGS)) flag |= 8;
             if (state.getBlock() instanceof VegetationBlock) flag |= 16;
+            if (state.is(BlockTags.JUNGLE_LOGS)) flag |= 32;
             flags.add(flag);
         }
         profile.add("heightmap_masks", heightmaps); profile.add("material_flags", flags);

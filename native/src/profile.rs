@@ -1,9 +1,20 @@
+use crate::decoration::Recipe;
 use bytemuck::{Pod, Zeroable};
 use serde::Deserialize;
 use serde_json::Value;
 
 #[derive(Clone, Deserialize)]
 pub struct BiomeProfile {
+    #[serde(default)]
+    pub lakes: [f32; 2],
+    #[serde(default)]
+    pub lake_barrier: u8,
+    #[serde(default)]
+    pub cave_kind: u32,
+    #[serde(default)]
+    pub cave_depth: [f32; 2],
+    #[serde(default)]
+    pub cave_features: crate::features::CaveFeatures,
     pub id: String,
     pub climate: [f32; 4],
     pub terrain: [f32; 3],
@@ -11,6 +22,12 @@ pub struct BiomeProfile {
     pub filler: u32,
     pub underwater: u32,
     pub flags: u32,
+    #[serde(default)]
+    pub decorations: Vec<u32>,
+    #[serde(default)]
+    pub ores: Vec<u32>,
+    #[serde(default)]
+    pub carvers: Vec<crate::geology::Carver>,
 }
 
 #[derive(Clone, Deserialize)]
@@ -22,6 +39,8 @@ pub struct NoiseProfile {
 
 #[derive(Clone, Deserialize)]
 pub struct WorldProfile {
+    #[serde(default)]
+    pub terrain_features: crate::features::TerrainFeatures,
     pub biome_scale: f32,
     pub blend: f32,
     pub sea_level: i32,
@@ -34,6 +53,12 @@ pub struct WorldProfile {
     pub materials: Vec<Value>,
     pub biomes: Vec<BiomeProfile>,
     pub noises: Vec<NoiseProfile>,
+    #[serde(default)]
+    pub decorations: Vec<Recipe>,
+    #[serde(flatten)]
+    pub geology: crate::geology::GeologyProfile,
+    pub material_flags: Vec<u8>,
+    pub heightmap_masks: Vec<u8>,
     #[serde(skip)]
     pub encoded: Vec<u8>,
 }
@@ -54,8 +79,20 @@ impl WorldProfile {
         {
             return Err("invalid world profile dimensions".into());
         }
+        if profile.material_flags.len() != profile.materials.len()
+            || profile.heightmap_masks.len() != profile.materials.len()
+        {
+            return Err("material flags must cover the complete palette".into());
+        }
+        for recipe in &profile.decorations {
+            recipe.validate(profile.materials.len())?;
+        }
         for biome in &profile.biomes {
-            if biome.id.is_empty()
+            if biome
+                .decorations
+                .iter()
+                .any(|id| *id as usize >= profile.decorations.len())
+                || biome.id.is_empty()
                 || biome.id.len() > u16::MAX as usize
                 || biome
                     .climate
@@ -114,6 +151,20 @@ impl WorldProfile {
                 return Err("invalid registry noise profile".into());
             }
         }
+        for noise in &profile.geology.cave_noises {
+            if noise.modifiers.is_empty()
+                || noise.modifiers.len() > 32
+                || !noise.frequency.is_finite()
+                || noise.frequency <= 0.0
+                || !noise.amplitude.is_finite()
+                || noise.amplitude <= 0.0
+                || noise.modifiers.iter().any(|v| !v.is_finite() || *v < 0.0)
+            {
+                return Err("invalid cave noise parameters".into());
+            }
+        }
+        profile.geology.validate(&profile)?;
+        profile.terrain_features.validate(&profile)?;
         profile.encoded = json.to_vec();
         Ok(profile)
     }
@@ -123,8 +174,8 @@ impl WorldProfile {
         bytes.extend_from_slice(bytemuck::bytes_of(&[
             self.biome_scale,
             self.blend,
-            0.0,
-            0.0,
+            self.terrain_features.band_frequency,
+            self.terrain_features.band_amplitude,
         ]));
         bytes.extend_from_slice(bytemuck::bytes_of(&[
             self.biomes.len() as u32,
@@ -148,6 +199,12 @@ impl WorldProfile {
                 climate: biome.climate,
                 terrain: [biome.terrain[0], biome.terrain[1], biome.terrain[2], 0.0],
                 materials: [biome.top, biome.filler, biome.underwater, biome.flags],
+                features: [
+                    biome.lakes[0],
+                    biome.lakes[1],
+                    biome.lake_barrier as f32,
+                    0.0,
+                ],
             }));
         }
         bytes
@@ -170,6 +227,7 @@ struct GpuBiome {
     climate: [f32; 4],
     terrain: [f32; 4],
     materials: [u32; 4],
+    features: [f32; 4],
 }
 
 /// One compact GPU readback record per column. All interpolation and surface choice is finished.
@@ -191,9 +249,18 @@ impl Column {
         if y < min_y + 1 + (self.packed >> 30) as i32 {
             return profile.bedrock;
         }
+        let lake = self.packed & (1 << 29) != 0;
+        let depth = ((self.packed >> 24) & 7) as i32;
+        let waterline = if lake {
+            self.height + depth
+        } else {
+            profile.sea_level
+        };
         if y >= self.height {
-            return if y < profile.sea_level {
-                if self.packed & (1 << 28) != 0 && y == profile.sea_level - 1 {
+            return if y < waterline {
+                if lake && self.packed & (1 << 28) != 0 {
+                    profile.geology.lava
+                } else if !lake && self.packed & (1 << 28) != 0 && y == waterline - 1 {
                     profile.ice
                 } else {
                     profile.water
@@ -205,7 +272,17 @@ impl Column {
         if y == self.height - 1 {
             return ((self.packed >> 8) & 255) as u8;
         }
-        if y >= self.height - 1 - ((self.packed >> 24) & 15) as i32 {
+        // Badlands reuse the filler byte for the GPU's signed band offset.
+        if !lake
+            && profile.biomes[self.biome()].flags & 8 != 0
+            && !profile.terrain_features.bands.is_empty()
+            && y >= profile.sea_level - 16
+        {
+            let offset = ((self.packed >> 16) & 255) as u8 as i8 as i32;
+            let bands = &profile.terrain_features.bands;
+            return bands[(y + offset).rem_euclid(bands.len() as i32) as usize];
+        }
+        if y >= self.height - 1 - if lake { 2 } else { depth } {
             return ((self.packed >> 16) & 255) as u8;
         }
         if y < 0 {
@@ -216,6 +293,12 @@ impl Column {
     }
 
     pub fn surface_height(self, profile: Option<&WorldProfile>) -> i32 {
-        profile.map_or(self.height, |p| self.height.max(p.sea_level))
+        profile.map_or(self.height, |p| {
+            if self.packed & (1 << 29) != 0 {
+                self.height + ((self.packed >> 24) & 7) as i32
+            } else {
+                self.height.max(p.sea_level)
+            }
+        })
     }
 }

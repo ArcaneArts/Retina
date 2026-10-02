@@ -34,9 +34,8 @@ public abstract class ChunkMapMixin {
                 throw new IllegalArgumentException("Retina MCA bounds must match the dimension bounds for stored sections and heightmaps");
             }
             var worker = (IOWorker) ((ChunkMap) (Object) this).chunkScanner();
-            var coordinator = new RegionCoordinator(retina, level.getSeed(), worker);
+            var coordinator = new RegionCoordinator(retina, level.getSeed());
             ((RegionStorageBridge) (Object) ((IOWorkerAccessor) worker).retina$storage()).retina$configure(coordinator);
-            retina.attachRegions(coordinator);
         }
     }
 

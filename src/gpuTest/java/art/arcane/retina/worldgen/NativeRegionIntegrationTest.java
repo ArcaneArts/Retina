@@ -35,6 +35,7 @@ public final class NativeRegionIntegrationTest {
         Codec<PalettedContainer<BlockState>> codec = PalettedContainer.codecRW(BlockState.CODEC,
                 Strategy.createForBlockStates(Block.BLOCK_STATE_REGISTRY), Blocks.AIR.defaultBlockState());
         try {
+            Files.createFile(path); // Vanilla and DH can open the MCA before the first chunk write.
             long started = System.nanoTime();
             var report = nativeTerrain.generateRegion(request, path, version, "minecraft:plains");
             double ms = (System.nanoTime() - started) / 1_000_000.0;

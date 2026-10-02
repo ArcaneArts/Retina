@@ -20,23 +20,53 @@ final class TerrainQa {
         ServerLevel level = player.level();
         var position = player.chunkPosition();
         var chunk = level.getChunk(position.x(), position.z());
-        var random = level.getChunkSource().randomState();
-        for (int z = 0; z < 16; z += 3) {
-            for (int x = 0; x < 16; x += 3) {
-                int globalX = position.getMinBlockX() + x;
-                int globalZ = position.getMinBlockZ() + z;
-                int expected = generator.getBaseHeight(globalX, globalZ, Heightmap.Types.WORLD_SURFACE, level, random);
-                int actual = chunk.getHeight(Heightmap.Types.WORLD_SURFACE, x, z) + 1;
-                var column = generator.getBaseColumn(globalX, globalZ, level, random);
-                if (actual != expected
-                        || !level.getBlockState(new BlockPos(globalX, actual - 1, globalZ)).equals(column.getBlock(actual - 1))
-                        || !level.getBlockState(new BlockPos(globalX, actual, globalZ)).isAir()
-                        || !column.getBlock(actual).isAir()) {
-                    Retina.LOGGER.error("QA_EVT {\"event\":\"minecraft_height_roundtrip\",\"status\":\"fail\",\"context\":{\"x\":{},\"z\":{},\"gpu\":{},\"minecraft\":{}}}", globalX, globalZ, expected, actual);
-                    return;
+        var request = generator.request(level.getSeed(), position.x(), position.z());
+        var profile = generator.profile();
+        var materials = profile == null ? new net.minecraft.world.level.block.state.BlockState[]{Blocks.AIR.defaultBlockState(), Blocks.STONE.defaultBlockState()} : profile.materials();
+        try (var generated = NativeTerrain.instance().generate(request)) {
+            var blocks = generated.blocks();
+            int plants = 0, logs = 0, leaves = 0, caveAir = 0, ores = 0, geologySamples = 0;
+            for (int z = 0; z < 16; z += 3) for (int x = 0; x < 16; x += 3) {
+                int globalX = position.getMinBlockX() + x, globalZ = position.getMinBlockZ() + z;
+                for (var type : new Heightmap.Types[]{Heightmap.Types.WORLD_SURFACE, Heightmap.Types.OCEAN_FLOOR, Heightmap.Types.MOTION_BLOCKING, Heightmap.Types.MOTION_BLOCKING_NO_LEAVES}) {
+                    int expected = request.minY();
+                    for (int y = request.height() - 1; y >= 0; y--) {
+                        var state = materials[Byte.toUnsignedInt(blocks.get(java.lang.foreign.ValueLayout.JAVA_BYTE, (long)y * 256 + z * 16 + x))];
+                        if (type.isOpaque().test(state)) { expected += y + 1; break; }
+                    }
+                    int actual = chunk.getHeight(type, x, z) + 1;
+                    if (actual != expected) {
+                        Retina.LOGGER.error("QA_EVT {\"event\":\"minecraft_height_roundtrip\",\"status\":\"fail\",\"context\":{\"x\":{},\"z\":{},\"expected\":{},\"minecraft\":{},\"type\":\"{}\"}}", globalX, globalZ, expected, actual, type);
+                        return;
+                    }
                 }
             }
+            for (int y = request.minY(); y < request.minY() + request.height(); y++) for (int z = 0; z < 16; z++) for (int x = 0; x < 16; x++) {
+                var pos = new BlockPos(position.getMinBlockX() + x, y, position.getMinBlockZ() + z);
+                var state = chunk.getBlockState(pos);
+                if (profile != null && y < generated.heights()[z * 16 + x] - 8) {
+                    var expected = materials[Byte.toUnsignedInt(blocks.get(java.lang.foreign.ValueLayout.JAVA_BYTE, (long)(y - request.minY()) * 256 + z * 16 + x))];
+                    geologySamples++;
+                    if (!state.is(expected.getBlock())) {
+                        Retina.LOGGER.error("QA_EVT {\"event\":\"minecraft_geology_roundtrip\",\"status\":\"fail\",\"context\":{\"x\":{},\"y\":{},\"z\":{},\"expected\":\"{}\",\"actual\":\"{}\"}}", pos.getX(), y, pos.getZ(), expected, state);
+                        return;
+                    }
+                    if (state.isAir()) caveAir++;
+                    if (net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(state.getBlock()).getPath().endsWith("_ore")) ores++;
+                }
+                if (state.is(net.minecraft.tags.BlockTags.LOGS)) logs++;
+                if (state.is(net.minecraft.tags.BlockTags.LEAVES)) leaves++;
+                if (state.getBlock() instanceof net.minecraft.world.level.block.VegetationBlock) plants++;
+                if (state.getBlock() instanceof net.minecraft.world.level.block.DoublePlantBlock) {
+                    var half = state.getValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.DOUBLE_BLOCK_HALF);
+                    var other = chunk.getBlockState(half == net.minecraft.world.level.block.state.properties.DoubleBlockHalf.LOWER ? pos.above() : pos.below());
+                    if (!other.is(state.getBlock()) || other.getValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.DOUBLE_BLOCK_HALF) == half) {
+                        Retina.LOGGER.error("QA_EVT {\"event\":\"minecraft_plant_pairs\",\"status\":\"fail\"}"); return;
+                    }
+                }
+            }
+            Retina.LOGGER.info("QA_EVT {\"event\":\"minecraft_geology_roundtrip\",\"status\":\"pass\",\"context\":{\"blocks\":{},\"cave_air\":{},\"ores\":{}}}", geologySamples, caveAir, ores);
+            Retina.LOGGER.info("QA_EVT {\"event\":\"minecraft_height_roundtrip\",\"status\":\"pass\",\"context\":{\"columns\":36,\"heightmaps\":4,\"logs\":{},\"leaves\":{},\"plants\":{}}}", logs, leaves, plants);
         }
-        Retina.LOGGER.info("QA_EVT {\"event\":\"minecraft_height_roundtrip\",\"status\":\"pass\",\"context\":{\"columns\":36,\"chunks\":{}}}", generator.metrics().snapshot().total());
     }
 }

@@ -19,7 +19,7 @@ struct NoiseProfile {
     frequency: f32, amplitude: f32, count: u32, padding: u32,
     modifiers: array<f32, 32>,
 }
-struct BiomeProfile { climate: vec4<f32>, terrain: vec4<f32>, materials: vec4<u32> }
+struct BiomeProfile { climate: vec4<f32>, terrain: vec4<f32>, materials: vec4<u32>, features: vec4<f32> }
 struct WorldProfile {
     globals: vec4<f32>, ids: vec4<u32>, noises: array<NoiseProfile, 4>,
     biomes: array<BiomeProfile>,
@@ -129,6 +129,7 @@ fn biome_sites(@builtin(global_invocation_id) id: vec3<u32>) {
     var best = 1e20;
     var biome = 0u;
     for (var index = 0u; index < world.ids.x; index++) {
+        if (world.biomes[index].materials.w & 16u) != 0u { continue; }
         let difference = climate - world.biomes[index].climate;
         var fitness = dot(difference * difference, vec4<f32>(2.5, 1.5, 2.0, 0.5));
         // Ocean sites are selected by continentalness, rather than invading hot/cold land cells.
@@ -141,24 +142,8 @@ fn biome_sites(@builtin(global_invocation_id) id: vec3<u32>) {
 
 // Final GPU stage: domain warp, Voronoi assignment, continuous height blending,
 // simplex relief, coherent material borders, soil depth, cold-water and bedrock flags.
-@compute @workgroup_size(64)
-fn main(@builtin(global_invocation_id) id: vec3<u32>) {
-    let region = requests[0].tile_side > 0u;
-    let request_index = select(id.y, 0u, region);
-    let request = requests[request_index];
-    var tile = vec2<i32>(0);
-    if region {
-        tile = vec2<i32>(i32(id.y % request.tile_side), i32(id.y / request.tile_side)) * 16;
-    }
-    let coordinate = vec2<i32>(request.origin_x + tile.x + i32(id.x & 15u),
-                               request.origin_z + tile.y + i32(id.x >> 4u));
-    let point = vec2<f32>(coordinate);
-    let index = id.y * 256u + id.x;
-    if request.profile == 0u {
-        let height = i32(floor(request.base_height + request.amplitude * fbm(point * request.frequency, request.seed_low, request.seed_high)));
-        columns[index] = Column(clamp(height, request.min_y + 1, request.max_y), 0u);
-        return;
-    }
+struct TerrainSample { height: i32, biome: u32, terrain: vec3<f32>, climate: vec4<f32> }
+fn terrain_at(point: vec2<f32>, request: Request, request_index: u32) -> TerrainSample {
     let scale = world.globals.x;
     let warp = vec2<f32>(
         simplex(point / (scale * 2.0), request.seed_low + 407u, request.seed_high),
@@ -206,6 +191,29 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
     let erosion_scale = clamp(1.0 - climate.w * 0.35, 0.6, 1.4);
     let height = clamp(i32(floor(request.base_height + terrain.x + continental_shape
         + request.amplitude * terrain.y * relief * erosion_scale)), request.min_y + 1, request.max_y);
+    return TerrainSample(height,biome,terrain,climate);
+}
+@compute @workgroup_size(64)
+fn main(@builtin(global_invocation_id) id: vec3<u32>) {
+    let region = requests[0].tile_side > 0u;
+    let request_index = select(id.y, 0u, region);
+    let request = requests[request_index];
+    var tile = vec2<i32>(0);
+    if region {
+        tile = vec2<i32>(i32(id.y % request.tile_side), i32(id.y / request.tile_side)) * 16;
+    }
+    let coordinate = vec2<i32>(request.origin_x + tile.x + i32(id.x & 15u),
+                               request.origin_z + tile.y + i32(id.x >> 4u));
+    let point = vec2<f32>(coordinate);
+    let index = id.y * 256u + id.x;
+    if request.profile == 0u {
+        let height = i32(floor(request.base_height + request.amplitude * fbm(point * request.frequency, request.seed_low, request.seed_high)));
+        columns[index] = Column(clamp(height, request.min_y + 1, request.max_y), 0u);
+        return;
+    }
+    let sample = terrain_at(point,request,request_index);
+    var height = sample.height;
+    let biome = sample.biome;
     // One coherent region membership selects both the biome and its surface.
     // The only per-column hash below controls hidden bedrock thickness.
     let h = cell_hash(coordinate, request.seed_low + 1381u, request.seed_high);
@@ -223,8 +231,51 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
         top = world.ids.z; filler = top;
     }
     if (world.biomes[biome].materials.w & 1u) != 0u { flags |= 1u << 28u; }
+    // Vanilla vegetation threshold sampling stays on the GPU, sharing this readback.
+    if simplex(point * 0.005, 2345u, 0u) < -0.8 { flags |= 1u << 27u; }
     let depth_noise = simplex(point * request.frequency * 3.0, request.seed_low + 559u, request.seed_high);
-    let depth = u32(clamp(i32(floor(3.5 + depth_noise * 2.0)), 2, 6));
+    var depth = u32(clamp(i32(floor(3.5 + depth_noise * 2.0)), 2, 6));
+    // Fixed global cells make rounded, warped basins with a flat waterline.
+    // Their geometry is computed here, before any readback or Rust assembly.
+    let lake_cell = vec2<i32>(floor(point / 128.0));
+    let lh = cell_hash(lake_cell, request.seed_low + 8647u, request.seed_high);
+    let lake_center = (vec2<f32>(lake_cell) + vec2<f32>(0.25) + vec2<f32>(f32(lh & 255u),f32((lh >> 8u) & 255u))/510.0)*128.0;
+    let lake_delta = point - lake_center;
+    let radius = 24.0+f32(lh & 7u);
+    let basin = length(lake_delta * vec2<f32>(1.0,0.78)) / radius
+        + simplex(point * 0.055, request.seed_low + 9913u, request.seed_high)*0.09;
+    if basin < 1.35 {
+        let center = terrain_at(lake_center,request,request_index);
+        let options = world.biomes[center.biome].features;
+        let chance = f32((lh >> 16u) & 65535u)/65535.0;
+        let lava_lake = chance < options.y;
+        let eligible = lava_lake || chance < options.x;
+        if eligible && (material.w & (2u | 4u | 8u | 16u)) == 0u {
+            // A fixed level below the lowest sampled bank contains the fluid.
+            let shore_x0 = terrain_at(lake_center+vec2<f32>(radius+5.0,0.0),request,request_index).height;
+            let shore_x1 = terrain_at(lake_center-vec2<f32>(radius+5.0,0.0),request,request_index).height;
+            let shore_z0 = terrain_at(lake_center+vec2<f32>(0.0,(radius+5.0)/0.78),request,request_index).height;
+            let shore_z1 = terrain_at(lake_center-vec2<f32>(0.0,(radius+5.0)/0.78),request,request_index).height;
+            let level = min(center.height,min(min(shore_x0,shore_x1),min(shore_z0,shore_z1)))-2;
+            if level > sea_level+3 && abs(height-level) <= 18 {
+                if basin < 1.0 {
+                    let drop = u32(clamp(i32(ceil((1.0-basin*basin)*6.0)),1,7));
+                    height = clamp(level-i32(drop),request.min_y+6,request.max_y-1);
+                    depth = drop; flags &= ~(1u<<28u); flags |= 1u<<29u;
+                    if lava_lake { flags |= 1u<<28u; top = u32(options.z); filler = top; }
+                    else { top = material.z; filler = top; }
+                } else {
+                    height = i32(round(mix(f32(level),f32(height),smoothstep(1.0,1.35,basin))));
+                }
+            }
+        }
+    }
+    // Terracotta retains its red-sand cap. The filler byte transports the small
+    // signed band offset; Rust only indexes the resident 192-entry color table.
+    if (material.w & 8u) != 0u && world.globals.z > 0.0 {
+        let offset = i32(round(simplex(point * world.globals.z,request.seed_low+6833u,request.seed_high)*4.0*world.globals.w));
+        filler = bitcast<u32>(clamp(offset,-127,127)) & 255u;
+    }
     flags |= (h >> 16u & 3u) << 30u;
     columns[index] = Column(height, biome | (top << 8u) | (filler << 16u) | (depth << 24u) | flags);
 }
