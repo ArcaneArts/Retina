@@ -7,7 +7,7 @@ use std::sync::OnceLock;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
-use flate2::{Compression, write::ZlibEncoder};
+use libdeflater::{CompressionLvl, Compressor};
 use rayon::prelude::*;
 
 use crate::{
@@ -30,6 +30,48 @@ pub struct RegionReport {
     pub assembly_nanos: u64,
     pub write_nanos: u64,
     pub bytes: u64,
+}
+
+/// Separate ABI keeps legacy region callers compatible. Worker shares are scaled
+/// to the measured parallel phase; device timestamps overlap the GPU host phase.
+#[repr(C)]
+#[derive(Default)]
+pub struct DetailedRegionReport {
+    pub region: RegionReport,
+    pub stages: timings::Snapshot,
+}
+struct RegionTimers<'a> {
+    session: &'a timings::Timings,
+    job: &'a timings::Timings,
+}
+impl RegionTimers<'_> {
+    fn time<T>(&self, stage: usize, f: impl FnOnce() -> T) -> T {
+        let _span = self.span(stage);
+        f()
+    }
+    fn span(&self, stage: usize) -> RegionGuard<'_> {
+        RegionGuard {
+            timers: self,
+            stage,
+            start: Instant::now(),
+        }
+    }
+    fn chunks(&self, count: u64) {
+        self.session.chunks(count);
+    }
+}
+
+struct RegionGuard<'a> {
+    timers: &'a RegionTimers<'a>,
+    stage: usize,
+    start: Instant,
+}
+impl Drop for RegionGuard<'_> {
+    fn drop(&mut self) {
+        let elapsed = self.start.elapsed().as_nanos() as u64;
+        self.timers.session.add(self.stage, elapsed);
+        self.timers.job.add(self.stage, elapsed);
+    }
 }
 
 fn assemblers() -> Result<&'static rayon::ThreadPool, String> {
@@ -57,7 +99,7 @@ pub fn generate_region(
     data_version: i32,
     biome: &str,
 ) -> Result<RegionReport, String> {
-    generate_region_inner(engine, request, path, data_version, biome, None, None)
+    generate_region_inner(engine, request, path, data_version, biome, None, None, None)
 }
 
 /// Preview generation also returns the undecorated GPU columns, without another dispatch.
@@ -80,6 +122,7 @@ pub fn generate_region_columns(
         biome,
         Some(columns),
         None,
+        None,
     )
 }
 
@@ -90,7 +133,29 @@ pub fn publish_cached_region(
     path: &Path,
     cached: &Path,
 ) -> Result<RegionReport, String> {
-    generate_region_inner(engine, request, path, 0, "", None, Some(cached))
+    generate_region_inner(engine, request, path, 0, "", None, Some(cached), None)
+}
+
+pub fn generate_region_profiled(
+    engine: &TerrainEngine,
+    request: ChunkRequest,
+    path: &Path,
+    data_version: i32,
+    biome: &str,
+    columns: Option<&mut [Column]>,
+) -> Result<DetailedRegionReport, String> {
+    let mut stages = timings::Snapshot::default();
+    let region = generate_region_inner(
+        engine,
+        request,
+        path,
+        data_version,
+        biome,
+        columns,
+        None,
+        Some(&mut stages),
+    )?;
+    Ok(DetailedRegionReport { region, stages })
 }
 
 fn generate_region_inner(
@@ -101,6 +166,7 @@ fn generate_region_inner(
     biome: &str,
     output: Option<&mut [Column]>,
     cached: Option<&Path>,
+    detail: Option<&mut timings::Snapshot>,
 ) -> Result<RegionReport, String> {
     request.validate()?;
     if request.min_y % 16 != 0
@@ -113,7 +179,14 @@ fn generate_region_inner(
     if cached.is_none() && (biome.is_empty() || biome.len() > u16::MAX as usize) {
         return Err("invalid MCA biome identifier".into());
     }
-    let timings = engine.timings(request.reserved);
+    let session = engine.timings(request.reserved);
+    let job = timings::Timings::default();
+    let timings = RegionTimers {
+        session: &session,
+        job: &job,
+    };
+    let mut gpu_trace = timings::Snapshot::default();
+    let mut parallel_nanos = 0;
     let mut file = match timings.time(timings::IO, || fs::read(path)) {
         Ok(bytes) => bytes,
         Err(e) if e.kind() == ErrorKind::NotFound => vec![0; HEADER],
@@ -207,7 +280,7 @@ fn generate_region_inner(
             .as_deref()
             .is_some_and(|p| decorated || !p.geology.ores.is_empty() || p.geology.caves_enabled(p))
         {
-            engine.terrain_field(origin, 32)?
+            engine.terrain_field_profiled(origin, 32, Some(&mut gpu_trace))?
         } else {
             (
                 decoration::Field {
@@ -228,7 +301,10 @@ fn generate_region_inner(
             }
         }
         report.gpu_nanos = start.elapsed().as_nanos() as u64;
-        let structure_plans = crate::structures::plans(engine, origin, 32)?;
+        // Structure planning already updates the session counter internally.
+        let structure_plans = job.time(timings::STRUCTURE_PLAN, || {
+            crate::structures::plans(engine, origin, 32)
+        })?;
         assemblers()?.install(|| {
             let overlays = timings.time(timings::VEGETATION_PLAN, || {
                 if decorated {
@@ -252,8 +328,11 @@ fn generate_region_inner(
                     vec![Vec::new(); 1024]
                 }
             });
-            requests
+            let parallel_start = Instant::now();
+            let records = requests
                 .par_iter()
+                // Amortize scratch/compressor setup over small batches without changing slot order.
+                .with_min_len(8)
                 .enumerate()
                 .map_init(ChunkScratch::default, |scratch, (index, &request)| {
                     let columns = field.chunk(request.chunk_x, request.chunk_z);
@@ -322,14 +401,18 @@ fn generate_region_inner(
                     });
                     scratch.blocks = blocks;
                     timings.time(timings::COMPRESS, || {
-                        let mut compressed = ZlibEncoder::new(Vec::new(), Compression::fast());
-                        compressed
-                            .write_all(&scratch.nbt.0)
+                        let bound = scratch.compressor.zlib_compress_bound(scratch.nbt.0.len());
+                        scratch.compressed.resize(bound, 0);
+                        let size = scratch
+                            .compressor
+                            .zlib_compress(&scratch.nbt.0, &mut scratch.compressed)
                             .map_err(|e| e.to_string())?;
-                        compressed.finish().map_err(|e| e.to_string())
+                        Ok(scratch.compressed[..size].to_vec())
                     })
                 })
-                .collect()
+                .collect();
+            parallel_nanos = parallel_start.elapsed().as_nanos() as u64;
+            records
         })
     };
     let records = records?;
@@ -388,6 +471,29 @@ fn generate_region_inner(
     result?;
     report.write_nanos = start.elapsed().as_nanos() as u64;
     report.bytes = file.len() as u64;
+    drop(_io);
+    if let Some(detail) = detail {
+        *detail = job.snapshot();
+        detail.chunks = report.generated as u64;
+        detail.flags = gpu_trace.flags;
+        detail.gpu_columns = gpu_trace.gpu_columns;
+        detail.gpu_jobs = gpu_trace.gpu_jobs;
+        detail.nanos[..timings::STRUCTURE_PLAN]
+            .copy_from_slice(&gpu_trace.nanos[..timings::STRUCTURE_PLAN]);
+        let gpu_host: u64 = detail.nanos[..timings::HEIGHT].iter().sum();
+        // Includes field-cache copies and host bookkeeping within the measured GPU phase.
+        detail.nanos[timings::WAIT_COPY] += report.gpu_nanos.saturating_sub(gpu_host);
+        let worker_total: u64 = detail.nanos[timings::ASSEMBLY..=timings::COMPRESS]
+            .iter()
+            .sum();
+        for stage in timings::ASSEMBLY..=timings::COMPRESS {
+            detail.nanos[stage] = if worker_total == 0 {
+                0
+            } else {
+                (detail.nanos[stage] as u128 * parallel_nanos as u128 / worker_total as u128) as u64
+            };
+        }
+    }
     Ok(report)
 }
 
@@ -516,33 +622,47 @@ impl PaletteScratch {
             self.lookup[id as usize] = u32::MAX;
         }
         self.palette.clear();
-        self.indices.clear();
         self.lookup.resize(domain, u32::MAX);
         let first = values[0];
         // Uniform air/stone sections need no index buffer or packed data.
         if values.iter().all(|&v| v == first) {
             self.palette.push(first);
+            self.indices.clear();
             self.lookup[first as usize] = 0;
             return;
         }
-        self.indices.reserve(values.len());
-        for &id in values {
+        self.indices.resize(values.len(), 0);
+        for (&id, index) in values.iter().zip(&mut self.indices) {
             let entry = &mut self.lookup[id as usize];
             if *entry == u32::MAX {
                 *entry = self.palette.len() as u32;
                 self.palette.push(id);
             }
-            self.indices.push(*entry);
+            *index = *entry;
         }
     }
 }
-#[derive(Default)]
 struct ChunkScratch {
     blocks: Vec<u16>,
     nbt: Nbt,
     palette: PaletteScratch,
     occupied: Vec<bool>,
     biomes: PaletteScratch,
+    compressor: Compressor,
+    compressed: Vec<u8>,
+}
+impl Default for ChunkScratch {
+    fn default() -> Self {
+        Self {
+            blocks: Vec::new(),
+            nbt: Nbt::default(),
+            palette: PaletteScratch::default(),
+            occupied: Vec::new(),
+            biomes: PaletteScratch::default(),
+            compressor: Compressor::new(CompressionLvl::new(1).unwrap()),
+            compressed: Vec::new(),
+        }
+    }
 }
 
 pub(crate) fn material_nbt(material: &serde_json::Value) -> Vec<u8> {
@@ -677,22 +797,15 @@ fn encode_chunk(
     }
     nbt.compound("Heightmaps");
     let bits = 32 - request.height.leading_zeros(); // ceil(log2(height + 1)).
-    let ground: Vec<u32> = columns
-        .iter()
-        .map(|column| {
-            let icy = profile.is_some() && column.packed & (1 << 28) != 0;
-            let height = if icy {
-                column.surface_height(profile)
-            } else {
-                column.height
-            };
-            (height - request.min_y) as u32
-        })
-        .collect();
-    let surface: Vec<u32> = columns
-        .iter()
-        .map(|column| (column.surface_height(profile) - request.min_y) as u32)
-        .collect();
+    let mut ground = [0u32; COLUMNS];
+    let mut surface = [0u32; COLUMNS];
+    // Profiled terrain uses final block predicates below, not these legacy maps.
+    if profile.is_none() {
+        for (i, column) in columns.iter().enumerate() {
+            ground[i] = (column.height - request.min_y) as u32;
+            surface[i] = (column.surface_height(profile) - request.min_y) as u32;
+        }
+    }
     let mut final_heights = [[0u32; COLUMNS]; 6];
     if let Some(profile) = profile {
         let mut pending = [63u8; COLUMNS];
@@ -764,16 +877,34 @@ fn palette_bits(length: usize) -> u32 {
 }
 impl Nbt {
     fn packed(&mut self, name: &str, values: &[u32], bits: u32) {
+        match bits {
+            4 => self.packed_bits::<4>(name, values),
+            5 => self.packed_bits::<5>(name, values),
+            6 => self.packed_bits::<6>(name, values),
+            9 => self.packed_bits::<9>(name, values),
+            _ => self.packed_generic(name, values, bits),
+        }
+    }
+    fn packed_bits<const BITS: u32>(&mut self, name: &str, values: &[u32]) {
+        self.packed_generic(name, values, BITS);
+    }
+    #[inline(always)]
+    fn packed_generic(&mut self, name: &str, values: &[u32], bits: u32) {
         let per_long = 64 / bits as usize;
         self.named(12, name);
-        self.0
-            .extend_from_slice(&(values.len().div_ceil(per_long) as i32).to_be_bytes());
-        for group in values.chunks(per_long) {
+        let longs = values.len().div_ceil(per_long);
+        self.0.extend_from_slice(&(longs as i32).to_be_bytes());
+        let start = self.0.len();
+        self.0.resize(start + longs * 8, 0);
+        for (group, output) in values
+            .chunks(per_long)
+            .zip(self.0[start..].chunks_exact_mut(8))
+        {
             let mut word = 0u64;
             for (i, &value) in group.iter().enumerate() {
                 word |= (value as u64) << (i * bits as usize);
             }
-            self.0.extend_from_slice(&word.to_be_bytes());
+            output.copy_from_slice(&word.to_be_bytes());
         }
     }
 }

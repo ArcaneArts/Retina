@@ -31,6 +31,7 @@ def main():
     parser.add_argument("--parallel", type=int, choices=(1,2), default=1)
     parser.add_argument("--seed", type=int, default=123456789)
     parser.add_argument("--count", type=int, default=6)
+    parser.add_argument("--warmups", type=int, default=1)
     args = parser.parse_args()
     args.out.mkdir(parents=True, exist_ok=False)
     lib = c.CDLL(str(args.library.resolve()))
@@ -54,7 +55,8 @@ def main():
         check(lib.retina_generate_region(c.byref(req), path, len(path), 0, b"minecraft:plains", 16, c.byref(report)))
         return dict(name=name, x=x, z=z, ms=(time.perf_counter()-start)*1000, generated=report.generated,
                     gpu_ms=report.gpu/1e6, assembly_ms=report.assembly/1e6, write_ms=report.write/1e6)
-    generate(("warm",8,8))
+    for i in range(args.warmups):
+        generate((f"warm{i}",8+i,8))
     before = Snapshot(); check(lib.retina_timing_snapshot(profile, c.byref(before)))
     # Adjacent tiles exercise shared structure halos and cold full-region terrain.
     coords = [(str(i), i%3-1, i//3-1) for i in range(args.count)]

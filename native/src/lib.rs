@@ -120,6 +120,7 @@ struct Job {
     cave_side: u32,
     reply: mpsc::Sender<Result<gpu::GpuSample, String>>,
     queued: Instant,
+    queue_nanos: u64,
     timings: Arc<timings::Timings>,
 }
 
@@ -198,9 +199,9 @@ impl TerrainEngine {
                         requests[0].tile_side = tile_side;
                         requests[0].padding = batch[0].cave_side;
                     }
-                    for job in &batch {
-                        job.timings
-                            .add(timings::QUEUE, job.queued.elapsed().as_nanos() as u64);
+                    for job in &mut batch {
+                        job.queue_nanos = job.queued.elapsed().as_nanos() as u64;
+                        job.timings.add(timings::QUEUE, job.queue_nanos);
                     }
                     let result = catch_unwind(AssertUnwindSafe(|| {
                         gpu.sample(&requests, batch[0].profile.as_deref(), &batch[0].timings)
@@ -222,6 +223,18 @@ impl TerrainEngine {
                                 let _ = job.reply.send(Ok(gpu::GpuSample {
                                     columns: sample.columns[offset..end].to_vec(),
                                     mask: sample.mask.take(),
+                                    timings: {
+                                        let mut trace = sample.timings;
+                                        let portion = (end - offset) as u64;
+                                        let total = sample.columns.len() as u64;
+                                        for value in &mut trace.nanos {
+                                            *value = value.saturating_mul(portion) / total;
+                                        }
+                                        trace.gpu_columns = portion;
+                                        // Queue time is specific to this request, including batching.
+                                        trace.nanos[timings::QUEUE] = job.queue_nanos;
+                                        trace
+                                    },
                                 }));
                                 offset = end;
                             }
@@ -455,6 +468,14 @@ impl TerrainEngine {
         request: ChunkRequest,
         side: u32,
     ) -> Result<(decoration::Field, Option<Arc<geology::CaveMask>>), String> {
+        self.terrain_field_profiled(request, side, None)
+    }
+    pub(crate) fn terrain_field_profiled(
+        &self,
+        request: ChunkRequest,
+        side: u32,
+        trace: Option<&mut timings::Snapshot>,
+    ) -> Result<(decoration::Field, Option<Arc<geology::CaveMask>>), String> {
         if !(1..=32).contains(&side) {
             return Err("terrain side must be 1..32".into());
         }
@@ -502,6 +523,9 @@ impl TerrainEngine {
             }
         }
         let sample = self.dispatch_full(vec![origin], side + 2, side)?;
+        if let Some(trace) = trace {
+            *trace = sample.timings;
+        }
         let columns = sample.columns;
         let mask = Arc::new(sample.mask.ok_or("GPU cave job returned no mask")?);
         let requests: Vec<_> = (0..(side + 2) * (side + 2))
@@ -550,6 +574,7 @@ impl TerrainEngine {
                 cave_side,
                 reply,
                 queued: Instant::now(),
+                queue_nanos: 0,
                 timings: self.timings(timing_profile),
             })
             .map_err(|_| "GPU worker stopped".to_string())?;
@@ -1086,6 +1111,50 @@ pub unsafe extern "C" fn retina_generate_region(
 }
 
 /// # Safety
+/// Region buffers follow retina_generate_region. report holds DetailedRegionReport;
+/// optional columns is null or points to 1024 * 256 writable Column records.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn retina_generate_region_profiled(
+    request: *const ChunkRequest,
+    path: *const u8,
+    path_len: u64,
+    data_version: i32,
+    biome: *const u8,
+    biome_len: u64,
+    report: *mut region::DetailedRegionReport,
+    columns: *mut Column,
+) -> i32 {
+    boundary(|| {
+        if request.is_null() || path.is_null() || biome.is_null() || report.is_null() {
+            return Err("null profiled region buffer".into());
+        }
+        let path =
+            std::str::from_utf8(unsafe { std::slice::from_raw_parts(path, path_len as usize) })
+                .map_err(|e| e.to_string())?;
+        let biome =
+            std::str::from_utf8(unsafe { std::slice::from_raw_parts(biome, biome_len as usize) })
+                .map_err(|e| e.to_string())?;
+        let columns = if columns.is_null() {
+            None
+        } else {
+            Some(unsafe { std::slice::from_raw_parts_mut(columns, 1024 * COLUMNS) })
+        };
+        let result = region::generate_region_profiled(
+            shared_engine()?,
+            unsafe { *request },
+            std::path::Path::new(path),
+            data_version,
+            biome,
+            columns,
+        )?;
+        unsafe {
+            *report = result;
+        }
+        Ok(())
+    })
+}
+
+/// # Safety
 /// Region arguments follow retina_generate_region; columns points to 1024 * 256 writable records.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn retina_generate_region_columns(
@@ -1229,5 +1298,10 @@ mod tests {
         assert_eq!(std::mem::offset_of!(timings::Snapshot, nanos), 32);
         assert_eq!(std::mem::size_of::<region::RegionReport>(), 40);
         assert_eq!(std::mem::offset_of!(region::RegionReport, gpu_nanos), 8);
+        assert_eq!(std::mem::size_of::<region::DetailedRegionReport>(), 232);
+        assert_eq!(
+            std::mem::offset_of!(region::DetailedRegionReport, stages),
+            40
+        );
     }
 }

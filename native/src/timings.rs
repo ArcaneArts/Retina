@@ -1,5 +1,5 @@
 //! Per-profile counters. Worker time is additive across Rayon threads; GPU device
-//! timestamps are separate from queue/host wait and never presented as wall-time shares.
+//! timestamps overlap queue/host phases. Region reports separately scale worker costs to wall shares.
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Instant;
 

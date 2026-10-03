@@ -38,9 +38,9 @@ metadata, entities and loot NBT on the matched Metal fixtures.
   retain the ordinary read and missing-slot generation path.
 
 The pipeline can increase a region's individual latency while improving throughput.
-Overlapping job times are not additive wall time. F3's production rate includes
-newly produced temporary batches; promotion counts publication without counting
-production again. Cave carving time is now part of base assembly; the ores/carve
+Overlapping job times are not additive wall time. F3's production count includes newly produced temporary batches; promotion counts
+publication without counting production again. MCA speed now uses the rolling
+latency window described below. Cave carving time is now part of base assembly; the ores/carve
 worker bucket mostly measures ore replacement and exposure checks.
 
 ## Measured results
@@ -127,3 +127,57 @@ For live QA, use an isolated fresh server directory configured with
 
 The server checks three distant load requests, activates their terrain, validates
 stage telemetry and the stats packet, then stops. These QA flags are opt-in.
+
+## Encoding and timing window update
+
+Baseline: `4d2093d`. Same Apple M4 Max/Metal and full `structureTest` fixture,
+seed 123456789, five warm-up regions followed by 20 matched regions (20,480
+chunks). The candidate retains all features and switches type-2 zlib encoding
+from flate2's level-1 encoder to reusable libdeflate level-1 compressors. Small
+Rayon batches amortize scratch/compressor setup. Palette indices retain their
+length, common bit widths specialize packing, unused legacy heightmaps are
+skipped, and NBT strings bypass modified-UTF-8 allocation for non-NUL ASCII.
+
+The repeated matched run measured:
+
+| Measurement | Baseline | Candidate |
+| --- | ---: | ---: |
+| NBT worker ms/chunk | 0.08774 | 0.06903 |
+| Compression worker ms/chunk | 0.09123 | 0.06663 |
+| Total region file bytes | 173,981,696 | 148,955,136 |
+| Native chunks/s | 3,654 | 3,695 |
+| Median region request ms | 274.88 | 276.18 |
+
+NBT CPU elapsed time decreased **21%**, compression decreased **27%**, and the
+region files were **14% smaller**. All **20,480 decompressed chunk NBT records
+matched byte-for-byte**, including palettes, heightmaps, structures, block
+entities and entities. Whole-region throughput and median latency were essentially
+unchanged; these stage improvements do not establish a significant end-to-end
+speedup. An earlier run also improved NBT/compression stages while total throughput
+was lower. Other system activity varied, so compare stage savings conservatively.
+
+A zlib-rs candidate improved compression but made files larger and did not improve
+whole-region throughput. A libdeflate level-0 trial preserved NBT but tripled file
+size and worsened I/O/region latency; level 1 remains the chosen compatible format.
+No features or save durability were removed to improve the measurements.
+
+Reproduce with the commands above, using `--count 20 --warmups 5` and matched fresh
+output directories. Local evidence: `build/encoding-repeat-before/measurements.json`
+and `build/encoding-reuse/measurements.json`; the first baseline was retained in
+`build/encoding-baseline/libretina_worldgen.dylib`.
+
+F3 now uses the last 20 generated regions for average latency and both reciprocal
+speed figures, excluding promotions and existing saves. Each region returns its
+own stage report so concurrent callers cannot contaminate another job's counters.
+Serial phases use measured wall latency; parallel worker costs are scaled to the
+measured parallel-phase wall time and marked as estimates. GPU device percentages
+use the same denominator but explicitly overlap GPU host work. Raw cumulative
+worker measurements remain available to this benchmark.
+
+Validation passed: full build and native unit/GPU, Java bridge, MCA region,
+biome, geology, feature, preview, datapack and structure suites. Follow-up build,
+GPU/packet/formatting and preview checks passed after measuring Java column-cache
+writes separately. An isolated dedicated Minecraft server generated ten regions,
+passed real requested-region loading/promotion, and verified the rolling averages,
+per-region stage data and column-cache measurement through the actual stats packet.
+The packaged JAR's native library is byte-identical to the release build.

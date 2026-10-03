@@ -2,7 +2,7 @@ package art.arcane.retina.worldgen;
 
 import net.minecraft.network.RegistryFriendlyByteBuf;
 
-/** Cumulative per-profile session timings. CPU worker times add across parallel workers. */
+/** Stage snapshot. Session CPU counters add across workers; region CPU counters estimate wall shares. */
 public record NativeTimings(int flags, long chunks, long gpuColumns, long gpuJobs, long[] nanos) {
     public static final int STAGES = 20;
     public static final int QUEUE=0, ENCODE=1, WAIT_COPY=2, HEIGHT=3, SITES=4, COLUMNS=5,

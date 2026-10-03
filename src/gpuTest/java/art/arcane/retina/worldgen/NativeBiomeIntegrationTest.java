@@ -163,6 +163,9 @@ public final class NativeBiomeIntegrationTest {
             var report = nativeTerrain.generateRegion(request(profile, -1, 0), path, SharedConstants.getCurrentVersion().dataVersion().version(), "minecraft:plains");
             double generationMs = (System.nanoTime() - start) / 1_000_000.0;
             require(report.generated() == 1024, "entire biome MCA is generated");
+            require(report.stages().chunks()==1024 && report.stages().gpuJobs()==1, "MCA report isolates one cave GPU submission");
+            if(report.stages().gpuMeasured())for(int stage:new int[]{NativeTimings.HEIGHT,NativeTimings.CAVE_DENSITY,NativeTimings.CAVE_MASK})
+                require(report.stages().nanos(stage)>0, "region keeps real device timestamps: "+stage);
             var allHeights = new int[512 * 512];
             var allSurfaces = new int[512 * 512];
             var regionBiomes = new HashSet<String>();

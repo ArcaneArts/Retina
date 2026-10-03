@@ -40,6 +40,14 @@ public final class NativeRegionIntegrationTest {
             var report = nativeTerrain.generateRegion(request, path, version, "minecraft:plains");
             double ms = (System.nanoTime() - started) / 1_000_000.0;
             require(report.generated() == 1024 && report.preserved() == 0, "all region slots generated");
+            require(report.stages().chunks()==1024, "job-local timing ABI counts only this region");
+            for(int stage:new int[]{NativeTimings.ASSEMBLY,NativeTimings.NBT,NativeTimings.COMPRESS,NativeTimings.IO})
+                require(report.stages().nanos(stage)>0, "region reports measured wall shares: "+stage);
+            require(report.stages().workerNanos()<=report.assemblyNanos(), "worker shares fit inside the actual assembly wall time");
+            long accounted=0;
+            for(int stage=0;stage<NativeTimings.STAGES;stage++)
+                if(stage<NativeTimings.HEIGHT || stage>=NativeTimings.STRUCTURE_PLAN)accounted+=report.stages().nanos(stage);
+            require(accounted<=ms*1e6, "disjoint wall phases fit within request latency");
             try (var storage = new RegionFileStorage(info, directory, false)) {
                 for (int z = 0; z < 32; z++) {
                     for (int x = -32; x < 0; x++) {
@@ -102,6 +110,7 @@ public final class NativeRegionIntegrationTest {
             }
             var repair = nativeTerrain.generateRegion(request, path, version, "minecraft:plains");
             require(repair.generated() == 1 && repair.preserved() == 1023, "fill only the missing slot");
+            require(repair.stages().chunks()==1, "partial region report excludes prior requests");
             try (var storage = new RegionFileStorage(info, directory, false)) {
                 var edited = storage.read(editedPosition);
                 require(edited.getStringOr("retina_test_marker", "").equals("player edit"), "custom data preserved");

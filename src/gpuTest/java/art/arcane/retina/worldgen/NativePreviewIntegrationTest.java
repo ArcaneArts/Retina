@@ -98,6 +98,7 @@ public final class NativePreviewIntegrationTest {
                 public void retina$closeRegion(ChunkPos position) { }
             };
             Files.createFile(save.resolve("r.-1.0.mca")); // DH probes leave empty RegionFile placeholders.
+            var beforeMetrics=generator.metrics().snapshot();
             var beforePromotion=NativeTerrain.instance().timings(generator.profile().nativeId());
             new RegionCoordinator(generator, seed, save).prepare(position, bridge);
             var afterPromotion=NativeTerrain.instance().timings(generator.profile().nativeId());
@@ -105,6 +106,8 @@ public final class NativePreviewIntegrationTest {
                     && afterPromotion.workerNanos()==beforePromotion.workerNanos(), "promotion adds neither GPU nor Rust generation time");
             require(afterPromotion.nanos(NativeTimings.IO)>beforePromotion.nanos(NativeTimings.IO), "promotion records actual file I/O");
             require(generator.metrics().snapshot().promotions() == 1 && generator.metrics().snapshot().total() == 1024, "warm preview is promoted without duplicate terrain production");
+            require(beforeMetrics.columnCacheMs()>0, "Java column cache writes are measured separately");
+            require(generator.metrics().snapshot().regionSamples()==1 && generator.metrics().snapshot().averageRegionMs()==beforeMetrics.averageRegionMs(), "promotion preserves the measured generation window");
             require(Files.isRegularFile(save.resolve("r.-1.0.mca")), "actual Minecraft load publishes the cached region");
             System.out.println("QA_EVT {\"event\":\"temporary_mca_promotion\",\"status\":\"pass\"}");
 
@@ -121,6 +124,9 @@ public final class NativePreviewIntegrationTest {
             }
             require(generator.metrics().snapshot().previewRegions() == before + 2 && parallel,
                     "two requested regions prepare concurrently and duplicate loads coalesce");
+            var concurrentMetrics=generator.metrics().snapshot();
+            require(concurrentMetrics.regionSamples()==3 && concurrentMetrics.regionStages().chunks()==3072, "parallel regions do not leak session counters into each other");
+            require(concurrentMetrics.regionStagePercent(NativeTimings.NBT)>0 && concurrentMetrics.regionStagePercent(NativeTimings.COMPRESS)>0, "concurrent job wall shares reach F3");
             require(!Files.exists(save.resolve("r.2.0.mca")) && !Files.exists(save.resolve("r.3.0.mca")),
                     "background assembly leaves live save files untouched until their I/O jobs");
             try (var storage = new RegionFileStorage(new RegionStorageInfo("retina-pipeline-test", Level.OVERWORLD, "chunk"), save, false)) {

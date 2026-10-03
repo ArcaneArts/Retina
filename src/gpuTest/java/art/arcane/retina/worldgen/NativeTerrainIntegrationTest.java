@@ -10,6 +10,7 @@ import static java.lang.foreign.ValueLayout.JAVA_SHORT;
 /** Standalone integration runner invoked by ./gradlew gpuTest; requires a compute device. */
 public final class NativeTerrainIntegrationTest {
     public static void main(String[] args) throws Exception {
+        GenerationMetricsTest.run();
         var nativeTerrain = NativeTerrain.instance();
         System.out.println("QA_EVT {\"event\":\"java_native_loaded\",\"status\":\"pass\",\"details\":\"" + nativeTerrain.backend() + "\"}");
         long started = System.nanoTime();
@@ -51,12 +52,14 @@ public final class NativeTerrainIntegrationTest {
         if(timings.gpuMeasured()) require(timings.nanos(NativeTimings.COLUMNS)>0, "GPU timestamps measure real shader execution");
         var buffer=new net.minecraft.network.RegistryFriendlyByteBuf(io.netty.buffer.Unpooled.buffer(),net.minecraft.core.RegistryAccess.EMPTY);
         try {
-            var stats=new GenerationMetrics.Snapshot(3,4,5,6,7,8,9,10,11,12,13,14,timings);
+            var stats=new GenerationMetrics.Snapshot(3,4,5,6,7,8,9,10,11,12,13,14,timings,20,GenerationMetricsTest.stages(8_000_000),2.5);
             var payload=new TerrainStatsPayload(true,nativeTerrain.backend(),"mca",stats);
             TerrainStatsPayload.CODEC.encode(buffer,payload);
             var decoded=TerrainStatsPayload.CODEC.decode(buffer);
             require(decoded.active() && decoded.mode().equals("mca") && decoded.stats().promotions()==14, "F3 payload preserves existing statistics");
             require(decoded.stats().stages().chunks()==timings.chunks() && Arrays.equals(decoded.stats().stages().nanos(),timings.nanos()), "F3 payload carries all native stage counters");
+            require(decoded.stats().averageRegionMs()==11 && decoded.stats().regionSamples()==20 && decoded.stats().columnCacheMs()==2.5, "F3 packet carries the rolling region average");
+            require(Arrays.equals(decoded.stats().regionStages().nanos(),stats.regionStages().nanos()), "F3 packet carries job-local wall shares");
             require(!buffer.isReadable(), "timing packet consumes its complete bounded schema");
         } finally { buffer.release(); }
         System.out.println("QA_EVT {\"event\":\"native_timing_packet\",\"status\":\"pass\",\"context\":{\"chunks\":"+timings.chunks()+",\"gpu_jobs\":"+timings.gpuJobs()+",\"gpu_timestamps\":"+timings.gpuMeasured()+"}}");

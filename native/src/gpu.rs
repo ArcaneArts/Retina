@@ -36,6 +36,7 @@ pub(crate) struct Gpu {
 pub(crate) struct GpuSample {
     pub columns: Vec<Column>,
     pub mask: Option<crate::geology::CaveMask>,
+    pub timings: timings::Snapshot,
 }
 struct Timestamps {
     queries: wgpu::QuerySet,
@@ -556,9 +557,15 @@ impl Gpu {
             encoder.copy_buffer_to_buffer(&t.resolve, 0, &t.readback, 0, query_bytes);
         }
         let submission = self.queue.submit([encoder.finish()]);
-        timings.add(timings::ENCODE, host_start.elapsed().as_nanos() as u64);
+        let encode_nanos = host_start.elapsed().as_nanos() as u64;
+        timings.add(timings::ENCODE, encode_nanos);
         let wait_start = Instant::now();
         let (query_sender, query_receiver) = mpsc::channel();
+        let mut job_timings = timings::Snapshot::default();
+        job_timings.version = 1;
+        job_timings.gpu_jobs = 1;
+        job_timings.gpu_columns = (count * COLUMNS) as u64;
+        job_timings.nanos[timings::ENCODE] = encode_nanos;
         if let Some(t) = &self.timestamps {
             t.readback
                 .slice(..query_bytes)
@@ -639,16 +646,22 @@ impl Gpu {
                 let values = bytemuck::cast_slice::<u8, u64>(&mapped);
                 let period = self.queue.get_timestamp_period() as f64;
                 for (i, stage) in measured.iter().enumerate() {
-                    timings.add(
-                        *stage,
-                        (values[i * 2 + 1].saturating_sub(values[i * 2]) as f64 * period) as u64,
-                    );
+                    let nanos =
+                        (values[i * 2 + 1].saturating_sub(values[i * 2]) as f64 * period) as u64;
+                    timings.add(*stage, nanos);
+                    job_timings.nanos[*stage] = nanos;
                 }
             }
             t.readback.unmap();
         }
-        timings.add(timings::WAIT_COPY, wait_start.elapsed().as_nanos() as u64);
+        job_timings.flags = u32::from(self.timestamps.is_some());
+        job_timings.nanos[timings::WAIT_COPY] = wait_start.elapsed().as_nanos() as u64;
+        timings.add(timings::WAIT_COPY, job_timings.nanos[timings::WAIT_COPY]);
         timings.gpu((count * COLUMNS) as u64, self.timestamps.is_some());
-        Ok(GpuSample { columns, mask })
+        Ok(GpuSample {
+            columns,
+            mask,
+            timings: job_timings,
+        })
     }
 }

@@ -27,8 +27,7 @@ public final class NativeTerrain {
     private final MethodHandle structureStarts;
     private final MethodHandle freeBytes;
     private final MethodHandle sample;
-    private final MethodHandle region;
-    private final MethodHandle regionColumns;
+    private final MethodHandle profiledRegion;
     private final MethodHandle publishRegionCache;
     private final MethodHandle registerProfile;
     private final MethodHandle sampleColumns;
@@ -49,9 +48,7 @@ public final class NativeTerrain {
         freeBytes = linker.downcallHandle(symbols.findOrThrow("retina_free_bytes"), FunctionDescriptor.ofVoid(ADDRESS, JAVA_LONG));
         sample = linker.downcallHandle(symbols.findOrThrow("retina_sample_heights"),
                 FunctionDescriptor.of(JAVA_INT, ADDRESS, ADDRESS));
-        region = linker.downcallHandle(symbols.findOrThrow("retina_generate_region"),
-                FunctionDescriptor.of(JAVA_INT, ADDRESS, ADDRESS, JAVA_LONG, JAVA_INT, ADDRESS, JAVA_LONG, ADDRESS));
-        regionColumns = linker.downcallHandle(symbols.findOrThrow("retina_generate_region_columns"),
+        profiledRegion = linker.downcallHandle(symbols.findOrThrow("retina_generate_region_profiled"),
                 FunctionDescriptor.of(JAVA_INT, ADDRESS, ADDRESS, JAVA_LONG, JAVA_INT, ADDRESS, JAVA_LONG, ADDRESS, ADDRESS));
         publishRegionCache = linker.downcallHandle(symbols.findOrThrow("retina_publish_region_cache"),
                 FunctionDescriptor.of(JAVA_INT, ADDRESS, ADDRESS, JAVA_LONG, ADDRESS, JAVA_LONG, ADDRESS));
@@ -93,10 +90,19 @@ public final class NativeTerrain {
             var output = arena.allocate(192, Long.BYTES);
             check((int) timingSnapshot.invokeExact(profile, output));
             if (output.get(JAVA_INT,0) != 1) throw new IllegalStateException("Unsupported native timing ABI");
-            long[] stages = new long[NativeTimings.STAGES];
-            for(int i=0;i<stages.length;i++) stages[i]=output.get(JAVA_LONG,32L+i*8L);
-            return new NativeTimings(output.get(JAVA_INT,4),output.get(JAVA_LONG,8),output.get(JAVA_LONG,16),output.get(JAVA_LONG,24),stages);
+            return decodeTimings(output);
         } catch(Throwable error) { throw failure(error); }
+    }
+
+    private static NativeTimings decodeTimings(MemorySegment output) {
+        long[] stages=new long[NativeTimings.STAGES];
+        for(int i=0;i<stages.length;i++)stages[i]=output.get(JAVA_LONG,32L+i*8L);
+        return new NativeTimings(output.get(JAVA_INT,4),output.get(JAVA_LONG,8),output.get(JAVA_LONG,16),output.get(JAVA_LONG,24),stages);
+    }
+
+    private static RegionReport decodeRegionReport(MemorySegment report) {
+        return new RegionReport(report.get(JAVA_INT,0),report.get(JAVA_INT,4),report.get(JAVA_LONG,8),
+                report.get(JAVA_LONG,16),report.get(JAVA_LONG,24),report.get(JAVA_LONG,32),decodeTimings(report.asSlice(40,192)));
     }
 
     public net.minecraft.nbt.CompoundTag structureData(TerrainRequest request) { return readStructureData(structureData,request); }
@@ -196,11 +202,10 @@ public final class NativeTerrain {
             var biomeBytes = biome.getBytes(StandardCharsets.UTF_8);
             var path = arena.allocateFrom(JAVA_BYTE, pathBytes);
             var biomeName = arena.allocateFrom(JAVA_BYTE, biomeBytes);
-            var report = arena.allocate(40, Long.BYTES);
-            check((int) region.invokeExact(encode(arena, request), path, (long) pathBytes.length,
-                    dataVersion, biomeName, (long) biomeBytes.length, report));
-            return new RegionReport(report.get(JAVA_INT, 0), report.get(JAVA_INT, 4),
-                    report.get(JAVA_LONG, 8), report.get(JAVA_LONG, 16), report.get(JAVA_LONG, 24), report.get(JAVA_LONG, 32));
+            var report = arena.allocate(232, Long.BYTES);
+            check((int) profiledRegion.invokeExact(encode(arena, request), path, (long) pathBytes.length,
+                    dataVersion, biomeName, (long) biomeBytes.length, report, MemorySegment.NULL));
+            return decodeRegionReport(report);
         } catch (Throwable error) {
             throw failure(error);
         }
@@ -212,11 +217,10 @@ public final class NativeTerrain {
             var pathBytes = destination.toAbsolutePath().toString().getBytes(StandardCharsets.UTF_8);
             var biomeBytes = biome.getBytes(StandardCharsets.UTF_8);
             var output = arena.allocate(1024L * 256 * 12, Integer.BYTES);
-            var report = arena.allocate(40, Long.BYTES);
-            check((int) regionColumns.invokeExact(encode(arena, request), arena.allocateFrom(JAVA_BYTE, pathBytes), (long) pathBytes.length,
+            var report = arena.allocate(232, Long.BYTES);
+            check((int) profiledRegion.invokeExact(encode(arena, request), arena.allocateFrom(JAVA_BYTE, pathBytes), (long) pathBytes.length,
                     dataVersion, arena.allocateFrom(JAVA_BYTE, biomeBytes), (long) biomeBytes.length, report, output));
-            return new RegionData(new RegionReport(report.get(JAVA_INT, 0), report.get(JAVA_INT, 4),
-                    report.get(JAVA_LONG, 8), report.get(JAVA_LONG, 16), report.get(JAVA_LONG, 24), report.get(JAVA_LONG, 32)), decodeColumns(output));
+            return new RegionData(decodeRegionReport(report), decodeColumns(output));
         } catch (Throwable error) { throw failure(error); }
     }
 
@@ -236,7 +240,11 @@ public final class NativeTerrain {
     }
 
     public record RegionReport(int generated, int preserved, long gpuNanos, long assemblyNanos,
-                               long writeNanos, long bytes) { }
+                               long writeNanos, long bytes, NativeTimings stages) {
+        public RegionReport(int generated, int preserved, long gpuNanos, long assemblyNanos, long writeNanos, long bytes) {
+            this(generated,preserved,gpuNanos,assemblyNanos,writeNanos,bytes,NativeTimings.EMPTY);
+        }
+    }
 
     private static MemorySegment encode(Arena arena, TerrainRequest request) {
         var data = arena.allocate(40, Long.BYTES);

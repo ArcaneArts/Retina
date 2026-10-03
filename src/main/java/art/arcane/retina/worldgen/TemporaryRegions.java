@@ -174,9 +174,11 @@ final class TemporaryRegions implements AutoCloseable {
                         settings.baseHeight(), settings.amplitude(), settings.frequency(), settings.profile());
                 var data = NativeTerrain.instance().generateRegionColumns(r, entry.path,
                         SharedConstants.getCurrentVersion().dataVersion().version(), biome);
+                long cacheStarted=System.nanoTime();
                 entry.storeColumns(data.columns());
+                long columnCacheNanos=System.nanoTime()-cacheStarted;
                 long elapsed = System.nanoTime() - start;
-                metrics.completedPreviewRegion(data.report().generated(), elapsed);
+                metrics.completedPreviewRegion(data.report().generated(), elapsed, data.report().stages(), columnCacheNanos);
                 entry.generated.complete(data.report());
                 synchronized (this) { if (!entry.retired) warm.put(entry.key, entry); trimWarm(); }
                 if (Boolean.getBoolean("retina.qa")) Retina.LOGGER.info(

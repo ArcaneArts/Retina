@@ -44,12 +44,15 @@ final class TerrainQa {
         if(generator.regionMode() && (stages.nanos(NativeTimings.NBT)==0 || stages.nanos(NativeTimings.COMPRESS)==0 || stages.nanos(NativeTimings.IO)==0))throw new IllegalStateException("MCA serialization stages were not recorded");
         if(stages.gpuMeasured() && (stages.nanos(NativeTimings.HEIGHT)==0 || stages.nanos(NativeTimings.CAVE_DENSITY)==0 || stages.nanos(NativeTimings.CAVE_MASK)==0))throw new IllegalStateException("Live GPU stages missing timestamps");
         generator.metrics().nativeTimings(stages);
-        var sessionStages=generator.metrics().snapshot().stages();
+        var snapshot=generator.metrics().snapshot();
+        var sessionStages=snapshot.stages();
+        if(generator.regionMode() && (snapshot.regionSamples()==0 || snapshot.averageRegionMs()<=0 || snapshot.regionStages().chunks()==0))throw new IllegalStateException("Live regions did not enter the rolling timing window");
         var buffer=new net.minecraft.network.RegistryFriendlyByteBuf(io.netty.buffer.Unpooled.buffer(),level.registryAccess());
         try {
-            TerrainStatsPayload.CODEC.encode(buffer,new TerrainStatsPayload(true,generator.backend(),generator.mode(),generator.metrics().snapshot()));
+            TerrainStatsPayload.CODEC.encode(buffer,new TerrainStatsPayload(true,generator.backend(),generator.mode(),snapshot));
             var decoded=TerrainStatsPayload.CODEC.decode(buffer);
             if(decoded.stats().stages().chunks()!=sessionStages.chunks() || !java.util.Arrays.equals(decoded.stats().stages().nanos(),sessionStages.nanos()))throw new IllegalStateException("Live F3 packet lost stage measurements");
+            if(decoded.stats().regionSamples()!=snapshot.regionSamples() || decoded.stats().averageRegionMs()!=snapshot.averageRegionMs() || decoded.stats().columnCacheMs()!=snapshot.columnCacheMs() || !java.util.Arrays.equals(decoded.stats().regionStages().nanos(),snapshot.regionStages().nanos()))throw new IllegalStateException("Live F3 packet lost rolling region measurements");
         } finally { buffer.release(); }
         Retina.LOGGER.info("QA_EVT {\"event\":\"minecraft_live_stage_timings\",\"status\":\"pass\",\"context\":{\"mode\":\"{}\",\"chunks\":{},\"gpu_jobs\":{},\"gpu_timestamps\":{},\"worker_ms_chunk\":{},\"gpu_height_ms_256_columns\":{},\"gpu_cave_density_ms_256_columns\":{}}}",generator.mode(),stages.chunks(),stages.gpuJobs(),stages.gpuMeasured(),stages.workerNanos()/(Math.max(1,stages.chunks())*1e6),stages.gpuChunkMs(NativeTimings.HEIGHT),stages.gpuChunkMs(NativeTimings.CAVE_DENSITY));
         if(server.isDedicatedServer() && !Boolean.getBoolean("retina.qa.structures"))server.halt(false);

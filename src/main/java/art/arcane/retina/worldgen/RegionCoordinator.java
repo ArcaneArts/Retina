@@ -91,7 +91,7 @@ public final class RegionCoordinator {
                     SharedConstants.getCurrentVersion().dataVersion().version(), generator.regionBiome());
             long elapsed = System.nanoTime() - started;
             prepared.add(key);
-            generator.metrics().completedRegion(report.generated(), elapsed);
+            generator.metrics().completedRegion(report.generated(), elapsed, report.stages());
             if (report.generated() > 0) {
                 Retina.LOGGER.info("Generated Retina region {},{}: {} chunks, {} preserved, {} ms",
                         position.getRegionX(), position.getRegionZ(), report.generated(), report.preserved(), elapsed / 1_000_000.0);

@@ -4,8 +4,10 @@ Fabric 26.3 terrain generation with GPU registry density programs, biome climate
 
 ## Run it
 
-Install JDK 25 and Rust/Cargo (Rust 1.87 or newer). Gradle selects Java 25 and builds
-and packages the native library automatically.
+Install JDK 25, Rust/Cargo (Rust 1.87 or newer), and a platform C compiler
+(Clang, GCC or MSVC) for the vendored libdeflate compressor. Gradle selects Java 25
+and builds and packages the native library automatically; no separate libdeflate
+runtime installation is needed.
 
 ```sh
 ./gradlew build
@@ -416,25 +418,31 @@ These changes apply to new terrain in both modes and temporary DH regions.
 
 ## F3 metrics
 
-- **chunks/s (5s)**: newly produced terrain chunks over the last five seconds.
-  MCA counts all newly produced slots, including temporary preview batches and
-  chunks not yet requested by the game. Promotion does not count production twice. Disk cache hits and previously saved chunks do not count as production.
-- **ms/chunk**: weighted timings from the last 128 production jobs. In per-chunk
-  mode this is request-to-completion latency, including worker queue delay. In
-  MCA mode it is region generation/publication time divided by chunks produced,
-  explicitly labeled **amortized**. It is not a chunk's individual wait time.
-- **Native / Convert**: native time and Java block conversion time per produced
-  chunk. MCA native time includes file processing/publication; conversion is zero
-  for fresh region chunks. Minecraft's NBT decoding is subsequent work.
-- **Temporary regions / Cache hits / Promoted**: preview batches produced, reused
-  preview requests, and copies published by real Minecraft chunk loading.
-- **Regions / Last region**: regions published to the save and the complete latest region-job
-  latency, including initialization, GPU work, CPU assembly and file publication.
-- **In flight jobs / Terrain chunks / Failed**: current jobs and lifetime counters.
+MCA timing and speed use the **last 20 newly generated regions**, including temporary
+DH preview batches. The window starts with available samples and remains visible
+while idle. Promotion, disk cache hits and already saved regions do not enter it.
 
-Timings remain visible while idle. These are terrain production metrics rather
-than fully lit/rendered chunk throughput. Dedicated servers send stats to modded
-clients once per second.
+- **Average region**: mean generation/publication latency over that window, with
+  the current sample count. Temporary-region latency also includes storing its
+  GPU column cache.
+- **Chunks/sec / Amortized chunk**: total newly produced slots divided by total
+  window latency, and its reciprocal in milliseconds. With full 1,024-chunk
+  regions this is `1024 * 1000 / averageRegionMs` and `averageRegionMs / 1024`.
+  Partial regions use their actual chunk count. This is latency-derived native
+  production capacity; overlapping regions, Minecraft loading, lighting and
+  rendering are separate work.
+- **Timing stages**: one colored line per stage, expressed as a percentage of the
+  same average region time. GPU host, Rust and device timings have separate
+  headers; larger percentages change from green to yellow, orange and red.
+  CPU worker estimates are marked `~`, and device timing overlap is explicit.
+- **Temporary regions / Hits / Promoted**: preview batches produced, preview
+  requests reused, and copies published by real Minecraft chunk loading.
+- **Regions / In flight / Terrain chunks / Failed**: publication and job counters.
+
+Per-chunk mode retains its five-second production rate and last-128-job mean
+request latency, including worker queue delay, plus native/conversion accounting.
+These are terrain production metrics rather than fully lit/rendered throughput.
+Dedicated servers send stats to modded clients once per second.
 
 ## Tests and packaging
 
@@ -508,38 +516,39 @@ References: [Fabric 26.3](https://www.fabricmc.net/2026/09/15/263.html),
 
 ## Native stage timings
 
-F3 receives per-world-profile session counters once per second (192 bytes from
-Rust plus the regular client stats packet). Rust records terrain assembly,
-ore replacement/carving, cave decorations, vegetation, structures, snow,
-NBT encoding and zlib compression separately across Rayon workers. Displayed
-ms/chunk and percentages describe **summed worker time**, so they do not add up
-to region wall latency. Planning and file I/O wall times are separate; structure
-planning can include GPU height queries. Cache promotion adds I/O without
-counting those cached chunks as newly generated.
+Each generated region returns a local timing snapshot with its report (an extra
+192 bytes, with no additional GPU readback). Concurrent region jobs keep their
+measurements separate. The client aggregates the same 20-region window used for
+latency and speed, rather than displaying cumulative session worker milliseconds.
 
-When the adapter exposes timestamp queries, each GPU pass records hardware
-begin/end timestamps: heights/climate, biome sites, columns/materials, cave
-density and cave masks. Those results use the existing submission/readback,
-adding at most 80 bytes and no extra GPU round trip. Device timings are
-amortized per 256 processed columns (including query/halo work). Host encoding,
-queue delay and wait/readback times are separate and overlap GPU execution.
-Adapters without timestamp queries keep generating and report host timings.
-Raw native counters are cumulative by resident profile; the client subtracts a
-world-bind baseline so reopening or switching worlds starts a fresh timing report
-even when identical profiles reuse the same native upload.
+Queue, GPU command encoding/readback, serial planning and file I/O record wall
+latency. Rayon worker stages record CPU task elapsed time, then distribute the
+measured parallel phase proportionally across terrain assembly, ores, cave
+features, vegetation, structures, snow, NBT and compression. These are **estimated
+wall shares**, marked `~`, not exact critical-path costs. Java column-cache writing
+is measured separately; other/waiting includes bookkeeping and work outside those
+measured phases. Structure planning includes GPU probes. Promotion does not contribute generation timings.
 
-`./gradlew landscapeTest` samples three seeds for land/ocean coverage and compares
-biome boundary density at both scales. `gpuTest`, `regionTest` and `featureTest`
-verify real GPU timestamps, concurrent accounting, the client packet, cached
-record accounting and compact lava lake footprints. An opt-in dedicated server
-check uses `-PretinaQa -PretinaTimingsQa` and exits after validating generated
+When the adapter exposes timestamp queries, GPU passes record hardware begin/end
+timestamps for heights/climate, biome sites, columns/materials, cave density and
+cave masks. Results use the existing submission/readback, adding at most 80 bytes
+and no extra round trip. Device percentages use average region time but overlap
+the GPU host phases; do not add them a second time. Adapters without timestamps
+keep generating and report host timings.
+
+Raw per-profile cumulative CPU/GPU counters remain available to QA/benchmarks.
+The Java session subtracts a world-bind baseline when a resident profile is reused.
+`gpuTest` checks rolling eviction, partial regions, promotion exclusion, formatting
+and packet round trips; `regionTest`, `biomeTest` and `previewTest` check actual
+job-local native measurements, GPU timestamps and concurrent isolation. An opt-in
+server check uses `-PretinaQa -PretinaTimingsQa` and exits after validating loaded
 chunks and the actual F3 payload.
 
 ## Native region performance
 
-Rust now recycles chunk/NBT and ore scratch storage, skips uniform palette index
-work, compiles structure processors and indexes template blocks by chunk, and
-combines base assembly with GPU cave-mask consumption. New-region load requests
+Rust now recycles chunk/NBT, level-1 libdeflate zlib compressor, output and ore
+scratch storage, skips uniform palette index work, compiles structure processors
+and indexes template blocks by chunk, and combines base assembly with GPU cave-mask consumption. New-region load requests
 can prepare two temporary MCAs concurrently while the owning Minecraft I/O queue
 continues to serialize save publication. Background work never changes live save
 files, and publication preserves already stored chunks and player edits.
@@ -550,3 +559,10 @@ regions. This measures native generation rather than loaded/rendered client
 throughput. Concurrent jobs can have longer individual latency while producing
 more chunks per second. See [the performance report](docs/NATIVE_PERFORMANCE.md)
 for stage results, correctness checks and the repeatable benchmark commands.
+
+MCA records retain standard type-2 zlib compression. Level 1 was already used by
+the old encoder; the new compressor trades less CPU work for the same compatible
+format. NBT uses retained palette index storage, specialized bit packing, an ASCII
+string fast path with Java modified-UTF-8 fallback, and avoids unused heightmaps.
+The 20-region matched encoding benchmark preserved all 20,480 decoded chunks;
+see [the measured encoding results](docs/NATIVE_PERFORMANCE.md#encoding-and-timing-window-update).

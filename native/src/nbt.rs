@@ -28,6 +28,11 @@ pub fn list_values(tag: &Value) -> &[Value] {
     tag[1][1].as_array().map(Vec::as_slice).unwrap_or(&[])
 }
 fn text(out: &mut Vec<u8>, s: &str) {
+    if s.is_ascii() && !s.as_bytes().contains(&0) {
+        out.extend_from_slice(&(s.len() as u16).to_be_bytes());
+        out.extend_from_slice(s.as_bytes());
+        return;
+    }
     let mut bytes = Vec::new();
     for c in s.encode_utf16() {
         if c != 0 && c < 128 {
@@ -141,5 +146,25 @@ pub fn validate(tag: &Value, depth: u32) -> bool {
                 .all(|(k, t)| k.len() < 65536 && validate(t, depth + 1))
         }),
         _ => false,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn strings_keep_java_modified_utf8() {
+        let mut out = Vec::new();
+        text(&mut out, "minecraft:plains");
+        assert_eq!(&out[..2], &[0, 16]);
+        assert_eq!(&out[2..], b"minecraft:plains");
+        out.clear();
+        text(&mut out, "A\0é😀");
+        assert_eq!(
+            out,
+            [
+                0, 11, 65, 0xc0, 0x80, 0xc3, 0xa9, 0xed, 0xa0, 0xbd, 0xed, 0xb8, 0x80
+            ]
+        );
     }
 }
