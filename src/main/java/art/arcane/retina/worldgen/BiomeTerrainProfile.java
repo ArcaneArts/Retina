@@ -48,6 +48,7 @@ public record BiomeTerrainProfile(int nativeId, int seaLevel, BlockState[] mater
         if (sea < minY || sea > minY + height) throw new IllegalArgumentException("Registry sea level is outside Retina's generation bounds");
         var materials = new LinkedHashMap<BlockState, Integer>();
         var profile = new JsonObject();
+        profile.addProperty("ore_layout", 2);
         profile.addProperty("biome_scale", source.scale());
         profile.addProperty("blend", source.blend());
         profile.addProperty("sea_level", sea);

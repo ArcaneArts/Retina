@@ -24,3 +24,28 @@ Reproduce with `scripts/native-region-benchmark.py`, `--count 20 --warmups 3`,
 then repeat with `--parallel 2`. Preserve each release library before rebuilding
 and use `--compare` for behavior-preserving changes. Local results are in
 `build/optimization-steps/`; they are intentionally not committed.
+
+## Independent ore attempts and whole-vein culling
+
+Ore layout 2 samples positions from the anchor/recipe stream and gives each vein
+attempt its own geometry stream. Rejected attempts no longer shift later veins.
+Bounds reject attempts outside the requested tile, vertical range, replacement
+bands, or all possible terrain/fluid hosts before sphere construction. Sky culling
+is disabled if any recipe can create materials from air, preserving replacement
+chains across anchors. Bounds include scattered offsets and f32 rounding margins.
+Vanilla/datapack registry exports identify the layout explicitly. Existing saved
+chunks remain intact; new ore distributions change. Temporary MCA previews are
+process-local and cannot survive a restart into the new layout.
+
+On the original real GPU field, 178,753 of 279,773 eligible attempts were culled
+(64%), leaving 7,808,716 ordered candidates. A complete 20-region run measured
+34.84 ms/region in ore planning and 7,232 native chunks/s, versus 50.58 ms/region
+and 6,510 chunks/s after the jigsaw change. System load varies; these are samples,
+not a guaranteed speedup. The focused benchmark now reports culling counts.
+
+Thirteen native unit tests passed, including uncullled-versus-culled final block
+replay and individual-chunk/region parity for scattered and regular veins, air
+hosts and water hosts. Actual vanilla registry geology, cave/exposure rules,
+temporary MCA preview/promotion, and structure MCA/chunk parity suites passed.
+GPU rasterization needs a compact per-vein output and stable replay order; simply
+appending all 12-byte candidates would still transfer about 90 MiB on this field.

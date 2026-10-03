@@ -59,10 +59,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .build()?;
     let mut timings = Vec::new();
     let mut expected = None;
+    let mut stats = geology::PlanStats::default();
     for iteration in 0..iterations + 5 {
         let start = Instant::now();
-        let plan =
-            workers.install(|| geology::plan(&field, &profile, request, 32, mask.as_deref()));
+        let (plan, measured) = workers
+            .install(|| geology::plan_profiled(&field, &profile, request, 32, mask.as_deref()));
+        stats = measured;
         let ms = start.elapsed().as_secs_f64() * 1000.0;
         if iteration >= 5 {
             timings.push(ms);
@@ -79,7 +81,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (placements, signature) = expected.unwrap();
     println!(
         "{}",
-        serde_json::json!({"backend":engine.backend(),"seed":seed,"chunk_x":chunk_x,"chunk_z":chunk_z,"workers":threads,"warmups":5,"iterations":iterations,"ore_recipes":profile.geology.ores.len(),"placements":placements,"signature":format!("{signature:016x}"),"median_ms":sorted[sorted.len()/2],"p95_ms":sorted[(sorted.len()*95/100).min(sorted.len()-1)],"samples_ms":timings})
+        serde_json::json!({"backend":engine.backend(),"seed":seed,"chunk_x":chunk_x,"chunk_z":chunk_z,"workers":threads,"warmups":5,"iterations":iterations,"ore_recipes":profile.geology.ores.len(),"ore_layout":profile.geology.ore_layout,"attempts":stats,"placements":placements,"signature":format!("{signature:016x}"),"median_ms":sorted[sorted.len()/2],"p95_ms":sorted[(sorted.len()*95/100).min(sorted.len()-1)],"samples_ms":timings})
     );
     Ok(())
 }

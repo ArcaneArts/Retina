@@ -61,8 +61,12 @@ pub struct Carver {
     #[serde(default)]
     pub rotation_range: [f32; 2],
 }
-#[derive(Clone, Default, Deserialize)]
+#[derive(Clone, Deserialize)]
 pub struct GeologyProfile {
+    /// Independent attempt streams permit conservative culling without shifting
+    /// later veins. Version 1 remains available for retained benchmark fixtures.
+    #[serde(default = "ore_layout_version")]
+    pub ore_layout: u32,
     #[serde(default)]
     pub ores: Vec<OreRecipe>,
     #[serde(default)]
@@ -78,8 +82,28 @@ pub struct GeologyProfile {
     #[serde(default)]
     pub geology_height: u32,
 }
+fn ore_layout_version() -> u32 {
+    2
+}
+impl Default for GeologyProfile {
+    fn default() -> Self {
+        Self {
+            ore_layout: 2,
+            ores: Vec::new(),
+            cave_noises: Vec::new(),
+            carveable: Vec::new(),
+            lava: 0,
+            lava_level: 0,
+            geology_min_y: 0,
+            geology_height: 0,
+        }
+    }
+}
 impl GeologyProfile {
     pub fn validate(&self, profile: &WorldProfile) -> Result<(), String> {
+        if !(1..=2).contains(&self.ore_layout) {
+            return Err("unsupported ore layout version".into());
+        }
         let palette = profile.materials.len();
         if self.ores.is_empty() && self.cave_noises.is_empty() {
             return Ok(());
@@ -392,17 +416,62 @@ pub fn plan(
     side: usize,
     mask: Option<&CaveMask>,
 ) -> Vec<Vec<OrePlacement>> {
+    plan_inner(field, profile, request, side, mask, true).0
+}
+
+#[derive(Clone, Copy, Default, serde::Serialize)]
+pub struct PlanStats {
+    pub eligible_attempts: usize,
+    pub culled_attempts: usize,
+}
+pub fn plan_profiled(
+    field: &Field,
+    profile: &WorldProfile,
+    request: ChunkRequest,
+    side: usize,
+    mask: Option<&CaveMask>,
+) -> (Vec<Vec<OrePlacement>>, PlanStats) {
+    plan_inner(field, profile, request, side, mask, true)
+}
+
+fn plan_inner(
+    field: &Field,
+    profile: &WorldProfile,
+    request: ChunkRequest,
+    side: usize,
+    mask: Option<&CaveMask>,
+    cull: bool,
+) -> (Vec<Vec<OrePlacement>>, PlanStats) {
+    let independent = profile.geology.ore_layout >= 2;
+    // Any recipe can create hosts from air before another anchor is replayed.
+    // Disable sky rejection for that profile, retaining all replacement chains.
+    let replaces_air = profile
+        .geology
+        .ores
+        .iter()
+        .any(|r| r.replacement_bands.iter().any(|b| b.materials[0] != 0));
+    let tops: Vec<_> = field
+        .columns
+        .chunks_exact(COLUMNS)
+        .map(|c| {
+            c.iter()
+                .map(|c| c.surface_height(Some(profile)))
+                .max()
+                .unwrap()
+        })
+        .collect();
     let generate = |scratch: &mut VeinScratch, index: usize| {
         let cx = field.origin_x + (index % field.side) as i32;
         let cz = field.origin_z + (index / field.side) as i32;
         let mut blocks = AnchorBuckets::default();
+        let mut stats = PlanStats::default();
         for (id, recipe) in profile.geology.ores.iter().enumerate() {
             let mut random = Random(seed(request, cx, cz, id as u32));
             if random.next() % recipe.rarity != 0 {
                 continue;
             }
             let tries = random.int(recipe.count_min as i32, recipe.count_max as i32);
-            for _ in 0..tries {
+            for attempt in 0..tries {
                 let x = cx * 16 + random.int(0, 15);
                 let z = cz * 16 + random.int(0, 15);
                 let y = random.height(&recipe.height);
@@ -415,12 +484,33 @@ pub fn plan(
                 if !profile.ore_membership[biome][id] {
                     continue;
                 }
-                vein(recipe, x, y, z, &mut random, scratch, |x, y, z, random| {
+                stats.eligible_attempts += 1;
+                if independent
+                    && cull
+                    && !vein_may_intersect(
+                        recipe,
+                        [x, y, z],
+                        field,
+                        &tops,
+                        request,
+                        side,
+                        replaces_air,
+                    )
+                {
+                    stats.culled_attempts += 1;
+                    continue;
+                }
+                let mut local = Random(
+                    seed(request, cx, cz, id as u32)
+                        ^ (attempt as u64 + 1).wrapping_mul(0xd6e8feb86659fd93),
+                );
+                let random = if independent { &mut local } else { &mut random };
+                vein(recipe, x, y, z, random, scratch, |x, y, z, random| {
                     blocks.emit(request, side, id as u32, x, y, z, random);
                 });
             }
         }
-        blocks
+        (blocks, stats)
     };
     let anchors: Vec<_> = if side > 1 {
         (0..field.side * field.side)
@@ -436,7 +526,7 @@ pub fn plan(
     let merge = |target| {
         let buckets: Vec<_> = anchors
             .iter()
-            .filter_map(|anchor| {
+            .filter_map(|(anchor, _)| {
                 anchor
                     .0
                     .binary_search_by_key(&target, |b| b.0)
@@ -451,11 +541,80 @@ pub fn plan(
         output
     };
     // Each target merges anchors in the original indexed order; no serial per-voxel scatter.
-    if side > 1 {
+    let stats = anchors.iter().fold(PlanStats::default(), |mut s, (_, a)| {
+        s.eligible_attempts += a.eligible_attempts;
+        s.culled_attempts += a.culled_attempts;
+        s
+    });
+    let output = if side > 1 {
         (0..side * side).into_par_iter().map(merge).collect()
     } else {
         (0..side * side).map(merge).collect()
+    };
+    (output, stats)
+}
+
+/// Conservative whole-vein bounds, before sphere generation or voxel traversal.
+fn vein_may_intersect(
+    recipe: &OreRecipe,
+    at: [i32; 3],
+    field: &Field,
+    tops: &[i32],
+    request: ChunkRequest,
+    side: usize,
+    replaces_air: bool,
+) -> bool {
+    let reach = if recipe.scattered {
+        7
+    } else {
+        (recipe.size as f32 / 8.0).ceil() as i64
+            + (recipe.size as f32 / 16.0 + 0.5).ceil() as i64
+            + 3
+    };
+    // Account for absolute f32 geometry rounding, including distant coordinates.
+    let padding =
+        (at.iter().map(|v| (*v as f64).abs()).fold(0.0, f64::max) * f32::EPSILON as f64 * 4.0)
+            .ceil() as i64
+            + 2;
+    let radius = reach + padding;
+    let low: [i64; 3] = at.map(|v| v as i64 - radius);
+    let high: [i64; 3] = at.map(|v| v as i64 + radius);
+    let x0 = low[0].div_euclid(16).max(request.chunk_x as i64);
+    let z0 = low[2].div_euclid(16).max(request.chunk_z as i64);
+    let x1 = high[0]
+        .div_euclid(16)
+        .min(request.chunk_x as i64 + side as i64 - 1);
+    let z1 = high[2]
+        .div_euclid(16)
+        .min(request.chunk_z as i64 + side as i64 - 1);
+    let y0 = low[1].max(request.min_y as i64);
+    let y1 = high[1].min(request.min_y as i64 + request.height as i64 - 1);
+    if x0 > x1
+        || z0 > z1
+        || y0 > y1
+        || !recipe
+            .replacement_bands
+            .iter()
+            .any(|b| b.min as i64 <= y1 && b.max as i64 >= y0)
+    {
+        return false;
     }
+    if replaces_air {
+        return true;
+    }
+    for z in z0..=z1 {
+        for x in x0..=x1 {
+            let fx = x - field.origin_x as i64;
+            let fz = z - field.origin_z as i64;
+            if fx < 0 || fz < 0 || fx >= field.side as i64 || fz >= field.side as i64 {
+                return true;
+            }
+            if y0 < tops[fz as usize * field.side + fx as usize] as i64 {
+                return true;
+            }
+        }
+    }
+    false
 }
 fn vein(
     recipe: &OreRecipe,
@@ -652,6 +811,109 @@ pub fn apply_ores(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn early_vein_culling_preserves_replay_and_chunk_boundaries() {
+        use crate::profile::Column;
+        use serde_json::json;
+        let mut profile: WorldProfile = serde_json::from_value(json!({
+            "biome_scale":256,"blend":0.55,"sea_level":32,"stone":1,"water":3,
+            "bedrock":1,"deepslate":1,"snow":0,"ice":3,
+            "materials":["minecraft:air","minecraft:stone","minecraft:gold_ore","minecraft:water"],
+            "biomes":[{"id":"test:biome","climate":[0,0,0,0],"terrain":[0,1,1],"top":1,"filler":1,"underwater":1,"flags":0}],
+            "noises":[],"material_flags":[0,1,1,0],"heightmap_masks":[0,63,63,0]
+        })).unwrap();
+        profile.geology.ores = vec![OreRecipe {
+            id: "test:vein".into(),
+            size: 64,
+            discard: 0.25,
+            scattered: false,
+            count_min: 12,
+            count_max: 12,
+            rarity: 1,
+            height: HeightRange {
+                min: -40,
+                max: 100,
+                ..Default::default()
+            },
+            replacement_bands: vec![ReplacementBand {
+                min: -64,
+                max: 127,
+                materials: vec![0, 2, 0, 2],
+            }],
+        }];
+        profile.ore_membership = vec![vec![true]];
+        let field = Field {
+            origin_x: -2,
+            origin_z: -2,
+            side: 5,
+            columns: vec![
+                Column {
+                    height: 20,
+                    packed: 3 << 24,
+                    materials: 1 | (1 << 16)
+                };
+                25 * COLUMNS
+            ],
+        };
+        let request = ChunkRequest {
+            seed: 42,
+            chunk_x: -1,
+            chunk_z: -1,
+            min_y: -64,
+            height: 192,
+            base_height: 20.,
+            amplitude: 0.,
+            frequency: 0.008,
+            reserved: 0,
+        };
+        for scattered in [false, true] {
+            profile.geology.ores[0].scattered = scattered;
+            for air_host in [false, true] {
+                profile.geology.ores[0].replacement_bands[0].materials[0] =
+                    if air_host { 2 } else { 0 };
+                let (reference, _) = plan_inner(&field, &profile, request, 3, None, false);
+                let (culled, stats) = plan_inner(&field, &profile, request, 3, None, true);
+                if !air_host {
+                    assert!(stats.culled_attempts > 0);
+                }
+                for slot in 0..9 {
+                    let chunk = ChunkRequest {
+                        chunk_x: request.chunk_x + (slot % 3) as i32,
+                        chunk_z: request.chunk_z + (slot / 3) as i32,
+                        ..request
+                    };
+                    let column = field.chunk(chunk.chunk_x, chunk.chunk_z);
+                    let p = &profile;
+                    let original: Vec<_> = (0..chunk.height)
+                        .flat_map(|i| {
+                            column.iter().map(move |c| {
+                                c.material(chunk.min_y + i as i32, chunk.min_y, Some(p))
+                            })
+                        })
+                        .collect();
+                    let mut expected = original.clone();
+                    apply_ores(
+                        chunk,
+                        &field,
+                        &profile,
+                        None,
+                        &reference[slot],
+                        &mut expected,
+                    );
+                    let mut actual = original.clone();
+                    apply_ores(chunk, &field, &profile, None, &culled[slot], &mut actual);
+                    assert_eq!(actual, expected, "culling changed final host replay");
+                    let (single, _) = plan_inner(&field, &profile, chunk, 1, None, true);
+                    let mut independent = original;
+                    apply_ores(chunk, &field, &profile, None, &single[0], &mut independent);
+                    assert_eq!(
+                        independent, expected,
+                        "chunk and region ore streams diverged"
+                    );
+                }
+            }
+        }
+    }
     #[test]
     fn ore_ellipsoids_are_unique_and_fit_the_neighbor_chunk_halo() {
         for size in 1..=64 {
