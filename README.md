@@ -332,6 +332,10 @@ persistent region pool of up to 16 cores. Independent Minecraft chunk requests
 also assemble concurrently after the persistent GPU worker returns their masks.
 Assembly order is base terrain, caves, ores, cave decorations, then surface vegetation.
 
+The [ore planning investigation](docs/ORE_PLANNING_PERFORMANCE.md) includes a
+focused real-field benchmark, rejected micro-optimizations and the constraints on
+skipping whole veins or moving their expansion to the GPU.
+
 GPU cave fields evaluate the registered final-density program. Legacy profiles use
 registered cave cheese, spaghetti, layer, roughness and pillar noise octaves/amplitudes. Additional compute stages produce chambers, tunnels
 and finite curved ravines using the biome's registered carver probability, center-height
