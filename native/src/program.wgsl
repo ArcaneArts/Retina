@@ -90,36 +90,126 @@ fn run_program(program:u32,point:vec3<f32>,request:Request,context:vec4<f32>)->a
     }
     var roots:array<f32,6>;for(var i=0u;i<6u;i++){roots[i]=values[bytecode[descriptor+2u+i]];}return roots;
 }
+fn density_floor_div(value:i32,step:i32)->i32 {
+    return value/step-select(0,1,value%step<0);
+}
+fn density_origin(r:Request)->vec3<i32> {
+    let sx=i32(r.density_step_xz);let sy=i32(r.density_step_y);
+    // Four-block guard covers the surface-rule slope probes on every tile edge.
+    return vec3<i32>(density_floor_div(r.origin_x-4,sx)*sx,density_floor_div(r.min_y,sy)*sy,density_floor_div(r.origin_z-4,sx)*sx);
+}
+fn density_layers(r:Request)->u32 {
+    let bottom=density_origin(r).y;let step=i32(r.density_step_y);
+    return u32((r.max_y-bottom+step-1)/step)+1u;
+}
+@compute @workgroup_size(64)
+fn density_nodes(@builtin(global_invocation_id) id:vec3<u32>) {
+    let r=requests[id.z];let n=r.density_side;
+    if id.x>=n*n || id.y>=density_layers(r) {return;}
+    let origin=density_origin(r);
+    let offset=vec3<i32>(i32(id.x%n)*i32(r.density_step_xz),i32(id.y)*i32(r.density_step_y),i32(id.x/n)*i32(r.density_step_xz));
+    surface_nodes[r.density_offset+id.y*n*n+id.x]=run_program(1u,vec3<f32>(origin+offset),r,vec4<f32>(0.0))[0];
+}
+fn density_corner(cell:vec2<i32>,layer:u32,r:Request)->f32 {
+    let n=i32(r.density_side);
+    if all(cell>=vec2<i32>(0)) && all(cell<vec2<i32>(n)) {
+        return surface_nodes[r.density_offset+(layer*r.density_side+u32(cell.y))*r.density_side+u32(cell.x)];
+    }
+    // Lake banks and height probes can lie outside a cached tile. Evaluate the
+    // same global grid node on the GPU instead of clamping to a tile edge.
+    let origin=density_origin(r);
+    let point=origin+vec3<i32>(cell.x*i32(r.density_step_xz),i32(layer)*i32(r.density_step_y),cell.y*i32(r.density_step_xz));
+    return run_program(1u,vec3<f32>(point),r,vec4<f32>(0.0))[0];
+}
+fn density_layer(cell:vec2<i32>,t:vec2<f32>,layer:u32,r:Request)->f32 {
+    let a=density_corner(cell,layer,r);var b=a;
+    if t.x>0.0 {b=density_corner(cell+vec2<i32>(1,0),layer,r);}
+    let near=mix(a,b,t.x);
+    if t.y==0.0 {return near;}
+    let c=density_corner(cell+vec2<i32>(0,1),layer,r);var d=c;
+    if t.x>0.0 {d=density_corner(cell+vec2<i32>(1,1),layer,r);}
+    return mix(near,mix(c,d,t.x),t.y);
+}
+fn registered_density(point:vec3<f32>,r:Request)->f32 {
+    let origin=density_origin(r);
+    let local=(point-vec3<f32>(origin))/vec3<f32>(f32(r.density_step_xz),f32(r.density_step_y),f32(r.density_step_xz));
+    let cell=vec2<i32>(floor(local.xz));let t=fract(local.xz);
+    let y=clamp(local.y,0.0,f32(density_layers(r)-1u));let layer=min(u32(floor(y)),density_layers(r)-2u);
+    return mix(density_layer(cell,t,layer,r),density_layer(cell,t,layer+1u,r),y-f32(layer));
+}
+fn surface_layer(cell:vec2<i32>,t:vec2<f32>,layer:u32,r:Request,probe:u32)->f32 {
+    if probe==0xffffffffu {return density_layer(cell,t,layer,r);}
+    let at=lake_probe_offset(r)+(probe*density_layers(r)+layer)*4u;
+    return mix(mix(surface_nodes[at],surface_nodes[at+1u],t.x),mix(surface_nodes[at+2u],surface_nodes[at+3u],t.x),t.y);
+}
+fn density_surface_height(point:vec2<f32>,r:Request,probe:u32)->f32 {
+    // Interpolate densities before locating the highest solid interval. Blending
+    // corner heights instead loses density gradients and creates planar shelves.
+    let origin=density_origin(r);
+    let local=(point-vec2<f32>(origin.xz))/f32(r.density_step_xz);
+    let cell=vec2<i32>(floor(local));let t=fract(local);
+    var layer=density_layers(r)-1u;
+    var upper=surface_layer(cell,t,layer,r,probe);
+    var upper_y=f32(origin.y)+f32(layer)*f32(r.density_step_y);
+    if upper_y>f32(r.max_y) {
+        let lower=surface_layer(cell,t,layer-1u,r,probe);
+        let lower_y=upper_y-f32(r.density_step_y);
+        upper=mix(lower,upper,(f32(r.max_y)-lower_y)/f32(r.density_step_y));
+        upper_y=f32(r.max_y);
+    }
+    if upper>0.0 {return f32(r.max_y);}
+    while layer>0u {
+        layer-=1u;
+        let lower=surface_layer(cell,t,layer,r,probe);
+        if lower>0.0 {
+            let y=f32(origin.y)+f32(layer)*f32(r.density_step_y);
+            let crossing=y+(upper_y-y)*lower/max(lower-upper,0.000001);
+            return clamp(crossing+1.0,f32(r.min_y+1),f32(r.max_y));
+        }
+        upper=lower;
+        upper_y=f32(origin.y)+f32(layer)*f32(r.density_step_y);
+    }
+    return f32(r.min_y+1);
+}
+fn surface_width(r:Request)->u32 {return select(16u,r.tile_side*16u,r.tile_side>0u)+8u;}
+fn surface_offset(r:Request)->u32 {return r.density_offset+r.density_side*r.density_side*density_layers(r);}
+fn lake_side(r:Request)->u32 {
+    let width=select(16u,r.tile_side*16u,r.tile_side>0u);
+    let cell=vec2<i32>(density_floor_div(r.origin_x,128),density_floor_div(r.origin_z,128));
+    let remainder=vec2<i32>(r.origin_x,r.origin_z)-cell*128;
+    return (width+u32(max(remainder.x,remainder.y))+127u)/128u;
+}
+fn lake_offset(r:Request)->u32 {return surface_offset(r)+surface_width(r)*surface_width(r);}
+fn lake_probe_offset(r:Request)->u32 {return lake_offset(r)+lake_side(r)*lake_side(r)*4u;}
+@compute @workgroup_size(64)
+fn surface_columns(@builtin(global_invocation_id) id:vec3<u32>) {
+    let r=requests[id.y];let width=surface_width(r);if id.x>=width*width {return;}
+    let point=vec2<f32>(f32(r.origin_x-4+i32(id.x%width)),f32(r.origin_z-4+i32(id.x/width)));
+    surface_nodes[surface_offset(r)+id.x]=density_surface_height(point,r,0xffffffffu);
+}
 @compute @workgroup_size(64)
 fn height_nodes(@builtin(global_invocation_id) id:vec3<u32>) {
     let r=requests[id.y];let n=select(5u,r.tile_side*4u+1u,r.tile_side>0u);if id.x>=n*n {return;}
     let point=vec3<f32>(f32(r.origin_x+i32(id.x%n)*4),0.0,f32(r.origin_z+i32(id.x/n)*4));
-    var height=run_program(1u,point,r,vec4<f32>(0.0))[0];
-    if bytecode[5]==0u {
-        let upper=run_program(1u,point,r,vec4<f32>(0.0))[1];let step=i32(bytecode[4]);let bottom=max(r.min_y,bitcast<i32>(bytecode[3]));
-        // The game's preliminary surface lookup rounds DOWN to an eight-block
-        // probe. Using that probe as the actual terrain ceiling produces shelves.
-        // Start above the zero crossing so the first solid sample has an air
-        // sample to interpolate against, even when upper_bound is already exact.
-        height=f32(bottom);var previous=min(ceil(clamp(upper,f32(bottom),f32(r.max_y))/f32(step))*f32(step),f32(r.max_y));
-        var initial_density=run_program(1u,vec3<f32>(point.x,previous,point.z),r,vec4<f32>(0.0))[0];
-        while initial_density>0.0 && previous<f32(r.max_y) {
-            previous=min(previous+f32(step),f32(r.max_y));
-            initial_density=run_program(1u,vec3<f32>(point.x,previous,point.z),r,vec4<f32>(0.0))[0];
-        }
-        var previous_density=0.0;
-        for(var y=i32(previous);y>=bottom;y-=step) {
-            let density=run_program(1u,vec3<f32>(point.x,f32(y),point.z),r,vec4<f32>(0.0))[0];
-            if density>0.0 {height=f32(y);if previous>f32(y) && previous_density<=0.0 {height=mix(f32(y),previous,density/max(density-previous_density,0.000001));}break;}
-            previous=f32(y);previous_density=density;
-        }
-    }
+    var height=f32(r.min_y);
+    if bytecode[5]!=0u {height=run_program(1u,point,r,vec4<f32>(0.0))[0];}
+    // Density-based surfaces are found per column after the 3D prepass.
+    // Explicit registered height functions retain their separate 2D path.
     let node=(id.y*select(25u,20000u,r.tile_side>0u)+id.x)*8u;
     surface_nodes[node]=clamp(height+1.0,f32(r.min_y+1),f32(r.max_y));
     let climate=run_program(0u,point,r,vec4<f32>(0.0));
     for(var channel=0u;channel<6u;channel++){surface_nodes[node+1u+channel]=climate[channel];}
 }
-fn registered_height(point:vec2<f32>,r:Request,index:u32)->f32 {
+// Keep the full density interpreter out of the per-block column entry point's
+// call graph. Its integer coordinates and slope probes always fit this cache.
+fn registered_height_fast(point:vec2<f32>,r:Request,index:u32)->f32 {
+    if bytecode[5]==0u {
+        let local=vec2<u32>(point-vec2<f32>(f32(r.origin_x-4),f32(r.origin_z-4)));
+        return surface_nodes[surface_offset(r)+local.y*surface_width(r)+local.x];
+    }
+    return registered_height_2d(point,r,index);
+}
+fn registered_height_2d(point:vec2<f32>,r:Request,index:u32)->f32 {
     let n=select(5u,r.tile_side*4u+1u,r.tile_side>0u);
     let local=(point-vec2<f32>(f32(r.origin_x),f32(r.origin_z)))*0.25;
     let cell=vec2<u32>(clamp(floor(local),vec2<f32>(0.0),vec2<f32>(f32(n-2u))));let t=clamp(local-vec2<f32>(cell),vec2<f32>(0.0),vec2<f32>(1.0));
@@ -127,6 +217,20 @@ fn registered_height(point:vec2<f32>,r:Request,index:u32)->f32 {
     return mix(mix(surface_nodes[at],surface_nodes[at+8u],t.x),mix(surface_nodes[at+n*8u],surface_nodes[at+(n+1u)*8u],t.x),t.y);
 }
 fn registered_climate(point:vec2<f32>,r:Request,index:u32)->array<f32,6> {
+    let n=select(5u,r.tile_side*4u+1u,r.tile_side>0u);
+    let local=(point-vec2<f32>(f32(r.origin_x),f32(r.origin_z)))*0.25;
+    if any(local<vec2<f32>(0.0)) || any(local>vec2<f32>(f32(n-1u))) {
+        // Shared lake probes need global climate samples beyond a request edge.
+        let grid=floor(point*0.25)*4.0;let t=fract(point*0.25);
+        let a=run_program(0u,vec3<f32>(grid.x,0.0,grid.y),r,vec4<f32>(0.0));
+        let b=run_program(0u,vec3<f32>(grid.x+4.0,0.0,grid.y),r,vec4<f32>(0.0));
+        let c=run_program(0u,vec3<f32>(grid.x,0.0,grid.y+4.0),r,vec4<f32>(0.0));
+        let d=run_program(0u,vec3<f32>(grid.x+4.0,0.0,grid.y+4.0),r,vec4<f32>(0.0));
+        var result:array<f32,6>;for(var channel=0u;channel<6u;channel++){result[channel]=mix(mix(a[channel],b[channel],t.x),mix(c[channel],d[channel],t.x),t.y);}return result;
+    }
+    return registered_climate_fast(point,r,index);
+}
+fn registered_climate_fast(point:vec2<f32>,r:Request,index:u32)->array<f32,6> {
     let n=select(5u,r.tile_side*4u+1u,r.tile_side>0u);
     let local=(point-vec2<f32>(f32(r.origin_x),f32(r.origin_z)))*0.25;
     let cell=vec2<u32>(clamp(floor(local),vec2<f32>(0.0),vec2<f32>(f32(n-2u))));let t=clamp(local-vec2<f32>(cell),vec2<f32>(0.0),vec2<f32>(1.0));

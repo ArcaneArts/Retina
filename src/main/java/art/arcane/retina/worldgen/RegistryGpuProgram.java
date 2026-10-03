@@ -59,6 +59,12 @@ final class RegistryGpuProgram {
         }
         var result=new JsonObject(); result.add("programs",compiler.programs);result.add("noises",compiler.noises);
         result.add("points",compiler.points); result.add("surface",config);
+        var terrainCell=compiler.terrainCell(compiler.encode(router.finalDensity()),new HashSet<>());
+        if(terrainCell==null) {
+            terrainCell=new JsonArray();terrainCell.add(4);terrainCell.add(8);
+            compiler.approximations.add("density:uninterpolated-final-field:4x8x4-sampling");
+        }
+        result.add("terrain_cell",terrainCell);
         var surfaceNoises=new JsonArray();
         for(String id:List.of("surface","surface_secondary","clay_bands_offset"))surfaceNoises.add(compiler.noise(new JsonPrimitive("minecraft:"+id)));
         result.add("surface_noises",surfaceNoises);
@@ -68,6 +74,19 @@ final class RegistryGpuProgram {
         return result;
     }
     JsonElement encode(DensityFunction fn) { return DensityFunction.CODEC.encodeStart(registry.createSerializationContext(JsonOps.INSTANCE),fn).getOrThrow(); }
+    JsonArray terrainCell(JsonElement value, Set<String> visited) {
+        if(value==null || !visited.add(value.toString()))return null;
+        value=resolve(value);
+        if(!value.isJsonObject())return null;
+        var o=value.getAsJsonObject();
+        if(o.has("type") && type(o).equals("interpolated")) {
+            var sizes=new JsonArray();sizes.add((int)number(o,"cell_size_xz",4));sizes.add((int)number(o,"cell_size_y",8));return sizes;
+        }
+        for(String key:List.of("input","left","right","alpha","first","second","when_in_range","when_out_of_range")) {
+            var sizes=terrainCell(o.get(key),visited);if(sizes!=null)return sizes;
+        }
+        return null;
+    }
     JsonElement resolve(JsonElement value) {
         if(value.isJsonPrimitive() && value.getAsJsonPrimitive().isString()) {
             var key=ResourceKey.create(Registries.DENSITY_FUNCTION,Identifier.parse(value.getAsString()));

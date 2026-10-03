@@ -10,6 +10,12 @@ use std::{
 };
 use wgpu::util::DeviceExt;
 
+const SURFACE_METADATA_FLOATS: usize = 8 * if 20000 > MAX_BATCH * 25 {
+    20000
+} else {
+    MAX_BATCH * 25
+};
+
 pub(crate) struct Gpu {
     device: wgpu::Device,
     queue: wgpu::Queue,
@@ -22,6 +28,11 @@ pub(crate) struct Gpu {
     cave_buffers: Option<CaveBuffers>,
     columns_pipeline: wgpu::ComputePipeline,
     height_pipeline: wgpu::ComputePipeline,
+    density_pipeline: wgpu::ComputePipeline,
+    lake_pipeline: wgpu::ComputePipeline,
+    lake_candidates_pipeline: wgpu::ComputePipeline,
+    lake_density_pipeline: wgpu::ComputePipeline,
+    surface_pipeline: wgpu::ComputePipeline,
     height_nodes: wgpu::Buffer,
     layout: wgpu::BindGroupLayout,
     profiles: HashMap<u32, (wgpu::Buffer, wgpu::Buffer, wgpu::Buffer, wgpu::BindGroup)>,
@@ -208,9 +219,14 @@ impl Gpu {
             wgpu::BufferUsages::STORAGE,
         );
         let height_pipeline = pipeline("height_nodes");
+        let density_pipeline = pipeline("density_nodes");
+        let lake_pipeline = pipeline("lake_nodes");
+        let lake_candidates_pipeline = pipeline("lake_candidates");
+        let lake_density_pipeline = pipeline("lake_density");
+        let surface_pipeline = pipeline("surface_columns");
         let height_nodes = buffer(
             "Retina registered surface lattice",
-            32 * 20000usize.max(MAX_BATCH * 25) as u64,
+            (SURFACE_METADATA_FLOATS * 4) as u64,
             wgpu::BufferUsages::STORAGE,
         );
         let timestamps = device
@@ -245,6 +261,11 @@ impl Gpu {
             cave_buffers: None,
             columns_pipeline,
             height_pipeline,
+            density_pipeline,
+            lake_pipeline,
+            lake_candidates_pipeline,
+            lake_density_pipeline,
+            surface_pipeline,
             height_nodes,
             layout,
             profiles: HashMap::new(),
@@ -281,7 +302,17 @@ impl Gpu {
                 contents: bytes,
                 usage: wgpu::BufferUsages::STORAGE,
             });
-        let group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+        let group = self.world_group(&buffer, &climate, &program);
+        self.profiles.insert(id, (buffer, climate, program, group));
+    }
+
+    fn world_group(
+        &self,
+        buffer: &wgpu::Buffer,
+        climate: &wgpu::Buffer,
+        program: &wgpu::Buffer,
+    ) -> wgpu::BindGroup {
+        self.device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("Retina world profile"),
             layout: &self.layout,
             entries: &[
@@ -314,8 +345,30 @@ impl Gpu {
                     resource: self.height_nodes.as_entire_binding(),
                 },
             ],
+        })
+    }
+
+    fn ensure_surface_lattice(&mut self, size: u64) {
+        if self.height_nodes.size() >= size {
+            return;
+        }
+        self.height_nodes = self.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("Retina GPU-only density and climate lattice"),
+            size,
+            usage: wgpu::BufferUsages::STORAGE,
+            mapped_at_creation: false,
         });
-        self.profiles.insert(id, (buffer, climate, program, group));
+        // Refresh views without uploading immutable registry buffers again.
+        let groups: Vec<_> = self
+            .profiles
+            .iter()
+            .map(|(id, (buffer, climate, program, _))| {
+                (*id, self.world_group(buffer, climate, program))
+            })
+            .collect();
+        for (id, group) in groups {
+            self.profiles.get_mut(&id).unwrap().3 = group;
+        }
     }
 
     pub(crate) fn sample(
@@ -326,6 +379,60 @@ impl Gpu {
     ) -> Result<GpuSample, String> {
         let host_start = Instant::now();
         let profile_id = requests[0].profile;
+        let density_program = profile
+            .and_then(|p| p.registry_program.as_ref())
+            .filter(|p| p.surface[2] == 0);
+        let mut gpu_requests = requests.to_vec();
+        let mut density_dispatch = (0u32, 0u32);
+        let mut lake_dispatch = 0u32;
+        let mut surface_dispatch = 0u32;
+        if let Some(program) = density_program {
+            let [sx, sy] = program.terrain_cell;
+            let mut floats = SURFACE_METADATA_FLOATS as u64;
+            for request in &mut gpu_requests {
+                let width = if request.tile_side > 0 {
+                    request.tile_side * 16
+                } else {
+                    16
+                };
+                let guard_x = request
+                    .origin_x
+                    .checked_sub(4)
+                    .ok_or("GPU density guard X overflows block coordinates")?;
+                let guard_z = request
+                    .origin_z
+                    .checked_sub(4)
+                    .ok_or("GPU density guard Z overflows block coordinates")?;
+                let remainder = guard_x
+                    .rem_euclid(sx as i32)
+                    .max(guard_z.rem_euclid(sx as i32)) as u64;
+                let side = (width as u64 + 8 + remainder).div_ceil(sx as u64) + 1;
+                let bottom = (request.min_y as i64).div_euclid(sy as i64) * sy as i64;
+                let layers = (request.max_y as i64 - bottom) as u64;
+                let layers = layers.div_ceil(sy as u64) + 1;
+                request.density_offset =
+                    u32::try_from(floats).map_err(|_| "GPU density address exceeds u32")?;
+                request.density_side = side as u32;
+                request.density_step_xz = sx;
+                request.density_step_y = sy;
+                floats += side * side * layers;
+                let surface_width = width + 8;
+                floats += (surface_width * surface_width) as u64;
+                surface_dispatch = surface_dispatch.max(surface_width * surface_width);
+                let lake_remainder = request
+                    .origin_x
+                    .rem_euclid(128)
+                    .max(request.origin_z.rem_euclid(128))
+                    as u64;
+                let lake_side = (width as u64 + lake_remainder).div_ceil(128);
+                floats += lake_side * lake_side * (4 + 5 * 4 * layers);
+                lake_dispatch = lake_dispatch.max((lake_side * lake_side) as u32);
+                density_dispatch.0 = density_dispatch.0.max((side * side) as u32);
+                density_dispatch.1 = density_dispatch.1.max(layers as u32);
+            }
+            self.ensure_surface_lattice(floats * 4);
+        }
+
         if !self.profiles.contains_key(&profile_id) {
             self.add_profile(
                 profile_id,
@@ -405,7 +512,7 @@ impl Gpu {
             }
         }
         self.queue
-            .write_buffer(&self.requests, 0, bytemuck::cast_slice(requests));
+            .write_buffer(&self.requests, 0, bytemuck::cast_slice(&gpu_requests));
         let group = &self.profiles[&profile_id].3;
         let count = if requests[0].tile_side > 0 {
             (requests[0].tile_side * requests[0].tile_side) as usize
@@ -433,19 +540,54 @@ impl Gpu {
             .create_command_encoder(&wgpu::CommandEncoderDescriptor {
                 label: Some("Retina terrain batch"),
             });
+        if density_program.is_some() {
+            let mut writes = timestamp_writes(timings::HEIGHT);
+            if let Some(ref mut writes) = writes {
+                writes.end_of_pass_write_index = None;
+            }
+            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("Retina registered 3D density lattice"),
+                timestamp_writes: writes,
+            });
+            pass.set_pipeline(&self.density_pipeline);
+            pass.set_bind_group(0, group, &[]);
+            pass.dispatch_workgroups(
+                density_dispatch.0.div_ceil(64),
+                density_dispatch.1,
+                requests.len() as u32,
+            );
+        }
         if profile.is_some_and(|p| p.registry_program.is_some()) {
             let side = if requests[0].tile_side > 0 {
                 requests[0].tile_side * 4 + 1
             } else {
                 5
             };
+            let writes = if density_program.is_some() {
+                None
+            } else {
+                timestamp_writes(timings::HEIGHT)
+            };
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                label: Some("Retina registered surface lattice"),
-                timestamp_writes: timestamp_writes(timings::HEIGHT),
+                label: Some("Retina registered surface and climate lattice"),
+                timestamp_writes: writes,
             });
             pass.set_pipeline(&self.height_pipeline);
             pass.set_bind_group(0, group, &[]);
             pass.dispatch_workgroups((side * side).div_ceil(64), requests.len() as u32, 1);
+        }
+        if density_program.is_some() {
+            let mut writes = timestamp_writes(timings::HEIGHT);
+            if let Some(ref mut writes) = writes {
+                writes.beginning_of_pass_write_index = None;
+            }
+            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("Retina density surface extraction and slope halo"),
+                timestamp_writes: writes,
+            });
+            pass.set_pipeline(&self.surface_pipeline);
+            pass.set_bind_group(0, group, &[]);
+            pass.dispatch_workgroups(surface_dispatch.div_ceil(64), requests.len() as u32, 1);
         }
         if profile_id != 0 {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
@@ -456,10 +598,51 @@ impl Gpu {
             pass.set_bind_group(0, group, &[]);
             pass.dispatch_workgroups(3, requests.len() as u32, 1);
         }
+        if density_program.is_some() {
+            let mut writes = timestamp_writes(timings::COLUMNS);
+            if let Some(ref mut writes) = writes {
+                writes.end_of_pass_write_index = None;
+            }
+            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("Retina lake candidate classification"),
+                timestamp_writes: writes,
+            });
+            pass.set_pipeline(&self.lake_candidates_pipeline);
+            pass.set_bind_group(0, group, &[]);
+            pass.dispatch_workgroups(lake_dispatch.div_ceil(64), requests.len() as u32, 1);
+        }
+        if density_program.is_some() {
+            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("Retina parallel lake density probes"),
+                timestamp_writes: None,
+            });
+            pass.set_pipeline(&self.lake_density_pipeline);
+            pass.set_bind_group(0, group, &[]);
+            pass.dispatch_workgroups(
+                (lake_dispatch * 20).div_ceil(64),
+                density_dispatch.1,
+                requests.len() as u32,
+            );
+        }
+        if density_program.is_some() {
+            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("Retina shared lake level extraction"),
+                timestamp_writes: None,
+            });
+            pass.set_pipeline(&self.lake_pipeline);
+            pass.set_bind_group(0, group, &[]);
+            pass.dispatch_workgroups(lake_dispatch.div_ceil(64), requests.len() as u32, 1);
+        }
         {
+            let mut writes = timestamp_writes(timings::COLUMNS);
+            if density_program.is_some() {
+                if let Some(ref mut writes) = writes {
+                    writes.beginning_of_pass_write_index = None;
+                }
+            }
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
                 label: Some("Retina interpolated column pass"),
-                timestamp_writes: timestamp_writes(timings::COLUMNS),
+                timestamp_writes: writes,
             });
             pass.set_pipeline(&self.columns_pipeline);
             pass.set_bind_group(0, group, &[]);

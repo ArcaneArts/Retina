@@ -28,11 +28,16 @@ pub struct RegistryProgram {
     pub noises: Vec<Noise>,
     pub points: Vec<[f32; 4]>,
     pub surface: [i32; 3],
+    #[serde(default = "default_terrain_cell")]
+    pub terrain_cell: [u32; 2],
     #[serde(default)]
     pub surface_noises: [u32; 3],
 }
 fn unit_scale() -> f32 {
     1.0
+}
+fn default_terrain_cell() -> [u32; 2] {
+    [4, 8]
 }
 impl RegistryProgram {
     pub fn validate(&self, biomes: usize) -> Result<(), String> {
@@ -45,6 +50,10 @@ impl RegistryProgram {
             || self.surface[1] <= 0
             || self.surface[2] < 0
             || self.surface[2] > 1
+            || self
+                .terrain_cell
+                .iter()
+                .any(|s| *s == 0 || *s > i32::MAX as u32)
         {
             return Err("invalid registry GPU program dimensions".into());
         }

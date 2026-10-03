@@ -3,6 +3,7 @@ struct Request {
     origin_x: i32, origin_z: i32, min_y: i32, max_y: i32,
     seed_low: u32, seed_high: u32, base_height: f32, amplitude: f32,
     frequency: f32, profile: u32, tile_side: u32, padding: u32,
+    density_offset: u32, density_side: u32, density_step_xz: u32, density_step_y: u32,
 }
 struct Column { height: i32, packed: u32, materials: u32 }
 struct NoiseProfile { frequency: f32, amplitude: f32, count: u32, padding: u32, modifiers: array<f32,32> }
@@ -131,7 +132,10 @@ fn cave_nodes(@builtin(global_invocation_id) id: vec3<u32>) {
     let layer = abs(registry_noise(point*vec3<f32>(1.0,3.0,1.0),3u,seed));
     let pillar = registry_noise(point*vec3<f32>(1.0,0.25,1.0),5u,seed);
     var chambers = cheese - layer*0.12 - max(pillar-0.48,0.0)*1.5;
-    if caves.globals.y>0u {chambers=run_program(2u,point,r,vec4<f32>(0.0))[0];}
+    if caves.globals.y>0u {
+        if bytecode[5]==0u {chambers=registered_density(point,r);}
+        else {chambers=run_program(2u,point,r,vec4<f32>(0.0))[0];}
+    }
     let a = registry_noise(point*vec3<f32>(1.6,1.0,1.6),1u,seed)+rough*0.06;
     let b = registry_noise(point*vec3<f32>(1.6,1.0,1.6),2u,seed)-rough*0.06;
     var ribbon = 0.0;
@@ -175,6 +179,14 @@ fn exterior_offset(r: Request) -> u32 {
     let bottom = i32(floor(f32(r.min_y)/4.0))*4;
     return n*n*(u32((r.max_y-bottom+3)/4)+1u);
 }
+fn chamber_density(x:u32,y:i32,z:u32,sampled:f32,r:Request)->f32 {
+    if caves.globals.y>0u && bytecode[5]==0u && (r.density_step_xz%4u!=0u || r.density_step_y%4u!=0u) {
+        // The cave grid subdivides vanilla's 4x8x4 cells exactly. Custom cell
+        // boundaries inside a cave cell require the original density lattice.
+        return registered_density(vec3<f32>(f32(r.origin_x+i32(x)),f32(y),f32(r.origin_z+i32(z))),r);
+    }
+    return sampled;
+}
 @compute @workgroup_size(64)
 fn cave_exterior(@builtin(global_invocation_id) id: vec3<u32>) {
     let r = requests[0]; let width = r.tile_side*16u;
@@ -186,13 +198,11 @@ fn cave_exterior(@builtin(global_invocation_id) id: vec3<u32>) {
         let column=column_at(x,z,r.tile_side);
         var roof=column.height;
         if caves.globals.y>0u && bytecode[5]==0u {
-            // Height interpolation already defines the exterior terrain envelope.
-            // The finer 3D lattice can disagree by a few blocks at its upper zero
-            // crossing. That sky-connected negative interval is exterior air,
-            // not an underground cavity that should strip the selected surface.
+            // Surface extraction defines the terrain envelope. Account for voxel
+            // rounding at its zero crossing without stripping the selected topsoil.
             roof=column.height-1;
             while roof>r.min_y+5 {
-                let density=interpolate(vec3<f32>(f32(x),f32(roof-bottom),f32(z))*0.25,r.tile_side*4u+1u).x;
+                let density=chamber_density(x,roof,z,interpolate(vec3<f32>(f32(x),f32(roof-bottom),f32(z))*0.25,r.tile_side*4u+1u).x,r);
                 if density>=0.0 { break; }
                 roof-=1;
             }
@@ -221,7 +231,7 @@ fn is_cave(x: u32, y: i32, z: u32, column: Column, r: Request) -> bool {
     let biome = biome_sample(x,y,z,r);
     let index=z*(r.tile_side*16u)+x;
     let exterior=nodes[exterior_offset(r)+index/4u][index%4u];
-    var carved = caves.globals.y>0u && values.x<0.0 && f32(y)<exterior;
+    var carved = caves.globals.y>0u && chamber_density(x,y,z,values.x,r)<0.0 && f32(y)<exterior;
     for (var c=0u;c<4u;c++) {
         let settings = caves.biomes[biome].carvers[c];
         // Registry Y ranges locate tunnel centers, not their outer walls.

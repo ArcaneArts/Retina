@@ -99,14 +99,19 @@ Height/base-column and in-memory surface requests use temporary region batches
 Rust performs the following work:
 
 1. Read the real MCA header and preserve all existing chunk records.
-2. Send one 48-byte region descriptor to the GPU. A small pass creates nearby
-   resident registry programs. A surface lattice pass evaluates the registered height
-   function and climate fields; the column pass interpolates heights/climates,
+2. Send one 64-byte region descriptor to the GPU. Registry programs stay resident.
+   A density prepass samples the registered solid field on a global 3D lattice
+   using imported cell sizes (vanilla: 4 x 8 x 4). A climate pass samples the
+   climate lattice. A surface pass interpolates density before finding each
+   column's surface zero crossing, including a four-block slope halo. Shared lake
+   probe densities are sampled in parallel and cached once per lake cell.
+   The column pass reads those GPU caches,
+   interpolates climate values,
    selects biome intervals and evaluates surface material predicates, soil depth,
    lake basins and terracotta offsets. Legacy profiles retain warped Voronoi sites.
    Intermediate data stays on the GPU. Vegetation threshold noise shares the column pass.
    A one-chunk halo produces 544 x 544 compact column records (3.39 MiB).
-   Two further GPU stages evaluate the registered final density and sample 3D cave fields on a global four-block lattice,
+   Further GPU stages reuse the cached registered density and sample 3D cave fields on a global four-block lattice,
    select underground quart biomes, interpolate those fields, apply each 3D
    biome's cave/canyon settings and pack a final
    one-bit mask. The 384-block-high mask, including a one-block exposure halo,
@@ -227,12 +232,31 @@ Registered noise keeps its octave modifiers, normalization mode and two sample
 stacks with Minecraft's frequency ratio. The exported layer weights are checked
 against Minecraft's actual noise-stack metadata; GPU hashes still differ.
 
-Registered height programs run on a global four-block GPU lattice. The column
-pass interpolates those heights and climate values. When the registry supplies
-`find_top_surface`, the GPU scans the actual registered final solid density and
-interpolates its zero crossing. Vanilla's conservative preliminary surface probe
+Minecraft uses trilinear interpolation inside 3D density cells, and cubic Hermite
+splines for some terrain-shaping expressions. Retina already evaluates the exported
+Hermite splines on the GPU. When the registry supplies `find_top_surface`, a GPU
+prepass caches the actual final solid density on a global lattice. A surface pass
+interpolates density in X/Z at each Y level, then locates its interpolated zero
+crossing in Y. It no longer blends already-extracted corner heights; that loses
+the density gradients which shape slopes. The same cached field feeds caves.
+Extracted per-block surfaces and shared lake-bank probes also stay on the GPU,
+so surface rules reuse slope samples without repeating the vertical density scan.
+See [GPU density interpolation validation](docs/GPU_DENSITY_INTERPOLATION.md)
+for correctness checks and measured GPU phase costs.
+
+Java imports `cell_size_xz` and `cell_size_y` from the dominant registered
+`interpolated` expression; vanilla uses 4 x 8 x 4. In
+[26.3](https://feedback.minecraft.net/hc/en-us/articles/48394701938573-Minecraft-Java-Edition-26-3-Snapshot-10),
+these sizes belong to density expressions rather than the noise settings object.
+Density nodes align to global coordinates even when a cell size does not divide
+16, and distant lake-bank probes evaluate the same GPU nodes instead of clamping
+to a request boundary. The lattice stays resident for the dispatch, with no extra
+CPU/GPU transfer. Climate fields still use a four-block bilinear lattice, with
+global GPU sampling for shared probes outside the cached request.
+Vanilla's conservative preliminary surface probe
 is intended for aquifers; treating it as the terrain ceiling depressed land and
-produced excessive ocean. Explicit datapack surface expressions remain direct.
+produced excessive ocean. Explicit datapack height expressions retain the separate
+four-block height lattice and bilinear interpolation.
 The statistical GPU test compares sea coverage to vanilla's actual final density
 at sea level rather than its preliminary probe.
 The registered final-density expression supplies the cavity field on the 3D
@@ -251,8 +275,10 @@ coherent warped Voronoi assignment; legacy fixed-biome saves keep their original
 stone/air model. Registry profiles use GPU height programs in both generation modes.
 
 This remains an approximation: GPU noise differs from Minecraft's CPU sampler,
-legacy blended noise is projected onto GPU noise, cache/interpolation wrappers
-use the GPU sampling lattice, and unsupported structure kinds, the complete
+legacy blended noise is projected onto GPU noise, and nested interpolation wrappers
+are collapsed onto a shared final-density lattice at the first registered cell
+size (4 x 8 x 4 if none is present). Different nested resolutions and operations
+outside those wrappers are therefore approximated. Unsupported structure kinds, the complete
 aquifer pressure model and arbitrary mod-defined feature code are not reproduced. Unsupported
 custom density primitives use their registered range midpoint and are identified
 in the export log; unsupported material/feature kinds are also logged. Ore-vein
@@ -347,8 +373,8 @@ The GPU also emits one surface bit per halo column, so Rust skips tree and plant
 anchors over openings without reading back the halo's full cave volume.
 
 When heights come from registered final density, a GPU-only exterior pass separates
-the sky-connected negative interval from underground cavities. The height and
-cave lattices interpolate the surface differently; exterior air must not strip
+the sky-connected negative interval from underground cavities. Surface extraction
+and cave chambers share the density lattice; exterior air must still not strip
 the selected topsoil. Biome carvers can still open caves and ravines through the
 surface. The scratch limits add no readback bytes and their time is included in
 F3's GPU cave-mask stage.

@@ -11,6 +11,10 @@ struct Request {
     profile: u32,
     tile_side: u32,
     padding: u32,
+    density_offset: u32,
+    density_side: u32,
+    density_step_xz: u32,
+    density_step_y: u32,
 }
 
 @group(0) @binding(0) var<storage, read> requests: array<Request>;
@@ -171,7 +175,7 @@ fn biome_sites(@builtin(global_invocation_id) id: vec3<u32>) {
 // Final GPU stage: domain warp, Voronoi assignment, continuous height blending,
 // simplex relief, coherent material borders, soil depth, cold-water and bedrock flags.
 struct TerrainSample { height: i32, biome: u32, terrain: vec3<f32>, climate: vec4<f32> }
-fn terrain_at(point: vec2<f32>, request: Request, request_index: u32) -> TerrainSample {
+fn terrain_base(point: vec2<f32>, request: Request, request_index: u32) -> TerrainSample {
     let scale = world.globals.x;
     let warp = vec2<f32>(
         simplex(point / (scale * 2.0), request.seed_low + 407u, request.seed_high),
@@ -220,26 +224,129 @@ fn terrain_at(point: vec2<f32>, request: Request, request_index: u32) -> Terrain
     let height = clamp(i32(floor(request.base_height + terrain.x + continental_shape
         + request.amplitude * terrain.y * relief * erosion_scale)), request.min_y + 1, request.max_y);
     if bytecode[0]>0u {
-        let actual=registered_climate(point,request,request_index);
+        let actual=registered_climate_fast(point,request,request_index);
         climate=vec4<f32>(actual[0],actual[1],actual[2],actual[3]);
-        if climate_table.count.x>0u {
-            var best=1e20;
-            for(var index=0u;index<world.ids.x;index++) {
-                if world.biomes[index].terrain.w>0.5 || (world.biomes[index].materials.w & 16u)!=0u {continue;}
-                let difference=climate-world.biomes[index].climate;
-                let fitness=dot(difference,difference)-0.03;
-                if fitness<best {best=fitness;biome=index;}
-            }
-            for(var i=0u;i<climate_table.count.x;i++) {
-                let entry=climate_table.targets[i];if (world.biomes[u32(entry.extra.w)].materials.w & 16u)!=0u {continue;}let difference=climate-clamp(climate,entry.low,entry.high);
-                let ridge=actual[4]-clamp(actual[4],entry.extra.x,entry.extra.y);
-                let fitness=dot(difference,difference)+ridge*ridge+entry.extra.z*entry.extra.z;
-                if fitness<best {best=fitness;biome=u32(entry.extra.w);}
-            }
-        }
-        return TerrainSample(i32(floor(registered_height(point,request,request_index))),biome,terrain,climate);
+        biome=registered_biome(actual,biome);
+        return TerrainSample(height,biome,terrain,climate);
     }
     return TerrainSample(height,biome,terrain,climate);
+}
+fn registered_biome(actual:array<f32,6>,initial:u32)->u32 {
+    var biome=initial;let climate=vec4<f32>(actual[0],actual[1],actual[2],actual[3]);
+    if climate_table.count.x>0u {
+        var best=1e20;
+        for(var index=0u;index<world.ids.x;index++) {
+            if world.biomes[index].terrain.w>0.5 || (world.biomes[index].materials.w & 16u)!=0u {continue;}
+            let difference=climate-world.biomes[index].climate;let fitness=dot(difference,difference)-0.03;
+            if fitness<best {best=fitness;biome=index;}
+        }
+        for(var i=0u;i<climate_table.count.x;i++) {
+            let entry=climate_table.targets[i];if (world.biomes[u32(entry.extra.w)].materials.w & 16u)!=0u {continue;}
+            let difference=climate-clamp(climate,entry.low,entry.high);let ridge=actual[4]-clamp(actual[4],entry.extra.x,entry.extra.y);
+            let fitness=dot(difference,difference)+ridge*ridge+entry.extra.z*entry.extra.z;
+            if fitness<best {best=fitness;biome=u32(entry.extra.w);}
+        }
+    }
+    return biome;
+}
+fn terrain_probe(point:vec2<f32>,r:Request,index:u32)->TerrainSample {
+    var sample=terrain_base(point,r,index);
+    if bytecode[0]>0u {
+        let actual=registered_climate(point,r,index);
+        sample.climate=vec4<f32>(actual[0],actual[1],actual[2],actual[3]);
+        sample.biome=registered_biome(actual,sample.biome);
+    }
+    return sample;
+}
+fn terrain_cached(point:vec2<f32>,r:Request,index:u32)->TerrainSample {
+    var sample=terrain_base(point,r,index);
+    if bytecode[0]>0u {sample.height=i32(floor(registered_height_fast(point,r,index)));}return sample;
+}
+fn lake_center(cell:vec2<i32>,r:Request)->vec2<f32> {
+    let h=cell_hash(cell,r.seed_low+8647u,r.seed_high);
+    return (vec2<f32>(cell)+vec2<f32>(0.25)+vec2<f32>(f32(h&255u),f32((h>>8u)&255u))/510.0)*128.0;
+}
+// radius, fluid level, center biome, eligibility. A whole lake shares these probes.
+fn lake_parameters(cell:vec2<i32>,r:Request,index:u32)->vec4<f32> {
+    let h=cell_hash(cell,r.seed_low+8647u,r.seed_high);
+    let point=lake_center(cell,r);let center=terrain_probe(point,r,index);
+    let options=world.biomes[center.biome].features;
+    let chance=f32((h>>16u)&65535u)/65535.0;
+    let lava=chance<options.y;var radius=24.0+f32(h&7u);
+    if lava {radius*=0.25;}
+    return vec4<f32>(radius,f32(r.min_y),f32(center.biome),select(0.0,1.0,lava || chance<options.x));
+}
+@compute @workgroup_size(64)
+fn lake_candidates(@builtin(global_invocation_id) id:vec3<u32>) {
+    let r=requests[id.y];let n=lake_side(r);if id.x>=n*n {return;}
+    let cell=vec2<i32>(density_floor_div(r.origin_x,128),density_floor_div(r.origin_z,128))+vec2<i32>(i32(id.x%n),i32(id.x/n));
+    let width=i32(select(16u,r.tile_side*16u,r.tile_side>0u));
+    let last=vec2<i32>(density_floor_div(r.origin_x+width-1,128),density_floor_div(r.origin_z+width-1,128));
+    var info=vec4<f32>(0.0);if all(cell<=last) {info=lake_parameters(cell,r,id.y);}
+    let at=lake_offset(r)+id.x*4u;
+    for(var i=0u;i<4u;i++){surface_nodes[at+i]=info[i];}
+}
+fn lake_probe_point(probe:u32,r:Request)->vec2<f32> {
+    let lake=probe/5u;let n=lake_side(r);
+    let cell=vec2<i32>(density_floor_div(r.origin_x,128),density_floor_div(r.origin_z,128))+vec2<i32>(i32(lake%n),i32(lake/n));
+    let center=lake_center(cell,r);let radius=surface_nodes[lake_offset(r)+lake*4u];
+    switch probe%5u {
+        case 1u:{return center+vec2<f32>(radius+5.0,0.0);}
+        case 2u:{return center-vec2<f32>(radius+5.0,0.0);}
+        case 3u:{return center+vec2<f32>(0.0,(radius+5.0)/0.78);}
+        case 4u:{return center-vec2<f32>(0.0,(radius+5.0)/0.78);}
+        default:{return center;}
+    }
+}
+@compute @workgroup_size(64)
+fn lake_density(@builtin(global_invocation_id) id:vec3<u32>) {
+    let r=requests[id.z];let n=lake_side(r);
+    if id.x>=n*n*20u || id.y>=density_layers(r) {return;}
+    let probe=id.x/4u;let corner=id.x%4u;
+    if surface_nodes[lake_offset(r)+(probe/5u)*4u+3u]<0.5 {return;}
+    let point=lake_probe_point(probe,r);
+    let cell=vec2<i32>(floor((point-vec2<f32>(density_origin(r).xz))/f32(r.density_step_xz)))+vec2<i32>(i32(corner&1u),i32(corner>>1u));
+    // Every corner/Y sample has its own invocation. Outside-grid noise is never
+    // evaluated serially inside a lake's vertical scan.
+    surface_nodes[lake_probe_offset(r)+(probe*density_layers(r)+id.y)*4u+corner]=density_corner(cell,id.y,r);
+}
+@compute @workgroup_size(64)
+fn lake_nodes(@builtin(global_invocation_id) id:vec3<u32>) {
+    let r=requests[id.y];let n=lake_side(r);if id.x>=n*n {return;}
+    let at=lake_offset(r)+id.x*4u;if surface_nodes[at+3u]<0.5 {return;}
+    var height=r.max_y;
+    for(var p=0u;p<5u;p++) {
+        let probe=id.x*5u+p;
+        height=min(height,i32(floor(density_surface_height(lake_probe_point(probe,r),r,probe))));
+    }
+    surface_nodes[at+1u]=f32(height-2);
+}
+fn cached_lake(cell:vec2<i32>,r:Request,index:u32)->vec4<f32> {
+    if bytecode[0]>0u && bytecode[5]==0u {
+        let local=cell-vec2<i32>(density_floor_div(r.origin_x,128),density_floor_div(r.origin_z,128));
+        let at=lake_offset(r)+(u32(local.y)*lake_side(r)+u32(local.x))*4u;
+        return vec4<f32>(surface_nodes[at],surface_nodes[at+1u],surface_nodes[at+2u],surface_nodes[at+3u]);
+    }
+    return lake_geometry_legacy(cell,r,index);
+}
+// Legacy and explicit-height profiles retain their original height lookup.
+// This separate helper avoids pulling uncached density evaluation into main.
+fn lake_geometry_legacy(cell:vec2<i32>,r:Request,index:u32)->vec4<f32> {
+    let h=cell_hash(cell,r.seed_low+8647u,r.seed_high);
+    let point=lake_center(cell,r);let center=terrain_cached(point,r,index);
+    let options=world.biomes[center.biome].features;
+    let chance=f32((h>>16u)&65535u)/65535.0;
+    let lava=chance<options.y;var radius=24.0+f32(h&7u);
+    if lava {radius*=0.25;}
+    var level=f32(r.min_y);let eligible=lava || chance<options.x;
+    if eligible {
+        let x0=terrain_cached(point+vec2<f32>(radius+5.0,0.0),r,index).height;
+        let x1=terrain_cached(point-vec2<f32>(radius+5.0,0.0),r,index).height;
+        let z0=terrain_cached(point+vec2<f32>(0.0,(radius+5.0)/0.78),r,index).height;
+        let z1=terrain_cached(point-vec2<f32>(0.0,(radius+5.0)/0.78),r,index).height;
+        level=f32(min(center.height,min(min(x0,x1),min(z0,z1)))-2);
+    }
+    return vec4<f32>(radius,level,f32(center.biome),select(0.0,1.0,eligible));
 }
 @compute @workgroup_size(64)
 fn main(@builtin(global_invocation_id) id: vec3<u32>) {
@@ -259,7 +366,7 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
         columns[index] = Column(clamp(height, request.min_y + 1, request.max_y), 0u, 0u);
         return;
     }
-    let sample = terrain_at(point,request,request_index);
+    let sample = terrain_cached(point,request,request_index);
     var height = sample.height;
     let biome = sample.biome;
     // One coherent region membership selects both the biome and its surface.
@@ -298,35 +405,32 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
     // Their geometry is computed here, before any readback or Rust assembly.
     let lake_cell = vec2<i32>(floor(point / 128.0));
     let lh = cell_hash(lake_cell, request.seed_low + 8647u, request.seed_high);
-    let lake_center = (vec2<f32>(lake_cell) + vec2<f32>(0.25) + vec2<f32>(f32(lh & 255u),f32((lh >> 8u) & 255u))/510.0)*128.0;
-    let lake_delta = point - lake_center;
+    let lake_point = lake_center(lake_cell,request);
+    let lake_delta = point - lake_point;
     var radius = 24.0+f32(lh & 7u);
     var basin = length(lake_delta * vec2<f32>(1.0,0.78)) / radius
         + simplex(point * 0.055, request.seed_low + 9913u, request.seed_high)*0.09;
     if basin < 1.35 {
-        let center = terrain_at(lake_center,request,request_index);
-        let options = world.biomes[center.biome].features;
+        let lake = cached_lake(lake_cell,request,request_index);
+        let center_biome=u32(lake.z);
+        let options = world.biomes[center_biome].features;
         let chance = f32((lh >> 16u) & 65535u)/65535.0;
         let lava_lake = chance < options.y;
         if lava_lake {
-            radius *= 0.25;
+            radius = lake.x;
             basin = length(lake_delta * vec2<f32>(1.0,0.78)) / radius
                 + simplex(point * 0.055, request.seed_low + 9913u, request.seed_high)*0.09;
         }
-        let eligible = lava_lake || chance < options.x;
+        let eligible = lake.w>0.0;
         if eligible && basin < 1.35 && (material.w & (2u | 4u | 8u | 16u)) == 0u {
             // A fixed level below the lowest sampled bank contains the fluid.
-            let shore_x0 = terrain_at(lake_center+vec2<f32>(radius+5.0,0.0),request,request_index).height;
-            let shore_x1 = terrain_at(lake_center-vec2<f32>(radius+5.0,0.0),request,request_index).height;
-            let shore_z0 = terrain_at(lake_center+vec2<f32>(0.0,(radius+5.0)/0.78),request,request_index).height;
-            let shore_z1 = terrain_at(lake_center-vec2<f32>(0.0,(radius+5.0)/0.78),request,request_index).height;
-            let level = min(center.height,min(min(shore_x0,shore_x1),min(shore_z0,shore_z1)))-2;
+            let level = i32(lake.y);
             if level > sea_level+3 && abs(height-level) <= 18 {
                 if basin < 1.0 {
                     let drop = u32(clamp(i32(ceil((1.0-basin*basin)*6.0)),1,7));
                     height = clamp(level-i32(drop),request.min_y+6,request.max_y-1);
                     depth = drop; flags &= ~(1u<<28u); flags |= 1u<<29u;
-                    if lava_lake { flags |= 1u<<28u; top = 4u; filler = center.biome; }
+                    if lava_lake { flags |= 1u<<28u; top = 4u; filler = center_biome; }
                     else { top = 1u; filler = top; }
                 } else {
                     height = i32(round(mix(f32(level),f32(height),smoothstep(1.0,1.35,basin))));
@@ -345,8 +449,8 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
     if top==1u {top_id=material.z;}else if top==2u {top_id=world.ids.w;}else if top==3u {top_id=world.ids.z;}
     if filler==1u {filler_id=material.z;}else if filler==3u {filler_id=world.ids.z;}
     if bytecode[0]>0u && (flags & (1u<<29u))==0u {
-        let slope=abs(registered_height(point+vec2<f32>(4.0,0.0),request,request_index)-registered_height(point-vec2<f32>(4.0,0.0),request,request_index))
-                  +abs(registered_height(point+vec2<f32>(0.0,4.0),request,request_index)-registered_height(point-vec2<f32>(0.0,4.0),request,request_index));
+        let slope=abs(registered_height_fast(point+vec2<f32>(4.0,0.0),request,request_index)-registered_height_fast(point-vec2<f32>(4.0,0.0),request,request_index))
+                  +abs(registered_height_fast(point+vec2<f32>(0.0,4.0),request,request_index)-registered_height_fast(point-vec2<f32>(0.0,4.0),request,request_index));
         let band=f32(bitcast<i32>(filler<<24u)>>24);
         let selected_top=run_program(3u+biome,vec3<f32>(point.x,f32(height-1),point.y),request,vec4<f32>(1.0,f32(depth),slope,band))[0];
         let selected_filler=run_program(3u+biome,vec3<f32>(point.x,f32(height-3),point.y),request,vec4<f32>(3.0,f32(depth),slope,band))[0];

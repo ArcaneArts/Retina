@@ -92,6 +92,10 @@ struct GpuRequest {
     profile: u32,
     tile_side: u32,
     padding: u32,
+    density_offset: u32,
+    density_side: u32,
+    density_step_xz: u32,
+    density_step_y: u32,
 }
 
 impl From<ChunkRequest> for GpuRequest {
@@ -109,6 +113,10 @@ impl From<ChunkRequest> for GpuRequest {
             profile: r.reserved,
             tile_side: 0,
             padding: 0,
+            density_offset: 0,
+            density_side: 0,
+            density_step_xz: 4,
+            density_step_y: 8,
         }
     }
 }
@@ -1293,7 +1301,10 @@ mod tests {
     fn abi_layout_is_stable() {
         assert_eq!(std::mem::size_of::<ChunkRequest>(), 40);
         assert_eq!(std::mem::offset_of!(ChunkRequest, frequency), 32);
-        assert_eq!(std::mem::size_of::<GpuRequest>(), 48);
+        // GPU-only descriptors include density lattice addressing; the public
+        // ChunkRequest ABI above remains unchanged.
+        assert_eq!(std::mem::size_of::<GpuRequest>(), 64);
+        assert_eq!(std::mem::offset_of!(GpuRequest, density_offset), 48);
         assert_eq!(std::mem::size_of::<timings::Snapshot>(), 192);
         assert_eq!(std::mem::offset_of!(timings::Snapshot, nanos), 32);
         assert_eq!(std::mem::size_of::<region::RegionReport>(), 40);
