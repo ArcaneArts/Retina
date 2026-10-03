@@ -79,6 +79,7 @@ impl RegistryProgram {
                     23 | 24 => vec![n.a, n.b, n.c],
                     25 => vec![n.a],
                     40 => vec![n.a, n.b],
+                    53 => vec![n.a],
                     _ => vec![],
                 };
                 if deps.iter().any(|x| *x as usize >= i) {
@@ -98,7 +99,7 @@ impl RegistryProgram {
                 {
                     return Err("invalid GPU spline points".into());
                 }
-                if !matches!(n.op,0..=26|40..=51) {
+                if !matches!(n.op,0..=26|40..=53) {
                     return Err("unknown GPU opcode".into());
                 }
             }

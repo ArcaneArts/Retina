@@ -11,7 +11,7 @@ runtime installation is needed.
 
 ```sh
 ./gradlew build
-./gradlew gpuTest regionTest biomeTest geologyTest featureTest previewTest structureTest
+./gradlew gpuTest regionTest biomeTest geologyTest featureTest previewTest structureTest shoreTest
 ./gradlew runClient -PretinaQa
 ```
 
@@ -22,14 +22,19 @@ Create a new single-player world and select a Retina world type in the **World**
 
 Both generate the same biome terrain model in the overworld. Nether and End remain vanilla.
 The default biome set includes plains, forests, taiga, snowy plains, desert, savanna,
-badlands, jungle, mangrove swamp, windswept hills, jagged peaks and three oceans.
+badlands, jungle, mangrove swamp, windswept hills, jagged peaks, three oceans,
+sandy/snowy beaches and stony shores. New presets select these biomes using the
+registered Overworld climate intervals. Enabled packs can replace those intervals,
+material rules and shoreline sediment recipes; the GPU evaluates them in both modes.
+See [shoreline generation](docs/SHORELINES.md) for the projection and its limits.
 Surfaces include grass/dirt, podzol, sand, red sand/striped terracotta, mud, snow and stone.
 Underground, GPU-selected lush caves, dripstone caves and deep dark contain moss,
 cave plants, hanging vines, spore blossoms, stalactites/stalagmites and sculk.
 Curved ravines and water/lava lakes share the native region pipeline. Lava lakes
 use one quarter of the original radius/diameter; water lake size is unchanged.
 New presets use `biome_scale: 128`, halving the default horizontal climate
-wavelengths and Voronoi spacing while retaining datapack noise/spacing ratios.
+wavelengths while retaining datapack noise/spacing ratios. Existing saves without
+an imported registry source retain their original Voronoi selection.
 Oceans fill to the registry sea level, with ice in cold biomes; bedrock and deepslate
 form the lower layers. Grass, ferns, flowers, tall plants, bushes and biome-specific
 wood/leaves are assembled in Rust from vanilla's registered decoration recipes.

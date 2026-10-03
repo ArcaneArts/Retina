@@ -22,10 +22,17 @@
             "minecraft:jagged_peaks",
             "minecraft:ocean",
             "minecraft:warm_ocean",
-            "minecraft:frozen_ocean"
+            "minecraft:frozen_ocean",
+            "minecraft:beach",
+            "minecraft:snowy_beach",
+            "minecraft:stony_shore"
           ],
           "biome_scale": 128.0,
-          "blend": 0.55
+          "blend": 0.55,
+          "registry_source": {
+            "type": "minecraft:multi_noise",
+            "preset": "minecraft:overworld"
+          }
         },
         "min_y": -64,
         "height": 384,

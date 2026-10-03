@@ -229,3 +229,12 @@ tasks.register('landscapeTest', JavaExec) {
     mainClass = 'art.arcane.retina.worldgen.NativeLandscapeIntegrationTest'
     jvmArgs '--enable-native-access=ALL-UNNAMED'
 }
+
+tasks.register('shoreTest', JavaExec) {
+    group = 'verification'
+    description = 'Validate registered coastal biomes, water predicates and GPU surface sediments.'
+    dependsOn 'gpuTestClasses', 'packageNative'
+    classpath = sourceSets.gpuTest.runtimeClasspath
+    mainClass = 'art.arcane.retina.worldgen.NativeShoreIntegrationTest'
+    jvmArgs '--enable-native-access=ALL-UNNAMED'
+}

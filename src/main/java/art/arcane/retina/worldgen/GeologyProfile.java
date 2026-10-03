@@ -30,6 +30,8 @@ final class GeologyProfile {
         var pending = new ArrayList<Pending>();
         var ids = new LinkedHashMap<String, Integer>();
         var omitted = new TreeSet<String>();
+        var gpuSediments = new HashSet<String>();
+        for (var id : world.getAsJsonObject("registry_program").getAsJsonArray("shore_features")) gpuSediments.add(id.getAsString());
         var ops = registry.createSerializationContext(JsonOps.INSTANCE);
         for (int i = 0; i < biomes.size(); i++) {
             var oreIds = new JsonArray();
@@ -38,6 +40,7 @@ final class GeologyProfile {
                 var placed = holder.value();
                 if (!(placed.feature().value() instanceof AbstractOreFeature ore)) continue;
                 String id = holder.unwrapKey().map(k -> k.identifier().toString()).orElse("inline/" + placed.hashCode());
+                if (gpuSediments.contains(id)) continue;
                 Integer index = ids.get(id);
                 if (index == null) {
                     var recipe = new JsonObject();
@@ -180,7 +183,7 @@ final class GeologyProfile {
         if (a.has("relative_to_sea_level")) return sea + a.get("relative_to_sea_level").getAsInt();
         throw new IllegalArgumentException("Unsupported geology anchor: " + a);
     }
-    private static JsonObject range(JsonElement value, int min, int height, int sea) {
+    static JsonObject range(JsonElement value, int min, int height, int sea) {
         var data = value.getAsJsonObject(); var result = new JsonObject(); String kind = type(data);
         if (kind.equals("constant")) {
             int y = anchor(data.has("value") ? data.get("value") : data, min, height, sea);

@@ -24,9 +24,9 @@ public final class NativeLandscapeIntegrationTest {
             var loaded=RegistryDataLoader.load(resources,builtin.listRegistries().toList(),RegistryDataLoader.WORLD_REGISTRIES,Runnable::run).join();
             var registry=new RegistryAccess.ImmutableRegistryAccess(java.util.stream.Stream.concat(builtin.registries(),loaded.registries())).freeze();
             var preset=JsonParser.parseString(Files.readString(Path.of("src/main/resources/data/retina/worldgen/world_preset/gpu.json"))).getAsJsonObject().getAsJsonObject("dimensions").getAsJsonObject("minecraft:overworld").getAsJsonObject("generator").getAsJsonObject("biome_source");
-            var choices=preset.getAsJsonArray("biomes").asList().stream().map(e->(Holder<Biome>)registry.lookupOrThrow(Registries.BIOME).getOrThrow(ResourceKey.create(Registries.BIOME,Identifier.parse(e.getAsString())))).toList();
             var settings=registry.lookupOrThrow(Registries.NOISE_SETTINGS).getOrThrow(NoiseGeneratorSettings.OVERWORLD).value();
-            var profile=BiomeTerrainProfile.load(registry,new RetinaBiomeSource(choices,preset.get("biome_scale").getAsFloat(),.55f),-64,384,123456789L);
+            var source = RetinaBiomeSource.CODEC.codec().parse(registry.createSerializationContext(com.mojang.serialization.JsonOps.INSTANCE), preset).getOrThrow();
+            var profile=BiomeTerrainProfile.load(registry,source,-64,384,123456789L);
             var data=JsonParser.parseString(profile.json()).getAsJsonObject();
             // Lake placement must not distort the broad land/ocean measurement.
             for(var b:data.getAsJsonArray("biomes"))b.getAsJsonObject().add("lakes",JsonParser.parseString("[0,0]"));

@@ -4,7 +4,6 @@ import com.google.gson.*;
 import net.minecraft.SharedConstants;
 import net.minecraft.core.Holder;
 import net.minecraft.core.registries.Registries;
-import net.minecraft.data.registries.VanillaRegistries;
 import net.minecraft.resources.*;
 import net.minecraft.server.Bootstrap;
 import net.minecraft.world.level.ChunkPos;
@@ -22,7 +21,7 @@ public final class NativeFeatureIntegrationTest {
         var resources = new net.minecraft.server.packs.resources.FallbackResourceManager(net.minecraft.server.packs.PackType.SERVER_DATA, "minecraft");
         resources.push(net.minecraft.server.packs.repository.ServerPacksSource.createVanillaPackSource().fullResources());
         net.minecraft.tags.TagLoader.loadTagsForExistingRegistries(resources, net.minecraft.core.RegistryAccess.fromRegistryOfRegistries(net.minecraft.core.registries.BuiltInRegistries.REGISTRY)).forEach(net.minecraft.core.Registry.PendingTags::apply);
-        var registry = VanillaRegistries.createWorldLookup();
+        var registry = RegistryIntegrationFixtures.load(resources);
         List<Holder<Biome>> choices = List.of("plains", "badlands").stream().map(id -> (Holder<Biome>) registry.lookupOrThrow(Registries.BIOME).getOrThrow(ResourceKey.create(Registries.BIOME, Identifier.withDefaultNamespace(id)))).toList();
         var profile = BiomeTerrainProfile.load(registry, new RetinaBiomeSource(choices, 256, 0.55F), -64, 384, 123456789L);
         var json = JsonParser.parseString(profile.json()).getAsJsonObject();

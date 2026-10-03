@@ -75,7 +75,10 @@ fn run_program(program:u32,point:vec3<f32>,request:Request,context:vec4<f32>)->a
             case 44u:{result=select(0.0,1.0,values[a]>=p.x && values[a]<=p.y);}
             // context: stone depth, surface depth, local slope, terracotta offset.
             case 45u:{result=select(0.0,1.0,a==1u && context.x<=1.0+p.x+select(0.0,context.y,b==1u)+p.y*0.5);}
-            case 46u:{result=select(0.0,1.0,point.y+select(0.0,context.x,a==1u)>=f32(bitcast<i32>(bytecode[8]))+p.x+context.y*p.y);}
+            case 46u:{
+                let water=f32(bitcast<i32>(bytecode[8]));let surface=point.y+context.x;
+                result=select(0.0,1.0,surface>=water || point.y+select(0.0,context.x,a==1u)>=water+p.x+context.y*p.y);
+            }
             case 47u:{result=select(0.0,1.0,point.y+select(0.0,context.x,a==1u)>=p.x+context.y*p.y);}
             case 48u:{let h=cell_hash(vec2<i32>(point.xz),request.seed_low+u32(program)*7919u,request.seed_high);let chance=f32(h&65535u)/65535.0;result=select(0.0,1.0,chance<clamp((p.y-point.y)/max(p.y-p.x,1.0),0.0,1.0));}
             case 49u:{result=select(0.0,1.0,context.z>3.0);}
@@ -83,6 +86,26 @@ fn run_program(program:u32,point:vec3<f32>,request:Request,context:vec4<f32>)->a
             case 51u:{var temperature=p.x;let snowline=f32(bitcast<i32>(bytecode[8]))+17.0;
                 if point.y>snowline {temperature-=(noise3(point*vec3<f32>(0.125,0.0,0.125),1234u)*8.0+point.y-snowline)*0.00125;}
                 result=select(0.0,1.0,temperature<0.15);}
+
+            case 52u:{
+                // Minecraft's noise-based count formula, using our GPU noise approximation.
+                result=ceil((noise3(vec3<f32>(point.x,0.0,point.z)/p.x,2345u)*0.625+p.y)*p.z);
+            }
+            case 53u:{
+                let surface=point.y+context.x;let sea=f32(bitcast<i32>(bytecode[8]));
+                var low=select(p.x,surface,(c&2u)!=0u);var high=select(p.y,surface,(c&2u)!=0u);
+                let range=max(1.0,high-low+1.0);
+                if (c&1u)!=0u {low=max(low,surface);high=min(high,sea-1.0);}
+                let eligible=max(0.0,min(high,point.y+p.w)-max(low,point.y-p.w)+1.0);
+                if values[a]>0.0 && eligible>0.0 {
+                    let area=max(1.0,3.14159265*p.z*p.z);
+                    let coverage=1.0-exp(-values[a]*area*min(1.0,eligible/range)/256.0);
+                    // Spatial correlation follows the feature radius; no independent block scatter.
+                    let field=noise3(vec3<f32>(point.x,0.0,point.z)/max(2.0,p.z*2.0),request.seed_low^mix_hash(request.seed_high)^b)*0.625;
+                    let coverage_noise=smoothstep(-0.5,0.5,field);
+                    result=select(0.0,1.0,coverage_noise<coverage);
+                }
+            }
 
             default:{}
         }

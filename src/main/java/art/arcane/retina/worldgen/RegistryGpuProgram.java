@@ -21,6 +21,8 @@ final class RegistryGpuProgram {
     final JsonArray noises = new JsonArray(), programs = new JsonArray(), points = new JsonArray();
     final Map<String,Integer> noiseIds = new LinkedHashMap<>();
     final Set<String> approximations = new TreeSet<>();
+    final Set<String> shoreFeatures = new TreeSet<>();
+    BlockState defaultFluid = net.minecraft.world.level.block.Blocks.WATER.defaultBlockState();
     final int minY, height, sea;
     RegistryGpuProgram(HolderLookup.Provider registry, int minY, int height, int sea) {
         this.registry=registry; this.minY=minY; this.height=height; this.sea=sea;
@@ -28,6 +30,7 @@ final class RegistryGpuProgram {
     static JsonObject export(HolderLookup.Provider registry, NoiseGeneratorSettings settings,
                              List<Holder<Biome>> biomes, LinkedHashMap<BlockState,Integer> palette, int minY, int height, float biomeScale) {
         var compiler=new RegistryGpuProgram(registry,minY,height,settings.seaLevel());
+        compiler.defaultFluid = settings.defaultFluid();
         var router=settings.noiseRouter();
         var climate=compiler.new Program();
         for(var fn:List.of(router.temperature(),router.vegetation(),router.continents(),router.erosion(),router.ridges(),router.depth()))
@@ -54,7 +57,10 @@ final class RegistryGpuProgram {
         var density=compiler.new Program();density.roots.add(density.density(compiler.encode(router.finalDensity())));compiler.programs.add(density.finish());
         for(var biome:biomes) {
             var p=compiler.new Program();
-            p.roots.add(p.rule(settings.materialRule().value(),biome,palette));
+            int base = p.rule(settings.materialRule().value(),biome,palette);
+            p.roots.add(ShoreMaterialProfile.compile(compiler, p, biome, palette, base));
+            // Preserve the uncoated root for diagnostics and shader A/B measurements.
+            p.roots.add(base);
             compiler.programs.add(p.finish());
         }
         var result=new JsonObject(); result.add("programs",compiler.programs);result.add("noises",compiler.noises);
@@ -68,6 +74,8 @@ final class RegistryGpuProgram {
         var surfaceNoises=new JsonArray();
         for(String id:List.of("surface","surface_secondary","clay_bands_offset"))surfaceNoises.add(compiler.noise(new JsonPrimitive("minecraft:"+id)));
         result.add("surface_noises",surfaceNoises);
+        var shores = new JsonArray(); compiler.shoreFeatures.forEach(shores::add); result.add("shore_features", shores);
+        Retina.LOGGER.info("Projected {} registered surface sediment features to GPU coverage: {}", shores.size(), shores);
         var approximations=new JsonArray();compiler.approximations.forEach(approximations::add);result.add("approximations",approximations);
         Retina.LOGGER.info("Compiled registry GPU programs: {} climate nodes, {} surface nodes, {} material programs, {} noises; approximations {}",
                 climate.nodes.size(),terrain.nodes.size(),biomes.size(),compiler.noises.size(),compiler.approximations);

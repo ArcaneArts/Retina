@@ -159,7 +159,7 @@ final class DecorationProfile {
         result.program.add(op); return result;
     }
 
-    private static boolean supportedIntProvider(JsonElement value) {
+    static boolean supportedIntProvider(JsonElement value) {
         if (value == null || value.isJsonPrimitive()) return true;
         var object = value.getAsJsonObject();
         return switch (type(object)) {
@@ -254,7 +254,7 @@ final class DecorationProfile {
         return output;
     }
 
-    private static boolean matchesBlock(JsonElement choices, BlockState state) {
+    static boolean matchesBlock(JsonElement choices, BlockState state) {
         if (choices.isJsonArray()) return choices.getAsJsonArray().asList().stream().anyMatch(c -> matchesBlock(c, state));
         String id = choices.getAsString();
         return id.startsWith("#") ? state.is(TagKey.create(Registries.BLOCK, Identifier.parse(id.substring(1))))
@@ -399,7 +399,7 @@ final class DecorationProfile {
         }
         var result = new JsonArray(); result.add(min); result.add(max); return result;
     }
-    private static double mean(JsonElement value) {
+    static double mean(JsonElement value) {
         if (value.isJsonPrimitive()) return value.getAsDouble();
         var object = value.getAsJsonObject();
         if (object.has("distribution")) { double sum = 0, weight = 0; for (var e : object.getAsJsonArray("distribution")) { var w = e.getAsJsonObject(); double n = w.get("weight").getAsDouble(); sum += n * mean(w.get("data")); weight += n; } return sum / weight; }

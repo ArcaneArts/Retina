@@ -73,7 +73,7 @@ final class TerrainFeatureProfile {
             int flags = entry.get("flags").getAsInt();
             // Modern vanilla registers lava lakes. Water basins are Retina's approximation,
             // using the registered default fluid, seabed material, and biome rainfall.
-            entry.add("lakes", array(underground || (flags & (4 | 8)) != 0 ? 0 : 0.15 + wetness * 0.45, underground ? 0 : lavaChance));
+            entry.add("lakes", array(underground || (flags & (4 | 8 | 64)) != 0 ? 0 : 0.15 + wetness * 0.45, underground ? 0 : lavaChance));
             entry.addProperty("snow_surface",snowSurface && biome.value().hasPrecipitation());
             if(snowSurface)entry.addProperty("flags",entry.get("flags").getAsInt()|32);
             entry.add("cave_features", collector.finish(kind));

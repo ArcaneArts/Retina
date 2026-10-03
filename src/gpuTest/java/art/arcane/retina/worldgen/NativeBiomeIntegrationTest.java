@@ -4,7 +4,6 @@ import com.mojang.serialization.Codec;
 import net.minecraft.SharedConstants;
 import net.minecraft.core.Holder;
 import net.minecraft.core.registries.Registries;
-import net.minecraft.data.registries.VanillaRegistries;
 import net.minecraft.nbt.NbtOps;
 import net.minecraft.server.Bootstrap;
 import net.minecraft.util.SimpleBitStorage;
@@ -34,7 +33,7 @@ public final class NativeBiomeIntegrationTest {
         var resources = new net.minecraft.server.packs.resources.FallbackResourceManager(net.minecraft.server.packs.PackType.SERVER_DATA, "minecraft");
         resources.push(net.minecraft.server.packs.repository.ServerPacksSource.createVanillaPackSource().fullResources());
         net.minecraft.tags.TagLoader.loadTagsForExistingRegistries(resources, net.minecraft.core.RegistryAccess.fromRegistryOfRegistries(net.minecraft.core.registries.BuiltInRegistries.REGISTRY)).forEach(net.minecraft.core.Registry.PendingTags::apply);
-        var registry = VanillaRegistries.createWorldLookup();
+        var registry = RegistryIntegrationFixtures.load(resources);
         var biomeRegistry = registry.lookupOrThrow(Registries.BIOME);
         var ids = List.of("plains", "forest", "dark_forest", "birch_forest", "taiga", "old_growth_pine_taiga", "snowy_plains", "desert", "savanna", "badlands", "jungle", "mangrove_swamp", "windswept_hills", "jagged_peaks", "ocean", "warm_ocean", "frozen_ocean");
         List<Holder<Biome>> biomes = ids.stream().map(id -> (Holder<Biome>) biomeRegistry.getOrThrow(ResourceKey.create(Registries.BIOME, Identifier.withDefaultNamespace(id)))).toList();

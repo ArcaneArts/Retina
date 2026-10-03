@@ -92,7 +92,10 @@ public record BiomeTerrainProfile(int nativeId, int seaLevel, BlockState[] mater
             entry.addProperty("underwater", material(materials, surface(root, seabed, Blocks.GRAVEL.defaultBlockState())));
             int flags = biome.value().getBaseTemperature() < 0.15F ? 1 : 0;
             if (id.contains("windswept") || id.contains("peak") || id.contains("slopes") || id.contains("mountain") || id.contains("highland") || id.contains("volcanic")) flags |= 2;
-            if (id.contains("ocean")) flags |= 4;
+            if (biome.is(net.minecraft.tags.BiomeTags.IS_OCEAN) || biome.is(net.minecraft.tags.TagKey.create(Registries.BIOME, Identifier.parse("c:is_ocean"))) || id.contains("ocean")) flags |= 4;
+            if (biome.is(net.minecraft.tags.BiomeTags.IS_BEACH) || biome.is(Biomes.BEACH) || biome.is(Biomes.SNOWY_BEACH) || biome.is(Biomes.STONY_SHORE)
+                    || biome.is(net.minecraft.tags.TagKey.create(Registries.BIOME, Identifier.parse("c:is_beach")))
+                    || biome.is(net.minecraft.tags.TagKey.create(Registries.BIOME, Identifier.parse("c:is_stony_shores")))) flags |= 64;
             if (id.contains("badlands")) flags |= 8;
             if (id.contains("cave/") || id.contains("caves") || biome.is(Biomes.DEEP_DARK) || (!biome.unwrapKey().orElseThrow().identifier().getNamespace().equals("minecraft") && biome.is(net.minecraft.tags.TagKey.create(Registries.BIOME, Identifier.parse("c:is_cave"))))) flags |= 16;
             entry.addProperty("flags", flags);
