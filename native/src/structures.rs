@@ -67,7 +67,7 @@ pub struct Part {
 #[derive(Clone, Deserialize)]
 pub struct Pool {
     pub fallback: String,
-    pub entries: Vec<Element>,
+    pub entries: Vec<Arc<Element>>,
 }
 #[derive(Clone, Deserialize)]
 pub struct Definition {
@@ -126,7 +126,7 @@ pub fn empty_data() -> Value {
 }
 #[derive(Clone)]
 pub struct Piece {
-    pub element: Element,
+    pub element: Arc<Element>,
     pub pos: [i32; 3],
     pub rotation: usize,
     pub bounds: [i32; 6],
@@ -608,12 +608,14 @@ fn choose_aliases(v: &Value, out: &mut HashMap<String, String>, r: &mut Random) 
         }
     }
 }
-fn shuffled(pool: Option<&Pool>, r: &mut Random) -> Vec<Element> {
+fn shuffled<'a>(pool: Option<&'a Pool>, r: &mut Random) -> Vec<&'a Arc<Element>> {
     let mut out = Vec::new();
     if let Some(pool) = pool {
         for e in &pool.entries {
             for _ in 0..e.weight {
-                out.push(e.clone());
+                // Keep the weighted slot order and RNG draws, but share immutable
+                // entries instead of copying parts and their processor JSON.
+                out.push(e);
             }
         }
         r.shuffle(&mut out);
@@ -736,7 +738,7 @@ fn build(
             .unwrap()
             .clone()
     } else {
-        Element {
+        Arc::new(Element {
             parts: vec![Part {
                 template: d.template,
                 ignore_air: false,
@@ -745,7 +747,7 @@ fn build(
             }],
             terrain_matching: false,
             weight: 1,
-        }
+        })
     };
     if root.parts.is_empty() {
         return Ok(out);
@@ -917,7 +919,7 @@ fn build(
                             continue;
                         }
                         let piece = Piece {
-                            element: element.clone(),
+                            element: Arc::clone(element),
                             pos,
                             rotation,
                             bounds: box2,
@@ -1001,7 +1003,7 @@ impl Profile {
         }
         for pool in self.pools.values_mut() {
             for entry in &mut pool.entries {
-                for part in &mut entry.parts {
+                for part in &mut Arc::make_mut(entry).parts {
                     part.program = Arc::new(Program::compile(&part.processors, materials));
                 }
             }
@@ -1427,6 +1429,28 @@ pub fn apply(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn weighted_pool_shuffle_shares_entries_and_preserves_random_stream() {
+        let pool: Pool = serde_json::from_value(json!({
+            "fallback":"test:empty", "entries": [
+                {"parts":[{"template":0,"ignore_air":false,"processors":[]}],"terrain_matching":false,"weight":3},
+                {"parts":[{"template":1,"ignore_air":false,"processors":[{"processor_type":"minecraft:rule"}]}],"terrain_matching":true,"weight":2},
+                {"parts":[],"terrain_matching":false,"weight":1}
+            ]
+        })).unwrap();
+        for seed in [0, 1, 42, u64::MAX] {
+            let mut old_rng = Random::new(seed);
+            let mut expected = vec![0, 0, 0, 1, 1, 2];
+            old_rng.shuffle(&mut expected);
+            let mut rng = Random::new(seed);
+            let actual = shuffled(Some(&pool), &mut rng);
+            for (entry, index) in actual.iter().zip(expected) {
+                assert!(Arc::ptr_eq(entry, &pool.entries[index]));
+            }
+            assert_eq!(rng.long(), old_rng.long());
+            assert_eq!(Arc::strong_count(&pool.entries[0]), 1);
+        }
+    }
     #[test]
     fn rigid_floors_extend_column_soil_instead_of_repeating_the_floor() {
         let mut profile: WorldProfile = serde_json::from_value(json!({
