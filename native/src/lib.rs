@@ -9,7 +9,6 @@ use std::sync::{Arc, OnceLock, mpsc};
 use std::time::{Duration, Instant};
 
 use bytemuck::{Pod, Zeroable};
-use gpu::Gpu;
 use profile::{Column, WorldProfile};
 use std::collections::{HashMap, VecDeque};
 use std::sync::{Mutex, RwLock};
@@ -18,6 +17,8 @@ pub mod decoration;
 mod features;
 pub mod geology;
 mod gpu;
+mod gpu_worker;
+pub mod pipeline;
 pub mod profile;
 mod tree_shapes;
 
@@ -145,146 +146,31 @@ pub struct TerrainEngine {
     caves: Mutex<CaveCache>,
     structures: Mutex<structures::Cache>,
     timings: Mutex<HashMap<u32, Arc<timings::Timings>>>,
+    pipeline: Arc<pipeline::Metrics>,
 }
 
 impl TerrainEngine {
     pub fn new() -> Result<Self, String> {
+        Self::with_pipeline_depth(2)
+    }
+    /// One-slot mode supports matched diagnostics; normal generation uses two.
+    pub fn with_pipeline_depth(depth: usize) -> Result<Self, String> {
+        if !(1..=2).contains(&depth) {
+            return Err("GPU pipeline depth must be 1 or 2".into());
+        }
         let (sender, receiver) = mpsc::sync_channel::<Job>(256);
         let (ready_sender, ready_receiver) = mpsc::sync_channel(1);
+        let pipeline = Arc::new(pipeline::Metrics::default());
+        let metrics = pipeline.clone();
         std::thread::Builder::new()
             .name("retina-gpu".into())
-            .spawn(move || {
-                let startup = catch_unwind(AssertUnwindSafe(Gpu::new));
-                let mut gpu = match startup {
-                    Ok(Ok(gpu)) => {
-                        let _ = ready_sender.send(Ok(gpu.backend.clone()));
-                        gpu
-                    }
-                    Ok(Err(error)) => {
-                        let _ = ready_sender.send(Err(error));
-                        return;
-                    }
-                    Err(_) => {
-                        let _ = ready_sender.send(Err("GPU initialization panicked".into()));
-                        return;
-                    }
-                };
-                let mut pending = None;
-                loop {
-                    let first = match pending.take().or_else(|| receiver.recv().ok()) {
-                        Some(first) => first,
-                        None => break,
-                    };
-                    let profile_id = first.requests[0].reserved;
-                    let tile_side = first.tile_side;
-                    let probe_mode = first.probe_mode;
-                    let mut count = if tile_side != 0 {
-                        MAX_BATCH
-                    } else {
-                        first.requests.len()
-                    };
-                    let mut batch = vec![first];
-                    let deadline = Instant::now() + BATCH_WAIT;
-                    while count < MAX_BATCH {
-                        match receiver
-                            .recv_timeout(deadline.saturating_duration_since(Instant::now()))
-                        {
-                            Ok(job) => {
-                                if job.tile_side != 0
-                                    || job.probe_mode != probe_mode
-                                    || job.requests[0].reserved != profile_id
-                                    || count + job.requests.len() > MAX_BATCH
-                                {
-                                    pending = Some(job);
-                                    break;
-                                }
-                                count += job.requests.len();
-                                batch.push(job);
-                            }
-                            Err(_) => break,
-                        }
-                    }
-                    let mut requests: Vec<_> = batch
-                        .iter()
-                        .flat_map(|job| {
-                            job.requests.iter().enumerate().map(|(i, r)| {
-                                let mut gpu = GpuRequest::from(*r);
-                                if probe_mode == 1 {
-                                    gpu.padding = 1 << 31;
-                                }
-                                if probe_mode == 3 {
-                                    gpu.padding = 1 << 29;
-                                }
-                                if probe_mode == 2 {
-                                    let y = job.probe_y[i].div_euclid(4) * 4
-                                        - r.min_y.div_euclid(4) * 4;
-                                    gpu.padding = (1 << 30) | ((y as u32) << 8);
-                                }
-                                gpu
-                            })
-                        })
-                        .collect();
-                    if tile_side != 0 {
-                        requests[0].tile_side = tile_side;
-                        requests[0].padding |= batch[0].cave_side;
-                    }
-                    for job in &mut batch {
-                        job.queue_nanos = job.queued.elapsed().as_nanos() as u64;
-                        job.timings.add(timings::QUEUE, job.queue_nanos);
-                    }
-                    let result = catch_unwind(AssertUnwindSafe(|| {
-                        gpu.sample(&requests, batch[0].profile.as_deref(), &batch[0].timings)
-                    }));
-                    let result = match result {
-                        Ok(result) => result,
-                        Err(_) => Err("GPU dispatch panicked; see native stderr".into()),
-                    };
-                    match result {
-                        Ok(mut sample) => {
-                            let mut offset = 0;
-                            for job in batch {
-                                let end = offset
-                                    + if job.tile_side != 0 {
-                                        (job.tile_side * job.tile_side) as usize
-                                    } else {
-                                        job.requests.len()
-                                    } * if probe_mode == 1 || probe_mode == 2 {
-                                        1
-                                    } else {
-                                        COLUMNS
-                                    };
-                                let _ = job.reply.send(Ok(gpu::GpuSample {
-                                    columns: sample.columns[offset..end].to_vec(),
-                                    mask: sample.mask.take(),
-                                    timings: {
-                                        let mut trace = sample.timings;
-                                        let portion = (end - offset) as u64;
-                                        let total = sample.columns.len() as u64;
-                                        for value in &mut trace.nanos {
-                                            *value = value.saturating_mul(portion) / total;
-                                        }
-                                        trace.gpu_columns = portion;
-                                        // Queue time is specific to this request, including batching.
-                                        trace.nanos[timings::QUEUE] = job.queue_nanos;
-                                        trace
-                                    },
-                                }));
-                                offset = end;
-                            }
-                        }
-                        Err(error) => {
-                            for job in batch {
-                                let _ = job.reply.send(Err(error.clone()));
-                            }
-                        }
-                    }
-                }
-            })
+            .spawn(move || gpu_worker::run(receiver, ready_sender, metrics, depth))
             .map_err(|e| e.to_string())?;
         let backend = ready_receiver.recv().map_err(|e| e.to_string())??;
         Ok(Self {
             sender,
             backend,
+            pipeline,
             profiles: RwLock::new(Vec::new()),
             cache: Mutex::new(ColumnCache::default()),
             height_cache: Mutex::new(ColumnCache::default()),
@@ -292,6 +178,10 @@ impl TerrainEngine {
             structures: Mutex::new(structures::Cache::default()),
             timings: Mutex::new(HashMap::new()),
         })
+    }
+
+    pub fn pipeline_snapshot(&self) -> pipeline::Snapshot {
+        self.pipeline.snapshot()
     }
 
     pub fn timings(&self, profile: u32) -> Arc<timings::Timings> {
@@ -907,6 +797,20 @@ impl TerrainEngine {
     }
 }
 
+/// # Safety
+/// output must point to a writable timing snapshot.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn retina_gpu_pipeline_snapshot(output: *mut pipeline::Snapshot) -> i32 {
+    boundary(|| {
+        if output.is_null() {
+            return Err("null GPU pipeline snapshot".into());
+        }
+        unsafe {
+            *output = shared_engine()?.pipeline_snapshot();
+        }
+        Ok(())
+    })
+}
 /// # Safety
 /// output must point to a writable timing snapshot.
 #[unsafe(no_mangle)]

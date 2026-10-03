@@ -21,6 +21,9 @@ class Snapshot(c.Structure):
                 ("jobs", c.c_uint64), ("nanos", c.c_uint64 * 20)]
 STAGES = ["queue", "encode", "wait_copy", "height", "sites", "columns", "cave_density", "cave_mask",
           "structure_plan", "vegetation_plan", "ore_plan", "assembly", "geology", "cave_features", "vegetation", "structures", "snow", "nbt", "compress", "io"]
+class PipelineSnapshot(c.Structure):
+    _fields_ = [("version", c.c_uint32), ("peak_in_flight", c.c_uint32)] + [(s, c.c_uint64) for s in
+                ("completed", "device_span_nanos", "device_gap_nanos", "unavailable_timestamp_pairs")]
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
@@ -58,6 +61,11 @@ def main():
     for i in range(args.warmups):
         generate((f"warm{i}",8+i,8))
     before = Snapshot(); check(lib.retina_timing_snapshot(profile, c.byref(before)))
+    pipeline = getattr(lib, "retina_gpu_pipeline_snapshot", None)
+    before_pipeline = PipelineSnapshot()
+    if pipeline:
+        pipeline.argtypes = [c.POINTER(PipelineSnapshot)]
+        check(pipeline(c.byref(before_pipeline)))
     # Adjacent tiles exercise shared structure halos and cold full-region terrain.
     coords = [(str(i), i%3-1, i//3-1) for i in range(args.count)]
     start = time.perf_counter()
@@ -70,6 +78,13 @@ def main():
                 total_ms=wall*1000, chunks_per_second=chunks/wall, median_ms=statistics.median(r["ms"] for r in regions),
                 gpu_timestamps=bool(after.flags & 1),
                 stage_ms_chunk={name:(after.nanos[i]-before.nanos[i])/max(chunks,1)/1e6 for i,name in enumerate(STAGES)})
+    if pipeline:
+        after_pipeline = PipelineSnapshot(); check(pipeline(c.byref(after_pipeline)))
+        data["gpu_pipeline"] = {"peak_in_flight": after_pipeline.peak_in_flight,
+            "completed": after_pipeline.completed-before_pipeline.completed,
+            "device_span_ms": (after_pipeline.device_span_nanos-before_pipeline.device_span_nanos)/1e6,
+            "device_gap_ms": (after_pipeline.device_gap_nanos-before_pipeline.device_gap_nanos)/1e6,
+            "unavailable_timestamp_pairs": after_pipeline.unavailable_timestamp_pairs-before_pipeline.unavailable_timestamp_pairs}
     if args.compare:
         identical = 0
         def records(path):

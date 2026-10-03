@@ -110,6 +110,7 @@ fn sparse_biomes_match_full_fields_and_reuse_cached_quarts() {
     let noise = json!({"frequency":0.02,"amplitude":0.5,"modifiers":[1,0.5]});
     let climate = json!({"nodes":[{"op":2,"a":0,"b":0,"c":0,"p":[0,0,0,0]}],"roots":[0,0,0,0,0,0]});
     let density = json!({"nodes":[{"op":3,"a":1,"b":0,"c":0,"p":[-64,128,1,-1]}],"roots":[0]});
+    let mut last_profile = 0;
     for mode in 0..3 {
         let mut source = json!({
             "biome_scale":256,"blend":0.55,"sea_level":32,"stone":1,"water":2,
@@ -135,6 +136,7 @@ fn sparse_biomes_match_full_fields_and_reuse_cached_quarts() {
         let id = engine
             .register_profile(&serde_json::to_vec(&source).unwrap())
             .unwrap();
+        last_profile = id;
         let requests: Vec<_> = [(-31, 17), (17, -31), (10_000, -10_000), (-10_000, 10_000)]
             .into_iter()
             .map(|(x, z)| ChunkRequest {
@@ -209,4 +211,55 @@ fn sparse_biomes_match_full_fields_and_reuse_cached_quarts() {
             "cached probes must not dispatch"
         );
     }
+    // Different mask sizes force scratch growth and slot reuse while submissions
+    // overlap. Compare every returned byte with an independent one-slot engine.
+    let serial = TerrainEngine::with_pipeline_depth(1).unwrap();
+    let serial_profile = serial
+        .register_profile(&engine.profile(last_profile).unwrap().unwrap().encoded)
+        .unwrap();
+    let cases = [(0, 0, 32), (32, 0, 16), (-32, 0, 8), (0, -32, 1)];
+    let barrier = std::sync::Barrier::new(cases.len());
+    let parallel = std::thread::scope(|scope| {
+        let handles: Vec<_> = cases
+            .iter()
+            .map(|&(x, z, side)| {
+                let engine = &engine;
+                let barrier = &barrier;
+                scope.spawn(move || {
+                    barrier.wait();
+                    let r = ChunkRequest {
+                        reserved: last_profile,
+                        min_y: -63,
+                        height: 191,
+                        ..request(x, z)
+                    };
+                    engine.terrain_field(r, side).unwrap()
+                })
+            })
+            .collect();
+        handles
+            .into_iter()
+            .map(|h| h.join().unwrap())
+            .collect::<Vec<_>>()
+    });
+    for ((x, z, side), (actual, mask)) in cases.into_iter().zip(parallel) {
+        let r = ChunkRequest {
+            reserved: serial_profile,
+            min_y: -63,
+            height: 191,
+            ..request(x, z)
+        };
+        let (expected, reference) = serial.terrain_field(r, side).unwrap();
+        assert_eq!(
+            bytemuck::cast_slice::<_, u8>(&actual.columns),
+            bytemuck::cast_slice::<_, u8>(&expected.columns)
+        );
+        assert_eq!(mask.unwrap().words, reference.unwrap().words);
+    }
+    assert_eq!(engine.pipeline_snapshot().peak_in_flight, 2);
+    assert_eq!(serial.pipeline_snapshot().peak_in_flight, 1);
+    println!(
+        "QA_EVT {{\"event\":\"gpu_readback_ring_parity\",\"status\":\"pass\",\"context\":{}}}",
+        serde_json::to_string(&engine.pipeline_snapshot()).unwrap()
+    );
 }

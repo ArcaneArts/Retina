@@ -43,7 +43,7 @@ On the original real GPU field, 178,753 of 279,773 eligible attempts were culled
 and 6,510 chunks/s after the jigsaw change. System load varies; these are samples,
 not a guaranteed speedup. The focused benchmark now reports culling counts.
 
-Thirteen native unit tests passed, including uncullled-versus-culled final block
+Thirteen native unit tests passed, including unculled-versus-culled final block
 replay and individual-chunk/region parity for scattered and regular veins, air
 hosts and water hosts. Actual vanilla registry geology, cave/exposure rules,
 temporary MCA preview/promotion, and structure MCA/chunk parity suites passed.
@@ -67,3 +67,48 @@ actual Metal sparse/full query parity, and vanilla structure MCA/chunk tests
 passed. Sparse tests cover legacy, explicit height and 3D density profiles,
 unaligned vertical bounds, negative/distant coordinates, water-surface heights,
 and cache/halo reuse without additional dispatches.
+
+## Bounded GPU submission/readback ring
+
+The device owner submits up to two batches before waiting on the oldest fence.
+Each slot owns its column/mask readback buffers, query set and timestamp resolve
+buffers. GPU scratch buffers can remain shared because queue submissions order
+their reads/writes and copy results into independent slots before reuse. Mapping
+guards own cancellation/unmap cleanup; failed maps do not attempt to unmap idle
+buffers. A region response transfers its vector directly instead of copying it
+again to split a one-job batch.
+
+`gpu_pipeline_benchmark` measures the field and readback path with two callers,
+excluding output hashing. On twelve full vanilla GPU regions, one slot took
+383.90 ms (31.26 regions/s) and two took 362.35 ms (33.12 regions/s), about 6%
+more throughput. Device gaps dropped from 20.95 to 1.91 ms; device spans were
+362.31 and 359.45 ms. Both output signatures were `faf7a6e57fe14512`. Gaps include
+unmeasured copies/commands and are not a pure idle counter. Unavailable/stale Metal
+timestamp pairs are reported separately and excluded from gap arithmetic.
+
+Complete native generation sampled 8,132 chunks/s serially after this change;
+the first two-caller run reached 10,176 chunks/s, versus a matched preceding
+query-only repeat at 9,805 chunks/s. Whole-generator differences vary with load;
+the focused result isolates the ring's effect. Serial/concurrent full-region
+checks match 40,960 decompressed NBT records against the query-only baseline.
+
+Fourteen native tests and two real GPU tests passed, including mapping
+cancellation/failure/reuse and byte-for-byte one-slot/two-slot fields with changing
+mask sizes. `./gradlew build gpuTest regionTest biomeTest geologyTest featureTest
+previewTest datapackTest structureTest` passed on Metal, including Terralith,
+temporary promotion and the actual timing packet. Packaged native bytes match the
+release library. Vulkan/DX12 runtime behavior still needs hardware testing.
+
+Reproduce the focused comparison with:
+
+```sh
+cargo build --manifest-path native/Cargo.toml --release --locked \
+  --target-dir build/native-target --example gpu_pipeline_benchmark
+build/native-target/release/examples/gpu_pipeline_benchmark build/structure-profile.json 1 12
+build/native-target/release/examples/gpu_pipeline_benchmark build/structure-profile.json 2 12
+```
+
+Run measurements sequentially. `ring-final-parallel` and the first focused repeat
+files overlap another benchmark and are excluded from performance conclusions;
+`ring-final-parallel-clean` is the independent replacement. The original focused
+one/two-slot comparison above was sequential.

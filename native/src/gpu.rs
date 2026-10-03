@@ -42,8 +42,10 @@ pub(crate) struct Gpu {
     requests: wgpu::Buffer,
     output: wgpu::Buffer,
     sites: wgpu::Buffer,
-    readback: wgpu::Buffer,
-    timestamps: Option<Timestamps>,
+    timestamp_support: bool,
+    readback_pool: Vec<ReadbackSlot>,
+    pipeline: std::sync::Arc<crate::pipeline::Metrics>,
+    last_device_tick: Option<u64>,
     pub(crate) backend: String,
 }
 
@@ -69,13 +71,12 @@ impl Timestamps {
 struct CaveBuffers {
     nodes: wgpu::Buffer,
     mask: wgpu::Buffer,
-    readback: wgpu::Buffer,
     nodes_size: u64,
     mask_size: u64,
 }
 
 impl Gpu {
-    pub(crate) fn new() -> Result<Self, String> {
+    pub(crate) fn new(metrics: std::sync::Arc<crate::pipeline::Metrics>) -> Result<Self, String> {
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
             backends: wgpu::Backends::METAL | wgpu::Backends::VULKAN | wgpu::Backends::DX12,
             ..wgpu::InstanceDescriptor::new_without_display_handle()
@@ -222,11 +223,6 @@ impl Gpu {
             size,
             wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
         );
-        let readback = buffer(
-            "Retina column readback",
-            size,
-            wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
-        );
         let sites = buffer(
             "Retina GPU-only biome sites",
             (MAX_BATCH * 144 * 32) as u64,
@@ -243,26 +239,7 @@ impl Gpu {
             (SURFACE_METADATA_FLOATS * 4) as u64,
             wgpu::BufferUsages::STORAGE,
         );
-        let timestamps = device
-            .features()
-            .contains(wgpu::Features::TIMESTAMP_QUERY)
-            .then(|| Timestamps {
-                queries: device.create_query_set(&wgpu::QuerySetDescriptor {
-                    label: Some("Retina pass timings"),
-                    ty: wgpu::QueryType::Timestamp,
-                    count: 10,
-                }),
-                resolve: buffer(
-                    "Retina timestamp resolve",
-                    256,
-                    wgpu::BufferUsages::QUERY_RESOLVE | wgpu::BufferUsages::COPY_SRC,
-                ),
-                readback: buffer(
-                    "Retina timestamp readback",
-                    80,
-                    wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
-                ),
-            });
+        let timestamp_support = device.features().contains(wgpu::Features::TIMESTAMP_QUERY);
         let mut gpu = Self {
             device,
             queue,
@@ -289,8 +266,10 @@ impl Gpu {
             requests,
             output,
             sites,
-            readback,
-            timestamps,
+            readback_pool: Vec::new(),
+            pipeline: metrics,
+            last_device_tick: None,
+            timestamp_support,
             backend,
         };
         gpu.add_profile(0, &vec![0; 672], &[0; 224], &[0; 32]);
@@ -388,12 +367,12 @@ impl Gpu {
         }
     }
 
-    pub(crate) fn sample(
+    pub(crate) fn submit(
         &mut self,
         requests: &[GpuRequest],
         profile: Option<&WorldProfile>,
         timings: &timings::Timings,
-    ) -> Result<GpuSample, String> {
+    ) -> Result<PendingSample, String> {
         let host_start = Instant::now();
         let surface_probe = requests[0].padding & (1 << 31) != 0;
         let underground_probe = requests[0].padding & (1 << 30) != 0;
@@ -529,11 +508,6 @@ impl Gpu {
                         mask_size,
                         wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
                     ),
-                    readback: buffer(
-                        "Retina cave mask readback",
-                        mask_size,
-                        wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
-                    ),
                     nodes_size,
                     mask_size,
                 });
@@ -547,6 +521,16 @@ impl Gpu {
         } else {
             requests.len()
         };
+        let mut slot = self.readback_pool.pop().unwrap_or_else(|| ReadbackSlot {
+            columns: self.readback_buffer("Retina slot columns", self.output.size()),
+            mask: None,
+            timestamps: self.timestamp_support.then(|| self.create_timestamps()),
+        });
+        if cave_side > 0 || underground_probe {
+            if slot.mask.as_ref().is_none_or(|b| b.size() < mask_size) {
+                slot.mask = Some(self.readback_buffer("Retina slot cave/biome mask", mask_size));
+            }
+        }
         let mut measured = Vec::new();
         if profile.is_some_and(|p| p.registry_program.is_some()) {
             measured.push(timings::HEIGHT);
@@ -561,7 +545,7 @@ impl Gpu {
             measured.push(timings::CAVE_DENSITY);
         }
         let timestamp_writes = |stage| {
-            self.timestamps
+            slot.timestamps
                 .as_ref()
                 .map(|t| t.writes(measured.iter().position(|s| *s == stage).unwrap() as u32))
         };
@@ -782,13 +766,19 @@ impl Gpu {
                     );
                 }
             }
-            encoder.copy_buffer_to_buffer(&buffers.mask, 0, &buffers.readback, 0, mask_size);
+            encoder.copy_buffer_to_buffer(
+                &buffers.mask,
+                0,
+                slot.mask.as_ref().unwrap(),
+                0,
+                mask_size,
+            );
         }
         let column_count = count * if sparse { 1 } else { COLUMNS };
         let size = (column_count * std::mem::size_of::<Column>()) as u64;
-        encoder.copy_buffer_to_buffer(&self.output, 0, &self.readback, 0, size);
+        encoder.copy_buffer_to_buffer(&self.output, 0, &slot.columns, 0, size);
         let query_bytes = measured.len() as u64 * 16;
-        if let Some(t) = &self.timestamps {
+        if let Some(t) = &slot.timestamps {
             encoder.resolve_query_set(&t.queries, 0..measured.len() as u32 * 2, &t.resolve, 0);
             encoder.copy_buffer_to_buffer(&t.resolve, 0, &t.readback, 0, query_bytes);
         }
@@ -796,115 +786,303 @@ impl Gpu {
         let encode_nanos = host_start.elapsed().as_nanos() as u64;
         timings.add(timings::ENCODE, encode_nanos);
         let wait_start = Instant::now();
-        let (query_sender, query_receiver) = mpsc::channel();
         let mut job_timings = timings::Snapshot::default();
         job_timings.version = 1;
         job_timings.gpu_jobs = 1;
         job_timings.gpu_columns = column_count as u64;
         job_timings.nanos[timings::ENCODE] = encode_nanos;
-        if let Some(t) = &self.timestamps {
-            t.readback
-                .slice(..query_bytes)
-                .map_async(wgpu::MapMode::Read, move |result| {
-                    let _ = query_sender.send(result);
-                });
+        let columns_map = Mapping::new(&slot.columns, size);
+        let mask_map = (cave_side > 0 || underground_probe)
+            .then(|| Mapping::new(slot.mask.as_ref().unwrap(), mask_size));
+        let query_map = slot
+            .timestamps
+            .as_ref()
+            .map(|t| Mapping::new(&t.readback, query_bytes));
+        Ok(PendingSample {
+            slot,
+            submission,
+            columns_map,
+            mask_map,
+            query_map,
+            wait_start,
+            request: requests[0],
+            cave_width,
+            cave_height,
+            underground_probe,
+            size,
+            mask_size,
+            query_bytes,
+            measured,
+            timings: job_timings,
+        })
+    }
+    fn create_timestamps(&self) -> Timestamps {
+        Timestamps {
+            queries: self.device.create_query_set(&wgpu::QuerySetDescriptor {
+                label: Some("Retina slot pass timings"),
+                ty: wgpu::QueryType::Timestamp,
+                count: 10,
+            }),
+            resolve: self.device.create_buffer(&wgpu::BufferDescriptor {
+                label: Some("Retina slot timestamp resolve"),
+                size: 256,
+                usage: wgpu::BufferUsages::QUERY_RESOLVE | wgpu::BufferUsages::COPY_SRC,
+                mapped_at_creation: false,
+            }),
+            readback: self.readback_buffer("Retina slot timestamp readback", 80),
         }
-        let slice = self.readback.slice(..size);
-        let (sender, receiver) = mpsc::channel();
-        slice.map_async(wgpu::MapMode::Read, move |result| {
-            let _ = sender.send(result);
-        });
-        let (mask_sender, mask_receiver) = mpsc::channel();
-        if cave_side > 0 || underground_probe {
-            self.cave_buffers
-                .as_ref()
-                .unwrap()
-                .readback
-                .slice(..mask_size)
-                .map_async(wgpu::MapMode::Read, move |result| {
-                    let _ = mask_sender.send(result);
-                });
-        }
+    }
+    fn readback_buffer(&self, label: &str, size: u64) -> wgpu::Buffer {
+        self.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some(label),
+            size,
+            usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
+            mapped_at_creation: false,
+        })
+    }
+    pub(crate) fn ready(&self, pending: &mut PendingSample) -> Result<bool, String> {
         self.device
-            .poll(wgpu::PollType::Wait {
-                submission_index: Some(submission),
-                timeout: Some(Duration::from_secs(30)),
-            })
+            .poll(wgpu::PollType::Poll)
             .map_err(|e| format!("GPU poll failed: {e}"))?;
-        receiver
-            .recv_timeout(Duration::from_secs(30))
-            .map_err(|e| format!("GPU readback timed out: {e}"))?
-            .map_err(|e| format!("GPU readback failed: {e}"))?;
+        let ready = pending.ready();
+        if !ready && pending.wait_start.elapsed() > Duration::from_secs(30) {
+            return Err("GPU mapping timed out".into());
+        }
+        Ok(ready)
+    }
+    pub(crate) fn complete(
+        &mut self,
+        mut pending: PendingSample,
+        timings: &timings::Timings,
+    ) -> Result<GpuSample, String> {
+        if !pending.ready() {
+            self.device
+                .poll(wgpu::PollType::Wait {
+                    submission_index: Some(pending.submission.clone()),
+                    timeout: Some(Duration::from_secs(30)),
+                })
+                .map_err(|e| format!("GPU poll failed: {e}"))?;
+        }
+        pending.columns_map.check()?;
         let mut columns = {
-            let mapped = slice
+            let mapped = pending
+                .slot
+                .columns
+                .slice(..pending.size)
                 .get_mapped_range()
-                .map_err(|e| format!("mapped GPU buffer unavailable: {e}"))?;
+                .map_err(|e| e.to_string())?;
             bytemuck::cast_slice::<u8, Column>(&mapped).to_vec()
         };
-        self.readback.unmap();
-        let mask = if cave_side > 0 || underground_probe {
-            mask_receiver
-                .recv_timeout(Duration::from_secs(30))
-                .map_err(|e| format!("cave readback timed out: {e}"))?
-                .map_err(|e| format!("cave readback failed: {e}"))?;
-            let buffers = self.cave_buffers.as_ref().unwrap();
+        let mask = if let Some(mapping) = &mut pending.mask_map {
+            mapping.check()?;
             let words = {
-                let mapped = buffers
-                    .readback
-                    .slice(..mask_size)
+                let mapped = pending
+                    .slot
+                    .mask
+                    .as_ref()
+                    .unwrap()
+                    .slice(..pending.mask_size)
                     .get_mapped_range()
                     .map_err(|e| e.to_string())?;
                 bytemuck::cast_slice::<u8, u32>(&mapped).to_vec()
             };
-            buffers.readback.unmap();
-            if underground_probe {
+            if pending.underground_probe {
                 for (column, biome) in columns.iter_mut().zip(words) {
                     column.packed = biome;
                 }
                 None
             } else {
                 Some(crate::geology::CaveMask {
-                    origin_x: requests[0].origin_x + 15,
-                    origin_z: requests[0].origin_z + 15,
-                    min_y: requests[0].min_y,
-                    height: cave_height,
-                    width: cave_width as usize,
+                    origin_x: pending.request.origin_x + 15,
+                    origin_z: pending.request.origin_z + 15,
+                    min_y: pending.request.min_y,
+                    height: pending.cave_height,
+                    width: pending.cave_width as usize,
                     words,
                 })
             }
         } else {
             None
         };
-        if let Some(t) = &self.timestamps {
-            query_receiver
-                .recv_timeout(Duration::from_secs(30))
-                .map_err(|e| e.to_string())?
+        if let Some(mapping) = &mut pending.query_map {
+            mapping.check()?;
+            let mapped = pending
+                .slot
+                .timestamps
+                .as_ref()
+                .unwrap()
+                .readback
+                .slice(..pending.query_bytes)
+                .get_mapped_range()
                 .map_err(|e| e.to_string())?;
-            {
-                let mapped = t
-                    .readback
-                    .slice(..query_bytes)
-                    .get_mapped_range()
-                    .map_err(|e| e.to_string())?;
-                let values = bytemuck::cast_slice::<u8, u64>(&mapped);
-                let period = self.queue.get_timestamp_period() as f64;
-                for (i, stage) in measured.iter().enumerate() {
-                    let nanos =
-                        (values[i * 2 + 1].saturating_sub(values[i * 2]) as f64 * period) as u64;
-                    timings.add(*stage, nanos);
-                    job_timings.nanos[*stage] = nanos;
+            let values = bytemuck::cast_slice::<u8, u64>(&mapped);
+            let period = self.queue.get_timestamp_period() as f64;
+            let mut first = u64::MAX;
+            let mut last = 0;
+            for (i, stage) in pending.measured.iter().enumerate() {
+                let start = values[i * 2];
+                let end = values[i * 2 + 1];
+                // Some Metal samples are unavailable or stale. Never treat a
+                // zero/old endpoint as an enormous device idle interval.
+                if start == 0 || end < start {
+                    self.pipeline.unavailable();
+                    continue;
                 }
+                first = first.min(start);
+                last = last.max(end);
+                let nanos = ((end - start) as f64 * period) as u64;
+                timings.add(*stage, nanos);
+                pending.timings.nanos[*stage] = nanos;
             }
-            t.readback.unmap();
+            if last > 0 {
+                let gap = self
+                    .last_device_tick
+                    .map_or(0, |previous| first.saturating_sub(previous));
+                self.last_device_tick = Some(self.last_device_tick.unwrap_or(0).max(last));
+                self.pipeline.device(
+                    ((last - first) as f64 * period) as u64,
+                    (gap as f64 * period) as u64,
+                );
+            }
         }
-        job_timings.flags = u32::from(self.timestamps.is_some());
-        job_timings.nanos[timings::WAIT_COPY] = wait_start.elapsed().as_nanos() as u64;
-        timings.add(timings::WAIT_COPY, job_timings.nanos[timings::WAIT_COPY]);
-        timings.gpu(column_count as u64, self.timestamps.is_some());
+        drop(pending.columns_map);
+        drop(pending.mask_map);
+        drop(pending.query_map);
+        pending.timings.flags = u32::from(self.timestamp_support);
+        pending.timings.nanos[timings::WAIT_COPY] = pending.wait_start.elapsed().as_nanos() as u64;
+        timings.add(
+            timings::WAIT_COPY,
+            pending.timings.nanos[timings::WAIT_COPY],
+        );
+        timings.gpu(pending.timings.gpu_columns, self.timestamp_support);
+        self.pipeline.completed();
+        self.readback_pool.push(pending.slot);
         Ok(GpuSample {
             columns,
             mask,
-            timings: job_timings,
+            timings: pending.timings,
         })
+    }
+}
+
+struct ReadbackSlot {
+    columns: wgpu::Buffer,
+    mask: Option<wgpu::Buffer>,
+    timestamps: Option<Timestamps>,
+}
+struct Mapping {
+    buffer: wgpu::Buffer,
+    receiver: mpsc::Receiver<Result<(), String>>,
+    result: Option<Result<(), String>>,
+}
+impl Mapping {
+    fn new(buffer: &wgpu::Buffer, size: u64) -> Self {
+        let (sender, receiver) = mpsc::channel();
+        buffer
+            .slice(..size)
+            .map_async(wgpu::MapMode::Read, move |r| {
+                let _ = sender.send(r.map_err(|e| e.to_string()));
+            });
+        Self {
+            buffer: buffer.clone(),
+            receiver,
+            result: None,
+        }
+    }
+    fn ready(&mut self) -> bool {
+        if self.result.is_none() {
+            match self.receiver.try_recv() {
+                Ok(r) => self.result = Some(r),
+                Err(mpsc::TryRecvError::Disconnected) => {
+                    self.result = Some(Err("GPU mapping callback disconnected".into()))
+                }
+                Err(mpsc::TryRecvError::Empty) => {}
+            }
+        }
+        self.result.is_some()
+    }
+    fn check(&mut self) -> Result<(), String> {
+        if self.result.is_none() {
+            match self.receiver.recv_timeout(Duration::from_secs(30)) {
+                Ok(r) => self.result = Some(r),
+                Err(error) => return Err(format!("GPU mapping timed out: {error}")),
+            }
+        }
+        self.result.as_ref().unwrap().clone()
+    }
+}
+impl Drop for Mapping {
+    fn drop(&mut self) {
+        self.ready();
+        // An outstanding map can be cancelled; a successful map must be
+        // unmapped. Failed mappings never put the buffer in a mapped state.
+        if !matches!(self.result, Some(Err(_))) {
+            self.buffer.unmap();
+        }
+    }
+}
+
+pub(crate) struct PendingSample {
+    slot: ReadbackSlot,
+    submission: wgpu::SubmissionIndex,
+    columns_map: Mapping,
+    mask_map: Option<Mapping>,
+    query_map: Option<Mapping>,
+    wait_start: Instant,
+    request: GpuRequest,
+    cave_width: u32,
+    cave_height: u32,
+    underground_probe: bool,
+    size: u64,
+    mask_size: u64,
+    query_bytes: u64,
+    measured: Vec<usize>,
+    timings: timings::Snapshot,
+}
+impl PendingSample {
+    fn ready(&mut self) -> bool {
+        self.columns_map.ready()
+            && self.mask_map.as_mut().is_none_or(|m| m.ready())
+            && self.query_map.as_mut().is_none_or(|m| m.ready())
+    }
+}
+
+#[cfg(test)]
+mod mapping_tests {
+    use super::*;
+    #[test]
+    fn cancelled_mapping_cleanup_allows_buffer_reuse() {
+        let gpu = Gpu::new(std::sync::Arc::new(crate::pipeline::Metrics::default())).unwrap();
+        let buffer = gpu.readback_buffer("Retina mapping cleanup test", 64);
+        // Drop a genuinely pending map; this cancels the callback and frees the
+        // mapping state without touching any other slot's buffers.
+        drop(Mapping::new(&buffer, 64));
+        let mut cancelled = Mapping::new(&buffer, 64);
+        buffer.unmap();
+        gpu.device
+            .poll(wgpu::PollType::Wait {
+                submission_index: None,
+                timeout: Some(Duration::from_secs(30)),
+            })
+            .unwrap();
+        assert!(cancelled.check().is_err());
+        drop(cancelled);
+        let mut successful = Mapping::new(&buffer, 64);
+        gpu.device
+            .poll(wgpu::PollType::Wait {
+                submission_index: None,
+                timeout: Some(Duration::from_secs(30)),
+            })
+            .unwrap();
+        successful.check().unwrap();
+        drop(successful);
+        let mut reused = Mapping::new(&buffer, 64);
+        gpu.device
+            .poll(wgpu::PollType::Wait {
+                submission_index: None,
+                timeout: Some(Duration::from_secs(30)),
+            })
+            .unwrap();
+        reused.check().unwrap();
     }
 }
