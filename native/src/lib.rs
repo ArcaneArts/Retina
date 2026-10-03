@@ -654,7 +654,7 @@ impl TerrainEngine {
         if let Some(p) = profile.as_deref() {
             let plans = structures::plans(self, request, 1)?;
             let data = timings.time(timings::STRUCTURES, || {
-                structures::apply(request, p, &plans, Some(blocks))
+                structures::apply(request, p, &plans, &columns, Some(blocks))
             });
             self.structures
                 .lock()

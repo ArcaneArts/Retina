@@ -1,7 +1,10 @@
 //! CPU jigsaw planning over resident registry templates. Plans are shared by MCA,
 //! individual chunks and DH previews, including pieces crossing region boundaries.
 use crate::structure_processors::Program;
-use crate::{CacheKey, ChunkRequest, TerrainEngine, nbt, profile::WorldProfile};
+use crate::{
+    CacheKey, ChunkRequest, TerrainEngine, nbt,
+    profile::{Column, WorldProfile},
+};
 use rayon::prelude::*;
 use serde::Deserialize;
 use serde_json::{Value, json};
@@ -1147,6 +1150,7 @@ pub fn apply(
     request: ChunkRequest,
     profile: &WorldProfile,
     plans: &[Arc<Start>],
+    columns: &[Column],
     mut blocks: Option<&mut [u16]>,
 ) -> ChunkData {
     let p = &profile.structures;
@@ -1202,9 +1206,9 @@ pub fn apply(
                             {
                                 continue;
                             }
-                            let material = block.original;
-                            let name = block_name(profile, material);
-                            if material == 0
+                            let floor_material = block.original;
+                            let name = block_name(profile, floor_material);
+                            if floor_material == 0
                                 || matches!(
                                     name,
                                     "minecraft:water"
@@ -1213,10 +1217,14 @@ pub fn apply(
                                         | "minecraft:structure_void"
                                         | "minecraft:structure_block"
                                 )
-                                || profile.material_flags[material as usize] & (4 | 8 | 16) != 0
+                                || profile.material_flags[floor_material as usize] & (4 | 8 | 16)
+                                    != 0
                             {
                                 continue;
                             }
+                            let column = (pos[2] - chunk_bounds[2]) as usize * 16
+                                + (pos[0] - chunk_bounds[0]) as usize;
+                            let material = columns[column].foundation_material(profile);
                             let bottom = (pos[1] - 12)
                                 .max(terrain.get(pos[0], pos[2]) - 1)
                                 .max(request.min_y);
@@ -1420,6 +1428,97 @@ pub fn apply(
 mod tests {
     use super::*;
     #[test]
+    fn rigid_floors_extend_column_soil_instead_of_repeating_the_floor() {
+        let mut profile: WorldProfile = serde_json::from_value(json!({
+            "biome_scale":256,"blend":0.55,"sea_level":63,"stone":1,"water":0,
+            "bedrock":1,"deepslate":1,"snow":0,"ice":0,
+            "materials":["minecraft:air","minecraft:stone","minecraft:gold_block",
+                "minecraft:grass_block","minecraft:dirt","minecraft:sand",
+                "minecraft:sandstone","minecraft:dirt_path"],
+            "biomes":[
+                {"id":"test:grass","climate":[0,0,0,0],"terrain":[0,1,1],"top":3,"filler":4,"underwater":4,"flags":0},
+                {"id":"test:desert","climate":[0,0,0,0],"terrain":[0,1,1],"top":5,"filler":6,"underwater":6,"flags":0}
+            ],"noises":[],"material_flags":[0,1,1,1,1,1,1,1],"heightmap_masks":[0,63,63,63,63,63,63,63],
+            "structures":{
+                "templates":[{"id":"test:floor","size":[2,1,1],"ground":0,
+                    "palettes":[[[7,7,7,7]]],"blocks":[0,0,0,0,1,0,0,0],"tags":{},"joints":[],"entities":[]}],
+                "definitions":[{"id":"test:floor","kind":"jigsaw","biomes":[],"config":{"terrain_adaptation":"beard_thin"}}],
+                "pools":{"test:floor":{"fallback":"test:floor","entries":[{"parts":[{"template":0,"ignore_air":false,"processors":[]}],"terrain_matching":false,"weight":1}]}},"sets":[]
+            }
+        })).unwrap();
+        profile.structures.compile(&profile.materials);
+        let element = profile.structures.pools["test:floor"].entries[0].clone();
+        let pos = [-16, 70, -16];
+        let start = Arc::new(Start {
+            definition: 0,
+            chunk: [-1, -1],
+            seed: 42,
+            pieces: vec![Piece {
+                bounds: bounds(&element, pos, 0, &profile.structures),
+                element,
+                pos,
+                rotation: 0,
+                palette: 0,
+                context: 0,
+                depth: 0,
+                priority: 0,
+            }],
+            terrain: Some(Heights {
+                origin: [-16, -16],
+                width: 16,
+                values: vec![64; 256],
+            }),
+            index: OnceLock::new(),
+        });
+        let request = ChunkRequest {
+            seed: 42,
+            chunk_x: -1,
+            chunk_z: -1,
+            min_y: 60,
+            height: 16,
+            base_height: 64.0,
+            amplitude: 0.0,
+            frequency: 0.008,
+            reserved: 0,
+        };
+        let mut columns = vec![
+            Column {
+                height: 64,
+                packed: 0,
+                materials: 3 | (4 << 16)
+            };
+            256
+        ];
+        columns[1] = Column {
+            height: 64,
+            packed: 1,
+            materials: 5 | (6 << 16),
+        };
+        let mut blocks = vec![0; request.block_count()];
+        blocks[..4 * 256].fill(1);
+        apply(request, &profile, &[start], &columns, Some(&mut blocks));
+        for y in 64..70 {
+            let index = (y - 60) * 256;
+            assert_eq!(blocks[index], 4, "grass column foundation must be dirt");
+            assert_eq!(
+                blocks[index + 1],
+                6,
+                "desert column foundation must be sandstone"
+            );
+        }
+        assert_eq!(
+            blocks[10 * 256],
+            7,
+            "keep the actual floor at its original elevation"
+        );
+        assert_eq!(blocks[10 * 256 + 1], 7);
+        assert_eq!(
+            blocks[3 * 256],
+            1,
+            "keep preexisting terrain below the support"
+        );
+    }
+    #[test]
     fn indexed_templates_preserve_capped_order_across_rotated_negative_chunk_boundaries() {
         let rule = json!({"processor_type":"minecraft:rule","rules":[{
             "input_predicate":{"predicate_type":"minecraft:block_match","block":"minecraft:stone"},
@@ -1487,7 +1586,7 @@ mod tests {
                         reserved: 0,
                     };
                     let mut blocks = vec![1; request.block_count()];
-                    let data = apply(request, &profile, &[start.clone()], Some(&mut blocks));
+                    let data = apply(request, &profile, &[start.clone()], &[], Some(&mut blocks));
                     let mut expected_tags = 0;
                     for x in 0..32 {
                         let q = add(pos, rotate([x, 0, 0], rotation));

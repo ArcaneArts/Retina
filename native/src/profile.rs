@@ -372,6 +372,20 @@ impl Column {
             (self.materials >> 16) as u16
         }
     }
+    /// Terrain adaptation extends the column's underlying soil, never its top
+    /// block or a structure floor. The GPU has already selected the surface rule.
+    pub fn foundation_material(self, profile: &WorldProfile) -> u16 {
+        if profile.biomes[self.biome()].flags & 8 != 0 {
+            profile.biomes[self.biome()].filler as u16
+        } else {
+            let filler = self.surface_material(profile, false);
+            if filler == 0 {
+                profile.biomes[self.biome()].filler as u16
+            } else {
+                filler
+            }
+        }
+    }
     pub fn material(self, y: i32, min_y: i32, profile: Option<&WorldProfile>) -> u16 {
         let Some(profile) = profile else {
             return if y < self.height { 1 } else { 0 };

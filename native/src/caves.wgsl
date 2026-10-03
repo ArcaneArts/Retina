@@ -7,7 +7,7 @@ struct Request {
 }
 struct Column { height: i32, packed: u32, materials: u32 }
 struct NoiseProfile { frequency: f32, amplitude: f32, count: u32, padding: u32, modifiers: array<f32,32> }
-struct Carver { range: vec4<f32>, shape: vec4<f32>, detail: vec4<f32>, variation: vec4<f32>, length: vec4<f32> }
+struct Carver { range: vec4<f32>, shape: vec4<f32>, detail: vec4<f32>, variation: vec4<f32>, length: vec4<f32>, axis: vec4<f32> }
 struct CaveBiome { carvers: array<Carver,4>, climate: vec4<f32>, selection: vec4<f32> }
 struct CaveProfile { globals: vec4<u32>, noises: array<NoiseProfile,6>, biomes: array<CaveBiome> }
 @group(0) @binding(0) var<storage,read> requests: array<Request>;
@@ -48,10 +48,11 @@ fn registry_noise(point: vec3<f32>, channel: u32, seed: u32) -> f32 {
     }
     return sum/max(weights,0.0001)*caves.noises[channel].amplitude;
 }
-// Finite, curved ravine centerlines are globally anchored. This field is sampled
-// once per density node rather than evaluating curve noise for every carved voxel.
-fn ravine_distance(point: vec2<f32>, seed: u32, settings:Carver) -> f32 {
-    let cell=vec2<i32>(floor(point/128.0));var distance=1000.0;
+// Rounded, finite 3D canyons. Center height and radii belong to the registered
+// carver; neither endpoint nor roof is stretched to the terrain surface.
+// Curve/edge noise runs at density nodes, not once per carved voxel.
+fn ravine_distance(point: vec3<f32>, seed: u32, settings:Carver) -> f32 {
+    let cell=vec2<i32>(floor(point.xz/128.0));var distance=1000.0;
     // One tile covers 64 potential source chunks. The carver's registered
     // probability determines whether that tile has a canyon, including zero.
     let probability=1.0-pow(1.0-clamp(settings.range.z,0.0,1.0),64.0);
@@ -64,12 +65,40 @@ fn ravine_distance(point: vec2<f32>, seed: u32, settings:Carver) -> f32 {
         if settings.variation.w>0.0 {horizontal=mix(settings.variation.z,settings.variation.w,random.y);}
         if settings.length.y>0.0 {factor=mix(settings.length.x,settings.length.y,random.z);}
         let half_length=max(1.0,112.0*factor*0.5);
-        let center=(vec2<f32>(at)+vec2<f32>(0.5))*128.0;
+        let center=(vec2<f32>(at)+vec2<f32>(0.25+random.y*0.5,0.25+random.z*0.5))*128.0;
+        let height_random=f32(hash(h+3u)&65535u)/65535.0;
+        var center_y=mix(settings.range.x,settings.range.y,height_random);
+        if settings.length.w>0.0 {
+            let span=settings.range.y-settings.range.x;
+            let slope=(span-clamp(settings.length.w-1.0,0.0,span))*0.5;
+            center_y=settings.range.x+height_random*slope+f32(hash(h+4u)&65535u)/65535.0*(span-slope);
+        }
+        var y_scale=settings.shape.z;
+        if settings.axis.y>0.0 {y_scale=mix(settings.axis.x,settings.axis.y,random.z);}
+        // Conservative rejection keeps expensive noise out of distant Y layers.
+        let has_vertical_factor=settings.detail.w>0.0 || settings.length.z>0.0;
+        let maximum_factor=select(1.0,max(0.2,settings.detail.w+settings.length.z),has_vertical_factor);
+        let maximum_y=(1.5+thickness)*y_scale*maximum_factor*1.25+12.0;
+        if abs(point.y-center_y)>maximum_y {continue;}
         let angle=f32((h>>8u)&65535u)/65535.0*6.2831853;
-        let delta=point-center;let along=dot(delta,vec2<f32>(cos(angle),sin(angle)));let side=dot(delta,vec2<f32>(-sin(angle),cos(angle)));
-        let bend=sin(along/max(half_length*0.6,1.0)+f32(h&31u))*half_length*0.12;
-        let width=max(0.25,(1.5+thickness*sqrt(max(0.0,1.0-pow(along/half_length,2.0))))*horizontal);
-        distance=min(distance,max(abs(side-bend)/width,abs(along)/half_length));
+        let delta=point.xz-center;let along=dot(delta,vec2<f32>(cos(angle),sin(angle)));let side=dot(delta,vec2<f32>(-sin(angle),cos(angle)));
+        let t=along/half_length;
+        if abs(t)>=1.0 || abs(side)>half_length*0.18+(1.5+thickness)*horizontal*1.5+6.0 {continue;}
+        let phase=f32(h&31u);
+        let bend=sin(t*2.2+phase)*half_length*0.10
+            +noise3(vec3<f32>(along*0.035,phase,0.0),seed+19391u)*4.0;
+        let rotation=mix(settings.axis.z,settings.axis.w,height_random);
+        let height_bend=sin(t*2.7+phase)*3.0+sin(rotation)*sin(t*1.8)*8.0;
+        let radius=1.5+thickness*sqrt(max(0.0,1.0-t*t));
+        let smoothness=max(settings.detail.z,1.0);
+        let edge=noise3(vec3<f32>(along*0.06,point.y/(4.0*smoothness),phase),seed+24107u);
+        let width=max(0.5,radius*horizontal*(0.82+edge*0.18));
+        let vertical_factor=select(1.0,max(0.2,settings.detail.w+settings.length.z*(1.0-abs(t))),has_vertical_factor);
+        let vertical_radius=max(2.0,radius*y_scale*vertical_factor*(0.85+edge*0.10));
+        let wall=noise3(point*0.045,seed+31337u)*0.6;
+        let horizontal_distance=(side-bend+wall)/width;
+        let vertical_distance=(point.y-center_y-height_bend)/vertical_radius;
+        distance=min(distance,horizontal_distance*horizontal_distance+vertical_distance*vertical_distance+t*t);
     }}return distance;
 }
 fn biome_at(x: u32, y: i32, z: u32, column: Column, r: Request) -> u32 {
@@ -138,11 +167,8 @@ fn cave_nodes(@builtin(global_invocation_id) id: vec3<u32>) {
     }
     let a = registry_noise(point*vec3<f32>(1.6,1.0,1.6),1u,seed)+rough*0.06;
     let b = registry_noise(point*vec3<f32>(1.6,1.0,1.6),2u,seed)-rough*0.06;
-    var ribbon = 0.0;
-    if id.y == 0u {
-        ribbon=1000.0;let column=column_at(min((id.x%n)*4u,r.tile_side*16u-1u),min((id.x/n)*4u,r.tile_side*16u-1u),r.tile_side);
-        for(var c=0u;c<4u;c++){let settings=caves.biomes[column.packed&65535u].carvers[c];if settings.range.w>0.5 && settings.range.z>0.0 {ribbon=min(ribbon,ravine_distance(point.xz,seed,settings));}}
-    }
+    var ribbon=1000.0;let column=column_at(min((id.x%n)*4u,r.tile_side*16u-1u),min((id.x/n)*4u,r.tile_side*16u-1u),r.tile_side);
+    for(var c=0u;c<4u;c++){let settings=caves.biomes[column.packed&65535u].carvers[c];if settings.range.w>0.5 && settings.range.z>0.0 {ribbon=min(ribbon,ravine_distance(point,seed,settings));}}
     nodes[id.y*n*n+id.x] = vec4<f32>(chambers,a,b,ribbon);
     let width = r.padding*16u+2u;
     let surface_width = r.tile_side*16u;
@@ -169,10 +195,7 @@ fn interpolate(local: vec3<f32>, n: u32) -> vec4<f32> {
     let i = (cell.y*n+cell.z)*n+cell.x;
     let z0 = mix(mix(nodes[i],nodes[i+1u],t.x),mix(nodes[i+n*n],nodes[i+n*n+1u],t.x),t.y);
     let z1 = mix(mix(nodes[i+n],nodes[i+n+1u],t.x),mix(nodes[i+n*n+n],nodes[i+n*n+n+1u],t.x),t.y);
-    var result = mix(z0,z1,t.z);
-    let j = cell.z*n+cell.x;
-    result.w = mix(mix(nodes[j].w,nodes[j+1u].w,t.x),mix(nodes[j+n].w,nodes[j+n+1u].w,t.x),t.z);
-    return result;
+    return mix(z0,z1,t.z);
 }
 fn exterior_offset(r: Request) -> u32 {
     let n = r.tile_side*4u+1u;
@@ -193,6 +216,8 @@ fn cave_exterior(@builtin(global_invocation_id) id: vec3<u32>) {
     let word = id.x; if word >= width*width/4u { return; }
     let bottom = i32(floor(f32(r.min_y)/4.0))*4;
     var limits = vec4<f32>(0.0);
+    var entrances = vec4<f32>(0.0);
+    let seed=r.seed_low ^ hash(r.seed_high);
     for(var b=0u;b<4u;b++) {
         let index=word*4u+b; let x=index%width; let z=index/width;
         let column=column_at(x,z,r.tile_side);
@@ -208,9 +233,13 @@ fn cave_exterior(@builtin(global_invocation_id) id: vec3<u32>) {
             }
         }
         limits[b]=f32(roof);
+        let point=vec3<f32>(f32(r.origin_x+i32(x)),0.0,f32(r.origin_z+i32(z)));
+        let aperture=noise3(point*0.012,seed+43117u)+noise3(point*0.026,seed+53731u)*0.25;
+        entrances[b]=smoothstep(0.18,0.45,aperture);
     }
     // Four GPU-only limits per vector; this scratch never enters a readback.
     nodes[exterior_offset(r)+word]=limits;
+    nodes[exterior_offset(r)+width*width/4u+word]=entrances;
 }
 // The same GPU classification drives both the packed cavity volume and vegetation support.
 fn column_at(x: u32, z: u32, side: u32) -> Column {
@@ -231,7 +260,11 @@ fn is_cave(x: u32, y: i32, z: u32, column: Column, r: Request) -> bool {
     let biome = biome_sample(x,y,z,r);
     let index=z*(r.tile_side*16u)+x;
     let exterior=nodes[exterior_offset(r)+index/4u][index%4u];
-    var carved = caves.globals.y>0u && chamber_density(x,y,z,values.x,r)<0.0 && f32(y)<exterior;
+    let entrance=nodes[exterior_offset(r)+(r.tile_side*16u)*(r.tile_side*16u)/4u+index/4u][index%4u];
+    // Gradually narrow near-surface cavities except inside sparse coherent
+    // entrance domains. All ordinary cave decisions 24+ blocks down are unchanged.
+    let roof=(1.0-entrance)*(1.0-smoothstep(0.0,24.0,f32(column.height-1-y)));
+    var carved = caves.globals.y>0u && chamber_density(x,y,z,values.x,r)<-roof*0.20 && f32(y)<exterior;
     for (var c=0u;c<4u;c++) {
         let settings = caves.biomes[biome].carvers[c];
         // Registry Y ranges locate tunnel centers, not their outer walls.
@@ -242,18 +275,13 @@ fn is_cave(x: u32, y: i32, z: u32, column: Column, r: Request) -> bool {
         let fade = clamp(min(f32(y)-lower,upper-f32(y))*0.125,0.0,1.0);
         if settings.range.w < 0.5 {
             let strength = clamp(settings.range.z*settings.shape.w,0.0,2.0);
-            let chamber_threshold = 0.43-strength*0.085-settings.detail.y*0.025;
-            let tunnel_width = (0.042+settings.shape.x*0.028)*settings.shape.y*sqrt(max(strength,0.001));
+            let chamber_threshold = 0.43-strength*0.085-settings.detail.y*0.025+roof*0.35;
+            let tunnel_width = (0.042+settings.shape.x*0.028)*settings.shape.y*sqrt(max(strength,0.001))*(1.0-roof*0.92);
             let floor = clamp((settings.detail.x+1.0)*0.03,0.0,0.06);
             carved = carved || (caves.globals.y==0u && values.x > chamber_threshold+(1.0-fade)*0.5)
                 || (max(abs(values.y),abs(values.z)*settings.shape.z) < tunnel_width*fade-floor);
         } else {
-            let middle = (settings.range.x+settings.range.y)*0.5;
-            let bottom_y = max(f32(r.min_y+6),middle-max(12.0,settings.shape.z*22.0));
-            let top_y = max(upper,f32(column.height)+3.0);
-            let vertical = clamp(min(f32(y)-bottom_y,top_y-f32(y))*0.12,0.0,1.0);
-            let vertical_factor=select(1.0,max(0.2,settings.detail.w+settings.length.z),settings.detail.w>0.0 || settings.length.z>0.0);
-            carved = carved || (values.w < vertical*vertical_factor && vertical > 0.0);
+            carved = carved || values.w < 1.0-roof*0.25;
 
         }
     }

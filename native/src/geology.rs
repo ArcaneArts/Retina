@@ -56,6 +56,10 @@ pub struct Carver {
     pub vertical_default: f32,
     #[serde(default)]
     pub vertical_center: f32,
+    #[serde(default)]
+    pub vertical_range: [f32; 2],
+    #[serde(default)]
+    pub rotation_range: [f32; 2],
 }
 #[derive(Clone, Default, Deserialize)]
 pub struct GeologyProfile {
@@ -186,10 +190,18 @@ impl GeologyProfile {
                         c.distance_range[0],
                         c.distance_range[1],
                         c.vertical_center,
-                        0.0,
+                        if c.height.triangle {
+                            c.height.plateau as f32 + 1.0
+                        } else {
+                            0.0
+                        },
+                        c.vertical_range[0],
+                        c.vertical_range[1],
+                        c.rotation_range[0],
+                        c.rotation_range[1],
                     ]
                 } else {
-                    [0.0; 20]
+                    [0.0; 24]
                 };
                 bytes.extend_from_slice(bytemuck::cast_slice(&floats));
             }

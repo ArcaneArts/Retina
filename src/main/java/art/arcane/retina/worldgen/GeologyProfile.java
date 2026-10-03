@@ -106,6 +106,8 @@ final class GeologyProfile {
                     c.add("thickness_range", floatRange(canyon.shape().thickness()));
                     c.add("horizontal_range", floatRange(canyon.shape().horizontalRadiusFactor()));
                     c.add("distance_range", floatRange(canyon.shape().distanceFactor()));
+                    c.add("vertical_range", floatRange(canyon.shape().yScale()));
+                    c.add("rotation_range", floatRange(canyon.verticalRotation()));
                 } else { omitted.add("carver:" + holder.value().getClass().getSimpleName()); continue; }
                 carvers.add(c);
             }

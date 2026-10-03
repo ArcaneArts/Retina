@@ -458,9 +458,9 @@ impl Gpu {
         let node_side = requests[0].tile_side * 4 + 1;
         let node_bottom = requests[0].min_y.div_euclid(4) * 4;
         let node_height = ((requests[0].max_y - node_bottom + 3) / 4 + 1) as u32;
-        // Append four exterior limits per vector, remaining entirely on the GPU.
+        // Exterior limits and coherent entrance strengths remain entirely on the GPU.
         let nodes_size = node_side as u64 * node_side as u64 * node_height as u64 * 16
-            + surface_width as u64 * surface_width as u64 * 4;
+            + surface_width as u64 * surface_width as u64 * 8;
         if cave_side > 0 {
             if !self.cave_profiles.contains_key(&profile_id) {
                 let data = profile

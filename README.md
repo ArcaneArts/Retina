@@ -73,6 +73,8 @@ preserved; test new structures in fresh terrain.
 
 This is an approximation, not a complete port of every vanilla structure algorithm.
 Terrain matching and short floor supports approximate vanilla terrain adaptation;
+supports extend each column's GPU-selected underlying soil, rather than repeating
+grass, paths or the structure's floor block down the sides of a platform.
 village street expansion reserves space for attached houses, and WORLD_SURFACE
 projection includes water rather than placing buildings on the seabed. Liquid handling
 and some processors can differ. Pool feature
@@ -365,10 +367,17 @@ skipping whole veins or moving their expansion to the GPU.
 GPU cave fields evaluate the registered final-density program. Legacy profiles use
 registered cave cheese, spaghetti, layer, roughness and pillar noise octaves/amplitudes. Additional compute stages produce chambers, tunnels
 and finite curved ravines using the biome's registered carver probability, center-height
-range, thickness and radius parameters. Interpolation and final cavity decisions
+range/distribution, thickness, axis ranges and radius parameters. Ravines use a
+rounded 3D cross-section with tapered ends, vertical bends, and procedural wall
+roughness controlled by the registered width smoothness. Their roofs follow
+their sampled center heights and radii, rather than extending to every terrain
+column's surface. Interpolation and final cavity decisions
 happen on the GPU. Rust reads a bit-packed mask and replaces carved blocks with
 air, lava below 26.3's global lava boundary, or water below sea level in ocean
-biomes. Bedrock stays protected; caves can break through the ground and hillsides.
+biomes. Bedrock stays protected. Within 24 blocks of the surface, ordinary cave
+fields gradually narrow except inside sparse coherent entrance domains. The
+deeper chamber and tunnel decisions remain unchanged; mouths still break through
+the ground and hillsides. Entrance strengths are cached per column on the GPU.
 The GPU also emits one surface bit per halo column, so Rust skips tree and plant
 anchors over openings without reading back the halo's full cave volume.
 
@@ -376,7 +385,7 @@ When heights come from registered final density, a GPU-only exterior pass separa
 the sky-connected negative interval from underground cavities. Surface extraction
 and cave chambers share the density lattice; exterior air must still not strip
 the selected topsoil. Biome carvers can still open caves and ravines through the
-surface. The scratch limits add no readback bytes and their time is included in
+surface. The scratch limits and entrance fields add no readback bytes and their time is included in
 F3's GPU cave-mask stage.
 
 These shapes approximate vanilla carvers/noise caves; they do not replay vanilla
@@ -387,7 +396,9 @@ Height/base-column APIs return terrain before carving/features and do not run a
 3D GPU pass. Native cavity masks are shared across requests in a bounded 2,048
 chunk-entry cache; the larger temporary MCA cache remains on disk.
 
-Run `./gradlew geologyTest` for real-GPU parallel ore/cave and exposure checks.
+Run `./gradlew geologyTest` for real-GPU parallel ore/cave and exposure checks,
+including sparse entrances, identical deeper cave networks under different roofs,
+bounded ravine heights, tapered cross-sections, and registry height/roughness changes.
 `biomeTest` checks all 1,024 MCA chunks against independent chunk assembly and
 Minecraft's six heightmap predicates. Use a fresh world or unexplored regions
 for new geology; existing saved chunk records are preserved.

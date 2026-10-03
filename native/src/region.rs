@@ -377,6 +377,7 @@ fn generate_region_inner(
                                 request,
                                 p,
                                 &structure_plans,
+                                columns,
                                 Some(&mut blocks),
                             )
                         })
