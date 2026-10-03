@@ -24,7 +24,10 @@ badlands, jungle, mangrove swamp, windswept hills, jagged peaks and three oceans
 Surfaces include grass/dirt, podzol, sand, red sand/striped terracotta, mud, snow and stone.
 Underground, GPU-selected lush caves, dripstone caves and deep dark contain moss,
 cave plants, hanging vines, spore blossoms, stalactites/stalagmites and sculk.
-Curved ravines and water/lava lakes share the native region pipeline.
+Curved ravines and water/lava lakes share the native region pipeline. Lava lakes
+use one quarter of the original radius/diameter; water lake size is unchanged.
+New presets use `biome_scale: 128`, halving the default horizontal climate
+wavelengths and Voronoi spacing while retaining datapack noise/spacing ratios.
 Oceans fill to the registry sea level, with ice in cold biomes; bedrock and deepslate
 form the lower layers. Grass, ferns, flowers, tall plants, bushes and biome-specific
 wood/leaves are assembled in Rust from vanilla's registered decoration recipes.
@@ -222,11 +225,14 @@ Registered noise keeps its octave modifiers, normalization mode and two sample
 stacks with Minecraft's frequency ratio. The exported layer weights are checked
 against Minecraft's actual noise-stack metadata; GPU hashes still differ.
 
-The registered chunk-surface function supplies heights on a global four-block
-GPU lattice. The column pass interpolates those heights and climate values.
-For a preliminary surface lookup, the GPU brackets the density zero crossing
-above and below before interpolating. It does not use the rounded eight-block
-preliminary probe as the final terrain height, which would create flat shelves.
+Registered height programs run on a global four-block GPU lattice. The column
+pass interpolates those heights and climate values. When the registry supplies
+`find_top_surface`, the GPU scans the actual registered final solid density and
+interpolates its zero crossing. Vanilla's conservative preliminary surface probe
+is intended for aquifers; treating it as the terrain ceiling depressed land and
+produced excessive ocean. Explicit datapack surface expressions remain direct.
+The statistical GPU test compares sea coverage to vanilla's actual final density
+at sea level rather than its preliminary probe.
 The registered final-density expression supplies the cavity field on the 3D
 lattice. Java exports material-rule programs specialized by biome; the GPU samples
 registered material noises and evaluates thresholds, height/water/stone-depth
@@ -244,8 +250,8 @@ stone/air model. Registry profiles use GPU height programs in both generation mo
 
 This remains an approximation: GPU noise differs from Minecraft's CPU sampler,
 legacy blended noise is projected onto GPU noise, cache/interpolation wrappers
-use the GPU sampling lattice, and structures, the complete aquifer pressure
-model and arbitrary mod-defined feature code are not reproduced. Unsupported
+use the GPU sampling lattice, and unsupported structure kinds, the complete
+aquifer pressure model and arbitrary mod-defined feature code are not reproduced. Unsupported
 custom density primitives use their registered range midpoint and are identified
 in the export log; unsupported material/feature kinds are also logged. Ore-vein
 material rules are approximated by Rust's registered ore recipes. Material rules
@@ -254,8 +260,10 @@ on its GPU/Rust path. Existing saved chunks are preserved; these changes affect
 new terrain and temporary DH regions, with no retroactive terrain blending.
 
 The generator codec includes optional registry `settings`; the biome-source codec
-includes optional `registry_source`. `biome_scale` and `blend` configure legacy
-Voronoi profiles; imported multi-noise distribution follows the registry programs.
+includes optional `registry_source`. `biome_scale` controls horizontal climate wavelengths as well as Voronoi spacing;
+`blend` controls legacy Voronoi blending. Imported multi-noise intervals and
+registered noise ratios remain authoritative. Existing saves retain their stored
+scale; the denser default applies to new presets.
 Different GPU backends may produce different results for the same seed.
 
 ## Registry-derived surface decorations
@@ -490,3 +498,32 @@ Vulkan and Direct3D 12 still need runtime testing.
 References: [Fabric 26.3](https://www.fabricmc.net/2026/09/15/263.html),
 [wgpu](https://docs.rs/wgpu/30.0.1/wgpu/), and
 [Java's native linker](https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/foreign/Linker.html).
+
+## Native stage timings
+
+F3 receives per-world-profile session counters once per second (192 bytes from
+Rust plus the regular client stats packet). Rust records terrain assembly,
+ore replacement/carving, cave decorations, vegetation, structures, snow,
+NBT encoding and zlib compression separately across Rayon workers. Displayed
+ms/chunk and percentages describe **summed worker time**, so they do not add up
+to region wall latency. Planning and file I/O wall times are separate; structure
+planning can include GPU height queries. Cache promotion adds I/O without
+counting those cached chunks as newly generated.
+
+When the adapter exposes timestamp queries, each GPU pass records hardware
+begin/end timestamps: heights/climate, biome sites, columns/materials, cave
+density and cave masks. Those results use the existing submission/readback,
+adding at most 80 bytes and no extra GPU round trip. Device timings are
+amortized per 256 processed columns (including query/halo work). Host encoding,
+queue delay and wait/readback times are separate and overlap GPU execution.
+Adapters without timestamp queries keep generating and report host timings.
+Raw native counters are cumulative by resident profile; the client subtracts a
+world-bind baseline so reopening or switching worlds starts a fresh timing report
+even when identical profiles reuse the same native upload.
+
+`./gradlew landscapeTest` samples three seeds for land/ocean coverage and compares
+biome boundary density at both scales. `gpuTest`, `regionTest` and `featureTest`
+verify real GPU timestamps, concurrent accounting, the client packet, cached
+record accounting and compact lava lake footprints. An opt-in dedicated server
+check uses `-PretinaQa -PretinaTimingsQa` and exits after validating generated
+chunks and the actual F3 payload.

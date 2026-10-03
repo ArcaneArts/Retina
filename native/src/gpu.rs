@@ -1,8 +1,13 @@
+use crate::timings;
 use crate::{
     COLUMNS, GpuRequest, MAX_BATCH, MAX_TILES,
     profile::{Column, WorldProfile},
 };
-use std::{collections::HashMap, sync::mpsc, time::Duration};
+use std::{
+    collections::HashMap,
+    sync::mpsc,
+    time::{Duration, Instant},
+};
 use wgpu::util::DeviceExt;
 
 pub(crate) struct Gpu {
@@ -23,12 +28,27 @@ pub(crate) struct Gpu {
     output: wgpu::Buffer,
     sites: wgpu::Buffer,
     readback: wgpu::Buffer,
+    timestamps: Option<Timestamps>,
     pub(crate) backend: String,
 }
 
 pub(crate) struct GpuSample {
     pub columns: Vec<Column>,
     pub mask: Option<crate::geology::CaveMask>,
+}
+struct Timestamps {
+    queries: wgpu::QuerySet,
+    resolve: wgpu::Buffer,
+    readback: wgpu::Buffer,
+}
+impl Timestamps {
+    fn writes(&self, pair: u32) -> wgpu::ComputePassTimestampWrites<'_> {
+        wgpu::ComputePassTimestampWrites {
+            query_set: &self.queries,
+            beginning_of_pass_write_index: Some(pair * 2),
+            end_of_pass_write_index: Some(pair * 2 + 1),
+        }
+    }
 }
 struct CaveBuffers {
     nodes: wgpu::Buffer,
@@ -55,6 +75,7 @@ impl Gpu {
         let backend = format!("{:?}: {}", info.backend, info.name);
         let (device, queue) = pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor {
             label: Some("Retina terrain device"),
+            required_features: adapter.features() & wgpu::Features::TIMESTAMP_QUERY,
             required_limits: wgpu::Limits {
                 max_storage_buffer_binding_size: adapter.limits().max_storage_buffer_binding_size,
                 max_buffer_size: adapter.limits().max_buffer_size,
@@ -189,6 +210,26 @@ impl Gpu {
             32 * 20000usize.max(MAX_BATCH * 25) as u64,
             wgpu::BufferUsages::STORAGE,
         );
+        let timestamps = device
+            .features()
+            .contains(wgpu::Features::TIMESTAMP_QUERY)
+            .then(|| Timestamps {
+                queries: device.create_query_set(&wgpu::QuerySetDescriptor {
+                    label: Some("Retina pass timings"),
+                    ty: wgpu::QueryType::Timestamp,
+                    count: 10,
+                }),
+                resolve: buffer(
+                    "Retina timestamp resolve",
+                    256,
+                    wgpu::BufferUsages::QUERY_RESOLVE | wgpu::BufferUsages::COPY_SRC,
+                ),
+                readback: buffer(
+                    "Retina timestamp readback",
+                    80,
+                    wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
+                ),
+            });
         let mut gpu = Self {
             device,
             queue,
@@ -207,6 +248,7 @@ impl Gpu {
             output,
             sites,
             readback,
+            timestamps,
             backend,
         };
         gpu.add_profile(0, &vec![0; 672], &[0; 224], &[0; 32]);
@@ -276,7 +318,9 @@ impl Gpu {
         &mut self,
         requests: &[GpuRequest],
         profile: Option<&WorldProfile>,
+        timings: &timings::Timings,
     ) -> Result<GpuSample, String> {
+        let host_start = Instant::now();
         let profile_id = requests[0].profile;
         if !self.profiles.contains_key(&profile_id) {
             self.add_profile(
@@ -362,6 +406,22 @@ impl Gpu {
         } else {
             requests.len()
         };
+        let mut measured = Vec::new();
+        if profile.is_some_and(|p| p.registry_program.is_some()) {
+            measured.push(timings::HEIGHT);
+        }
+        if profile_id != 0 {
+            measured.push(timings::SITES);
+        }
+        measured.push(timings::COLUMNS);
+        if cave_side > 0 {
+            measured.extend([timings::CAVE_DENSITY, timings::CAVE_MASK]);
+        }
+        let timestamp_writes = |stage| {
+            self.timestamps
+                .as_ref()
+                .map(|t| t.writes(measured.iter().position(|s| *s == stage).unwrap() as u32))
+        };
         let mut encoder = self
             .device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor {
@@ -375,7 +435,7 @@ impl Gpu {
             };
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
                 label: Some("Retina registered surface lattice"),
-                timestamp_writes: None,
+                timestamp_writes: timestamp_writes(timings::HEIGHT),
             });
             pass.set_pipeline(&self.height_pipeline);
             pass.set_bind_group(0, group, &[]);
@@ -384,7 +444,7 @@ impl Gpu {
         if profile_id != 0 {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
                 label: Some("Retina biome site pass"),
-                timestamp_writes: None,
+                timestamp_writes: timestamp_writes(timings::SITES),
             });
             pass.set_pipeline(&self.sites_pipeline);
             pass.set_bind_group(0, group, &[]);
@@ -393,7 +453,7 @@ impl Gpu {
         {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
                 label: Some("Retina interpolated column pass"),
-                timestamp_writes: None,
+                timestamp_writes: timestamp_writes(timings::COLUMNS),
             });
             pass.set_pipeline(&self.columns_pipeline);
             pass.set_bind_group(0, group, &[]);
@@ -442,7 +502,7 @@ impl Gpu {
             {
                 let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
                     label: Some("Retina cave density pass"),
-                    timestamp_writes: None,
+                    timestamp_writes: timestamp_writes(timings::CAVE_DENSITY),
                 });
                 pass.set_pipeline(&self.cave_nodes_pipeline);
                 pass.set_bind_group(0, &cave_group, &[]);
@@ -451,7 +511,7 @@ impl Gpu {
             {
                 let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
                     label: Some("Retina GPU interpolated cave mask"),
-                    timestamp_writes: None,
+                    timestamp_writes: timestamp_writes(timings::CAVE_MASK),
                 });
                 pass.set_pipeline(&self.cave_mask_pipeline);
                 pass.set_bind_group(0, &cave_group, &[]);
@@ -468,7 +528,22 @@ impl Gpu {
         }
         let size = (count * COLUMNS * std::mem::size_of::<Column>()) as u64;
         encoder.copy_buffer_to_buffer(&self.output, 0, &self.readback, 0, size);
+        let query_bytes = measured.len() as u64 * 16;
+        if let Some(t) = &self.timestamps {
+            encoder.resolve_query_set(&t.queries, 0..measured.len() as u32 * 2, &t.resolve, 0);
+            encoder.copy_buffer_to_buffer(&t.resolve, 0, &t.readback, 0, query_bytes);
+        }
         let submission = self.queue.submit([encoder.finish()]);
+        timings.add(timings::ENCODE, host_start.elapsed().as_nanos() as u64);
+        let wait_start = Instant::now();
+        let (query_sender, query_receiver) = mpsc::channel();
+        if let Some(t) = &self.timestamps {
+            t.readback
+                .slice(..query_bytes)
+                .map_async(wgpu::MapMode::Read, move |result| {
+                    let _ = query_sender.send(result);
+                });
+        }
         let slice = self.readback.slice(..size);
         let (sender, receiver) = mpsc::channel();
         slice.map_async(wgpu::MapMode::Read, move |result| {
@@ -528,6 +603,30 @@ impl Gpu {
         } else {
             None
         };
+        if let Some(t) = &self.timestamps {
+            query_receiver
+                .recv_timeout(Duration::from_secs(30))
+                .map_err(|e| e.to_string())?
+                .map_err(|e| e.to_string())?;
+            {
+                let mapped = t
+                    .readback
+                    .slice(..query_bytes)
+                    .get_mapped_range()
+                    .map_err(|e| e.to_string())?;
+                let values = bytemuck::cast_slice::<u8, u64>(&mapped);
+                let period = self.queue.get_timestamp_period() as f64;
+                for (i, stage) in measured.iter().enumerate() {
+                    timings.add(
+                        *stage,
+                        (values[i * 2 + 1].saturating_sub(values[i * 2]) as f64 * period) as u64,
+                    );
+                }
+            }
+            t.readback.unmap();
+        }
+        timings.add(timings::WAIT_COPY, wait_start.elapsed().as_nanos() as u64);
+        timings.gpu((count * COLUMNS) as u64, self.timestamps.is_some());
         Ok(GpuSample { columns, mask })
     }
 }

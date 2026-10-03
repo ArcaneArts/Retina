@@ -424,6 +424,8 @@ pub fn plans(
     request: ChunkRequest,
     side: i32,
 ) -> Result<Vec<Arc<Start>>, String> {
+    let timings = engine.timings(request.reserved);
+    let _planning = timings.span(crate::timings::STRUCTURE_PLAN);
     let Some(profile) = engine.profile(request.reserved)? else {
         return Ok(Vec::new());
     };

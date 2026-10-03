@@ -2,14 +2,15 @@
 @group(0) @binding(5) var<storage,read> bytecode: array<u32>;
 @group(0) @binding(6) var<storage,read_write> surface_nodes: array<f32>;
 fn program_noise(point:vec3<f32>,index:u32,request:Request)->f32 {
-    let at=bytecode[1]+index*36u;
+    let at=bytecode[1]+index*37u;
     var frequency=bitcast<f32>(bytecode[at]);let amplitude=bitcast<f32>(bytecode[at+1u]);
     let seed=request.seed_low ^ mix_hash(request.seed_high) ^ bytecode[at+3u];
+    let scaled=point*vec3<f32>(bitcast<f32>(bytecode[at+36u]),1.0,bitcast<f32>(bytecode[at+36u]));
     var sum=0.0;
     for(var i=0u;i<bytecode[at+2u];i++) {
         let w=bitcast<f32>(bytecode[at+4u+i]);
         if w!=0.0 {
-            sum+=(noise3(point*frequency,seed+i*1013u)+noise3(point*(frequency*1.0181268882175227),(seed^0xa511e9b3u)+i*1013u))*w;
+            sum+=(noise3(scaled*frequency,seed+i*1013u)+noise3(scaled*(frequency*1.0181268882175227),(seed^0xa511e9b3u)+i*1013u))*w;
         }
         frequency*=2.0;
     }

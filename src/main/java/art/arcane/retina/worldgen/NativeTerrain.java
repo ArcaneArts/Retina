@@ -21,6 +21,7 @@ import static java.lang.foreign.ValueLayout.JAVA_LONG;
 
 /** Bulk C ABI calls. Rust borrows these buffers only until the downcall returns. */
 public final class NativeTerrain {
+    private final MethodHandle timingSnapshot;
     private final MethodHandle generate;
     private final MethodHandle structureData;
     private final MethodHandle structureStarts;
@@ -40,6 +41,7 @@ public final class NativeTerrain {
         var symbols = SymbolLookup.libraryLookup(extractLibrary(), Arena.global());
         var linker = Linker.nativeLinker();
         var initialize = linker.downcallHandle(symbols.findOrThrow("retina_initialize"), FunctionDescriptor.of(JAVA_INT));
+        timingSnapshot = linker.downcallHandle(symbols.findOrThrow("retina_timing_snapshot"), FunctionDescriptor.of(JAVA_INT, JAVA_INT, ADDRESS));
         generate = linker.downcallHandle(symbols.findOrThrow("retina_generate_chunk_columns_u16"),
                 FunctionDescriptor.of(JAVA_INT, ADDRESS, ADDRESS, JAVA_LONG, ADDRESS));
         structureData = linker.downcallHandle(symbols.findOrThrow("retina_chunk_structure_data"), FunctionDescriptor.of(JAVA_INT, ADDRESS, ADDRESS, ADDRESS));
@@ -84,6 +86,17 @@ public final class NativeTerrain {
 
     public String backend() {
         return backend;
+    }
+
+    public NativeTimings timings(int profile) {
+        try (var arena = Arena.ofConfined()) {
+            var output = arena.allocate(192, Long.BYTES);
+            check((int) timingSnapshot.invokeExact(profile, output));
+            if (output.get(JAVA_INT,0) != 1) throw new IllegalStateException("Unsupported native timing ABI");
+            long[] stages = new long[NativeTimings.STAGES];
+            for(int i=0;i<stages.length;i++) stages[i]=output.get(JAVA_LONG,32L+i*8L);
+            return new NativeTimings(output.get(JAVA_INT,4),output.get(JAVA_LONG,8),output.get(JAVA_LONG,16),output.get(JAVA_LONG,24),stages);
+        } catch(Throwable error) { throw failure(error); }
     }
 
     public net.minecraft.nbt.CompoundTag structureData(TerrainRequest request) { return readStructureData(structureData,request); }

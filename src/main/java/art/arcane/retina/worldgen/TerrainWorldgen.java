@@ -22,8 +22,14 @@ public final class TerrainWorldgen {
         });
         ServerTickEvents.END_SERVER_TICK.register(server -> {
             TerrainQa.checkPromotion(server);
+            TerrainQa.checkTimings(server);
             TerrainQa.checkStructures(server);
             if (server.getTickCount() % 20 != 0) return;
+            for (var level : server.getAllLevels()) {
+                if (level.getChunkSource().getGenerator() instanceof RetinaChunkGenerator retina) {
+                    retina.metrics().nativeTimings(NativeTerrain.instance().timings(retina.profile() == null ? 0 : retina.profile().nativeId()));
+                }
+            }
             for (var player : PlayerLookup.all(server)) {
                 if (!ServerPlayNetworking.canSend(player, TerrainStatsPayload.TYPE)) continue;
                 var generator = player.level().getChunkSource().getGenerator();

@@ -26,20 +26,29 @@ final class RegistryGpuProgram {
         this.registry=registry; this.minY=minY; this.height=height; this.sea=sea;
     }
     static JsonObject export(HolderLookup.Provider registry, NoiseGeneratorSettings settings,
-                             List<Holder<Biome>> biomes, LinkedHashMap<BlockState,Integer> palette, int minY, int height) {
+                             List<Holder<Biome>> biomes, LinkedHashMap<BlockState,Integer> palette, int minY, int height, float biomeScale) {
         var compiler=new RegistryGpuProgram(registry,minY,height,settings.seaLevel());
         var router=settings.noiseRouter();
         var climate=compiler.new Program();
         for(var fn:List.of(router.temperature(),router.vegetation(),router.continents(),router.erosion(),router.ridges(),router.depth()))
             climate.roots.add(climate.density(compiler.encode(fn)));
         compiler.programs.add(climate.finish());
+        var climateNoises=new HashSet<Integer>();
+        for(var value:climate.nodes) {
+            var node=value.getAsJsonObject();int op=node.get("op").getAsInt();
+            if(op==1)climateNoises.add(node.getAsJsonArray("p").get(0).getAsInt());
+            if(op==2)climateNoises.add(node.get("a").getAsInt());
+        }
+        for(int id:climateNoises)compiler.noises.get(id).getAsJsonObject().addProperty("horizontal_scale",256.0/biomeScale);
         var terrain=compiler.new Program();
         JsonElement surface=compiler.unwrap(compiler.encode(router.chunkSurfaceLevel()));
         var config=new JsonArray();
         if(surface.isJsonObject() && type(surface.getAsJsonObject()).equals("find_top_surface")) {
-            var o=surface.getAsJsonObject();
-            terrain.roots.add(terrain.density(o.get("density"))); terrain.roots.add(terrain.density(o.get("upper_bound")));
-            config.add(o.get("lower_bound")); config.add(o.get("cell_height")); config.add(0);
+            // chunk_surface_level is a conservative probe used by vanilla's aquifers,
+            // not the actual terrain ceiling. Search the registered solid density.
+            terrain.roots.add(terrain.density(compiler.encode(router.finalDensity())));
+            terrain.roots.add(terrain.constant(minY+height));
+            config.add(minY); config.add(8); config.add(0);
         } else { terrain.roots.add(terrain.density(surface)); terrain.roots.add(0); config.add(minY);config.add(1);config.add(1); }
         compiler.programs.add(terrain.finish());
         var density=compiler.new Program();density.roots.add(density.density(compiler.encode(router.finalDensity())));compiler.programs.add(density.finish());

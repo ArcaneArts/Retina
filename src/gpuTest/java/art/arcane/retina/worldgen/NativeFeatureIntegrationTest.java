@@ -96,6 +96,7 @@ public final class NativeFeatureIntegrationTest {
         var metrics = new GenerationMetrics();
         int lakeColumns = 0, compared = 0;
         var levels = new HashMap<Long,Integer>();
+        var bounds = new HashMap<Long,int[]>();
         try (var cache = new TemporaryRegions(r, "minecraft:plains", profile, metrics, 2)) {
             for (int cz = 0; cz < 32; cz++) for (int cx = 0; cx < 32; cx++) {
                 var pos = new ChunkPos(cx, cz); var columns = cache.columns(pos);
@@ -106,6 +107,8 @@ public final class NativeFeatureIntegrationTest {
                     int level = columns.heights()[i] + ((packed >>> 24) & 7);
                     int x = cx * 16 + i % 16, z = cz * 16 + i / 16;
                     long key = ChunkPos.pack(Math.floorDiv(x,128),Math.floorDiv(z,128));
+                    var box=bounds.computeIfAbsent(key,k->new int[]{x,z,x,z});
+                    box[0]=Math.min(box[0],x);box[1]=Math.min(box[1],z);box[2]=Math.max(box[2],x);box[3]=Math.max(box[3],z);
                     var old = levels.putIfAbsent(key, level); require(old == null || old == level, "GPU lake waterline is flat across chunk borders");
                     var generated = cache.baseColumn(columns,i);
                     require(generated[level + 63].is(lava ? Blocks.LAVA : Blocks.WATER), "lake contains registered fluid");
@@ -126,7 +129,10 @@ public final class NativeFeatureIntegrationTest {
             var samples = cache.biomes(new ChunkPos(0,0));
             require(Arrays.equals(samples, NativeTerrain.instance().sampleBiomes(r)), "cached MCA biome query agrees with GPU quart output");
             require(lakeColumns > 100 && levels.size() > 1 && compared == 24, "GPU lakes are reachable and span multiple global cells");
-            event(lava ? "gpu_lava_lakes" : "gpu_water_lakes", "\"columns\":" + lakeColumns + ",\"lakes\":" + levels.size());
+            int maxWidth=bounds.values().stream().mapToInt(b->b[2]-b[0]+1).max().orElse(0);
+            int maxDepth=bounds.values().stream().mapToInt(b->b[3]-b[1]+1).max().orElse(0);
+            require(lava ? maxWidth<=20 && maxDepth<=24 : maxWidth>=45 && maxDepth>=45, "lava footprint is quarter width while water lakes retain original size");
+            event(lava ? "gpu_lava_lakes" : "gpu_water_lakes", "\"columns\":" + lakeColumns + ",\"lakes\":" + levels.size()+",\"max_width\":"+maxWidth+",\"max_depth\":"+maxDepth);
         }
     }
     private static JsonObject cave(JsonObject json, String name) {

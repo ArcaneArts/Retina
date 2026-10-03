@@ -44,12 +44,37 @@ public final class NativeTerrainIntegrationTest {
                 "QA_EVT {\"event\":\"java_parallel_bridge\",\"status\":\"pass\",\"context\":{\"chunks\":128,\"workers\":16,\"chunks_per_second\":%.2f,\"mean_native_request_ms\":%.3f}}%n",
                 128 / seconds, latency / 128);
 
+        var timings = nativeTerrain.timings(0);
+        require(timings.chunks()==128, "parallel requests are counted exactly once");
+        require(timings.gpuColumns()>=128*256 && timings.gpuJobs()>0, "GPU dispatches and processed columns are reported");
+        require(timings.nanos(NativeTimings.ASSEMBLY)>0 && timings.nanos(NativeTimings.WAIT_COPY)>0, "worker and host timings cross C ABI");
+        if(timings.gpuMeasured()) require(timings.nanos(NativeTimings.COLUMNS)>0, "GPU timestamps measure real shader execution");
+        var buffer=new net.minecraft.network.RegistryFriendlyByteBuf(io.netty.buffer.Unpooled.buffer(),net.minecraft.core.RegistryAccess.EMPTY);
+        try {
+            var stats=new GenerationMetrics.Snapshot(3,4,5,6,7,8,9,10,11,12,13,14,timings);
+            var payload=new TerrainStatsPayload(true,nativeTerrain.backend(),"mca",stats);
+            TerrainStatsPayload.CODEC.encode(buffer,payload);
+            var decoded=TerrainStatsPayload.CODEC.decode(buffer);
+            require(decoded.active() && decoded.mode().equals("mca") && decoded.stats().promotions()==14, "F3 payload preserves existing statistics");
+            require(decoded.stats().stages().chunks()==timings.chunks() && Arrays.equals(decoded.stats().stages().nanos(),timings.nanos()), "F3 payload carries all native stage counters");
+            require(!buffer.isReadable(), "timing packet consumes its complete bounded schema");
+        } finally { buffer.release(); }
+        System.out.println("QA_EVT {\"event\":\"native_timing_packet\",\"status\":\"pass\",\"context\":{\"chunks\":"+timings.chunks()+",\"gpu_jobs\":"+timings.gpuJobs()+",\"gpu_timestamps\":"+timings.gpuMeasured()+"}}");
         try {
             nativeTerrain.sampleHeights(new TerrainRequest(0, 0, 0, -64, 384, 64, 48, 0));
             throw new AssertionError("invalid native request must report its actual error");
         } catch (IllegalStateException expected) {
             require(expected.getMessage().contains("invalid simplex settings"), "Rust error crosses ABI");
         }
+        require(nativeTerrain.timings(0).chunks()==128, "failed requests do not count as generated chunks");
+        var nextWorld=new GenerationMetrics(); nextWorld.startNativeTimings(nativeTerrain.timings(0));
+        nextWorld.nativeTimings(nativeTerrain.timings(0));
+        require(nextWorld.snapshot().stages().chunks()==0 && nextWorld.snapshot().stages().workerNanos()==0, "new world baseline excludes reused native profile history");
+        try(var data=nativeTerrain.generate(new TerrainRequest(123456789L,17,17,-64,384,64,48,.008F))) {
+            require(data.heights().length==256,"new world request completes");
+        }
+        nextWorld.nativeTimings(nativeTerrain.timings(0));
+        require(nextWorld.snapshot().stages().chunks()==1 && nextWorld.snapshot().stages().workerNanos()>0, "new session reports only new worker measurements");
         System.out.println("QA_EVT {\"event\":\"native_error_propagation\",\"status\":\"pass\"}");
     }
 

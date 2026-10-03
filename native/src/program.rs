@@ -15,6 +15,8 @@ pub struct Program {
 }
 #[derive(Clone, Deserialize)]
 pub struct Noise {
+    #[serde(default = "unit_scale")]
+    pub horizontal_scale: f32,
     pub frequency: f32,
     pub amplitude: f32,
     pub salt: i32,
@@ -28,6 +30,9 @@ pub struct RegistryProgram {
     pub surface: [i32; 3],
     #[serde(default)]
     pub surface_noises: [u32; 3],
+}
+fn unit_scale() -> f32 {
+    1.0
 }
 impl RegistryProgram {
     pub fn validate(&self, biomes: usize) -> Result<(), String> {
@@ -92,6 +97,8 @@ impl RegistryProgram {
         for n in &self.noises {
             if n.coefficients.is_empty()
                 || n.coefficients.len() > 32
+                || !n.horizontal_scale.is_finite()
+                || n.horizontal_scale <= 0.0
                 || !n.frequency.is_finite()
                 || n.frequency <= 0.0
                 || !n.amplitude.is_finite()
@@ -135,6 +142,7 @@ impl RegistryProgram {
             let mut mods = [0f32; 32];
             mods[..n.coefficients.len()].copy_from_slice(&n.coefficients);
             words.extend(mods.map(f32::to_bits));
+            words.push(n.horizontal_scale.to_bits());
         }
         words[2] = words.len() as u32;
         for v in &p.points {

@@ -79,11 +79,17 @@ public final class NativeRegionIntegrationTest {
                     "QA_EVT {\"event\":\"minecraft_mca_decode\",\"status\":\"pass\",\"context\":{\"chunks\":1024,\"generation_ms\":%.3f,\"amortized_ms_per_chunk\":%.5f,\"bytes\":%d}}%n",
                     ms, ms / 1024, report.bytes());
 
+            var stages=nativeTerrain.timings(0);
+            require(stages.chunks()==1024, "MCA worker chunks counted once");
+            for(int stage:new int[]{NativeTimings.ASSEMBLY,NativeTimings.NBT,NativeTimings.COMPRESS,NativeTimings.IO})
+                require(stages.nanos(stage)>0, "MCA stage has real measurements: "+stage);
+            System.out.println("QA_EVT {\"event\":\"mca_stage_timings\",\"status\":\"pass\",\"context\":{\"worker_ms_per_chunk\":"+stages.workerNanos()/1024e6+",\"nbt_ms_per_chunk\":"+stages.chunkMs(NativeTimings.NBT)+",\"compression_ms_per_chunk\":"+stages.chunkMs(NativeTimings.COMPRESS)+"}}");
             byte[] complete = Files.readAllBytes(path);
             var repeat = nativeTerrain.generateRegion(request, path, version, "minecraft:plains");
             require(repeat.generated() == 0 && repeat.preserved() == 1024, "complete region does not regenerate");
             require(Arrays.equals(complete, Files.readAllBytes(path)), "complete region stays byte-for-byte unchanged");
 
+            require(nativeTerrain.timings(0).chunks()==1024, "existing region does not inflate timing chunk counts");
             var editedPosition = new ChunkPos(-32, 0);
             try (var storage = new RegionFileStorage(info, directory, false)) {
                 var edited = storage.read(editedPosition);
@@ -104,6 +110,7 @@ public final class NativeRegionIntegrationTest {
                 require(blocks.get(0, 0, 0).is(Blocks.DIAMOND_BLOCK), "player block edits survive region generation");
                 require(storage.read(new ChunkPos(-1, 31)) != null, "missing slot is readable again");
             }
+            require(nativeTerrain.timings(0).chunks()==1025, "single missing slot counts as one chunk");
             System.out.println("QA_EVT {\"event\":\"mca_existing_edits_and_missing_slots\",\"status\":\"pass\"}");
 
             var corrupt = directory.resolve("corrupt.mca");

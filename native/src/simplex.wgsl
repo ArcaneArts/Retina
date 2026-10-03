@@ -300,16 +300,21 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
     let lh = cell_hash(lake_cell, request.seed_low + 8647u, request.seed_high);
     let lake_center = (vec2<f32>(lake_cell) + vec2<f32>(0.25) + vec2<f32>(f32(lh & 255u),f32((lh >> 8u) & 255u))/510.0)*128.0;
     let lake_delta = point - lake_center;
-    let radius = 24.0+f32(lh & 7u);
-    let basin = length(lake_delta * vec2<f32>(1.0,0.78)) / radius
+    var radius = 24.0+f32(lh & 7u);
+    var basin = length(lake_delta * vec2<f32>(1.0,0.78)) / radius
         + simplex(point * 0.055, request.seed_low + 9913u, request.seed_high)*0.09;
     if basin < 1.35 {
         let center = terrain_at(lake_center,request,request_index);
         let options = world.biomes[center.biome].features;
         let chance = f32((lh >> 16u) & 65535u)/65535.0;
         let lava_lake = chance < options.y;
+        if lava_lake {
+            radius *= 0.25;
+            basin = length(lake_delta * vec2<f32>(1.0,0.78)) / radius
+                + simplex(point * 0.055, request.seed_low + 9913u, request.seed_high)*0.09;
+        }
         let eligible = lava_lake || chance < options.x;
-        if eligible && (material.w & (2u | 4u | 8u | 16u)) == 0u {
+        if eligible && basin < 1.35 && (material.w & (2u | 4u | 8u | 16u)) == 0u {
             // A fixed level below the lowest sampled bank contains the fluid.
             let shore_x0 = terrain_at(lake_center+vec2<f32>(radius+5.0,0.0),request,request_index).height;
             let shore_x1 = terrain_at(lake_center-vec2<f32>(radius+5.0,0.0),request,request_index).height;

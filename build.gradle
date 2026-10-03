@@ -10,6 +10,7 @@ loom {
         if (providers.gradleProperty('retinaQa').isPresent()) {
             vmArg '-Dretina.qa=true'
             if (providers.gradleProperty('retinaPromotionQa').isPresent()) vmArg '-Dretina.qa.promotion=true'
+            if (providers.gradleProperty('retinaTimingsQa').isPresent()) vmArg '-Dretina.qa.timings=true'
             if (providers.gradleProperty('retinaStructuresQa').isPresent()) vmArg '-Dretina.qa.structures=true'
             if (providers.gradleProperty('retinaStructuresReopenQa').isPresent()) vmArg '-Dretina.qa.structures.reopen=true'
         }
@@ -216,5 +217,14 @@ tasks.register('structureTest', JavaExec) {
     dependsOn 'gpuTestClasses', 'packageNative'
     classpath = sourceSets.gpuTest.runtimeClasspath
     mainClass = 'art.arcane.retina.worldgen.NativeStructureIntegrationTest'
+    jvmArgs '--enable-native-access=ALL-UNNAMED'
+}
+
+tasks.register('landscapeTest', JavaExec) {
+    group = 'verification'
+    description = 'Compare GPU landscape distribution against registered vanilla terrain and validate stage telemetry.'
+    dependsOn 'gpuTestClasses', 'packageNative'
+    classpath = sourceSets.gpuTest.runtimeClasspath
+    mainClass = 'art.arcane.retina.worldgen.NativeLandscapeIntegrationTest'
     jvmArgs '--enable-native-access=ALL-UNNAMED'
 }

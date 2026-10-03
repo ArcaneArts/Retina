@@ -13,6 +13,7 @@ use rayon::prelude::*;
 use crate::{
     COLUMNS, ChunkRequest, TerrainEngine, decoration, geology,
     profile::{Column, WorldProfile},
+    timings,
 };
 
 const SECTOR: usize = 4096;
@@ -112,7 +113,8 @@ fn generate_region_inner(
     if cached.is_none() && (biome.is_empty() || biome.len() > u16::MAX as usize) {
         return Err("invalid MCA biome identifier".into());
     }
-    let mut file = match fs::read(path) {
+    let timings = engine.timings(request.reserved);
+    let mut file = match timings.time(timings::IO, || fs::read(path)) {
         Ok(bytes) => bytes,
         Err(e) if e.kind() == ErrorKind::NotFound => vec![0; HEADER],
         Err(e) => return Err(format!("read region {}: {e}", path.display())),
@@ -167,8 +169,9 @@ fn generate_region_inner(
 
     let start = Instant::now();
     let records: Result<Vec<Vec<u8>>, String> = if let Some(cached) = cached {
-        let source =
-            fs::read(cached).map_err(|e| format!("read preview {}: {e}", cached.display()))?;
+        let source = timings
+            .time(timings::IO, || fs::read(cached))
+            .map_err(|e| format!("read preview {}: {e}", cached.display()))?;
         if source.len() < HEADER {
             return Err("truncated cached MCA header".into());
         }
@@ -224,74 +227,114 @@ fn generate_region_inner(
                 ));
             }
         }
-        let structure_plans = crate::structures::plans(engine, origin, 32)?;
         report.gpu_nanos = start.elapsed().as_nanos() as u64;
+        let structure_plans = crate::structures::plans(engine, origin, 32)?;
         assemblers()?.install(|| {
-            let overlays = if decorated {
-                decoration::plan(
-                    &field,
-                    profile.as_deref().unwrap(),
-                    origin,
-                    origin.chunk_x,
-                    origin.chunk_z,
-                    32,
-                    cave_mask.as_deref(),
-                )
-            } else {
-                vec![Vec::new(); 1024]
-            };
-            let ores = if let Some(p) = profile.as_deref() {
-                geology::plan(&field, p, origin, 32, cave_mask.as_deref())
-            } else {
-                vec![Vec::new(); 1024]
-            };
+            let overlays = timings.time(timings::VEGETATION_PLAN, || {
+                if decorated {
+                    decoration::plan(
+                        &field,
+                        profile.as_deref().unwrap(),
+                        origin,
+                        origin.chunk_x,
+                        origin.chunk_z,
+                        32,
+                        cave_mask.as_deref(),
+                    )
+                } else {
+                    vec![Vec::new(); 1024]
+                }
+            });
+            let ores = timings.time(timings::ORE_PLAN, || {
+                if let Some(p) = profile.as_deref() {
+                    geology::plan(&field, p, origin, 32, cave_mask.as_deref())
+                } else {
+                    vec![Vec::new(); 1024]
+                }
+            });
             requests
                 .par_iter()
                 .enumerate()
                 .map(|(index, &request)| {
                     let columns = field.chunk(request.chunk_x, request.chunk_z);
-                    let mut blocks = vec![0; request.block_count()];
-                    decoration::assemble(request, columns, profile.as_deref(), &[], &mut blocks);
-                    if let Some(p) = profile.as_deref() {
-                        geology::apply(
+                    let mut blocks = timings.time(timings::ASSEMBLY, || {
+                        let mut blocks = vec![0; request.block_count()];
+                        decoration::assemble(
                             request,
-                            &field,
-                            p,
-                            cave_mask.as_deref(),
-                            &ores[slots[index]],
+                            columns,
+                            profile.as_deref(),
+                            &[],
                             &mut blocks,
                         );
-                    }
-                    if let Some(p) = profile.as_deref() {
-                        crate::features::apply(request, p, cave_mask.as_deref(), &mut blocks);
-                    }
-                    decoration::decorate(profile.as_deref(), &overlays[slots[index]], &mut blocks);
-                    let structure_data = profile.as_deref().map(|p| {
-                        crate::structures::apply(request, p, &structure_plans, Some(&mut blocks))
+                        blocks
                     });
                     if let Some(p) = profile.as_deref() {
-                        crate::features::snow(request, p, columns, &mut blocks);
+                        timings.time(timings::GEOLOGY, || {
+                            geology::apply(
+                                request,
+                                &field,
+                                p,
+                                cave_mask.as_deref(),
+                                &ores[slots[index]],
+                                &mut blocks,
+                            )
+                        });
                     }
-                    let nbt = chunk_nbt_blocks(
-                        request,
-                        columns,
-                        &blocks,
-                        data_version,
-                        biome,
-                        profile.as_deref(),
-                        cave_mask.as_deref(),
-                        structure_data.as_ref().map(|data| &data.tag),
-                    );
-                    let mut compressed = ZlibEncoder::new(Vec::new(), Compression::fast());
-                    compressed.write_all(&nbt).map_err(|e| e.to_string())?;
-                    compressed.finish().map_err(|e| e.to_string())
+                    if let Some(p) = profile.as_deref() {
+                        timings.time(timings::CAVE_FEATURES, || {
+                            crate::features::apply(request, p, cave_mask.as_deref(), &mut blocks)
+                        });
+                    }
+                    timings.time(timings::VEGETATION, || {
+                        decoration::decorate(
+                            profile.as_deref(),
+                            &overlays[slots[index]],
+                            &mut blocks,
+                        )
+                    });
+                    let structure_data = profile.as_deref().map(|p| {
+                        timings.time(timings::STRUCTURES, || {
+                            crate::structures::apply(
+                                request,
+                                p,
+                                &structure_plans,
+                                Some(&mut blocks),
+                            )
+                        })
+                    });
+                    if let Some(p) = profile.as_deref() {
+                        timings.time(timings::SNOW, || {
+                            crate::features::snow(request, p, columns, &mut blocks)
+                        });
+                    }
+                    let nbt = timings.time(timings::NBT, || {
+                        chunk_nbt_blocks(
+                            request,
+                            columns,
+                            &blocks,
+                            data_version,
+                            biome,
+                            profile.as_deref(),
+                            cave_mask.as_deref(),
+                            structure_data.as_ref().map(|data| &data.tag),
+                        )
+                    });
+                    timings.time(timings::COMPRESS, || {
+                        let mut compressed = ZlibEncoder::new(Vec::new(), Compression::fast());
+                        compressed.write_all(&nbt).map_err(|e| e.to_string())?;
+                        compressed.finish().map_err(|e| e.to_string())
+                    })
                 })
                 .collect()
         })
     };
     let records = records?;
+    if cached.is_none() {
+        timings.chunks(records.len() as u64);
+    }
     report.assembly_nanos = (start.elapsed().as_nanos() as u64).saturating_sub(report.gpu_nanos);
     let start = Instant::now();
+    let _io = timings.span(timings::IO);
     file.resize(file.len().div_ceil(SECTOR) * SECTOR, 0);
     let timestamp = SystemTime::now()
         .duration_since(UNIX_EPOCH)

@@ -21,7 +21,7 @@ import java.util.stream.Stream;
 public final class RetinaBiomeSource extends BiomeSource {
     public static final MapCodec<RetinaBiomeSource> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
             Biome.CODEC.listOf(1, 65535).fieldOf("biomes").forGetter(RetinaBiomeSource::nativeBiomes),
-            Codec.floatRange(128, 4096).optionalFieldOf("biome_scale", 256F).forGetter(s -> s.scale),
+            Codec.floatRange(128, 4096).optionalFieldOf("biome_scale", 128F).forGetter(s -> s.scale),
             Codec.floatRange(0.1F, 1F).optionalFieldOf("blend", 0.55F).forGetter(s -> s.blend),
             BiomeSource.CODEC.optionalFieldOf("registry_source").forGetter(s -> s.registrySource)
     ).apply(i, RetinaBiomeSource::new));

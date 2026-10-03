@@ -28,6 +28,7 @@ public record TerrainStatsPayload(boolean active, String backend, String mode, G
         buffer.writeVarLong(stats.previewRegions());
         buffer.writeVarLong(stats.previewCacheHits());
         buffer.writeVarLong(stats.promotions());
+        stats.stages().write(buffer);
     }
 
     private static TerrainStatsPayload read(RegistryFriendlyByteBuf buffer) {
@@ -36,7 +37,7 @@ public record TerrainStatsPayload(boolean active, String backend, String mode, G
         String mode = buffer.readUtf(16);
         return new TerrainStatsPayload(active, backend, mode, new GenerationMetrics.Snapshot(
                 buffer.readDouble(), buffer.readDouble(), buffer.readDouble(), buffer.readDouble(),
-                buffer.readVarInt(), buffer.readVarLong(), buffer.readVarLong(), buffer.readVarLong(), buffer.readDouble(), buffer.readVarLong(), buffer.readVarLong(), buffer.readVarLong()));
+                buffer.readVarInt(), buffer.readVarLong(), buffer.readVarLong(), buffer.readVarLong(), buffer.readDouble(), buffer.readVarLong(), buffer.readVarLong(), buffer.readVarLong(), NativeTimings.read(buffer)));
     }
 
     @Override

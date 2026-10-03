@@ -97,7 +97,12 @@ public final class NativePreviewIntegrationTest {
                 public void retina$closeRegion(ChunkPos position) { }
             };
             Files.createFile(save.resolve("r.-1.0.mca")); // DH probes leave empty RegionFile placeholders.
+            var beforePromotion=NativeTerrain.instance().timings(generator.profile().nativeId());
             new RegionCoordinator(generator, seed).prepare(position, bridge);
+            var afterPromotion=NativeTerrain.instance().timings(generator.profile().nativeId());
+            require(afterPromotion.chunks()==beforePromotion.chunks() && afterPromotion.gpuJobs()==beforePromotion.gpuJobs()
+                    && afterPromotion.workerNanos()==beforePromotion.workerNanos(), "promotion adds neither GPU nor Rust generation time");
+            require(afterPromotion.nanos(NativeTimings.IO)>beforePromotion.nanos(NativeTimings.IO), "promotion records actual file I/O");
             require(generator.metrics().snapshot().promotions() == 1 && generator.metrics().snapshot().total() == 1024, "warm preview is promoted without duplicate terrain production");
             require(Files.isRegularFile(save.resolve("r.-1.0.mca")), "actual Minecraft load publishes the cached region");
             System.out.println("QA_EVT {\"event\":\"temporary_mca_promotion\",\"status\":\"pass\"}");

@@ -1,6 +1,7 @@
 mod nbt;
 mod program;
 pub mod structures;
+pub mod timings;
 use std::cell::RefCell;
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::sync::{Arc, OnceLock, mpsc};
@@ -117,6 +118,8 @@ struct Job {
     tile_side: u32,
     cave_side: u32,
     reply: mpsc::Sender<Result<gpu::GpuSample, String>>,
+    queued: Instant,
+    timings: Arc<timings::Timings>,
 }
 
 /// Concurrent callers enqueue work; one persistent device batches GPU submissions.
@@ -128,6 +131,7 @@ pub struct TerrainEngine {
     cache: Mutex<ColumnCache>,
     caves: Mutex<CaveCache>,
     structures: Mutex<structures::Cache>,
+    timings: Mutex<HashMap<u32, Arc<timings::Timings>>>,
 }
 
 impl TerrainEngine {
@@ -193,8 +197,12 @@ impl TerrainEngine {
                         requests[0].tile_side = tile_side;
                         requests[0].padding = batch[0].cave_side;
                     }
+                    for job in &batch {
+                        job.timings
+                            .add(timings::QUEUE, job.queued.elapsed().as_nanos() as u64);
+                    }
                     let result = catch_unwind(AssertUnwindSafe(|| {
-                        gpu.sample(&requests, batch[0].profile.as_deref())
+                        gpu.sample(&requests, batch[0].profile.as_deref(), &batch[0].timings)
                     }));
                     let result = match result {
                         Ok(result) => result,
@@ -234,9 +242,18 @@ impl TerrainEngine {
             cache: Mutex::new(ColumnCache::default()),
             caves: Mutex::new(CaveCache::default()),
             structures: Mutex::new(structures::Cache::default()),
+            timings: Mutex::new(HashMap::new()),
         })
     }
 
+    pub fn timings(&self, profile: u32) -> Arc<timings::Timings> {
+        self.timings
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .entry(profile)
+            .or_default()
+            .clone()
+    }
     pub fn backend(&self) -> &str {
         &self.backend
     }
@@ -497,6 +514,7 @@ impl TerrainEngine {
     ) -> Result<gpu::GpuSample, String> {
         let profile = self.profile(requests[0].reserved)?;
         let (reply, receiver) = mpsc::channel();
+        let timing_profile = requests[0].reserved;
         self.sender
             .send(Job {
                 requests,
@@ -504,6 +522,8 @@ impl TerrainEngine {
                 tile_side,
                 cave_side,
                 reply,
+                queued: Instant::now(),
+                timings: self.timings(timing_profile),
             })
             .map_err(|_| "GPU worker stopped".to_string())?;
         receiver
@@ -530,44 +550,65 @@ impl TerrainEngine {
             return Err("incorrect block buffer length".into());
         }
         let profile = self.profile(request.reserved)?;
+        let timings = self.timings(request.reserved);
         let columns = if let Some(p) = profile.as_deref().filter(|p| {
             !p.decorations.is_empty() || !p.geology.ores.is_empty() || p.geology.caves_enabled(p)
         }) {
             let (field, mask) = self.terrain_field(request, 1)?;
-            let placements = decoration::plan(
-                &field,
-                p,
-                request,
-                request.chunk_x,
-                request.chunk_z,
-                1,
-                mask.as_deref(),
-            );
+            let placements = timings.time(timings::VEGETATION_PLAN, || {
+                decoration::plan(
+                    &field,
+                    p,
+                    request,
+                    request.chunk_x,
+                    request.chunk_z,
+                    1,
+                    mask.as_deref(),
+                )
+            });
             let columns = field.chunk(request.chunk_x, request.chunk_z);
-            let ores = geology::plan(&field, p, request, 1, mask.as_deref());
-            decoration::assemble(request, columns, Some(p), &[], blocks);
-            geology::apply(request, &field, p, mask.as_deref(), &ores[0], blocks);
-            features::apply(request, p, mask.as_deref(), blocks);
-            decoration::decorate(Some(p), &placements[0], blocks);
+            let ores = timings.time(timings::ORE_PLAN, || {
+                geology::plan(&field, p, request, 1, mask.as_deref())
+            });
+            timings.time(timings::ASSEMBLY, || {
+                decoration::assemble(request, columns, Some(p), &[], blocks)
+            });
+            timings.time(timings::GEOLOGY, || {
+                geology::apply(request, &field, p, mask.as_deref(), &ores[0], blocks)
+            });
+            timings.time(timings::CAVE_FEATURES, || {
+                features::apply(request, p, mask.as_deref(), blocks)
+            });
+            timings.time(timings::VEGETATION, || {
+                decoration::decorate(Some(p), &placements[0], blocks)
+            });
 
             columns.to_vec()
         } else {
             let columns = self.sample_columns(&[request])?;
-            decoration::assemble(request, &columns, profile.as_deref(), &[], blocks);
+            timings.time(timings::ASSEMBLY, || {
+                decoration::assemble(request, &columns, profile.as_deref(), &[], blocks)
+            });
             columns
         };
         if let Some(p) = profile.as_deref() {
             let plans = structures::plans(self, request, 1)?;
-            let data = structures::apply(request, p, &plans, Some(blocks));
+            let data = timings.time(timings::STRUCTURES, || {
+                structures::apply(request, p, &plans, Some(blocks))
+            });
             self.structures
                 .lock()
                 .map_err(|_| "structure cache poisoned")?
                 .store_metadata(request, data.tag);
-            features::snow(request, p, &columns, blocks);
+            timings.time(timings::SNOW, || {
+                features::snow(request, p, &columns, blocks)
+            });
         }
-        columns
+        let result = columns
             .try_into()
-            .map_err(|_| "incorrect GPU column count".into())
+            .map_err(|_| "incorrect GPU column count".to_string())?;
+        timings.chunks(1);
+        Ok(result)
     }
 }
 
@@ -604,6 +645,25 @@ impl TerrainEngine {
     }
 }
 
+/// # Safety
+/// output must point to a writable timing snapshot.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn retina_timing_snapshot(
+    profile: u32,
+    output: *mut timings::Snapshot,
+) -> i32 {
+    boundary(|| {
+        if output.is_null() {
+            return Err("null timing snapshot".into());
+        }
+        let engine = shared_engine()?;
+        engine.profile(profile)?;
+        unsafe {
+            *output = engine.timings(profile).snapshot();
+        }
+        Ok(())
+    })
+}
 /// # Safety
 /// request is readable; output and length are writable. Free the returned allocation with retina_free_bytes.
 #[unsafe(no_mangle)]
@@ -1138,6 +1198,8 @@ mod tests {
         assert_eq!(std::mem::size_of::<ChunkRequest>(), 40);
         assert_eq!(std::mem::offset_of!(ChunkRequest, frequency), 32);
         assert_eq!(std::mem::size_of::<GpuRequest>(), 48);
+        assert_eq!(std::mem::size_of::<timings::Snapshot>(), 192);
+        assert_eq!(std::mem::offset_of!(timings::Snapshot, nanos), 32);
         assert_eq!(std::mem::size_of::<region::RegionReport>(), 40);
         assert_eq!(std::mem::offset_of!(region::RegionReport, gpu_nanos), 8);
     }

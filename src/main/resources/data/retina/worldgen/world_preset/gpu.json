@@ -24,7 +24,7 @@
             "minecraft:warm_ocean",
             "minecraft:frozen_ocean"
           ],
-          "biome_scale": 256.0,
+          "biome_scale": 128.0,
           "blend": 0.55
         },
         "min_y": -64,
