@@ -1,11 +1,11 @@
 # Registered shorelines
 
-Retina previously evaluated registered beach material rules, but its default biome
-pool did not include beach biomes. Both new world presets now include `beach`,
-`snowy_beach` and `stony_shore`, and import the registered Overworld multi-noise
-source. GPU biome selection uses the source's actual intervals for temperature,
-humidity, continentalness, erosion, weirdness and offsets within the selected
-biome pool. This replaces the default's legacy Voronoi biome selection.
+Both new world presets import the complete registered Overworld multi-noise biome
+pool, including `beach`, `snowy_beach` and `stony_shore`. GPU biome selection uses
+the source's actual intervals for temperature, humidity, continentalness, erosion,
+weirdness and offsets. Surface and underground climate lookups use resident
+bounding-box indices; see [the generation upgrade](GENERATION_UPGRADE.md).
+Older saved sources retain their explicit biome pool.
 
 Vanilla identifies coastal climate zones through continentalness and selects their
 biomes with temperature, humidity, erosion and weirdness. Its main coast interval

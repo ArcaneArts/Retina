@@ -1,0 +1,109 @@
+# Generation fidelity and performance work
+
+The active goal covers six workstreams: complete registered biome coverage and
+indexed GPU climate selection; compact layered GPU material rules; local GPU
+aquifers; broader registered features and placement/provider support; cached
+specialized WGSL programs with better density semantics; and measured reductions
+in repeated Rust block scans. Only the first workstream is implemented so far.
+The remaining five are still required, along with final integrated validation,
+transfer-volume measurements and updated stage telemetry where new stages arise.
+
+## Registered biome coverage and climate index
+
+New MCA and chunk presets opt into `use_registry_biomes`, which takes the complete
+pool from their registered biome source. Vanilla 26.3 supplies 56 Overworld biomes,
+including underground biomes. Explicit saved sources without this option retain
+their old list. Both source mode and imported pool survive serialization. Pack
+dimension imports also retain the referenced biome source and existing handling
+of additional custom biomes. Tagged Nether/End additions remain excluded.
+
+Rust builds two resident stackless bounding-box trees at the first GPU profile
+upload. The surface tree removes depth-only duplicates and excludes underground
+biomes; the underground tree retains all six climate dimensions and all targets.
+Nodes bound interval distance and minimum offset squared. Subtrees can be skipped
+without a private traversal stack. Original registry ordinals resolve exact ties;
+equal-distance branches are retained, and an equally close unplaced custom-biome
+niche retains its previous precedence. Weighted legacy site selection and its
+ocean penalty also retain their semantics. The diagnostic profile option
+`climate_lookup: "linear"` exercises the reference search.
+
+The complete vanilla table has 7,594 targets: 7,590 surface targets reduce to
+3,795 distinct surface entries. Terralith has 1,708 targets and 1,697 distinct
+surface entries. Indexed queries add no dispatches or readback bytes. Both trees
+remain on the device and share the existing climate-buffer binding.
+
+The resource-based structure exporter now applies the same STRUCTURE data fixer
+as Minecraft's template loader. This is needed for older Terralith templates with
+`Name`/`Properties` palettes, and also migrates their block/entity NBT. The live
+StructureTemplateManager path already performs this migration.
+
+## Measured first milestone
+
+Apple M4 Max / Metal, release libraries, seed 123456789, two warmups followed by
+20 adjacent regions, including negative region coordinates. The baseline library
+is commit `8ed9076`; both libraries receive identical complete-biome profiles.
+Thus these comparisons isolate lookup changes rather than biome-pool changes.
+Vanilla includes 30 structure definitions and 105 decoration recipes; Terralith
+includes 58 definitions and 262 recipes. Templates and ore/cave data are present.
+Builds and GPU tests were stopped before benchmark measurements.
+
+| Profile / callers | Baseline chunks/sec | Indexed chunks/sec | Baseline average region ms | Indexed average region ms |
+| --- | ---: | ---: | ---: | ---: |
+| Vanilla / 1, first run | 4,932 | 7,613 | 207.32 | 134.24 |
+| Vanilla / 1, repeat | 4,772 | 7,231 | 214.31 | 141.33 |
+| Vanilla / 2 | 5,449 | 9,421 | 375.18 | 209.97 |
+| Terralith / 1, first run | 5,924 | 6,904 | 172.59 | 148.04 |
+| Terralith / 1, repeat | 5,869 | 6,997 | 174.20 | 146.09 |
+| Terralith / 2 | 6,831 | 6,721 | 297.33 | 294.76 |
+
+Serial gains repeat at 52–54% for vanilla and 17–19% for Terralith in this workload.
+Concurrent vanilla improved 73%; concurrent Terralith throughput did not improve.
+Keep that distinction when reporting results or considering changes to scheduling.
+These measure native production, not Minecraft loading, lighting or rendering.
+
+For the serial repeat, vanilla column GPU work fell from 0.06719 to 0.01614
+ms/chunk and cave-density work from 0.07304 to 0.01950. Terralith columns fell from
+0.04265 to 0.02555, and cave density from 0.03178 to 0.02118. Device/worker counters
+overlap; their sum is not region wall latency.
+
+All 20,480 decompressed chunk NBT records match the baseline in each candidate
+serial/repeat/concurrent comparison, including palettes, heightmaps, features,
+structures and block/entity data. Region totals remain exactly 137,617,408 bytes
+for vanilla and 113,623,040 for Terralith. Serial repeat peak process RSS is about
+743 → 761 MiB for vanilla and 725 → 753 MiB for Terralith, including profiles,
+buffers, caches and the comparison reader.
+
+Warm shader-cache initialization is about 28–39 ms. The first indexed process
+observed 1,099 ms initialization while compiling the changed shaders; later runs
+were 30–32 ms. Native profile registration remains about 470–482 ms for vanilla
+and 968–1,014 ms for Terralith. Java registry/template export is separate from
+these native startup measurements. Avoid treating warm startup as cold startup.
+
+## Reproduction and validation
+
+`exportBenchmarkProfile` loads merged registries and real templates, rather than
+using a structures-disabled surface-test profile:
+
+```sh
+./gradlew exportBenchmarkProfile -PbenchmarkProfile=build/benchmark-vanilla.json
+./gradlew exportBenchmarkProfile -PbenchmarkProfile=build/benchmark-terralith.json \
+  -PbenchmarkPack=run/datapacks/Terralith.zip
+python3 scripts/native-region-benchmark.py --library build/native-target/release/libretina_worldgen.dylib \
+  --profile build/benchmark-vanilla.json --out build/benchmark-vanilla --count 20 --warmups 2
+```
+
+Retain a baseline library and matched profile/output directory, then use
+`--compare <baseline-directory>`. `--parallel 2` measures overlapping requests.
+The script records initialization, profile registration, warmups, average/median
+region latency, actual throughput, peak RSS, file sizes and the profile SHA-256.
+Local first-milestone evidence is under `build/goal-baseline/`.
+
+Validation: 20 native unit tests (including randomized indexed/linear intervals
+and ties); real GPU tests; Java bridge and MCA decoding; biome, geology, feature,
+preview/cache/promotion, structure, shoreline, actual Terralith and landscape
+suites. GPU lookup parity checks exercise 32 concurrent chunk queries per profile
+across three seeds, comparing heights, surface materials/biomes and underground
+biomes. The structure suite verifies old palette migration with block properties
+intact. The landscape suite compares three-seed ocean coverage and biome spacing.
+The combined Terralith/BulkBiomes fixture also passes indexed/linear parity with
+418 biomes, GPU selection of IDs above 255, MCA decoding and temporary promotion.

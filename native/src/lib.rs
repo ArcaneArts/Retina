@@ -1,3 +1,4 @@
+mod climate;
 mod nbt;
 mod program;
 mod structure_processors;

@@ -6,7 +6,10 @@ import argparse
 import concurrent.futures
 import ctypes as c
 import json
+import hashlib
 from pathlib import Path
+import platform
+import resource
 import statistics
 import time
 import zlib
@@ -47,9 +50,13 @@ def main():
         if status:
             buf = c.create_string_buffer(8192); lib.retina_last_error(buf, len(buf))
             raise RuntimeError(buf.value.decode())
+    startup = time.perf_counter()
     check(lib.retina_initialize())
+    initialize_ms = (time.perf_counter()-startup)*1000
     source = args.profile.read_bytes(); profile = c.c_uint32()
+    registration = time.perf_counter()
     check(lib.retina_register_profile(source, len(source), c.byref(profile)))
+    registration_ms = (time.perf_counter()-registration)*1000
     def generate(item):
         name, x, z = item
         path = str((args.out / f"{name}.mca").resolve()).encode()
@@ -58,8 +65,7 @@ def main():
         check(lib.retina_generate_region(c.byref(req), path, len(path), 0, b"minecraft:plains", 16, c.byref(report)))
         return dict(name=name, x=x, z=z, ms=(time.perf_counter()-start)*1000, generated=report.generated,
                     gpu_ms=report.gpu/1e6, assembly_ms=report.assembly/1e6, write_ms=report.write/1e6)
-    for i in range(args.warmups):
-        generate((f"warm{i}",8+i,8))
+    warmups = [generate((f"warm{i}",8+i,8)) for i in range(args.warmups)]
     before = Snapshot(); check(lib.retina_timing_snapshot(profile, c.byref(before)))
     pipeline = getattr(lib, "retina_gpu_pipeline_snapshot", None)
     before_pipeline = PipelineSnapshot()
@@ -76,6 +82,11 @@ def main():
     chunks = after.chunks-before.chunks
     data = dict(library=str(args.library), parallel=args.parallel, seed=args.seed, regions=regions,
                 total_ms=wall*1000, chunks_per_second=chunks/wall, median_ms=statistics.median(r["ms"] for r in regions),
+                average_region_ms=statistics.mean(r["ms"] for r in regions),
+                startup=dict(initialize_ms=initialize_ms, registration_ms=registration_ms, warmups=warmups),
+                profile_sha256=hashlib.sha256(source).hexdigest(),
+                region_file_bytes=sum((args.out/f"{name}.mca").stat().st_size for name,_,_ in coords),
+                peak_rss_bytes=resource.getrusage(resource.RUSAGE_SELF).ru_maxrss*(1 if platform.system()=="Darwin" else 1024),
                 gpu_timestamps=bool(after.flags & 1),
                 stage_ms_chunk={name:(after.nanos[i]-before.nanos[i])/max(chunks,1)/1e6 for i,name in enumerate(STAGES)})
     if pipeline:

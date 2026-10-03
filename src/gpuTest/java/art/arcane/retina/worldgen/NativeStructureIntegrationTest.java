@@ -29,6 +29,14 @@ public final class NativeStructureIntegrationTest {
     private static final long SEED=123456789L;
     public static void main(String[] args) throws Exception {
         SharedConstants.tryDetectVersion();Bootstrap.bootStrap();
+        var legacy = new CompoundTag(); legacy.putInt("DataVersion", 3120);
+        var palette = new ListTag(); var log = new CompoundTag(); log.putString("Name", "minecraft:oak_log");
+        var properties = new CompoundTag(); properties.putString("axis", "x"); log.put("Properties", properties); palette.add(log);
+        legacy.put("palette", palette); legacy.put("blocks", new ListTag()); legacy.put("entities", new ListTag());
+        var size = new ListTag(); size.add(IntTag.valueOf(1)); size.add(IntTag.valueOf(1)); size.add(IntTag.valueOf(1)); legacy.put("size", size);
+        var upgraded = StructureProfile.upgradeTemplate(legacy);
+        require(net.minecraft.world.level.block.state.BlockState.CODEC.parse(NbtOps.INSTANCE, upgraded.getListOrEmpty("palette").get(0)).getOrThrow()
+                .equals(Blocks.OAK_LOG.defaultBlockState().setValue(net.minecraft.world.level.block.RotatedPillarBlock.AXIS, net.minecraft.core.Direction.Axis.X)), "legacy structure palettes migrate through Minecraft's data fixer with properties intact");
         var frozen=MappedRegistry.class.getDeclaredField("frozen");frozen.setAccessible(true);frozen.setBoolean(BuiltInRegistries.STRUCTURE_PIECE,false);
         RetinaStructurePiece.register();var bind=Holder.Reference.class.getDeclaredMethod("bindValue",Object.class);bind.setAccessible(true);bind.invoke(BuiltInRegistries.STRUCTURE_PIECE.get(Identifier.parse("retina:template")).orElseThrow(),RetinaStructurePiece.TYPE);frozen.setBoolean(BuiltInRegistries.STRUCTURE_PIECE,true);
         try(var resources=new MultiPackResourceManager(PackType.SERVER_DATA,List.of(ServerPacksSource.createVanillaPackSource().fullResources()))) {

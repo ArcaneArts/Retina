@@ -105,8 +105,9 @@ impl Gpu {
             label: Some("Retina GPU biomes and simplex"),
             source: wgpu::ShaderSource::Wgsl(
                 format!(
-                    "{}\n{}\n{}",
+                    "{}\n{}\n{}\n{}",
                     include_str!("simplex.wgsl"),
+                    include_str!("climate.wgsl"),
                     include_str!("program.wgsl"),
                     include_str!("noise3.wgsl")
                 )
@@ -149,8 +150,9 @@ impl Gpu {
             label: Some("Retina GPU cave fields and mask"),
             source: wgpu::ShaderSource::Wgsl(
                 format!(
-                    "{}\n{}",
+                    "{}\n{}\n{}",
                     include_str!("caves.wgsl"),
+                    include_str!("climate.wgsl"),
                     include_str!("program.wgsl")
                 )
                 .into(),

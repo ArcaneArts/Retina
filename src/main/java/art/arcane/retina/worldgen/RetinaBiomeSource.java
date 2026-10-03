@@ -23,12 +23,14 @@ public final class RetinaBiomeSource extends BiomeSource {
             Biome.CODEC.listOf(1, 65535).fieldOf("biomes").forGetter(RetinaBiomeSource::nativeBiomes),
             Codec.floatRange(128, 4096).optionalFieldOf("biome_scale", 128F).forGetter(s -> s.scale),
             Codec.floatRange(0.1F, 1F).optionalFieldOf("blend", 0.55F).forGetter(s -> s.blend),
-            BiomeSource.CODEC.optionalFieldOf("registry_source").forGetter(s -> s.registrySource)
+            BiomeSource.CODEC.optionalFieldOf("registry_source").forGetter(s -> s.registrySource),
+            Codec.BOOL.optionalFieldOf("use_registry_biomes", false).forGetter(s -> s.useRegistryBiomes)
     ).apply(i, RetinaBiomeSource::new));
     private final List<Holder<Biome>> biomes;
     private final float scale;
     private final float blend;
     private final Optional<BiomeSource> registrySource;
+    private final boolean useRegistryBiomes;
     private volatile BiomeResolver resolver;
     private volatile BiomeResolver searchResolver;
     private final ThreadLocal<Boolean> searching = ThreadLocal.withInitial(() -> false);
@@ -39,15 +41,22 @@ public final class RetinaBiomeSource extends BiomeSource {
         this(biomes, scale, blend, Optional.empty());
     }
     public RetinaBiomeSource(List<Holder<Biome>> biomes, float scale, float blend, Optional<BiomeSource> registrySource) {
+        this(biomes, scale, blend, registrySource, false);
+    }
+    public RetinaBiomeSource(List<Holder<Biome>> biomes, float scale, float blend, Optional<BiomeSource> registrySource, boolean useRegistryBiomes) {
         this.registrySource = registrySource;
-        this.biomes = List.copyOf(biomes);
+        this.useRegistryBiomes = useRegistryBiomes;
+        // Opt in only for new presets. Serialized older sources retain their explicit pool.
+        this.biomes = useRegistryBiomes ? choices(registrySource.orElseThrow(() -> new IllegalArgumentException("use_registry_biomes requires registry_source"))) : List.copyOf(biomes);
         this.scale = scale;
         this.blend = blend;
     }
     static RetinaBiomeSource fromRegistry(BiomeSource source, float scale, float blend) {
         if (source instanceof RetinaBiomeSource retina) return retina;
-        var choices = source.possibleBiomes().stream().sorted(java.util.Comparator.comparing(b -> b.unwrapKey().orElseThrow().identifier().toString())).toList();
-        return new RetinaBiomeSource(choices, scale, blend, Optional.of(source));
+        return new RetinaBiomeSource(choices(source), scale, blend, Optional.of(source), true);
+    }
+    private static List<Holder<Biome>> choices(BiomeSource source) {
+        return source.possibleBiomes().stream().sorted(java.util.Comparator.comparing(b -> b.unwrapKey().orElseThrow().identifier().toString())).toList();
     }
     boolean hasRegistrySource() { return registrySource.isPresent(); }
     void includeRegisteredBiomes(HolderLookup.Provider registry) {

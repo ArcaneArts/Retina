@@ -32,8 +32,6 @@ struct Site { point: vec2<f32>, biome: u32, padding: u32, climate: vec4<f32> }
 @group(0) @binding(1) var<storage, read_write> columns: array<Column>;
 @group(0) @binding(2) var<storage, read> world: WorldProfile;
 @group(0) @binding(3) var<storage, read_write> sites: array<Site>;
-struct ClimateTarget { low: vec4<f32>, high: vec4<f32>, extra: vec4<f32>, depth: vec4<f32> }
-struct ClimateTable { count: vec4<u32>, noise: NoiseProfile, targets: array<ClimateTarget> }
 @group(0) @binding(4) var<storage, read> climate_table: ClimateTable;
 const SITE_SIDE: u32 = 12u;
 const SITE_COUNT: u32 = 144u;
@@ -158,16 +156,7 @@ fn biome_sites(@builtin(global_invocation_id) id: vec3<u32>) {
             weights += weight; frequency *= 2.0; persistence *= 0.5;
         }
         let weirdness = select(clamp(sum/max(weights,0.0001)*noise.amplitude*1.6,-1.0,1.0),weirdness_value,bytecode[0]>0u);
-        for(var i=0u;i<climate_table.count.x;i++) {
-            let entry = climate_table.targets[i]; let index = u32(entry.extra.w);
-            if (world.biomes[index].materials.w & 16u)!=0u {continue;}
-            let difference = climate-clamp(climate,entry.low,entry.high);
-            let ridge = weirdness-clamp(weirdness,entry.extra.x,entry.extra.y);
-            var fitness = dot(difference*difference,vec4<f32>(2.5,1.5,2.0,0.5))+ridge*ridge+entry.extra.z*entry.extra.z;
-            let ocean = (world.biomes[index].materials.w & 4u) != 0u;
-            if bytecode[0]==0u && ocean != (climate.z < -0.25) { fitness += 8.0; }
-            if fitness < best { best = fitness; biome = index; }
-        }
+        biome=climate_search(array<f32,6>(climate.x,climate.y,climate.z,climate.w,weirdness,0.0),true,false,bytecode[0]==0u,biome,best);
     }
     sites[id.y * SITE_COUNT + id.x] = Site(point, biome, 0u, climate);
 }
@@ -240,12 +229,7 @@ fn registered_biome(actual:array<f32,6>,initial:u32)->u32 {
             let difference=climate-world.biomes[index].climate;let fitness=dot(difference,difference)-0.03;
             if fitness<best {best=fitness;biome=index;}
         }
-        for(var i=0u;i<climate_table.count.x;i++) {
-            let entry=climate_table.targets[i];if (world.biomes[u32(entry.extra.w)].materials.w & 16u)!=0u {continue;}
-            let difference=climate-clamp(climate,entry.low,entry.high);let ridge=actual[4]-clamp(actual[4],entry.extra.x,entry.extra.y);
-            let fitness=dot(difference,difference)+ridge*ridge+entry.extra.z*entry.extra.z;
-            if fitness<best {best=fitness;biome=u32(entry.extra.w);}
-        }
+        biome=climate_search(actual,false,false,false,biome,best);
     }
     return biome;
 }

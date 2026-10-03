@@ -63,6 +63,8 @@ pub struct WorldProfile {
     #[serde(default)]
     pub climate_targets: Vec<ClimateTarget>,
     #[serde(default)]
+    pub climate_lookup: crate::climate::Lookup,
+    #[serde(default)]
     pub weirdness_noise: Option<NoiseProfile>,
     pub biome_scale: f32,
     pub blend: f32,
@@ -202,6 +204,8 @@ impl WorldProfile {
                     .any(|(min, max)| !min.is_finite() || !max.is_finite() || min > max)
                 || target.weirdness.iter().any(|x| !x.is_finite())
                 || target.weirdness[0] > target.weirdness[1]
+                || target.depth.iter().any(|x| !x.is_finite())
+                || target.depth[0] > target.depth[1]
                 || !target.offset.is_finite()
             {
                 return Err("invalid climate target".into());
@@ -249,34 +253,7 @@ impl WorldProfile {
     }
 
     pub fn climate_gpu_bytes(&self) -> Vec<u8> {
-        let mut bytes =
-            bytemuck::cast_slice(&[self.climate_targets.len() as u32, 0, 0, 0]).to_vec();
-        let mut noise = GpuNoise::zeroed();
-        if let Some(source) = &self.weirdness_noise {
-            noise.frequency = source.frequency;
-            noise.amplitude = source.amplitude;
-            noise.count = source.modifiers.len() as u32;
-            noise.modifiers[..source.modifiers.len()].copy_from_slice(&source.modifiers);
-        }
-        bytes.extend_from_slice(bytemuck::bytes_of(&noise));
-        for target in &self.climate_targets {
-            bytes.extend_from_slice(bytemuck::cast_slice(&target.min));
-            bytes.extend_from_slice(bytemuck::cast_slice(&target.max));
-            bytes.extend_from_slice(bytemuck::cast_slice(&[
-                target.weirdness[0],
-                target.weirdness[1],
-                target.offset,
-                target.biome as f32,
-            ]));
-            bytes.extend_from_slice(bytemuck::cast_slice(&[
-                target.depth[0],
-                target.depth[1],
-                0.0,
-                0.0,
-            ]));
-        }
-        bytes.resize(bytes.len().max(224), 0);
-        bytes
+        crate::climate::bytes(self)
     }
     pub fn gpu_bytes(&self) -> Vec<u8> {
         let mut bytes = Vec::new();

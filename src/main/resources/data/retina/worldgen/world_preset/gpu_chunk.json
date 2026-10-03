@@ -32,7 +32,8 @@
           "registry_source": {
             "type": "minecraft:multi_noise",
             "preset": "minecraft:overworld"
-          }
+          },
+          "use_registry_biomes": true
         },
         "min_y": -64,
         "height": 384,

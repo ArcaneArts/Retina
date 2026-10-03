@@ -15,8 +15,6 @@ struct CaveProfile { globals: vec4<u32>, noises: array<NoiseProfile,6>, biomes: 
 @group(0) @binding(2) var<storage,read> caves: CaveProfile;
 @group(0) @binding(3) var<storage,read_write> nodes: array<vec4<f32>>;
 @group(0) @binding(4) var<storage,read_write> mask: array<u32>;
-struct ClimateTarget { low:vec4<f32>,high:vec4<f32>,extra:vec4<f32>,depth:vec4<f32> }
-struct ClimateTable {count:vec4<u32>,noise:NoiseProfile,targets:array<ClimateTarget>}
 @group(0) @binding(7) var<storage,read> climate_table:ClimateTable;
 fn hash(value: u32) -> u32 {
     var h = value; h = (h ^ (h >> 16u))*0x7feb352du; h = (h ^ (h >> 15u))*0x846ca68bu; return h ^ (h >> 16u);
@@ -106,17 +104,9 @@ fn biome_at(x: u32, y: i32, z: u32, column: Column, r: Request) -> u32 {
     if y >= column.height-12 { return surface; }
     let seed = r.seed_low ^ hash(r.seed_high);
     let point = vec3<f32>(f32(r.origin_x+i32(x)),f32(y),f32(r.origin_z+i32(z)));
-    if caves.globals.y>0u && climate_table.count.x>0u {
-        let actual=run_program(0u,point,r,vec4<f32>(0.0));let climate=vec4<f32>(actual[0],actual[1],actual[2],actual[3]);
-        var best=1e20;var selected=surface;
-        for(var i=0u;i<climate_table.count.x;i++) {
-            let entry=climate_table.targets[i];let difference=climate-clamp(climate,entry.low,entry.high);
-            let weirdness=actual[4]-clamp(actual[4],entry.extra.x,entry.extra.y);
-            let depth=actual[5]-clamp(actual[5],entry.depth.x,entry.depth.y);
-            let fitness=dot(difference,difference)+weirdness*weirdness+depth*depth+entry.extra.z*entry.extra.z;
-            if fitness<best {best=fitness;selected=u32(entry.extra.w);}
-        }
-        return selected;
+    if caves.globals.y>0u && climate_table.count.z>climate_table.count.y {
+        let actual=run_program(0u,point,r,vec4<f32>(0.0));
+        return climate_search(actual,false,true,false,surface,1e20);
     }
     // Coarse coherent 3D climate domains; their targets/depths are registry values.
     let humidity = clamp(0.5+noise3(point*vec3<f32>(0.004,0.006,0.004),seed+2297u),-1.0,1.0);

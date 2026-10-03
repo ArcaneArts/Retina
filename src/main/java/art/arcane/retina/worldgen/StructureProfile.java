@@ -33,10 +33,15 @@ final class StructureProfile {
         }
         static Context of(ResourceManager resources) {
             return new Context(id->resources.getResource(id.withPath("structure/"+id.getPath()+".nbt")).map(r->{
-                try(var input=r.open()){return NbtIo.readCompressed(input,NbtAccounter.unlimitedHeap());}
+                try(var input=r.open()){return upgradeTemplate(NbtIo.readCompressed(input,NbtAccounter.unlimitedHeap()));}
                 catch(java.io.IOException e){throw new IllegalStateException("Loading structure "+id,e);}
             }),true);
         }
+    }
+    // Match Minecraft's TemplateSource migration, including old palettes and block/entity NBT.
+    static CompoundTag upgradeTemplate(CompoundTag tag) {
+        return net.minecraft.util.datafix.DataFixTypes.STRUCTURE.updateToCurrentVersion(
+                net.minecraft.util.datafix.DataFixers.getDataFixer(), tag, NbtUtils.getDataVersion(tag, 500));
     }
     final HolderLookup.Provider registry;
     final List<Holder<Biome>> biomes;

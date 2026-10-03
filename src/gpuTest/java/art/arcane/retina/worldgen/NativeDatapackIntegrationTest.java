@@ -76,7 +76,9 @@ public final class NativeDatapackIntegrationTest {
                 require(profile.biomes().stream().anyMatch(b -> b.unwrapKey().orElseThrow().identifier().getNamespace().equals("terralith")), "pack biomes are imported");
                 System.out.println("QA_EVT {\"event\":\"datapack_registry_import\",\"status\":\"pass\",\"context\":{\"mode\":\""+mode+"\",\"biomes\":"+profile.biomes().size()+",\"materials\":"+profile.materials().length+"}}");
                 if (mode.equals("mca")) {
-                    RegistryDecorationIntegrationChecks.check(profile, true);
+                    RegistryClimateIntegrationChecks.check(profile);
+                    // BulkBiomes deliberately replaces the climate source and has no dark forest.
+                    if (!bulk) RegistryDecorationIntegrationChecks.check(profile, true);
                     if (!controls && !bulk) RegistryShoreIntegrationChecks.checkSediments(profile, true);
                     var seen = new HashSet<String>();boolean wideBiome=false;
                     for (int z = -64; z <= 64; z += 8) for (int x = -64; x <= 64; x += 8) {

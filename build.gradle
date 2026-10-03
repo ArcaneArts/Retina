@@ -238,3 +238,14 @@ tasks.register('shoreTest', JavaExec) {
     mainClass = 'art.arcane.retina.worldgen.NativeShoreIntegrationTest'
     jvmArgs '--enable-native-access=ALL-UNNAMED'
 }
+
+tasks.register('exportBenchmarkProfile', JavaExec) {
+    group = 'verification'
+    description = 'Export actual world registries including structure templates for native benchmarks.'
+    dependsOn 'gpuTestClasses', 'packageNative'
+    classpath = sourceSets.gpuTest.runtimeClasspath
+    mainClass = 'art.arcane.retina.worldgen.NativeProfileExport'
+    jvmArgs '--enable-native-access=ALL-UNNAMED'
+    args providers.gradleProperty('benchmarkProfile').getOrElse('build/benchmark-vanilla-profile.json')
+    if (providers.gradleProperty('benchmarkPack').isPresent()) args providers.gradleProperty('benchmarkPack').get()
+}
