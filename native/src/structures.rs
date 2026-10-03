@@ -515,15 +515,10 @@ pub fn plans(
             jobs.push((r, set, cell, probe));
         }
     }
-    // Cold starts share bulk GPU column probes; warm plans need no probe at all.
+    // Cold starts share sparse biome probes; warm plans need no probe at all.
     let mut biomes = Vec::with_capacity(probes.len());
     for batch in probes.chunks(1024) {
-        biomes.extend(
-            engine
-                .sample_columns(batch)?
-                .chunks_exact(crate::COLUMNS)
-                .map(|c| c[8 * 16 + 8].biome() as u16),
-        );
+        biomes.extend(engine.sample_biomes(batch, None)?);
     }
     let mut result: Vec<_> = jobs
         .par_iter()
@@ -704,10 +699,7 @@ fn build(
             && profile.geology.caves_enabled(profile)
         {
             let y = sample_height(&d.config["start_height"], &mut Random::new(seed), request);
-            let (_, mask) = engine.terrain_field(request, 1)?;
-            mask.as_ref()
-                .and_then(|m| m.biome(request.chunk_x * 16 + 8, y, request.chunk_z * 16 + 8))
-                .unwrap_or(biome)
+            engine.sample_biomes(&[request], Some(&[y]))?[0]
         } else {
             biome
         };
@@ -776,7 +768,10 @@ fn build(
             ..request
         };
         let side = (2 * radius + 1) as u32;
-        let field = engine.sample_tile(origin, side)?;
+        let water_surface = d.config["project_start_to_heightmap"]
+            .as_str()
+            .is_some_and(|name| name.starts_with("WORLD_SURFACE"));
+        let field = engine.sample_height_tile(origin, side, water_surface)?;
         let width = side as usize * 16;
         let mut heights = vec![0; width * width];
         for chunk in 0..(side * side) as usize {
@@ -784,17 +779,7 @@ fn build(
                 for x in 0..16 {
                     heights[(chunk / side as usize * 16 + z) * width
                         + chunk % side as usize * 16
-                        + x] = {
-                        let column = field[chunk * 256 + z * 16 + x];
-                        if d.config["project_start_to_heightmap"]
-                            .as_str()
-                            .is_some_and(|name| name.starts_with("WORLD_SURFACE"))
-                        {
-                            column.surface_height(Some(profile))
-                        } else {
-                            column.height
-                        }
-                    };
+                        + x] = field[chunk * 256 + z * 16 + x];
                 }
             }
         }

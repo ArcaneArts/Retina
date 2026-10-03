@@ -148,6 +148,13 @@ fn biome_at(x: u32, y: i32, z: u32, column: Column, r: Request) -> u32 {
     return selected;
 }
 @compute @workgroup_size(64)
+fn underground_queries(@builtin(global_invocation_id) id:vec3<u32>) {
+    if id.x!=0u {return;}
+    let r=requests[id.y];let bottom=i32(floor(f32(r.min_y)/4.0))*4;
+    let y=bottom+i32((r.padding>>8u)&65535u);
+    mask[id.y]=biome_at(8u,y,8u,columns[id.y],r);
+}
+@compute @workgroup_size(64)
 fn cave_nodes(@builtin(global_invocation_id) id: vec3<u32>) {
     let r = requests[0]; let n = r.tile_side*4u+1u;
     let bottom = i32(floor(f32(r.min_y)/4.0))*4;

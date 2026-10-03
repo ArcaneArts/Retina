@@ -20,6 +20,9 @@ pub(crate) struct Gpu {
     device: wgpu::Device,
     queue: wgpu::Queue,
     sites_pipeline: wgpu::ComputePipeline,
+    biome_queries_pipeline: wgpu::ComputePipeline,
+    underground_queries_pipeline: wgpu::ComputePipeline,
+    climate_pipeline: wgpu::ComputePipeline,
     cave_nodes_pipeline: wgpu::ComputePipeline,
     cave_exterior_pipeline: wgpu::ComputePipeline,
     cave_mask_pipeline: wgpu::ComputePipeline,
@@ -188,6 +191,17 @@ impl Gpu {
         let cave_exterior_pipeline = cave_pipeline("cave_exterior");
         let cave_mask_pipeline = cave_pipeline("cave_mask");
         let sites_pipeline = pipeline("biome_sites");
+        let biome_queries_pipeline = pipeline("biome_queries");
+        let climate_pipeline = pipeline("climate_nodes");
+        let underground_queries_pipeline =
+            device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some("Retina sparse underground biomes"),
+                layout: Some(&cave_pipeline_layout),
+                module: &cave_shader,
+                entry_point: Some("underground_queries"),
+                compilation_options: Default::default(),
+                cache: None,
+            });
         let columns_pipeline = pipeline("main");
         let requests = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Retina batched descriptors"),
@@ -253,6 +267,9 @@ impl Gpu {
             device,
             queue,
             sites_pipeline,
+            biome_queries_pipeline,
+            underground_queries_pipeline,
+            climate_pipeline,
             cave_nodes_pipeline,
             cave_exterior_pipeline,
             cave_mask_pipeline,
@@ -378,10 +395,13 @@ impl Gpu {
         timings: &timings::Timings,
     ) -> Result<GpuSample, String> {
         let host_start = Instant::now();
+        let surface_probe = requests[0].padding & (1 << 31) != 0;
+        let underground_probe = requests[0].padding & (1 << 30) != 0;
+        let sparse = surface_probe || underground_probe;
         let profile_id = requests[0].profile;
         let density_program = profile
             .and_then(|p| p.registry_program.as_ref())
-            .filter(|p| p.surface[2] == 0);
+            .filter(|p| p.surface[2] == 0 && !surface_probe);
         let mut gpu_requests = requests.to_vec();
         let mut density_dispatch = (0u32, 0u32);
         let mut lake_dispatch = 0u32;
@@ -441,7 +461,7 @@ impl Gpu {
                 &crate::program::RegistryProgram::bytes(profile),
             );
         }
-        let cave_side = requests[0].padding;
+        let cave_side = requests[0].padding & 255;
         let cave_width = cave_side * 16 + 2;
         let cave_height = (requests[0].max_y - requests[0].min_y) as u32;
         let surface_width = requests[0].tile_side * 16;
@@ -451,17 +471,25 @@ impl Gpu {
         let quart_layers =
             ((requests[0].max_y - requests[0].min_y.div_euclid(4) * 4 + 3) / 4) as u64;
         let biome_words = (quart_width * quart_width * quart_layers).div_ceil(2);
-        let mask_size = (volume_words
-            + (surface_width as u64 * surface_width as u64).div_ceil(32)
-            + biome_words)
-            * 4;
+        let mask_size = if underground_probe {
+            requests.len() as u64 * 4
+        } else {
+            (volume_words
+                + (surface_width as u64 * surface_width as u64).div_ceil(32)
+                + biome_words)
+                * 4
+        };
         let node_side = requests[0].tile_side * 4 + 1;
         let node_bottom = requests[0].min_y.div_euclid(4) * 4;
         let node_height = ((requests[0].max_y - node_bottom + 3) / 4 + 1) as u32;
         // Exterior limits and coherent entrance strengths remain entirely on the GPU.
-        let nodes_size = node_side as u64 * node_side as u64 * node_height as u64 * 16
-            + surface_width as u64 * surface_width as u64 * 8;
-        if cave_side > 0 {
+        let nodes_size = if underground_probe {
+            16
+        } else {
+            node_side as u64 * node_side as u64 * node_height as u64 * 16
+                + surface_width as u64 * surface_width as u64 * 8
+        };
+        if cave_side > 0 || underground_probe {
             if !self.cave_profiles.contains_key(&profile_id) {
                 let data = profile
                     .ok_or("missing cave profile")?
@@ -529,6 +557,8 @@ impl Gpu {
         measured.push(timings::COLUMNS);
         if cave_side > 0 {
             measured.extend([timings::CAVE_DENSITY, timings::CAVE_MASK]);
+        } else if underground_probe {
+            measured.push(timings::CAVE_DENSITY);
         }
         let timestamp_writes = |stage| {
             self.timestamps
@@ -572,7 +602,11 @@ impl Gpu {
                 label: Some("Retina registered surface and climate lattice"),
                 timestamp_writes: writes,
             });
-            pass.set_pipeline(&self.height_pipeline);
+            pass.set_pipeline(if surface_probe {
+                &self.climate_pipeline
+            } else {
+                &self.height_pipeline
+            });
             pass.set_bind_group(0, group, &[]);
             pass.dispatch_workgroups((side * side).div_ceil(64), requests.len() as u32, 1);
         }
@@ -644,11 +678,15 @@ impl Gpu {
                 label: Some("Retina interpolated column pass"),
                 timestamp_writes: writes,
             });
-            pass.set_pipeline(&self.columns_pipeline);
+            pass.set_pipeline(if surface_probe {
+                &self.biome_queries_pipeline
+            } else {
+                &self.columns_pipeline
+            });
             pass.set_bind_group(0, group, &[]);
-            pass.dispatch_workgroups(4, count as u32, 1);
+            pass.dispatch_workgroups(if sparse { 1 } else { 4 }, count as u32, 1);
         }
-        if cave_side > 0 {
+        if cave_side > 0 || underground_probe {
             let buffers = self.cave_buffers.as_ref().unwrap();
             let cave_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
                 label: Some("Retina cave job"),
@@ -688,51 +726,66 @@ impl Gpu {
                     },
                 ],
             });
-            {
+            if underground_probe {
                 let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                    label: Some("Retina cave density pass"),
+                    label: Some("Retina sparse underground biome query"),
                     timestamp_writes: timestamp_writes(timings::CAVE_DENSITY),
                 });
-                pass.set_pipeline(&self.cave_nodes_pipeline);
+                pass.set_pipeline(&self.underground_queries_pipeline);
                 pass.set_bind_group(0, &cave_group, &[]);
-                pass.dispatch_workgroups((node_side * node_side).div_ceil(64), node_height, 1);
-            }
-            {
-                let mut writes = timestamp_writes(timings::CAVE_MASK);
-                if let Some(ref mut writes) = writes {
-                    writes.end_of_pass_write_index = None;
+                pass.dispatch_workgroups(1, count as u32, 1);
+            } else {
+                {
+                    let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                        label: Some("Retina cave density pass"),
+                        timestamp_writes: timestamp_writes(timings::CAVE_DENSITY),
+                    });
+                    pass.set_pipeline(&self.cave_nodes_pipeline);
+                    pass.set_bind_group(0, &cave_group, &[]);
+                    pass.dispatch_workgroups((node_side * node_side).div_ceil(64), node_height, 1);
                 }
-                let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                    label: Some("Retina GPU exterior density classification"),
-                    timestamp_writes: writes,
-                });
-                pass.set_pipeline(&self.cave_exterior_pipeline);
-                pass.set_bind_group(0, &cave_group, &[]);
-                pass.dispatch_workgroups((surface_width * surface_width / 4).div_ceil(64), 1, 1);
-            }
-            {
-                let mut writes = timestamp_writes(timings::CAVE_MASK);
-                if let Some(ref mut writes) = writes {
-                    writes.beginning_of_pass_write_index = None;
+                {
+                    let mut writes = timestamp_writes(timings::CAVE_MASK);
+                    if let Some(ref mut writes) = writes {
+                        writes.end_of_pass_write_index = None;
+                    }
+                    let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                        label: Some("Retina GPU exterior density classification"),
+                        timestamp_writes: writes,
+                    });
+                    pass.set_pipeline(&self.cave_exterior_pipeline);
+                    pass.set_bind_group(0, &cave_group, &[]);
+                    pass.dispatch_workgroups(
+                        (surface_width * surface_width / 4).div_ceil(64),
+                        1,
+                        1,
+                    );
                 }
-                let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                    label: Some("Retina GPU interpolated cave mask"),
-                    timestamp_writes: writes,
-                });
-                pass.set_pipeline(&self.cave_mask_pipeline);
-                pass.set_bind_group(0, &cave_group, &[]);
-                pass.dispatch_workgroups(
-                    256,
-                    volume_words
-                        .max((surface_width as u64 * surface_width as u64).div_ceil(32))
-                        .max(biome_words)
-                        .div_ceil(16384) as u32,
-                    1,
-                );
+                {
+                    let mut writes = timestamp_writes(timings::CAVE_MASK);
+                    if let Some(ref mut writes) = writes {
+                        writes.beginning_of_pass_write_index = None;
+                    }
+                    let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                        label: Some("Retina GPU interpolated cave mask"),
+                        timestamp_writes: writes,
+                    });
+                    pass.set_pipeline(&self.cave_mask_pipeline);
+                    pass.set_bind_group(0, &cave_group, &[]);
+                    pass.dispatch_workgroups(
+                        256,
+                        volume_words
+                            .max((surface_width as u64 * surface_width as u64).div_ceil(32))
+                            .max(biome_words)
+                            .div_ceil(16384) as u32,
+                        1,
+                    );
+                }
             }
             encoder.copy_buffer_to_buffer(&buffers.mask, 0, &buffers.readback, 0, mask_size);
         }
-        let size = (count * COLUMNS * std::mem::size_of::<Column>()) as u64;
+        let column_count = count * if sparse { 1 } else { COLUMNS };
+        let size = (column_count * std::mem::size_of::<Column>()) as u64;
         encoder.copy_buffer_to_buffer(&self.output, 0, &self.readback, 0, size);
         let query_bytes = measured.len() as u64 * 16;
         if let Some(t) = &self.timestamps {
@@ -747,7 +800,7 @@ impl Gpu {
         let mut job_timings = timings::Snapshot::default();
         job_timings.version = 1;
         job_timings.gpu_jobs = 1;
-        job_timings.gpu_columns = (count * COLUMNS) as u64;
+        job_timings.gpu_columns = column_count as u64;
         job_timings.nanos[timings::ENCODE] = encode_nanos;
         if let Some(t) = &self.timestamps {
             t.readback
@@ -762,7 +815,7 @@ impl Gpu {
             let _ = sender.send(result);
         });
         let (mask_sender, mask_receiver) = mpsc::channel();
-        if cave_side > 0 {
+        if cave_side > 0 || underground_probe {
             self.cave_buffers
                 .as_ref()
                 .unwrap()
@@ -782,14 +835,14 @@ impl Gpu {
             .recv_timeout(Duration::from_secs(30))
             .map_err(|e| format!("GPU readback timed out: {e}"))?
             .map_err(|e| format!("GPU readback failed: {e}"))?;
-        let columns = {
+        let mut columns = {
             let mapped = slice
                 .get_mapped_range()
                 .map_err(|e| format!("mapped GPU buffer unavailable: {e}"))?;
             bytemuck::cast_slice::<u8, Column>(&mapped).to_vec()
         };
         self.readback.unmap();
-        let mask = if cave_side > 0 {
+        let mask = if cave_side > 0 || underground_probe {
             mask_receiver
                 .recv_timeout(Duration::from_secs(30))
                 .map_err(|e| format!("cave readback timed out: {e}"))?
@@ -804,14 +857,21 @@ impl Gpu {
                 bytemuck::cast_slice::<u8, u32>(&mapped).to_vec()
             };
             buffers.readback.unmap();
-            Some(crate::geology::CaveMask {
-                origin_x: requests[0].origin_x + 15,
-                origin_z: requests[0].origin_z + 15,
-                min_y: requests[0].min_y,
-                height: cave_height,
-                width: cave_width as usize,
-                words,
-            })
+            if underground_probe {
+                for (column, biome) in columns.iter_mut().zip(words) {
+                    column.packed = biome;
+                }
+                None
+            } else {
+                Some(crate::geology::CaveMask {
+                    origin_x: requests[0].origin_x + 15,
+                    origin_z: requests[0].origin_z + 15,
+                    min_y: requests[0].min_y,
+                    height: cave_height,
+                    width: cave_width as usize,
+                    words,
+                })
+            }
         } else {
             None
         };
@@ -840,7 +900,7 @@ impl Gpu {
         job_timings.flags = u32::from(self.timestamps.is_some());
         job_timings.nanos[timings::WAIT_COPY] = wait_start.elapsed().as_nanos() as u64;
         timings.add(timings::WAIT_COPY, job_timings.nanos[timings::WAIT_COPY]);
-        timings.gpu((count * COLUMNS) as u64, self.timestamps.is_some());
+        timings.gpu(column_count as u64, self.timestamps.is_some());
         Ok(GpuSample {
             columns,
             mask,

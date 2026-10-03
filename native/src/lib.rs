@@ -126,6 +126,8 @@ struct Job {
     profile: Option<Arc<WorldProfile>>,
     tile_side: u32,
     cave_side: u32,
+    probe_mode: u32,
+    probe_y: Vec<i32>,
     reply: mpsc::Sender<Result<gpu::GpuSample, String>>,
     queued: Instant,
     queue_nanos: u64,
@@ -139,6 +141,7 @@ pub struct TerrainEngine {
     backend: String,
     profiles: RwLock<Vec<Arc<WorldProfile>>>,
     cache: Mutex<ColumnCache>,
+    height_cache: Mutex<ColumnCache>,
     caves: Mutex<CaveCache>,
     structures: Mutex<structures::Cache>,
     timings: Mutex<HashMap<u32, Arc<timings::Timings>>>,
@@ -174,6 +177,7 @@ impl TerrainEngine {
                     };
                     let profile_id = first.requests[0].reserved;
                     let tile_side = first.tile_side;
+                    let probe_mode = first.probe_mode;
                     let mut count = if tile_side != 0 {
                         MAX_BATCH
                     } else {
@@ -187,6 +191,7 @@ impl TerrainEngine {
                         {
                             Ok(job) => {
                                 if job.tile_side != 0
+                                    || job.probe_mode != probe_mode
                                     || job.requests[0].reserved != profile_id
                                     || count + job.requests.len() > MAX_BATCH
                                 {
@@ -201,11 +206,27 @@ impl TerrainEngine {
                     }
                     let mut requests: Vec<_> = batch
                         .iter()
-                        .flat_map(|job| job.requests.iter().copied().map(GpuRequest::from))
+                        .flat_map(|job| {
+                            job.requests.iter().enumerate().map(|(i, r)| {
+                                let mut gpu = GpuRequest::from(*r);
+                                if probe_mode == 1 {
+                                    gpu.padding = 1 << 31;
+                                }
+                                if probe_mode == 3 {
+                                    gpu.padding = 1 << 29;
+                                }
+                                if probe_mode == 2 {
+                                    let y = job.probe_y[i].div_euclid(4) * 4
+                                        - r.min_y.div_euclid(4) * 4;
+                                    gpu.padding = (1 << 30) | ((y as u32) << 8);
+                                }
+                                gpu
+                            })
+                        })
                         .collect();
                     if tile_side != 0 {
                         requests[0].tile_side = tile_side;
-                        requests[0].padding = batch[0].cave_side;
+                        requests[0].padding |= batch[0].cave_side;
                     }
                     for job in &mut batch {
                         job.queue_nanos = job.queued.elapsed().as_nanos() as u64;
@@ -227,7 +248,11 @@ impl TerrainEngine {
                                         (job.tile_side * job.tile_side) as usize
                                     } else {
                                         job.requests.len()
-                                    } * COLUMNS;
+                                    } * if probe_mode == 1 || probe_mode == 2 {
+                                        1
+                                    } else {
+                                        COLUMNS
+                                    };
                                 let _ = job.reply.send(Ok(gpu::GpuSample {
                                     columns: sample.columns[offset..end].to_vec(),
                                     mask: sample.mask.take(),
@@ -262,6 +287,7 @@ impl TerrainEngine {
             backend,
             profiles: RwLock::new(Vec::new()),
             cache: Mutex::new(ColumnCache::default()),
+            height_cache: Mutex::new(ColumnCache::default()),
             caves: Mutex::new(CaveCache::default()),
             structures: Mutex::new(structures::Cache::default()),
             timings: Mutex::new(HashMap::new()),
@@ -318,6 +344,84 @@ impl TerrainEngine {
             .iter()
             .map(|c| c.height)
             .collect())
+    }
+
+    /// Center biome probes reuse complete cached columns/quart biomes. Cold
+    /// probes return one GPU record each, never a full cavity volume.
+    pub fn sample_biomes(
+        &self,
+        requests: &[ChunkRequest],
+        ys: Option<&[i32]>,
+    ) -> Result<Vec<u16>, String> {
+        if requests.is_empty() {
+            return Ok(Vec::new());
+        }
+        if requests.len() > MAX_BATCH || ys.is_some_and(|y| y.len() != requests.len()) {
+            return Err("invalid biome query batch".into());
+        }
+        for r in requests {
+            r.validate()?;
+            if r.reserved != requests[0].reserved {
+                return Err("biome query profiles must match".into());
+            }
+        }
+        let profile = self.profile(requests[0].reserved)?;
+        let underground = ys.is_some()
+            && profile
+                .as_deref()
+                .is_some_and(|p| p.geology.caves_enabled(p));
+        let cached: Vec<_> = {
+            let columns = self.cache.lock().map_err(|_| "column cache poisoned")?;
+            let heights = self
+                .height_cache
+                .lock()
+                .map_err(|_| "height cache poisoned")?;
+            let caves = self.caves.lock().map_err(|_| "cave cache poisoned")?;
+            requests
+                .iter()
+                .enumerate()
+                .map(|(i, r)| {
+                    let key = CacheKey::from(*r);
+                    let surface = columns
+                        .entries
+                        .get(&key)
+                        .or_else(|| heights.entries.get(&key))
+                        .map(|c| c[8 * 16 + 8].biome() as u16);
+                    if underground && (r.min_y..r.min_y + r.height as i32).contains(&ys.unwrap()[i])
+                    {
+                        caves.biome(key, r.chunk_x * 16 + 8, ys.unwrap()[i], r.chunk_z * 16 + 8)
+                    } else {
+                        surface
+                    }
+                })
+                .collect()
+        };
+        let mut result = vec![0; requests.len()];
+        let mut missing = Vec::new();
+        let mut ids = Vec::new();
+        let mut y = Vec::new();
+        // Out-of-range underground starts have the surface biome, as before.
+        for (i, (r, cached)) in requests.iter().zip(cached).enumerate() {
+            if let Some(b) = cached {
+                result[i] = b;
+            } else if underground && !(r.min_y..r.min_y + r.height as i32).contains(&ys.unwrap()[i])
+            {
+                result[i] = self.sample_biomes(&[*r], None)?[0];
+            } else {
+                missing.push(*r);
+                ids.push(i);
+                if underground {
+                    y.push(ys.unwrap()[i]);
+                }
+            }
+        }
+        if !missing.is_empty() {
+            let samples = self.dispatch_job(missing, 0, 0, if underground { 2 } else { 1 }, y)?;
+            for (i, c) in ids.into_iter().zip(samples.columns) {
+                result[i] = c.biome() as u16;
+            }
+        }
+        Ok(result)
     }
 
     pub fn sample_columns(&self, requests: &[ChunkRequest]) -> Result<Vec<Column>, String> {
@@ -438,6 +542,92 @@ impl TerrainEngine {
             .map_err(|_| "column cache poisoned")?
             .insert(&requests, &result);
         Ok(result)
+    }
+
+    /// Projected structure heights need lakes/fluid levels, but no surface
+    /// material program. Reuse cached columns and dispatch only missing chunks.
+    pub fn sample_height_tile(
+        &self,
+        request: ChunkRequest,
+        side: u32,
+        water_surface: bool,
+    ) -> Result<Vec<i32>, String> {
+        if !(1..=34).contains(&side) {
+            return Err("height tile side must be 1..34".into());
+        }
+        let requests: Vec<_> = (0..side * side)
+            .map(|i| {
+                let r = ChunkRequest {
+                    chunk_x: request
+                        .chunk_x
+                        .checked_add((i % side) as i32)
+                        .ok_or("height tile X overflows")?,
+                    chunk_z: request
+                        .chunk_z
+                        .checked_add((i / side) as i32)
+                        .ok_or("height tile Z overflows")?,
+                    ..request
+                };
+                r.validate()?;
+                Ok(r)
+            })
+            .collect::<Result<_, String>>()?;
+        let profile = self.profile(request.reserved)?;
+        let cached: Vec<_> = {
+            let cache = self.cache.lock().map_err(|_| "column cache poisoned")?;
+            let heights = self
+                .height_cache
+                .lock()
+                .map_err(|_| "height cache poisoned")?;
+            requests
+                .iter()
+                .map(|r| {
+                    cache
+                        .entries
+                        .get(&CacheKey::from(*r))
+                        .or_else(|| heights.entries.get(&CacheKey::from(*r)))
+                        .cloned()
+                })
+                .collect()
+        };
+        let missing: Vec<_> = requests
+            .iter()
+            .zip(&cached)
+            .filter_map(|(r, c)| c.is_none().then_some(*r))
+            .collect();
+        let mut fresh = Vec::new();
+        if missing.len() == requests.len() {
+            fresh = self
+                .dispatch_job(vec![request], side, 0, 3, Vec::new())?
+                .columns;
+        } else {
+            for batch in missing.chunks(MAX_BATCH) {
+                fresh.extend(
+                    self.dispatch_job(batch.to_vec(), 0, 0, 3, Vec::new())?
+                        .columns,
+                );
+            }
+        }
+        self.height_cache
+            .lock()
+            .map_err(|_| "height cache poisoned")?
+            .insert(&missing, &fresh);
+        let mut fresh = fresh.chunks_exact(COLUMNS);
+        let mut heights = Vec::with_capacity(requests.len() * COLUMNS);
+        for chunk in cached {
+            let columns = chunk
+                .as_deref()
+                .map(|c| c.as_slice())
+                .unwrap_or_else(|| fresh.next().unwrap());
+            heights.extend(columns.iter().map(|c| {
+                if water_surface {
+                    c.surface_height(profile.as_deref())
+                } else {
+                    c.height
+                }
+            }));
+        }
+        Ok(heights)
     }
 
     pub fn sample_region(&self, mut request: ChunkRequest) -> Result<Vec<Column>, String> {
@@ -571,6 +761,16 @@ impl TerrainEngine {
         tile_side: u32,
         cave_side: u32,
     ) -> Result<gpu::GpuSample, String> {
+        self.dispatch_job(requests, tile_side, cave_side, 0, Vec::new())
+    }
+    fn dispatch_job(
+        &self,
+        requests: Vec<ChunkRequest>,
+        tile_side: u32,
+        cave_side: u32,
+        probe_mode: u32,
+        probe_y: Vec<i32>,
+    ) -> Result<gpu::GpuSample, String> {
         let profile = self.profile(requests[0].reserved)?;
         let (reply, receiver) = mpsc::channel();
         let timing_profile = requests[0].reserved;
@@ -580,6 +780,8 @@ impl TerrainEngine {
                 profile,
                 tile_side,
                 cave_side,
+                probe_mode,
+                probe_y,
                 reply,
                 queued: Instant::now(),
                 queue_nanos: 0,
@@ -815,6 +1017,24 @@ struct CaveCache {
     order: VecDeque<CacheKey>,
 }
 impl CaveCache {
+    fn biome(&self, key: CacheKey, x: i32, y: i32, z: i32) -> Option<u16> {
+        self.entries
+            .get(&key)
+            .and_then(|m| m.biome(x, y, z))
+            .or_else(|| {
+                // Quart data covers the decoration halo too, although only target
+                // chunks have cache keys. Reuse it without generating another mask.
+                self.entries.iter().find_map(|(k, m)| {
+                    (CacheKey {
+                        x: key.x,
+                        z: key.z,
+                        ..*k
+                    } == key)
+                        .then(|| m.biome(x, y, z))
+                        .flatten()
+                })
+            })
+    }
     fn insert(&mut self, request: ChunkRequest, side: u32, mask: Arc<geology::CaveMask>) {
         for z in 0..side {
             for x in 0..side {

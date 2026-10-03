@@ -49,3 +49,21 @@ hosts and water hosts. Actual vanilla registry geology, cave/exposure rules,
 temporary MCA preview/promotion, and structure MCA/chunk parity suites passed.
 GPU rasterization needs a compact per-vein output and stable replay order; simply
 appending all 12-byte candidates would still transfer about 90 MiB on this field.
+
+## Sparse structure queries
+
+Cold surface biome probes run the registered climate lattice and biome selection
+for one center point, without a density lattice, soil predicates, lakes or caves.
+Underground probes preserve the original quart coordinates and lake-adjusted
+ground height, then execute the same biome selector without a cavity volume.
+Cached quart data includes halos. Projected height tiles preserve ground and
+WORLD_SURFACE fluid/lake levels, skip soil material programs, and retain a separate
+bounded height cache so incomplete material records cannot enter terrain generation.
+
+The same workload reached 8,394 native chunks/s serially and 10,344 with two
+callers; serial structure planning measured 9.36 ms/region. Both runs matched
+40,960 decompressed chunk records against the ore-layout-2 baseline. Native unit,
+actual Metal sparse/full query parity, and vanilla structure MCA/chunk tests
+passed. Sparse tests cover legacy, explicit height and 3D density profiles,
+unaligned vertical bounds, negative/distant coordinates, water-surface heights,
+and cache/halo reuse without additional dispatches.

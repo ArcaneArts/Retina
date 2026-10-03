@@ -101,3 +101,112 @@ fn actual_gpu_parallel_chunks_and_height_queries() {
     );
     println!("QA_EVT {{\"event\":\"negative_coordinates_and_bounds\",\"status\":\"pass\"}}");
 }
+
+#[test]
+fn sparse_biomes_match_full_fields_and_reuse_cached_quarts() {
+    use serde_json::json;
+    let engine = TerrainEngine::new().unwrap();
+    let constant = |v: f32| json!({"nodes":[{"op":0,"a":0,"b":0,"c":0,"p":[v,0,0,0]}],"roots":[0]});
+    let noise = json!({"frequency":0.02,"amplitude":0.5,"modifiers":[1,0.5]});
+    let climate = json!({"nodes":[{"op":2,"a":0,"b":0,"c":0,"p":[0,0,0,0]}],"roots":[0,0,0,0,0,0]});
+    let density = json!({"nodes":[{"op":3,"a":1,"b":0,"c":0,"p":[-64,128,1,-1]}],"roots":[0]});
+    for mode in 0..3 {
+        let mut source = json!({
+            "biome_scale":256,"blend":0.55,"sea_level":32,"stone":1,"water":2,
+            "bedrock":1,"deepslate":1,"snow":1,"ice":2,
+            "materials":["minecraft:air","minecraft:stone","minecraft:water"],
+            "biomes":[
+                {"id":"test:surface","climate":[-0.5,-0.5,-0.5,-0.5],"terrain":[0,1,1],"top":1,"filler":1,"underwater":1,"flags":0},
+                {"id":"test:caves","climate":[0.5,0.5,0.5,0.5],"terrain":[10,1,1],"top":1,"filler":1,"underwater":1,"flags":16,"cave_kind":1,"cave_depth":[0.2,0.9]}
+            ],"noises":[noise,noise,noise,noise],"cave_noises":[noise,noise,noise,noise,noise,noise],
+            "geology_min_y":-64,"geology_height":192,"carveable":[false,true,false],"lava":2,"lava_level":-54,
+            "material_flags":[0,1,0],"heightmap_masks":[0,63,0]
+        });
+        if mode > 0 {
+            source["registry_program"] = json!({"programs":[climate,if mode==1 {constant(70.)} else {density.clone()},constant(1.),constant(0.),constant(0.)],
+                "noises":[{"frequency":0.02,"amplitude":0.5,"salt":42,"coefficients":[1,0.5]}],
+                "points":[],"surface":[-64,192,if mode==1 {1} else {0}]});
+            source["climate_targets"] = json!([
+                {"biome":0,"min":[-1,-1,-1,-1],"max":[0,0,0,0],"weirdness":[-1,1],"depth":[-1,1],"offset":0},
+                {"biome":1,"min":[0,0,0,0],"max":[1,1,1,1],"weirdness":[-1,1],"depth":[-1,1],"offset":0}
+            ]);
+            source["weirdness_noise"] = noise.clone();
+        }
+        let id = engine
+            .register_profile(&serde_json::to_vec(&source).unwrap())
+            .unwrap();
+        let requests: Vec<_> = [(-31, 17), (17, -31), (10_000, -10_000), (-10_000, 10_000)]
+            .into_iter()
+            .map(|(x, z)| ChunkRequest {
+                reserved: id,
+                min_y: -63,
+                height: 191,
+                ..request(x, z)
+            })
+            .collect();
+        let ys = [-61, -27, 8, 66];
+        let before = engine.timings(id).snapshot();
+        let surface = engine.sample_biomes(&requests, None).unwrap();
+        let after = engine.timings(id).snapshot();
+        assert_eq!(
+            after.gpu_columns - before.gpu_columns,
+            4,
+            "surface probes return one column each"
+        );
+        let underground = engine.sample_biomes(&requests, Some(&ys)).unwrap();
+        for (i, r) in requests.iter().enumerate() {
+            let ground = engine.sample_height_tile(*r, 1, false).unwrap();
+            let water = engine.sample_height_tile(*r, 1, true).unwrap();
+            let (field, mask) = engine.terrain_field(*r, 1).unwrap();
+            let col = field
+                .column(r.chunk_x * 16 + 8, r.chunk_z * 16 + 8)
+                .unwrap();
+            assert_eq!(surface[i], col.biome() as u16, "surface mode {mode}");
+            let profile = engine.profile(id).unwrap().unwrap();
+            for (j, c) in field.chunk(r.chunk_x, r.chunk_z).iter().enumerate() {
+                assert_eq!(ground[j], c.height, "height mode {mode}");
+                assert_eq!(
+                    water[j],
+                    c.surface_height(Some(&profile)),
+                    "fluid height mode {mode}"
+                );
+            }
+            assert_eq!(
+                underground[i],
+                mask.as_ref()
+                    .and_then(|m| m.biome(r.chunk_x * 16 + 8, ys[i], r.chunk_z * 16 + 8))
+                    .unwrap_or(col.biome() as u16),
+                "underground mode {mode}"
+            );
+            let halo = ChunkRequest {
+                chunk_x: r.chunk_x - 1,
+                ..*r
+            };
+            let before = engine.timings(id).snapshot();
+            let biome = engine.sample_biomes(&[halo], Some(&[ys[i]])).unwrap()[0];
+            if let Some(mask) = mask {
+                assert_eq!(
+                    biome,
+                    mask.biome(halo.chunk_x * 16 + 8, ys[i], halo.chunk_z * 16 + 8)
+                        .unwrap()
+                );
+                assert_eq!(
+                    before.gpu_jobs,
+                    engine.timings(id).snapshot().gpu_jobs,
+                    "halo quart queries reuse masks"
+                );
+            }
+        }
+        let before = engine.timings(id).snapshot();
+        assert_eq!(surface, engine.sample_biomes(&requests, None).unwrap());
+        assert_eq!(
+            underground,
+            engine.sample_biomes(&requests, Some(&ys)).unwrap()
+        );
+        assert_eq!(
+            before.gpu_jobs,
+            engine.timings(id).snapshot().gpu_jobs,
+            "cached probes must not dispatch"
+        );
+    }
+}

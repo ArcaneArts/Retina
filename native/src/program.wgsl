@@ -188,6 +188,14 @@ fn surface_columns(@builtin(global_invocation_id) id:vec3<u32>) {
     surface_nodes[surface_offset(r)+id.x]=density_surface_height(point,r,0xffffffffu);
 }
 @compute @workgroup_size(64)
+fn climate_nodes(@builtin(global_invocation_id) id:vec3<u32>) {
+    let r=requests[id.y];if id.x>=25u {return;}
+    let point=vec3<f32>(f32(r.origin_x+i32(id.x%5u)*4),0.0,f32(r.origin_z+i32(id.x/5u)*4));
+    let node=(id.y*25u+id.x)*8u;
+    let climate=run_program(0u,point,r,vec4<f32>(0.0));
+    for(var channel=0u;channel<6u;channel++){surface_nodes[node+1u+channel]=climate[channel];}
+}
+@compute @workgroup_size(64)
 fn height_nodes(@builtin(global_invocation_id) id:vec3<u32>) {
     let r=requests[id.y];let n=select(5u,r.tile_side*4u+1u,r.tile_side>0u);if id.x>=n*n {return;}
     let point=vec3<f32>(f32(r.origin_x+i32(id.x%n)*4),0.0,f32(r.origin_z+i32(id.x/n)*4));

@@ -349,7 +349,18 @@ fn lake_geometry_legacy(cell:vec2<i32>,r:Request,index:u32)->vec4<f32> {
     return vec4<f32>(radius,level,f32(center.biome),select(0.0,1.0,eligible));
 }
 @compute @workgroup_size(64)
+fn biome_queries(@builtin(global_invocation_id) id:vec3<u32>) {
+    if id.x!=0u {return;}
+    let r=requests[id.y];
+    if r.profile==0u {columns[id.y]=Column(0,0u,0u);return;}
+    let point=vec2<f32>(f32(r.origin_x+8),f32(r.origin_z+8));
+    columns[id.y]=Column(0,terrain_base(point,r,id.y).biome,0u);
+}
+@compute @workgroup_size(64)
 fn main(@builtin(global_invocation_id) id: vec3<u32>) {
+    let probe=(requests[0].padding & (1u<<30u))!=0u;
+    let height_probe=(requests[0].padding & (1u<<29u))!=0u;
+    if probe && id.x!=0u {return;}
     let region = requests[0].tile_side > 0u;
     let request_index = select(id.y, 0u, region);
     let request = requests[request_index];
@@ -357,10 +368,10 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
     if region {
         tile = vec2<i32>(i32(id.y % request.tile_side), i32(id.y / request.tile_side)) * 16;
     }
-    let coordinate = vec2<i32>(request.origin_x + tile.x + i32(id.x & 15u),
-                               request.origin_z + tile.y + i32(id.x >> 4u));
+    let coordinate = vec2<i32>(request.origin_x + tile.x + select(i32(id.x & 15u),8,probe),
+                               request.origin_z + tile.y + select(i32(id.x >> 4u),8,probe));
     let point = vec2<f32>(coordinate);
-    let index = id.y * 256u + id.x;
+    let index = select(id.y * 256u + id.x,id.y,probe);
     if request.profile == 0u {
         let height = i32(floor(request.base_height + request.amplitude * fbm(point * request.frequency, request.seed_low, request.seed_high)));
         columns[index] = Column(clamp(height, request.min_y + 1, request.max_y), 0u, 0u);
@@ -438,6 +449,7 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
             }
         }
     }
+    if probe || height_probe {columns[index]=Column(height,biome | (depth<<24u) | flags,0u);return;}
     // Terracotta retains its red-sand cap. The filler byte transports the small
     // signed band offset; Rust only indexes the resident 192-entry color table.
     if (material.w & 8u) != 0u && world.globals.z > 0.0 {
