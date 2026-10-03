@@ -5,9 +5,9 @@ struct Request {
     seed_low: u32, seed_high: u32, base_height: f32, amplitude: f32,
     frequency: f32, profile: u32, tile_side: u32, padding: u32,
 }
-struct Column { height: i32, packed: u32 }
+struct Column { height: i32, packed: u32, materials: u32 }
 struct NoiseProfile { frequency: f32, amplitude: f32, count: u32, padding: u32, modifiers: array<f32,32> }
-struct Carver { range: vec4<f32>, shape: vec4<f32>, detail: vec4<f32> }
+struct Carver { range: vec4<f32>, shape: vec4<f32>, detail: vec4<f32>, variation: vec4<f32>, length: vec4<f32> }
 struct CaveBiome { carvers: array<Carver,4>, climate: vec4<f32>, selection: vec4<f32> }
 struct CaveProfile { globals: vec4<u32>, noises: array<NoiseProfile,6>, biomes: array<CaveBiome> }
 @group(0) @binding(0) var<storage,read> requests: array<Request>;
@@ -15,6 +15,9 @@ struct CaveProfile { globals: vec4<u32>, noises: array<NoiseProfile,6>, biomes: 
 @group(0) @binding(2) var<storage,read> caves: CaveProfile;
 @group(0) @binding(3) var<storage,read_write> nodes: array<vec4<f32>>;
 @group(0) @binding(4) var<storage,read_write> mask: array<u32>;
+struct ClimateTarget { low:vec4<f32>,high:vec4<f32>,extra:vec4<f32>,depth:vec4<f32> }
+struct ClimateTable {count:vec4<u32>,noise:NoiseProfile,targets:array<ClimateTarget>}
+@group(0) @binding(7) var<storage,read> climate_table:ClimateTable;
 fn hash(value: u32) -> u32 {
     var h = value; h = (h ^ (h >> 16u))*0x7feb352du; h = (h ^ (h >> 15u))*0x846ca68bu; return h ^ (h >> 16u);
 }
@@ -47,30 +50,45 @@ fn registry_noise(point: vec3<f32>, channel: u32, seed: u32) -> f32 {
 }
 // Finite, curved ravine centerlines are globally anchored. This field is sampled
 // once per density node rather than evaluating curve noise for every carved voxel.
-fn ravine_distance(point: vec2<f32>, seed: u32) -> f32 {
-    let cell = vec2<i32>(floor(point/192.0));
-    var distance = 1000.0;
-    for (var dz=-1; dz<=1; dz++) { for (var dx=-1; dx<=1; dx++) {
-        let at = cell+vec2<i32>(dx,dz);
-        let h = hash(bitcast<u32>(at.x)*0x9e3779b9u ^ bitcast<u32>(at.y)*0x85ebca6bu ^ seed ^ 17863u);
-        if (h & 255u) > 72u { continue; }
-        let center = (vec2<f32>(at)+vec2<f32>(0.5))*192.0;
-        let angle = f32((h>>8u)&65535u)/65535.0*6.2831853;
-        let delta = point-center;
-        let along = dot(delta,vec2<f32>(cos(angle),sin(angle)));
-        let side = dot(delta,vec2<f32>(-sin(angle),cos(angle)));
-        let length = 46.0+f32((h>>24u)&31u);
-        let bend = sin(along*0.032+f32(h&31u))*9.0;
-        let width = 2.5+f32((h>>20u)&7u)*0.45;
-        distance = min(distance,max(abs(side-bend)-width,abs(along)-length));
-    }}
-    return distance;
+fn ravine_distance(point: vec2<f32>, seed: u32, settings:Carver) -> f32 {
+    let cell=vec2<i32>(floor(point/128.0));var distance=1000.0;
+    // One tile covers 64 potential source chunks. The carver's registered
+    // probability determines whether that tile has a canyon, including zero.
+    let probability=1.0-pow(1.0-clamp(settings.range.z,0.0,1.0),64.0);
+    for(var dz=-1;dz<=1;dz++){for(var dx=-1;dx<=1;dx++){
+        let at=cell+vec2<i32>(dx,dz);let h=hash(bitcast<u32>(at.x)*0x9e3779b9u ^ bitcast<u32>(at.y)*0x85ebca6bu ^ seed ^ 17863u);
+        if f32(h&65535u)/65535.0>=probability {continue;}
+        let random=vec3<f32>(f32((h>>16u)&255u),f32((hash(h)>>8u)&255u),f32(hash(h+1u)&255u))/255.0;
+        var thickness=settings.shape.x;var horizontal=settings.shape.y;var factor=settings.detail.y;
+        if settings.variation.y>0.0 {thickness=mix(settings.variation.x,settings.variation.y,random.x);}
+        if settings.variation.w>0.0 {horizontal=mix(settings.variation.z,settings.variation.w,random.y);}
+        if settings.length.y>0.0 {factor=mix(settings.length.x,settings.length.y,random.z);}
+        let half_length=max(1.0,112.0*factor*0.5);
+        let center=(vec2<f32>(at)+vec2<f32>(0.5))*128.0;
+        let angle=f32((h>>8u)&65535u)/65535.0*6.2831853;
+        let delta=point-center;let along=dot(delta,vec2<f32>(cos(angle),sin(angle)));let side=dot(delta,vec2<f32>(-sin(angle),cos(angle)));
+        let bend=sin(along/max(half_length*0.6,1.0)+f32(h&31u))*half_length*0.12;
+        let width=max(0.25,(1.5+thickness*sqrt(max(0.0,1.0-pow(along/half_length,2.0))))*horizontal);
+        distance=min(distance,max(abs(side-bend)/width,abs(along)/half_length));
+    }}return distance;
 }
 fn biome_at(x: u32, y: i32, z: u32, column: Column, r: Request) -> u32 {
-    let surface = column.packed & 255u;
+    let surface = column.packed & 65535u;
     if y >= column.height-12 { return surface; }
     let seed = r.seed_low ^ hash(r.seed_high);
     let point = vec3<f32>(f32(r.origin_x+i32(x)),f32(y),f32(r.origin_z+i32(z)));
+    if caves.globals.y>0u && climate_table.count.x>0u {
+        let actual=run_program(0u,point,r,vec4<f32>(0.0));let climate=vec4<f32>(actual[0],actual[1],actual[2],actual[3]);
+        var best=1e20;var selected=surface;
+        for(var i=0u;i<climate_table.count.x;i++) {
+            let entry=climate_table.targets[i];let difference=climate-clamp(climate,entry.low,entry.high);
+            let weirdness=actual[4]-clamp(actual[4],entry.extra.x,entry.extra.y);
+            let depth=actual[5]-clamp(actual[5],entry.depth.x,entry.depth.y);
+            let fitness=dot(difference,difference)+weirdness*weirdness+depth*depth+entry.extra.z*entry.extra.z;
+            if fitness<best {best=fitness;selected=u32(entry.extra.w);}
+        }
+        return selected;
+    }
     // Coarse coherent 3D climate domains; their targets/depths are registry values.
     let humidity = clamp(0.5+noise3(point*vec3<f32>(0.004,0.006,0.004),seed+2297u),-1.0,1.0);
     let continental = clamp(0.5+noise3(point*vec3<f32>(0.003,0.004,0.003),seed+3571u),-1.0,1.0);
@@ -85,6 +103,13 @@ fn biome_at(x: u32, y: i32, z: u32, column: Column, r: Request) -> u32 {
             continue;
         }
         if depth < b.selection.x || depth > b.selection.y { continue; }
+        if kind == 4u {
+            let temperature = noise3(point*vec3<f32>(0.003,0.004,0.003),seed+7919u);
+            let difference = vec4<f32>(temperature,humidity,continental,erosion)-b.climate;
+            let error = dot(difference*difference,vec4<f32>(2.0,1.5,1.0,0.5));
+            if error < fitness {fitness = error; selected = i;}
+            continue;
+        }
         let value = select(continental,humidity,kind == 1u);
         let climate_target = select(b.climate.z,b.climate.y,kind == 1u);
         if value < climate_target-0.15 { continue; }
@@ -106,11 +131,15 @@ fn cave_nodes(@builtin(global_invocation_id) id: vec3<u32>) {
     let cheese = registry_noise(point*vec3<f32>(1.0,1.7,1.0),0u,seed);
     let layer = abs(registry_noise(point*vec3<f32>(1.0,3.0,1.0),3u,seed));
     let pillar = registry_noise(point*vec3<f32>(1.0,0.25,1.0),5u,seed);
-    let chambers = cheese - layer*0.12 - max(pillar-0.48,0.0)*1.5;
+    var chambers = cheese - layer*0.12 - max(pillar-0.48,0.0)*1.5;
+    if caves.globals.y>0u {chambers=run_program(2u,point,r,vec4<f32>(0.0))[0];}
     let a = registry_noise(point*vec3<f32>(1.6,1.0,1.6),1u,seed)+rough*0.06;
     let b = registry_noise(point*vec3<f32>(1.6,1.0,1.6),2u,seed)-rough*0.06;
     var ribbon = 0.0;
-    if id.y == 0u { ribbon = ravine_distance(point.xz,seed); }
+    if id.y == 0u {
+        ribbon=1000.0;let column=column_at(min((id.x%n)*4u,r.tile_side*16u-1u),min((id.x/n)*4u,r.tile_side*16u-1u),r.tile_side);
+        for(var c=0u;c<4u;c++){let settings=caves.biomes[column.packed&65535u].carvers[c];if settings.range.w>0.5 && settings.range.z>0.0 {ribbon=min(ribbon,ravine_distance(point.xz,seed,settings));}}
+    }
     nodes[id.y*n*n+id.x] = vec4<f32>(chambers,a,b,ribbon);
     let width = r.padding*16u+2u;
     let surface_width = r.tile_side*16u;
@@ -120,13 +149,13 @@ fn cave_nodes(@builtin(global_invocation_id) id: vec3<u32>) {
     let surface_words = (surface_width*surface_width+31u)/32u;
     // The first stage writes quart IDs. The second can use each underground
     // biome's own carvers, without resampling climate per voxel or adding a pass.
-    if id.y < layers && id.x < quart_width*quart_width/4u {
-        let word = id.y*(quart_width*quart_width/4u)+id.x;
+    if id.y < layers && id.x < quart_width*quart_width/2u {
+        let word = id.y*(quart_width*quart_width/2u)+id.x;
         var ids = 0u;
-        for (var b=0u;b<4u;b++) {
-            let at = id.x*4u+b;
+        for (var b=0u;b<2u;b++) {
+            let at = id.x*2u+b;
             let qx = (at%quart_width)*4u; let qz = (at/quart_width)*4u;
-            ids |= biome_at(qx,bottom+i32(id.y)*4,qz,column_at(qx,qz,r.tile_side),r) << (b*8u);
+            ids |= biome_at(qx,bottom+i32(id.y)*4,qz,column_at(qx,qz,r.tile_side),r) << (b*16u);
         }
         mask[volume_words+surface_words+word] = ids;
     }
@@ -151,7 +180,7 @@ fn biome_sample(x: u32, y: i32, z: u32, r: Request) -> u32 {
     let bottom = i32(floor(f32(r.min_y)/4.0))*4;
     let offset = (width*width*u32(r.max_y-r.min_y)+31u)/32u+(surface_width*surface_width+31u)/32u;
     let q = ((u32(y-bottom)/4u)*(surface_width/4u)+(z/4u))*(surface_width/4u)+x/4u;
-    return (mask[offset+q/4u] >> ((q%4u)*8u)) & 255u;
+    return (mask[offset+q/2u] >> ((q%2u)*16u)) & 65535u;
 }
 fn is_cave(x: u32, y: i32, z: u32, column: Column, r: Request) -> bool {
     if y < r.min_y+5 || y >= column.height { return false; }
@@ -159,7 +188,7 @@ fn is_cave(x: u32, y: i32, z: u32, column: Column, r: Request) -> bool {
     let bottom = i32(floor(f32(r.min_y)/4.0))*4;
     let values = interpolate(vec3<f32>(f32(x),f32(y-bottom),f32(z))*0.25,r.tile_side*4u+1u);
     let biome = biome_sample(x,y,z,r);
-    var carved = false;
+    var carved = caves.globals.y>0u && values.x<0.0;
     for (var c=0u;c<4u;c++) {
         let settings = caves.biomes[biome].carvers[c];
         // Registry Y ranges locate tunnel centers, not their outer walls.
@@ -173,15 +202,15 @@ fn is_cave(x: u32, y: i32, z: u32, column: Column, r: Request) -> bool {
             let chamber_threshold = 0.43-strength*0.085-settings.detail.y*0.025;
             let tunnel_width = (0.042+settings.shape.x*0.028)*settings.shape.y*sqrt(max(strength,0.001));
             let floor = clamp((settings.detail.x+1.0)*0.03,0.0,0.06);
-            carved = carved || (values.x > chamber_threshold+(1.0-fade)*0.5)
+            carved = carved || (caves.globals.y==0u && values.x > chamber_threshold+(1.0-fade)*0.5)
                 || (max(abs(values.y),abs(values.z)*settings.shape.z) < tunnel_width*fade-floor);
         } else {
             let middle = (settings.range.x+settings.range.y)*0.5;
             let bottom_y = max(f32(r.min_y+6),middle-max(12.0,settings.shape.z*22.0));
             let top_y = max(upper,f32(column.height)+3.0);
             let vertical = clamp(min(f32(y)-bottom_y,top_y-f32(y))*0.12,0.0,1.0);
-            let width = settings.shape.x*settings.shape.y*settings.range.z*10.0;
-            carved = carved || (values.w < width*vertical-1.8 && vertical > 0.0);
+            let vertical_factor=select(1.0,max(0.2,settings.detail.w+settings.length.z),settings.detail.w>0.0 || settings.length.z>0.0);
+            carved = carved || (values.w < vertical*vertical_factor && vertical > 0.0);
 
         }
     }
@@ -219,3 +248,6 @@ fn cave_mask(@builtin(global_invocation_id) id: vec3<u32>) {
     mask[volume_words+word] = surface_bits;
     }
 }
+
+fn mix_hash(value:u32)->u32 {return hash(value);}
+fn cell_hash(cell:vec2<i32>,low:u32,high:u32)->u32 {return hash(bitcast<u32>(cell.x)*0x9e3779b9u ^ bitcast<u32>(cell.y)*0x85ebca6bu ^ low ^ hash(high));}

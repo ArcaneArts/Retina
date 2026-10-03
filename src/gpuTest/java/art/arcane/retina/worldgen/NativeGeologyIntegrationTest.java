@@ -46,11 +46,11 @@ public final class NativeGeologyIntegrationTest {
                 jobs.add(workers.submit(() -> {
                     var r = request(plainsId, chunk % 8 - 4, chunk / 8 - 4);
                     try (var data = nativeTerrain.generate(r)) {
-                        var bytes = data.blocks().toArray(ValueLayout.JAVA_BYTE);
+                        var bytes = data.blocks().toArray(ValueLayout.JAVA_SHORT);
                         var columns = data.columns();
                         for (int layer = 0; layer < 384; layer++) for (int c = 0; c < 256; c++) {
                             int y = layer - 64;
-                            var state = profile.materials()[Byte.toUnsignedInt(bytes[layer * 256 + c])];
+                            var state = profile.materials()[Short.toUnsignedInt(bytes[layer * 256 + c])];
                             if (y < -56) require(!state.isAir(), "bottom floor remains intact");
                             if (y == columns.heights()[c] - 1 && state.isAir()) entrances.increment();
                             if (state.isAir() && y < columns.heights()[c] - 8) carved.increment();
@@ -73,7 +73,7 @@ public final class NativeGeologyIntegrationTest {
         for (var n : changed.getAsJsonArray("cave_noises")) { var noise = n.getAsJsonObject(); noise.addProperty("frequency", noise.get("frequency").getAsDouble() * 1.5); }
         int changedId = nativeTerrain.registerProfile(changed.toString());
         try (var a = nativeTerrain.generate(request(plainsId, 1, -1)); var b = nativeTerrain.generate(request(solidId, 1, -1)); var c = nativeTerrain.generate(request(changedId, 1, -1))) {
-            var before = a.blocks().toArray(ValueLayout.JAVA_BYTE); var solid = b.blocks().toArray(ValueLayout.JAVA_BYTE); var after = c.blocks().toArray(ValueLayout.JAVA_BYTE);
+            var before = a.blocks().toArray(ValueLayout.JAVA_SHORT); var solid = b.blocks().toArray(ValueLayout.JAVA_SHORT); var after = c.blocks().toArray(ValueLayout.JAVA_SHORT);
             require(Arrays.equals(a.heights(), b.heights()) && Arrays.equals(a.heights(), c.heights()), "caves preserve surface heights");
             int removed = 0, noiseChanges = 0;
             for (int i = 0; i < 120 * 256; i++) { if (before[i] == 0 && solid[i] != 0) removed++; if ((before[i] == 0) != (after[i] == 0)) noiseChanges++; }
@@ -86,10 +86,10 @@ public final class NativeGeologyIntegrationTest {
         int flooded = 0;
         for (int x = 0; x < 8; x++) {
             try (var data = nativeTerrain.generate(request(oceanId, x, 0))) {
-                var bytes = data.blocks().toArray(ValueLayout.JAVA_BYTE);
+                var bytes = data.blocks().toArray(ValueLayout.JAVA_SHORT);
                 for (int y = 0; y < 100; y++) for (int column = 0; column < 256; column++) {
                     if (y - 64 >= data.heights()[column] - 8) continue;
-                    var state = profile.materials()[Byte.toUnsignedInt(bytes[y * 256 + column])];
+                    var state = profile.materials()[Short.toUnsignedInt(bytes[y * 256 + column])];
                     require(!state.isAir(), "ocean cavities stay flooded below sea level");
                     if (state.is(Blocks.WATER)) flooded++;
                 }
@@ -103,7 +103,7 @@ public final class NativeGeologyIntegrationTest {
         int canyonId = nativeTerrain.registerProfile(canyon.toString()); int canyonAir = 0;
         for (int z = -8; z < 8; z++) for (int x = -8; x < 8; x++) {
             try (var data = nativeTerrain.generate(request(canyonId, x, z))) {
-                var bytes = data.blocks().toArray(ValueLayout.JAVA_BYTE);
+                var bytes = data.blocks().toArray(ValueLayout.JAVA_SHORT);
                 for (int y = 64; y < 120; y++) for (int column = 0; column < 256; column++) if (y - 64 < data.heights()[column] - 8 && bytes[y * 256 + column] == 0) canyonAir++;
             }
         }
@@ -122,12 +122,12 @@ public final class NativeGeologyIntegrationTest {
         int suppressed = 0;
         for (int z = 0; z < 4; z++) for (int x = 0; x < 4; x++) {
             try (var a = nativeTerrain.generate(request(exposedId, x, z)); var b = nativeTerrain.generate(request(hiddenId, x, z))) {
-                var visible = a.blocks().toArray(ValueLayout.JAVA_BYTE); var concealed = b.blocks().toArray(ValueLayout.JAVA_BYTE);
+                var visible = a.blocks().toArray(ValueLayout.JAVA_SHORT); var concealed = b.blocks().toArray(ValueLayout.JAVA_SHORT);
                 for (int y = 1; y < 120; y++) for (int zz = 1; zz < 15; zz++) for (int xx = 1; xx < 15; xx++) {
                     int i = y * 256 + zz * 16 + xx;
-                    var state = profile.materials()[Byte.toUnsignedInt(concealed[i])];
+                    var state = profile.materials()[Short.toUnsignedInt(concealed[i])];
                     if (state.is(Blocks.DIAMOND_ORE) || state.is(Blocks.DEEPSLATE_DIAMOND_ORE)) for (int d : new int[]{-1,1,-16,16,-256,256}) require(concealed[i+d] != 0, "buried diamonds have no adjacent cave air");
-                    var raw = profile.materials()[Byte.toUnsignedInt(visible[i])];
+                    var raw = profile.materials()[Short.toUnsignedInt(visible[i])];
                     if ((raw.is(Blocks.DIAMOND_ORE) || raw.is(Blocks.DEEPSLATE_DIAMOND_ORE)) && !raw.equals(state)) suppressed++;
                 }
             }
@@ -136,7 +136,7 @@ public final class NativeGeologyIntegrationTest {
         System.out.println("QA_EVT {\"event\":\"ore_air_exposure_rule\",\"status\":\"pass\",\"context\":{\"suppressed\":" + suppressed + "}}");
     }
     private static TerrainRequest request(int profile, int x, int z) { return new TerrainRequest(123456789L, x, z, -64, 384, 64, 52, 0.0035F, profile); }
-    private static JsonObject forceBiome(JsonObject source, int index) { var result = source.deepCopy(); var biomes = new JsonArray(); biomes.add(source.getAsJsonArray("biomes").get(index).deepCopy()); result.add("biomes", biomes); return result; }
+    private static JsonObject forceBiome(JsonObject source, int index) { var result = source.deepCopy(); result.remove("registry_program"); var biomes = new JsonArray(); biomes.add(source.getAsJsonArray("biomes").get(index).deepCopy()); result.add("biomes", biomes); return result; }
     private static int recipe(JsonArray recipes, String id) { for (int i = 0; i < recipes.size(); i++) if (recipes.get(i).getAsJsonObject().get("id").getAsString().equals(id)) return i; throw new AssertionError("missing " + id); }
     private static boolean has(JsonArray ids, int target) { for (var id : ids) if (id.getAsInt() == target) return true; return false; }
     private static JsonObject counts(Map<String, java.util.concurrent.atomic.LongAdder> totals) { var result = new JsonObject(); totals.forEach((id, count) -> result.addProperty(id, count.sum())); return result; }

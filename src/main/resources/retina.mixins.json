@@ -2,7 +2,7 @@
   "required": true,
   "package": "art.arcane.retina.mixin",
   "compatibilityLevel": "JAVA_25",
-  "mixins": ["ChunkMapMixin", "IOWorkerAccessor", "RegionFileStorageMixin"],
+  "mixins": ["ChunkMapMixin", "IOWorkerAccessor", "RegionFileStorageMixin", "WorldDimensionsMixin"],
   "injectors": {
     "defaultRequire": 1
   },

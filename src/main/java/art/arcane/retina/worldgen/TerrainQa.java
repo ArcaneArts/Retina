@@ -15,6 +15,66 @@ import java.util.WeakHashMap;
 final class TerrainQa {
     private static final Set<RetinaChunkGenerator> CHECKED = Collections.newSetFromMap(new WeakHashMap<>());
 
+    private static boolean promotionChecked;
+    static void checkPromotion(net.minecraft.server.MinecraftServer server) {
+        if (!Boolean.getBoolean("retina.qa.promotion") || promotionChecked || server.getTickCount()<40) return;
+        promotionChecked=true;
+        var level=server.overworld();
+        if (!(level.getChunkSource().getGenerator() instanceof RetinaChunkGenerator generator) || !generator.regionMode())
+            throw new IllegalStateException("Promotion QA requires a Retina MCA world");
+        var position=new net.minecraft.world.level.ChunkPos(2064,2064);
+        long before=generator.metrics().snapshot().promotions();
+        // Same temporary MCA entry used by DH surface generation, then the real loader.
+        generator.biomeAt(position.getMinBlockX(),position.getMinBlockZ());
+        var chunk=level.getChunk(position.x(),position.z());
+        if (generator.metrics().snapshot().promotions()<=before) throw new IllegalStateException("Minecraft loader did not promote the temporary region");
+        var request=generator.request(level.getSeed(),position.x(),position.z());
+        int compared=0;
+        try(var generated=NativeTerrain.instance().generate(request)) {
+            for(int y=0;y<request.height();y++)for(int z=0;z<16;z++)for(int x=0;x<16;x++) {
+                var expected=generator.profile().materials()[Short.toUnsignedInt(generated.blocks().get(java.lang.foreign.ValueLayout.JAVA_SHORT,((long)y*256+z*16+x)*2))];
+                var actual=chunk.getBlockState(new BlockPos(position.getMinBlockX()+x,request.minY()+y,position.getMinBlockZ()+z));
+                if(!actual.equals(expected))throw new IllegalStateException("Promoted chunk differs at "+x+","+(y+request.minY())+","+z+": "+actual+" != "+expected);
+                compared++;
+            }
+        }
+        Retina.LOGGER.info("QA_EVT {\"event\":\"minecraft_live_preview_promotion\",\"status\":\"pass\",\"context\":{\"blocks\":{},\"x\":{},\"z\":{}}}",compared,position.x(),position.z());
+    }
+
+    private static boolean structuresChecked;
+    static void checkStructures(net.minecraft.server.MinecraftServer server) {
+        if(!Boolean.getBoolean("retina.qa.structures") || structuresChecked || server.getTickCount()<40)return;
+        structuresChecked=true;
+        var level=server.overworld();
+        if(!(level.getChunkSource().getGenerator() instanceof RetinaChunkGenerator generator))throw new IllegalStateException("Structure QA requires Retina");
+        var position=new net.minecraft.world.level.ChunkPos(320,320);
+        long promotions=generator.metrics().snapshot().promotions();
+        if(generator.regionMode())generator.biomeAt(position.getMinBlockX(),position.getMinBlockZ());
+        var chunk=level.getChunk(position.x(),position.z());
+        var structure=level.registryAccess().lookupOrThrow(net.minecraft.core.registries.Registries.STRUCTURE).getValue(art.arcane.retina.Retina.id("qa_village"));
+        var start=chunk.getAllStarts().get(structure);
+        if(start==null || !start.isValid() || start.getPieces().size()<5)throw new IllegalStateException("Live loader lost the native structure start");
+        if(start.getPieces().stream().anyMatch(p->!(p instanceof RetinaStructurePiece)))throw new IllegalStateException("Structure unexpectedly used a Java piece");
+        var request=generator.request(level.getSeed(),position.x(),position.z());int gold=0,compared=0;
+        try(var generated=NativeTerrain.instance().generate(request)) {
+            for(int y=0;y<request.height();y++)for(int z=0;z<16;z++)for(int x=0;x<16;x++) {
+                var expected=generator.profile().materials()[Short.toUnsignedInt(generated.blocks().get(java.lang.foreign.ValueLayout.JAVA_SHORT,((long)y*256+z*16+x)*2))];
+                var actual=chunk.getBlockState(new BlockPos(position.getMinBlockX()+x,request.minY()+y,position.getMinBlockZ()+z));
+                if(!actual.equals(expected))throw new IllegalStateException("Live structure block differs at "+x+","+(y+request.minY())+","+z+": "+actual+" != "+expected);
+                if(actual.is(Blocks.GOLD_BLOCK))gold++;compared++;
+            }
+        }
+        if(gold==0)throw new IllegalStateException("Registered datapack processor did not replace cobblestone with gold");
+        if(generator.regionMode() && !Boolean.getBoolean("retina.qa.structures.reopen") && generator.metrics().snapshot().promotions()<=promotions)throw new IllegalStateException("Structure preview was not promoted");
+        var nativeTag=NativeTerrain.instance().structureData(request);
+        for(var value:nativeTag.getListOrEmpty("block_entities")) {
+            var tag=(net.minecraft.nbt.CompoundTag)value;var pos=new BlockPos(tag.getIntOr("x",0),tag.getIntOr("y",0),tag.getIntOr("z",0));
+            if(level.getBlockEntity(pos)==null)throw new IllegalStateException("Live loader lost block entity at "+pos);
+        }
+        Retina.LOGGER.info("QA_EVT {\"event\":\"minecraft_live_rust_structures\",\"status\":\"pass\",\"context\":{\"mode\":\"{}\",\"pieces\":{},\"blocks\":{},\"processor_gold\":{}}}",generator.mode(),start.getPieces().size(),compared,gold);
+        if(server.isDedicatedServer())server.halt(false);
+    }
+
     static void check(ServerPlayer player, RetinaChunkGenerator generator) {
         if (!Boolean.getBoolean("retina.qa") || !CHECKED.add(generator)) return;
         ServerLevel level = player.level();
@@ -31,7 +91,7 @@ final class TerrainQa {
                 for (var type : new Heightmap.Types[]{Heightmap.Types.WORLD_SURFACE, Heightmap.Types.OCEAN_FLOOR, Heightmap.Types.MOTION_BLOCKING, Heightmap.Types.MOTION_BLOCKING_NO_LEAVES}) {
                     int expected = request.minY();
                     for (int y = request.height() - 1; y >= 0; y--) {
-                        var state = materials[Byte.toUnsignedInt(blocks.get(java.lang.foreign.ValueLayout.JAVA_BYTE, (long)y * 256 + z * 16 + x))];
+                        var state = materials[Short.toUnsignedInt(blocks.get(java.lang.foreign.ValueLayout.JAVA_SHORT, ((long)y * 256 + z * 16 + x)*2))];
                         if (type.isOpaque().test(state)) { expected += y + 1; break; }
                     }
                     int actual = chunk.getHeight(type, x, z) + 1;
@@ -45,7 +105,7 @@ final class TerrainQa {
                 var pos = new BlockPos(position.getMinBlockX() + x, y, position.getMinBlockZ() + z);
                 var state = chunk.getBlockState(pos);
                 if (profile != null && y < generated.heights()[z * 16 + x] - 8) {
-                    var expected = materials[Byte.toUnsignedInt(blocks.get(java.lang.foreign.ValueLayout.JAVA_BYTE, (long)(y - request.minY()) * 256 + z * 16 + x))];
+                    var expected = materials[Short.toUnsignedInt(blocks.get(java.lang.foreign.ValueLayout.JAVA_SHORT, ((long)(y - request.minY()) * 256 + z * 16 + x)*2))];
                     geologySamples++;
                     if (!state.is(expected.getBlock())) {
                         Retina.LOGGER.error("QA_EVT {\"event\":\"minecraft_geology_roundtrip\",\"status\":\"fail\",\"context\":{\"x\":{},\"y\":{},\"z\":{},\"expected\":\"{}\",\"actual\":\"{}\"}}", pos.getX(), y, pos.getZ(), expected, state);

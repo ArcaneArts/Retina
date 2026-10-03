@@ -224,6 +224,7 @@ fn generate_region_inner(
                 ));
             }
         }
+        let structure_plans = crate::structures::plans(engine, origin, 32)?;
         report.gpu_nanos = start.elapsed().as_nanos() as u64;
         assemblers()?.install(|| {
             let overlays = if decorated {
@@ -265,6 +266,12 @@ fn generate_region_inner(
                         crate::features::apply(request, p, cave_mask.as_deref(), &mut blocks);
                     }
                     decoration::decorate(profile.as_deref(), &overlays[slots[index]], &mut blocks);
+                    let structure_data = profile.as_deref().map(|p| {
+                        crate::structures::apply(request, p, &structure_plans, Some(&mut blocks))
+                    });
+                    if let Some(p) = profile.as_deref() {
+                        crate::features::snow(request, p, columns, &mut blocks);
+                    }
                     let nbt = chunk_nbt_blocks(
                         request,
                         columns,
@@ -273,6 +280,7 @@ fn generate_region_inner(
                         biome,
                         profile.as_deref(),
                         cave_mask.as_deref(),
+                        structure_data.as_ref().map(|data| &data.tag),
                     );
                     let mut compressed = ZlibEncoder::new(Vec::new(), Compression::fast());
                     compressed.write_all(&nbt).map_err(|e| e.to_string())?;
@@ -394,6 +402,7 @@ pub fn chunk_nbt(
     let columns: Vec<_> = heights
         .iter()
         .map(|height| Column {
+            materials: 0,
             height: *height,
             packed: 0,
         })
@@ -418,17 +427,19 @@ pub fn chunk_nbt_columns(
         biome,
         profile,
         None,
+        None,
     )
 }
 
 fn chunk_nbt_blocks(
     request: ChunkRequest,
     columns: &[Column],
-    blocks: &[u8],
+    blocks: &[u16],
     data_version: i32,
     biome: &str,
     profile: Option<&WorldProfile>,
     cave_mask: Option<&crate::geology::CaveMask>,
+    structure_data: Option<&serde_json::Value>,
 ) -> Vec<u8> {
     let heights: Vec<_> = columns.iter().map(|c| c.height).collect();
     let mut nbt = Nbt(Vec::with_capacity(20_000));
@@ -491,7 +502,7 @@ fn chunk_nbt_blocks(
                         })
                         .unwrap_or(
                             columns[((index % 16) / 4) as usize * 64 + (index % 4) as usize * 4]
-                                .biome() as u8,
+                                .biome() as u16,
                         )
                 })
                 .collect();
@@ -587,13 +598,12 @@ fn chunk_nbt_blocks(
         nbt.longs(name, &pack(values, bits));
     }
     nbt.end();
-    nbt.compound("structures");
-    nbt.compound("starts");
-    nbt.end();
-    nbt.compound("References");
-    nbt.end();
-    nbt.end();
-    for name in ["block_entities", "entities", "block_ticks", "fluid_ticks"] {
+    if let Some(data) = structure_data {
+        crate::nbt::fields(&mut nbt.0, data);
+    } else {
+        crate::nbt::fields(&mut nbt.0, &crate::structures::empty_data());
+    }
+    for name in ["block_ticks", "fluid_ticks"] {
         nbt.list(name, 10, 0);
     }
     nbt.list("PostProcessing", 9, 0);
@@ -601,13 +611,21 @@ fn chunk_nbt_blocks(
     nbt.0
 }
 
-fn make_palette(values: &[u8]) -> (Vec<u8>, Vec<u32>) {
+fn make_palette<T: Copy + Into<usize>>(values: &[T]) -> (Vec<T>, Vec<u32>) {
     let mut palette = Vec::new();
-    let mut lookup = [u32::MAX; 256];
+    let mut lookup = vec![
+        u32::MAX;
+        values
+            .iter()
+            .map(|value| (*value).into())
+            .max()
+            .unwrap_or(0)
+            + 1
+    ];
     let indices = values
         .iter()
         .map(|value| {
-            let id = *value as usize;
+            let id: usize = (*value).into();
             if lookup[id] == u32::MAX {
                 lookup[id] = palette.len() as u32;
                 palette.push(*value);

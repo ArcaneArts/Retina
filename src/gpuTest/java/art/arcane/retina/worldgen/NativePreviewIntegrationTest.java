@@ -57,22 +57,28 @@ public final class NativePreviewIntegrationTest {
         var position = new ChunkPos(-32, 0);
         var save = Files.createTempDirectory("retina-preview-save-test-");
         try {
+            long regionsBeforeSearch=generator.metrics().snapshot().previewRegions();
+            var search=((RetinaBiomeSource)generator.getBiomeSource()).findBiomeHorizontal(0,64,0,512,16,b -> false,
+                    net.minecraft.util.RandomSource.create(42),false,random);
+            require(search==null && generator.metrics().snapshot().previewRegions()==regionsBeforeSearch,
+                    "wide biome searches perform GPU queries without creating temporary MCAs or blocking publication");
+            System.out.println("QA_EVT {\"event\":\"biome_search_no_mca_assembly\",\"status\":\"pass\"}");
             var proto = new ProtoChunk(position, UpgradeData.EMPTY, bounds, factory, null);
             var biomeFuture = generator.createBiomes(random, Blender.empty(), null, proto);
             require(biomeFuture.isDone() && biomeFuture.join() == proto, "DH receives a completed biome future");
             var surfaceFuture = generator.buildTerrain(proto, Blender.empty(), random, null, null, null, Set.copyOf(biomes));
             require(surfaceFuture.isDone() && surfaceFuture.join() == proto, "DH terrain is available before buildTerrain returns");
             try (var generated = NativeTerrain.instance().generate(generator.request(seed, position.x(), position.z()))) {
-                var bytes = generated.blocks().toArray(ValueLayout.JAVA_BYTE);
+                var bytes = generated.blocks().toArray(ValueLayout.JAVA_SHORT);
                 for (int layer = 0; layer < 384; layer++) for (int z = 0; z < 16; z++) for (int x = 0; x < 16; x++) {
                     var at = new net.minecraft.core.BlockPos(position.getMinBlockX() + x, layer - 64, z);
-                    require(proto.getBlockState(at).equals(generator.profile().materials()[Byte.toUnsignedInt(bytes[layer * 256 + z * 16 + x])]), "temporary MCA surface matches decorated native chunks");
+                    require(proto.getBlockState(at).equals(generator.profile().materials()[Short.toUnsignedInt(bytes[layer * 256 + z * 16 + x])]), "temporary MCA surface matches decorated native chunks");
                 }
             }
             for (int z : new int[]{0, 7, 15}) for (int x : new int[]{0, 4, 15}) {
                 var actual = generator.getBaseColumn(position.getMinBlockX() + x, z, bounds, random);
                 var nativeColumn = NativeTerrain.instance().column(generator.request(seed, position.x(), position.z()), z * 16 + x);
-                for (int layer = 0; layer < 384; layer++) require(actual.getBlock(layer - 64).equals(generator.profile().materials()[Byte.toUnsignedInt(nativeColumn[layer])]), "cached GPU columns preserve undecorated height/base-column semantics");
+                for (int layer = 0; layer < 384; layer++) require(actual.getBlock(layer - 64).equals(generator.profile().materials()[Short.toUnsignedInt(nativeColumn[layer])]), "cached GPU columns preserve undecorated height/base-column semantics");
                 int top = generator.getBaseHeight(position.getMinBlockX() + x, z, Heightmap.Types.WORLD_SURFACE, bounds, random);
                 require(actual.getBlock(top).isAir() && !actual.getBlock(top - 1).isAir(), "height query uses the same temporary batch");
             }

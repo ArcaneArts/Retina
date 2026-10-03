@@ -12,25 +12,25 @@ use std::collections::{HashSet, VecDeque};
 pub struct TreeDecorator {
     pub kind: String,
     pub probability: f64,
-    pub states: Vec<u8>,
+    pub states: Vec<u16>,
 }
 
 #[derive(Clone, Deserialize)]
 pub struct PlantState {
-    pub lower: u8,
-    pub upper: u8,
+    pub lower: u16,
+    pub upper: u16,
     pub weight: f64,
     pub band: u8,
     pub dry: bool,
 }
 #[derive(Clone, Deserialize)]
 pub struct LogState {
-    pub axes: [u8; 3],
+    pub axes: [u16; 3],
     pub weight: f64,
 }
 #[derive(Clone, Deserialize)]
 pub struct LeafState {
-    pub distances: [u8; 6],
+    pub distances: [u16; 6],
     pub weight: f64,
 }
 #[derive(Clone, Deserialize)]
@@ -64,8 +64,8 @@ pub enum Kind {
         trunk_height: [i32; 2],
         logs: Vec<LogState>,
         leaves: Vec<LeafState>,
-        soil: u8,
-        root: u8,
+        soil: u16,
+        root: u16,
         root_offset: [i32; 2],
         #[serde(default)]
         decorators: Vec<TreeDecorator>,
@@ -93,7 +93,7 @@ impl Recipe {
         {
             return Err("decoration water offset exceeds terrain halo".into());
         }
-        let valid = |id: u8| (id as usize) < material_count;
+        let valid = |id: u16| (id as usize) < material_count;
         let okay = match &self.feature {
             Kind::Plant { states } => {
                 !states.is_empty()
@@ -178,8 +178,8 @@ impl Field {
 #[derive(Clone, Copy)]
 pub struct Placement {
     pub index: u32,
-    pub material: u8,
-    pub upper: u8,
+    pub material: u16,
+    pub upper: u16,
     pub role: u8,
 }
 #[derive(Clone, Copy)]
@@ -187,8 +187,8 @@ struct WorldBlock {
     x: i32,
     y: i32,
     z: i32,
-    material: u8,
-    upper: u8,
+    material: u16,
+    upper: u16,
     role: u8,
 }
 const PLANT: u8 = 0;
@@ -402,7 +402,7 @@ fn tree(
     let ground = field.column(x, z).unwrap();
     let ground_material = ground.material(ground.height - 1, request.min_y, Some(profile));
     let snowy_soil = ground_material == profile.snow
-        && profile.material_flags[((ground.packed >> 16) & 255) as usize] & 1 != 0;
+        && profile.material_flags[(ground.materials >> 16) as usize] & 1 != 0;
     if profile.material_flags[ground_material as usize] & 1 == 0 && !snowy_soil {
         return;
     }
@@ -670,7 +670,7 @@ fn decorate_tree(
                         y: at.1,
                         z: at.2,
                         material,
-                        upper: side as u8,
+                        upper: side as u16,
                         role: if decorator.kind == "cocoa" {
                             COCOA
                         } else {
@@ -688,7 +688,7 @@ pub fn assemble(
     columns: &[Column],
     profile: Option<&WorldProfile>,
     placements: &[Placement],
-    blocks: &mut [u8],
+    blocks: &mut [u16],
 ) {
     for (layer, row) in blocks.chunks_exact_mut(COLUMNS).enumerate() {
         for (block, column) in row.iter_mut().zip(columns) {
@@ -698,7 +698,7 @@ pub fn assemble(
     decorate(profile, placements, blocks);
 }
 
-pub fn decorate(profile: Option<&WorldProfile>, placements: &[Placement], blocks: &mut [u8]) {
+pub fn decorate(profile: Option<&WorldProfile>, placements: &[Placement], blocks: &mut [u16]) {
     let Some(profile) = profile else {
         return;
     };
@@ -807,6 +807,10 @@ mod tests {
     #[test]
     fn giant_jungle_crowns_close_above_the_trunk_without_four_interior_holes() {
         let profile = WorldProfile {
+            structures: Default::default(),
+            registry_program: None,
+            climate_targets: Vec::new(),
+            weirdness_noise: None,
             biome_scale: 256.0,
             blend: 0.55,
             sea_level: 63,
@@ -817,7 +821,13 @@ mod tests {
             snow: 1,
             ice: 1,
             materials: vec![serde_json::json!("minecraft:air"); 10],
-            biomes: Vec::new(),
+            biomes: vec![
+                serde_json::from_value(serde_json::json!({
+                    "id":"test:jungle", "climate":[0,0,0,0], "terrain":[0,0,0],
+                    "top":2,"filler":2,"underwater":1,"flags":0
+                }))
+                .unwrap(),
+            ],
             noises: Vec::new(),
             decorations: Vec::new(),
             geology: Default::default(),
@@ -832,8 +842,9 @@ mod tests {
             side: 3,
             columns: vec![
                 Column {
+                    materials: 2 | (2 << 16),
                     height: 64,
-                    packed: 2 << 8
+                    packed: 0
                 };
                 9 * COLUMNS
             ],

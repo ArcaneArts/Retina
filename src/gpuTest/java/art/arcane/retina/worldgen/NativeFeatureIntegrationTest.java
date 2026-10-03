@@ -36,7 +36,7 @@ public final class NativeFeatureIntegrationTest {
         for (int x = 0; x < 8; x++) {
             var r = request(mesaId, x, -1, 218, 0);
             try (var data = nativeTerrain.generate(r)) {
-                var blocks = data.blocks().toArray(ValueLayout.JAVA_BYTE);
+                var blocks = data.blocks().toArray(ValueLayout.JAVA_SHORT);
                 var column = nativeTerrain.column(r, 0);
                 for (int layer = 0; layer < 384; layer++) {
                     require(column[layer] == blocks[layer * 256], "badlands base-column API agrees with native assembly");
@@ -61,13 +61,13 @@ public final class NativeFeatureIntegrationTest {
                         var biomeSamples = nativeTerrain.sampleBiomes(r);
                         boolean caveSeen = false;
                         for (int layer = 0; layer < 96; layer++) for (int i = 0; i < 16; i++) {
-                            int b = Byte.toUnsignedInt(biomeSamples[layer * 16 + i]);
+                            int b = Short.toUnsignedInt(biomeSamples[layer * 16 + i]);
                             require(b <= 1, "GPU quart biome references are in range"); caveSeen |= b == 1;
                             if (layer >= 64) require(b == 0, "cave biomes cannot leak into surface sky");
                         }
                         require(caveSeen, "underground biome is reachable");
                         try (var data = nativeTerrain.generate(r)) {
-                            for (byte block : data.blocks().toArray(ValueLayout.JAVA_BYTE)) counts.computeIfAbsent(id(profile, block), k -> new java.util.concurrent.atomic.LongAdder()).increment();
+                            for (short block : data.blocks().toArray(ValueLayout.JAVA_SHORT)) counts.computeIfAbsent(id(profile, block), k -> new java.util.concurrent.atomic.LongAdder()).increment();
                         }
                     }));
                 }
@@ -113,9 +113,9 @@ public final class NativeFeatureIntegrationTest {
                     if (compared < 24) {
                         var request = request(id,cx,cz,112,12);
                         var nativeColumn = NativeTerrain.instance().column(request,i);
-                        for (int y = 0; y < 384; y++) require(generated[y].equals(source.materials()[Byte.toUnsignedInt(nativeColumn[y])]), "temporary MCA base columns agree with native lake columns");
+                        for (int y = 0; y < 384; y++) require(generated[y].equals(source.materials()[Short.toUnsignedInt(nativeColumn[y])]), "temporary MCA base columns agree with native lake columns");
                         try (var data = NativeTerrain.instance().generate(request)) {
-                            var blocks = data.blocks().toArray(ValueLayout.JAVA_BYTE);
+                            var blocks = data.blocks().toArray(ValueLayout.JAVA_SHORT);
                             require(id(source, blocks[(columns.heights()[i]-1+64)*256+i]).equals(id(source,nativeColumn[columns.heights()[i]-1+64])), "GPU cave carving preserves lake floors");
                         }
                         compared++;
@@ -135,11 +135,11 @@ public final class NativeFeatureIntegrationTest {
         cave.add("climate", array(0,-1,-1,1)); cave.add("cave_depth", array(0,2)); entries.add(cave);
         return result;
     }
-    private static JsonObject only(JsonObject json, String id) { var r = json.deepCopy(); var a = new JsonArray(); a.add(find(json,id).deepCopy()); r.add("biomes",a); return r; }
+    private static JsonObject only(JsonObject json, String id) { var r = json.deepCopy(); r.remove("registry_program"); var a = new JsonArray(); a.add(find(json,id).deepCopy()); r.add("biomes",a); return r; }
     private static JsonObject find(JsonObject json, String id) { return json.getAsJsonArray("biomes").asList().stream().map(JsonElement::getAsJsonObject).filter(b -> b.get("id").getAsString().equals(id)).findFirst().orElseThrow(); }
     private static JsonArray array(double... values) { var a = new JsonArray(); for (double v : values) a.add(v); return a; }
     private static TerrainRequest request(int profile, int x, int z, float base, float amplitude) { return new TerrainRequest(123456789L,x,z,-64,384,base,amplitude,0.0035F,profile); }
-    private static String id(BiomeTerrainProfile p, byte m) { return net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(p.materials()[Byte.toUnsignedInt(m)].getBlock()).toString(); }
+    private static String id(BiomeTerrainProfile p, short m) { return net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(p.materials()[Short.toUnsignedInt(m)].getBlock()).toString(); }
     private static long count(Map<String,java.util.concurrent.atomic.LongAdder> values,String id) { var v = values.get("minecraft:"+id); return v == null ? 0 : v.sum(); }
     private static void require(boolean pass,String message) { if (!pass) throw new AssertionError(message); }
     private static void event(String name,String context) { System.out.println("QA_EVT {\"event\":\""+name+"\",\"status\":\"pass\",\"context\":{"+context+"}}"); }

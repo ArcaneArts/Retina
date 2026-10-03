@@ -5,7 +5,8 @@ use serde::Deserialize;
 #[derive(Clone, Default, Deserialize)]
 #[serde(default)]
 pub struct TerrainFeatures {
-    pub bands: Vec<u8>,
+    pub snow_layer: u16,
+    pub bands: Vec<u16>,
     pub band_frequency: f32,
     pub band_amplitude: f32,
 }
@@ -13,14 +14,14 @@ pub struct TerrainFeatures {
 #[serde(default)]
 pub struct CaveFeatures {
     pub replaceable: Vec<bool>,
-    pub floor: u8,
-    pub clay: u8,
-    pub blossom: u8,
-    pub plants: Vec<u8>,
-    pub vine_bodies: Vec<u8>,
-    pub vine_tips: Vec<u8>,
-    pub drip_up: Vec<u8>,
-    pub drip_down: Vec<u8>,
+    pub floor: u16,
+    pub clay: u16,
+    pub blossom: u16,
+    pub plants: Vec<u16>,
+    pub vine_bodies: Vec<u16>,
+    pub vine_tips: Vec<u16>,
+    pub drip_up: Vec<u16>,
+    pub drip_down: Vec<u16>,
     pub drip_min: u32,
     pub drip_max: u32,
     pub density: f32,
@@ -29,7 +30,8 @@ pub struct CaveFeatures {
 }
 impl TerrainFeatures {
     pub fn validate(&self, p: &WorldProfile) -> Result<(), String> {
-        if self.bands.len() > 256
+        if self.snow_layer as usize >= p.materials.len()
+            || self.bands.len() > 256
             || self.bands.iter().any(|m| *m as usize >= p.materials.len())
             || !self.band_frequency.is_finite()
             || self.band_frequency < 0.0
@@ -40,7 +42,7 @@ impl TerrainFeatures {
         }
         for b in &p.biomes {
             let f = &b.cave_features;
-            if b.cave_kind > 3
+            if b.cave_kind > 4
                 || b.lakes
                     .iter()
                     .any(|v| !v.is_finite() || !(0.0..=1.0).contains(v))
@@ -64,7 +66,10 @@ impl TerrainFeatures {
                 || !f.plant_chance.is_finite()
                 || !(0.0..=1.0).contains(&f.plant_chance)
             {
-                return Err(format!("invalid terrain features for {}", b.id));
+                return Err(format!(
+                    "invalid terrain features for {} (kind {}, lakes {:?}, drip {}..{})",
+                    b.id, b.cave_kind, b.lakes, f.drip_min, f.drip_max
+                ));
             }
         }
         Ok(())
@@ -85,13 +90,13 @@ fn random(r: ChunkRequest, x: i32, y: i32, z: i32, salt: u32) -> u32 {
             ^ salt,
     )
 }
-fn choose(values: &[u8], h: u32) -> u8 {
+fn choose(values: &[u16], h: u32) -> u16 {
     values[(h as usize) % values.len()]
 }
 
 /// Each task owns one chunk. Vertical features stay in their supporting column,
 /// so scheduling and region boundaries cannot clip them or change their random seed.
-pub fn apply(r: ChunkRequest, p: &WorldProfile, mask: Option<&CaveMask>, blocks: &mut [u8]) {
+pub fn apply(r: ChunkRequest, p: &WorldProfile, mask: Option<&CaveMask>, blocks: &mut [u16]) {
     let Some(mask) = mask else {
         return;
     };
@@ -215,6 +220,37 @@ pub fn apply(r: ChunkRequest, p: &WorldProfile, mask: Option<&CaveMask>, blocks:
                     }
                 }
             }
+        }
+    }
+}
+
+/// Registered snow/freezing feature, applied after vegetation. Temperature flags come from GPU columns.
+pub fn snow(
+    request: ChunkRequest,
+    p: &WorldProfile,
+    columns: &[crate::profile::Column],
+    blocks: &mut [u16],
+) {
+    if p.terrain_features.snow_layer == 0 {
+        return;
+    }
+    for (index, column) in columns.iter().enumerate() {
+        if !p.biomes[column.biome()].snow_surface
+            || column.packed & (1 << 28) == 0
+            || column.packed & (1 << 29) != 0
+        {
+            continue;
+        }
+        for layer in (0..request.height as usize - 1).rev() {
+            let at = layer * COLUMNS + index;
+            let material = blocks[at] as usize;
+            if p.heightmap_masks[material] & (1 << 4) == 0 {
+                continue;
+            }
+            if blocks[at + COLUMNS] == 0 && blocks[at] != p.water && blocks[at] != p.geology.lava {
+                blocks[at + COLUMNS] = p.terrain_features.snow_layer;
+            }
+            break;
         }
     }
 }

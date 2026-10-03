@@ -18,7 +18,7 @@ pub struct HeightRange {
 pub struct ReplacementBand {
     pub min: i32,
     pub max: i32,
-    pub materials: Vec<u8>,
+    pub materials: Vec<u16>,
 }
 #[derive(Clone, Deserialize)]
 pub struct OreRecipe {
@@ -44,6 +44,18 @@ pub struct Carver {
     pub vertical: f32,
     pub floor: f32,
     pub room: f32,
+    #[serde(default)]
+    pub thickness_range: [f32; 2],
+    #[serde(default)]
+    pub horizontal_range: [f32; 2],
+    #[serde(default)]
+    pub distance_range: [f32; 2],
+    #[serde(default)]
+    pub width_smoothness: f32,
+    #[serde(default)]
+    pub vertical_default: f32,
+    #[serde(default)]
+    pub vertical_center: f32,
 }
 #[derive(Clone, Default, Deserialize)]
 pub struct GeologyProfile {
@@ -54,7 +66,7 @@ pub struct GeologyProfile {
     #[serde(default)]
     pub carveable: Vec<bool>,
     #[serde(default)]
-    pub lava: u8,
+    pub lava: u16,
     #[serde(default)]
     pub lava_level: i32,
     #[serde(default)]
@@ -127,13 +139,20 @@ impl GeologyProfile {
     }
     pub fn caves_enabled(&self, profile: &WorldProfile) -> bool {
         !self.cave_noises.is_empty()
-            && profile
-                .biomes
-                .iter()
-                .any(|b| b.carvers.iter().any(|c| c.probability > 0.0))
+            && (profile.registry_program.is_some()
+                || profile
+                    .biomes
+                    .iter()
+                    .any(|b| b.carvers.iter().any(|c| c.probability > 0.0)))
     }
     pub fn gpu_bytes(&self, profile: &WorldProfile) -> Vec<u8> {
-        let mut bytes = bytemuck::cast_slice(&[profile.biomes.len() as u32, 0, 0, 0]).to_vec();
+        let mut bytes = bytemuck::cast_slice(&[
+            profile.biomes.len() as u32,
+            u32::from(profile.registry_program.is_some()),
+            0,
+            0,
+        ])
+        .to_vec();
         for noise in &self.cave_noises {
             let mut data = vec![0u8; 144];
             data[..4].copy_from_slice(&noise.frequency.to_le_bytes());
@@ -158,11 +177,19 @@ impl GeologyProfile {
                         c.count,
                         c.floor,
                         c.room,
-                        0.0,
+                        c.width_smoothness,
+                        c.vertical_default,
+                        c.thickness_range[0],
+                        c.thickness_range[1],
+                        c.horizontal_range[0],
+                        c.horizontal_range[1],
+                        c.distance_range[0],
+                        c.distance_range[1],
+                        c.vertical_center,
                         0.0,
                     ]
                 } else {
-                    [0.0; 12]
+                    [0.0; 20]
                 };
                 bytes.extend_from_slice(bytemuck::cast_slice(&floats));
             }
@@ -190,7 +217,7 @@ pub struct CaveMask {
 }
 impl CaveMask {
     /// Packed GPU quart biome IDs, including the complete horizontal decoration/ore halo.
-    pub fn biome(&self, x: i32, y: i32, z: i32) -> Option<u8> {
+    pub fn biome(&self, x: i32, y: i32, z: i32) -> Option<u16> {
         let surface_width = self.width + 30;
         let width = surface_width / 4;
         let x = x - (self.origin_x - 15);
@@ -210,7 +237,7 @@ impl CaveMask {
         let offset = (self.width * self.width * self.height as usize).div_ceil(32)
             + (surface_width * surface_width).div_ceil(32);
         let index = (y as usize / 4 * width + z as usize / 4) * width + x as usize / 4;
-        Some(((self.words[offset + index / 4] >> ((index % 4) * 8)) & 255) as u8)
+        Some(((self.words[offset + index / 2] >> ((index % 2) * 16)) & 65535) as u16)
     }
     pub fn surface_carved(&self, x: i32, z: i32) -> bool {
         let x = x - (self.origin_x - 15);
@@ -468,7 +495,7 @@ fn vein(
     }
 }
 
-fn cave_material(profile: &WorldProfile, column: crate::profile::Column, y: i32) -> u8 {
+fn cave_material(profile: &WorldProfile, column: crate::profile::Column, y: i32) -> u16 {
     if y < profile.geology.lava_level {
         profile.geology.lava
     } else if profile.biomes[column.biome()].flags & 4 != 0 && y < profile.sea_level {
@@ -484,7 +511,7 @@ pub fn apply(
     profile: &WorldProfile,
     mask: Option<&CaveMask>,
     ores: &[OrePlacement],
-    blocks: &mut [u8],
+    blocks: &mut [u16],
 ) {
     if let Some(mask) = mask {
         for (layer, row) in blocks.chunks_exact_mut(COLUMNS).enumerate() {

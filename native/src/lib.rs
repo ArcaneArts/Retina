@@ -1,3 +1,6 @@
+mod nbt;
+mod program;
+pub mod structures;
 use std::cell::RefCell;
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::sync::{Arc, OnceLock, mpsc};
@@ -20,8 +23,8 @@ pub mod region;
 
 pub const CHUNK_SIDE: usize = 16;
 pub const COLUMNS: usize = CHUNK_SIDE * CHUNK_SIDE;
-pub const AIR: u8 = 0;
-pub const STONE: u8 = 1;
+pub const AIR: u16 = 0;
+pub const STONE: u16 = 1;
 const MAX_BATCH: usize = 1024;
 const MAX_TILES: usize = 34 * 34;
 const BATCH_WAIT: Duration = Duration::from_micros(250);
@@ -124,6 +127,7 @@ pub struct TerrainEngine {
     profiles: RwLock<Vec<Arc<WorldProfile>>>,
     cache: Mutex<ColumnCache>,
     caves: Mutex<CaveCache>,
+    structures: Mutex<structures::Cache>,
 }
 
 impl TerrainEngine {
@@ -229,6 +233,7 @@ impl TerrainEngine {
             profiles: RwLock::new(Vec::new()),
             cache: Mutex::new(ColumnCache::default()),
             caves: Mutex::new(CaveCache::default()),
+            structures: Mutex::new(structures::Cache::default()),
         })
     }
 
@@ -332,6 +337,35 @@ impl TerrainEngine {
             .get(&requests)
         {
             return Ok(cached);
+        }
+        let cached: Vec<_> = {
+            let cache = self.cache.lock().map_err(|_| "column cache poisoned")?;
+            requests
+                .iter()
+                .map(|r| cache.entries.get(&CacheKey::from(*r)).cloned())
+                .collect()
+        };
+        if cached.iter().any(Option::is_some) {
+            let missing: Vec<_> = requests
+                .iter()
+                .zip(&cached)
+                .filter_map(|(r, c)| c.is_none().then_some(*r))
+                .collect();
+            let mut samples = Vec::with_capacity(missing.len() * COLUMNS);
+            for batch in missing.chunks(MAX_BATCH) {
+                samples.extend(self.sample_columns(batch)?);
+            }
+            let mut chunks = samples.chunks_exact(COLUMNS);
+            let mut result = Vec::with_capacity(requests.len() * COLUMNS);
+            for chunk in cached {
+                result.extend_from_slice(
+                    chunk
+                        .as_deref()
+                        .map(|c| c.as_slice())
+                        .unwrap_or_else(|| chunks.next().unwrap()),
+                );
+            }
+            return Ok(result);
         }
         let result = self.dispatch(vec![request], side)?;
         self.cache
@@ -480,7 +514,7 @@ impl TerrainEngine {
     pub fn generate_into(
         &self,
         request: ChunkRequest,
-        blocks: &mut [u8],
+        blocks: &mut [u16],
     ) -> Result<[i32; COLUMNS], String> {
         let columns = self.generate_columns_into(request, blocks)?;
         Ok(std::array::from_fn(|i| columns[i].height))
@@ -489,7 +523,7 @@ impl TerrainEngine {
     pub fn generate_columns_into(
         &self,
         request: ChunkRequest,
-        blocks: &mut [u8],
+        blocks: &mut [u16],
     ) -> Result<[Column; COLUMNS], String> {
         request.validate()?;
         if blocks.len() != request.block_count() {
@@ -515,15 +549,116 @@ impl TerrainEngine {
             geology::apply(request, &field, p, mask.as_deref(), &ores[0], blocks);
             features::apply(request, p, mask.as_deref(), blocks);
             decoration::decorate(Some(p), &placements[0], blocks);
+
             columns.to_vec()
         } else {
             let columns = self.sample_columns(&[request])?;
             decoration::assemble(request, &columns, profile.as_deref(), &[], blocks);
             columns
         };
+        if let Some(p) = profile.as_deref() {
+            let plans = structures::plans(self, request, 1)?;
+            let data = structures::apply(request, p, &plans, Some(blocks));
+            self.structures
+                .lock()
+                .map_err(|_| "structure cache poisoned")?
+                .store_metadata(request, data.tag);
+            features::snow(request, p, &columns, blocks);
+        }
         columns
             .try_into()
             .map_err(|_| "incorrect GPU column count".into())
+    }
+}
+
+impl TerrainEngine {
+    pub fn structure_starts(&self, request: ChunkRequest) -> Result<Vec<u8>, String> {
+        request.validate()?;
+        let plans = structures::plans(self, request, 1)?;
+        let root = if let Some(profile) = self.profile(request.reserved)? {
+            structures::start_data(request, &profile, &plans)
+        } else {
+            structures::empty_data()
+        };
+        Ok(nbt::root(&root))
+    }
+    pub fn structure_data(&self, request: ChunkRequest) -> Result<Vec<u8>, String> {
+        request.validate()?;
+        if let Some(data) = self
+            .structures
+            .lock()
+            .map_err(|_| "structure cache poisoned")?
+            .metadata(request)
+        {
+            return Ok(nbt::root(&data));
+        }
+        let mut blocks = vec![0; request.block_count()];
+        self.generate_columns_into(request, &mut blocks)?;
+        let data = self
+            .structures
+            .lock()
+            .map_err(|_| "structure cache poisoned")?
+            .metadata(request)
+            .unwrap_or_else(structures::empty_data);
+        Ok(nbt::root(&data))
+    }
+}
+
+/// # Safety
+/// request is readable; output and length are writable. Free the returned allocation with retina_free_bytes.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn retina_chunk_structure_data(
+    request: *const ChunkRequest,
+    output: *mut *mut u8,
+    length: *mut u64,
+) -> i32 {
+    boundary(|| {
+        if request.is_null() || output.is_null() || length.is_null() {
+            return Err("null structure metadata buffer".into());
+        }
+        let bytes = shared_engine()?
+            .structure_data(unsafe { *request })?
+            .into_boxed_slice();
+        unsafe {
+            *length = bytes.len() as u64;
+            *output = Box::into_raw(bytes) as *mut u8;
+        }
+        Ok(())
+    })
+}
+/// # Safety
+/// Same ownership contract as retina_chunk_structure_data; returns only starts and references.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn retina_chunk_structure_starts(
+    request: *const ChunkRequest,
+    output: *mut *mut u8,
+    length: *mut u64,
+) -> i32 {
+    boundary(|| {
+        if request.is_null() || output.is_null() || length.is_null() {
+            return Err("null structure metadata buffer".into());
+        }
+        let bytes = shared_engine()?
+            .structure_starts(unsafe { *request })?
+            .into_boxed_slice();
+        unsafe {
+            *length = bytes.len() as u64;
+            *output = Box::into_raw(bytes) as *mut u8;
+        }
+        Ok(())
+    })
+}
+/// # Safety
+/// data and length must describe an allocation returned by retina_chunk_structure_data, freed exactly once.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn retina_free_bytes(data: *mut u8, length: u64) {
+    if !data.is_null() {
+        unsafe {
+            drop(Box::from_raw(std::ptr::slice_from_raw_parts_mut(
+                data,
+                length as usize,
+            )));
+        }
     }
 }
 
@@ -610,7 +745,7 @@ impl ColumnCache {
     }
 }
 
-pub fn assemble_stone(request: ChunkRequest, heights: &[i32; COLUMNS], blocks: &mut [u8]) {
+pub fn assemble_stone(request: ChunkRequest, heights: &[i32; COLUMNS], blocks: &mut [u16]) {
     for (layer, row) in blocks.chunks_exact_mut(COLUMNS).enumerate() {
         let y = request.min_y + layer as i32;
         for (block, height) in row.iter_mut().zip(heights) {
@@ -687,11 +822,11 @@ pub unsafe extern "C" fn retina_sample_columns(
 }
 
 /// # Safety
-/// request is readable; output has capacity bytes, exactly height*4 quart biome IDs.
+/// request is readable; output has capacity u16 elements, exactly height*4 quart biome IDs.
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn retina_sample_biomes(
+pub unsafe extern "C" fn retina_sample_biomes_u16(
     request: *const ChunkRequest,
-    output: *mut u8,
+    output: *mut u16,
     capacity: u64,
 ) -> i32 {
     boundary(|| {
@@ -716,18 +851,18 @@ pub unsafe extern "C" fn retina_sample_biomes(
             *value = mask
                 .as_ref()
                 .and_then(|m| m.biome(x, y, z))
-                .unwrap_or(field.column(x, z).ok_or("missing biome column")?.biome() as u8);
+                .unwrap_or(field.column(x, z).ok_or("missing biome column")?.biome() as u16);
         }
         Ok(())
     })
 }
 
 /// # Safety
-/// request is readable, blocks has capacity writable bytes, columns has 256 records.
+/// request is readable, blocks has capacity writable u16 elements, columns has 256 records.
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn retina_generate_chunk_columns(
+pub unsafe extern "C" fn retina_generate_chunk_columns_u16(
     request: *const ChunkRequest,
-    blocks: *mut u8,
+    blocks: *mut u16,
     capacity: u64,
     columns: *mut Column,
 ) -> i32 {
@@ -753,10 +888,10 @@ pub unsafe extern "C" fn retina_generate_chunk_columns(
 /// # Safety
 /// request is readable; output points to request.height writable bytes.
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn retina_generate_column(
+pub unsafe extern "C" fn retina_generate_column_u16(
     request: *const ChunkRequest,
     column: u32,
-    output: *mut u8,
+    output: *mut u16,
 ) -> i32 {
     boundary(|| {
         if request.is_null() || output.is_null() || column >= COLUMNS as u32 {
@@ -782,9 +917,9 @@ pub unsafe extern "C" fn retina_generate_column(
 /// The request and output buffers must be valid, aligned, and exclusively owned
 /// by the caller for the complete duration of this synchronous call.
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn retina_generate_chunk(
+pub unsafe extern "C" fn retina_generate_chunk_u16(
     request: *const ChunkRequest,
-    blocks: *mut u8,
+    blocks: *mut u16,
     capacity: u64,
     heights: *mut i32,
 ) -> i32 {

@@ -13,6 +13,7 @@ public final class TerrainWorldgen {
     private TerrainWorldgen() { }
 
     public static void initialize() {
+        RetinaStructurePiece.register();
         Registry.register(BuiltInRegistries.CHUNK_GENERATOR, Retina.id("gpu"), RetinaChunkGenerator.CODEC);
         Registry.register(BuiltInRegistries.BIOME_SOURCE, Retina.id("voronoi"), RetinaBiomeSource.CODEC);
         PayloadTypeRegistry.clientboundPlay().register(TerrainStatsPayload.TYPE, TerrainStatsPayload.CODEC);
@@ -20,6 +21,8 @@ public final class TerrainWorldgen {
             if (level.getChunkSource().getGenerator() instanceof RetinaChunkGenerator retina) retina.closePreviews();
         });
         ServerTickEvents.END_SERVER_TICK.register(server -> {
+            TerrainQa.checkPromotion(server);
+            TerrainQa.checkStructures(server);
             if (server.getTickCount() % 20 != 0) return;
             for (var player : PlayerLookup.all(server)) {
                 if (!ServerPlayNetworking.canSend(player, TerrainStatsPayload.TYPE)) continue;

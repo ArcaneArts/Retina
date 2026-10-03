@@ -42,8 +42,8 @@ final class TemporaryRegions implements AutoCloseable {
     private final LinkedHashMap<Long, Entry> entries = new LinkedHashMap<>(16, 0.75F, true);
     private int users;
     private boolean closed;
-    private final int stone, water, bedrock, deepslate, ice, lava;
-    private final int[] bands, biomeFlags, biomeFillers;
+    private final int stone, water, bedrock, deepslate, ice, lava, snow;
+    private final int[] bands, biomeFlags, biomeFillers, biomeTops, biomeUnderwater, biomeBarriers;
     private final Map<String,Integer> biomeIds = new HashMap<>();
 
     TemporaryRegions(TerrainRequest settings, String biome, BiomeTerrainProfile profile, GenerationMetrics metrics, int capacity) {
@@ -65,10 +65,14 @@ final class TemporaryRegions implements AutoCloseable {
         water = ids == null ? 0 : ids.get("water").getAsInt();
         bedrock = ids == null ? 1 : ids.get("bedrock").getAsInt();
         deepslate = ids == null ? 1 : ids.get("deepslate").getAsInt();
+        snow = ids == null ? 1 : ids.get("snow").getAsInt();
         ice = ids == null ? 0 : ids.get("ice").getAsInt();
         lava = ids == null || !ids.has("lava") ? water : ids.get("lava").getAsInt();
         bands = ids == null || !ids.has("terrain_features") ? new int[0] : ids.getAsJsonObject("terrain_features").getAsJsonArray("bands").asList().stream().mapToInt(e -> e.getAsInt()).toArray();
         biomeFillers = ids == null ? new int[0] : ids.getAsJsonArray("biomes").asList().stream().mapToInt(e -> e.getAsJsonObject().get("filler").getAsInt()).toArray();
+        biomeTops = ids == null ? new int[0] : ids.getAsJsonArray("biomes").asList().stream().mapToInt(e -> e.getAsJsonObject().get("top").getAsInt()).toArray();
+        biomeUnderwater = ids == null ? new int[0] : ids.getAsJsonArray("biomes").asList().stream().mapToInt(e -> e.getAsJsonObject().get("underwater").getAsInt()).toArray();
+        biomeBarriers = ids == null ? new int[0] : ids.getAsJsonArray("biomes").asList().stream().mapToInt(e -> e.getAsJsonObject().get("lake_barrier") == null ? 0 : e.getAsJsonObject().get("lake_barrier").getAsInt()).toArray();
         biomeFlags = ids == null ? new int[0] : ids.getAsJsonArray("biomes").asList().stream().mapToInt(e -> e.getAsJsonObject().get("flags").getAsInt()).toArray();
         if (profile != null) for (int i = 0; i < profile.biomes().size(); i++) biomeIds.put(profile.biomes().get(i).unwrapKey().orElseThrow().identifier().toString(), i);
     }
@@ -99,18 +103,18 @@ final class TemporaryRegions implements AutoCloseable {
             var deflater = new Deflater(Deflater.BEST_SPEED);
             try (var output = new DataOutputStream(new BufferedOutputStream(new DeflaterOutputStream(Files.newOutputStream(columnPath), deflater)))) {
                 for (int i = 0; i < columns.heights().length; i++) {
-                    output.writeInt(columns.heights()[i]); output.writeInt(columns.packed()[i]);
+                    output.writeInt(columns.heights()[i]); output.writeInt(columns.packed()[i]); output.writeInt(columns.materials()[i]);
                 }
             } finally { deflater.end(); }
             this.columns = columns;
         }
         synchronized NativeTerrain.Columns columns() throws IOException {
             if (columns == null) {
-                int[] heights = new int[1024 * 256], packed = new int[1024 * 256];
+                int[] heights = new int[1024 * 256], packed = new int[1024 * 256], materials = new int[1024 * 256];
                 try (var input = new DataInputStream(new BufferedInputStream(new InflaterInputStream(Files.newInputStream(columnPath))))) {
-                    for (int i = 0; i < heights.length; i++) { heights[i] = input.readInt(); packed[i] = input.readInt(); }
+                    for (int i = 0; i < heights.length; i++) { heights[i] = input.readInt(); packed[i] = input.readInt(); materials[i] = input.readInt(); }
                 }
-                columns = new NativeTerrain.Columns(heights, packed);
+                columns = new NativeTerrain.Columns(heights, packed, materials);
             }
             return columns;
         }
@@ -214,7 +218,7 @@ final class TemporaryRegions implements AutoCloseable {
             var columns = lease.entry.columns();
             int start = (Math.floorMod(position.z(), 32) * 32 + Math.floorMod(position.x(), 32)) * 256;
             return new NativeTerrain.Columns(Arrays.copyOfRange(columns.heights(), start, start + 256),
-                    Arrays.copyOfRange(columns.packed(), start, start + 256));
+                    Arrays.copyOfRange(columns.packed(), start, start + 256), Arrays.copyOfRange(columns.materials(),start,start+256));
         } catch (IOException error) { throw new UncheckedIOException(error); }
     }
 
@@ -225,9 +229,9 @@ final class TemporaryRegions implements AutoCloseable {
         } catch (IOException error) { throw new UncheckedIOException(error); }
     }
 
-    byte[] biomes(ChunkPos position) {
+    short[] biomes(ChunkPos position) {
         var tag = read(position);
-        var output = new byte[settings.height() * 4];
+        var output = new short[settings.height() * 4];
         for (var section : tag.getListOrEmpty("sections")) {
             var entry = (CompoundTag) section;
             int start = (entry.getByte("Y").orElseThrow() * 16 - settings.minY()) * 4;
@@ -236,7 +240,7 @@ final class TemporaryRegions implements AutoCloseable {
             var palette = data.getListOrEmpty("palette");
             int bits = 32 - Integer.numberOfLeadingZeros(palette.size() - 1);
             var packed = palette.size() == 1 ? null : new net.minecraft.util.SimpleBitStorage(bits, 64, data.getLongArray("data").orElseThrow());
-            for (int i = 0; i < 64; i++) output[start + i] = biomeIds.get(palette.getString(packed == null ? 0 : packed.get(i)).orElseThrow()).byteValue();
+            for (int i = 0; i < 64; i++) output[start + i] = biomeIds.get(palette.getString(packed == null ? 0 : packed.get(i)).orElseThrow()).shortValue();
         }
         return output;
     }
@@ -254,13 +258,17 @@ final class TemporaryRegions implements AutoCloseable {
             if (profile == null) id = y < ground ? 1 : 0;
             else if (layer < 1 + (packed >>> 30)) id = bedrock;
             else if (y >= ground) id = y < waterline ? (lake && (packed & (1 << 28)) != 0 ? lava : !lake && (packed & (1 << 28)) != 0 && y == waterline - 1 ? ice : water) : 0;
-            else if (y == ground - 1) id = (packed >>> 8) & 255;
-            else if (!lake && (biomeFlags[packed & 255] & 8) != 0 && bands.length > 0 && y >= profile.seaLevel() - 16) id = bands[Math.floorMod(y + (byte) ((packed >>> 16) & 255), bands.length)];
-            else if (y >= ground - 1 - (lake ? 2 : depth)) id = !lake && (biomeFlags[packed & 255] & 8) != 0 && bands.length > 0 ? biomeFillers[packed & 255] : (packed >>> 16) & 255;
+            else if (y == ground - 1) id = surfaceMaterial(packed, columns.materials()[index], true);
+            else if (!lake && (biomeFlags[packed & 65535] & 8) != 0 && bands.length > 0 && y >= profile.seaLevel() - 16) id = bands[Math.floorMod(y + (byte) ((packed >>> 16) & 255), bands.length)];
+            else if (y >= ground - 1 - (lake ? 2 : depth)) id = !lake && (biomeFlags[packed & 65535] & 8) != 0 && bands.length > 0 ? biomeFillers[packed & 65535] : surfaceMaterial(packed, columns.materials()[index], false);
             else id = y < 0 ? deepslate : stone;
             states[layer] = materials[id];
         }
         return states;
+    }
+
+    private int surfaceMaterial(int packed, int materials, boolean top) {
+        return (materials >>> (top ? 0 : 16)) & 65535;
     }
 
     /** Called exclusively on Minecraft's region I/O queue, after closing its destination handle. */

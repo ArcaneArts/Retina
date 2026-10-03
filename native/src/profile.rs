@@ -6,9 +6,13 @@ use serde_json::Value;
 #[derive(Clone, Deserialize)]
 pub struct BiomeProfile {
     #[serde(default)]
+    pub snow_surface: bool,
+    #[serde(default)]
+    pub temperature: f32,
+    #[serde(default)]
     pub lakes: [f32; 2],
     #[serde(default)]
-    pub lake_barrier: u8,
+    pub lake_barrier: u16,
     #[serde(default)]
     pub cave_kind: u32,
     #[serde(default)]
@@ -38,18 +42,37 @@ pub struct NoiseProfile {
 }
 
 #[derive(Clone, Deserialize)]
+pub struct ClimateTarget {
+    pub biome: u32,
+    pub min: [f32; 4],
+    pub max: [f32; 4],
+    pub weirdness: [f32; 2],
+    #[serde(default)]
+    pub depth: [f32; 2],
+    pub offset: f32,
+}
+
+#[derive(Clone, Deserialize)]
 pub struct WorldProfile {
     #[serde(default)]
+    pub structures: crate::structures::Profile,
+    #[serde(default)]
+    pub registry_program: Option<crate::program::RegistryProgram>,
+    #[serde(default)]
     pub terrain_features: crate::features::TerrainFeatures,
+    #[serde(default)]
+    pub climate_targets: Vec<ClimateTarget>,
+    #[serde(default)]
+    pub weirdness_noise: Option<NoiseProfile>,
     pub biome_scale: f32,
     pub blend: f32,
     pub sea_level: i32,
-    pub stone: u8,
-    pub water: u8,
-    pub bedrock: u8,
-    pub deepslate: u8,
-    pub snow: u8,
-    pub ice: u8,
+    pub stone: u16,
+    pub water: u16,
+    pub bedrock: u16,
+    pub deepslate: u16,
+    pub snow: u16,
+    pub ice: u16,
     pub materials: Vec<Value>,
     pub biomes: Vec<BiomeProfile>,
     pub noises: Vec<NoiseProfile>,
@@ -68,9 +91,9 @@ impl WorldProfile {
         let mut profile: Self =
             serde_json::from_slice(json).map_err(|e| format!("world profile: {e}"))?;
         if profile.biomes.is_empty()
-            || profile.biomes.len() > 255
+            || profile.biomes.len() > 65535
             || profile.materials.len() < 2
-            || profile.materials.len() > 256
+            || profile.materials.len() > 65536
             || profile.noises.len() != 4
             || !profile.biome_scale.is_finite()
             || !(128.0..=4096.0).contains(&profile.biome_scale)
@@ -84,6 +107,9 @@ impl WorldProfile {
         {
             return Err("material flags must cover the complete palette".into());
         }
+        profile
+            .structures
+            .validate(profile.materials.len(), profile.biomes.len())?;
         for recipe in &profile.decorations {
             recipe.validate(profile.materials.len())?;
         }
@@ -163,12 +189,74 @@ impl WorldProfile {
                 return Err("invalid cave noise parameters".into());
             }
         }
+        for target in &profile.climate_targets {
+            if target.biome as usize >= profile.biomes.len()
+                || target
+                    .min
+                    .iter()
+                    .zip(&target.max)
+                    .any(|(min, max)| !min.is_finite() || !max.is_finite() || min > max)
+                || target.weirdness.iter().any(|x| !x.is_finite())
+                || target.weirdness[0] > target.weirdness[1]
+                || !target.offset.is_finite()
+            {
+                return Err("invalid climate target".into());
+            }
+        }
+        if !profile.climate_targets.is_empty() && profile.weirdness_noise.is_none() {
+            return Err("climate targets require registered weirdness noise".into());
+        }
+        if let Some(noise) = &profile.weirdness_noise {
+            if noise.modifiers.is_empty()
+                || noise.modifiers.len() > 32
+                || !noise.frequency.is_finite()
+                || noise.frequency <= 0.0
+                || !noise.amplitude.is_finite()
+                || noise.amplitude <= 0.0
+                || noise.modifiers.iter().any(|x| !x.is_finite() || *x < 0.0)
+            {
+                return Err("invalid weirdness noise".into());
+            }
+        }
+        if let Some(program) = &profile.registry_program {
+            program.validate(profile.biomes.len())?;
+        }
         profile.geology.validate(&profile)?;
         profile.terrain_features.validate(&profile)?;
         profile.encoded = json.to_vec();
         Ok(profile)
     }
 
+    pub fn climate_gpu_bytes(&self) -> Vec<u8> {
+        let mut bytes =
+            bytemuck::cast_slice(&[self.climate_targets.len() as u32, 0, 0, 0]).to_vec();
+        let mut noise = GpuNoise::zeroed();
+        if let Some(source) = &self.weirdness_noise {
+            noise.frequency = source.frequency;
+            noise.amplitude = source.amplitude;
+            noise.count = source.modifiers.len() as u32;
+            noise.modifiers[..source.modifiers.len()].copy_from_slice(&source.modifiers);
+        }
+        bytes.extend_from_slice(bytemuck::bytes_of(&noise));
+        for target in &self.climate_targets {
+            bytes.extend_from_slice(bytemuck::cast_slice(&target.min));
+            bytes.extend_from_slice(bytemuck::cast_slice(&target.max));
+            bytes.extend_from_slice(bytemuck::cast_slice(&[
+                target.weirdness[0],
+                target.weirdness[1],
+                target.offset,
+                target.biome as f32,
+            ]));
+            bytes.extend_from_slice(bytemuck::cast_slice(&[
+                target.depth[0],
+                target.depth[1],
+                0.0,
+                0.0,
+            ]));
+        }
+        bytes.resize(bytes.len().max(224), 0);
+        bytes
+    }
     pub fn gpu_bytes(&self) -> Vec<u8> {
         let mut bytes = Vec::new();
         bytes.extend_from_slice(bytemuck::bytes_of(&[
@@ -194,16 +282,29 @@ impl WorldProfile {
                 modifiers,
             }));
         }
-        for biome in &self.biomes {
+        for (index, biome) in self.biomes.iter().enumerate() {
             bytes.extend_from_slice(bytemuck::bytes_of(&GpuBiome {
                 climate: biome.climate,
-                terrain: [biome.terrain[0], biome.terrain[1], biome.terrain[2], 0.0],
+                terrain: [
+                    biome.terrain[0],
+                    biome.terrain[1],
+                    biome.terrain[2],
+                    if self
+                        .climate_targets
+                        .iter()
+                        .any(|t| t.biome as usize == index)
+                    {
+                        1.0
+                    } else {
+                        0.0
+                    },
+                ],
                 materials: [biome.top, biome.filler, biome.underwater, biome.flags],
                 features: [
                     biome.lakes[0],
                     biome.lakes[1],
                     biome.lake_barrier as f32,
-                    0.0,
+                    biome.temperature,
                 ],
             }));
         }
@@ -236,13 +337,21 @@ struct GpuBiome {
 pub struct Column {
     pub height: i32,
     pub packed: u32,
+    pub materials: u32,
 }
 
 impl Column {
     pub fn biome(self) -> usize {
-        (self.packed & 255) as usize
+        (self.packed & 65535) as usize
     }
-    pub fn material(self, y: i32, min_y: i32, profile: Option<&WorldProfile>) -> u8 {
+    fn surface_material(self, _p: &WorldProfile, top: bool) -> u16 {
+        if top {
+            self.materials as u16
+        } else {
+            (self.materials >> 16) as u16
+        }
+    }
+    pub fn material(self, y: i32, min_y: i32, profile: Option<&WorldProfile>) -> u16 {
         let Some(profile) = profile else {
             return if y < self.height { 1 } else { 0 };
         };
@@ -270,7 +379,7 @@ impl Column {
             };
         }
         if y == self.height - 1 {
-            return ((self.packed >> 8) & 255) as u8;
+            return self.surface_material(profile, true);
         }
         // Badlands reuse the filler byte for the GPU's signed band offset.
         if !lake
@@ -287,9 +396,9 @@ impl Column {
                 && profile.biomes[self.biome()].flags & 8 != 0
                 && !profile.terrain_features.bands.is_empty()
             {
-                profile.biomes[self.biome()].filler as u8
+                profile.biomes[self.biome()].filler as u16
             } else {
-                ((self.packed >> 16) & 255) as u8
+                self.surface_material(profile, false)
             };
         }
         if y < 0 {

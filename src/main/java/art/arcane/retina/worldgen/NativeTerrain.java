@@ -15,12 +15,16 @@ import java.util.Locale;
 import static java.lang.foreign.ValueLayout.ADDRESS;
 import static java.lang.foreign.ValueLayout.JAVA_BYTE;
 import static java.lang.foreign.ValueLayout.JAVA_FLOAT;
+import static java.lang.foreign.ValueLayout.JAVA_SHORT;
 import static java.lang.foreign.ValueLayout.JAVA_INT;
 import static java.lang.foreign.ValueLayout.JAVA_LONG;
 
 /** Bulk C ABI calls. Rust borrows these buffers only until the downcall returns. */
 public final class NativeTerrain {
     private final MethodHandle generate;
+    private final MethodHandle structureData;
+    private final MethodHandle structureStarts;
+    private final MethodHandle freeBytes;
     private final MethodHandle sample;
     private final MethodHandle region;
     private final MethodHandle regionColumns;
@@ -36,8 +40,11 @@ public final class NativeTerrain {
         var symbols = SymbolLookup.libraryLookup(extractLibrary(), Arena.global());
         var linker = Linker.nativeLinker();
         var initialize = linker.downcallHandle(symbols.findOrThrow("retina_initialize"), FunctionDescriptor.of(JAVA_INT));
-        generate = linker.downcallHandle(symbols.findOrThrow("retina_generate_chunk_columns"),
+        generate = linker.downcallHandle(symbols.findOrThrow("retina_generate_chunk_columns_u16"),
                 FunctionDescriptor.of(JAVA_INT, ADDRESS, ADDRESS, JAVA_LONG, ADDRESS));
+        structureData = linker.downcallHandle(symbols.findOrThrow("retina_chunk_structure_data"), FunctionDescriptor.of(JAVA_INT, ADDRESS, ADDRESS, ADDRESS));
+        structureStarts = linker.downcallHandle(symbols.findOrThrow("retina_chunk_structure_starts"), FunctionDescriptor.of(JAVA_INT, ADDRESS, ADDRESS, ADDRESS));
+        freeBytes = linker.downcallHandle(symbols.findOrThrow("retina_free_bytes"), FunctionDescriptor.ofVoid(ADDRESS, JAVA_LONG));
         sample = linker.downcallHandle(symbols.findOrThrow("retina_sample_heights"),
                 FunctionDescriptor.of(JAVA_INT, ADDRESS, ADDRESS));
         region = linker.downcallHandle(symbols.findOrThrow("retina_generate_region"),
@@ -50,9 +57,9 @@ public final class NativeTerrain {
                 FunctionDescriptor.of(JAVA_INT, ADDRESS, JAVA_LONG, ADDRESS));
         sampleColumns = linker.downcallHandle(symbols.findOrThrow("retina_sample_columns"),
                 FunctionDescriptor.of(JAVA_INT, ADDRESS, ADDRESS));
-        sampleBiomes = linker.downcallHandle(symbols.findOrThrow("retina_sample_biomes"),
+        sampleBiomes = linker.downcallHandle(symbols.findOrThrow("retina_sample_biomes_u16"),
                 FunctionDescriptor.of(JAVA_INT, ADDRESS, ADDRESS, JAVA_LONG));
-        column = linker.downcallHandle(symbols.findOrThrow("retina_generate_column"),
+        column = linker.downcallHandle(symbols.findOrThrow("retina_generate_column_u16"),
                 FunctionDescriptor.of(JAVA_INT, ADDRESS, JAVA_INT, ADDRESS));
         lastError = linker.downcallHandle(symbols.findOrThrow("retina_last_error"),
                 FunctionDescriptor.of(JAVA_LONG, ADDRESS, JAVA_LONG));
@@ -79,11 +86,25 @@ public final class NativeTerrain {
         return backend;
     }
 
+    public net.minecraft.nbt.CompoundTag structureData(TerrainRequest request) { return readStructureData(structureData,request); }
+    public net.minecraft.nbt.CompoundTag structureStarts(TerrainRequest request) { return readStructureData(structureStarts,request); }
+    private net.minecraft.nbt.CompoundTag readStructureData(MethodHandle handle, TerrainRequest request) {
+        try (var arena = Arena.ofConfined()) {
+            var pointer = arena.allocate(ADDRESS); var length = arena.allocate(JAVA_LONG);
+            check((int) handle.invokeExact(encode(arena, request), pointer, length));
+            var data = pointer.get(ADDRESS, 0); long count = length.get(JAVA_LONG, 0);
+            try {
+                var bytes = data.reinterpret(count).toArray(JAVA_BYTE);
+                return net.minecraft.nbt.NbtIo.read(new java.io.DataInputStream(new java.io.ByteArrayInputStream(bytes)));
+            } finally { freeBytes.invokeExact(data, count); }
+        } catch (Throwable error) { throw failure(error); }
+    }
+
     public ChunkData generate(TerrainRequest request) {
         var arena = Arena.ofConfined();
         try {
-            var blocks = arena.allocate(request.blockCount(), 1);
-            var columns = arena.allocate(256L * 8, Integer.BYTES);
+            var blocks = arena.allocate(request.blockCount() * Short.BYTES, Short.BYTES);
+            var columns = arena.allocate(256L * 12, Integer.BYTES);
             check((int) generate.invokeExact(encode(arena, request), blocks, request.blockCount(), columns));
             return new ChunkData(arena, blocks, decodeColumns(columns));
         } catch (Throwable error) {
@@ -113,43 +134,46 @@ public final class NativeTerrain {
 
     public Columns sampleColumns(TerrainRequest request) {
         try (var arena = Arena.ofConfined()) {
-            var columns = arena.allocate(256L * 8, Integer.BYTES);
+            var columns = arena.allocate(256L * 12, Integer.BYTES);
             check((int) sampleColumns.invokeExact(encode(arena, request), columns));
             return decodeColumns(columns);
         } catch (Throwable error) { throw failure(error); }
     }
 
-    /** Minecraft's x,z,y quart order: 4*4*(height/4) one-byte registry indices. */
-    public byte[] sampleBiomes(TerrainRequest request) {
+    /** Minecraft's x,z,y quart order: 4*4*(height/4) 16-bit registry indices. */
+    public short[] sampleBiomes(TerrainRequest request) {
         try (var arena = Arena.ofConfined()) {
             long size = request.height() * 4L;
-            var output = arena.allocate(size);
+            var output = arena.allocate(size * (long)Short.BYTES,Short.BYTES);
             check((int) sampleBiomes.invokeExact(encode(arena, request), output, size));
-            return output.toArray(JAVA_BYTE);
+            return output.toArray(JAVA_SHORT);
         } catch (Throwable error) { throw failure(error); }
     }
 
-    public byte[] column(TerrainRequest request, int index) {
+    public short[] column(TerrainRequest request, int index) {
         try (var arena = Arena.ofConfined()) {
-            var blocks = arena.allocate(request.height());
+            var blocks = arena.allocate(request.height() * (long) Short.BYTES, Short.BYTES);
             check((int) column.invokeExact(encode(arena, request), index, blocks));
-            return blocks.toArray(JAVA_BYTE);
+            return blocks.toArray(JAVA_SHORT);
         } catch (Throwable error) { throw failure(error); }
     }
 
     private static Columns decodeColumns(MemorySegment data) {
-        int count = Math.toIntExact(data.byteSize() / 8);
+        int count = Math.toIntExact(data.byteSize() / 12);
         var heights = new int[count];
         var packed = new int[count];
+        var materials = new int[count];
         for (int i = 0; i < count; i++) {
-            heights[i] = data.get(JAVA_INT, i * 8L);
-            packed[i] = data.get(JAVA_INT, i * 8L + 4);
+            heights[i] = data.get(JAVA_INT, i * 12L);
+            packed[i] = data.get(JAVA_INT, i * 12L + 4);
+            materials[i] = data.get(JAVA_INT, i * 12L + 8);
         }
-        return new Columns(heights, packed);
+        return new Columns(heights, packed, materials);
     }
 
-    public record Columns(int[] heights, int[] packed) {
-        public int biome(int index) { return packed[index] & 255; }
+    public record Columns(int[] heights, int[] packed, int[] materials) {
+        public Columns(int[] heights, int[] packed) {this(heights,packed,new int[heights.length]);}
+        public int biome(int index) { return packed[index] & 65535; }
     }
 
     /** Caller must own the destination's Minecraft I/O queue, with its region handle closed. */
@@ -174,7 +198,7 @@ public final class NativeTerrain {
         try (var arena = Arena.ofConfined()) {
             var pathBytes = destination.toAbsolutePath().toString().getBytes(StandardCharsets.UTF_8);
             var biomeBytes = biome.getBytes(StandardCharsets.UTF_8);
-            var output = arena.allocate(1024L * 256 * 8, Integer.BYTES);
+            var output = arena.allocate(1024L * 256 * 12, Integer.BYTES);
             var report = arena.allocate(40, Long.BYTES);
             check((int) regionColumns.invokeExact(encode(arena, request), arena.allocateFrom(JAVA_BYTE, pathBytes), (long) pathBytes.length,
                     dataVersion, arena.allocateFrom(JAVA_BYTE, biomeBytes), (long) biomeBytes.length, report, output));

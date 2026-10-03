@@ -22,7 +22,7 @@ import java.util.*;
 /** Small resident feature tables, projected from this world's registered feature graphs. */
 final class TerrainFeatureProfile {
     static void export(HolderLookup.Provider registry, List<Holder<Biome>> biomes, JsonArray entries,
-                       LinkedHashMap<BlockState,Integer> palette, JsonObject world, MaterialRule materialRule, long seed) {
+                       LinkedHashMap<BlockState,Integer> palette, JsonObject world, MaterialRule materialRule, long seed, List<com.mojang.datafixers.util.Pair<Climate.ParameterPoint, Holder<Biome>>> parameters) {
         var ops = registry.createSerializationContext(JsonOps.INSTANCE);
         var terrain = new JsonObject();
         var bands = new JsonArray();
@@ -30,18 +30,17 @@ final class TerrainFeatureProfile {
         // its spatial offset is evaluated on the GPU using the registered noise below.
         if (hasBands(materialRule)) for (var state : bands(seed)) bands.add(material(palette, state));
         terrain.add("bands", bands);
+        terrain.addProperty("snow_layer",material(palette,Blocks.SNOW.defaultBlockState()));
         var noise = registry.lookupOrThrow(Registries.NOISE).getOrThrow(ResourceKey.create(Registries.NOISE,
                 Identifier.withDefaultNamespace("clay_bands_offset"))).value();
         var data = NormalNoise.DIRECT_CODEC.encodeStart(JsonOps.INSTANCE, noise).getOrThrow().getAsJsonObject();
         terrain.addProperty("band_frequency", Math.scalb(1.0, data.get("base_octave").getAsInt()));
         terrain.addProperty("band_amplitude", data.has("base_amplitude") ? data.get("base_amplitude").getAsDouble() : 1.0);
         world.add("terrain_features", terrain);
-        var parameters = registry.lookupOrThrow(Registries.MULTI_NOISE_BIOME_SOURCE_PARAMETER_LIST)
-                .getOrThrow(MultiNoiseBiomeSourceParameterLists.OVERWORLD).value().parameters().values();
         for (int i = 0; i < biomes.size(); i++) {
             var biome = biomes.get(i); var entry = entries.get(i).getAsJsonObject();
             boolean underground = (entry.get("flags").getAsInt() & 16) != 0;
-            int kind = biome.is(Biomes.LUSH_CAVES) ? 1 : biome.is(Biomes.DRIPSTONE_CAVES) ? 2 : biome.is(Biomes.DEEP_DARK) ? 3 : 0;
+            int kind = biome.is(Biomes.LUSH_CAVES) ? 1 : biome.is(Biomes.DRIPSTONE_CAVES) ? 2 : biome.is(Biomes.DEEP_DARK) ? 3 : underground ? 4 : 0;
             entry.addProperty("cave_kind", kind);
             double depthMin = 2, depthMax = -2;
             for (var pair : parameters) if (pair.getSecond().equals(biome)) {
@@ -49,9 +48,10 @@ final class TerrainFeatureProfile {
                 depthMax = Math.max(depthMax, Climate.unquantizeCoord(pair.getFirst().depth().max()));
             }
             entry.add("cave_depth", array(depthMin <= depthMax ? depthMin : 0.2, depthMin <= depthMax ? depthMax : 1));
-            double lavaChance = 0;
+            double lavaChance = 0;boolean snowSurface=false;
             var collector = new Collector(registry, palette);
             for (var step : biome.value().getGenerationSettings().features()) for (var placed : step) {
+                snowSurface |= placed.value().feature().value() instanceof SnowAndFreezeFeature;
                 String id = placed.unwrapKey().map(k -> k.identifier().toString()).orElse("inline");
                 if (placed.value().feature().value() instanceof LakeFeature lake && id.contains("surface")) {
                     int rarity = 1;
@@ -65,15 +65,17 @@ final class TerrainFeatureProfile {
                         entry.addProperty("lake_barrier", material(palette, providerState(registry, palette, lake.barrier().value())));
                     }
                 }
-                if (underground && (id.contains("lush") || id.contains("cave_vine") || id.contains("spore") || id.contains("dripstone") || id.contains("sculk")))
+                if (underground)
                     collector.walk(Feature.DIRECT_CODEC.encodeStart(ops, placed.value().feature().value()).getOrThrow(), 0);
             }
             var climate = Biome.NETWORK_CODEC.encodeStart(JsonOps.INSTANCE, biome.value()).getOrThrow().getAsJsonObject();
-            double wetness = climate.get("downfall").getAsDouble();
+            double wetness = Math.clamp(climate.get("downfall").getAsDouble(),0,1);
             int flags = entry.get("flags").getAsInt();
             // Modern vanilla registers lava lakes. Water basins are Retina's approximation,
             // using the registered default fluid, seabed material, and biome rainfall.
             entry.add("lakes", array(underground || (flags & (4 | 8)) != 0 ? 0 : 0.15 + wetness * 0.45, underground ? 0 : lavaChance));
+            entry.addProperty("snow_surface",snowSurface && biome.value().hasPrecipitation());
+            if(snowSurface)entry.addProperty("flags",entry.get("flags").getAsInt()|32);
             entry.add("cave_features", collector.finish(kind));
         }
     }
@@ -93,8 +95,8 @@ final class TerrainFeatureProfile {
                 var block = BlockState.CODEC.parse(JsonOps.INSTANCE, value).result();
                 if (block.isPresent()) { states.add(block.get()); return; }
                 String id = value.getAsString();
-                if (!id.startsWith("minecraft:") || !visited.add(id)) return;
-                var key = Identifier.parse(id);
+                var key = Identifier.tryParse(id);
+                if (key == null || !id.contains(":") || !visited.add(id)) return;
                 var ops = registry.createSerializationContext(JsonOps.INSTANCE);
                 var feature = registry.lookupOrThrow(Registries.FEATURE).get(ResourceKey.create(Registries.FEATURE, key));
                 if (feature.isPresent()) { walk(Feature.DIRECT_CODEC.encodeStart(ops, feature.get().value()).getOrThrow(), depth + 1); return; }

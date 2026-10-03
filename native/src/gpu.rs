@@ -15,8 +15,10 @@ pub(crate) struct Gpu {
     cave_profiles: HashMap<u32, wgpu::Buffer>,
     cave_buffers: Option<CaveBuffers>,
     columns_pipeline: wgpu::ComputePipeline,
+    height_pipeline: wgpu::ComputePipeline,
+    height_nodes: wgpu::Buffer,
     layout: wgpu::BindGroupLayout,
-    profiles: HashMap<u32, (wgpu::Buffer, wgpu::BindGroup)>,
+    profiles: HashMap<u32, (wgpu::Buffer, wgpu::Buffer, wgpu::Buffer, wgpu::BindGroup)>,
     requests: wgpu::Buffer,
     output: wgpu::Buffer,
     sites: wgpu::Buffer,
@@ -63,17 +65,25 @@ impl Gpu {
         .map_err(|e| format!("cannot create the GPU compute device: {e}"))?;
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("Retina GPU biomes and simplex"),
-            source: wgpu::ShaderSource::Wgsl(include_str!("simplex.wgsl").into()),
+            source: wgpu::ShaderSource::Wgsl(
+                format!(
+                    "{}\n{}\n{}",
+                    include_str!("simplex.wgsl"),
+                    include_str!("program.wgsl"),
+                    include_str!("noise3.wgsl")
+                )
+                .into(),
+            ),
         });
         let layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("Retina world buffers"),
-            entries: &(0..4)
+            entries: &(0..7)
                 .map(|binding| wgpu::BindGroupLayoutEntry {
                     binding,
                     visibility: wgpu::ShaderStages::COMPUTE,
                     ty: wgpu::BindingType::Buffer {
                         ty: wgpu::BufferBindingType::Storage {
-                            read_only: binding == 0 || binding == 2,
+                            read_only: binding == 0 || binding == 2 || binding == 4 || binding == 5,
                         },
                         has_dynamic_offset: false,
                         min_binding_size: None,
@@ -99,17 +109,24 @@ impl Gpu {
         };
         let cave_shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("Retina GPU cave fields and mask"),
-            source: wgpu::ShaderSource::Wgsl(include_str!("caves.wgsl").into()),
+            source: wgpu::ShaderSource::Wgsl(
+                format!(
+                    "{}\n{}",
+                    include_str!("caves.wgsl"),
+                    include_str!("program.wgsl")
+                )
+                .into(),
+            ),
         });
         let cave_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("Retina cave buffers"),
-            entries: &(0..5)
+            entries: &(0..8)
                 .map(|binding| wgpu::BindGroupLayoutEntry {
                     binding,
                     visibility: wgpu::ShaderStages::COMPUTE,
                     ty: wgpu::BindingType::Buffer {
                         ty: wgpu::BufferBindingType::Storage {
-                            read_only: binding < 3,
+                            read_only: binding < 3 || binding == 5 || binding == 7,
                         },
                         has_dynamic_offset: false,
                         min_binding_size: None,
@@ -166,6 +183,12 @@ impl Gpu {
             (MAX_BATCH * 144 * 32) as u64,
             wgpu::BufferUsages::STORAGE,
         );
+        let height_pipeline = pipeline("height_nodes");
+        let height_nodes = buffer(
+            "Retina registered surface lattice",
+            32 * 20000usize.max(MAX_BATCH * 25) as u64,
+            wgpu::BufferUsages::STORAGE,
+        );
         let mut gpu = Self {
             device,
             queue,
@@ -176,6 +199,8 @@ impl Gpu {
             cave_profiles: HashMap::new(),
             cave_buffers: None,
             columns_pipeline,
+            height_pipeline,
+            height_nodes,
             layout,
             profiles: HashMap::new(),
             requests,
@@ -184,11 +209,25 @@ impl Gpu {
             readback,
             backend,
         };
-        gpu.add_profile(0, &vec![0; 672]);
+        gpu.add_profile(0, &vec![0; 672], &[0; 224], &[0; 32]);
         Ok(gpu)
     }
 
-    fn add_profile(&mut self, id: u32, bytes: &[u8]) {
+    fn add_profile(&mut self, id: u32, bytes: &[u8], climate_bytes: &[u8], program_bytes: &[u8]) {
+        let program = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Retina registry GPU programs"),
+                contents: program_bytes,
+                usage: wgpu::BufferUsages::STORAGE,
+            });
+        let climate = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Retina resident climate targets"),
+                contents: climate_bytes,
+                usage: wgpu::BufferUsages::STORAGE,
+            });
         let buffer = self
             .device
             .create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -216,9 +255,21 @@ impl Gpu {
                     binding: 3,
                     resource: self.sites.as_entire_binding(),
                 },
+                wgpu::BindGroupEntry {
+                    binding: 4,
+                    resource: climate.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 5,
+                    resource: program.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 6,
+                    resource: self.height_nodes.as_entire_binding(),
+                },
             ],
         });
-        self.profiles.insert(id, (buffer, group));
+        self.profiles.insert(id, (buffer, climate, program, group));
     }
 
     pub(crate) fn sample(
@@ -231,6 +282,8 @@ impl Gpu {
             self.add_profile(
                 profile_id,
                 &profile.ok_or("missing GPU world profile")?.gpu_bytes(),
+                &profile.unwrap().climate_gpu_bytes(),
+                &crate::program::RegistryProgram::bytes(profile),
             );
         }
         let cave_side = requests[0].padding;
@@ -242,7 +295,7 @@ impl Gpu {
         let quart_width = surface_width as u64 / 4;
         let quart_layers =
             ((requests[0].max_y - requests[0].min_y.div_euclid(4) * 4 + 3) / 4) as u64;
-        let biome_words = (quart_width * quart_width * quart_layers).div_ceil(4);
+        let biome_words = (quart_width * quart_width * quart_layers).div_ceil(2);
         let mask_size = (volume_words
             + (surface_width as u64 * surface_width as u64).div_ceil(32)
             + biome_words)
@@ -303,7 +356,7 @@ impl Gpu {
         }
         self.queue
             .write_buffer(&self.requests, 0, bytemuck::cast_slice(requests));
-        let group = &self.profiles[&profile_id].1;
+        let group = &self.profiles[&profile_id].3;
         let count = if requests[0].tile_side > 0 {
             (requests[0].tile_side * requests[0].tile_side) as usize
         } else {
@@ -314,6 +367,20 @@ impl Gpu {
             .create_command_encoder(&wgpu::CommandEncoderDescriptor {
                 label: Some("Retina terrain batch"),
             });
+        if profile.is_some_and(|p| p.registry_program.is_some()) {
+            let side = if requests[0].tile_side > 0 {
+                requests[0].tile_side * 4 + 1
+            } else {
+                5
+            };
+            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("Retina registered surface lattice"),
+                timestamp_writes: None,
+            });
+            pass.set_pipeline(&self.height_pipeline);
+            pass.set_bind_group(0, group, &[]);
+            pass.dispatch_workgroups((side * side).div_ceil(64), requests.len() as u32, 1);
+        }
         if profile_id != 0 {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
                 label: Some("Retina biome site pass"),
@@ -357,6 +424,18 @@ impl Gpu {
                     wgpu::BindGroupEntry {
                         binding: 4,
                         resource: buffers.mask.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 5,
+                        resource: self.profiles[&profile_id].2.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 6,
+                        resource: self.height_nodes.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 7,
+                        resource: self.profiles[&profile_id].1.as_entire_binding(),
                     },
                 ],
             });

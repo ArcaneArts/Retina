@@ -38,6 +38,10 @@ import java.util.EnumSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import net.minecraft.world.level.levelgen.NoiseGeneratorSettings;
+import net.minecraft.world.level.levelgen.NoiseBasedChunkGenerator;
+import net.minecraft.world.level.dimension.DimensionType;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
@@ -45,7 +49,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Stream;
 
-import static java.lang.foreign.ValueLayout.JAVA_BYTE;
+import static java.lang.foreign.ValueLayout.JAVA_SHORT;
 
 /** Minecraft owns chunk lifecycle; Rust owns every terrain block decision. */
 public final class RetinaChunkGenerator extends ChunkGenerator {
@@ -58,7 +62,8 @@ public final class RetinaChunkGenerator extends ChunkGenerator {
             Codec.floatRange(0.000001F, 1).optionalFieldOf("frequency", 0.008F).forGetter(generator -> generator.frequency),
             Codec.STRING.validate(mode -> mode.equals("mca") || mode.equals("chunk")
                     ? DataResult.success(mode) : DataResult.error(() -> "Retina mode must be mca or chunk"))
-                    .optionalFieldOf("mode", "mca").forGetter(generator -> generator.mode)
+                    .optionalFieldOf("mode", "mca").forGetter(generator -> generator.mode),
+            NoiseGeneratorSettings.CODEC.optionalFieldOf("settings").forGetter(generator -> generator.settings)
     ).apply(instance, RetinaChunkGenerator::new));
 
     private static final ExecutorService WORKERS = Executors.newFixedThreadPool(
@@ -70,6 +75,7 @@ public final class RetinaChunkGenerator extends ChunkGenerator {
     private final float amplitude;
     private final float frequency;
     private final String mode;
+    private final Optional<Holder<NoiseGeneratorSettings>> settings;
     private volatile TemporaryRegions previews;
     private PalettedContainerFactory containerFactory;
     private volatile BiomeTerrainProfile profile;
@@ -85,7 +91,13 @@ public final class RetinaChunkGenerator extends ChunkGenerator {
 
     public RetinaChunkGenerator(BiomeSource biomes, int minY, int height,
                                 float baseHeight, float amplitude, float frequency, String mode) {
+        this(biomes, minY, height, baseHeight, amplitude, frequency, mode, Optional.empty());
+    }
+    public RetinaChunkGenerator(BiomeSource biomes, int minY, int height,
+                                float baseHeight, float amplitude, float frequency, String mode,
+                                Optional<Holder<NoiseGeneratorSettings>> settings) {
         super(biomes);
+        this.settings = settings;
         if (minY % 16 != 0 || height % 16 != 0) {
             throw new IllegalArgumentException("Retina generation bounds must align with 16-block sections");
         }
@@ -101,19 +113,35 @@ public final class RetinaChunkGenerator extends ChunkGenerator {
         }
     }
 
+    public RetinaChunkGenerator withDatapackGenerator(ChunkGenerator generator, DimensionType type) {
+        float scale = getBiomeSource() instanceof RetinaBiomeSource source ? source.scale() : 256F;
+        float blend = getBiomeSource() instanceof RetinaBiomeSource source ? source.blend() : 0.55F;
+        var imported = generator instanceof NoiseBasedChunkGenerator noise ? Optional.of(noise.generatorSettings()) : settings;
+        return new RetinaChunkGenerator(RetinaBiomeSource.fromRegistry(generator.getBiomeSource(), scale, blend),
+                type.minY(), type.height(), baseHeight, amplitude, frequency, mode, imported);
+    }
+
     public void bindWorld(RegistryAccess registry, long seed) {
         bindWorld(registry, seed, PalettedContainerFactory.create(registry));
     }
 
+    public void bindWorld(RegistryAccess registry,long seed,net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplateManager templates,boolean structures) {
+        bindWorld(registry,seed,PalettedContainerFactory.create(registry),StructureProfile.Context.of(templates,structures));
+    }
+
     void bindWorld(HolderLookup.Provider registry, long seed, PalettedContainerFactory factory) {
+        bindWorld(registry,seed,factory,StructureProfile.Context.NONE);
+    }
+    void bindWorld(HolderLookup.Provider registry, long seed, PalettedContainerFactory factory,StructureProfile.Context structures) {
         closePreviews();
         heightCache.clear();
         biomeCache.clear();
+        searchBiomeCache.clear();
         containerFactory = factory;
         worldSeed = seed;
         if (getBiomeSource() instanceof RetinaBiomeSource biomes) {
-            profile = BiomeTerrainProfile.load(registry, biomes, minY, height, seed);
-            biomes.bind((x, y, z) -> biomeAt(x * 4, y * 4, z * 4));
+            profile = BiomeTerrainProfile.load(registry, biomes, minY, height, seed, settings.orElseGet(() -> registry.lookupOrThrow(net.minecraft.core.registries.Registries.NOISE_SETTINGS).getOrThrow(NoiseGeneratorSettings.OVERWORLD)).value(),structures);
+            biomes.bind((x, y, z) -> biomeAt(x * 4, y * 4, z * 4), (x,y,z) -> searchBiomeAt(x*4,y*4,z*4));
         }
         if (regionMode()) previews = new TemporaryRegions(request(seed, 0, 0), regionBiome(), profile, metrics, TemporaryRegions.MAX_REGIONS);
     }
@@ -131,23 +159,36 @@ public final class RetinaChunkGenerator extends ChunkGenerator {
     public BiomeTerrainProfile profile() { return profile; }
 
     public Holder<Biome> biomeAt(int x, int z) {
-        var source = (RetinaBiomeSource) getBiomeSource();
         var columns = columns(worldSeed, Math.floorDiv(x, 16), Math.floorDiv(z, 16));
-        return source.biomes().get(columns.biome(Math.floorMod(z, 16) * 16 + Math.floorMod(x, 16)));
+        return profile.biomes().get(columns.biome(Math.floorMod(z, 16) * 16 + Math.floorMod(x, 16)));
     }
 
-    private final Map<HeightKey, byte[]> biomeCache = Collections.synchronizedMap(new LinkedHashMap<>(128, 0.75F, true) {
-        @Override protected boolean removeEldestEntry(Map.Entry<HeightKey, byte[]> eldest) { return size() > 2048; }
+    private final Map<HeightKey, short[]> searchBiomeCache = Collections.synchronizedMap(new LinkedHashMap<>(128,.75F,true) {
+        @Override protected boolean removeEldestEntry(Map.Entry<HeightKey,short[]> entry) {return size()>2048;}
+    });
+    private Holder<Biome> searchBiomeAt(int x,int y,int z) {
+        var key=new HeightKey(worldSeed,Math.floorDiv(x,16),Math.floorDiv(z,16));
+        var data=searchBiomeCache.get(key);
+        if(data==null) {
+            data=NativeTerrain.instance().sampleBiomes(request(worldSeed,key.x(),key.z()));
+            searchBiomeCache.put(key,data);
+        }
+        int layer=Math.clamp(Math.floorDiv(y-minY,4),0,height/4-1);
+        return profile.biomes().get(Short.toUnsignedInt(data[layer*16+Math.floorMod(Math.floorDiv(z,4),4)*4+Math.floorMod(Math.floorDiv(x,4),4)]));
+    }
+
+    private final Map<HeightKey, short[]> biomeCache = Collections.synchronizedMap(new LinkedHashMap<>(128, 0.75F, true) {
+        @Override protected boolean removeEldestEntry(Map.Entry<HeightKey, short[]> eldest) { return size() > 2048; }
     });
 
     public Holder<Biome> biomeAt(int x, int y, int z) {
         var data = biomeSamples(worldSeed, Math.floorDiv(x, 16), Math.floorDiv(z, 16));
         int layer = Math.clamp(Math.floorDiv(y - minY, 4), 0, height / 4 - 1);
         int index = layer * 16 + Math.floorMod(Math.floorDiv(z, 4), 4) * 4 + Math.floorMod(Math.floorDiv(x, 4), 4);
-        return profile.biomes().get(Byte.toUnsignedInt(data[index]));
+        return profile.biomes().get(Short.toUnsignedInt(data[index]));
     }
 
-    private byte[] biomeSamples(long seed, int x, int z) {
+    private short[] biomeSamples(long seed, int x, int z) {
         var key = new HeightKey(seed, x, z);
         var data = biomeCache.get(key);
         if (data == null) {
@@ -181,7 +222,7 @@ public final class RetinaChunkGenerator extends ChunkGenerator {
         java.util.function.Supplier<ChunkAccess> fill = () -> {
             var position = chunk.getPos();
             var samples = biomeSamples(seed(random), position.x(), position.z());
-            chunk.fillBiomesFromNoise((x, y, z) -> profile.biomes().get(Byte.toUnsignedInt(samples[
+            chunk.fillBiomesFromNoise((x, y, z) -> profile.biomes().get(Short.toUnsignedInt(samples[
                     Math.clamp(y - Math.floorDiv(minY, 4), 0, height / 4 - 1) * 16 + Math.floorMod(z, 4) * 4 + Math.floorMod(x, 4)])));
             return chunk;
         };
@@ -268,8 +309,8 @@ public final class RetinaChunkGenerator extends ChunkGenerator {
                     long offset = nativeY * 256L;
                     for (int z = 0; z < 16; z++) {
                         for (int x = 0; x < 16; x++) {
-                            byte material = data.blocks().get(JAVA_BYTE, offset + z * 16L + x);
-                            section.setBlockState(x, y, z, materials[Byte.toUnsignedInt(material)], false);
+                            short material = data.blocks().get(JAVA_SHORT, (offset + z * 16L + x) * Short.BYTES);
+                            section.setBlockState(x, y, z, materials[Short.toUnsignedInt(material)], false);
                         }
                     }
                 }
@@ -305,7 +346,7 @@ public final class RetinaChunkGenerator extends ChunkGenerator {
         var states = new BlockState[bounds.getHeight()];
         for (int i = 0; i < states.length; i++) {
             int nativeY = bounds.getMinY() + i - minY;
-            states[i] = nativeY >= 0 && nativeY < height ? (preview == null ? palette[Byte.toUnsignedInt(data[nativeY])] : preview[nativeY]) : Blocks.AIR.defaultBlockState();
+            states[i] = nativeY >= 0 && nativeY < height ? (preview == null ? palette[Short.toUnsignedInt(data[nativeY])] : preview[nativeY]) : Blocks.AIR.defaultBlockState();
         }
         return new NoiseColumn(bounds.getMinY(), states);
     }
@@ -317,11 +358,55 @@ public final class RetinaChunkGenerator extends ChunkGenerator {
 
     @Override
     public ChunkGeneratorStructureState createState(HolderLookup<StructureSet> structures, RandomState state, long seed) {
-        return ChunkGeneratorStructureState.createForFlat(state, seed, getOrigin(state), getBiomeSource(), Stream.empty());
+        // Only advertise layouts Rust can generate. In particular, vanilla stronghold rings
+        // would launch thousands of GPU biome searches during ServerLevel construction.
+        var supported=structures.listElements().filter(s -> StructureProfile.supportedSet(s.value())).map(s -> (Holder<StructureSet>)s);
+        return ChunkGeneratorStructureState.createForFlat(state, seed, getOrigin(state), getBiomeSource(), supported);
     }
 
     @Override
-    public void applyBiomeDecoration(WorldGenLevel level, ChunkAccess chunk, StructureManager structures) { }
+    public void applyBiomeDecoration(WorldGenLevel level, ChunkAccess chunk, StructureManager structures) {
+        if (profile == null) return;
+        var data = regionMode() ? previews.read(chunk.getPos()) : NativeTerrain.instance().structureData(request(worldSeed, chunk.getPos().x(), chunk.getPos().z()));
+        installStructures(chunk,data,net.minecraft.world.level.levelgen.structure.pieces.StructurePieceSerializationContext.fromLevel(level.getLevel()),level.registryAccess());
+        for (var value : data.getListOrEmpty("block_entities")) chunk.setBlockEntityNbt((net.minecraft.nbt.CompoundTag)value);
+        if (chunk instanceof net.minecraft.world.level.chunk.ProtoChunk proto)
+            for (var value : data.getListOrEmpty("entities")) proto.addEntity((net.minecraft.nbt.CompoundTag)value);
+    }
+
+    private void installStructures(ChunkAccess chunk, net.minecraft.nbt.CompoundTag data,
+                                   net.minecraft.world.level.levelgen.structure.pieces.StructurePieceSerializationContext context,
+                                   RegistryAccess registries) {
+        var nativeStructures = data.getCompoundOrEmpty("structures");
+        var starts = new java.util.HashMap<net.minecraft.world.level.levelgen.structure.Structure, net.minecraft.world.level.levelgen.structure.StructureStart>();
+        var startTags = nativeStructures.getCompoundOrEmpty("starts");
+        for (String key : startTags.keySet()) {
+            var start = net.minecraft.world.level.levelgen.structure.StructureStart.loadStaticStart(context, startTags.getCompoundOrEmpty(key), worldSeed);
+            if (start != null && start.isValid()) starts.put(start.getStructure(), start);
+        }
+        chunk.setAllStarts(starts);
+        var references = new java.util.HashMap<net.minecraft.world.level.levelgen.structure.Structure, it.unimi.dsi.fastutil.longs.LongSet>();
+        var referenceTags = nativeStructures.getCompoundOrEmpty("References");
+        var registry = registries.lookupOrThrow(net.minecraft.core.registries.Registries.STRUCTURE);
+        for (String key : referenceTags.keySet()) {
+            var structure = registry.getValue(net.minecraft.resources.Identifier.parse(key));
+            if (structure != null) references.put(structure, new it.unimi.dsi.fastutil.longs.LongOpenHashSet(referenceTags.getLongArray(key).orElseThrow()));
+        }
+        chunk.setAllReferences(references);
+    }
+
+    @Override
+    public void createStructures(RegistryAccess registry, ChunkGeneratorStructureState state, StructureManager structures,
+                                 ChunkAccess chunk, net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplateManager templates,
+                                 net.minecraft.resources.ResourceKey<net.minecraft.world.level.Level> dimension) {
+        if(profile==null)return;
+        var data=NativeTerrain.instance().structureStarts(request(worldSeed,chunk.getPos().x(),chunk.getPos().z()));
+        var context=new net.minecraft.world.level.levelgen.structure.pieces.StructurePieceSerializationContext(null,registry,templates);
+        installStructures(chunk,data,context,registry);
+    }
+
+    @Override
+    public void createReferences(WorldGenLevel level, StructureManager structures, ChunkAccess chunk) { }
 
     @Override
     public void spawnOriginalMobs(WorldGenRegion region) { }

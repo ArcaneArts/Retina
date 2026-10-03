@@ -14,7 +14,7 @@ struct Request {
 }
 
 @group(0) @binding(0) var<storage, read> requests: array<Request>;
-struct Column { height: i32, packed: u32 }
+struct Column { height: i32, packed: u32, materials: u32 }
 struct NoiseProfile {
     frequency: f32, amplitude: f32, count: u32, padding: u32,
     modifiers: array<f32, 32>,
@@ -28,6 +28,9 @@ struct Site { point: vec2<f32>, biome: u32, padding: u32, climate: vec4<f32> }
 @group(0) @binding(1) var<storage, read_write> columns: array<Column>;
 @group(0) @binding(2) var<storage, read> world: WorldProfile;
 @group(0) @binding(3) var<storage, read_write> sites: array<Site>;
+struct ClimateTarget { low: vec4<f32>, high: vec4<f32>, extra: vec4<f32>, depth: vec4<f32> }
+struct ClimateTable { count: vec4<u32>, noise: NoiseProfile, targets: array<ClimateTarget> }
+@group(0) @binding(4) var<storage, read> climate_table: ClimateTable;
 const SITE_SIDE: u32 = 12u;
 const SITE_COUNT: u32 = 144u;
 
@@ -126,16 +129,41 @@ fn biome_sites(@builtin(global_invocation_id) id: vec3<u32>) {
     for (var channel = 0u; channel < 4u; channel++) {
         climate[channel] = registry_noise(point, channel, request.seed_low, request.seed_high);
     }
+    var weirdness_value = 0.0;
+    if bytecode[0]>0u {let actual=run_program(0u,vec3<f32>(point.x,0.0,point.y),request,vec4<f32>(0.0));climate=vec4<f32>(actual[0],actual[1],actual[2],actual[3]);weirdness_value=actual[4];}
     var best = 1e20;
     var biome = 0u;
     for (var index = 0u; index < world.ids.x; index++) {
-        if (world.biomes[index].materials.w & 16u) != 0u { continue; }
+        if (world.biomes[index].materials.w & 16u) != 0u || world.biomes[index].terrain.w > 0.5 { continue; }
         let difference = climate - world.biomes[index].climate;
         var fitness = dot(difference * difference, vec4<f32>(2.5, 1.5, 2.0, 0.5));
+        // Biomes added without climate placement receive a small local niche
+        // around their registered temperature/rainfall, even beside pack intervals.
+        if climate_table.count.x > 0u { fitness -= 0.12; }
         // Ocean sites are selected by continentalness, rather than invading hot/cold land cells.
         let ocean = (world.biomes[index].materials.w & 4u) != 0u;
-        if ocean != (climate.z < -0.25) { fitness += 8.0; }
+        if bytecode[0]==0u && ocean != (climate.z < -0.25) { fitness += 8.0; }
         if fitness < best { best = fitness; biome = index; }
+    }
+    if climate_table.count.x > 0u {
+        let noise = climate_table.noise;
+        var frequency = noise.frequency; var persistence = 1.0; var sum = 0.0; var weights = 0.0;
+        for(var octave=0u;octave<noise.count;octave++) {
+            let weight = noise.modifiers[octave]*persistence;
+            sum += simplex(point*frequency,request.seed_low+31676u+octave*1013u,request.seed_high)*weight;
+            weights += weight; frequency *= 2.0; persistence *= 0.5;
+        }
+        let weirdness = select(clamp(sum/max(weights,0.0001)*noise.amplitude*1.6,-1.0,1.0),weirdness_value,bytecode[0]>0u);
+        for(var i=0u;i<climate_table.count.x;i++) {
+            let entry = climate_table.targets[i]; let index = u32(entry.extra.w);
+            if (world.biomes[index].materials.w & 16u)!=0u {continue;}
+            let difference = climate-clamp(climate,entry.low,entry.high);
+            let ridge = weirdness-clamp(weirdness,entry.extra.x,entry.extra.y);
+            var fitness = dot(difference*difference,vec4<f32>(2.5,1.5,2.0,0.5))+ridge*ridge+entry.extra.z*entry.extra.z;
+            let ocean = (world.biomes[index].materials.w & 4u) != 0u;
+            if bytecode[0]==0u && ocean != (climate.z < -0.25) { fitness += 8.0; }
+            if fitness < best { best = fitness; biome = index; }
+        }
     }
     sites[id.y * SITE_COUNT + id.x] = Site(point, biome, 0u, climate);
 }
@@ -191,6 +219,26 @@ fn terrain_at(point: vec2<f32>, request: Request, request_index: u32) -> Terrain
     let erosion_scale = clamp(1.0 - climate.w * 0.35, 0.6, 1.4);
     let height = clamp(i32(floor(request.base_height + terrain.x + continental_shape
         + request.amplitude * terrain.y * relief * erosion_scale)), request.min_y + 1, request.max_y);
+    if bytecode[0]>0u {
+        let actual=registered_climate(point,request,request_index);
+        climate=vec4<f32>(actual[0],actual[1],actual[2],actual[3]);
+        if climate_table.count.x>0u {
+            var best=1e20;
+            for(var index=0u;index<world.ids.x;index++) {
+                if world.biomes[index].terrain.w>0.5 || (world.biomes[index].materials.w & 16u)!=0u {continue;}
+                let difference=climate-world.biomes[index].climate;
+                let fitness=dot(difference,difference)-0.03;
+                if fitness<best {best=fitness;biome=index;}
+            }
+            for(var i=0u;i<climate_table.count.x;i++) {
+                let entry=climate_table.targets[i];if (world.biomes[u32(entry.extra.w)].materials.w & 16u)!=0u {continue;}let difference=climate-clamp(climate,entry.low,entry.high);
+                let ridge=actual[4]-clamp(actual[4],entry.extra.x,entry.extra.y);
+                let fitness=dot(difference,difference)+ridge*ridge+entry.extra.z*entry.extra.z;
+                if fitness<best {best=fitness;biome=u32(entry.extra.w);}
+            }
+        }
+        return TerrainSample(i32(floor(registered_height(point,request,request_index))),biome,terrain,climate);
+    }
     return TerrainSample(height,biome,terrain,climate);
 }
 @compute @workgroup_size(64)
@@ -208,7 +256,7 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
     let index = id.y * 256u + id.x;
     if request.profile == 0u {
         let height = i32(floor(request.base_height + request.amplitude * fbm(point * request.frequency, request.seed_low, request.seed_high)));
-        columns[index] = Column(clamp(height, request.min_y + 1, request.max_y), 0u);
+        columns[index] = Column(clamp(height, request.min_y + 1, request.max_y), 0u, 0u);
         return;
     }
     let sample = terrain_at(point,request,request_index);
@@ -218,23 +266,34 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
     // The only per-column hash below controls hidden bedrock thickness.
     let h = cell_hash(coordinate, request.seed_low + 1381u, request.seed_high);
     let material = world.biomes[biome].materials;
-    var top = material.x;
-    var filler = material.y;
+    var top = 0u;
+    var filler = 0u;
     var flags = 0u;
     let sea_level = bitcast<i32>(world.ids.y);
     if height < sea_level {
-        top = world.biomes[biome].materials.z;
+        top = 1u;
         filler = top;
     } else if (world.biomes[biome].materials.w & 1u) != 0u {
-        top = world.ids.w;
+        top = 2u;
     } else if (material.w & 2u) != 0u && height > sea_level + 65 {
-        top = world.ids.z; filler = top;
+        top = 3u; filler = top;
     }
-    if (world.biomes[biome].materials.w & 1u) != 0u { flags |= 1u << 28u; }
+    var frozen=(material.w & 1u)!=0u;
+    if bytecode[0]>0u {
+        var temperature=world.biomes[biome].features.w;
+        let snowline=f32(sea_level+17);
+        if f32(height)>snowline {temperature-=(noise3(vec3<f32>(point.x,0.0,point.y)*0.125,1234u)*8.0+f32(height)-snowline)*0.00125;}
+        frozen=(material.w&32u)!=0u && temperature<0.15;
+    }
+    if frozen { flags |= 1u << 28u; }
     // Vanilla vegetation threshold sampling stays on the GPU, sharing this readback.
     if simplex(point * 0.005, 2345u, 0u) < -0.8 { flags |= 1u << 27u; }
     let depth_noise = simplex(point * request.frequency * 3.0, request.seed_low + 559u, request.seed_high);
     var depth = u32(clamp(i32(floor(3.5 + depth_noise * 2.0)), 2, 6));
+    if bytecode[0]>0u {
+        let registered=program_noise(vec3<f32>(point.x,0.0,point.y),bytecode[9],request);
+        depth=u32(clamp(i32(registered*2.75+3.0+f32(h&65535u)/65535.0*0.25),0,7));
+    }
     // Fixed global cells make rounded, warped basins with a flat waterline.
     // Their geometry is computed here, before any readback or Rust assembly.
     let lake_cell = vec2<i32>(floor(point / 128.0));
@@ -262,8 +321,8 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
                     let drop = u32(clamp(i32(ceil((1.0-basin*basin)*6.0)),1,7));
                     height = clamp(level-i32(drop),request.min_y+6,request.max_y-1);
                     depth = drop; flags &= ~(1u<<28u); flags |= 1u<<29u;
-                    if lava_lake { flags |= 1u<<28u; top = u32(options.z); filler = top; }
-                    else { top = material.z; filler = top; }
+                    if lava_lake { flags |= 1u<<28u; top = 4u; filler = center.biome; }
+                    else { top = 1u; filler = top; }
                 } else {
                     height = i32(round(mix(f32(level),f32(height),smoothstep(1.0,1.35,basin))));
                 }
@@ -273,9 +332,22 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
     // Terracotta retains its red-sand cap. The filler byte transports the small
     // signed band offset; Rust only indexes the resident 192-entry color table.
     if (material.w & 8u) != 0u && world.globals.z > 0.0 {
-        let offset = i32(round(simplex(point * world.globals.z,request.seed_low+6833u,request.seed_high)*4.0*world.globals.w));
+        var offset = i32(round(simplex(point * world.globals.z,request.seed_low+6833u,request.seed_high)*4.0*world.globals.w));
+        if bytecode[0]>0u {offset=i32(round(program_noise(vec3<f32>(point.x,0.0,point.y),bytecode[11],request)*4.0));}
         filler = bitcast<u32>(clamp(offset,-127,127)) & 255u;
     }
+    var top_id=material.x;var filler_id=material.y;
+    if top==1u {top_id=material.z;}else if top==2u {top_id=world.ids.w;}else if top==3u {top_id=world.ids.z;}
+    if filler==1u {filler_id=material.z;}else if filler==3u {filler_id=world.ids.z;}
+    if bytecode[0]>0u && (flags & (1u<<29u))==0u {
+        let slope=abs(registered_height(point+vec2<f32>(4.0,0.0),request,request_index)-registered_height(point-vec2<f32>(4.0,0.0),request,request_index))
+                  +abs(registered_height(point+vec2<f32>(0.0,4.0),request,request_index)-registered_height(point-vec2<f32>(0.0,4.0),request,request_index));
+        let band=f32(bitcast<i32>(filler<<24u)>>24);
+        let selected_top=run_program(3u+biome,vec3<f32>(point.x,f32(height-1),point.y),request,vec4<f32>(1.0,f32(depth),slope,band))[0];
+        let selected_filler=run_program(3u+biome,vec3<f32>(point.x,f32(height-3),point.y),request,vec4<f32>(3.0,f32(depth),slope,band))[0];
+        if selected_top>0.0 {top_id=u32(selected_top-1.0);}if selected_filler>0.0 {filler_id=u32(selected_filler-1.0);}
+    }
+    if (flags & ((1u<<29u)|(1u<<28u)))==((1u<<29u)|(1u<<28u)) {top_id=u32(world.biomes[filler].features.z);filler_id=top_id;}
     flags |= (h >> 16u & 3u) << 30u;
-    columns[index] = Column(height, biome | (top << 8u) | (filler << 16u) | (depth << 24u) | flags);
+    columns[index] = Column(height, biome | ((filler & 255u) << 16u) | (depth << 24u) | flags, top_id | (filler_id << 16u));
 }

@@ -24,20 +24,26 @@ import java.util.LinkedHashMap;
 import java.util.List;
 
 /** One-time projection of the world's actual registries into a resident GPU profile.
- * Height styles are Retina approximations; vanilla does not store a biome height parameter.
- * Surface rules are probed at representative land/subsurface/seabed positions, without
- * evaluating vanilla's density router or per-column material noise on the CPU.
+ * Registry density and material programs execute on the GPU. Representative
+ * recipes and height styles remain available for legacy profiles and fallback materials.
  */
 public record BiomeTerrainProfile(int nativeId, int seaLevel, BlockState[] materials, List<Holder<Biome>> biomes, String json) {
     public static BiomeTerrainProfile load(HolderLookup.Provider registry, RetinaBiomeSource source, int minY, int height) {
         return load(registry, source, minY, height, 0L);
     }
     public static BiomeTerrainProfile load(HolderLookup.Provider registry, RetinaBiomeSource source, int minY, int height, long seed) {
+        return load(registry, source, minY, height, seed, registry.lookupOrThrow(Registries.NOISE_SETTINGS).getOrThrow(NoiseGeneratorSettings.OVERWORLD).value());
+    }
+    public static BiomeTerrainProfile load(HolderLookup.Provider registry, RetinaBiomeSource source, int minY, int height, long seed, NoiseGeneratorSettings settings) {
+        return load(registry,source,minY,height,seed,settings,StructureProfile.Context.NONE);
+    }
+    static BiomeTerrainProfile load(HolderLookup.Provider registry, RetinaBiomeSource source, int minY, int height, long seed, NoiseGeneratorSettings settings, StructureProfile.Context structures) {
+        source.includeRegisteredBiomes(registry);
+        source.underground(List.of());
         source.underground(List.of(Biomes.LUSH_CAVES, Biomes.DRIPSTONE_CAVES, Biomes.DEEP_DARK).stream()
                 .map(key -> (Holder<Biome>) registry.lookupOrThrow(Registries.BIOME).getOrThrow(key))
-                .filter(b -> !source.biomes().contains(b)).limit(Math.max(0, 255 - source.biomes().size())).toList());
+                .filter(b -> !source.nativeBiomes().contains(b)).limit(Math.max(0, 65535 - source.nativeBiomes().size())).toList());
         var nativeBiomes = source.nativeBiomes();
-        var settings = registry.lookupOrThrow(Registries.NOISE_SETTINGS).getOrThrow(NoiseGeneratorSettings.OVERWORLD).value();
         int sea = settings.seaLevel();
         if (sea < minY || sea > minY + height) throw new IllegalArgumentException("Registry sea level is outside Retina's generation bounds");
         var materials = new LinkedHashMap<BlockState, Integer>();
@@ -52,13 +58,13 @@ public record BiomeTerrainProfile(int nativeId, int seaLevel, BlockState[] mater
         profile.addProperty("deepslate", material(materials, Blocks.DEEPSLATE.defaultBlockState()));
         profile.addProperty("snow", material(materials, Blocks.SNOW_BLOCK.defaultBlockState()));
         profile.addProperty("ice", material(materials, Blocks.ICE.defaultBlockState()));
-        var parameters = registry.lookupOrThrow(Registries.MULTI_NOISE_BIOME_SOURCE_PARAMETER_LIST)
-                .getOrThrow(MultiNoiseBiomeSourceParameterLists.OVERWORLD).value().parameters().values();
+        var parameters = source.climateParameters(registry);
         var biomes = new JsonArray();
         for (var biome : nativeBiomes) {
             String id = biome.unwrapKey().orElseThrow().identifier().toString();
             var entry = new JsonObject();
             entry.addProperty("id", id);
+            entry.addProperty("temperature",biome.value().getBaseTemperature());
             double[] climate = new double[4];
             int count = 0;
             for (var pair : parameters) {
@@ -84,32 +90,43 @@ public record BiomeTerrainProfile(int nativeId, int seaLevel, BlockState[] mater
             entry.addProperty("filler", material(materials, surface(root, below, Blocks.DIRT.defaultBlockState())));
             entry.addProperty("underwater", material(materials, surface(root, seabed, Blocks.GRAVEL.defaultBlockState())));
             int flags = biome.value().getBaseTemperature() < 0.15F ? 1 : 0;
-            if (id.contains("windswept") || id.contains("peak") || id.contains("slopes")) flags |= 2;
+            if (id.contains("windswept") || id.contains("peak") || id.contains("slopes") || id.contains("mountain") || id.contains("highland") || id.contains("volcanic")) flags |= 2;
             if (id.contains("ocean")) flags |= 4;
             if (id.contains("badlands")) flags |= 8;
-            if (List.of(Biomes.LUSH_CAVES, Biomes.DRIPSTONE_CAVES, Biomes.DEEP_DARK).stream().anyMatch(biome::is)) flags |= 16;
+            if (id.contains("cave/") || id.contains("caves") || biome.is(Biomes.DEEP_DARK) || (!biome.unwrapKey().orElseThrow().identifier().getNamespace().equals("minecraft") && biome.is(net.minecraft.tags.TagKey.create(Registries.BIOME, Identifier.parse("c:is_cave"))))) flags |= 16;
             entry.addProperty("flags", flags);
             biomes.add(entry);
         }
         profile.add("biomes", biomes);
-        var noises = new JsonArray();
-        for (String id : List.of("temperature", "vegetation", "continentalness", "erosion")) {
-            var noise = registry.lookupOrThrow(Registries.NOISE)
-                    .getOrThrow(ResourceKey.create(Registries.NOISE, Identifier.withDefaultNamespace(id))).value();
-            var data = NormalNoise.DIRECT_CODEC.encodeStart(JsonOps.INSTANCE, noise).getOrThrow().getAsJsonObject();
-            var entry = new JsonObject();
-            entry.addProperty("frequency", Math.scalb(1.0, data.get("base_octave").getAsInt()));
-            entry.addProperty("amplitude", (data.has("base_amplitude") ? data.get("base_amplitude").getAsDouble() : 1.0));
-            int count = data.has("octave_count") ? data.get("octave_count").getAsInt() : 1;
-            var modifiers = new JsonArray();
-            var supplied = data.getAsJsonArray("amplitude_modifiers");
-            for (int i = 0; i < count; i++) modifiers.add(supplied != null && i < supplied.size() ? supplied.get(i).getAsDouble() : 1.0);
-            entry.add("modifiers", modifiers);
-            noises.add(entry);
+        // Keep the pack's climate intervals, rather than collapsing thousands of
+        // targets into one mean per biome. These tables remain resident on the GPU.
+        var targets = new JsonArray();
+        if (source.hasRegistrySource()) for (var pair : parameters) {
+            int index = nativeBiomes.indexOf(pair.getSecond());
+            if (index < 0) continue;
+            var point = pair.getFirst();
+            var dimensions = List.of(point.temperature(),point.humidity(),point.continentalness(),point.erosion());
+            var target = new JsonObject();
+            target.addProperty("biome",index);
+            target.add("min",array(dimensions.stream().mapToDouble(d -> Climate.unquantizeCoord(d.min())).toArray()));
+            target.add("max",array(dimensions.stream().mapToDouble(d -> Climate.unquantizeCoord(d.max())).toArray()));
+            target.add("weirdness",array(new double[]{Climate.unquantizeCoord(point.weirdness().min()),Climate.unquantizeCoord(point.weirdness().max())}));
+            target.add("depth",array(new double[]{Climate.unquantizeCoord(point.depth().min()),Climate.unquantizeCoord(point.depth().max())}));
+            target.addProperty("offset",Climate.unquantizeCoord(point.offset()));
+            targets.add(target);
         }
-        profile.add("noises", noises);
+        profile.add("climate_targets",targets);
+        var climateNoises = ClimateNoiseProfile.export(registry,settings,source.hasRegistrySource());
+        var noises = new JsonArray(); for(int i=0;i<4;i++)noises.add(climateNoises.get(i));
+        float spacing = ClimateNoiseProfile.siteScale(climateNoises,source.scale());
+        profile.addProperty("biome_scale",spacing);
+        profile.add("noises",noises);
+        profile.add("weirdness_noise",climateNoises.get(4));
+        Retina.LOGGER.info("GPU climate site scale {} blocks; registered climate channels {}",spacing,noises);
+        profile.add("registry_program", RegistryGpuProgram.export(registry, settings, nativeBiomes, materials, minY, height));
         profile.add("decorations", DecorationProfile.export(registry, nativeBiomes, biomes, materials));
-        TerrainFeatureProfile.export(registry, nativeBiomes, biomes, materials, profile, settings.materialRule().value(), seed);
+        TerrainFeatureProfile.export(registry, nativeBiomes, biomes, materials, profile, settings.materialRule().value(), seed, parameters);
+        profile.add("structures",StructureProfile.export(registry,nativeBiomes,materials,structures));
         GeologyProfile.export(registry, nativeBiomes, biomes, materials, profile, minY, height, sea);
         TerrainFeatureProfile.finishReplacementTables(biomes, materials);
         DecorationProfile.materialFlags(profile, materials);
@@ -117,6 +134,7 @@ public record BiomeTerrainProfile(int nativeId, int seaLevel, BlockState[] mater
         for (var state : materials.keySet()) palette.add(BlockState.CODEC.encodeStart(JsonOps.INSTANCE, state).getOrThrow());
         profile.add("materials", palette);
         String json = profile.toString();
+        Retina.LOGGER.info("Prepared registry profile: {} biomes, {} materials, {} climate targets",biomes.size(),materials.size(),targets.size());
         int nativeId = NativeTerrain.instance().registerProfile(json);
         Retina.LOGGER.info("GPU biome profile {}: {} biomes, {} block states, sea level {}, {} bytes uploaded once", nativeId, biomes.size(), materials.size(), sea, json.length());
         if (Boolean.getBoolean("retina.qa")) Retina.LOGGER.info("QA_EVT {\"event\":\"registry_biome_profile\",\"status\":\"pass\",\"context\":{\"biomes\":{},\"materials\":{},\"profile\":{}}}", biomes.size(), materials.size(), nativeId);
@@ -134,7 +152,7 @@ public record BiomeTerrainProfile(int nativeId, int seaLevel, BlockState[] mater
     private static double[] terrain(String id) {
         if (id.contains("deep_") && id.contains("ocean")) return new double[]{-43, 0.25, 0.65};
         if (id.contains("ocean")) return new double[]{-30, 0.3, 0.65};
-        if (id.contains("peak") || id.contains("slopes")) return new double[]{65, 1.8, 0.6};
+        if (id.contains("peak") || id.contains("slopes") || id.contains("mountain") || id.contains("highland") || id.contains("volcanic")) return new double[]{65, 1.8, 0.6};
         if (id.contains("windswept")) return new double[]{42, 1.5, 0.7};
         if (id.contains("badlands")) return new double[]{30, 0.8, 0.7};
         if (id.contains("swamp")) return new double[]{-1, 0.12, 0.7};

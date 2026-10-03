@@ -9,6 +9,15 @@ loom {
         vmArg '--enable-native-access=ALL-UNNAMED'
         if (providers.gradleProperty('retinaQa').isPresent()) {
             vmArg '-Dretina.qa=true'
+            if (providers.gradleProperty('retinaPromotionQa').isPresent()) vmArg '-Dretina.qa.promotion=true'
+            if (providers.gradleProperty('retinaStructuresQa').isPresent()) vmArg '-Dretina.qa.structures=true'
+            if (providers.gradleProperty('retinaStructuresReopenQa').isPresent()) vmArg '-Dretina.qa.structures.reopen=true'
+        }
+    }
+
+    if (providers.gradleProperty('retinaDatapackQa').isPresent()) {
+        runs.server {
+            runDir providers.gradleProperty('retinaDatapackQa').get()
         }
     }
 
@@ -187,4 +196,25 @@ jar {
     from('LICENSE') {
         rename { "${it}_${projectName}" }
     }
+}
+
+tasks.register('datapackTest', JavaExec) {
+    group = 'verification'
+    description = 'Load real datapacks through Minecraft and validate retained Retina GPU MCA generation.'
+    dependsOn 'gpuTestClasses'
+    classpath = sourceSets.gpuTest.runtimeClasspath
+    mainClass = 'art.arcane.retina.worldgen.NativeDatapackIntegrationTest'
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
+    jvmArgs '--enable-native-access=ALL-UNNAMED'
+    args providers.gradleProperty('testDatapack').getOrElse('run/datapacks/Terralith.zip')
+    if (providers.gradleProperty('testSupplement').isPresent()) args providers.gradleProperty('testSupplement').get()
+}
+
+tasks.register('structureTest', JavaExec) {
+    group = 'verification'
+    description = 'Validate registry-derived Rust jigsaw structures, loot NBT and chunk/MCA boundaries on the real GPU.'
+    dependsOn 'gpuTestClasses', 'packageNative'
+    classpath = sourceSets.gpuTest.runtimeClasspath
+    mainClass = 'art.arcane.retina.worldgen.NativeStructureIntegrationTest'
+    jvmArgs '--enable-native-access=ALL-UNNAMED'
 }

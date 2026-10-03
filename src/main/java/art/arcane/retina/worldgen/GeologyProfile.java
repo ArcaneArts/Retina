@@ -100,6 +100,12 @@ final class GeologyProfile {
                     c.addProperty("horizontal", mean(canyon.shape().horizontalRadiusFactor()));
                     c.addProperty("vertical", mean(canyon.shape().yScale()));
                     c.addProperty("floor", -1); c.addProperty("room", mean(canyon.shape().distanceFactor()));
+                    c.addProperty("width_smoothness",canyon.shape().widthSmoothness());
+                    c.addProperty("vertical_default",canyon.shape().verticalRadiusDefaultFactor());
+                    c.addProperty("vertical_center",canyon.shape().verticalRadiusCenterFactor());
+                    c.add("thickness_range", floatRange(canyon.shape().thickness()));
+                    c.add("horizontal_range", floatRange(canyon.shape().horizontalRadiusFactor()));
+                    c.add("distance_range", floatRange(canyon.shape().distanceFactor()));
                 } else { omitted.add("carver:" + holder.value().getClass().getSimpleName()); continue; }
                 carvers.add(c);
             }
@@ -161,6 +167,7 @@ final class GeologyProfile {
         };
     }
     private static String type(JsonObject object) { return object.has("type") ? object.get("type").getAsString().replace("minecraft:", "") : "constant"; }
+    private static JsonArray floatRange(FloatProvider provider) {var a=new JsonArray();a.add(provider.min());a.add(provider.max());return a;}
     private static double mean(FloatProvider provider) { return (provider.min() + provider.max()) * 0.5; }
     private static int material(LinkedHashMap<BlockState, Integer> palette, BlockState state) { return palette.computeIfAbsent(state, ignored -> palette.size()); }
     private static int anchor(JsonElement value, int min, int height, int sea) {

@@ -5,7 +5,7 @@ import java.util.Arrays;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Executors;
 
-import static java.lang.foreign.ValueLayout.JAVA_BYTE;
+import static java.lang.foreign.ValueLayout.JAVA_SHORT;
 
 /** Standalone integration runner invoked by ./gradlew gpuTest; requires a compute device. */
 public final class NativeTerrainIntegrationTest {
@@ -22,13 +22,13 @@ public final class NativeTerrainIntegrationTest {
                 long begin = System.nanoTime();
                 try (var data = nativeTerrain.generate(request)) {
                     double elapsed = (System.nanoTime() - begin) / 1_000_000.0;
-                    require(data.blocks().byteSize() == 98_304, "chunk buffer size");
+                    require(data.blocks().byteSize() == 196_608, "chunk buffer size");
                     require(Arrays.equals(data.heights(), nativeTerrain.sampleHeights(request)), "GPU query agrees with chunk generation");
                     for (int column = 0; column < 256; column++) {
                         int firstAir = data.heights()[column];
                         for (int layer = 0; layer < 384; layer++) {
                             byte expected = (byte) (layer - 64 < firstAir ? 1 : 0);
-                            require(data.blocks().get(JAVA_BYTE, layer * 256L + column) == expected, "stone column matches GPU height");
+                            require(data.blocks().get(JAVA_SHORT, (layer * 256L + column)*2) == expected, "stone column matches GPU height");
                         }
                     }
                     return elapsed;
