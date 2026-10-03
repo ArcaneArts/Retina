@@ -112,3 +112,75 @@ Run measurements sequentially. `ring-final-parallel` and the first focused repea
 files overlap another benchmark and are excluded from performance conclusions;
 `ring-final-parallel-clean` is the independent replacement. The original focused
 one/two-slot comparison above was sequential.
+
+## Compact GPU ore raster experiment
+
+The optional `ore-raster-benchmark` feature contains an actual WGSL prototype;
+normal mod builds continue to use the CPU planner. Rust constructs and prunes
+the same vein spheres in parallel, packs descriptors and inverse radii, and the
+GPU rasterizes one workgroup per vein. Each lane owns separate output words, so
+there are no atomic append races. Rust decodes and merges in stable
+anchor/recipe/attempt order. Scattered recipes remain on the CPU.
+
+Two output encodings were measured on three real vanilla GPU fields, seed
+123456789, chunk origins `(0,0)`, `(-32,-32)` and `(32,0)`, 16 workers, three
+warmups and nine alternating CPU/GPU measurements per encoding. Validation and
+hashing are outside the timed interval; buffers and pipelines are reused. Times
+include sphere preparation, packing, upload, dispatch, fence/readback, Rust decode
+and candidate merging, but exclude the initial terrain field and final block
+replacement/application, which both approaches need.
+
+| Chunk origin | CPU plan (bits comparison) | GPU union bits total | CPU plan (ordered comparison) | GPU ordered bytes total |
+| --- | ---: | ---: | ---: | ---: |
+| `(0,0)` | 29.14 ms | 26.43 ms | 28.53 ms | 31.50 ms |
+| `(-32,-32)` | 26.44 ms | 25.56 ms | 31.44 ms | 33.48 ms |
+| `(32,0)` | 28.01 ms | 26.53 ms | 28.33 ms | 31.86 ms |
+
+Union bits return about 3.9–4.1 MB instead of roughly 91–94 MB of 12-byte
+candidates; both formats upload another 18.8–19.9 MB of descriptors/spheres.
+Candidate positions/counts matched the CPU in all three fields,
+about 23.2 million records in total, and repeated GPU outputs were identical.
+However, lexical bit decoding changes the exposure random sequence within each
+vein. Its small 3–9% planning improvement does not justify adopting that format
+as a production ore-layout change on this evidence.
+
+Ordered bytes retain the first containing sphere's ID per voxel. Rust uses
+counting buckets to restore sphere/Y/Z/X traversal before consuming exposure
+draws. This matched the complete ordered CPU records, including random values,
+at two origins. One first-sphere classification differed at a floating boundary
+in the negative field; candidate positions still matched. That boundary
+difference must be accounted for when versioning a future GPU layout.
+
+The ordered shader took about 3.5–3.8 ms, but 10–11 ms of preparation and
+12–15 ms of decode/merge outweighed the fast device work. Readback grew to
+30–32 MB; total planning was 6–12% slower than its matched CPU runs. Earlier
+sort-based decoding was even slower and was replaced before these final
+measurements. Stale/impossible Metal timestamp pairs are excluded and counted;
+the decision uses host wall time. System activity remains uncontrolled.
+
+The production choice is therefore CPU culling/planning. A future GPU design
+should consume compact masks directly during block assembly, or keep the block
+volume resident and resolve registered replacement rules there, rather than
+recreating millions of CPU candidate records after readback. This experiment
+does not establish that all GPU ore generation would be slower.
+
+Reproduce each coordinate sequentially with both formats:
+
+```sh
+cargo build --manifest-path native/Cargo.toml --release --locked \
+  --target-dir build/native-target --features ore-raster-benchmark \
+  --example ore_raster_benchmark
+build/native-target/release/examples/ore_raster_benchmark build/structure-profile.json 9 123456789 0 0 bits
+build/native-target/release/examples/ore_raster_benchmark build/structure-profile.json 9 123456789 0 0 ordered
+```
+
+Local final results are
+`build/optimization-steps/ore-raster-{bits,ordered}-{origin,negative,positive}-final.json`.
+The production sphere helper is shared
+with this feature so the prototype cannot silently use a different vein shape.
+
+After extracting that helper, all native tests and the complete build/GPU,
+region, biome, geology, vegetation, preview/promotion, Terralith and structure
+suites passed again. A final 20-region comparison matched 20,480 decompressed
+chunk NBT records against the preceding ring build and measured 8,332 native
+chunks/s serially. The JAR's native library is byte-identical to that release.

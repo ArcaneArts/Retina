@@ -7,6 +7,9 @@ use crate::{
 use rayon::prelude::*;
 use serde::Deserialize;
 
+#[cfg(feature = "ore-raster-benchmark")]
+pub mod raster_benchmark;
+
 #[derive(Clone, Default, Deserialize)]
 pub struct HeightRange {
     pub min: i32,
@@ -636,54 +639,8 @@ fn vein(
         }
         return;
     }
-    let angle = random.unit() * std::f32::consts::PI;
-    let dx = angle.sin() * recipe.size as f32 / 8.0;
-    let dz = angle.cos() * recipe.size as f32 / 8.0;
-    let a = [
-        x as f32 + dx,
-        y as f32 + random.int(-2, 0) as f32,
-        z as f32 + dz,
-    ];
-    let b = [
-        x as f32 - dx,
-        y as f32 + random.int(-2, 0) as f32,
-        z as f32 - dz,
-    ];
-    // Vanilla's containment pruning avoids testing the interiors of hidden ellipsoids.
+    vein_spheres(recipe, x, y, z, random, &mut scratch.spheres);
     let VeinScratch { spheres, tested } = scratch;
-    spheres.clear();
-    spheres.extend((0..recipe.size).map(|i| {
-        let t = i as f32 / recipe.size as f32;
-        [
-            a[0] + (b[0] - a[0]) * t,
-            a[1] + (b[1] - a[1]) * t,
-            a[2] + (b[2] - a[2]) * t,
-            ((std::f32::consts::PI * t).sin() + 1.0) * random.unit() * recipe.size as f32 / 32.0
-                + 0.5,
-        ]
-    }));
-    for i in 0..spheres.len() {
-        if spheres[i][3] < 0.0 {
-            continue;
-        }
-        for j in i + 1..spheres.len() {
-            if spheres[j][3] < 0.0 {
-                continue;
-            }
-            let dr = spheres[i][3] - spheres[j][3];
-            let distance: f32 = (0..3)
-                .map(|k| (spheres[i][k] - spheres[j][k]).powi(2))
-                .sum();
-            if dr * dr > distance {
-                if dr > 0.0 {
-                    spheres[j][3] = -1.0;
-                } else {
-                    spheres[i][3] = -1.0;
-                    break;
-                }
-            }
-        }
-    }
     let reach =
         (recipe.size as f32 / 8.0).ceil() as i32 + (recipe.size as f32 / 16.0 + 0.5).ceil() as i32;
     let width = (reach * 2 + 3) as usize;
@@ -716,6 +673,63 @@ fn vein(
                         tested[index / 64] |= bit;
                         emit(xx, yy, zz, random.next());
                     }
+                }
+            }
+        }
+    }
+}
+
+fn vein_spheres(
+    recipe: &OreRecipe,
+    x: i32,
+    y: i32,
+    z: i32,
+    random: &mut Random,
+    spheres: &mut Vec<[f32; 4]>,
+) {
+    let angle = random.unit() * std::f32::consts::PI;
+    let dx = angle.sin() * recipe.size as f32 / 8.0;
+    let dz = angle.cos() * recipe.size as f32 / 8.0;
+    let a = [
+        x as f32 + dx,
+        y as f32 + random.int(-2, 0) as f32,
+        z as f32 + dz,
+    ];
+    let b = [
+        x as f32 - dx,
+        y as f32 + random.int(-2, 0) as f32,
+        z as f32 - dz,
+    ];
+    // Vanilla's containment pruning avoids testing the interiors of hidden ellipsoids.
+    spheres.clear();
+    spheres.extend((0..recipe.size).map(|i| {
+        let t = i as f32 / recipe.size as f32;
+        [
+            a[0] + (b[0] - a[0]) * t,
+            a[1] + (b[1] - a[1]) * t,
+            a[2] + (b[2] - a[2]) * t,
+            ((std::f32::consts::PI * t).sin() + 1.0) * random.unit() * recipe.size as f32 / 32.0
+                + 0.5,
+        ]
+    }));
+    for i in 0..spheres.len() {
+        if spheres[i][3] < 0.0 {
+            continue;
+        }
+        for j in i + 1..spheres.len() {
+            if spheres[j][3] < 0.0 {
+                continue;
+            }
+            let dr = spheres[i][3] - spheres[j][3];
+            let distance: f32 = (0..3)
+                .map(|k| (spheres[i][k] - spheres[j][k]).powi(2))
+                .sum();
+            if dr * dr > distance {
+                if dr > 0.0 {
+                    spheres[j][3] = -1.0;
+                } else {
+                    spheres[i][3] = -1.0;
+                    break;
                 }
             }
         }

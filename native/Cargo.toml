@@ -5,6 +5,14 @@ edition = "2024"
 rust-version = "1.87"
 publish = false
 
+[features]
+# Diagnostic prototype; production ore generation remains on the CPU.
+ore-raster-benchmark = []
+
+[[example]]
+name = "ore_raster_benchmark"
+required-features = ["ore-raster-benchmark"]
+
 [lib]
 name = "retina_worldgen"
 crate-type = ["cdylib", "rlib"]
