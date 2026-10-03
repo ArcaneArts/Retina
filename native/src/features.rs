@@ -97,19 +97,68 @@ fn choose(values: &[u16], h: u32) -> u16 {
 /// Each task owns one chunk. Vertical features stay in their supporting column,
 /// so scheduling and region boundaries cannot clip them or change their random seed.
 pub fn apply(r: ChunkRequest, p: &WorldProfile, mask: Option<&CaveMask>, blocks: &mut [u16]) {
+    apply_inner(r, p, mask, blocks, true);
+}
+fn apply_inner(
+    r: ChunkRequest,
+    p: &WorldProfile,
+    mask: Option<&CaveMask>,
+    blocks: &mut [u16],
+    bounded: bool,
+) {
     let Some(mask) = mask else {
         return;
     };
-    if !p.biomes.iter().any(|b| b.cave_kind != 0) {
+    if r.height < 8 || !p.biomes.iter().any(|b| b.cave_kind != 0) {
+        return;
+    }
+    // Biomes are constant in each 4×4×4 quart. Check the actual GPU field before
+    // reading the much larger strided block columns; this includes every possible
+    // cave-floor start, even if a surface/ceiling biome differs from its floor.
+    let mut eligible = [Some((6, r.height as usize)); 16];
+    let first_quart = (r.min_y + 6).div_euclid(4);
+    let last_quart = (r.min_y + r.height as i32 - 2).div_euclid(4);
+    if bounded {
+        for z in 0..4 {
+            for x in 0..4 {
+                let mut bounds = None;
+                for q in first_quart..=last_quart {
+                    if mask
+                        .biome(r.chunk_x * 16 + x * 4, q * 4, r.chunk_z * 16 + z * 4)
+                        .is_some_and(|id| {
+                            let biome = &p.biomes[id as usize];
+                            biome.cave_kind != 0 && biome.cave_features.floor != 0
+                        })
+                    {
+                        let start = (q * 4 - r.min_y).max(6) as usize;
+                        let end = (q * 4 + 4 - r.min_y) as usize;
+                        bounds = Some((bounds.map_or(start, |(first, _)| first), end));
+                    }
+                }
+                eligible[(z * 4 + x) as usize] = bounds;
+            }
+        }
+    }
+    if eligible.iter().all(Option::is_none) {
         return;
     }
     for z in 0..16 {
         for x in 0..16 {
+            let Some((first, last)) = eligible[(z / 4 * 4 + x / 4) as usize] else {
+                continue;
+            };
             let wx = r.chunk_x * 16 + x;
             let wz = r.chunk_z * 16 + z;
             let column = (z * 16 + x) as usize;
-            let mut layer = 6usize;
-            while layer + 1 < r.height as usize {
+            let mut layer = first;
+            // Do not invent a floor when the first eligible quart intersects an
+            // air span whose actual start was in an ineligible biome below it.
+            if first > 6 && blocks[(first - 1) * COLUMNS + column] == 0 {
+                while layer < r.height as usize && blocks[layer * COLUMNS + column] == 0 {
+                    layer += 1;
+                }
+            }
+            while layer < last && layer + 1 < r.height as usize {
                 if blocks[layer * COLUMNS + column] != 0 {
                     layer += 1;
                     continue;
@@ -221,6 +270,104 @@ pub fn apply(r: ChunkRequest, p: &WorldProfile, mask: Option<&CaveMask>, blocks:
                 }
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod scan_tests {
+    use super::*;
+    #[test]
+    fn quart_bounds_preserve_dense_dressing_across_air_spans_and_vertical_alignment() {
+        let noise = serde_json::json!({"frequency":0.001,"amplitude":1,"modifiers":[1]});
+        let biome = serde_json::json!({"id":"test:plain","climate":[0,0,0,0],"terrain":[0,0,0],"top":1,"filler":1,"underwater":1,"flags":0});
+        let mut cave = biome.clone();
+        cave["id"] = serde_json::json!("test:cave");
+        cave["cave_kind"] = serde_json::json!(1);
+        cave["cave_features"] = serde_json::json!({"floor":3,"clay":4,"plants":[5],"plant_chance":1,"replaceable":[false,true,false,true,true,false]});
+        let profile = WorldProfile::parse(serde_json::json!({
+            "biome_scale":128,"blend":0.55,"sea_level":63,"stone":1,"water":2,"bedrock":1,"deepslate":1,"snow":1,"ice":1,
+            "materials":["minecraft:air","minecraft:stone","minecraft:water","minecraft:moss_block","minecraft:clay","minecraft:short_grass"],
+            "biomes":[biome,cave],"noises":[noise,noise,noise,noise],"material_flags":[0,1,2,1,1,4],"heightmap_masks":[0,63,3,63,63,3]
+        }).to_string().as_bytes()).unwrap();
+        let mut dressed = 0;
+        for min_y in [-65, -64, -63, -1, 0, 3] {
+            for height in [4u32, 31, 64, 127] {
+                let r = ChunkRequest {
+                    seed: 42,
+                    chunk_x: -3,
+                    chunk_z: 5,
+                    min_y,
+                    height,
+                    base_height: 64.0,
+                    amplitude: 48.0,
+                    frequency: 0.008,
+                    reserved: 0,
+                };
+                let width = 18usize;
+                let surface_width = width + 30;
+                let layers = ((min_y + height as i32 - min_y.div_euclid(4) * 4 + 3) / 4) as usize;
+                let offset = (width * width * height as usize).div_ceil(32)
+                    + (surface_width * surface_width).div_ceil(32);
+                let mut mask = CaveMask {
+                    origin_x: r.chunk_x * 16 - 1,
+                    origin_z: r.chunk_z * 16 - 1,
+                    min_y,
+                    height,
+                    width,
+                    words: vec![
+                        0;
+                        offset
+                            + (surface_width / 4 * surface_width / 4 * layers).div_ceil(2)
+                    ],
+                };
+                for pattern in 0..5 {
+                    for i in 0..surface_width / 4 * surface_width / 4 * layers {
+                        let q = i / (surface_width / 4 * surface_width / 4);
+                        let active = match pattern {
+                            0 => false,
+                            1 => true,
+                            2 => q >= 3 && q <= layers / 2,
+                            3 => q % 3 == 1,
+                            _ => (i * 13 + q * 7) % 11 < 4,
+                        };
+                        let shift = (i % 2) * 16;
+                        mask.words[offset + i / 2] = (mask.words[offset + i / 2]
+                            & !(65535 << shift))
+                            | (u32::from(active) << shift);
+                    }
+                    let original: Vec<u16> = (0..r.block_count())
+                        .map(|i| {
+                            let y = i / COLUMNS;
+                            let c = i % COLUMNS;
+                            // Long spans crossing the eligibility boundary, short closed spans,
+                            // water endpoints, and open surface air all coexist.
+                            if y == 0 || y % 23 == 0 {
+                                1
+                            } else if y % 29 == 0 {
+                                2
+                            } else if (y + c % 7) % 17 < 13 {
+                                0
+                            } else {
+                                1
+                            }
+                        })
+                        .collect();
+                    let mut dense = original.clone();
+                    let mut bounded = original.clone();
+                    apply_inner(r, &profile, Some(&mask), &mut dense, false);
+                    apply(r, &profile, Some(&mask), &mut bounded);
+                    assert_eq!(
+                        bounded, dense,
+                        "min_y={min_y}, height={height}, pattern={pattern}"
+                    );
+                    dressed += dense.iter().zip(&original).filter(|(a, b)| a != b).count();
+                }
+            }
+        }
+        assert!(
+            dressed > 1000,
+            "fixtures exercise actual floor and plant writes"
+        );
     }
 }
 

@@ -4,8 +4,9 @@ The active goal covers six workstreams: complete registered biome coverage and
 indexed GPU climate selection; compact layered GPU material rules; local GPU
 aquifers; broader registered features and placement/provider support; cached
 specialized WGSL programs with better density semantics; and measured reductions
-in repeated Rust block scans. Only the first workstream is implemented so far.
-The remaining five are still required, along with final integrated validation,
+in repeated Rust block scans. The first workstream and an initial Rust scan
+optimization are implemented so far. The other workstreams remain required,
+along with final integrated validation,
 transfer-volume measurements and updated stage telemetry where new stages arise.
 
 ## Registered biome coverage and climate index
@@ -107,3 +108,49 @@ biomes. The structure suite verifies old palette migration with block properties
 intact. The landscape suite compares three-seed ocean coverage and biome spacing.
 The combined Terralith/BulkBiomes fixture also passes indexed/linear parity with
 418 biomes, GPU selection of IDs above 255, MCA decoding and temporary promotion.
+
+## Rust cave-dressing scans
+
+Cave dressing previously inspected every block column from the bedrock zone to
+the top of the world, even when none of its actual GPU quart biomes had a cave
+floor recipe. Each chunk now derives the first/last eligible floor quart for its
+16 horizontal quart columns. It skips columns with no applicable floor recipe,
+and limits the remaining block scans to those bounds. This uses the actual GPU
+biome IDs rather than a surface-biome guess or a height approximation.
+
+An air span crossing into the first eligible quart is skipped if its actual floor
+began in an ineligible biome below it. A span starting in an eligible quart still
+runs to its actual roof, including roofs outside the eligible range. Floor and
+roof recipes, plants, vines, random choices and mutation order remain unchanged.
+The small bound array is stack-local and needs no allocation, cache invalidation,
+additional dispatch or transfer.
+
+The existing assembler already fuses contiguous base/carving writes. NBT recycles
+scratch and palette lookups, emits uniform sections directly and scans final
+occupied sections for heightmaps. Maintaining heightmaps before ores, plants and
+structures would require subsequent correction, so those final-block metadata
+paths remain intact. The measured scan change targets cave dressing directly.
+
+Same machine/profiles/coordinates as above; baseline is native commit `905b5ad`,
+five warmups then 20 regions per run. Alternating baseline/candidate repeats:
+
+| Profile / run | Cave worker ms/chunk before | After | Native chunks/sec before | After |
+| --- | ---: | ---: | ---: | ---: |
+| Vanilla / first | 0.06968 | 0.00594 | 7,516 | 7,673 |
+| Vanilla / repeat | 0.06873 | 0.00585 | 7,558 | 7,787 |
+| Terralith / first | 0.08029 | 0.01965 | 6,281 | 6,495 |
+| Terralith / repeat | 0.08554 | 0.01706 | 6,216 | 6,652 |
+
+The CPU stage savings repeat at about 91% for vanilla and 75–80% for Terralith.
+Whole-region gains are smaller (2–7%) and sensitive to system load; do not equate
+the worker reduction with that much total speedup. A simpler horizontal-only
+prototype reduced vanilla worker time by 57% but did little for Terralith; only
+the tighter vertical-bound version is retained. Every candidate run matches all
+20,480 decompressed NBT records, with unchanged file sizes.
+
+Validation adds a dense-reference comparison over six vertical alignments, four
+heights and five biome patterns, including negative coordinates, tiny worlds,
+closed and open air spans, fluids and biome transitions. It verifies actual floor
+and plant writes, rather than only checking empty output. All 21 native unit tests,
+the full build and affected feature/geology/biome/region/preview suites pass.
+Raw comparison artifacts use `*-bounds-*` under `build/goal-baseline/`.
