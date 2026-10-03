@@ -1,5 +1,4 @@
-// Two GPU-only stages: registry-driven 3D fields on a global four-block lattice,
-// then trilinear interpolation and final biome/roof classification into one bit per voxel.
+// GPU-only density, exterior classification and packed cavity masks.
 struct Request {
     origin_x: i32, origin_z: i32, min_y: i32, max_y: i32,
     seed_low: u32, seed_high: u32, base_height: f32, amplitude: f32,
@@ -171,6 +170,38 @@ fn interpolate(local: vec3<f32>, n: u32) -> vec4<f32> {
     result.w = mix(mix(nodes[j].w,nodes[j+1u].w,t.x),mix(nodes[j+n].w,nodes[j+n+1u].w,t.x),t.z);
     return result;
 }
+fn exterior_offset(r: Request) -> u32 {
+    let n = r.tile_side*4u+1u;
+    let bottom = i32(floor(f32(r.min_y)/4.0))*4;
+    return n*n*(u32((r.max_y-bottom+3)/4)+1u);
+}
+@compute @workgroup_size(64)
+fn cave_exterior(@builtin(global_invocation_id) id: vec3<u32>) {
+    let r = requests[0]; let width = r.tile_side*16u;
+    let word = id.x; if word >= width*width/4u { return; }
+    let bottom = i32(floor(f32(r.min_y)/4.0))*4;
+    var limits = vec4<f32>(0.0);
+    for(var b=0u;b<4u;b++) {
+        let index=word*4u+b; let x=index%width; let z=index/width;
+        let column=column_at(x,z,r.tile_side);
+        var roof=column.height;
+        if caves.globals.y>0u && bytecode[5]==0u {
+            // Height interpolation already defines the exterior terrain envelope.
+            // The finer 3D lattice can disagree by a few blocks at its upper zero
+            // crossing. That sky-connected negative interval is exterior air,
+            // not an underground cavity that should strip the selected surface.
+            roof=column.height-1;
+            while roof>r.min_y+5 {
+                let density=interpolate(vec3<f32>(f32(x),f32(roof-bottom),f32(z))*0.25,r.tile_side*4u+1u).x;
+                if density>=0.0 { break; }
+                roof-=1;
+            }
+        }
+        limits[b]=f32(roof);
+    }
+    // Four GPU-only limits per vector; this scratch never enters a readback.
+    nodes[exterior_offset(r)+word]=limits;
+}
 // The same GPU classification drives both the packed cavity volume and vegetation support.
 fn column_at(x: u32, z: u32, side: u32) -> Column {
     return columns[((z/16u)*side+x/16u)*256u+(z%16u)*16u+x%16u];
@@ -188,7 +219,9 @@ fn is_cave(x: u32, y: i32, z: u32, column: Column, r: Request) -> bool {
     let bottom = i32(floor(f32(r.min_y)/4.0))*4;
     let values = interpolate(vec3<f32>(f32(x),f32(y-bottom),f32(z))*0.25,r.tile_side*4u+1u);
     let biome = biome_sample(x,y,z,r);
-    var carved = caves.globals.y>0u && values.x<0.0;
+    let index=z*(r.tile_side*16u)+x;
+    let exterior=nodes[exterior_offset(r)+index/4u][index%4u];
+    var carved = caves.globals.y>0u && values.x<0.0 && f32(y)<exterior;
     for (var c=0u;c<4u;c++) {
         let settings = caves.biomes[biome].carvers[c];
         // Registry Y ranges locate tunnel centers, not their outer walls.

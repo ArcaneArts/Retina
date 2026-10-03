@@ -331,7 +331,7 @@ also assemble concurrently after the persistent GPU worker returns their masks.
 Assembly order is base terrain, caves, ores, cave decorations, then surface vegetation.
 
 GPU cave fields evaluate the registered final-density program. Legacy profiles use
-registered cave cheese, spaghetti, layer, roughness and pillar noise octaves/amplitudes. Two additional compute stages produce chambers, tunnels
+registered cave cheese, spaghetti, layer, roughness and pillar noise octaves/amplitudes. Additional compute stages produce chambers, tunnels
 and finite curved ravines using the biome's registered carver probability, center-height
 range, thickness and radius parameters. Interpolation and final cavity decisions
 happen on the GPU. Rust reads a bit-packed mask and replaces carved blocks with
@@ -339,6 +339,13 @@ air, lava below 26.3's global lava boundary, or water below sea level in ocean
 biomes. Bedrock stays protected; caves can break through the ground and hillsides.
 The GPU also emits one surface bit per halo column, so Rust skips tree and plant
 anchors over openings without reading back the halo's full cave volume.
+
+When heights come from registered final density, a GPU-only exterior pass separates
+the sky-connected negative interval from underground cavities. The height and
+cave lattices interpolate the surface differently; exterior air must not strip
+the selected topsoil. Biome carvers can still open caves and ravines through the
+surface. The scratch limits add no readback bytes and their time is included in
+F3's GPU cave-mask stage.
 
 These shapes approximate vanilla carvers/noise caves; they do not replay vanilla
 random walks or the full aquifer pressure model. Unsupported registry feature

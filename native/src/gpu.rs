@@ -15,6 +15,7 @@ pub(crate) struct Gpu {
     queue: wgpu::Queue,
     sites_pipeline: wgpu::ComputePipeline,
     cave_nodes_pipeline: wgpu::ComputePipeline,
+    cave_exterior_pipeline: wgpu::ComputePipeline,
     cave_mask_pipeline: wgpu::ComputePipeline,
     cave_layout: wgpu::BindGroupLayout,
     cave_profiles: HashMap<u32, wgpu::Buffer>,
@@ -172,6 +173,7 @@ impl Gpu {
             })
         };
         let cave_nodes_pipeline = cave_pipeline("cave_nodes");
+        let cave_exterior_pipeline = cave_pipeline("cave_exterior");
         let cave_mask_pipeline = cave_pipeline("cave_mask");
         let sites_pipeline = pipeline("biome_sites");
         let columns_pipeline = pipeline("main");
@@ -235,6 +237,7 @@ impl Gpu {
             queue,
             sites_pipeline,
             cave_nodes_pipeline,
+            cave_exterior_pipeline,
             cave_mask_pipeline,
             cave_layout,
             cave_profiles: HashMap::new(),
@@ -347,7 +350,9 @@ impl Gpu {
         let node_side = requests[0].tile_side * 4 + 1;
         let node_bottom = requests[0].min_y.div_euclid(4) * 4;
         let node_height = ((requests[0].max_y - node_bottom + 3) / 4 + 1) as u32;
-        let nodes_size = node_side as u64 * node_side as u64 * node_height as u64 * 16;
+        // Append four exterior limits per vector, remaining entirely on the GPU.
+        let nodes_size = node_side as u64 * node_side as u64 * node_height as u64 * 16
+            + surface_width as u64 * surface_width as u64 * 4;
         if cave_side > 0 {
             if !self.cave_profiles.contains_key(&profile_id) {
                 let data = profile
@@ -509,9 +514,26 @@ impl Gpu {
                 pass.dispatch_workgroups((node_side * node_side).div_ceil(64), node_height, 1);
             }
             {
+                let mut writes = timestamp_writes(timings::CAVE_MASK);
+                if let Some(ref mut writes) = writes {
+                    writes.end_of_pass_write_index = None;
+                }
+                let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                    label: Some("Retina GPU exterior density classification"),
+                    timestamp_writes: writes,
+                });
+                pass.set_pipeline(&self.cave_exterior_pipeline);
+                pass.set_bind_group(0, &cave_group, &[]);
+                pass.dispatch_workgroups((surface_width * surface_width / 4).div_ceil(64), 1, 1);
+            }
+            {
+                let mut writes = timestamp_writes(timings::CAVE_MASK);
+                if let Some(ref mut writes) = writes {
+                    writes.beginning_of_pass_write_index = None;
+                }
                 let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
                     label: Some("Retina GPU interpolated cave mask"),
-                    timestamp_writes: timestamp_writes(timings::CAVE_MASK),
+                    timestamp_writes: writes,
                 });
                 pass.set_pipeline(&self.cave_mask_pipeline);
                 pass.set_bind_group(0, &cave_group, &[]);

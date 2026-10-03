@@ -43,6 +43,7 @@ public final class NativeBiomeIntegrationTest {
         var nativeTerrain = NativeTerrain.instance();
         require(nativeTerrain.registerProfile(profile.json()) == profile.nativeId(), "identical profiles reuse the GPU upload");
         RegistryGpuProgramIntegrationChecks.checkSurfaceInterpolation(profile);
+        RegistryGpuProgramIntegrationChecks.checkNoiseSurfacePreservation(profile);
         var seenBiomes = new HashSet<Integer>();
         var seenMaterials = new HashSet<Integer>();
         var decorations = com.google.gson.JsonParser.parseString(profile.json()).getAsJsonObject().getAsJsonArray("decorations");
