@@ -76,6 +76,7 @@ public final class NativeDatapackIntegrationTest {
                 require(profile.biomes().stream().anyMatch(b -> b.unwrapKey().orElseThrow().identifier().getNamespace().equals("terralith")), "pack biomes are imported");
                 System.out.println("QA_EVT {\"event\":\"datapack_registry_import\",\"status\":\"pass\",\"context\":{\"mode\":\""+mode+"\",\"biomes\":"+profile.biomes().size()+",\"materials\":"+profile.materials().length+"}}");
                 if (mode.equals("mca")) {
+                    RegistryDecorationIntegrationChecks.check(profile, true);
                     var seen = new HashSet<String>();boolean wideBiome=false;
                     for (int z = -64; z <= 64; z += 8) for (int x = -64; x <= 64; x += 8) {
                         var r = new TerrainRequest(123456789L,x*32,z*32,-64,384,64,48,.008F,profile.nativeId());

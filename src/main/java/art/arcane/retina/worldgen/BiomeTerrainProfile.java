@@ -130,6 +130,7 @@ public record BiomeTerrainProfile(int nativeId, int seaLevel, BlockState[] mater
         profile.add("structures",StructureProfile.export(registry,nativeBiomes,materials,structures));
         GeologyProfile.export(registry, nativeBiomes, biomes, materials, profile, minY, height, sea);
         TerrainFeatureProfile.finishReplacementTables(biomes, materials);
+        DecorationProfile.finishPlacements(profile.getAsJsonArray("decorations"), materials);
         DecorationProfile.materialFlags(profile, materials);
         var palette = new JsonArray();
         for (var state : materials.keySet()) palette.add(BlockState.CODEC.encodeStart(JsonOps.INSTANCE, state).getOrThrow());

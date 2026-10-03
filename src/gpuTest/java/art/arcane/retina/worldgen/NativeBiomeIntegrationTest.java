@@ -36,7 +36,7 @@ public final class NativeBiomeIntegrationTest {
         net.minecraft.tags.TagLoader.loadTagsForExistingRegistries(resources, net.minecraft.core.RegistryAccess.fromRegistryOfRegistries(net.minecraft.core.registries.BuiltInRegistries.REGISTRY)).forEach(net.minecraft.core.Registry.PendingTags::apply);
         var registry = VanillaRegistries.createWorldLookup();
         var biomeRegistry = registry.lookupOrThrow(Registries.BIOME);
-        var ids = List.of("plains", "forest", "birch_forest", "taiga", "old_growth_pine_taiga", "snowy_plains", "desert", "savanna", "badlands", "jungle", "mangrove_swamp", "windswept_hills", "jagged_peaks", "ocean", "warm_ocean", "frozen_ocean");
+        var ids = List.of("plains", "forest", "dark_forest", "birch_forest", "taiga", "old_growth_pine_taiga", "snowy_plains", "desert", "savanna", "badlands", "jungle", "mangrove_swamp", "windswept_hills", "jagged_peaks", "ocean", "warm_ocean", "frozen_ocean");
         List<Holder<Biome>> biomes = ids.stream().map(id -> (Holder<Biome>) biomeRegistry.getOrThrow(ResourceKey.create(Registries.BIOME, Identifier.withDefaultNamespace(id)))).toList();
         var profile = BiomeTerrainProfile.load(registry, new RetinaBiomeSource(biomes, 256, 0.55F), -64, 384);
         var importedCell=com.google.gson.JsonParser.parseString(profile.json()).getAsJsonObject().getAsJsonObject("registry_program").getAsJsonArray("terrain_cell");
@@ -53,6 +53,7 @@ public final class NativeBiomeIntegrationTest {
         var exportedKinds = new HashSet<String>();
         for (var recipe : decorations) exportedKinds.add(recipe.getAsJsonObject().get("kind").getAsString());
         require(exportedKinds.containsAll(List.of("tree", "plant")), "exported trees and plants");
+        RegistryDecorationIntegrationChecks.check(profile, false);
         checkJungle(profile, nativeTerrain);
         var decorationCounts = new java.util.concurrent.atomic.AtomicLongArray(5);
         var chunks = new HashMap<ChunkPos, NativeTerrain.Columns>();

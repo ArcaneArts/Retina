@@ -8,6 +8,8 @@ use rayon::prelude::*;
 use serde::Deserialize;
 use std::collections::{HashSet, VecDeque};
 
+pub mod placement;
+
 #[derive(Clone, Deserialize)]
 pub struct TreeDecorator {
     pub kind: String,
@@ -45,6 +47,10 @@ pub struct Recipe {
     pub spread: [i32; 3],
     #[serde(default)]
     pub water_offsets: Vec<[i32; 3]>,
+    #[serde(default)]
+    pub placement_salt: Option<i64>,
+    #[serde(default)]
+    pub placement: Option<Vec<placement::Modifier>>,
     #[serde(flatten)]
     pub feature: Kind,
 }
@@ -73,23 +79,28 @@ pub enum Kind {
 }
 impl Recipe {
     pub fn validate(&self, material_count: usize) -> Result<(), String> {
-        if !self.density.is_finite()
-            || !self.low_density.is_finite()
-            || !self.rarity.is_finite()
-            || !self.tries.is_finite()
-            || self.density < 0.0
-            || self.low_density < 0.0
-            || self.rarity < 1.0
-            || !(1.0..=4096.0).contains(&self.tries)
-            || self.spread.iter().any(|v| !(0..=15).contains(v))
+        if let Some(program) = &self.placement {
+            placement::validate(program, material_count)?;
+        }
+        if self.placement.is_none()
+            && (!self.density.is_finite()
+                || !self.low_density.is_finite()
+                || !self.rarity.is_finite()
+                || !self.tries.is_finite()
+                || self.density < 0.0
+                || self.low_density < 0.0
+                || self.rarity < 1.0
+                || !(1.0..=4096.0).contains(&self.tries)
+                || self.spread.iter().any(|v| !(0..=15).contains(v)))
         {
             return Err(format!("invalid decoration placement: {}", self.source));
         }
-        if self
-            .water_offsets
-            .iter()
-            .flatten()
-            .any(|v| !(-15..=15).contains(v))
+        if self.placement.is_none()
+            && self
+                .water_offsets
+                .iter()
+                .flatten()
+                .any(|v| !(-15..=15).contains(v))
         {
             return Err("decoration water offset exceeds terrain halo".into());
         }
@@ -269,8 +280,30 @@ fn anchors(
     ids.sort_unstable();
     let center = field.column(chunk_x * 16 + 8, chunk_z * 16 + 8).unwrap();
     let mut blocks = Vec::new();
+    let mut candidates = Vec::new();
+    let mut groups = std::collections::HashMap::new();
     for id in ids {
         let recipe = &profile.decorations[id as usize];
+        if let Some(program) = &recipe.placement {
+            let salt = recipe.placement_salt.unwrap_or(recipe.salt) as u64;
+            let group = *groups.entry(salt).or_insert(id);
+            let rng = Rng::new(
+                request.seed
+                    ^ salt
+                    ^ mix(chunk_x as u32 as u64)
+                    ^ mix((chunk_z as u32 as u64) << 32),
+            );
+            placement::expand(
+                program,
+                id,
+                group,
+                [chunk_x * 16, request.min_y, chunk_z * 16],
+                rng,
+                field,
+                &mut candidates,
+            );
+            continue;
+        }
         let mut rng = Rng::new(
             request.seed
                 ^ recipe.salt as u64
@@ -363,9 +396,80 @@ fn anchors(
                     &mut rng,
                     &mut blocks,
                     mask,
+                    None,
                 ),
             }
         }
+    }
+    candidates.sort_by(|a, b| {
+        a.group
+            .cmp(&b.group)
+            .then(a.order.cmp(&b.order))
+            .then(a.recipe.cmp(&b.recipe))
+    });
+    let mut overlay = placement::Overlay::default();
+    let mut evaluation_cache = placement::EvaluationCache::new();
+    for candidate in candidates {
+        let recipe = &profile.decorations[candidate.recipe as usize];
+        let Some(position) = placement::position(
+            &candidate,
+            recipe,
+            field,
+            profile,
+            request,
+            &overlay,
+            &mut evaluation_cache,
+        ) else {
+            continue;
+        };
+        let [x, y, z] = position;
+        let Some(column) = field.column(x, z) else {
+            continue;
+        };
+        if mask.is_some_and(|m| y == column.height && m.surface_carved(x, z)) {
+            continue;
+        }
+        let start = blocks.len();
+        let mut rng = Rng::new(candidate.seed);
+        match &recipe.feature {
+            Kind::Tree { .. } => tree(
+                field,
+                profile,
+                request,
+                recipe,
+                x,
+                z,
+                &mut rng,
+                &mut blocks,
+                mask,
+                Some((y, &overlay)),
+            ),
+            Kind::Plant { states } => {
+                let low = column.packed & (1 << 27) != 0;
+                if let Some(state) = weighted(
+                    states
+                        .iter()
+                        .filter(|s| s.band == 0 || s.band == if low { 1 } else { 2 }),
+                    |s| s.weight,
+                    &mut rng,
+                ) {
+                    let soil = overlay.material(field, profile, request, [x, y - 1, z]);
+                    if soil.is_some_and(|s| {
+                        profile.material_flags[s as usize] & if state.dry { 2 } else { 1 } != 0
+                    }) {
+                        blocks.push(WorldBlock {
+                            x,
+                            y,
+                            z,
+                            material: state.lower,
+                            upper: state.upper,
+                            role: PLANT,
+                        });
+                    }
+                }
+            }
+        }
+        overlay.commit(&blocks, start, field, profile, request);
     }
     blocks
 }
@@ -380,6 +484,7 @@ fn tree(
     rng: &mut Rng,
     blocks: &mut Vec<WorldBlock>,
     mask: Option<&crate::geology::CaveMask>,
+    placed: Option<(i32, &placement::Overlay)>,
 ) {
     let Kind::Tree {
         trunk_shape,
@@ -400,14 +505,17 @@ fn tree(
         return;
     };
     let ground = field.column(x, z).unwrap();
-    let ground_material = ground.material(ground.height - 1, request.min_y, Some(profile));
+    let ground_y = placed.map_or(ground.height, |p| p.0);
+    let ground_material = placed
+        .and_then(|p| p.1.material(field, profile, request, [x, ground_y - 1, z]))
+        .unwrap_or_else(|| ground.material(ground_y - 1, request.min_y, Some(profile)));
     let snowy_soil = ground_material == profile.snow
         && profile.material_flags[(ground.materials >> 16) as usize] & 1 != 0;
     if profile.material_flags[ground_material as usize] & 1 == 0 && !snowy_soil {
         return;
     }
     let h = (height[0] + rng.below(height[1] + 1) + rng.below(height[2] + 1)).max(1);
-    let base_y = ground.height + rng.range(*root_offset);
+    let base_y = ground_y + rng.range(*root_offset);
     if base_y + h + 4 >= request.min_y + request.height as i32 {
         return;
     }
@@ -432,6 +540,10 @@ fn tree(
         field
             .column(wx, wz)
             .is_none_or(|c| wy < c.surface_height(Some(profile)))
+            || placed.is_some_and(|p| {
+                p.1.material(field, profile, request, [wx, wy, wz])
+                    .is_some_and(|m| m != 0 && profile.material_flags[m as usize] & (4 | 16) == 0)
+            })
     }) {
         return;
     }
@@ -451,7 +563,7 @@ fn tree(
             for wx in 0..width {
                 blocks.push(WorldBlock {
                     x: x + wx,
-                    y: ground.height - 1,
+                    y: ground_y - 1,
                     z: z + wz,
                     material: *soil,
                     upper: 0,
@@ -910,6 +1022,8 @@ mod tests {
         };
         let recipe = Recipe {
             source: "test:mega_jungle".into(),
+            placement_salt: None,
+            placement: None,
             salt: 0,
             density: 1.0,
             low_density: 1.0,
@@ -962,6 +1076,7 @@ mod tests {
                 16,
                 &mut Rng::new(seed),
                 &mut blocks,
+                None,
                 None,
             );
             let leaves: HashSet<_> = blocks

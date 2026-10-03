@@ -7,9 +7,11 @@ import net.minecraft.core.Holder;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.Direction;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.tags.BlockTags;
+import net.minecraft.tags.TagKey;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.block.*;
 import net.minecraft.world.level.block.state.BlockState;
@@ -41,7 +43,7 @@ final class DecorationProfile {
             var features = biomes.get(i).value().getGenerationSettings().features();
             int step = GenerationStep.Decoration.VEGETAL_DECORATION.ordinal();
             if (features.size() > step) for (var holder : features.get(step)) {
-                String name = holder.unwrapKey().map(k -> k.identifier().toString()).orElse("inline/" + selected.size());
+                String name = holder.unwrapKey().map(k -> k.identifier().toString()).orElse("inline/" + biomes.get(i).unwrapKey().map(k -> k.identifier().toString()).orElse(Integer.toString(i)) + "/" + selected.size());
                 var before = new ArrayList<Integer>();
                 exporter.placed(holder.value(), new Placement(), 1, name, before, 0);
                 for (int id : before) selected.add(id);
@@ -57,18 +59,23 @@ final class DecorationProfile {
         int xSpread = 0, ySpread = 0, zSpread = 0;
         boolean surface = false, noiseCount = false;
         JsonArray waterOffsets = new JsonArray();
+        JsonArray program = new JsonArray();
+        long placementSalt;
         Placement copy() {
             var p = new Placement(); p.density = density; p.lowDensity = lowDensity; p.rarity = rarity; p.tries = tries;
-            p.xSpread = xSpread; p.ySpread = ySpread; p.zSpread = zSpread; p.surface = surface; p.noiseCount = noiseCount; p.waterOffsets = waterOffsets.deepCopy(); return p;
+            p.xSpread = xSpread; p.ySpread = ySpread; p.zSpread = zSpread; p.surface = surface; p.noiseCount = noiseCount; p.waterOffsets = waterOffsets.deepCopy(); p.program = program.deepCopy(); p.placementSalt = placementSalt; return p;
         }
     }
     private void placed(PlacedFeature placed, Placement previous, double chance, String path, List<Integer> selected, int depth) {
+        if (chance <= 0) return;
         if (depth > 16) throw new IllegalArgumentException("Recursive decoration feature: " + path);
         var p = previous.copy();
+        if (depth == 0) p.placementSalt = salt(path);
         for (var modifier : placed.placement()) {
             var json = PlacementModifier.CODEC.encodeStart(registry.createSerializationContext(JsonOps.INSTANCE), modifier).getOrThrow().getAsJsonObject();
             switch (type(json)) {
                 case "count" -> {
+                    if (!supportedIntProvider(json.get("count"))) { unsupported.add("count:" + json.get("count")); return; }
                     double n = mean(json.get("count"));
                     if (p.surface) p.tries *= n;
                     else { p.density *= n; p.lowDensity *= n; }
@@ -81,30 +88,44 @@ final class DecorationProfile {
                 case "noise_based_count" -> { unsupported.add("noise_based_count"); return; }
                 case "rarity_filter" -> p.rarity *= json.get("chance").getAsDouble();
                 case "heightmap" -> p.surface = true;
-                case "offset" -> { p.xSpread += extent(json.get("x")); p.ySpread += extent(json.get("y")); p.zSpread += extent(json.get("z")); }
-                case "block_predicate_filter" -> waterOffsets(json.getAsJsonObject("predicate"), p.waterOffsets);
+                case "offset" -> {
+                    if (!supportedIntProvider(json.get("x")) || !supportedIntProvider(json.get("y")) || !supportedIntProvider(json.get("z"))) { unsupported.add("offset:" + json); return; }
+                    p.xSpread += extent(json.get("x")); p.ySpread += extent(json.get("y")); p.zSpread += extent(json.get("z"));
+                }
+                case "block_predicate_filter" -> {
+                    if (!supportedPredicate(json.getAsJsonObject("predicate"))) { unsupported.add("predicate:" + json.get("predicate")); return; }
+                    waterOffsets(json.getAsJsonObject("predicate"), p.waterOffsets);
+                }
                 case "in_square", "biome", "surface_water_depth_filter" -> { }
                 default -> { unsupported.add("placement:" + type(json)); return; }
             }
+            p.program.add(json.deepCopy());
         }
         var feature = placed.feature().value();
         if (feature instanceof RandomSelectorFeature random) {
             double remaining = chance;
             for (int i = 0; i < random.features().size(); i++) {
                 var option = random.features().get(i);
-                placed(option.feature().value(), p, remaining * option.chance(), path + "/choice" + i, selected, depth + 1);
+                double low = 1 - remaining / chance;
+                var branch = selection(p, low, low + remaining / chance * option.chance());
+                placed(option.feature().value(), branch, remaining * option.chance(), path + "/choice" + i, selected, depth + 1);
                 remaining *= 1 - option.chance();
             }
-            placed(random.defaultFeature().value(), p, remaining, path + "/default", selected, depth + 1);
+            placed(random.defaultFeature().value(), selection(p, 1 - remaining / chance, 1), remaining, path + "/default", selected, depth + 1);
         } else if (feature instanceof SimpleRandomSelectorFeature random) {
-            for (int i = 0; i < random.features().size(); i++) placed(random.features().get(i).value(), p, chance / random.features().size(), path + "/choice" + i, selected, depth + 1);
+            for (int i = 0; i < random.features().size(); i++) placed(random.features().get(i).value(), selection(p, (double)i / random.features().size(), (double)(i+1) / random.features().size()), chance / random.features().size(), path + "/choice" + i, selected, depth + 1);
         } else if (feature instanceof RandomBooleanSelectorFeature random) {
-            placed(random.featureTrue().value(), p, chance * 0.5, path + "/true", selected, depth + 1);
-            placed(random.featureFalse().value(), p, chance * 0.5, path + "/false", selected, depth + 1);
+            placed(random.featureTrue().value(), selection(p, 0, .5), chance * 0.5, path + "/true", selected, depth + 1);
+            placed(random.featureFalse().value(), selection(p, .5, 1), chance * 0.5, path + "/false", selected, depth + 1);
         } else if (feature instanceof WeightedRandomSelectorFeature random) {
             double total = random.features().unwrap().stream().mapToInt(w -> w.weight()).sum();
-            int i = 0;
-            for (var w : random.features().unwrap()) placed(w.value().value(), p, chance * w.weight() / total, path + "/choice" + i++, selected, depth + 1);
+            if (total <= 0) return;
+            int i = 0; double low = 0;
+            for (var w : random.features().unwrap()) {
+                double high = low + w.weight() / total;
+                placed(w.value().value(), selection(p, low, high), chance * w.weight() / total, path + "/choice" + i++, selected, depth + 1);
+                low = high;
+            }
         } else if (feature instanceof TreeFeature tree) {
             var data = tree(tree);
             if (data != null) emit(path, p, chance, "tree", data, selected);
@@ -132,6 +153,121 @@ final class DecorationProfile {
         } else unsupported.add(feature.getClass().getSimpleName());
     }
 
+    private static Placement selection(Placement parent, double low, double high) {
+        var result = parent.copy();
+        var op = new JsonObject(); op.addProperty("type", "select"); op.addProperty("min", low); op.addProperty("max", high);
+        result.program.add(op); return result;
+    }
+
+    private static boolean supportedIntProvider(JsonElement value) {
+        if (value == null || value.isJsonPrimitive()) return true;
+        var object = value.getAsJsonObject();
+        return switch (type(object)) {
+            case "constant", "uniform", "biased_to_bottom", "trapezoid", "clamped_normal" -> true;
+            case "clamped" -> supportedIntProvider(object.get("source"));
+            case "weighted_list" -> object.getAsJsonArray("distribution").asList().stream().allMatch(e -> supportedIntProvider(e.getAsJsonObject().get("data")));
+            default -> false;
+        };
+    }
+
+    private static boolean supportedPredicate(JsonObject p) {
+        return switch (type(p)) {
+            case "all_of", "any_of" -> p.getAsJsonArray("predicates").asList().stream().allMatch(e -> supportedPredicate(e.getAsJsonObject()));
+            case "not" -> supportedPredicate(p.getAsJsonObject("predicate"));
+            case "matching_blocks", "matching_block_tag", "matching_fluids", "replaceable", "true" -> true;
+            case "would_survive" -> BlockState.CODEC.parse(JsonOps.INSTANCE, p.get("state")).result().map(s -> s.getBlock() instanceof VegetationBlock).orElse(false);
+            default -> false;
+        };
+    }
+
+    /** Resolve tags/material predicates after every registry exporter has extended the palette. */
+    static void finishPlacements(JsonArray recipes, LinkedHashMap<BlockState, Integer> palette) {
+        for (var element : recipes) {
+            var recipe = element.getAsJsonObject();
+            for (var value : recipe.getAsJsonArray("placement")) {
+                var op = value.getAsJsonObject();
+                String kind = type(op);
+                op.addProperty("type", kind);
+                if (kind.equals("heightmap")) {
+                    op.addProperty("map", Heightmap.Types.valueOf(op.remove("heightmap").getAsString()).ordinal());
+                }
+                if (kind.equals("block_predicate_filter")) op.add("predicate", predicate(op.getAsJsonObject("predicate"), palette));
+                normalizeTypes(op);
+            }
+        }
+    }
+
+    private static void normalizeTypes(JsonElement value) {
+        if (value.isJsonObject()) {
+            var object = value.getAsJsonObject();
+            if (object.has("type")) object.addProperty("type", type(object));
+            for (var child : object.entrySet()) normalizeTypes(child.getValue());
+        } else if (value.isJsonArray()) {
+            for (var child : value.getAsJsonArray()) normalizeTypes(child);
+        }
+    }
+
+    private static TagKey<Block> survivalSoil(BlockState state) {
+        if (state.getBlock() instanceof MangrovePropaguleBlock) {
+            return state.getValue(MangrovePropaguleBlock.HANGING)
+                    ? BlockTags.SUPPORTS_HANGING_MANGROVE_PROPAGULE : BlockTags.SUPPORTS_MANGROVE_PROPAGULE;
+        }
+        return state.getBlock() instanceof DryVegetationBlock ? BlockTags.SUPPORTS_DRY_VEGETATION : BlockTags.SUPPORTS_VEGETATION;
+    }
+
+    private static JsonObject predicate(JsonObject input, LinkedHashMap<BlockState, Integer> palette) {
+        String kind = type(input);
+        var output = new JsonObject();
+        output.addProperty("type", kind);
+        if (kind.equals("all_of") || kind.equals("any_of")) {
+            var children = new JsonArray();
+            for (var child : input.getAsJsonArray("predicates")) children.add(predicate(child.getAsJsonObject(), palette));
+            output.add("predicates", children);
+            return output;
+        }
+        if (kind.equals("not")) {
+            output.add("predicate", predicate(input.getAsJsonObject("predicate"), palette));
+            return output;
+        }
+        if (kind.equals("true")) return output;
+        int[] offset = input.has("offset") ? new Gson().fromJson(input.get("offset"), int[].class) : new int[3];
+        BlockState survival = kind.equals("would_survive") ? BlockState.CODEC.parse(JsonOps.INSTANCE, input.get("state")).getOrThrow() : null;
+        if (survival != null) {
+            offset[1] += survival.getBlock() instanceof MangrovePropaguleBlock && survival.getValue(MangrovePropaguleBlock.HANGING) ? 1 : -1;
+        }
+        var allowed = new JsonArray();
+        for (var entry : palette.entrySet()) {
+            var state = entry.getKey();
+            boolean matches = switch (kind) {
+                case "matching_blocks" -> matchesBlock(input.get("blocks"), state);
+                case "matching_block_tag" -> state.is(TagKey.create(Registries.BLOCK, Identifier.parse(input.get("tag").getAsString())));
+                case "matching_fluids" -> matchesFluid(input.get("fluids"), state);
+                case "replaceable" -> state.canBeReplaced();
+                case "would_survive" -> state.is(survivalSoil(survival));
+                default -> throw new IllegalArgumentException("Unsupported decoration predicate " + input);
+            };
+            if (matches) allowed.add(entry.getValue());
+        }
+        output.addProperty("type", "material");
+        output.add("offset", new Gson().toJsonTree(offset));
+        output.add("allowed", allowed);
+        return output;
+    }
+
+    private static boolean matchesBlock(JsonElement choices, BlockState state) {
+        if (choices.isJsonArray()) return choices.getAsJsonArray().asList().stream().anyMatch(c -> matchesBlock(c, state));
+        String id = choices.getAsString();
+        return id.startsWith("#") ? state.is(TagKey.create(Registries.BLOCK, Identifier.parse(id.substring(1))))
+                : BuiltInRegistries.BLOCK.getKey(state.getBlock()).equals(Identifier.parse(id));
+    }
+
+    private static boolean matchesFluid(JsonElement choices, BlockState state) {
+        if (choices.isJsonArray()) return choices.getAsJsonArray().asList().stream().anyMatch(c -> matchesFluid(c, state));
+        String id = choices.getAsString();
+        return id.startsWith("#") ? state.getFluidState().is(TagKey.create(Registries.FLUID, Identifier.parse(id.substring(1))))
+                : BuiltInRegistries.FLUID.getKey(state.getFluidState().getType()).equals(Identifier.parse(id));
+    }
+
     private static void waterOffsets(JsonObject predicate, JsonArray offsets) {
         if (type(predicate).equals("all_of")) {
             for (var child : predicate.getAsJsonArray("predicates")) waterOffsets(child.getAsJsonObject(), offsets);
@@ -154,6 +290,7 @@ final class DecorationProfile {
         if (id == null) {
             id = recipes.size(); ids.put(path, id);
             data.addProperty("source", path); data.addProperty("salt", salt(path)); data.addProperty("kind", kind);
+            data.addProperty("placement_salt", p.placementSalt); data.add("placement", p.program.deepCopy());
             data.addProperty("density", p.density * chance); data.addProperty("low_density", p.lowDensity * chance);
             data.add("water_offsets", p.waterOffsets.deepCopy());
             data.addProperty("noise_count", p.noiseCount); data.addProperty("rarity", p.rarity);
@@ -266,10 +403,12 @@ final class DecorationProfile {
         if (value.isJsonPrimitive()) return value.getAsDouble();
         var object = value.getAsJsonObject();
         if (object.has("distribution")) { double sum = 0, weight = 0; for (var e : object.getAsJsonArray("distribution")) { var w = e.getAsJsonObject(); double n = w.get("weight").getAsDouble(); sum += n * mean(w.get("data")); weight += n; } return sum / weight; }
+        if (type(object).equals("constant")) return object.get("value").getAsDouble();
+        if (type(object).equals("clamped_normal")) return Math.clamp(object.get("mean").getAsDouble(), object.get("min_inclusive").getAsDouble(), object.get("max_inclusive").getAsDouble());
         if (type(object).equals("clamped")) {
             double min = object.get("min_inclusive").getAsDouble(), max = object.get("max_inclusive").getAsDouble();
-            var source = object.getAsJsonObject("source");
-            if (type(source).equals("uniform")) { int low = source.get("min_inclusive").getAsInt(), high = source.get("max_inclusive").getAsInt(); double sum = 0; for (int i = low; i <= high; i++) sum += Math.clamp(i, min, max); return sum / (high - low + 1); }
+            var source = object.get("source");
+            if (source.isJsonObject() && type(source.getAsJsonObject()).equals("uniform")) { var distribution = source.getAsJsonObject(); int low = distribution.get("min_inclusive").getAsInt(), high = distribution.get("max_inclusive").getAsInt(); double sum = 0; for (int i = low; i <= high; i++) sum += Math.clamp(i, min, max); return sum / (high - low + 1); }
             return Math.clamp(mean(source), min, max);
         }
         if (object.has("min_inclusive")) return (object.get("min_inclusive").getAsDouble() + object.get("max_inclusive").getAsDouble()) / 2;

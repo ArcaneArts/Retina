@@ -33,6 +33,10 @@ wavelengths and Voronoi spacing while retaining datapack noise/spacing ratios.
 Oceans fill to the registry sea level, with ice in cold biomes; bedrock and deepslate
 form the lower layers. Grass, ferns, flowers, tall plants, bushes and biome-specific
 wood/leaves are assembled in Rust from vanilla's registered decoration recipes.
+Counts, rarity, selectors, offsets, heightmaps and soil/air filters retain their
+registered placement order. A live canopy overlay rejects covered planting sites
+instead of treating each attempted tree as a successful tree. See
+[decoration placement](docs/DECORATION_PLACEMENT.md) for supported rules and limits.
 Creative mode with commands enabled is useful for testing. Press **F3**, then fly
 into unexplored terrain or use `/tp @s 4096 160 4096` to trigger generation.
 
