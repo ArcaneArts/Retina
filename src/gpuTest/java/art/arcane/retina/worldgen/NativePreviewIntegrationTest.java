@@ -94,11 +94,12 @@ public final class NativePreviewIntegrationTest {
             var bridge = new RegionStorageBridge() {
                 public void retina$configure(RegionCoordinator coordinator) { }
                 public Path retina$folder() { return save; }
+                public void retina$request(ChunkPos position) { }
                 public void retina$closeRegion(ChunkPos position) { }
             };
             Files.createFile(save.resolve("r.-1.0.mca")); // DH probes leave empty RegionFile placeholders.
             var beforePromotion=NativeTerrain.instance().timings(generator.profile().nativeId());
-            new RegionCoordinator(generator, seed).prepare(position, bridge);
+            new RegionCoordinator(generator, seed, save).prepare(position, bridge);
             var afterPromotion=NativeTerrain.instance().timings(generator.profile().nativeId());
             require(afterPromotion.chunks()==beforePromotion.chunks() && afterPromotion.gpuJobs()==beforePromotion.gpuJobs()
                     && afterPromotion.workerNanos()==beforePromotion.workerNanos(), "promotion adds neither GPU nor Rust generation time");
@@ -106,6 +107,38 @@ public final class NativePreviewIntegrationTest {
             require(generator.metrics().snapshot().promotions() == 1 && generator.metrics().snapshot().total() == 1024, "warm preview is promoted without duplicate terrain production");
             require(Files.isRegularFile(save.resolve("r.-1.0.mca")), "actual Minecraft load publishes the cached region");
             System.out.println("QA_EVT {\"event\":\"temporary_mca_promotion\",\"status\":\"pass\"}");
+
+            var coordinator = new RegionCoordinator(generator, seed, save);
+            var next = new ChunkPos(64, 0);
+            var following = new ChunkPos(96, 0);
+            long before = generator.metrics().snapshot().previewRegions();
+            coordinator.request(next); coordinator.request(next); coordinator.request(following);
+            long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(15);
+            boolean parallel = false;
+            while (generator.metrics().snapshot().previewRegions() < before + 2 && System.nanoTime() < deadline) {
+                parallel |= generator.metrics().snapshot().inFlight() >= 2;
+                Thread.sleep(1);
+            }
+            require(generator.metrics().snapshot().previewRegions() == before + 2 && parallel,
+                    "two requested regions prepare concurrently and duplicate loads coalesce");
+            require(!Files.exists(save.resolve("r.2.0.mca")) && !Files.exists(save.resolve("r.3.0.mca")),
+                    "background assembly leaves live save files untouched until their I/O jobs");
+            try (var storage = new RegionFileStorage(new RegionStorageInfo("retina-pipeline-test", Level.OVERWORLD, "chunk"), save, false)) {
+                var editTag = new net.minecraft.nbt.CompoundTag(); editTag.putString("retina_test_marker", "concurrent edit");
+                storage.write(next, editTag);
+            }
+            long chunks = NativeTerrain.instance().timings(generator.profile().nativeId()).chunks();
+            coordinator.prepare(next, bridge); coordinator.prepare(following, bridge);
+            require(NativeTerrain.instance().timings(generator.profile().nativeId()).chunks() == chunks,
+                    "publication consumes completed preparation without regenerating either region");
+            try (var storage = new RegionFileStorage(new RegionStorageInfo("retina-pipeline-test", Level.OVERWORLD, "chunk"), save, false)) {
+                require(storage.read(next).getStringOr("retina_test_marker", "").equals("concurrent edit"),
+                        "publication merges around a chunk written while preparation was in flight");
+                require(storage.read(new ChunkPos(65, 0)) != null && storage.read(following) != null,
+                        "both prepared regions load all missing chunks");
+            }
+            coordinator.close();
+            System.out.println("QA_EVT {\"event\":\"requested_region_pipeline_and_concurrent_edit\",\"status\":\"pass\"}");
         } finally { generator.closePreviews(); }
 
         var request = generator.request(seed, -1, 0);

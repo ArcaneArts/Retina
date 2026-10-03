@@ -1,9 +1,11 @@
 //! CPU jigsaw planning over resident registry templates. Plans are shared by MCA,
 //! individual chunks and DH previews, including pieces crossing region boundaries.
+use crate::structure_processors::Program;
 use crate::{CacheKey, ChunkRequest, TerrainEngine, nbt, profile::WorldProfile};
 use rayon::prelude::*;
 use serde::Deserialize;
 use serde_json::{Value, json};
+use std::borrow::Cow;
 use std::collections::{HashMap, VecDeque};
 use std::sync::{Arc, OnceLock};
 
@@ -13,6 +15,10 @@ pub struct Profile {
     pub definitions: Vec<Definition>,
     pub pools: HashMap<String, Pool>,
     pub sets: Vec<Set>,
+    #[serde(skip)]
+    pub(crate) names: Vec<String>,
+    #[serde(skip)]
+    classes: Vec<u8>,
 }
 #[derive(Clone, Deserialize)]
 pub struct Template {
@@ -24,6 +30,8 @@ pub struct Template {
     pub tags: HashMap<usize, Value>,
     pub joints: Vec<Joint>,
     pub entities: Vec<Value>,
+    #[serde(skip)]
+    rotated: Vec<Arc<OnceLock<RotatedTemplate>>>,
 }
 #[derive(Clone, Deserialize)]
 pub struct Joint {
@@ -50,6 +58,8 @@ pub struct Part {
     pub template: usize,
     pub ignore_air: bool,
     pub processors: Value,
+    #[serde(skip)]
+    program: Arc<Program>,
 }
 #[derive(Clone, Deserialize)]
 pub struct Pool {
@@ -128,6 +138,7 @@ pub struct Start {
     pub seed: u64,
     pub pieces: Vec<Piece>,
     pub terrain: Option<Heights>,
+    index: OnceLock<PlacementIndex>,
 }
 pub struct Heights {
     origin: [i32; 2],
@@ -164,7 +175,7 @@ fn rand64(mut x: u64) -> u64 {
     x = (x ^ (x >> 27)).wrapping_mul(0x94d049bb133111eb);
     x ^ (x >> 31)
 }
-struct Random(u64);
+pub(crate) struct Random(u64);
 impl Random {
     fn new(seed: u64) -> Self {
         Self((seed ^ 0x5deece66d) & ((1 << 48) - 1))
@@ -193,7 +204,7 @@ impl Random {
     fn double(&mut self) -> f64 {
         (((self.bits(26) as u64) << 27) + self.bits(27) as u64) as f64 / (1u64 << 53) as f64
     }
-    fn float(&mut self) -> f64 {
+    pub(crate) fn float(&mut self) -> f64 {
         self.bits(24) as f64 / (1u32 << 24) as f64
     }
     fn shuffle<T>(&mut self, v: &mut [T]) {
@@ -235,7 +246,7 @@ fn rotate(p: [i32; 3], rotation: usize) -> [i32; 3] {
 fn add(a: [i32; 3], b: [i32; 3]) -> [i32; 3] {
     [a[0] + b[0], a[1] + b[1], a[2] + b[2]]
 }
-fn sub(a: [i32; 3], b: [i32; 3]) -> [i32; 3] {
+pub(crate) fn sub(a: [i32; 3], b: [i32; 3]) -> [i32; 3] {
     [a[0] - b[0], a[1] - b[1], a[2] - b[2]]
 }
 fn direction(d: usize, r: usize) -> [i32; 3] {
@@ -461,36 +472,63 @@ pub fn plans(
             }
         }
     }
-    let mut result: Vec<_> = candidates
-        .par_iter()
-        .map(|&(set, at)| {
+    let mut jobs = Vec::with_capacity(candidates.len());
+    let mut probes = Vec::new();
+    let mut probe_ids = HashMap::new();
+    {
+        let mut cache = engine
+            .structures
+            .lock()
+            .map_err(|_| "structure cache poisoned")?;
+        for (set, at) in candidates {
             let r = ChunkRequest {
                 chunk_x: at[0],
                 chunk_z: at[1],
                 ..request
             };
             let key = (CacheKey::from(r), set);
-            let cell = {
-                let mut cache = engine
-                    .structures
-                    .lock()
-                    .map_err(|_| "structure cache poisoned")?;
-                if let Some(cell) = cache.entries.get(&key) {
-                    cell.clone()
-                } else {
-                    let cell = Arc::new(OnceLock::new());
-                    cache.entries.insert(key, cell.clone());
-                    cache.order.push_back(key);
-                    while cache.entries.len() > 256 {
-                        if let Some(old) = cache.order.pop_front() {
-                            cache.entries.remove(&old);
-                        }
+            let cell = if let Some(cell) = cache.entries.get(&key) {
+                cell.clone()
+            } else {
+                let cell = Arc::new(OnceLock::new());
+                cache.entries.insert(key, cell.clone());
+                cache.order.push_back(key);
+                while cache.entries.len() > 256 {
+                    if let Some(old) = cache.order.pop_front() {
+                        cache.entries.remove(&old);
                     }
-                    cell
                 }
+                cell
             };
-            cell.get_or_init(|| build(engine, r, set, &profile).map(Arc::new))
-                .clone()
+            let probe = if cell.get().is_none() {
+                Some(*probe_ids.entry(CacheKey::from(r)).or_insert_with(|| {
+                    let id = probes.len();
+                    probes.push(r);
+                    id
+                }))
+            } else {
+                None
+            };
+            jobs.push((r, set, cell, probe));
+        }
+    }
+    // Cold starts share bulk GPU column probes; warm plans need no probe at all.
+    let mut biomes = Vec::with_capacity(probes.len());
+    for batch in probes.chunks(1024) {
+        biomes.extend(
+            engine
+                .sample_columns(batch)?
+                .chunks_exact(crate::COLUMNS)
+                .map(|c| c[8 * 16 + 8].biome() as u16),
+        );
+    }
+    let mut result: Vec<_> = jobs
+        .par_iter()
+        .map(|(r, set, cell, probe)| {
+            cell.get_or_init(|| {
+                build(engine, *r, *set, &profile, biomes[probe.unwrap()]).map(Arc::new)
+            })
+            .clone()
         })
         .collect::<Result<Vec<_>, String>>()?;
     result.retain(|s| !s.pieces.is_empty());
@@ -621,6 +659,7 @@ fn build(
     request: ChunkRequest,
     set: usize,
     profile: &WorldProfile,
+    biome: u16,
 ) -> Result<Start, String> {
     let p = &profile.structures;
     let s = &p.sets[set];
@@ -636,10 +675,9 @@ fn build(
         seed,
         pieces: Vec::new(),
         terrain: None,
+        index: OnceLock::new(),
     };
     let mut random = Random::new(seed);
-    let columns = engine.sample_columns(&[request])?;
-    let biome = columns[8 * 16 + 8].biome() as u16;
     let mut choices = s.entries.clone();
     let definition = loop {
         if choices.is_empty() {
@@ -700,6 +738,7 @@ fn build(
                 template: d.template,
                 ignore_air: false,
                 processors: json!([]),
+                program: Arc::default(),
             }],
             terrain_matching: false,
             weight: 1,
@@ -916,181 +955,124 @@ fn build(
 }
 
 fn block_name(profile: &WorldProfile, material: u16) -> &str {
-    profile.materials[material as usize]
-        .as_str()
-        .or_else(|| profile.materials[material as usize]["id"].as_str())
-        .unwrap_or("")
+    &profile.structures.names[material as usize]
 }
-fn predicate(
-    v: &Value,
+
+#[derive(Clone, Copy)]
+struct RotatedBlock {
+    pos: [i32; 3],
     material: u16,
-    rotation: usize,
-    profile: &WorldProfile,
-    r: &mut Random,
-) -> bool {
-    let kind = v["predicate_type"]
-        .as_str()
-        .unwrap_or("minecraft:always_true")
-        .trim_start_matches("minecraft:");
-    let okay = match kind {
-        "block_match" | "random_block_match" => {
-            block_name(profile, material) == v["block"].as_str().unwrap_or("")
+    original: u16,
+    index: usize,
+    skip: bool,
+}
+struct RotatedTemplate {
+    blocks: Vec<RotatedBlock>,
+    floors: Vec<usize>,
+}
+impl Profile {
+    pub fn compile(&mut self, materials: &[Value]) {
+        self.names = materials
+            .iter()
+            .map(|m| {
+                m.as_str()
+                    .or_else(|| m["id"].as_str())
+                    .unwrap_or("")
+                    .to_owned()
+            })
+            .collect();
+        self.classes = self
+            .names
+            .iter()
+            .map(|name| match name.as_str() {
+                "minecraft:structure_void" | "minecraft:structure_block" => 1,
+                "minecraft:jigsaw" => 2,
+                "minecraft:water" | "minecraft:lava" => 4,
+                _ => 0,
+            })
+            .collect();
+        for template in &mut self.templates {
+            template.rotated = (0..template.palettes.len() * 4)
+                .map(|_| Arc::new(OnceLock::new()))
+                .collect();
         }
-        "blockstate_match" | "random_blockstate_match" => {
-            v["block_state"]["retina_rotations"][rotation].as_u64() == Some(material as u64)
-        }
-        "tag_match" => v["retina_matching"]
-            .as_array()
-            .is_some_and(|a| a.iter().any(|n| n.as_u64() == Some(material as u64))),
-        "always_true" => true,
-        _ => false,
-    };
-    okay && (!kind.starts_with("random_") || r.float() < v["probability"].as_f64().unwrap_or(1.0))
-}
-struct ProcessorContext {
-    position: [i32; 3],
-    origin: [i32; 3],
-    counts: HashMap<usize, u32>,
-}
-fn position_predicate(v: &Value, ctx: &ProcessorContext, r: &mut Random) -> bool {
-    let kind = v["predicate_type"]
-        .as_str()
-        .unwrap_or("minecraft:always_true")
-        .trim_start_matches("minecraft:");
-    if kind == "always_true" {
-        return true;
-    }
-    let delta = sub(ctx.position, ctx.origin);
-    let distance = if kind == "axis_aligned_linear_pos" {
-        delta[match v["axis"].as_str().unwrap_or("y") {
-            "x" => 0,
-            "z" => 2,
-            _ => 1,
-        }]
-        .abs()
-    } else if kind == "linear_pos" {
-        delta.iter().map(|n| n.abs()).sum()
-    } else {
-        return false;
-    } as f64;
-    let min = v["min_dist"].as_f64().unwrap_or(0.0);
-    let max = v["max_dist"].as_f64().unwrap_or(100.0);
-    let blend = ((distance - min) / (max - min).max(1.0)).clamp(0.0, 1.0);
-    r.float()
-        < v["min_chance"].as_f64().unwrap_or(0.0) * (1.0 - blend)
-            + v["max_chance"].as_f64().unwrap_or(0.0) * blend
-}
-fn process(
-    v: &Value,
-    material: &mut u16,
-    world: u16,
-    tag: &mut Option<Value>,
-    rotation: usize,
-    profile: &WorldProfile,
-    r: &mut Random,
-    ctx: &mut ProcessorContext,
-) -> bool {
-    if let Some(list) = v.as_array() {
-        for p in list {
-            if !process(p, material, world, tag, rotation, profile, r, ctx) {
-                return false;
+        for pool in self.pools.values_mut() {
+            for entry in &mut pool.entries {
+                for part in &mut entry.parts {
+                    part.program = Arc::new(Program::compile(&part.processors, materials));
+                }
             }
         }
-        return true;
     }
-    if let Some(list) = v.get("processors") {
-        return process(list, material, world, tag, rotation, profile, r, ctx);
+    fn rotated(&self, template: usize, palette: usize, rotation: usize) -> &RotatedTemplate {
+        let t = &self.templates[template];
+        let palette = palette % t.palettes.len();
+        t.rotated[palette * 4 + rotation].get_or_init(|| {
+            let mut floors = Vec::new();
+            let blocks = t
+                .blocks
+                .chunks_exact(4)
+                .enumerate()
+                .map(|(index, b)| {
+                    let raw = [b[0], b[1], b[2]];
+                    let original = t.palettes[palette][b[3] as usize][rotation];
+                    let material = if self.classes[original as usize] & 2 != 0 {
+                        t.joints
+                            .iter()
+                            .find(|j| j.pos == raw)
+                            .map_or(0, |j| j.final_state[rotation])
+                    } else {
+                        original
+                    };
+                    if b[1] == 0 {
+                        floors.push(index);
+                    }
+                    RotatedBlock {
+                        pos: rotate(raw, rotation),
+                        material,
+                        original,
+                        index,
+                        skip: self.classes[original as usize] & 1 != 0,
+                    }
+                })
+                .collect();
+            RotatedTemplate { blocks, floors }
+        })
     }
-    match v["processor_type"]
-        .as_str()
-        .unwrap_or("")
-        .trim_start_matches("minecraft:")
-    {
-        "block_rot" => {
-            let rottable = v.get("retina_rottable").is_none_or(|a| {
-                a.as_array()
-                    .is_some_and(|a| a.iter().any(|n| n.as_u64() == Some(*material as u64)))
-            });
-            if rottable && r.float() > v["integrity"].as_f64().unwrap_or(1.0) {
-                return false;
-            }
-        }
-        "rule" => {
-            if let Some(rules) = v["rules"].as_array() {
-                for rule in rules {
-                    if predicate(&rule["input_predicate"], *material, rotation, profile, r)
-                        && predicate(&rule["location_predicate"], world, rotation, profile, r)
-                        && position_predicate(&rule["position_predicate"], ctx, r)
-                    {
-                        if let Some(id) =
-                            rule["output_state"]["retina_rotations"][rotation].as_u64()
-                        {
-                            if block_name(profile, *material) != block_name(profile, id as u16) {
-                                *tag = rule["output_state"].get("retina_entity").cloned();
-                            }
-                            *material = id as u16;
-                        }
-                        let modifier = &rule["block_entity_modifier"];
-                        match modifier["type"]
-                            .as_str()
-                            .unwrap_or("")
-                            .trim_start_matches("minecraft:")
-                        {
-                            "clear" => *tag = None,
-                            "append_static" => {
-                                if let Some(append) = modifier.get("retina_nbt") {
-                                    let t = tag.get_or_insert_with(nbt::compound);
-                                    for (key, value) in append[1].as_object().unwrap() {
-                                        nbt::put(t, key, value.clone());
-                                    }
-                                }
-                            }
-                            _ => {}
-                        }
-                        if let Some(loot) = modifier["loot_table"].as_str() {
-                            let t = tag.get_or_insert_with(nbt::compound);
-                            nbt::put(t, "LootTable", nbt::string(loot));
-                        }
-                        break;
+}
+#[derive(Default)]
+struct PlacementIndex {
+    pieces: HashMap<[i32; 2], Vec<usize>>,
+    blocks: HashMap<([i32; 2], usize, usize), Vec<usize>>,
+    floors: HashMap<([i32; 2], usize, usize), Vec<usize>>,
+}
+impl Start {
+    fn index(&self, p: &Profile) -> &PlacementIndex {
+        self.index.get_or_init(|| {
+            let mut out = PlacementIndex::default();
+            for (i, piece) in self.pieces.iter().enumerate() {
+                for z in piece.bounds[2].div_euclid(16)..=piece.bounds[5].div_euclid(16) {
+                    for x in piece.bounds[0].div_euclid(16)..=piece.bounds[3].div_euclid(16) {
+                        out.pieces.entry([x, z]).or_default().push(i);
+                    }
+                }
+                for (j, part) in piece.element.parts.iter().enumerate() {
+                    let rotated = p.rotated(part.template, piece.palette, piece.rotation);
+                    for b in &rotated.blocks {
+                        let pos = add(piece.pos, b.pos);
+                        let chunk = [pos[0].div_euclid(16), pos[2].div_euclid(16)];
+                        out.blocks.entry((chunk, i, j)).or_default().push(b.index);
+                    }
+                    for &b in &rotated.floors {
+                        let pos = add(piece.pos, rotated.blocks[b].pos);
+                        let chunk = [pos[0].div_euclid(16), pos[2].div_euclid(16)];
+                        out.floors.entry((chunk, i, j)).or_default().push(b);
                     }
                 }
             }
-        }
-        "capped" => {
-            let key = v as *const Value as usize;
-            let limit = v["limit"]
-                .as_u64()
-                .or_else(|| v["limit"]["value"].as_u64())
-                .unwrap_or(1) as u32;
-            if *ctx.counts.get(&key).unwrap_or(&0) < limit {
-                let before = (*material, tag.clone());
-                let keep = process(
-                    &v["delegate"],
-                    material,
-                    world,
-                    tag,
-                    rotation,
-                    profile,
-                    r,
-                    ctx,
-                );
-                if !keep || before != (*material, tag.clone()) {
-                    *ctx.counts.entry(key).or_default() += 1;
-                }
-                return keep;
-            }
-        }
-        "protected_blocks" => {
-            if v["retina_protected"]
-                .as_array()
-                .is_some_and(|a| a.iter().any(|n| n.as_u64() == Some(world as u64)))
-            {
-                return false;
-            }
-        }
-        _ => {}
+            out
+        })
     }
-    true
 }
 pub fn start_data(request: ChunkRequest, profile: &WorldProfile, plans: &[Arc<Start>]) -> Value {
     let p = &profile.structures;
@@ -1107,9 +1089,13 @@ pub fn start_data(request: ChunkRequest, profile: &WorldProfile, plans: &[Arc<St
     for start in plans {
         let definition = &p.definitions[start.definition];
         let relevant = start
+            .index(p)
             .pieces
-            .iter()
-            .any(|piece| intersects(piece.bounds, chunk_bounds));
+            .get(&[request.chunk_x, request.chunk_z])
+            .is_some_and(|ids| {
+                ids.iter()
+                    .any(|&i| intersects(start.pieces[i].bounds, chunk_bounds))
+            });
         if start.chunk == [request.chunk_x, request.chunk_z] {
             let mut tag = nbt::compound();
             nbt::put(&mut tag, "id", nbt::string(&definition.id));
@@ -1182,19 +1168,18 @@ pub fn apply(
     let mut count = 0;
     let mut placed = 0;
     for start in plans {
-        for piece in &start.pieces {
+        let chunk = [request.chunk_x, request.chunk_z];
+        let indexed = start.index(p);
+        for &piece_id in indexed.pieces.get(&chunk).map_or(&[][..], Vec::as_slice) {
+            let piece = &start.pieces[piece_id];
             if !intersects(piece.bounds, chunk_bounds) {
                 continue;
             }
             count += 1;
-            for part in &piece.element.parts {
+            for (part_id, part) in piece.element.parts.iter().enumerate() {
                 let template = &p.templates[part.template];
-                let palette = &template.palettes[piece.palette % template.palettes.len()];
-                let mut ctx = ProcessorContext {
-                    position: piece.pos,
-                    origin: piece.pos,
-                    counts: HashMap::new(),
-                };
+                let rotated = p.rotated(part.template, piece.palette, piece.rotation);
+                let mut ctx = part.program.context(piece.pos);
                 // Approximate the registered terrain beard with short supports below rigid floors.
                 // Heights were sampled once for the shared start; no CPU noise or per-block GPU calls.
                 let definition = &p.definitions[start.definition];
@@ -1203,11 +1188,13 @@ pub fn apply(
                         || definition.config["terrain_adaptation"] != "none")
                 {
                     if let (Some(terrain), Some(output)) = (&start.terrain, blocks.as_deref_mut()) {
-                        for block in template.blocks.chunks_exact(4).filter(|b| b[1] == 0) {
-                            let pos = add(
-                                piece.pos,
-                                rotate([block[0], block[1], block[2]], piece.rotation),
-                            );
+                        for &i in indexed
+                            .floors
+                            .get(&(chunk, piece_id, part_id))
+                            .map_or(&[][..], Vec::as_slice)
+                        {
+                            let block = &rotated.blocks[i];
+                            let pos = add(piece.pos, block.pos);
                             if pos[0] < chunk_bounds[0]
                                 || pos[0] > chunk_bounds[3]
                                 || pos[2] < chunk_bounds[2]
@@ -1215,7 +1202,7 @@ pub fn apply(
                             {
                                 continue;
                             }
-                            let material = palette[block[3] as usize][piece.rotation];
+                            let material = block.original;
                             let name = block_name(profile, material);
                             if material == 0
                                 || matches!(
@@ -1256,14 +1243,22 @@ pub fn apply(
                     }
                 }
 
-                for (i, block) in template.blocks.chunks_exact(4).enumerate() {
-                    let mut pos = add(
-                        piece.pos,
-                        rotate([block[0], block[1], block[2]], piece.rotation),
-                    );
+                let subset = indexed
+                    .blocks
+                    .get(&(chunk, piece_id, part_id))
+                    .map_or(&[][..], Vec::as_slice);
+                // Capped processors consume quotas in full template order, including outside blocks.
+                let candidates: Box<dyn Iterator<Item = usize>> = if part.program.capped {
+                    Box::new(0..rotated.blocks.len())
+                } else {
+                    Box::new(subset.iter().copied())
+                };
+                for i in candidates {
+                    let block = &rotated.blocks[i];
+                    let mut pos = add(piece.pos, block.pos);
                     if piece.element.terrain_matching {
                         if let Some(terrain) = &start.terrain {
-                            pos[1] = terrain.get(pos[0], pos[2]) - 1 + block[1];
+                            pos[1] = terrain.get(pos[0], pos[2]) - 1 + block.pos[1];
                         }
                     }
                     let in_chunk = inside(chunk_bounds, pos);
@@ -1274,22 +1269,14 @@ pub fn apply(
                     } else {
                         0
                     };
-                    let mut material = palette[block[3] as usize][piece.rotation];
-                    let name = block_name(profile, material);
-                    if name == "minecraft:structure_void"
-                        || name == "minecraft:structure_block"
-                        || part.ignore_air && material == 0
-                    {
+                    if !in_chunk && !part.program.capped {
                         continue;
                     }
-                    if name == "minecraft:jigsaw" {
-                        material = template
-                            .joints
-                            .iter()
-                            .find(|j| j.pos == [block[0], block[1], block[2]])
-                            .map_or(0, |j| j.final_state[piece.rotation]);
+                    if block.skip || part.ignore_air && block.original == 0 {
+                        continue;
                     }
-                    let mut tag = template.tags.get(&i).cloned();
+                    let mut material = block.material;
+                    let mut tag = template.tags.get(&i).map(Cow::Borrowed);
                     let mut r = Random::new(
                         start.seed
                             ^ rand64(pos[0] as i64 as u64)
@@ -1302,8 +1289,7 @@ pub fn apply(
                         profile.stone
                     };
                     ctx.position = pos;
-                    if !process(
-                        &part.processors,
+                    if !part.program.apply(
                         &mut material,
                         world,
                         &mut tag,
@@ -1323,7 +1309,8 @@ pub fn apply(
                     placed += 1;
                     block_entities.remove(&pos);
                     if material != 0 {
-                        if let Some(mut tag) = tag {
+                        if let Some(tag) = tag {
+                            let mut tag = tag.into_owned();
                             for i in 0..3 {
                                 nbt::put(&mut tag, ["x", "y", "z"][i], nbt::int(pos[i]));
                             }
@@ -1432,6 +1419,99 @@ pub fn apply(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn indexed_templates_preserve_capped_order_across_rotated_negative_chunk_boundaries() {
+        let rule = json!({"processor_type":"minecraft:rule","rules":[{
+            "input_predicate":{"predicate_type":"minecraft:block_match","block":"minecraft:stone"},
+            "output_state":{"retina_rotations":[2,2,2,2]},
+            "block_entity_modifier":{"type":"minecraft:append_static","retina_nbt":[10,{"marker":[8,"quota"]}]}
+        }]});
+        for capped in [false, true] {
+            let processors = if capped {
+                json!({"processor_type":"minecraft:capped","limit":3,"delegate":rule})
+            } else {
+                rule.clone()
+            };
+            let blocks: Vec<i32> = (0..32).flat_map(|x| [x, 0, 0, 0]).collect();
+            let mut profile: WorldProfile=serde_json::from_value(json!({
+                "biome_scale":256,"blend":0.55,"sea_level":63,"stone":1,"water":0,
+                "bedrock":1,"deepslate":1,"snow":0,"ice":0,
+                "materials":["minecraft:air","minecraft:stone","minecraft:gold_block"],
+                "biomes":[],"noises":[],"material_flags":[0,1,1],"heightmap_masks":[0,63,63],
+                "structures":{
+                    "templates":[{"id":"test:line","size":[32,1,1],"ground":0,
+                        "palettes":[[[1,1,1,1]]],"blocks":blocks,"tags":{},"joints":[],"entities":[]}],
+                    "definitions":[{"id":"test:line","kind":"jigsaw","biomes":[],"config":{"terrain_adaptation":"none"}}],
+                    "pools":{"test:line":{"fallback":"test:line","entries":[{"parts":[{"template":0,"ignore_air":false,"processors":processors}],"terrain_matching":false,"weight":1}]}},
+                    "sets":[]
+                }
+            })).unwrap();
+            profile.structures.compile(&profile.materials);
+            for rotation in 0..4 {
+                let element = profile.structures.pools["test:line"].entries[0].clone();
+                let pos = [-32, 64, -16];
+                let bounds = bounds(&element, pos, rotation, &profile.structures);
+                let start = Arc::new(Start {
+                    definition: 0,
+                    chunk: [-2, -1],
+                    seed: 42,
+                    pieces: vec![Piece {
+                        element,
+                        pos,
+                        rotation,
+                        bounds,
+                        palette: 0,
+                        context: 0,
+                        depth: 0,
+                        priority: 0,
+                    }],
+                    terrain: None,
+                    index: OnceLock::new(),
+                });
+                let targets: std::collections::HashSet<_> = (0..32)
+                    .map(|x| {
+                        let q = add(pos, rotate([x, 0, 0], rotation));
+                        [q[0].div_euclid(16), q[2].div_euclid(16)]
+                    })
+                    .collect();
+                for target in targets {
+                    let request = ChunkRequest {
+                        seed: 42,
+                        chunk_x: target[0],
+                        chunk_z: target[1],
+                        min_y: 64,
+                        height: 16,
+                        base_height: 64.0,
+                        amplitude: 0.0,
+                        frequency: 0.008,
+                        reserved: 0,
+                    };
+                    let mut blocks = vec![1; request.block_count()];
+                    let data = apply(request, &profile, &[start.clone()], Some(&mut blocks));
+                    let mut expected_tags = 0;
+                    for x in 0..32 {
+                        let q = add(pos, rotate([x, 0, 0], rotation));
+                        if [q[0].div_euclid(16), q[2].div_euclid(16)] != target {
+                            continue;
+                        }
+                        let gold = !capped || x < 3;
+                        let index =
+                            q[2].rem_euclid(16) as usize * 16 + q[0].rem_euclid(16) as usize;
+                        assert_eq!(
+                            blocks[index],
+                            if gold { 2 } else { 1 },
+                            "quota crossed a target chunk incorrectly"
+                        );
+                        expected_tags += usize::from(gold);
+                    }
+                    assert_eq!(
+                        nbt::list_values(nbt::field(&data.tag, "block_entities").unwrap()).len(),
+                        expected_tags
+                    );
+                }
+            }
+        }
+    }
     #[test]
     fn rotations_and_negative_spread_cells_are_consistent() {
         assert_eq!(rotate([3, 2, 7], 1), [-7, 2, 3]);

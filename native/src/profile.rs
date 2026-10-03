@@ -84,6 +84,10 @@ pub struct WorldProfile {
     pub heightmap_masks: Vec<u8>,
     #[serde(skip)]
     pub encoded: Vec<u8>,
+    #[serde(skip)]
+    pub material_nbt: Vec<Vec<u8>>,
+    #[serde(skip)]
+    pub ore_membership: Vec<Vec<bool>>,
 }
 
 impl WorldProfile {
@@ -223,6 +227,23 @@ impl WorldProfile {
         }
         profile.geology.validate(&profile)?;
         profile.terrain_features.validate(&profile)?;
+        profile.material_nbt = profile
+            .materials
+            .iter()
+            .map(crate::region::material_nbt)
+            .collect();
+        profile.ore_membership = profile
+            .biomes
+            .iter()
+            .map(|b| {
+                let mut ids = vec![false; profile.geology.ores.len()];
+                for &id in &b.ores {
+                    ids[id as usize] = true;
+                }
+                ids
+            })
+            .collect();
+        profile.structures.compile(&profile.materials);
         profile.encoded = json.to_vec();
         Ok(profile)
     }
@@ -416,5 +437,84 @@ impl Column {
                 self.height.max(p.sea_level)
             }
         })
+    }
+}
+
+/// Column constants resolved once, rather than rediscovering biome/lake state for every voxel.
+pub(crate) struct PreparedColumn<'a> {
+    height: i32,
+    bedrock_end: i32,
+    waterline: i32,
+    filler_start: i32,
+    top: u16,
+    filler: u16,
+    fluid: u16,
+    ice: Option<u16>,
+    bands: &'a [u16],
+    band_offset: i32,
+    band_min: i32,
+    stone: u16,
+    deepslate: u16,
+    bedrock: u16,
+}
+impl<'a> PreparedColumn<'a> {
+    pub fn new(c: Column, min_y: i32, p: &'a WorldProfile) -> Self {
+        let lake = c.packed & (1 << 29) != 0;
+        let icy = c.packed & (1 << 28) != 0;
+        let depth = ((c.packed >> 24) & 7) as i32;
+        let badlands =
+            !lake && p.biomes[c.biome()].flags & 8 != 0 && !p.terrain_features.bands.is_empty();
+        Self {
+            height: c.height,
+            bedrock_end: min_y + 1 + (c.packed >> 30) as i32,
+            waterline: if lake { c.height + depth } else { p.sea_level },
+            filler_start: c.height - 1 - if lake { 2 } else { depth },
+            top: c.materials as u16,
+            filler: if badlands {
+                p.biomes[c.biome()].filler as u16
+            } else {
+                (c.materials >> 16) as u16
+            },
+            fluid: if lake && icy { p.geology.lava } else { p.water },
+            ice: if !lake && icy { Some(p.ice) } else { None },
+            bands: if badlands {
+                &p.terrain_features.bands
+            } else {
+                &[]
+            },
+            band_offset: ((c.packed >> 16) & 255) as u8 as i8 as i32,
+            band_min: p.sea_level - 16,
+            stone: p.stone,
+            deepslate: p.deepslate,
+            bedrock: p.bedrock,
+        }
+    }
+    pub fn end(&self) -> i32 {
+        self.height.max(self.waterline).max(self.bedrock_end)
+    }
+    #[inline]
+    pub fn material(&self, y: i32) -> u16 {
+        if y < self.bedrock_end {
+            return self.bedrock;
+        }
+        if y >= self.height {
+            return if y >= self.waterline {
+                0
+            } else if y == self.waterline - 1 {
+                self.ice.unwrap_or(self.fluid)
+            } else {
+                self.fluid
+            };
+        }
+        if y == self.height - 1 {
+            return self.top;
+        }
+        if !self.bands.is_empty() && y >= self.band_min {
+            return self.bands[(y + self.band_offset).rem_euclid(self.bands.len() as i32) as usize];
+        }
+        if y >= self.filler_start {
+            return self.filler;
+        }
+        if y < 0 { self.deepslate } else { self.stone }
     }
 }

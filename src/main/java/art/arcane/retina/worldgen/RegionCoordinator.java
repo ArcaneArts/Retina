@@ -5,28 +5,73 @@ import net.minecraft.SharedConstants;
 import net.minecraft.world.level.ChunkPos;
 
 import java.io.IOException;
-import java.util.HashSet;
 import java.util.Set;
+import java.nio.file.Path;
+import java.nio.file.Files;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ExecutorService;
 
 /** Requests in one region share its first I/O job; subsequent jobs read the published MCA. */
 public final class RegionCoordinator {
     private final RetinaChunkGenerator generator;
     private final long seed;
+    private final Path folder;
+    private final TemporaryRegions previews;
+    // Two requested regions can overlap GPU/planning with the shared Rust assembly pool.
+    private static final ExecutorService PREPARERS = Executors.newFixedThreadPool(2,
+            Thread.ofPlatform().daemon().name("retina-region-prepare-", 0).factory());
+    private final Map<Long, CompletableFuture<AutoCloseable>> pending = new HashMap<>();
+    private boolean closed;
     // Confined to the IOWorker's consecutive executor, including all MCA publication.
-    private final Set<Long> prepared = new HashSet<>();
+    private final Set<Long> prepared = java.util.concurrent.ConcurrentHashMap.newKeySet();
 
-    public RegionCoordinator(RetinaChunkGenerator generator, long seed) {
+    public RegionCoordinator(RetinaChunkGenerator generator, long seed, Path folder) {
         this.generator = generator;
         this.seed = seed;
+        this.folder = folder;
+        this.previews = generator.previewCache();
+    }
+
+    /** Called before a load is enqueued, so the next actual request can run during current assembly.
+     * Existing files still use the normal queue and its validation; this only chooses prefetch work.
+     */
+    public synchronized void request(ChunkPos position) {
+        long key = ChunkPos.pack(position.getRegionX(), position.getRegionZ());
+        if (closed || previews == null || prepared.contains(key) || pending.containsKey(key) || pending.size() >= 4) return;
+        Path destination = folder.resolve("r." + position.getRegionX() + "." + position.getRegionZ() + ".mca");
+        if (!Files.notExists(destination)) return;
+        pending.put(key, CompletableFuture.supplyAsync(() -> previews.prepare(position), PREPARERS));
+    }
+
+    public synchronized void close() {
+        closed = true;
+        for (var future : pending.values()) future.thenAccept(RegionCoordinator::release);
+        pending.clear();
+    }
+    private static void release(AutoCloseable lease) {
+        try { if (lease != null) lease.close(); }
+        catch (Exception error) { Retina.LOGGER.warn("Could not release prepared Retina region", error); }
     }
 
     public void prepare(ChunkPos position, RegionStorageBridge storage) throws IOException {
         long key = ChunkPos.pack(position.getRegionX(), position.getRegionZ());
-        if (prepared.contains(key)) return;
+        if (prepared.contains(key)) {
+            CompletableFuture<AutoCloseable> unused;
+            synchronized (this) { unused = pending.remove(key); }
+            if (unused != null) unused.thenAccept(RegionCoordinator::release);
+            return;
+        }
         var destination = storage.retina$folder().resolve("r." + position.getRegionX() + "." + position.getRegionZ() + ".mca");
+        CompletableFuture<AutoCloseable> preparation;
+        synchronized (this) { preparation = pending.get(key); }
+        AutoCloseable lease = null;
         generator.metrics().begin();
         long started = System.nanoTime();
         try {
+            if (preparation != null) lease = preparation.join();
             // Includes cached misses. All reads/writes in this storage run on this same queue.
             storage.retina$closeRegion(position);
             var cached = generator.publishPreview(position, destination);
@@ -61,6 +106,9 @@ public final class RegionCoordinator {
             // IOWorker completes failed tasks for Exceptions. This also carries native-loader
             // initialization errors back to its future instead of abandoning the waiting read.
             throw new IOException("Rust MCA generation failed for " + destination, error);
+        } finally {
+            synchronized (this) { pending.remove(key); }
+            release(lease);
         }
     }
 }

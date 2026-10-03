@@ -690,12 +690,69 @@ pub fn assemble(
     placements: &[Placement],
     blocks: &mut [u16],
 ) {
-    for (layer, row) in blocks.chunks_exact_mut(COLUMNS).enumerate() {
-        for (block, column) in row.iter_mut().zip(columns) {
-            *block = column.material(request.min_y + layer as i32, request.min_y, profile);
+    assemble_carved(request, columns, profile, None, blocks);
+    decorate(profile, placements, blocks);
+}
+
+/// Base material and GPU cavity mask are written together; ore replacement follows this pass.
+pub fn assemble_carved(
+    request: ChunkRequest,
+    columns: &[Column],
+    profile: Option<&WorldProfile>,
+    mask: Option<&crate::geology::CaveMask>,
+    blocks: &mut [u16],
+) {
+    let Some(p) = profile else {
+        for (layer, row) in blocks.chunks_exact_mut(COLUMNS).enumerate() {
+            for (block, column) in row.iter_mut().zip(columns) {
+                *block = if request.min_y + (layer as i32) < column.height {
+                    1
+                } else {
+                    0
+                };
+            }
+        }
+        return;
+    };
+    let prepared: Vec<_> = columns
+        .iter()
+        .map(|&c| crate::profile::PreparedColumn::new(c, request.min_y, p))
+        .collect();
+    let end = prepared
+        .iter()
+        .map(|c| c.end())
+        .max()
+        .unwrap()
+        .clamp(request.min_y, request.min_y + request.height as i32);
+    let layers = (end - request.min_y) as usize;
+    // Buffers are recycled: explicitly clear all upper air, including previous buildings.
+    blocks[layers * COLUMNS..].fill(0);
+    for (layer, row) in blocks[..layers * COLUMNS]
+        .chunks_exact_mut(COLUMNS)
+        .enumerate()
+    {
+        let y = request.min_y + layer as i32;
+        for z in 0..16 {
+            let mut carved = mask.map_or(0, |m| {
+                m.row_bits(request.chunk_x * 16, y, request.chunk_z * 16 + z as i32)
+            });
+            for x in 0..16 {
+                let i = z * 16 + x;
+                let mut material = prepared[i].material(y);
+                if carved & 1 != 0 && p.geology.carveable[material as usize] {
+                    material = if y < p.geology.lava_level {
+                        p.geology.lava
+                    } else if p.biomes[columns[i].biome()].flags & 4 != 0 && y < p.sea_level {
+                        p.water
+                    } else {
+                        0
+                    };
+                }
+                row[i] = material;
+                carved >>= 1;
+            }
         }
     }
-    decorate(profile, placements, blocks);
 }
 
 pub fn decorate(profile: Option<&WorldProfile>, placements: &[Placement], blocks: &mut [u16]) {
@@ -835,6 +892,8 @@ mod tests {
             material_flags: vec![0, 0, 1, 8 | 32, 4, 4, 4, 4, 4, 4],
             heightmap_masks: vec![0; 10],
             encoded: Vec::new(),
+            material_nbt: Vec::new(),
+            ore_membership: Vec::new(),
         };
         let field = Field {
             origin_x: 0,

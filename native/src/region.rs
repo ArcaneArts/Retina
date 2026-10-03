@@ -255,22 +255,22 @@ fn generate_region_inner(
             requests
                 .par_iter()
                 .enumerate()
-                .map(|(index, &request)| {
+                .map_init(ChunkScratch::default, |scratch, (index, &request)| {
                     let columns = field.chunk(request.chunk_x, request.chunk_z);
-                    let mut blocks = timings.time(timings::ASSEMBLY, || {
-                        let mut blocks = vec![0; request.block_count()];
-                        decoration::assemble(
+                    let mut blocks = std::mem::take(&mut scratch.blocks);
+                    blocks.resize(request.block_count(), 0);
+                    timings.time(timings::ASSEMBLY, || {
+                        decoration::assemble_carved(
                             request,
                             columns,
                             profile.as_deref(),
-                            &[],
+                            cave_mask.as_deref(),
                             &mut blocks,
                         );
-                        blocks
                     });
                     if let Some(p) = profile.as_deref() {
                         timings.time(timings::GEOLOGY, || {
-                            geology::apply(
+                            geology::apply_ores(
                                 request,
                                 &field,
                                 p,
@@ -307,8 +307,8 @@ fn generate_region_inner(
                             crate::features::snow(request, p, columns, &mut blocks)
                         });
                     }
-                    let nbt = timings.time(timings::NBT, || {
-                        chunk_nbt_blocks(
+                    timings.time(timings::NBT, || {
+                        encode_chunk(
                             request,
                             columns,
                             &blocks,
@@ -317,11 +317,15 @@ fn generate_region_inner(
                             profile.as_deref(),
                             cave_mask.as_deref(),
                             structure_data.as_ref().map(|data| &data.tag),
+                            scratch,
                         )
                     });
+                    scratch.blocks = blocks;
                     timings.time(timings::COMPRESS, || {
                         let mut compressed = ZlibEncoder::new(Vec::new(), Compression::fast());
-                        compressed.write_all(&nbt).map_err(|e| e.to_string())?;
+                        compressed
+                            .write_all(&scratch.nbt.0)
+                            .map_err(|e| e.to_string())?;
                         compressed.finish().map_err(|e| e.to_string())
                     })
                 })
@@ -388,6 +392,7 @@ fn generate_region_inner(
 }
 
 /// Original, narrow NBT encoder for the generated terrain schema. No numeric registry IDs.
+#[derive(Default)]
 struct Nbt(Vec<u8>);
 impl Nbt {
     fn text(&mut self, value: &str) {
@@ -484,8 +489,105 @@ fn chunk_nbt_blocks(
     cave_mask: Option<&crate::geology::CaveMask>,
     structure_data: Option<&serde_json::Value>,
 ) -> Vec<u8> {
-    let heights: Vec<_> = columns.iter().map(|c| c.height).collect();
-    let mut nbt = Nbt(Vec::with_capacity(20_000));
+    let mut scratch = ChunkScratch::default();
+    encode_chunk(
+        request,
+        columns,
+        blocks,
+        data_version,
+        biome,
+        profile,
+        cave_mask,
+        structure_data,
+        &mut scratch,
+    );
+    scratch.nbt.0
+}
+
+#[derive(Default)]
+struct PaletteScratch {
+    palette: Vec<u16>,
+    lookup: Vec<u32>,
+    indices: Vec<u32>,
+}
+impl PaletteScratch {
+    fn build(&mut self, values: &[u16], domain: usize) {
+        for &id in &self.palette {
+            self.lookup[id as usize] = u32::MAX;
+        }
+        self.palette.clear();
+        self.indices.clear();
+        self.lookup.resize(domain, u32::MAX);
+        let first = values[0];
+        // Uniform air/stone sections need no index buffer or packed data.
+        if values.iter().all(|&v| v == first) {
+            self.palette.push(first);
+            self.lookup[first as usize] = 0;
+            return;
+        }
+        self.indices.reserve(values.len());
+        for &id in values {
+            let entry = &mut self.lookup[id as usize];
+            if *entry == u32::MAX {
+                *entry = self.palette.len() as u32;
+                self.palette.push(id);
+            }
+            self.indices.push(*entry);
+        }
+    }
+}
+#[derive(Default)]
+struct ChunkScratch {
+    blocks: Vec<u16>,
+    nbt: Nbt,
+    palette: PaletteScratch,
+    occupied: Vec<bool>,
+    biomes: PaletteScratch,
+}
+
+pub(crate) fn material_nbt(material: &serde_json::Value) -> Vec<u8> {
+    let mut nbt = Nbt::default();
+    nbt.string(
+        "id",
+        material
+            .as_str()
+            .unwrap_or_else(|| material["id"].as_str().unwrap()),
+    );
+    if let Some(properties) = material
+        .get("properties")
+        .and_then(serde_json::Value::as_object)
+    {
+        nbt.compound("properties");
+        for (key, value) in properties {
+            nbt.string(key, value.as_str().unwrap());
+        }
+        nbt.end();
+    }
+    nbt.end();
+    nbt.0
+}
+
+fn encode_chunk(
+    request: ChunkRequest,
+    columns: &[Column],
+    blocks: &[u16],
+    data_version: i32,
+    biome: &str,
+    profile: Option<&WorldProfile>,
+    cave_mask: Option<&crate::geology::CaveMask>,
+    structure_data: Option<&serde_json::Value>,
+    scratch: &mut ChunkScratch,
+) {
+    let heights: [i32; COLUMNS] = std::array::from_fn(|i| columns[i].height);
+    let ChunkScratch {
+        nbt,
+        palette,
+        biomes,
+        occupied,
+        ..
+    } = scratch;
+    nbt.0.clear();
+    occupied.clear();
     nbt.compound("");
     nbt.int("DataVersion", data_version);
     nbt.int("xPos", request.chunk_x);
@@ -505,57 +607,46 @@ fn chunk_nbt_blocks(
         nbt.compound("block_states");
         if let Some(profile) = profile {
             let values = &blocks[section as usize * 4096..(section as usize + 1) * 4096];
-            let (palette, indices) = make_palette(values);
-            nbt.list("palette", 10, palette.len());
-            for id in &palette {
-                let material = &profile.materials[*id as usize];
-                nbt.string(
-                    "id",
-                    material
-                        .as_str()
-                        .unwrap_or_else(|| material["id"].as_str().unwrap()),
-                );
-                if let Some(properties) = material
-                    .get("properties")
-                    .and_then(serde_json::Value::as_object)
-                {
-                    nbt.compound("properties");
-                    for (key, value) in properties {
-                        nbt.string(key, value.as_str().unwrap());
-                    }
-                    nbt.end();
-                }
-                nbt.end();
+            palette.build(values, profile.materials.len());
+            occupied.push(
+                palette.palette.len() != 1
+                    || profile.heightmap_masks[palette.palette[0] as usize] != 0,
+            );
+            nbt.list("palette", 10, palette.palette.len());
+            for &id in &palette.palette {
+                nbt.0.extend_from_slice(&profile.material_nbt[id as usize]);
             }
-            if palette.len() > 1 {
-                nbt.longs("data", &pack(&indices, palette_bits(palette.len()).max(4)));
+            if palette.palette.len() > 1 {
+                nbt.packed(
+                    "data",
+                    &palette.indices,
+                    palette_bits(palette.palette.len()).max(4),
+                );
             }
             nbt.end();
             nbt.compound("biomes");
             // GPU quart biomes use Minecraft's x,z,y order.
-            let values: Vec<_> = (0..64)
-                .map(|index| {
-                    cave_mask
-                        .and_then(|m| {
-                            m.biome(
-                                request.chunk_x * 16 + (index % 4) * 4,
-                                y + (index / 16) * 4,
-                                request.chunk_z * 16 + ((index % 16) / 4) * 4,
-                            )
-                        })
-                        .unwrap_or(
-                            columns[((index % 16) / 4) as usize * 64 + (index % 4) as usize * 4]
-                                .biome() as u16,
+            let values: [u16; 64] = std::array::from_fn(|index| {
+                cave_mask
+                    .and_then(|m| {
+                        m.biome(
+                            request.chunk_x * 16 + (index % 4) as i32 * 4,
+                            y + (index / 16) as i32 * 4,
+                            request.chunk_z * 16 + ((index % 16) / 4) as i32 * 4,
                         )
-                })
-                .collect();
-            let (palette, indices) = make_palette(&values);
-            nbt.list("palette", 8, palette.len());
-            for id in &palette {
+                    })
+                    .unwrap_or(
+                        columns[((index % 16) / 4) as usize * 64 + (index % 4) as usize * 4].biome()
+                            as u16,
+                    )
+            });
+            biomes.build(&values, profile.biomes.len());
+            nbt.list("palette", 8, biomes.palette.len());
+            for id in &biomes.palette {
                 nbt.text(&profile.biomes[*id as usize].id);
             }
-            if palette.len() > 1 {
-                nbt.longs("data", &pack(&indices, palette_bits(palette.len())));
+            if biomes.palette.len() > 1 {
+                nbt.packed("data", &biomes.indices, palette_bits(biomes.palette.len()));
             }
             nbt.end();
         } else {
@@ -602,21 +693,36 @@ fn chunk_nbt_blocks(
         .iter()
         .map(|column| (column.surface_height(profile) - request.min_y) as u32)
         .collect();
-    let mut final_heights = vec![vec![0u32; COLUMNS]; 6];
+    let mut final_heights = [[0u32; COLUMNS]; 6];
     if let Some(profile) = profile {
-        for c in 0..COLUMNS {
-            let mut pending = 63u8;
-            for layer in (0..request.height as usize).rev() {
-                let hit = profile.heightmap_masks[blocks[layer * COLUMNS + c] as usize] & pending;
-                for (kind, heights) in final_heights.iter_mut().enumerate() {
-                    if hit & (1 << kind) != 0 {
-                        heights[c] = layer as u32 + 1;
+        let mut pending = [63u8; COLUMNS];
+        let mut remaining = COLUMNS;
+        // Traverse occupied final sections in contiguous rows, including structure/tree tops.
+        for section in (0..occupied.len()).rev().filter(|&i| occupied[i]) {
+            for layer in (section * 16..(section + 1) * 16).rev() {
+                let row = &blocks[layer * COLUMNS..(layer + 1) * COLUMNS];
+                for c in 0..COLUMNS {
+                    if pending[c] == 0 {
+                        continue;
+                    }
+                    let hit = profile.heightmap_masks[row[c] as usize] & pending[c];
+                    let mut hits = hit;
+                    while hits != 0 {
+                        let kind = hits.trailing_zeros() as usize;
+                        final_heights[kind][c] = layer as u32 + 1;
+                        hits &= hits - 1;
+                    }
+                    pending[c] &= !hit;
+                    if pending[c] == 0 {
+                        remaining -= 1;
                     }
                 }
-                pending &= !hit;
-                if pending == 0 {
+                if remaining == 0 {
                     break;
                 }
+            }
+            if remaining == 0 {
+                break;
             }
         }
     }
@@ -632,13 +738,13 @@ fn chunk_nbt_blocks(
     .enumerate()
     {
         let values = if profile.is_some() {
-            &final_heights[kind]
+            &final_heights[kind][..]
         } else if name.starts_with("OCEAN_FLOOR") {
             &ground
         } else {
             &surface
         };
-        nbt.longs(name, &pack(values, bits));
+        nbt.packed(name, values, bits);
     }
     nbt.end();
     if let Some(data) = structure_data {
@@ -651,41 +757,23 @@ fn chunk_nbt_blocks(
     }
     nbt.list("PostProcessing", 9, 0);
     nbt.end();
-    nbt.0
 }
 
-fn make_palette<T: Copy + Into<usize>>(values: &[T]) -> (Vec<T>, Vec<u32>) {
-    let mut palette = Vec::new();
-    let mut lookup = vec![
-        u32::MAX;
-        values
-            .iter()
-            .map(|value| (*value).into())
-            .max()
-            .unwrap_or(0)
-            + 1
-    ];
-    let indices = values
-        .iter()
-        .map(|value| {
-            let id: usize = (*value).into();
-            if lookup[id] == u32::MAX {
-                lookup[id] = palette.len() as u32;
-                palette.push(*value);
-            }
-            lookup[id]
-        })
-        .collect();
-    (palette, indices)
-}
 fn palette_bits(length: usize) -> u32 {
     usize::BITS - (length - 1).leading_zeros()
 }
-fn pack(values: &[u32], bits: u32) -> Vec<u64> {
-    let per_long = 64 / bits as usize;
-    let mut packed = vec![0; values.len().div_ceil(per_long)];
-    for (index, value) in values.iter().enumerate() {
-        packed[index / per_long] |= (*value as u64) << ((index % per_long) * bits as usize);
+impl Nbt {
+    fn packed(&mut self, name: &str, values: &[u32], bits: u32) {
+        let per_long = 64 / bits as usize;
+        self.named(12, name);
+        self.0
+            .extend_from_slice(&(values.len().div_ceil(per_long) as i32).to_be_bytes());
+        for group in values.chunks(per_long) {
+            let mut word = 0u64;
+            for (i, &value) in group.iter().enumerate() {
+                word |= (value as u64) << (i * bits as usize);
+            }
+            self.0.extend_from_slice(&word.to_be_bytes());
+        }
     }
-    packed
 }

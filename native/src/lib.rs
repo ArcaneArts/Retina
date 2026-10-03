@@ -1,5 +1,6 @@
 mod nbt;
 mod program;
+mod structure_processors;
 pub mod structures;
 pub mod timings;
 use std::cell::RefCell;
@@ -316,12 +317,38 @@ impl TerrainEngine {
         {
             return Ok(cached);
         }
-        let result = self.dispatch(requests.to_vec(), 0)?;
+        let cached: Vec<_> = {
+            let cache = self.cache.lock().map_err(|_| "column cache poisoned")?;
+            requests
+                .iter()
+                .map(|r| cache.entries.get(&CacheKey::from(*r)).cloned())
+                .collect()
+        };
+        let missing: Vec<_> = requests
+            .iter()
+            .zip(&cached)
+            .filter_map(|(r, c)| c.is_none().then_some(*r))
+            .collect();
+        let result = if missing.is_empty() {
+            Vec::new()
+        } else {
+            self.dispatch(missing.clone(), 0)?
+        };
         self.cache
             .lock()
             .map_err(|_| "column cache poisoned")?
-            .insert(requests, &result);
-        Ok(result)
+            .insert(&missing, &result);
+        let mut fresh = result.chunks_exact(COLUMNS);
+        let mut out = Vec::with_capacity(requests.len() * COLUMNS);
+        for chunk in cached {
+            out.extend_from_slice(
+                chunk
+                    .as_deref()
+                    .map(|c| c.as_slice())
+                    .unwrap_or_else(|| fresh.next().unwrap()),
+            );
+        }
+        Ok(out)
     }
 
     /// One descriptor and two GPU stages for a square tile, including decoration halos.
@@ -571,10 +598,10 @@ impl TerrainEngine {
                 geology::plan(&field, p, request, 1, mask.as_deref())
             });
             timings.time(timings::ASSEMBLY, || {
-                decoration::assemble(request, columns, Some(p), &[], blocks)
+                decoration::assemble_carved(request, columns, Some(p), mask.as_deref(), blocks)
             });
             timings.time(timings::GEOLOGY, || {
-                geology::apply(request, &field, p, mask.as_deref(), &ores[0], blocks)
+                geology::apply_ores(request, &field, p, mask.as_deref(), &ores[0], blocks)
             });
             timings.time(timings::CAVE_FEATURES, || {
                 features::apply(request, p, mask.as_deref(), blocks)

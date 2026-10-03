@@ -31,6 +31,8 @@ import java.util.concurrent.CompletableFuture;
 /** Per-world, immutable MCA previews. Leases protect active reads from LRU eviction and shutdown. */
 final class TemporaryRegions implements AutoCloseable {
     static final int MAX_REGIONS = 1024;
+    // Bound dense native region fields across DH and ordinary asynchronous requests.
+    private static final java.util.concurrent.Semaphore GENERATORS = new java.util.concurrent.Semaphore(2, true);
     private final TerrainRequest settings;
     private final String biome;
     private final GenerationMetrics metrics;
@@ -164,6 +166,7 @@ final class TemporaryRegions implements AutoCloseable {
         }
         var lease = new Lease(entry);
         if (generate) {
+            GENERATORS.acquireUninterruptibly();
             metrics.begin();
             long start = System.nanoTime();
             try {
@@ -186,9 +189,16 @@ final class TemporaryRegions implements AutoCloseable {
                 if (error instanceof RuntimeException runtime) throw runtime;
                 if (error instanceof Error fatal) throw fatal;
                 throw new IllegalStateException(error);
-            }
+            } finally { GENERATORS.release(); }
         }
         return lease;
+    }
+
+    /** A prepared request keeps its immutable MCA pinned until the I/O queue publishes it. */
+    AutoCloseable prepare(ChunkPos position) {
+        var lease = acquire(position);
+        try { lease.data(); return lease; }
+        catch (Throwable error) { lease.close(); throw error; }
     }
 
     synchronized Path folder() { return folder; }

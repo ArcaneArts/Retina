@@ -250,6 +250,26 @@ impl CaveMask {
         let index = z as usize * width + x as usize;
         self.words[offset + index / 32] & (1 << (index % 32)) != 0
     }
+    /// Sixteen neighboring bits with at most two word loads, used by fused chunk assembly.
+    pub fn row_bits(&self, x: i32, y: i32, z: i32) -> u16 {
+        let (x, y, z) = (x - self.origin_x, y - self.min_y, z - self.origin_z);
+        if x < 0
+            || z < 0
+            || y < 0
+            || x as usize + 16 > self.width
+            || z as usize >= self.width
+            || y as u32 >= self.height
+        {
+            return 0;
+        }
+        let i = (y as usize * self.width + z as usize) * self.width + x as usize;
+        let shift = i % 32;
+        let mut word = self.words[i / 32] >> shift;
+        if shift > 16 {
+            word |= self.words[i / 32 + 1] << (32 - shift);
+        }
+        word as u16
+    }
     pub fn carved(&self, x: i32, y: i32, z: i32) -> bool {
         let x = x - self.origin_x;
         let z = z - self.origin_z;
@@ -274,13 +294,51 @@ pub struct OrePlacement {
     pub recipe: u32,
     pub random: u32,
 }
-#[derive(Clone, Copy)]
-struct OreBlock {
-    x: i32,
-    y: i32,
-    z: i32,
-    recipe: u32,
-    random: u32,
+#[derive(Default)]
+struct VeinScratch {
+    spheres: Vec<[f32; 4]>,
+    tested: Vec<u64>,
+}
+// Each anchor writes only its few intersecting target chunks, retaining emission order.
+#[derive(Default)]
+struct AnchorBuckets(Vec<(usize, Vec<OrePlacement>)>);
+impl AnchorBuckets {
+    fn emit(
+        &mut self,
+        request: ChunkRequest,
+        side: usize,
+        recipe: u32,
+        x: i32,
+        y: i32,
+        z: i32,
+        random: u32,
+    ) {
+        let cx = x.div_euclid(16) - request.chunk_x;
+        let cz = z.div_euclid(16) - request.chunk_z;
+        let y = y - request.min_y;
+        if cx < 0
+            || cz < 0
+            || cx as usize >= side
+            || cz as usize >= side
+            || y < 0
+            || y >= request.height as i32
+        {
+            return;
+        }
+        let target = cz as usize * side + cx as usize;
+        let index = match self.0.binary_search_by_key(&target, |b| b.0) {
+            Ok(i) => i,
+            Err(i) => {
+                self.0.insert(i, (target, Vec::new()));
+                i
+            }
+        };
+        self.0[index].1.push(OrePlacement {
+            index: y as u32 * 256 + z.rem_euclid(16) as u32 * 16 + x.rem_euclid(16) as u32,
+            recipe,
+            random,
+        });
+    }
 }
 struct Random(u64);
 impl Random {
@@ -322,10 +380,10 @@ pub fn plan(
     side: usize,
     mask: Option<&CaveMask>,
 ) -> Vec<Vec<OrePlacement>> {
-    let generate = |index: usize| {
+    let generate = |scratch: &mut VeinScratch, index: usize| {
         let cx = field.origin_x + (index % field.side) as i32;
         let cz = field.origin_z + (index / field.side) as i32;
-        let mut blocks = Vec::new();
+        let mut blocks = AnchorBuckets::default();
         for (id, recipe) in profile.geology.ores.iter().enumerate() {
             let mut random = Random(seed(request, cx, cz, id as u32));
             if random.next() % recipe.rarity != 0 {
@@ -342,10 +400,12 @@ pub fn plan(
                 let biome = mask
                     .and_then(|m| m.biome(x, y, z))
                     .map_or(column.biome(), |b| b as usize);
-                if !profile.biomes[biome].ores.contains(&(id as u32)) {
+                if !profile.ore_membership[biome][id] {
                     continue;
                 }
-                vein(recipe, id as u32, x, y, z, &mut random, &mut blocks);
+                vein(recipe, x, y, z, &mut random, scratch, |x, y, z, random| {
+                    blocks.emit(request, side, id as u32, x, y, z, random);
+                });
             }
         }
         blocks
@@ -353,51 +413,47 @@ pub fn plan(
     let anchors: Vec<_> = if side > 1 {
         (0..field.side * field.side)
             .into_par_iter()
-            .map(generate)
+            .map_init(VeinScratch::default, generate)
             .collect()
     } else {
-        (0..field.side * field.side).map(generate).collect()
+        let mut scratch = VeinScratch::default();
+        (0..field.side * field.side)
+            .map(|i| generate(&mut scratch, i))
+            .collect()
     };
-    let mut targets = vec![Vec::new(); side * side];
-    for b in anchors.into_iter().flatten() {
-        let cx = b.x.div_euclid(16) - request.chunk_x;
-        let cz = b.z.div_euclid(16) - request.chunk_z;
-        let y = b.y - request.min_y;
-        if cx < 0
-            || cz < 0
-            || cx as usize >= side
-            || cz as usize >= side
-            || y < 0
-            || y >= request.height as i32
-        {
-            continue;
+    let merge = |target| {
+        let buckets: Vec<_> = anchors
+            .iter()
+            .filter_map(|anchor| {
+                anchor
+                    .0
+                    .binary_search_by_key(&target, |b| b.0)
+                    .ok()
+                    .map(|i| &anchor.0[i].1)
+            })
+            .collect();
+        let mut output = Vec::with_capacity(buckets.iter().map(|b| b.len()).sum());
+        for bucket in buckets {
+            output.extend_from_slice(bucket);
         }
-        targets[cz as usize * side + cx as usize].push(OrePlacement {
-            index: y as u32 * 256 + b.z.rem_euclid(16) as u32 * 16 + b.x.rem_euclid(16) as u32,
-            recipe: b.recipe,
-            random: b.random,
-        });
+        output
+    };
+    // Each target merges anchors in the original indexed order; no serial per-voxel scatter.
+    if side > 1 {
+        (0..side * side).into_par_iter().map(merge).collect()
+    } else {
+        (0..side * side).map(merge).collect()
     }
-    targets
 }
 fn vein(
     recipe: &OreRecipe,
-    id: u32,
     x: i32,
     y: i32,
     z: i32,
     random: &mut Random,
-    out: &mut Vec<OreBlock>,
+    scratch: &mut VeinScratch,
+    mut emit: impl FnMut(i32, i32, i32, u32),
 ) {
-    let mut emit = |x, y, z, random: &mut Random| {
-        out.push(OreBlock {
-            x,
-            y,
-            z,
-            recipe: id,
-            random: random.next(),
-        })
-    };
     if recipe.scattered {
         let tries = random.int(0, recipe.size as i32);
         for i in 0..tries {
@@ -405,7 +461,7 @@ fn vein(
             let dx = ((random.unit() - random.unit()) * spread).round() as i32;
             let dy = ((random.unit() - random.unit()) * spread).round() as i32;
             let dz = ((random.unit() - random.unit()) * spread).round() as i32;
-            emit(x + dx, y + dy, z + dz, random);
+            emit(x + dx, y + dy, z + dz, random.next());
         }
         return;
     }
@@ -423,19 +479,18 @@ fn vein(
         z as f32 - dz,
     ];
     // Vanilla's containment pruning avoids testing the interiors of hidden ellipsoids.
-    let mut spheres: Vec<[f32; 4]> = (0..recipe.size)
-        .map(|i| {
-            let t = i as f32 / recipe.size as f32;
-            [
-                a[0] + (b[0] - a[0]) * t,
-                a[1] + (b[1] - a[1]) * t,
-                a[2] + (b[2] - a[2]) * t,
-                ((std::f32::consts::PI * t).sin() + 1.0) * random.unit() * recipe.size as f32
-                    / 32.0
-                    + 0.5,
-            ]
-        })
-        .collect();
+    let VeinScratch { spheres, tested } = scratch;
+    spheres.clear();
+    spheres.extend((0..recipe.size).map(|i| {
+        let t = i as f32 / recipe.size as f32;
+        [
+            a[0] + (b[0] - a[0]) * t,
+            a[1] + (b[1] - a[1]) * t,
+            a[2] + (b[2] - a[2]) * t,
+            ((std::f32::consts::PI * t).sin() + 1.0) * random.unit() * recipe.size as f32 / 32.0
+                + 0.5,
+        ]
+    }));
     for i in 0..spheres.len() {
         if spheres[i][3] < 0.0 {
             continue;
@@ -462,7 +517,8 @@ fn vein(
         (recipe.size as f32 / 8.0).ceil() as i32 + (recipe.size as f32 / 16.0 + 0.5).ceil() as i32;
     let width = (reach * 2 + 3) as usize;
     let bottom = [x - reach - 1, y - reach - 3, z - reach - 1];
-    let mut tested = vec![0u64; (width * width * (width + 4)).div_ceil(64)];
+    tested.clear();
+    tested.resize((width * width * (width + 4)).div_ceil(64), 0);
     for sphere in spheres.iter().filter(|s| s[3] > 0.0) {
         let radius = sphere[3];
         let inverse = 1.0 / radius;
@@ -487,7 +543,7 @@ fn vein(
                     let bit = 1u64 << (index % 64);
                     if tested[index / 64] & bit == 0 {
                         tested[index / 64] |= bit;
-                        emit(xx, yy, zz, random);
+                        emit(xx, yy, zz, random.next());
                     }
                 }
             }
@@ -525,6 +581,16 @@ pub fn apply(
             }
         }
     }
+    apply_ores(request, field, profile, mask, ores, blocks);
+}
+pub fn apply_ores(
+    request: ChunkRequest,
+    field: &Field,
+    profile: &WorldProfile,
+    mask: Option<&CaveMask>,
+    ores: &[OrePlacement],
+    blocks: &mut [u16],
+) {
     for ore in ores {
         let index = ore.index as usize;
         let recipe = &profile.geology.ores[ore.recipe as usize];
@@ -590,18 +656,25 @@ mod tests {
             };
             for seed in 0..32 {
                 let mut blocks = Vec::new();
-                vein(&recipe, 0, -1, -32, -1, &mut Random(seed), &mut blocks);
-                let positions: std::collections::HashSet<_> =
-                    blocks.iter().map(|b| (b.x, b.y, b.z)).collect();
+                vein(
+                    &recipe,
+                    -1,
+                    -32,
+                    -1,
+                    &mut Random(seed),
+                    &mut VeinScratch::default(),
+                    |x, y, z, _| blocks.push((x, y, z)),
+                );
+                let positions: std::collections::HashSet<_> = blocks.iter().copied().collect();
                 assert_eq!(
                     positions.len(),
                     blocks.len(),
                     "ellipsoid overlap duplicated a voxel"
                 );
                 assert!(
-                    blocks.iter().all(|b| (b.x + 1).abs() <= 16
-                        && (b.z + 1).abs() <= 16
-                        && (b.y + 32).abs() <= 16),
+                    blocks.iter().all(|b| (b.0 + 1).abs() <= 16
+                        && (b.2 + 1).abs() <= 16
+                        && (b.1 + 32).abs() <= 16),
                     "vein extends beyond the shared halo"
                 );
             }

@@ -152,6 +152,8 @@ public final class RetinaChunkGenerator extends ChunkGenerator {
         if (cache != null) cache.close();
     }
 
+    TemporaryRegions previewCache() { return previews; }
+
     NativeTerrain.RegionReport publishPreview(ChunkPos position, Path destination) {
         var cache = previews;
         return cache == null ? null : cache.publishIfPresent(position, destination);

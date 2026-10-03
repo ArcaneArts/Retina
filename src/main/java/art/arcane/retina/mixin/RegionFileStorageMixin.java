@@ -14,6 +14,7 @@ import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -27,6 +28,16 @@ public abstract class RegionFileStorageMixin implements RegionStorageBridge {
 
     @Override
     public void retina$configure(RegionCoordinator coordinator) { retina$coordinator = coordinator; }
+
+    @Override
+    public void retina$request(ChunkPos position) {
+        if (retina$coordinator != null) retina$coordinator.request(position);
+    }
+
+    @Inject(method = "close", at = @At("HEAD"))
+    private void retina$closePreparation(CallbackInfo callback) {
+        if (retina$coordinator != null) retina$coordinator.close();
+    }
 
     @Override
     public Path retina$folder() { return folder; }

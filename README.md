@@ -527,3 +527,19 @@ verify real GPU timestamps, concurrent accounting, the client packet, cached
 record accounting and compact lava lake footprints. An opt-in dedicated server
 check uses `-PretinaQa -PretinaTimingsQa` and exits after validating generated
 chunks and the actual F3 payload.
+
+## Native region performance
+
+Rust now recycles chunk/NBT and ore scratch storage, skips uniform palette index
+work, compiles structure processors and indexes template blocks by chunk, and
+combines base assembly with GPU cave-mask consumption. New-region load requests
+can prepare two temporary MCAs concurrently while the owning Minecraft I/O queue
+continues to serialize save publication. Background work never changes live save
+files, and publication preserves already stored chunks and player edits.
+
+The matched Metal benchmark retained every feature and identical chunk NBT,
+improving native throughput from about 2,525 to 4,418 chunks/s with two concurrent
+regions. This measures native generation rather than loaded/rendered client
+throughput. Concurrent jobs can have longer individual latency while producing
+more chunks per second. See [the performance report](docs/NATIVE_PERFORMANCE.md)
+for stage results, correctness checks and the repeatable benchmark commands.

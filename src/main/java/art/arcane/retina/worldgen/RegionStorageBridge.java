@@ -9,5 +9,6 @@ import java.nio.file.Path;
 public interface RegionStorageBridge {
     void retina$configure(RegionCoordinator coordinator);
     Path retina$folder();
+    void retina$request(ChunkPos position);
     void retina$closeRegion(ChunkPos position) throws IOException;
 }

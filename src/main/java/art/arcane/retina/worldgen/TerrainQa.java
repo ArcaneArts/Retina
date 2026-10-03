@@ -21,6 +21,22 @@ final class TerrainQa {
         timingsChecked=true;
         var level=server.overworld();
         if(!(level.getChunkSource().getGenerator() instanceof RetinaChunkGenerator generator)) throw new IllegalStateException("Timing QA requires Retina");
+        if (Boolean.getBoolean("retina.qa.pipeline") && generator.regionMode()) {
+            var worker = (net.minecraft.world.level.chunk.storage.IOWorker) level.getChunkSource().chunkMap.chunkScanner();
+            long before = generator.metrics().snapshot().previewRegions();
+            var positions = java.util.List.of(new net.minecraft.world.level.ChunkPos(128,128),
+                    new net.minecraft.world.level.ChunkPos(160,128), new net.minecraft.world.level.ChunkPos(192,128));
+            var loads = positions.stream().map(worker::loadAsync).toList();
+            java.util.concurrent.CompletableFuture.allOf(loads.toArray(java.util.concurrent.CompletableFuture[]::new)).join();
+            for (int i=0; i<loads.size(); i++) {
+                var tag = loads.get(i).join().orElseThrow(); var pos = positions.get(i);
+                if (tag.getIntOr("xPos",0)!=pos.x() || tag.getIntOr("zPos",0)!=pos.z()) throw new IllegalStateException("Pipelined I/O loaded the wrong chunk");
+            }
+            if (generator.metrics().snapshot().previewRegions()<before+2) throw new IllegalStateException("IOWorker loadAsync did not start native region preparation");
+            var loaded = level.getChunk(128,128);
+            if (loaded.getHeight(Heightmap.Types.WORLD_SURFACE,8,8)<level.getMinY()) throw new IllegalStateException("Pipelined region did not activate terrain");
+            Retina.LOGGER.info("QA_EVT {\"event\":\"minecraft_live_requested_region_pipeline\",\"status\":\"pass\",\"context\":{\"requests\":3}}");
+        }
         // Force actual terrain work even when no player has joined this dedicated harness.
         var position=new net.minecraft.world.level.ChunkPos(3,3); level.getChunk(position.x(),position.z());
         var stages=NativeTerrain.instance().timings(generator.profile().nativeId());
