@@ -108,7 +108,7 @@ final class DecorationProfile {
                     }
                 }
                 case "random_chance" -> { }
-                case "in_square", "biome", "surface_water_depth_filter" -> { }
+                case "in_square", "biome", "surface_water_depth_filter", "surface_relative_threshold_filter" -> { }
                 default -> { unsupported.add("placement:" + type(json)); return; }
             }
             p.program.add(json.deepCopy());
@@ -255,7 +255,7 @@ final class DecorationProfile {
                 var op = value.getAsJsonObject();
                 String kind = type(op);
                 op.addProperty("type", kind);
-                if (kind.equals("heightmap")) {
+                if (kind.equals("heightmap") || kind.equals("surface_relative_threshold_filter")) {
                     op.addProperty("map", Heightmap.Types.valueOf(op.remove("heightmap").getAsString()).ordinal());
                 }
                 if (kind.equals("block_predicate_filter")) op.add("predicate", predicate(op.getAsJsonObject("predicate"), palette));
@@ -466,7 +466,7 @@ final class DecorationProfile {
                 case "height_range" -> supportedHeightProvider(json.get("height"));
                 case "block_predicate_filter" -> supportedPredicate(json.getAsJsonObject("predicate"));
                 case "environment_scan" -> supportedPredicate(json.getAsJsonObject("target_condition")) && (!json.has("allowed_search_condition") || supportedPredicate(json.getAsJsonObject("allowed_search_condition")));
-                case "in_square", "heightmap", "rarity_filter", "random_chance", "surface_water_depth_filter" -> true;
+                case "in_square", "heightmap", "rarity_filter", "random_chance", "surface_water_depth_filter", "surface_relative_threshold_filter" -> true;
                 default -> false;
             };
             if(!supported){unsupported.add("vegetation_patch:nested_placement:"+type(json));return null;}

@@ -369,6 +369,24 @@ impl World<'_> {
                     return false;
                 }
             }
+            Modifier::SurfaceRelativeThresholdFilter {
+                map,
+                min_inclusive,
+                max_inclusive,
+            } => {
+                if !placement::surface_relative(
+                    at,
+                    *map,
+                    *min_inclusive,
+                    *max_inclusive,
+                    self.field,
+                    self.profile,
+                    self.request,
+                    self.overlay,
+                ) {
+                    return false;
+                }
+            }
             _ => unreachable!("unsupported nested modifier rejected at export/validation"),
         }
         self.placed(placed, at, rng, index + 1)

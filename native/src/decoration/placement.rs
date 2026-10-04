@@ -279,6 +279,13 @@ pub enum Modifier {
     SurfaceWaterDepthFilter {
         max_water_depth: i32,
     },
+    SurfaceRelativeThresholdFilter {
+        map: u8,
+        #[serde(default = "minimum_threshold")]
+        min_inclusive: i32,
+        #[serde(default = "maximum_threshold")]
+        max_inclusive: i32,
+    },
     Biome,
     Select {
         min: f64,
@@ -287,6 +294,12 @@ pub enum Modifier {
 }
 fn always_true() -> Predicate {
     Predicate::True
+}
+fn minimum_threshold() -> i32 {
+    i32::MIN
+}
+fn maximum_threshold() -> i32 {
+    i32::MAX
 }
 /// Diagnostic invocation of the same expansion/filter path used by production.
 pub(crate) fn sample(
@@ -389,7 +402,9 @@ pub(super) fn validate(program: &[Modifier], palette: usize) -> Result<(), Strin
             }
             Modifier::RarityFilter { chance } => *chance > 0,
             Modifier::RandomChance { chance } => chance.is_finite() && (0.0..=1.0).contains(chance),
-            Modifier::Heightmap { map } => *map < 6,
+            Modifier::Heightmap { map } | Modifier::SurfaceRelativeThresholdFilter { map, .. } => {
+                *map < 6
+            }
             Modifier::HeightRange { height } => height.validate(),
             Modifier::EnvironmentScan {
                 direction,
@@ -641,6 +656,24 @@ pub(super) fn position(
                                 return None;
                             }
                         }
+                        Modifier::SurfaceRelativeThresholdFilter {
+                            map,
+                            min_inclusive,
+                            max_inclusive,
+                        } => {
+                            if !surface_relative(
+                                at,
+                                *map,
+                                *min_inclusive,
+                                *max_inclusive,
+                                field,
+                                profile,
+                                request,
+                                overlay,
+                            ) {
+                                return None;
+                            }
+                        }
                         Modifier::EnvironmentScan {
                             direction,
                             target_condition,
@@ -671,6 +704,24 @@ pub(super) fn position(
         }
     }
     (at[1] >= request.min_y && at[1] < request.min_y + request.height as i32).then_some(at)
+}
+/// Minecraft adds both offsets in long arithmetic and includes both endpoints.
+pub(super) fn surface_relative(
+    at: [i32; 3],
+    map: u8,
+    min: i32,
+    max: i32,
+    field: &Field,
+    profile: &WorldProfile,
+    request: ChunkRequest,
+    overlay: &Overlay,
+) -> bool {
+    overlay
+        .height(field, profile, request, at[0], at[2], map)
+        .is_some_and(|surface| {
+            let y = at[1] as i64;
+            surface as i64 + min as i64 <= y && y <= surface as i64 + max as i64
+        })
 }
 pub(super) fn environment_scan(
     mut at: [i32; 3],

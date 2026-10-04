@@ -121,7 +121,7 @@ public final class NativeBlockFeatureIntegrationTest {
             String type=json.get("type").getAsString().replace("minecraft:","");
             boolean supported=switch(type) {
                 case "height_range" -> DecorationProfile.supportedHeightProvider(json.get("height"));
-                case "random_chance" -> true;
+                case "random_chance", "surface_relative_threshold_filter" -> true;
                 case "environment_scan" -> DecorationProfile.supportedPredicate(json.getAsJsonObject("target_condition")) && (!json.has("allowed_search_condition") || DecorationProfile.supportedPredicate(json.getAsJsonObject("allowed_search_condition")));
                 default -> false;
             };
@@ -144,6 +144,12 @@ public final class NativeBlockFeatureIntegrationTest {
             var modifier=net.minecraft.world.level.levelgen.placement.PlacementModifier.CODEC.parse(ops,scan).getOrThrow();
             var offset=net.minecraft.world.level.levelgen.placement.PlacementModifier.CODEC.parse(ops,JsonParser.parseString("{\"type\":\"minecraft:offset\",\"x\":0,\"y\":1,\"z\":0}")).getOrThrow();
             raw.put(scan+"/offset",List.of(modifier,offset));
+        }
+        for(var map:net.minecraft.world.level.levelgen.Heightmap.Types.values())for(int[] range:List.of(
+                new int[]{Integer.MIN_VALUE,Integer.MAX_VALUE},new int[]{0,0},new int[]{-1,1},
+                new int[]{Integer.MIN_VALUE,-1},new int[]{1,Integer.MAX_VALUE},new int[]{1,-1})) {
+            var modifier=net.minecraft.world.level.levelgen.placement.SurfaceRelativeThresholdFilter.of(map,range[0],range[1]);
+            raw.put("surface_relative/"+map+"/"+Arrays.toString(range),List.of(modifier));
         }
         var palette=new LinkedHashMap<BlockState,Integer>();for(int i=0;i<materials.length;i++)palette.put(materials[i],i);
         var result=new ArrayList<PlacementCase>();

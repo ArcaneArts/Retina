@@ -31,6 +31,8 @@ their lengths, orientations, terrain checks and decorators; see
 and general simple blocks now retain their local placement data and nested
 replay; see [registered patches](REGISTERED_VEGETATION_PATCHES.md). Spatial
 providers and further filters remain required.
+The [surface-relative filter](REGISTERED_SPATIAL_FILTERS.md) now respects loaded
+heightmaps and inclusive offsets in top-level and nested placement programs.
 
 The [GPU decoration substrate](GPU_DECORATION_SUBSTRATE.md) now supplies complete
 carved air, local fluids and material runs across the existing placement halo.
