@@ -40,9 +40,9 @@ and readbacks.
 
 F3 calls the combined stage **Ore planning (CPU + GPU)** under **Native**. It
 includes Rust descriptor preparation, lock/queue waiting, GPU execution and
-readback. Ore application remains a separate worker estimate. Existing GPU
-device rows measure terrain/climate/cave passes; they do not separately time the
-new ore pass. Their sum is not total device utilization.
+readback. Ore application remains a separate worker estimate. The appended **Ore masks** device row now measures the actual mask pass;
+see [ore batching and measurements](GPU_ORE_BATCHING.md). Device counters overlap
+host wall phases and their sum is not total device utilization.
 
 ## Why plant geometry remains in Rust
 

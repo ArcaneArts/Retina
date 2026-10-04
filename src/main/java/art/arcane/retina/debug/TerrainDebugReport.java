@@ -53,7 +53,9 @@ public final class TerrainDebugReport {
                 lines.add(share(GPU,"Material layers",stats.regionStagePercent(MATERIALS),false));
                 lines.add(share(GPU,"Aquifer fields",stats.regionStagePercent(AQUIFER_FIELDS),false));
                 lines.add(share(GPU,"Aquifer fluids / barriers",stats.regionStagePercent(AQUIFER_MASK),false));
-                lines.add(share(GPU,"Feature counts",stats.regionStagePercent(FEATURE_COUNTS),false));}
+                lines.add(share(GPU,"Feature counts",stats.regionStagePercent(FEATURE_COUNTS),false));
+                if(stats.regionStages().oreMeasured())lines.add(share(GPU,"Ore masks",stats.regionStagePercent(ORE_MASK),false));
+                else lines.add(LABEL+"Ore masks: "+DATA+"not measured");}
             else lines.add(LABEL+"Device timestamps unavailable");
         } else if(!mca && stats.stages().chunks()>0) {
             lines.add(HEADER+"Rust (% of average chunk time)"+RESET);

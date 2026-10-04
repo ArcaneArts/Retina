@@ -20,12 +20,18 @@ enum Prepared {
         exposure_random: u64,
         minimum: [i32; 3],
         sizes: [u32; 3],
-        spheres: Vec<[f32; 4]>,
+        /// Range within this anchor's shared sphere vector.
+        spheres: [usize; 2],
     },
     Scattered {
         recipe: u32,
         points: Vec<[i32; 4]>,
     },
+}
+#[derive(Default)]
+struct PreparedAnchor {
+    attempts: Vec<Prepared>,
+    spheres: Vec<[f32; 4]>,
 }
 enum Attempt {
     Regular(usize),
@@ -102,13 +108,12 @@ impl Batch {
             .any(|r| r.replacement_bands.iter().any(|b| b.materials[0] != 0));
         // Mirror the production attempt visitor and culling. Indexed collection
         // keeps anchor/recipe/attempt priority stable, including scattered recipes.
-        let prepared: Vec<Vec<Prepared>> = (0..field.side * field.side)
+        let prepared: Vec<PreparedAnchor> = (0..field.side * field.side)
             .into_par_iter()
-            .map(|index| {
+            .map_init(VeinScratch::default, |scratch, index| {
                 let cx = field.origin_x + (index % field.side) as i32;
                 let cz = field.origin_z + (index / field.side) as i32;
-                let mut output = Vec::new();
-                let mut scratch = VeinScratch::default();
+                let mut output = PreparedAnchor::default();
                 for (id, recipe) in profile.geology.ores.iter().enumerate() {
                     let mut random = Random(seed(request, cx, cz, id as u32));
                     if random.next() % recipe.rarity != 0 {
@@ -143,10 +148,10 @@ impl Batch {
                         let mut local = Random(initial_random);
                         if recipe.scattered || (compact && recipe.discard > 0.) {
                             let mut points = Vec::new();
-                            vein(recipe, x, y, z, &mut local, &mut scratch, |x, y, z, r| {
+                            vein(recipe, x, y, z, &mut local, scratch, |x, y, z, r| {
                                 points.push([x, y, z, r as i32])
                             });
-                            output.push(Prepared::Scattered {
+                            output.attempts.push(Prepared::Scattered {
                                 recipe: id as u32,
                                 points,
                             });
@@ -154,29 +159,26 @@ impl Batch {
                             vein_spheres(recipe, x, y, z, &mut local, &mut scratch.spheres);
                             let mut minimum = [i32::MAX; 3];
                             let mut maximum = [i32::MIN; 3];
-                            let spheres: Vec<_> = scratch
-                                .spheres
-                                .iter()
-                                .filter(|s| s[3] > 0.)
-                                .map(|s| {
-                                    for i in 0..3 {
-                                        minimum[i] = minimum[i].min((s[i] - s[3]).floor() as i32);
-                                        maximum[i] = maximum[i].max((s[i] + s[3]).floor() as i32);
-                                    }
-                                    *s
-                                })
-                                .collect();
-                            if !spheres.is_empty() {
+                            let first = output.spheres.len();
+                            for s in scratch.spheres.iter().filter(|s| s[3] > 0.) {
+                                for i in 0..3 {
+                                    minimum[i] = minimum[i].min((s[i] - s[3]).floor() as i32);
+                                    maximum[i] = maximum[i].max((s[i] + s[3]).floor() as i32);
+                                }
+                                output.spheres.push(*s);
+                            }
+                            let count = output.spheres.len() - first;
+                            if count != 0 {
                                 let sizes =
                                     std::array::from_fn(|i| (maximum[i] - minimum[i] + 1) as u32);
-                                output.push(Prepared::Regular {
+                                output.attempts.push(Prepared::Regular {
                                     origin: [x, y, z],
                                     recipe: id as u32,
                                     initial_random,
                                     exposure_random: local.0,
                                     minimum,
                                     sizes,
-                                    spheres,
+                                    spheres: [first, count],
                                 });
                             }
                         }
@@ -185,9 +187,19 @@ impl Batch {
                 output
             })
             .collect();
+        let regular_count = prepared
+            .iter()
+            .map(|a| {
+                a.attempts
+                    .iter()
+                    .filter(|a| matches!(a, Prepared::Regular { .. }))
+                    .count()
+            })
+            .sum();
+        let sphere_count = prepared.iter().map(|a| a.spheres.len()).sum();
         let mut batch = Self {
-            descriptors: Vec::new(),
-            spheres: Vec::new(),
+            descriptors: Vec::with_capacity(regular_count),
+            spheres: Vec::with_capacity(sphere_count),
             words: 0,
             ordered,
             guarded: compact,
@@ -198,8 +210,10 @@ impl Batch {
             targets: (0..side * side).map(|_| Vec::new()).collect(),
         };
         for anchor in prepared {
+            let sphere_base = batch.spheres.len();
+            batch.spheres.extend_from_slice(&anchor.spheres);
             let mut attempts = Vec::new();
-            for prepared in anchor {
+            for prepared in anchor.attempts {
                 match prepared {
                     Prepared::Scattered { recipe, points } => {
                         if compact {
@@ -228,12 +242,16 @@ impl Batch {
                         batch.descriptors.push(Descriptor {
                             minimum: [minimum[0], minimum[1], minimum[2], 0],
                             dimensions: [sizes[0], sizes[1], sizes[2], batch.words as u32],
-                            source: [batch.spheres.len() as u32, spheres.len() as u32, recipe, 0],
+                            source: [
+                                (sphere_base + spheres[0]) as u32,
+                                spheres[1] as u32,
+                                recipe,
+                                0,
+                            ],
                         });
                         batch.words += (sizes[0] as usize * sizes[1] as usize * sizes[2] as usize)
                             .div_ceil(if ordered { 4 } else { 32 })
                             * if compact { 2 } else { 1 };
-                        batch.spheres.extend_from_slice(&spheres);
                         if !compact {
                             batch.hosts.push(Host {
                                 origin,

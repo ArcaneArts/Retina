@@ -337,7 +337,7 @@ fn generate_region_inner(
             })?;
             let ores = timings.time(timings::ORE_PLAN, || {
                 if let Some(p) = profile.as_deref() {
-                    engine.plan_ores(&field, p, origin, 32, cave_mask.as_deref())
+                    engine.plan_ores(&field, p, origin, 32, cave_mask.as_deref(), Some(&job))
                 } else {
                     Ok(geology::RegionPlan::Cpu(vec![Vec::new(); 1024]))
                 }

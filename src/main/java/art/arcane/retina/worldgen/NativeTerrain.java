@@ -102,7 +102,7 @@ public final class NativeTerrain {
         try (var arena = Arena.ofConfined()) {
             var output = arena.allocate(NativeTimings.BYTES, Long.BYTES);
             check((int) timingSnapshot.invokeExact(profile, output));
-            if (output.get(JAVA_INT,0) != 4) throw new IllegalStateException("Unsupported native timing ABI");
+            if (output.get(JAVA_INT,0) != 5) throw new IllegalStateException("Unsupported native timing ABI");
             return decodeTimings(output);
         } catch(Throwable error) { throw failure(error); }
     }

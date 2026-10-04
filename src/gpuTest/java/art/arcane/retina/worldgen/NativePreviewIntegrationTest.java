@@ -82,6 +82,9 @@ public final class NativePreviewIntegrationTest {
                 require(actual.getBlock(top).isAir() && !actual.getBlock(top - 1).isAir(), "height query uses the same temporary batch");
             }
             require(generator.metrics().snapshot().previewRegions() == 1 && generator.metrics().snapshot().regions() == 0 && generator.metrics().snapshot().total() == 1024, "biomes, terrain and height queries share one temporary region batch");
+            var oreStages = generator.metrics().snapshot().regionStages();
+            require(oreStages.nanos(NativeTimings.ORE_PLAN)>0, "temporary MCA reports mixed ore planning wall time");
+            if(oreStages.oreMeasured())require(oreStages.nanos(NativeTimings.ORE_MASK)>0 && NativeTerrain.instance().timings(generator.profile().nativeId()).nanos(NativeTimings.ORE_MASK)>=oreStages.nanos(NativeTimings.ORE_MASK), "ore device timestamps survive region/session reporting");
             try (var files = Files.list(save)) { require(files.findAny().isEmpty(), "surface calls leave the actual save folder empty"); }
             var another = new ProtoChunk(position, UpgradeData.EMPTY, bounds, factory, null);
             generator.buildTerrain(another, Blender.empty(), random, null, null, null, Set.copyOf(biomes)).join();

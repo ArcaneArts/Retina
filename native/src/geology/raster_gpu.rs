@@ -1,6 +1,9 @@
 //! Ore mask submissions share the terrain device/queue, with reusable buffers.
 use super::raster::Batch;
-use std::{sync::mpsc, time::Duration};
+use std::{
+    sync::mpsc,
+    time::{Duration, Instant},
+};
 
 pub(crate) struct Gpu {
     device: wgpu::Device,
@@ -8,6 +11,17 @@ pub(crate) struct Gpu {
     pipeline: wgpu::ComputePipeline,
     layout: wgpu::BindGroupLayout,
     buffers: Option<Buffers>,
+    timestamps: Option<Timestamps>,
+}
+struct Timestamps {
+    queries: wgpu::QuerySet,
+    resolve: wgpu::Buffer,
+    readback: wgpu::Buffer,
+}
+pub(crate) struct ResultMasks {
+    pub words: Vec<u32>,
+    pub device_nanos: Option<u64>,
+    pub readback_bytes: u64,
 }
 struct Buffers {
     descriptors: wgpu::Buffer,
@@ -52,18 +66,52 @@ impl Gpu {
             compilation_options: Default::default(),
             cache: None,
         });
+        let timestamps = device
+            .features()
+            .contains(wgpu::Features::TIMESTAMP_QUERY)
+            .then(|| {
+                let buffer = |label, usage| {
+                    device.create_buffer(&wgpu::BufferDescriptor {
+                        label: Some(label),
+                        size: 16,
+                        usage,
+                        mapped_at_creation: false,
+                    })
+                };
+                Timestamps {
+                    queries: device.create_query_set(&wgpu::QuerySetDescriptor {
+                        label: Some("Retina ore mask timestamps"),
+                        ty: wgpu::QueryType::Timestamp,
+                        count: 2,
+                    }),
+                    resolve: buffer(
+                        "Retina ore timestamp resolve",
+                        wgpu::BufferUsages::QUERY_RESOLVE | wgpu::BufferUsages::COPY_SRC,
+                    ),
+                    readback: buffer(
+                        "Retina ore timestamp readback",
+                        wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
+                    ),
+                }
+            });
         Self {
             device,
             queue,
             pipeline,
             layout,
             buffers: None,
+            timestamps,
         }
     }
-    pub(crate) fn run(&mut self, batch: &Batch) -> Result<Vec<u32>, String> {
+    pub(crate) fn run(&mut self, batch: &Batch) -> Result<ResultMasks, String> {
         if batch.descriptors.is_empty() {
-            return Ok(Vec::new());
+            return Ok(ResultMasks {
+                words: Vec::new(),
+                device_nanos: None,
+                readback_bytes: 0,
+            });
         }
+        let start = Instant::now();
         let sizes = [
             (batch.descriptors.len() * 48) as u64,
             (batch.spheres.len() * 16) as u64,
@@ -149,7 +197,13 @@ impl Gpu {
         {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
                 label: Some("Retina ore masks"),
-                timestamp_writes: None,
+                timestamp_writes: self.timestamps.as_ref().map(|t| {
+                    wgpu::ComputePassTimestampWrites {
+                        query_set: &t.queries,
+                        beginning_of_pass_write_index: Some(0),
+                        end_of_pass_write_index: Some(1),
+                    }
+                }),
             });
             pass.set_pipeline(&self.pipeline);
             pass.set_bind_group(0, &bindings, &[]);
@@ -157,8 +211,20 @@ impl Gpu {
             pass.dispatch_workgroups(256, (batch.descriptors.len() as u32).div_ceil(256), 1);
         }
         encoder.copy_buffer_to_buffer(&buffers.output, 0, &buffers.readback, 0, sizes[2]);
+        if let Some(t) = &self.timestamps {
+            encoder.resolve_query_set(&t.queries, 0..2, &t.resolve, 0);
+            encoder.copy_buffer_to_buffer(&t.resolve, 0, &t.readback, 0, 16);
+        }
         let submission = self.queue.submit([encoder.finish()]);
         let (sender, receiver) = mpsc::channel();
+        if let Some(t) = &self.timestamps {
+            let sender = sender.clone();
+            t.readback
+                .slice(..)
+                .map_async(wgpu::MapMode::Read, move |result| {
+                    let _ = sender.send(result);
+                });
+        }
         buffers
             .readback
             .slice(..sizes[2])
@@ -172,18 +238,43 @@ impl Gpu {
                     timeout: Some(Duration::from_secs(30)),
                 })
                 .map_err(|e| format!("ore GPU poll failed: {e}"))?;
-            receiver
-                .recv_timeout(Duration::from_secs(30))
-                .map_err(|e| format!("ore GPU mapping timed out: {e}"))?
-                .map_err(|e| format!("ore GPU mapping failed: {e}"))?;
+            for _ in 0..1 + usize::from(self.timestamps.is_some()) {
+                receiver
+                    .recv_timeout(Duration::from_secs(30))
+                    .map_err(|e| format!("ore GPU mapping timed out: {e}"))?
+                    .map_err(|e| format!("ore GPU mapping failed: {e}"))?;
+            }
             let mapped = buffers
                 .readback
                 .slice(..sizes[2])
                 .get_mapped_range()
                 .map_err(|e| e.to_string())?;
-            Ok(bytemuck::cast_slice::<u8, u32>(&mapped).to_vec())
+            let device_nanos = if let Some(t) = &self.timestamps {
+                let range = t
+                    .readback
+                    .slice(..)
+                    .get_mapped_range()
+                    .map_err(|e| e.to_string())?;
+                let ticks: &[u64] = bytemuck::cast_slice(&range);
+                let nanos = (ticks[1].saturating_sub(ticks[0]) as f64
+                    * self.queue.get_timestamp_period() as f64) as u64;
+                // Reject stale/reversed pairs; a device pass cannot outlast the
+                // entire host submission/readback interval containing it.
+                (ticks[0] > 0 && ticks[1] >= ticks[0] && nanos <= start.elapsed().as_nanos() as u64)
+                    .then_some(nanos)
+            } else {
+                None
+            };
+            Ok(ResultMasks {
+                words: bytemuck::cast_slice::<u8, u32>(&mapped).to_vec(),
+                device_nanos,
+                readback_bytes: sizes[2] + if self.timestamps.is_some() { 16 } else { 0 },
+            })
         })();
         buffers.readback.unmap();
+        if let Some(t) = &self.timestamps {
+            t.readback.unmap();
+        }
         result
     }
 }
@@ -272,7 +363,13 @@ mod tests {
             };
             let expected = plan(&field, &profile, request, side, None);
             let batch = Batch::prepare_compact(&field, &profile, request, side, None);
-            let words = gpu.run(&batch).unwrap();
+            let result = gpu.run(&batch).unwrap();
+            assert_eq!(result.words.len(), batch.words);
+            assert_eq!(
+                result.readback_bytes,
+                (batch.words * 4) as u64 + if gpu.timestamps.is_some() { 16 } else { 0 }
+            );
+            let words = result.words;
             for target in 0..side * side {
                 let r = ChunkRequest {
                     chunk_x: cx + (target % side) as i32,

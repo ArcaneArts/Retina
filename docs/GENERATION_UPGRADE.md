@@ -195,3 +195,12 @@ closed and open air spans, fluids and biome transitions. It verifies actual floo
 and plant writes, rather than only checking empty output. All 21 native unit tests,
 the full build and affected feature/geology/biome/region/preview suites pass.
 Raw comparison artifacts use `*-bounds-*` under `build/goal-baseline/`.
+
+## Ore preparation batching
+
+[Ore batching measurements](GPU_ORE_BATCHING.md) record the latest retained
+preparation allocation reduction, actual device mask timestamps and a rejected
+GPU containment-pruning prototype. Registered noise-based plant budgets remain
+on the sparse GPU count sampler; ore attempts/exposure and branching feature
+geometry still need further measured offload work. Broader feature adapters and
+provider/filter support remain part of the incomplete fourth workstream.

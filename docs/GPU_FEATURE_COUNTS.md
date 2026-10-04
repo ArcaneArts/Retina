@@ -60,8 +60,9 @@ GPU lock/queue waiting, dispatch/readback and Rust geometry. **Feature counts**
 under GPU device timing measures the count shader alone and overlaps that planner
 time. It must not be added to region latency. Device timestamps are job-local for
 concurrent region reports; optional timestamp readback adds 16 bytes per batch.
-The matched bridge uses timing ABI 4: 24 stages, 224-byte snapshots and 264-byte
-detailed region reports. The legacy 40-byte region API is unchanged.
+The matched bridge uses timing ABI 5: 25 stages, 232-byte snapshots and 272-byte
+detailed region reports. The appended ore-mask stage measures device work separately
+from mixed ore-planning wall time. The legacy 40-byte region API is unchanged.
 
 `decorationCountTest` exports full vanilla/Terralith benchmark profiles and checks
 the production sampler against `Biome.BIOME_INFO_NOISE`. It exercises 10,240

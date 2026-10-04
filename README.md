@@ -45,6 +45,8 @@ instead of treating each attempted tree as a successful tree. See
 Registered noise-based counts and arbitrary threshold counts are evaluated in
 [sparse GPU batches](docs/GPU_FEATURE_COUNTS.md), while branching geometry and
 ordered canopy/survival checks remain in Rust.
+[Ore preparation batching](docs/GPU_ORE_BATCHING.md) removes per-vein allocations;
+F3 measures the ore mask device pass separately from complete planning wall time.
 Creative mode with commands enabled is useful for testing. Press **F3**, then fly
 into unexplored terrain or use `/tp @s 4096 160 4096` to trigger generation.
 

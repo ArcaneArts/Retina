@@ -210,6 +210,7 @@ impl TerrainEngine {
         request: ChunkRequest,
         side: usize,
         mask: Option<&geology::CaveMask>,
+        job: Option<&timings::Timings>,
     ) -> Result<geology::RegionPlan, String> {
         if profile.geology.ore_layout < 2 || side == 1 || profile.geology.ores.is_empty() {
             return Ok(geology::RegionPlan::Cpu(geology::plan(
@@ -217,7 +218,7 @@ impl TerrainEngine {
             )));
         }
         let batch = geology::raster::Batch::prepare_compact(field, profile, request, side, mask);
-        let words = self
+        let result = self
             .ore_gpu
             .lock()
             .map_err(|_| "ore GPU lock poisoned")?
@@ -225,9 +226,19 @@ impl TerrainEngine {
         self.pipeline.transfer(
             request.reserved,
             (batch.descriptors.len() * 48 + batch.spheres.len() * 16) as u64,
-            (words.len() * 4) as u64,
+            result.readback_bytes,
         );
-        Ok(geology::RegionPlan::Gpu { batch, words })
+        if let Some(nanos) = result.device_nanos {
+            self.timings(request.reserved)
+                .device(timings::ORE_MASK, nanos);
+            if let Some(job) = job {
+                job.device(timings::ORE_MASK, nanos);
+            }
+        }
+        Ok(geology::RegionPlan::Gpu {
+            batch,
+            words: result.words,
+        })
     }
 
     fn feature_counts(
@@ -1646,11 +1657,11 @@ mod tests {
         // ChunkRequest ABI above remains unchanged.
         assert_eq!(std::mem::size_of::<GpuRequest>(), 64);
         assert_eq!(std::mem::offset_of!(GpuRequest, density_offset), 48);
-        assert_eq!(std::mem::size_of::<timings::Snapshot>(), 224);
+        assert_eq!(std::mem::size_of::<timings::Snapshot>(), 232);
         assert_eq!(std::mem::offset_of!(timings::Snapshot, nanos), 32);
         assert_eq!(std::mem::size_of::<region::RegionReport>(), 40);
         assert_eq!(std::mem::offset_of!(region::RegionReport, gpu_nanos), 8);
-        assert_eq!(std::mem::size_of::<region::DetailedRegionReport>(), 264);
+        assert_eq!(std::mem::size_of::<region::DetailedRegionReport>(), 272);
         assert_eq!(
             std::mem::offset_of!(region::DetailedRegionReport, stages),
             40
