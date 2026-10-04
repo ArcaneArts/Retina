@@ -132,6 +132,7 @@ impl WorldProfile {
                         | crate::decoration::Kind::Bamboo { .. }
                         | crate::decoration::Kind::Aquatic { .. }
                         | crate::decoration::Kind::HugeMushroom { .. }
+                        | crate::decoration::Kind::FallenTree { .. }
                 )
             {
                 return Err("registered block features require ordered decoration replay".into());

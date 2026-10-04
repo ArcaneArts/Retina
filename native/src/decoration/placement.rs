@@ -196,20 +196,25 @@ impl Predicate {
         request: ChunkRequest,
         overlay: &Overlay,
     ) -> Option<bool> {
+        self.test_with(at, &|pos| overlay.material(field, profile, request, pos))
+    }
+    /// Expose earlier writes from the same feature without copying the entire
+    /// anchor overlay.
+    pub(super) fn test_with(
+        &self,
+        at: [i32; 3],
+        material: &impl Fn([i32; 3]) -> Option<u16>,
+    ) -> Option<bool> {
         match self {
-            Self::Material { offset, allowed } => overlay
-                .material(
-                    field,
-                    profile,
-                    request,
-                    std::array::from_fn(|i| at[i] + offset[i]),
-                )
-                .map(|m| allowed.binary_search(&m).is_ok()),
+            Self::Material { offset, allowed } => {
+                material(std::array::from_fn(|i| at[i] + offset[i]))
+                    .map(|m| allowed.binary_search(&m).is_ok())
+            }
             Self::AllOf { predicates } | Self::AnyOf { predicates } => {
                 let all = matches!(self, Self::AllOf { .. });
                 let mut unknown = false;
                 for predicate in predicates {
-                    match predicate.test(at, field, profile, request, overlay) {
+                    match predicate.test_with(at, material) {
                         Some(value) if value != all => return Some(value),
                         None => unknown = true,
                         _ => {}
@@ -217,9 +222,7 @@ impl Predicate {
                 }
                 (!unknown).then_some(all)
             }
-            Self::Not { predicate } => predicate
-                .test(at, field, profile, request, overlay)
-                .map(|v| !v),
+            Self::Not { predicate } => predicate.test_with(at, material).map(|v| !v),
             Self::True => Some(true),
         }
     }

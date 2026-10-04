@@ -104,7 +104,7 @@ NBT records exactly. New concurrent output matches its serial output for another
 stage timings, transfer counts and file sizes are in each run's `measurements.json`.
 The tested native library SHA-256 is
 `3cafe9cb331c10772d088e8c8a2f9957b87052c7cd1f647dce97871e6bd690d1`,
-and the built mod JAR contains that same library.
+and the built mod JAR contained that same library at this milestone.
 
 ## Remaining approximations
 
@@ -114,5 +114,6 @@ representative GPU columns for its base predicate substrate rather than all
 material runs/carved voxels at every halo position. Neighboring anchor overlays
 remain independent for stable parallel chunk/MCA output. Custom light conditions,
 block updates/ticks and Minecraft's neighboring-chunk feature scheduling are not
-fully simulated. Fallen trees, patches, other provider/decorator families and
+fully simulated. Fallen trees are covered by the subsequent
+[fallen-tree milestone](REGISTERED_FALLEN_TREES.md). Patches, other provider/decorator families and
 the remaining graph/scan workstreams are still outstanding.

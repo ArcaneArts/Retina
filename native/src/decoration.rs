@@ -10,6 +10,7 @@ use std::collections::{HashSet, VecDeque};
 
 mod blocks;
 pub mod counts;
+mod fallen;
 mod mushroom;
 pub mod placement;
 mod spatial;
@@ -61,6 +62,11 @@ pub struct Recipe {
 #[derive(Clone, Deserialize)]
 #[serde(tag = "kind")]
 pub enum Kind {
+    #[serde(rename = "fallen_tree")]
+    FallenTree {
+        #[serde(flatten)]
+        fallen: fallen::Recipe,
+    },
     #[serde(rename = "huge_mushroom")]
     HugeMushroom {
         #[serde(flatten)]
@@ -127,6 +133,9 @@ impl Recipe {
         }
         let valid = |id: u16| (id as usize) < material_count;
         let okay = match &self.feature {
+            Kind::FallenTree { fallen } => {
+                self.placement.is_some() && fallen.validate(material_count)
+            }
             Kind::HugeMushroom { mushroom } => {
                 self.placement.is_some() && mushroom.validate(material_count)
             }
@@ -727,6 +736,7 @@ pub(crate) fn feature_sample(
             | Kind::Bamboo { .. }
             | Kind::Aquatic { .. }
             | Kind::HugeMushroom { .. }
+            | Kind::FallenTree { .. }
     ) {
         return Err("feature sampler supports registered block features".into());
     }

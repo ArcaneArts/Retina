@@ -5,6 +5,7 @@ import com.mojang.serialization.JsonOps;
 import net.minecraft.core.*;
 import net.minecraft.core.registries.*;
 import net.minecraft.resources.*;
+import net.minecraft.tags.BlockTags;
 import net.minecraft.server.packs.*;
 import net.minecraft.server.packs.repository.*;
 import net.minecraft.server.packs.resources.MultiPackResourceManager;
@@ -30,7 +31,7 @@ import java.util.*;
  * Both implementations receive the same controlled random stream and terrain;
  * this tests geometry/providers, not equivalence with Minecraft's seed RNG. */
 public final class NativeBlockFeatureIntegrationTest {
-    private static final Set<String> ADAPTERS=Set.of("block_column","bamboo","aquatic","huge_mushroom");
+    private static final Set<String> ADAPTERS=Set.of("block_column","bamboo","aquatic","huge_mushroom","fallen_tree");
     public static void main(String[] args) throws Exception {
         Path vanilla=Path.of("build/registered-columns-vanilla.json");
         NativeProfileExport.main(new String[]{vanilla.toString()});
@@ -51,8 +52,11 @@ public final class NativeBlockFeatureIntegrationTest {
             var json=JsonParser.parseString(Files.readString(file)).getAsJsonObject();
             var materials=json.getAsJsonArray("materials").asList().stream().map(e->BlockState.CODEC.parse(JsonOps.INSTANCE,e).getOrThrow()).toArray(BlockState[]::new);
             var fixtures=List.of(new Fixture(json,materials,96,384),new Fixture(json,materials,32,384),new Fixture(json,materials,58,384),new Fixture(json,materials,96,176),new Fixture(json,materials,96,168),new Fixture(json,materials,96,384,true));
+            var factory=PalettedContainerFactory.create(registry);
+            for(var fixture:fixtures)fixture.factory=factory;
             var kinds=new TreeMap<String,Integer>();int cases=0,placed=0,empty=0,ruggedMushrooms=0,ruggedRejected=0;
             var tipAges=new TreeSet<Integer>();var bambooHeights=new TreeSet<Integer>();var mushroomHeights=new TreeSet<Integer>();
+            var fallenLengths=new TreeSet<Integer>();var fallenAxes=new HashSet<Direction.Axis>();int fallenDecorated=0,fallenStumps=0,ruggedFallenLogs=0;
             var recipes=json.getAsJsonArray("decorations");
             for(int id=0;id<recipes.size();id++) {
                 var recipe=recipes.get(id).getAsJsonObject();String kind=recipe.get("kind").getAsString();
@@ -77,14 +81,26 @@ public final class NativeBlockFeatureIntegrationTest {
                         if(!actual.isEmpty())mushroomHeights.add(actual.keySet().stream().mapToInt(BlockPos::getY).max().orElseThrow()-at[1]);
                         if(fixture.rugged){if(actual.isEmpty())ruggedRejected++;else ruggedMushrooms++;}
                     }
+                    if(kind.equals("fallen_tree")) {
+                        var logs=actual.values().stream().filter(s->s.is(BlockTags.LOGS)).toList();
+                        int horizontal=0;
+                        for(var state:logs)if(state.hasProperty(RotatedPillarBlock.AXIS)) {
+                            var axis=state.getValue(RotatedPillarBlock.AXIS);if(axis!=Direction.Axis.Y){horizontal++;fallenAxes.add(axis);}
+                        }
+                        fallenLengths.add(horizontal);if(horizontal==0)fallenStumps++;
+                        if(fixture.rugged && horizontal>0)ruggedFallenLogs++;
+                        if(actual.size()>logs.size())fallenDecorated++;
+                    }
                 }
             }
-            require(kinds.getOrDefault("block_column",0)>0 && kinds.getOrDefault("bamboo",0)>0 && kinds.getOrDefault("aquatic",0)>0 && kinds.getOrDefault("huge_mushroom",0)>0,"common registered adapters exported: "+kinds);
+            require(kinds.getOrDefault("block_column",0)>0 && kinds.getOrDefault("bamboo",0)>0 && kinds.getOrDefault("aquatic",0)>0 && kinds.getOrDefault("huge_mushroom",0)>0 && kinds.getOrDefault("fallen_tree",0)>0,"common registered adapters exported: "+kinds);
             require(tipAges.equals(new TreeSet<>(List.of(20,21,22,23))),"randomized kelp tip age distribution retained: "+tipAges);
             require(bambooHeights.size()>5 && placed>100 && empty>100,"varied heights, survival and truncation exercised");
             require(mushroomHeights.equals(new TreeSet<>(List.of(4,5,6,8,10,12))) && ruggedMushrooms>0 && ruggedRejected>0,"mushroom heights and terrain clearance exercised: "+mushroomHeights+"/"+ruggedMushrooms+"/"+ruggedRejected);
+            require(fallenLengths.size()>8 && fallenAxes.equals(Set.of(Direction.Axis.X,Direction.Axis.Z)) && fallenDecorated>0 && fallenStumps>0 && ruggedFallenLogs>0,"fallen log lengths, axes, decorators and rejected runs exercised: "+fallenLengths+"/"+fallenStumps+"/"+ruggedFallenLogs);
             System.out.println("QA_EVT {\"event\":\"registered_block_features_minecraft_reference\",\"status\":\"pass\",\"context\":{\"datapack\":"+(pack!=null)+",\"recipes\":"+new Gson().toJson(kinds)+",\"cases\":"+cases+",\"placed\":"+placed+",\"empty\":"+empty+",\"mushroom_heights\":"+new Gson().toJson(mushroomHeights)+",\"rugged_mushrooms\":"+ruggedMushrooms+",\"rugged_rejections\":"+ruggedRejected+"}}");
-            for(String biome:List.of("bamboo_jungle","desert","ocean","mushroom_fields","dark_forest"))checkRegion(json,materials,biome);
+            System.out.println("QA_EVT {\"event\":\"registered_fallen_trees_minecraft_reference\",\"status\":\"pass\",\"context\":{\"datapack\":"+(pack!=null)+",\"horizontal_lengths\":"+new Gson().toJson(fallenLengths)+",\"decorated\":"+fallenDecorated+",\"stump_only\":"+fallenStumps+",\"rugged_runs\":"+ruggedFallenLogs+"}}");
+            for(String biome:List.of("bamboo_jungle","desert","ocean","mushroom_fields","dark_forest","forest","dappled_forest","old_growth_birch_forest"))checkRegion(json,materials,biome);
 
         }
     }
@@ -144,7 +160,7 @@ public final class NativeBlockFeatureIntegrationTest {
         }finally{try(var files=Files.walk(directory)){for(var f:files.sorted(Comparator.reverseOrder()).toList())Files.delete(f);}}
     }
     private static boolean isFeature(BlockState state) {
-        return state.is(Blocks.BAMBOO)||state.is(Blocks.KELP)||state.is(Blocks.KELP_PLANT)||state.is(Blocks.SEAGRASS)||state.is(Blocks.TALL_SEAGRASS)||state.is(Blocks.CACTUS)
+        return state.is(BlockTags.LOGS)||state.is(Blocks.BAMBOO)||state.is(Blocks.KELP)||state.is(Blocks.KELP_PLANT)||state.is(Blocks.SEAGRASS)||state.is(Blocks.TALL_SEAGRASS)||state.is(Blocks.CACTUS)
                 ||state.is(Blocks.MUSHROOM_STEM)||state.is(Blocks.RED_MUSHROOM_BLOCK)||state.is(Blocks.BROWN_MUSHROOM_BLOCK);
     }
     private static Feature resolve(RegistryAccess registry,String source) {
@@ -168,6 +184,7 @@ public final class NativeBlockFeatureIntegrationTest {
     private static final class Fixture {
         final TerrainRequest request;final BlockState[] column;final int base,originHeight;final boolean rugged;
         final BlockState[] materials;final Map<ChunkPos,short[]> terrain=new HashMap<>();
+        PalettedContainerFactory factory;
         Fixture(JsonObject original,BlockState[] materials,int base,int height) {
             this(original,materials,base,height,false);
         }
@@ -202,6 +219,7 @@ public final class NativeBlockFeatureIntegrationTest {
     private static int index(BlockState[] states,BlockState state) {for(int i=0;i<states.length;i++)if(states[i].equals(state))return i;throw new AssertionError("Missing material "+state);}
     private static final class World implements InvocationHandler {
         final Fixture fixture;final Map<BlockPos,BlockState> changed=new HashMap<>();
+        final Map<ChunkPos,ProtoChunk> chunks=new HashMap<>();
         final WorldGenLevel level=(WorldGenLevel)Proxy.newProxyInstance(WorldGenLevel.class.getClassLoader(),new Class<?>[]{WorldGenLevel.class},this);
         World(Fixture fixture){this.fixture=fixture;}
         BlockState get(BlockPos pos) {return changed.getOrDefault(pos,base(pos));}
@@ -210,7 +228,12 @@ public final class NativeBlockFeatureIntegrationTest {
             var args=arguments==null?new Object[0]:arguments;
             return switch(method.getName()) {
                 case "getBlockState" -> get((BlockPos)args[0]);
+                case "isStateAtPosition" -> ((java.util.function.Predicate<BlockState>)args[1]).test(get((BlockPos)args[0]));
                 case "getFluidState" -> get((BlockPos)args[0]).getFluidState();
+                case "getChunk" -> {
+                    var pos=args[0] instanceof BlockPos p?ChunkPos.containing(p):new ChunkPos((int)args[0],(int)args[1]);
+                    yield chunks.computeIfAbsent(pos,p->new ProtoChunk(p,UpgradeData.EMPTY,level,fixture.factory,null));
+                }
                 case "setBlock" -> {
                     var pos=((BlockPos)args[0]).immutable();int y=pos.getY()-fixture.request.minY();
                     if(y<0 || y>=fixture.column.length)yield false;

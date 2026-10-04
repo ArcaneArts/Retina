@@ -136,6 +136,9 @@ final class DecorationProfile {
         } else if (feature instanceof AbstractHugeMushroomFeature mushroom) {
             var data=mushroom(mushroom);
             if(data != null)emit(path,p,chance,"huge_mushroom",data,selected);
+        } else if (feature instanceof FallenTreeFeature fallen) {
+            var data=fallen(fallen);
+            if(data != null)emit(path,p,chance,"fallen_tree",data,selected);
         } else if (feature instanceof BlockColumnFeature column) {
             var data = column(column);
             if(data != null)emit(path,p,chance,"block_column",data,selected);
@@ -230,6 +233,11 @@ final class DecorationProfile {
                 normalizeTypes(op);
             }
             switch(recipe.get("kind").getAsString()) {
+                case "fallen_tree" -> {
+                    for(String key:List.of("clearance","sturdy","air","replaceable","water","shelf"))recipe.add(key,predicate(recipe.getAsJsonObject(key),palette));
+                    normalizeTypes(recipe.get("trunk"));normalizeTypes(recipe.get("log_length"));
+                    normalizeTypes(recipe.get("stump_decorators"));normalizeTypes(recipe.get("log_decorators"));
+                }
                 case "huge_mushroom" -> {
                     for(String key:List.of("support","clearance","replaceable"))recipe.add(key,predicate(recipe.getAsJsonObject(key),palette));
                     normalizeTypes(recipe.get("cap"));normalizeTypes(recipe.get("stem"));
@@ -317,6 +325,53 @@ final class DecorationProfile {
             var output=new JsonObject();output.add("height",layer.get("height").deepCopy());output.add("provider",provider);layers.add(output);
         }
         result.add("layers",layers);return result;
+    }
+    private JsonObject fallen(FallenTreeFeature feature) {
+        var json=Feature.DIRECT_CODEC.encodeStart(registry.createSerializationContext(JsonOps.INSTANCE),feature).getOrThrow().getAsJsonObject();
+        if(!supportedIntProvider(json.get("log_length")) || extent(json.get("log_length"))>15) {unsupported.add("fallen_tree:log_length_exceeds_halo");return null;}
+        var trunk=stateProgram(json.get("trunk_provider"),0);if(trunk==null)return null;
+        var stump=fallenDecorators(json.getAsJsonArray("stump_decorators"));var logs=fallenDecorators(json.getAsJsonArray("log_decorators"));
+        if(stump==null || logs==null)return null;
+        var result=new JsonObject();result.add("trunk",trunk);result.add("log_length",json.get("log_length").deepCopy());
+        result.add("stump_decorators",stump);result.add("log_decorators",logs);
+        var axes=new JsonArray();
+        for(int id:programStates(trunk)) {
+            var base=materials.entrySet().stream().filter(e->e.getValue()==id).findFirst().orElseThrow().getKey();
+            var states=new JsonArray();for(var axis:List.of(Direction.Axis.X,Direction.Axis.Z))states.add(material(base.trySetValue(RotatedPillarBlock.AXIS,axis)));
+            var a=new JsonObject();a.addProperty("source",id);a.add("states",states);axes.add(a);
+        }
+        result.add("axes",axes);
+        var air=matching("matching_block_tag","tag","minecraft:air",0,0,0);
+        result.add("clearance",combine("any_of",air.deepCopy(),matching("matching_block_tag","tag",BlockTags.REPLACEABLE_BY_TREES.location().toString(),0,0,0)));
+        result.add("sturdy",matching("has_sturdy_face","direction","up",0,-1,0));result.add("air",air);
+        result.add("replaceable",test("replaceable",0,0,0));
+        result.add("water",matching("matching_blocks","blocks","minecraft:water",0,0,0));
+        result.add("shelf",matching("matching_blocks","blocks","minecraft:shelf_mushroom",0,0,0));return result;
+    }
+    private JsonArray fallenDecorators(JsonArray input) {
+        var output=new JsonArray();
+        for(var value:input) {
+            var json=value.getAsJsonObject();var d=new JsonObject();d.addProperty("type",type(json));
+            switch(type(json)) {
+                case "attached_to_logs" -> {
+                    var provider=stateProgram(json.get("block_provider"),0);if(provider==null)return null;
+                    d.add("probability",json.get("probability"));d.add("provider",provider);var directions=new JsonArray();
+                    for(var v:json.getAsJsonArray("directions")) {var direction=Direction.valueOf(v.getAsString().toUpperCase(Locale.ROOT));directions.add(new Gson().toJsonTree(new int[]{direction.getStepX(),direction.getStepY(),direction.getStepZ()}));}
+                    d.add("directions",directions);
+                }
+                case "trunk_vine" -> {
+                    var states=new JsonArray();for(var property:List.of(VineBlock.EAST,VineBlock.WEST,VineBlock.SOUTH,VineBlock.NORTH))states.add(material(Blocks.VINE.defaultBlockState().setValue(property,true)));d.add("states",states);
+                }
+                case "shelf_mushroom" -> {
+                    d.add("probability",json.get("probability"));var states=new JsonArray();
+                    for(var direction:Direction.Plane.HORIZONTAL) {var ages=new JsonArray();for(int age=0;age<2;age++)ages.add(material(Blocks.SHELF_MUSHROOM.defaultBlockState().setValue(ShelfMushroomBlock.FACING,direction).setValue(ShelfMushroomBlock.AGE,age)));states.add(ages);}
+                    d.add("states",states);
+                }
+                default -> {unsupported.add("fallen_tree:decorator:"+type(json));return null;}
+            }
+            output.add(d);
+        }
+        return output;
     }
     private JsonObject mushroom(AbstractHugeMushroomFeature feature) {
         if(feature.foliageRadius()<0 || feature.foliageRadius()>15) {unsupported.add("huge_mushroom:radius_exceeds_halo");return null;}

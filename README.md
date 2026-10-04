@@ -353,10 +353,12 @@ of replacing the material-rule ground with solid snow blocks.
 Registered count providers and selectors preserve their budgets and placement
 order. Noise-based and threshold counts use the game's exported permutation on
 the GPU. Rust builds the geometry and tracks accepted blocks in the live overlay.
-Common aquatic vegetation, bamboo, cactus, sugar cane and giant mushrooms now use
+Common aquatic vegetation, bamboo, cactus, sugar cane, fallen trees and giant mushrooms now use
 their registered feature recipes. Giant mushrooms retain loaded cap/stem providers,
 face states, radius and terrain-clearance rules; see [registered mushrooms](docs/REGISTERED_MUSHROOMS.md).
-Fallen trees, vegetation patches, spatial block
+Fallen trees retain configured lengths, sideways log states, mushroom attachments,
+stump vines and shelf mushrooms; see [registered fallen trees](docs/REGISTERED_FALLEN_TREES.md).
+Vegetation patches, spatial block
 providers, additional tree decorators and unsupported placement rules still need
 adapters; export logs identify omissions. Existing regions and edits are preserved.
 Use fresh terrain after restarting to inspect new decorations.
