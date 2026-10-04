@@ -40,7 +40,7 @@ public final class NativeLandscapeIntegrationTest {
                     int height=columns.heights()[136],bx=cx*16+8,bz=cz*16+8;
                     if((data.getAsJsonArray("biomes").get(columns.biome(136)).getAsJsonObject().get("flags").getAsInt()&64)!=0) {
                         shores++;
-                        require(height>=profile.seaLevel()-2 && height<=profile.seaLevel()+6,"real registered beach does not form a disconnected highland patch");
+                        require(height>=profile.seaLevel()-2 && height<=profile.seaLevel()+3,"real registered beach does not form a disconnected highland patch");
                     }
                     float vanilla=state.sampleBlockValueUncached(settings.noiseRouter().chunkSurfaceLevel(),bx,0,bz)+1;
                     if(state.sampleBlockValueUncached(settings.noiseRouter().finalDensity(),bx,settings.seaLevel()-1,bz)<=0)solidWater++;

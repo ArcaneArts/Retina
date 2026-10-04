@@ -77,6 +77,7 @@ final class RegistryShoreIntegrationChecks {
             }
         }
         require(target != null, "registered warm beach fixture is reachable");
+        checkShoreWidth(profile, original, target);
         checkSurfaceResolution(profile, original, target);
         for (boolean inlandClimate : new boolean[]{false, true}) {
             var data = original.deepCopy();
@@ -98,7 +99,7 @@ final class RegistryShoreIntegrationChecks {
             for (int z : new int[]{-33,-32,-1,0,31,32}) {
                 var shore = NativeTerrain.instance().sampleColumns(request(id, 0, z));
                 for (int row = 0; row < 16; row++) {
-                    int column = row*16+8;
+                    int column = row*16+3;
                     require(shore.biome(column) == beach, "GPU aligns the registered shore with real water despite mismatched climate: "+inlandClimate);
                     require(profile.materials()[shore.materials()[column]&65535].is(Blocks.SAND), "aligned beach uses registered sand rules");
                 }
@@ -132,6 +133,74 @@ final class RegistryShoreIntegrationChecks {
             for(int c=0;c<256;c++)require((original.getAsJsonArray("biomes").get(columns.biome(c)).getAsJsonObject().get("flags").getAsInt()&64)==0,"absent coastal placements stay absent");
         }
         System.out.println("QA_EVT {\"event\":\"gpu_physical_shore_alignment\",\"status\":\"pass\",\"context\":{\"climate_cases\":2,\"negative_boundaries\":true}}");
+    }
+
+    /** Shallow slopes must not turn a whole lowland shelf into a beach. */
+    private static void checkShoreWidth(BiomeTerrainProfile profile, JsonObject original, JsonObject target) {
+        long checked = 0, beachColumns = 0, nearDryColumns = 0;
+        double maxDryDistance = 0;
+        // Axis and diagonal shores around a negative MCA boundary expose both
+        // over-wide bands and the previous square (rather than radial) reach.
+        float diagonal = (float) (-1 / Math.sqrt(2));
+        for (String execution : List.of("interpreter", "specialized"))
+            for (float slope : new float[]{1F / 16, 1})
+                for (float[] direction : new float[][]{{1, 0}, {0, 1}, {diagonal, diagonal}}) {
+                    var data = original.deepCopy(); data.addProperty("program_execution", execution);
+                    for (var b : data.getAsJsonArray("biomes")) b.getAsJsonObject().add("lakes", JsonParser.parseString("[0,0]"));
+                    constantClimate(data, target);
+                    var registry = data.getAsJsonObject("registry_program");
+                    // This fixture checks coast selection, not material rules.
+                    // Keep the loaded climate table but isolate unused graphs;
+                    // actual rules have separate reference/parity checks below.
+                    registry.remove("aquifer");
+                    var programs = registry.getAsJsonArray("programs");
+                    while (programs.size() > data.getAsJsonArray("biomes").size() + 3) programs.remove(programs.size() - 1);
+                    for (int b = 0; b < data.getAsJsonArray("biomes").size(); b++) programs.set(3 + b, constant(1));
+                    registry.add("surface", JsonParser.parseString("[-64,1,0]"));
+                    registry.getAsJsonArray("programs").get(0).getAsJsonObject().getAsJsonArray("nodes").get(2)
+                            .getAsJsonObject().getAsJsonArray("p").set(0, new JsonPrimitive(.4));
+                    float crossing = -512 * (direction[0] + direction[1]) + .375F;
+                    var density = new JsonObject(); var nodes = new JsonArray();
+                    nodes.add(node(0, 0, 0, 0, profile.seaLevel() - 1 - crossing * slope));
+                    for (int axis : new int[]{0, 2}) {
+                        float gradient = direction[axis / 2] * slope;
+                        var n = node(3, axis, 0, 0, 0);
+                        n.add("p", JsonParser.parseString("[-32768,32768," + (-32768 * gradient) + "," + (32768 * gradient) + "]"));
+                        nodes.add(n);
+                    }
+                    nodes.add(node(4, 0, 1, 0, 0)); nodes.add(node(4, 3, 2, 0, 0));
+                    var vertical = node(3, 1, 0, 0, 0); vertical.add("p", JsonParser.parseString("[-64,320,-64,320]"));
+                    nodes.add(vertical); nodes.add(node(5, 4, 5, 0, 0));
+                    density.add("nodes", nodes); density.add("roots", JsonParser.parseString("[6]"));
+                    registry.getAsJsonArray("programs").set(1, density);
+                    int id = NativeTerrain.instance().registerProfile(data.toString());
+                    long nearby = 0, selectedNearby = 0, selectedDry = 0;
+                    for (int cz = -34; cz < -30; cz++) for (int cx = -34; cx < -30; cx++) {
+                        var columns = NativeTerrain.instance().sampleColumns(request(id, cx, cz));
+                        for (int c = 0; c < 256; c++) {
+                            int x = cx * 16 + (c & 15), z = cz * 16 + (c >> 4);
+                            double distance = x * (double) direction[0] + z * (double) direction[1] - crossing;
+                            boolean shore = (original.getAsJsonArray("biomes").get(columns.biome(c)).getAsJsonObject().get("flags").getAsInt() & 64) != 0;
+                            if (shore) {
+                                require(Math.abs(distance) <= 6.05, "registered beach stays beside its physical waterline: "
+                                        + execution + " slope=" + slope + " at " + x + "," + z + " distance=" + distance);
+                                require(columns.heights()[c] <= profile.seaLevel() + 3, "shore treatment cannot climb high banks");
+                                beachColumns++;
+                                if (distance > 0) { selectedDry++; maxDryDistance = Math.max(maxDryDistance, distance); }
+                            }
+                            if (distance >= .1 && distance <= 2.5) {
+                                nearby++; if (shore) selectedNearby++;
+                            }
+                            checked++;
+                        }
+                    }
+                    require(selectedDry > 0 && nearby > 0 && nearby == selectedNearby,
+                            "narrowing the shore retains its registered beach at the waterline");
+                    nearDryColumns += nearby;
+                }
+        System.out.println("QA_EVT {\"event\":\"gpu_narrow_shore_width\",\"status\":\"pass\",\"context\":{\"columns\":"
+                + checked + ",\"shore_columns\":" + beachColumns + ",\"near_dry_columns\":" + nearDryColumns
+                + ",\"max_dry_distance\":" + maxDryDistance + ",\"negative_region_edge\":true}}");
     }
 
     /** Diagonal shoreline transitions must not borrow a neighboring quart's surface rule. */

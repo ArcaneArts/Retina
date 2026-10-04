@@ -126,7 +126,7 @@ fn run_program(program:u32,point:vec3<f32>,request:Request,context:vec4<f32>)->a
 fn density_floor_div(value:i32,step:i32)->i32 {
     return value/step-select(0,1,value%step<0);
 }
-fn surface_guard(r:Request)->i32 {return select(4,16,(r.padding&(1u<<28u))!=0u);}
+fn surface_guard(r:Request)->i32 {return select(4,6,(r.padding&(1u<<28u))!=0u);}
 fn density_origin(r:Request)->vec3<i32> {
     let sx=i32(r.density_step_xz);let sy=i32(r.density_step_y);
     // Shared global nodes cover slope and coastal-water probes at tile edges.

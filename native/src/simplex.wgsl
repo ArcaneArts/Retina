@@ -253,13 +253,17 @@ fn terrain_cached(point:vec2<f32>,r:Request,index:u32)->TerrainSample {
     if (r.padding&(1u<<28u))!=0u && r.density_side>0u {
         let sea=bitcast<i32>(world.ids.y);
         var coastal=false;
-        if sample.height>=sea-2 && sample.height<=sea+6 {
+        if sample.height>=sea-2 && sample.height<=sea+3 {
             // Read the resident pre-cave terrain, so inland lake carving and
             // surface cave mouths cannot manufacture beach patches.
-            for(var radius=4;radius<=16 && !coastal;radius*=2) {
+            for(var radius=2;radius<=6 && !coastal;radius+=2) {
                 for(var direction=0u;direction<8u && !coastal;direction++) {
                     let offsets=array<vec2<i32>,8>(vec2<i32>(1,0),vec2<i32>(-1,0),vec2<i32>(0,1),vec2<i32>(0,-1),vec2<i32>(1,1),vec2<i32>(-1,1),vec2<i32>(1,-1),vec2<i32>(-1,-1));
-                    let probe=point+vec2<f32>(offsets[direction]*radius);
+                    // The old 16-block square reach made diagonal shores over
+                    // 22 blocks wide. Keep every probe within a six-block disk;
+                    // integer positions address the resident height cache exactly.
+                    let step=select(radius,i32(round(f32(radius)*0.70710678)),direction>=4u);
+                    let probe=point+vec2<f32>(offsets[direction]*step);
                     let probe_height=registered_height_fast(probe,r,index);
                     // Shallow sea floor needs nearby land as well: an open
                     // shallow ocean plateau is not a shoreline by itself.

@@ -110,7 +110,7 @@ fn physical_coasts_match_sparse_chunks_and_neighbor_regions() {
     let noise = json!({"frequency":0.02,"amplitude":0.5,"modifiers":[1]});
     let density = json!({"nodes":[
         {"op":0,"a":0,"b":0,"c":0,"p":[0,0,0,0]},
-        {"op":3,"a":0,"b":0,"c":0,"p":[448,576,46,78]},
+        {"op":3,"a":0,"b":0,"c":0,"p":[448,576,45,77]},
         {"op":3,"a":1,"b":0,"c":0,"p":[-64,320,-64,320]},
         {"op":5,"a":1,"b":2,"c":0,"p":[0,0,0,0]}],"roots":[3]});
     let profile = json!({
@@ -152,8 +152,9 @@ fn physical_coasts_match_sparse_chunks_and_neighbor_regions() {
                 chunk[136].biome(),
                 "cold sparse coast agrees with columns in {mode}"
             );
-            let coastal =
-                chunk[136].height >= 61 && chunk[136].height <= 69 && requests[i].chunk_x <= 32;
+            // This plane crosses sea level at X=516: the X=520 center is
+            // within the narrow coastal band, while X=504 is too far seaward.
+            let coastal = requests[i].chunk_x == 32;
             assert_eq!(
                 chunk[136].biome(),
                 if coastal { 2 } else { 0 },

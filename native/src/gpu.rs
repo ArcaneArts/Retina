@@ -478,7 +478,7 @@ impl Gpu {
             .filter(|p| p.surface[2] == 0 && (!surface_probe || align_shores));
         let horizontal_fields = specialized.as_ref().map_or(0, |p| p.horizontal_fields);
         let mut gpu_requests = requests.to_vec();
-        let guard = if align_shores { 16 } else { 4 };
+        let guard = if align_shores { 6 } else { 4 };
         if align_shores {
             for request in &mut gpu_requests {
                 request.padding |= 1 << 28;

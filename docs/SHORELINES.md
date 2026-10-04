@@ -34,11 +34,16 @@ temperature cutoff or sand material ID. Unreferenced shore tags do not create
 inland temperature/rainfall niches.
 
 Physical eligibility is an approximation: ground between sea level minus two and
-plus six blocks, with water beside dry ground or land beside shallow water in the
-uncarved density height field, using neighbor probes four, eight and sixteen blocks
-away. Flat low inland ground and open shallow ocean plateaus do not qualify.
-The GPU height/density halo
-extends to sixteen blocks, including diagonal probes at negative region edges.
+plus three blocks, with water beside dry ground or land beside shallow water in the
+uncarved density height field. Neighbor probes reach two, four and six blocks along
+the axes; diagonal offsets are rounded to integer columns while staying within
+the six-block radius. The old four/eight/sixteen-block square search reached over
+twenty-two blocks diagonally and painted broad sand belts onto low coastal shelves.
+The narrower band limits that treatment horizontally and prevents it climbing as
+far above the waterline. Its distance/elevation bounds approximate the physical
+translation of the registered coast; they are not vanilla registry width settings.
+Flat low inland ground and open shallow ocean plateaus do not qualify.
+The GPU height/density halo extends to six blocks at negative region edges too.
 Synthetic lake carving and cave openings cannot create eligible water. This is
 not an ocean-connectivity flood fill; naturally low inland water can receive a
 registered coastal transition. Explicit-height and older non-registry profiles
@@ -160,6 +165,15 @@ For each profile it also creates a full negative-coordinate MCA and compares all
 Actual Minecraft material-reference checks cover another 6,680,576 voxels, and
 temporary-region promotion, cold base columns and concurrent edits pass.
 
+The shore-width fixture uses shallow shelves and steep banks in both axis
+directions and diagonally, around a negative MCA boundary. It checks actual GPU
+selection in interpreter and specialized modes against each plane's analytic
+waterline: nearby dry ground keeps its registered beach, while inland or seaward
+columns beyond the narrow band cannot select a shore biome. The same checks load
+vanilla and Terralith intervals and retain the no-shore-source and flat inland /
+open-ocean rejection cases. Width changes add no dispatch or transfer fields;
+the resident terrain guard shrinks with the probe reach.
+
 `./gradlew datapackTest` loads the real Terralith ZIP and verifies its three beach
 recipes affect GPU material output. The broader biome and datapack tests compare
 chunk output with decoded MCA blocks, including negative region boundaries and
@@ -200,8 +214,70 @@ Evidence is in `build/goal-baseline/shore-resolution/*/measurements.json`,
 `validation.log` and `final-shore-validation.log`. The tested/packaged native SHA-256 is
 `4131791b3ad92901c6a72b71c91cee0a25ef2c8303f920ac453437e7b705eefe`.
 
+### Narrow shoreline measurements
+
+The previous physical eligibility painted low shelves up to sixteen blocks inland
+and over twenty-two diagonally. Comparing the old/new release libraries with the
+same full registered profiles, seed 123456789 and nine adjacent regions around
+the origin checks 2,359,296 columns per profile/version. The production MCA
+column-return API supplied the fields; the diagnostic wrote private temporary
+regions and ran separately from throughput measurements.
+
+| Profile | Old dry shore columns | Narrow dry shore columns | Reduction | Old / new share of dry land |
+| --- | ---: | ---: | ---: | ---: |
+| Vanilla | 420,996 | 168,297 | 60.0% | 30.13% / 12.05% |
+| Terralith | 330,573 | 134,901 | 59.2% | 22.58% / 9.22% |
+
+Every region's complete column-height field remained identical. Shore material
+and feature choices deliberately change, including more inland vegetation where
+the broad beach band previously suppressed it. These percentages describe these
+sampled landscapes, not a global biome coverage target. The analytic width checks
+cover another 98,304 columns across both loaded profiles; the old library fails
+on a shelf column 15.375 blocks from its waterline. The new fixture's farthest dry
+shore column is 5.625 blocks away, while all tested dry columns within 2.5 blocks
+retain their registered beach. Actual rules, sediments, source alternatives and
+per-block material resolution have separate integration checks.
+
+Metal / Apple M4 Max, release builds, two warmups and twenty full regions per run:
+
+| Profile / callers | Old mean request ms | Narrow mean request ms | Narrow native chunks/sec | Narrow peak RSS MiB |
+| --- | ---: | ---: | ---: | ---: |
+| Vanilla / 1 | 160.05 | 160.67 | 6,362 | 957 |
+| Terralith / 1 | 178.51 | 192.99 | 5,298 | 1,596 |
+| Vanilla / 2 | — | 226.60 | 8,909 | 1,055 |
+| Terralith / 2 | — | 286.10 | 7,068 | 1,702 |
+
+Concurrent throughput uses total elapsed time, rather than overlapping request
+latencies. All 20,480 decompressed chunk records per profile match the new serial
+run. This is a fidelity change with different material/feature workloads; user
+applications were active and these numbers do not isolate a performance gain or
+regression. No builds/tests ran concurrently with the benchmarks.
+
+New serial upload/readback averages were 14.27 / 45.62 MB per vanilla region and
+12.39 / 41.90 MB per Terralith region. Twenty-file totals were 153,907,200 and
+131,649,536 bytes. No dispatch or transferred field was added. The resident
+height/density guard is smaller; variable material-run/file sizes change with
+the selected materials and decorations.
+
+Native initialization / profile registration took 2,079 / 521 ms vanilla and
+42 / 1,025 ms Terralith. First requests in deliberately forced specialized mode
+took 13.54 / 53.28 seconds with the changed shader identity; subsequent processes
+started in 0.71 / 3.01 seconds. Driver-cache state differs from the old warmed
+library. Production automatic mode keeps its GPU interpreter during compilation;
+the goal's separate cold-compilation workstream remains required.
+
+`build/shore-width-validation.log` records the final shore, datapack, preview,
+native GPU and landscape checks. The earlier full-program fixtures also passed
+in `build/shore-width-full-program-validation.log`; the final width fixture
+isolates biome selection from unused material/aquifer graphs. Measurements and
+dense classifications are in `build/goal-baseline/shore-width/`. The packaged
+native SHA-256 is
+`57a6a5cc61d6ec2cebf23701f76fbdfa4c679df46e3723de460876c3c47819b1`.
+
 Restart the client and create a new world to use the new default coastal source.
 Saved worlds retain their serialized biome source and existing terrain. Worlds
 already using a pack's imported source receive the new sediment logic in freshly
 generated terrain. Existing generated chunks and cached MCA regions retain their
 stored materials.
+The narrower physical shore band likewise applies to fresh terrain after a
+restart; existing saved or temporary MCA terrain keeps its stored beach width.
