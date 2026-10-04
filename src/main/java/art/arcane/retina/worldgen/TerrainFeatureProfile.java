@@ -83,18 +83,22 @@ final class TerrainFeatureProfile {
             var caveFeatures=collector.finish(kind);
             // A supported loaded column recipe owns its placement budget. Do
             // not add the old per-roof vine approximation on top of those draws.
-            boolean registeredVines=false;
+            boolean registeredVines=false,registeredFloor=false,registeredCeiling=false;
+            var states=palette.keySet().toArray(BlockState[]::new);
             for(var index:entry.getAsJsonArray("decorations")) {
                 var recipe=world.getAsJsonArray("decorations").get(index.getAsInt()).getAsJsonObject();
-                if(!recipe.get("kind").getAsString().equals("block_column"))continue;
-                var direction=recipe.getAsJsonArray("direction");
-                if(direction.get(1).getAsInt()!=-1)continue;
-                for(var layer:recipe.getAsJsonArray("layers"))for(int material:DecorationProfile.programStates(layer.getAsJsonObject().getAsJsonObject("provider"))) {
-                    var state=palette.entrySet().stream().filter(e->e.getValue()==material).findFirst().orElseThrow().getKey();
+                if(recipe.get("kind").getAsString().equals("vegetation_patch")) {
+                    boolean ownsFloor=DecorationProfile.programStates(recipe.getAsJsonObject("ground")).contains(caveFeatures.get("floor").getAsInt());
+                    if(recipe.get("direction").getAsInt()<0)registeredFloor |= ownsFloor;else registeredCeiling |= ownsFloor;
+                }
+                for(int material:DecorationProfile.featureMaterials(recipe)) {
+                    var state=states[material];
                     registeredVines |= state.getBlock() instanceof CaveVinesBlock || state.getBlock() instanceof CaveVinesPlantBlock;
                 }
             }
             caveFeatures.addProperty("registered_vines",registeredVines);
+            caveFeatures.addProperty("registered_floor_patch",registeredFloor);
+            caveFeatures.addProperty("registered_ceiling_patch",registeredCeiling);
             entry.add("cave_features", caveFeatures);
         }
     }

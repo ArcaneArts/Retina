@@ -288,6 +288,29 @@ impl GeologyProfile {
     }
 }
 
+/// Extra column metadata for complete feature footprints in the GPU guard.
+pub struct ColumnHalo {
+    pub origin_x: i32,
+    pub origin_z: i32,
+    pub side: usize,
+    pub columns: std::sync::Arc<Vec<crate::Column>>,
+}
+impl ColumnHalo {
+    pub fn column_at(&self, x: i32, z: i32) -> Option<crate::Column> {
+        let cx = x.div_euclid(16) - self.origin_x;
+        let cz = z.div_euclid(16) - self.origin_z;
+        if cx < 0 || cz < 0 || cx as usize >= self.side || cz as usize >= self.side {
+            return None;
+        }
+        self.columns
+            .get(
+                (cz as usize * self.side + cx as usize) * crate::COLUMNS
+                    + z.rem_euclid(16) as usize * 16
+                    + x.rem_euclid(16) as usize,
+            )
+            .copied()
+    }
+}
 /// One bit per voxel plus a one-block guard for ore exposure checks. New material
 /// profiles cover the decoration halo too. Coordinates and lattice align globally;
 /// a region and independent chunk get the same base materials.
@@ -300,6 +323,8 @@ pub struct CaveMask {
     /// Registered aquifers store only carved air in the CPU exposure bit plane.
     pub air_only: bool,
     pub words: Vec<u32>,
+    /// GPU guard columns retained with cached substrate, without adding anchors.
+    pub columns: Option<ColumnHalo>,
 }
 impl CaveMask {
     /// Actual GPU base material, including carved air, local fluids and surface

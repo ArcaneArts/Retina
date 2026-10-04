@@ -14,6 +14,8 @@ pub struct TerrainFeatures {
 #[serde(default)]
 pub struct CaveFeatures {
     pub registered_vines: bool,
+    pub registered_floor_patch: bool,
+    pub registered_ceiling_patch: bool,
     pub replaceable: Vec<bool>,
     pub floor: u16,
     pub clay: u16,
@@ -199,7 +201,7 @@ fn apply_inner(
                     .copied()
                     .unwrap_or(false);
                 let h = random(r, wx, y, wz, 4139);
-                if floor_ok {
+                if floor_ok && !f.registered_floor_patch {
                     blocks[below] = f.floor;
                     match biome.cave_kind {
                         1 => {
@@ -247,7 +249,9 @@ fn apply_inner(
                 }
                 let h = random(r, wx, r.min_y + end as i32, wz, 9283);
                 if roof.cave_kind == 1 && f.floor != 0 {
-                    blocks[above] = f.floor;
+                    if !f.registered_ceiling_patch {
+                        blocks[above] = f.floor;
+                    }
                     if !f.registered_vines
                         && !f.vine_bodies.is_empty()
                         && !f.vine_tips.is_empty()
@@ -325,6 +329,7 @@ mod scan_tests {
                 let offset = (width * width * height as usize).div_ceil(32)
                     + (surface_width * surface_width).div_ceil(32);
                 let mut mask = CaveMask {
+                    columns: None,
                     air_only: false,
                     origin_x: r.chunk_x * 16 - 1,
                     origin_z: r.chunk_z * 16 - 1,

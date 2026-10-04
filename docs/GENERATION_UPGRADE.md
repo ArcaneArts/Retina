@@ -27,8 +27,10 @@ sugar cane and aquatic vegetation now have ordered native adapters; see
 giant mushrooms now retain loaded providers, cap faces and clearance rules; see
 [registered mushrooms](REGISTERED_MUSHROOMS.md). Loaded fallen trees now retain
 their lengths, orientations, terrain checks and decorators; see
-[registered fallen trees](REGISTERED_FALLEN_TREES.md). Patches and spatial providers
-remain required.
+[registered fallen trees](REGISTERED_FALLEN_TREES.md). Loaded vegetation patches
+and general simple blocks now retain their local placement data and nested
+replay; see [registered patches](REGISTERED_VEGETATION_PATCHES.md). Spatial
+providers and further filters remain required.
 
 The [GPU decoration substrate](GPU_DECORATION_SUBSTRATE.md) now supplies complete
 carved air, local fluids and material runs across the existing placement halo.
@@ -36,8 +38,9 @@ Live predicates and heightmap modifiers consume those runs, consistently across
 independent chunks and regions. This supplies the base data needed by underground
 vegetation patches. [Registered vertical placements](REGISTERED_VERTICAL_PLACEMENTS.md)
 now preserve height distributions, environment scans and 3D biome restrictions,
-with one discovery pass per anchor. The patch adapter and remaining spatial
-filters/providers are still required.
+with one discovery pass per anchor. Patches now receive complete GPU footprint
+substrate outside those anchors, preserving region/chunk random replay. Remaining
+spatial filters/providers are still required.
 [Final paired-plant replay](PAIRED_PLANT_REPLAY.md) now repairs overlapping tall
 plants after all feature/structure writes, using registered block identities.
 Broader biome/MCA validation passes; the previous defect and measured sparse

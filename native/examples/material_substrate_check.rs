@@ -140,7 +140,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .is_some()
     );
     assert_eq!(
-        mask.material_at(request.chunk_x * 16 - 17, 0, request.chunk_z * 16),
+        mask.material_at(
+            request.chunk_x * 16
+                - if profile.decoration_patch_halo {
+                    33
+                } else {
+                    17
+                },
+            0,
+            request.chunk_z * 16
+        ),
         None
     );
     assert_eq!(

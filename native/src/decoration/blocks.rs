@@ -182,6 +182,49 @@ fn write(blocks: &mut Vec<WorldBlock>, at: [i32; 3], material: u16) {
         role: FEATURE,
     });
 }
+pub(super) fn place_column(
+    column: &ColumnRecipe,
+    at: [i32; 3],
+    rng: &mut Rng,
+    field: &Field,
+    profile: &WorldProfile,
+    request: ChunkRequest,
+    overlay: &Overlay,
+    blocks: &mut Vec<WorldBlock>,
+) -> bool {
+    let test = |p: &Predicate, at| p.test(at, field, profile, request, overlay) == Some(true);
+    let mut heights: Vec<i32> = column.layers.iter().map(|l| l.height.sample(rng)).collect();
+    let total: i32 = heights.iter().sum();
+    for y in 0..total {
+        // Minecraft checks the next position, not the origin.
+        let next = std::array::from_fn(|i| at[i] + column.direction[i] * (y + 1));
+        if !test(&column.allowed, next) {
+            let mut remove = total - y;
+            let indices: Vec<_> = if column.prioritize_tip {
+                (0..heights.len()).collect()
+            } else {
+                (0..heights.len()).rev().collect()
+            };
+            for i in indices {
+                let n = heights[i].min(remove);
+                heights[i] -= n;
+                remove -= n;
+                if remove == 0 {
+                    break;
+                }
+            }
+            break;
+        }
+    }
+    let mut pos = at;
+    for (layer, height) in column.layers.iter().zip(heights) {
+        for _ in 0..height {
+            write(blocks, pos, layer.provider.sample(rng));
+            pos = std::array::from_fn(|i| pos[i] + column.direction[i]);
+        }
+    }
+    total != 0
+}
 pub(super) fn place(
     kind: &Kind,
     at: [i32; 3],
@@ -201,37 +244,7 @@ pub(super) fn place(
             super::mushroom::place(mushroom, at, rng, field, profile, request, overlay, blocks)
         }
         Kind::BlockColumn { column } => {
-            let mut heights: Vec<i32> =
-                column.layers.iter().map(|l| l.height.sample(rng)).collect();
-            let total: i32 = heights.iter().sum();
-            for y in 0..total {
-                // Minecraft checks the next position, not the origin.
-                let next = std::array::from_fn(|i| at[i] + column.direction[i] * (y + 1));
-                if !test(&column.allowed, next) {
-                    let mut remove = total - y;
-                    let indices: Vec<_> = if column.prioritize_tip {
-                        (0..heights.len()).collect()
-                    } else {
-                        (0..heights.len()).rev().collect()
-                    };
-                    for i in indices {
-                        let n = heights[i].min(remove);
-                        heights[i] -= n;
-                        remove -= n;
-                        if remove == 0 {
-                            break;
-                        }
-                    }
-                    break;
-                }
-            }
-            let mut pos = at;
-            for (layer, height) in column.layers.iter().zip(heights) {
-                for _ in 0..height {
-                    write(blocks, pos, layer.provider.sample(rng));
-                    pos = std::array::from_fn(|i| pos[i] + column.direction[i]);
-                }
-            }
+            place_column(column, at, rng, field, profile, request, overlay, blocks);
         }
         Kind::Bamboo { bamboo } => {
             if overlay.material(field, profile, request, at) != Some(0)

@@ -88,6 +88,9 @@ pub struct WorldProfile {
     pub ordered_decorations: bool,
     #[serde(default)]
     pub decoration_biome_3d: bool,
+    /// Complete substrate for patches originating in the existing anchor halo.
+    #[serde(default)]
+    pub decoration_patch_halo: bool,
     #[serde(default)]
     pub decoration_noise: Option<crate::decoration::counts::Noise>,
     #[serde(flatten)]

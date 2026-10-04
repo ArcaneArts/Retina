@@ -110,6 +110,7 @@ registration and first region are 37 / 504 / 627 ms for vanilla and
 native library and bundled JAR library both have SHA-256
 `2aec7211634428032aae41b73eb4d4c4e84dc6e679b9db08e4542ce4b4a62868`.
 
-Vegetation patches, other spatial placement filters and spatial/rule-based block
-providers remain required. Unsupported recipes still appear in the export log;
-this milestone does not silently replace them with a guessed density.
+The subsequent [vegetation-patch milestone](REGISTERED_VEGETATION_PATCHES.md)
+implements supported loaded floor/ceiling/water patches and simple blocks,
+including their nested replay. Other spatial placement filters and spatial/rule
+providers remain required. Unsupported recipes still appear in the export log.

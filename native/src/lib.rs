@@ -32,7 +32,7 @@ pub const COLUMNS: usize = CHUNK_SIDE * CHUNK_SIDE;
 pub const AIR: u16 = 0;
 pub const STONE: u16 = 1;
 const MAX_BATCH: usize = 1024;
-const MAX_TILES: usize = 36 * 36;
+const MAX_TILES: usize = 38 * 38;
 const BATCH_WAIT: Duration = Duration::from_micros(250);
 
 /// C ABI layout. reserved is the resident world-profile handle (0 = legacy stone).
@@ -726,6 +726,8 @@ impl TerrainEngine {
         let material_halo = profile
             .as_deref()
             .is_some_and(|p| p.registry_program.as_ref().is_some_and(|r| r.material_halo));
+        let patch_halo =
+            material_halo && profile.as_deref().is_some_and(|p| p.decoration_patch_halo);
         if !profile.as_deref().is_some_and(|p| {
             p.geology.caves_enabled(p)
                 || p.registry_program
@@ -751,10 +753,16 @@ impl TerrainEngine {
                 return Ok((field, Some(mask)));
             }
         }
-        // Evaluate complete runs for the existing decoration halo. An additional
-        // outer tile keeps slopes, cave interpolation and aquifer support
-        // away from tile edges. It is not an additional feature anchor ring.
-        let ring = if material_halo { 2 } else { 1 };
+        // Complete runs cover existing decoration anchors and, for patches, their
+        // outer footprint. One further tile keeps slope/cave/aquifer evaluation
+        // away from tile edges. These guards do not add feature anchors.
+        let ring = if patch_halo {
+            3
+        } else if material_halo {
+            2
+        } else {
+            1
+        };
         let tile_side = side + ring * 2;
         let origin = ChunkRequest {
             chunk_x: request
@@ -788,8 +796,17 @@ impl TerrainEngine {
         if let Some(trace) = trace {
             *trace = sample.timings;
         }
-        let columns = sample.columns;
-        let mask = Arc::new(sample.mask.ok_or("GPU cave job returned no mask")?);
+        let columns = Arc::new(sample.columns);
+        let mut mask = sample.mask.ok_or("GPU cave job returned no mask")?;
+        if patch_halo {
+            mask.columns = Some(geology::ColumnHalo {
+                origin_x: origin.chunk_x,
+                origin_z: origin.chunk_z,
+                side: tile_side as usize,
+                columns: columns.clone(),
+            });
+        }
+        let mask = Arc::new(mask);
         let requests: Vec<_> = (0..tile_side * tile_side)
             .map(|i| ChunkRequest {
                 chunk_x: origin.chunk_x + (i % tile_side) as i32,
@@ -808,16 +825,16 @@ impl TerrainEngine {
         let columns = if material_halo {
             // Keep anchor counts/order and CPU planning bounds exactly as before.
             // The extra GPU guard's columns can still satisfy future cache queries.
-            (1..tile_side - 1)
+            (ring - 1..ring - 1 + side + 2)
                 .flat_map(|z| {
-                    let start = (z * tile_side + 1) as usize * COLUMNS;
+                    let start = (z * tile_side + ring - 1) as usize * COLUMNS;
                     columns[start..start + (side + 2) as usize * COLUMNS]
                         .iter()
                         .copied()
                 })
                 .collect()
         } else {
-            columns
+            Arc::try_unwrap(columns).unwrap_or_else(|columns| (*columns).clone())
         };
         Ok((
             decoration::Field {
@@ -1327,7 +1344,7 @@ pub unsafe extern "C" fn retina_sample_decoration_feature(
         let profile = engine
             .profile(request.reserved)?
             .ok_or("registered feature requires a profile")?;
-        let field = engine.decoration_field(request, 1)?;
+        let (field, _) = engine.terrain_field(request, 1)?;
         let result = decoration::feature_sample(
             &field,
             &profile,
@@ -1370,7 +1387,7 @@ pub unsafe extern "C" fn retina_sample_decoration_placement(
         let profile = engine
             .profile(request.reserved)?
             .ok_or("registered placement requires a profile")?;
-        let field = engine.decoration_field(request, 1)?;
+        let (field, _) = engine.terrain_field(request, 1)?;
         let result = decoration::placement::sample(
             &field,
             &profile,

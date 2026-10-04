@@ -138,6 +138,9 @@ final class DecorationProfile {
                 placed(w.value().value(), selection(p, low, high), chance * w.weight() / total, path + "/choice" + i++, selected, depth + 1);
                 low = high;
             }
+        } else if (feature instanceof VegetationPatchFeature patch) {
+            var data=patch(patch,depth+1);
+            if(data!=null)emit(path,p,chance,"vegetation_patch",data,selected);
         } else if (feature instanceof TreeFeature tree) {
             var data = tree(tree);
             if (data != null) emit(path, p, chance, "tree", data, selected);
@@ -195,7 +198,11 @@ final class DecorationProfile {
                 aquatic.addAll(drySimple);
                 var data=new JsonObject();data.add("states",aquatic);emit(path,p,chance,"aquatic",data,selected);
             } else if (!variants.isEmpty()) { var data = new JsonObject(); data.add("states", variants); emit(path, p, chance, "plant", data, selected); }
-            else unsupported.add(feature.getClass().getSimpleName() + ":non-surface-plant");
+            else {
+                var data=simple(block);
+                if(data!=null)emit(path,p,chance,"simple_block",data,selected);
+                else unsupported.add(feature.getClass().getSimpleName() + ":unsupported-survival");
+            }
         } else unsupported.add(feature.getClass().getSimpleName());
     }
 
@@ -239,7 +246,12 @@ final class DecorationProfile {
     static void finishPlacements(JsonArray recipes, LinkedHashMap<BlockState, Integer> palette) {
         for (var element : recipes) {
             var recipe = element.getAsJsonObject();
-            for (var value : recipe.getAsJsonArray("placement")) {
+            finishProgram(recipe.getAsJsonArray("placement"),palette);
+            finishFeature(recipe,palette);
+        }
+    }
+    private static void finishProgram(JsonArray program,LinkedHashMap<BlockState,Integer> palette) {
+        for (var value : program) {
                 var op = value.getAsJsonObject();
                 String kind = type(op);
                 op.addProperty("type", kind);
@@ -255,7 +267,34 @@ final class DecorationProfile {
                 }
                 normalizeTypes(op);
             }
+    }
+    private static void finishFeature(JsonObject recipe,LinkedHashMap<BlockState,Integer> palette) {
             switch(recipe.get("kind").getAsString()) {
+                case "vegetation_patch" -> {
+                    for(String key:List.of("replaceable","air","sturdy"))recipe.add(key,predicate(recipe.getAsJsonObject(key),palette));
+                    var same=new JsonArray();
+                    for(int id:programStates(recipe.getAsJsonObject("ground"))) {
+                        var base=palette.entrySet().stream().filter(e->e.getValue()==id).findFirst().orElseThrow().getKey();
+                        var item=new JsonObject();item.addProperty("source",id);item.add("predicate",predicate(matching("matching_blocks","blocks",BuiltInRegistries.BLOCK.getKey(base.getBlock()).toString(),0,0,0),palette));same.add(item);
+                    }
+                    recipe.add("same_blocks",same);normalizeTypes(recipe.get("ground"));normalizeTypes(recipe.get("depth"));normalizeTypes(recipe.get("xz_radius"));
+                    var enclosed=recipe.getAsJsonArray("enclosed");for(int i=0;i<enclosed.size();i++)enclosed.set(i,predicate(enclosed.get(i).getAsJsonObject(),palette));
+                    var wet=new JsonArray();for(var e:palette.entrySet())if(e.getKey().hasProperty(BlockStateProperties.WATERLOGGED)) {
+                        var target=palette.get(e.getKey().setValue(BlockStateProperties.WATERLOGGED,true));
+                        if(target!=null && target.intValue()!=e.getValue().intValue()){var pair=new JsonArray();pair.add(e.getValue());pair.add(target);wet.add(pair);}
+                    }
+                    recipe.add("waterlogged_states",wet);finishNested(recipe.getAsJsonObject("vegetation"),palette);
+                }
+                case "simple_block" -> {
+                    normalizeTypes(recipe.get("provider"));recipe.add("water",predicate(recipe.getAsJsonObject("water"),palette));
+                    for(var value:recipe.getAsJsonArray("states"))for(String key:List.of("survival","upper_allowed")) {
+                        var state=value.getAsJsonObject();state.add(key,predicate(state.getAsJsonObject(key),palette));
+                    }
+                }
+                case "random_selector" -> {for(var v:recipe.getAsJsonArray("options"))finishNested(v.getAsJsonObject().getAsJsonObject("placed"),palette);finishNested(recipe.getAsJsonObject("default"),palette);}
+                case "simple_selector" -> {for(var v:recipe.getAsJsonArray("features"))finishNested(v.getAsJsonObject(),palette);}
+                case "boolean_selector" -> {finishNested(recipe.getAsJsonObject("when_true"),palette);finishNested(recipe.getAsJsonObject("when_false"),palette);}
+                case "weighted_selector" -> {for(var v:recipe.getAsJsonArray("entries"))finishNested(v.getAsJsonObject().getAsJsonObject("placed"),palette);}
                 case "fallen_tree" -> {
                     for(String key:List.of("clearance","sturdy","air","replaceable","water","shelf"))recipe.add(key,predicate(recipe.getAsJsonObject(key),palette));
                     normalizeTypes(recipe.get("trunk"));normalizeTypes(recipe.get("log_length"));
@@ -271,9 +310,11 @@ final class DecorationProfile {
                     var state=variant.getAsJsonObject();state.add(key,predicate(state.getAsJsonObject(key),palette));
                 }}
             }
-        }
     }
 
+    private static void finishNested(JsonObject placed,LinkedHashMap<BlockState,Integer> palette) {
+        finishProgram(placed.getAsJsonArray("placement"),palette);finishFeature(placed.getAsJsonObject("feature"),palette);
+    }
     private static void normalizeTypes(JsonElement value) {
         if (value.isJsonObject()) {
             var object = value.getAsJsonObject();
@@ -285,6 +326,7 @@ final class DecorationProfile {
     }
 
     private static TagKey<Block> survivalSoil(BlockState state) {
+        if(state.getBlock() instanceof AzaleaBlock)return BlockTags.SUPPORTS_AZALEA;
         if (state.getBlock() instanceof MangrovePropaguleBlock) {
             return state.getValue(MangrovePropaguleBlock.HANGING)
                     ? BlockTags.SUPPORTS_HANGING_MANGROVE_PROPAGULE : BlockTags.SUPPORTS_MANGROVE_PROPAGULE;
@@ -314,6 +356,11 @@ final class DecorationProfile {
         variant.add("upper_allowed",combine("any_of",matching("matching_block_tag","tag","minecraft:air",0,0,0),above));return variant;
     }
     private static JsonObject survivalPredicate(BlockState state) {
+        if(state.getBlock() instanceof SmallDripleafBlock)return combine("any_of",matching("matching_block_tag","tag",BlockTags.SUPPORTS_SMALL_DRIPLEAF.location().toString(),0,-1,0),combine("all_of",test("source_water",0,0,0),matching("matching_block_tag","tag",BlockTags.SUPPORTS_VEGETATION.location().toString(),0,-1,0)));
+        if(state.getBlock() instanceof SeaPickleBlock)return test("supports_sea_pickle",0,-1,0);
+        if(state.getBlock() instanceof CarpetBlock)return not(matching("matching_block_tag","tag","minecraft:air",0,-1,0));
+        if(state.getBlock() instanceof SnowLayerBlock)return test("supports_snow",0,-1,0);
+        if(defaultSurvival(state)){var result=new JsonObject();result.addProperty("type","true");return result;}
         if(state.getBlock() instanceof CactusBlock) {
             var neighbors=new ArrayList<JsonObject>();
             for(var d:Direction.Plane.HORIZONTAL)neighbors.add(not(test("solid_or_lava",d.getStepX(),0,d.getStepZ())));
@@ -347,7 +394,115 @@ final class DecorationProfile {
             var provider=stateProgram(layer.get("provider"),0);if(provider==null)return null;
             var output=new JsonObject();output.add("height",layer.get("height").deepCopy());output.add("provider",provider);layers.add(output);
         }
-        result.add("layers",layers);return result;
+        result.add("layers",layers);
+        // Registered waterlogged patches postprocess any placed column base.
+        for(var layer:layers)for(int id:programStates(layer.getAsJsonObject().getAsJsonObject("provider"))) {
+            var state=materials.entrySet().stream().filter(e->e.getValue()==id).findFirst().orElseThrow().getKey();
+            if(state.hasProperty(BlockStateProperties.WATERLOGGED))material(state.setValue(BlockStateProperties.WATERLOGGED,true));
+        }
+        return result;
+    }
+    private static boolean defaultSurvival(BlockState state) {
+        for(Class<?> c=state.getBlock().getClass();c!=null;c=c.getSuperclass())for(var m:c.getDeclaredMethods())
+            if(m.getName().equals("canSurvive") && m.getParameterCount()==3 && m.getParameterTypes()[0]==BlockState.class)
+                return c==net.minecraft.world.level.block.state.BlockBehaviour.class;
+        return false;
+    }
+    private JsonObject simple(SimpleBlockFeature feature) {
+        var provider=stateProgram(BlockStateProvider.DIRECT_CODEC.encodeStart(registry.createSerializationContext(JsonOps.INSTANCE),feature.toPlace().value()).getOrThrow(),0);
+        if(provider==null)return null;
+        var states=new JsonArray();
+        for(int id:programStates(provider)) {
+            var state=materials.entrySet().stream().filter(e->e.getValue()==id).findFirst().orElseThrow().getKey();
+            if(state.getBlock() instanceof MossyCarpetBlock || state.getBlock() instanceof MushroomBlock || !(state.getBlock() instanceof VegetationBlock || state.getBlock() instanceof CarpetBlock || state.getBlock() instanceof SnowLayerBlock || defaultSurvival(state))) {
+                unsupported.add("simple_block:survival:"+BuiltInRegistries.BLOCK.getKey(state.getBlock()));return null;
+            }
+            if(state.getBlock() instanceof DoublePlantBlock && state.getValue(DoublePlantBlock.HALF)!=DoubleBlockHalf.LOWER) {unsupported.add("simple_block:upper-half-provider");return null;}
+            var entry=new JsonObject();entry.addProperty("source",id);var lower=new JsonArray();var upper=new JsonArray();
+            for(boolean wet:List.of(false,true)) {
+                var lo=state;BlockState up=null;
+                if(state.getBlock() instanceof DoublePlantBlock) {
+                    up=state.setValue(DoublePlantBlock.HALF,DoubleBlockHalf.UPPER);
+                    if(state.hasProperty(BlockStateProperties.WATERLOGGED)){lo=lo.setValue(BlockStateProperties.WATERLOGGED,wet);up=up.setValue(BlockStateProperties.WATERLOGGED,wet);}
+                }
+                lower.add(material(lo));upper.add(up==null?0:material(up));
+                // Pool postprocessing can waterlog single blocks too.
+                if(state.hasProperty(BlockStateProperties.WATERLOGGED))material(state.setValue(BlockStateProperties.WATERLOGGED,wet));
+            }
+            entry.add("lower",lower);entry.add("upper",upper);entry.add("survival",survivalPredicate(state));
+            var same=new JsonObject();same.addProperty("type","same_fluid_replaceable");same.add("state",BlockState.CODEC.encodeStart(JsonOps.INSTANCE,state).getOrThrow());
+            entry.add("upper_allowed",combine("any_of",matching("matching_block_tag","tag","minecraft:air",0,0,0),same));states.add(entry);
+        }
+        var result=new JsonObject();result.addProperty("kind","simple_block");result.add("provider",provider);result.add("states",states);
+        result.add("water",matching("matching_fluids","fluids","#"+FluidTags.WATER.location(),0,0,0));result.addProperty("reach",0);return result;
+    }
+    private JsonObject patch(VegetationPatchFeature feature,int depth) {
+        if(depth>16)throw new IllegalArgumentException("Recursive vegetation patch");
+        var ops=registry.createSerializationContext(JsonOps.INSTANCE);
+        var json=Feature.DIRECT_CODEC.encodeStart(ops,feature).getOrThrow().getAsJsonObject();
+        if(!supportedIntProvider(json.get("xz_radius")) || !supportedIntProvider(json.get("depth"))) {unsupported.add("vegetation_patch:int_provider");return null;}
+        int radius=net.minecraft.util.valueproviders.IntProviders.CODEC.parse(JsonOps.INSTANCE,json.get("xz_radius")).getOrThrow().maxInclusive()+1;
+        var ground=stateProgram(json.get("ground_state"),0);if(ground==null)return null;
+        var vegetation=nested(PlacedFeature.CODEC.parse(ops,json.get("vegetation_feature")).getOrThrow().value(),depth+1);
+        if(vegetation==null)return null;
+        if(radius<1 || radius+vegetation.get("reach").getAsInt()>15) {unsupported.add("vegetation_patch:geometry_exceeds_halo");return null;}
+        int direction=json.get("surface").getAsString().equals("floor")?-1:1;
+        var result=new JsonObject();result.addProperty("kind","vegetation_patch");result.add("ground",ground);result.add("vegetation",vegetation);
+        var replaceable=new JsonObject();replaceable.addProperty("type","matching_blocks");replaceable.add("blocks",json.get("replaceable").deepCopy());result.add("replaceable",replaceable);
+        result.add("air",matching("matching_block_tag","tag","minecraft:air",0,0,0));result.add("sturdy",matching("has_sturdy_face","direction",direction<0?"up":"down",0,0,0));result.addProperty("direction",direction);
+        for(String key:List.of("depth","xz_radius","vertical_range","extra_bottom_block_chance","extra_edge_column_chance","vegetation_chance"))result.add(key,json.get(key).deepCopy());
+        boolean water=feature instanceof WaterloggedVegetationPatchFeature;result.addProperty("water_pool",water);var enclosed=new JsonArray();
+        if(water)for(var d:List.of(Direction.NORTH,Direction.EAST,Direction.SOUTH,Direction.WEST,Direction.DOWN))enclosed.add(matching("has_sturdy_face","direction",d.getOpposite().getName(),d.getStepX(),d.getStepY(),d.getStepZ()));
+        result.add("enclosed",enclosed);result.addProperty("reach",radius+vegetation.get("reach").getAsInt());return result;
+    }
+    private JsonObject nested(PlacedFeature placed,int depth) {
+        if(depth>16)throw new IllegalArgumentException("Recursive nested patch feature");
+        var program=new JsonArray();int reach=0;
+        for(var modifier:placed.placement()) {
+            var json=PlacementModifier.CODEC.encodeStart(registry.createSerializationContext(JsonOps.INSTANCE),modifier).getOrThrow().getAsJsonObject();
+            boolean supported=switch(type(json)) {
+                case "count" -> supportedIntProvider(json.get("count"));
+                case "offset" -> supportedIntProvider(json.get("x")) && supportedIntProvider(json.get("y")) && supportedIntProvider(json.get("z"));
+                case "height_range" -> supportedHeightProvider(json.get("height"));
+                case "block_predicate_filter" -> supportedPredicate(json.getAsJsonObject("predicate"));
+                case "environment_scan" -> supportedPredicate(json.getAsJsonObject("target_condition")) && (!json.has("allowed_search_condition") || supportedPredicate(json.getAsJsonObject("allowed_search_condition")));
+                case "in_square", "heightmap", "rarity_filter", "random_chance", "surface_water_depth_filter" -> true;
+                default -> false;
+            };
+            if(!supported){unsupported.add("vegetation_patch:nested_placement:"+type(json));return null;}
+            if(type(json).equals("in_square"))reach+=15;
+            if(type(json).equals("offset"))for(String axis:List.of("x","z")) {
+                var provider=net.minecraft.util.valueproviders.IntProviders.CODEC.parse(JsonOps.INSTANCE,json.get(axis)).getOrThrow();reach+=Math.max(Math.abs(provider.minInclusive()),Math.abs(provider.maxInclusive()));
+            }
+            program.add(json);
+        }
+        var feature=placed.feature().value();JsonObject data=null;
+        if(feature instanceof BlockColumnFeature column) {
+            data=column(column);if(data!=null){data.addProperty("kind","block_column");data.addProperty("reach",column.direction().getAxis().isHorizontal()?Math.max(0,column.layers().stream().mapToInt(l->l.height().maxInclusive()).sum()-1):0);}
+        } else if(feature instanceof SimpleBlockFeature block)data=simple(block);
+        else if(feature instanceof VegetationPatchFeature patch)data=patch(patch,depth+1);
+        else if(feature instanceof RandomSelectorFeature random) {
+            data=new JsonObject();data.addProperty("kind","random_selector");var options=new JsonArray();int extent=0;
+            for(var option:random.features()) {
+                var child=nested(option.feature().value(),depth+1);if(child==null)return null;
+                var item=new JsonObject();item.addProperty("chance",option.chance());item.add("placed",child);options.add(item);extent=Math.max(extent,child.get("reach").getAsInt());
+            }
+            var child=nested(random.defaultFeature().value(),depth+1);if(child==null)return null;
+            data.add("options",options);data.add("default",child);data.addProperty("reach",Math.max(extent,child.get("reach").getAsInt()));
+        } else if(feature instanceof SimpleRandomSelectorFeature random) {
+            data=new JsonObject();data.addProperty("kind","simple_selector");var choices=new JsonArray();int extent=0;
+            for(var option:random.features()){var child=nested(option.value(),depth+1);if(child==null)return null;choices.add(child);extent=Math.max(extent,child.get("reach").getAsInt());}
+            data.add("features",choices);data.addProperty("reach",extent);
+        } else if(feature instanceof RandomBooleanSelectorFeature random) {
+            var a=nested(random.featureTrue().value(),depth+1);var b=nested(random.featureFalse().value(),depth+1);if(a==null || b==null)return null;
+            data=new JsonObject();data.addProperty("kind","boolean_selector");data.add("when_true",a);data.add("when_false",b);data.addProperty("reach",Math.max(a.get("reach").getAsInt(),b.get("reach").getAsInt()));
+        } else if(feature instanceof WeightedRandomSelectorFeature random) {
+            data=new JsonObject();data.addProperty("kind","weighted_selector");var choices=new JsonArray();int extent=0;
+            for(var option:random.features().unwrap()){var child=nested(option.value().value(),depth+1);if(child==null)return null;var item=new JsonObject();item.addProperty("weight",option.weight());item.add("placed",child);choices.add(item);extent=Math.max(extent,child.get("reach").getAsInt());}
+            data.add("entries",choices);data.addProperty("reach",extent);
+        } else {unsupported.add("vegetation_patch:nested_feature:"+feature.getClass().getSimpleName());return null;}
+        if(data==null)return null;
+        var result=new JsonObject();result.add("placement",program);result.add("feature",data);result.addProperty("reach",reach+data.get("reach").getAsInt());return result;
     }
     private JsonObject fallen(FallenTreeFeature feature) {
         var json=Feature.DIRECT_CODEC.encodeStart(registry.createSerializationContext(JsonOps.INSTANCE),feature).getOrThrow().getAsJsonObject();
@@ -460,6 +615,19 @@ final class DecorationProfile {
         }
         return result;
     }
+    static Set<Integer> featureMaterials(JsonObject recipe) {
+        var out=new LinkedHashSet<Integer>();
+        switch(recipe.get("kind").getAsString()) {
+            case "vegetation_patch" -> {out.addAll(programStates(recipe.getAsJsonObject("ground")));out.addAll(featureMaterials(recipe.getAsJsonObject("vegetation").getAsJsonObject("feature")));}
+            case "block_column" -> {for(var layer:recipe.getAsJsonArray("layers"))out.addAll(programStates(layer.getAsJsonObject().getAsJsonObject("provider")));}
+            case "simple_block" -> out.addAll(programStates(recipe.getAsJsonObject("provider")));
+            case "simple_selector" -> {for(var child:recipe.getAsJsonArray("features"))out.addAll(featureMaterials(child.getAsJsonObject().getAsJsonObject("feature")));}
+            case "random_selector" -> {for(var child:recipe.getAsJsonArray("options"))out.addAll(featureMaterials(child.getAsJsonObject().getAsJsonObject("placed").getAsJsonObject("feature")));out.addAll(featureMaterials(recipe.getAsJsonObject("default").getAsJsonObject("feature")));}
+            case "boolean_selector" -> {for(String key:List.of("when_true","when_false"))out.addAll(featureMaterials(recipe.getAsJsonObject(key).getAsJsonObject("feature")));}
+            case "weighted_selector" -> {for(var child:recipe.getAsJsonArray("entries"))out.addAll(featureMaterials(child.getAsJsonObject().getAsJsonObject("placed").getAsJsonObject("feature")));}
+        }
+        return out;
+    }
     static Set<Integer> programStates(JsonObject p) {
         var out=new LinkedHashSet<Integer>();
         switch(p.get("type").getAsString()) {
@@ -501,6 +669,9 @@ final class DecorationProfile {
                 case "replaceable" -> state.canBeReplaced();
                 case "has_sturdy_face" -> state.isFaceSturdy(EmptyBlockGetter.INSTANCE,BlockPos.ZERO,Direction.valueOf(input.get("direction").getAsString().toUpperCase(Locale.ROOT)));
                 case "full_water" -> state.getFluidState().is(FluidTags.WATER) && state.getFluidState().isFull();
+                case "source_water" -> state.getFluidState().isSourceOfType(net.minecraft.world.level.material.Fluids.WATER);
+                case "supports_sea_pickle" -> !state.getCollisionShape(EmptyBlockGetter.INSTANCE,BlockPos.ZERO).getFaceShape(Direction.UP).isEmpty() || state.isFaceSturdy(EmptyBlockGetter.INSTANCE,BlockPos.ZERO,Direction.UP);
+                case "supports_snow" -> !state.is(BlockTags.CANNOT_SUPPORT_SNOW_LAYER) && (state.is(BlockTags.SUPPORT_OVERRIDE_SNOW_LAYER) || Block.isFaceFull(state.getCollisionShape(EmptyBlockGetter.INSTANCE,BlockPos.ZERO),Direction.UP) || state.is(Blocks.SNOW) && state.getValue(SnowLayerBlock.LAYERS)==8);
                 case "same_fluid_replaceable" -> state.canBeReplaced() && state.getFluidState().equals(BlockState.CODEC.parse(JsonOps.INSTANCE,input.get("state")).getOrThrow().getFluidState());
                 case "solid_or_lava" -> state.isSolid() || state.getFluidState().is(FluidTags.LAVA);
                 case "solid" -> state.isSolid();
@@ -680,6 +851,11 @@ final class DecorationProfile {
     static void materialFlags(JsonObject profile, LinkedHashMap<BlockState, Integer> palette) {
         profile.addProperty("ordered_decorations",true);
         profile.addProperty("decoration_biome_3d",true);
+        boolean patchHalo = false;
+        for (var recipe : profile.getAsJsonArray("decorations")) {
+            if (recipe.getAsJsonObject().get("kind").getAsString().equals("vegetation_patch")) patchHalo = true;
+        }
+        profile.addProperty("decoration_patch_halo", patchHalo);
         var heightmaps = new JsonArray(); var flags = new JsonArray(); var halves = new JsonArray();
         var plantTypes = new LinkedHashMap<Block, Integer>();
         for (var state : palette.keySet()) {

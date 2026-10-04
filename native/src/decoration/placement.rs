@@ -672,7 +672,7 @@ pub(super) fn position(
     }
     (at[1] >= request.min_y && at[1] < request.min_y + request.height as i32).then_some(at)
 }
-fn environment_scan(
+pub(super) fn environment_scan(
     mut at: [i32; 3],
     direction: i32,
     max_steps: u32,
@@ -749,7 +749,7 @@ impl Overlay {
         }
         Some(y)
     }
-    fn write(&mut self, profile: &WorldProfile, at: [i32; 3], material: u16) {
+    pub(super) fn write(&mut self, profile: &WorldProfile, at: [i32; 3], material: u16) {
         self.blocks.insert(at, material);
         let masks = profile.heightmap_masks[material as usize];
         let tops = self.tops.entry((at[0], at[2])).or_insert([i32::MIN; 6]);
@@ -881,6 +881,7 @@ mod tests {
         let (mut profile, mut field, request, _) = fixture();
         profile.ordered_decorations = true;
         let mut mask = crate::geology::CaveMask {
+            columns: None,
             origin_x: -17,
             origin_z: -17,
             min_y: 0,

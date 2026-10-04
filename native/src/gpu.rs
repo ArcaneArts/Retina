@@ -1346,6 +1346,7 @@ impl Gpu {
                     width: pending.cave_width as usize,
                     air_only: pending.aquifer,
                     words,
+                    columns: None,
                 })
             }
         } else {

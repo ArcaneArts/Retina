@@ -13,6 +13,7 @@ pub mod counts;
 mod fallen;
 mod mushroom;
 pub mod pairs;
+mod patch;
 pub mod placement;
 mod placement_height;
 mod spatial;
@@ -64,6 +65,16 @@ pub struct Recipe {
 #[derive(Clone, Deserialize)]
 #[serde(tag = "kind")]
 pub enum Kind {
+    #[serde(rename = "vegetation_patch")]
+    VegetationPatch {
+        #[serde(flatten)]
+        patch: patch::Recipe,
+    },
+    #[serde(rename = "simple_block")]
+    SimpleBlock {
+        #[serde(flatten)]
+        simple: patch::Simple,
+    },
     #[serde(rename = "fallen_tree")]
     FallenTree {
         #[serde(flatten)]
@@ -135,6 +146,12 @@ impl Recipe {
         }
         let valid = |id: u16| (id as usize) < material_count;
         let okay = match &self.feature {
+            Kind::VegetationPatch { patch } => {
+                self.placement.is_some() && patch.validate(material_count)
+            }
+            Kind::SimpleBlock { simple } => {
+                self.placement.is_some() && simple.validate(material_count)
+            }
             Kind::FallenTree { fallen } => {
                 self.placement.is_some() && fallen.validate(material_count)
             }
@@ -228,7 +245,7 @@ impl Field {
             || chunk_x as usize >= self.side
             || chunk_z as usize >= self.side
         {
-            return None;
+            return self.substrate.as_ref()?.columns.as_ref()?.column_at(x, z);
         }
         Some(
             self.columns[(chunk_z as usize * self.side + chunk_x as usize) * COLUMNS
@@ -786,6 +803,30 @@ fn anchors_sampled(
                     }
                 }
             }
+            Kind::VegetationPatch { patch } => {
+                patch::place(
+                    patch,
+                    position,
+                    &mut rng,
+                    field,
+                    profile,
+                    request,
+                    &mut overlay,
+                    &mut blocks,
+                );
+            }
+            Kind::SimpleBlock { simple } => {
+                patch::place_simple(
+                    simple,
+                    position,
+                    &mut rng,
+                    field,
+                    profile,
+                    request,
+                    &mut overlay,
+                    &mut blocks,
+                );
+            }
             feature => blocks::place(
                 feature,
                 position,
@@ -835,6 +876,8 @@ pub(crate) fn feature_sample(
     if !matches!(
         recipe.feature,
         Kind::BlockColumn { .. }
+            | Kind::VegetationPatch { .. }
+            | Kind::SimpleBlock { .. }
             | Kind::Bamboo { .. }
             | Kind::Aquatic { .. }
             | Kind::HugeMushroom { .. }
@@ -846,16 +889,44 @@ pub(crate) fn feature_sample(
         return Err("feature sample origin outside field".into());
     }
     let mut blocks = Vec::new();
-    blocks::place(
-        &recipe.feature,
-        at,
-        &mut Rng::new(seed),
-        field,
-        profile,
-        request,
-        &placement::Overlay::default(),
-        &mut blocks,
-    );
+    let mut overlay = placement::Overlay::default();
+    let mut rng = Rng::new(seed);
+    match &recipe.feature {
+        Kind::VegetationPatch { patch } => {
+            patch::place(
+                patch,
+                at,
+                &mut rng,
+                field,
+                profile,
+                request,
+                &mut overlay,
+                &mut blocks,
+            );
+        }
+        Kind::SimpleBlock { simple } => {
+            patch::place_simple(
+                simple,
+                at,
+                &mut rng,
+                field,
+                profile,
+                request,
+                &mut overlay,
+                &mut blocks,
+            );
+        }
+        feature => blocks::place(
+            feature,
+            at,
+            &mut rng,
+            field,
+            profile,
+            request,
+            &overlay,
+            &mut blocks,
+        ),
+    }
     Ok(blocks
         .into_iter()
         .filter(|b| b.y >= request.min_y && b.y < request.min_y + request.height as i32)
@@ -1537,6 +1608,7 @@ mod tests {
             decorations: Vec::new(),
             ordered_decorations: false,
             decoration_biome_3d: false,
+            decoration_patch_halo: false,
             decoration_noise: None,
             geology: Default::default(),
             terrain_features: Default::default(),
