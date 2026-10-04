@@ -44,7 +44,7 @@ readback. Ore application remains a separate worker estimate. Existing GPU
 device rows measure terrain/climate/cave passes; they do not separately time the
 new ore pass. Their sum is not total device utilization.
 
-## Why plants remain in Rust for this step
+## Why plant geometry remains in Rust
 
 The plant-planning timer includes trunk/crown construction, six-neighbor leaf
 distance propagation, ordered placement modifiers and the live canopy overlay.
@@ -168,3 +168,8 @@ can influence a count where the actual recipe requests it. Compact candidate
 packets are preferable to scanning every world voxel. Live heightmaps, ordered
 canopy filters and variable tree geometry require careful batching; independently
 sampling a noise threshold is not an equivalent replacement for those rules.
+
+Registered spatial counts are now implemented by
+[sparse GPU feature queries](GPU_FEATURE_COUNTS.md). Their actual loaded
+threshold/factor/offset/ratio defines the budget. The branching tree geometry
+and live placement replay described above still run in Rust.

@@ -151,6 +151,7 @@ pub struct TerrainEngine {
     timings: Mutex<HashMap<u32, Arc<timings::Timings>>>,
     pipeline: Arc<pipeline::Metrics>,
     ore_gpu: Mutex<geology::raster_gpu::Gpu>,
+    feature_gpu: Mutex<decoration::counts::gpu::Gpu>,
 }
 
 impl TerrainEngine {
@@ -170,12 +171,13 @@ impl TerrainEngine {
             .name("retina-gpu".into())
             .spawn(move || gpu_worker::run(receiver, ready_sender, metrics, depth))
             .map_err(|e| e.to_string())?;
-        let (backend, ores) = ready_receiver.recv().map_err(|e| e.to_string())??;
+        let (backend, ores, counts) = ready_receiver.recv().map_err(|e| e.to_string())??;
         Ok(Self {
             sender,
             backend,
             pipeline,
             ore_gpu: Mutex::new(ores),
+            feature_gpu: Mutex::new(counts),
             profiles: RwLock::new(Vec::new()),
             cache: Mutex::new(ColumnCache::default()),
             height_cache: Mutex::new(ColumnCache::default()),
@@ -226,6 +228,112 @@ impl TerrainEngine {
             (words.len() * 4) as u64,
         );
         Ok(geology::RegionPlan::Gpu { batch, words })
+    }
+
+    fn feature_counts(
+        &self,
+        profile: &WorldProfile,
+        request: ChunkRequest,
+        queries: &[decoration::counts::Query],
+        job: Option<&timings::Timings>,
+    ) -> Result<Vec<i32>, String> {
+        let noise = profile
+            .decoration_noise
+            .as_ref()
+            .ok_or("profile has no registered placement noise")?;
+        let result = self
+            .feature_gpu
+            .lock()
+            .map_err(|_| "feature GPU lock poisoned")?
+            .run(request.reserved, noise, queries)?;
+        self.pipeline
+            .transfer(request.reserved, result.upload, result.readback);
+        if let Some(nanos) = result.device_nanos {
+            self.timings(request.reserved)
+                .device(timings::FEATURE_COUNTS, nanos);
+            if let Some(job) = job {
+                job.device(timings::FEATURE_COUNTS, nanos);
+            }
+        }
+        Ok(result.counts)
+    }
+
+    /// Sparse diagnostics use exactly the production rule descriptors/sampler.
+    pub fn decoration_counts(
+        &self,
+        request: ChunkRequest,
+        points: &[[i32; 4]],
+    ) -> Result<Vec<i32>, String> {
+        request.validate()?;
+        let profile = self
+            .profile(request.reserved)?
+            .ok_or("count queries require a registered profile")?;
+        let queries = points
+            .iter()
+            .map(|&[x, z, recipe, op]| {
+                let program = profile
+                    .decorations
+                    .get(recipe as usize)
+                    .and_then(|r| r.placement.as_ref())
+                    .ok_or("invalid decoration count recipe")?;
+                let rule = program
+                    .get(op as usize)
+                    .and_then(|op| op.noise_rule())
+                    .ok_or("invalid decoration noise count modifier")?;
+                Ok(decoration::counts::Query { x, z, rule })
+            })
+            .collect::<Result<Vec<_>, String>>()?;
+        self.feature_counts(&profile, request, &queries, None)
+    }
+
+    /// Only count sampling crosses the device boundary. Crowns, live canopy,
+    /// survival and recipe/anchor write order stay in the parallel Rust planner.
+    pub fn plan_decorations(
+        &self,
+        field: &decoration::Field,
+        profile: &WorldProfile,
+        request: ChunkRequest,
+        side: usize,
+        mask: Option<&geology::CaveMask>,
+    ) -> Result<Vec<Vec<decoration::Placement>>, String> {
+        self.plan_decorations_profiled(field, profile, request, side, mask, None)
+    }
+    pub(crate) fn plan_decorations_profiled(
+        &self,
+        field: &decoration::Field,
+        profile: &WorldProfile,
+        request: ChunkRequest,
+        side: usize,
+        mask: Option<&geology::CaveMask>,
+        job: Option<&timings::Timings>,
+    ) -> Result<Vec<Vec<decoration::Placement>>, String> {
+        let mut counts = decoration::counts::Counts::default();
+        if profile.decoration_noise.is_some()
+            && profile.decorations.iter().any(|r| {
+                r.placement
+                    .as_ref()
+                    .is_some_and(|ops| ops.iter().any(|op| op.noise_rule().is_some()))
+            })
+        {
+            loop {
+                let queries = decoration::count_queries(field, profile, request, &counts);
+                if queries.is_empty() {
+                    break;
+                }
+                let values = self.feature_counts(profile, request, &queries, job)?;
+                counts.extend(queries.into_iter().zip(values));
+            }
+        }
+        Ok(decoration::plan_sampled(
+            field,
+            profile,
+            request,
+            request.chunk_x,
+            request.chunk_z,
+            side,
+            mask,
+            profile.decoration_noise.as_ref().map(|_| &counts),
+        ))
     }
 
     pub fn register_profile(&self, bytes: &[u8]) -> Result<u32, String> {
@@ -747,16 +855,8 @@ impl TerrainEngine {
         }) {
             let (field, mask) = self.terrain_field(request, 1)?;
             let placements = timings.time(timings::VEGETATION_PLAN, || {
-                decoration::plan(
-                    &field,
-                    p,
-                    request,
-                    request.chunk_x,
-                    request.chunk_z,
-                    1,
-                    mask.as_deref(),
-                )
-            });
+                self.plan_decorations(&field, p, request, 1, mask.as_deref())
+            })?;
             let columns = field.chunk(request.chunk_x, request.chunk_z);
             let ores = timings.time(timings::ORE_PLAN, || {
                 geology::plan(&field, p, request, 1, mask.as_deref())
@@ -1116,6 +1216,34 @@ pub unsafe extern "C" fn retina_sample_columns(
         let result = shared_engine()?.sample_columns(&[unsafe { *request }])?;
         unsafe {
             std::ptr::copy_nonoverlapping(result.as_ptr(), columns, COLUMNS);
+        }
+        Ok(())
+    })
+}
+
+/// # Safety
+/// request is readable; points contains count [x,z,recipe,modifier] records and
+/// output has count writable i32 elements. Buffers live until this call returns.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn retina_sample_decoration_counts(
+    request: *const ChunkRequest,
+    points: *const [i32; 4],
+    count: u64,
+    output: *mut i32,
+) -> i32 {
+    boundary(|| {
+        if request.is_null() || points.is_null() || output.is_null() {
+            return Err("null feature count buffer".into());
+        }
+        let count = usize::try_from(count).map_err(|_| "feature count buffer too large")?;
+        if count > isize::MAX as usize / 16 {
+            return Err("feature count buffer too large".into());
+        }
+        let result = shared_engine()?.decoration_counts(unsafe { *request }, unsafe {
+            std::slice::from_raw_parts(points, count)
+        })?;
+        unsafe {
+            std::ptr::copy_nonoverlapping(result.as_ptr(), output, count);
         }
         Ok(())
     })
@@ -1518,11 +1646,11 @@ mod tests {
         // ChunkRequest ABI above remains unchanged.
         assert_eq!(std::mem::size_of::<GpuRequest>(), 64);
         assert_eq!(std::mem::offset_of!(GpuRequest, density_offset), 48);
-        assert_eq!(std::mem::size_of::<timings::Snapshot>(), 216);
+        assert_eq!(std::mem::size_of::<timings::Snapshot>(), 224);
         assert_eq!(std::mem::offset_of!(timings::Snapshot, nanos), 32);
         assert_eq!(std::mem::size_of::<region::RegionReport>(), 40);
         assert_eq!(std::mem::offset_of!(region::RegionReport, gpu_nanos), 8);
-        assert_eq!(std::mem::size_of::<region::DetailedRegionReport>(), 256);
+        assert_eq!(std::mem::size_of::<region::DetailedRegionReport>(), 264);
         assert_eq!(
             std::mem::offset_of!(region::DetailedRegionReport, stages),
             40

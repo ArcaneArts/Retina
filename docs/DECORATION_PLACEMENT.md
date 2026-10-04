@@ -26,14 +26,19 @@ Checking only bare terrain let nearly every attempt succeed. Checking the live
 canopy rejects attempts above earlier leaves while preserving the requested 155
 attempts. There is no global density reduction or tree-count cap.
 
-The existing GPU vegetation threshold bit handles the supported -0.8 threshold.
-Other threshold levels, noise-based counts and unsupported placement/feature kinds
-are still omitted and reported during export. Survival checks approximate soil
+Registered noise-based counts and arbitrary threshold counts now use sparse
+GPU batches with Minecraft's actual placement permutation. Signed ratios,
+frequency/factor, offsets and the configured below/above counts are retained.
+See [sparse GPU feature counts](GPU_FEATURE_COUNTS.md) for ordering, transfers,
+precision and validation. Older native profiles without that permutation keep
+the existing -0.8 vegetation threshold bit.
+Unsupported placement/feature kinds are still reported during export. Survival checks approximate soil
 tags; they do not simulate every custom block's light or environmental conditions.
 Tree shapes retain the native approximation. Canopy interactions between different
 anchor chunks are independent to preserve parallel generation and request-order
 stability; this is not a complete reproduction of vanilla's decoration scheduling.
-Terrain sampling stays on the GPU, with no additional GPU dispatch or readback.
+Terrain and spatial count sampling stay on the GPU. Count batches return one
+integer per unique sampling point, rather than a dense region noise grid.
 
 Validation uses `./gradlew nativeUnitTest biomeTest datapackTest --no-parallel`:
 shared selector budgets, nested counts, zero counts, rarity order, live canopy

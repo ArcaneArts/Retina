@@ -46,6 +46,8 @@ final class GenerationMetricsTest {
         require(lines.stream().anyMatch(s -> s.contains("Aquifer fluids / barriers") && s.startsWith("§d")), "GPU aquifer classification has a dedicated category");
         require(lines.stream().anyMatch(s -> s.contains("GPU device") && s.contains("overlaps")), "device timing overlap is explicit");
         require(lines.stream().anyMatch(s -> s.startsWith("§dOre planning (CPU + GPU)")), "mixed ore planner is labeled and colored as GPU work");
+        require(lines.stream().anyMatch(s -> s.startsWith("§dPlant planning (CPU + GPU)")), "mixed plant planner is labeled and colored as GPU work");
+        require(lines.stream().anyMatch(s -> s.startsWith("§dFeature counts")), "sparse feature device timing has its own colored row");
         for (String line : lines) {
             require(!line.contains(" | ") && !line.contains("Last region") && !line.contains("session worker"), "each stage has its own line without old counters");
             require(line.chars().filter(c -> c == '%').count() <= 1, "one percentage per display line");

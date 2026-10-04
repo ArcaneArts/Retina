@@ -3,7 +3,7 @@
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Instant;
 
-pub const STAGES: usize = 23;
+pub const STAGES: usize = 24;
 pub const QUEUE: usize = 0;
 pub const ENCODE: usize = 1;
 pub const WAIT_COPY: usize = 2;
@@ -27,6 +27,7 @@ pub const IO: usize = 19;
 pub const MATERIALS: usize = 20;
 pub const AQUIFER_FIELDS: usize = 21;
 pub const AQUIFER_MASK: usize = 22;
+pub const FEATURE_COUNTS: usize = 23;
 
 #[repr(C)]
 #[derive(Default, Clone, Copy, Debug)]
@@ -57,6 +58,10 @@ impl Default for Timings {
     }
 }
 impl Timings {
+    pub fn device(&self, stage: usize, nanos: u64) {
+        self.add(stage, nanos);
+        self.flags.fetch_or(1, Ordering::Relaxed);
+    }
     pub fn add(&self, stage: usize, nanos: u64) {
         self.nanos[stage].fetch_add(nanos, Ordering::Relaxed);
     }
@@ -83,7 +88,7 @@ impl Timings {
     }
     pub fn snapshot(&self) -> Snapshot {
         Snapshot {
-            version: 3,
+            version: 4,
             flags: self.flags.load(Ordering::Relaxed) as u32,
             chunks: self.chunks.load(Ordering::Relaxed),
             gpu_columns: self.gpu_columns.load(Ordering::Relaxed),

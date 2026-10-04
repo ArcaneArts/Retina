@@ -8,6 +8,7 @@ use rayon::prelude::*;
 use serde::Deserialize;
 use std::collections::{HashSet, VecDeque};
 
+pub mod counts;
 pub mod placement;
 mod spatial;
 
@@ -305,6 +306,24 @@ pub fn plan(
     side: usize,
     mask: Option<&crate::geology::CaveMask>,
 ) -> Vec<Vec<Placement>> {
+    assert!(
+        profile.decoration_noise.is_none(),
+        "registered spatial counts must use TerrainEngine::plan_decorations"
+    );
+    plan_sampled(
+        field, profile, request, origin_x, origin_z, side, mask, None,
+    )
+}
+pub(crate) fn plan_sampled(
+    field: &Field,
+    profile: &WorldProfile,
+    request: ChunkRequest,
+    origin_x: i32,
+    origin_z: i32,
+    side: usize,
+    mask: Option<&crate::geology::CaveMask>,
+    counts: Option<&counts::Counts>,
+) -> Vec<Vec<Placement>> {
     let origins: Vec<_> = (0..field.side * field.side)
         .map(|index| {
             (
@@ -313,7 +332,8 @@ pub fn plan(
             )
         })
         .collect();
-    let generate = |&(x, z): &(i32, i32)| anchors(field, profile, request, x, z, mask);
+    let generate =
+        |&(x, z): &(i32, i32)| anchors_sampled(field, profile, request, x, z, mask, counts);
     // Indexed collection preserves global anchor order despite parallel planning.
     let blocks: Vec<_> = if side > 1 {
         origins.par_iter().map(generate).collect()
@@ -346,6 +366,7 @@ pub fn plan(
     targets
 }
 
+#[cfg(test)]
 fn anchors(
     field: &Field,
     profile: &WorldProfile,
@@ -354,6 +375,9 @@ fn anchors(
     chunk_z: i32,
     mask: Option<&crate::geology::CaveMask>,
 ) -> Vec<WorldBlock> {
+    anchors_sampled(field, profile, request, chunk_x, chunk_z, mask, None)
+}
+fn anchor_ids(field: &Field, profile: &WorldProfile, chunk_x: i32, chunk_z: i32) -> Vec<u32> {
     let mut ids = HashSet::new();
     for z in (0..16).step_by(4) {
         for x in (0..16).step_by(4) {
@@ -363,6 +387,66 @@ fn anchors(
     }
     let mut ids: Vec<_> = ids.into_iter().collect();
     ids.sort_unstable();
+    ids
+}
+
+/// Replaying only the placement stream discovers sparse sampling points. RNG
+/// forks and positions are identical on every round; resolved counts expose any
+/// later nested count without constructing crowns or modifying the live overlay.
+pub(crate) fn count_queries(
+    field: &Field,
+    profile: &WorldProfile,
+    request: ChunkRequest,
+    counts: &counts::Counts,
+) -> Vec<counts::Query> {
+    let per_anchor: Vec<Vec<counts::Query>> = (0..field.side * field.side)
+        .into_par_iter()
+        .map(|index| {
+            let x = field.origin_x + (index % field.side) as i32;
+            let z = field.origin_z + (index / field.side) as i32;
+            let mut queries = Vec::new();
+            for id in anchor_ids(field, profile, x, z) {
+                let recipe = &profile.decorations[id as usize];
+                let Some(program) = &recipe.placement else {
+                    continue;
+                };
+                if !program.iter().any(|op| op.noise_rule().is_some()) {
+                    continue;
+                }
+                let salt = recipe.placement_salt.unwrap_or(recipe.salt) as u64;
+                let rng = Rng::new(
+                    request.seed ^ salt ^ mix(x as u32 as u64) ^ mix((z as u32 as u64) << 32),
+                );
+                placement::expand(
+                    program,
+                    id,
+                    id,
+                    [x * 16, request.min_y, z * 16],
+                    rng,
+                    field,
+                    Some(counts),
+                    None,
+                    &mut queries,
+                );
+            }
+            queries
+        })
+        .collect();
+    let mut queries: Vec<_> = per_anchor.into_iter().flatten().collect();
+    queries.sort_unstable();
+    queries.dedup();
+    queries
+}
+fn anchors_sampled(
+    field: &Field,
+    profile: &WorldProfile,
+    request: ChunkRequest,
+    chunk_x: i32,
+    chunk_z: i32,
+    mask: Option<&crate::geology::CaveMask>,
+    counts: Option<&counts::Counts>,
+) -> Vec<WorldBlock> {
+    let ids = anchor_ids(field, profile, chunk_x, chunk_z);
     let center = field.column(chunk_x * 16 + 8, chunk_z * 16 + 8).unwrap();
     let mut blocks = Vec::new();
     let mut candidates = Vec::new();
@@ -378,6 +462,7 @@ fn anchors(
                     ^ mix(chunk_x as u32 as u64)
                     ^ mix((chunk_z as u32 as u64) << 32),
             );
+            let mut missing = Vec::new();
             placement::expand(
                 program,
                 id,
@@ -385,7 +470,13 @@ fn anchors(
                 [chunk_x * 16, request.min_y, chunk_z * 16],
                 rng,
                 field,
-                &mut candidates,
+                counts,
+                Some(&mut candidates),
+                &mut missing,
+            );
+            assert!(
+                missing.is_empty(),
+                "feature planner received an incomplete GPU count batch"
             );
             continue;
         }
@@ -1220,6 +1311,7 @@ mod tests {
             ],
             noises: Vec::new(),
             decorations: Vec::new(),
+            decoration_noise: None,
             geology: Default::default(),
             terrain_features: Default::default(),
             material_flags: vec![0, 0, 1, 8 | 32, 4, 4, 4, 4, 4, 4],

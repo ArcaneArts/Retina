@@ -235,6 +235,12 @@ pub enum Modifier {
         below_noise: i32,
         above_noise: i32,
     },
+    NoiseBasedCount {
+        noise_to_count_ratio: i32,
+        noise_factor: f64,
+        #[serde(default)]
+        noise_offset: f64,
+    },
     RarityFilter {
         chance: u32,
     },
@@ -262,6 +268,35 @@ pub enum Modifier {
         max: f64,
     },
 }
+impl Modifier {
+    pub(crate) fn noise_rule(&self) -> Option<counts::Rule> {
+        match self {
+            Self::NoiseThresholdCount {
+                noise_level,
+                below_noise,
+                above_noise,
+            } => Some(counts::Rule::threshold(
+                *noise_level,
+                *below_noise,
+                *above_noise,
+            )),
+            Self::NoiseBasedCount {
+                noise_to_count_ratio,
+                noise_factor,
+                noise_offset,
+            } => Some(counts::Rule::based(
+                *noise_to_count_ratio,
+                *noise_factor,
+                *noise_offset,
+            )),
+            _ => None,
+        }
+    }
+    pub(crate) fn requires_registered_noise(&self) -> bool {
+        matches!(self, Self::NoiseBasedCount { .. })
+            || matches!(self, Self::NoiseThresholdCount { noise_level, .. } if (*noise_level + 0.8).abs() >= 0.00001)
+    }
+}
 pub(super) fn validate(program: &[Modifier], palette: usize) -> Result<(), String> {
     for op in program {
         let valid = match op {
@@ -276,9 +311,20 @@ pub(super) fn validate(program: &[Modifier], palette: usize) -> Result<(), Strin
                 above_noise,
             } => {
                 noise_level.is_finite()
-                    && (*noise_level + 0.8).abs() < 0.00001
+                    && (*noise_level as f32).is_finite()
                     && *below_noise >= 0
                     && *above_noise >= 0
+            }
+            Modifier::NoiseBasedCount {
+                noise_factor,
+                noise_offset,
+                ..
+            } => {
+                noise_factor.is_finite()
+                    && (*noise_factor as f32).is_finite()
+                    && *noise_factor as f32 != 0.0
+                    && noise_offset.is_finite()
+                    && (*noise_offset as f32).is_finite()
             }
             Modifier::RarityFilter { chance } => *chance > 0,
             Modifier::Heightmap { map } => *map < 6,
@@ -314,7 +360,9 @@ pub(super) fn expand(
     origin: [i32; 3],
     rng: Rng,
     field: &Field,
-    output: &mut Vec<Candidate>,
+    counts: Option<&counts::Counts>,
+    output: Option<&mut Vec<Candidate>>,
+    queries: &mut Vec<counts::Query>,
 ) {
     struct Walker<'a> {
         program: &'a [Modifier],
@@ -322,7 +370,9 @@ pub(super) fn expand(
         group: u32,
         origin: [i32; 3],
         field: &'a Field,
-        output: &'a mut Vec<Candidate>,
+        counts: Option<&'a counts::Counts>,
+        output: Option<&'a mut Vec<Candidate>>,
+        queries: &'a mut Vec<counts::Query>,
     }
     impl Walker<'_> {
         fn step(
@@ -333,15 +383,24 @@ pub(super) fn expand(
             actions: &mut Vec<Action>,
             order: &mut Vec<usize>,
         ) {
+            if self.output.is_none()
+                && !self.program[index..]
+                    .iter()
+                    .any(|op| op.noise_rule().is_some())
+            {
+                return;
+            }
             if index == self.program.len() {
-                self.output.push(Candidate {
-                    recipe: self.recipe,
-                    group: self.group,
-                    order: order.clone(),
-                    seed: rng.0,
-                    origin: self.origin,
-                    actions: actions.clone(),
-                });
+                if let Some(output) = self.output.as_mut() {
+                    output.push(Candidate {
+                        recipe: self.recipe,
+                        group: self.group,
+                        order: order.clone(),
+                        seed: rng.0,
+                        origin: self.origin,
+                        actions: actions.clone(),
+                    });
+                }
                 return;
             }
             let mut point = at;
@@ -356,18 +415,35 @@ pub(super) fn expand(
                     }
                     return;
                 }
-                Modifier::NoiseThresholdCount {
-                    below_noise,
-                    above_noise,
-                    ..
-                } => {
-                    let Some(column) = self.field.column(at[0], at[2]) else {
-                        return;
-                    };
-                    let count = if column.packed & (1 << 27) != 0 {
-                        *below_noise
+                Modifier::NoiseThresholdCount { .. } | Modifier::NoiseBasedCount { .. } => {
+                    let rule = self.program[index].noise_rule().unwrap();
+                    let count = if let Some(counts) = self.counts {
+                        let Some(count) = counts.get(rule, at[0], at[2]) else {
+                            self.queries.push(counts::Query {
+                                x: at[0],
+                                z: at[2],
+                                rule,
+                            });
+                            return;
+                        };
+                        count
+                    } else if let Modifier::NoiseThresholdCount {
+                        below_noise,
+                        above_noise,
+                        ..
+                    } = self.program[index]
+                    {
+                        // Saved profiles without the new permutation keep their old bit-field rules.
+                        let Some(column) = self.field.column(at[0], at[2]) else {
+                            return;
+                        };
+                        if column.packed & (1 << 27) != 0 {
+                            below_noise
+                        } else {
+                            above_noise
+                        }
                     } else {
-                        *above_noise
+                        panic!("noise-based placement requires a prepared GPU count batch");
                     };
                     for i in 0..count.max(0) as usize {
                         let child = Rng::new(rng.next());
@@ -413,7 +489,9 @@ pub(super) fn expand(
         group,
         origin,
         field,
+        counts,
         output,
+        queries,
     }
     .step(0, origin, rng, &mut Vec::new(), &mut Vec::new());
 }
@@ -646,7 +724,9 @@ mod tests {
             [0, 0, 0],
             Rng::new(seed),
             field,
-            &mut out,
+            None,
+            Some(&mut out),
+            &mut Vec::new(),
         );
         out
     }
@@ -690,6 +770,98 @@ mod tests {
             assert!([0, 80].contains(&candidates(&before, 0, &field, seed).len()));
         }
         assert!((1..80).contains(&candidates(&after, 0, &field, 42).len()));
+    }
+
+    #[test]
+    fn sparse_noise_queries_preserve_nested_count_streams_and_selector_budgets() {
+        let (_, field, _, _) = fixture();
+        let program = ops(json!([
+            {"type":"count","count":7},{"type":"in_square"},
+            {"type":"noise_threshold_count","noise_level":0.02,"below_noise":2,"above_noise":3},
+            {"type":"in_square"},
+            {"type":"noise_based_count","noise_to_count_ratio":-8,"noise_factor":30,"noise_offset":-0.5},
+            {"type":"heightmap","map":1}
+        ]));
+        validate(&program, 8).unwrap();
+        let run = |program: &[Modifier], counts: Option<&counts::Counts>, output: bool| {
+            let mut found = Vec::new();
+            let mut queries = Vec::new();
+            expand(
+                program,
+                0,
+                0,
+                [0, 0, 0],
+                Rng::new(847),
+                &field,
+                counts,
+                output.then_some(&mut found),
+                &mut queries,
+            );
+            (found, queries)
+        };
+        let mut counts = counts::Counts::default();
+        let (_, first) = run(&program, Some(&counts), false);
+        assert_eq!(first.len(), 7);
+        assert!(
+            first
+                .iter()
+                .all(|q| q.rule == program[2].noise_rule().unwrap())
+        );
+        counts.extend(first.into_iter().map(|q| (q, 2)));
+        let (_, second) = run(&program, Some(&counts), false);
+        assert_eq!(second.len(), 14);
+        assert!(
+            second
+                .iter()
+                .all(|q| q.rule == program[4].noise_rule().unwrap())
+        );
+        counts.extend(second.into_iter().map(|q| (q, 3)));
+        assert!(run(&program, Some(&counts), false).1.is_empty());
+        let (actual, missing) = run(&program, Some(&counts), true);
+        assert!(missing.is_empty());
+        let mut baseline = program.clone();
+        baseline[2] = Modifier::Count {
+            count: IntProvider::Value(2),
+        };
+        baseline[4] = Modifier::Count {
+            count: IntProvider::Value(3),
+        };
+        let (expected, _) = run(&baseline, None, true);
+        assert_eq!(actual.len(), 42);
+        assert_eq!(
+            actual
+                .iter()
+                .map(|c| (&c.order, c.seed))
+                .collect::<Vec<_>>(),
+            expected
+                .iter()
+                .map(|c| (&c.order, c.seed))
+                .collect::<Vec<_>>()
+        );
+        // One selected branch per parent, after both spatial counts.
+        let mut selected = Vec::new();
+        for (id, (min, max)) in [(0., 0.25), (0.25, 0.8), (0.8, 1.)].into_iter().enumerate() {
+            let mut branch = program.clone();
+            branch.push(Modifier::Select { min, max });
+            let mut missing = Vec::new();
+            expand(
+                &branch,
+                id as u32,
+                0,
+                [0, 0, 0],
+                Rng::new(847),
+                &field,
+                Some(&counts),
+                Some(&mut selected),
+                &mut missing,
+            );
+            assert!(missing.is_empty());
+        }
+        let mut expected: Vec<_> = actual.into_iter().map(|c| c.order).collect();
+        let mut actual: Vec<_> = selected.into_iter().map(|c| c.order).collect();
+        expected.sort();
+        actual.sort();
+        assert_eq!(actual, expected);
     }
 
     #[test]

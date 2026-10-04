@@ -86,6 +86,9 @@ struct CaveBuffers {
 }
 
 impl Gpu {
+    pub(crate) fn decoration_counts(&self) -> crate::decoration::counts::gpu::Gpu {
+        crate::decoration::counts::gpu::Gpu::new(self.device.clone(), self.queue.clone())
+    }
     pub(crate) fn ore_planner(&self) -> crate::geology::raster_gpu::Gpu {
         crate::geology::raster_gpu::Gpu::new(self.device.clone(), self.queue.clone())
     }

@@ -18,6 +18,11 @@ remaining fluid-tick approximations. Broader features, further graph
 semantics and scan work remain required, along with final integrated validation,
 transfer-volume measurements and updated stage telemetry where new stages arise.
 
+Registered noise-based feature counts and arbitrary threshold counts now use
+[sparse GPU feature queries](GPU_FEATURE_COUNTS.md), including signed ratios and
+nested placements. Broader feature geometry, providers and spatial filters remain
+part of the fourth workstream.
+
 See [GPU program specialization](GPU_PROGRAM_SPECIALIZATION.md) for the compiler,
 resident horizontal cache, startup behavior and its validation.
 The [shoreline correction](SHORELINES.md) adds a resident coastal index and GPU

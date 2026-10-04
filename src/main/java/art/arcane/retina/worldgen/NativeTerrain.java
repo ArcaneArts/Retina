@@ -33,6 +33,7 @@ public final class NativeTerrain {
     private final MethodHandle registerProfile;
     private final MethodHandle sampleColumns;
     private final MethodHandle sampleBiomes;
+    private final MethodHandle decorationCounts;
     private final MethodHandle column;
     private final MethodHandle lastError;
     private final String backend;
@@ -60,6 +61,8 @@ public final class NativeTerrain {
                 FunctionDescriptor.of(JAVA_INT, ADDRESS, ADDRESS));
         sampleBiomes = linker.downcallHandle(symbols.findOrThrow("retina_sample_biomes_u16"),
                 FunctionDescriptor.of(JAVA_INT, ADDRESS, ADDRESS, JAVA_LONG));
+        decorationCounts = linker.downcallHandle(symbols.findOrThrow("retina_sample_decoration_counts"),
+                FunctionDescriptor.of(JAVA_INT, ADDRESS, ADDRESS, JAVA_LONG, ADDRESS));
         column = linker.downcallHandle(symbols.findOrThrow("retina_generate_column_u16"),
                 FunctionDescriptor.of(JAVA_INT, ADDRESS, JAVA_INT, ADDRESS));
         lastError = linker.downcallHandle(symbols.findOrThrow("retina_last_error"),
@@ -97,9 +100,9 @@ public final class NativeTerrain {
 
     public NativeTimings timings(int profile) {
         try (var arena = Arena.ofConfined()) {
-            var output = arena.allocate(216, Long.BYTES);
+            var output = arena.allocate(NativeTimings.BYTES, Long.BYTES);
             check((int) timingSnapshot.invokeExact(profile, output));
-            if (output.get(JAVA_INT,0) != 3) throw new IllegalStateException("Unsupported native timing ABI");
+            if (output.get(JAVA_INT,0) != 4) throw new IllegalStateException("Unsupported native timing ABI");
             return decodeTimings(output);
         } catch(Throwable error) { throw failure(error); }
     }
@@ -112,7 +115,7 @@ public final class NativeTerrain {
 
     private static RegionReport decodeRegionReport(MemorySegment report) {
         return new RegionReport(report.get(JAVA_INT,0),report.get(JAVA_INT,4),report.get(JAVA_LONG,8),
-                report.get(JAVA_LONG,16),report.get(JAVA_LONG,24),report.get(JAVA_LONG,32),decodeTimings(report.asSlice(40,216)));
+                report.get(JAVA_LONG,16),report.get(JAVA_LONG,24),report.get(JAVA_LONG,32),decodeTimings(report.asSlice(40,NativeTimings.BYTES)));
     }
 
     public net.minecraft.nbt.CompoundTag structureData(TerrainRequest request) { return readStructureData(structureData,request); }
@@ -187,6 +190,18 @@ public final class NativeTerrain {
         } catch (Throwable error) { throw failure(error); }
     }
 
+    /** Diagnostic sparse [x,z,recipe,modifier] tuples, using the production GPU sampler. */
+    int[] decorationCounts(TerrainRequest request, int[] points) {
+        if (points.length % 4 != 0) throw new IllegalArgumentException("Expected four integers per feature point");
+        if (points.length == 0) return new int[0];
+        try (var arena = Arena.ofConfined()) {
+            long count = points.length / 4;
+            var output = arena.allocate(count * Integer.BYTES, Integer.BYTES);
+            check((int) decorationCounts.invokeExact(encode(arena, request), arena.allocateFrom(JAVA_INT, points), count, output));
+            return output.toArray(JAVA_INT);
+        } catch (Throwable error) { throw failure(error); }
+    }
+
     private static Columns decodeColumns(MemorySegment data) {
         int count = Math.toIntExact(data.byteSize() / 12);
         var heights = new int[count];
@@ -212,7 +227,7 @@ public final class NativeTerrain {
             var biomeBytes = biome.getBytes(StandardCharsets.UTF_8);
             var path = arena.allocateFrom(JAVA_BYTE, pathBytes);
             var biomeName = arena.allocateFrom(JAVA_BYTE, biomeBytes);
-            var report = arena.allocate(256, Long.BYTES);
+            var report = arena.allocate(40 + NativeTimings.BYTES, Long.BYTES);
             check((int) profiledRegion.invokeExact(encode(arena, request), path, (long) pathBytes.length,
                     dataVersion, biomeName, (long) biomeBytes.length, report, MemorySegment.NULL));
             return decodeRegionReport(report);
@@ -227,7 +242,7 @@ public final class NativeTerrain {
             var pathBytes = destination.toAbsolutePath().toString().getBytes(StandardCharsets.UTF_8);
             var biomeBytes = biome.getBytes(StandardCharsets.UTF_8);
             var output = arena.allocate(1024L * 256 * 12, Integer.BYTES);
-            var report = arena.allocate(256, Long.BYTES);
+            var report = arena.allocate(40 + NativeTimings.BYTES, Long.BYTES);
             check((int) profiledRegion.invokeExact(encode(arena, request), arena.allocateFrom(JAVA_BYTE, pathBytes), (long) pathBytes.length,
                     dataVersion, arena.allocateFrom(JAVA_BYTE, biomeBytes), (long) biomeBytes.length, report, output));
             return new RegionData(decodeRegionReport(report), decodeColumns(output));

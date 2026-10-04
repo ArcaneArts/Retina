@@ -62,19 +62,29 @@ fn complete(gpu: &mut gpu::Gpu, batch: Vec<Job>, pending: gpu::PendingSample) {
 }
 pub(crate) fn run(
     receiver: mpsc::Receiver<Job>,
-    ready: mpsc::SyncSender<Result<(String, crate::geology::raster_gpu::Gpu), String>>,
+    ready: mpsc::SyncSender<
+        Result<
+            (
+                String,
+                crate::geology::raster_gpu::Gpu,
+                crate::decoration::counts::gpu::Gpu,
+            ),
+            String,
+        >,
+    >,
     metrics: Arc<pipeline::Metrics>,
     depth: usize,
 ) {
     let startup = catch_unwind(AssertUnwindSafe(|| {
         gpu::Gpu::new(metrics.clone()).map(|gpu| {
             let ores = gpu.ore_planner();
-            (gpu, ores)
+            let counts = gpu.decoration_counts();
+            (gpu, ores, counts)
         })
     }));
     let mut gpu = match startup {
-        Ok(Ok((gpu, ores))) => {
-            let _ = ready.send(Ok((gpu.backend.clone(), ores)));
+        Ok(Ok((gpu, ores, counts))) => {
+            let _ = ready.send(Ok((gpu.backend.clone(), ores, counts)));
             gpu
         }
         Ok(Err(error)) => {

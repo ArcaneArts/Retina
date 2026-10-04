@@ -84,6 +84,8 @@ pub struct WorldProfile {
     pub noises: Vec<NoiseProfile>,
     #[serde(default)]
     pub decorations: Vec<Recipe>,
+    #[serde(default)]
+    pub decoration_noise: Option<crate::decoration::counts::Noise>,
     #[serde(flatten)]
     pub geology: crate::geology::GeologyProfile,
     pub material_flags: Vec<u8>,
@@ -122,6 +124,19 @@ impl WorldProfile {
             .validate(profile.materials.len(), profile.biomes.len())?;
         for recipe in &profile.decorations {
             recipe.validate(profile.materials.len())?;
+            if profile.decoration_noise.is_none()
+                && recipe
+                    .placement
+                    .as_ref()
+                    .is_some_and(|ops| ops.iter().any(|op| op.requires_registered_noise()))
+            {
+                return Err(
+                    "registered spatial decoration counts require their noise permutation".into(),
+                );
+            }
+        }
+        if let Some(noise) = &profile.decoration_noise {
+            noise.validate()?;
         }
         for biome in &profile.biomes {
             if biome

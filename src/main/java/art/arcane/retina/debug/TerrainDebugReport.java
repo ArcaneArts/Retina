@@ -10,7 +10,7 @@ import static art.arcane.retina.worldgen.NativeTimings.*;
 public final class TerrainDebugReport {
     private static final String LABEL="§7", DATA="§f", RUST="§b", GPU="§d", HEADER="§6§l", RESET="§r";
     private static final String[] GPU_HOST={"GPU queue","Command encoding","GPU work / readback"};
-    private static final String[] PLANS={"Structure planning","Plant planning","Ore planning (CPU + GPU)"};
+    private static final String[] PLANS={"Structure planning","Plant planning (CPU + GPU)","Ore planning (CPU + GPU)"};
     private static final String[] GPU_DEVICE={"Height / climate","Biome sites","Column surfaces","Cave density","Cave mask"};
     private static final String[] WORKERS={"Base terrain","Ores","Cave decorations","Plants / trees","Structure placement","Snow","NBT encoding","Zlib compression"};
     private TerrainDebugReport() { }
@@ -39,7 +39,7 @@ public final class TerrainDebugReport {
             lines.add(HEADER+"GPU host (% of average region)"+RESET);
             for(int stage=QUEUE;stage<=WAIT_COPY;stage++)lines.add(share(GPU,GPU_HOST[stage],stats.regionStagePercent(stage),false));
             lines.add(HEADER+"Native (% of average region; ~ worker estimates)"+RESET);
-            for(int stage=STRUCTURE_PLAN;stage<=ORE_PLAN;stage++)lines.add(share(stage==ORE_PLAN?GPU:RUST,PLANS[stage-STRUCTURE_PLAN],stats.regionStagePercent(stage),false));
+            for(int stage=STRUCTURE_PLAN;stage<=ORE_PLAN;stage++)lines.add(share(stage>=VEGETATION_PLAN?GPU:RUST,PLANS[stage-STRUCTURE_PLAN],stats.regionStagePercent(stage),false));
             for(int stage=ASSEMBLY;stage<=COMPRESS;stage++)lines.add(share(RUST,WORKERS[stage-ASSEMBLY],stats.regionStagePercent(stage),true));
             lines.add(share(RUST,"File I/O",stats.regionStagePercent(IO),false));
             lines.add(share("§9","Java column cache",stats.columnCachePercent(),false));
@@ -52,7 +52,8 @@ public final class TerrainDebugReport {
                 lines.add(share(GPU,GPU_DEVICE[stage-HEIGHT],stats.regionStagePercent(stage),false));
                 lines.add(share(GPU,"Material layers",stats.regionStagePercent(MATERIALS),false));
                 lines.add(share(GPU,"Aquifer fields",stats.regionStagePercent(AQUIFER_FIELDS),false));
-                lines.add(share(GPU,"Aquifer fluids / barriers",stats.regionStagePercent(AQUIFER_MASK),false));}
+                lines.add(share(GPU,"Aquifer fluids / barriers",stats.regionStagePercent(AQUIFER_MASK),false));
+                lines.add(share(GPU,"Feature counts",stats.regionStagePercent(FEATURE_COUNTS),false));}
             else lines.add(LABEL+"Device timestamps unavailable");
         } else if(!mca && stats.stages().chunks()>0) {
             lines.add(HEADER+"Rust (% of average chunk time)"+RESET);
@@ -62,6 +63,7 @@ public final class TerrainDebugReport {
                 lines.add(share(GPU,"Material layers",100*stats.stages().gpuChunkMs(MATERIALS)/Math.max(.000001,stats.msPerChunk()),false));
                 lines.add(share(GPU,"Aquifer fields",100*stats.stages().gpuChunkMs(AQUIFER_FIELDS)/Math.max(.000001,stats.msPerChunk()),false));
                 lines.add(share(GPU,"Aquifer fluids / barriers",100*stats.stages().gpuChunkMs(AQUIFER_MASK)/Math.max(.000001,stats.msPerChunk()),false));
+                lines.add(share(GPU,"Feature counts",100*stats.stages().chunkMs(FEATURE_COUNTS)/Math.max(.000001,stats.msPerChunk()),false));
             }
         }
         return List.copyOf(lines);

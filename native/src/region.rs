@@ -323,19 +323,18 @@ fn generate_region_inner(
         assemblers()?.install(|| {
             let overlays = timings.time(timings::VEGETATION_PLAN, || {
                 if decorated {
-                    decoration::plan(
+                    engine.plan_decorations_profiled(
                         &field,
                         profile.as_deref().unwrap(),
                         origin,
-                        origin.chunk_x,
-                        origin.chunk_z,
                         32,
                         cave_mask.as_deref(),
+                        Some(&job),
                     )
                 } else {
-                    vec![Vec::new(); 1024]
+                    Ok(vec![Vec::new(); 1024])
                 }
-            });
+            })?;
             let ores = timings.time(timings::ORE_PLAN, || {
                 if let Some(p) = profile.as_deref() {
                     engine.plan_ores(&field, p, origin, 32, cave_mask.as_deref())
@@ -496,7 +495,11 @@ fn generate_region_inner(
         detail.gpu_jobs = gpu_trace.gpu_jobs;
         detail.nanos[..timings::STRUCTURE_PLAN]
             .copy_from_slice(&gpu_trace.nanos[..timings::STRUCTURE_PLAN]);
-        detail.nanos[timings::MATERIALS..].copy_from_slice(&gpu_trace.nanos[timings::MATERIALS..]);
+        detail.nanos[timings::MATERIALS..=timings::AQUIFER_MASK]
+            .copy_from_slice(&gpu_trace.nanos[timings::MATERIALS..=timings::AQUIFER_MASK]);
+        // Sparse feature sampling belongs to this job; it may overlap a different
+        // region's terrain submission on the shared queue.
+        detail.flags |= job.snapshot().flags;
         let gpu_host: u64 = detail.nanos[..timings::HEIGHT].iter().sum();
         // Includes field-cache copies and host bookkeeping within the measured GPU phase.
         detail.nanos[timings::WAIT_COPY] += report.gpu_nanos.saturating_sub(gpu_host);

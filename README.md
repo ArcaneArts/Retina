@@ -42,6 +42,9 @@ Counts, rarity, selectors, offsets, heightmaps and soil/air filters retain their
 registered placement order. A live canopy overlay rejects covered planting sites
 instead of treating each attempted tree as a successful tree. See
 [decoration placement](docs/DECORATION_PLACEMENT.md) for supported rules and limits.
+Registered noise-based counts and arbitrary threshold counts are evaluated in
+[sparse GPU batches](docs/GPU_FEATURE_COUNTS.md), while branching geometry and
+ordered canopy/survival checks remain in Rust.
 Creative mode with commands enabled is useful for testing. Press **F3**, then fly
 into unexplored terrain or use `/tp @s 4096 160 4096` to trigger generation.
 
@@ -334,7 +337,8 @@ blocks using Minecraft's exported predicates. Base-height/base-column APIs still
 return terrain before carvers, ores and decorations. Registered trunk vines, hanging leaf vines
 and cocoa decorators are replayed with exported attachment directions, cocoa
 ages and probabilities. Cocoa checks for jungle-log support; leaves retain their
-natural decay behavior. This adds no GPU dispatch or terrain readback.
+natural decay behavior. Tree geometry/decorators add no terrain readback;
+registered spatial count modifiers use compact, separate GPU queries.
 
 Biomes with the registered snow feature receive snow layers after vegetation.
 The GPU determines cold columns from the registered biome temperature and the

@@ -81,11 +81,12 @@ final class DecorationProfile {
                     else { p.density *= n; p.lowDensity *= n; }
                 }
                 case "noise_threshold_count" -> {
-                    if (Math.abs(json.get("noise_level").getAsDouble() + 0.8) > 0.00001) { unsupported.add("noise_threshold_count=" + json.get("noise_level")); return; }
                     p.density *= json.get("above_noise").getAsDouble();
                     p.lowDensity *= json.get("below_noise").getAsDouble(); p.noiseCount = true;
                 }
-                case "noise_based_count" -> { unsupported.add("noise_based_count"); return; }
+                // Preserve the complete spatial count, including negative ratios.
+                // The legacy mean is unused when the placement program is present.
+                case "noise_based_count" -> { }
                 case "rarity_filter" -> p.rarity *= json.get("chance").getAsDouble();
                 case "heightmap" -> p.surface = true;
                 case "offset" -> {
@@ -430,5 +431,20 @@ final class DecorationProfile {
             flags.add(flag);
         }
         profile.add("heightmap_masks", heightmaps); profile.add("material_flags", flags);
+        profile.add("decoration_noise", new DecorationNoise().export());
+    }
+
+    /** Minecraft's actual seeded placement permutation; spatial sampling stays on the GPU. */
+    private static final class DecorationNoise extends net.minecraft.world.level.levelgen.synth.SimplexNoise {
+        private DecorationNoise() {
+            super(new net.minecraft.world.level.levelgen.WorldgenRandom(
+                    new net.minecraft.world.level.levelgen.LegacyRandomSource(2345L)), true);
+        }
+        JsonObject export() {
+            var result = new JsonObject(); var permutation = new JsonArray();
+            for (byte p : perms) permutation.add(Byte.toUnsignedInt(p));
+            result.add("permutation", permutation);
+            return result;
+        }
     }
 }

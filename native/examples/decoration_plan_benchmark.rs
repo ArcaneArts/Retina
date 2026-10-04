@@ -1,6 +1,6 @@
 //! Real GPU terrain, registered feature planning, and ordered-output validation.
 //! decoration_plan_benchmark <profile.json> [seed] [chunk_x] [chunk_z] [iterations]
-use retina_worldgen::{ChunkRequest, TerrainEngine, decoration};
+use retina_worldgen::{ChunkRequest, TerrainEngine};
 use std::time::Instant;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -38,17 +38,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut placements = 0;
     for iteration in 0..iterations + 5 {
         let begin = Instant::now();
-        let plan = workers.install(|| {
-            decoration::plan(
-                &field,
-                &profile,
-                request,
-                chunk_x,
-                chunk_z,
-                32,
-                mask.as_deref(),
-            )
-        });
+        let plan = workers
+            .install(|| engine.plan_decorations(&field, &profile, request, 32, mask.as_deref()))?;
         let ms = begin.elapsed().as_secs_f64() * 1000.;
         if iteration >= 5 {
             samples.push(ms);

@@ -204,6 +204,16 @@ tasks.register('aquiferTest', JavaExec) {
     jvmArgs '--enable-native-access=ALL-UNNAMED'
 }
 
+tasks.register('decorationCountTest', JavaExec) {
+    group = 'verification'
+    description = 'Compare sparse GPU placement counts with actual Minecraft noise and vanilla/Terralith registries.'
+    dependsOn 'gpuTestClasses', 'packageNative'
+    classpath = sourceSets.gpuTest.runtimeClasspath
+    mainClass = 'art.arcane.retina.worldgen.NativeDecorationCountIntegrationTest'
+    jvmArgs '--enable-native-access=ALL-UNNAMED'
+    if (providers.gradleProperty('testPack').isPresent()) args providers.gradleProperty('testPack').get()
+}
+
 tasks.register('previewTest', JavaExec) {
     group = 'verification'
     description = 'Validate DH-style surface generation, temporary MCA cache sharing, eviction, promotion and cleanup.'
