@@ -50,6 +50,11 @@ repair cost are documented there.
 
 See [GPU program specialization](GPU_PROGRAM_SPECIALIZATION.md) for the compiler,
 resident horizontal cache, startup behavior and its validation.
+Material constant parameterization and grouped dispatch experiments were rejected:
+counterbalanced cold runs exposed shared driver-cache warmth rather than a reliable
+startup gain. The same document records a standalone interpreter liveness analysis
+(37 / 64 scratch values for the full vanilla / Terralith profiles). Native register
+reuse and a compact interpreter remain to be implemented and measured.
 The [shoreline correction](SHORELINES.md) adds a resident coastal index and GPU
 height-neighborhood checks to align registered coastal climates with the actual
 approximated terrain, preventing disconnected inland beach selection. Its

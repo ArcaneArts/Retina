@@ -112,3 +112,79 @@ ready. Reducing that compilation and interpreter cost remains required, alongsid
 broader feature recipes and remaining density semantics.
 [Local aquifer passes](GPU_AQUIFERS.md) now use direct specialized graph calls,
 keeping material-dispatch branches out of their field and pressure shaders.
+
+## Rejected material compiler experiments
+
+Two release experiments used the current full profiles (56 / 151 biomes,
+170 / 463 decoration recipes and 30 / 58 structure definitions). Both kept
+the original output, but neither demonstrated a reliable startup improvement.
+Their production changes were removed and the packaged library was restored.
+
+Leaving nonzero material constants in resident bytecode instead of folding them
+into WGSL did not reduce vanilla's 31 unique graph bodies; Terralith dropped from
+104 to 101. Generated source grew from 1,174,728 to 1,248,768 bytes vanilla and
+6,035,772 to 6,392,072 bytes Terralith. The candidate took 5.35 / 72.05 seconds to
+compile, compared with 13.34 / 53.00 seconds in the recent original-source runs.
+These are different cold shader identities and single observations, not an
+isolated compilation-speed comparison. Twenty full regions per profile matched
+all 40,960 decompressed reference chunk records. The small function-count change
+and larger source did not justify retaining this variant.
+
+Grouping every equivalent material dispatch label into one switch arm also
+retained all original program IDs and salts. Two pairs of identity-clamped
+profiles forced new shader code without changing terrain. Order was reversed
+in the second pair; each run generated twenty full regions.
+
+| Profile / cold variant | Run order | Original compilation seconds | Grouped compilation seconds |
+| --- | --- | ---: | ---: |
+| Vanilla / 1 | Original, grouped | 14.49 | 5.31 |
+| Vanilla / 2 | Grouped, original | 4.92 | 16.43 |
+| Terralith / 1 | Original, grouped | 80.34 | 59.26 |
+| Terralith / 2 | Grouped, original | 64.91 | 84.04 |
+
+The apparent win reversed with execution order. Only material dispatch changed;
+the shared density entrypoints had the same identity within each pair. The first
+process paid for those common cold shaders, and the second could reuse the
+driver's cache. Inspecting the installed wgpu 30 Metal backend confirms that it
+translates/compiles by selected entrypoint. Comparing one process's total cold
+compilation with a later process therefore confounds shared shader-cache warmth
+with the proposed material change. No consistent warmed region improvement was
+observed either. All 163,840 measured chunk records from these eight runs matched
+the unchanged reference. User applications remained active; no builds/tests ran
+concurrently with the benchmarks.
+
+Evidence and retained experimental libraries/sources are under
+`build/goal-baseline/material-code-sharing/` and
+`build/goal-baseline/material-dispatch-grouping/`. The restored `build` passes,
+and both the release dylib and packaged JAR contain native SHA-256
+`57a6a5cc61d6ec2cebf23701f76fbdfa4c679df46e3723de460876c3c47819b1`.
+
+## Interpreter value pressure
+
+`scripts/native-program-register-pressure.py` models the actual eager bytecode
+interpreter's dependencies, including spline child references, unused
+instructions and implicit root-zero outputs. It constructs a conservative
+lowest-free-slot allocation: operands stay live through the output write, and
+outputs stay live until the final root reads. It checks that no dependency or
+output root has been overwritten. This is a standalone diagnostic; it does not
+gate generation or modify a profile.
+
+The full vanilla profile has 4,965 instructions across its programs and needs at
+most 37 simultaneous scratch values. Terralith has 26,283 instructions and needs
+at most 64. Their largest individual programs have hundreds of instructions;
+allocating one scratch value for every instruction needlessly requires the
+current fixed 1,024-value array. These counts describe bytecode values, not the
+backend's total physical registers or helper-function temporaries.
+
+```sh
+python3 scripts/native-program-register-pressure.py \
+  build/goal-baseline/shore-width/vanilla.json \
+  build/goal-baseline/shore-width/terralith.json
+```
+
+`--include-slots` prints the proposed per-instruction slot maps. Captured reports
+are in `build/goal-baseline/material-dispatch-grouping/register-pressure.json`.
+The next implementation target is a native liveness allocator and a compact
+GPU interpreter, with a full-capacity path for valid profiles that need more
+slots. This has not been integrated or benchmarked yet; no improvement from
+register reuse is claimed. Cold automatic-mode generation still needs work.
