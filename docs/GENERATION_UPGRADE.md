@@ -38,6 +38,9 @@ approximated terrain, preventing disconnected inland beach selection. Its
 fidelity checks and separate twenty-region cost measurements are documented there.
 The [sparse planning milestone](GPU_SPARSE_PLANNING.md) adds direct GPU bulk-ore
 masks and cheaper Rust crown/canopy lookups while preserving final chunk data.
+The [final heightmap scan experiment](HEIGHTMAP_SCAN_EXPERIMENT.md) compared an
+unfinished-column bitset with the existing row scan. It preserved NBT but did not
+show a reliable whole-region speedup, so the production loop was retained.
 
 ## World-preset registry lifecycle
 
