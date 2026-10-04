@@ -15,6 +15,15 @@ runtime installation is needed.
 ./gradlew runClient -PretinaQa
 ```
 
+Native compilation defaults to two concurrent Cargo jobs in `.cargo/config.toml`.
+Development, release and build dependencies use two code generation units, leaving
+more CPU capacity for other applications. These settings apply to Gradle's native
+tasks and Cargo commands run from this repository. This limits build parallelism;
+terrain generation keeps its existing worker settings. The first build after
+changing compiler settings rebuilds dependencies.
+Gradle also starts Cargo at lower process priority (`nice +10`) on macOS/Linux,
+including when it uses an already-running Gradle daemon.
+
 Create a new single-player world and select a Retina world type in the **World** tab:
 
 - **Retina GPU Simplex (MCA)**: the default Retina mode; Rust writes whole regions.

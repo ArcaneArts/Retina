@@ -184,7 +184,96 @@ python3 scripts/native-program-register-pressure.py \
 
 `--include-slots` prints the proposed per-instruction slot maps. Captured reports
 are in `build/goal-baseline/material-dispatch-grouping/register-pressure.json`.
-The next implementation target is a native liveness allocator and a compact
-GPU interpreter, with a full-capacity path for valid profiles that need more
-slots. This has not been integrated or benchmarked yet; no improvement from
-register reuse is claimed. Cold automatic-mode generation still needs work.
+Native liveness allocation now supplies those slot maps to the executable GPU
+interpreter. Each map follows its program's original eight-word instruction array
+in resident bytecode. Instruction indices, root indices and shared spline child
+indices stay unchanged, preserving the specialized compiler's parameter addresses.
+The GPU maps every read and final output through the resident slot table; operands
+remain live through the result write. Noise data and spline arrays use their
+existing header offsets after the added tables.
+
+The ordinary interpreter declares 64 floats (256 bytes) instead of 1,024 (4 KiB)
+per invocation. These are declared scratch sizes, not measured physical hardware
+register allocations. A profile needing more than 64 slots selects a separate
+1,024-slot interpreter, compiled on first actual use and cached on the device.
+It keeps the existing valid 1,024-instruction graph limit; 64 is not a profile
+rejection limit. The wide pipeline and specialized pipelines are chosen before
+scratch layout and command encoding, without switching a submission mid-flight.
+
+The verbatim original WGSL interpreter remains the reference for opcode extraction
+and root-bit tests. The executable mapped version is generated from that same
+body. Specialized graph source and calculations remain unchanged.
+
+## Compact interpreter measurements
+
+Release dylibs on Apple M4 Max / Metal, the complete vanilla and Terralith profiles,
+seed 123456789, two warmups and twenty adjacent regions per run. Serial pairs were
+repeated with reversed order; concurrent runs used two callers. No builds or tests
+ran during measurements. Another game was active, so the rates describe this
+observed shared-machine workload rather than an otherwise idle-system benchmark.
+
+| Profile / callers | Original mean region ms | Compact mean region ms | Original chunks/s | Compact chunks/s |
+| --- | ---: | ---: | ---: | ---: |
+| Vanilla / 1, first pair | 2,330.74 | 476.92 | 439.1 | 2,144.1 |
+| Vanilla / 1, reversed pair | 2,282.72 | 481.27 | 448.4 | 2,124.2 |
+| Terralith / 1, first pair | 2,707.98 | 936.61 | 378.1 | 1,092.7 |
+| Terralith / 1, reversed pair | 2,672.27 | 820.43 | 383.1 | 1,247.3 |
+| Vanilla / 2 | 4,180.86 | 737.17 | 487.4 | 2,751.9 |
+| Terralith / 2 | 4,879.73 | 1,583.58 | 419.1 | 1,292.6 |
+
+This is an interpreter-path improvement, not a gain over already-ready specialized
+pipelines. Serial throughput improved 4.7–4.9× vanilla and 2.9–3.3× Terralith in
+these repeats. Material-rule GPU time fell from 1.80–1.94 to 0.149–0.166 ms/chunk
+vanilla, and from 2.14–2.22 to 0.511–0.623 ms/chunk Terralith. CPU stages increased
+in several compact runs as the GPU stopped dominating the request; worker timer
+percentages alone would not describe the whole-region gain.
+
+All 245,760 measured chunk records from the twelve runs matched the unchanged
+reference byte-for-byte after decompression. Twenty-region file totals stayed at
+153,907,200 bytes vanilla and 131,649,536 bytes Terralith. Per-region transfers
+remained 14.27 / 12.39 MB uploaded and 45.62 / 41.90 MB read back respectively.
+Slot maps add only 19,860 / 105,132 bytes to the one-time resident profile upload;
+they introduce no extra dispatch, readback or per-region upload. Serial peak RSS
+was 862–894 MiB compact versus 864–885 MiB original vanilla, and 964–994 versus
+977–1,060 MiB Terralith. Concurrent vanilla RSS increased from 931 to 1,333 MiB;
+concurrent Terralith was 1,019 versus 1,076 MiB. Smaller private shader arrays do
+not by themselves guarantee lower process memory under pipelined requests.
+
+The first observed new fixed interpreter pipeline compilation took 6.61 seconds
+inside native initialization; subsequent compact initializations took 95–165 ms.
+The original fixed shaders were already cached (83–100 ms). This is not a matched
+cold-initialization speedup measurement. Profile-specific specialization still
+runs in the background, and reducing its cold compilation cost remains required.
+
+Real-GPU checks compare all six roots of every actual profile graph against the
+unmapped original across 64 samples with varied seeds, Y and material contexts:
+85,632 output float bits match. A live-input graph with over 64 values exercises
+the wide fallback through sparse queries, chunks and four neighbor regions,
+including negative seams. Unit tests additionally cover implicit node-zero roots,
+spline child lifetimes, 1,024-node chains and graphs requiring 513 slots.
+`build`, native GPU checks, material checks (6,680,576 voxels), actual datapack
+import and DH cache/promotion/save-isolation checks pass. Evidence, retained dylibs,
+profiles and measurements are under `build/goal-baseline/compact-interpreter/`;
+integration logs use `build/compact-interpreter-*.log`.
+
+The project's subsequent build-resource change sets two Cargo jobs and two code
+generation units for development, release and build dependencies. Native Gradle
+tasks start Cargo with `nice +10` on macOS/Linux; a launcher-shell `nice` alone
+does not affect an existing Gradle daemon. The limited build and native checks
+pass, and the packaged native library is SHA-256
+`6c15af1f0156f8013fefb08cf5b929c13cedcd63582599bfd706bb336b2ce17e`.
+The preceding paired table isolates the interpreter using the old build profile.
+Two additional twenty-region runs of the final, limited-build artifact measured
+455.97 / 849.44 ms vanilla / Terralith, with all 40,960 chunk records identical.
+Native initialization took 104 / 84 ms and serial peak RSS was 864 / 1,014 MiB.
+
+Fresh identity-clamped profiles then forced new specialized shader code in normal
+automatic mode. Both generated twenty complete regions while compilation was
+still pending; all 40,960 measured records matched, and regenerating one region
+after compilation matched another 2,048 records. First native region requests
+took 461 / 936 ms; average request times were 554 / 980 ms. Profile compilation
+took 43.86 / 193.10 seconds in the background, with peak RSS 987 / 1,613 MiB.
+These are whole-application observations under shared machine load, not isolated
+compiler-speed comparisons. The new interpreter reduces waiting-period terrain
+cost; it does not remove this substantial cold specialization work. Java export
+and world-loading costs are separate from these native request times.

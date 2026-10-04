@@ -1,0 +1,3 @@
+# Leave CPU capacity available for other applications during native builds.
+[build]
+jobs = 2

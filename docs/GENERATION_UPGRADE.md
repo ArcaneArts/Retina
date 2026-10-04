@@ -54,7 +54,10 @@ Material constant parameterization and grouped dispatch experiments were rejecte
 counterbalanced cold runs exposed shared driver-cache warmth rather than a reliable
 startup gain. The same document records a standalone interpreter liveness analysis
 (37 / 64 scratch values for the full vanilla / Terralith profiles). Native register
-reuse and a compact interpreter remain to be implemented and measured.
+reuse and a 64-slot interpreter are now implemented, with a cached wide fallback.
+Repeated twenty-region interpreter benchmarks improve serial throughput 4.7–4.9×
+vanilla and 2.9–3.3× Terralith, preserving all chunk NBT. This accelerates generation
+while specialization is pending; cold profile compilation remains required work.
 The [shoreline correction](SHORELINES.md) adds a resident coastal index and GPU
 height-neighborhood checks to align registered coastal climates with the actual
 approximated terrain, preventing disconnected inland beach selection. Its

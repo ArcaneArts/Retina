@@ -134,9 +134,35 @@ fn physical_coasts_match_sparse_chunks_and_neighbor_regions() {
         seed: 123456789,
         ..request(x, z)
     };
-    for mode in ["interpreter", "specialized"] {
+    for mode in ["interpreter", "wide_interpreter", "specialized"] {
         let mut source = profile.clone();
-        source["program_execution"] = json!(mode);
+        source["program_execution"] = json!(if mode == "wide_interpreter" {
+            "interpreter"
+        } else {
+            mode
+        });
+        if mode == "wide_interpreter" {
+            // All constants must survive until their later consumers, requiring
+            // more than 64 slots. Cancel the exact integer sum at the end so
+            // these live inputs preserve the fixture's original climate roots.
+            let nodes = source["registry_program"]["programs"][0]["nodes"]
+                .as_array_mut()
+                .unwrap();
+            nodes.extend((1..81).map(|i| json!({"op":0,"a":0,"b":0,"c":0,"p":[i,0,0,0]})));
+            nodes.push(json!({"op":4,"a":1,"b":2,"c":0,"p":[0,0,0,0]}));
+            for input in 3..81 {
+                let previous = nodes.len() - 1;
+                nodes.push(json!({"op":4,"a":previous,"b":input,"c":0,"p":[0,0,0,0]}));
+            }
+            let sum = nodes.len() - 1;
+            let negative = nodes.len();
+            nodes.push(json!({"op":0,"a":0,"b":0,"c":0,"p":[-3240,0,0,0]}));
+            nodes.push(json!({"op":4,"a":sum,"b":negative,"c":0,"p":[0,0,0,0]}));
+            let zero = nodes.len() - 1;
+            nodes.push(json!({"op":4,"a":0,"b":zero,"c":0,"p":[0,0,0,0]}));
+            let root = nodes.len() - 1;
+            source["registry_program"]["programs"][0]["roots"] = json!(vec![root; 6]);
+        }
         let chunk_id = engine
             .register_profile(&serde_json::to_vec(&source).unwrap())
             .unwrap();

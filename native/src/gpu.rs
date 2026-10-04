@@ -57,6 +57,8 @@ pub(crate) struct Gpu {
     pub(crate) backend: String,
     compiler: crate::specialize::Compiler,
     specialized: HashMap<u32, std::sync::Arc<crate::specialize::State>>,
+    wide_profiles: std::collections::HashSet<u32>,
+    wide_interpreter: Option<std::sync::Arc<crate::specialize::Pipelines>>,
 }
 
 pub(crate) struct GpuSample {
@@ -124,7 +126,7 @@ impl Gpu {
                     "{}\n{}\n{}\n{}",
                     include_str!("simplex.wgsl"),
                     include_str!("climate.wgsl"),
-                    include_str!("program.wgsl"),
+                    crate::program::interpreter_source(crate::program::COMPACT_VALUES),
                     include_str!("noise3.wgsl")
                 )
                 .into(),
@@ -169,7 +171,7 @@ impl Gpu {
                     "{}\n{}\n{}\n{}\n{}",
                     include_str!("caves.wgsl"),
                     include_str!("climate.wgsl"),
-                    include_str!("program.wgsl"),
+                    crate::program::interpreter_source(crate::program::COMPACT_VALUES),
                     include_str!("aquifers.wgsl"),
                     include_str!("materials.wgsl")
                 )
@@ -312,6 +314,8 @@ impl Gpu {
             backend,
             compiler,
             specialized: HashMap::new(),
+            wide_profiles: std::collections::HashSet::new(),
+            wide_interpreter: None,
         };
         gpu.add_profile(0, &vec![0; 672], &[0; 240], &[0; 32]);
         Ok(gpu)
@@ -440,6 +444,9 @@ impl Gpu {
                 &crate::program::RegistryProgram::bytes(profile),
             );
             if let Some(program) = profile.and_then(|p| p.registry_program.as_ref()) {
+                if program.scratch_values() > crate::program::COMPACT_VALUES {
+                    self.wide_profiles.insert(profile_id);
+                }
                 if profile.unwrap().program_execution != crate::specialize::Execution::Interpreter {
                     match self.compiler.request(program) {
                         Ok(state) => {
@@ -469,10 +476,26 @@ impl Gpu {
         } else {
             None
         };
-        let world_pipeline =
-            |entry, fallback| specialized.as_ref().map_or(fallback, |p| p.world(entry));
-        let cave_pipeline =
-            |entry, fallback| specialized.as_ref().map_or(fallback, |p| p.cave(entry));
+        if specialized.is_none()
+            && self.wide_profiles.contains(&profile_id)
+            && self.wide_interpreter.is_none()
+        {
+            self.wide_interpreter =
+                Some(std::sync::Arc::new(crate::specialize::compile_interpreter(
+                    &self.device,
+                    &self.layout,
+                    &self.cave_layout,
+                    &crate::program::interpreter_source(1024),
+                )?));
+        }
+        let interpreted = self
+            .wide_interpreter
+            .as_ref()
+            .filter(|_| self.wide_profiles.contains(&profile_id))
+            .cloned();
+        let selected = specialized.as_deref().or(interpreted.as_deref());
+        let world_pipeline = |entry, fallback| selected.map_or(fallback, |p| p.world(entry));
+        let cave_pipeline = |entry, fallback| selected.map_or(fallback, |p| p.cave(entry));
         let density_program = profile
             .and_then(|p| p.registry_program.as_ref())
             .filter(|p| p.surface[2] == 0 && (!surface_probe || align_shores));
@@ -1576,7 +1599,12 @@ mod mapping_tests {
                 roots.split(',').map(|r| r.parse().unwrap()).collect();
         }
         let registry = profile.registry_program.as_ref().unwrap();
+        let interpreted = std::env::var_os("RETINA_PROGRAM_PARITY_INTERPRETER").is_some();
         let cached = std::env::var_os("RETINA_PROGRAM_PARITY_CACHE").is_some();
+        assert!(
+            !interpreted || !cached,
+            "compact interpreter has no horizontal cache"
+        );
         let far = cached && std::env::var_os("RETINA_PROGRAM_PARITY_FAR").is_some();
         let mut gpu = Gpu::new(std::sync::Arc::new(crate::pipeline::Metrics::default())).unwrap();
         gpu.add_profile(
@@ -1629,13 +1657,29 @@ mod mapping_tests {
         let start = reference.find("fn run_program(").unwrap();
         let end = reference.find("fn density_floor_div(").unwrap();
         let reference = reference[start..end].replace("fn run_program(", "fn run_reference(");
-        let source = crate::specialize::static_calls(&format!(
+        let program_source = if interpreted {
+            kernel = kernel.replace("var actual:array<f32,6>;switch program{case 0u:{actual=run_climate(point,r,context);}case 1u:{actual=run_surface_density(point,r,context);}case 2u:{actual=run_final_density(point,r,context);}default:{actual=run_program(program,point,r,context);}}", "let actual=run_program(program,point,r,context);");
+            let capacity = if registry.scratch_values() <= crate::program::COMPACT_VALUES {
+                crate::program::COMPACT_VALUES
+            } else {
+                1024
+            };
+            crate::program::interpreter_source(capacity)
+        } else {
+            crate::specialize::source(registry).unwrap()
+        };
+        let source = format!(
             "{}\n{}\n{}\n{}\n{reference}\n{kernel}",
             include_str!("simplex.wgsl"),
             include_str!("climate.wgsl"),
-            crate::specialize::source(registry).unwrap(),
+            program_source,
             include_str!("noise3.wgsl")
-        ));
+        );
+        let source = if interpreted {
+            source
+        } else {
+            crate::specialize::static_calls(&source)
+        };
         let module = gpu
             .device
             .create_shader_module(wgpu::ShaderModuleDescriptor {

@@ -40,6 +40,9 @@ def nativeOs = nativeOsName.contains('mac') ? 'macos' : nativeOsName.contains('w
 def nativeArchName = System.getProperty('os.arch').toLowerCase(Locale.ROOT)
 def nativeArch = ['arm64': 'aarch64', 'aarch64': 'aarch64', 'amd64': 'x86_64', 'x86_64': 'x86_64'].get(nativeArchName, nativeArchName)
 def cargoExecutable = providers.gradleProperty('cargoExecutable').orElse('cargo').get()
+// A reused Gradle daemon does not inherit the launcher shell's nice priority.
+// Start the native compiler/tests at lower priority on POSIX hosts directly.
+def nativeCargoCommand = nativeOs == 'windows' ? [cargoExecutable] : ['nice', '-n', '10', cargoExecutable]
 def nativeInputs = fileTree(nativeDirectory) {
     include 'Cargo.toml', 'Cargo.lock', 'src/**'
 }
@@ -48,7 +51,7 @@ tasks.register('buildNative', Exec) {
     group = 'build'
     description = 'Build the Rust GPU terrain library for this host.'
     workingDir nativeDirectory
-    commandLine cargoExecutable, 'build', '--release', '--locked', '--target-dir', nativeTarget.get().asFile.absolutePath
+    commandLine(nativeCargoCommand + ['build', '--release', '--locked', '--target-dir', nativeTarget.get().asFile.absolutePath])
     inputs.files nativeInputs
     outputs.file nativeTarget.map { it.file("release/${nativeLibraryName}") }
 }
@@ -73,7 +76,7 @@ tasks.register('nativeUnitTest', Exec) {
     group = 'verification'
     dependsOn 'buildNative'
     workingDir nativeDirectory
-    commandLine cargoExecutable, 'test', '--release', '--locked', '--lib', '--target-dir', nativeTarget.get().asFile.absolutePath
+    commandLine(nativeCargoCommand + ['test', '--release', '--locked', '--lib', '--target-dir', nativeTarget.get().asFile.absolutePath])
 }
 
 check.dependsOn 'nativeUnitTest'
@@ -84,7 +87,7 @@ tasks.register('nativeGpuTest', Exec) {
     dependsOn 'buildNative'
     mustRunAfter 'nativeUnitTest'
     workingDir nativeDirectory
-    commandLine cargoExecutable, 'test', '--release', '--locked', '--test', 'gpu', '--target-dir', nativeTarget.get().asFile.absolutePath, '--', '--nocapture'
+    commandLine(nativeCargoCommand + ['test', '--release', '--locked', '--test', 'gpu', '--target-dir', nativeTarget.get().asFile.absolutePath, '--', '--nocapture'])
 }
 
 tasks.register('gpuTest', JavaExec) {
@@ -105,9 +108,9 @@ tasks.register('nativeOreGpuTest', Exec) {
     dependsOn 'buildNative'
     mustRunAfter 'nativeGpuTest'
     workingDir nativeDirectory
-    commandLine cargoExecutable, 'test', '--release', '--locked', '--lib',
+    commandLine(nativeCargoCommand + ['test', '--release', '--locked', '--lib',
             'real_gpu_compact_ores_preserve_hosts_exposure_edges_and_reused_buffers',
-            '--target-dir', nativeTarget.get().asFile.absolutePath, '--', '--ignored', '--nocapture'
+            '--target-dir', nativeTarget.get().asFile.absolutePath, '--', '--ignored', '--nocapture'])
 }
 
 tasks.register('coordinateTest', JavaExec) {
@@ -137,9 +140,9 @@ tasks.register('nativeCoordinateGpuTest', Exec) {
     mustRunAfter 'nativeOreGpuTest'
     workingDir nativeDirectory
     environment 'RETINA_PROGRAM_PARITY_PROFILE', file('build/registry-coordinate-profile.json').absolutePath
-    commandLine cargoExecutable, 'test', '--release', '--locked', '--lib',
+    commandLine(nativeCargoCommand + ['test', '--release', '--locked', '--lib',
             'specialized_roots_match_interpreter_on_real_gpu',
-            '--target-dir', nativeTarget.get().asFile.absolutePath, '--', '--ignored', '--nocapture'
+            '--target-dir', nativeTarget.get().asFile.absolutePath, '--', '--ignored', '--nocapture'])
 }
 
 tasks.register('regionTest', JavaExec) {

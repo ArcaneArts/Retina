@@ -580,16 +580,52 @@ pub(crate) fn compile(
     material_layers: bool,
     aquifers: u8,
 ) -> Result<Pipelines, String> {
+    compile_program(
+        device,
+        world,
+        cave,
+        program,
+        horizontal_fields,
+        material_layers,
+        aquifers,
+        true,
+    )
+}
+
+pub(crate) fn compile_interpreter(
+    device: &wgpu::Device,
+    world: &wgpu::BindGroupLayout,
+    cave: &wgpu::BindGroupLayout,
+    program: &str,
+) -> Result<Pipelines, String> {
+    compile_program(device, world, cave, program, 0, true, 2, false)
+}
+
+fn compile_program(
+    device: &wgpu::Device,
+    world: &wgpu::BindGroupLayout,
+    cave: &wgpu::BindGroupLayout,
+    program: &str,
+    horizontal_fields: u32,
+    material_layers: bool,
+    aquifers: u8,
+    specialized: bool,
+) -> Result<Pipelines, String> {
     let scope = device.push_error_scope(wgpu::ErrorFilter::Validation);
     let make =
         |prefix: &str, suffix: &str, layout: &wgpu::BindGroupLayout, entries: &[&'static str]| {
+            let source = format!(
+                "{prefix}\n{}\n{program}\n{suffix}",
+                include_str!("climate.wgsl")
+            );
             let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
                 label: Some("Retina specialized registry graphs"),
                 source: wgpu::ShaderSource::Wgsl(
-                    static_calls(&format!(
-                        "{prefix}\n{}\n{program}\n{suffix}",
-                        include_str!("climate.wgsl")
-                    ))
+                    (if specialized {
+                        static_calls(&source)
+                    } else {
+                        source
+                    })
                     .into(),
                 ),
             });
@@ -615,23 +651,26 @@ pub(crate) fn compile(
                 })
                 .collect()
         };
+    let mut world_entries = vec![
+        "main",
+        "biome_sites",
+        "biome_queries",
+        "climate_nodes",
+        "height_nodes",
+        "density_nodes",
+        "surface_columns",
+        "lake_candidates",
+        "lake_density",
+        "lake_nodes",
+    ];
+    if specialized {
+        world_entries.push("horizontal_nodes");
+    }
     let world = make(
         include_str!("simplex.wgsl"),
         include_str!("noise3.wgsl"),
         world,
-        &[
-            "main",
-            "biome_sites",
-            "biome_queries",
-            "climate_nodes",
-            "height_nodes",
-            "density_nodes",
-            "horizontal_nodes",
-            "surface_columns",
-            "lake_candidates",
-            "lake_density",
-            "lake_nodes",
-        ],
+        &world_entries,
     );
     let material_source = if material_layers {
         format!(

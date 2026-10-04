@@ -31,6 +31,90 @@ pub struct Program {
     pub nodes: Vec<Instruction>,
     pub roots: Vec<u32>,
 }
+pub(crate) const COMPACT_VALUES: usize = 64;
+
+/// Eager interpreter values stay live through their last input read, and roots
+/// stay live through the final output copy. Original instruction indices remain
+/// unchanged for specialized graphs and the shared spline point table.
+struct Registers {
+    slots: Vec<u32>,
+    capacity: usize,
+}
+impl Program {
+    fn registers(&self, points: &[[f32; 4]]) -> Registers {
+        let count = self.nodes.len();
+        let mut last: Vec<usize> = (0..count).collect();
+        for (i, node) in self.nodes.iter().enumerate() {
+            for child in node.dependencies(points) {
+                last[child as usize] = i;
+            }
+        }
+        for &root in &self.roots {
+            last[root as usize] = count;
+        }
+        // Unspecified outputs read node zero, rather than a literal zero.
+        if self.roots.len() < 6 {
+            last[0] = count;
+        }
+        let mut release = vec![Vec::new(); count + 1];
+        let mut available = std::collections::BTreeSet::new();
+        let mut result = Registers {
+            slots: Vec::with_capacity(count),
+            capacity: 0,
+        };
+        for (i, &end) in last.iter().enumerate() {
+            available.extend(release[i].drain(..));
+            let slot = available.pop_first().unwrap_or_else(|| {
+                let slot = result.capacity as u32;
+                result.capacity += 1;
+                slot
+            });
+            result.slots.push(slot);
+            // Do not overwrite operands while evaluating the instruction body.
+            release[(end + 1).min(count)].push(slot);
+        }
+        result
+    }
+}
+
+/// Keep the verbatim interpreter as a reference for specialization and parity
+/// tests. Only this executable variant translates accesses to resident slots.
+pub(crate) fn interpreter_source(capacity: usize) -> String {
+    let source = include_str!("program.wgsl");
+    let start = source.find("fn run_program(").unwrap();
+    let end = source.find("fn density_floor_div(").unwrap();
+    let body = &source[start..end];
+    let mut mapped = String::new();
+    let mut at = 0;
+    while let Some(index) = body[at..].find("values[") {
+        let open = at + index + "values[".len();
+        mapped.push_str(&body[at..open]);
+        let mut depth = 1;
+        let mut close = open;
+        for (i, ch) in body[open..].char_indices() {
+            match ch {
+                '[' => depth += 1,
+                ']' => depth -= 1,
+                _ => {}
+            }
+            if depth == 0 {
+                close = open + i;
+                break;
+            }
+        }
+        assert_eq!(depth, 0, "unclosed interpreter value access");
+        mapped.push_str("bytecode[registers+");
+        mapped.push_str(&body[open..close]);
+        mapped.push_str("]]");
+        at = close + 1;
+    }
+    mapped.push_str(&body[at..]);
+    mapped = mapped.replace(
+        "var values:array<f32,1024>;",
+        &format!("let registers=offset+count*8u;var values:array<f32,{capacity}>;"),
+    );
+    format!("{}{}{}", &source[..start], mapped, &source[end..])
+}
 #[derive(Clone, Deserialize)]
 pub struct Noise {
     #[serde(default = "unit_scale")]
@@ -77,6 +161,13 @@ fn default_terrain_cell() -> [u32; 2] {
     [4, 8]
 }
 impl RegistryProgram {
+    pub(crate) fn scratch_values(&self) -> usize {
+        self.programs
+            .iter()
+            .map(|program| program.registers(&self.points).capacity)
+            .max()
+            .unwrap_or(0)
+    }
     pub fn validate(&self, biomes: usize) -> Result<(), String> {
         if self.material_halo && !self.material_layers {
             return Err("decoration substrate requires GPU material layers".into());
@@ -201,6 +292,7 @@ impl RegistryProgram {
                 words.extend([n.op, n.a, n.b, n.c]);
                 words.extend(n.p.map(f32::to_bits));
             }
+            words.extend(program.registers(&p.points).slots);
         }
         words[1] = words.len() as u32;
         for n in &p.noises {
@@ -225,5 +317,95 @@ impl RegistryProgram {
             words.extend(profile.terrain_features.bands.iter().map(|x| *x as u32));
         }
         bytemuck::cast_slice(&words).to_vec()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    fn n(op: u32, a: u32, b: u32, c: u32) -> Instruction {
+        Instruction {
+            op,
+            a,
+            b,
+            c,
+            p: [0.0; 4],
+        }
+    }
+    fn verify(program: &Program, points: &[[f32; 4]]) -> usize {
+        let registers = program.registers(points);
+        let mut owners = vec![usize::MAX; registers.capacity];
+        for (i, node) in program.nodes.iter().enumerate() {
+            for child in node.dependencies(points) {
+                assert_eq!(
+                    owners[registers.slots[child as usize] as usize], child as usize,
+                    "overwritten input at instruction {i}"
+                );
+            }
+            owners[registers.slots[i] as usize] = i;
+        }
+        for root in (0..6).map(|i| program.roots.get(i).copied().unwrap_or(0)) {
+            assert_eq!(
+                owners[registers.slots[root as usize] as usize],
+                root as usize
+            );
+        }
+        registers.capacity
+    }
+    #[test]
+    fn implicit_root_zero_and_spline_children_remain_live() {
+        let points = [[-1.0, 0.0, 1.0, 0.0], [1.0, 0.0, 3.0, 0.0]];
+        let program = Program {
+            nodes: vec![
+                n(0, 0, 0, 0),
+                n(0, 0, 0, 0),
+                n(4, 1, 1, 0),
+                n(0, 0, 0, 0),
+                n(0, 0, 0, 0),
+                n(25, 2, 0, 2),
+                n(4, 5, 5, 0),
+            ],
+            roots: vec![6],
+        };
+        assert_eq!(verify(&program, &points), 5);
+        let registers = program.registers(&points);
+        assert_eq!(registers.slots[0], 0);
+        assert_ne!(registers.slots[1], registers.slots[4]);
+    }
+    #[test]
+    fn long_chain_reuses_scratch_without_a_graph_length_limit() {
+        let mut nodes = vec![n(0, 0, 0, 0)];
+        nodes.extend((1..1024).map(|i| n(4, i - 1, i - 1, 0)));
+        let mut program = Program {
+            nodes,
+            roots: vec![1023],
+        };
+        assert_eq!(verify(&program, &[]), 3);
+        program.roots = vec![1023; 6];
+        assert_eq!(verify(&program, &[]), 2);
+    }
+    #[test]
+    fn wide_programs_keep_all_their_inputs() {
+        let mut nodes = vec![n(0, 0, 0, 0); 512];
+        nodes.extend((0..512).map(|i| n(4, i, i, 0)));
+        let program = Program {
+            nodes,
+            roots: vec![1023; 6],
+        };
+        assert_eq!(verify(&program, &[]), 513);
+        assert!(program.registers(&[]).capacity > COMPACT_VALUES);
+    }
+    #[test]
+    fn mapped_source_handles_nested_root_and_spline_addresses() {
+        let source = interpreter_source(COMPACT_VALUES);
+        assert!(source.contains("var values:array<f32,64>"));
+        assert!(source.contains("values[bytecode[registers+a]]"));
+        assert!(source.contains("values[bytecode[registers+i]]=result"));
+        assert!(source.contains("values[bytecode[registers+bytecode[descriptor+2u+i]]]"));
+        assert!(
+            source.contains("values[bytecode[registers+u32(bitcast<f32>(bytecode[left+2u]))]]")
+        );
+        assert!(!source.contains("values[a]"));
+        assert!(interpreter_source(1024).contains("var values:array<f32,1024>"));
     }
 }
