@@ -202,6 +202,7 @@ pub struct Field {
     pub origin_z: i32,
     pub side: usize,
     pub columns: Vec<Column>,
+    pub substrate: Option<std::sync::Arc<crate::geology::CaveMask>>,
 }
 impl Field {
     pub fn column(&self, x: i32, z: i32) -> Option<Column> {
@@ -224,6 +225,41 @@ impl Field {
         let start =
             ((z - self.origin_z) as usize * self.side + (x - self.origin_x) as usize) * COLUMNS;
         &self.columns[start..start + COLUMNS]
+    }
+    pub(crate) fn material(
+        &self,
+        profile: &WorldProfile,
+        request: ChunkRequest,
+        at: [i32; 3],
+    ) -> Option<u16> {
+        if let Some(mask) = &self.substrate {
+            return mask.material_at(at[0], at[1], at[2]);
+        }
+        self.column(at[0], at[2])
+            .map(|c| c.material(at[1], request.min_y, Some(profile)))
+    }
+    pub(crate) fn height(
+        &self,
+        profile: &WorldProfile,
+        request: ChunkRequest,
+        x: i32,
+        z: i32,
+        map: u8,
+    ) -> Option<i32> {
+        if let Some(mask) = &self.substrate {
+            return mask.height_at(x, z, &profile.heightmap_masks, map);
+        }
+        let column = self.column(x, z)?;
+        let mut y = column.surface_height(Some(profile));
+        while y > request.min_y
+            && profile.heightmap_masks
+                [column.material(y - 1, request.min_y, Some(profile)) as usize]
+                & (1 << map)
+                == 0
+        {
+            y -= 1;
+        }
+        Some(y)
     }
 }
 #[derive(Clone, Copy)]
@@ -1444,6 +1480,7 @@ mod tests {
             ore_membership: Vec::new(),
         };
         let field = Field {
+            substrate: None,
             origin_x: 0,
             origin_z: 0,
             side: 3,

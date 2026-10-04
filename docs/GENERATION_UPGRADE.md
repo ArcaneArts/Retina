@@ -30,6 +30,17 @@ their lengths, orientations, terrain checks and decorators; see
 [registered fallen trees](REGISTERED_FALLEN_TREES.md). Patches and spatial providers
 remain required.
 
+The [GPU decoration substrate](GPU_DECORATION_SUBSTRATE.md) now supplies complete
+carved air, local fluids and material runs across the existing placement halo.
+Live predicates and heightmap modifiers consume those runs, consistently across
+independent chunks and regions. This supplies the base data needed by underground
+vegetation patches; the patch adapter and remaining 3D placement filters are still
+required.
+Broader validation also reproduced an existing aquatic overlap defect: replacing
+the lower half of tall seagrass can leave its upper half. The retained previous
+library has the same failure. The substrate documentation records the reproduction;
+final partner/shape-update handling remains required feature work.
+
 See [GPU program specialization](GPU_PROGRAM_SPECIALIZATION.md) for the compiler,
 resident horizontal cache, startup behavior and its validation.
 The [shoreline correction](SHORELINES.md) adds a resident coastal index and GPU

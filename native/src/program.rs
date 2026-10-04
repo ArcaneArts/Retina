@@ -52,6 +52,10 @@ pub struct RegistryProgram {
     pub surface_noises: [u32; 3],
     #[serde(default)]
     pub material_layers: bool,
+    /// Complete base-block substrate for the existing one-chunk decoration halo.
+    /// Older saved profiles retain their representative-column placement checks.
+    #[serde(default)]
+    pub material_halo: bool,
     #[serde(default)]
     pub aquifer: Option<AquiferProgram>,
 }
@@ -74,6 +78,9 @@ fn default_terrain_cell() -> [u32; 2] {
 }
 impl RegistryProgram {
     pub fn validate(&self, biomes: usize) -> Result<(), String> {
+        if self.material_halo && !self.material_layers {
+            return Err("decoration substrate requires GPU material layers".into());
+        }
         let extra = if self.aquifer.as_ref().is_some_and(|a| a.enabled) {
             5
         } else {

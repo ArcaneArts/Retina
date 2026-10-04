@@ -32,21 +32,22 @@ existing ocean/lava cavity classification. The subsequent
 pressure barriers before the same run evaluator. Registered lake caps remain intact.
 
 The small column descriptor continues to hold stable representative top/filler
-materials for fast height and feature probes, including halo queries. It is not
-overwritten with a different core-only result. Full base-column queries and base
-assembly consume the complete runs. Some feature planning still uses the
-representative descriptor; extending survival and placement contexts is separate
-work in the active goal.
+materials for fast probes. Full base-column queries and base assembly consume the
+complete runs. New exported profiles also provide runs across the complete
+decoration halo: live placement predicates and heightmap modifiers use actual
+carved materials and local fluids there. See
+[decoration substrate](GPU_DECORATION_SUBSTRATE.md) for the coverage, compatibility
+and measured cost. Older profiles retain representative placement checks.
 
 ## Compact count and emission
 
-The first pass counts runs per core column. A workgroup prefix scan and a total
+The first pass counts runs per evaluated column. A workgroup prefix scan and a total
 prefix pass calculate offsets. The normal column/cave-mask readback includes
 these counts, so the host can allocate exactly the required run payload. A second
 GPU pass emits runs and reads back only that tail. There is no fixed layer cap,
 truncation or per-voxel material readback.
 
-The cavity/biome mask is followed by four header words: magic `0x52554e53`, core
+The cavity/biome mask is followed by four header words: magic `0x52554e53`, evaluated
 width, column count and total run count. Each column has a count and a local
 offset; each 256-column group has a total and an exclusive prefix. Each run is one
 `u32`: its relative lower Y in the upper 16 bits and its palette ID in the lower

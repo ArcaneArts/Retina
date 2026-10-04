@@ -350,6 +350,7 @@ mod tests {
                 reserved: 0,
             };
             let field = Field {
+                substrate: None,
                 origin_x: cx - 1,
                 origin_z: cz - 1,
                 side: side + 2,

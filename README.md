@@ -358,6 +358,9 @@ their registered feature recipes. Giant mushrooms retain loaded cap/stem provide
 face states, radius and terrain-clearance rules; see [registered mushrooms](docs/REGISTERED_MUSHROOMS.md).
 Fallen trees retain configured lengths, sideways log states, mushroom attachments,
 stump vines and shelf mushrooms; see [registered fallen trees](docs/REGISTERED_FALLEN_TREES.md).
+New registry profiles supply [complete GPU base materials](docs/GPU_DECORATION_SUBSTRATE.md)
+across the placement halo, so live predicates and heightmap modifiers see carved
+air, cave floors/ceilings and local fluids. Existing profile behavior is retained.
 Vegetation patches, spatial block
 providers, additional tree decorators and unsupported placement rules still need
 adapters; export logs identify omissions. Existing regions and edits are preserved.

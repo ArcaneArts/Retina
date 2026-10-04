@@ -115,9 +115,10 @@ and the built mod JAR contains that same library at this milestone.
 ## Remaining approximations
 
 Sturdy faces are projected from loaded palette states in an empty block context;
-custom context-dependent support shapes are not fully simulated. Base predicates
-use representative GPU columns rather than every material run/carved voxel at
-every halo position. Neighboring anchor overlays remain independent for stable
+custom context-dependent support shapes are not fully simulated. New profiles now
+use complete GPU runs/carved voxels for base predicates across the placement halo;
+see [decoration substrate](GPU_DECORATION_SUBSTRATE.md). Older profiles retain their
+representative checks. Neighboring anchor overlays remain independent for stable
 parallel output. Minecraft block updates/ticks and neighboring-chunk feature
 scheduling are not reproduced. Vegetation patches, spatial/rule providers,
 additional standing-tree decorators and remaining placement filters are still

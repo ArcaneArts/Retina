@@ -85,7 +85,7 @@ public final class NativeMaterialIntegrationTest {
                 for(var n:compiler.noises)n.getAsJsonObject().addProperty("amplitude",0);
                 var gpu=new JsonObject();gpu.add("programs",graphs);gpu.add("noises",compiler.noises);gpu.add("points",compiler.points);
                 gpu.add("surface",JsonParser.parseString("[-64,8,1]"));gpu.add("terrain_cell",JsonParser.parseString("[4,8]"));
-                gpu.add("surface_noises",JsonParser.parseString("[0,0,0]"));gpu.addProperty("material_layers",true);data.add("registry_program",gpu);
+                gpu.add("surface_noises",JsonParser.parseString("[0,0,0]"));gpu.addProperty("material_layers",true);gpu.addProperty("material_halo",true);data.add("registry_program",gpu);
                 // Remove unused recipes whose host-band masks belong to the old palette.
                 data.add("ores",new JsonArray());data.add("decorations",new JsonArray());
                 if(!caves)data.add("cave_noises",new JsonArray());

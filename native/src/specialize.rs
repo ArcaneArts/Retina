@@ -716,6 +716,7 @@ mod tests {
             terrain_cell: [4, 8],
             surface_noises: [0; 3],
             material_layers: true,
+            material_halo: false,
             aquifer: Some(crate::program::AquiferProgram {
                 enabled: true,
                 program: 4,
@@ -781,6 +782,7 @@ mod tests {
             terrain_cell: [4, 8],
             surface_noises: [0; 3],
             material_layers: false,
+            material_halo: false,
             aquifer: None,
         };
         let source = source(&registry).unwrap();

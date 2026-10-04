@@ -32,7 +32,7 @@ pub const COLUMNS: usize = CHUNK_SIDE * CHUNK_SIDE;
 pub const AIR: u16 = 0;
 pub const STONE: u16 = 1;
 const MAX_BATCH: usize = 1024;
-const MAX_TILES: usize = 34 * 34;
+const MAX_TILES: usize = 36 * 36;
 const BATCH_WAIT: Duration = Duration::from_micros(250);
 
 /// C ABI layout. reserved is the resident world-profile handle (0 = legacy stone).
@@ -698,6 +698,7 @@ impl TerrainEngine {
             origin_z: origin.chunk_z,
             side: (side + 2) as usize,
             columns: self.sample_tile(origin, side + 2)?,
+            substrate: None,
         })
     }
 
@@ -720,6 +721,9 @@ impl TerrainEngine {
         }
         request.validate()?;
         let profile = self.profile(request.reserved)?;
+        let material_halo = profile
+            .as_deref()
+            .is_some_and(|p| p.registry_program.as_ref().is_some_and(|r| r.material_halo));
         if !profile.as_deref().is_some_and(|p| {
             p.geology.caves_enabled(p)
                 || p.registry_program
@@ -738,17 +742,32 @@ impl TerrainEngine {
             .cloned();
         if side == 1 {
             if let Some(mask) = cached {
-                return Ok((self.decoration_field(request, side)?, Some(mask)));
+                let mut field = self.decoration_field(request, side)?;
+                if material_halo {
+                    field.substrate = Some(mask.clone());
+                }
+                return Ok((field, Some(mask)));
             }
         }
+        // Evaluate complete runs for the existing decoration halo. An additional
+        // outer tile keeps slopes, cave interpolation and aquifer support
+        // away from tile edges. It is not an additional feature anchor ring.
+        let ring = if material_halo { 2 } else { 1 };
+        let tile_side = side + ring * 2;
         let origin = ChunkRequest {
-            chunk_x: request.chunk_x.checked_sub(1).ok_or("cave X overflows")?,
-            chunk_z: request.chunk_z.checked_sub(1).ok_or("cave Z overflows")?,
+            chunk_x: request
+                .chunk_x
+                .checked_sub(ring as i32)
+                .ok_or("cave X overflows")?,
+            chunk_z: request
+                .chunk_z
+                .checked_sub(ring as i32)
+                .ok_or("cave Z overflows")?,
             ..request
         };
         // Validate the halo as well as the target, using the same checks as height tile jobs.
-        for dz in 0..side + 2 {
-            for dx in 0..side + 2 {
+        for dz in 0..tile_side {
+            for dx in 0..tile_side {
                 ChunkRequest {
                     chunk_x: origin
                         .chunk_x
@@ -763,16 +782,16 @@ impl TerrainEngine {
                 .validate()?;
             }
         }
-        let sample = self.dispatch_full(vec![origin], side + 2, side)?;
+        let sample = self.dispatch_full(vec![origin], tile_side, tile_side - 2)?;
         if let Some(trace) = trace {
             *trace = sample.timings;
         }
         let columns = sample.columns;
         let mask = Arc::new(sample.mask.ok_or("GPU cave job returned no mask")?);
-        let requests: Vec<_> = (0..(side + 2) * (side + 2))
+        let requests: Vec<_> = (0..tile_side * tile_side)
             .map(|i| ChunkRequest {
-                chunk_x: origin.chunk_x + (i % (side + 2)) as i32,
-                chunk_z: origin.chunk_z + (i / (side + 2)) as i32,
+                chunk_x: origin.chunk_x + (i % tile_side) as i32,
+                chunk_z: origin.chunk_z + (i / tile_side) as i32,
                 ..origin
             })
             .collect();
@@ -784,12 +803,27 @@ impl TerrainEngine {
             .lock()
             .map_err(|_| "cave cache poisoned")?
             .insert(request, side, mask.clone());
+        let columns = if material_halo {
+            // Keep anchor counts/order and CPU planning bounds exactly as before.
+            // The extra GPU guard's columns can still satisfy future cache queries.
+            (1..tile_side - 1)
+                .flat_map(|z| {
+                    let start = (z * tile_side + 1) as usize * COLUMNS;
+                    columns[start..start + (side + 2) as usize * COLUMNS]
+                        .iter()
+                        .copied()
+                })
+                .collect()
+        } else {
+            columns
+        };
         Ok((
             decoration::Field {
-                origin_x: origin.chunk_x,
-                origin_z: origin.chunk_z,
+                origin_x: request.chunk_x - 1,
+                origin_z: request.chunk_z - 1,
                 side: (side + 2) as usize,
                 columns,
+                substrate: material_halo.then(|| mask.clone()),
             },
             Some(mask),
         ))

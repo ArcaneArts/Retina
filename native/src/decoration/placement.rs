@@ -587,11 +587,10 @@ impl Overlay {
         {
             return Some(0);
         }
-        self.blocks.get(&at).copied().or_else(|| {
-            field
-                .column(at[0], at[2])
-                .map(|c| c.material(at[1], request.min_y, Some(profile)))
-        })
+        self.blocks
+            .get(&at)
+            .copied()
+            .or_else(|| field.material(profile, request, at))
     }
     pub(super) fn height(
         &self,
@@ -602,17 +601,8 @@ impl Overlay {
         z: i32,
         map: u8,
     ) -> Option<i32> {
-        let column = field.column(x, z)?;
         let mask = 1u8 << map;
-        let mut y = column.surface_height(Some(profile));
-        while y > request.min_y
-            && profile.heightmap_masks
-                [column.material(y - 1, request.min_y, Some(profile)) as usize]
-                & mask
-                == 0
-        {
-            y -= 1;
-        }
+        let mut y = field.height(profile, request, x, z, map)?;
         if let Some(tops) = self.tops.get(&(x, z)) {
             y = y.max(tops[map as usize].saturating_add(1));
         }
@@ -697,6 +687,7 @@ mod tests {
         }))
         .unwrap();
         let field = Field {
+            substrate: None,
             origin_x: -1,
             origin_z: -1,
             side: 3,
@@ -751,6 +742,85 @@ mod tests {
     }
     fn ops(value: serde_json::Value) -> Vec<Modifier> {
         serde_json::from_value(value).unwrap()
+    }
+
+    #[test]
+    fn placement_uses_carved_materials_fluids_and_live_heights() {
+        let (mut profile, mut field, request, _) = fixture();
+        profile.ordered_decorations = true;
+        let mut mask = crate::geology::CaveMask {
+            origin_x: -17,
+            origin_z: -17,
+            min_y: 0,
+            height: 128,
+            width: 50,
+            air_only: true,
+            words: Vec::new(),
+        };
+        // Full 48-column placement halo; descending runs include a flooded
+        // surface, a dirt ceiling and an air gap beneath it. The representative
+        // columns deliberately describe grass and miss all three transitions.
+        let columns = 48 * 48;
+        let groups = (columns + 255) / 256;
+        let base = (50 * 50 * 128 + 31) / 32 + (80 * 80 + 31) / 32 + 20 * 20 * 32 / 2;
+        let offset = base + 4 + columns * 2 + groups * 2;
+        mask.words.resize(offset, 0);
+        mask.words[base..base + 4].copy_from_slice(&[
+            0x52554e53,
+            48,
+            columns as u32,
+            columns as u32 * 5,
+        ]);
+        for i in 0..columns {
+            mask.words[base + 4 + i * 2] = 5;
+            mask.words[base + 5 + i * 2] = ((i % 256) * 5) as u32;
+            mask.words
+                .extend([70 << 16, 64 << 16 | 7, 61 << 16 | 3, 59 << 16, 1]);
+        }
+        for group in 0..groups {
+            mask.words[base + 4 + columns * 2 + groups + group] = (group * 256 * 5) as u32;
+        }
+        mask.validate_material_runs().unwrap();
+        field.substrate = Some(std::sync::Arc::new(mask));
+        let mut overlay = Overlay::default();
+        for (y, material) in [
+            (58, 1),
+            (59, 0),
+            (60, 0),
+            (61, 3),
+            (63, 3),
+            (64, 7),
+            (69, 7),
+            (70, 0),
+        ] {
+            assert_eq!(
+                overlay.material(&field, &profile, request, [0, y, 0]),
+                Some(material)
+            );
+        }
+        for (map, expected) in [70, 70, 64, 64, 70, 64].into_iter().enumerate() {
+            assert_eq!(
+                overlay.height(&field, &profile, request, 0, 0, map as u8),
+                Some(expected)
+            );
+        }
+        overlay.write(&profile, [0, 80, 0], 5);
+        assert_eq!(overlay.height(&field, &profile, request, 0, 0, 1), Some(81));
+        assert_eq!(overlay.height(&field, &profile, request, 0, 0, 5), Some(64));
+        overlay.write(&profile, [0, 80, 0], 0);
+        assert_eq!(overlay.height(&field, &profile, request, 0, 0, 1), Some(70));
+        assert_eq!(
+            overlay.material(&field, &profile, request, [0, -1, 0]),
+            Some(0)
+        );
+        assert_eq!(
+            overlay.material(&field, &profile, request, [0, 128, 0]),
+            Some(0)
+        );
+        assert_eq!(
+            overlay.material(&field, &profile, request, [-17, 60, 0]),
+            None
+        );
     }
 
     #[test]

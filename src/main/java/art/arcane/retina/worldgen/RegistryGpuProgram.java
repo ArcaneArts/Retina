@@ -94,6 +94,7 @@ final class RegistryGpuProgram {
         }
         result.add("terrain_cell",terrainCell);
         result.addProperty("material_layers",true);
+        result.addProperty("material_halo",true);
         compiler.approximations.add("material:preliminary-surface-from-final-height");
         var surfaceNoises=new JsonArray();
         for(String id:List.of("surface","surface_secondary","clay_bands_offset"))surfaceNoises.add(compiler.noise(new JsonPrimitive("minecraft:"+id)));

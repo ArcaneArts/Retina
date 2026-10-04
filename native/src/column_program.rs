@@ -185,6 +185,7 @@ mod tests {
             terrain_cell: [4, 8],
             surface_noises: [0; 3],
             material_layers: false,
+            material_halo: false,
             aquifer: None,
         };
         let plan = Plan::new(&r);
@@ -217,6 +218,7 @@ mod tests {
             terrain_cell: [4, 8],
             surface_noises: [0; 3],
             material_layers: false,
+            material_halo: false,
             aquifer: None,
         };
         let plan = Plan::new(&registry);
@@ -258,6 +260,7 @@ mod tests {
             terrain_cell: [4, 8],
             surface_noises: [0; 3],
             material_layers: false,
+            material_halo: false,
             aquifer: None,
         };
         let p = Plan::new(&r);

@@ -288,8 +288,9 @@ impl GeologyProfile {
     }
 }
 
-/// One bit per voxel plus a one-block horizontal halo for ore exposure checks.
-/// Coordinates and lattice align globally; a region and independent chunk get the same mask.
+/// One bit per voxel plus a one-block guard for ore exposure checks. New material
+/// profiles cover the decoration halo too. Coordinates and lattice align globally;
+/// a region and independent chunk get the same base materials.
 pub struct CaveMask {
     pub origin_x: i32,
     pub origin_z: i32,
@@ -301,6 +302,30 @@ pub struct CaveMask {
     pub words: Vec<u32>,
 }
 impl CaveMask {
+    /// Actual GPU base material, including carved air, local fluids and surface
+    /// rules. Available across the complete placement halo in new profiles.
+    pub fn material_at(&self, x: i32, y: i32, z: i32) -> Option<u16> {
+        let runs = self.material_runs(x, z)?;
+        let y = y - self.min_y;
+        if y < 0 || y as u32 >= self.height {
+            return Some(0);
+        }
+        let index = runs.partition_point(|run| run >> 16 > y as u32);
+        runs.get(index).map(|run| *run as u16)
+    }
+    /// Highest base block accepted by the game's exported heightmap predicate.
+    pub fn height_at(&self, x: i32, z: i32, masks: &[u8], map: u8) -> Option<i32> {
+        let bit = 1u8.checked_shl(map as u32)?;
+        let runs = self.material_runs(x, z)?;
+        let mut top = self.min_y + self.height as i32;
+        for run in runs {
+            if masks.get(*run as u16 as usize)? & bit != 0 {
+                return Some(top);
+            }
+            top = self.min_y + (run >> 16) as i32;
+        }
+        Some(self.min_y)
+    }
     fn base_words(&self) -> usize {
         let surface = self.width + 30;
         let quart = surface / 4;
@@ -1020,6 +1045,7 @@ mod tests {
         }];
         profile.ore_membership = vec![vec![true]];
         let field = Field {
+            substrate: None,
             origin_x: -2,
             origin_z: -2,
             side: 5,

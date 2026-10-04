@@ -84,7 +84,8 @@ public final class NativeBiomeIntegrationTest {
                                     int otherIndex = blockIndex + (half == net.minecraft.world.level.block.state.properties.DoubleBlockHalf.LOWER ? 256 : -256);
                                     require(otherIndex >= 0 && otherIndex < bytes.length, "plant pair fits world bounds");
                                     var other = profile.materials()[Short.toUnsignedInt(bytes[otherIndex])];
-                                    require(other.is(state.getBlock()) && other.getValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.DOUBLE_BLOCK_HALF) != half, "both halves of tall plants match");
+                                    require(other.is(state.getBlock()) && other.getValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.DOUBLE_BLOCK_HALF) != half,
+                                            "both halves of tall plants match: chunk="+r.chunkX()+","+r.chunkZ()+" index="+blockIndex+" state="+state+" other="+other);
                                 }
                             }
                         }
