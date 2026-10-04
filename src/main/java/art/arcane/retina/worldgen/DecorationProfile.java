@@ -22,7 +22,7 @@ import net.minecraft.world.level.block.state.properties.*;
 import net.minecraft.world.level.levelgen.GenerationStep;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.feature.*;
-import net.minecraft.world.level.levelgen.feature.stateproviders.BlockStateProvider;
+import net.minecraft.world.level.levelgen.feature.stateproviders.*;
 import net.minecraft.world.level.levelgen.placement.*;
 
 import java.util.*;
@@ -165,7 +165,14 @@ final class DecorationProfile {
             data.add("podzol_allowed",matching("matching_block_tag","tag",BlockTags.BENEATH_BAMBOO_PODZOL_REPLACEABLE.location().toString(),0,0,0));
             emit(path,p,chance,"bamboo",data,selected);
         } else if (feature instanceof SimpleBlockFeature block) {
-            var states = provider(BlockStateProvider.DIRECT_CODEC.encodeStart(registry.createSerializationContext(JsonOps.INSTANCE), block.toPlace().value()).getOrThrow(), 1, 0, 0);
+            var encoded=BlockStateProvider.DIRECT_CODEC.encodeStart(registry.createSerializationContext(JsonOps.INSTANCE), block.toPlace().value()).getOrThrow();
+            if(contextProvider(encoded,0)) {
+                var data=simple(block);
+                if(data!=null)emit(path,p,chance,"simple_block",data,selected);
+                else unsupported.add("SimpleBlockFeature:context-provider-or-survival");
+                return;
+            }
+            var states = provider(encoded, 1, 0, 0);
             var variants = new JsonArray();
             var aquatic = new JsonArray();
             var drySimple = new JsonArray();
@@ -277,7 +284,7 @@ final class DecorationProfile {
                         var base=palette.entrySet().stream().filter(e->e.getValue()==id).findFirst().orElseThrow().getKey();
                         var item=new JsonObject();item.addProperty("source",id);item.add("predicate",predicate(matching("matching_blocks","blocks",BuiltInRegistries.BLOCK.getKey(base.getBlock()).toString(),0,0,0),palette));same.add(item);
                     }
-                    recipe.add("same_blocks",same);normalizeTypes(recipe.get("ground"));normalizeTypes(recipe.get("depth"));normalizeTypes(recipe.get("xz_radius"));
+                    recipe.add("same_blocks",same);finishProvider(recipe.getAsJsonObject("ground"),palette);normalizeTypes(recipe.get("depth"));normalizeTypes(recipe.get("xz_radius"));
                     var enclosed=recipe.getAsJsonArray("enclosed");for(int i=0;i<enclosed.size();i++)enclosed.set(i,predicate(enclosed.get(i).getAsJsonObject(),palette));
                     var wet=new JsonArray();for(var e:palette.entrySet())if(e.getKey().hasProperty(BlockStateProperties.WATERLOGGED)) {
                         var target=palette.get(e.getKey().setValue(BlockStateProperties.WATERLOGGED,true));
@@ -286,7 +293,7 @@ final class DecorationProfile {
                     recipe.add("waterlogged_states",wet);finishNested(recipe.getAsJsonObject("vegetation"),palette);
                 }
                 case "simple_block" -> {
-                    normalizeTypes(recipe.get("provider"));recipe.add("water",predicate(recipe.getAsJsonObject("water"),palette));
+                    finishProvider(recipe.getAsJsonObject("provider"),palette);recipe.add("water",predicate(recipe.getAsJsonObject("water"),palette));
                     for(var value:recipe.getAsJsonArray("states"))for(String key:List.of("survival","upper_allowed")) {
                         var state=value.getAsJsonObject();state.add(key,predicate(state.getAsJsonObject(key),palette));
                     }
@@ -297,14 +304,15 @@ final class DecorationProfile {
                 case "weighted_selector" -> {for(var v:recipe.getAsJsonArray("entries"))finishNested(v.getAsJsonObject().getAsJsonObject("placed"),palette);}
                 case "fallen_tree" -> {
                     for(String key:List.of("clearance","sturdy","air","replaceable","water","shelf"))recipe.add(key,predicate(recipe.getAsJsonObject(key),palette));
-                    normalizeTypes(recipe.get("trunk"));normalizeTypes(recipe.get("log_length"));
+                    finishProvider(recipe.getAsJsonObject("trunk"),palette);normalizeTypes(recipe.get("log_length"));
                     normalizeTypes(recipe.get("stump_decorators"));normalizeTypes(recipe.get("log_decorators"));
+                    for(String key:List.of("stump_decorators","log_decorators"))for(var d:recipe.getAsJsonArray(key))if(d.getAsJsonObject().has("provider"))finishProvider(d.getAsJsonObject().getAsJsonObject("provider"),palette);
                 }
                 case "huge_mushroom" -> {
                     for(String key:List.of("support","clearance","replaceable"))recipe.add(key,predicate(recipe.getAsJsonObject(key),palette));
-                    normalizeTypes(recipe.get("cap"));normalizeTypes(recipe.get("stem"));
+                    finishProvider(recipe.getAsJsonObject("cap"),palette);finishProvider(recipe.getAsJsonObject("stem"),palette);
                 }
-                case "block_column" -> {recipe.add("allowed",predicate(recipe.getAsJsonObject("allowed"),palette));normalizeTypes(recipe.get("layers"));}
+                case "block_column" -> {recipe.add("allowed",predicate(recipe.getAsJsonObject("allowed"),palette));normalizeTypes(recipe.get("layers"));for(var l:recipe.getAsJsonArray("layers"))finishProvider(l.getAsJsonObject().getAsJsonObject("provider"),palette);}
                 case "bamboo" -> {for(String key:List.of("survival","podzol_allowed"))recipe.add(key,predicate(recipe.getAsJsonObject(key),palette));}
                 case "aquatic" -> {for(var variant:recipe.getAsJsonArray("states"))for(String key:List.of("survival","upper_allowed")) {
                     var state=variant.getAsJsonObject();state.add(key,predicate(state.getAsJsonObject(key),palette));
@@ -312,6 +320,20 @@ final class DecorationProfile {
             }
     }
 
+    private static void finishProvider(JsonObject provider,LinkedHashMap<BlockState,Integer> palette) {
+        switch(provider.get("type").getAsString()) {
+            case "rule_based" -> {
+                for(var e:provider.getAsJsonArray("rules")) {
+                    var rule=e.getAsJsonObject();rule.add("predicate",predicate(rule.getAsJsonObject("predicate"),palette));
+                    finishProvider(rule.getAsJsonObject("provider"),palette);
+                }
+                if(provider.has("fallback"))finishProvider(provider.getAsJsonObject("fallback"),palette);
+            }
+            case "weighted" -> {for(var e:provider.getAsJsonArray("entries"))finishProvider(e.getAsJsonObject().getAsJsonObject("provider"),palette);}
+            case "rotated", "randomized_int" -> finishProvider(provider.getAsJsonObject("source"),palette);
+        }
+        normalizeTypes(provider);
+    }
     private static void finishNested(JsonObject placed,LinkedHashMap<BlockState,Integer> palette) {
         finishProgram(placed.getAsJsonArray("placement"),palette);finishFeature(placed.getAsJsonObject("feature"),palette);
     }
@@ -508,6 +530,7 @@ final class DecorationProfile {
         var json=Feature.DIRECT_CODEC.encodeStart(registry.createSerializationContext(JsonOps.INSTANCE),feature).getOrThrow().getAsJsonObject();
         if(!supportedIntProvider(json.get("log_length")) || extent(json.get("log_length"))>15) {unsupported.add("fallen_tree:log_length_exceeds_halo");return null;}
         var trunk=stateProgram(json.get("trunk_provider"),0);if(trunk==null)return null;
+        if(nullableProvider(trunk)) {unsupported.add("fallen_tree:nullable_trunk_axis_transform");return null;}
         var stump=fallenDecorators(json.getAsJsonArray("stump_decorators"));var logs=fallenDecorators(json.getAsJsonArray("log_decorators"));
         if(stump==null || logs==null)return null;
         var result=new JsonObject();result.add("trunk",trunk);result.add("log_length",json.get("log_length").deepCopy());
@@ -557,6 +580,7 @@ final class DecorationProfile {
         if(!supportedPredicate(json.getAsJsonObject("can_place_on"))) {unsupported.add("huge_mushroom:can_place_on");return null;}
         var cap=stateProgram(json.get("cap_provider"),0);var stem=stateProgram(json.get("stem_provider"),0);
         if(cap==null || stem==null)return null;
+        if(nullableProvider(cap)) {unsupported.add("huge_mushroom:nullable_cap_face_transform");return null;}
         boolean red=feature instanceof HugeRedMushroomFeature;
         var result=new JsonObject();result.addProperty("red",red);result.addProperty("foliage_radius",feature.foliageRadius());
         result.add("cap",cap);result.add("stem",stem);result.add("support",json.get("can_place_on").deepCopy());
@@ -591,16 +615,18 @@ final class DecorationProfile {
         if(!input.isJsonObject()) {unsupported.add("block_provider:"+input);return null;}
         var object=input.getAsJsonObject();var result=new JsonObject();
         switch(type(object)) {
-            case "simple_state_provider" -> {return stateProgram(object.get("state"),depth+1);}
+            case "simple", "simple_state_provider" -> {return stateProgram(object.get("state"),depth+1);}
             case "weighted", "weighted_state_provider" -> {
                 result.addProperty("type","weighted");var entries=new JsonArray();
                 for(var e:object.getAsJsonArray("entries")) {var entry=e.getAsJsonObject();var child=stateProgram(entry.get("data"),depth+1);if(child==null)return null;
+                    if(nullableProvider(child)) {unsupported.add("block_provider:weighted_nullable_current_state");return null;}
                     var out=new JsonObject();out.add("weight",entry.get("weight"));out.add("provider",child);entries.add(out);}
                 result.add("entries",entries);
             }
             case "randomized_int", "randomized_int_state_provider" -> {
                 if(!supportedIntProvider(object.get("values"))) {unsupported.add("block_provider:int_values:"+object.get("values"));return null;}
                 var source=stateProgram(object.get("source"),depth+1);if(source==null)return null;
+                if(nullableProvider(source)) {unsupported.add("block_provider:randomized_nullable_current_state");return null;}
                 result.addProperty("type","randomized_int");result.add("source",source);result.add("values",object.get("values").deepCopy());var variants=new JsonArray();
                 for(int id:programStates(source)) {
                     var base=materials.entrySet().stream().filter(e->e.getValue()==id).findFirst().orElseThrow().getKey();
@@ -611,9 +637,62 @@ final class DecorationProfile {
                 }
                 result.add("variants",variants);
             }
+            case "rule_based" -> {
+                result.addProperty("type","rule_based");var rules=new JsonArray();
+                for(var e:object.getAsJsonArray("rules")) {
+                    var rule=e.getAsJsonObject();
+                    if(!supportedPredicate(rule.getAsJsonObject("if_true"))) {unsupported.add("block_provider:rule_predicate:"+rule.get("if_true"));return null;}
+                    var child=stateProgram(rule.get("then"),depth+1);if(child==null)return null;
+                    var out=new JsonObject();out.add("predicate",rule.get("if_true").deepCopy());out.add("provider",child);rules.add(out);
+                }
+                result.add("rules",rules);
+                if(object.has("fallback")) {var child=stateProgram(object.get("fallback"),depth+1);if(child==null)return null;result.add("fallback",child);}
+            }
+            case "rotated" -> {
+                var source=stateProgram(object.get("state"),depth+1);if(source==null)return null;
+                if(nullableProvider(source)) {unsupported.add("block_provider:rotated_nullable_current_state");return null;}
+                result.addProperty("type","rotated");result.add("source",source);var variants=new JsonArray();
+                if(object.has("direction"))result.addProperty("direction",Direction.valueOf(object.get("direction").getAsString().toUpperCase(Locale.ROOT)).ordinal());
+                for(int id:programStates(source)) {
+                    var base=materials.entrySet().stream().filter(e->e.getValue()==id).findFirst().orElseThrow().getKey();
+                    var states=new JsonArray();for(var direction:Direction.values()) {
+                        var rotated=base.trySetValue(BlockStateProperties.AXIS,direction.getAxis()).trySetValue(BlockStateProperties.FACING,direction);
+                        if(direction.getAxis().isHorizontal())rotated=rotated.trySetValue(BlockStateProperties.HORIZONTAL_FACING,direction);
+                        states.add(material(rotated));
+                    }
+                    var v=new JsonObject();v.addProperty("source",id);v.add("states",states);variants.add(v);
+                }
+                result.add("variants",variants);
+            }
+            case "random_block" -> {
+                var decoded=(RandomBlockProvider)BlockStateProvider.DIRECT_CODEC.parse(registry.createSerializationContext(JsonOps.INSTANCE),object).getOrThrow();
+                result.addProperty("type","random_block");var states=new JsonArray();for(var block:decoded.blocks())states.add(material(block.value().defaultBlockState()));result.add("states",states);
+            }
             default -> {unsupported.add("block_provider:"+type(object));return null;}
         }
         return result;
+    }
+    private boolean contextProvider(JsonElement input,int depth) {
+        if(depth>16)throw new IllegalArgumentException("Recursive block state provider");
+        if(input.isJsonPrimitive() && input.getAsJsonPrimitive().isString()) {
+            var holder=registry.lookupOrThrow(Registries.BLOCK_STATE_PROVIDER).get(ResourceKey.create(Registries.BLOCK_STATE_PROVIDER,Identifier.parse(input.getAsString())));
+            return holder.isPresent() && contextProvider(BlockStateProvider.DIRECT_CODEC.encodeStart(registry.createSerializationContext(JsonOps.INSTANCE),holder.get().value()).getOrThrow(),depth+1);
+        }
+        if(!input.isJsonObject())return false;
+        var object=input.getAsJsonObject();
+        return switch(type(object)) {
+            case "rule_based", "rotated", "random_block" -> true;
+            case "weighted", "weighted_state_provider" -> object.getAsJsonArray("entries").asList().stream().anyMatch(e->contextProvider(e.getAsJsonObject().get("data"),depth+1));
+            case "randomized_int", "randomized_int_state_provider" -> contextProvider(object.get("source"),depth+1);
+            default -> false;
+        };
+    }
+    private static boolean nullableProvider(JsonObject provider) {
+        return switch(provider.get("type").getAsString()) {
+            case "rule_based" -> !provider.has("fallback") || nullableProvider(provider.getAsJsonObject("fallback"));
+            case "random_block" -> provider.getAsJsonArray("states").isEmpty();
+            default -> false;
+        };
     }
     static Set<Integer> featureMaterials(JsonObject recipe) {
         var out=new LinkedHashSet<Integer>();
@@ -634,6 +713,9 @@ final class DecorationProfile {
             case "state" -> out.add(p.get("material").getAsInt());
             case "weighted" -> {for(var e:p.getAsJsonArray("entries"))out.addAll(programStates(e.getAsJsonObject().getAsJsonObject("provider")));}
             case "randomized_int" -> {for(var e:p.getAsJsonArray("variants"))for(var id:e.getAsJsonObject().getAsJsonArray("states"))out.add(id.getAsInt());}
+            case "rotated" -> {for(var e:p.getAsJsonArray("variants"))for(var id:e.getAsJsonObject().getAsJsonArray("states"))out.add(id.getAsInt());}
+            case "random_block" -> {for(var id:p.getAsJsonArray("states"))out.add(id.getAsInt());}
+            case "rule_based" -> {for(var rule:p.getAsJsonArray("rules"))out.addAll(programStates(rule.getAsJsonObject().getAsJsonObject("provider")));if(p.has("fallback"))out.addAll(programStates(p.getAsJsonObject("fallback")));}
         }
         return out;
     }

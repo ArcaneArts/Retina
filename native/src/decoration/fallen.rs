@@ -44,6 +44,7 @@ impl Recipe {
         let valid = |id: &u16| (*id as usize) < palette;
         let probability = |v: f32| v.is_finite() && (0.0..=1.0).contains(&v);
         self.trunk.validate(palette)
+            && !self.trunk.nullable()
             && self
                 .log_length
                 .bounds()
@@ -152,7 +153,8 @@ impl Context<'_> {
                         let direction = directions[rng.below(directions.len() as i32) as usize];
                         let pos = shift(at, direction, 1);
                         if (rng.unit() as f32) <= *probability && self.test(&recipe.air, pos) {
-                            self.put(pos, provider.sample(rng));
+                            let material = provider.sample(rng, pos, &|p| self.material(p));
+                            self.put(pos, material);
                         }
                     }
                 }
@@ -232,7 +234,8 @@ pub(super) fn place(
         blocks,
         start,
     };
-    context.put(at, recipe.trunk.sample(rng));
+    let stump = recipe.trunk.sample(rng, at, &|p| context.material(p));
+    context.put(at, stump);
     context.decorate(recipe, &recipe.stump_decorators, &[at], rng);
     let direction = HORIZONTAL[rng.below(4) as usize];
     let length = recipe.log_length.sample(rng) - 2;
@@ -262,7 +265,7 @@ pub(super) fn place(
     let mut logs = Vec::new();
     for i in 0..length {
         let p = shift(pos, direction, i);
-        let source = recipe.trunk.sample(rng);
+        let source = recipe.trunk.sample(rng, p, &|p| context.material(p));
         let axes = recipe.axes.iter().find(|v| v.source == source).unwrap();
         context.put(p, axes.states[usize::from(direction[2] != 0)]);
         logs.push(p);

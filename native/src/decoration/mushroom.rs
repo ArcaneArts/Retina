@@ -23,6 +23,7 @@ impl Recipe {
     pub(super) fn validate(&self, palette: usize) -> bool {
         (0..=15).contains(&self.foliage_radius)
             && self.cap.validate(palette)
+            && !self.cap.nullable()
             && self.stem.validate(palette)
             && self.support.validate(palette)
             && self.clearance.validate(palette)
@@ -78,17 +79,14 @@ pub(super) fn place(
             }
         }
     }
-    let mut put = |pos: [i32; 3], material| {
-        if test(&recipe.replaceable, pos) {
-            blocks.push(WorldBlock {
-                x: pos[0],
-                y: pos[1],
-                z: pos[2],
-                material,
-                upper: 0,
-                role: FEATURE,
-            });
-        }
+    let start = blocks.len();
+    let material_at = |blocks: &[WorldBlock], p| {
+        blocks[start..]
+            .iter()
+            .rev()
+            .find(|b| [b.x, b.y, b.z] == p)
+            .map(|b| b.material)
+            .or_else(|| overlay.material(field, profile, request, p))
     };
     let layers = if recipe.red {
         height - 3..=height
@@ -135,18 +133,41 @@ pub(super) fn place(
                     .iter()
                     .enumerate()
                     .fold(0, |mask, (i, on)| mask | ((*on as usize) << i));
-                let source = recipe.cap.sample(rng);
+                let pos = [at[0] + dx, at[1] + dy, at[2] + dz];
+                let source = recipe.cap.sample(rng, pos, &|p| material_at(blocks, p));
                 let states = &recipe
                     .faces
                     .iter()
                     .find(|v| v.source == source)
                     .unwrap()
                     .states;
-                put([at[0] + dx, at[1] + dy, at[2] + dz], states[mask]);
+                // Cap/stem positions are disjoint: the replacement predicate
+                // need not rescan this feature's earlier writes at each block.
+                if test(&recipe.replaceable, pos) {
+                    blocks.push(WorldBlock {
+                        x: pos[0],
+                        y: pos[1],
+                        z: pos[2],
+                        material: states[mask],
+                        upper: 0,
+                        role: FEATURE,
+                    });
+                }
             }
         }
     }
     for dy in 0..height {
-        put([at[0], at[1] + dy, at[2]], recipe.stem.sample(rng));
+        let pos = [at[0], at[1] + dy, at[2]];
+        let material = recipe.stem.sample(rng, pos, &|p| material_at(blocks, p));
+        if test(&recipe.replaceable, pos) {
+            blocks.push(WorldBlock {
+                x: pos[0],
+                y: pos[1],
+                z: pos[2],
+                material,
+                upper: 0,
+                role: FEATURE,
+            });
+        }
     }
 }

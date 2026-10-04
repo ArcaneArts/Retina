@@ -109,8 +109,86 @@ public final class NativeBlockFeatureIntegrationTest {
             System.out.println("QA_EVT {\"event\":\"registered_block_features_minecraft_reference\",\"status\":\"pass\",\"context\":{\"datapack\":"+(pack!=null)+",\"recipes\":"+new Gson().toJson(kinds)+",\"cases\":"+cases+",\"placed\":"+placed+",\"empty\":"+empty+",\"mushroom_heights\":"+new Gson().toJson(mushroomHeights)+",\"rugged_mushrooms\":"+ruggedMushrooms+",\"rugged_rejections\":"+ruggedRejected+"}}");
             System.out.println("QA_EVT {\"event\":\"registered_fallen_trees_minecraft_reference\",\"status\":\"pass\",\"context\":{\"datapack\":"+(pack!=null)+",\"horizontal_lengths\":"+new Gson().toJson(fallenLengths)+",\"decorated\":"+fallenDecorated+",\"stump_only\":"+fallenStumps+",\"rugged_runs\":"+ruggedFallenLogs+"}}");
             for(String biome:List.of("bamboo_jungle","desert","ocean","mushroom_fields","dark_forest","forest","dappled_forest","old_growth_birch_forest","lush_caves"))checkRegion(json,materials,biome);
+            checkStateProviders(registry,json,factory,pack!=null);
 
         }
+    }
+    private static void checkStateProviders(RegistryAccess registry,JsonObject original,PalettedContainerFactory factory,boolean packed) throws Exception {
+        var profile=original.deepCopy();profile.remove("ores");profile.remove("cave_noises");
+        var palette=new LinkedHashMap<BlockState,Integer>();
+        for(var value:profile.getAsJsonArray("materials"))palette.put(BlockState.CODEC.parse(JsonOps.INSTANCE,value).getOrThrow(),palette.size());
+        var constructor=DecorationProfile.class.getDeclaredConstructor(HolderLookup.Provider.class,LinkedHashMap.class);constructor.setAccessible(true);
+        var exporter=constructor.newInstance(registry,palette);
+        var placementClass=Arrays.stream(DecorationProfile.class.getDeclaredClasses()).filter(c->c.getSimpleName().equals("Placement")).findFirst().orElseThrow();
+        var placementConstructor=placementClass.getDeclaredConstructor();placementConstructor.setAccessible(true);
+        var export=DecorationProfile.class.getDeclaredMethod("placed",net.minecraft.world.level.levelgen.placement.PlacedFeature.class,placementClass,double.class,String.class,List.class,int.class);export.setAccessible(true);
+        var recipeField=DecorationProfile.class.getDeclaredField("recipes");recipeField.setAccessible(true);
+        var rules=List.of(
+            "{\"type\":\"minecraft:rule_based\",\"rules\":[{\"if_true\":{\"type\":\"minecraft:matching_blocks\",\"blocks\":\"minecraft:grass_block\",\"offset\":[0,-1,0]},\"then\":\"minecraft:stone\"},{\"if_true\":{\"type\":\"minecraft:matching_blocks\",\"blocks\":\"minecraft:stone\",\"offset\":[0,-1,0]},\"then\":\"minecraft:dirt\"}]}",
+            "{\"type\":\"minecraft:rule_based\",\"fallback\":\"minecraft:birch_log\",\"rules\":[{\"if_true\":{\"type\":\"minecraft:true\"},\"then\":{\"type\":\"minecraft:rule_based\",\"rules\":[]}},{\"if_true\":{\"type\":\"minecraft:matching_block_tag\",\"tag\":\"minecraft:supports_vegetation\",\"offset\":[0,-1,0]},\"then\":{\"type\":\"minecraft:random_block\",\"blocks\":[\"minecraft:oak_log\",\"minecraft:spruce_log\"]}}]}",
+            "{\"type\":\"minecraft:rule_based\",\"rules\":[{\"if_true\":{\"type\":\"minecraft:matching_fluids\",\"fluids\":\"minecraft:water\"},\"then\":\"minecraft:stone\"}]}",
+            "{\"type\":\"minecraft:random_block\",\"blocks\":[]}",
+            "{\"type\":\"minecraft:random_block\",\"blocks\":\"#minecraft:logs\"}",
+            "{\"type\":\"minecraft:rotated\",\"state\":{\"type\":\"minecraft:weighted\",\"entries\":[{\"weight\":2,\"data\":\"minecraft:oak_log\"},{\"weight\":3,\"data\":\"minecraft:birch_log\"}]}}",
+            "{\"type\":\"minecraft:rotated\",\"state\":{\"type\":\"minecraft:random_block\",\"blocks\":[\"minecraft:oak_stairs\",\"minecraft:furnace\"]}}"
+        );
+        var providers=new ArrayList<JsonElement>();for(var rule:rules)providers.add(providerStates(JsonParser.parseString(rule)));
+        for(var direction:Direction.values()) {
+            var provider=providerStates(JsonParser.parseString(rules.get(5))).getAsJsonObject();provider.addProperty("direction",direction.getName());providers.add(provider);
+        }
+        var synthetic=(JsonArray)recipeField.get(exporter);var features=new ArrayList<Feature>();
+        for(var provider:providers)for(String kind:List.of("block_column","simple_block")) {
+            var featureJson=new JsonObject();featureJson.addProperty("type","minecraft:"+kind);
+            if(kind.equals("block_column")) {
+                var layers=new JsonArray();var layer=new JsonObject();layer.add("height",JsonParser.parseString("{\"type\":\"minecraft:uniform\",\"min_inclusive\":3,\"max_inclusive\":9}"));layer.add("provider",provider.deepCopy());layers.add(layer);
+                // A second randomized layer exposes any extra/missing provider RNG draws.
+                var tail=new JsonObject();tail.addProperty("height",2);tail.add("provider",providerStates(JsonParser.parseString(rules.get(5))));layers.add(tail);
+                featureJson.add("layers",layers);featureJson.addProperty("direction","up");featureJson.addProperty("prioritize_tip",false);featureJson.add("allowed_placement",JsonParser.parseString("{\"type\":\"minecraft:true\"}"));
+            } else featureJson.add("to_place",provider.deepCopy());
+            var feature=Feature.DIRECT_CODEC.parse(registry.createSerializationContext(JsonOps.INSTANCE),featureJson).getOrThrow();
+            var selected=new ArrayList<Integer>();var placed=new net.minecraft.world.level.levelgen.placement.PlacedFeature(Holder.direct(feature),List.of(
+                net.minecraft.world.level.levelgen.placement.InSquarePlacement.spread(),net.minecraft.world.level.levelgen.placement.HeightmapPlacement.onHeightmap(Heightmap.Types.MOTION_BLOCKING)));
+            export.invoke(exporter,placed,placementConstructor.newInstance(),1.0,"test:provider"+features.size(),selected,0);
+            require(selected.size()==1 && synthetic.get(selected.getFirst()).getAsJsonObject().get("kind").getAsString().equals(kind),"registered provider feature exports through production dispatch: "+featureJson);
+            features.add(feature);
+        }
+        DecorationProfile.finishPlacements(synthetic,palette);DecorationProfile.materialFlags(profile,palette);
+        var materials=palette.keySet().toArray(BlockState[]::new);var serialized=new JsonArray();for(var state:materials)serialized.add(BlockState.CODEC.encodeStart(JsonOps.INSTANCE,state).getOrThrow());profile.add("materials",serialized);
+        int offset=profile.getAsJsonArray("decorations").size();profile.getAsJsonArray("decorations").addAll(synthetic);
+        int checked=0,empty=0;
+        for(int[] terrain:List.of(new int[]{32,384},new int[]{58,384},new int[]{96,384},new int[]{96,168})) {
+            int base=terrain[0];var fixture=new Fixture(profile,materials,base,terrain[1]);fixture.factory=factory;
+            var biome=registry.lookupOrThrow(Registries.BIOME).getOrThrow(ResourceKey.create(Registries.BIOME,Identifier.parse("minecraft:plains")));
+            fixture.generator=new RetinaChunkGenerator(new net.minecraft.world.level.biome.FixedBiomeSource(biome),-64,384,base,0,.008F,"mca");
+            for(int i=0;i<features.size();i++)for(long seed=0;seed<64;seed++) {
+                var at=new BlockPos(-17,fixture.originHeight,-17);var world=new World(fixture);
+                features.get(i).place(world.level,fixture.generator,new Stream(seed,false),at);
+                int[] blocks=NativeTerrain.instance().decorationFeature(fixture.request,offset+i,new int[]{at.getX(),at.getY(),at.getZ()},seed);
+                var actual=new HashMap<BlockPos,BlockState>();for(int k=0;k<blocks.length;k+=4)actual.put(new BlockPos(blocks[k],blocks[k+1],blocks[k+2]),materials[blocks[k+3]]);
+                require(world.changed.equals(actual),"state-provider reference mismatch: "+synthetic.get(i)+" base="+base+" seed="+seed+" differences="+differences(world.changed,actual));
+                checked++;if(actual.isEmpty())empty++;
+            }
+        }
+        require(empty>0,"nullable providers skip simple-block placement");
+        var ids=new JsonArray();for(int i=0;i<features.size();i++)ids.add(offset+i);
+        for(var b:profile.getAsJsonArray("biomes"))if(b.getAsJsonObject().get("id").getAsString().equals("minecraft:forest"))b.getAsJsonObject().add("decorations",ids);
+        // This is a controlled, cave-free carrier for the provider recipes; its
+        // imported replacement tables describe the old, smaller palette.
+        for(var b:profile.getAsJsonArray("biomes"))b.getAsJsonObject().remove("cave_features");
+        checkRegion(profile,materials,"forest");
+        System.out.println("QA_EVT {\"event\":\"registered_state_providers_minecraft_reference\",\"status\":\"pass\",\"context\":{\"datapack\":"+packed+",\"features\":"+features.size()+",\"cases\":"+checked+",\"empty\":"+empty+"}}");
+    }
+    private static JsonElement providerStates(JsonElement value) {
+        if(value.isJsonPrimitive()) {
+            var state=BuiltInRegistries.BLOCK.getValue(Identifier.parse(value.getAsString())).defaultBlockState();
+            return BlockState.FULL_CODEC.encodeStart(JsonOps.INSTANCE,state).getOrThrow();
+        }
+        var object=value.getAsJsonObject();
+        for(String key:List.of("state","source","fallback"))if(object.has(key))object.add(key,providerStates(object.get(key)));
+        for(String key:List.of("entries","rules"))if(object.has(key))for(var child:object.getAsJsonArray(key)) {
+            var e=child.getAsJsonObject();var slot=key.equals("rules")?"then":"data";e.add(slot,providerStates(e.get(slot)));
+        }
+        return object;
     }
     private record PlacementCase(int recipe,List<net.minecraft.world.level.levelgen.placement.PlacementModifier> modifiers) { }
     private static List<PlacementCase> placementCases(RegistryAccess registry,JsonObject profile,BlockState[] materials) {

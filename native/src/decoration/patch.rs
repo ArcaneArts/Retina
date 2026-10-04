@@ -207,7 +207,12 @@ impl World<'_> {
         self.overlay.write(self.profile, at, material);
     }
     fn simple(&mut self, simple: &Simple, at: [i32; 3], rng: &mut Rng) -> bool {
-        let id = simple.provider.sample(rng);
+        let Some(id) = simple
+            .provider
+            .sample_optional(rng, at, &|p| self.material(p))
+        else {
+            return false;
+        };
         let state = simple.states.iter().find(|s| s.source == id).unwrap();
         if !self.test(&state.survival, at) {
             return false;
@@ -429,7 +434,14 @@ impl World<'_> {
                 let mut pos = ground;
                 let mut placed = true;
                 for i in 0..depth {
-                    let material = patch.ground.sample(rng);
+                    let Some(material) = patch
+                        .ground
+                        .sample_optional(rng, pos, &|p| self.material(p))
+                    else {
+                        // getState's absent fallback retains the existing block;
+                        // Minecraft's same-block check then leaves the cursor here.
+                        continue;
+                    };
                     let same = patch
                         .same_blocks
                         .iter()
