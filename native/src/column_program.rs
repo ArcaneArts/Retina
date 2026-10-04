@@ -34,7 +34,7 @@ impl Plan {
                     knots: Vec::new(),
                 };
                 match n.op {
-                    1 | 23 | 24 => {
+                    1 | 23 | 24 | 27 | 31 => {
                         key.args = [
                             ids[n.a as usize] as u32,
                             ids[n.b as usize] as u32,
@@ -45,7 +45,7 @@ impl Plan {
                         key.args[0] = ids[n.a as usize] as u32;
                         key.args[1] = ids[n.b as usize] as u32;
                     }
-                    11..=22 | 43 | 44 | 53 => key.args[0] = ids[n.a as usize] as u32,
+                    11..=22 | 30 | 43 | 44 | 53 => key.args[0] = ids[n.a as usize] as u32,
                     25 => {
                         key.args[0] = ids[n.a as usize] as u32;
                         key.args[1] = 0; // Offset is not part of spline semantics.
@@ -76,7 +76,8 @@ impl Plan {
                             2 => 4,
                             _ => 7,
                         },
-                        4..=25 | 40 | 41 | 43 | 44 => 0,
+                        4..=25 | 27 | 30 | 31 | 40 | 41 | 43 | 44 => 0,
+                        29 => 1 << n.a,
                         26 => {
                             if n.p[1] == 0.0 {
                                 5
@@ -88,7 +89,11 @@ impl Plan {
                         _ => 7,
                     };
                     let cost = deps.iter().fold(
-                        if matches!(n.op, 1 | 2 | 26) { 8u32 } else { 1 },
+                        if matches!(n.op, 1 | 2 | 26 | 27 | 31) {
+                            8u32
+                        } else {
+                            1
+                        },
                         |c, &d| c.saturating_add(costs[ids[d as usize]]),
                     );
                     let id = owners.len();
@@ -186,6 +191,36 @@ mod tests {
         assert_eq!(plan.slots[1][2], Some(0));
         assert_eq!(plan.slots[0][2], None);
         assert_eq!(plan.slots[0][4], None);
+    }
+    #[test]
+    fn scoped_noise_caches_only_when_y_is_replaced() {
+        let graph = Program {
+            nodes: vec![
+                n(0, 0, 0, 0, [0.0; 4]),
+                n(29, 0, 0, 0, [0.0; 4]),
+                n(29, 1, 0, 0, [0.0; 4]),
+                n(29, 2, 0, 0, [0.0; 4]),
+                n(0, 0, 0, 0, [64.0, 0.0, 0.0, 0.0]),
+                n(27, 1, 4, 3, [0.0, 1.0, 0.0, 0.0]),
+                n(27, 1, 2, 3, [0.0, 1.0, 0.0, 0.0]),
+                n(4, 5, 6, 0, [0.0; 4]),
+            ],
+            roots: vec![7],
+        };
+        let registry = RegistryProgram {
+            programs: vec![graph.clone(), graph.clone(), graph],
+            noises: vec![],
+            points: vec![],
+            surface: [0, 8, 0],
+            terrain_cell: [4, 8],
+            surface_noises: [0; 3],
+        };
+        let plan = Plan::new(&registry);
+        assert_eq!(plan.owners, vec![(0, 5)]);
+        for slots in &plan.slots {
+            assert_eq!(slots[5], Some(0));
+            assert_eq!(slots[6], None);
+        }
     }
     #[test]
     fn spline_offsets_share_but_derivatives_do_not() {

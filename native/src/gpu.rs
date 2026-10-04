@@ -1197,7 +1197,9 @@ mod mapping_tests {
     #[ignore = "requires an exported registry profile in RETINA_PROGRAM_PARITY_PROFILE"]
     fn specialized_roots_match_interpreter_on_real_gpu() {
         let path = std::env::var("RETINA_PROGRAM_PARITY_PROFILE").unwrap();
-        let mut profile = WorldProfile::parse(&std::fs::read(path).unwrap()).unwrap();
+        let bytes = std::fs::read(path).unwrap();
+        let fixture: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+        let mut profile = WorldProfile::parse(&bytes).unwrap();
         if let Ok(roots) = std::env::var("RETINA_PROGRAM_PARITY_ROOTS") {
             profile.registry_program.as_mut().unwrap().programs[0].roots =
                 roots.split(',').map(|r| r.parse().unwrap()).collect();
@@ -1219,7 +1221,13 @@ mod mapping_tests {
             "if program>={}u{{return;}}",
             registry.programs.len()
         ));
-        kernel.push_str("let seed=min(sample/21u,2u);var r=requests[0];r.seed_low^=seed*7919u;let point=vec3<f32>(f32(i32(sample%8u)*131-513),f32(i32(sample)*6-64),f32(i32(sample/8u)*127-511));let context=vec4<f32>(f32(sample%8u+1u),f32(sample%3u+3u),f32(sample%6u),f32(sample%7u));let reference=run_reference(program,point,r,context);var actual:array<f32,6>;switch program{case 0u:{actual=run_climate(point,r,context);}case 1u:{actual=run_surface_density(point,r,context);}case 2u:{actual=run_final_density(point,r,context);}default:{actual=run_program(program,point,r,context);}}let at=id.x*4u;columns[at]=Column(bitcast<i32>(reference[0]),bitcast<u32>(reference[1]),bitcast<u32>(reference[2]));columns[at+1u]=Column(bitcast<i32>(reference[3]),bitcast<u32>(reference[4]),bitcast<u32>(reference[5]));columns[at+2u]=Column(bitcast<i32>(actual[0]),bitcast<u32>(actual[1]),bitcast<u32>(actual[2]));columns[at+3u]=Column(bitcast<i32>(actual[3]),bitcast<u32>(actual[4]),bitcast<u32>(actual[5]));}");
+        kernel.push_str("let seed=min(sample/21u,2u);var r=requests[0];r.seed_low^=seed*7919u;let point=vec3<f32>(f32(i32(sample%8u)*131-513),f32(i32(sample)*6-64),f32(i32(sample/8u)*127-511));let context=vec4<f32>(f32(sample%8u+1u),f32(sample%3u+3u),f32(sample%6u),f32(sample%7u));let reference=run_reference(program,point,r,context);var actual:array<f32,6>;switch program{case 0u:{actual=run_climate(point,r,context);}case 1u:{actual=run_surface_density(point,r,context);}case 2u:{actual=run_final_density(point,r,context);}default:{actual=run_program(program,point,r,context);}}var expected=reference;COORDINATE_EXPECTED let at=id.x*6u;columns[at]=Column(bitcast<i32>(reference[0]),bitcast<u32>(reference[1]),bitcast<u32>(reference[2]));columns[at+1u]=Column(bitcast<i32>(reference[3]),bitcast<u32>(reference[4]),bitcast<u32>(reference[5]));columns[at+2u]=Column(bitcast<i32>(actual[0]),bitcast<u32>(actual[1]),bitcast<u32>(actual[2]));columns[at+3u]=Column(bitcast<i32>(actual[3]),bitcast<u32>(actual[4]),bitcast<u32>(actual[5]));columns[at+4u]=Column(bitcast<i32>(expected[0]),bitcast<u32>(expected[1]),bitcast<u32>(expected[2]));columns[at+5u]=Column(bitcast<i32>(expected[3]),bitcast<u32>(expected[4]),bitcast<u32>(expected[5]));}");
+        let coordinate_expected = fixture.get("coordinate_expected_roots");
+        let coordinate_noise = fixture.get("coordinate_noise").map(|n| n.as_u64().unwrap());
+        let expected_kernel = coordinate_noise.map_or(String::new(), |noise| format!(
+            "if program==1u{{let clamped=clamp(point,vec3<f32>(-1024.0),vec3<f32>(1024.0))*0.125;expected[0]=program_noise(vec3<f32>(point.x*0.5+17.0*0.125,17.0*0.25+clamped.z,point.z*0.5+clamped.x),{noise}u,r);expected[1]=program_noise(vec3<f32>(-96.0,point.y,point.z)*0.25,{noise}u,r)*4.0;expected[2]=program_noise(vec3<f32>(point.x,0.0,160.0)*0.25,{noise}u,r)*4.0;expected[3]=program_noise(vec3<f32>(-96.0,17.0,0.0)*0.25,{noise}u,r)*4.0;expected[4]=run_reference(2u,vec3<f32>(point.x,32.0,point.z),r,context)[0];expected[5]=run_reference(3u,vec3<f32>(17.0,point.y,point.z),r,context)[0];}}"
+        ));
+        kernel = kernel.replace("COORDINATE_EXPECTED", &expected_kernel);
         if cached {
             kernel = kernel
                 .replace(
@@ -1333,7 +1341,7 @@ mod mapping_tests {
         gpu.queue
             .write_buffer(&gpu.requests, 0, bytemuck::cast_slice(&jobs));
         let count = registry.programs.len() * 64;
-        let size = (count * 48) as u64;
+        let size = (count * 72) as u64;
         let output = gpu.readback_buffer("Retina parity roots", size);
         let mut encoder = gpu
             .device
@@ -1365,8 +1373,34 @@ mod mapping_tests {
         let mut differences = 0;
         for sample in 0..count {
             for root in 0..6 {
-                let old = words[sample * 12 + root];
-                let new = words[sample * 12 + 6 + root];
+                let old = words[sample * 18 + root];
+                let new = words[sample * 18 + 6 + root];
+                if coordinate_noise.is_some() && sample / 64 == 1 {
+                    let expected = words[sample * 18 + 12 + root];
+                    assert_eq!(
+                        old,
+                        expected,
+                        "scoped interpreter noise root {root}, sample {}",
+                        sample % 64
+                    );
+                    assert_eq!(
+                        new,
+                        expected,
+                        "scoped specialized noise root {root}, sample {}",
+                        sample % 64
+                    );
+                }
+                if !cached && sample / 64 == 0 {
+                    if let Some(expected) = coordinate_expected {
+                        let expected = expected[sample % 64][root].as_f64().unwrap() as f32;
+                        let actual = f32::from_bits(old);
+                        assert!(
+                            (actual - expected).abs() <= 0.0001,
+                            "Minecraft scoped root {root}, sample {}: {actual} vs {expected}",
+                            sample % 64
+                        );
+                    }
+                }
                 if old != new {
                     if differences < 32 {
                         eprintln!(

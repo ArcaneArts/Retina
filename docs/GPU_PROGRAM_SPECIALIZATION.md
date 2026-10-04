@@ -98,6 +98,9 @@ The final guard is covered by exact far-coordinate and integration checks.
 Later performance repeats overlapped an active game client and are excluded from
 speedup claims; the table is not a measured speedup for that final guard revision.
 
-Specialization preserves the exported graph's current semantics. It does not yet
-repair flattened Slice/interpolation wrappers, introduce layered surfaces or
-aquifers, or expand feature recipes. Those remain part of the active goal.
+Specialization preserves the exported graph's current semantics. Registered
+`slice` operations now retain their coordinate scopes; see
+[coordinate scopes](GPU_COORDINATE_SCOPES.md). Per-expression interpolation
+wrappers remain flattened into the shared final-density lattice approximation.
+Layered surfaces, aquifers and broader feature recipes also remain part of the
+active goal.

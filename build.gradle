@@ -90,7 +90,7 @@ tasks.register('nativeGpuTest', Exec) {
 tasks.register('gpuTest', JavaExec) {
     group = 'verification'
     description = 'Test the GPU pipeline and Java/Rust bridge with parallel requests.'
-    dependsOn 'nativeGpuTest', 'nativeOreGpuTest', 'gpuTestClasses'
+    dependsOn 'nativeGpuTest', 'nativeOreGpuTest', 'nativeCoordinateGpuTest', 'gpuTestClasses'
     classpath = sourceSets.gpuTest.runtimeClasspath
     mainClass = 'art.arcane.retina.worldgen.NativeTerrainIntegrationTest'
     javaLauncher = javaToolchains.launcherFor {
@@ -107,6 +107,28 @@ tasks.register('nativeOreGpuTest', Exec) {
     workingDir nativeDirectory
     commandLine cargoExecutable, 'test', '--release', '--locked', '--lib',
             'real_gpu_compact_ores_preserve_hosts_exposure_edges_and_reused_buffers',
+            '--target-dir', nativeTarget.get().asFile.absolutePath, '--', '--ignored', '--nocapture'
+}
+
+tasks.register('coordinateTest', JavaExec) {
+    group = 'verification'
+    description = 'Validate registered SliceFunction export against Minecraft samplers and GPU chunk fields.'
+    dependsOn 'gpuTestClasses'
+    classpath = sourceSets.gpuTest.runtimeClasspath
+    mainClass = 'art.arcane.retina.worldgen.NativeCoordinateIntegrationTest'
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
+    jvmArgs '--enable-native-access=ALL-UNNAMED'
+}
+
+tasks.register('nativeCoordinateGpuTest', Exec) {
+    group = 'verification'
+    description = 'Compare scoped GPU noise, interpreter and specialization with actual-device coordinate identities.'
+    dependsOn 'coordinateTest'
+    mustRunAfter 'nativeOreGpuTest'
+    workingDir nativeDirectory
+    environment 'RETINA_PROGRAM_PARITY_PROFILE', file('build/registry-coordinate-profile.json').absolutePath
+    commandLine cargoExecutable, 'test', '--release', '--locked', '--lib',
+            'specialized_roots_match_interpreter_on_real_gpu',
             '--target-dir', nativeTarget.get().asFile.absolutePath, '--', '--ignored', '--nocapture'
 }
 

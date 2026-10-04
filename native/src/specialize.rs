@@ -674,6 +674,6 @@ mod tests {
         assert_eq!(source.matches("fn graph_").count(), 2);
         assert!(source.contains("vec3<f32>,2"));
         assert!(source.contains("v0,v0,v0,v0,v0"));
-        assert_eq!(opcode_bodies().unwrap().len(), 41);
+        assert_eq!(opcode_bodies().unwrap().len(), 45);
     }
 }

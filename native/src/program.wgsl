@@ -17,6 +17,14 @@ fn program_noise(point:vec3<f32>,index:u32,request:Request)->f32 {
     // noise3 has a 1.6 gain for the legacy field; remove it for registered Perlin amplitudes.
     return sum*amplitude*0.625;
 }
+fn program_old_blended(point:vec3<f32>,p:vec4<f32>,request:Request)->f32 {
+    let limit=point*vec3<f32>(684.412*p.x,684.412*p.y,684.412*p.x)/32768.0;
+    let main=point*vec3<f32>(684.412*p.x/p.z,684.412*p.y/p.w,684.412*p.x/p.z)/128.0;
+    let seed=request.seed_low ^ mix_hash(request.seed_high);
+    var lower=0.0;var upper=0.0;var blend=0.0;var weights=0.0;var weight=1.0;
+    for(var octave=0u;octave<8u;octave++) {let scale=exp2(f32(octave));lower+=noise3(limit*scale,seed+octave*1013u)*weight;upper+=noise3(limit*scale,seed+7919u+octave*1013u)*weight;blend+=noise3(main*scale,seed+15838u+octave*1013u)*weight;weights+=weight;weight*=0.5;}
+    return mix(lower,upper,clamp(blend/weights*0.5+0.5,0.0,1.0))/weights;
+}
 fn run_program(program:u32,point:vec3<f32>,request:Request,context:vec4<f32>)->array<f32,6> {
     let descriptor=12u+program*8u;let offset=bytecode[descriptor];let count=bytecode[descriptor+1u];
     var values:array<f32,1024>;
@@ -60,14 +68,12 @@ fn run_program(program:u32,point:vec3<f32>,request:Request,context:vec4<f32>)->a
                     result=mix(lv,rv,t)+t*(1.0-t)*mix(ld*span-delta,-rd*span+delta,t);
                 }
             }
-            case 26u:{
-                let limit=point*vec3<f32>(684.412*p.x,684.412*p.y,684.412*p.x)/32768.0;
-                let main=point*vec3<f32>(684.412*p.x/p.z,684.412*p.y/p.w,684.412*p.x/p.z)/128.0;
-                let seed=request.seed_low ^ mix_hash(request.seed_high);
-                var lower=0.0;var upper=0.0;var blend=0.0;var weights=0.0;var weight=1.0;
-                for(var octave=0u;octave<8u;octave++) {let scale=exp2(f32(octave));lower+=noise3(limit*scale,seed+octave*1013u)*weight;upper+=noise3(limit*scale,seed+7919u+octave*1013u)*weight;blend+=noise3(main*scale,seed+15838u+octave*1013u)*weight;weights+=weight;weight*=0.5;}
-                result=mix(lower,upper,clamp(blend/weights*0.5+0.5,0.0,1.0))/weights;
-            }
+            case 26u:{result=program_old_blended(point,p,request);}
+            // Slice scopes are lowered to explicit coordinates in the resident DAG.
+            case 27u:{result=program_noise(vec3<f32>(values[a],values[b],values[c]),u32(p.x),request)*p.y;}
+            case 29u:{result=point[a];}
+            case 30u:{var t=(values[a]-p.x)/(p.y-p.x);if b==1u {t=fract(t);}else if b==2u {t=1.0-abs(fract(t*0.5)*2.0-1.0);}else {t=clamp(t,0.0,1.0);}result=mix(p.z,p.w,t);}
+            case 31u:{result=program_old_blended(vec3<f32>(values[a],values[b],values[c]),p,request);}
             case 40u:{result=select(0.0,values[b],values[a]!=0.0);}
             case 41u:{result=select(values[b],values[a],values[a]!=0.0);}
             case 42u:{if bytecode[7]>0u {let band=i32(round(point.y))+i32(context.w);let size=i32(bytecode[7]);result=f32(bytecode[bytecode[6]+u32(((band%size)+size)%size)])+1.0;}}

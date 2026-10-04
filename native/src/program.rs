@@ -11,9 +11,9 @@ pub struct Instruction {
 impl Instruction {
     pub(crate) fn dependencies(&self, points: &[[f32; 4]]) -> Vec<u32> {
         let mut result = match self.op {
-            1 | 23 | 24 => vec![self.a, self.b, self.c],
+            1 | 23 | 24 | 27 | 31 => vec![self.a, self.b, self.c],
             4..=10 | 40 | 41 => vec![self.a, self.b],
-            11..=22 | 25 | 43 | 44 | 53 => vec![self.a],
+            11..=22 | 25 | 30 | 43 | 44 | 53 => vec![self.a],
             _ => vec![],
         };
         if self.op == 25 {
@@ -91,9 +91,9 @@ impl RegistryProgram {
                     return Err("nonfinite GPU instruction".into());
                 }
                 let deps: Vec<u32> = match n.op {
-                    1 => vec![n.a, n.b, n.c],
+                    1 | 27 | 31 => vec![n.a, n.b, n.c],
                     4..=10 | 41 => vec![n.a, n.b],
-                    11..=22 | 43 | 44 => vec![n.a],
+                    11..=22 | 30 | 43 | 44 => vec![n.a],
                     23 | 24 => vec![n.a, n.b, n.c],
                     25 => vec![n.a],
                     40 => vec![n.a, n.b],
@@ -103,7 +103,7 @@ impl RegistryProgram {
                 if deps.iter().any(|x| *x as usize >= i) {
                     return Err("GPU instruction must reference earlier values".into());
                 }
-                if n.op == 1 && (n.p[0] as usize >= self.noises.len())
+                if matches!(n.op, 1 | 27) && (n.p[0] as usize >= self.noises.len())
                     || n.op == 2 && n.a as usize >= self.noises.len()
                 {
                     return Err("invalid GPU noise reference".into());
@@ -117,7 +117,10 @@ impl RegistryProgram {
                 {
                     return Err("invalid GPU spline points".into());
                 }
-                if !matches!(n.op,0..=26|40..=53) {
+                if n.op == 29 && n.a > 2 {
+                    return Err("invalid GPU coordinate axis".into());
+                }
+                if !matches!(n.op,0..=27|29..=31|40..=53) {
                     return Err("unknown GPU opcode".into());
                 }
             }

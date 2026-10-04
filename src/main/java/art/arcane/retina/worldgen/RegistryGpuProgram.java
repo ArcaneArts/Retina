@@ -39,7 +39,7 @@ final class RegistryGpuProgram {
         var climateNoises=new HashSet<Integer>();
         for(var value:climate.nodes) {
             var node=value.getAsJsonObject();int op=node.get("op").getAsInt();
-            if(op==1)climateNoises.add(node.getAsJsonArray("p").get(0).getAsInt());
+            if(op==1 || op==27)climateNoises.add(node.getAsJsonArray("p").get(0).getAsInt());
             if(op==2)climateNoises.add(node.get("a").getAsInt());
         }
         for(int id:climateNoises)compiler.noises.get(id).getAsJsonObject().addProperty("horizontal_scale",256.0/biomeScale);
@@ -106,7 +106,7 @@ final class RegistryGpuProgram {
             value=resolve(value);
             if(!value.isJsonObject())return value;
             var o=value.getAsJsonObject();
-            if(!Set.of("cache","interpolated","blend_density","slice").contains(type(o)))return value;
+            if(!Set.of("cache","interpolated","blend_density").contains(type(o)))return value;
             value=o.get("input");
         } throw new IllegalArgumentException("Recursive surface density function");
     }
@@ -147,6 +147,7 @@ final class RegistryGpuProgram {
     final class Program {
         final JsonArray nodes=new JsonArray(), roots=new JsonArray();
         final Map<String,Integer> compiled=new HashMap<>(); final Set<String> resolving=new HashSet<>();
+        Coordinates coordinates = new Coordinates(null, null, null);
         Program() { constant(0); }
         int node(int op,int a,int b,int c,float... args) {
             var n=new JsonObject();n.addProperty("op",op);n.addProperty("a",a);n.addProperty("b",b);n.addProperty("c",c);
@@ -158,7 +159,7 @@ final class RegistryGpuProgram {
         int constant(float x) { return node(0,0,0,0,x); }
         int density(JsonElement value) {
             if(value==null)return constant(0);
-            String key="df:"+value;var existing=compiled.get(key);if(existing!=null)return existing;
+            String key="df:"+(coordinates.sliced()?coordinates+":":"")+value;var existing=compiled.get(key);if(existing!=null)return existing;
             if(!resolving.add(key))throw new IllegalArgumentException("Recursive registry density function: "+key);
             int index;
             if(value.isJsonPrimitive() && value.getAsJsonPrimitive().isNumber())index=constant(value.getAsFloat());
@@ -167,19 +168,22 @@ final class RegistryGpuProgram {
                 var o=value.getAsJsonObject();String kind=type(o);
                 index=switch(kind) {
                     case "constant" -> constant(o.get("value").getAsFloat());
-                    case "cache","interpolated","blend_density","slice" -> density(o.get("input"));
+                    case "cache","interpolated","blend_density" -> density(o.get("input"));
+                    case "slice" -> slice(o);
                     case "blend_alpha" -> constant(1);
                     case "blend_offset","beardifier" -> constant(0);
-                    case "noise" -> node(1,density(o.get("shift_x")),density(o.get("shift_y")),density(o.get("shift_z")),noise(o.get("noise")),number(o,"xz_scale",1),number(o,"y_scale",1),0);
-                    case "shift","shift_a","shift_b" -> node(2,noise(o.get("noise")),kind.equals("shift_b")?2:kind.equals("shift_a")?1:0,0);
-                    case "gradient" -> node(3,List.of("x","y","z").indexOf(o.get("axis").getAsString()),o.has("tiling")?List.of("clamp_to_edge","repeat","mirrored_repeat").indexOf(o.get("tiling").getAsString()):0,0,number(o,"from_coordinate",0),number(o,"to_coordinate",1),number(o,"from_value",0),number(o,"to_value",1));
+                    case "noise" -> noise(o);
+                    case "shift","shift_a","shift_b" -> shift(o,kind);
+                    case "gradient" -> gradient(o);
                     case "add","sub","mul","div","min","max","pow" -> node(4+List.of("add","sub","mul","div","min","max","pow").indexOf(kind),density(o.get("left")),density(o.get("right")),0);
                     case "abs","square","cube","half_negative","quarter_negative","squeeze","reciprocal","negate","sqrt","log","sign" -> node(11+List.of("abs","square","cube","half_negative","quarter_negative","squeeze","reciprocal","negate","sqrt","log","sign").indexOf(kind),density(o.get("input")),0,0);
                     case "clamp" -> node(22,density(o.get("input")),0,0,number(o,"min",0),number(o,"max",1));
                     case "range_choice" -> node(23,density(o.get("input")),density(o.get("when_in_range")),density(o.get("when_out_of_range")),number(o,"min_inclusive",0),number(o,"max_exclusive",1));
                     case "lerp" -> node(24,density(o.get("alpha")),density(o.get("first")),density(o.get("second")));
                     case "spline" -> spline(o.get("spline"));
-                    case "old_blended_noise" -> {approximations.add("density:old_blended_noise");yield node(26,0,0,0,number(o,"xz_scale",.25f),number(o,"y_scale",.125f),number(o,"xz_factor",80),number(o,"y_factor",160));}
+                    case "old_blended_noise" -> {approximations.add("density:old_blended_noise");yield coordinates.sliced()
+                            ?node(31,coordinate(0),coordinate(1),coordinate(2),number(o,"xz_scale",.25f),number(o,"y_scale",.125f),number(o,"xz_factor",80),number(o,"y_factor",160))
+                            :node(26,0,0,0,number(o,"xz_scale",.25f),number(o,"y_scale",.125f),number(o,"xz_factor",80),number(o,"y_factor",160));}
                     case "interval_select" -> interval(o);
                     default -> {
                         var decoded=DensityFunctions.DIRECT_CODEC.parse(registry.createSerializationContext(JsonOps.INSTANCE),o).getOrThrow();
@@ -190,6 +194,42 @@ final class RegistryGpuProgram {
             }
             resolving.remove(key);compiled.put(key,index);return index;
         }
+        int slice(JsonObject o) {
+            var previous=coordinates;
+            coordinates=coordinates.with(axis(o),o.get("coordinate").getAsInt());
+            try {return density(o.get("input"));}finally {coordinates=previous;}
+        }
+        int coordinate(int axis) {
+            Integer fixed=coordinates.at(axis);
+            return fixed==null?node(29,axis,0,0):constant(fixed);
+        }
+        int scaledCoordinate(int axis,float scale) {
+            if(scale==0)return 0;
+            int value=coordinate(axis);
+            return scale==1?value:node(6,value,constant(scale),0);
+        }
+        int noise(JsonObject o) {
+            int x=density(o.get("shift_x")),y=density(o.get("shift_y")),z=density(o.get("shift_z"));
+            int id=RegistryGpuProgram.this.noise(o.get("noise"));
+            float xz=number(o,"xz_scale",1),ys=number(o,"y_scale",1);
+            if(!coordinates.sliced())return node(1,x,y,z,id,xz,ys,0);
+            return node(27,node(4,scaledCoordinate(0,xz),x,0),node(4,scaledCoordinate(1,ys),y,0),node(4,scaledCoordinate(2,xz),z,0),id,1);
+        }
+        int shift(JsonObject o,String kind) {
+            int id=RegistryGpuProgram.this.noise(o.get("noise"));
+            if(!coordinates.sliced())return node(2,id,kind.equals("shift_b")?2:kind.equals("shift_a")?1:0,0);
+            int x=scaledCoordinate(kind.equals("shift_b")?2:0,.25F);
+            int y=kind.equals("shift_a")?0:scaledCoordinate(kind.equals("shift_b")?0:1,.25F);
+            int z=kind.equals("shift_b")?0:scaledCoordinate(2,.25F);
+            return node(27,x,y,z,id,4);
+        }
+        int gradient(JsonObject o) {
+            int axis=axis(o);
+            int tiling=o.has("tiling")?List.of("clamp_to_edge","repeat","mirrored_repeat").indexOf(o.get("tiling").getAsString()):0;
+            return node(coordinates.at(axis)==null?3:30,coordinates.at(axis)==null?axis:coordinate(axis),tiling,0,
+                    number(o,"from_coordinate",0),number(o,"to_coordinate",1),number(o,"from_value",0),number(o,"to_value",1));
+        }
+        int axis(JsonObject o) {return List.of("x","y","z").indexOf(o.get("axis").getAsString());}
         int interval(JsonObject o) {
             var functions=o.getAsJsonArray("functions");var thresholds=o.getAsJsonArray("thresholds");
             int input=density(o.get("input")),result=density(functions.get(functions.size()-1));
@@ -249,5 +289,11 @@ final class RegistryGpuProgram {
         boolean isConstant(int node) {return nodes.get(node).getAsJsonObject().get("op").getAsInt()==0;}
         float constantValue(int node) {return nodes.get(node).getAsJsonObject().getAsJsonArray("p").get(0).getAsFloat();}
         JsonObject finish() {var o=new JsonObject();o.add("nodes",nodes);o.add("roots",roots);return o;}
+    }
+    /** Scoped values follow SliceFunction: an inner slice of the same axis wins. */
+    private record Coordinates(Integer x,Integer y,Integer z) {
+        Integer at(int axis) {return switch(axis){case 0->x;case 1->y;case 2->z;default->throw new IllegalArgumentException("Invalid density axis "+axis);};}
+        boolean sliced() {return x!=null || y!=null || z!=null;}
+        Coordinates with(int axis,int value) {return switch(axis){case 0->new Coordinates(value,y,z);case 1->new Coordinates(x,value,z);case 2->new Coordinates(x,y,value);default->throw new IllegalArgumentException("Invalid density axis "+axis);};}
     }
 }
