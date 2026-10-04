@@ -15,8 +15,12 @@ from the actual GPU base/carving field. Air resets floor depth and fluid context
 fluid does not reset floor depth. Ceiling depth uses the next non-solid boundary
 below the current solid span. Secondary surface noise, signed surface depth,
 terracotta bands and the height-neighborhood slope are calculated on the GPU.
-Material rules select the actual quart biome at each Y. This supports multiple
-floor, ceiling and underwater layers rather than a fixed filler thickness.
+Material rules use the exact GPU column biome in the upper twelve blocks, matching
+the existing surface/underground split in biome classification. Deeper rules use
+the resident quart biome at each Y. Reusing that coarse 4×4×4 grid at the surface
+previously moved shoreline material boundaries into square patches, despite the
+column shader selecting a smooth, per-block coast. This supports multiple floor,
+ceiling and underwater layers rather than a fixed filler thickness.
 
 `AbovePreliminarySurface` is now a real condition. Its preliminary level is still
 approximated from final column height and surface depth, rather than Minecraft's

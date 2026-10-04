@@ -80,7 +80,12 @@ fn material_column(index:u32,emit:bool,r0:Request) {
             }
             above+=1;
             material_detail=vec4<f32>(f32(y-below+1),secondary,water,preliminary);
-            let biome=biome_sample(x,y,z,r);
+            // Shore alignment and the representative surface program use this
+            // exact column. Borrowing a 4x4x4 quart's biome here moves the coast
+            // in square patches and can even put grass back beside water.
+            // Keep the existing quart field for underground material rules.
+            var biome=c.packed&65535u;
+            if y<c.height-12 {biome=biome_sample(x,y,z,r);}
             let selected=run_program(3u+biome,vec3<f32>(point.x,f32(y),point.y),r,vec4<f32>(f32(above),depth,slope,band))[0];
             if selected>0.0 && (c.packed&(1u<<29u))==0u {material=u32(selected-1.0);}
         }

@@ -52,6 +52,15 @@ queries now compute the needed GPU height field for these profiles, still return
 only one record per requested center. They skip synthetic lake probes and match
 cached queries and the MCA path.
 
+Complete material runs use this same per-block surface biome in the upper twelve
+blocks. Previously they used the cached 4×4×4 biome grid instead: a coastal quart
+could paint sand onto inland grass columns, or an inland quart could leave square
+grass holes in a beach. This was a sampling-resolution mismatch, not a loss of
+floating-point precision with distance. The correction runs inside the existing
+GPU material pass, adds no dispatch/readback, and retains the quart field for
+underground rules. Sand/gravel sediment masks and registered coastal targets are
+still evaluated from their loaded data.
+
 On an Apple M4 Max, twenty full regions with five warmups and actual structures /
 decorations measured 103.05 ms average vanilla and 109.62 ms Terralith (9,912 and
 9,316 native chunks/sec). Diagnostic runs disabling coastal tags to retain the
@@ -115,8 +124,9 @@ This is a fast surface approximation, not exact vanilla feature placement or a
 complete block-by-block sediment volume. Conditional/random state providers,
 neighbor-dependent predicates, environment scans and other unsupported placement
 modifiers are not projected. Vanilla's conditional sand-disk provider remains
-unsupported; sandy beach surfaces still come from its material rules. The existing
-two-material column model also does not reproduce every deep sandstone transition.
+unsupported; sandy beach surfaces still come from its material rules. This initial
+sediment milestone used two representative materials; [complete GPU material
+runs](GPU_MATERIAL_LAYERS.md) now evaluate registered deeper transitions as well.
 
 Water conditions now recognize dry columns: vanilla treats a missing water surface
 as satisfying its water predicate. A filler query below sea level on dry ground
@@ -138,11 +148,57 @@ cold sparse queries, both execution paths, individual chunks and four neighborin
 region tiles across negative coordinates. The real vanilla landscape sampling
 also verifies that selected shore biomes stay near sea level.
 
+The diagonal-coast regression fixture crosses quart boundaries at four subcell
+phases with both gradient directions, including negative chunk coordinates.
+It compares the upper four material
+layers with each column's selected surface program in interpreter and specialized
+GPU modes, for both loaded vanilla and Terralith registries. The previous library
+fails at X=25, Y=68, Z=0: the column requests grass while the material run writes
+sand. The corrected implementation checks 32,768 surface voxels per profile.
+For each profile it also creates a full negative-coordinate MCA and compares all
+884,736 blocks in nine edge/diagonal chunks with independent chunk generation.
+Actual Minecraft material-reference checks cover another 6,680,576 voxels, and
+temporary-region promotion, cold base columns and concurrent edits pass.
+
 `./gradlew datapackTest` loads the real Terralith ZIP and verifies its three beach
 recipes affect GPU material output. The broader biome and datapack tests compare
 chunk output with decoded MCA blocks, including negative region boundaries and
 temporary-region promotion. `landscapeTest` checks ocean coverage and biome spacing
 with the actual default preset.
+
+### Surface-resolution correction measurements
+
+The final release library, actual full vanilla/Terralith profiles including
+structures and decorations, seed 123456789, two warmups and twenty regions per
+run measured the following on Metal / Apple M4 Max. Runs were sequential, with no
+concurrent builds/tests; other user applications remained active.
+
+| Profile / callers | Mean request ms | Native chunks/sec | Peak process RSS MiB |
+| --- | ---: | ---: | ---: |
+| Vanilla / 1 | 126.66 | 8,009 | 1,005 |
+| Terralith / 1 | 153.27 | 6,670 | 1,633 |
+| Vanilla / 2 | 191.98 | 10,277 | 984 |
+| Terralith / 2 | 245.93 | 8,300 | 1,624 |
+
+Concurrent throughput uses actual elapsed time rather than overlapping request
+latencies. Each concurrent output matches all 20,480 decompressed chunk records
+from its serial run. This correction intentionally changes surface materials, so
+old/new NBT identity is not expected. These results do not isolate a speedup.
+
+Serial upload/readback averages were 14.25 / 37.63 MB per vanilla region and
+12.38 / 33.98 MB per Terralith region. Twenty-file totals were 152,584,192 and
+129,253,376 bytes. The correction adds no dispatch, GPU buffer or transfer field;
+the existing variable material-run payload changes with the corrected materials.
+Native initialization / profile registration took 501 / 477 ms vanilla and
+36 / 974 ms Terralith. First regions took 2.99 / 33.40 seconds in deliberately
+forced specialized mode with the changed shader identity; warmed concurrent runs
+started in 0.67 / 2.65 seconds. These include driver compilation/cache effects.
+Production automatic mode retains the interpreter while specialization is pending;
+this fix does not resolve the broader cold-compilation workstream.
+
+Evidence is in `build/goal-baseline/shore-resolution/*/measurements.json`,
+`validation.log` and `final-shore-validation.log`. The tested/packaged native SHA-256 is
+`4131791b3ad92901c6a72b71c91cee0a25ef2c8303f920ac453437e7b705eefe`.
 
 Restart the client and create a new world to use the new default coastal source.
 Saved worlds retain their serialized biome source and existing terrain. Worlds

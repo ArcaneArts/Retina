@@ -72,7 +72,12 @@ final class RegistryDecorationIntegrationChecks {
         var nativeTerrain = NativeTerrain.instance();
         int modern = nativeTerrain.registerProfile(fixture.toString());
         var legacy = fixture.deepCopy();
-        for (var element : legacy.getAsJsonArray("decorations")) element.getAsJsonObject().remove("placement");
+        // This fixture selects only trees. New column/aquatic kinds require their
+        // registered placement program even when they are inactive in a biome.
+        for (var element : legacy.getAsJsonArray("decorations")) {
+            var recipe = element.getAsJsonObject();
+            if (recipe.get("kind").getAsString().equals("tree")) recipe.remove("placement");
+        }
         int old = nativeTerrain.registerProfile(legacy.toString());
         long modernRoots = 0, legacyRoots = 0;
         for (int z = -1; z <= 0; z++) for (int x = -2; x <= 1; x++) {

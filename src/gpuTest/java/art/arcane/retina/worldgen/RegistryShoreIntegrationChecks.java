@@ -77,6 +77,7 @@ final class RegistryShoreIntegrationChecks {
             }
         }
         require(target != null, "registered warm beach fixture is reachable");
+        checkSurfaceResolution(profile, original, target);
         for (boolean inlandClimate : new boolean[]{false, true}) {
             var data = original.deepCopy();
             for (var b : data.getAsJsonArray("biomes")) b.getAsJsonObject().add("lakes", JsonParser.parseString("[0,0]"));
@@ -131,6 +132,123 @@ final class RegistryShoreIntegrationChecks {
             for(int c=0;c<256;c++)require((original.getAsJsonArray("biomes").get(columns.biome(c)).getAsJsonObject().get("flags").getAsInt()&64)==0,"absent coastal placements stay absent");
         }
         System.out.println("QA_EVT {\"event\":\"gpu_physical_shore_alignment\",\"status\":\"pass\",\"context\":{\"climate_cases\":2,\"negative_boundaries\":true}}");
+    }
+
+    /** Diagonal shoreline transitions must not borrow a neighboring quart's surface rule. */
+    private static void checkSurfaceResolution(BiomeTerrainProfile profile, JsonObject original, JsonObject target) {
+        int sand = material(profile, Blocks.SAND), grass = material(profile, Blocks.GRASS_BLOCK);
+        long checked = 0; int mixedQuarts = 0;
+        for (String execution : List.of("interpreter", "specialized")) for (int phase : new int[]{0, 1, 2, 3}) {
+            int direction = phase < 2 ? 1 : -1;
+            var data = original.deepCopy();
+            data.addProperty("program_execution", execution); data.remove("structures");
+            data.add("cave_noises", new JsonArray()); data.add("ores", new JsonArray()); data.add("decorations", new JsonArray());
+            for (var element : data.getAsJsonArray("biomes")) {
+                var b = element.getAsJsonObject();
+                for (String key : List.of("carvers", "ores", "decorations")) b.add(key, new JsonArray());
+                b.addProperty("flags", b.get("flags").getAsInt() & 64); b.addProperty("cave_kind", 0);
+                b.add("lakes", JsonParser.parseString("[0,0]")); b.remove("cave_features");
+            }
+            constantClimate(data, target);
+            var registry = data.getAsJsonObject("registry_program"); var programs = registry.getAsJsonArray("programs");
+            // Inland climate deliberately disagrees with the physical sea-level crossing.
+            programs.get(0).getAsJsonObject().getAsJsonArray("nodes").get(2).getAsJsonObject()
+                    .getAsJsonArray("p").set(0, new JsonPrimitive(.4));
+            registry.remove("aquifer"); registry.addProperty("material_layers", true);
+            while (programs.size() > data.getAsJsonArray("biomes").size()+3) programs.remove(programs.size()-1);
+            registry.add("surface", JsonParser.parseString("[-64,1,0]"));
+            var density = new JsonObject(); var nodes = new JsonArray();
+            nodes.add(node(0, 0, 0, 0, profile.seaLevel()-1 + phase*.25F));
+            // Reverse the gradient in half the phases: quart sampling can both
+            // extend sand inland and leave grass holes on the coastal side.
+            var x = node(3, 0, 0, 0, 0); x.add("p", JsonParser.parseString("[-4096,4096,"+(-1024*direction)+","+(1024*direction)+"]")); nodes.add(x);
+            var z = node(3, 2, 0, 0, 0); z.add("p", JsonParser.parseString("[-4096,4096,"+(-512*direction)+","+(512*direction)+"]")); nodes.add(z);
+            nodes.add(node(4, 0, 1, 0, 0)); nodes.add(node(4, 3, 2, 0, 0));
+            var vertical = node(3, 1, 0, 0, 0); vertical.add("p", JsonParser.parseString("[-64,320,-64,320]")); nodes.add(vertical);
+            nodes.add(node(5, 4, 5, 0, 0)); density.add("nodes", nodes); density.add("roots", JsonParser.parseString("[6]"));
+            programs.set(1, density); programs.set(2, constant(1));
+            // Distinct constant rules expose biome sampling errors independently of noise,
+            // stone-depth, water, feature placement or cave classification.
+            for (int b = 0; b < data.getAsJsonArray("biomes").size(); b++) {
+                boolean coast = (data.getAsJsonArray("biomes").get(b).getAsJsonObject().get("flags").getAsInt() & 64) != 0;
+                programs.set(3+b, constant((coast ? sand : grass)+1));
+            }
+            int id = NativeTerrain.instance().registerProfile(data.toString());
+            for (int[] pos : new int[][]{{0,0},{1,0},{0,1},{1,-1}}) {
+                int cx = direction > 0 ? pos[0] : -pos[0]-1;
+                int cz = direction > 0 ? pos[1] : -pos[1]-1;
+                var request = request(id, cx, cz);
+                var selected = NativeTerrain.instance().sampleColumns(request);
+                try (var chunk = NativeTerrain.instance().generate(request)) {
+                    for (int c = 0; c < 256; c++) {
+                        int expected = selected.materials()[c] & 65535;
+                        int top = selected.heights()[c]-1;
+                        for (int y = top; y > top-4; y--) {
+                            int actual = Short.toUnsignedInt(chunk.blocks().getAtIndex(java.lang.foreign.ValueLayout.JAVA_SHORT, (y+64)*256L+c));
+                            require(actual == expected, "surface uses its own GPU column biome, not a neighboring quart: "
+                                    +execution+" phase="+phase+" at "+(cx*16+(c&15))+","+y+","+(cz*16+(c>>4))
+                                    +" expected="+profile.materials()[expected]+" actual="+profile.materials()[actual]);
+                            checked++;
+                        }
+                    }
+                    for (int z0 = 0; z0 < 16; z0 += 4) for (int x0 = 0; x0 < 16; x0 += 4) {
+                        int first = selected.biome(z0*16+x0);
+                        boolean mixed = false;
+                        for (int z1=0;z1<4;z1++) for (int x1=0;x1<4;x1++) mixed |= selected.biome((z0+z1)*16+x0+x1) != first;
+                        if (mixed) mixedQuarts++;
+                    }
+                }
+            }
+            if (execution.equals("specialized") && phase == 0) checkShoreRegion(profile, id);
+        }
+        require(mixedQuarts > 0, "diagonal coast crosses quart boundaries in the fixture");
+        System.out.println("QA_EVT {\"event\":\"gpu_shore_material_resolution\",\"status\":\"pass\",\"context\":{\"surface_voxels\":"+checked+",\"mixed_quarts\":"+mixedQuarts+"}}");
+    }
+
+    private static JsonObject constant(float value) {
+        var result = new JsonObject(); var nodes = new JsonArray(); nodes.add(node(0,0,0,0,value));
+        result.add("nodes",nodes); result.add("roots",JsonParser.parseString("[0]")); return result;
+    }
+
+    private static void checkShoreRegion(BiomeTerrainProfile profile, int id) {
+        var terrain = NativeTerrain.instance();
+        var positions = List.of(new net.minecraft.world.level.ChunkPos(-1,0),new net.minecraft.world.level.ChunkPos(-1,1),
+                new net.minecraft.world.level.ChunkPos(-2,2),new net.minecraft.world.level.ChunkPos(-8,14),
+                new net.minecraft.world.level.ChunkPos(-8,15),new net.minecraft.world.level.ChunkPos(-16,30),
+                new net.minecraft.world.level.ChunkPos(-16,31),new net.minecraft.world.level.ChunkPos(-32,0),
+                new net.minecraft.world.level.ChunkPos(-32,31));
+        var expected = new LinkedHashMap<net.minecraft.world.level.ChunkPos,short[]>();
+        for (var pos : positions) try (var chunk = terrain.generate(request(id,pos.x(),pos.z()))) {
+            expected.put(pos,chunk.blocks().toArray(java.lang.foreign.ValueLayout.JAVA_SHORT));
+        }
+        java.nio.file.Path directory = null;
+        try {
+            directory = java.nio.file.Files.createTempDirectory("retina-shore-resolution-");
+            var report = terrain.generateRegion(request(id,-32,0),directory.resolve("r.-1.0.mca"),
+                    net.minecraft.SharedConstants.getCurrentVersion().dataVersion().version(),"minecraft:beach");
+            require(report.generated() == 1024,"all shoreline MCA slots generated");
+            var codec = net.minecraft.world.level.chunk.PalettedContainer.codecRW(net.minecraft.world.level.block.state.BlockState.CODEC,
+                    net.minecraft.world.level.chunk.Strategy.createForBlockStates(net.minecraft.world.level.block.Block.BLOCK_STATE_REGISTRY),Blocks.AIR.defaultBlockState());
+            try (var storage = new net.minecraft.world.level.chunk.storage.RegionFileStorage(
+                    new net.minecraft.world.level.chunk.storage.RegionStorageInfo("retina-shore-resolution",net.minecraft.world.level.Level.OVERWORLD,"chunk"),directory,false)) {
+                for (var entry : expected.entrySet()) {
+                    var sections = storage.read(entry.getKey()).getListOrEmpty("sections");
+                    for (int section=0;section<24;section++) {
+                        var blocks = codec.parse(net.minecraft.nbt.NbtOps.INSTANCE,sections.getCompound(section).orElseThrow().getCompoundOrEmpty("block_states")).getOrThrow();
+                        for (int y=0;y<16;y++) for (int z=0;z<16;z++) for (int x=0;x<16;x++) {
+                            var state = profile.materials()[Short.toUnsignedInt(entry.getValue()[(section*16+y)*256+z*16+x])];
+                            require(blocks.get(x,y,z).equals(state),"MCA shore material equals independent GPU chunk at "+entry.getKey()+" / "+x+","+(section*16+y-64)+","+z);
+                        }
+                    }
+                }
+            }
+            System.out.println("QA_EVT {\"event\":\"gpu_shore_mca_resolution\",\"status\":\"pass\",\"context\":{\"chunks\":9,\"voxels\":884736}}");
+        } catch (java.io.IOException error) {throw new java.io.UncheckedIOException(error);}
+        finally {
+            if (directory != null) try (var paths = java.nio.file.Files.walk(directory)) {
+                for (var path : paths.sorted(Comparator.reverseOrder()).toList()) java.nio.file.Files.deleteIfExists(path);
+            } catch (java.io.IOException error) {throw new java.io.UncheckedIOException(error);}
+        }
     }
 
     static void checkWaterCondition(BiomeTerrainProfile profile) {
