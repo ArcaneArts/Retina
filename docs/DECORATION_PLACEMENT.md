@@ -32,6 +32,11 @@ frequency/factor, offsets and the configured below/above counts are retained.
 See [sparse GPU feature counts](GPU_FEATURE_COUNTS.md) for ordering, transfers,
 precision and validation. Older native profiles without that permutation keep
 the existing -0.8 vegetation threshold bit.
+[Registered block features](REGISTERED_BLOCK_FEATURES.md) add bamboo, cactus,
+sugar cane, kelp, seagrass and lily pads, plus sturdy faces and their support/fluid
+predicates. New profiles replay complete feature commands in order; legacy JSON
+profiles keep their previous global role replay. Removed blocks lower the live
+heightmap before subsequent features.
 Unsupported placement/feature kinds are still reported during export. Survival checks approximate soil
 tags; they do not simulate every custom block's light or environmental conditions.
 Tree shapes retain the native approximation. Canopy interactions between different

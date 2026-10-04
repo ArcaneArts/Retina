@@ -85,6 +85,8 @@ pub struct WorldProfile {
     #[serde(default)]
     pub decorations: Vec<Recipe>,
     #[serde(default)]
+    pub ordered_decorations: bool,
+    #[serde(default)]
     pub decoration_noise: Option<crate::decoration::counts::Noise>,
     #[serde(flatten)]
     pub geology: crate::geology::GeologyProfile,
@@ -123,6 +125,16 @@ impl WorldProfile {
             .structures
             .validate(profile.materials.len(), profile.biomes.len())?;
         for recipe in &profile.decorations {
+            if !profile.ordered_decorations
+                && matches!(
+                    recipe.feature,
+                    crate::decoration::Kind::BlockColumn { .. }
+                        | crate::decoration::Kind::Bamboo { .. }
+                        | crate::decoration::Kind::Aquatic { .. }
+                )
+            {
+                return Err("registered block features require ordered decoration replay".into());
+            }
             recipe.validate(profile.materials.len())?;
             if profile.decoration_noise.is_none()
                 && recipe

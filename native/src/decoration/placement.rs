@@ -56,7 +56,7 @@ pub struct WeightedInt {
     weight: u32,
 }
 impl IntProvider {
-    fn sample(&self, rng: &mut Rng) -> i32 {
+    pub(super) fn sample(&self, rng: &mut Rng) -> i32 {
         match self {
             Self::Value(v) | Self::Config(IntConfig::Constant { value: v }) => *v,
             Self::Config(IntConfig::Uniform {
@@ -107,7 +107,7 @@ impl IntProvider {
             }
         }
     }
-    fn bounds(&self) -> Result<(i32, i32), String> {
+    pub(super) fn bounds(&self) -> Result<(i32, i32), String> {
         let range = match self {
             Self::Value(v) | Self::Config(IntConfig::Constant { value: v }) => (*v, *v),
             Self::Config(IntConfig::Uniform {
@@ -174,7 +174,7 @@ pub enum Predicate {
     True,
 }
 impl Predicate {
-    fn validate(&self, palette: usize) -> bool {
+    pub(super) fn validate(&self, palette: usize) -> bool {
         match self {
             Self::Material { offset, allowed } => {
                 offset.iter().all(|v| (-17..=17).contains(v))
@@ -188,7 +188,7 @@ impl Predicate {
             Self::True => true,
         }
     }
-    fn test(
+    pub(super) fn test(
         &self,
         at: [i32; 3],
         field: &Field,
@@ -579,13 +579,18 @@ impl Overlay {
         request: ChunkRequest,
         at: [i32; 3],
     ) -> Option<u16> {
+        if profile.ordered_decorations
+            && (at[1] < request.min_y || at[1] >= request.min_y + request.height as i32)
+        {
+            return Some(0);
+        }
         self.blocks.get(&at).copied().or_else(|| {
             field
                 .column(at[0], at[2])
                 .map(|c| c.material(at[1], request.min_y, Some(profile)))
         })
     }
-    fn height(
+    pub(super) fn height(
         &self,
         field: &Field,
         profile: &WorldProfile,
@@ -608,6 +613,16 @@ impl Overlay {
         if let Some(tops) = self.tops.get(&(x, z)) {
             y = y.max(tops[map as usize].saturating_add(1));
         }
+        if profile.ordered_decorations {
+            while y > request.min_y
+                && profile.heightmap_masks
+                    [self.material(field, profile, request, [x, y - 1, z])? as usize]
+                    & mask
+                    == 0
+            {
+                y -= 1;
+            }
+        }
         Some(y)
     }
     fn write(&mut self, profile: &WorldProfile, at: [i32; 3], material: u16) {
@@ -628,7 +643,7 @@ impl Overlay {
         profile: &WorldProfile,
         request: ChunkRequest,
     ) {
-        for role in [SOIL, LOG, LEAF, COCOA, VINE, PLANT] {
+        for role in [SOIL, LOG, LEAF, COCOA, VINE, PLANT, FEATURE] {
             for b in blocks[start..].iter().filter(|b| b.role == role) {
                 if b.y < request.min_y || b.y >= request.min_y + request.height as i32 {
                     continue;
@@ -639,6 +654,7 @@ impl Overlay {
                 };
                 let flags = profile.material_flags[previous as usize];
                 let replaces = match role {
+                    FEATURE => true,
                     SOIL => flags & 1 != 0 || previous == profile.snow,
                     LOG => previous == 0 || flags & (4 | 16) != 0,
                     _ => previous == 0,
@@ -970,6 +986,66 @@ mod tests {
                 expected
             );
         }
+    }
+
+    #[test]
+    fn ordered_forced_writes_lower_live_height_and_preserve_later_features() {
+        let (mut profile, field, request, _) = fixture();
+        profile.ordered_decorations = true;
+        let mut overlay = Overlay::default();
+        let removal = WorldBlock {
+            x: 0,
+            y: 63,
+            z: 0,
+            material: 0,
+            upper: 0,
+            role: FEATURE,
+        };
+        overlay.commit(&[removal], 0, &field, &profile, request);
+        assert_eq!(overlay.height(&field, &profile, request, 0, 0, 1), Some(63));
+        assert_eq!(
+            overlay.material(&field, &profile, request, [0, -1, 0]),
+            Some(0)
+        );
+        assert_eq!(
+            overlay.material(&field, &profile, request, [0, 128, 0]),
+            Some(0)
+        );
+
+        let index = 64 * COLUMNS as u32;
+        let commands = [
+            Placement {
+                index,
+                material: 5,
+                upper: 0,
+                role: LEAF,
+            },
+            Placement {
+                index,
+                material: 0,
+                upper: 0,
+                role: FEATURE,
+            },
+            Placement {
+                index,
+                material: 4,
+                upper: 0,
+                role: LOG,
+            },
+        ];
+        let mut ordered = vec![0; COLUMNS * request.height as usize];
+        decorate(Some(&profile), &commands, &mut ordered);
+        assert_eq!(
+            ordered[index as usize], 4,
+            "a later tree reads the cleared earlier feature"
+        );
+        profile.ordered_decorations = false;
+        let mut legacy = vec![0; ordered.len()];
+        decorate(Some(&profile), &commands, &mut legacy);
+        assert_eq!(
+            legacy[index as usize], 0,
+            "legacy profiles retain global role replay"
+        );
     }
 
     #[test]

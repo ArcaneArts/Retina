@@ -6,6 +6,9 @@ import com.mojang.serialization.JsonOps;
 import net.minecraft.core.Holder;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.Direction;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.level.EmptyBlockGetter;
+import net.minecraft.tags.FluidTags;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
@@ -130,10 +133,34 @@ final class DecorationProfile {
         } else if (feature instanceof TreeFeature tree) {
             var data = tree(tree);
             if (data != null) emit(path, p, chance, "tree", data, selected);
+        } else if (feature instanceof BlockColumnFeature column) {
+            var data = column(column);
+            if(data != null)emit(path,p,chance,"block_column",data,selected);
+        } else if (feature instanceof BambooFeature bamboo) {
+            var data = new JsonObject(); data.addProperty("probability",bamboo.probability());
+            var trunk=Blocks.BAMBOO.defaultBlockState().setValue(BambooStalkBlock.AGE,1).setValue(BambooStalkBlock.LEAVES,BambooLeaves.NONE).setValue(BambooStalkBlock.STAGE,0);
+            data.addProperty("trunk",material(trunk)); var crown=new JsonArray();
+            crown.add(material(trunk.setValue(BambooStalkBlock.LEAVES,BambooLeaves.LARGE).setValue(BambooStalkBlock.STAGE,1)));
+            crown.add(material(trunk.setValue(BambooStalkBlock.LEAVES,BambooLeaves.LARGE)));
+            crown.add(material(trunk.setValue(BambooStalkBlock.LEAVES,BambooLeaves.SMALL))); data.add("crown",crown);
+            data.addProperty("podzol",material(Blocks.PODZOL.defaultBlockState()));
+            data.add("survival",matching("matching_block_tag","tag",BlockTags.SUPPORTS_BAMBOO.location().toString(),0,-1,0));
+            data.add("podzol_allowed",matching("matching_block_tag","tag",BlockTags.BENEATH_BAMBOO_PODZOL_REPLACEABLE.location().toString(),0,0,0));
+            emit(path,p,chance,"bamboo",data,selected);
         } else if (feature instanceof SimpleBlockFeature block) {
             var states = provider(BlockStateProvider.DIRECT_CODEC.encodeStart(registry.createSerializationContext(JsonOps.INSTANCE), block.toPlace().value()).getOrThrow(), 1, 0, 0);
             var variants = new JsonArray();
+            var aquatic = new JsonArray();
+            var drySimple = new JsonArray();
             for (var state : states) {
+                if (state.state.is(Blocks.SEAGRASS) || state.state.is(Blocks.TALL_SEAGRASS) || state.state.is(Blocks.LILY_PAD)) {
+                    var lower=state.state; int upper=0;
+                    if(lower.getBlock() instanceof DoublePlantBlock) {
+                        lower=lower.setValue(BlockStateProperties.DOUBLE_BLOCK_HALF,DoubleBlockHalf.LOWER);
+                        upper=material(lower.setValue(BlockStateProperties.DOUBLE_BLOCK_HALF,DoubleBlockHalf.UPPER));
+                    }
+                    aquatic.add(simpleVariant(lower,upper,state.weight,state.band));continue;
+                }
                 if (!(state.state.getBlock() instanceof VegetationBlock) || state.state.getBlock() instanceof SaplingBlock) continue;
                 if (!state.state.getFluidState().isEmpty() || state.state.is(Blocks.LILY_PAD)) continue;
                 if (state.state.getBlock() instanceof MushroomBlock) continue; // Their light/underground rules need a separate adapter.
@@ -148,8 +175,12 @@ final class DecorationProfile {
                 variant.addProperty("weight", state.weight); variant.addProperty("band", state.band);
                 variant.addProperty("dry", lower.getBlock() instanceof DryVegetationBlock);
                 variants.add(variant);
+                drySimple.add(simpleVariant(lower,upper,state.weight,state.band));
             }
-            if (!variants.isEmpty()) { var data = new JsonObject(); data.add("states", variants); emit(path, p, chance, "plant", data, selected); }
+            if (!aquatic.isEmpty()) {
+                aquatic.addAll(drySimple);
+                var data=new JsonObject();data.add("states",aquatic);emit(path,p,chance,"aquatic",data,selected);
+            } else if (!variants.isEmpty()) { var data = new JsonObject(); data.add("states", variants); emit(path, p, chance, "plant", data, selected); }
             else unsupported.add(feature.getClass().getSimpleName() + ":non-surface-plant");
         } else unsupported.add(feature.getClass().getSimpleName());
     }
@@ -175,8 +206,8 @@ final class DecorationProfile {
         return switch (type(p)) {
             case "all_of", "any_of" -> p.getAsJsonArray("predicates").asList().stream().allMatch(e -> supportedPredicate(e.getAsJsonObject()));
             case "not" -> supportedPredicate(p.getAsJsonObject("predicate"));
-            case "matching_blocks", "matching_block_tag", "matching_fluids", "replaceable", "true" -> true;
-            case "would_survive" -> BlockState.CODEC.parse(JsonOps.INSTANCE, p.get("state")).result().map(s -> s.getBlock() instanceof VegetationBlock).orElse(false);
+            case "matching_blocks", "matching_block_tag", "matching_fluids", "replaceable", "true", "has_sturdy_face" -> true;
+            case "would_survive" -> BlockState.CODEC.parse(JsonOps.INSTANCE, p.get("state")).result().map(s -> s.getBlock() instanceof VegetationBlock || s.getBlock() instanceof CactusBlock || s.getBlock() instanceof SugarCaneBlock || s.getBlock() instanceof BambooStalkBlock).orElse(false);
             default -> false;
         };
     }
@@ -194,6 +225,13 @@ final class DecorationProfile {
                 }
                 if (kind.equals("block_predicate_filter")) op.add("predicate", predicate(op.getAsJsonObject("predicate"), palette));
                 normalizeTypes(op);
+            }
+            switch(recipe.get("kind").getAsString()) {
+                case "block_column" -> {recipe.add("allowed",predicate(recipe.getAsJsonObject("allowed"),palette));normalizeTypes(recipe.get("layers"));}
+                case "bamboo" -> {for(String key:List.of("survival","podzol_allowed"))recipe.add(key,predicate(recipe.getAsJsonObject(key),palette));}
+                case "aquatic" -> {for(var variant:recipe.getAsJsonArray("states"))for(String key:List.of("survival","upper_allowed")) {
+                    var state=variant.getAsJsonObject();state.add(key,predicate(state.getAsJsonObject(key),palette));
+                }}
             }
         }
     }
@@ -216,8 +254,115 @@ final class DecorationProfile {
         return state.getBlock() instanceof DryVegetationBlock ? BlockTags.SUPPORTS_DRY_VEGETATION : BlockTags.SUPPORTS_VEGETATION;
     }
 
+    private static JsonObject matching(String type,String key,String value,int x,int y,int z) {
+        var p=new JsonObject();p.addProperty("type",type);p.addProperty(key,value);p.add("offset",new Gson().toJsonTree(new int[]{x,y,z}));return p;
+    }
+    private static JsonObject test(String type,int x,int y,int z) {
+        var p=new JsonObject();p.addProperty("type",type);p.add("offset",new Gson().toJsonTree(new int[]{x,y,z}));return p;
+    }
+    private static JsonObject combine(String type,JsonObject... children) {
+        var p=new JsonObject();p.addProperty("type",type);var all=new JsonArray();for(var c:children)all.add(c);p.add("predicates",all);return p;
+    }
+    private static JsonObject not(JsonObject child) {var p=new JsonObject();p.addProperty("type","not");p.add("predicate",child);return p;}
+    private static void shiftPredicate(JsonObject p,int[] offset) {
+        if(p.has("predicates")) {for(var child:p.getAsJsonArray("predicates"))shiftPredicate(child.getAsJsonObject(),offset);}
+        else if(p.has("predicate"))shiftPredicate(p.getAsJsonObject("predicate"),offset);
+        else {var v=p.has("offset")?new Gson().fromJson(p.get("offset"),int[].class):new int[3];for(int i=0;i<3;i++)v[i]+=offset[i];p.add("offset",new Gson().toJsonTree(v));}
+    }
+    private JsonObject simpleVariant(BlockState lower,int upper,double weight,int band) {
+        var variant=new JsonObject();variant.addProperty("lower",material(lower));variant.addProperty("upper",upper);
+        variant.addProperty("weight",weight);variant.addProperty("band",band);variant.add("survival",survivalPredicate(lower));
+        var above=new JsonObject();above.addProperty("type","same_fluid_replaceable");above.add("state",BlockState.CODEC.encodeStart(JsonOps.INSTANCE,lower).getOrThrow());
+        variant.add("upper_allowed",combine("any_of",matching("matching_block_tag","tag","minecraft:air",0,0,0),above));return variant;
+    }
+    private static JsonObject survivalPredicate(BlockState state) {
+        if(state.getBlock() instanceof CactusBlock) {
+            var neighbors=new ArrayList<JsonObject>();
+            for(var d:Direction.Plane.HORIZONTAL)neighbors.add(not(test("solid_or_lava",d.getStepX(),0,d.getStepZ())));
+            neighbors.add(not(test("liquid",0,1,0)));
+            neighbors.add(combine("any_of",matching("matching_blocks","blocks",BuiltInRegistries.BLOCK.getKey(state.getBlock()).toString(),0,-1,0),matching("matching_block_tag","tag",BlockTags.SUPPORTS_CACTUS.location().toString(),0,-1,0)));
+            return combine("all_of",neighbors.toArray(JsonObject[]::new));
+        }
+        if(state.getBlock() instanceof SugarCaneBlock) {
+            var neighbors=new ArrayList<JsonObject>();
+            for(var d:Direction.Plane.HORIZONTAL)neighbors.add(combine("any_of",matching("matching_fluids","fluids", "#"+FluidTags.SUPPORTS_SUGAR_CANE_ADJACENTLY.location(),d.getStepX(),-1,d.getStepZ()),matching("matching_block_tag","tag",BlockTags.SUPPORTS_SUGAR_CANE_ADJACENTLY.location().toString(),d.getStepX(),-1,d.getStepZ())));
+            return combine("any_of",matching("matching_blocks","blocks",BuiltInRegistries.BLOCK.getKey(state.getBlock()).toString(),0,-1,0),combine("all_of",matching("matching_block_tag","tag",BlockTags.SUPPORTS_SUGAR_CANE.location().toString(),0,-1,0),combine("any_of",neighbors.toArray(JsonObject[]::new))));
+        }
+        if(state.getBlock() instanceof BambooStalkBlock)return matching("matching_block_tag","tag",BlockTags.SUPPORTS_BAMBOO.location().toString(),0,-1,0);
+        if(state.is(Blocks.LILY_PAD))return combine("all_of",combine("any_of",matching("matching_fluids","fluids","#"+FluidTags.SUPPORTS_LILY_PAD.location(),0,-1,0),matching("matching_block_tag","tag",BlockTags.SUPPORTS_LILY_PAD.location().toString(),0,-1,0)),matching("matching_fluids","fluids","minecraft:empty",0,0,0));
+        if(state.is(Blocks.SEAGRASS) || state.is(Blocks.TALL_SEAGRASS)) {
+            var floor=combine("all_of",matching("has_sturdy_face","direction","up",0,-1,0),not(matching("matching_block_tag","tag",BlockTags.CANNOT_SUPPORT_SEAGRASS.location().toString(),0,-1,0)));
+            return state.is(Blocks.TALL_SEAGRASS)?combine("all_of",floor,test("full_water",0,0,0)):floor;
+        }
+        return matching("matching_block_tag","tag",survivalSoil(state).location().toString(),0,state.getBlock() instanceof MangrovePropaguleBlock && state.getValue(MangrovePropaguleBlock.HANGING)?1:-1,0);
+    }
+
+    private JsonObject column(BlockColumnFeature feature) {
+        long maximum=feature.layers().stream().mapToLong(l->l.height().maxInclusive()).sum();
+        if(feature.layers().size()>128 || maximum>(feature.direction().getAxis().isHorizontal()?15:4096)) {unsupported.add("block_column:geometry_exceeds_halo_or_height");return null;}
+        var json=Feature.DIRECT_CODEC.encodeStart(registry.createSerializationContext(JsonOps.INSTANCE),feature).getOrThrow().getAsJsonObject();
+        if(!supportedPredicate(json.getAsJsonObject("allowed_placement"))) {unsupported.add("block_column:predicate:"+json.get("allowed_placement"));return null;}
+        var result=new JsonObject();result.add("direction",new Gson().toJsonTree(new int[]{feature.direction().getStepX(),feature.direction().getStepY(),feature.direction().getStepZ()}));
+        result.add("allowed",json.get("allowed_placement").deepCopy());result.add("prioritize_tip",json.get("prioritize_tip"));var layers=new JsonArray();
+        for(var e:json.getAsJsonArray("layers")) {
+            var layer=e.getAsJsonObject();if(!supportedIntProvider(layer.get("height"))) {unsupported.add("block_column:height:"+layer.get("height"));return null;}
+            var provider=stateProgram(layer.get("provider"),0);if(provider==null)return null;
+            var output=new JsonObject();output.add("height",layer.get("height").deepCopy());output.add("provider",provider);layers.add(output);
+        }
+        result.add("layers",layers);return result;
+    }
+    private JsonObject stateProgram(JsonElement input,int depth) {
+        if(depth>16)throw new IllegalArgumentException("Recursive block state provider");
+        if(input.isJsonPrimitive() && input.getAsString().contains(":")) {
+            var holder=registry.lookupOrThrow(Registries.BLOCK_STATE_PROVIDER).get(ResourceKey.create(Registries.BLOCK_STATE_PROVIDER,Identifier.parse(input.getAsString())));
+            if(holder.isPresent())return stateProgram(BlockStateProvider.DIRECT_CODEC.encodeStart(registry.createSerializationContext(JsonOps.INSTANCE),holder.get().value()).getOrThrow(),depth+1);
+        }
+        var state=BlockState.CODEC.parse(JsonOps.INSTANCE,input).result();
+        if(state.isPresent()) {var result=new JsonObject();result.addProperty("type","state");result.addProperty("material",material(state.get()));return result;}
+        if(!input.isJsonObject()) {unsupported.add("block_provider:"+input);return null;}
+        var object=input.getAsJsonObject();var result=new JsonObject();
+        switch(type(object)) {
+            case "simple_state_provider" -> {return stateProgram(object.get("state"),depth+1);}
+            case "weighted", "weighted_state_provider" -> {
+                result.addProperty("type","weighted");var entries=new JsonArray();
+                for(var e:object.getAsJsonArray("entries")) {var entry=e.getAsJsonObject();var child=stateProgram(entry.get("data"),depth+1);if(child==null)return null;
+                    var out=new JsonObject();out.add("weight",entry.get("weight"));out.add("provider",child);entries.add(out);}
+                result.add("entries",entries);
+            }
+            case "randomized_int", "randomized_int_state_provider" -> {
+                if(!supportedIntProvider(object.get("values"))) {unsupported.add("block_provider:int_values:"+object.get("values"));return null;}
+                var source=stateProgram(object.get("source"),depth+1);if(source==null)return null;
+                result.addProperty("type","randomized_int");result.add("source",source);result.add("values",object.get("values").deepCopy());var variants=new JsonArray();
+                for(int id:programStates(source)) {
+                    var base=materials.entrySet().stream().filter(e->e.getValue()==id).findFirst().orElseThrow().getKey();
+                    var property=base.getBlock().getStateDefinition().getProperty(object.get("property").getAsString());
+                    if(!(property instanceof IntegerProperty integer)) {unsupported.add("block_provider:int_property:"+object.get("property"));return null;}
+                    var values=integer.getPossibleValues().stream().sorted().toList();var states=new JsonArray();for(int v:values)states.add(material(base.setValue(integer,v)));
+                    var variant=new JsonObject();variant.addProperty("source",id);variant.addProperty("minimum",values.getFirst());variant.add("states",states);variants.add(variant);
+                }
+                result.add("variants",variants);
+            }
+            default -> {unsupported.add("block_provider:"+type(object));return null;}
+        }
+        return result;
+    }
+    private static Set<Integer> programStates(JsonObject p) {
+        var out=new LinkedHashSet<Integer>();
+        switch(p.get("type").getAsString()) {
+            case "state" -> out.add(p.get("material").getAsInt());
+            case "weighted" -> {for(var e:p.getAsJsonArray("entries"))out.addAll(programStates(e.getAsJsonObject().getAsJsonObject("provider")));}
+            case "randomized_int" -> {for(var e:p.getAsJsonArray("variants"))for(var id:e.getAsJsonObject().getAsJsonArray("states"))out.add(id.getAsInt());}
+        }
+        return out;
+    }
+
     private static JsonObject predicate(JsonObject input, LinkedHashMap<BlockState, Integer> palette) {
         String kind = type(input);
+        if(kind.equals("would_survive")) {
+            var state=BlockState.CODEC.parse(JsonOps.INSTANCE,input.get("state")).getOrThrow();
+            var p=survivalPredicate(state);shiftPredicate(p,input.has("offset")?new Gson().fromJson(input.get("offset"),int[].class):new int[3]);
+            return predicate(p,palette);
+        }
         var output = new JsonObject();
         output.addProperty("type", kind);
         if (kind.equals("all_of") || kind.equals("any_of")) {
@@ -232,10 +377,6 @@ final class DecorationProfile {
         }
         if (kind.equals("true")) return output;
         int[] offset = input.has("offset") ? new Gson().fromJson(input.get("offset"), int[].class) : new int[3];
-        BlockState survival = kind.equals("would_survive") ? BlockState.CODEC.parse(JsonOps.INSTANCE, input.get("state")).getOrThrow() : null;
-        if (survival != null) {
-            offset[1] += survival.getBlock() instanceof MangrovePropaguleBlock && survival.getValue(MangrovePropaguleBlock.HANGING) ? 1 : -1;
-        }
         var allowed = new JsonArray();
         for (var entry : palette.entrySet()) {
             var state = entry.getKey();
@@ -244,7 +385,11 @@ final class DecorationProfile {
                 case "matching_block_tag" -> state.is(TagKey.create(Registries.BLOCK, Identifier.parse(input.get("tag").getAsString())));
                 case "matching_fluids" -> matchesFluid(input.get("fluids"), state);
                 case "replaceable" -> state.canBeReplaced();
-                case "would_survive" -> state.is(survivalSoil(survival));
+                case "has_sturdy_face" -> state.isFaceSturdy(EmptyBlockGetter.INSTANCE,BlockPos.ZERO,Direction.valueOf(input.get("direction").getAsString().toUpperCase(Locale.ROOT)));
+                case "full_water" -> state.getFluidState().is(FluidTags.WATER) && state.getFluidState().isFull();
+                case "same_fluid_replaceable" -> state.canBeReplaced() && state.getFluidState().equals(BlockState.CODEC.parse(JsonOps.INSTANCE,input.get("state")).getOrThrow().getFluidState());
+                case "solid_or_lava" -> state.isSolid() || state.getFluidState().is(FluidTags.LAVA);
+                case "liquid" -> state.liquid();
                 default -> throw new IllegalArgumentException("Unsupported decoration predicate " + input);
             };
             if (matches) allowed.add(entry.getValue());
@@ -418,6 +563,7 @@ final class DecorationProfile {
     }
 
     static void materialFlags(JsonObject profile, LinkedHashMap<BlockState, Integer> palette) {
+        profile.addProperty("ordered_decorations",true);
         var heightmaps = new JsonArray(); var flags = new JsonArray();
         for (var state : palette.keySet()) {
             int mask = 0; for (var type : Heightmap.Types.values()) if (type.isOpaque().test(state)) mask |= 1 << type.ordinal();

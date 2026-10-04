@@ -214,6 +214,16 @@ tasks.register('decorationCountTest', JavaExec) {
     if (providers.gradleProperty('testPack').isPresent()) args providers.gradleProperty('testPack').get()
 }
 
+tasks.register('blockFeatureTest', JavaExec) {
+    group = 'verification'
+    description = 'Compare native registered columns, bamboo and aquatic blocks with actual Minecraft feature code.'
+    dependsOn 'gpuTestClasses', 'packageNative'
+    classpath = sourceSets.gpuTest.runtimeClasspath
+    mainClass = 'art.arcane.retina.worldgen.NativeBlockFeatureIntegrationTest'
+    jvmArgs '--enable-native-access=ALL-UNNAMED'
+    if (providers.gradleProperty('testPack').isPresent()) args providers.gradleProperty('testPack').get()
+}
+
 tasks.register('previewTest', JavaExec) {
     group = 'verification'
     description = 'Validate DH-style surface generation, temporary MCA cache sharing, eviction, promotion and cleanup.'

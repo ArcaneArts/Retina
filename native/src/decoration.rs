@@ -8,6 +8,7 @@ use rayon::prelude::*;
 use serde::Deserialize;
 use std::collections::{HashSet, VecDeque};
 
+mod blocks;
 pub mod counts;
 pub mod placement;
 mod spatial;
@@ -59,6 +60,18 @@ pub struct Recipe {
 #[derive(Clone, Deserialize)]
 #[serde(tag = "kind")]
 pub enum Kind {
+    #[serde(rename = "block_column")]
+    BlockColumn {
+        #[serde(flatten)]
+        column: blocks::ColumnRecipe,
+    },
+    #[serde(rename = "bamboo")]
+    Bamboo {
+        #[serde(flatten)]
+        bamboo: blocks::BambooRecipe,
+    },
+    #[serde(rename = "aquatic")]
+    Aquatic { states: Vec<blocks::AquaticState> },
     #[serde(rename = "plant")]
     Plant { states: Vec<PlantState> },
     #[serde(rename = "tree")]
@@ -108,6 +121,13 @@ impl Recipe {
         }
         let valid = |id: u16| (id as usize) < material_count;
         let okay = match &self.feature {
+            Kind::BlockColumn { column } => {
+                self.placement.is_some() && column.validate(material_count)
+            }
+            Kind::Bamboo { bamboo } => self.placement.is_some() && bamboo.validate(material_count),
+            Kind::Aquatic { states } => {
+                self.placement.is_some() && blocks::aquatic_valid(states, material_count)
+            }
             Kind::Plant { states } => {
                 !states.is_empty()
                     && states.iter().all(|s| {
@@ -210,6 +230,7 @@ const LOG: u8 = 2;
 const SOIL: u8 = 3;
 const VINE: u8 = 4;
 const COCOA: u8 = 5;
+const FEATURE: u8 = 6;
 const SIDES: [(i32, i32); 4] = [(1, 0), (-1, 0), (0, 1), (0, -1)];
 
 /// A crown occupies a small local box. Direct byte lookup avoids hashing a world
@@ -574,6 +595,7 @@ fn anchors_sampled(
                     mask,
                     None,
                 ),
+                _ => unreachable!("registered block features require placement programs"),
             }
         }
     }
@@ -644,10 +666,77 @@ fn anchors_sampled(
                     }
                 }
             }
+            feature => blocks::place(
+                feature,
+                position,
+                &mut rng,
+                field,
+                profile,
+                request,
+                &overlay,
+                &mut blocks,
+            ),
+        }
+        if profile.ordered_decorations {
+            // Preserve the same within-feature replay as the live overlay,
+            // while retaining complete feature command order across anchors.
+            let order = |role| match role {
+                SOIL => 0,
+                LOG => 1,
+                LEAF => 2,
+                COCOA => 3,
+                VINE => 4,
+                PLANT => 5,
+                _ => 6,
+            };
+            if !blocks[start..].is_sorted_by_key(|b| order(b.role)) {
+                blocks[start..].sort_by_key(|b| order(b.role));
+            }
         }
         overlay.commit(&blocks, start, field, profile, request);
     }
     blocks
+}
+
+/// Invoke one registered feature against the same column/overlay substrate as
+/// production. Used by the Minecraft reference harness, with no placement RNG.
+pub(crate) fn feature_sample(
+    field: &Field,
+    profile: &WorldProfile,
+    request: ChunkRequest,
+    recipe: usize,
+    at: [i32; 3],
+    seed: u64,
+) -> Result<Vec<[i32; 4]>, String> {
+    let recipe = profile
+        .decorations
+        .get(recipe)
+        .ok_or("invalid registered feature")?;
+    if !matches!(
+        recipe.feature,
+        Kind::BlockColumn { .. } | Kind::Bamboo { .. } | Kind::Aquatic { .. }
+    ) {
+        return Err("feature sampler supports registered block features".into());
+    }
+    if field.column(at[0], at[2]).is_none() {
+        return Err("feature sample origin outside field".into());
+    }
+    let mut blocks = Vec::new();
+    blocks::place(
+        &recipe.feature,
+        at,
+        &mut Rng::new(seed),
+        field,
+        profile,
+        request,
+        &placement::Overlay::default(),
+        &mut blocks,
+    );
+    Ok(blocks
+        .into_iter()
+        .filter(|b| b.y >= request.min_y && b.y < request.min_y + request.height as i32)
+        .map(|b| [b.x, b.y, b.z, b.material as i32])
+        .collect())
 }
 
 fn tree(
@@ -1085,9 +1174,19 @@ pub fn decorate(profile: Option<&WorldProfile>, placements: &[Placement], blocks
     let Some(profile) = profile else {
         return;
     };
-    // Trees settle first; paired plants are placed only when both halves remain free.
-    for role in [SOIL, LOG, LEAF, COCOA, VINE, PLANT] {
-        for placement in placements.iter().filter(|p| p.role == role) {
+    // New profiles retain ordered feature commands; old profiles keep the
+    // historical global tree-first replay. Paired plants require both halves.
+    let roles: &[u8] = if profile.ordered_decorations {
+        &[u8::MAX]
+    } else {
+        &[SOIL, LOG, LEAF, COCOA, VINE, PLANT, FEATURE]
+    };
+    for &pass in roles {
+        for placement in placements
+            .iter()
+            .filter(|p| pass == u8::MAX || p.role == pass)
+        {
+            let role = placement.role;
             let index = placement.index as usize;
             if index >= blocks.len() {
                 continue;
@@ -1095,6 +1194,7 @@ pub fn decorate(profile: Option<&WorldProfile>, placements: &[Placement], blocks
             let previous = blocks[index];
             let flags = profile.material_flags[previous as usize];
             let replace = match role {
+                FEATURE => true,
                 SOIL => flags & 1 != 0 || previous == profile.snow,
                 LOG => previous == 0 || flags & (4 | 16) != 0,
                 LEAF => previous == 0,
@@ -1311,6 +1411,7 @@ mod tests {
             ],
             noises: Vec::new(),
             decorations: Vec::new(),
+            ordered_decorations: false,
             decoration_noise: None,
             geology: Default::default(),
             terrain_features: Default::default(),

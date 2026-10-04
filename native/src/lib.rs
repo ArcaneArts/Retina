@@ -1261,6 +1261,49 @@ pub unsafe extern "C" fn retina_sample_decoration_counts(
 }
 
 /// # Safety
+/// request/position are readable; output holds capacity [x,y,z,material] records;
+/// length is writable. Diagnostic invocation uses the production block-feature logic.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn retina_sample_decoration_feature(
+    request: *const ChunkRequest,
+    recipe: u32,
+    position: *const [i32; 3],
+    seed: u64,
+    output: *mut [i32; 4],
+    capacity: u64,
+    length: *mut u64,
+) -> i32 {
+    boundary(|| {
+        if request.is_null() || position.is_null() || output.is_null() || length.is_null() {
+            return Err("null registered feature buffer".into());
+        }
+        let request = unsafe { *request };
+        request.validate()?;
+        let engine = shared_engine()?;
+        let profile = engine
+            .profile(request.reserved)?
+            .ok_or("registered feature requires a profile")?;
+        let field = engine.decoration_field(request, 1)?;
+        let result = decoration::feature_sample(
+            &field,
+            &profile,
+            request,
+            recipe as usize,
+            unsafe { *position },
+            seed,
+        )?;
+        if result.len() as u64 > capacity {
+            return Err("registered feature output buffer too small".into());
+        }
+        unsafe {
+            std::ptr::copy_nonoverlapping(result.as_ptr(), output, result.len());
+            *length = result.len() as u64;
+        }
+        Ok(())
+    })
+}
+
+/// # Safety
 /// request is readable; output has capacity u16 elements, exactly height*4 quart biome IDs.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn retina_sample_biomes_u16(

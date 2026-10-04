@@ -5,8 +5,9 @@ now retain their loaded parameters. The former was previously omitted; the
 latter accepted only -0.8 and used an unrelated hash-simplex threshold bit.
 Actual Terralith export increases from 262 to 352 decoration recipes, including
 158 noise-based count operations and six threshold operations. Vanilla retains
-105 recipes with six threshold operations. Its noise-count aquatic recipes still
-need the aquatic feature adapter described below.
+105 recipes with six threshold operations at that milestone. The subsequent
+[registered block-feature adapters](REGISTERED_BLOCK_FEATURES.md) expand export
+to 132 / 384 recipes, including kelp/bamboo spatial count rules.
 
 Java exports the actual permutation produced by Minecraft 26.3's placement
 sampler (`SimplexNoise`, legacy seed 2345, discarded offsets). The GPU evaluates
@@ -130,8 +131,9 @@ This implements spatial **count** sampling, not all tree geometry or all ore
 planning. Bulk zero-discard ore rasterization already uses the GPU;
 [ore descriptors and exposure-sensitive recipes](GPU_SPARSE_PLANNING.md) still
 include CPU work. Providers such as the current `noise`/`dual_noise` codecs,
-bamboo, fallen trees, vegetation patches, aquatic growth, huge mushrooms,
-block-column features and remaining spatial filters still require adapters.
+fallen trees, vegetation patches, huge mushrooms and remaining spatial filters
+still require adapters. Common bamboo, aquatic and block-column recipes now use
+[registered native adapters](REGISTERED_BLOCK_FEATURES.md).
 Their export omissions remain visible in the registry log. Existing provider
 approximations and Rust survival/canopy limitations remain documented in
 [decoration placement](DECORATION_PLACEMENT.md).

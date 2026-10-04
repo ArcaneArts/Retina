@@ -34,6 +34,7 @@ public final class NativeTerrain {
     private final MethodHandle sampleColumns;
     private final MethodHandle sampleBiomes;
     private final MethodHandle decorationCounts;
+    private final MethodHandle decorationFeature;
     private final MethodHandle column;
     private final MethodHandle lastError;
     private final String backend;
@@ -63,6 +64,8 @@ public final class NativeTerrain {
                 FunctionDescriptor.of(JAVA_INT, ADDRESS, ADDRESS, JAVA_LONG));
         decorationCounts = linker.downcallHandle(symbols.findOrThrow("retina_sample_decoration_counts"),
                 FunctionDescriptor.of(JAVA_INT, ADDRESS, ADDRESS, JAVA_LONG, ADDRESS));
+        decorationFeature = linker.downcallHandle(symbols.findOrThrow("retina_sample_decoration_feature"),
+                FunctionDescriptor.of(JAVA_INT,ADDRESS,JAVA_INT,ADDRESS,JAVA_LONG,ADDRESS,JAVA_LONG,ADDRESS));
         column = linker.downcallHandle(symbols.findOrThrow("retina_generate_column_u16"),
                 FunctionDescriptor.of(JAVA_INT, ADDRESS, JAVA_INT, ADDRESS));
         lastError = linker.downcallHandle(symbols.findOrThrow("retina_last_error"),
@@ -200,6 +203,16 @@ public final class NativeTerrain {
             check((int) decorationCounts.invokeExact(encode(arena, request), arena.allocateFrom(JAVA_INT, points), count, output));
             return output.toArray(JAVA_INT);
         } catch (Throwable error) { throw failure(error); }
+    }
+
+    int[] decorationFeature(TerrainRequest request,int recipe,int[] position,long seed) {
+        if(position.length!=3)throw new IllegalArgumentException("Expected an x,y,z feature position");
+        try(var arena=Arena.ofConfined()) {
+            long capacity=Math.max(4096,request.height()*4L);
+            var out=arena.allocate(capacity*16,Integer.BYTES);var length=arena.allocate(JAVA_LONG);
+            check((int)decorationFeature.invokeExact(encode(arena,request),recipe,arena.allocateFrom(JAVA_INT,position),seed,out,capacity,length));
+            return out.asSlice(0,length.get(JAVA_LONG,0)*16).toArray(JAVA_INT);
+        }catch(Throwable error){throw failure(error);}
     }
 
     private static Columns decodeColumns(MemorySegment data) {

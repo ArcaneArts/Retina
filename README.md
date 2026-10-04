@@ -45,6 +45,9 @@ instead of treating each attempted tree as a successful tree. See
 Registered noise-based counts and arbitrary threshold counts are evaluated in
 [sparse GPU batches](docs/GPU_FEATURE_COUNTS.md), while branching geometry and
 ordered canopy/survival checks remain in Rust.
+[Registered block features](docs/REGISTERED_BLOCK_FEATURES.md) add bamboo, cactus,
+sugar cane, kelp, seagrass and lily pads with loaded heights, providers and support
+predicates.
 [Ore preparation batching](docs/GPU_ORE_BATCHING.md) removes per-vein allocations;
 F3 measures the ore mask device pass separately from complete planning wall time.
 Creative mode with commands enabled is useful for testing. Press **F3**, then fly
@@ -347,14 +350,14 @@ The GPU determines cold columns from the registered biome temperature and the
 sea-relative snow line. Rust places snow over the final ground or canopy instead
 of replacing the material-rule ground with solid snow blocks.
 
-Count distributions and feature selectors are projected into mean densities;
-noise-provider plant palettes use seeded choices. Vegetation threshold noise runs
-on the GPU using simplex, rather than copying vanilla's CPU noise implementation.
-Water-adjacent bush anchors use registered water offsets. Aquatic vegetation,
-bamboo, fallen trees, cactus/block-column features, tree decorators such as
-beehives and leaf litter, and unsupported underground/placement rules are
-omitted. The export logs omitted feature kinds. Existing regions are preserved;
-use a fresh world to inspect the new decorations.
+Registered count providers and selectors preserve their budgets and placement
+order. Noise-based and threshold counts use the game's exported permutation on
+the GPU. Rust builds the geometry and tracks accepted blocks in the live overlay.
+Common aquatic vegetation, bamboo, cactus and sugar cane now use their registered
+feature recipes. Fallen trees, vegetation patches, huge mushrooms, spatial block
+providers, additional tree decorators and unsupported placement rules still need
+adapters; export logs identify omissions. Existing regions and edits are preserved.
+Use fresh terrain after restarting to inspect new decorations.
 
 ## Registry-derived ores and GPU caves
 

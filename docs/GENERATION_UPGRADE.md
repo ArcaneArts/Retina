@@ -21,7 +21,10 @@ transfer-volume measurements and updated stage telemetry where new stages arise.
 Registered noise-based feature counts and arbitrary threshold counts now use
 [sparse GPU feature queries](GPU_FEATURE_COUNTS.md), including signed ratios and
 nested placements. Broader feature geometry, providers and spatial filters remain
-part of the fourth workstream.
+part of the fourth workstream. Common registered block columns, bamboo, cactus,
+sugar cane and aquatic vegetation now have ordered native adapters; see
+[registered block features](REGISTERED_BLOCK_FEATURES.md). Fallen trees, patches,
+mushrooms and spatial providers remain required.
 
 See [GPU program specialization](GPU_PROGRAM_SPECIALIZATION.md) for the compiler,
 resident horizontal cache, startup behavior and its validation.
