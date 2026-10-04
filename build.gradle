@@ -227,6 +227,16 @@ tasks.register('blockFeatureTest', JavaExec) {
     if (providers.gradleProperty('testPack').isPresent()) args providers.gradleProperty('testPack').get()
 }
 
+tasks.register('providerNoiseTest', JavaExec) {
+    group = 'verification'
+    description = 'Compare sparse registered provider noise with Minecraft stacks at near and far XYZ positions.'
+    dependsOn 'gpuTestClasses', 'packageNative'
+    classpath = sourceSets.gpuTest.runtimeClasspath
+    mainClass = 'art.arcane.retina.worldgen.NativeProviderNoiseIntegrationTest'
+    jvmArgs '--enable-native-access=ALL-UNNAMED'
+    if (providers.gradleProperty('testPack').isPresent()) args providers.gradleProperty('testPack').get()
+}
+
 tasks.register('previewTest', JavaExec) {
     group = 'verification'
     description = 'Validate DH-style surface generation, temporary MCA cache sharing, eviction, promotion and cleanup.'

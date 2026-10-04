@@ -34,11 +34,13 @@ final class DecorationProfile {
     private final JsonArray recipes = new JsonArray();
     private final Map<String, Integer> ids = new LinkedHashMap<>();
     private final Set<String> unsupported = new TreeSet<>();
+    private final ProviderNoiseProfile providerNoise;
     private DecorationProfile(HolderLookup.Provider registry, LinkedHashMap<BlockState, Integer> materials) {
         this.registry = registry;
         this.materials = materials;
+        this.providerNoise = new ProviderNoiseProfile(registry);
     }
-    static JsonArray export(HolderLookup.Provider registry, List<Holder<Biome>> biomes, JsonArray profiles, LinkedHashMap<BlockState, Integer> materials) {
+    static JsonArray export(HolderLookup.Provider registry, List<Holder<Biome>> biomes, JsonArray profiles, LinkedHashMap<BlockState, Integer> materials, JsonObject world) {
         var exporter = new DecorationProfile(registry, materials);
         for (int i = 0; i < biomes.size(); i++) {
             var selected = new JsonArray();
@@ -53,6 +55,7 @@ final class DecorationProfile {
             profiles.get(i).getAsJsonObject().add("decorations", selected);
         }
         Retina.LOGGER.info("Exported {} registered decoration recipes; omitted feature kinds: {}", exporter.recipes.size(), exporter.unsupported);
+        world.add("decoration_provider_noises", exporter.providerNoise.programs);
         return exporter.recipes;
     }
 
@@ -884,16 +887,21 @@ final class DecorationProfile {
         if (state.isPresent()) return List.of(new State(state.get(), weight, band));
         if (!json.isJsonObject()) return List.of();
         var object = json.getAsJsonObject(); var result = new ArrayList<State>();
+        if(type(object).equals("noise") || type(object).equals("dual_noise")) {
+            providerNoise.register(object,false);
+            if(type(object).equals("dual_noise"))providerNoise.register(object,true);
+        }
         switch (type(object)) {
             case "weighted", "weighted_state_provider" -> { for (var e : object.getAsJsonArray("entries")) { var entry = e.getAsJsonObject(); result.addAll(provider(entry.get("data"), weight * entry.get("weight").getAsDouble(), band, depth + 1)); } }
             case "noise_threshold" -> {
+                providerNoise.register(object,false);
                 var low = object.getAsJsonArray("low_states"); var high = object.getAsJsonArray("high_states");
                 for (var e : low) result.addAll(provider(e, weight / low.size(), 1, depth + 1));
                 double chance = object.get("high_chance").getAsDouble();
                 result.addAll(provider(object.get("default_state"), weight * (1 - chance), 2, depth + 1));
                 for (var e : high) result.addAll(provider(e, weight * chance / high.size(), 2, depth + 1));
             }
-            case "noise_provider", "dual_noise_provider" -> { for (var e : object.getAsJsonArray("states")) result.addAll(provider(e, weight, band, depth + 1)); }
+            case "noise_provider", "dual_noise_provider" -> { providerNoise.register(object,false);if(type(object).startsWith("dual_noise"))providerNoise.register(object,true);for (var e : object.getAsJsonArray("states")) result.addAll(provider(e, weight, band, depth + 1)); }
             case "rule_based" -> { for (var e : object.getAsJsonArray("rules")) result.addAll(provider(e.getAsJsonObject().get("then"), weight, band, depth + 1)); }
             case "simple_state_provider" -> result.addAll(provider(object.get("state"), weight, band, depth + 1));
             case "randomized_int", "randomized_int_state_provider" -> result.addAll(provider(object.get("source"), weight, band, depth + 1));

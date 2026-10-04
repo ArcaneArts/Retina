@@ -121,8 +121,9 @@ The after SHA-256 is the packaged/tested hash above.
 
 ## Remaining provider work
 
-Spatial `noise`, `noise_threshold` and `dual_noise` programs still require the
-GPU provider sampler. The legacy plant path retains its previous noise-provider
+Spatial `noise`, `noise_threshold` and `dual_noise` programs still require ordered
+replay integration with the [GPU provider sampler](GPU_PROVIDER_NOISE.md).
+The legacy plant path retains its previous noise-provider
 approximations until that work is complete. `copy_properties` also remains
 unsupported.
 

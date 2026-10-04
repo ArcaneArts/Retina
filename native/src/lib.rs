@@ -266,7 +266,7 @@ impl TerrainEngine {
                 job.device(timings::FEATURE_COUNTS, nanos);
             }
         }
-        Ok(result.counts)
+        Ok(result.values.into_iter().map(|v| v as i32).collect())
     }
 
     /// Sparse diagnostics use exactly the production rule descriptors/sampler.
@@ -295,6 +295,38 @@ impl TerrainEngine {
             })
             .collect::<Result<Vec<_>, String>>()?;
         self.feature_counts(&profile, request, &queries, None)
+    }
+
+    /// Sparse XYZ provider-noise sampling, shared by diagnostics and feature replay.
+    pub fn provider_noise(
+        &self,
+        request: ChunkRequest,
+        points: &[[i32; 4]],
+        job: Option<&timings::Timings>,
+    ) -> Result<Vec<f32>, String> {
+        request.validate()?;
+        let profile = self
+            .profile(request.reserved)?
+            .ok_or("provider noise requires a registered profile")?;
+        let result = self
+            .feature_gpu
+            .lock()
+            .map_err(|_| "feature GPU lock poisoned")?
+            .run_providers(
+                request.reserved,
+                &profile.decoration_provider_noises,
+                points,
+            )?;
+        self.pipeline
+            .transfer(request.reserved, result.upload, result.readback);
+        if let Some(nanos) = result.device_nanos {
+            self.timings(request.reserved)
+                .device(timings::PROVIDER_NOISE, nanos);
+            if let Some(job) = job {
+                job.device(timings::PROVIDER_NOISE, nanos);
+            }
+        }
+        Ok(result.values.into_iter().map(f32::from_bits).collect())
     }
 
     /// Only count sampling crosses the device boundary. Crowns, live canopy,
@@ -1322,6 +1354,36 @@ pub unsafe extern "C" fn retina_sample_decoration_counts(
 }
 
 /// # Safety
+/// request is readable; points contains count [x,y,z,program] records and
+/// output has count writable f32 elements. Buffers live until this call returns.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn retina_sample_provider_noise(
+    request: *const ChunkRequest,
+    points: *const [i32; 4],
+    count: u64,
+    output: *mut f32,
+) -> i32 {
+    boundary(|| {
+        if request.is_null() || points.is_null() || output.is_null() {
+            return Err("null provider noise buffer".into());
+        }
+        let count = usize::try_from(count).map_err(|_| "provider noise buffer too large")?;
+        if count > isize::MAX as usize / 16 {
+            return Err("provider noise buffer too large".into());
+        }
+        let result = shared_engine()?.provider_noise(
+            unsafe { *request },
+            unsafe { std::slice::from_raw_parts(points, count) },
+            None,
+        )?;
+        unsafe {
+            std::ptr::copy_nonoverlapping(result.as_ptr(), output, count);
+        }
+        Ok(())
+    })
+}
+
+/// # Safety
 /// request/position are readable; output holds capacity [x,y,z,material] records;
 /// length is writable. Diagnostic invocation uses the production block-feature logic.
 #[unsafe(no_mangle)]
@@ -1803,11 +1865,11 @@ mod tests {
         // ChunkRequest ABI above remains unchanged.
         assert_eq!(std::mem::size_of::<GpuRequest>(), 64);
         assert_eq!(std::mem::offset_of!(GpuRequest, density_offset), 48);
-        assert_eq!(std::mem::size_of::<timings::Snapshot>(), 232);
+        assert_eq!(std::mem::size_of::<timings::Snapshot>(), 240);
         assert_eq!(std::mem::offset_of!(timings::Snapshot, nanos), 32);
         assert_eq!(std::mem::size_of::<region::RegionReport>(), 40);
         assert_eq!(std::mem::offset_of!(region::RegionReport, gpu_nanos), 8);
-        assert_eq!(std::mem::size_of::<region::DetailedRegionReport>(), 272);
+        assert_eq!(std::mem::size_of::<region::DetailedRegionReport>(), 280);
         assert_eq!(
             std::mem::offset_of!(region::DetailedRegionReport, stages),
             40

@@ -6,6 +6,8 @@ pub(crate) struct Gpu {
     device: wgpu::Device,
     queue: wgpu::Queue,
     pipeline: wgpu::ComputePipeline,
+    provider_pipeline: Option<wgpu::ComputePipeline>,
+    provider_profiles: HashMap<u32, wgpu::Buffer>,
     layout: wgpu::BindGroupLayout,
     profiles: HashMap<u32, Resident>,
     buffers: Option<Buffers>,
@@ -27,8 +29,8 @@ struct Buffers {
     readback: wgpu::Buffer,
     capacity: usize,
 }
-pub(crate) struct ResultCounts {
-    pub counts: Vec<i32>,
+pub(crate) struct ResultSamples {
+    pub values: Vec<u32>,
     pub upload: u64,
     pub readback: u64,
     pub device_nanos: Option<u64>,
@@ -95,6 +97,8 @@ impl Gpu {
             device,
             queue,
             pipeline,
+            provider_pipeline: None,
+            provider_profiles: HashMap::new(),
             layout,
             profiles: HashMap::new(),
             buffers: None,
@@ -107,10 +111,10 @@ impl Gpu {
         id: u32,
         noise: &Noise,
         queries: &[Query],
-    ) -> Result<ResultCounts, String> {
+    ) -> Result<ResultSamples, String> {
         if queries.is_empty() {
-            return Ok(ResultCounts {
-                counts: Vec::new(),
+            return Ok(ResultSamples {
+                values: Vec::new(),
                 upload: 0,
                 readback: 0,
                 device_nanos: None,
@@ -145,7 +149,84 @@ impl Gpu {
             // Includes the permutation; repeated regions upload no static data.
             upload += (resident.words.len() * 4) as u64;
         }
-        let active = queries.len();
+        let table = resident.buffer.as_ref().unwrap().clone();
+        self.run_words(&table, &input, upload, false)
+    }
+
+    pub(crate) fn run_providers(
+        &mut self,
+        id: u32,
+        programs: &[crate::decoration::provider_noise::Program],
+        points: &[[i32; 4]],
+    ) -> Result<ResultSamples, String> {
+        if points.is_empty() {
+            return Ok(ResultSamples {
+                values: Vec::new(),
+                upload: 0,
+                readback: 0,
+                device_nanos: None,
+            });
+        }
+        if points
+            .iter()
+            .any(|p| p[3] < 0 || p[3] as usize >= programs.len())
+        {
+            return Err("invalid provider noise program ID".into());
+        }
+        let mut upload = 0;
+        let table = self
+            .provider_profiles
+            .entry(id)
+            .or_insert_with(|| {
+                let words = crate::decoration::provider_noise::encode(programs);
+                upload = (words.len() * 4) as u64;
+                self.device
+                    .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                        label: Some("Retina resident provider noise stacks"),
+                        contents: bytemuck::cast_slice(&words),
+                        usage: wgpu::BufferUsages::STORAGE,
+                    })
+            })
+            .clone();
+        let input: Vec<[u32; 4]> = points.iter().map(|p| p.map(|v| v as u32)).collect();
+        self.run_words(&table, &input, upload, true)
+    }
+
+    fn run_words(
+        &mut self,
+        table: &wgpu::Buffer,
+        input: &[[u32; 4]],
+        mut upload: u64,
+        providers: bool,
+    ) -> Result<ResultSamples, String> {
+        if providers && self.provider_pipeline.is_none() {
+            let shader = self
+                .device
+                .create_shader_module(wgpu::ShaderModuleDescriptor {
+                    label: Some("Retina registered provider noise"),
+                    source: wgpu::ShaderSource::Wgsl(
+                        include_str!("../../provider_noise.wgsl").into(),
+                    ),
+                });
+            let layout = self
+                .device
+                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("Retina sparse provider noise"),
+                    bind_group_layouts: &[Some(&self.layout)],
+                    immediate_size: 0,
+                });
+            self.provider_pipeline = Some(self.device.create_compute_pipeline(
+                &wgpu::ComputePipelineDescriptor {
+                    label: Some("Retina sparse provider noise"),
+                    layout: Some(&layout),
+                    module: &shader,
+                    entry_point: Some("provider_noise"),
+                    compilation_options: Default::default(),
+                    cache: None,
+                },
+            ));
+        }
+        let active = input.len();
         if self.buffers.as_ref().is_none_or(|b| b.capacity < active) {
             let capacity = active.max(self.buffers.as_ref().map_or(1, |b| b.capacity));
             let buffer = |label, size, usage| {
@@ -190,7 +271,7 @@ impl Gpu {
             entries: &[
                 wgpu::BindGroupEntry {
                     binding: 0,
-                    resource: resident.buffer.as_ref().unwrap().as_entire_binding(),
+                    resource: table.as_entire_binding(),
                 },
                 wgpu::BindGroupEntry {
                     binding: 1,
@@ -203,7 +284,7 @@ impl Gpu {
             ],
         });
         self.queue
-            .write_buffer(&buffers.input, 0, bytemuck::cast_slice(&input));
+            .write_buffer(&buffers.input, 0, bytemuck::cast_slice(input));
         upload += bytes * 4;
         let mut encoder = self
             .device
@@ -221,7 +302,11 @@ impl Gpu {
                     }
                 }),
             });
-            pass.set_pipeline(&self.pipeline);
+            pass.set_pipeline(if providers {
+                self.provider_pipeline.as_ref().unwrap()
+            } else {
+                &self.pipeline
+            });
             pass.set_bind_group(0, &group, &[]);
             // Two-dimensional dispatch also supports large sparse custom-feature batches.
             pass.dispatch_workgroups(
@@ -283,8 +368,8 @@ impl Gpu {
             } else {
                 None
             };
-            Ok(ResultCounts {
-                counts: bytemuck::cast_slice::<u8, i32>(&mapped).to_vec(),
+            Ok(ResultSamples {
+                values: bytemuck::cast_slice::<u8, u32>(&mapped).to_vec(),
                 upload,
                 readback: bytes + if self.timestamps.is_some() { 16 } else { 0 },
                 device_nanos,

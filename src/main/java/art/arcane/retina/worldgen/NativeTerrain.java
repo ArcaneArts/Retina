@@ -34,6 +34,7 @@ public final class NativeTerrain {
     private final MethodHandle sampleColumns;
     private final MethodHandle sampleBiomes;
     private final MethodHandle decorationCounts;
+    private final MethodHandle providerNoise;
     private final MethodHandle decorationFeature;
     private final MethodHandle decorationPlacement;
     private final MethodHandle column;
@@ -64,6 +65,8 @@ public final class NativeTerrain {
         sampleBiomes = linker.downcallHandle(symbols.findOrThrow("retina_sample_biomes_u16"),
                 FunctionDescriptor.of(JAVA_INT, ADDRESS, ADDRESS, JAVA_LONG));
         decorationCounts = linker.downcallHandle(symbols.findOrThrow("retina_sample_decoration_counts"),
+                FunctionDescriptor.of(JAVA_INT, ADDRESS, ADDRESS, JAVA_LONG, ADDRESS));
+        providerNoise = linker.downcallHandle(symbols.findOrThrow("retina_sample_provider_noise"),
                 FunctionDescriptor.of(JAVA_INT, ADDRESS, ADDRESS, JAVA_LONG, ADDRESS));
         decorationFeature = linker.downcallHandle(symbols.findOrThrow("retina_sample_decoration_feature"),
                 FunctionDescriptor.of(JAVA_INT,ADDRESS,JAVA_INT,ADDRESS,JAVA_LONG,ADDRESS,JAVA_LONG,ADDRESS));
@@ -108,7 +111,7 @@ public final class NativeTerrain {
         try (var arena = Arena.ofConfined()) {
             var output = arena.allocate(NativeTimings.BYTES, Long.BYTES);
             check((int) timingSnapshot.invokeExact(profile, output));
-            if (output.get(JAVA_INT,0) != 5) throw new IllegalStateException("Unsupported native timing ABI");
+            if (output.get(JAVA_INT,0) != 6) throw new IllegalStateException("Unsupported native timing ABI");
             return decodeTimings(output);
         } catch(Throwable error) { throw failure(error); }
     }
@@ -210,6 +213,16 @@ public final class NativeTerrain {
 
     int[] decorationFeature(TerrainRequest request,int recipe,int[] position,long seed) {
         return decorationSample(decorationFeature,request,recipe,position,seed);
+    }
+    /** Sparse [x,y,z,program] tuples; loaded noise stacks remain resident on the GPU. */
+    float[] providerNoise(TerrainRequest request,int[] points) {
+        if(points.length%4!=0)throw new IllegalArgumentException("Expected four integers per provider point");
+        if(points.length==0)return new float[0];
+        try(var arena=Arena.ofConfined()) {
+            long count=points.length/4;var output=arena.allocate(count*Float.BYTES,Float.BYTES);
+            check((int)providerNoise.invokeExact(encode(arena,request),arena.allocateFrom(JAVA_INT,points),count,output));
+            return output.toArray(JAVA_FLOAT);
+        }catch(Throwable error){throw failure(error);}
     }
     int[] decorationPlacement(TerrainRequest request,int recipe,int[] position,long seed) {
         return decorationSample(decorationPlacement,request,recipe,position,seed);

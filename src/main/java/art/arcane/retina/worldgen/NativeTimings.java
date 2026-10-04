@@ -4,12 +4,12 @@ import net.minecraft.network.RegistryFriendlyByteBuf;
 
 /** Stage snapshot. Session CPU counters add across workers; region CPU counters estimate wall shares. */
 public record NativeTimings(int flags, long chunks, long gpuColumns, long gpuJobs, long[] nanos) {
-    public static final int STAGES = 25;
+    public static final int STAGES = 26;
     public static final int BYTES = 32 + STAGES * Long.BYTES;
     public static final int QUEUE=0, ENCODE=1, WAIT_COPY=2, HEIGHT=3, SITES=4, COLUMNS=5,
             CAVE_DENSITY=6, CAVE_MASK=7, STRUCTURE_PLAN=8, VEGETATION_PLAN=9, ORE_PLAN=10,
             ASSEMBLY=11, GEOLOGY=12, CAVE_FEATURES=13, VEGETATION=14, STRUCTURES=15,
-            SNOW=16, NBT=17, COMPRESS=18, IO=19, MATERIALS=20, AQUIFER_FIELDS=21, AQUIFER_MASK=22, FEATURE_COUNTS=23, ORE_MASK=24;
+            SNOW=16, NBT=17, COMPRESS=18, IO=19, MATERIALS=20, AQUIFER_FIELDS=21, AQUIFER_MASK=22, FEATURE_COUNTS=23, ORE_MASK=24, PROVIDER_NOISE=25;
     public static final NativeTimings EMPTY = new NativeTimings(0,0,0,0,new long[STAGES]);
     public NativeTimings {
         if (nanos.length != STAGES) throw new IllegalArgumentException("Incorrect native timing stage count");
@@ -18,6 +18,7 @@ public record NativeTimings(int flags, long chunks, long gpuColumns, long gpuJob
     @Override public long[] nanos() { return nanos.clone(); }
     public long nanos(int stage) { return nanos[stage]; }
     public boolean gpuMeasured() { return (flags & 1) != 0; }
+    public boolean providerMeasured() { return (flags & 4) != 0; }
     public boolean oreMeasured() { return (flags & 2) != 0; }
     public double chunkMs(int stage) { return nanos[stage] / (Math.max(1,chunks) * 1e6); }
     public double dispatchMs(int stage) { return nanos[stage] / (Math.max(1,gpuJobs) * 1e6); }

@@ -16,6 +16,7 @@ pub mod pairs;
 mod patch;
 pub mod placement;
 mod placement_height;
+pub mod provider_noise;
 mod spatial;
 
 #[derive(Clone, Deserialize)]
@@ -1610,6 +1611,7 @@ mod tests {
             decoration_biome_3d: false,
             decoration_patch_halo: false,
             decoration_noise: None,
+            decoration_provider_noises: Vec::new(),
             geology: Default::default(),
             terrain_features: Default::default(),
             material_flags: vec![0, 0, 1, 8 | 32, 4, 4, 4, 4, 4, 4],

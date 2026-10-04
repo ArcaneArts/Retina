@@ -3,7 +3,7 @@
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Instant;
 
-pub const STAGES: usize = 25;
+pub const STAGES: usize = 26;
 pub const QUEUE: usize = 0;
 pub const ENCODE: usize = 1;
 pub const WAIT_COPY: usize = 2;
@@ -29,6 +29,7 @@ pub const AQUIFER_FIELDS: usize = 21;
 pub const AQUIFER_MASK: usize = 22;
 pub const FEATURE_COUNTS: usize = 23;
 pub const ORE_MASK: usize = 24;
+pub const PROVIDER_NOISE: usize = 25;
 
 #[repr(C)]
 #[derive(Default, Clone, Copy, Debug)]
@@ -61,8 +62,10 @@ impl Default for Timings {
 impl Timings {
     pub fn device(&self, stage: usize, nanos: u64) {
         self.add(stage, nanos);
-        self.flags
-            .fetch_or(1 | if stage == ORE_MASK { 2 } else { 0 }, Ordering::Relaxed);
+        self.flags.fetch_or(
+            1 | if stage == ORE_MASK { 2 } else { 0 } | if stage == PROVIDER_NOISE { 4 } else { 0 },
+            Ordering::Relaxed,
+        );
     }
     pub fn add(&self, stage: usize, nanos: u64) {
         self.nanos[stage].fetch_add(nanos, Ordering::Relaxed);
@@ -90,7 +93,7 @@ impl Timings {
     }
     pub fn snapshot(&self) -> Snapshot {
         Snapshot {
-            version: 5,
+            version: 6,
             flags: self.flags.load(Ordering::Relaxed) as u32,
             chunks: self.chunks.load(Ordering::Relaxed),
             gpu_columns: self.gpu_columns.load(Ordering::Relaxed),

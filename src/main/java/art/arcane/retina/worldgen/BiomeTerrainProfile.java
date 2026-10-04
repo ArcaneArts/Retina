@@ -128,7 +128,7 @@ public record BiomeTerrainProfile(int nativeId, int seaLevel, BlockState[] mater
         profile.add("weirdness_noise",climateNoises.get(4));
         Retina.LOGGER.info("GPU climate site scale {} blocks; registered climate channels {}",spacing,noises);
         profile.add("registry_program", RegistryGpuProgram.export(registry, settings, nativeBiomes, materials, minY, height, source.scale()));
-        profile.add("decorations", DecorationProfile.export(registry, nativeBiomes, biomes, materials));
+        profile.add("decorations", DecorationProfile.export(registry, nativeBiomes, biomes, materials, profile));
         TerrainFeatureProfile.export(registry, nativeBiomes, biomes, materials, profile, settings.materialRule().value(), seed, parameters);
         profile.add("structures",StructureProfile.export(registry,nativeBiomes,materials,structures));
         GeologyProfile.export(registry, nativeBiomes, biomes, materials, profile, minY, height, sea);

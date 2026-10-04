@@ -35,6 +35,10 @@ Registered rule-based, rotated and random-block providers now retain their
 positions, ordered branches, optional results and random-draw semantics; see
 [block-state providers](REGISTERED_BLOCK_PROVIDERS.md). Spatial noise providers,
 property copying and some nullable transformation combinations remain required.
+The [GPU provider-noise sampler](GPU_PROVIDER_NOISE.md) now exports and samples
+actual initialized Perlin stacks with integer XYZ queries and resident buffers.
+Ordered feature replay still needs to consume those spatial samples; legacy
+provider choices retain their previous behavior in this foundation milestone.
 The [surface-relative filter](REGISTERED_SPATIAL_FILTERS.md) now respects loaded
 heightmaps and inclusive offsets in top-level and nested placement programs.
 

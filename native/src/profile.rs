@@ -93,6 +93,8 @@ pub struct WorldProfile {
     pub decoration_patch_halo: bool,
     #[serde(default)]
     pub decoration_noise: Option<crate::decoration::counts::Noise>,
+    #[serde(default)]
+    pub decoration_provider_noises: Vec<crate::decoration::provider_noise::Program>,
     #[serde(flatten)]
     pub geology: crate::geology::GeologyProfile,
     pub material_flags: Vec<u8>,
@@ -163,6 +165,9 @@ impl WorldProfile {
             }
         }
         if let Some(noise) = &profile.decoration_noise {
+            noise.validate()?;
+        }
+        for noise in &profile.decoration_provider_noises {
             noise.validate()?;
         }
         for biome in &profile.biomes {

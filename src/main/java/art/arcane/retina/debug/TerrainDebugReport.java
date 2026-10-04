@@ -54,6 +54,7 @@ public final class TerrainDebugReport {
                 lines.add(share(GPU,"Aquifer fields",stats.regionStagePercent(AQUIFER_FIELDS),false));
                 lines.add(share(GPU,"Aquifer fluids / barriers",stats.regionStagePercent(AQUIFER_MASK),false));
                 lines.add(share(GPU,"Feature counts",stats.regionStagePercent(FEATURE_COUNTS),false));
+                if(stats.regionStages().providerMeasured())lines.add(share(GPU,"Provider noise",stats.regionStagePercent(PROVIDER_NOISE),false));
                 if(stats.regionStages().oreMeasured())lines.add(share(GPU,"Ore masks",stats.regionStagePercent(ORE_MASK),false));
                 else lines.add(LABEL+"Ore masks: "+DATA+"not measured");}
             else lines.add(LABEL+"Device timestamps unavailable");
@@ -66,6 +67,7 @@ public final class TerrainDebugReport {
                 lines.add(share(GPU,"Aquifer fields",100*stats.stages().gpuChunkMs(AQUIFER_FIELDS)/Math.max(.000001,stats.msPerChunk()),false));
                 lines.add(share(GPU,"Aquifer fluids / barriers",100*stats.stages().gpuChunkMs(AQUIFER_MASK)/Math.max(.000001,stats.msPerChunk()),false));
                 lines.add(share(GPU,"Feature counts",100*stats.stages().chunkMs(FEATURE_COUNTS)/Math.max(.000001,stats.msPerChunk()),false));
+                if(stats.stages().providerMeasured())lines.add(share(GPU,"Provider noise",100*stats.stages().chunkMs(PROVIDER_NOISE)/Math.max(.000001,stats.msPerChunk()),false));
             }
         }
         return List.copyOf(lines);

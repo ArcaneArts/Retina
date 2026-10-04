@@ -21,9 +21,9 @@ class Report(c.Structure):
     _fields_ = [("generated", c.c_uint32), ("preserved", c.c_uint32)] + [(s, c.c_uint64) for s in ("gpu", "assembly", "write", "bytes")]
 class Snapshot(c.Structure):
     _fields_ = [("version", c.c_uint32), ("flags", c.c_uint32), ("chunks", c.c_uint64), ("columns", c.c_uint64),
-                ("jobs", c.c_uint64), ("nanos", c.c_uint64 * 25)]
+                ("jobs", c.c_uint64), ("nanos", c.c_uint64 * 26)]
 STAGES = ["queue", "encode", "wait_copy", "height", "sites", "columns", "cave_density", "cave_mask",
-          "structure_plan", "vegetation_plan", "ore_plan", "assembly", "geology", "cave_features", "vegetation", "structures", "snow", "nbt", "compress", "io", "materials", "aquifer_fields", "aquifer_mask", "feature_counts", "ore_mask"]
+          "structure_plan", "vegetation_plan", "ore_plan", "assembly", "geology", "cave_features", "vegetation", "structures", "snow", "nbt", "compress", "io", "materials", "aquifer_fields", "aquifer_mask", "feature_counts", "ore_mask", "provider_noise"]
 class PipelineSnapshot(c.Structure):
     _fields_ = [("version", c.c_uint32), ("peak_in_flight", c.c_uint32)] + [(s, c.c_uint64) for s in
                 ("completed", "device_span_nanos", "device_gap_nanos", "unavailable_timestamp_pairs")]
