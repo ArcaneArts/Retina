@@ -71,6 +71,8 @@ final class RegistryGpuProgram {
             compiler.approximations.add("density:uninterpolated-final-field:4x8x4-sampling");
         }
         result.add("terrain_cell",terrainCell);
+        result.addProperty("material_layers",true);
+        compiler.approximations.add("material:preliminary-surface-from-final-height");
         var surfaceNoises=new JsonArray();
         for(String id:List.of("surface","surface_secondary","clay_bands_offset"))surfaceNoises.add(compiler.noise(new JsonPrimitive("minecraft:"+id)));
         result.add("surface_noises",surfaceNoises);
@@ -273,7 +275,7 @@ final class RegistryGpuProgram {
             if(condition instanceof WaterCondition w)return node(46,w.addStoneDepth()?1:0,0,0,w.offset(),w.surfaceDepthMultiplier());
             if(condition instanceof YCondition y)return node(47,y.addStoneDepth()?1:0,0,0,anchor(y.anchor()),y.surfaceDepthMultiplier());
             if(condition instanceof TemperatureCondition)return node(51,0,0,0,biome.value().getBaseTemperature());
-            if(condition instanceof AbovePreliminarySurfaceCondition)return constant(1);
+            if(condition instanceof AbovePreliminarySurfaceCondition)return node(54,0,0,0);
             if(condition instanceof HoleCondition)return node(50,0,0,0);
             if(condition instanceof VerticalGradientCondition g)return node(48,0,0,0,anchor(g.trueAtAndBelow()),anchor(g.falseAtAndAbove()));
             if(condition instanceof SteepCondition)return node(49,0,0,0);

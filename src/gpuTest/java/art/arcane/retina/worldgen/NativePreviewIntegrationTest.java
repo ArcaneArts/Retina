@@ -204,10 +204,19 @@ public final class NativePreviewIntegrationTest {
             catch (IllegalStateException error) { rejected = error.getMessage().contains("truncated MCA header"); }
             require(rejected && Arrays.equals(Files.readAllBytes(corrupt), new byte[]{1}), "nonempty truncated saves report corruption and remain unchanged");
             System.out.println("QA_EVT {\"event\":\"temporary_mca_placeholder_and_partial_promotion\",\"status\":\"pass\"}");
+            var basePosition=new ChunkPos(-1,0);
+            var baseBeforeEviction=cache.baseColumn(basePosition,cache.columns(basePosition),0);
             cache.read(new ChunkPos(-64, 0));
             var reloaded = cache.columns(new ChunkPos(-1, 0));
             require(Arrays.equals(reloaded.packed(), NativeTerrain.instance().sampleColumns(request).packed()) && metrics.snapshot().previewRegions() == 2, "cold columns reload from disk without regenerating the MCA");
             cache.read(new ChunkPos(-1, 0)); cache.read(new ChunkPos(0, 0));
+            long gpuJobs=NativeTerrain.instance().timings(request.profile()).gpuJobs();
+            var baseAfterEviction=cache.baseColumn(basePosition,cache.columns(basePosition),0);
+            require(Arrays.equals(baseBeforeEviction,baseAfterEviction)
+                    && NativeTerrain.instance().timings(request.profile()).gpuJobs()==gpuJobs,
+                    "cold material runs reload from disk after native field eviction without GPU work");
+            require(!Files.exists(previewFolder.resolve("r.-2.0.materials")),"LRU removes material companions with their MCA");
+            System.out.println("QA_EVT {\"event\":\"cold_preview_gpu_material_columns\",\"status\":\"pass\"}");
             require(cache.size() == 2 && !Files.exists(previewFolder.resolve("r.-2.0.mca")), "LRU closes and deletes evicted MCA files");
             try (var files = Files.list(previewFolder)) { require(files.filter(p -> p.toString().endsWith(".mca")).count() == 2, "temporary file count stays bounded"); }
             System.out.println("QA_EVT {\"event\":\"temporary_mca_parallel_lru_and_save_isolation\",\"status\":\"pass\"}");

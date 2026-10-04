@@ -41,6 +41,7 @@ final class GenerationMetricsTest {
         var lines = TerrainDebugReport.lines(new TerrainStatsPayload(true, "Metal test", "mca", window));
         require(lines.stream().anyMatch(s -> s.contains("Average region:") && s.contains("16.50 ms") && s.contains("20")), "display reports rolling latency and sample count");
         require(lines.stream().anyMatch(s -> s.contains("NBT encoding") && s.contains("§6~25.0%")), "NBT share is colored and marked as an estimate");
+        require(lines.stream().anyMatch(s -> s.contains("Material layers") && s.startsWith("§d")), "GPU material timing has a dedicated category");
         require(lines.stream().anyMatch(s -> s.contains("GPU device") && s.contains("overlaps")), "device timing overlap is explicit");
         require(lines.stream().anyMatch(s -> s.startsWith("§dOre planning (CPU + GPU)")), "mixed ore planner is labeled and colored as GPU work");
         for (String line : lines) {

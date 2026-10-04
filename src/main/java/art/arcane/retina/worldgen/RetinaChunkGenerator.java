@@ -343,7 +343,7 @@ public final class RetinaChunkGenerator extends ChunkGenerator {
         int chunkZ = Math.floorDiv(z, 16);
         var cache = previews;
         int index = Math.floorMod(z, 16) * 16 + Math.floorMod(x, 16);
-        BlockState[] preview = cache == null ? null : cache.baseColumn(columns(seed(state), chunkX, chunkZ), index);
+        BlockState[] preview = cache == null ? null : cache.baseColumn(new ChunkPos(chunkX, chunkZ), columns(seed(state), chunkX, chunkZ), index);
         var data = preview == null ? NativeTerrain.instance().column(request(seed(state), chunkX, chunkZ), index) : null;
         var palette = profile == null ? new BlockState[]{Blocks.AIR.defaultBlockState(), Blocks.STONE.defaultBlockState()} : profile.materials();
         var states = new BlockState[bounds.getHeight()];

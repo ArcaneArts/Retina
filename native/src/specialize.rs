@@ -449,6 +449,7 @@ struct Job {
     program: String,
     state: Arc<State>,
     horizontal_fields: u32,
+    material_layers: bool,
 }
 pub(crate) struct Compiler {
     sender: mpsc::Sender<Job>,
@@ -472,7 +473,14 @@ impl Compiler {
                 while let Ok(job) = receiver.recv() {
                     let start = Instant::now();
                     let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-                        compile(&device, &world, &cave, &job.program, job.horizontal_fields)
+                        compile(
+                            &device,
+                            &world,
+                            &cave,
+                            &job.program,
+                            job.horizontal_fields,
+                            job.material_layers,
+                        )
                     }))
                     .unwrap_or_else(|_| Err("specialized GPU compilation panicked".into()));
                     if let Err(error) = &result {
@@ -499,7 +507,9 @@ impl Compiler {
         })
     }
     pub fn request(&mut self, program: &RegistryProgram) -> Result<Arc<State>, String> {
-        let (source, horizontal_fields) = source_columns(program)?;
+        let (mut source, horizontal_fields) = source_columns(program)?;
+        // The entry-point set is part of pipeline identity even when graphs match.
+        writeln!(source, "// material pipelines: {}", program.material_layers).unwrap();
         if let Some(state) = self.cache.get(&source) {
             state
                 .progress
@@ -524,6 +534,7 @@ impl Compiler {
                 program: source.clone(),
                 state: state.clone(),
                 horizontal_fields,
+                material_layers: program.material_layers,
             })
             .map_err(|_| "GPU shader compiler stopped")?;
         self.cache.insert(source, state.clone());
@@ -537,6 +548,7 @@ pub(crate) fn compile(
     cave: &wgpu::BindGroupLayout,
     program: &str,
     horizontal_fields: u32,
+    material_layers: bool,
 ) -> Result<Pipelines, String> {
     let scope = device.push_error_scope(wgpu::ErrorFilter::Validation);
     let make =
@@ -593,14 +605,29 @@ pub(crate) fn compile(
     );
     let cave = make(
         include_str!("caves.wgsl"),
-        "",
+        if material_layers {
+            include_str!("materials.wgsl")
+        } else {
+            ""
+        },
         cave,
-        &[
-            "underground_queries",
-            "cave_nodes",
-            "cave_exterior",
-            "cave_mask",
-        ],
+        if material_layers {
+            &[
+                "underground_queries",
+                "cave_nodes",
+                "cave_exterior",
+                "cave_mask",
+                "material_counts",
+                "material_emit",
+            ]
+        } else {
+            &[
+                "underground_queries",
+                "cave_nodes",
+                "cave_exterior",
+                "cave_mask",
+            ]
+        },
     );
     if let Some(error) = pollster::block_on(scope.pop()) {
         return Err(format!("specialized GPU program: {error}"));
@@ -666,6 +693,7 @@ mod tests {
             surface: [0, 8, 0],
             terrain_cell: [4, 8],
             surface_noises: [0; 3],
+            material_layers: false,
         };
         let source = source(&registry).unwrap();
         assert!(!source.contains("array<f32,1024>"));
@@ -674,6 +702,6 @@ mod tests {
         assert_eq!(source.matches("fn graph_").count(), 2);
         assert!(source.contains("vec3<f32>,2"));
         assert!(source.contains("v0,v0,v0,v0,v0"));
-        assert_eq!(opcode_bodies().unwrap().len(), 45);
+        assert_eq!(opcode_bodies().unwrap().len(), 46);
     }
 }

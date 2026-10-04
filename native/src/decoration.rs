@@ -913,6 +913,42 @@ pub fn assemble_carved(
         }
         return;
     };
+    if let Some(mask) = mask.filter(|m| m.material_run_count().is_some()) {
+        let runs: [&[u32]; COLUMNS] = std::array::from_fn(|i| {
+            mask.material_runs(
+                request.chunk_x * 16 + (i % 16) as i32,
+                request.chunk_z * 16 + (i / 16) as i32,
+            )
+            .expect("material runs cover target chunk")
+        });
+        let layers = runs
+            .iter()
+            .map(|r| {
+                if r[0] as u16 == 0 {
+                    (r[0] >> 16) as usize
+                } else {
+                    request.height as usize
+                }
+            })
+            .max()
+            .unwrap();
+        // Recycled chunk buffers can contain old buildings. Clear their upper
+        // air in bulk, rather than replaying every empty column voxel.
+        blocks[layers * COLUMNS..].fill(0);
+        let mut cursor: [usize; COLUMNS] = std::array::from_fn(|i| runs[i].len() - 1);
+        for (y, row) in blocks[..layers * COLUMNS]
+            .chunks_exact_mut(COLUMNS)
+            .enumerate()
+        {
+            for i in 0..COLUMNS {
+                while cursor[i] > 0 && y as u32 >= runs[i][cursor[i] - 1] >> 16 {
+                    cursor[i] -= 1;
+                }
+                row[i] = runs[i][cursor[i]] as u16;
+            }
+        }
+        return;
+    }
     let prepared: Vec<_> = columns
         .iter()
         .map(|&c| crate::profile::PreparedColumn::new(c, request.min_y, p))

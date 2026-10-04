@@ -50,6 +50,8 @@ pub struct RegistryProgram {
     pub terrain_cell: [u32; 2],
     #[serde(default)]
     pub surface_noises: [u32; 3],
+    #[serde(default)]
+    pub material_layers: bool,
 }
 fn unit_scale() -> f32 {
     1.0
@@ -120,7 +122,7 @@ impl RegistryProgram {
                 if n.op == 29 && n.a > 2 {
                     return Err("invalid GPU coordinate axis".into());
                 }
-                if !matches!(n.op,0..=27|29..=31|40..=53) {
+                if !matches!(n.op,0..=27|29..=31|40..=54) {
                     return Err("unknown GPU opcode".into());
                 }
             }
@@ -150,6 +152,9 @@ impl RegistryProgram {
         words[9..12].copy_from_slice(&p.surface_noises);
         words[3] = p.surface[0] as u32;
         words[4] = p.surface[1] as u32;
+        if p.material_layers {
+            words[4] |= 1 << 31;
+        }
         words[5] = p.surface[2] as u32;
         for (i, program) in p.programs.iter().enumerate() {
             words[12 + i * 8] = words.len() as u32;

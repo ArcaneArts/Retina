@@ -479,11 +479,18 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
     if top==1u {top_id=material.z;}else if top==2u {top_id=world.ids.w;}else if top==3u {top_id=world.ids.z;}
     if filler==1u {filler_id=material.z;}else if filler==3u {filler_id=world.ids.z;}
     if bytecode[0]>0u && (flags & (1u<<29u))==0u {
-        let slope=abs(registered_height_fast(point+vec2<f32>(4.0,0.0),request,request_index)-registered_height_fast(point-vec2<f32>(4.0,0.0),request,request_index))
+        var slope=abs(registered_height_fast(point+vec2<f32>(4.0,0.0),request,request_index)-registered_height_fast(point-vec2<f32>(4.0,0.0),request,request_index))
                   +abs(registered_height_fast(point+vec2<f32>(0.0,4.0),request,request_index)-registered_height_fast(point-vec2<f32>(0.0,4.0),request,request_index));
+        var material_depth=f32(depth);
+        if layered_materials() {
+            slope=max(abs(floor(registered_height_fast(point+vec2<f32>(1.0,0.0),request,request_index))-floor(registered_height_fast(point-vec2<f32>(1.0,0.0),request,request_index))),
+                      abs(floor(registered_height_fast(point+vec2<f32>(0.0,1.0),request,request_index))-floor(registered_height_fast(point-vec2<f32>(0.0,1.0),request,request_index))));
+            material_depth=f32(i32(program_noise(vec3<f32>(point.x,0.0,point.y),bytecode[9],request)*2.75+3.0+f32(h&65535u)/65535.0*0.25));
+            material_detail=vec4<f32>(f32(height-request.min_y),program_noise(vec3<f32>(point.x,0.0,point.y),bytecode[10],request),select(-2147483648.0,f32(sea_level),height<sea_level),f32(height-1)+material_depth-8.0);
+        }
         let band=f32(bitcast<i32>(filler<<24u)>>24);
-        let selected_top=run_program(3u+biome,vec3<f32>(point.x,f32(height-1),point.y),request,vec4<f32>(1.0,f32(depth),slope,band))[0];
-        let selected_filler=run_program(3u+biome,vec3<f32>(point.x,f32(height-3),point.y),request,vec4<f32>(3.0,f32(depth),slope,band))[0];
+        let selected_top=run_program(3u+biome,vec3<f32>(point.x,f32(height-1),point.y),request,vec4<f32>(1.0,material_depth,slope,band))[0];
+        let selected_filler=run_program(3u+biome,vec3<f32>(point.x,f32(height-3),point.y),request,vec4<f32>(3.0,material_depth,slope,band))[0];
         if selected_top>0.0 {top_id=u32(selected_top-1.0);}if selected_filler>0.0 {filler_id=u32(selected_filler-1.0);}
     }
     if (flags & ((1u<<29u)|(1u<<28u)))==((1u<<29u)|(1u<<28u)) {top_id=u32(world.biomes[filler].features.z);filler_id=top_id;}

@@ -21,9 +21,9 @@ class Report(c.Structure):
     _fields_ = [("generated", c.c_uint32), ("preserved", c.c_uint32)] + [(s, c.c_uint64) for s in ("gpu", "assembly", "write", "bytes")]
 class Snapshot(c.Structure):
     _fields_ = [("version", c.c_uint32), ("flags", c.c_uint32), ("chunks", c.c_uint64), ("columns", c.c_uint64),
-                ("jobs", c.c_uint64), ("nanos", c.c_uint64 * 20)]
+                ("jobs", c.c_uint64), ("nanos", c.c_uint64 * 21)]
 STAGES = ["queue", "encode", "wait_copy", "height", "sites", "columns", "cave_density", "cave_mask",
-          "structure_plan", "vegetation_plan", "ore_plan", "assembly", "geology", "cave_features", "vegetation", "structures", "snow", "nbt", "compress", "io"]
+          "structure_plan", "vegetation_plan", "ore_plan", "assembly", "geology", "cave_features", "vegetation", "structures", "snow", "nbt", "compress", "io", "materials"]
 class PipelineSnapshot(c.Structure):
     _fields_ = [("version", c.c_uint32), ("peak_in_flight", c.c_uint32)] + [(s, c.c_uint64) for s in
                 ("completed", "device_span_nanos", "device_gap_nanos", "unavailable_timestamp_pairs")]
@@ -42,6 +42,7 @@ def main():
     parser.add_argument("--warmups", type=int, default=1)
     parser.add_argument("--program-execution", choices=("auto", "interpreter", "specialized"), help="Override GPU program mode for matched diagnostics")
     parser.add_argument("--await-specialization", action="store_true", help="After measurement, await compilation and compare one regenerated region with its pre-warmup output")
+    parser.add_argument("--specialization-timeout", type=float, default=180, help="Seconds to await a real compilation result after measurements")
     args = parser.parse_args()
     args.out.mkdir(parents=True, exist_ok=False)
     lib = c.CDLL(str(args.library.resolve()))
@@ -133,7 +134,7 @@ def main():
         awaited=ProgramSnapshot();check(program(profile,c.byref(awaited)))
         wait_start=time.perf_counter()
         print(f"Awaiting specialization after measuring {len(regions)} regions; status={awaited.status}",flush=True)
-        while awaited.status==1 and time.perf_counter()-wait_start<180:
+        while awaited.status==1 and time.perf_counter()-wait_start<args.specialization_timeout:
             time.sleep(.1);check(program(profile,c.byref(awaited)))
         if awaited.status!=2: raise RuntimeError(f"Specialization did not become ready: status={awaited.status}")
         _,x,z=coords[0]

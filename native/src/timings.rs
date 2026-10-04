@@ -3,7 +3,7 @@
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Instant;
 
-pub const STAGES: usize = 20;
+pub const STAGES: usize = 21;
 pub const QUEUE: usize = 0;
 pub const ENCODE: usize = 1;
 pub const WAIT_COPY: usize = 2;
@@ -24,6 +24,7 @@ pub const SNOW: usize = 16;
 pub const NBT: usize = 17;
 pub const COMPRESS: usize = 18;
 pub const IO: usize = 19;
+pub const MATERIALS: usize = 20;
 
 #[repr(C)]
 #[derive(Default, Clone, Copy, Debug)]
@@ -80,7 +81,7 @@ impl Timings {
     }
     pub fn snapshot(&self) -> Snapshot {
         Snapshot {
-            version: 1,
+            version: 2,
             flags: self.flags.load(Ordering::Relaxed) as u32,
             chunks: self.chunks.load(Ordering::Relaxed),
             gpu_columns: self.gpu_columns.load(Ordering::Relaxed),

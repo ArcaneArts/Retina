@@ -44,7 +44,9 @@ finishing midway through a batch cannot change that batch's layout or pipelines.
 
 A single compiler thread builds world and cave pipelines in the background.
 Generated source is the cache key, with exact string equality preventing hash
-collisions from reusing unrelated code. Compatible profiles share pipelines while
+collisions from reusing unrelated code. The material-layer entrypoint flag is part
+of that identity, so retained profiles avoid compiling unused material pipelines.
+Compatible profiles share pipelines while
 binding their own resident inputs. Compilation errors are caught and logged.
 
 Normal `program_execution: "auto"` jobs use the GPU interpreter while compilation
@@ -102,5 +104,8 @@ Specialization preserves the exported graph's current semantics. Registered
 `slice` operations now retain their coordinate scopes; see
 [coordinate scopes](GPU_COORDINATE_SCOPES.md). Per-expression interpolation
 wrappers remain flattened into the shared final-density lattice approximation.
-Layered surfaces, aquifers and broader feature recipes also remain part of the
-active goal.
+Complete [material layers](GPU_MATERIAL_LAYERS.md) now use the same specialization
+path. Their first Terralith compilation measured about 200–208 seconds; automatic
+mode continues generating with the interpreter but runs more slowly until it is
+ready. Reducing that compilation and interpreter cost remains required, alongside
+aquifers, broader feature recipes and remaining density semantics.

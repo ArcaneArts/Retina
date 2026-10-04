@@ -6,9 +6,13 @@ aquifers; broader registered features and placement/provider support; cached
 specialized WGSL programs with better density semantics; and measured reductions
 in repeated Rust block scans. The first workstream, an initial Rust scan
 optimization, and cached WGSL specialization with horizontal field reuse are
-implemented so far. Registered coordinate slices now retain their scopes in both
+implemented so far. Complete GPU material runs now evaluate floor/ceiling depths,
+secondary surface noise and fluid context; see
+[material layers](GPU_MATERIAL_LAYERS.md) for the run format, DH base-column cache,
+validation, transfer costs and substantial cold-compilation cost.
+Registered coordinate slices now retain their scopes in both
 GPU execution paths; see [coordinate scopes](GPU_COORDINATE_SCOPES.md).
-Layered materials, aquifers, broader features, further graph
+Aquifers, broader features, further graph
 semantics and scan work remain required, along with final integrated validation,
 transfer-volume measurements and updated stage telemetry where new stages arise.
 

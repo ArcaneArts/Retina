@@ -26,6 +26,10 @@ pub(crate) struct Gpu {
     cave_nodes_pipeline: wgpu::ComputePipeline,
     cave_exterior_pipeline: wgpu::ComputePipeline,
     cave_mask_pipeline: wgpu::ComputePipeline,
+    material_counts_pipeline: wgpu::ComputePipeline,
+    material_prefix_blocks_pipeline: wgpu::ComputePipeline,
+    material_prefix_total_pipeline: wgpu::ComputePipeline,
+    material_emit_pipeline: wgpu::ComputePipeline,
     cave_layout: wgpu::BindGroupLayout,
     cave_profiles: HashMap<u32, wgpu::Buffer>,
     cave_buffers: Option<CaveBuffers>,
@@ -155,10 +159,11 @@ impl Gpu {
             label: Some("Retina GPU cave fields and mask"),
             source: wgpu::ShaderSource::Wgsl(
                 format!(
-                    "{}\n{}\n{}",
+                    "{}\n{}\n{}\n{}",
                     include_str!("caves.wgsl"),
                     include_str!("climate.wgsl"),
-                    include_str!("program.wgsl")
+                    include_str!("program.wgsl"),
+                    include_str!("materials.wgsl")
                 )
                 .into(),
             ),
@@ -171,7 +176,7 @@ impl Gpu {
                     visibility: wgpu::ShaderStages::COMPUTE,
                     ty: wgpu::BindingType::Buffer {
                         ty: wgpu::BufferBindingType::Storage {
-                            read_only: binding < 3 || binding == 5 || binding == 7,
+                            read_only: binding <= 2 || binding == 5 || binding == 7,
                         },
                         has_dynamic_offset: false,
                         min_binding_size: None,
@@ -198,6 +203,10 @@ impl Gpu {
         let cave_nodes_pipeline = cave_pipeline("cave_nodes");
         let cave_exterior_pipeline = cave_pipeline("cave_exterior");
         let cave_mask_pipeline = cave_pipeline("cave_mask");
+        let material_counts_pipeline = cave_pipeline("material_counts");
+        let material_prefix_blocks_pipeline = cave_pipeline("material_prefix_blocks");
+        let material_prefix_total_pipeline = cave_pipeline("material_prefix_total");
+        let material_emit_pipeline = cave_pipeline("material_emit");
         let sites_pipeline = pipeline("biome_sites");
         let biome_queries_pipeline = pipeline("biome_queries");
         let climate_pipeline = pipeline("climate_nodes");
@@ -214,7 +223,9 @@ impl Gpu {
         let requests = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Retina batched descriptors"),
             contents: &vec![0; MAX_BATCH * std::mem::size_of::<GpuRequest>()],
-            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+            usage: wgpu::BufferUsages::STORAGE
+                | wgpu::BufferUsages::COPY_DST
+                | wgpu::BufferUsages::COPY_SRC,
         });
         let buffer = |label, size, usage| {
             device.create_buffer(&wgpu::BufferDescriptor {
@@ -258,6 +269,10 @@ impl Gpu {
             cave_nodes_pipeline,
             cave_exterior_pipeline,
             cave_mask_pipeline,
+            material_counts_pipeline,
+            material_prefix_blocks_pipeline,
+            material_prefix_total_pipeline,
+            material_emit_pipeline,
             cave_layout,
             cave_profiles: HashMap::new(),
             cave_buffers: None,
@@ -514,12 +529,25 @@ impl Gpu {
         let quart_layers =
             ((requests[0].max_y - requests[0].min_y.div_euclid(4) * 4 + 3) / 4) as u64;
         let biome_words = (quart_width * quart_width * quart_layers).div_ceil(2);
+        let layered = cave_side > 0
+            && profile.is_some_and(|p| {
+                p.registry_program
+                    .as_ref()
+                    .is_some_and(|r| r.material_layers)
+            });
+        let material_columns = (cave_side * 16).pow(2) as u64;
+        let material_header_words = if layered {
+            4 + material_columns * 2 + material_columns.div_ceil(256) * 2
+        } else {
+            0
+        };
         let mask_size = if underground_probe {
             requests.len() as u64 * 4
         } else {
             (volume_words
                 + (surface_width as u64 * surface_width as u64).div_ceil(32)
-                + biome_words)
+                + biome_words
+                + material_header_words)
                 * 4
         };
         let node_side = requests[0].tile_side * 4 + 1;
@@ -596,6 +624,7 @@ impl Gpu {
                 slot.mask = Some(self.readback_buffer("Retina slot cave/biome mask", mask_size));
             }
         }
+        let mut materials = None;
         let mut measured = Vec::new();
         if profile.is_some_and(|p| p.registry_program.is_some()) {
             measured.push(timings::HEIGHT);
@@ -608,6 +637,9 @@ impl Gpu {
             measured.extend([timings::CAVE_DENSITY, timings::CAVE_MASK]);
         } else if underground_probe {
             measured.push(timings::CAVE_DENSITY);
+        }
+        if layered {
+            measured.push(timings::MATERIALS);
         }
         let timestamp_writes = |stage| {
             slot.timestamps
@@ -854,6 +886,63 @@ impl Gpu {
                     );
                 }
             }
+            if layered {
+                {
+                    let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                        label: Some("Retina GPU material run counts"),
+                        timestamp_writes: timestamp_writes(timings::MATERIALS),
+                    });
+                    pass.set_pipeline(cave_pipeline(
+                        "material_counts",
+                        &self.material_counts_pipeline,
+                    ));
+                    pass.set_bind_group(0, &cave_group, &[]);
+                    pass.dispatch_workgroups((material_columns as u32).div_ceil(64), 1, 1);
+                }
+                for (pipeline, groups) in [
+                    (
+                        &self.material_prefix_blocks_pipeline,
+                        (material_columns as u32).div_ceil(256),
+                    ),
+                    (&self.material_prefix_total_pipeline, 1),
+                ] {
+                    let mut pass =
+                        encoder.begin_compute_pass(&wgpu::ComputePassDescriptor::default());
+                    pass.set_pipeline(pipeline);
+                    pass.set_bind_group(0, &cave_group, &[]);
+                    pass.dispatch_workgroups(groups, 1, 1);
+                }
+                // Immutable GPU snapshots allow other submitted regions to overwrite
+                // the shared density buffers while this job waits for its exact run count.
+                let snapshot = |label, size| {
+                    self.device.create_buffer(&wgpu::BufferDescriptor {
+                        label: Some(label),
+                        size,
+                        usage: wgpu::BufferUsages::STORAGE
+                            | wgpu::BufferUsages::COPY_DST
+                            | wgpu::BufferUsages::COPY_SRC,
+                        mapped_at_creation: false,
+                    })
+                };
+                let columns = snapshot(
+                    "Retina material job columns",
+                    count as u64 * COLUMNS as u64 * std::mem::size_of::<Column>() as u64,
+                );
+                let mask = snapshot("Retina material job mask and run offsets", mask_size);
+                let requests = snapshot(
+                    "Retina material job descriptor",
+                    std::mem::size_of::<GpuRequest>() as u64,
+                );
+                encoder.copy_buffer_to_buffer(&self.output, 0, &columns, 0, columns.size());
+                encoder.copy_buffer_to_buffer(&buffers.mask, 0, &mask, 0, mask_size);
+                encoder.copy_buffer_to_buffer(&self.requests, 0, &requests, 0, requests.size());
+                materials = Some(MaterialPending {
+                    columns,
+                    mask,
+                    requests,
+                    pipeline: cave_pipeline("material_emit", &self.material_emit_pipeline).clone(),
+                });
+            }
             encoder.copy_buffer_to_buffer(
                 &buffers.mask,
                 0,
@@ -888,7 +977,7 @@ impl Gpu {
         timings.add(timings::ENCODE, encode_nanos);
         let wait_start = Instant::now();
         let mut job_timings = timings::Snapshot::default();
-        job_timings.version = 1;
+        job_timings.version = 2;
         job_timings.gpu_jobs = 1;
         job_timings.gpu_columns = column_count as u64;
         job_timings.nanos[timings::ENCODE] = encode_nanos;
@@ -915,14 +1004,146 @@ impl Gpu {
             query_bytes,
             measured,
             timings: job_timings,
+            materials,
         })
+    }
+    fn emit_materials(
+        &mut self,
+        job: &MaterialPending,
+        request: GpuRequest,
+        count: usize,
+        timings: &timings::Timings,
+        trace: &mut timings::Snapshot,
+    ) -> Result<Vec<u32>, String> {
+        let start = Instant::now();
+        let size = count as u64 * 4;
+        let buffer = self.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("Retina exact material runs"),
+            size: job.mask.size() + size,
+            usage: wgpu::BufferUsages::STORAGE
+                | wgpu::BufferUsages::COPY_DST
+                | wgpu::BufferUsages::COPY_SRC,
+            mapped_at_creation: false,
+        });
+        let group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("Retina material emission"),
+            layout: &self.cave_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: job.requests.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: job.columns.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: self.cave_profiles[&request.profile].as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: self
+                        .cave_buffers
+                        .as_ref()
+                        .unwrap()
+                        .nodes
+                        .as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 4,
+                    resource: buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 5,
+                    resource: self.profiles[&request.profile].2.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 6,
+                    resource: self.height_nodes.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 7,
+                    resource: self.profiles[&request.profile].1.as_entire_binding(),
+                },
+            ],
+        });
+        let out = self.readback_buffer("Retina compact material runs", size);
+        let timestamps = self.timestamp_support.then(|| self.create_timestamps());
+        let mut encoder = self
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
+        encoder.copy_buffer_to_buffer(&job.mask, 0, &buffer, 0, job.mask.size());
+        {
+            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("Retina GPU material run emission"),
+                timestamp_writes: timestamps.as_ref().map(|t| t.writes(0)),
+            });
+            pass.set_pipeline(&job.pipeline);
+            pass.set_bind_group(0, &group, &[]);
+            pass.dispatch_workgroups((request.padding * 16).pow(2).div_ceil(64), 1, 1);
+        }
+        encoder.copy_buffer_to_buffer(&buffer, job.mask.size(), &out, 0, size);
+        if let Some(t) = &timestamps {
+            encoder.resolve_query_set(&t.queries, 0..2, &t.resolve, 0);
+            encoder.copy_buffer_to_buffer(&t.resolve, 0, &t.readback, 0, 16);
+        }
+        let encode = start.elapsed().as_nanos() as u64;
+        timings.add(timings::ENCODE, encode);
+        trace.nanos[timings::ENCODE] += encode;
+        let submission = self.queue.submit([encoder.finish()]);
+        let mut mapping = Mapping::new(&out, size);
+        let mut query = timestamps.as_ref().map(|t| Mapping::new(&t.readback, 16));
+        self.device
+            .poll(wgpu::PollType::Wait {
+                submission_index: Some(submission),
+                timeout: Some(Duration::from_secs(30)),
+            })
+            .map_err(|e| format!("GPU material poll: {e}"))?;
+        mapping.check()?;
+        let words = {
+            let view = out
+                .slice(..size)
+                .get_mapped_range()
+                .map_err(|e| e.to_string())?;
+            bytemuck::cast_slice::<u8, u32>(&view).to_vec()
+        };
+        if let Some(m) = &mut query {
+            m.check()?;
+            let view = timestamps
+                .as_ref()
+                .unwrap()
+                .readback
+                .slice(..16)
+                .get_mapped_range()
+                .map_err(|e| e.to_string())?;
+            let values = bytemuck::cast_slice::<u8, u64>(&view);
+            if values[0] != 0 && values[1] >= values[0] {
+                let nanos = ((values[1] - values[0]) as f64
+                    * self.queue.get_timestamp_period() as f64) as u64;
+                timings.add(timings::MATERIALS, nanos);
+                trace.nanos[timings::MATERIALS] += nanos;
+                // Emission can follow another pending job's first submission.
+                // Count its span, without labelling that intervening job as idle.
+                self.pipeline.device(nanos, 0);
+                self.last_device_tick = Some(self.last_device_tick.unwrap_or(0).max(values[1]));
+            } else {
+                self.pipeline.unavailable();
+            }
+        }
+        self.pipeline.transfer(
+            request.profile,
+            0,
+            size + if timestamps.is_some() { 16 } else { 0 },
+        );
+        Ok(words)
     }
     fn create_timestamps(&self) -> Timestamps {
         Timestamps {
             queries: self.device.create_query_set(&wgpu::QuerySetDescriptor {
                 label: Some("Retina slot pass timings"),
                 ty: wgpu::QueryType::Timestamp,
-                count: 10,
+                count: 12,
             }),
             resolve: self.device.create_buffer(&wgpu::BufferDescriptor {
                 label: Some("Retina slot timestamp resolve"),
@@ -930,7 +1151,7 @@ impl Gpu {
                 usage: wgpu::BufferUsages::QUERY_RESOLVE | wgpu::BufferUsages::COPY_SRC,
                 mapped_at_creation: false,
             }),
-            readback: self.readback_buffer("Retina slot timestamp readback", 80),
+            readback: self.readback_buffer("Retina slot timestamp readback", 96),
         }
     }
     fn readback_buffer(&self, label: &str, size: u64) -> wgpu::Buffer {
@@ -974,7 +1195,7 @@ impl Gpu {
                 .map_err(|e| e.to_string())?;
             bytemuck::cast_slice::<u8, Column>(&mapped).to_vec()
         };
-        let mask = if let Some(mapping) = &mut pending.mask_map {
+        let mut mask = if let Some(mapping) = &mut pending.mask_map {
             mapping.check()?;
             let words = {
                 let mapped = pending
@@ -1033,7 +1254,7 @@ impl Gpu {
                 last = last.max(end);
                 let nanos = ((end - start) as f64 * period) as u64;
                 timings.add(*stage, nanos);
-                pending.timings.nanos[*stage] = nanos;
+                pending.timings.nanos[*stage] += nanos;
             }
             if last > 0 {
                 let gap = self
@@ -1045,6 +1266,20 @@ impl Gpu {
                     (gap as f64 * period) as u64,
                 );
             }
+        }
+        if let (Some(materials), Some(mask)) = (&pending.materials, &mut mask) {
+            let count = mask
+                .material_run_count()
+                .ok_or("missing GPU material run header")?;
+            let runs = self.emit_materials(
+                materials,
+                pending.request,
+                count,
+                timings,
+                &mut pending.timings,
+            )?;
+            mask.words.extend(runs);
+            mask.validate_material_runs()?;
         }
         drop(pending.columns_map);
         drop(pending.mask_map);
@@ -1139,6 +1374,13 @@ pub(crate) struct PendingSample {
     query_bytes: u64,
     measured: Vec<usize>,
     timings: timings::Snapshot,
+    materials: Option<MaterialPending>,
+}
+struct MaterialPending {
+    columns: wgpu::Buffer,
+    mask: wgpu::Buffer,
+    requests: wgpu::Buffer,
+    pipeline: wgpu::ComputePipeline,
 }
 impl PendingSample {
     fn ready(&mut self) -> bool {
@@ -1160,7 +1402,8 @@ mod mapping_tests {
                 &gpu.layout,
                 &gpu.cave_layout,
                 "invalid WGSL",
-                0
+                0,
+                false
             )
             .is_err()
         );

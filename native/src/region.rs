@@ -20,6 +20,8 @@ const SECTOR: usize = 4096;
 const HEADER: usize = SECTOR * 2;
 static TEMP_ID: AtomicU64 = AtomicU64::new(0);
 static ASSEMBLERS: OnceLock<Result<rayon::ThreadPool, String>> = OnceLock::new();
+#[path = "material_cache.rs"]
+mod material_cache;
 
 #[repr(C)]
 #[derive(Default, Debug, Clone, Copy)]
@@ -169,6 +171,7 @@ fn generate_region_inner(
     detail: Option<&mut timings::Snapshot>,
 ) -> Result<RegionReport, String> {
     request.validate()?;
+    let cache_materials = output.is_some();
     if request.min_y % 16 != 0
         || !request.height.is_multiple_of(16)
         || request.min_y / 16 < -128
@@ -276,10 +279,14 @@ fn generate_region_inner(
         let decorated = profile
             .as_deref()
             .is_some_and(|p| !p.decorations.is_empty());
-        let (field, cave_mask) = if profile
-            .as_deref()
-            .is_some_and(|p| decorated || !p.geology.ores.is_empty() || p.geology.caves_enabled(p))
-        {
+        let (field, cave_mask) = if profile.as_deref().is_some_and(|p| {
+            decorated
+                || !p.geology.ores.is_empty()
+                || p.geology.caves_enabled(p)
+                || p.registry_program
+                    .as_ref()
+                    .is_some_and(|r| r.material_layers)
+        }) {
             engine.terrain_field_profiled(origin, 32, Some(&mut gpu_trace))?
         } else {
             (
@@ -301,6 +308,14 @@ fn generate_region_inner(
             }
         }
         report.gpu_nanos = start.elapsed().as_nanos() as u64;
+        if cache_materials {
+            if let Some(mask) = cave_mask
+                .as_deref()
+                .filter(|m| m.material_run_count().is_some())
+            {
+                parallel_nanos += material_cache::write(path, origin, mask, &timings)?;
+            }
+        }
         // Structure planning already updates the session counter internally.
         let structure_plans = job.time(timings::STRUCTURE_PLAN, || {
             crate::structures::plans(engine, origin, 32)
@@ -412,7 +427,7 @@ fn generate_region_inner(
                     })
                 })
                 .collect();
-            parallel_nanos = parallel_start.elapsed().as_nanos() as u64;
+            parallel_nanos += parallel_start.elapsed().as_nanos() as u64;
             records
         })
     };
@@ -481,6 +496,7 @@ fn generate_region_inner(
         detail.gpu_jobs = gpu_trace.gpu_jobs;
         detail.nanos[..timings::STRUCTURE_PLAN]
             .copy_from_slice(&gpu_trace.nanos[..timings::STRUCTURE_PLAN]);
+        detail.nanos[timings::MATERIALS] = gpu_trace.nanos[timings::MATERIALS];
         let gpu_host: u64 = detail.nanos[..timings::HEIGHT].iter().sum();
         // Includes field-cache copies and host bookkeeping within the measured GPU phase.
         detail.nanos[timings::WAIT_COPY] += report.gpu_nanos.saturating_sub(gpu_host);

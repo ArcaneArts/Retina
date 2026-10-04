@@ -37,6 +37,7 @@ final class TemporaryRegions implements AutoCloseable {
     private final String biome;
     private final GenerationMetrics metrics;
     private final BiomeTerrainProfile profile;
+    private final boolean layeredMaterials;
     private final Path folder;
     private final int capacity;
     private final int memoryCapacity;
@@ -63,6 +64,9 @@ final class TemporaryRegions implements AutoCloseable {
         try { folder = Files.createTempDirectory("retina-preview-"); }
         catch (IOException error) { throw new UncheckedIOException(error); }
         var ids = profile == null ? null : JsonParser.parseString(profile.json()).getAsJsonObject();
+        layeredMaterials = ids != null && ids.has("registry_program")
+                && ids.getAsJsonObject("registry_program").has("material_layers")
+                && ids.getAsJsonObject("registry_program").get("material_layers").getAsBoolean();
         stone = ids == null ? 1 : ids.get("stone").getAsInt();
         water = ids == null ? 0 : ids.get("water").getAsInt();
         bedrock = ids == null ? 1 : ids.get("bedrock").getAsInt();
@@ -85,7 +89,9 @@ final class TemporaryRegions implements AutoCloseable {
         final Path path;
         final CompletableFuture<NativeTerrain.RegionReport> generated = new CompletableFuture<>();
         final Path columnPath;
+        final Path materialPath;
         NativeTerrain.Columns columns;
+        BaseMaterialCache baseMaterials;
         RegionFileStorage storage;
         int pins;
         boolean retired;
@@ -94,6 +100,7 @@ final class TemporaryRegions implements AutoCloseable {
             origin = new ChunkPos(position.getRegionX() * 32, position.getRegionZ() * 32);
             path = folder.resolve("r." + position.getRegionX() + "." + position.getRegionZ() + ".mca");
             columnPath = folder.resolve("r." + position.getRegionX() + "." + position.getRegionZ() + ".columns.z");
+            materialPath = folder.resolve("r." + position.getRegionX() + "." + position.getRegionZ() + ".materials");
         }
         synchronized CompoundTag read(ChunkPos position) throws IOException {
             if (storage == null) storage = new RegionFileStorage(new RegionStorageInfo("retina-preview", Level.OVERWORLD, "chunk"), folder, false);
@@ -122,14 +129,22 @@ final class TemporaryRegions implements AutoCloseable {
         }
         synchronized void cool() {
             columns = null;
+            try { if (baseMaterials != null) baseMaterials.close(); }
+            catch (IOException error) { Retina.LOGGER.warn("Could not close temporary Retina materials {}", materialPath, error); }
+            baseMaterials = null;
             try { if (storage != null) storage.close(); }
             catch (IOException error) { Retina.LOGGER.warn("Could not close temporary Retina region {}", path, error); }
             storage = null;
         }
         synchronized void dispose() {
             cool();
-            try { Files.deleteIfExists(path); Files.deleteIfExists(columnPath); }
+            try { Files.deleteIfExists(path); Files.deleteIfExists(columnPath); Files.deleteIfExists(materialPath); }
             catch (IOException error) { Retina.LOGGER.warn("Could not remove temporary Retina region {}", path, error); }
+        }
+
+        synchronized BlockState[] baseColumn(ChunkPos position, int index) throws IOException {
+            if (baseMaterials == null) baseMaterials = new BaseMaterialCache(materialPath, settings, origin);
+            return baseMaterials.column(position,index,profile.materials());
         }
 
     }
@@ -257,7 +272,12 @@ final class TemporaryRegions implements AutoCloseable {
         return output;
     }
 
-    BlockState[] baseColumn(NativeTerrain.Columns columns, int index) {
+    BlockState[] baseColumn(ChunkPos position, NativeTerrain.Columns columns, int index) {
+        if (layeredMaterials) {
+            try (var lease = acquire(position)) {
+                lease.data();return lease.entry.baseColumn(position,index);
+            } catch (IOException error) { throw new UncheckedIOException(error); }
+        }
         int ground = columns.heights()[index], packed = columns.packed()[index];
         var states = new BlockState[settings.height()];
         boolean lake = (packed & (1 << 29)) != 0;

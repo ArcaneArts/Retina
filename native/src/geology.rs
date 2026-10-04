@@ -183,18 +183,35 @@ impl GeologyProfile {
     pub fn gpu_bytes(&self, profile: &WorldProfile) -> Vec<u8> {
         let mut bytes = bytemuck::cast_slice(&[
             profile.biomes.len() as u32,
+            u32::from(self.caves_enabled(profile) && profile.registry_program.is_some()),
             u32::from(profile.registry_program.is_some()),
-            0,
             0,
         ])
         .to_vec();
-        for noise in &self.cave_noises {
+        bytes.extend_from_slice(bytemuck::cast_slice(&[
+            profile.stone as u32,
+            profile.deepslate as u32,
+            profile.bedrock as u32,
+            profile.water as u32,
+            profile.ice as u32,
+            self.lava as u32,
+            self.lava_level as u32,
+            u32::from(
+                self.carveable
+                    .get(profile.stone as usize)
+                    .copied()
+                    .unwrap_or(false),
+            ),
+        ]));
+        for channel in 0..6 {
             let mut data = vec![0u8; 144];
-            data[..4].copy_from_slice(&noise.frequency.to_le_bytes());
-            data[4..8].copy_from_slice(&noise.amplitude.to_le_bytes());
-            data[8..12].copy_from_slice(&(noise.modifiers.len() as u32).to_le_bytes());
-            for (i, value) in noise.modifiers.iter().enumerate() {
-                data[16 + i * 4..20 + i * 4].copy_from_slice(&value.to_le_bytes());
+            if let Some(noise) = self.cave_noises.get(channel) {
+                data[..4].copy_from_slice(&noise.frequency.to_le_bytes());
+                data[4..8].copy_from_slice(&noise.amplitude.to_le_bytes());
+                data[8..12].copy_from_slice(&(noise.modifiers.len() as u32).to_le_bytes());
+                for (i, value) in noise.modifiers.iter().enumerate() {
+                    data[16 + i * 4..20 + i * 4].copy_from_slice(&value.to_le_bytes());
+                }
             }
             bytes.extend(data);
         }
@@ -259,6 +276,93 @@ pub struct CaveMask {
     pub words: Vec<u32>,
 }
 impl CaveMask {
+    fn base_words(&self) -> usize {
+        let surface = self.width + 30;
+        let quart = surface / 4;
+        let layers =
+            ((self.min_y + self.height as i32 - self.min_y.div_euclid(4) * 4 + 3) / 4) as usize;
+        (self.width * self.width * self.height as usize).div_ceil(32)
+            + (surface * surface).div_ceil(32)
+            + (quart * quart * layers).div_ceil(2)
+    }
+    pub(crate) fn material_run_count(&self) -> Option<usize> {
+        let at = self.base_words();
+        if self.words.get(at) != Some(&0x52554e53) {
+            return None;
+        }
+        self.words.get(at + 3).map(|v| *v as usize)
+    }
+    pub(crate) fn material_runs(&self, x: i32, z: i32) -> Option<&[u32]> {
+        let at = self.base_words();
+        if self.words.get(at) != Some(&0x52554e53) {
+            return None;
+        }
+        let width = self.words[at + 1] as usize;
+        let count = width * width;
+        let groups = count.div_ceil(256);
+        let x = x - (self.origin_x + 1);
+        let z = z - (self.origin_z + 1);
+        if x < 0 || z < 0 || x as usize >= width || z as usize >= width {
+            return None;
+        }
+        let index = z as usize * width + x as usize;
+        let length = self.words[at + 4 + index * 2] as usize;
+        let start = self.words[at + 5 + index * 2] as usize
+            + self.words[at + 4 + count * 2 + groups + index / 256] as usize;
+        self.words.get(
+            at + 4 + count * 2 + groups * 2 + start
+                ..at + 4 + count * 2 + groups * 2 + start + length,
+        )
+    }
+    pub(crate) fn validate_material_runs(&self) -> Result<(), String> {
+        let at = self.base_words();
+        let header = self
+            .words
+            .get(at..at + 4)
+            .ok_or("missing GPU material run header")?;
+        if header[0] != 0x52554e53 {
+            return Err("invalid GPU material run header".into());
+        }
+        let width = self.words[at + 1] as usize;
+        let count = width * width;
+        let groups = count.div_ceil(256);
+        let offset = at + 4 + count * 2 + groups * 2;
+        let total = self.words[at + 3] as usize;
+        if width + 2 != self.width
+            || self.words[at + 2] as usize != count
+            || self.words.len() != offset + total
+        {
+            return Err("invalid GPU material run dimensions".into());
+        }
+        let mut expected_start = 0;
+        for index in 0..count {
+            let length = self.words[at + 4 + index * 2] as usize;
+            let start = self.words[at + 5 + index * 2] as usize
+                + self.words[at + 4 + count * 2 + groups + index / 256] as usize;
+            if start != expected_start {
+                return Err("noncontiguous GPU material runs".into());
+            }
+            let Some(runs) = self.words.get(offset + start..offset + start + length) else {
+                return Err("invalid GPU material run range".into());
+            };
+            let mut previous = self.height;
+            for run in runs {
+                let y = run >> 16;
+                if y >= previous {
+                    return Err("unordered GPU material runs".into());
+                }
+                previous = y;
+            }
+            if previous != 0 || runs.is_empty() {
+                return Err("incomplete GPU material runs".into());
+            }
+            expected_start += length;
+        }
+        if expected_start != total {
+            return Err("incomplete GPU material payload".into());
+        }
+        Ok(())
+    }
     /// Packed GPU quart biome IDs, including the complete horizontal decoration/ore halo.
     pub fn biome(&self, x: i32, y: i32, z: i32) -> Option<u16> {
         let surface_width = self.width + 30;

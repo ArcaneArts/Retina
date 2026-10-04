@@ -9,7 +9,7 @@ struct Column { height: i32, packed: u32, materials: u32 }
 struct NoiseProfile { frequency: f32, amplitude: f32, count: u32, padding: u32, modifiers: array<f32,32> }
 struct Carver { range: vec4<f32>, shape: vec4<f32>, detail: vec4<f32>, variation: vec4<f32>, length: vec4<f32>, axis: vec4<f32> }
 struct CaveBiome { carvers: array<Carver,4>, climate: vec4<f32>, selection: vec4<f32> }
-struct CaveProfile { globals: vec4<u32>, noises: array<NoiseProfile,6>, biomes: array<CaveBiome> }
+struct CaveProfile { globals: vec4<u32>, base: array<vec4<u32>,2>, noises: array<NoiseProfile,6>, biomes: array<CaveBiome> }
 @group(0) @binding(0) var<storage,read> requests: array<Request>;
 @group(0) @binding(1) var<storage,read> columns: array<Column>;
 @group(0) @binding(2) var<storage,read> caves: CaveProfile;
@@ -104,7 +104,7 @@ fn biome_at(x: u32, y: i32, z: u32, column: Column, r: Request) -> u32 {
     if y >= column.height-12 { return surface; }
     let seed = r.seed_low ^ hash(r.seed_high);
     let point = vec3<f32>(f32(r.origin_x+i32(x)),f32(y),f32(r.origin_z+i32(z)));
-    if caves.globals.y>0u && climate_table.count.z>climate_table.count.y {
+    if caves.globals.z>0u && climate_table.count.z>climate_table.count.y {
         let actual=run_program(0u,point,r,vec4<f32>(0.0));
         return climate_search(actual,false,true,false,surface,1e20);
     }

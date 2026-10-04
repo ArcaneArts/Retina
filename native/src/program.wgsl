@@ -1,6 +1,9 @@
 // Registry DAG interpreter. The only per-job inputs are coordinates and seed.
 @group(0) @binding(5) var<storage,read> bytecode: array<u32>;
 @group(0) @binding(6) var<storage,read_write> surface_nodes: array<f32>;
+// Per-invocation material details: ceiling depth, secondary noise, fluid height, preliminary floor.
+var<private> material_detail: vec4<f32>;
+fn layered_materials()->bool {return (bytecode[4]&0x80000000u)!=0u;}
 fn program_noise(point:vec3<f32>,index:u32,request:Request)->f32 {
     let at=bytecode[1]+index*37u;
     var frequency=bitcast<f32>(bytecode[at]);let amplitude=bitcast<f32>(bytecode[at+1u]);
@@ -80,10 +83,10 @@ fn run_program(program:u32,point:vec3<f32>,request:Request,context:vec4<f32>)->a
             case 43u:{result=select(0.0,1.0,values[a]==0.0);}
             case 44u:{result=select(0.0,1.0,values[a]>=p.x && values[a]<=p.y);}
             // context: stone depth, surface depth, local slope, terracotta offset.
-            case 45u:{result=select(0.0,1.0,a==1u && context.x<=1.0+p.x+select(0.0,context.y,b==1u)+p.y*0.5);}
+            case 45u:{if layered_materials() {let depth=select(material_detail.x,context.x,a==1u);let secondary=f32(i32((material_detail.y+1.0)*0.5*p.y));result=select(0.0,1.0,depth<=1.0+p.x+select(0.0,context.y,b==1u)+secondary);}else{result=select(0.0,1.0,a==1u && context.x<=1.0+p.x+select(0.0,context.y,b==1u)+p.y*0.5);}}
             case 46u:{
                 let water=f32(bitcast<i32>(bytecode[8]));let surface=point.y+context.x;
-                result=select(0.0,1.0,surface>=water || point.y+select(0.0,context.x,a==1u)>=water+p.x+context.y*p.y);
+                if layered_materials(){result=select(0.0,1.0,material_detail.z==-2147483648.0 || point.y+select(0.0,context.x,a==1u)>=material_detail.z+p.x+context.y*p.y);}else{result=select(0.0,1.0,surface>=water || point.y+select(0.0,context.x,a==1u)>=water+p.x+context.y*p.y);}
             }
             case 47u:{result=select(0.0,1.0,point.y+select(0.0,context.x,a==1u)>=p.x+context.y*p.y);}
             case 48u:{let h=cell_hash(vec2<i32>(point.xz),request.seed_low+u32(program)*7919u,request.seed_high);let chance=f32(h&65535u)/65535.0;result=select(0.0,1.0,chance<clamp((p.y-point.y)/max(p.y-p.x,1.0),0.0,1.0));}
@@ -113,6 +116,7 @@ fn run_program(program:u32,point:vec3<f32>,request:Request,context:vec4<f32>)->a
                 }
             }
 
+            case 54u:{result=select(1.0,select(0.0,1.0,point.y>=material_detail.w),layered_materials());}
             default:{}
         }
         values[i]=result;

@@ -601,10 +601,12 @@ impl TerrainEngine {
         }
         request.validate()?;
         let profile = self.profile(request.reserved)?;
-        if !profile
-            .as_deref()
-            .is_some_and(|p| p.geology.caves_enabled(p))
-        {
+        if !profile.as_deref().is_some_and(|p| {
+            p.geology.caves_enabled(p)
+                || p.registry_program
+                    .as_ref()
+                    .is_some_and(|r| r.material_layers)
+        }) {
             return Ok((self.decoration_field(request, side)?, None));
         }
         let key = CacheKey::from(request);
@@ -736,7 +738,12 @@ impl TerrainEngine {
         let profile = self.profile(request.reserved)?;
         let timings = self.timings(request.reserved);
         let columns = if let Some(p) = profile.as_deref().filter(|p| {
-            !p.decorations.is_empty() || !p.geology.ores.is_empty() || p.geology.caves_enabled(p)
+            !p.decorations.is_empty()
+                || !p.geology.ores.is_empty()
+                || p.geology.caves_enabled(p)
+                || p.registry_program
+                    .as_ref()
+                    .is_some_and(|r| r.material_layers)
         }) {
             let (field, mask) = self.terrain_field(request, 1)?;
             let placements = timings.time(timings::VEGETATION_PLAN, || {
@@ -1193,8 +1200,32 @@ pub unsafe extern "C" fn retina_generate_column_u16(
         let request = unsafe { *request };
         let engine = shared_engine()?;
         let profile = engine.profile(request.reserved)?;
-        let column = engine.sample_columns(&[request])?[column as usize];
         let output = unsafe { std::slice::from_raw_parts_mut(output, request.height as usize) };
+        if profile.as_deref().is_some_and(|p| {
+            p.registry_program
+                .as_ref()
+                .is_some_and(|r| r.material_layers)
+        }) {
+            let (_, mask) = engine.terrain_field(request, 1)?;
+            let runs = mask
+                .as_ref()
+                .and_then(|m| {
+                    m.material_runs(
+                        request.chunk_x * 16 + (column % 16) as i32,
+                        request.chunk_z * 16 + (column / 16) as i32,
+                    )
+                })
+                .ok_or("GPU material column missing")?;
+            let mut cursor = runs.len() - 1;
+            for (y, block) in output.iter_mut().enumerate() {
+                while cursor > 0 && y as u32 >= runs[cursor - 1] >> 16 {
+                    cursor -= 1;
+                }
+                *block = runs[cursor] as u16;
+            }
+            return Ok(());
+        }
+        let column = engine.sample_columns(&[request])?[column as usize];
         for (layer, block) in output.iter_mut().enumerate() {
             *block = column.material(
                 request.min_y + layer as i32,
@@ -1487,11 +1518,11 @@ mod tests {
         // ChunkRequest ABI above remains unchanged.
         assert_eq!(std::mem::size_of::<GpuRequest>(), 64);
         assert_eq!(std::mem::offset_of!(GpuRequest, density_offset), 48);
-        assert_eq!(std::mem::size_of::<timings::Snapshot>(), 192);
+        assert_eq!(std::mem::size_of::<timings::Snapshot>(), 200);
         assert_eq!(std::mem::offset_of!(timings::Snapshot, nanos), 32);
         assert_eq!(std::mem::size_of::<region::RegionReport>(), 40);
         assert_eq!(std::mem::offset_of!(region::RegionReport, gpu_nanos), 8);
-        assert_eq!(std::mem::size_of::<region::DetailedRegionReport>(), 232);
+        assert_eq!(std::mem::size_of::<region::DetailedRegionReport>(), 240);
         assert_eq!(
             std::mem::offset_of!(region::DetailedRegionReport, stages),
             40

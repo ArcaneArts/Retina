@@ -90,7 +90,7 @@ tasks.register('nativeGpuTest', Exec) {
 tasks.register('gpuTest', JavaExec) {
     group = 'verification'
     description = 'Test the GPU pipeline and Java/Rust bridge with parallel requests.'
-    dependsOn 'nativeGpuTest', 'nativeOreGpuTest', 'nativeCoordinateGpuTest', 'gpuTestClasses'
+    dependsOn 'nativeGpuTest', 'nativeOreGpuTest', 'nativeCoordinateGpuTest', 'materialTest', 'gpuTestClasses'
     classpath = sourceSets.gpuTest.runtimeClasspath
     mainClass = 'art.arcane.retina.worldgen.NativeTerrainIntegrationTest'
     javaLauncher = javaToolchains.launcherFor {
@@ -116,6 +116,16 @@ tasks.register('coordinateTest', JavaExec) {
     dependsOn 'gpuTestClasses'
     classpath = sourceSets.gpuTest.runtimeClasspath
     mainClass = 'art.arcane.retina.worldgen.NativeCoordinateIntegrationTest'
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
+    jvmArgs '--enable-native-access=ALL-UNNAMED'
+}
+
+tasks.register('materialTest', JavaExec) {
+    group = 'verification'
+    description = 'Compare GPU vertical material runs with Minecraft material evaluators.'
+    dependsOn 'gpuTestClasses'
+    classpath = sourceSets.gpuTest.runtimeClasspath
+    mainClass = 'art.arcane.retina.worldgen.NativeMaterialIntegrationTest'
     javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
     jvmArgs '--enable-native-access=ALL-UNNAMED'
 }

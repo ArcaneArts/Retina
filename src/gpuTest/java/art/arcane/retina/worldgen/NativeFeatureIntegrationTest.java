@@ -109,7 +109,7 @@ public final class NativeFeatureIntegrationTest {
                     var box=bounds.computeIfAbsent(key,k->new int[]{x,z,x,z});
                     box[0]=Math.min(box[0],x);box[1]=Math.min(box[1],z);box[2]=Math.max(box[2],x);box[3]=Math.max(box[3],z);
                     var old = levels.putIfAbsent(key, level); require(old == null || old == level, "GPU lake waterline is flat across chunk borders");
-                    var generated = cache.baseColumn(columns,i);
+                    var generated = cache.baseColumn(pos,columns,i);
                     require(generated[level + 63].is(lava ? Blocks.LAVA : Blocks.WATER), "lake contains registered fluid");
                     require(!generated[columns.heights()[i] + 63].isAir() && generated[columns.heights()[i] + 63].getFluidState().isEmpty(), "lake has a solid basin floor");
                     if (compared < 24) {
