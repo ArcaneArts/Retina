@@ -12,6 +12,10 @@ transfer-volume measurements and updated stage telemetry where new stages arise.
 
 See [GPU program specialization](GPU_PROGRAM_SPECIALIZATION.md) for the compiler,
 resident horizontal cache, startup behavior and its validation.
+The [shoreline correction](SHORELINES.md) adds a resident coastal index and GPU
+height-neighborhood checks to align registered coastal climates with the actual
+approximated terrain, preventing disconnected inland beach selection. Its
+fidelity checks and separate twenty-region cost measurements are documented there.
 
 ## World-preset registry lifecycle
 

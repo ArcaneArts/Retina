@@ -279,7 +279,7 @@ impl Gpu {
             compiler,
             specialized: HashMap::new(),
         };
-        gpu.add_profile(0, &vec![0; 672], &[0; 224], &[0; 32]);
+        gpu.add_profile(0, &vec![0; 672], &[0; 240], &[0; 32]);
         Ok(gpu)
     }
 
@@ -389,6 +389,14 @@ impl Gpu {
         let surface_probe = requests[0].padding & (1 << 31) != 0;
         let underground_probe = requests[0].padding & (1 << 30) != 0;
         let sparse = surface_probe || underground_probe;
+        let align_shores = profile.is_some_and(|p| {
+            p.registry_program
+                .as_ref()
+                .is_some_and(|program| program.surface[2] == 0)
+                && p.climate_targets
+                    .iter()
+                    .any(|t| p.biomes[t.biome as usize].flags & 64 != 0)
+        });
         let profile_id = requests[0].profile;
         if !self.profiles.contains_key(&profile_id) {
             self.add_profile(
@@ -433,9 +441,15 @@ impl Gpu {
             |entry, fallback| specialized.as_ref().map_or(fallback, |p| p.cave(entry));
         let density_program = profile
             .and_then(|p| p.registry_program.as_ref())
-            .filter(|p| p.surface[2] == 0 && !surface_probe);
+            .filter(|p| p.surface[2] == 0 && (!surface_probe || align_shores));
         let horizontal_fields = specialized.as_ref().map_or(0, |p| p.horizontal_fields);
         let mut gpu_requests = requests.to_vec();
+        let guard = if align_shores { 16 } else { 4 };
+        if align_shores {
+            for request in &mut gpu_requests {
+                request.padding |= 1 << 28;
+            }
+        }
         let mut density_dispatch = (0u32, 0u32);
         let mut lake_dispatch = 0u32;
         let mut surface_dispatch = 0u32;
@@ -450,16 +464,16 @@ impl Gpu {
                 };
                 let guard_x = request
                     .origin_x
-                    .checked_sub(4)
+                    .checked_sub(guard)
                     .ok_or("GPU density guard X overflows block coordinates")?;
                 let guard_z = request
                     .origin_z
-                    .checked_sub(4)
+                    .checked_sub(guard)
                     .ok_or("GPU density guard Z overflows block coordinates")?;
                 let remainder = guard_x
                     .rem_euclid(sx as i32)
                     .max(guard_z.rem_euclid(sx as i32)) as u64;
-                let side = (width as u64 + 8 + remainder).div_ceil(sx as u64) + 1;
+                let side = (width as u64 + 2 * guard as u64 + remainder).div_ceil(sx as u64) + 1;
                 let bottom = (request.min_y as i64).div_euclid(sy as i64) * sy as i64;
                 let layers = (request.max_y as i64 - bottom) as u64;
                 let layers = layers.div_ceil(sy as u64) + 1;
@@ -469,7 +483,7 @@ impl Gpu {
                 request.density_step_xz = sx;
                 request.density_step_y = sy;
                 floats += side * side * layers;
-                let surface_width = width + 8;
+                let surface_width = width + 2 * guard as u32;
                 floats += (surface_width * surface_width) as u64;
                 surface_dispatch = surface_dispatch.max(surface_width * surface_width);
                 let lake_remainder = request
@@ -651,7 +665,7 @@ impl Gpu {
                 label: Some("Retina registered surface and climate lattice"),
                 timestamp_writes: writes,
             });
-            pass.set_pipeline(if surface_probe {
+            pass.set_pipeline(if surface_probe && !align_shores {
                 world_pipeline("climate_nodes", &self.climate_pipeline)
             } else {
                 world_pipeline("height_nodes", &self.height_pipeline)
@@ -681,7 +695,7 @@ impl Gpu {
             pass.set_bind_group(0, group, &[]);
             pass.dispatch_workgroups(3, requests.len() as u32, 1);
         }
-        if density_program.is_some() {
+        if density_program.is_some() && !surface_probe {
             let mut writes = timestamp_writes(timings::COLUMNS);
             if let Some(ref mut writes) = writes {
                 writes.end_of_pass_write_index = None;
@@ -697,7 +711,7 @@ impl Gpu {
             pass.set_bind_group(0, group, &[]);
             pass.dispatch_workgroups(lake_dispatch.div_ceil(64), requests.len() as u32, 1);
         }
-        if density_program.is_some() {
+        if density_program.is_some() && !surface_probe {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
                 label: Some("Retina parallel lake density probes"),
                 timestamp_writes: None,
@@ -710,7 +724,7 @@ impl Gpu {
                 requests.len() as u32,
             );
         }
-        if density_program.is_some() {
+        if density_program.is_some() && !surface_probe {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
                 label: Some("Retina shared lake level extraction"),
                 timestamp_writes: None,
@@ -721,7 +735,7 @@ impl Gpu {
         }
         {
             let mut writes = timestamp_writes(timings::COLUMNS);
-            if density_program.is_some() {
+            if density_program.is_some() && !surface_probe {
                 if let Some(ref mut writes) = writes {
                     writes.beginning_of_pass_write_index = None;
                 }
@@ -730,7 +744,7 @@ impl Gpu {
                 label: Some("Retina interpolated column pass"),
                 timestamp_writes: writes,
             });
-            pass.set_pipeline(if surface_probe {
+            pass.set_pipeline(if surface_probe && !align_shores {
                 world_pipeline("biome_queries", &self.biome_queries_pipeline)
             } else {
                 world_pipeline("main", &self.columns_pipeline)

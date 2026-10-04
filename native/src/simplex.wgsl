@@ -136,7 +136,7 @@ fn biome_sites(@builtin(global_invocation_id) id: vec3<u32>) {
     var best = 1e20;
     var biome = 0u;
     for (var index = 0u; index < world.ids.x; index++) {
-        if (world.biomes[index].materials.w & 16u) != 0u || world.biomes[index].terrain.w > 0.5 { continue; }
+        if (world.biomes[index].materials.w & 16u) != 0u || world.biomes[index].terrain.w > 0.5 || (climate_table.count.x>0u && (world.biomes[index].materials.w&64u)!=0u) { continue; }
         let difference = climate - world.biomes[index].climate;
         var fitness = dot(difference * difference, vec4<f32>(2.5, 1.5, 2.0, 0.5));
         // Biomes added without climate placement receive a small local niche
@@ -221,15 +221,20 @@ fn terrain_base(point: vec2<f32>, request: Request, request_index: u32) -> Terra
     return TerrainSample(height,biome,terrain,climate);
 }
 fn registered_biome(actual:array<f32,6>,initial:u32)->u32 {
+    return registered_biome_filtered(actual,initial,false);
+}
+fn registered_biome_filtered(actual:array<f32,6>,initial:u32,exclude_shores:bool)->u32 {
     var biome=initial;let climate=vec4<f32>(actual[0],actual[1],actual[2],actual[3]);
     if climate_table.count.x>0u {
         var best=1e20;
         for(var index=0u;index<world.ids.x;index++) {
-            if world.biomes[index].terrain.w>0.5 || (world.biomes[index].materials.w & 16u)!=0u {continue;}
+            // Tags identify a shore; only the active source supplies its placement.
+            // An unreferenced shore must not acquire an arbitrary inland niche.
+            if world.biomes[index].terrain.w>0.5 || (world.biomes[index].materials.w & (16u|64u))!=0u {continue;}
             let difference=climate-world.biomes[index].climate;let fitness=dot(difference,difference)-0.03;
             if fitness<best {best=fitness;biome=index;}
         }
-        biome=climate_search(actual,false,false,false,biome,best);
+        biome=climate_search_filtered(actual,false,false,false,biome,best,exclude_shores);
     }
     return biome;
 }
@@ -244,7 +249,33 @@ fn terrain_probe(point:vec2<f32>,r:Request,index:u32)->TerrainSample {
 }
 fn terrain_cached(point:vec2<f32>,r:Request,index:u32)->TerrainSample {
     var sample=terrain_base(point,r,index);
-    if bytecode[0]>0u {sample.height=i32(floor(registered_height_fast(point,r,index)));}return sample;
+    if bytecode[0]>0u {sample.height=i32(floor(registered_height_fast(point,r,index)));}
+    if (r.padding&(1u<<28u))!=0u && r.density_side>0u {
+        let sea=bitcast<i32>(world.ids.y);
+        var coastal=false;
+        if sample.height>=sea-2 && sample.height<=sea+6 {
+            // Read the resident pre-cave terrain, so inland lake carving and
+            // surface cave mouths cannot manufacture beach patches.
+            for(var radius=4;radius<=16 && !coastal;radius*=2) {
+                for(var direction=0u;direction<8u && !coastal;direction++) {
+                    let offsets=array<vec2<i32>,8>(vec2<i32>(1,0),vec2<i32>(-1,0),vec2<i32>(0,1),vec2<i32>(0,-1),vec2<i32>(1,1),vec2<i32>(-1,1),vec2<i32>(1,-1),vec2<i32>(-1,-1));
+                    let probe=point+vec2<f32>(offsets[direction]*radius);
+                    let probe_height=registered_height_fast(probe,r,index);
+                    // Shallow sea floor needs nearby land as well: an open
+                    // shallow ocean plateau is not a shoreline by itself.
+                    coastal=probe_height < f32(sea);
+                    if sample.height<sea {coastal=probe_height >= f32(sea);}
+                }
+            }
+        }
+        if coastal {
+            let actual=registered_climate_fast(point,r,index);
+            sample.biome=registered_biome(coastal_climate(actual),sample.biome);
+        } else if (world.biomes[sample.biome].materials.w&64u)!=0u {
+            sample.biome=registered_biome_filtered(registered_climate_fast(point,r,index),sample.biome,true);
+        }
+    }
+    return sample;
 }
 fn lake_center(cell:vec2<i32>,r:Request)->vec2<f32> {
     let h=cell_hash(cell,r.seed_low+8647u,r.seed_high);
@@ -342,7 +373,7 @@ fn biome_queries(@builtin(global_invocation_id) id:vec3<u32>) {
 }
 @compute @workgroup_size(64)
 fn main(@builtin(global_invocation_id) id: vec3<u32>) {
-    let probe=(requests[0].padding & (1u<<30u))!=0u;
+    let probe=(requests[0].padding & ((1u<<30u)|(1u<<31u)))!=0u;
     let height_probe=(requests[0].padding & (1u<<29u))!=0u;
     if probe && id.x!=0u {return;}
     let region = requests[0].tile_side > 0u;
@@ -398,6 +429,8 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
     }
     // Fixed global cells make rounded, warped basins with a flat waterline.
     // Their geometry is computed here, before any readback or Rust assembly.
+    // Surface biome probes need the physical coast, never synthetic lake levels.
+    if (request.padding&(1u<<31u))==0u {
     let lake_cell = vec2<i32>(floor(point / 128.0));
     let lh = cell_hash(lake_cell, request.seed_low + 8647u, request.seed_high);
     let lake_point = lake_center(lake_cell,request);
@@ -432,6 +465,7 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
                 }
             }
         }
+    }
     }
     if probe || height_probe {columns[index]=Column(height,biome | (depth<<24u) | flags,0u);return;}
     // Terracotta retains its red-sand cap. The filler byte transports the small

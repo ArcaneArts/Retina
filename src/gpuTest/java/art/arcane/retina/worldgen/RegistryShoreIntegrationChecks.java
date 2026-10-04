@@ -59,6 +59,77 @@ final class RegistryShoreIntegrationChecks {
             targets += exported.size();
         }
         System.out.println("QA_EVT {\"event\":\"registered_gpu_coast_intervals\",\"status\":\"pass\",\"context\":{\"shore_types\":3,\"intervals\":" + targets + "}}");
+        checkTerrainAlignment(profile, original);
+    }
+
+    /** A physical coast intentionally disagrees with the continentalness field. */
+    static void checkTerrainAlignment(BiomeTerrainProfile profile, JsonObject original) {
+        int beach = biome(profile, "minecraft:beach");
+        JsonObject target = null;
+        for (var element : original.getAsJsonArray("climate_targets")) {
+            var candidate = element.getAsJsonObject();
+            if (candidate.get("biome").getAsInt() != beach) continue;
+            var probe = flat(original, profile.seaLevel()); constantClimate(probe, candidate);
+            probe.addProperty("program_execution", "interpreter");
+            if (NativeTerrain.instance().sampleColumns(request(NativeTerrain.instance().registerProfile(probe.toString()), 0, 0)).biome(0) == beach) {
+                target = candidate; break;
+            }
+        }
+        require(target != null, "registered warm beach fixture is reachable");
+        for (boolean inlandClimate : new boolean[]{false, true}) {
+            var data = original.deepCopy();
+            for (var b : data.getAsJsonArray("biomes")) b.getAsJsonObject().add("lakes", JsonParser.parseString("[0,0]"));
+            data.addProperty("program_execution", "interpreter");
+            constantClimate(data, target);
+            if (inlandClimate) data.getAsJsonObject("registry_program").getAsJsonArray("programs").get(0)
+                    .getAsJsonObject().getAsJsonArray("nodes").get(2).getAsJsonObject().getAsJsonArray("p").set(0, new JsonPrimitive(.4));
+            var registry = data.getAsJsonObject("registry_program");
+            registry.add("surface", JsonParser.parseString("[-64,1,0]"));
+            var density = new JsonObject(); var nodes = new JsonArray();
+            nodes.add(node(0, 0, 0, 0, 0));
+            var x = node(3, 0, 0, 0, -64); x.add("p", JsonParser.parseString("[-64,64,"+(profile.seaLevel()-17)+","+(profile.seaLevel()+15)+"]")); nodes.add(x);
+            var y = node(3, 1, 0, 0, -64); y.add("p", JsonParser.parseString("[-64,320,-64,320]")); nodes.add(y);
+            nodes.add(node(5, 1, 2, 0, 0));
+            density.add("nodes", nodes); density.add("roots", JsonParser.parseString("[3]"));
+            registry.getAsJsonArray("programs").set(1, density);
+            int id = NativeTerrain.instance().registerProfile(data.toString());
+            for (int z : new int[]{-33,-32,-1,0,31,32}) {
+                var shore = NativeTerrain.instance().sampleColumns(request(id, 0, z));
+                for (int row = 0; row < 16; row++) {
+                    int column = row*16+8;
+                    require(shore.biome(column) == beach, "GPU aligns the registered shore with real water despite mismatched climate: "+inlandClimate);
+                    require(profile.materials()[shore.materials()[column]&65535].is(Blocks.SAND), "aligned beach uses registered sand rules");
+                }
+                for (int cx : new int[]{2,3}) {
+                    var inland = NativeTerrain.instance().sampleColumns(request(id, cx, z));
+                    for (int c=0;c<256;c++) require((original.getAsJsonArray("biomes").get(inland.biome(c)).getAsJsonObject().get("flags").getAsInt()&64)==0,
+                            "disconnected inland slopes cannot select a coastal biome");
+                }
+            }
+            if (inlandClimate) try {java.nio.file.Files.writeString(java.nio.file.Path.of("build/shore-alignment-profile.json"), data.toString());}
+                catch (java.io.IOException error) {throw new java.io.UncheckedIOException(error);}
+            if (!inlandClimate) for(int flatHeight:new int[]{profile.seaLevel()-1,profile.seaLevel()+1}) {
+                var plateau=data.deepCopy();
+                plateau.getAsJsonObject("registry_program").getAsJsonArray("programs").get(1).getAsJsonObject()
+                        .getAsJsonArray("nodes").set(1,node(0,0,0,0,flatHeight-1));
+                int flatId=NativeTerrain.instance().registerProfile(plateau.toString());
+                var flatColumns=NativeTerrain.instance().sampleColumns(request(flatId,-32,-32));
+                for(int c=0;c<256;c++)require((original.getAsJsonArray("biomes").get(flatColumns.biome(c)).getAsJsonObject().get("flags").getAsInt()&64)==0,
+                        "low dry land and open shallow water cannot manufacture a physical shoreline");
+            }
+        }
+        // An explicit datapack with no shore targets receives no manufactured shore.
+        var noShore = original.deepCopy();
+        noShore.getAsJsonArray("climate_targets").asList().removeIf(t ->
+                (noShore.getAsJsonArray("biomes").get(t.getAsJsonObject().get("biome").getAsInt()).getAsJsonObject().get("flags").getAsInt()&64)!=0);
+        require(noShore.getAsJsonArray("climate_targets").asList().stream().noneMatch(t ->
+                (noShore.getAsJsonArray("biomes").get(t.getAsJsonObject().get("biome").getAsInt()).getAsJsonObject().get("flags").getAsInt()&64)!=0), "no-shore fixture follows the source");
+        int without = NativeTerrain.instance().registerProfile(noShore.toString());
+        for (int x=-8;x<8;x++) {
+            var columns=NativeTerrain.instance().sampleColumns(request(without,x,-1));
+            for(int c=0;c<256;c++)require((original.getAsJsonArray("biomes").get(columns.biome(c)).getAsJsonObject().get("flags").getAsInt()&64)==0,"absent coastal placements stay absent");
+        }
+        System.out.println("QA_EVT {\"event\":\"gpu_physical_shore_alignment\",\"status\":\"pass\",\"context\":{\"climate_cases\":2,\"negative_boundaries\":true}}");
     }
 
     static void checkWaterCondition(BiomeTerrainProfile profile) {

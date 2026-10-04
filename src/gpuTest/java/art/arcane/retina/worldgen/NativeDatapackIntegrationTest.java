@@ -79,7 +79,10 @@ public final class NativeDatapackIntegrationTest {
                     RegistryClimateIntegrationChecks.check(profile);
                     // BulkBiomes deliberately replaces the climate source and has no dark forest.
                     if (!bulk) RegistryDecorationIntegrationChecks.check(profile, true);
-                    if (!controls && !bulk) RegistryShoreIntegrationChecks.checkSediments(profile, true);
+                    if (!controls && !bulk) {
+                        RegistryShoreIntegrationChecks.checkSediments(profile, true);
+                        RegistryShoreIntegrationChecks.checkTerrainAlignment(profile, projection);
+                    }
                     var seen = new HashSet<String>();boolean wideBiome=false;
                     for (int z = -64; z <= 64; z += 8) for (int x = -64; x <= 64; x += 8) {
                         var r = new TerrainRequest(123456789L,x*32,z*32,-64,384,64,48,.008F,profile.nativeId());

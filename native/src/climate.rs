@@ -31,7 +31,7 @@ impl Node {
                 target.weirdness[0],
                 target.weirdness[1],
                 target.offset,
-                (target.biome | ((flags & 4) << 16)) as f32,
+                (target.biome | ((flags & (4 | 64)) << 16)) as f32,
             ],
             depth: target.depth,
             order: order as u32,
@@ -110,6 +110,7 @@ fn tree(leaves: &mut [Node], dimensions: usize, output: &mut Vec<Node>) {
 pub fn bytes(profile: &WorldProfile) -> Vec<u8> {
     let mut surface = Vec::new();
     let mut underground = Vec::new();
+    let mut shores = Vec::new();
     let mut seen = HashSet::new();
     for (order, target) in profile.climate_targets.iter().enumerate() {
         let flags = profile.biomes[target.biome as usize].flags;
@@ -128,6 +129,15 @@ pub fn bytes(profile: &WorldProfile) -> Vec<u8> {
                 .collect();
             if seen.insert(key) {
                 surface.push(leaf);
+                if flags & 64 != 0 {
+                    // Coastal selection projects only continentalness onto a
+                    // registered shore interval. Keep the other climate axes.
+                    let mut shore = leaf;
+                    shore.low[2] = 0.0;
+                    shore.high[2] = 0.0;
+                    shore.depth = [target.min[2], target.max[2]];
+                    shores.push(shore);
+                }
             }
         }
     }
@@ -160,10 +170,21 @@ pub fn bytes(profile: &WorldProfile) -> Vec<u8> {
             }
         }
     }
+    let underground_end = nodes.len() as u32;
+    if !shores.is_empty() {
+        if indexed {
+            tree(&mut shores, 5, &mut nodes);
+        } else {
+            for mut leaf in shores {
+                leaf.escape = nodes.len() as u32 + 1;
+                nodes.push(leaf);
+            }
+        }
+    }
     let mut bytes = bytemuck::cast_slice(&[
         surface_end,
         surface_end,
-        nodes.len() as u32,
+        underground_end,
         u32::from(indexed),
     ])
     .to_vec();
@@ -177,8 +198,14 @@ pub fn bytes(profile: &WorldProfile) -> Vec<u8> {
         }
     }
     bytes.extend_from_slice(bytemuck::cast_slice(&noise));
+    bytes.extend_from_slice(bytemuck::cast_slice(&[
+        underground_end,
+        nodes.len() as u32,
+        0,
+        0,
+    ]));
     bytes.extend_from_slice(bytemuck::cast_slice(&nodes));
-    bytes.resize(bytes.len().max(224), 0);
+    bytes.resize(bytes.len().max(240), 0);
     bytes
 }
 

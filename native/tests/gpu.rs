@@ -72,7 +72,7 @@ fn actual_gpu_parallel_chunks_and_height_queries() {
         .sum();
     let seconds = start.elapsed().as_secs_f64();
     println!(
-        "QA_EVT {{\"event\":\"parallel_gpu_chunks\",\"status\":\"pass\",\"context\":{{\"workers\":16,\"chunks\":256,\"chunks_per_second\":{:.2},\"mean_request_ms\":{:.3},\"wall_seconds\":{:.3}}}}}",
+        "QA_EVT {{\"event\":\"parallel_gpu_chunks\",\"status\":\"pass\",\"context\":{{\"workers\":16,\"chunks\":256,\"chunks_per_second\":{:0.2},\"mean_request_ms\":{:0.3},\"wall_seconds\":{:0.3}}}}}",
         256.0 / seconds,
         latency_ms / 256.0,
         seconds
@@ -100,6 +100,93 @@ fn actual_gpu_parallel_chunks_and_height_queries() {
         "GPU respects vertical bounds"
     );
     println!("QA_EVT {{\"event\":\"negative_coordinates_and_bounds\",\"status\":\"pass\"}}");
+}
+
+#[test]
+fn physical_coasts_match_sparse_chunks_and_neighbor_regions() {
+    use serde_json::json;
+    let engine = TerrainEngine::new().unwrap();
+    let constant = |v: f32| json!({"nodes":[{"op":0,"a":0,"b":0,"c":0,"p":[v,0,0,0]}],"roots":[0]});
+    let noise = json!({"frequency":0.02,"amplitude":0.5,"modifiers":[1]});
+    let density = json!({"nodes":[
+        {"op":0,"a":0,"b":0,"c":0,"p":[0,0,0,0]},
+        {"op":3,"a":0,"b":0,"c":0,"p":[448,576,46,78]},
+        {"op":3,"a":1,"b":0,"c":0,"p":[-64,320,-64,320]},
+        {"op":5,"a":1,"b":2,"c":0,"p":[0,0,0,0]}],"roots":[3]});
+    let profile = json!({
+        "biome_scale":256,"blend":0.55,"sea_level":63,"stone":1,"water":2,"bedrock":1,"deepslate":1,"snow":1,"ice":2,
+        "materials":["minecraft:air","minecraft:stone","minecraft:water","minecraft:sand"],
+        "material_flags":[0,1,0,1],"heightmap_masks":[0,63,0,63],
+        "biomes":[
+            {"id":"test:land","climate":[0,0,0.5,0],"terrain":[0,1,1],"top":1,"filler":1,"underwater":1,"flags":0},
+            {"id":"test:ocean","climate":[0,0,-0.5,0],"terrain":[0,1,1],"top":1,"filler":1,"underwater":1,"flags":4},
+            {"id":"test:shore","climate":[0,0,-0.15,0],"terrain":[0,1,1],"top":3,"filler":3,"underwater":3,"flags":64}],
+        "climate_targets":[
+            {"biome":0,"min":[-1,-1,-0.11,-1],"max":[1,1,1,1],"weirdness":[-1,1],"depth":[-1,1],"offset":0},
+            {"biome":1,"min":[-1,-1,-1,-1],"max":[1,1,-0.19,1],"weirdness":[-1,1],"depth":[-1,1],"offset":0},
+            {"biome":2,"min":[-1,-1,-0.19,-1],"max":[1,1,-0.11,1],"weirdness":[-1,1],"depth":[-1,1],"offset":0}],
+        "noises":[noise,noise,noise,noise],"weirdness_noise":noise,
+        "registry_program":{"programs":[constant(0.4),density,constant(1.),constant(2.),constant(2.),constant(4.)],
+            "noises":[{"frequency":0.02,"amplitude":0.5,"salt":42,"coefficients":[1]}],"points":[],"surface":[-64,384,0]}
+    });
+    let request_at = |id, x, z| ChunkRequest {
+        reserved: id,
+        seed: 123456789,
+        ..request(x, z)
+    };
+    for mode in ["interpreter", "specialized"] {
+        let mut source = profile.clone();
+        source["program_execution"] = json!(mode);
+        let chunk_id = engine
+            .register_profile(&serde_json::to_vec(&source).unwrap())
+            .unwrap();
+        let requests: Vec<_> = [(31, -1), (32, -1), (33, -1), (31, 0), (32, 0), (33, 0)]
+            .into_iter()
+            .map(|(x, z)| request_at(chunk_id, x, z))
+            .collect();
+        let sparse = engine.sample_biomes(&requests, None).unwrap();
+        let chunks = engine.sample_columns(&requests).unwrap();
+        for (i, chunk) in chunks.chunks_exact(COLUMNS).enumerate() {
+            assert_eq!(
+                sparse[i] as usize,
+                chunk[136].biome(),
+                "cold sparse coast agrees with columns in {mode}"
+            );
+            let coastal =
+                chunk[136].height >= 61 && chunk[136].height <= 69 && requests[i].chunk_x <= 32;
+            assert_eq!(
+                chunk[136].biome(),
+                if coastal { 2 } else { 0 },
+                "shore band is beside physical water"
+            );
+        }
+        assert_eq!(
+            sparse,
+            engine.sample_biomes(&requests, None).unwrap(),
+            "cache does not change query results"
+        );
+        let tile_id = engine
+            .register_profile(&serde_json::to_vec(&source).unwrap())
+            .unwrap();
+        for (x, z) in [(0, -32), (32, -32), (0, 0), (32, 0)] {
+            let tile = engine.sample_tile(request_at(tile_id, x, z), 32).unwrap();
+            for (i, r) in requests.iter().enumerate() {
+                if r.chunk_x < x || r.chunk_x >= x + 32 || r.chunk_z < z || r.chunk_z >= z + 32 {
+                    continue;
+                }
+                let slot = ((r.chunk_z - z) * 32 + r.chunk_x - x) as usize;
+                let a = &tile[slot * COLUMNS..(slot + 1) * COLUMNS];
+                let b = &chunks[i * COLUMNS..(i + 1) * COLUMNS];
+                for (a, b) in a.iter().zip(b) {
+                    assert_eq!(
+                        (a.height, a.packed, a.materials),
+                        (b.height, b.packed, b.materials),
+                        "negative seam and chunk/region coast parity in {mode}"
+                    );
+                }
+            }
+        }
+    }
 }
 
 #[test]

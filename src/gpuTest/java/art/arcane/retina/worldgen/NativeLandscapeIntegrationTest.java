@@ -30,7 +30,7 @@ public final class NativeLandscapeIntegrationTest {
             var data=JsonParser.parseString(profile.json()).getAsJsonObject();
             // Lake placement must not distort the broad land/ocean measurement.
             for(var b:data.getAsJsonArray("biomes"))b.getAsJsonObject().add("lakes",JsonParser.parseString("[0,0]"));
-            int id=NativeTerrain.instance().registerProfile(data.toString());int wet=0,vanillaWet=0,solidWater=0,count=0,low=999,high=-999;
+            int id=NativeTerrain.instance().registerProfile(data.toString());int wet=0,vanillaWet=0,solidWater=0,count=0,low=999,high=-999,shores=0;
             StringBuilder csv=new StringBuilder("seed,x,z,gpu_height,vanilla_surface,biome\n");
             for(long seed:new long[]{123456789L,188485117924953955L,987654321L}) {
                 var state=RandomState.create(registry.lookupOrThrow(Registries.NOISE),seed,settings);
@@ -38,6 +38,10 @@ public final class NativeLandscapeIntegrationTest {
                     int cx=x*32+7,cz=z*32+11;
                     var columns=NativeTerrain.instance().sampleColumns(new TerrainRequest(seed,cx,cz,-64,384,64,48,.008f,id));
                     int height=columns.heights()[136],bx=cx*16+8,bz=cz*16+8;
+                    if((data.getAsJsonArray("biomes").get(columns.biome(136)).getAsJsonObject().get("flags").getAsInt()&64)!=0) {
+                        shores++;
+                        require(height>=profile.seaLevel()-2 && height<=profile.seaLevel()+6,"real registered beach does not form a disconnected highland patch");
+                    }
                     float vanilla=state.sampleBlockValueUncached(settings.noiseRouter().chunkSurfaceLevel(),bx,0,bz)+1;
                     if(state.sampleBlockValueUncached(settings.noiseRouter().finalDensity(),bx,settings.seaLevel()-1,bz)<=0)solidWater++;
                     if(height<profile.seaLevel())wet++;if(vanilla<profile.seaLevel())vanillaWet++;count++;
@@ -48,6 +52,8 @@ public final class NativeLandscapeIntegrationTest {
             double ocean=(double)wet/count, vanillaOcean=(double)solidWater/count;
             require(ocean<.55 && Math.abs(ocean-vanillaOcean)<.10, "GPU ocean fraction stays near vanilla solid density across seeds");
             require(low<profile.seaLevel()-15 && high>profile.seaLevel()+60, "ocean adjustment retains deep seas and mountains");
+            require(shores>0,"real registered terrain still contains coastal biomes");
+            System.out.println("QA_EVT {\"event\":\"registered_shore_landscape\",\"status\":\"pass\",\"context\":{\"samples\":"+count+",\"shore_samples\":"+shores+"}}");
             var sparse=data.deepCopy(); sparse.addProperty("biome_scale",256);
             for(var noise:sparse.getAsJsonObject("registry_program").getAsJsonArray("noises")) {
                 var n=noise.getAsJsonObject(); if(n.has("horizontal_scale"))n.addProperty("horizontal_scale",n.get("horizontal_scale").getAsFloat()/2);

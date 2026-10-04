@@ -116,10 +116,12 @@ fn run_program(program:u32,point:vec3<f32>,request:Request,context:vec4<f32>)->a
 fn density_floor_div(value:i32,step:i32)->i32 {
     return value/step-select(0,1,value%step<0);
 }
+fn surface_guard(r:Request)->i32 {return select(4,16,(r.padding&(1u<<28u))!=0u);}
 fn density_origin(r:Request)->vec3<i32> {
     let sx=i32(r.density_step_xz);let sy=i32(r.density_step_y);
-    // Four-block guard covers the surface-rule slope probes on every tile edge.
-    return vec3<i32>(density_floor_div(r.origin_x-4,sx)*sx,density_floor_div(r.min_y,sy)*sy,density_floor_div(r.origin_z-4,sx)*sx);
+    // Shared global nodes cover slope and coastal-water probes at tile edges.
+    let guard=surface_guard(r);
+    return vec3<i32>(density_floor_div(r.origin_x-guard,sx)*sx,density_floor_div(r.min_y,sy)*sy,density_floor_div(r.origin_z-guard,sx)*sx);
 }
 fn density_layers(r:Request)->u32 {
     let bottom=density_origin(r).y;let step=i32(r.density_step_y);
@@ -194,7 +196,7 @@ fn density_surface_height(point:vec2<f32>,r:Request,probe:u32)->f32 {
     }
     return f32(r.min_y+1);
 }
-fn surface_width(r:Request)->u32 {return select(16u,r.tile_side*16u,r.tile_side>0u)+8u;}
+fn surface_width(r:Request)->u32 {return select(16u,r.tile_side*16u,r.tile_side>0u)+2u*u32(surface_guard(r));}
 fn surface_offset(r:Request)->u32 {return r.density_offset+r.density_side*r.density_side*density_layers(r);}
 fn lake_side(r:Request)->u32 {
     let width=select(16u,r.tile_side*16u,r.tile_side>0u);
@@ -207,7 +209,8 @@ fn lake_probe_offset(r:Request)->u32 {return lake_offset(r)+lake_side(r)*lake_si
 @compute @workgroup_size(64)
 fn surface_columns(@builtin(global_invocation_id) id:vec3<u32>) {
     let r=requests[id.y];let width=surface_width(r);if id.x>=width*width {return;}
-    let point=vec2<f32>(f32(r.origin_x-4+i32(id.x%width)),f32(r.origin_z-4+i32(id.x/width)));
+    let guard=surface_guard(r);
+    let point=vec2<f32>(f32(r.origin_x-guard+i32(id.x%width)),f32(r.origin_z-guard+i32(id.x/width)));
     surface_nodes[surface_offset(r)+id.x]=density_surface_height(point,r,0xffffffffu);
 }
 @compute @workgroup_size(64)
@@ -235,7 +238,8 @@ fn height_nodes(@builtin(global_invocation_id) id:vec3<u32>) {
 // call graph. Its integer coordinates and slope probes always fit this cache.
 fn registered_height_fast(point:vec2<f32>,r:Request,index:u32)->f32 {
     if bytecode[5]==0u {
-        let local=vec2<u32>(point-vec2<f32>(f32(r.origin_x-4),f32(r.origin_z-4)));
+        let guard=surface_guard(r);
+        let local=vec2<u32>(point-vec2<f32>(f32(r.origin_x-guard),f32(r.origin_z-guard)));
         return surface_nodes[surface_offset(r)+local.y*surface_width(r)+local.x];
     }
     return registered_height_2d(point,r,index);

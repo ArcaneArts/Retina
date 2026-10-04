@@ -40,8 +40,8 @@ public final class NativeShoreIntegrationTest {
                 if (mode.equals("gpu_chunk")) continue;
                 var profile = BiomeTerrainProfile.load(registry, source, -64, 384, 123456789L);
                 Files.writeString(Path.of("build/shore-vanilla-profile.json"), profile.json());
-                RegistryClimateIntegrationChecks.check(profile);
                 RegistryShoreIntegrationChecks.checkCoasts(profile, source.climateParameters(registry));
+                RegistryClimateIntegrationChecks.check(profile);
                 RegistryShoreIntegrationChecks.checkWaterCondition(profile);
                 RegistryShoreIntegrationChecks.checkSediments(profile, false);
             }
