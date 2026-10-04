@@ -150,6 +150,7 @@ pub struct TerrainEngine {
     structures: Mutex<structures::Cache>,
     timings: Mutex<HashMap<u32, Arc<timings::Timings>>>,
     pipeline: Arc<pipeline::Metrics>,
+    ore_gpu: Mutex<geology::raster_gpu::Gpu>,
 }
 
 impl TerrainEngine {
@@ -169,11 +170,12 @@ impl TerrainEngine {
             .name("retina-gpu".into())
             .spawn(move || gpu_worker::run(receiver, ready_sender, metrics, depth))
             .map_err(|e| e.to_string())?;
-        let backend = ready_receiver.recv().map_err(|e| e.to_string())??;
+        let (backend, ores) = ready_receiver.recv().map_err(|e| e.to_string())??;
         Ok(Self {
             sender,
             backend,
             pipeline,
+            ore_gpu: Mutex::new(ores),
             profiles: RwLock::new(Vec::new()),
             cache: Mutex::new(ColumnCache::default()),
             height_cache: Mutex::new(ColumnCache::default()),
@@ -197,6 +199,33 @@ impl TerrainEngine {
     }
     pub fn backend(&self) -> &str {
         &self.backend
+    }
+
+    pub(crate) fn plan_ores(
+        &self,
+        field: &decoration::Field,
+        profile: &WorldProfile,
+        request: ChunkRequest,
+        side: usize,
+        mask: Option<&geology::CaveMask>,
+    ) -> Result<geology::RegionPlan, String> {
+        if profile.geology.ore_layout < 2 || side == 1 || profile.geology.ores.is_empty() {
+            return Ok(geology::RegionPlan::Cpu(geology::plan(
+                field, profile, request, side, mask,
+            )));
+        }
+        let batch = geology::raster::Batch::prepare_compact(field, profile, request, side, mask);
+        let words = self
+            .ore_gpu
+            .lock()
+            .map_err(|_| "ore GPU lock poisoned")?
+            .run(&batch)?;
+        self.pipeline.transfer(
+            request.reserved,
+            (batch.descriptors.len() * 48 + batch.spheres.len() * 16) as u64,
+            (words.len() * 4) as u64,
+        );
+        Ok(geology::RegionPlan::Gpu { batch, words })
     }
 
     pub fn register_profile(&self, bytes: &[u8]) -> Result<u32, String> {

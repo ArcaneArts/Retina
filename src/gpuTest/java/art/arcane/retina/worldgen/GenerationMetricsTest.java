@@ -42,6 +42,7 @@ final class GenerationMetricsTest {
         require(lines.stream().anyMatch(s -> s.contains("Average region:") && s.contains("16.50 ms") && s.contains("20")), "display reports rolling latency and sample count");
         require(lines.stream().anyMatch(s -> s.contains("NBT encoding") && s.contains("§6~25.0%")), "NBT share is colored and marked as an estimate");
         require(lines.stream().anyMatch(s -> s.contains("GPU device") && s.contains("overlaps")), "device timing overlap is explicit");
+        require(lines.stream().anyMatch(s -> s.startsWith("§dOre planning (CPU + GPU)")), "mixed ore planner is labeled and colored as GPU work");
         for (String line : lines) {
             require(!line.contains(" | ") && !line.contains("Last region") && !line.contains("session worker"), "each stage has its own line without old counters");
             require(line.chars().filter(c -> c == '%').count() <= 1, "one percentage per display line");

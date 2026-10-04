@@ -10,7 +10,7 @@ import static art.arcane.retina.worldgen.NativeTimings.*;
 public final class TerrainDebugReport {
     private static final String LABEL="§7", DATA="§f", RUST="§b", GPU="§d", HEADER="§6§l", RESET="§r";
     private static final String[] GPU_HOST={"GPU queue","Command encoding","GPU work / readback"};
-    private static final String[] PLANS={"Structure planning","Plant planning","Ore planning"};
+    private static final String[] PLANS={"Structure planning","Plant planning","Ore planning (CPU + GPU)"};
     private static final String[] GPU_DEVICE={"Height / climate","Biome sites","Column surfaces","Cave density","Cave mask"};
     private static final String[] WORKERS={"Base terrain","Ores","Cave decorations","Plants / trees","Structure placement","Snow","NBT encoding","Zlib compression"};
     private TerrainDebugReport() { }
@@ -38,8 +38,8 @@ public final class TerrainDebugReport {
         if(mca && stats.regionSamples()>0) {
             lines.add(HEADER+"GPU host (% of average region)"+RESET);
             for(int stage=QUEUE;stage<=WAIT_COPY;stage++)lines.add(share(GPU,GPU_HOST[stage],stats.regionStagePercent(stage),false));
-            lines.add(HEADER+"Rust (% of average region; ~ worker estimates)"+RESET);
-            for(int stage=STRUCTURE_PLAN;stage<=ORE_PLAN;stage++)lines.add(share(RUST,PLANS[stage-STRUCTURE_PLAN],stats.regionStagePercent(stage),false));
+            lines.add(HEADER+"Native (% of average region; ~ worker estimates)"+RESET);
+            for(int stage=STRUCTURE_PLAN;stage<=ORE_PLAN;stage++)lines.add(share(stage==ORE_PLAN?GPU:RUST,PLANS[stage-STRUCTURE_PLAN],stats.regionStagePercent(stage),false));
             for(int stage=ASSEMBLY;stage<=COMPRESS;stage++)lines.add(share(RUST,WORKERS[stage-ASSEMBLY],stats.regionStagePercent(stage),true));
             lines.add(share(RUST,"File I/O",stats.regionStagePercent(IO),false));
             lines.add(share("§9","Java column cache",stats.columnCachePercent(),false));

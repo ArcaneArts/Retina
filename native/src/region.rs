@@ -323,11 +323,11 @@ fn generate_region_inner(
             });
             let ores = timings.time(timings::ORE_PLAN, || {
                 if let Some(p) = profile.as_deref() {
-                    geology::plan(&field, p, origin, 32, cave_mask.as_deref())
+                    engine.plan_ores(&field, p, origin, 32, cave_mask.as_deref())
                 } else {
-                    vec![Vec::new(); 1024]
+                    Ok(geology::RegionPlan::Cpu(vec![Vec::new(); 1024]))
                 }
-            });
+            })?;
             let parallel_start = Instant::now();
             let records = requests
                 .par_iter()
@@ -349,12 +349,12 @@ fn generate_region_inner(
                     });
                     if let Some(p) = profile.as_deref() {
                         timings.time(timings::GEOLOGY, || {
-                            geology::apply_ores(
+                            ores.apply(
                                 request,
                                 &field,
                                 p,
                                 cave_mask.as_deref(),
-                                &ores[slots[index]],
+                                slots[index],
                                 &mut blocks,
                             )
                         });

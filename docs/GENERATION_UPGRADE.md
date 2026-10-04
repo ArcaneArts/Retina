@@ -16,6 +16,8 @@ The [shoreline correction](SHORELINES.md) adds a resident coastal index and GPU
 height-neighborhood checks to align registered coastal climates with the actual
 approximated terrain, preventing disconnected inland beach selection. Its
 fidelity checks and separate twenty-region cost measurements are documented there.
+The [sparse planning milestone](GPU_SPARSE_PLANNING.md) adds direct GPU bulk-ore
+masks and cheaper Rust crown/canopy lookups while preserving final chunk data.
 
 ## World-preset registry lifecycle
 

@@ -1,7 +1,7 @@
 //! Registered placement modifiers with shared selector budgets and a local live
 //! heightmap. Each anchor owns its overlay, preserving parallel MCA/chunk parity.
+use super::spatial::Map;
 use super::*;
-use std::collections::HashMap;
 
 #[derive(Clone, Deserialize)]
 #[serde(untagged)]
@@ -417,7 +417,7 @@ pub(super) fn expand(
     }
     .step(0, origin, rng, &mut Vec::new(), &mut Vec::new());
 }
-pub(super) type EvaluationCache = HashMap<(u32, usize, Vec<usize>), Option<[i32; 3]>>;
+pub(super) type EvaluationCache = Map<(u32, usize, Vec<usize>), Option<[i32; 3]>>;
 
 pub(super) fn position(
     candidate: &Candidate,
@@ -490,8 +490,8 @@ pub(super) fn position(
 }
 #[derive(Default)]
 pub(super) struct Overlay {
-    blocks: HashMap<[i32; 3], u16>,
-    tops: HashMap<(i32, i32), [i32; 6]>,
+    blocks: Map<[i32; 3], u16>,
+    tops: Map<(i32, i32), [i32; 6]>,
 }
 impl Overlay {
     pub(super) fn material(
@@ -770,7 +770,7 @@ mod tests {
                 &profile,
                 request,
                 &Overlay::default(),
-                &mut EvaluationCache::new()
+                &mut EvaluationCache::default()
             ),
             Some([8, 65, 8])
         );
@@ -793,7 +793,7 @@ mod tests {
                     &profile,
                     request,
                     &Overlay::default(),
-                    &mut EvaluationCache::new()
+                    &mut EvaluationCache::default()
                 ),
                 expected
             );
@@ -816,7 +816,7 @@ mod tests {
             recipe.placement = Some(ops(program));
             let candidates = candidates(recipe.placement.as_ref().unwrap(), 0, &field, 42);
             let mut overlay = Overlay::default();
-            let mut cache = EvaluationCache::new();
+            let mut cache = EvaluationCache::default();
             assert_eq!(
                 position(
                     &candidates[0],

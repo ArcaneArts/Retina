@@ -1,10 +1,12 @@
 //! End-to-end compact GPU ore raster experiment, NOT a production ore layout.
-//! ore_raster_benchmark <profile.json> [iterations] [seed] [chunk_x] [chunk_z] [bits|ordered]
+//! ore_raster_benchmark <profile.json> [iterations] [seed] [chunk_x] [chunk_z] [bits|ordered|compact]
 //! Includes descriptor preparation, upload, fence/readback, decode and merging.
 //! Production replacement/exposure rules remain on the CPU in both proposals.
 use retina_worldgen::{
     ChunkRequest, TerrainEngine,
+    decoration::{self, Field},
     geology::{self, OrePlacement, raster_benchmark::Batch},
+    profile::WorldProfile,
 };
 use std::{
     sync::mpsc,
@@ -102,13 +104,19 @@ impl RasterGpu {
         });
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("compact ore raster"),
-            source: wgpu::ShaderSource::Wgsl(include_str!("ore_raster.wgsl").into()),
+            source: wgpu::ShaderSource::Wgsl(include_str!("../src/ore.wgsl").into()),
         });
         let pipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
             label: None,
             layout: Some(&pipeline_layout),
             module: &shader,
-            entry_point: Some(if batch.ordered { "ordered" } else { "main" }),
+            entry_point: Some(if batch.guarded {
+                "guarded"
+            } else if batch.ordered {
+                "ordered"
+            } else {
+                "main"
+            }),
             compilation_options: Default::default(),
             cache: None,
         });
@@ -274,6 +282,149 @@ fn ordered_signature(plan: &[Vec<OrePlacement>]) -> u64 {
     }
     hash
 }
+
+fn compact_benchmark(
+    engine: &TerrainEngine,
+    workers: &rayon::ThreadPool,
+    field: &Field,
+    mask: Option<&geology::CaveMask>,
+    profile: &WorldProfile,
+    request: ChunkRequest,
+    iterations: usize,
+) -> Result<(), Box<dyn std::error::Error>> {
+    use rayon::prelude::*;
+    let chunk_request = |target: usize| ChunkRequest {
+        chunk_x: request.chunk_x + (target % 32) as i32,
+        chunk_z: request.chunk_z + (target / 32) as i32,
+        ..request
+    };
+    let base: Vec<Vec<u16>> = workers.install(|| {
+        (0..1024)
+            .into_par_iter()
+            .map(|target| {
+                let r = chunk_request(target);
+                let mut blocks = vec![0; r.block_count()];
+                decoration::assemble_carved(
+                    r,
+                    field.chunk(r.chunk_x, r.chunk_z),
+                    Some(profile),
+                    mask,
+                    &mut blocks,
+                );
+                blocks
+            })
+            .collect()
+    });
+    let batch = workers.install(|| Batch::prepare_compact(field, profile, request, 32, mask));
+    let gpu = RasterGpu::new(&batch)?;
+    let signature = |blocks: &[Vec<u16>]| {
+        workers.install(|| {
+            blocks
+                .par_iter()
+                .map(|chunk| {
+                    chunk.iter().fold(0xcbf29ce484222325u64, |h, v| {
+                        (h ^ *v as u64).wrapping_mul(0x100000001b3)
+                    })
+                })
+                .collect::<Vec<_>>()
+        })
+    };
+    let mut cpu_times = Vec::new();
+    let mut prep_times = Vec::new();
+    let mut dispatch_times = Vec::new();
+    let mut apply_times = Vec::new();
+    let mut total_times = Vec::new();
+    let mut device_times = Vec::new();
+    let mut expected = None;
+    for iteration in 0..iterations + 5 {
+        let cpu = || {
+            let mut blocks = base.clone(); // identical base copy excluded from both timers
+            let start = Instant::now();
+            let plan = workers.install(|| geology::plan(field, profile, request, 32, mask));
+            workers.install(|| {
+                blocks
+                    .par_iter_mut()
+                    .enumerate()
+                    .for_each(|(target, blocks)| {
+                        geology::apply_ores(
+                            chunk_request(target),
+                            field,
+                            profile,
+                            mask,
+                            &plan[target],
+                            blocks,
+                        );
+                    })
+            });
+            let elapsed = start.elapsed().as_secs_f64() * 1000.;
+            (elapsed, signature(&blocks))
+        };
+        let compact = || -> Result<_, Box<dyn std::error::Error>> {
+            let mut blocks = base.clone();
+            let start = Instant::now();
+            let batch =
+                workers.install(|| Batch::prepare_compact(field, profile, request, 32, mask));
+            let prepared = Instant::now();
+            let (bits, device) = gpu.run(&batch)?;
+            let readback = Instant::now();
+            workers.install(|| {
+                blocks
+                    .par_iter_mut()
+                    .enumerate()
+                    .for_each(|(target, blocks)| {
+                        batch.apply_compact(&bits, field, profile, mask, target, blocks);
+                    })
+            });
+            let finished = Instant::now();
+            let times = [
+                (prepared - start).as_secs_f64() * 1000.,
+                (readback - prepared).as_secs_f64() * 1000.,
+                (finished - readback).as_secs_f64() * 1000.,
+                (finished - start).as_secs_f64() * 1000.,
+            ];
+            Ok((times, device, signature(&blocks)))
+        };
+        let (cpu, (times, device, gpu_hash)) = if iteration % 2 == 0 {
+            (cpu(), compact()?)
+        } else {
+            let candidate = compact()?;
+            (cpu(), candidate)
+        };
+        assert_eq!(
+            cpu.1, gpu_hash,
+            "compact GPU changed final carved/ore block data"
+        );
+        if let Some(ref expected) = expected {
+            assert_eq!(expected, &gpu_hash, "repeat changed block data");
+        } else {
+            expected = Some(gpu_hash);
+        }
+        if iteration >= 5 {
+            cpu_times.push(cpu.0);
+            prep_times.push(times[0]);
+            dispatch_times.push(times[1]);
+            apply_times.push(times[2]);
+            total_times.push(times[3]);
+            if let Some(device) = device {
+                device_times.push(device);
+            }
+        }
+    }
+    println!(
+        "{}",
+        serde_json::json!({"backend":engine.backend(),"format":"direct_union_masks",
+        "seed":request.seed,"chunk_x":request.chunk_x,"chunk_z":request.chunk_z,
+        "workers":16,"warmups":5,"iterations":iterations,"identical_block_chunks":1024*(iterations+5),
+        "veins":batch.descriptors.len(),"spheres":batch.spheres.len(),
+        "upload_bytes":batch.descriptors.len()*48+batch.spheres.len()*16,"readback_bytes":batch.words*4,
+        "median_ms":{"cpu_plan_apply":median(&cpu_times),"prepare":median(&prep_times),
+            "upload_dispatch_readback":median(&dispatch_times),"direct_apply":median(&apply_times),
+            "gpu_total":median(&total_times),"gpu_device":if device_times.is_empty(){None}else{Some(median(&device_times))}},
+        "samples_ms":{"cpu_plan_apply":cpu_times,"prepare":prep_times,"upload_dispatch_readback":dispatch_times,
+            "direct_apply":apply_times,"gpu_total":total_times,"gpu_device":device_times}})
+    );
+    Ok(())
+}
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut args = std::env::args().skip(1);
     let source = std::fs::read(args.next().ok_or("profile path required")?)?;
@@ -285,10 +436,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .unwrap_or(123456789);
     let chunk_x = args.next().map(|s| s.parse()).transpose()?.unwrap_or(0);
     let chunk_z = args.next().map(|s| s.parse()).transpose()?.unwrap_or(0);
-    let ordered = match args.next().as_deref() {
+    let format = args.next();
+    let ordered = match format.as_deref() {
         None | Some("bits") => false,
         Some("ordered") => true,
-        Some(_) => return Err("format must be bits or ordered".into()),
+        Some("compact") => false,
+        Some(_) => return Err("format must be bits, ordered or compact".into()),
     };
     if iterations == 0 {
         return Err("iterations must be positive".into());
@@ -309,6 +462,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
     let (field, mask) = engine.terrain_field(request, 32)?;
     let workers = rayon::ThreadPoolBuilder::new().num_threads(16).build()?;
+    if format.as_deref() == Some("compact") {
+        return compact_benchmark(
+            &engine,
+            &workers,
+            &field,
+            mask.as_deref(),
+            &profile,
+            request,
+            iterations,
+        );
+    }
     let batch =
         workers.install(|| Batch::prepare(&field, &profile, request, 32, mask.as_deref(), ordered));
     if batch.descriptors.is_empty() {

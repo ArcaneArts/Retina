@@ -6,7 +6,7 @@ rust-version = "1.87"
 publish = false
 
 [features]
-# Diagnostic prototype; production ore generation remains on the CPU.
+# Diagnostic reference encodings and standalone GPU ore benchmarks.
 ore-raster-benchmark = []
 
 [[example]]

@@ -78,6 +78,9 @@ struct CaveBuffers {
 }
 
 impl Gpu {
+    pub(crate) fn ore_planner(&self) -> crate::geology::raster_gpu::Gpu {
+        crate::geology::raster_gpu::Gpu::new(self.device.clone(), self.queue.clone())
+    }
     pub(crate) fn new(metrics: std::sync::Arc<crate::pipeline::Metrics>) -> Result<Self, String> {
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
             backends: wgpu::Backends::METAL | wgpu::Backends::VULKAN | wgpu::Backends::DX12,

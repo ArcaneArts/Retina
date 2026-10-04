@@ -9,6 +9,7 @@ use serde::Deserialize;
 use std::collections::{HashSet, VecDeque};
 
 pub mod placement;
+mod spatial;
 
 #[derive(Clone, Deserialize)]
 pub struct TreeDecorator {
@@ -210,6 +211,90 @@ const VINE: u8 = 4;
 const COCOA: u8 = 5;
 const SIDES: [(i32, i32); 4] = [(1, 0), (-1, 0), (0, 1), (0, -1)];
 
+/// A crown occupies a small local box. Direct byte lookup avoids hashing a world
+/// coordinate six times for every visited leaf. State 2 includes trunk positions
+/// so leaves never overwrite logs; traversal order still comes from the BFS.
+struct LeafOccupancy {
+    minimum: [i32; 3],
+    sizes: [usize; 3],
+    cells: Vec<u8>,
+    sparse: Option<spatial::Set<(i32, i32, i32)>>,
+}
+impl LeafOccupancy {
+    fn new(positions: &[(i32, i32, i32)]) -> Self {
+        if positions.is_empty() {
+            return Self {
+                minimum: [0; 3],
+                sizes: [0; 3],
+                cells: Vec::new(),
+                sparse: None,
+            };
+        }
+        let mut minimum = [i32::MAX; 3];
+        let mut maximum = [i32::MIN; 3];
+        for &(x, y, z) in positions {
+            for (i, v) in [x, y, z].into_iter().enumerate() {
+                minimum[i] = minimum[i].min(v);
+                maximum[i] = maximum[i].max(v);
+            }
+        }
+        let sizes = std::array::from_fn(|i| (maximum[i] as i64 - minimum[i] as i64 + 1) as usize);
+        let count = sizes.iter().try_fold(1usize, |n, s| n.checked_mul(*s));
+        if count.is_none_or(|n| n > 1_048_576) {
+            // Unusual offsets can put crowns far apart or across an integer
+            // wrap. Keep sparse membership rather than allocating empty gaps.
+            return Self {
+                minimum,
+                sizes,
+                cells: Vec::new(),
+                sparse: Some(positions.iter().copied().collect()),
+            };
+        }
+        let mut result = Self {
+            minimum,
+            sizes,
+            cells: vec![0; count.unwrap()],
+            sparse: None,
+        };
+        for &p in positions {
+            let index = result.index(p).unwrap();
+            result.cells[index] = 1;
+        }
+        result
+    }
+    fn index(&self, (x, y, z): (i32, i32, i32)) -> Option<usize> {
+        let at = [x, y, z];
+        let delta: [usize; 3] =
+            std::array::from_fn(|i| (at[i] as i64 - self.minimum[i] as i64) as usize);
+        if (0..3).any(|i| delta[i] >= self.sizes[i]) {
+            return None;
+        }
+        Some((delta[1] * self.sizes[2] + delta[2]) * self.sizes[0] + delta[0])
+    }
+    fn mark_log(&mut self, p: (i32, i32, i32)) {
+        if let Some(sparse) = &mut self.sparse {
+            sparse.remove(&p);
+            return;
+        }
+        if let Some(i) = self.index(p) {
+            self.cells[i] = 2;
+        }
+    }
+    fn take_leaf(&mut self, p: (i32, i32, i32)) -> bool {
+        if let Some(sparse) = &mut self.sparse {
+            return sparse.remove(&p);
+        }
+        let Some(i) = self.index(p) else {
+            return false;
+        };
+        if self.cells[i] != 1 {
+            return false;
+        }
+        self.cells[i] = 2;
+        true
+    }
+}
+
 /// A sparse overlay per target chunk; the outer ring only supplies neighboring anchors.
 pub fn plan(
     field: &Field,
@@ -408,7 +493,7 @@ fn anchors(
             .then(a.recipe.cmp(&b.recipe))
     });
     let mut overlay = placement::Overlay::default();
-    let mut evaluation_cache = placement::EvaluationCache::new();
+    let mut evaluation_cache = placement::EvaluationCache::default();
     for candidate in candidates {
         let recipe = &profile.decorations[candidate.recipe as usize];
         let Some(position) = placement::position(
@@ -603,7 +688,7 @@ fn tree(
         rng.range(*foliage_height).max(2)
     }
     .min(h + 2);
-    let mut leaf_positions = HashSet::new();
+    let mut leaf_positions = Vec::new();
     for crown in &crowns {
         let (cx, cy, cz) = crown.pos;
         let jungle = foliage_shape == "jungle_foliage_placer";
@@ -656,17 +741,19 @@ fn tree(
                         .column(pos.0, pos.2)
                         .is_some_and(|c| pos.1 >= c.surface_height(Some(profile)))
                     {
-                        leaf_positions.insert(pos);
+                        leaf_positions.push(pos);
                     }
                 }
             }
         }
     }
     // Real six-neighbor leaf connectivity, not persistent leaves: chopping logs can decay them.
+    let mut occupancy = LeafOccupancy::new(&leaf_positions);
     let mut frontier = VecDeque::new();
-    let mut seen = HashSet::new();
+    let mut seen = spatial::Set::default();
     for &(wx, wy, wz, _) in &wood {
         if seen.insert((wx, wy, wz)) {
+            occupancy.mark_log((wx, wy, wz));
             frontier.push_back(((wx, wy, wz), 0u8));
         }
     }
@@ -683,7 +770,7 @@ fn tree(
             (0, 0, -1),
         ] {
             let next = (pos.0 + dx, pos.1 + dy, pos.2 + dz);
-            if leaf_positions.contains(&next) && seen.insert(next) {
+            if occupancy.take_leaf(next) {
                 let d = distance + 1;
                 blocks.push(WorldBlock {
                     x: next.0,
@@ -726,7 +813,7 @@ fn decorate_tree(
     if decorators.is_empty() {
         return;
     }
-    let mut occupied: HashSet<_> = wood
+    let mut occupied: spatial::Set<_> = wood
         .iter()
         .map(|w| (w.0, w.1, w.2))
         .chain(leaves.iter().copied())
@@ -972,6 +1059,102 @@ fn weighted<'a, T>(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn crown_grid_preserves_breadth_first_distance_order_and_log_occupancy() {
+        for origin in [(-30_000_000, -60, 30_000_000), (-17, 63, -33), (0, 0, 0)] {
+            for seed in 0..16 {
+                let mut rng = Rng::new(seed);
+                let mut positions = Vec::new();
+                for y in 0..9 {
+                    for z in -5..=5 {
+                        for x in -5..=5 {
+                            if rng.below(5) != 0 {
+                                positions.push((origin.0 + x, origin.1 + y, origin.2 + z));
+                            }
+                        }
+                    }
+                }
+                // Duplicate crowns and logs overlapping foliage must be suppressed.
+                positions.extend_from_within(..positions.len() / 2);
+                let wood = [origin, origin, (origin.0, origin.1 + 1, origin.2)];
+                let expected: HashSet<_> = positions.iter().copied().collect();
+                let mut seen = HashSet::new();
+                let mut frontier = VecDeque::new();
+                for p in wood {
+                    if seen.insert(p) {
+                        frontier.push_back((p, 0u8));
+                    }
+                }
+                let mut reference = Vec::new();
+                while let Some((p, d)) = frontier.pop_front() {
+                    if d >= 6 {
+                        continue;
+                    }
+                    for (x, y, z) in [
+                        (1, 0, 0),
+                        (-1, 0, 0),
+                        (0, 1, 0),
+                        (0, -1, 0),
+                        (0, 0, 1),
+                        (0, 0, -1),
+                    ] {
+                        let p = (p.0 + x, p.1 + y, p.2 + z);
+                        if expected.contains(&p) && seen.insert(p) {
+                            reference.push((p, d + 1));
+                            frontier.push_back((p, d + 1));
+                        }
+                    }
+                }
+                let mut grid = LeafOccupancy::new(&positions);
+                let mut seen = spatial::Set::default();
+                for p in wood {
+                    if seen.insert(p) {
+                        grid.mark_log(p);
+                        frontier.push_back((p, 0u8));
+                    }
+                }
+                let mut actual = Vec::new();
+                while let Some((p, d)) = frontier.pop_front() {
+                    if d >= 6 {
+                        continue;
+                    }
+                    for (x, y, z) in [
+                        (1, 0, 0),
+                        (-1, 0, 0),
+                        (0, 1, 0),
+                        (0, -1, 0),
+                        (0, 0, 1),
+                        (0, 0, -1),
+                    ] {
+                        let p = (p.0 + x, p.1 + y, p.2 + z);
+                        if grid.take_leaf(p) {
+                            actual.push((p, d + 1));
+                            frontier.push_back((p, d + 1));
+                        }
+                    }
+                }
+                assert!(!reference.is_empty());
+                assert_eq!(
+                    reference, actual,
+                    "distance/order changed at {origin:?}, seed {seed}"
+                );
+            }
+        }
+        let mut empty = LeafOccupancy::new(&[]);
+        empty.mark_log((1, 2, 3));
+        assert!(!empty.take_leaf((1, 2, 3)));
+        let extreme = [
+            (i32::MIN, i32::MIN, i32::MIN),
+            (i32::MAX, i32::MAX, i32::MAX),
+        ];
+        let mut sparse = LeafOccupancy::new(&extreme);
+        assert!(sparse.sparse.is_some());
+        sparse.mark_log(extreme[0]);
+        assert!(!sparse.take_leaf(extreme[0]));
+        assert!(sparse.take_leaf(extreme[1]));
+        assert!(!sparse.take_leaf(extreme[1]));
+    }
 
     #[test]
     fn giant_jungle_crowns_close_above_the_trunk_without_four_interior_holes() {

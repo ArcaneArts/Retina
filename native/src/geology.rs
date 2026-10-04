@@ -1,4 +1,5 @@
-//! Registry-derived subsurface generation. GPU masks are shared, Rust ore planning is parallel.
+//! Registry-derived subsurface generation. Bulk veins rasterize on the GPU;
+//! exposure-sensitive recipes and ordered replacement remain in parallel Rust.
 use crate::{
     COLUMNS, ChunkRequest,
     decoration::Field,
@@ -6,6 +7,9 @@ use crate::{
 };
 use rayon::prelude::*;
 use serde::Deserialize;
+
+pub mod raster;
+pub(crate) mod raster_gpu;
 
 #[cfg(feature = "ore-raster-benchmark")]
 pub mod raster_benchmark;
@@ -420,6 +424,32 @@ pub fn plan(
     mask: Option<&CaveMask>,
 ) -> Vec<Vec<OrePlacement>> {
     plan_inner(field, profile, request, side, mask, true).0
+}
+
+pub(crate) enum RegionPlan {
+    Cpu(Vec<Vec<OrePlacement>>),
+    Gpu {
+        batch: raster::Batch,
+        words: Vec<u32>,
+    },
+}
+impl RegionPlan {
+    pub(crate) fn apply(
+        &self,
+        request: ChunkRequest,
+        field: &Field,
+        profile: &WorldProfile,
+        mask: Option<&CaveMask>,
+        target: usize,
+        blocks: &mut [u16],
+    ) {
+        match self {
+            Self::Cpu(ores) => apply_ores(request, field, profile, mask, &ores[target], blocks),
+            Self::Gpu { batch, words } => {
+                batch.apply_compact(words, field, profile, mask, target, blocks)
+            }
+        }
+    }
 }
 
 #[derive(Clone, Copy, Default, serde::Serialize)]

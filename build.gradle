@@ -90,13 +90,24 @@ tasks.register('nativeGpuTest', Exec) {
 tasks.register('gpuTest', JavaExec) {
     group = 'verification'
     description = 'Test the GPU pipeline and Java/Rust bridge with parallel requests.'
-    dependsOn 'nativeGpuTest', 'gpuTestClasses'
+    dependsOn 'nativeGpuTest', 'nativeOreGpuTest', 'gpuTestClasses'
     classpath = sourceSets.gpuTest.runtimeClasspath
     mainClass = 'art.arcane.retina.worldgen.NativeTerrainIntegrationTest'
     javaLauncher = javaToolchains.launcherFor {
         languageVersion = JavaLanguageVersion.of(25)
     }
     jvmArgs '--enable-native-access=ALL-UNNAMED'
+}
+
+tasks.register('nativeOreGpuTest', Exec) {
+    group = 'verification'
+    description = 'Compare compact GPU ore masks with CPU host/exposure replay and distant coordinate bounds.'
+    dependsOn 'buildNative'
+    mustRunAfter 'nativeGpuTest'
+    workingDir nativeDirectory
+    commandLine cargoExecutable, 'test', '--release', '--locked', '--lib',
+            'real_gpu_compact_ores_preserve_hosts_exposure_edges_and_reused_buffers',
+            '--target-dir', nativeTarget.get().asFile.absolutePath, '--', '--ignored', '--nocapture'
 }
 
 tasks.register('regionTest', JavaExec) {

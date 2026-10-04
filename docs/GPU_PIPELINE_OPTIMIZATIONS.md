@@ -115,6 +115,10 @@ one/two-slot comparison above was sequential.
 
 ## Compact GPU ore raster experiment
 
+This section describes the original experiment. Production now consumes guarded
+bulk masks directly during assembly; see [sparse planning](GPU_SPARSE_PLANNING.md)
+for the subsequent implementation and complete-generator comparisons.
+
 The optional `ore-raster-benchmark` feature contains an actual WGSL prototype;
 normal mod builds continue to use the CPU planner. Rust constructs and prunes
 the same vein spheres in parallel, packs descriptors and inverse radii, and the
