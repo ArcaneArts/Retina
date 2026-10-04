@@ -12,7 +12,9 @@ secondary surface noise and fluid context; see
 validation, transfer costs and substantial cold-compilation cost.
 Registered coordinate slices now retain their scopes in both
 GPU execution paths; see [coordinate scopes](GPU_COORDINATE_SCOPES.md).
-Aquifers, broader features, further graph
+Local registered GPU aquifers and surface-lake corrections are implemented; see
+[GPU aquifers](GPU_AQUIFERS.md) for fluid/pressure equations, validation, costs and
+remaining fluid-tick approximations. Broader features, further graph
 semantics and scan work remain required, along with final integrated validation,
 transfer-volume measurements and updated stage telemetry where new stages arise.
 

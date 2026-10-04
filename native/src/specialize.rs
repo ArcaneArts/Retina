@@ -361,8 +361,22 @@ fn source_columns(program: &RegistryProgram) -> Result<(String, u32), String> {
     {
         writeln!(functions, "fn {name}(point:vec3<f32>,request:Request,context:vec4<f32>)->array<f32,6>{{return graph_{}(point,request,context,{i}u);}}", indices[i]).unwrap();
     }
+    if let Some(a) = program.aquifer.as_ref().filter(|a| a.enabled) {
+        for slot in 0..5 {
+            let pid = a.program as usize + slot;
+            writeln!(functions,"fn run_aquifer_{slot}(point:vec3<f32>,request:Request,context:vec4<f32>)->array<f32,6>{{return graph_{}(point,request,context,{pid}u);}}",indices[pid]).unwrap();
+        }
+    }
     functions.push_str("fn run_program(program:u32,point:vec3<f32>,request:Request,context:vec4<f32>)->array<f32,6>{switch program{\n");
-    for (i, f) in indices.iter().enumerate().skip(3) {
+    // Density and aquifer stages have direct calls. The only remaining dynamic
+    // selector is 3 + biome; exposing aquifer graphs here makes every material
+    // pipeline compile unreachable fluid/preliminary-density branches.
+    let material_end = program
+        .aquifer
+        .as_ref()
+        .filter(|a| a.enabled)
+        .map_or(indices.len(), |a| a.program as usize);
+    for (i, f) in indices.iter().take(material_end).enumerate().skip(3) {
         writeln!(
             functions,
             "case {i}u:{{return graph_{f}(point,request,context,program);}}"
@@ -450,6 +464,7 @@ struct Job {
     state: Arc<State>,
     horizontal_fields: u32,
     material_layers: bool,
+    aquifers: u8,
 }
 pub(crate) struct Compiler {
     sender: mpsc::Sender<Job>,
@@ -480,6 +495,7 @@ impl Compiler {
                             &job.program,
                             job.horizontal_fields,
                             job.material_layers,
+                            job.aquifers,
                         )
                     }))
                     .unwrap_or_else(|_| Err("specialized GPU compilation panicked".into()));
@@ -510,6 +526,15 @@ impl Compiler {
         let (mut source, horizontal_fields) = source_columns(program)?;
         // The entry-point set is part of pipeline identity even when graphs match.
         writeln!(source, "// material pipelines: {}", program.material_layers).unwrap();
+        writeln!(
+            source,
+            "// aquifer pipelines: {}",
+            program
+                .aquifer
+                .as_ref()
+                .map_or(0, |a| if a.enabled { 2 } else { 1 })
+        )
+        .unwrap();
         if let Some(state) = self.cache.get(&source) {
             state
                 .progress
@@ -535,6 +560,10 @@ impl Compiler {
                 state: state.clone(),
                 horizontal_fields,
                 material_layers: program.material_layers,
+                aquifers: program
+                    .aquifer
+                    .as_ref()
+                    .map_or(0, |a| if a.enabled { 2 } else { 1 }),
             })
             .map_err(|_| "GPU shader compiler stopped")?;
         self.cache.insert(source, state.clone());
@@ -549,6 +578,7 @@ pub(crate) fn compile(
     program: &str,
     horizontal_fields: u32,
     material_layers: bool,
+    aquifers: u8,
 ) -> Result<Pipelines, String> {
     let scope = device.push_error_scope(wgpu::ErrorFilter::Validation);
     let make =
@@ -603,31 +633,35 @@ pub(crate) fn compile(
             "lake_nodes",
         ],
     );
+    let material_source = if material_layers {
+        format!(
+            "{}\n{}",
+            include_str!("aquifers.wgsl"),
+            include_str!("materials.wgsl")
+        )
+    } else {
+        String::new()
+    };
+    let mut cave_entries = vec![
+        "underground_queries",
+        "cave_nodes",
+        "cave_exterior",
+        "cave_mask",
+    ];
+    if material_layers {
+        cave_entries.extend(["material_counts", "material_emit"]);
+    }
+    if aquifers > 0 {
+        cave_entries.push("aquifer_mask");
+    }
+    if aquifers > 1 {
+        cave_entries.extend(["aquifer_surface", "aquifer_centers", "aquifer_barrier"]);
+    }
     let cave = make(
         include_str!("caves.wgsl"),
-        if material_layers {
-            include_str!("materials.wgsl")
-        } else {
-            ""
-        },
+        &material_source,
         cave,
-        if material_layers {
-            &[
-                "underground_queries",
-                "cave_nodes",
-                "cave_exterior",
-                "cave_mask",
-                "material_counts",
-                "material_emit",
-            ]
-        } else {
-            &[
-                "underground_queries",
-                "cave_nodes",
-                "cave_exterior",
-                "cave_mask",
-            ]
-        },
+        &cave_entries,
     );
     if let Some(error) = pollster::block_on(scope.pop()) {
         return Err(format!("specialized GPU program: {error}"));
@@ -641,10 +675,24 @@ pub(crate) fn compile(
 
 /// Constant calls bypass the material dispatch and its other graph call paths.
 pub(crate) fn static_calls(source: &str) -> String {
-    source
+    let mut output = source
         .replace("run_program(0u,", "run_climate(")
         .replace("run_program(1u,", "run_surface_density(")
-        .replace("run_program(2u,", "run_final_density(")
+        .replace("run_program(2u,", "run_final_density(");
+    for slot in 0..5 {
+        if source.contains(&format!("fn run_aquifer_{slot}(")) {
+            let graph = if slot == 0 {
+                "caves.aquifer[0].y".to_owned()
+            } else {
+                format!("caves.aquifer[0].y+{slot}u")
+            };
+            output = output.replace(
+                &format!("run_program({graph},"),
+                &format!("run_aquifer_{slot}("),
+            );
+        }
+    }
+    output
 }
 
 #[cfg(test)]
@@ -652,6 +700,45 @@ mod tests {
     use super::*;
     fn n(op: u32, a: u32, b: u32, c: u32, p: [f32; 4]) -> Instruction {
         Instruction { op, a, b, c, p }
+    }
+    #[test]
+    fn material_dispatch_excludes_direct_aquifer_graphs() {
+        let registry = RegistryProgram {
+            programs: (0..9)
+                .map(|v| Program {
+                    nodes: vec![n(0, 0, 0, 0, [v as f32, 0.0, 0.0, 0.0])],
+                    roots: vec![0],
+                })
+                .collect(),
+            noises: vec![],
+            points: vec![],
+            surface: [-64, 8, 0],
+            terrain_cell: [4, 8],
+            surface_noises: [0; 3],
+            material_layers: true,
+            aquifer: Some(crate::program::AquiferProgram {
+                enabled: true,
+                program: 4,
+                surface: [-64, 8, 0],
+            }),
+        };
+        let generated = source(&registry).unwrap();
+        assert!(generated.contains("fn run_aquifer_4("));
+        let dispatch = generated
+            .split("fn run_program(")
+            .nth(1)
+            .unwrap()
+            .split("fn density_floor_div(")
+            .next()
+            .unwrap();
+        assert!(dispatch.contains("case 3u:"));
+        assert!(!dispatch.contains("case 4u:"));
+        assert!(
+            static_calls(&format!(
+                "{generated}\nrun_program(caves.aquifer[0].y+4u,p,r,c);"
+            ))
+            .ends_with("run_aquifer_4(p,r,c);")
+        );
     }
     #[test]
     fn branch_dominance_does_not_reuse_arm_local_values() {
@@ -694,6 +781,7 @@ mod tests {
             terrain_cell: [4, 8],
             surface_noises: [0; 3],
             material_layers: false,
+            aquifer: None,
         };
         let source = source(&registry).unwrap();
         assert!(!source.contains("array<f32,1024>"));

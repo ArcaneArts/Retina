@@ -4,11 +4,11 @@ import net.minecraft.network.RegistryFriendlyByteBuf;
 
 /** Stage snapshot. Session CPU counters add across workers; region CPU counters estimate wall shares. */
 public record NativeTimings(int flags, long chunks, long gpuColumns, long gpuJobs, long[] nanos) {
-    public static final int STAGES = 21;
+    public static final int STAGES = 23;
     public static final int QUEUE=0, ENCODE=1, WAIT_COPY=2, HEIGHT=3, SITES=4, COLUMNS=5,
             CAVE_DENSITY=6, CAVE_MASK=7, STRUCTURE_PLAN=8, VEGETATION_PLAN=9, ORE_PLAN=10,
             ASSEMBLY=11, GEOLOGY=12, CAVE_FEATURES=13, VEGETATION=14, STRUCTURES=15,
-            SNOW=16, NBT=17, COMPRESS=18, IO=19, MATERIALS=20;
+            SNOW=16, NBT=17, COMPRESS=18, IO=19, MATERIALS=20, AQUIFER_FIELDS=21, AQUIFER_MASK=22;
     public static final NativeTimings EMPTY = new NativeTimings(0,0,0,0,new long[STAGES]);
     public NativeTimings {
         if (nanos.length != STAGES) throw new IllegalArgumentException("Incorrect native timing stage count");

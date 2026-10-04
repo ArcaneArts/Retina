@@ -57,8 +57,9 @@ diagnostics, not changes to saved world configuration.
 
 F3 reports execution state, compilation time, registered/emitted node counts,
 horizontal field count and cumulative actual upload/readback bytes for the profile.
-The separate 64-byte diagnostics ABI leaves the original timing and request ABIs
-unchanged. Network round-trip and display tests cover the added information.
+The separate 64-byte diagnostics ABI leaves the request ABI unchanged.
+Subsequent material and aquifer milestones extend the native timing snapshot
+to version 3 with 23 stages. Network round-trip and display tests cover the added information.
 
 Cold automatic-mode checks use real exported profiles with identity clamps
 appended to the roots, forcing new shader code without changing terrain. Both
@@ -108,4 +109,6 @@ Complete [material layers](GPU_MATERIAL_LAYERS.md) now use the same specializati
 path. Their first Terralith compilation measured about 200–208 seconds; automatic
 mode continues generating with the interpreter but runs more slowly until it is
 ready. Reducing that compilation and interpreter cost remains required, alongside
-aquifers, broader feature recipes and remaining density semantics.
+broader feature recipes and remaining density semantics.
+[Local aquifer passes](GPU_AQUIFERS.md) now use direct specialized graph calls,
+keeping material-dispatch branches out of their field and pressure shaders.

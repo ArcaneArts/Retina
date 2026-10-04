@@ -44,19 +44,25 @@ public final class TerrainDebugReport {
             lines.add(share(RUST,"File I/O",stats.regionStagePercent(IO),false));
             lines.add(share("§9","Java column cache",stats.columnCachePercent(),false));
             double accounted=stats.columnCacheMs();
-            for(int stage=0;stage<STAGES;stage++)if(stage<HEIGHT || stage>=STRUCTURE_PLAN && stage!=MATERIALS)accounted+=stats.regionStageMs(stage);
+            for(int stage=0;stage<STAGES;stage++)if(stage<HEIGHT || stage>=STRUCTURE_PLAN && stage<MATERIALS)accounted+=stats.regionStageMs(stage);
             double other=100*Math.max(0,stats.averageRegionMs()-accounted)/Math.max(.000001,stats.averageRegionMs());
             lines.add(share(LABEL,"Other / waiting",other,false));
             lines.add(HEADER+"GPU device (% of region; overlaps host)"+RESET);
             if(stats.regionStages().gpuMeasured()) {for(int stage=HEIGHT;stage<=CAVE_MASK;stage++)
                 lines.add(share(GPU,GPU_DEVICE[stage-HEIGHT],stats.regionStagePercent(stage),false));
-                lines.add(share(GPU,"Material layers",stats.regionStagePercent(MATERIALS),false));}
+                lines.add(share(GPU,"Material layers",stats.regionStagePercent(MATERIALS),false));
+                lines.add(share(GPU,"Aquifer fields",stats.regionStagePercent(AQUIFER_FIELDS),false));
+                lines.add(share(GPU,"Aquifer fluids / barriers",stats.regionStagePercent(AQUIFER_MASK),false));}
             else lines.add(LABEL+"Device timestamps unavailable");
         } else if(!mca && stats.stages().chunks()>0) {
             lines.add(HEADER+"Rust (% of average chunk time)"+RESET);
             for(int stage=ASSEMBLY;stage<=COMPRESS;stage++)lines.add(share(RUST,WORKERS[stage-ASSEMBLY],100*stats.stages().chunkMs(stage)/Math.max(.000001,stats.msPerChunk()),false));
             lines.add(LABEL+"Convert: "+DATA+format("%.3f ms",stats.conversionMs()));
-            if(stats.stages().gpuMeasured())lines.add(share(GPU,"Material layers",100*stats.stages().gpuChunkMs(MATERIALS)/Math.max(.000001,stats.msPerChunk()),false));
+            if(stats.stages().gpuMeasured()) {
+                lines.add(share(GPU,"Material layers",100*stats.stages().gpuChunkMs(MATERIALS)/Math.max(.000001,stats.msPerChunk()),false));
+                lines.add(share(GPU,"Aquifer fields",100*stats.stages().gpuChunkMs(AQUIFER_FIELDS)/Math.max(.000001,stats.msPerChunk()),false));
+                lines.add(share(GPU,"Aquifer fluids / barriers",100*stats.stages().gpuChunkMs(AQUIFER_MASK)/Math.max(.000001,stats.msPerChunk()),false));
+            }
         }
         return List.copyOf(lines);
     }

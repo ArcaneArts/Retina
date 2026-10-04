@@ -86,6 +86,7 @@ public final class NativeFeatureIntegrationTest {
         var forced = only(json, "minecraft:plains");
         var entry = forced.getAsJsonArray("biomes").get(0).getAsJsonObject();
         entry.add("lakes", array(lava ? 0 : 1, lava ? 1 : 0));
+        entry.addProperty("lake_water_barrier",forced.get("stone").getAsInt());
         entry.add("terrain", array(0, 0.15, 0.85));
         entry.add("ores", new JsonArray()); entry.add("decorations", new JsonArray());
         // Leave caves enabled to verify basin floors survive carving.
@@ -111,6 +112,7 @@ public final class NativeFeatureIntegrationTest {
                     var old = levels.putIfAbsent(key, level); require(old == null || old == level, "GPU lake waterline is flat across chunk borders");
                     var generated = cache.baseColumn(pos,columns,i);
                     require(generated[level + 63].is(lava ? Blocks.LAVA : Blocks.WATER), "lake contains registered fluid");
+                    require(generated[columns.heights()[i]+63].is(Blocks.STONE), "lake floor uses its registered barrier material");
                     require(!generated[columns.heights()[i] + 63].isAir() && generated[columns.heights()[i] + 63].getFluidState().isEmpty(), "lake has a solid basin floor");
                     if (compared < 24) {
                         var request = request(id,cx,cz,112,12);

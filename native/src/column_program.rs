@@ -185,6 +185,7 @@ mod tests {
             terrain_cell: [4, 8],
             surface_noises: [0; 3],
             material_layers: false,
+            aquifer: None,
         };
         let plan = Plan::new(&r);
         assert_eq!(plan.owners, vec![(0, 1)]);
@@ -216,6 +217,7 @@ mod tests {
             terrain_cell: [4, 8],
             surface_noises: [0; 3],
             material_layers: false,
+            aquifer: None,
         };
         let plan = Plan::new(&registry);
         assert_eq!(plan.owners, vec![(0, 5)]);
@@ -256,6 +258,7 @@ mod tests {
             terrain_cell: [4, 8],
             surface_noises: [0; 3],
             material_layers: false,
+            aquifer: None,
         };
         let p = Plan::new(&r);
         assert_eq!(p.owners, vec![(0, 3), (2, 3)]);

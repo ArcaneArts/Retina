@@ -9,7 +9,7 @@ struct Column { height: i32, packed: u32, materials: u32 }
 struct NoiseProfile { frequency: f32, amplitude: f32, count: u32, padding: u32, modifiers: array<f32,32> }
 struct Carver { range: vec4<f32>, shape: vec4<f32>, detail: vec4<f32>, variation: vec4<f32>, length: vec4<f32>, axis: vec4<f32> }
 struct CaveBiome { carvers: array<Carver,4>, climate: vec4<f32>, selection: vec4<f32> }
-struct CaveProfile { globals: vec4<u32>, base: array<vec4<u32>,2>, noises: array<NoiseProfile,6>, biomes: array<CaveBiome> }
+struct CaveProfile { globals: vec4<u32>, base: array<vec4<u32>,2>, aquifer:array<vec4<u32>,2>, noises: array<NoiseProfile,6>, biomes: array<CaveBiome> }
 @group(0) @binding(0) var<storage,read> requests: array<Request>;
 @group(0) @binding(1) var<storage,read> columns: array<Column>;
 @group(0) @binding(2) var<storage,read> caves: CaveProfile;

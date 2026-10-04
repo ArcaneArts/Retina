@@ -203,6 +203,29 @@ impl GeologyProfile {
                     .unwrap_or(false),
             ),
         ]));
+        let aquifer = profile
+            .registry_program
+            .as_ref()
+            .and_then(|r| r.aquifer.as_ref());
+        bytes.extend_from_slice(bytemuck::cast_slice(&[
+            aquifer.map_or(0, |a| if a.enabled { 2 } else { 1 }),
+            aquifer.map_or(0, |a| a.program),
+            aquifer.map_or(0, |a| a.surface[0] as u32),
+            aquifer.map_or(1, |a| a.surface[1] as u32),
+            aquifer.map_or(1, |a| a.surface[2] as u32),
+            u32::from(
+                profile.materials[profile.water as usize]
+                    .as_str()
+                    .or_else(|| {
+                        profile.materials[profile.water as usize]
+                            .get("id")
+                            .and_then(serde_json::Value::as_str)
+                    })
+                    == Some("minecraft:water"),
+            ),
+            0,
+            0,
+        ]));
         for channel in 0..6 {
             let mut data = vec![0u8; 144];
             if let Some(noise) = self.cave_noises.get(channel) {
@@ -273,6 +296,8 @@ pub struct CaveMask {
     pub min_y: i32,
     pub height: u32,
     pub width: usize,
+    /// Registered aquifers store only carved air in the CPU exposure bit plane.
+    pub air_only: bool,
     pub words: Vec<u32>,
 }
 impl CaveMask {
@@ -944,7 +969,11 @@ pub fn apply_ores(
                 if mask.is_some_and(|m| m.carved(nx, ny, nz))
                     && profile.geology.carveable[material as usize]
                 {
-                    material = cave_material(profile, c, ny);
+                    material = if mask.is_some_and(|m| m.air_only) {
+                        0
+                    } else {
+                        cave_material(profile, c, ny)
+                    };
                 }
                 material == 0
             });

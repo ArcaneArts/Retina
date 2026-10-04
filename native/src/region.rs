@@ -496,7 +496,7 @@ fn generate_region_inner(
         detail.gpu_jobs = gpu_trace.gpu_jobs;
         detail.nanos[..timings::STRUCTURE_PLAN]
             .copy_from_slice(&gpu_trace.nanos[..timings::STRUCTURE_PLAN]);
-        detail.nanos[timings::MATERIALS] = gpu_trace.nanos[timings::MATERIALS];
+        detail.nanos[timings::MATERIALS..].copy_from_slice(&gpu_trace.nanos[timings::MATERIALS..]);
         let gpu_host: u64 = detail.nanos[..timings::HEIGHT].iter().sum();
         // Includes field-cache copies and host bookkeeping within the measured GPU phase.
         detail.nanos[timings::WAIT_COPY] += report.gpu_nanos.saturating_sub(gpu_host);

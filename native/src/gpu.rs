@@ -26,6 +26,10 @@ pub(crate) struct Gpu {
     cave_nodes_pipeline: wgpu::ComputePipeline,
     cave_exterior_pipeline: wgpu::ComputePipeline,
     cave_mask_pipeline: wgpu::ComputePipeline,
+    aquifer_surface_pipeline: wgpu::ComputePipeline,
+    aquifer_centers_pipeline: wgpu::ComputePipeline,
+    aquifer_barrier_pipeline: wgpu::ComputePipeline,
+    aquifer_mask_pipeline: wgpu::ComputePipeline,
     material_counts_pipeline: wgpu::ComputePipeline,
     material_prefix_blocks_pipeline: wgpu::ComputePipeline,
     material_prefix_total_pipeline: wgpu::ComputePipeline,
@@ -159,10 +163,11 @@ impl Gpu {
             label: Some("Retina GPU cave fields and mask"),
             source: wgpu::ShaderSource::Wgsl(
                 format!(
-                    "{}\n{}\n{}\n{}",
+                    "{}\n{}\n{}\n{}\n{}",
                     include_str!("caves.wgsl"),
                     include_str!("climate.wgsl"),
                     include_str!("program.wgsl"),
+                    include_str!("aquifers.wgsl"),
                     include_str!("materials.wgsl")
                 )
                 .into(),
@@ -203,6 +208,10 @@ impl Gpu {
         let cave_nodes_pipeline = cave_pipeline("cave_nodes");
         let cave_exterior_pipeline = cave_pipeline("cave_exterior");
         let cave_mask_pipeline = cave_pipeline("cave_mask");
+        let aquifer_surface_pipeline = cave_pipeline("aquifer_surface");
+        let aquifer_centers_pipeline = cave_pipeline("aquifer_centers");
+        let aquifer_barrier_pipeline = cave_pipeline("aquifer_barrier");
+        let aquifer_mask_pipeline = cave_pipeline("aquifer_mask");
         let material_counts_pipeline = cave_pipeline("material_counts");
         let material_prefix_blocks_pipeline = cave_pipeline("material_prefix_blocks");
         let material_prefix_total_pipeline = cave_pipeline("material_prefix_total");
@@ -269,6 +278,10 @@ impl Gpu {
             cave_nodes_pipeline,
             cave_exterior_pipeline,
             cave_mask_pipeline,
+            aquifer_surface_pipeline,
+            aquifer_centers_pipeline,
+            aquifer_barrier_pipeline,
+            aquifer_mask_pipeline,
             material_counts_pipeline,
             material_prefix_blocks_pipeline,
             material_prefix_total_pipeline,
@@ -536,6 +549,13 @@ impl Gpu {
                     .is_some_and(|r| r.material_layers)
             });
         let material_columns = (cave_side * 16).pow(2) as u64;
+        let aquifer = if layered {
+            profile
+                .and_then(|p| p.registry_program.as_ref())
+                .and_then(|p| p.aquifer.as_ref())
+        } else {
+            None
+        };
         let material_header_words = if layered {
             4 + material_columns * 2 + material_columns.div_ceil(256) * 2
         } else {
@@ -550,6 +570,14 @@ impl Gpu {
                 + material_header_words)
                 * 4
         };
+        // Fluid planes stay GPU-only. CPU mask/header and final run readbacks
+        // deliberately omit them; they are included in the emission snapshot.
+        let storage_mask_size = mask_size
+            + if aquifer.is_some() {
+                volume_words * 8
+            } else {
+                0
+            };
         let node_side = requests[0].tile_side * 4 + 1;
         let node_bottom = requests[0].min_y.div_euclid(4) * 4;
         let node_height = ((requests[0].max_y - node_bottom + 3) / 4 + 1) as u32;
@@ -559,6 +587,30 @@ impl Gpu {
         } else {
             node_side as u64 * node_side as u64 * node_height as u64 * 16
                 + surface_width as u64 * surface_width as u64 * 8
+                + if aquifer.is_some_and(|a| a.enabled) {
+                    let r = requests[0];
+                    let min = [
+                        (r.origin_x + 10).div_euclid(16),
+                        (r.min_y + 1).div_euclid(12) - 1,
+                        (r.origin_z + 10).div_euclid(16),
+                    ];
+                    let max = [
+                        (r.origin_x + cave_side as i32 * 16 + 11).div_euclid(16) + 1,
+                        r.max_y.div_euclid(12) + 1,
+                        (r.origin_z + cave_side as i32 * 16 + 11).div_euclid(16) + 1,
+                    ];
+                    let centers = (max[0] - min[0] + 1) as u64
+                        * (max[1] - min[1] + 1) as u64
+                        * (max[2] - min[2] + 1) as u64;
+                    let surfaces = ((max[0] * 16 + 25 - (min[0] * 16 - 48)) / 4 + 1) as u64
+                        * ((max[2] * 16 + 25 - (min[2] * 16 - 48)) / 4 + 1) as u64;
+                    (surfaces
+                        + centers * 2
+                        + (node_side as u64 * node_side as u64 * node_height as u64).div_ceil(4))
+                        * 16
+                } else {
+                    0
+                }
         };
         if cave_side > 0 || underground_probe {
             if !self.cave_profiles.contains_key(&profile_id) {
@@ -580,7 +632,7 @@ impl Gpu {
             if self
                 .cave_buffers
                 .as_ref()
-                .is_none_or(|b| b.nodes_size < nodes_size || b.mask_size < mask_size)
+                .is_none_or(|b| b.nodes_size < nodes_size || b.mask_size < storage_mask_size)
             {
                 let buffer = |label, size, usage| {
                     self.device.create_buffer(&wgpu::BufferDescriptor {
@@ -598,11 +650,11 @@ impl Gpu {
                     ),
                     mask: buffer(
                         "Retina packed cave mask",
-                        mask_size,
+                        storage_mask_size,
                         wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
                     ),
                     nodes_size,
-                    mask_size,
+                    mask_size: storage_mask_size,
                 });
             }
         }
@@ -640,6 +692,12 @@ impl Gpu {
         }
         if layered {
             measured.push(timings::MATERIALS);
+        }
+        if aquifer.is_some_and(|a| a.enabled) {
+            measured.push(timings::AQUIFER_FIELDS);
+        }
+        if aquifer.is_some() {
+            measured.push(timings::AQUIFER_MASK);
         }
         let timestamp_writes = |stage| {
             slot.timestamps
@@ -839,6 +897,56 @@ impl Gpu {
                 pass.set_bind_group(0, &cave_group, &[]);
                 pass.dispatch_workgroups(1, count as u32, 1);
             } else {
+                if aquifer.is_some_and(|a| a.enabled) {
+                    let r = requests[0];
+                    let min = [
+                        (r.origin_x + 10).div_euclid(16),
+                        (r.min_y + 1).div_euclid(12) - 1,
+                        (r.origin_z + 10).div_euclid(16),
+                    ];
+                    let max = [
+                        (r.origin_x + cave_side as i32 * 16 + 11).div_euclid(16) + 1,
+                        r.max_y.div_euclid(12) + 1,
+                        (r.origin_z + cave_side as i32 * 16 + 11).div_euclid(16) + 1,
+                    ];
+                    let centers = (max[0] - min[0] + 1) as u32
+                        * (max[1] - min[1] + 1) as u32
+                        * (max[2] - min[2] + 1) as u32;
+                    let surfaces = ((max[0] * 16 + 25 - (min[0] * 16 - 48)) / 4 + 1) as u32
+                        * ((max[2] * 16 + 25 - (min[2] * 16 - 48)) / 4 + 1) as u32;
+                    for (i, (name, pipeline, items)) in [
+                        ("aquifer_surface", &self.aquifer_surface_pipeline, surfaces),
+                        ("aquifer_centers", &self.aquifer_centers_pipeline, centers),
+                        (
+                            "aquifer_barrier",
+                            &self.aquifer_barrier_pipeline,
+                            (node_side * node_side * node_height).div_ceil(4),
+                        ),
+                    ]
+                    .into_iter()
+                    .enumerate()
+                    {
+                        let mut writes = timestamp_writes(timings::AQUIFER_FIELDS);
+                        if let Some(ref mut w) = writes {
+                            if i != 0 {
+                                w.beginning_of_pass_write_index = None;
+                            }
+                            if i != 2 {
+                                w.end_of_pass_write_index = None;
+                            }
+                        }
+                        if i == 1 {
+                            writes = None;
+                        }
+                        let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                            label: Some(name),
+                            timestamp_writes: writes,
+                        });
+                        pass.set_pipeline(cave_pipeline(name, pipeline));
+                        pass.set_bind_group(0, &cave_group, &[]);
+                        pass.dispatch_workgroups(items.div_ceil(64), 1, 1);
+                    }
+                }
                 {
                     let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
                         label: Some("Retina cave density pass"),
@@ -885,6 +993,15 @@ impl Gpu {
                         1,
                     );
                 }
+                if aquifer.is_some() {
+                    let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                        label: Some("Retina local aquifer fluids and pressure barriers"),
+                        timestamp_writes: timestamp_writes(timings::AQUIFER_MASK),
+                    });
+                    pass.set_pipeline(cave_pipeline("aquifer_mask", &self.aquifer_mask_pipeline));
+                    pass.set_bind_group(0, &cave_group, &[]);
+                    pass.dispatch_workgroups(256, volume_words.div_ceil(16384) as u32, 1);
+                }
             }
             if layered {
                 {
@@ -928,13 +1045,16 @@ impl Gpu {
                     "Retina material job columns",
                     count as u64 * COLUMNS as u64 * std::mem::size_of::<Column>() as u64,
                 );
-                let mask = snapshot("Retina material job mask and run offsets", mask_size);
+                let mask = snapshot(
+                    "Retina material job mask and run offsets",
+                    storage_mask_size,
+                );
                 let requests = snapshot(
                     "Retina material job descriptor",
                     std::mem::size_of::<GpuRequest>() as u64,
                 );
                 encoder.copy_buffer_to_buffer(&self.output, 0, &columns, 0, columns.size());
-                encoder.copy_buffer_to_buffer(&buffers.mask, 0, &mask, 0, mask_size);
+                encoder.copy_buffer_to_buffer(&buffers.mask, 0, &mask, 0, storage_mask_size);
                 encoder.copy_buffer_to_buffer(&self.requests, 0, &requests, 0, requests.size());
                 materials = Some(MaterialPending {
                     columns,
@@ -977,7 +1097,7 @@ impl Gpu {
         timings.add(timings::ENCODE, encode_nanos);
         let wait_start = Instant::now();
         let mut job_timings = timings::Snapshot::default();
-        job_timings.version = 2;
+        job_timings.version = 3;
         job_timings.gpu_jobs = 1;
         job_timings.gpu_columns = column_count as u64;
         job_timings.nanos[timings::ENCODE] = encode_nanos;
@@ -1005,6 +1125,7 @@ impl Gpu {
             measured,
             timings: job_timings,
             materials,
+            aquifer: aquifer.is_some(),
         })
     }
     fn emit_materials(
@@ -1143,7 +1264,7 @@ impl Gpu {
             queries: self.device.create_query_set(&wgpu::QuerySetDescriptor {
                 label: Some("Retina slot pass timings"),
                 ty: wgpu::QueryType::Timestamp,
-                count: 12,
+                count: 16,
             }),
             resolve: self.device.create_buffer(&wgpu::BufferDescriptor {
                 label: Some("Retina slot timestamp resolve"),
@@ -1151,7 +1272,7 @@ impl Gpu {
                 usage: wgpu::BufferUsages::QUERY_RESOLVE | wgpu::BufferUsages::COPY_SRC,
                 mapped_at_creation: false,
             }),
-            readback: self.readback_buffer("Retina slot timestamp readback", 96),
+            readback: self.readback_buffer("Retina slot timestamp readback", 128),
         }
     }
     fn readback_buffer(&self, label: &str, size: u64) -> wgpu::Buffer {
@@ -1220,6 +1341,7 @@ impl Gpu {
                     min_y: pending.request.min_y,
                     height: pending.cave_height,
                     width: pending.cave_width as usize,
+                    air_only: pending.aquifer,
                     words,
                 })
             }
@@ -1375,6 +1497,7 @@ pub(crate) struct PendingSample {
     measured: Vec<usize>,
     timings: timings::Snapshot,
     materials: Option<MaterialPending>,
+    aquifer: bool,
 }
 struct MaterialPending {
     columns: wgpu::Buffer,
@@ -1403,7 +1526,8 @@ mod mapping_tests {
                 &gpu.cave_layout,
                 "invalid WGSL",
                 0,
-                false
+                false,
+                0
             )
             .is_err()
         );

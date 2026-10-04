@@ -90,7 +90,7 @@ tasks.register('nativeGpuTest', Exec) {
 tasks.register('gpuTest', JavaExec) {
     group = 'verification'
     description = 'Test the GPU pipeline and Java/Rust bridge with parallel requests.'
-    dependsOn 'nativeGpuTest', 'nativeOreGpuTest', 'nativeCoordinateGpuTest', 'materialTest', 'gpuTestClasses'
+    dependsOn 'nativeGpuTest', 'nativeOreGpuTest', 'nativeCoordinateGpuTest', 'materialTest', 'aquiferTest', 'gpuTestClasses'
     classpath = sourceSets.gpuTest.runtimeClasspath
     mainClass = 'art.arcane.retina.worldgen.NativeTerrainIntegrationTest'
     javaLauncher = javaToolchains.launcherFor {
@@ -192,6 +192,15 @@ tasks.register('featureTest', JavaExec) {
     classpath = sourceSets.gpuTest.runtimeClasspath
     mainClass = 'art.arcane.retina.worldgen.NativeFeatureIntegrationTest'
     javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
+    jvmArgs '--enable-native-access=ALL-UNNAMED'
+}
+
+tasks.register('aquiferTest', JavaExec) {
+    group = 'verification'
+    description = 'Compare actual GPU local fluids and pressure barriers with Minecraft aquifer equations.'
+    dependsOn 'gpuTestClasses', 'packageNative'
+    classpath = sourceSets.gpuTest.runtimeClasspath
+    mainClass = 'art.arcane.retina.worldgen.NativeAquiferIntegrationTest'
     jvmArgs '--enable-native-access=ALL-UNNAMED'
 }
 

@@ -54,8 +54,9 @@ final class RegistryShoreIntegrationChecks {
             require(selected, "coastal biome is reachable: " + shore);
             require((original.getAsJsonArray("biomes").get(index).getAsJsonObject().get("flags").getAsInt() & 64) != 0,
                     "registered shore identity exported");
-            require(original.getAsJsonArray("biomes").get(index).getAsJsonObject().getAsJsonArray("lakes").get(0).getAsDouble() == 0,
-                    "synthetic inland water basins do not distort shorelines");
+            var lakes=original.getAsJsonArray("biomes").get(index).getAsJsonObject().getAsJsonArray("lakes");
+            require(lakes.get(0).getAsDouble() == lakes.get(1).getAsDouble(),
+                    "no synthetic water basins are added to registered shoreline recipes");
             targets += exported.size();
         }
         System.out.println("QA_EVT {\"event\":\"registered_gpu_coast_intervals\",\"status\":\"pass\",\"context\":{\"shore_types\":3,\"intervals\":" + targets + "}}");
@@ -244,7 +245,7 @@ final class RegistryShoreIntegrationChecks {
         var biomes = new JsonArray(); biomes.add(selected); data.add("biomes", biomes); data.add("climate_targets", new JsonArray());
         var registry = data.getAsJsonObject("registry_program"); var old = registry.getAsJsonArray("programs");
         var programs = new JsonArray(); for (int i = 0; i < 3; i++) programs.add(old.get(i)); programs.add(old.get(3 + biome));
-        registry.add("programs", programs); return data;
+        registry.add("programs", programs); registry.remove("aquifer"); return data;
     }
     private static void constantClimate(JsonObject data, JsonObject target) {
         var program = new JsonObject(); var nodes = new JsonArray(); var roots = new JsonArray();

@@ -459,7 +459,7 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
                     height = clamp(level-i32(drop),request.min_y+6,request.max_y-1);
                     depth = drop; flags &= ~(1u<<28u); flags |= 1u<<29u;
                     if lava_lake { flags |= 1u<<28u; top = 4u; filler = center_biome; }
-                    else { top = 1u; filler = top; }
+                    else { top = 1u; filler = center_biome; }
                 } else {
                     height = i32(round(mix(f32(level),f32(height),smoothstep(1.0,1.35,basin))));
                 }
@@ -493,7 +493,11 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
         let selected_filler=run_program(3u+biome,vec3<f32>(point.x,f32(height-3),point.y),request,vec4<f32>(3.0,material_depth,slope,band))[0];
         if selected_top>0.0 {top_id=u32(selected_top-1.0);}if selected_filler>0.0 {filler_id=u32(selected_filler-1.0);}
     }
-    if (flags & ((1u<<29u)|(1u<<28u)))==((1u<<29u)|(1u<<28u)) {top_id=u32(world.biomes[filler].features.z);filler_id=top_id;}
+    if (flags & (1u<<29u))!=0u {
+        let barriers=bitcast<u32>(world.biomes[filler].features.z);
+        let barrier=select(barriers>>16u,barriers&65535u,(flags&(1u<<28u))!=0u);
+        if barrier!=0u {top_id=barrier;filler_id=barrier;}
+    }
     flags |= (h >> 16u & 3u) << 30u;
     columns[index] = Column(height, biome | ((filler & 255u) << 16u) | (depth << 24u) | flags, top_id | (filler_id << 16u));
 }

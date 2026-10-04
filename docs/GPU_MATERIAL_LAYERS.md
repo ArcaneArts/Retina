@@ -22,9 +22,10 @@ floor, ceiling and underwater layers rather than a fixed filler thickness.
 approximated from final column height and surface depth, rather than Minecraft's
 separate preliminary-density search. The exporter reports
 `material:preliminary-surface-from-final-height` explicitly. Surface noise and
-terrain geometry retain Retina's existing GPU approximations. Local aquifer
-pressure is not implemented by this milestone: cavity fluids still follow the
-existing ocean/lava classification. Explicit registered lake caps remain intact.
+terrain geometry retain Retina's existing GPU approximations. This material milestone initially retained the
+existing ocean/lava cavity classification. The subsequent
+[local GPU aquifer milestone](GPU_AQUIFERS.md) now supplies air, local fluids and
+pressure barriers before the same run evaluator. Registered lake caps remain intact.
 
 The small column descriptor continues to hold stable representative top/filler
 materials for fast height and feature probes, including halo queries. It is not
@@ -61,7 +62,8 @@ stack-local run cursors. Final NBT palettes and heightmaps still reflect blocks
 after all features and structures. The new F3 `Material layers` line reports real
 device time for count plus emission. It overlaps host time and is excluded from
 Rust wall-percentage attribution; the small prefix passes are not separately
-timestamped. The internal native timing snapshot is version 2 with 21 stages.
+timestamped. This milestone introduced timing ABI version 2 with 21 stages;
+local aquifers extend it to version 3 with 23 stages.
 
 ## Distant Horizons base-column cache
 
@@ -195,6 +197,6 @@ to measure cold automatic startup and its post-compilation parity check. Retaine
 local evidence is under `build/goal-baseline/layers-*` and `build/layers-*.log`.
 
 Remaining work includes faster material specialization/interpreter execution,
-local aquifers, richer registered feature recipes and providers, per-expression
+richer registered feature recipes and providers, per-expression
 density interpolation, additional measured Rust reductions and final integrated
 validation of all goal workstreams.

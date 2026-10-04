@@ -52,6 +52,19 @@ pub struct RegistryProgram {
     pub surface_noises: [u32; 3],
     #[serde(default)]
     pub material_layers: bool,
+    #[serde(default)]
+    pub aquifer: Option<AquiferProgram>,
+}
+#[derive(Clone, Deserialize)]
+pub struct AquiferProgram {
+    pub enabled: bool,
+    #[serde(default)]
+    pub program: u32,
+    #[serde(default = "default_aquifer_surface")]
+    pub surface: [i32; 3],
+}
+fn default_aquifer_surface() -> [i32; 3] {
+    [0, 1, 1]
 }
 fn unit_scale() -> f32 {
     1.0
@@ -61,12 +74,27 @@ fn default_terrain_cell() -> [u32; 2] {
 }
 impl RegistryProgram {
     pub fn validate(&self, biomes: usize) -> Result<(), String> {
+        let extra = if self.aquifer.as_ref().is_some_and(|a| a.enabled) {
+            5
+        } else {
+            0
+        };
+        if let Some(a) = &self.aquifer {
+            if !self.material_layers
+                || a.enabled
+                    && (a.program as usize != biomes + 3
+                        || a.surface[1] <= 0
+                        || !(0..=1).contains(&a.surface[2]))
+            {
+                return Err("invalid registered aquifer program".into());
+            }
+        }
         if self
             .surface_noises
             .iter()
             .any(|id| *id as usize >= self.noises.len())
             || self.points.iter().flatten().any(|x| !x.is_finite())
-            || self.programs.len() != biomes + 3
+            || self.programs.len() != biomes + 3 + extra
             || self.surface[1] <= 0
             || self.surface[2] < 0
             || self.surface[2] > 1

@@ -14,6 +14,8 @@ pub struct BiomeProfile {
     #[serde(default)]
     pub lake_barrier: u16,
     #[serde(default)]
+    pub lake_water_barrier: u16,
+    #[serde(default)]
     pub cave_kind: u32,
     #[serde(default)]
     pub cave_depth: [f32; 2],
@@ -303,7 +305,9 @@ impl WorldProfile {
                 features: [
                     biome.lakes[0],
                     biome.lakes[1],
-                    biome.lake_barrier as f32,
+                    f32::from_bits(
+                        biome.lake_barrier as u32 | ((biome.lake_water_barrier as u32) << 16),
+                    ),
                     biome.temperature,
                 ],
             }));

@@ -289,12 +289,14 @@ This remains an approximation: GPU noise differs from Minecraft's CPU sampler,
 legacy blended noise is projected onto GPU noise, and nested interpolation wrappers
 are collapsed onto a shared final-density lattice at the first registered cell
 size (4 x 8 x 4 if none is present). Different nested resolutions and operations
-outside those wrappers are therefore approximated. Unsupported structure kinds, the complete
-aquifer pressure model and arbitrary mod-defined feature code are not reproduced. Unsupported
+outside those wrappers are therefore approximated. Unsupported structure kinds
+and arbitrary mod-defined feature code are not reproduced. [Local GPU aquifers](docs/GPU_AQUIFERS.md) approximate the loaded
+fluid/pressure settings with resident fields and compact material-run output. Unsupported
 custom density primitives use their registered range midpoint and are identified
 in the export log; unsupported material/feature kinds are also logged. Ore-vein
-material rules are approximated by Rust's registered ore recipes. Material rules
-are applied to the top/filler layers rather than every buried voxel. Retina stays
+material rules are approximated by Rust's registered ore recipes. Registered material rules
+now evaluate full vertical runs, including floor/ceiling depths and fluid context;
+see [GPU material layers](docs/GPU_MATERIAL_LAYERS.md). Retina stays
 on its GPU/Rust path. Existing saved chunks are preserved; these changes affect
 new terrain and temporary DH regions, with no retroactive terrain blending.
 
@@ -398,12 +400,14 @@ surface. The scratch limits and entrance fields add no readback bytes and their 
 F3's GPU cave-mask stage.
 
 These shapes approximate vanilla carvers/noise caves; they do not replay vanilla
-random walks or the full aquifer pressure model. Unsupported registry feature
+random walks. Local aquifer pressure uses the game's equations with GPU center
+jitter and interpolated registered barrier noise. Unsupported registry feature
 rules are logged rather than guessed. Both MCA and per-chunk generation use the
 same geology; temporary DH MCAs contain it and promotion copies it unchanged.
-Height/base-column APIs return terrain before carving/features and do not run a
-3D GPU pass. Native cavity masks are shared across requests in a bounded 2,048
-chunk-entry cache; the larger temporary MCA cache remains on disk.
+For layered registry profiles, height/base-column APIs use GPU material runs
+before decorations and structures, including caves and local fluids. Legacy
+diagnostic profiles retain their earlier column behavior. Native cavity masks
+are shared across requests in a bounded 2,048 chunk-entry cache; the larger temporary MCA cache remains on disk.
 
 Run `./gradlew geologyTest` for real-GPU parallel ore/cave and exposure checks,
 including sparse entrances, identical deeper cave networks under different roofs,
@@ -443,13 +447,16 @@ change their shape.
 The existing column pass shapes rounded, noise-warped water/lava basins, gives
 each lake a fixed level sampled from its banks and forms a smoothed rim. Registered
 surface lava-lake placement rarity and fluid/barrier providers drive lava lakes.
-Modern vanilla does not register general water-lake features, so water lakes use
-Retina's basin approximation with the biome's actual rainfall, seabed block and
-Overworld default fluid. Lakes are above sea level in low-relief land biomes.
+Modern vanilla does not register general water-lake features, so Retina no
+longer creates water basins from rainfall. Explicit registered heightmap lake
+features retain their rarity, fluid and water/lava barrier materials. Lakes are
+above sea level in low-relief land biomes.
 GPU cavity classification protects the top four blocks beneath lake beds.
 Lake depth/fluid flags fit in the twelve-byte column record, so no extra
 lake buffer crosses the GPU or Java bridge. Full vanilla lake placement checks,
-underground lava-lake features and aquifer pressure are not reproduced.
+height-range-only underground LakeFeatures remain unprojected. Local aquifer
+fluid levels and pressure barriers are implemented on the GPU; see
+[GPU aquifers](docs/GPU_AQUIFERS.md) for approximations and measurements.
 
 Badlands use the 26.3 MaterialSystem's 192-layer recipe and seven registered
 terracotta colors, with a world-seeded table built once during registry export.

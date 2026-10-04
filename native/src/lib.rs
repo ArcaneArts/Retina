@@ -1518,11 +1518,11 @@ mod tests {
         // ChunkRequest ABI above remains unchanged.
         assert_eq!(std::mem::size_of::<GpuRequest>(), 64);
         assert_eq!(std::mem::offset_of!(GpuRequest, density_offset), 48);
-        assert_eq!(std::mem::size_of::<timings::Snapshot>(), 200);
+        assert_eq!(std::mem::size_of::<timings::Snapshot>(), 216);
         assert_eq!(std::mem::offset_of!(timings::Snapshot, nanos), 32);
         assert_eq!(std::mem::size_of::<region::RegionReport>(), 40);
         assert_eq!(std::mem::offset_of!(region::RegionReport, gpu_nanos), 8);
-        assert_eq!(std::mem::size_of::<region::DetailedRegionReport>(), 240);
+        assert_eq!(std::mem::size_of::<region::DetailedRegionReport>(), 256);
         assert_eq!(
             std::mem::offset_of!(region::DetailedRegionReport, stages),
             40

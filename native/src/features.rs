@@ -48,6 +48,7 @@ impl TerrainFeatures {
                     .any(|v| !v.is_finite() || !(0.0..=1.0).contains(v))
                 || b.cave_depth.iter().any(|v| !v.is_finite())
                 || b.lake_barrier as usize >= p.materials.len()
+                || b.lake_water_barrier as usize >= p.materials.len()
                 || [f.floor, f.clay, f.blossom]
                     .iter()
                     .chain(&f.plants)
@@ -309,6 +310,7 @@ mod scan_tests {
                 let offset = (width * width * height as usize).div_ceil(32)
                     + (surface_width * surface_width).div_ceil(32);
                 let mut mask = CaveMask {
+                    air_only: false,
                     origin_x: r.chunk_x * 16 - 1,
                     origin_z: r.chunk_z * 16 - 1,
                     min_y,

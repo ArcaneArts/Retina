@@ -63,7 +63,29 @@ final class RegistryGpuProgram {
             p.roots.add(base);
             compiler.programs.add(p.finish());
         }
+        var aquifer=new JsonObject();aquifer.addProperty("enabled",settings.aquifers().isPresent());
+        if(settings.aquifers().isPresent()) {
+            var a=settings.aquifers().orElseThrow();
+            aquifer.addProperty("program",compiler.programs.size());
+            var flooded=compiler.new Program();
+            flooded.roots.add(flooded.density(compiler.encode(a.fluidLevelFloodednessNoise())));
+            flooded.roots.add(flooded.density(compiler.encode(a.exclusion())));compiler.programs.add(flooded.finish());
+            for(var fn:List.of(a.fluidLevelSpreadNoise(),a.lavaNoise(),a.barrierNoise())) {
+                var p=compiler.new Program();p.roots.add(p.density(compiler.encode(fn)));compiler.programs.add(p.finish());
+            }
+            var p=compiler.new Program();var value=compiler.unwrap(compiler.encode(a.surfaceLevel()));
+            var surfaceConfig=new JsonArray();
+            if(value.isJsonObject() && type(value.getAsJsonObject()).equals("find_top_surface")) {
+                var o=value.getAsJsonObject();p.roots.add(p.density(o.get("density")));p.roots.add(p.density(o.get("upper_bound")));
+                surfaceConfig.add(o.get("lower_bound"));surfaceConfig.add(o.get("cell_height"));surfaceConfig.add(0);
+            } else {p.roots.add(p.density(value));surfaceConfig.add(minY);surfaceConfig.add(1);surfaceConfig.add(1);}
+            compiler.programs.add(p.finish());aquifer.add("surface",surfaceConfig);
+            compiler.approximations.add("aquifer:gpu-positional-hash");
+            compiler.approximations.add("aquifer:4x4x4-barrier-interpolation");
+            compiler.approximations.add("aquifer:carver-negative-density-proxy");
+        }
         var result=new JsonObject(); result.add("programs",compiler.programs);result.add("noises",compiler.noises);
+        result.add("aquifer",aquifer);
         result.add("points",compiler.points); result.add("surface",config);
         var terrainCell=compiler.terrainCell(compiler.encode(router.finalDensity()),new HashSet<>());
         if(terrainCell==null) {

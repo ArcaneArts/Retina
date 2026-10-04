@@ -48,32 +48,36 @@ final class TerrainFeatureProfile {
                 depthMax = Math.max(depthMax, Climate.unquantizeCoord(pair.getFirst().depth().max()));
             }
             entry.add("cave_depth", array(depthMin <= depthMax ? depthMin : 0.2, depthMin <= depthMax ? depthMax : 1));
-            double lavaChance = 0;boolean snowSurface=false;
+            double lavaChance = 0, waterChance = 0;boolean snowSurface=false;
             var collector = new Collector(registry, palette);
             for (var step : biome.value().getGenerationSettings().features()) for (var placed : step) {
                 snowSurface |= placed.value().feature().value() instanceof SnowAndFreezeFeature;
-                String id = placed.unwrapKey().map(k -> k.identifier().toString()).orElse("inline");
-                if (placed.value().feature().value() instanceof LakeFeature lake && id.contains("surface")) {
-                    int rarity = 1;
+                if (placed.value().feature().value() instanceof LakeFeature lake) {
+                    double rarity = 1;boolean surfaceLake=false;
                     for (var modifier : placed.value().placement()) {
                         var m = PlacementModifier.CODEC.encodeStart(ops, modifier).getOrThrow().getAsJsonObject();
                         if (m.get("type").getAsString().endsWith("rarity_filter")) rarity *= m.get("chance").getAsInt();
+                        if (m.get("type").getAsString().endsWith("heightmap")) surfaceLake=true;
                     }
+                    if(!surfaceLake)continue;
                     var state = providerState(registry, palette, lake.fluid().value());
+                    // One globally aligned candidate per 8x8 chunks represents
+                    // the chance that at least one registered chunk attempt runs.
+                    double chance=1-Math.pow(1-1/rarity,64);
                     if (state.is(Blocks.LAVA)) {
-                        lavaChance = Math.min(0.18, 64.0 / rarity);
+                        lavaChance = 1-(1-lavaChance)*(1-chance);
                         entry.addProperty("lake_barrier", material(palette, providerState(registry, palette, lake.barrier().value())));
+                    } else if(palette.getOrDefault(state,-1)==world.get("water").getAsInt()) {
+                        waterChance=1-(1-waterChance)*(1-chance);
+                        entry.addProperty("lake_water_barrier", material(palette, providerState(registry, palette, lake.barrier().value())));
                     }
                 }
                 if (underground)
                     collector.walk(Feature.DIRECT_CODEC.encodeStart(ops, placed.value().feature().value()).getOrThrow(), 0);
             }
-            var climate = Biome.NETWORK_CODEC.encodeStart(JsonOps.INSTANCE, biome.value()).getOrThrow().getAsJsonObject();
-            double wetness = Math.clamp(climate.get("downfall").getAsDouble(),0,1);
-            int flags = entry.get("flags").getAsInt();
-            // Modern vanilla registers lava lakes. Water basins are Retina's approximation,
-            // using the registered default fluid, seabed material, and biome rainfall.
-            entry.add("lakes", array(underground || (flags & (4 | 8 | 64)) != 0 ? 0 : 0.15 + wetness * 0.45, underground ? 0 : lavaChance));
+            // Surface basins require registered lake recipes. Rainfall alone does
+            // not request water lakes in modern vanilla.
+            entry.add("lakes", array(underground ? 0 : Math.min(1.0,waterChance+lavaChance), underground ? 0 : lavaChance));
             entry.addProperty("snow_surface",snowSurface && biome.value().hasPrecipitation());
             if(snowSurface)entry.addProperty("flags",entry.get("flags").getAsInt()|32);
             entry.add("cave_features", collector.finish(kind));
