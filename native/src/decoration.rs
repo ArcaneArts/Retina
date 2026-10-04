@@ -976,6 +976,7 @@ mod tests {
     #[test]
     fn giant_jungle_crowns_close_above_the_trunk_without_four_interior_holes() {
         let profile = WorldProfile {
+            program_execution: crate::specialize::Execution::default(),
             climate_lookup: crate::climate::Lookup::default(),
             structures: Default::default(),
             registry_program: None,

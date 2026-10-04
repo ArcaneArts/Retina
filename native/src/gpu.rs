@@ -47,6 +47,8 @@ pub(crate) struct Gpu {
     pipeline: std::sync::Arc<crate::pipeline::Metrics>,
     last_device_tick: Option<u64>,
     pub(crate) backend: String,
+    compiler: crate::specialize::Compiler,
+    specialized: HashMap<u32, std::sync::Arc<crate::specialize::State>>,
 }
 
 pub(crate) struct GpuSample {
@@ -242,6 +244,7 @@ impl Gpu {
             wgpu::BufferUsages::STORAGE,
         );
         let timestamp_support = device.features().contains(wgpu::Features::TIMESTAMP_QUERY);
+        let compiler = crate::specialize::Compiler::new(&device, &layout, &cave_layout)?;
         let mut gpu = Self {
             device,
             queue,
@@ -273,6 +276,8 @@ impl Gpu {
             last_device_tick: None,
             timestamp_support,
             backend,
+            compiler,
+            specialized: HashMap::new(),
         };
         gpu.add_profile(0, &vec![0; 672], &[0; 224], &[0; 32]);
         Ok(gpu)
@@ -302,6 +307,11 @@ impl Gpu {
             });
         let group = self.world_group(&buffer, &climate, &program);
         self.profiles.insert(id, (buffer, climate, program, group));
+        self.pipeline.transfer(
+            id,
+            (bytes.len() + climate_bytes.len() + program_bytes.len()) as u64,
+            0,
+        );
     }
 
     fn world_group(
@@ -380,9 +390,51 @@ impl Gpu {
         let underground_probe = requests[0].padding & (1 << 30) != 0;
         let sparse = surface_probe || underground_probe;
         let profile_id = requests[0].profile;
+        if !self.profiles.contains_key(&profile_id) {
+            self.add_profile(
+                profile_id,
+                &profile.ok_or("missing GPU world profile")?.gpu_bytes(),
+                &profile.unwrap().climate_gpu_bytes(),
+                &crate::program::RegistryProgram::bytes(profile),
+            );
+            if let Some(program) = profile.and_then(|p| p.registry_program.as_ref()) {
+                if profile.unwrap().program_execution != crate::specialize::Execution::Interpreter {
+                    match self.compiler.request(program) {
+                        Ok(state) => {
+                            self.pipeline.shader(profile_id, state.progress.clone());
+                            self.specialized.insert(profile_id, state);
+                        }
+                        Err(error) => {
+                            if profile.unwrap().program_execution
+                                == crate::specialize::Execution::Specialized
+                            {
+                                return Err(error);
+                            }
+                            eprintln!("Retina keeps the GPU interpreter: {error}");
+                        }
+                    }
+                }
+            }
+        }
+        let specialized = if let Some(state) = self.specialized.get(&profile_id) {
+            let wait =
+                profile.unwrap().program_execution == crate::specialize::Execution::Specialized;
+            match state.ready(wait) {
+                Ok(p) => p,
+                Err(e) if wait => return Err(e),
+                Err(_) => None,
+            }
+        } else {
+            None
+        };
+        let world_pipeline =
+            |entry, fallback| specialized.as_ref().map_or(fallback, |p| p.world(entry));
+        let cave_pipeline =
+            |entry, fallback| specialized.as_ref().map_or(fallback, |p| p.cave(entry));
         let density_program = profile
             .and_then(|p| p.registry_program.as_ref())
             .filter(|p| p.surface[2] == 0 && !surface_probe);
+        let horizontal_fields = specialized.as_ref().map_or(0, |p| p.horizontal_fields);
         let mut gpu_requests = requests.to_vec();
         let mut density_dispatch = (0u32, 0u32);
         let mut lake_dispatch = 0u32;
@@ -427,6 +479,7 @@ impl Gpu {
                     as u64;
                 let lake_side = (width as u64 + lake_remainder).div_ceil(128);
                 floats += lake_side * lake_side * (4 + 5 * 4 * layers);
+                floats += side * side * horizontal_fields as u64;
                 lake_dispatch = lake_dispatch.max((lake_side * lake_side) as u32);
                 density_dispatch.0 = density_dispatch.0.max((side * side) as u32);
                 density_dispatch.1 = density_dispatch.1.max(layers as u32);
@@ -434,14 +487,6 @@ impl Gpu {
             self.ensure_surface_lattice(floats * 4);
         }
 
-        if !self.profiles.contains_key(&profile_id) {
-            self.add_profile(
-                profile_id,
-                &profile.ok_or("missing GPU world profile")?.gpu_bytes(),
-                &profile.unwrap().climate_gpu_bytes(),
-                &crate::program::RegistryProgram::bytes(profile),
-            );
-        }
         let cave_side = requests[0].padding & 255;
         let cave_width = cave_side * 16 + 2;
         let cave_height = (requests[0].max_y - requests[0].min_y) as u32;
@@ -485,6 +530,7 @@ impl Gpu {
                             usage: wgpu::BufferUsages::STORAGE,
                         }),
                 );
+                self.pipeline.transfer(profile_id, data.len() as u64, 0);
             }
             if self
                 .cave_buffers
@@ -556,8 +602,25 @@ impl Gpu {
             .create_command_encoder(&wgpu::CommandEncoderDescriptor {
                 label: Some("Retina terrain batch"),
             });
-        if density_program.is_some() {
+        if density_program.is_some() && horizontal_fields > 0 {
             let mut writes = timestamp_writes(timings::HEIGHT);
+            if let Some(ref mut writes) = writes {
+                writes.end_of_pass_write_index = None;
+            }
+            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("Retina shared horizontal program fields"),
+                timestamp_writes: writes,
+            });
+            pass.set_pipeline(specialized.as_ref().unwrap().world("horizontal_nodes"));
+            pass.set_bind_group(0, group, &[]);
+            pass.dispatch_workgroups(density_dispatch.0.div_ceil(64), requests.len() as u32, 1);
+        }
+        if density_program.is_some() {
+            let mut writes = if horizontal_fields > 0 {
+                None
+            } else {
+                timestamp_writes(timings::HEIGHT)
+            };
             if let Some(ref mut writes) = writes {
                 writes.end_of_pass_write_index = None;
             }
@@ -565,7 +628,7 @@ impl Gpu {
                 label: Some("Retina registered 3D density lattice"),
                 timestamp_writes: writes,
             });
-            pass.set_pipeline(&self.density_pipeline);
+            pass.set_pipeline(world_pipeline("density_nodes", &self.density_pipeline));
             pass.set_bind_group(0, group, &[]);
             pass.dispatch_workgroups(
                 density_dispatch.0.div_ceil(64),
@@ -589,9 +652,9 @@ impl Gpu {
                 timestamp_writes: writes,
             });
             pass.set_pipeline(if surface_probe {
-                &self.climate_pipeline
+                world_pipeline("climate_nodes", &self.climate_pipeline)
             } else {
-                &self.height_pipeline
+                world_pipeline("height_nodes", &self.height_pipeline)
             });
             pass.set_bind_group(0, group, &[]);
             pass.dispatch_workgroups((side * side).div_ceil(64), requests.len() as u32, 1);
@@ -605,7 +668,7 @@ impl Gpu {
                 label: Some("Retina density surface extraction and slope halo"),
                 timestamp_writes: writes,
             });
-            pass.set_pipeline(&self.surface_pipeline);
+            pass.set_pipeline(world_pipeline("surface_columns", &self.surface_pipeline));
             pass.set_bind_group(0, group, &[]);
             pass.dispatch_workgroups(surface_dispatch.div_ceil(64), requests.len() as u32, 1);
         }
@@ -614,7 +677,7 @@ impl Gpu {
                 label: Some("Retina biome site pass"),
                 timestamp_writes: timestamp_writes(timings::SITES),
             });
-            pass.set_pipeline(&self.sites_pipeline);
+            pass.set_pipeline(world_pipeline("biome_sites", &self.sites_pipeline));
             pass.set_bind_group(0, group, &[]);
             pass.dispatch_workgroups(3, requests.len() as u32, 1);
         }
@@ -627,7 +690,10 @@ impl Gpu {
                 label: Some("Retina lake candidate classification"),
                 timestamp_writes: writes,
             });
-            pass.set_pipeline(&self.lake_candidates_pipeline);
+            pass.set_pipeline(world_pipeline(
+                "lake_candidates",
+                &self.lake_candidates_pipeline,
+            ));
             pass.set_bind_group(0, group, &[]);
             pass.dispatch_workgroups(lake_dispatch.div_ceil(64), requests.len() as u32, 1);
         }
@@ -636,7 +702,7 @@ impl Gpu {
                 label: Some("Retina parallel lake density probes"),
                 timestamp_writes: None,
             });
-            pass.set_pipeline(&self.lake_density_pipeline);
+            pass.set_pipeline(world_pipeline("lake_density", &self.lake_density_pipeline));
             pass.set_bind_group(0, group, &[]);
             pass.dispatch_workgroups(
                 (lake_dispatch * 20).div_ceil(64),
@@ -649,7 +715,7 @@ impl Gpu {
                 label: Some("Retina shared lake level extraction"),
                 timestamp_writes: None,
             });
-            pass.set_pipeline(&self.lake_pipeline);
+            pass.set_pipeline(world_pipeline("lake_nodes", &self.lake_pipeline));
             pass.set_bind_group(0, group, &[]);
             pass.dispatch_workgroups(lake_dispatch.div_ceil(64), requests.len() as u32, 1);
         }
@@ -665,9 +731,9 @@ impl Gpu {
                 timestamp_writes: writes,
             });
             pass.set_pipeline(if surface_probe {
-                &self.biome_queries_pipeline
+                world_pipeline("biome_queries", &self.biome_queries_pipeline)
             } else {
-                &self.columns_pipeline
+                world_pipeline("main", &self.columns_pipeline)
             });
             pass.set_bind_group(0, group, &[]);
             pass.dispatch_workgroups(if sparse { 1 } else { 4 }, count as u32, 1);
@@ -717,7 +783,10 @@ impl Gpu {
                     label: Some("Retina sparse underground biome query"),
                     timestamp_writes: timestamp_writes(timings::CAVE_DENSITY),
                 });
-                pass.set_pipeline(&self.underground_queries_pipeline);
+                pass.set_pipeline(cave_pipeline(
+                    "underground_queries",
+                    &self.underground_queries_pipeline,
+                ));
                 pass.set_bind_group(0, &cave_group, &[]);
                 pass.dispatch_workgroups(1, count as u32, 1);
             } else {
@@ -726,7 +795,7 @@ impl Gpu {
                         label: Some("Retina cave density pass"),
                         timestamp_writes: timestamp_writes(timings::CAVE_DENSITY),
                     });
-                    pass.set_pipeline(&self.cave_nodes_pipeline);
+                    pass.set_pipeline(cave_pipeline("cave_nodes", &self.cave_nodes_pipeline));
                     pass.set_bind_group(0, &cave_group, &[]);
                     pass.dispatch_workgroups((node_side * node_side).div_ceil(64), node_height, 1);
                 }
@@ -739,7 +808,7 @@ impl Gpu {
                         label: Some("Retina GPU exterior density classification"),
                         timestamp_writes: writes,
                     });
-                    pass.set_pipeline(&self.cave_exterior_pipeline);
+                    pass.set_pipeline(cave_pipeline("cave_exterior", &self.cave_exterior_pipeline));
                     pass.set_bind_group(0, &cave_group, &[]);
                     pass.dispatch_workgroups(
                         (surface_width * surface_width / 4).div_ceil(64),
@@ -756,7 +825,7 @@ impl Gpu {
                         label: Some("Retina GPU interpolated cave mask"),
                         timestamp_writes: writes,
                     });
-                    pass.set_pipeline(&self.cave_mask_pipeline);
+                    pass.set_pipeline(cave_pipeline("cave_mask", &self.cave_mask_pipeline));
                     pass.set_bind_group(0, &cave_group, &[]);
                     pass.dispatch_workgroups(
                         256,
@@ -785,6 +854,19 @@ impl Gpu {
             encoder.copy_buffer_to_buffer(&t.resolve, 0, &t.readback, 0, query_bytes);
         }
         let submission = self.queue.submit([encoder.finish()]);
+        self.pipeline.transfer(
+            profile_id,
+            (gpu_requests.len() * std::mem::size_of::<GpuRequest>()) as u64,
+            size + if cave_side > 0 || underground_probe {
+                mask_size
+            } else {
+                0
+            } + if slot.timestamps.is_some() {
+                query_bytes
+            } else {
+                0
+            },
+        );
         let encode_nanos = host_start.elapsed().as_nanos() as u64;
         timings.add(timings::ENCODE, encode_nanos);
         let wait_start = Instant::now();
@@ -1052,6 +1134,239 @@ impl PendingSample {
 #[cfg(test)]
 mod mapping_tests {
     use super::*;
+    #[test]
+    fn rejected_specialization_leaves_interpreter_device_usable() {
+        let mut gpu = Gpu::new(std::sync::Arc::new(crate::pipeline::Metrics::default())).unwrap();
+        assert!(
+            crate::specialize::compile(
+                &gpu.device,
+                &gpu.layout,
+                &gpu.cave_layout,
+                "invalid WGSL",
+                0
+            )
+            .is_err()
+        );
+        let request = GpuRequest::from(crate::ChunkRequest {
+            seed: 123456789,
+            chunk_x: -33,
+            chunk_z: 32,
+            min_y: -64,
+            height: 384,
+            base_height: 64.0,
+            amplitude: 48.0,
+            frequency: 0.008,
+            reserved: 0,
+        });
+        let metrics = timings::Timings::default();
+        let mut pending = gpu.submit(&[request], None, &metrics).unwrap();
+        gpu.device
+            .poll(wgpu::PollType::Wait {
+                submission_index: None,
+                timeout: Some(Duration::from_secs(30)),
+            })
+            .unwrap();
+        assert!(gpu.ready(&mut pending).unwrap());
+        let sample = gpu.complete(pending, &metrics).unwrap();
+        assert_eq!(sample.columns.len(), 256);
+        assert!(
+            sample
+                .columns
+                .iter()
+                .all(|c| c.height > -64 && c.height <= 320)
+        );
+    }
+    #[test]
+    #[ignore = "requires an exported registry profile in RETINA_PROGRAM_PARITY_PROFILE"]
+    fn specialized_roots_match_interpreter_on_real_gpu() {
+        let path = std::env::var("RETINA_PROGRAM_PARITY_PROFILE").unwrap();
+        let mut profile = WorldProfile::parse(&std::fs::read(path).unwrap()).unwrap();
+        if let Ok(roots) = std::env::var("RETINA_PROGRAM_PARITY_ROOTS") {
+            profile.registry_program.as_mut().unwrap().programs[0].roots =
+                roots.split(',').map(|r| r.parse().unwrap()).collect();
+        }
+        let registry = profile.registry_program.as_ref().unwrap();
+        let cached = std::env::var_os("RETINA_PROGRAM_PARITY_CACHE").is_some();
+        let far = cached && std::env::var_os("RETINA_PROGRAM_PARITY_FAR").is_some();
+        let mut gpu = Gpu::new(std::sync::Arc::new(crate::pipeline::Metrics::default())).unwrap();
+        gpu.add_profile(
+            1,
+            &profile.gpu_bytes(),
+            &profile.climate_gpu_bytes(),
+            &crate::program::RegistryProgram::bytes(Some(&profile)),
+        );
+        let mut kernel = String::from(
+            "@compute @workgroup_size(64) fn parity(@builtin(global_invocation_id) id:vec3<u32>){let program=id.x/64u;let sample=id.x%64u;",
+        );
+        kernel.push_str(&format!(
+            "if program>={}u{{return;}}",
+            registry.programs.len()
+        ));
+        kernel.push_str("let seed=min(sample/21u,2u);var r=requests[0];r.seed_low^=seed*7919u;let point=vec3<f32>(f32(i32(sample%8u)*131-513),f32(i32(sample)*6-64),f32(i32(sample/8u)*127-511));let context=vec4<f32>(f32(sample%8u+1u),f32(sample%3u+3u),f32(sample%6u),f32(sample%7u));let reference=run_reference(program,point,r,context);var actual:array<f32,6>;switch program{case 0u:{actual=run_climate(point,r,context);}case 1u:{actual=run_surface_density(point,r,context);}case 2u:{actual=run_final_density(point,r,context);}default:{actual=run_program(program,point,r,context);}}let at=id.x*4u;columns[at]=Column(bitcast<i32>(reference[0]),bitcast<u32>(reference[1]),bitcast<u32>(reference[2]));columns[at+1u]=Column(bitcast<i32>(reference[3]),bitcast<u32>(reference[4]),bitcast<u32>(reference[5]));columns[at+2u]=Column(bitcast<i32>(actual[0]),bitcast<u32>(actual[1]),bitcast<u32>(actual[2]));columns[at+3u]=Column(bitcast<i32>(actual[3]),bitcast<u32>(actual[4]),bitcast<u32>(actual[5]));}");
+        if cached {
+            kernel = kernel
+                .replace(
+                    "var r=requests[0];r.seed_low^=seed*7919u;",
+                    "let r=requests[seed];",
+                )
+                .replace(
+                    "f32(i32(sample%8u)*131-513)",
+                    "f32(i32(sample%8u)*4-36)+select(0.0,0.25,sample%3u==1u)",
+                )
+                .replace(
+                    "f32(i32(sample/8u)*127-511)",
+                    "f32(i32(sample/8u)*4-36)+select(0.0,512.0,sample%3u==2u)",
+                );
+        }
+        if far {
+            kernel = kernel
+                .replace(
+                    "f32(i32(sample%8u)*4-36)+select(0.0,0.25,sample%3u==1u)",
+                    "f32(density_origin(r).x)+f32(sample%8u)*3.0",
+                )
+                .replace(
+                    "f32(i32(sample/8u)*4-36)+select(0.0,512.0,sample%3u==2u)",
+                    "f32(density_origin(r).z)+f32(sample/8u)*3.0",
+                );
+        }
+        let reference = include_str!("program.wgsl");
+        let start = reference.find("fn run_program(").unwrap();
+        let end = reference.find("fn density_floor_div(").unwrap();
+        let reference = reference[start..end].replace("fn run_program(", "fn run_reference(");
+        let source = crate::specialize::static_calls(&format!(
+            "{}\n{}\n{}\n{}\n{reference}\n{kernel}",
+            include_str!("simplex.wgsl"),
+            include_str!("climate.wgsl"),
+            crate::specialize::source(registry).unwrap(),
+            include_str!("noise3.wgsl")
+        ));
+        let module = gpu
+            .device
+            .create_shader_module(wgpu::ShaderModuleDescriptor {
+                label: Some("Retina interpreter specialization parity"),
+                source: wgpu::ShaderSource::Wgsl(source.into()),
+            });
+        let layout = gpu
+            .device
+            .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: None,
+                bind_group_layouts: &[Some(&gpu.layout)],
+                immediate_size: 0,
+            });
+        let pipeline = gpu
+            .device
+            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some("parity"),
+                layout: Some(&layout),
+                module: &module,
+                entry_point: Some("parity"),
+                compilation_options: Default::default(),
+                cache: None,
+            });
+        let mut r = GpuRequest {
+            origin_x: 0,
+            origin_z: 0,
+            min_y: -64,
+            max_y: 320,
+            seed_low: 123456789,
+            seed_high: 0,
+            base_height: 64.0,
+            amplitude: 48.0,
+            frequency: 0.008,
+            profile: 1,
+            tile_side: 0,
+            padding: 0,
+            density_offset: 0,
+            density_side: 0,
+            density_step_xz: 4,
+            density_step_y: 8,
+        };
+        let mut jobs = vec![r];
+        let horizontal = cached.then(|| {
+            gpu.device
+                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                    label: Some("parity horizontal cache"),
+                    layout: Some(&layout),
+                    module: &module,
+                    entry_point: Some("horizontal_nodes"),
+                    compilation_options: Default::default(),
+                    cache: None,
+                })
+        });
+        if cached {
+            r.origin_x = -32;
+            r.origin_z = -32;
+            r.density_side = 9;
+            if far {
+                r.origin_x = 16_777_232;
+                r.origin_z = -16_777_232;
+                r.density_step_xz = 3;
+            }
+            let fields = crate::column_program::Plan::new(registry).owners.len() as u32;
+            let floats = 9 * 9 * 49 + 24 * 24 + 4 + 20 * 49 + 9 * 9 * fields;
+            jobs = (0..3)
+                .map(|i| GpuRequest {
+                    seed_low: r.seed_low ^ (i * 7919),
+                    density_offset: SURFACE_METADATA_FLOATS as u32 + i * floats,
+                    ..r
+                })
+                .collect();
+            gpu.ensure_surface_lattice((SURFACE_METADATA_FLOATS as u64 + 3 * floats as u64) * 4);
+        }
+        gpu.queue
+            .write_buffer(&gpu.requests, 0, bytemuck::cast_slice(&jobs));
+        let count = registry.programs.len() * 64;
+        let size = (count * 48) as u64;
+        let output = gpu.readback_buffer("Retina parity roots", size);
+        let mut encoder = gpu
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
+        if let Some(horizontal) = horizontal.as_ref() {
+            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor::default());
+            pass.set_pipeline(horizontal);
+            pass.set_bind_group(0, &gpu.profiles[&1].3, &[]);
+            pass.dispatch_workgroups(2, 3, 1);
+        }
+        {
+            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor::default());
+            pass.set_pipeline(&pipeline);
+            pass.set_bind_group(0, &gpu.profiles[&1].3, &[]);
+            pass.dispatch_workgroups(registry.programs.len() as u32, 1, 1);
+        }
+        encoder.copy_buffer_to_buffer(&gpu.output, 0, &output, 0, size);
+        gpu.queue.submit([encoder.finish()]);
+        let mut mapping = Mapping::new(&output, size);
+        gpu.device
+            .poll(wgpu::PollType::Wait {
+                submission_index: None,
+                timeout: Some(Duration::from_secs(60)),
+            })
+            .unwrap();
+        mapping.check().unwrap();
+        let data = output.slice(..size).get_mapped_range().unwrap();
+        let words: &[u32] = bytemuck::cast_slice(&data);
+        let mut differences = 0;
+        for sample in 0..count {
+            for root in 0..6 {
+                let old = words[sample * 12 + root];
+                let new = words[sample * 12 + 6 + root];
+                if old != new {
+                    if differences < 32 {
+                        eprintln!(
+                            "program {} sample {} root {}: {:?} ({old:08x}) => {:?} ({new:08x})",
+                            sample / 64,
+                            sample % 64,
+                            root,
+                            f32::from_bits(old),
+                            f32::from_bits(new)
+                        );
+                    }
+                    differences += 1;
+                }
+            }
+        }
+        assert_eq!(differences, 0, "specialization changed root float bits");
+    }
     #[test]
     fn cancelled_mapping_cleanup_allows_buffer_reuse() {
         let gpu = Gpu::new(std::sync::Arc::new(crate::pipeline::Metrics::default())).unwrap();

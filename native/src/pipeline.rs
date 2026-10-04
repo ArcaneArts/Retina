@@ -1,6 +1,33 @@
 //! Device timeline diagnostics. Gaps include readback copies and unmeasured GPU
 //! commands as well as idle time; they must not be presented as pure GPU idle.
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::collections::HashMap;
+use std::sync::{
+    Arc, Mutex,
+    atomic::{AtomicU64, Ordering},
+};
+
+/// Separate versioned diagnostics keep the original timeline ABI unchanged.
+#[repr(C)]
+#[derive(Clone, Copy, Default, Debug, serde::Serialize)]
+pub struct ProgramSnapshot {
+    pub version: u32,
+    pub status: u32,
+    pub compile_nanos: u64,
+    pub source_bytes: u64,
+    pub nodes: u32,
+    pub emitted: u32,
+    pub graphs: u32,
+    pub horizontal_fields: u32,
+    pub cache_hits: u64,
+    pub upload_bytes: u64,
+    pub readback_bytes: u64,
+}
+#[derive(Default)]
+struct ProfileCounters {
+    shader: Mutex<Option<Arc<crate::specialize::Progress>>>,
+    upload: AtomicU64,
+    readback: AtomicU64,
+}
 
 #[repr(C)]
 #[derive(Clone, Copy, Default, Debug, serde::Serialize)]
@@ -19,8 +46,47 @@ pub(crate) struct Metrics {
     spans: AtomicU64,
     gaps: AtomicU64,
     unavailable: AtomicU64,
+    profiles: Mutex<HashMap<u32, Arc<ProfileCounters>>>,
 }
 impl Metrics {
+    fn profile(&self, id: u32) -> Arc<ProfileCounters> {
+        self.profiles
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .entry(id)
+            .or_default()
+            .clone()
+    }
+    pub fn shader(&self, id: u32, state: Arc<crate::specialize::Progress>) {
+        *self
+            .profile(id)
+            .shader
+            .lock()
+            .unwrap_or_else(|e| e.into_inner()) = Some(state);
+    }
+    pub fn transfer(&self, id: u32, upload: u64, readback: u64) {
+        let p = self.profile(id);
+        p.upload.fetch_add(upload, Ordering::Relaxed);
+        p.readback.fetch_add(readback, Ordering::Relaxed);
+    }
+    pub fn program_snapshot(&self, id: u32) -> ProgramSnapshot {
+        let p = self.profile(id);
+        let mut snapshot = p
+            .shader
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .as_ref()
+            .map_or(
+                ProgramSnapshot {
+                    version: 1,
+                    ..Default::default()
+                },
+                |s| s.snapshot(),
+            );
+        snapshot.upload_bytes = p.upload.load(Ordering::Relaxed);
+        snapshot.readback_bytes = p.readback.load(Ordering::Relaxed);
+        snapshot
+    }
     pub fn in_flight(&self, count: usize) {
         self.peak.fetch_max(count as u64, Ordering::Relaxed);
     }

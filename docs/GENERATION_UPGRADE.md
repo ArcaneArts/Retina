@@ -4,10 +4,14 @@ The active goal covers six workstreams: complete registered biome coverage and
 indexed GPU climate selection; compact layered GPU material rules; local GPU
 aquifers; broader registered features and placement/provider support; cached
 specialized WGSL programs with better density semantics; and measured reductions
-in repeated Rust block scans. The first workstream and an initial Rust scan
-optimization are implemented so far. The other workstreams remain required,
-along with final integrated validation,
+in repeated Rust block scans. The first workstream, an initial Rust scan
+optimization, and cached WGSL specialization with horizontal field reuse are
+implemented so far. Layered materials, aquifers, broader features, further graph
+semantics and scan work remain required, along with final integrated validation,
 transfer-volume measurements and updated stage telemetry where new stages arise.
+
+See [GPU program specialization](GPU_PROGRAM_SPECIALIZATION.md) for the compiler,
+resident horizontal cache, startup behavior and its validation.
 
 ## World-preset registry lifecycle
 

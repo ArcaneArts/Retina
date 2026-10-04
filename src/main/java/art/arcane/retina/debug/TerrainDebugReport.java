@@ -24,6 +24,17 @@ public final class TerrainDebugReport {
         lines.add(LABEL+"Temporary regions: §a"+stats.previewRegions()+LABEL+"   Hits: §a"+stats.previewCacheHits()+LABEL+"   Promoted: §a"+stats.promotions());
         lines.add(LABEL+"Terrain chunks: §a"+stats.total()+LABEL+"   Failed: "+(stats.failures()>0?"§c":"§a")+stats.failures());
         lines.add(GPU+"GPU: "+DATA+payload.backend());
+        var gpu=payload.diagnostics();
+        if(gpu.nodes()>0) {
+            lines.add(GPU+"GPU programs: "+(gpu.status()==3?"§c":DATA)+gpu.execution());
+            if(gpu.compileNanos()>0)lines.add(GPU+"GPU compilation: "+DATA+format("%.1f ms",gpu.compileNanos()/1e6));
+            lines.add(GPU+"Graph nodes: "+DATA+gpu.emittedNodes()+LABEL+" emitted / "+DATA+gpu.nodes()+LABEL+" registered");
+            if(gpu.horizontalFields()>0)lines.add(GPU+"Horizontal cache fields: "+DATA+gpu.horizontalFields());
+        }
+        if(gpu.readbackBytes()>0) {
+            lines.add(GPU+"GPU profile upload total: "+DATA+format("%.2f MiB",gpu.uploadBytes()/1048576.0));
+            lines.add(GPU+"GPU profile readback total: "+DATA+format("%.2f MiB",gpu.readbackBytes()/1048576.0));
+        }
         if(mca && stats.regionSamples()>0) {
             lines.add(HEADER+"GPU host (% of average region)"+RESET);
             for(int stage=QUEUE;stage<=WAIT_COPY;stage++)lines.add(share(GPU,GPU_HOST[stage],stats.regionStagePercent(stage),false));

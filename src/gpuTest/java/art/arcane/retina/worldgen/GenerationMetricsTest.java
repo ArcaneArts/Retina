@@ -48,6 +48,11 @@ final class GenerationMetricsTest {
             require(line.contains("§"), "every line is color coded");
         }
         var empty = TerrainDebugReport.lines(TerrainStatsPayload.INACTIVE);
+        var specialized=TerrainDebugReport.lines(new TerrainStatsPayload(true,"Metal test","mca",window,new NativeGpuDiagnostics(2,123_000_000,43210,1500,900,12,7,3,1048576,2097152)));
+        require(specialized.stream().anyMatch(s->s.contains("GPU programs:") && s.contains("specialized")),"F3 shows completed specialization");
+        require(specialized.stream().anyMatch(s->s.contains("GPU compilation:") && s.contains("123.0 ms")),"shader warmup cost is separate from region timings");
+        require(specialized.stream().anyMatch(s->s.contains("Horizontal cache fields:") && s.contains("7")),"F3 reports resident horizontal reuse");
+        require(specialized.stream().anyMatch(s->s.contains("GPU profile readback total:") && s.contains("2.00 MiB")),"readback volume has units and scope");
         require(empty.stream().noneMatch(s -> s.contains("NaN") || s.contains("Infinity")), "empty window formats finite values");
         System.out.println("QA_EVT {\"event\":\"rolling_region_metrics_and_f3_format\",\"status\":\"pass\"}");
     }

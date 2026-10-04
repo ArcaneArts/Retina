@@ -59,6 +59,8 @@ pub struct WorldProfile {
     #[serde(default)]
     pub registry_program: Option<crate::program::RegistryProgram>,
     #[serde(default)]
+    pub program_execution: crate::specialize::Execution,
+    #[serde(default)]
     pub terrain_features: crate::features::TerrainFeatures,
     #[serde(default)]
     pub climate_targets: Vec<ClimateTarget>,

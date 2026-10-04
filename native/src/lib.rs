@@ -1,6 +1,8 @@
 mod climate;
+mod column_program;
 mod nbt;
 mod program;
+mod specialize;
 mod structure_processors;
 pub mod structures;
 pub mod timings;
@@ -813,6 +815,23 @@ pub unsafe extern "C" fn retina_gpu_pipeline_snapshot(output: *mut pipeline::Sna
     })
 }
 /// # Safety
+/// output points to a writable 64-byte version-1 program diagnostic snapshot.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn retina_gpu_program_snapshot(
+    profile: u32,
+    output: *mut pipeline::ProgramSnapshot,
+) -> i32 {
+    boundary(|| {
+        if output.is_null() {
+            return Err("null GPU program snapshot".into());
+        }
+        unsafe {
+            *output = shared_engine()?.pipeline.program_snapshot(profile);
+        }
+        Ok(())
+    })
+}
+/// # Safety
 /// output must point to a writable timing snapshot.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn retina_timing_snapshot(
@@ -1424,6 +1443,15 @@ mod tests {
 
     #[test]
     fn abi_layout_is_stable() {
+        assert_eq!(std::mem::size_of::<pipeline::ProgramSnapshot>(), 64);
+        assert_eq!(
+            std::mem::offset_of!(pipeline::ProgramSnapshot, horizontal_fields),
+            36
+        );
+        assert_eq!(
+            std::mem::offset_of!(pipeline::ProgramSnapshot, upload_bytes),
+            48
+        );
         assert_eq!(std::mem::size_of::<ChunkRequest>(), 40);
         assert_eq!(std::mem::offset_of!(ChunkRequest, frequency), 32);
         // GPU-only descriptors include density lattice addressing; the public

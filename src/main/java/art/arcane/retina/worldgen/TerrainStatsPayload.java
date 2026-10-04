@@ -5,7 +5,10 @@ import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 
-public record TerrainStatsPayload(boolean active, String backend, String mode, GenerationMetrics.Snapshot stats) implements CustomPacketPayload {
+public record TerrainStatsPayload(boolean active, String backend, String mode, GenerationMetrics.Snapshot stats, NativeGpuDiagnostics diagnostics) implements CustomPacketPayload {
+    public TerrainStatsPayload(boolean active,String backend,String mode,GenerationMetrics.Snapshot stats) {
+        this(active,backend,mode,stats,NativeGpuDiagnostics.EMPTY);
+    }
     public static final Type<TerrainStatsPayload> TYPE = new Type<>(Retina.id("terrain_stats"));
     public static final StreamCodec<RegistryFriendlyByteBuf, TerrainStatsPayload> CODEC = CustomPacketPayload.codec(
             TerrainStatsPayload::write, TerrainStatsPayload::read);
@@ -32,6 +35,7 @@ public record TerrainStatsPayload(boolean active, String backend, String mode, G
         buffer.writeVarInt(stats.regionSamples());
         stats.regionStages().write(buffer);
         buffer.writeDouble(stats.columnCacheMs());
+        diagnostics.write(buffer);
     }
 
     private static TerrainStatsPayload read(RegistryFriendlyByteBuf buffer) {
@@ -40,7 +44,7 @@ public record TerrainStatsPayload(boolean active, String backend, String mode, G
         String mode = buffer.readUtf(16);
         return new TerrainStatsPayload(active, backend, mode, new GenerationMetrics.Snapshot(
                 buffer.readDouble(), buffer.readDouble(), buffer.readDouble(), buffer.readDouble(),
-                buffer.readVarInt(), buffer.readVarLong(), buffer.readVarLong(), buffer.readVarLong(), buffer.readDouble(), buffer.readVarLong(), buffer.readVarLong(), buffer.readVarLong(), NativeTimings.read(buffer),buffer.readVarInt(),NativeTimings.read(buffer),buffer.readDouble()));
+                buffer.readVarInt(), buffer.readVarLong(), buffer.readVarLong(), buffer.readVarLong(), buffer.readDouble(), buffer.readVarLong(), buffer.readVarLong(), buffer.readVarLong(), NativeTimings.read(buffer),buffer.readVarInt(),NativeTimings.read(buffer),buffer.readDouble()),NativeGpuDiagnostics.read(buffer));
     }
 
     @Override

@@ -31,6 +31,7 @@ final class RegistryClimateIntegrationChecks {
             for (var future : futures) future.get();
         }
         System.out.println("QA_EVT {\"event\":\"climate_gpu_index_parity\",\"status\":\"pass\",\"context\":{\"chunks\":32,\"seeds\":3,\"biomes\":" + profile.biomes().size() + "}}");
+        RegistryProgramIntegrationChecks.check(profile);
     }
     private static void require(boolean condition, String message) { if (!condition) throw new AssertionError(message); }
 }

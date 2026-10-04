@@ -22,6 +22,7 @@ import static java.lang.foreign.ValueLayout.JAVA_LONG;
 /** Bulk C ABI calls. Rust borrows these buffers only until the downcall returns. */
 public final class NativeTerrain {
     private final MethodHandle timingSnapshot;
+    private final MethodHandle gpuDiagnostics;
     private final MethodHandle generate;
     private final MethodHandle structureData;
     private final MethodHandle structureStarts;
@@ -41,6 +42,7 @@ public final class NativeTerrain {
         var linker = Linker.nativeLinker();
         var initialize = linker.downcallHandle(symbols.findOrThrow("retina_initialize"), FunctionDescriptor.of(JAVA_INT));
         timingSnapshot = linker.downcallHandle(symbols.findOrThrow("retina_timing_snapshot"), FunctionDescriptor.of(JAVA_INT, JAVA_INT, ADDRESS));
+        gpuDiagnostics = linker.downcallHandle(symbols.findOrThrow("retina_gpu_program_snapshot"), FunctionDescriptor.of(JAVA_INT, JAVA_INT, ADDRESS));
         generate = linker.downcallHandle(symbols.findOrThrow("retina_generate_chunk_columns_u16"),
                 FunctionDescriptor.of(JAVA_INT, ADDRESS, ADDRESS, JAVA_LONG, ADDRESS));
         structureData = linker.downcallHandle(symbols.findOrThrow("retina_chunk_structure_data"), FunctionDescriptor.of(JAVA_INT, ADDRESS, ADDRESS, ADDRESS));
@@ -83,6 +85,14 @@ public final class NativeTerrain {
 
     public String backend() {
         return backend;
+    }
+    public NativeGpuDiagnostics gpuDiagnostics(int profile) {
+        try(var arena=Arena.ofConfined()) {
+            var out=arena.allocate(64,Long.BYTES);
+            check((int)gpuDiagnostics.invokeExact(profile,out));
+            if(out.get(JAVA_INT,0)!=1)throw new IllegalStateException("Unsupported GPU diagnostic version");
+            return new NativeGpuDiagnostics(out.get(JAVA_INT,4),out.get(JAVA_LONG,8),out.get(JAVA_LONG,16),out.get(JAVA_INT,24),out.get(JAVA_INT,28),out.get(JAVA_INT,32),out.get(JAVA_INT,36),out.get(JAVA_LONG,40),out.get(JAVA_LONG,48),out.get(JAVA_LONG,56));
+        }catch(Throwable error){throw failure(error);}
     }
 
     public NativeTimings timings(int profile) {

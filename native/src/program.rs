@@ -8,6 +8,24 @@ pub struct Instruction {
     pub c: u32,
     pub p: [f32; 4],
 }
+impl Instruction {
+    pub(crate) fn dependencies(&self, points: &[[f32; 4]]) -> Vec<u32> {
+        let mut result = match self.op {
+            1 | 23 | 24 => vec![self.a, self.b, self.c],
+            4..=10 | 40 | 41 => vec![self.a, self.b],
+            11..=22 | 25 | 43 | 44 | 53 => vec![self.a],
+            _ => vec![],
+        };
+        if self.op == 25 {
+            result.extend(
+                points[self.b as usize..(self.b + self.c) as usize]
+                    .iter()
+                    .map(|p| p[2] as u32),
+            );
+        }
+        result
+    }
+}
 #[derive(Clone, Deserialize)]
 pub struct Program {
     pub nodes: Vec<Instruction>,
