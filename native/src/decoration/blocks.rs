@@ -29,7 +29,7 @@ pub struct IntStates {
     pub states: Vec<u16>,
 }
 impl Provider {
-    fn outputs(&self) -> Vec<u16> {
+    pub(super) fn outputs(&self) -> Vec<u16> {
         match self {
             Self::State { material } => vec![*material],
             Self::Weighted { entries } => {
@@ -71,7 +71,7 @@ impl Provider {
             }
         }
     }
-    fn sample(&self, rng: &mut Rng) -> u16 {
+    pub(super) fn sample(&self, rng: &mut Rng) -> u16 {
         match self {
             Self::State { material } => *material,
             Self::Weighted { entries } => {
@@ -194,6 +194,9 @@ pub(super) fn place(
 ) {
     let test = |p: &Predicate, at| p.test(at, field, profile, request, overlay) == Some(true);
     match kind {
+        Kind::HugeMushroom { mushroom } => {
+            super::mushroom::place(mushroom, at, rng, field, profile, request, overlay, blocks)
+        }
         Kind::BlockColumn { column } => {
             let mut heights: Vec<i32> =
                 column.layers.iter().map(|l| l.height.sample(rng)).collect();

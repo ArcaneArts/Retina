@@ -23,8 +23,10 @@ Registered noise-based feature counts and arbitrary threshold counts now use
 nested placements. Broader feature geometry, providers and spatial filters remain
 part of the fourth workstream. Common registered block columns, bamboo, cactus,
 sugar cane and aquatic vegetation now have ordered native adapters; see
-[registered block features](REGISTERED_BLOCK_FEATURES.md). Fallen trees, patches,
-mushrooms and spatial providers remain required.
+[registered block features](REGISTERED_BLOCK_FEATURES.md). Registered red/brown
+giant mushrooms now retain loaded providers, cap faces and clearance rules; see
+[registered mushrooms](REGISTERED_MUSHROOMS.md). Fallen trees, patches and spatial
+providers remain required.
 
 See [GPU program specialization](GPU_PROGRAM_SPECIALIZATION.md) for the compiler,
 resident horizontal cache, startup behavior and its validation.

@@ -133,6 +133,9 @@ final class DecorationProfile {
         } else if (feature instanceof TreeFeature tree) {
             var data = tree(tree);
             if (data != null) emit(path, p, chance, "tree", data, selected);
+        } else if (feature instanceof AbstractHugeMushroomFeature mushroom) {
+            var data=mushroom(mushroom);
+            if(data != null)emit(path,p,chance,"huge_mushroom",data,selected);
         } else if (feature instanceof BlockColumnFeature column) {
             var data = column(column);
             if(data != null)emit(path,p,chance,"block_column",data,selected);
@@ -227,6 +230,10 @@ final class DecorationProfile {
                 normalizeTypes(op);
             }
             switch(recipe.get("kind").getAsString()) {
+                case "huge_mushroom" -> {
+                    for(String key:List.of("support","clearance","replaceable"))recipe.add(key,predicate(recipe.getAsJsonObject(key),palette));
+                    normalizeTypes(recipe.get("cap"));normalizeTypes(recipe.get("stem"));
+                }
                 case "block_column" -> {recipe.add("allowed",predicate(recipe.getAsJsonObject("allowed"),palette));normalizeTypes(recipe.get("layers"));}
                 case "bamboo" -> {for(String key:List.of("survival","podzol_allowed"))recipe.add(key,predicate(recipe.getAsJsonObject(key),palette));}
                 case "aquatic" -> {for(var variant:recipe.getAsJsonArray("states"))for(String key:List.of("survival","upper_allowed")) {
@@ -310,6 +317,35 @@ final class DecorationProfile {
             var output=new JsonObject();output.add("height",layer.get("height").deepCopy());output.add("provider",provider);layers.add(output);
         }
         result.add("layers",layers);return result;
+    }
+    private JsonObject mushroom(AbstractHugeMushroomFeature feature) {
+        if(feature.foliageRadius()<0 || feature.foliageRadius()>15) {unsupported.add("huge_mushroom:radius_exceeds_halo");return null;}
+        var json=Feature.DIRECT_CODEC.encodeStart(registry.createSerializationContext(JsonOps.INSTANCE),feature).getOrThrow().getAsJsonObject();
+        if(!supportedPredicate(json.getAsJsonObject("can_place_on"))) {unsupported.add("huge_mushroom:can_place_on");return null;}
+        var cap=stateProgram(json.get("cap_provider"),0);var stem=stateProgram(json.get("stem_provider"),0);
+        if(cap==null || stem==null)return null;
+        boolean red=feature instanceof HugeRedMushroomFeature;
+        var result=new JsonObject();result.addProperty("red",red);result.addProperty("foliage_radius",feature.foliageRadius());
+        result.add("cap",cap);result.add("stem",stem);result.add("support",json.get("can_place_on").deepCopy());
+        result.add("clearance",combine("any_of",matching("matching_block_tag","tag","minecraft:air",0,0,0),matching("matching_block_tag","tag",BlockTags.LEAVES.location().toString(),0,0,0)));
+        result.add("replaceable",combine("any_of",matching("matching_block_tag","tag","minecraft:air",0,0,0),matching("matching_block_tag","tag",BlockTags.REPLACEABLE_BY_MUSHROOMS.location().toString(),0,0,0)));
+        var variants=new JsonArray();
+        for(int id:programStates(cap)) {
+            var base=materials.entrySet().stream().filter(e->e.getValue()==id).findFirst().orElseThrow().getKey();
+            boolean faces=base.hasProperty(HugeMushroomBlock.WEST)&&base.hasProperty(HugeMushroomBlock.EAST)&&base.hasProperty(HugeMushroomBlock.NORTH)&&base.hasProperty(HugeMushroomBlock.SOUTH)&&(!red || base.hasProperty(HugeMushroomBlock.UP));
+            var states=new JsonArray();
+            for(int mask=0;mask<32;mask++) {
+                var state=base;
+                if(faces) {
+                    state=state.setValue(HugeMushroomBlock.WEST,(mask&1)!=0).setValue(HugeMushroomBlock.EAST,(mask&2)!=0)
+                            .setValue(HugeMushroomBlock.NORTH,(mask&4)!=0).setValue(HugeMushroomBlock.SOUTH,(mask&8)!=0);
+                    if(red)state=state.setValue(HugeMushroomBlock.UP,(mask&16)!=0);
+                }
+                states.add(material(state));
+            }
+            var v=new JsonObject();v.addProperty("source",id);v.add("states",states);variants.add(v);
+        }
+        result.add("faces",variants);return result;
     }
     private JsonObject stateProgram(JsonElement input,int depth) {
         if(depth>16)throw new IllegalArgumentException("Recursive block state provider");

@@ -30,6 +30,7 @@ import java.util.*;
  * Both implementations receive the same controlled random stream and terrain;
  * this tests geometry/providers, not equivalence with Minecraft's seed RNG. */
 public final class NativeBlockFeatureIntegrationTest {
+    private static final Set<String> ADAPTERS=Set.of("block_column","bamboo","aquatic","huge_mushroom");
     public static void main(String[] args) throws Exception {
         Path vanilla=Path.of("build/registered-columns-vanilla.json");
         NativeProfileExport.main(new String[]{vanilla.toString()});
@@ -49,18 +50,19 @@ public final class NativeBlockFeatureIntegrationTest {
             var registry=RegistryIntegrationFixtures.load(resources);
             var json=JsonParser.parseString(Files.readString(file)).getAsJsonObject();
             var materials=json.getAsJsonArray("materials").asList().stream().map(e->BlockState.CODEC.parse(JsonOps.INSTANCE,e).getOrThrow()).toArray(BlockState[]::new);
-            var fixtures=List.of(new Fixture(json,materials,96,384),new Fixture(json,materials,32,384),new Fixture(json,materials,58,384),new Fixture(json,materials,96,176));
-            var kinds=new TreeMap<String,Integer>();int cases=0,placed=0,empty=0;var tipAges=new TreeSet<Integer>();var bambooHeights=new TreeSet<Integer>();
+            var fixtures=List.of(new Fixture(json,materials,96,384),new Fixture(json,materials,32,384),new Fixture(json,materials,58,384),new Fixture(json,materials,96,176),new Fixture(json,materials,96,168),new Fixture(json,materials,96,384,true));
+            var kinds=new TreeMap<String,Integer>();int cases=0,placed=0,empty=0,ruggedMushrooms=0,ruggedRejected=0;
+            var tipAges=new TreeSet<Integer>();var bambooHeights=new TreeSet<Integer>();var mushroomHeights=new TreeSet<Integer>();
             var recipes=json.getAsJsonArray("decorations");
             for(int id=0;id<recipes.size();id++) {
                 var recipe=recipes.get(id).getAsJsonObject();String kind=recipe.get("kind").getAsString();
-                if(!Set.of("block_column","bamboo","aquatic").contains(kind))continue;
+                if(!ADAPTERS.contains(kind))continue;
                 String name=recipe.get("source").getAsString();Feature feature=resolve(registry,name);
                 require(feature!=null,"registered source resolves: "+name);kinds.merge(kind,1,Integer::sum);
                 for(var fixture:fixtures)for(long seed=0;seed<32;seed++) {
                     // Straddle negative chunk boundaries; all decisions use the same
                     // actual material/height substrate as the Rust feature sampler.
-                    int[] at={-17,fixture.base<63?fixture.base:96,-17};
+                    int[] at={-17,fixture.originHeight,-17};
                     if(kind.equals("aquatic") && feature instanceof SimpleBlockFeature simple && simple.toPlace().value().getState(new World(fixture).level,new Stream(1,true),BlockPos.ZERO).is(Blocks.LILY_PAD))at[1]=63;
                     var world=new World(fixture);var origin=new BlockPos(at[0],at[1],at[2]);
                     feature.place(world.level,null,new Stream(seed,kind.equals("aquatic")),origin);
@@ -71,13 +73,18 @@ public final class NativeBlockFeatureIntegrationTest {
                     cases++;if(actual.isEmpty())empty++;else placed++;
                     for(var state:actual.values())if(state.is(Blocks.KELP))tipAges.add(state.getValue(KelpBlock.AGE));
                     if(kind.equals("bamboo") && !actual.isEmpty())bambooHeights.add(actual.keySet().stream().filter(p->actual.get(p).is(Blocks.BAMBOO)).mapToInt(BlockPos::getY).max().orElse(96)-96);
+                    if(kind.equals("huge_mushroom")) {
+                        if(!actual.isEmpty())mushroomHeights.add(actual.keySet().stream().mapToInt(BlockPos::getY).max().orElseThrow()-at[1]);
+                        if(fixture.rugged){if(actual.isEmpty())ruggedRejected++;else ruggedMushrooms++;}
+                    }
                 }
             }
-            require(kinds.getOrDefault("block_column",0)>0 && kinds.getOrDefault("bamboo",0)>0 && kinds.getOrDefault("aquatic",0)>0,"common registered adapters exported: "+kinds);
+            require(kinds.getOrDefault("block_column",0)>0 && kinds.getOrDefault("bamboo",0)>0 && kinds.getOrDefault("aquatic",0)>0 && kinds.getOrDefault("huge_mushroom",0)>0,"common registered adapters exported: "+kinds);
             require(tipAges.equals(new TreeSet<>(List.of(20,21,22,23))),"randomized kelp tip age distribution retained: "+tipAges);
             require(bambooHeights.size()>5 && placed>100 && empty>100,"varied heights, survival and truncation exercised");
-            System.out.println("QA_EVT {\"event\":\"registered_block_features_minecraft_reference\",\"status\":\"pass\",\"context\":{\"datapack\":"+(pack!=null)+",\"recipes\":"+new Gson().toJson(kinds)+",\"cases\":"+cases+",\"placed\":"+placed+",\"empty\":"+empty+"}}");
-            for(String biome:List.of("bamboo_jungle","desert","ocean"))checkRegion(json,materials,biome);
+            require(mushroomHeights.equals(new TreeSet<>(List.of(4,5,6,8,10,12))) && ruggedMushrooms>0 && ruggedRejected>0,"mushroom heights and terrain clearance exercised: "+mushroomHeights+"/"+ruggedMushrooms+"/"+ruggedRejected);
+            System.out.println("QA_EVT {\"event\":\"registered_block_features_minecraft_reference\",\"status\":\"pass\",\"context\":{\"datapack\":"+(pack!=null)+",\"recipes\":"+new Gson().toJson(kinds)+",\"cases\":"+cases+",\"placed\":"+placed+",\"empty\":"+empty+",\"mushroom_heights\":"+new Gson().toJson(mushroomHeights)+",\"rugged_mushrooms\":"+ruggedMushrooms+",\"rugged_rejections\":"+ruggedRejected+"}}");
+            for(String biome:List.of("bamboo_jungle","desert","ocean","mushroom_fields","dark_forest"))checkRegion(json,materials,biome);
 
         }
     }
@@ -88,7 +95,7 @@ public final class NativeBlockFeatureIntegrationTest {
                 .filter(b->b.get("id").getAsString().equals("minecraft:"+name)).findFirst().orElseThrow().deepCopy();
         biome.add("terrain",JsonParser.parseString("[0,0,0]"));biome.add("ores",new JsonArray());biome.add("carvers",new JsonArray());
         var allowed=new JsonArray();
-        for(var id:biome.getAsJsonArray("decorations"))if(Set.of("block_column","bamboo","aquatic").contains(original.getAsJsonArray("decorations").get(id.getAsInt()).getAsJsonObject().get("kind").getAsString()))allowed.add(id);
+        for(var id:biome.getAsJsonArray("decorations"))if(ADAPTERS.contains(original.getAsJsonArray("decorations").get(id.getAsInt()).getAsJsonObject().get("kind").getAsString()))allowed.add(id);
         biome.add("decorations",allowed);var biomes=new JsonArray();biomes.add(biome);json.add("biomes",biomes);
         for(var e:json.getAsJsonArray("noises"))e.getAsJsonObject().addProperty("amplitude",1e-12);
         var nativeTerrain=NativeTerrain.instance();int profile=nativeTerrain.registerProfile(json.toString());
@@ -106,7 +113,7 @@ public final class NativeBlockFeatureIntegrationTest {
                     var pos=new ChunkPos(x,z);var tag=storage.read(pos);require(tag!=null,"every feature MCA slot decodes");boolean active=false;
                     for(var entry:tag.getListOrEmpty("sections"))for(var item:((net.minecraft.nbt.CompoundTag)entry).getCompoundOrEmpty("block_states").getListOrEmpty("palette")) {
                         var state=BlockState.CODEC.parse(NbtOps.INSTANCE,item).getOrThrow();
-                        active|=state.is(Blocks.BAMBOO)||state.is(Blocks.KELP)||state.is(Blocks.KELP_PLANT)||state.is(Blocks.SEAGRASS)||state.is(Blocks.TALL_SEAGRASS)||state.is(Blocks.CACTUS);
+                        active|=isFeature(state);
                     }
                     if(active){activeChunks++;if(positions.size()<12)positions.add(pos);}
                 }
@@ -121,7 +128,7 @@ public final class NativeBlockFeatureIntegrationTest {
                                 int layer=section*16+y,c=bz*16+bx;var state=blocks.get(bx,y,bz);
                                 require(state.equals(materials[Short.toUnsignedInt(bytes[layer*256+c])]),"ordered feature chunk/MCA mismatch: "+name+"/"+pos+"/"+bx+","+(layer-64)+","+bz);
                                 for(var type:Heightmap.Types.values())if(type.isOpaque().test(state))maps[type.ordinal()][c]=layer+1;
-                                if(state.is(Blocks.BAMBOO)||state.is(Blocks.KELP)||state.is(Blocks.KELP_PLANT)||state.is(Blocks.SEAGRASS)||state.is(Blocks.TALL_SEAGRASS)||state.is(Blocks.CACTUS))vegetation++;
+                                if(isFeature(state))vegetation++;
                             }
                         }
                         for(var type:Heightmap.Types.values()) {
@@ -135,6 +142,10 @@ public final class NativeBlockFeatureIntegrationTest {
             require(activeChunks>10 && vegetation>0,"registered "+name+" features reach final chunk data");
             System.out.println("QA_EVT {\"event\":\"registered_block_features_chunk_mca\",\"status\":\"pass\",\"context\":{\"biome\":\""+name+"\",\"chunks\":"+compared+",\"feature_blocks\":"+vegetation+",\"active_region_chunks\":"+activeChunks+"}}");
         }finally{try(var files=Files.walk(directory)){for(var f:files.sorted(Comparator.reverseOrder()).toList())Files.delete(f);}}
+    }
+    private static boolean isFeature(BlockState state) {
+        return state.is(Blocks.BAMBOO)||state.is(Blocks.KELP)||state.is(Blocks.KELP_PLANT)||state.is(Blocks.SEAGRASS)||state.is(Blocks.TALL_SEAGRASS)||state.is(Blocks.CACTUS)
+                ||state.is(Blocks.MUSHROOM_STEM)||state.is(Blocks.RED_MUSHROOM_BLOCK)||state.is(Blocks.BROWN_MUSHROOM_BLOCK);
     }
     private static Feature resolve(RegistryAccess registry,String source) {
         var holder=registry.lookupOrThrow(Registries.PLACED_FEATURE).listElements()
@@ -155,19 +166,37 @@ public final class NativeBlockFeatureIntegrationTest {
         return feature;
     }
     private static final class Fixture {
-        final TerrainRequest request;final BlockState[] column;final int base;
+        final TerrainRequest request;final BlockState[] column;final int base,originHeight;final boolean rugged;
+        final BlockState[] materials;final Map<ChunkPos,short[]> terrain=new HashMap<>();
         Fixture(JsonObject original,BlockState[] materials,int base,int height) {
+            this(original,materials,base,height,false);
+        }
+        Fixture(JsonObject original,BlockState[] materials,int base,int height,boolean rugged) {
+            this.rugged=rugged;this.materials=materials;
             this.base=base;var json=original.deepCopy();
             for(String key:List.of("registry_program","climate_targets","structures","terrain_features"))json.remove(key);
             var biome=JsonParser.parseString("{\"id\":\"test:uniform\",\"climate\":[0,0,0,0],\"terrain\":[0,0,0],\"flags\":0}").getAsJsonObject();
             biome.addProperty("top",index(materials,Blocks.GRASS_BLOCK.defaultBlockState()));biome.addProperty("filler",index(materials,Blocks.DIRT.defaultBlockState()));biome.addProperty("underwater",index(materials,Blocks.DIRT.defaultBlockState()));
+            if(rugged)biome.add("terrain",JsonParser.parseString("[0,1,1]"));
             var biomes=new JsonArray();biomes.add(biome);json.add("biomes",biomes);
             for(var e:json.getAsJsonArray("noises"))e.getAsJsonObject().addProperty("amplitude",1e-12);
             int id=NativeTerrain.instance().registerProfile(json.toString());
-            request=new TerrainRequest(123456789L,-2,-2,-64,height,base,0,.008f,id);
+            request=new TerrainRequest(123456789L,-2,-2,-64,height,base,rugged?14:0,rugged?.15f:.008f,id);
+            originHeight=NativeTerrain.instance().sampleHeights(request)[255];
             var raw=NativeTerrain.instance().column(request,255);column=new BlockState[height];
             for(int y=0;y<height;y++)column[y]=materials[Short.toUnsignedInt(raw[y])];
-            require(column[base-1+64].is(base<63?Blocks.DIRT:Blocks.GRASS_BLOCK),"controlled feature substrate has registered surface");
+            require(column[originHeight-1+64].is(base<63?Blocks.DIRT:Blocks.GRASS_BLOCK),"controlled feature substrate has registered surface");
+        }
+        BlockState base(BlockPos pos) {
+            int y=pos.getY()-request.minY();
+            if(y<0 || y>=request.height())return Blocks.AIR.defaultBlockState();
+            if(!rugged)return column[y];
+            var chunkPos=new ChunkPos(Math.floorDiv(pos.getX(),16),Math.floorDiv(pos.getZ(),16));
+            var blocks=terrain.computeIfAbsent(chunkPos,p->{
+                var r=new TerrainRequest(request.seed(),p.x(),p.z(),request.minY(),request.height(),request.baseHeight(),request.amplitude(),request.frequency(),request.profile());
+                try(var data=NativeTerrain.instance().generate(r)){return data.blocks().toArray(ValueLayout.JAVA_SHORT);}
+            });
+            return materials[Short.toUnsignedInt(blocks[y*256+Math.floorMod(pos.getZ(),16)*16+Math.floorMod(pos.getX(),16)])];
         }
     }
     private static int index(BlockState[] states,BlockState state) {for(int i=0;i<states.length;i++)if(states[i].equals(state))return i;throw new AssertionError("Missing material "+state);}
@@ -176,7 +205,7 @@ public final class NativeBlockFeatureIntegrationTest {
         final WorldGenLevel level=(WorldGenLevel)Proxy.newProxyInstance(WorldGenLevel.class.getClassLoader(),new Class<?>[]{WorldGenLevel.class},this);
         World(Fixture fixture){this.fixture=fixture;}
         BlockState get(BlockPos pos) {return changed.getOrDefault(pos,base(pos));}
-        BlockState base(BlockPos pos) {int y=pos.getY()-fixture.request.minY();return y>=0 && y<fixture.column.length?fixture.column[y]:Blocks.AIR.defaultBlockState();}
+        BlockState base(BlockPos pos) {return fixture.base(pos);}
         @Override public Object invoke(Object proxy,Method method,Object[] arguments)throws Throwable {
             var args=arguments==null?new Object[0]:arguments;
             return switch(method.getName()) {

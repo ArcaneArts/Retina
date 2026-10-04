@@ -135,7 +135,10 @@ loaded registries, rather than hand-written reduced benchmark profiles.
 
 ## Remaining work
 
-Fallen trees, vegetation patches, huge mushrooms, coral and remaining placement
+Giant mushrooms are implemented in the subsequent
+[registered mushroom milestone](REGISTERED_MUSHROOMS.md), which extends the same
+reference harness to five biome fixtures and six terrain/build-height fixtures.
+Fallen trees, vegetation patches, coral and remaining placement
 filters still need adapters. Spatial `noise` / `dual_noise` and rule providers
 remain explicit omissions for these column recipes. Some old tree/provider
 approximations remain. The overlay still uses representative GPU terrain columns

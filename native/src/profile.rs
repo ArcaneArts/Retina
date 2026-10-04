@@ -131,6 +131,7 @@ impl WorldProfile {
                     crate::decoration::Kind::BlockColumn { .. }
                         | crate::decoration::Kind::Bamboo { .. }
                         | crate::decoration::Kind::Aquatic { .. }
+                        | crate::decoration::Kind::HugeMushroom { .. }
                 )
             {
                 return Err("registered block features require ordered decoration replay".into());
