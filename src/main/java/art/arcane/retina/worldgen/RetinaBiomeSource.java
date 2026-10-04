@@ -27,6 +27,7 @@ public final class RetinaBiomeSource extends BiomeSource {
             Codec.BOOL.optionalFieldOf("use_registry_biomes", false).forGetter(s -> s.useRegistryBiomes)
     ).apply(i, RetinaBiomeSource::new));
     private final List<Holder<Biome>> biomes;
+    private final java.util.function.Supplier<List<Holder<Biome>>> registryBiomes;
     private final float scale;
     private final float blend;
     private final Optional<BiomeSource> registrySource;
@@ -46,14 +47,20 @@ public final class RetinaBiomeSource extends BiomeSource {
     public RetinaBiomeSource(List<Holder<Biome>> biomes, float scale, float blend, Optional<BiomeSource> registrySource, boolean useRegistryBiomes) {
         this.registrySource = registrySource;
         this.useRegistryBiomes = useRegistryBiomes;
-        // Opt in only for new presets. Serialized older sources retain their explicit pool.
-        this.biomes = useRegistryBiomes ? choices(registrySource.orElseThrow(() -> new IllegalArgumentException("use_registry_biomes requires registry_source"))) : List.copyOf(biomes);
+        this.biomes = List.copyOf(biomes);
+        // Presets decode alongside the climate registry. Its referenced holders
+        // are still unbound here, so resolve the complete pool on first use after
+        // loading, just as MultiNoiseBiomeSource does. Older explicit pools stay explicit.
+        if (useRegistryBiomes) {
+            var source = registrySource.orElseThrow(() -> new IllegalArgumentException("use_registry_biomes requires registry_source"));
+            this.registryBiomes = com.google.common.base.Suppliers.memoize(() -> choices(source));
+        } else this.registryBiomes = null;
         this.scale = scale;
         this.blend = blend;
     }
     static RetinaBiomeSource fromRegistry(BiomeSource source, float scale, float blend) {
         if (source instanceof RetinaBiomeSource retina) return retina;
-        return new RetinaBiomeSource(choices(source), scale, blend, Optional.of(source), true);
+        return new RetinaBiomeSource(List.of(), scale, blend, Optional.of(source), true);
     }
     private static List<Holder<Biome>> choices(BiomeSource source) {
         return source.possibleBiomes().stream().sorted(java.util.Comparator.comparing(b -> b.unwrapKey().orElseThrow().identifier().toString())).toList();
@@ -77,9 +84,9 @@ public final class RetinaBiomeSource extends BiomeSource {
         }
         return registry.lookupOrThrow(Registries.MULTI_NOISE_BIOME_SOURCE_PARAMETER_LIST).getOrThrow(MultiNoiseBiomeSourceParameterLists.OVERWORLD).value().parameters().values();
     }
-    public List<Holder<Biome>> biomes() { return biomes; }
+    public List<Holder<Biome>> biomes() { return registryBiomes == null ? biomes : registryBiomes.get(); }
     void underground(List<Holder<Biome>> biomes) { underground = List.copyOf(biomes); }
-    List<Holder<Biome>> nativeBiomes() { return Stream.concat(Stream.concat(biomes.stream(), additional.stream()), underground.stream()).distinct().toList(); }
+    List<Holder<Biome>> nativeBiomes() { return Stream.concat(Stream.concat(biomes().stream(), additional.stream()), underground.stream()).distinct().toList(); }
     public float scale() { return scale; }
     public float blend() { return blend; }
     public void bind(BiomeResolver resolver) { bind(resolver,resolver); }

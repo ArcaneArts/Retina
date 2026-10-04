@@ -121,6 +121,17 @@ tasks.register('biomeTest', JavaExec) {
     jvmArgs '--enable-native-access=ALL-UNNAMED'
 }
 
+tasks.register('registryTest', JavaExec) {
+    group = 'verification'
+    description = 'Load actual Retina presets with pending registry references, as world creation does.'
+    dependsOn 'gpuTestClasses'
+    classpath = sourceSets.gpuTest.runtimeClasspath
+    mainClass = 'art.arcane.retina.worldgen.NativeRegistryLoadingTest'
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
+    if (providers.gradleProperty('testPack').isPresent()) args providers.gradleProperty('testPack').get()
+}
+check.dependsOn 'registryTest'
+
 tasks.register('geologyTest', JavaExec) {
     group = 'verification'
     description = 'Validate registry-derived parallel ores, GPU cave masks and exposure rules.'

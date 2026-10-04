@@ -9,6 +9,24 @@ optimization are implemented so far. The other workstreams remain required,
 along with final integrated validation,
 transfer-volume measurements and updated stage telemetry where new stages arise.
 
+## World-preset registry lifecycle
+
+World creation loads the Retina presets concurrently with their referenced
+Overworld climate parameter registry. Resolving the complete pool in the biome
+source constructor dereferenced an unbound holder, failed both presets, and left
+the client on its preparation screen before native generation started.
+
+Registry-backed sources now defer and memoize that pool until first use, following
+Minecraft's own MultiNoiseBiomeSource lifecycle. Explicit saved pools retain their
+existing behavior; the complete imported pool remains available after loading and
+through serialization. There is no readiness gate or fallback biome list.
+
+`registryTest` first constructs a source with an actual unbound parameter holder,
+then runs the game's parallel registry loader over the real Retina preset files.
+Both presets, modes and complete pools are checked after binding. The test failed
+with the same unbound-holder exception before the fix. It is part of `check` and
+can also load the real Terralith pack with `-PtestPack=run/datapacks/Terralith.zip`.
+
 ## Registered biome coverage and climate index
 
 New MCA and chunk presets opt into `use_registry_biomes`, which takes the complete
