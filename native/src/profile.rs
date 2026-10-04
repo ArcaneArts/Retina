@@ -92,6 +92,11 @@ pub struct WorldProfile {
     pub geology: crate::geology::GeologyProfile,
     pub material_flags: Vec<u8>,
     pub heightmap_masks: Vec<u8>,
+    /// Signed registered DoublePlantBlock identity: lower positive, upper negative.
+    #[serde(default)]
+    pub plant_halves: Vec<i32>,
+    #[serde(skip)]
+    pub base_plant_halves: bool,
     #[serde(skip)]
     pub encoded: Vec<u8>,
     #[serde(skip)]
@@ -118,6 +123,9 @@ impl WorldProfile {
         }
         if profile.material_flags.len() != profile.materials.len()
             || profile.heightmap_masks.len() != profile.materials.len()
+            || !profile.plant_halves.is_empty()
+                && (profile.plant_halves.len() != profile.materials.len()
+                    || profile.plant_halves.iter().any(|v| *v == i32::MIN))
         {
             return Err("material flags must cover the complete palette".into());
         }
@@ -281,6 +289,23 @@ impl WorldProfile {
             })
             .collect();
         profile.structures.compile(&profile.materials);
+        let is_half = |id: usize| profile.plant_halves.get(id).is_some_and(|v| *v != 0);
+        profile.base_plant_halves = profile.biomes.iter().any(|b| {
+            [b.top, b.filler, b.underwater]
+                .iter()
+                .any(|id| is_half(*id as usize))
+        }) || profile.registry_program.as_ref().is_some_and(|r| {
+            // A rule's block leaf is encoded as constant(material + 1).
+            // Conservatively include other constants in material graphs as well.
+            r.programs[3..3 + profile.biomes.len()]
+                .iter()
+                .any(|program| {
+                    program
+                        .nodes
+                        .iter()
+                        .any(|n| n.op == 0 && n.p[0] >= 1.0 && is_half(n.p[0] as usize - 1))
+                })
+        });
         profile.encoded = json.to_vec();
         Ok(profile)
     }

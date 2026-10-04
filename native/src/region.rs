@@ -353,6 +353,7 @@ fn generate_region_inner(
                     let columns = field.chunk(request.chunk_x, request.chunk_z);
                     let mut blocks = std::mem::take(&mut scratch.blocks);
                     blocks.resize(request.block_count(), 0);
+                    let mut plant_updates = decoration::pairs::Updates::default();
                     timings.time(timings::ASSEMBLY, || {
                         decoration::assemble_carved(
                             request,
@@ -361,6 +362,9 @@ fn generate_region_inner(
                             cave_mask.as_deref(),
                             &mut blocks,
                         );
+                        if let Some(p) = profile.as_deref() {
+                            plant_updates.base(p, &blocks);
+                        }
                     });
                     if let Some(p) = profile.as_deref() {
                         timings.time(timings::GEOLOGY, || {
@@ -376,7 +380,12 @@ fn generate_region_inner(
                     }
                     if let Some(p) = profile.as_deref() {
                         timings.time(timings::CAVE_FEATURES, || {
-                            crate::features::apply(request, p, cave_mask.as_deref(), &mut blocks)
+                            plant_updates.extend(crate::features::apply(
+                                request,
+                                p,
+                                cave_mask.as_deref(),
+                                &mut blocks,
+                            ))
                         });
                     }
                     timings.time(timings::VEGETATION, || {
@@ -384,23 +393,29 @@ fn generate_region_inner(
                             profile.as_deref(),
                             &overlays[slots[index]],
                             &mut blocks,
-                        )
+                        );
+                        if let Some(p) = profile.as_deref() {
+                            plant_updates.placements(p, &overlays[slots[index]]);
+                        }
                     });
                     let structure_data = profile.as_deref().map(|p| {
                         timings.time(timings::STRUCTURES, || {
-                            crate::structures::apply(
+                            let mut data = crate::structures::apply(
                                 request,
                                 p,
                                 &structure_plans,
                                 columns,
                                 Some(&mut blocks),
-                            )
+                            );
+                            plant_updates.extend(std::mem::take(&mut data.plant_updates));
+                            data
                         })
                     });
                     if let Some(p) = profile.as_deref() {
                         timings.time(timings::SNOW, || {
                             crate::features::snow(request, p, columns, &mut blocks)
                         });
+                        timings.time(timings::VEGETATION, || plant_updates.finish(p, &mut blocks));
                     }
                     timings.time(timings::NBT, || {
                         encode_chunk(

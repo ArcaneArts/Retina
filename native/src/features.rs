@@ -97,8 +97,15 @@ fn choose(values: &[u16], h: u32) -> u16 {
 
 /// Each task owns one chunk. Vertical features stay in their supporting column,
 /// so scheduling and region boundaries cannot clip them or change their random seed.
-pub fn apply(r: ChunkRequest, p: &WorldProfile, mask: Option<&CaveMask>, blocks: &mut [u16]) {
-    apply_inner(r, p, mask, blocks, true);
+pub fn apply(
+    r: ChunkRequest,
+    p: &WorldProfile,
+    mask: Option<&CaveMask>,
+    blocks: &mut [u16],
+) -> crate::decoration::pairs::Updates {
+    let mut updates = crate::decoration::pairs::Updates::default();
+    apply_inner(r, p, mask, blocks, true, &mut updates);
+    updates
 }
 fn apply_inner(
     r: ChunkRequest,
@@ -106,6 +113,7 @@ fn apply_inner(
     mask: Option<&CaveMask>,
     blocks: &mut [u16],
     bounded: bool,
+    updates: &mut crate::decoration::pairs::Updates,
 ) {
     let Some(mask) = mask else {
         return;
@@ -199,8 +207,10 @@ fn apply_inner(
                             }
                             if !f.plants.is_empty() && (h >> 8) as f32 / 16777216.0 < f.plant_chance
                             {
-                                blocks[start * COLUMNS + column] =
-                                    choose(&f.plants, hash(h ^ 7151));
+                                let index = start * COLUMNS + column;
+                                let material = choose(&f.plants, hash(h ^ 7151));
+                                blocks[index] = material;
+                                updates.record(p, index, material);
                             }
                         }
                         2 => {
@@ -356,7 +366,14 @@ mod scan_tests {
                         .collect();
                     let mut dense = original.clone();
                     let mut bounded = original.clone();
-                    apply_inner(r, &profile, Some(&mask), &mut dense, false);
+                    apply_inner(
+                        r,
+                        &profile,
+                        Some(&mask),
+                        &mut dense,
+                        false,
+                        &mut crate::decoration::pairs::Updates::default(),
+                    );
                     apply(r, &profile, Some(&mask), &mut bounded);
                     assert_eq!(
                         bounded, dense,

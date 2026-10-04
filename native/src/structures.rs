@@ -158,6 +158,7 @@ impl Heights {
 #[derive(Default)]
 pub struct ChunkData {
     pub tag: Value,
+    pub plant_updates: crate::decoration::pairs::Updates,
     pub starts: usize,
     pub pieces: usize,
     pub placed: usize,
@@ -1158,6 +1159,7 @@ pub fn apply(
     let mut block_entities = HashMap::<[i32; 3], Value>::new();
     let mut count = 0;
     let mut placed = 0;
+    let mut plant_updates = crate::decoration::pairs::Updates::default();
     for start in plans {
         let chunk = [request.chunk_x, request.chunk_z];
         let indexed = start.index(p);
@@ -1300,6 +1302,7 @@ pub fn apply(
                     }
                     if let Some(b) = blocks.as_deref_mut() {
                         b[index] = material;
+                        plant_updates.record(profile, index, material);
                     }
                     placed += 1;
                     block_entities.remove(&pos);
@@ -1406,6 +1409,7 @@ pub fn apply(
     nbt::put(&mut root, "entities", nbt::list(10, entities));
     ChunkData {
         tag: root,
+        plant_updates,
         starts: starts_count,
         pieces: count,
         placed,

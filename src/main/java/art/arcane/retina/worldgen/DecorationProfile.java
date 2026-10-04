@@ -655,7 +655,8 @@ final class DecorationProfile {
 
     static void materialFlags(JsonObject profile, LinkedHashMap<BlockState, Integer> palette) {
         profile.addProperty("ordered_decorations",true);
-        var heightmaps = new JsonArray(); var flags = new JsonArray();
+        var heightmaps = new JsonArray(); var flags = new JsonArray(); var halves = new JsonArray();
+        var plantTypes = new LinkedHashMap<Block, Integer>();
         for (var state : palette.keySet()) {
             int mask = 0; for (var type : Heightmap.Types.values()) if (type.isOpaque().test(state)) mask |= 1 << type.ordinal();
             heightmaps.add(mask);
@@ -666,8 +667,17 @@ final class DecorationProfile {
             if (state.getBlock() instanceof VegetationBlock) flag |= 16;
             if (state.is(BlockTags.JUNGLE_LOGS)) flag |= 32;
             flags.add(flag);
+            // Partner validation depends on block identity and opposite halves;
+            // facing/waterlogging may differ. Export registered classes, not names.
+            int half = 0;
+            if (state.getBlock() instanceof DoublePlantBlock) {
+                half = plantTypes.computeIfAbsent(state.getBlock(), ignored -> plantTypes.size() + 1);
+                if (state.getValue(DoublePlantBlock.HALF) == DoubleBlockHalf.UPPER) half = -half;
+            }
+            halves.add(half);
         }
         profile.add("heightmap_masks", heightmaps); profile.add("material_flags", flags);
+        profile.add("plant_halves", halves);
         profile.add("decoration_noise", new DecorationNoise().export());
     }
 

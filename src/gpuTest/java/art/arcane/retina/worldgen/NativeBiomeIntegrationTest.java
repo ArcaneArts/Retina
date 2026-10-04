@@ -53,6 +53,13 @@ public final class NativeBiomeIntegrationTest {
         for (var recipe : decorations) exportedKinds.add(recipe.getAsJsonObject().get("kind").getAsString());
         require(exportedKinds.containsAll(List.of("tree", "plant")), "exported trees and plants");
         RegistryDecorationIntegrationChecks.check(profile, false);
+        // Previously a later aquatic recipe replaced tall seagrass's lower half
+        // here, leaving an upper half above a single seagrass block.
+        try (var data = nativeTerrain.generate(request(profile, -111, -82))) {
+            var bytes = data.blocks().toArray(java.lang.foreign.ValueLayout.JAVA_SHORT);
+            require(profile.materials()[Short.toUnsignedInt(bytes[29182])].isAir(), "overlapped tall-seagrass upper is postprocessed");
+            require(profile.materials()[Short.toUnsignedInt(bytes[28926])].is(Blocks.SEAGRASS), "overwriting single seagrass survives partner repair");
+        }
         checkJungle(profile, nativeTerrain);
         var decorationCounts = new java.util.concurrent.atomic.AtomicLongArray(5);
         var chunks = new HashMap<ChunkPos, NativeTerrain.Columns>();
@@ -67,6 +74,7 @@ public final class NativeBiomeIntegrationTest {
                         var query = nativeTerrain.sampleColumns(r);
                         require(Arrays.equals(query.heights(), data.heights()) && Arrays.equals(query.packed(), data.columns().packed()), "concurrent queries agree with generation");
                         var bytes = data.blocks().toArray(java.lang.foreign.ValueLayout.JAVA_SHORT);
+                        checkPlantPartners(profile, bytes, new ChunkPos(r.chunkX(), r.chunkZ()));
                         for (int blockIndex = 0; blockIndex < bytes.length; blockIndex++) {
                             var state = profile.materials()[Short.toUnsignedInt(bytes[blockIndex])];
                             if (state.is(net.minecraft.tags.BlockTags.LOGS)) decorationCounts.incrementAndGet(0);
@@ -191,6 +199,7 @@ public final class NativeBiomeIntegrationTest {
                     }
                     try (var data = nativeTerrain.generate(r)) {
                         var bytes = data.blocks().toArray(java.lang.foreign.ValueLayout.JAVA_SHORT);
+                        checkPlantPartners(profile, bytes, pos);
                         if (chunkBlocks.containsKey(pos)) require(Arrays.equals(bytes, chunkBlocks.get(pos)), "decorations agree before and after region dispatch at " + pos);
                         var sections = tag.getListOrEmpty("sections");
                         var biomeSamples = nativeTerrain.sampleBiomes(r);
@@ -266,6 +275,18 @@ public final class NativeBiomeIntegrationTest {
             System.out.printf(Locale.ROOT, "QA_EVT {\"event\":\"minecraft_biome_mca_decode\",\"status\":\"pass\",\"context\":{\"chunks\":1024,\"biomes\":%d,\"largest_height_step\":%d,\"generation_ms\":%.3f,\"gpu_ms\":%.3f,\"assembly_ms\":%.3f,\"write_ms\":%.3f,\"bytes\":%d}}%n", regionBiomes.size(), largestStep, generationMs, report.gpuNanos()/1e6, report.assemblyNanos()/1e6, report.writeNanos()/1e6, report.bytes());
         } finally {
             try (var paths = Files.walk(directory)) { for (var file : paths.sorted(Comparator.reverseOrder()).toList()) Files.delete(file); }
+        }
+    }
+    private static void checkPlantPartners(BiomeTerrainProfile profile, short[] bytes, ChunkPos pos) {
+        for (int index = 0; index < bytes.length; index++) {
+            var state = profile.materials()[Short.toUnsignedInt(bytes[index])];
+            if (!(state.getBlock() instanceof net.minecraft.world.level.block.DoublePlantBlock)) continue;
+            var half = state.getValue(net.minecraft.world.level.block.DoublePlantBlock.HALF);
+            int partner = index + (half == net.minecraft.world.level.block.state.properties.DoubleBlockHalf.LOWER ? 256 : -256);
+            require(partner >= 0 && partner < bytes.length, "final plant fits build bounds at " + pos);
+            var other = profile.materials()[Short.toUnsignedInt(bytes[partner])];
+            require(other.is(state.getBlock()) && other.getValue(net.minecraft.world.level.block.DoublePlantBlock.HALF) != half,
+                    "final chunk plant partner at " + pos + "/" + index + ": " + state + "/" + other);
         }
     }
     private static void checkJungle(BiomeTerrainProfile profile, NativeTerrain nativeTerrain) throws Exception {

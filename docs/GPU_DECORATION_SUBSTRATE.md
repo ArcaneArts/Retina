@@ -70,7 +70,7 @@ checks. The material-reference harness explicitly opts into the new halo.
 The separate Terralith datapack-loading test also passes both MCA/chunk modes,
 registry import, preset persistence and temporary-region promotion.
 
-The broader `biomeTest` currently fails its paired-plant assertion. A retained
+At this substrate milestone, the broader `biomeTest` failed its paired-plant assertion. A retained
 pre-change library and the new library reproduce the same blocks at seed
 123456789, chunk -111/-82, local index 29182 (world -1762/49/-1297): tall seagrass
 upper above single seagrass. A later aquatic feature can replace the lower half
@@ -79,7 +79,9 @@ and `DoublePlantBlock` relies on shape updates for partner validation; Retina
 does not yet reproduce that final update behavior. This is an existing replay
 defect, not a substrate regression. The harness now reports position/states,
 and the reproduction, profile and failed logs are retained with the evidence.
-It remains required goal work rather than a claimed passing broader check.
+The subsequent [paired-plant replay repair](PAIRED_PLANT_REPLAY.md) resolves this
+defect and passes the broader checks. The timings below describe the substrate
+milestone before that repair.
 
 ```sh
 JAVA_HOME=/Library/Java/JavaVirtualMachines/jdk-25.jdk/Contents/Home \
@@ -153,7 +155,7 @@ The tested native library SHA-256 is
 the built mod JAR contains the identical library.
 
 Vegetation patches and spatial providers remain part of the active goal, alongside
-cold graph compilation, expression-level interpolation, paired-plant repair and
+cold graph compilation, expression-level interpolation and
 further measured scan work. Standing-tree geometry still has older approximations; complete base
 predicates do not reproduce Minecraft's entire neighboring-feature scheduler or
 block-update system.

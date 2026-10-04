@@ -890,6 +890,7 @@ impl TerrainEngine {
         }
         let profile = self.profile(request.reserved)?;
         let timings = self.timings(request.reserved);
+        let mut plant_updates = decoration::pairs::Updates::default();
         let columns = if let Some(p) = profile.as_deref().filter(|p| {
             !p.decorations.is_empty()
                 || !p.geology.ores.is_empty()
@@ -907,23 +908,28 @@ impl TerrainEngine {
                 geology::plan(&field, p, request, 1, mask.as_deref())
             });
             timings.time(timings::ASSEMBLY, || {
-                decoration::assemble_carved(request, columns, Some(p), mask.as_deref(), blocks)
+                decoration::assemble_carved(request, columns, Some(p), mask.as_deref(), blocks);
+                plant_updates.base(p, blocks);
             });
             timings.time(timings::GEOLOGY, || {
                 geology::apply_ores(request, &field, p, mask.as_deref(), &ores[0], blocks)
             });
             timings.time(timings::CAVE_FEATURES, || {
-                features::apply(request, p, mask.as_deref(), blocks)
+                plant_updates.extend(features::apply(request, p, mask.as_deref(), blocks))
             });
             timings.time(timings::VEGETATION, || {
-                decoration::decorate(Some(p), &placements[0], blocks)
+                decoration::decorate(Some(p), &placements[0], blocks);
+                plant_updates.placements(p, &placements[0]);
             });
 
             columns.to_vec()
         } else {
             let columns = self.sample_columns(&[request])?;
             timings.time(timings::ASSEMBLY, || {
-                decoration::assemble(request, &columns, profile.as_deref(), &[], blocks)
+                decoration::assemble(request, &columns, profile.as_deref(), &[], blocks);
+                if let Some(p) = profile.as_deref() {
+                    plant_updates.base(p, blocks);
+                }
             });
             columns
         };
@@ -932,6 +938,7 @@ impl TerrainEngine {
             let data = timings.time(timings::STRUCTURES, || {
                 structures::apply(request, p, &plans, &columns, Some(blocks))
             });
+            plant_updates.extend(data.plant_updates);
             self.structures
                 .lock()
                 .map_err(|_| "structure cache poisoned")?
@@ -939,6 +946,7 @@ impl TerrainEngine {
             timings.time(timings::SNOW, || {
                 features::snow(request, p, &columns, blocks)
             });
+            timings.time(timings::VEGETATION, || plant_updates.finish(p, blocks));
         }
         let result = columns
             .try_into()

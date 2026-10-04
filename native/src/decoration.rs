@@ -12,6 +12,7 @@ mod blocks;
 pub mod counts;
 mod fallen;
 mod mushroom;
+pub mod pairs;
 pub mod placement;
 mod spatial;
 
@@ -1475,6 +1476,8 @@ mod tests {
             terrain_features: Default::default(),
             material_flags: vec![0, 0, 1, 8 | 32, 4, 4, 4, 4, 4, 4],
             heightmap_masks: vec![0; 10],
+            plant_halves: Vec::new(),
+            base_plant_halves: false,
             encoded: Vec::new(),
             material_nbt: Vec::new(),
             ore_membership: Vec::new(),

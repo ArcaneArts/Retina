@@ -36,10 +36,10 @@ Live predicates and heightmap modifiers consume those runs, consistently across
 independent chunks and regions. This supplies the base data needed by underground
 vegetation patches; the patch adapter and remaining 3D placement filters are still
 required.
-Broader validation also reproduced an existing aquatic overlap defect: replacing
-the lower half of tall seagrass can leave its upper half. The retained previous
-library has the same failure. The substrate documentation records the reproduction;
-final partner/shape-update handling remains required feature work.
+[Final paired-plant replay](PAIRED_PLANT_REPLAY.md) now repairs overlapping tall
+plants after all feature/structure writes, using registered block identities.
+Broader biome/MCA validation passes; the previous defect and measured sparse
+repair cost are documented there.
 
 See [GPU program specialization](GPU_PROGRAM_SPECIALIZATION.md) for the compiler,
 resident horizontal cache, startup behavior and its validation.

@@ -54,6 +54,7 @@ public final class NativeBlockFeatureIntegrationTest {
             var fixtures=List.of(new Fixture(json,materials,96,384),new Fixture(json,materials,32,384),new Fixture(json,materials,58,384),new Fixture(json,materials,96,176),new Fixture(json,materials,96,168),new Fixture(json,materials,96,384,true));
             var factory=PalettedContainerFactory.create(registry);
             for(var fixture:fixtures)fixture.factory=factory;
+            checkPlantPartners(json, materials, fixtures.getFirst());
             var kinds=new TreeMap<String,Integer>();int cases=0,placed=0,empty=0,ruggedMushrooms=0,ruggedRejected=0;
             var tipAges=new TreeSet<Integer>();var bambooHeights=new TreeSet<Integer>();var mushroomHeights=new TreeSet<Integer>();
             var fallenLengths=new TreeSet<Integer>();var fallenAxes=new HashSet<Direction.Axis>();int fallenDecorated=0,fallenStumps=0,ruggedFallenLogs=0;
@@ -103,6 +104,33 @@ public final class NativeBlockFeatureIntegrationTest {
             for(String biome:List.of("bamboo_jungle","desert","ocean","mushroom_fields","dark_forest","forest","dappled_forest","old_growth_birch_forest"))checkRegion(json,materials,biome);
 
         }
+    }
+    private static void checkPlantPartners(JsonObject json, BlockState[] materials, Fixture fixture) {
+        var halves=json.getAsJsonArray("plant_halves");
+        require(halves.size()==materials.length,"registered pair metadata covers palette");
+        var world=new World(fixture);var pos=new BlockPos(-18,fixture.originHeight,-31);
+        int checked=0;
+        for(int i=0;i<materials.length;i++) {
+            var state=materials[i];int half=halves.get(i).getAsInt();
+            require((half!=0)==(state.getBlock() instanceof DoublePlantBlock),"pair metadata follows registered block class");
+            if(half==0)continue;
+            var direction=half>0?Direction.UP:Direction.DOWN;
+            BlockState ground=null;
+            for(var candidate:materials) {
+                world.changed.clear();world.changed.put(pos,state);world.changed.put(pos.below(),candidate);
+                if(state.canSurvive(world.level,pos)){ground=candidate;break;}
+            }
+            require(ground!=null,"registered palette has surviving support for "+state);
+            for(int j=0;j<materials.length;j++) {
+                world.changed.clear();world.changed.put(pos,state);world.changed.put(pos.below(),ground);world.changed.put(pos.relative(direction),materials[j]);
+                var actual=state.updateShape(world.level,world.level,pos,direction,pos.relative(direction),materials[j],new LegacyRandomSource(7));
+                boolean valid=halves.get(j).getAsInt()==-half;
+                require(valid?actual.equals(state):actual.isAir(),"registered partner table matches Minecraft updateShape: "+state+"/"+materials[j]);
+                checked++;
+            }
+        }
+        require(checked>100,"paired flowers, grasses and aquatics exercised");
+        System.out.println("QA_EVT {\"event\":\"registered_plant_partner_minecraft_reference\",\"status\":\"pass\",\"context\":{\"state_pairs\":"+checked+"}}");
     }
     private static void checkRegion(JsonObject original,BlockState[] materials,String name)throws Exception {
         var json=original.deepCopy();
