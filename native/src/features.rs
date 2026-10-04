@@ -13,6 +13,7 @@ pub struct TerrainFeatures {
 #[derive(Clone, Default, Deserialize)]
 #[serde(default)]
 pub struct CaveFeatures {
+    pub registered_vines: bool,
     pub replaceable: Vec<bool>,
     pub floor: u16,
     pub clay: u16,
@@ -247,7 +248,11 @@ fn apply_inner(
                 let h = random(r, wx, r.min_y + end as i32, wz, 9283);
                 if roof.cave_kind == 1 && f.floor != 0 {
                     blocks[above] = f.floor;
-                    if !f.vine_bodies.is_empty() && !f.vine_tips.is_empty() && h % 11 == 0 {
+                    if !f.registered_vines
+                        && !f.vine_bodies.is_empty()
+                        && !f.vine_tips.is_empty()
+                        && h % 11 == 0
+                    {
                         let length = (1 + hash(h) % f.vine_max.max(1)).min((end - start - 1) as u32)
                             as usize;
                         for i in 0..length {

@@ -51,10 +51,12 @@ public final class NativeBlockFeatureIntegrationTest {
             var registry=RegistryIntegrationFixtures.load(resources);
             var json=JsonParser.parseString(Files.readString(file)).getAsJsonObject();
             var materials=json.getAsJsonArray("materials").asList().stream().map(e->BlockState.CODEC.parse(JsonOps.INSTANCE,e).getOrThrow()).toArray(BlockState[]::new);
+            var placementCases=placementCases(registry,json,materials);
             var fixtures=List.of(new Fixture(json,materials,96,384),new Fixture(json,materials,32,384),new Fixture(json,materials,58,384),new Fixture(json,materials,96,176),new Fixture(json,materials,96,168),new Fixture(json,materials,96,384,true));
             var factory=PalettedContainerFactory.create(registry);
             for(var fixture:fixtures)fixture.factory=factory;
             checkPlantPartners(json, materials, fixtures.getFirst());
+            checkPlacements(registry, placementCases, fixtures);
             var kinds=new TreeMap<String,Integer>();int cases=0,placed=0,empty=0,ruggedMushrooms=0,ruggedRejected=0;
             var tipAges=new TreeSet<Integer>();var bambooHeights=new TreeSet<Integer>();var mushroomHeights=new TreeSet<Integer>();
             var fallenLengths=new TreeSet<Integer>();var fallenAxes=new HashSet<Direction.Axis>();int fallenDecorated=0,fallenStumps=0,ruggedFallenLogs=0;
@@ -104,6 +106,74 @@ public final class NativeBlockFeatureIntegrationTest {
             for(String biome:List.of("bamboo_jungle","desert","ocean","mushroom_fields","dark_forest","forest","dappled_forest","old_growth_birch_forest"))checkRegion(json,materials,biome);
 
         }
+    }
+    private record PlacementCase(int recipe,List<net.minecraft.world.level.levelgen.placement.PlacementModifier> modifiers) { }
+    private static List<PlacementCase> placementCases(RegistryAccess registry,JsonObject profile,BlockState[] materials) {
+        var ops=registry.createSerializationContext(JsonOps.INSTANCE);
+        var raw=new LinkedHashMap<String,List<net.minecraft.world.level.levelgen.placement.PlacementModifier>>();
+        for(var holder:registry.lookupOrThrow(Registries.PLACED_FEATURE).listElements().toList())for(var modifier:holder.value().placement()) {
+            var json=net.minecraft.world.level.levelgen.placement.PlacementModifier.CODEC.encodeStart(ops,modifier).getOrThrow().getAsJsonObject();
+            String type=json.get("type").getAsString().replace("minecraft:","");
+            boolean supported=switch(type) {
+                case "height_range" -> DecorationProfile.supportedHeightProvider(json.get("height"));
+                case "random_chance" -> true;
+                case "environment_scan" -> DecorationProfile.supportedPredicate(json.getAsJsonObject("target_condition")) && (!json.has("allowed_search_condition") || DecorationProfile.supportedPredicate(json.getAsJsonObject("allowed_search_condition")));
+                default -> false;
+            };
+            if(supported)raw.putIfAbsent(json.toString(),List.of(modifier));
+        }
+        // Exercise every supported height codec even when the active pack does
+        // not use that distribution, with anchors relative to these build bounds.
+        for(String height:List.of("{\"above_bottom\":7}","{\"below_top\":9}",
+                "{\"type\":\"minecraft:biased_to_bottom\",\"min_inclusive\":{\"above_bottom\":5},\"max_inclusive\":{\"below_top\":4},\"inner\":3}",
+                "{\"type\":\"minecraft:very_biased_to_bottom\",\"min_inclusive\":{\"above_bottom\":5},\"max_inclusive\":{\"below_top\":4},\"inner\":3}",
+                "{\"type\":\"minecraft:trapezoid\",\"min_inclusive\":{\"above_bottom\":5},\"max_inclusive\":{\"below_top\":4},\"plateau\":17}",
+                "{\"type\":\"minecraft:weighted_list\",\"distribution\":[{\"weight\":2,\"data\":{\"absolute\":22}},{\"weight\":3,\"data\":{\"type\":\"minecraft:uniform\",\"min_inclusive\":{\"above_bottom\":5},\"max_inclusive\":{\"below_top\":4}}}]}")) {
+            var json=new JsonObject();json.addProperty("type","minecraft:height_range");json.add("height",JsonParser.parseString(height));
+            raw.put(json.toString(),List.of(net.minecraft.world.level.levelgen.placement.PlacementModifier.CODEC.parse(ops,json).getOrThrow()));
+        }
+        for(int direction:new int[]{-1,1})for(int limit:new int[]{1,2,12,32}) {
+            var scan=new JsonObject();scan.addProperty("type","minecraft:environment_scan");scan.addProperty("direction_of_search",direction<0?"down":"up");scan.addProperty("max_steps",limit);
+            scan.add("allowed_search_condition",JsonParser.parseString("{\"type\":\"minecraft:matching_block_tag\",\"tag\":\"minecraft:air\"}"));
+            scan.add("target_condition",JsonParser.parseString("{\"type\":\"minecraft:solid\"}"));
+            var modifier=net.minecraft.world.level.levelgen.placement.PlacementModifier.CODEC.parse(ops,scan).getOrThrow();
+            var offset=net.minecraft.world.level.levelgen.placement.PlacementModifier.CODEC.parse(ops,JsonParser.parseString("{\"type\":\"minecraft:offset\",\"x\":0,\"y\":1,\"z\":0}")).getOrThrow();
+            raw.put(scan+"/offset",List.of(modifier,offset));
+        }
+        var palette=new LinkedHashMap<BlockState,Integer>();for(int i=0;i<materials.length;i++)palette.put(materials[i],i);
+        var result=new ArrayList<PlacementCase>();
+        for(var modifiers:raw.values()) {
+            var recipe=JsonParser.parseString("{\"source\":\"test:placement\",\"salt\":0,\"density\":1,\"low_density\":1,\"noise_count\":false,\"rarity\":1,\"tries\":1,\"spread\":[0,0,0],\"kind\":\"plant\",\"states\":[{\"lower\":0,\"upper\":0,\"weight\":1,\"band\":0,\"dry\":false}]}").getAsJsonObject();
+            var program=new JsonArray();for(var m:modifiers)program.add(net.minecraft.world.level.levelgen.placement.PlacementModifier.CODEC.encodeStart(ops,m).getOrThrow());recipe.add("placement",program);
+            var singleton=new JsonArray();singleton.add(recipe);DecorationProfile.finishPlacements(singleton,palette);
+            int index=profile.getAsJsonArray("decorations").size();profile.getAsJsonArray("decorations").add(recipe);result.add(new PlacementCase(index,modifiers));
+        }
+        return result;
+    }
+    private static void checkPlacements(RegistryAccess registry,List<PlacementCase> cases,List<Fixture> fixtures) {
+        int checked=0,accepted=0,rejected=0;
+        var biome=registry.lookupOrThrow(Registries.BIOME).getOrThrow(ResourceKey.create(Registries.BIOME,Identifier.parse("minecraft:plains")));
+        for(var fixture:fixtures) {
+            var world=new World(fixture);
+            var generator=new RetinaChunkGenerator(new net.minecraft.world.level.biome.FixedBiomeSource(biome),fixture.request.minY(),(fixture.request.height()+15)/16*16,64,0,.008F,"mca");
+            var context=new net.minecraft.world.level.levelgen.placement.PlacementContext(world.level,generator,Optional.empty());
+            for(var test:cases)for(int seed=0;seed<64;seed++) {
+                var origin=new BlockPos(-17,fixture.originHeight+(seed%9)-4,-17);
+                var stream=new Stream(seed,false);var expected=new ArrayList<BlockPos>();expected.add(origin);
+                for(var modifier:test.modifiers) {
+                    var next=new ArrayList<BlockPos>();for(var p:expected)modifier.modify(context,stream,p,q->next.add(q.immutable()));expected=next;
+                }
+                // The native feature planner also discards final out-of-build
+                // candidates before attempting geometry, beyond raw modifiers.
+                expected.removeIf(p->p.getY()<fixture.request.minY() || p.getY()>=fixture.request.minY()+fixture.request.height());
+                var actual=NativeTerrain.instance().decorationPlacement(fixture.request,test.recipe,new int[]{origin.getX(),origin.getY(),origin.getZ()},seed);
+                require(actual.length==expected.size()*4,"registered placement cardinality "+test.modifiers+" seed="+seed+" actual="+Arrays.toString(actual)+" expected="+expected);
+                for(int i=0;i<expected.size();i++)require(expected.get(i).equals(new BlockPos(actual[i*4],actual[i*4+1],actual[i*4+2])),"registered placement position matches Minecraft "+test.modifiers+" seed="+seed);
+                checked++;if(expected.isEmpty())rejected++;else accepted++;
+            }
+        }
+        require(accepted>100 && rejected>100,"spatial placements exercise surviving and rejected candidates");
+        System.out.println("QA_EVT {\"event\":\"registered_vertical_placements_minecraft_reference\",\"status\":\"pass\",\"context\":{\"programs\":"+cases.size()+",\"cases\":"+checked+",\"accepted\":"+accepted+",\"rejected\":"+rejected+"}}");
     }
     private static void checkPlantPartners(JsonObject json, BlockState[] materials, Fixture fixture) {
         var halves=json.getAsJsonArray("plant_halves");

@@ -87,6 +87,8 @@ pub struct WorldProfile {
     #[serde(default)]
     pub ordered_decorations: bool,
     #[serde(default)]
+    pub decoration_biome_3d: bool,
+    #[serde(default)]
     pub decoration_noise: Option<crate::decoration::counts::Noise>,
     #[serde(flatten)]
     pub geology: crate::geology::GeologyProfile,

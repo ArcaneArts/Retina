@@ -318,6 +318,7 @@ impl TerrainEngine {
         mask: Option<&geology::CaveMask>,
         job: Option<&timings::Timings>,
     ) -> Result<Vec<Vec<decoration::Placement>>, String> {
+        let anchors = decoration::anchor_recipes(field, profile);
         let mut counts = decoration::counts::Counts::default();
         if profile.decoration_noise.is_some()
             && profile.decorations.iter().any(|r| {
@@ -327,7 +328,7 @@ impl TerrainEngine {
             })
         {
             loop {
-                let queries = decoration::count_queries(field, profile, request, &counts);
+                let queries = decoration::count_queries(field, profile, request, &counts, &anchors);
                 if queries.is_empty() {
                     break;
                 }
@@ -344,6 +345,7 @@ impl TerrainEngine {
             side,
             mask,
             profile.decoration_noise.as_ref().map(|_| &counts),
+            Some(&anchors),
         ))
     }
 
@@ -1345,6 +1347,48 @@ pub unsafe extern "C" fn retina_sample_decoration_feature(
     })
 }
 
+/// # Safety
+/// request and position are readable; output has capacity [x, y, z, 0] records
+/// and length is writable.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn retina_sample_decoration_placement(
+    request: *const ChunkRequest,
+    recipe: u32,
+    position: *const [i32; 3],
+    seed: u64,
+    output: *mut [i32; 4],
+    capacity: u64,
+    length: *mut u64,
+) -> i32 {
+    boundary(|| {
+        if request.is_null() || position.is_null() || output.is_null() || length.is_null() {
+            return Err("null registered placement buffer".into());
+        }
+        let request = unsafe { *request };
+        request.validate()?;
+        let engine = shared_engine()?;
+        let profile = engine
+            .profile(request.reserved)?
+            .ok_or("registered placement requires a profile")?;
+        let field = engine.decoration_field(request, 1)?;
+        let result = decoration::placement::sample(
+            &field,
+            &profile,
+            request,
+            recipe as usize,
+            unsafe { *position },
+            seed,
+        )?;
+        if result.len() as u64 > capacity {
+            return Err("registered placement output buffer too small".into());
+        }
+        unsafe {
+            std::ptr::copy_nonoverlapping(result.as_ptr(), output, result.len());
+            *length = result.len() as u64;
+        }
+        Ok(())
+    })
+}
 /// # Safety
 /// request is readable; output has capacity u16 elements, exactly height*4 quart biome IDs.
 #[unsafe(no_mangle)]

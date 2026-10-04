@@ -34,8 +34,10 @@ The [GPU decoration substrate](GPU_DECORATION_SUBSTRATE.md) now supplies complet
 carved air, local fluids and material runs across the existing placement halo.
 Live predicates and heightmap modifiers consume those runs, consistently across
 independent chunks and regions. This supplies the base data needed by underground
-vegetation patches; the patch adapter and remaining 3D placement filters are still
-required.
+vegetation patches. [Registered vertical placements](REGISTERED_VERTICAL_PLACEMENTS.md)
+now preserve height distributions, environment scans and 3D biome restrictions,
+with one discovery pass per anchor. The patch adapter and remaining spatial
+filters/providers are still required.
 [Final paired-plant replay](PAIRED_PLANT_REPLAY.md) now repairs overlapping tall
 plants after all feature/structure writes, using registered block identities.
 Broader biome/MCA validation passes; the previous defect and measured sparse

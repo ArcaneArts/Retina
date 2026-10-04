@@ -1,5 +1,6 @@
 //! Registered placement modifiers with shared selector budgets and a local live
 //! heightmap. Each anchor owns its overlay, preserving parallel MCA/chunk parity.
+use super::placement_height::HeightProvider;
 use super::spatial::Map;
 use super::*;
 
@@ -247,9 +248,22 @@ pub enum Modifier {
     RarityFilter {
         chance: u32,
     },
+    RandomChance {
+        chance: f32,
+    },
     InSquare,
     Heightmap {
         map: u8,
+    },
+    HeightRange {
+        height: HeightProvider,
+    },
+    EnvironmentScan {
+        direction: i32,
+        target_condition: Predicate,
+        #[serde(default = "always_true")]
+        allowed_search_condition: Predicate,
+        max_steps: u32,
     },
     Offset {
         #[serde(default)]
@@ -270,6 +284,50 @@ pub enum Modifier {
         min: f64,
         max: f64,
     },
+}
+fn always_true() -> Predicate {
+    Predicate::True
+}
+/// Diagnostic invocation of the same expansion/filter path used by production.
+pub(crate) fn sample(
+    field: &Field,
+    profile: &WorldProfile,
+    request: ChunkRequest,
+    recipe: usize,
+    at: [i32; 3],
+    seed: u64,
+) -> Result<Vec<[i32; 4]>, String> {
+    let r = profile
+        .decorations
+        .get(recipe)
+        .ok_or("invalid placement recipe")?;
+    let program = r
+        .placement
+        .as_ref()
+        .ok_or("placement sample requires a program")?;
+    if program.iter().any(|op| op.noise_rule().is_some()) {
+        return Err("spatial count diagnostics use the GPU count sampler".into());
+    }
+    let mut candidates = Vec::new();
+    expand(
+        program,
+        recipe as u32,
+        recipe as u32,
+        at,
+        Rng::new(seed),
+        field,
+        request,
+        None,
+        Some(&mut candidates),
+        &mut Vec::new(),
+    );
+    let mut cache = EvaluationCache::default();
+    let overlay = Overlay::default();
+    Ok(candidates
+        .iter()
+        .filter_map(|c| position(c, r, field, profile, request, &overlay, &mut cache))
+        .map(|p| [p[0], p[1], p[2], 0])
+        .collect())
 }
 impl Modifier {
     pub(crate) fn noise_rule(&self) -> Option<counts::Rule> {
@@ -330,7 +388,20 @@ pub(super) fn validate(program: &[Modifier], palette: usize) -> Result<(), Strin
                     && (*noise_offset as f32).is_finite()
             }
             Modifier::RarityFilter { chance } => *chance > 0,
+            Modifier::RandomChance { chance } => chance.is_finite() && (0.0..=1.0).contains(chance),
             Modifier::Heightmap { map } => *map < 6,
+            Modifier::HeightRange { height } => height.validate(),
+            Modifier::EnvironmentScan {
+                direction,
+                target_condition,
+                allowed_search_condition,
+                max_steps,
+            } => {
+                matches!(direction, -1 | 1)
+                    && (1..=32).contains(max_steps)
+                    && target_condition.validate(palette)
+                    && allowed_search_condition.validate(palette)
+            }
             Modifier::BlockPredicateFilter { predicate } => predicate.validate(palette),
             Modifier::Select { min, max } => {
                 min.is_finite() && max.is_finite() && *min >= 0. && *max <= 1.00000001 && min <= max
@@ -346,6 +417,7 @@ pub(super) fn validate(program: &[Modifier], palette: usize) -> Result<(), Strin
 #[derive(Clone)]
 enum Action {
     Shift([i32; 3]),
+    SetY(i32),
     Modifier { index: usize, parents: usize },
 }
 pub(super) struct Candidate {
@@ -363,6 +435,7 @@ pub(super) fn expand(
     origin: [i32; 3],
     rng: Rng,
     field: &Field,
+    request: ChunkRequest,
     counts: Option<&counts::Counts>,
     output: Option<&mut Vec<Candidate>>,
     queries: &mut Vec<counts::Query>,
@@ -373,6 +446,7 @@ pub(super) fn expand(
         group: u32,
         origin: [i32; 3],
         field: &'a Field,
+        request: ChunkRequest,
         counts: Option<&'a counts::Counts>,
         output: Option<&'a mut Vec<Candidate>>,
         queries: &'a mut Vec<counts::Query>,
@@ -461,6 +535,15 @@ pub(super) fn expand(
                         return;
                     }
                 }
+                Modifier::RandomChance { chance } => {
+                    if (rng.unit() as f32) >= *chance {
+                        return;
+                    }
+                }
+                Modifier::HeightRange { height } => {
+                    point[1] = height.sample(&mut rng, self.request);
+                    actions.push(Action::SetY(point[1]));
+                }
                 Modifier::Select { min, max } => {
                     let n = rng.unit();
                     if n < *min || n >= *max {
@@ -492,6 +575,7 @@ pub(super) fn expand(
         group,
         origin,
         field,
+        request,
         counts,
         output,
         queries,
@@ -514,6 +598,7 @@ pub(super) fn position(
     for action in &candidate.actions {
         match action {
             Action::Shift(offset) => at = std::array::from_fn(|i| at[i] + offset[i]),
+            Action::SetY(y) => at[1] = *y,
             Action::Modifier { index, parents } => {
                 // Modifiers before a nested count execute once for the parent,
                 // before any of its children place blocks. Later children inherit
@@ -540,7 +625,7 @@ pub(super) fn position(
                             }
                         }
                         Modifier::Biome => {
-                            if !profile.biomes[field.column(at[0], at[2])?.biome()]
+                            if !profile.biomes[field.biome(profile, at)?]
                                 .decorations
                                 .contains(&candidate.recipe)
                             {
@@ -556,6 +641,24 @@ pub(super) fn position(
                                 return None;
                             }
                         }
+                        Modifier::EnvironmentScan {
+                            direction,
+                            target_condition,
+                            allowed_search_condition,
+                            max_steps,
+                        } => {
+                            at = environment_scan(
+                                at,
+                                *direction,
+                                *max_steps,
+                                target_condition,
+                                allowed_search_condition,
+                                field,
+                                profile,
+                                request,
+                                overlay,
+                            )?;
+                        }
                         _ => unreachable!(),
                     }
                     Some(at)
@@ -568,6 +671,34 @@ pub(super) fn position(
         }
     }
     (at[1] >= request.min_y && at[1] < request.min_y + request.height as i32).then_some(at)
+}
+fn environment_scan(
+    mut at: [i32; 3],
+    direction: i32,
+    max_steps: u32,
+    target: &Predicate,
+    allowed: &Predicate,
+    field: &Field,
+    profile: &WorldProfile,
+    request: ChunkRequest,
+    overlay: &Overlay,
+) -> Option<[i32; 3]> {
+    if allowed.test(at, field, profile, request, overlay) != Some(true) {
+        return None;
+    }
+    for _ in 0..max_steps {
+        if target.test(at, field, profile, request, overlay) == Some(true) {
+            return Some(at);
+        }
+        at[1] += direction;
+        if at[1] < request.min_y || at[1] >= request.min_y + request.height as i32 {
+            return None;
+        }
+        if allowed.test(at, field, profile, request, overlay) != Some(true) {
+            break;
+        }
+    }
+    (target.test(at, field, profile, request, overlay) == Some(true)).then_some(at)
 }
 #[derive(Default)]
 pub(super) struct Overlay {
@@ -734,6 +865,7 @@ mod tests {
             [0, 0, 0],
             Rng::new(seed),
             field,
+            fixture().2,
             None,
             Some(&mut out),
             &mut Vec::new(),
@@ -781,8 +913,109 @@ mod tests {
             mask.words[base + 4 + columns * 2 + groups + group] = (group * 256 * 5) as u32;
         }
         mask.validate_material_runs().unwrap();
+        // All underground quarts point at a second biome. Surface placement
+        // retains the precise column biome used by the GPU shoreline coating.
+        let mut underground = profile.biomes[0].clone();
+        underground.id = "test:cave".into();
+        underground.decorations = vec![1];
+        profile.biomes.push(underground);
+        let biome_offset = (50 * 50 * 128 + 31) / 32 + (80 * 80 + 31) / 32;
+        mask.words[biome_offset..base].fill(1 | (1 << 16));
         field.substrate = Some(std::sync::Arc::new(mask));
         let mut overlay = Overlay::default();
+        let solid = Predicate::Material {
+            offset: [0, 0, 0],
+            allowed: vec![1, 3],
+        };
+        let air = Predicate::Material {
+            offset: [0, 0, 0],
+            allowed: vec![0],
+        };
+        assert_eq!(
+            environment_scan(
+                [0, 60, 0],
+                -1,
+                2,
+                &solid,
+                &air,
+                &field,
+                &profile,
+                request,
+                &overlay
+            ),
+            Some([0, 58, 0])
+        );
+        assert_eq!(
+            environment_scan(
+                [0, 59, 0],
+                1,
+                1,
+                &solid,
+                &air,
+                &field,
+                &profile,
+                request,
+                &overlay
+            ),
+            None
+        );
+        assert_eq!(
+            environment_scan(
+                [0, 59, 0],
+                1,
+                2,
+                &solid,
+                &air,
+                &field,
+                &profile,
+                request,
+                &overlay
+            ),
+            Some([0, 61, 0])
+        );
+        assert_eq!(
+            environment_scan(
+                [0, 64, 0],
+                -1,
+                32,
+                &solid,
+                &air,
+                &field,
+                &profile,
+                request,
+                &overlay
+            ),
+            None,
+            "initial water fails allowed air even near solid ground"
+        );
+        assert_eq!(
+            environment_scan(
+                [0, 127, 0],
+                1,
+                32,
+                &solid,
+                &air,
+                &field,
+                &profile,
+                request,
+                &overlay
+            ),
+            None,
+            "scan stops at build ceiling"
+        );
+        assert_eq!(
+            field.biome(&profile, [0, 40, 0]),
+            Some(0),
+            "saved profiles preserve column-only restrictions"
+        );
+        profile.decoration_biome_3d = true;
+        assert_eq!(field.biome(&profile, [0, 40, 0]), Some(1));
+        assert_eq!(field.biome(&profile, [0, 64, 0]), Some(0));
+        assert_eq!(
+            anchor_ids(&field, &profile, 0, 0),
+            vec![0, 1],
+            "underground recipes discovered once per anchor"
+        );
         for (y, material) in [
             (58, 1),
             (59, 0),
@@ -882,6 +1115,7 @@ mod tests {
                 [0, 0, 0],
                 Rng::new(847),
                 &field,
+                fixture().2,
                 counts,
                 output.then_some(&mut found),
                 &mut queries,
@@ -940,6 +1174,7 @@ mod tests {
                 [0, 0, 0],
                 Rng::new(847),
                 &field,
+                fixture().2,
                 Some(&counts),
                 Some(&mut selected),
                 &mut missing,

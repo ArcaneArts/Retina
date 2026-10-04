@@ -14,6 +14,7 @@ mod fallen;
 mod mushroom;
 pub mod pairs;
 pub mod placement;
+mod placement_height;
 mod spatial;
 
 #[derive(Clone, Deserialize)]
@@ -206,6 +207,19 @@ pub struct Field {
     pub substrate: Option<std::sync::Arc<crate::geology::CaveMask>>,
 }
 impl Field {
+    pub fn biome(&self, profile: &WorldProfile, at: [i32; 3]) -> Option<usize> {
+        let c = self.column(at[0], at[2])?;
+        if profile.decoration_biome_3d && at[1] < c.height - 12 {
+            if let Some(id) = self
+                .substrate
+                .as_ref()
+                .and_then(|m| m.biome(at[0], at[1], at[2]))
+            {
+                return Some(id as usize);
+            }
+        }
+        Some(c.biome())
+    }
     pub fn column(&self, x: i32, z: i32) -> Option<Column> {
         let chunk_x = x.div_euclid(16) - self.origin_x;
         let chunk_z = z.div_euclid(16) - self.origin_z;
@@ -387,7 +401,7 @@ pub fn plan(
         "registered spatial counts must use TerrainEngine::plan_decorations"
     );
     plan_sampled(
-        field, profile, request, origin_x, origin_z, side, mask, None,
+        field, profile, request, origin_x, origin_z, side, mask, None, None,
     )
 }
 pub(crate) fn plan_sampled(
@@ -399,6 +413,7 @@ pub(crate) fn plan_sampled(
     side: usize,
     mask: Option<&crate::geology::CaveMask>,
     counts: Option<&counts::Counts>,
+    anchor_recipes: Option<&[Vec<u32>]>,
 ) -> Vec<Vec<Placement>> {
     let origins: Vec<_> = (0..field.side * field.side)
         .map(|index| {
@@ -408,8 +423,19 @@ pub(crate) fn plan_sampled(
             )
         })
         .collect();
-    let generate =
-        |&(x, z): &(i32, i32)| anchors_sampled(field, profile, request, x, z, mask, counts);
+    let generate = |&(x, z): &(i32, i32)| {
+        let index = (z - field.origin_z) as usize * field.side + (x - field.origin_x) as usize;
+        anchors_sampled(
+            field,
+            profile,
+            request,
+            x,
+            z,
+            mask,
+            counts,
+            anchor_recipes.map(|a| a[index].as_slice()),
+        )
+    };
     // Indexed collection preserves global anchor order despite parallel planning.
     let blocks: Vec<_> = if side > 1 {
         origins.par_iter().map(generate).collect()
@@ -451,16 +477,49 @@ fn anchors(
     chunk_z: i32,
     mask: Option<&crate::geology::CaveMask>,
 ) -> Vec<WorldBlock> {
-    anchors_sampled(field, profile, request, chunk_x, chunk_z, mask, None)
+    anchors_sampled(field, profile, request, chunk_x, chunk_z, mask, None, None)
+}
+/// Discover the complete GPU biome union once per field, sharing it across
+/// sparse-count rounds and final geometry planning.
+pub(crate) fn anchor_recipes(field: &Field, profile: &WorldProfile) -> Vec<Vec<u32>> {
+    (0..field.side * field.side)
+        .into_par_iter()
+        .map(|index| {
+            anchor_ids(
+                field,
+                profile,
+                field.origin_x + (index % field.side) as i32,
+                field.origin_z + (index / field.side) as i32,
+            )
+        })
+        .collect()
 }
 fn anchor_ids(field: &Field, profile: &WorldProfile, chunk_x: i32, chunk_z: i32) -> Vec<u32> {
-    let mut ids = HashSet::new();
+    let mut biomes = HashSet::new();
     for z in (0..16).step_by(4) {
         for x in (0..16).step_by(4) {
             let c = field.column(chunk_x * 16 + x, chunk_z * 16 + z).unwrap();
-            ids.extend(profile.biomes[c.biome()].decorations.iter().copied());
+            biomes.insert(c.biome());
         }
     }
+    if profile.decoration_biome_3d {
+        if let Some(mask) = &field.substrate {
+            for y in mask.min_y.div_euclid(4)..=(mask.min_y + mask.height as i32 - 1).div_euclid(4)
+            {
+                for z in (0..16).step_by(4) {
+                    for x in (0..16).step_by(4) {
+                        if let Some(id) = mask.biome(chunk_x * 16 + x, y * 4, chunk_z * 16 + z) {
+                            biomes.insert(id as usize);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    let ids: HashSet<_> = biomes
+        .iter()
+        .flat_map(|id| profile.biomes[*id].decorations.iter().copied())
+        .collect();
     let mut ids: Vec<_> = ids.into_iter().collect();
     ids.sort_unstable();
     ids
@@ -474,6 +533,7 @@ pub(crate) fn count_queries(
     profile: &WorldProfile,
     request: ChunkRequest,
     counts: &counts::Counts,
+    anchors: &[Vec<u32>],
 ) -> Vec<counts::Query> {
     let per_anchor: Vec<Vec<counts::Query>> = (0..field.side * field.side)
         .into_par_iter()
@@ -481,7 +541,7 @@ pub(crate) fn count_queries(
             let x = field.origin_x + (index % field.side) as i32;
             let z = field.origin_z + (index / field.side) as i32;
             let mut queries = Vec::new();
-            for id in anchor_ids(field, profile, x, z) {
+            for &id in &anchors[index] {
                 let recipe = &profile.decorations[id as usize];
                 let Some(program) = &recipe.placement else {
                     continue;
@@ -500,6 +560,7 @@ pub(crate) fn count_queries(
                     [x * 16, request.min_y, z * 16],
                     rng,
                     field,
+                    request,
                     Some(counts),
                     None,
                     &mut queries,
@@ -521,13 +582,16 @@ fn anchors_sampled(
     chunk_z: i32,
     mask: Option<&crate::geology::CaveMask>,
     counts: Option<&counts::Counts>,
+    ids: Option<&[u32]>,
 ) -> Vec<WorldBlock> {
-    let ids = anchor_ids(field, profile, chunk_x, chunk_z);
+    let ids = ids
+        .map(std::borrow::Cow::Borrowed)
+        .unwrap_or_else(|| std::borrow::Cow::Owned(anchor_ids(field, profile, chunk_x, chunk_z)));
     let center = field.column(chunk_x * 16 + 8, chunk_z * 16 + 8).unwrap();
     let mut blocks = Vec::new();
     let mut candidates = Vec::new();
     let mut groups = std::collections::HashMap::new();
-    for id in ids {
+    for id in ids.iter().copied() {
         let recipe = &profile.decorations[id as usize];
         if let Some(program) = &recipe.placement {
             let salt = recipe.placement_salt.unwrap_or(recipe.salt) as u64;
@@ -546,6 +610,7 @@ fn anchors_sampled(
                 [chunk_x * 16, request.min_y, chunk_z * 16],
                 rng,
                 field,
+                request,
                 counts,
                 Some(&mut candidates),
                 &mut missing,
@@ -1471,6 +1536,7 @@ mod tests {
             noises: Vec::new(),
             decorations: Vec::new(),
             ordered_decorations: false,
+            decoration_biome_3d: false,
             decoration_noise: None,
             geology: Default::default(),
             terrain_features: Default::default(),

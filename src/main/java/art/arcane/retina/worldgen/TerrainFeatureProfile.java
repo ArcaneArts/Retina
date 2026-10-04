@@ -80,7 +80,22 @@ final class TerrainFeatureProfile {
             entry.add("lakes", array(underground ? 0 : Math.min(1.0,waterChance+lavaChance), underground ? 0 : lavaChance));
             entry.addProperty("snow_surface",snowSurface && biome.value().hasPrecipitation());
             if(snowSurface)entry.addProperty("flags",entry.get("flags").getAsInt()|32);
-            entry.add("cave_features", collector.finish(kind));
+            var caveFeatures=collector.finish(kind);
+            // A supported loaded column recipe owns its placement budget. Do
+            // not add the old per-roof vine approximation on top of those draws.
+            boolean registeredVines=false;
+            for(var index:entry.getAsJsonArray("decorations")) {
+                var recipe=world.getAsJsonArray("decorations").get(index.getAsInt()).getAsJsonObject();
+                if(!recipe.get("kind").getAsString().equals("block_column"))continue;
+                var direction=recipe.getAsJsonArray("direction");
+                if(direction.get(1).getAsInt()!=-1)continue;
+                for(var layer:recipe.getAsJsonArray("layers"))for(int material:DecorationProfile.programStates(layer.getAsJsonObject().getAsJsonObject("provider"))) {
+                    var state=palette.entrySet().stream().filter(e->e.getValue()==material).findFirst().orElseThrow().getKey();
+                    registeredVines |= state.getBlock() instanceof CaveVinesBlock || state.getBlock() instanceof CaveVinesPlantBlock;
+                }
+            }
+            caveFeatures.addProperty("registered_vines",registeredVines);
+            entry.add("cave_features", caveFeatures);
         }
     }
     private static final class Collector {

@@ -42,7 +42,6 @@ final class DecorationProfile {
         var exporter = new DecorationProfile(registry, materials);
         for (int i = 0; i < biomes.size(); i++) {
             var selected = new JsonArray();
-            if ((profiles.get(i).getAsJsonObject().get("flags").getAsInt() & 16) != 0) { profiles.get(i).getAsJsonObject().add("decorations", selected); continue; }
             var features = biomes.get(i).value().getGenerationSettings().features();
             int step = GenerationStep.Decoration.VEGETAL_DECORATION.ordinal();
             if (features.size() > step) for (var holder : features.get(step)) {
@@ -100,6 +99,15 @@ final class DecorationProfile {
                     if (!supportedPredicate(json.getAsJsonObject("predicate"))) { unsupported.add("predicate:" + json.get("predicate")); return; }
                     waterOffsets(json.getAsJsonObject("predicate"), p.waterOffsets);
                 }
+                case "height_range" -> {
+                    if (!supportedHeightProvider(json.get("height"))) { unsupported.add("height:" + json.get("height")); return; }
+                }
+                case "environment_scan" -> {
+                    if (!supportedPredicate(json.getAsJsonObject("target_condition")) || json.has("allowed_search_condition") && !supportedPredicate(json.getAsJsonObject("allowed_search_condition"))) {
+                        unsupported.add("environment_scan:predicate:"+json); return;
+                    }
+                }
+                case "random_chance" -> { }
                 case "in_square", "biome", "surface_water_depth_filter" -> { }
                 default -> { unsupported.add("placement:" + type(json)); return; }
             }
@@ -207,12 +215,21 @@ final class DecorationProfile {
             default -> false;
         };
     }
+    static boolean supportedHeightProvider(JsonElement value) {
+        var object=value.getAsJsonObject();
+        if(!object.has("type"))return object.has("absolute") || object.has("above_bottom") || object.has("below_top");
+        return switch(type(object)) {
+            case "constant", "uniform", "biased_to_bottom", "very_biased_to_bottom", "trapezoid" -> true;
+            case "weighted_list" -> object.getAsJsonArray("distribution").asList().stream().allMatch(e->supportedHeightProvider(e.getAsJsonObject().get("data")));
+            default -> false;
+        };
+    }
 
-    private static boolean supportedPredicate(JsonObject p) {
+    static boolean supportedPredicate(JsonObject p) {
         return switch (type(p)) {
             case "all_of", "any_of" -> p.getAsJsonArray("predicates").asList().stream().allMatch(e -> supportedPredicate(e.getAsJsonObject()));
             case "not" -> supportedPredicate(p.getAsJsonObject("predicate"));
-            case "matching_blocks", "matching_block_tag", "matching_fluids", "replaceable", "true", "has_sturdy_face" -> true;
+            case "matching_blocks", "matching_block_tag", "matching_fluids", "replaceable", "true", "has_sturdy_face", "solid" -> true;
             case "would_survive" -> BlockState.CODEC.parse(JsonOps.INSTANCE, p.get("state")).result().map(s -> s.getBlock() instanceof VegetationBlock || s.getBlock() instanceof CactusBlock || s.getBlock() instanceof SugarCaneBlock || s.getBlock() instanceof BambooStalkBlock).orElse(false);
             default -> false;
         };
@@ -230,6 +247,12 @@ final class DecorationProfile {
                     op.addProperty("map", Heightmap.Types.valueOf(op.remove("heightmap").getAsString()).ordinal());
                 }
                 if (kind.equals("block_predicate_filter")) op.add("predicate", predicate(op.getAsJsonObject("predicate"), palette));
+                if (kind.equals("environment_scan")) {
+                    var direction=Direction.valueOf(op.remove("direction_of_search").getAsString().toUpperCase(Locale.ROOT));
+                    op.addProperty("direction",direction.getStepY());
+                    op.add("target_condition",predicate(op.getAsJsonObject("target_condition"),palette));
+                    if(op.has("allowed_search_condition"))op.add("allowed_search_condition",predicate(op.getAsJsonObject("allowed_search_condition"),palette));
+                }
                 normalizeTypes(op);
             }
             switch(recipe.get("kind").getAsString()) {
@@ -437,7 +460,7 @@ final class DecorationProfile {
         }
         return result;
     }
-    private static Set<Integer> programStates(JsonObject p) {
+    static Set<Integer> programStates(JsonObject p) {
         var out=new LinkedHashSet<Integer>();
         switch(p.get("type").getAsString()) {
             case "state" -> out.add(p.get("material").getAsInt());
@@ -480,6 +503,7 @@ final class DecorationProfile {
                 case "full_water" -> state.getFluidState().is(FluidTags.WATER) && state.getFluidState().isFull();
                 case "same_fluid_replaceable" -> state.canBeReplaced() && state.getFluidState().equals(BlockState.CODEC.parse(JsonOps.INSTANCE,input.get("state")).getOrThrow().getFluidState());
                 case "solid_or_lava" -> state.isSolid() || state.getFluidState().is(FluidTags.LAVA);
+                case "solid" -> state.isSolid();
                 case "liquid" -> state.liquid();
                 default -> throw new IllegalArgumentException("Unsupported decoration predicate " + input);
             };
@@ -655,6 +679,7 @@ final class DecorationProfile {
 
     static void materialFlags(JsonObject profile, LinkedHashMap<BlockState, Integer> palette) {
         profile.addProperty("ordered_decorations",true);
+        profile.addProperty("decoration_biome_3d",true);
         var heightmaps = new JsonArray(); var flags = new JsonArray(); var halves = new JsonArray();
         var plantTypes = new LinkedHashMap<Block, Integer>();
         for (var state : palette.keySet()) {
