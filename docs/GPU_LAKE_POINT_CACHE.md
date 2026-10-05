@@ -135,3 +135,51 @@ measurements use retained `lake-point-cache.dylib`, SHA-256
 `bcb0d7b639b91e03e2f2b4f62faa61a730a5c028aef967b88ec081959755e3dc`.
 The current packaged native library and retained `lake-point-cache-formatted.dylib`
 are SHA-256 `7118b1d454b9091d8addf2d0faaf8a02b4607258072a195e4d1b041f95190924`.
+
+## Rejected direct interval-program trial
+
+The general interval interpreter still runs inside composed lake probes. An
+experimental emitter lowered the loaded primary surface graph directly to WGSL,
+using the interpreter's verbatim interval opcode bodies and widening operations.
+It removed register-table reads and the opcode loop, retained only dependencies
+of the requested bound root, preserved resident values/thresholds and made
+registered coordinate axes and interpolation-field IDs explicit. Existing f32
+identity barriers separated node results. Only the lake pipeline called it;
+other kernels and the reference interval implementation stayed unchanged.
+
+The actual vanilla/Terralith surface graphs contain 21/27 nodes; interval-root
+dependency analysis retains 20/26. Every live opcode has an interval implementation.
+There is little dead work to eliminate in these particular small outer graphs;
+the interpolation input graphs remain substantial.
+
+Counterbalanced small trials use the same release prototype with the diagnostic
+enabled/disabled, the complete profiles above, two measured regions, one warmup,
+seed 123456789 and mixed Metal stages. Builds and measurements run sequentially.
+These trials filter candidates; they are not twenty-region throughput evidence.
+
+| Profile | Mean region ms, original → direct bounds | Lake GPU ms/region, original → direct bounds | Chunks/s, original → direct bounds |
+| --- | ---: | ---: | ---: |
+| Vanilla | 215.54 → 201.96 | 6.90 → 6.81 | 4,725 → 5,036 |
+| Terralith | 377.39 → 381.94 | 78.52 → 82.71 | 2,705 → 2,673 |
+
+All 8,192 decompressed chunk records match the retained composed reference. The
+target GPU stage does not meaningfully improve across both profiles. Vanilla's
+whole-region difference therefore does not establish that interval lowering
+caused a speedup. Shared desktop activity and cache warmth remain uncontrolled.
+This is output evidence for these tiles, not an independent proof of every
+generated interval's float bits or conservative enclosure.
+
+The newly identified shader bundle compiles in 2,242/7,372 ms versus 973/5,134 ms
+for the already driver-warm original. Those observations are not a matched cold
+compiler comparison. The trial adds no dispatch or readback, but neither that
+fact nor removing the bytecode loop establishes a useful throughput gain.
+
+The emitter, environment override and pipeline modification were removed. The
+restored production library/source retain the measured invocation-local cache
+above. Evidence is in `build/goal-baseline/specialized-lake-bounds/`: full profiles,
+`small.py`, four `measurements.json` reports, the experimental source/patch and
+retained `prototype.dylib`, SHA-256
+`d5f3ff05aa80477bb27badb05203680efe4764491df00d52c5e674be55884a53`.
+The restored build runs at two Cargo jobs and passes the normal native unit checks.
+Further work should measure reuse of actual sampled input corners, rather than
+assuming the small outer graph's dispatch is the dominant cost.
