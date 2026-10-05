@@ -124,7 +124,9 @@ The after SHA-256 is the packaged/tested hash above.
 Spatial `noise`, `noise_threshold` and `dual_noise` programs now consume the
 [GPU sampler through ordered replay](GPU_PROVIDER_NOISE.md), including nested
 block-feature providers. The approximate tree planner retains flattened material
-palettes. `copy_properties` remains unsupported.
+palettes. [Property-copy providers](REGISTERED_PROPERTY_COPY.md) now preserve
+live compatible properties for supported nonnullable sources; their reference
+checks and current full-profile measurements are documented separately.
 
 Contextual rules support the exported material/tag/fluid/survival predicates;
 unknown predicates remain logged omissions. Nullable providers inside weighted,

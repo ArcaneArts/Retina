@@ -147,6 +147,16 @@ public final class NativeBlockFeatureIntegrationTest {
             var provider=providerStates(JsonParser.parseString(rules.getLast())).getAsJsonObject();provider.addProperty("threshold",threshold);providers.add(provider);
         }
         var wrapped=new JsonObject();wrapped.addProperty("type","minecraft:rotated");wrapped.add("state",providerStates(JsonParser.parseString(rules.get(7))));providers.add(wrapped);
+        int firstCopy=providers.size();
+        for(var state:List.of(Blocks.OAK_LOG.defaultBlockState(),Blocks.FURNACE.defaultBlockState(),Blocks.OAK_STAIRS.defaultBlockState(),
+                Blocks.GRASS_BLOCK.defaultBlockState().setValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.SNOWY,true),
+                Blocks.WATER.defaultBlockState().setValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.LEVEL,7))) {
+            providers.add(copyProperties(BlockState.FULL_CODEC.encodeStart(JsonOps.INSTANCE,state).getOrThrow()));
+        }
+        providers.add(copyProperties(providerStates(JsonParser.parseString(rules.get(7)))));
+        providers.add(copyProperties(copyProperties(providerStates(new JsonPrimitive("minecraft:oak_log")))));
+        var rotateCopy=new JsonObject();rotateCopy.addProperty("type","minecraft:rotated");rotateCopy.addProperty("direction","east");rotateCopy.add("state",providers.get(firstCopy).deepCopy());providers.add(rotateCopy);
+        var copyRotation=copyProperties(providerStates(JsonParser.parseString(rules.get(5))));providers.add(copyRotation);
         var synthetic=(JsonArray)recipeField.get(exporter);var features=new ArrayList<Feature>();
         for(var provider:providers)for(String kind:List.of("block_column","simple_block")) {
             var featureJson=new JsonObject();featureJson.addProperty("type","minecraft:"+kind);
@@ -163,6 +173,19 @@ public final class NativeBlockFeatureIntegrationTest {
             require(selected.size()==1 && synthetic.get(selected.getFirst()).getAsJsonObject().get("kind").getAsString().equals(kind),"registered provider feature exports through production dispatch: "+featureJson);
             features.add(feature);
         }
+        // Add substrate states after provider export, as structures/geology do.
+        // The final copy tables must see their actual compatible properties.
+        var copyInputs=List.of(
+            Blocks.QUARTZ_PILLAR.defaultBlockState().setValue(RotatedPillarBlock.AXIS,Direction.Axis.X),
+            Blocks.POLISHED_BASALT.defaultBlockState().setValue(RotatedPillarBlock.AXIS,Direction.Axis.Z),
+            Blocks.OAK_STAIRS.defaultBlockState().setValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.HORIZONTAL_FACING,Direction.SOUTH)
+                .setValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.HALF,net.minecraft.world.level.block.state.properties.Half.TOP)
+                .setValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.WATERLOGGED,true),
+            Blocks.FURNACE.defaultBlockState().setValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.HORIZONTAL_FACING,Direction.EAST),
+            Blocks.GRASS_BLOCK.defaultBlockState().setValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.SNOWY,false),
+            Blocks.WATER.defaultBlockState().setValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.LEVEL,5),
+            Blocks.BEDROCK.defaultBlockState());
+        for(var input:copyInputs)palette.computeIfAbsent(input,ignored->palette.size());
         DecorationProfile.finishPlacements(synthetic,palette);DecorationProfile.materialFlags(profile,palette);
         var materials=palette.keySet().toArray(BlockState[]::new);var serialized=new JsonArray();for(var state:materials)serialized.add(BlockState.CODEC.encodeStart(JsonOps.INSTANCE,state).getOrThrow());profile.add("materials",serialized);
         int offset=profile.getAsJsonArray("decorations").size();profile.getAsJsonArray("decorations").addAll(synthetic);
@@ -181,6 +204,24 @@ public final class NativeBlockFeatureIntegrationTest {
             }
         }
         require(empty>0,"nullable providers skip simple-block placement");
+        int copiedCases=0,changedProperties=0;
+        for(var input:copyInputs) {
+            var fixture=new Fixture(profile,materials,96,384,false,-1,input);fixture.factory=factory;
+            var biome=registry.lookupOrThrow(Registries.BIOME).getOrThrow(ResourceKey.create(Registries.BIOME,Identifier.parse("minecraft:plains")));
+            fixture.generator=new RetinaChunkGenerator(new net.minecraft.world.level.biome.FixedBiomeSource(biome),-64,384,96,0,.008F,"mca");
+            for(int i=firstCopy*2;i<features.size();i++)for(long seed=0;seed<32;seed++) {
+                var at=new BlockPos(-17,fixture.originHeight-1,-17);var world=new World(fixture);
+                features.get(i).place(world.level,fixture.generator,new Stream(seed,false),at);
+                int[] blocks=NativeTerrain.instance().decorationFeature(fixture.request,offset+i,new int[]{at.getX(),at.getY(),at.getZ()},seed);
+                var actual=new HashMap<BlockPos,BlockState>();for(int k=0;k<blocks.length;k+=4)actual.put(new BlockPos(blocks[k],blocks[k+1],blocks[k+2]),materials[blocks[k+3]]);
+                require(world.changed.equals(actual),"property-copy reference mismatch: "+synthetic.get(i)+" input="+input+" seed="+seed+" differences="+differences(world.changed,actual));
+                var placed=actual.get(at);
+                if(placed!=null && !placed.equals(placed.getBlock().defaultBlockState()))changedProperties++;
+                copiedCases++;
+            }
+        }
+        require(changedProperties>256,"copied live axes, facing, half, waterlogging and levels are exercised");
+        System.out.println("QA_EVT {\"event\":\"registered_property_copy_minecraft_reference\",\"status\":\"pass\",\"context\":{\"datapack\":"+packed+",\"cases\":"+copiedCases+",\"nondefault_placements\":"+changedProperties+"}}");
         var ids=new JsonArray();for(int i=0;i<features.size();i++)ids.add(offset+i);
         for(var b:profile.getAsJsonArray("biomes"))if(b.getAsJsonObject().get("id").getAsString().equals("minecraft:forest"))b.getAsJsonObject().add("decorations",ids);
         // This is a controlled, cave-free carrier for the provider recipes; its
@@ -194,6 +235,9 @@ public final class NativeBlockFeatureIntegrationTest {
         for(var b:profile.getAsJsonArray("biomes"))if(b.getAsJsonObject().get("id").getAsString().equals("minecraft:lush_caves"))b.getAsJsonObject().add("decorations",only);
         checkRegion(profile,materials,"lush_caves");
         System.out.println("QA_EVT {\"event\":\"registered_state_providers_minecraft_reference\",\"status\":\"pass\",\"context\":{\"datapack\":"+packed+",\"features\":"+features.size()+",\"cases\":"+checked+",\"empty\":"+empty+"}}");
+    }
+    private static JsonObject copyProperties(JsonElement source) {
+        var value=new JsonObject();value.addProperty("type","minecraft:copy_properties");value.add("source",source);return value;
     }
     private static JsonElement providerStates(JsonElement value) {
         if(value.isJsonPrimitive()) {
@@ -459,11 +503,14 @@ public final class NativeBlockFeatureIntegrationTest {
             this(original,materials,base,height,rugged,-1);
         }
         Fixture(JsonObject original,BlockState[] materials,int base,int height,boolean rugged,int caveOrigin) {
+            this(original,materials,base,height,rugged,caveOrigin,Blocks.GRASS_BLOCK.defaultBlockState());
+        }
+        Fixture(JsonObject original,BlockState[] materials,int base,int height,boolean rugged,int caveOrigin,BlockState surface) {
             this.rugged=rugged;this.cavern=caveOrigin>=0;this.materials=materials;
             this.base=base;var json=original.deepCopy();
             for(String key:List.of("registry_program","climate_targets","structures","terrain_features"))json.remove(key);
             var biome=JsonParser.parseString("{\"id\":\"test:uniform\",\"climate\":[0,0,0,0],\"terrain\":[0,0,0],\"flags\":0}").getAsJsonObject();
-            biome.addProperty("top",index(materials,Blocks.GRASS_BLOCK.defaultBlockState()));biome.addProperty("filler",index(materials,Blocks.DIRT.defaultBlockState()));biome.addProperty("underwater",index(materials,Blocks.DIRT.defaultBlockState()));
+            biome.addProperty("top",index(materials,surface));biome.addProperty("filler",index(materials,Blocks.DIRT.defaultBlockState()));biome.addProperty("underwater",index(materials,Blocks.DIRT.defaultBlockState()));
             if(rugged)biome.add("terrain",JsonParser.parseString("[0,1,1]"));
             var biomes=new JsonArray();biomes.add(biome);json.add("biomes",biomes);
             for(var e:json.getAsJsonArray("noises"))e.getAsJsonObject().addProperty("amplitude",1e-12);
@@ -473,7 +520,7 @@ public final class NativeBlockFeatureIntegrationTest {
             originHeight=cavern?caveOrigin:NativeTerrain.instance().sampleHeights(request)[255];
             var raw=NativeTerrain.instance().column(request,255);column=new BlockState[height];
             for(int y=0;y<height;y++)column[y]=materials[Short.toUnsignedInt(raw[y])];
-            if(!cavern)require(column[originHeight-1+64].is(base<63?Blocks.DIRT:Blocks.GRASS_BLOCK),"controlled feature substrate has registered surface");
+            if(!cavern)require(column[originHeight-1+64].equals(base<63?Blocks.DIRT.defaultBlockState():surface),"controlled feature substrate has registered surface");
             else require(column[18+64].isAir() && column[30+64].isAir() && column[17+64].is(Blocks.STONE) && column[31+64].is(Blocks.STONE),"controlled GPU cave substrate has floor/ceiling");
         }
         BlockState base(BlockPos pos) {

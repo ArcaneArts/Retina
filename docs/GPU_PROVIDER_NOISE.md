@@ -174,8 +174,10 @@ in Git commit `4fe9290`.
 
 ## Remaining work
 
-`copy_properties`, additional live/spatial filters and nullable transformation
-combinations remain unsupported and are reported. The approximate tree planner
+[Property copying](REGISTERED_PROPERTY_COPY.md) now works for supported
+nonnullable source programs, including these spatial noise providers. Additional
+live/spatial filters and nullable transformation combinations remain unsupported
+and are reported. The approximate tree planner
 still uses its existing flattened trunk/foliage material palettes. Further
 survival adapters, per-expression density interpolation, cold specialization
 cost and additional measured Rust scan reductions remain part of the wider goal.

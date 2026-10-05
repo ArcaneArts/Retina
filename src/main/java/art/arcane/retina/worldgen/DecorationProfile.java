@@ -262,6 +262,27 @@ final class DecorationProfile {
             finishProgram(recipe.getAsJsonArray("placement"),palette);
             finishFeature(recipe,palette);
         }
+        // All exporters and placement predicates have now finished extending
+        // the palette. Copy tables must include these later substrate states.
+        finishCopies(recipes,palette);
+    }
+    private static void finishCopies(JsonElement value,LinkedHashMap<BlockState,Integer> palette) {
+        if(value.isJsonObject()) {
+            var object=value.getAsJsonObject();
+            if(object.has("type") && object.get("type").getAsString().equals("copy_properties")) {
+                var states=palette.keySet().toArray(BlockState[]::new);
+                for(var entry:object.getAsJsonArray("variants")) {
+                    var variant=entry.getAsJsonObject();int source=variant.get("source").getAsInt();
+                    var replacements=new JsonArray();
+                    for(int input=0;input<states.length;input++) {
+                        int result=palette.get(states[source].withPropertiesOf(states[input]));
+                        if(result!=source) {var pair=new JsonArray();pair.add(input);pair.add(result);replacements.add(pair);}
+                    }
+                    variant.add("replacements",replacements);
+                }
+            }
+            for(var child:object.entrySet())finishCopies(child.getValue(),palette);
+        } else if(value.isJsonArray())for(var child:value.getAsJsonArray())finishCopies(child,palette);
     }
     private static void finishProgram(JsonArray program,LinkedHashMap<BlockState,Integer> palette) {
         for (var value : program) {
@@ -336,7 +357,7 @@ final class DecorationProfile {
                 if(provider.has("fallback"))finishProvider(provider.getAsJsonObject("fallback"),palette);
             }
             case "weighted" -> {for(var e:provider.getAsJsonArray("entries"))finishProvider(e.getAsJsonObject().getAsJsonObject("provider"),palette);}
-            case "rotated", "randomized_int" -> finishProvider(provider.getAsJsonObject("source"),palette);
+            case "rotated", "randomized_int", "copy_properties" -> finishProvider(provider.getAsJsonObject("source"),palette);
         }
         normalizeTypes(provider);
     }
@@ -674,6 +695,21 @@ final class DecorationProfile {
                 var decoded=(RandomBlockProvider)BlockStateProvider.DIRECT_CODEC.parse(registry.createSerializationContext(JsonOps.INSTANCE),object).getOrThrow();
                 result.addProperty("type","random_block");var states=new JsonArray();for(var block:decoded.blocks())states.add(material(block.value().defaultBlockState()));result.add("states",states);
             }
+            case "copy_properties" -> {
+                var source=stateProgram(object.get("source"),depth+1);if(source==null)return null;
+                if(nullableProvider(source)) {unsupported.add("block_provider:copy_nullable_current_state");return null;}
+                result.addProperty("type","copy_properties");result.add("source",source);var variants=new JsonArray();
+                for(int id:programStates(source)) {
+                    var base=materials.entrySet().stream().filter(e->e.getValue()==id).findFirst().orElseThrow().getKey();
+                    var states=new JsonArray();
+                    // Every compatible result belongs to the source block's
+                    // registered definition. Reserve them before consumers
+                    // export survival, waterlogging and other state transforms.
+                    for(var possible:base.getBlock().getStateDefinition().getPossibleStates())states.add(material(possible));
+                    var variant=new JsonObject();variant.addProperty("source",id);variant.add("states",states);variants.add(variant);
+                }
+                result.add("variants",variants);
+            }
             case "noise", "noise_provider", "dual_noise", "dual_noise_provider" -> {
                 boolean dual=type(object).startsWith("dual_noise");result.addProperty("type",dual?"dual_noise":"noise");
                 result.addProperty(dual?"fast":"program",providerNoise.register(object,false));
@@ -706,7 +742,7 @@ final class DecorationProfile {
         if(!input.isJsonObject())return false;
         var object=input.getAsJsonObject();
         return switch(type(object)) {
-            case "rule_based", "rotated", "random_block", "noise", "noise_provider", "dual_noise", "dual_noise_provider", "noise_threshold" -> true;
+            case "rule_based", "rotated", "random_block", "copy_properties", "noise", "noise_provider", "dual_noise", "dual_noise_provider", "noise_threshold" -> true;
             case "weighted", "weighted_state_provider" -> object.getAsJsonArray("entries").asList().stream().anyMatch(e->contextProvider(e.getAsJsonObject().get("data"),depth+1));
             case "randomized_int", "randomized_int_state_provider" -> contextProvider(object.get("source"),depth+1);
             default -> false;
@@ -739,6 +775,7 @@ final class DecorationProfile {
             case "weighted" -> {for(var e:p.getAsJsonArray("entries"))out.addAll(programStates(e.getAsJsonObject().getAsJsonObject("provider")));}
             case "randomized_int" -> {for(var e:p.getAsJsonArray("variants"))for(var id:e.getAsJsonObject().getAsJsonArray("states"))out.add(id.getAsInt());}
             case "rotated" -> {for(var e:p.getAsJsonArray("variants"))for(var id:e.getAsJsonObject().getAsJsonArray("states"))out.add(id.getAsInt());}
+            case "copy_properties" -> {for(var e:p.getAsJsonArray("variants"))for(var id:e.getAsJsonObject().getAsJsonArray("states"))out.add(id.getAsInt());}
             case "random_block", "noise", "dual_noise" -> {for(var id:p.getAsJsonArray("states"))out.add(id.getAsInt());}
             case "noise_threshold" -> {out.add(p.get("default_state").getAsInt());for(String key:List.of("low_states","high_states"))for(var id:p.getAsJsonArray(key))out.add(id.getAsInt());}
             case "rule_based" -> {for(var rule:p.getAsJsonArray("rules"))out.addAll(programStates(rule.getAsJsonObject().getAsJsonObject("provider")));if(p.has("fallback"))out.addAll(programStates(p.getAsJsonObject("fallback")));}

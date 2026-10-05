@@ -27,6 +27,10 @@ pub enum Provider {
         direction: Option<usize>,
         variants: Vec<Rotations>,
     },
+    CopyProperties {
+        source: Box<Provider>,
+        variants: Vec<CopiedStates>,
+    },
     RandomBlock {
         states: Vec<u16>,
     },
@@ -58,6 +62,12 @@ pub struct StateRule {
 pub struct Rotations {
     pub source: u16,
     pub states: [u16; 6],
+}
+#[derive(Clone, Deserialize)]
+pub struct CopiedStates {
+    pub source: u16,
+    pub states: Vec<u16>,
+    pub replacements: Vec<[u16; 2]>,
 }
 #[derive(Clone, Deserialize)]
 pub struct WeightedProvider {
@@ -94,6 +104,10 @@ impl Provider {
                 .chain(fallback.iter().flat_map(|p| p.outputs()))
                 .collect(),
             Self::Rotated { variants, .. } => variants.iter().flat_map(|v| v.states).collect(),
+            Self::CopyProperties { variants, .. } => variants
+                .iter()
+                .flat_map(|v| v.states.iter().copied())
+                .collect(),
             Self::RandomBlock { states }
             | Self::Noise { states, .. }
             | Self::DualNoise { states, .. } => states.clone(),
@@ -162,6 +176,23 @@ impl Provider {
                         .all(|v| v.states.iter().all(|id| (*id as usize) < palette))
             }
             Self::RandomBlock { states } => states.iter().all(|id| (*id as usize) < palette),
+            Self::CopyProperties { source, variants } => {
+                !source.nullable()
+                    && source.validate(palette)
+                    && source
+                        .outputs()
+                        .iter()
+                        .all(|id| variants.iter().any(|v| v.source == *id))
+                    && variants.iter().all(|v| {
+                        (v.source as usize) < palette
+                            && v.states.contains(&v.source)
+                            && v.states.iter().all(|id| (*id as usize) < palette)
+                            && v.replacements.windows(2).all(|w| w[0][0] < w[1][0])
+                            && v.replacements.iter().all(|pair| {
+                                (pair[0] as usize) < palette && v.states.contains(&pair[1])
+                            })
+                    })
+            }
             Self::Noise { states, .. } => {
                 !states.is_empty() && states.iter().all(|id| (*id as usize) < palette)
             }
@@ -260,6 +291,20 @@ impl Provider {
             }
             Self::RandomBlock { states } => {
                 (!states.is_empty()).then(|| states[rng.below(states.len() as i32) as usize])
+            }
+            Self::CopyProperties { source, variants } => {
+                let source = source.sample(rng, at, material, noise);
+                let current = material(at).unwrap_or(0);
+                let variants = &variants
+                    .iter()
+                    .find(|v| v.source == source)
+                    .unwrap()
+                    .replacements;
+                Some(
+                    variants
+                        .binary_search_by_key(&current, |v| v[0])
+                        .map_or(source, |i| variants[i][1]),
+                )
             }
             Self::Noise { program, states } => {
                 Some(states[noise_index(noise.get(*program, at), states.len())])
@@ -541,6 +586,57 @@ pub(super) fn place(
 #[cfg(test)]
 mod provider_tests {
     use super::*;
+
+    #[test]
+    fn property_copies_read_live_position_without_extra_random_draws() {
+        let samples = provider_noise::Samples::default();
+        let noise = provider_noise::Context::new(&samples);
+        let provider: Provider = serde_json::from_str(
+            r#"{
+            "type":"copy_properties","source":{"type":"random_block","states":[1,2]},
+            "variants":[
+                {"source":1,"states":[1,3,4],"replacements":[[5,3],[7,4]]},
+                {"source":2,"states":[2,6,8],"replacements":[[5,6],[7,8]]}
+            ]}"#,
+        )
+        .unwrap();
+        assert!(provider.validate(9));
+        for seed in 0..64 {
+            for current in [0, 5, 7] {
+                let at = [-17, 11, -33];
+                let mut rng = Rng::new(seed);
+                let mut reference = Rng::new(seed);
+                let choice = reference.below(2);
+                let expected = match current {
+                    5 => [3, 6][choice as usize],
+                    7 => [4, 8][choice as usize],
+                    _ => choice as u16 + 1,
+                };
+                assert_eq!(
+                    provider.sample(
+                        &mut rng,
+                        at,
+                        &|p| {
+                            assert_eq!(p, at);
+                            Some(current)
+                        },
+                        &noise
+                    ),
+                    expected
+                );
+                assert_eq!(rng.next(), reference.next());
+            }
+        }
+        let Provider::CopyProperties {
+            mut variants,
+            source,
+        } = provider
+        else {
+            unreachable!()
+        };
+        variants[0].replacements.reverse();
+        assert!(!Provider::CopyProperties { variants, source }.validate(9));
+    }
 
     #[test]
     fn rules_continue_after_nullable_matches_and_preserve_draws() {

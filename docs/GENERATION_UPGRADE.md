@@ -53,8 +53,10 @@ replay; see [registered patches](REGISTERED_VEGETATION_PATCHES.md). Further
 spatial filters remain required.
 Registered rule-based, rotated and random-block providers now retain their
 positions, ordered branches, optional results and random-draw semantics; see
-[block-state providers](REGISTERED_BLOCK_PROVIDERS.md). Property copying and
-some nullable transformation combinations remain required.
+[block-state providers](REGISTERED_BLOCK_PROVIDERS.md). Registered
+[property copying](REGISTERED_PROPERTY_COPY.md) now reads live compatible
+properties with sparse finalized palette tables and no extra random draw. Some
+nullable transformation combinations remain required.
 The [GPU provider-noise replay](GPU_PROVIDER_NOISE.md) now samples actual initialized
 Perlin stacks with sparse integer XYZ queries and resident buffers. Registered
 noise, dual-noise and threshold providers drive production block-feature material
