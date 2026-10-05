@@ -442,14 +442,24 @@ pub(crate) fn plan_sampled(
         origin_z,
         side,
         mask,
-        counts,
         anchor_recipes,
     );
     assert!(
-        replay.poll(&samples).is_empty(),
+        replay.poll(&samples, counts).is_empty(),
         "spatial providers must use TerrainEngine::plan_decorations"
     );
     replay.finish()
+}
+
+#[derive(Default)]
+pub(crate) struct Queries {
+    pub noise: Vec<[i32; 4]>,
+    pub counts: Vec<counts::Query>,
+}
+impl Queries {
+    pub(crate) fn is_empty(&self) -> bool {
+        self.noise.is_empty() && self.counts.is_empty()
+    }
 }
 
 /// Completed anchors are retained while only unresolved ordered overlays retry.
@@ -462,7 +472,6 @@ pub(crate) struct Replay<'a> {
     origin_z: i32,
     side: usize,
     mask: Option<&'a crate::geology::CaveMask>,
-    counts: Option<&'a counts::Counts>,
     ids: Option<&'a [Vec<u32>]>,
     blocks: Vec<Option<Vec<WorldBlock>>>,
 }
@@ -475,7 +484,6 @@ impl<'a> Replay<'a> {
         origin_z: i32,
         side: usize,
         mask: Option<&'a crate::geology::CaveMask>,
-        counts: Option<&'a counts::Counts>,
         ids: Option<&'a [Vec<u32>]>,
     ) -> Self {
         Self {
@@ -486,19 +494,23 @@ impl<'a> Replay<'a> {
             origin_z,
             side,
             mask,
-            counts,
             ids,
             blocks: (0..field.side * field.side).map(|_| None).collect(),
         }
     }
-    pub(crate) fn poll(&mut self, samples: &provider_noise::Samples) -> Vec<[i32; 4]> {
+    pub(crate) fn poll(
+        &mut self,
+        samples: &provider_noise::Samples,
+        counts: Option<&counts::Counts>,
+    ) -> Queries {
         let generate = |(index, completed): (usize, &mut Option<Vec<WorldBlock>>)| {
             if completed.is_some() {
-                return Vec::new();
+                return Queries::default();
             }
             let x = self.field.origin_x + (index % self.field.side) as i32;
             let z = self.field.origin_z + (index / self.field.side) as i32;
             let noise = provider_noise::Context::new(samples);
+            let mut count_queries = Vec::new();
             let blocks = anchors_sampled(
                 self.field,
                 self.profile,
@@ -506,15 +518,19 @@ impl<'a> Replay<'a> {
                 x,
                 z,
                 self.mask,
-                self.counts,
+                counts,
                 self.ids.map(|a| a[index].as_slice()),
                 &noise,
+                &mut count_queries,
             );
             let missing = noise.missing();
-            if missing.is_empty() {
+            if missing.is_empty() && count_queries.is_empty() {
                 *completed = Some(blocks);
             }
-            missing
+            Queries {
+                noise: missing,
+                counts: count_queries,
+            }
         };
         let batches: Vec<_> = if self.side > 1 {
             self.blocks
@@ -525,9 +541,15 @@ impl<'a> Replay<'a> {
         } else {
             self.blocks.iter_mut().enumerate().map(generate).collect()
         };
-        let mut queries: Vec<_> = batches.into_iter().flatten().collect();
-        queries.sort_unstable();
-        queries.dedup();
+        let mut queries = Queries::default();
+        for batch in batches {
+            queries.noise.extend(batch.noise);
+            queries.counts.extend(batch.counts);
+        }
+        queries.noise.sort_unstable();
+        queries.noise.dedup();
+        queries.counts.sort_unstable();
+        queries.counts.dedup();
         queries
     }
     pub(crate) fn finish(self) -> Vec<Vec<Placement>> {
@@ -581,7 +603,16 @@ fn anchors(
     let samples = provider_noise::Samples::default();
     let noise = provider_noise::Context::new(&samples);
     let blocks = anchors_sampled(
-        field, profile, request, chunk_x, chunk_z, mask, None, None, &noise,
+        field,
+        profile,
+        request,
+        chunk_x,
+        chunk_z,
+        mask,
+        None,
+        None,
+        &noise,
+        &mut Vec::new(),
     );
     assert!(noise.missing().is_empty());
     blocks
@@ -691,6 +722,7 @@ fn anchors_sampled(
     counts: Option<&counts::Counts>,
     ids: Option<&[u32]>,
     noise: &provider_noise::Context,
+    missing: &mut Vec<counts::Query>,
 ) -> Vec<WorldBlock> {
     let ids = ids
         .map(std::borrow::Cow::Borrowed)
@@ -710,7 +742,6 @@ fn anchors_sampled(
                     ^ mix(chunk_x as u32 as u64)
                     ^ mix((chunk_z as u32 as u64) << 32),
             );
-            let mut missing = Vec::new();
             placement::expand(
                 program,
                 id,
@@ -721,11 +752,7 @@ fn anchors_sampled(
                 request,
                 counts,
                 Some(&mut candidates),
-                &mut missing,
-            );
-            assert!(
-                missing.is_empty(),
-                "feature planner received an incomplete GPU count batch"
+                missing,
             );
             continue;
         }
@@ -827,15 +854,18 @@ fn anchors_sampled(
             }
         }
     }
-    candidates.sort_by(|a, b| {
-        a.group
-            .cmp(&b.group)
-            .then(a.order.cmp(&b.order))
-            .then(a.recipe.cmp(&b.recipe))
-    });
+    let mut candidates = placement::Queue::new(candidates);
     let mut overlay = placement::Overlay::default();
     let mut evaluation_cache = placement::EvaluationCache::default();
-    for candidate in candidates {
+    while let Some(candidate) = candidates.next(
+        field,
+        profile,
+        request,
+        &overlay,
+        &mut evaluation_cache,
+        counts,
+        missing,
+    ) {
         let recipe = &profile.decorations[candidate.recipe as usize];
         let Some(position) = placement::position(
             &candidate,
@@ -1150,7 +1180,8 @@ fn tree(
             }
         }
     }
-    let r = rng.range(*radius).clamp(1, 4);
+    let dark_oak = foliage_shape == "dark_oak_foliage_placer";
+    let r = rng.range(*radius).clamp(i32::from(!dark_oak), 4);
     let o = rng.range(*offset);
     let conifer = foliage_shape.contains("spruce") || foliage_shape.contains("pine");
     let fh = if foliage_shape.contains("spruce") {
@@ -1163,6 +1194,18 @@ fn tree(
     .min(h + 2);
     let mut leaf_positions = Vec::new();
     for crown in &crowns {
+        if dark_oak {
+            leaf_positions.extend(
+                crate::tree_shapes::dark_oak_foliage(crown, r, o, rng)
+                    .into_iter()
+                    .filter(|p| {
+                        field
+                            .column(p.0, p.2)
+                            .is_some_and(|c| p.1 >= c.surface_height(Some(profile)))
+                    }),
+            );
+            continue;
+        }
         let (cx, cy, cz) = crown.pos;
         let jungle = foliage_shape == "jungle_foliage_placer";
         let layers = if jungle && crown.width == 1 {
@@ -1674,6 +1717,90 @@ mod tests {
         assert!(!sparse.take_leaf(extreme[0]));
         assert!(sparse.take_leaf(extreme[1]));
         assert!(!sparse.take_leaf(extreme[1]));
+    }
+
+    #[test]
+    fn registered_dark_oak_has_a_closed_crown_above_each_trunk_tip() {
+        let mut profile: WorldProfile = serde_json::from_value(serde_json::json!({
+            "biome_scale":256,"blend":0.55,"sea_level":63,
+            "stone":1,"water":1,"bedrock":1,"deepslate":1,"snow":1,"ice":1,
+            "materials":["air","stone","grass","log","leaves"],
+            "biomes":[{"id":"test:forest","climate":[0,0,0,0],"terrain":[0,0,0],
+                "top":2,"filler":2,"underwater":1,"flags":0}],
+            "noises":[],"material_flags":[0,0,1,8,4],"heightmap_masks":[0,63,63,63,31],
+            "ordered_decorations":true
+        }))
+        .unwrap();
+        let recipe: Recipe = serde_json::from_value(serde_json::json!({
+            "source":"test:dark_oak","salt":0,"density":1,"low_density":1,
+            "noise_count":false,"rarity":1,"tries":1,"spread":[0,0,0],
+            "kind":"tree","trunk_shape":"dark_oak_trunk_placer",
+            "foliage_shape":"dark_oak_foliage_placer","height":[6,2,1],
+            "radius":[0,0],"offset":[0,0],"foliage_height":[4,4],"trunk_height":[2,2],
+            "logs":[{"axes":[3,3,3],"weight":1}],
+            "leaves":[{"distances":[4,4,4,4,4,4],"weight":1}],"soil":2,"root":0,
+            "root_offset":[0,0]
+        }))
+        .unwrap();
+        profile.decorations.push(recipe);
+        let field = Field {
+            substrate: None,
+            origin_x: -1,
+            origin_z: -1,
+            side: 4,
+            columns: vec![
+                Column {
+                    height: 64,
+                    materials: 2 | (2 << 16),
+                    packed: 0
+                };
+                16 * COLUMNS
+            ],
+        };
+        let request = ChunkRequest {
+            seed: 42,
+            chunk_x: 0,
+            chunk_z: 0,
+            min_y: 0,
+            height: 128,
+            base_height: 64.0,
+            amplitude: 0.0,
+            frequency: 0.008,
+            reserved: 0,
+        };
+        for seed in 0..128 {
+            let mut blocks = Vec::new();
+            tree(
+                &field,
+                &profile,
+                request,
+                &profile.decorations[0],
+                15,
+                15,
+                &mut Rng::new(seed),
+                &mut blocks,
+                None,
+                Some((64, &placement::Overlay::default())),
+            );
+            let top = blocks
+                .iter()
+                .filter(|b| b.role == LOG)
+                .map(|b| b.y)
+                .max()
+                .unwrap();
+            for log in blocks.iter().filter(|b| b.role == LOG && b.y == top) {
+                assert!(
+                    blocks
+                        .iter()
+                        .any(|b| b.role == LEAF && b.x == log.x && b.z == log.z && b.y == top + 1),
+                    "exposed dark-oak trunk top at {},{},{} seed {}",
+                    log.x,
+                    log.y,
+                    log.z,
+                    seed
+                );
+            }
+        }
     }
 
     #[test]

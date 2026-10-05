@@ -85,6 +85,9 @@ final class DecorationProfile {
                     if (p.surface) p.tries *= n;
                     else { p.density *= n; p.lowDensity *= n; }
                 }
+                case "count_on_every_layer" -> {
+                    if (!supportedIntProvider(json.get("count"))) { unsupported.add("count_on_every_layer:" + json.get("count")); return; }
+                }
                 case "noise_threshold_count" -> {
                     p.density *= json.get("above_noise").getAsDouble();
                     p.lowDensity *= json.get("below_noise").getAsDouble(); p.noiseCount = true;
@@ -486,7 +489,7 @@ final class DecorationProfile {
         for(var modifier:placed.placement()) {
             var json=PlacementModifier.CODEC.encodeStart(registry.createSerializationContext(JsonOps.INSTANCE),modifier).getOrThrow().getAsJsonObject();
             boolean supported=switch(type(json)) {
-                case "count" -> supportedIntProvider(json.get("count"));
+                case "count", "count_on_every_layer" -> supportedIntProvider(json.get("count"));
                 case "offset" -> supportedIntProvider(json.get("x")) && supportedIntProvider(json.get("y")) && supportedIntProvider(json.get("z"));
                 case "height_range" -> supportedHeightProvider(json.get("height"));
                 case "block_predicate_filter" -> supportedPredicate(json.getAsJsonObject("predicate"));
@@ -495,7 +498,7 @@ final class DecorationProfile {
                 default -> false;
             };
             if(!supported){unsupported.add("vegetation_patch:nested_placement:"+type(json));return null;}
-            if(type(json).equals("in_square"))reach+=15;
+            if(type(json).equals("in_square") || type(json).equals("count_on_every_layer"))reach+=15;
             if(type(json).equals("offset"))for(String axis:List.of("x","z")) {
                 var provider=net.minecraft.util.valueproviders.IntProviders.CODEC.parse(JsonOps.INSTANCE,json.get(axis)).getOrThrow();reach+=Math.max(Math.abs(provider.minInclusive()),Math.abs(provider.maxInclusive()));
             }
@@ -977,6 +980,8 @@ final class DecorationProfile {
             if (state.is(BlockTags.LOGS)) flag |= 8;
             if (state.getBlock() instanceof VegetationBlock) flag |= 16;
             if (state.is(BlockTags.JUNGLE_LOGS)) flag |= 32;
+            if (state.isAir() || state.is(Blocks.WATER) || state.is(Blocks.LAVA)) flag |= 64;
+            if (state.is(Blocks.BEDROCK)) flag |= 128;
             flags.add(flag);
             // Partner validation depends on block identity and opposite halves;
             // facing/waterlogging may differ. Export registered classes, not names.

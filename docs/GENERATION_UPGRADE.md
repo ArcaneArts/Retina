@@ -42,6 +42,10 @@ choices. Ordered replay retries unresolved anchors while preserving completed
 commands, live overlays and random streams.
 The [surface-relative filter](REGISTERED_SPATIAL_FILTERS.md) now respects loaded
 heightmaps and inclusive offsets in top-level and nested placement programs.
+The [ground-layer placement adapter](REGISTERED_LAYER_PLACEMENTS.md) now follows
+loaded `count_on_every_layer` budgets and actual live empty-to-solid transitions,
+including sparse GPU counts after floor discovery. The same milestone fixes
+exposed dark-oak tops with their registered upper foliage rows and complete trunks.
 
 The [GPU decoration substrate](GPU_DECORATION_SUBSTRATE.md) now supplies complete
 carved air, local fluids and material runs across the existing placement halo.

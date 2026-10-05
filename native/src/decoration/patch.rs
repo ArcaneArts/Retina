@@ -304,6 +304,34 @@ impl World<'_> {
                 }
                 return any;
             }
+            Modifier::CountOnEveryLayer { count } => {
+                let mut layer = 0;
+                let mut any = false;
+                loop {
+                    let mut found = false;
+                    let mut i = 0;
+                    while i < count.sample(rng) {
+                        let x = at[0] + rng.below(16);
+                        let z = at[2] + rng.below(16);
+                        if let Some(y) = self.overlay.ground_layer(
+                            self.field,
+                            self.profile,
+                            self.request,
+                            x,
+                            z,
+                            layer,
+                        ) {
+                            found = true;
+                            any |= self.placed(placed, [x, y, z], rng, index + 1);
+                        }
+                        i += 1;
+                    }
+                    if !found {
+                        return any;
+                    }
+                    layer += 1;
+                }
+            }
             Modifier::RandomChance { chance } => {
                 if (rng.unit() as f32) >= *chance {
                     return false;

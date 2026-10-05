@@ -376,17 +376,22 @@ impl TerrainEngine {
             request.chunk_z,
             side,
             mask,
-            profile.decoration_noise.as_ref().map(|_| &counts),
             Some(&anchors),
         );
         let mut samples = decoration::provider_noise::Samples::default();
         loop {
-            let queries = replay.poll(&samples);
+            let queries = replay.poll(&samples, profile.decoration_noise.as_ref().map(|_| &counts));
             if queries.is_empty() {
                 return Ok(replay.finish());
             }
-            let values = self.provider_noise(request, &queries, job)?;
-            samples.extend(queries.into_iter().zip(values));
+            if !queries.counts.is_empty() {
+                let values = self.feature_counts(profile, request, &queries.counts, job)?;
+                counts.extend(queries.counts.into_iter().zip(values));
+            }
+            if !queries.noise.is_empty() {
+                let values = self.provider_noise(request, &queries.noise, job)?;
+                samples.extend(queries.noise.into_iter().zip(values));
+            }
         }
     }
 

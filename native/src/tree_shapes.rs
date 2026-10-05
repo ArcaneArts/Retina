@@ -20,6 +20,9 @@ pub(crate) fn trunk(
     if shape == "fancy_trunk_placer" {
         return fancy(x, y, z, height, rng);
     }
+    if shape == "dark_oak_trunk_placer" {
+        return dark_oak(x, y, z, height, rng);
+    }
     let mut wood = Vec::new();
     let mut crowns = vec![Crown {
         pos: (x, y + height, z),
@@ -86,6 +89,88 @@ pub(crate) fn trunk(
         }
     }
     (wood, crowns)
+}
+
+fn dark_oak(x: i32, y: i32, z: i32, height: i32, rng: &mut Rng) -> (Vec<Wood>, Vec<Crown>) {
+    let mut wood = Vec::new();
+    let (dx, dz) = [(1, 0), (-1, 0), (0, 1), (0, -1)][rng.below(4) as usize];
+    let lean_height = height - rng.below(4);
+    let mut lean_steps = 2 - rng.below(3);
+    let (mut tx, mut tz) = (x, z);
+    let ey = y + height - 1;
+    for dy in 0..height {
+        if dy >= lean_height && lean_steps > 0 {
+            tx += dx;
+            tz += dz;
+            lean_steps -= 1;
+        }
+        for ox in 0..2 {
+            for oz in 0..2 {
+                wood.push((tx + ox, y + dy, tz + oz, 0));
+            }
+        }
+    }
+    let mut crowns = vec![Crown {
+        pos: (tx, ey, tz),
+        radius_offset: 0,
+        width: 2,
+    }];
+    for ox in -1..=2 {
+        for oz in -1..=2 {
+            if (ox < 0 || ox > 1 || oz < 0 || oz > 1) && rng.below(3) == 0 {
+                let length = rng.below(3) + 2;
+                for branch_y in 0..length {
+                    wood.push((x + ox, ey - branch_y - 1, z + oz, 0));
+                }
+                crowns.push(Crown {
+                    pos: (x + ox, ey, z + oz),
+                    radius_offset: 0,
+                    width: 1,
+                });
+            }
+        }
+    }
+    (wood, crowns)
+}
+
+/// Registered dark-oak foliage has rows both below and above its attachment.
+/// A zero radius is meaningful: the main rows still have radii 2 / 3 / 2.
+pub(crate) fn dark_oak_foliage(
+    crown: &Crown,
+    radius: i32,
+    offset: i32,
+    rng: &mut Rng,
+) -> Vec<(i32, i32, i32)> {
+    let double = crown.width == 2;
+    let mut rows = if double {
+        vec![(-1, radius + 2), (0, radius + 3), (1, radius + 2)]
+    } else {
+        vec![(-1, radius + 2), (0, radius + 1)]
+    };
+    if double && rng.unit() < 0.5 {
+        rows.push((2, radius));
+    }
+    let mut leaves = Vec::new();
+    for (dy, r) in rows {
+        for dx in -r..=r + crown.width - 1 {
+            for dz in -r..=r + crown.width - 1 {
+                if dy == 0 && double && (dx == -r || dx >= r) && (dz == -r || dz >= r) {
+                    continue;
+                }
+                let ax = dx.abs().min((dx - crown.width + 1).abs());
+                let az = dz.abs().min((dz - crown.width + 1).abs());
+                if dy == -1 && !double && ax == r && az == r || dy == 1 && ax + az > r * 2 - 2 {
+                    continue;
+                }
+                leaves.push((
+                    crown.pos.0 + dx,
+                    crown.pos.1 + offset + dy,
+                    crown.pos.2 + dz,
+                ));
+            }
+        }
+    }
+    leaves
 }
 
 fn limb(wood: &mut Vec<Wood>, from: (i32, i32, i32), to: (i32, i32, i32)) {

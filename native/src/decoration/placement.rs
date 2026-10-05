@@ -3,6 +3,8 @@
 use super::placement_height::HeightProvider;
 use super::spatial::Map;
 use super::*;
+mod layers;
+pub(super) use layers::Queue;
 
 #[derive(Clone, Deserialize)]
 #[serde(untagged)]
@@ -234,6 +236,9 @@ pub enum Modifier {
     Count {
         count: IntProvider,
     },
+    CountOnEveryLayer {
+        count: IntProvider,
+    },
     NoiseThresholdCount {
         noise_level: f64,
         below_noise: i32,
@@ -336,11 +341,23 @@ pub(crate) fn sample(
     );
     let mut cache = EvaluationCache::default();
     let overlay = Overlay::default();
-    Ok(candidates
-        .iter()
-        .filter_map(|c| position(c, r, field, profile, request, &overlay, &mut cache))
-        .map(|p| [p[0], p[1], p[2], 0])
-        .collect())
+    let mut queue = Queue::new(candidates);
+    let mut output = Vec::new();
+    let mut queries = Vec::new();
+    while let Some(c) = queue.next(
+        field,
+        profile,
+        request,
+        &overlay,
+        &mut cache,
+        None,
+        &mut queries,
+    ) {
+        if let Some(p) = position(&c, r, field, profile, request, &overlay, &mut cache) {
+            output.push([p[0], p[1], p[2], 0]);
+        }
+    }
+    Ok(output)
 }
 impl Modifier {
     pub(crate) fn noise_rule(&self) -> Option<counts::Rule> {
@@ -377,6 +394,10 @@ pub(super) fn validate(program: &[Modifier], palette: usize) -> Result<(), Strin
             Modifier::Count { count } => {
                 let (a, b) = count.bounds()?;
                 a >= 0 && b <= 4096
+            }
+            Modifier::CountOnEveryLayer { count } => {
+                let (a, b) = count.bounds()?;
+                a >= 0 && b <= 256
             }
             Modifier::Offset { x, y, z } => [x, y, z].into_iter().all(|p| p.bounds().is_ok()),
             Modifier::NoiseThresholdCount {
@@ -435,6 +456,7 @@ enum Action {
     SetY(i32),
     Modifier { index: usize, parents: usize },
 }
+#[derive(Clone)]
 pub(super) struct Candidate {
     pub recipe: u32,
     pub group: u32,
@@ -442,6 +464,7 @@ pub(super) struct Candidate {
     pub seed: u64,
     origin: [i32; 3],
     actions: Vec<Action>,
+    layer: Option<layers::Attempt>,
 }
 pub(super) fn expand(
     program: &[Modifier],
@@ -454,6 +477,39 @@ pub(super) fn expand(
     counts: Option<&counts::Counts>,
     output: Option<&mut Vec<Candidate>>,
     queries: &mut Vec<counts::Query>,
+) {
+    expand_from(
+        program,
+        recipe,
+        group,
+        origin,
+        origin,
+        rng,
+        field,
+        request,
+        counts,
+        output,
+        queries,
+        0,
+        Vec::new(),
+        Vec::new(),
+    );
+}
+fn expand_from(
+    program: &[Modifier],
+    recipe: u32,
+    group: u32,
+    origin: [i32; 3],
+    at: [i32; 3],
+    rng: Rng,
+    field: &Field,
+    request: ChunkRequest,
+    counts: Option<&counts::Counts>,
+    output: Option<&mut Vec<Candidate>>,
+    queries: &mut Vec<counts::Query>,
+    start: usize,
+    mut actions: Vec<Action>,
+    mut order: Vec<usize>,
 ) {
     struct Walker<'a> {
         program: &'a [Modifier],
@@ -491,6 +547,7 @@ pub(super) fn expand(
                         seed: rng.0,
                         origin: self.origin,
                         actions: actions.clone(),
+                        layer: None,
                     });
                 }
                 return;
@@ -498,6 +555,30 @@ pub(super) fn expand(
             let mut point = at;
             let before = actions.len();
             match &self.program[index] {
+                Modifier::CountOnEveryLayer { .. } => {
+                    // Terrain-dependent expansion is resumed lazily against the
+                    // live overlay, preserving shared parent/selector order.
+                    if let Some(output) = self.output.as_mut() {
+                        let mut path = order.clone();
+                        path.extend([0, 0]);
+                        output.push(Candidate {
+                            recipe: self.recipe,
+                            group: self.group,
+                            order: path,
+                            seed: rng.0,
+                            origin: self.origin,
+                            actions: actions.clone(),
+                            layer: Some(layers::Attempt {
+                                index,
+                                layer: 0,
+                                attempt: 0,
+                                found: false,
+                                resolved: false,
+                            }),
+                        });
+                    }
+                    return;
+                }
                 Modifier::Count { count } => {
                     for i in 0..count.sample(&mut rng).max(0) as usize {
                         let child = Rng::new(rng.next());
@@ -595,7 +676,7 @@ pub(super) fn expand(
         output,
         queries,
     }
-    .step(0, origin, rng, &mut Vec::new(), &mut Vec::new());
+    .step(start, at, rng, &mut actions, &mut order);
 }
 pub(super) type EvaluationCache = Map<(u32, usize, Vec<usize>), Option<[i32; 3]>>;
 
@@ -607,6 +688,20 @@ pub(super) fn position(
     request: ChunkRequest,
     overlay: &Overlay,
     cache: &mut EvaluationCache,
+) -> Option<[i32; 3]> {
+    position_inner(
+        candidate, recipe, field, profile, request, overlay, cache, true,
+    )
+}
+fn position_inner(
+    candidate: &Candidate,
+    recipe: &Recipe,
+    field: &Field,
+    profile: &WorldProfile,
+    request: ChunkRequest,
+    overlay: &Overlay,
+    cache: &mut EvaluationCache,
+    clip: bool,
 ) -> Option<[i32; 3]> {
     let mut at = candidate.origin;
     let program = recipe.placement.as_ref()?;
@@ -703,7 +798,7 @@ pub(super) fn position(
             }
         }
     }
-    (at[1] >= request.min_y && at[1] < request.min_y + request.height as i32).then_some(at)
+    (!clip || at[1] >= request.min_y && at[1] < request.min_y + request.height as i32).then_some(at)
 }
 /// Minecraft adds both offsets in long arithmetic and includes both endpoints.
 pub(super) fn surface_relative(
@@ -755,6 +850,7 @@ pub(super) fn environment_scan(
 pub(super) struct Overlay {
     blocks: Map<[i32; 3], u16>,
     tops: Map<(i32, i32), [i32; 6]>,
+    grounds: std::cell::RefCell<Map<(i32, i32), Vec<i32>>>,
 }
 impl Overlay {
     pub(super) fn material(
@@ -801,6 +897,7 @@ impl Overlay {
         Some(y)
     }
     pub(super) fn write(&mut self, profile: &WorldProfile, at: [i32; 3], material: u16) {
+        self.grounds.get_mut().remove(&(at[0], at[2]));
         self.blocks.insert(at, material);
         let masks = profile.heightmap_masks[material as usize];
         let tops = self.tops.entry((at[0], at[2])).or_insert([i32::MIN; 6]);

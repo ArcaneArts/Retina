@@ -187,6 +187,12 @@ public final class NativeBlockFeatureIntegrationTest {
         // imported replacement tables describe the old, smaller palette.
         for(var b:profile.getAsJsonArray("biomes"))b.getAsJsonObject().remove("cave_features");
         checkRegion(profile,materials,"forest",true);
+        var layered=synthetic.get(0).getAsJsonObject().deepCopy();
+        layered.addProperty("source","test:layered_noise_counts");layered.addProperty("placement_salt",917);
+        layered.add("placement",JsonParser.parseString("[{\"type\":\"count_on_every_layer\",\"count\":{\"type\":\"uniform\",\"min_inclusive\":2,\"max_inclusive\":4}},{\"type\":\"noise_based_count\",\"noise_to_count_ratio\":2,\"noise_factor\":30,\"noise_offset\":1}]"));
+        var only=new JsonArray();only.add(profile.getAsJsonArray("decorations").size());profile.getAsJsonArray("decorations").add(layered);
+        for(var b:profile.getAsJsonArray("biomes"))if(b.getAsJsonObject().get("id").getAsString().equals("minecraft:lush_caves"))b.getAsJsonObject().add("decorations",only);
+        checkRegion(profile,materials,"lush_caves");
         System.out.println("QA_EVT {\"event\":\"registered_state_providers_minecraft_reference\",\"status\":\"pass\",\"context\":{\"datapack\":"+packed+",\"features\":"+features.size()+",\"cases\":"+checked+",\"empty\":"+empty+"}}");
     }
     private static JsonElement providerStates(JsonElement value) {
@@ -213,11 +219,22 @@ public final class NativeBlockFeatureIntegrationTest {
             String type=json.get("type").getAsString().replace("minecraft:","");
             boolean supported=switch(type) {
                 case "height_range" -> DecorationProfile.supportedHeightProvider(json.get("height"));
-                case "random_chance", "surface_relative_threshold_filter" -> true;
+                case "random_chance", "surface_relative_threshold_filter", "count_on_every_layer" -> true;
                 case "environment_scan" -> DecorationProfile.supportedPredicate(json.getAsJsonObject("target_condition")) && (!json.has("allowed_search_condition") || DecorationProfile.supportedPredicate(json.getAsJsonObject("allowed_search_condition")));
                 default -> false;
             };
             if(supported)raw.putIfAbsent(json.toString(),List.of(modifier));
+        }
+        // Compare the real layer loop, including its repeatedly sampled bound.
+        for(String count:List.of("0","1","256",
+                "{\"type\":\"minecraft:uniform\",\"min_inclusive\":0,\"max_inclusive\":3}",
+                "{\"type\":\"minecraft:biased_to_bottom\",\"min_inclusive\":2,\"max_inclusive\":5}",
+                "{\"type\":\"minecraft:weighted_list\",\"distribution\":[{\"weight\":2,\"data\":1},{\"weight\":3,\"data\":4}]}")) {
+            var json=new JsonObject();json.addProperty("type","minecraft:count_on_every_layer");json.add("count",JsonParser.parseString(count));
+            var layer=net.minecraft.world.level.levelgen.placement.PlacementModifier.CODEC.parse(ops,json).getOrThrow();
+            raw.put(json.toString(),List.of(layer));
+            var shift=net.minecraft.world.level.levelgen.placement.PlacementModifier.CODEC.parse(ops,JsonParser.parseString("{\"type\":\"minecraft:offset\",\"x\":-3,\"y\":0,\"z\":2}")).getOrThrow();
+            raw.put(json+"/shift",List.of(shift,layer));
         }
         // Exercise every supported height codec even when the active pack does
         // not use that distribution, with anchors relative to these build bounds.
@@ -261,7 +278,10 @@ public final class NativeBlockFeatureIntegrationTest {
             var generator=new RetinaChunkGenerator(new net.minecraft.world.level.biome.FixedBiomeSource(biome),fixture.request.minY(),(fixture.request.height()+15)/16*16,64,0,.008F,"mca");
             var context=new net.minecraft.world.level.levelgen.placement.PlacementContext(world.level,generator,Optional.empty());
             for(var test:cases)for(int seed=0;seed<64;seed++) {
-                var origin=new BlockPos(-17,fixture.originHeight+(seed%9)-4,-17);
+                // Keep the full offset + 16-column footprint inside the supplied
+                // three-chunk terrain halo, while crossing negative chunk edges.
+                boolean layer=test.modifiers.stream().anyMatch(m->m instanceof net.minecraft.world.level.levelgen.placement.CountOnEveryLayerPlacement);
+                var origin=new BlockPos(layer?-25:-17,fixture.originHeight+(seed%9)-4,layer?-25:-17);
                 var stream=new Stream(seed,false);var expected=new ArrayList<BlockPos>();expected.add(origin);
                 for(var modifier:test.modifiers) {
                     var next=new ArrayList<BlockPos>();for(var p:expected)modifier.modify(context,stream,p,q->next.add(q.immutable()));expected=next;
@@ -315,7 +335,13 @@ public final class NativeBlockFeatureIntegrationTest {
                 .filter(b->b.get("id").getAsString().equals("minecraft:"+name)).findFirst().orElseThrow().deepCopy();
         biome.add("terrain",JsonParser.parseString("[0,0,0]"));biome.add("ores",new JsonArray());biome.add("carvers",new JsonArray());
         var allowed=new JsonArray();
-        for(var id:biome.getAsJsonArray("decorations"))if(ADAPTERS.contains(original.getAsJsonArray("decorations").get(id.getAsInt()).getAsJsonObject().get("kind").getAsString()))allowed.add(id);
+        boolean crowns=name.equals("dark_forest");
+        for(var id:biome.getAsJsonArray("decorations")) {
+            var recipe=original.getAsJsonArray("decorations").get(id.getAsInt()).getAsJsonObject();
+            boolean selected=crowns ? recipe.get("kind").getAsString().equals("tree") && recipe.get("foliage_shape").getAsString().equals("dark_oak_foliage_placer")
+                    : ADAPTERS.contains(recipe.get("kind").getAsString());
+            if(selected)allowed.add(id);
+        }
         biome.add("decorations",allowed);var biomes=new JsonArray();biomes.add(biome);json.add("biomes",biomes);
         for(var e:json.getAsJsonArray("noises"))e.getAsJsonObject().addProperty("amplitude",1e-12);
         if(name.equals("lush_caves"))json.add("registry_program",cavernProgram(json,96));
@@ -325,6 +351,7 @@ public final class NativeBlockFeatureIntegrationTest {
         var directory=Files.createTempDirectory("retina-block-feature-regions-");
         var codec=PalettedContainer.codecRW(BlockState.CODEC,Strategy.createForBlockStates(Block.BLOCK_STATE_REGISTRY),Blocks.AIR.defaultBlockState());
         int compared=0,vegetation=0,activeChunks=0;
+        var canopyChunks=new HashMap<ChunkPos,short[]>();
         try {
             var report=nativeTerrain.generateRegion(request,directory.resolve("r.-1.0.mca"),net.minecraft.SharedConstants.getCurrentVersion().dataVersion().version(),"minecraft:"+name);
             if(expectProvider && report.stages().gpuMeasured())require(report.stages().providerMeasured() && report.stages().nanos(NativeTimings.PROVIDER_NOISE)>0,"production ordered replay records GPU provider time in the region report");
@@ -344,6 +371,7 @@ public final class NativeBlockFeatureIntegrationTest {
                     var r=new TerrainRequest(request.seed(),x,z,-64,384,base,0,.008f,profile);
                     try(var data=nativeTerrain.generate(r)) {
                         var bytes=data.blocks().toArray(ValueLayout.JAVA_SHORT);var maps=new int[6][256];
+                        if(crowns)canopyChunks.put(pos,bytes);
                         for(int section=0;section<24;section++) {
                             var blocks=codec.parse(NbtOps.INSTANCE,tag.getListOrEmpty("sections").getCompound(section).orElseThrow().getCompoundOrEmpty("block_states")).getOrThrow();
                             for(int y=0;y<16;y++)for(int bz=0;bz<16;bz++)for(int bx=0;bx<16;bx++) {
@@ -351,6 +379,25 @@ public final class NativeBlockFeatureIntegrationTest {
                                 require(state.equals(materials[Short.toUnsignedInt(bytes[layer*256+c])]),"ordered feature chunk/MCA mismatch: "+name+"/"+pos+"/"+bx+","+(layer-64)+","+bz);
                                 for(var type:Heightmap.Types.values())if(type.isOpaque().test(state))maps[type.ordinal()][c]=layer+1;
                                 if(isFeature(state))vegetation++;
+                                if(crowns && state.is(BlockTags.LOGS) && layer+1<384) {
+                                    var above=materials[Short.toUnsignedInt(bytes[(layer+1)*256+c])];
+                                    // Leaning trunks expose an elbow below their crown.
+                                    // A true tip has no continuation above it within
+                                    // the two-block lean footprint, even across chunks.
+                                    if(above.isAir()) {
+                                        boolean continuation=false;
+                                        for(int dy=1;dy<=3 && !continuation;dy++)for(int dz=-2;dz<=2 && !continuation;dz++)for(int dx=-2;dx<=2 && !continuation;dx++) {
+                                            int wx=x*16+bx+dx,wz=z*16+bz+dz;
+                                            var neighbor=new ChunkPos(Math.floorDiv(wx,16),Math.floorDiv(wz,16));
+                                            var raw=canopyChunks.computeIfAbsent(neighbor,p->{
+                                                var q=new TerrainRequest(request.seed(),p.x(),p.z(),-64,384,base,0,.008f,profile);
+                                                try(var generated=nativeTerrain.generate(q)){return generated.blocks().toArray(ValueLayout.JAVA_SHORT);}
+                                            });
+                                            if(layer+dy<384)continuation=materials[Short.toUnsignedInt(raw[(layer+dy)*256+Math.floorMod(wz,16)*16+Math.floorMod(wx,16)])].is(BlockTags.LOGS);
+                                        }
+                                        require(continuation,"registered dark crown leaves no exposed trunk tip: "+pos+"/"+bx+","+(layer-64)+","+bz);
+                                    }
+                                }
                             }
                         }
                         for(var type:Heightmap.Types.values()) {
