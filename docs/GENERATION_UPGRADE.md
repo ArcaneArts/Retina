@@ -71,6 +71,11 @@ their lengths, orientations, terrain checks and decorators; see
 and general simple blocks now retain their local placement data and nested
 replay; see [registered patches](REGISTERED_VEGETATION_PATCHES.md). Further
 spatial filters remain required.
+Loaded sediment disks now retain their radius distributions, target predicates,
+nullable providers and ordered writes in Rust, replacing GPU coverage masks for
+supported recipes. Ordered sequence/overlay wrappers also preserve child return
+values and shared random streams; see
+[registered disks and composites](REGISTERED_DISKS_COMPOSITES.md).
 Registered rule-based, rotated and random-block providers now retain their
 positions, ordered branches, optional results and random-draw semantics; see
 [block-state providers](REGISTERED_BLOCK_PROVIDERS.md). Registered

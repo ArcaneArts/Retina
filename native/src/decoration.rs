@@ -68,6 +68,15 @@ pub struct Recipe {
 #[derive(Clone, Deserialize)]
 #[serde(tag = "kind")]
 pub enum Kind {
+    #[serde(rename = "disk")]
+    Disk {
+        #[serde(flatten)]
+        disk: patch::Disk,
+    },
+    #[serde(rename = "sequence")]
+    Sequence { features: Vec<patch::Placed> },
+    #[serde(rename = "overlay")]
+    Overlay { features: Vec<patch::Placed> },
     #[serde(rename = "attachment_growth")]
     AttachmentGrowth {
         #[serde(flatten)]
@@ -154,6 +163,12 @@ impl Recipe {
         }
         let valid = |id: u16| (id as usize) < material_count;
         let okay = match &self.feature {
+            Kind::Disk { disk } => self.placement.is_some() && disk.validate(material_count),
+            Kind::Sequence { features } | Kind::Overlay { features } => {
+                self.placement.is_some()
+                    && !features.is_empty()
+                    && features.iter().all(|v| v.validate(material_count))
+            }
             Kind::AttachmentGrowth { growth } => {
                 self.placement.is_some() && growth.validate(material_count)
             }
@@ -898,6 +913,19 @@ fn anchors_sampled(
         let start = blocks.len();
         let mut rng = Rng::new(candidate.seed);
         match &recipe.feature {
+            Kind::Disk { .. } | Kind::Sequence { .. } | Kind::Overlay { .. } => {
+                patch::place_registered(
+                    &recipe.feature,
+                    position,
+                    &mut rng,
+                    field,
+                    profile,
+                    request,
+                    &mut overlay,
+                    &mut blocks,
+                    noise,
+                );
+            }
             Kind::Tree { .. } => tree(
                 field,
                 profile,
@@ -1010,7 +1038,10 @@ pub(crate) fn feature_sample(
         .ok_or("invalid registered feature")?;
     if !matches!(
         recipe.feature,
-        Kind::BlockColumn { .. }
+        Kind::Disk { .. }
+            | Kind::Sequence { .. }
+            | Kind::Overlay { .. }
+            | Kind::BlockColumn { .. }
             | Kind::AttachmentGrowth { .. }
             | Kind::VegetationPatch { .. }
             | Kind::SimpleBlock { .. }
@@ -1028,6 +1059,19 @@ pub(crate) fn feature_sample(
     let mut overlay = placement::Overlay::default();
     let mut rng = Rng::new(seed);
     match &recipe.feature {
+        Kind::Disk { .. } | Kind::Sequence { .. } | Kind::Overlay { .. } => {
+            patch::place_registered(
+                &recipe.feature,
+                at,
+                &mut rng,
+                field,
+                profile,
+                request,
+                &mut overlay,
+                &mut blocks,
+                noise,
+            );
+        }
         Kind::VegetationPatch { patch } => {
             patch::place(
                 patch,

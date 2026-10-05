@@ -25,14 +25,16 @@ final class RegistryGpuProgram {
     final Map<String,Integer> noiseIds = new LinkedHashMap<>();
     final Set<String> approximations = new TreeSet<>();
     final Set<String> shoreFeatures = new TreeSet<>();
+    final Set<net.minecraft.world.level.levelgen.placement.PlacedFeature> nativeDisks = Collections.newSetFromMap(new IdentityHashMap<>());
     BlockState defaultFluid = net.minecraft.world.level.block.Blocks.WATER.defaultBlockState();
     final int minY, height, sea;
     RegistryGpuProgram(HolderLookup.Provider registry, int minY, int height, int sea) {
         this.registry=registry; this.minY=minY; this.height=height; this.sea=sea;
     }
     static JsonObject export(HolderLookup.Provider registry, NoiseGeneratorSettings settings,
-                             List<Holder<Biome>> biomes, LinkedHashMap<BlockState,Integer> palette, int minY, int height, float biomeScale) {
+                             List<Holder<Biome>> biomes, LinkedHashMap<BlockState,Integer> palette, int minY, int height, float biomeScale, Set<net.minecraft.world.level.levelgen.placement.PlacedFeature> nativeDisks) {
         var compiler=new RegistryGpuProgram(registry,minY,height,settings.seaLevel());
+        compiler.nativeDisks.addAll(nativeDisks);
         compiler.defaultFluid = settings.defaultFluid();
         var router=settings.noiseRouter();
         var climate=compiler.new Program();
@@ -103,6 +105,9 @@ final class RegistryGpuProgram {
         for(String id:List.of("surface","surface_secondary","clay_bands_offset"))surfaceNoises.add(compiler.noise(new JsonPrimitive("minecraft:"+id)));
         result.add("surface_noises",surfaceNoises);
         var shores = new JsonArray(); compiler.shoreFeatures.forEach(shores::add); result.add("shore_features", shores);
+        var disks=new TreeSet<String>();
+        registry.lookupOrThrow(Registries.PLACED_FEATURE).listElements().filter(h->compiler.nativeDisks.contains(h.value())).forEach(h->disks.add(h.key().identifier().toString()));
+        result.add("registered_disks",new Gson().toJsonTree(disks));
         Retina.LOGGER.info("Projected {} registered surface sediment features to GPU coverage: {}", shores.size(), shores);
         var approximations=new JsonArray();compiler.approximations.forEach(approximations::add);result.add("approximations",approximations);
         Retina.LOGGER.info("Compiled registry GPU programs: {} climate nodes, {} surface nodes, {} material programs, {} noises, {} interpolation fields; approximations {}",

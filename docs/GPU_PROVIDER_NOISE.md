@@ -3,7 +3,7 @@
 Retina exports Minecraft 26.3's initialized `NormalNoise` Perlin stacks and uses
 resident GPU sampling for registered `noise`, `dual_noise` and `noise_threshold`
 block-state providers. Their material choices now reach production simple
-blocks, block columns, vegetation patches, mushroom caps/stems and fallen-tree
+blocks, block columns, vegetation patches, sediment disks, mushroom caps/stems and fallen-tree
 trunks/decorators, including providers nested inside supported wrappers.
 
 `ProviderNoiseProfile` initializes each stack with its actual registered provider

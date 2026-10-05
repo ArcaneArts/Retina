@@ -46,7 +46,7 @@ final class GenerationMetricsTest {
         require(lines.stream().anyMatch(s -> s.contains("Aquifer fluids / barriers") && s.startsWith("§d")), "GPU aquifer classification has a dedicated category");
         require(lines.stream().anyMatch(s -> s.contains("GPU device") && s.contains("overlaps")), "device timing overlap is explicit");
         require(lines.stream().anyMatch(s -> s.startsWith("§dOre planning (CPU + GPU)")), "mixed ore planner is labeled and colored as GPU work");
-        require(lines.stream().anyMatch(s -> s.startsWith("§dPlant planning (CPU + GPU)")), "mixed plant planner is labeled and colored as GPU work");
+        require(lines.stream().anyMatch(s -> s.startsWith("§dDecoration planning (CPU + GPU)")), "mixed decoration planner is labeled and colored as GPU work");
         require(lines.stream().anyMatch(s -> s.startsWith("§dFeature counts")), "sparse feature device timing has its own colored row");
         require(lines.stream().anyMatch(s -> s.startsWith("§dProvider noise") && s.contains("2.5%")), "provider noise has its own colored averaged timing row");
         require(lines.stream().anyMatch(s -> s.startsWith("§dOre masks") && s.contains("5.0%")), "ore device timing uses its own color and averaged region denominator");

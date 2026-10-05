@@ -31,6 +31,9 @@ final class ShoreMaterialProfile {
         for (var step : biome.value().getGenerationSettings().features()) for (var holder : step) {
             var placed = holder.value(); var feature = placed.feature().value();
             if (!(feature instanceof AbstractOreFeature) && !(feature instanceof DiskFeature)) continue;
+            // A supported disk owns its actual ordered placement budget in Rust.
+            // Do not widen it into a second, unrelated material-coverage mask.
+            if(feature instanceof DiskFeature && compiler.nativeDisks.contains(placed))continue;
             var placement = placement(placed.placement().stream().map(m -> PlacementModifier.CODEC.encodeStart(ops, m).getOrThrow().getAsJsonObject()).toList(), compiler);
             if (placement == null) continue;
             // Restrict this projection to surface sediments. Normal underground ore replay remains in Rust.

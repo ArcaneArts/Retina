@@ -74,8 +74,36 @@ pub struct Placed {
     pub feature: Box<Feature>,
 }
 #[derive(Clone, Deserialize)]
+pub struct Disk {
+    pub provider: Provider,
+    pub target: Predicate,
+    pub radius: placement::IntProvider,
+    pub half_height: i32,
+}
+impl Disk {
+    pub(super) fn validate(&self, palette: usize) -> bool {
+        self.provider.validate(palette)
+            && self.target.validate(palette)
+            && self
+                .radius
+                .bounds()
+                .is_ok_and(|(lo, hi)| lo >= 0 && hi <= 8)
+            && (0..=4).contains(&self.half_height)
+    }
+}
+#[derive(Clone, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum Feature {
+    Disk {
+        #[serde(flatten)]
+        disk: Disk,
+    },
+    Sequence {
+        features: Vec<Placed>,
+    },
+    Overlay {
+        features: Vec<Placed>,
+    },
     AttachmentGrowth {
         #[serde(flatten)]
         growth: super::attachment::Recipe,
@@ -118,12 +146,16 @@ pub struct WeightedFeature {
     pub placed: Placed,
 }
 impl Placed {
-    fn validate(&self, palette: usize) -> bool {
+    pub(super) fn validate(&self, palette: usize) -> bool {
         placement::validate(&self.placement, palette).is_ok()
             && self.placement.iter().all(|m| {
                 !matches!(m, Modifier::Biome | Modifier::Select { .. }) && m.noise_rule().is_none()
             })
             && match self.feature.as_ref() {
+                Feature::Disk { disk } => disk.validate(palette),
+                Feature::Sequence { features } | Feature::Overlay { features } => {
+                    !features.is_empty() && features.iter().all(|v| v.validate(palette))
+                }
                 Feature::AttachmentGrowth { growth } => growth.validate(palette),
                 Feature::SimpleBlock { simple } => simple.validate(palette),
                 Feature::BlockColumn { column } => column.validate(palette),
@@ -262,6 +294,9 @@ impl World<'_> {
     }
     fn feature(&mut self, feature: &Feature, at: [i32; 3], rng: &mut Rng) -> bool {
         match feature {
+            Feature::Disk { disk } => self.disk(disk, at, rng),
+            Feature::Sequence { features } => self.composite(features, true, at, rng),
+            Feature::Overlay { features } => self.composite(features, false, at, rng),
             Feature::AttachmentGrowth { growth } => {
                 let start = self.blocks.len();
                 let result = super::attachment::place(
@@ -335,6 +370,52 @@ impl World<'_> {
                 unreachable!()
             }
         }
+    }
+    fn composite(
+        &mut self,
+        features: &[Placed],
+        sequence: bool,
+        at: [i32; 3],
+        rng: &mut Rng,
+    ) -> bool {
+        let mut any = false;
+        for feature in features {
+            let placed = self.placed(feature, at, rng, 0);
+            if sequence && !placed {
+                // A sequence stops on failure but keeps earlier child writes.
+                return false;
+            }
+            any |= placed;
+        }
+        if sequence { true } else { any }
+    }
+    fn disk(&mut self, disk: &Disk, origin: [i32; 3], rng: &mut Rng) -> bool {
+        let radius = disk.radius.sample(rng);
+        let mut any = false;
+        // BlockPos.betweenClosed advances X first. Provider draws and earlier
+        // writes must remain visible in this order, including down each column.
+        for dz in -radius..=radius {
+            for dx in -radius..=radius {
+                if dx * dx + dz * dz > radius * radius {
+                    continue;
+                }
+                for y in (origin[1] - disk.half_height..=origin[1] + disk.half_height).rev() {
+                    let at = [origin[0] + dx, y, origin[2] + dz];
+                    if self.test(&disk.target, at) {
+                        if let Some(material) = disk.provider.sample_optional(
+                            rng,
+                            at,
+                            &|p| self.material(p),
+                            self.noise,
+                        ) {
+                            self.write(at, material);
+                            any = true;
+                        }
+                    }
+                }
+            }
+        }
+        any
     }
     fn placed(&mut self, placed: &Placed, mut at: [i32; 3], rng: &mut Rng, index: usize) -> bool {
         let Some(op) = placed.placement.get(index) else {
@@ -656,4 +737,31 @@ pub(super) fn place_simple(
         noise,
     }
     .simple(simple, at, rng)
+}
+
+pub(super) fn place_registered(
+    feature: &Kind,
+    at: [i32; 3],
+    rng: &mut Rng,
+    field: &Field,
+    profile: &WorldProfile,
+    request: ChunkRequest,
+    overlay: &mut Overlay,
+    blocks: &mut Vec<WorldBlock>,
+    noise: &provider_noise::Context,
+) -> bool {
+    let mut world = World {
+        field,
+        profile,
+        request,
+        overlay,
+        blocks,
+        noise,
+    };
+    match feature {
+        Kind::Disk { disk } => world.disk(disk, at, rng),
+        Kind::Sequence { features } => world.composite(features, true, at, rng),
+        Kind::Overlay { features } => world.composite(features, false, at, rng),
+        _ => unreachable!("expected a registered disk or composite"),
+    }
 }

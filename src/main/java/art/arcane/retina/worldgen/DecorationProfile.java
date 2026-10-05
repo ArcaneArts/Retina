@@ -35,21 +35,22 @@ final class DecorationProfile {
     private final Map<String, Integer> ids = new LinkedHashMap<>();
     private final Set<String> unsupported = new TreeSet<>();
     private final ProviderNoiseProfile providerNoise;
+    private final Set<PlacedFeature> nativeDisks=Collections.newSetFromMap(new IdentityHashMap<>());
     private DecorationProfile(HolderLookup.Provider registry, LinkedHashMap<BlockState, Integer> materials) {
         this.registry = registry;
         this.materials = materials;
         this.providerNoise = new ProviderNoiseProfile(registry);
     }
-    static JsonArray export(HolderLookup.Provider registry, List<Holder<Biome>> biomes, JsonArray profiles, LinkedHashMap<BlockState, Integer> materials, JsonObject world) {
+    static JsonArray export(HolderLookup.Provider registry, List<Holder<Biome>> biomes, JsonArray profiles, LinkedHashMap<BlockState, Integer> materials, JsonObject world, Set<PlacedFeature> nativeDisks) {
         var exporter = new DecorationProfile(registry, materials);
         for (int i = 0; i < biomes.size(); i++) {
             var selected = new JsonArray();
             var features = biomes.get(i).value().getGenerationSettings().features();
             int vegetation = GenerationStep.Decoration.VEGETAL_DECORATION.ordinal();
-            for(int step=0;step<Math.min(features.size(),vegetation+1);step++) for (var holder : features.get(step)) {
-                // Attachment recipes also occur before vegetation (notably
-                // underground glow lichen). Other stages keep their own exporters.
-                if(step!=vegetation && !hasAttachment(holder.value().feature().value(),0))continue;
+            for(int step=0;step<features.size();step++) for (var holder : features.get(step)) {
+                // Loaded disks and attachments also occur outside vegetation.
+                // Retain their biome feature order; other stages keep their exporters.
+                if(step!=vegetation && !hasOtherStageRecipe(holder.value().feature().value(),0))continue;
                 String name = holder.unwrapKey().map(k -> k.identifier().toString()).orElse("inline/" + biomes.get(i).unwrapKey().map(k -> k.identifier().toString()).orElse(Integer.toString(i)) + "/" + selected.size());
                 var before = new ArrayList<Integer>();
                 exporter.placed(holder.value(), new Placement(), 1, name, before, 0);
@@ -59,16 +60,19 @@ final class DecorationProfile {
         }
         Retina.LOGGER.info("Exported {} registered decoration recipes; omitted feature kinds: {}", exporter.recipes.size(), exporter.unsupported);
         world.add("decoration_provider_noises", exporter.providerNoise.programs);
+        nativeDisks.addAll(exporter.nativeDisks);
         return exporter.recipes;
     }
 
-    private static boolean hasAttachment(Feature feature,int depth) {
-        if(depth>16)throw new IllegalArgumentException("Recursive attachment feature");
-        if(feature instanceof MultifaceGrowthFeature || feature instanceof VinesFeature)return true;
-        if(feature instanceof RandomSelectorFeature f)return f.features().stream().anyMatch(v->hasAttachment(v.feature().value().feature().value(),depth+1)) || hasAttachment(f.defaultFeature().value().feature().value(),depth+1);
-        if(feature instanceof SimpleRandomSelectorFeature f)return f.features().stream().anyMatch(v->hasAttachment(v.value().feature().value(),depth+1));
-        if(feature instanceof RandomBooleanSelectorFeature f)return hasAttachment(f.featureTrue().value().feature().value(),depth+1) || hasAttachment(f.featureFalse().value().feature().value(),depth+1);
-        if(feature instanceof WeightedRandomSelectorFeature f)return f.features().unwrap().stream().anyMatch(v->hasAttachment(v.value().value().feature().value(),depth+1));
+    private static boolean hasOtherStageRecipe(Feature feature,int depth) {
+        if(depth>16)throw new IllegalArgumentException("Recursive other-stage feature");
+        if(feature instanceof MultifaceGrowthFeature || feature instanceof VinesFeature || feature instanceof DiskFeature)return true;
+        if(feature instanceof SequenceFeature f)return f.features().stream().anyMatch(v->hasOtherStageRecipe(v.value().feature().value(),depth+1));
+        if(feature instanceof OverlayFeature f)return f.features().stream().anyMatch(v->hasOtherStageRecipe(v.value().feature().value(),depth+1));
+        if(feature instanceof RandomSelectorFeature f)return f.features().stream().anyMatch(v->hasOtherStageRecipe(v.feature().value().feature().value(),depth+1)) || hasOtherStageRecipe(f.defaultFeature().value().feature().value(),depth+1);
+        if(feature instanceof SimpleRandomSelectorFeature f)return f.features().stream().anyMatch(v->hasOtherStageRecipe(v.value().feature().value(),depth+1));
+        if(feature instanceof RandomBooleanSelectorFeature f)return hasOtherStageRecipe(f.featureTrue().value().feature().value(),depth+1) || hasOtherStageRecipe(f.featureFalse().value().feature().value(),depth+1);
+        if(feature instanceof WeightedRandomSelectorFeature f)return f.features().unwrap().stream().anyMatch(v->hasOtherStageRecipe(v.value().value().feature().value(),depth+1));
         return false;
     }
 
@@ -160,6 +164,12 @@ final class DecorationProfile {
                 placed(w.value().value(), selection(p, low, high), chance * w.weight() / total, path + "/choice" + i++, selected, depth + 1);
                 low = high;
             }
+        } else if (feature instanceof SequenceFeature || feature instanceof OverlayFeature) {
+            var data=composite(feature,depth+1);
+            if(data!=null)emit(path,p,chance,data.get("kind").getAsString(),data,selected);
+        } else if (feature instanceof DiskFeature disk) {
+            var data=disk(disk);
+            if(data!=null) {emit(path,p,chance,"disk",data,selected);nativeDisks.add(placed);}
         } else if (feature instanceof MultifaceGrowthFeature || feature instanceof VinesFeature) {
             var data=attachment(feature);
             if(data!=null)emit(path,p,chance,"attachment_growth",data,selected);
@@ -351,6 +361,11 @@ final class DecorationProfile {
                         var state=value.getAsJsonObject();state.add(key,predicate(state.getAsJsonObject(key),palette));
                     }
                 }
+                case "disk" -> {
+                    recipe.add("target",predicate(recipe.getAsJsonObject("target"),palette));
+                    finishProvider(recipe.getAsJsonObject("provider"),palette);normalizeTypes(recipe.get("radius"));
+                }
+                case "sequence", "overlay" -> {for(var v:recipe.getAsJsonArray("features"))finishNested(v.getAsJsonObject(),palette);}
                 case "random_selector" -> {for(var v:recipe.getAsJsonArray("options"))finishNested(v.getAsJsonObject().getAsJsonObject("placed"),palette);finishNested(recipe.getAsJsonObject("default"),palette);}
                 case "simple_selector" -> {for(var v:recipe.getAsJsonArray("features"))finishNested(v.getAsJsonObject(),palette);}
                 case "boolean_selector" -> {finishNested(recipe.getAsJsonObject("when_true"),palette);finishNested(recipe.getAsJsonObject("when_false"),palette);}
@@ -630,7 +645,9 @@ final class DecorationProfile {
         var feature=placed.feature().value();JsonObject data=null;
         if(feature instanceof BlockColumnFeature column) {
             data=column(column);if(data!=null){data.addProperty("kind","block_column");data.addProperty("reach",column.direction().getAxis().isHorizontal()?Math.max(0,column.layers().stream().mapToInt(l->l.height().maxInclusive()).sum()-1):0);}
-        } else if(feature instanceof MultifaceGrowthFeature || feature instanceof VinesFeature)data=attachment(feature);
+        } else if(feature instanceof SequenceFeature || feature instanceof OverlayFeature)data=composite(feature,depth+1);
+        else if(feature instanceof DiskFeature disk)data=disk(disk);
+        else if(feature instanceof MultifaceGrowthFeature || feature instanceof VinesFeature)data=attachment(feature);
         else if(feature instanceof SimpleBlockFeature block)data=simple(block);
         else if(feature instanceof VegetationPatchFeature patch)data=patch(patch,depth+1);
         else if(feature instanceof RandomSelectorFeature random) {
@@ -655,6 +672,28 @@ final class DecorationProfile {
         } else {unsupported.add("vegetation_patch:nested_feature:"+feature.getClass().getSimpleName());return null;}
         if(data==null)return null;
         var result=new JsonObject();result.add("placement",program);result.add("feature",data);result.addProperty("reach",reach+data.get("reach").getAsInt());return result;
+    }
+    private JsonObject disk(DiskFeature disk) {
+        var ops=registry.createSerializationContext(JsonOps.INSTANCE);
+        var radius=net.minecraft.util.valueproviders.IntProviders.CODEC.encodeStart(JsonOps.INSTANCE,disk.radius()).getOrThrow();
+        var target=net.minecraft.world.level.levelgen.blockpredicates.BlockPredicate.CODEC.encodeStart(ops,disk.target()).getOrThrow().getAsJsonObject();
+        if(!supportedIntProvider(radius) || !supportedPredicate(target)) {unsupported.add("disk:radius-or-target");return null;}
+        var provider=stateProgram(BlockStateProvider.DIRECT_CODEC.encodeStart(ops,disk.stateProvider().value()).getOrThrow(),0);
+        if(provider==null)return null;
+        var result=new JsonObject();result.addProperty("kind","disk");result.add("provider",provider);result.add("target",target);
+        result.add("radius",radius);result.addProperty("half_height",disk.halfHeight());result.addProperty("reach",disk.radius().maxInclusive());return result;
+    }
+    private JsonObject composite(Feature feature,int depth) {
+        if(depth>16)throw new IllegalArgumentException("Recursive composite feature");
+        var features=feature instanceof SequenceFeature sequence?sequence.features():((OverlayFeature)feature).features();
+        var children=new JsonArray();int reach=0;
+        for(var child:features) {
+            var data=nested(child.value(),depth+1);if(data==null)return null;
+            children.add(data);reach=Math.max(reach,data.get("reach").getAsInt());
+        }
+        if(reach>15) {unsupported.add("composite:geometry_exceeds_halo");return null;}
+        var result=new JsonObject();result.addProperty("kind",feature instanceof SequenceFeature?"sequence":"overlay");
+        result.add("features",children);result.addProperty("reach",reach);return result;
     }
     private JsonObject attachment(Feature feature) {
         var result=new JsonObject();result.addProperty("kind","attachment_growth");result.addProperty("reach",3);
@@ -919,7 +958,8 @@ final class DecorationProfile {
             case "vegetation_patch" -> {out.addAll(programStates(recipe.getAsJsonObject("ground")));out.addAll(featureMaterials(recipe.getAsJsonObject("vegetation").getAsJsonObject("feature")));}
             case "block_column" -> {for(var layer:recipe.getAsJsonArray("layers"))out.addAll(programStates(layer.getAsJsonObject().getAsJsonObject("provider")));}
             case "simple_block" -> out.addAll(programStates(recipe.getAsJsonObject("provider")));
-            case "simple_selector" -> {for(var child:recipe.getAsJsonArray("features"))out.addAll(featureMaterials(child.getAsJsonObject().getAsJsonObject("feature")));}
+            case "disk" -> out.addAll(programStates(recipe.getAsJsonObject("provider")));
+            case "simple_selector", "sequence", "overlay" -> {for(var child:recipe.getAsJsonArray("features"))out.addAll(featureMaterials(child.getAsJsonObject().getAsJsonObject("feature")));}
             case "random_selector" -> {for(var child:recipe.getAsJsonArray("options"))out.addAll(featureMaterials(child.getAsJsonObject().getAsJsonObject("placed").getAsJsonObject("feature")));out.addAll(featureMaterials(recipe.getAsJsonObject("default").getAsJsonObject("feature")));}
             case "boolean_selector" -> {for(String key:List.of("when_true","when_false"))out.addAll(featureMaterials(recipe.getAsJsonObject(key).getAsJsonObject("feature")));}
             case "weighted_selector" -> {for(var child:recipe.getAsJsonArray("entries"))out.addAll(featureMaterials(child.getAsJsonObject().getAsJsonObject("placed").getAsJsonObject("feature")));}
@@ -1178,7 +1218,7 @@ final class DecorationProfile {
         profile.addProperty("decoration_biome_3d",true);
         boolean patchHalo = false;
         for (var recipe : profile.getAsJsonArray("decorations")) {
-            if (recipe.getAsJsonObject().get("kind").getAsString().equals("vegetation_patch")) patchHalo = true;
+            if (Set.of("vegetation_patch","disk","sequence","overlay").contains(recipe.getAsJsonObject().get("kind").getAsString())) patchHalo = true;
         }
         profile.addProperty("decoration_patch_halo", patchHalo);
         var heightmaps = new JsonArray(); var flags = new JsonArray(); var halves = new JsonArray(); var floorMasks = new JsonArray(); var snowSupport = new JsonArray();

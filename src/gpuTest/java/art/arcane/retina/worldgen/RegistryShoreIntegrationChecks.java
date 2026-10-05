@@ -347,10 +347,17 @@ final class RegistryShoreIntegrationChecks {
         var registry = original.getAsJsonObject("registry_program");
         var exported = new HashSet<String>();
         for (var id : registry.getAsJsonArray("shore_features")) exported.add(id.getAsString());
+        var disks=new HashSet<String>();
+        for(var id:registry.getAsJsonArray("registered_disks"))disks.add(id.getAsString());
         var features = terralith ? List.of("terralith:alpha/sand_beaches", "terralith:sakura/clay_beaches", "terralith:forest/flower/beaches")
                 : List.of("minecraft:disk_gravel", "minecraft:disk_clay");
-        int changed = 0;
+        int changed = 0, nativeDisks = 0;
         for (String feature : features) {
+            if(disks.contains(feature)) {
+                require(!exported.contains(feature),"registered disk is not duplicated by GPU coverage: "+feature);
+                require(original.getAsJsonArray("decorations").asList().stream().map(JsonElement::getAsJsonObject).anyMatch(r->r.get("kind").getAsString().equals("disk") && r.get("source").getAsString().equals(feature)),"registered disk has an ordered native recipe: "+feature);
+                nativeDisks++;continue;
+            }
             require(exported.contains(feature), "registered sediment recipe projected: " + feature);
             int salt = feature.hashCode() & Integer.MAX_VALUE;
             boolean reached = false;
@@ -413,7 +420,7 @@ final class RegistryShoreIntegrationChecks {
             }
             require(reached, "registered sediment affects actual GPU surfaces: " + feature);
         }
-        System.out.println("QA_EVT {\"event\":\"registered_gpu_surface_sediments\",\"status\":\"pass\",\"context\":{\"pack\":\"" + (terralith ? "terralith" : "vanilla") + "\",\"features\":" + features.size() + ",\"changed_columns\":" + changed + "}}");
+        System.out.println("QA_EVT {\"event\":\"registered_gpu_surface_sediments\",\"status\":\"pass\",\"context\":{\"pack\":\"" + (terralith ? "terralith" : "vanilla") + "\",\"features\":" + features.size() + ",\"native_disks\":"+nativeDisks+",\"changed_columns\":" + changed + "}}");
     }
 
     private static JsonObject flat(JsonObject original, int height) {
