@@ -90,6 +90,11 @@ The later [interval-vertex priming milestone](GPU_PRIMED_LAKE_CORNERS.md) keeps
 cache selection in immutable compilation source identity, verifies original
 interval endpoints as well as point roots, and measures further lake-stage reuse.
 It does not resolve cold shader activation or fast production composition.
+An [explicit-stack interpreter trial](GPU_STACK_INTERPRETER_TRIAL.md) subsequently
+tested eliminating duplicated nesting-level evaluators. Both implementations
+preserved GPU roots and chunk NBT but lost region throughput in small paired
+trials, so they were removed. No matched cold-compiler comparison was established;
+the depth-specific generic activation path remains required startup work.
 
 Real GPU root checks compare all six outputs of every graph bit-for-bit with the
 interpreter, varying seeds, Y levels and material contexts. Cache-mode checks
