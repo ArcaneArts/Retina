@@ -262,6 +262,33 @@ pub(crate) fn specialized(field: usize) -> String {
     )
 }
 
+/// Point queries in kernels whose host coverage proof includes every required
+/// fine-grid corner. Preserve global floor/mix arithmetic, but calculate the
+/// resident base address once instead of validating each of the eight corners.
+/// General, remapped and prepass queries continue to use `specialized` above.
+pub(crate) fn resident(field: usize) -> String {
+    format!(
+        "fn interpolation_field_{field}(point:vec3<f32>,request:Request,context:vec4<f32>)->f32{{
+let info=bytecode[12]+{field}u*4u;
+let step=vec3<i32>(i32(bytecode[info+1u]),i32(bytecode[info+2u]),i32(bytecode[info+1u]));
+let size=vec3<f32>(step);let lower=floor(point/size)*size;let alpha=(point-lower)/size;
+let header=request.density_offset-bytecode[13]*8u+{field}u*8u;
+let origin=vec3<i32>(bitcast<i32>(surface_nodes[header+1u]),bitcast<i32>(surface_nodes[header+2u]),bitcast<i32>(surface_nodes[header+3u]));
+let width=bitcast<u32>(surface_nodes[header+4u]);let depth=bitcast<u32>(surface_nodes[header+6u]);
+let cell=vec3<u32>((vec3<i32>(lower)-origin)/step);
+let base=bitcast<u32>(surface_nodes[header])+(cell.y*depth+cell.z)*width+cell.x;
+if all(alpha==vec3<f32>(0.0)){{return surface_nodes[base];}}
+var corners:array<f32,8>;
+for(var corner=0u;corner<8u;corner++){{
+let upper=vec3<u32>(corner&1u,(corner>>1u)&1u,(corner>>2u)&1u);
+if any((upper!=vec3<u32>(0u)) & (alpha==vec3<f32>(0.0))){{continue;}}
+corners[corner]=surface_nodes[base+upper.x+upper.z*width+upper.y*width*depth];
+}}
+return interpolation_mix(corners,alpha);
+}}\n"
+    )
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

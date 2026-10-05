@@ -20,8 +20,8 @@ interpolation-field lattices](GPU_INTERPOLATION_CACHE.md) now provide GPU-only
 sample reuse for that ongoing work.
 [Experimental block-position composition](GPU_DENSITY_COMPOSITION.md) now
 preserves arithmetic after the individual fields in analytic checks. Parallel
-lake probes, resident-only density kernels and aquifer pressure pruning reduce
-its initial cost, but whole-region regressions keep the
+lake probes, direct resident density reads, covered density-lattice kernels and
+aquifer pressure pruning reduce its initial cost, but whole-region regressions keep the
 experiment disabled by default; fast production composition remains required.
 [Mixed GPU stage selection](GPU_STAGE_SELECTION.md) now retains compact
 interpreted terrain/climate on Metal while specializing materials and caves.

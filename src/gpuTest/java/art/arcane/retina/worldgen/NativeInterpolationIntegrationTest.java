@@ -91,7 +91,12 @@ public final class NativeInterpolationIntegrationTest {
         var densityCases=List.of(binary("sub",add(new JsonPrimitive(91.75F),multiply(square(a),new JsonPrimitive(100F))),y),
                 binary("sub",add(new JsonPrimitive(105.75F),multiply(binary("min",square(a),interpolate(square(z),5,3)),new JsonPrimitive(35F))),y),
                 binary("sub",choice,y),
-                binary("sub",new JsonPrimitive(130.25F),multiply(square(interpolate(y,4,4)),new JsonPrimitive(.008F))));
+                binary("sub",new JsonPrimitive(130.25F),multiply(square(interpolate(y,4,4)),new JsonPrimitive(.008F))),
+                // All axes contribute with different weights. This catches
+                // resident X/Y/Z strides and partially aligned corner errors.
+                binary("sub",add(new JsonPrimitive(128.375F),multiply(interpolate(
+                        add(add(square(x),multiply(z,new JsonPrimitive(.4F))),multiply(y,new JsonPrimitive(.003F))),
+                        4,8),new JsonPrimitive(30F))),y));
         int checked=0,different=0;
         for(int index=0;index<densityCases.size();index++) {
             var value=densityCases.get(index);

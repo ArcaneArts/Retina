@@ -590,7 +590,7 @@ impl Compiler {
             && cached_masks
             && crate::program::composition::CachedDensity::new(program).is_some();
         if cached_masks {
-            source.push_str("\n// resident density mask and surface pipelines\n");
+            source.push_str("\n// direct resident density mask, surface and lattice pipelines\n");
         }
         if cached_nodes {
             source.push_str("\n// resident density node pipeline\n");
@@ -777,7 +777,7 @@ fn compile_program(
             include_str!("simplex.wgsl"),
             include_str!("noise3.wgsl"),
             world_layout,
-            &["surface_columns"],
+            &["surface_columns", "density_nodes"],
         );
         for (entry, pipeline) in pipelines {
             world.insert(format!("{entry}_cached"), pipeline);

@@ -186,6 +186,78 @@ driver-warm pipelines, so those waits are not evidence of a comparative startup
 regression. Raw results and `profile-mode.dylib` are retained under the same
 artifact directory. The experiment does not change the production generator.
 
+## Direct resident reads and density lattice
+
+Covered point samplers now calculate the resident field base address once and
+read its needed corners by X/Z/Y strides. They retain the original global floor,
+aligned-axis corner skipping and trilinear mix order. The coverage proof includes
+every returned evaluator root and implicit node-zero slot. Fine-grid, binary-cell
+and coordinate checks still select the general GPU sampler whenever necessary;
+they never prevent generation. Interval lookups keep their checked reader because
+an uncertain interval can include queries outside the covered point domain.
+
+The same optional variant now serves density-lattice nodes. Its proof includes
+the actual rounded terrain lattice endpoints, vertical top and four/six-block
+halo. Prepasses, material rules and out-of-tile lake probes keep their original
+samplers. This adds one optional pipeline, with its identity in the compiler key,
+but no extra dispatch, buffer layout, dense transfer or CPU spatial evaluation.
+Production with composition disabled compiles none of these optional pipelines.
+
+Fresh sequential Apple M4 Max / Metal comparisons use the same complete profiles,
+seed 123456789, twenty measured regions and two warmups. Desktop activity is
+uncontrolled. The before library is `cached-surface.dylib` (the preceding commit);
+the after library is `direct-resident-final.dylib`.
+
+| Profile | Before mean ms | After mean ms | Before chunks/s | After chunks/s | After two-caller chunks/s |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Vanilla, composition enabled | 232.08 | 203.87 | 4,407 | 5,017 | 6,120 |
+| Terralith, composition enabled | 433.14 | 397.79 | 2,363 | 2,573 | 3,068 |
+
+Cave-mask device time falls from 36.24 to 17.01 ms per region vanilla and 54.78
+to 23.15 ms Terralith. Height/climate work falls from 32.64 to 27.69 / 92.91 to
+87.91 ms. These aggregate comparisons measure direct reads plus the resident
+lattice variant; they do not establish an independent benefit from either alone.
+Composition remains slower than production's final-field interpolation. Production
+means are 168.78 / 227.35 ms with unchanged NBT; this is an output-preservation
+check, not a speedup claim for the disabled path.
+
+All **163,840** complete chunk records match their corresponding retained or fresh
+baseline across the eight serial/concurrent/production runs. Composed file totals
+remain 155,099,136 / 132,972,544 bytes. Serial uploads/readbacks remain about
+14.297 / 45.976 MB vanilla and 12.619 / 42.542 MB Terralith; tiny differences come
+from existing sparse batching. Candidate serial/two-caller peak RSS is 1,175 /
+1,234 MiB vanilla and 2,046 / 2,119 MiB Terralith, including compilation and
+comparison readers. There is no memory or transfer-reduction claim.
+
+Driver-warm candidate initialization takes 43–65 ms; registration takes 500–530 /
+998–1,027 ms. Forced-specialization compilation takes 690–714 / 3,683–3,705 ms,
+and first warmups take 962–983 / 4,426 ms. The first new pipeline-identity trials
+take 1,870 / 4,881 ms compilation and 2,146 / 5,614 ms first warmup, so these
+measurements do not establish a cold-start improvement. Automatic two-region
+checks produce the first region in 434 / 683 ms. Terralith finishes both while
+compilation is pending, then waits 2,049 ms for readiness. All 4,096 initial and
+2,048 regenerated NBT records match after activation.
+
+`interpolationTest nativeInterpolationGpuTest aquiferTest regionTest previewTest
+snowTest build` passes, including 51 native unit checks, 10,240 Minecraft-reference
+composition columns (now including asymmetric contributions from all three axes),
+3,072,000 aquifer voxel classifications, MCA decoding, edits, DH temporary
+promotion/LRU/save isolation, and bare regular ice. Evidence is
+`build/density-direct-resident-validation.log`. Matched runs and rejected trials
+are under `build/goal-baseline/density-composition/`; the final library SHA-256 is
+`ee6a93599369498240b07085c44f2650dac30f76ab52e0a77b1078a70ed871a9`.
+
+The existing `COLUMNS` timestamp spans lake candidates, lake density, lake nodes
+and final columns. F3 now labels it **Surfaces / lake probes**. Its measured
+32.77 / 114.98 ms per composed region cannot be attributed to column extraction
+alone. A column-only classifier experiment preserved NBT but did not improve this
+timer; it was reverted. Routing composed lake-density probes to the compact
+interpreter also preserved 4,096 records but increased this timer from 39.31 to
+57.93 ms vanilla and 110.23 to 163.79 ms Terralith in two-region trials. It was
+reverted. The lattice-only two-region trial preserved 4,096 records but did not
+establish a whole-region gain. Raw libraries/results are retained as
+`column-pipeline`, `lake-interpreter` and `resident-lattice` diagnostic artifacts.
+
 ## Validation and remaining work
 
 After separating the disabled branch at shader compilation, eight production

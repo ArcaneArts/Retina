@@ -11,7 +11,7 @@ public final class TerrainDebugReport {
     private static final String LABEL="§7", DATA="§f", RUST="§b", GPU="§d", HEADER="§6§l", RESET="§r";
     private static final String[] GPU_HOST={"GPU queue","Command encoding","GPU work / readback"};
     private static final String[] PLANS={"Structure planning","Plant planning (CPU + GPU)","Ore planning (CPU + GPU)"};
-    private static final String[] GPU_DEVICE={"Height / climate","Biome sites","Column surfaces","Cave density","Cave mask"};
+    private static final String[] GPU_DEVICE={"Height / climate","Biome sites","Surfaces / lake probes","Cave density","Cave mask"};
     private static final String[] WORKERS={"Base terrain","Ores","Cave decorations","Plants / trees","Structure placement","Snow","NBT encoding","Zlib compression"};
     private TerrainDebugReport() { }
     public static List<String> lines(TerrainStatsPayload payload) {

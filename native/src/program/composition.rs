@@ -8,27 +8,20 @@ pub(crate) struct CachedDensity {
 }
 impl CachedDensity {
     pub fn new(registry: &RegistryProgram) -> Option<Self> {
-        Self::for_programs(registry, &[1], false)
+        Self::for_programs(registry, &[1])
     }
     pub fn for_nodes(registry: &RegistryProgram) -> Option<Self> {
-        Self::for_programs(registry, &[0, 1, 2], true)
+        Self::for_programs(registry, &[0, 1, 2])
     }
-    fn for_programs(
-        registry: &RegistryProgram,
-        programs: &[usize],
-        all_roots: bool,
-    ) -> Option<Self> {
+    fn for_programs(registry: &RegistryProgram, programs: &[usize]) -> Option<Self> {
         let mut fields = std::collections::BTreeSet::new();
         for &pid in programs {
             let program = registry.programs.get(pid)?;
             let mut used = vec![false; program.nodes.len()];
-            let mut pending = if all_roots {
-                let mut roots = program.roots.clone();
-                roots.push(0);
-                roots
-            } else {
-                vec![*program.roots.first()?]
-            };
+            // The emitted evaluator returns six slots. Include every root and
+            // its implicit node-zero slots even when a caller consumes one.
+            let mut pending = program.roots.clone();
+            pending.push(0);
             while let Some(id) = pending.pop() {
                 if std::mem::replace(&mut used[id as usize], true) {
                     continue;
@@ -71,13 +64,26 @@ impl CachedDensity {
         let guard = if r.padding & (1 << 28) != 0 { 6 } else { 4 };
         self.covers_frame(r, header, false, guard)
     }
-    fn covers_frame(&self, r: &GpuRequest, header: &[u32], nodes: bool, guard: i64) -> bool {
-        if r.padding & ((1 << 26) | (1 << 27)) != (1 << 26) | (1 << 27)
-            || r.density_side == 0
-            || r.tile_side == 0
-        {
+    pub fn covers_lattice(&self, r: &GpuRequest, header: &[u32]) -> bool {
+        if r.density_side == 0 || r.density_step_xz == 0 || r.density_step_y == 0 {
             return false;
         }
+        let guard = if r.padding & (1 << 28) != 0 { 6 } else { 4 };
+        let sx = i64::from(r.density_step_xz);
+        let sy = i64::from(r.density_step_y);
+        let lo = [
+            (i64::from(r.origin_x) - guard).div_euclid(sx) * sx,
+            i64::from(r.min_y).div_euclid(sy) * sy,
+            (i64::from(r.origin_z) - guard).div_euclid(sx) * sx,
+        ];
+        let hi = [
+            lo[0] + i64::from(r.density_side - 1) * sx,
+            lo[1] + (i64::from(r.max_y) - lo[1] + sy - 1).div_euclid(sy) * sy,
+            lo[2] + i64::from(r.density_side - 1) * sx,
+        ];
+        self.covers_box(r, header, lo, hi)
+    }
+    fn covers_frame(&self, r: &GpuRequest, header: &[u32], nodes: bool, guard: i64) -> bool {
         let width = i64::from(r.tile_side) * 16;
         let lo = [
             i64::from(r.origin_x) - guard,
@@ -101,6 +107,15 @@ impl CachedDensity {
                 lo[2] + width + 2 * guard - 1,
             ]
         };
+        self.covers_box(r, header, lo, hi)
+    }
+    fn covers_box(&self, r: &GpuRequest, header: &[u32], lo: [i64; 3], hi: [i64; 3]) -> bool {
+        if r.padding & ((1 << 26) | (1 << 27)) != (1 << 26) | (1 << 27)
+            || r.density_side == 0
+            || r.tile_side == 0
+        {
+            return false;
+        }
         self.fields.iter().all(|&(field, cell)| {
             let Some(h) = header.get(field * 8..field * 8 + 8) else {
                 return false;
@@ -130,8 +145,8 @@ pub(crate) fn cached_source(source: &str) -> String {
     let fields = source.matches("fn interpolation_field_").count();
     for field in 0..fields {
         source = source.replace(
-            &format!("interpolation_graph_{field}(point,request,context,program)[0]"),
-            "0.0",
+            &super::interpolation::specialized(field),
+            &super::interpolation::resident(field),
         );
     }
     // Outside a stored density cell, missing interval corners remain uncertain.
@@ -195,14 +210,20 @@ mod tests {
         // extraction additionally needs its actual four/six-block halo.
         assert!(plan.covers_nodes(&r, &header));
         assert!(plan.covers_surface(&r, &header));
+        assert!(plan.covers_lattice(&r, &header));
+        r.density_side = 12;
+        assert!(!plan.covers_lattice(&r, &header));
+        r.density_side = 11;
         r.padding |= 1 << 28;
         assert!(!plan.covers_surface(&r, &header));
+        assert!(!plan.covers_lattice(&r, &header));
         r.padding &= !(1 << 28);
         r.min_y = -63;
         r.max_y = 319;
         assert!(plan.covers_nodes(&r, &header));
         r.max_y = 321;
         assert!(!plan.covers_nodes(&r, &header));
+        assert!(!plan.covers_lattice(&r, &header));
         r.min_y = -64;
         r.max_y = 320;
         let mut missing = header;
@@ -223,8 +244,8 @@ mod tests {
         assert!(CachedDensity::new(&registry).is_none());
 
         // Cave nodes also evaluate underground climate and the cave root.
-        // Every field used by either must have coverage; the mask alone only
-        // needs the surface-density root.
+        // Every field used by either must have coverage; the mask also checks
+        // all slots returned by the surface-density evaluator.
         registry.interpolations[0].cell = [4, 4];
         registry
             .interpolations
@@ -242,6 +263,11 @@ mod tests {
         registry.programs[0] = registry.programs[1].clone();
         registry.programs[2].nodes[3].c = 0;
         assert!(CachedDensity::for_nodes(&registry).is_none());
+        let mut remapped = registry.programs[1].nodes[3].clone();
+        remapped.b = 0;
+        registry.programs[1].nodes.push(remapped);
+        registry.programs[1].roots.push(4);
+        assert!(CachedDensity::new(&registry).is_none());
     }
 
     #[test]

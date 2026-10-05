@@ -951,7 +951,24 @@ impl Gpu {
                 label: Some("Retina registered 3D density lattice"),
                 timestamp_writes: writes,
             });
-            pass.set_pipeline(terrain_pipeline("density_nodes", &self.density_pipeline));
+            let cached_lattice = self.cached_density_masks
+                && composition
+                && self
+                    .cached_density_plans
+                    .get(&profile_id)
+                    .is_some_and(|plan| {
+                        gpu_requests
+                            .iter()
+                            .zip(&interpolation_headers)
+                            .all(|(r, (_, header))| plan.covers_lattice(r, header))
+                            && interpolation_headers.len() == gpu_requests.len()
+                    });
+            pass.set_pipeline(
+                selected
+                    .filter(|_| cached_lattice)
+                    .and_then(|p| p.cached_world("density_nodes"))
+                    .unwrap_or_else(|| terrain_pipeline("density_nodes", &self.density_pipeline)),
+            );
             pass.set_bind_group(0, group, &[]);
             pass.dispatch_workgroups(
                 density_dispatch.0.div_ceil(64),
