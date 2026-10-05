@@ -74,9 +74,11 @@ batched across anchors, rather than invoked for each block or attempt.
 
 The diagnostic feature bridge uses the same provider/replay logic as production.
 F3's colored **Provider noise** row now receives actual region/chunk device time.
-Timing ABI 6 remains 26 stages, a 240-byte snapshot and a 280-byte detailed region
-report; the legacy 40-byte region report is unchanged. Device time overlaps
-host/planning time and is not added to region latency.
+This milestone used timing ABI 6 (26 stages, a 240-byte snapshot and a 280-byte
+detailed region report). [Separate lake timings](GPU_LAKE_TIMINGS.md) subsequently
+extend it to ABI 7 with 29 stages and 264/304-byte reports. The legacy 40-byte
+region report is unchanged. Device time overlaps host/planning time and is not
+added to region latency.
 
 ## Reference and compatibility checks
 

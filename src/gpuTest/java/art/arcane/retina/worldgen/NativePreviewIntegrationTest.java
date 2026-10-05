@@ -85,6 +85,11 @@ public final class NativePreviewIntegrationTest {
             var oreStages = generator.metrics().snapshot().regionStages();
             require(oreStages.nanos(NativeTimings.ORE_PLAN)>0, "temporary MCA reports mixed ore planning wall time");
             if(oreStages.oreMeasured())require(oreStages.nanos(NativeTimings.ORE_MASK)>0 && NativeTerrain.instance().timings(generator.profile().nativeId()).nanos(NativeTimings.ORE_MASK)>=oreStages.nanos(NativeTimings.ORE_MASK), "ore device timestamps survive region/session reporting");
+            var sessionStages=NativeTerrain.instance().timings(generator.profile().nativeId());
+            for(int stage:new int[]{NativeTimings.LAKE_CANDIDATES,NativeTimings.LAKE_DENSITY,NativeTimings.LAKE_REDUCE}) {
+                if(sessionStages.nanos(stage)>0)require(oreStages.nanos(stage)>0 && sessionStages.nanos(stage)>=oreStages.nanos(stage), "measured lake device work survives the job-local region report: "+stage);
+            }
+            System.out.println("QA_EVT {\"event\":\"lake_device_region_timings\",\"status\":\"pass\",\"context\":{\"candidates_ns\":"+oreStages.nanos(NativeTimings.LAKE_CANDIDATES)+",\"probes_ns\":"+oreStages.nanos(NativeTimings.LAKE_DENSITY)+",\"reduction_ns\":"+oreStages.nanos(NativeTimings.LAKE_REDUCE)+"}}");
             try (var files = Files.list(save)) { require(files.findAny().isEmpty(), "surface calls leave the actual save folder empty"); }
             var another = new ProtoChunk(position, UpgradeData.EMPTY, bounds, factory, null);
             generator.buildTerrain(another, Blender.empty(), random, null, null, null, Set.copyOf(biomes)).join();

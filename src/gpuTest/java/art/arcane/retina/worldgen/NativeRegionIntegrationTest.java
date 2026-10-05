@@ -46,7 +46,7 @@ public final class NativeRegionIntegrationTest {
             require(report.stages().workerNanos()<=report.assemblyNanos(), "worker shares fit inside the actual assembly wall time");
             long accounted=0;
             for(int stage=0;stage<NativeTimings.STAGES;stage++)
-                if(stage<NativeTimings.HEIGHT || stage>=NativeTimings.STRUCTURE_PLAN)accounted+=report.stages().nanos(stage);
+                if(stage<NativeTimings.HEIGHT || stage>=NativeTimings.STRUCTURE_PLAN && stage<NativeTimings.MATERIALS)accounted+=report.stages().nanos(stage);
             require(accounted<=ms*1e6, "disjoint wall phases fit within request latency");
             try (var storage = new RegionFileStorage(info, directory, false)) {
                 for (int z = 0; z < 32; z++) {

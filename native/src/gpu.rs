@@ -81,6 +81,9 @@ struct Timestamps {
     readback: wgpu::Buffer,
 }
 impl Timestamps {
+    // Eleven pairs cover the largest terrain/material/aquifer batch. Keep an
+    // extra pair available without enlarging the aligned resolve buffer.
+    const PAIRS: u32 = 12;
     fn writes(&self, pair: u32) -> wgpu::ComputePassTimestampWrites<'_> {
         wgpu::ComputePassTimestampWrites {
             query_set: &self.queries,
@@ -868,6 +871,13 @@ impl Gpu {
             measured.push(timings::SITES);
         }
         measured.push(timings::COLUMNS);
+        if density_program.is_some() && !surface_probe {
+            measured.extend([
+                timings::LAKE_CANDIDATES,
+                timings::LAKE_DENSITY,
+                timings::LAKE_REDUCE,
+            ]);
+        }
         if cave_side > 0 {
             measured.extend([timings::CAVE_DENSITY, timings::CAVE_MASK]);
         } else if underground_probe {
@@ -1039,13 +1049,9 @@ impl Gpu {
             pass.dispatch_workgroups(3, requests.len() as u32, 1);
         }
         if density_program.is_some() && !surface_probe {
-            let mut writes = timestamp_writes(timings::COLUMNS);
-            if let Some(ref mut writes) = writes {
-                writes.end_of_pass_write_index = None;
-            }
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
                 label: Some("Retina lake candidate classification"),
-                timestamp_writes: writes,
+                timestamp_writes: timestamp_writes(timings::LAKE_CANDIDATES),
             });
             pass.set_pipeline(world_pipeline(
                 "lake_candidates",
@@ -1057,7 +1063,7 @@ impl Gpu {
         if density_program.is_some() && !surface_probe {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
                 label: Some("Retina parallel lake density probes"),
-                timestamp_writes: None,
+                timestamp_writes: timestamp_writes(timings::LAKE_DENSITY),
             });
             pass.set_pipeline(world_pipeline("lake_density", &self.lake_density_pipeline));
             pass.set_bind_group(0, group, &[]);
@@ -1070,22 +1076,16 @@ impl Gpu {
         if density_program.is_some() && !surface_probe {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
                 label: Some("Retina shared lake level extraction"),
-                timestamp_writes: None,
+                timestamp_writes: timestamp_writes(timings::LAKE_REDUCE),
             });
             pass.set_pipeline(world_pipeline("lake_nodes", &self.lake_pipeline));
             pass.set_bind_group(0, group, &[]);
             pass.dispatch_workgroups(lake_dispatch.div_ceil(64), requests.len() as u32, 1);
         }
         {
-            let mut writes = timestamp_writes(timings::COLUMNS);
-            if density_program.is_some() && !surface_probe {
-                if let Some(ref mut writes) = writes {
-                    writes.beginning_of_pass_write_index = None;
-                }
-            }
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
                 label: Some("Retina interpolated column pass"),
-                timestamp_writes: writes,
+                timestamp_writes: timestamp_writes(timings::COLUMNS),
             });
             pass.set_pipeline(if surface_probe && !align_shores {
                 world_pipeline("biome_queries", &self.biome_queries_pipeline)
@@ -1351,7 +1351,7 @@ impl Gpu {
         timings.add(timings::ENCODE, encode_nanos);
         let wait_start = Instant::now();
         let mut job_timings = timings::Snapshot::default();
-        job_timings.version = 3;
+        job_timings.version = timings::VERSION;
         job_timings.gpu_jobs = 1;
         job_timings.gpu_columns = column_count as u64;
         job_timings.nanos[timings::ENCODE] = encode_nanos;
@@ -1518,7 +1518,7 @@ impl Gpu {
             queries: self.device.create_query_set(&wgpu::QuerySetDescriptor {
                 label: Some("Retina slot pass timings"),
                 ty: wgpu::QueryType::Timestamp,
-                count: 16,
+                count: Timestamps::PAIRS * 2,
             }),
             resolve: self.device.create_buffer(&wgpu::BufferDescriptor {
                 label: Some("Retina slot timestamp resolve"),
@@ -1526,7 +1526,10 @@ impl Gpu {
                 usage: wgpu::BufferUsages::QUERY_RESOLVE | wgpu::BufferUsages::COPY_SRC,
                 mapped_at_creation: false,
             }),
-            readback: self.readback_buffer("Retina slot timestamp readback", 128),
+            readback: self.readback_buffer(
+                "Retina slot timestamp readback",
+                u64::from(Timestamps::PAIRS) * 16,
+            ),
         }
     }
     fn readback_buffer(&self, label: &str, size: u64) -> wgpu::Buffer {

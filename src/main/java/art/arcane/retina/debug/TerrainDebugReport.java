@@ -11,7 +11,8 @@ public final class TerrainDebugReport {
     private static final String LABEL="§7", DATA="§f", RUST="§b", GPU="§d", HEADER="§6§l", RESET="§r";
     private static final String[] GPU_HOST={"GPU queue","Command encoding","GPU work / readback"};
     private static final String[] PLANS={"Structure planning","Plant planning (CPU + GPU)","Ore planning (CPU + GPU)"};
-    private static final String[] GPU_DEVICE={"Height / climate","Biome sites","Surfaces / lake probes","Cave density","Cave mask"};
+    private static final String[] GPU_DEVICE={"Height / climate","Biome sites","Column surfaces","Cave density","Cave mask"};
+    private static final String[] GPU_LAKES={"Lake candidates","Lake density probes","Lake level reduction"};
     private static final String[] WORKERS={"Base terrain","Ores","Cave decorations","Plants / trees","Structure placement","Snow","NBT encoding","Zlib compression"};
     private TerrainDebugReport() { }
     public static List<String> lines(TerrainStatsPayload payload) {
@@ -50,6 +51,8 @@ public final class TerrainDebugReport {
             lines.add(HEADER+"GPU device (% of region; overlaps host)"+RESET);
             if(stats.regionStages().gpuMeasured()) {for(int stage=HEIGHT;stage<=CAVE_MASK;stage++)
                 lines.add(share(GPU,GPU_DEVICE[stage-HEIGHT],stats.regionStagePercent(stage),false));
+                for(int stage=LAKE_CANDIDATES;stage<=LAKE_REDUCE;stage++)
+                    lines.add(share(GPU,GPU_LAKES[stage-LAKE_CANDIDATES],stats.regionStagePercent(stage),false));
                 lines.add(share(GPU,"Material layers",stats.regionStagePercent(MATERIALS),false));
                 lines.add(share(GPU,"Aquifer fields",stats.regionStagePercent(AQUIFER_FIELDS),false));
                 lines.add(share(GPU,"Aquifer fluids / barriers",stats.regionStagePercent(AQUIFER_MASK),false));
@@ -63,6 +66,8 @@ public final class TerrainDebugReport {
             for(int stage=ASSEMBLY;stage<=COMPRESS;stage++)lines.add(share(RUST,WORKERS[stage-ASSEMBLY],100*stats.stages().chunkMs(stage)/Math.max(.000001,stats.msPerChunk()),false));
             lines.add(LABEL+"Convert: "+DATA+format("%.3f ms",stats.conversionMs()));
             if(stats.stages().gpuMeasured()) {
+                for(int stage=LAKE_CANDIDATES;stage<=LAKE_REDUCE;stage++)
+                    lines.add(share(GPU,GPU_LAKES[stage-LAKE_CANDIDATES],100*stats.stages().gpuChunkMs(stage)/Math.max(.000001,stats.msPerChunk()),false));
                 lines.add(share(GPU,"Material layers",100*stats.stages().gpuChunkMs(MATERIALS)/Math.max(.000001,stats.msPerChunk()),false));
                 lines.add(share(GPU,"Aquifer fields",100*stats.stages().gpuChunkMs(AQUIFER_FIELDS)/Math.max(.000001,stats.msPerChunk()),false));
                 lines.add(share(GPU,"Aquifer fluids / barriers",100*stats.stages().gpuChunkMs(AQUIFER_MASK)/Math.max(.000001,stats.msPerChunk()),false));

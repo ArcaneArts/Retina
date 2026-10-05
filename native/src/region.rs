@@ -513,6 +513,8 @@ fn generate_region_inner(
             .copy_from_slice(&gpu_trace.nanos[..timings::STRUCTURE_PLAN]);
         detail.nanos[timings::MATERIALS..=timings::AQUIFER_MASK]
             .copy_from_slice(&gpu_trace.nanos[timings::MATERIALS..=timings::AQUIFER_MASK]);
+        detail.nanos[timings::LAKE_CANDIDATES..=timings::LAKE_REDUCE]
+            .copy_from_slice(&gpu_trace.nanos[timings::LAKE_CANDIDATES..=timings::LAKE_REDUCE]);
         // Sparse feature sampling belongs to this job; it may overlap a different
         // region's terrain submission on the shared queue.
         detail.flags |= job.snapshot().flags;

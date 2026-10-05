@@ -23,6 +23,10 @@ preserves arithmetic after the individual fields in analytic checks. Parallel
 lake probes, direct resident density reads, covered density-lattice kernels and
 aquifer pressure pruning reduce its initial cost, but whole-region regressions keep the
 experiment disabled by default; fast production composition remains required.
+[Separate GPU lake timings](GPU_LAKE_TIMINGS.md) now distinguish candidates,
+density probes, level reduction and final columns in F3. Actual-profile checks
+identify expensive composed lake density; the paired resident/general probe
+trial preserved NBT but showed no gain and was removed.
 [Mixed GPU stage selection](GPU_STAGE_SELECTION.md) now retains compact
 interpreted terrain/climate on Metal while specializing materials and caves.
 Repeated actual-profile comparisons improve whole-region throughput, with

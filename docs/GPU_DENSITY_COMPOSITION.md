@@ -247,8 +247,8 @@ promotion/LRU/save isolation, and bare regular ice. Evidence is
 are under `build/goal-baseline/density-composition/`; the final library SHA-256 is
 `ee6a93599369498240b07085c44f2650dac30f76ab52e0a77b1078a70ed871a9`.
 
-The existing `COLUMNS` timestamp spans lake candidates, lake density, lake nodes
-and final columns. F3 now labels it **Surfaces / lake probes**. Its measured
+At this milestone the `COLUMNS` timestamp spans lake candidates, lake density,
+lake nodes and final columns. F3 labels it **Surfaces / lake probes**. Its measured
 32.77 / 114.98 ms per composed region cannot be attributed to column extraction
 alone. A column-only classifier experiment preserved NBT but did not improve this
 timer; it was reverted. Routing composed lake-density probes to the compact
@@ -257,6 +257,9 @@ interpreter also preserved 4,096 records but increased this timer from 39.31 to
 reverted. The lattice-only two-region trial preserved 4,096 records but did not
 establish a whole-region gain. Raw libraries/results are retained as
 `column-pipeline`, `lake-interpreter` and `resident-lattice` diagnostic artifacts.
+The later [separate lake timings](GPU_LAKE_TIMINGS.md) milestone splits these
+passes and restores **Column surfaces** in F3; that document records actual
+per-pass measurements and the rejected paired resident/general probe trial.
 
 ## Validation and remaining work
 
