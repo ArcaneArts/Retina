@@ -5,6 +5,9 @@ use serde::Deserialize;
 #[derive(Clone, Deserialize)]
 pub struct Program {
     pub layers: Vec<Layer>,
+    /// DualNoiseProvider rounds int * slow_scale to float before sampling.
+    #[serde(default)]
+    pub coordinate_scale: Option<f32>,
 }
 #[derive(Clone, Deserialize)]
 pub struct Layer {
@@ -15,8 +18,11 @@ pub struct Layer {
 }
 impl Program {
     pub(crate) fn validate(&self) -> Result<(), String> {
-        if self.layers.len() > 64 {
-            return Err("provider noise has more than 64 Perlin layers".into());
+        if self
+            .coordinate_scale
+            .is_some_and(|s| !s.is_finite() || s <= 0.0)
+        {
+            return Err("invalid provider slow-coordinate scale".into());
         }
         for layer in &self.layers {
             let mut sorted = layer.permutation.clone();
@@ -41,11 +47,12 @@ fn fixed_phase(value: f64) -> [u32; 2] {
     [phase as u32, (phase >> 32) as u32]
 }
 pub(crate) fn encode(programs: &[Program]) -> Vec<u32> {
-    let mut words = vec![0; 1 + programs.len() * 2];
+    let mut words = vec![0; 1 + programs.len() * 4];
     words[0] = programs.len() as u32;
     for (i, program) in programs.iter().enumerate() {
-        words[1 + i * 2] = words.len() as u32;
-        words[2 + i * 2] = program.layers.len() as u32;
+        words[1 + i * 4] = words.len() as u32;
+        words[2 + i * 4] = program.layers.len() as u32;
+        words[3 + i * 4] = program.coordinate_scale.unwrap_or(0.0).to_bits();
         for layer in &program.layers {
             words.extend_from_slice(&fixed_phase(layer.frequency));
             words.extend_from_slice(&[layer.amplitude.to_bits(), 0]);
@@ -53,10 +60,45 @@ pub(crate) fn encode(programs: &[Program]) -> Vec<u32> {
                 words.extend_from_slice(&fixed_phase(offset));
             }
             words.extend_from_slice(&layer.permutation);
-            words.extend_from_slice(&[0, 0]);
+            let frequency = layer.frequency.to_bits();
+            words.extend_from_slice(&[frequency as u32, (frequency >> 32) as u32]);
         }
     }
     words
+}
+
+#[derive(Default)]
+pub(crate) struct Samples {
+    values: super::spatial::Map<[i32; 4], f32>,
+}
+impl Samples {
+    pub(crate) fn extend(&mut self, values: impl IntoIterator<Item = ([i32; 4], f32)>) {
+        self.values.extend(values);
+    }
+}
+/// Every anchor owns a query collector. Provisional choices never escape an
+/// unresolved replay; the GPU resolves their union before that anchor retries.
+pub(crate) struct Context<'a> {
+    samples: &'a Samples,
+    missing: std::cell::RefCell<Vec<[i32; 4]>>,
+}
+impl<'a> Context<'a> {
+    pub(crate) fn new(samples: &'a Samples) -> Self {
+        Self {
+            samples,
+            missing: Default::default(),
+        }
+    }
+    pub(crate) fn get(&self, program: u32, at: [i32; 3]) -> f32 {
+        let query = [at[0], at[1], at[2], program as i32];
+        self.samples.values.get(&query).copied().unwrap_or_else(|| {
+            self.missing.borrow_mut().push(query);
+            0.0
+        })
+    }
+    pub(crate) fn missing(self) -> Vec<[i32; 4]> {
+        self.missing.into_inner()
+    }
 }
 
 #[cfg(test)]

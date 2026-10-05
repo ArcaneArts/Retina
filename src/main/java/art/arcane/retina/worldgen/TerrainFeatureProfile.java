@@ -88,7 +88,7 @@ final class TerrainFeatureProfile {
             for(var index:entry.getAsJsonArray("decorations")) {
                 var recipe=world.getAsJsonArray("decorations").get(index.getAsInt()).getAsJsonObject();
                 if(recipe.get("kind").getAsString().equals("vegetation_patch")) {
-                    boolean ownsFloor=DecorationProfile.programStates(recipe.getAsJsonObject("ground")).contains(caveFeatures.get("floor").getAsInt());
+                    boolean ownsFloor=caveFeatures.has("floor") && DecorationProfile.programStates(recipe.getAsJsonObject("ground")).contains(caveFeatures.get("floor").getAsInt());
                     if(recipe.get("direction").getAsInt()<0)registeredFloor |= ownsFloor;else registeredCeiling |= ownsFloor;
                 }
                 for(int material:DecorationProfile.featureMaterials(recipe)) {

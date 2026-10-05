@@ -671,9 +671,28 @@ final class DecorationProfile {
                 var decoded=(RandomBlockProvider)BlockStateProvider.DIRECT_CODEC.parse(registry.createSerializationContext(JsonOps.INSTANCE),object).getOrThrow();
                 result.addProperty("type","random_block");var states=new JsonArray();for(var block:decoded.blocks())states.add(material(block.value().defaultBlockState()));result.add("states",states);
             }
+            case "noise", "noise_provider", "dual_noise", "dual_noise_provider" -> {
+                boolean dual=type(object).startsWith("dual_noise");result.addProperty("type",dual?"dual_noise":"noise");
+                result.addProperty(dual?"fast":"program",providerNoise.register(object,false));
+                if(dual) {
+                    result.addProperty("slow",providerNoise.register(object,true));var variety=new JsonArray();
+                    var bounds=net.minecraft.util.InclusiveRange.codec(com.mojang.serialization.Codec.INT,1,64).parse(JsonOps.INSTANCE,object.get("variety")).getOrThrow();
+                    variety.add(bounds.minInclusive());variety.add(bounds.maxInclusive());result.add("variety",variety);
+                }
+                result.add("states",noiseStates(object.getAsJsonArray("states")));
+            }
+            case "noise_threshold" -> {
+                result.addProperty("type","noise_threshold");result.addProperty("program",providerNoise.register(object,false));
+                result.add("threshold",object.get("threshold"));result.add("high_chance",object.get("high_chance"));
+                result.addProperty("default_state",material(BlockState.CODEC.parse(JsonOps.INSTANCE,object.get("default_state")).getOrThrow()));
+                for(String key:List.of("low_states","high_states"))result.add(key,noiseStates(object.getAsJsonArray(key)));
+            }
             default -> {unsupported.add("block_provider:"+type(object));return null;}
         }
         return result;
+    }
+    private JsonArray noiseStates(JsonArray states) {
+        var ids=new JsonArray();for(var state:states)ids.add(material(BlockState.CODEC.parse(JsonOps.INSTANCE,state).getOrThrow()));return ids;
     }
     private boolean contextProvider(JsonElement input,int depth) {
         if(depth>16)throw new IllegalArgumentException("Recursive block state provider");
@@ -684,7 +703,7 @@ final class DecorationProfile {
         if(!input.isJsonObject())return false;
         var object=input.getAsJsonObject();
         return switch(type(object)) {
-            case "rule_based", "rotated", "random_block" -> true;
+            case "rule_based", "rotated", "random_block", "noise", "noise_provider", "dual_noise", "dual_noise_provider", "noise_threshold" -> true;
             case "weighted", "weighted_state_provider" -> object.getAsJsonArray("entries").asList().stream().anyMatch(e->contextProvider(e.getAsJsonObject().get("data"),depth+1));
             case "randomized_int", "randomized_int_state_provider" -> contextProvider(object.get("source"),depth+1);
             default -> false;
@@ -717,7 +736,8 @@ final class DecorationProfile {
             case "weighted" -> {for(var e:p.getAsJsonArray("entries"))out.addAll(programStates(e.getAsJsonObject().getAsJsonObject("provider")));}
             case "randomized_int" -> {for(var e:p.getAsJsonArray("variants"))for(var id:e.getAsJsonObject().getAsJsonArray("states"))out.add(id.getAsInt());}
             case "rotated" -> {for(var e:p.getAsJsonArray("variants"))for(var id:e.getAsJsonObject().getAsJsonArray("states"))out.add(id.getAsInt());}
-            case "random_block" -> {for(var id:p.getAsJsonArray("states"))out.add(id.getAsInt());}
+            case "random_block", "noise", "dual_noise" -> {for(var id:p.getAsJsonArray("states"))out.add(id.getAsInt());}
+            case "noise_threshold" -> {out.add(p.get("default_state").getAsInt());for(String key:List.of("low_states","high_states"))for(var id:p.getAsJsonArray(key))out.add(id.getAsInt());}
             case "rule_based" -> {for(var rule:p.getAsJsonArray("rules"))out.addAll(programStates(rule.getAsJsonObject().getAsJsonObject("provider")));if(p.has("fallback"))out.addAll(programStates(p.getAsJsonObject("fallback")));}
         }
         return out;

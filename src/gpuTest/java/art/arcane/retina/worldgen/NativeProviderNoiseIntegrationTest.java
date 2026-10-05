@@ -19,7 +19,7 @@ import java.util.concurrent.*;
 
 /** Actual 26.3 provider seeds/normalizations/permutations compared with GPU XYZ samples. */
 public final class NativeProviderNoiseIntegrationTest {
-    private record Case(int program,Noise reference,float scale,double amplitude,String source) { }
+    private record Case(int program,Noise reference,float scale,boolean slow,double amplitude,String source) { }
     public static void main(String[] args) throws Exception {
         for(int stack=0;stack<(args.length==0?1:2);stack++) {
             Path path=Path.of("build/provider-noise-"+(stack==0?"vanilla":"terralith")+".json");
@@ -48,12 +48,19 @@ public final class NativeProviderNoiseIntegrationTest {
                         registry,programs,cases,visited,holder.unwrapKey().orElseThrow().identifier().toString());
             for(int i=0;i<exported;i++)require(cases.containsKey(i),"exported active stack has actual registered reference: "+i);
             int registered=cases.size();
-            for(long seed:new long[]{0,2345,Long.MIN_VALUE,Long.MAX_VALUE})for(int octave:new int[]{-4,0,4})for(float scale:new float[]{.00017F,1F/48F,.75F}) {
+            for(long seed:new long[]{0,2345,Long.MIN_VALUE,Long.MAX_VALUE})for(int octave:new int[]{-4,0,4,8})for(float scale:new float[]{.00017F,1F/48F,.75F}) {
                 var builder=NormalNoise.builder().setBaseOctave(octave).setOctaveCount(3).setNormalize(octave!=0);
                 builder.setAmplitudeModifier(0,.5).setAmplitudeModifier(1,0).setAmplitudeModifier(2,1);
                 add(builder.build(),scale,seed,programs,cases,"fixture:"+octave+"/"+scale+"/"+seed);
+                add(builder.build(),scale,seed,programs,cases,"fixture:slow:"+octave+"/"+scale+"/"+seed,true);
             }
             add(NormalNoise.builder().setOctaveCount(2).setAmplitudeModifier(0,0).setAmplitudeModifier(1,0).build(),1,7,programs,cases,"fixture:zero");
+            // Storage-backed loops support more than 64 layers without a
+            // speculative exporter limit rejecting an otherwise valid stack.
+            var many=NormalNoise.builder().setBaseOctave(-40).setOctaveCount(40).build();
+            require(ProviderNoiseProfile.export(many,.75F,327).getAsJsonArray("layers").size()>64,"actual Minecraft stack exceeds the removed layer limit");
+            add(many,.75F,327,programs,cases,"fixture:80-layers");
+            add(many,.75F,327,programs,cases,"fixture:80-layers-slow",true);
             var nativeTerrain=NativeTerrain.instance();int id=nativeTerrain.registerProfile(profile.toString());
             var request=new TerrainRequest(123456789,-1,-1,-64,384,64,48,.008F,id);
             var points=new int[cases.size()*1024*4];var random=new Random(973911);var references=new ArrayList<Case>();
@@ -70,7 +77,9 @@ public final class NativeProviderNoiseIntegrationTest {
             double maxError=0,maxFarError=0;int varied=0;
             for(int i=0;i<values.length;i++) {
                 var test=references.get(i);
-                float expected=test.reference.get(points[i*4]*(double)test.scale,points[i*4+1]*(double)test.scale,points[i*4+2]*(double)test.scale);
+                float expected=test.reference.get(test.slow?(double)(points[i*4]*test.scale):points[i*4]*(double)test.scale,
+                        test.slow?(double)(points[i*4+1]*test.scale):points[i*4+1]*(double)test.scale,
+                        test.slow?(double)(points[i*4+2]*test.scale):points[i*4+2]*(double)test.scale);
                 double error=Math.abs(values[i]-expected);maxError=Math.max(maxError,error);
                 if(Math.abs(points[i*4])>4096 || Math.abs(points[i*4+2])>4096)maxFarError=Math.max(maxFarError,error);
                 require(Float.isFinite(values[i]) && error<=.00012*Math.max(1,test.amplitude),
@@ -148,15 +157,18 @@ public final class NativeProviderNoiseIntegrationTest {
         if(object.has("seed") && object.has("noise") && object.has("scale")) {
             long seed=object.get("seed").getAsLong();float scale=object.get("scale").getAsFloat();
             add(NormalNoise.DIRECT_CODEC.parse(registry.createSerializationContext(JsonOps.INSTANCE),object.get("noise")).getOrThrow(),scale,seed,programs,cases,source);
-            if(object.has("slow_noise"))add(NormalNoise.DIRECT_CODEC.parse(registry.createSerializationContext(JsonOps.INSTANCE),object.get("slow_noise")).getOrThrow(),object.get("slow_scale").getAsFloat(),seed,programs,cases,source+"/slow");
+            if(object.has("slow_noise"))add(NormalNoise.DIRECT_CODEC.parse(registry.createSerializationContext(JsonOps.INSTANCE),object.get("slow_noise")).getOrThrow(),object.get("slow_scale").getAsFloat(),seed,programs,cases,source+"/slow",true);
         }
         for(var entry:object.entrySet())collect(entry.getValue(),registry,programs,cases,visited,source);
     }
     private static void add(NormalNoise parameters,float scale,long seed,JsonArray programs,Map<Integer,Case> cases,String source) {
-        var exported=JsonParser.parseString(ProviderNoiseProfile.export(parameters,scale,seed).toString()).getAsJsonObject();int id=programs.asList().indexOf(exported);
+        add(parameters,scale,seed,programs,cases,source,false);
+    }
+    private static void add(NormalNoise parameters,float scale,long seed,JsonArray programs,Map<Integer,Case> cases,String source,boolean slow) {
+        var exported=JsonParser.parseString(ProviderNoiseProfile.export(parameters,scale,seed,slow).toString()).getAsJsonObject();int id=programs.asList().indexOf(exported);
         if(id<0) {id=programs.size();programs.add(exported);}
         double amplitude=0;for(var layer:exported.getAsJsonArray("layers"))amplitude+=Math.abs(layer.getAsJsonObject().get("amplitude").getAsDouble());
-        cases.putIfAbsent(id,new Case(id,parameters.create(new WorldgenRandom(new LegacyRandomSource(seed))),scale,amplitude,source));
+        cases.putIfAbsent(id,new Case(id,parameters.create(new WorldgenRandom(new LegacyRandomSource(seed))),scale,slow,amplitude,source));
     }
     private static void require(boolean condition,String message) {if(!condition)throw new AssertionError(message);}
 }

@@ -180,6 +180,7 @@ struct World<'a> {
     request: ChunkRequest,
     overlay: &'a mut Overlay,
     blocks: &'a mut Vec<WorldBlock>,
+    noise: &'a provider_noise::Context<'a>,
 }
 impl World<'_> {
     fn test(&self, p: &Predicate, at: [i32; 3]) -> bool {
@@ -209,7 +210,7 @@ impl World<'_> {
     fn simple(&mut self, simple: &Simple, at: [i32; 3], rng: &mut Rng) -> bool {
         let Some(id) = simple
             .provider
-            .sample_optional(rng, at, &|p| self.material(p))
+            .sample_optional(rng, at, &|p| self.material(p), self.noise)
         else {
             return false;
         };
@@ -244,6 +245,7 @@ impl World<'_> {
                     self.request,
                     self.overlay,
                     self.blocks,
+                    self.noise,
                 );
                 self.overlay
                     .commit(self.blocks, start, self.field, self.profile, self.request);
@@ -434,9 +436,10 @@ impl World<'_> {
                 let mut pos = ground;
                 let mut placed = true;
                 for i in 0..depth {
-                    let Some(material) = patch
-                        .ground
-                        .sample_optional(rng, pos, &|p| self.material(p))
+                    let Some(material) =
+                        patch
+                            .ground
+                            .sample_optional(rng, pos, &|p| self.material(p), self.noise)
                     else {
                         // getState's absent fallback retains the existing block;
                         // Minecraft's same-block check then leaves the cursor here.
@@ -519,6 +522,7 @@ pub(super) fn place(
     request: ChunkRequest,
     overlay: &mut Overlay,
     blocks: &mut Vec<WorldBlock>,
+    noise: &provider_noise::Context,
 ) -> bool {
     World {
         field,
@@ -526,6 +530,7 @@ pub(super) fn place(
         request,
         overlay,
         blocks,
+        noise,
     }
     .patch(patch, at, rng)
 }
@@ -538,6 +543,7 @@ pub(super) fn place_simple(
     request: ChunkRequest,
     overlay: &mut Overlay,
     blocks: &mut Vec<WorldBlock>,
+    noise: &provider_noise::Context,
 ) -> bool {
     World {
         field,
@@ -545,6 +551,7 @@ pub(super) fn place_simple(
         request,
         overlay,
         blocks,
+        noise,
     }
     .simple(simple, at, rng)
 }

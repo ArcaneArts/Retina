@@ -20,23 +20,26 @@ final class ProviderNoiseProfile {
         var parameters=provider.get(slow?"slow_noise":"noise");
         float scale=provider.get(slow?"slow_scale":"scale").getAsFloat();
         long seed=provider.get("seed").getAsLong();
-        String key=parameters+"/"+Float.toHexString(scale)+"/"+seed;
+        String key=parameters+"/"+Float.toHexString(scale)+"/"+seed+"/"+slow;
         var prior=ids.get(key);if(prior!=null)return prior;
         var noise=NormalNoise.DIRECT_CODEC.parse(registry.createSerializationContext(JsonOps.INSTANCE),parameters).getOrThrow();
-        int id=programs.size();programs.add(export(noise,scale,seed));ids.put(key,id);return id;
+        int id=programs.size();programs.add(export(noise,scale,seed,slow));ids.put(key,id);return id;
     }
     static JsonObject export(NormalNoise parameters,float scale,long seed) {
+        return export(parameters,scale,seed,false);
+    }
+    static JsonObject export(NormalNoise parameters,float scale,long seed,boolean slow) {
         var noise=parameters.create(new WorldgenRandom(new LegacyRandomSource(seed)));
         var result=new JsonObject();var layers=new JsonArray();
         for(var layer:(Object[])field(noise,"layers")) {
             var perlin=field(layer,"noise");
-            var encoded=new JsonObject();encoded.addProperty("frequency",((Number)field(layer,"frequency")).doubleValue()*scale);
+            var encoded=new JsonObject();encoded.addProperty("frequency",((Number)field(layer,"frequency")).doubleValue()*(slow?1:scale));
             encoded.addProperty("amplitude",((Number)field(layer,"amplitude")).floatValue());
             var offsets=new JsonArray();for(String axis:new String[]{"X","Y","Z"})offsets.add(((Number)field(perlin,"offset"+axis)).doubleValue());encoded.add("offsets",offsets);
             var permutation=new JsonArray();for(byte p:(byte[])field(perlin,"perms"))permutation.add(Byte.toUnsignedInt(p));encoded.add("permutation",permutation);
             layers.add(encoded);
         }
-        result.add("layers",layers);return result;
+        result.add("layers",layers);if(slow)result.addProperty("coordinate_scale",scale);return result;
     }
     private static Object field(Object object,String name) {
         for(Class<?> type=object.getClass();type!=null;type=type.getSuperclass()) {

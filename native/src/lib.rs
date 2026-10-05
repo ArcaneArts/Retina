@@ -329,7 +329,7 @@ impl TerrainEngine {
         Ok(result.values.into_iter().map(f32::from_bits).collect())
     }
 
-    /// Only count sampling crosses the device boundary. Crowns, live canopy,
+    /// Spatial counts/provider noise cross the device boundary. Crowns, live canopy,
     /// survival and recipe/anchor write order stay in the parallel Rust planner.
     pub fn plan_decorations(
         &self,
@@ -368,7 +368,7 @@ impl TerrainEngine {
                 counts.extend(queries.into_iter().zip(values));
             }
         }
-        Ok(decoration::plan_sampled(
+        let mut replay = decoration::Replay::new(
             field,
             profile,
             request,
@@ -378,7 +378,16 @@ impl TerrainEngine {
             mask,
             profile.decoration_noise.as_ref().map(|_| &counts),
             Some(&anchors),
-        ))
+        );
+        let mut samples = decoration::provider_noise::Samples::default();
+        loop {
+            let queries = replay.poll(&samples);
+            if queries.is_empty() {
+                return Ok(replay.finish());
+            }
+            let values = self.provider_noise(request, &queries, job)?;
+            samples.extend(queries.into_iter().zip(values));
+        }
     }
 
     pub fn register_profile(&self, bytes: &[u8]) -> Result<u32, String> {
@@ -1407,14 +1416,25 @@ pub unsafe extern "C" fn retina_sample_decoration_feature(
             .profile(request.reserved)?
             .ok_or("registered feature requires a profile")?;
         let (field, _) = engine.terrain_field(request, 1)?;
-        let result = decoration::feature_sample(
-            &field,
-            &profile,
-            request,
-            recipe as usize,
-            unsafe { *position },
-            seed,
-        )?;
+        let mut samples = decoration::provider_noise::Samples::default();
+        let result = loop {
+            let noise = decoration::provider_noise::Context::new(&samples);
+            let blocks = decoration::feature_sample(
+                &field,
+                &profile,
+                request,
+                recipe as usize,
+                unsafe { *position },
+                seed,
+                &noise,
+            )?;
+            let queries = noise.missing();
+            if queries.is_empty() {
+                break blocks;
+            }
+            let values = engine.provider_noise(request, &queries, None)?;
+            samples.extend(queries.into_iter().zip(values));
+        };
         if result.len() as u64 > capacity {
             return Err("registered feature output buffer too small".into());
         }

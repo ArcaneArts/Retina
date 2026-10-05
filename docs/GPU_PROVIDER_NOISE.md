@@ -1,161 +1,179 @@
-# Registered GPU provider-noise sampler
+# Registered GPU provider noise and ordered feature replay
 
-Minecraft 26.3's noise-based block providers use initialized `NormalNoise`
-stacks, rather than the `BIOME_INFO_NOISE` simplex sampler used by placement
-counts. `ProviderNoiseProfile` exports each stack's actual Perlin permutations,
-offsets, frequencies and float amplitudes after Minecraft initializes it with
-the provider's registered seed. The registered spatial scale is incorporated
-into each layer frequency. Fast and slow dual-noise stacks have separate entries.
-Initialization happens once while exporting the loaded profile; Java and Rust
-do not simulate spatial provider noise during generation.
+Retina exports Minecraft 26.3's initialized `NormalNoise` Perlin stacks and uses
+resident GPU sampling for registered `noise`, `dual_noise` and `noise_threshold`
+block-state providers. Their material choices now reach production simple
+blocks, block columns, vegetation patches, mushroom caps/stems and fallen-tree
+trunks/decorators, including providers nested inside supported wrappers.
 
-Vanilla exports four distinct stacks/eight Perlin layers. The current Terralith
-profile exports 24 stacks/134 layers. Existing feature recipes retain their
-previous representation for this foundation milestone. The sparse sampler is
-available through `TerrainEngine::provider_noise` and the diagnostic C/FFM bridge;
-ordered feature replay still needs to consume its results. This milestone does
-not yet replace the legacy noise-based material choices in generated terrain.
+`ProviderNoiseProfile` initializes each stack with its actual registered provider
+seed, then exports permutations, offsets, frequencies and float amplitudes.
+Initialization happens once during profile export. Java and Rust do not simulate
+spatial provider noise during generation. The profile contains four stacks/eight
+layers for vanilla and 32 stacks/188 layers for the tested Terralith version.
+Terralith exports 490 decoration recipes, up from 463 before spatial providers
+were supported. Counts, thresholds, state order and duplicate states come from
+loaded feature data.
 
-## Integer coordinates and resident batches
+## Sparse GPU sampling and coordinate semantics
 
-The GPU receives sixteen bytes per query: signed integer X/Y/Z and a resident
-program ID. Perlin's lattice permutation repeats every 256 cells. Frequency and
-offset phases are encoded as 48-bit values with forty fractional bits, modulo
-that period. WGSL multiplies the frequency phase by the signed coordinate using
-32-bit limbs before converting the bounded fractional coordinates to floats.
-This avoids rounding far block coordinates to `f32` before scaling, preserves
-negative coordinates and needs no GPU `f64` or backend-specific arithmetic.
-Minecraft's normal Perlin coordinate wrap has a period divisible by 256, so it
-does not require another spatial wrap field.
+Each query uploads sixteen bytes: signed integer X/Y/Z plus a resident program
+ID. Each result is one four-byte float, plus sixteen timestamp bytes per batch
+when available. The stack tables upload once per native profile. The provider
+and placement-count samplers reuse their point/output/readback buffers, layouts,
+timestamp resources and serialized GPU ownership. Active-length bindings prevent
+small batches from reading stale points in larger reused buffers.
 
-The shader then evaluates the actual registered gradients, quintic fade,
-trilinear interpolation and ordered weighted stack sum. The 40-bit coefficient
-quantization and GPU float arithmetic remain approximations. Tiny differences
-near a material-selection threshold must be treated as boundary tolerance when
-the provider selectors are connected. This is not a promise of CPU seed parity
-or cross-backend bit identity.
+Fast provider coordinates multiply integer positions by the registered scale in
+double precision in Minecraft. Retina folds that scale into each layer frequency
+and uses 48-bit modulo phases with forty fractional bits, multiplied by integer
+coordinates using WGSL `u32` limbs. Perlin permutations repeat every 256 cells;
+Minecraft's normal coordinate wrap period is divisible by 256. This retains far
+integer-coordinate fractions without GPU `f64`.
 
-One table upload holds all stacks for the native profile ID. Later batches reuse
-it. The sampler shares the sparse count path's point/output/readback buffers,
-bind-group layout, timestamp resources and serialized GPU ownership. Active-length
-bindings prevent a small batch from sampling stale points in a larger reused
-buffer. Empty batches skip dispatch. Each query reads back one four-byte float;
-timestamps add sixteen bytes per batch when available. No full provider grid or
-extra terrain readback is introduced by this API.
+`DualNoiseProvider`'s slow path is different: Minecraft first rounds integer
+position times `slow_scale` to a float. The GPU performs that float multiplication,
+then decodes the coordinate and double layer-frequency significands and evaluates
+their phase product using integer limbs. The full frequency is retained, including
+frequencies above 256; removing whole periods before multiplying a fractional
+coordinate would be incorrect. Program entries distinguish the two coordinate
+modes. Negative coordinates, zero stacks and an actual eighty-layer stack pass
+reference checks. Storage-backed loops have no arbitrary 64-layer rejection.
 
-The provider compute pipeline compiles lazily on its first query, independently
-of the large density/material specialization programs. The first observed new
-shader query took 138.16 ms including compilation, table upload and buffer setup;
-subsequent process/profile first queries took 4–14 ms with warm driver caches.
-These startup costs are separate from warmed batch timings.
+The shader evaluates registered gradients, quintic fade, trilinear interpolation
+and the ordered weighted stack sum. Frequency/offset quantization and GPU float
+arithmetic remain approximations; very close selection thresholds can differ.
+This does not promise Minecraft seed parity or cross-backend bit identity.
 
-## Timing ABI and validation
+## Ordered replay and selectors
 
-Timing ABI 6 appends **Provider noise** as stage 25: 26 stages, a 240-byte
-snapshot and a 280-byte detailed region report. The legacy 40-byte region report
-is unchanged. A separate measured flag enables the colored F3 row only when
-provider timestamps exist. The device timer overlaps host/planning time and is
-not added to region latency. Native, Java, payload serialization, F3 metrics tests
-and the region benchmark reader use the same stage layout.
+Every global anchor owns its placement stream and live overlay. A material lookup
+uses an immutable map of resolved GPU values. An unresolved lookup records its
+actual position/program and returns a provisional value for query discovery. An
+anchor with missing samples publishes no commands. The engine sorts/deduplicates
+the union of missing queries across anchors, submits one sparse GPU batch and
+retries only unresolved anchors. Completed anchors retain their final command
+buffers. The process stops when every executed lookup is resolved; there is no
+fixed retry cutoff, fabricated final material or vanilla-generator fallback.
 
-`providerNoiseTest` collects actual configured and inline placed features,
-including registered block-state-provider holder references. It compares all
-exported stacks with Minecraft's own `Noise.get` implementation. Extra fixtures
-cover four seeds, three scales, three octave bases, normalization, absent octave
-weights and an entirely zero stack. Equivalent initialized stacks are deduplicated.
+A retry reconstructs that anchor's stream and ordered overlay from its original
+seed. This matters for noise-threshold branches, nested patches, nullable rules,
+live heightmaps and survival checks: a changed material can change later draws or
+placements. Provisional writes remain local to the discarded replay. Indexed
+collection retains anchor order for final chunk/region commands. GPU work is
+batched across anchors, rather than invoked for each block or attempt.
 
-The reference corpus contains 32,768 vanilla and 90,112 Terralith XYZ queries.
-Half are near spawn and half range to ±30 million blocks; the first points also
-exercise neighboring integer positions beyond `f32`'s exact range. Maximum errors
-are 0.00001896 and 0.00003812 respectively, including the far-coordinate cases.
-The assertions scale a fixed tolerance by the stack's actual absolute amplitude
-sum. Small/large/empty batches, resident input reuse, repeated batches, eight calls
-from four workers, request-order stability, terrain-seed independence and provider
-device timestamps across the C ABI pass. Count and provider queries alternate
-through their shared buffers and concurrent calls without changing either result.
-Invalid program IDs return the native argument error without GPU transfers.
+- `noise` clamps `(1 + noise) / 2` to `[0, 0.9999]` and indexes the loaded state
+  list, preserving duplicate entries. It consumes no placement randomness.
+- `noise_threshold` uses the loaded threshold, uniform low/high lists,
+  `high_chance` and default state. Rust preserves each branch's random draws.
+- `dual_noise` derives local variety from the slow field, then uses the fast
+  field to choose a possible-state index. Only the slow sample at that chosen
+  offset is needed: the other possible-state samples have no side effects or
+  random draws. Offset arithmetic retains Minecraft's signed integer wrapping.
 
-Twenty identical resident batches measure the actual sampler on Metal / Apple
-M4 Max, excluding the Minecraft reference computation:
+The diagnostic feature bridge uses the same provider/replay logic as production.
+F3's colored **Provider noise** row now receives actual region/chunk device time.
+Timing ABI 6 remains 26 stages, a 240-byte snapshot and a 280-byte detailed region
+report; the legacy 40-byte region report is unchanged. Device time overlaps
+host/planning time and is not added to region latency.
 
-| Corpus | Queries/batch | Mean host ms/batch | Mean GPU device ms/batch | Upload bytes/batch | Readback bytes/batch |
-| --- | ---: | ---: | ---: | ---: | ---: |
-| Vanilla plus fixtures | 32,768 | 0.389 | 0.0388 | 524,288 | 131,088 |
-| Terralith plus fixtures | 90,112 | 0.653 | 0.1411 | 1,441,792 | 360,464 |
+## Reference and compatibility checks
 
-These are the final shared-buffer run's twenty-batch means. Earlier warm runs
-measured 0.708–0.867 ms vanilla / 0.927–0.963 ms Terralith host time and
-0.0112–0.0159 ms / 0.0385–0.0436 ms device time; system load and GPU clocks affect
-these small batches. The table does not establish a feature-planning speedup.
+`providerNoiseTest` collects actual configured/inline features and provider holder
+references. It compares exported stacks against Minecraft's own `Noise.get`,
+including the distinct fast/slow coordinate arithmetic. Fixtures cover four
+seeds, three scales, four octave bases, normalization, missing octave weights,
+zero stacks and more than 64 layers. Points include adjacent integers beyond
+float's exact range and positions to ±30 million blocks. Count/provider batches
+alternate through shared buffers, including eight calls from four workers.
+Invalid IDs return the actual native error without GPU transfers.
 
-The current profiles' other exported values match the prior provider milestone
-exactly. The shared count sampler retains its Minecraft reference checks:
-11,008 vanilla / 54,528 Terralith queries pass; the 50 Terralith differences are
-within the existing float-boundary tolerance. This measures the new sampler's
-cost, not a whole-region or CPU-to-GPU speedup. Vulkan/DX12 use the same shader
-but hardware runtime measurements remain unavailable here.
+The final reference corpus contains 80,896 vanilla / 140,288 Terralith queries.
+Maximum absolute errors were 0.00001896 / 0.00003812, including distant coordinates
+and actual 80-layer stacks.
 
-## Whole-region compatibility measurements
+The feature harness compares actual Minecraft output with production Rust logic
+using the same controlled random stream and substrate. Registered vanilla and
+Terralith features cover simple blocks, columns, nested patches, mushrooms and
+fallen trees. Additional mixed-provider fixtures include rotations, nullable
+rules and threshold branches, with a randomized tail layer that exposes random
+stream differences. Forty fixtures × four terrain/height cases × 64 seeds produce
+10,240 comparisons per pack; all 20,480 comparisons pass. Registered feature
+checks add 13,376 vanilla / 27,520 Terralith comparisons.
 
-The retained `5b653f4` native library and this candidate each generated twenty
-adjacent regions, after two warmups, with complete vanilla and Terralith profiles
-including structures and decorations. Runs used one or two concurrent region
-calls, forced the GPU interpreter and ran sequentially at `nice -n 10`; compilation
-and Java tests were not running alongside them. The full exported profiles differ
-only by the new stack catalog. Both builds read the same current profile files.
+Chunk/MCA checks compare every block and all six final heightmaps in sampled
+chunks, including negative coordinates and region edges. A forced mixed-provider
+region verifies that the production region report contains provider device time.
+The full build, native unit/GPU, count reference, preview and region checks pass,
+including DH temporary caching/promotion, parallel requests, concurrent edits,
+partial promotion, eviction, save isolation, MCA decoding and failure cleanup.
 
-| Profile / simultaneous calls | Retained mean region ms | Candidate mean region ms | Retained chunks/s | Candidate chunks/s |
-| --- | ---: | ---: | ---: | ---: |
-| Vanilla / 1 | 258.35 | 247.90 | 3,959.6 | 4,125.0 |
-| Vanilla / 2 | 467.46 | 439.52 | 4,375.7 | 4,650.8 |
-| Terralith / 1 | 554.01 | 523.28 | 1,847.4 | 1,955.9 |
-| Terralith / 2 | 1,102.06 | 1,019.85 | 1,856.9 | 2,006.9 |
+## Whole-region measurements
 
-These differences do not establish a throughput improvement: actual feature
-replay does not call the new sampler yet, its region device counter remains zero,
-and system load/run order were not controlled. Retained measurements from the
-previous milestone were substantially slower, which is why the retained library
-was measured again rather than attributing that difference to this change.
+Six twenty-region runs used complete profiles with structures/decorations,
+including two warmups per run. Runs were sequential at `nice -n 10`, with no
+compilation/tests alongside them, on Metal / Apple M4 Max. The GPU interpreter
+was forced to keep large density-program compilation out of the measurements.
 
-Initialization measured 40.5–55.0 ms. Profile registration was 514.8–524.8 ms
-vanilla and 1,019.0–1,188.8 ms Terralith. Peak process RSS ranged from 920.0 to
-1,201.8 MB vanilla and 1,067.5 to 1,124.7 MB Terralith. Twenty region files totaled
-153,907,200 and 131,649,536 bytes respectively, identical between builds and call
-counts. Per-region transfers remained approximately 14.27 MB upload / 45.62 MB
-readback vanilla and 12.39 MB / 41.9 MB Terralith, including existing terrain,
-count and ore work. Resident provider stacks are uploaded only by provider queries.
+| Profile | Concurrent calls | Mean region ms | Chunks/s |
+| --- | ---: | ---: | ---: |
+| Prior vanilla recipes / current replay framework | 1 | 243.55 | 4,200.4 |
+| Prior Terralith recipes / current replay framework | 1 | 484.27 | 2,113.4 |
+| Spatial vanilla providers | 1 | 245.13 | 4,172.9 |
+| Spatial vanilla providers | 2 | 434.82 | 4,702.2 |
+| Spatial Terralith providers | 1 | 489.19 | 2,092.2 |
+| Spatial Terralith providers | 2 | 912.12 | 2,243.4 |
 
-All 163,840 chunk-NBT comparisons passed: four candidate runs against retained
-prior outputs, and four freshly measured retained runs against candidate outputs.
-The broader build, native unit/GPU, block-feature, region and preview harnesses
-also passed, including MCA decode, chunk/MCA blocks and heightmaps, DH temporary
-regions, promotion, concurrent edits, eviction, partial saves and failure cleanup.
-The tested and packaged native SHA-256 is
-`04eb265ecdc6e0a7d87fb46eb5056f8252e0b71970fc66353ad92986f2c56c4b`.
+The prior-profile runs matched all 40,960 retained chunk NBT records. The spatial
+concurrent runs matched another 40,960 serial records. Spatial-provider outputs
+are intentionally different from the older approximations, so those two recipe
+sets are not compared for NBT equality. Region times are observations under the
+current system load; this fidelity change does not establish a generator speedup.
+
+Initialization measured 37.5–56.5 ms. Profile registration was 498.2–504.7 ms
+vanilla / 989.9–1,037.7 ms Terralith. Spatial-profile first warmup regions took
+262.7–337.0 ms vanilla / 545.1–545.8 ms Terralith, including lazy provider-pipeline
+setup when used. Peak RSS for spatial runs was 903.0–1,033.7 MB vanilla and
+1,022.4–1,169.0 MB Terralith. Twenty spatial region files totaled 153,911,296 and
+131,739,648 bytes respectively, identical between serial/concurrent runs.
+
+Spatial serial transfers averaged 14,289,824 bytes upload / 45,622,400 bytes
+readback per vanilla region and 12,461,469 / 41,921,215 per Terralith region.
+Compared with prior recipes, increases were about 18.1 KB / 4.5 KB vanilla and
+76.3 KB / 19.1 KB Terralith per region, including newly supported feature/count
+work. Provider device time averaged 0.0076 ms vanilla / 0.0188 ms Terralith per
+serial region; it overlapped region planning. Larger concurrent worker timers
+reflect contention and summed work, rather than independent wall-time savings.
+
+The measured native SHA-256 was
+`c13960c990614cc1e210fb0361ea15f8300e1f837829effa6b6bab105597139a`.
+A subsequent profile-validation change removes only the unused 64-layer ceiling
+and corrects its scale error message; the expanded stack-reference test verifies
+that change. The final tested and packaged native SHA-256 is
+`471685465e646edf5e306066f031f3e926600b06574a0312c56a0fe97e620f11`.
 
 Reproduction:
 
 ```sh
-./gradlew build nativeUnitTest nativeGpuTest providerNoiseTest decorationCountTest \
+./gradlew build nativeGpuTest providerNoiseTest decorationCountTest \
   blockFeatureTest previewTest regionTest \
   -PtestPack=/Users/cyberpwn/Downloads/Terralith_v2.6.5+26.3.zip \
   --no-parallel --max-workers=1
 ```
 
-The exported full profiles and sampler measurement JSON files are under
-`build/provider-noise-{vanilla,terralith}*.json` (ignored). Eight whole-region
-run outputs and measurements are under `build/goal-baseline/provider-noise/`;
-the reproduction scripts there use `scripts/native-region-benchmark.py` with
-`--count 20 --warmups 2 --parallel 1` or `2`, `--program-execution interpreter`
-and `--compare` against the other build's MCA files.
+Full profiles and sampler measurements are in ignored
+`build/provider-noise-{vanilla,terralith}*.json`. The six region-run outputs,
+measurements and reproduction script are in `build/goal-baseline/provider-replay/`.
+The script uses `scripts/native-region-benchmark.py` with `--count 20 --warmups 2`,
+`--parallel 1` or `2`, `--program-execution interpreter` and matched MCA comparisons.
+The previous sampler-only milestone and its historical measurements are retained
+in Git commit `4fe9290`.
 
-## Next integration requirements
+## Remaining work
 
-Spatial material selectors must preserve each provider's choice equations and
-random consumption. `noise` and `dual_noise` do not consume feature randomness;
-`noise_threshold` consumes different draws on its low/high branches. Ordered
-feature replay must resolve those results before publishing final commands,
-retain live survival/canopy checks and avoid one dispatch per block or attempt.
-The GPU API now provides the loaded-data sampler needed for that integration.
-Property copying, further filters, per-expression density interpolation, cold
-specialization cost and additional measured Rust scan work also remain active.
+`copy_properties`, additional live/spatial filters and nullable transformation
+combinations remain unsupported and are reported. The approximate tree planner
+still uses its existing flattened trunk/foliage material palettes. Further
+survival adapters, per-expression density interpolation, cold specialization
+cost and additional measured Rust scan reductions remain part of the wider goal.

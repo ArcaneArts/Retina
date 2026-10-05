@@ -101,6 +101,7 @@ struct Context<'a> {
     overlay: &'a Overlay,
     blocks: &'a mut Vec<WorldBlock>,
     start: usize,
+    noise: &'a provider_noise::Context<'a>,
 }
 impl Context<'_> {
     fn material(&self, at: [i32; 3]) -> Option<u16> {
@@ -153,7 +154,8 @@ impl Context<'_> {
                         let direction = directions[rng.below(directions.len() as i32) as usize];
                         let pos = shift(at, direction, 1);
                         if (rng.unit() as f32) <= *probability && self.test(&recipe.air, pos) {
-                            let material = provider.sample(rng, pos, &|p| self.material(p));
+                            let material =
+                                provider.sample(rng, pos, &|p| self.material(p), self.noise);
                             self.put(pos, material);
                         }
                     }
@@ -224,6 +226,7 @@ pub(super) fn place(
     request: ChunkRequest,
     overlay: &Overlay,
     blocks: &mut Vec<WorldBlock>,
+    noise: &provider_noise::Context,
 ) {
     let start = blocks.len();
     let mut context = Context {
@@ -233,8 +236,11 @@ pub(super) fn place(
         overlay,
         blocks,
         start,
+        noise,
     };
-    let stump = recipe.trunk.sample(rng, at, &|p| context.material(p));
+    let stump = recipe
+        .trunk
+        .sample(rng, at, &|p| context.material(p), context.noise);
     context.put(at, stump);
     context.decorate(recipe, &recipe.stump_decorators, &[at], rng);
     let direction = HORIZONTAL[rng.below(4) as usize];
@@ -265,7 +271,9 @@ pub(super) fn place(
     let mut logs = Vec::new();
     for i in 0..length {
         let p = shift(pos, direction, i);
-        let source = recipe.trunk.sample(rng, p, &|p| context.material(p));
+        let source = recipe
+            .trunk
+            .sample(rng, p, &|p| context.material(p), context.noise);
         let axes = recipe.axes.iter().find(|v| v.source == source).unwrap();
         context.put(p, axes.states[usize::from(direction[2] != 0)]);
         logs.push(p);

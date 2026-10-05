@@ -30,6 +30,24 @@ pub enum Provider {
     RandomBlock {
         states: Vec<u16>,
     },
+    Noise {
+        program: u32,
+        states: Vec<u16>,
+    },
+    DualNoise {
+        fast: u32,
+        slow: u32,
+        variety: [u32; 2],
+        states: Vec<u16>,
+    },
+    NoiseThreshold {
+        program: u32,
+        threshold: f32,
+        high_chance: f32,
+        default_state: u16,
+        low_states: Vec<u16>,
+        high_states: Vec<u16>,
+    },
 }
 #[derive(Clone, Deserialize)]
 pub struct StateRule {
@@ -76,7 +94,18 @@ impl Provider {
                 .chain(fallback.iter().flat_map(|p| p.outputs()))
                 .collect(),
             Self::Rotated { variants, .. } => variants.iter().flat_map(|v| v.states).collect(),
-            Self::RandomBlock { states } => states.clone(),
+            Self::RandomBlock { states }
+            | Self::Noise { states, .. }
+            | Self::DualNoise { states, .. } => states.clone(),
+            Self::NoiseThreshold {
+                default_state,
+                low_states,
+                high_states,
+                ..
+            } => std::iter::once(*default_state)
+                .chain(low_states.iter().copied())
+                .chain(high_states.iter().copied())
+                .collect(),
         }
     }
     pub(super) fn validate(&self, palette: usize) -> bool {
@@ -133,6 +162,37 @@ impl Provider {
                         .all(|v| v.states.iter().all(|id| (*id as usize) < palette))
             }
             Self::RandomBlock { states } => states.iter().all(|id| (*id as usize) < palette),
+            Self::Noise { states, .. } => {
+                !states.is_empty() && states.iter().all(|id| (*id as usize) < palette)
+            }
+            Self::DualNoise {
+                variety, states, ..
+            } => {
+                (1..=64).contains(&variety[0])
+                    && variety[0] <= variety[1]
+                    && variety[1] <= 64
+                    && !states.is_empty()
+                    && states.iter().all(|id| (*id as usize) < palette)
+            }
+            Self::NoiseThreshold {
+                threshold,
+                high_chance,
+                default_state,
+                low_states,
+                high_states,
+                ..
+            } => {
+                threshold.is_finite()
+                    && (-1.0..=1.0).contains(threshold)
+                    && high_chance.is_finite()
+                    && (0.0..=1.0).contains(high_chance)
+                    && !low_states.is_empty()
+                    && !high_states.is_empty()
+                    && std::iter::once(default_state)
+                        .chain(low_states)
+                        .chain(high_states)
+                        .all(|id| (*id as usize) < palette)
+            }
         }
     }
     /// Providers normally use getState, whose nullable rule/random-block result
@@ -142,8 +202,9 @@ impl Provider {
         rng: &mut Rng,
         at: [i32; 3],
         material: &impl Fn([i32; 3]) -> Option<u16>,
+        noise: &provider_noise::Context,
     ) -> u16 {
-        self.sample_optional(rng, at, material)
+        self.sample_optional(rng, at, material, noise)
             .unwrap_or_else(|| material(at).unwrap_or(0))
     }
     pub(super) fn sample_optional(
@@ -151,6 +212,7 @@ impl Provider {
         rng: &mut Rng,
         at: [i32; 3],
         material: &impl Fn([i32; 3]) -> Option<u16>,
+        noise: &provider_noise::Context,
     ) -> Option<u16> {
         match self {
             Self::State { material } => Some(*material),
@@ -158,7 +220,7 @@ impl Provider {
                 let mut n = rng.next() % entries.iter().map(|v| v.weight as u64).sum::<u64>();
                 for v in entries {
                     if n < v.weight as u64 {
-                        return Some(v.provider.sample(rng, at, material));
+                        return Some(v.provider.sample(rng, at, material, noise));
                     }
                     n -= v.weight as u64;
                 }
@@ -169,21 +231,22 @@ impl Provider {
                 values,
                 variants,
             } => {
-                let source = source.sample(rng, at, material);
+                let source = source.sample(rng, at, material, noise);
                 let variant = variants.iter().find(|v| v.source == source).unwrap();
                 Some(variant.states[(values.sample(rng) - variant.minimum) as usize])
             }
             Self::RuleBased { fallback, rules } => {
                 for rule in rules {
                     if rule.predicate.test_with(at, material) == Some(true) {
-                        if let Some(state) = rule.provider.sample_optional(rng, at, material) {
+                        if let Some(state) = rule.provider.sample_optional(rng, at, material, noise)
+                        {
                             return Some(state);
                         }
                     }
                 }
                 fallback
                     .as_ref()
-                    .and_then(|p| p.sample_optional(rng, at, material))
+                    .and_then(|p| p.sample_optional(rng, at, material, noise))
             }
             Self::Rotated {
                 source,
@@ -192,14 +255,53 @@ impl Provider {
             } => {
                 // Direction.getRandom runs before the nested provider.
                 let direction = direction.unwrap_or_else(|| rng.below(6) as usize);
-                let source = source.sample(rng, at, material);
+                let source = source.sample(rng, at, material, noise);
                 Some(variants.iter().find(|v| v.source == source).unwrap().states[direction])
             }
             Self::RandomBlock { states } => {
                 (!states.is_empty()).then(|| states[rng.below(states.len() as i32) as usize])
             }
+            Self::Noise { program, states } => {
+                Some(states[noise_index(noise.get(*program, at), states.len())])
+            }
+            Self::DualNoise {
+                fast,
+                slow,
+                variety,
+                states,
+            } => {
+                let local = (((noise.get(*slow, at) as f64 + 1.0) / 2.0).clamp(0.0, 1.0)
+                    * (variety[1] + 1 - variety[0]) as f64
+                    + variety[0] as f64) as usize;
+                let selected = noise_index(noise.get(*fast, at), local) as i32;
+                // Other possible-state samples have no side effects or draws.
+                // Evaluate only the slow sample the fast selector actually uses.
+                let pos = [
+                    at[0].wrapping_add(selected * 54545),
+                    at[1],
+                    at[2].wrapping_add(selected * 34234),
+                ];
+                Some(states[noise_index(noise.get(*slow, pos), states.len())])
+            }
+            Self::NoiseThreshold {
+                program,
+                threshold,
+                high_chance,
+                default_state,
+                low_states,
+                high_states,
+            } => Some(if noise.get(*program, at) < *threshold {
+                low_states[rng.below(low_states.len() as i32) as usize]
+            } else if (rng.unit() as f32) < *high_chance {
+                high_states[rng.below(high_states.len() as i32) as usize]
+            } else {
+                *default_state
+            }),
         }
     }
+}
+fn noise_index(value: f32, count: usize) -> usize {
+    (((1.0 + value) / 2.0).clamp(0.0, 0.9999) * count as f32) as usize
 }
 #[derive(Clone, Deserialize)]
 pub struct Layer {
@@ -296,6 +398,7 @@ pub(super) fn place_column(
     request: ChunkRequest,
     overlay: &Overlay,
     blocks: &mut Vec<WorldBlock>,
+    noise: &provider_noise::Context,
 ) -> bool {
     let test = |p: &Predicate, at| p.test(at, field, profile, request, overlay) == Some(true);
     let mut heights: Vec<i32> = column.layers.iter().map(|l| l.height.sample(rng)).collect();
@@ -325,17 +428,22 @@ pub(super) fn place_column(
     let start = blocks.len();
     for (layer, height) in column.layers.iter().zip(heights) {
         for _ in 0..height {
-            let material = layer.provider.sample(rng, pos, &|p| {
-                if p[1] < request.min_y || p[1] >= request.min_y + request.height as i32 {
-                    return Some(0);
-                }
-                blocks[start..]
-                    .iter()
-                    .rev()
-                    .find(|b| [b.x, b.y, b.z] == p)
-                    .map(|b| b.material)
-                    .or_else(|| overlay.material(field, profile, request, p))
-            });
+            let material = layer.provider.sample(
+                rng,
+                pos,
+                &|p| {
+                    if p[1] < request.min_y || p[1] >= request.min_y + request.height as i32 {
+                        return Some(0);
+                    }
+                    blocks[start..]
+                        .iter()
+                        .rev()
+                        .find(|b| [b.x, b.y, b.z] == p)
+                        .map(|b| b.material)
+                        .or_else(|| overlay.material(field, profile, request, p))
+                },
+                noise,
+            );
             write(blocks, pos, material);
             pos = std::array::from_fn(|i| pos[i] + column.direction[i]);
         }
@@ -351,17 +459,20 @@ pub(super) fn place(
     request: ChunkRequest,
     overlay: &Overlay,
     blocks: &mut Vec<WorldBlock>,
+    noise: &provider_noise::Context,
 ) {
     let test = |p: &Predicate, at| p.test(at, field, profile, request, overlay) == Some(true);
     match kind {
-        Kind::FallenTree { fallen } => {
-            super::fallen::place(fallen, at, rng, field, profile, request, overlay, blocks)
-        }
-        Kind::HugeMushroom { mushroom } => {
-            super::mushroom::place(mushroom, at, rng, field, profile, request, overlay, blocks)
-        }
+        Kind::FallenTree { fallen } => super::fallen::place(
+            fallen, at, rng, field, profile, request, overlay, blocks, noise,
+        ),
+        Kind::HugeMushroom { mushroom } => super::mushroom::place(
+            mushroom, at, rng, field, profile, request, overlay, blocks, noise,
+        ),
         Kind::BlockColumn { column } => {
-            place_column(column, at, rng, field, profile, request, overlay, blocks);
+            place_column(
+                column, at, rng, field, profile, request, overlay, blocks, noise,
+            );
         }
         Kind::Bamboo { bamboo } => {
             if overlay.material(field, profile, request, at) != Some(0)
@@ -433,6 +544,8 @@ mod provider_tests {
 
     #[test]
     fn rules_continue_after_nullable_matches_and_preserve_draws() {
+        let samples = provider_noise::Samples::default();
+        let noise = provider_noise::Context::new(&samples);
         let provider: Provider = serde_json::from_str(r#"{"type":"rule_based","rules":[
             {"predicate":{"type":"true"},"provider":{"type":"random_block","states":[]}},
             {"predicate":{"type":"material","offset":[0,-1,0],"allowed":[7]},"provider":{"type":"random_block","states":[2,3]}}
@@ -443,27 +556,33 @@ mod provider_tests {
             let mut expected = Rng::new(seed);
             let chosen = [2, 3][expected.below(2) as usize];
             assert_eq!(
-                provider.sample_optional(&mut rng, [-17, 8, -33], &|p| Some(if p[1] == 7 {
-                    7
-                } else {
-                    0
-                })),
+                provider.sample_optional(
+                    &mut rng,
+                    [-17, 8, -33],
+                    &|p| Some(if p[1] == 7 { 7 } else { 0 }),
+                    &noise
+                ),
                 Some(chosen)
             );
             assert_eq!(rng.next(), expected.next());
             let mut rng = Rng::new(seed);
             let mut expected = Rng::new(seed);
             assert_eq!(
-                provider.sample_optional(&mut rng, [0, 0, 0], &|_| Some(4)),
+                provider.sample_optional(&mut rng, [0, 0, 0], &|_| Some(4), &noise),
                 None
             );
-            assert_eq!(provider.sample(&mut rng, [0, 0, 0], &|_| Some(4)), 4);
+            assert_eq!(
+                provider.sample(&mut rng, [0, 0, 0], &|_| Some(4), &noise),
+                4
+            );
             assert_eq!(rng.next(), expected.next());
         }
     }
 
     #[test]
     fn rotations_draw_direction_before_nested_state_and_fixed_direction_draws_nothing() {
+        let samples = provider_noise::Samples::default();
+        let noise = provider_noise::Context::new(&samples);
         for direction in [None, Some(4)] {
             let provider = Provider::Rotated {
                 source: Box::new(Provider::RandomBlock { states: vec![1, 2] }),
@@ -486,7 +605,7 @@ mod provider_tests {
                 let d = direction.unwrap_or_else(|| expected.below(6) as usize);
                 let source = expected.below(2);
                 assert_eq!(
-                    provider.sample(&mut rng, [0, 0, 0], &|_| None),
+                    provider.sample(&mut rng, [0, 0, 0], &|_| None, &noise),
                     3 + source as u16 * 6 + d as u16
                 );
                 assert_eq!(rng.next(), expected.next());

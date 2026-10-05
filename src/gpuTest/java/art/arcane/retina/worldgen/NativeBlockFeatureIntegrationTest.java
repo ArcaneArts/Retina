@@ -119,6 +119,10 @@ public final class NativeBlockFeatureIntegrationTest {
         for(var value:profile.getAsJsonArray("materials"))palette.put(BlockState.CODEC.parse(JsonOps.INSTANCE,value).getOrThrow(),palette.size());
         var constructor=DecorationProfile.class.getDeclaredConstructor(HolderLookup.Provider.class,LinkedHashMap.class);constructor.setAccessible(true);
         var exporter=constructor.newInstance(registry,palette);
+        var noiseField=DecorationProfile.class.getDeclaredField("providerNoise");noiseField.setAccessible(true);
+        var noise=(ProviderNoiseProfile)noiseField.get(exporter);
+        noise.programs.addAll(profile.getAsJsonArray("decoration_provider_noises"));
+        profile.add("decoration_provider_noises",noise.programs);
         var placementClass=Arrays.stream(DecorationProfile.class.getDeclaredClasses()).filter(c->c.getSimpleName().equals("Placement")).findFirst().orElseThrow();
         var placementConstructor=placementClass.getDeclaredConstructor();placementConstructor.setAccessible(true);
         var export=DecorationProfile.class.getDeclaredMethod("placed",net.minecraft.world.level.levelgen.placement.PlacedFeature.class,placementClass,double.class,String.class,List.class,int.class);export.setAccessible(true);
@@ -130,12 +134,19 @@ public final class NativeBlockFeatureIntegrationTest {
             "{\"type\":\"minecraft:random_block\",\"blocks\":[]}",
             "{\"type\":\"minecraft:random_block\",\"blocks\":\"#minecraft:logs\"}",
             "{\"type\":\"minecraft:rotated\",\"state\":{\"type\":\"minecraft:weighted\",\"entries\":[{\"weight\":2,\"data\":\"minecraft:oak_log\"},{\"weight\":3,\"data\":\"minecraft:birch_log\"}]}}",
-            "{\"type\":\"minecraft:rotated\",\"state\":{\"type\":\"minecraft:random_block\",\"blocks\":[\"minecraft:oak_stairs\",\"minecraft:furnace\"]}}"
+            "{\"type\":\"minecraft:rotated\",\"state\":{\"type\":\"minecraft:random_block\",\"blocks\":[\"minecraft:oak_stairs\",\"minecraft:furnace\"]}}",
+            "{\"type\":\"minecraft:noise\",\"seed\":347,\"noise\":{\"base_octave\":-2,\"octave_count\":2},\"scale\":0.23,\"states\":[\"minecraft:oak_log\",\"minecraft:birch_log\",\"minecraft:stone\"]}",
+            "{\"type\":\"minecraft:dual_noise\",\"seed\":-977,\"noise\":{\"base_octave\":-1,\"octave_count\":2},\"scale\":0.75,\"slow_noise\":{\"base_octave\":-3,\"octave_count\":3},\"slow_scale\":0.013,\"variety\":{\"min_inclusive\":1,\"max_inclusive\":8},\"states\":[\"minecraft:oak_log\",\"minecraft:birch_log\",\"minecraft:stone\",\"minecraft:dirt\"]}",
+            "{\"type\":\"minecraft:noise_threshold\",\"seed\":9123,\"noise\":{\"base_octave\":-1,\"octave_count\":3},\"scale\":0.21,\"threshold\":0.1,\"high_chance\":0.4,\"default_state\":\"minecraft:stone\",\"low_states\":[\"minecraft:oak_log\",\"minecraft:birch_log\",\"minecraft:spruce_log\"],\"high_states\":[\"minecraft:dirt\",\"minecraft:grass_block\"]}"
         );
         var providers=new ArrayList<JsonElement>();for(var rule:rules)providers.add(providerStates(JsonParser.parseString(rule)));
         for(var direction:Direction.values()) {
             var provider=providerStates(JsonParser.parseString(rules.get(5))).getAsJsonObject();provider.addProperty("direction",direction.getName());providers.add(provider);
         }
+        for(float threshold:new float[]{-.8F,0,.8F}) {
+            var provider=providerStates(JsonParser.parseString(rules.getLast())).getAsJsonObject();provider.addProperty("threshold",threshold);providers.add(provider);
+        }
+        var wrapped=new JsonObject();wrapped.addProperty("type","minecraft:rotated");wrapped.add("state",providerStates(JsonParser.parseString(rules.get(7))));providers.add(wrapped);
         var synthetic=(JsonArray)recipeField.get(exporter);var features=new ArrayList<Feature>();
         for(var provider:providers)for(String kind:List.of("block_column","simple_block")) {
             var featureJson=new JsonObject();featureJson.addProperty("type","minecraft:"+kind);
@@ -175,7 +186,7 @@ public final class NativeBlockFeatureIntegrationTest {
         // This is a controlled, cave-free carrier for the provider recipes; its
         // imported replacement tables describe the old, smaller palette.
         for(var b:profile.getAsJsonArray("biomes"))b.getAsJsonObject().remove("cave_features");
-        checkRegion(profile,materials,"forest");
+        checkRegion(profile,materials,"forest",true);
         System.out.println("QA_EVT {\"event\":\"registered_state_providers_minecraft_reference\",\"status\":\"pass\",\"context\":{\"datapack\":"+packed+",\"features\":"+features.size()+",\"cases\":"+checked+",\"empty\":"+empty+"}}");
     }
     private static JsonElement providerStates(JsonElement value) {
@@ -184,7 +195,10 @@ public final class NativeBlockFeatureIntegrationTest {
             return BlockState.FULL_CODEC.encodeStart(JsonOps.INSTANCE,state).getOrThrow();
         }
         var object=value.getAsJsonObject();
-        for(String key:List.of("state","source","fallback"))if(object.has(key))object.add(key,providerStates(object.get(key)));
+        for(String key:List.of("state","source","fallback","default_state"))if(object.has(key))object.add(key,providerStates(object.get(key)));
+        for(String key:List.of("states","low_states","high_states"))if(object.has(key)) {
+            var states=new JsonArray();for(var state:object.getAsJsonArray(key))states.add(providerStates(state));object.add(key,states);
+        }
         for(String key:List.of("entries","rules"))if(object.has(key))for(var child:object.getAsJsonArray(key)) {
             var e=child.getAsJsonObject();var slot=key.equals("rules")?"then":"data";e.add(slot,providerStates(e.get(slot)));
         }
@@ -292,6 +306,9 @@ public final class NativeBlockFeatureIntegrationTest {
         System.out.println("QA_EVT {\"event\":\"registered_plant_partner_minecraft_reference\",\"status\":\"pass\",\"context\":{\"state_pairs\":"+checked+"}}");
     }
     private static void checkRegion(JsonObject original,BlockState[] materials,String name)throws Exception {
+        checkRegion(original,materials,name,false);
+    }
+    private static void checkRegion(JsonObject original,BlockState[] materials,String name,boolean expectProvider)throws Exception {
         var json=original.deepCopy();
         for(String key:List.of("registry_program","climate_targets","structures","terrain_features"))json.remove(key);
         var biome=original.getAsJsonArray("biomes").asList().stream().map(JsonElement::getAsJsonObject)
@@ -309,7 +326,8 @@ public final class NativeBlockFeatureIntegrationTest {
         var codec=PalettedContainer.codecRW(BlockState.CODEC,Strategy.createForBlockStates(Block.BLOCK_STATE_REGISTRY),Blocks.AIR.defaultBlockState());
         int compared=0,vegetation=0,activeChunks=0;
         try {
-            nativeTerrain.generateRegion(request,directory.resolve("r.-1.0.mca"),net.minecraft.SharedConstants.getCurrentVersion().dataVersion().version(),"minecraft:"+name);
+            var report=nativeTerrain.generateRegion(request,directory.resolve("r.-1.0.mca"),net.minecraft.SharedConstants.getCurrentVersion().dataVersion().version(),"minecraft:"+name);
+            if(expectProvider && report.stages().gpuMeasured())require(report.stages().providerMeasured() && report.stages().nanos(NativeTimings.PROVIDER_NOISE)>0,"production ordered replay records GPU provider time in the region report");
             try(var storage=new RegionFileStorage(new RegionStorageInfo("retina-block-features",Level.OVERWORLD,"chunk"),directory,false)) {
                 var positions=new LinkedHashSet<ChunkPos>();
                 for(int z:new int[]{0,15,31})for(int x:new int[]{-32,-17,-1})positions.add(new ChunkPos(x,z));

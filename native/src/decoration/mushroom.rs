@@ -48,6 +48,7 @@ pub(super) fn place(
     request: ChunkRequest,
     overlay: &Overlay,
     blocks: &mut Vec<WorldBlock>,
+    noise: &provider_noise::Context,
 ) {
     let mut height = rng.below(3) + 4;
     if rng.below(12) == 0 {
@@ -134,7 +135,9 @@ pub(super) fn place(
                     .enumerate()
                     .fold(0, |mask, (i, on)| mask | ((*on as usize) << i));
                 let pos = [at[0] + dx, at[1] + dy, at[2] + dz];
-                let source = recipe.cap.sample(rng, pos, &|p| material_at(blocks, p));
+                let source = recipe
+                    .cap
+                    .sample(rng, pos, &|p| material_at(blocks, p), noise);
                 let states = &recipe
                     .faces
                     .iter()
@@ -158,7 +161,9 @@ pub(super) fn place(
     }
     for dy in 0..height {
         let pos = [at[0], at[1] + dy, at[2]];
-        let material = recipe.stem.sample(rng, pos, &|p| material_at(blocks, p));
+        let material = recipe
+            .stem
+            .sample(rng, pos, &|p| material_at(blocks, p), noise);
         if test(&recipe.replaceable, pos) {
             blocks.push(WorldBlock {
                 x: pos[0],

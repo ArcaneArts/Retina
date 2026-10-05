@@ -433,57 +433,140 @@ pub(crate) fn plan_sampled(
     counts: Option<&counts::Counts>,
     anchor_recipes: Option<&[Vec<u32>]>,
 ) -> Vec<Vec<Placement>> {
-    let origins: Vec<_> = (0..field.side * field.side)
-        .map(|index| {
-            (
-                field.origin_x + (index % field.side) as i32,
-                field.origin_z + (index / field.side) as i32,
-            )
-        })
-        .collect();
-    let generate = |&(x, z): &(i32, i32)| {
-        let index = (z - field.origin_z) as usize * field.side + (x - field.origin_x) as usize;
-        anchors_sampled(
+    let samples = provider_noise::Samples::default();
+    let mut replay = Replay::new(
+        field,
+        profile,
+        request,
+        origin_x,
+        origin_z,
+        side,
+        mask,
+        counts,
+        anchor_recipes,
+    );
+    assert!(
+        replay.poll(&samples).is_empty(),
+        "spatial providers must use TerrainEngine::plan_decorations"
+    );
+    replay.finish()
+}
+
+/// Completed anchors are retained while only unresolved ordered overlays retry.
+/// Provisional writes never leave a replay with missing GPU samples.
+pub(crate) struct Replay<'a> {
+    field: &'a Field,
+    profile: &'a WorldProfile,
+    request: ChunkRequest,
+    origin_x: i32,
+    origin_z: i32,
+    side: usize,
+    mask: Option<&'a crate::geology::CaveMask>,
+    counts: Option<&'a counts::Counts>,
+    ids: Option<&'a [Vec<u32>]>,
+    blocks: Vec<Option<Vec<WorldBlock>>>,
+}
+impl<'a> Replay<'a> {
+    pub(crate) fn new(
+        field: &'a Field,
+        profile: &'a WorldProfile,
+        request: ChunkRequest,
+        origin_x: i32,
+        origin_z: i32,
+        side: usize,
+        mask: Option<&'a crate::geology::CaveMask>,
+        counts: Option<&'a counts::Counts>,
+        ids: Option<&'a [Vec<u32>]>,
+    ) -> Self {
+        Self {
             field,
             profile,
             request,
-            x,
-            z,
+            origin_x,
+            origin_z,
+            side,
             mask,
             counts,
-            anchor_recipes.map(|a| a[index].as_slice()),
-        )
-    };
-    // Indexed collection preserves global anchor order despite parallel planning.
-    let blocks: Vec<_> = if side > 1 {
-        origins.par_iter().map(generate).collect()
-    } else {
-        origins.iter().map(generate).collect()
-    };
-    let mut targets = vec![Vec::new(); side * side];
-    for block in blocks.into_iter().flatten() {
-        let cx = block.x.div_euclid(16) - origin_x;
-        let cz = block.z.div_euclid(16) - origin_z;
-        let y = block.y - request.min_y;
-        if cx < 0
-            || cz < 0
-            || cx as usize >= side
-            || cz as usize >= side
-            || y < 0
-            || y >= request.height as i32
-        {
-            continue;
+            ids,
+            blocks: (0..field.side * field.side).map(|_| None).collect(),
         }
-        targets[cz as usize * side + cx as usize].push(Placement {
-            index: y as u32 * 256
-                + block.z.rem_euclid(16) as u32 * 16
-                + block.x.rem_euclid(16) as u32,
-            material: block.material,
-            upper: block.upper,
-            role: block.role,
-        });
     }
-    targets
+    pub(crate) fn poll(&mut self, samples: &provider_noise::Samples) -> Vec<[i32; 4]> {
+        let generate = |(index, completed): (usize, &mut Option<Vec<WorldBlock>>)| {
+            if completed.is_some() {
+                return Vec::new();
+            }
+            let x = self.field.origin_x + (index % self.field.side) as i32;
+            let z = self.field.origin_z + (index / self.field.side) as i32;
+            let noise = provider_noise::Context::new(samples);
+            let blocks = anchors_sampled(
+                self.field,
+                self.profile,
+                self.request,
+                x,
+                z,
+                self.mask,
+                self.counts,
+                self.ids.map(|a| a[index].as_slice()),
+                &noise,
+            );
+            let missing = noise.missing();
+            if missing.is_empty() {
+                *completed = Some(blocks);
+            }
+            missing
+        };
+        let batches: Vec<_> = if self.side > 1 {
+            self.blocks
+                .par_iter_mut()
+                .enumerate()
+                .map(generate)
+                .collect()
+        } else {
+            self.blocks.iter_mut().enumerate().map(generate).collect()
+        };
+        let mut queries: Vec<_> = batches.into_iter().flatten().collect();
+        queries.sort_unstable();
+        queries.dedup();
+        queries
+    }
+    pub(crate) fn finish(self) -> Vec<Vec<Placement>> {
+        let Self {
+            request,
+            origin_x,
+            origin_z,
+            side,
+            blocks,
+            ..
+        } = self;
+        let mut targets = vec![Vec::new(); side * side];
+        for block in blocks
+            .into_iter()
+            .flat_map(|b| b.expect("unfinished provider replay"))
+        {
+            let cx = block.x.div_euclid(16) - origin_x;
+            let cz = block.z.div_euclid(16) - origin_z;
+            let y = block.y - request.min_y;
+            if cx < 0
+                || cz < 0
+                || cx as usize >= side
+                || cz as usize >= side
+                || y < 0
+                || y >= request.height as i32
+            {
+                continue;
+            }
+            targets[cz as usize * side + cx as usize].push(Placement {
+                index: y as u32 * 256
+                    + block.z.rem_euclid(16) as u32 * 16
+                    + block.x.rem_euclid(16) as u32,
+                material: block.material,
+                upper: block.upper,
+                role: block.role,
+            });
+        }
+        targets
+    }
 }
 
 #[cfg(test)]
@@ -495,7 +578,13 @@ fn anchors(
     chunk_z: i32,
     mask: Option<&crate::geology::CaveMask>,
 ) -> Vec<WorldBlock> {
-    anchors_sampled(field, profile, request, chunk_x, chunk_z, mask, None, None)
+    let samples = provider_noise::Samples::default();
+    let noise = provider_noise::Context::new(&samples);
+    let blocks = anchors_sampled(
+        field, profile, request, chunk_x, chunk_z, mask, None, None, &noise,
+    );
+    assert!(noise.missing().is_empty());
+    blocks
 }
 /// Discover the complete GPU biome union once per field, sharing it across
 /// sparse-count rounds and final geometry planning.
@@ -601,6 +690,7 @@ fn anchors_sampled(
     mask: Option<&crate::geology::CaveMask>,
     counts: Option<&counts::Counts>,
     ids: Option<&[u32]>,
+    noise: &provider_noise::Context,
 ) -> Vec<WorldBlock> {
     let ids = ids
         .map(std::borrow::Cow::Borrowed)
@@ -814,6 +904,7 @@ fn anchors_sampled(
                     request,
                     &mut overlay,
                     &mut blocks,
+                    noise,
                 );
             }
             Kind::SimpleBlock { simple } => {
@@ -826,6 +917,7 @@ fn anchors_sampled(
                     request,
                     &mut overlay,
                     &mut blocks,
+                    noise,
                 );
             }
             feature => blocks::place(
@@ -837,6 +929,7 @@ fn anchors_sampled(
                 request,
                 &overlay,
                 &mut blocks,
+                noise,
             ),
         }
         if profile.ordered_decorations {
@@ -869,6 +962,7 @@ pub(crate) fn feature_sample(
     recipe: usize,
     at: [i32; 3],
     seed: u64,
+    noise: &provider_noise::Context,
 ) -> Result<Vec<[i32; 4]>, String> {
     let recipe = profile
         .decorations
@@ -903,6 +997,7 @@ pub(crate) fn feature_sample(
                 request,
                 &mut overlay,
                 &mut blocks,
+                noise,
             );
         }
         Kind::SimpleBlock { simple } => {
@@ -915,6 +1010,7 @@ pub(crate) fn feature_sample(
                 request,
                 &mut overlay,
                 &mut blocks,
+                noise,
             );
         }
         feature => blocks::place(
@@ -926,6 +1022,7 @@ pub(crate) fn feature_sample(
             request,
             &overlay,
             &mut blocks,
+            noise,
         ),
     }
     Ok(blocks

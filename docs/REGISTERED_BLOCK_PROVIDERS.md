@@ -121,11 +121,10 @@ The after SHA-256 is the packaged/tested hash above.
 
 ## Remaining provider work
 
-Spatial `noise`, `noise_threshold` and `dual_noise` programs still require ordered
-replay integration with the [GPU provider sampler](GPU_PROVIDER_NOISE.md).
-The legacy plant path retains its previous noise-provider
-approximations until that work is complete. `copy_properties` also remains
-unsupported.
+Spatial `noise`, `noise_threshold` and `dual_noise` programs now consume the
+[GPU sampler through ordered replay](GPU_PROVIDER_NOISE.md), including nested
+block-feature providers. The approximate tree planner retains flattened material
+palettes. `copy_properties` remains unsupported.
 
 Contextual rules support the exported material/tag/fluid/survival predicates;
 unknown predicates remain logged omissions. Nullable providers inside weighted,

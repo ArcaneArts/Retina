@@ -29,16 +29,17 @@ giant mushrooms now retain loaded providers, cap faces and clearance rules; see
 their lengths, orientations, terrain checks and decorators; see
 [registered fallen trees](REGISTERED_FALLEN_TREES.md). Loaded vegetation patches
 and general simple blocks now retain their local placement data and nested
-replay; see [registered patches](REGISTERED_VEGETATION_PATCHES.md). Spatial
-providers and further filters remain required.
+replay; see [registered patches](REGISTERED_VEGETATION_PATCHES.md). Further
+spatial filters remain required.
 Registered rule-based, rotated and random-block providers now retain their
 positions, ordered branches, optional results and random-draw semantics; see
-[block-state providers](REGISTERED_BLOCK_PROVIDERS.md). Spatial noise providers,
-property copying and some nullable transformation combinations remain required.
-The [GPU provider-noise sampler](GPU_PROVIDER_NOISE.md) now exports and samples
-actual initialized Perlin stacks with integer XYZ queries and resident buffers.
-Ordered feature replay still needs to consume those spatial samples; legacy
-provider choices retain their previous behavior in this foundation milestone.
+[block-state providers](REGISTERED_BLOCK_PROVIDERS.md). Property copying and
+some nullable transformation combinations remain required.
+The [GPU provider-noise replay](GPU_PROVIDER_NOISE.md) now samples actual initialized
+Perlin stacks with sparse integer XYZ queries and resident buffers. Registered
+noise, dual-noise and threshold providers drive production block-feature material
+choices. Ordered replay retries unresolved anchors while preserving completed
+commands, live overlays and random streams.
 The [surface-relative filter](REGISTERED_SPATIAL_FILTERS.md) now respects loaded
 heightmaps and inclusive offsets in top-level and nested placement programs.
 
@@ -50,7 +51,7 @@ vegetation patches. [Registered vertical placements](REGISTERED_VERTICAL_PLACEME
 now preserve height distributions, environment scans and 3D biome restrictions,
 with one discovery pass per anchor. Patches now receive complete GPU footprint
 substrate outside those anchors, preserving region/chunk random replay. Remaining
-spatial filters/providers are still required.
+spatial filters and provider transformations are still required.
 [Final paired-plant replay](PAIRED_PLANT_REPLAY.md) now repairs overlapping tall
 plants after all feature/structure writes, using registered block identities.
 Broader biome/MCA validation passes; the previous defect and measured sparse
