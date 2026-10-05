@@ -167,7 +167,7 @@ fn cave_nodes(@builtin(global_invocation_id) id: vec3<u32>) {
     var ribbon=1000.0;let column=column_at(min((id.x%n)*4u,r.tile_side*16u-1u),min((id.x/n)*4u,r.tile_side*16u-1u),r.tile_side);
     for(var c=0u;c<4u;c++){let settings=caves.biomes[column.packed&65535u].carvers[c];if settings.range.w>0.5 && settings.range.z>0.0 {ribbon=min(ribbon,ravine_distance(point,seed,settings));}}
     nodes[id.y*n*n+id.x] = vec4<f32>(chambers,a,b,ribbon);
-    let width = r.padding*16u+2u;
+    let width = (r.padding&255u)*16u+2u;
     let surface_width = r.tile_side*16u;
     let quart_width = surface_width/4u;
     let layers = u32((r.max_y-bottom+3)/4);
@@ -243,7 +243,7 @@ fn column_at(x: u32, z: u32, side: u32) -> Column {
     return columns[((z/16u)*side+x/16u)*256u+(z%16u)*16u+x%16u];
 }
 fn biome_sample(x: u32, y: i32, z: u32, r: Request) -> u32 {
-    let width = r.padding*16u+2u; let surface_width = r.tile_side*16u;
+    let width = (r.padding&255u)*16u+2u; let surface_width = r.tile_side*16u;
     let bottom = i32(floor(f32(r.min_y)/4.0))*4;
     let offset = (width*width*u32(r.max_y-r.min_y)+31u)/32u+(surface_width*surface_width+31u)/32u;
     let q = ((u32(y-bottom)/4u)*(surface_width/4u)+(z/4u))*(surface_width/4u)+x/4u;
@@ -286,7 +286,7 @@ fn is_cave(x: u32, y: i32, z: u32, column: Column, r: Request) -> bool {
 }
 @compute @workgroup_size(64)
 fn cave_mask(@builtin(global_invocation_id) id: vec3<u32>) {
-    let r = requests[0]; let width = r.padding*16u+2u; let height = u32(r.max_y-r.min_y);
+    let r = requests[0]; let width = (r.padding&255u)*16u+2u; let height = u32(r.max_y-r.min_y);
     let word = id.x+id.y*16384u; let count = width*width*height;
     let volume_words = (count+31u)/32u;
     let surface_width = r.tile_side*16u;

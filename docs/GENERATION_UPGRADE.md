@@ -15,7 +15,9 @@ GPU execution paths; see [coordinate scopes](GPU_COORDINATE_SCOPES.md).
 [Individual interpolation operators](GPU_INTERPOLATION_SCOPES.md) now retain
 their own child graphs, cell sizes and nested slices in direct GPU samples.
 Child horizontal expressions retain GPU column reuse. The shared final-field
-terrain lattice and cold compilation cost remain required work.
+terrain lattice and cold compilation cost remain required work. [Resident
+interpolation-field lattices](GPU_INTERPOLATION_CACHE.md) now provide GPU-only
+sample reuse for that ongoing work.
 Local registered GPU aquifers and surface-lake corrections are implemented; see
 [GPU aquifers](GPU_AQUIFERS.md) for fluid/pressure equations, validation, costs and
 remaining fluid-tick approximations. Broader features, further graph

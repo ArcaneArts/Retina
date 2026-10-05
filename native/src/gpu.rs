@@ -61,6 +61,8 @@ pub(crate) struct Gpu {
     wide_interpreter: Option<std::sync::Arc<crate::specialize::Pipelines>>,
     interpolation_interpreters:
         HashMap<(usize, usize), std::sync::Arc<crate::specialize::Pipelines>>,
+    interpolation_plans: HashMap<u32, std::sync::Arc<crate::program::interpolation::CachePlan>>,
+    interpolation_cache: bool,
 }
 
 pub(crate) struct GpuSample {
@@ -271,7 +273,7 @@ impl Gpu {
         let height_nodes = buffer(
             "Retina registered surface lattice",
             (SURFACE_METADATA_FLOATS * 4) as u64,
-            wgpu::BufferUsages::STORAGE,
+            wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
         );
         let timestamp_support = device.features().contains(wgpu::Features::TIMESTAMP_QUERY);
         let compiler = crate::specialize::Compiler::new(&device, &layout, &cave_layout)?;
@@ -319,6 +321,8 @@ impl Gpu {
             wide_profiles: std::collections::HashSet::new(),
             wide_interpreter: None,
             interpolation_interpreters: HashMap::new(),
+            interpolation_plans: HashMap::new(),
+            interpolation_cache: std::env::var("RETINA_INTERPOLATION_CACHE").as_deref() != Ok("0"),
         };
         gpu.add_profile(0, &vec![0; 672], &[0; 240], &[0; 32]);
         Ok(gpu)
@@ -404,7 +408,7 @@ impl Gpu {
         self.height_nodes = self.device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("Retina GPU-only density and climate lattice"),
             size,
-            usage: wgpu::BufferUsages::STORAGE,
+            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
         // Refresh views without uploading immutable registry buffers again.
@@ -447,6 +451,10 @@ impl Gpu {
                 &crate::program::RegistryProgram::bytes(profile),
             );
             if let Some(program) = profile.and_then(|p| p.registry_program.as_ref()) {
+                self.interpolation_plans.insert(
+                    profile_id,
+                    std::sync::Arc::new(crate::program::interpolation::CachePlan::new(program)),
+                );
                 if program.scratch_values() > crate::program::COMPACT_VALUES {
                     self.wide_profiles.insert(profile_id);
                 }
@@ -527,6 +535,11 @@ impl Gpu {
             .and_then(|p| p.registry_program.as_ref())
             .filter(|p| p.surface[2] == 0 && (!surface_probe || align_shores));
         let horizontal_fields = specialized.as_ref().map_or(0, |p| p.horizontal_fields);
+        let interpolation_plan = self
+            .interpolation_plans
+            .get(&profile_id)
+            .cloned()
+            .filter(|_| self.interpolation_cache);
         let mut gpu_requests = requests.to_vec();
         let guard = if align_shores { 6 } else { 4 };
         if align_shores {
@@ -537,6 +550,9 @@ impl Gpu {
         let mut density_dispatch = (0u32, 0u32);
         let mut lake_dispatch = 0u32;
         let mut surface_dispatch = 0u32;
+        let mut interpolation_dispatch = 0u32;
+        let mut interpolation_headers = Vec::new();
+        let mut interpolation_depth = 0;
         if let Some(program) = density_program {
             let [sx, sy] = program.terrain_cell;
             let mut floats = SURFACE_METADATA_FLOATS as u64;
@@ -561,6 +577,11 @@ impl Gpu {
                 let bottom = (request.min_y as i64).div_euclid(sy as i64) * sy as i64;
                 let layers = (request.max_y as i64 - bottom) as u64;
                 let layers = layers.div_ceil(sy as u64) + 1;
+                if interpolation_plan.as_ref().is_some_and(|p| p.depth > 0) {
+                    floats += (program.interpolations.len()
+                        * crate::program::interpolation::CACHE_WORDS)
+                        as u64;
+                }
                 request.density_offset =
                     u32::try_from(floats).map_err(|_| "GPU density address exceeds u32")?;
                 request.density_side = side as u32;
@@ -581,6 +602,29 @@ impl Gpu {
                 lake_dispatch = lake_dispatch.max((lake_side * lake_side) as u32);
                 density_dispatch.0 = density_dispatch.0.max((side * side) as u32);
                 density_dispatch.1 = density_dispatch.1.max(layers as u32);
+            }
+            if let Some(plan) = interpolation_plan.filter(|p| p.depth > 0) {
+                let limit = self
+                    .device
+                    .limits()
+                    .max_buffer_size
+                    .min(self.device.limits().max_storage_buffer_binding_size as u64)
+                    / 4;
+                let max_samples =
+                    self.device.limits().max_compute_workgroups_per_dimension as u64 * 64;
+                for request in &mut gpu_requests {
+                    let (header, dispatch) =
+                        plan.layout(program, request, guard, &mut floats, limit, max_samples)?;
+                    if dispatch > 0 {
+                        request.padding |= crate::program::interpolation::CACHE_FLAG;
+                    }
+                    let address = request.density_offset as u64 - header.len() as u64;
+                    interpolation_headers.push((address, header));
+                    interpolation_dispatch = interpolation_dispatch.max(dispatch);
+                }
+                if interpolation_dispatch > 0 {
+                    interpolation_depth = plan.depth;
+                }
             }
             self.ensure_surface_lattice(floats * 4);
         }
@@ -713,6 +757,13 @@ impl Gpu {
         }
         self.queue
             .write_buffer(&self.requests, 0, bytemuck::cast_slice(&gpu_requests));
+        for (address, header) in &interpolation_headers {
+            self.queue.write_buffer(
+                &self.height_nodes,
+                address * 4,
+                bytemuck::cast_slice(header),
+            );
+        }
         let group = &self.profiles[&profile_id].3;
         let count = if requests[0].tile_side > 0 {
             (requests[0].tile_side * requests[0].tile_side) as usize
@@ -776,7 +827,40 @@ impl Gpu {
             pass.dispatch_workgroups(density_dispatch.0.div_ceil(64), requests.len() as u32, 1);
         }
         if density_program.is_some() {
+            for level in 1..=interpolation_depth {
+                let mut writes = if horizontal_fields == 0 && level == 1 {
+                    timestamp_writes(timings::HEIGHT)
+                } else {
+                    None
+                };
+                if let Some(ref mut w) = writes {
+                    w.end_of_pass_write_index = None;
+                }
+                let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                    label: Some("Retina resident registered interpolation fields"),
+                    timestamp_writes: writes,
+                });
+                pass.set_pipeline(
+                    selected
+                        .unwrap()
+                        .world(&format!("interpolation_nodes_{level}")),
+                );
+                pass.set_bind_group(0, group, &[]);
+                pass.dispatch_workgroups(
+                    interpolation_dispatch.div_ceil(64),
+                    profile
+                        .unwrap()
+                        .registry_program
+                        .as_ref()
+                        .unwrap()
+                        .interpolations
+                        .len() as u32,
+                    requests.len() as u32,
+                );
+            }
             let mut writes = if horizontal_fields > 0 {
+                None
+            } else if interpolation_depth > 0 {
                 None
             } else {
                 timestamp_writes(timings::HEIGHT)
@@ -1135,7 +1219,11 @@ impl Gpu {
         let submission = self.queue.submit([encoder.finish()]);
         self.pipeline.transfer(
             profile_id,
-            (gpu_requests.len() * std::mem::size_of::<GpuRequest>()) as u64,
+            (gpu_requests.len() * std::mem::size_of::<GpuRequest>()) as u64
+                + interpolation_headers
+                    .iter()
+                    .map(|(_, h)| h.len() as u64 * 4)
+                    .sum::<u64>(),
             size + if cave_side > 0 || underground_probe {
                 mask_size
             } else {
@@ -1628,11 +1716,13 @@ mod mapping_tests {
         let registry = profile.registry_program.as_ref().unwrap();
         let interpreted = std::env::var_os("RETINA_PROGRAM_PARITY_INTERPRETER").is_some();
         let cached = std::env::var_os("RETINA_PROGRAM_PARITY_CACHE").is_some();
+        let field_cached = std::env::var_os("RETINA_PROGRAM_PARITY_INTERPOLATION_CACHE").is_some();
         assert!(
             !interpreted || !cached,
             "compact interpreter has no horizontal cache"
         );
-        let far = cached && std::env::var_os("RETINA_PROGRAM_PARITY_FAR").is_some();
+        let far =
+            (cached || field_cached) && std::env::var_os("RETINA_PROGRAM_PARITY_FAR").is_some();
         let mut gpu = Gpu::new(std::sync::Arc::new(crate::pipeline::Metrics::default())).unwrap();
         gpu.add_profile(
             1,
@@ -1666,7 +1756,10 @@ mod mapping_tests {
             expected_kernel.push_str(&format!("if program==1u{{expected[0]=parity_interpolated_noise(point,r);expected[1]=program_noise(point*vec3<f32>(0.125,0.25,0.125),{noise}u,r);}}"));
         }
         kernel = kernel.replace("COORDINATE_EXPECTED", &expected_kernel);
-        if cached {
+        // The reference deliberately bypasses the field cache, including in
+        // nested helpers. Agreement cannot conceal incorrect cached samples.
+        kernel = kernel.replace("let reference=run_reference(program,point,r,context);", "var direct=r;direct.padding&=~(1u<<27u);let reference=run_reference(program,point,direct,context);");
+        if cached || field_cached {
             kernel = kernel
                 .replace(
                     "var r=requests[0];r.seed_low^=seed*7919u;",
@@ -1711,12 +1804,18 @@ mod mapping_tests {
             // outside material dispatch. Exercise those calls in full-profile
             // parity checks as well, rather than comparing the dispatch default.
             if let Some(aquifer) = registry.aquifer.as_ref().filter(|a| a.enabled) {
-                let cases = (0..5).map(|slot| format!(
-                    "case {}u:{{actual=run_aquifer_{slot}(point,r,context);}}",
-                    aquifer.program+slot
-                )).collect::<String>();
-                kernel = kernel.replace("default:{actual=run_program(program,point,r,context);}",
-                    &format!("{cases}default:{{actual=run_program(program,point,r,context);}}"));
+                let cases = (0..5)
+                    .map(|slot| {
+                        format!(
+                            "case {}u:{{actual=run_aquifer_{slot}(point,r,context);}}",
+                            aquifer.program + slot
+                        )
+                    })
+                    .collect::<String>();
+                kernel = kernel.replace(
+                    "default:{actual=run_program(program,point,r,context);}",
+                    &format!("{cases}default:{{actual=run_program(program,point,r,context);}}"),
+                );
             }
             crate::specialize::source(registry).unwrap()
         };
@@ -1785,7 +1884,10 @@ mod mapping_tests {
                     cache: None,
                 })
         });
-        if cached {
+        let mut headers = Vec::new();
+        let mut field_dispatch = 0;
+        let mut field_depth = 0;
+        if cached || field_cached {
             r.origin_x = -32;
             r.origin_z = -32;
             r.density_side = 9;
@@ -1794,19 +1896,52 @@ mod mapping_tests {
                 r.origin_z = -16_777_232;
                 r.density_step_xz = 3;
             }
-            let fields = crate::column_program::Plan::new(registry).owners.len() as u32;
-            let floats = 9 * 9 * 49 + 24 * 24 + 4 + 20 * 49 + 9 * 9 * fields;
+            let fields = if cached {
+                crate::column_program::Plan::new(registry).owners.len() as u32
+            } else {
+                0
+            };
+            let header_words = if field_cached {
+                registry.interpolations.len() as u32 * 8
+            } else {
+                0
+            };
+            let floats = header_words + 9 * 9 * 49 + 24 * 24 + 4 + 20 * 49 + 9 * 9 * fields;
             jobs = (0..3)
                 .map(|i| GpuRequest {
                     seed_low: r.seed_low ^ (i * 7919),
-                    density_offset: SURFACE_METADATA_FLOATS as u32 + i * floats,
+                    density_offset: SURFACE_METADATA_FLOATS as u32 + i * floats + header_words,
                     ..r
                 })
                 .collect();
-            gpu.ensure_surface_lattice((SURFACE_METADATA_FLOATS as u64 + 3 * floats as u64) * 4);
+            let mut size = SURFACE_METADATA_FLOATS as u64 + 3 * floats as u64;
+            if field_cached {
+                let plan = crate::program::interpolation::CachePlan::new(registry);
+                for request in &mut jobs {
+                    let (header, dispatch) = plan
+                        .layout(registry, request, 4, &mut size, u32::MAX as u64, 64 * 65535)
+                        .unwrap();
+                    request.padding |= crate::program::interpolation::CACHE_FLAG;
+                    headers.push((request.density_offset as u64 - header_words as u64, header));
+                    field_dispatch = field_dispatch.max(dispatch);
+                }
+                field_depth = plan.depth;
+                assert!(
+                    field_dispatch > 0,
+                    "fixture must exercise resident interpolation fields"
+                );
+            }
+            gpu.ensure_surface_lattice(size * 4);
         }
         gpu.queue
             .write_buffer(&gpu.requests, 0, bytemuck::cast_slice(&jobs));
+        for (address, header) in headers {
+            gpu.queue.write_buffer(
+                &gpu.height_nodes,
+                address * 4,
+                bytemuck::cast_slice(&header),
+            );
+        }
         let count = registry.programs.len() * 64;
         let size = (count * 72) as u64;
         let output = gpu.readback_buffer("Retina parity roots", size);
@@ -1818,6 +1953,26 @@ mod mapping_tests {
             pass.set_pipeline(horizontal);
             pass.set_bind_group(0, &gpu.profiles[&1].3, &[]);
             pass.dispatch_workgroups(2, 3, 1);
+        }
+        for level in 1..=field_depth {
+            let field_pipeline =
+                gpu.device
+                    .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                        label: Some("parity resident interpolation cache"),
+                        layout: Some(&layout),
+                        module: &module,
+                        entry_point: Some(&format!("interpolation_nodes_{level}")),
+                        compilation_options: Default::default(),
+                        cache: None,
+                    });
+            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor::default());
+            pass.set_pipeline(&field_pipeline);
+            pass.set_bind_group(0, &gpu.profiles[&1].3, &[]);
+            pass.dispatch_workgroups(
+                field_dispatch.div_ceil(64),
+                registry.interpolations.len() as u32,
+                3,
+            );
         }
         {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor::default());
@@ -1868,7 +2023,7 @@ mod mapping_tests {
                         );
                     }
                 }
-                if !cached && sample / 64 == 0 {
+                if !cached && !field_cached && sample / 64 == 0 {
                     if let Some(expected) = coordinate_expected {
                         let expected = expected[sample % 64][root].as_f64().unwrap() as f32;
                         let actual = f32::from_bits(old);

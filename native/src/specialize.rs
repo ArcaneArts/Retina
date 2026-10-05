@@ -326,6 +326,11 @@ fn source_columns(program: &RegistryProgram) -> Result<(String, u32), String> {
         writeln!(functions,"fn interpolation_graph_{field}(point:vec3<f32>,request:Request,context:vec4<f32>,program:u32)->array<f32,6>{{\n{body}}}").unwrap();
         functions.push_str(&crate::program::interpolation::specialized(field));
     }
+    functions.push_str(&crate::program::interpolation::prepass(
+        program.interpolation_depth(),
+        true,
+        program.interpolations.len(),
+    ));
     // The cache occupies only additional GPU scratch after the existing density,
     // surface and lake lattices. It never enters a host readback buffer.
     functions.push_str("fn column_offset(r:Request)->u32{return lake_probe_offset(r)+lake_side(r)*lake_side(r)*20u*density_layers(r);}\n");
@@ -426,8 +431,8 @@ fn source_columns(program: &RegistryProgram) -> Result<(String, u32), String> {
 }
 
 pub(crate) struct Pipelines {
-    world: HashMap<&'static str, wgpu::ComputePipeline>,
-    cave: HashMap<&'static str, wgpu::ComputePipeline>,
+    world: HashMap<String, wgpu::ComputePipeline>,
+    cave: HashMap<String, wgpu::ComputePipeline>,
     pub horizontal_fields: u32,
 }
 impl Pipelines {
@@ -635,45 +640,44 @@ fn compile_program(
     specialized: bool,
 ) -> Result<Pipelines, String> {
     let scope = device.push_error_scope(wgpu::ErrorFilter::Validation);
-    let make =
-        |prefix: &str, suffix: &str, layout: &wgpu::BindGroupLayout, entries: &[&'static str]| {
-            let source = format!(
-                "{prefix}\n{}\n{program}\n{suffix}",
-                include_str!("climate.wgsl")
-            );
-            let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-                label: Some("Retina specialized registry graphs"),
-                source: wgpu::ShaderSource::Wgsl(
-                    (if specialized {
-                        static_calls(&source)
-                    } else {
-                        source
-                    })
-                    .into(),
-                ),
-            });
-            let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some("Retina specialized registry graphs"),
-                bind_group_layouts: &[Some(layout)],
-                immediate_size: 0,
-            });
-            entries
-                .iter()
-                .map(|entry| {
-                    (
-                        *entry,
-                        device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                            label: Some(entry),
-                            layout: Some(&layout),
-                            module: &module,
-                            entry_point: Some(entry),
-                            compilation_options: Default::default(),
-                            cache: None,
-                        }),
-                    )
+    let make = |prefix: &str, suffix: &str, layout: &wgpu::BindGroupLayout, entries: &[&str]| {
+        let source = format!(
+            "{prefix}\n{}\n{program}\n{suffix}",
+            include_str!("climate.wgsl")
+        );
+        let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("Retina specialized registry graphs"),
+            source: wgpu::ShaderSource::Wgsl(
+                (if specialized {
+                    static_calls(&source)
+                } else {
+                    source
                 })
-                .collect()
-        };
+                .into(),
+            ),
+        });
+        let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("Retina specialized registry graphs"),
+            bind_group_layouts: &[Some(layout)],
+            immediate_size: 0,
+        });
+        entries
+            .iter()
+            .map(|entry| {
+                (
+                    (*entry).to_owned(),
+                    device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                        label: Some(entry),
+                        layout: Some(&layout),
+                        module: &module,
+                        entry_point: Some(entry),
+                        compilation_options: Default::default(),
+                        cache: None,
+                    }),
+                )
+            })
+            .collect()
+    };
     let mut world_entries = vec![
         "main",
         "biome_sites",
@@ -689,6 +693,10 @@ fn compile_program(
     if specialized {
         world_entries.push("horizontal_nodes");
     }
+    let interpolation_entries = (1..=program.matches("fn interpolation_nodes_").count())
+        .map(|level| format!("interpolation_nodes_{level}"))
+        .collect::<Vec<_>>();
+    world_entries.extend(interpolation_entries.iter().map(String::as_str));
     let world = make(
         include_str!("simplex.wgsl"),
         include_str!("noise3.wgsl"),

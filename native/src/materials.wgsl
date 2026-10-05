@@ -1,21 +1,21 @@
 // Complete vertical material runs. The count/emit stages share this evaluator;
 // no fixed layer budget, per-voxel host transfer or CPU noise is involved.
 fn material_base_offset(r:Request)->u32 {
-    let width=r.padding*16u+2u;let surface_width=r.tile_side*16u;
+    let width=(r.padding&255u)*16u+2u;let surface_width=r.tile_side*16u;
     let bottom=i32(floor(f32(r.min_y)/4.0))*4;
     let layers=u32((r.max_y-bottom+3)/4);
     return (width*width*u32(r.max_y-r.min_y)+31u)/32u
         +(surface_width*surface_width+31u)/32u
         +((surface_width/4u)*(surface_width/4u)*layers+1u)/2u;
 }
-fn material_width(r:Request)->u32 {return r.padding*16u;}
+fn material_width(r:Request)->u32 {return (r.padding&255u)*16u;}
 fn material_groups(r:Request)->u32 {return (material_width(r)*material_width(r)+255u)/256u;}
 fn material_runs_offset(r:Request)->u32 {
     return material_base_offset(r)+4u+2u*material_width(r)*material_width(r)+2u*material_groups(r)
         +select(0u,aquifer_volume_words(r)*2u,caves.aquifer[0].x!=0u);
 }
 fn material_carved(x:u32,y:i32,z:u32,r:Request)->bool {
-    let width=r.padding*16u+2u;
+    let width=(r.padding&255u)*16u+2u;
     let at=(u32(y-r.min_y)*width+(z-15u))*width+(x-15u);
     return (mask[at/32u]&(1u<<(at%32u)))!=0u;
 }

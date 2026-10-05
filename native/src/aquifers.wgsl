@@ -5,7 +5,7 @@ fn aquifer_min(r:Request)->vec3<i32> {
     return vec3<i32>(aquifer_div(r.origin_x+10,16),aquifer_div(r.min_y+1,12)-1,aquifer_div(r.origin_z+10,16));
 }
 fn aquifer_max(r:Request)->vec3<i32> {
-    return vec3<i32>(aquifer_div(r.origin_x+i32(r.padding*16u)+11,16)+1,aquifer_div(r.max_y,12)+1,aquifer_div(r.origin_z+i32(r.padding*16u)+11,16)+1);
+    return vec3<i32>(aquifer_div(r.origin_x+i32((r.padding&255u)*16u)+11,16)+1,aquifer_div(r.max_y,12)+1,aquifer_div(r.origin_z+i32((r.padding&255u)*16u)+11,16)+1);
 }
 fn aquifer_size(r:Request)->vec3<u32> {return vec3<u32>(aquifer_max(r)-aquifer_min(r)+vec3<i32>(1));}
 fn aquifer_surface_min(r:Request)->vec2<i32> {return aquifer_min(r).xz*16-vec2<i32>(48);}
@@ -22,14 +22,14 @@ fn aquifer_barrier_offset(r:Request)->u32 {
 fn aquifer_index(cell:vec3<i32>,r:Request)->u32 {
     let p=vec3<u32>(cell-aquifer_min(r));let n=aquifer_size(r);return (p.y*n.z+p.z)*n.x+p.x;
 }
-fn aquifer_volume_words(r:Request)->u32 {let w=r.padding*16u+2u;return (w*w*u32(r.max_y-r.min_y)+31u)/32u;}
+fn aquifer_volume_words(r:Request)->u32 {let w=(r.padding&255u)*16u+2u;return (w*w*u32(r.max_y-r.min_y)+31u)/32u;}
 fn aquifer_fluid_offset(r:Request)->u32 {
     let w=r.tile_side*16u;let q=w/4u;let bottom=aquifer_div(r.min_y,4)*4;let layers=u32((r.max_y-bottom+3)/4);
-    let core=(r.padding*16u)*(r.padding*16u);
+    let core=((r.padding&255u)*16u)*((r.padding&255u)*16u);
     return aquifer_volume_words(r)+(w*w+31u)/32u+(q*q*layers+1u)/2u+4u+core*2u+((core+255u)/256u)*2u;
 }
 fn aquifer_fluid(x:u32,y:i32,z:u32,r:Request)->u32 {
-    let w=r.padding*16u+2u;let i=(u32(y-r.min_y)*w+z-15u)*w+x-15u;
+    let w=(r.padding&255u)*16u+2u;let i=(u32(y-r.min_y)*w+z-15u)*w+x-15u;
     let base=aquifer_fluid_offset(r)+i/32u*2u;let bit=i%32u;
     return ((mask[base]>>bit)&1u)|(((mask[base+1u]>>bit)&1u)<<1u);
 }
@@ -166,7 +166,7 @@ fn aquifer_substance(x:u32,y:i32,z:u32,r:Request)->u32 {
 }
 @compute @workgroup_size(64)
 fn aquifer_mask(@builtin(global_invocation_id) id:vec3<u32>) {
-    let r=requests[0];let width=r.padding*16u+2u;let count=width*width*u32(r.max_y-r.min_y);
+    let r=requests[0];let width=(r.padding&255u)*16u+2u;let count=width*width*u32(r.max_y-r.min_y);
     let word=id.x+id.y*16384u;if word>=aquifer_volume_words(r) {return;}
     let geometry=mask[word];var air=0u;var fluid1=0u;var fluid2=0u;
     for(var bit=0u;bit<32u;bit++) {

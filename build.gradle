@@ -154,6 +154,24 @@ tasks.register('nativeInterpolationGpuTest', Exec) {
             '--target-dir', nativeTarget.get().asFile.absolutePath, '--', '--ignored', '--nocapture'])
 }
 
+['Specialized', 'Interpreter', 'Far'].each { mode ->
+    tasks.register("nativeInterpolationCache${mode}GpuTest", Exec) {
+        group = 'verification'
+        description = "Compare resident interpolation fields with uncached GPU roots (${mode})."
+        dependsOn 'interpolationTest'
+        workingDir nativeDirectory
+        environment 'RETINA_PROGRAM_PARITY_PROFILE', file('build/registry-interpolation-profile.json').absolutePath
+        environment 'RETINA_PROGRAM_PARITY_INTERPOLATION_CACHE', '1'
+        if (mode == 'Interpreter') environment 'RETINA_PROGRAM_PARITY_INTERPRETER', '1'
+        else environment 'RETINA_PROGRAM_PARITY_CACHE', '1'
+        if (mode == 'Far') environment 'RETINA_PROGRAM_PARITY_FAR', '1'
+        commandLine(nativeCargoCommand + ['test', '--release', '--locked', '--lib',
+                'specialized_roots_match_interpreter_on_real_gpu',
+                '--target-dir', nativeTarget.get().asFile.absolutePath, '--', '--ignored', '--nocapture'])
+    }
+    tasks.named('gpuTest') { dependsOn "nativeInterpolationCache${mode}GpuTest" }
+}
+
 tasks.register('nativeCoordinateGpuTest', Exec) {
     group = 'verification'
     description = 'Compare scoped GPU noise, interpreter and specialization with actual-device coordinate identities.'

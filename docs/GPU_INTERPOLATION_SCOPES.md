@@ -19,11 +19,15 @@ Reusable horizontal expressions inside field inputs participate in the existing
 GPU column cache, including sharing with other field inputs and primary graphs.
 Queries between cached columns or outside their extent evaluate the same graph
 directly. Each batch selects its pipelines and scratch layout before submission.
+[Resident field lattices](GPU_INTERPOLATION_CACHE.md) subsequently add reuse of
+the individual field samples; the measurements below describe the original
+direct-sampling milestone.
 
 Old saved profiles without the new field table still parse with an empty table.
 The bytecode header is internal and is rebuilt from each profile; public request,
-readback and timing layouts are unchanged. There is no new GPU dispatch or host
-readback for interpolation. Its work is measured in the consuming GPU stages.
+readback and timing layouts are unchanged. The direct-sampling milestone adds no
+GPU dispatch or host readback for interpolation. Subsequent field caching adds
+GPU-only prepasses measured in the existing height/climate stage.
 
 ## Scope and remaining approximation
 

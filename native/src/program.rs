@@ -89,7 +89,13 @@ pub(crate) fn interpreter_source_depth(capacity: usize, depth: usize) -> String 
     let start = source.find("fn run_program(").unwrap();
     let end = source.find("fn density_floor_div(").unwrap();
     let body = interpreter_body(capacity, depth, "run_program", true);
-    format!("{}{}{}", &source[..start], body, &source[end..])
+    format!(
+        "{}{}{}{}",
+        &source[..start],
+        body,
+        interpolation::prepass(depth, false, 0),
+        &source[end..]
+    )
 }
 pub(crate) fn interpreter_body(
     capacity: usize,
@@ -346,12 +352,13 @@ impl RegistryProgram {
         words[13] = p.interpolations.len() as u32;
         words[14] = p.interpolation_depth() as u32;
         words[15] = p.programs.len() as u32;
+        let depths = interpolation::depths(&p.interpolations);
         for (i, field) in p.interpolations.iter().enumerate() {
             words.extend([
                 p.programs.len() as u32 + i as u32,
                 field.cell[0],
                 field.cell[1],
-                0,
+                depths[i] as u32,
             ]);
         }
         words[1] = words.len() as u32;
