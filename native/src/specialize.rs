@@ -7,6 +7,7 @@ use std::sync::{Arc, Condvar, Mutex, mpsc};
 use std::time::Instant;
 #[cfg(test)]
 mod compile_probe;
+mod interpreter_dispatch;
 pub(crate) mod interpreter_reuse;
 
 #[derive(Clone, Copy, Default, serde::Deserialize, PartialEq)]
@@ -445,6 +446,29 @@ pub(crate) struct Pipelines {
     cave: HashMap<String, wgpu::ComputePipeline>,
     pub horizontal_fields: u32,
     reuse: Option<interpreter_reuse::Plan>,
+    dispatches: HashMap<String, u32>,
+}
+
+#[derive(Clone, Copy)]
+pub(crate) struct Selected<'a> {
+    pub pipeline: &'a wgpu::ComputePipeline,
+    pub dispatch: Option<u32>,
+}
+impl<'a> From<&'a wgpu::ComputePipeline> for Selected<'a> {
+    fn from(pipeline: &'a wgpu::ComputePipeline) -> Self {
+        Self {
+            pipeline,
+            dispatch: None,
+        }
+    }
+}
+impl Selected<'_> {
+    pub fn bind(self, pass: &mut wgpu::ComputePass<'_>) {
+        pass.set_pipeline(self.pipeline);
+        if let Some(mode) = self.dispatch {
+            pass.set_immediates(0, bytemuck::bytes_of(&mode));
+        }
+    }
 }
 impl Pipelines {
     pub fn world<'a>(&'a self, entry: &str) -> &'a wgpu::ComputePipeline {
@@ -453,26 +477,30 @@ impl Pipelines {
     pub fn cave<'a>(&'a self, entry: &str) -> &'a wgpu::ComputePipeline {
         &self.cave[entry]
     }
-    pub fn world_or<'a>(
-        &'a self,
-        entry: &str,
-        base: &'a wgpu::ComputePipeline,
-    ) -> &'a wgpu::ComputePipeline {
-        if self.reuse.is_some_and(|p| p.world_reuses(entry)) {
-            base
-        } else {
-            self.world(entry)
+    pub fn world_selected(&self, entry: &str) -> Selected<'_> {
+        Selected {
+            pipeline: self.world(entry),
+            dispatch: self.dispatches.get(entry).copied(),
         }
     }
-    pub fn cave_or<'a>(
-        &'a self,
-        entry: &str,
-        base: &'a wgpu::ComputePipeline,
-    ) -> &'a wgpu::ComputePipeline {
-        if self.reuse.is_some_and(|p| p.cave_reuses(entry)) {
-            base
+    fn cave_selected(&self, entry: &str) -> Selected<'_> {
+        Selected {
+            pipeline: self.cave(entry),
+            dispatch: self.dispatches.get(entry).copied(),
+        }
+    }
+    pub fn world_or<'a>(&'a self, entry: &str, base: &'a wgpu::ComputePipeline) -> Selected<'a> {
+        if self.reuse.is_some_and(|p| p.world_reuses(entry)) {
+            base.into()
         } else {
-            self.cave(entry)
+            self.world_selected(entry)
+        }
+    }
+    pub fn cave_or<'a>(&'a self, entry: &str, base: &'a wgpu::ComputePipeline) -> Selected<'a> {
+        if self.reuse.is_some_and(|p| p.cave_reuses(entry)) {
+            base.into()
+        } else {
+            self.cave_selected(entry)
         }
     }
     pub fn cached_cave(&self, entry: &str) -> Option<&wgpu::ComputePipeline> {
@@ -573,6 +601,7 @@ impl Compiler {
                             job.cached_nodes,
                             job.lake_point_cache,
                             None,
+                            false,
                         )
                     }))
                     .unwrap_or_else(|_| Err("specialized GPU compilation panicked".into()));
@@ -715,6 +744,7 @@ pub(crate) fn compile(
         false,
         false,
         None,
+        false,
     )
 }
 
@@ -724,9 +754,23 @@ pub(crate) fn compile_interpreter(
     cave: &wgpu::BindGroupLayout,
     program: &str,
     reuse: Option<interpreter_reuse::Plan>,
+    shared_dispatch: bool,
 ) -> Result<Pipelines, String> {
     compile_program(
-        device, world, cave, program, 0, true, 2, false, true, false, false, false, reuse,
+        device,
+        world,
+        cave,
+        program,
+        0,
+        true,
+        2,
+        false,
+        true,
+        false,
+        false,
+        false,
+        reuse,
+        shared_dispatch,
     )
 }
 
@@ -744,196 +788,233 @@ fn compile_program(
     cached_nodes: bool,
     lake_point_cache: bool,
     reuse: Option<interpreter_reuse::Plan>,
+    shared_dispatch: bool,
 ) -> Result<Pipelines, String> {
     let scope = device.push_error_scope(wgpu::ErrorFilter::Validation);
     #[cfg(test)]
     let probe = compile_probe::Probe::new(specialized);
     #[cfg(test)]
     let total_start = Instant::now();
-    let make = |program: &str,
-                prefix: &str,
-                suffix: &str,
-                layout: &wgpu::BindGroupLayout,
-                entries: &[&str]| {
-        if entries.is_empty() {
-            return HashMap::new();
-        }
-        let source = format!(
-            "{prefix}\n{}\n{program}\n{suffix}",
-            include_str!("climate.wgsl")
-        );
-        #[cfg(test)]
-        let source = probe.source(source, entries);
-        #[cfg(test)]
-        let bytes = source.len();
-        #[cfg(test)]
-        let module_start = Instant::now();
-        let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("Retina specialized registry graphs"),
-            source: wgpu::ShaderSource::Wgsl(
-                (if specialized {
-                    static_calls(&source)
-                } else {
-                    source
+    let result = (|| {
+        let mut dispatches = HashMap::new();
+        let mut make = |program: &str,
+                        prefix: &str,
+                        suffix: &str,
+                        layout: &wgpu::BindGroupLayout,
+                        entries: &[&str]|
+         -> Result<HashMap<String, wgpu::ComputePipeline>, String> {
+            if entries.is_empty() {
+                return Ok(HashMap::new());
+            }
+            let source = format!(
+                "{prefix}\n{}\n{program}\n{suffix}",
+                include_str!("climate.wgsl")
+            );
+            let wrapper = if prefix == include_str!("simplex.wgsl") {
+                "retina_world_dispatch"
+            } else {
+                "retina_cave_dispatch"
+            };
+            let source = if shared_dispatch {
+                interpreter_dispatch::source(source, entries, wrapper)?
+            } else {
+                source
+            };
+            let compiled_entries = if shared_dispatch {
+                std::slice::from_ref(&wrapper)
+            } else {
+                entries
+            };
+            #[cfg(test)]
+            let source = probe.source(source, compiled_entries);
+            #[cfg(test)]
+            let bytes = source.len();
+            #[cfg(test)]
+            let module_start = Instant::now();
+            let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+                label: Some("Retina specialized registry graphs"),
+                source: wgpu::ShaderSource::Wgsl(
+                    (if specialized {
+                        static_calls(&source)
+                    } else {
+                        source
+                    })
+                    .into(),
+                ),
+            });
+            let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("Retina specialized registry graphs"),
+                bind_group_layouts: &[Some(layout)],
+                immediate_size: if shared_dispatch { 4 } else { 0 },
+            });
+            #[cfg(test)]
+            probe.report("module_and_layout", entries[0], module_start, bytes);
+            let pipelines: HashMap<String, wgpu::ComputePipeline> = compiled_entries
+                .iter()
+                .map(|entry| {
+                    #[cfg(test)]
+                    let entry_name = probe.entry(entry);
+                    #[cfg(not(test))]
+                    let entry_name = *entry;
+                    #[cfg(test)]
+                    let entry_start = Instant::now();
+                    let pipeline =
+                        device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                            label: Some(entry),
+                            layout: Some(&layout),
+                            module: &module,
+                            entry_point: Some(&entry_name),
+                            compilation_options: Default::default(),
+                            cache: None,
+                        });
+                    #[cfg(test)]
+                    probe.report("pipeline", entry, entry_start, bytes);
+                    ((*entry).to_owned(), pipeline)
                 })
-                .into(),
-            ),
-        });
-        let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("Retina specialized registry graphs"),
-            bind_group_layouts: &[Some(layout)],
-            immediate_size: 0,
-        });
-        #[cfg(test)]
-        probe.report("module_and_layout", entries[0], module_start, bytes);
-        entries
-            .iter()
-            .map(|entry| {
-                #[cfg(test)]
-                let entry_name = probe.entry(entry);
-                #[cfg(not(test))]
-                let entry_name = *entry;
-                #[cfg(test)]
-                let entry_start = Instant::now();
-                let pipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                    label: Some(entry),
-                    layout: Some(&layout),
-                    module: &module,
-                    entry_point: Some(&entry_name),
-                    compilation_options: Default::default(),
-                    cache: None,
-                });
-                #[cfg(test)]
-                probe.report("pipeline", entry, entry_start, bytes);
-                ((*entry).to_owned(), pipeline)
-            })
-            .collect()
-    };
-    let mut world_entries = vec![
-        "main",
-        "biome_sites",
-        "biome_queries",
-        "lake_candidates",
-        "lake_density",
-        "lake_nodes",
-    ];
-    if terrain {
-        world_entries.extend([
-            "climate_nodes",
-            "height_nodes",
-            "density_nodes",
-            "surface_columns",
-        ]);
-    }
-    if specialized {
-        world_entries.push("horizontal_nodes");
-    }
-    let interpolation_entries = (1..=program.matches("fn interpolation_nodes_").count())
-        .map(|level| format!("interpolation_nodes_{level}"))
-        .collect::<Vec<_>>();
-    if terrain {
-        world_entries.extend(interpolation_entries.iter().map(String::as_str));
-    }
-    if lake_point_cache {
-        // This bundle always uses the cached lake entry. Do not compile and
-        // retain another lake pipeline which none of its requests will select.
-        world_entries.retain(|entry| *entry != "lake_density");
-    }
-    world_entries.retain(|entry| !reuse.is_some_and(|p| p.world_reuses(entry)));
-    let mut world: HashMap<String, wgpu::ComputePipeline> = make(
-        program,
-        include_str!("simplex.wgsl"),
-        include_str!("noise3.wgsl"),
-        world_layout,
-        &world_entries,
-    );
-    if lake_point_cache {
-        let cached_program = crate::program::interpolation::point_cached_source(program);
-        let pipelines: HashMap<String, wgpu::ComputePipeline> = make(
-            &cached_program,
-            include_str!("simplex.wgsl"),
-            include_str!("noise3.wgsl"),
-            world_layout,
-            &["lake_density"],
-        );
-        world.extend(pipelines);
-    }
-    if cached_masks {
-        let cached_program = crate::program::composition::cached_source(program);
-        let pipelines: HashMap<String, wgpu::ComputePipeline> = make(
-            &cached_program,
-            include_str!("simplex.wgsl"),
-            include_str!("noise3.wgsl"),
-            world_layout,
-            &["surface_columns", "density_nodes"],
-        );
-        for (entry, pipeline) in pipelines {
-            world.insert(format!("{entry}_cached"), pipeline);
+                .collect();
+            if shared_dispatch {
+                let pipeline = &pipelines[wrapper];
+                Ok(entries
+                    .iter()
+                    .enumerate()
+                    .map(|(mode, entry)| {
+                        dispatches.insert((*entry).to_owned(), mode as u32);
+                        ((*entry).to_owned(), pipeline.clone())
+                    })
+                    .collect())
+            } else {
+                Ok(pipelines)
+            }
+        };
+        let mut world_entries = vec![
+            "main",
+            "biome_sites",
+            "biome_queries",
+            "lake_candidates",
+            "lake_density",
+            "lake_nodes",
+        ];
+        if terrain {
+            world_entries.extend([
+                "climate_nodes",
+                "height_nodes",
+                "density_nodes",
+                "surface_columns",
+            ]);
         }
-    }
-    let material_source = if material_layers {
-        format!(
-            "{}\n{}",
-            include_str!("aquifers.wgsl"),
-            include_str!("materials.wgsl")
-        )
-    } else {
-        String::new()
-    };
-    let mut cave_entries = vec![
-        "underground_queries",
-        "cave_nodes",
-        "cave_exterior",
-        "cave_mask",
-    ];
-    if material_layers {
-        cave_entries.extend(["material_counts", "material_emit"]);
-    }
-    if aquifers > 0 {
-        cave_entries.push("aquifer_mask");
-    }
-    if aquifers > 1 {
-        cave_entries.extend(["aquifer_surface", "aquifer_centers", "aquifer_barrier"]);
-    }
-    cave_entries.retain(|entry| !reuse.is_some_and(|p| p.cave_reuses(entry)));
-    let mut cave_pipelines: HashMap<String, wgpu::ComputePipeline> = make(
-        program,
-        include_str!("caves.wgsl"),
-        &material_source,
-        cave,
-        &cave_entries,
-    );
-    if cached_masks || cached_nodes {
-        let cached_program = crate::program::composition::cached_source(program);
-        let mut entries = ["cave_exterior", "cave_mask", "aquifer_mask"]
-            .into_iter()
-            .filter(|e| cached_masks && cave_entries.contains(e))
+        if specialized {
+            world_entries.push("horizontal_nodes");
+        }
+        let interpolation_entries = (1..=program.matches("fn interpolation_nodes_").count())
+            .map(|level| format!("interpolation_nodes_{level}"))
             .collect::<Vec<_>>();
-        if cached_nodes {
-            entries.push("cave_nodes");
+        if terrain {
+            world_entries.extend(interpolation_entries.iter().map(String::as_str));
         }
-        let pipelines: HashMap<String, wgpu::ComputePipeline> = make(
-            &cached_program,
+        if lake_point_cache {
+            // This bundle always uses the cached lake entry. Do not compile and
+            // retain another lake pipeline which none of its requests will select.
+            world_entries.retain(|entry| *entry != "lake_density");
+        }
+        world_entries.retain(|entry| !reuse.is_some_and(|p| p.world_reuses(entry)));
+        let mut world: HashMap<String, wgpu::ComputePipeline> = make(
+            program,
+            include_str!("simplex.wgsl"),
+            include_str!("noise3.wgsl"),
+            world_layout,
+            &world_entries,
+        )?;
+        if lake_point_cache {
+            let cached_program = crate::program::interpolation::point_cached_source(program);
+            let pipelines: HashMap<String, wgpu::ComputePipeline> = make(
+                &cached_program,
+                include_str!("simplex.wgsl"),
+                include_str!("noise3.wgsl"),
+                world_layout,
+                &["lake_density"],
+            )?;
+            world.extend(pipelines);
+        }
+        if cached_masks {
+            let cached_program = crate::program::composition::cached_source(program);
+            let pipelines: HashMap<String, wgpu::ComputePipeline> = make(
+                &cached_program,
+                include_str!("simplex.wgsl"),
+                include_str!("noise3.wgsl"),
+                world_layout,
+                &["surface_columns", "density_nodes"],
+            )?;
+            for (entry, pipeline) in pipelines {
+                world.insert(format!("{entry}_cached"), pipeline);
+            }
+        }
+        let material_source = if material_layers {
+            format!(
+                "{}\n{}",
+                include_str!("aquifers.wgsl"),
+                include_str!("materials.wgsl")
+            )
+        } else {
+            String::new()
+        };
+        let mut cave_entries = vec![
+            "underground_queries",
+            "cave_nodes",
+            "cave_exterior",
+            "cave_mask",
+        ];
+        if material_layers {
+            cave_entries.extend(["material_counts", "material_emit"]);
+        }
+        if aquifers > 0 {
+            cave_entries.push("aquifer_mask");
+        }
+        if aquifers > 1 {
+            cave_entries.extend(["aquifer_surface", "aquifer_centers", "aquifer_barrier"]);
+        }
+        cave_entries.retain(|entry| !reuse.is_some_and(|p| p.cave_reuses(entry)));
+        let mut cave_pipelines: HashMap<String, wgpu::ComputePipeline> = make(
+            program,
             include_str!("caves.wgsl"),
             &material_source,
             cave,
-            &entries,
-        );
-        for (entry, pipeline) in pipelines {
-            cave_pipelines.insert(format!("{entry}_cached"), pipeline);
+            &cave_entries,
+        )?;
+        if cached_masks || cached_nodes {
+            let cached_program = crate::program::composition::cached_source(program);
+            let mut entries = ["cave_exterior", "cave_mask", "aquifer_mask"]
+                .into_iter()
+                .filter(|e| cached_masks && cave_entries.contains(e))
+                .collect::<Vec<_>>();
+            if cached_nodes {
+                entries.push("cave_nodes");
+            }
+            let pipelines: HashMap<String, wgpu::ComputePipeline> = make(
+                &cached_program,
+                include_str!("caves.wgsl"),
+                &material_source,
+                cave,
+                &entries,
+            )?;
+            for (entry, pipeline) in pipelines {
+                cave_pipelines.insert(format!("{entry}_cached"), pipeline);
+            }
         }
-    }
+        Ok(Pipelines {
+            world,
+            cave: cave_pipelines,
+            horizontal_fields,
+            reuse,
+            dispatches,
+        })
+    })();
+    // Source-generation errors must unwind the validation scope as well.
     if let Some(error) = pollster::block_on(scope.pop()) {
         return Err(format!("specialized GPU program: {error}"));
     }
     #[cfg(test)]
     probe.report("bundle", "all", total_start, program.len());
-    Ok(Pipelines {
-        world,
-        cave: cave_pipelines,
-        horizontal_fields,
-        reuse,
-    })
+    result
 }
 
 /// Constant calls bypass the material dispatch and its other graph call paths.

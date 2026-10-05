@@ -130,8 +130,12 @@ outputs, effective switching fixtures and per-process reports. `evidence.json`
 records hashes and final comparison totals. Final harness log:
 `build/interpreter-reuse-final-validation.log`.
 
-Remaining startup work includes the ten required generic pipelines and the
-already-loaded base bundle's own first-use cost. This measurement does not cover
+The subsequent [shared interpreter milestone](GPU_SHARED_INTERPRETER.md) reduces
+the ten required generic pipelines to two on measured compact Metal profiles,
+cutting another roughly two seconds from first-use compilation. It documents
+the remaining synchronous cost and small warm-throughput tradeoff. Remaining
+startup work includes generic activation and the already-loaded base bundle's
+own first-use cost. This measurement does not cover
 an empty-cache desktop launch or Java world creation. Efficient production
 density composition and remaining feature/provider approximations also remain
 open parts of the broader generation goal.

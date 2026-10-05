@@ -74,6 +74,7 @@ pub(crate) struct Gpu {
     cached_node_plans: HashMap<u32, crate::program::composition::CachedDensity>,
     interpolation_cache: bool,
     specialized_terrain: bool,
+    interpreter_dispatch: bool,
     density_composition: bool,
     cached_density_masks: bool,
     lake_point_cache: bool,
@@ -148,10 +149,27 @@ impl Gpu {
             Ok("1") => true,
             _ => info.backend == wgpu::Backend::Metal,
         };
+        // Matched Metal runs cut compact interpreter first-use compilation by
+        // about 70%. Unmeasured backends retain their independent pipelines.
+        let interpreter_dispatch = match std::env::var("RETINA_INTERPRETER_DISPATCH").as_deref() {
+            Ok("0") => false,
+            Ok("1") => true,
+            _ => {
+                info.backend == wgpu::Backend::Metal
+                    && adapter.features().contains(wgpu::Features::IMMEDIATES)
+                    && adapter.limits().max_immediate_size >= 4
+            }
+        };
         let (device, queue) = pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor {
             label: Some("Retina terrain device"),
-            required_features: adapter.features() & wgpu::Features::TIMESTAMP_QUERY,
+            required_features: (adapter.features() & wgpu::Features::TIMESTAMP_QUERY)
+                | if interpreter_dispatch {
+                    wgpu::Features::IMMEDIATES
+                } else {
+                    wgpu::Features::empty()
+                },
             required_limits: wgpu::Limits {
+                max_immediate_size: if interpreter_dispatch { 4 } else { 0 },
                 max_storage_buffer_binding_size: adapter.limits().max_storage_buffer_binding_size,
                 max_buffer_size: adapter.limits().max_buffer_size,
                 ..Default::default()
@@ -363,6 +381,7 @@ impl Gpu {
             cached_node_plans: HashMap::new(),
             interpolation_cache: std::env::var("RETINA_INTERPOLATION_CACHE").as_deref() != Ok("0"),
             specialized_terrain,
+            interpreter_dispatch,
             density_composition: std::env::var("RETINA_DENSITY_COMPOSITION").as_deref() == Ok("1"),
             cached_density_masks: std::env::var("RETINA_CACHED_DENSITY_MASKS").as_deref()
                 != Ok("0"),
@@ -565,6 +584,7 @@ impl Gpu {
                     &self.cave_layout,
                     &crate::program::interpreter_source(1024),
                     None,
+                    false,
                 )?));
         }
         let interpreted = if needs_interpreter && (depth > 0 || composition) {
@@ -607,6 +627,7 @@ impl Gpu {
                     &self.cave_layout,
                     &source,
                     Some(reuse),
+                    self.interpreter_dispatch && capacity == crate::program::COMPACT_VALUES,
                 )?;
                 self.interpolation_interpreters
                     .insert(key, std::sync::Arc::new(pipelines));
@@ -627,10 +648,16 @@ impl Gpu {
         } else {
             interpreted.as_deref()
         };
-        let world_pipeline =
-            |entry, fallback| selected.map_or(fallback, |p| p.world_or(entry, fallback));
-        let terrain_pipeline =
-            |entry, fallback| terrain.map_or(fallback, |p| p.world_or(entry, fallback));
+        let world_pipeline = |entry, fallback| {
+            selected.map_or(crate::specialize::Selected::from(fallback), |p| {
+                p.world_or(entry, fallback)
+            })
+        };
+        let terrain_pipeline = |entry, fallback| {
+            terrain.map_or(crate::specialize::Selected::from(fallback), |p| {
+                p.world_or(entry, fallback)
+            })
+        };
         let density_program = profile
             .and_then(|p| p.registry_program.as_ref())
             .filter(|p| p.surface[2] == 0 && (!surface_probe || align_shores));
@@ -755,9 +782,10 @@ impl Gpu {
             } else {
                 cached_masks
             };
-            selected.map_or(fallback, |p| {
+            selected.map_or(crate::specialize::Selected::from(fallback), |p| {
                 if cached {
                     p.cached_cave(entry)
+                        .map(crate::specialize::Selected::from)
                         .unwrap_or_else(|| p.cave_or(entry, fallback))
                 } else {
                     p.cave_or(entry, fallback)
@@ -983,11 +1011,10 @@ impl Gpu {
                     label: Some("Retina resident registered interpolation fields"),
                     timestamp_writes: writes,
                 });
-                pass.set_pipeline(
-                    terrain
-                        .unwrap()
-                        .world(&format!("interpolation_nodes_{level}")),
-                );
+                (terrain
+                    .unwrap()
+                    .world_selected(&format!("interpolation_nodes_{level}")))
+                .bind(&mut pass);
                 pass.set_bind_group(0, group, &[]);
                 pass.dispatch_workgroups(
                     interpolation_dispatch.div_ceil(64),
@@ -1027,12 +1054,12 @@ impl Gpu {
                             .all(|(r, (_, header))| plan.covers_lattice(r, header))
                             && interpolation_headers.len() == gpu_requests.len()
                     });
-            pass.set_pipeline(
-                selected
-                    .filter(|_| cached_lattice)
-                    .and_then(|p| p.cached_world("density_nodes"))
-                    .unwrap_or_else(|| terrain_pipeline("density_nodes", &self.density_pipeline)),
-            );
+            (selected
+                .filter(|_| cached_lattice)
+                .and_then(|p| p.cached_world("density_nodes"))
+                .map(crate::specialize::Selected::from)
+                .unwrap_or_else(|| terrain_pipeline("density_nodes", &self.density_pipeline)))
+            .bind(&mut pass);
             pass.set_bind_group(0, group, &[]);
             pass.dispatch_workgroups(
                 density_dispatch.0.div_ceil(64),
@@ -1055,11 +1082,12 @@ impl Gpu {
                 label: Some("Retina registered surface and climate lattice"),
                 timestamp_writes: writes,
             });
-            pass.set_pipeline(if surface_probe && !align_shores {
+            (if surface_probe && !align_shores {
                 terrain_pipeline("climate_nodes", &self.climate_pipeline)
             } else {
                 terrain_pipeline("height_nodes", &self.height_pipeline)
-            });
+            })
+            .bind(&mut pass);
             pass.set_bind_group(0, group, &[]);
             pass.dispatch_workgroups((side * side).div_ceil(64), requests.len() as u32, 1);
         }
@@ -1084,12 +1112,12 @@ impl Gpu {
                             .all(|(r, (_, header))| plan.covers_surface(r, header))
                             && interpolation_headers.len() == gpu_requests.len()
                     });
-            pass.set_pipeline(
-                selected
-                    .filter(|_| cached_surface)
-                    .and_then(|p| p.cached_world("surface_columns"))
-                    .unwrap_or_else(|| terrain_pipeline("surface_columns", &self.surface_pipeline)),
-            );
+            (selected
+                .filter(|_| cached_surface)
+                .and_then(|p| p.cached_world("surface_columns"))
+                .map(crate::specialize::Selected::from)
+                .unwrap_or_else(|| terrain_pipeline("surface_columns", &self.surface_pipeline)))
+            .bind(&mut pass);
             pass.set_bind_group(0, group, &[]);
             pass.dispatch_workgroups(surface_dispatch.div_ceil(64), requests.len() as u32, 1);
         }
@@ -1098,7 +1126,7 @@ impl Gpu {
                 label: Some("Retina biome site pass"),
                 timestamp_writes: timestamp_writes(timings::SITES),
             });
-            pass.set_pipeline(world_pipeline("biome_sites", &self.sites_pipeline));
+            (world_pipeline("biome_sites", &self.sites_pipeline)).bind(&mut pass);
             pass.set_bind_group(0, group, &[]);
             pass.dispatch_workgroups(3, requests.len() as u32, 1);
         }
@@ -1107,10 +1135,7 @@ impl Gpu {
                 label: Some("Retina lake candidate classification"),
                 timestamp_writes: timestamp_writes(timings::LAKE_CANDIDATES),
             });
-            pass.set_pipeline(world_pipeline(
-                "lake_candidates",
-                &self.lake_candidates_pipeline,
-            ));
+            (world_pipeline("lake_candidates", &self.lake_candidates_pipeline)).bind(&mut pass);
             pass.set_bind_group(0, group, &[]);
             pass.dispatch_workgroups(lake_dispatch.div_ceil(64), requests.len() as u32, 1);
         }
@@ -1119,7 +1144,7 @@ impl Gpu {
                 label: Some("Retina parallel lake density probes"),
                 timestamp_writes: timestamp_writes(timings::LAKE_DENSITY),
             });
-            pass.set_pipeline(world_pipeline("lake_density", &self.lake_density_pipeline));
+            (world_pipeline("lake_density", &self.lake_density_pipeline)).bind(&mut pass);
             pass.set_bind_group(0, group, &[]);
             pass.dispatch_workgroups(
                 (lake_dispatch * 20).div_ceil(64),
@@ -1132,7 +1157,7 @@ impl Gpu {
                 label: Some("Retina shared lake level extraction"),
                 timestamp_writes: timestamp_writes(timings::LAKE_REDUCE),
             });
-            pass.set_pipeline(world_pipeline("lake_nodes", &self.lake_pipeline));
+            (world_pipeline("lake_nodes", &self.lake_pipeline)).bind(&mut pass);
             pass.set_bind_group(0, group, &[]);
             pass.dispatch_workgroups(lake_dispatch.div_ceil(64), requests.len() as u32, 1);
         }
@@ -1141,11 +1166,12 @@ impl Gpu {
                 label: Some("Retina interpolated column pass"),
                 timestamp_writes: timestamp_writes(timings::COLUMNS),
             });
-            pass.set_pipeline(if surface_probe && !align_shores {
+            (if surface_probe && !align_shores {
                 world_pipeline("biome_queries", &self.biome_queries_pipeline)
             } else {
                 world_pipeline("main", &self.columns_pipeline)
-            });
+            })
+            .bind(&mut pass);
             pass.set_bind_group(0, group, &[]);
             pass.dispatch_workgroups(if sparse { 1 } else { 4 }, count as u32, 1);
         }
@@ -1194,10 +1220,8 @@ impl Gpu {
                     label: Some("Retina sparse underground biome query"),
                     timestamp_writes: timestamp_writes(timings::CAVE_DENSITY),
                 });
-                pass.set_pipeline(cave_pipeline(
-                    "underground_queries",
-                    &self.underground_queries_pipeline,
-                ));
+                (cave_pipeline("underground_queries", &self.underground_queries_pipeline))
+                    .bind(&mut pass);
                 pass.set_bind_group(0, &cave_group, &[]);
                 pass.dispatch_workgroups(1, count as u32, 1);
             } else {
@@ -1246,7 +1270,7 @@ impl Gpu {
                             label: Some(name),
                             timestamp_writes: writes,
                         });
-                        pass.set_pipeline(cave_pipeline(name, pipeline));
+                        (cave_pipeline(name, pipeline)).bind(&mut pass);
                         pass.set_bind_group(0, &cave_group, &[]);
                         pass.dispatch_workgroups(items.div_ceil(64), 1, 1);
                     }
@@ -1256,7 +1280,7 @@ impl Gpu {
                         label: Some("Retina cave density pass"),
                         timestamp_writes: timestamp_writes(timings::CAVE_DENSITY),
                     });
-                    pass.set_pipeline(cave_pipeline("cave_nodes", &self.cave_nodes_pipeline));
+                    (cave_pipeline("cave_nodes", &self.cave_nodes_pipeline)).bind(&mut pass);
                     pass.set_bind_group(0, &cave_group, &[]);
                     pass.dispatch_workgroups((node_side * node_side).div_ceil(64), node_height, 1);
                 }
@@ -1269,7 +1293,7 @@ impl Gpu {
                         label: Some("Retina GPU exterior density classification"),
                         timestamp_writes: writes,
                     });
-                    pass.set_pipeline(cave_pipeline("cave_exterior", &self.cave_exterior_pipeline));
+                    (cave_pipeline("cave_exterior", &self.cave_exterior_pipeline)).bind(&mut pass);
                     pass.set_bind_group(0, &cave_group, &[]);
                     pass.dispatch_workgroups(
                         (surface_width * surface_width / 4).div_ceil(64),
@@ -1286,7 +1310,7 @@ impl Gpu {
                         label: Some("Retina GPU interpolated cave mask"),
                         timestamp_writes: writes,
                     });
-                    pass.set_pipeline(cave_pipeline("cave_mask", &self.cave_mask_pipeline));
+                    (cave_pipeline("cave_mask", &self.cave_mask_pipeline)).bind(&mut pass);
                     pass.set_bind_group(0, &cave_group, &[]);
                     pass.dispatch_workgroups(
                         256,
@@ -1302,7 +1326,7 @@ impl Gpu {
                         label: Some("Retina local aquifer fluids and pressure barriers"),
                         timestamp_writes: timestamp_writes(timings::AQUIFER_MASK),
                     });
-                    pass.set_pipeline(cave_pipeline("aquifer_mask", &self.aquifer_mask_pipeline));
+                    (cave_pipeline("aquifer_mask", &self.aquifer_mask_pipeline)).bind(&mut pass);
                     pass.set_bind_group(0, &cave_group, &[]);
                     pass.dispatch_workgroups(256, volume_words.div_ceil(16384) as u32, 1);
                 }
@@ -1313,10 +1337,8 @@ impl Gpu {
                         label: Some("Retina GPU material run counts"),
                         timestamp_writes: timestamp_writes(timings::MATERIALS),
                     });
-                    pass.set_pipeline(cave_pipeline(
-                        "material_counts",
-                        &self.material_counts_pipeline,
-                    ));
+                    (cave_pipeline("material_counts", &self.material_counts_pipeline))
+                        .bind(&mut pass);
                     pass.set_bind_group(0, &cave_group, &[]);
                     pass.dispatch_workgroups((material_columns as u32).div_ceil(64), 1, 1);
                 }
@@ -1360,11 +1382,13 @@ impl Gpu {
                 encoder.copy_buffer_to_buffer(&self.output, 0, &columns, 0, columns.size());
                 encoder.copy_buffer_to_buffer(&buffers.mask, 0, &mask, 0, storage_mask_size);
                 encoder.copy_buffer_to_buffer(&self.requests, 0, &requests, 0, requests.size());
+                let emit = cave_pipeline("material_emit", &self.material_emit_pipeline);
                 materials = Some(MaterialPending {
                     columns,
                     mask,
                     requests,
-                    pipeline: cave_pipeline("material_emit", &self.material_emit_pipeline).clone(),
+                    pipeline: emit.pipeline.clone(),
+                    dispatch: emit.dispatch,
                 });
             }
             encoder.copy_buffer_to_buffer(
@@ -1508,7 +1532,11 @@ impl Gpu {
                 label: Some("Retina GPU material run emission"),
                 timestamp_writes: timestamps.as_ref().map(|t| t.writes(0)),
             });
-            pass.set_pipeline(&job.pipeline);
+            crate::specialize::Selected {
+                pipeline: &job.pipeline,
+                dispatch: job.dispatch,
+            }
+            .bind(&mut pass);
             pass.set_bind_group(0, &group, &[]);
             pass.dispatch_workgroups((request.padding * 16).pow(2).div_ceil(64), 1, 1);
         }
@@ -1816,6 +1844,7 @@ struct MaterialPending {
     mask: wgpu::Buffer,
     requests: wgpu::Buffer,
     pipeline: wgpu::ComputePipeline,
+    dispatch: Option<u32>,
 }
 impl PendingSample {
     fn ready(&mut self) -> bool {

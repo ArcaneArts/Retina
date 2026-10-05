@@ -101,6 +101,14 @@ Rust snow pass from blanketing regular frozen-ocean ice, while preserving snow
 on supported cold ground and crowns. Both chunk and MCA output are tested against
 Minecraft's loaded block survival rules.
 
+The [shared compact interpreter](GPU_SHARED_INTERPRETER.md) now reduces required
+Metal first-profile pipelines from ten to two. Fresh-identity twenty-region
+comparisons cut additional compilation about 70%, saving roughly two seconds
+in the first native region. Final outputs match across cold/warm/concurrent
+workloads and effective profile switches. Warm throughput shows a small mixed
+tradeoff, and about 0.94 seconds of synchronous generic compilation remains;
+full startup and fast production density composition remain required.
+
 See [GPU program specialization](GPU_PROGRAM_SPECIALIZATION.md) for the compiler,
 resident horizontal cache, startup behavior and its validation.
 Material constant parameterization and grouped dispatch experiments were rejected:

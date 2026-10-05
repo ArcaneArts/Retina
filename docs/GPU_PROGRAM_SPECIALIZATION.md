@@ -101,6 +101,11 @@ already-loaded compact pipelines for compatible stages. Final fresh-identity
 tests reduce first-profile generic compilation from 21 to 10 pipelines and about
 6.2 to 3.1 seconds. Required density pipelines and full cold startup remain open;
 warm throughput is essentially unchanged.
+[Shared compact interpreter dispatch](GPU_SHARED_INTERPRETER.md) subsequently
+reduces those ten pipelines to two on measured Metal hardware, lowering
+additional compilation to about 0.94 seconds with unchanged generated data.
+Warm throughput differences are small and mixed; remaining synchronous activation
+and full cold startup still require attention.
 
 Real GPU root checks compare all six outputs of every graph bit-for-bit with the
 interpreter, varying seeds, Y levels and material contexts. Cache-mode checks
