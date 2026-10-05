@@ -423,10 +423,86 @@ pub fn snow(
             if p.heightmap_masks[material] & (1 << 4) == 0 {
                 continue;
             }
-            if blocks[at + COLUMNS] == 0 && blocks[at] != p.water && blocks[at] != p.geology.lava {
+            let supports = p
+                .snow_support
+                .get(material)
+                .copied()
+                .unwrap_or(blocks[at] != p.ice);
+            if supports
+                && blocks[at + COLUMNS] == 0
+                && blocks[at] != p.water
+                && blocks[at] != p.geology.lava
+            {
                 blocks[at + COLUMNS] = p.terrain_features.snow_layer;
             }
             break;
         }
+    }
+}
+
+#[cfg(test)]
+mod snow_tests {
+    use super::*;
+    #[test]
+    fn snow_uses_registered_support_and_keeps_frozen_water_clear() {
+        let noise = serde_json::json!({"frequency":0.001,"amplitude":1,"modifiers":[1]});
+        let mut profile=WorldProfile::parse(serde_json::json!({
+            "biome_scale":128,"blend":0.55,"sea_level":3,"stone":1,"water":2,"bedrock":1,"deepslate":1,"snow":1,"ice":3,"lava":4,
+            "materials":["minecraft:air","minecraft:stone","minecraft:water","minecraft:ice","minecraft:lava","minecraft:oak_leaves","minecraft:packed_ice","test:unsupported","test:override",{"id":"minecraft:snow","properties":{"layers":"1"}}],
+            "biomes":[{"id":"test:cold","climate":[0,0,0,0],"terrain":[0,0,0],"top":1,"filler":1,"underwater":1,"flags":1,"snow_surface":true}],
+            "noises":[noise,noise,noise,noise],"material_flags":[0,0,64,0,64,4,0,0,0,0],"heightmap_masks":[0,63,63,63,63,63,63,63,63,0],
+            "snow_support":[false,true,false,false,false,true,false,false,true,false],"terrain_features":{"snow_layer":9}
+        }).to_string().as_bytes()).unwrap();
+        let request = ChunkRequest {
+            seed: 1,
+            chunk_x: -1,
+            chunk_z: 0,
+            min_y: 0,
+            height: 8,
+            base_height: 4.0,
+            amplitude: 0.0,
+            frequency: 0.01,
+            reserved: 0,
+        };
+        let mut columns = vec![
+            crate::profile::Column {
+                height: 4,
+                materials: 1 | (1 << 16),
+                packed: 1 << 28
+            };
+            COLUMNS
+        ];
+        let mut blocks = vec![0; request.block_count()];
+        for c in 0..COLUMNS {
+            blocks[3 * COLUMNS + c] = (1 + c % 8) as u16;
+        }
+        columns[0].packed = 0;
+        columns[8].packed |= 1 << 29;
+        blocks[4 * COLUMNS + 16] = 9;
+        let before = blocks.clone();
+        snow(request, &profile, &columns, &mut blocks);
+        let mut added = 0;
+        for c in 0..COLUMNS {
+            let ground = before[3 * COLUMNS + c] as usize;
+            let expected = c != 0 && c != 8 && c != 16 && profile.snow_support[ground];
+            assert_eq!(
+                blocks[4 * COLUMNS + c],
+                if expected || c == 16 { 9 } else { 0 },
+                "column {c}, ground {ground}"
+            );
+            assert_eq!(blocks[3 * COLUMNS + c], before[3 * COLUMNS + c]);
+            added += usize::from(expected);
+        }
+        assert!(
+            added > 80,
+            "fixture exercises snowy stone, leaves and loaded overrides"
+        );
+        // Older standalone profiles lack the support table. Their ordinary
+        // ocean-freezing ice must still remain clear.
+        profile.snow_support.clear();
+        let mut blocks = vec![0; request.block_count()];
+        blocks[3 * COLUMNS + 1] = profile.ice;
+        snow(request, &profile, &columns, &mut blocks);
+        assert_eq!(blocks[4 * COLUMNS + 1], 0);
     }
 }

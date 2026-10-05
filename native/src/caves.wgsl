@@ -200,6 +200,9 @@ fn exterior_offset(r: Request) -> u32 {
     return n*n*(u32((r.max_y-bottom+3)/4)+1u);
 }
 fn chamber_density(x:u32,y:i32,z:u32,sampled:f32,r:Request)->f32 {
+    if caves.globals.y>0u && bytecode[5]==0u && density_composed(r) {
+        return registered_density(vec3<f32>(f32(r.origin_x+i32(x)),f32(y),f32(r.origin_z+i32(z))),r);
+    }
     if caves.globals.y>0u && bytecode[5]==0u && (r.density_step_xz%4u!=0u || r.density_step_y%4u!=0u) {
         // The cave grid subdivides vanilla's 4x8x4 cells exactly. Custom cell
         // boundaries inside a cave cell require the original density lattice.
@@ -261,7 +264,16 @@ fn is_cave(x: u32, y: i32, z: u32, column: Column, r: Request) -> bool {
     // Gradually narrow near-surface cavities except inside sparse coherent
     // entrance domains. All ordinary cave decisions 24+ blocks down are unchanged.
     let roof=(1.0-entrance)*(1.0-smoothstep(0.0,24.0,f32(column.height-1-y)));
-    var carved = caves.globals.y>0u && chamber_density(x,y,z,values.x,r)<-roof*0.20 && f32(y)<exterior;
+    var carved=false;
+    if caves.globals.y>0u && f32(y)<exterior {
+        let threshold=-roof*0.20;
+        if bytecode[5]==0u && density_composed(r) {
+            let point=vec3<f32>(f32(r.origin_x+i32(x)),f32(y),f32(r.origin_z+i32(z)));
+            let bounds=density_point_bounds(point,r);
+            if bounds.y<threshold {carved=true;}
+            else if bounds.x<threshold {carved=registered_density(point,r)<threshold;}
+        }else {carved=chamber_density(x,y,z,values.x,r)<threshold;}
+    }
     for (var c=0u;c<4u;c++) {
         let settings = caves.biomes[biome].carvers[c];
         // Registry Y ranges locate tunnel centers, not their outer walls.

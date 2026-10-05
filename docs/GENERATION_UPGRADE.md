@@ -18,6 +18,10 @@ Child horizontal expressions retain GPU column reuse. The shared final-field
 terrain lattice and cold compilation cost remain required work. [Resident
 interpolation-field lattices](GPU_INTERPOLATION_CACHE.md) now provide GPU-only
 sample reuse for that ongoing work.
+[Experimental block-position composition](GPU_DENSITY_COMPOSITION.md) now
+preserves arithmetic after the individual fields in analytic checks. Parallel
+lake probes reduce its initial cost, but whole-region regressions keep the
+experiment disabled by default; fast production composition remains required.
 [Mixed GPU stage selection](GPU_STAGE_SELECTION.md) now retains compact
 interpreted terrain/climate on Metal while specializing materials and caves.
 Repeated actual-profile comparisons improve whole-region throughput, with
@@ -73,6 +77,10 @@ It also checks actual registered grass/fern soil support after village paths and
 gravel replace the ground, removing invalid lower and upper halves in order.
 Broader biome/MCA validation passes; the previous defect and measured sparse
 repair cost are documented there.
+The [registered snow-support table](SNOW_SUPPORT.md) now also prevents the final
+Rust snow pass from blanketing regular frozen-ocean ice, while preserving snow
+on supported cold ground and crowns. Both chunk and MCA output are tested against
+Minecraft's loaded block survival rules.
 
 See [GPU program specialization](GPU_PROGRAM_SPECIALIZATION.md) for the compiler,
 resident horizontal cache, startup behavior and its validation.

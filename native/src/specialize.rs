@@ -421,9 +421,16 @@ fn source_columns(program: &RegistryProgram) -> Result<(String, u32), String> {
         .ok_or("missing interpreter end")?;
     Ok((
         format!(
-            "{}\n{}\n{}",
+            "{}\n{}\n{}\n{}",
             &interpreter[..start],
             functions,
+            crate::program::density_bounds_source(
+                if program.scratch_values() > crate::program::COMPACT_VALUES {
+                    1024
+                } else {
+                    crate::program::COMPACT_VALUES
+                }
+            ),
             &interpreter[end..]
         ),
         fields as u32,
@@ -561,8 +568,10 @@ impl Compiler {
         &mut self,
         program: &RegistryProgram,
         terrain: bool,
+        composition: bool,
     ) -> Result<Arc<State>, String> {
         let (mut source, horizontal_fields) = source_columns(program)?;
+        source = crate::program::density_composition_source(&source, composition);
         // The entry-point set is part of pipeline identity even when graphs match.
         writeln!(source, "// material pipelines: {}", program.material_layers).unwrap();
         writeln!(
@@ -807,6 +816,7 @@ mod tests {
             points: vec![],
             surface: [-64, 8, 0],
             terrain_cell: [4, 8],
+            density_composition: false,
             surface_noises: [0; 3],
             material_layers: true,
             material_halo: false,
@@ -822,7 +832,7 @@ mod tests {
             .split("fn run_program(")
             .nth(1)
             .unwrap()
-            .split("fn density_floor_div(")
+            .split("fn density_composed(")
             .next()
             .unwrap();
         assert!(dispatch.contains("case 3u:"));
@@ -874,6 +884,7 @@ mod tests {
             points: vec![[-1.0, 1.0, 1.0, 0.0], [1.0, 0.0, 2.0, 0.0]],
             surface: [0, 8, 0],
             terrain_cell: [4, 8],
+            density_composition: false,
             surface_noises: [0; 3],
             material_layers: false,
             material_halo: false,

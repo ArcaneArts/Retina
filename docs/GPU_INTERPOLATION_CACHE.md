@@ -45,6 +45,11 @@ of cold generic and specialized shader compilation. This cache milestone must
 not be interpreted as completing either requirement. Existing saved terrain and
 Distant Horizons promotion retain their existing behavior.
 
+An [experimental block-position composition path](GPU_DENSITY_COMPOSITION.md)
+now reuses these fields and passes analytic samplers. It remains disabled by
+default because measured whole-region costs regress; efficient production
+composition and cold compilation remain required work.
+
 ## Validation and measurements
 
 The cache regression compares cached roots with a reference GPU interpreter whose

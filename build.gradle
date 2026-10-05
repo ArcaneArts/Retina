@@ -141,6 +141,7 @@ tasks.register('interpolationTest', JavaExec) {
     mainClass = 'art.arcane.retina.worldgen.NativeInterpolationIntegrationTest'
     javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
     jvmArgs '--enable-native-access=ALL-UNNAMED'
+    environment 'RETINA_DENSITY_COMPOSITION', '1'
 }
 
 tasks.register('nativeInterpolationGpuTest', Exec) {
@@ -236,6 +237,17 @@ tasks.register('featureTest', JavaExec) {
     javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
     jvmArgs '--enable-native-access=ALL-UNNAMED'
 }
+
+tasks.register('snowTest', JavaExec) {
+    group = 'verification'
+    description = 'Check loaded snow support, bare frozen oceans and MCA/chunk consistency.'
+    dependsOn 'gpuTestClasses', 'packageNative'
+    classpath = sourceSets.gpuTest.runtimeClasspath
+    mainClass = 'art.arcane.retina.worldgen.NativeSnowIntegrationTest'
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
+    jvmArgs '--enable-native-access=ALL-UNNAMED'
+}
+gpuTest.dependsOn 'snowTest'
 
 tasks.register('aquiferTest', JavaExec) {
     group = 'verification'

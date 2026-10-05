@@ -81,7 +81,54 @@ public final class NativeInterpolationIntegrationTest {
                 }
             }
             System.out.println("QA_EVT {\"event\":\"registered_interpolation_scopes\",\"status\":\"pass\",\"context\":{\"columns\":"+columns+",\"fields\":"+compiler.interpolations.size()+",\"distinct_from_flattening\":"+changed+"}}");
+            checkComposition(base,registry);
         }
+    }
+    private static void checkComposition(BiomeTerrainProfile base,RegistryAccess registry) throws Exception {
+        JsonElement x=gradient("x",-32,32,-1,1),z=gradient("z",-32,32,-1,1),y=gradient("y",-64,320,-64,320);
+        var a=interpolate(square(x),4,8);
+        var choice=new JsonObject();choice.addProperty("type","minecraft:range_choice");choice.add("input",interpolate(x,4,8));choice.addProperty("min_inclusive",-.3);choice.addProperty("max_exclusive",.2);choice.addProperty("when_in_range",145.25);choice.addProperty("when_out_of_range",95.5);
+        var densityCases=List.of(binary("sub",add(new JsonPrimitive(91.75F),multiply(square(a),new JsonPrimitive(100F))),y),
+                binary("sub",add(new JsonPrimitive(105.75F),multiply(binary("min",square(a),interpolate(square(z),5,3)),new JsonPrimitive(35F))),y),
+                binary("sub",choice,y),
+                binary("sub",new JsonPrimitive(130.25F),multiply(square(interpolate(y,4,4)),new JsonPrimitive(.008F))));
+        int checked=0,different=0;
+        for(int index=0;index<densityCases.size();index++) {
+            var value=densityCases.get(index);
+            var sampler=DensityFunction.CODEC.parse(registry.createSerializationContext(JsonOps.INSTANCE),value).getOrThrow().compileSampler(null);
+            var compiler=new RegistryGpuProgram(registry,-64,384,63);
+            var surface=compiler.new Program();surface.roots.add(surface.density(value));
+            var graph=surface.finish();
+            var common=NativeCoordinateIntegrationTest.fixture(base,compiler,List.of(NativeCoordinateIntegrationTest.zero(),graph,graph));
+            common.getAsJsonObject("registry_program").addProperty("density_composition",true);
+            for(String execution:List.of("interpreter","specialized")) {
+                var data=common.deepCopy();data.addProperty("program_execution",execution);
+                int id=NativeTerrain.instance().registerProfile(data.toString());
+                var legacy=data.deepCopy();legacy.getAsJsonObject("registry_program").addProperty("density_composition",false);
+                int old=NativeTerrain.instance().registerProfile(legacy.toString());
+                for(int[] pos:new int[][]{{-2,-1},{-1,0},{0,-1},{1,1}}) {
+                    var request=new TerrainRequest(123456789L,pos[0],pos[1],-64,384,64,48,.008F,id);
+                    var actual=NativeTerrain.instance().sampleColumns(request);
+                    var before=NativeTerrain.instance().sampleColumns(new TerrainRequest(request.seed(),pos[0],pos[1],-64,384,64,48,.008F,old));
+                    try(var generated=NativeTerrain.instance().generate(request)) {
+                        if(!Arrays.equals(actual.heights(),generated.columns().heights()))throw new AssertionError("Composed density height differs with chunk halo");
+                    }
+                    for(int dz=0;dz<16;dz++)for(int dx=0;dx<16;dx++) {
+                        int wx=pos[0]*16+dx,wz=pos[1]*16+dz,h=-63;
+                        for(int wy=319;wy>=-64;wy--)if(sampler.sampleValue(SamplerContext.EMPTY_UNCACHED,wx,wy,wz)>0){h=Math.max(-63,wy+1);break;}
+                        int at=dz*16+dx;
+                        if(actual.heights()[at]!=h)throw new AssertionError("Composed density "+index+" "+execution+" at "+wx+","+wz+": expected "+h+", got "+actual.heights()[at]);
+                        if(before.heights()[at]!=h)different++;
+                        checked++;
+                    }
+                }
+            }
+        }
+        if(different<256)throw new AssertionError("Composed fixtures must distinguish final-field interpolation: "+different);
+        System.out.println("QA_EVT {\"event\":\"registered_density_composition\",\"status\":\"pass\",\"context\":{\"columns\":"+checked+",\"different_from_final_interpolation\":"+different+"}}");
+    }
+    private static JsonObject gradient(String axis,int from,int to,float low,float high) {
+        var o=new JsonObject();o.addProperty("type","minecraft:gradient");o.addProperty("axis",axis);o.addProperty("from_coordinate",from);o.addProperty("to_coordinate",to);o.addProperty("from_value",low);o.addProperty("to_value",high);return o;
     }
     private static float sample(DensitySampler sampler,int x,int z) {return sampler.sampleValue(SamplerContext.EMPTY_UNCACHED,x,0,z);}
     private static JsonObject axis(String axis) {

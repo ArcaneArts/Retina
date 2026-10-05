@@ -60,10 +60,11 @@ pub(crate) struct Gpu {
     wide_profiles: std::collections::HashSet<u32>,
     wide_interpreter: Option<std::sync::Arc<crate::specialize::Pipelines>>,
     interpolation_interpreters:
-        HashMap<(usize, usize), std::sync::Arc<crate::specialize::Pipelines>>,
+        HashMap<(usize, usize, bool), std::sync::Arc<crate::specialize::Pipelines>>,
     interpolation_plans: HashMap<u32, std::sync::Arc<crate::program::interpolation::CachePlan>>,
     interpolation_cache: bool,
     specialized_terrain: bool,
+    density_composition: bool,
 }
 
 pub(crate) struct GpuSample {
@@ -333,6 +334,7 @@ impl Gpu {
             interpolation_plans: HashMap::new(),
             interpolation_cache: std::env::var("RETINA_INTERPOLATION_CACHE").as_deref() != Ok("0"),
             specialized_terrain,
+            density_composition: std::env::var("RETINA_DENSITY_COMPOSITION").as_deref() == Ok("1"),
         };
         gpu.add_profile(0, &vec![0; 672], &[0; 240], &[0; 32]);
         Ok(gpu)
@@ -469,7 +471,11 @@ impl Gpu {
                     self.wide_profiles.insert(profile_id);
                 }
                 if profile.unwrap().program_execution != crate::specialize::Execution::Interpreter {
-                    match self.compiler.request(program, self.specialized_terrain) {
+                    match self.compiler.request(
+                        program,
+                        self.specialized_terrain,
+                        self.density_composition && program.density_composition,
+                    ) {
                         Ok(state) => {
                             self.pipeline.shader(profile_id, state.progress.clone());
                             self.specialized.insert(profile_id, state);
@@ -501,6 +507,10 @@ impl Gpu {
             .and_then(|p| p.registry_program.as_ref())
             .map_or(0, |p| p.interpolation_depth());
         let needs_interpreter = specialized.is_none() || !self.specialized_terrain;
+        let composition = self.density_composition
+            && profile
+                .and_then(|p| p.registry_program.as_ref())
+                .is_some_and(|p| p.density_composition);
         if depth == 0
             && needs_interpreter
             && self.wide_profiles.contains(&profile_id)
@@ -514,15 +524,16 @@ impl Gpu {
                     &crate::program::interpreter_source(1024),
                 )?));
         }
-        let interpreted = if needs_interpreter && depth > 0 {
+        let interpreted = if needs_interpreter && (depth > 0 || composition) {
             let capacity = if self.wide_profiles.contains(&profile_id) {
                 1024
             } else {
                 crate::program::COMPACT_VALUES
             };
-            let key = (capacity, depth);
+            let key = (capacity, depth, composition);
             if !self.interpolation_interpreters.contains_key(&key) {
-                let source = crate::program::interpreter_source_depth(capacity, depth);
+                let source =
+                    crate::program::interpreter_source_density(capacity, depth, composition);
                 let pipelines = crate::specialize::compile_interpreter(
                     &self.device,
                     &self.layout,
@@ -574,9 +585,13 @@ impl Gpu {
         let mut interpolation_headers = Vec::new();
         let mut interpolation_depth = 0;
         if let Some(program) = density_program {
+            let compose = self.density_composition && program.density_composition;
             let [sx, sy] = program.terrain_cell;
             let mut floats = SURFACE_METADATA_FLOATS as u64;
             for request in &mut gpu_requests {
+                if compose {
+                    request.padding |= 1 << 26;
+                }
                 let width = if request.tile_side > 0 {
                     request.tile_side * 16
                 } else {
@@ -607,7 +622,7 @@ impl Gpu {
                 request.density_side = side as u32;
                 request.density_step_xz = sx;
                 request.density_step_y = sy;
-                floats += side * side * layers;
+                floats += side * side * layers * if compose { 3 } else { 1 };
                 let surface_width = width + 2 * guard as u32;
                 floats += (surface_width * surface_width) as u64;
                 surface_dispatch = surface_dispatch.max(surface_width * surface_width);
@@ -1735,8 +1750,19 @@ mod mapping_tests {
         }
         let registry = profile.registry_program.as_ref().unwrap();
         let interpreted = std::env::var_os("RETINA_PROGRAM_PARITY_INTERPRETER").is_some();
-        let cached = std::env::var_os("RETINA_PROGRAM_PARITY_CACHE").is_some();
         let field_cached = std::env::var_os("RETINA_PROGRAM_PARITY_INTERPOLATION_CACHE").is_some();
+        // Specialized interpolation inputs can read the horizontal atlas on
+        // aligned corners. Populate both caches, as production does, even when
+        // the requested oracle only targets interpolation-field reuse.
+        let cached = std::env::var_os("RETINA_PROGRAM_PARITY_CACHE").is_some()
+            || field_cached && !interpreted;
+        let bounds_check = std::env::var_os("RETINA_PROGRAM_PARITY_BOUNDS").is_some();
+        let samples_per_program = if bounds_check { 256 } else { 64 };
+        let programs = if bounds_check {
+            registry.programs.len().min(3)
+        } else {
+            registry.programs.len()
+        };
         assert!(
             !interpreted || !cached,
             "compact interpreter has no horizontal cache"
@@ -1753,10 +1779,7 @@ mod mapping_tests {
         let mut kernel = String::from(
             "@compute @workgroup_size(64) fn parity(@builtin(global_invocation_id) id:vec3<u32>){let program=id.x/64u;let sample=id.x%64u;",
         );
-        kernel.push_str(&format!(
-            "if program>={}u{{return;}}",
-            registry.programs.len()
-        ));
+        kernel.push_str(&format!("if program>={}u{{return;}}", programs));
         kernel.push_str("let seed=min(sample/21u,2u);var r=requests[0];r.seed_low^=seed*7919u;let point=vec3<f32>(f32(i32(sample%8u)*131-513),f32(i32(sample)*6-64),f32(i32(sample/8u)*127-511));let context=vec4<f32>(f32(sample%8u+1u),f32(sample%3u+3u),f32(sample%6u),f32(sample%7u));let reference=run_reference(program,point,r,context);var actual:array<f32,6>;switch program{case 0u:{actual=run_climate(point,r,context);}case 1u:{actual=run_surface_density(point,r,context);}case 2u:{actual=run_final_density(point,r,context);}default:{actual=run_program(program,point,r,context);}}var expected=reference;COORDINATE_EXPECTED let at=id.x*6u;columns[at]=Column(bitcast<i32>(reference[0]),bitcast<u32>(reference[1]),bitcast<u32>(reference[2]));columns[at+1u]=Column(bitcast<i32>(reference[3]),bitcast<u32>(reference[4]),bitcast<u32>(reference[5]));columns[at+2u]=Column(bitcast<i32>(actual[0]),bitcast<u32>(actual[1]),bitcast<u32>(actual[2]));columns[at+3u]=Column(bitcast<i32>(actual[3]),bitcast<u32>(actual[4]),bitcast<u32>(actual[5]));columns[at+4u]=Column(bitcast<i32>(expected[0]),bitcast<u32>(expected[1]),bitcast<u32>(expected[2]));columns[at+5u]=Column(bitcast<i32>(expected[3]),bitcast<u32>(expected[4]),bitcast<u32>(expected[5]));}");
         let coordinate_expected = fixture.get("coordinate_expected_roots");
         let coordinate_noise = fixture.get("coordinate_noise").map(|n| n.as_u64().unwrap());
@@ -1776,6 +1799,14 @@ mod mapping_tests {
             expected_kernel.push_str(&format!("if program==1u{{expected[0]=parity_interpolated_noise(point,r);expected[1]=program_noise(point*vec3<f32>(0.125,0.25,0.125),{noise}u,r);}}"));
         }
         kernel = kernel.replace("COORDINATE_EXPECTED", &expected_kernel);
+        if bounds_check {
+            kernel = kernel.replace("let at=id.x*6u;", "let cell=floor(point/vec3<f32>(4.0,8.0,4.0))*vec3<f32>(4.0,8.0,4.0);let bound=run_density_bounds(program,cell,cell+vec3<f32>(4.0,8.0,4.0),r);expected[0]=bound.x;expected[1]=bound.y;expected[2]=reference[0];let at=id.x*6u;");
+            kernel = kernel
+                .replace("/64u", "/256u")
+                .replace("%64u", "%256u")
+                .replace("sample/21u", "sample/85u")
+                .replace("f32(i32(sample)*6-64)", "f32(i32(sample%64u)*6-64)+0.375");
+        }
         // The reference deliberately bypasses the field cache, including in
         // nested helpers. Agreement cannot conceal incorrect cached samples.
         kernel = kernel.replace("let reference=run_reference(program,point,r,context);", "var direct=r;direct.padding&=~(1u<<27u);let reference=run_reference(program,point,direct,context);");
@@ -1962,7 +1993,7 @@ mod mapping_tests {
                 bytemuck::cast_slice(&header),
             );
         }
-        let count = registry.programs.len() * 64;
+        let count = programs * samples_per_program;
         let size = (count * 72) as u64;
         let output = gpu.readback_buffer("Retina parity roots", size);
         let mut encoder = gpu
@@ -1998,7 +2029,7 @@ mod mapping_tests {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor::default());
             pass.set_pipeline(&pipeline);
             pass.set_bind_group(0, &gpu.profiles[&1].3, &[]);
-            pass.dispatch_workgroups(registry.programs.len() as u32, 1, 1);
+            pass.dispatch_workgroups(count.div_ceil(64) as u32, 1, 1);
         }
         encoder.copy_buffer_to_buffer(&gpu.output, 0, &output, 0, size);
         gpu.queue.submit([encoder.finish()]);
@@ -2013,7 +2044,20 @@ mod mapping_tests {
         let data = output.slice(..size).get_mapped_range().unwrap();
         let words: &[u32] = bytemuck::cast_slice(&data);
         let mut differences = 0;
+        let mut finite_bounds = 0;
         for sample in 0..count {
+            if bounds_check && sample / samples_per_program > 0 {
+                let lower = f32::from_bits(words[sample * 18 + 12]);
+                let upper = f32::from_bits(words[sample * 18 + 13]);
+                let value = f32::from_bits(words[sample * 18 + 14]);
+                assert!(
+                    lower <= value && value <= upper,
+                    "density bound [{lower}, {upper}] misses {value}, program {}, sample {}",
+                    sample / samples_per_program,
+                    sample % samples_per_program
+                );
+                finite_bounds += usize::from(lower.is_finite() && upper.is_finite());
+            }
             for root in 0..6 {
                 let old = words[sample * 18 + root];
                 let new = words[sample * 18 + 6 + root];
@@ -2068,6 +2112,10 @@ mod mapping_tests {
                     differences += 1;
                 }
             }
+        }
+        if bounds_check && !far {
+            assert!(finite_bounds >= 32, "fixture must exercise finite bounds");
+            eprintln!("Checked {finite_bounds} finite density bounds against direct GPU points");
         }
         assert_eq!(differences, 0, "specialization changed root float bits");
     }

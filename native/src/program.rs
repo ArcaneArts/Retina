@@ -85,17 +85,43 @@ pub(crate) fn interpreter_source(capacity: usize) -> String {
     interpreter_source_depth(capacity, 0)
 }
 pub(crate) fn interpreter_source_depth(capacity: usize, depth: usize) -> String {
+    interpreter_source_density(capacity, depth, false)
+}
+pub(crate) fn interpreter_source_density(
+    capacity: usize,
+    depth: usize,
+    composition: bool,
+) -> String {
     let source = include_str!("program.wgsl");
     let start = source.find("fn run_program(").unwrap();
     let end = source.find("fn density_floor_div(").unwrap();
     let body = interpreter_body(capacity, depth, "run_program", true);
-    format!(
-        "{}{}{}{}",
-        &source[..start],
-        body,
-        interpolation::prepass(depth, false, 0),
-        &source[end..]
+    density_composition_source(
+        &format!(
+            "{}{}{}{}{}",
+            &source[..start],
+            body,
+            interpolation::prepass(depth, false, 0),
+            density_bounds_source(capacity),
+            &source[end..]
+        ),
+        composition,
     )
+}
+pub(crate) fn density_composition_source(source: &str, enabled: bool) -> String {
+    if enabled {
+        source.to_owned()
+    } else {
+        // Remove the experimental branch from legacy kernels at compilation,
+        // so unused point evaluators cannot inflate register pressure.
+        source.replace(
+            "fn density_composed(r:Request)->bool {return (r.padding&(1u<<26u))!=0u;}",
+            "fn density_composed(r:Request)->bool {return false;}",
+        )
+    }
+}
+pub(crate) fn density_bounds_source(capacity: usize) -> String {
+    include_str!("density_bounds.wgsl").replace("BOUND_VALUES", &capacity.to_string())
 }
 pub(crate) fn interpreter_body(
     capacity: usize,
@@ -160,6 +186,10 @@ pub struct RegistryProgram {
     pub surface: [i32; 3],
     #[serde(default = "default_terrain_cell")]
     pub terrain_cell: [u32; 2],
+    /// Compose registered interpolation fields at actual block positions.
+    /// Profiles without this option retain their original final-field lattice.
+    #[serde(default)]
+    pub density_composition: bool,
     #[serde(default)]
     pub surface_noises: [u32; 3],
     #[serde(default)]

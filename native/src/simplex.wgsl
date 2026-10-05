@@ -325,6 +325,25 @@ fn lake_density(@builtin(global_invocation_id) id:vec3<u32>) {
     if surface_nodes[lake_offset(r)+(probe/5u)*4u+3u]<0.5 {return;}
     let point=lake_probe_point(probe,r);
     let cell=vec2<i32>(floor((point-vec2<f32>(density_origin(r).xz))/f32(r.density_step_xz)))+vec2<i32>(i32(corner&1u),i32(corner>>1u));
+    if density_composed(r) {
+        if corner!=0u {return;}
+        var height=f32(r.min_y+1);
+        if id.y+1u<density_layers(r) {
+            let bottom=max(r.min_y,density_origin(r).y+i32(id.y*r.density_step_y));
+            let top=min(r.max_y,density_origin(r).y+i32((id.y+1u)*r.density_step_y));
+            let bounds=density_cell_bounds(vec3<i32>(cell.x,i32(id.y),cell.y),r);
+            if bounds.x>0.0 {height=f32(top);}
+            else if bounds.y>0.0 {
+                var y=top-1;
+                while y>=bottom {
+                    if registered_density(vec3<f32>(point.x,f32(y),point.y),r)>0.0 {height=f32(y+1);break;}
+                    y-=1;
+                }
+            }
+        }
+        surface_nodes[lake_probe_offset(r)+(probe*density_layers(r)+id.y)*4u]=height;
+        return;
+    }
     // Every corner/Y sample has its own invocation. Outside-grid noise is never
     // evaluated serially inside a lake's vertical scan.
     surface_nodes[lake_probe_offset(r)+(probe*density_layers(r)+id.y)*4u+corner]=density_corner(cell,id.y,r);

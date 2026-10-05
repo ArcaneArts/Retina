@@ -73,6 +73,7 @@ public final class NativeMaterialIntegrationTest {
                     var props=encoded.has("properties")?encoded.getAsJsonObject("properties"):encoded.has("Properties")?encoded.getAsJsonObject("Properties"):new JsonObject();
                     if(!props.isEmpty())m.add("properties",props);nativePalette.add(m);
                     data.getAsJsonArray("material_flags").add(0);data.getAsJsonArray("heightmap_masks").add(63);data.getAsJsonArray("carveable").add(true);
+                    data.getAsJsonArray("snow_support").add(DecorationProfile.supportsSnow(state));
                 }
                 for(var biome:data.getAsJsonArray("biomes")) {
                     var b=biome.getAsJsonObject();for(String key:List.of("decorations","ores","carvers"))b.add(key,new JsonArray());

@@ -99,6 +99,9 @@ pub struct WorldProfile {
     pub geology: crate::geology::GeologyProfile,
     pub material_flags: Vec<u8>,
     pub heightmap_masks: Vec<u8>,
+    /// Loaded snow-layer support tags and upper collision face per palette state.
+    #[serde(default)]
+    pub snow_support: Vec<bool>,
     /// Signed registered DoublePlantBlock identity: lower positive, upper negative.
     #[serde(default)]
     pub plant_halves: Vec<i32>,
@@ -133,6 +136,8 @@ impl WorldProfile {
         }
         if profile.material_flags.len() != profile.materials.len()
             || profile.heightmap_masks.len() != profile.materials.len()
+            || !profile.snow_support.is_empty()
+                && profile.snow_support.len() != profile.materials.len()
             || !profile.plant_halves.is_empty()
                 && (profile.plant_halves.len() != profile.materials.len()
                     || profile.plant_halves.iter().any(|v| *v == i32::MIN))

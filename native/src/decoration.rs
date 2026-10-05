@@ -1840,6 +1840,7 @@ mod tests {
             terrain_features: Default::default(),
             material_flags: vec![0, 0, 1, 8 | 32, 4, 4, 4, 4, 4, 4],
             heightmap_masks: vec![0; 10],
+            snow_support: Vec::new(),
             plant_halves: Vec::new(),
             plant_floor_masks: Vec::new(),
             base_plant_halves: false,

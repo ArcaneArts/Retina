@@ -173,6 +173,29 @@ fn density_nodes(@builtin(global_invocation_id) id:vec3<u32>) {
     let origin=density_origin(r);
     let offset=vec3<i32>(i32(id.x%n)*i32(r.density_step_xz),i32(id.y)*i32(r.density_step_y),i32(id.x/n)*i32(r.density_step_xz));
     surface_nodes[r.density_offset+id.y*n*n+id.x]=run_program(1u,vec3<f32>(origin+offset),r,vec4<f32>(0.0))[0];
+    if density_composed(r) {
+        var bounds=bounds_unknown();
+        if id.y+1u<density_layers(r) && id.x%n+1u<n && id.x/n+1u<n {
+            let lower=vec3<f32>(origin+offset);
+            let upper=vec3<f32>(origin+offset+vec3<i32>(i32(r.density_step_xz),i32(r.density_step_y),i32(r.density_step_xz)));
+            bounds=run_density_bounds(1u,lower,upper,r);
+        }
+        let at=r.density_offset+n*n*density_layers(r)+(id.y*n*n+id.x)*2u;
+        surface_nodes[at]=bounds.x;surface_nodes[at+1u]=bounds.y;
+    }
+}
+fn density_cell_bounds(cell:vec3<i32>,r:Request)->vec2<f32> {
+    if r.density_side==0u || any(cell<vec3<i32>(0)) || cell.x>=i32(r.density_side-1u) || cell.z>=i32(r.density_side-1u) || cell.y>=i32(density_layers(r)-1u){
+        let step=vec3<i32>(i32(r.density_step_xz),i32(r.density_step_y),i32(r.density_step_xz));
+        let lower=vec3<f32>(density_origin(r)+cell*step);
+        return run_density_bounds(1u,lower,lower+vec3<f32>(step),r);
+    }
+    let at=r.density_offset+r.density_side*r.density_side*density_layers(r)+((u32(cell.y)*r.density_side+u32(cell.z))*r.density_side+u32(cell.x))*2u;
+    return vec2<f32>(surface_nodes[at],surface_nodes[at+1u]);
+}
+fn density_point_bounds(point:vec3<f32>,r:Request)->vec2<f32> {
+    let local=floor((point-vec3<f32>(density_origin(r)))/vec3<f32>(f32(r.density_step_xz),f32(r.density_step_y),f32(r.density_step_xz)));
+    return density_cell_bounds(vec3<i32>(local),r);
 }
 fn density_corner(cell:vec2<i32>,layer:u32,r:Request)->f32 {
     let n=i32(r.density_side);
@@ -195,6 +218,7 @@ fn density_layer(cell:vec2<i32>,t:vec2<f32>,layer:u32,r:Request)->f32 {
     return mix(near,mix(c,d,t.x),t.y);
 }
 fn registered_density(point:vec3<f32>,r:Request)->f32 {
+    if density_composed(r) {return run_program(1u,point,r,vec4<f32>(0.0))[0];}
     let origin=density_origin(r);
     let local=(point-vec3<f32>(origin))/vec3<f32>(f32(r.density_step_xz),f32(r.density_step_y),f32(r.density_step_xz));
     let cell=vec2<i32>(floor(local.xz));let t=fract(local.xz);
@@ -207,6 +231,33 @@ fn surface_layer(cell:vec2<i32>,t:vec2<f32>,layer:u32,r:Request,probe:u32)->f32 
     return mix(mix(surface_nodes[at],surface_nodes[at+1u],t.x),mix(surface_nodes[at+2u],surface_nodes[at+3u],t.x),t.y);
 }
 fn density_surface_height(point:vec2<f32>,r:Request,probe:u32)->f32 {
+    if density_composed(r) {
+        if probe!=0xffffffffu {
+            var height=f32(r.min_y+1);
+            for(var layer=0u;layer<density_layers(r);layer++) {
+                height=max(height,surface_nodes[lake_probe_offset(r)+(probe*density_layers(r)+layer)*4u]);
+            }
+            return height;
+        }
+        let origin=density_origin(r);
+        let cell=vec2<i32>(floor((point-vec2<f32>(origin.xz))/f32(r.density_step_xz)));
+        var layer=i32(density_layers(r))-2;
+        while layer>=0 {
+            let bottom=max(r.min_y,origin.y+layer*i32(r.density_step_y));
+            let top=min(r.max_y,origin.y+(layer+1)*i32(r.density_step_y));
+            let bounds=density_cell_bounds(vec3<i32>(cell.x,layer,cell.y),r);
+            if bounds.x>0.0 {return f32(top);}
+            if bounds.y>0.0 {
+                var y=top-1;
+                while y>=bottom {
+                    if run_program(1u,vec3<f32>(point.x,f32(y),point.y),r,vec4<f32>(0.0))[0]>0.0 {return f32(max(y+1,r.min_y+1));}
+                    y-=1;
+                }
+            }
+            layer-=1;
+        }
+        return f32(r.min_y+1);
+    }
     // Interpolate densities before locating the highest solid interval. Blending
     // corner heights instead loses density gradients and creates planar shelves.
     let origin=density_origin(r);
@@ -236,7 +287,7 @@ fn density_surface_height(point:vec2<f32>,r:Request,probe:u32)->f32 {
     return f32(r.min_y+1);
 }
 fn surface_width(r:Request)->u32 {return select(16u,r.tile_side*16u,r.tile_side>0u)+2u*u32(surface_guard(r));}
-fn surface_offset(r:Request)->u32 {return r.density_offset+r.density_side*r.density_side*density_layers(r);}
+fn surface_offset(r:Request)->u32 {return r.density_offset+r.density_side*r.density_side*density_layers(r)*select(1u,3u,density_composed(r));}
 fn lake_side(r:Request)->u32 {
     let width=select(16u,r.tile_side*16u,r.tile_side>0u);
     let cell=vec2<i32>(density_floor_div(r.origin_x,128),density_floor_div(r.origin_z,128));

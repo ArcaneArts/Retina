@@ -43,12 +43,15 @@ def main():
     parser.add_argument("--warmups", type=int, default=1)
     parser.add_argument("--program-execution", choices=("auto", "interpreter", "specialized"), help="Override GPU program mode for matched diagnostics")
     parser.add_argument("--interpolation-cache", choices=("enabled", "disabled"), help="A/B diagnostic for resident interpolation-field reuse")
+    parser.add_argument("--density-composition", choices=("enabled", "disabled"), help="Experimental block-position composition of registered density fields")
     parser.add_argument("--terrain-execution", choices=("interpreter", "specialized"), help="Select terrain/climate stages independently of specialized material/cave stages")
     parser.add_argument("--await-specialization", action="store_true", help="After measurement, await compilation and compare one regenerated region with its pre-warmup output")
     parser.add_argument("--specialization-timeout", type=float, default=180, help="Seconds to await a real compilation result after measurements")
     args = parser.parse_args()
     if args.interpolation_cache:
         os.environ["RETINA_INTERPOLATION_CACHE"] = "1" if args.interpolation_cache == "enabled" else "0"
+    if args.density_composition:
+        os.environ["RETINA_DENSITY_COMPOSITION"] = "1" if args.density_composition == "enabled" else "0"
     if args.terrain_execution:
         os.environ["RETINA_SPECIALIZED_TERRAIN"] = "1" if args.terrain_execution == "specialized" else "0"
     args.out.mkdir(parents=True, exist_ok=False)
@@ -100,7 +103,7 @@ def main():
     wall = time.perf_counter()-start
     after = Snapshot(); check(lib.retina_timing_snapshot(profile, c.byref(after)))
     chunks = after.chunks-before.chunks
-    data = dict(library=str(args.library), parallel=args.parallel, seed=args.seed, regions=regions, program_execution=args.program_execution, interpolation_cache=args.interpolation_cache, terrain_execution=args.terrain_execution,
+    data = dict(library=str(args.library), parallel=args.parallel, seed=args.seed, regions=regions, program_execution=args.program_execution, interpolation_cache=args.interpolation_cache, density_composition=args.density_composition, terrain_execution=args.terrain_execution,
                 total_ms=wall*1000, chunks_per_second=chunks/wall, median_ms=statistics.median(r["ms"] for r in regions),
                 average_region_ms=statistics.mean(r["ms"] for r in regions),
                 startup=dict(initialize_ms=initialize_ms, registration_ms=registration_ms, warmups=warmups),

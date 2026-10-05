@@ -90,9 +90,12 @@ final class RegistryGpuProgram {
         var terrainCell=compiler.terrainCell(compiler.encode(router.finalDensity()),new HashSet<>());
         if(terrainCell==null) {
             terrainCell=new JsonArray();terrainCell.add(4);terrainCell.add(8);
-            compiler.approximations.add("density:uninterpolated-final-field:4x8x4-sampling");
         }
         result.add("terrain_cell",terrainCell);
+        result.addProperty("density_composition",true);
+        // Native composition remains experimental until its region throughput
+        // matches the production path; retain the default's approximation report.
+        compiler.approximations.add("density:uninterpolated-final-field:4x8x4-sampling");
         result.addProperty("material_layers",true);
         result.addProperty("material_halo",true);
         compiler.approximations.add("material:preliminary-surface-from-final-height");

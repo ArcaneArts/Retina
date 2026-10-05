@@ -39,6 +39,10 @@ a finer child lattice. It is not yet per-voxel composition from independent,
 resident interpolation-field lattices. That and their efficient reuse remain
 required work; this milestone supplies the operators and correct scoped graphs.
 
+Subsequent [experimental block-position composition](GPU_DENSITY_COMPOSITION.md)
+preserves that arithmetic in analytic terrain checks. It is disabled by default
+until its whole-region performance is suitable for production.
+
 Vanilla exports five distinct fields with 4 x 8 x 4 cells. Terralith exports seven,
 including a 4 x 4 x 4 field. The default shared final lattice remains 4 x 8 x 4.
 The benchmark coordinates retain identical final chunk data because the imported

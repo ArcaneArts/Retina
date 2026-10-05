@@ -103,7 +103,10 @@ impl CachePlan {
             // skips finer input nodes. Other field corners keep direct GPU
             // evaluation, rather than paying to precompute unused fine layers.
             let multiple = |field: u32, terrain: u32| {
-                if terrain.is_multiple_of(field) && terrain / field <= 65535 {
+                if r.padding & (1 << 26) == 0
+                    && terrain.is_multiple_of(field)
+                    && terrain / field <= 65535
+                {
                     terrain / field
                 } else {
                     1
@@ -404,5 +407,42 @@ mod tests {
         let context = CachePlan::new(&registry);
         assert_eq!(context.fields, [false; 3]);
         assert_eq!(context.depth, 0);
+    }
+    #[test]
+    fn composed_queries_retain_finer_vertical_input_nodes() {
+        let mut registry = registry();
+        registry.programs = vec![input(None), input(Some(0)), input(None)];
+        registry.interpolations = vec![Field {
+            input: input(None),
+            cell: [4, 4],
+        }];
+        let plan = CachePlan::new(&registry);
+        let mut request = GpuRequest::from(crate::ChunkRequest {
+            seed: 0,
+            chunk_x: -1,
+            chunk_z: 0,
+            min_y: -64,
+            height: 384,
+            base_height: 64.0,
+            amplitude: 48.0,
+            frequency: 0.008,
+            reserved: 0,
+        });
+        request.density_step_xz = 4;
+        request.density_step_y = 8;
+        let mut floats = 1000;
+        let (coarse, _) = plan
+            .layout(&registry, &request, 4, &mut floats, 100000, 100000)
+            .unwrap();
+        request.padding |= 1 << 26;
+        let mut floats = 1000;
+        let (dense, _) = plan
+            .layout(&registry, &request, 4, &mut floats, 100000, 100000)
+            .unwrap();
+        assert_eq!(coarse[5], 49);
+        assert_eq!(dense[5], 97);
+        assert_eq!(coarse[7], 1 | (2 << 16));
+        assert_eq!(dense[7], 1 | (1 << 16));
+        assert_eq!(coarse[1..4], dense[1..4]);
     }
 }

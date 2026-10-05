@@ -779,7 +779,7 @@ final class DecorationProfile {
                 case "full_water" -> state.getFluidState().is(FluidTags.WATER) && state.getFluidState().isFull();
                 case "source_water" -> state.getFluidState().isSourceOfType(net.minecraft.world.level.material.Fluids.WATER);
                 case "supports_sea_pickle" -> !state.getCollisionShape(EmptyBlockGetter.INSTANCE,BlockPos.ZERO).getFaceShape(Direction.UP).isEmpty() || state.isFaceSturdy(EmptyBlockGetter.INSTANCE,BlockPos.ZERO,Direction.UP);
-                case "supports_snow" -> !state.is(BlockTags.CANNOT_SUPPORT_SNOW_LAYER) && (state.is(BlockTags.SUPPORT_OVERRIDE_SNOW_LAYER) || Block.isFaceFull(state.getCollisionShape(EmptyBlockGetter.INSTANCE,BlockPos.ZERO),Direction.UP) || state.is(Blocks.SNOW) && state.getValue(SnowLayerBlock.LAYERS)==8);
+                case "supports_snow" -> supportsSnow(state);
                 case "same_fluid_replaceable" -> state.canBeReplaced() && state.getFluidState().equals(BlockState.CODEC.parse(JsonOps.INSTANCE,input.get("state")).getOrThrow().getFluidState());
                 case "solid_or_lava" -> state.isSolid() || state.getFluidState().is(FluidTags.LAVA);
                 case "solid" -> state.isSolid();
@@ -799,6 +799,13 @@ final class DecorationProfile {
         String id = choices.getAsString();
         return id.startsWith("#") ? state.is(TagKey.create(Registries.BLOCK, Identifier.parse(id.substring(1))))
                 : BuiltInRegistries.BLOCK.getKey(state.getBlock()).equals(Identifier.parse(id));
+    }
+
+    static boolean supportsSnow(BlockState state) {
+        return !state.is(BlockTags.CANNOT_SUPPORT_SNOW_LAYER)
+                && (state.is(BlockTags.SUPPORT_OVERRIDE_SNOW_LAYER)
+                || Block.isFaceFull(state.getCollisionShape(EmptyBlockGetter.INSTANCE, BlockPos.ZERO), Direction.UP)
+                || state.is(Blocks.SNOW) && state.getValue(SnowLayerBlock.LAYERS) == 8);
     }
 
     private static boolean matchesFluid(JsonElement choices, BlockState state) {
@@ -969,11 +976,12 @@ final class DecorationProfile {
             if (recipe.getAsJsonObject().get("kind").getAsString().equals("vegetation_patch")) patchHalo = true;
         }
         profile.addProperty("decoration_patch_halo", patchHalo);
-        var heightmaps = new JsonArray(); var flags = new JsonArray(); var halves = new JsonArray(); var floorMasks = new JsonArray();
+        var heightmaps = new JsonArray(); var flags = new JsonArray(); var halves = new JsonArray(); var floorMasks = new JsonArray(); var snowSupport = new JsonArray();
         var plantTypes = new LinkedHashMap<Block, Integer>();
         for (var state : palette.keySet()) {
             int mask = 0; for (var type : Heightmap.Types.values()) if (type.isOpaque().test(state)) mask |= 1 << type.ordinal();
             heightmaps.add(mask);
+            snowSupport.add(supportsSnow(state));
             int flag = state.is(BlockTags.SUPPORTS_VEGETATION) ? 1 : 0;
             if (state.is(BlockTags.SUPPORTS_DRY_VEGETATION)) flag |= 2;
             if (state.is(BlockTags.LEAVES)) flag |= 4;
@@ -1001,6 +1009,7 @@ final class DecorationProfile {
         profile.add("heightmap_masks", heightmaps); profile.add("material_flags", flags);
         profile.add("plant_halves", halves);
         profile.add("plant_floor_masks", floorMasks);
+        profile.add("snow_support", snowSupport);
         profile.add("decoration_noise", new DecorationNoise().export());
     }
 
