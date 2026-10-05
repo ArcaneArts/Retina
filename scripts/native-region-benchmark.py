@@ -49,6 +49,7 @@ def main():
     parser.add_argument("--lake-primed-corners", choices=("enabled", "disabled"), help="Reuse interval vertices in the composed lake point cache")
     parser.add_argument("--terrain-execution", choices=("interpreter", "specialized"), help="Select terrain/climate stages independently of specialized material/cave stages")
     parser.add_argument("--interpreter-dispatch", choices=("enabled", "disabled"), help="Shared compact interpreter entrypoints or independent pipelines")
+    parser.add_argument("--interpreter-preload", choices=("enabled", "disabled"), help="Overlap compact density pipeline preparation with profile parsing")
     parser.add_argument("--await-specialization", action="store_true", help="After measurement, await compilation and compare one regenerated region with its pre-warmup output")
     parser.add_argument("--specialization-timeout", type=float, default=180, help="Seconds to await a real compilation result after measurements")
     args = parser.parse_args()
@@ -64,6 +65,8 @@ def main():
         os.environ["RETINA_LAKE_PRIMED_CORNERS"] = "1" if args.lake_primed_corners == "enabled" else "0"
     if args.interpreter_dispatch:
         os.environ["RETINA_INTERPRETER_DISPATCH"] = "1" if args.interpreter_dispatch == "enabled" else "0"
+    if args.interpreter_preload:
+        os.environ["RETINA_INTERPRETER_PRELOAD"] = "1" if args.interpreter_preload == "enabled" else "0"
     if args.terrain_execution:
         os.environ["RETINA_SPECIALIZED_TERRAIN"] = "1" if args.terrain_execution == "specialized" else "0"
     args.out.mkdir(parents=True, exist_ok=False)
@@ -115,7 +118,7 @@ def main():
     wall = time.perf_counter()-start
     after = Snapshot(); check(lib.retina_timing_snapshot(profile, c.byref(after)))
     chunks = after.chunks-before.chunks
-    data = dict(library=str(args.library), parallel=args.parallel, seed=args.seed, regions=regions, program_execution=args.program_execution, interpolation_cache=args.interpolation_cache, density_composition=args.density_composition, cached_density_masks=args.cached_density_masks, terrain_execution=args.terrain_execution, interpreter_dispatch=args.interpreter_dispatch,
+    data = dict(library=str(args.library), parallel=args.parallel, seed=args.seed, regions=regions, program_execution=args.program_execution, interpolation_cache=args.interpolation_cache, density_composition=args.density_composition, cached_density_masks=args.cached_density_masks, terrain_execution=args.terrain_execution, interpreter_dispatch=args.interpreter_dispatch, interpreter_preload=args.interpreter_preload,
                 lake_point_cache=args.lake_point_cache,
                 lake_primed_corners=args.lake_primed_corners,
                 total_ms=wall*1000, chunks_per_second=chunks/wall, median_ms=statistics.median(r["ms"] for r in regions),

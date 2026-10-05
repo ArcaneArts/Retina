@@ -75,6 +75,7 @@ pub(crate) struct Gpu {
     interpolation_cache: bool,
     specialized_terrain: bool,
     interpreter_dispatch: bool,
+    preloaded_interpreter: Option<std::sync::Arc<crate::specialize::State>>,
     density_composition: bool,
     cached_density_masks: bool,
     lake_point_cache: bool,
@@ -382,6 +383,7 @@ impl Gpu {
             interpolation_cache: std::env::var("RETINA_INTERPOLATION_CACHE").as_deref() != Ok("0"),
             specialized_terrain,
             interpreter_dispatch,
+            preloaded_interpreter: None,
             density_composition: std::env::var("RETINA_DENSITY_COMPOSITION").as_deref() == Ok("1"),
             cached_density_masks: std::env::var("RETINA_CACHED_DENSITY_MASKS").as_deref()
                 != Ok("0"),
@@ -390,6 +392,19 @@ impl Gpu {
         };
         gpu.add_profile(0, &vec![0; 672], &[0; 240], &[0; 32]);
         Ok(gpu)
+    }
+
+    pub(crate) fn start_interpreter_preload(&mut self) {
+        // Overlap compact density compilation with native profile parsing.
+        if self.interpreter_dispatch
+            && !self.density_composition
+            && std::env::var("RETINA_INTERPRETER_PRELOAD").as_deref() != Ok("0")
+        {
+            match self.compiler.compact_interpreter() {
+                Ok(state) => self.preloaded_interpreter = Some(state),
+                Err(error) => eprintln!("Retina keeps on-demand interpreter compilation: {error}"),
+            }
+        }
     }
 
     fn add_profile(&mut self, id: u32, bytes: &[u8], climate_bytes: &[u8], program_bytes: &[u8]) {
@@ -621,14 +636,37 @@ impl Gpu {
             if !self.interpolation_interpreters.contains_key(&key) {
                 let source =
                     crate::program::interpreter_source_density(capacity, depth, composition);
-                let pipelines = crate::specialize::compile_interpreter(
-                    &self.device,
-                    &self.layout,
-                    &self.cave_layout,
-                    &source,
-                    Some(reuse),
-                    self.interpreter_dispatch && capacity == crate::program::COMPACT_VALUES,
-                )?;
+                let preloaded = if capacity == crate::program::COMPACT_VALUES
+                    && depth == 1
+                    && !composition
+                    && crate::specialize::interpreter_reuse::Plan::density_preload().supports(reuse)
+                {
+                    self.preloaded_interpreter
+                        .as_ref()
+                        .and_then(|state| match state.ready(true) {
+                            Ok(pipelines) => pipelines,
+                            Err(error) => {
+                                eprintln!(
+                                    "Retina keeps on-demand interpreter compilation: {error}"
+                                );
+                                None
+                            }
+                        })
+                } else {
+                    None
+                };
+                let pipelines = if let Some(pipelines) = preloaded {
+                    pipelines.with_reuse(reuse)
+                } else {
+                    crate::specialize::compile_interpreter(
+                        &self.device,
+                        &self.layout,
+                        &self.cave_layout,
+                        &source,
+                        Some(reuse),
+                        self.interpreter_dispatch && capacity == crate::program::COMPACT_VALUES,
+                    )?
+                };
                 self.interpolation_interpreters
                     .insert(key, std::sync::Arc::new(pipelines));
             }

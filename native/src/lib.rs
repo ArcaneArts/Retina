@@ -1911,6 +1911,7 @@ mod tests {
         let result = serde_json::json!({"profile":path,"pipeline_tag":std::env::var("RETINA_GENERIC_PIPELINE_TAG").ok(),
             "reuse":std::env::var("RETINA_COMPILE_REUSE").as_deref()!=Ok("0"),
             "shared_dispatch":std::env::var("RETINA_INTERPRETER_DISPATCH").as_deref()==Ok("1"),
+            "preload_requested":std::env::var("RETINA_INTERPRETER_PRELOAD").as_deref()==Ok("1"),
             "initialize_ms":initialize_ms,"registration_ms":registration_ms,
             "total_ms":total_ms,"chunks_per_second":count as f64*1024.0*1000.0/total_ms,"regions":regions});
         std::fs::write(

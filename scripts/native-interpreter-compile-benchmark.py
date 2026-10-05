@@ -32,16 +32,19 @@ def main():
     parser.add_argument("--profile", type=Path, required=True)
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--count", type=int, default=20)
-    parser.add_argument("--order", choices=("direct-first", "shared-first"), default="direct-first")
+    parser.add_argument("--comparison", choices=("dispatch", "preload"), default="dispatch")
+    parser.add_argument("--order", choices=("direct-first", "shared-first", "reference-first", "candidate-first"), default="reference-first")
     args = parser.parse_args()
     args.out.mkdir(parents=True, exist_ok=False)
-    modes = ("direct", "shared") if args.order == "direct-first" else ("shared", "direct")
+    reference, candidate = ("direct", "shared") if args.comparison == "dispatch" else ("demand", "preload")
+    modes = (candidate, reference) if args.order in ("shared-first", "candidate-first") else (reference, candidate)
     reports = {}
     for mode in modes:
         output = args.out / mode
         env = dict(os.environ, RETINA_COMPILE_PROBE="1", RETINA_COMPILE_REUSE="1",
                    RETINA_DENSITY_COMPOSITION="0", RETINA_SPECIALIZED_TERRAIN="0",
-                   RETINA_INTERPRETER_DISPATCH="1" if mode == "shared" else "0",
+                   RETINA_INTERPRETER_DISPATCH="1" if args.comparison == "preload" or mode == "shared" else "0",
+                   RETINA_INTERPRETER_PRELOAD="1" if mode == "preload" else "0",
                    RETINA_GENERIC_PIPELINE_TAG=f"retina-compile-{uuid.uuid4().hex}",
                    RETINA_COMPILE_REGIONS=str(args.count),
                    RETINA_PROGRAM_PARITY_PROFILE=str(args.profile.resolve()),
@@ -66,6 +69,7 @@ def main():
             bundle_ms=next(call["ms"] for call in calls if call["phase"] == "bundle"),
             initialize_ms=measured["initialize_ms"], registration_ms=measured["registration_ms"],
             first_region_ms=measured["regions"][0]["ms"],
+            init_to_first_region_ms=measured["initialize_ms"] + measured["registration_ms"] + measured["regions"][0]["ms"],
             subsequent_mean_ms=statistics.mean(row["ms"] for row in measured["regions"][1:])
                 if args.count > 1 else None,
             bytes=sum(row["bytes"] for row in measured["regions"]),
@@ -75,11 +79,11 @@ def main():
         print(json.dumps(dict(mode=mode, **reports[mode])), flush=True)
     matched = 0
     for index in range(args.count):
-        for slot, (a, b) in enumerate(zip(records(args.out / "direct" / f"{index}.mca"),
-                                        records(args.out / "shared" / f"{index}.mca"), strict=True)):
+        for slot, (a, b) in enumerate(zip(records(args.out / reference / f"{index}.mca"),
+                                        records(args.out / candidate / f"{index}.mca"), strict=True)):
             assert a == b, (index, slot)
             matched += 1
-    result = dict(profile=str(args.profile.resolve()), modes=reports, identical_nbt_chunks=matched)
+    result = dict(comparison=args.comparison, profile=str(args.profile.resolve()), modes=reports, identical_nbt_chunks=matched)
     (args.out / "comparison.json").write_text(json.dumps(result, indent=2))
     print(json.dumps(dict(identical_nbt_chunks=matched)), flush=True)
 

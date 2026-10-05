@@ -108,6 +108,12 @@ in the first native region. Final outputs match across cold/warm/concurrent
 workloads and effective profile switches. Warm throughput shows a small mixed
 tradeoff, and about 0.94 seconds of synchronous generic compilation remains;
 full startup and fast production density composition remain required.
+[Background density pipeline preparation](GPU_INTERPRETER_PRELOAD.md) now
+overlaps compact generic compilation with native registry parsing. Actual
+dependency masks choose reuse, with normal compilation for other layouts and
+real compiler failure recovery. Final twenty-region runs lower initialization-
+through-first-region latency 32% vanilla / 39% Terralith, with matching NBT and
+small mixed warm differences. Empty-cache desktop startup remains unmeasured.
 
 See [GPU program specialization](GPU_PROGRAM_SPECIALIZATION.md) for the compiler,
 resident horizontal cache, startup behavior and its validation.

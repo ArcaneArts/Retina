@@ -70,6 +70,28 @@ static DEPENDENCIES: LazyLock<Option<Vec<Vec<Root>>>> = LazyLock::new(|| {
 });
 
 impl Plan {
+    /// Precompile only the actual WGSL call paths reaching the surface/final
+    /// density graphs. This is a pipeline inventory, never a biome/data default.
+    pub fn density_preload() -> Self {
+        let Some(dependencies) = DEPENDENCIES.as_ref() else {
+            return Self::default();
+        };
+        let mut reuse = 0;
+        for (entry, roots) in dependencies.iter().enumerate() {
+            if !roots
+                .iter()
+                .any(|root| matches!(root, Root::One(1 | 2) | Root::All))
+            {
+                reuse |= 1 << entry;
+            }
+        }
+        Self(reuse)
+    }
+    /// Every stage omitted from this inventory must also be reusable by the
+    /// actual loaded profile. Otherwise that profile receives normal compilation.
+    pub fn supports(self, requested: Self) -> bool {
+        self.0 & !requested.0 == 0
+    }
     pub fn new(program: &RegistryProgram, capacity: usize, composition: bool) -> Self {
         if capacity > crate::program::COMPACT_VALUES {
             // Loaded base pipelines have 64 slots. Wide profiles retain the
@@ -362,6 +384,28 @@ mod tests {
         assert!(!aquifer.cave_reuses("aquifer_surface"));
         assert!(aquifer.cave_reuses("aquifer_centers"));
         assert_eq!(Plan::new(&p, 1024, false), Plan::default());
+    }
+    #[test]
+    fn preloaded_density_inventory_covers_only_actual_compatible_masks() {
+        let inventory = Plan::density_preload();
+        let mut p = profile();
+        p.programs[1].nodes[0].op = 28;
+        p.programs[2].nodes[0].op = 28;
+        assert_eq!(inventory, Plan::new(&p, 64, false));
+        assert!(inventory.supports(Plan::new(&p, 64, false)));
+        p.programs[1].nodes[0].op = 0;
+        assert!(inventory.supports(Plan::new(&p, 64, false)));
+        assert!(!inventory.supports(Plan::new(&p, 64, true)));
+        assert!(!inventory.supports(Plan::new(&p, 1024, false)));
+        for graph in [0, 3, 7] {
+            p.programs[graph].nodes[0].op = 28;
+            assert!(
+                !inventory.supports(Plan::new(&p, 64, false)),
+                "graph {graph}"
+            );
+            p.programs[graph].nodes[0].op = 0;
+        }
+        assert!(Plan::default().supports(inventory));
     }
     #[test]
     fn unknown_graph_ids_and_new_entrypoints_keep_the_complete_interpreter() {

@@ -106,6 +106,12 @@ reduces those ten pipelines to two on measured Metal hardware, lowering
 additional compilation to about 0.94 seconds with unchanged generated data.
 Warm throughput differences are small and mixed; remaining synchronous activation
 and full cold startup still require attention.
+[Background compact density preparation](GPU_INTERPRETER_PRELOAD.md) now overlaps
+that compilation with native profile parsing for compatible actual dependency
+masks. Fresh-identity twenty-region checks reduce initialization-through-first-
+region latency 32% vanilla / 39% Terralith, without changing generated data.
+Uncommon layouts keep normal compilation; full empty-cache desktop startup is
+still unmeasured.
 
 Real GPU root checks compare all six outputs of every graph bit-for-bit with the
 interpreter, varying seeds, Y levels and material contexts. Cache-mode checks

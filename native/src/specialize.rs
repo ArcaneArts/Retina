@@ -471,6 +471,17 @@ impl Selected<'_> {
     }
 }
 impl Pipelines {
+    /// Overlay the loaded profile's exact compatibility mask on complete generic
+    /// pipelines. Pipeline clones retain the same device objects and selectors.
+    pub fn with_reuse(&self, reuse: interpreter_reuse::Plan) -> Self {
+        Self {
+            world: self.world.clone(),
+            cave: self.cave.clone(),
+            horizontal_fields: self.horizontal_fields,
+            reuse: Some(reuse),
+            dispatches: self.dispatches.clone(),
+        }
+    }
     pub fn world<'a>(&'a self, entry: &str) -> &'a wgpu::ComputePipeline {
         &self.world[entry]
     }
@@ -555,6 +566,7 @@ impl State {
 }
 
 struct Job {
+    interpreter: bool,
     program: String,
     state: Arc<State>,
     horizontal_fields: u32,
@@ -587,22 +599,33 @@ impl Compiler {
                 while let Ok(job) = receiver.recv() {
                     let start = Instant::now();
                     let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-                        compile_program(
-                            &device,
-                            &world,
-                            &cave,
-                            &job.program,
-                            job.horizontal_fields,
-                            job.material_layers,
-                            job.aquifers,
-                            true,
-                            job.terrain,
-                            job.cached_masks,
-                            job.cached_nodes,
-                            job.lake_point_cache,
-                            None,
-                            false,
-                        )
+                        if job.interpreter {
+                            compile_interpreter(
+                                &device,
+                                &world,
+                                &cave,
+                                &job.program,
+                                Some(interpreter_reuse::Plan::density_preload()),
+                                true,
+                            )
+                        } else {
+                            compile_program(
+                                &device,
+                                &world,
+                                &cave,
+                                &job.program,
+                                job.horizontal_fields,
+                                job.material_layers,
+                                job.aquifers,
+                                true,
+                                job.terrain,
+                                job.cached_masks,
+                                job.cached_nodes,
+                                job.lake_point_cache,
+                                None,
+                                false,
+                            )
+                        }
                     }))
                     .unwrap_or_else(|_| Err("specialized GPU compilation panicked".into()));
                     if let Err(error) = &result {
@@ -631,6 +654,41 @@ impl Compiler {
             sender,
             cache: HashMap::new(),
         })
+    }
+    /// Prepare a profile-independent fallback after device startup, overlapping
+    /// native registry parsing. The same compiler thread preserves job ordering.
+    pub fn compact_interpreter(&self) -> Result<Arc<State>, String> {
+        let source =
+            crate::program::interpreter_source_density(crate::program::COMPACT_VALUES, 1, false);
+        #[cfg(test)]
+        let source = if std::env::var("RETINA_PRELOAD_SOURCE_ERROR").as_deref() == Ok("1") {
+            format!("{source}\ninvalid_preload_shader_source")
+        } else {
+            source
+        };
+        let state = Arc::new(State {
+            progress: Arc::new(Progress {
+                status: std::sync::atomic::AtomicU32::new(1),
+                source_bytes: source.len() as u64,
+                ..Default::default()
+            }),
+            ..Default::default()
+        });
+        self.sender
+            .send(Job {
+                interpreter: true,
+                program: source,
+                state: state.clone(),
+                horizontal_fields: 0,
+                material_layers: true,
+                aquifers: 2,
+                terrain: true,
+                cached_masks: false,
+                cached_nodes: false,
+                lake_point_cache: false,
+            })
+            .map_err(|_| "GPU shader compiler stopped")?;
+        Ok(state)
     }
     pub fn request(
         &mut self,
@@ -701,6 +759,7 @@ impl Compiler {
         });
         self.sender
             .send(Job {
+                interpreter: false,
                 program: key.0.clone(),
                 state: state.clone(),
                 horizontal_fields,

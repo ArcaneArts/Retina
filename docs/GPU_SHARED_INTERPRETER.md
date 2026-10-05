@@ -138,5 +138,11 @@ The final library, retained benchmark library and JAR native member are identica
 SHA-256 `4dbb8e21ee4d8d4079a00903c26efcf198deb0419d77e13fbec93ae239719a2a`.
 Harness log: `build/shared-interpreter-validation.log`.
 
+The subsequent [background preparation milestone](GPU_INTERPRETER_PRELOAD.md)
+overlaps a compatible density inventory with native profile parsing, reducing
+initialization-through-first-region latency another 32% vanilla / 39% Terralith.
+It preserves normal compilation for different dependency masks and documents
+remaining waits and cold-start scope.
+
 Full cold startup, fast production density composition and remaining registered
 feature/provider approximations remain open parts of the broader generation goal.
