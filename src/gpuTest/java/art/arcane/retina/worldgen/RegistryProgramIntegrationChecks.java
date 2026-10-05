@@ -30,7 +30,7 @@ final class RegistryProgramIntegrationChecks {
             for(var f:futures)f.get();
         }
         var diagnostics=nativeTerrain.gpuDiagnostics(compiled);
-        require(diagnostics.status()==2 && diagnostics.compileNanos()>0 && diagnostics.emittedNodes()>0,"actual compiled DAGs replace the interpreter");
+        require((diagnostics.status()==2 || diagnostics.status()==4) && diagnostics.compileNanos()>0 && diagnostics.emittedNodes()>0,"actual compiled DAGs serve the selected stages");
         System.out.println("QA_EVT {\"event\":\"gpu_program_specialization_parity\",\"status\":\"pass\",\"context\":{\"chunks\":24,\"seeds\":3,\"biomes\":"+profile.biomes().size()+",\"nodes\":"+diagnostics.nodes()+",\"emitted\":"+diagnostics.emittedNodes()+"}}");
     }
     private static void require(boolean condition,String message){if(!condition)throw new AssertionError(message);}

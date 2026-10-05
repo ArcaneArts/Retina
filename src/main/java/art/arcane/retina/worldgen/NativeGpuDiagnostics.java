@@ -9,7 +9,7 @@ public record NativeGpuDiagnostics(int status, long compileNanos, long sourceByt
     public NativeGpuDiagnostics(int status,long compileNanos,long sourceBytes,int nodes,int emittedNodes,int graphs,long cacheHits,long uploadBytes,long readbackBytes) {
         this(status,compileNanos,sourceBytes,nodes,emittedNodes,graphs,0,cacheHits,uploadBytes,readbackBytes);
     }
-    public String execution() { return switch(status) {case 1->"interpreter (compiling)";case 2->"specialized";case 3->"interpreter (compile failed)";default->"interpreter";}; }
+    public String execution() { return switch(status) {case 1->"interpreter (compiling)";case 2->"specialized";case 3->"interpreter (compile failed)";case 4->"mixed (terrain interpreter)";default->"interpreter";}; }
     public void write(RegistryFriendlyByteBuf b) {
         b.writeVarInt(status);b.writeVarLong(compileNanos);b.writeVarLong(sourceBytes);b.writeVarInt(nodes);b.writeVarInt(emittedNodes);
         b.writeVarInt(graphs);b.writeVarInt(horizontalFields);b.writeVarLong(cacheHits);b.writeVarLong(uploadBytes);b.writeVarLong(readbackBytes);

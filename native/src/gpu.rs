@@ -63,6 +63,7 @@ pub(crate) struct Gpu {
         HashMap<(usize, usize), std::sync::Arc<crate::specialize::Pipelines>>,
     interpolation_plans: HashMap<u32, std::sync::Arc<crate::program::interpolation::CachePlan>>,
     interpolation_cache: bool,
+    specialized_terrain: bool,
 }
 
 pub(crate) struct GpuSample {
@@ -112,6 +113,14 @@ impl Gpu {
         .map_err(|e| format!("cannot create a GPU compute adapter: {e}"))?;
         let info = adapter.get_info();
         let backend = format!("{:?}: {}", info.backend, info.name);
+        // Matched Metal measurements favor the compact density/climate stages.
+        // Keep the prior default on unmeasured backends; diagnostics can select
+        // either mode without changing loaded graph or saved-world semantics.
+        let specialized_terrain = match std::env::var("RETINA_SPECIALIZED_TERRAIN").as_deref() {
+            Ok("0") => false,
+            Ok("1") => true,
+            _ => info.backend != wgpu::Backend::Metal,
+        };
         let (device, queue) = pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor {
             label: Some("Retina terrain device"),
             required_features: adapter.features() & wgpu::Features::TIMESTAMP_QUERY,
@@ -323,6 +332,7 @@ impl Gpu {
             interpolation_interpreters: HashMap::new(),
             interpolation_plans: HashMap::new(),
             interpolation_cache: std::env::var("RETINA_INTERPOLATION_CACHE").as_deref() != Ok("0"),
+            specialized_terrain,
         };
         gpu.add_profile(0, &vec![0; 672], &[0; 240], &[0; 32]);
         Ok(gpu)
@@ -459,7 +469,7 @@ impl Gpu {
                     self.wide_profiles.insert(profile_id);
                 }
                 if profile.unwrap().program_execution != crate::specialize::Execution::Interpreter {
-                    match self.compiler.request(program) {
+                    match self.compiler.request(program, self.specialized_terrain) {
                         Ok(state) => {
                             self.pipeline.shader(profile_id, state.progress.clone());
                             self.specialized.insert(profile_id, state);
@@ -490,8 +500,9 @@ impl Gpu {
         let depth = profile
             .and_then(|p| p.registry_program.as_ref())
             .map_or(0, |p| p.interpolation_depth());
+        let needs_interpreter = specialized.is_none() || !self.specialized_terrain;
         if depth == 0
-            && specialized.is_none()
+            && needs_interpreter
             && self.wide_profiles.contains(&profile_id)
             && self.wide_interpreter.is_none()
         {
@@ -503,7 +514,7 @@ impl Gpu {
                     &crate::program::interpreter_source(1024),
                 )?));
         }
-        let interpreted = if specialized.is_none() && depth > 0 {
+        let interpreted = if needs_interpreter && depth > 0 {
             let capacity = if self.wide_profiles.contains(&profile_id) {
                 1024
             } else {
@@ -529,7 +540,16 @@ impl Gpu {
                 .cloned()
         };
         let selected = specialized.as_deref().or(interpreted.as_deref());
+        // Terrain input and climate passes may use the compact interpreter while
+        // materials/caves retain specialization. Both use the same resident
+        // bytecode, field cache and immutable per-batch layout.
+        let terrain = if self.specialized_terrain {
+            selected
+        } else {
+            interpreted.as_deref()
+        };
         let world_pipeline = |entry, fallback| selected.map_or(fallback, |p| p.world(entry));
+        let terrain_pipeline = |entry, fallback| terrain.map_or(fallback, |p| p.world(entry));
         let cave_pipeline = |entry, fallback| selected.map_or(fallback, |p| p.cave(entry));
         let density_program = profile
             .and_then(|p| p.registry_program.as_ref())
@@ -841,7 +861,7 @@ impl Gpu {
                     timestamp_writes: writes,
                 });
                 pass.set_pipeline(
-                    selected
+                    terrain
                         .unwrap()
                         .world(&format!("interpolation_nodes_{level}")),
                 );
@@ -872,7 +892,7 @@ impl Gpu {
                 label: Some("Retina registered 3D density lattice"),
                 timestamp_writes: writes,
             });
-            pass.set_pipeline(world_pipeline("density_nodes", &self.density_pipeline));
+            pass.set_pipeline(terrain_pipeline("density_nodes", &self.density_pipeline));
             pass.set_bind_group(0, group, &[]);
             pass.dispatch_workgroups(
                 density_dispatch.0.div_ceil(64),
@@ -896,9 +916,9 @@ impl Gpu {
                 timestamp_writes: writes,
             });
             pass.set_pipeline(if surface_probe && !align_shores {
-                world_pipeline("climate_nodes", &self.climate_pipeline)
+                terrain_pipeline("climate_nodes", &self.climate_pipeline)
             } else {
-                world_pipeline("height_nodes", &self.height_pipeline)
+                terrain_pipeline("height_nodes", &self.height_pipeline)
             });
             pass.set_bind_group(0, group, &[]);
             pass.dispatch_workgroups((side * side).div_ceil(64), requests.len() as u32, 1);
@@ -912,7 +932,7 @@ impl Gpu {
                 label: Some("Retina density surface extraction and slope halo"),
                 timestamp_writes: writes,
             });
-            pass.set_pipeline(world_pipeline("surface_columns", &self.surface_pipeline));
+            pass.set_pipeline(terrain_pipeline("surface_columns", &self.surface_pipeline));
             pass.set_bind_group(0, group, &[]);
             pass.dispatch_workgroups(surface_dispatch.div_ceil(64), requests.len() as u32, 1);
         }

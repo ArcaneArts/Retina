@@ -56,6 +56,13 @@ disables specialization; `"specialized"` waits and returns a real compilation
 error instead of silently benchmarking the interpreter. These are native profile
 diagnostics, not changes to saved world configuration.
 
+On Metal, ready profiles now use [mixed stage selection](GPU_STAGE_SELECTION.md):
+compact interpreted density/climate plus specialized materials/caves. Other
+backends keep the previous default until measured. The cache key includes this
+entrypoint selection, and F3 reports the mixed mode explicitly. The diagnostics
+force mode waits for the selected specialized stage bundle; terrain selection can
+be controlled separately for matched measurements.
+
 F3 reports execution state, compilation time, registered/emitted node counts,
 horizontal field count and cumulative actual upload/readback bytes for the profile.
 The separate 64-byte diagnostics ABI leaves the request ABI unchanged.

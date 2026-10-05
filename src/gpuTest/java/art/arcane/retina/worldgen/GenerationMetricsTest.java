@@ -61,6 +61,8 @@ final class GenerationMetricsTest {
         require(specialized.stream().anyMatch(s->s.contains("GPU compilation:") && s.contains("123.0 ms")),"shader warmup cost is separate from region timings");
         require(specialized.stream().anyMatch(s->s.contains("Horizontal cache fields:") && s.contains("7")),"F3 reports resident horizontal reuse");
         require(specialized.stream().anyMatch(s->s.contains("GPU profile readback total:") && s.contains("2.00 MiB")),"readback volume has units and scope");
+        var mixed=TerrainDebugReport.lines(new TerrainStatsPayload(true,"Metal test","mca",window,new NativeGpuDiagnostics(4,123_000_000,43210,1500,900,12,7,3,1048576,2097152)));
+        require(mixed.stream().anyMatch(s->s.contains("GPU programs:") && s.contains("mixed (terrain interpreter)")),"F3 reports mixed GPU stage selection");
         require(empty.stream().noneMatch(s -> s.contains("NaN") || s.contains("Infinity")), "empty window formats finite values");
         System.out.println("QA_EVT {\"event\":\"rolling_region_metrics_and_f3_format\",\"status\":\"pass\"}");
     }

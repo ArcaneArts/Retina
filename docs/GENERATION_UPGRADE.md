@@ -18,6 +18,11 @@ Child horizontal expressions retain GPU column reuse. The shared final-field
 terrain lattice and cold compilation cost remain required work. [Resident
 interpolation-field lattices](GPU_INTERPOLATION_CACHE.md) now provide GPU-only
 sample reuse for that ongoing work.
+[Mixed GPU stage selection](GPU_STAGE_SELECTION.md) now retains compact
+interpreted terrain/climate on Metal while specializing materials and caves.
+Repeated actual-profile comparisons improve whole-region throughput, with
+identical NBT; unmeasured backends retain their prior selection. F3 reports the
+mixed mode and the compiler skips its unused specialized terrain pipelines.
 Local registered GPU aquifers and surface-lake corrections are implemented; see
 [GPU aquifers](GPU_AQUIFERS.md) for fluid/pressure equations, validation, costs and
 remaining fluid-tick approximations. Broader features, further graph

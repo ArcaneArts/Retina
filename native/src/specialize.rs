@@ -493,12 +493,13 @@ struct Job {
     horizontal_fields: u32,
     material_layers: bool,
     aquifers: u8,
+    terrain: bool,
 }
 pub(crate) struct Compiler {
     sender: mpsc::Sender<Job>,
     // Exact generated source is the fingerprint key; HashMap also checks key
     // equality, so a hash collision cannot reuse an unrelated graph pipeline.
-    cache: HashMap<String, Arc<State>>,
+    cache: HashMap<(String, bool), Arc<State>>,
 }
 impl Compiler {
     pub fn new(
@@ -516,7 +517,7 @@ impl Compiler {
                 while let Ok(job) = receiver.recv() {
                     let start = Instant::now();
                     let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-                        compile(
+                        compile_program(
                             &device,
                             &world,
                             &cave,
@@ -524,6 +525,8 @@ impl Compiler {
                             job.horizontal_fields,
                             job.material_layers,
                             job.aquifers,
+                            true,
+                            job.terrain,
                         )
                     }))
                     .unwrap_or_else(|_| Err("specialized GPU compilation panicked".into()));
@@ -534,7 +537,11 @@ impl Compiler {
                         start.elapsed().as_nanos().min(u64::MAX as u128) as u64,
                         std::sync::atomic::Ordering::Relaxed,
                     );
-                    let status = if result.is_ok() { 2 } else { 3 };
+                    let status = if result.is_ok() {
+                        if job.terrain { 2 } else { 4 }
+                    } else {
+                        3
+                    };
                     *job.state.result.lock().unwrap_or_else(|e| e.into_inner()) =
                         Some(result.map(Arc::new));
                     job.state
@@ -550,7 +557,11 @@ impl Compiler {
             cache: HashMap::new(),
         })
     }
-    pub fn request(&mut self, program: &RegistryProgram) -> Result<Arc<State>, String> {
+    pub fn request(
+        &mut self,
+        program: &RegistryProgram,
+        terrain: bool,
+    ) -> Result<Arc<State>, String> {
         let (mut source, horizontal_fields) = source_columns(program)?;
         // The entry-point set is part of pipeline identity even when graphs match.
         writeln!(source, "// material pipelines: {}", program.material_layers).unwrap();
@@ -563,7 +574,8 @@ impl Compiler {
                 .map_or(0, |a| if a.enabled { 2 } else { 1 })
         )
         .unwrap();
-        if let Some(state) = self.cache.get(&source) {
+        let key = (source, terrain);
+        if let Some(state) = self.cache.get(&key) {
             state
                 .progress
                 .hits
@@ -573,10 +585,10 @@ impl Compiler {
         let state = Arc::new(State {
             progress: Arc::new(Progress {
                 status: std::sync::atomic::AtomicU32::new(1),
-                source_bytes: source.len() as u64,
+                source_bytes: key.0.len() as u64,
                 nodes: program.all_programs().map(|p| p.nodes.len() as u32).sum(),
-                emitted: source.matches("// retained node\n").count() as u32,
-                graphs: source.matches("fn graph_").count() as u32 - 1,
+                emitted: key.0.matches("// retained node\n").count() as u32,
+                graphs: key.0.matches("fn graph_").count() as u32 - 1,
                 horizontal_fields,
                 ..Default::default()
             }),
@@ -584,7 +596,7 @@ impl Compiler {
         });
         self.sender
             .send(Job {
-                program: source.clone(),
+                program: key.0.clone(),
                 state: state.clone(),
                 horizontal_fields,
                 material_layers: program.material_layers,
@@ -592,13 +604,15 @@ impl Compiler {
                     .aquifer
                     .as_ref()
                     .map_or(0, |a| if a.enabled { 2 } else { 1 }),
+                terrain,
             })
             .map_err(|_| "GPU shader compiler stopped")?;
-        self.cache.insert(source, state.clone());
+        self.cache.insert(key, state.clone());
         Ok(state)
     }
 }
 
+#[cfg(test)]
 pub(crate) fn compile(
     device: &wgpu::Device,
     world: &wgpu::BindGroupLayout,
@@ -617,6 +631,7 @@ pub(crate) fn compile(
         material_layers,
         aquifers,
         true,
+        true,
     )
 }
 
@@ -626,7 +641,7 @@ pub(crate) fn compile_interpreter(
     cave: &wgpu::BindGroupLayout,
     program: &str,
 ) -> Result<Pipelines, String> {
-    compile_program(device, world, cave, program, 0, true, 2, false)
+    compile_program(device, world, cave, program, 0, true, 2, false, true)
 }
 
 fn compile_program(
@@ -638,6 +653,7 @@ fn compile_program(
     material_layers: bool,
     aquifers: u8,
     specialized: bool,
+    terrain: bool,
 ) -> Result<Pipelines, String> {
     let scope = device.push_error_scope(wgpu::ErrorFilter::Validation);
     let make = |prefix: &str, suffix: &str, layout: &wgpu::BindGroupLayout, entries: &[&str]| {
@@ -682,21 +698,27 @@ fn compile_program(
         "main",
         "biome_sites",
         "biome_queries",
-        "climate_nodes",
-        "height_nodes",
-        "density_nodes",
-        "surface_columns",
         "lake_candidates",
         "lake_density",
         "lake_nodes",
     ];
+    if terrain {
+        world_entries.extend([
+            "climate_nodes",
+            "height_nodes",
+            "density_nodes",
+            "surface_columns",
+        ]);
+    }
     if specialized {
         world_entries.push("horizontal_nodes");
     }
     let interpolation_entries = (1..=program.matches("fn interpolation_nodes_").count())
         .map(|level| format!("interpolation_nodes_{level}"))
         .collect::<Vec<_>>();
-    world_entries.extend(interpolation_entries.iter().map(String::as_str));
+    if terrain {
+        world_entries.extend(interpolation_entries.iter().map(String::as_str));
+    }
     let world = make(
         include_str!("simplex.wgsl"),
         include_str!("noise3.wgsl"),

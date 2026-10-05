@@ -43,11 +43,14 @@ def main():
     parser.add_argument("--warmups", type=int, default=1)
     parser.add_argument("--program-execution", choices=("auto", "interpreter", "specialized"), help="Override GPU program mode for matched diagnostics")
     parser.add_argument("--interpolation-cache", choices=("enabled", "disabled"), help="A/B diagnostic for resident interpolation-field reuse")
+    parser.add_argument("--terrain-execution", choices=("interpreter", "specialized"), help="Select terrain/climate stages independently of specialized material/cave stages")
     parser.add_argument("--await-specialization", action="store_true", help="After measurement, await compilation and compare one regenerated region with its pre-warmup output")
     parser.add_argument("--specialization-timeout", type=float, default=180, help="Seconds to await a real compilation result after measurements")
     args = parser.parse_args()
     if args.interpolation_cache:
         os.environ["RETINA_INTERPOLATION_CACHE"] = "1" if args.interpolation_cache == "enabled" else "0"
+    if args.terrain_execution:
+        os.environ["RETINA_SPECIALIZED_TERRAIN"] = "1" if args.terrain_execution == "specialized" else "0"
     args.out.mkdir(parents=True, exist_ok=False)
     lib = c.CDLL(str(args.library.resolve()))
     lib.retina_initialize.restype = c.c_int
@@ -97,7 +100,7 @@ def main():
     wall = time.perf_counter()-start
     after = Snapshot(); check(lib.retina_timing_snapshot(profile, c.byref(after)))
     chunks = after.chunks-before.chunks
-    data = dict(library=str(args.library), parallel=args.parallel, seed=args.seed, regions=regions, program_execution=args.program_execution, interpolation_cache=args.interpolation_cache,
+    data = dict(library=str(args.library), parallel=args.parallel, seed=args.seed, regions=regions, program_execution=args.program_execution, interpolation_cache=args.interpolation_cache, terrain_execution=args.terrain_execution,
                 total_ms=wall*1000, chunks_per_second=chunks/wall, median_ms=statistics.median(r["ms"] for r in regions),
                 average_region_ms=statistics.mean(r["ms"] for r in regions),
                 startup=dict(initialize_ms=initialize_ms, registration_ms=registration_ms, warmups=warmups),
@@ -140,7 +143,7 @@ def main():
         print(f"Awaiting specialization after measuring {len(regions)} regions; status={awaited.status}",flush=True)
         while awaited.status==1 and time.perf_counter()-wait_start<args.specialization_timeout:
             time.sleep(.1);check(program(profile,c.byref(awaited)))
-        if awaited.status!=2: raise RuntimeError(f"Specialization did not become ready: status={awaited.status}")
+        if awaited.status not in (2,4): raise RuntimeError(f"Specialization did not become ready: status={awaited.status}")
         _,x,z=coords[0]
         regenerated=generate(("compiled_check",x,z))
         for slot,(old,new) in enumerate(zip(records(args.out/f"{coords[0][0]}.mca"),records(args.out/"compiled_check.mca"),strict=True)):
