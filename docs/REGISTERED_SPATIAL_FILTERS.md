@@ -36,3 +36,8 @@ is output-compatibility evidence, not a controlled performance comparison.
 
 The tested native and bundled JAR library SHA-256 is
 `68c1f493e8c761c2e2a88789fedf6b71d1a1b8be53661ddf40ed61458e961d8b`.
+
+Later [cuboid placement support](REGISTERED_CUBOID_PLACEMENTS.md) extends these
+programs with loaded inclusive dimensions and face/edge/interior selection. It
+also retains the same heightmap filters after cuboid expansion, with full
+Minecraft reference coverage. Other enclosing feature geometry remains required.

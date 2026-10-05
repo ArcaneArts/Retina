@@ -67,6 +67,10 @@ choices. Ordered replay retries unresolved anchors while preserving completed
 commands, live overlays and random streams.
 The [surface-relative filter](REGISTERED_SPATIAL_FILTERS.md) now respects loaded
 heightmaps and inclusive offsets in top-level and nested placement programs.
+[Registered cuboid placements](REGISTERED_CUBOID_PLACEMENTS.md) now preserve
+inclusive dimensions, edge/interior flags and ordered nested feature draws.
+Actual cave-floor/ceiling and uneven-terrain reference checks cover their complete
+local footprint; broader enclosing feature geometry remains required.
 The [ground-layer placement adapter](REGISTERED_LAYER_PLACEMENTS.md) now follows
 loaded `count_on_every_layer` budgets and actual live empty-to-solid transitions,
 including sparse GPU counts after floor discovery. The same milestone fixes

@@ -1400,6 +1400,8 @@ pub unsafe extern "C" fn retina_sample_provider_noise(
 /// # Safety
 /// request/position are readable; output holds capacity [x,y,z,material] records;
 /// length is writable. Diagnostic invocation uses the production block-feature logic.
+/// Returns 1 with the actual required length when output is too small; no records
+/// are copied in that case.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn retina_sample_decoration_feature(
     request: *const ChunkRequest,
@@ -1410,7 +1412,8 @@ pub unsafe extern "C" fn retina_sample_decoration_feature(
     capacity: u64,
     length: *mut u64,
 ) -> i32 {
-    boundary(|| {
+    let mut too_small = false;
+    let status = boundary(|| {
         if request.is_null() || position.is_null() || output.is_null() || length.is_null() {
             return Err("null registered feature buffer".into());
         }
@@ -1440,20 +1443,29 @@ pub unsafe extern "C" fn retina_sample_decoration_feature(
             let values = engine.provider_noise(request, &queries, None)?;
             samples.extend(queries.into_iter().zip(values));
         };
+        unsafe {
+            *length = result.len() as u64;
+        }
         if result.len() as u64 > capacity {
-            return Err("registered feature output buffer too small".into());
+            too_small = true;
+            return Ok(());
         }
         unsafe {
             std::ptr::copy_nonoverlapping(result.as_ptr(), output, result.len());
-            *length = result.len() as u64;
         }
         Ok(())
-    })
+    });
+    if status == 0 && too_small {
+        1
+    } else {
+        status
+    }
 }
 
 /// # Safety
 /// request and position are readable; output has capacity [x, y, z, 0] records
-/// and length is writable.
+/// and length is writable. Returns 1 with the actual required length when the
+/// output is too small; no records are copied in that case.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn retina_sample_decoration_placement(
     request: *const ChunkRequest,
@@ -1464,7 +1476,8 @@ pub unsafe extern "C" fn retina_sample_decoration_placement(
     capacity: u64,
     length: *mut u64,
 ) -> i32 {
-    boundary(|| {
+    let mut too_small = false;
+    let status = boundary(|| {
         if request.is_null() || position.is_null() || output.is_null() || length.is_null() {
             return Err("null registered placement buffer".into());
         }
@@ -1483,15 +1496,23 @@ pub unsafe extern "C" fn retina_sample_decoration_placement(
             unsafe { *position },
             seed,
         )?;
+        unsafe {
+            *length = result.len() as u64;
+        }
         if result.len() as u64 > capacity {
-            return Err("registered placement output buffer too small".into());
+            too_small = true;
+            return Ok(());
         }
         unsafe {
             std::ptr::copy_nonoverlapping(result.as_ptr(), output, result.len());
-            *length = result.len() as u64;
         }
         Ok(())
-    })
+    });
+    if status == 0 && too_small {
+        1
+    } else {
+        status
+    }
 }
 /// # Safety
 /// request is readable; output has capacity u16 elements, exactly height*4 quart biome IDs.

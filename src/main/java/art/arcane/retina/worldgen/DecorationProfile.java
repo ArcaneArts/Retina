@@ -114,6 +114,9 @@ final class DecorationProfile {
                     }
                 }
                 case "random_chance" -> { }
+                case "cuboid" -> {
+                    if(!supportedIntProvider(json.get("xz_size")) || !supportedIntProvider(json.get("y_size"))) {unsupported.add("cuboid:dimensions:"+json);return;}
+                }
                 case "in_square", "biome", "surface_water_depth_filter", "surface_relative_threshold_filter" -> { }
                 default -> { unsupported.add("placement:" + type(json)); return; }
             }
@@ -511,6 +514,7 @@ final class DecorationProfile {
             var json=PlacementModifier.CODEC.encodeStart(registry.createSerializationContext(JsonOps.INSTANCE),modifier).getOrThrow().getAsJsonObject();
             boolean supported=switch(type(json)) {
                 case "count", "count_on_every_layer" -> supportedIntProvider(json.get("count"));
+                case "cuboid" -> supportedIntProvider(json.get("xz_size")) && supportedIntProvider(json.get("y_size"));
                 case "offset" -> supportedIntProvider(json.get("x")) && supportedIntProvider(json.get("y")) && supportedIntProvider(json.get("z"));
                 case "height_range" -> supportedHeightProvider(json.get("height"));
                 case "block_predicate_filter" -> supportedPredicate(json.getAsJsonObject("predicate"));
@@ -520,6 +524,7 @@ final class DecorationProfile {
             };
             if(!supported){unsupported.add("vegetation_patch:nested_placement:"+type(json));return null;}
             if(type(json).equals("in_square") || type(json).equals("count_on_every_layer"))reach+=15;
+            if(type(json).equals("cuboid"))reach+=net.minecraft.util.valueproviders.IntProviders.CODEC.parse(JsonOps.INSTANCE,json.get("xz_size")).getOrThrow().maxInclusive();
             if(type(json).equals("offset"))for(String axis:List.of("x","z")) {
                 var provider=net.minecraft.util.valueproviders.IntProviders.CODEC.parse(JsonOps.INSTANCE,json.get(axis)).getOrThrow();reach+=Math.max(Math.abs(provider.minInclusive()),Math.abs(provider.maxInclusive()));
             }

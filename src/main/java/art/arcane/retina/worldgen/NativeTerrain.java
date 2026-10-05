@@ -232,7 +232,15 @@ public final class NativeTerrain {
         try(var arena=Arena.ofConfined()) {
             long capacity=Math.max(4096,request.height()*4L);
             var out=arena.allocate(capacity*16,Integer.BYTES);var length=arena.allocate(JAVA_LONG);
-            check((int)handle.invokeExact(encode(arena,request),recipe,arena.allocateFrom(JAVA_INT,position),seed,out,capacity,length));
+            var encoded=encode(arena,request);var at=arena.allocateFrom(JAVA_INT,position);
+            int status=(int)handle.invokeExact(encoded,recipe,at,seed,out,capacity,length);
+            while(status==1) {
+                // Size comes from an actual completed sample, rather than a
+                // guessed feature-budget limit. Retry the same deterministic sample.
+                capacity=length.get(JAVA_LONG,0);out=arena.allocate(Math.multiplyExact(capacity,16),Integer.BYTES);
+                status=(int)handle.invokeExact(encoded,recipe,at,seed,out,capacity,length);
+            }
+            check(status);
             return out.asSlice(0,length.get(JAVA_LONG,0)*16).toArray(JAVA_INT);
         }catch(Throwable error){throw failure(error);}
     }

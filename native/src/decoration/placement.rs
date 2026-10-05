@@ -257,6 +257,14 @@ pub enum Modifier {
         chance: f32,
     },
     InSquare,
+    Cuboid {
+        xz_size: IntProvider,
+        y_size: IntProvider,
+        #[serde(default = "include_cells")]
+        include_edges: bool,
+        #[serde(default = "include_cells")]
+        include_interior: bool,
+    },
     Heightmap {
         map: u8,
     },
@@ -299,6 +307,34 @@ pub enum Modifier {
 }
 fn always_true() -> Predicate {
     Predicate::True
+}
+fn include_cells() -> bool {
+    true
+}
+/// Minecraft samples height, width and length separately, with inclusive ends.
+/// Edges are positions on at least two boundary planes; face interiors are not
+/// edges. Keep this iterator shared by anchored and nested feature replay.
+pub(super) fn cuboid_offsets(
+    xz_size: &IntProvider,
+    y_size: &IntProvider,
+    include_edges: bool,
+    include_interior: bool,
+    rng: &mut Rng,
+) -> impl Iterator<Item = [i32; 3]> + use<> {
+    let height = y_size.sample(rng);
+    let width = xz_size.sample(rng);
+    let length = xz_size.sample(rng);
+    (0..=width).flat_map(move |x| {
+        (0..=height).flat_map(move |y| {
+            (0..=length).filter_map(move |z| {
+                let boundary = (x == 0 || x == width) as u8
+                    + (y == 0 || y == height) as u8
+                    + (z == 0 || z == length) as u8;
+                ((include_edges || boundary < 2) && (include_interior || boundary > 0))
+                    .then_some([x, y, z])
+            })
+        })
+    })
 }
 fn minimum_threshold() -> i32 {
     i32::MIN
@@ -400,6 +436,11 @@ pub(super) fn validate(program: &[Modifier], palette: usize) -> Result<(), Strin
                 a >= 0 && b <= 256
             }
             Modifier::Offset { x, y, z } => [x, y, z].into_iter().all(|p| p.bounds().is_ok()),
+            Modifier::Cuboid {
+                xz_size, y_size, ..
+            } => [xz_size, y_size]
+                .into_iter()
+                .all(|p| p.bounds().is_ok_and(|(lo, hi)| lo >= 1 && hi <= 16)),
             Modifier::NoiseThresholdCount {
                 noise_level,
                 below_noise,
@@ -585,6 +626,33 @@ fn expand_from(
                         order.push(i);
                         self.step(index + 1, at, child, actions, order);
                         order.pop();
+                    }
+                    return;
+                }
+                Modifier::Cuboid {
+                    xz_size,
+                    y_size,
+                    include_edges,
+                    include_interior,
+                } => {
+                    for (i, offset) in
+                        cuboid_offsets(xz_size, y_size, *include_edges, *include_interior, &mut rng)
+                            .enumerate()
+                    {
+                        // Use the existing anchored expansion stream convention:
+                        // each emitted branch has a stable independent stream.
+                        let child = Rng::new(rng.next());
+                        actions.push(Action::Shift(offset));
+                        order.push(i);
+                        self.step(
+                            index + 1,
+                            std::array::from_fn(|axis| at[axis] + offset[axis]),
+                            child,
+                            actions,
+                            order,
+                        );
+                        order.pop();
+                        actions.pop();
                     }
                     return;
                 }
@@ -1022,6 +1090,55 @@ mod tests {
     }
     fn ops(value: serde_json::Value) -> Vec<Modifier> {
         serde_json::from_value(value).unwrap()
+    }
+
+    #[test]
+    fn cuboids_preserve_inclusive_faces_order_and_dimension_draws() {
+        let three = IntProvider::Value(3);
+        for (edges, interior, count) in [
+            (true, true, 64),
+            (true, false, 56),
+            (false, true, 32),
+            (false, false, 24),
+        ] {
+            let points: Vec<_> =
+                cuboid_offsets(&three, &three, edges, interior, &mut Rng::new(42)).collect();
+            assert_eq!(points.len(), count);
+            assert!(points.windows(2).all(|v| v[0] < v[1]));
+            assert_eq!(points.contains(&[0, 0, 0]), edges);
+            assert!(points.contains(&[0, 1, 1]));
+            assert_eq!(points.contains(&[1, 1, 1]), interior);
+        }
+        let xz: IntProvider =
+            serde_json::from_value(json!({"type":"uniform","min_inclusive":1,"max_inclusive":16}))
+                .unwrap();
+        let y: IntProvider =
+            serde_json::from_value(json!({"type":"uniform","min_inclusive":1,"max_inclusive":7}))
+                .unwrap();
+        for seed in 0..64 {
+            let mut rng = Rng::new(seed);
+            let mut reference = Rng::new(seed);
+            let height = y.sample(&mut reference);
+            let width = xz.sample(&mut reference);
+            let length = xz.sample(&mut reference);
+            let points: Vec<_> = cuboid_offsets(&xz, &y, true, true, &mut rng).collect();
+            assert_eq!(points.first(), Some(&[0, 0, 0]));
+            assert_eq!(points.last(), Some(&[width, height, length]));
+            assert_eq!(
+                points.len(),
+                ((width + 1) * (height + 1) * (length + 1)) as usize
+            );
+            assert_eq!(rng.next(), reference.next());
+        }
+        let program = ops(json!([{"type":"cuboid","xz_size":16,"y_size":16}]));
+        assert!(validate(&program, 8).is_ok());
+        let (mut profile, field, request, mut recipe) = fixture();
+        recipe.placement = Some(program);
+        profile.decorations[0] = recipe;
+        let points = sample(&field, &profile, request, 0, [-17, 2, -17], 42).unwrap();
+        assert_eq!(points.len(), 17 * 17 * 17);
+        assert_eq!(points.first(), Some(&[-17, 2, -17, 0]));
+        assert_eq!(points.last(), Some(&[-1, 18, -1, 0]));
     }
 
     #[test]

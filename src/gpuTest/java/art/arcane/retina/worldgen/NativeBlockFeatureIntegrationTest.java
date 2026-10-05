@@ -181,6 +181,17 @@ public final class NativeBlockFeatureIntegrationTest {
             require(selected.size()==1 && synthetic.get(selected.getFirst()).getAsJsonObject().get("kind").getAsString().equals(kind),"registered provider feature exports through production dispatch: "+featureJson);
             features.add(feature);
         }
+        int firstCuboid=features.size();
+        for(String surface:List.of("floor","ceiling"))for(boolean edges:List.of(false,true))for(boolean interior:List.of(false,true)) {
+            var json=cuboidPatch(surface,edges,interior);
+            var feature=Feature.DIRECT_CODEC.parse(registry.createSerializationContext(JsonOps.INSTANCE),json).getOrThrow();
+            var selected=new ArrayList<Integer>();
+            var placed=new net.minecraft.world.level.levelgen.placement.PlacedFeature(Holder.direct(feature),List.of(
+                net.minecraft.world.level.levelgen.placement.InSquarePlacement.spread(),net.minecraft.world.level.levelgen.placement.HeightmapPlacement.onHeightmap(Heightmap.Types.MOTION_BLOCKING)));
+            export.invoke(exporter,placed,placementConstructor.newInstance(),1.0,"test:cuboid_patch"+features.size(),selected,0);
+            require(selected.size()==1 && synthetic.get(selected.getFirst()).getAsJsonObject().get("kind").getAsString().equals("vegetation_patch"),"nested cuboid exports through production patch dispatch");
+            features.add(feature);
+        }
         // Add substrate states after provider export, as structures/geology do.
         // The final copy tables must see their actual compatible properties.
         var copyInputs=List.of(
@@ -212,6 +223,35 @@ public final class NativeBlockFeatureIntegrationTest {
             }
         }
         require(empty>0,"nullable providers skip simple-block placement");
+        int cuboidCases=0,floorLogs=0,ceilingLogs=0;
+        // The provider-only carrier disables caves. Restore the actual registered
+        // cave inputs before replacing its density graph with the controlled void.
+        var caveProfile=profile.deepCopy();caveProfile.add("cave_noises",original.get("cave_noises").deepCopy());
+        var carveable=new JsonArray();for(var state:materials)carveable.add(!state.isAir() && state.getFluidState().isEmpty() && !state.is(BlockTags.UNCARVABLE));
+        caveProfile.add("carveable",carveable);
+        for(var fixture:List.of(new Fixture(caveProfile,materials,90,384,false,18),new Fixture(caveProfile,materials,90,384,false,30),new Fixture(profile,materials,96,384,true))) {
+            fixture.factory=factory;
+            var biome=registry.lookupOrThrow(Registries.BIOME).getOrThrow(ResourceKey.create(Registries.BIOME,Identifier.parse("minecraft:plains")));
+            fixture.generator=new RetinaChunkGenerator(new net.minecraft.world.level.biome.FixedBiomeSource(biome),-64,384,fixture.base,0,.008F,"mca");
+            for(int i=firstCuboid;i<features.size();i++) {
+                int direction=synthetic.get(i).getAsJsonObject().get("direction").getAsInt();
+                if(fixture.cavern && (direction<0)!=(fixture.originHeight==18))continue;
+                for(long seed=0;seed<64;seed++) {
+                    var at=new BlockPos(-17,fixture.originHeight,-17);var world=new World(fixture);
+                    features.get(i).place(world.level,fixture.generator,new Stream(seed,false),at);
+                    int[] blocks=NativeTerrain.instance().decorationFeature(fixture.request,offset+i,new int[]{at.getX(),at.getY(),at.getZ()},seed);
+                    var actual=new HashMap<BlockPos,BlockState>();for(int k=0;k<blocks.length;k+=4)actual.put(new BlockPos(blocks[k],blocks[k+1],blocks[k+2]),materials[blocks[k+3]]);
+                    require(world.changed.equals(actual),"nested cuboid cave/rugged reference mismatch: "+synthetic.get(i)+" seed="+seed+" differences="+differences(world.changed,actual));
+                    if(fixture.cavern) {
+                        int logs=(int)actual.values().stream().filter(s->s.is(BlockTags.LOGS)).count();
+                        if(direction<0)floorLogs+=logs;else ceilingLogs+=logs;
+                    }
+                    cuboidCases++;checked++;if(actual.isEmpty())empty++;
+                }
+            }
+        }
+        require(floorLogs>0 && ceilingLogs>0,"nested cuboids place on both carved cave surfaces");
+        System.out.println("QA_EVT {\"event\":\"registered_cuboid_patches_minecraft_reference\",\"status\":\"pass\",\"context\":{\"datapack\":"+packed+",\"cases\":"+cuboidCases+",\"floor_logs\":"+floorLogs+",\"ceiling_logs\":"+ceilingLogs+"}}");
         int copiedCases=0,changedProperties=0;
         for(var input:copyInputs) {
             var fixture=new Fixture(profile,materials,96,384,false,-1,input);fixture.factory=factory;
@@ -251,6 +291,19 @@ public final class NativeBlockFeatureIntegrationTest {
         var value=new JsonObject();value.addProperty("type","minecraft:randomized_int");value.add("source",source);value.addProperty("property",property);
         value.add("values",JsonParser.parseString("{\"type\":\"minecraft:uniform\",\"min_inclusive\":0,\"max_inclusive\":6}"));return value;
     }
+    private static JsonObject cuboidPatch(String surface,boolean edges,boolean interior) {
+        var value=JsonParser.parseString("{\"type\":\"minecraft:vegetation_patch\",\"replaceable\":\"#minecraft:moss_replaceable\",\"ground_state\":\"minecraft:moss_block\",\"surface\":\"floor\",\"depth\":1,\"vertical_range\":12,\"extra_bottom_block_chance\":0.2,\"extra_edge_column_chance\":0.35,\"vegetation_chance\":1,\"xz_radius\":{\"type\":\"minecraft:uniform\",\"min_inclusive\":0,\"max_inclusive\":1}}").getAsJsonObject();
+        value.addProperty("surface",surface);value.add("ground_state",providerStates(new JsonPrimitive("minecraft:moss_block")));
+        var nested=new JsonObject();var feature=new JsonObject();feature.addProperty("type","minecraft:block_column");feature.addProperty("direction","up");feature.addProperty("prioritize_tip",false);feature.add("allowed_placement",JsonParser.parseString("{\"type\":\"minecraft:true\"}"));
+        var layer=new JsonObject();layer.add("height",JsonParser.parseString("{\"type\":\"minecraft:uniform\",\"min_inclusive\":1,\"max_inclusive\":3}"));
+        layer.add("provider",providerStates(JsonParser.parseString("{\"type\":\"minecraft:weighted\",\"entries\":[{\"weight\":2,\"data\":\"minecraft:oak_log\"},{\"weight\":3,\"data\":\"minecraft:birch_log\"}]}")));
+        var layers=new JsonArray();layers.add(layer);feature.add("layers",layers);nested.add("feature",feature);
+        var cuboid=JsonParser.parseString("{\"type\":\"minecraft:cuboid\",\"xz_size\":{\"type\":\"minecraft:uniform\",\"min_inclusive\":1,\"max_inclusive\":3},\"y_size\":{\"type\":\"minecraft:uniform\",\"min_inclusive\":1,\"max_inclusive\":4}}").getAsJsonObject();
+        cuboid.addProperty("include_edges",edges);cuboid.addProperty("include_interior",interior);
+        var placement=new JsonArray();placement.add(cuboid);placement.add(JsonParser.parseString("{\"type\":\"minecraft:random_chance\",\"chance\":0.65}"));
+        placement.add(JsonParser.parseString("{\"type\":\"minecraft:offset\",\"x\":{\"type\":\"minecraft:uniform\",\"min_inclusive\":-1,\"max_inclusive\":1},\"y\":0,\"z\":0}"));
+        nested.add("placement",placement);value.add("vegetation_feature",nested);return value;
+    }
     private static JsonElement providerStates(JsonElement value) {
         if(value.isJsonArray()) {
             var states=new JsonArray();for(var state:value.getAsJsonArray())states.add(providerStates(state));return states;
@@ -278,12 +331,23 @@ public final class NativeBlockFeatureIntegrationTest {
             String type=json.get("type").getAsString().replace("minecraft:","");
             boolean supported=switch(type) {
                 case "height_range" -> DecorationProfile.supportedHeightProvider(json.get("height"));
-                case "random_chance", "surface_relative_threshold_filter", "count_on_every_layer" -> true;
+                case "random_chance", "surface_relative_threshold_filter", "count_on_every_layer", "cuboid" -> true;
                 case "environment_scan" -> DecorationProfile.supportedPredicate(json.getAsJsonObject("target_condition")) && (!json.has("allowed_search_condition") || DecorationProfile.supportedPredicate(json.getAsJsonObject("allowed_search_condition")));
                 default -> false;
             };
             if(supported)raw.putIfAbsent(json.toString(),List.of(modifier));
         }
+        for(String size:List.of("1","3","16","{\"type\":\"minecraft:uniform\",\"min_inclusive\":1,\"max_inclusive\":16}",
+                "{\"type\":\"minecraft:biased_to_bottom\",\"min_inclusive\":1,\"max_inclusive\":7}",
+                "{\"type\":\"minecraft:weighted_list\",\"distribution\":[{\"weight\":2,\"data\":1},{\"weight\":3,\"data\":4}]}"))for(boolean edges:List.of(false,true))for(boolean interior:List.of(false,true)) {
+            var json=new JsonObject();json.addProperty("type","minecraft:cuboid");json.add("xz_size",JsonParser.parseString(size));json.add("y_size",JsonParser.parseString("{\"type\":\"minecraft:uniform\",\"min_inclusive\":1,\"max_inclusive\":5}"));
+            json.addProperty("include_edges",edges);json.addProperty("include_interior",interior);
+            var modifier=net.minecraft.world.level.levelgen.placement.PlacementModifier.CODEC.parse(ops,json).getOrThrow();raw.put(json.toString(),List.of(modifier));
+            var map=net.minecraft.world.level.levelgen.placement.HeightmapPlacement.onHeightmap(Heightmap.Types.OCEAN_FLOOR);
+            raw.put(json+"/height",List.of(modifier,map));
+        }
+        var maximum=net.minecraft.world.level.levelgen.placement.PlacementModifier.CODEC.parse(ops,JsonParser.parseString("{\"type\":\"minecraft:cuboid\",\"xz_size\":16,\"y_size\":16}")).getOrThrow();
+        raw.put("cuboid/defaults/maximum",List.of(maximum));
         // Compare the real layer loop, including its repeatedly sampled bound.
         for(String count:List.of("0","1","256",
                 "{\"type\":\"minecraft:uniform\",\"min_inclusive\":0,\"max_inclusive\":3}",

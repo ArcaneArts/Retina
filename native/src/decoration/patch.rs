@@ -304,6 +304,29 @@ impl World<'_> {
                 }
                 return any;
             }
+            Modifier::Cuboid {
+                xz_size,
+                y_size,
+                include_edges,
+                include_interior,
+            } => {
+                let mut any = false;
+                for offset in placement::cuboid_offsets(
+                    xz_size,
+                    y_size,
+                    *include_edges,
+                    *include_interior,
+                    rng,
+                ) {
+                    any |= self.placed(
+                        placed,
+                        std::array::from_fn(|axis| at[axis] + offset[axis]),
+                        rng,
+                        index + 1,
+                    );
+                }
+                return any;
+            }
             Modifier::CountOnEveryLayer { count } => {
                 let mut layer = 0;
                 let mut any = false;
