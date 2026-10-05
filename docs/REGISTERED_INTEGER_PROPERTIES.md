@@ -16,8 +16,9 @@ query or readback. Its work remains within plant planning.
 
 This change applies to ordered native block-feature providers. Tree material
 palettes and legacy flattened plant recipes retain their existing approximations.
-Nullable source transformations still require complete tables for arbitrary live
-substrate states and remain explicitly reported.
+[Nullable source transformations](REGISTERED_NULLABLE_PROVIDERS.md) now close
+sparse tables over the live palette. Arbitrary-current SimpleBlock survival
+remains an explicit omission.
 
 ## Validation
 

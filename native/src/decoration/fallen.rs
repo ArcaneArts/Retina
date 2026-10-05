@@ -44,7 +44,6 @@ impl Recipe {
         let valid = |id: &u16| (*id as usize) < palette;
         let probability = |v: f32| v.is_finite() && (0.0..=1.0).contains(&v);
         self.trunk.validate(palette)
-            && !self.trunk.nullable()
             && self
                 .log_length
                 .bounds()
@@ -54,7 +53,7 @@ impl Recipe {
                 .trunk
                 .outputs()
                 .iter()
-                .all(|id| self.axes.iter().any(|a| a.source == *id))
+                .all(|id| self.trunk.reads_current() || self.axes.iter().any(|a| a.source == *id))
             && [
                 &self.clearance,
                 &self.sturdy,
@@ -274,8 +273,17 @@ pub(super) fn place(
         let source = recipe
             .trunk
             .sample(rng, p, &|p| context.material(p), context.noise);
-        let axes = recipe.axes.iter().find(|v| v.source == source).unwrap();
-        context.put(p, axes.states[usize::from(direction[2] != 0)]);
+        let material = recipe.axes.iter().find(|v| v.source == source).map_or_else(
+            || {
+                assert!(
+                    recipe.trunk.reads_current(),
+                    "missing registered fallen-log axes"
+                );
+                source
+            },
+            |v| v.states[usize::from(direction[2] != 0)],
+        );
+        context.put(p, material);
         logs.push(p);
     }
     // Minecraft's decorator context sorts by Y after collecting a Java HashSet.

@@ -61,7 +61,9 @@ positions, ordered branches, optional results and random-draw semantics; see
 [block-state providers](REGISTERED_BLOCK_PROVIDERS.md). Registered
 [property copying](REGISTERED_PROPERTY_COPY.md) now reads live compatible
 properties with sparse finalized palette tables and no extra random draw. Some
-nullable transformation combinations remain required. Native
+[nullable live-state transformations](REGISTERED_NULLABLE_PROVIDERS.md) now support
+rotations, integer properties, copying, mushroom caps and fallen logs. Arbitrary
+current-state SimpleBlock survival still needs full support. Native
 [integer-property providers](REGISTERED_INTEGER_PROPERTIES.md) now preserve
 source states without the configured integer property and skip the value draw,
 matching loaded provider behavior.

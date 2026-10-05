@@ -131,9 +131,9 @@ live compatible properties for supported nonnullable sources; their reference
 checks and current full-profile measurements are documented separately.
 
 Contextual rules support the exported material/tag/fluid/survival predicates;
-unknown predicates remain logged omissions. Nullable providers inside weighted,
-rotated or integer-property wrappers, nullable mushroom caps, and nullable fallen
-trunks still need complete transformations of arbitrary existing substrate
-states. Those combinations are explicitly reported rather than sampled through
-incomplete rotation/property tables. This milestone does not complete the wider
+unknown predicates remain logged omissions.
+[Nullable/current-state transformations](REGISTERED_NULLABLE_PROVIDERS.md) now
+cover rotations, integer properties, copies, mushroom caps and fallen logs.
+Arbitrary-current SimpleBlock survival is still explicitly omitted. The loaded
+26.3 weighted provider contains block states, not nullable child providers. This milestone does not complete the wider
 feature, interpolation, compiler-startup or scan workstreams.

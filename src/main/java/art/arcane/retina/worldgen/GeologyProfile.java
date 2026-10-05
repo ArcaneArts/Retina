@@ -131,6 +131,10 @@ final class GeologyProfile {
             n.add("modifiers", modifiers); caveNoises.add(n);
         }
         world.add("cave_noises", caveNoises);
+        // Structure/geology exporters have now reserved their material states.
+        // Close contextual provider transforms before freezing dense ore and
+        // cave predicates, so late registered substrates participate as well.
+        ProviderStateTransforms.prepare(world.getAsJsonArray("decorations"),palette);
         var carveable = new JsonArray();
         for (var state : palette.keySet()) carveable.add(!state.isAir() && state.getFluidState().isEmpty() && !state.is(BlockTags.UNCARVABLE));
         world.add("carveable", carveable);

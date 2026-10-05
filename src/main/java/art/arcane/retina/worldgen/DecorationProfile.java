@@ -276,6 +276,7 @@ final class DecorationProfile {
 
     /** Resolve tags/material predicates after every registry exporter has extended the palette. */
     static void finishPlacements(JsonArray recipes, LinkedHashMap<BlockState, Integer> palette) {
+        ProviderStateTransforms.prepare(recipes,palette);
         for (var element : recipes) {
             var recipe = element.getAsJsonObject();
             finishProgram(recipe.getAsJsonArray("placement"),palette);
@@ -488,6 +489,7 @@ final class DecorationProfile {
     private JsonObject simple(SimpleBlockFeature feature) {
         var provider=stateProgram(BlockStateProvider.DIRECT_CODEC.encodeStart(registry.createSerializationContext(JsonOps.INSTANCE),feature.toPlace().value()).getOrThrow(),0);
         if(provider==null)return null;
+        if(ProviderStateTransforms.optionalReadsCurrent(provider)) {unsupported.add("simple_block:transformed_current_survival");return null;}
         var states=new JsonArray();
         for(int id:programStates(provider)) {
             var state=materials.entrySet().stream().filter(e->e.getValue()==id).findFirst().orElseThrow().getKey();
@@ -641,7 +643,6 @@ final class DecorationProfile {
         var json=Feature.DIRECT_CODEC.encodeStart(registry.createSerializationContext(JsonOps.INSTANCE),feature).getOrThrow().getAsJsonObject();
         if(!supportedIntProvider(json.get("log_length")) || extent(json.get("log_length"))>15) {unsupported.add("fallen_tree:log_length_exceeds_halo");return null;}
         var trunk=stateProgram(json.get("trunk_provider"),0);if(trunk==null)return null;
-        if(nullableProvider(trunk)) {unsupported.add("fallen_tree:nullable_trunk_axis_transform");return null;}
         var stump=fallenDecorators(json.getAsJsonArray("stump_decorators"));var logs=fallenDecorators(json.getAsJsonArray("log_decorators"));
         if(stump==null || logs==null)return null;
         var result=new JsonObject();result.add("trunk",trunk);result.add("log_length",json.get("log_length").deepCopy());
@@ -653,6 +654,7 @@ final class DecorationProfile {
             var a=new JsonObject();a.addProperty("source",id);a.add("states",states);axes.add(a);
         }
         result.add("axes",axes);
+        if(ProviderStateTransforms.requiredReadsCurrent(trunk))result.addProperty("current_inputs",true);
         var air=matching("matching_block_tag","tag","minecraft:air",0,0,0);
         result.add("clearance",combine("any_of",air.deepCopy(),matching("matching_block_tag","tag",BlockTags.REPLACEABLE_BY_TREES.location().toString(),0,0,0)));
         result.add("sturdy",matching("has_sturdy_face","direction","up",0,-1,0));result.add("air",air);
@@ -691,7 +693,6 @@ final class DecorationProfile {
         if(!supportedPredicate(json.getAsJsonObject("can_place_on"))) {unsupported.add("huge_mushroom:can_place_on");return null;}
         var cap=stateProgram(json.get("cap_provider"),0);var stem=stateProgram(json.get("stem_provider"),0);
         if(cap==null || stem==null)return null;
-        if(nullableProvider(cap)) {unsupported.add("huge_mushroom:nullable_cap_face_transform");return null;}
         boolean red=feature instanceof HugeRedMushroomFeature;
         var result=new JsonObject();result.addProperty("red",red);result.addProperty("foliage_radius",feature.foliageRadius());
         result.add("cap",cap);result.add("stem",stem);result.add("support",json.get("can_place_on").deepCopy());
@@ -713,7 +714,7 @@ final class DecorationProfile {
             }
             var v=new JsonObject();v.addProperty("source",id);v.add("states",states);variants.add(v);
         }
-        result.add("faces",variants);return result;
+        result.add("faces",variants);if(ProviderStateTransforms.requiredReadsCurrent(cap))result.addProperty("current_inputs",true);return result;
     }
     private JsonObject stateProgram(JsonElement input,int depth) {
         if(depth>16)throw new IllegalArgumentException("Recursive block state provider");
@@ -737,7 +738,6 @@ final class DecorationProfile {
             case "randomized_int", "randomized_int_state_provider" -> {
                 if(!supportedIntProvider(object.get("values"))) {unsupported.add("block_provider:int_values:"+object.get("values"));return null;}
                 var source=stateProgram(object.get("source"),depth+1);if(source==null)return null;
-                if(nullableProvider(source)) {unsupported.add("block_provider:randomized_nullable_current_state");return null;}
                 result.addProperty("type","randomized_int");result.add("source",source);result.add("values",object.get("values").deepCopy());var variants=new JsonArray();
                 for(int id:programStates(source)) {
                     var base=materials.entrySet().stream().filter(e->e.getValue()==id).findFirst().orElseThrow().getKey();
@@ -750,6 +750,7 @@ final class DecorationProfile {
                     var variant=new JsonObject();variant.addProperty("source",id);variant.addProperty("minimum",values.getFirst());variant.add("states",states);variants.add(variant);
                 }
                 result.add("variants",variants);
+                if(ProviderStateTransforms.requiredReadsCurrent(source)) {result.addProperty("current_inputs",true);result.add("property",object.get("property"));}
             }
             case "rule_based" -> {
                 result.addProperty("type","rule_based");var rules=new JsonArray();
@@ -764,7 +765,6 @@ final class DecorationProfile {
             }
             case "rotated" -> {
                 var source=stateProgram(object.get("state"),depth+1);if(source==null)return null;
-                if(nullableProvider(source)) {unsupported.add("block_provider:rotated_nullable_current_state");return null;}
                 result.addProperty("type","rotated");result.add("source",source);var variants=new JsonArray();
                 if(object.has("direction"))result.addProperty("direction",Direction.valueOf(object.get("direction").getAsString().toUpperCase(Locale.ROOT)).ordinal());
                 for(int id:programStates(source)) {
@@ -777,6 +777,7 @@ final class DecorationProfile {
                     var v=new JsonObject();v.addProperty("source",id);v.add("states",states);variants.add(v);
                 }
                 result.add("variants",variants);
+                if(ProviderStateTransforms.requiredReadsCurrent(source))result.addProperty("current_inputs",true);
             }
             case "random_block" -> {
                 var decoded=(RandomBlockProvider)BlockStateProvider.DIRECT_CODEC.parse(registry.createSerializationContext(JsonOps.INSTANCE),object).getOrThrow();
@@ -784,7 +785,6 @@ final class DecorationProfile {
             }
             case "copy_properties" -> {
                 var source=stateProgram(object.get("source"),depth+1);if(source==null)return null;
-                if(nullableProvider(source)) {unsupported.add("block_provider:copy_nullable_current_state");return null;}
                 result.addProperty("type","copy_properties");result.add("source",source);var variants=new JsonArray();
                 for(int id:programStates(source)) {
                     var base=materials.entrySet().stream().filter(e->e.getValue()==id).findFirst().orElseThrow().getKey();

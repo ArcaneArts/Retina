@@ -517,6 +517,12 @@ impl World<'_> {
                         // Minecraft's same-block check then leaves the cursor here.
                         continue;
                     };
+                    if self.material(pos) == Some(material) {
+                        // A required nullable/derived-current provider can return
+                        // an arbitrary substrate state. Its identity result is
+                        // already the same block and leaves this cursor in place.
+                        continue;
+                    }
                     let same = patch
                         .same_blocks
                         .iter()

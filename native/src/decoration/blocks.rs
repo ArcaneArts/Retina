@@ -83,6 +83,40 @@ pub struct IntStates {
     pub passthrough: bool,
 }
 impl Provider {
+    /// Whether getState may derive its block from the live substrate. Property
+    /// transforms preserve that block identity; optional rules still fall
+    /// through instead of substituting a current state themselves.
+    pub(super) fn reads_current(&self) -> bool {
+        self.nullable()
+            || match self {
+                Self::RandomizedInt { source, .. }
+                | Self::Rotated { source, .. }
+                | Self::CopyProperties { source, .. } => source.reads_current(),
+                Self::Weighted { entries } => entries.iter().any(|v| v.provider.reads_current()),
+                Self::RuleBased { fallback, rules } => {
+                    rules.iter().any(|r| r.provider.optional_reads_current())
+                        || fallback
+                            .as_ref()
+                            .is_some_and(|p| p.optional_reads_current())
+                }
+                _ => false,
+            }
+    }
+    fn optional_reads_current(&self) -> bool {
+        match self {
+            Self::RandomizedInt { source, .. }
+            | Self::Rotated { source, .. }
+            | Self::CopyProperties { source, .. } => source.reads_current(),
+            Self::Weighted { entries } => entries.iter().any(|v| v.provider.reads_current()),
+            Self::RuleBased { fallback, rules } => {
+                rules.iter().any(|r| r.provider.optional_reads_current())
+                    || fallback
+                        .as_ref()
+                        .is_some_and(|p| p.optional_reads_current())
+            }
+            _ => false,
+        }
+    }
     pub(super) fn nullable(&self) -> bool {
         match self {
             Self::RuleBased { fallback, .. } => fallback.as_ref().is_none_or(|p| p.nullable()),
@@ -142,15 +176,16 @@ impl Provider {
                 let Ok((lo, hi)) = values.bounds() else {
                     return false;
                 };
-                !source.nullable()
-                    && source.validate(palette)
+                source.validate(palette)
                     && source.outputs().iter().all(|id| {
-                        variants.iter().any(|v| {
-                            v.source == *id
-                                && (v.passthrough
-                                    || (lo >= v.minimum
-                                        && (hi as i64) < v.minimum as i64 + v.states.len() as i64))
-                        })
+                        source.reads_current()
+                            || variants.iter().any(|v| {
+                                v.source == *id
+                                    && (v.passthrough
+                                        || (lo >= v.minimum
+                                            && (hi as i64)
+                                                < v.minimum as i64 + v.states.len() as i64))
+                            })
                     })
                     && variants.iter().all(|v| {
                         (v.source as usize) < palette
@@ -170,25 +205,21 @@ impl Provider {
                 direction,
                 variants,
             } => {
-                !source.nullable()
-                    && source.validate(palette)
+                source.validate(palette)
                     && direction.is_none_or(|d| d < 6)
-                    && source
-                        .outputs()
-                        .iter()
-                        .all(|id| variants.iter().any(|v| v.source == *id))
+                    && source.outputs().iter().all(|id| {
+                        source.reads_current() || variants.iter().any(|v| v.source == *id)
+                    })
                     && variants
                         .iter()
                         .all(|v| v.states.iter().all(|id| (*id as usize) < palette))
             }
             Self::RandomBlock { states } => states.iter().all(|id| (*id as usize) < palette),
             Self::CopyProperties { source, variants } => {
-                !source.nullable()
-                    && source.validate(palette)
-                    && source
-                        .outputs()
-                        .iter()
-                        .all(|id| variants.iter().any(|v| v.source == *id))
+                source.validate(palette)
+                    && source.outputs().iter().all(|id| {
+                        source.reads_current() || variants.iter().any(|v| v.source == *id)
+                    })
                     && variants.iter().all(|v| {
                         (v.source as usize) < palette
                             && v.states.contains(&v.source)
@@ -268,12 +299,18 @@ impl Provider {
                 values,
                 variants,
             } => {
-                let source = source.sample(rng, at, material, noise);
-                let variant = variants.iter().find(|v| v.source == source).unwrap();
+                let state = source.sample(rng, at, material, noise);
+                let Some(variant) = variants.iter().find(|v| v.source == state) else {
+                    assert!(
+                        source.reads_current(),
+                        "missing registered integer transform"
+                    );
+                    return Some(state);
+                };
                 // Minecraft returns the sampled state without a value draw
                 // when the named property is absent or is not an integer.
                 Some(if variant.passthrough {
-                    source
+                    state
                 } else {
                     variant.states[(values.sample(rng) - variant.minimum) as usize]
                 })
@@ -298,24 +335,36 @@ impl Provider {
             } => {
                 // Direction.getRandom runs before the nested provider.
                 let direction = direction.unwrap_or_else(|| rng.below(6) as usize);
-                let source = source.sample(rng, at, material, noise);
-                Some(variants.iter().find(|v| v.source == source).unwrap().states[direction])
+                let state = source.sample(rng, at, material, noise);
+                Some(variants.iter().find(|v| v.source == state).map_or_else(
+                    || {
+                        assert!(
+                            source.reads_current(),
+                            "missing registered rotation transform"
+                        );
+                        state
+                    },
+                    |v| v.states[direction],
+                ))
             }
             Self::RandomBlock { states } => {
                 (!states.is_empty()).then(|| states[rng.below(states.len() as i32) as usize])
             }
             Self::CopyProperties { source, variants } => {
-                let source = source.sample(rng, at, material, noise);
+                let state = source.sample(rng, at, material, noise);
                 let current = material(at).unwrap_or(0);
-                let variants = &variants
-                    .iter()
-                    .find(|v| v.source == source)
-                    .unwrap()
-                    .replacements;
+                let Some(variant) = variants.iter().find(|v| v.source == state) else {
+                    // An undeclared source comes from the current block,
+                    // possibly with changed properties. Copying all its own
+                    // compatible properties back restores the current state.
+                    assert!(source.reads_current(), "missing registered property copy");
+                    return Some(current);
+                };
+                let variants = &variant.replacements;
                 Some(
                     variants
                         .binary_search_by_key(&current, |v| v[0])
-                        .map_or(source, |i| variants[i][1]),
+                        .map_or(state, |i| variants[i][1]),
                 )
             }
             Self::Noise { program, states } => {
@@ -774,6 +823,88 @@ mod provider_tests {
                     3 + source as u16 * 6 + d as u16
                 );
                 assert_eq!(rng.next(), expected.next());
+            }
+        }
+    }
+    #[test]
+    fn nullable_current_transforms_preserve_identity_and_draw_order() {
+        let samples = provider_noise::Samples::default();
+        let noise = provider_noise::Context::new(&samples);
+        let empty = Provider::RandomBlock { states: vec![] };
+        for current in [0, 1, 7] {
+            for seed in 0..64 {
+                let mut rng = Rng::new(seed);
+                let mut reference = Rng::new(seed);
+                assert_eq!(
+                    empty.sample_optional(&mut rng, [0; 3], &|_| Some(current), &noise),
+                    None
+                );
+                assert_eq!(
+                    empty.sample(&mut rng, [0; 3], &|_| Some(current), &noise),
+                    current
+                );
+                assert_eq!(rng.next(), reference.next());
+                let rotation = Provider::Rotated {
+                    source: Box::new(empty.clone()),
+                    direction: None,
+                    variants: vec![Rotations {
+                        source: 1,
+                        states: [2, 3, 4, 5, 6, 7],
+                    }],
+                };
+                let mut rng = Rng::new(seed);
+                let mut reference = Rng::new(seed);
+                let direction = reference.below(6) as usize;
+                assert!(rotation.validate(8));
+                let result = rotation.sample(&mut rng, [0; 3], &|_| Some(current), &noise);
+                assert_eq!(
+                    result,
+                    if current == 1 {
+                        2 + direction as u16
+                    } else {
+                        current
+                    }
+                );
+                assert_eq!(rng.next(), reference.next());
+                let copied = Provider::CopyProperties {
+                    source: Box::new(rotation),
+                    variants: vec![],
+                };
+                let mut rng = Rng::new(seed);
+                let mut reference = Rng::new(seed);
+                reference.below(6);
+                assert!(copied.validate(8));
+                assert_eq!(
+                    copied.sample(&mut rng, [0; 3], &|_| Some(current), &noise),
+                    current
+                );
+                assert_eq!(rng.next(), reference.next());
+                let integer = Provider::RandomizedInt {
+                    source: Box::new(empty.clone()),
+                    values: IntProvider::Config(placement::IntConfig::Uniform {
+                        min_inclusive: 1,
+                        max_inclusive: 3,
+                    }),
+                    variants: vec![IntStates {
+                        source: 1,
+                        minimum: 1,
+                        states: vec![2, 3, 4],
+                        passthrough: false,
+                    }],
+                };
+                let mut rng = Rng::new(seed);
+                let mut reference = Rng::new(seed);
+                assert!(integer.validate(8));
+                let expected = if current == 1 {
+                    2 + reference.below(3) as u16
+                } else {
+                    current
+                };
+                assert_eq!(
+                    integer.sample(&mut rng, [0; 3], &|_| Some(current), &noise),
+                    expected
+                );
+                assert_eq!(rng.next(), reference.next());
             }
         }
     }

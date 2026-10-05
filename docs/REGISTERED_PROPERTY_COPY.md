@@ -114,9 +114,10 @@ are retained under ignored `build/goal-baseline/property-copy/`, including
 
 ## Remaining scope
 
-Sources that may return arbitrary current substrate states remain explicitly
-omitted as `block_provider:copy_nullable_current_state`; complete nullable
-transformations are still required. Unknown survival/spatial predicates remain
+[Nullable/current-state copying](REGISTERED_NULLABLE_PROVIDERS.md) is now supported
+by the later milestone. Its live-identity restoration avoids expanding the whole
+block registry. Arbitrary current-state SimpleBlock survival remains an explicit
+omission. Unknown survival/spatial predicates remain
 reported. The approximate tree planner still flattens trunk/foliage materials.
 This milestone does not complete broader spatial filters, fast production
 block-position density composition or cold profile compiler startup.

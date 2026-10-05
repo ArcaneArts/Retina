@@ -23,7 +23,6 @@ impl Recipe {
     pub(super) fn validate(&self, palette: usize) -> bool {
         (0..=15).contains(&self.foliage_radius)
             && self.cap.validate(palette)
-            && !self.cap.nullable()
             && self.stem.validate(palette)
             && self.support.validate(palette)
             && self.clearance.validate(palette)
@@ -36,7 +35,7 @@ impl Recipe {
                 .cap
                 .outputs()
                 .iter()
-                .all(|id| self.faces.iter().any(|v| v.source == *id))
+                .all(|id| self.cap.reads_current() || self.faces.iter().any(|v| v.source == *id))
     }
 }
 pub(super) fn place(
@@ -137,13 +136,21 @@ pub(super) fn place(
                 let pos = [at[0] + dx, at[1] + dy, at[2] + dz];
                 let source = recipe
                     .cap
-                    .sample(rng, pos, &|p| material_at(blocks, p), noise);
-                let states = &recipe
+                    .sample(rng, at, &|p| material_at(blocks, p), noise);
+                let material = recipe
                     .faces
                     .iter()
                     .find(|v| v.source == source)
-                    .unwrap()
-                    .states;
+                    .map_or_else(
+                        || {
+                            assert!(
+                                recipe.cap.reads_current(),
+                                "missing registered mushroom faces"
+                            );
+                            source
+                        },
+                        |v| v.states[mask],
+                    );
                 // Cap/stem positions are disjoint: the replacement predicate
                 // need not rescan this feature's earlier writes at each block.
                 if test(&recipe.replaceable, pos) {
@@ -151,7 +158,7 @@ pub(super) fn place(
                         x: pos[0],
                         y: pos[1],
                         z: pos[2],
-                        material: states[mask],
+                        material,
                         upper: 0,
                         role: FEATURE,
                     });
@@ -163,7 +170,7 @@ pub(super) fn place(
         let pos = [at[0], at[1] + dy, at[2]];
         let material = recipe
             .stem
-            .sample(rng, pos, &|p| material_at(blocks, p), noise);
+            .sample(rng, at, &|p| material_at(blocks, p), noise);
         if test(&recipe.replaceable, pos) {
             blocks.push(WorldBlock {
                 x: pos[0],

@@ -27,13 +27,15 @@ Support shapes use the existing export-time empty block getter. This retains
 state geometry and support tags, but does not simulate neighbor-dependent custom
 collision shapes or replace the generator's current GPU temperature approximation.
 
-`snowTest` compares all 201 fixture palette states against Minecraft 26.3's actual
+The original `snowTest` compared all 201 fixture palette states against Minecraft 26.3's actual
 `SnowLayerBlock.canSurvive`, then generates cold land and frozen ocean with the
 real GPU/native paths. Ocean output contains 256 exposed ice blocks and no snow
 layers; land contains 256 snow layers. It compares 196,608 decoded MCA blocks
 with individual-chunk output at negative coordinates. The same harness with the
 retained previous native library fails at the ocean snow assertion, reproducing
-the reported defect. Native tests also exercise support overrides, unsupported
+the reported defect. The later nullable-provider validation reruns this oracle over 483 loaded
+fixture states with the same bare-ice, snowy-land and MCA/chunk results. Native
+tests also exercise support overrides, unsupported
 materials, tree leaves, warm/lake columns, occupied space and old profile parsing.
 
 ```sh
