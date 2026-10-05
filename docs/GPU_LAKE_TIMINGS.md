@@ -81,6 +81,22 @@ was 25.67 / 25.96 ms and 137.91 / 146.89 ms. This small trial establishes no gai
 the extra pass and coverage test were removed. It does not identify whether
 coverage checks, register pressure or general-pass invocation overhead dominate.
 
+A second prototype expanded the GPU-only interpolation cache to cover every
+possible lake probe and used one resident lake pass. Geometry bounds included
+fractional endpoints, negative cells and distant fallback; generation still
+used actual GPU noise. It preserved another 4,096 NBT records but measured
+209.00 / 443.43 ms vanilla/Terralith. Lake density fell to 15.07 / 126.62 ms,
+while the height/field prepass rose from 11.11 / 29.94 to 22.59 / 92.11 ms.
+
+That resident variant also replaced out-of-atlas density intervals with unknown
+bounds, losing empty-layer skipping. A corrected trial retained the interval
+evaluator and preserved a further 4,096 records. It measured 206.77 / 417.89 ms,
+with 22.29 / 91.48 ms in the prepass and 15.03 / 117.73 ms in lake density.
+Neither two-region trial establishes a whole-region improvement across both
+profiles, so the expanded cache, extra pipeline and coverage/layout helpers
+were removed. Enlarging a rectangular atlas is expensive; a future sparse
+probe-specific cache must be measured rather than assuming a throughput gain.
+
 ## Validation and evidence
 
 `build gpuTest regionTest previewTest` passes, including 51 native unit checks,
@@ -94,5 +110,8 @@ candidate/probe/reduction device durations (395,875 / 330,125 / 117,833 ns).
 Evidence: `build/lake-timing-final-validation.log` and
 `build/goal-baseline/density-composition/{vanilla,terralith}-lake-timing-{production,composed}-20/measurements.json`.
 Matched rejected trials are `*-lake-{timing-matched,resident}-small-2`.
+Expanded-cache trials are `*-lake-field-{cache,bounds}-small`; retained libraries
+have the same `lake-field-*` names. Their additional geometry/coverage test passed
+alongside all 51 existing native unit checks before those prototypes were removed.
 The retained telemetry library `lake-timing.dylib` has SHA-256
 `9aceff7774588406dbbda17487a201a8df1b97eeda4d01db7211bbf7c6601f01`.
