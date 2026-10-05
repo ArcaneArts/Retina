@@ -19,6 +19,9 @@ exact covered X/Z nodes, using schedules that skip their unused dependencies;
 see [column reuse](GPU_COLUMN_INTERPRETER.md) for the later implementation,
 matched measurements and fallback behavior. This leaves mixed stage selection
 intact and does not enable block-position composition by default.
+[Optional local aquifer column reuse](GPU_AQUIFER_COLUMN_REUSE.md) shares
+horizontal spline values within specialized preliminary-surface searches.
+It adds no stage or readback and retains this mixed execution strategy.
 
 Metal defaults to this mixed selection. Vulkan and DX12 retain the previous
 selection because they have not been measured here. The diagnostic environment

@@ -5,6 +5,7 @@ use std::collections::HashMap;
 use std::fmt::Write;
 use std::sync::{Arc, Condvar, Mutex, mpsc};
 use std::time::Instant;
+mod aquifer_columns;
 #[cfg(test)]
 mod compile_probe;
 mod interpreter_dispatch;
@@ -308,7 +309,20 @@ fn graph_columns(
 pub(crate) fn source(program: &RegistryProgram) -> Result<String, String> {
     source_columns(program).map(|s| s.0)
 }
+#[cfg(test)]
 fn source_columns(program: &RegistryProgram) -> Result<(String, u32), String> {
+    source_columns_options(program, false)
+}
+
+#[cfg(test)]
+pub(crate) fn source_with_aquifer_columns(program: &RegistryProgram) -> Result<String, String> {
+    source_columns_options(program, true).map(|s| s.0)
+}
+
+fn source_columns_options(
+    program: &RegistryProgram,
+    aquifer_columns: bool,
+) -> Result<(String, u32), String> {
     let bodies = opcode_bodies()?;
     let columns = crate::column_program::Plan::new(program);
     let graphs = program.all_programs().collect::<Vec<_>>();
@@ -398,6 +412,9 @@ fn source_columns(program: &RegistryProgram) -> Result<(String, u32), String> {
             let pid = a.program as usize + slot;
             writeln!(functions,"fn run_aquifer_{slot}(point:vec3<f32>,request:Request,context:vec4<f32>)->array<f32,6>{{return graph_{}(point,request,context,{pid}u);}}",indices[pid]).unwrap();
         }
+    }
+    if aquifer_columns {
+        functions.push_str(&self::aquifer_columns::source(program, &bodies)?);
     }
     functions.push_str("fn run_program(program:u32,point:vec3<f32>,request:Request,context:vec4<f32>)->array<f32,6>{switch program{\n");
     // Density and aquifer stages have direct calls. The only remaining dynamic
@@ -699,8 +716,9 @@ impl Compiler {
         lake_point_cache: bool,
         lake_primed_corners: bool,
         lake_sparse_fields: bool,
+        aquifer_columns: bool,
     ) -> Result<Arc<State>, String> {
-        let (mut source, horizontal_fields) = source_columns(program)?;
+        let (mut source, horizontal_fields) = source_columns_options(program, aquifer_columns)?;
         source = crate::program::density_composition_source(&source, composition);
         let cached_nodes = composition
             && cached_masks
@@ -1132,7 +1150,7 @@ pub(crate) fn static_calls(source: &str) -> String {
             );
         }
     }
-    output
+    aquifer_columns::kernel(&output)
 }
 
 #[cfg(test)]

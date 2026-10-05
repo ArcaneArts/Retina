@@ -43,9 +43,13 @@ continues to store completed MCA previews and private base-material companions;
 its 1024-region capacity, promotion and saved edits retain their existing behavior.
 Specialized aquifer passes use direct graph calls, and the material dispatcher
 excludes those unreachable aquifer graphs.
+[Optional invocation-local column reuse](GPU_AQUIFER_COLUMN_REUSE.md) computes
+pure horizontal terrain expressions once per preliminary-surface search.
+Registered search semantics and transferred data are unchanged. Concurrent
+regressions keep it disabled by default; the measured tradeoffs are documented there.
 F3 adds separate **Aquifer fields** and **Aquifer fluids / barriers** device timing
 lines, with the same rolling-region denominator and overlap labeling as other
-GPU stages. The native timing ABI is version 3 with 23 stages.
+GPU stages. The current native timing ABI is version 7 with 29 stages.
 
 ## Registered surface lakes
 

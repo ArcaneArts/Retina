@@ -51,7 +51,10 @@ Terralith composition gains 22–31%. Parallel gains are workload-dependent. The
 composition path and cold-start work remain unfinished requirements.
 Local registered GPU aquifers and surface-lake corrections are implemented; see
 [GPU aquifers](GPU_AQUIFERS.md) for fluid/pressure equations, validation, costs and
-remaining fluid-tick approximations. Broader features, further graph
+remaining fluid-tick approximations. [Local aquifer column reuse](GPU_AQUIFER_COLUMN_REUSE.md)
+can avoid repeated horizontal spline evaluation during registered vertical
+surface searches. Serial gains are modest and concurrent results regress in the
+final repeat, so this alternative remains opt-in. Broader features, further graph
 semantics and scan work remain required, along with final integrated validation,
 transfer-volume measurements and updated stage telemetry where new stages arise.
 

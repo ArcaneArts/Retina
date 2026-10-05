@@ -52,6 +52,7 @@ def main():
     parser.add_argument("--interpreter-dispatch", choices=("enabled", "disabled"), help="Shared compact interpreter entrypoints or independent pipelines")
     parser.add_argument("--interpreter-preload", choices=("enabled", "disabled"), help="Overlap compact density pipeline preparation with profile parsing")
     parser.add_argument("--interpreter-columns", choices=("enabled", "disabled"), help="Reuse resident X/Z expressions in compact interpreted density programs")
+    parser.add_argument("--aquifer-columns", choices=("enabled", "disabled"), help="Reuse invocation-local X/Z expressions in registered aquifer surface searches")
     parser.add_argument("--await-specialization", action="store_true", help="After measurement, await compilation and compare one regenerated region with its pre-warmup output")
     parser.add_argument("--specialization-timeout", type=float, default=180, help="Seconds to await a real compilation result after measurements")
     args = parser.parse_args()
@@ -73,6 +74,8 @@ def main():
         os.environ["RETINA_INTERPRETER_PRELOAD"] = "1" if args.interpreter_preload == "enabled" else "0"
     if args.interpreter_columns:
         os.environ["RETINA_INTERPRETER_COLUMNS"] = "1" if args.interpreter_columns == "enabled" else "0"
+    if args.aquifer_columns:
+        os.environ["RETINA_AQUIFER_COLUMNS"] = "1" if args.aquifer_columns == "enabled" else "0"
     if args.terrain_execution:
         os.environ["RETINA_SPECIALIZED_TERRAIN"] = "1" if args.terrain_execution == "specialized" else "0"
     args.out.mkdir(parents=True, exist_ok=False)
@@ -134,6 +137,7 @@ def main():
                 lake_primed_corners=args.lake_primed_corners,
                 lake_sparse_fields=args.lake_sparse_fields or os.environ.get("RETINA_LAKE_SPARSE_FIELDS"),
                 interpreter_columns=args.interpreter_columns or os.environ.get("RETINA_INTERPRETER_COLUMNS"),
+                aquifer_columns=args.aquifer_columns or os.environ.get("RETINA_AQUIFER_COLUMNS"),
                 total_ms=wall*1000, chunks_per_second=chunks/wall, median_ms=statistics.median(r["ms"] for r in regions),
                 average_region_ms=statistics.mean(r["ms"] for r in regions),
                 startup=dict(initialize_ms=initialize_ms, registration_ms=registration_ms, warmups=warmups),

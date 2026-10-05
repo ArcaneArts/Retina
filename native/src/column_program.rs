@@ -17,6 +17,12 @@ pub(crate) struct Plan {
 
 impl Plan {
     pub fn new(registry: &RegistryProgram) -> Self {
+        Self::for_programs(registry, |pid| pid < 3 || pid >= registry.programs.len())
+    }
+
+    /// The same dependency/coordinate analysis can scope a cache to a single
+    /// vertical search, without enlarging the resident world column atlas.
+    pub fn for_programs(registry: &RegistryProgram, include: impl Fn(usize) -> bool) -> Self {
         let mut keys = HashMap::<Key, usize>::new();
         let mut owners = Vec::new();
         let mut axes = Vec::<u8>::new();
@@ -24,7 +30,7 @@ impl Plan {
         let mut programs = Vec::<Vec<usize>>::new();
         let mut selected = BTreeSet::new();
         for (pid, program) in registry.all_programs().enumerate() {
-            if pid >= 3 && pid < registry.programs.len() {
+            if !include(pid) {
                 programs.push(vec![]);
                 continue;
             }

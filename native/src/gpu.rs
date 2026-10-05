@@ -83,6 +83,7 @@ pub(crate) struct Gpu {
     lake_primed_corners: bool,
     lake_sparse_fields: bool,
     interpreter_columns: bool,
+    aquifer_columns: bool,
 }
 
 pub(crate) struct GpuSample {
@@ -163,6 +164,9 @@ impl Gpu {
             Ok("1") => true,
             _ => info.backend == wgpu::Backend::Metal,
         };
+        // Real profiles show small serial benefits but concurrent regressions.
+        // Keep this measured alternative opt-in until it improves both workloads.
+        let aquifer_columns = std::env::var("RETINA_AQUIFER_COLUMNS").as_deref() == Ok("1");
         // Matched Metal runs cut compact interpreter first-use compilation by
         // about 70%. Unmeasured backends retain their independent pipelines.
         let interpreter_dispatch = match std::env::var("RETINA_INTERPRETER_DISPATCH").as_deref() {
@@ -401,6 +405,7 @@ impl Gpu {
             density_composition: std::env::var("RETINA_DENSITY_COMPOSITION").as_deref() == Ok("1"),
             lake_sparse_fields,
             interpreter_columns,
+            aquifer_columns,
             cached_density_masks: std::env::var("RETINA_CACHED_DENSITY_MASKS").as_deref()
                 != Ok("0"),
             lake_point_cache,
@@ -571,6 +576,7 @@ impl Gpu {
                         self.lake_point_cache,
                         self.lake_primed_corners,
                         self.lake_sparse_fields,
+                        self.aquifer_columns,
                     ) {
                         Ok(state) => {
                             self.pipeline.shader(profile_id, state.progress.clone());
@@ -1993,6 +1999,8 @@ impl PendingSample {
     }
 }
 
+#[cfg(test)]
+mod aquifer_columns_tests;
 #[cfg(test)]
 mod column_interpreter_tests;
 #[cfg(test)]

@@ -447,3 +447,15 @@ tasks.register('exportBenchmarkProfile', JavaExec) {
     args providers.gradleProperty('benchmarkProfile').getOrElse('build/benchmark-vanilla-profile.json')
     if (providers.gradleProperty('benchmarkPack').isPresent()) args providers.gradleProperty('benchmarkPack').get()
 }
+
+tasks.register('nativeAquiferColumnsGpuTest', Exec) {
+    group = 'verification'
+    description = 'Compare local aquifer X/Z values against uncached GPU graphs at many heights.'
+    dependsOn 'exportBenchmarkProfile'
+    workingDir nativeDirectory
+    environment 'RETINA_PROGRAM_PARITY_PROFILE', file(providers.gradleProperty('benchmarkProfile').getOrElse('build/benchmark-vanilla-profile.json')).absolutePath
+    commandLine(nativeCargoCommand + ['test', '--release', '--locked', '--jobs', '2', '--lib',
+            'aquifer_column_roots_match_raw_gpu', '--target-dir', nativeTarget.get().asFile.absolutePath,
+            '--', '--ignored', '--nocapture'])
+}
+gpuTest.dependsOn 'nativeAquiferColumnsGpuTest'
