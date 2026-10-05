@@ -300,11 +300,22 @@ public final class NativeBlockFeatureIntegrationTest {
     }
     private static void checkPlantPartners(JsonObject json, BlockState[] materials, Fixture fixture) {
         var halves=json.getAsJsonArray("plant_halves");
+        var floors=json.getAsJsonArray("plant_floor_masks");
+        var flags=json.getAsJsonArray("material_flags");
         require(halves.size()==materials.length,"registered pair metadata covers palette");
+        require(floors.size()==materials.length,"registered floor metadata covers palette");
         var world=new World(fixture);var pos=new BlockPos(-18,fixture.originHeight,-31);
-        int checked=0;
+        int checked=0,floorChecked=0;
         for(int i=0;i<materials.length;i++) {
             var state=materials[i];int half=halves.get(i).getAsInt();
+            int mask=floors.get(i).getAsInt();
+            boolean ordinaryFloor=state.getBlock().getClass()==TallGrassBlock.class || state.getBlock().getClass()==DoublePlantBlock.class && half>0;
+            require((mask!=0)==ordinaryFloor,"floor metadata follows actual survival classes and lower halves");
+            if(mask!=0)for(int j=0;j<materials.length;j++) {
+                world.changed.clear();world.changed.put(pos,state);world.changed.put(pos.below(),materials[j]);
+                require(state.canSurvive(world.level,pos)==((flags.get(j).getAsInt()&mask)!=0),"floor mask matches Minecraft survival: "+state+"/"+materials[j]);
+                floorChecked++;
+            }
             require((half!=0)==(state.getBlock() instanceof DoublePlantBlock),"pair metadata follows registered block class");
             if(half==0)continue;
             var direction=half>0?Direction.UP:Direction.DOWN;
@@ -323,6 +334,8 @@ public final class NativeBlockFeatureIntegrationTest {
             }
         }
         require(checked>100,"paired flowers, grasses and aquatics exercised");
+        require(floorChecked>100,"grass/fern and terrestrial lower-half supports exercised");
+        System.out.println("QA_EVT {\"event\":\"registered_plant_floor_minecraft_reference\",\"status\":\"pass\",\"context\":{\"state_pairs\":"+floorChecked+"}}");
         System.out.println("QA_EVT {\"event\":\"registered_plant_partner_minecraft_reference\",\"status\":\"pass\",\"context\":{\"state_pairs\":"+checked+"}}");
     }
     private static void checkRegion(JsonObject original,BlockState[] materials,String name)throws Exception {

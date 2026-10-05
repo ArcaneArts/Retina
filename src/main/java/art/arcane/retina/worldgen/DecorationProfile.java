@@ -969,7 +969,7 @@ final class DecorationProfile {
             if (recipe.getAsJsonObject().get("kind").getAsString().equals("vegetation_patch")) patchHalo = true;
         }
         profile.addProperty("decoration_patch_halo", patchHalo);
-        var heightmaps = new JsonArray(); var flags = new JsonArray(); var halves = new JsonArray();
+        var heightmaps = new JsonArray(); var flags = new JsonArray(); var halves = new JsonArray(); var floorMasks = new JsonArray();
         var plantTypes = new LinkedHashMap<Block, Integer>();
         for (var state : palette.keySet()) {
             int mask = 0; for (var type : Heightmap.Types.values()) if (type.isOpaque().test(state)) mask |= 1 << type.ordinal();
@@ -991,9 +991,16 @@ final class DecorationProfile {
                 if (state.getValue(DoublePlantBlock.HALF) == DoubleBlockHalf.UPPER) half = -half;
             }
             halves.add(half);
+            // These registered classes use VegetationBlock's loaded soil tag.
+            // Specialized aquatics/dripleaf and custom survival overrides keep
+            // their own adapters; upper halves depend on the matching lower half.
+            boolean ordinaryFloor = state.getBlock().getClass() == TallGrassBlock.class
+                    || state.getBlock().getClass() == DoublePlantBlock.class && half > 0;
+            floorMasks.add(ordinaryFloor ? 1 : 0);
         }
         profile.add("heightmap_masks", heightmaps); profile.add("material_flags", flags);
         profile.add("plant_halves", halves);
+        profile.add("plant_floor_masks", floorMasks);
         profile.add("decoration_noise", new DecorationNoise().export());
     }
 

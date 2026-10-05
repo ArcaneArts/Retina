@@ -58,6 +58,8 @@ substrate outside those anchors, preserving region/chunk random replay. Remainin
 spatial filters and provider transformations are still required.
 [Final paired-plant replay](PAIRED_PLANT_REPLAY.md) now repairs overlapping tall
 plants after all feature/structure writes, using registered block identities.
+It also checks actual registered grass/fern soil support after village paths and
+gravel replace the ground, removing invalid lower and upper halves in order.
 Broader biome/MCA validation passes; the previous defect and measured sparse
 repair cost are documented there.
 

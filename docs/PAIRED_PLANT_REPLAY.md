@@ -1,5 +1,80 @@
 # Final paired-plant replay
 
+## Grass support after structures
+
+New profiles also export `plant_floor_masks` for actual plain `TallGrassBlock`
+states (short grass and ferns) and lower halves of plain `DoublePlantBlock`
+states (tall grass and large ferns). These classes use `VegetationBlock`'s loaded
+`SUPPORTS_VEGETATION` block tag. Rust tests the final block below each candidate
+against that exported support flag. Village paths and gravel fail that check in
+the active vanilla/Terralith registries, so grass is removed after the structure
+changes its ground. Supported soil from a datapack remains valid.
+
+The sparse candidate list now includes those single-block grasses as well as
+paired plants. Support checks run before partner checks; otherwise a removed
+lower half could leave an upper half which was visited first. Ordinary terrain
+still adds no full chunk scan. Specialized aquatics, dripleaf and custom survival
+overrides retain their own behavior. Optional metadata keeps old profile replay
+compatible. Existing saved chunks are preserved; new chunk and MCA assembly use
+the repaired final blocks before NBT palettes and heightmaps are built.
+
+The village regression reproduces 624 grass overlaps on paths/gravel with the
+floor table disabled. Enabling it removes 842 unsupported grass blocks including
+invalid upper halves, while 8,271 supported grass blocks survive. Five affected
+chunks match decoded MCA voxels and all six final heightmaps. A native regression
+covers path/gravel replacement, upper-first candidate order, duplicate records,
+build-bottom bounds, later unrelated writes and registered custom soil support.
+Minecraft's actual `canSurvive` matches 8,624 vanilla and 18,365 Terralith exported
+plant/support pairs. The build, 44 native unit tests, block-feature/structure
+integration, region serialization and DH cache/promotion/edit checks pass;
+logs are in `build/plant-floor-validation.log`.
+
+Six twenty-region measurements use the same new library with full actual
+vanilla/Terralith profiles and only the optional floor table enabled or removed.
+The disabled table exercises compatible prior support behavior; it is not a
+separately compiled old-library baseline. All runs use Metal on Apple M4 Max,
+seed 123456789, two warmups, adjacent regions including negative coordinates and
+the GPU interpreter, without simultaneous builds or tests.
+
+| Profile / floor check / callers | Mean region ms | Native chunks/sec | Peak process RSS MiB |
+| --- | ---: | ---: | ---: |
+| Vanilla / disabled / 1 | 256.80 | 3,983 | 867 |
+| Vanilla / enabled / 1 | 258.35 | 3,960 | 871 |
+| Vanilla / enabled / 2 | 485.85 | 4,210 | 936 |
+| Terralith / disabled / 1 | 518.05 | 1,976 | 987 |
+| Terralith / enabled / 1 | 556.16 | 1,840 | 975 |
+| Terralith / enabled / 2 | 1,045.35 | 1,944 | 1,381 |
+
+Serial vegetation worker time, including candidate collection and final repair,
+changes from 1.55 to 2.15 ms/region for vanilla and 1.59 to 1.93 for Terralith.
+Whole-region latency rises 0.6% / 7.4% in this shared-machine sequence; GPU queue,
+wait and other CPU stages vary too, so the full delta cannot be assigned to the
+small repair stage. No speedup or universal cost bound is claimed. Native rates
+exclude Java loading, lighting and rendering; RSS includes driver/cache memory
+and concurrent-run NBT comparison readers.
+
+Across the 40,960 enabled/disabled chunk comparisons, 8,411 vanilla and 11,144
+Terralith unsupported plant blocks become air. Decoded blocks verify their actual
+pre-change unsupported floor, including matching lower halves for removed uppers.
+There are zero unrelated block changes and zero unrelated metadata changes beyond
+block palettes and final heightmaps. Concurrent enabled output matches another
+40,960 serial chunk NBT records. Output totals change from 153,931,776 to
+153,911,296 bytes for vanilla and 131,764,224 to 131,751,936 for Terralith.
+
+GPU upload/readback remains about 14.29/45.62 MB per vanilla region and
+12.59/41.95 MB per Terralith region; this CPU repair adds no GPU transfers or
+dispatches. Tiny existing readback-byte differences reflect cache coalescing.
+Enabled serial warm-cache initialize / native registration / first region is
+40.9/508.8/275.4 ms for vanilla and 41.9/1,058.8/610.5 for Terralith. Java registry
+export and cold specialization remain separate measurements.
+
+Retained profiles, the tested library, scripts and raw results are in ignored
+`build/goal-baseline/plant-floors/`. The tested native library and packaged JAR
+library have matching SHA-256:
+`1be72f9ea16e3ca06ae05a3d0987035daac85bdbe026cab6f9af98e3f2137b77`.
+
+## Paired-block identity
+
 New registry profiles export `plant_halves`, a signed block-identity table for
 actual registered `DoublePlantBlock` instances. Lower halves have a positive
 identity and upper halves its negative. Facing and waterlogging need not match:

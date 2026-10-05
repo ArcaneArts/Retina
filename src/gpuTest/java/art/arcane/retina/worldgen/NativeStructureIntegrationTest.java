@@ -61,6 +61,7 @@ public final class NativeStructureIntegrationTest {
             require(structureState.possibleStructureSets().stream().anyMatch(s->s.unwrapKey().orElseThrow().identifier().toString().equals("minecraft:villages")),"village placement remains available for locate");
             event("native_structure_state","\"sets\":"+structureState.possibleStructureSets().size());
             villageTerrainChecks(data,profile,nativeTerrain);
+            villageGrassChecks(data,profile,nativeTerrain);
             for(String name:List.of("minecraft:village_plains","minecraft:pillager_outpost")) {
                 var fixture=force(data,name);var setName=name.contains("village")?"minecraft:villages":"minecraft:pillager_outposts";
                 var placement=structures.getAsJsonArray("sets").asList().stream().map(JsonElement::getAsJsonObject).filter(o->o.get("id").getAsString().equals(setName)).findFirst().orElseThrow().getAsJsonObject("placement").deepCopy();
@@ -163,6 +164,84 @@ public final class NativeStructureIntegrationTest {
             }
             event("village_terrain_houses","\"underwater\":"+underwater+",\"houses\":"+verified+",\"chunks\":"+chunks.size());
         }
+    }
+    private static void villageGrassChecks(JsonObject source,BiomeTerrainProfile profile,NativeTerrain terrain) throws Exception {
+        var fixture=force(source,"minecraft:village_plains");var materials=profile.materials();
+        int shortGrass=Arrays.asList(materials).indexOf(Blocks.SHORT_GRASS.defaultBlockState());
+        int lower=Arrays.asList(materials).indexOf(Blocks.TALL_GRASS.defaultBlockState());
+        int upper=Arrays.asList(materials).indexOf(Blocks.TALL_GRASS.defaultBlockState().setValue(net.minecraft.world.level.block.DoublePlantBlock.HALF,net.minecraft.world.level.block.state.properties.DoubleBlockHalf.UPPER));
+        int grass=Arrays.asList(materials).indexOf(Blocks.GRASS_BLOCK.defaultBlockState());
+        int dirt=Arrays.asList(materials).indexOf(Blocks.DIRT.defaultBlockState());
+        require(shortGrass>=0 && lower>=0 && upper>=0 && grass>=0 && dirt>=0,"grass fixture uses loaded registry states");
+        var recipes=new JsonArray();
+        for(int[] state:List.of(new int[]{shortGrass,0},new int[]{lower,upper})) {
+            var recipe=JsonParser.parseString("{\"source\":\"test:village_grass\",\"salt\":0,\"density\":256,\"low_density\":256,\"noise_count\":false,\"rarity\":1,\"tries\":1,\"spread\":[0,0,0],\"kind\":\"plant\",\"states\":[{\"lower\":0,\"upper\":0,\"weight\":1,\"band\":0,\"dry\":false}],\"placement\":[{\"type\":\"count\",\"count\":256},{\"type\":\"in_square\"},{\"type\":\"heightmap\",\"map\":3}]}").getAsJsonObject();
+            recipe.addProperty("placement_salt",recipes.size()+42);
+            var variant=recipe.getAsJsonArray("states").get(0).getAsJsonObject();variant.addProperty("lower",state[0]);variant.addProperty("upper",state[1]);recipes.add(recipe);
+        }
+        fixture.add("decorations",recipes);
+        for(var value:fixture.getAsJsonArray("biomes")) {
+            var biome=value.getAsJsonObject();biome.add("terrain",JsonParser.parseString("[0,0,0]"));
+            biome.addProperty("top",grass);biome.addProperty("filler",dirt);biome.addProperty("underwater",dirt);
+            biome.add("decorations",JsonParser.parseString("[0,1]"));
+        }
+        var legacy=fixture.deepCopy();legacy.remove("plant_floor_masks");
+        int id=terrain.registerProfile(fixture.toString()),oldId=terrain.registerProfile(legacy.toString());
+        var start=terrain.structureStarts(request(id,0,0)).getCompoundOrEmpty("structures").getCompoundOrEmpty("starts").getCompoundOrEmpty("minecraft:village_plains");
+        int minX=Integer.MAX_VALUE,minZ=Integer.MAX_VALUE,maxX=Integer.MIN_VALUE,maxZ=Integer.MIN_VALUE;
+        for(var child:start.getListOrEmpty("Children")) {
+            int[] b=((CompoundTag)child).getIntArray("BB").orElseThrow();minX=Math.min(minX,b[0]);minZ=Math.min(minZ,b[2]);maxX=Math.max(maxX,b[3]);maxZ=Math.max(maxZ,b[5]);
+        }
+        var affected=new LinkedHashMap<ChunkPos,short[]>();int removed=0,onRoad=0,surviving=0;
+        for(int z=Math.floorDiv(minZ,16);z<=Math.floorDiv(maxZ,16);z++)for(int x=Math.floorDiv(minX,16);x<=Math.floorDiv(maxX,16);x++) {
+            short[] old,now;
+            try(var generated=terrain.generate(request(oldId,x,z))){old=generated.blocks().toArray(ValueLayout.JAVA_SHORT);}
+            try(var generated=terrain.generate(request(id,x,z))){now=generated.blocks().toArray(ValueLayout.JAVA_SHORT);}
+            boolean road=false;
+            for(int i=0;i<now.length;i++) {
+                var before=materials[Short.toUnsignedInt(old[i])];var after=materials[Short.toUnsignedInt(now[i])];
+                if(old[i]!=now[i]) {
+                    require((before.is(Blocks.SHORT_GRASS)||before.is(Blocks.TALL_GRASS)) && after.isAir(),"final grass cleanup changes only unsupported vegetation");removed++;
+                }
+                if(i>=256 && (old[i]==shortGrass || old[i]==lower)) {
+                    var floor=materials[Short.toUnsignedInt(old[i-256])];
+                    if(floor.is(Blocks.DIRT_PATH)||floor.is(Blocks.GRAVEL)) {onRoad++;road=true;require(after.isAir(),"village roads clear their grass");}
+                }
+                if(now[i]==shortGrass || now[i]==lower) {
+                    require(i>=256 && materials[Short.toUnsignedInt(now[i-256])].is(net.minecraft.tags.BlockTags.SUPPORTS_VEGETATION),"surviving village grass has registered support");surviving++;
+                }
+                if(now[i]==upper)require(i>=256 && now[i-256]==lower,"removed grass leaves no upper half");
+            }
+            if(road)affected.put(new ChunkPos(x,z),now);
+        }
+        require(onRoad>20 && removed>onRoad && surviving>100,"fixture reproduces road overlap, both grass heights, and supported survivors");
+        var chosen=affected.keySet().iterator().next();int rx=Math.floorDiv(chosen.x(),32),rz=Math.floorDiv(chosen.z(),32);
+        var directory=Files.createTempDirectory("retina-village-grass-");int compared=0;
+        var codec=PalettedContainer.codecRW(net.minecraft.world.level.block.state.BlockState.CODEC,Strategy.createForBlockStates(Block.BLOCK_STATE_REGISTRY),Blocks.AIR.defaultBlockState());
+        try {
+            terrain.generateRegion(request(id,rx*32,rz*32),directory.resolve("r."+rx+"."+rz+".mca"),SharedConstants.getCurrentVersion().dataVersion().version(),"minecraft:plains");
+            try(var storage=new RegionFileStorage(new RegionStorageInfo("retina-village-grass",Level.OVERWORLD,"chunk"),directory,false)) {
+                for(var entry:affected.entrySet()) {
+                    var pos=entry.getKey();if(Math.floorDiv(pos.x(),32)!=rx || Math.floorDiv(pos.z(),32)!=rz)continue;
+                    var tag=storage.read(pos);var raw=entry.getValue();var maps=new int[6][256];
+                    for(int section=0;section<24;section++) {
+                        var states=codec.parse(NbtOps.INSTANCE,tag.getListOrEmpty("sections").getCompound(section).orElseThrow().getCompoundOrEmpty("block_states")).getOrThrow();
+                        for(int y=0;y<16;y++)for(int z=0;z<16;z++)for(int x=0;x<16;x++) {
+                            int layer=section*16+y,c=z*16+x;var state=states.get(x,y,z);
+                            require(state.equals(materials[Short.toUnsignedInt(raw[layer*256+c])]),"road grass cleanup has chunk/MCA parity");
+                            for(var type:net.minecraft.world.level.levelgen.Heightmap.Types.values())if(type.isOpaque().test(state))maps[type.ordinal()][c]=layer+1;
+                        }
+                    }
+                    for(var type:net.minecraft.world.level.levelgen.Heightmap.Types.values()) {
+                        var bits=new net.minecraft.util.SimpleBitStorage(9,256,tag.getCompoundOrEmpty("Heightmaps").getLongArray(type.getSerializationKey()).orElseThrow());
+                        for(int c=0;c<256;c++)require(bits.get(c)==maps[type.ordinal()][c],"road cleanup updates final heightmaps");
+                    }
+                    compared++;
+                }
+            }
+        }finally{try(var files=Files.walk(directory)){for(var f:files.sorted(Comparator.reverseOrder()).toList())Files.delete(f);}}
+        require(compared>0,"road-overlap chunks decoded from native MCA");
+        event("village_grass_final_support","\"road_overlaps\":"+onRoad+",\"removed_blocks\":"+removed+",\"surviving_grass\":"+surviving+",\"mca_chunks\":"+compared);
     }
     private static JsonObject force(JsonObject source,String name) {
         var out=source.deepCopy();out.remove("registry_program");out.add("decorations",new JsonArray());out.add("ores",new JsonArray());out.add("cave_noises",new JsonArray());out.add("terrain_features",new JsonObject());

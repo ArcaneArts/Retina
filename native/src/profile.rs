@@ -102,6 +102,9 @@ pub struct WorldProfile {
     /// Signed registered DoublePlantBlock identity: lower positive, upper negative.
     #[serde(default)]
     pub plant_halves: Vec<i32>,
+    /// Loaded soil flag required by ordinary grass/fern and terrestrial lower halves.
+    #[serde(default)]
+    pub plant_floor_masks: Vec<u8>,
     #[serde(skip)]
     pub base_plant_halves: bool,
     #[serde(skip)]
@@ -133,6 +136,9 @@ impl WorldProfile {
             || !profile.plant_halves.is_empty()
                 && (profile.plant_halves.len() != profile.materials.len()
                     || profile.plant_halves.iter().any(|v| *v == i32::MIN))
+            || !profile.plant_floor_masks.is_empty()
+                && (profile.plant_floor_masks.len() != profile.materials.len()
+                    || profile.plant_floor_masks.iter().any(|v| *v > 3))
         {
             return Err("material flags must cover the complete palette".into());
         }
@@ -299,7 +305,10 @@ impl WorldProfile {
             })
             .collect();
         profile.structures.compile(&profile.materials);
-        let is_half = |id: usize| profile.plant_halves.get(id).is_some_and(|v| *v != 0);
+        let is_half = |id: usize| {
+            profile.plant_halves.get(id).is_some_and(|v| *v != 0)
+                || profile.plant_floor_masks.get(id).is_some_and(|v| *v != 0)
+        };
         profile.base_plant_halves = profile.biomes.iter().any(|b| {
             [b.top, b.filler, b.underwater]
                 .iter()
