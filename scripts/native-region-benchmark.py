@@ -51,6 +51,7 @@ def main():
     parser.add_argument("--terrain-execution", choices=("interpreter", "specialized"), help="Select terrain/climate stages independently of specialized material/cave stages")
     parser.add_argument("--interpreter-dispatch", choices=("enabled", "disabled"), help="Shared compact interpreter entrypoints or independent pipelines")
     parser.add_argument("--interpreter-preload", choices=("enabled", "disabled"), help="Overlap compact density pipeline preparation with profile parsing")
+    parser.add_argument("--interpreter-columns", choices=("enabled", "disabled"), help="Reuse resident X/Z expressions in compact interpreted density programs")
     parser.add_argument("--await-specialization", action="store_true", help="After measurement, await compilation and compare one regenerated region with its pre-warmup output")
     parser.add_argument("--specialization-timeout", type=float, default=180, help="Seconds to await a real compilation result after measurements")
     args = parser.parse_args()
@@ -70,6 +71,8 @@ def main():
         os.environ["RETINA_INTERPRETER_DISPATCH"] = "1" if args.interpreter_dispatch == "enabled" else "0"
     if args.interpreter_preload:
         os.environ["RETINA_INTERPRETER_PRELOAD"] = "1" if args.interpreter_preload == "enabled" else "0"
+    if args.interpreter_columns:
+        os.environ["RETINA_INTERPRETER_COLUMNS"] = "1" if args.interpreter_columns == "enabled" else "0"
     if args.terrain_execution:
         os.environ["RETINA_SPECIALIZED_TERRAIN"] = "1" if args.terrain_execution == "specialized" else "0"
     args.out.mkdir(parents=True, exist_ok=False)
@@ -93,20 +96,25 @@ def main():
     registration = time.perf_counter()
     check(lib.retina_register_profile(source, len(source), c.byref(profile)))
     registration_ms = (time.perf_counter()-registration)*1000
+    program = getattr(lib,"retina_gpu_program_snapshot",None)
+    if program:
+        program.argtypes=[c.c_uint32,c.POINTER(ProgramSnapshot)]
     def generate(item):
         name, x, z = item
         path = str((args.out / f"{name}.mca").resolve()).encode()
         req = Request(args.seed, x*32, z*32, -64, 384, 64, 48, .008, profile.value)
         report = Report(); start = time.perf_counter()
         check(lib.retina_generate_region(c.byref(req), path, len(path), 0, b"minecraft:plains", 16, c.byref(report)))
-        return dict(name=name, x=x, z=z, ms=(time.perf_counter()-start)*1000, generated=report.generated,
+        elapsed_ms=(time.perf_counter()-start)*1000
+        status=None
+        if program:
+            snapshot=ProgramSnapshot();check(program(profile,c.byref(snapshot)));status=snapshot.status
+        return dict(name=name, x=x, z=z, ms=elapsed_ms, generated=report.generated, program_status=status,
                     gpu_ms=report.gpu/1e6, assembly_ms=report.assembly/1e6, write_ms=report.write/1e6)
     warmups = [generate((f"warm{i}",8+i,8)) for i in range(args.warmups)]
     before = Snapshot(); check(lib.retina_timing_snapshot(profile, c.byref(before)))
-    program = getattr(lib,"retina_gpu_program_snapshot",None)
     before_program=ProgramSnapshot()
     if program:
-        program.argtypes=[c.c_uint32,c.POINTER(ProgramSnapshot)]
         check(program(profile,c.byref(before_program)))
     pipeline = getattr(lib, "retina_gpu_pipeline_snapshot", None)
     before_pipeline = PipelineSnapshot()
@@ -125,6 +133,7 @@ def main():
                 lake_point_cache=args.lake_point_cache,
                 lake_primed_corners=args.lake_primed_corners,
                 lake_sparse_fields=args.lake_sparse_fields or os.environ.get("RETINA_LAKE_SPARSE_FIELDS"),
+                interpreter_columns=args.interpreter_columns or os.environ.get("RETINA_INTERPRETER_COLUMNS"),
                 total_ms=wall*1000, chunks_per_second=chunks/wall, median_ms=statistics.median(r["ms"] for r in regions),
                 average_region_ms=statistics.mean(r["ms"] for r in regions),
                 startup=dict(initialize_ms=initialize_ms, registration_ms=registration_ms, warmups=warmups),

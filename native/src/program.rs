@@ -1,5 +1,7 @@
 //! Resident bytecode for registered density functions and surface predicates.
 use serde::Deserialize;
+mod column_interpreter;
+pub(crate) use column_interpreter::FLAG as COLUMN_INTERPRETER_FLAG;
 pub(crate) mod composition;
 pub(crate) mod interpolation;
 pub(crate) mod lake_sparse;
@@ -97,11 +99,12 @@ pub(crate) fn interpreter_source_density(
     let source = include_str!("program.wgsl");
     let start = source.find("fn run_program(").unwrap();
     let end = source.find("fn density_floor_div(").unwrap();
-    let body = interpreter_body(capacity, depth, "run_program", true);
+    let body = interpreter_body_impl(capacity, depth, "run_program", true, true);
     density_composition_source(
         &format!(
-            "{}{}{}{}{}",
+            "{}{}{}{}{}{}",
             &source[..start],
+            column_interpreter::SOURCE,
             body,
             interpolation::prepass(depth, false, 0),
             density_bounds_source(capacity),
@@ -125,16 +128,33 @@ pub(crate) fn density_composition_source(source: &str, enabled: bool) -> String 
 pub(crate) fn density_bounds_source(capacity: usize) -> String {
     include_str!("density_bounds.wgsl").replace("BOUND_VALUES", &capacity.to_string())
 }
+#[cfg(test)]
 pub(crate) fn interpreter_body(
     capacity: usize,
     depth: usize,
     prefix: &str,
     compact: bool,
 ) -> String {
+    interpreter_body_impl(capacity, depth, prefix, compact, false)
+}
+fn interpreter_body_impl(
+    capacity: usize,
+    depth: usize,
+    prefix: &str,
+    compact: bool,
+    columns: bool,
+) -> String {
     let source = include_str!("program.wgsl");
     let start = source.find("fn run_program(").unwrap();
     let end = source.find("fn density_floor_div(").unwrap();
-    let body = &source[start..end];
+    let original = &source[start..end];
+    let cached;
+    let body = if columns {
+        cached = column_interpreter::interpreter_body(original);
+        cached.as_str()
+    } else {
+        original
+    };
     if !compact {
         return interpolation::interpreter(body, depth, prefix);
     }
@@ -415,6 +435,7 @@ impl RegistryProgram {
             words[7] = profile.terrain_features.bands.len() as u32;
             words.extend(profile.terrain_features.bands.iter().map(|x| *x as u32));
         }
+        column_interpreter::append(p, &mut words);
         bytemuck::cast_slice(&words).to_vec()
     }
 }

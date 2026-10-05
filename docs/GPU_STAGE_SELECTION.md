@@ -14,6 +14,12 @@ bytecode, interpolation atlas, scratch bindings and readback formats. The
 specialized horizontal prepass remains available to its consumers. A compiler
 finishing during a request cannot change that request's selected pipelines.
 
+The compact interpreter now also reads those resident horizontal fields on
+exact covered X/Z nodes, using schedules that skip their unused dependencies;
+see [column reuse](GPU_COLUMN_INTERPRETER.md) for the later implementation,
+matched measurements and fallback behavior. This leaves mixed stage selection
+intact and does not enable block-position composition by default.
+
 Metal defaults to this mixed selection. Vulkan and DX12 retain the previous
 selection because they have not been measured here. The diagnostic environment
 variable `RETINA_SPECIALIZED_TERRAIN=1` selects all-specialized terrain after

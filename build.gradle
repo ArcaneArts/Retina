@@ -286,6 +286,18 @@ tasks.register('snowTest', JavaExec) {
     javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
     jvmArgs '--enable-native-access=ALL-UNNAMED'
 }
+
+tasks.register('nativeColumnInterpreterGpuTest', Exec) {
+    group = 'verification'
+    description = 'Compare compact X/Z-cache schedules against uncached GPU graphs.'
+    dependsOn 'nativeLakeSparseGpuTest'
+    workingDir nativeDirectory
+    environment 'RETINA_PROGRAM_PARITY_PROFILE', layout.buildDirectory.file('registry-sparse-lake-profile.json').get().asFile.absolutePath
+    commandLine(nativeCargoCommand + ['test', '--release', '--locked', '--lib',
+            'column_interpreter_roots_match_raw_gpu', '--target-dir', nativeTarget.get().asFile.absolutePath,
+            '--', '--ignored', '--nocapture'])
+}
+gpuTest.dependsOn 'nativeColumnInterpreterGpuTest'
 gpuTest.dependsOn 'snowTest'
 
 tasks.register('aquiferTest', JavaExec) {

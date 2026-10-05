@@ -43,6 +43,12 @@ interpreted terrain/climate on Metal while specializing materials and caves.
 Repeated actual-profile comparisons improve whole-region throughput, with
 identical NBT; unmeasured backends retain their prior selection. F3 reports the
 mixed mode and the compiler skips its unused specialized terrain pipelines.
+[Compact interpreter column reuse](GPU_COLUMN_INTERPRETER.md) now lets Metal's
+mixed density/climate stages consume that horizontal atlas with pruned resident
+instruction schedules. Actual-profile root and NBT comparisons preserve output;
+matched production serial throughput improves about 4–7%, while experimental
+Terralith composition gains 22–31%. Parallel gains are workload-dependent. The
+composition path and cold-start work remain unfinished requirements.
 Local registered GPU aquifers and surface-lake corrections are implemented; see
 [GPU aquifers](GPU_AQUIFERS.md) for fluid/pressure equations, validation, costs and
 remaining fluid-tick approximations. Broader features, further graph

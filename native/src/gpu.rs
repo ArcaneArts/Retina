@@ -82,6 +82,7 @@ pub(crate) struct Gpu {
     lake_point_cache: bool,
     lake_primed_corners: bool,
     lake_sparse_fields: bool,
+    interpreter_columns: bool,
 }
 
 pub(crate) struct GpuSample {
@@ -153,6 +154,11 @@ impl Gpu {
             _ => info.backend == wgpu::Backend::Metal,
         };
         let lake_sparse_fields = match std::env::var("RETINA_LAKE_SPARSE_FIELDS").as_deref() {
+            Ok("0") => false,
+            Ok("1") => true,
+            _ => info.backend == wgpu::Backend::Metal,
+        };
+        let interpreter_columns = match std::env::var("RETINA_INTERPRETER_COLUMNS").as_deref() {
             Ok("0") => false,
             Ok("1") => true,
             _ => info.backend == wgpu::Backend::Metal,
@@ -394,6 +400,7 @@ impl Gpu {
             preloaded_interpreter: None,
             density_composition: std::env::var("RETINA_DENSITY_COMPOSITION").as_deref() == Ok("1"),
             lake_sparse_fields,
+            interpreter_columns,
             cached_density_masks: std::env::var("RETINA_CACHED_DENSITY_MASKS").as_deref()
                 != Ok("0"),
             lake_point_cache,
@@ -780,6 +787,9 @@ impl Gpu {
                 request.density_side = side as u32;
                 request.density_step_xz = sx;
                 request.density_step_y = sy;
+                if self.interpreter_columns && horizontal_fields > 0 {
+                    request.padding |= crate::program::COLUMN_INTERPRETER_FLAG;
+                }
                 floats += side * side * layers * if compose { 3 } else { 1 };
                 let surface_width = width + 2 * guard as u32;
                 floats += (surface_width * surface_width) as u64;
@@ -1983,6 +1993,8 @@ impl PendingSample {
     }
 }
 
+#[cfg(test)]
+mod column_interpreter_tests;
 #[cfg(test)]
 mod lake_sparse_tests;
 

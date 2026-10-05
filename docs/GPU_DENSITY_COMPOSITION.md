@@ -14,6 +14,12 @@ previous behavior. The benchmark's `--density-composition enabled` explicitly
 selects the experiment. It is not a saved-world option or the production default:
 measured whole-region regressions still need to be resolved before enabling it.
 
+[Compact interpreter column reuse](GPU_COLUMN_INTERPRETER.md) now avoids repeated
+X/Z expressions during the finer input prepasses. Later actual-profile pairs
+preserve composition output and improve Terralith composition throughput by
+22–31% serial / 22% with two callers. Composition remains slower than the regular
+path in those observations, so this milestone keeps the experiment disabled.
+
 ## GPU execution
 
 The existing resident interpolation atlas retains all relevant vertical samples
