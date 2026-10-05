@@ -45,8 +45,11 @@ final class DecorationProfile {
         for (int i = 0; i < biomes.size(); i++) {
             var selected = new JsonArray();
             var features = biomes.get(i).value().getGenerationSettings().features();
-            int step = GenerationStep.Decoration.VEGETAL_DECORATION.ordinal();
-            if (features.size() > step) for (var holder : features.get(step)) {
+            int vegetation = GenerationStep.Decoration.VEGETAL_DECORATION.ordinal();
+            for(int step=0;step<Math.min(features.size(),vegetation+1);step++) for (var holder : features.get(step)) {
+                // Attachment recipes also occur before vegetation (notably
+                // underground glow lichen). Other stages keep their own exporters.
+                if(step!=vegetation && !hasAttachment(holder.value().feature().value(),0))continue;
                 String name = holder.unwrapKey().map(k -> k.identifier().toString()).orElse("inline/" + biomes.get(i).unwrapKey().map(k -> k.identifier().toString()).orElse(Integer.toString(i)) + "/" + selected.size());
                 var before = new ArrayList<Integer>();
                 exporter.placed(holder.value(), new Placement(), 1, name, before, 0);
@@ -57,6 +60,16 @@ final class DecorationProfile {
         Retina.LOGGER.info("Exported {} registered decoration recipes; omitted feature kinds: {}", exporter.recipes.size(), exporter.unsupported);
         world.add("decoration_provider_noises", exporter.providerNoise.programs);
         return exporter.recipes;
+    }
+
+    private static boolean hasAttachment(Feature feature,int depth) {
+        if(depth>16)throw new IllegalArgumentException("Recursive attachment feature");
+        if(feature instanceof MultifaceGrowthFeature || feature instanceof VinesFeature)return true;
+        if(feature instanceof RandomSelectorFeature f)return f.features().stream().anyMatch(v->hasAttachment(v.feature().value().feature().value(),depth+1)) || hasAttachment(f.defaultFeature().value().feature().value(),depth+1);
+        if(feature instanceof SimpleRandomSelectorFeature f)return f.features().stream().anyMatch(v->hasAttachment(v.value().feature().value(),depth+1));
+        if(feature instanceof RandomBooleanSelectorFeature f)return hasAttachment(f.featureTrue().value().feature().value(),depth+1) || hasAttachment(f.featureFalse().value().feature().value(),depth+1);
+        if(feature instanceof WeightedRandomSelectorFeature f)return f.features().unwrap().stream().anyMatch(v->hasAttachment(v.value().value().feature().value(),depth+1));
+        return false;
     }
 
     private static final class Placement {
@@ -147,6 +160,9 @@ final class DecorationProfile {
                 placed(w.value().value(), selection(p, low, high), chance * w.weight() / total, path + "/choice" + i++, selected, depth + 1);
                 low = high;
             }
+        } else if (feature instanceof MultifaceGrowthFeature || feature instanceof VinesFeature) {
+            var data=attachment(feature);
+            if(data!=null)emit(path,p,chance,"attachment_growth",data,selected);
         } else if (feature instanceof VegetationPatchFeature patch) {
             var data=patch(patch,depth+1);
             if(data!=null)emit(path,p,chance,"vegetation_patch",data,selected);
@@ -307,6 +323,12 @@ final class DecorationProfile {
     }
     private static void finishFeature(JsonObject recipe,LinkedHashMap<BlockState,Integer> palette) {
             switch(recipe.get("kind").getAsString()) {
+                case "attachment_growth" -> {
+                    for(String key:List.of("air","water","source_water","placed_on","spread_replaceable","spread_support"))recipe.add(key,predicate(recipe.getAsJsonObject(key),palette));
+                    for(String key:List.of("support","sturdy")) {
+                        var values=recipe.getAsJsonArray(key);for(int i=0;i<values.size();i++)values.set(i,predicate(values.get(i).getAsJsonObject(),palette));
+                    }
+                }
                 case "vegetation_patch" -> {
                     for(String key:List.of("replaceable","air","sturdy"))recipe.add(key,predicate(recipe.getAsJsonObject(key),palette));
                     var same=new JsonArray();
@@ -388,6 +410,9 @@ final class DecorationProfile {
 
     private static JsonObject matching(String type,String key,String value,int x,int y,int z) {
         var p=new JsonObject();p.addProperty("type",type);p.addProperty(key,value);p.add("offset",new Gson().toJsonTree(new int[]{x,y,z}));return p;
+    }
+    private static JsonObject matching(String type,String key,JsonElement value,int x,int y,int z) {
+        var p=test(type,x,y,z);p.add(key,value);return p;
     }
     private static JsonObject test(String type,int x,int y,int z) {
         var p=new JsonObject();p.addProperty("type",type);p.add("offset",new Gson().toJsonTree(new int[]{x,y,z}));return p;
@@ -533,7 +558,8 @@ final class DecorationProfile {
         var feature=placed.feature().value();JsonObject data=null;
         if(feature instanceof BlockColumnFeature column) {
             data=column(column);if(data!=null){data.addProperty("kind","block_column");data.addProperty("reach",column.direction().getAxis().isHorizontal()?Math.max(0,column.layers().stream().mapToInt(l->l.height().maxInclusive()).sum()-1):0);}
-        } else if(feature instanceof SimpleBlockFeature block)data=simple(block);
+        } else if(feature instanceof MultifaceGrowthFeature || feature instanceof VinesFeature)data=attachment(feature);
+        else if(feature instanceof SimpleBlockFeature block)data=simple(block);
         else if(feature instanceof VegetationPatchFeature patch)data=patch(patch,depth+1);
         else if(feature instanceof RandomSelectorFeature random) {
             data=new JsonObject();data.addProperty("kind","random_selector");var options=new JsonArray();int extent=0;
@@ -558,6 +584,59 @@ final class DecorationProfile {
         if(data==null)return null;
         var result=new JsonObject();result.add("placement",program);result.add("feature",data);result.addProperty("reach",reach+data.get("reach").getAsInt());return result;
     }
+    private JsonObject attachment(Feature feature) {
+        var result=new JsonObject();result.addProperty("kind","attachment_growth");result.addProperty("reach",3);
+        boolean vines=feature instanceof VinesFeature;result.addProperty("vines",vines);
+        Block block=vines?Blocks.VINE:((MultifaceGrowthFeature)feature).placeBlock();
+        result.addProperty("initial",material(block.defaultBlockState()));
+        result.addProperty("wet_initial",material(block.defaultBlockState().trySetValue(BlockStateProperties.WATERLOGGED,true)));
+        int faceMask=0;for(var d:Direction.values())if((!vines || d!=Direction.DOWN) && block.defaultBlockState().hasProperty(vines?VineBlock.getPropertyForFace(d):MultifaceBlock.getFaceProperty(d)))faceMask|=1<<d.ordinal();
+        result.addProperty("face_mask",faceMask);
+        var states=new JsonArray();
+        for(var state:block.getStateDefinition().getPossibleStates()) {
+            int faces=0;var added=new JsonArray();
+            for(var d:Direction.values()) {
+                var property=vines?(d==Direction.DOWN?null:VineBlock.getPropertyForFace(d)):MultifaceBlock.getFaceProperty(d);
+                if(property!=null && state.getValueOrElse(property,false))faces|=1<<d.ordinal();
+                added.add(material(property!=null?state.trySetValue(property,true):state));
+            }
+            var entry=new JsonObject();entry.addProperty("source",material(state));entry.addProperty("faces",faces);entry.add("added",added);states.add(entry);
+        }
+        states.asList().sort(Comparator.comparingInt(v->v.getAsJsonObject().get("source").getAsInt()));
+        result.add("states",states);var directions=new JsonArray();var spreadOrder=new JsonArray();
+        if(vines) {
+            for(var d:Direction.values())if(d!=Direction.DOWN)directions.add(d.ordinal());
+            result.addProperty("search_range",0);result.addProperty("spread_chance",0);result.addProperty("sculk",false);
+            result.add("placed_on",test("true",0,0,0));
+        } else {
+            var growth=(MultifaceGrowthFeature)feature;
+            if(growth.canPlaceOnCeiling())directions.add(Direction.UP.ordinal());
+            if(growth.canPlaceOnFloor())directions.add(Direction.DOWN.ordinal());
+            if(growth.canPlaceOnWall())for(var d:Direction.Plane.HORIZONTAL)directions.add(d.ordinal());
+            result.addProperty("search_range",growth.searchRange());result.addProperty("spread_chance",growth.chanceOfSpreading());
+            var allowed=new JsonArray();for(var holder:growth.canBePlacedOn())allowed.add(BuiltInRegistries.BLOCK.getKey(holder.value()).toString());
+            result.add("placed_on",matching("matching_blocks","blocks",allowed,0,0,0));
+            try {
+                var configField=MultifaceSpreader.class.getDeclaredField("config");configField.setAccessible(true);
+                var config=(MultifaceSpreader.SpreadConfig)configField.get(((MultifaceSpreadeableBlock)block).getSpreader());
+                boolean sculk=block instanceof SculkVeinBlock;
+                if(config.getClass()!=MultifaceSpreader.DefaultSpreaderConfig.class && !sculk) {unsupported.add("multiface_growth:spreader:"+config.getClass().getName());return null;}
+                result.addProperty("sculk",sculk);for(var spread:config.getSpreadTypes())spreadOrder.add(spread.ordinal());
+            } catch(ReflectiveOperationException error) {throw new IllegalStateException("Cannot export registered multiface spreader",error);}
+        }
+        result.add("directions",directions);result.add("spread_order",spreadOrder);
+        result.add("air",matching("matching_block_tag","tag","minecraft:air",0,0,0));
+        result.add("water",matching("matching_blocks","blocks","minecraft:water",0,0,0));result.add("source_water",test("source_water",0,0,0));
+        result.add("spread_replaceable",test("sculk_spread_replaceable",0,0,0));
+        result.add("spread_support",not(matching("matching_blocks","blocks",new Gson().toJsonTree(List.of("minecraft:sculk","minecraft:sculk_catalyst","minecraft:moving_piston")),0,0,0)));
+        var support=new JsonArray();var sturdy=new JsonArray();
+        for(var d:Direction.values()) {
+            support.add(matching("attachment_support","direction",d.getOpposite().getName(),d.getStepX(),d.getStepY(),d.getStepZ()));
+            sturdy.add(matching("has_sturdy_face","direction",d.getName(),0,0,0));
+        }
+        result.add("support",support);result.add("sturdy",sturdy);return result;
+    }
+
     private JsonObject fallen(FallenTreeFeature feature) {
         var json=Feature.DIRECT_CODEC.encodeStart(registry.createSerializationContext(JsonOps.INSTANCE),feature).getOrThrow().getAsJsonObject();
         if(!supportedIntProvider(json.get("log_length")) || extent(json.get("log_length"))>15) {unsupported.add("fallen_tree:log_length_exceeds_halo");return null;}
@@ -766,6 +845,7 @@ final class DecorationProfile {
     static Set<Integer> featureMaterials(JsonObject recipe) {
         var out=new LinkedHashSet<Integer>();
         switch(recipe.get("kind").getAsString()) {
+            case "attachment_growth" -> {for(var state:recipe.getAsJsonArray("states"))out.add(state.getAsJsonObject().get("source").getAsInt());}
             case "vegetation_patch" -> {out.addAll(programStates(recipe.getAsJsonObject("ground")));out.addAll(featureMaterials(recipe.getAsJsonObject("vegetation").getAsJsonObject("feature")));}
             case "block_column" -> {for(var layer:recipe.getAsJsonArray("layers"))out.addAll(programStates(layer.getAsJsonObject().getAsJsonObject("provider")));}
             case "simple_block" -> out.addAll(programStates(recipe.getAsJsonObject("provider")));
@@ -821,6 +901,11 @@ final class DecorationProfile {
                 case "matching_fluids" -> matchesFluid(input.get("fluids"), state);
                 case "replaceable" -> state.canBeReplaced();
                 case "has_sturdy_face" -> state.isFaceSturdy(EmptyBlockGetter.INSTANCE,BlockPos.ZERO,Direction.valueOf(input.get("direction").getAsString().toUpperCase(Locale.ROOT)));
+                case "attachment_support" -> {
+                    var face=Direction.valueOf(input.get("direction").getAsString().toUpperCase(Locale.ROOT));
+                    yield Block.isFaceFull(state.getBlockSupportShape(EmptyBlockGetter.INSTANCE,BlockPos.ZERO),face) || Block.isFaceFull(state.getCollisionShape(EmptyBlockGetter.INSTANCE,BlockPos.ZERO),face);
+                }
+                case "sculk_spread_replaceable" -> !state.is(BlockTags.FIRE) && (state.getFluidState().isEmpty() || state.getFluidState().is(net.minecraft.world.level.material.Fluids.WATER)) && state.canBeReplaced();
                 case "full_water" -> state.getFluidState().is(FluidTags.WATER) && state.getFluidState().isFull();
                 case "source_water" -> state.getFluidState().isSourceOfType(net.minecraft.world.level.material.Fluids.WATER);
                 case "supports_sea_pickle" -> !state.getCollisionShape(EmptyBlockGetter.INSTANCE,BlockPos.ZERO).getFaceShape(Direction.UP).isEmpty() || state.isFaceSturdy(EmptyBlockGetter.INSTANCE,BlockPos.ZERO,Direction.UP);

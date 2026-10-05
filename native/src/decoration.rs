@@ -8,6 +8,7 @@ use rayon::prelude::*;
 use serde::Deserialize;
 use std::collections::{HashSet, VecDeque};
 
+mod attachment;
 mod blocks;
 pub mod counts;
 mod fallen;
@@ -66,6 +67,11 @@ pub struct Recipe {
 #[derive(Clone, Deserialize)]
 #[serde(tag = "kind")]
 pub enum Kind {
+    #[serde(rename = "attachment_growth")]
+    AttachmentGrowth {
+        #[serde(flatten)]
+        growth: attachment::Recipe,
+    },
     #[serde(rename = "vegetation_patch")]
     VegetationPatch {
         #[serde(flatten)]
@@ -147,6 +153,9 @@ impl Recipe {
         }
         let valid = |id: u16| (id as usize) < material_count;
         let okay = match &self.feature {
+            Kind::AttachmentGrowth { growth } => {
+                self.placement.is_some() && growth.validate(material_count)
+            }
             Kind::VegetationPatch { patch } => {
                 self.placement.is_some() && patch.validate(material_count)
             }
@@ -1001,6 +1010,7 @@ pub(crate) fn feature_sample(
     if !matches!(
         recipe.feature,
         Kind::BlockColumn { .. }
+            | Kind::AttachmentGrowth { .. }
             | Kind::VegetationPatch { .. }
             | Kind::SimpleBlock { .. }
             | Kind::Bamboo { .. }

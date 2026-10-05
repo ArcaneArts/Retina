@@ -100,6 +100,11 @@ The [registered snow-support table](SNOW_SUPPORT.md) now also prevents the final
 Rust snow pass from blanketing regular frozen-ocean ice, while preserving snow
 on supported cold ground and crowns. Both chunk and MCA output are tested against
 Minecraft's loaded block survival rules.
+[Registered attachment growth](REGISTERED_ATTACHMENT_GROWTH.md) now imports
+underground and vegetation-step multiface/vine recipes, with loaded support
+faces, wet states, spreading and nested-patch replay. Actual Minecraft reference
+checks cover all six faces, fluids and ordered draws; both assembly paths and
+temporary-region promotion remain validated. Other recipe/provider gaps remain.
 
 The [shared compact interpreter](GPU_SHARED_INTERPRETER.md) now reduces required
 Metal first-profile pipelines from ten to two. Fresh-identity twenty-region

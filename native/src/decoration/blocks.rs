@@ -520,6 +520,9 @@ pub(super) fn place(
 ) {
     let test = |p: &Predicate, at| p.test(at, field, profile, request, overlay) == Some(true);
     match kind {
+        Kind::AttachmentGrowth { growth } => {
+            super::attachment::place(growth, at, rng, field, profile, request, overlay, blocks);
+        }
         Kind::FallenTree { fallen } => super::fallen::place(
             fallen, at, rng, field, profile, request, overlay, blocks, noise,
         ),

@@ -70,6 +70,10 @@ pub struct Placed {
 #[derive(Clone, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum Feature {
+    AttachmentGrowth {
+        #[serde(flatten)]
+        growth: super::attachment::Recipe,
+    },
     SimpleBlock {
         #[serde(flatten)]
         simple: Simple,
@@ -114,6 +118,7 @@ impl Placed {
                 !matches!(m, Modifier::Biome | Modifier::Select { .. }) && m.noise_rule().is_none()
             })
             && match self.feature.as_ref() {
+                Feature::AttachmentGrowth { growth } => growth.validate(palette),
                 Feature::SimpleBlock { simple } => simple.validate(palette),
                 Feature::BlockColumn { column } => column.validate(palette),
                 Feature::VegetationPatch { patch } => patch.validate(palette),
@@ -233,6 +238,22 @@ impl World<'_> {
     }
     fn feature(&mut self, feature: &Feature, at: [i32; 3], rng: &mut Rng) -> bool {
         match feature {
+            Feature::AttachmentGrowth { growth } => {
+                let start = self.blocks.len();
+                let result = super::attachment::place(
+                    growth,
+                    at,
+                    rng,
+                    self.field,
+                    self.profile,
+                    self.request,
+                    self.overlay,
+                    self.blocks,
+                );
+                self.overlay
+                    .commit(self.blocks, start, self.field, self.profile, self.request);
+                result
+            }
             Feature::SimpleBlock { simple } => self.simple(simple, at, rng),
             Feature::BlockColumn { column } => {
                 let start = self.blocks.len();

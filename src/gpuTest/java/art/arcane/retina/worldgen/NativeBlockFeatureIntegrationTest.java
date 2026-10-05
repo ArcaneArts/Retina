@@ -31,7 +31,7 @@ import java.util.*;
  * Both implementations receive the same controlled random stream and terrain;
  * this tests geometry/providers, not equivalence with Minecraft's seed RNG. */
 public final class NativeBlockFeatureIntegrationTest {
-    private static final Set<String> ADAPTERS=Set.of("block_column","bamboo","aquatic","huge_mushroom","fallen_tree","vegetation_patch","simple_block");
+    private static final Set<String> ADAPTERS=Set.of("block_column","bamboo","aquatic","huge_mushroom","fallen_tree","vegetation_patch","simple_block","attachment_growth");
     public static void main(String[] args) throws Exception {
         Path vanilla=Path.of("build/registered-columns-vanilla.json");
         NativeProfileExport.main(new String[]{vanilla.toString()});
@@ -71,7 +71,7 @@ public final class NativeBlockFeatureIntegrationTest {
                 String name=recipe.get("source").getAsString();Feature feature=resolve(registry,name);
                 require(feature!=null,"registered source resolves: "+name);kinds.merge(kind,1,Integer::sum);
                 for(var fixture:fixtures)for(long seed=0;seed<32;seed++) {
-                    if(fixture.cavern && !kind.equals("vegetation_patch") && !kind.equals("simple_block"))continue;
+                    if(fixture.cavern && !Set.of("vegetation_patch","simple_block","attachment_growth").contains(kind))continue;
                     // Straddle negative chunk boundaries; all decisions use the same
                     // actual material/height substrate as the Rust feature sampler.
                     int[] at={-17,fixture.originHeight,-17};
@@ -110,8 +110,92 @@ public final class NativeBlockFeatureIntegrationTest {
             System.out.println("QA_EVT {\"event\":\"registered_fallen_trees_minecraft_reference\",\"status\":\"pass\",\"context\":{\"datapack\":"+(pack!=null)+",\"horizontal_lengths\":"+new Gson().toJson(fallenLengths)+",\"decorated\":"+fallenDecorated+",\"stump_only\":"+fallenStumps+",\"rugged_runs\":"+ruggedFallenLogs+"}}");
             for(String biome:List.of("bamboo_jungle","desert","ocean","mushroom_fields","dark_forest","forest","dappled_forest","old_growth_birch_forest","lush_caves"))checkRegion(json,materials,biome);
             checkStateProviders(registry,json,factory,pack!=null);
+            checkAttachments(registry,json,factory,pack!=null);
 
         }
+    }
+    private static void checkAttachments(RegistryAccess registry,JsonObject original,PalettedContainerFactory factory,boolean packed) throws Exception {
+        var profile=original.deepCopy();profile.remove("ores");
+        // Controlled geometry fixtures extend the palette after the full-profile
+        // ore/cave dressing replacement tables were built. Those independent
+        // features are exercised by the original profile checks above.
+        for(var biome:profile.getAsJsonArray("biomes"))biome.getAsJsonObject().remove("cave_features");
+        var palette=new LinkedHashMap<BlockState,Integer>();
+        for(var value:profile.getAsJsonArray("materials"))palette.put(BlockState.CODEC.parse(JsonOps.INSTANCE,value).getOrThrow(),palette.size());
+        var constructor=DecorationProfile.class.getDeclaredConstructor(HolderLookup.Provider.class,LinkedHashMap.class);constructor.setAccessible(true);
+        var exporter=constructor.newInstance(registry,palette);
+        var placementType=Class.forName("art.arcane.retina.worldgen.DecorationProfile$Placement");
+        var pc=placementType.getDeclaredConstructor();pc.setAccessible(true);
+        var export=DecorationProfile.class.getDeclaredMethod("placed",net.minecraft.world.level.levelgen.placement.PlacedFeature.class,placementType,double.class,String.class,List.class,int.class);export.setAccessible(true);
+        var field=DecorationProfile.class.getDeclaredField("recipes");field.setAccessible(true);
+        var recipes=(JsonArray)field.get(exporter);var features=new ArrayList<Feature>();
+        var inputs=new ArrayList<JsonObject>();
+        for(String block:List.of("glow_lichen","sculk_vein"))for(float chance:List.of(0F,.37F,1F))for(int flags:List.of(1,2,4,7)) {
+            var feature=new JsonObject();feature.addProperty("type","minecraft:multiface_growth");feature.addProperty("block","minecraft:"+block);
+            feature.addProperty("search_range",flags==7?64:5);feature.addProperty("chance_of_spreading",chance);
+            feature.addProperty("can_place_on_floor",(flags&1)!=0);feature.addProperty("can_place_on_ceiling",(flags&2)!=0);feature.addProperty("can_place_on_wall",(flags&4)!=0);
+            feature.add("can_be_placed_on",JsonParser.parseString("[\"minecraft:grass_block\",\"minecraft:dirt\",\"minecraft:stone\",\"minecraft:moss_block\"]"));inputs.add(feature);
+            if(flags==7 && chance==.37F) {
+                var patch=cuboidPatch("floor",true,true);var nested=new JsonObject();nested.add("feature",feature.deepCopy());
+                nested.add("placement",JsonParser.parseString("[{\"type\":\"minecraft:count\",\"count\":3},{\"type\":\"minecraft:random_chance\",\"chance\":0.65}]"));
+                patch.add("vegetation_feature",nested);inputs.add(patch);
+            }
+        }
+        inputs.add(JsonParser.parseString("{\"type\":\"minecraft:vines\"}").getAsJsonObject());
+        for(var input:inputs) {
+            var feature=Feature.DIRECT_CODEC.parse(registry.createSerializationContext(JsonOps.INSTANCE),input).getOrThrow();
+            var selected=new ArrayList<Integer>();var placed=new net.minecraft.world.level.levelgen.placement.PlacedFeature(Holder.direct(feature),List.of(
+                net.minecraft.world.level.levelgen.placement.InSquarePlacement.spread(),net.minecraft.world.level.levelgen.placement.HeightmapPlacement.onHeightmap(Heightmap.Types.MOTION_BLOCKING)));
+            export.invoke(exporter,placed,pc.newInstance(),1.0,"test:attachment"+features.size(),selected,0);
+            require(selected.size()==1,"registered attachment exports: "+input);features.add(feature);
+        }
+        var flowing=Blocks.WATER.defaultBlockState().setValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.LEVEL,5);
+        palette.computeIfAbsent(flowing,ignored->palette.size());
+        DecorationProfile.finishPlacements(recipes,palette);DecorationProfile.materialFlags(profile,palette);
+        var materials=palette.keySet().toArray(BlockState[]::new);var serialized=new JsonArray();for(var state:materials)serialized.add(BlockState.CODEC.encodeStart(JsonOps.INSTANCE,state).getOrThrow());profile.add("materials",serialized);
+        var carveable=new JsonArray();for(var state:materials)carveable.add(!state.isAir() && state.getFluidState().isEmpty() && !state.is(BlockTags.UNCARVABLE));profile.add("carveable",carveable);
+        int offset=profile.getAsJsonArray("decorations").size();profile.getAsJsonArray("decorations").addAll(recipes);
+        var fixtures=List.of(new Fixture(profile,materials,96,384),new Fixture(profile,materials,32,384),new Fixture(profile,materials,58,384),new Fixture(profile,materials,90,384,false,18),new Fixture(profile,materials,90,384,false,30),new Fixture(profile,materials,96,384,true),new Fixture(profile,materials,96,384,false,-1,flowing));
+        int checked=0,placedCount=0,spreadCount=0,wetCount=0,flowCount=0,vines=0;var faces=new TreeSet<String>();
+        for(var fixture:fixtures) {
+            fixture.factory=factory;var biome=registry.lookupOrThrow(Registries.BIOME).getOrThrow(ResourceKey.create(Registries.BIOME,Identifier.parse("minecraft:plains")));
+            fixture.generator=new RetinaChunkGenerator(new net.minecraft.world.level.biome.FixedBiomeSource(biome),-64,384,fixture.base,0,.008F,"mca");
+            for(int i=0;i<features.size();i++)for(long seed=0;seed<32;seed++)for(int dy:List.of(-1,0,1,2)) {
+                var at=new BlockPos(-17,fixture.originHeight+dy,-17);var world=new World(fixture);
+                features.get(i).place(world.level,fixture.generator,new Stream(seed,false),at);
+                var actual=new HashMap<BlockPos,BlockState>();var blocks=NativeTerrain.instance().decorationFeature(fixture.request,offset+i,new int[]{at.getX(),at.getY(),at.getZ()},seed);
+                for(int k=0;k<blocks.length;k+=4)actual.put(new BlockPos(blocks[k],blocks[k+1],blocks[k+2]),materials[blocks[k+3]]);
+                require(world.changed.equals(actual),"attachment reference mismatch: "+inputs.get(i)+" seed="+seed+" origin="+at+" differences="+differences(world.changed,actual));
+                checked++;if(!actual.isEmpty())placedCount++;if(features.get(i) instanceof MultifaceGrowthFeature && actual.size()>1)spreadCount++;
+                for(var state:actual.values()) {
+                    if(state.is(Blocks.VINE))vines++;
+                    if(state.getValueOrElse(net.minecraft.world.level.block.state.properties.BlockStateProperties.WATERLOGGED,false))wetCount++;
+                    else if(fixture.column[fixture.originHeight-1+64].equals(flowing))flowCount++;
+                    if(state.getBlock() instanceof MultifaceBlock)for(var d:Direction.values())if(MultifaceBlock.hasFace(state,d))faces.add(d.getName());
+                }
+            }
+        }
+        require(placedCount>500 && spreadCount>100 && wetCount>500 && flowCount>100 && vines>0 && faces.size()>=5,"nonvacuous attachment directions/spreading/fluids: "+faces+"/"+placedCount+"/"+spreadCount+"/"+wetCount+"/"+flowCount+"/"+vines);
+        // A GPU-carved vertical wall reaches the highest buildable layer, so
+        // wrap-around spread can find a supported face outside the build range.
+        // Minecraft rejects that write and continues with the next direction.
+        var boundary=new Fixture(profile,materials,320,384,true,-1,Blocks.STONE.defaultBlockState(),true);
+        boundary.factory=factory;boundary.generator=fixtures.getFirst().generator;
+        int boundaryCases=0,rejectedWrites=0,recoveredWrites=0;
+        for(int i=0;i<features.size();i++)for(long seed=0;seed<64;seed++)for(int y:List.of(-65,-64,-63,317,318,319,320,321)) {
+            var at=new BlockPos(-17,y,-17);var world=new World(boundary);
+            features.get(i).place(world.level,boundary.generator,new Stream(seed,false),at);
+            var actual=new HashMap<BlockPos,BlockState>();var blocks=NativeTerrain.instance().decorationFeature(boundary.request,offset+i,new int[]{at.getX(),at.getY(),at.getZ()},seed);
+            for(int k=0;k<blocks.length;k+=4)actual.put(new BlockPos(blocks[k],blocks[k+1],blocks[k+2]),materials[blocks[k+3]]);
+            require(world.changed.equals(actual),"attachment build-boundary mismatch: "+inputs.get(i)+" seed="+seed+" origin="+at+" differences="+differences(world.changed,actual));
+            boundaryCases++;rejectedWrites+=world.rejectedWrites;if(world.rejectedWrites>0 && world.changed.size()>1)recoveredWrites++;
+        }
+        require(rejectedWrites>100 && recoveredWrites>0,"attachment build-boundary checks reject writes and recover: "+rejectedWrites+"/"+recoveredWrites);
+        System.out.println("QA_EVT {\"event\":\"registered_attachment_build_bounds\",\"status\":\"pass\",\"context\":{\"datapack\":"+packed+",\"cases\":"+boundaryCases+",\"rejected_writes\":"+rejectedWrites+",\"recovered_cases\":"+recoveredWrites+"}}");
+        var ids=new JsonArray();for(int i=0;i<features.size();i++)ids.add(offset+i);
+        for(var b:profile.getAsJsonArray("biomes"))if(b.getAsJsonObject().get("id").getAsString().equals("minecraft:lush_caves"))b.getAsJsonObject().add("decorations",ids);
+        checkRegion(profile,materials,"lush_caves");
+        System.out.println("QA_EVT {\"event\":\"registered_attachment_minecraft_reference\",\"status\":\"pass\",\"context\":{\"datapack\":"+packed+",\"cases\":"+checked+",\"placed\":"+placedCount+",\"spread\":"+spreadCount+",\"waterlogged\":"+wetCount+",\"flowing_water_dry\":"+flowCount+",\"vines\":"+vines+",\"faces\":"+new Gson().toJson(faces)+"}}");
     }
     private static void checkStateProviders(RegistryAccess registry,JsonObject original,PalettedContainerFactory factory,boolean packed) throws Exception {
         var profile=original.deepCopy();profile.remove("ores");profile.remove("cave_noises");
@@ -585,6 +669,9 @@ public final class NativeBlockFeatureIntegrationTest {
             this(original,materials,base,height,rugged,caveOrigin,Blocks.GRASS_BLOCK.defaultBlockState());
         }
         Fixture(JsonObject original,BlockState[] materials,int base,int height,boolean rugged,int caveOrigin,BlockState surface) {
+            this(original,materials,base,height,rugged,caveOrigin,surface,false);
+        }
+        Fixture(JsonObject original,BlockState[] materials,int base,int height,boolean rugged,int caveOrigin,BlockState surface,boolean boundaryWall) {
             this.rugged=rugged;this.cavern=caveOrigin>=0;this.materials=materials;
             this.base=base;var json=original.deepCopy();
             for(String key:List.of("registry_program","climate_targets","structures","terrain_features"))json.remove(key);
@@ -594,12 +681,18 @@ public final class NativeBlockFeatureIntegrationTest {
             var biomes=new JsonArray();biomes.add(biome);json.add("biomes",biomes);
             for(var e:json.getAsJsonArray("noises"))e.getAsJsonObject().addProperty("amplitude",1e-12);
             if(cavern)json.add("registry_program",cavernProgram(json,base));
+            if(boundaryWall) {
+                var gpu=cavernProgram(json,base);
+                gpu.getAsJsonArray("programs").set(2,JsonParser.parseString("{\"nodes\":[{\"op\":3,\"a\":0,\"b\":0,\"c\":0,\"p\":[-18,-17,1,-1]}],\"roots\":[0]}"));
+                gpu.add("terrain_cell",JsonParser.parseString("[1,1]"));json.add("registry_program",gpu);
+            }
             int id=NativeTerrain.instance().registerProfile(json.toString());
             request=new TerrainRequest(123456789L,-2,-2,-64,height,base,rugged?14:0,rugged?.15f:.008f,id);
-            originHeight=cavern?caveOrigin:NativeTerrain.instance().sampleHeights(request)[255];
+            originHeight=boundaryWall?319:cavern?caveOrigin:NativeTerrain.instance().sampleHeights(request)[255];
             var raw=NativeTerrain.instance().column(request,255);column=new BlockState[height];
             for(int y=0;y<height;y++)column[y]=materials[Short.toUnsignedInt(raw[y])];
-            if(!cavern)require(column[originHeight-1+64].equals(base<63?Blocks.DIRT.defaultBlockState():surface),"controlled feature substrate has registered surface");
+            if(boundaryWall)require(column[height-1].isAir() && base(new BlockPos(-18,319,-17)).is(Blocks.STONE),"controlled GPU wall reaches build ceiling");
+            else if(!cavern)require(column[originHeight-1+64].equals(base<63?Blocks.DIRT.defaultBlockState():surface),"controlled feature substrate has registered surface");
             else require(column[18+64].isAir() && column[30+64].isAir() && column[17+64].is(Blocks.STONE) && column[31+64].is(Blocks.STONE),"controlled GPU cave substrate has floor/ceiling");
         }
         BlockState base(BlockPos pos) {
@@ -625,6 +718,7 @@ public final class NativeBlockFeatureIntegrationTest {
     private static int index(BlockState[] states,BlockState state) {for(int i=0;i<states.length;i++)if(states[i].equals(state))return i;throw new AssertionError("Missing material "+state);}
     private static final class World implements InvocationHandler {
         final Fixture fixture;final Map<BlockPos,BlockState> changed=new HashMap<>();
+        int rejectedWrites;
         final Map<ChunkPos,ProtoChunk> chunks=new HashMap<>();
         final WorldGenLevel level=(WorldGenLevel)Proxy.newProxyInstance(WorldGenLevel.class.getClassLoader(),new Class<?>[]{WorldGenLevel.class},this);
         World(Fixture fixture){this.fixture=fixture;}
@@ -642,7 +736,7 @@ public final class NativeBlockFeatureIntegrationTest {
                 }
                 case "setBlock" -> {
                     var pos=((BlockPos)args[0]).immutable();int y=pos.getY()-fixture.request.minY();
-                    if(y<0 || y>=fixture.column.length)yield false;
+                    if(y<0 || y>=fixture.column.length){rejectedWrites++;yield false;}
                     changed.put(pos,(BlockState)args[1]);yield true;
                 }
                 case "isEmptyBlock" -> get((BlockPos)args[0]).isAir();
