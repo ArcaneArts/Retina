@@ -155,13 +155,22 @@ fn aquifer_substance(x:u32,y:i32,z:u32,r:Request)->u32 {
     if caves.aquifer[1].y!=0u && material==caves.base[0].w && aquifer_at(aquifer_global(y-1),y-1)==caves.base[1].y {return result;}
     let bottom=aquifer_div(r.min_y,4)*4;let local=vec3<f32>(f32(x),f32(y-bottom),f32(z))*0.25;
     let noise=aquifer_barrier_value(local,r);
-    // Additional registered carvers lack a final-density value. Preserve an
-    // explicitly negative proxy for those cells, rather than passing solid density.
-    let density=min(-0.02,chamber_density(x,y,z,interpolate(local,r.tile_side*4u+1u).x,r));
-    if density+s12*aquifer_pressure(y,noise,status[0],status[1])>0.0 {return 3u;}
     let s13=aquifer_similar(distance[0],distance[2]);let s23=aquifer_similar(distance[1],distance[2]);
-    if s13>0.0 && density+s12*s13*aquifer_pressure(y,noise,status[0],status[2])>0.0 {return 3u;}
-    if s23>0.0 && density+s12*s23*aquifer_pressure(y,noise,status[1],status[2])>0.0 {return 3u;}
+    let p12=aquifer_pressure(y,noise,status[0],status[1]);
+    var p13=0.0;var p23=0.0;
+    if s13>0.0 {p13=aquifer_pressure(y,noise,status[0],status[2]);}
+    if s23>0.0 {p23=aquifer_pressure(y,noise,status[1],status[2]);}
+    // Additional registered carvers lack a final-density value. Preserve the
+    // negative proxy. Nonpositive pressures cannot overcome it, so avoid the
+    // full point graph unless a participating pair can actually form a barrier.
+    // Keep the original multiplication order in the final decisions.
+    var density=-0.02;
+    if p12>0.0 || p13>0.0 || p23>0.0 {
+        density=min(density,chamber_density(x,y,z,interpolate(local,r.tile_side*4u+1u).x,r));
+    }
+    if density+s12*p12>0.0 {return 3u;}
+    if s13>0.0 && density+s12*s13*p13>0.0 {return 3u;}
+    if s23>0.0 && density+s12*s23*p23>0.0 {return 3u;}
     return result;
 }
 @compute @workgroup_size(64)

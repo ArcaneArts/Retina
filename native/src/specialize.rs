@@ -449,6 +449,12 @@ impl Pipelines {
     pub fn cave<'a>(&'a self, entry: &str) -> &'a wgpu::ComputePipeline {
         &self.cave[entry]
     }
+    pub fn cached_cave(&self, entry: &str) -> Option<&wgpu::ComputePipeline> {
+        self.cave.get(&format!("{entry}_cached"))
+    }
+    pub fn cached_world(&self, entry: &str) -> Option<&wgpu::ComputePipeline> {
+        self.world.get(&format!("{entry}_cached"))
+    }
 }
 #[derive(Default)]
 pub(crate) struct State {
@@ -501,6 +507,8 @@ struct Job {
     material_layers: bool,
     aquifers: u8,
     terrain: bool,
+    cached_masks: bool,
+    cached_nodes: bool,
 }
 pub(crate) struct Compiler {
     sender: mpsc::Sender<Job>,
@@ -534,6 +542,8 @@ impl Compiler {
                             job.aquifers,
                             true,
                             job.terrain,
+                            job.cached_masks,
+                            job.cached_nodes,
                         )
                     }))
                     .unwrap_or_else(|_| Err("specialized GPU compilation panicked".into()));
@@ -569,9 +579,22 @@ impl Compiler {
         program: &RegistryProgram,
         terrain: bool,
         composition: bool,
+        cached_masks: bool,
     ) -> Result<Arc<State>, String> {
         let (mut source, horizontal_fields) = source_columns(program)?;
         source = crate::program::density_composition_source(&source, composition);
+        let cached_nodes = composition
+            && cached_masks
+            && crate::program::composition::CachedDensity::for_nodes(program).is_some();
+        let cached_masks = composition
+            && cached_masks
+            && crate::program::composition::CachedDensity::new(program).is_some();
+        if cached_masks {
+            source.push_str("\n// resident density mask and surface pipelines\n");
+        }
+        if cached_nodes {
+            source.push_str("\n// resident density node pipeline\n");
+        }
         // The entry-point set is part of pipeline identity even when graphs match.
         writeln!(source, "// material pipelines: {}", program.material_layers).unwrap();
         writeln!(
@@ -614,6 +637,8 @@ impl Compiler {
                     .as_ref()
                     .map_or(0, |a| if a.enabled { 2 } else { 1 }),
                 terrain,
+                cached_masks,
+                cached_nodes,
             })
             .map_err(|_| "GPU shader compiler stopped")?;
         self.cache.insert(key, state.clone());
@@ -641,6 +666,8 @@ pub(crate) fn compile(
         aquifers,
         true,
         true,
+        false,
+        false,
     )
 }
 
@@ -650,12 +677,14 @@ pub(crate) fn compile_interpreter(
     cave: &wgpu::BindGroupLayout,
     program: &str,
 ) -> Result<Pipelines, String> {
-    compile_program(device, world, cave, program, 0, true, 2, false, true)
+    compile_program(
+        device, world, cave, program, 0, true, 2, false, true, false, false,
+    )
 }
 
 fn compile_program(
     device: &wgpu::Device,
-    world: &wgpu::BindGroupLayout,
+    world_layout: &wgpu::BindGroupLayout,
     cave: &wgpu::BindGroupLayout,
     program: &str,
     horizontal_fields: u32,
@@ -663,9 +692,15 @@ fn compile_program(
     aquifers: u8,
     specialized: bool,
     terrain: bool,
+    cached_masks: bool,
+    cached_nodes: bool,
 ) -> Result<Pipelines, String> {
     let scope = device.push_error_scope(wgpu::ErrorFilter::Validation);
-    let make = |prefix: &str, suffix: &str, layout: &wgpu::BindGroupLayout, entries: &[&str]| {
+    let make = |program: &str,
+                prefix: &str,
+                suffix: &str,
+                layout: &wgpu::BindGroupLayout,
+                entries: &[&str]| {
         let source = format!(
             "{prefix}\n{}\n{program}\n{suffix}",
             include_str!("climate.wgsl")
@@ -728,12 +763,26 @@ fn compile_program(
     if terrain {
         world_entries.extend(interpolation_entries.iter().map(String::as_str));
     }
-    let world = make(
+    let mut world: HashMap<String, wgpu::ComputePipeline> = make(
+        program,
         include_str!("simplex.wgsl"),
         include_str!("noise3.wgsl"),
-        world,
+        world_layout,
         &world_entries,
     );
+    if cached_masks {
+        let cached_program = crate::program::composition::cached_source(program);
+        let pipelines: HashMap<String, wgpu::ComputePipeline> = make(
+            &cached_program,
+            include_str!("simplex.wgsl"),
+            include_str!("noise3.wgsl"),
+            world_layout,
+            &["surface_columns"],
+        );
+        for (entry, pipeline) in pipelines {
+            world.insert(format!("{entry}_cached"), pipeline);
+        }
+    }
     let material_source = if material_layers {
         format!(
             "{}\n{}",
@@ -758,18 +807,39 @@ fn compile_program(
     if aquifers > 1 {
         cave_entries.extend(["aquifer_surface", "aquifer_centers", "aquifer_barrier"]);
     }
-    let cave = make(
+    let mut cave_pipelines: HashMap<String, wgpu::ComputePipeline> = make(
+        program,
         include_str!("caves.wgsl"),
         &material_source,
         cave,
         &cave_entries,
     );
+    if cached_masks || cached_nodes {
+        let cached_program = crate::program::composition::cached_source(program);
+        let mut entries = ["cave_exterior", "cave_mask", "aquifer_mask"]
+            .into_iter()
+            .filter(|e| cached_masks && cave_entries.contains(e))
+            .collect::<Vec<_>>();
+        if cached_nodes {
+            entries.push("cave_nodes");
+        }
+        let pipelines: HashMap<String, wgpu::ComputePipeline> = make(
+            &cached_program,
+            include_str!("caves.wgsl"),
+            &material_source,
+            cave,
+            &entries,
+        );
+        for (entry, pipeline) in pipelines {
+            cave_pipelines.insert(format!("{entry}_cached"), pipeline);
+        }
+    }
     if let Some(error) = pollster::block_on(scope.pop()) {
         return Err(format!("specialized GPU program: {error}"));
     }
     Ok(Pipelines {
         world,
-        cave,
+        cave: cave_pipelines,
         horizontal_fields,
     })
 }

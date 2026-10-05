@@ -1,5 +1,6 @@
 //! Resident bytecode for registered density functions and surface predicates.
 use serde::Deserialize;
+pub(crate) mod composition;
 pub(crate) mod interpolation;
 pub(crate) use interpolation::Field as Interpolation;
 #[derive(Clone, Deserialize)]

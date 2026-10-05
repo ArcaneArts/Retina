@@ -62,9 +62,12 @@ pub(crate) struct Gpu {
     interpolation_interpreters:
         HashMap<(usize, usize, bool), std::sync::Arc<crate::specialize::Pipelines>>,
     interpolation_plans: HashMap<u32, std::sync::Arc<crate::program::interpolation::CachePlan>>,
+    cached_density_plans: HashMap<u32, crate::program::composition::CachedDensity>,
+    cached_node_plans: HashMap<u32, crate::program::composition::CachedDensity>,
     interpolation_cache: bool,
     specialized_terrain: bool,
     density_composition: bool,
+    cached_density_masks: bool,
 }
 
 pub(crate) struct GpuSample {
@@ -332,9 +335,13 @@ impl Gpu {
             wide_interpreter: None,
             interpolation_interpreters: HashMap::new(),
             interpolation_plans: HashMap::new(),
+            cached_density_plans: HashMap::new(),
+            cached_node_plans: HashMap::new(),
             interpolation_cache: std::env::var("RETINA_INTERPOLATION_CACHE").as_deref() != Ok("0"),
             specialized_terrain,
             density_composition: std::env::var("RETINA_DENSITY_COMPOSITION").as_deref() == Ok("1"),
+            cached_density_masks: std::env::var("RETINA_CACHED_DENSITY_MASKS").as_deref()
+                != Ok("0"),
         };
         gpu.add_profile(0, &vec![0; 672], &[0; 240], &[0; 32]);
         Ok(gpu)
@@ -467,6 +474,12 @@ impl Gpu {
                     profile_id,
                     std::sync::Arc::new(crate::program::interpolation::CachePlan::new(program)),
                 );
+                if let Some(plan) = crate::program::composition::CachedDensity::new(program) {
+                    self.cached_density_plans.insert(profile_id, plan);
+                }
+                if let Some(plan) = crate::program::composition::CachedDensity::for_nodes(program) {
+                    self.cached_node_plans.insert(profile_id, plan);
+                }
                 if program.scratch_values() > crate::program::COMPACT_VALUES {
                     self.wide_profiles.insert(profile_id);
                 }
@@ -475,6 +488,7 @@ impl Gpu {
                         program,
                         self.specialized_terrain,
                         self.density_composition && program.density_composition,
+                        self.cached_density_masks,
                     ) {
                         Ok(state) => {
                             self.pipeline.shader(profile_id, state.progress.clone());
@@ -561,7 +575,6 @@ impl Gpu {
         };
         let world_pipeline = |entry, fallback| selected.map_or(fallback, |p| p.world(entry));
         let terrain_pipeline = |entry, fallback| terrain.map_or(fallback, |p| p.world(entry));
-        let cave_pipeline = |entry, fallback| selected.map_or(fallback, |p| p.cave(entry));
         let density_program = profile
             .and_then(|p| p.registry_program.as_ref())
             .filter(|p| p.surface[2] == 0 && (!surface_probe || align_shores));
@@ -663,6 +676,37 @@ impl Gpu {
             }
             self.ensure_surface_lattice(floats * 4);
         }
+
+        let cached_masks = self.cached_density_masks
+            && composition
+            && self
+                .cached_density_plans
+                .get(&profile_id)
+                .is_some_and(|plan| {
+                    interpolation_headers
+                        .first()
+                        .is_some_and(|(_, header)| plan.covers(&gpu_requests[0], header))
+                });
+        let cave_pipeline = |entry, fallback| {
+            let cached = if entry == "cave_nodes" {
+                self.cached_density_masks
+                    && composition
+                    && self.cached_node_plans.get(&profile_id).is_some_and(|plan| {
+                        interpolation_headers
+                            .first()
+                            .is_some_and(|(_, header)| plan.covers_nodes(&gpu_requests[0], header))
+                    })
+            } else {
+                cached_masks
+            };
+            selected.map_or(fallback, |p| {
+                if cached {
+                    p.cached_cave(entry).unwrap_or_else(|| p.cave(entry))
+                } else {
+                    p.cave(entry)
+                }
+            })
+        };
 
         let cave_side = requests[0].padding & 255;
         let cave_width = cave_side * 16 + 2;
@@ -947,7 +991,24 @@ impl Gpu {
                 label: Some("Retina density surface extraction and slope halo"),
                 timestamp_writes: writes,
             });
-            pass.set_pipeline(terrain_pipeline("surface_columns", &self.surface_pipeline));
+            let cached_surface = self.cached_density_masks
+                && composition
+                && self
+                    .cached_density_plans
+                    .get(&profile_id)
+                    .is_some_and(|plan| {
+                        gpu_requests
+                            .iter()
+                            .zip(&interpolation_headers)
+                            .all(|(r, (_, header))| plan.covers_surface(r, header))
+                            && interpolation_headers.len() == gpu_requests.len()
+                    });
+            pass.set_pipeline(
+                selected
+                    .filter(|_| cached_surface)
+                    .and_then(|p| p.cached_world("surface_columns"))
+                    .unwrap_or_else(|| terrain_pipeline("surface_columns", &self.surface_pipeline)),
+            );
             pass.set_bind_group(0, group, &[]);
             pass.dispatch_workgroups(surface_dispatch.div_ceil(64), requests.len() as u32, 1);
         }

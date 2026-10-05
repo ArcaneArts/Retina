@@ -47,7 +47,7 @@ so its additional point-evaluation call graph need not inflate register pressure
 in production kernels. Compilation finishing during a request cannot change its
 layout or stage selection.
 
-## Prototype measurements
+## Initial prototype measurements
 
 Apple M4 Max / Metal, seed 123456789, complete vanilla and Terralith profiles
 including structures and decorations. These exploratory runs have **two measured
@@ -67,8 +67,8 @@ These remain slower than the production mixed path documented in
 [GPU stage selection](GPU_STAGE_SELECTION.md). In the vanilla mixed experiment,
 the aquifer mask alone takes about 687 ms per region, despite faster material and
 column kernels. Moving composition onto the GPU has not demonstrated a net
-throughput improvement. Removing heavy raw-field fallback call graphs from
-provably resident point queries is a possible next step, not an implemented gain.
+throughput improvement. The resident-query optimization below now removes those
+heavy raw-field fallback call graphs for covered requests.
 
 All 8,192 complete NBT comparisons pass across the original/parallel-probe and
 interpreted/mixed pairs. Each pair's two measured MCA files total exactly
@@ -77,6 +77,114 @@ interpreter transfers approximately 14.13 / 45.79 MB uploaded/read back per
 vanilla region and 11.89 / 42.09 MB per Terralith region. Transfer differences
 include existing sparse-query batching. These are experimental terrain outputs,
 not an equality claim against production's final-field interpolation.
+
+## Resident density kernels and pressure pruning
+
+Specialized composition now has additional cave-node, cave-mask, exterior,
+aquifer-mask and surface-extraction pipelines which read resident field samples
+without carrying raw interpolation-input graphs in their call trees. The normal
+prepasses still populate those fields with the full GPU samplers. No new GPU
+pass, dense output, CPU spatial sampler or readback is added.
+
+The host derives eligibility from the loaded graph and checks the actual uploaded
+cache headers for each dispatch. Surface-density queries must retain their XYZ
+coordinates. Cave-node eligibility additionally checks every climate/cave root,
+including unspecified root slots. All required fields need full fine-grid
+coverage, binary cell sizes and representable corner coordinates within
+±8,388,608. Node endpoints include the rounded vertical and horizontal grid edges;
+surface extraction includes its actual four/six-block probe halo. Partial,
+coarse, remapped, nonbinary or distant caches use the ordinary GPU sampler. This
+selection never rejects generation. Material, lake and aquifer-field kernels
+retain the general sampler for their separate contexts and out-of-tile probes.
+
+The fast variants disconnect unreachable raw input fallbacks. Missing interval
+certificates become unbounded, causing evaluation of the actual resident point.
+The compiled entry set is part of the profile cache identity; variants are absent
+while compilation is pending and the interpreter continues to operate.
+`RETINA_CACHED_DENSITY_MASKS=0`, or the benchmark's
+`--cached-density-masks disabled`, disables all these variants for diagnostics.
+Composition remains off by default, so production compiles no additional variants.
+
+Aquifer pressure now evaluates final point density only if a participating pair
+has positive raw pressure. Its density proxy is at most −0.02 and participating
+similarities are positive, so nonpositive pressures cannot produce a barrier.
+The original multiplication order and barrier decisions are retained. This
+pruning also applies to the ordinary production path.
+
+Matched Apple M4 Max / Metal runs use seed 123456789, the complete current vanilla
+and Terralith profiles, **twenty measured regions and two warmups** each. Builds,
+tests and benchmarks run sequentially; other desktop activity remains uncontrolled.
+Both rows below enable the same experimental composition semantics.
+
+| Profile | Original composition mean ms | Resident kernels mean ms | Original chunks/s | Resident chunks/s | Two-caller resident chunks/s |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Vanilla | 1,039.73 | 228.58 | 985 | 4,475 | 5,185 |
+| Terralith | 2,366.06 | 439.14 | 433 | 2,330 | 2,647 |
+
+Original/candidate serial GPU stage milliseconds per region are 174.65 → 13.78
+vanilla and 311.63 → 8.99 Terralith for cave nodes, and 691.02 → 11.88 / 1,719.91 →
+14.42 for the aquifer mask. Device stages and worker totals overlap; they are not
+additive components of region latency. The small surface-only experiment did not
+establish an independent whole-region gain. Remaining costs include interpreted
+terrain input/bounds, column/material dispatch and block-position masks.
+
+All **81,920** serial/concurrent chunk NBT comparisons match the original composed
+implementation. Twenty-region file totals remain 155,099,136 / 132,972,544 bytes.
+Serial uploads/readbacks remain about 14.297 / 45.976 MB per vanilla region and
+12.619 / 42.542 MB per Terralith region; a few bytes differ through existing sparse
+query batching. Candidate serial/two-caller peak process RSS is 1,084 / 1,158 MiB
+vanilla and 1,987 / 2,040 MiB Terralith, including comparison readers and compiler
+memory. This is not a memory-reduction claim.
+
+Initialization is driver-warm at 44–48 ms. Profile registration takes 528–549 ms
+vanilla or 1,018–1,034 ms Terralith. Forced-specialization first warmups take about
+977–997 / 4,469–4,487 ms; measured compilation is 684–694 / 3,700–3,720 ms. They
+wait for all optional variants and do not demonstrate a cold-start improvement.
+Automatic runs with no warmups produce the first region in 434 / 675 ms while
+specialization proceeds asynchronously. Their twenty-region means are 248.03 /
+536.16 ms. All 40,960 records match the forced-specialized composition baseline,
+and a further 2,048 regenerated records match after compilation becomes ready.
+These are driver-warm activation checks; cold generic shader activation and
+substantial profile compilation still require further work.
+A shorter Terralith check finishes two regions while compiler status is still
+pending, then waits 1,966 ms for readiness; all 2,048 initial and 1,024 regenerated
+records match. The benchmark now measures that wait separately from regeneration.
+
+Production-default checks against the retained pre-change library also preserve
+all **40,960** chunk records. Their means are 175.26 / 230.93 ms (5,833 / 4,429
+chunks/s), versus the earlier 170.03 / 224.42 ms runs. These sequential checks
+establish output preservation, not a production speedup. Production remains faster
+than composition, so the experiment is still opt-in.
+
+Artifacts are `build/goal-baseline/density-composition/`: the original library is
+`final.dylib`, the candidate is `cached-surface.dylib`, and matched results are
+`{vanilla,terralith}-general-composition-20`, `*-cached-kernels-20-{1,2}` and
+`*-production-kernels-20-1`. Two-region pressure/mask/node trials isolate the
+largest changes; they are not substituted for the twenty-region table above.
+The candidate SHA-256 is
+`05b2069e32a785571dd269b265804a2ce3a29d2a0ded233349124077165151d9`.
+`resident-kernels-manifest.json` retains all library/profile hashes and run records.
+
+`interpolationTest nativeInterpolationGpuTest aquiferTest regionTest previewTest
+snowTest build` passes with composition enabled, including 51 native unit checks,
+8,192 Minecraft-reference composition columns and 3,072,000 aquifer voxel
+classifications. Checks cover nonbinary fallback, negative chunk/halo boundaries,
+MCA metadata, preservation of edits and partial slots, DH temporary caching and
+promotion, concurrent edits, failure cleanup and regular-ice snow exclusion.
+Unit cases additionally cover missing/coarse/short headers, rounded node endpoints,
+four/six-block surface halos, remapped climate/cave operands and far coordinates.
+The combined log is `build/density-cached-kernel-validation.log`.
+
+A follow-up experiment baked the immutable registered density/explicit-height
+mode and program-presence branches into all specialized kernels, preserving the
+dynamic rounding identity. Two-region composition trials matched 4,096 NBT records
+but showed no convincing throughput gain: 232.29 / 470.49 ms vanilla/Terralith,
+compared with 243.60 / 444.87 ms in the preceding small resident-kernel runs.
+The experiment was reverted. Its first shader activation waited 20,420 / 83,907
+ms for forced compilation; these new identities were cold relative to the prior
+driver-warm pipelines, so those waits are not evidence of a comparative startup
+regression. Raw results and `profile-mode.dylib` are retained under the same
+artifact directory. The experiment does not change the production generator.
 
 ## Validation and remaining work
 
