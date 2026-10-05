@@ -654,6 +654,9 @@ struct PaletteScratch {
 }
 impl PaletteScratch {
     fn build(&mut self, values: &[u16], domain: usize) {
+        self.build_with_indices::<true>(values, domain);
+    }
+    fn build_with_indices<const INDICES: bool>(&mut self, values: &[u16], domain: usize) {
         for &id in &self.palette {
             self.lookup[id as usize] = u32::MAX;
         }
@@ -667,14 +670,18 @@ impl PaletteScratch {
             self.lookup[first as usize] = 0;
             return;
         }
-        self.indices.resize(values.len(), 0);
-        for (&id, index) in values.iter().zip(&mut self.indices) {
+        if INDICES {
+            self.indices.resize(values.len(), 0);
+        }
+        for (i, &id) in values.iter().enumerate() {
             let entry = &mut self.lookup[id as usize];
             if *entry == u32::MAX {
                 *entry = self.palette.len() as u32;
                 self.palette.push(id);
             }
-            *index = *entry;
+            if INDICES {
+                self.indices[i] = *entry;
+            }
         }
     }
 }
@@ -763,7 +770,7 @@ fn encode_chunk(
         nbt.compound("block_states");
         if let Some(profile) = profile {
             let values = &blocks[section as usize * 4096..(section as usize + 1) * 4096];
-            palette.build(values, profile.materials.len());
+            palette.build_with_indices::<false>(values, profile.materials.len());
             occupied.push(
                 palette.palette.len() != 1
                     || profile.heightmap_masks[palette.palette[0] as usize] != 0,
@@ -773,9 +780,10 @@ fn encode_chunk(
                 nbt.0.extend_from_slice(&profile.material_nbt[id as usize]);
             }
             if palette.palette.len() > 1 {
-                nbt.packed(
+                nbt.packed_palette(
                     "data",
-                    &palette.indices,
+                    values,
+                    &palette.lookup,
                     palette_bits(palette.palette.len()).max(4),
                 );
             }
@@ -912,6 +920,38 @@ fn palette_bits(length: usize) -> u32 {
     usize::BITS - (length - 1).leading_zeros()
 }
 impl Nbt {
+    /// Pack final block IDs through their section-local palette directly. The
+    /// palette keeps first-occurrence order; no temporary u32 index pass is needed.
+    fn packed_palette(&mut self, name: &str, values: &[u16], lookup: &[u32], bits: u32) {
+        match bits {
+            4 => self.packed_palette_bits::<4>(name, values, lookup),
+            5 => self.packed_palette_bits::<5>(name, values, lookup),
+            6 => self.packed_palette_bits::<6>(name, values, lookup),
+            _ => self.packed_palette_generic(name, values, lookup, bits),
+        }
+    }
+    fn packed_palette_bits<const BITS: u32>(&mut self, name: &str, values: &[u16], lookup: &[u32]) {
+        self.packed_palette_generic(name, values, lookup, BITS);
+    }
+    #[inline(always)]
+    fn packed_palette_generic(&mut self, name: &str, values: &[u16], lookup: &[u32], bits: u32) {
+        let per_long = 64 / bits as usize;
+        self.named(12, name);
+        let longs = values.len().div_ceil(per_long);
+        self.0.extend_from_slice(&(longs as i32).to_be_bytes());
+        let start = self.0.len();
+        self.0.resize(start + longs * 8, 0);
+        for (group, output) in values
+            .chunks(per_long)
+            .zip(self.0[start..].chunks_exact_mut(8))
+        {
+            let mut word = 0u64;
+            for (i, &material) in group.iter().enumerate() {
+                word |= (lookup[material as usize] as u64) << (i * bits as usize);
+            }
+            output.copy_from_slice(&word.to_be_bytes());
+        }
+    }
     fn packed(&mut self, name: &str, values: &[u32], bits: u32) {
         match bits {
             4 => self.packed_bits::<4>(name, values),
@@ -941,6 +981,173 @@ impl Nbt {
                 word |= (value as u64) << (i * bits as usize);
             }
             output.copy_from_slice(&word.to_be_bytes());
+        }
+    }
+}
+
+#[cfg(test)]
+mod palette_tests {
+    use super::*;
+    use std::hint::black_box;
+
+    fn encode_sections(
+        sections: &[Vec<u16>],
+        domain: usize,
+        materials: &[Vec<u8>],
+        indexed: bool,
+        palette: &mut PaletteScratch,
+        nbt: &mut Nbt,
+    ) -> usize {
+        let mut bytes = 0;
+        for values in sections {
+            if indexed {
+                palette.build(values, domain);
+            } else {
+                palette.build_with_indices::<false>(values, domain);
+            }
+            nbt.0.clear();
+            nbt.compound("block_states");
+            nbt.list("palette", 10, palette.palette.len());
+            for &id in &palette.palette {
+                nbt.0.extend_from_slice(&materials[id as usize]);
+            }
+            if palette.palette.len() > 1 {
+                let bits = palette_bits(palette.palette.len()).max(4);
+                if indexed {
+                    nbt.packed("data", &palette.indices, bits);
+                } else {
+                    nbt.packed_palette("data", values, &palette.lookup, bits);
+                }
+            }
+            nbt.end();
+            bytes += black_box(&nbt.0).len();
+        }
+        bytes
+    }
+
+    #[test]
+    fn direct_palette_keeps_indices_order_padding_and_reused_uniform_sections() {
+        let mut direct = PaletteScratch::default();
+        let mut indexed = PaletteScratch::default();
+        let mut reference = Nbt::default();
+        let mut actual = Nbt::default();
+        for count in [
+            1, 2, 3, 16, 17, 32, 33, 64, 65, 128, 129, 256, 257, 512, 513, 1024, 1025, 2048, 2049,
+            4096, 1,
+        ] {
+            // All bit widths reachable by a section, with noncontiguous high
+            // block IDs and an arbitrary first-occurrence palette order.
+            let values: Vec<u16> = (0..4096)
+                .map(|i| (65535 - ((i * 2053) % count) * 13) as u16)
+                .collect();
+            direct.build_with_indices::<false>(&values, 65536);
+            indexed.build(&values, 65536);
+            assert_eq!(direct.palette, indexed.palette);
+            if count == 1 {
+                assert!(direct.indices.is_empty());
+                continue;
+            }
+            assert!(
+                direct.indices.is_empty(),
+                "direct packing has no index buffer"
+            );
+            let bits = palette_bits(direct.palette.len()).max(4);
+            actual.0.clear();
+            reference.0.clear();
+            actual.packed_palette("data", &values, &direct.lookup, bits);
+            reference.packed("data", &indexed.indices, bits);
+            assert_eq!(actual.0, reference.0, "palette width {bits}");
+            let data = &actual.0[11..]; // Named long array: type, name length/name, array length.
+            let per_long = 64 / bits;
+            for (i, &value) in values.iter().enumerate() {
+                let start = i / per_long as usize * 8;
+                let word = u64::from_be_bytes(data[start..start + 8].try_into().unwrap());
+                let index = (word >> (i % per_long as usize * bits as usize)) & ((1 << bits) - 1);
+                assert_eq!(direct.palette[index as usize], value);
+            }
+            let used = values.len() % per_long as usize;
+            if used != 0 {
+                let word = u64::from_be_bytes(data[data.len() - 8..].try_into().unwrap());
+                assert_eq!(word >> (used * bits as usize), 0, "unused final bits");
+            }
+        }
+    }
+
+    #[test]
+    #[ignore = "requires actual MCA section fixtures in RETINA_PALETTE_FIXTURES"]
+    fn actual_section_palette_encoding_benchmark() {
+        let root = std::path::PathBuf::from(std::env::var("RETINA_PALETTE_FIXTURES").unwrap());
+        for name in ["vanilla", "terralith"] {
+            let profile: serde_json::Value =
+                serde_json::from_slice(&fs::read(root.join(format!("{name}.json"))).unwrap())
+                    .unwrap();
+            let materials: Vec<_> = profile["materials"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(material_nbt)
+                .collect();
+            let bytes = fs::read(root.join(format!("{name}-sections.bin"))).unwrap();
+            assert_eq!(bytes.len() % 8192, 0);
+            let sections: Vec<Vec<u16>> = bytes
+                .chunks_exact(8192)
+                .map(|s| {
+                    s.chunks_exact(2)
+                        .map(|v| u16::from_le_bytes(v.try_into().unwrap()))
+                        .collect()
+                })
+                .collect();
+            let mut palettes = [PaletteScratch::default(), PaletteScratch::default()];
+            let mut nbts = [Nbt::default(), Nbt::default()];
+            for section in &sections {
+                for variant in 0..2 {
+                    encode_sections(
+                        std::slice::from_ref(section),
+                        materials.len(),
+                        &materials,
+                        variant == 0,
+                        &mut palettes[variant],
+                        &mut nbts[variant],
+                    );
+                }
+                assert_eq!(nbts[0].0, nbts[1].0, "{name}: changed section NBT");
+            }
+            let mut samples = [Vec::new(), Vec::new()];
+            for iteration in 0..30 {
+                // Reverse the paired order on every iteration. Timers exclude
+                // registry loading and include palette construction and writes.
+                for variant in if iteration % 2 == 0 { [0, 1] } else { [1, 0] } {
+                    let start = Instant::now();
+                    let bytes = encode_sections(
+                        black_box(&sections),
+                        materials.len(),
+                        &materials,
+                        variant == 0,
+                        &mut palettes[variant],
+                        &mut nbts[variant],
+                    );
+                    black_box(bytes);
+                    if iteration >= 5 {
+                        samples[variant].push(start.elapsed().as_secs_f64() * 1000.0);
+                    }
+                }
+            }
+            let report = serde_json::json!({"profile":name,"sections":sections.len(),"indexed_ms":samples[0],"direct_ms":samples[1]});
+            fs::write(
+                root.join(format!("{name}-palette-benchmark.json")),
+                serde_json::to_vec_pretty(&report).unwrap(),
+            )
+            .unwrap();
+            for variant in 0..2 {
+                samples[variant].sort_by(f64::total_cmp);
+            }
+            eprintln!(
+                "{name}: {} exact sections; indexed median {:.3} ms, direct median {:.3} ms; {:.3}x",
+                sections.len(),
+                samples[0][12],
+                samples[1][12],
+                samples[0][12] / samples[1][12]
+            );
         }
     }
 }

@@ -4,6 +4,10 @@ All terrain features remain enabled. The optimization changes how registered dat
 prepared and encoded, with unchanged blocks, biome palettes, heightmaps, structure
 metadata, entities and loot NBT on the matched Metal fixtures.
 
+The later [direct palette packing milestone](DIRECT_PALETTE_PACKING.md) removes
+the mixed-section index buffer and reports fresh actual-profile measurements,
+including the limits of its whole-region performance evidence.
+
 ## Implementation
 
 - **NBT:** uniform sections emit only their palette entry. Rayon work units recycle

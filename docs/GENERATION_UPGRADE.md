@@ -82,6 +82,10 @@ masks and cheaper Rust crown/canopy lookups while preserving final chunk data.
 The [final heightmap scan experiment](HEIGHTMAP_SCAN_EXPERIMENT.md) compared an
 unfinished-column bitset with the existing row scan. It preserved NBT but did not
 show a reliable whole-region speedup, so the production loop was retained.
+The [direct palette encoder](DIRECT_PALETTE_PACKING.md) removes the temporary
+mixed-section index pass. Paired real-section benchmarks reduce encoding time
+about 8%, with exact NBT; complete-region repeats show lower NBT worker time but
+do not establish a reliable whole-region speedup.
 
 ## World-preset registry lifecycle
 
