@@ -6,6 +6,11 @@ same interpolation cell. Previously each test loaded or evaluated those corners
 again, including expensive registered input graphs outside the resident atlas.
 The new sampler retains the corners already used by that invocation.
 
+The subsequent [interval-vertex priming milestone](GPU_PRIMED_LAKE_CORNERS.md)
+also reuses samples already evaluated by interval certificates. It retains the
+same cache storage and records separate paired measurements and GPU oracles.
+The measurements below describe the original point-cache milestone.
+
 Each registered field has an exact lower-coordinate key, an exact material-context
 key, an eight-bit validity mask and eight float values in WGSL private storage.
 Only required corners are computed. A later query can add newly required corners;
@@ -133,8 +138,8 @@ Evidence and retained profiles/libraries are in `build/goal-baseline/lake-point-
 logs are `build/source-preparation-{vanilla,terralith}.log`. Paired final-bundle
 measurements use retained `lake-point-cache.dylib`, SHA-256
 `bcb0d7b639b91e03e2f2b4f62faa61a730a5c028aef967b88ec081959755e3dc`.
-The current packaged native library and retained `lake-point-cache-formatted.dylib`
-are SHA-256 `7118b1d454b9091d8addf2d0faaf8a02b4607258072a195e4d1b041f95190924`.
+The library packaged at commit `a5a009f`, retained as `lake-point-cache-formatted.dylib`,
+is SHA-256 `7118b1d454b9091d8addf2d0faaf8a02b4607258072a195e4d1b041f95190924`.
 
 ## Rejected direct interval-program trial
 

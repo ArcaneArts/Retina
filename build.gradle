@@ -155,6 +155,19 @@ tasks.register('nativeInterpolationGpuTest', Exec) {
             '--target-dir', nativeTarget.get().asFile.absolutePath, '--', '--ignored', '--nocapture'])
 }
 
+tasks.register('nativeInterpolationPrimedGpuTest', Exec) {
+    group = 'verification'
+    description = 'Compare primed lake corners and interval endpoints with an independent GPU interpreter.'
+    dependsOn 'interpolationTest'
+    workingDir nativeDirectory
+    environment 'RETINA_PROGRAM_PARITY_PROFILE', file('build/registry-interpolation-profile.json').absolutePath
+    environment 'RETINA_PROGRAM_PARITY_PRIMED_CORNERS', '1'
+    commandLine(nativeCargoCommand + ['test', '--release', '--locked', '--lib',
+            'specialized_roots_match_interpreter_on_real_gpu',
+            '--target-dir', nativeTarget.get().asFile.absolutePath, '--', '--ignored', '--nocapture'])
+}
+gpuTest.dependsOn 'nativeInterpolationPrimedGpuTest'
+
 ['Specialized', 'Interpreter', 'Far'].each { mode ->
     tasks.register("nativeInterpolationCache${mode}GpuTest", Exec) {
         group = 'verification'

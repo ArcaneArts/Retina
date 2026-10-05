@@ -583,6 +583,7 @@ impl Compiler {
         composition: bool,
         cached_masks: bool,
         lake_point_cache: bool,
+        lake_primed_corners: bool,
     ) -> Result<Arc<State>, String> {
         let (mut source, horizontal_fields) = source_columns(program)?;
         source = crate::program::density_composition_source(&source, composition);
@@ -602,6 +603,14 @@ impl Compiler {
             composition && lake_point_cache && !program.interpolations.is_empty();
         if lake_point_cache {
             source.push_str("\n// invocation-local lake interpolation cache\n");
+            if lake_primed_corners {
+                writeln!(
+                    source,
+                    "\n{}",
+                    crate::program::interpolation::PRIMED_CORNERS_SOURCE_KEY
+                )
+                .unwrap();
+            }
         }
         // The entry-point set is part of pipeline identity even when graphs match.
         writeln!(source, "// material pipelines: {}", program.material_layers).unwrap();

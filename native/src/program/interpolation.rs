@@ -13,6 +13,7 @@ pub struct Field {
 
 pub(crate) const CACHE_FLAG: u32 = 1 << 27;
 pub(crate) const CACHE_WORDS: usize = 8;
+pub(crate) const PRIMED_CORNERS_SOURCE_KEY: &str = "// primed interval vertices for lake points";
 
 /// Only pure, reachable density fields can share a context-free spatial cache.
 /// Material context, or an input which depends on it, keeps the direct sampler.
@@ -297,10 +298,55 @@ pub(crate) fn point_cached(field: usize) -> String {
 }
 
 pub(crate) fn point_cached_source(source: &str) -> String {
+    // Selection is captured in the job's source identity. Background compilation
+    // must not reread environment variables and change a cached job's semantics.
+    if source.contains(PRIMED_CORNERS_SOURCE_KEY) {
+        return primed_corner_source(source);
+    }
     let mut result = source.to_owned();
     for field in 0..source.matches("fn interpolation_field_").count() {
         result = result.replace(&specialized(field), &point_cached(field));
     }
+    result
+}
+
+/// Reuse already evaluated interval vertices in the existing cell cache. The
+/// final two vertices per axis form the last cell in the interval box; descending
+/// lake scans query it first. Singleton axes populate only sampled mask bits.
+/// Exact point checks retain direct fallback for different f32 arithmetic.
+fn primed_corner_source(source: &str) -> String {
+    let fields = source.matches("fn interpolation_field_").count();
+    let mut result = source.to_owned();
+    let mut begin = "fn lake_begin_bounds(field:u32,lower:vec3<f32>){switch field{\n".to_owned();
+    let mut store =
+        "fn lake_store_bounds(field:u32,slot:u32,point:vec3<f32>,value:f32){switch field{\n"
+            .to_owned();
+    for field in 0..fields {
+        let name = format!("lake_field_{field}");
+        result = result.replace(&specialized(field), &point_cached(field));
+        writeln!(begin,"case {field}u:{{{name}_lower=bitcast<vec3<u32>>(lower);{name}_context=vec4<u32>(0u);{name}_mask=0u;}}\n").unwrap();
+        writeln!(store,"case {field}u:{{
+let info=bytecode[12]+{field}u*4u;
+let step=vec3<f32>(f32(bytecode[info+1u]),f32(bytecode[info+2u]),f32(bytecode[info+1u]));
+let upper=vec3<f32>(f32(slot&1u),f32((slot>>1u)&1u),f32((slot>>2u)&1u));
+let expected=bitcast<vec3<f32>>({name}_lower)+upper*step;
+if all(bitcast<vec3<u32>>(expected)==bitcast<vec3<u32>>(point)) && all({name}_context==vec4<u32>(0u)){{
+{name}_values[slot]=value;{name}_mask|=1u<<slot;
+}}
+}}\n").unwrap();
+    }
+    begin.push_str("default:{} }}\n");
+    store.push_str("default:{} }}\n");
+    result = result.replace(
+        "for(var y=0u;y<size.y;y++){for(var z=0u;z<size.z;z++){for(var x=0u;x<size.x;x++){",
+        "let prime_start=max(size,vec3<u32>(2u))-vec3<u32>(2u);\nlet prime_lower=lower+vec3<f32>(prime_start)*step;\nlake_begin_bounds(field,prime_lower);\nfor(var y=0u;y<size.y;y++){for(var z=0u;z<size.z;z++){for(var x=0u;x<size.x;x++){",
+    );
+    result = result.replace(
+        "result=vec2<f32>(min(result.x,value),max(result.y,value));",
+        "if x>=prime_start.x && y>=prime_start.y && z>=prime_start.z{let corner=vec3<u32>(x,y,z)-prime_start;lake_store_bounds(field,corner.x+corner.y*2u+corner.z*4u,point,value);}\nresult=vec2<f32>(min(result.x,value),max(result.y,value));",
+    );
+    result.push_str(&begin);
+    result.push_str(&store);
     result
 }
 

@@ -69,6 +69,7 @@ pub(crate) struct Gpu {
     density_composition: bool,
     cached_density_masks: bool,
     lake_point_cache: bool,
+    lake_primed_corners: bool,
 }
 
 pub(crate) struct GpuSample {
@@ -130,6 +131,11 @@ impl Gpu {
             _ => info.backend != wgpu::Backend::Metal,
         };
         let lake_point_cache = match std::env::var("RETINA_LAKE_POINT_CACHE").as_deref() {
+            Ok("0") => false,
+            Ok("1") => true,
+            _ => info.backend == wgpu::Backend::Metal,
+        };
+        let lake_primed_corners = match std::env::var("RETINA_LAKE_PRIMED_CORNERS").as_deref() {
             Ok("0") => false,
             Ok("1") => true,
             _ => info.backend == wgpu::Backend::Metal,
@@ -352,6 +358,7 @@ impl Gpu {
             cached_density_masks: std::env::var("RETINA_CACHED_DENSITY_MASKS").as_deref()
                 != Ok("0"),
             lake_point_cache,
+            lake_primed_corners,
         };
         gpu.add_profile(0, &vec![0; 672], &[0; 240], &[0; 32]);
         Ok(gpu)
@@ -500,6 +507,7 @@ impl Gpu {
                         self.density_composition && program.density_composition,
                         self.cached_density_masks,
                         self.lake_point_cache,
+                        self.lake_primed_corners,
                     ) {
                         Ok(state) => {
                             self.pipeline.shader(profile_id, state.progress.clone());
@@ -1782,6 +1790,7 @@ impl PendingSample {
 #[cfg(test)]
 mod mapping_tests {
     use super::*;
+    use std::fmt::Write;
     #[test]
     fn rejected_specialization_leaves_interpreter_device_usable() {
         let mut gpu = Gpu::new(std::sync::Arc::new(crate::pipeline::Metrics::default())).unwrap();
@@ -1839,7 +1848,9 @@ mod mapping_tests {
         }
         let registry = profile.registry_program.as_ref().unwrap();
         let interpreted = std::env::var_os("RETINA_PROGRAM_PARITY_INTERPRETER").is_some();
-        let point_cached = std::env::var_os("RETINA_PROGRAM_PARITY_POINT_CACHE").is_some();
+        let primed_corners = std::env::var_os("RETINA_PROGRAM_PARITY_PRIMED_CORNERS").is_some();
+        let point_cached =
+            primed_corners || std::env::var_os("RETINA_PROGRAM_PARITY_POINT_CACHE").is_some();
         let field_cached = std::env::var_os("RETINA_PROGRAM_PARITY_INTERPOLATION_CACHE").is_some();
         // Specialized interpolation inputs can read the horizontal atlas on
         // aligned corners. Populate both caches, as production does, even when
@@ -1927,7 +1938,7 @@ mod mapping_tests {
                 );
         }
         if point_cached {
-            assert!(!interpreted && !bounds_check && coordinate_expected.is_none());
+            assert!(!interpreted && !bounds_check);
             // Repeated queries within one invocation exercise reuse, newly needed
             // corners, cell changes and context invalidation. The independent
             // interpreter always bypasses both caches. Count every root mismatch,
@@ -1953,12 +1964,63 @@ columns[at+2u]=Column(i32(mismatches),0u,0u);
 }}"
             );
         }
-        let reference = crate::program::interpreter_body(
+        let mut reference = crate::program::interpreter_body(
             1024,
             registry.interpolation_depth(),
             "run_reference",
             false,
         );
+        if primed_corners {
+            // The original bounds implementation samples the independent
+            // interpreter and bypasses both caches. Check endpoints bit for bit,
+            // then sample every graph with the newly primed production cache.
+            let mut bound_reference = crate::program::density_bounds_source(1024);
+            for symbol in [
+                "density_composed",
+                "bounds_unknown",
+                "bounds_finite",
+                "bounds_widen",
+                "bounds_product",
+                "interpolation_bounds",
+                "run_density_bounds",
+            ] {
+                bound_reference = bound_reference.replace(symbol, &format!("parity_{symbol}"));
+            }
+            bound_reference = bound_reference.replace(
+                "run_interpolation_input",
+                "parity_reference_interpolation_input",
+            );
+            reference.push_str("\nfn parity_reference_interpolation_input(field:u32,point:vec3<f32>,r:Request)->f32{return run_reference(bytecode[15]+field,point,r,vec4<f32>(0.0))[0];}\n");
+            reference.push_str(&bound_reference);
+            kernel = kernel.replace("var mismatches=0u;", "var mismatches=0u;var primed=0u;");
+            kernel = kernel.replace("let context=vec4<f32>(", "let changed_context=vec4<f32>(");
+            kernel = kernel.replace(
+                "let reference=run_reference(program,point,r,context);",
+                "let context=select(vec4<f32>(0.0),changed_context,query>=12u);\n\
+                let step=vec3<f32>(4.0,8.0,4.0);let cell=floor(point/step)*step;\n\
+                var lo=cell;var hi=cell+step;\n\
+                switch phase%6u{\n\
+                case 0u:{lo=point;hi=point;}\n\
+                case 1u:{hi=cell+step*2.0;}\n\
+                case 2u:{lo=point;hi=point+vec3<f32>(0.125);}\n\
+                case 3u:{hi=cell+vec3<f32>(0.0,8.0,0.0);}\n\
+                case 4u:{hi=cell+vec3<f32>(4096.0);}\n\
+                default:{}\n}\n\
+                let original_bound=parity_run_density_bounds(1u,lo,hi,r);\n\
+                let bound=run_density_bounds(1u,lo,hi,r);\n\
+                if any(bitcast<vec2<u32>>(original_bound)!=bitcast<vec2<u32>>(bound)){mismatches+=1u;}\n\
+                PRIMED_MASK_COUNT\n\
+                let reference=run_reference(program,point,r,context);",
+            );
+            let masks = (0..registry.interpolations.len())
+                .map(|field| format!("primed+=countOneBits(lake_field_{field}_mask);\n"))
+                .collect::<String>();
+            kernel = kernel.replace("PRIMED_MASK_COUNT", &masks);
+            kernel = kernel.replace(
+                "columns[at+2u]=Column(i32(mismatches),0u,0u);",
+                "columns[at+2u]=Column(i32(mismatches),0u,0u);columns[at+5u]=Column(i32(primed),0u,0u);",
+            );
+        }
         let mut program_source = if interpreted {
             kernel = kernel.replace("var actual:array<f32,6>;switch program{case 0u:{actual=run_climate(point,r,context);}case 1u:{actual=run_surface_density(point,r,context);}case 2u:{actual=run_final_density(point,r,context);}default:{actual=run_program(program,point,r,context);}}", "let actual=run_program(program,point,r,context);");
             let capacity = if registry.scratch_values() <= crate::program::COMPACT_VALUES {
@@ -1988,6 +2050,14 @@ columns[at+2u]=Column(i32(mismatches),0u,0u);
             crate::specialize::source(registry).unwrap()
         };
         if point_cached {
+            if primed_corners {
+                writeln!(
+                    program_source,
+                    "\n{}",
+                    crate::program::interpolation::PRIMED_CORNERS_SOURCE_KEY
+                )
+                .unwrap();
+            }
             program_source = crate::program::interpolation::point_cached_source(&program_source);
         }
         let source = format!(
@@ -2165,7 +2235,11 @@ columns[at+2u]=Column(i32(mismatches),0u,0u);
         let words: &[u32] = bytemuck::cast_slice(&data);
         let mut differences = 0;
         let mut finite_bounds = 0;
+        let mut primed_samples = 0;
         for sample in 0..count {
+            if primed_corners {
+                primed_samples += words[sample * 18 + 15] as usize;
+            }
             if bounds_check && sample / samples_per_program > 0 {
                 let lower = f32::from_bits(words[sample * 18 + 12]);
                 let upper = f32::from_bits(words[sample * 18 + 13]);
@@ -2181,7 +2255,7 @@ columns[at+2u]=Column(i32(mismatches),0u,0u);
             for root in 0..6 {
                 let old = words[sample * 18 + root];
                 let new = words[sample * 18 + 6 + root];
-                if coordinate_noise.is_some() && sample / 64 == 1 {
+                if !point_cached && coordinate_noise.is_some() && sample / 64 == 1 {
                     let expected = words[sample * 18 + 12 + root];
                     assert_eq!(
                         old,
@@ -2196,7 +2270,7 @@ columns[at+2u]=Column(i32(mismatches),0u,0u);
                         sample % 64
                     );
                 }
-                if interpolation_noise.is_some() && sample / 64 == 1 && root < 2 {
+                if !point_cached && interpolation_noise.is_some() && sample / 64 == 1 && root < 2 {
                     let expected = f32::from_bits(words[sample * 18 + 12 + root]);
                     for value in [old, new] {
                         assert!(
@@ -2207,7 +2281,7 @@ columns[at+2u]=Column(i32(mismatches),0u,0u);
                         );
                     }
                 }
-                if !cached && !field_cached && sample / 64 == 0 {
+                if !point_cached && !cached && !field_cached && sample / 64 == 0 {
                     if let Some(expected) = coordinate_expected {
                         let expected = expected[sample % 64][root].as_f64().unwrap() as f32;
                         let actual = f32::from_bits(old);
@@ -2242,6 +2316,16 @@ columns[at+2u]=Column(i32(mismatches),0u,0u);
             eprintln!(
                 "Invocation-local interpolation cache: {} exact root comparisons",
                 programs * samples_per_program * 24 * 6
+            );
+        }
+        if primed_corners {
+            assert!(
+                primed_samples > 0,
+                "fixture must actually prime cache corners"
+            );
+            eprintln!(
+                "Primed interval cache: {} exact endpoint comparisons, {primed_samples} populated corner observations",
+                programs * samples_per_program * 24 * 2
             );
         }
     }
