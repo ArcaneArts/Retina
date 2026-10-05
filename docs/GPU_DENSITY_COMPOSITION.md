@@ -40,8 +40,10 @@ reduce those results across the existing probes. This greatly reduces that
 experiment's serial probe work while preserving its complete chunk output.
 The old lake extraction remains selected for production interpolation.
 
-Interpreter pipelines are keyed by scratch capacity, interpolation depth and
-composition selection. Specialized cache identities include the exact source
+Interpreter pipelines are keyed by scratch capacity, interpolation depth,
+composition selection and the [compatible base-pipeline reuse mask](GPU_INTERPRETER_PIPELINE_REUSE.md).
+That mask also follows the composition-dependent scratch layout; graph roots
+alone are insufficient to establish compatibility. Specialized cache identities include the exact source
 after the same selection. Disabled composition is a compile-time false branch,
 so its additional point-evaluation call graph need not inflate register pressure
 in production kernels. Compilation finishing during a request cannot change its

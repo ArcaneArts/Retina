@@ -94,7 +94,13 @@ An [explicit-stack interpreter trial](GPU_STACK_INTERPRETER_TRIAL.md) subsequent
 tested eliminating duplicated nesting-level evaluators. Both implementations
 preserved GPU roots and chunk NBT but lost region throughput in small paired
 trials, so they were removed. No matched cold-compiler comparison was established;
-the depth-specific generic activation path remains required startup work.
+the depth-specific generic activation path remained required startup work.
+The subsequent [pipeline reuse milestone](GPU_INTERPRETER_PIPELINE_REUSE.md)
+follows actual WGSL call graphs and loaded interpolation instructions, reusing
+already-loaded compact pipelines for compatible stages. Final fresh-identity
+tests reduce first-profile generic compilation from 21 to 10 pipelines and about
+6.2 to 3.1 seconds. Required density pipelines and full cold startup remain open;
+warm throughput is essentially unchanged.
 
 Real GPU root checks compare all six outputs of every graph bit-for-bit with the
 interpreter, varying seeds, Y levels and material contexts. Cache-mode checks

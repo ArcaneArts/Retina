@@ -1861,6 +1861,69 @@ mod tests {
     use super::*;
 
     #[test]
+    #[ignore = "requires RETINA_PROGRAM_PARITY_PROFILE and a fresh RETINA_COMPILE_OUT directory"]
+    fn actual_interpreter_pipeline_compile() {
+        let path = std::env::var("RETINA_PROGRAM_PARITY_PROFILE").unwrap();
+        let out = std::path::PathBuf::from(std::env::var("RETINA_COMPILE_OUT").unwrap());
+        std::fs::create_dir(&out).unwrap();
+        let mut json: serde_json::Value =
+            serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
+        json["program_execution"] = serde_json::json!("interpreter");
+        let bytes = serde_json::to_vec(&json).unwrap();
+        let count: u32 = std::env::var("RETINA_COMPILE_REGIONS").map_or(20, |n| n.parse().unwrap());
+        let start = Instant::now();
+        let engine = TerrainEngine::new().unwrap();
+        let initialize_ms = start.elapsed().as_secs_f64() * 1000.0;
+        let start = Instant::now();
+        let profile = engine.register_profile(&bytes).unwrap();
+        let registration_ms = start.elapsed().as_secs_f64() * 1000.0;
+        let start = Instant::now();
+        let mut regions = Vec::new();
+        for index in 0..count {
+            let request = ChunkRequest {
+                seed: 123456789,
+                chunk_x: (index as i32 % 3 - 1) * 32,
+                chunk_z: (index as i32 / 3 - 1) * 32,
+                min_y: -64,
+                height: 384,
+                base_height: 64.0,
+                amplitude: 48.0,
+                frequency: 0.008,
+                reserved: profile,
+            };
+            let region_start = Instant::now();
+            let report = region::generate_region_profiled(
+                &engine,
+                request,
+                &out.join(format!("{index}.mca")),
+                0,
+                "minecraft:plains",
+                None,
+            )
+            .unwrap();
+            assert_eq!(report.region.generated, 1024);
+            regions.push(serde_json::json!({"name":index,"ms":region_start.elapsed().as_secs_f64()*1000.0,
+                "gpu_ms":report.region.gpu_nanos as f64/1e6,"assembly_ms":report.region.assembly_nanos as f64/1e6,
+                "write_ms":report.region.write_nanos as f64/1e6,"bytes":report.region.bytes,
+                "stage_nanos":report.stages.nanos.to_vec()}));
+        }
+        let total_ms = start.elapsed().as_secs_f64() * 1000.0;
+        let result = serde_json::json!({"profile":path,"pipeline_tag":std::env::var("RETINA_GENERIC_PIPELINE_TAG").ok(),
+            "reuse":std::env::var("RETINA_COMPILE_REUSE").as_deref()!=Ok("0"),
+            "initialize_ms":initialize_ms,"registration_ms":registration_ms,
+            "total_ms":total_ms,"chunks_per_second":count as f64*1024.0*1000.0/total_ms,"regions":regions});
+        std::fs::write(
+            out.join("measurements.json"),
+            serde_json::to_vec_pretty(&result).unwrap(),
+        )
+        .unwrap();
+        println!(
+            "QA_EVT {}",
+            serde_json::json!({"event":"actual_interpreter_pipeline_compile","status":"pass","context":result})
+        );
+    }
+
+    #[test]
     fn assembly_uses_y_z_x_order_and_negative_minimum() {
         let request = ChunkRequest {
             seed: 0,

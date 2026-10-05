@@ -59,8 +59,16 @@ pub(crate) struct Gpu {
     specialized: HashMap<u32, std::sync::Arc<crate::specialize::State>>,
     wide_profiles: std::collections::HashSet<u32>,
     wide_interpreter: Option<std::sync::Arc<crate::specialize::Pipelines>>,
-    interpolation_interpreters:
-        HashMap<(usize, usize, bool), std::sync::Arc<crate::specialize::Pipelines>>,
+    interpreter_reuse_plans: HashMap<u32, crate::specialize::interpreter_reuse::Plan>,
+    interpolation_interpreters: HashMap<
+        (
+            usize,
+            usize,
+            bool,
+            crate::specialize::interpreter_reuse::Plan,
+        ),
+        std::sync::Arc<crate::specialize::Pipelines>,
+    >,
     interpolation_plans: HashMap<u32, std::sync::Arc<crate::program::interpolation::CachePlan>>,
     cached_density_plans: HashMap<u32, crate::program::composition::CachedDensity>,
     cached_node_plans: HashMap<u32, crate::program::composition::CachedDensity>,
@@ -348,6 +356,7 @@ impl Gpu {
             specialized: HashMap::new(),
             wide_profiles: std::collections::HashSet::new(),
             wide_interpreter: None,
+            interpreter_reuse_plans: HashMap::new(),
             interpolation_interpreters: HashMap::new(),
             interpolation_plans: HashMap::new(),
             cached_density_plans: HashMap::new(),
@@ -555,6 +564,7 @@ impl Gpu {
                     &self.layout,
                     &self.cave_layout,
                     &crate::program::interpreter_source(1024),
+                    None,
                 )?));
         }
         let interpreted = if needs_interpreter && (depth > 0 || composition) {
@@ -563,7 +573,31 @@ impl Gpu {
             } else {
                 crate::program::COMPACT_VALUES
             };
-            let key = (capacity, depth, composition);
+            // Profiles and execution/layout options are immutable on this GPU.
+            // Resolve graph dependencies once, including for frequent sparse
+            // biome/structure probes, rather than scanning every material DAG.
+            let reuse = *self
+                .interpreter_reuse_plans
+                .entry(profile_id)
+                .or_insert_with(|| {
+                    profile.and_then(|p| p.registry_program.as_ref()).map_or(
+                        Default::default(),
+                        |p| {
+                            crate::specialize::interpreter_reuse::Plan::new(
+                                p,
+                                capacity,
+                                composition,
+                            )
+                        },
+                    )
+                });
+            #[cfg(test)]
+            let reuse = if std::env::var("RETINA_COMPILE_REUSE").as_deref() == Ok("0") {
+                Default::default()
+            } else {
+                reuse
+            };
+            let key = (capacity, depth, composition, reuse);
             if !self.interpolation_interpreters.contains_key(&key) {
                 let source =
                     crate::program::interpreter_source_density(capacity, depth, composition);
@@ -572,6 +606,7 @@ impl Gpu {
                     &self.layout,
                     &self.cave_layout,
                     &source,
+                    Some(reuse),
                 )?;
                 self.interpolation_interpreters
                     .insert(key, std::sync::Arc::new(pipelines));
@@ -592,8 +627,10 @@ impl Gpu {
         } else {
             interpreted.as_deref()
         };
-        let world_pipeline = |entry, fallback| selected.map_or(fallback, |p| p.world(entry));
-        let terrain_pipeline = |entry, fallback| terrain.map_or(fallback, |p| p.world(entry));
+        let world_pipeline =
+            |entry, fallback| selected.map_or(fallback, |p| p.world_or(entry, fallback));
+        let terrain_pipeline =
+            |entry, fallback| terrain.map_or(fallback, |p| p.world_or(entry, fallback));
         let density_program = profile
             .and_then(|p| p.registry_program.as_ref())
             .filter(|p| p.surface[2] == 0 && (!surface_probe || align_shores));
@@ -720,9 +757,10 @@ impl Gpu {
             };
             selected.map_or(fallback, |p| {
                 if cached {
-                    p.cached_cave(entry).unwrap_or_else(|| p.cave(entry))
+                    p.cached_cave(entry)
+                        .unwrap_or_else(|| p.cave_or(entry, fallback))
                 } else {
-                    p.cave(entry)
+                    p.cave_or(entry, fallback)
                 }
             })
         };
