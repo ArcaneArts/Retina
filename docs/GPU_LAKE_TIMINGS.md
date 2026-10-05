@@ -99,6 +99,12 @@ probe-specific cache must be measured rather than assuming a throughput gain.
 
 ## Validation and evidence
 
+The subsequent [invocation-local interpolation cache](GPU_LAKE_POINT_CACHE.md)
+reuses required corners within composed vertical probes. It retains the pass and
+timing layout above and reduces the density-probe stage without a larger atlas.
+That document records actual-profile repeats, complete NBT comparisons, startup
+checks and the remaining gap between composition and production throughput.
+
 `build gpuTest regionTest previewTest` passes, including 51 native unit checks,
 the 29-stage network packet, rolling F3 percentages, actual measured lake times
 in DH region/session reports, both generator modes, MCA decode/edits, concurrent

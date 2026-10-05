@@ -27,6 +27,11 @@ experiment disabled by default; fast production composition remains required.
 density probes, level reduction and final columns in F3. Actual-profile checks
 identify expensive composed lake density; the paired resident/general probe
 trial preserved NBT but showed no gain and was removed.
+[Invocation-local lake interpolation reuse](GPU_LAKE_POINT_CACHE.md) now reduces
+repeated corner evaluation in composed probes without another dispatch or readback.
+Actual-profile repeats preserve complete NBT and improve several whole-region
+workloads, with documented mixed preliminary results. Composition remains slower
+than production and stays disabled; cold-start work remains required.
 [Mixed GPU stage selection](GPU_STAGE_SELECTION.md) now retains compact
 interpreted terrain/climate on Metal while specializing materials and caves.
 Repeated actual-profile comparisons improve whole-region throughput, with

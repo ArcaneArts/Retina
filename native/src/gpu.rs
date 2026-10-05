@@ -68,6 +68,7 @@ pub(crate) struct Gpu {
     specialized_terrain: bool,
     density_composition: bool,
     cached_density_masks: bool,
+    lake_point_cache: bool,
 }
 
 pub(crate) struct GpuSample {
@@ -127,6 +128,11 @@ impl Gpu {
             Ok("0") => false,
             Ok("1") => true,
             _ => info.backend != wgpu::Backend::Metal,
+        };
+        let lake_point_cache = match std::env::var("RETINA_LAKE_POINT_CACHE").as_deref() {
+            Ok("0") => false,
+            Ok("1") => true,
+            _ => info.backend == wgpu::Backend::Metal,
         };
         let (device, queue) = pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor {
             label: Some("Retina terrain device"),
@@ -345,6 +351,7 @@ impl Gpu {
             density_composition: std::env::var("RETINA_DENSITY_COMPOSITION").as_deref() == Ok("1"),
             cached_density_masks: std::env::var("RETINA_CACHED_DENSITY_MASKS").as_deref()
                 != Ok("0"),
+            lake_point_cache,
         };
         gpu.add_profile(0, &vec![0; 672], &[0; 240], &[0; 32]);
         Ok(gpu)
@@ -492,6 +499,7 @@ impl Gpu {
                         self.specialized_terrain,
                         self.density_composition && program.density_composition,
                         self.cached_density_masks,
+                        self.lake_point_cache,
                     ) {
                         Ok(state) => {
                             self.pipeline.shader(profile_id, state.progress.clone());
@@ -1831,6 +1839,7 @@ mod mapping_tests {
         }
         let registry = profile.registry_program.as_ref().unwrap();
         let interpreted = std::env::var_os("RETINA_PROGRAM_PARITY_INTERPRETER").is_some();
+        let point_cached = std::env::var_os("RETINA_PROGRAM_PARITY_POINT_CACHE").is_some();
         let field_cached = std::env::var_os("RETINA_PROGRAM_PARITY_INTERPOLATION_CACHE").is_some();
         // Specialized interpolation inputs can read the horizontal atlas on
         // aligned corners. Populate both caches, as production does, even when
@@ -1917,13 +1926,40 @@ mod mapping_tests {
                     "f32(density_origin(r).z)+f32(sample/8u)*3.0",
                 );
         }
+        if point_cached {
+            assert!(!interpreted && !bounds_check && coordinate_expected.is_none());
+            // Repeated queries within one invocation exercise reuse, newly needed
+            // corners, cell changes and context invalidation. The independent
+            // interpreter always bypasses both caches. Count every root mismatch,
+            // rather than allowing aggregate checksums to cancel differences.
+            kernel = format!(
+                "@compute @workgroup_size(64) fn parity(@builtin(global_invocation_id) id:vec3<u32>){{
+let program=id.x/64u;let sample=id.x%64u;if program>={programs}u{{return;}}
+var r=requests[0];r.seed_low^=min(sample/21u,2u)*7919u;r.padding&=~(1u<<27u);
+var mismatches=0u;
+for(var query=0u;query<24u;query++){{
+let phase=query%12u;
+let base=select(f32(i32(sample%8u)*11-48),16777210.0,sample%4u==3u);
+let point=vec3<f32>(base+select(0.0,0.375,phase%3u!=0u)+select(0.0,9.0,phase>=8u),
+f32(i32(sample%16u)*5-64)-f32(phase)*0.5,f32(i32(sample/8u)*13-48)+select(0.0,0.625,phase%4u!=0u));
+let context=vec4<f32>(f32(sample%8u+1u),f32(sample%3u+3u),f32(sample%6u)+select(0.0,1.0,query>=12u),f32(sample%7u));
+let reference=run_reference(program,point,r,context);var actual:array<f32,6>;
+switch program{{case 0u:{{actual=run_climate(point,r,context);}}case 1u:{{actual=run_surface_density(point,r,context);}}case 2u:{{actual=run_final_density(point,r,context);}}default:{{actual=run_program(program,point,r,context);}}}}
+for(var root=0u;root<6u;root++){{if bitcast<u32>(reference[root])!=bitcast<u32>(actual[root]){{mismatches+=1u;}}}}
+}}
+let at=id.x*6u;
+for(var slot=0u;slot<6u;slot++){{columns[at+slot]=Column(0,0u,0u);}}
+columns[at+2u]=Column(i32(mismatches),0u,0u);
+}}"
+            );
+        }
         let reference = crate::program::interpreter_body(
             1024,
             registry.interpolation_depth(),
             "run_reference",
             false,
         );
-        let program_source = if interpreted {
+        let mut program_source = if interpreted {
             kernel = kernel.replace("var actual:array<f32,6>;switch program{case 0u:{actual=run_climate(point,r,context);}case 1u:{actual=run_surface_density(point,r,context);}case 2u:{actual=run_final_density(point,r,context);}default:{actual=run_program(program,point,r,context);}}", "let actual=run_program(program,point,r,context);");
             let capacity = if registry.scratch_values() <= crate::program::COMPACT_VALUES {
                 crate::program::COMPACT_VALUES
@@ -1951,6 +1987,9 @@ mod mapping_tests {
             }
             crate::specialize::source(registry).unwrap()
         };
+        if point_cached {
+            program_source = crate::program::interpolation::point_cached_source(&program_source);
+        }
         let source = format!(
             "{}\n{}\n{}\n{}\n{reference}\n{kernel}",
             include_str!("simplex.wgsl"),
@@ -2199,6 +2238,12 @@ mod mapping_tests {
             eprintln!("Checked {finite_bounds} finite density bounds against direct GPU points");
         }
         assert_eq!(differences, 0, "specialization changed root float bits");
+        if point_cached {
+            eprintln!(
+                "Invocation-local interpolation cache: {} exact root comparisons",
+                programs * samples_per_program * 24 * 6
+            );
+        }
     }
     #[test]
     fn cancelled_mapping_cleanup_allows_buffer_reuse() {

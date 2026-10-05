@@ -262,6 +262,48 @@ pub(crate) fn specialized(field: usize) -> String {
     )
 }
 
+/// Lake probes scan several block Y positions inside one interpolation cell.
+/// Keep only actually sampled corners in this invocation, with exact coordinate
+/// and context keys. Aligned queries retain their original direct path.
+pub(crate) fn point_cached(field: usize) -> String {
+    let name = format!("lake_field_{field}");
+    let call = format!("interpolation_graph_{field}(point,request,context,program)");
+    let mut body = sample_body(&call, &format!("{field}u"));
+    body = body.replace(
+        "var corners:array<f32,8>;",
+        &format!(
+            "let key=bitcast<vec3<u32>>(lower);let context_key=bitcast<vec4<u32>>(context);\n\
+        if {name}_mask==0u || any({name}_lower!=key) || any({name}_context!=context_key){{\n\
+        {name}_lower=key;{name}_context=context_key;{name}_mask=0u;}}\n\
+        var corners:array<f32,8>;"
+        ),
+    );
+    body = body.replace(
+        "let point=lower+vec3<f32>(upper)*size;let cached=interpolation_cached_corner",
+        &format!("let bit=1u<<corner;if ({name}_mask&bit)!=0u{{corners[corner]={name}_values[corner];continue;}}\n\
+        let point=lower+vec3<f32>(upper)*size;let cached=interpolation_cached_corner"),
+    );
+    body = body.replace(
+        "}\nreturn interpolation_mix",
+        &format!(
+            "{name}_values[corner]=corners[corner];{name}_mask|=bit;\n}}\nreturn interpolation_mix"
+        ),
+    );
+    format!(
+        "var<private> {name}_lower:vec3<u32>;\nvar<private> {name}_context:vec4<u32>;\n\
+         var<private> {name}_mask:u32;\nvar<private> {name}_values:array<f32,8>;\n\
+         fn interpolation_field_{field}(point:vec3<f32>,request:Request,context:vec4<f32>)->f32{{\n{body}}}\n"
+    )
+}
+
+pub(crate) fn point_cached_source(source: &str) -> String {
+    let mut result = source.to_owned();
+    for field in 0..source.matches("fn interpolation_field_").count() {
+        result = result.replace(&specialized(field), &point_cached(field));
+    }
+    result
+}
+
 /// Point queries in kernels whose host coverage proof includes every required
 /// fine-grid corner. Preserve global floor/mix arithmetic, but calculate the
 /// resident base address once instead of validating each of the eight corners.

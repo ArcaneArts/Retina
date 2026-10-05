@@ -79,6 +79,14 @@ export and profile registration are separate from those first-region times.
 
 ## Validation and remaining work
 
+The [lake interpolation reuse milestone](GPU_LAKE_POINT_CACHE.md) separately
+measures synchronous source preparation with the actual current profiles. Five
+samples take 3.76–4.39 ms vanilla and 18.49–20.68 ms Terralith; this does not explain
+multi-second stalls. The ignored native `actual_profile_source_preparation` test
+accepts `RETINA_PROGRAM_PREPARATION_PROFILE` and emits source size, horizontal field
+count and actual elapsed preparation time. The test measures code preparation,
+not GPU compilation or Java export, and adds no production startup gate.
+
 Real GPU root checks compare all six outputs of every graph bit-for-bit with the
 interpreter, varying seeds, Y levels and material contexts. Cache-mode checks
 cover aligned nodes, fractional/outside queries, separate request seeds, negative

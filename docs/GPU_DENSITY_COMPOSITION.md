@@ -260,6 +260,11 @@ establish a whole-region gain. Raw libraries/results are retained as
 The later [separate lake timings](GPU_LAKE_TIMINGS.md) milestone splits these
 passes and restores **Column surfaces** in F3; that document records actual
 per-pass measurements and the rejected paired resident/general probe trial.
+The subsequent [lake interpolation reuse](GPU_LAKE_POINT_CACHE.md) milestone
+retains exact invocation-local corners between vertical probe queries. It reduces
+the probe stage and improves repeated actual-profile region workloads, while
+preserving complete NBT. Composition still trails production; the measurements
+do not justify enabling it by default or claiming a cold-start improvement.
 
 ## Validation and remaining work
 

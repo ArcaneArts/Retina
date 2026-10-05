@@ -509,6 +509,7 @@ struct Job {
     terrain: bool,
     cached_masks: bool,
     cached_nodes: bool,
+    lake_point_cache: bool,
 }
 pub(crate) struct Compiler {
     sender: mpsc::Sender<Job>,
@@ -544,6 +545,7 @@ impl Compiler {
                             job.terrain,
                             job.cached_masks,
                             job.cached_nodes,
+                            job.lake_point_cache,
                         )
                     }))
                     .unwrap_or_else(|_| Err("specialized GPU compilation panicked".into()));
@@ -580,6 +582,7 @@ impl Compiler {
         terrain: bool,
         composition: bool,
         cached_masks: bool,
+        lake_point_cache: bool,
     ) -> Result<Arc<State>, String> {
         let (mut source, horizontal_fields) = source_columns(program)?;
         source = crate::program::density_composition_source(&source, composition);
@@ -594,6 +597,11 @@ impl Compiler {
         }
         if cached_nodes {
             source.push_str("\n// resident density node pipeline\n");
+        }
+        let lake_point_cache =
+            composition && lake_point_cache && !program.interpolations.is_empty();
+        if lake_point_cache {
+            source.push_str("\n// invocation-local lake interpolation cache\n");
         }
         // The entry-point set is part of pipeline identity even when graphs match.
         writeln!(source, "// material pipelines: {}", program.material_layers).unwrap();
@@ -639,6 +647,7 @@ impl Compiler {
                 terrain,
                 cached_masks,
                 cached_nodes,
+                lake_point_cache,
             })
             .map_err(|_| "GPU shader compiler stopped")?;
         self.cache.insert(key, state.clone());
@@ -668,6 +677,7 @@ pub(crate) fn compile(
         true,
         false,
         false,
+        false,
     )
 }
 
@@ -678,7 +688,7 @@ pub(crate) fn compile_interpreter(
     program: &str,
 ) -> Result<Pipelines, String> {
     compile_program(
-        device, world, cave, program, 0, true, 2, false, true, false, false,
+        device, world, cave, program, 0, true, 2, false, true, false, false, false,
     )
 }
 
@@ -694,6 +704,7 @@ fn compile_program(
     terrain: bool,
     cached_masks: bool,
     cached_nodes: bool,
+    lake_point_cache: bool,
 ) -> Result<Pipelines, String> {
     let scope = device.push_error_scope(wgpu::ErrorFilter::Validation);
     let make = |program: &str,
@@ -763,6 +774,11 @@ fn compile_program(
     if terrain {
         world_entries.extend(interpolation_entries.iter().map(String::as_str));
     }
+    if lake_point_cache {
+        // This bundle always uses the cached lake entry. Do not compile and
+        // retain another lake pipeline which none of its requests will select.
+        world_entries.retain(|entry| *entry != "lake_density");
+    }
     let mut world: HashMap<String, wgpu::ComputePipeline> = make(
         program,
         include_str!("simplex.wgsl"),
@@ -770,6 +786,17 @@ fn compile_program(
         world_layout,
         &world_entries,
     );
+    if lake_point_cache {
+        let cached_program = crate::program::interpolation::point_cached_source(program);
+        let pipelines: HashMap<String, wgpu::ComputePipeline> = make(
+            &cached_program,
+            include_str!("simplex.wgsl"),
+            include_str!("noise3.wgsl"),
+            world_layout,
+            &["lake_density"],
+        );
+        world.extend(pipelines);
+    }
     if cached_masks {
         let cached_program = crate::program::composition::cached_source(program);
         let pipelines: HashMap<String, wgpu::ComputePipeline> = make(
@@ -869,6 +896,29 @@ pub(crate) fn static_calls(source: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    #[ignore = "requires an actual exported profile in RETINA_PROGRAM_PREPARATION_PROFILE"]
+    fn actual_profile_source_preparation() {
+        let path = std::env::var("RETINA_PROGRAM_PREPARATION_PROFILE").unwrap();
+        let json: serde_json::Value =
+            serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
+        let program: RegistryProgram =
+            serde_json::from_value(json["registry_program"].clone()).unwrap();
+        program
+            .validate(json["biomes"].as_array().unwrap().len())
+            .unwrap();
+        for repeat in 0..5 {
+            let start = Instant::now();
+            let (source, fields) = source_columns(&program).unwrap();
+            println!(
+                "QA_EVT {}",
+                serde_json::json!({"event":"actual_profile_source_preparation","status":"pass",
+                    "context":{"profile":path,"repeat":repeat,"prepare_ms":start.elapsed().as_secs_f64()*1000.0,
+                    "source_bytes":source.len(),"horizontal_fields":fields}})
+            );
+            std::hint::black_box(source);
+        }
+    }
     fn n(op: u32, a: u32, b: u32, c: u32, p: [f32; 4]) -> Instruction {
         Instruction { op, a, b, c, p }
     }

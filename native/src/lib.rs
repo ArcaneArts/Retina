@@ -1455,11 +1455,7 @@ pub unsafe extern "C" fn retina_sample_decoration_feature(
         }
         Ok(())
     });
-    if status == 0 && too_small {
-        1
-    } else {
-        status
-    }
+    if status == 0 && too_small { 1 } else { status }
 }
 
 /// # Safety
@@ -1508,11 +1504,7 @@ pub unsafe extern "C" fn retina_sample_decoration_placement(
         }
         Ok(())
     });
-    if status == 0 && too_small {
-        1
-    } else {
-        status
-    }
+    if status == 0 && too_small { 1 } else { status }
 }
 /// # Safety
 /// request is readable; output has capacity u16 elements, exactly height*4 quart biome IDs.
