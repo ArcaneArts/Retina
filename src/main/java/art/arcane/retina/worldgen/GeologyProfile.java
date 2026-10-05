@@ -135,6 +135,7 @@ final class GeologyProfile {
         // Close contextual provider transforms before freezing dense ore and
         // cave predicates, so late registered substrates participate as well.
         ProviderStateTransforms.prepare(world.getAsJsonArray("decorations"),palette);
+        DecorationProfile.reserveCurrentSurvival(world,palette);
         var carveable = new JsonArray();
         for (var state : palette.keySet()) carveable.add(!state.isAir() && state.getFluidState().isEmpty() && !state.is(BlockTags.UNCARVABLE));
         world.add("carveable", carveable);

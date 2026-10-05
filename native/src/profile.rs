@@ -84,6 +84,9 @@ pub struct WorldProfile {
     pub noises: Vec<NoiseProfile>,
     #[serde(default)]
     pub decorations: Vec<Recipe>,
+    /// Shared loaded survival rules for context-derived SimpleBlock outputs.
+    #[serde(default)]
+    pub simple_current_states: Vec<Option<crate::decoration::SimpleState>>,
     #[serde(default)]
     pub ordered_decorations: bool,
     #[serde(default)]
@@ -174,6 +177,20 @@ impl WorldProfile {
                     "registered spatial decoration counts require their noise permutation".into(),
                 );
             }
+        }
+        if !profile.simple_current_states.is_empty()
+            && (profile.simple_current_states.len() != profile.materials.len()
+                || profile
+                    .simple_current_states
+                    .iter()
+                    .enumerate()
+                    .any(|(id, row)| {
+                        row.as_ref().is_some_and(|s| {
+                            s.source as usize != id || !s.validate(profile.materials.len())
+                        })
+                    }))
+        {
+            return Err("invalid shared SimpleBlock survival table".into());
         }
         if let Some(noise) = &profile.decoration_noise {
             noise.validate()?;

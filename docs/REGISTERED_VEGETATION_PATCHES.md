@@ -23,6 +23,10 @@ child features and waterlog their resulting ground block where applicable.
 Simple blocks use actual registered survival predicates, paired-plant states and
 separate lower/upper waterlogging. Column palettes now include registered wet
 states needed by nested dripleaf providers.
+Subsequent [live-state SimpleBlock support](REGISTERED_SIMPLE_SURVIVAL.md) shares
+loaded survival rows for current-derived provider outputs and exports spore
+blossoms. Light-dependent and unimplemented survival classes remain explicit
+omissions.
 
 Ordinary Java `HashSet<BlockPos>` iteration is reproduced by stable final-bucket
 ordering, preserving child random draws. Pathological tree bins use Java object

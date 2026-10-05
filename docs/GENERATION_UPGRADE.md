@@ -63,7 +63,10 @@ positions, ordered branches, optional results and random-draw semantics; see
 properties with sparse finalized palette tables and no extra random draw. Some
 [nullable live-state transformations](REGISTERED_NULLABLE_PROVIDERS.md) now support
 rotations, integer properties, copying, mushroom caps and fallen logs. Arbitrary
-current-state SimpleBlock survival still needs full support. Native
+current-state SimpleBlock placement now has [shared survival rules](REGISTERED_SIMPLE_SURVIVAL.md)
+for supported loaded classes, including paired plants; light-dependent and
+unimplemented classes remain explicit omissions. Registered spore blossoms now
+use the same adapter. Native
 [integer-property providers](REGISTERED_INTEGER_PROPERTIES.md) now preserve
 source states without the configured integer property and skip the value draw,
 matching loaded provider behavior.

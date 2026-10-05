@@ -266,9 +266,6 @@ public final class NativeBlockFeatureIntegrationTest {
         var synthetic=(JsonArray)recipeField.get(exporter);var features=new ArrayList<Feature>();
         for(int providerIndex=0;providerIndex<providers.size();providerIndex++)for(String kind:List.of("block_column","simple_block")) {
             var provider=providers.get(providerIndex);
-            // Transformed arbitrary-current SimpleBlock survival is a separate
-            // explicit omission; columns impose no additional survival rule.
-            if(kind.equals("simple_block") && providerIndex>=firstNullable)continue;
             var featureJson=new JsonObject();featureJson.addProperty("type","minecraft:"+kind);
             if(kind.equals("block_column")) {
                 var layers=new JsonArray();var layer=new JsonObject();layer.add("height",JsonParser.parseString("{\"type\":\"minecraft:uniform\",\"min_inclusive\":3,\"max_inclusive\":9}"));layer.add("provider",provider.deepCopy());layers.add(layer);
@@ -326,9 +323,19 @@ public final class NativeBlockFeatureIntegrationTest {
             Blocks.FURNACE.defaultBlockState().setValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.HORIZONTAL_FACING,Direction.EAST),
             Blocks.GRASS_BLOCK.defaultBlockState().setValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.SNOWY,false),
             Blocks.WATER.defaultBlockState().setValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.LEVEL,5),
-            Blocks.BEDROCK.defaultBlockState());
+            Blocks.BEDROCK.defaultBlockState(),
+            Blocks.TALL_GRASS.defaultBlockState(),
+            Blocks.TALL_GRASS.defaultBlockState().setValue(DoublePlantBlock.HALF,net.minecraft.world.level.block.state.properties.DoubleBlockHalf.UPPER),
+            Blocks.SNOW.defaultBlockState(),
+            Blocks.MOSS_CARPET.defaultBlockState());
         for(var input:copyInputs)palette.computeIfAbsent(input,ignored->palette.size());
-        DecorationProfile.finishPlacements(synthetic,palette);DecorationProfile.materialFlags(profile,palette);
+        var pending=new JsonObject();pending.add("decorations",synthetic);
+        DecorationProfile.reserveCurrentSurvival(pending,palette);
+        DecorationProfile.finishPlacements(synthetic,palette);
+        DecorationProfile.finishCurrentSurvival(pending,palette);
+        profile.add("simple_current_states",pending.get("simple_current_states"));
+        profile.add("simple_current_omissions",pending.get("simple_current_omissions"));
+        DecorationProfile.materialFlags(profile,palette);
         var materials=palette.keySet().toArray(BlockState[]::new);var serialized=new JsonArray();for(var state:materials)serialized.add(BlockState.CODEC.encodeStart(JsonOps.INSTANCE,state).getOrThrow());profile.add("materials",serialized);
         int offset=profile.getAsJsonArray("decorations").size();profile.getAsJsonArray("decorations").addAll(synthetic);
         int checked=0,empty=0;
@@ -336,6 +343,7 @@ public final class NativeBlockFeatureIntegrationTest {
             int base=terrain[0];var fixture=new Fixture(profile,materials,base,terrain[1]);fixture.factory=factory;
             var biome=registry.lookupOrThrow(Registries.BIOME).getOrThrow(ResourceKey.create(Registries.BIOME,Identifier.parse("minecraft:plains")));
             fixture.generator=new RetinaChunkGenerator(new net.minecraft.world.level.biome.FixedBiomeSource(biome),-64,384,base,0,.008F,"mca");
+            if(base==96 && terrain[1]==384)checkCurrentSurvival(profile,materials,fixture,packed);
             for(int i=0;i<features.size();i++)for(long seed=0;seed<64;seed++) {
                 for(int dy:i>=firstNullable*2 && i<firstCuboid?List.of(-1,0,1):List.of(0)) {
                     var at=new BlockPos(-17,fixture.originHeight+dy,-17);var world=new World(fixture);
@@ -419,6 +427,59 @@ public final class NativeBlockFeatureIntegrationTest {
         for(var b:profile.getAsJsonArray("biomes"))if(b.getAsJsonObject().get("id").getAsString().equals("minecraft:lush_caves"))b.getAsJsonObject().add("decorations",only);
         checkRegion(profile,materials,"lush_caves");
         System.out.println("QA_EVT {\"event\":\"registered_state_providers_minecraft_reference\",\"status\":\"pass\",\"context\":{\"datapack\":"+packed+",\"features\":"+features.size()+",\"cases\":"+checked+",\"empty\":"+empty+"}}");
+    }
+    private static void checkCurrentSurvival(JsonObject profile,BlockState[] materials,Fixture fixture,boolean packed) {
+        var world=new World(fixture);var at=new BlockPos(-17,fixture.originHeight,-17);
+        var ids=new HashMap<BlockState,Integer>();for(int i=0;i<materials.length;i++)ids.put(materials[i],i);
+        int checked=0,supported=0,omitted=0;
+        var rows=profile.getAsJsonArray("simple_current_states");require(rows.size()==materials.length,"shared survival rows cover the final palette");
+        for(int i=0;i<rows.size();i++) {
+            if(rows.get(i).isJsonNull()){omitted++;continue;}
+            supported++;var row=rows.get(i).getAsJsonObject();var predicate=currentPredicate(row.getAsJsonObject("survival"),world,ids,materials.length);
+            boolean constant=row.getAsJsonObject("survival").get("type").getAsString().equals("true");
+            // The default base implementation is constant; all contextual rows
+            // test every registered floor/ceiling state and dry/water origins.
+            int floorCount=constant?1:materials.length;
+            for(int j=0;j<floorCount;j++)for(var current:List.of(Blocks.AIR.defaultBlockState(),Blocks.WATER.defaultBlockState())) {
+                world.changed.clear();world.changed.put(at,current);world.changed.put(at.below(),materials[j]);world.changed.put(at.above(),materials[j]);
+                require(materials[i].canSurvive(world.level,at)==predicate.test(at),"shared survival differs from Minecraft: state="+materials[i]+" floor/ceiling="+materials[j]+" current="+current);
+                checked++;
+            }
+            if(materials[i].getBlock() instanceof CactusBlock || materials[i].getBlock() instanceof SugarCaneBlock) {
+                boolean cactus=materials[i].getBlock() instanceof CactusBlock;
+                var floor=cactus?Blocks.CACTUS.defaultBlockState():Blocks.SAND.defaultBlockState();
+                for(var neighbor:materials) {
+                    world.changed.clear();world.changed.put(at,Blocks.AIR.defaultBlockState());world.changed.put(at.below(),floor);world.changed.put(at.above(),neighbor);
+                    require(materials[i].canSurvive(world.level,at)==predicate.test(at),"shared survival above differs from Minecraft: state="+materials[i]+" above="+neighbor);
+                    checked++;
+                    for(var direction:Direction.Plane.HORIZONTAL) {
+                        world.changed.clear();world.changed.put(at,Blocks.AIR.defaultBlockState());world.changed.put(at.below(),floor);world.changed.put(at.above(),Blocks.AIR.defaultBlockState());
+                        world.changed.put((cactus?at:at.below()).relative(direction),neighbor);
+                        require(materials[i].canSurvive(world.level,at)==predicate.test(at),"shared survival neighbor differs from Minecraft: state="+materials[i]+" neighbor="+neighbor+" direction="+direction);
+                        checked++;
+                    }
+                }
+            }
+        }
+        require(supported>100 && omitted>0 && checked>10000,"shared survival oracle exercises loaded rules and explicit omissions");
+        System.out.println("QA_EVT {\"event\":\"shared_survival_minecraft_reference\",\"status\":\"pass\",\"context\":{\"datapack\":"+packed+",\"cases\":"+checked+",\"supported_states\":"+supported+",\"omitted_states\":"+omitted+"}}");
+    }
+    private static java.util.function.Predicate<BlockPos> currentPredicate(JsonObject p,World world,Map<BlockState,Integer> ids,int palette) {
+        return switch(p.get("type").getAsString()) {
+            case "true" -> at->true;
+            case "not" -> currentPredicate(p.getAsJsonObject("predicate"),world,ids,palette).negate();
+            case "all_of", "any_of" -> {
+                boolean all=p.get("type").getAsString().equals("all_of");
+                var children=p.getAsJsonArray("predicates").asList().stream().map(v->currentPredicate(v.getAsJsonObject(),world,ids,palette)).toList();
+                yield at->{for(var child:children)if(child.test(at)!=all)return !all;return all;};
+            }
+            case "material" -> {
+                var allowed=new boolean[palette];for(var id:p.getAsJsonArray("allowed"))allowed[id.getAsInt()]=true;
+                int[] offset=new Gson().fromJson(p.get("offset"),int[].class);
+                yield at->allowed[ids.get(world.get(at.offset(offset[0],offset[1],offset[2])))];
+            }
+            default -> throw new AssertionError("Unknown finalized survival predicate: "+p);
+        };
     }
     private static JsonObject copyProperties(JsonElement source) {
         var value=new JsonObject();value.addProperty("type","minecraft:copy_properties");value.add("source",source);return value;

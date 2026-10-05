@@ -269,7 +269,7 @@ final class DecorationProfile {
             case "all_of", "any_of" -> p.getAsJsonArray("predicates").asList().stream().allMatch(e -> supportedPredicate(e.getAsJsonObject()));
             case "not" -> supportedPredicate(p.getAsJsonObject("predicate"));
             case "matching_blocks", "matching_block_tag", "matching_fluids", "replaceable", "true", "has_sturdy_face", "solid" -> true;
-            case "would_survive" -> BlockState.CODEC.parse(JsonOps.INSTANCE, p.get("state")).result().map(s -> s.getBlock() instanceof VegetationBlock || s.getBlock() instanceof CactusBlock || s.getBlock() instanceof SugarCaneBlock || s.getBlock() instanceof BambooStalkBlock).orElse(false);
+            case "would_survive" -> BlockState.CODEC.parse(JsonOps.INSTANCE, p.get("state")).result().map(DecorationProfile::supportedSurvival).orElse(false);
             default -> false;
         };
     }
@@ -402,11 +402,28 @@ final class DecorationProfile {
 
     private static TagKey<Block> survivalSoil(BlockState state) {
         if(state.getBlock() instanceof AzaleaBlock)return BlockTags.SUPPORTS_AZALEA;
+        if(state.getBlock() instanceof WitherRoseBlock)return BlockTags.SUPPORTS_WITHER_ROSE;
+        if(state.getBlock() instanceof NetherSproutsBlock)return BlockTags.SUPPORTS_NETHER_SPROUTS;
+        if(state.getBlock() instanceof NetherWartBlock)return BlockTags.SUPPORTS_NETHER_WART;
+        if(state.getBlock() instanceof NetherFungusBlock)return supportTag(state,NetherFungusBlock.class,"supportBlocks");
+        if(state.getBlock() instanceof NetherRootsBlock)return supportTag(state,NetherRootsBlock.class,"supportBlocks");
+        if(state.getBlock() instanceof StemBlock)return supportTag(state,StemBlock.class,"stemSupportBlocks");
+        if(state.getBlock() instanceof AttachedStemBlock)return supportTag(state,AttachedStemBlock.class,"supportBlocks");
         if (state.getBlock() instanceof MangrovePropaguleBlock) {
             return state.getValue(MangrovePropaguleBlock.HANGING)
                     ? BlockTags.SUPPORTS_HANGING_MANGROVE_PROPAGULE : BlockTags.SUPPORTS_MANGROVE_PROPAGULE;
         }
         return state.getBlock() instanceof DryVegetationBlock ? BlockTags.SUPPORTS_DRY_VEGETATION : BlockTags.SUPPORTS_VEGETATION;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static TagKey<Block> supportTag(BlockState state,Class<?> owner,String name) {
+        try {
+            var field=owner.getDeclaredField(name);field.setAccessible(true);
+            return (TagKey<Block>)field.get(state.getBlock());
+        } catch(ReflectiveOperationException error) {
+            throw new IllegalStateException("Cannot export registered support tag for "+state,error);
+        }
     }
 
     private static JsonObject matching(String type,String key,String value,int x,int y,int z) {
@@ -434,6 +451,12 @@ final class DecorationProfile {
         variant.add("upper_allowed",combine("any_of",matching("matching_block_tag","tag","minecraft:air",0,0,0),above));return variant;
     }
     private static JsonObject survivalPredicate(BlockState state) {
+        if(state.getBlock() instanceof SporeBlossomBlock)return combine("all_of",matching("supports_center","direction","down",0,1,0),not(matching("matching_fluids","fluids","#"+FluidTags.WATER.location(),0,0,0)));
+        if(state.getBlock() instanceof CactusFlowerBlock)return combine("any_of",matching("matching_block_tag","tag",BlockTags.SUPPORT_OVERRIDE_CACTUS_FLOWER.location().toString(),0,-1,0),matching("supports_center","direction","up",0,-1,0));
+        if(state.getBlock() instanceof LeafLitterBlock)return matching("has_sturdy_face","direction","up",0,-1,0);
+        if(state.getBlock() instanceof DoublePlantBlock && state.getValue(DoublePlantBlock.HALF)==DoubleBlockHalf.UPPER) {
+            var p=matching("matching_plant_lower","block",BuiltInRegistries.BLOCK.getKey(state.getBlock()).toString(),0,-1,0);return p;
+        }
         if(state.getBlock() instanceof SmallDripleafBlock)return combine("any_of",matching("matching_block_tag","tag",BlockTags.SUPPORTS_SMALL_DRIPLEAF.location().toString(),0,-1,0),combine("all_of",test("source_water",0,0,0),matching("matching_block_tag","tag",BlockTags.SUPPORTS_VEGETATION.location().toString(),0,-1,0)));
         if(state.getBlock() instanceof SeaPickleBlock)return test("supports_sea_pickle",0,-1,0);
         if(state.getBlock() instanceof CarpetBlock)return not(matching("matching_block_tag","tag","minecraft:air",0,-1,0));
@@ -481,39 +504,86 @@ final class DecorationProfile {
         return result;
     }
     private static boolean defaultSurvival(BlockState state) {
+        return methodOwner(state,"canSurvive")==net.minecraft.world.level.block.state.BlockBehaviour.class;
+    }
+    private static Class<?> methodOwner(BlockState state,String name) {
         for(Class<?> c=state.getBlock().getClass();c!=null;c=c.getSuperclass())for(var m:c.getDeclaredMethods())
-            if(m.getName().equals("canSurvive") && m.getParameterCount()==3 && m.getParameterTypes()[0]==BlockState.class)
-                return c==net.minecraft.world.level.block.state.BlockBehaviour.class;
-        return false;
+            if(m.getName().equals(name) && m.getParameterCount()==3 && m.getParameterTypes()[0]==BlockState.class)return c;
+        return null;
+    }
+    private static boolean supportedSurvival(BlockState state) {
+        var owner=methodOwner(state,"canSurvive");
+        if(owner==net.minecraft.world.level.block.state.BlockBehaviour.class)return true;
+        if(Set.of(CarpetBlock.class,SnowLayerBlock.class,CactusBlock.class,SugarCaneBlock.class,BambooStalkBlock.class,SporeBlossomBlock.class,SeaPickleBlock.class,LeafLitterBlock.class).contains(owner))return true;
+        if(!Set.of(VegetationBlock.class,DoublePlantBlock.class,MangrovePropaguleBlock.class,SmallDripleafBlock.class,TallSeagrassBlock.class).contains(owner))return false;
+        // These source-known methods use loaded support tags or the explicit
+        // face/fluid predicates above. Light-dependent and custom overrides
+        // must not inherit a generic vegetation-soil approximation.
+        return Set.of(VegetationBlock.class,DryVegetationBlock.class,AzaleaBlock.class,MangrovePropaguleBlock.class,SmallDripleafBlock.class,SeagrassBlock.class,TallSeagrassBlock.class,LilyPadBlock.class,CactusFlowerBlock.class,WitherRoseBlock.class,NetherFungusBlock.class,NetherRootsBlock.class,NetherSproutsBlock.class,NetherWartBlock.class,StemBlock.class,AttachedStemBlock.class).contains(methodOwner(state,"mayPlaceOn"));
     }
     private JsonObject simple(SimpleBlockFeature feature) {
         var provider=stateProgram(BlockStateProvider.DIRECT_CODEC.encodeStart(registry.createSerializationContext(JsonOps.INSTANCE),feature.toPlace().value()).getOrThrow(),0);
         if(provider==null)return null;
-        if(ProviderStateTransforms.optionalReadsCurrent(provider)) {unsupported.add("simple_block:transformed_current_survival");return null;}
         var states=new JsonArray();
         for(int id:programStates(provider)) {
             var state=materials.entrySet().stream().filter(e->e.getValue()==id).findFirst().orElseThrow().getKey();
-            if(state.getBlock() instanceof MossyCarpetBlock || state.getBlock() instanceof MushroomBlock || !(state.getBlock() instanceof VegetationBlock || state.getBlock() instanceof CarpetBlock || state.getBlock() instanceof SnowLayerBlock || defaultSurvival(state))) {
-                unsupported.add("simple_block:survival:"+BuiltInRegistries.BLOCK.getKey(state.getBlock()));return null;
-            }
-            if(state.getBlock() instanceof DoublePlantBlock && state.getValue(DoublePlantBlock.HALF)!=DoubleBlockHalf.LOWER) {unsupported.add("simple_block:upper-half-provider");return null;}
-            var entry=new JsonObject();entry.addProperty("source",id);var lower=new JsonArray();var upper=new JsonArray();
-            for(boolean wet:List.of(false,true)) {
-                var lo=state;BlockState up=null;
-                if(state.getBlock() instanceof DoublePlantBlock) {
-                    up=state.setValue(DoublePlantBlock.HALF,DoubleBlockHalf.UPPER);
-                    if(state.hasProperty(BlockStateProperties.WATERLOGGED)){lo=lo.setValue(BlockStateProperties.WATERLOGGED,wet);up=up.setValue(BlockStateProperties.WATERLOGGED,wet);}
-                }
-                lower.add(material(lo));upper.add(up==null?0:material(up));
-                // Pool postprocessing can waterlog single blocks too.
-                if(state.hasProperty(BlockStateProperties.WATERLOGGED))material(state.setValue(BlockStateProperties.WATERLOGGED,wet));
-            }
-            entry.add("lower",lower);entry.add("upper",upper);entry.add("survival",survivalPredicate(state));
-            var same=new JsonObject();same.addProperty("type","same_fluid_replaceable");same.add("state",BlockState.CODEC.encodeStart(JsonOps.INSTANCE,state).getOrThrow());
-            entry.add("upper_allowed",combine("any_of",matching("matching_block_tag","tag","minecraft:air",0,0,0),same));states.add(entry);
+            var row=simpleState(state,id,materials);
+            if(row==null) {unsupported.add("simple_block:survival:"+BuiltInRegistries.BLOCK.getKey(state.getBlock()));return null;}
+            states.add(row);
         }
         var result=new JsonObject();result.addProperty("kind","simple_block");result.add("provider",provider);result.add("states",states);
+        if(ProviderStateTransforms.optionalReadsCurrent(provider))result.addProperty("current_survival",true);
         result.add("water",matching("matching_fluids","fluids","#"+FluidTags.WATER.location(),0,0,0));result.addProperty("reach",0);return result;
+    }
+    private static JsonObject simpleState(BlockState state,int id,LinkedHashMap<BlockState,Integer> palette) {
+        if(state.getBlock() instanceof MossyCarpetBlock || !supportedSurvival(state))return null;
+        var entry=new JsonObject();entry.addProperty("source",id);var lower=new JsonArray();var upper=new JsonArray();
+        for(boolean wet:List.of(false,true)) {
+            var lo=state;BlockState up=null;
+            if(state.getBlock() instanceof DoublePlantBlock) {
+                lo=state.setValue(DoublePlantBlock.HALF,DoubleBlockHalf.LOWER);
+                up=state.setValue(DoublePlantBlock.HALF,DoubleBlockHalf.UPPER);
+                if(state.hasProperty(BlockStateProperties.WATERLOGGED)){lo=lo.setValue(BlockStateProperties.WATERLOGGED,wet);up=up.setValue(BlockStateProperties.WATERLOGGED,wet);}
+            }
+            lower.add(palette.computeIfAbsent(lo,ignored->palette.size()));
+            upper.add(up==null?0:palette.computeIfAbsent(up,ignored->palette.size()));
+            if(state.hasProperty(BlockStateProperties.WATERLOGGED))palette.computeIfAbsent(state.setValue(BlockStateProperties.WATERLOGGED,wet),ignored->palette.size());
+        }
+        entry.add("lower",lower);entry.add("upper",upper);entry.add("survival",survivalPredicate(state));
+        var same=new JsonObject();same.addProperty("type","same_fluid_replaceable");same.add("state",BlockState.CODEC.encodeStart(JsonOps.INSTANCE,state).getOrThrow());
+        entry.add("upper_allowed",combine("any_of",matching("matching_block_tag","tag","minecraft:air",0,0,0),same));return entry;
+    }
+    private static boolean needsCurrentSurvival(JsonElement value) {
+        if(value.isJsonObject()) {
+            var object=value.getAsJsonObject();
+            return object.has("current_survival") && object.get("current_survival").getAsBoolean() || object.entrySet().stream().anyMatch(e->needsCurrentSurvival(e.getValue()));
+        }
+        return value.isJsonArray() && value.getAsJsonArray().asList().stream().anyMatch(DecorationProfile::needsCurrentSurvival);
+    }
+    /** One palette-indexed table serves all contextual SimpleBlock recipes. */
+    static void reserveCurrentSurvival(JsonObject world,LinkedHashMap<BlockState,Integer> palette) {
+        if(!needsCurrentSurvival(world.getAsJsonArray("decorations")))return;
+        var rows=new JsonArray();var omissions=new TreeSet<String>();
+        // Required transform outputs and wet/paired variants all participate in
+        // one closure before any dense material predicate is frozen.
+        int next=0;
+        while(next<palette.size()) {
+            ProviderStateTransforms.prepare(world.getAsJsonArray("decorations"),palette);
+            var states=palette.keySet().toArray(BlockState[]::new);
+            while(next<states.length) {
+                var state=states[next];var row=simpleState(state,next++,palette);
+                rows.add(row==null?JsonNull.INSTANCE:row);
+                if(row==null)omissions.add(BuiltInRegistries.BLOCK.getKey(state.getBlock()).toString());
+            }
+        }
+        world.add("simple_current_states",rows);world.add("simple_current_omissions",new Gson().toJsonTree(omissions));
+        if(!omissions.isEmpty())Retina.LOGGER.info("Contextual SimpleBlock survival omissions: {}",omissions);
+    }
+    static void finishCurrentSurvival(JsonObject world,LinkedHashMap<BlockState,Integer> palette) {
+        if(!world.has("simple_current_states"))return;
+        for(var value:world.getAsJsonArray("simple_current_states"))if(!value.isJsonNull())for(String key:List.of("survival","upper_allowed")) {
+            var row=value.getAsJsonObject();row.add(key,predicate(row.getAsJsonObject(key),palette));
+        }
     }
     private JsonObject patch(VegetationPatchFeature feature,int depth) {
         if(depth>16)throw new IllegalArgumentException("Recursive vegetation patch");
@@ -897,6 +967,7 @@ final class DecorationProfile {
             var state = entry.getKey();
             boolean matches = switch (kind) {
                 case "matching_blocks" -> matchesBlock(input.get("blocks"), state);
+                case "matching_plant_lower" -> BuiltInRegistries.BLOCK.getKey(state.getBlock()).toString().equals(input.get("block").getAsString()) && state.getValue(DoublePlantBlock.HALF)==DoubleBlockHalf.LOWER;
                 case "matching_block_tag" -> state.is(TagKey.create(Registries.BLOCK, Identifier.parse(input.get("tag").getAsString())));
                 case "matching_fluids" -> matchesFluid(input.get("fluids"), state);
                 case "replaceable" -> state.canBeReplaced();
@@ -910,6 +981,10 @@ final class DecorationProfile {
                 case "source_water" -> state.getFluidState().isSourceOfType(net.minecraft.world.level.material.Fluids.WATER);
                 case "supports_sea_pickle" -> !state.getCollisionShape(EmptyBlockGetter.INSTANCE,BlockPos.ZERO).getFaceShape(Direction.UP).isEmpty() || state.isFaceSturdy(EmptyBlockGetter.INSTANCE,BlockPos.ZERO,Direction.UP);
                 case "supports_snow" -> supportsSnow(state);
+                case "supports_center" -> {
+                    var face=Direction.valueOf(input.get("direction").getAsString().toUpperCase(Locale.ROOT));
+                    yield !(face==Direction.DOWN && state.is(BlockTags.UNSTABLE_BOTTOM_CENTER)) && state.isFaceSturdy(EmptyBlockGetter.INSTANCE,BlockPos.ZERO,face,SupportType.CENTER);
+                }
                 case "same_fluid_replaceable" -> state.canBeReplaced() && state.getFluidState().equals(BlockState.CODEC.parse(JsonOps.INSTANCE,input.get("state")).getOrThrow().getFluidState());
                 case "solid_or_lava" -> state.isSolid() || state.getFluidState().is(FluidTags.LAVA);
                 case "solid" -> state.isSolid();

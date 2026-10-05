@@ -15,6 +15,7 @@ mod fallen;
 mod mushroom;
 pub mod pairs;
 mod patch;
+pub(crate) use patch::SimpleState;
 pub mod placement;
 mod placement_height;
 pub mod provider_noise;
@@ -1816,6 +1817,7 @@ mod tests {
     #[test]
     fn giant_jungle_crowns_close_above_the_trunk_without_four_interior_holes() {
         let profile = WorldProfile {
+            simple_current_states: vec![],
             program_execution: crate::specialize::Execution::default(),
             climate_lookup: crate::climate::Lookup::default(),
             structures: Default::default(),

@@ -141,13 +141,11 @@ Reproduce with `scripts/native-region-benchmark.py`, `--count 20 --warmups 2`,
 `--terrain-execution interpreter`, `--density-composition disabled` and
 `--compare` against a matched-profile retained output directory.
 
-## Remaining scope
+## Subsequent support and remaining scope
 
-A SimpleBlock provider that can return an arbitrary transformed current block
-still reports `simple_block:transformed_current_survival`. Its outputs need
-complete survival rules and double-plant behavior for that live palette, rather
-than only the explicitly declared provider outputs. Ordinary nullable
-SimpleBlock providers still skip missing optional states. Unsupported survival
-classes and spatial predicates remain reported. The approximate tree planner
-still flattens trunk and foliage materials. This milestone does not finish the
-broader generation goal.
+[Live-state SimpleBlock survival](REGISTERED_SIMPLE_SURVIVAL.md) now supplies
+shared loaded survival and paired-plant rules for supported transformed current
+blocks. Ordinary nullable SimpleBlock providers still skip missing optional
+states. Unsupported survival classes and spatial predicates remain reported.
+The approximate tree planner still flattens trunk and foliage materials. These
+milestones do not finish the broader generation goal.

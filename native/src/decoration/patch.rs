@@ -17,11 +17,25 @@ pub struct SimpleState {
     pub survival: Predicate,
     pub upper_allowed: Predicate,
 }
+impl SimpleState {
+    pub(crate) fn validate(&self, palette: usize) -> bool {
+        (self.source as usize) < palette
+            && self
+                .lower
+                .iter()
+                .chain(&self.upper)
+                .all(|id| (*id as usize) < palette)
+            && self.survival.validate(palette)
+            && self.upper_allowed.validate(palette)
+    }
+}
 #[derive(Clone, Deserialize)]
 pub struct Simple {
     pub provider: Provider,
     pub states: Vec<SimpleState>,
     pub water: Predicate,
+    #[serde(default)]
+    pub current_survival: bool,
 }
 impl Simple {
     pub(super) fn validate(&self, palette: usize) -> bool {
@@ -31,16 +45,8 @@ impl Simple {
                 .provider
                 .outputs()
                 .iter()
-                .all(|id| self.states.iter().any(|s| s.source == *id))
-            && self.states.iter().all(|s| {
-                (s.source as usize) < palette
-                    && s.lower
-                        .iter()
-                        .chain(&s.upper)
-                        .all(|id| (*id as usize) < palette)
-                    && s.survival.validate(palette)
-                    && s.upper_allowed.validate(palette)
-            })
+                .all(|id| self.current_survival || self.states.iter().any(|s| s.source == *id))
+            && self.states.iter().all(|s| s.validate(palette))
     }
 }
 #[derive(Clone, Deserialize)]
@@ -219,7 +225,25 @@ impl World<'_> {
         else {
             return false;
         };
-        let state = simple.states.iter().find(|s| s.source == id).unwrap();
+        let state = if let Some(state) = simple.states.iter().find(|s| s.source == id) {
+            state
+        } else {
+            assert!(
+                simple.current_survival,
+                "missing declared SimpleBlock survival state"
+            );
+            let row = self
+                .profile
+                .simple_current_states
+                .get(id as usize)
+                .expect("missing shared current-state survival table");
+            let Some(state) = row.as_ref() else {
+                // This material's unsupported survival class is explicitly
+                // reported by the registry exporter, rather than assumed safe.
+                return false;
+            };
+            state
+        };
         if !self.test(&state.survival, at) {
             return false;
         }
