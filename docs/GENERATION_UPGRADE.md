@@ -12,6 +12,10 @@ secondary surface noise and fluid context; see
 validation, transfer costs and substantial cold-compilation cost.
 Registered coordinate slices now retain their scopes in both
 GPU execution paths; see [coordinate scopes](GPU_COORDINATE_SCOPES.md).
+[Individual interpolation operators](GPU_INTERPOLATION_SCOPES.md) now retain
+their own child graphs, cell sizes and nested slices in direct GPU samples.
+Child horizontal expressions retain GPU column reuse. The shared final-field
+terrain lattice and cold compilation cost remain required work.
 Local registered GPU aquifers and surface-lake corrections are implemented; see
 [GPU aquifers](GPU_AQUIFERS.md) for fluid/pressure equations, validation, costs and
 remaining fluid-tick approximations. Broader features, further graph

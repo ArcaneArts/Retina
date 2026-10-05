@@ -15,7 +15,8 @@ checks and whole-MCA comparisons verify the retained implementation.
 
 ## Horizontal field reuse
 
-The first three registered graphs are analyzed for coordinate dependencies.
+The first three registered graphs and interpolation input graphs are analyzed
+for coordinate dependencies.
 Expensive X/Z-only subgraphs entering Y-dependent calculations, and horizontal
 climate roots, become cached fields. Semantically identical nodes are interned
 across graphs. Spline locations, derivatives and child expressions participate in
@@ -104,7 +105,9 @@ speedup claims; the table is not a measured speedup for that final guard revisio
 Specialization preserves the exported graph's current semantics. Registered
 `slice` operations now retain their coordinate scopes; see
 [coordinate scopes](GPU_COORDINATE_SCOPES.md). Per-expression interpolation
-wrappers remain flattened into the shared final-density lattice approximation.
+operators now retain their nested scopes in direct graph samples; see
+[interpolation scopes](GPU_INTERPOLATION_SCOPES.md). The shared final-density
+lattice remains a terrain-composition approximation.
 Complete [material layers](GPU_MATERIAL_LAYERS.md) now use the same specialization
 path. Their first Terralith compilation measured about 200–208 seconds; automatic
 mode continues generating with the interpreter but runs more slowly until it is

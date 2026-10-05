@@ -23,7 +23,11 @@ impl Plan {
         let mut costs = Vec::<u32>::new();
         let mut programs = Vec::<Vec<usize>>::new();
         let mut selected = BTreeSet::new();
-        for (pid, program) in registry.programs.iter().take(3).enumerate() {
+        for (pid, program) in registry.all_programs().enumerate() {
+            if pid >= 3 && pid < registry.programs.len() {
+                programs.push(vec![]);
+                continue;
+            }
             let mut ids = Vec::<usize>::new();
             for (i, n) in program.nodes.iter().enumerate() {
                 let deps = n.dependencies(&registry.points);
@@ -34,7 +38,7 @@ impl Plan {
                     knots: Vec::new(),
                 };
                 match n.op {
-                    1 | 23 | 24 | 27 | 31 => {
+                    1 | 23 | 24 | 27 | 28 | 31 => {
                         key.args = [
                             ids[n.a as usize] as u32,
                             ids[n.b as usize] as u32,
@@ -139,13 +143,14 @@ impl Plan {
             .collect::<HashMap<_, _>>();
         Self {
             slots: registry
-                .programs
-                .iter()
+                .all_programs()
                 .enumerate()
-                .map(|(pid, p)| match programs.get(pid) {
-                    Some(ids) => ids.iter().map(|id| field_slots.get(id).copied()).collect(),
-                    None => vec![None; p.nodes.len()],
-                })
+                .map(
+                    |(pid, p)| match programs.get(pid).filter(|ids| !ids.is_empty()) {
+                        Some(ids) => ids.iter().map(|id| field_slots.get(id).copied()).collect(),
+                        None => vec![None; p.nodes.len()],
+                    },
+                )
                 .collect(),
             owners: field_ids.iter().map(|&id| owners[id]).collect(),
         }
@@ -178,6 +183,7 @@ mod tests {
         b.nodes[4].b += 1;
         b.roots = vec![4];
         let r = RegistryProgram {
+            interpolations: vec![],
             programs: vec![a.clone(), b, a],
             noises: vec![],
             points: vec![],
@@ -194,6 +200,39 @@ mod tests {
         assert_eq!(plan.slots[1][2], Some(0));
         assert_eq!(plan.slots[0][2], None);
         assert_eq!(plan.slots[0][4], None);
+
+        let mut nested = r;
+        let zero = Program {
+            nodes: vec![n(0, 0, 0, 0, [0.0; 4])],
+            roots: vec![0],
+        };
+        let input = nested.programs[0].clone();
+        nested.programs = vec![zero.clone(), zero.clone(), zero, input.clone()];
+        nested.interpolations = vec![
+            crate::program::Interpolation {
+                input: input.clone(),
+                cell: [4, 8],
+            },
+            crate::program::Interpolation {
+                input,
+                cell: [7, 5],
+            },
+        ];
+        let child_plan = Plan::new(&nested);
+        assert_eq!(child_plan.owners, vec![(4, 1)]);
+        assert_eq!(child_plan.slots[3], vec![None; 5]);
+        assert_eq!(child_plan.slots[4][1], Some(0));
+        assert_eq!(child_plan.slots[5][1], Some(0));
+        let source = crate::specialize::source(&nested).unwrap();
+        assert!(source.contains("store_columns_4(point,r,id.x)"));
+        let child = source
+            .split("fn interpolation_graph_0(")
+            .nth(1)
+            .unwrap()
+            .split("fn interpolation_field_0(")
+            .next()
+            .unwrap();
+        assert!(child.contains("column_field_0(point,request)"));
     }
     #[test]
     fn scoped_noise_caches_only_when_y_is_replaced() {
@@ -211,6 +250,7 @@ mod tests {
             roots: vec![7],
         };
         let registry = RegistryProgram {
+            interpolations: vec![],
             programs: vec![graph.clone(), graph.clone(), graph],
             noises: vec![],
             points: vec![],
@@ -246,6 +286,7 @@ mod tests {
         let mut c = a.clone();
         c.nodes[3].b = 4;
         let r = RegistryProgram {
+            interpolations: vec![],
             programs: vec![a, b, c],
             noises: vec![],
             points: vec![

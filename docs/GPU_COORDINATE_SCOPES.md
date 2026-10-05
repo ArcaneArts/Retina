@@ -134,9 +134,10 @@ the retained baseline library is `9c7e3e6-native.dylib`. Profiles are
 
 ## Remaining graph approximations
 
-This change fixes coordinate replacement. It does not implement each nested
-`interpolated` expression as a distinct trilinear operator. The existing shared
-world-aligned density lattice still approximates the final field, and nested
-wrappers are flattened. Registered simplex/Perlin and old blended noise remain
-GPU approximations; unsupported density operations still appear in export
-diagnostics. Layered surfaces and aquifers remain separate active workstreams.
+This change fixes coordinate replacement. A subsequent
+[interpolation milestone](GPU_INTERPOLATION_SCOPES.md) preserves distinct
+trilinear operators and their nested coordinate scopes in direct GPU samples.
+The shared world-aligned density lattice still approximates final terrain
+composition. Registered simplex/Perlin and old blended noise remain GPU
+approximations; unsupported operations still appear in export diagnostics.
+Layered surfaces and local aquifers are documented in their separate milestones.

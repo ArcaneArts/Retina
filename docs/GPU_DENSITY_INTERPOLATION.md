@@ -11,9 +11,11 @@ stay on the GPU. Cave generation reuses the solid field. Eligible lake probes
 sample their density corners and Y levels in parallel before extracting waterlines.
 The public Java/Rust request and timing ABIs and readback formats are unchanged.
 
-Nested interpolation wrappers are approximated using a shared final-density
-lattice at the first imported cell size. GPU noise remains an approximation of
-Minecraft's CPU sampler. Existing generated terrain retains its old shape.
+[Registered interpolation scopes](GPU_INTERPOLATION_SCOPES.md) now preserve
+individual operators, nested cell sizes and slices in direct graph samples.
+The shared final-density lattice at the first imported cell size remains a
+terrain-pipeline approximation. GPU noise remains an approximation of Minecraft's
+CPU sampler. Existing generated terrain retains its old shape.
 
 ## Validation
 

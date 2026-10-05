@@ -28,8 +28,12 @@ fn program_old_blended(point:vec3<f32>,p:vec4<f32>,request:Request)->f32 {
     for(var octave=0u;octave<8u;octave++) {let scale=exp2(f32(octave));lower+=noise3(limit*scale,seed+octave*1013u)*weight;upper+=noise3(limit*scale,seed+7919u+octave*1013u)*weight;blend+=noise3(main*scale,seed+15838u+octave*1013u)*weight;weights+=weight;weight*=0.5;}
     return mix(lower,upper,clamp(blend/weights*0.5+0.5,0.0,1.0))/weights;
 }
+fn interpolation_mix(corners:array<f32,8>,alpha:vec3<f32>)->f32 {
+    return mix(mix(mix(corners[0],corners[1],alpha.x),mix(corners[2],corners[3],alpha.x),alpha.y),
+               mix(mix(corners[4],corners[5],alpha.x),mix(corners[6],corners[7],alpha.x),alpha.y),alpha.z);
+}
 fn run_program(program:u32,point:vec3<f32>,request:Request,context:vec4<f32>)->array<f32,6> {
-    let descriptor=12u+program*8u;let offset=bytecode[descriptor];let count=bytecode[descriptor+1u];
+    let descriptor=16u+program*8u;let offset=bytecode[descriptor];let count=bytecode[descriptor+1u];
     var values:array<f32,1024>;
     for(var i=0u;i<count;i++) {
         let at=offset+i*8u;let op=bytecode[at];let a=bytecode[at+1u];let b=bytecode[at+2u];let c=bytecode[at+3u];
@@ -74,6 +78,7 @@ fn run_program(program:u32,point:vec3<f32>,request:Request,context:vec4<f32>)->a
             case 26u:{result=program_old_blended(point,p,request);}
             // Slice scopes are lowered to explicit coordinates in the resident DAG.
             case 27u:{result=program_noise(vec3<f32>(values[a],values[b],values[c]),u32(p.x),request)*p.y;}
+            case 28u:{result=INTERPOLATION_CALL(u32(p.x),vec3<f32>(values[a],values[b],values[c]),request,context);}
             case 29u:{result=point[a];}
             case 30u:{var t=(values[a]-p.x)/(p.y-p.x);if b==1u {t=fract(t);}else if b==2u {t=1.0-abs(fract(t*0.5)*2.0-1.0);}else {t=clamp(t,0.0,1.0);}result=mix(p.z,p.w,t);}
             case 31u:{result=program_old_blended(vec3<f32>(values[a],values[b],values[c]),p,request);}

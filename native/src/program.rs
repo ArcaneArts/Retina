@@ -1,5 +1,7 @@
 //! Resident bytecode for registered density functions and surface predicates.
 use serde::Deserialize;
+pub(crate) mod interpolation;
+pub(crate) use interpolation::Field as Interpolation;
 #[derive(Clone, Deserialize)]
 pub struct Instruction {
     pub op: u32,
@@ -11,7 +13,7 @@ pub struct Instruction {
 impl Instruction {
     pub(crate) fn dependencies(&self, points: &[[f32; 4]]) -> Vec<u32> {
         let mut result = match self.op {
-            1 | 23 | 24 | 27 | 31 => vec![self.a, self.b, self.c],
+            1 | 23 | 24 | 27 | 28 | 31 => vec![self.a, self.b, self.c],
             4..=10 | 40 | 41 => vec![self.a, self.b],
             11..=22 | 25 | 30 | 43 | 44 | 53 => vec![self.a],
             _ => vec![],
@@ -80,10 +82,28 @@ impl Program {
 /// Keep the verbatim interpreter as a reference for specialization and parity
 /// tests. Only this executable variant translates accesses to resident slots.
 pub(crate) fn interpreter_source(capacity: usize) -> String {
+    interpreter_source_depth(capacity, 0)
+}
+pub(crate) fn interpreter_source_depth(capacity: usize, depth: usize) -> String {
+    let source = include_str!("program.wgsl");
+    let start = source.find("fn run_program(").unwrap();
+    let end = source.find("fn density_floor_div(").unwrap();
+    let body = interpreter_body(capacity, depth, "run_program", true);
+    format!("{}{}{}", &source[..start], body, &source[end..])
+}
+pub(crate) fn interpreter_body(
+    capacity: usize,
+    depth: usize,
+    prefix: &str,
+    compact: bool,
+) -> String {
     let source = include_str!("program.wgsl");
     let start = source.find("fn run_program(").unwrap();
     let end = source.find("fn density_floor_div(").unwrap();
     let body = &source[start..end];
+    if !compact {
+        return interpolation::interpreter(body, depth, prefix);
+    }
     let mut mapped = String::new();
     let mut at = 0;
     while let Some(index) = body[at..].find("values[") {
@@ -113,7 +133,7 @@ pub(crate) fn interpreter_source(capacity: usize) -> String {
         "var values:array<f32,1024>;",
         &format!("let registers=offset+count*8u;var values:array<f32,{capacity}>;"),
     );
-    format!("{}{}{}", &source[..start], mapped, &source[end..])
+    interpolation::interpreter(&mapped, depth, prefix)
 }
 #[derive(Clone, Deserialize)]
 pub struct Noise {
@@ -127,6 +147,8 @@ pub struct Noise {
 #[derive(Clone, Deserialize)]
 pub struct RegistryProgram {
     pub programs: Vec<Program>,
+    #[serde(default)]
+    pub interpolations: Vec<Interpolation>,
     pub noises: Vec<Noise>,
     pub points: Vec<[f32; 4]>,
     pub surface: [i32; 3],
@@ -161,9 +183,19 @@ fn default_terrain_cell() -> [u32; 2] {
     [4, 8]
 }
 impl RegistryProgram {
-    pub(crate) fn scratch_values(&self) -> usize {
+    pub(crate) fn all_programs(&self) -> impl Iterator<Item = &Program> {
         self.programs
             .iter()
+            .chain(self.interpolations.iter().map(|f| &f.input))
+    }
+    pub(crate) fn interpolation_depth(&self) -> usize {
+        interpolation::depths(&self.interpolations)
+            .into_iter()
+            .max()
+            .unwrap_or(0)
+    }
+    pub(crate) fn scratch_values(&self) -> usize {
+        self.all_programs()
             .map(|program| program.registers(&self.points).capacity)
             .max()
             .unwrap_or(0)
@@ -203,7 +235,7 @@ impl RegistryProgram {
         {
             return Err("invalid registry GPU program dimensions".into());
         }
-        for program in &self.programs {
+        for (pid, program) in self.all_programs().enumerate() {
             if program.nodes.is_empty()
                 || program.nodes.len() > 1024
                 || program.roots.len() > 6
@@ -219,7 +251,7 @@ impl RegistryProgram {
                     return Err("nonfinite GPU instruction".into());
                 }
                 let deps: Vec<u32> = match n.op {
-                    1 | 27 | 31 => vec![n.a, n.b, n.c],
+                    1 | 27 | 28 | 31 => vec![n.a, n.b, n.c],
                     4..=10 | 41 => vec![n.a, n.b],
                     11..=22 | 30 | 43 | 44 => vec![n.a],
                     23 | 24 => vec![n.a, n.b, n.c],
@@ -248,10 +280,26 @@ impl RegistryProgram {
                 if n.op == 29 && n.a > 2 {
                     return Err("invalid GPU coordinate axis".into());
                 }
-                if !matches!(n.op,0..=27|29..=31|40..=54) {
+                if n.op == 28 {
+                    let field = n.p[0] as usize;
+                    let limit = if pid < self.programs.len() {
+                        self.interpolations.len()
+                    } else {
+                        pid - self.programs.len()
+                    };
+                    if n.p[0] < 0.0 || n.p[0] != field as f32 || field >= limit {
+                        return Err("interpolation fields must reference earlier subgraphs".into());
+                    }
+                }
+                if !matches!(n.op,0..=31|40..=54) {
                     return Err("unknown GPU opcode".into());
                 }
             }
+        }
+        if self.interpolations.iter().any(|f| {
+            f.input.roots.len() != 1 || f.cell.iter().any(|s| *s == 0 || *s > i32::MAX as u32)
+        }) {
+            return Err("invalid registered interpolation field".into());
         }
         for n in &self.noises {
             if n.coefficients.is_empty()
@@ -272,8 +320,8 @@ impl RegistryProgram {
         let Some(p) = profile.and_then(|p| p.registry_program.as_ref()) else {
             return vec![0; 32];
         };
-        let mut words = vec![0u32; 12 + p.programs.len() * 8];
-        words[0] = p.programs.len() as u32;
+        let mut words = vec![0u32; 16 + p.all_programs().count() * 8];
+        words[0] = p.all_programs().count() as u32;
         words[8] = profile.unwrap().sea_level as u32;
         words[9..12].copy_from_slice(&p.surface_noises);
         words[3] = p.surface[0] as u32;
@@ -282,17 +330,29 @@ impl RegistryProgram {
             words[4] |= 1 << 31;
         }
         words[5] = p.surface[2] as u32;
-        for (i, program) in p.programs.iter().enumerate() {
-            words[12 + i * 8] = words.len() as u32;
-            words[13 + i * 8] = program.nodes.len() as u32;
+        for (i, program) in p.all_programs().enumerate() {
+            words[16 + i * 8] = words.len() as u32;
+            words[17 + i * 8] = program.nodes.len() as u32;
             for (j, root) in program.roots.iter().enumerate() {
-                words[14 + i * 8 + j] = *root;
+                words[18 + i * 8 + j] = *root;
             }
             for n in &program.nodes {
                 words.extend([n.op, n.a, n.b, n.c]);
                 words.extend(n.p.map(f32::to_bits));
             }
             words.extend(program.registers(&p.points).slots);
+        }
+        words[12] = words.len() as u32;
+        words[13] = p.interpolations.len() as u32;
+        words[14] = p.interpolation_depth() as u32;
+        words[15] = p.programs.len() as u32;
+        for (i, field) in p.interpolations.iter().enumerate() {
+            words.extend([
+                p.programs.len() as u32 + i as u32,
+                field.cell[0],
+                field.cell[1],
+                0,
+            ]);
         }
         words[1] = words.len() as u32;
         for n in &p.noises {

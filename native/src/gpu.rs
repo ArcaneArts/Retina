@@ -59,6 +59,8 @@ pub(crate) struct Gpu {
     specialized: HashMap<u32, std::sync::Arc<crate::specialize::State>>,
     wide_profiles: std::collections::HashSet<u32>,
     wide_interpreter: Option<std::sync::Arc<crate::specialize::Pipelines>>,
+    interpolation_interpreters:
+        HashMap<(usize, usize), std::sync::Arc<crate::specialize::Pipelines>>,
 }
 
 pub(crate) struct GpuSample {
@@ -316,6 +318,7 @@ impl Gpu {
             specialized: HashMap::new(),
             wide_profiles: std::collections::HashSet::new(),
             wide_interpreter: None,
+            interpolation_interpreters: HashMap::new(),
         };
         gpu.add_profile(0, &vec![0; 672], &[0; 240], &[0; 32]);
         Ok(gpu)
@@ -476,7 +479,11 @@ impl Gpu {
         } else {
             None
         };
-        if specialized.is_none()
+        let depth = profile
+            .and_then(|p| p.registry_program.as_ref())
+            .map_or(0, |p| p.interpolation_depth());
+        if depth == 0
+            && specialized.is_none()
             && self.wide_profiles.contains(&profile_id)
             && self.wide_interpreter.is_none()
         {
@@ -488,11 +495,31 @@ impl Gpu {
                     &crate::program::interpreter_source(1024),
                 )?));
         }
-        let interpreted = self
-            .wide_interpreter
-            .as_ref()
-            .filter(|_| self.wide_profiles.contains(&profile_id))
-            .cloned();
+        let interpreted = if specialized.is_none() && depth > 0 {
+            let capacity = if self.wide_profiles.contains(&profile_id) {
+                1024
+            } else {
+                crate::program::COMPACT_VALUES
+            };
+            let key = (capacity, depth);
+            if !self.interpolation_interpreters.contains_key(&key) {
+                let source = crate::program::interpreter_source_depth(capacity, depth);
+                let pipelines = crate::specialize::compile_interpreter(
+                    &self.device,
+                    &self.layout,
+                    &self.cave_layout,
+                    &source,
+                )?;
+                self.interpolation_interpreters
+                    .insert(key, std::sync::Arc::new(pipelines));
+            }
+            self.interpolation_interpreters.get(&key).cloned()
+        } else {
+            self.wide_interpreter
+                .as_ref()
+                .filter(|_| self.wide_profiles.contains(&profile_id))
+                .cloned()
+        };
         let selected = specialized.as_deref().or(interpreted.as_deref());
         let world_pipeline = |entry, fallback| selected.map_or(fallback, |p| p.world(entry));
         let cave_pipeline = |entry, fallback| selected.map_or(fallback, |p| p.cave(entry));
@@ -1623,9 +1650,21 @@ mod mapping_tests {
         kernel.push_str("let seed=min(sample/21u,2u);var r=requests[0];r.seed_low^=seed*7919u;let point=vec3<f32>(f32(i32(sample%8u)*131-513),f32(i32(sample)*6-64),f32(i32(sample/8u)*127-511));let context=vec4<f32>(f32(sample%8u+1u),f32(sample%3u+3u),f32(sample%6u),f32(sample%7u));let reference=run_reference(program,point,r,context);var actual:array<f32,6>;switch program{case 0u:{actual=run_climate(point,r,context);}case 1u:{actual=run_surface_density(point,r,context);}case 2u:{actual=run_final_density(point,r,context);}default:{actual=run_program(program,point,r,context);}}var expected=reference;COORDINATE_EXPECTED let at=id.x*6u;columns[at]=Column(bitcast<i32>(reference[0]),bitcast<u32>(reference[1]),bitcast<u32>(reference[2]));columns[at+1u]=Column(bitcast<i32>(reference[3]),bitcast<u32>(reference[4]),bitcast<u32>(reference[5]));columns[at+2u]=Column(bitcast<i32>(actual[0]),bitcast<u32>(actual[1]),bitcast<u32>(actual[2]));columns[at+3u]=Column(bitcast<i32>(actual[3]),bitcast<u32>(actual[4]),bitcast<u32>(actual[5]));columns[at+4u]=Column(bitcast<i32>(expected[0]),bitcast<u32>(expected[1]),bitcast<u32>(expected[2]));columns[at+5u]=Column(bitcast<i32>(expected[3]),bitcast<u32>(expected[4]),bitcast<u32>(expected[5]));}");
         let coordinate_expected = fixture.get("coordinate_expected_roots");
         let coordinate_noise = fixture.get("coordinate_noise").map(|n| n.as_u64().unwrap());
-        let expected_kernel = coordinate_noise.map_or(String::new(), |noise| format!(
+        let interpolation_noise = fixture
+            .get("interpolation_noise")
+            .map(|n| n.as_u64().unwrap());
+        let mut expected_kernel = coordinate_noise.map_or(String::new(), |noise| format!(
             "if program==1u{{let clamped=clamp(point,vec3<f32>(-1024.0),vec3<f32>(1024.0))*0.125;expected[0]=program_noise(vec3<f32>(point.x*0.5+17.0*0.125,17.0*0.25+clamped.z,point.z*0.5+clamped.x),{noise}u,r);expected[1]=program_noise(vec3<f32>(-96.0,point.y,point.z)*0.25,{noise}u,r)*4.0;expected[2]=program_noise(vec3<f32>(point.x,0.0,160.0)*0.25,{noise}u,r)*4.0;expected[3]=program_noise(vec3<f32>(-96.0,17.0,0.0)*0.25,{noise}u,r)*4.0;expected[4]=run_reference(2u,vec3<f32>(point.x,32.0,point.z),r,context)[0];expected[5]=run_reference(3u,vec3<f32>(17.0,point.y,point.z),r,context)[0];}}"
         ));
+        if let Some(noise) = interpolation_noise {
+            // Independent eight-corner noise reference, not another call to
+            // the emitted interpolation graph/evaluator.
+            let helper = format!(
+                "fn parity_interpolated_noise(point:vec3<f32>,r:Request)->f32{{let size=vec3<f32>(4.0,8.0,4.0);let lower=floor(point/size)*size;let t=(point-lower)/size;var c:array<f32,8>;for(var i=0u;i<8u;i++){{let offset=vec3<f32>(f32(i&1u),f32((i>>1u)&1u),f32((i>>2u)&1u));c[i]=program_noise((lower+offset*size)*vec3<f32>(0.125,0.25,0.125),{noise}u,r);}}return interpolation_mix(c,t);}}\n"
+            );
+            kernel = format!("{helper}{kernel}");
+            expected_kernel.push_str(&format!("if program==1u{{expected[0]=parity_interpolated_noise(point,r);expected[1]=program_noise(point*vec3<f32>(0.125,0.25,0.125),{noise}u,r);}}"));
+        }
         kernel = kernel.replace("COORDINATE_EXPECTED", &expected_kernel);
         if cached {
             kernel = kernel
@@ -1653,10 +1692,12 @@ mod mapping_tests {
                     "f32(density_origin(r).z)+f32(sample/8u)*3.0",
                 );
         }
-        let reference = include_str!("program.wgsl");
-        let start = reference.find("fn run_program(").unwrap();
-        let end = reference.find("fn density_floor_div(").unwrap();
-        let reference = reference[start..end].replace("fn run_program(", "fn run_reference(");
+        let reference = crate::program::interpreter_body(
+            1024,
+            registry.interpolation_depth(),
+            "run_reference",
+            false,
+        );
         let program_source = if interpreted {
             kernel = kernel.replace("var actual:array<f32,6>;switch program{case 0u:{actual=run_climate(point,r,context);}case 1u:{actual=run_surface_density(point,r,context);}case 2u:{actual=run_final_density(point,r,context);}default:{actual=run_program(program,point,r,context);}}", "let actual=run_program(program,point,r,context);");
             let capacity = if registry.scratch_values() <= crate::program::COMPACT_VALUES {
@@ -1664,8 +1705,19 @@ mod mapping_tests {
             } else {
                 1024
             };
-            crate::program::interpreter_source(capacity)
+            crate::program::interpreter_source_depth(capacity, registry.interpolation_depth())
         } else {
+            // Production aquifer stages use direct calls and deliberately stay
+            // outside material dispatch. Exercise those calls in full-profile
+            // parity checks as well, rather than comparing the dispatch default.
+            if let Some(aquifer) = registry.aquifer.as_ref().filter(|a| a.enabled) {
+                let cases = (0..5).map(|slot| format!(
+                    "case {}u:{{actual=run_aquifer_{slot}(point,r,context);}}",
+                    aquifer.program+slot
+                )).collect::<String>();
+                kernel = kernel.replace("default:{actual=run_program(program,point,r,context);}",
+                    &format!("{cases}default:{{actual=run_program(program,point,r,context);}}"));
+            }
             crate::specialize::source(registry).unwrap()
         };
         let source = format!(
@@ -1804,6 +1856,17 @@ mod mapping_tests {
                         "scoped specialized noise root {root}, sample {}",
                         sample % 64
                     );
+                }
+                if interpolation_noise.is_some() && sample / 64 == 1 && root < 2 {
+                    let expected = f32::from_bits(words[sample * 18 + 12 + root]);
+                    for value in [old, new] {
+                        assert!(
+                            (f32::from_bits(value) - expected).abs() <= 0.000001,
+                            "interpolated GPU noise root {root}, sample {}: {} vs {expected}",
+                            sample % 64,
+                            f32::from_bits(value)
+                        );
+                    }
                 }
                 if !cached && sample / 64 == 0 {
                     if let Some(expected) = coordinate_expected {

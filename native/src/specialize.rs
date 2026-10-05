@@ -175,7 +175,7 @@ impl<'a> Emitter<'a> {
         }
     }
     fn parameters(&self, i: usize, out: &mut String) {
-        writeln!(out,"let at=bytecode[12u+program*8u]+{}u;let p=vec4<f32>(bitcast<f32>(bytecode[at]),bitcast<f32>(bytecode[at+1u]),bitcast<f32>(bytecode[at+2u]),bitcast<f32>(bytecode[at+3u]));",i*8+4).unwrap();
+        writeln!(out,"let at=bytecode[16u+program*8u]+{}u;let p=vec4<f32>(bitcast<f32>(bytecode[at]),bitcast<f32>(bytecode[at+1u]),bitcast<f32>(bytecode[at+2u]),bitcast<f32>(bytecode[at+3u]));",i*8+4).unwrap();
     }
     fn emit(&self, i: usize, memo: &mut [bool], out: &mut String) -> Result<(), String> {
         if memo[i] {
@@ -227,7 +227,14 @@ impl<'a> Emitter<'a> {
             writeln!(out, "// retained node\nvar v{i}:f32;{{").unwrap();
             self.parameters(i, out);
             out.push_str("var result=0.0;\n");
-            if n.op == 25 {
+            if n.op == 28 {
+                writeln!(
+                    out,
+                    "result=interpolation_field_{}(vec3<f32>(v{},v{},v{}),request,context);",
+                    n.p[0] as usize, n.a, n.b, n.c
+                )
+                .unwrap();
+            } else if n.op == 25 {
                 let entries=self.points[n.b as usize..(n.b+n.c) as usize].iter().enumerate().map(|(k,v)|format!("vec3<f32>(bitcast<f32>(bytecode[bytecode[2]+{}u]),bitcast<f32>(bytecode[bytecode[2]+{}u]),v{})",(n.b as usize+k)*4,(n.b as usize+k)*4+1,v[2] as u32)).collect::<Vec<_>>().join(",");
                 writeln!(
                     out,
@@ -300,27 +307,43 @@ pub(crate) fn source(program: &RegistryProgram) -> Result<String, String> {
 fn source_columns(program: &RegistryProgram) -> Result<(String, u32), String> {
     let bodies = opcode_bodies()?;
     let columns = crate::column_program::Plan::new(program);
+    let graphs = program.all_programs().collect::<Vec<_>>();
     let mut shared = HashMap::<String, usize>::new();
     // Preserve the interpreter's f32 node boundary through a dynamic integer
     // identity. The validated descriptor count makes this xor exactly zero.
     let mut functions = format!(
         "fn program_zero()->u32{{return bytecode[0]-{}u;}}\nfn graph_round(value:f32)->f32{{return bitcast<f32>(bitcast<u32>(value)^program_zero());}}\n",
-        program.programs.len()
+        program.all_programs().count()
     );
     let fields = columns.owners.len();
+    for (field, interpolation) in program.interpolations.iter().enumerate() {
+        let body = graph_columns(
+            &interpolation.input,
+            &program.points,
+            &bodies,
+            Some(&columns.slots[program.programs.len() + field]),
+        )?;
+        writeln!(functions,"fn interpolation_graph_{field}(point:vec3<f32>,request:Request,context:vec4<f32>,program:u32)->array<f32,6>{{\n{body}}}").unwrap();
+        functions.push_str(&crate::program::interpolation::specialized(field));
+    }
     // The cache occupies only additional GPU scratch after the existing density,
     // surface and lake lattices. It never enters a host readback buffer.
     functions.push_str("fn column_offset(r:Request)->u32{return lake_probe_offset(r)+lake_side(r)*lake_side(r)*20u*density_layers(r);}\n");
     for (slot, &(pid, node)) in columns.owners.iter().enumerate() {
-        let p = &program.programs[pid];
+        let p = graphs[pid];
         let emitter = Emitter::new(p, &program.points, &bodies, None);
         let mut raw = String::new();
         emitter.emit(node, &mut vec![false; p.nodes.len()], &mut raw)?;
         writeln!(functions,"fn raw_column_{slot}(point:vec3<f32>,request:Request)->f32{{let context=vec4<f32>(0.0);let program={pid}u;\n{raw}return v{node};}}").unwrap();
         writeln!(functions,"fn column_field_{slot}(point:vec3<f32>,r:Request)->f32{{if r.density_side>0u{{let local=(point.xz-vec2<f32>(density_origin(r).xz))/f32(r.density_step_xz);let cell=vec2<i32>(local);if all(local==vec2<f32>(cell)) && all(cell>=vec2<i32>(0)) && all(cell<vec2<i32>(i32(r.density_side))){{let grid=density_origin(r).xz+cell*i32(r.density_step_xz);if all(point.xz==vec2<f32>(grid)){{return surface_nodes[column_offset(r)+(u32(cell.y)*r.density_side+u32(cell.x))*{fields}u+{slot}u];}}}}}}return raw_column_{slot}(point,r);}}").unwrap();
     }
-    for pid in 0..program.programs.len().min(3) {
-        let p = &program.programs[pid];
+    let owners = columns
+        .owners
+        .iter()
+        .map(|o| o.0)
+        .collect::<std::collections::BTreeSet<_>>();
+    for &pid in &owners {
+        let p = graphs[pid];
         let emitter = Emitter::new(p, &program.points, &bodies, None);
         let mut body = String::new();
         let mut memo = vec![false; p.nodes.len()];
@@ -341,7 +364,7 @@ fn source_columns(program: &RegistryProgram) -> Result<(String, u32), String> {
         writeln!(functions,"fn store_columns_{pid}(point:vec3<f32>,request:Request,node:u32){{let context=vec4<f32>(0.0);let program={pid}u;\n{body}}}").unwrap();
     }
     functions.push_str("@compute @workgroup_size(64) fn horizontal_nodes(@builtin(global_invocation_id) id:vec3<u32>){let r=requests[id.y];if id.x>=r.density_side*r.density_side{return;}let origin=density_origin(r);let point=vec3<f32>(f32(origin.x+i32(id.x%r.density_side)*i32(r.density_step_xz)),0.0,f32(origin.z+i32(id.x/r.density_side)*i32(r.density_step_xz)));\n");
-    for pid in 0..program.programs.len().min(3) {
+    for pid in owners {
         writeln!(functions, "store_columns_{pid}(point,r,id.x);").unwrap();
     }
     functions.push_str("}\n");
@@ -546,7 +569,7 @@ impl Compiler {
             progress: Arc::new(Progress {
                 status: std::sync::atomic::AtomicU32::new(1),
                 source_bytes: source.len() as u64,
-                nodes: program.programs.iter().map(|p| p.nodes.len() as u32).sum(),
+                nodes: program.all_programs().map(|p| p.nodes.len() as u32).sum(),
                 emitted: source.matches("// retained node\n").count() as u32,
                 graphs: source.matches("fn graph_").count() as u32 - 1,
                 horizontal_fields,
@@ -743,6 +766,7 @@ mod tests {
     #[test]
     fn material_dispatch_excludes_direct_aquifer_graphs() {
         let registry = RegistryProgram {
+            interpolations: vec![],
             programs: (0..9)
                 .map(|v| Program {
                     nodes: vec![n(0, 0, 0, 0, [v as f32, 0.0, 0.0, 0.0])],
@@ -814,6 +838,7 @@ mod tests {
             roots: vec![4],
         };
         let registry = RegistryProgram {
+            interpolations: vec![],
             programs: vec![program.clone(), program.clone(), program],
             noises: vec![],
             points: vec![[-1.0, 1.0, 1.0, 0.0], [1.0, 0.0, 2.0, 0.0]],
@@ -831,6 +856,6 @@ mod tests {
         assert_eq!(source.matches("fn graph_").count(), 2);
         assert!(source.contains("vec3<f32>,2"));
         assert!(source.contains("v0,v0,v0,v0,v0"));
-        assert_eq!(opcode_bodies().unwrap().len(), 46);
+        assert_eq!(opcode_bodies().unwrap().len(), 47);
     }
 }

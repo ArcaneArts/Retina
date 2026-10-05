@@ -96,7 +96,7 @@ public final class NativeCoordinateIntegrationTest {
             System.out.println("QA_EVT {\"event\":\"registered_coordinate_scopes\",\"status\":\"pass\",\"context\":{\"columns\":"+columns+",\"different_from_flattening\":"+different+"}}");
         }
     }
-    private static JsonObject fixture(BiomeTerrainProfile base,RegistryGpuProgram compiler,List<JsonObject> graphs) {
+    static JsonObject fixture(BiomeTerrainProfile base,RegistryGpuProgram compiler,List<JsonObject> graphs) {
         var data=JsonParser.parseString(base.json()).getAsJsonObject();
         data.remove("structures");
         for(var biome:data.getAsJsonArray("biomes")) {
@@ -108,12 +108,13 @@ public final class NativeCoordinateIntegrationTest {
         // A dummy registered noise is required even for analytic-only graphs.
         compiler.noise(JsonParser.parseString("\"minecraft:surface\""));
         registry.add("programs",programs);registry.add("noises",compiler.noises.deepCopy());registry.add("points",compiler.points.deepCopy());
+        registry.add("interpolations",compiler.interpolations.deepCopy());
         registry.add("surface",JsonParser.parseString("[-64,8,0]"));registry.add("terrain_cell",JsonParser.parseString("[4,8]"));
         registry.add("surface_noises",JsonParser.parseString("[0,0,0]"));data.add("registry_program",registry);
         data.addProperty("program_execution","specialized");
         return data;
     }
-    private static JsonObject zero() {return JsonParser.parseString("{\"nodes\":[{\"op\":0,\"a\":0,\"b\":0,\"c\":0,\"p\":[0,0,0,0]}],\"roots\":[0]}").getAsJsonObject();}
+    static JsonObject zero() {return JsonParser.parseString("{\"nodes\":[{\"op\":0,\"a\":0,\"b\":0,\"c\":0,\"p\":[0,0,0,0]}],\"roots\":[0]}").getAsJsonObject();}
     private static JsonElement number(float value) {return new JsonPrimitive(value);}
     private static JsonObject gradient(String axis,int from,int to) {
         var o=new JsonObject();o.addProperty("type","minecraft:gradient");o.addProperty("axis",axis);

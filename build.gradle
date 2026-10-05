@@ -93,7 +93,7 @@ tasks.register('nativeGpuTest', Exec) {
 tasks.register('gpuTest', JavaExec) {
     group = 'verification'
     description = 'Test the GPU pipeline and Java/Rust bridge with parallel requests.'
-    dependsOn 'nativeGpuTest', 'nativeOreGpuTest', 'nativeCoordinateGpuTest', 'materialTest', 'aquiferTest', 'gpuTestClasses'
+    dependsOn 'nativeGpuTest', 'nativeOreGpuTest', 'nativeCoordinateGpuTest', 'nativeInterpolationGpuTest', 'materialTest', 'aquiferTest', 'gpuTestClasses'
     classpath = sourceSets.gpuTest.runtimeClasspath
     mainClass = 'art.arcane.retina.worldgen.NativeTerrainIntegrationTest'
     javaLauncher = javaToolchains.launcherFor {
@@ -131,6 +131,27 @@ tasks.register('materialTest', JavaExec) {
     mainClass = 'art.arcane.retina.worldgen.NativeMaterialIntegrationTest'
     javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
     jvmArgs '--enable-native-access=ALL-UNNAMED'
+}
+
+tasks.register('interpolationTest', JavaExec) {
+    group = 'verification'
+    description = 'Validate registered interpolation fields and nested/sliced scopes against Minecraft samplers.'
+    dependsOn 'gpuTestClasses', 'packageNative'
+    classpath = sourceSets.gpuTest.runtimeClasspath
+    mainClass = 'art.arcane.retina.worldgen.NativeInterpolationIntegrationTest'
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
+    jvmArgs '--enable-native-access=ALL-UNNAMED'
+}
+
+tasks.register('nativeInterpolationGpuTest', Exec) {
+    group = 'verification'
+    description = 'Compare nested interpolation roots and GPU-noise corners across both GPU evaluators.'
+    dependsOn 'interpolationTest'
+    workingDir nativeDirectory
+    environment 'RETINA_PROGRAM_PARITY_PROFILE', file('build/registry-interpolation-profile.json').absolutePath
+    commandLine(nativeCargoCommand + ['test', '--release', '--locked', '--lib',
+            'specialized_roots_match_interpreter_on_real_gpu',
+            '--target-dir', nativeTarget.get().asFile.absolutePath, '--', '--ignored', '--nocapture'])
 }
 
 tasks.register('nativeCoordinateGpuTest', Exec) {

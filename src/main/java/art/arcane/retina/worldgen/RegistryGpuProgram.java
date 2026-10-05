@@ -19,6 +19,9 @@ import java.util.*;
 final class RegistryGpuProgram {
     final HolderLookup.Provider registry;
     final JsonArray noises = new JsonArray(), programs = new JsonArray(), points = new JsonArray();
+    final JsonArray interpolations = new JsonArray();
+    final Map<String,Integer> interpolationIds = new HashMap<>();
+    final Set<String> resolvingInterpolations = new HashSet<>();
     final Map<String,Integer> noiseIds = new LinkedHashMap<>();
     final Set<String> approximations = new TreeSet<>();
     final Set<String> shoreFeatures = new TreeSet<>();
@@ -37,11 +40,7 @@ final class RegistryGpuProgram {
             climate.roots.add(climate.density(compiler.encode(fn)));
         compiler.programs.add(climate.finish());
         var climateNoises=new HashSet<Integer>();
-        for(var value:climate.nodes) {
-            var node=value.getAsJsonObject();int op=node.get("op").getAsInt();
-            if(op==1 || op==27)climateNoises.add(node.getAsJsonArray("p").get(0).getAsInt());
-            if(op==2)climateNoises.add(node.get("a").getAsInt());
-        }
+        compiler.collectNoises(climate.finish(),climateNoises,new HashSet<>());
         for(int id:climateNoises)compiler.noises.get(id).getAsJsonObject().addProperty("horizontal_scale",256.0/biomeScale);
         var terrain=compiler.new Program();
         JsonElement surface=compiler.unwrap(compiler.encode(router.chunkSurfaceLevel()));
@@ -52,7 +51,7 @@ final class RegistryGpuProgram {
             terrain.roots.add(terrain.density(compiler.encode(router.finalDensity())));
             terrain.roots.add(terrain.constant(minY+height));
             config.add(minY); config.add(8); config.add(0);
-        } else { terrain.roots.add(terrain.density(surface)); terrain.roots.add(0); config.add(minY);config.add(1);config.add(1); }
+        } else { terrain.roots.add(terrain.density(compiler.encode(router.chunkSurfaceLevel()))); terrain.roots.add(0); config.add(minY);config.add(1);config.add(1); }
         compiler.programs.add(terrain.finish());
         var density=compiler.new Program();density.roots.add(density.density(compiler.encode(router.finalDensity())));compiler.programs.add(density.finish());
         for(var biome:biomes) {
@@ -78,7 +77,7 @@ final class RegistryGpuProgram {
             if(value.isJsonObject() && type(value.getAsJsonObject()).equals("find_top_surface")) {
                 var o=value.getAsJsonObject();p.roots.add(p.density(o.get("density")));p.roots.add(p.density(o.get("upper_bound")));
                 surfaceConfig.add(o.get("lower_bound"));surfaceConfig.add(o.get("cell_height"));surfaceConfig.add(0);
-            } else {p.roots.add(p.density(value));surfaceConfig.add(minY);surfaceConfig.add(1);surfaceConfig.add(1);}
+            } else {p.roots.add(p.density(compiler.encode(a.surfaceLevel())));surfaceConfig.add(minY);surfaceConfig.add(1);surfaceConfig.add(1);}
             compiler.programs.add(p.finish());aquifer.add("surface",surfaceConfig);
             compiler.approximations.add("aquifer:gpu-positional-hash");
             compiler.approximations.add("aquifer:4x4x4-barrier-interpolation");
@@ -87,6 +86,7 @@ final class RegistryGpuProgram {
         var result=new JsonObject(); result.add("programs",compiler.programs);result.add("noises",compiler.noises);
         result.add("aquifer",aquifer);
         result.add("points",compiler.points); result.add("surface",config);
+        result.add("interpolations",compiler.interpolations);
         var terrainCell=compiler.terrainCell(compiler.encode(router.finalDensity()),new HashSet<>());
         if(terrainCell==null) {
             terrainCell=new JsonArray();terrainCell.add(4);terrainCell.add(8);
@@ -102,8 +102,8 @@ final class RegistryGpuProgram {
         var shores = new JsonArray(); compiler.shoreFeatures.forEach(shores::add); result.add("shore_features", shores);
         Retina.LOGGER.info("Projected {} registered surface sediment features to GPU coverage: {}", shores.size(), shores);
         var approximations=new JsonArray();compiler.approximations.forEach(approximations::add);result.add("approximations",approximations);
-        Retina.LOGGER.info("Compiled registry GPU programs: {} climate nodes, {} surface nodes, {} material programs, {} noises; approximations {}",
-                climate.nodes.size(),terrain.nodes.size(),biomes.size(),compiler.noises.size(),compiler.approximations);
+        Retina.LOGGER.info("Compiled registry GPU programs: {} climate nodes, {} surface nodes, {} material programs, {} noises, {} interpolation fields; approximations {}",
+                climate.nodes.size(),terrain.nodes.size(),biomes.size(),compiler.noises.size(),compiler.interpolations.size(),compiler.approximations);
         return result;
     }
     JsonElement encode(DensityFunction fn) { return DensityFunction.CODEC.encodeStart(registry.createSerializationContext(JsonOps.INSTANCE),fn).getOrThrow(); }
@@ -169,6 +169,29 @@ final class RegistryGpuProgram {
     }
     static String type(JsonObject o) { return o.get("type").getAsString().replace("minecraft:",""); }
     static float number(JsonObject o,String key,float fallback) { return o.has(key)?o.get(key).getAsFloat():fallback; }
+    void collectNoises(JsonObject program,Set<Integer> ids,Set<Integer> fields) {
+        for(var value:program.getAsJsonArray("nodes")) {
+            var node=value.getAsJsonObject();int op=node.get("op").getAsInt();
+            if(op==1 || op==27)ids.add(node.getAsJsonArray("p").get(0).getAsInt());
+            if(op==2)ids.add(node.get("a").getAsInt());
+            if(op==28) {
+                int field=node.getAsJsonArray("p").get(0).getAsInt();
+                if(fields.add(field))collectNoises(interpolations.get(field).getAsJsonObject().getAsJsonObject("input"),ids,fields);
+            }
+        }
+    }
+    int interpolation(JsonObject value) {
+        // The child samples its own corner coordinates. Outer slices modify
+        // the lookup point; slices inside the child retain their own scope.
+        String key=value.toString();var existing=interpolationIds.get(key);if(existing!=null)return existing;
+        if(!resolvingInterpolations.add(key))throw new IllegalArgumentException("Recursive interpolation field: "+key);
+        try {
+            var input=new Program();input.roots.add(input.density(value.get("input")));
+            var field=new JsonObject();field.add("input",input.finish());
+            var sizes=new JsonArray();sizes.add(value.get("cell_size_xz"));sizes.add(value.get("cell_size_y"));field.add("cell",sizes);
+            int id=interpolations.size();interpolations.add(field);interpolationIds.put(key,id);return id;
+        } finally {resolvingInterpolations.remove(key);}
+    }
     final class Program {
         final JsonArray nodes=new JsonArray(), roots=new JsonArray();
         final Map<String,Integer> compiled=new HashMap<>(); final Set<String> resolving=new HashSet<>();
@@ -193,7 +216,8 @@ final class RegistryGpuProgram {
                 var o=value.getAsJsonObject();String kind=type(o);
                 index=switch(kind) {
                     case "constant" -> constant(o.get("value").getAsFloat());
-                    case "cache","interpolated","blend_density" -> density(o.get("input"));
+                    case "cache","blend_density" -> density(o.get("input"));
+                    case "interpolated" -> node(28,coordinate(0),coordinate(1),coordinate(2),interpolation(o));
                     case "slice" -> slice(o);
                     case "blend_alpha" -> constant(1);
                     case "blend_offset","beardifier" -> constant(0);
