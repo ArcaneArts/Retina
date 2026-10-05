@@ -47,6 +47,7 @@ def main():
     parser.add_argument("--cached-density-masks", choices=("enabled", "disabled"), help="Resident-only density samplers for proven mask queries")
     parser.add_argument("--lake-point-cache", choices=("enabled", "disabled"), help="Invocation-local interpolation corner reuse for composed lake scans")
     parser.add_argument("--lake-primed-corners", choices=("enabled", "disabled"), help="Reuse interval vertices in the composed lake point cache")
+    parser.add_argument("--lake-sparse-fields", choices=("enabled", "disabled"), help="GPU scratch stencils for actual composed lake probe coordinates")
     parser.add_argument("--terrain-execution", choices=("interpreter", "specialized"), help="Select terrain/climate stages independently of specialized material/cave stages")
     parser.add_argument("--interpreter-dispatch", choices=("enabled", "disabled"), help="Shared compact interpreter entrypoints or independent pipelines")
     parser.add_argument("--interpreter-preload", choices=("enabled", "disabled"), help="Overlap compact density pipeline preparation with profile parsing")
@@ -63,6 +64,8 @@ def main():
         os.environ["RETINA_LAKE_POINT_CACHE"] = "1" if args.lake_point_cache == "enabled" else "0"
     if args.lake_primed_corners:
         os.environ["RETINA_LAKE_PRIMED_CORNERS"] = "1" if args.lake_primed_corners == "enabled" else "0"
+    if args.lake_sparse_fields:
+        os.environ["RETINA_LAKE_SPARSE_FIELDS"] = "1" if args.lake_sparse_fields == "enabled" else "0"
     if args.interpreter_dispatch:
         os.environ["RETINA_INTERPRETER_DISPATCH"] = "1" if args.interpreter_dispatch == "enabled" else "0"
     if args.interpreter_preload:
@@ -121,6 +124,7 @@ def main():
     data = dict(library=str(args.library), parallel=args.parallel, seed=args.seed, regions=regions, program_execution=args.program_execution, interpolation_cache=args.interpolation_cache, density_composition=args.density_composition, cached_density_masks=args.cached_density_masks, terrain_execution=args.terrain_execution, interpreter_dispatch=args.interpreter_dispatch, interpreter_preload=args.interpreter_preload,
                 lake_point_cache=args.lake_point_cache,
                 lake_primed_corners=args.lake_primed_corners,
+                lake_sparse_fields=args.lake_sparse_fields or os.environ.get("RETINA_LAKE_SPARSE_FIELDS"),
                 total_ms=wall*1000, chunks_per_second=chunks/wall, median_ms=statistics.median(r["ms"] for r in regions),
                 average_region_ms=statistics.mean(r["ms"] for r in regions),
                 startup=dict(initialize_ms=initialize_ms, registration_ms=registration_ms, warmups=warmups),

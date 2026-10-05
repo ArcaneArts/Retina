@@ -22,6 +22,9 @@ pub(crate) struct CachePlan {
     pub depth: usize,
 }
 impl CachePlan {
+    pub(super) fn retains(&self, field: usize) -> bool {
+        self.fields.get(field).copied().unwrap_or(false)
+    }
     pub fn new(registry: &RegistryProgram) -> Self {
         let mut pure = Vec::new();
         for f in &registry.interpolations {

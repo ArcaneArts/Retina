@@ -698,6 +698,7 @@ impl Compiler {
         cached_masks: bool,
         lake_point_cache: bool,
         lake_primed_corners: bool,
+        lake_sparse_fields: bool,
     ) -> Result<Arc<State>, String> {
         let (mut source, horizontal_fields) = source_columns(program)?;
         source = crate::program::density_composition_source(&source, composition);
@@ -724,6 +725,11 @@ impl Compiler {
                     crate::program::interpolation::PRIMED_CORNERS_SOURCE_KEY
                 )
                 .unwrap();
+            }
+        }
+        if composition && lake_sparse_fields {
+            if let Some(plan) = crate::program::lake_sparse::Plan::new(program) {
+                source.push_str(&plan.source(horizontal_fields));
             }
         }
         // The entry-point set is part of pipeline identity even when graphs match.
@@ -865,6 +871,13 @@ fn compile_program(
             if entries.is_empty() {
                 return Ok(HashMap::new());
             }
+            let cave_program;
+            let program = if prefix == include_str!("caves.wgsl") {
+                cave_program = crate::program::lake_sparse::without_source(program);
+                cave_program.as_ref()
+            } else {
+                program
+            };
             let source = format!(
                 "{prefix}\n{}\n{program}\n{suffix}",
                 include_str!("climate.wgsl")
@@ -964,6 +977,10 @@ fn compile_program(
         if specialized {
             world_entries.push("horizontal_nodes");
         }
+        let sparse_lakes = program.contains(crate::program::lake_sparse::SOURCE_KEY);
+        if sparse_lakes {
+            world_entries.push("lake_sparse_fields");
+        }
         let interpolation_entries = (1..=program.matches("fn interpolation_nodes_").count())
             .map(|level| format!("interpolation_nodes_{level}"))
             .collect::<Vec<_>>();
@@ -983,6 +1000,26 @@ fn compile_program(
             world_layout,
             &world_entries,
         )?;
+        if sparse_lakes {
+            let pipeline = world.remove("lake_sparse_fields").unwrap();
+            world.insert("lake_sparse_fields_cached".to_owned(), pipeline);
+            let sparse_program = crate::program::lake_sparse::cached_source(program);
+            let sparse_world = include_str!("simplex.wgsl").replace(
+                "let point=lake_probe_point(probe,r);",
+                "lake_sparse_probe=probe;let point=lake_probe_point(probe,r);",
+            );
+            let mut pipelines = make(
+                &sparse_program,
+                &sparse_world,
+                include_str!("noise3.wgsl"),
+                world_layout,
+                &["lake_density"],
+            )?;
+            world.insert(
+                "lake_density_sparse_cached".to_owned(),
+                pipelines.remove("lake_density").unwrap(),
+            );
+        }
         if lake_point_cache {
             let cached_program = crate::program::interpolation::point_cached_source(program);
             let pipelines: HashMap<String, wgpu::ComputePipeline> = make(

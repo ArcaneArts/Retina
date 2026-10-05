@@ -168,6 +168,32 @@ tasks.register('nativeInterpolationPrimedGpuTest', Exec) {
 }
 gpuTest.dependsOn 'nativeInterpolationPrimedGpuTest'
 
+tasks.register('nativeLakeSparseGpuTest', Exec) {
+    group = 'verification'
+    description = 'Compare sparse lake-probe interpolation samples with an uncached GPU interpreter.'
+    dependsOn 'interpolationTest'
+    workingDir nativeDirectory
+    def sourceFixture = file('build/registry-interpolation-profile.json')
+    def sparseFixture = file('build/registry-sparse-lake-profile.json')
+    environment 'RETINA_PROGRAM_PARITY_PROFILE', sparseFixture.absolutePath
+    doFirst {
+        // Exercise actual nested inputs on several binary grids; primary roots
+        // use original XYZ while nested remappings retain their own semantics.
+        def fixture = new groovy.json.JsonSlurper().parse(sourceFixture)
+        def registry = fixture.registry_program
+        def cells = [[2,4],[8,4],[4,16],[2,4],[8,4],[4,2],[4,8]]
+        registry.interpolations.eachWithIndex { field, index -> field.cell = cells[index] }
+        def nodes = registry.programs[1].nodes.take(4)
+        (0..<6).each { index -> nodes.add([op:28,a:1,b:2,c:3,p:[index,0,0,0]]) }
+        registry.programs[1] = [nodes:nodes,roots:(4..<10).toList()]
+        sparseFixture.text = groovy.json.JsonOutput.toJson(fixture)
+    }
+    commandLine(nativeCargoCommand + ['test', '--release', '--locked', '--lib',
+            'sparse_lake_roots_match_uncached_gpu',
+            '--target-dir', nativeTarget.get().asFile.absolutePath, '--', '--ignored', '--nocapture'])
+}
+gpuTest.dependsOn 'nativeLakeSparseGpuTest'
+
 ['Specialized', 'Interpreter', 'Far'].each { mode ->
     tasks.register("nativeInterpolationCache${mode}GpuTest", Exec) {
         group = 'verification'

@@ -32,6 +32,12 @@ repeated corner evaluation in composed probes without another dispatch or readba
 Actual-profile repeats preserve complete NBT and improve several whole-region
 workloads, with documented mixed preliminary results. Composition remains slower
 than production and stays disabled; cold-start work remains required.
+[Sparse lake-field stencils](GPU_SPARSE_LAKE_FIELDS.md) now move uncovered
+fractional-probe corners into a GPU scratch prepass. The probe shader reuses them
+without carrying raw input graphs in its hot call tree. Independent uncached-GPU
+oracles preserve actual registered roots and interval endpoints. This continues
+the composition experiment; it does not complete fast production composition
+or cold-start work.
 [Mixed GPU stage selection](GPU_STAGE_SELECTION.md) now retains compact
 interpreted terrain/climate on Metal while specializing materials and caves.
 Repeated actual-profile comparisons improve whole-region throughput, with

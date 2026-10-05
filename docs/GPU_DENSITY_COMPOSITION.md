@@ -271,6 +271,11 @@ The later [interval-vertex reuse](GPU_PRIMED_LAKE_CORNERS.md) reuses bound sampl
 in that same cache. Repeated Terralith serial tests gain about 3–4%, and a paired
 two-caller test gains 5.7% throughput. Vanilla serial throughput is unchanged;
 composition still trails production, and cold activation remains open.
+The [sparse probe stencil](GPU_SPARSE_LAKE_FIELDS.md) now fills uncovered registered
+field corners in a GPU prepass. Actual-profile repeats preserve NBT and reduce
+Terralith serial region time about 9%, including the writer cost. It adds GPU
+scratch and optional pipeline compilation; production composition and cold startup
+remain unresolved.
 
 ## Validation and remaining work
 

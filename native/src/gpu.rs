@@ -72,6 +72,7 @@ pub(crate) struct Gpu {
     interpolation_plans: HashMap<u32, std::sync::Arc<crate::program::interpolation::CachePlan>>,
     cached_density_plans: HashMap<u32, crate::program::composition::CachedDensity>,
     cached_node_plans: HashMap<u32, crate::program::composition::CachedDensity>,
+    sparse_lake_plans: HashMap<u32, crate::program::lake_sparse::Plan>,
     interpolation_cache: bool,
     specialized_terrain: bool,
     interpreter_dispatch: bool,
@@ -80,6 +81,7 @@ pub(crate) struct Gpu {
     cached_density_masks: bool,
     lake_point_cache: bool,
     lake_primed_corners: bool,
+    lake_sparse_fields: bool,
 }
 
 pub(crate) struct GpuSample {
@@ -146,6 +148,11 @@ impl Gpu {
             _ => info.backend == wgpu::Backend::Metal,
         };
         let lake_primed_corners = match std::env::var("RETINA_LAKE_PRIMED_CORNERS").as_deref() {
+            Ok("0") => false,
+            Ok("1") => true,
+            _ => info.backend == wgpu::Backend::Metal,
+        };
+        let lake_sparse_fields = match std::env::var("RETINA_LAKE_SPARSE_FIELDS").as_deref() {
             Ok("0") => false,
             Ok("1") => true,
             _ => info.backend == wgpu::Backend::Metal,
@@ -380,11 +387,13 @@ impl Gpu {
             interpolation_plans: HashMap::new(),
             cached_density_plans: HashMap::new(),
             cached_node_plans: HashMap::new(),
+            sparse_lake_plans: HashMap::new(),
             interpolation_cache: std::env::var("RETINA_INTERPOLATION_CACHE").as_deref() != Ok("0"),
             specialized_terrain,
             interpreter_dispatch,
             preloaded_interpreter: None,
             density_composition: std::env::var("RETINA_DENSITY_COMPOSITION").as_deref() == Ok("1"),
+            lake_sparse_fields,
             cached_density_masks: std::env::var("RETINA_CACHED_DENSITY_MASKS").as_deref()
                 != Ok("0"),
             lake_point_cache,
@@ -540,6 +549,9 @@ impl Gpu {
                 if let Some(plan) = crate::program::composition::CachedDensity::for_nodes(program) {
                     self.cached_node_plans.insert(profile_id, plan);
                 }
+                if let Some(plan) = crate::program::lake_sparse::Plan::new(program) {
+                    self.sparse_lake_plans.insert(profile_id, plan);
+                }
                 if program.scratch_values() > crate::program::COMPACT_VALUES {
                     self.wide_profiles.insert(profile_id);
                 }
@@ -551,6 +563,7 @@ impl Gpu {
                         self.cached_density_masks,
                         self.lake_point_cache,
                         self.lake_primed_corners,
+                        self.lake_sparse_fields,
                     ) {
                         Ok(state) => {
                             self.pipeline.shader(profile_id, state.progress.clone());
@@ -718,6 +731,17 @@ impl Gpu {
         let mut interpolation_dispatch = 0u32;
         let mut interpolation_headers = Vec::new();
         let mut interpolation_depth = 0;
+        let sparse_plan = self
+            .sparse_lake_plans
+            .get(&profile_id)
+            .cloned()
+            .filter(|_| {
+                composition
+                    && self.lake_sparse_fields
+                    && !surface_probe
+                    && selected.is_some_and(|p| p.cached_world("lake_density_sparse").is_some())
+            });
+        let mut sparse_dispatch = 0u32;
         if let Some(program) = density_program {
             let compose = self.density_composition && program.density_composition;
             let [sx, sy] = program.terrain_cell;
@@ -768,6 +792,29 @@ impl Gpu {
                 let lake_side = (width as u64 + lake_remainder).div_ceil(128);
                 floats += lake_side * lake_side * (4 + 5 * 4 * layers);
                 floats += side * side * horizontal_fields as u64;
+                if let Some(plan) = sparse_plan
+                    .as_ref()
+                    .filter(|p| p.request_supported(request))
+                {
+                    let samples = plan.max_samples(request);
+                    let count = lake_side * lake_side * 5;
+                    let extra = count * plan.words(request);
+                    let limit = self
+                        .device
+                        .limits()
+                        .max_buffer_size
+                        .min(self.device.limits().max_storage_buffer_binding_size as u64)
+                        / 4;
+                    if extra <= limit.saturating_sub(floats)
+                        && count * samples
+                            <= u64::from(self.device.limits().max_compute_workgroups_per_dimension)
+                                * 64
+                    {
+                        floats += extra;
+                        request.padding |= crate::program::lake_sparse::FLAG;
+                        sparse_dispatch = sparse_dispatch.max((count * samples) as u32);
+                    }
+                }
                 lake_dispatch = lake_dispatch.max((lake_side * lake_side) as u32);
                 density_dispatch.0 = density_dispatch.0.max((side * side) as u32);
                 density_dispatch.1 = density_dispatch.1.max(layers as u32);
@@ -797,6 +844,12 @@ impl Gpu {
             }
             self.ensure_surface_lattice(floats * 4);
         }
+        // A submission selects one complete sampler. Partial optional capacity
+        // or coordinate coverage keeps the original GPU path for the whole batch.
+        let sparse_lakes = sparse_plan.is_some()
+            && gpu_requests
+                .iter()
+                .all(|r| r.padding & crate::program::lake_sparse::FLAG != 0);
 
         let cached_masks = self.cached_density_masks
             && composition
@@ -1178,11 +1231,49 @@ impl Gpu {
             pass.dispatch_workgroups(lake_dispatch.div_ceil(64), requests.len() as u32, 1);
         }
         if density_program.is_some() && !surface_probe {
+            if sparse_lakes {
+                let mut writes = timestamp_writes(timings::LAKE_DENSITY);
+                if let Some(ref mut w) = writes {
+                    w.end_of_pass_write_index = None;
+                }
+                let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                    label: Some("Retina sparse lake interpolation corners"),
+                    timestamp_writes: writes,
+                });
+                pass.set_pipeline(
+                    selected
+                        .unwrap()
+                        .cached_world("lake_sparse_fields")
+                        .unwrap(),
+                );
+                pass.set_bind_group(0, group, &[]);
+                pass.dispatch_workgroups(
+                    sparse_dispatch.div_ceil(64),
+                    sparse_plan.as_ref().unwrap().field_count(),
+                    requests.len() as u32,
+                );
+            }
+            let mut writes = timestamp_writes(timings::LAKE_DENSITY);
+            if sparse_lakes {
+                if let Some(ref mut w) = writes {
+                    w.beginning_of_pass_write_index = None;
+                }
+            }
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
                 label: Some("Retina parallel lake density probes"),
-                timestamp_writes: timestamp_writes(timings::LAKE_DENSITY),
+                timestamp_writes: writes,
             });
-            (world_pipeline("lake_density", &self.lake_density_pipeline)).bind(&mut pass);
+            (if sparse_lakes {
+                crate::specialize::Selected::from(
+                    selected
+                        .unwrap()
+                        .cached_world("lake_density_sparse")
+                        .unwrap(),
+                )
+            } else {
+                world_pipeline("lake_density", &self.lake_density_pipeline)
+            })
+            .bind(&mut pass);
             pass.set_bind_group(0, group, &[]);
             pass.dispatch_workgroups(
                 (lake_dispatch * 20).div_ceil(64),
@@ -1891,6 +1982,9 @@ impl PendingSample {
             && self.query_map.as_mut().is_none_or(|m| m.ready())
     }
 }
+
+#[cfg(test)]
+mod lake_sparse_tests;
 
 #[cfg(test)]
 mod mapping_tests {

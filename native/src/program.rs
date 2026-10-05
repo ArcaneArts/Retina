@@ -2,6 +2,7 @@
 use serde::Deserialize;
 pub(crate) mod composition;
 pub(crate) mod interpolation;
+pub(crate) mod lake_sparse;
 pub(crate) use interpolation::Field as Interpolation;
 #[derive(Clone, Deserialize)]
 pub struct Instruction {

@@ -7,6 +7,9 @@ pub(crate) struct CachedDensity {
     fields: Vec<(usize, [u32; 2])>,
 }
 impl CachedDensity {
+    pub(super) fn fields(&self) -> &[(usize, [u32; 2])] {
+        &self.fields
+    }
     pub fn new(registry: &RegistryProgram) -> Option<Self> {
         Self::for_programs(registry, &[1])
     }
