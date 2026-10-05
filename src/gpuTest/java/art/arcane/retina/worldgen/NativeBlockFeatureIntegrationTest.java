@@ -157,6 +157,14 @@ public final class NativeBlockFeatureIntegrationTest {
         providers.add(copyProperties(copyProperties(providerStates(new JsonPrimitive("minecraft:oak_log")))));
         var rotateCopy=new JsonObject();rotateCopy.addProperty("type","minecraft:rotated");rotateCopy.addProperty("direction","east");rotateCopy.add("state",providers.get(firstCopy).deepCopy());providers.add(rotateCopy);
         var copyRotation=copyProperties(providerStates(JsonParser.parseString(rules.get(5))));providers.add(copyRotation);
+        int endCopy=providers.size();
+        for(String property:List.of("missing_property","axis"))providers.add(randomizedProperty(providerStates(new JsonPrimitive("minecraft:oak_log")),property));
+        providers.add(randomizedProperty(providerStates(new JsonPrimitive("minecraft:furnace")),"lit"));
+        var mixed=new JsonObject();mixed.addProperty("type","minecraft:random_block");mixed.add("blocks",JsonParser.parseString("[\"minecraft:water\",\"minecraft:stone\"]"));
+        providers.add(randomizedProperty(mixed,"level"));
+        var spatial=providerStates(JsonParser.parseString(rules.get(7))).getAsJsonObject();spatial.add("states",providerStates(JsonParser.parseString("[\"minecraft:water\",\"minecraft:stone\"]")));
+        providers.add(randomizedProperty(spatial,"level"));
+        providers.add(copyProperties(randomizedProperty(mixed.deepCopy(),"level")));
         var synthetic=(JsonArray)recipeField.get(exporter);var features=new ArrayList<Feature>();
         for(var provider:providers)for(String kind:List.of("block_column","simple_block")) {
             var featureJson=new JsonObject();featureJson.addProperty("type","minecraft:"+kind);
@@ -209,7 +217,7 @@ public final class NativeBlockFeatureIntegrationTest {
             var fixture=new Fixture(profile,materials,96,384,false,-1,input);fixture.factory=factory;
             var biome=registry.lookupOrThrow(Registries.BIOME).getOrThrow(ResourceKey.create(Registries.BIOME,Identifier.parse("minecraft:plains")));
             fixture.generator=new RetinaChunkGenerator(new net.minecraft.world.level.biome.FixedBiomeSource(biome),-64,384,96,0,.008F,"mca");
-            for(int i=firstCopy*2;i<features.size();i++)for(long seed=0;seed<32;seed++) {
+            for(int i=firstCopy*2;i<endCopy*2;i++)for(long seed=0;seed<32;seed++) {
                 var at=new BlockPos(-17,fixture.originHeight-1,-17);var world=new World(fixture);
                 features.get(i).place(world.level,fixture.generator,new Stream(seed,false),at);
                 int[] blocks=NativeTerrain.instance().decorationFeature(fixture.request,offset+i,new int[]{at.getX(),at.getY(),at.getZ()},seed);
@@ -239,7 +247,14 @@ public final class NativeBlockFeatureIntegrationTest {
     private static JsonObject copyProperties(JsonElement source) {
         var value=new JsonObject();value.addProperty("type","minecraft:copy_properties");value.add("source",source);return value;
     }
+    private static JsonObject randomizedProperty(JsonElement source,String property) {
+        var value=new JsonObject();value.addProperty("type","minecraft:randomized_int");value.add("source",source);value.addProperty("property",property);
+        value.add("values",JsonParser.parseString("{\"type\":\"minecraft:uniform\",\"min_inclusive\":0,\"max_inclusive\":6}"));return value;
+    }
     private static JsonElement providerStates(JsonElement value) {
+        if(value.isJsonArray()) {
+            var states=new JsonArray();for(var state:value.getAsJsonArray())states.add(providerStates(state));return states;
+        }
         if(value.isJsonPrimitive()) {
             var state=BuiltInRegistries.BLOCK.getValue(Identifier.parse(value.getAsString())).defaultBlockState();
             return BlockState.FULL_CODEC.encodeStart(JsonOps.INSTANCE,state).getOrThrow();

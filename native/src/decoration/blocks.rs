@@ -79,6 +79,8 @@ pub struct IntStates {
     pub source: u16,
     pub minimum: i32,
     pub states: Vec<u16>,
+    #[serde(default)]
+    pub passthrough: bool,
 }
 impl Provider {
     pub(super) fn nullable(&self) -> bool {
@@ -145,12 +147,16 @@ impl Provider {
                     && source.outputs().iter().all(|id| {
                         variants.iter().any(|v| {
                             v.source == *id
-                                && lo >= v.minimum
-                                && (hi as i64) < v.minimum as i64 + v.states.len() as i64
+                                && (v.passthrough
+                                    || (lo >= v.minimum
+                                        && (hi as i64) < v.minimum as i64 + v.states.len() as i64))
                         })
                     })
                     && variants.iter().all(|v| {
-                        !v.states.is_empty() && v.states.iter().all(|id| (*id as usize) < palette)
+                        (v.source as usize) < palette
+                            && !v.states.is_empty()
+                            && (!v.passthrough || v.states == [v.source])
+                            && v.states.iter().all(|id| (*id as usize) < palette)
                     })
             }
             Self::RuleBased { fallback, rules } => {
@@ -264,7 +270,13 @@ impl Provider {
             } => {
                 let source = source.sample(rng, at, material, noise);
                 let variant = variants.iter().find(|v| v.source == source).unwrap();
-                Some(variant.states[(values.sample(rng) - variant.minimum) as usize])
+                // Minecraft returns the sampled state without a value draw
+                // when the named property is absent or is not an integer.
+                Some(if variant.passthrough {
+                    source
+                } else {
+                    variant.states[(values.sample(rng) - variant.minimum) as usize]
+                })
             }
             Self::RuleBased { fallback, rules } => {
                 for rule in rules {
@@ -586,6 +598,60 @@ pub(super) fn place(
 #[cfg(test)]
 mod provider_tests {
     use super::*;
+
+    #[test]
+    fn missing_integer_properties_preserve_source_and_random_stream() {
+        let samples = provider_noise::Samples::default();
+        let noise = provider_noise::Context::new(&samples);
+        let provider: Provider = serde_json::from_str(
+            r#"{
+            "type":"randomized_int","source":{"type":"random_block","states":[1,2]},
+            "values":{"type":"uniform","min_inclusive":1,"max_inclusive":3},
+            "variants":[
+                {"source":1,"minimum":0,"states":[1],"passthrough":true},
+                {"source":2,"minimum":1,"states":[3,4,5]}
+            ]}"#,
+        )
+        .unwrap();
+        assert!(provider.validate(6));
+        let mut passed = 0;
+        let mut sampled = 0;
+        for seed in 0..64 {
+            let mut rng = Rng::new(seed);
+            let mut reference = Rng::new(seed);
+            let source = reference.below(2) + 1;
+            let expected = if source == 1 {
+                passed += 1;
+                1
+            } else {
+                sampled += 1;
+                3 + reference.below(3) as u16
+            };
+            assert_eq!(
+                provider.sample(&mut rng, [-17, 11, -33], &|_| Some(0), &noise),
+                expected
+            );
+            assert_eq!(rng.next(), reference.next());
+        }
+        assert!(passed > 0 && sampled > 0);
+        let Provider::RandomizedInt {
+            mut variants,
+            source,
+            values,
+        } = provider
+        else {
+            unreachable!()
+        };
+        variants[0].states.push(2);
+        assert!(
+            !Provider::RandomizedInt {
+                source,
+                values,
+                variants
+            }
+            .validate(6)
+        );
+    }
 
     #[test]
     fn property_copies_read_live_position_without_extra_random_draws() {

@@ -56,7 +56,10 @@ positions, ordered branches, optional results and random-draw semantics; see
 [block-state providers](REGISTERED_BLOCK_PROVIDERS.md). Registered
 [property copying](REGISTERED_PROPERTY_COPY.md) now reads live compatible
 properties with sparse finalized palette tables and no extra random draw. Some
-nullable transformation combinations remain required.
+nullable transformation combinations remain required. Native
+[integer-property providers](REGISTERED_INTEGER_PROPERTIES.md) now preserve
+source states without the configured integer property and skip the value draw,
+matching loaded provider behavior.
 The [GPU provider-noise replay](GPU_PROVIDER_NOISE.md) now samples actual initialized
 Perlin stacks with sparse integer XYZ queries and resident buffers. Registered
 noise, dual-noise and threshold providers drive production block-feature material

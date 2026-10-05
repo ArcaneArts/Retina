@@ -658,7 +658,10 @@ final class DecorationProfile {
                 for(int id:programStates(source)) {
                     var base=materials.entrySet().stream().filter(e->e.getValue()==id).findFirst().orElseThrow().getKey();
                     var property=base.getBlock().getStateDefinition().getProperty(object.get("property").getAsString());
-                    if(!(property instanceof IntegerProperty integer)) {unsupported.add("block_provider:int_property:"+object.get("property"));return null;}
+                    if(!(property instanceof IntegerProperty integer)) {
+                        var variant=new JsonObject();variant.addProperty("source",id);variant.addProperty("minimum",0);variant.addProperty("passthrough",true);
+                        var states=new JsonArray();states.add(id);variant.add("states",states);variants.add(variant);continue;
+                    }
                     var values=integer.getPossibleValues().stream().sorted().toList();var states=new JsonArray();for(int v:values)states.add(material(base.setValue(integer,v)));
                     var variant=new JsonObject();variant.addProperty("source",id);variant.addProperty("minimum",values.getFirst());variant.add("states",states);variants.add(variant);
                 }

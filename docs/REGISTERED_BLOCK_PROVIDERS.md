@@ -26,7 +26,9 @@ nested provider. A fixed direction consumes no direction draw. Java exports the
 actual resulting AXIS/FACING/HORIZONTAL_FACING states, preserving other
 properties; Rust selects those palette entries. Rule predicates do not consume
 random draws themselves. Existing atomic, weighted and integer-property providers
-keep their sampling behavior.
+keep their sampling behavior. [Integer-property passthrough](REGISTERED_INTEGER_PROPERTIES.md)
+now also preserves sampled states when the configured property is absent or
+noninteger, without consuming a value draw.
 
 These operations do not add a GPU dispatch or readback. Spatial predicate inputs
 already come from the GPU; short ordered branches and local writes remain in
