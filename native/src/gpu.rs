@@ -178,16 +178,31 @@ impl Gpu {
                     && adapter.limits().max_immediate_size >= 4
             }
         };
+        // The two material scans share a call graph. Fresh-identity Metal pairs
+        // cut their cold compilation by 48–63%; warm throughput is mixed.
+        let material_dispatch = match std::env::var("RETINA_MATERIAL_DISPATCH").as_deref() {
+            Ok("0") => false,
+            Ok("1") => true,
+            _ => {
+                info.backend == wgpu::Backend::Metal
+                    && adapter.features().contains(wgpu::Features::IMMEDIATES)
+                    && adapter.limits().max_immediate_size >= 4
+            }
+        };
         let (device, queue) = pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor {
             label: Some("Retina terrain device"),
             required_features: (adapter.features() & wgpu::Features::TIMESTAMP_QUERY)
-                | if interpreter_dispatch {
+                | if interpreter_dispatch || material_dispatch {
                     wgpu::Features::IMMEDIATES
                 } else {
                     wgpu::Features::empty()
                 },
             required_limits: wgpu::Limits {
-                max_immediate_size: if interpreter_dispatch { 4 } else { 0 },
+                max_immediate_size: if interpreter_dispatch || material_dispatch {
+                    4
+                } else {
+                    0
+                },
                 max_storage_buffer_binding_size: adapter.limits().max_storage_buffer_binding_size,
                 max_buffer_size: adapter.limits().max_buffer_size,
                 ..Default::default()
@@ -348,7 +363,8 @@ impl Gpu {
             wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
         );
         let timestamp_support = device.features().contains(wgpu::Features::TIMESTAMP_QUERY);
-        let compiler = crate::specialize::Compiler::new(&device, &layout, &cave_layout)?;
+        let compiler =
+            crate::specialize::Compiler::new(&device, &layout, &cave_layout, material_dispatch)?;
         let mut gpu = Self {
             device,
             queue,

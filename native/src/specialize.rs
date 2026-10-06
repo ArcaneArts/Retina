@@ -10,6 +10,7 @@ mod aquifer_columns;
 mod compile_probe;
 mod interpreter_dispatch;
 pub(crate) mod interpreter_reuse;
+mod material_dispatch;
 
 #[derive(Clone, Copy, Default, serde::Deserialize, PartialEq)]
 #[serde(rename_all = "snake_case")]
@@ -593,18 +594,21 @@ struct Job {
     cached_masks: bool,
     cached_nodes: bool,
     lake_point_cache: bool,
+    material_dispatch: bool,
 }
 pub(crate) struct Compiler {
     sender: mpsc::Sender<Job>,
     // Exact generated source is the fingerprint key; HashMap also checks key
     // equality, so a hash collision cannot reuse an unrelated graph pipeline.
     cache: HashMap<(String, bool), Arc<State>>,
+    material_dispatch: bool,
 }
 impl Compiler {
     pub fn new(
         device: &wgpu::Device,
         world: &wgpu::BindGroupLayout,
         cave: &wgpu::BindGroupLayout,
+        material_dispatch: bool,
     ) -> Result<Self, String> {
         let device = device.clone();
         let world = world.clone();
@@ -641,6 +645,7 @@ impl Compiler {
                                 job.lake_point_cache,
                                 None,
                                 false,
+                                job.material_dispatch,
                             )
                         }
                     }))
@@ -670,6 +675,7 @@ impl Compiler {
         Ok(Self {
             sender,
             cache: HashMap::new(),
+            material_dispatch,
         })
     }
     /// Prepare a profile-independent fallback after device startup, overlapping
@@ -703,6 +709,7 @@ impl Compiler {
                 cached_masks: false,
                 cached_nodes: false,
                 lake_point_cache: false,
+                material_dispatch: false,
             })
             .map_err(|_| "GPU shader compiler stopped")?;
         Ok(state)
@@ -754,6 +761,12 @@ impl Compiler {
         writeln!(source, "// material pipelines: {}", program.material_layers).unwrap();
         writeln!(
             source,
+            "// shared material dispatch: {}",
+            self.material_dispatch
+        )
+        .unwrap();
+        writeln!(
+            source,
             "// aquifer pipelines: {}",
             program
                 .aquifer
@@ -796,6 +809,7 @@ impl Compiler {
                 cached_masks,
                 cached_nodes,
                 lake_point_cache,
+                material_dispatch: self.material_dispatch,
             })
             .map_err(|_| "GPU shader compiler stopped")?;
         self.cache.insert(key, state.clone());
@@ -828,6 +842,7 @@ pub(crate) fn compile(
         false,
         None,
         false,
+        false,
     )
 }
 
@@ -854,6 +869,7 @@ pub(crate) fn compile_interpreter(
         false,
         reuse,
         shared_dispatch,
+        false,
     )
 }
 
@@ -872,6 +888,7 @@ fn compile_program(
     lake_point_cache: bool,
     reuse: Option<interpreter_reuse::Plan>,
     shared_dispatch: bool,
+    material_dispatch: bool,
 ) -> Result<Pipelines, String> {
     let scope = device.push_error_scope(wgpu::ErrorFilter::Validation);
     #[cfg(test)]
@@ -905,18 +922,33 @@ fn compile_program(
             } else {
                 "retina_cave_dispatch"
             };
+            let shared_materials = material_dispatch
+                && specialized
+                && prefix == include_str!("caves.wgsl")
+                && entries.contains(&"material_counts")
+                && entries.contains(&"material_emit");
             let source = if shared_dispatch {
                 interpreter_dispatch::source(source, entries, wrapper)?
+            } else if shared_materials {
+                material_dispatch::source(source)?
             } else {
                 source
             };
             let compiled_entries = if shared_dispatch {
-                std::slice::from_ref(&wrapper)
+                vec![wrapper]
+            } else if shared_materials {
+                let mut compiled = entries
+                    .iter()
+                    .copied()
+                    .filter(|e| !matches!(*e, "material_counts" | "material_emit"))
+                    .collect::<Vec<_>>();
+                compiled.push(material_dispatch::ENTRY);
+                compiled
             } else {
-                entries
+                entries.to_vec()
             };
             #[cfg(test)]
-            let source = probe.source(source, compiled_entries);
+            let source = probe.source(source, &compiled_entries);
             #[cfg(test)]
             let bytes = source.len();
             #[cfg(test)]
@@ -935,11 +967,15 @@ fn compile_program(
             let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("Retina specialized registry graphs"),
                 bind_group_layouts: &[Some(layout)],
-                immediate_size: if shared_dispatch { 4 } else { 0 },
+                immediate_size: if shared_dispatch || shared_materials {
+                    4
+                } else {
+                    0
+                },
             });
             #[cfg(test)]
             probe.report("module_and_layout", entries[0], module_start, bytes);
-            let pipelines: HashMap<String, wgpu::ComputePipeline> = compiled_entries
+            let mut pipelines: HashMap<String, wgpu::ComputePipeline> = compiled_entries
                 .iter()
                 .map(|entry| {
                     #[cfg(test)]
@@ -972,6 +1008,13 @@ fn compile_program(
                         ((*entry).to_owned(), pipeline.clone())
                     })
                     .collect())
+            } else if shared_materials {
+                let pipeline = pipelines.remove(material_dispatch::ENTRY).unwrap();
+                for (mode, entry) in ["material_counts", "material_emit"].into_iter().enumerate() {
+                    dispatches.insert(entry.to_owned(), mode as u32);
+                    pipelines.insert(entry.to_owned(), pipeline.clone());
+                }
+                Ok(pipelines)
             } else {
                 Ok(pipelines)
             }

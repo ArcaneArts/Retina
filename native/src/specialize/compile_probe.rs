@@ -11,9 +11,12 @@ impl Probe {
     pub fn new(specialized: bool) -> Self {
         Self {
             enabled: std::env::var_os("RETINA_COMPILE_PROBE").is_some(),
-            tag: (!specialized)
-                .then(|| std::env::var("RETINA_GENERIC_PIPELINE_TAG").ok())
-                .flatten(),
+            tag: std::env::var(if specialized {
+                "RETINA_SPECIALIZED_PIPELINE_TAG"
+            } else {
+                "RETINA_GENERIC_PIPELINE_TAG"
+            })
+            .ok(),
             specialized,
         }
     }

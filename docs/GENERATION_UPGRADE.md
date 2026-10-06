@@ -155,6 +155,11 @@ reuse and a 64-slot interpreter are now implemented, with a cached wide fallback
 Repeated twenty-region interpreter benchmarks improve serial throughput 4.7–4.9×
 vanilla and 2.9–3.3× Terralith, preserving all chunk NBT. This accelerates generation
 while specialization is pending; cold profile compilation remains required work.
+The [shared specialized material scans](GPU_SHARED_MATERIALS.md) now remove one
+duplicate count/emit compilation on supported Metal adapters. Fresh-identity
+counterbalanced pairs reduce material compilation 48–63%, with complete NBT
+preservation. Warm throughput is mixed; this is a startup/compiler-work saving,
+and substantial cold specialization and fast production composition remain required.
 The [shoreline correction](SHORELINES.md) adds a resident coastal index and GPU
 height-neighborhood checks to align registered coastal climates with the actual
 approximated terrain, preventing disconnected inland beach selection. Its

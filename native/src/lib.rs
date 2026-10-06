@@ -1868,7 +1868,8 @@ mod tests {
         std::fs::create_dir(&out).unwrap();
         let mut json: serde_json::Value =
             serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
-        json["program_execution"] = serde_json::json!("interpreter");
+        let mode = std::env::var("RETINA_COMPILE_MODE").unwrap_or_else(|_| "interpreter".into());
+        json["program_execution"] = serde_json::json!(mode);
         let bytes = serde_json::to_vec(&json).unwrap();
         let count: u32 = std::env::var("RETINA_COMPILE_REGIONS").map_or(20, |n| n.parse().unwrap());
         let start = Instant::now();
@@ -1902,13 +1903,18 @@ mod tests {
             )
             .unwrap();
             assert_eq!(report.region.generated, 1024);
+            let program = engine.pipeline.program_snapshot(profile);
             regions.push(serde_json::json!({"name":index,"ms":region_start.elapsed().as_secs_f64()*1000.0,
                 "gpu_ms":report.region.gpu_nanos as f64/1e6,"assembly_ms":report.region.assembly_nanos as f64/1e6,
                 "write_ms":report.region.write_nanos as f64/1e6,"bytes":report.region.bytes,
-                "stage_nanos":report.stages.nanos.to_vec()}));
+                "stage_nanos":report.stages.nanos.to_vec(),"program_status":program.status}));
         }
         let total_ms = start.elapsed().as_secs_f64() * 1000.0;
+        let program = engine.pipeline.program_snapshot(profile);
         let result = serde_json::json!({"profile":path,"pipeline_tag":std::env::var("RETINA_GENERIC_PIPELINE_TAG").ok(),
+            "specialized_pipeline_tag":std::env::var("RETINA_SPECIALIZED_PIPELINE_TAG").ok(),"program_execution":mode,
+            "material_dispatch_requested":std::env::var("RETINA_MATERIAL_DISPATCH").as_deref()==Ok("1"),
+            "program":{"status":program.status,"compile_ms":program.compile_nanos as f64/1e6,"source_bytes":program.source_bytes,"upload_bytes":program.upload_bytes,"readback_bytes":program.readback_bytes},
             "reuse":std::env::var("RETINA_COMPILE_REUSE").as_deref()!=Ok("0"),
             "shared_dispatch":std::env::var("RETINA_INTERPRETER_DISPATCH").as_deref()==Ok("1"),
             "preload_requested":std::env::var("RETINA_INTERPRETER_PRELOAD").as_deref()==Ok("1"),
