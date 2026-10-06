@@ -2059,6 +2059,7 @@ mod mapping_tests {
     use super::*;
     use std::fmt::Write;
     #[test]
+    #[ignore = "requires an actual GPU compute adapter; run nativeMappingGpuTest"]
     fn rejected_specialization_leaves_interpreter_device_usable() {
         let mut gpu = Gpu::new(std::sync::Arc::new(crate::pipeline::Metrics::default())).unwrap();
         assert!(
@@ -2597,6 +2598,7 @@ columns[at+2u]=Column(i32(mismatches),0u,0u);
         }
     }
     #[test]
+    #[ignore = "requires an actual GPU compute adapter; run nativeMappingGpuTest"]
     fn cancelled_mapping_cleanup_allows_buffer_reuse() {
         let gpu = Gpu::new(std::sync::Arc::new(crate::pipeline::Metrics::default())).unwrap();
         let buffer = gpu.readback_buffer("Retina mapping cleanup test", 64);

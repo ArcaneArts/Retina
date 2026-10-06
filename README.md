@@ -530,7 +530,10 @@ Dedicated servers send stats to modded clients once per second.
 
 `./gradlew gpuTest` runs the real GPU shader, seed variation, negative coordinates,
 vertical bounds, 256 chunks across 16 Rust callers, 128 concurrent Java/Rust requests
-and native error propagation.
+and native error propagation. It also runs `nativeMappingGpuTest`, which checks
+readback buffer reuse and interpreter recovery after a real shader compilation
+failure. Those device tests are opt-in rather than part of the ordinary build;
+an unavailable compute adapter still fails the explicit GPU task.
 
 `./gradlew regionTest` writes a real 1024-chunk MCA region with Rust and reads every
 chunk with Minecraft's region reader, NBT decoder, block palette codec and packed

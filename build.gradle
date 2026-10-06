@@ -93,13 +93,25 @@ tasks.register('nativeGpuTest', Exec) {
 tasks.register('gpuTest', JavaExec) {
     group = 'verification'
     description = 'Test the GPU pipeline and Java/Rust bridge with parallel requests.'
-    dependsOn 'nativeGpuTest', 'nativeOreGpuTest', 'nativeCoordinateGpuTest', 'nativeInterpolationGpuTest', 'materialTest', 'aquiferTest', 'gpuTestClasses'
+    dependsOn 'nativeGpuTest', 'nativeMappingGpuTest', 'nativeOreGpuTest', 'nativeCoordinateGpuTest', 'nativeInterpolationGpuTest', 'materialTest', 'aquiferTest', 'gpuTestClasses'
     classpath = sourceSets.gpuTest.runtimeClasspath
     mainClass = 'art.arcane.retina.worldgen.NativeTerrainIntegrationTest'
     javaLauncher = javaToolchains.launcherFor {
         languageVersion = JavaLanguageVersion.of(25)
     }
     jvmArgs '--enable-native-access=ALL-UNNAMED'
+}
+
+tasks.register('nativeMappingGpuTest', Exec) {
+    group = 'verification'
+    description = 'Verify real-device readback reuse and interpreter recovery after shader compilation fails.'
+    dependsOn 'buildNative'
+    mustRunAfter 'nativeGpuTest'
+    workingDir nativeDirectory
+    commandLine(nativeCargoCommand + ['test', '--release', '--locked', '--lib',
+            '--target-dir', nativeTarget.get().asFile.absolutePath, '--', '--ignored', '--nocapture',
+            'gpu::mapping_tests::cancelled_mapping_cleanup_allows_buffer_reuse',
+            'gpu::mapping_tests::rejected_specialization_leaves_interpreter_device_usable'])
 }
 
 tasks.register('nativeOreGpuTest', Exec) {
