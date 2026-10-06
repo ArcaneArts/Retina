@@ -1,0 +1,31 @@
+plugins {
+    id 'java-library'
+    id 'net.neoforged.moddev'
+}
+apply from: rootProject.file('gradle/java-conventions.gradle')
+
+neoForge { neoFormVersion = neo_form_version }
+repositories {
+    maven { url = 'https://maven.fabricmc.net/' }
+}
+dependencies {
+    compileOnly 'net.fabricmc:sponge-mixin:0.17.3+mixin.0.8.7'
+    compileOnly 'io.github.llamalad7:mixinextras-common:0.5.3'
+    annotationProcessor 'io.github.llamalad7:mixinextras-common:0.5.3'
+}
+sourceSets {
+    client {
+        compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
+        runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath
+    }
+    gpuTest {
+        compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
+        runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath
+    }
+}
+// Native resources are provided lazily, after the root tasks have been defined.
+processResources { from rootProject.tasks.named('packageNative') }
+processResources.dependsOn ':packageNative'
+tasks.named('build') { dependsOn 'clientClasses' }
+
+apply from: rootProject.file('gradle/verification.gradle')

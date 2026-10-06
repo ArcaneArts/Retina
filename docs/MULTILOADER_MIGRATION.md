@@ -16,9 +16,9 @@ Its client-only platform supplies startup, payload reception, and disconnect
 callbacks. Server initialization never references the client platform.
 
 Fabric entrypoints and adapters live in `art.arcane.retina.fabric`. Shared
-runtime code has no Fabric API imports. Splitting these sources into `common`,
-`fabric`, and `neoforge` modules is the next migration increment; this increment
-still builds the existing Fabric artifact.
+runtime code has no Fabric API imports. Shared sources/resources now live in
+`common`, with Fabric adapters and transformation tests in `fabric`. NeoForge
+integration follows in a separate increment.
 
 ## Baseline and first increment
 
@@ -53,3 +53,34 @@ These are recorded as remaining validation work. They are not evidence that
 NeoForge support is complete. The full cross-platform artifact build initially
 failed at `cargo zigbuild` because that local tool was absent; the successful
 host build used `-PretinaHostOnly`.
+
+## Module split and centralized native packaging
+
+The second increment moves shared source and Minecraft-reference fixtures into
+`common`, compiles shared main/client code independently against NeoForm, and
+compiles it against Fabric's actual runtime for the Fabric artifact. The native
+crate stays at the root; host and cross compilation tasks are defined once and
+their resource trees can be consumed by both loader jars. Root build, check,
+test and Fabric launch commands remain available.
+
+The full distribution build passed with macOS, Linux and Windows libraries for
+both x64 and ARM64, preserving `natives/<os>-<arch>/`. The host build, shared
+registry/reference checks, native unit tests, Fabric transformation tests,
+region checks and preview/cache checks also passed.
+
+Fresh Fabric dedicated servers passed in MCA and chunk modes, including live
+timing payload round trips, saving and normal shutdown. An opt-in real-client
+startup check verified the shared debug-registry invoker and extracted native
+library, then closed the isolated client normally. The invoker removes a
+dependency on Fabric's access widening of vanilla's private registration method.
+
+`exportFabricBenchmarkProfile` produced a byte-identical baseline profile and
+another 3,072 identical decompressed NBT records. The common NeoForm export
+differs in 24 decoration-noise offsets because its rebuilt `BitRandomSource`
+uses float arithmetic in `nextDouble()` while the official Minecraft bytecode
+uses double arithmetic. All 24 offsets have identical f32 representations, and
+the compared MCA output is identical. Both exports and the precise differences
+are retained; this is not a claim that the serialized profiles are identical.
+
+NeoForge runtime, packaged-loader and compatibility validation remain pending,
+as do the two baseline fixture failures recorded above.
