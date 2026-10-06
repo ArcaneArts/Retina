@@ -592,10 +592,53 @@ client passed 30,760 loaded underground block comparisons and its heightmaps;
 the user confirmed caves/ores worked, then requested natural surface openings.
 The follow-up removes the roof cutoff and skips vegetation over entrances.
 
-`./gradlew build` runs Rust unit tests and packages the build host's native library
-in `build/libs/retina-0.1.0.jar`. Build on each target OS/architecture for its native
-artifact. The source jar includes Rust and WGSL source. GitHub Actions builds a
-Linux artifact; GPU tests require hardware and are run separately.
+`./gradlew build` runs Rust unit tests and creates `build/libs/retina-0.1.0.jar`.
+Distributable JAR tasks (`jar`, `assemble` and `build`) include the
+host library and cross-compile additional libraries:
+
+| Build host | Packaged native platforms |
+| --- | --- |
+| macOS ARM64 or x64 | macOS, Linux and Windows, each for ARM64 and x64 |
+| Linux ARM64 or x64 | Linux and Windows, each for ARM64 and x64 |
+| Windows | Host Windows architecture |
+
+`runClient`, `runServer`, `test`, `check` and the GPU integration tests build only
+the host library. Cross libraries are staged separately and are not development
+runtime resources. Foreign builds run sequentially after the host build and any
+requested verification tasks, with the same two Cargo jobs and lowered POSIX
+priority. Incremental JAR builds reuse
+their native outputs. `-PretinaHostOnly` explicitly creates a host-only JAR.
+The source JAR contains Rust and WGSL source without native binaries.
+
+On macOS, install the release cross-compilation tools once:
+
+```sh
+brew install llvm@20 lld
+python3 -m pip install --user cargo-xwin==0.23.1 cargo-zigbuild==0.23.4 ziglang==0.13.0
+rustup target add aarch64-apple-darwin x86_64-apple-darwin aarch64-unknown-linux-gnu x86_64-unknown-linux-gnu aarch64-pc-windows-msvc x86_64-pc-windows-msvc
+export PATH="$(brew --prefix llvm@20)/bin:$(brew --prefix lld)/bin:$(python3 -m site --user-base)/bin:$PATH"
+```
+
+Put LLVM's `bin` directory and the Python user scripts directory on `PATH` so
+Cargo can launch the installed subcommands. Linux release builds need LLVM/Clang,
+`cargo-xwin`, `cargo-zigbuild`, both Linux Rust targets and both Windows MSVC Rust
+targets listed above. Windows builds need no cross-compilation tools. Required
+tool/compiler errors propagate from the actual build; missing tools do not
+silently produce an incomplete release JAR.
+Use the listed tool versions for the vendored libdeflate sources: newer Zig
+Clang toolchains reject their AVX-512 function attributes.
+Linux ARM64 cross-builds disable libdeflate's optional SHA3 checksum
+implementation, which Zig 0.13 cannot compile; its CRC32/NEON implementations
+remain enabled. Host builds retain their existing compiler settings.
+
+[cargo-xwin](https://github.com/rust-cross/cargo-xwin) builds the Windows MSVC DLL
+with a static C runtime and obtains the Microsoft SDK/CRT under its license.
+[cargo-zigbuild](https://github.com/rust-cross/cargo-zigbuild) builds the Linux
+library targeting glibc 2.17. Libraries use the loader's existing
+`natives/<os>-<arch>/` layout. GitHub Actions uses `-PretinaHostOnly` and produces
+a host-only Linux JAR without cross-compilation tools or foreign builds. Build
+the full release JAR locally on macOS. GPU tests require hardware and are run
+separately.
 
 Retina also retries Distant Horizons' Chunky listener setup when spawn chunks load
 before Chunky's server-started initializer. The optional compatibility mixin keeps

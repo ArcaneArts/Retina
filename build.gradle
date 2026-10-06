@@ -47,13 +47,14 @@ def nativeCargoCommand = nativeOs == 'windows' ? [cargoExecutable] : ['nice', '-
 def nativeInputs = fileTree(nativeDirectory) {
     include 'Cargo.toml', 'Cargo.lock', 'src/**'
 }
+def nativeCompilerConfig = layout.projectDirectory.file('.cargo/config.toml')
 
 tasks.register('buildNative', Exec) {
     group = 'build'
     description = 'Build the Rust GPU terrain library for this host.'
     workingDir nativeDirectory
     commandLine(nativeCargoCommand + ['build', '--release', '--locked', '--target-dir', nativeTarget.get().asFile.absolutePath])
-    inputs.files nativeInputs
+    inputs.files nativeInputs, nativeCompilerConfig
     outputs.file nativeTarget.map { it.file("release/${nativeLibraryName}") }
 }
 
@@ -65,6 +66,73 @@ tasks.register('packageNative', Copy) {
 
 sourceSets.main.resources.srcDir(nativeResources)
 processResources.dependsOn 'packageNative'
+
+// Only distributable JARs require foreign libraries. Keep them out of the
+// runtime resource source set so runClient/runServer and tests stay host-only.
+def crossNativeTargets = []
+if (!providers.gradleProperty('retinaHostOnly').isPresent()) {
+    if (nativeOs == 'macos') {
+        def otherArch = nativeArch == 'aarch64' ? 'x86_64' : 'aarch64'
+        crossNativeTargets.add([name: 'Macos', triple: "${otherArch}-apple-darwin",
+                platform: "macos-${otherArch}", library: 'libretina_worldgen.dylib', cargo: ['build']])
+    }
+    if (nativeOs in ['macos', 'linux']) {
+        ['x86_64', 'aarch64'].each { arch ->
+            def label = arch == 'x86_64' ? 'X64' : 'Arm64'
+            if (nativeOs != 'linux' || nativeArch != arch) {
+                crossNativeTargets.add([name: "Linux${label}", triple: "${arch}-unknown-linux-gnu",
+                        platform: "linux-${arch}", library: 'libretina_worldgen.so', cargo: ['zigbuild'], suffix: '.2.17',
+                        cFlags: arch == 'aarch64' ? '-DLIBDEFLATE_ASSEMBLER_DOES_NOT_SUPPORT_SHA3' : ''])
+            }
+            crossNativeTargets.add([name: "Windows${label}", triple: "${arch}-pc-windows-msvc",
+                    platform: "windows-${arch}", library: 'retina_worldgen.dll', cargo: ['xwin', 'build'], staticCrt: true])
+        }
+    }
+}
+
+def crossNativeResources = tasks.register('packageCrossNatives', Sync) {
+    group = 'build'
+    description = 'Stage cross-compiled libraries for distributable JARs only.'
+    into layout.buildDirectory.dir('generated/cross-native-resources')
+}
+def previousNativeBuild = tasks.named('buildNative')
+crossNativeTargets.each { target ->
+    def predecessor = previousNativeBuild
+    def crossBuild = tasks.register("buildNative${target.name}", Exec) {
+        group = 'build'
+        description = "Cross-compile the Rust terrain library for ${target.platform}."
+        workingDir nativeDirectory
+        mustRunAfter predecessor
+        mustRunAfter tasks.matching { it.group == 'verification' }
+        def arguments = target.cargo + ['--release', '--locked', '--lib',
+                '--target', target.triple + (target.suffix ?: ''),
+                '--target-dir', nativeTarget.get().asFile.absolutePath]
+        if (target.staticCrt) {
+            // Embed the C runtime, including libdeflate's C code, in the DLL.
+            arguments += ['--config', "target.${target.triple}.rustflags=[\"-C\",\"target-feature=+crt-static\"]"]
+        }
+        if (target.cFlags) {
+            // Zig 0.13 cannot lower libdeflate's optional ARM SHA3 intrinsic.
+            // Its ordinary CRC32/NEON implementations remain available.
+            def key = "CFLAGS_${target.triple.replace('-', '_')}"
+            def flags = (providers.environmentVariable(key).getOrElse('') + ' ' + target.cFlags).trim()
+            environment key, flags
+            inputs.property 'cFlags', flags
+        }
+        commandLine(nativeCargoCommand + arguments)
+        inputs.files nativeInputs, nativeCompilerConfig
+        inputs.property 'target', target.triple + (target.suffix ?: '')
+        inputs.property 'cargoArguments', arguments
+        outputs.file nativeTarget.map { it.file("${target.triple}/release/${target.library}") }
+    }
+    previousNativeBuild = crossBuild
+    crossNativeResources.configure {
+        from(crossBuild) { into "natives/${target.platform}" }
+    }
+}
+if (!crossNativeTargets.isEmpty()) {
+    tasks.named('jar') { from crossNativeResources }
+}
 
 sourceSets {
     gpuTest {
