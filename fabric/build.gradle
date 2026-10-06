@@ -8,7 +8,8 @@ loom {
         vmArg '--enable-native-access=ALL-UNNAMED'
         if (providers.gradleProperty('retinaQa').isPresent()) {
             vmArg '-Dretina.qa=true'
-            [ClientDatapack: 'client.datapack', ClientServer: 'client.server', ExpectedFeature: 'expectedFeature', ProfileOutput: 'profileOutput'].each { flag, property ->
+            [ClientDatapack: 'client.datapack', ClientServer: 'client.server', ClientHoldSeconds: 'client.holdSeconds',
+             ClientCommands: 'client.commands', ExpectedFeature: 'expectedFeature', ProfileOutput: 'profileOutput'].each { flag, property ->
                 if (providers.gradleProperty("retina${flag}Qa").isPresent()) vmArg "-Dretina.qa.${property}=${providers.gradleProperty("retina${flag}Qa").get()}"
             }
             if (providers.gradleProperty('retinaBiomeModificationQa').isPresent()) vmArg '-Dretina.qa.biomeModification=true'

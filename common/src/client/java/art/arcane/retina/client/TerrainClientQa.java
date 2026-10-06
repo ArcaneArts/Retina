@@ -35,10 +35,14 @@ public final class TerrainClientQa {
     private static final String MODE = System.getProperty("retina.qa.client.mode", "mca");
     private static final String WORLD = "retina-qa-" + MODE;
     private static final String SERVER = System.getProperty("retina.qa.client.server", "");
+    private static final long HOLD_NANOS = Math.max(0, Integer.getInteger("retina.qa.client.holdSeconds", 0)) * 1_000_000_000L;
+    private static final String COMMANDS = System.getProperty("retina.qa.client.commands", "");
     private static final BlockPos EDIT = new BlockPos(-17, 120, -17);
     private static int phase;
     private static long started, packets, disconnects, packetsBeforeReopen, disconnectsBeforeLeave;
     private static CompletableFuture<Void> serverCheck;
+    private static CompletableFuture<Void> commandsCheck;
+    private static long readySince;
 
     private TerrainClientQa() { }
 
@@ -71,6 +75,23 @@ public final class TerrainClientQa {
             }
             case 1 -> {
                 if (!ready(minecraft) || packets == 0) return;
+                if (readySince == 0) {
+                    readySince = System.nanoTime();
+                    if (!COMMANDS.isBlank()) {
+                        var server = minecraft.getSingleplayerServer();
+                        require(server != null, "QA commands require an integrated server");
+                        commandsCheck = CompletableFuture.runAsync(() -> {
+                            for (String command : COMMANDS.split("\\|")) {
+                                server.getCommands().performPrefixedCommand(server.createCommandSourceStack(), command);
+                            }
+                        }, server);
+                    }
+                }
+                if (commandsCheck != null) {
+                    if (!commandsCheck.isDone()) return;
+                    commandsCheck.join();
+                }
+                if (System.nanoTime() - readySince < HOLD_NANOS) return;
                 checkDisplay(minecraft);
                 disconnectsBeforeLeave = disconnects;
                 serverCheck = checkServer(minecraft, false);
@@ -90,6 +111,7 @@ public final class TerrainClientQa {
                 event("minecraft_client_disconnect_reset", "\"disconnects\":" + disconnects);
                 phase = 4;
                 serverCheck = null;
+                readySince = 0;
                 if (!SERVER.isBlank()) connect(minecraft);
                 else minecraft.createWorldOpenFlows().openWorld(WORLD, () -> { throw new IllegalStateException("QA world reopen cancelled"); });
             }
@@ -104,6 +126,8 @@ public final class TerrainClientQa {
                     return;
                 }
                 if (!ready(minecraft) || packets <= packetsBeforeReopen) return;
+                if (readySince == 0) readySince = System.nanoTime();
+                if (System.nanoTime() - readySince < HOLD_NANOS) return;
                 if (serverCheck == null) {
                     checkDisplay(minecraft);
                     disconnectsBeforeLeave = disconnects;

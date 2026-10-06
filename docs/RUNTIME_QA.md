@@ -92,3 +92,43 @@ in that isolated test server; the normal account resolver can return an online
 UUID that differs from the offline login UUID. Authentication and Realms errors
 from the deliberately offline client account are separate from local gameplay
 and payload validation.
+
+## Distant Horizons and Chunky
+
+The matching 26.3 fixtures use Distant Horizons 3.3.4 (its Fabric/NeoForge jar),
+Chunky Fabric 1.5.3 or Chunky NeoForge 1.5.4. Install those jars alongside the
+packaged Retina artifact. The extended client options
+`retina.qa.client.holdSeconds` and `retina.qa.client.commands` keep each world
+open while background generation runs and execute commands on the integrated
+server. Commands are separated by `|`; they run once on the fresh world.
+
+For a disposable integrated MCA QA world, use:
+
+```text
+-Dretina.qa.client.holdSeconds=15
+-Dretina.qa.client.commands=gamerule random_tick_speed 0|chunky start minecraft:overworld square -1024 -1024 128
+```
+
+Quote the entire command-property argument when passing it through a shell.
+The Gradle equivalents are `-PretinaClientHoldSecondsQa=15` and
+`-PretinaClientCommandsQa=<commands>`. Random ticks are frozen for the terrain
+snapshot comparison: otherwise lava ignition and other normal world updates
+can change blocks before the saved-world comparison. Normal gameplay keeps its
+normal rules. The client still checks received statistics, the saved edit,
+effective modified registry and reconnect.
+
+On the isolated dedicated server, exercise normal console commands:
+
+```text
+chunky start minecraft:overworld square -1024 -1024 256
+chunky start minecraft:overworld square -8192 -8192 512
+chunky pause
+chunky continue
+```
+
+Wait for the first job to finish before starting the second. Verify actual
+progress, paused/resumed state and completion in the log. DH should disable its
+generation during Chunky work and re-enable it afterward. Confirm generated
+MCA files and nonempty DH `FullData` rows in the saved SQLite database after
+normal shutdown. The integrated log should also show DH world-gen workers
+consuming Retina temporary MCA chunks before and after reopening.

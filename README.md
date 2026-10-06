@@ -46,6 +46,10 @@ run `runFabricClient -PretinaQa -PretinaClientStartupQa` or
 `runNeoForgeClient -PretinaQa -PretinaClientStartupQa` with a fresh
 `-PretinaClientRunDir`. This hardware-dependent check logs a result and closes
 the client after startup.
+For actual gameplay, saved edits, effective biome modifications, dedicated
+telemetry/reconnect and matching Distant Horizons/Chunky checks, see
+[loader runtime QA](docs/RUNTIME_QA.md). These hardware-dependent checks use
+fresh isolated worlds and remain outside ordinary CI builds.
 
 Native compilation defaults to two concurrent Cargo jobs in `.cargo/config.toml`.
 Development, release and build dependencies use two code generation units, leaving

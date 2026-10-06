@@ -180,3 +180,29 @@ do not require fresh generation timings for chunks already saved on disk.
 The combined build and ordinary Java/native checks passed. The remaining
 compatibility increment covers matching Distant Horizons/Chunky installations
 and the final documentation/CI audit.
+
+## Matching Distant Horizons and Chunky installations
+
+The sixth increment adds optional QA hold/command controls for background
+generation and restricts both Minecraft metadata ranges to the tested 26.3
+release. Later game versions require a separately validated port.
+
+Ordinary dedicated installations loaded Distant Horizons 3.3.4 with Chunky
+Fabric 1.5.3 or NeoForge 1.5.4. Each loader completed 1,089-chunk and
+4,225-chunk square pregeneration jobs at negative coordinates. The larger job
+was paused and resumed. DH disabled its generation during Chunky work and
+re-enabled it on completion; both saved databases contain generated full data.
+
+Packaged integrated MCA clients with the same mods and the registry QA pack
+passed telemetry, modified-feature export, negative edits and save/reopen.
+Actual DH world-gen threads consumed Retina's shared temporary MCA chunks
+before and after reopening, and the saved DH databases contain full data.
+For these longer snapshot checks the disposable worlds disable random ticks;
+the initial unfrozen attempt correctly detected a naturally ignited fire on
+reopen rather than unchanged generated terrain.
+
+The larger server job also exposed three block-attached template entities with
+untransformed attachment positions on both loaders. Native export transforms
+`Pos` but currently retains the captured `block_pos`. This is recorded for a
+separate implementation/validation cycle; template-entity validation and the
+final migration completion audit remain outstanding.
