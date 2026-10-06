@@ -2,7 +2,7 @@
   "required": true,
   "package": "art.arcane.retina.client.mixin",
   "compatibilityLevel": "JAVA_25",
-  "client": ["DebugScreenEntriesAccessor"],
+  "client": ["DebugScreenEntriesAccessor", "MinecraftClientQaMixin"],
   "injectors": {
     "defaultRequire": 1
   },

@@ -143,3 +143,40 @@ The Rust/WGSL algorithms, ABI and serialized profile format are unchanged.
 Actual integrated gameplay, client telemetry/reconnect, packaged installations,
 effective loader registry modifications and DH/Chunky on both loaders remain
 for subsequent increments.
+
+## Real client gameplay and effective registries
+
+The fifth increment adds opt-in shared client gameplay QA. It creates a fresh
+Retina world through Minecraft's world-loading flow, waits for actual received
+telemetry, exercises the registered F3 entry, edits a block at (-17,120,-17),
+disconnects, reopens, verifies the saved generator/mode and block, then exits.
+A dedicated-server option instead connects, receives telemetry, disconnects and
+reconnects over TCP. These checks are inactive during ordinary gameplay.
+Disconnect assertions account for NeoForge also emitting logout events while
+starting a new integrated world. Custom registry worlds use Minecraft's normal
+backup-and-join flow when reopening an experimental world.
+
+The registry QA pack adds `retina:qa_extra_grass` through a Fabric biome API
+modification or a NeoForge biome modifier. The runtime assertion checks both
+the loaded biome's feature holders and the exported native decoration recipes.
+Both ordinary packaged-loader MCA installations passed this check before and
+after reopening, with 56 biomes and 183 decoration recipes. Their profiles
+differ only in the same 24 provider-noise offsets documented above; all have
+identical f32 representations. This does not assert byte-identical profiles.
+
+Development gameplay passed on both loaders in MCA and chunk modes. Packaged
+artifacts include all six native targets, with identical binaries in the two
+loader jars. Runtime checks use isolated directories and preserve existing
+development worlds. Reproduction instructions and packs are in
+[`RUNTIME_QA.md`](RUNTIME_QA.md) and `qa/datapacks/`.
+
+Packaged chunk-mode gameplay and MCA dedicated TCP telemetry/reconnect passed
+on both loaders. Packaged structure worlds passed fresh and reopened in both
+modes: 81 native template pieces, all 98,304 target-chunk blocks, decoded block
+entities and 132 processed gold blocks were checked on each loader. Fresh
+dedicated worlds also passed stage timing checks. Reopened structure checks
+do not require fresh generation timings for chunks already saved on disk.
+
+The combined build and ordinary Java/native checks passed. The remaining
+compatibility increment covers matching Distant Horizons/Chunky installations
+and the final documentation/CI audit.

@@ -20,6 +20,13 @@ neoForge {
             jvmArguments.add '--illegal-native-access=allow'
             if (providers.gradleProperty('retinaQa').isPresent()) {
                 systemProperty 'retina.qa', 'true'
+                [ClientDatapack: 'client.datapack', ClientServer: 'client.server', ExpectedFeature: 'expectedFeature', ProfileOutput: 'profileOutput'].each { flag, property ->
+                    if (providers.gradleProperty("retina${flag}Qa").isPresent()) systemProperty "retina.qa.${property}", providers.gradleProperty("retina${flag}Qa").get()
+                }
+                if (providers.gradleProperty('retinaClientGameplayQa').isPresent()) {
+                    systemProperty 'retina.qa.client.gameplay', 'true'
+                    systemProperty 'retina.qa.client.mode', providers.gradleProperty('retinaClientQaMode').getOrElse('mca')
+                }
                 [ClientStartup: 'client.startup', Promotion: 'promotion', Pipeline: 'pipeline',
                  Timings: 'timings', Lighting: 'lighting', Structures: 'structures',
                  StructuresReopen: 'structures.reopen'].each { flag, property ->

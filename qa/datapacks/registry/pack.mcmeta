@@ -1,0 +1,13 @@
+{
+  "pack": {
+    "description": "Retina isolated loader registry QA",
+    "min_format": [
+      121,
+      0
+    ],
+    "max_format": [
+      121,
+      0
+    ]
+  }
+}

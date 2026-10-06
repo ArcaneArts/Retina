@@ -21,6 +21,7 @@ final class TerrainQa {
         timingsChecked=true;
         var level=server.overworld();
         if(!(level.getChunkSource().getGenerator() instanceof RetinaChunkGenerator generator)) throw new IllegalStateException("Timing QA requires Retina");
+        TerrainRegistryQa.check(generator);
         if (Boolean.getBoolean("retina.qa.pipeline") && generator.regionMode()) {
             var worker = (net.minecraft.world.level.chunk.storage.IOWorker) level.getChunkSource().chunkMap.chunkScanner();
             long before = generator.metrics().snapshot().previewRegions();
