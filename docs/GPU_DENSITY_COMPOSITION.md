@@ -154,6 +154,13 @@ specialization proceeds asynchronously. Their twenty-region means are 248.03 /
 and a further 2,048 regenerated records match after compilation becomes ready.
 These are driver-warm activation checks; cold generic shader activation and
 substantial profile compilation still require further work.
+
+The later [voxel-mask trials](GPU_VOXEL_MASK_TRIALS.md) distribute cavity decisions
+across GPU invocations and preserve 278,528 complete chunk records. One-word
+tiling improves the composed cave stage, but serial/concurrent whole-region
+results are mixed and ordinary masks regress. Both prototypes were reverted;
+the existing packed-word kernel remains selected.
+
 A shorter Terralith check finishes two regions while compiler status is still
 pending, then waits 1,966 ms for readiness; all 2,048 initial and 1,024 regenerated
 records match. The benchmark now measures that wait separately from regeneration.
