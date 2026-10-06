@@ -39,12 +39,14 @@ public final class TerrainDebugReport {
         if(mca && stats.regionSamples()>0) {
             lines.add(HEADER+"GPU host (% of average region)"+RESET);
             for(int stage=QUEUE;stage<=WAIT_COPY;stage++)lines.add(share(GPU,GPU_HOST[stage],stats.regionStagePercent(stage),false));
+            lines.add(share(GPU,"GPU lighting / upload / readback",stats.regionStagePercent(LIGHT_HOST),false));
             lines.add(HEADER+"Native (% of average region; ~ worker estimates)"+RESET);
             for(int stage=STRUCTURE_PLAN;stage<=ORE_PLAN;stage++)lines.add(share(stage>=VEGETATION_PLAN?GPU:RUST,PLANS[stage-STRUCTURE_PLAN],stats.regionStagePercent(stage),false));
             for(int stage=ASSEMBLY;stage<=COMPRESS;stage++)lines.add(share(RUST,WORKERS[stage-ASSEMBLY],stats.regionStagePercent(stage),true));
             lines.add(share(RUST,"File I/O",stats.regionStagePercent(IO),false));
             lines.add(share("§9","Java column cache",stats.columnCachePercent(),false));
             double accounted=stats.columnCacheMs();
+            accounted+=stats.regionStageMs(LIGHT_HOST);
             for(int stage=0;stage<STAGES;stage++)if(stage<HEIGHT || stage>=STRUCTURE_PLAN && stage<MATERIALS)accounted+=stats.regionStageMs(stage);
             double other=100*Math.max(0,stats.averageRegionMs()-accounted)/Math.max(.000001,stats.averageRegionMs());
             lines.add(share(LABEL,"Other / waiting",other,false));
@@ -59,7 +61,12 @@ public final class TerrainDebugReport {
                 lines.add(share(GPU,"Feature counts",stats.regionStagePercent(FEATURE_COUNTS),false));
                 if(stats.regionStages().providerMeasured())lines.add(share(GPU,"Provider noise",stats.regionStagePercent(PROVIDER_NOISE),false));
                 if(stats.regionStages().oreMeasured())lines.add(share(GPU,"Ore masks",stats.regionStagePercent(ORE_MASK),false));
-                else lines.add(LABEL+"Ore masks: "+DATA+"not measured");}
+                else lines.add(LABEL+"Ore masks: "+DATA+"not measured");
+                if(stats.regionStages().lightingMeasured()) {
+                    lines.add(share(GPU,"Lighting: sky / sources",stats.regionStagePercent(LIGHT_SKY),false));
+                    lines.add(share(GPU,"Lighting: propagation",stats.regionStagePercent(LIGHT_SPREAD),false));
+                    lines.add(share(GPU,"Lighting: packing",stats.regionStagePercent(LIGHT_PACK),false));
+                }}
             else lines.add(LABEL+"Device timestamps unavailable");
         } else if(!mca && stats.stages().chunks()>0) {
             lines.add(HEADER+"Rust (% of average chunk time)"+RESET);

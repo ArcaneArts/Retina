@@ -41,6 +41,9 @@ public record BiomeTerrainProfile(int nativeId, int seaLevel, BlockState[] mater
         return load(registry,source,minY,height,seed,settings,structures,true);
     }
     static BiomeTerrainProfile load(HolderLookup.Provider registry, RetinaBiomeSource source, int minY, int height, long seed, NoiseGeneratorSettings settings, StructureProfile.Context structures, boolean densityComposition) {
+        return load(registry,source,minY,height,seed,settings,structures,densityComposition,true);
+    }
+    static BiomeTerrainProfile load(HolderLookup.Provider registry, RetinaBiomeSource source, int minY, int height, long seed, NoiseGeneratorSettings settings, StructureProfile.Context structures, boolean densityComposition, boolean skyLight) {
         source.includeRegisteredBiomes(registry);
         source.underground(List.of());
         source.underground(List.of(Biomes.LUSH_CAVES, Biomes.DRIPSTONE_CAVES, Biomes.DEEP_DARK).stream()
@@ -140,6 +143,7 @@ public record BiomeTerrainProfile(int nativeId, int seaLevel, BlockState[] mater
         DecorationProfile.finishPlacements(profile.getAsJsonArray("decorations"), materials);
         DecorationProfile.finishCurrentSurvival(profile,materials);
         DecorationProfile.materialFlags(profile, materials);
+        profile.add("lighting", LightingProfile.export(materials.keySet(), skyLight));
         var palette = new JsonArray();
         for (var state : materials.keySet()) palette.add(BlockState.CODEC.encodeStart(JsonOps.INSTANCE, state).getOrThrow());
         profile.add("materials", palette);

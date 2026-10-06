@@ -102,6 +102,8 @@ pub struct WorldProfile {
     pub geology: crate::geology::GeologyProfile,
     pub material_flags: Vec<u8>,
     pub heightmap_masks: Vec<u8>,
+    #[serde(default)]
+    pub lighting: Option<crate::lighting::Profile>,
     /// Loaded snow-layer support tags and upper collision face per palette state.
     #[serde(default)]
     pub snow_support: Vec<bool>,
@@ -153,6 +155,9 @@ impl WorldProfile {
         profile
             .structures
             .validate(profile.materials.len(), profile.biomes.len())?;
+        if let Some(lighting) = &profile.lighting {
+            lighting.validate(profile.materials.len())?;
+        }
         for recipe in &profile.decorations {
             if !profile.ordered_decorations
                 && matches!(

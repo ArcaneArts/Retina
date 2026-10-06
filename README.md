@@ -11,7 +11,7 @@ runtime installation is needed.
 
 ```sh
 ./gradlew build
-./gradlew gpuTest regionTest biomeTest geologyTest featureTest previewTest structureTest shoreTest
+./gradlew gpuTest regionTest biomeTest geologyTest featureTest previewTest structureTest shoreTest lightingTest
 ./gradlew runClient -PretinaQa
 ```
 
@@ -94,7 +94,10 @@ Both MCA and individual chunk modes save starts, references, block entities, loo
 spawner/vault data and template entities. A small `retina:template` piece records
 bounds for Minecraft's normal structure queries and saves. DH previews contain the
 same records and promotion copies them without running Java structure generation.
-Minecraft owns lighting, entity activation and loot resolution. Existing chunks are
+Fresh MCA regions compute block and sky light on the GPU for their interior 30×30
+chunks before their single save. Minecraft lights the outer ring and handles later
+block changes; see [GPU region lighting](docs/GPU_REGION_LIGHTING.md). Minecraft
+owns entity activation and loot resolution. Existing chunks are
 preserved; test new structures in fresh terrain.
 
 This is an approximation, not a complete port of every vanilla structure algorithm.

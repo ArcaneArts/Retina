@@ -32,6 +32,7 @@ public final class NativeTerrain {
     private final MethodHandle publishRegionCache;
     private final MethodHandle registerProfile;
     private final MethodHandle sampleColumns;
+    private final MethodHandle lightVolume;
     private final MethodHandle sampleBiomes;
     private final MethodHandle decorationCounts;
     private final MethodHandle providerNoise;
@@ -62,6 +63,8 @@ public final class NativeTerrain {
                 FunctionDescriptor.of(JAVA_INT, ADDRESS, JAVA_LONG, ADDRESS));
         sampleColumns = linker.downcallHandle(symbols.findOrThrow("retina_sample_columns"),
                 FunctionDescriptor.of(JAVA_INT, ADDRESS, ADDRESS));
+        lightVolume = linker.downcallHandle(symbols.findOrThrow("retina_light_volume"),
+                FunctionDescriptor.of(JAVA_INT, ADDRESS, JAVA_INT, ADDRESS, JAVA_LONG, ADDRESS, JAVA_LONG));
         sampleBiomes = linker.downcallHandle(symbols.findOrThrow("retina_sample_biomes_u16"),
                 FunctionDescriptor.of(JAVA_INT, ADDRESS, ADDRESS, JAVA_LONG));
         decorationCounts = linker.downcallHandle(symbols.findOrThrow("retina_sample_decoration_counts"),
@@ -97,6 +100,15 @@ public final class NativeTerrain {
 
     public String backend() {
         return backend;
+    }
+    /** Diagnostic for comparing the production shader against Minecraft's actual light engine. */
+    byte[] lightVolume(TerrainRequest request, int chunks, short[] blocks) {
+        try (var arena = Arena.ofConfined()) {
+            var input = arena.allocateFrom(JAVA_SHORT, blocks);
+            var output = arena.allocate((long) chunks * chunks * (request.height() + 32) * 256, 4);
+            check((int) lightVolume.invokeExact(encode(arena, request), chunks, input, (long) blocks.length, output, output.byteSize()));
+            return output.toArray(JAVA_BYTE);
+        } catch(Throwable error) { throw failure(error); }
     }
     public NativeGpuDiagnostics gpuDiagnostics(int profile) {
         try(var arena=Arena.ofConfined()) {

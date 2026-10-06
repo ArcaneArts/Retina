@@ -21,6 +21,7 @@ mod features;
 pub mod geology;
 mod gpu;
 mod gpu_worker;
+pub mod lighting;
 pub mod pipeline;
 pub mod profile;
 mod tree_shapes;
@@ -152,6 +153,7 @@ pub struct TerrainEngine {
     pipeline: Arc<pipeline::Metrics>,
     ore_gpu: Mutex<geology::raster_gpu::Gpu>,
     feature_gpu: Mutex<decoration::counts::gpu::Gpu>,
+    light_gpu: Mutex<lighting::Gpu>,
 }
 
 impl TerrainEngine {
@@ -172,12 +174,14 @@ impl TerrainEngine {
             .spawn(move || gpu_worker::run(receiver, ready_sender, metrics, depth))
             .map_err(|e| e.to_string())?;
         let (backend, ores, counts) = ready_receiver.recv().map_err(|e| e.to_string())??;
+        let (device, queue) = ores.shared_device();
         Ok(Self {
             sender,
             backend,
             pipeline,
             ore_gpu: Mutex::new(ores),
             feature_gpu: Mutex::new(counts),
+            light_gpu: Mutex::new(lighting::Gpu::new(device, queue)),
             profiles: RwLock::new(Vec::new()),
             cache: Mutex::new(ColumnCache::default()),
             height_cache: Mutex::new(ColumnCache::default()),
@@ -1340,6 +1344,69 @@ pub unsafe extern "C" fn retina_sample_columns(
 }
 
 /// # Safety
+/// blocks contains count u16 materials; output contains capacity bytes. Diagnostic
+/// lighting includes one virtual-air section above/below, in chunk-major order.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn retina_light_volume(
+    request: *const ChunkRequest,
+    chunks: u32,
+    blocks: *const u16,
+    count: u64,
+    output: *mut u8,
+    capacity: u64,
+) -> i32 {
+    boundary(|| {
+        if request.is_null() || blocks.is_null() || output.is_null() {
+            return Err("null lighting volume".into());
+        }
+        let request = unsafe { *request };
+        request.validate()?;
+        if chunks == 0
+            || chunks > 12
+            || count != chunks as u64 * chunks as u64 * request.height as u64 * 256
+            || capacity != chunks as u64 * chunks as u64 * (request.height as u64 + 32) * 256
+        {
+            return Err("incorrect lighting buffer dimensions".into());
+        }
+        let engine = shared_engine()?;
+        let world = engine
+            .profile(request.reserved)?
+            .ok_or("lighting needs a registered palette")?;
+        let profile = world
+            .lighting
+            .as_ref()
+            .ok_or("profile has no loaded lighting properties")?;
+        let source = unsafe { std::slice::from_raw_parts(blocks, count as usize) };
+        if source.iter().any(|&m| m as usize >= profile.states.len()) {
+            return Err("unknown lighting material".into());
+        }
+        let mut padded = Vec::with_capacity(capacity as usize);
+        for chunk in source.chunks_exact(request.block_count()) {
+            padded.resize(padded.len() + 4096, 0);
+            padded.extend_from_slice(chunk);
+            padded.resize(padded.len() + 4096, 0);
+        }
+        let light = engine
+            .light_gpu
+            .lock()
+            .map_err(|_| "lighting GPU lock poisoned")?
+            .run(
+                request.reserved,
+                profile,
+                chunks,
+                request.height + 32,
+                0,
+                chunks,
+                &padded,
+            )?;
+        unsafe {
+            std::ptr::copy_nonoverlapping(light.bytes.as_ptr(), output, capacity as usize);
+        }
+        Ok(())
+    })
+}
+
+/// # Safety
 /// request is readable; points contains count [x,z,recipe,modifier] records and
 /// output has count writable i32 elements. Buffers live until this call returns.
 #[unsafe(no_mangle)]
@@ -1974,11 +2041,11 @@ mod tests {
         // ChunkRequest ABI above remains unchanged.
         assert_eq!(std::mem::size_of::<GpuRequest>(), 64);
         assert_eq!(std::mem::offset_of!(GpuRequest, density_offset), 48);
-        assert_eq!(std::mem::size_of::<timings::Snapshot>(), 264);
+        assert_eq!(std::mem::size_of::<timings::Snapshot>(), 296);
         assert_eq!(std::mem::offset_of!(timings::Snapshot, nanos), 32);
         assert_eq!(std::mem::size_of::<region::RegionReport>(), 40);
         assert_eq!(std::mem::offset_of!(region::RegionReport, gpu_nanos), 8);
-        assert_eq!(std::mem::size_of::<region::DetailedRegionReport>(), 304);
+        assert_eq!(std::mem::size_of::<region::DetailedRegionReport>(), 336);
         assert_eq!(
             std::mem::offset_of!(region::DetailedRegionReport, stages),
             40

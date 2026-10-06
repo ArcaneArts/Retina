@@ -27,7 +27,7 @@ public abstract class ChunkMapMixin {
     @Inject(method = "<init>", at = @At("TAIL"))
     private void retina$attachStorage(CallbackInfo callback) {
         if (generator() instanceof RetinaChunkGenerator retina) {
-            retina.bindWorld(level.registryAccess(), level.getSeed(),level.getStructureTemplateManager(),level.getServer().getWorldGenSettings().options().generateStructures());
+            retina.bindWorld(level.registryAccess(), level.getSeed(),level.getStructureTemplateManager(),level.getServer().getWorldGenSettings().options().generateStructures(),level.dimensionType().hasSkyLight());
             if (!retina.regionMode()) return;
             var bounds = retina.request(level.getSeed(), 0, 0);
             if (bounds.minY() != level.getMinY() || bounds.height() != level.getHeight()) {

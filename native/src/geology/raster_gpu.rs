@@ -31,6 +31,9 @@ struct Buffers {
     sizes: [u64; 3],
 }
 impl Gpu {
+    pub(crate) fn shared_device(&self) -> (wgpu::Device, wgpu::Queue) {
+        (self.device.clone(), self.queue.clone())
+    }
     pub(crate) fn new(device: wgpu::Device, queue: wgpu::Queue) -> Self {
         let layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("Retina ore masks"),

@@ -52,6 +52,8 @@ final class GenerationMetricsTest {
         require(lines.stream().anyMatch(s -> s.startsWith("§dOre masks") && s.contains("5.0%")), "ore device timing uses its own color and averaged region denominator");
         require(lines.stream().anyMatch(s -> s.startsWith("§dLake candidates") && s.contains("1.0%")), "lake classification uses the region average");
         require(lines.stream().anyMatch(s -> s.startsWith("§dLake density probes") && s.contains("7.5%")), "lake probes have a separate colored percentage");
+        require(lines.stream().anyMatch(s -> s.startsWith("§dGPU lighting / upload / readback") && s.contains("10.0%")), "lighting host share uses averaged region wall time");
+        require(lines.stream().anyMatch(s -> s.startsWith("§dLighting: propagation") && s.contains("6.0%")), "lighting device propagation has a separate averaged share");
         require(lines.stream().anyMatch(s -> s.startsWith("§dLake level reduction") && s.contains("0.5%")), "lake reduction is not included in column time");
         for (String line : lines) {
             require(!line.contains(" | ") && !line.contains("Last region") && !line.contains("session worker"), "each stage has its own line without old counters");
@@ -81,7 +83,11 @@ final class GenerationMetricsTest {
         stages[LAKE_CANDIDATES] = nanos / 100;
         stages[LAKE_DENSITY] = nanos * 3 / 40;
         stages[LAKE_REDUCE] = nanos / 200;
-        return new NativeTimings(7, 1024, 256 * 1024, 1, stages);
+        stages[LIGHT_HOST] = nanos / 10;
+        stages[LIGHT_SKY] = nanos / 100;
+        stages[LIGHT_SPREAD] = nanos * 3 / 50;
+        stages[LIGHT_PACK] = nanos / 200;
+        return new NativeTimings(15, 1024, 256 * 1024, 1, stages);
     }
     private static void close(double actual, double expected, String message) {
         require(Math.abs(actual - expected) < 1e-6, message + ": " + actual + " != " + expected);

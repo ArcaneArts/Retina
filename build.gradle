@@ -12,6 +12,7 @@ loom {
             if (providers.gradleProperty('retinaPromotionQa').isPresent()) vmArg '-Dretina.qa.promotion=true'
             if (providers.gradleProperty('retinaPipelineQa').isPresent()) vmArg '-Dretina.qa.pipeline=true'
             if (providers.gradleProperty('retinaTimingsQa').isPresent()) vmArg '-Dretina.qa.timings=true'
+            if (providers.gradleProperty('retinaLightingQa').isPresent()) vmArg '-Dretina.qa.lighting=true'
             if (providers.gradleProperty('retinaStructuresQa').isPresent()) vmArg '-Dretina.qa.structures=true'
             if (providers.gradleProperty('retinaStructuresReopenQa').isPresent()) vmArg '-Dretina.qa.structures.reopen=true'
         }
@@ -245,6 +246,17 @@ tasks.register('regionTest', JavaExec) {
     javaLauncher = javaToolchains.launcherFor {
         languageVersion = JavaLanguageVersion.of(25)
     }
+    jvmArgs '--enable-native-access=ALL-UNNAMED'
+}
+
+tasks.register('lightingTest', JavaExec) {
+    group = 'verification'
+    description = 'Compare GPU lighting with Minecraft and validate mixed lit/unlit MCA regions.'
+    dependsOn 'gpuTestClasses', 'packageNative'
+    classpath = sourceSets.gpuTest.runtimeClasspath
+    mainClass = 'art.arcane.retina.worldgen.NativeLightingIntegrationTest'
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
+    if (providers.gradleProperty('lightingRegionDirectory').isPresent()) args providers.gradleProperty('lightingRegionDirectory').get()
     jvmArgs '--enable-native-access=ALL-UNNAMED'
 }
 
