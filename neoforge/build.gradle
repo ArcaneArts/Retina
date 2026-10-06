@@ -1,0 +1,51 @@
+plugins {
+    id 'java-library'
+    id 'net.neoforged.moddev'
+}
+apply from: rootProject.file('gradle/java-conventions.gradle')
+apply from: rootProject.file('gradle/loader-sources.gradle')
+
+sourceSets.main {
+    java.srcDir rootProject.file('common/src/client/java')
+    resources.srcDir rootProject.file('common/src/client/resources')
+}
+
+neoForge {
+    version = neoforge_version
+    runs {
+        configureEach {
+            jvmArguments.add '--enable-native-access=ALL-UNNAMED'
+            // FML creates named mod modules after boot, outside the JVM flag's module lookup.
+            // Java 25 permits their FFM calls through this explicit policy.
+            jvmArguments.add '--illegal-native-access=allow'
+            if (providers.gradleProperty('retinaQa').isPresent()) {
+                systemProperty 'retina.qa', 'true'
+                [ClientStartup: 'client.startup', Promotion: 'promotion', Pipeline: 'pipeline',
+                 Timings: 'timings', Lighting: 'lighting', Structures: 'structures',
+                 StructuresReopen: 'structures.reopen'].each { flag, property ->
+                    if (providers.gradleProperty("retina${flag}Qa").isPresent()) {
+                        systemProperty "retina.qa.${property}", 'true'
+                    }
+                }
+            }
+        }
+        client {
+            client()
+            gameDirectory = rootProject.file(providers.gradleProperty('retinaClientRunDir').getOrElse('run/neoforge-client'))
+        }
+        server {
+            server()
+            gameDirectory = rootProject.file(providers.gradleProperty('retinaDatapackQa').getOrElse('run/neoforge-server'))
+            programArguments.add '--nogui'
+        }
+    }
+    mods {
+        retina { sourceSet sourceSets.main }
+    }
+}
+
+processResources {
+    def metadata = [version: project.version, minecraft_version: minecraft_version, neoforge_version: neoforge_version]
+    inputs.properties(metadata)
+    filesMatching('META-INF/neoforge.mods.toml') { expand(metadata) }
+}

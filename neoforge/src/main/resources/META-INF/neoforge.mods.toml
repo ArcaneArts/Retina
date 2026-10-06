@@ -1,0 +1,29 @@
+modLoader = "javafml"
+loaderVersion = "[4,)"
+license = "All-Rights-Reserved"
+issueTrackerURL = "https://github.com/ArcaneArts/Retina/issues"
+
+[[mods]]
+modId = "retina"
+version = "${version}"
+displayName = "Retina"
+authors = "Arcane Arts"
+description = '''GPU terrain generation for Minecraft ${minecraft_version}.'''
+
+[[mixins]]
+config = "retina.mixins.json"
+[[mixins]]
+config = "retina.client.mixins.json"
+
+[[dependencies.retina]]
+modId = "neoforge"
+type = "required"
+versionRange = "[${neoforge_version},)"
+ordering = "NONE"
+side = "BOTH"
+[[dependencies.retina]]
+modId = "minecraft"
+type = "required"
+versionRange = "[${minecraft_version},26.4)"
+ordering = "NONE"
+side = "BOTH"

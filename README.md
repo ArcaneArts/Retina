@@ -1,6 +1,6 @@
 # Retina
 
-Fabric 26.3 terrain generation with GPU registry density programs, biome climates, surface materials, caves, registry-derived features and Rust chunk/MCA assembly.
+Fabric and NeoForge 26.3 terrain generation with GPU registry density programs, biome climates, surface materials, caves, registry-derived features and Rust chunk/MCA assembly.
 
 ## Run it
 
@@ -16,7 +16,8 @@ runtime installation is needed.
 ```
 
 Shared Java, client display code, Minecraft-reference tests and resources live
-in `common/`; Fabric adapters and loader transformation tests live in `fabric/`.
+in `common/`; loader adapters live in `fabric/` and `neoforge/`, with Fabric
+loader transformation tests in `fabric/`.
 The standalone common compilation uses ModDevGradle/NeoForm and has no loader
 API dependency. `native/` remains the single Rust/WGSL engine, with native build,
 packaging and unit-test work shared by the root build.
@@ -26,14 +27,23 @@ Root `runClient`, `runServer` and `test` commands remain Fabric aliases.
 `:fabric:runClient`, `:fabric:runServer` or `:fabric:test` when passing task-specific
 options such as `--args` or `--tests`. Existing development worlds remain in the
 root `run/` directory; `-PretinaClientRunDir=/absolute/fresh/directory` selects an
-isolated client directory. NeoForge integration is the next migration increment.
+isolated client directory. `runNeoForgeClient` and `runNeoForgeServer` use
+`run/neoforge-client/` and `run/neoforge-server/` by default. NeoForge task-specific
+arguments use `:neoforge:runClient` or `:neoforge:runServer`.
+
+The combined build produces `fabric/build/libs/retina-fabric-26.3-0.1.0.jar` and
+`neoforge/build/libs/retina-neoforge-26.3-0.1.0.jar`. Install the jar matching
+your loader. Both contain the shared code and the same six platform native
+binaries; `common` is a development module, not a separately installed mod.
+Minecraft releases after 26.3 require a separate port and validation.
 
 `exportBenchmarkProfile` runs the shared NeoForm reference exporter;
 `exportFabricBenchmarkProfile` uses Fabric's Minecraft runtime classes for
 baseline comparisons. See [migration validation](docs/MULTILOADER_MIGRATION.md)
 for the recorded precision difference between those classpaths.
 To exercise actual client entrypoints, the debug mixin and native extraction,
-run `runFabricClient -PretinaQa -PretinaClientStartupQa` with a fresh
+run `runFabricClient -PretinaQa -PretinaClientStartupQa` or
+`runNeoForgeClient -PretinaQa -PretinaClientStartupQa` with a fresh
 `-PretinaClientRunDir`. This hardware-dependent check logs a result and closes
 the client after startup.
 
@@ -671,9 +681,15 @@ through Fabric Loader's actual mixin transformation, using minimal DH/Chunky fix
 World startup and pregeneration were also checked with Chunky 1.5.3 and Distant
 Horizons 3.3.4 on Minecraft 26.3, including DH pausing and resuming its generator.
 
-Development runs enable `--enable-native-access=ALL-UNNAMED`; add this JVM argument
-to a normal launcher/server using the packaged mod. Fabric Loader 0.19.5+ and
-Fabric API are required. `-Dretina.native.path=/absolute/library/path` selects an
+Fabric development runs enable `--enable-native-access=ALL-UNNAMED`; add this JVM
+argument to a normal Fabric launcher/server using the packaged mod. Fabric
+Loader 0.19.5+ and Fabric API are required. NeoForge uses 26.3.0.51-beta or later
+on Minecraft 26.3 and Java 25. Its development runs also set
+`--illegal-native-access=allow`; add both JVM arguments to a packaged NeoForge
+launcher/server. FML creates Retina's named module after JVM startup, so
+`--enable-native-access=retina` cannot grant access to that module. The explicit
+Java 25 policy permits its Foreign Function API calls. Revisit this configuration
+when porting to a later Java release. `-Dretina.native.path=/absolute/library/path` selects an
 externally built native library. `wgpu` enables Metal, Vulkan and Direct3D 12;
 Vulkan and Direct3D 12 still need runtime testing.
 
