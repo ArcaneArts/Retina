@@ -586,6 +586,14 @@ in `build/libs/retina-0.1.0.jar`. Build on each target OS/architecture for its n
 artifact. The source jar includes Rust and WGSL source. GitHub Actions builds a
 Linux artifact; GPU tests require hardware and are run separately.
 
+Retina also retries Distant Horizons' Chunky listener setup when spawn chunks load
+before Chunky's server-started initializer. The optional compatibility mixin keeps
+the listener pending until a later chunk update succeeds; other setup failures
+still propagate. `./gradlew test` covers this startup race and single registration
+through Fabric Loader's actual mixin transformation, using minimal DH/Chunky fixtures.
+World startup and pregeneration were also checked with Chunky 1.5.3 and Distant
+Horizons 3.3.4 on Minecraft 26.3, including DH pausing and resuming its generator.
+
 Development runs enable `--enable-native-access=ALL-UNNAMED`; add this JVM argument
 to a normal launcher/server using the packaged mod. Fabric Loader 0.19.5+ and
 Fabric API are required. `-Dretina.native.path=/absolute/library/path` selects an
