@@ -48,6 +48,11 @@ possible positive contribution. The worklist stays on the GPU through all passes
 there is no CPU frontier scan or intermediate readback. Empty worklists dispatch
 no propagation work, and classification/counters are cleared on buffer reuse.
 
+Shader initialization computes one chunk-column address per aligned group of four
+voxels and reads its two packed material words per height. Propagation shares the
+group's coordinates and current light word. Packing copies a complete light word
+into chunk order: chunk, row and crop boundaries are all four-voxel aligned.
+
 The region is tiled into 10×10 output cores with a one-chunk halo under normal
 storage-buffer limits. Smaller cores are selected from actual device limits when
 necessary. The 16-block halo covers the maximum 14-block light influence. One
@@ -82,6 +87,10 @@ height, retaining those blocks uses about 192 MiB and retained interior light
 results use about 91 MiB, in addition to existing generation fields and reusable
 GPU tile buffers. Lighting submissions share the existing wgpu device/queue and
 serialize through their own mutex; parallel Rust chunk assembly remains enabled.
+
+Rust reuses the padded tile input allocation throughout a region and retains the
+two fixed-size timestamp resolve/readback buffers across lighting calls. Readbacks
+are unmapped before reuse; each submission still creates its own timestamp queries.
 
 This moves initial lighting work out of Minecraft's load path, which is especially
 useful when generation happens ahead of loading through DH. It is not a guaranteed
@@ -148,6 +157,33 @@ with a pre-change build. The script alternates order, reports median/p95 host an
 hardware timings, and checks every output hash on every iteration. Raw replay
 inputs stay in ignored `build/`; summary results are in
 [`benchmarks/gpu-lighting-sparse.json`](benchmarks/gpu-lighting-sparse.json).
+
+A subsequent comparison against that sparse implementation (`f85d148`) measured
+the aligned-word shader and Rust allocation changes on the same M4 Max / Metal.
+Two runs alternated retained-baseline/candidate order over three saved-terrain
+12×12-chunk, 384-height tiles, with five warmups and 25 measured calls per mode.
+Median tile times across the six paired measurements:
+
+| Stage | Previous sparse | Aligned-word sparse |
+| --- | ---: | ---: |
+| Sky / source initialization | 0.76–0.85 ms | 0.65–0.68 ms |
+| Propagation, including worklist setup | 2.02–2.42 ms | 1.77–2.22 ms |
+| Packing | 0.23–0.25 ms | 0.11 ms |
+| All device lighting stages | 3.05–3.43 ms | 2.54–3.00 ms |
+| Host call | 15.87–19.88 ms | 15.67–19.73 ms |
+
+Paired total device times fell 11–17%, and packing was 2.1–2.2 times faster.
+Host timings varied, so the device improvement does not establish a stable
+complete-generation speedup. Every replay output matched the retained library;
+another two complete generated regions matched all 2,048 chunk NBT records.
+The Minecraft reference, seam/update, buffer-reuse and saved-region tests also
+passed. Measurements and input/output hashes are retained in
+[`benchmarks/gpu-lighting-words.json`](benchmarks/gpu-lighting-words.json).
+
+To measure a retained library instead of only checking its output, add
+`--reference-library=<old library> --modes reference sparse --warmups 5
+--iterations 25` to the replay command above. The report includes initialization
+and packing times as well as propagation and total device/host times.
 
 The small flat 64-height fixture reduced the measured Minecraft lighting phase
 from about 28 ms to 15 ms per region in one local run, while GPU preparation took

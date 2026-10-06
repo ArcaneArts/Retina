@@ -34,6 +34,7 @@ pub(crate) struct Gpu {
     device: wgpu::Device,
     queue: wgpu::Queue,
     pipelines: Option<Pipelines>,
+    timing: Option<Timing>,
     profiles: HashMap<u32, (wgpu::Buffer, wgpu::Buffer)>,
     buffers: Option<Buffers>,
 }
@@ -45,6 +46,10 @@ struct Pipelines {
     args: wgpu::ComputePipeline,
     sparse: wgpu::ComputePipeline,
     pack: wgpu::ComputePipeline,
+}
+struct Timing {
+    resolve: wgpu::Buffer,
+    readback: wgpu::Buffer,
 }
 struct Buffers {
     params: wgpu::Buffer,
@@ -69,6 +74,7 @@ impl Gpu {
             device,
             queue,
             pipelines: None,
+            timing: None,
             profiles: HashMap::new(),
             buffers: None,
         }
@@ -133,6 +139,25 @@ impl Gpu {
             pack: pipeline("pack"),
             layout,
         });
+        // Runs are serialized and both readbacks are unmapped before returning.
+        self.timing = self
+            .device
+            .features()
+            .contains(wgpu::Features::TIMESTAMP_QUERY)
+            .then(|| Timing {
+                resolve: self.device.create_buffer(&wgpu::BufferDescriptor {
+                    label: Some("Retina light resolve"),
+                    size: 48,
+                    usage: wgpu::BufferUsages::QUERY_RESOLVE | wgpu::BufferUsages::COPY_SRC,
+                    mapped_at_creation: false,
+                }),
+                readback: self.device.create_buffer(&wgpu::BufferDescriptor {
+                    label: Some("Retina light times"),
+                    size: 48,
+                    usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
+                    mapped_at_creation: false,
+                }),
+            });
     }
     /// Chunk-major material input; crop/core are measured in chunks. No CPU propagation.
     pub(crate) fn run(
@@ -296,10 +321,7 @@ impl Gpu {
         self.queue
             .write_buffer(&buffers.blocks, 0, bytemuck::cast_slice(blocks));
         upload += sizes[0] + 32;
-        let timestamp = self
-            .device
-            .features()
-            .contains(wgpu::Features::TIMESTAMP_QUERY);
+        let timestamp = self.timing.is_some();
         let queries = timestamp.then(|| {
             self.device.create_query_set(&wgpu::QuerySetDescriptor {
                 label: Some("Retina light timing"),
@@ -307,22 +329,7 @@ impl Gpu {
                 count: 6,
             })
         });
-        let times = timestamp.then(|| {
-            (
-                self.device.create_buffer(&wgpu::BufferDescriptor {
-                    label: Some("Retina light resolve"),
-                    size: 48,
-                    usage: wgpu::BufferUsages::QUERY_RESOLVE | wgpu::BufferUsages::COPY_SRC,
-                    mapped_at_creation: false,
-                }),
-                self.device.create_buffer(&wgpu::BufferDescriptor {
-                    label: Some("Retina light times"),
-                    size: 48,
-                    usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
-                    mapped_at_creation: false,
-                }),
-            )
-        });
+        let times = self.timing.as_ref().map(|t| (&t.resolve, &t.readback));
         let mut encoder = self
             .device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor {
@@ -493,10 +500,11 @@ pub(crate) fn region(
                 <= gpu.device.limits().max_storage_buffer_binding_size as u64
         })
         .unwrap_or(1);
+    let count = (request.height as usize + 32) * 256;
+    let mut input = Vec::with_capacity((core + 2).pow(2) * count);
     for cz in (1..31).step_by(core) {
         for cx in (1..31).step_by(core) {
-            let count = (request.height as usize + 32) * 256;
-            let mut input = Vec::with_capacity((core + 2).pow(2) * count);
+            input.clear();
             for z in cz - 1..cz + core + 1 {
                 for x in cx - 1..cx + core + 1 {
                     input.resize(input.len() + 4096, 0);

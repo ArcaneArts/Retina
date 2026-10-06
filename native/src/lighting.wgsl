@@ -37,16 +37,21 @@ fn initialize(@builtin(global_invocation_id) id: vec3<u32>) {
     if column >= p.side * p.side { return; }
     let has_sky = (p.sky & 1u) != 0u;
     let sparse = (p.sky & 2u) != 0u;
+    // Four aligned x lanes always stay inside the same chunk and packed word.
+    let x = column % p.side;
+    let z = column / p.side;
+    let block_column = ((z / 16u) * p.chunks + x / 16u) * p.height * 128u
+        + (z % 16u) * 8u + (x % 16u) / 2u;
+    let plane_words = p.side * p.side / 4u;
     var sun = array<bool, 4>(has_sky, has_sky, has_sky, has_sky);
     var classification = 0u;
     var above = array<u32, 4>(0u, 0u, 0u, 0u);
     for (var dy = p.height; dy > 0u; dy--) {
         let y = dy - 1u;
+        let materials = vec2<u32>(blocks[block_column + y * 128u], blocks[block_column + y * 128u + 1u]);
         var word = 0u;
         for (var lane = 0u; lane < 4u; lane++) {
-            let x = (column + lane) % p.side;
-            let z = (column + lane) / p.side;
-            let m = material(x, y, z);
+            let m = (materials[lane / 2u] >> ((lane % 2u) * 16u)) & 65535u;
             // Direct sky remains 15 only above the first attenuating/covered edge.
             sun[lane] = sun[lane] && (states[m].traits & 15u) == 0u && !occludes(above[lane], m, 0u);
             let value = ((states[m].traits >> 4u) & 15u) | select(0u, 240u, sun[lane]);
@@ -60,15 +65,14 @@ fn initialize(@builtin(global_invocation_id) id: vec3<u32>) {
                 classification |= select(0u, 8u, sun[lane]);
             }
         }
-        let index = (y * p.side * p.side + column) / 4u;
+        let index = y * plane_words + column / 4u;
         destination[index] = word;
         if sparse {
             // Unscheduled bricks remain seeds in BOTH ping-pong frontiers.
             source[index] = word;
             if y % 8u == 0u {
                 if classification != 0u {
-                    atomicOr(&work.bricks[brick_index((column % p.side) / 8u, y / 8u,
-                        (column / p.side) / 8u)], classification);
+                    atomicOr(&work.bricks[brick_index(x / 8u, y / 8u, z / 8u)], classification);
                 }
                 classification = 0u;
             }
@@ -109,13 +113,17 @@ fn dispatch_args() {
 
 fn propagate(word_id: u32, channels: u32) -> u32 {
     let plane = p.side * p.side;
+    let first = word_id * 4u;
+    let x0 = first % p.side;
+    let z = (first / p.side) % p.side;
+    let y = first / plane;
+    let current_word = source[word_id];
     var result = 0u;
     for (var lane = 0u; lane < 4u; lane++) {
-        let i = word_id * 4u + lane;
-        let x = i % p.side; let z = (i / p.side) % p.side; let y = i / plane;
+        let x = x0 + lane;
         let m = material(x, y, z);
         let opacity = max(1u, states[m].traits & 15u);
-        let current = light(i);
+        let current = (current_word >> (lane * 8u)) & 255u;
         var block = current & 15u; var sky = current >> 4u;
         if opacity < 15u && ((channels & 1u) != 0u && block < 14u || (channels & 2u) != 0u && sky < 14u) {
             for (var d = 0u; d < 6u; d++) {
@@ -173,14 +181,11 @@ fn spread_sparse(@builtin(workgroup_id) id: vec3<u32>, @builtin(local_invocation
 fn pack(@builtin(global_invocation_id) id: vec3<u32>) {
     let word_id = id.y * 16384u + id.x;
     if word_id >= p.core * p.core * p.height * 64u { return; }
-    var result = 0u;
-    for (var lane = 0u; lane < 4u; lane++) {
-        let i = word_id * 4u + lane;
-        let chunk = i / (p.height * 256u); let local = i % (p.height * 256u);
-        let x = (p.crop + chunk % p.core) * 16u + local % 16u;
-        let z = (p.crop + chunk / p.core) * 16u + (local / 16u) % 16u;
-        let y = local / 256u;
-        result |= light(y * p.side * p.side + z * p.side + x) << (lane * 8u);
-    }
-    output[word_id] = result;
+    let chunk = word_id / (p.height * 64u);
+    let local = word_id % (p.height * 64u);
+    let x = (p.crop + chunk % p.core) * 4u + local % 4u;
+    let z = (p.crop + chunk / p.core) * 16u + (local / 4u) % 16u;
+    let y = local / 64u;
+    // Crop and row boundaries are multiples of four voxels, so no byte shuffle.
+    output[word_id] = source[(y * p.side + z) * (p.side / 4u) + x];
 }
