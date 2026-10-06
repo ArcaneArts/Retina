@@ -63,7 +63,8 @@ public final class RetinaChunkGenerator extends ChunkGenerator {
             Codec.STRING.validate(mode -> mode.equals("mca") || mode.equals("chunk")
                     ? DataResult.success(mode) : DataResult.error(() -> "Retina mode must be mca or chunk"))
                     .optionalFieldOf("mode", "mca").forGetter(generator -> generator.mode),
-            NoiseGeneratorSettings.CODEC.optionalFieldOf("settings").forGetter(generator -> generator.settings)
+            NoiseGeneratorSettings.CODEC.optionalFieldOf("settings").forGetter(generator -> generator.settings),
+            Codec.BOOL.optionalFieldOf("density_composition", false).forGetter(RetinaChunkGenerator::densityComposition)
     ).apply(instance, RetinaChunkGenerator::new));
 
     private static final ExecutorService WORKERS = Executors.newFixedThreadPool(
@@ -76,6 +77,7 @@ public final class RetinaChunkGenerator extends ChunkGenerator {
     private final float frequency;
     private final String mode;
     private final Optional<Holder<NoiseGeneratorSettings>> settings;
+    private final boolean densityComposition;
     private volatile TemporaryRegions previews;
     private PalettedContainerFactory containerFactory;
     private volatile BiomeTerrainProfile profile;
@@ -96,8 +98,14 @@ public final class RetinaChunkGenerator extends ChunkGenerator {
     public RetinaChunkGenerator(BiomeSource biomes, int minY, int height,
                                 float baseHeight, float amplitude, float frequency, String mode,
                                 Optional<Holder<NoiseGeneratorSettings>> settings) {
+        this(biomes, minY, height, baseHeight, amplitude, frequency, mode, settings, false);
+    }
+    public RetinaChunkGenerator(BiomeSource biomes, int minY, int height,
+                                float baseHeight, float amplitude, float frequency, String mode,
+                                Optional<Holder<NoiseGeneratorSettings>> settings, boolean densityComposition) {
         super(biomes);
         this.settings = settings;
+        this.densityComposition = densityComposition;
         if (minY % 16 != 0 || height % 16 != 0) {
             throw new IllegalArgumentException("Retina generation bounds must align with 16-block sections");
         }
@@ -118,7 +126,7 @@ public final class RetinaChunkGenerator extends ChunkGenerator {
         float blend = getBiomeSource() instanceof RetinaBiomeSource source ? source.blend() : 0.55F;
         var imported = generator instanceof NoiseBasedChunkGenerator noise ? Optional.of(noise.generatorSettings()) : settings;
         return new RetinaChunkGenerator(RetinaBiomeSource.fromRegistry(generator.getBiomeSource(), scale, blend),
-                type.minY(), type.height(), baseHeight, amplitude, frequency, mode, imported);
+                type.minY(), type.height(), baseHeight, amplitude, frequency, mode, imported, densityComposition);
     }
 
     public void bindWorld(RegistryAccess registry, long seed) {
@@ -140,7 +148,7 @@ public final class RetinaChunkGenerator extends ChunkGenerator {
         containerFactory = factory;
         worldSeed = seed;
         if (getBiomeSource() instanceof RetinaBiomeSource biomes) {
-            profile = BiomeTerrainProfile.load(registry, biomes, minY, height, seed, settings.orElseGet(() -> registry.lookupOrThrow(net.minecraft.core.registries.Registries.NOISE_SETTINGS).getOrThrow(NoiseGeneratorSettings.OVERWORLD)).value(),structures);
+            profile = BiomeTerrainProfile.load(registry, biomes, minY, height, seed, settings.orElseGet(() -> registry.lookupOrThrow(net.minecraft.core.registries.Registries.NOISE_SETTINGS).getOrThrow(NoiseGeneratorSettings.OVERWORLD)).value(),structures,densityComposition);
             biomes.bind((x, y, z) -> biomeAt(x * 4, y * 4, z * 4), (x,y,z) -> searchBiomeAt(x*4,y*4,z*4));
         }
         metrics.startNativeTimings(NativeTerrain.instance().timings(profile == null ? 0 : profile.nativeId()));
@@ -236,6 +244,8 @@ public final class RetinaChunkGenerator extends ChunkGenerator {
     public boolean regionMode() { return mode.equals("mca"); }
 
     public String mode() { return mode; }
+
+    public boolean densityComposition() { return densityComposition; }
 
     public String regionBiome() {
         return getBiomeSource().possibleBiomes().iterator().next().unwrapKey().orElseThrow().identifier().toString();

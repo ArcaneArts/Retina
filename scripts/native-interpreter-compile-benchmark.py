@@ -32,6 +32,8 @@ def main():
     parser.add_argument("--profile", type=Path, required=True)
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--count", type=int, default=20)
+    parser.add_argument("--density-composition", choices=("enabled", "disabled"), default="disabled")
+    parser.add_argument("--program-execution", choices=("interpreter", "auto"), default="interpreter")
     parser.add_argument("--comparison", choices=("dispatch", "preload"), default="dispatch")
     parser.add_argument("--order", choices=("direct-first", "shared-first", "reference-first", "candidate-first"), default="reference-first")
     args = parser.parse_args()
@@ -42,7 +44,8 @@ def main():
     for mode in modes:
         output = args.out / mode
         env = dict(os.environ, RETINA_COMPILE_PROBE="1", RETINA_COMPILE_REUSE="1",
-                   RETINA_DENSITY_COMPOSITION="0", RETINA_SPECIALIZED_TERRAIN="0",
+                   RETINA_DENSITY_COMPOSITION="1" if args.density_composition == "enabled" else "0", RETINA_SPECIALIZED_TERRAIN="0",
+                   RETINA_COMPILE_MODE=args.program_execution,
                    RETINA_INTERPRETER_DISPATCH="1" if args.comparison == "preload" or mode == "shared" else "0",
                    RETINA_INTERPRETER_PRELOAD="1" if mode == "preload" else "0",
                    RETINA_GENERIC_PIPELINE_TAG=f"retina-compile-{uuid.uuid4().hex}",
@@ -66,7 +69,10 @@ def main():
             peak = re.search(r"Maximum resident set size \(kbytes\):\s*(\d+)", text)
         reports[mode] = dict(
             pipelines=sum(call["phase"] == "pipeline" for call in calls),
-            bundle_ms=next(call["ms"] for call in calls if call["phase"] == "bundle"),
+            bundle_ms=sum(call["ms"] for call in calls if call["phase"] == "bundle"),
+            bundles=[call for call in calls if call["phase"] == "bundle"],
+            first_program_status=measured["regions"][0]["program_status"],
+            last_program_status=measured["regions"][-1]["program_status"],
             initialize_ms=measured["initialize_ms"], registration_ms=measured["registration_ms"],
             first_region_ms=measured["regions"][0]["ms"],
             init_to_first_region_ms=measured["initialize_ms"] + measured["registration_ms"] + measured["regions"][0]["ms"],
@@ -83,7 +89,9 @@ def main():
                                         records(args.out / candidate / f"{index}.mca"), strict=True)):
             assert a == b, (index, slot)
             matched += 1
-    result = dict(comparison=args.comparison, profile=str(args.profile.resolve()), modes=reports, identical_nbt_chunks=matched)
+    result = dict(comparison=args.comparison, profile=str(args.profile.resolve()),
+                  density_composition=args.density_composition, program_execution=args.program_execution,
+                  modes=reports, identical_nbt_chunks=matched)
     (args.out / "comparison.json").write_text(json.dumps(result, indent=2))
     print(json.dumps(dict(identical_nbt_chunks=matched)), flush=True)
 

@@ -1,11 +1,17 @@
 # Background preparation of compact density pipelines
 
-The measured Metal path now starts preparing its compact, depth-one density
-interpreter after the GPU owner and auxiliary planners are ready. The existing
+The measured Metal path now starts preparing compact, depth-one density
+interpreters after the GPU owner and auxiliary planners are ready. New presets
+select saved block-position composition; its inventory is prepared first,
+followed by the separate legacy inventory for existing worlds. The existing
 compiler thread performs that work while Rust parses the loaded registry profile.
 The first compatible request captures the resulting pipelines and the actual
 profile's reuse mask. This reduces startup latency without changing shader
 arithmetic, dispatch order, scratch layout, registered data or GPU transfers.
+
+The current selection and fresh-identity automatic-mode measurements are in
+[production density composition](PRODUCTION_DENSITY_COMPOSITION.md). The tables
+below describe the earlier legacy-only preparation milestone.
 
 The initial experiment compiled every world/cave stage. It matched chunk output
 but increased fresh compilation from about 0.94 to 1.36 seconds, leaving much less
@@ -17,14 +23,15 @@ dependency analysis. This keeps compilation at about 0.93–0.95 seconds.
 
 The prepared inventory is a set of available pipelines, rather than a profile
 default. Rust derives it from the real shader call graph. Surface and final density
-occupy their defined registry-program ABI slots; unknown dynamic calls retain the
+occupy their defined registry-program ABI slots. The composed inventory also
+includes every call path depending on block-position composition. Unknown dynamic calls retain the
 conservative complete path. Every actual loaded profile still receives its own
 dependency plan. A prepared bundle is usable only when every stage it omitted
 is also reusable by that profile, and capacity, nesting depth and layout match.
 
 Profiles with interpolation in climate, material or aquifer graphs that need
 additional stages receive the existing on-demand compilation. Wide interpreters,
-other nesting depths and experimental composed layouts also retain their
+other nesting depths and incompatible composed inventories retain their
 existing paths. No biome parameters, source data or loaded graph results are
 substituted. Returning to a previous profile keeps its cached selection.
 
@@ -42,9 +49,10 @@ available while pending. Each submission retains its captured pipelines through
 its deferred material pass and readbacks. The prepared state lives with its GPU
 owner; it adds neither a detached per-profile compiler nor repeated region work.
 
-The default enables preparation when shared compact dispatch is enabled and
-the production, non-composed layout is selected. That currently means measured capable Metal
-adapters; unmeasured backends retain their earlier selection. Diagnostic
+The default enables preparation when shared compact dispatch is enabled.
+That currently means measured capable Metal
+adapters; unmeasured backends retain their earlier selection. The two layouts
+have separate immutable sources, compatibility masks and cache keys. Diagnostic
 `RETINA_INTERPRETER_PRELOAD=0` disables preparation. The existing
 `RETINA_INTERPRETER_DISPATCH` option remains separate. Generated chunks and saved
 profiles retain their previous interpretation.
@@ -156,6 +164,7 @@ The final library, JAR native member and retained benchmark library are identica
 SHA-256 `d4c75f5345bfc03d4ec375419ab87e32114bab32accea10008511c7333a9a0bf`.
 Final harness log: `build/interpreter-preload-validation.log`.
 
-Fast production density composition and remaining registered feature/provider
-approximations remain required parts of the broader goal, along with its final
-integrated audit. Full empty-cache desktop startup remains unmeasured.
+The later [production selection](PRODUCTION_DENSITY_COMPOSITION.md) enables saved
+composition for new worlds and validates both prepared layouts. Remaining
+registered approximations are listed in [the integrated audit](GENERATION_GOAL_AUDIT.md).
+Full empty-cache desktop startup remains unmeasured.

@@ -1,183 +1,29 @@
 # Generation fidelity and performance work
 
-The active goal covers six workstreams: complete registered biome coverage and
-indexed GPU climate selection; compact layered GPU material rules; local GPU
-aquifers; broader registered features and placement/provider support; cached
-specialized WGSL programs with better density semantics; and measured reductions
-in repeated Rust block scans. The first workstream, an initial Rust scan
-optimization, and cached WGSL specialization with horizontal field reuse are
-implemented so far. Complete GPU material runs now evaluate floor/ceiling depths,
-secondary surface noise and fluid context; see
-[material layers](GPU_MATERIAL_LAYERS.md) for the run format, DH base-column cache,
-validation, transfer costs and substantial cold-compilation cost.
-Registered coordinate slices now retain their scopes in both
-GPU execution paths; see [coordinate scopes](GPU_COORDINATE_SCOPES.md).
-[Individual interpolation operators](GPU_INTERPOLATION_SCOPES.md) now retain
-their own child graphs, cell sizes and nested slices in direct GPU samples.
-Child horizontal expressions retain GPU column reuse. The shared final-field
-terrain lattice and cold compilation cost remain required work. [Resident
-interpolation-field lattices](GPU_INTERPOLATION_CACHE.md) now provide GPU-only
-sample reuse for that ongoing work.
-[Experimental block-position composition](GPU_DENSITY_COMPOSITION.md) now
-preserves arithmetic after the individual fields in analytic checks. Parallel
-lake probes, direct resident density reads, covered density-lattice kernels and
-aquifer pressure pruning reduce its initial cost, but whole-region regressions keep the
-experiment disabled by default; fast production composition remains required.
-[Separate GPU lake timings](GPU_LAKE_TIMINGS.md) now distinguish candidates,
-density probes, level reduction and final columns in F3. Actual-profile checks
-identify expensive composed lake density; the paired resident/general probe
-trial preserved NBT but showed no gain and was removed.
-[Invocation-local lake interpolation reuse](GPU_LAKE_POINT_CACHE.md) now reduces
-repeated corner evaluation in composed probes without another dispatch or readback.
-Actual-profile repeats preserve complete NBT and improve several whole-region
-workloads, with documented mixed preliminary results. Composition remains slower
-than production and stays disabled; cold-start work remains required.
-[Sparse lake-field stencils](GPU_SPARSE_LAKE_FIELDS.md) now move uncovered
-fractional-probe corners into a GPU scratch prepass. The probe shader reuses them
-without carrying raw input graphs in its hot call tree. Independent uncached-GPU
-oracles preserve actual registered roots and interval endpoints. This continues
-the composition experiment; it does not complete fast production composition
-or cold-start work.
-[Mixed GPU stage selection](GPU_STAGE_SELECTION.md) now retains compact
-interpreted terrain/climate on Metal while specializing materials and caves.
-Repeated actual-profile comparisons improve whole-region throughput, with
-identical NBT; unmeasured backends retain their prior selection. F3 reports the
-mixed mode and the compiler skips its unused specialized terrain pipelines.
-[Compact interpreter column reuse](GPU_COLUMN_INTERPRETER.md) now lets Metal's
-mixed density/climate stages consume that horizontal atlas with pruned resident
-instruction schedules. Actual-profile root and NBT comparisons preserve output;
-matched production serial throughput improves about 4–7%, while experimental
-Terralith composition gains 22–31%. Parallel gains are workload-dependent. The
-composition path and cold-start work remain unfinished requirements.
-Local registered GPU aquifers and surface-lake corrections are implemented; see
-[GPU aquifers](GPU_AQUIFERS.md) for fluid/pressure equations, validation, costs and
-remaining fluid-tick approximations. [Local aquifer column reuse](GPU_AQUIFER_COLUMN_REUSE.md)
-can avoid repeated horizontal spline evaluation during registered vertical
-surface searches. Serial gains are modest and concurrent results regress in the
-final repeat, so this alternative remains opt-in. Broader features, further graph
-semantics and scan work remain required, along with final integrated validation,
-transfer-volume measurements and updated stage telemetry where new stages arise.
+The six requested workstreams are implemented. The current requirement audit,
+final integrated validation, production-selection measurements and remaining
+approximations are recorded in [the goal audit](GENERATION_GOAL_AUDIT.md).
 
-Registered noise-based feature counts and arbitrary threshold counts now use
-[sparse GPU feature queries](GPU_FEATURE_COUNTS.md), including signed ratios and
-nested placements. Broader feature geometry, providers and spatial filters remain
-part of the fourth workstream. Common registered block columns, bamboo, cactus,
-sugar cane and aquatic vegetation now have ordered native adapters; see
-[registered block features](REGISTERED_BLOCK_FEATURES.md). Registered red/brown
-giant mushrooms now retain loaded providers, cap faces and clearance rules; see
-[registered mushrooms](REGISTERED_MUSHROOMS.md). Loaded fallen trees now retain
-their lengths, orientations, terrain checks and decorators; see
-[registered fallen trees](REGISTERED_FALLEN_TREES.md). Loaded vegetation patches
-and general simple blocks now retain their local placement data and nested
-replay; see [registered patches](REGISTERED_VEGETATION_PATCHES.md). Further
-spatial filters remain required.
-Loaded sediment disks now retain their radius distributions, target predicates,
-nullable providers and ordered writes in Rust, replacing GPU coverage masks for
-supported recipes. Ordered sequence/overlay wrappers also preserve child return
-values and shared random streams; see
-[registered disks and composites](REGISTERED_DISKS_COMPOSITES.md).
-Registered rule-based, rotated and random-block providers now retain their
-positions, ordered branches, optional results and random-draw semantics; see
-[block-state providers](REGISTERED_BLOCK_PROVIDERS.md). Registered
-[property copying](REGISTERED_PROPERTY_COPY.md) now reads live compatible
-properties with sparse finalized palette tables and no extra random draw. Some
-[nullable live-state transformations](REGISTERED_NULLABLE_PROVIDERS.md) now support
-rotations, integer properties, copying, mushroom caps and fallen logs. Arbitrary
-current-state SimpleBlock placement now has [shared survival rules](REGISTERED_SIMPLE_SURVIVAL.md)
-for supported loaded classes, including paired plants; light-dependent and
-unimplemented classes remain explicit omissions. Registered spore blossoms now
-use the same adapter. Native
-[integer-property providers](REGISTERED_INTEGER_PROPERTIES.md) now preserve
-source states without the configured integer property and skip the value draw,
-matching loaded provider behavior.
-The [GPU provider-noise replay](GPU_PROVIDER_NOISE.md) now samples actual initialized
-Perlin stacks with sparse integer XYZ queries and resident buffers. Registered
-noise, dual-noise and threshold providers drive production block-feature material
-choices. Ordered replay retries unresolved anchors while preserving completed
-commands, live overlays and random streams.
-The [surface-relative filter](REGISTERED_SPATIAL_FILTERS.md) now respects loaded
-heightmaps and inclusive offsets in top-level and nested placement programs.
-[Registered cuboid placements](REGISTERED_CUBOID_PLACEMENTS.md) now preserve
-inclusive dimensions, edge/interior flags and ordered nested feature draws.
-Actual cave-floor/ceiling and uneven-terrain reference checks cover their complete
-local footprint; broader enclosing feature geometry remains required.
-The [ground-layer placement adapter](REGISTERED_LAYER_PLACEMENTS.md) now follows
-loaded `count_on_every_layer` budgets and actual live empty-to-solid transitions,
-including sparse GPU counts after floor discovery. The same milestone fixes
-exposed dark-oak tops with their registered upper foliage rows and complete trunks.
+New MCA and chunk presets save `density_composition: true`; worlds whose saved
+generator lacks that option keep legacy final-field interpolation. Datapack
+imports preserve the choice. Individual registered interpolation fields are
+sampled on their own GPU lattices before block-position graph composition, with
+resident bounds and sparse lake fields to reduce repeated work. This fidelity
+choice has a measured cost; it is not presented as a throughput optimization.
+See [production density composition](PRODUCTION_DENSITY_COMPOSITION.md).
 
-The [GPU decoration substrate](GPU_DECORATION_SUBSTRATE.md) now supplies complete
-carved air, local fluids and material runs across the existing placement halo.
-Live predicates and heightmap modifiers consume those runs, consistently across
-independent chunks and regions. This supplies the base data needed by underground
-vegetation patches. [Registered vertical placements](REGISTERED_VERTICAL_PLACEMENTS.md)
-now preserve height distributions, environment scans and 3D biome restrictions,
-with one discovery pass per anchor. Patches now receive complete GPU footprint
-substrate outside those anchors, preserving region/chunk random replay. Remaining
-spatial filters and provider transformations are still required.
-[Final paired-plant replay](PAIRED_PLANT_REPLAY.md) now repairs overlapping tall
-plants after all feature/structure writes, using registered block identities.
-It also checks actual registered grass/fern soil support after village paths and
-gravel replace the ground, removing invalid lower and upper halves in order.
-Broader biome/MCA validation passes; the previous defect and measured sparse
-repair cost are documented there.
-The [registered snow-support table](SNOW_SUPPORT.md) now also prevents the final
-Rust snow pass from blanketing regular frozen-ocean ice, while preserving snow
-on supported cold ground and crowns. Both chunk and MCA output are tested against
-Minecraft's loaded block survival rules.
-[Registered attachment growth](REGISTERED_ATTACHMENT_GROWTH.md) now imports
-underground and vegetation-step multiface/vine recipes, with loaded support
-faces, wet states, spreading and nested-patch replay. Actual Minecraft reference
-checks cover all six faces, fluids and ordered draws; both assembly paths and
-temporary-region promotion remain validated. Other recipe/provider gaps remain.
+The implementation includes complete active Overworld biome sources with GPU
+climate interval indexes; complete vertical GPU material runs; local aquifer
+fluids and barriers; registered feature counts, providers, filters and ordered
+Rust geometry; cached specialized shaders and compact GPU interpreter reuse;
+and measured Rust planning, scan and palette improvements. The detailed design
+and historical paired measurements remain in the linked milestone documents.
+Rejected alternatives, including [per-voxel cave masks](GPU_VOXEL_MASK_TRIALS.md),
+are retained as evidence rather than enabled because one stage became faster.
 
-The [shared compact interpreter](GPU_SHARED_INTERPRETER.md) now reduces required
-Metal first-profile pipelines from ten to two. Fresh-identity twenty-region
-comparisons cut additional compilation about 70%, saving roughly two seconds
-in the first native region. Final outputs match across cold/warm/concurrent
-workloads and effective profile switches. Warm throughput shows a small mixed
-tradeoff, and about 0.94 seconds of synchronous generic compilation remains;
-full startup and fast production density composition remain required.
-[Background density pipeline preparation](GPU_INTERPRETER_PRELOAD.md) now
-overlaps compact generic compilation with native registry parsing. Actual
-dependency masks choose reuse, with normal compilation for other layouts and
-real compiler failure recovery. Final twenty-region runs lower initialization-
-through-first-region latency 32% vanilla / 39% Terralith, with matching NBT and
-small mixed warm differences. Empty-cache desktop startup remains unmeasured.
-
-See [GPU program specialization](GPU_PROGRAM_SPECIALIZATION.md) for the compiler,
-resident horizontal cache, startup behavior and its validation.
-Material constant parameterization and grouped dispatch experiments were rejected:
-counterbalanced cold runs exposed shared driver-cache warmth rather than a reliable
-startup gain. The same document records a standalone interpreter liveness analysis
-(37 / 64 scratch values for the full vanilla / Terralith profiles). Native register
-reuse and a 64-slot interpreter are now implemented, with a cached wide fallback.
-Repeated twenty-region interpreter benchmarks improve serial throughput 4.7–4.9×
-vanilla and 2.9–3.3× Terralith, preserving all chunk NBT. This accelerates generation
-while specialization is pending; cold profile compilation remains required work.
-The [shared specialized material scans](GPU_SHARED_MATERIALS.md) now remove one
-duplicate count/emit compilation on supported Metal adapters. Fresh-identity
-counterbalanced pairs reduce material compilation 48–63%, with complete NBT
-preservation. Warm throughput is mixed; this is a startup/compiler-work saving,
-and substantial cold specialization and fast production composition remain required.
-The [specialized interpolation input writers](GPU_INTERPOLATION_WRITERS.md) now
-separate cached field preparation from the remaining mixed terrain stages.
-Actual-profile repeats preserve NBT and improve normal Terralith serial throughput
-4–9% / concurrent throughput 11%, with mixed vanilla and composition results.
-Composition and full cold-start work remain unfinished requirements.
-The [shoreline correction](SHORELINES.md) adds a resident coastal index and GPU
-height-neighborhood checks to align registered coastal climates with the actual
-approximated terrain, preventing disconnected inland beach selection. Its
-fidelity checks and separate twenty-region cost measurements are documented there.
-The [sparse planning milestone](GPU_SPARSE_PLANNING.md) adds direct GPU bulk-ore
-masks and cheaper Rust crown/canopy lookups while preserving final chunk data.
-The [final heightmap scan experiment](HEIGHTMAP_SCAN_EXPERIMENT.md) compared an
-unfinished-column bitset with the existing row scan. It preserved NBT but did not
-show a reliable whole-region speedup, so the production loop was retained.
-The [direct palette encoder](DIRECT_PALETTE_PACKING.md) removes the temporary
-mixed-section index pass. Paired real-section benchmarks reduce encoding time
-about 8%, with exact NBT; complete-region repeats show lower NBT worker time but
-do not establish a reliable whole-region speedup.
+The following sections record earlier milestones and their measurements. Their
+profile sizes, selected modes and baseline rates belong to those revisions;
+the audit and production-selection report describe the final build.
 
 ## World-preset registry lifecycle
 

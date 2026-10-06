@@ -584,7 +584,7 @@ impl State {
 }
 
 struct Job {
-    interpreter: bool,
+    interpreter: Option<interpreter_reuse::Plan>,
     program: String,
     state: Arc<State>,
     horizontal_fields: u32,
@@ -623,13 +623,13 @@ impl Compiler {
                 while let Ok(job) = receiver.recv() {
                     let start = Instant::now();
                     let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-                        if job.interpreter {
+                        if let Some(reuse) = job.interpreter {
                             compile_interpreter(
                                 &device,
                                 &world,
                                 &cave,
                                 &job.program,
-                                Some(interpreter_reuse::Plan::density_preload()),
+                                Some(reuse),
                                 true,
                             )
                         } else {
@@ -685,9 +685,12 @@ impl Compiler {
     }
     /// Prepare a profile-independent fallback after device startup, overlapping
     /// native registry parsing. The same compiler thread preserves job ordering.
-    pub fn compact_interpreter(&self) -> Result<Arc<State>, String> {
-        let source =
-            crate::program::interpreter_source_density(crate::program::COMPACT_VALUES, 1, false);
+    pub fn compact_interpreter(&self, composition: bool) -> Result<Arc<State>, String> {
+        let source = crate::program::interpreter_source_density(
+            crate::program::COMPACT_VALUES,
+            1,
+            composition,
+        );
         #[cfg(test)]
         let source = if std::env::var("RETINA_PRELOAD_SOURCE_ERROR").as_deref() == Ok("1") {
             format!("{source}\ninvalid_preload_shader_source")
@@ -704,7 +707,7 @@ impl Compiler {
         });
         self.sender
             .send(Job {
-                interpreter: true,
+                interpreter: Some(interpreter_reuse::Plan::density_preload(composition)),
                 program: source,
                 state: state.clone(),
                 horizontal_fields: 0,
@@ -808,7 +811,7 @@ impl Compiler {
         });
         self.sender
             .send(Job {
-                interpreter: false,
+                interpreter: None,
                 program: key.0.clone(),
                 state: state.clone(),
                 horizontal_fields,

@@ -40,7 +40,8 @@
         "base_height": 64.0,
         "amplitude": 48.0,
         "frequency": 0.008,
-        "mode": "chunk"
+        "mode": "chunk",
+        "density_composition": true
       }
     },
     "minecraft:the_nether": {

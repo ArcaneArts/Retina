@@ -1,24 +1,24 @@
-# Experimental block-position density composition
+# Block-position density composition
 
-The production generator still interpolates its final density lattice for
-terrain classification. An experimental GPU path now evaluates arithmetic and
-range choices at block positions after sampling each registered interpolation
-field on its own lattice. It retains the loaded graph's operator ordering rather
-than interpolating an already-composed result. No CPU noise substitute or normal
-Minecraft generator is involved.
+New MCA and chunk presets now save `density_composition: true` and select this
+GPU path in normal generation. Existing saved generators without the option
+keep legacy final-field interpolation; their runtime exports explicitly disable
+composition. Datapack adaptation and save/reopen retain the saved choice. The
+native profile flag controls selection, and `RETINA_DENSITY_COMPOSITION=0`
+remains a diagnostic disable. Profiles without the native flag retain legacy
+semantics. See [production selection](PRODUCTION_DENSITY_COMPOSITION.md) for
+current validation, startup measurements and the fidelity/throughput tradeoff.
 
-This path requires both the exported `registry_program.density_composition`
-capability and `RETINA_DENSITY_COMPOSITION=1`. New registry exports include the
-capability; the environment switch is off by default. Old profiles retain their
-previous behavior. The benchmark's `--density-composition enabled` explicitly
-selects the experiment. It is not a saved-world option or the production default:
-measured whole-region regressions still need to be resolved before enabling it.
+The path evaluates arithmetic and range choices at block positions after
+sampling each registered interpolation field on its own lattice. It retains
+the loaded graph's operator ordering rather than interpolating an already
+composed result. Both interpreter and specialized pipelines execute on the GPU;
+there is no CPU noise substitute or normal Minecraft generation fallback.
 
-[Compact interpreter column reuse](GPU_COLUMN_INTERPRETER.md) now avoids repeated
-X/Z expressions during the finer input prepasses. Later actual-profile pairs
-preserve composition output and improve Terralith composition throughput by
-22–31% serial / 22% with two callers. Composition remains slower than the regular
-path in those observations, so this milestone keeps the experiment disabled.
+The remaining measurements below record the development of this path while it
+was experimental, including its substantial initial regressions and subsequent
+resident-query, column-reuse and sparse-lake optimizations. They are historical
+comparisons, not claims that the final fidelity change is free.
 
 ## GPU execution
 

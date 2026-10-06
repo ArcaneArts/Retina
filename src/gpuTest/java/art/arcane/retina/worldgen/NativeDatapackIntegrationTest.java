@@ -52,19 +52,22 @@ public final class NativeDatapackIntegrationTest {
             var original = packs.getValueOrThrow(LevelStem.OVERWORLD);
             var biome = world.lookupOrThrow(Registries.BIOME).getOrThrow(Biomes.PLAINS);
             for (String mode : List.of("mca", "chunk")) {
-                var chosen = new RetinaChunkGenerator(new RetinaBiomeSource(List.of(biome), 256, .55F), -64, 384, 64, 48, .008F, mode);
+                var chosen = new RetinaChunkGenerator(new RetinaBiomeSource(List.of(biome), 256, .55F), -64, 384, 64, 48, .008F, mode, Optional.empty(), true);
                 var adapted = RetinaDimensions.retainSelection(Map.of(LevelStem.OVERWORLD,new LevelStem(original.type(),chosen)), packs);
                 require(adapted.getValueOrThrow(LevelStem.OVERWORLD).generator() instanceof RetinaChunkGenerator, "Retina generator survives pack override");
                 var generator = (RetinaChunkGenerator) adapted.getValueOrThrow(LevelStem.OVERWORLD).generator();
                 require(generator.mode().equals(mode), "selected mode survives");
+                require(generator.densityComposition(), "selected density semantics survive datapack import");
                 var ops = world.createSerializationContext(JsonOps.INSTANCE);
                 var encoded = ChunkGenerator.CODEC.encodeStart(ops,generator).getOrThrow();
                 var reopened = (RetinaChunkGenerator) ChunkGenerator.CODEC.parse(ops,encoded).getOrThrow();
                 require(reopened.mode().equals(mode) && reopened.getBiomeSource().possibleBiomes().size() == generator.getBiomeSource().possibleBiomes().size(), "save/reopen codec retains mode and imported source");
+                require(reopened.densityComposition(), "save/reopen retains composed density");
                 reopened.bindWorld(world,123456789L,net.minecraft.world.level.chunk.PalettedContainerFactory.create(world));
                 var profile = reopened.profile();
                 Files.writeString(Path.of("build/terralith-profile.json"),profile.json());
                 var projection=com.google.gson.JsonParser.parseString(profile.json()).getAsJsonObject();
+                require(projection.getAsJsonObject("registry_program").get("density_composition").getAsBoolean(), "saved density option reaches native profile");
                 float spacing=projection.get("biome_scale").getAsFloat();
                 require(spacing>256,"registered horizontal climate scales influence biome spacing");
                 if(args.length>1 && !bulk)require(spacing>1024,"additional datapack's climate scale changes spacing alongside Terralith");

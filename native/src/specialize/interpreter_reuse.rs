@@ -72,16 +72,16 @@ static DEPENDENCIES: LazyLock<Option<Vec<Vec<Root>>>> = LazyLock::new(|| {
 impl Plan {
     /// Precompile only the actual WGSL call paths reaching the surface/final
     /// density graphs. This is a pipeline inventory, never a biome/data default.
-    pub fn density_preload() -> Self {
+    pub fn density_preload(composition: bool) -> Self {
         let Some(dependencies) = DEPENDENCIES.as_ref() else {
             return Self::default();
         };
         let mut reuse = 0;
         for (entry, roots) in dependencies.iter().enumerate() {
-            if !roots
-                .iter()
-                .any(|root| matches!(root, Root::One(1 | 2) | Root::All))
-            {
+            if !roots.iter().any(|root| {
+                matches!(root, Root::One(1 | 2) | Root::All)
+                    || composition && *root == Root::Composition
+            }) {
                 reuse |= 1 << entry;
             }
         }
@@ -387,7 +387,7 @@ mod tests {
     }
     #[test]
     fn preloaded_density_inventory_covers_only_actual_compatible_masks() {
-        let inventory = Plan::density_preload();
+        let inventory = Plan::density_preload(false);
         let mut p = profile();
         p.programs[1].nodes[0].op = 28;
         p.programs[2].nodes[0].op = 28;
@@ -396,6 +396,10 @@ mod tests {
         p.programs[1].nodes[0].op = 0;
         assert!(inventory.supports(Plan::new(&p, 64, false)));
         assert!(!inventory.supports(Plan::new(&p, 64, true)));
+        let composed = Plan::density_preload(true);
+        assert!(composed.supports(Plan::new(&p, 64, true)));
+        assert!(!composed.cave_reuses("cave_mask"));
+        assert!(!composed.cave_reuses("aquifer_mask"));
         assert!(!inventory.supports(Plan::new(&p, 1024, false)));
         for graph in [0, 3, 7] {
             p.programs[graph].nodes[0].op = 28;

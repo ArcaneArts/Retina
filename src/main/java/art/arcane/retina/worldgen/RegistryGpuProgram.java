@@ -32,7 +32,7 @@ final class RegistryGpuProgram {
         this.registry=registry; this.minY=minY; this.height=height; this.sea=sea;
     }
     static JsonObject export(HolderLookup.Provider registry, NoiseGeneratorSettings settings,
-                             List<Holder<Biome>> biomes, LinkedHashMap<BlockState,Integer> palette, int minY, int height, float biomeScale, Set<net.minecraft.world.level.levelgen.placement.PlacedFeature> nativeDisks) {
+                             List<Holder<Biome>> biomes, LinkedHashMap<BlockState,Integer> palette, int minY, int height, float biomeScale, Set<net.minecraft.world.level.levelgen.placement.PlacedFeature> nativeDisks, boolean densityComposition) {
         var compiler=new RegistryGpuProgram(registry,minY,height,settings.seaLevel());
         compiler.nativeDisks.addAll(nativeDisks);
         compiler.defaultFluid = settings.defaultFluid();
@@ -94,10 +94,8 @@ final class RegistryGpuProgram {
             terrainCell=new JsonArray();terrainCell.add(4);terrainCell.add(8);
         }
         result.add("terrain_cell",terrainCell);
-        result.addProperty("density_composition",true);
-        // Native composition remains experimental until its region throughput
-        // matches the production path; retain the default's approximation report.
-        compiler.approximations.add("density:uninterpolated-final-field:4x8x4-sampling");
+        result.addProperty("density_composition",densityComposition);
+        if(!densityComposition) compiler.approximations.add("density:legacy-final-field-interpolation");
         result.addProperty("material_layers",true);
         result.addProperty("material_halo",true);
         compiler.approximations.add("material:preliminary-surface-from-final-height");

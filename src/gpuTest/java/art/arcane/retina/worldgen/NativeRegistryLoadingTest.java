@@ -64,6 +64,19 @@ public final class NativeRegistryLoadingTest {
                         .collect(java.util.stream.Collectors.toSet());
                 require(source.possibleBiomes().equals(expected), "complete registered pool after preset loading " + name);
                 require(((RetinaChunkGenerator) generator).mode().equals(name.equals("gpu") ? "mca" : "chunk"), "mode preserved");
+                var retina = (RetinaChunkGenerator) generator;
+                require(retina.densityComposition(), "new preset enables registered field composition");
+                var ops = registry.createSerializationContext(com.mojang.serialization.JsonOps.INSTANCE);
+                var encoded = net.minecraft.world.level.chunk.ChunkGenerator.CODEC.encodeStart(ops, retina).getOrThrow();
+                var reopened = (RetinaChunkGenerator) net.minecraft.world.level.chunk.ChunkGenerator.CODEC.parse(ops, encoded).getOrThrow();
+                require(reopened.densityComposition(), "composition survives save/reopen");
+                var legacy = encoded.deepCopy().getAsJsonObject();
+                legacy.remove("density_composition");
+                var oldWorld = (RetinaChunkGenerator) net.minecraft.world.level.chunk.ChunkGenerator.CODEC.parse(ops, legacy).getOrThrow();
+                require(!oldWorld.densityComposition(), "absent saved option preserves legacy interpolation");
+                require(!oldWorld.withDatapackGenerator(referenceGenerator(registry), registry.lookupOrThrow(Registries.DIMENSION_TYPE)
+                        .getValueOrThrow(net.minecraft.world.level.dimension.BuiltinDimensionTypes.OVERWORLD)).densityComposition(),
+                        "datapack import preserves legacy selection");
             }
             System.out.println("QA_EVT {\"event\":\"retina_preset_registry_loading\",\"status\":\"pass\",\"context\":{\"pack\":\""
                     + (args.length == 0 ? "vanilla" : "terralith") + "\",\"presets\":2}}");
@@ -78,6 +91,16 @@ public final class NativeRegistryLoadingTest {
         bind.setAccessible(true);
         register(BuiltInRegistries.CHUNK_GENERATOR, Identifier.parse("retina:gpu"), RetinaChunkGenerator.CODEC, frozen, bind);
         register(BuiltInRegistries.BIOME_SOURCE, Identifier.parse("retina:voronoi"), RetinaBiomeSource.CODEC, frozen, bind);
+    }
+
+    private static net.minecraft.world.level.chunk.ChunkGenerator referenceGenerator(RegistryAccess registry) {
+        return new net.minecraft.world.level.levelgen.NoiseBasedChunkGenerator(referenceSource(registry), registry.lookupOrThrow(Registries.NOISE_SETTINGS)
+                .getOrThrow(net.minecraft.world.level.levelgen.NoiseGeneratorSettings.OVERWORLD));
+    }
+
+    private static BiomeSource referenceSource(RegistryAccess registry) {
+        return MultiNoiseBiomeSource.createFromPreset(registry.lookupOrThrow(Registries.MULTI_NOISE_BIOME_SOURCE_PARAMETER_LIST)
+                .getOrThrow(MultiNoiseBiomeSourceParameterLists.OVERWORLD));
     }
 
     private static <T> void register(Registry<T> registry, Identifier id, T value,

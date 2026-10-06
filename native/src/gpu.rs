@@ -77,7 +77,7 @@ pub(crate) struct Gpu {
     specialized_terrain: bool,
     specialized_interpolation: bool,
     interpreter_dispatch: bool,
-    preloaded_interpreter: Option<std::sync::Arc<crate::specialize::State>>,
+    preloaded_interpreters: HashMap<bool, std::sync::Arc<crate::specialize::State>>,
     density_composition: bool,
     cached_density_masks: bool,
     lake_point_cache: bool,
@@ -432,8 +432,10 @@ impl Gpu {
             specialized_terrain,
             specialized_interpolation,
             interpreter_dispatch,
-            preloaded_interpreter: None,
-            density_composition: std::env::var("RETINA_DENSITY_COMPOSITION").as_deref() == Ok("1"),
+            preloaded_interpreters: HashMap::new(),
+            // The saved profile selects graph semantics. This diagnostic may
+            // disable composition, but cannot opt a legacy saved profile in.
+            density_composition: std::env::var("RETINA_DENSITY_COMPOSITION").as_deref() != Ok("0"),
             lake_sparse_fields,
             interpreter_columns,
             aquifer_columns,
@@ -449,12 +451,24 @@ impl Gpu {
     pub(crate) fn start_interpreter_preload(&mut self) {
         // Overlap compact density compilation with native profile parsing.
         if self.interpreter_dispatch
-            && !self.density_composition
             && std::env::var("RETINA_INTERPRETER_PRELOAD").as_deref() != Ok("0")
         {
-            match self.compiler.compact_interpreter() {
-                Ok(state) => self.preloaded_interpreter = Some(state),
-                Err(error) => eprintln!("Retina keeps on-demand interpreter compilation: {error}"),
+            // New presets use composition; absent saved fields use legacy.
+            // Each inventory has its own immutable source/layout identity.
+            let modes: &[bool] = if self.density_composition {
+                &[true, false]
+            } else {
+                &[false]
+            };
+            for &composition in modes {
+                match self.compiler.compact_interpreter(composition) {
+                    Ok(state) => {
+                        self.preloaded_interpreters.insert(composition, state);
+                    }
+                    Err(error) => {
+                        eprintln!("Retina keeps on-demand interpreter compilation: {error}")
+                    }
+                }
             }
         }
     }
@@ -695,11 +709,11 @@ impl Gpu {
                     crate::program::interpreter_source_density(capacity, depth, composition);
                 let preloaded = if capacity == crate::program::COMPACT_VALUES
                     && depth == 1
-                    && !composition
-                    && crate::specialize::interpreter_reuse::Plan::density_preload().supports(reuse)
+                    && crate::specialize::interpreter_reuse::Plan::density_preload(composition)
+                        .supports(reuse)
                 {
-                    self.preloaded_interpreter
-                        .as_ref()
+                    self.preloaded_interpreters
+                        .get(&composition)
                         .and_then(|state| match state.ready(true) {
                             Ok(pipelines) => pipelines,
                             Err(error) => {
