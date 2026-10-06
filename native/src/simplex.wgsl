@@ -406,8 +406,11 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
     if region {
         tile = vec2<i32>(i32(id.y % request.tile_side), i32(id.y / request.tile_side)) * 16;
     }
-    let coordinate = vec2<i32>(request.origin_x + tile.x + select(i32(id.x & 15u),8,probe),
-                               request.origin_z + tile.y + select(i32(id.x >> 4u),8,probe));
+    let exact=(request.padding&(1u<<21u))!=0u;
+    let query_offset=vec2<i32>(8+select(0,i32(request.padding&3u),exact),
+                                8+select(0,i32((request.padding>>2u)&3u),exact));
+    let coordinate = vec2<i32>(request.origin_x + tile.x + select(i32(id.x & 15u),query_offset.x,probe),
+                               request.origin_z + tile.y + select(i32(id.x >> 4u),query_offset.y,probe));
     let point = vec2<f32>(coordinate);
     let index = select(id.y * 256u + id.x,id.y,probe);
     if request.profile == 0u {
@@ -453,7 +456,7 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
     // Fixed global cells make rounded, warped basins with a flat waterline.
     // Their geometry is computed here, before any readback or Rust assembly.
     // Surface biome probes need the physical coast, never synthetic lake levels.
-    if (request.padding&(1u<<31u))==0u {
+    if height_probe || (request.padding&(1u<<31u))==0u {
     let lake_cell = vec2<i32>(floor(point / 128.0));
     let lh = cell_hash(lake_cell, request.seed_low + 8647u, request.seed_high);
     let lake_point = lake_center(lake_cell,request);

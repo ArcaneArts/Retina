@@ -77,6 +77,10 @@ public final class NativeStructureIntegrationTest {
             }
             for(String name:List.of("minecraft:village_plains","minecraft:bastion_remnant","minecraft:trial_chambers","minecraft:desert_pyramid","minecraft:jungle_pyramid","minecraft:swamp_hut")) {
                 var modified=force(data,name);int id=nativeTerrain.registerProfile(modified.toString());var request=request(id,0,0);
+                long chunksBefore=nativeTerrain.timings(id).chunks();
+                int selected=nativeTerrain.queryStructureStarts(request,new int[]{0,0,0})[0];
+                require(selected>=0 && modified.getAsJsonObject("structures").getAsJsonArray("definitions").get(selected).getAsJsonObject().get("id").getAsString().equals(name),"cold query selects exact production start for "+name);
+                require(nativeTerrain.timings(id).chunks()==chunksBefore,"structure queries never assemble chunks");
                 var starts=nativeTerrain.structureStarts(request).getCompoundOrEmpty("structures").getCompoundOrEmpty("starts");
                 require(starts.contains(name),"native start for "+name+": "+starts.keySet());
                 var start=StructureStart.loadStaticStart(context,starts.getCompoundOrEmpty(name),SEED);

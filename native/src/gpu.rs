@@ -578,6 +578,8 @@ impl Gpu {
         let host_start = Instant::now();
         let surface_probe = requests[0].padding & (1 << 31) != 0;
         let underground_probe = requests[0].padding & (1 << 30) != 0;
+        let height_probe = requests[0].padding & (1 << 29) != 0;
+        let needs_lakes = !surface_probe || height_probe;
         let sparse = surface_probe || underground_probe;
         let align_shores = profile.is_some_and(|p| {
             p.registry_program
@@ -769,7 +771,7 @@ impl Gpu {
         };
         let density_program = profile
             .and_then(|p| p.registry_program.as_ref())
-            .filter(|p| p.surface[2] == 0 && (!surface_probe || align_shores));
+            .filter(|p| p.surface[2] == 0 && (needs_lakes || align_shores));
         let horizontal_fields = specialized.as_ref().map_or(0, |p| p.horizontal_fields);
         let interpolation_plan = self
             .interpolation_plans
@@ -796,7 +798,7 @@ impl Gpu {
             .filter(|_| {
                 composition
                     && self.lake_sparse_fields
-                    && !surface_probe
+                    && needs_lakes
                     && selected.is_some_and(|p| p.cached_world("lake_density_sparse").is_some())
             });
         let mut sparse_dispatch = 0u32;
@@ -945,7 +947,8 @@ impl Gpu {
             })
         };
 
-        let cave_side = requests[0].padding & 255;
+        // Sparse point queries reuse the low byte for local X/Z offsets.
+        let cave_side = if sparse { 0 } else { requests[0].padding & 255 };
         let cave_width = cave_side * 16 + 2;
         let cave_height = (requests[0].max_y - requests[0].min_y) as u32;
         let surface_width = requests[0].tile_side * 16;
@@ -1105,7 +1108,7 @@ impl Gpu {
             measured.push(timings::SITES);
         }
         measured.push(timings::COLUMNS);
-        if density_program.is_some() && !surface_probe {
+        if density_program.is_some() && needs_lakes {
             measured.extend([
                 timings::LAKE_CANDIDATES,
                 timings::LAKE_DENSITY,
@@ -1237,7 +1240,7 @@ impl Gpu {
                 label: Some("Retina registered surface and climate lattice"),
                 timestamp_writes: writes,
             });
-            (if surface_probe && !align_shores {
+            (if surface_probe && !align_shores && !height_probe {
                 terrain_pipeline("climate_nodes", &self.climate_pipeline)
             } else {
                 terrain_pipeline("height_nodes", &self.height_pipeline)
@@ -1285,7 +1288,7 @@ impl Gpu {
             pass.set_bind_group(0, group, &[]);
             pass.dispatch_workgroups(3, requests.len() as u32, 1);
         }
-        if density_program.is_some() && !surface_probe {
+        if density_program.is_some() && needs_lakes {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
                 label: Some("Retina lake candidate classification"),
                 timestamp_writes: timestamp_writes(timings::LAKE_CANDIDATES),
@@ -1294,7 +1297,7 @@ impl Gpu {
             pass.set_bind_group(0, group, &[]);
             pass.dispatch_workgroups(lake_dispatch.div_ceil(64), requests.len() as u32, 1);
         }
-        if density_program.is_some() && !surface_probe {
+        if density_program.is_some() && needs_lakes {
             if sparse_lakes {
                 let mut writes = timestamp_writes(timings::LAKE_DENSITY);
                 if let Some(ref mut w) = writes {
@@ -1345,7 +1348,7 @@ impl Gpu {
                 requests.len() as u32,
             );
         }
-        if density_program.is_some() && !surface_probe {
+        if density_program.is_some() && needs_lakes {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
                 label: Some("Retina shared lake level extraction"),
                 timestamp_writes: timestamp_writes(timings::LAKE_REDUCE),
@@ -1359,7 +1362,7 @@ impl Gpu {
                 label: Some("Retina interpolated column pass"),
                 timestamp_writes: timestamp_writes(timings::COLUMNS),
             });
-            (if surface_probe && !align_shores {
+            (if surface_probe && !align_shores && !height_probe {
                 world_pipeline("biome_queries", &self.biome_queries_pipeline)
             } else {
                 world_pipeline("main", &self.columns_pipeline)

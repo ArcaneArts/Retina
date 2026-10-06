@@ -34,6 +34,7 @@ public final class RetinaBiomeSource extends BiomeSource {
     private final boolean useRegistryBiomes;
     private volatile BiomeResolver resolver;
     private volatile BiomeResolver searchResolver;
+    private volatile java.util.function.Function<List<net.minecraft.core.BlockPos>, List<Holder<Biome>>> batchQueries;
     private final ThreadLocal<Boolean> searching = ThreadLocal.withInitial(() -> false);
     private volatile List<Holder<Biome>> additional = List.of();
     private volatile List<Holder<Biome>> underground = List.of();
@@ -91,12 +92,44 @@ public final class RetinaBiomeSource extends BiomeSource {
     public float blend() { return blend; }
     public void bind(BiomeResolver resolver) { bind(resolver,resolver); }
     public void bind(BiomeResolver resolver, BiomeResolver searchResolver) { this.resolver = resolver; this.searchResolver = searchResolver; }
+    void bindQueries(java.util.function.Function<List<net.minecraft.core.BlockPos>, List<Holder<Biome>>> queries) { batchQueries = queries; }
     @Override public com.mojang.datafixers.util.Pair<net.minecraft.core.BlockPos,Holder<Biome>> findClosestBiome3d(
             net.minecraft.core.BlockPos origin,int radius,int horizontal,int vertical,
             java.util.function.Predicate<Holder<Biome>> allowed, net.minecraft.world.level.levelgen.RandomState random,net.minecraft.world.level.LevelReader level) {
-        boolean previous=searching.get(); searching.set(true);
-        try {return super.findClosestBiome3d(origin,radius,horizontal,vertical,allowed,random,level);}
-        finally {searching.set(previous);}
+        var batch = batchQueries;
+        if (batch == null) {
+            boolean previous=searching.get(); searching.set(true);
+            try {return super.findClosestBiome3d(origin,radius,horizontal,vertical,allowed,random,level);}
+            finally {searching.set(previous);}
+        }
+        return findClosestQuery(origin,radius,horizontal,vertical,allowed,level.getMinY(),level.getMaxY());
+    }
+    /** Bounds are captured before an interactive search leaves the server thread. */
+    public Pair<net.minecraft.core.BlockPos,Holder<Biome>> findClosestQuery(
+            net.minecraft.core.BlockPos origin,int radius,int horizontal,int vertical,
+            java.util.function.Predicate<Holder<Biome>> allowed,int minY,int maxY) {
+        var batch = batchQueries;
+        if (batch == null) throw new IllegalStateException("Retina queries are not bound");
+        var wanted = possibleBiomes().stream().filter(allowed).collect(java.util.stream.Collectors.toUnmodifiableSet());
+        if (wanted.isEmpty()) return null;
+        int[] ys = net.minecraft.util.Mth.outFromOrigin(origin.getY(), minY+1, maxY+1, vertical).toArray();
+        var points = new java.util.ArrayList<net.minecraft.core.BlockPos>(64);
+        for (var column : net.minecraft.core.BlockPos.spiralAround(net.minecraft.core.BlockPos.ZERO, Math.floorDiv(radius,horizontal), net.minecraft.core.Direction.EAST, net.minecraft.core.Direction.SOUTH)) {
+            int x = origin.getX()+column.getX()*horizontal, z=origin.getZ()+column.getZ()*horizontal;
+            for (int y : ys) {
+                points.add(new net.minecraft.core.BlockPos(x,y,z));
+                if (points.size()==64) {
+                    var found = firstMatch(points,batch.apply(points),wanted);
+                    if (found != null) return found;
+                    points.clear();
+                }
+            }
+        }
+        return points.isEmpty() ? null : firstMatch(points,batch.apply(points),wanted);
+    }
+    private static Pair<net.minecraft.core.BlockPos,Holder<Biome>> firstMatch(List<net.minecraft.core.BlockPos> points, List<Holder<Biome>> biomes, Set<Holder<Biome>> wanted) {
+        for (int i=0;i<points.size();i++) if (wanted.contains(biomes.get(i))) return Pair.of(points.get(i),biomes.get(i));
+        return null;
     }
     @Override public com.mojang.datafixers.util.Pair<net.minecraft.core.BlockPos,Holder<Biome>> findBiomeHorizontal(
             int x,int y,int z,int radius,int skip,java.util.function.Predicate<Holder<Biome>> allowed,
