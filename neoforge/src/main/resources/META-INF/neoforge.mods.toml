@@ -24,6 +24,6 @@ side = "BOTH"
 [[dependencies.retina]]
 modId = "minecraft"
 type = "required"
-versionRange = "[${minecraft_version},26.4)"
+versionRange = "[${minecraft_version}]"
 ordering = "NONE"
 side = "BOTH"
