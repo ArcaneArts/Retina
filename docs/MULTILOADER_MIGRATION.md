@@ -1,208 +1,159 @@
 # Minecraft 26.3 loader migration
 
-The migration targets Fabric and NeoForge on 26.3. Future Minecraft releases
-need their own port and validation; Forge and older versions are outside this
-migration. The Rust/WGSL engine remains shared.
+Retina supports Fabric and NeoForge on Minecraft 26.3, with shared Java,
+resources and Rust/WGSL. Forge and older Minecraft versions are outside this
+migration. Both mod metadata files accept exactly 26.3; future Minecraft
+releases require a separate port and validation.
 
-## Loader boundary
+## Architecture and distribution
 
-`Retina.initialize(RetinaPlatform)` owns shared server initialization. The
-platform supplies registry registration, payload registration and transport,
-server ticking, and level unload callbacks. The shared tick retains the existing
-20-tick telemetry interval and optional-client channel check.
+- `common/`: generation, registry/profile export, generator/biome codecs,
+  storage/cache integration, telemetry codec, shared mixins, client display and
+  Minecraft-reference fixtures. Runtime sources do not import loader APIs.
+- `fabric/`: Fabric entrypoints, registration, events, networking and metadata.
+- `neoforge/`: equivalent NeoForge adapters and metadata, using ModDevGradle.
+- `native/`: one Rust crate and WGSL engine for both loaders.
+- `gradle/`: shared Java, native build and verification conventions.
 
-`RetinaClient.initialize(RetinaClientPlatform)` owns shared debug display logic.
-Its client-only platform supplies startup, payload reception, and disconnect
-callbacks. Server initialization never references the client platform.
+Fabric uses Loom. Common compilation uses NeoForm; loader artifacts compile the
+shared sources against their own actual Minecraft classpaths. Explicit
+`RetinaPlatform` and client-only `RetinaClientPlatform` interfaces supply the
+loader hooks. There is no Architectury runtime dependency. Server startup does
+not initialize client classes.
 
-Fabric entrypoints and adapters live in `art.arcane.retina.fabric`. Shared
-runtime code has no Fabric API imports. Shared sources/resources now live in
-`common`, with Fabric adapters and transformation tests in `fabric` and NeoForge
-adapters in `neoforge`.
+Stable IDs include `retina:gpu`, `retina:voronoi`, `retina:template`, the MCA and
+chunk world presets, and `retina:terrain_stats`. Networking remains optional
+for clients, with main-thread reception and statistics cleanup on disconnect.
 
-## Baseline and first increment
+A combined macOS distribution build compiles once per OS/architecture and puts
+the same six native binaries in both jars. Native resource paths, native-library
+override, two Cargo jobs and lowered POSIX process priority are retained. Shared
+native unit tests run once. CI builds both host-only Linux artifacts; GPU tests
+remain explicit and require hardware. See the README for release toolchains,
+artifact names, loader commands and Java 25 native-access arguments.
 
-The source baseline is `f7618000c22628bb2699e651b0699bc8c1efa8ad`.
-`exportBenchmarkProfile` retained an effective vanilla profile with 56 biomes,
-30 structure definitions and 182 decoration recipes. Its SHA-256 is
+## Delivery cycles
+
+Every cycle used a fresh worktree and branch, a ready PR, and squash auto-merge.
+
+| Cycle | Increment | PR |
+| --- | --- | --- |
+| 1 | Fabric baseline and explicit loader hooks | [#8](https://github.com/ArcaneArts/Retina/pull/8) |
+| 2 | Common/Fabric modules and centralized native packaging | [#9](https://github.com/ArcaneArts/Retina/pull/9) |
+| 3 | NeoForge registration, lifecycle, networking and client entrypoint | [#10](https://github.com/ArcaneArts/Retina/pull/10) |
+| 4 | Shared Minecraft-reference verification | [#11](https://github.com/ArcaneArts/Retina/pull/11) |
+| 5 | Actual client gameplay, effective registries and packaged installations | [#12](https://github.com/ArcaneArts/Retina/pull/12) |
+| 6 | Matching DH/Chunky installations and exact Minecraft metadata | [#13](https://github.com/ArcaneArts/Retina/pull/13) |
+| 7 | Template entity attachment correction and final audit | This change |
+
+## Baseline comparisons
+
+The Fabric source baseline is `f7618000c22628bb2699e651b0699bc8c1efa8ad`.
+Its effective vanilla profile contains 56 biomes, 30 structure definitions and
+182 decoration recipes, with SHA-256
 `2949064f5f62fc889b706b2c7911727e94e76c0cb40cf92f3e7340dd7732fea3`.
-The exported profile after extracting the hooks is byte-identical.
+The final Fabric export is byte-identical. Using that identical profile and
+seed 123456789, the final native binary produces identical decompressed chunk
+NBT for regions (-1,-1), (0,-1) and (1,-1): 3,072 chunks compared.
 
-Using seed 123456789, three adjacent regions at (-1,-1), (0,-1), and (1,-1)
-have identical decompressed chunk NBT before and after the extraction: 3,072
-chunks compared. Profiles, MCA files, decoded NBT, the baseline native binary,
-and execution logs are retained outside the disposable implementation worktree.
+NeoForm's rebuilt `BitRandomSource.nextDouble()` uses a float intermediate
+where the official Minecraft bytecode uses double arithmetic. Common and
+NeoForge exports consequently differ in 24 decoration-noise offsets; all have
+identical f32 representations. These profiles are not claimed byte-identical.
+The actual modified-registry fixture contains 56 biomes and 183 decoration
+recipes on both loaders and exhibits the same bounded precision difference.
+Comparisons retain their exact effective profiles, seeds and coordinates.
 
-Validation of the first increment passed:
+The narrow native change in cycle 7 fixes necessary template entity metadata:
+attachment anchors now come from transformed wrapper `blockPos`, and current
+frame/painting direction codecs rotate with the piece. Entity ownership uses
+the template anchor, matching Minecraft's placement bounds. UUID generation,
+entity contents, terrain algorithms, ABI and serialized formats are retained.
+Previously invalid attachment records are intentionally different in affected
+structures. Already saved chunks are preserved rather than rewritten.
 
-- Host artifact build and existing Java and native unit tests.
-- `gpuTest`, including its native GPU, mapping, ore, interpolation, coordinate,
-  material and aquifer dependencies on an Apple M4 Max Metal device.
-- `regionTest` and `previewTest`, including preservation of edits, concurrent
-  requests, promotion, partial regions, eviction, shutdown and error cleanup.
-- A fresh Fabric dedicated-server MCA world, registry initialization, live
-  generation, stage-timing payload round trip, and normal save/shutdown.
+## Validation performed
 
-The initial unchanged-source baseline also exposed two outstanding checks:
+The host build, Java/Fabric transformation tests and native unit tests passed.
+The full distribution build contains macOS, Linux and Windows binaries for x64
+and ARM64; corresponding binaries in the loader jars are byte-identical.
+Actual GPU and loader execution used an Apple M4 Max Metal host. Cross-compilation
+is not evidence of Windows/Linux GPU runtime validation.
 
-- `biomeTest`: density-first surface at (-16,2), cell 4x8, expected 58 and got 57.
-- `structureTest`: its section decoder attempted to decode `block_states` from
-  an empty compound (`No key palette in MapLike[{}]`).
+The shared suite passed GPU/mapping/interpolation/coordinate, material,
+aquifer, biome, geology, feature, registered block-feature, shoreline, structure,
+Terralith datapack, region, preview/cache and GPU lighting checks. Recorded
+baseline fixture failures were corrected without changing terrain algorithms:
+fixtures distinguish density interpolation from composition, identify MCA
+sections by world Y, isolate fallback placement budgets, and refresh lighting
+metadata when synthetic palettes change.
 
-These are recorded as remaining validation work. They are not evidence that
-NeoForge support is complete. The full cross-platform artifact build initially
-failed at `cargo zigbuild` because that local tool was absent; the successful
-host build used `-PretinaHostOnly`.
+Region/cache checks exercise negative coordinates, concurrent request sharing,
+absent/empty/partial-region promotion, retained chunks and edits, eviction,
+failed reads, native errors and shutdown. They retain the existing 1,024-region
+cache policy and warm-memory limits. After the entity correction, native GPU,
+biome, region, preview, lighting and structure checks passed again. The new
+Minecraft-reference attachment fixture checks 64 entities across every rotation
+and negative chunk boundaries; 64 ordinary native unit tests pass.
 
-## Module split and centralized native packaging
+Actual development and ordinary packaged installations passed:
 
-The second increment moves shared source and Minecraft-reference fixtures into
-`common`, compiles shared main/client code independently against NeoForm, and
-compiles it against Fabric's actual runtime for the Fabric artifact. The native
-crate stays at the root; host and cross compilation tasks are defined once and
-their resource trees can be consumed by both loader jars. Root build, check,
-test and Fabric launch commands remain available.
+- Integrated gameplay in MCA and chunk modes on both loaders, with actual
+  telemetry reception, the registered F3 entry, an edit at (-17,120,-17),
+  disconnect, save/reopen and retained generator settings.
+- Dedicated TCP connections on both loaders, actual received packets and
+  disconnect/reconnect callbacks with cleared statistics between sessions.
+- Effective biome modifications supplied by Fabric's biome API or NeoForge's
+  biome modifier, verified in both loaded feature holders and native recipes.
+- Fresh/reopened structures in both modes on both loaders: 81 native pieces,
+  all 98,304 target-chunk blocks, decoded block entities and 132 processed gold
+  blocks, including temporary preview promotion in MCA mode.
+- Fresh/reopened template entities in both modes on both loaders: actual frame,
+  glow frame and painting UUIDs, world anchors, directions and survival against
+  their support blocks, with no invalid-attachment messages.
 
-The full distribution build passed with macOS, Linux and Windows libraries for
-both x64 and ARM64, preserving `natives/<os>-<arch>/`. The host build, shared
-registry/reference checks, native unit tests, Fabric transformation tests,
-region checks and preview/cache checks also passed.
+These checks use disposable isolated worlds. Offline authentication/Realms
+errors are expected from the local QA identity. On the macOS QA host, VSync and
+FML's optional early loading window were disabled in those isolated directories.
+Long snapshot comparisons freeze random ticks in their disposable worlds so
+normal fire/vegetation updates do not invalidate comparisons with generated
+terrain. Normal gameplay defaults are unchanged.
 
-Fresh Fabric dedicated servers passed in MCA and chunk modes, including live
-timing payload round trips, saving and normal shutdown. An opt-in real-client
-startup check verified the shared debug-registry invoker and extracted native
-library, then closed the isolated client normally. The invoker removes a
-dependency on Fabric's access widening of vanilla's private registration method.
+## Distant Horizons and Chunky
 
-`exportFabricBenchmarkProfile` produced a byte-identical baseline profile and
-another 3,072 identical decompressed NBT records. The common NeoForm export
-differs in 24 decoration-noise offsets because its rebuilt `BitRandomSource`
-uses float arithmetic in `nextDouble()` while the official Minecraft bytecode
-uses double arithmetic. All 24 offsets have identical f32 representations, and
-the compared MCA output is identical. Both exports and the precise differences
-are retained; this is not a claim that the serialized profiles are identical.
+Matching installations use Distant Horizons 3.3.4, Chunky Fabric 1.5.3 and Chunky
+NeoForge 1.5.4. Both dedicated loaders completed 1,089-chunk and 4,225-chunk
+pregeneration jobs at negative coordinates, including pause/resume of the
+larger job. DH disabled generation during Chunky work and restored it afterward.
+After normal shutdown each dedicated DH database contains 5,395 chunk hashes
+and generated full data.
 
-## NeoForge registration, lifecycle and client integration
+Packaged integrated MCA clients with these mods and the registry QA pack passed
+telemetry, modified-feature export, negative edits and save/reopen. Actual DH
+world-gen threads consumed Retina's temporary MCA chunks before and after
+reopening; saved DH databases contain full data. The larger job exposed the
+attachment defect fixed in cycle 7. Reproduction commands and current QA packs
+are documented in [RUNTIME_QA.md](RUNTIME_QA.md).
 
-The third increment adds NeoForge 26.3.0.51-beta with ModDevGradle 2.0.147.
-Its mod event bus registers the generator, biome-source and structure-piece
-codecs and the optional clientbound telemetry payload. The main event bus
-supplies server ticks and server-level unload callbacks. A client-only entrypoint
-registers the payload receiver and supplies startup and disconnect callbacks;
-the dedicated server loads without client initialization.
+The final artifacts repeated the full 4,225-chunk dedicated job on both loaders
+without invalid attachment messages. Final packaged integrated clients with
+these mods passed the gameplay, registry and save/reopen checks in both modes.
 
-The combined distribution build passed. Both loader jars contain byte-identical
-native libraries for macOS, Linux and Windows on x64 and ARM64, compiled once
-per target. Shared native unit tests run once in the combined build. The host
-build and Fabric transformation tests also passed.
+## Future Minecraft ports
 
-Fresh NeoForge dedicated worlds passed in MCA and individual-chunk modes.
-The MCA world also reopened and passed live preview promotion, concurrent
-requested-region publication, GPU lighting, timing payload round trips and
-normal save/shutdown. Actual NeoForge client startup passed the debug-registry
-invoker, native extraction and Metal initialization and then shut down normally.
-On this macOS QA host, OpenGL presentation initially stalled with VSync; the
-isolated QA directory disables VSync in `options.txt` and FML's optional early
-loading window in `config/fml.toml`. These are local QA settings, not mod defaults.
+Start each future release from a separate branch and update the Minecraft,
+Loom/NeoForm, Fabric API and NeoForge versions together. Adapt Minecraft-facing
+code in `common/worldgen`, shared mixins and client integration, then adapt the
+thin platform modules for any changed loader events or networking APIs. Keep
+native changes scoped to verified profile or game-format changes.
 
-NeoForge development runs use Java 25's `--illegal-native-access=allow` in
-addition to `--enable-native-access=ALL-UNNAMED`. FML constructs named mod modules
-after JVM startup, so naming `retina` in the startup native-access flag produces
-an unknown-module warning without enabling that module. The explicit Java 25
-policy permits the native calls and was verified in real server/client runs.
-Packaged installations require the same JVM arguments; later Java versions
-need separate validation.
+Validate both artifacts against that release's effective registries, saved-world
+codecs, storage paths and matching optional mods. Repeat the shared reference,
+GPU and packaged client/dedicated matrix before widening that release's metadata.
+Older versions can receive their own maintenance branch if needed; this migration
+does not introduce multi-version build tooling or claim forward compatibility.
 
-Integrated gameplay, actual client telemetry and reconnect, packaged-loader,
-modified-registry and NeoForge DH/Chunky validation remain pending.
-
-## Shared reference validation
-
-The fourth increment resolves the recorded baseline fixture failures and runs
-the broader shared suite. The density-lattice fixture now explicitly selects
-final-density interpolation; separate Minecraft-reference checks continue to
-exercise composition. MCA fixtures select terrain sections by their world Y
-instead of list position, validate adjacent lighting padding, and reject
-missing or duplicate terrain sections. This preserves full voxel comparisons
-when GPU lighting adds boundary sections.
-
-The cave-adapter fixture now isolates the fallback material adapter from loaded
-recipes that own its placement budgets. The actual loaded patch/column recipes
-remain covered by block-feature Minecraft-reference and MCA/chunk parity checks.
-Synthetic fixtures that extend the block palette regenerate matching light
-metadata. Native parity tasks now locate exported profiles under root `build/`,
-matching the shared Java fixtures' working directory.
-
-Validation passed the host build, Java/Fabric transformation and native unit
-tests, GPU/coordinate/interpolation/material/aquifer dependencies, biome,
-structure, geology, cave/feature, registered block-feature, shoreline,
-Terralith datapack, region, preview/cache and lighting checks. The first broad
-run exposed the fixture/path failures; focused rechecks passed after corrections.
-The Rust/WGSL algorithms, ABI and serialized profile format are unchanged.
-
-Actual integrated gameplay, client telemetry/reconnect, packaged installations,
-effective loader registry modifications and DH/Chunky on both loaders remain
-for subsequent increments.
-
-## Real client gameplay and effective registries
-
-The fifth increment adds opt-in shared client gameplay QA. It creates a fresh
-Retina world through Minecraft's world-loading flow, waits for actual received
-telemetry, exercises the registered F3 entry, edits a block at (-17,120,-17),
-disconnects, reopens, verifies the saved generator/mode and block, then exits.
-A dedicated-server option instead connects, receives telemetry, disconnects and
-reconnects over TCP. These checks are inactive during ordinary gameplay.
-Disconnect assertions account for NeoForge also emitting logout events while
-starting a new integrated world. Custom registry worlds use Minecraft's normal
-backup-and-join flow when reopening an experimental world.
-
-The registry QA pack adds `retina:qa_extra_grass` through a Fabric biome API
-modification or a NeoForge biome modifier. The runtime assertion checks both
-the loaded biome's feature holders and the exported native decoration recipes.
-Both ordinary packaged-loader MCA installations passed this check before and
-after reopening, with 56 biomes and 183 decoration recipes. Their profiles
-differ only in the same 24 provider-noise offsets documented above; all have
-identical f32 representations. This does not assert byte-identical profiles.
-
-Development gameplay passed on both loaders in MCA and chunk modes. Packaged
-artifacts include all six native targets, with identical binaries in the two
-loader jars. Runtime checks use isolated directories and preserve existing
-development worlds. Reproduction instructions and packs are in
-[`RUNTIME_QA.md`](RUNTIME_QA.md) and `qa/datapacks/`.
-
-Packaged chunk-mode gameplay and MCA dedicated TCP telemetry/reconnect passed
-on both loaders. Packaged structure worlds passed fresh and reopened in both
-modes: 81 native template pieces, all 98,304 target-chunk blocks, decoded block
-entities and 132 processed gold blocks were checked on each loader. Fresh
-dedicated worlds also passed stage timing checks. Reopened structure checks
-do not require fresh generation timings for chunks already saved on disk.
-
-The combined build and ordinary Java/native checks passed. The remaining
-compatibility increment covers matching Distant Horizons/Chunky installations
-and the final documentation/CI audit.
-
-## Matching Distant Horizons and Chunky installations
-
-The sixth increment adds optional QA hold/command controls for background
-generation and restricts both Minecraft metadata ranges to the tested 26.3
-release. Later game versions require a separately validated port.
-
-Ordinary dedicated installations loaded Distant Horizons 3.3.4 with Chunky
-Fabric 1.5.3 or NeoForge 1.5.4. Each loader completed 1,089-chunk and
-4,225-chunk square pregeneration jobs at negative coordinates. The larger job
-was paused and resumed. DH disabled its generation during Chunky work and
-re-enabled it on completion; both saved databases contain generated full data.
-
-Packaged integrated MCA clients with the same mods and the registry QA pack
-passed telemetry, modified-feature export, negative edits and save/reopen.
-Actual DH world-gen threads consumed Retina's shared temporary MCA chunks
-before and after reopening, and the saved DH databases contain full data.
-For these longer snapshot checks the disposable worlds disable random ticks;
-the initial unfrozen attempt correctly detected a naturally ignited fire on
-reopen rather than unchanged generated terrain.
-
-The larger server job also exposed three block-attached template entities with
-untransformed attachment positions on both loaders. Native export transforms
-`Pos` but currently retains the captured `block_pos`. This is recorded for a
-separate implementation/validation cycle; template-entity validation and the
-final migration completion audit remain outstanding.
+Existing terrain approximations and unsupported recipes remain documented in
+the README and generation-specific documents and are reported during export.
+This migration preserves those boundaries; it does not implement all vanilla
+structures/features or promise compatibility with arbitrary datapacks/mods.

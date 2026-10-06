@@ -24,6 +24,8 @@ loom {
             if (providers.gradleProperty('retinaLightingQa').isPresent()) vmArg '-Dretina.qa.lighting=true'
             if (providers.gradleProperty('retinaStructuresQa').isPresent()) vmArg '-Dretina.qa.structures=true'
             if (providers.gradleProperty('retinaStructuresReopenQa').isPresent()) vmArg '-Dretina.qa.structures.reopen=true'
+            if (providers.gradleProperty('retinaEntitiesQa').isPresent()) vmArg '-Dretina.qa.entities=true'
+            if (providers.gradleProperty('retinaEntitiesReopenQa').isPresent()) vmArg '-Dretina.qa.entities.reopen=true'
         }
     }
 
