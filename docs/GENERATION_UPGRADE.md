@@ -160,6 +160,11 @@ duplicate count/emit compilation on supported Metal adapters. Fresh-identity
 counterbalanced pairs reduce material compilation 48–63%, with complete NBT
 preservation. Warm throughput is mixed; this is a startup/compiler-work saving,
 and substantial cold specialization and fast production composition remain required.
+The [specialized interpolation input writers](GPU_INTERPOLATION_WRITERS.md) now
+separate cached field preparation from the remaining mixed terrain stages.
+Actual-profile repeats preserve NBT and improve normal Terralith serial throughput
+4–9% / concurrent throughput 11%, with mixed vanilla and composition results.
+Composition and full cold-start work remain unfinished requirements.
 The [shoreline correction](SHORELINES.md) adds a resident coastal index and GPU
 height-neighborhood checks to align registered coastal climates with the actual
 approximated terrain, preventing disconnected inland beach selection. Its

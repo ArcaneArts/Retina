@@ -75,6 +75,7 @@ pub(crate) struct Gpu {
     sparse_lake_plans: HashMap<u32, crate::program::lake_sparse::Plan>,
     interpolation_cache: bool,
     specialized_terrain: bool,
+    specialized_interpolation: bool,
     interpreter_dispatch: bool,
     preloaded_interpreter: Option<std::sync::Arc<crate::specialize::State>>,
     density_composition: bool,
@@ -144,6 +145,14 @@ impl Gpu {
             Ok("1") => true,
             _ => info.backend != wgpu::Backend::Metal,
         };
+        // Input-field writers benefit from direct graph calls even when the
+        // remaining Metal terrain stages favor the compact interpreter.
+        let specialized_interpolation =
+            match std::env::var("RETINA_SPECIALIZED_INTERPOLATION").as_deref() {
+                Ok("0") => false,
+                Ok("1") => true,
+                _ => info.backend == wgpu::Backend::Metal,
+            };
         let lake_point_cache = match std::env::var("RETINA_LAKE_POINT_CACHE").as_deref() {
             Ok("0") => false,
             Ok("1") => true,
@@ -363,8 +372,13 @@ impl Gpu {
             wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
         );
         let timestamp_support = device.features().contains(wgpu::Features::TIMESTAMP_QUERY);
-        let compiler =
-            crate::specialize::Compiler::new(&device, &layout, &cave_layout, material_dispatch)?;
+        let compiler = crate::specialize::Compiler::new(
+            &device,
+            &layout,
+            &cave_layout,
+            material_dispatch,
+            specialized_interpolation,
+        )?;
         let mut gpu = Self {
             device,
             queue,
@@ -416,6 +430,7 @@ impl Gpu {
             sparse_lake_plans: HashMap::new(),
             interpolation_cache: std::env::var("RETINA_INTERPOLATION_CACHE").as_deref() != Ok("0"),
             specialized_terrain,
+            specialized_interpolation,
             interpreter_dispatch,
             preloaded_interpreter: None,
             density_composition: std::env::var("RETINA_DENSITY_COMPOSITION").as_deref() == Ok("1"),
@@ -1134,10 +1149,13 @@ impl Gpu {
                     label: Some("Retina resident registered interpolation fields"),
                     timestamp_writes: writes,
                 });
-                (terrain
-                    .unwrap()
-                    .world_selected(&format!("interpolation_nodes_{level}")))
-                .bind(&mut pass);
+                let entry = format!("interpolation_nodes_{level}");
+                let fields = if self.specialized_interpolation {
+                    specialized.as_deref().or(terrain)
+                } else {
+                    terrain
+                };
+                fields.unwrap().world_selected(&entry).bind(&mut pass);
                 pass.set_bind_group(0, group, &[]);
                 pass.dispatch_workgroups(
                     interpolation_dispatch.div_ceil(64),

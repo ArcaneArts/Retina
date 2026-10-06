@@ -595,6 +595,7 @@ struct Job {
     cached_nodes: bool,
     lake_point_cache: bool,
     material_dispatch: bool,
+    specialized_interpolation: bool,
 }
 pub(crate) struct Compiler {
     sender: mpsc::Sender<Job>,
@@ -602,6 +603,7 @@ pub(crate) struct Compiler {
     // equality, so a hash collision cannot reuse an unrelated graph pipeline.
     cache: HashMap<(String, bool), Arc<State>>,
     material_dispatch: bool,
+    specialized_interpolation: bool,
 }
 impl Compiler {
     pub fn new(
@@ -609,6 +611,7 @@ impl Compiler {
         world: &wgpu::BindGroupLayout,
         cave: &wgpu::BindGroupLayout,
         material_dispatch: bool,
+        specialized_interpolation: bool,
     ) -> Result<Self, String> {
         let device = device.clone();
         let world = world.clone();
@@ -646,6 +649,7 @@ impl Compiler {
                                 None,
                                 false,
                                 job.material_dispatch,
+                                job.specialized_interpolation,
                             )
                         }
                     }))
@@ -676,6 +680,7 @@ impl Compiler {
             sender,
             cache: HashMap::new(),
             material_dispatch,
+            specialized_interpolation,
         })
     }
     /// Prepare a profile-independent fallback after device startup, overlapping
@@ -710,6 +715,7 @@ impl Compiler {
                 cached_nodes: false,
                 lake_point_cache: false,
                 material_dispatch: false,
+                specialized_interpolation: false,
             })
             .map_err(|_| "GPU shader compiler stopped")?;
         Ok(state)
@@ -761,6 +767,12 @@ impl Compiler {
         writeln!(source, "// material pipelines: {}", program.material_layers).unwrap();
         writeln!(
             source,
+            "// specialized interpolation prepasses: {}",
+            self.specialized_interpolation
+        )
+        .unwrap();
+        writeln!(
+            source,
             "// shared material dispatch: {}",
             self.material_dispatch
         )
@@ -810,6 +822,7 @@ impl Compiler {
                 cached_nodes,
                 lake_point_cache,
                 material_dispatch: self.material_dispatch,
+                specialized_interpolation: self.specialized_interpolation,
             })
             .map_err(|_| "GPU shader compiler stopped")?;
         self.cache.insert(key, state.clone());
@@ -843,6 +856,7 @@ pub(crate) fn compile(
         None,
         false,
         false,
+        false,
     )
 }
 
@@ -870,6 +884,7 @@ pub(crate) fn compile_interpreter(
         reuse,
         shared_dispatch,
         false,
+        false,
     )
 }
 
@@ -889,6 +904,7 @@ fn compile_program(
     reuse: Option<interpreter_reuse::Plan>,
     shared_dispatch: bool,
     material_dispatch: bool,
+    specialized_interpolation: bool,
 ) -> Result<Pipelines, String> {
     let scope = device.push_error_scope(wgpu::ErrorFilter::Validation);
     #[cfg(test)]
@@ -1045,7 +1061,7 @@ fn compile_program(
         let interpolation_entries = (1..=program.matches("fn interpolation_nodes_").count())
             .map(|level| format!("interpolation_nodes_{level}"))
             .collect::<Vec<_>>();
-        if terrain {
+        if terrain || specialized_interpolation {
             world_entries.extend(interpolation_entries.iter().map(String::as_str));
         }
         if lake_point_cache {

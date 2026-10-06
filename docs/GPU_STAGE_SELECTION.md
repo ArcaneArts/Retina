@@ -14,6 +14,11 @@ bytecode, interpolation atlas, scratch bindings and readback formats. The
 specialized horizontal prepass remains available to its consumers. A compiler
 finishing during a request cannot change that request's selected pipelines.
 
+The later [specialized input writers](GPU_INTERPOLATION_WRITERS.md) refine this
+selection: ready Metal bundles now compile their interpolation prepasses, while
+the other density/height/climate stages retain the compact interpreter. Repeated
+whole-region measurements and the independent diagnostic are documented there.
+
 The compact interpreter now also reads those resident horizontal fields on
 exact covered X/Z nodes, using schedules that skip their unused dependencies;
 see [column reuse](GPU_COLUMN_INTERPRETER.md) for the later implementation,

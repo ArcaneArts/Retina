@@ -49,6 +49,7 @@ def main():
     parser.add_argument("--lake-primed-corners", choices=("enabled", "disabled"), help="Reuse interval vertices in the composed lake point cache")
     parser.add_argument("--lake-sparse-fields", choices=("enabled", "disabled"), help="GPU scratch stencils for actual composed lake probe coordinates")
     parser.add_argument("--terrain-execution", choices=("interpreter", "specialized"), help="Select terrain/climate stages independently of specialized material/cave stages")
+    parser.add_argument("--specialized-interpolation", choices=("enabled", "disabled"), help="Specialize input-field prepasses independently of remaining terrain stages")
     parser.add_argument("--interpreter-dispatch", choices=("enabled", "disabled"), help="Shared compact interpreter entrypoints or independent pipelines")
     parser.add_argument("--interpreter-preload", choices=("enabled", "disabled"), help="Overlap compact density pipeline preparation with profile parsing")
     parser.add_argument("--interpreter-columns", choices=("enabled", "disabled"), help="Reuse resident X/Z expressions in compact interpreted density programs")
@@ -81,6 +82,8 @@ def main():
         os.environ["RETINA_MATERIAL_DISPATCH"] = "1" if args.material_dispatch == "enabled" else "0"
     if args.terrain_execution:
         os.environ["RETINA_SPECIALIZED_TERRAIN"] = "1" if args.terrain_execution == "specialized" else "0"
+    if args.specialized_interpolation:
+        os.environ["RETINA_SPECIALIZED_INTERPOLATION"] = "1" if args.specialized_interpolation == "enabled" else "0"
     args.out.mkdir(parents=True, exist_ok=False)
     lib = c.CDLL(str(args.library.resolve()))
     lib.retina_initialize.restype = c.c_int
@@ -142,6 +145,7 @@ def main():
                 interpreter_columns=args.interpreter_columns or os.environ.get("RETINA_INTERPRETER_COLUMNS"),
                 aquifer_columns=args.aquifer_columns or os.environ.get("RETINA_AQUIFER_COLUMNS"),
                 material_dispatch=args.material_dispatch or os.environ.get("RETINA_MATERIAL_DISPATCH"),
+                specialized_interpolation=args.specialized_interpolation or os.environ.get("RETINA_SPECIALIZED_INTERPOLATION"),
                 total_ms=wall*1000, chunks_per_second=chunks/wall, median_ms=statistics.median(r["ms"] for r in regions),
                 average_region_ms=statistics.mean(r["ms"] for r in regions),
                 startup=dict(initialize_ms=initialize_ms, registration_ms=registration_ms, warmups=warmups),
