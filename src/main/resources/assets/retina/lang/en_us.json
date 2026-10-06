@@ -1,5 +1,7 @@
 {
   "generator.retina.gpu": "Retina GPU Simplex (MCA)",
   "debug.entry.retina.generation": "Retina terrain generation",
-  "generator.retina.gpu_chunk": "Retina GPU Simplex (Chunks)"
+  "generator.retina.gpu_chunk": "Retina GPU Simplex (Chunks)",
+  "retina.locate.busy": "The Retina locate queue is full. Try again shortly.",
+  "retina.locate.failed": "Retina could not complete the search for %s. See the server log for details."
 }

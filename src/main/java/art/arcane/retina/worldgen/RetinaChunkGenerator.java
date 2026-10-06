@@ -79,6 +79,7 @@ public final class RetinaChunkGenerator extends ChunkGenerator {
     private final Optional<Holder<NoiseGeneratorSettings>> settings;
     private final boolean densityComposition;
     private volatile TemporaryRegions previews;
+    private volatile TerrainQueries queries;
     private PalettedContainerFactory containerFactory;
     private volatile BiomeTerrainProfile profile;
     private long worldSeed;
@@ -150,18 +151,24 @@ public final class RetinaChunkGenerator extends ChunkGenerator {
         closePreviews();
         heightCache.clear();
         biomeCache.clear();
-        searchBiomeCache.clear();
         containerFactory = factory;
         worldSeed = seed;
         if (getBiomeSource() instanceof RetinaBiomeSource biomes) {
             profile = BiomeTerrainProfile.load(registry, biomes, minY, height, seed, settings.orElseGet(() -> registry.lookupOrThrow(net.minecraft.core.registries.Registries.NOISE_SETTINGS).getOrThrow(NoiseGeneratorSettings.OVERWORLD)).value(),structures,densityComposition,skyLight);
-            biomes.bind((x, y, z) -> biomeAt(x * 4, y * 4, z * 4), (x,y,z) -> searchBiomeAt(x*4,y*4,z*4));
+            queries = new TerrainQueries(request(seed, 0, 0), profile);
+            var query = queries;
+            biomes.bind((x, y, z) -> biomeAt(x * 4, y * 4, z * 4), (x,y,z) -> query.biomes(List.of(new BlockPos(x*4,y*4,z*4))).getFirst());
+            biomes.bindQueries(query::biomes);
         }
         metrics.startNativeTimings(NativeTerrain.instance().timings(profile == null ? 0 : profile.nativeId()));
         if (regionMode()) previews = new TemporaryRegions(request(seed, 0, 0), regionBiome(), profile, metrics, TemporaryRegions.MAX_REGIONS);
     }
 
+    public TerrainQueries queries() { return queries; }
+
     public void closePreviews() {
+        var query = queries;
+        if (query != null) query.close();
         var cache = previews;
         if (cache != null) cache.close();
     }
@@ -178,20 +185,6 @@ public final class RetinaChunkGenerator extends ChunkGenerator {
     public Holder<Biome> biomeAt(int x, int z) {
         var columns = columns(worldSeed, Math.floorDiv(x, 16), Math.floorDiv(z, 16));
         return profile.biomes().get(columns.biome(Math.floorMod(z, 16) * 16 + Math.floorMod(x, 16)));
-    }
-
-    private final Map<HeightKey, short[]> searchBiomeCache = Collections.synchronizedMap(new LinkedHashMap<>(128,.75F,true) {
-        @Override protected boolean removeEldestEntry(Map.Entry<HeightKey,short[]> entry) {return size()>2048;}
-    });
-    private Holder<Biome> searchBiomeAt(int x,int y,int z) {
-        var key=new HeightKey(worldSeed,Math.floorDiv(x,16),Math.floorDiv(z,16));
-        var data=searchBiomeCache.get(key);
-        if(data==null) {
-            data=NativeTerrain.instance().sampleBiomes(request(worldSeed,key.x(),key.z()));
-            searchBiomeCache.put(key,data);
-        }
-        int layer=Math.clamp(Math.floorDiv(y-minY,4),0,height/4-1);
-        return profile.biomes().get(Short.toUnsignedInt(data[layer*16+Math.floorMod(Math.floorDiv(z,4),4)*4+Math.floorMod(Math.floorDiv(x,4),4)]));
     }
 
     private final Map<HeightKey, short[]> biomeCache = Collections.synchronizedMap(new LinkedHashMap<>(128, 0.75F, true) {
@@ -412,6 +405,26 @@ public final class RetinaChunkGenerator extends ChunkGenerator {
             if (structure != null) references.put(structure, new it.unimi.dsi.fastutil.longs.LongOpenHashSet(referenceTags.getLongArray(key).orElseThrow()));
         }
         chunk.setAllReferences(references);
+    }
+
+    /** Structure lookup reads saved starts or the native planner, never a chunk load. */
+    @Override
+    public com.mojang.datafixers.util.Pair<BlockPos,Holder<net.minecraft.world.level.levelgen.structure.Structure>> findNearestMapStructure(
+            net.minecraft.server.level.ServerLevel level, net.minecraft.core.HolderSet<net.minecraft.world.level.levelgen.structure.Structure> wanted,
+            BlockPos origin, int radius, boolean createReference) {
+        // Explorer maps need Minecraft's reference mutation and retain its lifecycle.
+        if (createReference || queries == null) return super.findNearestMapStructure(level,wanted,origin,radius,createReference);
+        return prepareStructureSearch(level,wanted,origin,radius).get();
+    }
+
+    public java.util.function.Supplier<com.mojang.datafixers.util.Pair<BlockPos,Holder<net.minecraft.world.level.levelgen.structure.Structure>>> prepareStructureSearch(
+            net.minecraft.server.level.ServerLevel level, net.minecraft.core.HolderSet<net.minecraft.world.level.levelgen.structure.Structure> wanted, BlockPos origin, int radius) {
+        var query=queries;
+        if (query==null || net.minecraft.SharedConstants.DEBUG_DISABLE_FEATURES || !level.getServer().getWorldGenSettings().options().generateStructures()) return () -> null;
+        var search=query.prepareStructures(level.registryAccess(),wanted,origin,radius);
+        var scanner=level.getChunkSource().chunkMap.chunkScanner();
+        var fixContext=net.minecraft.server.level.ChunkMap.getChunkDataFixContextTag(level.dimension(),getTypeNameForDataFixer());
+        return () -> query.structures(search,position -> TerrainQueries.readSaved(scanner,fixContext,position));
     }
 
     @Override

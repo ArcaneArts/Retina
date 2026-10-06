@@ -24,6 +24,7 @@ mod gpu_worker;
 pub mod lighting;
 pub mod pipeline;
 pub mod profile;
+pub mod queries;
 mod tree_shapes;
 
 pub mod region;
@@ -133,6 +134,7 @@ struct Job {
     cave_side: u32,
     probe_mode: u32,
     probe_y: Vec<i32>,
+    probe_points: Vec<queries::Point>,
     reply: mpsc::Sender<Result<gpu::GpuSample, String>>,
     queued: Instant,
     queue_nanos: u64,
@@ -147,6 +149,7 @@ pub struct TerrainEngine {
     profiles: RwLock<Vec<Arc<WorldProfile>>>,
     cache: Mutex<ColumnCache>,
     height_cache: Mutex<ColumnCache>,
+    query_cache: Mutex<queries::Cache>,
     caves: Mutex<CaveCache>,
     structures: Mutex<structures::Cache>,
     timings: Mutex<HashMap<u32, Arc<timings::Timings>>>,
@@ -185,6 +188,7 @@ impl TerrainEngine {
             profiles: RwLock::new(Vec::new()),
             cache: Mutex::new(ColumnCache::default()),
             height_cache: Mutex::new(ColumnCache::default()),
+            query_cache: Mutex::new(queries::Cache::default()),
             caves: Mutex::new(CaveCache::default()),
             structures: Mutex::new(structures::Cache::default()),
             timings: Mutex::new(HashMap::new()),
@@ -928,6 +932,7 @@ impl TerrainEngine {
                 cave_side,
                 probe_mode,
                 probe_y,
+                probe_points: Vec::new(),
                 reply,
                 queued: Instant::now(),
                 queue_nanos: 0,

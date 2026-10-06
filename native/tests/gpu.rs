@@ -171,8 +171,39 @@ fn physical_coasts_match_sparse_chunks_and_neighbor_regions() {
             .map(|(x, z)| request_at(chunk_id, x, z))
             .collect();
         let sparse = engine.sample_biomes(&requests, None).unwrap();
+        use retina_worldgen::queries::{Kind, Point};
+        let points: Vec<_> = requests
+            .iter()
+            .flat_map(|r| {
+                (0..16).map(move |i| Point {
+                    x: r.chunk_x * 16 + i,
+                    y: 319,
+                    z: r.chunk_z * 16 + 15 - i,
+                })
+            })
+            .collect();
+        let exact = engine
+            .query_points(requests[0], &points, Kind::Biome)
+            .unwrap();
+        let heights = engine
+            .query_points(requests[0], &points, Kind::Height)
+            .unwrap();
         let chunks = engine.sample_columns(&requests).unwrap();
         for (i, chunk) in chunks.chunks_exact(COLUMNS).enumerate() {
+            for offset in 0..16 {
+                let x = offset / 4 * 4;
+                let z = (15 - offset) / 4 * 4;
+                assert_eq!(
+                    exact[i * 16 + offset].biome(),
+                    chunk[z * 16 + x].biome(),
+                    "exact physical shore in {mode}"
+                );
+                assert_eq!(
+                    heights[i * 16 + offset].height,
+                    chunk[(15 - offset) * 16 + offset].height,
+                    "exact physical height in {mode}"
+                );
+            }
             assert_eq!(
                 sparse[i] as usize,
                 chunk[136].biome(),
@@ -251,6 +282,75 @@ fn sparse_biomes_match_full_fields_and_reuse_cached_quarts() {
             .register_profile(&serde_json::to_vec(&source).unwrap())
             .unwrap();
         last_profile = id;
+        // Exact queries run cold before any field exists and must agree at every
+        // local offset, including negative chunks and distant world coordinates.
+        use retina_worldgen::queries::{Kind, Point};
+        for (x, z) in [(-31, 17), (10_000, -10_000)] {
+            let r = ChunkRequest {
+                reserved: id,
+                min_y: -64,
+                height: 192,
+                ..request(x, z)
+            };
+            let points: Vec<_> = (0..16)
+                .map(|i| Point {
+                    x: x * 16 + i,
+                    y: [-64, -28, 8, 68][i as usize % 4],
+                    z: z * 16 + 15 - i,
+                })
+                .collect();
+            let before = engine.timings(id).snapshot();
+            let started = std::time::Instant::now();
+            let biomes = engine.query_points(r, &points, Kind::Biome).unwrap();
+            let heights = engine.query_points(r, &points, Kind::Height).unwrap();
+            let cold = started.elapsed();
+            assert_eq!(
+                before.chunks,
+                engine.timings(id).snapshot().chunks,
+                "point queries do not assemble chunks"
+            );
+            let (field, mask) = engine.terrain_field(r, 1).unwrap();
+            for (i, p) in points.iter().enumerate() {
+                let quart_x = p.x.div_euclid(4) * 4;
+                let quart_z = p.z.div_euclid(4) * 4;
+                let expected = mask
+                    .as_ref()
+                    .and_then(|m| m.biome(quart_x, p.y, quart_z))
+                    .unwrap_or(field.column(quart_x, quart_z).unwrap().biome() as u16);
+                assert_eq!(
+                    biomes[i].biome() as u16,
+                    expected,
+                    "point biome mode {mode} at {p:?}, query height {}, quart column {:?}",
+                    biomes[i].height,
+                    field.column(quart_x, quart_z).unwrap()
+                );
+                assert_eq!(
+                    heights[i].height,
+                    field.column(p.x, p.z).unwrap().height,
+                    "point height mode {mode} at {p:?}"
+                );
+            }
+            let jobs = engine.timings(id).snapshot().gpu_jobs;
+            let started = std::time::Instant::now();
+            assert_eq!(
+                biomes,
+                engine.query_points(r, &points, Kind::Biome).unwrap()
+            );
+            assert_eq!(
+                heights,
+                engine.query_points(r, &points, Kind::Height).unwrap()
+            );
+            assert_eq!(
+                jobs,
+                engine.timings(id).snapshot().gpu_jobs,
+                "point cache avoids GPU dispatch"
+            );
+            println!(
+                "QA_EVT {{\"event\":\"exact_point_parity\",\"status\":\"pass\",\"context\":{{\"mode\":{mode},\"cold_ms\":{},\"warm_ms\":{}}}}}",
+                cold.as_secs_f64() * 1000.,
+                started.elapsed().as_secs_f64() * 1000.
+            );
+        }
         let requests: Vec<_> = [(-31, 17), (17, -31), (10_000, -10_000), (-10_000, 10_000)]
             .into_iter()
             .map(|(x, z)| ChunkRequest {

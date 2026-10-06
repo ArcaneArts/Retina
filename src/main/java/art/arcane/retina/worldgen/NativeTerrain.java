@@ -21,6 +21,8 @@ import static java.lang.foreign.ValueLayout.JAVA_LONG;
 
 /** Bulk C ABI calls. Rust borrows these buffers only until the downcall returns. */
 public final class NativeTerrain {
+    private final MethodHandle pointQueries;
+    private final MethodHandle structureQueries;
     private final MethodHandle timingSnapshot;
     private final MethodHandle gpuDiagnostics;
     private final MethodHandle generate;
@@ -46,6 +48,8 @@ public final class NativeTerrain {
         var symbols = SymbolLookup.libraryLookup(extractLibrary(), Arena.global());
         var linker = Linker.nativeLinker();
         var initialize = linker.downcallHandle(symbols.findOrThrow("retina_initialize"), FunctionDescriptor.of(JAVA_INT));
+        pointQueries = linker.downcallHandle(symbols.findOrThrow("retina_query_points"), FunctionDescriptor.of(JAVA_INT, ADDRESS, ADDRESS, JAVA_LONG, JAVA_INT, ADDRESS));
+        structureQueries = linker.downcallHandle(symbols.findOrThrow("retina_query_structure_starts"), FunctionDescriptor.of(JAVA_INT, ADDRESS, ADDRESS, JAVA_LONG, ADDRESS));
         timingSnapshot = linker.downcallHandle(symbols.findOrThrow("retina_timing_snapshot"), FunctionDescriptor.of(JAVA_INT, JAVA_INT, ADDRESS));
         gpuDiagnostics = linker.downcallHandle(symbols.findOrThrow("retina_gpu_program_snapshot"), FunctionDescriptor.of(JAVA_INT, JAVA_INT, ADDRESS));
         generate = linker.downcallHandle(symbols.findOrThrow("retina_generate_chunk_columns_u16"),
@@ -200,6 +204,30 @@ public final class NativeTerrain {
             var output = arena.allocate(size * (long)Short.BYTES,Short.BYTES);
             check((int) sampleBiomes.invokeExact(encode(arena, request), output, size));
             return output.toArray(JAVA_SHORT);
+        } catch (Throwable error) { throw failure(error); }
+    }
+
+    /** Exact XYZ triples; biome queries use Minecraft quart coordinates. No MCA assembly. */
+    public int[] queryPoints(TerrainRequest request, int[] points, boolean heights) {
+        if (points.length % 3 != 0 || points.length / 3 > 1024) throw new IllegalArgumentException("Invalid point query batch");
+        if (points.length == 0) return new int[0];
+        try (var arena = Arena.ofConfined()) {
+            long count = points.length / 3;
+            var output = arena.allocate(count * Integer.BYTES, Integer.BYTES);
+            check((int) pointQueries.invokeExact(encode(arena, request), arena.allocateFrom(JAVA_INT, points), count, heights ? 1 : 0, output));
+            return output.toArray(JAVA_INT);
+        } catch (Throwable error) { throw failure(error); }
+    }
+
+    /** Candidate triples contain chunk X/Z and the native structure-set index. */
+    public int[] queryStructureStarts(TerrainRequest request, int[] candidates) {
+        if (candidates.length % 3 != 0 || candidates.length / 3 > 64) throw new IllegalArgumentException("Invalid structure query batch");
+        if (candidates.length == 0) return new int[0];
+        try (var arena = Arena.ofConfined()) {
+            long count = candidates.length / 3;
+            var output = arena.allocate(count * Integer.BYTES, Integer.BYTES);
+            check((int) structureQueries.invokeExact(encode(arena, request), arena.allocateFrom(JAVA_INT, candidates), count, output));
+            return output.toArray(JAVA_INT);
         } catch (Throwable error) { throw failure(error); }
     }
 

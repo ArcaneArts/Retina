@@ -99,6 +99,21 @@ pub struct Cache {
     meta_order: VecDeque<CacheKey>,
 }
 impl Cache {
+    fn cell(&mut self, key: (CacheKey, usize)) -> Arc<OnceLock<Result<Arc<Start>, String>>> {
+        if let Some(cell) = self.entries.get(&key) {
+            return cell.clone();
+        }
+        let cell = Arc::new(OnceLock::new());
+        self.entries.insert(key, cell.clone());
+        self.order.push_back(key);
+        while self.entries.len() > 256 {
+            if let Some(old) = self.order.pop_front() {
+                self.entries.remove(&old);
+            }
+        }
+        cell
+    }
+
     pub fn metadata(&self, request: ChunkRequest) -> Option<Value> {
         self.metadata.get(&CacheKey::from(request)).cloned()
     }
@@ -491,19 +506,7 @@ pub fn plans(
                 ..request
             };
             let key = (CacheKey::from(r), set);
-            let cell = if let Some(cell) = cache.entries.get(&key) {
-                cell.clone()
-            } else {
-                let cell = Arc::new(OnceLock::new());
-                cache.entries.insert(key, cell.clone());
-                cache.order.push_back(key);
-                while cache.entries.len() > 256 {
-                    if let Some(old) = cache.order.pop_front() {
-                        cache.entries.remove(&old);
-                    }
-                }
-                cell
-            };
+            let cell = cache.cell(key);
             let probe = if cell.get().is_none() {
                 Some(*probe_ids.entry(CacheKey::from(r)).or_insert_with(|| {
                     let id = probes.len();
@@ -534,6 +537,79 @@ pub fn plans(
     result.sort_by_key(|s| (s.chunk[1], s.chunk[0], s.definition));
     Ok(result)
 }
+/// Query only requested candidates, sharing the exact production start cache.
+/// Piece planning may sample a height tile; it never rasterizes terrain or saves.
+pub fn query_starts(
+    engine: &TerrainEngine,
+    request: ChunkRequest,
+    candidates: &[[i32; 3]],
+) -> Result<Vec<i32>, String> {
+    request.validate()?;
+    let Some(profile) = engine.profile(request.reserved)? else {
+        return Ok(vec![-1; candidates.len()]);
+    };
+    let mut jobs = Vec::new();
+    let mut probes = Vec::new();
+    {
+        let mut cache = engine
+            .structures
+            .lock()
+            .map_err(|_| "structure cache poisoned")?;
+        for &[x, z, set] in candidates {
+            let set = usize::try_from(set).map_err(|_| "invalid structure set index")?;
+            let placement = &profile
+                .structures
+                .sets
+                .get(set)
+                .ok_or("unknown structure set")?
+                .placement;
+            let r = ChunkRequest {
+                chunk_x: x,
+                chunk_z: z,
+                ..request
+            };
+            r.validate()?;
+            if candidate(r.seed, x, z, placement) != [x, z]
+                || !permitted(&profile.structures, set, r.seed, x, z, &mut Vec::new())
+            {
+                jobs.push(None);
+                continue;
+            }
+            let cell = cache.cell((CacheKey::from(r), set));
+            let probe = if cell.get().is_none() {
+                let i = probes.len();
+                probes.push(r);
+                Some(i)
+            } else {
+                None
+            };
+            jobs.push(Some((r, set, cell, probe)));
+        }
+    }
+    let mut biomes = Vec::new();
+    for batch in probes.chunks(64) {
+        biomes.extend(engine.sample_biomes(batch, None)?);
+    }
+    jobs.iter()
+        .map(|job| {
+            let Some((r, set, cell, probe)) = job else {
+                return Ok(-1);
+            };
+            let start = cell
+                .get_or_init(|| {
+                    build(engine, *r, *set, &profile, biomes[probe.unwrap()]).map(Arc::new)
+                })
+                .as_ref()
+                .map_err(Clone::clone)?;
+            Ok(if start.pieces.is_empty() {
+                -1
+            } else {
+                start.definition as i32
+            })
+        })
+        .collect()
+}
+
 fn sample_height(v: &Value, r: &mut Random, request: ChunkRequest) -> i32 {
     fn anchor(v: &Value, r: ChunkRequest) -> i32 {
         if v.is_number() {

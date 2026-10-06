@@ -27,7 +27,7 @@ fn reply(batch: Vec<Job>, result: Result<gpu::GpuSample, String>) {
                 };
                 let end = offset
                     + count
-                        * if job.probe_mode == 1 || job.probe_mode == 2 {
+                        * if matches!(job.probe_mode, 1 | 2 | 4) {
                             1
                         } else {
                             COLUMNS
@@ -179,12 +179,20 @@ pub(crate) fn run(
                     gpu.padding = match mode {
                         1 => 1 << 31,
                         3 => 1 << 29,
+                        4 => (1 << 31) | (1 << 29),
                         2 => {
                             let y = job.probe_y[i].div_euclid(4) * 4 - r.min_y.div_euclid(4) * 4;
                             (1 << 30) | ((y as u32) << 8)
                         }
                         _ => 0,
                     };
+                    if let Some(point) = job.probe_points.get(i) {
+                        gpu.origin_x = point.x.div_euclid(4) * 4 - 8;
+                        gpu.origin_z = point.z.div_euclid(4) * 4 - 8;
+                        gpu.padding |= (1 << 21)
+                            | (point.x.rem_euclid(4) as u32)
+                            | ((point.z.rem_euclid(4) as u32) << 2);
+                    }
                     gpu
                 })
             })

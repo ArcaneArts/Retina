@@ -448,6 +448,16 @@ tasks.register('structureTest', JavaExec) {
     jvmArgs '--enable-native-access=ALL-UNNAMED'
 }
 
+tasks.register('locateTest', JavaExec) {
+    group = 'verification'
+    description = 'Compare direct GPU queries and locate ordering with generated quart biomes and saved starts.'
+    dependsOn 'gpuTestClasses', 'packageNative'
+    classpath = sourceSets.gpuTest.runtimeClasspath
+    mainClass = 'art.arcane.retina.worldgen.NativeLocateIntegrationTest'
+    jvmArgs '--enable-native-access=ALL-UNNAMED'
+    if (providers.gradleProperty('testDatapack').isPresent()) args providers.gradleProperty('testDatapack').get()
+}
+
 tasks.register('landscapeTest', JavaExec) {
     group = 'verification'
     description = 'Compare GPU landscape distribution against registered vanilla terrain and validate stage telemetry.'

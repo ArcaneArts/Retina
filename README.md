@@ -189,9 +189,14 @@ palettes; there is no per-chunk GPU dispatch or dense block-buffer conversion.
 Biome and terrain futures finish synchronously on the calling generation thread,
 as required by DH's surface sampling.
 
-Biome searches such as `/locate biome` use separate GPU query caches. They do not
-assemble temporary MCA files: the old behavior could run a large region spiral
-on the server thread and block loading/promotion for minutes.
+`/locate biome` submits exact quart positions to the GPU in batches of 64 and
+preserves Minecraft's spiral/vertical search order. `/locate structure` scans
+saved start metadata, then queries the production Rust structure planner for
+unknown candidates. Neither path assembles chunks or temporary MCA files.
+Interactive player searches run on a bounded worker queue; console commands and
+command-result callbacks retain synchronous results. Explorer maps retain
+Minecraft's structure-reference lifecycle. See [GPU locate queries](docs/GPU_LOCATE_QUERIES.md)
+for the APIs, cache bounds, validation and remaining work.
 
 The cache retains up to **1,024 regions on disk**, using LRU eviction. Each file
 contains a full 32 x 32 region. Undecorated GPU columns are returned by that same
