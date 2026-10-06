@@ -41,6 +41,9 @@ struct Pipelines {
     layout: wgpu::BindGroupLayout,
     init: wgpu::ComputePipeline,
     spread: wgpu::ComputePipeline,
+    compact: wgpu::ComputePipeline,
+    args: wgpu::ComputePipeline,
+    sparse: wgpu::ComputePipeline,
     pack: wgpu::ComputePipeline,
 }
 struct Buffers {
@@ -50,7 +53,10 @@ struct Buffers {
     b: wgpu::Buffer,
     output: wgpu::Buffer,
     readback: wgpu::Buffer,
-    capacities: [u64; 3],
+    work: wgpu::Buffer,
+    active: wgpu::Buffer,
+    indirect: wgpu::Buffer,
+    capacities: [u64; 4],
 }
 pub(crate) struct ResultLight {
     pub bytes: Vec<u8>,
@@ -75,7 +81,7 @@ impl Gpu {
             .device
             .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
                 label: Some("Retina final lighting"),
-                entries: &(0..7)
+                entries: &(0..9)
                     .map(|binding| wgpu::BindGroupLayoutEntry {
                         binding,
                         visibility: wgpu::ShaderStages::COMPUTE,
@@ -84,7 +90,7 @@ impl Gpu {
                                 wgpu::BufferBindingType::Uniform
                             } else {
                                 wgpu::BufferBindingType::Storage {
-                                    read_only: binding < 5,
+                                    read_only: binding < 4,
                                 }
                             },
                             has_dynamic_offset: false,
@@ -121,6 +127,9 @@ impl Gpu {
         self.pipelines = Some(Pipelines {
             init: pipeline("initialize"),
             spread: pipeline("spread"),
+            compact: pipeline("compact"),
+            args: pipeline("dispatch_args"),
+            sparse: pipeline("spread_sparse"),
             pack: pipeline("pack"),
             layout,
         });
@@ -166,15 +175,19 @@ impl Gpu {
                 ),
             );
         }
+        // Dense reference mode uses the same attenuation/face rules, for diagnostics.
+        let sparse = std::env::var("RETINA_LIGHTING_DENSE").as_deref() != Ok("1");
+        let bricks = (chunks * 2).pow(2) * height.div_ceil(8);
         let sizes = [
             (blocks.len() * 2) as u64,
             blocks.len() as u64,
             core as u64 * core as u64 * height as u64 * 256,
+            bricks as u64 * 4,
         ];
         if self
             .buffers
             .as_ref()
-            .is_none_or(|b| (0..3).any(|i| b.capacities[i] < sizes[i]))
+            .is_none_or(|b| (0..4).any(|i| b.capacities[i] < sizes[i]))
         {
             let capacities = std::array::from_fn(|i| {
                 sizes[i].max(self.buffers.as_ref().map_or(4, |b| b.capacities[i]))
@@ -218,6 +231,23 @@ impl Gpu {
                     capacities[2],
                     wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
                 ),
+                work: buffer(
+                    "Retina light brick classification / indirect dispatch",
+                    capacities[3] + 16,
+                    wgpu::BufferUsages::STORAGE
+                        | wgpu::BufferUsages::COPY_DST
+                        | wgpu::BufferUsages::COPY_SRC,
+                ),
+                active: buffer(
+                    "Retina active light bricks",
+                    capacities[3],
+                    wgpu::BufferUsages::STORAGE,
+                ),
+                indirect: buffer(
+                    "Retina light dispatch args",
+                    12,
+                    wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::INDIRECT,
+                ),
                 capacities,
             });
         }
@@ -233,6 +263,8 @@ impl Gpu {
                 read,
                 write,
                 &buffers.output,
+                &buffers.work,
+                &buffers.active,
             ];
             self.device.create_bind_group(&wgpu::BindGroupDescriptor {
                 label: Some("Retina light volume"),
@@ -255,7 +287,7 @@ impl Gpu {
             chunks,
             crop,
             core,
-            profile.sky as u32,
+            profile.sky as u32 | if sparse { 2 } else { 0 },
             profile.faces.div_ceil(32),
             (blocks.len() / 4) as u32,
         ];
@@ -303,6 +335,9 @@ impl Gpu {
                 end_of_pass_write_index: Some(pair * 2 + 1),
             })
         };
+        if sparse {
+            encoder.clear_buffer(&buffers.work, 0, None);
+        }
         {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
                 label: Some("Retina direct sky / emissions"),
@@ -312,16 +347,42 @@ impl Gpu {
             pass.set_bind_group(0, &ab, &[]);
             pass.dispatch_workgroups((chunks * chunks * 64).div_ceil(64), 1, 1);
         }
+        if sparse {
+            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("Retina compact active light bricks"),
+                timestamp_writes: queries.as_ref().map(|q| wgpu::ComputePassTimestampWrites {
+                    query_set: q,
+                    beginning_of_pass_write_index: Some(2),
+                    end_of_pass_write_index: None,
+                }),
+            });
+            pass.set_pipeline(&pipelines.compact);
+            pass.set_bind_group(0, &ab, &[]);
+            pass.dispatch_workgroups(bricks.div_ceil(64), 1, 1);
+        }
+        if sparse {
+            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("Retina light indirect arguments"),
+                timestamp_writes: None,
+            });
+            pass.set_pipeline(&pipelines.args);
+            pass.set_bind_group(0, &ab, &[]);
+            pass.dispatch_workgroups(1, 1, 1);
+        }
+        if sparse {
+            // A storage-writable binding cannot also be used as indirect arguments.
+            encoder.copy_buffer_to_buffer(&buffers.work, 0, &buffers.indirect, 0, 12);
+        }
         // 15 -> 1 takes fourteen edges; all source columns were initialized together.
         // Separate passes provide storage visibility between ping-pong frontiers.
         for iteration in 0..14 {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
                 label: Some("Retina bounded light propagation"),
                 timestamp_writes: queries.as_ref().and_then(|q| {
-                    if iteration == 0 || iteration == 13 {
+                    if iteration == 0 && !sparse || iteration == 13 {
                         Some(wgpu::ComputePassTimestampWrites {
                             query_set: q,
-                            beginning_of_pass_write_index: (iteration == 0).then_some(2),
+                            beginning_of_pass_write_index: (iteration == 0 && !sparse).then_some(2),
                             end_of_pass_write_index: (iteration == 13).then_some(3),
                         })
                     } else {
@@ -329,9 +390,17 @@ impl Gpu {
                     }
                 }),
             });
-            pass.set_pipeline(&pipelines.spread);
+            pass.set_pipeline(if sparse {
+                &pipelines.sparse
+            } else {
+                &pipelines.spread
+            });
             pass.set_bind_group(0, if iteration % 2 == 0 { &ba } else { &ab }, &[]);
-            pass.dispatch_workgroups(256, params[7].div_ceil(16384), 1);
+            if sparse {
+                pass.dispatch_workgroups_indirect(&buffers.indirect, 0);
+            } else {
+                pass.dispatch_workgroups(256, params[7].div_ceil(16384), 1);
+            }
         }
         {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {

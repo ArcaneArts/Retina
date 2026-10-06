@@ -1385,6 +1385,7 @@ pub unsafe extern "C" fn retina_light_volume(
         if source.iter().any(|&m| m as usize >= profile.states.len()) {
             return Err("unknown lighting material".into());
         }
+        let start = Instant::now();
         let mut padded = Vec::with_capacity(capacity as usize);
         for chunk in source.chunks_exact(request.block_count()) {
             padded.resize(padded.len() + 4096, 0);
@@ -1404,6 +1405,13 @@ pub unsafe extern "C" fn retina_light_volume(
                 chunks,
                 &padded,
             )?;
+        let timings = engine.timings(request.reserved);
+        timings.add(timings::LIGHT_HOST, start.elapsed().as_nanos() as u64);
+        if let Some(nanos) = light.device_nanos {
+            for (i, value) in nanos.into_iter().enumerate() {
+                timings.device(timings::LIGHT_SKY + i, value);
+            }
+        }
         unsafe {
             std::ptr::copy_nonoverlapping(light.bytes.as_ptr(), output, capacity as usize);
         }

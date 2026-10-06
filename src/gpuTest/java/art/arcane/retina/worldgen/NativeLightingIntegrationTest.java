@@ -57,6 +57,7 @@ public final class NativeLightingIntegrationTest {
                 for(int variant=0;variant<3;variant++) {
                     var fixture=new Fixture(factory,palette,sky,variant,examples);
                     var request=new TerrainRequest(123456789L,0,0,0,HEIGHT,24,0,.0035F,profile);
+                    exportFixture("small-"+sky+"-"+variant,data,SIDE,HEIGHT,0,fixture.materials);
                     byte[] light=NativeTerrain.instance().lightVolume(request,SIDE,fixture.materials);
                     var expected=fixture.engine(null);var imported=fixture.engine(light);
                     for(int z=0;z<48;z++)for(int x=0;x<48;x++)for(int y=0;y<HEIGHT;y++) {
@@ -83,11 +84,36 @@ public final class NativeLightingIntegrationTest {
                     }
                 }
             }
+            sparseBoundaries(factory,data,palette,examples);
             System.out.println("QA_EVT {\"event\":\"gpu_lighting_minecraft_reference\",\"status\":\"pass\",\"context\":{\"comparisons\":"+compared+"}}");
             region(base,registry,factory);
             GenerationMetricsTest.run();
-            if(args.length==1) savedBenchmark(Path.of(args[0]),factory);
+            if(args.length==1) savedBenchmark(Path.of(args[0]),factory,data,palette);
         }
+    }
+    private static void sparseBoundaries(PalettedContainerFactory factory,JsonObject data,List<BlockState> palette,List<BlockState> examples) throws Exception {
+        int compared=0;
+        for(boolean sky:List.of(true,false)) {
+            data.add("lighting",LightingProfile.export(palette,sky));
+            int profile=NativeTerrain.instance().registerProfile(data.toString());
+            // Reuse the same native allocations across empty, enclosed and sunlit volumes.
+            for(int variant:List.of(4,3,5,3)) {
+                var fixture=new Fixture(factory,palette,sky,variant,examples);
+                exportFixture("boundary-"+sky+"-"+variant,data,SIDE,HEIGHT,0,fixture.materials);
+                byte[] light=NativeTerrain.instance().lightVolume(new TerrainRequest(123456789L,0,0,0,HEIGHT,24,0,.0035F,profile),SIDE,fixture.materials);
+                var expected=fixture.engine(null);
+                for(int z=0;z<48;z++)for(int x=0;x<48;x++)for(int y=0;y<HEIGHT;y++) {
+                    int i=(z/16*SIDE+x/16)*(HEIGHT+32)*256+(y+16)*256+z%16*16+x%16;
+                    var pos=new BlockPos(x,y,z);int value=Byte.toUnsignedInt(light[i]);
+                    for(var layer:LightLayer.values()) {
+                        int actual=layer==LightLayer.SKY?value>>4:value&15;
+                        require(actual==expected.getLayerListener(layer).getLightValue(pos),"sparse boundary differs: "+sky+"/"+variant+" "+layer+" "+pos);
+                        compared++;
+                    }
+                }
+            }
+        }
+        System.out.println("QA_EVT {\"event\":\"gpu_lighting_sparse_boundaries\",\"status\":\"pass\",\"context\":{\"comparisons\":"+compared+"}}");
     }
     private static final class Fixture implements LightChunkGetter {
         final ProtoChunk[] chunks=new ProtoChunk[9];final short[] materials=new short[9*COUNT];
@@ -99,7 +125,16 @@ public final class NativeLightingIntegrationTest {
             var ids=new HashMap<BlockState,Integer>();for(int i=0;i<palette.size();i++)ids.put(palette.get(i),i);
             for(int z=0;z<48;z++)for(int x=0;x<48;x++)for(int y=0;y<HEIGHT;y++) {
                 BlockState state=Blocks.AIR.defaultBlockState();
-                if(y<4 || y==32 && x>3 && x<44 && z>3 && z<44)state=Blocks.STONE.defaultBlockState();
+                if(variant==3) { /* No emitters: zero-work indirect dispatch, including buffer reuse. */ }
+                else if(variant==4) {
+                    state=y==16&&z==16?Blocks.AIR.defaultBlockState():Blocks.STONE.defaultBlockState();
+                    if(y==16&&z==16&&x==7)state=Blocks.GLOWSTONE.defaultBlockState();
+                }
+                else if(variant==5) {
+                    if(y==32&&!(x==7&&z==7))state=Blocks.STONE.defaultBlockState();
+                    if(y==16&&x==7&&z==7)state=Blocks.GLOWSTONE.defaultBlockState();
+                }
+                else if(y<4 || y==32 && x>3 && x<44 && z>3 && z<44)state=Blocks.STONE.defaultBlockState();
                 else if(y<23 && ((x+z*3)%19<3 || z%17<2))state=Blocks.STONE.defaultBlockState();
                 else if(y>=8 && y<30 && random.nextInt(35)==0)state=examples.get(random.nextInt(examples.size()));
                 else if(variant==1 && y>=35 && y<=39 && x>10 && x<38 && z>10 && z<38)state=Blocks.OAK_LEAVES.defaultBlockState();
@@ -245,7 +280,7 @@ public final class NativeLightingIntegrationTest {
             engine.runLightUpdates();return engine;
         }
     }
-    private static void savedBenchmark(Path directory,PalettedContainerFactory factory) throws Exception {
+    private static void savedBenchmark(Path directory,PalettedContainerFactory factory,JsonObject profile,List<BlockState> palette) throws Exception {
         var bounds=LevelHeightAccessor.create(-64,384);var saved=new ArrayList<SerializableChunkData>();
         try(var storage=new RegionFileStorage(new RegionStorageInfo("retina-light-benchmark",Level.OVERWORLD,"chunk"),directory,false)) {
             for(int z=0;z<32;z++)for(int x=0;x<32;x++) {
@@ -254,6 +289,7 @@ public final class NativeLightingIntegrationTest {
             }
         }
         var grid=new SavedGrid(factory,saved,bounds);
+        exportSaved(grid,profile,palette);
         var vanilla=grid.engine(false);var imported=grid.engine(true);var random=new Random(31579);
         for(int i=0;i<100000;i++) {
             var pos=new BlockPos(random.nextInt(512),-64+random.nextInt(384),random.nextInt(512));
@@ -264,6 +300,40 @@ public final class NativeLightingIntegrationTest {
         for(int i=0;i<4;i++)if(i%2==0){a[i]=grid.measure(false);b[i]=grid.measure(true);}
             else{b[i]=grid.measure(true);a[i]=grid.measure(false);}
         System.out.println("QA_EVT {\"event\":\"live_saved_region_light_benchmark\",\"status\":\"pass\",\"context\":{\"comparisons\":200000,\"vanilla_light_ms\":"+Arrays.stream(a).average().orElseThrow()+",\"prelit_load_ms\":"+Arrays.stream(b).average().orElseThrow()+"}}");
+    }
+    private static void exportFixture(String name,JsonObject profile,int side,int height,int minY,short[] blocks) throws java.io.IOException {
+        String destination=System.getenv("RETINA_LIGHTING_EXPORT");if(destination==null)return;
+        var path=Path.of(destination);Files.createDirectories(path);
+        var bytes=java.nio.ByteBuffer.allocate(blocks.length*2).order(java.nio.ByteOrder.LITTLE_ENDIAN);
+        bytes.asShortBuffer().put(blocks);Files.write(path.resolve(name+".blocks"),bytes.array());
+        var manifest=new JsonObject();manifest.add("profile",profile.deepCopy());
+        manifest.addProperty("side",side);manifest.addProperty("height",height);manifest.addProperty("min_y",minY);
+        manifest.addProperty("blocks",name+".blocks");Files.writeString(path.resolve(name+".json"),manifest.toString());
+    }
+    private static void exportSaved(SavedGrid grid,JsonObject base,List<BlockState> original) throws java.io.IOException {
+        if(System.getenv("RETINA_LIGHTING_EXPORT")==null)return;
+        var profile=base.deepCopy();var palette=new ArrayList<>(original);var ids=new HashMap<BlockState,Integer>();
+        for(int i=0;i<palette.size();i++)ids.put(palette.get(i),i);
+        for(int origin:List.of(0,10,20)) {
+            short[] blocks=new short[12*12*384*256];
+            for(int z=0;z<12;z++)for(int x=0;x<12;x++) {
+                var chunk=grid.chunks[(z+origin)*32+x+origin];
+                for(int section=0;section<24;section++) {
+                    var values=chunk.getSection(section);if(values.hasOnlyAir())continue;
+                    for(int y=0;y<16;y++)for(int lz=0;lz<16;lz++)for(int lx=0;lx<16;lx++) {
+                        var state=values.getBlockState(lx,y,lz);
+                        int id=ids.computeIfAbsent(state,ignored->{
+                            palette.add(state);profile.getAsJsonArray("materials").add(BlockState.CODEC.encodeStart(JsonOps.INSTANCE,state).getOrThrow());
+                            profile.getAsJsonArray("material_flags").add(0);profile.getAsJsonArray("heightmap_masks").add(0);profile.getAsJsonArray("carveable").add(false);
+                            return palette.size()-1;
+                        });
+                        blocks[(z*12+x)*384*256+(section*16+y)*256+lz*16+lx]=(short)id;
+                    }
+                }
+            }
+            profile.add("lighting",LightingProfile.export(palette,true));
+            exportFixture("region-"+origin,profile,12,384,-64,blocks);
+        }
     }
     /** Direct engines are private in LevelLightEngine; the production mixin calls this same helper. */
     private static void seed(LevelLightEngine engine,LightChunkGetter source,ChunkPos pos) {
