@@ -682,8 +682,9 @@ before Chunky's server-started initializer. The optional compatibility mixin kee
 the listener pending until a later chunk update succeeds; other setup failures
 still propagate. `./gradlew test` covers this startup race and single registration
 through Fabric Loader's actual mixin transformation, using minimal DH/Chunky fixtures.
-World startup and pregeneration were also checked with Chunky 1.5.3 and Distant
-Horizons 3.3.4 on Minecraft 26.3, including DH pausing and resuming its generator.
+Packaged client and dedicated installations were checked with Distant Horizons
+3.3.4 and Chunky Fabric 1.5.3 or NeoForge 1.5.4 on Minecraft 26.3, including
+negative-coordinate pregeneration, pause/resume and DH temporary-region reads.
 
 Fabric development runs enable `--enable-native-access=ALL-UNNAMED`; add this JVM
 argument to a normal Fabric launcher/server using the packaged mod. Fabric

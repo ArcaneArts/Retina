@@ -1427,10 +1427,49 @@ pub fn apply(
                         q[1] + piece.pos[1] as f64,
                         q[2] + piece.pos[2] as f64,
                     ];
-                    if (pos[0].floor() as i32).div_euclid(16) != request.chunk_x
-                        || (pos[2].floor() as i32).div_euclid(16) != request.chunk_z
-                    {
+                    // StructureTemplate uses the normalized wrapper blockPos, not the
+                    // entity's original capture-world block_pos or floating-point Pos.
+                    let anchor = nbt::field(entity, "blockPos")
+                        .map(nbt::list_values)
+                        .filter(|v| v.len() == 3)
+                        .map(|v| {
+                            add(
+                                piece.pos,
+                                rotate(
+                                    std::array::from_fn(|i| nbt::number(&v[i]) as i32),
+                                    piece.rotation,
+                                ),
+                            )
+                        })
+                        .unwrap_or_else(|| pos.map(|v| v.floor() as i32));
+                    if !inside(chunk_bounds, anchor) {
                         continue;
+                    }
+                    if nbt::field(&tag, "block_pos").is_some() {
+                        nbt::put(&mut tag, "block_pos", json!([11, anchor]));
+                        // Current 26.3 codecs use 3D IDs for frames and 2D IDs for
+                        // paintings. Loading these fields resets the attachment direction.
+                        let id = nbt::field(&tag, "id")
+                            .and_then(|v| v[1].as_str())
+                            .unwrap_or("");
+                        let key = match id {
+                            "minecraft:item_frame" | "minecraft:glow_item_frame" => "Facing",
+                            "minecraft:painting" => "facing",
+                            _ => "",
+                        };
+                        if let Some(mut facing) = nbt::field(&tag, key).cloned() {
+                            let value = nbt::number(&facing) as usize;
+                            if key == "facing" && value < 4 {
+                                facing[1] = json!((value + piece.rotation) % 4);
+                            } else if key == "Facing" && (2..6).contains(&value) {
+                                let mut value = value;
+                                for _ in 0..piece.rotation {
+                                    value = [0, 1, 5, 4, 2, 3][value];
+                                }
+                                facing[1] = json!(value);
+                            }
+                            nbt::put(&mut tag, key, facing);
+                        }
                     }
                     nbt::put(
                         &mut tag,
@@ -1698,6 +1737,113 @@ mod tests {
                     );
                 }
             }
+        }
+    }
+    #[test]
+    fn attached_entities_use_template_anchors_and_rotate_current_direction_codecs() {
+        let mut entities = Vec::new();
+        for (id, key, count) in [
+            ("minecraft:item_frame", "Facing", 6),
+            ("minecraft:glow_item_frame", "Facing", 6),
+            ("minecraft:painting", "facing", 4),
+        ] {
+            for facing in 0..count {
+                entities.push(json!([10, {
+                    "pos":[9,[6,[[6,16.1],[6,1.5],[6,0.5]]]],
+                    "blockPos":[9,[3,[[3,15],[3,1],[3,0]]]],
+                    "nbt":[10,{
+                        "id":[8,id],"block_pos":[11,[1234,99,-5678]],
+                        key:[3,facing],"Rotation":[9,[5,[[5,45.0],[5,12.0]]]],
+                        "Item":[10,{"id":[8,"minecraft:diamond"],"count":[3,1]}]
+                    }]
+                }]));
+            }
+        }
+        let mut profile: WorldProfile = serde_json::from_value(json!({
+            "biome_scale":256,"blend":0.55,"sea_level":63,"stone":1,"water":0,
+            "bedrock":1,"deepslate":1,"snow":0,"ice":0,
+            "materials":["minecraft:air","minecraft:stone"],"biomes":[],"noises":[],
+            "material_flags":[0,1],"heightmap_masks":[0,63],
+            "structures":{
+                "templates":[{"id":"test:attached","size":[32,2,2],"ground":0,
+                    "palettes":[[[1,1,1,1]]],"blocks":[0,0,0,0],"tags":{},"joints":[],"entities":entities}],
+                "definitions":[{"id":"test:attached","kind":"jigsaw","biomes":[],"config":{"terrain_adaptation":"none"}}],
+                "pools":{"test:attached":{"fallback":"test:attached","entries":[{"parts":[{"template":0,"ignore_air":false,"processors":[]}],"terrain_matching":false,"weight":1}]}},
+                "sets":[]
+            }
+        })).unwrap();
+        profile.structures.compile(&profile.materials);
+        let origin = [-32, 64, -16];
+        let expected_3d = [
+            [0, 1, 2, 3, 4, 5],
+            [0, 1, 5, 4, 2, 3],
+            [0, 1, 3, 2, 5, 4],
+            [0, 1, 4, 5, 3, 2],
+        ];
+        for rotation in 0..4 {
+            let element = profile.structures.pools["test:attached"].entries[0].clone();
+            let start = Arc::new(Start {
+                definition: 0,
+                chunk: [-2, -1],
+                seed: 42,
+                pieces: vec![Piece {
+                    bounds: bounds(&element, origin, rotation, &profile.structures),
+                    element,
+                    pos: origin,
+                    rotation,
+                    palette: 0,
+                    context: 0,
+                    depth: 0,
+                    priority: 0,
+                }],
+                terrain: None,
+                index: OnceLock::new(),
+            });
+            let anchor = add(origin, rotate([15, 1, 0], rotation));
+            let owner = [anchor[0].div_euclid(16), anchor[2].div_euclid(16)];
+            let mut seen = 0;
+            for z in -4..2 {
+                for x in -5..2 {
+                    let request = ChunkRequest {
+                        seed: 42,
+                        chunk_x: x,
+                        chunk_z: z,
+                        min_y: 64,
+                        height: 16,
+                        base_height: 64.0,
+                        amplitude: 0.0,
+                        frequency: 0.008,
+                        reserved: 0,
+                    };
+                    let data = apply(request, &profile, &[start.clone()], &[], None);
+                    assert_eq!(
+                        data.tag,
+                        apply(request, &profile, &[start.clone()], &[], None).tag
+                    );
+                    let actual = nbt::list_values(nbt::field(&data.tag, "entities").unwrap());
+                    assert_eq!(actual.len(), if [x, z] == owner { 16 } else { 0 });
+                    for (i, tag) in actual.iter().enumerate() {
+                        assert_eq!(nbt::field(tag, "block_pos").unwrap(), &json!([11, anchor]));
+                        let (key, expected) = if i < 12 {
+                            ("Facing", expected_3d[rotation][i % 6])
+                        } else {
+                            ("facing", (i - 12 + rotation) % 4)
+                        };
+                        assert_eq!(nbt::field(tag, key).unwrap(), &json!([3, expected]));
+                        assert_eq!(
+                            nbt::field(tag, "Item").unwrap(),
+                            &json!([10,{"id":[8,"minecraft:diamond"],"count":[3,1]}])
+                        );
+                        assert_eq!(
+                            nbt::list_values(nbt::field(tag, "Rotation").unwrap())[1],
+                            json!([5, 12.0])
+                        );
+                        assert!(nbt::field(tag, "UUID").is_some());
+                        seen += 1;
+                    }
+                }
+            }
+            assert_eq!(seen, 16);
         }
     }
     #[test]

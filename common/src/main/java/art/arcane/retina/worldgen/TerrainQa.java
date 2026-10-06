@@ -96,6 +96,50 @@ final class TerrainQa {
     }
 
     private static boolean structuresChecked;
+    private static int entitiesStarted;
+    private static boolean entitiesChecked;
+    static void checkEntities(net.minecraft.server.MinecraftServer server) {
+        if(!Boolean.getBoolean("retina.qa.entities") || entitiesChecked || server.getTickCount()<40)return;
+        var level=server.overworld();
+        if(!(level.getChunkSource().getGenerator() instanceof RetinaChunkGenerator generator))throw new IllegalStateException("Entity QA requires Retina");
+        var position=new net.minecraft.world.level.ChunkPos(320,320);
+        var chunk=level.getChunk(position.x(),position.z());
+        var start=chunk.getAllStarts().get(level.registryAccess().lookupOrThrow(net.minecraft.core.registries.Registries.STRUCTURE).getValue(art.arcane.retina.Retina.id("qa_entities")));
+        if(start==null || !start.isValid())throw new IllegalStateException("Loaded entity QA structure is missing");
+        var bounds=start.getBoundingBox();
+        var positions=new java.util.ArrayList<net.minecraft.world.level.ChunkPos>();
+        for(int z=Math.floorDiv(bounds.minZ(),16);z<=Math.floorDiv(bounds.maxZ(),16);z++)for(int x=Math.floorDiv(bounds.minX(),16);x<=Math.floorDiv(bounds.maxX(),16);x++)positions.add(new net.minecraft.world.level.ChunkPos(x,z));
+        if(entitiesStarted==0) {
+            entitiesStarted=server.getTickCount();
+            TerrainRegistryQa.check(generator);
+            for(var at:positions) {
+                level.getChunk(at.x(),at.z());
+                level.getChunkSource().addTicketWithRadius(net.minecraft.server.level.TicketType.FORCED,at,2);
+            }
+            return;
+        }
+        // Entity storage completes on later server ticks after the real chunk load.
+        if(server.getTickCount()<entitiesStarted+20)return;
+        int checked=0;
+        for(var at:positions) for(var value:NativeTerrain.instance().structureData(generator.request(level.getSeed(),at.x(),at.z())).getListOrEmpty("entities")) {
+            var expected=(net.minecraft.nbt.CompoundTag)value;
+            var uuid=net.minecraft.core.UUIDUtil.CODEC.parse(net.minecraft.nbt.NbtOps.INSTANCE,expected.get("UUID")).getOrThrow();
+            var entity=level.getEntity(uuid);
+            if(entity==null)throw new IllegalStateException("Loaded template entity is missing: "+uuid);
+            if(!(entity instanceof net.minecraft.world.entity.decoration.HangingEntity hanging))throw new IllegalStateException("Template entity is not attached");
+            var anchor=BlockPos.CODEC.parse(net.minecraft.nbt.NbtOps.INSTANCE,expected.get("block_pos")).getOrThrow();
+            boolean painting=expected.getStringOr("id","").equals("minecraft:painting");
+            var codec=painting?net.minecraft.core.Direction.LEGACY_ID_CODEC_2D:net.minecraft.core.Direction.LEGACY_ID_CODEC;
+            var direction=codec.parse(net.minecraft.nbt.NbtOps.INSTANCE,expected.get(painting?"facing":"Facing")).getOrThrow();
+            if(!hanging.getPos().equals(anchor) || hanging.getDirection()!=direction || !hanging.survives())throw new IllegalStateException("Loaded attachment differs: expected="+anchor+"/"+direction+", actual="+hanging.getPos()+"/"+hanging.getDirection()+", survives="+hanging.survives()+", support="+level.getBlockState(anchor.relative(direction.getOpposite())));
+            checked++;
+        }
+        if(checked!=3)throw new IllegalStateException("Expected frame, glow frame and painting, got "+checked);
+        entitiesChecked=true;
+        Retina.LOGGER.info("QA_EVT {\"event\":\"minecraft_live_template_entities\",\"status\":\"pass\",\"context\":{\"mode\":\"{}\",\"entities\":{},\"reopen\":{}}}",generator.mode(),checked,Boolean.getBoolean("retina.qa.entities.reopen"));
+        if(server.isDedicatedServer())server.halt(false);
+    }
+
     static void checkStructures(net.minecraft.server.MinecraftServer server) {
         if(!Boolean.getBoolean("retina.qa.structures") || structuresChecked || server.getTickCount()<40)return;
         structuresChecked=true;

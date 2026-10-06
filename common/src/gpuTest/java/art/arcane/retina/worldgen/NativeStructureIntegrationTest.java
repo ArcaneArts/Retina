@@ -55,6 +55,7 @@ public final class NativeStructureIntegrationTest {
             var context=new StructurePieceSerializationContext(resources,registry,null);
             event("registered_structure_export","\"definitions\":"+structures.getAsJsonArray("definitions").size()+",\"templates\":"+structures.getAsJsonArray("templates").size()+",\"materials\":"+profile.materials().length);
             var nativeTerrain=NativeTerrain.instance();
+            templateEntityChecks(data,nativeTerrain);
             var stateGenerator=new RetinaChunkGenerator(new RetinaBiomeSource(biomes,256,.55f),-64,384,64,48,.008f,"mca");
             var structureState=stateGenerator.createState(registry.lookupOrThrow(Registries.STRUCTURE_SET),net.minecraft.world.level.levelgen.RandomState.create(registry.lookupOrThrow(Registries.NOISE),SEED,registry.lookupOrThrow(Registries.NOISE_SETTINGS).getOrThrow(NoiseGeneratorSettings.OVERWORLD).value()),SEED);
             require(structureState.possibleStructureSets().stream().noneMatch(s->s.value().placement() instanceof net.minecraft.world.level.levelgen.structure.placement.ConcentricRingsStructurePlacement),"unsupported stronghold searches are not scheduled");
@@ -144,6 +145,60 @@ public final class NativeStructureIntegrationTest {
             if(template.contains("/houses/") && !template.contains("accessory") && !template.contains("farm") && !template.contains("pen"))count++;
         }
         return count;
+    }
+    private static void templateEntityChecks(JsonObject source,NativeTerrain terrain) {
+        var fixture=force(source,"minecraft:village_plains");
+        var entities=new JsonArray();var sourceTags=new ArrayList<CompoundTag>();
+        for(String type:List.of("minecraft:item_frame","minecraft:glow_item_frame","minecraft:painting")) {
+            boolean painting=type.equals("minecraft:painting");
+            for(int facing=0;facing<(painting?4:6);facing++) {
+                var wrapper=new CompoundTag();var position=new ListTag();
+                for(double v:new double[]{16.1,1.5,.5})position.add(DoubleTag.valueOf(v));wrapper.put("pos",position);
+                var anchor=new ListTag();for(int v:new int[]{15,1,0})anchor.add(IntTag.valueOf(v));wrapper.put("blockPos",anchor);
+                var tag=new CompoundTag();tag.putString("id",type);tag.putIntArray("block_pos",new int[]{1234,99,-5678});
+                tag.putInt(painting?"facing":"Facing",facing);tag.putString("fixture",type+":"+facing);
+                wrapper.put("nbt",tag);sourceTags.add(tag);entities.add(StructureProfile.tag(wrapper));
+            }
+        }
+        var structures=fixture.getAsJsonObject("structures");
+        var template=JsonParser.parseString("{\"id\":\"retina:attached\",\"size\":[32,3,2],\"ground\":0,\"palettes\":[[[1,1,1,1]]],\"blocks\":[0,0,0,0],\"tags\":{},\"joints\":[]}").getAsJsonObject();
+        template.add("entities",entities);var templates=new JsonArray();templates.add(template);structures.add("templates",templates);
+        var definition=JsonParser.parseString("{\"id\":\"retina:attached\",\"kind\":\"jigsaw\",\"pool\":\"retina:attached\",\"config\":{\"size\":0,\"start_height\":{\"absolute\":64},\"terrain_adaptation\":\"none\",\"max_distance_from_center\":80}}").getAsJsonObject();
+        var biomes=new JsonArray();for(int i=0;i<fixture.getAsJsonArray("biomes").size();i++)biomes.add(i);definition.add("biomes",biomes);
+        var definitions=new JsonArray();definitions.add(definition);structures.add("definitions",definitions);
+        structures.add("pools",JsonParser.parseString("{\"retina:attached\":{\"fallback\":\"minecraft:empty\",\"entries\":[{\"parts\":[{\"template\":0,\"ignore_air\":false,\"processors\":[]}],\"terrain_matching\":false,\"weight\":1}]}}"));
+        structures.getAsJsonArray("sets").get(0).getAsJsonObject().getAsJsonArray("entries").get(0).getAsJsonObject().addProperty("definition",0);
+        int id=terrain.registerProfile(fixture.toString()),checked=0;var seen=EnumSet.noneOf(net.minecraft.world.level.block.Rotation.class);
+        for(long seed=0;seed<64 && seen.size()<4;seed++) {
+            var request=new TerrainRequest(seed,0,0,-64,384,120,0,.008f,id);
+            var children=terrain.structureStarts(request).getCompoundOrEmpty("structures").getCompoundOrEmpty("starts").getCompoundOrEmpty("retina:attached").getListOrEmpty("Children");
+            require(children.size()==1,"attached entity fixture creates one piece");
+            int[] bounds=((CompoundTag)children.getFirst()).getIntArray("BB").orElseThrow();
+            var rotation=bounds[3]==31?net.minecraft.world.level.block.Rotation.NONE:bounds[5]==31?net.minecraft.world.level.block.Rotation.CLOCKWISE_90:bounds[0]==-31?net.minecraft.world.level.block.Rotation.CLOCKWISE_180:net.minecraft.world.level.block.Rotation.COUNTERCLOCKWISE_90;
+            if(!seen.add(rotation))continue;
+            var origin=new BlockPos(0,64,0);
+            var anchor=net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplate.transform(new BlockPos(15,1,0),Mirror.NONE,rotation,BlockPos.ZERO).offset(origin);
+            var position=net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplate.transform(new net.minecraft.world.phys.Vec3(16.1,1.5,.5),Mirror.NONE,rotation,BlockPos.ZERO).add(0,64,0);
+            var owner=new ChunkPos(Math.floorDiv(anchor.getX(),16),Math.floorDiv(anchor.getZ(),16));int count=0;var uuids=new HashSet<String>();
+            for(int z=Math.floorDiv(bounds[2],16);z<=Math.floorDiv(bounds[5],16);z++)for(int x=Math.floorDiv(bounds[0],16);x<=Math.floorDiv(bounds[3],16);x++) {
+                var r=new TerrainRequest(seed,x,z,-64,384,120,0,.008f,id);var actual=terrain.structureData(r);
+                require(actual.equals(terrain.structureData(r)),"attached metadata is deterministic");
+                var values=actual.getListOrEmpty("entities");require(values.size()==(new ChunkPos(x,z).equals(owner)?16:0),"Minecraft template blockPos selects the entity's chunk");
+                for(var value:values) {
+                    var tag=(CompoundTag)value;boolean painting=tag.getStringOr("id","").equals("minecraft:painting");
+                    require(BlockPos.CODEC.parse(NbtOps.INSTANCE,tag.get("block_pos")).getOrThrow().equals(anchor),"attachment anchor matches Minecraft template transform");
+                    var sourceTag=sourceTags.get(count);
+                    var codec=painting?Direction.LEGACY_ID_CODEC_2D:Direction.LEGACY_ID_CODEC;
+                    var direction=codec.parse(NbtOps.INSTANCE,sourceTag.get(painting?"facing":"Facing")).getOrThrow();
+                    require(codec.parse(NbtOps.INSTANCE,tag.get(painting?"facing":"Facing")).getOrThrow()==rotation.rotate(direction),"current attachment codec follows Minecraft rotation");
+                    var pos=tag.getListOrEmpty("Pos");for(int i=0;i<3;i++)require(pos.getDouble(i).orElseThrow()==new double[]{position.x,position.y,position.z}[i],"entity Pos matches Minecraft Vec3 transform");
+                    require(uuids.add(Arrays.toString(tag.getIntArray("UUID").orElseThrow())),"entity UUIDs remain distinct");count++;
+                }
+            }
+            require(count==16,"all attachment directions survive chunk partitioning");checked+=count;
+        }
+        require(seen.size()==4,"Minecraft-reference entity fixture covers every rotation");
+        event("minecraft_template_entity_parity","\"rotations\":4,\"entities\":"+checked);
     }
     private static void villageTerrainChecks(JsonObject source,BiomeTerrainProfile profile,NativeTerrain terrain) {
         var fixture=force(source,"minecraft:village_plains");int id=terrain.registerProfile(fixture.toString());

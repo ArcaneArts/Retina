@@ -21,6 +21,7 @@ public final class TerrainWorldgen {
         TerrainQa.checkPromotion(server);
         TerrainQa.checkTimings(server);
         TerrainQa.checkStructures(server);
+        TerrainQa.checkEntities(server);
         if (server.getTickCount() % 20 != 0) return;
         for (var level : server.getAllLevels()) {
             if (level.getChunkSource().getGenerator() instanceof RetinaChunkGenerator retina) {

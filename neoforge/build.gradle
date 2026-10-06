@@ -30,7 +30,8 @@ neoForge {
                 }
                 [ClientStartup: 'client.startup', Promotion: 'promotion', Pipeline: 'pipeline',
                  Timings: 'timings', Lighting: 'lighting', Structures: 'structures',
-                 StructuresReopen: 'structures.reopen'].each { flag, property ->
+                 StructuresReopen: 'structures.reopen', Entities: 'entities',
+                 EntitiesReopen: 'entities.reopen'].each { flag, property ->
                     if (providers.gradleProperty("retina${flag}Qa").isPresent()) {
                         systemProperty "retina.qa.${property}", 'true'
                     }

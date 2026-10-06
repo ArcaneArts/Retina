@@ -54,6 +54,22 @@ Place it in a fresh dedicated world's `datapacks` directory, select
 `minecraft_live_rust_structures` check compares every block, checks decoded
 native pieces and block entities, and shuts down normally after saving.
 
+The `qa/datapacks/entities` fixture places a stone support wall with an item
+frame, glow item frame and one-block painting at the same forced start chunk.
+Its current 26.3 template intentionally retains distant capture-world
+`block_pos` values; normalized wrapper `blockPos` coordinates supply the real
+placement anchors. Put this pack alone in a fresh dedicated QA world's
+`datapacks` directory and use `-PretinaQa -PretinaEntitiesQa` with the same
+seed and either generation mode. Repeat with `-PretinaEntitiesReopenQa`.
+`python3 qa/entity_fixture.py` regenerates its deterministic compressed NBT;
+the template palette uses the current 26.3 compound `id` representation.
+The `minecraft_live_template_entities` checkpoint checks actual loaded UUIDs,
+attachment positions, directions and survival against the native metadata,
+then saves and stops normally. The packaged equivalents are
+`-Dretina.qa.entities=true` and, on reopen,
+`-Dretina.qa.entities.reopen=true`. Keep entity QA separate from the structure
+and timing checks, which can stop the dedicated server earlier.
+
 ## Dedicated connections and packaged artifacts
 
 Start an isolated matching dedicated server. With a fresh client run directory,
