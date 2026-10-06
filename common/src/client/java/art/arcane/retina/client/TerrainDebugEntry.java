@@ -20,9 +20,11 @@ public final class TerrainDebugEntry implements DebugScreenEntry {
         var id = Retina.id("generation");
         DebugScreenEntriesAccessor.retina$register(id, new TerrainDebugEntry());
         platform.onClientStarted(() -> Minecraft.getInstance().debugEntries.setStatus(id, DebugScreenEntryStatus.IN_OVERLAY));
-        platform.registerTerrainStatsReceiver(payload -> remote = payload);
-        platform.onDisconnect(() -> remote = TerrainStatsPayload.INACTIVE);
+        platform.registerTerrainStatsReceiver(payload -> { remote = payload; TerrainClientQa.received(); });
+        platform.onDisconnect(() -> { remote = TerrainStatsPayload.INACTIVE; TerrainClientQa.disconnected(); });
     }
+
+    static TerrainStatsPayload remoteStats() { return remote; }
 
     @Override
     public void display(DebugScreenDisplayer displayer, Level level, LevelChunk clientChunk, LevelChunk serverChunk) {

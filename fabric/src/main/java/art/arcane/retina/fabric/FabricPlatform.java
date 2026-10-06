@@ -24,6 +24,13 @@ public final class FabricPlatform implements RetinaPlatform {
         RetinaStructurePiece.register();
         Registry.register(BuiltInRegistries.CHUNK_GENERATOR, Retina.id("gpu"), RetinaChunkGenerator.CODEC);
         Registry.register(BuiltInRegistries.BIOME_SOURCE, Retina.id("voronoi"), RetinaBiomeSource.CODEC);
+        // The runtime QA pack supplies this feature; ordinary worlds are unaffected.
+        if (Boolean.getBoolean("retina.qa.biomeModification")) {
+            net.fabricmc.fabric.api.biome.v1.BiomeModifications.addFeature(
+                    net.fabricmc.fabric.api.biome.v1.BiomeSelectors.includeByKey(net.minecraft.world.level.biome.Biomes.PLAINS),
+                    net.minecraft.world.level.levelgen.GenerationStep.Decoration.VEGETAL_DECORATION,
+                    net.minecraft.resources.ResourceKey.create(net.minecraft.core.registries.Registries.PLACED_FEATURE, Retina.id("qa_extra_grass")));
+        }
     }
 
     @Override

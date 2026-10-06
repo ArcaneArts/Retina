@@ -8,7 +8,15 @@ loom {
         vmArg '--enable-native-access=ALL-UNNAMED'
         if (providers.gradleProperty('retinaQa').isPresent()) {
             vmArg '-Dretina.qa=true'
+            [ClientDatapack: 'client.datapack', ClientServer: 'client.server', ExpectedFeature: 'expectedFeature', ProfileOutput: 'profileOutput'].each { flag, property ->
+                if (providers.gradleProperty("retina${flag}Qa").isPresent()) vmArg "-Dretina.qa.${property}=${providers.gradleProperty("retina${flag}Qa").get()}"
+            }
+            if (providers.gradleProperty('retinaBiomeModificationQa').isPresent()) vmArg '-Dretina.qa.biomeModification=true'
             if (providers.gradleProperty('retinaClientStartupQa').isPresent()) vmArg '-Dretina.qa.client.startup=true'
+            if (providers.gradleProperty('retinaClientGameplayQa').isPresent()) {
+                vmArg '-Dretina.qa.client.gameplay=true'
+                vmArg "-Dretina.qa.client.mode=${providers.gradleProperty('retinaClientQaMode').getOrElse('mca')}"
+            }
             if (providers.gradleProperty('retinaPromotionQa').isPresent()) vmArg '-Dretina.qa.promotion=true'
             if (providers.gradleProperty('retinaPipelineQa').isPresent()) vmArg '-Dretina.qa.pipeline=true'
             if (providers.gradleProperty('retinaTimingsQa').isPresent()) vmArg '-Dretina.qa.timings=true'
