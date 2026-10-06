@@ -91,7 +91,7 @@ tasks.register('nativeInterpolationGpuTest', Exec) {
     description = 'Compare nested interpolation roots and GPU-noise corners across both GPU evaluators.'
     dependsOn 'interpolationTest'
     workingDir nativeDirectory
-    environment 'RETINA_PROGRAM_PARITY_PROFILE', file('build/registry-interpolation-profile.json').absolutePath
+    environment 'RETINA_PROGRAM_PARITY_PROFILE', rootProject.file('build/registry-interpolation-profile.json').absolutePath
     commandLine(nativeCargoCommand + ['test', '--release', '--locked', '--lib',
             'specialized_roots_match_interpreter_on_real_gpu',
             '--target-dir', nativeTarget.get().asFile.absolutePath, '--', '--ignored', '--nocapture'])
@@ -102,7 +102,7 @@ tasks.register('nativeInterpolationPrimedGpuTest', Exec) {
     description = 'Compare primed lake corners and interval endpoints with an independent GPU interpreter.'
     dependsOn 'interpolationTest'
     workingDir nativeDirectory
-    environment 'RETINA_PROGRAM_PARITY_PROFILE', file('build/registry-interpolation-profile.json').absolutePath
+    environment 'RETINA_PROGRAM_PARITY_PROFILE', rootProject.file('build/registry-interpolation-profile.json').absolutePath
     environment 'RETINA_PROGRAM_PARITY_PRIMED_CORNERS', '1'
     commandLine(nativeCargoCommand + ['test', '--release', '--locked', '--lib',
             'specialized_roots_match_interpreter_on_real_gpu',
@@ -115,8 +115,8 @@ tasks.register('nativeLakeSparseGpuTest', Exec) {
     description = 'Compare sparse lake-probe interpolation samples with an uncached GPU interpreter.'
     dependsOn 'interpolationTest'
     workingDir nativeDirectory
-    def sourceFixture = file('build/registry-interpolation-profile.json')
-    def sparseFixture = file('build/registry-sparse-lake-profile.json')
+    def sourceFixture = rootProject.file('build/registry-interpolation-profile.json')
+    def sparseFixture = rootProject.file('build/registry-sparse-lake-profile.json')
     environment 'RETINA_PROGRAM_PARITY_PROFILE', sparseFixture.absolutePath
     doFirst {
         // Exercise actual nested inputs on several binary grids; primary roots
@@ -142,7 +142,7 @@ gpuTest.dependsOn 'nativeLakeSparseGpuTest'
         description = "Compare resident interpolation fields with uncached GPU roots (${mode})."
         dependsOn 'interpolationTest'
         workingDir nativeDirectory
-        environment 'RETINA_PROGRAM_PARITY_PROFILE', file('build/registry-interpolation-profile.json').absolutePath
+        environment 'RETINA_PROGRAM_PARITY_PROFILE', rootProject.file('build/registry-interpolation-profile.json').absolutePath
         environment 'RETINA_PROGRAM_PARITY_INTERPOLATION_CACHE', '1'
         if (mode == 'Interpreter') environment 'RETINA_PROGRAM_PARITY_INTERPRETER', '1'
         else environment 'RETINA_PROGRAM_PARITY_CACHE', '1'
@@ -160,7 +160,7 @@ tasks.register('nativeCoordinateGpuTest', Exec) {
     dependsOn 'coordinateTest'
     mustRunAfter 'nativeOreGpuTest'
     workingDir nativeDirectory
-    environment 'RETINA_PROGRAM_PARITY_PROFILE', file('build/registry-coordinate-profile.json').absolutePath
+    environment 'RETINA_PROGRAM_PARITY_PROFILE', rootProject.file('build/registry-coordinate-profile.json').absolutePath
     commandLine(nativeCargoCommand + ['test', '--release', '--locked', '--lib',
             'specialized_roots_match_interpreter_on_real_gpu',
             '--target-dir', nativeTarget.get().asFile.absolutePath, '--', '--ignored', '--nocapture'])

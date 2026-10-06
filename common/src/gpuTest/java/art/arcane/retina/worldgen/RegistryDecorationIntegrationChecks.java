@@ -115,9 +115,9 @@ final class RegistryDecorationIntegrationChecks {
             var codec = PalettedContainer.codecRW(BlockState.CODEC, Strategy.createForBlockStates(Block.BLOCK_STATE_REGISTRY), Blocks.AIR.defaultBlockState());
             try (var storage = new RegionFileStorage(new RegionStorageInfo("retina-density-test", Level.OVERWORLD, "chunk"), directory, false)) {
                 for (var entry : expected.entrySet()) {
-                    var sections = storage.read(entry.getKey()).getListOrEmpty("sections");
+                    var sections = McaTestSections.terrain(storage.read(entry.getKey()),-64,384);
                     for (int section = 0; section < 24; section++) {
-                        var blocks = codec.parse(NbtOps.INSTANCE, sections.getCompound(section).orElseThrow().getCompoundOrEmpty("block_states")).getOrThrow();
+                        var blocks = codec.parse(NbtOps.INSTANCE, sections.get(section).getCompoundOrEmpty("block_states")).getOrThrow();
                         for (int y = 0; y < 16; y++) for (int z = 0; z < 16; z++) for (int x = 0; x < 16; x++) {
                             var state = profile.materials()[Short.toUnsignedInt(entry.getValue()[(section * 16 + y) * 256 + z * 16 + x])];
                             require(blocks.get(x, y, z).equals(state), "live decoration filters agree between independent chunks and MCA at " + entry.getKey() + " / " + x + "," + (section * 16 + y - 64) + "," + z);

@@ -190,9 +190,9 @@ public final class NativeDatapackIntegrationTest {
                 try(var data=NativeTerrain.instance().generate(generator.request(123456789L,position.x(),position.z()))) {
                     var blocks=data.blocks().toArray(java.lang.foreign.ValueLayout.JAVA_SHORT);
                     var samples=NativeTerrain.instance().sampleBiomes(generator.request(123456789L,position.x(),position.z()));
-                    var sections=tag.getListOrEmpty("sections");
+                    var sections=McaTestSections.terrain(tag,-64,384);
                     for(int section=0;section<24;section++) {
-                        var nbt=sections.getCompound(section).orElseThrow();
+                        var nbt=sections.get(section);
                         var decoded=codec.parse(net.minecraft.nbt.NbtOps.INSTANCE,nbt.getCompoundOrEmpty("block_states")).getOrThrow();
                         var biomes=nbt.getCompoundOrEmpty("biomes");var palette=biomes.getListOrEmpty("palette");
                         var packed=palette.size()==1?null:new net.minecraft.util.SimpleBitStorage(32-Integer.numberOfLeadingZeros(palette.size()-1),64,biomes.getLongArray("data").orElseThrow());

@@ -124,7 +124,9 @@ public final class NativeStructureIntegrationTest {
                     try(var storage=new RegionFileStorage(new RegionStorageInfo("retina-structures",Level.OVERWORLD,"chunk"),directory,false)) {
                         for(var e:chunks.entrySet()){var tag=storage.read(e.getKey());require(tag!=null,"MCA chunk exists");
                             var expected=tags.get(e.getKey());for(String key:List.of("structures","block_entities","entities"))require(Objects.equals(tag.get(key),expected.get(key)),"MCA metadata agrees with chunk path: "+key+" "+e.getKey());
-                            for(var value:tag.getListOrEmpty("sections")){var section=(CompoundTag)value;int layer=section.getIntOr("Y",0)*16+64;var blocks=codec.parse(NbtOps.INSTANCE,section.getCompoundOrEmpty("block_states")).getOrThrow();
+                            for(var section:McaTestSections.terrain(tag,-64,384)) {
+                                int layer=section.getIntOr("Y",0)*16+64;
+                                var blocks=codec.parse(NbtOps.INSTANCE,section.getCompoundOrEmpty("block_states")).getOrThrow();
                                 for(int y=0;y<16;y++)for(int z=0;z<16;z++)for(int x=0;x<16;x++)require(blocks.get(x,y,z).equals(profile.materials()[Short.toUnsignedInt(e.getValue()[(layer+y)*256+z*16+x])]),"MCA and per-chunk blocks agree at "+e.getKey());
                             }
                         }
@@ -228,8 +230,9 @@ public final class NativeStructureIntegrationTest {
                 for(var entry:affected.entrySet()) {
                     var pos=entry.getKey();if(Math.floorDiv(pos.x(),32)!=rx || Math.floorDiv(pos.z(),32)!=rz)continue;
                     var tag=storage.read(pos);var raw=entry.getValue();var maps=new int[6][256];
+                    var sections=McaTestSections.terrain(tag,-64,384);
                     for(int section=0;section<24;section++) {
-                        var states=codec.parse(NbtOps.INSTANCE,tag.getListOrEmpty("sections").getCompound(section).orElseThrow().getCompoundOrEmpty("block_states")).getOrThrow();
+                        var states=codec.parse(NbtOps.INSTANCE,sections.get(section).getCompoundOrEmpty("block_states")).getOrThrow();
                         for(int y=0;y<16;y++)for(int z=0;z<16;z++)for(int x=0;x<16;x++) {
                             int layer=section*16+y,c=z*16+x;var state=states.get(x,y,z);
                             require(state.equals(materials[Short.toUnsignedInt(raw[layer*256+c])]),"road grass cleanup has chunk/MCA parity");

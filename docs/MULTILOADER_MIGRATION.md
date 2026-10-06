@@ -114,5 +114,32 @@ Packaged installations require the same JVM arguments; later Java versions
 need separate validation.
 
 Integrated gameplay, actual client telemetry and reconnect, packaged-loader,
-modified-registry and NeoForge DH/Chunky validation remain pending, as do the
-two baseline fixture failures recorded above.
+modified-registry and NeoForge DH/Chunky validation remain pending.
+
+## Shared reference validation
+
+The fourth increment resolves the recorded baseline fixture failures and runs
+the broader shared suite. The density-lattice fixture now explicitly selects
+final-density interpolation; separate Minecraft-reference checks continue to
+exercise composition. MCA fixtures select terrain sections by their world Y
+instead of list position, validate adjacent lighting padding, and reject
+missing or duplicate terrain sections. This preserves full voxel comparisons
+when GPU lighting adds boundary sections.
+
+The cave-adapter fixture now isolates the fallback material adapter from loaded
+recipes that own its placement budgets. The actual loaded patch/column recipes
+remain covered by block-feature Minecraft-reference and MCA/chunk parity checks.
+Synthetic fixtures that extend the block palette regenerate matching light
+metadata. Native parity tasks now locate exported profiles under root `build/`,
+matching the shared Java fixtures' working directory.
+
+Validation passed the host build, Java/Fabric transformation and native unit
+tests, GPU/coordinate/interpolation/material/aquifer dependencies, biome,
+structure, geology, cave/feature, registered block-feature, shoreline,
+Terralith datapack, region, preview/cache and lighting checks. The first broad
+run exposed the fixture/path failures; focused rechecks passed after corrections.
+The Rust/WGSL algorithms, ABI and serialized profile format are unchanged.
+
+Actual integrated gameplay, client telemetry/reconnect, packaged installations,
+effective loader registry modifications and DH/Chunky on both loaders remain
+for subsequent increments.

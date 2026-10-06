@@ -140,9 +140,9 @@ public final class NativeMaterialIntegrationTest {
                 for(int z:new int[]{-32,-1})for(int x:new int[]{-64,-33}) {
                     var pos=new ChunkPos(x,z);var tag=storage.read(pos);
                     if(tag==null)throw new AssertionError("Missing material-only corner chunk "+pos);
-                    var sections=tag.getListOrEmpty("sections");
+                    var sections=McaTestSections.terrain(tag,min,height);
                     for(int i=0;i<sections.size();i++) {
-                        var section=sections.getCompound(i).orElseThrow();
+                        var section=sections.get(i);
                         int y0=section.getByte("Y").orElseThrow()*16;
                         var blocks=codec.parse(NbtOps.INSTANCE,section.getCompoundOrEmpty("block_states")).getOrThrow();
                         for(int y=0;y<16;y++)if(y0+y>=min && y0+y<min+height)
