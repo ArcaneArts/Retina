@@ -23,4 +23,6 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: retina
-          path: fabric/build/libs/*.jar
+          path: |
+            fabric/build/libs/*.jar
+            neoforge/build/libs/*.jar

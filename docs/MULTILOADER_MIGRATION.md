@@ -17,8 +17,8 @@ callbacks. Server initialization never references the client platform.
 
 Fabric entrypoints and adapters live in `art.arcane.retina.fabric`. Shared
 runtime code has no Fabric API imports. Shared sources/resources now live in
-`common`, with Fabric adapters and transformation tests in `fabric`. NeoForge
-integration follows in a separate increment.
+`common`, with Fabric adapters and transformation tests in `fabric` and NeoForge
+adapters in `neoforge`.
 
 ## Baseline and first increment
 
@@ -82,5 +82,37 @@ uses double arithmetic. All 24 offsets have identical f32 representations, and
 the compared MCA output is identical. Both exports and the precise differences
 are retained; this is not a claim that the serialized profiles are identical.
 
-NeoForge runtime, packaged-loader and compatibility validation remain pending,
-as do the two baseline fixture failures recorded above.
+## NeoForge registration, lifecycle and client integration
+
+The third increment adds NeoForge 26.3.0.51-beta with ModDevGradle 2.0.147.
+Its mod event bus registers the generator, biome-source and structure-piece
+codecs and the optional clientbound telemetry payload. The main event bus
+supplies server ticks and server-level unload callbacks. A client-only entrypoint
+registers the payload receiver and supplies startup and disconnect callbacks;
+the dedicated server loads without client initialization.
+
+The combined distribution build passed. Both loader jars contain byte-identical
+native libraries for macOS, Linux and Windows on x64 and ARM64, compiled once
+per target. Shared native unit tests run once in the combined build. The host
+build and Fabric transformation tests also passed.
+
+Fresh NeoForge dedicated worlds passed in MCA and individual-chunk modes.
+The MCA world also reopened and passed live preview promotion, concurrent
+requested-region publication, GPU lighting, timing payload round trips and
+normal save/shutdown. Actual NeoForge client startup passed the debug-registry
+invoker, native extraction and Metal initialization and then shut down normally.
+On this macOS QA host, OpenGL presentation initially stalled with VSync; the
+isolated QA directory disables VSync in `options.txt` and FML's optional early
+loading window in `config/fml.toml`. These are local QA settings, not mod defaults.
+
+NeoForge development runs use Java 25's `--illegal-native-access=allow` in
+addition to `--enable-native-access=ALL-UNNAMED`. FML constructs named mod modules
+after JVM startup, so naming `retina` in the startup native-access flag produces
+an unknown-module warning without enabling that module. The explicit Java 25
+policy permits the native calls and was verified in real server/client runs.
+Packaged installations require the same JVM arguments; later Java versions
+need separate validation.
+
+Integrated gameplay, actual client telemetry and reconnect, packaged-loader,
+modified-registry and NeoForge DH/Chunky validation remain pending, as do the
+two baseline fixture failures recorded above.

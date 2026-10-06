@@ -15,9 +15,9 @@ project(':common').tasks.matching { it.group == 'verification' && !(it.name in [
     }
 }
 
-tasks.named('assemble') { dependsOn ':fabric:assemble' }
-tasks.named('check') { dependsOn ':common:check', ':fabric:check' }
-tasks.named('build') { dependsOn ':common:build', ':fabric:build' }
+tasks.named('assemble') { dependsOn ':fabric:assemble', ':neoforge:assemble' }
+tasks.named('check') { dependsOn ':common:check', ':fabric:check', ':neoforge:check' }
+tasks.named('build') { dependsOn ':common:build', ':fabric:build', ':neoforge:build' }
 
 ['test', 'runClient', 'runServer'].each { name ->
     tasks.register(name) {
@@ -30,6 +30,10 @@ tasks.named('build') { dependsOn ':common:build', ':fabric:build' }
     tasks.register("runFabric${side}") {
         group = 'fabric'
         dependsOn ":fabric:run${side}"
+    }
+    tasks.register("runNeoForge${side}") {
+        group = 'neoforge'
+        dependsOn ":neoforge:run${side}"
     }
 }
 tasks.register('exportFabricBenchmarkProfile') {
