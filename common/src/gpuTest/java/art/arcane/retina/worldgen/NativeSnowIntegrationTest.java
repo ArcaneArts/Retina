@@ -68,7 +68,7 @@ public final class NativeSnowIntegrationTest {
                     NativeTerrain.instance().generateRegion(region,directory.resolve("r.-1.-1.mca"),SharedConstants.getCurrentVersion().dataVersion().version(),name);
                     try(var storage=new RegionFileStorage(new RegionStorageInfo("retina-snow",Level.OVERWORLD,"chunk"),directory,false)) {
                         var nbt=storage.read(new ChunkPos(-1,-1));require(nbt!=null,"MCA chunk is readable");
-                        for(var value:nbt.getListOrEmpty("sections")) {
+                        for(var value:McaTestSections.terrain(nbt,request.minY(),request.height())) {
                             var section=(net.minecraft.nbt.CompoundTag)value;int y=section.getByteOr("Y",(byte)0)*16;
                             var blocks=codec.parse(net.minecraft.nbt.NbtOps.INSTANCE,section.getCompoundOrEmpty("block_states")).getOrThrow();
                             for(int dy=0;dy<16;dy++)for(int z=0;z<16;z++)for(int x=0;x<16;x++) {

@@ -177,6 +177,7 @@ public final class NativeBlockFeatureIntegrationTest {
         }
         DecorationProfile.finishPlacements(recipes,palette);DecorationProfile.materialFlags(profile,palette);
         var materials=palette.keySet().toArray(BlockState[]::new);var serialized=new JsonArray();for(var state:materials)serialized.add(BlockState.CODEC.encodeStart(JsonOps.INSTANCE,state).getOrThrow());profile.add("materials",serialized);
+        profile.add("lighting",LightingProfile.export(palette.keySet(),profile.getAsJsonObject("lighting").get("sky").getAsBoolean()));
         var carveable=new JsonArray();for(var state:materials)carveable.add(!state.isAir() && state.getFluidState().isEmpty() && !state.is(BlockTags.UNCARVABLE));profile.add("carveable",carveable);
         int offset=profile.getAsJsonArray("decorations").size();profile.getAsJsonArray("decorations").addAll(recipes);
         var fixtures=List.of(new Fixture(profile,materials,96,384),new Fixture(profile,materials,32,384),new Fixture(profile,materials,96,384,true),new Fixture(profile,materials,90,384,false,18));
@@ -244,6 +245,7 @@ public final class NativeBlockFeatureIntegrationTest {
         palette.computeIfAbsent(flowing,ignored->palette.size());
         DecorationProfile.finishPlacements(recipes,palette);DecorationProfile.materialFlags(profile,palette);
         var materials=palette.keySet().toArray(BlockState[]::new);var serialized=new JsonArray();for(var state:materials)serialized.add(BlockState.CODEC.encodeStart(JsonOps.INSTANCE,state).getOrThrow());profile.add("materials",serialized);
+        profile.add("lighting",LightingProfile.export(palette.keySet(),profile.getAsJsonObject("lighting").get("sky").getAsBoolean()));
         var carveable=new JsonArray();for(var state:materials)carveable.add(!state.isAir() && state.getFluidState().isEmpty() && !state.is(BlockTags.UNCARVABLE));profile.add("carveable",carveable);
         int offset=profile.getAsJsonArray("decorations").size();profile.getAsJsonArray("decorations").addAll(recipes);
         var fixtures=List.of(new Fixture(profile,materials,96,384),new Fixture(profile,materials,32,384),new Fixture(profile,materials,58,384),new Fixture(profile,materials,90,384,false,18),new Fixture(profile,materials,90,384,false,30),new Fixture(profile,materials,96,384,true),new Fixture(profile,materials,96,384,false,-1,flowing));
@@ -428,6 +430,7 @@ public final class NativeBlockFeatureIntegrationTest {
         profile.add("simple_current_omissions",pending.get("simple_current_omissions"));
         DecorationProfile.materialFlags(profile,palette);
         var materials=palette.keySet().toArray(BlockState[]::new);var serialized=new JsonArray();for(var state:materials)serialized.add(BlockState.CODEC.encodeStart(JsonOps.INSTANCE,state).getOrThrow());profile.add("materials",serialized);
+        profile.add("lighting",LightingProfile.export(palette.keySet(),profile.getAsJsonObject("lighting").get("sky").getAsBoolean()));
         int offset=profile.getAsJsonArray("decorations").size();profile.getAsJsonArray("decorations").addAll(synthetic);
         int checked=0,empty=0;
         for(int[] terrain:List.of(new int[]{32,384},new int[]{58,384},new int[]{96,384},new int[]{96,168})) {
@@ -796,8 +799,9 @@ public final class NativeBlockFeatureIntegrationTest {
                     try(var data=nativeTerrain.generate(r)) {
                         var bytes=data.blocks().toArray(ValueLayout.JAVA_SHORT);var maps=new int[6][256];
                         if(crowns)canopyChunks.put(pos,bytes);
+                        var sections=McaTestSections.terrain(tag,-64,384);
                         for(int section=0;section<24;section++) {
-                            var blocks=codec.parse(NbtOps.INSTANCE,tag.getListOrEmpty("sections").getCompound(section).orElseThrow().getCompoundOrEmpty("block_states")).getOrThrow();
+                            var blocks=codec.parse(NbtOps.INSTANCE,sections.get(section).getCompoundOrEmpty("block_states")).getOrThrow();
                             for(int y=0;y<16;y++)for(int bz=0;bz<16;bz++)for(int bx=0;bx<16;bx++) {
                                 int layer=section*16+y,c=bz*16+bx;var state=blocks.get(bx,y,bz);
                                 require(state.equals(materials[Short.toUnsignedInt(bytes[layer*256+c])]),"ordered feature chunk/MCA mismatch: "+name+"/"+pos+"/"+bx+","+(layer-64)+","+bz);

@@ -74,6 +74,9 @@ final class RegistryGpuProgramIntegrationChecks {
         var data=JsonParser.parseString(profile.json()).getAsJsonObject();
         for(var biome:data.getAsJsonArray("biomes"))biome.getAsJsonObject().add("lakes",JsonParser.parseString("[0,0]"));
         var program=data.getAsJsonObject("registry_program");
+        // This fixture measures final-density lattice interpolation. Composition
+        // evaluates its factors separately and has its own analytic checks.
+        program.addProperty("density_composition",false);
         program.add("surface",JsonParser.parseString("[-64,8,0]"));
         // D(x,y,z) = (H(x,z)-y) * A(x,y,z). Both factors vary over
         // the lattice, so height blending cannot reproduce its zero crossing.

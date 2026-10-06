@@ -201,11 +201,11 @@ public final class NativeBiomeIntegrationTest {
                         var bytes = data.blocks().toArray(java.lang.foreign.ValueLayout.JAVA_SHORT);
                         checkPlantPartners(profile, bytes, pos);
                         if (chunkBlocks.containsKey(pos)) require(Arrays.equals(bytes, chunkBlocks.get(pos)), "decorations agree before and after region dispatch at " + pos);
-                        var sections = tag.getListOrEmpty("sections");
+                        var sections = McaTestSections.terrain(tag,-64,384);
                         var biomeSamples = nativeTerrain.sampleBiomes(r);
                         var actualHeights = new int[Heightmap.Types.values().length][256];
                         for (int sectionIndex = 0; sectionIndex < 24; sectionIndex++) {
-                            var section = sections.getCompound(sectionIndex).orElseThrow();
+                            var section = sections.get(sectionIndex);
                             var blocks = codec.parse(NbtOps.INSTANCE, section.getCompoundOrEmpty("block_states")).getOrThrow();
                             var biomeTag = section.getCompoundOrEmpty("biomes");
                             var palette = biomeTag.getListOrEmpty("palette");
@@ -339,9 +339,9 @@ public final class NativeBiomeIntegrationTest {
             var codec = PalettedContainer.codecRW(BlockState.CODEC, Strategy.createForBlockStates(Block.BLOCK_STATE_REGISTRY), Blocks.AIR.defaultBlockState());
             try (var storage = new RegionFileStorage(new RegionStorageInfo("retina-jungle-test", Level.OVERWORLD, "chunk"), directory, false)) {
                 for (var pos : List.of(new ChunkPos(0, 0), new ChunkPos(3, 3))) {
-                    var expected = load.apply(pos); var sections = storage.read(pos).getListOrEmpty("sections");
+                    var expected = load.apply(pos); var sections = McaTestSections.terrain(storage.read(pos),-64,384);
                     for (int section = 0; section < 24; section++) {
-                        var decoded = codec.parse(NbtOps.INSTANCE, sections.getCompound(section).orElseThrow().getCompoundOrEmpty("block_states")).getOrThrow();
+                        var decoded = codec.parse(NbtOps.INSTANCE, sections.get(section).getCompoundOrEmpty("block_states")).getOrThrow();
                         for (int y = 0; y < 16; y++) for (int z = 0; z < 16; z++) for (int x = 0; x < 16; x++)
                             require(decoded.get(x, y, z).equals(profile.materials()[Short.toUnsignedInt(expected[(section * 16 + y) * 256 + z * 16 + x])]), "jungle trees, vines and cocoa match between chunk and region assembly at " + pos);
                     }

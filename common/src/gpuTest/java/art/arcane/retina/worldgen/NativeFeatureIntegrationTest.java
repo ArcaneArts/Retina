@@ -139,6 +139,12 @@ public final class NativeFeatureIntegrationTest {
     private static JsonObject cave(JsonObject json, String name) {
         var result = only(json,"minecraft:plains"); var entries = result.getAsJsonArray("biomes");
         var cave = find(json,"minecraft:" + name).deepCopy();
+        // Isolate the registered-material cave adapter. Modern loaded patch and
+        // column recipes own these budgets and suppress the adapter in production;
+        // blockFeatureTest checks their actual placement against Minecraft.
+        cave.add("decorations",new JsonArray());
+        var features=cave.getAsJsonObject("cave_features");
+        for(String owner:List.of("registered_floor_patch","registered_ceiling_patch","registered_vines"))features.addProperty(owner,false);
         cave.add("climate", array(0,-1,-1,1)); cave.add("cave_depth", array(0,2)); entries.add(cave);
         return result;
     }
