@@ -43,6 +43,16 @@ final class TerrainQa {
         if(stages.chunks()==0 || stages.gpuJobs()==0 || stages.workerNanos()==0)throw new IllegalStateException("Live terrain did not record stage timings");
         if(generator.regionMode() && (stages.nanos(NativeTimings.NBT)==0 || stages.nanos(NativeTimings.COMPRESS)==0 || stages.nanos(NativeTimings.IO)==0))throw new IllegalStateException("MCA serialization stages were not recorded");
         if(stages.gpuMeasured() && (stages.nanos(NativeTimings.HEIGHT)==0 || stages.nanos(NativeTimings.CAVE_DENSITY)==0 || stages.nanos(NativeTimings.CAVE_MASK)==0))throw new IllegalStateException("Live GPU stages missing timestamps");
+        if(Boolean.getBoolean("retina.qa.lighting")) {
+            if(!generator.regionMode() || stages.nanos(NativeTimings.LIGHT_HOST)==0)throw new IllegalStateException("Fresh MCA lighting QA did not use the GPU");
+            if(stages.lightingMeasured() && stages.nanos(NativeTimings.LIGHT_SPREAD)==0)throw new IllegalStateException("GPU lighting has no propagation timestamp");
+            // Exercise the actual Fabric hook at an unlit ring / prelit interior boundary.
+            for(var pos:java.util.List.of(new net.minecraft.world.level.ChunkPos(0,3),new net.minecraft.world.level.ChunkPos(1,3)))
+                if(!level.getChunk(pos.x(),pos.z()).isLightCorrect())throw new IllegalStateException("Live mixed lighting seam did not activate");
+            Retina.LOGGER.info("QA_EVT {\"event\":\"minecraft_live_gpu_region_lighting\",\"status\":\"pass\",\"context\":{\"host_ms_region\":{},\"device_ms_region\":{},\"gpu_timestamps\":{}}}",
+                    stages.nanos(NativeTimings.LIGHT_HOST)*1024.0/(Math.max(1,stages.chunks())*1e6),
+                    (stages.nanos(NativeTimings.LIGHT_SKY)+stages.nanos(NativeTimings.LIGHT_SPREAD)+stages.nanos(NativeTimings.LIGHT_PACK))*1024.0/(Math.max(1,stages.chunks())*1e6),stages.lightingMeasured());
+        }
         generator.metrics().nativeTimings(stages);
         var snapshot=generator.metrics().snapshot();
         var sessionStages=snapshot.stages();

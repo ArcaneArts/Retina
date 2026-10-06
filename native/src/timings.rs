@@ -3,8 +3,8 @@
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Instant;
 
-pub const VERSION: u32 = 7;
-pub const STAGES: usize = 29;
+pub const VERSION: u32 = 8;
+pub const STAGES: usize = 33;
 pub const QUEUE: usize = 0;
 pub const ENCODE: usize = 1;
 pub const WAIT_COPY: usize = 2;
@@ -34,9 +34,13 @@ pub const PROVIDER_NOISE: usize = 25;
 pub const LAKE_CANDIDATES: usize = 26;
 pub const LAKE_DENSITY: usize = 27;
 pub const LAKE_REDUCE: usize = 28;
+pub const LIGHT_HOST: usize = 29;
+pub const LIGHT_SKY: usize = 30;
+pub const LIGHT_SPREAD: usize = 31;
+pub const LIGHT_PACK: usize = 32;
 
 #[repr(C)]
-#[derive(Default, Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug)]
 pub struct Snapshot {
     pub version: u32,
     pub flags: u32,
@@ -44,6 +48,18 @@ pub struct Snapshot {
     pub gpu_columns: u64,
     pub gpu_jobs: u64,
     pub nanos: [u64; STAGES],
+}
+impl Default for Snapshot {
+    fn default() -> Self {
+        Self {
+            version: 0,
+            flags: 0,
+            chunks: 0,
+            gpu_columns: 0,
+            gpu_jobs: 0,
+            nanos: [0; STAGES],
+        }
+    }
 }
 pub struct Timings {
     chunks: AtomicU64,
@@ -67,7 +83,9 @@ impl Timings {
     pub fn device(&self, stage: usize, nanos: u64) {
         self.add(stage, nanos);
         self.flags.fetch_or(
-            1 | if stage == ORE_MASK { 2 } else { 0 } | if stage == PROVIDER_NOISE { 4 } else { 0 },
+            1 | if stage == ORE_MASK { 2 } else { 0 }
+                | if stage == PROVIDER_NOISE { 4 } else { 0 }
+                | if stage == LIGHT_SKY { 8 } else { 0 },
             Ordering::Relaxed,
         );
     }

@@ -343,8 +343,19 @@ fn generate_region_inner(
                     Ok(geology::RegionPlan::Cpu(vec![Vec::new(); 1024]))
                 }
             })?;
+            // Fresh complete regions have all final neighbors. Repairs keep Minecraft lighting.
+            let lighting = profile
+                .as_deref()
+                .and_then(|p| p.lighting.as_ref())
+                .filter(|_| {
+                    // Anvil stores section Y as a signed byte, including light-only padding.
+                    requests.len() == 1024
+                        && origin.min_y / 16 > -128
+                        && (origin.min_y + origin.height as i32) / 16 <= 127
+                        && std::env::var("RETINA_GPU_LIGHTING").as_deref() != Ok("0")
+                });
             let parallel_start = Instant::now();
-            let records = requests
+            let records: Result<Vec<PreparedRecord>, String> = requests
                 .par_iter()
                 // Amortize scratch/compressor setup over small batches without changing slot order.
                 .with_min_len(8)
@@ -417,6 +428,12 @@ fn generate_region_inner(
                         });
                         timings.time(timings::VEGETATION, || plant_updates.finish(p, &mut blocks));
                     }
+                    if lighting.is_some() {
+                        return Ok(PreparedRecord::Blocks(
+                            blocks,
+                            structure_data.map(|d| d.tag),
+                        ));
+                    }
                     timings.time(timings::NBT, || {
                         encode_chunk(
                             request,
@@ -427,6 +444,7 @@ fn generate_region_inner(
                             profile.as_deref(),
                             cave_mask.as_deref(),
                             structure_data.as_ref().map(|data| &data.tag),
+                            None,
                             scratch,
                         )
                     });
@@ -438,12 +456,66 @@ fn generate_region_inner(
                             .compressor
                             .zlib_compress(&scratch.nbt.0, &mut scratch.compressed)
                             .map_err(|e| e.to_string())?;
-                        Ok(scratch.compressed[..size].to_vec())
+                        Ok(PreparedRecord::Compressed(
+                            scratch.compressed[..size].to_vec(),
+                        ))
                     })
                 })
                 .collect();
             parallel_nanos += parallel_start.elapsed().as_nanos() as u64;
-            records
+            let records = records?;
+            if let Some(lighting) = lighting {
+                let (blocks, structures): (Vec<_>, Vec<_>) = records
+                    .into_iter()
+                    .map(|record| match record {
+                        PreparedRecord::Blocks(blocks, data) => (blocks, data),
+                        PreparedRecord::Compressed(_) => unreachable!(),
+                    })
+                    .unzip();
+                // GPU lighting completes before any chunk is encoded/compressed or published.
+                let lights = crate::lighting::region(engine, origin, lighting, &blocks, &job)?;
+                let encoding_start = Instant::now();
+                let records = requests
+                    .par_iter()
+                    .enumerate()
+                    .with_min_len(8)
+                    .map_init(ChunkScratch::default, |scratch, (i, &request)| {
+                        timings.time(timings::NBT, || {
+                            encode_chunk(
+                                request,
+                                field.chunk(request.chunk_x, request.chunk_z),
+                                &blocks[i],
+                                data_version,
+                                biome,
+                                profile.as_deref(),
+                                cave_mask.as_deref(),
+                                structures[i].as_ref(),
+                                lights[i].as_deref(),
+                                scratch,
+                            )
+                        });
+                        timings.time(timings::COMPRESS, || {
+                            let bound = scratch.compressor.zlib_compress_bound(scratch.nbt.0.len());
+                            scratch.compressed.resize(bound, 0);
+                            let size = scratch
+                                .compressor
+                                .zlib_compress(&scratch.nbt.0, &mut scratch.compressed)
+                                .map_err(|e| e.to_string())?;
+                            Ok(scratch.compressed[..size].to_vec())
+                        })
+                    })
+                    .collect();
+                parallel_nanos += encoding_start.elapsed().as_nanos() as u64;
+                records
+            } else {
+                Ok(records
+                    .into_iter()
+                    .map(|record| match record {
+                        PreparedRecord::Compressed(bytes) => bytes,
+                        PreparedRecord::Blocks(_, _) => unreachable!(),
+                    })
+                    .collect())
+            }
         })
     };
     let records = records?;
@@ -643,6 +715,7 @@ fn chunk_nbt_blocks(
         profile,
         cave_mask,
         structure_data,
+        None,
         &mut scratch,
     );
     scratch.nbt.0
@@ -686,6 +759,10 @@ impl PaletteScratch {
             }
         }
     }
+}
+enum PreparedRecord {
+    Compressed(Vec<u8>),
+    Blocks(Vec<u16>, Option<serde_json::Value>),
 }
 struct ChunkScratch {
     blocks: Vec<u16>,
@@ -741,6 +818,7 @@ fn encode_chunk(
     profile: Option<&WorldProfile>,
     cave_mask: Option<&crate::geology::CaveMask>,
     structure_data: Option<&serde_json::Value>,
+    lighting: Option<&[u8]>,
     scratch: &mut ChunkScratch,
 ) {
     let heights: [i32; COLUMNS] = std::array::from_fn(|i| columns[i].height);
@@ -758,12 +836,28 @@ fn encode_chunk(
     nbt.int("xPos", request.chunk_x);
     nbt.int("zPos", request.chunk_z);
     nbt.int("yPos", request.min_y / 16);
-    // Terrain and features are complete. Minecraft calculates lighting before activation.
-    nbt.string("Status", "minecraft:features");
-    nbt.byte("isLightOn", 0);
+    // Interior lighting is complete; the outer ring retains normal Minecraft lighting.
+    nbt.string(
+        "Status",
+        if lighting.is_some() {
+            "minecraft:light"
+        } else {
+            "minecraft:features"
+        },
+    );
+    nbt.byte("isLightOn", i8::from(lighting.is_some()));
     nbt.long("LastUpdate", 0);
     nbt.long("InhabitedTime", 0);
-    nbt.list("sections", 10, request.height as usize / 16);
+    nbt.list(
+        "sections",
+        10,
+        request.height as usize / 16 + if lighting.is_some() { 2 } else { 0 },
+    );
+    if let Some(light) = lighting {
+        nbt.byte("Y", (request.min_y / 16 - 1) as i8);
+        section_light(nbt, &light[..4096]);
+        nbt.end();
+    }
     let lowest = *heights.iter().min().unwrap();
     let highest = *heights.iter().max().unwrap();
     for section in 0..request.height as i32 / 16 {
@@ -839,7 +933,18 @@ fn encode_chunk(
             nbt.text(biome);
             nbt.end();
         }
+        if let Some(light) = lighting {
+            section_light(
+                nbt,
+                &light[(section as usize + 1) * 4096..(section as usize + 2) * 4096],
+            );
+        }
         nbt.end(); // Section compound.
+    }
+    if let Some(light) = lighting {
+        nbt.byte("Y", ((request.min_y + request.height as i32) / 16) as i8);
+        section_light(nbt, &light[light.len() - 4096..]);
+        nbt.end();
     }
     nbt.compound("Heightmaps");
     let bits = 32 - request.height.leading_zeros(); // ceil(log2(height + 1)).
@@ -916,6 +1021,21 @@ fn encode_chunk(
     }
     nbt.list("PostProcessing", 9, 0);
     nbt.end();
+}
+
+/// One GPU byte per voxel -> Minecraft's two nibble arrays. Omit uniform zero layers.
+fn section_light(nbt: &mut Nbt, light: &[u8]) {
+    for (name, shift) in [("BlockLight", 0), ("SkyLight", 4)] {
+        if light.iter().any(|&v| (v >> shift) & 15 != 0) {
+            nbt.named(7, name);
+            nbt.0.extend_from_slice(&2048i32.to_be_bytes());
+            nbt.0.extend(
+                light
+                    .chunks_exact(2)
+                    .map(|pair| ((pair[0] >> shift) & 15) | (((pair[1] >> shift) & 15) << 4)),
+            );
+        }
+    }
 }
 
 fn palette_bits(length: usize) -> u32 {

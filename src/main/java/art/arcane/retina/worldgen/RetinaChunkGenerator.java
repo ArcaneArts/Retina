@@ -136,11 +136,17 @@ public final class RetinaChunkGenerator extends ChunkGenerator {
     public void bindWorld(RegistryAccess registry,long seed,net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplateManager templates,boolean structures) {
         bindWorld(registry,seed,PalettedContainerFactory.create(registry),StructureProfile.Context.of(templates,structures));
     }
+    public void bindWorld(RegistryAccess registry,long seed,net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplateManager templates,boolean structures,boolean skyLight) {
+        bindWorld(registry,seed,PalettedContainerFactory.create(registry),StructureProfile.Context.of(templates,structures),skyLight);
+    }
 
     void bindWorld(HolderLookup.Provider registry, long seed, PalettedContainerFactory factory) {
         bindWorld(registry,seed,factory,StructureProfile.Context.NONE);
     }
     void bindWorld(HolderLookup.Provider registry, long seed, PalettedContainerFactory factory,StructureProfile.Context structures) {
+        bindWorld(registry,seed,factory,structures,true);
+    }
+    void bindWorld(HolderLookup.Provider registry, long seed, PalettedContainerFactory factory,StructureProfile.Context structures,boolean skyLight) {
         closePreviews();
         heightCache.clear();
         biomeCache.clear();
@@ -148,7 +154,7 @@ public final class RetinaChunkGenerator extends ChunkGenerator {
         containerFactory = factory;
         worldSeed = seed;
         if (getBiomeSource() instanceof RetinaBiomeSource biomes) {
-            profile = BiomeTerrainProfile.load(registry, biomes, minY, height, seed, settings.orElseGet(() -> registry.lookupOrThrow(net.minecraft.core.registries.Registries.NOISE_SETTINGS).getOrThrow(NoiseGeneratorSettings.OVERWORLD)).value(),structures,densityComposition);
+            profile = BiomeTerrainProfile.load(registry, biomes, minY, height, seed, settings.orElseGet(() -> registry.lookupOrThrow(net.minecraft.core.registries.Registries.NOISE_SETTINGS).getOrThrow(NoiseGeneratorSettings.OVERWORLD)).value(),structures,densityComposition,skyLight);
             biomes.bind((x, y, z) -> biomeAt(x * 4, y * 4, z * 4), (x,y,z) -> searchBiomeAt(x*4,y*4,z*4));
         }
         metrics.startNativeTimings(NativeTerrain.instance().timings(profile == null ? 0 : profile.nativeId()));
