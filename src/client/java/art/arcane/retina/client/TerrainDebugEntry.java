@@ -3,9 +3,7 @@ package art.arcane.retina.client;
 import art.arcane.retina.Retina;
 import art.arcane.retina.worldgen.RetinaChunkGenerator;
 import art.arcane.retina.worldgen.TerrainStatsPayload;
-import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
-import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
-import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.debug.DebugScreenDisplayer;
 import net.minecraft.client.gui.components.debug.DebugScreenEntries;
 import net.minecraft.client.gui.components.debug.DebugScreenEntry;
@@ -18,12 +16,12 @@ import net.minecraft.world.level.chunk.LevelChunk;
 public final class TerrainDebugEntry implements DebugScreenEntry {
     private static volatile TerrainStatsPayload remote = TerrainStatsPayload.INACTIVE;
 
-    public static void initialize() {
+    public static void initialize(RetinaClientPlatform platform) {
         var id = Retina.id("generation");
         DebugScreenEntries.register(id, new TerrainDebugEntry());
-        ClientLifecycleEvents.CLIENT_STARTED.register(client -> client.debugEntries.setStatus(id, DebugScreenEntryStatus.IN_OVERLAY));
-        ClientPlayNetworking.registerGlobalReceiver(TerrainStatsPayload.TYPE, (payload, context) -> remote = payload);
-        ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> remote = TerrainStatsPayload.INACTIVE);
+        platform.onClientStarted(() -> Minecraft.getInstance().debugEntries.setStatus(id, DebugScreenEntryStatus.IN_OVERLAY));
+        platform.registerTerrainStatsReceiver(payload -> remote = payload);
+        platform.onDisconnect(() -> remote = TerrainStatsPayload.INACTIVE);
     }
 
     @Override

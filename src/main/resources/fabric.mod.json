@@ -12,8 +12,8 @@
   "license": "All-Rights-Reserved",
   "environment": "*",
   "entrypoints": {
-    "main": ["art.arcane.retina.Retina"],
-    "client": ["art.arcane.retina.client.RetinaClient"]
+    "main": ["art.arcane.retina.fabric.RetinaFabric"],
+    "client": ["art.arcane.retina.fabric.RetinaFabricClient"]
   },
   "mixins": [
     "retina.mixins.json",
