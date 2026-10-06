@@ -1,0 +1,29 @@
+{
+  "schema": "cantrip.run-configuration",
+  "version": 1,
+  "id": "93e8c360-e9e7-444e-92f3-8f70a7ea3ffb",
+  "name": "Run Client",
+  "provider": "shell",
+  "workingDirectory": ".",
+  "target": {
+    "kind": "command",
+    "command": "./gradlew runClient"
+  },
+  "commandOverride": null,
+  "arguments": [],
+  "environment": {
+    "includeCodexEnvironment": true,
+    "files": [],
+    "variables": [],
+    "secrets": []
+  },
+  "beforeLaunch": [],
+  "platformOverrides": {},
+  "options": {
+    "shell": "automatic",
+    "login": true
+  },
+  "stop": {
+    "gracePeriodMs": 3000
+  }
+}
