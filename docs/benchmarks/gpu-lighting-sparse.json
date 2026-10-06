@@ -1,0 +1,1417 @@
+{
+  "hardware": "Apple M4 Max",
+  "backend": "Metal",
+  "date": "2026-10-05",
+  "base_commit": "108e0d6",
+  "original_library_byte_parity": true,
+  "runs": [
+    {
+      "iterations": 21,
+      "warmups": 3,
+      "fixtures": [
+        {
+          "name": "boundary-false-3",
+          "side_chunks": 3,
+          "height": 64,
+          "sha256": "ee961e92ad4f21f2180e880c05620c4c651170bd8d906a75b56b3b3f3c2d4182",
+          "modes": {
+            "dense": {
+              "host": {
+                "median_ms": 1.221542,
+                "p95_ms": 1.746042
+              },
+              "device": {
+                "median_ms": 0.711,
+                "p95_ms": 1.062624
+              },
+              "propagation": {
+                "median_ms": 0.506041,
+                "p95_ms": 0.746833
+              }
+            },
+            "sparse": {
+              "host": {
+                "median_ms": 0.91825,
+                "p95_ms": 1.150625
+              },
+              "device": {
+                "median_ms": 0.207167,
+                "p95_ms": 0.307375
+              },
+              "propagation": {
+                "median_ms": 0.0,
+                "p95_ms": 0.0
+              }
+            }
+          },
+          "host_speedup": 1.3302934930574462
+        },
+        {
+          "name": "boundary-false-4",
+          "side_chunks": 3,
+          "height": 64,
+          "sha256": "c3fb32a535aaccc74e59795a7b3ecbdbe64c36264c21a8ef9b18d9b429e31d41",
+          "modes": {
+            "dense": {
+              "host": {
+                "median_ms": 0.848125,
+                "p95_ms": 0.941708
+              },
+              "device": {
+                "median_ms": 0.357251,
+                "p95_ms": 0.399542
+              },
+              "propagation": {
+                "median_ms": 0.232541,
+                "p95_ms": 0.26775
+              }
+            },
+            "sparse": {
+              "host": {
+                "median_ms": 0.909917,
+                "p95_ms": 1.08875
+              },
+              "device": {
+                "median_ms": 0.370791,
+                "p95_ms": 0.408876
+              },
+              "propagation": {
+                "median_ms": 0.244,
+                "p95_ms": 0.265334
+              }
+            }
+          },
+          "host_speedup": 0.9320905093541499
+        },
+        {
+          "name": "boundary-false-5",
+          "side_chunks": 3,
+          "height": 64,
+          "sha256": "e22cd259d66c2cb16874cac64319269f2e208657ea1c998cb1b1b098f37d073e",
+          "modes": {
+            "dense": {
+              "host": {
+                "median_ms": 0.93125,
+                "p95_ms": 1.083167
+              },
+              "device": {
+                "median_ms": 0.434791,
+                "p95_ms": 0.441458
+              },
+              "propagation": {
+                "median_ms": 0.309792,
+                "p95_ms": 0.318167
+              }
+            },
+            "sparse": {
+              "host": {
+                "median_ms": 0.98925,
+                "p95_ms": 1.100959
+              },
+              "device": {
+                "median_ms": 0.452291,
+                "p95_ms": 0.467208
+              },
+              "propagation": {
+                "median_ms": 0.325625,
+                "p95_ms": 0.340083
+              }
+            }
+          },
+          "host_speedup": 0.9413697245387921
+        },
+        {
+          "name": "boundary-true-3",
+          "side_chunks": 3,
+          "height": 64,
+          "sha256": "12214e9684457fc38192bb9109d9a809c9010678f63cd2029046601ed8ae0c29",
+          "modes": {
+            "dense": {
+              "host": {
+                "median_ms": 1.066959,
+                "p95_ms": 1.129375
+              },
+              "device": {
+                "median_ms": 0.488917,
+                "p95_ms": 0.492208
+              },
+              "propagation": {
+                "median_ms": 0.306083,
+                "p95_ms": 0.30875
+              }
+            },
+            "sparse": {
+              "host": {
+                "median_ms": 0.977375,
+                "p95_ms": 1.12175
+              },
+              "device": {
+                "median_ms": 0.185417,
+                "p95_ms": 0.268459
+              },
+              "propagation": {
+                "median_ms": 0.0,
+                "p95_ms": 0.075625
+              }
+            }
+          },
+          "host_speedup": 1.091657756746387
+        },
+        {
+          "name": "boundary-true-4",
+          "side_chunks": 3,
+          "height": 64,
+          "sha256": "e4ad686cd6bec42d8c005b73414786ec29dca4e56f7156ce938f2d90601da152",
+          "modes": {
+            "dense": {
+              "host": {
+                "median_ms": 0.945292,
+                "p95_ms": 1.073458
+              },
+              "device": {
+                "median_ms": 0.144417,
+                "p95_ms": 0.520166
+              },
+              "propagation": {
+                "median_ms": 0.0,
+                "p95_ms": 0.385875
+              }
+            },
+            "sparse": {
+              "host": {
+                "median_ms": 0.953959,
+                "p95_ms": 1.13025
+              },
+              "device": {
+                "median_ms": 0.395375,
+                "p95_ms": 0.402541
+              },
+              "propagation": {
+                "median_ms": 0.248625,
+                "p95_ms": 0.257125
+              }
+            }
+          },
+          "host_speedup": 0.9909147038814037
+        },
+        {
+          "name": "boundary-true-5",
+          "side_chunks": 3,
+          "height": 64,
+          "sha256": "0fdfe617b05499467897cfff6704a1afcde67efd0cfd253ce3a3c4faa210cabc",
+          "modes": {
+            "dense": {
+              "host": {
+                "median_ms": 1.093875,
+                "p95_ms": 1.242
+              },
+              "device": {
+                "median_ms": 0.574249,
+                "p95_ms": 0.630584
+              },
+              "propagation": {
+                "median_ms": 0.391041,
+                "p95_ms": 0.408417
+              }
+            },
+            "sparse": {
+              "host": {
+                "median_ms": 1.170333,
+                "p95_ms": 1.301292
+              },
+              "device": {
+                "median_ms": 0.576791,
+                "p95_ms": 0.63225
+              },
+              "propagation": {
+                "median_ms": 0.392541,
+                "p95_ms": 0.4285
+              }
+            }
+          },
+          "host_speedup": 0.9346698760096485
+        },
+        {
+          "name": "region-0",
+          "side_chunks": 12,
+          "height": 384,
+          "sha256": "4433f6cdf6fc4ee00e1d2b43a580afda1e2c96e8a9690e03d18a34f96bcb4c32",
+          "modes": {
+            "dense": {
+              "host": {
+                "median_ms": 23.074167,
+                "p95_ms": 23.711583
+              },
+              "device": {
+                "median_ms": 14.510333,
+                "p95_ms": 14.881668
+              },
+              "propagation": {
+                "median_ms": 13.529542,
+                "p95_ms": 13.890792
+              }
+            },
+            "sparse": {
+              "host": {
+                "median_ms": 12.049667,
+                "p95_ms": 12.481375
+              },
+              "device": {
+                "median_ms": 3.288041,
+                "p95_ms": 3.372541
+              },
+              "propagation": {
+                "median_ms": 2.279708,
+                "p95_ms": 2.356083
+              }
+            }
+          },
+          "host_speedup": 1.9149215492843081
+        },
+        {
+          "name": "region-10",
+          "side_chunks": 12,
+          "height": 384,
+          "sha256": "9b662aa30d43151155776430c891d097416fafa3fa3a752a4ecc958c44aeeaf7",
+          "modes": {
+            "dense": {
+              "host": {
+                "median_ms": 24.7165,
+                "p95_ms": 25.243083
+              },
+              "device": {
+                "median_ms": 15.293667,
+                "p95_ms": 15.775917
+              },
+              "propagation": {
+                "median_ms": 14.293083,
+                "p95_ms": 14.809
+              }
+            },
+            "sparse": {
+              "host": {
+                "median_ms": 12.783875,
+                "p95_ms": 13.293084
+              },
+              "device": {
+                "median_ms": 3.468084,
+                "p95_ms": 3.591708
+              },
+              "propagation": {
+                "median_ms": 2.416084,
+                "p95_ms": 2.540375
+              }
+            }
+          },
+          "host_speedup": 1.9334122087395254
+        },
+        {
+          "name": "region-20",
+          "side_chunks": 12,
+          "height": 384,
+          "sha256": "81c7a7e9c366971e487b202e15f2d1bfde82d178b6dafe1211fec711ead6a3f6",
+          "modes": {
+            "dense": {
+              "host": {
+                "median_ms": 24.102792,
+                "p95_ms": 24.621
+              },
+              "device": {
+                "median_ms": 15.215791,
+                "p95_ms": 15.530751
+              },
+              "propagation": {
+                "median_ms": 14.187042,
+                "p95_ms": 14.457042
+              }
+            },
+            "sparse": {
+              "host": {
+                "median_ms": 11.978625,
+                "p95_ms": 12.531167
+              },
+              "device": {
+                "median_ms": 3.156583,
+                "p95_ms": 3.260749
+              },
+              "propagation": {
+                "median_ms": 2.082,
+                "p95_ms": 2.17975
+              }
+            }
+          },
+          "host_speedup": 2.012150142441224
+        },
+        {
+          "name": "small-false-0",
+          "side_chunks": 3,
+          "height": 64,
+          "sha256": "4de704874a04d427d1a3c7d4e409c32e924c6f0f2eaf6703b39e907a4a4d8fc3",
+          "modes": {
+            "dense": {
+              "host": {
+                "median_ms": 0.963417,
+                "p95_ms": 1.199834
+              },
+              "device": {
+                "median_ms": 0.475958,
+                "p95_ms": 0.479458
+              },
+              "propagation": {
+                "median_ms": 0.341042,
+                "p95_ms": 0.344416
+              }
+            },
+            "sparse": {
+              "host": {
+                "median_ms": 1.054083,
+                "p95_ms": 1.188708
+              },
+              "device": {
+                "median_ms": 0.52875,
+                "p95_ms": 0.53175
+              },
+              "propagation": {
+                "median_ms": 0.391917,
+                "p95_ms": 0.395
+              }
+            }
+          },
+          "host_speedup": 0.9139859005410389
+        },
+        {
+          "name": "small-false-1",
+          "side_chunks": 3,
+          "height": 64,
+          "sha256": "29ad25e33ca7fab3174de0a71925436c98fea27505e82876d6bb0440f69a6193",
+          "modes": {
+            "dense": {
+              "host": {
+                "median_ms": 1.030292,
+                "p95_ms": 1.164959
+              },
+              "device": {
+                "median_ms": 0.476958,
+                "p95_ms": 0.483833
+              },
+              "propagation": {
+                "median_ms": 0.342875,
+                "p95_ms": 0.34825
+              }
+            },
+            "sparse": {
+              "host": {
+                "median_ms": 1.13,
+                "p95_ms": 1.282208
+              },
+              "device": {
+                "median_ms": 0.524042,
+                "p95_ms": 0.528542
+              },
+              "propagation": {
+                "median_ms": 0.386667,
+                "p95_ms": 0.39275
+              }
+            }
+          },
+          "host_speedup": 0.9117628318584071
+        },
+        {
+          "name": "small-false-2",
+          "side_chunks": 3,
+          "height": 64,
+          "sha256": "1cef492ff31235e591e5aa98d4883d54c09eda8e4f951758fed46a57f920fa2a",
+          "modes": {
+            "dense": {
+              "host": {
+                "median_ms": 0.990208,
+                "p95_ms": 1.129083
+              },
+              "device": {
+                "median_ms": 0.477625,
+                "p95_ms": 0.485708
+              },
+              "propagation": {
+                "median_ms": 0.3425,
+                "p95_ms": 0.350958
+              }
+            },
+            "sparse": {
+              "host": {
+                "median_ms": 1.152959,
+                "p95_ms": 1.276458
+              },
+              "device": {
+                "median_ms": 0.552083,
+                "p95_ms": 0.561751
+              },
+              "propagation": {
+                "median_ms": 0.415167,
+                "p95_ms": 0.424417
+              }
+            }
+          },
+          "host_speedup": 0.8588406005764297
+        },
+        {
+          "name": "small-true-0",
+          "side_chunks": 3,
+          "height": 64,
+          "sha256": "25288695621d674e818a6f9d037461439b03a873b1b7a542393cb407dd2b6c91",
+          "modes": {
+            "dense": {
+              "host": {
+                "median_ms": 1.025833,
+                "p95_ms": 1.124834
+              },
+              "device": {
+                "median_ms": 0.520458,
+                "p95_ms": 0.54375
+              },
+              "propagation": {
+                "median_ms": 0.33775,
+                "p95_ms": 0.358375
+              }
+            },
+            "sparse": {
+              "host": {
+                "median_ms": 1.164667,
+                "p95_ms": 1.375625
+              },
+              "device": {
+                "median_ms": 0.584416,
+                "p95_ms": 0.601251
+              },
+              "propagation": {
+                "median_ms": 0.396958,
+                "p95_ms": 0.411459
+              }
+            }
+          },
+          "host_speedup": 0.8807951113923551
+        },
+        {
+          "name": "small-true-1",
+          "side_chunks": 3,
+          "height": 64,
+          "sha256": "e2554301bce27adb56841ba234cc1dd8d0733cf2cd7a6e4c3973c9214a74624e",
+          "modes": {
+            "dense": {
+              "host": {
+                "median_ms": 1.052167,
+                "p95_ms": 1.215
+              },
+              "device": {
+                "median_ms": 0.510166,
+                "p95_ms": 0.545875
+              },
+              "propagation": {
+                "median_ms": 0.336625,
+                "p95_ms": 0.360625
+              }
+            },
+            "sparse": {
+              "host": {
+                "median_ms": 1.153958,
+                "p95_ms": 1.28925
+              },
+              "device": {
+                "median_ms": 0.57075,
+                "p95_ms": 0.593042
+              },
+              "propagation": {
+                "median_ms": 0.385708,
+                "p95_ms": 0.405083
+              }
+            }
+          },
+          "host_speedup": 0.9117896838533118
+        },
+        {
+          "name": "small-true-2",
+          "side_chunks": 3,
+          "height": 64,
+          "sha256": "9fa4f9552d41cb105a06d4db981a2ad9c72f12bd9ea1a8a641df1f9156305688",
+          "modes": {
+            "dense": {
+              "host": {
+                "median_ms": 1.099208,
+                "p95_ms": 1.348625
+              },
+              "device": {
+                "median_ms": 0.518167,
+                "p95_ms": 0.540417
+              },
+              "propagation": {
+                "median_ms": 0.335792,
+                "p95_ms": 0.355333
+              }
+            },
+            "sparse": {
+              "host": {
+                "median_ms": 1.228166,
+                "p95_ms": 1.477125
+              },
+              "device": {
+                "median_ms": 0.642666,
+                "p95_ms": 0.669959
+              },
+              "propagation": {
+                "median_ms": 0.459583,
+                "p95_ms": 0.481875
+              }
+            }
+          },
+          "host_speedup": 0.8949995358933563
+        }
+      ]
+    },
+    {
+      "iterations": 25,
+      "warmups": 3,
+      "fixtures": [
+        {
+          "name": "boundary-false-3",
+          "side_chunks": 3,
+          "height": 64,
+          "sha256": "ee961e92ad4f21f2180e880c05620c4c651170bd8d906a75b56b3b3f3c2d4182",
+          "modes": {
+            "dense": {
+              "host": {
+                "median_ms": 1.290083,
+                "p95_ms": 1.778541
+              },
+              "device": {
+                "median_ms": 0.630709,
+                "p95_ms": 1.077542
+              },
+              "propagation": {
+                "median_ms": 0.444084,
+                "p95_ms": 0.76175
+              }
+            },
+            "sparse": {
+              "host": {
+                "median_ms": 0.944833,
+                "p95_ms": 1.337042
+              },
+              "device": {
+                "median_ms": 0.208416,
+                "p95_ms": 0.3905
+              },
+              "propagation": {
+                "median_ms": 0.0,
+                "p95_ms": 0.0
+              }
+            }
+          },
+          "host_speedup": 1.3654084901776293
+        },
+        {
+          "name": "boundary-false-4",
+          "side_chunks": 3,
+          "height": 64,
+          "sha256": "c3fb32a535aaccc74e59795a7b3ecbdbe64c36264c21a8ef9b18d9b429e31d41",
+          "modes": {
+            "dense": {
+              "host": {
+                "median_ms": 0.90675,
+                "p95_ms": 1.006791
+              },
+              "device": {
+                "median_ms": 0.414959,
+                "p95_ms": 0.462833
+              },
+              "propagation": {
+                "median_ms": 0.269167,
+                "p95_ms": 0.301208
+              }
+            },
+            "sparse": {
+              "host": {
+                "median_ms": 0.992958,
+                "p95_ms": 1.180208
+              },
+              "device": {
+                "median_ms": 0.407792,
+                "p95_ms": 0.461083
+              },
+              "propagation": {
+                "median_ms": 0.264667,
+                "p95_ms": 0.29675
+              }
+            }
+          },
+          "host_speedup": 0.9131806179113315
+        },
+        {
+          "name": "boundary-false-5",
+          "side_chunks": 3,
+          "height": 64,
+          "sha256": "e22cd259d66c2cb16874cac64319269f2e208657ea1c998cb1b1b098f37d073e",
+          "modes": {
+            "dense": {
+              "host": {
+                "median_ms": 0.95525,
+                "p95_ms": 1.173375
+              },
+              "device": {
+                "median_ms": 0.435917,
+                "p95_ms": 0.464208
+              },
+              "propagation": {
+                "median_ms": 0.311042,
+                "p95_ms": 0.330209
+              }
+            },
+            "sparse": {
+              "host": {
+                "median_ms": 1.001083,
+                "p95_ms": 1.166833
+              },
+              "device": {
+                "median_ms": 0.454417,
+                "p95_ms": 0.486917
+              },
+              "propagation": {
+                "median_ms": 0.325833,
+                "p95_ms": 0.350333
+              }
+            }
+          },
+          "host_speedup": 0.9542165834401344
+        },
+        {
+          "name": "boundary-true-3",
+          "side_chunks": 3,
+          "height": 64,
+          "sha256": "12214e9684457fc38192bb9109d9a809c9010678f63cd2029046601ed8ae0c29",
+          "modes": {
+            "dense": {
+              "host": {
+                "median_ms": 1.097375,
+                "p95_ms": 1.240583
+              },
+              "device": {
+                "median_ms": 0.50625,
+                "p95_ms": 0.552166
+              },
+              "propagation": {
+                "median_ms": 0.312375,
+                "p95_ms": 0.34675
+              }
+            },
+            "sparse": {
+              "host": {
+                "median_ms": 0.970125,
+                "p95_ms": 1.167
+              },
+              "device": {
+                "median_ms": 0.197708,
+                "p95_ms": 0.285667
+              },
+              "propagation": {
+                "median_ms": 0.0,
+                "p95_ms": 0.079167
+              }
+            }
+          },
+          "host_speedup": 1.1311686638319804
+        },
+        {
+          "name": "boundary-true-4",
+          "side_chunks": 3,
+          "height": 64,
+          "sha256": "e4ad686cd6bec42d8c005b73414786ec29dca4e56f7156ce938f2d90601da152",
+          "modes": {
+            "dense": {
+              "host": {
+                "median_ms": 1.021167,
+                "p95_ms": 1.1525
+              },
+              "device": {
+                "median_ms": 0.479125,
+                "p95_ms": 0.531167
+              },
+              "propagation": {
+                "median_ms": 0.298667,
+                "p95_ms": 0.340542
+              }
+            },
+            "sparse": {
+              "host": {
+                "median_ms": 1.0685,
+                "p95_ms": 1.260375
+              },
+              "device": {
+                "median_ms": 0.473417,
+                "p95_ms": 0.584582
+              },
+              "propagation": {
+                "median_ms": 0.296084,
+                "p95_ms": 0.362416
+              }
+            }
+          },
+          "host_speedup": 0.9557014506317266
+        },
+        {
+          "name": "boundary-true-5",
+          "side_chunks": 3,
+          "height": 64,
+          "sha256": "0fdfe617b05499467897cfff6704a1afcde67efd0cfd253ce3a3c4faa210cabc",
+          "modes": {
+            "dense": {
+              "host": {
+                "median_ms": 1.302917,
+                "p95_ms": 1.485959
+              },
+              "device": {
+                "median_ms": 0.743208,
+                "p95_ms": 0.859332
+              },
+              "propagation": {
+                "median_ms": 0.490541,
+                "p95_ms": 0.585416
+              }
+            },
+            "sparse": {
+              "host": {
+                "median_ms": 1.389375,
+                "p95_ms": 1.587292
+              },
+              "device": {
+                "median_ms": 0.797501,
+                "p95_ms": 0.844584
+              },
+              "propagation": {
+                "median_ms": 0.538167,
+                "p95_ms": 0.586
+              }
+            }
+          },
+          "host_speedup": 0.9377720197930725
+        },
+        {
+          "name": "region-0",
+          "side_chunks": 12,
+          "height": 384,
+          "sha256": "4433f6cdf6fc4ee00e1d2b43a580afda1e2c96e8a9690e03d18a34f96bcb4c32",
+          "modes": {
+            "dense": {
+              "host": {
+                "median_ms": 23.288625,
+                "p95_ms": 24.353208
+              },
+              "device": {
+                "median_ms": 14.493208,
+                "p95_ms": 14.864458
+              },
+              "propagation": {
+                "median_ms": 13.531708,
+                "p95_ms": 13.883333
+              }
+            },
+            "sparse": {
+              "host": {
+                "median_ms": 12.00275,
+                "p95_ms": 12.825333
+              },
+              "device": {
+                "median_ms": 3.233834,
+                "p95_ms": 3.372999
+              },
+              "propagation": {
+                "median_ms": 2.214709,
+                "p95_ms": 2.316291
+              }
+            }
+          },
+          "host_speedup": 1.9402741038512006
+        },
+        {
+          "name": "region-10",
+          "side_chunks": 12,
+          "height": 384,
+          "sha256": "9b662aa30d43151155776430c891d097416fafa3fa3a752a4ecc958c44aeeaf7",
+          "modes": {
+            "dense": {
+              "host": {
+                "median_ms": 25.09275,
+                "p95_ms": 25.827375
+              },
+              "device": {
+                "median_ms": 15.785584,
+                "p95_ms": 16.409208
+              },
+              "propagation": {
+                "median_ms": 14.737792,
+                "p95_ms": 15.293375
+              }
+            },
+            "sparse": {
+              "host": {
+                "median_ms": 12.879833,
+                "p95_ms": 13.511667
+              },
+              "device": {
+                "median_ms": 3.56075,
+                "p95_ms": 3.787416
+              },
+              "propagation": {
+                "median_ms": 2.51525,
+                "p95_ms": 2.659
+              }
+            }
+          },
+          "host_speedup": 1.9482201360840625
+        },
+        {
+          "name": "region-20",
+          "side_chunks": 12,
+          "height": 384,
+          "sha256": "81c7a7e9c366971e487b202e15f2d1bfde82d178b6dafe1211fec711ead6a3f6",
+          "modes": {
+            "dense": {
+              "host": {
+                "median_ms": 23.460125,
+                "p95_ms": 24.729334
+              },
+              "device": {
+                "median_ms": 14.570084,
+                "p95_ms": 15.624958
+              },
+              "propagation": {
+                "median_ms": 13.572,
+                "p95_ms": 14.570792
+              }
+            },
+            "sparse": {
+              "host": {
+                "median_ms": 11.992416,
+                "p95_ms": 12.441291
+              },
+              "device": {
+                "median_ms": 3.002874,
+                "p95_ms": 3.249415
+              },
+              "propagation": {
+                "median_ms": 2.006708,
+                "p95_ms": 2.169208
+              }
+            }
+          },
+          "host_speedup": 1.9562467646219077
+        },
+        {
+          "name": "small-false-0",
+          "side_chunks": 3,
+          "height": 64,
+          "sha256": "4de704874a04d427d1a3c7d4e409c32e924c6f0f2eaf6703b39e907a4a4d8fc3",
+          "modes": {
+            "dense": {
+              "host": {
+                "median_ms": 1.019125,
+                "p95_ms": 1.125125
+              },
+              "device": {
+                "median_ms": 0.447374,
+                "p95_ms": 0.473375
+              },
+              "propagation": {
+                "median_ms": 0.321416,
+                "p95_ms": 0.338917
+              }
+            },
+            "sparse": {
+              "host": {
+                "median_ms": 1.190583,
+                "p95_ms": 1.341625
+              },
+              "device": {
+                "median_ms": 0.498834,
+                "p95_ms": 0.536042
+              },
+              "propagation": {
+                "median_ms": 0.370542,
+                "p95_ms": 0.398042
+              }
+            }
+          },
+          "host_speedup": 0.8559882007386298
+        },
+        {
+          "name": "small-false-1",
+          "side_chunks": 3,
+          "height": 64,
+          "sha256": "29ad25e33ca7fab3174de0a71925436c98fea27505e82876d6bb0440f69a6193",
+          "modes": {
+            "dense": {
+              "host": {
+                "median_ms": 0.967709,
+                "p95_ms": 1.108334
+              },
+              "device": {
+                "median_ms": 0.449999,
+                "p95_ms": 0.480458
+              },
+              "propagation": {
+                "median_ms": 0.323916,
+                "p95_ms": 0.346708
+              }
+            },
+            "sparse": {
+              "host": {
+                "median_ms": 1.082625,
+                "p95_ms": 1.214167
+              },
+              "device": {
+                "median_ms": 0.491875,
+                "p95_ms": 0.539041
+              },
+              "propagation": {
+                "median_ms": 0.363583,
+                "p95_ms": 0.410083
+              }
+            }
+          },
+          "host_speedup": 0.893854289343032
+        },
+        {
+          "name": "small-false-2",
+          "side_chunks": 3,
+          "height": 64,
+          "sha256": "1cef492ff31235e591e5aa98d4883d54c09eda8e4f951758fed46a57f920fa2a",
+          "modes": {
+            "dense": {
+              "host": {
+                "median_ms": 0.975791,
+                "p95_ms": 1.191958
+              },
+              "device": {
+                "median_ms": 0.450333,
+                "p95_ms": 0.467875
+              },
+              "propagation": {
+                "median_ms": 0.324333,
+                "p95_ms": 0.329916
+              }
+            },
+            "sparse": {
+              "host": {
+                "median_ms": 1.143209,
+                "p95_ms": 1.299375
+              },
+              "device": {
+                "median_ms": 0.5175,
+                "p95_ms": 0.562749
+              },
+              "propagation": {
+                "median_ms": 0.388791,
+                "p95_ms": 0.434958
+              }
+            }
+          },
+          "host_speedup": 0.8535543369585089
+        },
+        {
+          "name": "small-true-0",
+          "side_chunks": 3,
+          "height": 64,
+          "sha256": "25288695621d674e818a6f9d037461439b03a873b1b7a542393cb407dd2b6c91",
+          "modes": {
+            "dense": {
+              "host": {
+                "median_ms": 1.0505,
+                "p95_ms": 1.184625
+              },
+              "device": {
+                "median_ms": 0.50525,
+                "p95_ms": 0.516041
+              },
+              "propagation": {
+                "median_ms": 0.331917,
+                "p95_ms": 0.342583
+              }
+            },
+            "sparse": {
+              "host": {
+                "median_ms": 1.182917,
+                "p95_ms": 1.343333
+              },
+              "device": {
+                "median_ms": 0.553292,
+                "p95_ms": 0.571584
+              },
+              "propagation": {
+                "median_ms": 0.379167,
+                "p95_ms": 0.392666
+              }
+            }
+          },
+          "host_speedup": 0.8880589255205564
+        },
+        {
+          "name": "small-true-1",
+          "side_chunks": 3,
+          "height": 64,
+          "sha256": "e2554301bce27adb56841ba234cc1dd8d0733cf2cd7a6e4c3973c9214a74624e",
+          "modes": {
+            "dense": {
+              "host": {
+                "median_ms": 1.06825,
+                "p95_ms": 1.244959
+              },
+              "device": {
+                "median_ms": 0.505626,
+                "p95_ms": 0.512916
+              },
+              "propagation": {
+                "median_ms": 0.332459,
+                "p95_ms": 0.337959
+              }
+            },
+            "sparse": {
+              "host": {
+                "median_ms": 1.18125,
+                "p95_ms": 1.308083
+              },
+              "device": {
+                "median_ms": 0.552542,
+                "p95_ms": 0.571375
+              },
+              "propagation": {
+                "median_ms": 0.376792,
+                "p95_ms": 0.394125
+              }
+            }
+          },
+          "host_speedup": 0.9043386243386243
+        },
+        {
+          "name": "small-true-2",
+          "side_chunks": 3,
+          "height": 64,
+          "sha256": "9fa4f9552d41cb105a06d4db981a2ad9c72f12bd9ea1a8a641df1f9156305688",
+          "modes": {
+            "dense": {
+              "host": {
+                "median_ms": 1.073583,
+                "p95_ms": 1.217417
+              },
+              "device": {
+                "median_ms": 0.504001,
+                "p95_ms": 0.51575
+              },
+              "propagation": {
+                "median_ms": 0.33025,
+                "p95_ms": 0.343167
+              }
+            },
+            "sparse": {
+              "host": {
+                "median_ms": 1.282041,
+                "p95_ms": 1.454208
+              },
+              "device": {
+                "median_ms": 0.615959,
+                "p95_ms": 0.652917
+              },
+              "propagation": {
+                "median_ms": 0.439417,
+                "p95_ms": 0.476709
+              }
+            }
+          },
+          "host_speedup": 0.8374014559596767
+        }
+      ]
+    }
+  ],
+  "whole_region_interleaved": {
+    "profile_sha256": "2949064f5f62fc889b706b2c7911727e94e76c0cb40cf92f3e7340dd7732fea3",
+    "program_execution": "specialized",
+    "seed": 123456789,
+    "regions_per_mode": 16,
+    "order": "dense first on even region indices; sparse first on odd indices",
+    "conditions": "User confirmed concurrent compilation in other projects; substantial wall-time variability",
+    "summary": {
+      "dense": {
+        "average_region_ms": 978.9197499485454,
+        "median_region_ms": 988.5356670129113,
+        "light_host_ms": 343.012406125,
+        "light_spread_ms": 138.508937625,
+        "chunks_per_second": 1046.0510170050447
+      },
+      "sparse": {
+        "average_region_ms": 894.8499295074726,
+        "median_region_ms": 926.8184165121056,
+        "light_host_ms": 244.202130375,
+        "light_spread_ms": 48.4086638125,
+        "chunks_per_second": 1144.3259548152525
+      }
+    },
+    "identical_nbt_chunks": 16384,
+    "program_statuses": [
+      4
+    ],
+    "regions": [
+      {
+        "name": "dense-0",
+        "mode": "dense",
+        "ms": 1170.4395420383662,
+        "program_status": 4,
+        "lighting_host_ms": 391.921666,
+        "lighting_spread_ms": 127.040915
+      },
+      {
+        "name": "sparse-0",
+        "mode": "sparse",
+        "ms": 918.2700000237674,
+        "program_status": 4,
+        "lighting_host_ms": 280.138625,
+        "lighting_spread_ms": 53.506332
+      },
+      {
+        "name": "sparse-1",
+        "mode": "sparse",
+        "ms": 590.8699160208926,
+        "program_status": 4,
+        "lighting_host_ms": 202.238375,
+        "lighting_spread_ms": 39.692916
+      },
+      {
+        "name": "dense-1",
+        "mode": "dense",
+        "ms": 959.7547090379521,
+        "program_status": 4,
+        "lighting_host_ms": 314.922417,
+        "lighting_spread_ms": 145.773458
+      },
+      {
+        "name": "dense-2",
+        "mode": "dense",
+        "ms": 875.818874919787,
+        "program_status": 4,
+        "lighting_host_ms": 268.720583,
+        "lighting_spread_ms": 132.308832
+      },
+      {
+        "name": "sparse-2",
+        "mode": "sparse",
+        "ms": 1076.1304999468848,
+        "program_status": 4,
+        "lighting_host_ms": 215.574708,
+        "lighting_spread_ms": 27.840709
+      },
+      {
+        "name": "sparse-3",
+        "mode": "sparse",
+        "ms": 737.1537080034614,
+        "program_status": 4,
+        "lighting_host_ms": 244.917083,
+        "lighting_spread_ms": 64.481625
+      },
+      {
+        "name": "dense-3",
+        "mode": "dense",
+        "ms": 894.3411249201745,
+        "program_status": 4,
+        "lighting_host_ms": 359.945,
+        "lighting_spread_ms": 129.890918
+      },
+      {
+        "name": "dense-4",
+        "mode": "dense",
+        "ms": 588.8544170884416,
+        "program_status": 4,
+        "lighting_host_ms": 247.484041,
+        "lighting_spread_ms": 128.274374
+      },
+      {
+        "name": "sparse-4",
+        "mode": "sparse",
+        "ms": 998.4851659974083,
+        "program_status": 4,
+        "lighting_host_ms": 307.920416,
+        "lighting_spread_ms": 67.121459
+      },
+      {
+        "name": "sparse-5",
+        "mode": "sparse",
+        "ms": 620.3977080294862,
+        "program_status": 4,
+        "lighting_host_ms": 160.021667,
+        "lighting_spread_ms": 22.452584
+      },
+      {
+        "name": "dense-5",
+        "mode": "dense",
+        "ms": 1017.3166249878705,
+        "program_status": 4,
+        "lighting_host_ms": 359.1115,
+        "lighting_spread_ms": 135.840586
+      },
+      {
+        "name": "dense-6",
+        "mode": "dense",
+        "ms": 1107.6459579635412,
+        "program_status": 4,
+        "lighting_host_ms": 329.13475,
+        "lighting_spread_ms": 121.386417
+      },
+      {
+        "name": "sparse-6",
+        "mode": "sparse",
+        "ms": 1315.9826659830287,
+        "program_status": 4,
+        "lighting_host_ms": 271.762917,
+        "lighting_spread_ms": 60.497125
+      },
+      {
+        "name": "sparse-7",
+        "mode": "sparse",
+        "ms": 1006.3846670091152,
+        "program_status": 4,
+        "lighting_host_ms": 180.166709,
+        "lighting_spread_ms": 55.517876
+      },
+      {
+        "name": "dense-7",
+        "mode": "dense",
+        "ms": 1126.8429580377415,
+        "program_status": 4,
+        "lighting_host_ms": 319.715833,
+        "lighting_spread_ms": 148.035459
+      },
+      {
+        "name": "dense-8",
+        "mode": "dense",
+        "ms": 1195.7787909777835,
+        "program_status": 4,
+        "lighting_host_ms": 523.856917,
+        "lighting_spread_ms": 156.173292
+      },
+      {
+        "name": "sparse-8",
+        "mode": "sparse",
+        "ms": 958.1781249726191,
+        "program_status": 4,
+        "lighting_host_ms": 250.342084,
+        "lighting_spread_ms": 35.71125
+      },
+      {
+        "name": "sparse-9",
+        "mode": "sparse",
+        "ms": 559.2555410694331,
+        "program_status": 4,
+        "lighting_host_ms": 176.650042,
+        "lighting_spread_ms": 31.22108
+      },
+      {
+        "name": "dense-9",
+        "mode": "dense",
+        "ms": 906.5879160771146,
+        "program_status": 4,
+        "lighting_host_ms": 371.965791,
+        "lighting_spread_ms": 141.87225
+      },
+      {
+        "name": "dense-10",
+        "mode": "dense",
+        "ms": 1019.0517921000719,
+        "program_status": 4,
+        "lighting_host_ms": 312.744416,
+        "lighting_spread_ms": 123.334583
+      },
+      {
+        "name": "sparse-10",
+        "mode": "sparse",
+        "ms": 892.1384999994189,
+        "program_status": 4,
+        "lighting_host_ms": 198.707042,
+        "lighting_spread_ms": 46.439333
+      },
+      {
+        "name": "sparse-11",
+        "mode": "sparse",
+        "ms": 606.4308340428397,
+        "program_status": 4,
+        "lighting_host_ms": 197.609584,
+        "lighting_spread_ms": 48.789586
+      },
+      {
+        "name": "dense-11",
+        "mode": "dense",
+        "ms": 1155.6735830381513,
+        "program_status": 4,
+        "lighting_host_ms": 314.284209,
+        "lighting_spread_ms": 151.626541
+      },
+      {
+        "name": "dense-12",
+        "mode": "dense",
+        "ms": 769.2679580068216,
+        "program_status": 4,
+        "lighting_host_ms": 295.834625,
+        "lighting_spread_ms": 137.749584
+      },
+      {
+        "name": "sparse-12",
+        "mode": "sparse",
+        "ms": 1052.942540962249,
+        "program_status": 4,
+        "lighting_host_ms": 295.635709,
+        "lighting_spread_ms": 29.246873
+      },
+      {
+        "name": "sparse-13",
+        "mode": "sparse",
+        "ms": 604.8478339798748,
+        "program_status": 4,
+        "lighting_host_ms": 175.511375,
+        "lighting_spread_ms": 22.967332
+      },
+      {
+        "name": "dense-13",
+        "mode": "dense",
+        "ms": 936.1967920558527,
+        "program_status": 4,
+        "lighting_host_ms": 355.8875,
+        "lighting_spread_ms": 121.230834
+      },
+      {
+        "name": "dense-14",
+        "mode": "dense",
+        "ms": 1100.576666998677,
+        "program_status": 4,
+        "lighting_host_ms": 372.427583,
+        "lighting_spread_ms": 173.952375
+      },
+      {
+        "name": "sparse-14",
+        "mode": "sparse",
+        "ms": 1444.7643330786377,
+        "program_status": 4,
+        "lighting_host_ms": 386.629791,
+        "lighting_spread_ms": 101.360125
+      },
+      {
+        "name": "sparse-15",
+        "mode": "sparse",
+        "ms": 935.3668330004439,
+        "program_status": 4,
+        "lighting_host_ms": 363.407959,
+        "lighting_spread_ms": 67.692416
+      },
+      {
+        "name": "dense-15",
+        "mode": "dense",
+        "ms": 838.5682909283787,
+        "program_status": 4,
+        "lighting_host_ms": 350.241667,
+        "lighting_spread_ms": 141.652584
+      }
+    ]
+  }
+}
