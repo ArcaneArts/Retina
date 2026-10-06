@@ -1,0 +1,20 @@
+// Each loader compiles the same sources against its actual Minecraft runtime.
+sourceSets.main {
+    java.srcDir rootProject.file('common/src/main/java')
+    resources.srcDir rootProject.file('common/src/main/resources')
+}
+processResources {
+    from rootProject.tasks.named('packageNative')
+}
+base { archivesName = "retina-${project.name}-${minecraft_version}" }
+tasks.named('jar') {
+    from rootProject.tasks.named('packageCrossNatives')
+    from(rootProject.file('LICENSE')) { rename { "${it}_retina" } }
+}
+tasks.named('sourcesJar') {
+    exclude 'natives/**'
+    from(rootProject.file('native')) {
+        include 'Cargo.toml', 'Cargo.lock', 'src/**'
+        into 'native'
+    }
+}

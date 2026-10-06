@@ -1,0 +1,378 @@
+def nativeDirectory = rootProject.ext.nativeDirectory
+def nativeTarget = rootProject.ext.nativeTarget
+def nativeCargoCommand = rootProject.ext.nativeCargoCommand
+
+tasks.register('nativeUnitTest', Exec) {
+    group = 'verification'
+    dependsOn ':buildNative'
+    workingDir nativeDirectory
+    commandLine(nativeCargoCommand + ['test', '--release', '--locked', '--lib', '--target-dir', nativeTarget.get().asFile.absolutePath])
+}
+
+check.dependsOn 'nativeUnitTest'
+
+tasks.register('nativeGpuTest', Exec) {
+    group = 'verification'
+    description = 'Run concurrent chunk and height-query tests on the actual GPU.'
+    dependsOn ':buildNative'
+    mustRunAfter 'nativeUnitTest'
+    workingDir nativeDirectory
+    commandLine(nativeCargoCommand + ['test', '--release', '--locked', '--test', 'gpu', '--target-dir', nativeTarget.get().asFile.absolutePath, '--', '--nocapture'])
+}
+
+tasks.register('gpuTest', JavaExec) {
+    group = 'verification'
+    description = 'Test the GPU pipeline and Java/Rust bridge with parallel requests.'
+    dependsOn 'nativeGpuTest', 'nativeMappingGpuTest', 'nativeOreGpuTest', 'nativeCoordinateGpuTest', 'nativeInterpolationGpuTest', 'materialTest', 'aquiferTest', 'gpuTestClasses'
+    classpath = sourceSets.gpuTest.runtimeClasspath
+    mainClass = 'art.arcane.retina.worldgen.NativeTerrainIntegrationTest'
+    javaLauncher = javaToolchains.launcherFor {
+        languageVersion = JavaLanguageVersion.of(25)
+    }
+    jvmArgs '--enable-native-access=ALL-UNNAMED'
+}
+
+tasks.register('nativeMappingGpuTest', Exec) {
+    group = 'verification'
+    description = 'Verify real-device readback reuse and interpreter recovery after shader compilation fails.'
+    dependsOn ':buildNative'
+    mustRunAfter 'nativeGpuTest'
+    workingDir nativeDirectory
+    commandLine(nativeCargoCommand + ['test', '--release', '--locked', '--lib',
+            '--target-dir', nativeTarget.get().asFile.absolutePath, '--', '--ignored', '--nocapture',
+            'gpu::mapping_tests::cancelled_mapping_cleanup_allows_buffer_reuse',
+            'gpu::mapping_tests::rejected_specialization_leaves_interpreter_device_usable'])
+}
+
+tasks.register('nativeOreGpuTest', Exec) {
+    group = 'verification'
+    description = 'Compare compact GPU ore masks with CPU host/exposure replay and distant coordinate bounds.'
+    dependsOn ':buildNative'
+    mustRunAfter 'nativeGpuTest'
+    workingDir nativeDirectory
+    commandLine(nativeCargoCommand + ['test', '--release', '--locked', '--lib',
+            'real_gpu_compact_ores_preserve_hosts_exposure_edges_and_reused_buffers',
+            '--target-dir', nativeTarget.get().asFile.absolutePath, '--', '--ignored', '--nocapture'])
+}
+
+tasks.register('coordinateTest', JavaExec) {
+    group = 'verification'
+    description = 'Validate registered SliceFunction export against Minecraft samplers and GPU chunk fields.'
+    dependsOn 'gpuTestClasses'
+    classpath = sourceSets.gpuTest.runtimeClasspath
+    mainClass = 'art.arcane.retina.worldgen.NativeCoordinateIntegrationTest'
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
+    jvmArgs '--enable-native-access=ALL-UNNAMED'
+}
+
+tasks.register('materialTest', JavaExec) {
+    group = 'verification'
+    description = 'Compare GPU vertical material runs with Minecraft material evaluators.'
+    dependsOn 'gpuTestClasses'
+    classpath = sourceSets.gpuTest.runtimeClasspath
+    mainClass = 'art.arcane.retina.worldgen.NativeMaterialIntegrationTest'
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
+    jvmArgs '--enable-native-access=ALL-UNNAMED'
+}
+
+tasks.register('interpolationTest', JavaExec) {
+    group = 'verification'
+    description = 'Validate registered interpolation fields and nested/sliced scopes against Minecraft samplers.'
+    dependsOn 'gpuTestClasses', ':packageNative'
+    classpath = sourceSets.gpuTest.runtimeClasspath
+    mainClass = 'art.arcane.retina.worldgen.NativeInterpolationIntegrationTest'
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
+    jvmArgs '--enable-native-access=ALL-UNNAMED'
+    environment 'RETINA_DENSITY_COMPOSITION', '1'
+}
+
+tasks.register('nativeInterpolationGpuTest', Exec) {
+    group = 'verification'
+    description = 'Compare nested interpolation roots and GPU-noise corners across both GPU evaluators.'
+    dependsOn 'interpolationTest'
+    workingDir nativeDirectory
+    environment 'RETINA_PROGRAM_PARITY_PROFILE', file('build/registry-interpolation-profile.json').absolutePath
+    commandLine(nativeCargoCommand + ['test', '--release', '--locked', '--lib',
+            'specialized_roots_match_interpreter_on_real_gpu',
+            '--target-dir', nativeTarget.get().asFile.absolutePath, '--', '--ignored', '--nocapture'])
+}
+
+tasks.register('nativeInterpolationPrimedGpuTest', Exec) {
+    group = 'verification'
+    description = 'Compare primed lake corners and interval endpoints with an independent GPU interpreter.'
+    dependsOn 'interpolationTest'
+    workingDir nativeDirectory
+    environment 'RETINA_PROGRAM_PARITY_PROFILE', file('build/registry-interpolation-profile.json').absolutePath
+    environment 'RETINA_PROGRAM_PARITY_PRIMED_CORNERS', '1'
+    commandLine(nativeCargoCommand + ['test', '--release', '--locked', '--lib',
+            'specialized_roots_match_interpreter_on_real_gpu',
+            '--target-dir', nativeTarget.get().asFile.absolutePath, '--', '--ignored', '--nocapture'])
+}
+gpuTest.dependsOn 'nativeInterpolationPrimedGpuTest'
+
+tasks.register('nativeLakeSparseGpuTest', Exec) {
+    group = 'verification'
+    description = 'Compare sparse lake-probe interpolation samples with an uncached GPU interpreter.'
+    dependsOn 'interpolationTest'
+    workingDir nativeDirectory
+    def sourceFixture = file('build/registry-interpolation-profile.json')
+    def sparseFixture = file('build/registry-sparse-lake-profile.json')
+    environment 'RETINA_PROGRAM_PARITY_PROFILE', sparseFixture.absolutePath
+    doFirst {
+        // Exercise actual nested inputs on several binary grids; primary roots
+        // use original XYZ while nested remappings retain their own semantics.
+        def fixture = new groovy.json.JsonSlurper().parse(sourceFixture)
+        def registry = fixture.registry_program
+        def cells = [[2,4],[8,4],[4,16],[2,4],[8,4],[4,2],[4,8]]
+        registry.interpolations.eachWithIndex { field, index -> field.cell = cells[index] }
+        def nodes = registry.programs[1].nodes.take(4)
+        (0..<6).each { index -> nodes.add([op:28,a:1,b:2,c:3,p:[index,0,0,0]]) }
+        registry.programs[1] = [nodes:nodes,roots:(4..<10).toList()]
+        sparseFixture.text = groovy.json.JsonOutput.toJson(fixture)
+    }
+    commandLine(nativeCargoCommand + ['test', '--release', '--locked', '--lib',
+            'sparse_lake_roots_match_uncached_gpu',
+            '--target-dir', nativeTarget.get().asFile.absolutePath, '--', '--ignored', '--nocapture'])
+}
+gpuTest.dependsOn 'nativeLakeSparseGpuTest'
+
+['Specialized', 'Interpreter', 'Far'].each { mode ->
+    tasks.register("nativeInterpolationCache${mode}GpuTest", Exec) {
+        group = 'verification'
+        description = "Compare resident interpolation fields with uncached GPU roots (${mode})."
+        dependsOn 'interpolationTest'
+        workingDir nativeDirectory
+        environment 'RETINA_PROGRAM_PARITY_PROFILE', file('build/registry-interpolation-profile.json').absolutePath
+        environment 'RETINA_PROGRAM_PARITY_INTERPOLATION_CACHE', '1'
+        if (mode == 'Interpreter') environment 'RETINA_PROGRAM_PARITY_INTERPRETER', '1'
+        else environment 'RETINA_PROGRAM_PARITY_CACHE', '1'
+        if (mode == 'Far') environment 'RETINA_PROGRAM_PARITY_FAR', '1'
+        commandLine(nativeCargoCommand + ['test', '--release', '--locked', '--lib',
+                'specialized_roots_match_interpreter_on_real_gpu',
+                '--target-dir', nativeTarget.get().asFile.absolutePath, '--', '--ignored', '--nocapture'])
+    }
+    tasks.named('gpuTest') { dependsOn "nativeInterpolationCache${mode}GpuTest" }
+}
+
+tasks.register('nativeCoordinateGpuTest', Exec) {
+    group = 'verification'
+    description = 'Compare scoped GPU noise, interpreter and specialization with actual-device coordinate identities.'
+    dependsOn 'coordinateTest'
+    mustRunAfter 'nativeOreGpuTest'
+    workingDir nativeDirectory
+    environment 'RETINA_PROGRAM_PARITY_PROFILE', file('build/registry-coordinate-profile.json').absolutePath
+    commandLine(nativeCargoCommand + ['test', '--release', '--locked', '--lib',
+            'specialized_roots_match_interpreter_on_real_gpu',
+            '--target-dir', nativeTarget.get().asFile.absolutePath, '--', '--ignored', '--nocapture'])
+}
+
+tasks.register('regionTest', JavaExec) {
+    group = 'verification'
+    description = 'Generate Rust MCA files and verify them with Minecraft decoders, including existing edits.'
+    dependsOn 'gpuTestClasses'
+    classpath = sourceSets.gpuTest.runtimeClasspath
+    mainClass = 'art.arcane.retina.worldgen.NativeRegionIntegrationTest'
+    javaLauncher = javaToolchains.launcherFor {
+        languageVersion = JavaLanguageVersion.of(25)
+    }
+    jvmArgs '--enable-native-access=ALL-UNNAMED'
+}
+
+tasks.register('lightingTest', JavaExec) {
+    group = 'verification'
+    description = 'Compare GPU lighting with Minecraft and validate mixed lit/unlit MCA regions.'
+    dependsOn 'gpuTestClasses', ':packageNative'
+    classpath = sourceSets.gpuTest.runtimeClasspath
+    mainClass = 'art.arcane.retina.worldgen.NativeLightingIntegrationTest'
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
+    if (providers.gradleProperty('lightingRegionDirectory').isPresent()) args providers.gradleProperty('lightingRegionDirectory').get()
+    jvmArgs '--enable-native-access=ALL-UNNAMED'
+}
+
+tasks.register('biomeTest', JavaExec) {
+    group = 'verification'
+    description = 'Run GPU biomes and decode a full MCA using Minecraft block and biome palettes.'
+    dependsOn 'gpuTestClasses'
+    classpath = sourceSets.gpuTest.runtimeClasspath
+    mainClass = 'art.arcane.retina.worldgen.NativeBiomeIntegrationTest'
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
+    jvmArgs '--enable-native-access=ALL-UNNAMED'
+}
+
+tasks.register('registryTest', JavaExec) {
+    group = 'verification'
+    description = 'Load actual Retina presets with pending registry references, as world creation does.'
+    dependsOn 'gpuTestClasses'
+    classpath = sourceSets.gpuTest.runtimeClasspath
+    mainClass = 'art.arcane.retina.worldgen.NativeRegistryLoadingTest'
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
+    if (providers.gradleProperty('testPack').isPresent()) args providers.gradleProperty('testPack').get()
+}
+check.dependsOn 'registryTest'
+
+tasks.register('geologyTest', JavaExec) {
+    group = 'verification'
+    description = 'Validate registry-derived parallel ores, GPU cave masks and exposure rules.'
+    dependsOn 'gpuTestClasses'
+    classpath = sourceSets.gpuTest.runtimeClasspath
+    mainClass = 'art.arcane.retina.worldgen.NativeGeologyIntegrationTest'
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
+    jvmArgs '--enable-native-access=ALL-UNNAMED'
+}
+
+tasks.register('featureTest', JavaExec) {
+    group = 'verification'
+    description = 'Validate GPU cave biomes, native cave decorations, ravines, lake basins and terracotta bands.'
+    dependsOn 'gpuTestClasses'
+    classpath = sourceSets.gpuTest.runtimeClasspath
+    mainClass = 'art.arcane.retina.worldgen.NativeFeatureIntegrationTest'
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
+    jvmArgs '--enable-native-access=ALL-UNNAMED'
+}
+
+tasks.register('snowTest', JavaExec) {
+    group = 'verification'
+    description = 'Check loaded snow support, bare frozen oceans and MCA/chunk consistency.'
+    dependsOn 'gpuTestClasses', ':packageNative'
+    classpath = sourceSets.gpuTest.runtimeClasspath
+    mainClass = 'art.arcane.retina.worldgen.NativeSnowIntegrationTest'
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
+    jvmArgs '--enable-native-access=ALL-UNNAMED'
+}
+
+tasks.register('nativeColumnInterpreterGpuTest', Exec) {
+    group = 'verification'
+    description = 'Compare compact X/Z-cache schedules against uncached GPU graphs.'
+    dependsOn 'nativeLakeSparseGpuTest'
+    workingDir nativeDirectory
+    environment 'RETINA_PROGRAM_PARITY_PROFILE', rootProject.layout.buildDirectory.file('registry-sparse-lake-profile.json').get().asFile.absolutePath
+    commandLine(nativeCargoCommand + ['test', '--release', '--locked', '--lib',
+            'column_interpreter_roots_match_raw_gpu', '--target-dir', nativeTarget.get().asFile.absolutePath,
+            '--', '--ignored', '--nocapture'])
+}
+gpuTest.dependsOn 'nativeColumnInterpreterGpuTest'
+gpuTest.dependsOn 'snowTest'
+
+tasks.register('aquiferTest', JavaExec) {
+    group = 'verification'
+    description = 'Compare actual GPU local fluids and pressure barriers with Minecraft aquifer equations.'
+    dependsOn 'gpuTestClasses', ':packageNative'
+    classpath = sourceSets.gpuTest.runtimeClasspath
+    mainClass = 'art.arcane.retina.worldgen.NativeAquiferIntegrationTest'
+    jvmArgs '--enable-native-access=ALL-UNNAMED'
+}
+
+tasks.register('decorationCountTest', JavaExec) {
+    group = 'verification'
+    description = 'Compare sparse GPU placement counts with actual Minecraft noise and vanilla/Terralith registries.'
+    dependsOn 'gpuTestClasses', ':packageNative'
+    classpath = sourceSets.gpuTest.runtimeClasspath
+    mainClass = 'art.arcane.retina.worldgen.NativeDecorationCountIntegrationTest'
+    jvmArgs '--enable-native-access=ALL-UNNAMED'
+    if (providers.gradleProperty('testPack').isPresent()) args providers.gradleProperty('testPack').get()
+}
+
+tasks.register('blockFeatureTest', JavaExec) {
+    group = 'verification'
+    description = 'Compare native registered columns, bamboo and aquatic blocks with actual Minecraft feature code.'
+    dependsOn 'gpuTestClasses', ':packageNative'
+    classpath = sourceSets.gpuTest.runtimeClasspath
+    mainClass = 'art.arcane.retina.worldgen.NativeBlockFeatureIntegrationTest'
+    jvmArgs '--enable-native-access=ALL-UNNAMED'
+    if (providers.gradleProperty('testPack').isPresent()) args providers.gradleProperty('testPack').get()
+}
+
+tasks.register('providerNoiseTest', JavaExec) {
+    group = 'verification'
+    description = 'Compare sparse registered provider noise with Minecraft stacks at near and far XYZ positions.'
+    dependsOn 'gpuTestClasses', ':packageNative'
+    classpath = sourceSets.gpuTest.runtimeClasspath
+    mainClass = 'art.arcane.retina.worldgen.NativeProviderNoiseIntegrationTest'
+    jvmArgs '--enable-native-access=ALL-UNNAMED'
+    if (providers.gradleProperty('testPack').isPresent()) args providers.gradleProperty('testPack').get()
+}
+
+tasks.register('previewTest', JavaExec) {
+    group = 'verification'
+    description = 'Validate DH-style surface generation, temporary MCA cache sharing, eviction, promotion and cleanup.'
+    dependsOn 'gpuTestClasses'
+    classpath = sourceSets.gpuTest.runtimeClasspath
+    mainClass = 'art.arcane.retina.worldgen.NativePreviewIntegrationTest'
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
+    jvmArgs '--enable-native-access=ALL-UNNAMED'
+}
+
+tasks.register('datapackTest', JavaExec) {
+    group = 'verification'
+    description = 'Load real datapacks through Minecraft and validate retained Retina GPU MCA generation.'
+    dependsOn 'gpuTestClasses'
+    classpath = sourceSets.gpuTest.runtimeClasspath
+    mainClass = 'art.arcane.retina.worldgen.NativeDatapackIntegrationTest'
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
+    jvmArgs '--enable-native-access=ALL-UNNAMED'
+    args providers.gradleProperty('testDatapack').getOrElse('run/datapacks/Terralith.zip')
+    if (providers.gradleProperty('testSupplement').isPresent()) args providers.gradleProperty('testSupplement').get()
+}
+
+tasks.register('structureTest', JavaExec) {
+    group = 'verification'
+    description = 'Validate registry-derived Rust jigsaw structures, loot NBT and chunk/MCA boundaries on the real GPU.'
+    dependsOn 'gpuTestClasses', ':packageNative'
+    classpath = sourceSets.gpuTest.runtimeClasspath
+    mainClass = 'art.arcane.retina.worldgen.NativeStructureIntegrationTest'
+    jvmArgs '--enable-native-access=ALL-UNNAMED'
+}
+
+tasks.register('locateTest', JavaExec) {
+    group = 'verification'
+    description = 'Compare direct GPU queries and locate ordering with generated quart biomes and saved starts.'
+    dependsOn 'gpuTestClasses', ':packageNative'
+    classpath = sourceSets.gpuTest.runtimeClasspath
+    mainClass = 'art.arcane.retina.worldgen.NativeLocateIntegrationTest'
+    jvmArgs '--enable-native-access=ALL-UNNAMED'
+    if (providers.gradleProperty('testDatapack').isPresent()) args providers.gradleProperty('testDatapack').get()
+}
+
+tasks.register('landscapeTest', JavaExec) {
+    group = 'verification'
+    description = 'Compare GPU landscape distribution against registered vanilla terrain and validate stage telemetry.'
+    dependsOn 'gpuTestClasses', ':packageNative'
+    classpath = sourceSets.gpuTest.runtimeClasspath
+    mainClass = 'art.arcane.retina.worldgen.NativeLandscapeIntegrationTest'
+    jvmArgs '--enable-native-access=ALL-UNNAMED'
+}
+
+tasks.register('shoreTest', JavaExec) {
+    group = 'verification'
+    description = 'Validate registered coastal biomes, water predicates and GPU surface sediments.'
+    dependsOn 'gpuTestClasses', ':packageNative'
+    classpath = sourceSets.gpuTest.runtimeClasspath
+    mainClass = 'art.arcane.retina.worldgen.NativeShoreIntegrationTest'
+    jvmArgs '--enable-native-access=ALL-UNNAMED'
+}
+
+tasks.register('exportBenchmarkProfile', JavaExec) {
+    group = 'verification'
+    description = 'Export actual world registries including structure templates for native benchmarks.'
+    dependsOn 'gpuTestClasses', ':packageNative'
+    classpath = sourceSets.gpuTest.runtimeClasspath
+    mainClass = 'art.arcane.retina.worldgen.NativeProfileExport'
+    jvmArgs '--enable-native-access=ALL-UNNAMED'
+    args providers.gradleProperty('benchmarkProfile').getOrElse('build/benchmark-vanilla-profile.json')
+    if (providers.gradleProperty('benchmarkPack').isPresent()) args providers.gradleProperty('benchmarkPack').get()
+}
+
+tasks.register('nativeAquiferColumnsGpuTest', Exec) {
+    group = 'verification'
+    description = 'Compare local aquifer X/Z values against uncached GPU graphs at many heights.'
+    dependsOn 'exportBenchmarkProfile'
+    workingDir nativeDirectory
+    environment 'RETINA_PROGRAM_PARITY_PROFILE', rootProject.file(providers.gradleProperty('benchmarkProfile').getOrElse('build/benchmark-vanilla-profile.json')).absolutePath
+    commandLine(nativeCargoCommand + ['test', '--release', '--locked', '--jobs', '2', '--lib',
+            'aquifer_column_roots_match_raw_gpu', '--target-dir', nativeTarget.get().asFile.absolutePath,
+            '--', '--ignored', '--nocapture'])
+}
+gpuTest.dependsOn 'nativeAquiferColumnsGpuTest'
+
+// Keep existing benchmark/profile output paths relative to the repository root.
+tasks.withType(JavaExec).configureEach { workingDir rootProject.projectDir }

@@ -1,0 +1,72 @@
+plugins { id 'net.fabricmc.fabric-loom' }
+apply from: rootProject.file('gradle/java-conventions.gradle')
+
+loom {
+    splitEnvironmentSourceSets()
+
+    runs.configureEach {
+        vmArg '--enable-native-access=ALL-UNNAMED'
+        if (providers.gradleProperty('retinaQa').isPresent()) {
+            vmArg '-Dretina.qa=true'
+            if (providers.gradleProperty('retinaClientStartupQa').isPresent()) vmArg '-Dretina.qa.client.startup=true'
+            if (providers.gradleProperty('retinaPromotionQa').isPresent()) vmArg '-Dretina.qa.promotion=true'
+            if (providers.gradleProperty('retinaPipelineQa').isPresent()) vmArg '-Dretina.qa.pipeline=true'
+            if (providers.gradleProperty('retinaTimingsQa').isPresent()) vmArg '-Dretina.qa.timings=true'
+            if (providers.gradleProperty('retinaLightingQa').isPresent()) vmArg '-Dretina.qa.lighting=true'
+            if (providers.gradleProperty('retinaStructuresQa').isPresent()) vmArg '-Dretina.qa.structures=true'
+            if (providers.gradleProperty('retinaStructuresReopenQa').isPresent()) vmArg '-Dretina.qa.structures.reopen=true'
+        }
+    }
+
+    runs.client {
+        runDir rootProject.file(providers.gradleProperty('retinaClientRunDir').getOrElse('run')).absolutePath
+    }
+    runs.server {
+        runDir rootProject.file(providers.gradleProperty('retinaDatapackQa').getOrElse('run')).absolutePath
+    }
+
+    mods {
+        retina {
+            sourceSet sourceSets.main
+            sourceSet sourceSets.client
+        }
+    }
+}
+
+apply from: rootProject.file('gradle/loader-sources.gradle')
+sourceSets.client {
+    java.srcDir rootProject.file('common/src/client/java')
+    resources.srcDir rootProject.file('common/src/client/resources')
+}
+sourceSets {
+    gpuTest {
+        java.srcDir rootProject.file('common/src/gpuTest/java')
+        compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
+        runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath
+    }
+}
+dependencies {
+    minecraft "com.mojang:minecraft:${minecraft_version}"
+    implementation "net.fabricmc:fabric-loader:${loader_version}"
+    implementation "net.fabricmc.fabric-api:fabric-api:${fabric_api_version}"
+    testImplementation "net.fabricmc:fabric-loader-junit:${loader_version}"
+}
+test { useJUnitPlatform() }
+processResources {
+    def metadata = [version: project.version, minecraft_version: minecraft_version, loader_version: loader_version]
+    inputs.properties(metadata)
+    filesMatching('fabric.mod.json') { expand(metadata) }
+}
+
+tasks.register('exportBenchmarkProfile', JavaExec) {
+    group = 'verification'
+    description = 'Export the benchmark profile against Fabric Minecraft runtime classes.'
+    dependsOn 'gpuTestClasses'
+    classpath = sourceSets.gpuTest.runtimeClasspath
+    mainClass = 'art.arcane.retina.worldgen.NativeProfileExport'
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
+    jvmArgs '--enable-native-access=ALL-UNNAMED'
+    workingDir rootProject.projectDir
+    args providers.gradleProperty('benchmarkProfile').getOrElse('build/benchmark-fabric-profile.json')
+    if (providers.gradleProperty('benchmarkPack').isPresent()) args providers.gradleProperty('benchmarkPack').get()
+}

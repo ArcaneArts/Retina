@@ -15,6 +15,28 @@ runtime installation is needed.
 ./gradlew runClient -PretinaQa
 ```
 
+Shared Java, client display code, Minecraft-reference tests and resources live
+in `common/`; Fabric adapters and loader transformation tests live in `fabric/`.
+The standalone common compilation uses ModDevGradle/NeoForm and has no loader
+API dependency. `native/` remains the single Rust/WGSL engine, with native build,
+packaging and unit-test work shared by the root build.
+
+Root `runClient`, `runServer` and `test` commands remain Fabric aliases.
+`runFabricClient` and `runFabricServer` make the loader explicit. Use
+`:fabric:runClient`, `:fabric:runServer` or `:fabric:test` when passing task-specific
+options such as `--args` or `--tests`. Existing development worlds remain in the
+root `run/` directory; `-PretinaClientRunDir=/absolute/fresh/directory` selects an
+isolated client directory. NeoForge integration is the next migration increment.
+
+`exportBenchmarkProfile` runs the shared NeoForm reference exporter;
+`exportFabricBenchmarkProfile` uses Fabric's Minecraft runtime classes for
+baseline comparisons. See [migration validation](docs/MULTILOADER_MIGRATION.md)
+for the recorded precision difference between those classpaths.
+To exercise actual client entrypoints, the debug mixin and native extraction,
+run `runFabricClient -PretinaQa -PretinaClientStartupQa` with a fresh
+`-PretinaClientRunDir`. This hardware-dependent check logs a result and closes
+the client after startup.
+
 Native compilation defaults to two concurrent Cargo jobs in `.cargo/config.toml`.
 Development, release and build dependencies use two code generation units, leaving
 more CPU capacity for other applications. These settings apply to Gradle's native
@@ -592,7 +614,8 @@ client passed 30,760 loaded underground block comparisons and its heightmaps;
 the user confirmed caves/ores worked, then requested natural surface openings.
 The follow-up removes the roof cutoff and skips vegetation over entrances.
 
-`./gradlew build` runs Rust unit tests and creates `build/libs/retina-0.1.0.jar`.
+`./gradlew build` runs shared Rust unit tests once and creates
+`fabric/build/libs/retina-fabric-26.3-0.1.0.jar`.
 Distributable JAR tasks (`jar`, `assemble` and `build`) include the
 host library and cross-compile additional libraries:
 
