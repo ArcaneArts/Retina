@@ -1,0 +1,1262 @@
+{
+  "scope": "Registered narrow coastal biomes and exact height-cache component; complete Bend backend and Rust comparison remain unfinished",
+  "base_commit": "7362dd5f9a93d99f62f8254efd848df8f0852c8a",
+  "bend_version": "2.0.36",
+  "host": "macOS arm64, Apple M4 Max, Metal",
+  "cpu_workers": 2,
+  "nice": 10,
+  "source_sha256": {
+    "bend/binary.bend": "f716146b3a19403c4ad208ce37c2056f9ba023d6b76a3fecba5c3253185d9b68",
+    "bend/chunk.bend": "7aa37914a3941541f78909d0ab582ab956f972be7804c4abf97fdf07b839fe86",
+    "bend/chunk_catalog.bend": "666d5f98e2128a31a49f36ccdf0a1da7d7cb59067ce58d3cd1d0da3742963df3",
+    "bend/climate.bend": "57074782ae0f82c71d81fc5f21152af124a25c422b6ebd7a0d82037552ff2f19",
+    "bend/climate_batch.bend": "f65fbc7b463f5e093feb2364da0f504fa295088285917f7a04dc205bf1dc34fa",
+    "bend/compression.bend": "e42e1a312180ee0fce6faad39fc82b9a2e43ba05727e04d9a3c8e7651dd14130",
+    "bend/density.bend": "01beac1b7443695c1507293a7d916489ac5441235c1e07290330691864b56aae",
+    "bend/density_batch.bend": "51231a72efa798c9a31f1a6a841176ea50d1ac5644352b389e3d1a9bff30d99c",
+    "bend/density_lattice.bend": "0b02993df32e160b21c50b8ee33e003f2d7f3eb53645c91ab6699bed0e1a9ae8",
+    "bend/engine.bend": "dbf38229997b15fa50a9620ebbe0f4d229a45ee3bd898f5ee506a8a2da7feb92",
+    "bend/generated_chunk.bend": "53c9f0aa02add6f7c207d079481129178c6e2b96eda544f2952eb1744b8cd63f",
+    "bend/generated_region.bend": "a2969fa86cd4fa8becf2192eb3b662cf6415c68e28a272716a2d2627b3f82531",
+    "bend/heightmaps.bend": "0b69c87d24ec3b27cbb082bb394205765154bf78c5c4db2c226fbc4ba3e2d997",
+    "bend/material.bend": "fea1e62174797c5b44634f3674dfc550d0178f207524193ed0d9416fbbf70f64",
+    "bend/material_batch.bend": "e34ee066c23a5328d279c5137ce2d107f2e4df661d63d3de373970d5cbee2073",
+    "bend/material_columns.bend": "48b60b5502ae2ad68d699a36e9a339595151a1ae8c8eae40066cefb92bb4aaee",
+    "bend/material_columns_data.bend": "4d702d0723ca85d6a7ae0dea1dd3873ab67f8d5f248de8dcd9e9442bd6de22ef",
+    "bend/material_lazy.bend": "8675a4ea5d3e1b164d1d2a71b248c9ec23078c05da9880fb5470b543a6de1f10",
+    "bend/material_program.bend": "f4b7e78629f7eecd991418eb00fa3face480954b300fa996e370d4c16c35128c",
+    "bend/nbt.bend": "7063555acf523d12269bd152e1e32981534009785b6a7653509f1a108b18cb57",
+    "bend/noise.bend": "80485dd8d18580a1044c8e55dbd03dab1b8dbdd9aa6681e1b8f6743fce928c1d",
+    "bend/numbers.bend": "858ea999141639aa26c559a2e06a87d62c58e93d0d8d3a793bb530b629060956",
+    "bend/packed.bend": "b4ebd29bc4d31d53ddcc221f64c84e68c5bde4a0fbbb51acfdaa9ddd01e2c23f",
+    "bend/palette.bend": "4f813fb89317308dc02c70d36cf5e3eeaf6d62a9a82477b781b976be5eee82ff",
+    "bend/precise.bend": "50ba7138300f2c913b2d75a554a78d88bfb09931c6cd58ecc884ab7024c73c01",
+    "bend/reader.bend": "e659a2cac6b8435f02fd0fe91902ceca918055d026ec1908845186bee4fdc0ac",
+    "bend/region.bend": "1455654e09969a0c80b6536b61b8da2f6070c80d007d2a3639b4a42cb873cc35",
+    "bend/registry.bend": "433b4dbb17b127dd322a11465a1111ddadd86a8682597310c062a194aa802296",
+    "bend/registry_chunk_catalog.bend": "032c8411f124d9876a34e2537b7dff1f9ccbd068a53b2e4a7423ae71ffe98652",
+    "bend/registry_climate.bend": "3daed5cbc3da3a4d4f91c65465e899b31fe219fe34af03731fc7ca1c49c572ad",
+    "bend/registry_density.bend": "0c1972222bbcdfead41b30ae0453f7e05e85ab7bb446c113c3a07a8b12f56cb7",
+    "bend/registry_material.bend": "b28952c7b085865d41f853d55e287c0c0bb8000442cc2c94b37325daaab8d29e",
+    "bend/registry_material_columns.bend": "9eb18ecf8327d35a9f1c00da86272b5a18447f203c7b7964377f782648a9846b",
+    "bend/registry_noise.bend": "ae6994d216acc9751c20e4df1e4ff62548c8af99c61e6b006155e2fbc3e1ca94",
+    "bend/registry_surface.bend": "7964afc9153879537d0fed15b811aaf88d1a0b41b210be339122e595ab76bd60",
+    "bend/registry_values.bend": "5bb1d3ab6bfed7cf640af35089a5ec1370cc2f686d7cfb8b210e7643e1b3d97f",
+    "bend/shoreline.bend": "936e978072ad2a0f32e6a85b6fe30d2dc2eb1773757e2d43f6b5fa6106681041",
+    "bend/terrain_surface.bend": "26687ac40e62949ca563d7f31117207fa0eb053d82f51b58a14e84b9a2d4d652",
+    "bend/transport.bend": "2d7b2667aaf37b537de8be6c584acaeaec37377da475741bfe790a46d9c76f81",
+    "bend/word64.bend": "62e104fbbc56208d66457789a7f2ed3f5fe122f4a19068c3df9b3bbbf555e139"
+  },
+  "component": {
+    "runs": [
+      {
+        "gpu_required": false,
+        "profiles": [
+          {
+            "name": "coastal",
+            "biome_counts": {
+              "2": 56,
+              "1": 32,
+              "0": 168
+            },
+            "observational_host_ms": 650.9841670049354
+          },
+          {
+            "name": "inland_low",
+            "biome_counts": {
+              "0": 256
+            },
+            "observational_host_ms": 589.5696659572423
+          },
+          {
+            "name": "open_shallow_ocean",
+            "biome_counts": {
+              "0": 256
+            },
+            "observational_host_ms": 597.3439579829574
+          },
+          {
+            "name": "high_land",
+            "biome_counts": {
+              "0": 256
+            },
+            "observational_host_ms": 456.4879999961704
+          },
+          {
+            "name": "negative_sea",
+            "biome_counts": {
+              "2": 56,
+              "1": 32,
+              "0": 168
+            },
+            "observational_host_ms": 560.4517919709906
+          },
+          {
+            "name": "explicit_height",
+            "biome_counts": {
+              "2": 56,
+              "1": 24,
+              "0": 176
+            },
+            "observational_host_ms": 555.0825409591198
+          },
+          {
+            "name": "non_power_cells",
+            "biome_counts": {
+              "2": 56,
+              "1": 24,
+              "0": 176
+            },
+            "observational_host_ms": 539.7830419242382
+          },
+          {
+            "name": "no_shores",
+            "biome_counts": {
+              "2": 56,
+              "1": 200
+            },
+            "observational_host_ms": 434.81283297296613
+          },
+          {
+            "name": "unreferenced_shores",
+            "biome_counts": {
+              "0": 256
+            },
+            "observational_host_ms": 431.36245803907514
+          },
+          {
+            "name": "shore_only",
+            "biome_counts": {
+              "2": 56,
+              "1": 200
+            },
+            "observational_host_ms": 532.5735419755802
+          },
+          {
+            "name": "floating_intervals",
+            "biome_counts": {
+              "0": 256
+            },
+            "observational_host_ms": 566.2883330369368
+          },
+          {
+            "name": "ceiling_sliver",
+            "biome_counts": {
+              "0": 256
+            },
+            "observational_host_ms": 346.7469580937177
+          },
+          {
+            "name": "tiny_density",
+            "biome_counts": {
+              "2": 56,
+              "1": 24,
+              "0": 176
+            },
+            "observational_host_ms": 527.1294999402016
+          },
+          {
+            "name": "vanilla",
+            "biome_counts": {
+              "2": 2
+            },
+            "observational_host_ms": 1321.241999976337
+          },
+          {
+            "name": "terralith",
+            "biome_counts": {
+              "17": 2
+            },
+            "observational_host_ms": 2715.3597499709576
+          },
+          {
+            "name": "combined",
+            "biome_counts": {
+              "17": 2
+            },
+            "observational_host_ms": 2855.4013340035453
+          }
+        ],
+        "surface_columns_checked": 3342,
+        "material_voxels_checked": 158080,
+        "requests_in_one_process": 601,
+        "expected_gpu_dispatches": 253,
+        "sha256": "66a814f27f27b9efbd00b8a0e3f63f9956530525e6b24d689d1a5a81f715e10d",
+        "observed_metal_commands": 0
+      },
+      {
+        "gpu_required": true,
+        "profiles": [
+          {
+            "name": "coastal",
+            "biome_counts": {
+              "2": 56,
+              "1": 32,
+              "0": 168
+            },
+            "observational_host_ms": 749.6644170023501
+          },
+          {
+            "name": "inland_low",
+            "biome_counts": {
+              "0": 256
+            },
+            "observational_host_ms": 633.9193750172853
+          },
+          {
+            "name": "open_shallow_ocean",
+            "biome_counts": {
+              "0": 256
+            },
+            "observational_host_ms": 637.2489579953253
+          },
+          {
+            "name": "high_land",
+            "biome_counts": {
+              "0": 256
+            },
+            "observational_host_ms": 508.5791250457987
+          },
+          {
+            "name": "negative_sea",
+            "biome_counts": {
+              "2": 56,
+              "1": 32,
+              "0": 168
+            },
+            "observational_host_ms": 619.7594170225784
+          },
+          {
+            "name": "explicit_height",
+            "biome_counts": {
+              "2": 56,
+              "1": 24,
+              "0": 176
+            },
+            "observational_host_ms": 572.6085000205785
+          },
+          {
+            "name": "non_power_cells",
+            "biome_counts": {
+              "2": 56,
+              "1": 24,
+              "0": 176
+            },
+            "observational_host_ms": 592.1579579589888
+          },
+          {
+            "name": "no_shores",
+            "biome_counts": {
+              "2": 56,
+              "1": 200
+            },
+            "observational_host_ms": 486.9444170035422
+          },
+          {
+            "name": "unreferenced_shores",
+            "biome_counts": {
+              "0": 256
+            },
+            "observational_host_ms": 489.6133339498192
+          },
+          {
+            "name": "shore_only",
+            "biome_counts": {
+              "2": 56,
+              "1": 200
+            },
+            "observational_host_ms": 597.8556670015678
+          },
+          {
+            "name": "floating_intervals",
+            "biome_counts": {
+              "0": 256
+            },
+            "observational_host_ms": 622.0495830057189
+          },
+          {
+            "name": "ceiling_sliver",
+            "biome_counts": {
+              "0": 256
+            },
+            "observational_host_ms": 399.4625830091536
+          },
+          {
+            "name": "tiny_density",
+            "biome_counts": {
+              "2": 56,
+              "1": 24,
+              "0": 176
+            },
+            "observational_host_ms": 602.9352499172091
+          },
+          {
+            "name": "vanilla",
+            "biome_counts": {
+              "2": 2
+            },
+            "observational_host_ms": 1604.166334029287
+          },
+          {
+            "name": "terralith",
+            "biome_counts": {
+              "17": 2
+            },
+            "observational_host_ms": 3917.833665967919
+          },
+          {
+            "name": "combined",
+            "biome_counts": {
+              "17": 2
+            },
+            "observational_host_ms": 3738.8187079923227
+          }
+        ],
+        "surface_columns_checked": 3342,
+        "material_voxels_checked": 158080,
+        "requests_in_one_process": 601,
+        "expected_gpu_dispatches": 253,
+        "sha256": "66a814f27f27b9efbd00b8a0e3f63f9956530525e6b24d689d1a5a81f715e10d",
+        "observed_metal_commands": 0
+      }
+    ],
+    "actual_metal_proof": {
+      "gpu_required": true,
+      "profiles": [
+        {
+          "name": "coastal",
+          "biome_counts": {
+            "2": 56,
+            "1": 32,
+            "0": 168
+          },
+          "observational_host_ms": 770.3805830096826
+        },
+        {
+          "name": "inland_low",
+          "biome_counts": {
+            "0": 256
+          },
+          "observational_host_ms": 646.7253749724478
+        },
+        {
+          "name": "open_shallow_ocean",
+          "biome_counts": {
+            "0": 256
+          },
+          "observational_host_ms": 648.0734159704298
+        },
+        {
+          "name": "high_land",
+          "biome_counts": {
+            "0": 256
+          },
+          "observational_host_ms": 515.2669158997014
+        },
+        {
+          "name": "negative_sea",
+          "biome_counts": {
+            "2": 56,
+            "1": 32,
+            "0": 168
+          },
+          "observational_host_ms": 622.6135840406641
+        },
+        {
+          "name": "explicit_height",
+          "biome_counts": {
+            "2": 56,
+            "1": 24,
+            "0": 176
+          },
+          "observational_host_ms": 569.3552499869838
+        },
+        {
+          "name": "non_power_cells",
+          "biome_counts": {
+            "2": 56,
+            "1": 24,
+            "0": 176
+          },
+          "observational_host_ms": 586.902083014138
+        },
+        {
+          "name": "no_shores",
+          "biome_counts": {
+            "2": 56,
+            "1": 200
+          },
+          "observational_host_ms": 491.04420898947865
+        },
+        {
+          "name": "unreferenced_shores",
+          "biome_counts": {
+            "0": 256
+          },
+          "observational_host_ms": 488.47462492994964
+        },
+        {
+          "name": "shore_only",
+          "biome_counts": {
+            "2": 56,
+            "1": 200
+          },
+          "observational_host_ms": 601.9409999717027
+        },
+        {
+          "name": "floating_intervals",
+          "biome_counts": {
+            "0": 256
+          },
+          "observational_host_ms": 619.8747910093516
+        },
+        {
+          "name": "ceiling_sliver",
+          "biome_counts": {
+            "0": 256
+          },
+          "observational_host_ms": 400.4337090300396
+        },
+        {
+          "name": "tiny_density",
+          "biome_counts": {
+            "2": 56,
+            "1": 24,
+            "0": 176
+          },
+          "observational_host_ms": 607.9085830133408
+        },
+        {
+          "name": "vanilla",
+          "biome_counts": {
+            "2": 2
+          },
+          "observational_host_ms": 1853.5282500088215
+        },
+        {
+          "name": "terralith",
+          "biome_counts": {
+            "17": 2
+          },
+          "observational_host_ms": 3827.9467499814928
+        },
+        {
+          "name": "combined",
+          "biome_counts": {
+            "17": 2
+          },
+          "observational_host_ms": 3844.7267919545993
+        }
+      ],
+      "surface_columns_checked": 3342,
+      "material_voxels_checked": 158080,
+      "requests_in_one_process": 601,
+      "expected_gpu_dispatches": 253,
+      "sha256": "66a814f27f27b9efbd00b8a0e3f63f9956530525e6b24d689d1a5a81f715e10d",
+      "observed_metal_commands": 253
+    }
+  },
+  "whole_regions": {
+    "scope": "Whole generated unlit base/material MCA output; no full-world parity or performance comparison",
+    "timing_scope": "Observational correctness-test response times; uncontrolled host load, not comparative benchmarks",
+    "inputs": [
+      {
+        "name": "ramp",
+        "rbp_sha256": "aeaf4d184229f316e26c14a773b43c411f0965e8aab4a59a4cf7d81c57aeabd5"
+      },
+      {
+        "name": "islands",
+        "rbp_sha256": "c8ad8694ec0bab8306b6a83366232da32e902549122f0d2ec455bdc9059a0042"
+      },
+      {
+        "name": "coastal",
+        "rbp_sha256": "8a0ee857dbc8a89fc4ef55324395590773688bba914a351bb2736f1627ce6397"
+      },
+      {
+        "name": "vanilla",
+        "rbp_sha256": "39c775ca58b6d084d4de060925df01d170c89caa09b9eaf7d33e55a915c8065a"
+      },
+      {
+        "name": "terralith",
+        "rbp_sha256": "cf9ef7e0d83d91c5d99aa914101aad8b156ce9a8caa4050f71e81b190a1c0ca6"
+      },
+      {
+        "name": "combined",
+        "rbp_sha256": "d4ac8f9040e39892de12b6fc6ecc46b3d9e961c3cba7f05a2ae9b53262967193"
+      }
+    ],
+    "runs": [
+      {
+        "gpu_required": false,
+        "regions": [
+          {
+            "name": "ramp",
+            "region": [
+              -1,
+              0
+            ],
+            "chunks": 1024,
+            "world_min": -16,
+            "world_height": 32,
+            "mca_bytes": 4202496,
+            "sha256": "0967df8d1ce02aeffb9edef144b680135bee5d05c7a212d9d0395ad3045c2ba0",
+            "generation_response_host_ms": 4878.513792064041,
+            "encode_compress_write_response_host_ms": 2254.7771249664947,
+            "biome_quart_counts": {
+              "minecraft:plains": 131072
+            },
+            "repeated_file_identical": true
+          },
+          {
+            "name": "islands",
+            "region": [
+              58593,
+              -58594
+            ],
+            "chunks": 1024,
+            "world_min": -16,
+            "world_height": 32,
+            "mca_bytes": 4202496,
+            "sha256": "441b750c0acfe64a7beb0aec810df858c777e18efb16f273864d2763bff175e0",
+            "generation_response_host_ms": 5448.185624903999,
+            "encode_compress_write_response_host_ms": 2519.397750031203,
+            "biome_quart_counts": {
+              "minecraft:plains": 131072
+            },
+            "repeated_file_identical": true
+          },
+          {
+            "name": "coastal",
+            "region": [
+              -1,
+              0
+            ],
+            "chunks": 1024,
+            "world_min": -16,
+            "world_height": 48,
+            "mca_bytes": 4202496,
+            "sha256": "95d6165abc19a9d2a0edfe73adfc6264ac50a956c408cf27bcc4285a729d71e7",
+            "generation_response_host_ms": 6939.715416985564,
+            "encode_compress_write_response_host_ms": 2708.1976250046864,
+            "biome_quart_counts": {
+              "minecraft:plains": 192000,
+              "minecraft:snowy_beach": 144,
+              "minecraft:stony_shore": 4464
+            },
+            "repeated_file_identical": true
+          }
+        ],
+        "chunk_streams_decoded": 3072,
+        "blocks_compared_to_generated_queries": 200704,
+        "requests_in_one_process": 149,
+        "expected_gpu_dispatches": 15,
+        "metal_commands_ms": [],
+        "sha256": "026a7d99c35d5444ee403a29654beec137e1240b16bd3551c8e9f04bdb6f0b3a"
+      },
+      {
+        "gpu_required": true,
+        "regions": [
+          {
+            "name": "ramp",
+            "region": [
+              -1,
+              0
+            ],
+            "chunks": 1024,
+            "world_min": -16,
+            "world_height": 32,
+            "mca_bytes": 4202496,
+            "sha256": "0967df8d1ce02aeffb9edef144b680135bee5d05c7a212d9d0395ad3045c2ba0",
+            "generation_response_host_ms": 5448.065749951638,
+            "encode_compress_write_response_host_ms": 2201.4602919807658,
+            "biome_quart_counts": {
+              "minecraft:plains": 131072
+            },
+            "repeated_file_identical": true
+          },
+          {
+            "name": "islands",
+            "region": [
+              58593,
+              -58594
+            ],
+            "chunks": 1024,
+            "world_min": -16,
+            "world_height": 32,
+            "mca_bytes": 4202496,
+            "sha256": "441b750c0acfe64a7beb0aec810df858c777e18efb16f273864d2763bff175e0",
+            "generation_response_host_ms": 4109.402749920264,
+            "encode_compress_write_response_host_ms": 2486.8327080039307,
+            "biome_quart_counts": {
+              "minecraft:plains": 131072
+            },
+            "repeated_file_identical": true
+          },
+          {
+            "name": "coastal",
+            "region": [
+              -1,
+              0
+            ],
+            "chunks": 1024,
+            "world_min": -16,
+            "world_height": 48,
+            "mca_bytes": 4202496,
+            "sha256": "95d6165abc19a9d2a0edfe73adfc6264ac50a956c408cf27bcc4285a729d71e7",
+            "generation_response_host_ms": 4896.817666944116,
+            "encode_compress_write_response_host_ms": 2564.4555420149118,
+            "biome_quart_counts": {
+              "minecraft:plains": 192000,
+              "minecraft:snowy_beach": 144,
+              "minecraft:stony_shore": 4464
+            },
+            "repeated_file_identical": true
+          },
+          {
+            "name": "vanilla",
+            "region": [
+              -2,
+              3
+            ],
+            "chunks": 1024,
+            "world_min": -64,
+            "world_height": 384,
+            "mca_bytes": 4263936,
+            "sha256": "822dafd55091fc29ac5533bdfe5d7f3af55527abb956505068f8f30dadcf582c",
+            "generation_response_host_ms": 57231.33574996609,
+            "encode_compress_write_response_host_ms": 14165.628624963574,
+            "biome_quart_counts": {
+              "minecraft:forest": 315936,
+              "minecraft:river": 168000,
+              "minecraft:beach": 200640,
+              "minecraft:plains": 289920,
+              "minecraft:flower_forest": 40992,
+              "minecraft:sunflower_plains": 40800,
+              "minecraft:meadow": 20640,
+              "minecraft:cherry_grove": 6912,
+              "minecraft:ocean": 400320,
+              "minecraft:birch_forest": 86784,
+              "minecraft:old_growth_birch_forest": 1920
+            },
+            "repeated_file_identical": true
+          },
+          {
+            "name": "terralith",
+            "region": [
+              -2,
+              3
+            ],
+            "chunks": 1024,
+            "world_min": -64,
+            "world_height": 384,
+            "mca_bytes": 4333568,
+            "sha256": "e9a82bf685bb1142d31ccd2c2ddfdea9b547163ed1c6a3d6f7e2f5df7c91a116",
+            "generation_response_host_ms": 73240.58212491218,
+            "encode_compress_write_response_host_ms": 14953.710166970268,
+            "biome_quart_counts": {
+              "terralith:steppe": 39840,
+              "minecraft:river": 168480,
+              "minecraft:beach": 148512,
+              "terralith:orchid_swamp": 46368,
+              "minecraft:plains": 256704,
+              "terralith:gravel_beach": 35520,
+              "minecraft:cherry_grove": 8736,
+              "minecraft:forest": 222624,
+              "minecraft:meadow": 10560,
+              "terralith:highlands": 123168,
+              "minecraft:ocean": 366624,
+              "minecraft:lukewarm_ocean": 1632,
+              "minecraft:birch_forest": 112416,
+              "terralith:forested_highlands": 27936,
+              "minecraft:old_growth_birch_forest": 3552,
+              "terralith:temperate_highlands": 192
+            },
+            "repeated_file_identical": true
+          },
+          {
+            "name": "combined",
+            "region": [
+              -2,
+              3
+            ],
+            "chunks": 1024,
+            "world_min": -64,
+            "world_height": 384,
+            "mca_bytes": 4374528,
+            "sha256": "98ab5affc0d8ec4722caa64a0c6a0523828ef22c21b3d1fbc4a02b0abdce99be",
+            "generation_response_host_ms": 74526.41870791558,
+            "encode_compress_write_response_host_ms": 15217.825416941196,
+            "biome_quart_counts": {
+              "terralith:highlands": 19200,
+              "terralith:steppe": 30624,
+              "minecraft:river": 122112,
+              "minecraft:beach": 120384,
+              "terralith:orchid_swamp": 46368,
+              "minecraft:plains": 139488,
+              "terralith:gravel_beach": 33600,
+              "terralith:shield": 58080,
+              "minecraft:cherry_grove": 8736,
+              "minecraft:savanna": 13248,
+              "minecraft:forest": 133056,
+              "terralith:gravel_desert": 7968,
+              "minecraft:meadow": 10272,
+              "terralith:moonlight_valley": 21504,
+              "minecraft:snowy_plains": 36672,
+              "terralith:cold_shrubland": 23136,
+              "minecraft:frozen_river": 20160,
+              "minecraft:snowy_beach": 10848,
+              "terralith:yellowstone": 46752,
+              "minecraft:snowy_taiga": 1536,
+              "minecraft:frozen_ocean": 672,
+              "minecraft:ocean": 226752,
+              "minecraft:cold_ocean": 6144,
+              "terralith:alpine_highlands": 480,
+              "terralith:arid_highlands": 9600,
+              "minecraft:lukewarm_ocean": 134688,
+              "terralith:brushland": 33216,
+              "terralith:hot_shrubland": 31296,
+              "minecraft:desert": 71520,
+              "terralith:warm_river": 16320,
+              "minecraft:birch_forest": 52032,
+              "minecraft:jungle": 35136,
+              "terralith:desert_canyon": 10848,
+              "terralith:desert_oasis": 13824,
+              "terralith:forested_highlands": 10752,
+              "minecraft:taiga": 12192,
+              "terralith:shrubland": 96,
+              "minecraft:sparse_jungle": 3552
+            },
+            "repeated_file_identical": true
+          }
+        ],
+        "chunk_streams_decoded": 6144,
+        "blocks_compared_to_generated_queries": 2265088,
+        "requests_in_one_process": 296,
+        "expected_gpu_dispatches": 30,
+        "metal_commands_ms": [],
+        "sha256": "a7aeae6b5a7f024172bca67614d609b7c0f76be7be4be9cc68c6b1b1aac52be9"
+      }
+    ],
+    "chunk_records_decoded": 9216,
+    "queried_blocks_and_heightmaps": 2465792,
+    "optimized_vs_direct_scan": {
+      "all_nine_complete_mca_files_identical": true,
+      "sha256": {
+        "(False, 'ramp')": "0967df8d1ce02aeffb9edef144b680135bee5d05c7a212d9d0395ad3045c2ba0",
+        "(False, 'islands')": "441b750c0acfe64a7beb0aec810df858c777e18efb16f273864d2763bff175e0",
+        "(False, 'coastal')": "95d6165abc19a9d2a0edfe73adfc6264ac50a956c408cf27bcc4285a729d71e7",
+        "(True, 'ramp')": "0967df8d1ce02aeffb9edef144b680135bee5d05c7a212d9d0395ad3045c2ba0",
+        "(True, 'islands')": "441b750c0acfe64a7beb0aec810df858c777e18efb16f273864d2763bff175e0",
+        "(True, 'coastal')": "95d6165abc19a9d2a0edfe73adfc6264ac50a956c408cf27bcc4285a729d71e7",
+        "(True, 'vanilla')": "822dafd55091fc29ac5533bdfe5d7f3af55527abb956505068f8f30dadcf582c",
+        "(True, 'terralith')": "e9a82bf685bb1142d31ccd2c2ddfdea9b547163ed1c6a3d6f7e2f5df7c91a116",
+        "(True, 'combined')": "98ab5affc0d8ec4722caa64a0c6a0523828ef22c21b3d1fbc4a02b0abdce99be"
+      }
+    },
+    "actual_metal_proof": {
+      "gpu_required": true,
+      "regions": [
+        {
+          "name": "ramp",
+          "region": [
+            -1,
+            0
+          ],
+          "chunks": 1024,
+          "world_min": -16,
+          "world_height": 32,
+          "mca_bytes": 4202496,
+          "sha256": "0967df8d1ce02aeffb9edef144b680135bee5d05c7a212d9d0395ad3045c2ba0",
+          "generation_response_host_ms": 5278.408083016984,
+          "encode_compress_write_response_host_ms": 2149.5711670722812,
+          "biome_quart_counts": {
+            "minecraft:plains": 131072
+          },
+          "repeated_file_identical": null
+        },
+        {
+          "name": "islands",
+          "region": [
+            58593,
+            -58594
+          ],
+          "chunks": 1024,
+          "world_min": -16,
+          "world_height": 32,
+          "mca_bytes": 4202496,
+          "sha256": "441b750c0acfe64a7beb0aec810df858c777e18efb16f273864d2763bff175e0",
+          "generation_response_host_ms": 4082.802208024077,
+          "encode_compress_write_response_host_ms": 2482.1601669536904,
+          "biome_quart_counts": {
+            "minecraft:plains": 131072
+          },
+          "repeated_file_identical": null
+        },
+        {
+          "name": "coastal",
+          "region": [
+            -1,
+            0
+          ],
+          "chunks": 1024,
+          "world_min": -16,
+          "world_height": 48,
+          "mca_bytes": 4202496,
+          "sha256": "95d6165abc19a9d2a0edfe73adfc6264ac50a956c408cf27bcc4285a729d71e7",
+          "generation_response_host_ms": 4969.38691707328,
+          "encode_compress_write_response_host_ms": 2572.5487910676748,
+          "biome_quart_counts": {
+            "minecraft:plains": 192000,
+            "minecraft:snowy_beach": 144,
+            "minecraft:stony_shore": 4464
+          },
+          "repeated_file_identical": null
+        },
+        {
+          "name": "vanilla",
+          "region": [
+            -2,
+            3
+          ],
+          "chunks": 1024,
+          "world_min": -64,
+          "world_height": 384,
+          "mca_bytes": 4263936,
+          "sha256": "822dafd55091fc29ac5533bdfe5d7f3af55527abb956505068f8f30dadcf582c",
+          "generation_response_host_ms": 56880.46558306087,
+          "encode_compress_write_response_host_ms": 14280.179916066118,
+          "biome_quart_counts": {
+            "minecraft:forest": 315936,
+            "minecraft:river": 168000,
+            "minecraft:beach": 200640,
+            "minecraft:plains": 289920,
+            "minecraft:flower_forest": 40992,
+            "minecraft:sunflower_plains": 40800,
+            "minecraft:meadow": 20640,
+            "minecraft:cherry_grove": 6912,
+            "minecraft:ocean": 400320,
+            "minecraft:birch_forest": 86784,
+            "minecraft:old_growth_birch_forest": 1920
+          },
+          "repeated_file_identical": null
+        }
+      ],
+      "chunk_streams_decoded": 4096,
+      "blocks_compared_to_generated_queries": 888832,
+      "requests_in_one_process": 194,
+      "expected_gpu_dispatches": 20,
+      "sha256": "0673d8cffa509a3f38ae77854d829a68b75eb2d747f9c2ea931901150b75bee4",
+      "stage_device_ms": {
+        "ramp": {
+          "density": 10.535042,
+          "surface": 65.808708,
+          "height_cache": 35.65425,
+          "coastal_selection": 2616.814,
+          "material": 2479.69275
+        },
+        "islands": {
+          "density": 9.959583,
+          "surface": 11.001667,
+          "height_cache": 9.882583,
+          "coastal_selection": 2808.755875,
+          "material": 1192.824875
+        },
+        "coastal": {
+          "density": 9.160667,
+          "surface": 66.2155,
+          "height_cache": 108.23925,
+          "coastal_selection": 3033.447833,
+          "material": 1705.093792
+        },
+        "vanilla": {
+          "density": 8370.041333,
+          "surface": 2033.868875,
+          "height_cache": 149.469917,
+          "coastal_selection": 3673.615708,
+          "material": 42595.817667
+        }
+      },
+      "observed_metal_commands": 20
+    },
+    "synthetic_coastal_inland_percent": 97.65625,
+    "synthetic_coastal_shore_percent": 2.34375
+  },
+  "observational_full_vanilla_metal_shore": {
+    "direct_scan_ms": 31356.132125,
+    "cached_height_ms": 149.469917,
+    "cached_selection_ms": 3673.615708,
+    "limitations": "Single correctness-run observations, uncontrolled other host load; not formal timings or an overall Rust-versus-Bend comparison"
+  },
+  "validation": {
+    "minecraft": {
+      "status": "pass",
+      "files": 9,
+      "chunk_records_per_file": 1024,
+      "reads_per_chunk": 2,
+      "blocks_checked": 721420288,
+      "version_data": 5023,
+      "optimization_recheck": "Minecraft validated the direct-scan output; every optimized whole MCA file is byte-identical to that input"
+    },
+    "java_worker": {
+      "status": "pass",
+      "executions": [
+        "cpu",
+        "gpu-required"
+      ],
+      "concurrent_writes_per_execution": 2,
+      "queued_cancellations": 2,
+      "actual_file_open_failure": true,
+      "shutdown": true
+    },
+    "host_build": {
+      "status": "pass",
+      "loaders": [
+        "Fabric",
+        "NeoForge"
+      ],
+      "native_passed": 64,
+      "explicit_native_gpu_fixture_ignores": 11,
+      "command": "RUST_TEST_THREADS=2 CARGO_BUILD_JOBS=2 nice -n 10 ./gradlew gpuTestClasses build -PretinaHostOnly --max-workers=2 --no-parallel"
+    },
+    "dedicated_gradle_task": {
+      "status": "pass",
+      "surface_columns_per_backend": 3336,
+      "material_voxels_per_backend": 155776,
+      "profiles": 13
+    },
+    "raw_surface_regression": {
+      "status": "pass",
+      "cpu_gpu_bytes_equal": true,
+      "profiles": 7,
+      "queries_per_backend": 5636
+    },
+    "diff_check": "pass"
+  },
+  "formal_alternating_ab": {
+    "scope": "Warm alternating shoreline-only A/B; compilation must finish beforehand.\n\nThe baseline is the unmerged direct-scan shoreline implementation, not Rust.\nAll raw surface rows are restored before each timed finalization. Transport is\nincluded; lattice/surface/material construction is excluded. Complete lit and\nfeatured Rust-versus-Bend benchmarks remain separate unfinished work.\n",
+    "warmups": 1,
+    "repetitions": 5,
+    "cpu_workers": 2,
+    "nice": 10,
+    "own_compilation_and_other_tests_concurrent": false,
+    "other_host_load_controlled": false,
+    "executables": {
+      "baseline": "9c07bc97ba6f3700910ccbe4e52b35ad5dac48c9aab7f4003cf11b8cfb1e091c",
+      "candidate": "640c80c79df938bcd82b9d1d2659b68f5a1a7a157b8a559d643fa0b5e77743d7"
+    },
+    "profiles": [
+      {
+        "name": "vanilla",
+        "rbp_sha256": "39c775ca58b6d084d4de060925df01d170c89caa09b9eaf7d33e55a915c8065a"
+      },
+      {
+        "name": "terralith",
+        "rbp_sha256": "cf9ef7e0d83d91c5d99aa914101aad8b156ce9a8caa4050f71e81b190a1c0ca6"
+      },
+      {
+        "name": "combined",
+        "rbp_sha256": "d4ac8f9040e39892de12b6fc6ecc46b3d9e961c3cba7f05a2ae9b53262967193"
+      }
+    ],
+    "results": [
+      {
+        "profile": "vanilla",
+        "width": 64,
+        "depth": 64,
+        "gpu_required": false,
+        "baseline_host_ms": [
+          186.34254101198167,
+          190.41912502143532,
+          188.2432500133291,
+          194.15999995544553,
+          194.26354102324694
+        ],
+        "candidate_host_ms": [
+          27.033166959881783,
+          26.940292096696794,
+          25.516874971799552,
+          25.957125006243587,
+          27.22679206635803
+        ],
+        "baseline_median_ms": 190.41912502143532,
+        "candidate_median_ms": 26.940292096696794,
+        "ratio": 7.068190810179932,
+        "all_surface_bytes_sha256": "7d6a400c38471266db6d32e18cfe4c80eafd3fa6848120365a19384d6c3e8129"
+      },
+      {
+        "profile": "vanilla",
+        "width": 128,
+        "depth": 128,
+        "gpu_required": false,
+        "baseline_host_ms": [
+          991.686875000596,
+          993.4752089902759,
+          1008.9367920299992,
+          994.6284170728177,
+          1005.7982080616057
+        ],
+        "candidate_host_ms": [
+          127.69554206170142,
+          128.92804108560085,
+          128.57112498022616,
+          129.2677919846028,
+          130.11933397501707
+        ],
+        "baseline_median_ms": 994.6284170728177,
+        "candidate_median_ms": 128.92804108560085,
+        "ratio": 7.71460117363019,
+        "all_surface_bytes_sha256": "56ca8ca25d4286e181275a1681beb9fe33a3de77a74f941fbba06637e569a1ec"
+      },
+      {
+        "profile": "terralith",
+        "width": 64,
+        "depth": 64,
+        "gpu_required": false,
+        "baseline_host_ms": [
+          187.58945900481194,
+          191.07270799577236,
+          188.8187079457566,
+          189.33537497650832,
+          189.54158306587487
+        ],
+        "candidate_host_ms": [
+          20.794417010620236,
+          20.402916008606553,
+          20.444625057280064,
+          20.885667065158486,
+          20.783709012903273
+        ],
+        "baseline_median_ms": 189.33537497650832,
+        "candidate_median_ms": 20.783709012903273,
+        "ratio": 9.109797238739347,
+        "all_surface_bytes_sha256": "27b0fae5838fa44f61ff77a3db8afff2e60eedd9bf2333caca247eaa2df922d2"
+      },
+      {
+        "profile": "terralith",
+        "width": 128,
+        "depth": 128,
+        "gpu_required": false,
+        "baseline_host_ms": [
+          1318.3867920888588,
+          1294.163207989186,
+          1291.4896250003949,
+          1294.7885000612587,
+          1293.1863750563934
+        ],
+        "candidate_host_ms": [
+          78.72674998361617,
+          80.03958396147937,
+          80.97695803735405,
+          80.33529098611325,
+          84.65258299838752
+        ],
+        "baseline_median_ms": 1294.163207989186,
+        "candidate_median_ms": 80.33529098611325,
+        "ratio": 16.10952287722335,
+        "all_surface_bytes_sha256": "5548d911737ceb5c0e1abc258f9d43c1077b4155d591bf189ce0b463bf688b6b"
+      },
+      {
+        "profile": "combined",
+        "width": 64,
+        "depth": 64,
+        "gpu_required": false,
+        "baseline_host_ms": [
+          189.99887502286583,
+          189.15579200256616,
+          190.61691698152572,
+          189.37729205936193,
+          190.89020800311118
+        ],
+        "candidate_host_ms": [
+          20.244999905116856,
+          20.275832968764007,
+          20.453084027394652,
+          20.28379193507135,
+          20.653082989156246
+        ],
+        "baseline_median_ms": 189.99887502286583,
+        "candidate_median_ms": 20.28379193507135,
+        "ratio": 9.367029381441814,
+        "all_surface_bytes_sha256": "5868e12179cd0325d92f44a234ae8b15c5960aa73960001cd4fbc986c107b06e"
+      },
+      {
+        "profile": "combined",
+        "width": 128,
+        "depth": 128,
+        "gpu_required": false,
+        "baseline_host_ms": [
+          1284.7841249313205,
+          1265.4483750229701,
+          1273.748959065415,
+          1273.0042909970507,
+          1274.081249954179
+        ],
+        "candidate_host_ms": [
+          78.29345809295774,
+          78.14437500201166,
+          75.21291601005942,
+          76.22862502466887,
+          75.13395801652223
+        ],
+        "baseline_median_ms": 1273.748959065415,
+        "candidate_median_ms": 76.22862502466887,
+        "ratio": 16.709588539124354,
+        "all_surface_bytes_sha256": "935b807f3b7dc63af7dfa7022e839e5e899f05dbd66b54c8329604cfa6a78349"
+      },
+      {
+        "profile": "vanilla",
+        "width": 64,
+        "depth": 64,
+        "gpu_required": true,
+        "baseline_host_ms": [
+          539.9706671014428,
+          529.6863330295309,
+          539.9106669938192,
+          562.2640000656247,
+          553.8160830037668
+        ],
+        "candidate_host_ms": [
+          41.117832995951176,
+          59.43016707897186,
+          51.52704089414328,
+          59.38791704829782,
+          65.15458400826901
+        ],
+        "baseline_median_ms": 539.9706671014428,
+        "candidate_median_ms": 59.38791704829782,
+        "ratio": 9.092264789524545,
+        "all_surface_bytes_sha256": "7d6a400c38471266db6d32e18cfe4c80eafd3fa6848120365a19384d6c3e8129"
+      },
+      {
+        "profile": "vanilla",
+        "width": 128,
+        "depth": 128,
+        "gpu_required": true,
+        "baseline_host_ms": [
+          618.1005829712376,
+          632.4006660142913,
+          655.1685829181224,
+          652.9278340749443,
+          643.9891250338405
+        ],
+        "candidate_host_ms": [
+          140.28720802161843,
+          138.2829169742763,
+          157.78512496035546,
+          157.43504103738815,
+          159.5529590267688
+        ],
+        "baseline_median_ms": 643.9891250338405,
+        "candidate_median_ms": 157.43504103738815,
+        "ratio": 4.090506921396896,
+        "all_surface_bytes_sha256": "56ca8ca25d4286e181275a1681beb9fe33a3de77a74f941fbba06637e569a1ec"
+      },
+      {
+        "profile": "terralith",
+        "width": 64,
+        "depth": 64,
+        "gpu_required": true,
+        "baseline_host_ms": [
+          477.0433329977095,
+          484.1808750061318,
+          476.8619999522343,
+          480.4549999535084,
+          477.0775830838829
+        ],
+        "candidate_host_ms": [
+          40.23525002412498,
+          55.169457918964326,
+          44.91391603369266,
+          56.00220803171396,
+          41.49199998937547
+        ],
+        "baseline_median_ms": 477.0775830838829,
+        "candidate_median_ms": 44.91391603369266,
+        "ratio": 10.622043794310834,
+        "all_surface_bytes_sha256": "27b0fae5838fa44f61ff77a3db8afff2e60eedd9bf2333caca247eaa2df922d2"
+      },
+      {
+        "profile": "terralith",
+        "width": 128,
+        "depth": 128,
+        "gpu_required": true,
+        "baseline_host_ms": [
+          807.0432499516755,
+          770.9342500893399,
+          793.4189999941736,
+          788.2006659638137,
+          814.7447910159826
+        ],
+        "candidate_host_ms": [
+          144.42033297382295,
+          205.5013329954818,
+          136.008583009243,
+          203.1437080586329,
+          150.0532500213012
+        ],
+        "baseline_median_ms": 793.4189999941736,
+        "candidate_median_ms": 150.0532500213012,
+        "ratio": 5.287582907278194,
+        "all_surface_bytes_sha256": "5548d911737ceb5c0e1abc258f9d43c1077b4155d591bf189ce0b463bf688b6b"
+      },
+      {
+        "profile": "combined",
+        "width": 64,
+        "depth": 64,
+        "gpu_required": true,
+        "baseline_host_ms": [
+          467.32862503267825,
+          485.66212493460625,
+          488.58783300966024,
+          485.6571250129491,
+          471.10045806039125
+        ],
+        "candidate_host_ms": [
+          55.83291710354388,
+          43.29741594847292,
+          43.473249999806285,
+          57.4316669953987,
+          54.502291954122484
+        ],
+        "baseline_median_ms": 485.6571250129491,
+        "candidate_median_ms": 54.502291954122484,
+        "ratio": 8.91076517335735,
+        "all_surface_bytes_sha256": "5868e12179cd0325d92f44a234ae8b15c5960aa73960001cd4fbc986c107b06e"
+      },
+      {
+        "profile": "combined",
+        "width": 128,
+        "depth": 128,
+        "gpu_required": true,
+        "baseline_host_ms": [
+          791.39933292754,
+          812.1641669422388,
+          798.8047089893371,
+          880.1949159242213,
+          802.5771250249818
+        ],
+        "candidate_host_ms": [
+          151.717875036411,
+          204.2334999423474,
+          148.85858399793506,
+          209.47612507734448,
+          151.01150004193187
+        ],
+        "baseline_median_ms": 802.5771250249818,
+        "candidate_median_ms": 151.717875036411,
+        "ratio": 5.289931228158648,
+        "all_surface_bytes_sha256": "935b807f3b7dc63af7dfa7022e839e5e899f05dbd66b54c8329604cfa6a78349"
+      }
+    ]
+  },
+  "baseline_provenance": {
+    "description": "Unmerged direct-scan coastal prototype from this cycle, after PR40; not the PR40 worker or Retina Rust",
+    "files_sha256": {
+      "engine": "9c07bc97ba6f3700910ccbe4e52b35ad5dac48c9aab7f4003cf11b8cfb1e091c",
+      "engine.gpu": "330ea1a89b94650050e19d2ae12ab4e32c5a0979113b8ac1a363ff9f8f5626ad",
+      "generated-engine.c": "04ee41e9e9aab477786b260b36c7bffdded3816503a549f432776c62df6b75b4",
+      "generated-region-tests.json": "721e80562c6fc804e636d1264ac20b9b392302780b96c3758df2d45cb41c02d6"
+    }
+  },
+  "remaining": "Inland river/ocean remapping, cave/feature/structure/lighting parity, usable world types, existing-world runtime integration, complete lit compressed Rust-versus-Bend performance and load testing"
+}

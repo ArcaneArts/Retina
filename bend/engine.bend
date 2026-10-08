@@ -14,6 +14,7 @@ import ./density.bend as Q
 import ./density_batch.bend as DB
 import ./density_lattice.bend as L
 import ./terrain_surface.bend as S
+import ./shoreline.bend as Shore
 import ./registry_surface.bend as RS
 import ./material_program.bend as M
 import ./material_batch.bend as MB
@@ -38,7 +39,8 @@ import ./generated_region.bend as GR
 # PROFILE_SURFACE=15, SURFACE_COLUMNS=16, SURFACE_BATCH=17, SURFACE_PLAN=18,
 # PROFILE_MATERIAL=19, MATERIAL_BATCH=20, PROFILE_BLOCKS=21,
 # BLOCK_COLUMNS=22, BLOCK_BATCH=23, BLOCK_RUNS=24, PROFILE_CHUNK=25,
-# CHUNK_NBT=26, CHUNK_ZLIB=27, REGION_MCA=28 (private staged path).
+# CHUNK_NBT=26, CHUNK_ZLIB=27, REGION_MCA=28 (private staged path),
+# SHORELINE_COLUMNS=29 (resident exact heights and coastal biome selection).
 # Requests: RBND magic, payload length, request ID, opcode (all BE u32).
 # Responses add a status u32 after opcode. stdout contains frames only.
 type Settings is Data:
@@ -532,6 +534,24 @@ def surface_build(plan: Bool,input: File,output: File,old: State,backend: U32,id
     case State{Settings{noise,climate,Some{prepared}},profile}: surface_tile(S.decode(body),plan,prepared,noise,climate,profile,input,output,backend,id,opcode)
 
 @unsafe
+def shoreline_generate(ok: Bool,prepared: RD.Prepared,noise: Maybe<&2,N.Stack>,climate: C.Model,profile: Maybe<&1,P.Document>,input: File,output: File,backend: U32,id: U32,opcode: U32) -> IO(Unit):
+  match ok prepared:
+    case True{} RD.Prepared{model,programs,noises,points,fields,Some{density},Some{S.State{+config,Some{surface}}},materials}:
+      surface_built(materials,Shore.execute(config,density,model,programs,climate,surface),config,noises,points,fields,noise,profile,input,output,backend,id,opcode)
+    case _ _: error(input,output,State{Settings{noise,Some{climate},Some{prepared}},profile},backend,id,opcode,735)
+
+@unsafe
+def shoreline_build(valid: Bool,input: File,output: File,old: State,backend: U32,id: U32,opcode: U32) -> IO(Unit):
+  match valid old:
+    case False{} _: error(input,output,old,backend,id,opcode,603)
+    case True{} State{Settings{noise,climate,None{}},profile}: error(input,output,State{Settings{noise,climate,None{}},profile},backend,id,opcode,716)
+    case True{} State{Settings{noise,None{},density},profile}: error(input,output,State{Settings{noise,None{},density},profile},backend,id,opcode,714)
+    case True{} State{Settings{noise,Some{+climate},Some{RD.Prepared{model,programs,noises,points,fields,Some{+density},Some{S.State{+config,Some{+surface}}},materials}}},profile}:
+      shoreline_generate(Shore.compatible(config,surface,density,climate),
+        RD.Prepared{model,programs,noises,points,fields,Some{density},Some{S.State{config,Some{surface}}},materials},noise,climate,profile,input,output,backend,id,opcode)
+    case _ _: error(input,output,old,backend,id,opcode,734)
+
+@unsafe
 def surface_queries(queries: S.Input,prepared: RD.Prepared,noise: Maybe<&2,N.Stack>,climate: Maybe<&2,C.Model>,profile: Maybe<&1,P.Document>,input: File,output: File,backend: U32,id: U32,opcode: U32) -> IO(Unit):
   match queries prepared:
     case S.Input{_,_,False{}} _: error(input,output,State{Settings{noise,climate,Some{prepared}},profile},backend,id,opcode,603)
@@ -781,6 +801,7 @@ def dispatch(input: File,output: File,stack: State,backend: U32,id: U32,opcode: 
     case 26: chunk_generate(False{},input,output,stack,backend,id,26,body)
     case 27: chunk_generate(True{},input,output,stack,backend,id,27,body)
     case 28: region_generate(input,output,stack,backend,id,28,body)
+    case 29: shoreline_build(R.end(R.start(body)),input,output,stack,backend,id,29)
     case 4: empty_command(R.end(R.start(body)),input,output,stack,backend,id,4)
     case _: error(input,output,stack,backend,id,opcode,605)
 
