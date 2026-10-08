@@ -44,10 +44,10 @@ more deeply; retain the original requested scope.
 | Structure entities/block entities/loot and attachment rotations | `nbt.rs`, `structures.rs`, `structure_processors.rs` | Pending |
 | Snow, freezing, plant support and path/gravel restrictions | `LightingProfile.java`, profile material/survival tables, `region.rs` | Pending |
 | Full 64-bit seeds, signed/distant coordinates and repeatable ordering | `ChunkRequest`, native hash/random routines | Exact word-pair add/subtract/multiply/bit operations implemented; 3,689 operations independently verified. Integration and coordinate/order checks pending |
-| Block/biome palettes, bit-packed long arrays, heightmaps, modified UTF-8 NBT and current data versions | `region.rs`, `nbt.rs` | NBT and exact numerical bits verified. Modern non-spanning local-index packing independently verifies 142,320 entries across 144 cases. Palette remapping, heightmap calculation and chunk-schema integration pending |
+| Block/biome palettes, bit-packed long arrays, heightmaps, modified UTF-8 NBT and current data versions | `region.rs`, `nbt.rs` | Pure Bend palette remapping (49,664 indices), final-block heightmaps and complete fixture chunk encoding implemented. Minecraft 26.3 (data version 5023) reads/reopens mixed and prelit fixture chunks through actual region, palette and SerializableChunkData decoders. Registry/runtime generation integration remains pending |
 | LZ77, fixed-Huffman DEFLATE, zlib/Adler-32 and stored fallback | `region.rs` uses libdeflater | Implemented in `bend/compression.bend`; independent fixture tests pass |
 | Independent parallel chunk compression | Rayon chunk assembly in `region.rs` | Implemented Bend fork/join API; four streams verified at 1/2/4 workers; region integration pending |
-| GPU lighting, interior-chunk validity, boundary handling and one final region write | `lighting.rs`, `lighting.wgsl`, `region.rs`, `LightSeams.java` | Pending |
+| GPU lighting, interior-chunk validity, boundary handling and one final region write | `lighting.rs`, `lighting.wgsl`, `region.rs`, `LightSeams.java` | Serialization of supplied light arrays/padding and completion flags validated with Minecraft. Lighting computation, interior/boundary policy and actual generation integration remain pending |
 | MCA sector tables, external records, preserving existing chunks and atomic publication | `region.rs` | Pure Bend new-file inline planning/streaming validated with 1024 full, 3 sparse and empty record containers. Existing/external-record preservation and atomic publication pending |
 | Persistent engine, bounded scheduling/singleflight, cleanup and actionable failure propagation | `NativeTerrain.java`, `RegionCoordinator.java`, `TerrainQueries.java` | Pending |
 | DH surface/height requests generate temporary whole regions, 1024-region cache, eviction and promotion | `TemporaryRegions.java`, `RegionCoordinator.java` | Pending: share coordinator/cache with selected backend |
@@ -55,7 +55,7 @@ more deeply; retain the original requested scope.
 | Exactly two selectable world types; Rust default; legacy chunk-save migration aliases | `world_preset/gpu*.json`, world preset tag, language keys and generator codec | Pending; do not advertise an incomplete Bend backend |
 | Color-coded stage report and last-20-region derived throughput | `GenerationMetrics.java`, `TerrainDebugReport.java`, `timings.rs` | Pending: backend-neutral timing transport |
 | Reproducible pinned runtime, packaging, licensing and supported-loader builds | `gradle/native.gradle`, Fabric/NeoForge modules, CI | Pending: pinned 2.0.36 experiment installer available; production integration incomplete |
-| Independent format tests, region/concurrency/query/cache tests, actual Minecraft loading, edit persistence and datapack combinations | shared unit/GPU tests and QA harnesses | Compression tests implemented; all generation/runtime acceptance checks pending |
+| Independent format tests, region/concurrency/query/cache tests, actual Minecraft loading, edit persistence and datapack combinations | shared unit/GPU tests and QA harnesses | Primitive tests and Minecraft decoder/reopen tests of complete fixture chunks implemented. Actual generated-world loading, edits and all runtime acceptance checks remain pending |
 | Complete lit/compressed region comparison: startup, warm latency, throughput, memory, output sizes and load-in | existing native benchmark scripts | Pending; simplex experiment and file-driver timing are insufficient |
 
 ## Implementation cycles
@@ -68,9 +68,12 @@ more deeply; retain the original requested scope.
    paletted section packing, region records and independent parser validation.
    Exact word arithmetic, growable chunk buffers and typed NBT are implemented
    in [PR #19](https://github.com/ArcaneArts/Retina/pull/19), commit `2788730`.
-   A third cycle implements packed local indices and streamed new-file MCA
-   containers; palette remapping, existing-record publication and actual chunk
-   schema remain required. Both build checks on each of PRs #18/#19 passed.
+   [PR #20](https://github.com/ArcaneArts/Retina/pull/20), commit `6d5d555`, adds
+   packed local indices and streamed new-file MCA containers. Both build checks
+   on each of PRs #18/#19/#20 passed. The next cycle adds palette remapping,
+   final-block heightmaps and complete fixture chunk serialization, validated by
+   Minecraft's own decoders. Existing-record publication and actual generated
+   world integration remain required.
 3. **Persistent engine and shared registry transport.** Separate exported data
    from Rust registration, define backend-neutral contracts, process lifecycle
    and request coalescing without exposing a misleading ready world type.

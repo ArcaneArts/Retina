@@ -396,3 +396,19 @@ gpuTest.dependsOn 'nativeAquiferColumnsGpuTest'
 
 // Keep existing benchmark/profile output paths relative to the repository root.
 tasks.withType(JavaExec).configureEach { workingDir rootProject.projectDir }
+
+tasks.register('bendChunkFixtures', Exec) {
+    group = 'verification'
+    description = 'Compile Bend chunk serialization and independently validate palettes, NBT, heightmaps and MCA records.'
+    workingDir rootProject.projectDir
+    commandLine providers.gradleProperty('pythonExecutable').getOrElse('python3'), 'scripts/test_bend_chunks.py'
+}
+
+tasks.register('bendChunkTest', JavaExec) {
+    group = 'verification'
+    description = 'Decode pure Bend MCA chunks with Minecraft palettes, heightmap predicates and SerializableChunkData.'
+    dependsOn 'gpuTestClasses', 'bendChunkFixtures'
+    classpath = sourceSets.gpuTest.runtimeClasspath
+    mainClass = 'art.arcane.retina.worldgen.BendChunkIntegrationTest'
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
+}

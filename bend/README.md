@@ -88,9 +88,8 @@ python3 scripts/test_bend_binary.py
 The independent Python reader checks every NBT type and exact full-buffer
 consumption. It also compares 527 rows of seven 64-bit operations (3,689 results)
 with Python integer arithmetic, covering all shift counts and carry/borrow/sign
-boundaries. Nine invalid-input fixtures check error propagation. This does not
-yet prove Minecraft chunk schema, palette packing or MCA-file compatibility;
-those remain separate required integration work.
+boundaries. Nine invalid-input fixtures check error propagation. These primitive tests alone do not prove Minecraft chunk schema or MCA-file
+compatibility; the chunk integration tests below exercise those separately.
 
 ## Packed indices and MCA container planning
 
@@ -98,7 +97,7 @@ those remain separate required integration work.
 `floor(64 / bits)` values per long, with low bits first and unused high bits
 zero. It accepts already local palette indices, 1..16 bits and up to 4,096
 entries, and rejects invalid widths, capacities and overflowing values. Mapping
-global material IDs into each section's local palette remains separate work.
+global IDs into each section's local palette is implemented in `palette.bend`.
 
 `region.bend` turns independently compressed records into an owned stream of
 an 8 KiB header and sector-aligned record buffers. It writes location/timestamp
@@ -122,3 +121,46 @@ zero padding and timestamps. Nine invalid-input fixtures fail as expected.
 These MCA fixtures deliberately contain `minecraft:empty` test metadata and
 `DataVersion=1`; they do not claim current Minecraft chunk-schema or terrain
 compatibility. Real generated-region loading remains an explicit acceptance test.
+
+## Chunk serialization
+
+`palette.bend` maps profile-local U16 material/biome IDs to deterministic local
+palettes in first-occurrence order. A bounded open-addressed table sized to the
+section avoids clearing the entire global ID domain. Uniform palettes omit
+`data`; block palettes use at least four bits and biome palettes at least one.
+
+`material.bend` defines registry-supplied block IDs, properties and six heightmap
+predicate bits. `heightmaps.bend` scans final blocks, including tree/structure
+tops, into all six maps. Values are relative to world minimum Y and include the
+top block plus one. It uses the packed-array implementation rather than GPU
+surface estimates or block-name heuristics.
+
+`chunk.bend` validates dimensions, section counts/capacities and profile IDs, then
+encodes current chunk fields, block/biome sections, heightmaps, structure
+references, entities and block entities. It accepts already computed 2048-byte
+light arrays and emits the two light-only padding sections when lighting is
+complete. Missing/inconsistent lighting or malformed nibble arrays fail instead
+of producing a successfully marked-lit chunk. It **does not compute lighting**.
+The caller must establish the supplied lighting's correctness. Without lighting,
+the chunk remains at `minecraft:features` for normal Minecraft lighting.
+
+```sh
+python3 scripts/test_bend_chunks.py
+./gradlew bendChunkTest -PretinaHostOnly --max-workers=2 --no-parallel
+```
+
+The independent runner verifies 20 local-palette cases (49,664 indices), every
+block and quart biome in two 24-section chunks, all six final heightmaps, exact
+loot seed bits, signed section extremes, complete zlib/MCA framing and 27 invalid
+inputs. The fixture includes water, leaves, non-default log/chest properties and
+a block at the world ceiling. The separate Minecraft harness supplies the actual
+runtime data version and reads/reopens the MCA through `RegionFileStorage`,
+`PalettedContainer`, `SimpleBitStorage` and `SerializableChunkData`, comparing
+heightmaps with Minecraft's actual predicates. Java only drives and decodes test
+fixtures; Bend produces the bytes, compression and container.
+
+These are complete **serialized fixture chunks**, not generated worlds. The
+profiles and blocks are constructed in Bend test code. Registry transport, real
+terrain/features, lighting computation, existing-file preservation, runtime
+integration and actual client gameplay remain incomplete. The last independent
+fixture report is in `docs/benchmarks/bend-chunk-correctness.json`.
