@@ -4,7 +4,7 @@ Fabric and NeoForge 26.3 terrain generation with GPU registry density programs, 
 
 An independent pure Bend backend is in development. Its compression, Minecraft
 chunk encoding, persistent registry transport, loaded climate selection and
-numeric terrain programs are verified; it is not yet a selectable or complete
+numeric terrain programs and reusable GPU density lattices are verified; it is not yet a selectable or complete
 generator.
 See the [implementation checklist](docs/BEND_IMPLEMENTATION.md) for remaining
 parity and integration work. The working Rust world types below remain available

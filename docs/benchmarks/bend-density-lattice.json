@@ -1,0 +1,715 @@
+{
+  "scope": "Resident numeric top-level density lattice and GPU interpolation; complete terrain/regions, per-field caching and full-generator throughput remain pending",
+  "base_commit": "28fd388e1c913b639159c3c598601f47ee76aa09",
+  "host": {
+    "os": "macOS",
+    "gpu": "Apple M4 Max / Metal",
+    "compiler": "Bend 2.0.36",
+    "workers": 2,
+    "process_nice": 10
+  },
+  "correctness": {
+    "scope": "Resident top-level GPU density lattice and interpolation; no integrated terrain or complete-region benchmark",
+    "vertex_capacity": 1048576,
+    "maximum_axis_span_blocks": 4096,
+    "cpu_workers": 2,
+    "process_nice": 10,
+    "runs": [
+      {
+        "mode": "cpu",
+        "profiles": [
+          {
+            "name": "mixed",
+            "lattices": 6,
+            "validated_queries": 313,
+            "grid_prepare_host_ms": [
+              0.30916696414351463,
+              0.12170791160315275,
+              0.13025000225752592,
+              0.555165926925838
+            ],
+            "mixed_query_host_ms": [
+              0.3863329766318202,
+              0.3251249436289072,
+              0.24908408522605896,
+              0.4472091095522046
+            ],
+            "repeat_reorder_empty": "pass",
+            "overlapping_tiles": "byte-identical",
+            "program_seed_outside_misses": "direct Bend sampler",
+            "rejected_request_retains_cache": "pass",
+            "profile_and_numeric_prepare_invalidation": "pass"
+          },
+          {
+            "name": "vanilla",
+            "lattices": 6,
+            "validated_queries": 313,
+            "grid_prepare_host_ms": [
+              138.46645900048316,
+              49.01333409361541,
+              32.663125079125166,
+              2.749249921180308
+            ],
+            "mixed_query_host_ms": [
+              1.5511669917032123,
+              7.80016602948308,
+              2.423790981993079,
+              3.694541985169053
+            ],
+            "repeat_reorder_empty": "pass",
+            "overlapping_tiles": "byte-identical",
+            "program_seed_outside_misses": "direct Bend sampler",
+            "rejected_request_retains_cache": "pass",
+            "profile_and_numeric_prepare_invalidation": "pass"
+          },
+          {
+            "name": "terralith",
+            "lattices": 6,
+            "validated_queries": 313,
+            "grid_prepare_host_ms": [
+              208.3958339644596,
+              34.422583994455636,
+              30.600499943830073,
+              0.2770000137388706
+            ],
+            "mixed_query_host_ms": [
+              3.5054589388892055,
+              2.0520829129964113,
+              2.7180409524589777,
+              0.879791914485395
+            ],
+            "repeat_reorder_empty": "pass",
+            "overlapping_tiles": "byte-identical",
+            "program_seed_outside_misses": "direct Bend sampler",
+            "rejected_request_retains_cache": "pass",
+            "profile_and_numeric_prepare_invalidation": "pass"
+          },
+          {
+            "name": "combined",
+            "lattices": 6,
+            "validated_queries": 313,
+            "grid_prepare_host_ms": [
+              236.30700004287064,
+              28.62162492237985,
+              42.7296661073342,
+              0.36616704892367125
+            ],
+            "mixed_query_host_ms": [
+              2.6455409824848175,
+              2.1459159906953573,
+              5.765083944424987,
+              1.1638749856501818
+            ],
+            "repeat_reorder_empty": "pass",
+            "overlapping_tiles": "byte-identical",
+            "program_seed_outside_misses": "direct Bend sampler",
+            "rejected_request_retains_cache": "pass",
+            "profile_and_numeric_prepare_invalidation": "pass"
+          },
+          {
+            "name": "analytic",
+            "lattices": 6,
+            "validated_queries": 313,
+            "grid_prepare_host_ms": [
+              0.19933306612074375,
+              0.14775001909583807,
+              0.1087910495698452,
+              0.10800000745803118
+            ],
+            "mixed_query_host_ms": [
+              0.28870790265500546,
+              0.28000003658235073,
+              0.26462506502866745,
+              0.3111250698566437
+            ],
+            "repeat_reorder_empty": "pass",
+            "overlapping_tiles": "byte-identical",
+            "program_seed_outside_misses": "direct Bend sampler",
+            "rejected_request_retains_cache": "pass",
+            "profile_and_numeric_prepare_invalidation": "pass"
+          }
+        ],
+        "maximum_batch_queries": 4096,
+        "invalid_layouts": 65,
+        "requests_in_one_process": 258,
+        "expected_dispatches": 132,
+        "max_relative_or_absolute_error": 1.1118923261693725e-06,
+        "aggregate_sha256": "1fa562be9294622cba8392e4042c6ccb57c56fd7a42d212207c6f4f596ed3402",
+        "observed_metal_command_ms": []
+      },
+      {
+        "mode": "gpu_required",
+        "profiles": [
+          {
+            "name": "mixed",
+            "lattices": 6,
+            "validated_queries": 313,
+            "grid_prepare_host_ms": [
+              80.58454201091081,
+              1.0098750935867429,
+              0.8667920483276248,
+              10.380916064605117
+            ],
+            "mixed_query_host_ms": [
+              14.102125074714422,
+              10.399165912531316,
+              1.101749949157238,
+              10.400332976132631
+            ],
+            "repeat_reorder_empty": "pass",
+            "overlapping_tiles": "byte-identical",
+            "program_seed_outside_misses": "direct Bend sampler",
+            "rejected_request_retains_cache": "pass",
+            "profile_and_numeric_prepare_invalidation": "pass"
+          },
+          {
+            "name": "vanilla",
+            "lattices": 6,
+            "validated_queries": 313,
+            "grid_prepare_host_ms": [
+              204.54895892180502,
+              701.8851250177249,
+              863.182415952906,
+              4.609417053870857
+            ],
+            "mixed_query_host_ms": [
+              141.22683298774064,
+              132.8103750711307,
+              227.96749998815358,
+              78.47366703208536
+            ],
+            "repeat_reorder_empty": "pass",
+            "overlapping_tiles": "byte-identical",
+            "program_seed_outside_misses": "direct Bend sampler",
+            "rejected_request_retains_cache": "pass",
+            "profile_and_numeric_prepare_invalidation": "pass"
+          },
+          {
+            "name": "terralith",
+            "lattices": 6,
+            "validated_queries": 313,
+            "grid_prepare_host_ms": [
+              313.17504204344004,
+              1367.0242918888107,
+              1430.2341250004247,
+              6.596125080250204
+            ],
+            "mixed_query_host_ms": [
+              244.9190840125084,
+              249.81116596609354,
+              411.36925003957003,
+              134.6302500460297
+            ],
+            "repeat_reorder_empty": "pass",
+            "overlapping_tiles": "byte-identical",
+            "program_seed_outside_misses": "direct Bend sampler",
+            "rejected_request_retains_cache": "pass",
+            "profile_and_numeric_prepare_invalidation": "pass"
+          },
+          {
+            "name": "combined",
+            "lattices": 6,
+            "validated_queries": 313,
+            "grid_prepare_host_ms": [
+              324.41158406436443,
+              1362.4784999992698,
+              1452.4263750063255,
+              6.510583916679025
+            ],
+            "mixed_query_host_ms": [
+              250.12666697148234,
+              239.3461250467226,
+              418.1570000946522,
+              134.49170906096697
+            ],
+            "repeat_reorder_empty": "pass",
+            "overlapping_tiles": "byte-identical",
+            "program_seed_outside_misses": "direct Bend sampler",
+            "rejected_request_retains_cache": "pass",
+            "profile_and_numeric_prepare_invalidation": "pass"
+          },
+          {
+            "name": "analytic",
+            "lattices": 6,
+            "validated_queries": 313,
+            "grid_prepare_host_ms": [
+              55.13216694816947,
+              1.8357089720666409,
+              1.1447080178186297,
+              0.9176669409498572
+            ],
+            "mixed_query_host_ms": [
+              3.3931249054148793,
+              2.1206249948590994,
+              1.7894579796120524,
+              1.6793329268693924
+            ],
+            "repeat_reorder_empty": "pass",
+            "overlapping_tiles": "byte-identical",
+            "program_seed_outside_misses": "direct Bend sampler",
+            "rejected_request_retains_cache": "pass",
+            "profile_and_numeric_prepare_invalidation": "pass"
+          }
+        ],
+        "maximum_batch_queries": 4096,
+        "invalid_layouts": 65,
+        "requests_in_one_process": 258,
+        "expected_dispatches": 132,
+        "max_relative_or_absolute_error": 1.1118923261693725e-06,
+        "aggregate_sha256": "1fa562be9294622cba8392e4042c6ccb57c56fd7a42d212207c6f4f596ed3402",
+        "observed_metal_command_ms": []
+      }
+    ],
+    "cpu_gpu_bytes_equal": true,
+    "metal_observation": {
+      "diagnostic_only": true,
+      "command_buffers": 132,
+      "device_ms": {
+        "min": 0.103708,
+        "max": 1448.73125,
+        "sum": 17974.485916
+      },
+      "output_bytes_equal": true
+    },
+    "profiles": [
+      {
+        "name": "mixed",
+        "wire_sha256": "ae4a8ef446edc2c30da8bc99f7937222659d26a87b58d03b41c22ca13457f360"
+      },
+      {
+        "name": "vanilla",
+        "wire_sha256": "39c775ca58b6d084d4de060925df01d170c89caa09b9eaf7d33e55a915c8065a"
+      },
+      {
+        "name": "terralith",
+        "wire_sha256": "cf9ef7e0d83d91c5d99aa914101aad8b156ce9a8caa4050f71e81b190a1c0ca6"
+      },
+      {
+        "name": "combined",
+        "wire_sha256": "d4ac8f9040e39892de12b6fc6ecc46b3d9e961c3cba7f05a2ae9b53262967193"
+      },
+      {
+        "name": "analytic",
+        "wire_sha256": "5870121670c80e62a6d36d5278c6021efc3a37056a58c5ea514114ac9b332d3e"
+      }
+    ],
+    "source_sha256": {
+      "bend/density_lattice.bend": "0b02993df32e160b21c50b8ee33e003f2d7f3eb53645c91ab6699bed0e1a9ae8",
+      "bend/registry_density.bend": "4ac0504f56de21433d13ce733a882019d8b2bc9bbfc00928ad5dc51c74b43b02",
+      "bend/engine.bend": "aefd3f300ebff16d9b2a3c8ac5ad871fe495a27b431e6cedc128c76aa0b3186f",
+      "scripts/test_bend_density_lattice.py": "be262e0191ac17da3279fda8aaa81ded4d09888cf9066096fe0f5eaf08a125d4"
+    }
+  },
+  "query_benchmark": {
+    "scope": "Warm resident versus direct numeric density vertex queries, not complete-region throughput",
+    "cpu_workers": 2,
+    "process_nice": 10,
+    "compilation": "Separate; completed before this harness",
+    "order": "Serial alternating direct/cached after one warmup each",
+    "memory": "Sampled RSS after batches, not peak",
+    "binary_sha256": "c82c9660972fa56f33b57d2755b4509b06e2e0ee401b8f29eec0c19405696ad1",
+    "runs": [
+      {
+        "mode": "cpu",
+        "profiles": [
+          {
+            "profile": "vanilla",
+            "vertices": 405,
+            "construction_host_ms": 277.2348748985678,
+            "queries_per_batch": 24,
+            "warmups_per_path": 1,
+            "repeats": 3,
+            "direct_host_batch_ms": [
+              19.9617090402171,
+              17.967000021599233,
+              23.156500072218478
+            ],
+            "cached_host_batch_ms": [
+              1.682666945271194,
+              1.8357919761911035,
+              1.8952499376609921
+            ],
+            "direct_median_ms": 19.9617090402171,
+            "cached_median_ms": 1.8357919761911035,
+            "median_query_speed_ratio": 10.87362255588109,
+            "output_bytes_equal_at_vertices": true,
+            "reference_max_relative_or_absolute_error": 4.980263194898082e-07,
+            "resident_rss_after_batches_bytes": 46497792,
+            "output_sha256": "75707f1eaf2265bb5bb28e8a08ce588ee38feddf2879e1dd65e9e541556f6b41",
+            "json_sha256": "aefce6ff0e800966ad55920c5d21510dfa277de4612f67e22d5146d3aa838203",
+            "wire_sha256": "39c775ca58b6d084d4de060925df01d170c89caa09b9eaf7d33e55a915c8065a"
+          },
+          {
+            "profile": "terralith",
+            "vertices": 405,
+            "construction_host_ms": 482.801332953386,
+            "queries_per_batch": 24,
+            "warmups_per_path": 1,
+            "repeats": 3,
+            "direct_host_batch_ms": [
+              37.45937498752028,
+              35.06816702429205,
+              35.811792011372745
+            ],
+            "cached_host_batch_ms": [
+              0.6384999724105,
+              0.5354160675778985,
+              2.6816249592229724
+            ],
+            "direct_median_ms": 35.811792011372745,
+            "cached_median_ms": 0.6384999724105,
+            "median_query_speed_ratio": 56.087382237737785,
+            "output_bytes_equal_at_vertices": true,
+            "reference_max_relative_or_absolute_error": 4.980263194898082e-07,
+            "resident_rss_after_batches_bytes": 115015680,
+            "output_sha256": "ac41911e12f73e2b5b0dda9273a42d1ff1c502b246677c35c7cd5705e08bb942",
+            "json_sha256": "c9abbe97860a394ed899d64967bd0395bb9bb4ec71a9dff43d1bb45893fefd4d",
+            "wire_sha256": "cf9ef7e0d83d91c5d99aa914101aad8b156ce9a8caa4050f71e81b190a1c0ca6"
+          },
+          {
+            "profile": "combined",
+            "vertices": 405,
+            "construction_host_ms": 436.87083304394037,
+            "queries_per_batch": 24,
+            "warmups_per_path": 1,
+            "repeats": 3,
+            "direct_host_batch_ms": [
+              23.025458911433816,
+              21.270166034810245,
+              19.907542038708925
+            ],
+            "cached_host_batch_ms": [
+              0.23133400827646255,
+              0.23920799139887094,
+              0.22945902310311794
+            ],
+            "direct_median_ms": 21.270166034810245,
+            "cached_median_ms": 0.23133400827646255,
+            "median_query_speed_ratio": 91.94569442375591,
+            "output_bytes_equal_at_vertices": true,
+            "reference_max_relative_or_absolute_error": 4.980263194898082e-07,
+            "resident_rss_after_batches_bytes": 182403072,
+            "output_sha256": "ac41911e12f73e2b5b0dda9273a42d1ff1c502b246677c35c7cd5705e08bb942",
+            "json_sha256": "068fd602ad497128dd3960cb9be76840ebd41882b5b64c25acfa76d65e930c8b",
+            "wire_sha256": "d4ac8f9040e39892de12b6fc6ecc46b3d9e961c3cba7f05a2ae9b53262967193"
+          }
+        ]
+      },
+      {
+        "mode": "gpu_required",
+        "profiles": [
+          {
+            "profile": "vanilla",
+            "vertices": 405,
+            "construction_host_ms": 316.55274995137006,
+            "queries_per_batch": 24,
+            "warmups_per_path": 1,
+            "repeats": 3,
+            "direct_host_batch_ms": [
+              345.4098749207333,
+              337.2770840069279,
+              337.262750021182
+            ],
+            "cached_host_batch_ms": [
+              0.8459169184789062,
+              0.7570000598207116,
+              0.8724579820409417
+            ],
+            "direct_median_ms": 337.2770840069279,
+            "cached_median_ms": 0.8459169184789062,
+            "median_query_speed_ratio": 398.7118316694812,
+            "output_bytes_equal_at_vertices": true,
+            "reference_max_relative_or_absolute_error": 4.980263194898082e-07,
+            "resident_rss_after_batches_bytes": 66682880,
+            "output_sha256": "75707f1eaf2265bb5bb28e8a08ce588ee38feddf2879e1dd65e9e541556f6b41",
+            "json_sha256": "aefce6ff0e800966ad55920c5d21510dfa277de4612f67e22d5146d3aa838203",
+            "wire_sha256": "39c775ca58b6d084d4de060925df01d170c89caa09b9eaf7d33e55a915c8065a"
+          },
+          {
+            "profile": "terralith",
+            "vertices": 405,
+            "construction_host_ms": 446.98975002393126,
+            "queries_per_batch": 24,
+            "warmups_per_path": 1,
+            "repeats": 3,
+            "direct_host_batch_ms": [
+              730.7940419996157,
+              661.5750830387697,
+              659.2400840017945
+            ],
+            "cached_host_batch_ms": [
+              1.257041934877634,
+              0.9608330437913537,
+              1.1330419220030308
+            ],
+            "direct_median_ms": 661.5750830387697,
+            "cached_median_ms": 1.1330419220030308,
+            "median_query_speed_ratio": 583.8928553227884,
+            "output_bytes_equal_at_vertices": true,
+            "reference_max_relative_or_absolute_error": 4.980263194898082e-07,
+            "resident_rss_after_batches_bytes": 137101312,
+            "output_sha256": "ac41911e12f73e2b5b0dda9273a42d1ff1c502b246677c35c7cd5705e08bb942",
+            "json_sha256": "c9abbe97860a394ed899d64967bd0395bb9bb4ec71a9dff43d1bb45893fefd4d",
+            "wire_sha256": "cf9ef7e0d83d91c5d99aa914101aad8b156ce9a8caa4050f71e81b190a1c0ca6"
+          },
+          {
+            "profile": "combined",
+            "vertices": 405,
+            "construction_host_ms": 448.21816601324826,
+            "queries_per_batch": 24,
+            "warmups_per_path": 1,
+            "repeats": 3,
+            "direct_host_batch_ms": [
+              721.1535410024226,
+              670.7577909110114,
+              666.5952909970656
+            ],
+            "cached_host_batch_ms": [
+              0.8753329748287797,
+              0.8241659961640835,
+              0.8664579363539815
+            ],
+            "direct_median_ms": 670.7577909110114,
+            "cached_median_ms": 0.8664579363539815,
+            "median_query_speed_ratio": 774.1377426047154,
+            "output_bytes_equal_at_vertices": true,
+            "reference_max_relative_or_absolute_error": 4.980263194898082e-07,
+            "resident_rss_after_batches_bytes": 204914688,
+            "output_sha256": "ac41911e12f73e2b5b0dda9273a42d1ff1c502b246677c35c7cd5705e08bb942",
+            "json_sha256": "068fd602ad497128dd3960cb9be76840ebd41882b5b64c25acfa76d65e930c8b",
+            "wire_sha256": "d4ac8f9040e39892de12b6fc6ecc46b3d9e961c3cba7f05a2ae9b53262967193"
+          }
+        ]
+      }
+    ],
+    "source_sha256": {
+      "bend/density_lattice.bend": "0b02993df32e160b21c50b8ee33e003f2d7f3eb53645c91ab6699bed0e1a9ae8",
+      "bend/engine.bend": "aefd3f300ebff16d9b2a3c8ac5ad871fe495a27b431e6cedc128c76aa0b3186f",
+      "scripts/benchmark_bend_lattice.py": "deafa3dc54a8d050ec426c7b21145f70508686d68593141e3c668e612047d440"
+    }
+  },
+  "resident_density_regression": {
+    "scope": "Resident numeric terrain program projection and bounded queries; material and region generation pending",
+    "profiles": [
+      {
+        "name": "vanilla",
+        "json_sha256": "aefce6ff0e800966ad55920c5d21510dfa277de4612f67e22d5146d3aa838203",
+        "wire_sha256": "39c775ca58b6d084d4de060925df01d170c89caa09b9eaf7d33e55a915c8065a"
+      },
+      {
+        "name": "terralith",
+        "json_sha256": "c9abbe97860a394ed899d64967bd0395bb9bb4ec71a9dff43d1bb45893fefd4d",
+        "wire_sha256": "cf9ef7e0d83d91c5d99aa914101aad8b156ce9a8caa4050f71e81b190a1c0ca6"
+      },
+      {
+        "name": "combined",
+        "json_sha256": "068fd602ad497128dd3960cb9be76840ebd41882b5b64c25acfa76d65e930c8b",
+        "wire_sha256": "d4ac8f9040e39892de12b6fc6ecc46b3d9e961c3cba7f05a2ae9b53262967193"
+      }
+    ],
+    "runs": [
+      {
+        "mode": "cpu",
+        "profiles": [
+          {
+            "name": "mixed",
+            "queries": 24,
+            "validated_rows": 75,
+            "prepare_host_ms": 11.911583016626537,
+            "first_batch_host_ms": 15.564874978736043,
+            "noise_climate_independence": "pass",
+            "failed_upload_retains_model": "pass",
+            "repeat_reorder_empty": "pass"
+          },
+          {
+            "name": "packed",
+            "queries": 24,
+            "validated_rows": 75,
+            "prepare_host_ms": 5.819790996611118,
+            "first_batch_host_ms": 44.11041701678187,
+            "noise_climate_independence": "pass",
+            "failed_upload_retains_model": "pass",
+            "repeat_reorder_empty": "pass"
+          },
+          {
+            "name": "default_scale",
+            "queries": 24,
+            "validated_rows": 75,
+            "prepare_host_ms": 16.666417010128498,
+            "first_batch_host_ms": 19.74941696971655,
+            "noise_climate_independence": "pass",
+            "failed_upload_retains_model": "pass",
+            "repeat_reorder_empty": "pass"
+          },
+          {
+            "name": "constant",
+            "queries": 24,
+            "validated_rows": 75,
+            "prepare_host_ms": 0.2520829439163208,
+            "first_batch_host_ms": 0.9804581059142947,
+            "noise_climate_independence": "pass",
+            "failed_upload_retains_model": "pass",
+            "repeat_reorder_empty": "pass"
+          },
+          {
+            "name": "vanilla",
+            "queries": 24,
+            "validated_rows": 75,
+            "prepare_host_ms": 160.33566696569324,
+            "first_batch_host_ms": 115.01395795494318,
+            "noise_climate_independence": "pass",
+            "failed_upload_retains_model": "pass",
+            "repeat_reorder_empty": "pass"
+          },
+          {
+            "name": "terralith",
+            "queries": 24,
+            "validated_rows": 75,
+            "prepare_host_ms": 19.636834040284157,
+            "first_batch_host_ms": 32.0575829828158,
+            "noise_climate_independence": "pass",
+            "failed_upload_retains_model": "pass",
+            "repeat_reorder_empty": "pass"
+          },
+          {
+            "name": "combined",
+            "queries": 24,
+            "validated_rows": 75,
+            "prepare_host_ms": 23.205749923363328,
+            "first_batch_host_ms": 16.99195895344019,
+            "noise_climate_independence": "pass",
+            "failed_upload_retains_model": "pass",
+            "repeat_reorder_empty": "pass"
+          }
+        ],
+        "maximum_batch_queries": 4096,
+        "invalid_typed_profiles": 71,
+        "requests_in_one_process": 381,
+        "expected_dispatches": 53,
+        "max_relative_or_absolute_error": 1.5808156002133922e-06,
+        "aggregate_sha256": "ff7be7e0f8e4bfc66c93fdd70f4ef14d6389c35fe1f7825682a3f602d94e22f7",
+        "observed_metal_command_ms": []
+      },
+      {
+        "mode": "gpu_required",
+        "profiles": [
+          {
+            "name": "mixed",
+            "queries": 24,
+            "validated_rows": 75,
+            "prepare_host_ms": 1.0930000571534038,
+            "first_batch_host_ms": 19.10458307247609,
+            "noise_climate_independence": "pass",
+            "failed_upload_retains_model": "pass",
+            "repeat_reorder_empty": "pass"
+          },
+          {
+            "name": "packed",
+            "queries": 24,
+            "validated_rows": 75,
+            "prepare_host_ms": 0.9357500821352005,
+            "first_batch_host_ms": 12.52158300485462,
+            "noise_climate_independence": "pass",
+            "failed_upload_retains_model": "pass",
+            "repeat_reorder_empty": "pass"
+          },
+          {
+            "name": "default_scale",
+            "queries": 24,
+            "validated_rows": 75,
+            "prepare_host_ms": 0.5494169890880585,
+            "first_batch_host_ms": 10.957000078633428,
+            "noise_climate_independence": "pass",
+            "failed_upload_retains_model": "pass",
+            "repeat_reorder_empty": "pass"
+          },
+          {
+            "name": "constant",
+            "queries": 24,
+            "validated_rows": 75,
+            "prepare_host_ms": 0.21333398763090372,
+            "first_batch_host_ms": 1.4676660066470504,
+            "noise_climate_independence": "pass",
+            "failed_upload_retains_model": "pass",
+            "repeat_reorder_empty": "pass"
+          },
+          {
+            "name": "vanilla",
+            "queries": 24,
+            "validated_rows": 75,
+            "prepare_host_ms": 10.772917070426047,
+            "first_batch_host_ms": 419.3967090686783,
+            "noise_climate_independence": "pass",
+            "failed_upload_retains_model": "pass",
+            "repeat_reorder_empty": "pass"
+          },
+          {
+            "name": "terralith",
+            "queries": 24,
+            "validated_rows": 75,
+            "prepare_host_ms": 14.293667045421898,
+            "first_batch_host_ms": 723.953582928516,
+            "noise_climate_independence": "pass",
+            "failed_upload_retains_model": "pass",
+            "repeat_reorder_empty": "pass"
+          },
+          {
+            "name": "combined",
+            "queries": 24,
+            "validated_rows": 75,
+            "prepare_host_ms": 17.861250089481473,
+            "first_batch_host_ms": 732.6642920961604,
+            "noise_climate_independence": "pass",
+            "failed_upload_retains_model": "pass",
+            "repeat_reorder_empty": "pass"
+          }
+        ],
+        "maximum_batch_queries": 4096,
+        "invalid_typed_profiles": 71,
+        "requests_in_one_process": 381,
+        "expected_dispatches": 53,
+        "max_relative_or_absolute_error": 1.5808156002133922e-06,
+        "aggregate_sha256": "ff7be7e0f8e4bfc66c93fdd70f4ef14d6389c35fe1f7825682a3f602d94e22f7",
+        "observed_metal_command_ms": []
+      }
+    ],
+    "cpu_gpu_bytes_equal": true,
+    "source_sha256": {
+      "bend/registry_density.bend": "4ac0504f56de21433d13ce733a882019d8b2bc9bbfc00928ad5dc51c74b43b02",
+      "bend/density_batch.bend": "51231a72efa798c9a31f1a6a841176ea50d1ac5644352b389e3d1a9bff30d99c",
+      "bend/engine.bend": "aefd3f300ebff16d9b2a3c8ac5ad871fe495a27b431e6cedc128c76aa0b3186f",
+      "scripts/test_bend_registry_density.py": "ff884af8a8112008aac1e508b68f1c209542850a629986b4402219fb2d5a9b77"
+    }
+  },
+  "host_build": {
+    "command": "RUST_TEST_THREADS=2 nice -n 10 ./gradlew bendRegistryWireTest build -PretinaHostOnly --max-workers=2 --no-parallel",
+    "result": "BUILD SUCCESSFUL in 3m 43s",
+    "native_tests": {
+      "passed": 64,
+      "failed": 0,
+      "ignored": 11
+    },
+    "java_registry_worker": [
+      "CPU pass including concurrent lattice/fallback queries",
+      "GPU_REQUIRED pass including concurrent lattice/fallback queries"
+    ],
+    "loader_builds": [
+      "Fabric 26.3",
+      "NeoForge 26.3"
+    ],
+    "repaired_attempt": "An earlier build timed out in the single Bend compiler after 120 seconds while limited Cargo compilation ran concurrently. Only build() now allows 300 seconds; runtime command deadlines and compilation concurrency are unchanged."
+  },
+  "source_sha256": {
+    "bend/density_lattice.bend": "0b02993df32e160b21c50b8ee33e003f2d7f3eb53645c91ab6699bed0e1a9ae8",
+    "bend/density.bend": "0c0a88958c71598112c879b587112bd00e97d838b57262f74496f772150df620",
+    "bend/density_batch.bend": "51231a72efa798c9a31f1a6a841176ea50d1ac5644352b389e3d1a9bff30d99c",
+    "bend/registry_density.bend": "4ac0504f56de21433d13ce733a882019d8b2bc9bbfc00928ad5dc51c74b43b02",
+    "bend/engine.bend": "aefd3f300ebff16d9b2a3c8ac5ad871fe495a27b431e6cedc128c76aa0b3186f",
+    "common/src/main/java/art/arcane/retina/worldgen/BendWorker.java": "92d1ffafd3c5e0542ac0bec45383ed1a9177ac17eef03f58a0922d8f1ffc6fa8",
+    "common/src/gpuTest/java/art/arcane/retina/worldgen/BendProfileWireTest.java": "367164a24284a6846a6e15716cedb0785b35723028e3981ec8f22ba36b737483",
+    "scripts/test_bend_density_lattice.py": "be262e0191ac17da3279fda8aaa81ded4d09888cf9066096fe0f5eaf08a125d4",
+    "scripts/benchmark_bend_lattice.py": "deafa3dc54a8d050ec426c7b21145f70508686d68593141e3c668e612047d440",
+    "scripts/test_bend_compression.py": "7f6eee6d3b74c9292d5faf8e00fdbd3bed5a6271d6f1d5fb253aa97e2194f5ca",
+    "gradle/verification.gradle": "3eda562606abf3e58a4ac51072a203e78d82c98f525d505b80e91c781b4b85d7"
+  }
+}

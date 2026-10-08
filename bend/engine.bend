@@ -12,6 +12,7 @@ import ./climate_batch.bend as CB
 import ./registry_density.bend as RD
 import ./density.bend as Q
 import ./density_batch.bend as DB
+import ./density_lattice.bend as L
 
 # Persistent binary worker. Protocol v1 is a component transport, not yet a
 # world generator: PING=0, PREPARE_NOISE=1, SAMPLE_GRID=2, COMPRESS=3, STOP=4,
@@ -19,7 +20,8 @@ import ./density_batch.bend as DB
 # PROFILE_TEXT=7 (lossless packed UTF-16 string),
 # PROFILE_NOISE=8 (prepare a loaded climate/ridge stack using both seed words),
 # PROFILE_CLIMATE=9 (prepare resident targets), CLIMATE_BATCH=10 (raw queries),
-# PROFILE_DENSITY=11 (prepare numeric programs), DENSITY_BATCH=12 (raw queries).
+# PROFILE_DENSITY=11 (prepare numeric programs), DENSITY_BATCH=12 (raw queries),
+# DENSITY_LATTICE=13 (build resident grid), LATTICE_BATCH=14 (cached queries).
 # Requests: RBND magic, payload length, request ID, opcode (all BE u32).
 # Responses add a status u32 after opcode. stdout contains frames only.
 type Settings is Data:
@@ -363,11 +365,11 @@ def climate_batch(input: File,output: File,old: State,backend: U32,id: U32,opcod
 def density_ready(result: Result<&1,&1,U32,RD.Prepared>,doc: P.Document,settings: Settings,input: File,output: File,backend: U32,id: U32,opcode: U32) -> IO(Unit):
   match result settings:
     case Fail{code} _: error(input,output,State{settings,Some{doc}},backend,id,opcode,code)
-    case Done{RD.Prepared{+model,+programs,+noises,+points,+fields}} Settings{noise,climate,_}:
+    case Done{RD.Prepared{+model,+programs,+noises,+points,+fields,lattice}} Settings{noise,climate,_}:
       do IO<Unit>:
         # Acknowledge CPU projection before any subsequent GPU evaluation.
         body : Z.Bytes <- payload(B.int(B.int(B.int(B.int(B.new(),3),noises),points),fields))
-        finish(input,output,State{Settings{noise,climate,Some{RD.Prepared{model,programs,noises,points,fields}}},Some{doc}},backend,id,opcode,0,body,True{})
+        finish(input,output,State{Settings{noise,climate,Some{RD.Prepared{model,programs,noises,points,fields,lattice}}},Some{doc}},backend,id,opcode,0,body,True{})
 
 @unsafe
 def profile_density(valid: Bool,input: File,output: File,old: State,backend: U32,id: U32,opcode: U32) -> IO(Unit):
@@ -378,20 +380,20 @@ def profile_density(valid: Bool,input: File,output: File,old: State,backend: U32
       density_ready(result,doc,settings,input,output,backend,id,opcode))
 
 @unsafe
-def density_calculated(computed: DB.Computed,count: U32,noises: U32,points: U32,fields: U32,noise: Maybe<&2,N.Stack>,climate: Maybe<&2,C.Model>,profile: Maybe<&1,P.Document>,input: File,output: File,backend: U32,id: U32,opcode: U32) -> IO(Unit):
+def density_calculated(computed: DB.Computed,count: U32,noises: U32,points: U32,fields: U32,lattice: Maybe<&2,L.Grid>,noise: Maybe<&2,N.Stack>,climate: Maybe<&2,C.Model>,profile: Maybe<&1,P.Document>,input: File,output: File,backend: U32,id: U32,opcode: U32) -> IO(Unit):
   match computed:
     case DB.Computed{model,programs,rows}:
       do IO<Unit>:
         body : Z.Bytes <- payload(DB.encode(U32.to_nat(count),rows,B.new(),0))
-        finish(input,output,State{Settings{noise,climate,Some{RD.Prepared{model,programs,noises,points,fields}}},profile},backend,id,opcode,0,body,True{})
+        finish(input,output,State{Settings{noise,climate,Some{RD.Prepared{model,programs,noises,points,fields,lattice}}},profile},backend,id,opcode,0,body,True{})
 
 @unsafe
 def density_queries(queries: DB.Input,prepared: RD.Prepared,noise: Maybe<&2,N.Stack>,climate: Maybe<&2,C.Model>,profile: Maybe<&1,P.Document>,input: File,output: File,backend: U32,id: U32,opcode: U32) -> IO(Unit):
   match queries prepared:
     case DB.Input{_,_,False{}} _:
       error(input,output,State{Settings{noise,climate,Some{prepared}},profile},backend,id,opcode,603)
-    case DB.Input{queries,count,True{}} RD.Prepared{model,programs,noises,points,fields}:
-      density_calculated(DB.execute(model,programs,queries),count,noises,points,fields,noise,climate,profile,input,output,backend,id,opcode)
+    case DB.Input{queries,count,True{}} RD.Prepared{model,programs,noises,points,fields,lattice}:
+      density_calculated(DB.execute(model,programs,queries),count,noises,points,fields,lattice,noise,climate,profile,input,output,backend,id,opcode)
 
 @unsafe
 def density_batch(input: File,output: File,old: State,backend: U32,id: U32,opcode: U32,body: Z.Bytes) -> IO(Unit):
@@ -399,6 +401,58 @@ def density_batch(input: File,output: File,old: State,backend: U32,id: U32,opcod
     case State{Settings{noise,climate,None{}},profile}: error(input,output,State{Settings{noise,climate,None{}},profile},backend,id,opcode,716)
     case State{Settings{noise,climate,Some{prepared}},profile}:
       density_queries(DB.decode(body),prepared,noise,climate,profile,input,output,backend,id,opcode)
+
+@unsafe
+def lattice_generated(generated: L.Generated,noises: U32,points: U32,fields: U32,noise: Maybe<&2,N.Stack>,climate: Maybe<&2,C.Model>,profile: Maybe<&1,P.Document>,input: File,output: File,backend: U32,id: U32,opcode: U32) -> IO(Unit):
+  match generated:
+    case L.Generated{model,programs,L.Grid{+layout,values}}:
+      lattice_ack(layout,L.Grid{layout,values},model,programs,noises,points,fields,noise,climate,profile,input,output,backend,id,opcode)
+
+@unsafe
+def lattice_ack(layout: L.Layout,grid: L.Grid,model: Q.Model,programs: Q.Table<Q.Program>,noises: U32,points: U32,fields: U32,noise: Maybe<&2,N.Stack>,climate: Maybe<&2,C.Model>,profile: Maybe<&1,P.Document>,input: File,output: File,backend: U32,id: U32,opcode: U32) -> IO(Unit):
+  match layout:
+    case L.Layout{_,+nx,+ny,+nz,_,_,_,_,_}:
+      do IO<Unit>:
+        body : Z.Bytes <- payload(B.int(B.int(B.int(B.int(B.new(),nx),ny),nz),U32.mul(U32.mul(nx,ny),nz)))
+        finish(input,output,State{Settings{noise,climate,Some{RD.Prepared{model,programs,noises,points,fields,Some{grid}}}},profile},backend,id,opcode,0,body,True{})
+
+@unsafe
+def lattice_prepare(result: Result<&1,&1,U32,L.Layout>,prepared: RD.Prepared,noise: Maybe<&2,N.Stack>,climate: Maybe<&2,C.Model>,profile: Maybe<&1,P.Document>,input: File,output: File,backend: U32,id: U32,opcode: U32) -> IO(Unit):
+  match result prepared:
+    case Fail{code} _: error(input,output,State{Settings{noise,climate,Some{prepared}},profile},backend,id,opcode,code)
+    case Done{layout} RD.Prepared{model,programs,noises,points,fields,_}:
+      lattice_generated(L.generate(model,programs,layout),noises,points,fields,noise,climate,profile,input,output,backend,id,opcode)
+
+@unsafe
+def density_lattice(input: File,output: File,old: State,backend: U32,id: U32,opcode: U32,body: Z.Bytes) -> IO(Unit):
+  match old:
+    case State{Settings{noise,climate,None{}},profile}: error(input,output,State{Settings{noise,climate,None{}},profile},backend,id,opcode,716)
+    case State{Settings{noise,climate,Some{prepared}},profile}:
+      lattice_prepare(L.decode(body),prepared,noise,climate,profile,input,output,backend,id,opcode)
+
+@unsafe
+def lattice_calculated(computed: L.Computed,count: U32,noises: U32,points: U32,fields: U32,noise: Maybe<&2,N.Stack>,climate: Maybe<&2,C.Model>,profile: Maybe<&1,P.Document>,input: File,output: File,backend: U32,id: U32,opcode: U32) -> IO(Unit):
+  match computed:
+    case L.Computed{model,programs,grid,rows}:
+      do IO<Unit>:
+        body : Z.Bytes <- payload(DB.encode(U32.to_nat(count),rows,B.new(),0))
+        finish(input,output,State{Settings{noise,climate,Some{RD.Prepared{model,programs,noises,points,fields,Some{grid}}}},profile},backend,id,opcode,0,body,True{})
+
+@unsafe
+def lattice_queries(queries: DB.Input,prepared: RD.Prepared,noise: Maybe<&2,N.Stack>,climate: Maybe<&2,C.Model>,profile: Maybe<&1,P.Document>,input: File,output: File,backend: U32,id: U32,opcode: U32) -> IO(Unit):
+  match queries prepared:
+    case DB.Input{_,_,False{}} _: error(input,output,State{Settings{noise,climate,Some{prepared}},profile},backend,id,opcode,603)
+    case _ RD.Prepared{model,programs,noises,points,fields,None{}}:
+      error(input,output,State{Settings{noise,climate,Some{RD.Prepared{model,programs,noises,points,fields,None{}}}},profile},backend,id,opcode,718)
+    case DB.Input{queries,count,True{}} RD.Prepared{model,programs,noises,points,fields,Some{grid}}:
+      lattice_calculated(L.execute(grid,model,programs,queries),count,noises,points,fields,noise,climate,profile,input,output,backend,id,opcode)
+
+@unsafe
+def lattice_batch(input: File,output: File,old: State,backend: U32,id: U32,opcode: U32,body: Z.Bytes) -> IO(Unit):
+  match old:
+    case State{Settings{noise,climate,None{}},profile}: error(input,output,State{Settings{noise,climate,None{}},profile},backend,id,opcode,716)
+    case State{Settings{noise,climate,Some{prepared}},profile}:
+      lattice_queries(DB.decode(body),prepared,noise,climate,profile,input,output,backend,id,opcode)
 
 @unsafe
 def dispatch(input: File,output: File,stack: State,backend: U32,id: U32,opcode: U32,body: Z.Bytes) -> IO(Unit):
@@ -415,6 +469,8 @@ def dispatch(input: File,output: File,stack: State,backend: U32,id: U32,opcode: 
     case 10: climate_batch(input,output,stack,backend,id,10,body)
     case 11: profile_density(R.end(R.start(body)),input,output,stack,backend,id,11)
     case 12: density_batch(input,output,stack,backend,id,12,body)
+    case 13: density_lattice(input,output,stack,backend,id,13,body)
+    case 14: lattice_batch(input,output,stack,backend,id,14,body)
     case 4: empty_command(R.end(R.start(body)),input,output,stack,backend,id,4)
     case _: error(input,output,stack,backend,id,opcode,605)
 

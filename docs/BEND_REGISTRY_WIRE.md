@@ -126,6 +126,26 @@ The existing `RBND` IPC framing remains version 1. Additional opcodes:
   compensated transformed coordinates participate. Invalid length/count/ID
   returns 603; no prepared model returns 716. One GPU batch (or explicit Bend
   CPU execution) uses the prepared model without resending registry data.
+- **13 — build density lattice:** eleven U32 words: program ID (0..2), inclusive
+  minimum X/Y/Z, inclusive maximum X/Y/Z (signed-i32 bit patterns), horizontal
+  step, vertical step, seed low and high. Bend aligns the origin down to the
+  global cell grid and includes the upper interpolation vertices. Each axis
+  span is at most 4,096 blocks; cell steps are 1..4,096. The grid has at least
+  two vertices/axis and at most 1,048,576 total vertices. Invalid/truncated
+  descriptors return 717, leaving the previous grid intact; missing prepared
+  model returns 716. Success returns four U32 words: X/Y/Z vertex counts and
+  total count. Sample order is X, then Y, then Z. The original program, including
+  registered interpolation fields, executes at each vertex on the selected
+  backend. Values stay in the worker; no sample array crosses the Java bridge.
+- **14 — lattice density batch:** same request/response layout and query limit
+  as opcode 12. Matching program/seed queries inside the resident grid interpolate
+  its six channels on GPU (or explicit Bend CPU), in X/Y/Z order. Program, seed
+  or coverage misses evaluate the original Bend graph directly, preserving the
+  cache. Missing numeric model returns 716; prepared model with no lattice
+  returns 718. Invalid batches return 603. Successful opcode 11 or 5 invalidates
+  the lattice. Rejected commands/uploads preserve it. This top-level lattice is
+  an approximation between vertices, not a replacement for the registered op28
+  fields' semantics within the sampled graph.
 
 `BendWorker.loadProfile` transports only the path. Its caller owns the staged
 file until acknowledgement. If a load is canceled while active, retain the file
@@ -157,6 +177,17 @@ reply. Typed program/point visitors and direct evaluation helpers reduce shared
 subtree ownership and continuation allocation. This does not change opcodes or
 wire output. Noise/field ownership and repeated interpolation corners remain
 performance work; measurements are in `docs/benchmarks/bend-density-borrows.json`.
+
+`BendWorker.prepareDensityLattice(...)` transports only the descriptor. Bend
+validates/aligns bounds and builds a balanced vertex tree, with short serial
+runs per fork task on large grids. Small grids expose every vertex; grouping
+aims for roughly 16,384 tasks as the grid grows. A pure wrapper retains the model on the host; later query
+batches retain both model and grid. Endpoints use compensated coordinates, so
+global cells can extend beyond signed-i32 endpoints without wrapping. One worker
+retains one grid with the vertex bound above; replacing it releases the old one.
+The runtime's boxed vertex storage is larger than packed raw F32 arrays. Full
+region memory/performance, per-field caches and integrated surface/cave consumers
+remain future work.
 
 A successful opcode 5 upload invalidates both prepared climate and density
 models. Call 9/11 before querying the replacement. Structurally rejected,
@@ -240,3 +271,33 @@ on CPU and GPU. Diagnostic stock-runtime observation must see actual Metal
 commands and match normal executable bytes. Evidence is in
 `docs/benchmarks/bend-registry-density.json`; preparation/query wall times are
 component diagnostics, not complete-region benchmarks.
+
+Resident density lattice checks:
+
+```sh
+nice -n 10 ./gradlew bendDensityLatticeTest -PretinaHostOnly --max-workers=2 -PproveMetal \
+  -PbendDensityRegistryProfiles=/absolute/vanilla.json=/absolute/vanilla.rbp,/absolute/terralith.json=/absolute/terralith.rbp
+```
+
+Independent scalar reference equations sample the original graphs at global
+vertices and apply trilinear interpolation. The harness checks nonaligned and
+negative bounds, distant neighbors, signed-i32 endpoints, non-power-of-two cells,
+seed/program/coverage misses, overlapping tile seams, reordered/repeated/empty
+and 4,096-query batches, invalid capacity/geometry/lengths, cache invalidation
+and retained caches after rejected uploads. The diagnostic observer must match
+normal GPU bytes and observe the actual successful dispatches. Java concurrent
+callers also exercise resident interpolation and direct Bend misses.
+
+The construction/query component benchmark runs after compilation, alternates
+direct/cached order, and checks byte-identical results at the same graph vertices:
+
+```sh
+nice -n 10 python3 scripts/benchmark_bend_lattice.py \
+  --profile /absolute/vanilla.json /absolute/vanilla.rbp \
+  --profile /absolute/terralith.json /absolute/terralith.rbp
+```
+
+Construction cost is separate from warm query medians. Between vertices the
+lattice is an approximation, so these measurements do not establish complete
+region latency/throughput or full generator parity. CPU/GPU validation and the
+query measurements are recorded in `docs/benchmarks/bend-density-lattice.json`.
