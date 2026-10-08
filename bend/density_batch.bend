@@ -11,6 +11,9 @@ type Request is Data:
 type Input is Type:
   Input{queries: Array<Request>,count: U32,valid: Bool}
 
+type Computed is Type:
+  Computed{model: Q.Model,programs: Q.Table<Q.Program>,rows: Array<Q.Outputs>}
+
 @unsafe
 def requests(n: Nat,cursor: R.Cursor,a: Array<Request>,+i: U32,+count: U32,+valid: Bool) -> Input:
   match n:
@@ -31,7 +34,7 @@ def decode(bytes: Z.Bytes) -> Input:
 def row(active: Bool,model: Q.Model,programs: Q.Table<Q.Program>,request: Request) -> Q.Outputs:
   match active request:
     case False{} _: Q.Outputs{D.scalar(0.0),D.scalar(0.0),D.scalar(0.0),D.scalar(0.0),D.scalar(0.0),D.scalar(0.0)}
-    case True{} Request{program,x,y,z,low,high}: Q.run(model,Q.get(Q.Program,programs,program,Q.Program{[],[],0}),Q.world(x,y,z),low,high)
+    case True{} Request{program,x,y,z,low,high}: Q.run_index(model,programs,program,Q.world(x,y,z),low,high)
 
 @unsafe
 def calculate(+model: Q.Model,+programs: Q.Table<Q.Program>,requests: Array<Request>) -> Array<Q.Outputs>:
@@ -45,6 +48,12 @@ def calculate(+model: Q.Model,+programs: Q.Table<Q.Program>,requests: Array<Requ
 def active(request: Request) -> Bool:
   match request:
     case Request{program,_,_,_,_,_}: U32.is_ne(program,4294967295)
+
+# Keep one owner on the host and borrow immutable tables through the GPU call.
+# Putting the bang in an IO continuation makes its captured tables owned.
+def execute(+model: Q.Model,+programs: Q.Table<Q.Program>,queries: Array<Request>) -> Computed:
+  rows : Array<Q.Outputs> = calculate!(model,programs,queries)
+  Computed{model,programs,rows}
 
 @unsafe
 def encode(n: Nat,a: Array<Q.Outputs>,w: B.Writer,+i: U32) -> B.Writer:

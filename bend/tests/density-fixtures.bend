@@ -1,5 +1,6 @@
 import Base
 import ../density.bend as Q
+import ../density_batch.bend as DB
 import ../precise.bend as D
 import ../registry.bend as P
 import ../reader.bend as R
@@ -8,10 +9,8 @@ import ../compression.bend as Z
 import ../transport.bend as T
 import ./compress-file.bend as F
 
-type Request is Data:
-  Request{program: U32,x: U32,y: U32,z: U32,low: U32,high: U32}
 type Input is Type:
-  Input{cursor: R.Cursor,model: Q.Model,programs: Q.Table<Q.Program>,queries: Array<Request>,count: U32,valid: Bool}
+  Input{cursor: R.Cursor,model: Q.Model,programs: Q.Table<Q.Program>,queries: Array<DB.Request>,count: U32,valid: Bool}
 
 def vector(-A: Type,cursor: R.Cursor,next: R.Cursor -> Q.Vec4 -> A) -> A:
   R.word(A,cursor,cursor => a => R.word(A,cursor,cursor => b => R.word(A,cursor,cursor => c => R.word(A,cursor,cursor => d =>
@@ -81,21 +80,21 @@ def fields_done(cursor: R.Cursor,noises: Q.Table<Q.Noise>,points: Q.Table<Q.Vec4
 def programs(n: Nat,cursor: R.Cursor,+model: Q.Model,acc: List<&2,Q.Program>,+query_count: U32,+valid: Bool) -> Input:
   match n model:
     case 0n _: queries(U32.to_nat(query_count),cursor,model,Q.prepared_table(Q.Program,List.reverse(&2,Q.Program,acc)),
-      Array.new(Request,P.capacity(query_count,1,0n),Request{4294967295,0,0,0,0,0}),0,query_count,valid)
+      Array.new(DB.Request,P.capacity(query_count,1,0n),DB.Request{4294967295,0,0,0,0,0}),0,query_count,valid)
     case 1n+p Q.Model{_,_,+fields}: program(Input,cursor,cursor => +value => programs(p,cursor,model,value <> acc,query_count,
       Bool.and(valid,Q.valid_program(model,value,Q.table_size(Q.Field,fields)))))
 
 @unsafe
-def queries(n: Nat,cursor: R.Cursor,+model: Q.Model,+programs: Q.Table<Q.Program>,a: Array<Request>,+i: U32,+count: U32,+valid: Bool) -> Input:
+def queries(n: Nat,cursor: R.Cursor,+model: Q.Model,+programs: Q.Table<Q.Program>,a: Array<DB.Request>,+i: U32,+count: U32,+valid: Bool) -> Input:
   match n:
     case 0n: Input{cursor,model,programs,a,count,valid}
     case 1n+p: R.word(Input,cursor,cursor => +program => R.word(Input,cursor,cursor => x => R.word(Input,cursor,cursor => y =>
       R.word(Input,cursor,cursor => z => R.word(Input,cursor,cursor => low => R.word(Input,cursor,cursor => high =>
-      queries(p,cursor,model,programs,Array.set(Request,a,i,Request{program,x,y,z,low,high}),U32.inc(i),count,
+      queries(p,cursor,model,programs,Array.set(DB.Request,a,i,DB.Request{program,x,y,z,low,high}),U32.inc(i),count,
         Bool.and(valid,U32.is_lt(program,Q.table_size(Q.Program,programs))))))))))
 
 def bad(cursor: R.Cursor) -> Input:
-  Input{cursor,Q.Model{Q.Empty{},Q.Empty{},Q.Empty{}},Q.Empty{},[Request{4294967295,0,0,0,0,0}:Request*1n],0,False{}}
+  Input{cursor,Q.Model{Q.Empty{},Q.Empty{},Q.Empty{}},Q.Empty{},[DB.Request{4294967295,0,0,0,0,0}:DB.Request*1n],0,False{}}
 
 @unsafe
 def room(valid: Bool,cursor: R.Cursor,noise_count: U32,points: U32,fields: U32,programs: U32,queries: U32) -> Input:
@@ -107,25 +106,6 @@ def decode(bytes: Z.Bytes) -> Input:
   R.word(Input,R.start(bytes),cursor => +n => R.word(Input,cursor,cursor => +p => R.word(Input,cursor,cursor => +f =>
   R.word(Input,cursor,cursor => +g => R.word(Input,cursor,cursor => +q =>
     room(Bool.and(Bool.and(U32.is_le(n,8192),U32.is_le(p,65536)),Bool.and(U32.is_le(f,128),Bool.and(U32.is_le(g,256),U32.is_le(q,4096)))),cursor,n,p,f,g,q))))))
-
-@unsafe
-def row(active: Bool,model: Q.Model,programs: Q.Table<Q.Program>,request: Request) -> Q.Outputs:
-  match active request:
-    case False{} _: Q.Outputs{D.scalar(0.0),D.scalar(0.0),D.scalar(0.0),D.scalar(0.0),D.scalar(0.0),D.scalar(0.0)}
-    case True{} Request{program,x,y,z,low,high}: Q.run(model,Q.get(Q.Program,programs,program,Q.Program{[],[],0}),Q.world(x,y,z),low,high)
-
-@unsafe
-def calculate(+model: Q.Model,+programs: Q.Table<Q.Program>,requests: Array<Request>) -> Array<Q.Outputs>:
-  match requests:
-    case ALeaf{+request}: ALeaf{row(active(request),model,programs,request)}
-    case ANode{a,b}:
-      a b = calculate(model,programs,a) calculate(model,programs,b)
-      ANode{a,b}
-
-@unsafe
-def active(request: Request) -> Bool:
-  match request:
-    case Request{program,_,_,_,_,_}: U32.is_ne(program,4294967295)
 
 @unsafe
 def encode(n: Nat,a: Array<Q.Outputs>,w: B.Writer,+i: U32) -> B.Writer:
@@ -149,14 +129,17 @@ def save(result: Result<&1,&1,U32,Z.Bytes>,path: String) -> IO(Unit):
     case Fail{code}: IO.die(Unit,code,"density fixture output overflow")
     case Done{bytes}: F.save(bytes,path)
 
-def generate(valid: Bool,model: Q.Model,programs: Q.Table<Q.Program>,queries: Array<Request>,count: U32,path: String) -> IO(Unit):
+def generated(computed: DB.Computed,count: U32,path: String) -> IO(Unit):
+  match computed:
+    case DB.Computed{_,_,rows}: save(B.done(encode(U32.to_nat(count),rows,B.new(),0)),path)
+
+def generate(valid: Bool,model: Q.Model,programs: Q.Table<Q.Program>,queries: Array<DB.Request>,count: U32,path: String) -> IO(Unit):
   match valid:
     case False{}: IO.die(Unit,715,"invalid density fixture")
     case True{}:
       do IO<Unit>:
         _ : Nat <- IO.now()
-        rows : Array<Q.Outputs> = calculate!(model,programs,queries)
-        save(B.done(encode(U32.to_nat(count),rows,B.new(),0)),path)
+        generated(DB.execute(model,programs,queries),count,path)
 
 def decoded(input: Input,path: String) -> IO(Unit):
   match input:

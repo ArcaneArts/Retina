@@ -151,6 +151,13 @@ programs before acknowledging. Query requests carry no model data. Preparing
 noise, climate or density preserves the other prepared settings; no query
 mutates the resident input or numeric model.
 
+The numeric query entry point keeps model ownership on the host through a pure
+batch wrapper, returning the model with the computed rows before encoding the
+reply. Typed program/point visitors and direct evaluation helpers reduce shared
+subtree ownership and continuation allocation. This does not change opcodes or
+wire output. Noise/field ownership and repeated interpolation corners remain
+performance work; measurements are in `docs/benchmarks/bend-density-borrows.json`.
+
 A successful opcode 5 upload invalidates both prepared climate and density
 models. Call 9/11 before querying the replacement. Structurally rejected,
 missing or truncated uploads retain the old tape and both models. A typed

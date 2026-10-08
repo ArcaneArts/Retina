@@ -378,21 +378,27 @@ def profile_density(valid: Bool,input: File,output: File,old: State,backend: U32
       density_ready(result,doc,settings,input,output,backend,id,opcode))
 
 @unsafe
-def density_queries(queries: DB.Input,model: Q.Model,programs: Q.Table<Q.Program>,old: State,input: File,output: File,backend: U32,id: U32,opcode: U32) -> IO(Unit):
-  match queries:
-    case DB.Input{_,_,False{}}: error(input,output,old,backend,id,opcode,603)
-    case DB.Input{queries,count,True{}}:
+def density_calculated(computed: DB.Computed,count: U32,noises: U32,points: U32,fields: U32,noise: Maybe<&2,N.Stack>,climate: Maybe<&2,C.Model>,profile: Maybe<&1,P.Document>,input: File,output: File,backend: U32,id: U32,opcode: U32) -> IO(Unit):
+  match computed:
+    case DB.Computed{model,programs,rows}:
       do IO<Unit>:
-        rows : Array<Q.Outputs> = DB.calculate!(model,programs,queries)
         body : Z.Bytes <- payload(DB.encode(U32.to_nat(count),rows,B.new(),0))
-        finish(input,output,old,backend,id,opcode,0,body,True{})
+        finish(input,output,State{Settings{noise,climate,Some{RD.Prepared{model,programs,noises,points,fields}}},profile},backend,id,opcode,0,body,True{})
+
+@unsafe
+def density_queries(queries: DB.Input,prepared: RD.Prepared,noise: Maybe<&2,N.Stack>,climate: Maybe<&2,C.Model>,profile: Maybe<&1,P.Document>,input: File,output: File,backend: U32,id: U32,opcode: U32) -> IO(Unit):
+  match queries prepared:
+    case DB.Input{_,_,False{}} _:
+      error(input,output,State{Settings{noise,climate,Some{prepared}},profile},backend,id,opcode,603)
+    case DB.Input{queries,count,True{}} RD.Prepared{model,programs,noises,points,fields}:
+      density_calculated(DB.execute(model,programs,queries),count,noises,points,fields,noise,climate,profile,input,output,backend,id,opcode)
 
 @unsafe
 def density_batch(input: File,output: File,old: State,backend: U32,id: U32,opcode: U32,body: Z.Bytes) -> IO(Unit):
   match old:
     case State{Settings{noise,climate,None{}},profile}: error(input,output,State{Settings{noise,climate,None{}},profile},backend,id,opcode,716)
-    case State{Settings{noise,climate,Some{RD.Prepared{+model,+programs,+noises,+points,+fields}}},profile}:
-      density_queries(DB.decode(body),model,programs,State{Settings{noise,climate,Some{RD.Prepared{model,programs,noises,points,fields}}},profile},input,output,backend,id,opcode)
+    case State{Settings{noise,climate,Some{prepared}},profile}:
+      density_queries(DB.decode(body),prepared,noise,climate,profile,input,output,backend,id,opcode)
 
 @unsafe
 def dispatch(input: File,output: File,stack: State,backend: U32,id: U32,opcode: U32,body: Z.Bytes) -> IO(Unit):

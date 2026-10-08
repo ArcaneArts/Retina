@@ -109,9 +109,31 @@ def sample(noise: Noise,point: Point,low: U32,high: U32) -> F32:
     case Noise{horizontal,frequency,amplitude,salt,weights}: F32.mul(F32.mul(octaves(weights,scale(point,horizontal,1.0),frequency,
       U32.xor(U32.xor(low,N.hash(high)),salt),0,0.0),amplitude),0.625)
 
-def noise(model: Model,index: U32,point: Point,low: U32,high: U32) -> D.Number:
-  match model:
-    case Model{noises,_,_}: D.scalar(sample(get(Noise,noises,index,Noise{1.0,1.0,0.0,0,[]}),point,low,high))
+@unsafe
+def noise_at(table: Table<Noise>,+index: U32,point: Point,low: U32,high: U32) -> D.Number:
+  match table:
+    case Empty{}: D.scalar(0.0)
+    case Leaf{noise}: D.scalar(sample(noise,point,low,high))
+    case Branch{_,+a,b}: noise_branch(U32.is_lt(index,table_size(Noise,a)),a,b,index,point,low,high)
+
+@unsafe
+def noise_branch(left: Bool,+a: Table<Noise>,b: Table<Noise>,index: U32,point: Point,low: U32,high: U32) -> D.Number:
+  match left:
+    case True{}: noise_at(a,index,point,low,high)
+    case False{}: noise_at(b,U32.sub(index,table_size(Noise,a)),point,low,high)
+
+@unsafe
+def point_at(table: Table<Vec4>,+index: U32) -> Vec4:
+  match table:
+    case Empty{}: Vec4{0.0,0.0,0.0,0.0}
+    case Leaf{Vec4{a,b,c,d}}: Vec4{a,b,c,d}
+    case Branch{_,+a,b}: point_branch(U32.is_lt(index,table_size(Vec4,a)),a,b,index)
+
+@unsafe
+def point_branch(left: Bool,+a: Table<Vec4>,b: Table<Vec4>,index: U32) -> Vec4:
+  match left:
+    case True{}: point_at(a,index)
+    case False{}: point_at(b,U32.sub(index,table_size(Vec4,a)))
 
 def blend_octaves(n: Nat,+limit: Point,+main: Point,+seed: U32,+i: U32,+weight: F32,+total: F32,+lower: F32,+upper: F32,+blend: F32) -> F32:
   match n:
@@ -172,40 +194,45 @@ def read(-A: Type,pair: Array<D.Number> & D.Number,next: Array<D.Number> -> D.Nu
   (array,value) = pair
   next(array,value)
 
+# Direct tuple returns keep immutable model data out of heap closures.
 @unsafe
-def spline_left(-A: Type,more: Bool,+points: Table<Vec4>,+base: U32,+count: U32,+j: U32,+k: U32,+x: D.Number,values: Array<D.Number>,next: Array<D.Number> -> D.Number -> A) -> A:
+def spline_left(more: Bool,+points: Table<Vec4>,+base: U32,+count: U32,+j: U32,+k: U32,+x: D.Number,values: Array<D.Number>) -> Array<D.Number> & D.Number:
   match more:
-    case False{}: spline_value(A,points,base,count,j,x,values,next)
-    case True{}: spline_scan(A,points,get(Vec4,points,U32.add(base,k),Vec4{0.0,0.0,0.0,0.0}),base,count,j,k,x,values,next)
+    case False{}: spline_point(points,point_at(points,U32.add(base,j)),base,count,j,x,values)
+    case True{}: spline_scan(points,point_at(points,U32.add(base,k)),base,count,j,k,x,values)
 
 @unsafe
-def spline_scan(-A: Type,+points: Table<Vec4>,point: Vec4,+base: U32,+count: U32,+j: U32,+k: U32,+x: D.Number,values: Array<D.Number>,next: Array<D.Number> -> D.Number -> A) -> A:
+def spline_scan(+points: Table<Vec4>,point: Vec4,+base: U32,+count: U32,+j: U32,+k: U32,+x: D.Number,values: Array<D.Number>) -> Array<D.Number> & D.Number:
   match point:
-    case Vec4{at,_,_,_}: spline_left(A,U32.is_lt(U32.inc(k),count),points,base,count,
-      N.word(Bool.not(D.less(x,D.scalar(at))),k,j),U32.inc(k),x,values,next)
+    case Vec4{at,_,_,_}: spline_left(U32.is_lt(U32.inc(k),count),points,base,count,
+      N.word(Bool.not(D.less(x,D.scalar(at))),k,j),U32.inc(k),x,values)
 
 @unsafe
-def spline_value(-A: Type,+points: Table<Vec4>,+base: U32,+count: U32,+j: U32,x: D.Number,values: Array<D.Number>,next: Array<D.Number> -> D.Number -> A) -> A:
-  spline_point(A,points,get(Vec4,points,U32.add(base,j),Vec4{0.0,0.0,0.0,0.0}),base,count,j,x,values,next)
-
-@unsafe
-def spline_point(-A: Type,points: Table<Vec4>,point: Vec4,base: U32,+count: U32,+j: U32,+x: D.Number,values: Array<D.Number>,next: Array<D.Number> -> D.Number -> A) -> A:
+def spline_point(+points: Table<Vec4>,point: Vec4,base: U32,+count: U32,+j: U32,+x: D.Number,values: Array<D.Number>) -> Array<D.Number> & D.Number:
   match point:
-    case Vec4{+at,+derivative,child,_}: read(A,Array.get(D.Number,values,F32.to_u32(child)),values => value =>
-      spline_branch(A,Bool.or(D.less(x,D.scalar(at)),U32.is_eq(j,U32.sub(count,1))),points,base,j,x,at,derivative,value,values,next))
+    case Vec4{+at,+derivative,child,_}: spline_value(Array.get(D.Number,values,F32.to_u32(child)),
+      Bool.or(D.less(x,D.scalar(at)),U32.is_eq(j,U32.sub(count,1))),points,base,j,x,at,derivative)
 
 @unsafe
-def spline_branch(-A: Type,end: Bool,points: Table<Vec4>,base: U32,j: U32,x: D.Number,at: F32,derivative: F32,value: D.Number,values: Array<D.Number>,next: Array<D.Number> -> D.Number -> A) -> A:
+def spline_value(pair: Array<D.Number> & D.Number,end: Bool,points: Table<Vec4>,base: U32,j: U32,x: D.Number,at: F32,derivative: F32) -> Array<D.Number> & D.Number:
+  (values,value) = pair
+  spline_branch(end,points,base,j,x,at,derivative,value,values)
+
+@unsafe
+def spline_branch(end: Bool,points: Table<Vec4>,base: U32,j: U32,x: D.Number,at: F32,derivative: F32,value: D.Number,values: Array<D.Number>) -> Array<D.Number> & D.Number:
   match end:
-    case True{}: next(values,D.add(value,D.scale(D.sub(x,D.scalar(at)),derivative)))
-    case False{}: spline_right(A,get(Vec4,points,U32.inc(U32.add(base,j)),Vec4{0.0,0.0,0.0,0.0}),x,at,derivative,value,values,next)
+    case True{}: (values,D.add(value,D.scale(D.sub(x,D.scalar(at)),derivative)))
+    case False{}: spline_right(point_at(points,U32.inc(U32.add(base,j))),x,at,derivative,value,values)
 
 @unsafe
-def spline_right(-A: Type,point: Vec4,x: D.Number,+at: F32,+derivative: F32,+left: D.Number,values: Array<D.Number>,next: Array<D.Number> -> D.Number -> A) -> A:
+def spline_right(point: Vec4,x: D.Number,+at: F32,+derivative: F32,+left: D.Number,values: Array<D.Number>) -> Array<D.Number> & D.Number:
   match point:
-    case Vec4{right_at,right_derivative,child,_}: read(A,Array.get(D.Number,values,F32.to_u32(child)),values => +right =>
-      next(values,
-        spline_mix(x,at,right_at,derivative,right_derivative,left,right)))
+    case Vec4{right_at,right_derivative,child,_}: spline_right_value(Array.get(D.Number,values,F32.to_u32(child)),x,at,right_at,derivative,right_derivative,left)
+
+@unsafe
+def spline_right_value(pair: Array<D.Number> & D.Number,x: D.Number,a: F32,b: F32,ad: F32,bd: F32,left: D.Number) -> Array<D.Number> & D.Number:
+  (values,right) = pair
+  (values,spline_mix(x,a,b,ad,bd,left,right))
 
 @unsafe
 def spline_mix(x: D.Number,+a: F32,+b: F32,ad: F32,bd: F32,+left: D.Number,+right: D.Number) -> D.Number:
@@ -221,34 +248,47 @@ def lattice(x: D.Number,+step: U32) -> D.Number:
   D.scale(D.floor(D.divide(x,D.scalar(U32.to_f32(step)))),U32.to_f32(step))
 
 @unsafe
-def interpolate(model: Model,field: Field,point: Point,low: U32,high: U32) -> D.Number:
+def field_at(+noises: Table<Noise>,+points: Table<Vec4>,+fields: Table<Field>,table: Table<Field>,+index: U32,point: Point,low: U32,high: U32) -> D.Number:
+  match table:
+    case Empty{}: D.scalar(0.0)
+    case Leaf{field}: interpolate(noises,points,fields,field,point,low,high)
+    case Branch{_,+a,b}: field_branch(U32.is_lt(index,table_size(Field,a)),noises,points,fields,a,b,index,point,low,high)
+
+@unsafe
+def field_branch(left: Bool,noises: Table<Noise>,points: Table<Vec4>,fields: Table<Field>,+a: Table<Field>,b: Table<Field>,index: U32,point: Point,low: U32,high: U32) -> D.Number:
+  match left:
+    case True{}: field_at(noises,points,fields,a,index,point,low,high)
+    case False{}: field_at(noises,points,fields,b,U32.sub(index,table_size(Field,a)),point,low,high)
+
+@unsafe
+def interpolate(noises: Table<Noise>,points: Table<Vec4>,fields: Table<Field>,field: Field,point: Point,low: U32,high: U32) -> D.Number:
   match field point:
     case Field{program,+horizontal,+vertical} Point{+x,+y,+z}:
       +a = lattice(x,horizontal)
       +b = lattice(y,vertical)
       +c = lattice(z,horizontal)
-      corners(model,program,Point{a,b,c},horizontal,vertical,low,high,0,[],
+      corners(noises,points,fields,program,Point{a,b,c},horizontal,vertical,low,high,0,[],
         D.value(D.divide(D.sub(x,a),D.scalar(U32.to_f32(horizontal)))),
         D.value(D.divide(D.sub(y,b),D.scalar(U32.to_f32(vertical)))),
         D.value(D.divide(D.sub(z,c),D.scalar(U32.to_f32(horizontal)))))
 
 @unsafe
-def corners(+model: Model,+program: Program,+origin: Point,+horizontal: U32,+vertical: U32,+low: U32,+high: U32,+i: U32,acc: List<&2,D.Number>,x: F32,y: F32,z: F32) -> D.Number:
-  corners_more(U32.is_lt(i,8),model,program,origin,horizontal,vertical,low,high,i,acc,x,y,z)
+def corners(+noises: Table<Noise>,+points: Table<Vec4>,+fields: Table<Field>,+program: Program,+origin: Point,+horizontal: U32,+vertical: U32,+low: U32,+high: U32,+i: U32,acc: List<&2,D.Number>,x: F32,y: F32,z: F32) -> D.Number:
+  corners_more(U32.is_lt(i,8),noises,points,fields,program,origin,horizontal,vertical,low,high,i,acc,x,y,z)
 
 @unsafe
-def corners_more(more: Bool,+model: Model,+program: Program,+origin: Point,+horizontal: U32,+vertical: U32,+low: U32,+high: U32,+i: U32,acc: List<&2,D.Number>,x: F32,y: F32,z: F32) -> D.Number:
+def corners_more(more: Bool,+noises: Table<Noise>,+points: Table<Vec4>,+fields: Table<Field>,+program: Program,+origin: Point,+horizontal: U32,+vertical: U32,+low: U32,+high: U32,+i: U32,acc: List<&2,D.Number>,x: F32,y: F32,z: F32) -> D.Number:
   match more:
     case False{}: corner_mix(List.reverse(&2,D.Number,acc),x,y,z)
-    case True{}: corners_output(model,program,origin,horizontal,vertical,low,high,i,acc,x,y,z,
-      run(model,program,shifted(origin,D.scalar(U32.to_f32(U32.mul(U32.and(i,1),horizontal))),
+    case True{}: corners_output(noises,points,fields,program,origin,horizontal,vertical,low,high,i,acc,x,y,z,
+      run_parts(noises,points,fields,program,shifted(origin,D.scalar(U32.to_f32(U32.mul(U32.and(i,1),horizontal))),
         D.scalar(U32.to_f32(U32.mul(U32.and(U32.shrn(i,1n),1),vertical))),
         D.scalar(U32.to_f32(U32.mul(U32.and(U32.shrn(i,2n),1),horizontal)))),low,high))
 
 @unsafe
-def corners_output(+model: Model,+program: Program,+origin: Point,+horizontal: U32,+vertical: U32,+low: U32,+high: U32,+i: U32,acc: List<&2,D.Number>,x: F32,y: F32,z: F32,output: Outputs) -> D.Number:
+def corners_output(+noises: Table<Noise>,+points: Table<Vec4>,+fields: Table<Field>,+program: Program,+origin: Point,+horizontal: U32,+vertical: U32,+low: U32,+high: U32,+i: U32,acc: List<&2,D.Number>,x: F32,y: F32,z: F32,output: Outputs) -> D.Number:
   match output:
-    case Outputs{a,_,_,_,_,_}: corners(model,program,origin,horizontal,vertical,low,high,U32.inc(i),a <> acc,x,y,z)
+    case Outputs{a,_,_,_,_,_}: corners(noises,points,fields,program,origin,horizontal,vertical,low,high,U32.inc(i),a <> acc,x,y,z)
 
 def corner_mix(values: List<&2,D.Number>,+x: F32,+y: F32,z: F32) -> D.Number:
   match values:
@@ -258,50 +298,62 @@ def corner_mix(values: List<&2,D.Number>,+x: F32,+y: F32,z: F32) -> D.Number:
     case _: D.scalar(0.0)
 
 @unsafe
-def eval(-A: Type,+model: Model,instruction: Instruction,+point: Point,+low: U32,+high: U32,values: Array<D.Number>,next: Array<D.Number> -> D.Number -> A) -> A:
-  match model instruction:
-    case Model{_,+points,+fields} Instruction{+op,+a,+b,+c,+p}:
-      read(A,Array.get(D.Number,values,a),values => +av => read(A,Array.get(D.Number,values,b),values => +bv =>
-      read(A,Array.get(D.Number,values,c),values => +cv =>
-        operation(A,model,points,fields,op,a,b,c,p,point,low,high,av,bv,cv,values,next))))
+def eval(noises: Table<Noise>,points: Table<Vec4>,fields: Table<Field>,instruction: Instruction,point: Point,low: U32,high: U32,values: Array<D.Number>) -> Array<D.Number> & D.Number:
+  match instruction:
+    case Instruction{op,+a,b,c,p}: operand_a(Array.get(D.Number,values,a),noises,points,fields,op,a,b,c,p,point,low,high)
 
 @unsafe
-def operation(-A: Type,+model: Model,points: Table<Vec4>,fields: Table<Field>,op: U32,+a: U32,+b: U32,+c: U32,+p: Vec4,+point: Point,+low: U32,+high: U32,+av: D.Number,+bv: D.Number,+cv: D.Number,values: Array<D.Number>,next: Array<D.Number> -> D.Number -> A) -> A:
+def operand_a(pair: Array<D.Number> & D.Number,noises: Table<Noise>,points: Table<Vec4>,fields: Table<Field>,op: U32,a: U32,+b: U32,c: U32,p: Vec4,point: Point,low: U32,high: U32) -> Array<D.Number> & D.Number:
+  (values,av) = pair
+  operand_b(Array.get(D.Number,values,b),noises,points,fields,op,a,b,c,p,point,low,high,av)
+
+@unsafe
+def operand_b(pair: Array<D.Number> & D.Number,noises: Table<Noise>,points: Table<Vec4>,fields: Table<Field>,op: U32,a: U32,b: U32,+c: U32,p: Vec4,point: Point,low: U32,high: U32,av: D.Number) -> Array<D.Number> & D.Number:
+  (values,bv) = pair
+  operand_c(Array.get(D.Number,values,c),noises,points,fields,op,a,b,c,p,point,low,high,av,bv)
+
+@unsafe
+def operand_c(pair: Array<D.Number> & D.Number,noises: Table<Noise>,points: Table<Vec4>,fields: Table<Field>,op: U32,a: U32,b: U32,c: U32,p: Vec4,point: Point,low: U32,high: U32,av: D.Number,bv: D.Number) -> Array<D.Number> & D.Number:
+  (values,cv) = pair
+  operation(noises,points,fields,op,a,b,c,p,point,low,high,av,bv,cv,values)
+
+@unsafe
+def operation(+noises: Table<Noise>,points: Table<Vec4>,+fields: Table<Field>,op: U32,+a: U32,+b: U32,+c: U32,+p: Vec4,+point: Point,+low: U32,+high: U32,+av: D.Number,+bv: D.Number,+cv: D.Number,values: Array<D.Number>) -> Array<D.Number> & D.Number:
   match op p:
-    case 0 Vec4{x,_,_,_}: next(values,D.scalar(x))
-    case 1 Vec4{x,y,z,_}: next(values,noise(model,F32.to_u32(x),shifted(scale(point,y,z),av,bv,cv),low,high))
+    case 0 Vec4{x,_,_,_}: (values,D.scalar(x))
+    case 1 Vec4{x,y,z,_}: (values,noise_at(noises,F32.to_u32(x),shifted(scale(point,y,z),av,bv,cv),low,high))
     case 2 _:
-      next(values,D.scale(noise(model,a,scale(shift_point(point,b),0.25,0.25),low,high),4.0))
-    case 3 _: next(values,gradient(point_axis(point,a),p,b))
-    case 4 _: next(values,binary(4,av,bv))
-    case 5 _: next(values,binary(5,av,bv))
-    case 6 _: next(values,binary(6,av,bv))
-    case 7 _: next(values,binary(7,av,bv))
-    case 8 _: next(values,binary(8,av,bv))
-    case 9 _: next(values,binary(9,av,bv))
-    case 10 _: next(values,binary(10,av,bv))
-    case 11 _: next(values,unary(11,av,p))
-    case 12 _: next(values,unary(12,av,p))
-    case 13 _: next(values,unary(13,av,p))
-    case 14 _: next(values,unary(14,av,p))
-    case 15 _: next(values,unary(15,av,p))
-    case 16 _: next(values,unary(16,av,p))
-    case 17 _: next(values,unary(17,av,p))
-    case 18 _: next(values,unary(18,av,p))
-    case 19 _: next(values,unary(19,av,p))
-    case 20 _: next(values,unary(20,av,p))
-    case 21 _: next(values,unary(21,av,p))
-    case 22 _: next(values,unary(22,av,p))
-    case 23 Vec4{x,y,_,_}: next(values,D.choose(Bool.and(Bool.not(D.less(av,D.scalar(x))),D.less(av,D.scalar(y))),bv,cv))
-    case 24 _: next(values,D.mix(bv,cv,av))
-    case 25 _: spline_left(A,U32.is_gt(c,1),points,b,c,0,1,av,values,next)
-    case 26 _: next(values,old_blended(point,p,low,high))
-    case 27 Vec4{x,y,_,_}: next(values,D.scale(noise(model,F32.to_u32(x),Point{av,bv,cv},low,high),y))
-    case 28 Vec4{x,_,_,_}: next(values,interpolate(model,get(Field,fields,F32.to_u32(x),Field{Program{[],[],0},4,8}),Point{av,bv,cv},low,high))
-    case 29 _: next(values,point_axis(point,a))
-    case 30 _: next(values,gradient(av,p,b))
-    case 31 _: next(values,old_blended(Point{av,bv,cv},p,low,high))
-    case _ _: next(values,D.scalar(F32.div(0.0,0.0)))
+      (values,D.scale(noise_at(noises,a,scale(shift_point(point,b),0.25,0.25),low,high),4.0))
+    case 3 _: (values,gradient(point_axis(point,a),p,b))
+    case 4 _: (values,binary(4,av,bv))
+    case 5 _: (values,binary(5,av,bv))
+    case 6 _: (values,binary(6,av,bv))
+    case 7 _: (values,binary(7,av,bv))
+    case 8 _: (values,binary(8,av,bv))
+    case 9 _: (values,binary(9,av,bv))
+    case 10 _: (values,binary(10,av,bv))
+    case 11 _: (values,unary(11,av,p))
+    case 12 _: (values,unary(12,av,p))
+    case 13 _: (values,unary(13,av,p))
+    case 14 _: (values,unary(14,av,p))
+    case 15 _: (values,unary(15,av,p))
+    case 16 _: (values,unary(16,av,p))
+    case 17 _: (values,unary(17,av,p))
+    case 18 _: (values,unary(18,av,p))
+    case 19 _: (values,unary(19,av,p))
+    case 20 _: (values,unary(20,av,p))
+    case 21 _: (values,unary(21,av,p))
+    case 22 _: (values,unary(22,av,p))
+    case 23 Vec4{x,y,_,_}: (values,D.choose(Bool.and(Bool.not(D.less(av,D.scalar(x))),D.less(av,D.scalar(y))),bv,cv))
+    case 24 _: (values,D.mix(bv,cv,av))
+    case 25 _: spline_left(U32.is_gt(c,1),points,b,c,0,1,av,values)
+    case 26 _: (values,old_blended(point,p,low,high))
+    case 27 Vec4{x,y,_,_}: (values,D.scale(noise_at(noises,F32.to_u32(x),Point{av,bv,cv},low,high),y))
+    case 28 Vec4{x,_,_,_}: (values,field_at(noises,points,fields,fields,F32.to_u32(x),Point{av,bv,cv},low,high))
+    case 29 _: (values,point_axis(point,a))
+    case 30 _: (values,gradient(av,p,b))
+    case 31 _: (values,old_blended(Point{av,bv,cv},p,low,high))
+    case _ _: (values,D.scalar(F32.div(0.0,0.0)))
 
 @unsafe
 def shift_point(point: Point,+mode: U32) -> Point:
@@ -309,18 +361,27 @@ def shift_point(point: Point,+mode: U32) -> Point:
     case Point{+x,+y,+z}: Point{D.choose(U32.is_eq(mode,2),z,x),D.choose(U32.is_eq(mode,1),D.scalar(0.0),D.choose(U32.is_eq(mode,2),x,y)),D.choose(U32.is_eq(mode,2),D.scalar(0.0),z)}
 
 @unsafe
-def nodes(+model: Model,xs: List<&2,Instruction>,+point: Point,+low: U32,+high: U32,+i: U32,values: Array<D.Number>,roots: List<&2,U32>) -> Outputs:
+def nodes(+noises: Table<Noise>,+points: Table<Vec4>,+fields: Table<Field>,xs: List<&2,Instruction>,+point: Point,+low: U32,+high: U32,+i: U32,values: Array<D.Number>,roots: List<&2,U32>) -> Outputs:
   match xs:
     case Nil{}: outputs(6n,roots,values,[])
-    case instruction <> rest: eval(Outputs,model,instruction,point,low,high,values,values => value =>
-      nodes(model,rest,point,low,high,U32.inc(i),Array.set(D.Number,values,i,value),roots))
+    case instruction <> rest: node_value(eval(noises,points,fields,instruction,point,low,high,values),noises,points,fields,rest,point,low,high,i,roots)
+
+@unsafe
+def node_value(pair: Array<D.Number> & D.Number,noises: Table<Noise>,points: Table<Vec4>,fields: Table<Field>,rest: List<&2,Instruction>,point: Point,low: U32,high: U32,+i: U32,roots: List<&2,U32>) -> Outputs:
+  (values,value) = pair
+  nodes(noises,points,fields,rest,point,low,high,U32.inc(i),Array.set(D.Number,values,i,value),roots)
 
 @unsafe
 def outputs(n: Nat,roots: List<&2,U32>,values: Array<D.Number>,acc: List<&2,D.Number>) -> Outputs:
   match n roots:
     case 0n _: output_list(List.reverse(&2,D.Number,acc))
-    case 1n+p Nil{}: read(Outputs,Array.get(D.Number,values,0),values => value => outputs(p,[],values,value <> acc))
-    case 1n+p root <> rest: read(Outputs,Array.get(D.Number,values,root),values => value => outputs(p,rest,values,value <> acc))
+    case 1n+p Nil{}: output_value(Array.get(D.Number,values,0),p,[],acc)
+    case 1n+p root <> rest: output_value(Array.get(D.Number,values,root),p,rest,acc)
+
+@unsafe
+def output_value(pair: Array<D.Number> & D.Number,n: Nat,roots: List<&2,U32>,acc: List<&2,D.Number>) -> Outputs:
+  (values,value) = pair
+  outputs(n,roots,values,value <> acc)
 
 def output_list(xs: List<&2,D.Number>) -> Outputs:
   match xs:
@@ -328,10 +389,27 @@ def output_list(xs: List<&2,D.Number>) -> Outputs:
     case _: Outputs{D.scalar(0.0),D.scalar(0.0),D.scalar(0.0),D.scalar(0.0),D.scalar(0.0),D.scalar(0.0)}
 
 @unsafe
-def run(+model: Model,program: Program,+point: Point,+low: U32,+high: U32) -> Outputs:
+def run_parts(noises: Table<Noise>,points: Table<Vec4>,fields: Table<Field>,program: Program,point: Point,low: U32,high: U32) -> Outputs:
   match program:
-    case Program{nodes_list,roots,count}: nodes(model,nodes_list,point,low,high,0,
+    case Program{nodes_list,roots,count}: nodes(noises,points,fields,nodes_list,point,low,high,0,
       Array.new(D.Number,R.capacity(count,1,0n),D.scalar(0.0)),roots)
+
+def run(model: Model,program: Program,point: Point,low: U32,high: U32) -> Outputs:
+  match model:
+    case Model{noises,points,fields}: run_parts(noises,points,fields,program,point,low,high)
+
+@unsafe
+def run_index(+model: Model,programs: Table<Program>,+index: U32,point: Point,low: U32,high: U32) -> Outputs:
+  match programs:
+    case Empty{}: Outputs{D.scalar(0.0),D.scalar(0.0),D.scalar(0.0),D.scalar(0.0),D.scalar(0.0),D.scalar(0.0)}
+    case Leaf{program}: run(model,program,point,low,high)
+    case Branch{_,+a,b}: run_branch(U32.is_lt(index,table_size(Program,a)),model,a,b,index,point,low,high)
+
+@unsafe
+def run_branch(left: Bool,model: Model,+a: Table<Program>,b: Table<Program>,index: U32,point: Point,low: U32,high: U32) -> Outputs:
+  match left:
+    case True{}: run_index(model,a,index,point,low,high)
+    case False{}: run_index(model,b,U32.sub(index,table_size(Program,a)),point,low,high)
 
 # Preparation rejects malformed DAGs before unchecked per-point array reads.
 # This validator is for numeric density programs (0..31); material predicates
