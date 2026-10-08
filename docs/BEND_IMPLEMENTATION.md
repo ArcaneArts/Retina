@@ -177,7 +177,23 @@ more deeply; retain the original requested scope.
    independent noise/climate settings and Java concurrent callers. Material
    programs remain resident for a future projection. Cached lattices and actual
    terrain generation remain required. Evidence is in
-   `docs/benchmarks/bend-registry-density.json`.
+   `docs/benchmarks/bend-registry-density.json`. Merged in
+   [PR #31](https://github.com/ArcaneArts/Retina/pull/31), commit `2173223`;
+   both CI builds passed.
+   The density hot path now uses direct tuple helpers rather than per-node and
+   per-operand continuation closures. Typed visitors evaluate immutable program
+   and point tables without returning shared subtrees. A pure batch wrapper
+   retains the model outside the GPU call and reconstructs worker state afterward;
+   this avoids ownership changes from capturing the model in an IO continuation.
+   Noise/field ownership overhead and repeated corner evaluation still remain.
+   Warmed, serial A/B tests with byte-identical output measured 2.27–3.11× faster
+   CPU and 5.20–5.74× faster Metal batches on the three actual profiles (24 queries
+   each, two CPU workers, three repeats). These are component measurements, not
+   complete-region throughput. Independent scalar checks, resident reload/error
+   tests, actual Metal command observations and the full host build passed.
+   Evidence and the reproducible harness are in
+   `docs/benchmarks/bend-density-borrows.json` and
+   `scripts/benchmark_bend_density.py`.
 5. **Registered features and structures.** Port ordered decorations, geology,
    jigsaw/templates/processors and metadata with cross-region tests.
 6. **GPU lighting and integration.** Interior prelighting, cache/promotion,
