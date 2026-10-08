@@ -98,7 +98,7 @@ def correctness(binary, profiles, gpu):
             signal.alarm(600); prepare(worker, wire)
             count = len(source['biomes']); geometry = (0, -13, count*8, 1, LOW, HIGH)
             tile(worker, geometry); dispatches += 2
-            worker.call(22); dispatches += 1
+            worker.call(22); dispatches += 2
             points = [(i*8, -13, LOW, HIGH) for i in range(count)]
             raw = worker.call(24, query_bytes(points)); columns = decode(raw)
             assert worker.call(24, query_bytes(points[::-1])) == b''.join(
@@ -123,7 +123,7 @@ def correctness(binary, profiles, gpu):
             original_count = count-36
             original = [q for q in queries if q[0] < original_count]
             ref.verify(worker.call(20, request(original)), original); dispatches += 1
-            worker.call(22); dispatches += 1
+            worker.call(22); dispatches += 2
             assert worker.call(24, query_bytes(points)) == raw
             hashes.append(hashlib.sha256(raw).hexdigest())
             rows.append(dict(name=name, programs=count, eager_voxels=len(queries), independent_voxels=len(original),

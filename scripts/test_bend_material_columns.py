@@ -2,7 +2,7 @@
 """Independent block-run/context checks for Bend CPU and actual GPU execution.
 
 This stage consumes the existing top-level density approximation. Caves,
-aquifers, coastal remapping, 3D biome columns and generated MCA integration are
+aquifers, 3D biome columns and complete world integration are
 still required; this is not a complete-region benchmark.
 """
 import argparse
@@ -146,13 +146,13 @@ def exercise(binary,profiles,invalid,gpu):
     worker=Worker(binary,gpu);dispatches=0;records=[];hashes=[];checked=0;maximum=0.
     def call(op,data=b'',status=0):
         nonlocal dispatches
-        if status==0 and op in (13,16,20,22):dispatches+=1
+        if status==0 and op in (13,16,20,22):dispatches+=2 if op==22 else 1
         return worker.call(op,data,status=status)
     def error(op,data,code):
         nonlocal dispatches
         # Invalid evaluated material results are rejected after the GPU work.
         # Decode/preparation/halo failures never dispatch that work.
-        if op==22 and code==729:dispatches+=1
+        if op==22 and code==729:dispatches+=2
         assert call(op,data,1)==struct.pack('>I',code),(op,code)
     def build_tile(tile):
         x,z,w,d,lo,hi=tile
@@ -172,6 +172,8 @@ def exercise(binary,profiles,invalid,gpu):
             tiles=[(-8,-8,4,3,LOW,HIGH),(29999997,-30000005,3,4,LOW,HIGH),(-(1<<31)+1,(1<<31)-5,2,3,MASK,MASK)]
             if name in ('vanilla','terralith','combined'):tiles=tiles[:2]
             if name=='top_sliver':tiles=[(0,0,8,3,LOW,HIGH)]
+            if name in ('ramp','islands','explicit'):
+                tiles += [(0,0,1,1,LOW,HIGH),(3,-7,1,11,LOW,HIGH),(-9,4,13,1,LOW,HIGH)]
             for tile in tiles:
                 begin=time.perf_counter();desc,ack=build_tile(tile);times.append((time.perf_counter()-begin)*1000)
                 x,z,w,d,lo,hi=tile

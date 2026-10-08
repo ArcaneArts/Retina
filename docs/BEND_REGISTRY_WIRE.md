@@ -413,14 +413,27 @@ The matching density lattice must cover one extra column on all four X/Z sides
 for central-difference slopes. Request a descriptor with command 18 for that
 expanded tile, submit it to 13, and generate the central surface tile with 16
 before 22. Signed bounds, full seeds and world limits must match. Work is bounded
-to 134,217,728 voxel positions per tile; larger worlds can use smaller tiles.
+to 134,217,728 central voxel positions per tile; larger worlds can use smaller
+tiles. The geometry cache also scans the existing one-column slope halo.
 The acknowledgement is width, depth, column count and total run count. Missing
 prepared blocks/surface data returns 727, incompatible halo/seed/spacing or
 oversized work returns 728, and an actual invalid material result/biome returns
 729 without replacing an existing result. No Java terrain evaluation occurs.
 
-Bend caches each column's bilinear density layers once and interpolates Y while
-finding all solid intervals. It derives registered noise-based soil depth,
+Bend first caches each column's bilinear density layers and interpolates Y to
+find all solid/fluid/air spans for the central tile plus its one-column halo.
+On GPU, one step retains those compact spans and exact integer heights. A second
+GPU step applies materials only to the central tile and uses four cached
+neighbor heights for slopes, avoiding repeated vertical density scans. Both
+steps stay within command 22, without an intermediate Java/IPC terrain payload.
+The cache is immutable and scoped to that command; accepted/rejected state
+replacement and material validation retain their existing behavior. A complete
+region scans 514×514 columns (0.783% more than its central area); narrow tiles
+have proportionally more halo work. CPU execution retains the original single
+step: generate central spans and directly scan neighboring heights for slopes.
+That choice avoids the measured CPU cache overhead and shares the context and
+material algorithms; neither path delegates generation to another language.
+It derives registered noise-based soil depth,
 secondary depth noise, terracotta offsets, integer-height slopes, preliminary
 surface height, top/bottom stone depth and water context before evaluating the
 per-biome material DAG. Solid intervals and floating islands are preserved.

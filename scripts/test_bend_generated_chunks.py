@@ -111,7 +111,7 @@ def exercise(binary,profiles,invalid,gpu,folder,version):
     worker=Worker(binary,gpu);dispatches=0;hashes=[];records=[];checked=0
     def call(op,data=b'',status=0):
         nonlocal dispatches
-        if status==0 and op in (13,16,22): dispatches+=1
+        if status==0 and op in (13,16,22): dispatches+=2 if op==22 else 1
         return worker.call(op,data,status=status)
     def error(op,data,code): assert call(op,data,1)==struct.pack('>I',code),(op,code)
     def prepare(path):

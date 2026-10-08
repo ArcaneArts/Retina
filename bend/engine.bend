@@ -658,10 +658,10 @@ def columns_computed(computed: MC.Computed,palette: MD.Config,config: S.Config,n
       columns_finished(MC.summary(values),MC.Computed{model,programs,density,surface,materials,MD.Grid{tile,minimum,height,values}},palette,config,noises,points,fields,noise,climate,profile,input,output,backend,id,opcode)
 
 @unsafe
-def columns_generate(ok: Bool,prepared: RD.Prepared,noise: Maybe<&2,N.Stack>,climate: Maybe<&2,C.Model>,profile: Maybe<&1,P.Document>,input: File,output: File,backend: U32,id: U32,opcode: U32) -> IO(Unit):
+def columns_generate(ok: Bool,prepared: RD.Prepared,noise: Maybe<&2,N.Stack>,climate: Maybe<&2,C.Model>,profile: Maybe<&1,P.Document>,input: File,output: File,+backend: U32,id: U32,opcode: U32) -> IO(Unit):
   match ok prepared:
     case True{} RD.Prepared{model,programs,noises,points,fields,Some{density},Some{S.State{+config,Some{surface}}},Some{M.Model{materials,bands,sea,layered,Some{MD.State{+palette,old,catalog}}}}}:
-      columns_computed(MC.execute(config,palette,density,surface,model,programs,M.Model{materials,bands,sea,layered,Some{MD.State{palette,old,catalog}}}),palette,config,noises,points,fields,noise,climate,profile,input,output,backend,id,opcode)
+      columns_computed(MC.execute(U32.is_eq(backend,1),config,palette,density,surface,model,programs,M.Model{materials,bands,sea,layered,Some{MD.State{palette,old,catalog}}}),palette,config,noises,points,fields,noise,climate,profile,input,output,backend,id,opcode)
     case _ _: error(input,output,State{Settings{noise,climate,Some{prepared}},profile},backend,id,opcode,728)
 
 @unsafe

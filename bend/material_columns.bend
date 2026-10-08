@@ -19,6 +19,12 @@ type Computed is Type:
 # This avoids fetching eight six-root lattice outputs for every single block.
 type Vertical is Data:
   Vertical{origin: D.Number,step: U32,values: Q.Table<D.Number>,explicit: Maybe<&2,D.Number>}
+# Immutable pre-material spans plus exact heights for the central tile and its
+# one-column slope halo. Both device steps remain inside command 22.
+type Geometry is Data:
+  Geometry{runs: List<&2,MD.Run>,height: U32}
+type GeometryCache is Data:
+  GeometryCache{tile: S.Tile,values: Q.Table<Geometry>}
 type Query is Data:
   Query{x: U32,y: U32,z: U32,low: U32,high: U32}
 type Input is Type:
@@ -170,6 +176,53 @@ def slope(+config: S.Config,+density: L.Grid,+model: Q.Model,+programs: Q.Table<
     D.value(D.absolute(D.sub(D.integer(height(config,density,model,programs,Q.shifted(point,D.scalar(0.0),D.scalar(0.0),D.scalar(1.0)),low,high)),
       D.integer(height(config,density,model,programs,Q.shifted(point,D.scalar(0.0),D.scalar(0.0),D.scalar(F32.neg(1.0))),low,high))))))
 
+def geometry_halo(tile: S.Tile) -> S.Tile:
+  match tile:
+    case S.Tile{x,z,width,depth,low,high}: S.Tile{U32.sub(x,1),U32.sub(z,1),U32.add(width,2),U32.add(depth,2),low,high}
+
+@unsafe
+def geometry_column(+config: S.Config,density: L.Grid,point: Q.Point) -> Geometry:
+  match config:
+    case S.Config{+minimum,+span,+sea,_,_,_}:
+      +runs = geometry(span,span,4294967295,[],vertical(config,density,point),minimum,sea)
+      Geometry{runs,highest(runs,minimum)}
+
+@unsafe
+def geometry_rows(+limit: U32,+n: U32,+base: U32,+config: S.Config,+density: L.Grid,+tile: S.Tile) -> Q.Table<Geometry>:
+  match n:
+    case 1: Q.Leaf{geometry_column(config,density,S.point(tile,base))}
+    case _: geometry_split(U32.is_le(n,limit),limit,n,base,config,density,tile)
+
+@unsafe
+def geometry_split(serial: Bool,+limit: U32,+n: U32,+base: U32,+config: S.Config,+density: L.Grid,+tile: S.Tile) -> Q.Table<Geometry>:
+  match serial:
+    case True{}: Q.Branch{n,geometry_rows(limit,U32.div(n,2),base,config,density,tile),
+      geometry_rows(limit,U32.sub(n,U32.div(n,2)),U32.add(base,U32.div(n,2)),config,density,tile)}
+    case False{}:
+      +half = U32.div(n,2)
+      a b = geometry_rows(limit,half,base,config,density,tile)
+        geometry_rows(limit,U32.sub(n,half),U32.add(base,half),config,density,tile)
+      Q.Branch{n,a,b}
+
+@unsafe
+def geometry_at(cache: GeometryCache,point: Q.Point) -> Geometry:
+  match cache point:
+    case GeometryCache{S.Tile{x,z,width,_,_,_},values} Q.Point{px,_,pz}:
+      Q.get(Geometry,values,U32.add(F32.to_u32(D.value(D.sub(px,D.integer(x)))),
+        U32.mul(width,F32.to_u32(D.value(D.sub(pz,D.integer(z)))))),Geometry{[],0})
+
+def geometry_height(column: Geometry) -> U32:
+  match column:
+    case Geometry{_,height}: height
+
+@unsafe
+def cached_slope(+cache: GeometryCache,+point: Q.Point) -> F32:
+  +xp = geometry_height(geometry_at(cache,Q.shifted(point,D.scalar(1.0),D.scalar(0.0),D.scalar(0.0))))
+  +xm = geometry_height(geometry_at(cache,Q.shifted(point,D.scalar(F32.neg(1.0)),D.scalar(0.0),D.scalar(0.0))))
+  +zp = geometry_height(geometry_at(cache,Q.shifted(point,D.scalar(0.0),D.scalar(0.0),D.scalar(1.0))))
+  +zm = geometry_height(geometry_at(cache,Q.shifted(point,D.scalar(0.0),D.scalar(0.0),D.scalar(F32.neg(1.0)))))
+  F32.max(D.value(D.absolute(D.sub(D.integer(xp),D.integer(xm)))),D.value(D.absolute(D.sub(D.integer(zp),D.integer(zm)))))
+
 @unsafe
 def push(+start: U32,+end: U32,+material: U32,runs: List<&2,MD.Run>) -> List<&2,MD.Run>:
   match runs:
@@ -264,51 +317,104 @@ def material_count(materials: ML.Prepared) -> U32:
   ML.count(materials)
 
 @unsafe
-def context(+config: S.Config,+palette: MD.Config,+density: L.Grid,+model: Q.Model,+programs: Q.Table<Q.Program>,+point: Q.Point,+low: U32,+high: U32,+first_free: U32) -> M.Context:
+def context(config: S.Config,palette: MD.Config,+cache: GeometryCache,model: Q.Model,programs: Q.Table<Q.Program>,+point: Q.Point,low: U32,high: U32,first_free: U32) -> M.Context:
+  context_at(palette,model,point,low,high,first_free,cached_slope(cache,point))
+
+@unsafe
+def context_at(+palette: MD.Config,+model: Q.Model,+point: Q.Point,+low: U32,+high: U32,+first_free: U32,slope: F32) -> M.Context:
   match palette model:
     case MD.Config{_,_,_,+a,+b,+c} Q.Model{+noises,_,_}:
       +depth = M.trunc(F32.add(F32.add(F32.mul(D.value(Q.noise_at(noises,a,point,low,high)),2.75),3.0),
         F32.mul(F32.div(U32.to_f32(U32.and(M.cell_hash(point,U32.add(low,1381),high),65535)),65535.0),0.25)))
-      M.Context{0.0,depth,slope(config,density,model,programs,point,low,high),F32.round(F32.mul(D.value(Q.noise_at(noises,c,point,low,high)),4.0)),
+      M.Context{0.0,depth,slope,F32.round(F32.mul(D.value(Q.noise_at(noises,c,point,low,high)),4.0)),
         0.0,D.value(Q.noise_at(noises,b,point,low,high)),F32.neg(2147483648.0),F32.add(F32.sub(D.value(D.integer(first_free)),9.0),depth)}
 
 @unsafe
-def column(+config: S.Config,+palette: MD.Config,+density: L.Grid,+surface: S.Grid,+model: Q.Model,+programs: Q.Table<Q.Program>,+materials: ML.Prepared,+i: U32) -> MD.Column:
+def column(+config: S.Config,+palette: MD.Config,+cache: GeometryCache,+surface: S.Grid,+model: Q.Model,+programs: Q.Table<Q.Program>,+materials: ML.Prepared,+i: U32) -> MD.Column:
   match config surface:
     case S.Config{_,+span,_,_,_,_} S.Grid{+tile,+values}:
-      sampled(Q.get(S.Row,values,i,S.empty()),config,palette,density,model,programs,materials,S.point(tile,i),tile,span)
+      sampled(Q.get(S.Row,values,i,S.empty()),config,palette,cache,model,programs,materials,S.point(tile,i),tile,span)
 
 @unsafe
-def sampled(row: S.Row,+config: S.Config,+palette: MD.Config,+density: L.Grid,+model: Q.Model,+programs: Q.Table<Q.Program>,+materials: ML.Prepared,+point: Q.Point,tile: S.Tile,+span: U32) -> MD.Column:
+def sampled(row: S.Row,+config: S.Config,+palette: MD.Config,+cache: GeometryCache,+model: Q.Model,+programs: Q.Table<Q.Program>,+materials: ML.Prepared,+point: Q.Point,tile: S.Tile,+span: U32) -> MD.Column:
+  match row config tile:
+    case S.Row{_,_,+biome} S.Config{+minimum,_,+sea,_,_,_} S.Tile{_,_,_,_,+low,+high}:
+      +spans = cached_runs(geometry_at(cache,point))
+      column_ready(spans,config,palette,model,materials,point,low,high,biome,
+        context(config,palette,cache,model,programs,point,low,high,highest(spans,minimum)))
+
+@unsafe
+def columns(+limit: U32,+n: U32,+base: U32,+config: S.Config,+palette: MD.Config,+cache: GeometryCache,+surface: S.Grid,+model: Q.Model,+programs: Q.Table<Q.Program>,+materials: ML.Prepared) -> Q.Table<MD.Column>:
+  match n:
+    case 1: Q.Leaf{column(config,palette,cache,surface,model,programs,materials,base)}
+    case _: split(U32.is_le(n,limit),limit,n,base,config,palette,cache,surface,model,programs,materials)
+
+@unsafe
+def split(serial: Bool,+limit: U32,+n: U32,+base: U32,+config: S.Config,+palette: MD.Config,+cache: GeometryCache,+surface: S.Grid,+model: Q.Model,+programs: Q.Table<Q.Program>,+materials: ML.Prepared) -> Q.Table<MD.Column>:
+  match serial:
+    case True{}: Q.Branch{n,columns(limit,U32.div(n,2),base,config,palette,cache,surface,model,programs,materials),
+      columns(limit,U32.sub(n,U32.div(n,2)),U32.add(base,U32.div(n,2)),config,palette,cache,surface,model,programs,materials)}
+    case False{}:
+      +half = U32.div(n,2)
+      a b = columns(limit,half,base,config,palette,cache,surface,model,programs,materials)
+        columns(limit,U32.sub(n,half),U32.add(base,half),config,palette,cache,surface,model,programs,materials)
+      Q.Branch{n,a,b}
+
+def cached_runs(column: Geometry) -> List<&2,MD.Run>:
+  match column:
+    case Geometry{runs,_}: runs
+
+def cached_execute(+config: S.Config,+palette: MD.Config,+density: L.Grid,+surface: S.Grid,+model: Q.Model,+programs: Q.Table<Q.Program>,+materials: M.Model) -> Computed:
+  match config surface:
+    case S.Config{+minimum,+span,_,_,_,_} S.Grid{+tile,_}:
+      +prepared = ML.prepare(M.rules(materials))
+      +expanded = geometry_halo(tile)
+      geometry : Q.Table<Geometry> = geometry_rows!(U32.max(1,U32.div(U32.add(S.total(expanded),16383),16384)),S.total(expanded),0,config,density,expanded)
+      values : Q.Table<MD.Column> = columns!(U32.max(1,U32.div(U32.add(S.total(tile),16383),16384)),S.total(tile),0,config,palette,GeometryCache{expanded,geometry},surface,model,programs,prepared)
+      Computed{model,programs,density,surface,materials,MD.Grid{tile,minimum,span,values}}
+
+@unsafe
+def direct_column(+config: S.Config,+palette: MD.Config,+density: L.Grid,+surface: S.Grid,+model: Q.Model,+programs: Q.Table<Q.Program>,+materials: ML.Prepared,+i: U32) -> MD.Column:
+  match config surface:
+    case S.Config{_,+span,_,_,_,_} S.Grid{+tile,+values}:
+      direct_sampled(Q.get(S.Row,values,i,S.empty()),config,palette,density,model,programs,materials,S.point(tile,i),tile,span)
+
+@unsafe
+def direct_sampled(row: S.Row,+config: S.Config,+palette: MD.Config,+density: L.Grid,+model: Q.Model,+programs: Q.Table<Q.Program>,+materials: ML.Prepared,+point: Q.Point,tile: S.Tile,+span: U32) -> MD.Column:
   match row config tile:
     case S.Row{_,_,+biome} S.Config{+minimum,_,+sea,_,_,_} S.Tile{_,_,_,_,+low,+high}:
       +spans = geometry(span,span,4294967295,[],vertical(config,density,point),minimum,sea)
       column_ready(spans,config,palette,model,materials,point,low,high,biome,
-        context(config,palette,density,model,programs,point,low,high,highest(spans,minimum)))
+        context_at(palette,model,point,low,high,highest(spans,minimum),slope(config,density,model,programs,point,low,high)))
 
 @unsafe
-def columns(+limit: U32,+n: U32,+base: U32,+config: S.Config,+palette: MD.Config,+density: L.Grid,+surface: S.Grid,+model: Q.Model,+programs: Q.Table<Q.Program>,+materials: ML.Prepared) -> Q.Table<MD.Column>:
+def direct_columns(+limit: U32,+n: U32,+base: U32,+config: S.Config,+palette: MD.Config,+density: L.Grid,+surface: S.Grid,+model: Q.Model,+programs: Q.Table<Q.Program>,+materials: ML.Prepared) -> Q.Table<MD.Column>:
   match n:
-    case 1: Q.Leaf{column(config,palette,density,surface,model,programs,materials,base)}
-    case _: split(U32.is_le(n,limit),limit,n,base,config,palette,density,surface,model,programs,materials)
+    case 1: Q.Leaf{direct_column(config,palette,density,surface,model,programs,materials,base)}
+    case _: direct_split(U32.is_le(n,limit),limit,n,base,config,palette,density,surface,model,programs,materials)
 
 @unsafe
-def split(serial: Bool,+limit: U32,+n: U32,+base: U32,+config: S.Config,+palette: MD.Config,+density: L.Grid,+surface: S.Grid,+model: Q.Model,+programs: Q.Table<Q.Program>,+materials: ML.Prepared) -> Q.Table<MD.Column>:
+def direct_split(serial: Bool,+limit: U32,+n: U32,+base: U32,+config: S.Config,+palette: MD.Config,+density: L.Grid,+surface: S.Grid,+model: Q.Model,+programs: Q.Table<Q.Program>,+materials: ML.Prepared) -> Q.Table<MD.Column>:
   match serial:
-    case True{}: Q.Branch{n,columns(limit,U32.div(n,2),base,config,palette,density,surface,model,programs,materials),
-      columns(limit,U32.sub(n,U32.div(n,2)),U32.add(base,U32.div(n,2)),config,palette,density,surface,model,programs,materials)}
+    case True{}: Q.Branch{n,direct_columns(limit,U32.div(n,2),base,config,palette,density,surface,model,programs,materials),
+      direct_columns(limit,U32.sub(n,U32.div(n,2)),U32.add(base,U32.div(n,2)),config,palette,density,surface,model,programs,materials)}
     case False{}:
       +half = U32.div(n,2)
-      a b = columns(limit,half,base,config,palette,density,surface,model,programs,materials)
-        columns(limit,U32.sub(n,half),U32.add(base,half),config,palette,density,surface,model,programs,materials)
+      a b = direct_columns(limit,half,base,config,palette,density,surface,model,programs,materials)
+        direct_columns(limit,U32.sub(n,half),U32.add(base,half),config,palette,density,surface,model,programs,materials)
       Q.Branch{n,a,b}
 
-def execute(+config: S.Config,+palette: MD.Config,+density: L.Grid,+surface: S.Grid,+model: Q.Model,+programs: Q.Table<Q.Program>,+materials: M.Model) -> Computed:
+def direct_execute(+config: S.Config,+palette: MD.Config,+density: L.Grid,+surface: S.Grid,+model: Q.Model,+programs: Q.Table<Q.Program>,+materials: M.Model) -> Computed:
   match config surface:
     case S.Config{+minimum,+span,_,_,_,_} S.Grid{+tile,_}:
       +prepared = ML.prepare(M.rules(materials))
-      values : Q.Table<MD.Column> = columns!(U32.max(1,U32.div(U32.add(S.total(tile),16383),16384)),S.total(tile),0,config,palette,density,surface,model,programs,prepared)
+      values : Q.Table<MD.Column> = direct_columns!(U32.max(1,U32.div(U32.add(S.total(tile),16383),16384)),S.total(tile),0,config,palette,density,surface,model,programs,prepared)
       Computed{model,programs,density,surface,materials,MD.Grid{tile,minimum,span,values}}
+
+def execute(cached: Bool,config: S.Config,palette: MD.Config,density: L.Grid,surface: S.Grid,model: Q.Model,programs: Q.Table<Q.Program>,materials: M.Model) -> Computed:
+  match cached:
+    case True{}: cached_execute(config,palette,density,surface,model,programs,materials)
+    case False{}: direct_execute(config,palette,density,surface,model,programs,materials)
 
 @unsafe
 def summary(columns: Q.Table<MD.Column>) -> U32 & U32:

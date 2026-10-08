@@ -499,3 +499,54 @@ steps, excludes lattice/surface/material preparation, and runs with two CPU
 workers at nice +10 after compilation and other tests finish. External host load
 is uncontrolled. This component improvement does not establish full-generator
 performance; the report retains executable/input hashes and all samples.
+
+The coastal-surface cycle merged in [PR #41](https://github.com/ArcaneArts/Retina/pull/41),
+commit `b873ffe`; both actual push/PR CI builds passed.
+
+On GPU, material columns now separate immutable geometry from material evaluation
+in two resident Bend steps. The first builds compact solid/fluid/air spans
+and exact heights for the central tile plus its existing one-column slope halo.
+The second reuses central spans and four neighboring cached heights when deriving
+material context. No extra halo is serialized, no intermediate terrain crosses
+Java IPC, and the cache is released with the command. The independent scalar
+height path remains available to coastal finalization. CPU execution preserves
+the prior one-step generation path after a two-step trial regressed small CPU
+workloads; both paths share context arithmetic and the material/coating logic.
+
+Independent CPU/GPU checks verify 8,613 material voxels per backend across eleven
+synthetic and three loaded registry profiles, including one-column/thin-strip
+tiles, floating islands, explicit heights, distant/signed coordinates, invalid
+materials and cache retention/invalidation. The diagnostic worker observes all
+520 expected Metal commands and identical normal output. Lazy/eager evaluation
+regressions retain their bytes and observe 32 Metal commands. Shoreline checks
+retain their PR41 aggregate hashes and observe 290 Metal commands.
+
+All nine complete MCA files remain byte-identical to PR41; independent readers
+decode 9,216 records and compare 2,465,792 block/heightmap queries. Twenty-four
+full-region Metal commands are observed, including both material stages.
+Minecraft reads/reopens every chunk twice and checks 721,420,288 blocks. Real
+Java concurrent writes, queued cancellation, actual file-open failure and
+shutdown pass, as do the Fabric/NeoForge host build and 64 native unit tests.
+
+The ordinary loaded-profile correctness runs complete base/material generation
+in roughly 42/58/58 seconds for vanilla/Terralith/combined, versus PR41's earlier
+57/73/75-second observations. Short analytic GPU regions regress from roughly
+4–5 seconds to 8–11 seconds; the additional immutable-table lookup/kernel cost
+is a tradeoff, not a universal speed improvement. These uncontrolled observations
+are separate from formal A/B measurements. Peak cache memory is not established
+by this component run; the complete runtime/memory/Rust comparison remains
+pending along with feature, cave, structure and lighting parity.
+
+Final warm alternating A/B compares this implementation with the compiled PR41
+worker at 32×32 and 64×64 columns for vanilla/Terralith/combined inputs, plus a
+256×256 vanilla GPU tile. Every column's bytes match before and after measurement.
+One warmup and five repetitions give GPU material-stage median ratios of
+1.13–1.49x on the small tiles and 1.33x on the large tile (9,430 to 7,079 ms).
+Final CPU ratios range from 0.959 to 1.061, close to the original path rather
+than the forced-cache trial's 0.772–0.996. These command timings include geometry,
+materials and transport; they exclude earlier density/surface/coastal stages.
+Compilation and correctness tests finished first, and both workers use two CPU
+threads at nice +10; other host load remains uncontrolled. This is not a complete
+Rust-versus-Bend comparison. Raw samples, executable/GPU/source/input hashes,
+discarded-trial provenance and actual Minecraft evidence are recorded in
+`docs/benchmarks/bend-material-geometry.json`.
