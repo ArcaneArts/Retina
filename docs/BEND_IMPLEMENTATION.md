@@ -44,11 +44,11 @@ more deeply; retain the original requested scope.
 | Structure entities/block entities/loot and attachment rotations | `nbt.rs`, `structures.rs`, `structure_processors.rs` | Pending |
 | Snow, freezing, plant support and path/gravel restrictions | `LightingProfile.java`, profile material/survival tables, `region.rs` | Pending |
 | Full 64-bit seeds, signed/distant coordinates and repeatable ordering | `ChunkRequest`, native hash/random routines | Exact word-pair add/subtract/multiply/bit operations implemented; 3,689 operations independently verified. Integration and coordinate/order checks pending |
-| Block/biome palettes, bit-packed long arrays, heightmaps, modified UTF-8 NBT and current data versions | `region.rs`, `nbt.rs` | Every NBT tag type and bounded binary buffer implemented and independently parsed, including exact long/double/NaN bits and modified UTF-8. Palette/heightmap/MCA integration pending |
+| Block/biome palettes, bit-packed long arrays, heightmaps, modified UTF-8 NBT and current data versions | `region.rs`, `nbt.rs` | NBT and exact numerical bits verified. Modern non-spanning local-index packing independently verifies 142,320 entries across 144 cases. Palette remapping, heightmap calculation and chunk-schema integration pending |
 | LZ77, fixed-Huffman DEFLATE, zlib/Adler-32 and stored fallback | `region.rs` uses libdeflater | Implemented in `bend/compression.bend`; independent fixture tests pass |
 | Independent parallel chunk compression | Rayon chunk assembly in `region.rs` | Implemented Bend fork/join API; four streams verified at 1/2/4 workers; region integration pending |
 | GPU lighting, interior-chunk validity, boundary handling and one final region write | `lighting.rs`, `lighting.wgsl`, `region.rs`, `LightSeams.java` | Pending |
-| MCA sector tables, external records, preserving existing chunks and atomic publication | `region.rs` | Pending |
+| MCA sector tables, external records, preserving existing chunks and atomic publication | `region.rs` | Pure Bend new-file inline planning/streaming validated with 1024 full, 3 sparse and empty record containers. Existing/external-record preservation and atomic publication pending |
 | Persistent engine, bounded scheduling/singleflight, cleanup and actionable failure propagation | `NativeTerrain.java`, `RegionCoordinator.java`, `TerrainQueries.java` | Pending |
 | DH surface/height requests generate temporary whole regions, 1024-region cache, eviction and promotion | `TemporaryRegions.java`, `RegionCoordinator.java` | Pending: share coordinator/cache with selected backend |
 | Backend selection survives datapacks, codecs, save/reopen and server lifecycle | `RetinaChunkGenerator.java`, preset/platform mixins | Pending |
@@ -62,12 +62,15 @@ more deeply; retain the original requested scope.
 
 1. **Compression core and tracked parity inventory.** Pure Bend zlib encoder,
    bounded stored fallback, independent format-boundary tests and parallel chunk
-   stream API. No world selection or Rust execution changes. PR/merge evidence
-   is available through the Git history and attached PR.
+   stream API. No world selection or Rust execution changes. Merged as
+   [PR #18](https://github.com/ArcaneArts/Retina/pull/18), commit `b622d8b`.
 2. **Binary/NBT/MCA foundation.** Word pairs, compact buffers, complete typed NBT,
    paletted section packing, region records and independent parser validation.
    Exact word arithmetic, growable chunk buffers and typed NBT are implemented
-   in the second PR cycle; palette packing and MCA records require further cycles.
+   in [PR #19](https://github.com/ArcaneArts/Retina/pull/19), commit `2788730`.
+   A third cycle implements packed local indices and streamed new-file MCA
+   containers; palette remapping, existing-record publication and actual chunk
+   schema remain required. Both build checks on each of PRs #18/#19 passed.
 3. **Persistent engine and shared registry transport.** Separate exported data
    from Rust registration, define backend-neutral contracts, process lifecycle
    and request coalescing without exposing a misleading ready world type.

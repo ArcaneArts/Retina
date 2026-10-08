@@ -91,3 +91,34 @@ with Python integer arithmetic, covering all shift counts and carry/borrow/sign
 boundaries. Nine invalid-input fixtures check error propagation. This does not
 yet prove Minecraft chunk schema, palette packing or MCA-file compatibility;
 those remain separate required integration work.
+
+## Packed indices and MCA container planning
+
+`packed.bend` implements Minecraft's modern non-spanning long-array layout:
+`floor(64 / bits)` values per long, with low bits first and unused high bits
+zero. It accepts already local palette indices, 1..16 bits and up to 4,096
+entries, and rejects invalid widths, capacities and overflowing values. Mapping
+global material IDs into each section's local palette remains separate work.
+
+`region.bend` turns independently compressed records into an owned stream of
+an 8 KiB header and sector-aligned record buffers. It writes location/timestamp
+tables, big-endian record lengths and the standard zlib type byte, and supports
+unordered/sparse input slots. Duplicate slots and invalid inline limits fail.
+Each record is bounded to the current Rust writer's 255-sector inline limit.
+
+This planner is for **new files only**. It is not connected to game saves and
+must not be used to replace existing files; preservation of loaded records,
+external `.mcc` entries, atomic publication and cache promotion remain required.
+Streaming avoids constructing one giant Bend byte-list for an entire region.
+
+```sh
+python3 scripts/test_bend_formats.py
+```
+
+An independent Python reader checks 144 packing cases (142,320 indices), every
+record in a permuted 1,024-slot MCA, a sparse MCA containing a three-sector
+record, an empty MCA, exact zlib/NBT consumption, sector coverage/non-overlap,
+zero padding and timestamps. Nine invalid-input fixtures fail as expected.
+These MCA fixtures deliberately contain `minecraft:empty` test metadata and
+`DataVersion=1`; they do not claim current Minecraft chunk-schema or terrain
+compatibility. Real generated-region loading remains an explicit acceptance test.

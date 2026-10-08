@@ -1,0 +1,36 @@
+{
+  "bend_version": "bend 2.0.36",
+  "packed": {
+    "cases": 144,
+    "entries_verified": 142320,
+    "bits": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16
+    ],
+    "sha256": "e466cbfe59fd8c8d4e900087c0124280f9d84cd27a270523aa92b2b0d0f9c336"
+  },
+  "mca": {
+    "full_chunks": 1024,
+    "sparse_chunks": 3,
+    "full_bytes": 4202496,
+    "sparse_bytes": 28672,
+    "full_sha256": "288cb2ffb60cdc6d55f5210f2509bf1e7c89f9e32e831e86b4af5fb93d788ebc",
+    "sparse_sha256": "4e9132978dac714c8258e41ad1b2e4e114fe1b18b8c60aae95640fc5130ec31e"
+  },
+  "invalid_requests_rejected": 9,
+  "scope": "packed indices and new-file MCA containers; not generated terrain or promotion"
+}
