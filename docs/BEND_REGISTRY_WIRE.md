@@ -85,6 +85,25 @@ The existing `RBND` IPC framing remains version 1. Additional opcodes:
   path. No profile returns error 708, invalid command shape/channel 603,
   missing/wrongly typed schema values 710 and invalid numerical bounds 501.
   A rejected selection preserves the prepared stack and resident profile.
+- **9 — prepare profile climate:** empty payload. Bend resolves `biomes.flags`
+  and `climate_targets` from the resident tape, converts numeric intervals and
+  builds reusable surface, underground and coastal indices. Success returns
+  target count and biome count (two U32 words). Missing targets mean an empty
+  index; missing depth defaults to `[0,0]`, matching the Rust input schema.
+  Biomes are bounded to 1..65,535 and targets to 65,536. Invalid types, dimensions,
+  interval ordering, finite bounds or biome references return 713; absent profile
+  returns 708 and a nonempty command body returns 603.
+- **10 — climate batch:** payload is a U32 query count (0..65,536), then each
+  query has six raw F32 words (temperature, humidity, continentalness, erosion,
+  weirdness, depth) and a U32 mode. Mode bits are weighted fitness=1,
+  underground/depth=2, ocean mismatch penalty=4, exclude shores=8 and coastal
+  projection=16. Coastal mode ignores the other bits. Output is five U32 words
+  per query: present, biome ID, original target ordinal, fitness F32 bits and
+  selected interval midpoint F32 bits (continentalness for coast, depth otherwise).
+  Missing results are `[0,0xffffffff,0xffffffff,0,0]`. Invalid lengths, nonfinite
+  queries or modes above 31 return 603. No prepared index returns 714. Lookup
+  runs in one GPU batch, or on explicit Bend CPU execution, using the resident
+  index without retransmitting the target table.
 
 `BendWorker.loadProfile` transports only the path. Its caller owns the staged
 file until acknowledgement. If a load is canceled while active, retain the file
@@ -95,6 +114,20 @@ without a floating-point conversion. Schema key lookup and numeric projection
 run once during preparation; the per-coordinate GPU kernel only receives the
 small prepared stack. Known schema keys are ASCII; unrelated strings remain
 lossless UTF-16 in the tape.
+
+`BendWorker.prepareProfileClimate()` only sends the empty command. All climate
+projection/index algorithms run in Bend. Known field keys resolve once;
+biome/target list spans are walked once, avoiding repeated scans from the start
+of the full target table. Numeric vectors support mixed nodes and packed
+i32/i64/f64 arrays. Biome references and flags require unsigned integer values.
+The preparation acknowledgement's IO write separates CPU index-building forks
+from the following GPU batch in stock Bend's scheduler.
+
+A successful opcode 5 upload invalidates the prepared climate index. Call 9
+before querying the replacement. Structurally rejected/missing/truncated uploads
+retain the old tape and index. A typed preparation failure is reported explicitly;
+it does not restore or silently use the previous profile's targets. Production
+atomic full-profile validation/reload remains future integration work.
 
 `bend/numbers.bend` implements nearest/ties-to-even i64/f64-to-F32 conversion
 using integer word pairs. It covers signed zero, subnormals, underflow, overflow
@@ -135,6 +168,8 @@ nice -n 10 ./gradlew bendNumericTest bendRegistryNoiseTest -PretinaHostOnly --ma
 # Optional actual exported inputs: comma-separated JSON=RBP file pairs.
 nice -n 10 ./gradlew bendRegistryNoiseTest -PretinaHostOnly --max-workers=2 \
   -PbendNoiseProfiles=/absolute/vanilla.json=/absolute/vanilla.rbp,/absolute/terralith.json=/absolute/terralith.rbp
+nice -n 10 ./gradlew bendRegistryClimateTest -PretinaHostOnly --max-workers=2 -PproveMetal \
+  -PbendClimateRegistryProfiles=/absolute/vanilla.json=/absolute/vanilla.rbp,/absolute/terralith.json=/absolute/terralith.rbp
 ```
 
 The numeric harness independently checks 131,072 scalar conversions per run on

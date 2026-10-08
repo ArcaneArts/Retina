@@ -1,0 +1,193 @@
+{
+  "scope": "Resident climate projection/index lookup; density fields and terrain integration pending",
+  "profiles": [
+    {
+      "name": "vanilla",
+      "json_sha256": "aefce6ff0e800966ad55920c5d21510dfa277de4612f67e22d5146d3aa838203",
+      "wire_sha256": "39c775ca58b6d084d4de060925df01d170c89caa09b9eaf7d33e55a915c8065a"
+    },
+    {
+      "name": "terralith",
+      "json_sha256": "c9abbe97860a394ed899d64967bd0395bb9bb4ec71a9dff43d1bb45893fefd4d",
+      "wire_sha256": "cf9ef7e0d83d91c5d99aa914101aad8b156ce9a8caa4050f71e81b190a1c0ca6"
+    },
+    {
+      "name": "combined",
+      "json_sha256": "068fd602ad497128dd3960cb9be76840ebd41882b5b64c25acfa76d65e930c8b",
+      "wire_sha256": "d4ac8f9040e39892de12b6fc6ecc46b3d9e961c3cba7f05a2ae9b53262967193"
+    }
+  ],
+  "runs": [
+    {
+      "mode": "cpu",
+      "profiles": [
+        {
+          "name": "mixed",
+          "targets": 131,
+          "biomes": 7,
+          "independent_reference_queries": 256,
+          "validated_query_rows": 1293,
+          "repeated_query_and_failed_upload": "pass",
+          "noise_and_climate_state_independent": "pass"
+        },
+        {
+          "name": "packed",
+          "targets": 131,
+          "biomes": 7,
+          "independent_reference_queries": 256,
+          "validated_query_rows": 1293,
+          "repeated_query_and_failed_upload": "pass",
+          "noise_and_climate_state_independent": "pass"
+        },
+        {
+          "name": "empty",
+          "targets": 0,
+          "biomes": 1,
+          "independent_reference_queries": 256,
+          "validated_query_rows": 1293,
+          "repeated_query_and_failed_upload": "pass",
+          "noise_and_climate_state_independent": "pass"
+        },
+        {
+          "name": "missing_targets",
+          "targets": 0,
+          "biomes": 1,
+          "independent_reference_queries": 256,
+          "validated_query_rows": 1293,
+          "repeated_query_and_failed_upload": "pass",
+          "noise_and_climate_state_independent": "pass"
+        },
+        {
+          "name": "vanilla",
+          "targets": 7594,
+          "biomes": 56,
+          "independent_reference_queries": 256,
+          "validated_query_rows": 1293,
+          "repeated_query_and_failed_upload": "pass",
+          "noise_and_climate_state_independent": "pass"
+        },
+        {
+          "name": "terralith",
+          "targets": 1708,
+          "biomes": 151,
+          "independent_reference_queries": 256,
+          "validated_query_rows": 1293,
+          "repeated_query_and_failed_upload": "pass",
+          "noise_and_climate_state_independent": "pass"
+        },
+        {
+          "name": "combined",
+          "targets": 1708,
+          "biomes": 152,
+          "independent_reference_queries": 256,
+          "validated_query_rows": 1293,
+          "repeated_query_and_failed_upload": "pass",
+          "noise_and_climate_state_independent": "pass"
+        }
+      ],
+      "maximum_batch_queries": 65536,
+      "invalid_typed_profiles": 32,
+      "requests_in_one_process": 271,
+      "aggregate_sha256": "b545ed0c7d54821cae729ebe7fc58274c435678998d7b54de37f73fd44a7fb45",
+      "observed_metal_command_ms": []
+    },
+    {
+      "mode": "gpu_required",
+      "profiles": [
+        {
+          "name": "mixed",
+          "targets": 131,
+          "biomes": 7,
+          "independent_reference_queries": 256,
+          "validated_query_rows": 1293,
+          "repeated_query_and_failed_upload": "pass",
+          "noise_and_climate_state_independent": "pass"
+        },
+        {
+          "name": "packed",
+          "targets": 131,
+          "biomes": 7,
+          "independent_reference_queries": 256,
+          "validated_query_rows": 1293,
+          "repeated_query_and_failed_upload": "pass",
+          "noise_and_climate_state_independent": "pass"
+        },
+        {
+          "name": "empty",
+          "targets": 0,
+          "biomes": 1,
+          "independent_reference_queries": 256,
+          "validated_query_rows": 1293,
+          "repeated_query_and_failed_upload": "pass",
+          "noise_and_climate_state_independent": "pass"
+        },
+        {
+          "name": "missing_targets",
+          "targets": 0,
+          "biomes": 1,
+          "independent_reference_queries": 256,
+          "validated_query_rows": 1293,
+          "repeated_query_and_failed_upload": "pass",
+          "noise_and_climate_state_independent": "pass"
+        },
+        {
+          "name": "vanilla",
+          "targets": 7594,
+          "biomes": 56,
+          "independent_reference_queries": 256,
+          "validated_query_rows": 1293,
+          "repeated_query_and_failed_upload": "pass",
+          "noise_and_climate_state_independent": "pass"
+        },
+        {
+          "name": "terralith",
+          "targets": 1708,
+          "biomes": 151,
+          "independent_reference_queries": 256,
+          "validated_query_rows": 1293,
+          "repeated_query_and_failed_upload": "pass",
+          "noise_and_climate_state_independent": "pass"
+        },
+        {
+          "name": "combined",
+          "targets": 1708,
+          "biomes": 152,
+          "independent_reference_queries": 256,
+          "validated_query_rows": 1293,
+          "repeated_query_and_failed_upload": "pass",
+          "noise_and_climate_state_independent": "pass"
+        }
+      ],
+      "maximum_batch_queries": 65536,
+      "invalid_typed_profiles": 32,
+      "requests_in_one_process": 271,
+      "aggregate_sha256": "b545ed0c7d54821cae729ebe7fc58274c435678998d7b54de37f73fd44a7fb45",
+      "observed_metal_command_ms": []
+    }
+  ],
+  "cpu_gpu_bytes_equal": true,
+  "metal_observation": {
+    "diagnostic_only": true,
+    "command_buffers": 60,
+    "device_ms": {
+      "min": 0.07975,
+      "max": 97.384375,
+      "sum": 220.933208
+    },
+    "output_bytes_equal": true
+  },
+  "source_sha256": {
+    "bend/registry_climate.bend": "3daed5cbc3da3a4d4f91c65465e899b31fe219fe34af03731fc7ca1c49c572ad",
+    "bend/climate_batch.bend": "f65fbc7b463f5e093feb2364da0f504fa295088285917f7a04dc205bf1dc34fa",
+    "bend/engine.bend": "04297351dd0230f6cef7511232a6b1d1ed01d6f8bfda75138bfd8afe9314d898"
+  },
+  "bend_version": "2.0.36",
+  "validation": {
+    "gradle": "bendRegistryWireTest bendRegistryNoiseTest bendRegistryClimateTest bendWorkerTest -PretinaHostOnly --max-workers=2 -PproveMetal with actual climate JSON=RBP profiles",
+    "java_concurrent_calls": "12 resident query requests on each CPU/GPU worker; reload invalidation passed",
+    "gpu_device": "Apple M4 Max / Metal",
+    "staged_fixture_deleted_after_ack": "pass",
+    "region_benchmark": false,
+    "host_build": "Fabric/NeoForge build passed; 64 native tests passed, 11 explicit GPU/fixture tests ignored"
+  }
+}

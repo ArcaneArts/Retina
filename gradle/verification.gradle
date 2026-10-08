@@ -433,6 +433,19 @@ tasks.register('bendClimateTest', Exec) {
     mustRunAfter 'bendRegistryWireTest', 'bendRegistryNoiseTest', 'bendEngineTest', 'bendNoiseTest'
 }
 
+def registryClimateProfiles = providers.gradleProperty('bendClimateRegistryProfiles').getOrElse('')
+tasks.register('bendRegistryClimateTest', Exec) {
+    group = 'verification'
+    description = 'Prepare resident registered climate targets in Bend and independently validate repeated GPU lookups.'
+    workingDir rootProject.projectDir
+    commandLine providers.gradleProperty('pythonExecutable').getOrElse('python3'), 'scripts/test_bend_registry_climate.py'
+    if (providers.gradleProperty('proveMetal').isPresent()) args '--prove-metal'
+    if (!registryClimateProfiles.isEmpty()) registryClimateProfiles.split(',').each { pair ->
+        pair.split('=', 2).with { paths -> args '--profile', paths[0], paths[1] }
+    }
+    mustRunAfter 'bendRegistryWireTest', 'bendRegistryNoiseTest', 'bendEngineTest', 'bendClimateTest', 'bendNumericTest'
+}
+
 def registryNoiseProfiles = providers.gradleProperty('bendNoiseProfiles').getOrElse('')
 tasks.register('bendRegistryNoiseTest', Exec) {
     group = 'verification'

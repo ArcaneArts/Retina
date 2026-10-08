@@ -93,6 +93,14 @@ public final class BendWorker implements AutoCloseable {
         return request(8, payload.array());
     }
 
+    /** Bend resolves the resident target table and biome flags and builds its
+     * reusable climate index. Acknowledgement contains target and biome counts.
+     * Accepting a replacement profile invalidates this index until preparation.
+     */
+    public CompletableFuture<byte[]> prepareProfileClimate() {
+        return request(9, new byte[0]);
+    }
+
     /** Cancellation skips queued requests; in-flight responses are drained to
      * preserve framing. World shutdown closes the worker and terminates it.
      */
