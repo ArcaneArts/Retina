@@ -123,6 +123,37 @@ public final class BendWorker implements AutoCloseable {
         return request(13, payload.array());
     }
 
+    /** Resolve world limits and terrain cell spacing from the loaded registry.
+     * Numeric preparation must already exist. The six acknowledgement words
+     * are min Y, height, sea level, horizontal/vertical cells and height mode.
+     */
+    public CompletableFuture<byte[]> prepareProfileSurface() {
+        return request(15, new byte[0]);
+    }
+
+    /** Ask Bend for the raw opcode-13 descriptor needed by this surface tile.
+     * Submit that descriptor, then generateSurfaceColumns. Coordination must
+     * serialize this build sequence against other cache replacements; this
+     * transport helper does not provide a region scheduler.
+     */
+    public CompletableFuture<byte[]> surfaceDensityDescriptor(int x, int z, int width, int depth, long seed) {
+        return request(18, surfaceTilePayload(x, z, width, depth, seed));
+    }
+
+    /** GPU surface scan, spatial climate evaluation and registered biome lookup.
+     * A matching density lattice and prepared climate/surface profile are
+     * required. The acknowledgement is width, depth and column count; computed
+     * columns remain resident for bounded raw opcode-17 query batches.
+     */
+    public CompletableFuture<byte[]> generateSurfaceColumns(int x, int z, int width, int depth, long seed) {
+        return request(16, surfaceTilePayload(x, z, width, depth, seed));
+    }
+
+    private static byte[] surfaceTilePayload(int x, int z, int width, int depth, long seed) {
+        return java.nio.ByteBuffer.allocate(24).putInt(x).putInt(z).putInt(width).putInt(depth)
+                .putInt((int) seed).putInt((int) (seed >>> 32)).array();
+    }
+
     /** Cancellation skips queued requests; in-flight responses are drained to
      * preserve framing. World shutdown closes the worker and terminates it.
      */
