@@ -1,0 +1,76 @@
+{
+  "scope": "Shared Java registry extraction and explicit Rust registration; Bend interpretation and runtime integration still pending",
+  "minecraft": "26.3",
+  "data_version": 5023,
+  "seed": -9223372036731319019,
+  "cases": [
+    {
+      "case": "vanilla",
+      "profile_bytes": 13400891,
+      "profile_sha256": "aefce6ff0e800966ad55920c5d21510dfa277de4612f67e22d5146d3aa838203",
+      "biomes": 56,
+      "materials": 2438,
+      "climate_targets": 7594,
+      "decorations": 182,
+      "ores": 30,
+      "structure_definitions": 30,
+      "structure_pools": 182,
+      "structure_templates": 1121,
+      "independent_export_with_native_library_unavailable": "pass",
+      "explicit_rust_registration_and_metal_query": "pass",
+      "export_bytes_identical": true
+    },
+    {
+      "case": "terralith",
+      "profile_bytes": 30351712,
+      "profile_sha256": "c9abbe97860a394ed899d64967bd0395bb9bb4ec71a9dff43d1bb45893fefd4d",
+      "biomes": 151,
+      "materials": 3946,
+      "climate_targets": 1708,
+      "decorations": 553,
+      "ores": 27,
+      "structure_definitions": 58,
+      "structure_pools": 230,
+      "structure_templates": 1258,
+      "independent_export_with_native_library_unavailable": "pass",
+      "explicit_rust_registration_and_metal_query": "pass",
+      "export_bytes_identical": true
+    },
+    {
+      "case": "combined",
+      "profile_bytes": 30383566,
+      "profile_sha256": "068fd602ad497128dd3960cb9be76840ebd41882b5b64c25acfa76d65e930c8b",
+      "biomes": 152,
+      "materials": 3946,
+      "climate_targets": 1708,
+      "decorations": 553,
+      "ores": 27,
+      "structure_definitions": 58,
+      "structure_pools": 230,
+      "structure_templates": 1258,
+      "independent_export_with_native_library_unavailable": "pass",
+      "explicit_rust_registration_and_metal_query": "pass",
+      "export_bytes_identical": true
+    }
+  ],
+  "combined_supplement": {
+    "biome": "retina_test:export_probe",
+    "temperature_noise_frequency": 0.001953125,
+    "temperature_noise_modifiers": [
+      1.0,
+      0.25,
+      0.5
+    ]
+  },
+  "incompatible_pack_attempt": {
+    "pack": "downloaded Lithosphere.zip",
+    "result": "Minecraft registry loading failed before Retina export",
+    "errors": [
+      "Old block-state Name/Properties rather than id/properties",
+      "Unknown minecraft:shifted_noise density type",
+      "Missing current dimension/noise-router fields"
+    ]
+  },
+  "terralith_zip_sha256": "9764f1d11a0bfe99c2cd96cd54f346fe756165d14a6f855b394954c171d603d5",
+  "lithosphere_zip_sha256": "79e1d4cbd302501aab9028e689c5d3824eeb1eb003081dd0e645e049214cd088"
+}

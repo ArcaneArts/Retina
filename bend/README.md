@@ -164,3 +164,33 @@ profiles and blocks are constructed in Bend test code. Registry transport, real
 terrain/features, lighting computation, existing-file preservation, runtime
 integration and actual client gameplay remain incomplete. The last independent
 fixture report is in `docs/benchmarks/bend-chunk-correctness.json`.
+
+## Shared registry export
+
+Java's `TerrainProfileData.export` projects the same loaded registry programs,
+ordered materials/properties, biome/climate tables, feature recipes, structures
+and lighting predicates for either backend. It does not initialize Rust or a
+GPU. `BiomeTerrainProfile.register` is the explicit Rust adapter; existing Rust
+callers keep their prior behavior. The exported material array and biome list
+are snapshots so backend registration cannot change the shared ordering.
+
+```sh
+./gradlew registryExportTest registryExportRustTest -PretinaHostOnly --max-workers=2 --no-parallel
+./gradlew registryExportTest registryExportRustTest -PretinaHostOnly --max-workers=2 --no-parallel \
+  -PtestDatapack=/absolute/path/Terralith.zip -PtestRegistrySupplement
+```
+
+The first test exports real Minecraft registries while the native library is
+unavailable, then confirms that actually initializing Rust fails. The second
+explicitly registers the projection and queries terrain on Metal. Optional
+`testDatapack` and `testSupplement` accept pack ZIPs in that order;
+`testRegistrySupplement` builds a compatible fixture that adds a biome and
+overrides temperature noise. Vanilla, Terralith and the combined fixture stack
+produced byte-identical profiles between independent export and Rust registration.
+Counts, hashes and the attempted incompatible Lithosphere input are recorded in
+`docs/benchmarks/bend-registry-export.json`.
+
+This separates registry extraction only. Bend still needs to receive and
+interpret these profiles in its persistent runtime. They are about 13 MB for
+vanilla and 30 MB for Terralith; profile transport must use its own suitable
+bounds rather than the encoder's per-chunk 16 MiB buffer limit.

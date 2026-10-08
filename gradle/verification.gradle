@@ -412,3 +412,29 @@ tasks.register('bendChunkTest', JavaExec) {
     mainClass = 'art.arcane.retina.worldgen.BendChunkIntegrationTest'
     javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
 }
+
+def registryExportSupplement = tasks.register('registryExportSupplement', Zip) {
+    from rootProject.layout.projectDirectory.dir('common/src/gpuTest/datapacks/registry-supplement')
+    destinationDirectory = rootProject.layout.buildDirectory.dir('registry-fixtures')
+    archiveFileName = 'registry-supplement.zip'
+}
+
+['registryExportTest': false, 'registryExportRustTest': true].each { taskName, rust ->
+    tasks.register(taskName, JavaExec) {
+        group = 'verification'
+        description = rust ? 'Register the shared registry projection in Rust and query actual GPU terrain.'
+                : 'Export complete loaded registries while the Rust library is unavailable.'
+        dependsOn 'gpuTestClasses'
+        classpath = sourceSets.gpuTest.runtimeClasspath
+        mainClass = 'art.arcane.retina.worldgen.RegistryProfileExportTest'
+        javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
+        jvmArgs '--enable-native-access=ALL-UNNAMED'
+        if (rust) args '--rust'
+        if (providers.gradleProperty('testDatapack').isPresent()) args providers.gradleProperty('testDatapack').get()
+        if (providers.gradleProperty('testSupplement').isPresent()) args providers.gradleProperty('testSupplement').get()
+        if (providers.gradleProperty('testRegistrySupplement').isPresent()) {
+            dependsOn registryExportSupplement
+            args registryExportSupplement.flatMap { it.archiveFile }.get().asFile.absolutePath
+        }
+    }
+}

@@ -43,7 +43,7 @@ public final class NativeProfileExport {
                     : RetinaBiomeSource.CODEC.codec().parse(registry.createSerializationContext(JsonOps.INSTANCE), preset).getOrThrow();
             var settings = packed && original.generator() instanceof NoiseBasedChunkGenerator noise ? noise.generatorSettings().value()
                     : registry.lookupOrThrow(Registries.NOISE_SETTINGS).getOrThrow(NoiseGeneratorSettings.OVERWORLD).value();
-            var profile = BiomeTerrainProfile.load(registry, source, -64, 384, 123456789L, settings, StructureProfile.Context.of(resources));
+            var profile = TerrainProfileData.export(registry, source, -64, 384, 123456789L, settings, StructureProfile.Context.of(resources));
             var data = JsonParser.parseString(profile.json()).getAsJsonObject();
             if (data.getAsJsonObject("structures").getAsJsonArray("definitions").isEmpty()) throw new AssertionError("benchmark must include structures");
             if (data.getAsJsonArray("decorations").isEmpty()) throw new AssertionError("benchmark must include decorations");
