@@ -19,6 +19,12 @@ public final class BendProfileWireTest {
         String noise = "{\"frequency\":0.0035,\"amplitude\":0.8,\"modifiers\":[1.0,0.0,0.25,1.0,-1.0,0.5]}";
         encode(output, "noise", "{\"noises\":[" + String.join(",", java.util.Collections.nCopies(4, noise))
                 + "],\"weirdness_noise\":" + noise + "}");
+        encode(output, "climate", """
+            {"biomes":[{"flags":0},{"flags":64},{"flags":16}],"climate_targets":[
+              {"biome":0,"min":[0,0,0,0],"max":[1,1,1,1],"weirdness":[0,1],"offset":0},
+              {"biome":1,"min":[0,0,-0.3,0],"max":[1,1,-0.1,1],"weirdness":[0,1],"offset":0},
+              {"biome":2,"min":[0,0,0,0],"max":[1,1,1,1],"weirdness":[0,1],"depth":[0,1],"offset":0}]}
+            """);
         for (int i = 1; i < args.length; i++) {
             if (args[i].equals("--worker")) { worker(output.resolve("fixture.rbp"), Path.of(args[++i])); continue; }
             try (var source = Files.newBufferedReader(Path.of(args[i]))) {
@@ -53,6 +59,35 @@ public final class BendProfileWireTest {
                 worker.request(1, explicit.array()).get(10, java.util.concurrent.TimeUnit.SECONDS);
                 if (!java.util.Arrays.equals(loaded, worker.request(2, grid).get(10, java.util.concurrent.TimeUnit.SECONDS)))
                     throw new AssertionError("typed registry stack/seed transport");
+            }
+            worker.loadProfile(profile.resolveSibling("climate.rbp")).get(30, java.util.concurrent.TimeUnit.SECONDS);
+            var counts = java.nio.ByteBuffer.wrap(worker.prepareProfileClimate().get(30, java.util.concurrent.TimeUnit.SECONDS));
+            if (counts.getInt() != 3 || counts.getInt() != 3 || counts.hasRemaining())
+                throw new AssertionError("resident climate acknowledgement");
+            var climate = java.nio.ByteBuffer.allocate(60).putInt(2);
+            for (int queryMode : new int[]{0, 16}) {
+                for (int axis = 0; axis < 6; axis++) climate.putFloat(0);
+                climate.putInt(queryMode);
+            }
+            requests.clear();
+            for (int i = 0; i < 12; i++) requests.add(worker.request(10, climate.array()));
+            for (var request : requests) {
+                var rows = java.nio.ByteBuffer.wrap(request.get(10, java.util.concurrent.TimeUnit.SECONDS));
+                for (int expected : new int[]{0, 1}) {
+                    if (rows.getInt() != 1 || rows.getInt() != expected || rows.getInt() != expected || rows.getFloat() != 0)
+                        throw new AssertionError("typed resident climate selection");
+                    float midpoint = rows.getFloat();
+                    if (Math.abs(midpoint - (expected == 0 ? 0 : -0.2f)) > 0.000001f)
+                        throw new AssertionError("resident coastal interval");
+                }
+                if (rows.hasRemaining()) throw new AssertionError("climate response length");
+            }
+            worker.loadProfile(profile).get(30, java.util.concurrent.TimeUnit.SECONDS);
+            try {
+                worker.request(10, climate.array()).get(10, java.util.concurrent.TimeUnit.SECONDS);
+                throw new AssertionError("reloaded profile retained stale climate");
+            } catch (java.util.concurrent.ExecutionException expected) {
+                if (!expected.getCause().getMessage().contains("code 714")) throw expected;
             }
             if (worker.processId() != pid) throw new AssertionError("worker replaced");
             System.out.println("Java registry worker " + mode + " pass");

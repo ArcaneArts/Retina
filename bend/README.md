@@ -272,9 +272,28 @@ optional Metal observer must produce the normal GPU executable's bytes.
 This is an index library, not an integrated biome generator or a throughput
 benchmark. It retains surface targets differing only in depth; Rust deduplicates
 those. Bounds and traversal preserve selection, but parity of performance is
-unproven. Typed projection from the resident registry tape, climate density
-programs, smooth spatial boundaries and terrain generation remain pending.
+unproven. `registry_climate.bend` now projects registered intervals/flags from the
+resident tape, and `climate_batch.bend` supplies bounded bulk query decoding,
+GPU mapping and raw response encoding for worker commands 9/10. Successful profile
+uploads invalidate the index; queries require explicit re-preparation. Full schema
+and protocol details are in [BEND_REGISTRY_WIRE.md](../docs/BEND_REGISTRY_WIRE.md).
+Climate density programs, smooth spatial boundaries and terrain generation remain pending.
 Evidence is in `docs/benchmarks/bend-climate-correctness.json`.
+
+```sh
+nice -n 10 ./gradlew bendRegistryClimateTest -PretinaHostOnly --max-workers=2 -PproveMetal \
+  -PbendClimateRegistryProfiles=/absolute/vanilla.json=/absolute/vanilla.rbp,/absolute/terralith.json=/absolute/terralith.rbp
+```
+
+The resident harness checks mixed and packed numeric vectors, default depth,
+empty/missing target lists and actual exported profiles. It independently checks
+interval selection, repeats bounded batches up to 65,536 queries, rejects 32 typed
+profiles and verifies explicit index invalidation. Acknowledged fixture staging
+files can be removed; rejected/truncated uploads keep the prior index. The
+diagnostic observer records 60 Metal command buffers for the seven-profile run,
+with normal GPU bytes unchanged. Java independently exercises concurrent raw
+callers on CPU and GPU workers. See `docs/benchmarks/bend-registry-climate.json`;
+these are component checks, not generated-world or complete-region measurements.
 
 ## Persistent component worker
 
@@ -320,8 +339,9 @@ Minecraft. Evidence is in `docs/benchmarks/bend-engine-correctness.json`.
 Protocol v1 uses big-endian U32 words. Requests contain `RBND`, payload byte
 length, request ID and opcode. Responses add a status word (0 success, 1 error)
 after opcode. Opcodes are 0 ping, 1 prepare noise, 2 sample grid, 3 compress and
-4 stop, 5 load a staged registry file, 6 query a registry path and 7 read a
-registry string. Noise input contains low/high seed words, frequency/amplitude
+4 stop, 5 load a staged registry file, 6 query a registry path, 7 read a
+registry string, 8 prepare registered noise, 9 prepare resident climate and
+10 query climate batches. Noise input contains low/high seed words, frequency/amplitude
 F32 bits,
 channel, modifier count and modifier F32 bits. Grid input is X, Z, width, height
 and integer step; output contains row-major raw F32 bits. Framed requests are

@@ -6,16 +6,23 @@ import ./reader.bend as R
 import ./transport.bend as T
 import ./registry.bend as P
 import ./registry_noise.bend as RN
+import ./registry_climate.bend as RC
+import ./climate.bend as C
+import ./climate_batch.bend as CB
 
 # Persistent binary worker. Protocol v1 is a component transport, not yet a
 # world generator: PING=0, PREPARE_NOISE=1, SAMPLE_GRID=2, COMPRESS=3, STOP=4,
 # LOAD_PROFILE=5 (staged path), QUERY_PROFILE=6 (dictionary/index path),
 # PROFILE_TEXT=7 (lossless packed UTF-16 string),
-# PROFILE_NOISE=8 (prepare a loaded climate/ridge stack using both seed words).
+# PROFILE_NOISE=8 (prepare a loaded climate/ridge stack using both seed words),
+# PROFILE_CLIMATE=9 (prepare resident targets), CLIMATE_BATCH=10 (raw queries).
 # Requests: RBND magic, payload length, request ID, opcode (all BE u32).
 # Responses add a status u32 after opcode. stdout contains frames only.
+type Settings is Data:
+  Settings{noise: Maybe<&2,N.Stack>,climate: Maybe<&2,C.Model>}
+
 type State is Type:
-  State{noise: Maybe<&2,N.Stack>,profile: Maybe<&1,P.Document>}
+  State{settings: Settings,profile: Maybe<&1,P.Document>}
 
 type Grid is Data:
   Grid{x: U32,z: U32,width: U32,count: U32,step: U32}
@@ -124,7 +131,7 @@ def set_ended(valid: Bool,input: File,output: File,old: State,backend: U32,id: U
 
 def replace_noise(old: State,noise: N.Stack) -> State:
   match old:
-    case State{_,profile}: State{Some{noise},profile}
+    case State{Settings{_,climate},profile}: State{Settings{Some{noise},climate},profile}
 
 @unsafe
 def set_result(result: Result<&1,&1,U32,N.Stack>,input: File,output: File,old: State,backend: U32,id: U32,opcode: U32) -> IO(Unit):
@@ -145,12 +152,12 @@ def grid_valid(valid: Bool,input: File,output: File,old: State,backend: U32,id: 
     x: U32,z: U32,+width: U32,+height: U32,step: U32) -> IO(Unit):
   match valid old:
     case False{} _: error(input,output,old,backend,id,opcode,603)
-    case True{} State{None{},profile}: error(input,output,State{None{},profile},backend,id,opcode,604)
-    case True{} State{Some{+stack},profile}:
+    case True{} State{Settings{None{},climate},profile}: error(input,output,State{Settings{None{},climate},profile},backend,id,opcode,604)
+    case True{} State{Settings{Some{+stack},climate},profile}:
       do IO<Unit>:
         samples : Samples = sample!(depth(U32.mul(width,height),256,0n),0,Grid{x,z,width,U32.mul(width,height),step},stack,U32.mul(width,height))
         body : Z.Bytes <- payload(encode(samples,B.new(),U32.mul(width,height)))
-        finish(input,output,State{Some{stack},profile},backend,id,opcode,0,body,True{})
+        finish(input,output,State{Settings{Some{stack},climate},profile},backend,id,opcode,0,body,True{})
 
 @unsafe
 def grid(input: File,output: File,old: State,backend: U32,id: U32,opcode: U32,body: Z.Bytes) -> IO(Unit):
@@ -170,6 +177,10 @@ def empty_command(valid: Bool,input: File,output: File,stack: State,+backend: U3
         body : Z.Bytes <- payload(B.int(B.int(B.int(B.int(B.int(B.new(),1),2),0),36),backend))
         finish(input,output,stack,backend,id,opcode,0,body,U32.is_zero(opcode))
 
+def clear_climate(noise: Settings) -> Settings:
+  match noise:
+    case Settings{stack,_}: Settings{stack,None{}}
+
 # Profile uploads are staged raw files, so large structure registries do not
 # bypass the bounded frame queue. The worker owns one validated resident tape.
 @unsafe
@@ -178,7 +189,7 @@ def profile_result(result: Result<&1,&1,U32,P.Document>,input: File,output: File
     case Fail{code} _: error(input,output,old,backend,id,opcode,code)
     case Done{doc} State{noise,_}:
       P.info(IO(Unit),doc,doc => count => strings => tape => hash =>
-        profile_ready(input,output,State{noise,Some{doc}},backend,id,opcode,count,strings,tape,hash))
+        profile_ready(input,output,State{clear_climate(noise),Some{doc}},backend,id,opcode,count,strings,tape,hash))
 
 @unsafe
 def profile_ready(input: File,output: File,state: State,backend: U32,id: U32,opcode: U32,count: U32,strings: U32,tape: U32,hash: U32) -> IO(Unit):
@@ -213,7 +224,7 @@ def profile_load(input: File,output: File,old: State,backend: U32,id: U32,opcode
   R.word(IO(Unit),R.start(body),cursor => +count => profile_size(Bool.and(U32.is_gt(count,0),U32.is_le(count,4096)),input,output,old,backend,id,opcode,cursor,count))
 
 @unsafe
-def query_done(valid: Bool,doc: P.Document,v: Maybe<&2,P.Value>,input: File,output: File,noise: Maybe<&2,N.Stack>,backend: U32,id: U32,opcode: U32) -> IO(Unit):
+def query_done(valid: Bool,doc: P.Document,v: Maybe<&2,P.Value>,input: File,output: File,noise: Settings,backend: U32,id: U32,opcode: U32) -> IO(Unit):
   match valid v:
     case False{} _: error(input,output,State{noise,Some{doc}},backend,id,opcode,603)
     case True{} None{}: error(input,output,State{noise,Some{doc}},backend,id,opcode,707)
@@ -223,7 +234,7 @@ def query_done(valid: Bool,doc: P.Document,v: Maybe<&2,P.Value>,input: File,outp
         finish(input,output,State{noise,Some{doc}},backend,id,opcode,0,body,True{})
 
 @unsafe
-def query_steps(n: Nat,cursor: R.Cursor,doc: P.Document,v: Maybe<&2,P.Value>,input: File,output: File,noise: Maybe<&2,N.Stack>,backend: U32,id: U32,opcode: U32) -> IO(Unit):
+def query_steps(n: Nat,cursor: R.Cursor,doc: P.Document,v: Maybe<&2,P.Value>,input: File,output: File,noise: Settings,backend: U32,id: U32,opcode: U32) -> IO(Unit):
   match n v:
     case 0n _: query_done(R.end(cursor),doc,v,input,output,noise,backend,id,opcode)
     case 1n+p None{}: query_done(True{},doc,None{},input,output,noise,backend,id,opcode)
@@ -231,21 +242,21 @@ def query_steps(n: Nat,cursor: R.Cursor,doc: P.Document,v: Maybe<&2,P.Value>,inp
       query_step(kind,p,cursor,doc,v,key,input,output,noise,backend,id,opcode)))
 
 @unsafe
-def query_step(kind: U32,n: Nat,cursor: R.Cursor,doc: P.Document,v: P.Value,key: U32,input: File,output: File,noise: Maybe<&2,N.Stack>,backend: U32,id: U32,opcode: U32) -> IO(Unit):
+def query_step(kind: U32,n: Nat,cursor: R.Cursor,doc: P.Document,v: P.Value,key: U32,input: File,output: File,noise: Settings,backend: U32,id: U32,opcode: U32) -> IO(Unit):
   match kind:
     case 0: P.field(IO(Unit),doc,v,key,doc => v => query_steps(n,cursor,doc,v,input,output,noise,backend,id,opcode))
     case 1: P.item(IO(Unit),doc,v,key,doc => v => query_steps(n,cursor,doc,v,input,output,noise,backend,id,opcode))
     case _: query_done(False{},doc,None{},input,output,noise,backend,id,opcode)
 
 @unsafe
-def query_count(valid: Bool,cursor: R.Cursor,doc: P.Document,count: U32,input: File,output: File,noise: Maybe<&2,N.Stack>,backend: U32,id: U32,opcode: U32) -> IO(Unit):
+def query_count(valid: Bool,cursor: R.Cursor,doc: P.Document,count: U32,input: File,output: File,noise: Settings,backend: U32,id: U32,opcode: U32) -> IO(Unit):
   match valid:
     case False{}: query_done(False{},doc,None{},input,output,noise,backend,id,opcode)
     case True{}: P.info(IO(Unit),doc,doc => size => strings => at => hash => P.value(IO(Unit),doc,at,doc => v =>
       query_steps(U32.to_nat(count),cursor,doc,Some{v},input,output,noise,backend,id,opcode)))
 
 @unsafe
-def query_body(body: Z.Bytes,doc: P.Document,input: File,output: File,noise: Maybe<&2,N.Stack>,backend: U32,id: U32,opcode: U32) -> IO(Unit):
+def query_body(body: Z.Bytes,doc: P.Document,input: File,output: File,noise: Settings,backend: U32,id: U32,opcode: U32) -> IO(Unit):
   match body:
     case Z.Bytes{a,+size}: R.word(IO(Unit),R.start(Z.Bytes{a,size}),cursor => +count =>
       query_count(Bool.and(U32.is_le(count,128),U32.is_eq(size,U32.add(4,U32.mul(count,8)))),cursor,doc,count,input,output,noise,backend,id,opcode))
@@ -262,26 +273,26 @@ def text_words(-A: Type,n: Nat,doc: P.Document,+at: U32,w: B.Writer,next: P.Docu
     case 1n+p: P.get(A,doc,at,doc => word => text_words(A,p,doc,U32.inc(at),B.int(w,word),next))
 
 @unsafe
-def text_ready(valid: Bool,doc: P.Document,at: U32,+length: U32,input: File,output: File,noise: Maybe<&2,N.Stack>,backend: U32,id: U32,opcode: U32) -> IO(Unit):
+def text_ready(valid: Bool,doc: P.Document,at: U32,+length: U32,input: File,output: File,noise: Settings,backend: U32,id: U32,opcode: U32) -> IO(Unit):
   match valid:
     case False{}: error(input,output,State{noise,Some{doc}},backend,id,opcode,709)
     case True{}: text_words(IO(Unit),U32.to_nat(U32.div(U32.inc(length),2)),doc,at,B.int(B.new(),length),doc => w =>
       text_reply(doc,w,input,output,noise,backend,id,opcode))
 
 @unsafe
-def text_reply(doc: P.Document,w: B.Writer,input: File,output: File,noise: Maybe<&2,N.Stack>,backend: U32,id: U32,opcode: U32) -> IO(Unit):
+def text_reply(doc: P.Document,w: B.Writer,input: File,output: File,noise: Settings,backend: U32,id: U32,opcode: U32) -> IO(Unit):
   do IO<Unit>:
     body : Z.Bytes <- payload(w)
     finish(input,output,State{noise,Some{doc}},backend,id,opcode,0,body,True{})
 
 @unsafe
-def text_result(found: Maybe<&2,P.StringRef>,doc: P.Document,input: File,output: File,noise: Maybe<&2,N.Stack>,backend: U32,id: U32,opcode: U32) -> IO(Unit):
+def text_result(found: Maybe<&2,P.StringRef>,doc: P.Document,input: File,output: File,noise: Settings,backend: U32,id: U32,opcode: U32) -> IO(Unit):
   match found:
     case None{}: error(input,output,State{noise,Some{doc}},backend,id,opcode,707)
     case Some{P.StringRef{at,+length}}: text_ready(U32.is_le(length,8388606),doc,at,length,input,output,noise,backend,id,opcode)
 
 @unsafe
-def text_body(valid: Bool,doc: P.Document,key: U32,input: File,output: File,noise: Maybe<&2,N.Stack>,backend: U32,id: U32,opcode: U32) -> IO(Unit):
+def text_body(valid: Bool,doc: P.Document,key: U32,input: File,output: File,noise: Settings,backend: U32,id: U32,opcode: U32) -> IO(Unit):
   match valid:
     case False{}: error(input,output,State{noise,Some{doc}},backend,id,opcode,603)
     case True{}: P.string(IO(Unit),doc,key,doc => found => text_result(found,doc,input,output,noise,backend,id,opcode))
@@ -309,6 +320,42 @@ def profile_noise(input: File,output: File,old: State,backend: U32,id: U32,opcod
       old,low,high,channel,input,output,backend,id,opcode))))
 
 @unsafe
+def climate_ready(result: Result<&1,&1,U32,RC.Prepared>,doc: P.Document,settings: Settings,input: File,output: File,backend: U32,id: U32,opcode: U32) -> IO(Unit):
+  match result settings:
+    case Fail{code} _: error(input,output,State{settings,Some{doc}},backend,id,opcode,code)
+    case Done{RC.Prepared{model,count,biomes}} Settings{noise,_}:
+      do IO<Unit>:
+        # The response write ends CPU preparation's evaluation before the next
+        # request can bang the resident index (stock Bend scheduling boundary).
+        body : Z.Bytes <- payload(B.int(B.int(B.new(),count),biomes))
+        finish(input,output,State{Settings{noise,Some{model}},Some{doc}},backend,id,opcode,0,body,True{})
+
+@unsafe
+def profile_climate(valid: Bool,input: File,output: File,old: State,backend: U32,id: U32,opcode: U32) -> IO(Unit):
+  match valid old:
+    case False{} _: error(input,output,old,backend,id,opcode,603)
+    case True{} State{settings,None{}}: error(input,output,State{settings,None{}},backend,id,opcode,708)
+    case True{} State{settings,Some{doc}}: RC.prepare(IO(Unit),doc,doc => result =>
+      climate_ready(result,doc,settings,input,output,backend,id,opcode))
+
+@unsafe
+def climate_queries(queries: CB.Input,model: C.Model,old: State,input: File,output: File,backend: U32,id: U32,opcode: U32) -> IO(Unit):
+  match queries:
+    case CB.Input{_,_,False{}}: error(input,output,old,backend,id,opcode,603)
+    case CB.Input{queries,count,True{}}:
+      do IO<Unit>:
+        rows : Array<CB.Row> = CB.calculate!(model,queries)
+        body : Z.Bytes <- payload(CB.encode(U32.to_nat(count),rows,B.new(),0))
+        finish(input,output,old,backend,id,opcode,0,body,True{})
+
+@unsafe
+def climate_batch(input: File,output: File,old: State,backend: U32,id: U32,opcode: U32,body: Z.Bytes) -> IO(Unit):
+  match old:
+    case State{Settings{noise,None{}},profile}: error(input,output,State{Settings{noise,None{}},profile},backend,id,opcode,714)
+    case State{Settings{noise,Some{+model}},profile}:
+      climate_queries(CB.decode(body),model,State{Settings{noise,Some{model}},profile},input,output,backend,id,opcode)
+
+@unsafe
 def dispatch(input: File,output: File,stack: State,backend: U32,id: U32,opcode: U32,body: Z.Bytes) -> IO(Unit):
   match opcode:
     case 0: empty_command(R.end(R.start(body)),input,output,stack,backend,id,0)
@@ -319,6 +366,8 @@ def dispatch(input: File,output: File,stack: State,backend: U32,id: U32,opcode: 
     case 6: profile_query(input,output,stack,backend,id,6,body)
     case 7: profile_text(input,output,stack,backend,id,7,body)
     case 8: profile_noise(input,output,stack,backend,id,8,body)
+    case 9: profile_climate(R.end(R.start(body)),input,output,stack,backend,id,9)
+    case 10: climate_batch(input,output,stack,backend,id,10,body)
     case 4: empty_command(R.end(R.start(body)),input,output,stack,backend,id,4)
     case _: error(input,output,stack,backend,id,opcode,605)
 
@@ -357,7 +406,7 @@ def launch(backend: U32) -> IO(Unit):
   do IO<Unit>:
     input : File <- IO.try(File,File.open("/dev/stdin","r"))
     output : File <- IO.try(File,File.open("/dev/stdout","w"))
-    loop(input,output,State{None{},None{}},backend)
+    loop(input,output,State{Settings{None{},None{}},None{}},backend)
 
 def modes(cpu: Bool,gpu: Bool) -> IO(Unit):
   match cpu gpu:

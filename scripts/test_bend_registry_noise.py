@@ -42,6 +42,11 @@ def fixture_wire(value, packed=False):
             children = []
             for name,item in value.items(): children += [key(name)]+node(item)
             return [7,len(children)+3,len(value)]+children
+        if packed and value and all(type(v) is int for v in value):
+            if all(-(1<<31) <= v < (1<<31) for v in value):
+                return [8,len(value)+3,len(value)]+[v&MASK for v in value]
+            words=[word for v in value for word in ((v>>32)&MASK,v&MASK)]
+            return [9,len(words)+3,len(value)]+words
         if packed and value and all(type(v) is float for v in value):
             words = [word for v in value for word in struct.unpack('>2I',struct.pack('>d',v))]
             return [10,len(words)+3,len(value)]+words
