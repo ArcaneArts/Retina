@@ -103,7 +103,7 @@ File writes and other IO remain CPU effects. We used a foreign C IO effect only 
 
 - [Bend 2 repository and limitations](https://github.com/bendlang/bend)
 - [Execution, ownership, parallelism and foreign effects](https://github.com/bendlang/bend/blob/main/guide/GUIDE.md)
-- [GPU scheduling and shader-layout guide](https://github.com/bendlang/bend/blob/main/guide/shaders.md)
+- [GPU scheduling and shader-layout guide](https://github.com/bendlang/bend/blob/main/guide/SHADERS.md)
 - [Pinned release](https://github.com/bendlang/bend/releases/tag/v2.0.36)
 
 The upstream checkout used for investigation was `059266225b77c8ca256ac6b25ee5c21449bab151`; executables were compiled by the installed **2.0.36 release**, not by that checkout. The shader guide identifies itself as an AI-written tutorial, so its performance advice was tested locally rather than treated as a guarantee.
