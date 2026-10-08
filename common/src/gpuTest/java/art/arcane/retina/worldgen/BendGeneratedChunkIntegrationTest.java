@@ -23,6 +23,8 @@ import net.minecraft.server.packs.repository.ServerPacksSource;
 import net.minecraft.server.packs.resources.MultiPackResourceManager;
 import net.minecraft.util.SimpleBitStorage;
 import net.minecraft.world.level.LevelHeightAccessor;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
@@ -32,6 +34,8 @@ import net.minecraft.world.level.chunk.PalettedContainerFactory;
 import net.minecraft.world.level.chunk.Strategy;
 import net.minecraft.world.level.chunk.status.ChunkStatus;
 import net.minecraft.world.level.chunk.storage.SerializableChunkData;
+import net.minecraft.world.level.chunk.storage.RegionFileStorage;
+import net.minecraft.world.level.chunk.storage.RegionStorageInfo;
 import net.minecraft.world.level.levelgen.Heightmap;
 
 import java.io.DataInputStream;
@@ -51,12 +55,14 @@ public final class BendGeneratedChunkIntegrationTest {
     public static void main(String[] args) throws Exception {
         SharedConstants.tryDetectVersion();
         Bootstrap.bootStrap();
-        var folder = Path.of(args.length == 0 ? "build/bend/generated-chunks" : args[0]);
-        var names = Set.copyOf(Arrays.asList((args.length < 2
-                ? "ramp,islands,solid,empty,non_power_cells,vanilla" : args[1]).split(",")));
+        boolean regions = args.length > 0 && args[0].equals("--regions");
+        int offset = regions ? 1 : 0;
+        var folder = Path.of(args.length == offset ? "build/bend/generated-chunks" : args[offset]);
+        var names = Set.copyOf(Arrays.asList((args.length < offset + 2
+                ? "ramp,islands,solid,empty,non_power_cells,vanilla" : args[offset + 1]).split(",")));
         var stack = new ArrayList<PackResources>();
         stack.add(ServerPacksSource.createVanillaPackSource().fullResources());
-        for (int i = 2; i < args.length; i++) stack.add((PackResources) new FilePackResources.FileResourcesSupplier(Path.of(args[i]))
+        for (int i = offset + 2; i < args.length; i++) stack.add((PackResources) new FilePackResources.FileResourcesSupplier(Path.of(args[i]))
                 .openMetadata(new PackLocationInfo("bend-chunk-test-" + i, Component.literal("Bend chunk test"),
                         PackSource.DEFAULT, Optional.empty())));
         try (var resources = new MultiPackResourceManager(PackType.SERVER_DATA, stack)) {
@@ -78,6 +84,10 @@ public final class BendGeneratedChunkIntegrationTest {
             var blockCodec = PalettedContainer.codecRW(BlockState.CODEC, blocks, Blocks.AIR.defaultBlockState());
             var factory = new PalettedContainerFactory(blocks, Blocks.AIR.defaultBlockState(), blockCodec,
                     biomes, plains, PalettedContainer.codecRO(biomeCodec, biomes, plains));
+            if (regions) {
+                checkRegions(folder, names, factory, blockCodec, biomeCodec);
+                return;
+            }
             int chunks = 0; long verified = 0;
             try (var paths = Files.walk(folder)) {
                 for (var path : paths.filter(p -> p.toString().endsWith(".nbt") && names.contains(p.getParent().getFileName().toString())).sorted().toList()) {
@@ -103,6 +113,39 @@ public final class BendGeneratedChunkIntegrationTest {
             System.out.println("QA_EVT {\"event\":\"bend_generated_chunk_decoding\",\"status\":\"pass\",\"context\":{\"chunks\":"
                     + chunks + ",\"decodes_per_chunk\":2,\"blocks_verified\":" + verified + "}}");
         }
+    }
+
+    private static void checkRegions(Path folder, Set<String> names, PalettedContainerFactory factory,
+            Codec<PalettedContainer<BlockState>> blockCodec, Codec<Holder<Biome>> biomeCodec) throws Exception {
+        long verified = 0;
+        int files = 0;
+        var pattern = java.util.regex.Pattern.compile("r\\.(-?\\d+)\\.(-?\\d+)\\.mca");
+        var info = new RegionStorageInfo("retina-bend-generated-test", Level.OVERWORLD, "chunk");
+        try (var paths = Files.walk(folder)) {
+            for (var path : paths.filter(p -> names.contains(p.getParent().getFileName().toString())
+                    && pattern.matcher(p.getFileName().toString()).matches()).sorted().toList()) {
+                var match = pattern.matcher(path.getFileName().toString());
+                require(match.matches(), "region filename");
+                int rx = Integer.parseInt(match.group(1)), rz = Integer.parseInt(match.group(2));
+                byte[] original = Files.readAllBytes(path);
+                for (int reopen = 0; reopen < 2; reopen++) {
+                    try (var storage = new RegionFileStorage(info, path.getParent(), false)) {
+                        for (int slot = 0; slot < 1024; slot++) {
+                            var pos = new ChunkPos(rx * 32 + slot % 32, rz * 32 + slot / 32);
+                            var tag = storage.read(pos);
+                            require(tag != null && tag.getIntOr("xPos", Integer.MAX_VALUE) == pos.x()
+                                    && tag.getIntOr("zPos", Integer.MAX_VALUE) == pos.z(), "region slot coordinates");
+                            verified += check(tag, factory, blockCodec, biomeCodec);
+                        }
+                    }
+                }
+                require(Arrays.equals(original, Files.readAllBytes(path)), "reading/reopening preserves generated file bytes");
+                files++;
+            }
+        }
+        require(files > 0, "generated region files found");
+        System.out.println("QA_EVT {\"event\":\"bend_generated_region_decoding\",\"status\":\"pass\",\"context\":{\"files\":"
+                + files + ",\"chunks_per_file\":1024,\"reads_per_chunk\":2,\"blocks_verified\":" + verified + "}}");
     }
 
     private static long check(CompoundTag tag, PalettedContainerFactory factory, Codec<PalettedContainer<BlockState>> codec, Codec<Holder<Biome>> biomeCodec) {

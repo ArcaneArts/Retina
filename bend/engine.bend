@@ -25,6 +25,7 @@ import ./material.bend as Material
 import ./chunk_catalog.bend as CC
 import ./registry_chunk_catalog.bend as RCC
 import ./generated_chunk.bend as GC
+import ./generated_region.bend as GR
 
 # Persistent binary worker. Protocol v1 is a component transport, not yet a
 # world generator: PING=0, PREPARE_NOISE=1, SAMPLE_GRID=2, COMPRESS=3, STOP=4,
@@ -37,7 +38,7 @@ import ./generated_chunk.bend as GC
 # PROFILE_SURFACE=15, SURFACE_COLUMNS=16, SURFACE_BATCH=17, SURFACE_PLAN=18,
 # PROFILE_MATERIAL=19, MATERIAL_BATCH=20, PROFILE_BLOCKS=21,
 # BLOCK_COLUMNS=22, BLOCK_BATCH=23, BLOCK_RUNS=24, PROFILE_CHUNK=25,
-# CHUNK_NBT=26, CHUNK_ZLIB=27.
+# CHUNK_NBT=26, CHUNK_ZLIB=27, REGION_MCA=28 (private staged path).
 # Requests: RBND magic, payload length, request ID, opcode (all BE u32).
 # Responses add a status u32 after opcode. stdout contains frames only.
 type Settings is Data:
@@ -727,6 +728,29 @@ def chunk_generate(compress: Bool,input: File,output: File,old: State,backend: U
     case _: error(input,output,old,backend,id,opcode,731)
 
 @unsafe
+def region_saved(result: Result<&1,&1,U32,U32 & U32>,old: State,input: File,output: File,backend: U32,id: U32,opcode: U32) -> IO(Unit):
+  match result:
+    case Fail{code}: error(input,output,old,backend,id,opcode,code)
+    case Done{pair}:
+      (chunks,sectors) = pair
+      do IO<Unit>:
+        body : Z.Bytes <- payload(B.int(B.int(B.new(),chunks),sectors))
+        finish(input,output,old,backend,id,opcode,0,body,True{})
+
+@unsafe
+def region_generate(input: File,output: File,old: State,backend: U32,id: U32,opcode: U32,body: Z.Bytes) -> IO(Unit):
+  match old:
+    case State{Settings{noise,climate,None{}},profile}: error(input,output,State{Settings{noise,climate,None{}},profile},backend,id,opcode,716)
+    case State{Settings{noise,climate,Some{RD.Prepared{model,programs,noises,points,fields,density,surface,
+      Some{M.Model{materials,bands,sea,layered,Some{MD.State{config,Some{+grid},Some{+catalog}}}}}}}},profile}:
+      prepared : RD.Prepared = RD.Prepared{model,programs,noises,points,fields,density,surface,
+        Some{M.Model{materials,bands,sea,layered,Some{MD.State{config,Some{grid},Some{catalog}}}}}}
+      do IO<Unit>:
+        result : Result<&1,&1,U32,U32 & U32> <- GR.run(GR.decode(body),grid,catalog)
+        region_saved(result,State{Settings{noise,climate,Some{prepared}},profile},input,output,backend,id,opcode)
+    case _: error(input,output,old,backend,id,opcode,731)
+
+@unsafe
 def dispatch(input: File,output: File,stack: State,backend: U32,id: U32,opcode: U32,body: Z.Bytes) -> IO(Unit):
   match opcode:
     case 0: empty_command(R.end(R.start(body)),input,output,stack,backend,id,0)
@@ -756,6 +780,7 @@ def dispatch(input: File,output: File,stack: State,backend: U32,id: U32,opcode: 
     case 25: chunk_profile(R.end(R.start(body)),input,output,stack,backend,id,25)
     case 26: chunk_generate(False{},input,output,stack,backend,id,26,body)
     case 27: chunk_generate(True{},input,output,stack,backend,id,27,body)
+    case 28: region_generate(input,output,stack,backend,id,28,body)
     case 4: empty_command(R.end(R.start(body)),input,output,stack,backend,id,4)
     case _: error(input,output,stack,backend,id,opcode,605)
 

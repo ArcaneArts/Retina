@@ -464,3 +464,38 @@ readers; see `docs/BEND_REGISTRY_WIRE.md` for metadata, bounds and test options.
 This stage emits unlit base/material chunks. Final caves/fluids/features,
 underground biomes, light, region publication and usable world selection remain
 on the implementation checklist.
+
+## Whole generated MCA staging
+
+`generated_region.bend` connects the generated block snapshot, chunk encoder,
+parallel compression and MCA planner. Command 28 writes all 1,024 chunks of a
+fully covered region to a caller-owned private staging path. Eight independent
+CPU Bend chunk tasks run per batch; expanded sections/NBT are released after
+compression. The writer retains at most 1,024 compressed records and their
+sector-aligned output buffers, then streams one header and the records through
+stock Bend file IO. It does not concatenate an entire MCA byte-list or send the
+file through IPC. The stock runtime has no seek/write-at API; the header must
+be planned before the final sequential write. Inline records retain the existing
+255-sector limit. Compression, palette/catalog conversion and MCA planning are
+CPU Bend even when preceding terrain passes run on GPU.
+
+```sh
+nice -n 10 ./gradlew :common:bendGeneratedRegionTest :common:bendGeneratedRegionWorkerTest \
+  -PretinaHostOnly --max-workers=2 --no-parallel -PproveMetal \
+  -PbendDensityRegistryProfiles=/absolute/vanilla.json=/absolute/vanilla.rbp
+```
+
+The independent reader checks every record, packed palette, coordinate,
+timestamp, sector allocation, zlib checksum and NBT stream; selected chunks
+match the component serializer and generated queries. Minecraft reads all
+chunks through actual `RegionFileStorage`, palette, heightmap and
+`SerializableChunkData` readers and reopens the files without changing their
+bytes. Concurrent raw Java callers check repeated writes, queued cancellation,
+snapshot retention, actual file-open failure and process cleanup.
+
+This remains **unlit base/material component output**. It is not connected to
+game saves and must never overwrite an existing region. Caves/features/structures,
+underground biomes, computed lighting, existing/external record preservation,
+atomic publication, region coalescing/cache integration and actual running-world
+tests remain required. Decode/reopen checks are not gameplay save/edit checks;
+component host timings are not a full Rust-versus-Bend generation benchmark.

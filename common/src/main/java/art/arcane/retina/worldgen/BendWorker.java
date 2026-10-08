@@ -203,6 +203,24 @@ public final class BendWorker implements AutoCloseable {
         return request(compressed ? 27 : 26, payload.array());
     }
 
+    /** Write all 1024 generated chunks from one covered resident tile. Bend owns
+     * chunk serialization, compression, sector allocation and the file bytes.
+     * The caller MUST supply a private staged file, never an existing region,
+     * and retain its ownership until this request completes or the worker exits.
+     * Only successful acknowledgement (chunk count, sector count) permits later
+     * publication. Cancellation can still drain an active write; deletion must
+     * wait for worker shutdown. File IO errors terminate this component worker.
+     */
+    public CompletableFuture<byte[]> writeGeneratedRegion(int regionX, int regionZ, long seed,
+            int dataVersion, int timestamp, Path stagedFile) {
+        int[] points = stagedFile.toAbsolutePath().toString().codePoints().toArray();
+        var payload = java.nio.ByteBuffer.allocate(28 + points.length * 4)
+                .putInt(regionX).putInt(regionZ).putInt((int) seed).putInt((int) (seed >>> 32))
+                .putInt(dataVersion).putInt(timestamp).putInt(points.length);
+        for (int point : points) payload.putInt(point);
+        return request(28, payload.array());
+    }
+
     /** Cancellation skips queued requests; in-flight responses are drained to
      * preserve framing. World shutdown closes the worker and terminates it.
      */
