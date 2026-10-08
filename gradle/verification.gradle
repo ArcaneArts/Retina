@@ -487,16 +487,25 @@ def bendProfileWireClasses = tasks.register('bendProfileWireClasses', JavaCompil
     options.release = 25
 }
 
+// Keep the classpath as lazy file data until the owning task executes. Root
+// verification aliases realize this task while configuring a different project;
+// resolving common's configuration there violates Gradle's project lock.
+def registryWireClasspath = files(rootProject.layout.buildDirectory.dir('bend/profile-java'), sourceSets.main.compileClasspath)
+def registryWireJava = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
+        .map { launcher -> launcher.executablePath.asFile.absolutePath }
+def registryWirePython = providers.gradleProperty('pythonExecutable').getOrElse('python3')
+def registryWireProfiles = providers.gradleProperty('bendRegistryProfiles').getOrElse('')
 tasks.register('bendRegistryWireTest', Exec) {
     group = 'verification'
     description = 'Validate pure Bend registry decoding against every source value and exercise resident input queries.'
     dependsOn bendProfileWireClasses
     workingDir rootProject.projectDir
-    commandLine providers.gradleProperty('pythonExecutable').getOrElse('python3'), 'scripts/test_bend_registry.py',
-            '--java', javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }.get().executablePath.asFile.absolutePath,
-            '--classpath', files(rootProject.layout.buildDirectory.dir('bend/profile-java'), sourceSets.main.compileClasspath).asPath
-    if (providers.gradleProperty('bendRegistryProfiles').isPresent())
-        providers.gradleProperty('bendRegistryProfiles').get().split(',').each { args '--profile', it }
+    doFirst {
+        commandLine registryWirePython, 'scripts/test_bend_registry.py',
+                '--java', registryWireJava.get(), '--classpath', registryWireClasspath.asPath
+        if (!registryWireProfiles.isEmpty())
+            registryWireProfiles.split(',').each { args '--profile', it }
+    }
 }
 
 // Both explicit harnesses build build/bend/engine; serialize them when selected
