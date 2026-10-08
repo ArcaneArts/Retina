@@ -1,0 +1,194 @@
+{
+  "scope": "Persistent component transport; full registry/world generator integration pending",
+  "bend_version": "bend 2.0.36",
+  "runs": [
+    {
+      "gpu_required": false,
+      "grids": [
+        {
+          "width": 16,
+          "height": 16,
+          "step": 1,
+          "sha256": "ea1898c42bad031d70f518b6b64f57f23a6e20d9b824c06249291905a4fd4e83"
+        },
+        {
+          "width": 13,
+          "height": 17,
+          "step": 1,
+          "sha256": "fc83619d0ebecb76109b34063db3a6ce5249a01b2ed5b5733aa68427f17c6780"
+        },
+        {
+          "width": 64,
+          "height": 64,
+          "step": 3,
+          "sha256": "773c9791ec0e61659ff994490ac3ba543883583df1bc6b928df663e8690e4eef"
+        },
+        {
+          "width": 512,
+          "height": 512,
+          "step": 1,
+          "sha256": "0e1ecfbbf6e60a3abb36ae2a3da353d330450396cfbc999dd8f8bb0d198cfd6a"
+        }
+      ],
+      "max_reference_error": 3.6100139255701436e-07,
+      "compression": [
+        {
+          "input_bytes": 0,
+          "compressed_bytes": 8
+        },
+        {
+          "input_bytes": 131072,
+          "compressed_bytes": 1482
+        },
+        {
+          "input_bytes": 65536,
+          "compressed_bytes": 65552
+        },
+        {
+          "input_bytes": 1048576,
+          "compressed_bytes": 1048667
+        }
+      ],
+      "requests_in_one_process": 127,
+      "observed_metal_command_ms": []
+    },
+    {
+      "gpu_required": true,
+      "grids": [
+        {
+          "width": 16,
+          "height": 16,
+          "step": 1,
+          "sha256": "ea1898c42bad031d70f518b6b64f57f23a6e20d9b824c06249291905a4fd4e83"
+        },
+        {
+          "width": 13,
+          "height": 17,
+          "step": 1,
+          "sha256": "fc83619d0ebecb76109b34063db3a6ce5249a01b2ed5b5733aa68427f17c6780"
+        },
+        {
+          "width": 64,
+          "height": 64,
+          "step": 3,
+          "sha256": "773c9791ec0e61659ff994490ac3ba543883583df1bc6b928df663e8690e4eef"
+        },
+        {
+          "width": 512,
+          "height": 512,
+          "step": 1,
+          "sha256": "0e1ecfbbf6e60a3abb36ae2a3da353d330450396cfbc999dd8f8bb0d198cfd6a"
+        }
+      ],
+      "max_reference_error": 3.6100139255701436e-07,
+      "compression": [
+        {
+          "input_bytes": 0,
+          "compressed_bytes": 8
+        },
+        {
+          "input_bytes": 131072,
+          "compressed_bytes": 1482
+        },
+        {
+          "input_bytes": 65536,
+          "compressed_bytes": 65552
+        },
+        {
+          "input_bytes": 1048576,
+          "compressed_bytes": 1048667
+        }
+      ],
+      "requests_in_one_process": 127,
+      "observed_metal_command_ms": []
+    }
+  ],
+  "malformed_streams_rejected": 5,
+  "clean_eof": "pass",
+  "cpu_gpu_grid_bytes_equal": true,
+  "metal_observation": {
+    "diagnostic_only": true,
+    "gpu_required": true,
+    "grids": [
+      {
+        "width": 16,
+        "height": 16,
+        "step": 1,
+        "sha256": "ea1898c42bad031d70f518b6b64f57f23a6e20d9b824c06249291905a4fd4e83"
+      },
+      {
+        "width": 13,
+        "height": 17,
+        "step": 1,
+        "sha256": "fc83619d0ebecb76109b34063db3a6ce5249a01b2ed5b5733aa68427f17c6780"
+      },
+      {
+        "width": 64,
+        "height": 64,
+        "step": 3,
+        "sha256": "773c9791ec0e61659ff994490ac3ba543883583df1bc6b928df663e8690e4eef"
+      },
+      {
+        "width": 512,
+        "height": 512,
+        "step": 1,
+        "sha256": "0e1ecfbbf6e60a3abb36ae2a3da353d330450396cfbc999dd8f8bb0d198cfd6a"
+      }
+    ],
+    "max_reference_error": 3.6100139255701436e-07,
+    "compression": [
+      {
+        "input_bytes": 0,
+        "compressed_bytes": 8
+      },
+      {
+        "input_bytes": 131072,
+        "compressed_bytes": 1482
+      },
+      {
+        "input_bytes": 65536,
+        "compressed_bytes": 65552
+      },
+      {
+        "input_bytes": 1048576,
+        "compressed_bytes": 1048667
+      }
+    ],
+    "requests_in_one_process": 127,
+    "observed_metal_command_ms": [
+      2.437625,
+      1.334583,
+      1.579625,
+      1.179375,
+      1.650875,
+      2.687792,
+      2.410167,
+      2.93675,
+      0.19625,
+      0.14225
+    ]
+  },
+  "java_transport_checks": {
+    "real_bend_execution": [
+      "CPU",
+      "GPU_REQUIRED"
+    ],
+    "concurrent_callers": 4,
+    "compression_requests_per_execution": 64,
+    "queue_limit": 16,
+    "retained_payload_budget_mib": 32,
+    "heap_mib": 256,
+    "queued_and_inflight_cancellation": "pass",
+    "canceled_byte_budget_recovery": "pass",
+    "mutable_payload_snapshot": "pass",
+    "shutdown_pending_requests": "pass",
+    "corrupt_frame_status_and_worker_crash": "pass",
+    "child_process_termination": "pass"
+  },
+  "source_sha256": {
+    "bend/engine.bend": "6ca777a5cb6f539176f9de97cc0484da7cdaa1e24e68ca6398fdad95985705c4",
+    "bend/reader.bend": "e659a2cac6b8435f02fd0fe91902ceca918055d026ec1908845186bee4fdc0ac",
+    "bend/transport.bend": "2d7b2667aaf37b537de8be6c584acaeaec37377da475741bfe790a46d9c76f81",
+    "common/src/main/java/art/arcane/retina/worldgen/BendWorker.java": "717c774062f8c84fd5c426119d9ea169cd4c20454a628bca19de73bd47ed624a"
+  }
+}

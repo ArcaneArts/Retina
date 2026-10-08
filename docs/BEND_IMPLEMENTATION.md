@@ -49,7 +49,7 @@ more deeply; retain the original requested scope.
 | Independent parallel chunk compression | Rayon chunk assembly in `region.rs` | Implemented Bend fork/join API; four streams verified at 1/2/4 workers; region integration pending |
 | GPU lighting, interior-chunk validity, boundary handling and one final region write | `lighting.rs`, `lighting.wgsl`, `region.rs`, `LightSeams.java` | Serialization of supplied light arrays/padding and completion flags validated with Minecraft. Lighting computation, interior/boundary policy and actual generation integration remain pending |
 | MCA sector tables, external records, preserving existing chunks and atomic publication | `region.rs` | Pure Bend new-file inline planning/streaming validated with 1024 full, 3 sparse and empty record containers. Existing/external-record preservation and atomic publication pending |
-| Persistent engine, bounded scheduling/singleflight, cleanup and actionable failure propagation | `NativeTerrain.java`, `RegionCoordinator.java`, `TerrainQueries.java` | Pending |
+| Persistent engine, bounded scheduling/singleflight, cleanup and actionable failure propagation | `NativeTerrain.java`, `RegionCoordinator.java`, `TerrainQueries.java` | Persistent Bend component worker and bounded raw Java transport implemented: resident noise stacks, GPU grids, Bend compression, 16 queued requests/32 MiB retained request payloads, cancellation, shutdown and fatal protocol/process failure checks. Full registry/region commands, coalescing and Minecraft lifecycle integration pending |
 | DH surface/height requests generate temporary whole regions, 1024-region cache, eviction and promotion | `TemporaryRegions.java`, `RegionCoordinator.java` | Pending: share coordinator/cache with selected backend |
 | Backend selection survives datapacks, codecs, save/reopen and server lifecycle | `RetinaChunkGenerator.java`, preset/platform mixins | Pending |
 | Exactly two selectable world types; Rust default; legacy chunk-save migration aliases | `world_preset/gpu*.json`, world preset tag, language keys and generator codec | Pending; do not advertise an incomplete Bend backend |
@@ -84,9 +84,17 @@ more deeply; retain the original requested scope.
    Lithosphere pack was also actually attempted but fails Minecraft 26.3's own
    registry loader because its data uses older formats. Evidence is recorded in
    `docs/benchmarks/bend-registry-export.json`. Bend transport and persistent
-   execution remain required. Shared extraction merged in
+   region execution remain required. Shared extraction merged in
    [PR #22](https://github.com/ArcaneArts/Retina/pull/22), commit `a90f33d`; both CI
    builds passed.
+   The component worker now reuses one stock Bend process for cached noise
+   configurations, GPU sample grids and compression. Raw Java scheduling is
+   bounded by queue count and retained payload bytes. Independent framing,
+   partial-read/EOF, CPU/GPU numerical and zlib checks pass; actual Java callers
+   verify concurrency, queued/in-flight cancellation, budget recovery, shutdown,
+   corrupted responses and worker crashes. No Minecraft or Rust initialization
+   is involved in this transport test. Complete registry transport and region
+   commands/coalescing remain pending.
 4. **GPU terrain and registry programs.** Port numerical kernels, climate,
    interpolation, materials, caves, fluids and surface/query consistency.
    `bend/noise.bend` now provides reusable seeded simplex, 3D gradient noise,
@@ -96,6 +104,8 @@ more deeply; retain the original requested scope.
    Metal command buffer; the observed executable produces identical fixture
    bytes. This is numerical component evidence, not a region benchmark or an
    integrated terrain generator. See `docs/benchmarks/bend-noise-correctness.json`.
+   Merged in [PR #23](https://github.com/ArcaneArts/Retina/pull/23), commit `5f0f837`;
+   both CI builds passed.
 5. **Registered features and structures.** Port ordered decorations, geology,
    jigsaw/templates/processors and metadata with cross-region tests.
 6. **GPU lighting and integration.** Interior prelighting, cache/promotion,
