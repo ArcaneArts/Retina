@@ -182,6 +182,27 @@ public final class BendWorker implements AutoCloseable {
         return request(22, new byte[0]);
     }
 
+    /** Project registered block names/properties, biome IDs and the six actual
+     * heightmap predicates in Bend. Requires the prepared block model. The two
+     * acknowledgement words are material and biome counts; no NBT is built here.
+     */
+    public CompletableFuture<byte[]> prepareProfileChunks() {
+        return request(25, new byte[0]);
+    }
+
+    /** Encode a chunk fully covered by the resident generated block tile.
+     * Bend owns block/biome packing, heightmaps, NBT and optional zlib. Seed,
+     * chunk coordinates and the running game's DataVersion are raw metadata.
+     * This component currently emits FEATURES status without precomputed light;
+     * final generation and region scheduling are separate integration work.
+     */
+    public CompletableFuture<byte[]> encodeGeneratedChunk(int chunkX, int chunkZ, long seed,
+            int dataVersion, boolean compressed) {
+        var payload = java.nio.ByteBuffer.allocate(20).putInt(chunkX).putInt(chunkZ)
+                .putInt((int) seed).putInt((int) (seed >>> 32)).putInt(dataVersion);
+        return request(compressed ? 27 : 26, payload.array());
+    }
+
     /** Cancellation skips queued requests; in-flight responses are drained to
      * preserve framing. World shutdown closes the worker and terminates it.
      */

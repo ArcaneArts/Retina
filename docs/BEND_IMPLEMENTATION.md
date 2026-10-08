@@ -44,7 +44,7 @@ more deeply; retain the original requested scope.
 | Structure entities/block entities/loot and attachment rotations | `nbt.rs`, `structures.rs`, `structure_processors.rs` | Pending |
 | Snow, freezing, plant support and path/gravel restrictions | `LightingProfile.java`, profile material/survival tables, `region.rs` | Pending |
 | Full 64-bit seeds, signed/distant coordinates and repeatable ordering | `ChunkRequest`, native hash/random routines | Exact word-pair add/subtract/multiply/bit operations implemented; 3,689 operations independently verified. Typed i64/f64-to-F32 rounding independently verifies 131,072 scalar conversions per CPU/GPU run, including distant-value midpoint cases. Integration and coordinate/order checks pending |
-| Block/biome palettes, bit-packed long arrays, heightmaps, modified UTF-8 NBT and current data versions | `region.rs`, `nbt.rs` | Pure Bend palette remapping (49,664 indices), final-block heightmaps and complete fixture chunk encoding implemented. Minecraft 26.3 (data version 5023) reads/reopens mixed and prelit fixture chunks through actual region, palette and SerializableChunkData decoders. Registry/runtime generation integration remains pending |
+| Block/biome palettes, bit-packed long arrays, heightmaps, modified UTF-8 NBT and current data versions | `region.rs`, `nbt.rs` | Pure Bend palette remapping (49,664 indices), final-block heightmaps and complete fixture chunk encoding implemented. Minecraft 26.3 (data version 5023) reads/reopens mixed and prelit fixture chunks through actual region, palette and SerializableChunkData decoders. Resident generated base/material columns now encode into current-version NBT/zlib with exact state properties, quart surface biomes and final-block heightmaps; final generated-region/runtime integration remains pending |
 | LZ77, fixed-Huffman DEFLATE, zlib/Adler-32 and stored fallback | `region.rs` uses libdeflater | Implemented in `bend/compression.bend`; independent fixture tests pass |
 | Independent parallel chunk compression | Rayon chunk assembly in `region.rs` | Implemented Bend fork/join API; four streams verified at 1/2/4 workers; region integration pending |
 | GPU lighting, interior-chunk validity, boundary handling and one final region write | `lighting.rs`, `lighting.wgsl`, `region.rs`, `LightSeams.java` | Serialization of supplied light arrays/padding and completion flags validated with Minecraft. Lighting computation, interior/boundary policy and actual generation integration remain pending |
@@ -298,3 +298,24 @@ results on failure. This is still a component: caves, fluids beyond the base sea
 coast remapping, underground biome changes and generated-region integration
 remain on the parity checklist. Evidence is recorded in
 `docs/benchmarks/bend-material-columns.json`.
+
+The material-column cycle merged in [PR #36](https://github.com/ArcaneArts/Retina/pull/36),
+commit `6312a55`; both actual push/PR CI builds passed.
+
+Generated base/material chunk serialization now projects registered block
+names/properties, biome IDs and six heightmap predicate masks into a resident
+Bend catalog. It expands cached compact runs into sections, samples surface
+quart biomes and calls the pure Bend palette/NBT/zlib writers. Commands 25..27
+accept only raw metadata, retain catalogs across tiles and reject missing,
+misaligned or uncovered data without modifying successful generation results.
+This is an intermediate unlit generated chunk, not a finished world: final
+caves/fluids/features, underground biomes, light and region publication remain.
+Independent checks validate 442,368 generated blocks per CPU/GPU run across
+six synthetic and actual vanilla/Terralith/combined profiles. All 54 expected
+Metal command buffers were observed, with diagnostic and normal output bytes
+identical. Fourteen invalid catalogs plus metadata/coverage/alignment rejection
+cases pass; each worker handles 470 requests. Minecraft decodes/reopens 22
+outputs twice and checks 1,703,936 blocks using its actual heightmap predicates.
+Java raw transport checks twelve concurrent chunk requests per backend. The full
+host Fabric/NeoForge build and existing material-column regressions pass.
+Evidence is recorded in `docs/benchmarks/bend-generated-chunks.json`.

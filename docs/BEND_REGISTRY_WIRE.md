@@ -460,3 +460,53 @@ inputs. Java callers also exercise concurrent resident voxel queries. Diagnostic
 stock-runtime timestamps verify real Metal dispatch and identical normal-worker
 output. These are component checks; host timings include preceding lattice and
 surface construction and are not full-region performance measurements.
+
+### Generated base/material chunks (component commands 25..27)
+
+Command **25** takes an empty payload and projects the loaded `materials`,
+`biomes[].id` and exact `heightmap_masks` into a reusable Bend catalog. It
+requires the block configuration from command 21. Materials retain string IDs
+or object IDs/properties; property values remain strings. Sequential tape
+visitors avoid repeatedly walking large arrays. UTF-16 code units are preserved
+for the existing modified-UTF8 NBT writer. The acknowledgement is two U32s:
+material count and biome count. Invalid typed catalog data returns **730**;
+missing block preparation returns **727**. Rejection preserves prior state.
+
+Commands **26** (NBT) and **27** (zlib-compressed NBT) take exactly five U32s:
+chunk X, chunk Z (signed bits), low/high world-seed words and the running game's
+DataVersion. The whole 16x16 chunk must be covered by the resident block tile;
+its origin need not equal the tile origin. Missing generated data/catalog returns
+**731**, a tile/full-seed miss **732**, and coordinates outside signed-i32 block
+space or non-section-aligned world limits **733**. These are serializer errors;
+the existing block generator still handles nonaligned limits independently.
+Truncated/trailing metadata returns **603**.
+
+Bend expands the cached compact runs in Y/Z/X section order, samples 4x4 quart
+surface biomes, packs both palettes, derives all six heightmaps from the actual
+serialized blocks and exported Minecraft predicates, writes NBT and optionally
+compresses it with its own DEFLATE/zlib encoder. The bridge transports only the
+raw metadata and result. Output has `minecraft:features` status, no supplied
+light arrays and `isLightOn=0`; it does not claim prelighting. Structure/entity
+metadata is empty at this component stage. Underground biome reassignment,
+final features/caves/fluids/light and actual region publication remain required.
+
+Catalogs survive density/surface tile replacements and same-profile command 21
+preparation, while block runs invalidate as before. Profile/numeric/material
+model replacements invalidate the dependent catalog. Serialization is read-only
+with respect to retained generation data; repeated raw/compressed requests and
+parallel Java callers return the same bytes.
+
+```sh
+nice -n 10 ./gradlew bendGeneratedChunkTest -PretinaHostOnly --max-workers=2 --no-parallel \
+  -PbendDensityRegistryProfiles=/absolute/vanilla.json=/absolute/vanilla.rbp
+```
+
+The fixture task checks every serialized block, biome and heightmap with
+independent readers. `-PproveMetal` observes the actual generation commands;
+encoding/compression itself is CPU Bend in this cycle. Minecraft's own codecs,
+heightmap predicates and `SerializableChunkData` additionally decode and reopen
+the outputs. Select pack-profile folders with `-PbendGeneratedChunkProfiles=terralith,combined`
+and supply their registry packs using `-PtestDatapack`/`-PtestSupplement`.
+`-PbendSkipBuild` reuses an explicitly already-built worker during local checks.
+These are generated-chunk component checks, not running-world save/edit tests
+or complete-region benchmarks.
