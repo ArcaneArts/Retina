@@ -207,7 +207,7 @@ weights, registry-style weighted octave stacks and a trilinear primitive. Both
 seed words participate in hashing. Octave preparation preserves channel/ordinal
 salts, ignores nonpositive modifier weights and rejects invalid/oversized stacks.
 Preparation runs once per profile/channel; prepared stacks can feed bulk GPU
-sampling. Actual density bytecode and interpolation grids are still pending.
+sampling. Registered numeric density bytecode is implemented below; cached region interpolation grids remain pending.
 
 Use `world_simplex` / `world_perlin` for integer world coordinates. These accept
 signed-i32 coordinate bits and split the scaled coordinate into a lattice cell
@@ -237,6 +237,55 @@ output against the normal executable. This confirms actual dispatch; it is not
 a production runtime modification or a performance benchmark. The report is in
 `docs/benchmarks/bend-noise-correctness.json`. Runtime terrain integration and
 complete lit/compressed-region measurements remain required.
+
+## Registered numeric density programs
+
+`density.bend` evaluates the exported numeric density opcodes **0..31** in Bend:
+constants, coordinate transforms/gradients, arithmetic, range selection, mapped
+functions, registered two-stack Perlin noise, old blended noise, Hermite splines
+and recursively nested trilinear interpolation fields. Both seed words and
+registered octave/salt/horizontal-scale parameters participate. Missing roots
+read node zero, matching the current Rust interpreter.
+
+`precise.bend` retains transformed coordinates as a compensated pair of F32s.
+Signed i32 coordinates are split before conversion, arithmetic retains the small
+residual, and lattice hashing separates the integer cell from its fraction.
+This preserves neighboring positions after transformations beyond 2^24 blocks.
+It is not an IEEE F64 implementation: transcendental density operations and final
+outputs use F32. Cross-backend bitwise agreement is not a requirement.
+
+Construct immutable tables with `prepared_table`, validate the model with
+`valid_model`, and validate each main program with `valid_program` before `run`.
+Preparation rejects invalid dependencies/roots, nonfinite parameters, missing
+noise/spline/field references, invalid cells and recursive field cycles. Fields
+reference earlier fields and have exactly one root. Registered spline locations
+may be repeated or nonmonotonic; the evaluator preserves the exported order and
+last-matching-location behavior, including Terralith's existing splines.
+Each invocation owns its value array. Immutable `Data` input tables can be shared
+across the GPU batch; no Rust, Java generation or handwritten kernels are used.
+
+```sh
+nice -n 10 ./gradlew bendDensityTest -PretinaHostOnly --max-workers=2 -PproveMetal \
+  -PbendDensityProfiles=/absolute/vanilla/profile.json,/absolute/terralith/profile.json,/absolute/combined/profile.json
+```
+
+The test-only raw driver copies the registered noise, spline and field graphs;
+an independent Python scalar evaluator checks all numeric operations, negative
+coordinates, signed-i32 extremes, world-border neighbors, full seed words,
+nested interpolation, repeated/reordered requests and empty batches. The actual
+vanilla/Terralith/combined climate and two terrain programs run on one/two CPU
+workers and Metal. Malformed models and truncated/trailing input must fail.
+The optional stock-runtime observer verifies actual command buffers and output
+identical to the normal GPU executable. See
+`docs/benchmarks/bend-density-correctness.json` for the recorded evidence.
+
+This component does **not** yet project its model from the resident registry tape
+or expose production worker commands. Material predicates 40..54, shared GPU
+lattice caches, surface extraction and generated regions remain pending.
+Per-query interpolation currently reevaluates its corners and stores all node
+values; it is deliberately unoptimized. Diagnostic device times are not an
+end-to-end benchmark or evidence of a Rust throughput improvement. Region-sized
+lattice reuse and live-value reuse need measurement during integration.
 
 ## Climate interval indices
 

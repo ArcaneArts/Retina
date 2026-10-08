@@ -1,0 +1,203 @@
+{
+  "scope": "Numeric density evaluator 0..31; material predicates, resident projection and region integration pending",
+  "profiles": [
+    {
+      "name": "vanilla",
+      "json_sha256": "aefce6ff0e800966ad55920c5d21510dfa277de4612f67e22d5146d3aa838203"
+    },
+    {
+      "name": "terralith",
+      "json_sha256": "c9abbe97860a394ed899d64967bd0395bb9bb4ec71a9dff43d1bb45893fefd4d"
+    },
+    {
+      "name": "combined",
+      "json_sha256": "068fd602ad497128dd3960cb9be76840ebd41882b5b64c25acfa76d65e930c8b"
+    }
+  ],
+  "runs": [
+    {
+      "name": "synthetic",
+      "queries": 308,
+      "scalar_results": 1848,
+      "gpu": "off",
+      "threads": 1,
+      "max_relative_or_absolute_error": 5.479560212573453e-06,
+      "sha256": "0f504d35afb2b6d3c7f04d20bbf9af9d8851be13f23046da4003fe419f4e991c",
+      "metal_commands_ms": []
+    },
+    {
+      "name": "empty_batch",
+      "queries": 0,
+      "scalar_results": 0,
+      "gpu": "off",
+      "threads": 1,
+      "max_relative_or_absolute_error": 0.0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "metal_commands_ms": []
+    },
+    {
+      "name": "vanilla",
+      "queries": 36,
+      "scalar_results": 216,
+      "gpu": "off",
+      "threads": 1,
+      "max_relative_or_absolute_error": 1.0566518954860903e-06,
+      "sha256": "ea4cbce9da38a197abf8159600f5fd877ebebfdd97ced797e16a12e1f05c8321",
+      "metal_commands_ms": []
+    },
+    {
+      "name": "terralith",
+      "queries": 36,
+      "scalar_results": 216,
+      "gpu": "off",
+      "threads": 1,
+      "max_relative_or_absolute_error": 1.5808156002133922e-06,
+      "sha256": "cfd8bca21acc3b1dfbe065f0e3308aac883d6b92293651ff16adef6e1e073244",
+      "metal_commands_ms": []
+    },
+    {
+      "name": "combined",
+      "queries": 36,
+      "scalar_results": 216,
+      "gpu": "off",
+      "threads": 1,
+      "max_relative_or_absolute_error": 1.5808156002133922e-06,
+      "sha256": "7d3322cbb94c014c00f1ab0c735c253aca98131c63338a0f62b7eb7689219f21",
+      "metal_commands_ms": []
+    },
+    {
+      "name": "synthetic",
+      "queries": 308,
+      "scalar_results": 1848,
+      "gpu": "off",
+      "threads": 2,
+      "max_relative_or_absolute_error": 5.479560212573453e-06,
+      "sha256": "0f504d35afb2b6d3c7f04d20bbf9af9d8851be13f23046da4003fe419f4e991c",
+      "metal_commands_ms": []
+    },
+    {
+      "name": "empty_batch",
+      "queries": 0,
+      "scalar_results": 0,
+      "gpu": "off",
+      "threads": 2,
+      "max_relative_or_absolute_error": 0.0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "metal_commands_ms": []
+    },
+    {
+      "name": "vanilla",
+      "queries": 36,
+      "scalar_results": 216,
+      "gpu": "off",
+      "threads": 2,
+      "max_relative_or_absolute_error": 1.0566518954860903e-06,
+      "sha256": "ea4cbce9da38a197abf8159600f5fd877ebebfdd97ced797e16a12e1f05c8321",
+      "metal_commands_ms": []
+    },
+    {
+      "name": "terralith",
+      "queries": 36,
+      "scalar_results": 216,
+      "gpu": "off",
+      "threads": 2,
+      "max_relative_or_absolute_error": 1.5808156002133922e-06,
+      "sha256": "cfd8bca21acc3b1dfbe065f0e3308aac883d6b92293651ff16adef6e1e073244",
+      "metal_commands_ms": []
+    },
+    {
+      "name": "combined",
+      "queries": 36,
+      "scalar_results": 216,
+      "gpu": "off",
+      "threads": 2,
+      "max_relative_or_absolute_error": 1.5808156002133922e-06,
+      "sha256": "7d3322cbb94c014c00f1ab0c735c253aca98131c63338a0f62b7eb7689219f21",
+      "metal_commands_ms": []
+    },
+    {
+      "name": "synthetic",
+      "queries": 308,
+      "scalar_results": 1848,
+      "gpu": "on",
+      "threads": 2,
+      "max_relative_or_absolute_error": 5.479560212573453e-06,
+      "sha256": "f9ce96356941fc521db11ba18f49094b258a418fc859b6f504e82fa99ff4628b",
+      "metal_commands_ms": []
+    },
+    {
+      "name": "empty_batch",
+      "queries": 0,
+      "scalar_results": 0,
+      "gpu": "on",
+      "threads": 2,
+      "max_relative_or_absolute_error": 0.0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "metal_commands_ms": []
+    },
+    {
+      "name": "vanilla",
+      "queries": 36,
+      "scalar_results": 216,
+      "gpu": "on",
+      "threads": 2,
+      "max_relative_or_absolute_error": 1.0566518954860903e-06,
+      "sha256": "ea4cbce9da38a197abf8159600f5fd877ebebfdd97ced797e16a12e1f05c8321",
+      "metal_commands_ms": []
+    },
+    {
+      "name": "terralith",
+      "queries": 36,
+      "scalar_results": 216,
+      "gpu": "on",
+      "threads": 2,
+      "max_relative_or_absolute_error": 1.5808156002133922e-06,
+      "sha256": "cfd8bca21acc3b1dfbe065f0e3308aac883d6b92293651ff16adef6e1e073244",
+      "metal_commands_ms": []
+    },
+    {
+      "name": "combined",
+      "queries": 36,
+      "scalar_results": 216,
+      "gpu": "on",
+      "threads": 2,
+      "max_relative_or_absolute_error": 1.5808156002133922e-06,
+      "sha256": "7d3322cbb94c014c00f1ab0c735c253aca98131c63338a0f62b7eb7689219f21",
+      "metal_commands_ms": []
+    }
+  ],
+  "invalid_cases": [
+    {
+      "gpu": "off",
+      "threads": 1,
+      "rejected": 26
+    },
+    {
+      "gpu": "off",
+      "threads": 2,
+      "rejected": 26
+    },
+    {
+      "gpu": "on",
+      "threads": 2,
+      "rejected": 26
+    }
+  ],
+  "metal_observation": {
+    "diagnostic_only": true,
+    "command_buffers": 5,
+    "device_ms": [
+      45.184292,
+      2.683875,
+      1880.694125,
+      3498.872833,
+      3483.04625
+    ],
+    "output_bytes_equal": true
+  },
+  "source_sha256": {
+    "bend/density.bend": "ec2ddbc29e6bbbe1d6a446476f3992e478d146708a4fb6dbaf6fb1af8f1e6acc",
+    "bend/precise.bend": "50ba7138300f2c913b2d75a554a78d88bfb09931c6cd58ecc884ab7024c73c01",
+    "bend/tests/density-fixtures.bend": "5f65ed1f5a705a238b27d59f6a22ced58d194a92b9c7f810479be99463aefd01"
+  }
+}

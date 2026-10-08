@@ -32,7 +32,7 @@ more deeply; retain the original requested scope.
 | Requirement | Current Rust/shared source | Bend implementation / completion evidence |
 | --- | --- | --- |
 | Shared loaded registry export, including palette properties and climate intervals | `TerrainProfileData.java`, `RegistryGpuProgram.java`, `native/src/profile.rs` | Export decoupled from Rust initialization; actual vanilla, Terralith and Terralith+supplement registries pass with native library unavailable. Explicit Rust adapter receives byte-identical data and passes real Metal queries. Full structural profiles now stream into a resident Bend word tape with lossless field/array/string access and independent full-value checks. Loaded climate/ridge stacks now resolve schema keys and convert numeric parameters entirely in Bend; density/terrain program interpretation pending |
-| Noise stacks, density bytecode, splines and GPU interpolation | `native/src/program.rs`, `program/`, `program.wgsl`, `noise3.wgsl`, `simplex.wgsl` | Reusable Bend seeded simplex/3D gradient kernels, weighted octave stacks and trilinear primitive implemented and independently checked on CPU and actual Metal. Integer/fraction coordinate handling checked through signed-i32 extremes. Density bytecode/splines, actual interpolation fields and runtime integration pending |
+| Noise stacks, density bytecode, splines and GPU interpolation | `native/src/program.rs`, `program/`, `program.wgsl`, `noise3.wgsl`, `simplex.wgsl` | Reusable Bend seeded simplex/3D gradient kernels, weighted octave stacks and trilinear primitive implemented and independently checked on CPU and actual Metal. Integer/fraction coordinate handling checked through signed-i32 extremes. Numeric density opcodes 0..31, registered noise, ordered Hermite splines and nested trilinear fields implemented and independently checked with actual vanilla/Terralith/combined climate and terrain graphs on CPU/Metal. Compensated transformed coordinates preserve distant neighbors. Resident model projection, material predicates, cached GPU lattices and runtime integration pending |
 | Climate targets, biome selection, smooth boundaries and underground biomes | `climate.rs`, `climate.wgsl`, `RetinaBiomeSource.java` | Pure Bend balanced interval indices and surface/underground/coastal lookup implemented, checked against independent linear search with actual registered intervals on CPU and Metal. Typed resident-tape projection and persistent query commands implemented with explicit reload invalidation. Spatial climate fields, blended boundaries and terrain integration pending |
 | Coastlines, shore materials, rivers and material predicates/layers | `ShoreMaterialProfile.java`, `column_program.rs`, `materials.wgsl` | Pending |
 | Caves, ravines, rare surface entrances and cave decoration | `GeologyProfile.java`, `geology.rs`, `features.rs`, `caves.wgsl` | Pending |
@@ -151,7 +151,21 @@ more deeply; retain the original requested scope.
    them. Component tests include actual vanilla/Terralith/combined profiles,
    maximum-size query batches, malformed typed schemas and Java concurrent callers.
    Registered density programs, spatial climate fields and integrated terrain
-   remain required. See `docs/benchmarks/bend-registry-climate.json`.
+   remain required. See `docs/benchmarks/bend-registry-climate.json`. Merged in
+   [PR #29](https://github.com/ArcaneArts/Retina/pull/29), commit `e140655`;
+   both CI builds passed.
+   The numeric density evaluator now implements opcodes 0..31, registered Perlin
+   and old blended noise, Hermite splines and nested global trilinear fields.
+   Compensated F32 pairs retain transformed signed/distant coordinates through
+   lattice conversion. Independent scalar checks exercise actual vanilla,
+   Terralith and combined climate/terrain graphs on CPU and confirmed Metal;
+   malformed graphs, cycles, cells, references and transport must fail. Terralith's
+   duplicate and nonmonotonic spline locations retain their exported semantics.
+   This is a typed library with raw QA fixtures: resident tape projection,
+   material predicates, GPU lattice caching and actual terrain generation remain
+   required. Per-query corner recomputation is an explicit performance follow-up,
+   not a claimed region throughput improvement. Evidence is in
+   `docs/benchmarks/bend-density-correctness.json`.
 5. **Registered features and structures.** Port ordered decorations, geology,
    jigsaw/templates/processors and metadata with cross-region tests.
 6. **GPU lighting and integration.** Interior prelighting, cache/promotion,
