@@ -101,6 +101,15 @@ public final class BendWorker implements AutoCloseable {
         return request(9, new byte[0]);
     }
 
+    /** Bend projects and validates the resident numeric climate, surface and
+     * final-density programs. The four acknowledgement words are program,
+     * noise, spline-point and interpolation-field counts. A replacement profile
+     * invalidates the prepared model. This method transports no generated data.
+     */
+    public CompletableFuture<byte[]> prepareProfileDensity() {
+        return request(11, new byte[0]);
+    }
+
     /** Cancellation skips queued requests; in-flight responses are drained to
      * preserve framing. World shutdown closes the worker and terminates it.
      */

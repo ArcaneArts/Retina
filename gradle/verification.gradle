@@ -423,6 +423,19 @@ tasks.register('bendDensityTest', Exec) {
     mustRunAfter 'bendRegistryWireTest', 'bendRegistryNoiseTest', 'bendRegistryClimateTest', 'bendEngineTest', 'bendNoiseTest', 'bendClimateTest', 'bendNumericTest'
 }
 
+def registryDensityProfiles = providers.gradleProperty('bendDensityRegistryProfiles').getOrElse('')
+tasks.register('bendRegistryDensityTest', Exec) {
+    group = 'verification'
+    description = 'Project resident numeric density graphs in Bend and validate bounded repeated CPU/GPU queries.'
+    workingDir rootProject.projectDir
+    commandLine providers.gradleProperty('pythonExecutable').getOrElse('python3'), 'scripts/test_bend_registry_density.py'
+    if (providers.gradleProperty('proveMetal').isPresent()) args '--prove-metal'
+    if (!registryDensityProfiles.isEmpty()) registryDensityProfiles.split(',').each { pair ->
+        pair.split('=', 2).with { paths -> args '--profile', paths[0], paths[1] }
+    }
+    mustRunAfter 'bendRegistryWireTest', 'bendRegistryNoiseTest', 'bendRegistryClimateTest', 'bendEngineTest', 'bendNoiseTest', 'bendClimateTest', 'bendNumericTest', 'bendDensityTest'
+}
+
 tasks.register('bendNumericTest', Exec) {
     group = 'verification'
     description = 'Independently check Bend i64/f64-to-F32 rounding on CPU and GPU.'

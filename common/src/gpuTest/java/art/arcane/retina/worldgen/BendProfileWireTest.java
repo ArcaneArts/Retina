@@ -25,6 +25,14 @@ public final class BendProfileWireTest {
               {"biome":1,"min":[0,0,-0.3,0],"max":[1,1,-0.1,1],"weirdness":[0,1],"offset":0},
               {"biome":2,"min":[0,0,0,0],"max":[1,1,1,1],"weirdness":[0,1],"depth":[0,1],"offset":0}]}
             """);
+        encode(output, "density", """
+            {"biomes":[{"flags":0}],"climate_targets":[],"registry_program":{"noises":[],"points":[],"programs":[
+             {"nodes":[{"op":0,"a":0,"b":0,"c":0,"p":[0.25,0,0,0]}],"roots":[]},
+             {"nodes":[{"op":29,"a":0,"b":0,"c":0,"p":[0,0,0,0]},
+                       {"op":0,"a":0,"b":0,"c":0,"p":[30000000,0,0,0]},
+                       {"op":5,"a":0,"b":1,"c":0,"p":[0,0,0,0]}],"roots":[2]},
+             {"nodes":[{"op":29,"a":1,"b":0,"c":0,"p":[0,0,0,0]}],"roots":[0]}]}}
+            """);
         for (int i = 1; i < args.length; i++) {
             if (args[i].equals("--worker")) { worker(output.resolve("fixture.rbp"), Path.of(args[++i])); continue; }
             try (var source = Files.newBufferedReader(Path.of(args[i]))) {
@@ -88,6 +96,32 @@ public final class BendProfileWireTest {
                 throw new AssertionError("reloaded profile retained stale climate");
             } catch (java.util.concurrent.ExecutionException expected) {
                 if (!expected.getCause().getMessage().contains("code 714")) throw expected;
+            }
+            worker.loadProfile(profile.resolveSibling("density.rbp")).get(30, java.util.concurrent.TimeUnit.SECONDS);
+            counts = java.nio.ByteBuffer.wrap(worker.prepareProfileDensity().get(30, java.util.concurrent.TimeUnit.SECONDS));
+            for (int count : new int[]{3, 0, 0, 0}) if (counts.getInt() != count)
+                throw new AssertionError("resident numeric program acknowledgement");
+            if (counts.hasRemaining()) throw new AssertionError("density acknowledgement length");
+            worker.prepareProfileClimate().get(30, java.util.concurrent.TimeUnit.SECONDS);
+            var density = java.nio.ByteBuffer.allocate(76).putInt(3);
+            for (int program = 0; program < 3; program++) density.putInt(program).putInt(29999999).putInt(127)
+                    .putInt(-30000001).putInt((int) seed).putInt((int) (seed >>> 32));
+            requests.clear();
+            for (int i = 0; i < 12; i++) requests.add(worker.request(12, density.array()));
+            for (var request : requests) {
+                var values = java.nio.ByteBuffer.wrap(request.get(30, java.util.concurrent.TimeUnit.SECONDS));
+                for (int program = 0; program < 3; program++) for (int channel = 0; channel < 6; channel++) {
+                    float expected = program == 0 ? .25f : program == 2 ? 127 : channel == 0 ? -1 : (float) 29999999;
+                    if (values.getFloat() != expected) throw new AssertionError("resident density/coordinate transport");
+                }
+                if (values.hasRemaining()) throw new AssertionError("density response length");
+            }
+            worker.loadProfile(profile).get(30, java.util.concurrent.TimeUnit.SECONDS);
+            try {
+                worker.request(12, density.array()).get(10, java.util.concurrent.TimeUnit.SECONDS);
+                throw new AssertionError("reloaded profile retained stale numeric model");
+            } catch (java.util.concurrent.ExecutionException expected) {
+                if (!expected.getCause().getMessage().contains("code 716")) throw expected;
             }
             if (worker.processId() != pid) throw new AssertionError("worker replaced");
             System.out.println("Java registry worker " + mode + " pass");
