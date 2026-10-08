@@ -18,6 +18,9 @@ import ./registry_surface.bend as RS
 import ./material_program.bend as M
 import ./material_batch.bend as MB
 import ./registry_material.bend as RM
+import ./material_columns_data.bend as MD
+import ./material_columns.bend as MC
+import ./registry_material_columns.bend as RMC
 
 # Persistent binary worker. Protocol v1 is a component transport, not yet a
 # world generator: PING=0, PREPARE_NOISE=1, SAMPLE_GRID=2, COMPRESS=3, STOP=4,
@@ -28,7 +31,8 @@ import ./registry_material.bend as RM
 # PROFILE_DENSITY=11 (prepare numeric programs), DENSITY_BATCH=12 (raw queries),
 # DENSITY_LATTICE=13 (build resident grid), LATTICE_BATCH=14 (cached queries),
 # PROFILE_SURFACE=15, SURFACE_COLUMNS=16, SURFACE_BATCH=17, SURFACE_PLAN=18,
-# PROFILE_MATERIAL=19, MATERIAL_BATCH=20.
+# PROFILE_MATERIAL=19, MATERIAL_BATCH=20, PROFILE_BLOCKS=21,
+# BLOCK_COLUMNS=22, BLOCK_BATCH=23, BLOCK_RUNS=24.
 # Requests: RBND magic, payload length, request ID, opcode (all BE u32).
 # Responses add a status u32 after opcode. stdout contains frames only.
 type Settings is Data:
@@ -421,7 +425,7 @@ def lattice_ack(materials: Maybe<&2,M.Model>,layout: L.Layout,grid: L.Grid,model
     case L.Layout{_,+nx,+ny,+nz,_,_,_,_,_}:
       do IO<Unit>:
         body : Z.Bytes <- payload(B.int(B.int(B.int(B.int(B.new(),nx),ny),nz),U32.mul(U32.mul(nx,ny),nz)))
-        finish(input,output,State{Settings{noise,climate,Some{RD.Prepared{model,programs,noises,points,fields,Some{grid},surface,materials}}},profile},backend,id,opcode,0,body,True{})
+        finish(input,output,State{Settings{noise,climate,Some{RD.Prepared{model,programs,noises,points,fields,Some{grid},surface,M.clear_columns(materials)}}},profile},backend,id,opcode,0,body,True{})
 
 @unsafe
 def lattice_prepare(result: Result<&1,&1,U32,L.Layout>,prepared: RD.Prepared,noise: Maybe<&2,N.Stack>,climate: Maybe<&2,C.Model>,profile: Maybe<&1,P.Document>,input: File,output: File,backend: U32,id: U32,opcode: U32) -> IO(Unit):
@@ -468,7 +472,7 @@ def surface_ready(result: Result<&1,&1,U32,S.Config>,doc: P.Document,prepared: R
     case Done{+config} RD.Prepared{model,programs,noises,points,fields,lattice,_,materials}:
       do IO<Unit>:
         body : Z.Bytes <- payload(S.config_ack(config))
-        finish(input,output,State{Settings{noise,climate,Some{RD.Prepared{model,programs,noises,points,fields,lattice,Some{S.State{config,None{}}},materials}}},Some{doc}},backend,id,opcode,0,body,True{})
+        finish(input,output,State{Settings{noise,climate,Some{RD.Prepared{model,programs,noises,points,fields,lattice,Some{S.State{config,None{}}},M.clear_columns(materials)}}},Some{doc}},backend,id,opcode,0,body,True{})
 
 @unsafe
 def surface_profile(valid: Bool,input: File,output: File,old: State,backend: U32,id: U32,opcode: U32) -> IO(Unit):
@@ -491,7 +495,7 @@ def surface_ack(materials: Maybe<&2,M.Model>,tile: S.Tile,columns: S.Grid,model:
     case S.Tile{_,_,+width,+depth,_,_}:
       do IO<Unit>:
         body : Z.Bytes <- payload(B.int(B.int(B.int(B.new(),width),depth),U32.mul(width,depth)))
-        finish(input,output,State{Settings{noise,Some{climate},Some{RD.Prepared{model,programs,noises,points,fields,Some{density},Some{S.State{config,Some{columns}}},materials}}},profile},backend,id,opcode,0,body,True{})
+        finish(input,output,State{Settings{noise,Some{climate},Some{RD.Prepared{model,programs,noises,points,fields,Some{density},Some{S.State{config,Some{columns}}},M.clear_columns(materials)}}},profile},backend,id,opcode,0,body,True{})
 
 @unsafe
 def surface_generate(ok: Bool,+config: S.Config,tile: S.Tile,prepared: RD.Prepared,noise: Maybe<&2,N.Stack>,climate: C.Model,profile: Maybe<&1,P.Document>,input: File,output: File,backend: U32,id: U32,opcode: U32) -> IO(Unit):
@@ -541,10 +545,10 @@ def surface_batch(input: File,output: File,old: State,backend: U32,id: U32,opcod
 def material_ready(result: Result<&1,&1,U32,M.Model>,doc: P.Document,prepared: RD.Prepared,noise: Maybe<&2,N.Stack>,climate: Maybe<&2,C.Model>,input: File,output: File,backend: U32,id: U32,opcode: U32) -> IO(Unit):
   match result prepared:
     case Fail{code} _: error(input,output,State{Settings{noise,climate,Some{prepared}},Some{doc}},backend,id,opcode,code)
-    case Done{M.Model{+materials,+bands,+sea,+layered}} RD.Prepared{model,programs,noises,points,fields,lattice,surface,_}:
+    case Done{M.Model{+materials,+bands,+sea,+layered,columns}} RD.Prepared{model,programs,noises,points,fields,lattice,surface,_}:
       do IO<Unit>:
         body : Z.Bytes <- payload(B.int(B.int(B.int(B.int(B.new(),Q.table_size(Q.Program,materials)),Q.table_size(U32,bands)),sea),Z.word(layered,1,0)))
-        finish(input,output,State{Settings{noise,climate,Some{RD.Prepared{model,programs,noises,points,fields,lattice,surface,Some{M.Model{materials,bands,sea,layered}}}}},Some{doc}},backend,id,opcode,0,body,True{})
+        finish(input,output,State{Settings{noise,climate,Some{RD.Prepared{model,programs,noises,points,fields,lattice,surface,Some{M.Model{materials,bands,sea,layered,columns}}}}},Some{doc}},backend,id,opcode,0,body,True{})
 
 @unsafe
 def material_profile(valid: Bool,input: File,output: File,old: State,backend: U32,id: U32,opcode: U32) -> IO(Unit):
@@ -575,9 +579,109 @@ def material_queries(queries: MB.Input,prepared: RD.Prepared,noise: Maybe<&2,N.S
 def material_batch(input: File,output: File,old: State,backend: U32,id: U32,opcode: U32,body: Z.Bytes) -> IO(Unit):
   match old:
     case State{Settings{noise,climate,None{}},profile}: error(input,output,State{Settings{noise,climate,None{}},profile},backend,id,opcode,716)
-    case State{Settings{noise,climate,Some{RD.Prepared{model,programs,noises,points,fields,lattice,surface,Some{M.Model{+materials,bands,sea,layered}}}}},profile}:
-      material_queries(MB.decode(body,Q.table_size(Q.Program,materials)),RD.Prepared{model,programs,noises,points,fields,lattice,surface,Some{M.Model{materials,bands,sea,layered}}},noise,climate,profile,input,output,backend,id,opcode)
+    case State{Settings{noise,climate,Some{RD.Prepared{model,programs,noises,points,fields,lattice,surface,Some{M.Model{+materials,bands,sea,layered,columns}}}}},profile}:
+      material_queries(MB.decode(body,Q.table_size(Q.Program,materials)),RD.Prepared{model,programs,noises,points,fields,lattice,surface,Some{M.Model{materials,bands,sea,layered,columns}}},noise,climate,profile,input,output,backend,id,opcode)
     case _: error(input,output,old,backend,id,opcode,725)
+
+@unsafe
+def columns_profile_ready(result: Result<&1,&1,U32,MD.Config>,doc: P.Document,prepared: RD.Prepared,noise: Maybe<&2,N.Stack>,climate: Maybe<&2,C.Model>,input: File,output: File,backend: U32,id: U32,opcode: U32) -> IO(Unit):
+  match result prepared:
+    case Fail{code} _: error(input,output,State{Settings{noise,climate,Some{prepared}},Some{doc}},backend,id,opcode,code)
+    case Done{MD.Config{+stone,+water,+count,+a,+b,+c}} RD.Prepared{model,programs,noises,points,fields,density,surface,Some{M.Model{materials,bands,sea,layered,_}}}:
+      do IO<Unit>:
+        body : Z.Bytes <- payload(B.int(B.int(B.int(B.int(B.int(B.int(B.new(),stone),water),count),a),b),c))
+        finish(input,output,State{Settings{noise,climate,Some{RD.Prepared{model,programs,noises,points,fields,density,surface,
+          Some{M.Model{materials,bands,sea,layered,Some{MD.State{MD.Config{stone,water,count,a,b,c},None{}}}}}}}},Some{doc}},backend,id,opcode,0,body,True{})
+    case _ _: error(input,output,State{Settings{noise,climate,Some{prepared}},Some{doc}},backend,id,opcode,725)
+
+@unsafe
+def columns_profile(valid: Bool,input: File,output: File,old: State,backend: U32,id: U32,opcode: U32) -> IO(Unit):
+  match valid old:
+    case False{} _: error(input,output,old,backend,id,opcode,603)
+    case True{} State{Settings{noise,climate,None{}},profile}: error(input,output,State{Settings{noise,climate,None{}},profile},backend,id,opcode,716)
+    case True{} State{Settings{noise,climate,Some{RD.Prepared{+model,programs,noises,points,fields,density,surface,Some{materials}}}},Some{doc}}:
+      RMC.prepare(IO(Unit),doc,model,doc => result => columns_profile_ready(result,doc,RD.Prepared{model,programs,noises,points,fields,density,surface,Some{materials}},noise,climate,input,output,backend,id,opcode))
+    case _ _: error(input,output,old,backend,id,opcode,725)
+
+@unsafe
+def columns_finished(pair: U32 & U32,computed: MC.Computed,palette: MD.Config,config: S.Config,noises: U32,points: U32,fields: U32,noise: Maybe<&2,N.Stack>,climate: Maybe<&2,C.Model>,profile: Maybe<&1,P.Document>,input: File,output: File,backend: U32,id: U32,opcode: U32) -> IO(Unit):
+  (runs,invalid) = pair
+  columns_valid(U32.is_zero(invalid),computed,runs,palette,config,noises,points,fields,noise,climate,profile,input,output,backend,id,opcode)
+
+@unsafe
+def columns_valid(valid: Bool,computed: MC.Computed,runs: U32,palette: MD.Config,config: S.Config,noises: U32,points: U32,fields: U32,noise: Maybe<&2,N.Stack>,climate: Maybe<&2,C.Model>,profile: Maybe<&1,P.Document>,input: File,output: File,backend: U32,id: U32,opcode: U32) -> IO(Unit):
+  match valid computed:
+    case False{} MC.Computed{model,programs,density,surface,materials,_}:
+      error(input,output,State{Settings{noise,climate,Some{RD.Prepared{model,programs,noises,points,fields,Some{density},Some{S.State{config,Some{surface}}},Some{materials}}}},profile},backend,id,opcode,729)
+    case True{} MC.Computed{model,programs,density,surface,M.Model{materials,bands,sea,layered,_},MD.Grid{+tile,+minimum,+height,+values}}:
+      columns_ack(tile,MD.Grid{tile,minimum,height,values},model,programs,density,surface,materials,bands,sea,layered,runs,palette,config,noises,points,fields,noise,climate,profile,input,output,backend,id,opcode)
+
+@unsafe
+def columns_ack(tile: S.Tile,grid: MD.Grid,model: Q.Model,programs: Q.Table<Q.Program>,density: L.Grid,surface: S.Grid,materials: Q.Table<Q.Program>,bands: Q.Table<U32>,sea: U32,layered: Bool,runs: U32,palette: MD.Config,config: S.Config,noises: U32,points: U32,fields: U32,noise: Maybe<&2,N.Stack>,climate: Maybe<&2,C.Model>,profile: Maybe<&1,P.Document>,input: File,output: File,backend: U32,id: U32,opcode: U32) -> IO(Unit):
+  match tile:
+    case S.Tile{_,_,+width,+depth,_,_}:
+      do IO<Unit>:
+        body : Z.Bytes <- payload(B.int(B.int(B.int(B.int(B.new(),width),depth),U32.mul(width,depth)),runs))
+        finish(input,output,State{Settings{noise,climate,Some{RD.Prepared{model,programs,noises,points,fields,Some{density},Some{S.State{config,Some{surface}}},
+          Some{M.Model{materials,bands,sea,layered,Some{MD.State{palette,Some{grid}}}}}}}},profile},backend,id,opcode,0,body,True{})
+
+@unsafe
+def columns_computed(computed: MC.Computed,palette: MD.Config,config: S.Config,noises: U32,points: U32,fields: U32,noise: Maybe<&2,N.Stack>,climate: Maybe<&2,C.Model>,profile: Maybe<&1,P.Document>,input: File,output: File,backend: U32,id: U32,opcode: U32) -> IO(Unit):
+  match computed:
+    case MC.Computed{model,programs,density,surface,materials,MD.Grid{tile,minimum,height,+values}}:
+      columns_finished(MC.summary(values),MC.Computed{model,programs,density,surface,materials,MD.Grid{tile,minimum,height,values}},palette,config,noises,points,fields,noise,climate,profile,input,output,backend,id,opcode)
+
+@unsafe
+def columns_generate(ok: Bool,prepared: RD.Prepared,noise: Maybe<&2,N.Stack>,climate: Maybe<&2,C.Model>,profile: Maybe<&1,P.Document>,input: File,output: File,backend: U32,id: U32,opcode: U32) -> IO(Unit):
+  match ok prepared:
+    case True{} RD.Prepared{model,programs,noises,points,fields,Some{density},Some{S.State{+config,Some{surface}}},Some{M.Model{materials,bands,sea,layered,Some{MD.State{+palette,old}}}}}:
+      columns_computed(MC.execute(config,palette,density,surface,model,programs,M.Model{materials,bands,sea,layered,Some{MD.State{palette,old}}}),palette,config,noises,points,fields,noise,climate,profile,input,output,backend,id,opcode)
+    case _ _: error(input,output,State{Settings{noise,climate,Some{prepared}},profile},backend,id,opcode,728)
+
+@unsafe
+def columns_build(valid: Bool,input: File,output: File,old: State,backend: U32,id: U32,opcode: U32) -> IO(Unit):
+  match valid old:
+    case False{} _: error(input,output,old,backend,id,opcode,603)
+    case True{} State{Settings{noise,climate,None{}},profile}: error(input,output,State{Settings{noise,climate,None{}},profile},backend,id,opcode,716)
+    case True{} State{Settings{noise,climate,Some{RD.Prepared{model,programs,noises,points,fields,Some{+density},Some{S.State{+config,Some{+surface}}},Some{M.Model{materials,bands,sea,layered,Some{columns}}}}}},profile}:
+      columns_generate(MC.compatible(config,surface,density),RD.Prepared{model,programs,noises,points,fields,Some{density},Some{S.State{config,Some{surface}}},Some{M.Model{materials,bands,sea,layered,Some{columns}}}},noise,climate,profile,input,output,backend,id,opcode)
+    case _ _: error(input,output,old,backend,id,opcode,727)
+
+@unsafe
+def columns_voxels(queries: MC.Input,prepared: RD.Prepared,noise: Maybe<&2,N.Stack>,climate: Maybe<&2,C.Model>,profile: Maybe<&1,P.Document>,input: File,output: File,backend: U32,id: U32,opcode: U32) -> IO(Unit):
+  match queries prepared:
+    case MC.Input{_,_,False{}} _: error(input,output,State{Settings{noise,climate,Some{prepared}},profile},backend,id,opcode,603)
+    case MC.Input{queries,count,True{}} RD.Prepared{model,programs,noises,points,fields,density,surface,Some{M.Model{materials,bands,sea,layered,Some{MD.State{palette,Some{+grid}}}}}}:
+      do IO<Unit>:
+        body : Z.Bytes <- payload(MC.voxel_encode(U32.to_nat(count),queries,grid,B.new(),0))
+        finish(input,output,State{Settings{noise,climate,Some{RD.Prepared{model,programs,noises,points,fields,density,surface,Some{M.Model{materials,bands,sea,layered,Some{MD.State{palette,Some{grid}}}}}}}},profile},backend,id,opcode,0,body,True{})
+    case _ _: error(input,output,State{Settings{noise,climate,Some{prepared}},profile},backend,id,opcode,727)
+
+@unsafe
+def columns_queries(queries: S.Input,prepared: RD.Prepared,noise: Maybe<&2,N.Stack>,climate: Maybe<&2,C.Model>,profile: Maybe<&1,P.Document>,input: File,output: File,backend: U32,id: U32,opcode: U32) -> IO(Unit):
+  match queries prepared:
+    case S.Input{_,_,False{}} _: error(input,output,State{Settings{noise,climate,Some{prepared}},profile},backend,id,opcode,603)
+    case S.Input{queries,count,True{}} RD.Prepared{model,programs,noises,points,fields,density,surface,Some{M.Model{materials,bands,sea,layered,Some{MD.State{palette,Some{+grid}}}}}}:
+      do IO<Unit>:
+        body : Z.Bytes <- payload(MC.encode(U32.to_nat(count),queries,grid,B.new(),0))
+        finish(input,output,State{Settings{noise,climate,Some{RD.Prepared{model,programs,noises,points,fields,density,surface,Some{M.Model{materials,bands,sea,layered,Some{MD.State{palette,Some{grid}}}}}}}},profile},backend,id,opcode,0,body,True{})
+    case _ _: error(input,output,State{Settings{noise,climate,Some{prepared}},profile},backend,id,opcode,727)
+
+@unsafe
+def columns_query_decode(+count: U32,queries: Array<S.Query>,valid: Bool,prepared: RD.Prepared,noise: Maybe<&2,N.Stack>,climate: Maybe<&2,C.Model>,profile: Maybe<&1,P.Document>,input: File,output: File,backend: U32,id: U32,opcode: U32) -> IO(Unit):
+  columns_queries(S.Input{queries,count,Bool.and(valid,U32.is_le(count,256))},prepared,noise,climate,profile,input,output,backend,id,opcode)
+
+@unsafe
+def columns_read_input(queries: S.Input,prepared: RD.Prepared,noise: Maybe<&2,N.Stack>,climate: Maybe<&2,C.Model>,profile: Maybe<&1,P.Document>,input: File,output: File,backend: U32,id: U32,opcode: U32) -> IO(Unit):
+  match queries:
+    case S.Input{queries,count,valid}: columns_query_decode(count,queries,valid,prepared,noise,climate,profile,input,output,backend,id,opcode)
+
+@unsafe
+def columns_read(voxels: Bool,input: File,output: File,old: State,backend: U32,id: U32,opcode: U32,body: Z.Bytes) -> IO(Unit):
+  match voxels old:
+    case _ State{Settings{noise,climate,None{}},profile}: error(input,output,State{Settings{noise,climate,None{}},profile},backend,id,opcode,716)
+    case True{} State{Settings{noise,climate,Some{prepared}},profile}: columns_voxels(MC.decode(body),prepared,noise,climate,profile,input,output,backend,id,opcode)
+    case False{} State{Settings{noise,climate,Some{prepared}},profile}: columns_read_input(S.query_decode(body),prepared,noise,climate,profile,input,output,backend,id,opcode)
 
 @unsafe
 def dispatch(input: File,output: File,stack: State,backend: U32,id: U32,opcode: U32,body: Z.Bytes) -> IO(Unit):
@@ -602,6 +706,10 @@ def dispatch(input: File,output: File,stack: State,backend: U32,id: U32,opcode: 
     case 18: surface_build(True{},input,output,stack,backend,id,18,body)
     case 19: material_profile(R.end(R.start(body)),input,output,stack,backend,id,19)
     case 20: material_batch(input,output,stack,backend,id,20,body)
+    case 21: columns_profile(R.end(R.start(body)),input,output,stack,backend,id,21)
+    case 22: columns_build(R.end(R.start(body)),input,output,stack,backend,id,22)
+    case 23: columns_read(True{},input,output,stack,backend,id,23,body)
+    case 24: columns_read(False{},input,output,stack,backend,id,24,body)
     case 4: empty_command(R.end(R.start(body)),input,output,stack,backend,id,4)
     case _: error(input,output,stack,backend,id,opcode,605)
 

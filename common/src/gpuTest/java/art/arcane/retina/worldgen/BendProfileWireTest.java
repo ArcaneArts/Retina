@@ -34,6 +34,22 @@ public final class BendProfileWireTest {
              {"nodes":[{"op":29,"a":1,"b":0,"c":0,"p":[0,0,0,0]}],"roots":[0]},
              {"nodes":[{"op":42,"a":0,"b":0,"c":0,"p":[0,0,0,0]}],"roots":[0]}]}}
             """);
+        encode(output, "blocks", """
+            {"geology_min_y":-16,"geology_height":32,"sea_level":4,"stone":1,"water":2,
+             "materials":["minecraft:air","minecraft:stone","minecraft:water","minecraft:grass_block","minecraft:dirt"],
+             "terrain_features":{"bands":[]},"biomes":[{"flags":0}],"climate_targets":[
+             {"biome":0,"min":[-1,-1,-1,-1],"max":[1,1,1,1],"weirdness":[-1,1],"depth":[0,0],"offset":0}],
+             "registry_program":{"material_layers":true,"surface":[-16,8,0],"terrain_cell":[4,8],"surface_noises":[0,0,0],
+              "noises":[{"frequency":0.0035,"amplitude":0,"salt":0,"coefficients":[1]}],"points":[],"programs":[
+              {"nodes":[{"op":0,"a":0,"b":0,"c":0,"p":[0,0,0,0]}],"roots":[0]},
+              {"nodes":[{"op":0,"a":0,"b":0,"c":0,"p":[8,0,0,0]},{"op":29,"a":1,"b":0,"c":0,"p":[0,0,0,0]},
+                        {"op":5,"a":0,"b":1,"c":0,"p":[0,0,0,0]}],"roots":[2]},
+              {"nodes":[{"op":0,"a":0,"b":0,"c":0,"p":[0,0,0,0]}],"roots":[0]},
+              {"nodes":[{"op":45,"a":1,"b":0,"c":0,"p":[0,0,0,0]},{"op":0,"a":0,"b":0,"c":0,"p":[4,0,0,0]},
+                        {"op":40,"a":0,"b":1,"c":0,"p":[0,0,0,0]},{"op":45,"a":1,"b":1,"c":0,"p":[0,0,0,0]},
+                        {"op":0,"a":0,"b":0,"c":0,"p":[5,0,0,0]},{"op":40,"a":3,"b":4,"c":0,"p":[0,0,0,0]},
+                        {"op":41,"a":2,"b":5,"c":0,"p":[0,0,0,0]}],"roots":[6]}]}}
+            """);
         for (int i = 1; i < args.length; i++) {
             if (args[i].equals("--worker")) { worker(output.resolve("fixture.rbp"), Path.of(args[++i])); continue; }
             try (var source = Files.newBufferedReader(Path.of(args[i]))) {
@@ -198,6 +214,34 @@ public final class BendProfileWireTest {
                 throw new AssertionError("reloaded profile retained stale numeric model");
             } catch (java.util.concurrent.ExecutionException expected) {
                 if (!expected.getCause().getMessage().contains("code 716")) throw expected;
+            }
+            worker.loadProfile(profile.resolveSibling("blocks.rbp")).get(30, java.util.concurrent.TimeUnit.SECONDS);
+            worker.prepareProfileDensity().get(30, java.util.concurrent.TimeUnit.SECONDS);
+            worker.prepareProfileClimate().get(30, java.util.concurrent.TimeUnit.SECONDS);
+            worker.prepareProfileSurface().get(30, java.util.concurrent.TimeUnit.SECONDS);
+            worker.prepareProfileMaterials().get(30, java.util.concurrent.TimeUnit.SECONDS);
+            counts = java.nio.ByteBuffer.wrap(worker.prepareProfileBlocks().get(30, java.util.concurrent.TimeUnit.SECONDS));
+            for (int count : new int[]{1, 2, 5, 0, 0, 0}) if (counts.getInt() != count)
+                throw new AssertionError("block profile acknowledgement");
+            descriptor = worker.surfaceDensityDescriptor(29999994, -30000004, 9, 7, seed)
+                    .get(30, java.util.concurrent.TimeUnit.SECONDS);
+            worker.request(13, descriptor).get(30, java.util.concurrent.TimeUnit.SECONDS);
+            worker.generateSurfaceColumns(29999995, -30000003, 7, 5, seed).get(30, java.util.concurrent.TimeUnit.SECONDS);
+            counts = java.nio.ByteBuffer.wrap(worker.generateBlockColumns().get(30, java.util.concurrent.TimeUnit.SECONDS));
+            for (int count : new int[]{7, 5, 35, 140}) if (counts.getInt() != count)
+                throw new AssertionError("resident block-run acknowledgement");
+            var voxels = java.nio.ByteBuffer.allocate(104).putInt(5);
+            for (int y : new int[]{3, 4, 7, 8, -17}) voxels.putInt(30000001).putInt(y).putInt(-30000001)
+                    .putInt((int) seed).putInt((int) (seed >>> 32));
+            requests.clear();
+            for (int i = 0; i < 12; i++) requests.add(worker.request(23, voxels.array()));
+            for (var request : requests) {
+                var values = java.nio.ByteBuffer.wrap(request.get(30, java.util.concurrent.TimeUnit.SECONDS));
+                for (int expected : new int[]{1, 4, 3, 0, -1}) {
+                    if (values.getInt() != (expected == -1 ? 0 : 1) || values.getInt() != expected)
+                        throw new AssertionError("resident block/height/material transport");
+                }
+                if (values.hasRemaining()) throw new AssertionError("block response length");
             }
             if (worker.processId() != pid) throw new AssertionError("worker replaced");
             System.out.println("Java registry worker " + mode + " pass");

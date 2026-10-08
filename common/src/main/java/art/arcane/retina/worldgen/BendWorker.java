@@ -164,6 +164,24 @@ public final class BendWorker implements AutoCloseable {
         return request(19, new byte[0]);
     }
 
+    /** Resolve the base palette and three registered material-context noises.
+     * Numeric/material preparation is required. The six acknowledgement words
+     * are stone, water, palette count, depth/secondary/band noise IDs.
+     */
+    public CompletableFuture<byte[]> prepareProfileBlocks() {
+        return request(21, new byte[0]);
+    }
+
+    /** Derive material context and compact vertical block runs in Bend on the
+     * selected CPU/GPU backend. The current surface tile needs a matching
+     * density lattice covering one extra X/Z column on every side for slopes.
+     * Only width, depth, column count and total run count return to Java.
+     * Raw opcodes 23/24 query bounded voxels/runs without regenerating them.
+     */
+    public CompletableFuture<byte[]> generateBlockColumns() {
+        return request(22, new byte[0]);
+    }
+
     /** Cancellation skips queued requests; in-flight responses are drained to
      * preserve framing. World shutdown closes the worker and terminates it.
      */

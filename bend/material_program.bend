@@ -3,12 +3,13 @@ import ./density.bend as Q
 import ./precise.bend as D
 import ./noise.bend as N
 import ./registry.bend as P
+import ./material_columns_data.bend as MD
 
 # Registered material predicates share the numeric DAG, but have explicit
 # context/immediate operands rather than unchecked numeric scratch reads.
 # Zero means no selected material; palette IDs are encoded as ID + 1.
 type Model is Data:
-  Model{programs: Q.Table<Q.Program>,bands: Q.Table<U32>,sea: U32,layered: Bool}
+  Model{programs: Q.Table<Q.Program>,bands: Q.Table<U32>,sea: U32,layered: Bool,columns: Maybe<&2,MD.State>}
 type Context is Data:
   Context{above: F32,depth: F32,slope: F32,offset: F32,below: F32,secondary: F32,water: F32,preliminary: F32}
 
@@ -190,7 +191,7 @@ def node_value(pair: Array<D.Number> & D.Number,+model: Q.Model,bands: Q.Table<U
 @unsafe
 def run(+model: Q.Model,+materials: Model,+index: U32,+point: Q.Point,+low: U32,+high: U32,+context: Context) -> Q.Outputs:
   match materials:
-    case Model{+programs,+bands,+sea,+layered}: run_index(model,bands,sea,layered,programs,index,U32.add(index,3),point,low,high,context)
+    case Model{+programs,+bands,+sea,+layered,_}: run_index(model,bands,sea,layered,programs,index,U32.add(index,3),point,low,high,context)
 
 # Specialized traversal borrows only the selected program. A generic get of
 # a Data payload may force ownership and copy an entire program subtree.
@@ -250,3 +251,16 @@ def valid_programs(+model: Q.Model,xs: List<&2,Q.Program>,+limit: U32) -> Bool:
   match xs:
     case Nil{}: True{}
     case program <> rest: Bool.and(valid_program(model,program,limit),valid_programs(model,rest,limit))
+
+# Generated columns depend on the current density/surface snapshots. Preparing
+# either keeps the material programs/config, but drops their derived block runs.
+def clear_columns(materials: Maybe<&2,Model>) -> Maybe<&2,Model>:
+  match materials:
+    case None{}: None{}
+    case Some{Model{programs,bands,sea,layered,columns}}: Some{Model{programs,bands,sea,layered,MD.clear(columns)}}
+
+# Computational dispatches need only the immutable program model, never an old
+# generated column cache. The outer worker retains that cache for later queries.
+def rules(materials: Model) -> Model:
+  match materials:
+    case Model{programs,bands,sea,layered,_}: Model{programs,bands,sea,layered,None{}}

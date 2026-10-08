@@ -438,6 +438,16 @@ nice -n 10 python3 scripts/test_bend_material.py --prove-metal \
 ```
 
 Opcodes 19/20 prepare/query the resident model; see `docs/BEND_REGISTRY_WIRE.md`
-for the exact context/response format. Java only transports bytes. Bulk voxel
-contexts/layers and final world generation remain required; this does not expose
+for the exact context/response format. Java only transports bytes. The derived
+column stage below supplies bulk voxel contexts/layers. Final world generation
+remains required; this does not expose
 an incomplete selectable Bend world type.
+
+`material_columns.bend` derives material context and emits compact vertical
+block runs on the selected Bend CPU/GPU backend. Bilinear density layers are
+cached per column, with Y interpolation preserving multiple solid intervals.
+`registry_material_columns.bend` resolves the base palette and context noises
+from the resident registry. Commands 21..24 prepare, build and query these runs;
+see `docs/BEND_REGISTRY_WIRE.md`. A one-column density halo provides slopes.
+Caves/aquifers/coasts, 3D biome assignment and full generated MCA integration
+remain pending; this component does not expose a selectable Bend world type.
