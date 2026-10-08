@@ -451,3 +451,16 @@ from the resident registry. Commands 21..24 prepare, build and query these runs;
 see `docs/BEND_REGISTRY_WIRE.md`. A one-column density halo provides slopes.
 Caves/aquifers/coasts, 3D biome assignment and full generated MCA integration
 remain pending; this component does not expose a selectable Bend world type.
+
+## Generated base/material chunk serialization
+
+`registry_chunk_catalog.bend` projects registered state names/properties, biome
+IDs and Minecraft's six heightmap predicates from the resident tape.
+`generated_chunk.bend` expands cached material runs into ordered sections and
+uses the existing pure Bend palette/NBT/zlib code. Worker commands 25..27 retain
+the catalog across tiles and supply raw or compressed chunks without Java/Rust
+computation. `bendGeneratedChunkTest` checks independent decoding plus Minecraft
+readers; see `docs/BEND_REGISTRY_WIRE.md` for metadata, bounds and test options.
+This stage emits unlit base/material chunks. Final caves/fluids/features,
+underground biomes, light, region publication and usable world selection remain
+on the implementation checklist.

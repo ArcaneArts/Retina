@@ -1,0 +1,718 @@
+{
+  "scope": "Generated base/material chunks; complete region generation pending",
+  "bend_version": "bend 2.0.36",
+  "runs": [
+    {
+      "gpu_required": false,
+      "profiles": [
+        {
+          "name": "ramp",
+          "chunks": [
+            {
+              "chunk": [
+                -2,
+                3
+              ],
+              "blocks": 16384,
+              "nbt_bytes": 8570,
+              "zlib_bytes": 992,
+              "encode_response_host_ms": 25.754875037819147
+            },
+            {
+              "chunk": [
+                1875000,
+                -1875001
+              ],
+              "blocks": 16384,
+              "nbt_bytes": 6470,
+              "zlib_bytes": 632,
+              "encode_response_host_ms": 17.000249936245382
+            }
+          ]
+        },
+        {
+          "name": "islands",
+          "chunks": [
+            {
+              "chunk": [
+                -2,
+                3
+              ],
+              "blocks": 16384,
+              "nbt_bytes": 6714,
+              "zlib_bytes": 715,
+              "encode_response_host_ms": 15.658834017813206
+            },
+            {
+              "chunk": [
+                1875000,
+                -1875001
+              ],
+              "blocks": 16384,
+              "nbt_bytes": 6714,
+              "zlib_bytes": 731,
+              "encode_response_host_ms": 15.24999993853271
+            }
+          ]
+        },
+        {
+          "name": "solid",
+          "chunks": [
+            {
+              "chunk": [
+                -1,
+                -1
+              ],
+              "blocks": 16384,
+              "nbt_bytes": 6470,
+              "zlib_bytes": 608,
+              "encode_response_host_ms": 23.743374971672893
+            }
+          ]
+        },
+        {
+          "name": "empty",
+          "chunks": [
+            {
+              "chunk": [
+                -1,
+                -1
+              ],
+              "blocks": 16384,
+              "nbt_bytes": 4401,
+              "zlib_bytes": 535,
+              "encode_response_host_ms": 15.271334093995392
+            },
+            {
+              "chunk": [
+                134217726,
+                -134217727
+              ],
+              "blocks": 16384,
+              "nbt_bytes": 4401,
+              "zlib_bytes": 545,
+              "encode_response_host_ms": 11.709957965649664
+            }
+          ]
+        },
+        {
+          "name": "non_power_cells",
+          "chunks": [
+            {
+              "chunk": [
+                -1,
+                -1
+              ],
+              "blocks": 16384,
+              "nbt_bytes": 8570,
+              "zlib_bytes": 996,
+              "encode_response_host_ms": 13.605125015601516
+            }
+          ]
+        },
+        {
+          "name": "unicode",
+          "chunks": [
+            {
+              "chunk": [
+                -1,
+                -1
+              ],
+              "blocks": 16384,
+              "nbt_bytes": 6484,
+              "zlib_bytes": 624,
+              "encode_response_host_ms": 12.637333013117313
+            }
+          ]
+        },
+        {
+          "name": "vanilla",
+          "chunks": [
+            {
+              "chunk": [
+                -1,
+                -1
+              ],
+              "blocks": 98304,
+              "nbt_bytes": 22344,
+              "zlib_bytes": 2732,
+              "encode_response_host_ms": 64.83012496028095
+            }
+          ]
+        },
+        {
+          "name": "terralith",
+          "chunks": [
+            {
+              "chunk": [
+                -1,
+                -1
+              ],
+              "blocks": 98304,
+              "nbt_bytes": 22388,
+              "zlib_bytes": 2847,
+              "encode_response_host_ms": 108.710499946028
+            }
+          ]
+        },
+        {
+          "name": "combined",
+          "chunks": [
+            {
+              "chunk": [
+                -1,
+                -1
+              ],
+              "blocks": 98304,
+              "nbt_bytes": 22388,
+              "zlib_bytes": 2847,
+              "encode_response_host_ms": 63.165292027406394
+            }
+          ]
+        }
+      ],
+      "blocks_verified": 442368,
+      "invalid_catalogs_rejected": 14,
+      "requests_in_one_process": 458,
+      "expected_gpu_dispatches": 54,
+      "metal_commands_ms": [],
+      "sha256": "24918d3a814982b6f7340be2b332753de70dd1b024aafeb01f464cd7313de02e"
+    },
+    {
+      "gpu_required": true,
+      "profiles": [
+        {
+          "name": "ramp",
+          "chunks": [
+            {
+              "chunk": [
+                -2,
+                3
+              ],
+              "blocks": 16384,
+              "nbt_bytes": 8570,
+              "zlib_bytes": 992,
+              "encode_response_host_ms": 11.719750007614493
+            },
+            {
+              "chunk": [
+                1875000,
+                -1875001
+              ],
+              "blocks": 16384,
+              "nbt_bytes": 6470,
+              "zlib_bytes": 632,
+              "encode_response_host_ms": 10.159084107726812
+            }
+          ]
+        },
+        {
+          "name": "islands",
+          "chunks": [
+            {
+              "chunk": [
+                -2,
+                3
+              ],
+              "blocks": 16384,
+              "nbt_bytes": 6714,
+              "zlib_bytes": 715,
+              "encode_response_host_ms": 10.855666943825781
+            },
+            {
+              "chunk": [
+                1875000,
+                -1875001
+              ],
+              "blocks": 16384,
+              "nbt_bytes": 6714,
+              "zlib_bytes": 731,
+              "encode_response_host_ms": 11.317749973386526
+            }
+          ]
+        },
+        {
+          "name": "solid",
+          "chunks": [
+            {
+              "chunk": [
+                -1,
+                -1
+              ],
+              "blocks": 16384,
+              "nbt_bytes": 6470,
+              "zlib_bytes": 608,
+              "encode_response_host_ms": 11.437250068411231
+            }
+          ]
+        },
+        {
+          "name": "empty",
+          "chunks": [
+            {
+              "chunk": [
+                -1,
+                -1
+              ],
+              "blocks": 16384,
+              "nbt_bytes": 4401,
+              "zlib_bytes": 535,
+              "encode_response_host_ms": 10.205083061009645
+            },
+            {
+              "chunk": [
+                134217726,
+                -134217727
+              ],
+              "blocks": 16384,
+              "nbt_bytes": 4401,
+              "zlib_bytes": 545,
+              "encode_response_host_ms": 15.697541064582765
+            }
+          ]
+        },
+        {
+          "name": "non_power_cells",
+          "chunks": [
+            {
+              "chunk": [
+                -1,
+                -1
+              ],
+              "blocks": 16384,
+              "nbt_bytes": 8570,
+              "zlib_bytes": 996,
+              "encode_response_host_ms": 16.996874939650297
+            }
+          ]
+        },
+        {
+          "name": "unicode",
+          "chunks": [
+            {
+              "chunk": [
+                -1,
+                -1
+              ],
+              "blocks": 16384,
+              "nbt_bytes": 6484,
+              "zlib_bytes": 624,
+              "encode_response_host_ms": 14.49674996547401
+            }
+          ]
+        },
+        {
+          "name": "vanilla",
+          "chunks": [
+            {
+              "chunk": [
+                -1,
+                -1
+              ],
+              "blocks": 98304,
+              "nbt_bytes": 22344,
+              "zlib_bytes": 2732,
+              "encode_response_host_ms": 95.15449998434633
+            }
+          ]
+        },
+        {
+          "name": "terralith",
+          "chunks": [
+            {
+              "chunk": [
+                -1,
+                -1
+              ],
+              "blocks": 98304,
+              "nbt_bytes": 22388,
+              "zlib_bytes": 2847,
+              "encode_response_host_ms": 105.9289169497788
+            }
+          ]
+        },
+        {
+          "name": "combined",
+          "chunks": [
+            {
+              "chunk": [
+                -1,
+                -1
+              ],
+              "blocks": 98304,
+              "nbt_bytes": 22388,
+              "zlib_bytes": 2847,
+              "encode_response_host_ms": 123.03645792417228
+            }
+          ]
+        }
+      ],
+      "blocks_verified": 442368,
+      "invalid_catalogs_rejected": 14,
+      "requests_in_one_process": 458,
+      "expected_gpu_dispatches": 54,
+      "metal_commands_ms": [],
+      "sha256": "24918d3a814982b6f7340be2b332753de70dd1b024aafeb01f464cd7313de02e"
+    }
+  ],
+  "actual_metal_proof": {
+    "gpu_required": true,
+    "profiles": [
+      {
+        "name": "ramp",
+        "chunks": [
+          {
+            "chunk": [
+              -2,
+              3
+            ],
+            "blocks": 16384,
+            "nbt_bytes": 8570,
+            "zlib_bytes": 992,
+            "encode_response_host_ms": 20.349791971966624
+          },
+          {
+            "chunk": [
+              1875000,
+              -1875001
+            ],
+            "blocks": 16384,
+            "nbt_bytes": 6470,
+            "zlib_bytes": 632,
+            "encode_response_host_ms": 11.644125101156533
+          }
+        ]
+      },
+      {
+        "name": "islands",
+        "chunks": [
+          {
+            "chunk": [
+              -2,
+              3
+            ],
+            "blocks": 16384,
+            "nbt_bytes": 6714,
+            "zlib_bytes": 715,
+            "encode_response_host_ms": 13.014540891163051
+          },
+          {
+            "chunk": [
+              1875000,
+              -1875001
+            ],
+            "blocks": 16384,
+            "nbt_bytes": 6714,
+            "zlib_bytes": 731,
+            "encode_response_host_ms": 12.855042004957795
+          }
+        ]
+      },
+      {
+        "name": "solid",
+        "chunks": [
+          {
+            "chunk": [
+              -1,
+              -1
+            ],
+            "blocks": 16384,
+            "nbt_bytes": 6470,
+            "zlib_bytes": 608,
+            "encode_response_host_ms": 11.224874993786216
+          }
+        ]
+      },
+      {
+        "name": "empty",
+        "chunks": [
+          {
+            "chunk": [
+              -1,
+              -1
+            ],
+            "blocks": 16384,
+            "nbt_bytes": 4401,
+            "zlib_bytes": 535,
+            "encode_response_host_ms": 11.67124998755753
+          },
+          {
+            "chunk": [
+              134217726,
+              -134217727
+            ],
+            "blocks": 16384,
+            "nbt_bytes": 4401,
+            "zlib_bytes": 545,
+            "encode_response_host_ms": 11.763958027586341
+          }
+        ]
+      },
+      {
+        "name": "non_power_cells",
+        "chunks": [
+          {
+            "chunk": [
+              -1,
+              -1
+            ],
+            "blocks": 16384,
+            "nbt_bytes": 8570,
+            "zlib_bytes": 996,
+            "encode_response_host_ms": 14.239082927815616
+          }
+        ]
+      },
+      {
+        "name": "unicode",
+        "chunks": [
+          {
+            "chunk": [
+              -1,
+              -1
+            ],
+            "blocks": 16384,
+            "nbt_bytes": 6484,
+            "zlib_bytes": 624,
+            "encode_response_host_ms": 26.722708018496633
+          }
+        ]
+      },
+      {
+        "name": "vanilla",
+        "chunks": [
+          {
+            "chunk": [
+              -1,
+              -1
+            ],
+            "blocks": 98304,
+            "nbt_bytes": 22344,
+            "zlib_bytes": 2732,
+            "encode_response_host_ms": 66.9996669748798
+          }
+        ]
+      },
+      {
+        "name": "terralith",
+        "chunks": [
+          {
+            "chunk": [
+              -1,
+              -1
+            ],
+            "blocks": 98304,
+            "nbt_bytes": 22388,
+            "zlib_bytes": 2847,
+            "encode_response_host_ms": 108.85204200167209
+          }
+        ]
+      },
+      {
+        "name": "combined",
+        "chunks": [
+          {
+            "chunk": [
+              -1,
+              -1
+            ],
+            "blocks": 98304,
+            "nbt_bytes": 22388,
+            "zlib_bytes": 2847,
+            "encode_response_host_ms": 115.74283300433308
+          }
+        ]
+      }
+    ],
+    "blocks_verified": 442368,
+    "invalid_catalogs_rejected": 14,
+    "requests_in_one_process": 458,
+    "expected_gpu_dispatches": 54,
+    "metal_commands_ms": [
+      1.093375,
+      1.525417,
+      52.092833,
+      52.170458,
+      1.114125,
+      1.171875,
+      41.463667,
+      41.122792,
+      1.139,
+      1.495917,
+      19.682417,
+      19.84025,
+      1.146333,
+      1.471792,
+      19.732125,
+      19.717167,
+      0.865375,
+      1.229125,
+      41.574125,
+      41.68325,
+      0.855583,
+      1.883625,
+      15.51725,
+      15.653542,
+      0.749875,
+      1.788458,
+      15.0945,
+      15.192167,
+      1.224125,
+      1.979333,
+      58.30675,
+      57.766,
+      0.827,
+      1.286833,
+      41.595125,
+      41.665917,
+      933.234875,
+      17.082917,
+      388.537833,
+      372.01275,
+      1749.627083,
+      22.595375,
+      1200.968125,
+      1093.462708,
+      1746.33325,
+      23.75075,
+      1193.296833,
+      1071.978333,
+      1.106083,
+      1.126,
+      17.263583,
+      1.078583,
+      0.977042,
+      16.570458
+    ],
+    "sha256": "24918d3a814982b6f7340be2b332753de70dd1b024aafeb01f464cd7313de02e"
+  },
+  "source_sha256": {
+    "bend/binary.bend": "f716146b3a19403c4ad208ce37c2056f9ba023d6b76a3fecba5c3253185d9b68",
+    "bend/chunk.bend": "7aa37914a3941541f78909d0ab582ab956f972be7804c4abf97fdf07b839fe86",
+    "bend/chunk_catalog.bend": "666d5f98e2128a31a49f36ccdf0a1da7d7cb59067ce58d3cd1d0da3742963df3",
+    "bend/climate.bend": "57074782ae0f82c71d81fc5f21152af124a25c422b6ebd7a0d82037552ff2f19",
+    "bend/climate_batch.bend": "f65fbc7b463f5e093feb2364da0f504fa295088285917f7a04dc205bf1dc34fa",
+    "bend/compression.bend": "e42e1a312180ee0fce6faad39fc82b9a2e43ba05727e04d9a3c8e7651dd14130",
+    "bend/density.bend": "0c0a88958c71598112c879b587112bd00e97d838b57262f74496f772150df620",
+    "bend/density_batch.bend": "51231a72efa798c9a31f1a6a841176ea50d1ac5644352b389e3d1a9bff30d99c",
+    "bend/density_lattice.bend": "0b02993df32e160b21c50b8ee33e003f2d7f3eb53645c91ab6699bed0e1a9ae8",
+    "bend/engine.bend": "5dd1b339409b4e293d777b58b55bfcc2ea8bcd6acbef0b570c366ffcdf74630a",
+    "bend/generated_chunk.bend": "53c9f0aa02add6f7c207d079481129178c6e2b96eda544f2952eb1744b8cd63f",
+    "bend/heightmaps.bend": "0b69c87d24ec3b27cbb082bb394205765154bf78c5c4db2c226fbc4ba3e2d997",
+    "bend/material.bend": "fea1e62174797c5b44634f3674dfc550d0178f207524193ed0d9416fbbf70f64",
+    "bend/material_batch.bend": "e34ee066c23a5328d279c5137ce2d107f2e4df661d63d3de373970d5cbee2073",
+    "bend/material_columns.bend": "3a5e24efd73b7e670982a1038028962d08c60c18ee0ed34d80b4db0dfbacca9b",
+    "bend/material_columns_data.bend": "4d702d0723ca85d6a7ae0dea1dd3873ab67f8d5f248de8dcd9e9442bd6de22ef",
+    "bend/material_program.bend": "f4b7e78629f7eecd991418eb00fa3face480954b300fa996e370d4c16c35128c",
+    "bend/nbt.bend": "7063555acf523d12269bd152e1e32981534009785b6a7653509f1a108b18cb57",
+    "bend/noise.bend": "80485dd8d18580a1044c8e55dbd03dab1b8dbdd9aa6681e1b8f6743fce928c1d",
+    "bend/numbers.bend": "858ea999141639aa26c559a2e06a87d62c58e93d0d8d3a793bb530b629060956",
+    "bend/packed.bend": "b4ebd29bc4d31d53ddcc221f64c84e68c5bde4a0fbbb51acfdaa9ddd01e2c23f",
+    "bend/palette.bend": "4f813fb89317308dc02c70d36cf5e3eeaf6d62a9a82477b781b976be5eee82ff",
+    "bend/precise.bend": "50ba7138300f2c913b2d75a554a78d88bfb09931c6cd58ecc884ab7024c73c01",
+    "bend/reader.bend": "e659a2cac6b8435f02fd0fe91902ceca918055d026ec1908845186bee4fdc0ac",
+    "bend/region.bend": "1455654e09969a0c80b6536b61b8da2f6070c80d007d2a3639b4a42cb873cc35",
+    "bend/registry.bend": "433b4dbb17b127dd322a11465a1111ddadd86a8682597310c062a194aa802296",
+    "bend/registry_chunk_catalog.bend": "032c8411f124d9876a34e2537b7dff1f9ccbd068a53b2e4a7423ae71ffe98652",
+    "bend/registry_climate.bend": "3daed5cbc3da3a4d4f91c65465e899b31fe219fe34af03731fc7ca1c49c572ad",
+    "bend/registry_density.bend": "0c1972222bbcdfead41b30ae0453f7e05e85ab7bb446c113c3a07a8b12f56cb7",
+    "bend/registry_material.bend": "b28952c7b085865d41f853d55e287c0c0bb8000442cc2c94b37325daaab8d29e",
+    "bend/registry_material_columns.bend": "9eb18ecf8327d35a9f1c00da86272b5a18447f203c7b7964377f782648a9846b",
+    "bend/registry_noise.bend": "ae6994d216acc9751c20e4df1e4ff62548c8af99c61e6b006155e2fbc3e1ca94",
+    "bend/registry_surface.bend": "7964afc9153879537d0fed15b811aaf88d1a0b41b210be339122e595ab76bd60",
+    "bend/registry_values.bend": "5bb1d3ab6bfed7cf640af35089a5ec1370cc2f686d7cfb8b210e7643e1b3d97f",
+    "bend/terrain_surface.bend": "26687ac40e62949ca563d7f31117207fa0eb053d82f51b58a14e84b9a2d4d652",
+    "bend/transport.bend": "2d7b2667aaf37b537de8be6c584acaeaec37377da475741bfe790a46d9c76f81",
+    "bend/word64.bend": "62e104fbbc56208d66457789a7f2ed3f5fe122f4a19068c3df9b3bbbf555e139",
+    "scripts/test_bend_generated_chunks.py": "2abf4600fb3a69929080ad51068e7852e802347a171ded042af075cbf2c9c7f3"
+  },
+  "inputs": [
+    {
+      "name": "ramp",
+      "json_sha256": "6f0f47a8ed1209b15511fe50aed201547942c0f6aee8a779dde9a63042052b5e",
+      "rbp_sha256": "5a4f50b1d589e5857e8b0b4f288ac2dc04c20b43f18d5cf9b4906ce19a54c809"
+    },
+    {
+      "name": "islands",
+      "json_sha256": "514ddad82a70ba78f511592ff26941461629102698de9a986b0f9cc9aa2f9db1",
+      "rbp_sha256": "05d2c58ec4b429f7877f297b162c49b47652c6fc6146c99b933824bdf507dde2"
+    },
+    {
+      "name": "solid",
+      "json_sha256": "d5325348c01fcdb6544be484df940358fa7c238b917da918939dc5604bef9d6f",
+      "rbp_sha256": "ebd0067f170cd38aa1a999ed01fc76858e40a58f3c6a9e5d318511317b30104c"
+    },
+    {
+      "name": "empty",
+      "json_sha256": "e71fde4e40b4429a0a0e04ab0b75a8ef9e3978f2b75ef5e0e1fe55a69846a3d7",
+      "rbp_sha256": "e14c9260e4bca0655a7dbb2dd26d7a3af673b7370bc40a6603745c7f8cfd5ee8"
+    },
+    {
+      "name": "non_power_cells",
+      "json_sha256": "b332354ca9e406dd0066659acb2c22fcaeebae1986e7a153b5e78d63209034f3",
+      "rbp_sha256": "b2e96800d66c8856281e9bb2283d23e4b68a817e082a9519a1a8b737bd751b3f"
+    },
+    {
+      "name": "unicode",
+      "json_sha256": "11d92f162cb574e3edd4ed1a6ae15da2c5aa1f6ee4ed7283050d451605c0775f",
+      "rbp_sha256": "e6cd184abd74112076d4b5763d9530382ad16610fa7eb82df1bddaac5c530504"
+    },
+    {
+      "name": "vanilla",
+      "json_sha256": "ff1f4e71034b254595b1f5c56c3bcec85227267551144dc4a6698981a02d809c",
+      "rbp_sha256": "39c775ca58b6d084d4de060925df01d170c89caa09b9eaf7d33e55a915c8065a"
+    },
+    {
+      "name": "terralith",
+      "json_sha256": "aacacbbbb4e13f7627cc88d36188f0ac102e1361e69b061d6b5590c5007bc15d",
+      "rbp_sha256": "cf9ef7e0d83d91c5d99aa914101aad8b156ce9a8caa4050f71e81b190a1c0ca6"
+    },
+    {
+      "name": "combined",
+      "json_sha256": "af76945ae79e0850a201a62c857afa84062ec700b3b2941dab4a8c99cd2ab67e",
+      "rbp_sha256": "d4ac8f9040e39892de12b6fc6ecc46b3d9e961c3cba7f05a2ae9b53262967193"
+    }
+  ],
+  "minecraft": {
+    "event": "bend_generated_chunk_decoding",
+    "chunks": 22,
+    "decodes_per_chunk": 2,
+    "blocks_verified": 1703936,
+    "data_version": 5023,
+    "registries": "vanilla, Terralith 2.6.5 and registry-supplement",
+    "scope": "Component NBT/zlib/SerializableChunkData reads, not an actual running world save/reopen test"
+  },
+  "java_transport": {
+    "backends": [
+      "CPU",
+      "GPU_REQUIRED"
+    ],
+    "concurrent_generated_chunk_requests_per_backend": 12,
+    "result": "pass"
+  },
+  "host_build": {
+    "loaders": [
+      "Fabric",
+      "NeoForge"
+    ],
+    "native_tests_passed": 64,
+    "native_tests_ignored": 11,
+    "result": "pass"
+  },
+  "validation_note": "Host encode-response values are component driver timings, not complete-region throughput; encoding/compression uses CPU Bend and generation uses the selected CPU/GPU backend.",
+  "material_column_regression": {
+    "backends": [
+      "CPU",
+      "GPU_REQUIRED"
+    ],
+    "voxel_queries_per_backend": 7641,
+    "profiles": 14,
+    "result": "pass"
+  },
+  "artifacts_sha256": {
+    "engine": "d8efeb33843f6b65f254b5ab78de465605cbb5591eca9cbbe7f8834dbc73578a",
+    "engine.gpu": "c1fa53a27413e5b58dc8ef612f6d6140cef57b6ef9e94dffbdf0847b0d83cbf8",
+    "generated-chunks-metal-probe": "eca7404a6b69ddaf7605a22bfa38d274eb3633b8c2d6d32832715e925868e90f",
+    "generated-chunks-metal-probe.gpu": "1d366aade1cd3c5f29c98b87c039e40c61f70a36e24571ccae9d5872b2ab76f2"
+  }
+}

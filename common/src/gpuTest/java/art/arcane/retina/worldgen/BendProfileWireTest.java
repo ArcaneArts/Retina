@@ -37,7 +37,7 @@ public final class BendProfileWireTest {
         encode(output, "blocks", """
             {"geology_min_y":-16,"geology_height":32,"sea_level":4,"stone":1,"water":2,
              "materials":["minecraft:air","minecraft:stone","minecraft:water","minecraft:grass_block","minecraft:dirt"],
-             "terrain_features":{"bands":[]},"biomes":[{"flags":0}],"climate_targets":[
+             "heightmap_masks":[0,63,51,63,63],"terrain_features":{"bands":[]},"biomes":[{"flags":0,"id":"minecraft:plains"}],"climate_targets":[
              {"biome":0,"min":[-1,-1,-1,-1],"max":[1,1,1,1],"weirdness":[-1,1],"depth":[0,0],"offset":0}],
              "registry_program":{"material_layers":true,"surface":[-16,8,0],"terrain_cell":[4,8],"surface_noises":[0,0,0],
               "noises":[{"frequency":0.0035,"amplitude":0,"salt":0,"coefficients":[1]}],"points":[],"programs":[
@@ -242,6 +242,27 @@ public final class BendProfileWireTest {
                         throw new AssertionError("resident block/height/material transport");
                 }
                 if (values.hasRemaining()) throw new AssertionError("block response length");
+            }
+            counts = java.nio.ByteBuffer.wrap(worker.prepareProfileChunks().get(30, java.util.concurrent.TimeUnit.SECONDS));
+            if (counts.getInt() != 5 || counts.getInt() != 1 || counts.hasRemaining())
+                throw new AssertionError("chunk catalog acknowledgement");
+            descriptor = worker.surfaceDensityDescriptor(29999983, -30000017, 34, 18, seed)
+                    .get(30, java.util.concurrent.TimeUnit.SECONDS);
+            worker.request(13, descriptor).get(30, java.util.concurrent.TimeUnit.SECONDS);
+            worker.generateSurfaceColumns(29999984, -30000016, 32, 16, seed).get(30, java.util.concurrent.TimeUnit.SECONDS);
+            worker.generateBlockColumns().get(30, java.util.concurrent.TimeUnit.SECONDS);
+            byte[] generated = worker.encodeGeneratedChunk(1874999, -1875001, seed, 5023, false)
+                    .get(30, java.util.concurrent.TimeUnit.SECONDS);
+            if (generated.length < 3 || generated[0] != 10 || generated[1] != 0 || generated[2] != 0)
+                throw new AssertionError("generated root NBT");
+            requests.clear();
+            for (int i = 0; i < 12; i++) requests.add(worker.encodeGeneratedChunk(1874999, -1875001, seed, 5023, i % 2 == 1));
+            for (int i = 0; i < requests.size(); i++) {
+                byte[] result = requests.get(i).get(30, java.util.concurrent.TimeUnit.SECONDS);
+                if (i % 2 == 1) try (var inflate = new java.util.zip.InflaterInputStream(new java.io.ByteArrayInputStream(result))) {
+                    result = inflate.readAllBytes();
+                }
+                if (!java.util.Arrays.equals(generated, result)) throw new AssertionError("concurrent generated chunk bytes");
             }
             if (worker.processId() != pid) throw new AssertionError("worker replaced");
             System.out.println("Java registry worker " + mode + " pass");

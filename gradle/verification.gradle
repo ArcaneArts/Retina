@@ -562,6 +562,35 @@ tasks.register('bendWorkerTest', JavaExec) {
     maxHeapSize = '256m'
 }
 
+tasks.register('bendGeneratedChunkFixtures', Exec) {
+    group = 'verification'
+    description = 'Validate generated Bend blocks, quart biomes, heightmaps and pure Bend compressed NBT.'
+    workingDir rootProject.projectDir
+    commandLine providers.gradleProperty('pythonExecutable').getOrElse('python3'), 'scripts/test_bend_generated_chunks.py'
+    if (providers.gradleProperty('bendSkipBuild').isPresent()) args '--skip-build'
+    if (providers.gradleProperty('proveMetal').isPresent()) args '--prove-metal'
+    if (!registryDensityProfiles.isEmpty())
+        registryDensityProfiles.split(',').each { pair -> args '--profile', *pair.split('=', 2) }
+    mustRunAfter 'bendRegistryWireTest', 'bendRegistryNoiseTest', 'bendRegistryClimateTest', 'bendEngineTest', 'bendNoiseTest', 'bendClimateTest', 'bendNumericTest', 'bendDensityTest', 'bendRegistryDensityTest', 'bendDensityLatticeTest', 'bendSurfaceTest', 'bendMaterialTest', 'bendMaterialColumnsTest'
+}
+
+tasks.register('bendGeneratedChunkTest', JavaExec) {
+    group = 'verification'
+    description = 'Decode Bend generated chunks with Minecraft palettes, registered heightmap predicates and SerializableChunkData.'
+    dependsOn 'gpuTestClasses', 'bendGeneratedChunkFixtures'
+    classpath = sourceSets.gpuTest.runtimeClasspath
+    mainClass = 'art.arcane.retina.worldgen.BendGeneratedChunkIntegrationTest'
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
+    args rootProject.file('build/bend/generated-chunks').absolutePath,
+            providers.gradleProperty('bendGeneratedChunkProfiles').getOrElse('ramp,islands,solid,empty,non_power_cells,vanilla')
+    if (providers.gradleProperty('testDatapack').isPresent()) args providers.gradleProperty('testDatapack').get()
+    if (providers.gradleProperty('testSupplement').isPresent()) args providers.gradleProperty('testSupplement').get()
+    if (providers.gradleProperty('testRegistrySupplement').isPresent()) {
+        dependsOn 'registryExportSupplement'
+        args rootProject.file('build/registry-fixtures/registry-supplement.zip').absolutePath
+    }
+}
+
 tasks.register('bendChunkTest', JavaExec) {
     group = 'verification'
     description = 'Decode pure Bend MCA chunks with Minecraft palettes, heightmap predicates and SerializableChunkData.'
