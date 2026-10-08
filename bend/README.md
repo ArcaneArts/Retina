@@ -238,6 +238,44 @@ a production runtime modification or a performance benchmark. The report is in
 `docs/benchmarks/bend-noise-correctness.json`. Runtime terrain integration and
 complete lit/compressed-region measurements remain required.
 
+## Climate interval indices
+
+`climate.bend` builds balanced bounding-volume trees for surface, underground and
+shore lookup. Validate finite, ordered intervals and U16 biome IDs before calling
+`prepare`; original target ordinals must be unique. Surface lookup excludes
+underground-only biomes. Coastal lookup ignores continental distance and returns
+the selected target's original continental midpoint. Weighted fitness, depth,
+offsets, optional ocean mismatch penalties and shore exclusion follow the current
+Rust approximator. Equal fitness chooses the earliest original target, including
+when finite inputs overflow squared distances to infinity.
+
+Preparation runs once on the CPU. The immutable `Data` model can be shared by
+GPU queries. With stock Bend 2.0.36, an IO effect must separate CPU preparation's
+forks from the next GPU bang; otherwise that bang continues on the CPU pool.
+The fixture driver uses `IO.now()` at that boundary. The diagnostic observer
+checks that the batch actually dispatches on Metal.
+
+```sh
+python3 scripts/test_bend_climate.py --prove-metal \
+  --profile /absolute/vanilla/profile.json --profile /absolute/terralith/profile.json
+nice -n 10 ./gradlew bendClimateTest -PretinaHostOnly --max-workers=2 -PproveMetal \
+  -PbendClimateProfiles=/absolute/vanilla/profile.json,/absolute/terralith/profile.json
+```
+
+The Python harness copies registered targets into raw fixture records and compares
+Bend lookup against an independent linear search. CPU one/two-worker and GPU runs
+cover all query modes, empty indices, original-order ties, interval endpoints,
+non-dyadic floats and overflowing squared distances. Invalid targets, queries,
+dimensions and truncated/trailing input must fail without writing output. The
+optional Metal observer must produce the normal GPU executable's bytes.
+
+This is an index library, not an integrated biome generator or a throughput
+benchmark. It retains surface targets differing only in depth; Rust deduplicates
+those. Bounds and traversal preserve selection, but parity of performance is
+unproven. Typed projection from the resident registry tape, climate density
+programs, smooth spatial boundaries and terrain generation remain pending.
+Evidence is in `docs/benchmarks/bend-climate-correctness.json`.
+
 ## Persistent component worker
 
 `engine.bend` runs one stock-runtime process across requests. It caches a
