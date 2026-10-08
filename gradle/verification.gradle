@@ -415,10 +415,22 @@ tasks.register('bendNoiseTest', Exec) {
 tasks.register('bendNumericTest', Exec) {
     group = 'verification'
     description = 'Independently check Bend i64/f64-to-F32 rounding on CPU and GPU.'
-    mustRunAfter 'bendRegistryWireTest', 'bendRegistryNoiseTest', 'bendEngineTest'
+    mustRunAfter 'bendRegistryWireTest', 'bendRegistryNoiseTest', 'bendEngineTest', 'bendClimateTest'
     workingDir rootProject.projectDir
     commandLine providers.gradleProperty('pythonExecutable').getOrElse('python3'), 'scripts/test_bend_numbers.py'
     if (providers.gradleProperty('proveMetal').isPresent()) args '--prove-metal'
+}
+
+def climateProfiles = providers.gradleProperty('bendClimateProfiles').getOrElse('')
+tasks.register('bendClimateTest', Exec) {
+    group = 'verification'
+    description = 'Compare pure Bend climate interval indices with independent linear CPU/GPU reference searches.'
+    workingDir rootProject.projectDir
+    commandLine providers.gradleProperty('pythonExecutable').getOrElse('python3'), 'scripts/test_bend_climate.py'
+    if (providers.gradleProperty('proveMetal').isPresent()) args '--prove-metal'
+    if (!climateProfiles.isEmpty()) climateProfiles.split(',').each { path -> args '--profile', path }
+    // Native Bend compilers remain serial when several verification tasks run.
+    mustRunAfter 'bendRegistryWireTest', 'bendRegistryNoiseTest', 'bendEngineTest', 'bendNoiseTest'
 }
 
 def registryNoiseProfiles = providers.gradleProperty('bendNoiseProfiles').getOrElse('')

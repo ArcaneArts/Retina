@@ -1,0 +1,396 @@
+{
+  "scope": "Climate index correctness; resident projection/density programs/world generation pending",
+  "datasets": [
+    {
+      "name": "synthetic",
+      "targets": 1005,
+      "input_sha256": "381b649032f5bc4e84cb1ca727eaf88283b80d5e27d1cf1d3953922ae9504dbf",
+      "runs": [
+        {
+          "requested_gpu": "off",
+          "threads": 1,
+          "queries": 512,
+          "max_fitness_error": 0.0,
+          "sha256": "4b679593d03812222b377558637d463a6cf3c6f6a168242438b1c7f11fe167f5",
+          "observed_metal_command_ms": []
+        },
+        {
+          "requested_gpu": "off",
+          "threads": 2,
+          "queries": 512,
+          "max_fitness_error": 0.0,
+          "sha256": "4b679593d03812222b377558637d463a6cf3c6f6a168242438b1c7f11fe167f5",
+          "observed_metal_command_ms": []
+        },
+        {
+          "requested_gpu": "on",
+          "threads": 2,
+          "queries": 512,
+          "max_fitness_error": 0.0,
+          "sha256": "4b679593d03812222b377558637d463a6cf3c6f6a168242438b1c7f11fe167f5",
+          "observed_metal_command_ms": []
+        }
+      ],
+      "cpu_gpu_bytes_equal": true
+    },
+    {
+      "name": "empty",
+      "targets": 0,
+      "input_sha256": "0eb485b04490f819819ec4724f591347a71c2d8c6f3ccf590cd12b577f33e1de",
+      "runs": [
+        {
+          "requested_gpu": "off",
+          "threads": 1,
+          "queries": 32,
+          "max_fitness_error": 0.0,
+          "sha256": "6c56499eeb3d8e5167d5d31366607328608a38a2d0dd73b4ce9efa8e7562cbf9",
+          "observed_metal_command_ms": []
+        },
+        {
+          "requested_gpu": "off",
+          "threads": 2,
+          "queries": 32,
+          "max_fitness_error": 0.0,
+          "sha256": "6c56499eeb3d8e5167d5d31366607328608a38a2d0dd73b4ce9efa8e7562cbf9",
+          "observed_metal_command_ms": []
+        },
+        {
+          "requested_gpu": "on",
+          "threads": 2,
+          "queries": 32,
+          "max_fitness_error": 0.0,
+          "sha256": "6c56499eeb3d8e5167d5d31366607328608a38a2d0dd73b4ce9efa8e7562cbf9",
+          "observed_metal_command_ms": []
+        }
+      ],
+      "cpu_gpu_bytes_equal": true
+    },
+    {
+      "name": "no_queries",
+      "targets": 1005,
+      "input_sha256": "9a374f5dcccb6ebb018f2e361a90d5b633994f403b4372aa14d67c4af3a3098a",
+      "runs": [
+        {
+          "requested_gpu": "off",
+          "threads": 1,
+          "queries": 0,
+          "max_fitness_error": 0.0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "observed_metal_command_ms": []
+        },
+        {
+          "requested_gpu": "off",
+          "threads": 2,
+          "queries": 0,
+          "max_fitness_error": 0.0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "observed_metal_command_ms": []
+        },
+        {
+          "requested_gpu": "on",
+          "threads": 2,
+          "queries": 0,
+          "max_fitness_error": 0.0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "observed_metal_command_ms": []
+        }
+      ],
+      "cpu_gpu_bytes_equal": true
+    },
+    {
+      "name": "ties",
+      "targets": 33,
+      "input_sha256": "f051ccec9b271407419c31056e409bd1fd24a45ef456812ea320c62ce17c0887",
+      "runs": [
+        {
+          "requested_gpu": "off",
+          "threads": 1,
+          "queries": 128,
+          "max_fitness_error": 0.0,
+          "sha256": "b8e99de5c40be995aa78d04207e7ba76792d56cf52c8762dc74bc56070b377c0",
+          "observed_metal_command_ms": []
+        },
+        {
+          "requested_gpu": "off",
+          "threads": 2,
+          "queries": 128,
+          "max_fitness_error": 0.0,
+          "sha256": "b8e99de5c40be995aa78d04207e7ba76792d56cf52c8762dc74bc56070b377c0",
+          "observed_metal_command_ms": []
+        },
+        {
+          "requested_gpu": "on",
+          "threads": 2,
+          "queries": 128,
+          "max_fitness_error": 0.0,
+          "sha256": "b8e99de5c40be995aa78d04207e7ba76792d56cf52c8762dc74bc56070b377c0",
+          "observed_metal_command_ms": []
+        }
+      ],
+      "cpu_gpu_bytes_equal": true
+    },
+    {
+      "name": "overflow",
+      "targets": 2,
+      "input_sha256": "0f55eabc2ecde42c1a192203683c7d82f1b81df3924980e6ea84b7333c880b3b",
+      "runs": [
+        {
+          "requested_gpu": "off",
+          "threads": 1,
+          "queries": 32,
+          "max_fitness_error": 0.0,
+          "sha256": "11a60f0acbb857af9fd29705a22736bfb368eca62faa1de8237496571e3f7123",
+          "observed_metal_command_ms": []
+        },
+        {
+          "requested_gpu": "off",
+          "threads": 2,
+          "queries": 32,
+          "max_fitness_error": 0.0,
+          "sha256": "11a60f0acbb857af9fd29705a22736bfb368eca62faa1de8237496571e3f7123",
+          "observed_metal_command_ms": []
+        },
+        {
+          "requested_gpu": "on",
+          "threads": 2,
+          "queries": 32,
+          "max_fitness_error": 0.0,
+          "sha256": "11a60f0acbb857af9fd29705a22736bfb368eca62faa1de8237496571e3f7123",
+          "observed_metal_command_ms": []
+        }
+      ],
+      "cpu_gpu_bytes_equal": true
+    },
+    {
+      "name": "rounded",
+      "targets": 257,
+      "input_sha256": "e502945427a3b8c01d27f5a00a660b767a537492f6bf6cc8c566681fab9629c9",
+      "runs": [
+        {
+          "requested_gpu": "off",
+          "threads": 1,
+          "queries": 512,
+          "max_fitness_error": 0.0,
+          "sha256": "2654ccaa3e68175d0da9c148e2c9b68301b79ef893826f5affb23cc7d3cbab6e",
+          "observed_metal_command_ms": []
+        },
+        {
+          "requested_gpu": "off",
+          "threads": 2,
+          "queries": 512,
+          "max_fitness_error": 0.0,
+          "sha256": "2654ccaa3e68175d0da9c148e2c9b68301b79ef893826f5affb23cc7d3cbab6e",
+          "observed_metal_command_ms": []
+        },
+        {
+          "requested_gpu": "on",
+          "threads": 2,
+          "queries": 512,
+          "max_fitness_error": 0.0,
+          "sha256": "2654ccaa3e68175d0da9c148e2c9b68301b79ef893826f5affb23cc7d3cbab6e",
+          "observed_metal_command_ms": []
+        }
+      ],
+      "cpu_gpu_bytes_equal": true
+    },
+    {
+      "name": "vanilla",
+      "targets": 7594,
+      "input_sha256": "99559cf145f9214d62b26af2b94219c0096eff6fd94fa1950dd221ecd335bbfb",
+      "runs": [
+        {
+          "requested_gpu": "off",
+          "threads": 1,
+          "queries": 256,
+          "max_fitness_error": 0.0,
+          "sha256": "91ac58a514cbf5eb9a40dbb6075e93e26c6f6055e202c42998558f178a05eebe",
+          "observed_metal_command_ms": []
+        },
+        {
+          "requested_gpu": "off",
+          "threads": 2,
+          "queries": 256,
+          "max_fitness_error": 0.0,
+          "sha256": "91ac58a514cbf5eb9a40dbb6075e93e26c6f6055e202c42998558f178a05eebe",
+          "observed_metal_command_ms": []
+        },
+        {
+          "requested_gpu": "on",
+          "threads": 2,
+          "queries": 256,
+          "max_fitness_error": 0.0,
+          "sha256": "91ac58a514cbf5eb9a40dbb6075e93e26c6f6055e202c42998558f178a05eebe",
+          "observed_metal_command_ms": []
+        }
+      ],
+      "cpu_gpu_bytes_equal": true
+    },
+    {
+      "name": "terralith",
+      "targets": 1708,
+      "input_sha256": "0d95cdffe87cb37d91393e2ccfb50fe324d3cf778b8afb10c900cec46996f84c",
+      "runs": [
+        {
+          "requested_gpu": "off",
+          "threads": 1,
+          "queries": 256,
+          "max_fitness_error": 0.0,
+          "sha256": "539efa2713c45344ce7224d5f8170df05738695b9776d9724132b402cac63598",
+          "observed_metal_command_ms": []
+        },
+        {
+          "requested_gpu": "off",
+          "threads": 2,
+          "queries": 256,
+          "max_fitness_error": 0.0,
+          "sha256": "539efa2713c45344ce7224d5f8170df05738695b9776d9724132b402cac63598",
+          "observed_metal_command_ms": []
+        },
+        {
+          "requested_gpu": "on",
+          "threads": 2,
+          "queries": 256,
+          "max_fitness_error": 0.0,
+          "sha256": "539efa2713c45344ce7224d5f8170df05738695b9776d9724132b402cac63598",
+          "observed_metal_command_ms": []
+        }
+      ],
+      "cpu_gpu_bytes_equal": true
+    },
+    {
+      "name": "combined",
+      "targets": 1708,
+      "input_sha256": "d20b35330c46999cf008da0a27ff388853f2c0fdfc34b8d9e11d21f6cc3346bd",
+      "runs": [
+        {
+          "requested_gpu": "off",
+          "threads": 1,
+          "queries": 256,
+          "max_fitness_error": 0.0,
+          "sha256": "a0b7ebfa9bb439593435f2b8f94b5679a13ef42e6b185b87f1a6bc89dbe08112",
+          "observed_metal_command_ms": []
+        },
+        {
+          "requested_gpu": "off",
+          "threads": 2,
+          "queries": 256,
+          "max_fitness_error": 0.0,
+          "sha256": "a0b7ebfa9bb439593435f2b8f94b5679a13ef42e6b185b87f1a6bc89dbe08112",
+          "observed_metal_command_ms": []
+        },
+        {
+          "requested_gpu": "on",
+          "threads": 2,
+          "queries": 256,
+          "max_fitness_error": 0.0,
+          "sha256": "a0b7ebfa9bb439593435f2b8f94b5679a13ef42e6b185b87f1a6bc89dbe08112",
+          "observed_metal_command_ms": []
+        }
+      ],
+      "cpu_gpu_bytes_equal": true
+    }
+  ],
+  "metal_observation": [
+    {
+      "name": "synthetic",
+      "diagnostic_only": true,
+      "command_buffers": 1,
+      "device_ms": [
+        8.144625
+      ],
+      "output_bytes_equal": true
+    },
+    {
+      "name": "empty",
+      "diagnostic_only": true,
+      "command_buffers": 1,
+      "device_ms": [
+        1.10825
+      ],
+      "output_bytes_equal": true
+    },
+    {
+      "name": "no_queries",
+      "diagnostic_only": true,
+      "command_buffers": 1,
+      "device_ms": [
+        0.32925
+      ],
+      "output_bytes_equal": true
+    },
+    {
+      "name": "ties",
+      "diagnostic_only": true,
+      "command_buffers": 1,
+      "device_ms": [
+        2.421375
+      ],
+      "output_bytes_equal": true
+    },
+    {
+      "name": "overflow",
+      "diagnostic_only": true,
+      "command_buffers": 1,
+      "device_ms": [
+        1.216333
+      ],
+      "output_bytes_equal": true
+    },
+    {
+      "name": "rounded",
+      "diagnostic_only": true,
+      "command_buffers": 1,
+      "device_ms": [
+        6.370875
+      ],
+      "output_bytes_equal": true
+    },
+    {
+      "name": "vanilla",
+      "diagnostic_only": true,
+      "command_buffers": 1,
+      "device_ms": [
+        9.912167
+      ],
+      "output_bytes_equal": true
+    },
+    {
+      "name": "terralith",
+      "diagnostic_only": true,
+      "command_buffers": 1,
+      "device_ms": [
+        7.074875
+      ],
+      "output_bytes_equal": true
+    },
+    {
+      "name": "combined",
+      "diagnostic_only": true,
+      "command_buffers": 1,
+      "device_ms": [
+        5.1915
+      ],
+      "output_bytes_equal": true
+    }
+  ],
+  "rejected_inputs": {
+    "cases_per_backend": 31,
+    "backends": [
+      "off",
+      "on"
+    ],
+    "successful_partial_outputs": 0
+  },
+  "source_sha256": {
+    "bend/climate.bend": "57074782ae0f82c71d81fc5f21152af124a25c422b6ebd7a0d82037552ff2f19",
+    "bend/tests/climate-fixtures.bend": "c9854d355a035d8c3dd552c3a1df625e93ae24e14296383ffc2988ac4d11aa63"
+  },
+  "bend_version": "2.0.36",
+  "validation": {
+    "gradle": "bendClimateTest -PretinaHostOnly --max-workers=2 -PproveMetal -PbendClimateProfiles=<vanilla,terralith,combined>",
+    "query_count_per_backend": 1984,
+    "gpu_device": "Apple M4 Max / Metal",
+    "region_benchmark": false,
+    "host_build": "Fabric/NeoForge build passed; 64 native tests passed, 11 explicit GPU/fixture tests ignored"
+  }
+}

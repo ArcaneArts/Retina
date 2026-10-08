@@ -33,7 +33,7 @@ more deeply; retain the original requested scope.
 | --- | --- | --- |
 | Shared loaded registry export, including palette properties and climate intervals | `TerrainProfileData.java`, `RegistryGpuProgram.java`, `native/src/profile.rs` | Export decoupled from Rust initialization; actual vanilla, Terralith and Terralith+supplement registries pass with native library unavailable. Explicit Rust adapter receives byte-identical data and passes real Metal queries. Full structural profiles now stream into a resident Bend word tape with lossless field/array/string access and independent full-value checks. Loaded climate/ridge stacks now resolve schema keys and convert numeric parameters entirely in Bend; density/terrain program interpretation pending |
 | Noise stacks, density bytecode, splines and GPU interpolation | `native/src/program.rs`, `program/`, `program.wgsl`, `noise3.wgsl`, `simplex.wgsl` | Reusable Bend seeded simplex/3D gradient kernels, weighted octave stacks and trilinear primitive implemented and independently checked on CPU and actual Metal. Integer/fraction coordinate handling checked through signed-i32 extremes. Density bytecode/splines, actual interpolation fields and runtime integration pending |
-| Climate targets, biome selection, smooth boundaries and underground biomes | `climate.rs`, `climate.wgsl`, `RetinaBiomeSource.java` | Pending |
+| Climate targets, biome selection, smooth boundaries and underground biomes | `climate.rs`, `climate.wgsl`, `RetinaBiomeSource.java` | Pure Bend balanced interval indices and surface/underground/coastal lookup implemented, checked against independent linear search with actual registered intervals on CPU and Metal. Typed resident-tape projection, spatial climate fields, blended boundaries and terrain integration pending |
 | Coastlines, shore materials, rivers and material predicates/layers | `ShoreMaterialProfile.java`, `column_program.rs`, `materials.wgsl` | Pending |
 | Caves, ravines, rare surface entrances and cave decoration | `GeologyProfile.java`, `geology.rs`, `features.rs`, `caves.wgsl` | Pending |
 | Lakes, aquifer fields and fluid barriers | `TerrainFeatureProfile.java`, `program/lake_sparse.rs`, `aquifers.wgsl` | Pending |
@@ -130,7 +130,19 @@ more deeply; retain the original requested scope.
    registered octave stacks; loaded density DAGs, climate target selection and
    full terrain integration remain pending. Evidence is in
    `docs/benchmarks/bend-numeric-correctness.json` and
-   `docs/benchmarks/bend-registry-noise.json`.
+   `docs/benchmarks/bend-registry-noise.json`. Merged in
+   [PR #27](https://github.com/ArcaneArts/Retina/pull/27), commit `6ddcf4e`;
+   both CI builds passed.
+   Climate interval indices now prepare balanced surface, underground and coast
+   trees in Bend. GPU lookup preserves registered interval fitness, optional
+   weights/ocean penalties, shore filters and original ordinal ties. Independent
+   linear searches cover actual vanilla/Terralith/combined intervals, empty
+   indices, rounded boundaries and overflowing distances. A required IO boundary
+   separates CPU index-building forks from the GPU batch; the diagnostic observer
+   verifies actual Metal dispatch rather than inferring it from `--gpu on`.
+   This component accepts typed targets; resident registry-tape projection and
+   climate/terrain fields remain pending. See
+   `docs/benchmarks/bend-climate-correctness.json`.
 5. **Registered features and structures.** Port ordered decorations, geology,
    jigsaw/templates/processors and metadata with cross-region tests.
 6. **GPU lighting and integration.** Interior prelighting, cache/promotion,
