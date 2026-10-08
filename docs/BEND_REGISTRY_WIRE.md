@@ -4,7 +4,8 @@
 structural binary data. It does not generate terrain or encode Minecraft NBT,
 MCA, lighting or compression. `bend/registry.bend` alone validates and reads that
 data. The worker owns one validated tape alongside its prepared noise stack.
-Terrain-specific interpretation into Bend programs remains pending.
+Loaded climate/ridge octave stacks now have a typed Bend projection. Density
+programs, full biome selection and terrain generation remain pending.
 
 Streaming avoids allocating millions of Gson nodes. Complete vanilla, Terralith
 and Terralith plus the compatible registry-supplement profiles encode within a
@@ -76,13 +77,35 @@ The existing `RBND` IPC framing remains version 1. Additional opcodes:
 - **7 — string data:** payload is a dictionary ID. Output is code-unit count and
   packed UTF-16 words, with the same padding rule. Output remains bounded by the
   16 MiB Bend response encoder; excessively large strings return an error.
+- **8 — prepare profile noise:** payload is seed low word, seed high word and
+  channel (0–3 climate, 4 ridge). Bend resolves the corresponding loaded noise
+  object by schema key, converts its exact numeric values to F32, validates the
+  frequency/amplitude/modifiers and prepares the reusable GPU octave stack.
+  Success returns an empty body; opcode 2 then samples the existing GPU grid
+  path. No profile returns error 708, invalid command shape/channel 603,
+  missing/wrongly typed schema values 710 and invalid numerical bounds 501.
+  A rejected selection preserves the prepared stack and resident profile.
 
 `BendWorker.loadProfile` transports only the path. Its caller owns the staged
 file until acknowledgement. If a load is canceled while active, retain the file
 until worker shutdown because the raw transport may still drain that operation.
 After acknowledgement the file may be deleted: queries read the owned snapshot.
+`BendWorker.prepareProfileNoise(seed, channel)` transports the two seed words
+without a floating-point conversion. Schema key lookup and numeric projection
+run once during preparation; the per-coordinate GPU kernel only receives the
+small prepared stack. Known schema keys are ASCII; unrelated strings remain
+lossless UTF-16 in the tape.
+
+`bend/numbers.bend` implements nearest/ties-to-even i64/f64-to-F32 conversion
+using integer word pairs. It covers signed zero, subnormals, underflow, overflow
+and carry into the next exponent, without double-rounding split integer halves.
+Raw registry numbers stay exact until a typed F32 parameter is required. The
+noise validator rejects conversions that overflow its finite parameter bounds.
+
 Automatic production staging lifetime/reload policy remains part of Minecraft
-backend integration, along with typed registry interpretation and region jobs.
+backend integration, along with the remaining typed registry programs and region
+jobs. These octave stacks do not execute the loaded density DAG or constitute a
+complete datapack terrain implementation.
 
 ## Verification
 
@@ -104,3 +127,27 @@ covers raw transport concurrency, cancellation, bounded scheduling and shutdown.
 
 `docs/benchmarks/bend-registry-wire.json` records actual results. These checks
 establish complete input access, not a generated world or feature-parity claim.
+
+Typed projection checks:
+
+```sh
+nice -n 10 ./gradlew bendNumericTest bendRegistryNoiseTest -PretinaHostOnly --max-workers=2 -PproveMetal
+# Optional actual exported inputs: comma-separated JSON=RBP file pairs.
+nice -n 10 ./gradlew bendRegistryNoiseTest -PretinaHostOnly --max-workers=2 \
+  -PbendNoiseProfiles=/absolute/vanilla.json=/absolute/vanilla.rbp,/absolute/terralith.json=/absolute/terralith.rbp
+```
+
+The numeric harness independently checks 131,072 scalar conversions per run on
+one/two CPU workers and GPU, including every double exponent and exact rational
+integer midpoint checks above 2^53. Its diagnostic runtime observer records a
+real Metal command buffer, with identical output bits. The loaded-noise harness
+checks mixed and packed fixture arrays plus actual vanilla/Terralith/combined
+snapshots: 16,100 independent samples per backend, all five channels, both seed
+words, signed-i32 coordinate extremes and repeatable grids. It also checks direct
+versus loaded preparation within each backend and 18 rejected typed profiles
+without losing the previous stack. CPU/GPU floating-point byte equality is
+reported, not required. A diagnostic observer confirms 319 actual Metal command
+buffers for these loaded inputs and matches the normal GPU executable's output.
+See `docs/benchmarks/bend-numeric-correctness.json` and
+`docs/benchmarks/bend-registry-noise.json`. These are component correctness
+results, not full-region speed measurements.

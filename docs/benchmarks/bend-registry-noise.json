@@ -1,0 +1,64 @@
+{
+  "scope": "Loaded climate/ridge octave stacks; full density programs and terrain integration pending",
+  "profiles": [
+    {
+      "name": "vanilla",
+      "json_sha256": "aefce6ff0e800966ad55920c5d21510dfa277de4612f67e22d5146d3aa838203",
+      "wire_sha256": "39c775ca58b6d084d4de060925df01d170c89caa09b9eaf7d33e55a915c8065a"
+    },
+    {
+      "name": "terralith",
+      "json_sha256": "c9abbe97860a394ed899d64967bd0395bb9bb4ec71a9dff43d1bb45893fefd4d",
+      "wire_sha256": "cf9ef7e0d83d91c5d99aa914101aad8b156ce9a8caa4050f71e81b190a1c0ca6"
+    },
+    {
+      "name": "combined",
+      "json_sha256": "068fd602ad497128dd3960cb9be76840ebd41882b5b64c25acfa76d65e930c8b",
+      "wire_sha256": "d4ac8f9040e39892de12b6fc6ecc46b3d9e961c3cba7f05a2ae9b53262967193"
+    }
+  ],
+  "runs": [
+    {
+      "mode": "cpu",
+      "profiles": 5,
+      "independent_sample_checks": 16100,
+      "grid_sha256": "92bba8e961f96fba560f2641f3364cc432657f2b295a91b72e37e1afbf3b9414",
+      "max_reference_error": 4.313523686017007e-07,
+      "invalid_typed_profiles_rejected": 18,
+      "old_stack_preserved": "pass",
+      "requests_in_one_process": 473,
+      "observed_metal_command_ms": [],
+      "grids": 200
+    },
+    {
+      "mode": "gpu_required",
+      "profiles": 5,
+      "independent_sample_checks": 16100,
+      "grid_sha256": "92bba8e961f96fba560f2641f3364cc432657f2b295a91b72e37e1afbf3b9414",
+      "max_reference_error": 4.313523686017007e-07,
+      "invalid_typed_profiles_rejected": 18,
+      "old_stack_preserved": "pass",
+      "requests_in_one_process": 473,
+      "observed_metal_command_ms": [],
+      "grids": 200
+    }
+  ],
+  "cpu_gpu_bytes_equal": true,
+  "metal_observation": {
+    "diagnostic_only": true,
+    "baseline_command_buffers": 10,
+    "loaded_profile_command_buffers": 319,
+    "loaded_profile_device_ms": {
+      "min": 0.075,
+      "max": 4.783542,
+      "sum": 238.706002
+    },
+    "output_bytes_equal": true
+  },
+  "source_sha256": {
+    "bend/numbers.bend": "858ea999141639aa26c559a2e06a87d62c58e93d0d8d3a793bb530b629060956",
+    "bend/registry_values.bend": "5bb1d3ab6bfed7cf640af35089a5ec1370cc2f686d7cfb8b210e7643e1b3d97f",
+    "bend/registry_noise.bend": "ae6994d216acc9751c20e4df1e4ff62548c8af99c61e6b006155e2fbc3e1ca94",
+    "bend/engine.bend": "462b2d162d51fb38961eaec99b5ba94e0ea20e47e7ecfd494d5f6b8a6cb120e5"
+  }
+}

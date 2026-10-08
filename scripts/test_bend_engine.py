@@ -143,7 +143,7 @@ def malformed_streams(binary):
     return len(cases)
 
 
-def metal_observer(bend,source,binary):
+def compile_metal_observer(bend,source,binary):
     # Diagnostic observation only; exactly the same one-line stock-runtime
     # observer used by the earlier simplex experiment and noise verification.
     cpath = binary.with_suffix('.c')
@@ -158,6 +158,11 @@ def metal_observer(bend,source,binary):
                     '-DBEND_METAL=1','-x','objective-c','-fobjc-arc','-fmodules','-std=c11','-O3',
                     str(cpath),'-lpthread','-lm','-o',str(binary)],check=True,env=env,timeout=120)
     subprocess.run([str(binary),'--gpu-build'],check=True,cwd=ROOT,env=env,capture_output=True,timeout=120)
+    return binary
+
+
+def metal_observer(bend,source,binary):
+    compile_metal_observer(bend,source,binary)
     result = exercise(binary,True)
     assert len(result['observed_metal_command_ms']) == 10, result['observed_metal_command_ms']
     return {'diagnostic_only':True,**result}

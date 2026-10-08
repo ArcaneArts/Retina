@@ -412,6 +412,30 @@ tasks.register('bendNoiseTest', Exec) {
     if (providers.gradleProperty('proveMetal').isPresent()) args '--prove-metal'
 }
 
+tasks.register('bendNumericTest', Exec) {
+    group = 'verification'
+    description = 'Independently check Bend i64/f64-to-F32 rounding on CPU and GPU.'
+    mustRunAfter 'bendRegistryWireTest', 'bendRegistryNoiseTest', 'bendEngineTest'
+    workingDir rootProject.projectDir
+    commandLine providers.gradleProperty('pythonExecutable').getOrElse('python3'), 'scripts/test_bend_numbers.py'
+    if (providers.gradleProperty('proveMetal').isPresent()) args '--prove-metal'
+}
+
+def registryNoiseProfiles = providers.gradleProperty('bendNoiseProfiles').getOrElse('')
+tasks.register('bendRegistryNoiseTest', Exec) {
+    group = 'verification'
+    description = 'Prepare loaded registry climate/ridge noise in Bend and validate persistent CPU/GPU samples.'
+    workingDir rootProject.projectDir
+    commandLine providers.gradleProperty('pythonExecutable').getOrElse('python3'), 'scripts/test_bend_registry_noise.py'
+    if (providers.gradleProperty('proveMetal').isPresent()) args '--prove-metal'
+    if (!registryNoiseProfiles.isEmpty()) registryNoiseProfiles.split(',').each { pair ->
+        pair.split('=', 2).with { paths -> args '--profile', paths[0], paths[1] }
+    }
+    // These harnesses compile the same stock engine path; do not run concurrent
+    // native compilers against it when several explicit tasks are requested.
+    mustRunAfter 'bendRegistryWireTest'
+}
+
 tasks.register('bendEngineTest', Exec) {
     group = 'verification'
     description = 'Compile and exercise the persistent Bend worker and independent CPU/GPU protocol checks.'
@@ -510,4 +534,4 @@ tasks.register('bendRegistryWireTest', Exec) {
 
 // Both explicit harnesses build build/bend/engine; serialize them when selected
 // together, including Gradle configurations that allow parallel task execution.
-tasks.named('bendEngineTest') { mustRunAfter 'bendRegistryWireTest' }
+tasks.named('bendEngineTest') { mustRunAfter 'bendRegistryWireTest', 'bendRegistryNoiseTest' }

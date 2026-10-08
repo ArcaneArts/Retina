@@ -31,7 +31,7 @@ more deeply; retain the original requested scope.
 
 | Requirement | Current Rust/shared source | Bend implementation / completion evidence |
 | --- | --- | --- |
-| Shared loaded registry export, including palette properties and climate intervals | `TerrainProfileData.java`, `RegistryGpuProgram.java`, `native/src/profile.rs` | Export decoupled from Rust initialization; actual vanilla, Terralith and Terralith+supplement registries pass with native library unavailable. Explicit Rust adapter receives byte-identical data and passes real Metal queries. Full structural profiles now stream into a resident Bend word tape with lossless field/array/string access and independent full-value checks. Typed terrain/program interpretation pending |
+| Shared loaded registry export, including palette properties and climate intervals | `TerrainProfileData.java`, `RegistryGpuProgram.java`, `native/src/profile.rs` | Export decoupled from Rust initialization; actual vanilla, Terralith and Terralith+supplement registries pass with native library unavailable. Explicit Rust adapter receives byte-identical data and passes real Metal queries. Full structural profiles now stream into a resident Bend word tape with lossless field/array/string access and independent full-value checks. Loaded climate/ridge stacks now resolve schema keys and convert numeric parameters entirely in Bend; density/terrain program interpretation pending |
 | Noise stacks, density bytecode, splines and GPU interpolation | `native/src/program.rs`, `program/`, `program.wgsl`, `noise3.wgsl`, `simplex.wgsl` | Reusable Bend seeded simplex/3D gradient kernels, weighted octave stacks and trilinear primitive implemented and independently checked on CPU and actual Metal. Integer/fraction coordinate handling checked through signed-i32 extremes. Density bytecode/splines, actual interpolation fields and runtime integration pending |
 | Climate targets, biome selection, smooth boundaries and underground biomes | `climate.rs`, `climate.wgsl`, `RetinaBiomeSource.java` | Pending |
 | Coastlines, shore materials, rivers and material predicates/layers | `ShoreMaterialProfile.java`, `column_program.rs`, `materials.wgsl` | Pending |
@@ -43,7 +43,7 @@ more deeply; retain the original requested scope.
 | Jigsaw pools/templates/processors, structures spanning regions and locate queries | `StructureProfile.java`, `structures.rs`, `structure_processors.rs`, `queries.rs` | Pending |
 | Structure entities/block entities/loot and attachment rotations | `nbt.rs`, `structures.rs`, `structure_processors.rs` | Pending |
 | Snow, freezing, plant support and path/gravel restrictions | `LightingProfile.java`, profile material/survival tables, `region.rs` | Pending |
-| Full 64-bit seeds, signed/distant coordinates and repeatable ordering | `ChunkRequest`, native hash/random routines | Exact word-pair add/subtract/multiply/bit operations implemented; 3,689 operations independently verified. Integration and coordinate/order checks pending |
+| Full 64-bit seeds, signed/distant coordinates and repeatable ordering | `ChunkRequest`, native hash/random routines | Exact word-pair add/subtract/multiply/bit operations implemented; 3,689 operations independently verified. Typed i64/f64-to-F32 rounding independently verifies 131,072 scalar conversions per CPU/GPU run, including distant-value midpoint cases. Integration and coordinate/order checks pending |
 | Block/biome palettes, bit-packed long arrays, heightmaps, modified UTF-8 NBT and current data versions | `region.rs`, `nbt.rs` | Pure Bend palette remapping (49,664 indices), final-block heightmaps and complete fixture chunk encoding implemented. Minecraft 26.3 (data version 5023) reads/reopens mixed and prelit fixture chunks through actual region, palette and SerializableChunkData decoders. Registry/runtime generation integration remains pending |
 | LZ77, fixed-Huffman DEFLATE, zlib/Adler-32 and stored fallback | `region.rs` uses libdeflater | Implemented in `bend/compression.bend`; independent fixture tests pass |
 | Independent parallel chunk compression | Rayon chunk assembly in `region.rs` | Implemented Bend fork/join API; four streams verified at 1/2/4 workers; region integration pending |
@@ -102,7 +102,13 @@ more deeply; retain the original requested scope.
    independently compared value by value; CPU/GPU-required workers retain
    the validated tape across input queries, rejected/truncated/missing uploads,
    noise dispatches and deletion of the staging file. Java encoding passes
-   within 256 MiB heap. Typed program interpretation and actual region
+   within 256 MiB heap. Merged in
+   [PR #25](https://github.com/ArcaneArts/Retina/pull/25), commit `05fefc3`.
+   Both initial CI builds failed during parallel Gradle classpath resolution;
+   [PR #26](https://github.com/ArcaneArts/Retina/pull/26), commit `d71afe5`,
+   repairs task-time resolution and configuration-cache reuse. Both repair CI
+   builds passed, along with the complete host Fabric/NeoForge build and 64
+   native unit tests. Typed program interpretation and actual region
    commands/coalescing remain pending.
 4. **GPU terrain and registry programs.** Port numerical kernels, climate,
    interpolation, materials, caves, fluids and surface/query consistency.
@@ -115,6 +121,16 @@ more deeply; retain the original requested scope.
    integrated terrain generator. See `docs/benchmarks/bend-noise-correctness.json`.
    Merged in [PR #23](https://github.com/ArcaneArts/Retina/pull/23), commit `5f0f837`;
    both CI builds passed.
+   Loaded climate/ridge octave preparation now resolves schema keys and converts
+   exact i64/f64 parameters inside Bend, reusing the persistent GPU sample path.
+   Numeric tests check 131,072 conversions per CPU/GPU run; actual vanilla,
+   Terralith and combined input tests check 16,100 independent samples per backend,
+   18 rejected typed profiles and unchanged resident stacks. Diagnostic observers
+   confirm actual Metal work and matching normal-executable output. This prepares
+   registered octave stacks; loaded density DAGs, climate target selection and
+   full terrain integration remain pending. Evidence is in
+   `docs/benchmarks/bend-numeric-correctness.json` and
+   `docs/benchmarks/bend-registry-noise.json`.
 5. **Registered features and structures.** Port ordered decorations, geology,
    jigsaw/templates/processors and metadata with cross-region tests.
 6. **GPU lighting and integration.** Interior prelighting, cache/promotion,

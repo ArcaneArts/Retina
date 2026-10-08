@@ -5,11 +5,13 @@ import ./compression.bend as Z
 import ./reader.bend as R
 import ./transport.bend as T
 import ./registry.bend as P
+import ./registry_noise.bend as RN
 
 # Persistent binary worker. Protocol v1 is a component transport, not yet a
 # world generator: PING=0, PREPARE_NOISE=1, SAMPLE_GRID=2, COMPRESS=3, STOP=4,
 # LOAD_PROFILE=5 (staged path), QUERY_PROFILE=6 (dictionary/index path),
-# PROFILE_TEXT=7 (lossless packed UTF-16 string).
+# PROFILE_TEXT=7 (lossless packed UTF-16 string),
+# PROFILE_NOISE=8 (prepare a loaded climate/ridge stack using both seed words).
 # Requests: RBND magic, payload length, request ID, opcode (all BE u32).
 # Responses add a status u32 after opcode. stdout contains frames only.
 type State is Type:
@@ -292,6 +294,21 @@ def profile_text(input: File,output: File,old: State,backend: U32,id: U32,opcode
       text_body(R.end(cursor),doc,key,input,output,noise,backend,id,opcode))
 
 @unsafe
+def selected_noise(valid: Bool,old: State,low: U32,high: U32,channel: U32,input: File,output: File,backend: U32,id: U32,opcode: U32) -> IO(Unit):
+  match valid old:
+    case False{} _: error(input,output,old,backend,id,opcode,603)
+    case True{} State{noise,None{}}: error(input,output,State{noise,None{}},backend,id,opcode,708)
+    case True{} State{noise,Some{doc}}:
+      RN.prepare(IO(Unit),doc,channel,low,high,doc => result =>
+        set_result(result,input,output,State{noise,Some{doc}},backend,id,opcode))
+
+@unsafe
+def profile_noise(input: File,output: File,old: State,backend: U32,id: U32,opcode: U32,body: Z.Bytes) -> IO(Unit):
+  R.word(IO(Unit),R.start(body),cursor => low => R.word(IO(Unit),cursor,cursor => high =>
+    R.word(IO(Unit),cursor,cursor => +channel => selected_noise(Bool.and(R.end(cursor),U32.is_le(channel,4)),
+      old,low,high,channel,input,output,backend,id,opcode))))
+
+@unsafe
 def dispatch(input: File,output: File,stack: State,backend: U32,id: U32,opcode: U32,body: Z.Bytes) -> IO(Unit):
   match opcode:
     case 0: empty_command(R.end(R.start(body)),input,output,stack,backend,id,0)
@@ -301,6 +318,7 @@ def dispatch(input: File,output: File,stack: State,backend: U32,id: U32,opcode: 
     case 5: profile_load(input,output,stack,backend,id,5,body)
     case 6: profile_query(input,output,stack,backend,id,6,body)
     case 7: profile_text(input,output,stack,backend,id,7,body)
+    case 8: profile_noise(input,output,stack,backend,id,8,body)
     case 4: empty_command(R.end(R.start(body)),input,output,stack,backend,id,4)
     case _: error(input,output,stack,backend,id,opcode,605)
 
