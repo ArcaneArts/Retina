@@ -1,0 +1,79 @@
+{
+  "scope": "Seeded noise correctness; not full generation or performance",
+  "bend_version": "bend 2.0.36",
+  "invalid_configurations_rejected_per_run": 8,
+  "additional_seed_and_stack_boundary_checks_per_run": 6,
+  "runs": [
+    {
+      "requested_gpu": "off",
+      "threads": 1,
+      "rows": 8192,
+      "scalar_values": 49152,
+      "max_absolute_errors": [
+        1.0281759688091086e-06,
+        2.401791026229727e-06,
+        1.120111184693684e-06,
+        1.0988978206283306e-06,
+        7.629394531694089e-07,
+        1.1661340044710755e-06
+      ],
+      "distant_neighbor_pairs_with_variation": 1170,
+      "sha256": "8eea19d8f475f7969b15e2ee558536f1a335518783bfa6da822fbe082c39ff23"
+    },
+    {
+      "requested_gpu": "off",
+      "threads": 2,
+      "rows": 8192,
+      "scalar_values": 49152,
+      "max_absolute_errors": [
+        1.0281759688091086e-06,
+        2.401791026229727e-06,
+        1.120111184693684e-06,
+        1.0988978206283306e-06,
+        7.629394531694089e-07,
+        1.1661340044710755e-06
+      ],
+      "distant_neighbor_pairs_with_variation": 1170,
+      "sha256": "8eea19d8f475f7969b15e2ee558536f1a335518783bfa6da822fbe082c39ff23"
+    },
+    {
+      "requested_gpu": "on",
+      "threads": 2,
+      "rows": 8192,
+      "scalar_values": 49152,
+      "max_absolute_errors": [
+        1.0281759688091086e-06,
+        2.401791026229727e-06,
+        1.120111184693684e-06,
+        1.0988978206283306e-06,
+        7.629394531694089e-07,
+        1.1661340044710755e-06
+      ],
+      "distant_neighbor_pairs_with_variation": 1170,
+      "sha256": "8eea19d8f475f7969b15e2ee558536f1a335518783bfa6da822fbe082c39ff23"
+    }
+  ],
+  "cpu_gpu_bytes_equal": true,
+  "metal_observation": {
+    "diagnostic_only": true,
+    "actual_command_buffers": 1,
+    "device_ms": [
+      12.824875
+    ],
+    "output": {
+      "rows": 8192,
+      "scalar_values": 49152,
+      "max_absolute_errors": [
+        1.0281759688091086e-06,
+        2.401791026229727e-06,
+        1.120111184693684e-06,
+        1.0988978206283306e-06,
+        7.629394531694089e-07,
+        1.1661340044710755e-06
+      ],
+      "distant_neighbor_pairs_with_variation": 1170,
+      "sha256": "8eea19d8f475f7969b15e2ee558536f1a335518783bfa6da822fbe082c39ff23"
+    }
+  },
+  "source_sha256": "80485dd8d18580a1044c8e55dbd03dab1b8dbdd9aa6681e1b8f6743fce928c1d"
+}

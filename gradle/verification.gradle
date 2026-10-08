@@ -404,6 +404,14 @@ tasks.register('bendChunkFixtures', Exec) {
     commandLine providers.gradleProperty('pythonExecutable').getOrElse('python3'), 'scripts/test_bend_chunks.py'
 }
 
+tasks.register('bendNoiseTest', Exec) {
+    group = 'verification'
+    description = 'Validate seeded Bend simplex, gradient noise and interpolation on CPU and GPU.'
+    workingDir rootProject.projectDir
+    commandLine providers.gradleProperty('pythonExecutable').getOrElse('python3'), 'scripts/test_bend_noise.py'
+    if (providers.gradleProperty('proveMetal').isPresent()) args '--prove-metal'
+}
+
 tasks.register('bendChunkTest', JavaExec) {
     group = 'verification'
     description = 'Decode pure Bend MCA chunks with Minecraft palettes, heightmap predicates and SerializableChunkData.'

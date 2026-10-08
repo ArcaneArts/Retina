@@ -32,7 +32,7 @@ more deeply; retain the original requested scope.
 | Requirement | Current Rust/shared source | Bend implementation / completion evidence |
 | --- | --- | --- |
 | Shared loaded registry export, including palette properties and climate intervals | `TerrainProfileData.java`, `RegistryGpuProgram.java`, `native/src/profile.rs` | Export decoupled from Rust initialization; actual vanilla, Terralith and Terralith+supplement registries pass with native library unavailable. Explicit Rust adapter receives byte-identical data and passes real Metal queries. Bend transport/interpretation pending |
-| Noise stacks, density bytecode, splines and GPU interpolation | `native/src/program.rs`, `program/`, `program.wgsl`, `noise3.wgsl`, `simplex.wgsl` | Pending: reusable runtime kernels; existing experiment proves only simplex feasibility |
+| Noise stacks, density bytecode, splines and GPU interpolation | `native/src/program.rs`, `program/`, `program.wgsl`, `noise3.wgsl`, `simplex.wgsl` | Reusable Bend seeded simplex/3D gradient kernels, weighted octave stacks and trilinear primitive implemented and independently checked on CPU and actual Metal. Integer/fraction coordinate handling checked through signed-i32 extremes. Density bytecode/splines, actual interpolation fields and runtime integration pending |
 | Climate targets, biome selection, smooth boundaries and underground biomes | `climate.rs`, `climate.wgsl`, `RetinaBiomeSource.java` | Pending |
 | Coastlines, shore materials, rivers and material predicates/layers | `ShoreMaterialProfile.java`, `column_program.rs`, `materials.wgsl` | Pending |
 | Caves, ravines, rare surface entrances and cave decoration | `GeologyProfile.java`, `geology.rs`, `features.rs`, `caves.wgsl` | Pending |
@@ -84,9 +84,18 @@ more deeply; retain the original requested scope.
    Lithosphere pack was also actually attempted but fails Minecraft 26.3's own
    registry loader because its data uses older formats. Evidence is recorded in
    `docs/benchmarks/bend-registry-export.json`. Bend transport and persistent
-   execution remain required.
+   execution remain required. Shared extraction merged in
+   [PR #22](https://github.com/ArcaneArts/Retina/pull/22), commit `a90f33d`; both CI
+   builds passed.
 4. **GPU terrain and registry programs.** Port numerical kernels, climate,
    interpolation, materials, caves, fluids and surface/query consistency.
+   `bend/noise.bend` now provides reusable seeded simplex, 3D gradient noise,
+   weighted octave preparation and trilinear interpolation. Independent scalar
+   equations validate 8,192 sample rows / 49,152 scalar values per run on one/two
+   CPU workers and GPU. A diagnostic stock-runtime observer confirms an actual
+   Metal command buffer; the observed executable produces identical fixture
+   bytes. This is numerical component evidence, not a region benchmark or an
+   integrated terrain generator. See `docs/benchmarks/bend-noise-correctness.json`.
 5. **Registered features and structures.** Port ordered decorations, geology,
    jigsaw/templates/processors and metadata with cross-region tests.
 6. **GPU lighting and integration.** Interior prelighting, cache/promotion,
