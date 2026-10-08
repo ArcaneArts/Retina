@@ -1,0 +1,333 @@
+{
+  "payload_cases": [
+    {
+      "name": "empty",
+      "input_bytes": 0,
+      "zlib_bytes": 8,
+      "driver_wall_ms": 152.34370902180672,
+      "sha256": "09d469dfeeaf4c436fd3f80ba7e168bcc34e5050993b5da3c8416fbae680f18f"
+    },
+    {
+      "name": "one_zero",
+      "input_bytes": 1,
+      "zlib_bytes": 9,
+      "driver_wall_ms": 4.798291949555278,
+      "sha256": "94b176b91437ca9041d4081d518e88e36c71ffc4bc598800b2bccd6d9a080f03"
+    },
+    {
+      "name": "one_ff",
+      "input_bytes": 1,
+      "zlib_bytes": 9,
+      "driver_wall_ms": 3.996749990619719,
+      "sha256": "f1137a4fc67f98c142dae10f2335995c9c159f1fc55ea1eabf82243029606d48"
+    },
+    {
+      "name": "all_literals",
+      "input_bytes": 256,
+      "zlib_bytes": 267,
+      "driver_wall_ms": 4.1762919863685966,
+      "sha256": "d3341eb5414a98051bd69af0b0005c47c1625bf2af08ef58a6e6a5e9f35a9755"
+    },
+    {
+      "name": "overlapping_distance_one",
+      "input_bytes": 10000,
+      "zlib_bytes": 106,
+      "driver_wall_ms": 5.144458031281829,
+      "sha256": "8ee87da682e0e6af15faa30c7a439050ec3755d28cd65c0013dfbc819c96e3ad"
+    },
+    {
+      "name": "overlapping_distance_three",
+      "input_bytes": 30000,
+      "zlib_bytes": 303,
+      "driver_wall_ms": 6.906209047883749,
+      "sha256": "d88457185deec438f474dc4fb41f612cfc297028991a887cf348c5ddf996dfbf"
+    },
+    {
+      "name": "long_period",
+      "input_bytes": 1048576,
+      "zlib_bytes": 13532,
+      "driver_wall_ms": 82.29666692204773,
+      "sha256": "81ec1ec20ca56db0d2e003bcfc7738078142d1aeed101a4fb4620567c8c61227"
+    },
+    {
+      "name": "nbt_like",
+      "input_bytes": 376832,
+      "zlib_bytes": 4433,
+      "driver_wall_ms": 29.955499921925366,
+      "sha256": "ee6f28e2a0e680e0a055546f6fde674ba2704c13adced2cb610f72106938ed90"
+    },
+    {
+      "name": "random_2",
+      "input_bytes": 2,
+      "zlib_bytes": 10,
+      "driver_wall_ms": 4.444499965757132,
+      "sha256": "caa8992a0daef5c2f2a8e0f0f9664bd7ea64e7aa1f050dd533120285c024dc1d"
+    },
+    {
+      "name": "random_3",
+      "input_bytes": 3,
+      "zlib_bytes": 11,
+      "driver_wall_ms": 4.440832999534905,
+      "sha256": "4cbd8dbf32526a0066d007e1e41bbe8386136224b6040c442efa947f74ed0887"
+    },
+    {
+      "name": "random_257",
+      "input_bytes": 257,
+      "zlib_bytes": 268,
+      "driver_wall_ms": 4.068959038704634,
+      "sha256": "5220a0f442a8630b13b9f23e6c96d6c6a011ff3de283eae4404451a52e9068ef"
+    },
+    {
+      "name": "random_258",
+      "input_bytes": 258,
+      "zlib_bytes": 269,
+      "driver_wall_ms": 4.278833046555519,
+      "sha256": "5fccd256ef2f1b072e9e2e0c8fe9e92ea4661c0e794d5f66acd32eecdb7b16b6"
+    },
+    {
+      "name": "random_259",
+      "input_bytes": 259,
+      "zlib_bytes": 270,
+      "driver_wall_ms": 4.277333966456354,
+      "sha256": "926252ec4dff8e3878dcba040a9aab15376f9d9e7c0e0ecd2e9cf70f2ed9f276"
+    },
+    {
+      "name": "random_32767",
+      "input_bytes": 32767,
+      "zlib_bytes": 32778,
+      "driver_wall_ms": 12.77516596019268,
+      "sha256": "300bdeff41ff2f789d1dda11441d3507948c1a5611d0c7f0749af6d704c989a4"
+    },
+    {
+      "name": "random_32768",
+      "input_bytes": 32768,
+      "zlib_bytes": 32779,
+      "driver_wall_ms": 13.16929201129824,
+      "sha256": "501290c3390fdf2361ec253ce3f7d7ee0738ca1637487e4ea8997e25b4aade94"
+    },
+    {
+      "name": "random_32769",
+      "input_bytes": 32769,
+      "zlib_bytes": 32780,
+      "driver_wall_ms": 18.553041969425976,
+      "sha256": "60455e2f7fdea0e05244ea76398133bb29be9fdbc03d5dfddb7b8e38adb02f25"
+    },
+    {
+      "name": "random_65534",
+      "input_bytes": 65534,
+      "zlib_bytes": 65545,
+      "driver_wall_ms": 21.988666034303606,
+      "sha256": "a77a2068becc806b0f73a40da11a4af617b50c642eb8e64ef61d19e848d0bcfe"
+    },
+    {
+      "name": "random_65535",
+      "input_bytes": 65535,
+      "zlib_bytes": 65546,
+      "driver_wall_ms": 33.776958007365465,
+      "sha256": "5b90d238bdec0015095908d5c8b50a8a2fa7fce0f8d7f69089607dc5b8e2760f"
+    },
+    {
+      "name": "random_65536",
+      "input_bytes": 65536,
+      "zlib_bytes": 65552,
+      "driver_wall_ms": 25.294166058301926,
+      "sha256": "9bfad64b513e2fcf15deb7865d375c36c7f9104625a0732451a2e16b15875df4"
+    },
+    {
+      "name": "random_131070",
+      "input_bytes": 131070,
+      "zlib_bytes": 131086,
+      "driver_wall_ms": 38.828167016617954,
+      "sha256": "9031a3c0976df9dcaa7f4fc9c4e15c39db9d1e2a46dce7c90294c3121affea15"
+    },
+    {
+      "name": "random_131071",
+      "input_bytes": 131071,
+      "zlib_bytes": 131092,
+      "driver_wall_ms": 38.58320799190551,
+      "sha256": "05eeaeef67413e1c56d3a10a70a9f2820c6e65b6bb0961095561d3584eb56e1c"
+    },
+    {
+      "name": "random_1048576",
+      "input_bytes": 1048576,
+      "zlib_bytes": 1048667,
+      "driver_wall_ms": 293.801708961837,
+      "sha256": "6b2d32572e7723676d13f3ae3b1d35f542a326ec73237800483afc71dc767637"
+    },
+    {
+      "name": "mixed_0",
+      "input_bytes": 4136,
+      "zlib_bytes": 1152,
+      "driver_wall_ms": 5.469667026773095,
+      "sha256": "c1a15470b9bbe609bc4987b129e9cb058f2b0422ee1e9ed0da899359cc40701d"
+    },
+    {
+      "name": "mixed_1",
+      "input_bytes": 9728,
+      "zlib_bytes": 2751,
+      "driver_wall_ms": 5.629416089504957,
+      "sha256": "cdfbc6c6d3bf1f0692bfeac682e88972bae359f73cdb6c1e95dfcc3875b100a8"
+    },
+    {
+      "name": "mixed_2",
+      "input_bytes": 24948,
+      "zlib_bytes": 6771,
+      "driver_wall_ms": 13.293875032104552,
+      "sha256": "b20320485155708b7fad959ba2e5586c5504feeef943a2ba7839a23bc1c0a10a"
+    },
+    {
+      "name": "mixed_3",
+      "input_bytes": 8778,
+      "zlib_bytes": 2432,
+      "driver_wall_ms": 5.932040978223085,
+      "sha256": "cd637e5dc62fb512fd1db1af4630362f573d31e8c9bdb6be0994c38a9d75ad54"
+    },
+    {
+      "name": "mixed_4",
+      "input_bytes": 2208,
+      "zlib_bytes": 684,
+      "driver_wall_ms": 5.204709013924003,
+      "sha256": "6256d66aa2e38031ea0510dd7673f082ba5741dce51801762dd6593d13a5f3b8"
+    },
+    {
+      "name": "mixed_5",
+      "input_bytes": 12690,
+      "zlib_bytes": 3721,
+      "driver_wall_ms": 5.91750000603497,
+      "sha256": "394a476ae652bc1daab95cb4c91b0c52bb50fed367d587f7fbe50e4f5cd8986c"
+    },
+    {
+      "name": "mixed_6",
+      "input_bytes": 12696,
+      "zlib_bytes": 3541,
+      "driver_wall_ms": 6.0529999900609255,
+      "sha256": "39f03d87c16ad9f92b02a8226066787efdc66d410aef43ba828b2ea1a59697d6"
+    },
+    {
+      "name": "mixed_7",
+      "input_bytes": 16632,
+      "zlib_bytes": 4476,
+      "driver_wall_ms": 6.567957927472889,
+      "sha256": "9fe6a957542609e2ba6ac09bcfe0f5babb319e87811ab82770db6f1f9ef612a8"
+    },
+    {
+      "name": "mixed_8",
+      "input_bytes": 28420,
+      "zlib_bytes": 7790,
+      "driver_wall_ms": 7.837000070139766,
+      "sha256": "6688ecb62db35713aed7a8bcfdf4825899fce23c86841aa0ac189bdd68769c17"
+    },
+    {
+      "name": "mixed_9",
+      "input_bytes": 17457,
+      "zlib_bytes": 4941,
+      "driver_wall_ms": 6.6305838990956545,
+      "sha256": "0ff7d84c13ea613e24b6c19fd84d46266e2c906ffa11b9fc3ce93c8a8491326f"
+    },
+    {
+      "name": "mixed_10",
+      "input_bytes": 13230,
+      "zlib_bytes": 3886,
+      "driver_wall_ms": 5.886042024940252,
+      "sha256": "c8d50b293cf4b336d51b7d6a4a40f1ed492a5a84455b270470d311571d9dbecb"
+    },
+    {
+      "name": "mixed_11",
+      "input_bytes": 16280,
+      "zlib_bytes": 4809,
+      "driver_wall_ms": 6.019999971613288,
+      "sha256": "c0aff4d1dcf251190b812ba9116e25e058cf92029fe980075b4680458059679b"
+    },
+    {
+      "name": "mixed_12",
+      "input_bytes": 31993,
+      "zlib_bytes": 8937,
+      "driver_wall_ms": 7.965874974615872,
+      "sha256": "5666b85b009ed84c459c6f5c106da911a59b99d47cadb59a14f00a2a24acfdbc"
+    },
+    {
+      "name": "mixed_13",
+      "input_bytes": 21840,
+      "zlib_bytes": 6232,
+      "driver_wall_ms": 7.052458939142525,
+      "sha256": "cf1705d1d9d591182f1e7a0336c091d0b7f9c82d88122f4465728e0a18edc1c5"
+    },
+    {
+      "name": "mixed_14",
+      "input_bytes": 12549,
+      "zlib_bytes": 3352,
+      "driver_wall_ms": 5.908209015615284,
+      "sha256": "5394ed982200a9a693e4bfe7948256c4e211f05e0c38ca4e5e01d6caaf9f0a1b"
+    },
+    {
+      "name": "mixed_15",
+      "input_bytes": 12495,
+      "zlib_bytes": 3497,
+      "driver_wall_ms": 5.775582976639271,
+      "sha256": "abbb45551295c58abc26493382903292dbaec1a2a7a61d5e44c5aa04a9547617"
+    },
+    {
+      "name": "mixed_16",
+      "input_bytes": 7473,
+      "zlib_bytes": 2142,
+      "driver_wall_ms": 6.164749967865646,
+      "sha256": "0d59adf6805eb720bdb3d4bb83ccb1e16dfc5524efaa3a9b3af43f9593359f1d"
+    },
+    {
+      "name": "mixed_17",
+      "input_bytes": 1495,
+      "zlib_bytes": 343,
+      "driver_wall_ms": 6.237875088118017,
+      "sha256": "6cc3d9e356df4652789d1de9597c710296992430cdcfe3a3d8b2d103487faaa3"
+    },
+    {
+      "name": "mixed_18",
+      "input_bytes": 5733,
+      "zlib_bytes": 1734,
+      "driver_wall_ms": 5.419458029791713,
+      "sha256": "222bbd028362a1e6d64dcad1b39c67831deb0c57563cb5bf376e3aff66475ee2"
+    },
+    {
+      "name": "mixed_19",
+      "input_bytes": 21560,
+      "zlib_bytes": 6246,
+      "driver_wall_ms": 6.94837502669543,
+      "sha256": "87f2629d15e0a40983c59344ae75fa18d16c6974f3002e326605f1178d7b58d6"
+    },
+    {
+      "name": "mixed_20",
+      "input_bytes": 12558,
+      "zlib_bytes": 3599,
+      "driver_wall_ms": 5.771333002485335,
+      "sha256": "ff181d7f814071e1a0b4cd09146ea04136b33907f24da6c28f7ffda903e34b5f"
+    },
+    {
+      "name": "mixed_21",
+      "input_bytes": 8758,
+      "zlib_bytes": 2361,
+      "driver_wall_ms": 5.409750039689243,
+      "sha256": "d3a8a6748e14eac51a42bba42cb83629ffb492574446d649a3b5059f3690fee5"
+    },
+    {
+      "name": "mixed_22",
+      "input_bytes": 17020,
+      "zlib_bytes": 4882,
+      "driver_wall_ms": 6.044332985766232,
+      "sha256": "b5b512d7d99024294dae965a48cdf88d24495a07fa8a9e39d886c4274f5d705b"
+    },
+    {
+      "name": "mixed_23",
+      "input_bytes": 665,
+      "zlib_bytes": 202,
+      "driver_wall_ms": 4.761957912705839,
+      "sha256": "e510190378d969a1a6dfc98a103fcabce392b11d4b3c9181c13aa6d3b66416a3"
+    }
+  ],
+  "backreference_cases": 312,
+  "parallel_streams_verified": 12,
+  "invalid_requests_rejected": 7,
+  "decoder": "Python zlib 1.2.12",
+  "bend_version": "bend 2.0.36",
+  "source_sha256": "e42e1a312180ee0fce6faad39fc82b9a2e43ba05727e04d9a3c8e7651dd14130",
+  "scope": "compression correctness; not full region performance"
+}
