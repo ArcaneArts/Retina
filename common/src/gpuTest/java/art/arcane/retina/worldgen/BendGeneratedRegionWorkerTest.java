@@ -28,8 +28,10 @@ public final class BendGeneratedRegionWorkerTest {
                     await(worker.loadProfile(profile));await(worker.prepareProfileDensity());
                     await(worker.prepareProfileMaterials());await(worker.prepareProfileBlocks());
                     await(worker.prepareProfileClimate());await(worker.prepareProfileSurface());await(worker.prepareProfileChunks());
-                    byte[] descriptor = await(worker.surfaceDensityDescriptor(-513, -1, 514, 514, seed));
+                    byte[] descriptor = await(worker.surfaceDensityDescriptor(-518, -6, 524, 524, seed));
                     await(worker.request(13, descriptor));await(worker.generateSurfaceColumns(-512, 0, 512, 512, seed));
+                    require(Arrays.equals(await(worker.finalizeShorelineColumns()),
+                            ByteBuffer.allocate(12).putInt(512).putInt(512).putInt(262144).array()), "resident shoreline acknowledgement");
                     await(worker.generateBlockColumns());
                     byte[] chunk = await(worker.encodeGeneratedChunk(-32, 0, seed, 5023, true));
                     var first = folder.resolve(execution + "-first.mca");

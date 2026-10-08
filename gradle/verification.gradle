@@ -519,6 +519,19 @@ tasks.register('bendNumericTest', Exec) {
     if (providers.gradleProperty('proveMetal').isPresent()) args '--prove-metal'
 }
 
+tasks.register('bendShorelineTest', Exec) {
+    group = 'verification'
+    description = 'Check exact Bend shore heights, registered coastal materials and actual Metal execution.'
+    workingDir rootProject.projectDir
+    commandLine providers.gradleProperty('pythonExecutable').getOrElse('python3'), 'scripts/test_bend_shoreline.py'
+    if (providers.gradleProperty('bendSkipBuild').isPresent()) args '--skip-build'
+    if (providers.gradleProperty('proveMetal').isPresent()) args '--prove-metal'
+    if (!registryDensityProfiles.isEmpty()) registryDensityProfiles.split(',').each { pair ->
+        pair.split('=', 2).with { paths -> args '--profile', paths[0], paths[1] }
+    }
+    mustRunAfter 'bendRegistryWireTest', 'bendRegistryNoiseTest', 'bendRegistryClimateTest', 'bendEngineTest', 'bendNoiseTest', 'bendClimateTest', 'bendNumericTest', 'bendDensityTest', 'bendRegistryDensityTest', 'bendInterpolationTest', 'bendDensityLatticeTest', 'bendSurfaceTest', 'bendMaterialTest', 'bendMaterialColumnsTest', 'bendLazyMaterialTest'
+}
+
 def climateProfiles = providers.gradleProperty('bendClimateProfiles').getOrElse('')
 tasks.register('bendClimateTest', Exec) {
     group = 'verification'
@@ -626,7 +639,7 @@ tasks.register('bendGeneratedRegionFixtures', Exec) {
     if (providers.gradleProperty('proveMetal').isPresent()) args '--prove-metal'
     if (!registryDensityProfiles.isEmpty())
         registryDensityProfiles.split(',').each { pair -> args '--profile', *pair.split('=', 2) }
-    mustRunAfter 'bendRegistryWireTest', 'bendRegistryNoiseTest', 'bendRegistryClimateTest', 'bendEngineTest', 'bendNoiseTest', 'bendClimateTest', 'bendNumericTest', 'bendDensityTest', 'bendRegistryDensityTest', 'bendInterpolationTest', 'bendDensityLatticeTest', 'bendSurfaceTest', 'bendMaterialTest', 'bendMaterialColumnsTest', 'bendLazyMaterialTest', 'bendGeneratedChunkFixtures'
+    mustRunAfter 'bendRegistryWireTest', 'bendRegistryNoiseTest', 'bendRegistryClimateTest', 'bendEngineTest', 'bendNoiseTest', 'bendClimateTest', 'bendNumericTest', 'bendDensityTest', 'bendRegistryDensityTest', 'bendInterpolationTest', 'bendDensityLatticeTest', 'bendSurfaceTest', 'bendMaterialTest', 'bendMaterialColumnsTest', 'bendLazyMaterialTest', 'bendShorelineTest', 'bendGeneratedChunkFixtures'
 }
 
 tasks.register('bendGeneratedRegionTest', JavaExec) {
@@ -638,7 +651,7 @@ tasks.register('bendGeneratedRegionTest', JavaExec) {
     javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
     jvmArgs '-XX:ActiveProcessorCount=2'
     args '--regions', rootProject.file('build/bend/generated-regions').absolutePath,
-            providers.gradleProperty('bendGeneratedRegionProfiles').getOrElse('ramp,islands,vanilla')
+            providers.gradleProperty('bendGeneratedRegionProfiles').getOrElse('ramp,islands,coastal,vanilla')
     if (providers.gradleProperty('testDatapack').isPresent()) args providers.gradleProperty('testDatapack').get()
     if (providers.gradleProperty('testSupplement').isPresent()) args providers.gradleProperty('testSupplement').get()
     if (providers.gradleProperty('testRegistrySupplement').isPresent()) {

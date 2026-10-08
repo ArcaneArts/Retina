@@ -149,6 +149,17 @@ public final class BendWorker implements AutoCloseable {
         return request(16, surfaceTilePayload(x, z, width, depth, seed));
     }
 
+    /** Finalize resident surface heights against exact solid voxels and select
+     * registered coastal alternatives near actual land/water transitions.
+     * Request the density descriptor with six extra X/Z columns on each side
+     * when the climate registry contains shore targets. No terrain readback to Java is
+     * needed. The acknowledgement is width, depth and column count; success
+     * invalidates derived block columns while preserving the chunk catalog.
+     */
+    public CompletableFuture<byte[]> finalizeShorelineColumns() {
+        return request(29, new byte[0]);
+    }
+
     private static byte[] surfaceTilePayload(int x, int z, int width, int depth, long seed) {
         return java.nio.ByteBuffer.allocate(24).putInt(x).putInt(z).putInt(width).putInt(depth)
                 .putInt((int) seed).putInt((int) (seed >>> 32)).array();

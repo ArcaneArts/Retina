@@ -9,6 +9,7 @@ Gradle task. Optional loaded registry profiles exercise actual registered data.
 """
 import argparse
 import copy
+from collections import Counter
 import hashlib
 import json
 from pathlib import Path
@@ -29,6 +30,7 @@ from test_bend_surface import tile_bytes, query_bytes
 from test_bend_material_columns import decode
 from test_bend_density_lattice import LOW, HIGH
 from test_bend_noise import MASK
+from test_bend_shoreline import source_profile
 
 
 def request(x, z, path, low=LOW, high=HIGH, version=5023, timestamp=0x80000001):
@@ -44,6 +46,12 @@ def fixtures(folder):
         source=copy.deepcopy(source);source.update(geology_min_y=-16,geology_height=32)
         path=folder/(name+'.rbp');path.write_bytes(fixture_wire(source,True))
         result.append((name,source,path))
+    coastal=source_profile(folder/'coastal')
+    # The shore crosses the middle of this negative-X region. Raw climate would
+    # select shore targets everywhere; final selection must retain inland areas.
+    coastal['registry_program']['programs'][1]['nodes'][3]['p']=[40,0,0,0]
+    path=folder/'coastal.rbp';path.write_bytes(fixture_wire(coastal,True))
+    result.append(('coastal',coastal,path))
     return result
 
 
@@ -56,7 +64,7 @@ def exercise(binary, profiles, gpu, folder, version, repeat=True):
     worker=Worker(binary,gpu);rows=[];dispatches=0;hashes=[];blocks=0
     def call(op,data=b'',status=0):
         nonlocal dispatches
-        if op in (13,16,22) and status==0:dispatches+=1
+        if op in (13,16,22,29) and status==0:dispatches+=2 if op==29 else 1
         return worker.call(op,data,status=status)
     def reject(data, code):
         assert call(28,data,1)==struct.pack('>I',code),code
@@ -66,12 +74,12 @@ def exercise(binary, profiles, gpu, folder, version, repeat=True):
             signal.alarm(1800);print(f'{"GPU" if gpu else "CPU"}: whole generated region {name}',flush=True)
             call(5,path_request(wire));call(11);call(19);call(21);call(9);call(15)
             reject(b'',731);call(25);reject(b'',731)
-            rx,rz=(-1,0) if name=='ramp' else (58593,-58594) if name=='islands' else (-2,3)
+            rx,rz=(-1,0) if name in ('ramp','coastal') else (58593,-58594) if name=='islands' else (-2,3)
             low,high=(MASK,0x80000000) if name=='islands' else (LOW,HIGH)
             ox,oz=rx*512,rz*512
             started=time.perf_counter()
-            descriptor=call(18,tile_bytes((ox-1,oz-1,514,514,low,high)))
-            call(13,descriptor);call(16,tile_bytes((ox,oz,512,512,low,high)));call(22)
+            descriptor=call(18,tile_bytes((ox-6,oz-6,524,524,low,high)))
+            call(13,descriptor);call(16,tile_bytes((ox,oz,512,512,low,high)));call(29);call(22)
             generation_ms=(time.perf_counter()-started)*1000
             print(f'  generated resident tile in {generation_ms:.1f} ms; serializing 1024 chunks',flush=True)
             out=folder/('gpu' if gpu else 'cpu')/name;out.mkdir(parents=True,exist_ok=True)
@@ -89,6 +97,7 @@ def exercise(binary, profiles, gpu, folder, version, repeat=True):
             print(f'  staged {len(data)} MCA bytes in {write_ms:.1f} ms; independently decoding',flush=True)
             assert struct.unpack('>2I',ack)==(1024,len(data)//4096)
             records=read_region(data);assert set(records)==set(range(1024))
+            biome_counts=Counter()
             for slot,record in records.items():
                 tag=record['tag'];cx,cz=rx*32+slot%32,rz*32+slot//32
                 assert (tag['xPos'],tag['zPos'],tag['yPos'],tag['DataVersion'])==(cx,cz,source['geology_min_y']//16,version)
@@ -101,7 +110,11 @@ def exercise(binary, profiles, gpu, folder, version, repeat=True):
                     assert 'SkyLight' not in section and 'BlockLight' not in section
                     # Decode every packed index independently, including entries
                     # crossing 64-bit words. Complete block comparison below.
-                    palette(section['block_states'],4096,4);palette(section['biomes'],64,1)
+                    palette(section['block_states'],4096,4)
+                    biome_counts.update(palette(section['biomes'],64,1))
+            if name=='coastal':
+                total=sum(biome_counts.values());inland=biome_counts['minecraft:plains']
+                assert total*.95<inland<total,(name,biome_counts)
             samples=(0,31,32,511,512,992,1023)
             for slot in samples:
                 cx,cz=rx*32+slot%32,rz*32+slot//32
@@ -121,6 +134,7 @@ def exercise(binary, profiles, gpu, folder, version, repeat=True):
             rows.append(dict(name=name,region=[rx,rz],chunks=1024,world_min=source['geology_min_y'],
                 world_height=source['geology_height'],mca_bytes=len(data),sha256=digest,
                 generation_response_host_ms=generation_ms,encode_compress_write_response_host_ms=write_ms,
+                biome_quart_counts=dict(biome_counts),
                 repeated_file_identical=identical if repeat else None))
         call(4);assert worker.process.wait(timeout=10)==0
         diagnostic=worker.process.stderr.read().decode()

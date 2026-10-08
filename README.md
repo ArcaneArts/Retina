@@ -6,7 +6,9 @@ An independent pure Bend backend is in development. Its compression, Minecraft
 chunk encoding, persistent registry transport, loaded climate selection and
 numeric terrain programs, reusable GPU density lattices and GPU surface/climate
 tiles are verified. Bend now writes whole compressed base/material MCA regions
-from resident generated blocks; final features and lighting remain in progress.
+from resident generated blocks. A resident GPU pass now selects narrow shores
+from registered coastal targets using nearby solid terrain, before material
+assignment; final features and lighting remain in progress.
 It is not yet a selectable or complete generator.
 See the [implementation checklist](docs/BEND_IMPLEMENTATION.md) for remaining
 parity and integration work. The working Rust world types below remain available

@@ -34,7 +34,7 @@ more deeply; retain the original requested scope.
 | Shared loaded registry export, including palette properties and climate intervals | `TerrainProfileData.java`, `RegistryGpuProgram.java`, `native/src/profile.rs` | Export decoupled from Rust initialization; actual vanilla, Terralith and Terralith+supplement registries pass with native library unavailable. Explicit Rust adapter receives byte-identical data and passes real Metal queries. Full structural profiles now stream into a resident Bend word tape with lossless field/array/string access and independent full-value checks. Loaded climate/ridge stacks now resolve schema keys and convert numeric parameters entirely in Bend; numeric terrain DAGs now project and execute in the resident worker; material predicates now project and execute on CPU/GPU; GPU-derived material contexts and exhaustive compact vertical block runs implemented; final terrain integration pending |
 | Noise stacks, density bytecode, splines and GPU interpolation | `native/src/program.rs`, `program/`, `program.wgsl`, `noise3.wgsl`, `simplex.wgsl` | Reusable Bend seeded simplex/3D gradient kernels, weighted octave stacks and trilinear primitive implemented and independently checked on CPU and actual Metal. Integer/fraction coordinate handling checked through signed-i32 extremes. Numeric density opcodes 0..31, registered noise, ordered Hermite splines and nested trilinear fields implemented and independently checked with actual vanilla/Terralith/combined climate and terrain graphs on CPU/Metal. Compensated transformed coordinates preserve distant neighbors. Resident typed model projection and bounded persistent CPU/GPU queries implemented with reload invalidation; bounded top-level GPU lattices now retain samples for independently checked trilinear queries. GPU surface-height scans now consume the resident lattice; GPU-derived compact material layers implemented; per-field caching and runtime integration pending |
 | Climate targets, biome selection, smooth boundaries and underground biomes | `climate.rs`, `climate.wgsl`, `RetinaBiomeSource.java` | Pure Bend balanced interval indices and surface/underground/coastal lookup implemented, checked against independent linear search with actual registered intervals on CPU and Metal. Typed resident-tape projection and persistent query commands implemented with explicit reload invalidation. GPU spatial climate fields and surface biome selection now consume resident density tiles; compact material layers implemented; blended boundaries and world integration pending |
-| Coastlines, shore materials, rivers and material predicates/layers | `ShoreMaterialProfile.java`, `column_program.rs`, `materials.wgsl` | Pure Bend resident per-biome material DAGs and predicates (40..54) implemented with shared numeric evaluation, registered bands/sea/layer mode and bounded CPU/GPU query batches. Independent synthetic and actual loaded-profile checks cover supplied contexts; GPU context/compact block-run generation now implemented and independently checked; coastline remapping, 3D biome material assignment and final voxel integration remain required |
+| Coastlines, shore materials, rivers and material predicates/layers | `ShoreMaterialProfile.java`, `column_program.rs`, `materials.wgsl` | Pure Bend resident per-biome material DAGs and predicates (40..54) implemented with shared numeric evaluation, registered bands/sea/layer mode and bounded CPU/GPU query batches. GPU context/compact block runs implemented. Resident GPU coastal finalization now uses exact generated occupancy, six-block disk probes and registered climate alternatives before material generation; independent CPU/Metal checks cover inland/ocean exclusion, distinct materials and cache/coordinate rules. Inland rivers, ocean remapping, 3D biome material assignment and final integration remain required |
 | Caves, ravines, rare surface entrances and cave decoration | `GeologyProfile.java`, `geology.rs`, `features.rs`, `caves.wgsl` | Pending |
 | Lakes, aquifer fields and fluid barriers | `TerrainFeatureProfile.java`, `program/lake_sparse.rs`, `aquifers.wgsl` | Pending |
 | Ore height/count/replacement/discard rules and GPU rasterization | `geology/`, `ore.wgsl` | Pending |
@@ -433,3 +433,69 @@ is no universal GPU speedup claim. Every column's bytes match before and after
 timing. These are host response times for one component, including preparation
 and transport; other host load is uncontrolled. Evidence is recorded in
 `docs/benchmarks/bend-lazy-materials.json`.
+
+The branch-selected material cycle merged in [PR #40](https://github.com/ArcaneArts/Retina/pull/40),
+commit `7362dd5`; both actual push/PR CI builds passed.
+
+Coastal finalization now runs as two pure Bend GPU steps over the
+resident surface/density snapshot. It scans the same integer solid voxels used
+by material columns, excludes shore targets inland, and requires nearby terrain
+on the opposite side of sea level before consulting registered coastal targets.
+Six-block disk probes and a narrow height band reproduce the existing Rust
+shore approximation without adding biome-name/material heuristics. A six-column
+density halo supports matching decisions at tile boundaries; only the central
+columns are materialized and serialized. Sources without referenced shore
+targets retain the smaller coverage contract. The bridge sends an empty command
+and receives only dimensions; no bulk terrain IPC transfer intervenes.
+
+Independent CPU/GPU checks each verify 3,342 surface columns and 158,080 material
+voxels across thirteen synthetic profiles and actual vanilla, Terralith and
+combined inputs. They cover shallow open ocean, low inland plains, distinct
+registered shore materials, floating intervals, explicit height mode, negative
+sea levels, full seeds, signed/far coordinates, overlapping tiles, idempotence,
+rejected requests and dependent cache invalidation. All 253 expected Metal
+command buffers are observed, with diagnostic and normal output identical.
+This is a coastal component; inland rivers, ocean remapping, final cave/feature/
+structure/light behavior and running-world integration remain required.
+
+The direct-scan coastal draft repeatedly built whole vertical density columns
+for neighboring probes. A full vanilla Metal run spent 31,356 ms in that stage.
+The final implementation first caches integer heights, reusing the resident
+continuous heights as hints and validating adjacent voxel signs. Ambiguous
+crossings retain the full scan on the selected backend; clipped upper islands
+and very small density values have independent regression fixtures. A second
+GPU step performs only cached probes and climate lookups. The observed full
+vanilla cache/selection steps take 149/3,674 ms (3,823 ms combined). These are
+single correctness-run device measurements under uncontrolled external load,
+not a complete Rust-versus-Bend benchmark.
+
+All nine whole MCA files match the direct-scan coastal version byte-for-byte,
+including full vanilla, Terralith and combined profiles. Independent readers
+decode 9,216 chunk records and compare 2,465,792 queried blocks/heightmaps.
+Repeated files match. The full-tile observer confirms 20 Metal command buffers
+for the synthetic and vanilla files, with identical normal output. Minecraft
+reads/reopens this identical nine-file output set twice, checking 721,420,288
+blocks with its actual palettes/heightmap predicates. Concurrent Java writers,
+queued cancellation, actual file-open failure and worker cleanup pass. The host
+Fabric/NeoForge build, 64 native tests, surface regressions and dedicated Gradle
+shoreline task pass. The controlled coastline retains 97.65625% inland biome
+samples; its shore strip occupies 2.34375% of the region.
+
+The ordinary correctness run builds full loaded-profile base/material tiles in
+roughly 57/73/75 seconds (vanilla/Terralith/combined), then writes compressed
+MCA in 14–15 seconds. Material construction remains the largest observed GPU
+stage. Final features, lighting, runtime integration and a complete comparison
+against Retina Rust remain required. Evidence is recorded in
+`docs/benchmarks/bend-shorelines.json`.
+
+Warm alternating shoreline-only A/B timings compare the final cache against the
+unmerged direct-scan coastal prototype from this cycle, rather than PR40 or
+Rust. At 64×64 and 128×128 columns, all vanilla/Terralith/combined cases retain
+identical surface bytes and sampled material runs. Five timed repetitions after
+one warmup give 7.07–16.71x CPU and 4.09–10.62x GPU-required median ratios. For
+128×128 vanilla columns, host response changes from 995 to 129 ms on CPU and
+644 to 157 ms on GPU. The timed command includes transport and both shoreline
+steps, excludes lattice/surface/material preparation, and runs with two CPU
+workers at nice +10 after compilation and other tests finish. External host load
+is uncontrolled. This component improvement does not establish full-generator
+performance; the report retains executable/input hashes and all samples.

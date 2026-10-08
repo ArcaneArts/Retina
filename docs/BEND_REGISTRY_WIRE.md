@@ -511,6 +511,69 @@ and supply their registry packs using `-PtestDatapack`/`-PtestSupplement`.
 These are generated-chunk component checks, not running-world save/edit tests
 or complete-region benchmarks.
 
+### Resident shoreline finalization (component command 29)
+
+Command **29** takes an empty payload after numeric/climate/surface preparation
+and a successful surface build (16). It computes each column's integer
+first-free height using the same solid-voxel predicate as block generation,
+preserves its six sampled climate axes, and selects a final registered biome.
+The acknowledgement is three U32s: width, depth and column count. Surface rows
+remain queryable through 17; success invalidates dependent block runs, retaining
+material preparation and the chunk catalog. Rejected requests preserve both.
+
+Where the loaded climate source references shore targets, request 18 for a tile
+expanded by **six columns per X/Z side**, generate that lattice with 13, build
+only the central surface tile with 16, finalize with 29, then build blocks with
+22. For a complete region the descriptor covers 524x524 columns; material output
+and MCA output still cover exactly 512x512. The halo contains density samples,
+not extra serialized chunks. Sources without referenced shore targets need only
+central coverage for 29 (22 still needs its existing one-column slope halo).
+
+Inland selection excludes shore targets, falling back to all targets only when
+the source has no inland alternatives. Columns from sea-2 through sea+3 probe
+the pre-cave terrain in eight directions at radii 2/4/6; diagonals stay within
+the disk. Land requires nearby submerged terrain; submerged columns require
+nearby land. A low inland plain or an entirely shallow ocean cannot manufacture
+a shoreline. A coastal hit remaps continentalness to the nearest registered
+shore interval's midpoint, then lets the complete climate source choose its
+beach, river or other alternative. Per-biome material rules use that result;
+there are no hardcoded sand, gravel, snow or biome-ID choices in the algorithm.
+This ports the existing Rust coastal approximation, not exact vanilla biome
+placement. Rivers away from shores and final ocean remapping remain separate
+parity work. Cave/lake cuts do not influence this pre-cave snapshot.
+
+Two bulk steps first cache integer heights for the expanded tile, then select
+coastal biomes through bounded cache lookups. Existing continuous surface
+heights are hints: adjacent voxel signs verify the integer answer with the
+material generator's interpolation order. Exact-zero crossings are corrected;
+ambiguous, tiny-density or clipped-island cases retain the full voxel scan.
+Explicit-height profiles, nonfinite hints and world Y ranges beyond sub-block
+F32 precision also retain that scan. Coastal probes never rescan neighbors.
+
+The stages run on the explicitly selected Bend CPU/GPU backend. Java submits
+only an empty command; no bulk height/biome IPC download or Java recomputation
+occurs between the resident surface and material stages. The stock Bend runtime
+owns device data movement and synchronization. Missing numeric preparation
+returns **716**, missing climate **714**, missing resident surface/density
+**734**, incompatible six-column halo or signed coordinate bounds **735**, and
+trailing payload **603**. World seeds and globally aligned density cells retain
+their existing contracts. Integer first-free heights refer to actual generated
+occupancy, not exact arithmetic or cross-backend floating-point agreement.
+
+```sh
+nice -n 10 ./gradlew bendShorelineTest -PretinaHostOnly --max-workers=2 --no-parallel \
+  -PbendSkipBuild -PbendDensityRegistryProfiles=/absolute/vanilla.json=/absolute/vanilla.rbp
+```
+
+`-PproveMetal` observes actual Metal command buffers. The independent oracle
+scans integer voxels, searches climate intervals linearly and checks every
+material voxel in selected columns. It covers inland/ocean rejection, distinct
+shore materials, explicit heights, floating intervals, no-shore/shore-only
+sources, negative sea levels, far/signed coordinates, overlaps, idempotence,
+malformed requests and dependent cache invalidation. The whole-region fixture
+pipeline now invokes 29 before 22, including a synthetic narrow coastline and
+actual supplied vanilla/datapack profiles.
+
 ### Whole generated MCA staging (component command 28)
 
 Command **28** takes seven U32s followed by Unicode scalar words:
@@ -549,7 +612,7 @@ reads/reopens all chunks through Minecraft. `bendGeneratedRegionWorkerTest`
 exercises real concurrent Java writes, queued cancellation, unchanged snapshots,
 an actual missing-parent open failure and worker shutdown. Add actual profiles
 with `-PbendDensityRegistryProfiles`; select Minecraft decoder inputs using
-`-PbendGeneratedRegionProfiles=ramp,islands,vanilla,terralith,combined` and load
+`-PbendGeneratedRegionProfiles=ramp,islands,coastal,vanilla,terralith,combined` and load
 the corresponding packs with the existing test pack arguments. These are unlit
 base/material regions; final generation and running-world acceptance remain
 explicitly incomplete.
