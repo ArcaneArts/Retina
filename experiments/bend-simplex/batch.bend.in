@@ -1,0 +1,66 @@
+# Generated after simplex.bend by bench.py; @GRAIN@ is a power of two.
+def Bench.now() -> IO(Nat):
+  import "./now_us.c"
+
+type Samples is Type:
+  Leaf{values: Array<F32>}
+  Node{left: Samples, right: Samples}
+
+def fill(+n: Nat, +base: U32, a: Array<F32>) -> Array<F32>:
+  match n:
+    case 0n: a
+    case 1n+p:
+      +i = U32.sub(@GRAIN@, U32.inc(U32.from_nat(p)))
+      fill(p, base, Array.set(F32, a, i, sample(U32.add(base, i))))
+
+def batch(+d: Nat, +base: U32) -> Samples:
+  match d:
+    case 0n:
+      Leaf{fill(@GRAIN@n, base, [0.0 : F32*@GRAIN@n])}
+    case 1n+p:
+      a b = batch(p, base) batch(p, U32.add(base, U32.shln(@GRAIN@, p)))
+      Node{a, b}
+
+def consume_array(+n: Nat, r: Array<F32> & F32, acc: U32) -> U32:
+  match n:
+    case 0n:
+      (a, v) = r
+      acc
+    case 1n+p:
+      (a, v) = r
+      consume_array(p, Array.get(F32, a, U32.sub(U32.from_nat(p), 1)), U32.add(acc, quantize(v)))
+
+def consume(s: Samples) -> U32:
+  match s:
+    case Leaf{a}: consume_array(@GRAIN@n, Array.get(F32, a, U32.sub(@GRAIN@, 1)), 0)
+    case Node{a, b}: U32.add(consume(a), consume(b))
+
+def read_nat(m: Maybe<&2, Nat>) -> Nat:
+  match m:
+    case Some{n}: n
+    case None{}: 0n
+
+def run(n: Nat, +depth: Nat) -> IO(Unit):
+  match n:
+    case 0n: IO.pure(Unit, Unit{})
+    case 1n+p:
+      do IO<Unit>:
+        +start : Nat <- Bench.now()
+        data : Samples = batch!(depth, 0)
+        end : Nat <- Bench.now()
+        sum : U32 = consume(data)
+        done : Nat <- Bench.now()
+        _ : Unit <- IO.print(Nat.show(Nat.sub(end, start)) ++ "," ++ Nat.show(Nat.sub(done, start)) ++ "," ++ U32.show(sum))
+        run(p, depth)
+
+def arguments(xs: List<String>) -> IO(Unit):
+  match xs:
+    case _ <> d <> n <> Nil{}:
+      run(read_nat(Nat.read(n)), read_nat(Nat.read(d)))
+    case _:
+      IO.die(Unit, 2, "usage: binary depth repetitions [--threads N] [--gpu on|off]")
+
+def main() -> IO(Unit):
+  do IO<Unit>:
+    args : List<String> <- IO.args()
+    arguments(args)
