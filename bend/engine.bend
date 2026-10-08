@@ -9,17 +9,21 @@ import ./registry_noise.bend as RN
 import ./registry_climate.bend as RC
 import ./climate.bend as C
 import ./climate_batch.bend as CB
+import ./registry_density.bend as RD
+import ./density.bend as Q
+import ./density_batch.bend as DB
 
 # Persistent binary worker. Protocol v1 is a component transport, not yet a
 # world generator: PING=0, PREPARE_NOISE=1, SAMPLE_GRID=2, COMPRESS=3, STOP=4,
 # LOAD_PROFILE=5 (staged path), QUERY_PROFILE=6 (dictionary/index path),
 # PROFILE_TEXT=7 (lossless packed UTF-16 string),
 # PROFILE_NOISE=8 (prepare a loaded climate/ridge stack using both seed words),
-# PROFILE_CLIMATE=9 (prepare resident targets), CLIMATE_BATCH=10 (raw queries).
+# PROFILE_CLIMATE=9 (prepare resident targets), CLIMATE_BATCH=10 (raw queries),
+# PROFILE_DENSITY=11 (prepare numeric programs), DENSITY_BATCH=12 (raw queries).
 # Requests: RBND magic, payload length, request ID, opcode (all BE u32).
 # Responses add a status u32 after opcode. stdout contains frames only.
 type Settings is Data:
-  Settings{noise: Maybe<&2,N.Stack>,climate: Maybe<&2,C.Model>}
+  Settings{noise: Maybe<&2,N.Stack>,climate: Maybe<&2,C.Model>,density: Maybe<&2,RD.Prepared>}
 
 type State is Type:
   State{settings: Settings,profile: Maybe<&1,P.Document>}
@@ -131,7 +135,7 @@ def set_ended(valid: Bool,input: File,output: File,old: State,backend: U32,id: U
 
 def replace_noise(old: State,noise: N.Stack) -> State:
   match old:
-    case State{Settings{_,climate},profile}: State{Settings{Some{noise},climate},profile}
+    case State{Settings{_,climate,density},profile}: State{Settings{Some{noise},climate,density},profile}
 
 @unsafe
 def set_result(result: Result<&1,&1,U32,N.Stack>,input: File,output: File,old: State,backend: U32,id: U32,opcode: U32) -> IO(Unit):
@@ -152,12 +156,12 @@ def grid_valid(valid: Bool,input: File,output: File,old: State,backend: U32,id: 
     x: U32,z: U32,+width: U32,+height: U32,step: U32) -> IO(Unit):
   match valid old:
     case False{} _: error(input,output,old,backend,id,opcode,603)
-    case True{} State{Settings{None{},climate},profile}: error(input,output,State{Settings{None{},climate},profile},backend,id,opcode,604)
-    case True{} State{Settings{Some{+stack},climate},profile}:
+    case True{} State{Settings{None{},climate,density},profile}: error(input,output,State{Settings{None{},climate,density},profile},backend,id,opcode,604)
+    case True{} State{Settings{Some{+stack},climate,density},profile}:
       do IO<Unit>:
         samples : Samples = sample!(depth(U32.mul(width,height),256,0n),0,Grid{x,z,width,U32.mul(width,height),step},stack,U32.mul(width,height))
         body : Z.Bytes <- payload(encode(samples,B.new(),U32.mul(width,height)))
-        finish(input,output,State{Settings{Some{stack},climate},profile},backend,id,opcode,0,body,True{})
+        finish(input,output,State{Settings{Some{stack},climate,density},profile},backend,id,opcode,0,body,True{})
 
 @unsafe
 def grid(input: File,output: File,old: State,backend: U32,id: U32,opcode: U32,body: Z.Bytes) -> IO(Unit):
@@ -177,9 +181,9 @@ def empty_command(valid: Bool,input: File,output: File,stack: State,+backend: U3
         body : Z.Bytes <- payload(B.int(B.int(B.int(B.int(B.int(B.new(),1),2),0),36),backend))
         finish(input,output,stack,backend,id,opcode,0,body,U32.is_zero(opcode))
 
-def clear_climate(noise: Settings) -> Settings:
+def clear_indices(noise: Settings) -> Settings:
   match noise:
-    case Settings{stack,_}: Settings{stack,None{}}
+    case Settings{stack,_,_}: Settings{stack,None{},None{}}
 
 # Profile uploads are staged raw files, so large structure registries do not
 # bypass the bounded frame queue. The worker owns one validated resident tape.
@@ -189,7 +193,7 @@ def profile_result(result: Result<&1,&1,U32,P.Document>,input: File,output: File
     case Fail{code} _: error(input,output,old,backend,id,opcode,code)
     case Done{doc} State{noise,_}:
       P.info(IO(Unit),doc,doc => count => strings => tape => hash =>
-        profile_ready(input,output,State{clear_climate(noise),Some{doc}},backend,id,opcode,count,strings,tape,hash))
+        profile_ready(input,output,State{clear_indices(noise),Some{doc}},backend,id,opcode,count,strings,tape,hash))
 
 @unsafe
 def profile_ready(input: File,output: File,state: State,backend: U32,id: U32,opcode: U32,count: U32,strings: U32,tape: U32,hash: U32) -> IO(Unit):
@@ -323,12 +327,12 @@ def profile_noise(input: File,output: File,old: State,backend: U32,id: U32,opcod
 def climate_ready(result: Result<&1,&1,U32,RC.Prepared>,doc: P.Document,settings: Settings,input: File,output: File,backend: U32,id: U32,opcode: U32) -> IO(Unit):
   match result settings:
     case Fail{code} _: error(input,output,State{settings,Some{doc}},backend,id,opcode,code)
-    case Done{RC.Prepared{model,count,biomes}} Settings{noise,_}:
+    case Done{RC.Prepared{model,count,biomes}} Settings{noise,_,density}:
       do IO<Unit>:
         # The response write ends CPU preparation's evaluation before the next
         # request can bang the resident index (stock Bend scheduling boundary).
         body : Z.Bytes <- payload(B.int(B.int(B.new(),count),biomes))
-        finish(input,output,State{Settings{noise,Some{model}},Some{doc}},backend,id,opcode,0,body,True{})
+        finish(input,output,State{Settings{noise,Some{model},density},Some{doc}},backend,id,opcode,0,body,True{})
 
 @unsafe
 def profile_climate(valid: Bool,input: File,output: File,old: State,backend: U32,id: U32,opcode: U32) -> IO(Unit):
@@ -351,9 +355,44 @@ def climate_queries(queries: CB.Input,model: C.Model,old: State,input: File,outp
 @unsafe
 def climate_batch(input: File,output: File,old: State,backend: U32,id: U32,opcode: U32,body: Z.Bytes) -> IO(Unit):
   match old:
-    case State{Settings{noise,None{}},profile}: error(input,output,State{Settings{noise,None{}},profile},backend,id,opcode,714)
-    case State{Settings{noise,Some{+model}},profile}:
-      climate_queries(CB.decode(body),model,State{Settings{noise,Some{model}},profile},input,output,backend,id,opcode)
+    case State{Settings{noise,None{},density},profile}: error(input,output,State{Settings{noise,None{},density},profile},backend,id,opcode,714)
+    case State{Settings{noise,Some{+model},density},profile}:
+      climate_queries(CB.decode(body),model,State{Settings{noise,Some{model},density},profile},input,output,backend,id,opcode)
+
+@unsafe
+def density_ready(result: Result<&1,&1,U32,RD.Prepared>,doc: P.Document,settings: Settings,input: File,output: File,backend: U32,id: U32,opcode: U32) -> IO(Unit):
+  match result settings:
+    case Fail{code} _: error(input,output,State{settings,Some{doc}},backend,id,opcode,code)
+    case Done{RD.Prepared{+model,+programs,+noises,+points,+fields}} Settings{noise,climate,_}:
+      do IO<Unit>:
+        # Acknowledge CPU projection before any subsequent GPU evaluation.
+        body : Z.Bytes <- payload(B.int(B.int(B.int(B.int(B.new(),3),noises),points),fields))
+        finish(input,output,State{Settings{noise,climate,Some{RD.Prepared{model,programs,noises,points,fields}}},Some{doc}},backend,id,opcode,0,body,True{})
+
+@unsafe
+def profile_density(valid: Bool,input: File,output: File,old: State,backend: U32,id: U32,opcode: U32) -> IO(Unit):
+  match valid old:
+    case False{} _: error(input,output,old,backend,id,opcode,603)
+    case True{} State{settings,None{}}: error(input,output,State{settings,None{}},backend,id,opcode,708)
+    case True{} State{settings,Some{doc}}: RD.prepare(IO(Unit),doc,doc => result =>
+      density_ready(result,doc,settings,input,output,backend,id,opcode))
+
+@unsafe
+def density_queries(queries: DB.Input,model: Q.Model,programs: Q.Table<Q.Program>,old: State,input: File,output: File,backend: U32,id: U32,opcode: U32) -> IO(Unit):
+  match queries:
+    case DB.Input{_,_,False{}}: error(input,output,old,backend,id,opcode,603)
+    case DB.Input{queries,count,True{}}:
+      do IO<Unit>:
+        rows : Array<Q.Outputs> = DB.calculate!(model,programs,queries)
+        body : Z.Bytes <- payload(DB.encode(U32.to_nat(count),rows,B.new(),0))
+        finish(input,output,old,backend,id,opcode,0,body,True{})
+
+@unsafe
+def density_batch(input: File,output: File,old: State,backend: U32,id: U32,opcode: U32,body: Z.Bytes) -> IO(Unit):
+  match old:
+    case State{Settings{noise,climate,None{}},profile}: error(input,output,State{Settings{noise,climate,None{}},profile},backend,id,opcode,716)
+    case State{Settings{noise,climate,Some{RD.Prepared{+model,+programs,+noises,+points,+fields}}},profile}:
+      density_queries(DB.decode(body),model,programs,State{Settings{noise,climate,Some{RD.Prepared{model,programs,noises,points,fields}}},profile},input,output,backend,id,opcode)
 
 @unsafe
 def dispatch(input: File,output: File,stack: State,backend: U32,id: U32,opcode: U32,body: Z.Bytes) -> IO(Unit):
@@ -368,6 +407,8 @@ def dispatch(input: File,output: File,stack: State,backend: U32,id: U32,opcode: 
     case 8: profile_noise(input,output,stack,backend,id,8,body)
     case 9: profile_climate(R.end(R.start(body)),input,output,stack,backend,id,9)
     case 10: climate_batch(input,output,stack,backend,id,10,body)
+    case 11: profile_density(R.end(R.start(body)),input,output,stack,backend,id,11)
+    case 12: density_batch(input,output,stack,backend,id,12,body)
     case 4: empty_command(R.end(R.start(body)),input,output,stack,backend,id,4)
     case _: error(input,output,stack,backend,id,opcode,605)
 
@@ -406,7 +447,7 @@ def launch(backend: U32) -> IO(Unit):
   do IO<Unit>:
     input : File <- IO.try(File,File.open("/dev/stdin","r"))
     output : File <- IO.try(File,File.open("/dev/stdout","w"))
-    loop(input,output,State{Settings{None{},None{}},None{}},backend)
+    loop(input,output,State{Settings{None{},None{},None{}},None{}},backend)
 
 def modes(cpu: Bool,gpu: Bool) -> IO(Unit):
   match cpu gpu:

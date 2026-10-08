@@ -279,13 +279,31 @@ The optional stock-runtime observer verifies actual command buffers and output
 identical to the normal GPU executable. See
 `docs/benchmarks/bend-density-correctness.json` for the recorded evidence.
 
-This component does **not** yet project its model from the resident registry tape
-or expose production worker commands. Material predicates 40..54, shared GPU
-lattice caches, surface extraction and generated regions remain pending.
+`registry_density.bend` now projects this numeric model from the resident tape.
+Worker command 11 prepares it once; command 12 evaluates bounded raw batches
+through `density_batch.bend`, retaining the model between requests. Additional
+material/aquifer programs stay in the lossless input tape. Java only transports
+commands and bytes. Material predicates 40..54, shared GPU lattice caches,
+surface extraction and generated regions remain pending.
 Per-query interpolation currently reevaluates its corners and stores all node
 values; it is deliberately unoptimized. Diagnostic device times are not an
 end-to-end benchmark or evidence of a Rust throughput improvement. Region-sized
 lattice reuse and live-value reuse need measurement during integration.
+
+```sh
+nice -n 10 ./gradlew bendRegistryDensityTest -PretinaHostOnly --max-workers=2 -PproveMetal \
+  -PbendDensityRegistryProfiles=/absolute/vanilla.json=/absolute/vanilla.rbp,/absolute/terralith.json=/absolute/terralith.rbp
+```
+
+The resident harness independently checks actual registered graphs, full seeds,
+signed/distant coordinates, nested interpolation, mixed/packed vectors, default
+parameters, maximum 4,096-query batches and typed rejection. It also exercises
+repetition/reordering, acknowledged-file deletion, rejected uploads, successful
+reload invalidation and independent noise/climate state. Java callers check
+concurrent raw queries without Minecraft or Rust initialization. The diagnostic
+observer confirms actual Metal commands and normal executable bytes. See
+`docs/BEND_REGISTRY_WIRE.md` for schema and protocol limits and
+`docs/benchmarks/bend-registry-density.json` for component evidence.
 
 ## Climate interval indices
 

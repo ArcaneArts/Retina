@@ -4,8 +4,9 @@
 structural binary data. It does not generate terrain or encode Minecraft NBT,
 MCA, lighting or compression. `bend/registry.bend` alone validates and reads that
 data. The worker owns one validated tape alongside its prepared noise stack.
-Loaded climate/ridge octave stacks now have a typed Bend projection. Density
-programs, full biome selection and terrain generation remain pending.
+Loaded climate/ridge octave stacks, climate indices and numeric density
+programs now have typed Bend projections. Materials, complete spatial biome
+selection and terrain generation remain pending.
 
 Streaming avoids allocating millions of Gson nodes. Complete vanilla, Terralith
 and Terralith plus the compatible registry-supplement profiles encode within a
@@ -104,6 +105,27 @@ The existing `RBND` IPC framing remains version 1. Additional opcodes:
   queries or modes above 31 return 603. No prepared index returns 714. Lookup
   runs in one GPU batch, or on explicit Bend CPU execution, using the resident
   index without retransmitting the target table.
+- **11 — prepare profile density:** empty payload. Bend resolves
+  `registry_program.noises`, `points`, optional `interpolations` and the first
+  three `programs` (climate, surface, final density), then validates numeric
+  opcodes 0..31 and retains a typed model. Success returns four U32 counts:
+  programs (3), noises, spline points, interpolation fields. Numeric vectors
+  accept mixed or packed i32/i64/f64 arrays; IDs require unsigned integer
+  values, salts require signed i32. Missing horizontal scale defaults to 1;
+  missing interpolation lists default to empty. Limits: 8,192 noises with
+  1..32 coefficients, 65,536 spline points, 128 ordered interpolation fields,
+  1..1,024 instructions/program and 0..6 output roots. Fields have one root
+  and may reference earlier fields; cyclic/forward references fail. Additional
+  material/aquifer programs remain in the tape for future projections.
+  Typed invalid models return 715; absent profile returns 708 and nonempty
+  command body returns 603.
+- **12 — density batch:** U32 query count (0..4,096), followed by six U32 words
+  per query: program ID (0..2), signed-i32 X/Y/Z bit patterns, seed low and
+  seed high. Output is six raw F32 words per query (24 bytes); absent output
+  roots read node zero, as in the numeric library. Both full seed words and
+  compensated transformed coordinates participate. Invalid length/count/ID
+  returns 603; no prepared model returns 716. One GPU batch (or explicit Bend
+  CPU execution) uses the prepared model without resending registry data.
 
 `BendWorker.loadProfile` transports only the path. Its caller owns the staged
 file until acknowledgement. If a load is canceled while active, retain the file
@@ -123,10 +145,17 @@ i32/i64/f64 arrays. Biome references and flags require unsigned integer values.
 The preparation acknowledgement's IO write separates CPU index-building forks
 from the following GPU batch in stock Bend's scheduler.
 
-A successful opcode 5 upload invalidates the prepared climate index. Call 9
-before querying the replacement. Structurally rejected/missing/truncated uploads
-retain the old tape and index. A typed preparation failure is reported explicitly;
-it does not restore or silently use the previous profile's targets. Production
+`BendWorker.prepareProfileDensity()` sends only the empty command. Bend resolves
+schema keys, walks container spans once, converts numeric values and validates
+programs before acknowledging. Query requests carry no model data. Preparing
+noise, climate or density preserves the other prepared settings; no query
+mutates the resident input or numeric model.
+
+A successful opcode 5 upload invalidates both prepared climate and density
+models. Call 9/11 before querying the replacement. Structurally rejected,
+missing or truncated uploads retain the old tape and both models. A typed
+preparation failure is reported explicitly; it does not restore or silently use
+the previous profile's targets. Production
 atomic full-profile validation/reload remains future integration work.
 
 `bend/numbers.bend` implements nearest/ties-to-even i64/f64-to-F32 conversion
@@ -137,8 +166,8 @@ noise validator rejects conversions that overflow its finite parameter bounds.
 
 Automatic production staging lifetime/reload policy remains part of Minecraft
 backend integration, along with the remaining typed registry programs and region
-jobs. These octave stacks do not execute the loaded density DAG or constitute a
-complete datapack terrain implementation.
+jobs. Numeric worker commands execute loaded density DAGs, but material rules,
+shared lattice caches and integrated datapack terrain remain pending.
 
 ## Verification
 
@@ -186,3 +215,21 @@ buffers for these loaded inputs and matches the normal GPU executable's output.
 See `docs/benchmarks/bend-numeric-correctness.json` and
 `docs/benchmarks/bend-registry-noise.json`. These are component correctness
 results, not full-region speed measurements.
+
+Resident numeric program checks:
+
+```sh
+nice -n 10 ./gradlew bendRegistryDensityTest -PretinaHostOnly --max-workers=2 -PproveMetal \
+  -PbendDensityRegistryProfiles=/absolute/vanilla.json=/absolute/vanilla.rbp,/absolute/terralith.json=/absolute/terralith.rbp
+```
+
+The harness compares original registered programs with independent scalar
+reference equations, including nested interpolation, ordered splines, both seed
+words, signed extremes and world-border neighbors. It checks mixed/packed
+vectors, missing optional values, extra material programs, maximum batches,
+reordered/repeated/empty queries, typed rejection, explicit reload invalidation
+and independent resident noise/climate state. Java tests concurrent raw callers
+on CPU and GPU. Diagnostic stock-runtime observation must see actual Metal
+commands and match normal executable bytes. Evidence is in
+`docs/benchmarks/bend-registry-density.json`; preparation/query wall times are
+component diagnostics, not complete-region benchmarks.

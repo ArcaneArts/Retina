@@ -1,0 +1,217 @@
+{
+  "scope": "Resident numeric terrain program projection and bounded queries; material and region generation pending",
+  "profiles": [
+    {
+      "name": "vanilla",
+      "json_sha256": "aefce6ff0e800966ad55920c5d21510dfa277de4612f67e22d5146d3aa838203",
+      "wire_sha256": "39c775ca58b6d084d4de060925df01d170c89caa09b9eaf7d33e55a915c8065a"
+    },
+    {
+      "name": "terralith",
+      "json_sha256": "c9abbe97860a394ed899d64967bd0395bb9bb4ec71a9dff43d1bb45893fefd4d",
+      "wire_sha256": "cf9ef7e0d83d91c5d99aa914101aad8b156ce9a8caa4050f71e81b190a1c0ca6"
+    },
+    {
+      "name": "combined",
+      "json_sha256": "068fd602ad497128dd3960cb9be76840ebd41882b5b64c25acfa76d65e930c8b",
+      "wire_sha256": "d4ac8f9040e39892de12b6fc6ecc46b3d9e961c3cba7f05a2ae9b53262967193"
+    }
+  ],
+  "runs": [
+    {
+      "mode": "cpu",
+      "profiles": [
+        {
+          "name": "mixed",
+          "queries": 24,
+          "validated_rows": 75,
+          "prepare_host_ms": 0.45791594311594963,
+          "first_batch_host_ms": 1.2563749914988875,
+          "noise_climate_independence": "pass",
+          "failed_upload_retains_model": "pass",
+          "repeat_reorder_empty": "pass"
+        },
+        {
+          "name": "packed",
+          "queries": 24,
+          "validated_rows": 75,
+          "prepare_host_ms": 0.4514580359682441,
+          "first_batch_host_ms": 2.291833981871605,
+          "noise_climate_independence": "pass",
+          "failed_upload_retains_model": "pass",
+          "repeat_reorder_empty": "pass"
+        },
+        {
+          "name": "default_scale",
+          "queries": 24,
+          "validated_rows": 75,
+          "prepare_host_ms": 0.5561669822782278,
+          "first_batch_host_ms": 1.212499919347465,
+          "noise_climate_independence": "pass",
+          "failed_upload_retains_model": "pass",
+          "repeat_reorder_empty": "pass"
+        },
+        {
+          "name": "constant",
+          "queries": 24,
+          "validated_rows": 75,
+          "prepare_host_ms": 0.10258401744067669,
+          "first_batch_host_ms": 0.21720794029533863,
+          "noise_climate_independence": "pass",
+          "failed_upload_retains_model": "pass",
+          "repeat_reorder_empty": "pass"
+        },
+        {
+          "name": "vanilla",
+          "queries": 24,
+          "validated_rows": 75,
+          "prepare_host_ms": 5.8703330578282475,
+          "first_batch_host_ms": 22.148416959680617,
+          "noise_climate_independence": "pass",
+          "failed_upload_retains_model": "pass",
+          "repeat_reorder_empty": "pass"
+        },
+        {
+          "name": "terralith",
+          "queries": 24,
+          "validated_rows": 75,
+          "prepare_host_ms": 18.066000076942146,
+          "first_batch_host_ms": 49.528875038959086,
+          "noise_climate_independence": "pass",
+          "failed_upload_retains_model": "pass",
+          "repeat_reorder_empty": "pass"
+        },
+        {
+          "name": "combined",
+          "queries": 24,
+          "validated_rows": 75,
+          "prepare_host_ms": 10.868333047255874,
+          "first_batch_host_ms": 48.31133293919265,
+          "noise_climate_independence": "pass",
+          "failed_upload_retains_model": "pass",
+          "repeat_reorder_empty": "pass"
+        }
+      ],
+      "maximum_batch_queries": 4096,
+      "invalid_typed_profiles": 71,
+      "requests_in_one_process": 381,
+      "expected_dispatches": 53,
+      "max_relative_or_absolute_error": 1.5808156002133922e-06,
+      "aggregate_sha256": "ff7be7e0f8e4bfc66c93fdd70f4ef14d6389c35fe1f7825682a3f602d94e22f7",
+      "observed_metal_command_ms": []
+    },
+    {
+      "mode": "gpu_required",
+      "profiles": [
+        {
+          "name": "mixed",
+          "queries": 24,
+          "validated_rows": 75,
+          "prepare_host_ms": 0.42112497612833977,
+          "first_batch_host_ms": 48.16654196474701,
+          "noise_climate_independence": "pass",
+          "failed_upload_retains_model": "pass",
+          "repeat_reorder_empty": "pass"
+        },
+        {
+          "name": "packed",
+          "queries": 24,
+          "validated_rows": 75,
+          "prepare_host_ms": 0.4778750007972121,
+          "first_batch_host_ms": 41.04708391241729,
+          "noise_climate_independence": "pass",
+          "failed_upload_retains_model": "pass",
+          "repeat_reorder_empty": "pass"
+        },
+        {
+          "name": "default_scale",
+          "queries": 24,
+          "validated_rows": 75,
+          "prepare_host_ms": 0.40333298966288567,
+          "first_batch_host_ms": 41.459540952928364,
+          "noise_climate_independence": "pass",
+          "failed_upload_retains_model": "pass",
+          "repeat_reorder_empty": "pass"
+        },
+        {
+          "name": "constant",
+          "queries": 24,
+          "validated_rows": 75,
+          "prepare_host_ms": 0.11758296750485897,
+          "first_batch_host_ms": 1.1362090008333325,
+          "noise_climate_independence": "pass",
+          "failed_upload_retains_model": "pass",
+          "repeat_reorder_empty": "pass"
+        },
+        {
+          "name": "vanilla",
+          "queries": 24,
+          "validated_rows": 75,
+          "prepare_host_ms": 6.5913330763578415,
+          "first_batch_host_ms": 2098.9060000283644,
+          "noise_climate_independence": "pass",
+          "failed_upload_retains_model": "pass",
+          "repeat_reorder_empty": "pass"
+        },
+        {
+          "name": "terralith",
+          "queries": 24,
+          "validated_rows": 75,
+          "prepare_host_ms": 18.969291006214917,
+          "first_batch_host_ms": 3835.2199170039967,
+          "noise_climate_independence": "pass",
+          "failed_upload_retains_model": "pass",
+          "repeat_reorder_empty": "pass"
+        },
+        {
+          "name": "combined",
+          "queries": 24,
+          "validated_rows": 75,
+          "prepare_host_ms": 11.051040957681835,
+          "first_batch_host_ms": 3836.1565000377595,
+          "noise_climate_independence": "pass",
+          "failed_upload_retains_model": "pass",
+          "repeat_reorder_empty": "pass"
+        }
+      ],
+      "maximum_batch_queries": 4096,
+      "invalid_typed_profiles": 71,
+      "requests_in_one_process": 381,
+      "expected_dispatches": 53,
+      "max_relative_or_absolute_error": 1.5808156002133922e-06,
+      "aggregate_sha256": "ff7be7e0f8e4bfc66c93fdd70f4ef14d6389c35fe1f7825682a3f602d94e22f7",
+      "observed_metal_command_ms": []
+    }
+  ],
+  "cpu_gpu_bytes_equal": true,
+  "metal_observation": {
+    "diagnostic_only": true,
+    "command_buffers": 53,
+    "device_ms": {
+      "min": 0.125667,
+      "max": 3821.366125,
+      "sum": 33402.815043
+    },
+    "output_bytes_equal": true
+  },
+  "source_sha256": {
+    "bend/registry_density.bend": "2b61e3c98d892eb7b613a0cf9c2857257083c35be020640b6844bbdd7780aaf3",
+    "bend/density_batch.bend": "7b03494c58c50956ed806692eeb09c4b1693e1177933f616ce6288dd277ea626",
+    "bend/engine.bend": "74fba5430d41e5bfeaa3681d18cd6bfa97216053d63d9c8766a3d428a1dede4a",
+    "scripts/test_bend_registry_density.py": "ff884af8a8112008aac1e508b68f1c209542850a629986b4402219fb2d5a9b77"
+  },
+  "toolchain": "Bend 2.0.36 (pinned stock runtime)",
+  "host": {
+    "system": "Darwin",
+    "machine": "arm64",
+    "gpu": "Apple M4 Max / Metal"
+  },
+  "validation": {
+    "host_build": "Fabric/NeoForge build passed, 64 native unit tests passed, 11 explicit GPU/fixture tests ignored",
+    "java_callers": "Persistent CPU and GPU_REQUIRED workers passed concurrent density queries, exact distant-coordinate transport and reload invalidation",
+    "limit": "No generated regions, material rules, full world generation or complete-region speed comparison in this cycle",
+    "regressions": "Existing persistent worker/framing/compression and resident climate CPU/GPU harnesses passed",
+    "format_only_cleanup": "One trailing blank line removed after the checks; executable behavior is unchanged."
+  },
+  "measurements": "Host milliseconds include component IPC/preparation/query only; not a generator throughput benchmark."
+}
