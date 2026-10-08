@@ -26,7 +26,7 @@ public final class BendProfileWireTest {
               {"biome":2,"min":[0,0,0,0],"max":[1,1,1,1],"weirdness":[0,1],"depth":[0,1],"offset":0}]}
             """);
         encode(output, "density", """
-            {"biomes":[{"flags":0}],"climate_targets":[],"registry_program":{"noises":[],"points":[],"programs":[
+            {"geology_min_y":-16,"geology_height":32,"sea_level":4,"biomes":[{"flags":0}],"climate_targets":[],"registry_program":{"surface":[-16,8,0],"terrain_cell":[4,8],"noises":[],"points":[],"programs":[
              {"nodes":[{"op":0,"a":0,"b":0,"c":0,"p":[0.25,0,0,0]}],"roots":[]},
              {"nodes":[{"op":29,"a":0,"b":0,"c":0,"p":[0,0,0,0]},
                        {"op":0,"a":0,"b":0,"c":0,"p":[30000000,0,0,0]},
@@ -131,6 +131,39 @@ public final class BendProfileWireTest {
                     if (values.getFloat() != expected) throw new AssertionError("resident lattice/fallback transport");
                 }
                 if (values.hasRemaining()) throw new AssertionError("lattice response length");
+            }
+            counts = java.nio.ByteBuffer.wrap(worker.prepareProfileSurface().get(30, java.util.concurrent.TimeUnit.SECONDS));
+            for (int count : new int[]{-16, 32, 4, 4, 8, 0}) if (counts.getInt() != count)
+                throw new AssertionError("surface profile acknowledgement");
+            if (counts.hasRemaining()) throw new AssertionError("surface profile length");
+            byte[] descriptor = worker.surfaceDensityDescriptor(29999995, -30000003, 7, 5, seed)
+                    .get(30, java.util.concurrent.TimeUnit.SECONDS);
+            var planned = java.nio.ByteBuffer.wrap(descriptor);
+            for (int value : new int[]{1, 29999995, -16, -30000003, 30000001, 16, -29999999, 4, 8,
+                    (int) seed, (int) (seed >>> 32)}) if (planned.getInt() != value)
+                throw new AssertionError("Bend surface density descriptor");
+            if (planned.hasRemaining()) throw new AssertionError("surface descriptor length");
+            worker.request(13, descriptor).get(30, java.util.concurrent.TimeUnit.SECONDS);
+            counts = java.nio.ByteBuffer.wrap(worker.generateSurfaceColumns(29999995, -30000003, 7, 5, seed)
+                    .get(30, java.util.concurrent.TimeUnit.SECONDS));
+            for (int count : new int[]{7, 5, 35}) if (counts.getInt() != count)
+                throw new AssertionError("resident surface tile acknowledgement");
+            if (counts.hasRemaining()) throw new AssertionError("surface tile length");
+            var surface = java.nio.ByteBuffer.allocate(36).putInt(2);
+            for (int x : new int[]{29999999, 30000001}) surface.putInt(x).putInt(-30000001)
+                    .putInt((int) seed).putInt((int) (seed >>> 32));
+            requests.clear();
+            for (int i = 0; i < 12; i++) requests.add(worker.request(17, surface.array()));
+            for (var request : requests) {
+                var values = java.nio.ByteBuffer.wrap(request.get(30, java.util.concurrent.TimeUnit.SECONDS));
+                for (float height : new float[]{-15, 16}) {
+                    if (values.getInt() != 1 || values.getFloat() != height)
+                        throw new AssertionError("resident surface height");
+                    for (int channel = 0; channel < 6; channel++) if (values.getFloat() != .25f)
+                        throw new AssertionError("surface climate transport");
+                    if (values.getInt() != -1) throw new AssertionError("empty surface target table");
+                }
+                if (values.hasRemaining()) throw new AssertionError("surface response length");
             }
             worker.prepareProfileDensity().get(30, java.util.concurrent.TimeUnit.SECONDS);
             try {

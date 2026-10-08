@@ -146,6 +146,41 @@ The existing `RBND` IPC framing remains version 1. Additional opcodes:
   the lattice. Rejected commands/uploads preserve it. This top-level lattice is
   an approximation between vertices, not a replacement for the registered op28
   fields' semantics within the sampled graph.
+- **15 — prepare surface profile:** empty request after opcode 11. Bend reads
+  signed `geology_min_y`, `sea_level`, positive `geology_height`, and registered
+  `surface`/`terrain_cell`. Six U32 acknowledgement words contain minimum Y,
+  height, sea level, horizontal/vertical cells and explicit-height mode. Invalid
+  typed configuration returns 719; no numeric preparation returns 716. World
+  height and cells are bounded to 4,096; the signed maximum Y must fit the wire.
+  A successful preparation clears previous computed columns.
+- **18 — plan surface density:** six U32 words: signed minimum X/Z, width,
+  depth, seed low/high. Width/depth are 1..1,024 and inclusive maximum coordinates
+  must fit signed i32. Bend returns the 44-byte opcode-13 descriptor using
+  profile cell spacing and world Y limits (Y=0 for explicit-height profiles).
+  Invalid tiles return 720; missing surface preparation returns 722. Planning
+  does not replace any cache. The surface probe's exported minimum/step remain
+  raw profile data; the final-density grid uses world limits and `terrain_cell`.
+- **16 — build surface columns:** same tile request as 18. Requires prepared
+  climate (714 when absent), a density lattice (718 when absent), and compatible
+  program 1, seed, cells and complete bounds (721 on mismatch). One GPU call
+  (or explicit Bend CPU) scans bilinearly interpolated density layers, finds the
+  highest solid-to-air crossing, evaluates six spatial climate channels at Y=0,
+  and selects registered surface biome IDs. Explicit-height profiles instead
+  interpolate program 1 at Y=0 and clamp height+1. Acknowledgement contains
+  width/depth/column count. The computed tree remains resident: no density or
+  column array needs to cross the bridge between stages. This top-level density
+  approximation also applies to composition-mode profiles; exact interval-aware
+  composition and downstream materials/caves remain implementation work.
+- **17 — query surface columns:** U32 count (0..4,096), then four U32 words per
+  query: signed X/Z, seed low/high. Each 36-byte row is U32 presence, F32 height,
+  six F32 climate channels and U32 biome ID. Covered queries return presence 1;
+  coordinate/seed misses return presence 0, seven zero F32s and biome 0xffffffff.
+  An empty registered surface target table also yields biome 0xffffffff for
+  present columns. Invalid batches return 603; no computed columns returns 723.
+  Querying/encoding cached rows is host-side Bend. Heavy surface computation is
+  opcode 16 on the selected backend; query transport is not a GPU benchmark.
+  Successful 5/11/13/15 invalidates columns; rejected requests retain them.
+
 
 `BendWorker.loadProfile` transports only the path. Its caller owns the staged
 file until acknowledgement. If a load is canceled while active, retain the file
@@ -186,8 +221,8 @@ batches retain both model and grid. Endpoints use compensated coordinates, so
 global cells can extend beyond signed-i32 endpoints without wrapping. One worker
 retains one grid with the vertex bound above; replacing it releases the old one.
 The runtime's boxed vertex storage is larger than packed raw F32 arrays. Full
-region memory/performance, per-field caches and integrated surface/cave consumers
-remain future work.
+region generation/performance and per-field caches remain future work. The
+surface consumer below now reuses the resident density grid.
 
 A successful opcode 5 upload invalidates both prepared climate and density
 models. Call 9/11 before querying the replacement. Structurally rejected,
@@ -301,3 +336,17 @@ Construction cost is separate from warm query medians. Between vertices the
 lattice is an approximation, so these measurements do not establish complete
 region latency/throughput or full generator parity. CPU/GPU validation and the
 query measurements are recorded in `docs/benchmarks/bend-density-lattice.json`.
+
+Resident surface checks (add actual JSON=RBP profiles with the same property used
+by `bendDensityLatticeTest`):
+
+```sh
+nice -n 10 ./gradlew bendSurfaceTest -PretinaHostOnly --max-workers=2 -PproveMetal
+```
+
+`prepareProfileSurface`, `surfaceDensityDescriptor` and `generateSurfaceColumns`
+are raw Java transport helpers. A scheduler must serialize the descriptor/build/
+scan sequence against competing cache replacements; these helpers alone are not
+region singleflight or world-generation integration. A worker retains one bounded
+density grid and one bounded column tile. Tile overlap and signed/distant X/Z
+queries are checked independently; a full 512x512 analytic tile exercises sizing.

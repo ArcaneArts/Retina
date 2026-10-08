@@ -1,0 +1,564 @@
+{
+  "scope": "Resident density-to-surface/climate/biome component; complete region generation and Rust-versus-Bend throughput remain pending",
+  "base_commit": "3544b980996a27060f88e6da0fab5dd9b9978f0a",
+  "host": {
+    "os": "macOS",
+    "gpu": "Apple M4 Max / Metal",
+    "compiler": "Bend 2.0.36",
+    "workers": 2,
+    "process_nice": 10
+  },
+  "surface_correctness": {
+    "scope": "Resident GPU lattice surface heights, climate and surface biome IDs; no materials, caves or complete-region output",
+    "column_capacity": 1048576,
+    "cpu_workers": 2,
+    "nice": 10,
+    "runs": [
+      {
+        "mode": "cpu",
+        "profiles": [
+          {
+            "name": "ramp",
+            "validated_queries": 220,
+            "tiles": 5,
+            "density_and_surface_host_ms": [
+              0.2852089237421751,
+              0.21312502212822437,
+              0.2187909558415413
+            ],
+            "negative_distant_i32_endpoints": "pass",
+            "repeat_reorder": "pass",
+            "overlapping_tiles": "byte-identical",
+            "rejected_request_retention": "pass",
+            "reload_invalidation": "pass"
+          },
+          {
+            "name": "islands",
+            "validated_queries": 220,
+            "tiles": 5,
+            "density_and_surface_host_ms": [
+              0.20691694226115942,
+              0.22899999748915434,
+              0.1930419821292162
+            ],
+            "negative_distant_i32_endpoints": "pass",
+            "repeat_reorder": "pass",
+            "overlapping_tiles": "byte-identical",
+            "rejected_request_retention": "pass",
+            "reload_invalidation": "pass"
+          },
+          {
+            "name": "solid",
+            "validated_queries": 220,
+            "tiles": 5,
+            "density_and_surface_host_ms": [
+              0.24083303287625313,
+              0.20758307073265314,
+              0.19441696349531412
+            ],
+            "negative_distant_i32_endpoints": "pass",
+            "repeat_reorder": "pass",
+            "overlapping_tiles": "byte-identical",
+            "rejected_request_retention": "pass",
+            "reload_invalidation": "pass"
+          },
+          {
+            "name": "empty",
+            "validated_queries": 220,
+            "tiles": 5,
+            "density_and_surface_host_ms": [
+              0.2437080256640911,
+              0.23195799440145493,
+              0.2151669468730688
+            ],
+            "negative_distant_i32_endpoints": "pass",
+            "repeat_reorder": "pass",
+            "overlapping_tiles": "byte-identical",
+            "rejected_request_retention": "pass",
+            "reload_invalidation": "pass"
+          },
+          {
+            "name": "explicit",
+            "validated_queries": 220,
+            "tiles": 5,
+            "density_and_surface_host_ms": [
+              0.1906669931486249,
+              0.2912919735535979,
+              0.24479092098772526
+            ],
+            "negative_distant_i32_endpoints": "pass",
+            "repeat_reorder": "pass",
+            "overlapping_tiles": "byte-identical",
+            "rejected_request_retention": "pass",
+            "reload_invalidation": "pass"
+          },
+          {
+            "name": "probe_minimum",
+            "validated_queries": 220,
+            "tiles": 5,
+            "density_and_surface_host_ms": [
+              0.4400830948725343,
+              0.4681249847635627,
+              0.3090410027652979
+            ],
+            "negative_distant_i32_endpoints": "pass",
+            "repeat_reorder": "pass",
+            "overlapping_tiles": "byte-identical",
+            "rejected_request_retention": "pass",
+            "reload_invalidation": "pass"
+          },
+          {
+            "name": "non_power_cells",
+            "validated_queries": 220,
+            "tiles": 5,
+            "density_and_surface_host_ms": [
+              0.26637502014636993,
+              0.2672499977052212,
+              0.2607919741421938
+            ],
+            "negative_distant_i32_endpoints": "pass",
+            "repeat_reorder": "pass",
+            "overlapping_tiles": "byte-identical",
+            "rejected_request_retention": "pass",
+            "reload_invalidation": "pass"
+          },
+          {
+            "name": "vanilla",
+            "validated_queries": 220,
+            "tiles": 5,
+            "density_and_surface_host_ms": [
+              243.55816596653312,
+              253.45858407672495,
+              208.22270796634257
+            ],
+            "negative_distant_i32_endpoints": "pass",
+            "repeat_reorder": "pass",
+            "overlapping_tiles": "byte-identical",
+            "rejected_request_retention": "pass",
+            "reload_invalidation": "pass"
+          },
+          {
+            "name": "terralith",
+            "validated_queries": 220,
+            "tiles": 5,
+            "density_and_surface_host_ms": [
+              525.6432089954615,
+              447.0254579791799,
+              302.5574169587344
+            ],
+            "negative_distant_i32_endpoints": "pass",
+            "repeat_reorder": "pass",
+            "overlapping_tiles": "byte-identical",
+            "rejected_request_retention": "pass",
+            "reload_invalidation": "pass"
+          },
+          {
+            "name": "combined",
+            "validated_queries": 220,
+            "tiles": 5,
+            "density_and_surface_host_ms": [
+              440.22870797198266,
+              419.6800000499934,
+              307.7055839821696
+            ],
+            "negative_distant_i32_endpoints": "pass",
+            "repeat_reorder": "pass",
+            "overlapping_tiles": "byte-identical",
+            "rejected_request_retention": "pass",
+            "reload_invalidation": "pass"
+          }
+        ],
+        "validated_queries": 6296,
+        "requests": 1044,
+        "max_relative_or_absolute_error": 4.9718245800415565e-06,
+        "analytic_full_tile_columns": 262144,
+        "analytic_full_tile_host_ms": 202.20337493810803,
+        "invalid_profile_configs": 29,
+        "expected_gpu_dispatches": 207,
+        "aggregate_sha256": "e4d46d6905291222d641c9c68b2b97c8768a42d062c08ed6582a28d6e10db5c4",
+        "observed_metal_command_ms": []
+      },
+      {
+        "mode": "gpu_required",
+        "profiles": [
+          {
+            "name": "ramp",
+            "validated_queries": 220,
+            "tiles": 5,
+            "density_and_surface_host_ms": [
+              69.1724579082802,
+              2.3751669796183705,
+              3.1370000215247273
+            ],
+            "negative_distant_i32_endpoints": "pass",
+            "repeat_reorder": "pass",
+            "overlapping_tiles": "byte-identical",
+            "rejected_request_retention": "pass",
+            "reload_invalidation": "pass"
+          },
+          {
+            "name": "islands",
+            "validated_queries": 220,
+            "tiles": 5,
+            "density_and_surface_host_ms": [
+              3.1275830697268248,
+              1.8667919794097543,
+              2.064957981929183
+            ],
+            "negative_distant_i32_endpoints": "pass",
+            "repeat_reorder": "pass",
+            "overlapping_tiles": "byte-identical",
+            "rejected_request_retention": "pass",
+            "reload_invalidation": "pass"
+          },
+          {
+            "name": "solid",
+            "validated_queries": 220,
+            "tiles": 5,
+            "density_and_surface_host_ms": [
+              2.430790918879211,
+              1.6616670181974769,
+              1.8270829459652305
+            ],
+            "negative_distant_i32_endpoints": "pass",
+            "repeat_reorder": "pass",
+            "overlapping_tiles": "byte-identical",
+            "rejected_request_retention": "pass",
+            "reload_invalidation": "pass"
+          },
+          {
+            "name": "empty",
+            "validated_queries": 220,
+            "tiles": 5,
+            "density_and_surface_host_ms": [
+              2.4096249835565686,
+              2.1054160315543413,
+              2.340042032301426
+            ],
+            "negative_distant_i32_endpoints": "pass",
+            "repeat_reorder": "pass",
+            "overlapping_tiles": "byte-identical",
+            "rejected_request_retention": "pass",
+            "reload_invalidation": "pass"
+          },
+          {
+            "name": "explicit",
+            "validated_queries": 220,
+            "tiles": 5,
+            "density_and_surface_host_ms": [
+              2.4837920209392905,
+              2.1018750267103314,
+              2.381084021180868
+            ],
+            "negative_distant_i32_endpoints": "pass",
+            "repeat_reorder": "pass",
+            "overlapping_tiles": "byte-identical",
+            "rejected_request_retention": "pass",
+            "reload_invalidation": "pass"
+          },
+          {
+            "name": "probe_minimum",
+            "validated_queries": 220,
+            "tiles": 5,
+            "density_and_surface_host_ms": [
+              2.905207918956876,
+              1.7484170384705067,
+              2.5730420602485538
+            ],
+            "negative_distant_i32_endpoints": "pass",
+            "repeat_reorder": "pass",
+            "overlapping_tiles": "byte-identical",
+            "rejected_request_retention": "pass",
+            "reload_invalidation": "pass"
+          },
+          {
+            "name": "non_power_cells",
+            "validated_queries": 220,
+            "tiles": 5,
+            "density_and_surface_host_ms": [
+              2.754666958935559,
+              2.395541057921946,
+              2.5334999663755298
+            ],
+            "negative_distant_i32_endpoints": "pass",
+            "repeat_reorder": "pass",
+            "overlapping_tiles": "byte-identical",
+            "rejected_request_retention": "pass",
+            "reload_invalidation": "pass"
+          },
+          {
+            "name": "vanilla",
+            "validated_queries": 220,
+            "tiles": 5,
+            "density_and_surface_host_ms": [
+              397.83687505405396,
+              352.4815409909934,
+              271.2997910566628
+            ],
+            "negative_distant_i32_endpoints": "pass",
+            "repeat_reorder": "pass",
+            "overlapping_tiles": "byte-identical",
+            "rejected_request_retention": "pass",
+            "reload_invalidation": "pass"
+          },
+          {
+            "name": "terralith",
+            "validated_queries": 220,
+            "tiles": 5,
+            "density_and_surface_host_ms": [
+              676.7545840702951,
+              612.7549579832703,
+              464.1918329289183
+            ],
+            "negative_distant_i32_endpoints": "pass",
+            "repeat_reorder": "pass",
+            "overlapping_tiles": "byte-identical",
+            "rejected_request_retention": "pass",
+            "reload_invalidation": "pass"
+          },
+          {
+            "name": "combined",
+            "validated_queries": 220,
+            "tiles": 5,
+            "density_and_surface_host_ms": [
+              663.4966670535505,
+              616.6822500526905,
+              465.0221250485629
+            ],
+            "negative_distant_i32_endpoints": "pass",
+            "repeat_reorder": "pass",
+            "overlapping_tiles": "byte-identical",
+            "rejected_request_retention": "pass",
+            "reload_invalidation": "pass"
+          }
+        ],
+        "validated_queries": 6296,
+        "requests": 1044,
+        "max_relative_or_absolute_error": 4.9718245800415565e-06,
+        "analytic_full_tile_columns": 262144,
+        "analytic_full_tile_host_ms": 65.67379098851234,
+        "invalid_profile_configs": 29,
+        "expected_gpu_dispatches": 207,
+        "aggregate_sha256": "e4d46d6905291222d641c9c68b2b97c8768a42d062c08ed6582a28d6e10db5c4",
+        "observed_metal_command_ms": []
+      }
+    ],
+    "metal_observation": {
+      "diagnostic_only": true,
+      "command_buffers": 207,
+      "device_ms": {
+        "min": 0.244042,
+        "max": 677.266875,
+        "sum": 12077.93804
+      },
+      "normal_output_bytes_equal": true
+    },
+    "cpu_gpu_bytes_equal": true,
+    "profiles": [
+      {
+        "name": "ramp",
+        "wire_sha256": "a89ee71738d371c6e03ae0285d05a0b78efb2ad6681eaefd5aedd00bb1d4ca36"
+      },
+      {
+        "name": "islands",
+        "wire_sha256": "1305578202855dec9c9820fc2c2bc19ce126b60a80fb51c3fe625cffc93c0b6d"
+      },
+      {
+        "name": "solid",
+        "wire_sha256": "6cb38daf3336df248998bb8fd603cde7fb98eabebc9528f1c27bad4f4bd4c5e8"
+      },
+      {
+        "name": "empty",
+        "wire_sha256": "79a763f5498a15c195b84d86e0fafbdfec39464e64da88f9cae7b8c3ebaaee99"
+      },
+      {
+        "name": "explicit",
+        "wire_sha256": "b30a450245336ce2f3afbc42ba3dbcc15c84a1cc4f286e6d0a17a57c46448d2d"
+      },
+      {
+        "name": "probe_minimum",
+        "wire_sha256": "4a05402af7bcd690e600f272d88591797b7968d04056eae4e7b4c16b7c74b769"
+      },
+      {
+        "name": "non_power_cells",
+        "wire_sha256": "c63a0611492d7cbb459d8b2f08bb045797003b24a258ff92f8f098fabc2ed513"
+      },
+      {
+        "name": "vanilla",
+        "wire_sha256": "39c775ca58b6d084d4de060925df01d170c89caa09b9eaf7d33e55a915c8065a"
+      },
+      {
+        "name": "terralith",
+        "wire_sha256": "cf9ef7e0d83d91c5d99aa914101aad8b156ce9a8caa4050f71e81b190a1c0ca6"
+      },
+      {
+        "name": "combined",
+        "wire_sha256": "d4ac8f9040e39892de12b6fc6ecc46b3d9e961c3cba7f05a2ae9b53262967193"
+      }
+    ],
+    "source_sha256": {
+      "bend/terrain_surface.bend": "26687ac40e62949ca563d7f31117207fa0eb053d82f51b58a14e84b9a2d4d652",
+      "bend/registry_surface.bend": "7964afc9153879537d0fed15b811aaf88d1a0b41b210be339122e595ab76bd60",
+      "bend/registry_density.bend": "a2c55fbb4f43a85d258db693b53bc2f045ffa407261ff53048e0e4bb7d182df1",
+      "bend/engine.bend": "5b7b8f5b86b9e0440e0df1d25e5baeec322dc912f3603f7b41da1a10737311a6",
+      "scripts/test_bend_surface.py": "60018e9a89a9e7486ca38101fe7c98767e9714b2b8972e0deba8c7eac0ff8e18"
+    }
+  },
+  "loader_build": {
+    "command": "RUST_TEST_THREADS=2 nice -n 10 ./gradlew bendRegistryWireTest build -PretinaHostOnly --max-workers=2 --no-parallel",
+    "result": "BUILD SUCCESSFUL in 1m 32s",
+    "loaders": [
+      "Fabric 26.3",
+      "NeoForge 26.3"
+    ],
+    "native_tests": {
+      "passed": 64,
+      "failed": 0,
+      "ignored_gpu_only": 11
+    },
+    "java_worker": "CPU and GPU_REQUIRED pass; 12 concurrent resident surface query requests per mode"
+  },
+  "performance_limits": [
+    "Host times are single correctness-driver measurements, not warmed benchmarks.",
+    "The 512x512 full surface tile uses inexpensive analytic equations and a short vertical span; it is not a complete generated MCA.",
+    "No overall generator or Rust-versus-Bend speed claim is made."
+  ],
+  "lattice_regression": {
+    "scope": "Resident top-level GPU density lattice and interpolation; no integrated terrain or complete-region benchmark",
+    "vertex_capacity": 1048576,
+    "maximum_axis_span_blocks": 4096,
+    "cpu_workers": 2,
+    "process_nice": 10,
+    "runs": [
+      {
+        "mode": "cpu",
+        "profiles": [
+          {
+            "name": "mixed",
+            "lattices": 6,
+            "validated_queries": 313,
+            "grid_prepare_host_ms": [
+              0.19462499767541885,
+              0.0854589743539691,
+              0.19029201939702034,
+              0.42795808985829353
+            ],
+            "mixed_query_host_ms": [
+              0.3131249686703086,
+              0.2910420298576355,
+              0.26133295614272356,
+              0.4117080243304372
+            ],
+            "repeat_reorder_empty": "pass",
+            "overlapping_tiles": "byte-identical",
+            "program_seed_outside_misses": "direct Bend sampler",
+            "rejected_request_retains_cache": "pass",
+            "profile_and_numeric_prepare_invalidation": "pass"
+          },
+          {
+            "name": "analytic",
+            "lattices": 6,
+            "validated_queries": 313,
+            "grid_prepare_host_ms": [
+              0.13229099567979574,
+              0.10995904449373484,
+              0.06287498399615288,
+              0.08645805064588785
+            ],
+            "mixed_query_host_ms": [
+              0.30575005803257227,
+              0.2577919512987137,
+              0.22924994118511677,
+              0.2822499955072999
+            ],
+            "repeat_reorder_empty": "pass",
+            "overlapping_tiles": "byte-identical",
+            "program_seed_outside_misses": "direct Bend sampler",
+            "rejected_request_retains_cache": "pass",
+            "profile_and_numeric_prepare_invalidation": "pass"
+          }
+        ],
+        "maximum_batch_queries": 4096,
+        "invalid_layouts": 26,
+        "requests_in_one_process": 108,
+        "expected_dispatches": 54,
+        "max_relative_or_absolute_error": 6.911598506610661e-07,
+        "aggregate_sha256": "169e4351132b26fc9d068ad230b8ce04b890cb726232d4fbde8d6bd7b347100e",
+        "observed_metal_command_ms": []
+      },
+      {
+        "mode": "gpu_required",
+        "profiles": [
+          {
+            "name": "mixed",
+            "lattices": 6,
+            "validated_queries": 313,
+            "grid_prepare_host_ms": [
+              62.454958097077906,
+              1.0194999631494284,
+              0.8556670509278774,
+              10.207416024059057
+            ],
+            "mixed_query_host_ms": [
+              13.660790980793536,
+              17.031375085934997,
+              1.5873329248279333,
+              10.971790994517505
+            ],
+            "repeat_reorder_empty": "pass",
+            "overlapping_tiles": "byte-identical",
+            "program_seed_outside_misses": "direct Bend sampler",
+            "rejected_request_retains_cache": "pass",
+            "profile_and_numeric_prepare_invalidation": "pass"
+          },
+          {
+            "name": "analytic",
+            "lattices": 6,
+            "validated_queries": 313,
+            "grid_prepare_host_ms": [
+              0.708000035956502,
+              1.1671249521896243,
+              0.9202499641105533,
+              0.7618330419063568
+            ],
+            "mixed_query_host_ms": [
+              1.223500003106892,
+              1.401833025738597,
+              1.6731660580262542,
+              1.274749985896051
+            ],
+            "repeat_reorder_empty": "pass",
+            "overlapping_tiles": "byte-identical",
+            "program_seed_outside_misses": "direct Bend sampler",
+            "rejected_request_retains_cache": "pass",
+            "profile_and_numeric_prepare_invalidation": "pass"
+          }
+        ],
+        "maximum_batch_queries": 4096,
+        "invalid_layouts": 26,
+        "requests_in_one_process": 108,
+        "expected_dispatches": 54,
+        "max_relative_or_absolute_error": 6.911598506610661e-07,
+        "aggregate_sha256": "169e4351132b26fc9d068ad230b8ce04b890cb726232d4fbde8d6bd7b347100e",
+        "observed_metal_command_ms": []
+      }
+    ],
+    "cpu_gpu_bytes_equal": true,
+    "profiles": [
+      {
+        "name": "mixed",
+        "wire_sha256": "ae4a8ef446edc2c30da8bc99f7937222659d26a87b58d03b41c22ca13457f360"
+      },
+      {
+        "name": "analytic",
+        "wire_sha256": "5870121670c80e62a6d36d5278c6021efc3a37056a58c5ea514114ac9b332d3e"
+      }
+    ],
+    "source_sha256": {
+      "bend/density_lattice.bend": "0b02993df32e160b21c50b8ee33e003f2d7f3eb53645c91ab6699bed0e1a9ae8",
+      "bend/registry_density.bend": "a2c55fbb4f43a85d258db693b53bc2f045ffa407261ff53048e0e4bb7d182df1",
+      "bend/engine.bend": "5b7b8f5b86b9e0440e0df1d25e5baeec322dc912f3603f7b41da1a10737311a6",
+      "scripts/test_bend_density_lattice.py": "be262e0191ac17da3279fda8aaa81ded4d09888cf9066096fe0f5eaf08a125d4"
+    }
+  }
+}
