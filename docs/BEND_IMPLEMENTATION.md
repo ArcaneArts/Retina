@@ -388,3 +388,48 @@ of seconds, so material-stage scaling still needs substantial improvement.
 Neighboring contributing samples still repeat field work. Per-field reuse,
 bulk material evaluation and the original feature/runtime parity items remain
 required; this change does not expose a partial Bend world type.
+
+The interpolation-corner cycle merged in [PR #39](https://github.com/ArcaneArts/Retina/pull/39),
+commit `488cf4c`; both actual push/PR CI builds passed.
+
+Bulk material generation now has a pure Bend branch-selected scalar evaluator.
+It prepares immutable random-access instruction tables once per dispatch,
+memoizes shared dependencies within each voxel, and follows only the selected
+children of conditional/first-material rules. Numeric operations and material
+predicates still use the established evaluator. Raw six-root queries remain
+eager; generated columns need only the first root. An explicit operation list
+keeps the machine stack independent of graph depth. A recursive trial failed
+on a valid 1,024-node GPU rule; the final work-list evaluator passes that case
+without weakening validation or falling back to CPU.
+
+CPU/GPU differential checks compare 8,832 solid voxels per backend against
+eager queries across four profiles, including layered/legacy and empty bands.
+Independent equations check 4,224 predicate voxels per backend. All numeric
+dependency shapes, spline children, shared DAGs, empty root lists and ignored
+overflowing branches are covered. The diagnostic runtime confirms 24 actual
+Metal commands and identical output. Existing material-column checks additionally
+verify 7,641 voxel queries per backend, including actual vanilla, Terralith and
+combined registries, distant/signed coordinates, overlapping tiles, malformed
+inputs, invalidation and selected nonfinite-result rejection.
+
+All seven complete unlit base/material MCA files match PR39 byte-for-byte;
+7,168 records independently decode, and repeated full writes match. Minecraft
+reads/reopens each chunk twice and checks 671,088,640 blocks. Concurrent Java
+region writes, queued cancellation, actual file-open failure and worker cleanup
+pass. The Fabric/NeoForge host build, 64 native unit tests and the dedicated
+Gradle lazy-material task also pass. Feature/runtime/lighting parity and the
+complete Rust-versus-Bend comparison remain pending.
+
+Warm alternating A/B material-column calls against the compiled PR39 worker
+use two CPU workers, nice +10, one warmup and five repetitions, with compilation
+and correctness runs completed first. At 64×64 columns on the M4 Max, CPU
+medians change from 2,607 to 1,206 ms for vanilla (2.16x), 10,430 to 1,859 ms for
+Terralith (5.61x), and 13,326 to 2,339 ms for combined (5.70x). GPU-required
+medians change from 843 to 858 ms for vanilla (0.98x), 2,129 to 1,409 ms for
+Terralith (1.51x), and 2,143 to 1,423 ms for combined (1.51x). The smaller 32×32
+workloads show 1.95–5.74x CPU ratios, 1.56–1.60x datapack GPU ratios and a 0.96x
+vanilla GPU ratio. Vanilla GPU response is slightly worse in this run; there
+is no universal GPU speedup claim. Every column's bytes match before and after
+timing. These are host response times for one component, including preparation
+and transport; other host load is uncontrolled. Evidence is recorded in
+`docs/benchmarks/bend-lazy-materials.json`.

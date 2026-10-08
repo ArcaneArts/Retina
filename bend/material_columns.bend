@@ -3,6 +3,7 @@ import ./density.bend as Q
 import ./density_lattice.bend as L
 import ./terrain_surface.bend as S
 import ./material_program.bend as M
+import ./material_lazy.bend as ML
 import ./material_batch.bend as MB
 import ./material_columns_data.bend as MD
 import ./precise.bend as D
@@ -197,12 +198,12 @@ def selected_valid(ok: Bool,+value: F32,stone: U32) -> U32 & Bool:
     case True{}: (Z.word(F32.is_gt(value,0.0),F32.to_u32(F32.sub(F32.max(value,1.0),1.0)),stone),True{})
 
 @unsafe
-def coat_solid(+n: U32,+start: U32,+end: U32,runs: List<&2,MD.Run>,+valid: Bool,+config: S.Config,+palette: MD.Config,+model: Q.Model,+materials: M.Model,+point: Q.Point,+low: U32,+high: U32,+biome: U32,+context: M.Context) -> List<&2,MD.Run> & Bool:
+def coat_solid(+n: U32,+start: U32,+end: U32,runs: List<&2,MD.Run>,+valid: Bool,+config: S.Config,+palette: MD.Config,+model: Q.Model,+materials: ML.Prepared,+point: Q.Point,+low: U32,+high: U32,+biome: U32,+context: M.Context) -> List<&2,MD.Run> & Bool:
   match n context:
     case 0 _: (runs,valid)
     case _ M.Context{+above,+depth,+slope,+band,_,+secondary,+water,+preliminary}:
-      coat_value(selected(M.run(model,materials,biome,at(point,y(config,U32.sub(U32.add(start,n),1))),low,high,
-        M.Context{F32.add(above,U32.to_f32(U32.sub(U32.inc(end),U32.add(start,n)))),depth,slope,band,U32.to_f32(n),secondary,water,preliminary}),stone(palette),palette_size(palette)),
+      coat_value(selected_value(D.value(ML.run(model,materials,biome,at(point,y(config,U32.sub(U32.add(start,n),1))),low,high,
+        M.Context{F32.add(above,U32.to_f32(U32.sub(U32.inc(end),U32.add(start,n)))),depth,slope,band,U32.to_f32(n),secondary,water,preliminary})),stone(palette),palette_size(palette)),
         n,start,end,runs,valid,config,palette,model,materials,point,low,high,biome,context)
 
 def stone(config: MD.Config) -> U32:
@@ -214,19 +215,19 @@ def palette_size(config: MD.Config) -> U32:
     case MD.Config{_,_,count,_,_,_}: count
 
 @unsafe
-def coat_value(pair: U32 & Bool,+n: U32,+start: U32,end: U32,runs: List<&2,MD.Run>,valid: Bool,config: S.Config,palette: MD.Config,model: Q.Model,materials: M.Model,point: Q.Point,low: U32,high: U32,biome: U32,context: M.Context) -> List<&2,MD.Run> & Bool:
+def coat_value(pair: U32 & Bool,+n: U32,+start: U32,end: U32,runs: List<&2,MD.Run>,valid: Bool,config: S.Config,palette: MD.Config,model: Q.Model,materials: ML.Prepared,point: Q.Point,low: U32,high: U32,biome: U32,context: M.Context) -> List<&2,MD.Run> & Bool:
   (material,ok) = pair
   coat_solid(U32.sub(n,1),start,end,push(U32.sub(U32.add(start,n),1),U32.add(start,n),material,runs),Bool.and(valid,ok),config,palette,model,materials,point,low,high,biome,context)
 
 @unsafe
-def coat(spans: List<&2,MD.Run>,runs: List<&2,MD.Run>,+valid: Bool,+config: S.Config,+palette: MD.Config,+model: Q.Model,+materials: M.Model,+point: Q.Point,+low: U32,+high: U32,+biome: U32,+context: M.Context) -> List<&2,MD.Run> & Bool:
+def coat(spans: List<&2,MD.Run>,runs: List<&2,MD.Run>,+valid: Bool,+config: S.Config,+palette: MD.Config,+model: Q.Model,+materials: ML.Prepared,+point: Q.Point,+low: U32,+high: U32,+biome: U32,+context: M.Context) -> List<&2,MD.Run> & Bool:
   match spans:
     case Nil{}: (runs,valid)
     case MD.Run{+start,+end,+kind} <> rest:
       coat_kind(kind,start,end,rest,runs,valid,config,palette,model,materials,point,low,high,biome,context)
 
 @unsafe
-def coat_kind(+kind: U32,+start: U32,+end: U32,rest: List<&2,MD.Run>,runs: List<&2,MD.Run>,valid: Bool,+config: S.Config,+palette: MD.Config,+model: Q.Model,+materials: M.Model,+point: Q.Point,+low: U32,+high: U32,+biome: U32,+context: M.Context) -> List<&2,MD.Run> & Bool:
+def coat_kind(+kind: U32,+start: U32,+end: U32,rest: List<&2,MD.Run>,runs: List<&2,MD.Run>,valid: Bool,+config: S.Config,+palette: MD.Config,+model: Q.Model,+materials: ML.Prepared,+point: Q.Point,+low: U32,+high: U32,+biome: U32,+context: M.Context) -> List<&2,MD.Run> & Bool:
   match kind palette context:
     case 2 _ _: coat_next(coat_solid(U32.sub(end,start),start,end,runs,valid,config,palette,model,materials,point,low,high,biome,context),rest,config,palette,model,materials,point,low,high,biome,advance(context,U32.sub(end,start)))
     case _ MD.Config{_,+water,_,_,_,_} M.Context{+above,+depth,+slope,+band,+below,+secondary,+level,+preliminary}:
@@ -239,7 +240,7 @@ def advance(context: M.Context,count: U32) -> M.Context:
     case M.Context{above,depth,slope,band,below,secondary,water,preliminary}: M.Context{F32.add(above,U32.to_f32(count)),depth,slope,band,below,secondary,water,preliminary}
 
 @unsafe
-def coat_next(pair: List<&2,MD.Run> & Bool,rest: List<&2,MD.Run>,config: S.Config,palette: MD.Config,model: Q.Model,materials: M.Model,point: Q.Point,low: U32,high: U32,biome: U32,context: M.Context) -> List<&2,MD.Run> & Bool:
+def coat_next(pair: List<&2,MD.Run> & Bool,rest: List<&2,MD.Run>,config: S.Config,palette: MD.Config,model: Q.Model,materials: ML.Prepared,point: Q.Point,low: U32,high: U32,biome: U32,context: M.Context) -> List<&2,MD.Run> & Bool:
   (runs,valid) = pair
   coat(rest,runs,valid,config,palette,model,materials,point,low,high,biome,context)
 
@@ -250,18 +251,17 @@ def completed(pair: List<&2,MD.Run> & Bool,+height: U32,+biome: U32,context: M.C
     case M.Context{_,depth,slope,band,_,secondary,_,preliminary}: MD.Column{height,biome,depth,slope,band,secondary,preliminary,runs,U32.from_nat(List.length(&2,MD.Run,runs)),valid}
 
 @unsafe
-def column_ready(+geometry: List<&2,MD.Run>,+config: S.Config,+palette: MD.Config,+model: Q.Model,+materials: M.Model,+point: Q.Point,+low: U32,+high: U32,+biome: U32,+context: M.Context) -> MD.Column:
+def column_ready(+geometry: List<&2,MD.Run>,+config: S.Config,+palette: MD.Config,+model: Q.Model,+materials: ML.Prepared,+point: Q.Point,+low: U32,+high: U32,+biome: U32,+context: M.Context) -> MD.Column:
   column_valid(Bool.and(U32.is_lt(biome,material_count(materials)),MB.finite(context)),geometry,config,palette,model,materials,point,low,high,biome,context)
 
 @unsafe
-def column_valid(ok: Bool,+geometry: List<&2,MD.Run>,+config: S.Config,palette: MD.Config,model: Q.Model,materials: M.Model,point: Q.Point,low: U32,high: U32,+biome: U32,+context: M.Context) -> MD.Column:
+def column_valid(ok: Bool,+geometry: List<&2,MD.Run>,+config: S.Config,palette: MD.Config,model: Q.Model,materials: ML.Prepared,point: Q.Point,low: U32,high: U32,+biome: U32,+context: M.Context) -> MD.Column:
   match ok config:
     case False{} S.Config{minimum,_,_,_,_,_}: completed(([],False{}),highest(geometry,minimum),biome,context)
     case True{} S.Config{+minimum,_,_,_,_,_}: completed(coat(geometry,[],True{},config,palette,model,materials,point,low,high,biome,context),highest(geometry,minimum),biome,context)
 
-def material_count(materials: M.Model) -> U32:
-  match materials:
-    case M.Model{programs,_,_,_,_}: Q.table_size(Q.Program,programs)
+def material_count(materials: ML.Prepared) -> U32:
+  ML.count(materials)
 
 @unsafe
 def context(+config: S.Config,+palette: MD.Config,+density: L.Grid,+model: Q.Model,+programs: Q.Table<Q.Program>,+point: Q.Point,+low: U32,+high: U32,+first_free: U32) -> M.Context:
@@ -273,13 +273,13 @@ def context(+config: S.Config,+palette: MD.Config,+density: L.Grid,+model: Q.Mod
         0.0,D.value(Q.noise_at(noises,b,point,low,high)),F32.neg(2147483648.0),F32.add(F32.sub(D.value(D.integer(first_free)),9.0),depth)}
 
 @unsafe
-def column(+config: S.Config,+palette: MD.Config,+density: L.Grid,+surface: S.Grid,+model: Q.Model,+programs: Q.Table<Q.Program>,+materials: M.Model,+i: U32) -> MD.Column:
+def column(+config: S.Config,+palette: MD.Config,+density: L.Grid,+surface: S.Grid,+model: Q.Model,+programs: Q.Table<Q.Program>,+materials: ML.Prepared,+i: U32) -> MD.Column:
   match config surface:
     case S.Config{_,+span,_,_,_,_} S.Grid{+tile,+values}:
       sampled(Q.get(S.Row,values,i,S.empty()),config,palette,density,model,programs,materials,S.point(tile,i),tile,span)
 
 @unsafe
-def sampled(row: S.Row,+config: S.Config,+palette: MD.Config,+density: L.Grid,+model: Q.Model,+programs: Q.Table<Q.Program>,+materials: M.Model,+point: Q.Point,tile: S.Tile,+span: U32) -> MD.Column:
+def sampled(row: S.Row,+config: S.Config,+palette: MD.Config,+density: L.Grid,+model: Q.Model,+programs: Q.Table<Q.Program>,+materials: ML.Prepared,+point: Q.Point,tile: S.Tile,+span: U32) -> MD.Column:
   match row config tile:
     case S.Row{_,_,+biome} S.Config{+minimum,_,+sea,_,_,_} S.Tile{_,_,_,_,+low,+high}:
       +spans = geometry(span,span,4294967295,[],vertical(config,density,point),minimum,sea)
@@ -287,13 +287,13 @@ def sampled(row: S.Row,+config: S.Config,+palette: MD.Config,+density: L.Grid,+m
         context(config,palette,density,model,programs,point,low,high,highest(spans,minimum)))
 
 @unsafe
-def columns(+limit: U32,+n: U32,+base: U32,+config: S.Config,+palette: MD.Config,+density: L.Grid,+surface: S.Grid,+model: Q.Model,+programs: Q.Table<Q.Program>,+materials: M.Model) -> Q.Table<MD.Column>:
+def columns(+limit: U32,+n: U32,+base: U32,+config: S.Config,+palette: MD.Config,+density: L.Grid,+surface: S.Grid,+model: Q.Model,+programs: Q.Table<Q.Program>,+materials: ML.Prepared) -> Q.Table<MD.Column>:
   match n:
     case 1: Q.Leaf{column(config,palette,density,surface,model,programs,materials,base)}
     case _: split(U32.is_le(n,limit),limit,n,base,config,palette,density,surface,model,programs,materials)
 
 @unsafe
-def split(serial: Bool,+limit: U32,+n: U32,+base: U32,+config: S.Config,+palette: MD.Config,+density: L.Grid,+surface: S.Grid,+model: Q.Model,+programs: Q.Table<Q.Program>,+materials: M.Model) -> Q.Table<MD.Column>:
+def split(serial: Bool,+limit: U32,+n: U32,+base: U32,+config: S.Config,+palette: MD.Config,+density: L.Grid,+surface: S.Grid,+model: Q.Model,+programs: Q.Table<Q.Program>,+materials: ML.Prepared) -> Q.Table<MD.Column>:
   match serial:
     case True{}: Q.Branch{n,columns(limit,U32.div(n,2),base,config,palette,density,surface,model,programs,materials),
       columns(limit,U32.sub(n,U32.div(n,2)),U32.add(base,U32.div(n,2)),config,palette,density,surface,model,programs,materials)}
@@ -306,7 +306,8 @@ def split(serial: Bool,+limit: U32,+n: U32,+base: U32,+config: S.Config,+palette
 def execute(+config: S.Config,+palette: MD.Config,+density: L.Grid,+surface: S.Grid,+model: Q.Model,+programs: Q.Table<Q.Program>,+materials: M.Model) -> Computed:
   match config surface:
     case S.Config{+minimum,+span,_,_,_,_} S.Grid{+tile,_}:
-      values : Q.Table<MD.Column> = columns!(U32.max(1,U32.div(U32.add(S.total(tile),16383),16384)),S.total(tile),0,config,palette,density,surface,model,programs,M.rules(materials))
+      +prepared = ML.prepare(M.rules(materials))
+      values : Q.Table<MD.Column> = columns!(U32.max(1,U32.div(U32.add(S.total(tile),16383),16384)),S.total(tile),0,config,palette,density,surface,model,programs,prepared)
       Computed{model,programs,density,surface,materials,MD.Grid{tile,minimum,span,values}}
 
 @unsafe
