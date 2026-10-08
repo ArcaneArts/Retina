@@ -532,6 +532,19 @@ tasks.register('bendShorelineTest', Exec) {
     mustRunAfter 'bendRegistryWireTest', 'bendRegistryNoiseTest', 'bendRegistryClimateTest', 'bendEngineTest', 'bendNoiseTest', 'bendClimateTest', 'bendNumericTest', 'bendDensityTest', 'bendRegistryDensityTest', 'bendInterpolationTest', 'bendDensityLatticeTest', 'bendSurfaceTest', 'bendMaterialTest', 'bendMaterialColumnsTest', 'bendLazyMaterialTest'
 }
 
+tasks.register('bendGeologyTest', Exec) {
+    group = 'verification'
+    description = 'Check registered Bend cave/carver projection, persistent state and actual GPU noise sampling.'
+    workingDir rootProject.projectDir
+    commandLine providers.gradleProperty('pythonExecutable').getOrElse('python3'), 'scripts/test_bend_geology.py'
+    if (providers.gradleProperty('bendSkipBuild').isPresent()) args '--skip-build'
+    if (providers.gradleProperty('proveMetal').isPresent()) args '--prove-metal'
+    if (!registryDensityProfiles.isEmpty()) registryDensityProfiles.split(',').each { pair ->
+        pair.split('=', 2).with { paths -> args '--profile', paths[0], paths[1] }
+    }
+    mustRunAfter 'bendRegistryWireTest', 'bendRegistryNoiseTest', 'bendRegistryClimateTest', 'bendEngineTest', 'bendNoiseTest', 'bendClimateTest', 'bendNumericTest', 'bendDensityTest', 'bendRegistryDensityTest', 'bendInterpolationTest', 'bendDensityLatticeTest', 'bendSurfaceTest', 'bendMaterialTest', 'bendMaterialColumnsTest', 'bendLazyMaterialTest', 'bendShorelineTest'
+}
+
 def climateProfiles = providers.gradleProperty('bendClimateProfiles').getOrElse('')
 tasks.register('bendClimateTest', Exec) {
     group = 'verification'

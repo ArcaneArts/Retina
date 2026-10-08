@@ -1,0 +1,497 @@
+{
+  "scope": "Registered Bend cave/carver projection and six-channel noise sampling component. Cave carving, complete world integration and overall Rust comparison remain pending.",
+  "date": "2026-10-08",
+  "base_commit": "6a259a42d04d0ec18747d70d0a2e3758dec1be99",
+  "bend_version": "2.0.36",
+  "machine": "Apple M4 Max, macOS arm64, Metal",
+  "implementation": {
+    "projection": "Bend sequential resident-tape visitors; immutable typed noise/carver/material tables; packed and ordinary boolean arrays",
+    "device": "Stock Bend calculate! dispatch of all six cave-noise channels; only numeric noise tables uploaded",
+    "sampling": "Four-block lattice Nyquist filter, retained positive-weight normalization, full seed and integer/fraction signed coordinates",
+    "large_weights": "Weighted mean prevents multiplication overflow for accepted large finite modifier weights",
+    "commands": {
+      "30": "Prepare typed geology and invalidate generated columns on success",
+      "31": "Bounded six-channel cave-noise batch",
+      "32": "Bounded typed carver diagnostic batch"
+    },
+    "not_yet_implemented": "Cave lattice/masks/carving, ravines/entrances, cave biomes/decoration, fluids and actual world integration"
+  },
+  "validation": {
+    "registered_profiles": {
+      "scope": "Typed cave/carver projection and six-channel GPU sampling; cave carving and world integration remain pending",
+      "bend_version": "existing executable",
+      "runs": [
+        {
+          "gpu_required": false,
+          "profiles": [
+            {
+              "name": "mixed",
+              "noise_scalars": 6612,
+              "carvers": 3
+            },
+            {
+              "name": "nyquist",
+              "noise_scalars": 6612,
+              "carvers": 3
+            },
+            {
+              "name": "filtered",
+              "noise_scalars": 6612,
+              "carvers": 3
+            },
+            {
+              "name": "zero",
+              "noise_scalars": 6612,
+              "carvers": 3
+            },
+            {
+              "name": "large_finite_weight",
+              "noise_scalars": 6612,
+              "carvers": 3
+            },
+            {
+              "name": "empty_carvers",
+              "noise_scalars": 6612,
+              "carvers": 0
+            },
+            {
+              "name": "vanilla",
+              "noise_scalars": 6612,
+              "carvers": 168
+            },
+            {
+              "name": "terralith",
+              "noise_scalars": 6612,
+              "carvers": 451
+            },
+            {
+              "name": "combined",
+              "noise_scalars": 6612,
+              "carvers": 452
+            }
+          ],
+          "noise_scalars_checked": 59508,
+          "carvers_checked": 1086,
+          "invalid_profiles_rejected": 57,
+          "maximum_reference_error": 2.682209014892578e-07,
+          "expected_gpu_dispatches": 74,
+          "cave_gpu_dispatches": 68,
+          "metal_commands_ms": [],
+          "sha256": "65f65641baeb42b70a3cacf01af3ee75cba1a6966e49ce274fe22658e65ef17a",
+          "requests_in_one_process": 717,
+          "reload_and_block_invalidation": "pass",
+          "query_reordering": "byte-identical",
+          "generated_chunk_blocks_checked": 16384,
+          "geology_retained_through_chunk_encoding": "pass"
+        },
+        {
+          "gpu_required": true,
+          "profiles": [
+            {
+              "name": "mixed",
+              "noise_scalars": 6612,
+              "carvers": 3
+            },
+            {
+              "name": "nyquist",
+              "noise_scalars": 6612,
+              "carvers": 3
+            },
+            {
+              "name": "filtered",
+              "noise_scalars": 6612,
+              "carvers": 3
+            },
+            {
+              "name": "zero",
+              "noise_scalars": 6612,
+              "carvers": 3
+            },
+            {
+              "name": "large_finite_weight",
+              "noise_scalars": 6612,
+              "carvers": 3
+            },
+            {
+              "name": "empty_carvers",
+              "noise_scalars": 6612,
+              "carvers": 0
+            },
+            {
+              "name": "vanilla",
+              "noise_scalars": 6612,
+              "carvers": 168
+            },
+            {
+              "name": "terralith",
+              "noise_scalars": 6612,
+              "carvers": 451
+            },
+            {
+              "name": "combined",
+              "noise_scalars": 6612,
+              "carvers": 452
+            }
+          ],
+          "noise_scalars_checked": 59508,
+          "carvers_checked": 1086,
+          "invalid_profiles_rejected": 57,
+          "maximum_reference_error": 2.682209014892578e-07,
+          "expected_gpu_dispatches": 74,
+          "cave_gpu_dispatches": 68,
+          "metal_commands_ms": [],
+          "sha256": "65f65641baeb42b70a3cacf01af3ee75cba1a6966e49ce274fe22658e65ef17a",
+          "requests_in_one_process": 717,
+          "reload_and_block_invalidation": "pass",
+          "query_reordering": "byte-identical",
+          "generated_chunk_blocks_checked": 16384,
+          "geology_retained_through_chunk_encoding": "pass"
+        }
+      ],
+      "actual_metal_proof": {
+        "gpu_required": true,
+        "profiles": [
+          {
+            "name": "mixed",
+            "noise_scalars": 6612,
+            "carvers": 3
+          },
+          {
+            "name": "nyquist",
+            "noise_scalars": 6612,
+            "carvers": 3
+          },
+          {
+            "name": "filtered",
+            "noise_scalars": 6612,
+            "carvers": 3
+          },
+          {
+            "name": "zero",
+            "noise_scalars": 6612,
+            "carvers": 3
+          },
+          {
+            "name": "large_finite_weight",
+            "noise_scalars": 6612,
+            "carvers": 3
+          },
+          {
+            "name": "empty_carvers",
+            "noise_scalars": 6612,
+            "carvers": 0
+          },
+          {
+            "name": "vanilla",
+            "noise_scalars": 6612,
+            "carvers": 168
+          },
+          {
+            "name": "terralith",
+            "noise_scalars": 6612,
+            "carvers": 451
+          },
+          {
+            "name": "combined",
+            "noise_scalars": 6612,
+            "carvers": 452
+          }
+        ],
+        "noise_scalars_checked": 59508,
+        "carvers_checked": 1086,
+        "invalid_profiles_rejected": 57,
+        "maximum_reference_error": 2.682209014892578e-07,
+        "expected_gpu_dispatches": 74,
+        "cave_gpu_dispatches": 68,
+        "metal_commands_ms": [
+          10.671125,
+          9.448,
+          5.420875,
+          17.3705,
+          0.315875,
+          5.357625,
+          5.321625,
+          5.294708,
+          12.01175,
+          5.298167,
+          10.040292,
+          0.346125,
+          5.30675,
+          5.377292,
+          5.522125,
+          10.00825,
+          5.406458,
+          9.78275,
+          0.3615,
+          5.397875,
+          5.520292,
+          5.514,
+          11.237625,
+          5.539625,
+          9.832917,
+          0.482375,
+          5.4105,
+          5.522458,
+          5.555875,
+          12.57525,
+          5.408708,
+          10.080792,
+          0.366917,
+          5.490625,
+          5.372125,
+          5.409667,
+          5.5465,
+          5.59725,
+          10.1575,
+          0.4285,
+          5.714125,
+          5.702792,
+          9.864375,
+          11.0085,
+          5.49125,
+          10.277667,
+          0.62825,
+          7.864167,
+          11.045417,
+          12.829458,
+          5.422917,
+          5.52875,
+          10.2625,
+          0.322083,
+          5.284917,
+          5.470125,
+          10.4505,
+          12.962333,
+          5.480375,
+          10.21325,
+          0.429333,
+          5.5515,
+          10.698125,
+          3.303333,
+          2.727,
+          7.687,
+          15.539042,
+          6.130917,
+          15.431042,
+          9.268542,
+          5.597625,
+          5.288583,
+          5.48625,
+          5.5205
+        ],
+        "sha256": "65f65641baeb42b70a3cacf01af3ee75cba1a6966e49ce274fe22658e65ef17a",
+        "requests_in_one_process": 717,
+        "reload_and_block_invalidation": "pass",
+        "query_reordering": "byte-identical",
+        "generated_chunk_blocks_checked": 16384,
+        "geology_retained_through_chunk_encoding": "pass"
+      },
+      "metal_probe_sha256": "9e5b30434be3acc4b20efb621af4772631d3ef90690e2c829a9ccc78b669b371",
+      "executable_sha256": "7d37cf175e13267d5b063133aa71a4d07f908eae5a5f5ecacf3242b8816e6eb8",
+      "source_sha256": {
+        "bend/binary.bend": "f716146b3a19403c4ad208ce37c2056f9ba023d6b76a3fecba5c3253185d9b68",
+        "bend/chunk.bend": "7aa37914a3941541f78909d0ab582ab956f972be7804c4abf97fdf07b839fe86",
+        "bend/chunk_catalog.bend": "666d5f98e2128a31a49f36ccdf0a1da7d7cb59067ce58d3cd1d0da3742963df3",
+        "bend/climate.bend": "57074782ae0f82c71d81fc5f21152af124a25c422b6ebd7a0d82037552ff2f19",
+        "bend/climate_batch.bend": "f65fbc7b463f5e093feb2364da0f504fa295088285917f7a04dc205bf1dc34fa",
+        "bend/compression.bend": "e42e1a312180ee0fce6faad39fc82b9a2e43ba05727e04d9a3c8e7651dd14130",
+        "bend/density.bend": "01beac1b7443695c1507293a7d916489ac5441235c1e07290330691864b56aae",
+        "bend/density_batch.bend": "51231a72efa798c9a31f1a6a841176ea50d1ac5644352b389e3d1a9bff30d99c",
+        "bend/density_lattice.bend": "0b02993df32e160b21c50b8ee33e003f2d7f3eb53645c91ab6699bed0e1a9ae8",
+        "bend/engine.bend": "2ecd6611b29ffbf5a3939e1d9be425c9dc8d57f59b1e6129e43f3e16439d7d1c",
+        "bend/generated_chunk.bend": "53c9f0aa02add6f7c207d079481129178c6e2b96eda544f2952eb1744b8cd63f",
+        "bend/generated_region.bend": "a2969fa86cd4fa8becf2192eb3b662cf6415c68e28a272716a2d2627b3f82531",
+        "bend/geology.bend": "0569fb1c04167b14bb0ebac7d5e77a3c469e464ee25b4b1dbd3945d0be4326cd",
+        "bend/geology_batch.bend": "bc6dacea444aa973c1cfca738c7ef45efaeaae83ad835a8e19d570c6e888e482",
+        "bend/heightmaps.bend": "0b69c87d24ec3b27cbb082bb394205765154bf78c5c4db2c226fbc4ba3e2d997",
+        "bend/material.bend": "fea1e62174797c5b44634f3674dfc550d0178f207524193ed0d9416fbbf70f64",
+        "bend/material_batch.bend": "e34ee066c23a5328d279c5137ce2d107f2e4df661d63d3de373970d5cbee2073",
+        "bend/material_columns.bend": "9f111a47ca9247f3b229c98654d79a754e620055ab817caece92a58f3ebf417f",
+        "bend/material_columns_data.bend": "c9d9eb52dd043f9200dae431e4036695bdeb5c4d574e890c5ba2ec93d4de398c",
+        "bend/material_lazy.bend": "8675a4ea5d3e1b164d1d2a71b248c9ec23078c05da9880fb5470b543a6de1f10",
+        "bend/material_program.bend": "f4b7e78629f7eecd991418eb00fa3face480954b300fa996e370d4c16c35128c",
+        "bend/nbt.bend": "7063555acf523d12269bd152e1e32981534009785b6a7653509f1a108b18cb57",
+        "bend/noise.bend": "80485dd8d18580a1044c8e55dbd03dab1b8dbdd9aa6681e1b8f6743fce928c1d",
+        "bend/numbers.bend": "858ea999141639aa26c559a2e06a87d62c58e93d0d8d3a793bb530b629060956",
+        "bend/packed.bend": "b4ebd29bc4d31d53ddcc221f64c84e68c5bde4a0fbbb51acfdaa9ddd01e2c23f",
+        "bend/palette.bend": "4f813fb89317308dc02c70d36cf5e3eeaf6d62a9a82477b781b976be5eee82ff",
+        "bend/precise.bend": "50ba7138300f2c913b2d75a554a78d88bfb09931c6cd58ecc884ab7024c73c01",
+        "bend/reader.bend": "e659a2cac6b8435f02fd0fe91902ceca918055d026ec1908845186bee4fdc0ac",
+        "bend/region.bend": "1455654e09969a0c80b6536b61b8da2f6070c80d007d2a3639b4a42cb873cc35",
+        "bend/registry.bend": "433b4dbb17b127dd322a11465a1111ddadd86a8682597310c062a194aa802296",
+        "bend/registry_chunk_catalog.bend": "032c8411f124d9876a34e2537b7dff1f9ccbd068a53b2e4a7423ae71ffe98652",
+        "bend/registry_climate.bend": "3daed5cbc3da3a4d4f91c65465e899b31fe219fe34af03731fc7ca1c49c572ad",
+        "bend/registry_density.bend": "0c1972222bbcdfead41b30ae0453f7e05e85ab7bb446c113c3a07a8b12f56cb7",
+        "bend/registry_geology.bend": "a32f7721fdeee0c56b908861de4c4a20c55b489c333c5670528fad5876f1a7b6",
+        "bend/registry_material.bend": "b28952c7b085865d41f853d55e287c0c0bb8000442cc2c94b37325daaab8d29e",
+        "bend/registry_material_columns.bend": "9eb18ecf8327d35a9f1c00da86272b5a18447f203c7b7964377f782648a9846b",
+        "bend/registry_noise.bend": "ae6994d216acc9751c20e4df1e4ff62548c8af99c61e6b006155e2fbc3e1ca94",
+        "bend/registry_surface.bend": "7964afc9153879537d0fed15b811aaf88d1a0b41b210be339122e595ab76bd60",
+        "bend/registry_values.bend": "5bb1d3ab6bfed7cf640af35089a5ec1370cc2f686d7cfb8b210e7643e1b3d97f",
+        "bend/shoreline.bend": "936e978072ad2a0f32e6a85b6fe30d2dc2eb1773757e2d43f6b5fa6106681041",
+        "bend/terrain_surface.bend": "26687ac40e62949ca563d7f31117207fa0eb053d82f51b58a14e84b9a2d4d652",
+        "bend/transport.bend": "2d7b2667aaf37b537de8be6c584acaeaec37377da475741bfe790a46d9c76f81",
+        "bend/word64.bend": "62e104fbbc56208d66457789a7f2ed3f5fe122f4a19068c3df9b3bbbf555e139"
+      },
+      "inputs": [
+        {
+          "name": "mixed",
+          "rbp_sha256": "9a3c4d0d658fa068dd1f58b117e5c145010173fcaef29df8cae5333f76ed9c9c"
+        },
+        {
+          "name": "nyquist",
+          "rbp_sha256": "a7691c39a826568ef44e61800ddb9e19cab92ca703965ea0207dcd4a03770b38"
+        },
+        {
+          "name": "filtered",
+          "rbp_sha256": "e12105561bc98f369701328f8e9f2b407edc6a265a80bd03747d90473c575aa4"
+        },
+        {
+          "name": "zero",
+          "rbp_sha256": "37389bd66bafa0acc0844c1dafad3212c9673408f6a415586776e05cfd1d3004"
+        },
+        {
+          "name": "large_finite_weight",
+          "rbp_sha256": "b81ddc8ae589b62337e8bf85bdabb5bb05d1b0bb8ec9516eb56c4aed0af10f66"
+        },
+        {
+          "name": "empty_carvers",
+          "rbp_sha256": "d319a8e0072de1bcba2495373cd43a8c2be9d4a242ff0e3980f6961a680c0d52"
+        },
+        {
+          "name": "vanilla",
+          "rbp_sha256": "39c775ca58b6d084d4de060925df01d170c89caa09b9eaf7d33e55a915c8065a"
+        },
+        {
+          "name": "terralith",
+          "rbp_sha256": "cf9ef7e0d83d91c5d99aa914101aad8b156ce9a8caa4050f71e81b190a1c0ca6"
+        },
+        {
+          "name": "combined",
+          "rbp_sha256": "d4ac8f9040e39892de12b6fc6ecc46b3d9e961c3cba7f05a2ae9b53262967193"
+        }
+      ]
+    },
+    "whole_regions_with_resident_geology": {
+      "scope": "Keep complete base/material MCA serialization unchanged with resident geology.\n\nA typed geology model is prepared before generation and retained through every\nchunk/region query. This checks complete file/state integration of that model;\nit does not claim caves are carved or that world-generator parity is complete.",
+      "runs": [
+        {
+          "gpu_required": false,
+          "regions": [
+            {
+              "name": "ramp",
+              "region": [
+                -1,
+                0
+              ],
+              "chunks": 1024,
+              "world_min": -16,
+              "world_height": 32,
+              "mca_bytes": 4202496,
+              "sha256": "0967df8d1ce02aeffb9edef144b680135bee5d05c7a212d9d0395ad3045c2ba0",
+              "generation_response_host_ms": 4512.221667100675,
+              "encode_compress_write_response_host_ms": 2229.0617920225486,
+              "biome_quart_counts": {
+                "minecraft:plains": 131072
+              },
+              "repeated_file_identical": null
+            }
+          ],
+          "chunk_streams_decoded": 1024,
+          "blocks_compared_to_generated_queries": 57344,
+          "requests_in_one_process": 51,
+          "expected_gpu_dispatches": 6,
+          "metal_commands_ms": [],
+          "sha256": "80af8a24b3733586d8fb974302607046cc34b3831508b2a64434e1af5d10b439"
+        },
+        {
+          "gpu_required": true,
+          "regions": [
+            {
+              "name": "ramp",
+              "region": [
+                -1,
+                0
+              ],
+              "chunks": 1024,
+              "world_min": -16,
+              "world_height": 32,
+              "mca_bytes": 4202496,
+              "sha256": "0967df8d1ce02aeffb9edef144b680135bee5d05c7a212d9d0395ad3045c2ba0",
+              "generation_response_host_ms": 8042.376333032735,
+              "encode_compress_write_response_host_ms": 2211.9762919610366,
+              "biome_quart_counts": {
+                "minecraft:plains": 131072
+              },
+              "repeated_file_identical": null
+            }
+          ],
+          "chunk_streams_decoded": 1024,
+          "blocks_compared_to_generated_queries": 57344,
+          "requests_in_one_process": 51,
+          "expected_gpu_dispatches": 6,
+          "metal_commands_ms": [],
+          "sha256": "80af8a24b3733586d8fb974302607046cc34b3831508b2a64434e1af5d10b439"
+        }
+      ],
+      "actual_metal_proof": {
+        "gpu_required": true,
+        "regions": [
+          {
+            "name": "ramp",
+            "region": [
+              -1,
+              0
+            ],
+            "chunks": 1024,
+            "world_min": -16,
+            "world_height": 32,
+            "mca_bytes": 4202496,
+            "sha256": "0967df8d1ce02aeffb9edef144b680135bee5d05c7a212d9d0395ad3045c2ba0",
+            "generation_response_host_ms": 7924.918083008379,
+            "encode_compress_write_response_host_ms": 2284.0779579710215,
+            "biome_quart_counts": {
+              "minecraft:plains": 131072
+            },
+            "repeated_file_identical": null
+          }
+        ],
+        "chunk_streams_decoded": 1024,
+        "blocks_compared_to_generated_queries": 57344,
+        "requests_in_one_process": 51,
+        "expected_gpu_dispatches": 6,
+        "metal_commands_ms": [
+          9.66875,
+          61.3435,
+          34.046875,
+          2633.659292,
+          47.340833,
+          5066.41425
+        ],
+        "sha256": "80af8a24b3733586d8fb974302607046cc34b3831508b2a64434e1af5d10b439"
+      },
+      "baseline_files": "byte-identical by SHA-256 to prior independently validated MCA output",
+      "baseline_report_sha256": "3d48476ff6e5623e1e85fc691c1500d37d1a614c83c9e5effc665d24a5c29bcb",
+      "executable_sha256": "7d37cf175e13267d5b063133aa71a4d07f908eae5a5f5ecacf3242b8816e6eb8",
+      "input_sha256": "ee4db31edf37720f70c8bc7670163c35bdebcdbd019c0ffc667d9867558f71f9"
+    },
+    "gradle_synthetic_entrypoint": {
+      "command": "nice -n 10 ./gradlew bendGeologyTest -PbendSkipBuild -PretinaHostOnly --max-workers=2 --no-parallel",
+      "result": "BUILD SUCCESSFUL",
+      "noise_scalars_per_backend": 39672,
+      "carvers_per_backend": 15
+    },
+    "host_build": {
+      "command": "RUST_TEST_THREADS=2 CARGO_BUILD_JOBS=2 nice -n 10 ./gradlew build -PretinaHostOnly --max-workers=2 --no-parallel",
+      "result": "BUILD SUCCESSFUL; Fabric and NeoForge",
+      "native_tests_passed": 64,
+      "native_fixture_tests_explicitly_ignored": 11,
+      "log_sha256": "ab2ef2051a00226a7bf4adbdb3263a48e2d7c06e3c1b60bcb25f8b253477f78a"
+    }
+  },
+  "measurement": "Correctness-run host/device timings only. External load is uncontrolled; no formal performance comparison or full-generator speed claim.",
+  "test_source_sha256": {
+    "scripts/test_bend_geology.py": "ad06f0631eb9288bc51032ebb1c633b295bd3fe18d8cfc44025bfee48f32fa24",
+    "scripts/test_bend_geology_regions.py": "ad80e983658b4c58afe5ea4775fabb01ab86f3a2df57b6a0707d79c09d28abc9"
+  }
+}
