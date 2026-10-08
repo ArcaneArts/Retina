@@ -1,0 +1,24 @@
+# Dump a real GPU-produced batch, separately from all timed measurements.
+def dump_array(+n: Nat, r: Array<F32> & F32) -> IO(Unit):
+  match n:
+    case 0n:
+      IO.pure(Unit, Unit{})
+    case 1n+p:
+      (a, v) = r
+      do IO<Unit>:
+        _ : Unit <- IO.print(F32.show(v))
+        dump_array(p, Array.get(F32, a, U32.sub(U32.from_nat(p), 1)))
+
+def dump(s: Samples) -> IO(Unit):
+  match s:
+    case Leaf{a}:
+      dump_array(64n, Array.get(F32, a, 63))
+    case Node{a, b}:
+      do IO<Unit>:
+        _ : Unit <- dump(a)
+        dump(b)
+
+def main() -> IO(Unit):
+  do IO<Unit>:
+    data : Samples = batch!(4n, 0)
+    dump(data)

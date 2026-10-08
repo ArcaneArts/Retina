@@ -1,0 +1,87 @@
+{
+  "cpu": "Apple M4 Max",
+  "utc": "2026-10-08T03:31:22Z",
+  "results": [
+    {
+      "n": 256,
+      "kind": "bend_gpu",
+      "threads": 4,
+      "grain": 256,
+      "summary": {
+        "total_ms": {
+          "median": 0.46799999999999997,
+          "mean": 0.538175,
+          "p95": 1.017,
+          "min": 0.395
+        },
+        "materialize_ms": {
+          "median": 0.46799999999999997,
+          "mean": 0.53735,
+          "p95": 1.01,
+          "min": 0.395
+        }
+      }
+    },
+    {
+      "n": 262144,
+      "kind": "bend_gpu",
+      "threads": 4,
+      "grain": 256,
+      "summary": {
+        "total_ms": {
+          "median": 1.02,
+          "mean": 1.104575,
+          "p95": 1.982,
+          "min": 0.749
+        },
+        "materialize_ms": {
+          "median": 0.6785000000000001,
+          "mean": 0.768425,
+          "p95": 1.652,
+          "min": 0.399
+        }
+      }
+    },
+    {
+      "n": 1048576,
+      "kind": "bend_gpu",
+      "threads": 4,
+      "grain": 256,
+      "summary": {
+        "total_ms": {
+          "median": 2.1565,
+          "mean": 2.222475,
+          "p95": 2.821,
+          "min": 1.693
+        },
+        "materialize_ms": {
+          "median": 0.606,
+          "mean": 0.8106,
+          "p95": 1.516,
+          "min": 0.473
+        }
+      }
+    },
+    {
+      "n": 4194304,
+      "kind": "bend_gpu",
+      "threads": 4,
+      "grain": 256,
+      "summary": {
+        "total_ms": {
+          "median": 7.302,
+          "mean": 7.357575,
+          "p95": 8.258,
+          "min": 6.124
+        },
+        "materialize_ms": {
+          "median": 1.455,
+          "mean": 1.546025,
+          "p95": 2.44,
+          "min": 0.909
+        }
+      }
+    }
+  ],
+  "selected_grain": 256
+}
