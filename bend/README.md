@@ -471,6 +471,30 @@ see `docs/BEND_REGISTRY_WIRE.md`. A one-column density halo provides slopes.
 Caves/aquifers/coasts, 3D biome assignment and full generated MCA integration
 remain pending; this component does not expose a selectable Bend world type.
 
+Bulk material columns use `material_lazy.bend` to evaluate only the first
+selected material root. Rule sequences stop at their first nonzero material;
+false conditional rules do not evaluate their material child. Numeric and
+material operations reuse the existing evaluators, and each voxel memoizes
+shared dependencies. Immutable instruction tables are prepared once per bulk
+dispatch. An explicit pending-operation list bounds machine-stack use for the
+maximum accepted 1,024-node DAG, including on Metal. The six-output material
+query command remains eager for comparison and callers needing other roots.
+
+```sh
+nice -n 10 ./gradlew :common:bendLazyMaterialTest -PretinaHostOnly --max-workers=2 --no-parallel -PproveMetal
+python3 scripts/test_bend_lazy_material.py --skip-build --baseline /absolute/prior/engine \
+  --profile /absolute/vanilla.json /absolute/vanilla.rbp
+```
+
+The checks compare every solid voxel with the eager query path, independently
+check predicate fixtures, exercise all numeric dependency shapes and spline
+children, and cover shared nodes, implicit roots, unused overflow and maximum
+graph depth. Optional A/B timings use one warmup and five serial alternating
+repeats of 32×32 and 64×64 material-column builds. Every column's bytes must
+match the prior executable before and after timing. Compile both executables
+first and avoid concurrent project compilation while benchmarking. These
+component measurements do not establish complete generator performance.
+
 ## Generated base/material chunk serialization
 
 `registry_chunk_catalog.bend` projects registered state names/properties, biome
