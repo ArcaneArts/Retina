@@ -31,7 +31,7 @@ more deeply; retain the original requested scope.
 
 | Requirement | Current Rust/shared source | Bend implementation / completion evidence |
 | --- | --- | --- |
-| Shared loaded registry export, including palette properties and climate intervals | `BiomeTerrainProfile.java`, `RegistryGpuProgram.java`, `native/src/profile.rs` | Pending: decouple export from immediate Rust registration, parse once in Bend |
+| Shared loaded registry export, including palette properties and climate intervals | `TerrainProfileData.java`, `RegistryGpuProgram.java`, `native/src/profile.rs` | Export decoupled from Rust initialization; actual vanilla, Terralith and Terralith+supplement registries pass with native library unavailable. Explicit Rust adapter receives byte-identical data and passes real Metal queries. Bend transport/interpretation pending |
 | Noise stacks, density bytecode, splines and GPU interpolation | `native/src/program.rs`, `program/`, `program.wgsl`, `noise3.wgsl`, `simplex.wgsl` | Pending: reusable runtime kernels; existing experiment proves only simplex feasibility |
 | Climate targets, biome selection, smooth boundaries and underground biomes | `climate.rs`, `climate.wgsl`, `RetinaBiomeSource.java` | Pending |
 | Coastlines, shore materials, rivers and material predicates/layers | `ShoreMaterialProfile.java`, `column_program.rs`, `materials.wgsl` | Pending |
@@ -70,13 +70,21 @@ more deeply; retain the original requested scope.
    in [PR #19](https://github.com/ArcaneArts/Retina/pull/19), commit `2788730`.
    [PR #20](https://github.com/ArcaneArts/Retina/pull/20), commit `6d5d555`, adds
    packed local indices and streamed new-file MCA containers. Both build checks
-   on each of PRs #18/#19/#20 passed. The next cycle adds palette remapping,
-   final-block heightmaps and complete fixture chunk serialization, validated by
-   Minecraft's own decoders. Existing-record publication and actual generated
+   on each of PRs #18/#19/#20 passed. [PR #21](https://github.com/ArcaneArts/Retina/pull/21),
+   commit `11f4ec8`, adds palette remapping, final-block heightmaps and complete
+   fixture chunk serialization, validated by Minecraft's own decoders. Both CI
+   builds passed. Existing-record publication and actual generated
    world integration remain required.
 3. **Persistent engine and shared registry transport.** Separate exported data
    from Rust registration, define backend-neutral contracts, process lifecycle
    and request coalescing without exposing a misleading ready world type.
+   `TerrainProfileData` now owns the unchanged projection; `BiomeTerrainProfile`
+   explicitly registers it in Rust. Shared export and Rust regression checks
+   pass for vanilla, Terralith and a compatible supplemental pack. The downloaded
+   Lithosphere pack was also actually attempted but fails Minecraft 26.3's own
+   registry loader because its data uses older formats. Evidence is recorded in
+   `docs/benchmarks/bend-registry-export.json`. Bend transport and persistent
+   execution remain required.
 4. **GPU terrain and registry programs.** Port numerical kernels, climate,
    interpolation, materials, caves, fluids and surface/query consistency.
 5. **Registered features and structures.** Port ordered decorations, geology,

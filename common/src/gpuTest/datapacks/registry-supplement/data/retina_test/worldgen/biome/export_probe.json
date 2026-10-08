@@ -1,0 +1,31 @@
+{
+  "attributes": {},
+  "has_precipitation": true,
+  "temperature": 0.65,
+  "downfall": 0.75,
+  "effects": {
+    "water_color": 4159204
+  },
+  "carvers": [
+    "minecraft:cave"
+  ],
+  "features": [
+    [],
+    [],
+    [],
+    [],
+    [],
+    [],
+    [
+      "minecraft:ore_coal_upper"
+    ],
+    [],
+    [],
+    [
+      "minecraft:patch_grass_plain"
+    ],
+    [
+      "minecraft:freeze_top_layer"
+    ]
+  ]
+}

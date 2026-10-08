@@ -1,0 +1,7 @@
+{
+  "pack": {
+    "description": "Registry export test: extra biome and changed climate noise",
+    "min_format": 121,
+    "max_format": 121
+  }
+}
