@@ -154,6 +154,16 @@ public final class BendWorker implements AutoCloseable {
                 .putInt((int) seed).putInt((int) (seed >>> 32)).array();
     }
 
+    /** Bend projects all per-biome material DAGs, terracotta bands, sea level
+     * and layer mode from the loaded registry. Numeric preparation is required.
+     * The acknowledgement is program count, band count, sea level and layer flag.
+     * Raw opcode-20 batches supply coordinates/seeds and eight context values;
+     * material selection and numerical evaluation remain in Bend.
+     */
+    public CompletableFuture<byte[]> prepareProfileMaterials() {
+        return request(19, new byte[0]);
+    }
+
     /** Cancellation skips queued requests; in-flight responses are drained to
      * preserve framing. World shutdown closes the worker and terminates it.
      */

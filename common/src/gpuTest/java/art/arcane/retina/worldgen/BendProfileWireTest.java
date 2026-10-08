@@ -26,12 +26,13 @@ public final class BendProfileWireTest {
               {"biome":2,"min":[0,0,0,0],"max":[1,1,1,1],"weirdness":[0,1],"depth":[0,1],"offset":0}]}
             """);
         encode(output, "density", """
-            {"geology_min_y":-16,"geology_height":32,"sea_level":4,"biomes":[{"flags":0}],"climate_targets":[],"registry_program":{"surface":[-16,8,0],"terrain_cell":[4,8],"noises":[],"points":[],"programs":[
+            {"geology_min_y":-16,"geology_height":32,"sea_level":4,"materials":[{}, {}, {}],"terrain_features":{"bands":[1,2]},"biomes":[{"flags":0}],"climate_targets":[],"registry_program":{"material_layers":true,"surface":[-16,8,0],"terrain_cell":[4,8],"noises":[],"points":[],"programs":[
              {"nodes":[{"op":0,"a":0,"b":0,"c":0,"p":[0.25,0,0,0]}],"roots":[]},
              {"nodes":[{"op":29,"a":0,"b":0,"c":0,"p":[0,0,0,0]},
                        {"op":0,"a":0,"b":0,"c":0,"p":[30000000,0,0,0]},
                        {"op":5,"a":0,"b":1,"c":0,"p":[0,0,0,0]}],"roots":[2]},
-             {"nodes":[{"op":29,"a":1,"b":0,"c":0,"p":[0,0,0,0]}],"roots":[0]}]}}
+             {"nodes":[{"op":29,"a":1,"b":0,"c":0,"p":[0,0,0,0]}],"roots":[0]},
+             {"nodes":[{"op":42,"a":0,"b":0,"c":0,"p":[0,0,0,0]}],"roots":[0]}]}}
             """);
         for (int i = 1; i < args.length; i++) {
             if (args[i].equals("--worker")) { worker(output.resolve("fixture.rbp"), Path.of(args[++i])); continue; }
@@ -164,6 +165,25 @@ public final class BendProfileWireTest {
                     if (values.getInt() != -1) throw new AssertionError("empty surface target table");
                 }
                 if (values.hasRemaining()) throw new AssertionError("surface response length");
+            }
+            counts = java.nio.ByteBuffer.wrap(worker.prepareProfileMaterials().get(30, java.util.concurrent.TimeUnit.SECONDS));
+            for (int count : new int[]{1, 2, 4, 1}) if (counts.getInt() != count)
+                throw new AssertionError("material profile acknowledgement");
+            if (counts.hasRemaining()) throw new AssertionError("material profile length");
+            var materials = java.nio.ByteBuffer.allocate(116).putInt(2);
+            for (int y : new int[]{-3, 4}) {
+                materials.putInt(0).putInt(30000001).putInt(y).putInt(-30000001)
+                        .putInt((int) seed).putInt((int) (seed >>> 32));
+                for (float value : new float[]{1, 3, 0, -2.5f, 4, .5f, 4, 0}) materials.putFloat(value);
+            }
+            requests.clear();
+            for (int i = 0; i < 12; i++) requests.add(worker.request(20, materials.array()));
+            for (var request : requests) {
+                var values = java.nio.ByteBuffer.wrap(request.get(30, java.util.concurrent.TimeUnit.SECONDS));
+                for (float expected : new float[]{3, 2}) for (int channel = 0; channel < 6; channel++) {
+                    if (values.getFloat() != expected) throw new AssertionError("material bands/coordinate/context transport");
+                }
+                if (values.hasRemaining()) throw new AssertionError("material response length");
             }
             worker.prepareProfileDensity().get(30, java.util.concurrent.TimeUnit.SECONDS);
             try {

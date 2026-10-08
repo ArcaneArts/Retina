@@ -417,6 +417,27 @@ and leave the IPC queue limit intact; see the registry wire document.
 
 This worker is an independently tested component transport, not yet connected
 to world selection or Minecraft generation. Registry inputs are received and
-read; actual terrain/program interpretation, features, structures, lighting,
+read; complete terrain generation, features, structures, lighting,
 region job coalescing/cache integration and
 complete-region benchmarks remain required. A noise grid is not an MCA region.
+
+
+## Resident material rules
+
+`material_program.bend` evaluates the loaded per-biome material DAGs on GPU or
+explicit Bend CPU, sharing the numeric/noise/spline evaluator. It implements
+conditional material selection, soil depth, water/height/slope predicates,
+seeded vertical gradients, temperature, noise counts, correlated feature
+coverage, preliminary-surface predicates and registered terracotta bands.
+`registry_material.bend` projects and validates programs and metadata from the
+resident tape once; `material_batch.bend` supplies a bounded parallel query map.
+
+```sh
+nice -n 10 python3 scripts/test_bend_material.py --prove-metal \
+  --profile /absolute/vanilla.json /absolute/vanilla.rbp
+```
+
+Opcodes 19/20 prepare/query the resident model; see `docs/BEND_REGISTRY_WIRE.md`
+for the exact context/response format. Java only transports bytes. Bulk voxel
+contexts/layers and final world generation remain required; this does not expose
+an incomplete selectable Bend world type.

@@ -1,0 +1,377 @@
+{
+  "scope": "Resident material-program component; bulk context generation and complete regions pending",
+  "bend_version": "bend 2.0.36",
+  "runs": [
+    {
+      "gpu_required": false,
+      "profiles": [
+        {
+          "name": "layered",
+          "programs": 33,
+          "queries": 396,
+          "prepare_host_ms": 1.558166928589344,
+          "first_batch_host_ms": 11.706458986736834,
+          "repeat_reorder_empty": "pass",
+          "numeric_reprepare_invalidates": "pass",
+          "surface_lattice_independence": "pass"
+        },
+        {
+          "name": "packed",
+          "programs": 33,
+          "queries": 396,
+          "prepare_host_ms": 1.8211660208180547,
+          "first_batch_host_ms": 12.490875087678432,
+          "repeat_reorder_empty": "pass",
+          "numeric_reprepare_invalidates": "pass",
+          "surface_lattice_independence": "pass"
+        },
+        {
+          "name": "legacy",
+          "programs": 33,
+          "queries": 396,
+          "prepare_host_ms": 1.2058749562129378,
+          "first_batch_host_ms": 9.902499965392053,
+          "repeat_reorder_empty": "pass",
+          "numeric_reprepare_invalidates": "pass",
+          "surface_lattice_independence": "pass"
+        },
+        {
+          "name": "no_bands",
+          "programs": 33,
+          "queries": 396,
+          "prepare_host_ms": 0.8552910294383764,
+          "first_batch_host_ms": 10.207333019934595,
+          "repeat_reorder_empty": "pass",
+          "numeric_reprepare_invalidates": "pass",
+          "surface_lattice_independence": "pass"
+        },
+        {
+          "name": "vanilla",
+          "programs": 56,
+          "queries": 224,
+          "prepare_host_ms": 29.23020801972598,
+          "first_batch_host_ms": 6.8014999851584435,
+          "repeat_reorder_empty": "pass",
+          "numeric_reprepare_invalidates": "pass",
+          "surface_lattice_independence": "pass"
+        },
+        {
+          "name": "terralith",
+          "programs": 151,
+          "queries": 604,
+          "prepare_host_ms": 196.88566704280674,
+          "first_batch_host_ms": 31.876291963271797,
+          "repeat_reorder_empty": "pass",
+          "numeric_reprepare_invalidates": "pass",
+          "surface_lattice_independence": "pass"
+        },
+        {
+          "name": "combined",
+          "programs": 152,
+          "queries": 608,
+          "prepare_host_ms": 197.78812502045184,
+          "first_batch_host_ms": 33.13629096373916,
+          "repeat_reorder_empty": "pass",
+          "numeric_reprepare_invalidates": "pass",
+          "surface_lattice_independence": "pass"
+        }
+      ],
+      "queries_checked": 7116,
+      "max_normalized_error": 1.1436341828818808e-06,
+      "requests_in_one_process": 383,
+      "invalid_profiles_rejected": 30,
+      "expected_gpu_dispatches": 85,
+      "sha256": "c99d5cdd1c71872440968b97904f5bf02c57c544f902d46219cb7483478eb02b",
+      "metal_commands_ms": []
+    },
+    {
+      "gpu_required": true,
+      "profiles": [
+        {
+          "name": "layered",
+          "programs": 33,
+          "queries": 396,
+          "prepare_host_ms": 1.1765829985961318,
+          "first_batch_host_ms": 102.44554199744016,
+          "repeat_reorder_empty": "pass",
+          "numeric_reprepare_invalidates": "pass",
+          "surface_lattice_independence": "pass"
+        },
+        {
+          "name": "packed",
+          "programs": 33,
+          "queries": 396,
+          "prepare_host_ms": 1.3564160326495767,
+          "first_batch_host_ms": 14.39874991774559,
+          "repeat_reorder_empty": "pass",
+          "numeric_reprepare_invalidates": "pass",
+          "surface_lattice_independence": "pass"
+        },
+        {
+          "name": "legacy",
+          "programs": 33,
+          "queries": 396,
+          "prepare_host_ms": 0.8197089191526175,
+          "first_batch_host_ms": 10.51649998407811,
+          "repeat_reorder_empty": "pass",
+          "numeric_reprepare_invalidates": "pass",
+          "surface_lattice_independence": "pass"
+        },
+        {
+          "name": "no_bands",
+          "programs": 33,
+          "queries": 396,
+          "prepare_host_ms": 1.0228750761598349,
+          "first_batch_host_ms": 12.08116696216166,
+          "repeat_reorder_empty": "pass",
+          "numeric_reprepare_invalidates": "pass",
+          "surface_lattice_independence": "pass"
+        },
+        {
+          "name": "vanilla",
+          "programs": 56,
+          "queries": 224,
+          "prepare_host_ms": 24.725458002649248,
+          "first_batch_host_ms": 57.56270803976804,
+          "repeat_reorder_empty": "pass",
+          "numeric_reprepare_invalidates": "pass",
+          "surface_lattice_independence": "pass"
+        },
+        {
+          "name": "terralith",
+          "programs": 151,
+          "queries": 604,
+          "prepare_host_ms": 174.6089169755578,
+          "first_batch_host_ms": 79.01041698642075,
+          "repeat_reorder_empty": "pass",
+          "numeric_reprepare_invalidates": "pass",
+          "surface_lattice_independence": "pass"
+        },
+        {
+          "name": "combined",
+          "programs": 152,
+          "queries": 608,
+          "prepare_host_ms": 238.71466610580683,
+          "first_batch_host_ms": 84.41737503744662,
+          "repeat_reorder_empty": "pass",
+          "numeric_reprepare_invalidates": "pass",
+          "surface_lattice_independence": "pass"
+        }
+      ],
+      "queries_checked": 7116,
+      "max_normalized_error": 1.1436341828818808e-06,
+      "requests_in_one_process": 383,
+      "invalid_profiles_rejected": 30,
+      "expected_gpu_dispatches": 85,
+      "sha256": "c99d5cdd1c71872440968b97904f5bf02c57c544f902d46219cb7483478eb02b",
+      "metal_commands_ms": []
+    }
+  ],
+  "actual_metal_proof": {
+    "gpu_required": true,
+    "profiles": [
+      {
+        "name": "layered",
+        "programs": 33,
+        "queries": 396,
+        "prepare_host_ms": 1.0089999996125698,
+        "first_batch_host_ms": 115.37812498863786,
+        "repeat_reorder_empty": "pass",
+        "numeric_reprepare_invalidates": "pass",
+        "surface_lattice_independence": "pass"
+      },
+      {
+        "name": "packed",
+        "programs": 33,
+        "queries": 396,
+        "prepare_host_ms": 1.2767079751938581,
+        "first_batch_host_ms": 15.69204090628773,
+        "repeat_reorder_empty": "pass",
+        "numeric_reprepare_invalidates": "pass",
+        "surface_lattice_independence": "pass"
+      },
+      {
+        "name": "legacy",
+        "programs": 33,
+        "queries": 396,
+        "prepare_host_ms": 1.5743750846013427,
+        "first_batch_host_ms": 13.516624923795462,
+        "repeat_reorder_empty": "pass",
+        "numeric_reprepare_invalidates": "pass",
+        "surface_lattice_independence": "pass"
+      },
+      {
+        "name": "no_bands",
+        "programs": 33,
+        "queries": 396,
+        "prepare_host_ms": 1.1146250180900097,
+        "first_batch_host_ms": 15.254708006978035,
+        "repeat_reorder_empty": "pass",
+        "numeric_reprepare_invalidates": "pass",
+        "surface_lattice_independence": "pass"
+      },
+      {
+        "name": "vanilla",
+        "programs": 56,
+        "queries": 224,
+        "prepare_host_ms": 38.62066601868719,
+        "first_batch_host_ms": 65.95979200210422,
+        "repeat_reorder_empty": "pass",
+        "numeric_reprepare_invalidates": "pass",
+        "surface_lattice_independence": "pass"
+      },
+      {
+        "name": "terralith",
+        "programs": 151,
+        "queries": 604,
+        "prepare_host_ms": 270.78549994621426,
+        "first_batch_host_ms": 110.30870804097503,
+        "repeat_reorder_empty": "pass",
+        "numeric_reprepare_invalidates": "pass",
+        "surface_lattice_independence": "pass"
+      },
+      {
+        "name": "combined",
+        "programs": 152,
+        "queries": 608,
+        "prepare_host_ms": 268.87195790186524,
+        "first_batch_host_ms": 100.56249995250255,
+        "repeat_reorder_empty": "pass",
+        "numeric_reprepare_invalidates": "pass",
+        "surface_lattice_independence": "pass"
+      }
+    ],
+    "queries_checked": 7116,
+    "max_normalized_error": 1.1436341828818808e-06,
+    "requests_in_one_process": 383,
+    "invalid_profiles_rejected": 30,
+    "expected_gpu_dispatches": 85,
+    "sha256": "c99d5cdd1c71872440968b97904f5bf02c57c544f902d46219cb7483478eb02b",
+    "metal_commands_ms": [
+      3.868125,
+      2.192,
+      2.0905,
+      0.1415,
+      0.379625,
+      0.472833,
+      1.900875,
+      0.384125,
+      0.298,
+      0.330583,
+      0.358708,
+      13.1275,
+      0.388875,
+      1.990667,
+      2.013125,
+      1.983708,
+      0.148167,
+      0.378625,
+      0.479125,
+      1.849625,
+      0.3105,
+      0.322583,
+      0.354333,
+      0.382125,
+      0.358292,
+      1.987667,
+      2.09275,
+      2.07675,
+      0.175542,
+      0.385875,
+      0.487625,
+      1.973875,
+      0.308875,
+      0.33275,
+      0.371958,
+      0.361042,
+      0.385375,
+      2.04875,
+      1.941833,
+      2.008792,
+      0.138917,
+      0.386333,
+      0.478,
+      1.948875,
+      0.312208,
+      0.2925,
+      0.369375,
+      0.378875,
+      0.419417,
+      4.520667,
+      2.639,
+      2.786125,
+      0.136667,
+      1.621,
+      90.650125,
+      8.4495,
+      4.737083,
+      92.63825,
+      1.672375,
+      1.791875,
+      1.702917,
+      11.864958,
+      13.879875,
+      9.595875,
+      0.150208,
+      2.963625,
+      153.667625,
+      9.525042,
+      11.520292,
+      158.513833,
+      2.981958,
+      3.028,
+      6.356958,
+      13.739042,
+      11.956583,
+      9.679833,
+      0.146,
+      3.03975,
+      157.742417,
+      9.815083,
+      6.70375,
+      164.7405,
+      3.052625,
+      3.017167,
+      3.85425
+    ]
+  },
+  "validation_environment": {
+    "date": "2026-10-08",
+    "os": "macOS-27.0.1-arm64-arm-64bit",
+    "machine": "arm64",
+    "gpu": "Apple M4 Max (Metal 4, 40 GPU cores)",
+    "cpu_workers": 2,
+    "compilation": "One Bend compiler, nice 10; compilation excluded from recorded query diagnostics"
+  },
+  "extra_invalid_profile_checks": [
+    {
+      "gpu_required": false,
+      "extra_invalid_profiles": [
+        "outside_root",
+        "float_root",
+        "missing_roots",
+        "empty_nodes",
+        "null_nodes"
+      ],
+      "result": "pass"
+    },
+    {
+      "gpu_required": true,
+      "extra_invalid_profiles": [
+        "outside_root",
+        "float_root",
+        "missing_roots",
+        "empty_nodes",
+        "null_nodes"
+      ],
+      "result": "pass"
+    }
+  ],
+  "validation": {
+    "full_host_build": "Fabric/NeoForge 26.3; bendRegistryWireTest build -PretinaHostOnly --max-workers=2 --no-parallel: pass (3m37s)",
+    "java_transport": "12 concurrent material batches per CPU/GPU worker; signed offsets/coordinates/contexts: pass",
+    "native_unit_tests": "64 passed, 11 GPU-only ignored",
+    "scope": "Component correctness; supplied per-point contexts. No complete-region performance claim; bulk material context/layer generation and Minecraft generation remain required.",
+    "surface_regression": "Independent analytic CPU/GPU surface tiles, overlap/cache/invalidation/512x512 sizing: pass"
+  }
+}
