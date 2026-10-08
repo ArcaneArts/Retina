@@ -5,8 +5,9 @@ structural binary data. It does not generate terrain or encode Minecraft NBT,
 MCA, lighting or compression. `bend/registry.bend` alone validates and reads that
 data. The worker owns one validated tape alongside its prepared noise stack.
 Loaded climate/ridge octave stacks, climate indices and numeric density
-programs now have typed Bend projections. Materials, complete spatial biome
-selection and terrain generation remain pending.
+programs and per-biome material predicates now have typed Bend projections.
+Bulk material context/layer generation, full biome blending and world integration
+remain pending.
 
 Streaming avoids allocating millions of Gson nodes. Complete vanilla, Terralith
 and Terralith plus the compatible registry-supplement profiles encode within a
@@ -181,6 +182,31 @@ The existing `RBND` IPC framing remains version 1. Additional opcodes:
   opcode 16 on the selected backend; query transport is not a GPU benchmark.
   Successful 5/11/13/15 invalidates columns; rejected requests retain them.
 
+- **19 — prepare material programs:** empty request after opcode 11. Bend walks
+  the programs immediately following the first three numeric programs, one per
+  registered biome, and projects `terrain_features.bands`, signed `sea_level`
+  and the required boolean `registry_program.material_layers`. Acknowledgement
+  is four U32 words: program count, band count, sea level bits, layer flag.
+  Biomes/materials are bounded to 65,535; bands to 4,096 with each ID in the
+  material palette. Programs have at most 1,024 nodes/six roots. Numeric
+  dependencies reuse opcode-11 validation; material opcodes 40..54 validate
+  their own scratch dependencies, immediate flags and parameters. Unsupported
+  opcodes, missing/wrongly typed fields and invalid references reject with 724.
+  No numeric preparation returns 716. Successful preparation retains density
+  and surface caches; opcode 5/11 success invalidates this model.
+- **20 — material batch:** U32 query count (0..4,096), then six U32 words per
+  query: zero-based biome/program ID, signed X/Y/Z, seed low/high; followed by
+  eight F32 context values: stone depth above, surface depth, local slope,
+  terracotta offset, stone depth below, secondary surface noise, water height,
+  preliminary surface height. Output is six F32 DAG roots (24 bytes/query);
+  absent roots use node zero as in numeric queries. Material selection uses
+  palette ID + 1, with zero meaning no selected material. Inputs require finite
+  context values and an in-range program. Invalid batches return 603, no numeric
+  preparation 716, no material preparation 725. A single GPU bang evaluates
+  the bounded batch, or explicit Bend CPU execution. Model and caches remain
+  resident; rejected commands retain them. Contexts are supplied component
+  inputs at this stage; bulk voxel context/layer generation is still pending.
+
 
 `BendWorker.loadProfile` transports only the path. Its caller owns the staged
 file until acknowledgement. If a load is canceled while active, retain the file
@@ -350,3 +376,22 @@ scan sequence against competing cache replacements; these helpers alone are not
 region singleflight or world-generation integration. A worker retains one bounded
 density grid and one bounded column tile. Tile overlap and signed/distant X/Z
 queries are checked independently; a full 512x512 analytic tile exercises sizing.
+
+
+Resident material-program checks:
+
+```sh
+nice -n 10 ./gradlew bendMaterialTest -PretinaHostOnly --max-workers=2 -PproveMetal \
+  -PbendDensityRegistryProfiles=/absolute/vanilla.json=/absolute/vanilla.rbp,/absolute/terralith.json=/absolute/terralith.rbp
+```
+
+The scalar reference independently checks all material predicates (40..54),
+legacy/layered contexts, signed terracotta offsets/band wrapping, full seeds,
+distant integer coordinates, sparse patch coverage and mixed numeric/noise DAGs.
+Actual exported vanilla/Terralith/combined material programs use the same path.
+The worker retains its material model across numeric/lattice/surface queries;
+accepted numeric preparation invalidates it, while rejected commands retain it.
+Java checks concurrent callers on both CPU and GPU. Stock Metal command-buffer
+observation verifies actual execution with output matching the normal binary.
+These are component checks; material context generation, final voxel placement
+and complete-region performance are not established by them.
