@@ -64,7 +64,7 @@ def exercise(binary, profiles, gpu, folder, version, repeat=True):
     worker=Worker(binary,gpu);rows=[];dispatches=0;hashes=[];blocks=0
     def call(op,data=b'',status=0):
         nonlocal dispatches
-        if op in (13,16,22,29) and status==0:dispatches+=2 if op==29 else 1
+        if op in (13,16,22,29) and status==0:dispatches+=2 if op in (22,29) else 1
         return worker.call(op,data,status=status)
     def reject(data, code):
         assert call(28,data,1)==struct.pack('>I',code),code

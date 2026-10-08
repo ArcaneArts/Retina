@@ -1,0 +1,692 @@
+{
+  "scope": "Bend GPU material geometry cache component; full cave/feature/structure/lighting/world integration and Rust comparison remain incomplete",
+  "date": "2026-10-08",
+  "base_commit": "b873ffeef206b5d563a506319df1f0ee38e3c5d7",
+  "bend_version": "2.0.36",
+  "machine": "Apple M4 Max, macOS arm64, Metal",
+  "implementation": {
+    "gpu": "Two resident device steps: compact geometry and exact heights in existing one-column halo, then central materials using four cached neighbor heights",
+    "cpu": "Original one-step central geometry plus direct neighbor height scans; shared material/context arithmetic",
+    "ipc": "No intermediate bulk terrain exchange within command 22",
+    "halo_columns": [
+      514,
+      514
+    ],
+    "central_columns": [
+      512,
+      512
+    ],
+    "temporary_geometry_cache": true
+  },
+  "validation": {
+    "material_columns": {
+      "voxels_per_backend": 8613,
+      "profiles": 14,
+      "invalid_schemas": 18,
+      "actual_metal_commands": 520,
+      "cpu_and_gpu_sha256": "5ce38f7ab0c4979d48c4f453727f409b1cdbf8f0dbc9ee99c1f6bdd7fce50e19"
+    },
+    "lazy_material": {
+      "diagnostic_only": true,
+      "binary_sha256": "bf555c1f92e12603d2b7bf4af811a37c46099f896411eb831465a2c2a0ebbc45",
+      "commands": 32,
+      "output_identical": true,
+      "device_ms": [
+        3.551667,
+        2.793208,
+        4.021375,
+        2152.0025,
+        36.483875,
+        7.3685,
+        3.4195,
+        2156.615292,
+        3.179292,
+        3.30625,
+        4.104125,
+        2129.306,
+        36.605625,
+        7.2585,
+        3.471375,
+        2159.225583,
+        3.29075,
+        2.793208,
+        3.971208,
+        2131.284625,
+        36.960167,
+        7.394875,
+        3.419,
+        2122.554333,
+        3.27125,
+        3.97425,
+        3.391917,
+        2093.7425,
+        35.64625,
+        7.503292,
+        3.57025,
+        2130.954583
+      ]
+    },
+    "shoreline": {
+      "columns_per_backend": 3342,
+      "voxels_per_backend": 158080,
+      "actual_metal_commands": 290,
+      "sha256": "66a814f27f27b9efbd00b8a0e3f63f9956530525e6b24d689d1a5a81f715e10d",
+      "matches_pr41_full_loaded_profile_run": true
+    },
+    "whole_regions": {
+      "files": 9,
+      "chunk_records": 9216,
+      "block_heightmap_queries": 2465792,
+      "actual_metal_commands": 24,
+      "pr41_identity": {
+        "all_nine_complete_mca_files_identical_to_pr41": true,
+        "regions": [
+          {
+            "gpu_required": false,
+            "name": "ramp",
+            "sha256": "0967df8d1ce02aeffb9edef144b680135bee5d05c7a212d9d0395ad3045c2ba0",
+            "identical_to_pr41": true
+          },
+          {
+            "gpu_required": false,
+            "name": "islands",
+            "sha256": "441b750c0acfe64a7beb0aec810df858c777e18efb16f273864d2763bff175e0",
+            "identical_to_pr41": true
+          },
+          {
+            "gpu_required": false,
+            "name": "coastal",
+            "sha256": "95d6165abc19a9d2a0edfe73adfc6264ac50a956c408cf27bcc4285a729d71e7",
+            "identical_to_pr41": true
+          },
+          {
+            "gpu_required": true,
+            "name": "ramp",
+            "sha256": "0967df8d1ce02aeffb9edef144b680135bee5d05c7a212d9d0395ad3045c2ba0",
+            "identical_to_pr41": true
+          },
+          {
+            "gpu_required": true,
+            "name": "islands",
+            "sha256": "441b750c0acfe64a7beb0aec810df858c777e18efb16f273864d2763bff175e0",
+            "identical_to_pr41": true
+          },
+          {
+            "gpu_required": true,
+            "name": "coastal",
+            "sha256": "95d6165abc19a9d2a0edfe73adfc6264ac50a956c408cf27bcc4285a729d71e7",
+            "identical_to_pr41": true
+          },
+          {
+            "gpu_required": true,
+            "name": "vanilla",
+            "sha256": "822dafd55091fc29ac5533bdfe5d7f3af55527abb956505068f8f30dadcf582c",
+            "identical_to_pr41": true
+          },
+          {
+            "gpu_required": true,
+            "name": "terralith",
+            "sha256": "e9a82bf685bb1142d31ccd2c2ddfdea9b547163ed1c6a3d6f7e2f5df7c91a116",
+            "identical_to_pr41": true
+          },
+          {
+            "gpu_required": true,
+            "name": "combined",
+            "sha256": "98ab5affc0d8ec4722caa64a0c6a0523828ef22c21b3d1fbc4a02b0abdce99be",
+            "identical_to_pr41": true
+          }
+        ]
+      },
+      "stage_device_ms": {
+        "ramp": {
+          "density": 11.071792,
+          "surface": 62.613333,
+          "shore_height_cache": 34.346458,
+          "coastal_selection": 2654.09875,
+          "geometry_cache": 47.507958,
+          "material": 5209.373
+        },
+        "islands": {
+          "density": 11.679875,
+          "surface": 11.063083,
+          "shore_height_cache": 9.238875,
+          "coastal_selection": 2788.950917,
+          "geometry_cache": 60.471875,
+          "material": 8597.0635
+        },
+        "coastal": {
+          "density": 11.961125,
+          "surface": 61.853042,
+          "shore_height_cache": 99.874208,
+          "coastal_selection": 2876.393333,
+          "geometry_cache": 99.777708,
+          "material": 4635.25525
+        },
+        "vanilla": {
+          "density": 8470.183667,
+          "surface": 1944.178,
+          "shore_height_cache": 129.109083,
+          "coastal_selection": 3583.011,
+          "geometry_cache": 1422.04675,
+          "material": 25906.13525
+        }
+      }
+    },
+    "minecraft_events": [
+      {
+        "event": "bend_generated_region_decoding",
+        "status": "pass",
+        "context": {
+          "files": 9,
+          "chunks_per_file": 1024,
+          "reads_per_chunk": 2,
+          "blocks_verified": 721420288
+        }
+      },
+      {
+        "event": "bend_generated_region_worker",
+        "status": "pass",
+        "context": {
+          "executions": 2,
+          "concurrent_writes_per_execution": 2,
+          "queued_cancellations": 2,
+          "actual_io_failure": true
+        }
+      }
+    ],
+    "host_build": {
+      "fabric_and_neoforge": true,
+      "native_tests_passed": 64,
+      "native_fixture_tests_explicitly_ignored": 11,
+      "command": "RUST_TEST_THREADS=2 CARGO_BUILD_JOBS=2 nice -n 10 ./gradlew gpuTestClasses build -PretinaHostOnly --max-workers=2 --no-parallel"
+    }
+  },
+  "formal_ab": {
+    "material_stage_only": true,
+    "no_complete_generator_speed_claim": true,
+    "small": {
+      "scope": "Warm alternating material-stage A/B against the compiled PR41 Bend worker.\n\nIncludes geometry, material evaluation and command transport; excludes earlier\nlattice, surface and coastal steps. Compilation and correctness tests must\nfinish first. This is not a complete Rust-versus-Bend generator benchmark.\n",
+      "baseline_commit": "d78c81ca209b2b04c80e543df7b692ebe5b35aa5",
+      "warmups": 1,
+      "repetitions": 5,
+      "cpu_workers": 2,
+      "nice": 10,
+      "own_compilation_and_other_tests_concurrent": false,
+      "other_host_load_controlled": false,
+      "executables": {
+        "baseline": "640c80c79df938bcd82b9d1d2659b68f5a1a7a157b8a559d643fa0b5e77743d7",
+        "candidate": "d6eee9d728e8bf952757edda1c65123e97d544624d521ace4782964e8e8a5254"
+      },
+      "gpu_companions": {
+        "baseline": "c5f245cbde33d047d124ebcd806314f0c39023339577736e170e9fb4fbd7df3a",
+        "candidate": "7726b4d227bed260553829a152151b61119cc940fe33753216071ec4a95eaf46"
+      },
+      "profiles": [
+        {
+          "name": "vanilla",
+          "rbp_sha256": "39c775ca58b6d084d4de060925df01d170c89caa09b9eaf7d33e55a915c8065a"
+        },
+        {
+          "name": "terralith",
+          "rbp_sha256": "cf9ef7e0d83d91c5d99aa914101aad8b156ce9a8caa4050f71e81b190a1c0ca6"
+        },
+        {
+          "name": "combined",
+          "rbp_sha256": "d4ac8f9040e39892de12b6fc6ecc46b3d9e961c3cba7f05a2ae9b53262967193"
+        }
+      ],
+      "results": [
+        {
+          "profile": "vanilla",
+          "width": 32,
+          "depth": 32,
+          "gpu_required": false,
+          "baseline_host_ms": [
+            302.054375060834,
+            288.0110410042107,
+            280.613417038694,
+            334.4619170529768,
+            313.9436669880524
+          ],
+          "candidate_host_ms": [
+            300.6123329978436,
+            312.780458945781,
+            309.6625830512494,
+            297.29316604789346,
+            314.1460419865325
+          ],
+          "baseline_median_ms": 302.054375060834,
+          "candidate_median_ms": 309.6625830512494,
+          "ratio": 0.975430651273886,
+          "all_column_bytes_sha256": "7b1cf4d3d083b656dce0128a1f9ec9b57ed730e41b83b8c81c583c7f90d898df"
+        },
+        {
+          "profile": "vanilla",
+          "width": 64,
+          "depth": 64,
+          "gpu_required": false,
+          "baseline_host_ms": [
+            1059.1970829991624,
+            1203.8639999227598,
+            1325.9502080036327,
+            1172.932208981365,
+            1224.4043750688434
+          ],
+          "candidate_host_ms": [
+            1112.4620829941705,
+            1171.6789579950273,
+            1075.8177089737728,
+            1217.982666916214,
+            1258.1386669771746
+          ],
+          "baseline_median_ms": 1203.8639999227598,
+          "candidate_median_ms": 1171.6789579950273,
+          "ratio": 1.027469164405587,
+          "all_column_bytes_sha256": "73f7f17ece65491092fbe6ffd86cf81f40345188f5e40131d5ec9d4953c0da3d"
+        },
+        {
+          "profile": "terralith",
+          "width": 32,
+          "depth": 32,
+          "gpu_required": false,
+          "baseline_host_ms": [
+            393.6185829807073,
+            458.2685409113765,
+            436.06441700831056,
+            441.14574999548495,
+            491.36641703080386
+          ],
+          "candidate_host_ms": [
+            410.4787919204682,
+            501.1857500066981,
+            484.7088330425322,
+            459.9063750356436,
+            444.1949159372598
+          ],
+          "baseline_median_ms": 441.14574999548495,
+          "candidate_median_ms": 459.9063750356436,
+          "ratio": 0.9592077299674208,
+          "all_column_bytes_sha256": "6a5d74a8505bc2ce2531c29217976e950909311012bc809e285fb920dfceed5d"
+        },
+        {
+          "profile": "terralith",
+          "width": 64,
+          "depth": 64,
+          "gpu_required": false,
+          "baseline_host_ms": [
+            1527.375957928598,
+            1547.841666964814,
+            1600.9557080687955,
+            1588.1216250127181,
+            1634.390249964781
+          ],
+          "candidate_host_ms": [
+            1413.962374906987,
+            1583.9215409941971,
+            1648.9386250032112,
+            1672.3820829065517,
+            1627.8603340033442
+          ],
+          "baseline_median_ms": 1588.1216250127181,
+          "candidate_median_ms": 1627.8603340033442,
+          "ratio": 0.9755883793218931,
+          "all_column_bytes_sha256": "3e62c5525f3eb58ebea85cf01cd33537460c1895085238685527738f8e38d861"
+        },
+        {
+          "profile": "combined",
+          "width": 32,
+          "depth": 32,
+          "gpu_required": false,
+          "baseline_host_ms": [
+            442.67287489492446,
+            469.6499169804156,
+            448.70712503325194,
+            495.6672500120476,
+            473.15979201812297
+          ],
+          "candidate_host_ms": [
+            423.92608406953514,
+            368.03849996067584,
+            446.5194999938831,
+            442.77750002220273,
+            483.419582946226
+          ],
+          "baseline_median_ms": 469.6499169804156,
+          "candidate_median_ms": 442.77750002220273,
+          "ratio": 1.060690565705948,
+          "all_column_bytes_sha256": "62dfd2364912535ef0b268bf2c7c89f1ab89fbf557978277426a1e43a906a26a"
+        },
+        {
+          "profile": "combined",
+          "width": 64,
+          "depth": 64,
+          "gpu_required": false,
+          "baseline_host_ms": [
+            1521.0014160256833,
+            1473.3054590178654,
+            1488.3584160124883,
+            1475.3132089972496,
+            1428.6177499452606
+          ],
+          "candidate_host_ms": [
+            1345.247916993685,
+            1475.736292079091,
+            1510.827500023879,
+            1418.9195000799373,
+            1466.154083958827
+          ],
+          "baseline_median_ms": 1475.3132089972496,
+          "candidate_median_ms": 1466.154083958827,
+          "ratio": 1.0062470412480056,
+          "all_column_bytes_sha256": "04e3e6988647e2ea53d31f250ba20fbc441e4a987a9de183cc2bd61228885a8e"
+        },
+        {
+          "profile": "vanilla",
+          "width": 32,
+          "depth": 32,
+          "gpu_required": true,
+          "baseline_host_ms": [
+            491.3717079907656,
+            493.88233304489404,
+            486.02054198272526,
+            490.7882090192288,
+            491.4472500095144
+          ],
+          "candidate_host_ms": [
+            343.59008294995874,
+            341.35091700591147,
+            345.93762503936887,
+            345.5497910035774,
+            338.73375004623085
+          ],
+          "baseline_median_ms": 491.3717079907656,
+          "candidate_median_ms": 343.59008294995874,
+          "ratio": 1.4301102749299377,
+          "all_column_bytes_sha256": "7b1cf4d3d083b656dce0128a1f9ec9b57ed730e41b83b8c81c583c7f90d898df"
+        },
+        {
+          "profile": "vanilla",
+          "width": 64,
+          "depth": 64,
+          "gpu_required": true,
+          "baseline_host_ms": [
+            968.5148340649903,
+            961.3100410206243,
+            939.4060830818489,
+            962.3049159999937,
+            941.9064589310437
+          ],
+          "candidate_host_ms": [
+            656.0239170212299,
+            629.740500007756,
+            656.5490000648424,
+            627.239041030407,
+            644.1107080318034
+          ],
+          "baseline_median_ms": 961.3100410206243,
+          "candidate_median_ms": 644.1107080318034,
+          "ratio": 1.492460890703216,
+          "all_column_bytes_sha256": "73f7f17ece65491092fbe6ffd86cf81f40345188f5e40131d5ec9d4953c0da3d"
+        },
+        {
+          "profile": "terralith",
+          "width": 32,
+          "depth": 32,
+          "gpu_required": true,
+          "baseline_host_ms": [
+            721.6208750614896,
+            717.131583020091,
+            709.2307499842718,
+            721.504915971309,
+            732.6506660319865
+          ],
+          "candidate_host_ms": [
+            534.0826250612736,
+            534.0794159565121,
+            546.7468750430271,
+            542.8042499115691,
+            554.3237919919193
+          ],
+          "baseline_median_ms": 721.504915971309,
+          "candidate_median_ms": 542.8042499115691,
+          "ratio": 1.3292175145807221,
+          "all_column_bytes_sha256": "6a5d74a8505bc2ce2531c29217976e950909311012bc809e285fb920dfceed5d"
+        },
+        {
+          "profile": "terralith",
+          "width": 64,
+          "depth": 64,
+          "gpu_required": true,
+          "baseline_host_ms": [
+            1414.2944170162082,
+            1418.0095000192523,
+            1399.5209579588845,
+            1423.3903749845922,
+            1390.1007500244305
+          ],
+          "candidate_host_ms": [
+            1253.9676250889897,
+            1199.699291959405,
+            1253.7979589542374,
+            1231.4139999216422,
+            1241.2117089843377
+          ],
+          "baseline_median_ms": 1414.2944170162082,
+          "candidate_median_ms": 1241.2117089843377,
+          "ratio": 1.139446564014048,
+          "all_column_bytes_sha256": "3e62c5525f3eb58ebea85cf01cd33537460c1895085238685527738f8e38d861"
+        },
+        {
+          "profile": "combined",
+          "width": 32,
+          "depth": 32,
+          "gpu_required": true,
+          "baseline_host_ms": [
+            739.149208064191,
+            751.9937920151278,
+            716.0712499171495,
+            749.2576660588384,
+            724.6768749319017
+          ],
+          "candidate_host_ms": [
+            594.2911250749603,
+            597.2300840076059,
+            625.0005000038072,
+            616.4577919989824,
+            623.4173339325935
+          ],
+          "baseline_median_ms": 739.149208064191,
+          "candidate_median_ms": 616.4577919989824,
+          "ratio": 1.1990264664631105,
+          "all_column_bytes_sha256": "62dfd2364912535ef0b268bf2c7c89f1ab89fbf557978277426a1e43a906a26a"
+        },
+        {
+          "profile": "combined",
+          "width": 64,
+          "depth": 64,
+          "gpu_required": true,
+          "baseline_host_ms": [
+            1413.9272079337388,
+            1399.9740830622613,
+            1387.9135419847444,
+            1411.615165998228,
+            1403.3591250190511
+          ],
+          "candidate_host_ms": [
+            1239.743083016947,
+            1222.3071670159698,
+            1249.6453339699656,
+            1224.6984159573913,
+            1251.2855000095442
+          ],
+          "baseline_median_ms": 1403.3591250190511,
+          "candidate_median_ms": 1239.743083016947,
+          "ratio": 1.1319757651754268,
+          "all_column_bytes_sha256": "04e3e6988647e2ea53d31f250ba20fbc441e4a987a9de183cc2bd61228885a8e"
+        }
+      ]
+    },
+    "large": {
+      "scope": "Warm alternating material-stage A/B against the compiled PR41 Bend worker.\n\nIncludes geometry, material evaluation and command transport; excludes earlier\nlattice, surface and coastal steps. Compilation and correctness tests must\nfinish first. This is not a complete Rust-versus-Bend generator benchmark.\n",
+      "baseline_commit": "d78c81ca209b2b04c80e543df7b692ebe5b35aa5",
+      "warmups": 1,
+      "repetitions": 5,
+      "cpu_workers": 2,
+      "nice": 10,
+      "own_compilation_and_other_tests_concurrent": false,
+      "other_host_load_controlled": false,
+      "executables": {
+        "baseline": "640c80c79df938bcd82b9d1d2659b68f5a1a7a157b8a559d643fa0b5e77743d7",
+        "candidate": "d6eee9d728e8bf952757edda1c65123e97d544624d521ace4782964e8e8a5254"
+      },
+      "gpu_companions": {
+        "baseline": "c5f245cbde33d047d124ebcd806314f0c39023339577736e170e9fb4fbd7df3a",
+        "candidate": "7726b4d227bed260553829a152151b61119cc940fe33753216071ec4a95eaf46"
+      },
+      "profiles": [
+        {
+          "name": "vanilla",
+          "rbp_sha256": "39c775ca58b6d084d4de060925df01d170c89caa09b9eaf7d33e55a915c8065a"
+        }
+      ],
+      "results": [
+        {
+          "profile": "vanilla",
+          "width": 256,
+          "depth": 256,
+          "gpu_required": true,
+          "baseline_host_ms": [
+            9407.496165949851,
+            9600.992082967423,
+            9231.667957967147,
+            9429.609832935967,
+            9573.184333974496
+          ],
+          "candidate_host_ms": [
+            6979.039667057805,
+            7051.302083069459,
+            7078.95900006406,
+            7091.664333012886,
+            7223.783417022787
+          ],
+          "baseline_median_ms": 9429.609832935967,
+          "candidate_median_ms": 7078.95900006406,
+          "ratio": 1.3320616538181158,
+          "all_column_bytes_sha256": "efef992edece5b31fcc5c43c9dbf1fb989cb2f93d1d2fb3753d8e23b778d0419"
+        }
+      ]
+    }
+  },
+  "uncontrolled_correctness_observations": {
+    "scope": "Single sequential correctness runs under uncontrolled external load; generation includes earlier density/surface/coastal stages, serialization separate; not formal comparative benchmarks",
+    "current_gpu": {
+      "ramp": {
+        "generation_response_host_ms": 8069.204125087708,
+        "encode_compress_write_response_host_ms": 2162.2498750220984,
+        "mca_bytes": 4202496
+      },
+      "islands": {
+        "generation_response_host_ms": 11473.26316696126,
+        "encode_compress_write_response_host_ms": 2469.0684580709785,
+        "mca_bytes": 4202496
+      },
+      "coastal": {
+        "generation_response_host_ms": 7838.62983295694,
+        "encode_compress_write_response_host_ms": 2544.4819580297917,
+        "mca_bytes": 4202496
+      },
+      "vanilla": {
+        "generation_response_host_ms": 41822.77870899998,
+        "encode_compress_write_response_host_ms": 14044.755958020687,
+        "mca_bytes": 4263936
+      },
+      "terralith": {
+        "generation_response_host_ms": 57541.96191695519,
+        "encode_compress_write_response_host_ms": 14646.268957993016,
+        "mca_bytes": 4333568
+      },
+      "combined": {
+        "generation_response_host_ms": 58406.06683399528,
+        "encode_compress_write_response_host_ms": 15048.665292095393,
+        "mca_bytes": 4374528
+      }
+    },
+    "prior_pr41_gpu_generation_host_ms": {
+      "ramp": 5448.065749951638,
+      "islands": 4109.402749920264,
+      "coastal": 4896.817666944116,
+      "vanilla": 57231.33574996609,
+      "terralith": 73240.58212491218,
+      "combined": 74526.41870791558
+    }
+  },
+  "rejected_forced_cpu_cache_trial": {
+    "scope": "Unmerged forced-cache CPU/GPU prototype before final CPU adapter; different executable, separate from final measurements",
+    "candidate_binary_sha256": "49f0bc6874c1034b5579ae74a1d5a6ea557c772d14b490ed6268461080819d03",
+    "cpu_median_ratios": [
+      0.7716269211403188,
+      0.9649789730221598,
+      0.8191976235187254,
+      0.9221813621555964,
+      0.9955716629760115,
+      0.9888703357633265
+    ],
+    "gpu_256_median_ratios": [
+      1.3133616767554743,
+      1.3131070845878807,
+      1.3385245384228033
+    ],
+    "reason": "CPU overhead motivated retention of the original CPU path",
+    "preserved_under": "forced-cache-prototype/ in this cycle artifact directory"
+  },
+  "source_sha256": {
+    "bend/binary.bend": "f716146b3a19403c4ad208ce37c2056f9ba023d6b76a3fecba5c3253185d9b68",
+    "bend/chunk.bend": "7aa37914a3941541f78909d0ab582ab956f972be7804c4abf97fdf07b839fe86",
+    "bend/chunk_catalog.bend": "666d5f98e2128a31a49f36ccdf0a1da7d7cb59067ce58d3cd1d0da3742963df3",
+    "bend/climate.bend": "57074782ae0f82c71d81fc5f21152af124a25c422b6ebd7a0d82037552ff2f19",
+    "bend/climate_batch.bend": "f65fbc7b463f5e093feb2364da0f504fa295088285917f7a04dc205bf1dc34fa",
+    "bend/compression.bend": "e42e1a312180ee0fce6faad39fc82b9a2e43ba05727e04d9a3c8e7651dd14130",
+    "bend/density.bend": "01beac1b7443695c1507293a7d916489ac5441235c1e07290330691864b56aae",
+    "bend/density_batch.bend": "51231a72efa798c9a31f1a6a841176ea50d1ac5644352b389e3d1a9bff30d99c",
+    "bend/density_lattice.bend": "0b02993df32e160b21c50b8ee33e003f2d7f3eb53645c91ab6699bed0e1a9ae8",
+    "bend/engine.bend": "14e8e4f1f0fd337de96e34c483c20318991a780a48161134ad1bf093062c4ae0",
+    "bend/generated_chunk.bend": "53c9f0aa02add6f7c207d079481129178c6e2b96eda544f2952eb1744b8cd63f",
+    "bend/generated_region.bend": "a2969fa86cd4fa8becf2192eb3b662cf6415c68e28a272716a2d2627b3f82531",
+    "bend/heightmaps.bend": "0b69c87d24ec3b27cbb082bb394205765154bf78c5c4db2c226fbc4ba3e2d997",
+    "bend/material.bend": "fea1e62174797c5b44634f3674dfc550d0178f207524193ed0d9416fbbf70f64",
+    "bend/material_batch.bend": "e34ee066c23a5328d279c5137ce2d107f2e4df661d63d3de373970d5cbee2073",
+    "bend/material_columns.bend": "9f111a47ca9247f3b229c98654d79a754e620055ab817caece92a58f3ebf417f",
+    "bend/material_columns_data.bend": "4d702d0723ca85d6a7ae0dea1dd3873ab67f8d5f248de8dcd9e9442bd6de22ef",
+    "bend/material_lazy.bend": "8675a4ea5d3e1b164d1d2a71b248c9ec23078c05da9880fb5470b543a6de1f10",
+    "bend/material_program.bend": "f4b7e78629f7eecd991418eb00fa3face480954b300fa996e370d4c16c35128c",
+    "bend/nbt.bend": "7063555acf523d12269bd152e1e32981534009785b6a7653509f1a108b18cb57",
+    "bend/noise.bend": "80485dd8d18580a1044c8e55dbd03dab1b8dbdd9aa6681e1b8f6743fce928c1d",
+    "bend/numbers.bend": "858ea999141639aa26c559a2e06a87d62c58e93d0d8d3a793bb530b629060956",
+    "bend/packed.bend": "b4ebd29bc4d31d53ddcc221f64c84e68c5bde4a0fbbb51acfdaa9ddd01e2c23f",
+    "bend/palette.bend": "4f813fb89317308dc02c70d36cf5e3eeaf6d62a9a82477b781b976be5eee82ff",
+    "bend/precise.bend": "50ba7138300f2c913b2d75a554a78d88bfb09931c6cd58ecc884ab7024c73c01",
+    "bend/reader.bend": "e659a2cac6b8435f02fd0fe91902ceca918055d026ec1908845186bee4fdc0ac",
+    "bend/region.bend": "1455654e09969a0c80b6536b61b8da2f6070c80d007d2a3639b4a42cb873cc35",
+    "bend/registry.bend": "433b4dbb17b127dd322a11465a1111ddadd86a8682597310c062a194aa802296",
+    "bend/registry_chunk_catalog.bend": "032c8411f124d9876a34e2537b7dff1f9ccbd068a53b2e4a7423ae71ffe98652",
+    "bend/registry_climate.bend": "3daed5cbc3da3a4d4f91c65465e899b31fe219fe34af03731fc7ca1c49c572ad",
+    "bend/registry_density.bend": "0c1972222bbcdfead41b30ae0453f7e05e85ab7bb446c113c3a07a8b12f56cb7",
+    "bend/registry_material.bend": "b28952c7b085865d41f853d55e287c0c0bb8000442cc2c94b37325daaab8d29e",
+    "bend/registry_material_columns.bend": "9eb18ecf8327d35a9f1c00da86272b5a18447f203c7b7964377f782648a9846b",
+    "bend/registry_noise.bend": "ae6994d216acc9751c20e4df1e4ff62548c8af99c61e6b006155e2fbc3e1ca94",
+    "bend/registry_surface.bend": "7964afc9153879537d0fed15b811aaf88d1a0b41b210be339122e595ab76bd60",
+    "bend/registry_values.bend": "5bb1d3ab6bfed7cf640af35089a5ec1370cc2f686d7cfb8b210e7643e1b3d97f",
+    "bend/shoreline.bend": "936e978072ad2a0f32e6a85b6fe30d2dc2eb1773757e2d43f6b5fa6106681041",
+    "bend/terrain_surface.bend": "26687ac40e62949ca563d7f31117207fa0eb053d82f51b58a14e84b9a2d4d652",
+    "bend/transport.bend": "2d7b2667aaf37b537de8be6c584acaeaec37377da475741bfe790a46d9c76f81",
+    "bend/word64.bend": "62e104fbbc56208d66457789a7f2ed3f5fe122f4a19068c3df9b3bbbf555e139"
+  },
+  "limitations": [
+    "Short 32-high analytic GPU region fixtures are slower than PR41; immutable table lookups and the extra kernel impose overhead.",
+    "CPU final ratios range 0.959..1.061 under uncontrolled external load; this is not a guarantee of identical performance.",
+    "Peak cache memory has not been measured.",
+    "No CUDA, AMD or Windows measurements.",
+    "Output is unlit base/material MCA, not full generator parity or a selectable Bend world type.",
+    "Complete lit compressed Rust-versus-Bend benchmark remains required."
+  ]
+}
