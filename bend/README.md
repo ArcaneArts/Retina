@@ -194,3 +194,41 @@ This separates registry extraction only. Bend still needs to receive and
 interpret these profiles in its persistent runtime. They are about 13 MB for
 vanilla and 30 MB for Terralith; profile transport must use its own suitable
 bounds rather than the encoder's per-chunk 16 MiB buffer limit.
+
+## Seeded noise kernels
+
+`noise.bend` provides seeded 2D simplex, 3D gradient noise with quintic lattice
+weights, registry-style weighted octave stacks and a trilinear primitive. Both
+seed words participate in hashing. Octave preparation preserves channel/ordinal
+salts, ignores nonpositive modifier weights and rejects invalid/oversized stacks.
+Preparation runs once per profile/channel; prepared stacks can feed bulk GPU
+sampling. Actual density bytecode and interpolation grids are still pending.
+
+Use `world_simplex` / `world_perlin` for integer world coordinates. These accept
+signed-i32 coordinate bits and split the scaled coordinate into a lattice cell
+and fraction using exact word products. Frequency is quantized to Q32, with
+resolution 2^-32 per block; fractional conversion rounds at F32 precision.
+Simplex skewing uses the same split representation and unskews only fractions,
+avoiding subtraction of large floating coordinates. Lattice cells wrap for
+hashing. Low-level axis frequency must be finite in [0, 2^30]; octave preparation
+enforces that bound and a maximum of 32 modifiers. The floating-point `simplex`
+entry point is for already small noise-space coordinates.
+
+```sh
+python3 scripts/test_bend_noise.py --prove-metal
+./gradlew bendNoiseTest -PretinaHostOnly --max-workers=2 --no-parallel -PproveMetal
+```
+
+The runner independently checks 8,192 rows at one/two CPU workers and GPU,
+including signed-i32 extremes, world-border coordinates, negative Y, full seed
+words, zero/missing octave weights, interpolation and neighboring distant
+samples. Maximum observed scalar error is below 0.000003. Eight malformed
+configurations and six seed/stack boundary checks run in each executable.
+
+`--prove-metal` is a macOS diagnostic: it adds one logging statement after the
+stock generated runtime waits for a Metal command buffer, without replacing any
+algorithm or kernel. It builds that executable's own GPU archive and checks its
+output against the normal executable. This confirms actual dispatch; it is not
+a production runtime modification or a performance benchmark. The report is in
+`docs/benchmarks/bend-noise-correctness.json`. Runtime terrain integration and
+complete lit/compressed-region measurements remain required.
