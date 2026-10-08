@@ -1,0 +1,54 @@
+{
+  "schema": "retina.performance-summary",
+  "schema_version": 1,
+  "environment": {
+    "device": "Apple M4 Max",
+    "backend": "Metal",
+    "operating_system": "Darwin 27.0.0",
+    "desktop_load_controlled": false
+  },
+  "retained_library": {
+    "revision": "8d41f8d",
+    "sha256": "aa5303da943b39b7a9375686cc4ce9f67780d582627f2f741604740d272b5948"
+  },
+  "candidate_library": {
+    "sha256": "6c7de9c8ecbb166747ebaf0cad4cdc5dd633b8bfce9885cb8329a9eb1146ddd5"
+  },
+  "vanilla_lit_mca": {
+    "warmups_per_trial": 5,
+    "regions_per_trial": 20,
+    "baseline_trials_chunks_per_second": [3204.2667024340067, 3036.9290870133045],
+    "candidate_trials_chunks_per_second": [3309.7411477835535, 3322.4992047260052],
+    "baseline_median_chunks_per_second": 3120.5978947236554,
+    "candidate_median_chunks_per_second": 3316.1201762547794,
+    "median_change_percent": 6.265539109082763,
+    "identical_candidate_chunks": 40960,
+    "region_file_bytes_per_trial": 174018560
+  },
+  "terralith_lit_mca_shader_ready": {
+    "warmups_per_trial": 5,
+    "regions_per_trial": 20,
+    "trials_per_library": 4,
+    "baseline_median_chunks_per_second": 1135.475579151534,
+    "candidate_median_chunks_per_second": 1051.2198508606955,
+    "median_change_percent": -7.420302984745586,
+    "bootstrap_95_percent": [-29.636054152559332, 21.01940751104765],
+    "interpretation": "inconclusive due to large system-level variance",
+    "identical_candidate_chunks": 81920
+  },
+  "chunk_mode_real_gpu_bridge_chunks_per_second": 614.99,
+  "exact_output": {
+    "candidate_chunks_compared": 176128,
+    "seeds": [123456789, 42, 987654321],
+    "profiles": ["vanilla", "Terralith"],
+    "callers": [1, 2],
+    "coordinates": "positive and negative",
+    "mismatches": 0
+  },
+  "scope_finding": "The approximately 500-600 chunk-mode rate is not comparable to 1024-chunk lit-MCA production throughput.",
+  "limitations": [
+    "Desktop load was not controlled.",
+    "No second GPU or backend was available.",
+    "No universal Terralith end-to-end speedup is claimed."
+  ]
+}

@@ -36,6 +36,7 @@ pub(crate) struct Gpu {
     pipelines: Option<Pipelines>,
     timing: Option<Timing>,
     profiles: HashMap<u32, (wgpu::Buffer, wgpu::Buffer)>,
+    bind_groups: HashMap<u32, (wgpu::BindGroup, wgpu::BindGroup)>,
     buffers: Option<Buffers>,
 }
 struct Pipelines {
@@ -48,6 +49,7 @@ struct Pipelines {
     pack: wgpu::ComputePipeline,
 }
 struct Timing {
+    queries: wgpu::QuerySet,
     resolve: wgpu::Buffer,
     readback: wgpu::Buffer,
 }
@@ -63,6 +65,10 @@ struct Buffers {
     indirect: wgpu::Buffer,
     capacities: [u64; 4],
 }
+pub(crate) enum OutputFormat {
+    Voxels,
+    Sections,
+}
 pub(crate) struct ResultLight {
     pub bytes: Vec<u8>,
     pub device_nanos: Option<[u64; 3]>,
@@ -76,6 +82,7 @@ impl Gpu {
             pipelines: None,
             timing: None,
             profiles: HashMap::new(),
+            bind_groups: HashMap::new(),
             buffers: None,
         }
     }
@@ -145,6 +152,11 @@ impl Gpu {
             .features()
             .contains(wgpu::Features::TIMESTAMP_QUERY)
             .then(|| Timing {
+                queries: self.device.create_query_set(&wgpu::QuerySetDescriptor {
+                    label: Some("Retina light timing"),
+                    ty: wgpu::QueryType::Timestamp,
+                    count: 6,
+                }),
                 resolve: self.device.create_buffer(&wgpu::BufferDescriptor {
                     label: Some("Retina light resolve"),
                     size: 48,
@@ -159,7 +171,8 @@ impl Gpu {
                 }),
             });
     }
-    /// Chunk-major material input; crop/core are measured in chunks. No CPU propagation.
+    /// Unpadded chunk-major materials; the GPU supplies the two air sections.
+    /// Crop/core are measured in chunks. No CPU propagation.
     pub(crate) fn run(
         &mut self,
         handle: u32,
@@ -169,6 +182,7 @@ impl Gpu {
         crop: u32,
         core: u32,
         blocks: &[u16],
+        format: OutputFormat,
     ) -> Result<ResultLight, String> {
         if chunks == 0
             || height == 0
@@ -202,11 +216,13 @@ impl Gpu {
         }
         // Dense reference mode uses the same attenuation/face rules, for diagnostics.
         let sparse = std::env::var("RETINA_LIGHTING_DENSE").as_deref() != Ok("1");
-        let bricks = (chunks * 2).pow(2) * height.div_ceil(8);
+        let light_height = height + 32;
+        let voxels = chunks as u64 * chunks as u64 * light_height as u64 * 256;
+        let bricks = (chunks * 2).pow(2) * light_height.div_ceil(8);
         let sizes = [
             (blocks.len() * 2) as u64,
-            blocks.len() as u64,
-            core as u64 * core as u64 * height as u64 * 256,
+            voxels,
+            core as u64 * core as u64 * light_height as u64 * 256,
             bricks as u64 * 4,
         ];
         if self
@@ -275,46 +291,55 @@ impl Gpu {
                 ),
                 capacities,
             });
+            // Bind groups retain their buffers, so growing any shared allocation
+            // invalidates every profile's cached pair.
+            self.bind_groups.clear();
         }
         let buffers = self.buffers.as_ref().unwrap();
         let pipelines = self.pipelines.as_ref().unwrap();
-        let resident = &self.profiles[&handle];
-        let bind = |read: &wgpu::Buffer, write: &wgpu::Buffer| {
-            let entries = [
-                &buffers.params,
-                &buffers.blocks,
-                &resident.0,
-                &resident.1,
-                read,
-                write,
-                &buffers.output,
-                &buffers.work,
-                &buffers.active,
-            ];
-            self.device.create_bind_group(&wgpu::BindGroupDescriptor {
-                label: Some("Retina light volume"),
-                layout: &pipelines.layout,
-                entries: &entries
-                    .iter()
-                    .enumerate()
-                    .map(|(i, b)| wgpu::BindGroupEntry {
+        let bind_groups = self.bind_groups.entry(handle).or_insert_with(|| {
+            let resident = &self.profiles[&handle];
+            let bind = |read: &wgpu::Buffer, write: &wgpu::Buffer| {
+                let buffers = [
+                    &buffers.params,
+                    &buffers.blocks,
+                    &resident.0,
+                    &resident.1,
+                    read,
+                    write,
+                    &buffers.output,
+                    &buffers.work,
+                    &buffers.active,
+                ];
+                let entries: [wgpu::BindGroupEntry<'_>; 9] =
+                    std::array::from_fn(|i| wgpu::BindGroupEntry {
                         binding: i as u32,
-                        resource: b.as_entire_binding(),
-                    })
-                    .collect::<Vec<_>>(),
-            })
-        };
-        let ab = bind(&buffers.a, &buffers.b);
-        let ba = bind(&buffers.b, &buffers.a);
+                        resource: buffers[i].as_entire_binding(),
+                    });
+                self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+                    label: Some("Retina light volume"),
+                    layout: &pipelines.layout,
+                    entries: &entries,
+                })
+            };
+            (bind(&buffers.a, &buffers.b), bind(&buffers.b, &buffers.a))
+        });
+        let (ab, ba) = (&bind_groups.0, &bind_groups.1);
         let params = [
             chunks * 16,
-            height,
+            light_height,
             chunks,
             crop,
             core,
-            profile.sky as u32 | if sparse { 2 } else { 0 },
+            profile.sky as u32
+                | if sparse { 2 } else { 0 }
+                | if matches!(format, OutputFormat::Sections) {
+                    4
+                } else {
+                    0
+                },
             profile.faces.div_ceil(32),
-            (blocks.len() / 4) as u32,
+            (voxels / 4) as u32,
         ];
         self.queue
             .write_buffer(&buffers.params, 0, bytemuck::cast_slice(&params));
@@ -322,13 +347,7 @@ impl Gpu {
             .write_buffer(&buffers.blocks, 0, bytemuck::cast_slice(blocks));
         upload += sizes[0] + 32;
         let timestamp = self.timing.is_some();
-        let queries = timestamp.then(|| {
-            self.device.create_query_set(&wgpu::QuerySetDescriptor {
-                label: Some("Retina light timing"),
-                ty: wgpu::QueryType::Timestamp,
-                count: 6,
-            })
-        });
+        let queries = self.timing.as_ref().map(|t| &t.queries);
         let times = self.timing.as_ref().map(|t| (&t.resolve, &t.readback));
         let mut encoder = self
             .device
@@ -336,7 +355,7 @@ impl Gpu {
                 label: Some("Retina final lighting"),
             });
         let writes = |pair: u32| {
-            queries.as_ref().map(|q| wgpu::ComputePassTimestampWrites {
+            queries.map(|q| wgpu::ComputePassTimestampWrites {
                 query_set: q,
                 beginning_of_pass_write_index: Some(pair * 2),
                 end_of_pass_write_index: Some(pair * 2 + 1),
@@ -351,20 +370,20 @@ impl Gpu {
                 timestamp_writes: writes(0),
             });
             pass.set_pipeline(&pipelines.init);
-            pass.set_bind_group(0, &ab, &[]);
+            pass.set_bind_group(0, ab, &[]);
             pass.dispatch_workgroups((chunks * chunks * 64).div_ceil(64), 1, 1);
         }
         if sparse {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
                 label: Some("Retina compact active light bricks"),
-                timestamp_writes: queries.as_ref().map(|q| wgpu::ComputePassTimestampWrites {
+                timestamp_writes: queries.map(|q| wgpu::ComputePassTimestampWrites {
                     query_set: q,
                     beginning_of_pass_write_index: Some(2),
                     end_of_pass_write_index: None,
                 }),
             });
             pass.set_pipeline(&pipelines.compact);
-            pass.set_bind_group(0, &ab, &[]);
+            pass.set_bind_group(0, ab, &[]);
             pass.dispatch_workgroups(bricks.div_ceil(64), 1, 1);
         }
         if sparse {
@@ -373,7 +392,7 @@ impl Gpu {
                 timestamp_writes: None,
             });
             pass.set_pipeline(&pipelines.args);
-            pass.set_bind_group(0, &ab, &[]);
+            pass.set_bind_group(0, ab, &[]);
             pass.dispatch_workgroups(1, 1, 1);
         }
         if sparse {
@@ -385,7 +404,7 @@ impl Gpu {
         for iteration in 0..14 {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
                 label: Some("Retina bounded light propagation"),
-                timestamp_writes: queries.as_ref().and_then(|q| {
+                timestamp_writes: queries.and_then(|q| {
                     if iteration == 0 && !sparse || iteration == 13 {
                         Some(wgpu::ComputePassTimestampWrites {
                             query_set: q,
@@ -402,7 +421,7 @@ impl Gpu {
             } else {
                 &pipelines.spread
             });
-            pass.set_bind_group(0, if iteration % 2 == 0 { &ba } else { &ab }, &[]);
+            pass.set_bind_group(0, if iteration % 2 == 0 { ba } else { ab }, &[]);
             if sparse {
                 pass.dispatch_workgroups_indirect(&buffers.indirect, 0);
             } else {
@@ -415,11 +434,11 @@ impl Gpu {
                 timestamp_writes: writes(2),
             });
             pass.set_pipeline(&pipelines.pack);
-            pass.set_bind_group(0, &ba, &[]);
+            pass.set_bind_group(0, ba, &[]);
             pass.dispatch_workgroups(256, (sizes[2] as u32 / 4).div_ceil(16384), 1);
         }
         encoder.copy_buffer_to_buffer(&buffers.output, 0, &buffers.readback, 0, sizes[2]);
-        if let (Some(q), Some((resolve, readback))) = (&queries, &times) {
+        if let (Some(q), Some((resolve, readback))) = (queries, &times) {
             encoder.resolve_query_set(q, 0..6, resolve, 0);
             encoder.copy_buffer_to_buffer(resolve, 0, readback, 0, 48);
         }
@@ -501,25 +520,24 @@ pub(crate) fn region(
         })
         .unwrap_or(1);
     let count = (request.height as usize + 32) * 256;
-    let mut input = Vec::with_capacity((core + 2).pow(2) * count);
+    let mut input = Vec::with_capacity((core + 2).pow(2) * request.block_count());
     for cz in (1..31).step_by(core) {
         for cx in (1..31).step_by(core) {
             input.clear();
             for z in cz - 1..cz + core + 1 {
                 for x in cx - 1..cx + core + 1 {
-                    input.resize(input.len() + 4096, 0);
                     input.extend_from_slice(&chunks[z * 32 + x]);
-                    input.resize(input.len() + 4096, 0);
                 }
             }
             let result = gpu.run(
                 request.reserved,
                 profile,
                 (core + 2) as u32,
-                request.height + 32,
+                request.height,
                 1,
                 core as u32,
                 &input,
+                OutputFormat::Sections,
             )?;
             engine
                 .pipeline
@@ -546,4 +564,89 @@ pub(crate) fn region(
         .add(crate::timings::LIGHT_HOST, elapsed);
     job.add(crate::timings::LIGHT_HOST, elapsed);
     Ok(output)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    #[ignore = "requires a supported GPU"]
+    fn section_packing_matches_voxels_with_crop_padding_and_reuse() {
+        let engine = crate::TerrainEngine::new().unwrap();
+        let mut gpu = engine.light_gpu.lock().unwrap();
+        for sky in [true, false] {
+            let mut states = vec![[0; 8]; 4];
+            states[1][0] = 15;
+            states[2][0] = 240;
+            states[3][0] = 1;
+            let profile = Profile {
+                sky,
+                faces: 1,
+                states,
+                blocked: vec![0],
+            };
+            let handle = 1 + u32::from(sky);
+            for (chunks, height, crop, core, empty) in [
+                (1, 16, 0, 1, true),
+                (2, 32, 0, 2, false),
+                (3, 48, 1, 1, false),
+                (3, 16, 0, 3, false),
+            ] {
+                let blocks: Vec<u16> = (0..chunks * chunks * height * 256)
+                    .map(|i| {
+                        if empty {
+                            0
+                        } else {
+                            match (i * 17 + i / 16) % 103 {
+                                0..=2 => 2,
+                                3..=44 => 1,
+                                45..=60 => 3,
+                                _ => 0,
+                            }
+                        }
+                    })
+                    .collect();
+                let voxels = gpu
+                    .run(
+                        handle,
+                        &profile,
+                        chunks,
+                        height,
+                        crop,
+                        core,
+                        &blocks,
+                        OutputFormat::Voxels,
+                    )
+                    .unwrap();
+                let packed = gpu
+                    .run(
+                        handle,
+                        &profile,
+                        chunks,
+                        height,
+                        crop,
+                        core,
+                        &blocks,
+                        OutputFormat::Sections,
+                    )
+                    .unwrap();
+                let expected: Vec<u8> = voxels
+                    .bytes
+                    .chunks_exact(4096)
+                    .flat_map(|section| {
+                        [0, 4].into_iter().flat_map(move |shift| {
+                            section.chunks_exact(2).map(move |pair| {
+                                ((pair[0] >> shift) & 15) | (((pair[1] >> shift) & 15) << 4)
+                            })
+                        })
+                    })
+                    .collect();
+                assert_eq!(
+                    packed.bytes, expected,
+                    "sky={sky}, chunks={chunks}, height={height}, crop={crop}"
+                );
+            }
+        }
+    }
 }

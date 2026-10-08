@@ -178,10 +178,30 @@ tasks.register('regionTest', JavaExec) {
     jvmArgs '--enable-native-access=ALL-UNNAMED'
 }
 
+tasks.register('nativeLightingGpuTest', Exec) {
+    group = 'verification'
+    description = 'Compare GPU section nibble packing with voxel output across cropped and reused buffers.'
+    dependsOn ':buildNative'
+    workingDir nativeDirectory
+    commandLine(nativeCargoCommand + ['test', '--release', '--locked', '--lib',
+            '--target-dir', nativeTarget.get().asFile.absolutePath,
+            'lighting::tests::section_packing_matches_voxels_with_crop_padding_and_reuse',
+            '--', '--ignored', '--nocapture'])
+}
+
+tasks.register('benchmarkHarnessTest', Exec) {
+    group = 'verification'
+    description = 'Validate benchmark percentiles, MCA parsing, corpus membership and mismatch diagnostics.'
+    workingDir rootProject.projectDir
+    commandLine providers.gradleProperty('pythonExecutable').getOrElse('python3'), '-m', 'unittest',
+            'scripts/test_benchmark_support.py'
+}
+check.dependsOn 'benchmarkHarnessTest'
+
 tasks.register('lightingTest', JavaExec) {
     group = 'verification'
     description = 'Compare GPU lighting with Minecraft and validate mixed lit/unlit MCA regions.'
-    dependsOn 'gpuTestClasses', ':packageNative'
+    dependsOn 'gpuTestClasses', ':packageNative', 'nativeLightingGpuTest'
     classpath = sourceSets.gpuTest.runtimeClasspath
     mainClass = 'art.arcane.retina.worldgen.NativeLightingIntegrationTest'
     javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }

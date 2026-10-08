@@ -26,8 +26,9 @@ properties include modded/datapack-used blocks in the palette. Sky light follows
 the actual dimension's `hasSkyLight` flag.
 
 Metadata stays resident per native profile. The lighting pass transfers final
-16-bit material IDs and returns one byte per voxel (block and sky nibbles). It does
-not read noise data back for another CPU lighting calculation.
+16-bit material IDs and returns one byte per voxel of light data. Region output
+contains section-ordered Minecraft nibble arrays; diagnostic volumes keep their
+interleaved block/sky bytes. Noise data is not read back for CPU lighting.
 
 ## GPU solve and Minecraft handoff
 
@@ -44,20 +45,27 @@ from a seeded source spans at most fourteen edges. Separate compute passes provi
 storage visibility. Packed integer operations avoid floating-point precision or
 backend determinism issues. An 8-block brick three bricks away is at least
 17 edges from a source brick, so a conservative ±2-brick search covers every
-possible positive contribution. The worklist stays on the GPU through all passes;
+possible positive contribution. The scan excludes brick pairs whose minimum
+Manhattan voxel distance exceeds fourteen, reducing an interior neighborhood
+from 125 to 81 possible bricks. It stops once all needed source channels have
+been found, including sources in the current brick. The worklist stays on the GPU through all passes;
 there is no CPU frontier scan or intermediate readback. Empty worklists dispatch
 no propagation work, and classification/counters are cleared on buffer reuse.
 
 Shader initialization computes one chunk-column address per aligned group of four
 voxels and reads its two packed material words per height. Propagation shares the
-group's coordinates and current light word. Packing copies a complete light word
-into chunk order: chunk, row and crop boundaries are all four-voxel aligned.
+group's coordinates and current light word. The final region packing pass gathers
+eight voxel nibbles per output word directly into Minecraft's block/sky arrays.
+Rust copies these arrays into NBT without per-voxel shifts or nibble repacking.
+Diagnostic packing still copies complete light words into chunk order.
 
 The region is tiled into 10×10 output cores with a one-chunk halo under normal
 storage-buffer limits. Smaller cores are selected from actual device limits when
 necessary. The 16-block halo covers the maximum 14-block light influence. One
 virtual-air section above and below the world preserves Minecraft's light-only
-padding sections; these are not generated terrain.
+padding sections; the shader supplies their air material without CPU padding or
+uploads. At height 384 this removes 7.7% of material upload bytes, or 20.25 MiB
+across the nine standard region tiles.
 
 Interior records contain `BlockLight` / `SkyLight` nibble arrays, `isLightOn=1` and
 `Status=minecraft:light`. The outer ring has `isLightOn=0`, no saved light arrays and
@@ -88,9 +96,10 @@ results use about 91 MiB, in addition to existing generation fields and reusable
 GPU tile buffers. Lighting submissions share the existing wgpu device/queue and
 serialize through their own mutex; parallel Rust chunk assembly remains enabled.
 
-Rust reuses the padded tile input allocation throughout a region and retains the
-two fixed-size timestamp resolve/readback buffers across lighting calls. Readbacks
-are unmapped before reuse; each submission still creates its own timestamp queries.
+Rust reuses the unpadded tile input allocation throughout a region and retains the
+profile bind groups, timestamp query set and fixed-size timestamp resolve/readback
+buffers across lighting calls. Buffer growth invalidates the affected bind-group
+cache; readbacks are unmapped before reuse.
 
 This moves initial lighting work out of Minecraft's load path, which is especially
 useful when generation happens ahead of loading through DH. It is not a guaranteed
@@ -111,6 +120,11 @@ uses the production shader and Minecraft 26.3's real lighting engine:
   negative region coordinates and 60,000 sampled imported-light comparisons;
 - partial repair preserves player edits and delegates repaired-chunk lighting;
 - rolling F3 percentages and an alternating lighting-phase load benchmark.
+
+The task also runs a real-device Rust check comparing GPU section packing against
+the diagnostic voxel format, including emissions, attenuation, skyless volumes,
+cropping, padding and allocation reuse. It can be run alone with
+`./gradlew nativeLightingGpuTest`.
 
 ## Sparse propagation performance
 
@@ -184,6 +198,24 @@ To measure a retained library instead of only checking its output, add
 `--reference-library=<old library> --modes reference sparse --warmups 5
 --iterations 25` to the replay command above. The report includes initialization
 and packing times as well as propagation and total device/host times.
+
+A further pass moved air padding and final nibble packing to the GPU and bounded
+the source-neighborhood scan more closely. On the same M4 Max / Metal, a retained
+`8d41f8d` library and the candidate were replayed in alternating order with five
+warmups and 25 measured calls per mode. Across three saved-terrain tiles, median
+lighting host time fell 4–9%, total device time fell 5–8%, and propagation including
+compaction fell 6–9%. All fifteen synthetic/saved-terrain fixture outputs matched
+both the retained library and the dense reference.
+
+Two additional same-process region comparisons isolated GPU nibble packing from
+the other changes. Each used five warmups and twenty measured calls per library
+at height 384, on a fixed terrain profile with registry programs and decoration
+disabled. All 51,200 paired chunk NBT records matched, including warmups. Median
+aggregate NBT CPU time fell 27–31%. Packing itself cost an additional 0.12–0.18 ms
+per region on the GPU. Whole-region wall-time changes were below 5% and noisy;
+these results establish less CPU work, not a stable overall generation speedup.
+The reports are retained in
+[`benchmarks/gpu-lighting-preparation.json`](benchmarks/gpu-lighting-preparation.json).
 
 The small flat 64-height fixture reduced the measured Minecraft lighting phase
 from about 28 ms to 15 ms per region in one local run, while GPU preparation took

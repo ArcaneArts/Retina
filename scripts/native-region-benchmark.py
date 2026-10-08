@@ -13,7 +13,10 @@ import platform
 import resource
 import statistics
 import time
-import zlib
+import subprocess
+
+from benchmark_support import (RESULT_SCHEMA, RESULT_SCHEMA_VERSION, compare_corpora,
+                               corpus_manifest, mca_records, percentile, write_json)
 
 class Request(c.Structure):
     _fields_ = [("seed", c.c_uint64), ("x", c.c_int32), ("z", c.c_int32), ("min_y", c.c_int32),
@@ -39,8 +42,17 @@ def main():
     parser.add_argument("--compare", type=Path, help="A matched baseline output directory; fail on any changed chunk NBT")
     parser.add_argument("--parallel", type=int, choices=(1,2), default=1)
     parser.add_argument("--seed", type=int, default=123456789)
+    parser.add_argument("--origin-x", type=int, default=-1, help="First region X coordinate")
+    parser.add_argument("--origin-z", type=int, default=-1, help="First region Z coordinate")
+    parser.add_argument("--grid-width", type=int, default=3)
     parser.add_argument("--count", type=int, default=6)
     parser.add_argument("--warmups", type=int, default=1)
+    parser.add_argument("--scope", choices=("native-region", "lit-mca"), default="lit-mca",
+                        help="Label the measured completion boundary; this harness does not measure live activation")
+    parser.add_argument("--lighting", choices=("enabled", "disabled", "dense"), default="enabled")
+    parser.add_argument("--library-revision", help="Revision or immutable label that produced --library")
+    parser.add_argument("--readiness", choices=("driver-warm", "shader-ready"), default="driver-warm",
+                        help="Whether measurement may overlap specialization or waits for a ready/final status")
     parser.add_argument("--program-execution", choices=("auto", "interpreter", "specialized"), help="Override GPU program mode for matched diagnostics")
     parser.add_argument("--interpolation-cache", choices=("enabled", "disabled"), help="A/B diagnostic for resident interpolation-field reuse")
     parser.add_argument("--density-composition", choices=("enabled", "disabled"), help="Experimental block-position composition of registered density fields")
@@ -58,6 +70,12 @@ def main():
     parser.add_argument("--await-specialization", action="store_true", help="After measurement, await compilation and compare one regenerated region with its pre-warmup output")
     parser.add_argument("--specialization-timeout", type=float, default=180, help="Seconds to await a real compilation result after measurements")
     args = parser.parse_args()
+    if args.count < 1 or args.warmups < 0 or args.grid_width < 1:
+        parser.error("--count and --grid-width must be positive and --warmups cannot be negative")
+    if (args.scope == "native-region") != (args.lighting == "disabled"):
+        parser.error("--scope native-region requires --lighting disabled; lit-mca requires lighting enabled or dense")
+    os.environ["RETINA_GPU_LIGHTING"] = "0" if args.lighting == "disabled" else "1"
+    os.environ["RETINA_LIGHTING_DENSE"] = "1" if args.lighting == "dense" else "0"
     if args.interpolation_cache:
         os.environ["RETINA_INTERPOLATION_CACHE"] = "1" if args.interpolation_cache == "enabled" else "0"
     if args.density_composition:
@@ -99,8 +117,11 @@ def main():
     check(lib.retina_initialize())
     initialize_ms = (time.perf_counter()-startup)*1000
     source = args.profile.read_bytes(); profile = c.c_uint32()
+    profile_source = json.loads(source)
+    if args.scope == "lit-mca" and not profile_source.get("lighting"):
+        raise ValueError("lit-mca scope requires a profile containing lighting properties")
     if args.program_execution:
-        value = json.loads(source); value["program_execution"] = args.program_execution
+        value = profile_source; value["program_execution"] = args.program_execution
         source = json.dumps(value, separators=(",", ":")).encode()
     registration = time.perf_counter()
     check(lib.retina_register_profile(source, len(source), c.byref(profile)))
@@ -121,6 +142,17 @@ def main():
         return dict(name=name, x=x, z=z, ms=elapsed_ms, generated=report.generated, program_status=status,
                     gpu_ms=report.gpu/1e6, assembly_ms=report.assembly/1e6, write_ms=report.write/1e6)
     warmups = [generate((f"warm{i}",8+i,8)) for i in range(args.warmups)]
+    readiness_wait_ms = 0.0
+    if args.readiness == "shader-ready":
+        if not program:
+            raise RuntimeError("The loaded library does not expose program readiness diagnostics")
+        ready = ProgramSnapshot(); check(program(profile, c.byref(ready)))
+        wait_start = time.perf_counter()
+        while ready.status == 1 and time.perf_counter() - wait_start < args.specialization_timeout:
+            time.sleep(.1); check(program(profile, c.byref(ready)))
+        readiness_wait_ms = (time.perf_counter() - wait_start) * 1000
+        if ready.status not in (2, 3, 4):
+            raise RuntimeError(f"GPU program did not reach a final readiness state: status={ready.status}")
     before = Snapshot(); check(lib.retina_timing_snapshot(profile, c.byref(before)))
     before_program=ProgramSnapshot()
     if program:
@@ -131,14 +163,35 @@ def main():
         pipeline.argtypes = [c.POINTER(PipelineSnapshot)]
         check(pipeline(c.byref(before_pipeline)))
     # Adjacent tiles exercise shared structure halos and cold full-region terrain.
-    coords = [(str(i), i%3-1, i//3-1) for i in range(args.count)]
+    coords = [(str(i), args.origin_x + i % args.grid_width, args.origin_z + i // args.grid_width)
+              for i in range(args.count)]
     start = time.perf_counter()
     with concurrent.futures.ThreadPoolExecutor(args.parallel) as workers:
         regions = list(workers.map(generate, coords))
     wall = time.perf_counter()-start
     after = Snapshot(); check(lib.retina_timing_snapshot(profile, c.byref(after)))
     chunks = after.chunks-before.chunks
-    data = dict(library=str(args.library), parallel=args.parallel, seed=args.seed, regions=regions, program_execution=args.program_execution, interpolation_cache=args.interpolation_cache, density_composition=args.density_composition, cached_density_masks=args.cached_density_masks, terrain_execution=args.terrain_execution, interpreter_dispatch=args.interpreter_dispatch, interpreter_preload=args.interpreter_preload,
+    durations = [r["ms"] for r in regions]
+    try:
+        revision = subprocess.run(["git", "rev-parse", "HEAD"], check=True, capture_output=True, text=True).stdout.strip()
+        dirty_state = subprocess.run(["git", "status", "--porcelain"], check=True, capture_output=True, text=True).stdout
+        dirty = bool(dirty_state)
+        diff = subprocess.run(["git", "diff", "--binary", "HEAD"], check=True, capture_output=True).stdout
+        dirty_fingerprint = hashlib.sha256(diff + dirty_state.encode()).hexdigest() if dirty else None
+    except (OSError, subprocess.CalledProcessError):
+        revision, dirty, dirty_fingerprint = None, None, None
+    data = dict(schema=RESULT_SCHEMA, schema_version=RESULT_SCHEMA_VERSION,
+                benchmark_scope=args.scope, lighting=args.lighting,
+                readiness=args.readiness, readiness_wait_ms=readiness_wait_ms,
+                build={"harness_revision": revision, "harness_dirty": dirty,
+                       "harness_dirty_fingerprint": dirty_fingerprint,
+                       "library_revision": args.library_revision, "library": str(args.library.resolve()),
+                       "library_sha256": hashlib.sha256(args.library.read_bytes()).hexdigest()},
+                host={"system": platform.system(), "release": platform.release(), "machine": platform.machine(),
+                      "python": platform.python_version()},
+                library=str(args.library), parallel=args.parallel, seed=args.seed,
+                coordinates={"origin_x": args.origin_x, "origin_z": args.origin_z, "grid_width": args.grid_width},
+                regions=regions, program_execution=args.program_execution, interpolation_cache=args.interpolation_cache, density_composition=args.density_composition, cached_density_masks=args.cached_density_masks, terrain_execution=args.terrain_execution, interpreter_dispatch=args.interpreter_dispatch, interpreter_preload=args.interpreter_preload,
                 lake_point_cache=args.lake_point_cache,
                 lake_primed_corners=args.lake_primed_corners,
                 lake_sparse_fields=args.lake_sparse_fields or os.environ.get("RETINA_LAKE_SPARSE_FIELDS"),
@@ -146,8 +199,9 @@ def main():
                 aquifer_columns=args.aquifer_columns or os.environ.get("RETINA_AQUIFER_COLUMNS"),
                 material_dispatch=args.material_dispatch or os.environ.get("RETINA_MATERIAL_DISPATCH"),
                 specialized_interpolation=args.specialized_interpolation or os.environ.get("RETINA_SPECIALIZED_INTERPOLATION"),
-                total_ms=wall*1000, chunks_per_second=chunks/wall, median_ms=statistics.median(r["ms"] for r in regions),
-                average_region_ms=statistics.mean(r["ms"] for r in regions),
+                total_ms=wall*1000, chunks_per_second=chunks/wall, median_ms=statistics.median(durations),
+                p95_region_ms=percentile(durations, 95), maximum_region_ms=max(durations),
+                average_region_ms=statistics.mean(durations),
                 startup=dict(initialize_ms=initialize_ms, registration_ms=registration_ms, warmups=warmups),
                 profile_sha256=hashlib.sha256(source).hexdigest(),
                 region_file_bytes=sum((args.out/f"{name}.mca").stat().st_size for name,_,_ in coords),
@@ -167,21 +221,11 @@ def main():
         data["gpu_program"]={name:getattr(after_program,name) for name,_ in ProgramSnapshot._fields_ if name != "version"}
         data["gpu_transfers"]={"upload_bytes":after_program.upload_bytes-before_program.upload_bytes,"readback_bytes":after_program.readback_bytes-before_program.readback_bytes,
             "upload_bytes_per_region":(after_program.upload_bytes-before_program.upload_bytes)/len(regions),"readback_bytes_per_region":(after_program.readback_bytes-before_program.readback_bytes)/len(regions)}
-    def records(path):
-        data = path.read_bytes()
-        for i in range(1024):
-            location = int.from_bytes(data[i*4:i*4+4], "big")
-            offset = (location >> 8)*4096
-            length = int.from_bytes(data[offset:offset+4], "big")
-            if not location or data[offset+4] != 2: raise ValueError(f"Invalid benchmark MCA record: {path}:{i}")
-            yield zlib.decompress(data[offset+5:offset+4+length])
+    names = [name for name, _, _ in coords]
+    data["corpus"] = corpus_manifest(args.out, names)
     if args.compare:
-        identical = 0
-        for name, _, _ in coords:
-            for slot, (old, new) in enumerate(zip(records(args.compare/f"{name}.mca"), records(args.out/f"{name}.mca"), strict=True)):
-                if old != new: raise AssertionError(f"Changed NBT: {name}.mca, slot {slot}")
-                identical += 1
-        data["identical_nbt_chunks"] = identical
+        data["comparison"] = compare_corpora(args.compare, args.out, names)
+        data["identical_nbt_chunks"] = data["comparison"]["identical_nbt_chunks"]
     if args.await_specialization:
         if not program: raise RuntimeError("The loaded library does not expose program diagnostics")
         awaited=ProgramSnapshot();check(program(profile,c.byref(awaited)))
@@ -194,11 +238,11 @@ def main():
         wait_after_measurement_ms=(time.perf_counter()-wait_start)*1000
         _,x,z=coords[0]
         regenerated=generate(("compiled_check",x,z))
-        for slot,(old,new) in enumerate(zip(records(args.out/f"{coords[0][0]}.mca"),records(args.out/"compiled_check.mca"),strict=True)):
-            if old!=new: raise AssertionError(f"Compilation changed NBT in slot {slot}")
+        old, new = mca_records(args.out/f"{coords[0][0]}.mca"), mca_records(args.out/"compiled_check.mca")
+        if old != new: raise AssertionError("Compilation changed region NBT")
         data["specialization_warmup_check"]={"status_before_wait":status_before_wait,"wait_after_measurement_ms":wait_after_measurement_ms,
             "compile_ms":awaited.compile_nanos/1e6,"identical_nbt_chunks":1024,"regenerated_region":regenerated}
     data["peak_rss_bytes"]=resource.getrusage(resource.RUSAGE_SELF).ru_maxrss*(1 if platform.system()=="Darwin" else 1024)
-    (args.out/"measurements.json").write_text(json.dumps(data, indent=2)+"\n")
+    write_json(args.out/"measurements.json", data)
     print(json.dumps(data, indent=2))
 if __name__ == "__main__": main()

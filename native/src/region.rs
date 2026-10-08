@@ -1023,17 +1023,13 @@ fn encode_chunk(
     nbt.end();
 }
 
-/// One GPU byte per voxel -> Minecraft's two nibble arrays. Omit uniform zero layers.
+/// GPU-packed Minecraft nibble arrays. Omit uniform zero layers.
 fn section_light(nbt: &mut Nbt, light: &[u8]) {
-    for (name, shift) in [("BlockLight", 0), ("SkyLight", 4)] {
-        if light.iter().any(|&v| (v >> shift) & 15 != 0) {
+    for (name, bytes) in [("BlockLight", &light[..2048]), ("SkyLight", &light[2048..])] {
+        if bytes.iter().any(|&v| v != 0) {
             nbt.named(7, name);
             nbt.0.extend_from_slice(&2048i32.to_be_bytes());
-            nbt.0.extend(
-                light
-                    .chunks_exact(2)
-                    .map(|pair| ((pair[0] >> shift) & 15) | (((pair[1] >> shift) & 15) << 4)),
-            );
+            nbt.0.extend_from_slice(bytes);
         }
     }
 }
