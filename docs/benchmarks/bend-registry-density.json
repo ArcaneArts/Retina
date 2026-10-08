@@ -196,7 +196,7 @@
   },
   "source_sha256": {
     "bend/registry_density.bend": "2b61e3c98d892eb7b613a0cf9c2857257083c35be020640b6844bbdd7780aaf3",
-    "bend/density_batch.bend": "989f2185d979bbfa7772b76b737ead2019561f5197c8512ac6d7517cb162f330",
+    "bend/density_batch.bend": "7b03494c58c50956ed806692eeb09c4b1693e1177933f616ce6288dd277ea626",
     "bend/engine.bend": "74fba5430d41e5bfeaa3681d18cd6bfa97216053d63d9c8766a3d428a1dede4a",
     "scripts/test_bend_registry_density.py": "ff884af8a8112008aac1e508b68f1c209542850a629986b4402219fb2d5a9b77"
   },
@@ -210,7 +210,8 @@
     "host_build": "Fabric/NeoForge build passed, 64 native unit tests passed, 11 explicit GPU/fixture tests ignored",
     "java_callers": "Persistent CPU and GPU_REQUIRED workers passed concurrent density queries, exact distant-coordinate transport and reload invalidation",
     "limit": "No generated regions, material rules, full world generation or complete-region speed comparison in this cycle",
-    "regressions": "Existing persistent worker/framing/compression and resident climate CPU/GPU harnesses passed"
+    "regressions": "Existing persistent worker/framing/compression and resident climate CPU/GPU harnesses passed",
+    "format_only_cleanup": "One trailing blank line removed after the checks; executable behavior is unchanged."
   },
   "measurements": "Host milliseconds include component IPC/preparation/query only; not a generator throughput benchmark."
 }

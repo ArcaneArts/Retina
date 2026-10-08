@@ -62,4 +62,3 @@ def encode_row(n: Nat,a: Array<Q.Outputs>,output: Q.Outputs,w: B.Writer,i: U32) 
   match output:
     case Q.Outputs{v0,v1,v2,v3,v4,v5}: encode(n,a,B.int(B.int(B.int(B.int(B.int(B.int(w,
       F32.bits(D.value(v0))),F32.bits(D.value(v1))),F32.bits(D.value(v2))),F32.bits(D.value(v3))),F32.bits(D.value(v4))),F32.bits(D.value(v5))),U32.inc(i))
-
