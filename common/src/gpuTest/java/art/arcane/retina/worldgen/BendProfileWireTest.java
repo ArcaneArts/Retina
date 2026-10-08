@@ -116,6 +116,29 @@ public final class BendProfileWireTest {
                 }
                 if (values.hasRemaining()) throw new AssertionError("density response length");
             }
+            counts = java.nio.ByteBuffer.wrap(worker.prepareDensityLattice(1,
+                    29999991, 120, -30000007, 30000007, 136, -29999991, 4, 8, seed)
+                    .get(30, java.util.concurrent.TimeUnit.SECONDS));
+            for (int count : new int[]{6, 3, 6, 108}) if (counts.getInt() != count)
+                throw new AssertionError("density lattice acknowledgement");
+            if (counts.hasRemaining()) throw new AssertionError("lattice acknowledgement length");
+            requests.clear();
+            for (int i = 0; i < 12; i++) requests.add(worker.request(14, density.array()));
+            for (var request : requests) {
+                var values = java.nio.ByteBuffer.wrap(request.get(30, java.util.concurrent.TimeUnit.SECONDS));
+                for (int program = 0; program < 3; program++) for (int channel = 0; channel < 6; channel++) {
+                    float expected = program == 0 ? .25f : program == 2 ? 127 : channel == 0 ? -1 : (float) 29999999;
+                    if (values.getFloat() != expected) throw new AssertionError("resident lattice/fallback transport");
+                }
+                if (values.hasRemaining()) throw new AssertionError("lattice response length");
+            }
+            worker.prepareProfileDensity().get(30, java.util.concurrent.TimeUnit.SECONDS);
+            try {
+                worker.request(14, density.array()).get(10, java.util.concurrent.TimeUnit.SECONDS);
+                throw new AssertionError("reprepared density retained stale lattice");
+            } catch (java.util.concurrent.ExecutionException expected) {
+                if (!expected.getCause().getMessage().contains("code 718")) throw expected;
+            }
             worker.loadProfile(profile).get(30, java.util.concurrent.TimeUnit.SECONDS);
             try {
                 worker.request(12, density.array()).get(10, java.util.concurrent.TimeUnit.SECONDS);

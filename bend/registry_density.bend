@@ -2,13 +2,14 @@ import Base
 import ./registry.bend as P
 import ./registry_values.bend as V
 import ./density.bend as Q
+import ./density_lattice.bend as L
 
 # Typed numeric density projection from the resident registry tape. No Java
 # choice of opcodes/noise parameters and no per-query registry traversal.
 type Keys is Data:
   Keys{ids: List<&2,U32>}
 type Prepared is Data:
-  Prepared{model: Q.Model,programs: Q.Table<Q.Program>,noises: U32,points: U32,fields: U32}
+  Prepared{model: Q.Model,programs: Q.Table<Q.Program>,noises: U32,points: U32,fields: U32,lattice: Maybe<&2,L.Grid>}
 
 @unsafe
 def key_id(value: Maybe<&2,U32>) -> U32:
@@ -384,7 +385,7 @@ def valid_programs(+model: Q.Model,programs: List<&2,Q.Program>,+limit: U32) -> 
 def complete(-A: Type,ok: Bool,doc: P.Document,model: Q.Model,programs: List<&2,Q.Program>,noise_count: U32,point_count: U32,field_count: U32,next: P.Document -> Result<&1,&1,U32,Prepared> -> A) -> A:
   match ok:
     case False{}: next(doc,Fail{715})
-    case True{}: next(doc,Done{Prepared{model,Q.prepared_table(Q.Program,programs),noise_count,point_count,field_count}})
+    case True{}: next(doc,Done{Prepared{model,Q.prepared_table(Q.Program,programs),noise_count,point_count,field_count,None{}}})
 
 @unsafe
 def projected(-A: Type,result: Result<&1,&1,U32,List<&2,Q.Program>>,doc: P.Document,+noises: List<&2,Q.Noise>,+points: List<&2,Q.Vec4>,+fields: List<&2,Q.Field>,next: P.Document -> Result<&1,&1,U32,Prepared> -> A) -> A:

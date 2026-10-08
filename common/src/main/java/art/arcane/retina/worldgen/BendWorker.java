@@ -110,6 +110,19 @@ public final class BendWorker implements AutoCloseable {
         return request(11, new byte[0]);
     }
 
+    /** Build one resident density lattice. Bend aligns the inclusive bounds to
+     * the global lattice, validates its capacity and generates the samples.
+     * Only dimensions/count return; values stay in the worker for opcode 14.
+     * Preparing/reloading a profile invalidates this cache.
+     */
+    public CompletableFuture<byte[]> prepareDensityLattice(int program, int minX, int minY, int minZ,
+            int maxX, int maxY, int maxZ, int horizontalStep, int verticalStep, long seed) {
+        var payload = java.nio.ByteBuffer.allocate(44).putInt(program)
+                .putInt(minX).putInt(minY).putInt(minZ).putInt(maxX).putInt(maxY).putInt(maxZ)
+                .putInt(horizontalStep).putInt(verticalStep).putInt((int) seed).putInt((int) (seed >>> 32));
+        return request(13, payload.array());
+    }
+
     /** Cancellation skips queued requests; in-flight responses are drained to
      * preserve framing. World shutdown closes the worker and terminates it.
      */

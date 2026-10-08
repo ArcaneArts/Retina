@@ -20,9 +20,9 @@ VERSION = "2.0.36"
 DEFAULT_BEND = Path.home() / f".local/share/retina-bend/{VERSION}/bin/bend"
 
 
-def command(args, **kwargs):
+def command(args, timeout=120, **kwargs):
     return subprocess.run([str(x) for x in args], check=True, capture_output=True,
-                          text=True, timeout=120, **kwargs)
+                          text=True, timeout=timeout, **kwargs)
 
 
 def build(bend, binary, source=None):
@@ -32,10 +32,12 @@ def build(bend, binary, source=None):
         env["CC"] = str(xcode / "Toolchains/XcodeDefault.xctoolchain/usr/bin/clang")
         env["SDKROOT"] = str(xcode / "Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk")
     # Compile before running any checks. One native compiler at reduced priority.
+    # The persistent worker is much larger than the compression fixture, and a
+    # concurrent limited Cargo build can extend its single-compiler wall time.
     binary.parent.mkdir(parents=True, exist_ok=True)
     version = command([bend, "version"], env=env).stdout.strip()
     command(["nice", "-n", "10", bend, source or ROOT / "bend/tests/compress-file.bend",
-             "-o", binary], env=env, cwd=ROOT)
+             "-o", binary], env=env, cwd=ROOT, timeout=300)
     return version
 
 
