@@ -635,3 +635,64 @@ GPU command buffers for both synthetic full tiles and the first supplied actual
 registry profile. Observed output files must match the normal GPU-required run.
 The report lists the exact observed profiles; other supplied profiles still run
 the normal independent checks, without a claim of additional device observation.
+
+### Registered cave component (commands 30–32)
+
+These commands prepare and exercise subsurface inputs. They do **not** carve
+resident blocks yet; cave nodes/masks, 3D biomes, ravines, entrances, fluids and
+final region integration remain required.
+
+- **30 — prepare geology:** empty payload, after numeric/material/block
+  preparation (11/19/21). Bend resolves six `cave_noises`, each biome's `carvers`,
+  `carveable`, lava ID/level and world minimum/height from the resident tape.
+  The acknowledgement is eight U32 words: noise count, biome count, total
+  carver count, material count, lava ID, lava level, minimum Y and world height.
+  Signed values retain i32 bits. Both ordinary and packed boolean carveable
+  arrays are supported. Carver IDs retain dictionary references; height ranges,
+  triangle/plateau values, cave parameters and optional canyon/ravine ranges
+  become immutable typed records. Optional shape fields default to zero,
+  matching the shared export schema. Successful preparation drops generated
+  block columns, retaining the numeric/surface inputs and chunk catalog.
+  Rejected preparation preserves the old state. Missing block dependencies
+  return **727**, invalid typed geology **736**, and a nonempty body **603**.
+- **31 — cave noise batch:** payload is count (0..4096), followed by five raw
+  U32 words per query: X, Y, Z, seed low, seed high. Output is six F32 words per
+  query, in registered cave-channel order. Bend samples the registered 3D
+  gradient stacks on the explicitly selected CPU/GPU backend. It retains signed
+  coordinate fractions through i32 extremes, combines both seed words, ignores
+  nonpositive weights and filters octave frequencies above 0.125 (the
+  four-block cave lattice's Nyquist limit). Only retained weights normalize the
+  result; no climate-stack gain or clamp is added. A weighted mean avoids
+  overflowing the intermediate noise-times-weight product for large finite
+  weights. The original 0.0001 denominator floor is retained for tiny weights.
+  The GPU receives the six immutable noise definitions, not the registry tape
+  or per-biome carvers. Missing geology returns **737**; malformed batches
+  return **603**. Sampling does not mutate block columns or prepared models.
+- **32 — biome carver batch:** count (0..256), then biome IDs. Each output starts
+  with its carver count. Each carver has six U32 words (dictionary ID, kind,
+  minimum Y, maximum Y, triangle flag, plateau) and 21 F32 words: probability;
+  thickness/horizontal/vertical/count; floor/room/width-smoothness/vertical-default;
+  thickness and horizontal ranges; distance range/vertical-center/zero padding;
+  vertical and rotation ranges. This bounded host diagnostic reads typed
+  records without traversing the registry tape again. Missing geology returns
+  **737**; invalid IDs or framing return **603**.
+
+Related surface/lattice/material-column generation retains the prepared cave
+model. Successful density/material replacement and profile upload invalidate
+its dependents. Failed uploads and rejected queries retain it. Java's new
+methods only submit these raw commands; no cave/noise computation moves to Java.
+
+```sh
+nice -n 10 ./gradlew bendGeologyTest -PretinaHostOnly --max-workers=2 --no-parallel \
+  -PbendSkipBuild -PproveMetal \
+  -PbendDensityRegistryProfiles=/absolute/vanilla.json=/absolute/vanilla.rbp
+```
+
+The independent Python reference checks all six noise channels and every
+projected carver field, using both synthetic and supplied loaded registries.
+Tests cover octave filtering, zero/negative weights, large finite weights,
+negative/distant coordinates, full seeds, reordered and repeated batches,
+maximum counts, invalid schemas, malformed uploads and cache invalidation.
+`-PproveMetal` observes actual stock-runtime Metal command buffers and compares
+its output with the ordinary worker. These checks establish a cave input/noise
+component, not complete-region performance or usable Bend world generation.

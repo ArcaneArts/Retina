@@ -232,6 +232,31 @@ public final class BendWorker implements AutoCloseable {
         return request(28, payload.array());
     }
 
+    /** Project registered cave noise, per-biome carvers, carveable materials and
+     * lava/world-height metadata in Bend. Requires numeric/material/block models.
+     * Eight raw acknowledgement words: noise, biome, carver and material counts,
+     * lava ID, lava level, minimum Y and height. Successful preparation invalidates
+     * generated block columns; this component does not yet carve terrain.
+     */
+    public CompletableFuture<byte[]> prepareProfileGeology() {
+        return request(30, new byte[0]);
+    }
+
+    /** Sample all six registered cave channels using the selected Bend CPU/GPU
+     * backend. Raw batches contain count followed by x/y/z/seed-low/seed-high
+     * words per query; each result contains six F32 words. No Java noise work.
+     */
+    public CompletableFuture<byte[]> sampleCaveNoise(byte[] batch) {
+        return request(31, batch);
+    }
+
+    /** Read bounded projected biome-carver records for diagnostics. The raw
+     * payload is count followed by biome IDs; Bend retains all typed records.
+     */
+    public CompletableFuture<byte[]> queryBiomeCarvers(byte[] batch) {
+        return request(32, batch);
+    }
+
     /** Cancellation skips queued requests; in-flight responses are drained to
      * preserve framing. World shutdown closes the worker and terminates it.
      */
