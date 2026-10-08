@@ -18,11 +18,11 @@ public final class TerrainDebugReport {
     public static List<String> lines(TerrainStatsPayload payload) {
         var stats=payload.stats();var lines=new ArrayList<String>();boolean mca=payload.mode().equals("mca");
         lines.add("§b§lRetina "+payload.mode().toUpperCase(Locale.ROOT)+RESET);
-        if(mca)lines.add(LABEL+"Average region: "+DATA+format("%.2f ms",stats.averageRegionMs())+LABEL+" (last "+DATA+stats.regionSamples()+LABEL+" / 20)");
-        lines.add(LABEL+"Chunks/sec: §a"+format("%.1f",stats.chunksPerSecond())+(mca?LABEL+" from region average":LABEL+" (5s)"));
+        if(mca)lines.add(LABEL+"Region latency: "+DATA+format("%.2f ms mean",stats.averageRegionMs())+LABEL+" / "+DATA+format("%.2f ms p95",stats.p95RegionMs())+LABEL+" (last "+DATA+stats.regionSamples()+LABEL+" / 20)");
+        lines.add(LABEL+(mca?"Lit MCA production: §a":"Chunk-mode completion: §a")+format("%.1f chunks/s",stats.chunksPerSecond())+(mca?LABEL+" from region latency":LABEL+" (5s)"));
         lines.add(LABEL+(mca?"Amortized chunk: ":"Chunk time: ")+DATA+format("%.3f ms",stats.msPerChunk()));
         lines.add(LABEL+"Regions: §a"+stats.regions()+LABEL+"   In flight: §e"+stats.inFlight());
-        lines.add(LABEL+"Temporary regions: §a"+stats.previewRegions()+LABEL+"   Hits: §a"+stats.previewCacheHits()+LABEL+"   Promoted: §a"+stats.promotions());
+        lines.add(LABEL+"Temporary regions: §a"+stats.previewRegions()+LABEL+"   Hits: §a"+stats.previewCacheHits()+LABEL+"   Promotions: §a"+stats.promotions()+LABEL+" (publication count, not production rate)");
         lines.add(LABEL+"Terrain chunks: §a"+stats.total()+LABEL+"   Failed: "+(stats.failures()>0?"§c":"§a")+stats.failures());
         lines.add(GPU+"GPU: "+DATA+payload.backend());
         var gpu=payload.diagnostics();

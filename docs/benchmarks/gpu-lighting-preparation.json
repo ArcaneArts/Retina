@@ -1,0 +1,1424 @@
+{
+  "description": "GPU virtual air, bounded source scans, and Minecraft section nibble packing",
+  "baseline_commit": "8d41f8d",
+  "environment": {
+    "device": "Apple M4 Max, 40 GPU cores",
+    "backend": "Metal",
+    "wgpu": "30.0.1",
+    "other_workloads": "Desktop applications remained active; wall-time variability limits end-to-end conclusions."
+  },
+  "tile_command": "python3 scripts/lighting-benchmark.py --library build/native-target/release/libretina_worldgen.dylib --reference-library build/lighting-next-baseline.dylib --fixtures build/lighting-next-fixtures --out build/lighting-next-final-ab.json --modes reference sparse dense --warmups 5 --iterations 25",
+  "tile_replay": {
+    "library": "build/native-target/release/libretina_worldgen.dylib",
+    "reference_library": "build/lighting-next-baseline.dylib",
+    "iterations": 25,
+    "warmups": 5,
+    "fixtures": [
+      {
+        "name": "boundary-false-3",
+        "side_chunks": 3,
+        "height": 64,
+        "sha256": "ee961e92ad4f21f2180e880c05620c4c651170bd8d906a75b56b3b3f3c2d4182",
+        "modes": {
+          "reference": {
+            "host": {
+              "median_ms": 1.372583,
+              "p95_ms": 2.814208
+            },
+            "device": {
+              "median_ms": 0.24175,
+              "p95_ms": 0.746958
+            },
+            "initialization": {
+              "median_ms": 0.240167,
+              "p95_ms": 0.437958
+            },
+            "propagation": {
+              "median_ms": 0.0,
+              "p95_ms": 0.322167
+            },
+            "packing": {
+              "median_ms": 0.0,
+              "p95_ms": 0.016
+            }
+          },
+          "sparse": {
+            "host": {
+              "median_ms": 1.261,
+              "p95_ms": 2.054166
+            },
+            "device": {
+              "median_ms": 0.2735,
+              "p95_ms": 0.830084
+            },
+            "initialization": {
+              "median_ms": 0.22775,
+              "p95_ms": 0.417
+            },
+            "propagation": {
+              "median_ms": 0.0,
+              "p95_ms": 0.396125
+            },
+            "packing": {
+              "median_ms": 0.0,
+              "p95_ms": 0.016542
+            }
+          },
+          "dense": {
+            "host": {
+              "median_ms": 1.78425,
+              "p95_ms": 3.786125
+            },
+            "device": {
+              "median_ms": 0.921124,
+              "p95_ms": 1.696959
+            },
+            "initialization": {
+              "median_ms": 0.223625,
+              "p95_ms": 0.426042
+            },
+            "propagation": {
+              "median_ms": 0.708791,
+              "p95_ms": 1.272167
+            },
+            "packing": {
+              "median_ms": 0.0,
+              "p95_ms": 0.017459
+            }
+          }
+        },
+        "host_speedup": 1.4149484536082475,
+        "reference_speedup": {
+          "host": 1.0884877081681208,
+          "device": 0.8839122486288847,
+          "initialization": 1.0545203073545553,
+          "propagation": null,
+          "packing": null
+        }
+      },
+      {
+        "name": "boundary-false-4",
+        "side_chunks": 3,
+        "height": 64,
+        "sha256": "c3fb32a535aaccc74e59795a7b3ecbdbe64c36264c21a8ef9b18d9b429e31d41",
+        "modes": {
+          "reference": {
+            "host": {
+              "median_ms": 1.753542,
+              "p95_ms": 3.677875
+            },
+            "device": {
+              "median_ms": 0.758709,
+              "p95_ms": 1.362208
+            },
+            "initialization": {
+              "median_ms": 0.241417,
+              "p95_ms": 0.434417
+            },
+            "propagation": {
+              "median_ms": 0.516584,
+              "p95_ms": 0.911916
+            },
+            "packing": {
+              "median_ms": 0.0,
+              "p95_ms": 0.016458
+            }
+          },
+          "sparse": {
+            "host": {
+              "median_ms": 1.651583,
+              "p95_ms": 5.708
+            },
+            "device": {
+              "median_ms": 0.744124,
+              "p95_ms": 1.349833
+            },
+            "initialization": {
+              "median_ms": 0.228916,
+              "p95_ms": 0.414917
+            },
+            "propagation": {
+              "median_ms": 0.515,
+              "p95_ms": 0.917666
+            },
+            "packing": {
+              "median_ms": 0.0,
+              "p95_ms": 0.016167
+            }
+          },
+          "dense": {
+            "host": {
+              "median_ms": 1.524084,
+              "p95_ms": 3.289833
+            },
+            "device": {
+              "median_ms": 0.709416,
+              "p95_ms": 1.280624
+            },
+            "initialization": {
+              "median_ms": 0.224291,
+              "p95_ms": 0.406416
+            },
+            "propagation": {
+              "median_ms": 0.485125,
+              "p95_ms": 0.858916
+            },
+            "packing": {
+              "median_ms": 0.0,
+              "p95_ms": 0.016417
+            }
+          }
+        },
+        "host_speedup": 0.9228019421367257,
+        "reference_speedup": {
+          "host": 1.0617341060061771,
+          "device": 1.0196002279190026,
+          "initialization": 1.0546095511017142,
+          "propagation": 1.00307572815534,
+          "packing": null
+        }
+      },
+      {
+        "name": "boundary-false-5",
+        "side_chunks": 3,
+        "height": 64,
+        "sha256": "e22cd259d66c2cb16874cac64319269f2e208657ea1c998cb1b1b098f37d073e",
+        "modes": {
+          "reference": {
+            "host": {
+              "median_ms": 1.462292,
+              "p95_ms": 4.197333
+            },
+            "device": {
+              "median_ms": 0.57525,
+              "p95_ms": 0.752918
+            },
+            "initialization": {
+              "median_ms": 0.144958,
+              "p95_ms": 0.191333
+            },
+            "propagation": {
+              "median_ms": 0.431292,
+              "p95_ms": 0.570625
+            },
+            "packing": {
+              "median_ms": 0.0,
+              "p95_ms": 0.0
+            }
+          },
+          "sparse": {
+            "host": {
+              "median_ms": 1.380917,
+              "p95_ms": 3.351917
+            },
+            "device": {
+              "median_ms": 0.579666,
+              "p95_ms": 0.856333
+            },
+            "initialization": {
+              "median_ms": 0.137916,
+              "p95_ms": 0.180375
+            },
+            "propagation": {
+              "median_ms": 0.44175,
+              "p95_ms": 0.625292
+            },
+            "packing": {
+              "median_ms": 0.0,
+              "p95_ms": 0.0
+            }
+          },
+          "dense": {
+            "host": {
+              "median_ms": 1.231958,
+              "p95_ms": 1.907709
+            },
+            "device": {
+              "median_ms": 0.549959,
+              "p95_ms": 0.825708
+            },
+            "initialization": {
+              "median_ms": 0.134875,
+              "p95_ms": 0.176375
+            },
+            "propagation": {
+              "median_ms": 0.4155,
+              "p95_ms": 0.64975
+            },
+            "packing": {
+              "median_ms": 0.0,
+              "p95_ms": 0.0
+            }
+          }
+        },
+        "host_speedup": 0.8921303742368297,
+        "reference_speedup": {
+          "host": 1.0589282339199242,
+          "device": 0.9923818198755836,
+          "initialization": 1.0510600655471445,
+          "propagation": 0.9763259762308999,
+          "packing": null
+        }
+      },
+      {
+        "name": "boundary-true-3",
+        "side_chunks": 3,
+        "height": 64,
+        "sha256": "12214e9684457fc38192bb9109d9a809c9010678f63cd2029046601ed8ae0c29",
+        "modes": {
+          "reference": {
+            "host": {
+              "median_ms": 1.381958,
+              "p95_ms": 1.8005
+            },
+            "device": {
+              "median_ms": 0.385208,
+              "p95_ms": 0.875292
+            },
+            "initialization": {
+              "median_ms": 0.385208,
+              "p95_ms": 0.672833
+            },
+            "propagation": {
+              "median_ms": 0.0,
+              "p95_ms": 0.274042
+            },
+            "packing": {
+              "median_ms": 0.0,
+              "p95_ms": 0.006208
+            }
+          },
+          "sparse": {
+            "host": {
+              "median_ms": 1.321083,
+              "p95_ms": 1.866292
+            },
+            "device": {
+              "median_ms": 0.314875,
+              "p95_ms": 0.545251
+            },
+            "initialization": {
+              "median_ms": 0.314875,
+              "p95_ms": 0.378833
+            },
+            "propagation": {
+              "median_ms": 0.0,
+              "p95_ms": 0.160792
+            },
+            "packing": {
+              "median_ms": 0.0,
+              "p95_ms": 0.0
+            }
+          },
+          "dense": {
+            "host": {
+              "median_ms": 1.681458,
+              "p95_ms": 2.621709
+            },
+            "device": {
+              "median_ms": 0.95575,
+              "p95_ms": 1.753167
+            },
+            "initialization": {
+              "median_ms": 0.36825,
+              "p95_ms": 0.6745
+            },
+            "propagation": {
+              "median_ms": 0.665125,
+              "p95_ms": 1.265666
+            },
+            "packing": {
+              "median_ms": 0.0,
+              "p95_ms": 0.016208
+            }
+          }
+        },
+        "host_speedup": 1.2727875538478657,
+        "reference_speedup": {
+          "host": 1.0460796180103749,
+          "device": 1.2233680031758634,
+          "initialization": 1.2233680031758634,
+          "propagation": null,
+          "packing": null
+        }
+      },
+      {
+        "name": "boundary-true-4",
+        "side_chunks": 3,
+        "height": 64,
+        "sha256": "e4ad686cd6bec42d8c005b73414786ec29dca4e56f7156ce938f2d90601da152",
+        "modes": {
+          "reference": {
+            "host": {
+              "median_ms": 1.558833,
+              "p95_ms": 1.927917
+            },
+            "device": {
+              "median_ms": 0.780458,
+              "p95_ms": 0.960459
+            },
+            "initialization": {
+              "median_ms": 0.267042,
+              "p95_ms": 0.269
+            },
+            "propagation": {
+              "median_ms": 0.513,
+              "p95_ms": 0.6445
+            },
+            "packing": {
+              "median_ms": 0.0,
+              "p95_ms": 0.01275
+            }
+          },
+          "sparse": {
+            "host": {
+              "median_ms": 1.465375,
+              "p95_ms": 1.86875
+            },
+            "device": {
+              "median_ms": 0.76925,
+              "p95_ms": 1.00425
+            },
+            "initialization": {
+              "median_ms": 0.254,
+              "p95_ms": 0.416167
+            },
+            "propagation": {
+              "median_ms": 0.514542,
+              "p95_ms": 0.61675
+            },
+            "packing": {
+              "median_ms": 0.0,
+              "p95_ms": 0.0125
+            }
+          },
+          "dense": {
+            "host": {
+              "median_ms": 1.411458,
+              "p95_ms": 1.921625
+            },
+            "device": {
+              "median_ms": 0.737958,
+              "p95_ms": 1.229293
+            },
+            "initialization": {
+              "median_ms": 0.24975,
+              "p95_ms": 0.419125
+            },
+            "propagation": {
+              "median_ms": 0.488583,
+              "p95_ms": 0.877834
+            },
+            "packing": {
+              "median_ms": 0.0,
+              "p95_ms": 0.015792
+            }
+          }
+        },
+        "host_speedup": 0.9632060052887487,
+        "reference_speedup": {
+          "host": 1.0637775313486308,
+          "device": 1.0145700357491063,
+          "initialization": 1.0513464566929134,
+          "propagation": 0.9970031600918875,
+          "packing": null
+        }
+      },
+      {
+        "name": "boundary-true-5",
+        "side_chunks": 3,
+        "height": 64,
+        "sha256": "0fdfe617b05499467897cfff6704a1afcde67efd0cfd253ce3a3c4faa210cabc",
+        "modes": {
+          "reference": {
+            "host": {
+              "median_ms": 1.634542,
+              "p95_ms": 2.468042
+            },
+            "device": {
+              "median_ms": 0.846457,
+              "p95_ms": 1.082084
+            },
+            "initialization": {
+              "median_ms": 0.247708,
+              "p95_ms": 0.319334
+            },
+            "propagation": {
+              "median_ms": 0.597667,
+              "p95_ms": 0.763959
+            },
+            "packing": {
+              "median_ms": 0.0,
+              "p95_ms": 0.0
+            }
+          },
+          "sparse": {
+            "host": {
+              "median_ms": 1.622541,
+              "p95_ms": 3.365917
+            },
+            "device": {
+              "median_ms": 0.845666,
+              "p95_ms": 1.108792
+            },
+            "initialization": {
+              "median_ms": 0.239916,
+              "p95_ms": 0.30725
+            },
+            "propagation": {
+              "median_ms": 0.606,
+              "p95_ms": 0.797208
+            },
+            "packing": {
+              "median_ms": 0.0,
+              "p95_ms": 0.0
+            }
+          },
+          "dense": {
+            "host": {
+              "median_ms": 1.494708,
+              "p95_ms": 6.392042
+            },
+            "device": {
+              "median_ms": 0.778542,
+              "p95_ms": 1.011749
+            },
+            "initialization": {
+              "median_ms": 0.236291,
+              "p95_ms": 0.302625
+            },
+            "propagation": {
+              "median_ms": 0.546166,
+              "p95_ms": 0.710583
+            },
+            "packing": {
+              "median_ms": 0.0,
+              "p95_ms": 0.0
+            }
+          }
+        },
+        "host_speedup": 0.9212143175426691,
+        "reference_speedup": {
+          "host": 1.0073964232644967,
+          "device": 1.000935357457909,
+          "initialization": 1.0324780339785593,
+          "propagation": 0.9862491749174916,
+          "packing": null
+        }
+      },
+      {
+        "name": "region-0",
+        "side_chunks": 12,
+        "height": 384,
+        "sha256": "4433f6cdf6fc4ee00e1d2b43a580afda1e2c96e8a9690e03d18a34f96bcb4c32",
+        "modes": {
+          "reference": {
+            "host": {
+              "median_ms": 14.947125,
+              "p95_ms": 25.889
+            },
+            "device": {
+              "median_ms": 2.836376,
+              "p95_ms": 8.201916
+            },
+            "initialization": {
+              "median_ms": 0.682459,
+              "p95_ms": 2.665208
+            },
+            "propagation": {
+              "median_ms": 2.051667,
+              "p95_ms": 5.408292
+            },
+            "packing": {
+              "median_ms": 0.112042,
+              "p95_ms": 0.129333
+            }
+          },
+          "sparse": {
+            "host": {
+              "median_ms": 13.541417,
+              "p95_ms": 16.90825
+            },
+            "device": {
+              "median_ms": 2.683417,
+              "p95_ms": 3.900375
+            },
+            "initialization": {
+              "median_ms": 0.648208,
+              "p95_ms": 0.892625
+            },
+            "propagation": {
+              "median_ms": 1.935,
+              "p95_ms": 2.878541
+            },
+            "packing": {
+              "median_ms": 0.11325,
+              "p95_ms": 0.12775
+            }
+          },
+          "dense": {
+            "host": {
+              "median_ms": 24.172584,
+              "p95_ms": 29.034708
+            },
+            "device": {
+              "median_ms": 13.325417,
+              "p95_ms": 14.652709
+            },
+            "initialization": {
+              "median_ms": 0.643541,
+              "p95_ms": 0.87575
+            },
+            "propagation": {
+              "median_ms": 12.594667,
+              "p95_ms": 13.669875
+            },
+            "packing": {
+              "median_ms": 0.106,
+              "p95_ms": 0.107708
+            }
+          }
+        },
+        "host_speedup": 1.7850852684028564,
+        "reference_speedup": {
+          "host": 1.1038080431316752,
+          "device": 1.057001576721024,
+          "initialization": 1.0528395206476935,
+          "propagation": 1.060293023255814,
+          "packing": 0.9893333333333333
+        }
+      },
+      {
+        "name": "region-10",
+        "side_chunks": 12,
+        "height": 384,
+        "sha256": "9b662aa30d43151155776430c891d097416fafa3fa3a752a4ecc958c44aeeaf7",
+        "modes": {
+          "reference": {
+            "host": {
+              "median_ms": 21.375709,
+              "p95_ms": 28.759375
+            },
+            "device": {
+              "median_ms": 3.415335,
+              "p95_ms": 7.231959
+            },
+            "initialization": {
+              "median_ms": 0.7395,
+              "p95_ms": 2.692125
+            },
+            "propagation": {
+              "median_ms": 2.548459,
+              "p95_ms": 4.410375
+            },
+            "packing": {
+              "median_ms": 0.115208,
+              "p95_ms": 0.130667
+            }
+          },
+          "sparse": {
+            "host": {
+              "median_ms": 19.598417,
+              "p95_ms": 26.046459
+            },
+            "device": {
+              "median_ms": 3.177583,
+              "p95_ms": 3.581375
+            },
+            "initialization": {
+              "median_ms": 0.722958,
+              "p95_ms": 0.895958
+            },
+            "propagation": {
+              "median_ms": 2.326,
+              "p95_ms": 2.715333
+            },
+            "packing": {
+              "median_ms": 0.114917,
+              "p95_ms": 0.133958
+            }
+          },
+          "dense": {
+            "host": {
+              "median_ms": 31.7375,
+              "p95_ms": 88.322834
+            },
+            "device": {
+              "median_ms": 15.2165,
+              "p95_ms": 16.132542
+            },
+            "initialization": {
+              "median_ms": 0.694791,
+              "p95_ms": 0.749916
+            },
+            "propagation": {
+              "median_ms": 14.416542,
+              "p95_ms": 15.304125
+            },
+            "packing": {
+              "median_ms": 0.108167,
+              "p95_ms": 0.270917
+            }
+          }
+        },
+        "host_speedup": 1.6193909946910507,
+        "reference_speedup": {
+          "host": 1.0906854875064653,
+          "device": 1.0748216490332432,
+          "initialization": 1.022880997236354,
+          "propagation": 1.0956401547721408,
+          "packing": 1.0025322624154824
+        }
+      },
+      {
+        "name": "region-20",
+        "side_chunks": 12,
+        "height": 384,
+        "sha256": "81c7a7e9c366971e487b202e15f2d1bfde82d178b6dafe1211fec711ead6a3f6",
+        "modes": {
+          "reference": {
+            "host": {
+              "median_ms": 15.451541,
+              "p95_ms": 19.164459
+            },
+            "device": {
+              "median_ms": 2.642625,
+              "p95_ms": 2.911626
+            },
+            "initialization": {
+              "median_ms": 0.672125,
+              "p95_ms": 0.70325
+            },
+            "propagation": {
+              "median_ms": 1.841833,
+              "p95_ms": 2.129917
+            },
+            "packing": {
+              "median_ms": 0.113667,
+              "p95_ms": 0.117667
+            }
+          },
+          "sparse": {
+            "host": {
+              "median_ms": 14.841792,
+              "p95_ms": 19.774667
+            },
+            "device": {
+              "median_ms": 2.441417,
+              "p95_ms": 3.408584
+            },
+            "initialization": {
+              "median_ms": 0.662542,
+              "p95_ms": 0.707791
+            },
+            "propagation": {
+              "median_ms": 1.672541,
+              "p95_ms": 2.617292
+            },
+            "packing": {
+              "median_ms": 0.113417,
+              "p95_ms": 0.116209
+            }
+          },
+          "dense": {
+            "host": {
+              "median_ms": 25.709833,
+              "p95_ms": 32.736916
+            },
+            "device": {
+              "median_ms": 13.261333,
+              "p95_ms": 14.067376
+            },
+            "initialization": {
+              "median_ms": 0.65025,
+              "p95_ms": 0.686917
+            },
+            "propagation": {
+              "median_ms": 12.57925,
+              "p95_ms": 13.296167
+            },
+            "packing": {
+              "median_ms": 0.106208,
+              "p95_ms": 0.117
+            }
+          }
+        },
+        "host_speedup": 1.7322593525094543,
+        "reference_speedup": {
+          "host": 1.04108324655136,
+          "device": 1.0824144339127646,
+          "initialization": 1.014463988698075,
+          "propagation": 1.1012184454671066,
+          "packing": 1.0022042550940335
+        }
+      },
+      {
+        "name": "small-false-0",
+        "side_chunks": 3,
+        "height": 64,
+        "sha256": "4de704874a04d427d1a3c7d4e409c32e924c6f0f2eaf6703b39e907a4a4d8fc3",
+        "modes": {
+          "reference": {
+            "host": {
+              "median_ms": 1.41625,
+              "p95_ms": 4.398375
+            },
+            "device": {
+              "median_ms": 0.117333,
+              "p95_ms": 0.560958
+            },
+            "initialization": {
+              "median_ms": 0.115,
+              "p95_ms": 0.117583
+            },
+            "propagation": {
+              "median_ms": 0.0,
+              "p95_ms": 0.441
+            },
+            "packing": {
+              "median_ms": 0.0,
+              "p95_ms": 0.004917
+            }
+          },
+          "sparse": {
+            "host": {
+              "median_ms": 1.313666,
+              "p95_ms": 2.823417
+            },
+            "device": {
+              "median_ms": 0.110084,
+              "p95_ms": 0.565083
+            },
+            "initialization": {
+              "median_ms": 0.104833,
+              "p95_ms": 0.110875
+            },
+            "propagation": {
+              "median_ms": 0.0,
+              "p95_ms": 0.455583
+            },
+            "packing": {
+              "median_ms": 0.0,
+              "p95_ms": 0.004584
+            }
+          },
+          "dense": {
+            "host": {
+              "median_ms": 1.204083,
+              "p95_ms": 16.742333
+            },
+            "device": {
+              "median_ms": 0.107708,
+              "p95_ms": 0.450667
+            },
+            "initialization": {
+              "median_ms": 0.107375,
+              "p95_ms": 0.108333
+            },
+            "propagation": {
+              "median_ms": 0.0,
+              "p95_ms": 0.343125
+            },
+            "packing": {
+              "median_ms": 0.0,
+              "p95_ms": 0.0
+            }
+          }
+        },
+        "host_speedup": 0.916582297174472,
+        "reference_speedup": {
+          "host": 1.0780898645470005,
+          "device": 1.0658497147632717,
+          "initialization": 1.0969828202951362,
+          "propagation": null,
+          "packing": null
+        }
+      },
+      {
+        "name": "small-false-1",
+        "side_chunks": 3,
+        "height": 64,
+        "sha256": "29ad25e33ca7fab3174de0a71925436c98fea27505e82876d6bb0440f69a6193",
+        "modes": {
+          "reference": {
+            "host": {
+              "median_ms": 1.864959,
+              "p95_ms": 3.5775
+            },
+            "device": {
+              "median_ms": 0.117334,
+              "p95_ms": 0.568749
+            },
+            "initialization": {
+              "median_ms": 0.111875,
+              "p95_ms": 0.117708
+            },
+            "propagation": {
+              "median_ms": 0.0,
+              "p95_ms": 0.452375
+            },
+            "packing": {
+              "median_ms": 0.0,
+              "p95_ms": 0.005
+            }
+          },
+          "sparse": {
+            "host": {
+              "median_ms": 1.904875,
+              "p95_ms": 3.790042
+            },
+            "device": {
+              "median_ms": 0.11025,
+              "p95_ms": 0.693167
+            },
+            "initialization": {
+              "median_ms": 0.104584,
+              "p95_ms": 0.110542
+            },
+            "propagation": {
+              "median_ms": 0.0,
+              "p95_ms": 0.580959
+            },
+            "packing": {
+              "median_ms": 0.0,
+              "p95_ms": 0.005042
+            }
+          },
+          "dense": {
+            "host": {
+              "median_ms": 1.445333,
+              "p95_ms": 3.294375
+            },
+            "device": {
+              "median_ms": 0.107083,
+              "p95_ms": 0.610333
+            },
+            "initialization": {
+              "median_ms": 0.103125,
+              "p95_ms": 0.108833
+            },
+            "propagation": {
+              "median_ms": 0.0,
+              "p95_ms": 0.507208
+            },
+            "packing": {
+              "median_ms": 0.0,
+              "p95_ms": 0.004916
+            }
+          }
+        },
+        "host_speedup": 0.7587547739352976,
+        "reference_speedup": {
+          "host": 0.9790453441826891,
+          "device": 1.0642539682539682,
+          "initialization": 1.0697142966419337,
+          "propagation": null,
+          "packing": null
+        }
+      },
+      {
+        "name": "small-false-2",
+        "side_chunks": 3,
+        "height": 64,
+        "sha256": "1cef492ff31235e591e5aa98d4883d54c09eda8e4f951758fed46a57f920fa2a",
+        "modes": {
+          "reference": {
+            "host": {
+              "median_ms": 1.6395,
+              "p95_ms": 4.192208
+            },
+            "device": {
+              "median_ms": 0.511208,
+              "p95_ms": 1.105083
+            },
+            "initialization": {
+              "median_ms": 0.131958,
+              "p95_ms": 0.241083
+            },
+            "propagation": {
+              "median_ms": 0.396416,
+              "p95_ms": 0.858125
+            },
+            "packing": {
+              "median_ms": 0.0,
+              "p95_ms": 0.004792
+            }
+          },
+          "sparse": {
+            "host": {
+              "median_ms": 1.544292,
+              "p95_ms": 3.578125
+            },
+            "device": {
+              "median_ms": 0.580749,
+              "p95_ms": 0.846958
+            },
+            "initialization": {
+              "median_ms": 0.125416,
+              "p95_ms": 0.183125
+            },
+            "propagation": {
+              "median_ms": 0.453166,
+              "p95_ms": 0.721917
+            },
+            "packing": {
+              "median_ms": 0.0,
+              "p95_ms": 0.004875
+            }
+          },
+          "dense": {
+            "host": {
+              "median_ms": 1.438333,
+              "p95_ms": 2.744417
+            },
+            "device": {
+              "median_ms": 0.137541,
+              "p95_ms": 0.825167
+            },
+            "initialization": {
+              "median_ms": 0.123541,
+              "p95_ms": 0.226541
+            },
+            "propagation": {
+              "median_ms": 0.0,
+              "p95_ms": 0.669458
+            },
+            "packing": {
+              "median_ms": 0.0,
+              "p95_ms": 0.004958
+            }
+          }
+        },
+        "host_speedup": 0.9313866807572662,
+        "reference_speedup": {
+          "host": 1.0616515529446504,
+          "device": 0.8802563585989817,
+          "initialization": 1.0521624035210817,
+          "propagation": 0.8747699518498739,
+          "packing": null
+        }
+      },
+      {
+        "name": "small-true-0",
+        "side_chunks": 3,
+        "height": 64,
+        "sha256": "25288695621d674e818a6f9d037461439b03a873b1b7a542393cb407dd2b6c91",
+        "modes": {
+          "reference": {
+            "host": {
+              "median_ms": 2.044833,
+              "p95_ms": 3.260625
+            },
+            "device": {
+              "median_ms": 1.201667,
+              "p95_ms": 1.249375
+            },
+            "initialization": {
+              "median_ms": 0.360959,
+              "p95_ms": 0.3675
+            },
+            "propagation": {
+              "median_ms": 0.844291,
+              "p95_ms": 0.882666
+            },
+            "packing": {
+              "median_ms": 0.0,
+              "p95_ms": 0.0
+            }
+          },
+          "sparse": {
+            "host": {
+              "median_ms": 1.965542,
+              "p95_ms": 4.295791
+            },
+            "device": {
+              "median_ms": 1.146167,
+              "p95_ms": 1.258625
+            },
+            "initialization": {
+              "median_ms": 0.297417,
+              "p95_ms": 0.354125
+            },
+            "propagation": {
+              "median_ms": 0.845583,
+              "p95_ms": 0.906375
+            },
+            "packing": {
+              "median_ms": 0.0,
+              "p95_ms": 0.0
+            }
+          },
+          "dense": {
+            "host": {
+              "median_ms": 1.816833,
+              "p95_ms": 3.527042
+            },
+            "device": {
+              "median_ms": 1.084042,
+              "p95_ms": 1.170083
+            },
+            "initialization": {
+              "median_ms": 0.343958,
+              "p95_ms": 0.350416
+            },
+            "propagation": {
+              "median_ms": 0.740625,
+              "p95_ms": 0.869958
+            },
+            "packing": {
+              "median_ms": 0.0,
+              "p95_ms": 0.0
+            }
+          }
+        },
+        "host_speedup": 0.9243419881132023,
+        "reference_speedup": {
+          "host": 1.0403405269386257,
+          "device": 1.0484222630733568,
+          "initialization": 1.2136461601051722,
+          "propagation": 0.9984720601052766,
+          "packing": null
+        }
+      },
+      {
+        "name": "small-true-1",
+        "side_chunks": 3,
+        "height": 64,
+        "sha256": "e2554301bce27adb56841ba234cc1dd8d0733cf2cd7a6e4c3973c9214a74624e",
+        "modes": {
+          "reference": {
+            "host": {
+              "median_ms": 2.011916,
+              "p95_ms": 8.0545
+            },
+            "device": {
+              "median_ms": 1.163084,
+              "p95_ms": 1.334958
+            },
+            "initialization": {
+              "median_ms": 0.359917,
+              "p95_ms": 0.373
+            },
+            "propagation": {
+              "median_ms": 0.82875,
+              "p95_ms": 0.881208
+            },
+            "packing": {
+              "median_ms": 0.0,
+              "p95_ms": 0.0
+            }
+          },
+          "sparse": {
+            "host": {
+              "median_ms": 1.950292,
+              "p95_ms": 3.186708
+            },
+            "device": {
+              "median_ms": 1.184792,
+              "p95_ms": 1.231792
+            },
+            "initialization": {
+              "median_ms": 0.349834,
+              "p95_ms": 0.35525
+            },
+            "propagation": {
+              "median_ms": 0.838,
+              "p95_ms": 0.876542
+            },
+            "packing": {
+              "median_ms": 0.0,
+              "p95_ms": 0.0
+            }
+          },
+          "dense": {
+            "host": {
+              "median_ms": 1.691333,
+              "p95_ms": 3.004583
+            },
+            "device": {
+              "median_ms": 1.023583,
+              "p95_ms": 1.166041
+            },
+            "initialization": {
+              "median_ms": 0.343458,
+              "p95_ms": 0.351292
+            },
+            "propagation": {
+              "median_ms": 0.674958,
+              "p95_ms": 0.76625
+            },
+            "packing": {
+              "median_ms": 0.0,
+              "p95_ms": 0.0
+            }
+          }
+        },
+        "host_speedup": 0.8672203957151032,
+        "reference_speedup": {
+          "host": 1.0315973197859603,
+          "device": 0.981677796609025,
+          "initialization": 1.028822241405924,
+          "propagation": 0.9889618138424822,
+          "packing": null
+        }
+      },
+      {
+        "name": "small-true-2",
+        "side_chunks": 3,
+        "height": 64,
+        "sha256": "9fa4f9552d41cb105a06d4db981a2ad9c72f12bd9ea1a8a641df1f9156305688",
+        "modes": {
+          "reference": {
+            "host": {
+              "median_ms": 1.688833,
+              "p95_ms": 2.152042
+            },
+            "device": {
+              "median_ms": 0.81475,
+              "p95_ms": 1.222417
+            },
+            "initialization": {
+              "median_ms": 0.247333,
+              "p95_ms": 0.358459
+            },
+            "propagation": {
+              "median_ms": 0.596417,
+              "p95_ms": 0.863
+            },
+            "packing": {
+              "median_ms": 0.0,
+              "p95_ms": 0.0
+            }
+          },
+          "sparse": {
+            "host": {
+              "median_ms": 1.539666,
+              "p95_ms": 1.942292
+            },
+            "device": {
+              "median_ms": 0.846667,
+              "p95_ms": 1.194125
+            },
+            "initialization": {
+              "median_ms": 0.238833,
+              "p95_ms": 0.348125
+            },
+            "propagation": {
+              "median_ms": 0.601,
+              "p95_ms": 0.845208
+            },
+            "packing": {
+              "median_ms": 0.0,
+              "p95_ms": 0.0
+            }
+          },
+          "dense": {
+            "host": {
+              "median_ms": 1.380583,
+              "p95_ms": 1.691042
+            },
+            "device": {
+              "median_ms": 0.660625,
+              "p95_ms": 0.981167
+            },
+            "initialization": {
+              "median_ms": 0.234875,
+              "p95_ms": 0.344167
+            },
+            "propagation": {
+              "median_ms": 0.453625,
+              "p95_ms": 0.709333
+            },
+            "packing": {
+              "median_ms": 0.0,
+              "p95_ms": 0.0
+            }
+          }
+        },
+        "host_speedup": 0.8966769416224037,
+        "reference_speedup": {
+          "host": 1.0968827005337523,
+          "device": 0.9623027707469407,
+          "initialization": 1.0355897216883765,
+          "propagation": 0.9923743760399334,
+          "packing": null
+        }
+      }
+    ]
+  },
+  "section_packing_comparison": {
+    "reference": "Padding and brick-scan changes present, CPU nibble packing",
+    "candidate": "Same implementation with GPU nibble packing",
+    "profile_sha256": "7d0635fef39148afc4c22aa7af842c600d48c50cb3bbf051815190d7581b7366",
+    "profile_notes": "Exported lighting fixture profile without registry programs or decoration, seed 123456789, region 0,0, min_y -64, height 384; same region regenerated to fresh private MCA paths.",
+    "harness": "build/lighting-next-region-ab.py",
+    "commands": [
+      "python3 build/lighting-next-region-ab.py",
+      "RETINA_LIGHTING_REGION_AB_DIR=build/lighting-next-region-ab-repeat python3 build/lighting-next-region-ab.py"
+    ],
+    "runs": [
+      {
+        "reference_library": "build/lighting-next-compact.dylib",
+        "candidate_library": "build/native-target/release/libretina_worldgen.dylib",
+        "warmups": 5,
+        "iterations": 20,
+        "identical_nbt_records": 25600,
+        "modes": {
+          "reference": {
+            "host": {
+              "median_ms": 124.4422505,
+              "p95_ms": 147.665917
+            },
+            "device": {
+              "median_ms": 18.3577285,
+              "p95_ms": 22.156669
+            },
+            "nbt_cpu_sum": {
+              "median_ms": 115.2876485,
+              "p95_ms": 152.152395
+            },
+            "lighting_host": {
+              "median_ms": 76.826896,
+              "p95_ms": 98.278042
+            },
+            "initialization": {
+              "median_ms": 11.888167,
+              "p95_ms": 14.019874
+            },
+            "propagation": {
+              "median_ms": 5.249542,
+              "p95_ms": 8.475211
+            },
+            "packing": {
+              "median_ms": 1.038376,
+              "p95_ms": 1.890958
+            }
+          },
+          "candidate": {
+            "host": {
+              "median_ms": 123.060375,
+              "p95_ms": 201.270542
+            },
+            "device": {
+              "median_ms": 18.3152695,
+              "p95_ms": 29.141374
+            },
+            "nbt_cpu_sum": {
+              "median_ms": 84.08415,
+              "p95_ms": 143.84649
+            },
+            "lighting_host": {
+              "median_ms": 76.48929150000001,
+              "p95_ms": 138.510875
+            },
+            "initialization": {
+              "median_ms": 11.7480425,
+              "p95_ms": 13.444666
+            },
+            "propagation": {
+              "median_ms": 5.3679985,
+              "p95_ms": 16.165583
+            },
+            "packing": {
+              "median_ms": 1.155292,
+              "p95_ms": 1.877582
+            }
+          }
+        },
+        "speedup": {
+          "host": 1.011229248245018,
+          "device": 1.0023182296061766,
+          "nbt_cpu_sum": 1.3710984591031723,
+          "lighting_host": 1.0044137485572082,
+          "initialization": 1.0119274764285198,
+          "propagation": 0.9779328366056734,
+          "packing": 0.8987996108343171
+        }
+      },
+      {
+        "reference_library": "build/lighting-next-compact.dylib",
+        "candidate_library": "build/native-target/release/libretina_worldgen.dylib",
+        "warmups": 5,
+        "iterations": 20,
+        "identical_nbt_records": 25600,
+        "modes": {
+          "reference": {
+            "host": {
+              "median_ms": 145.3074585,
+              "p95_ms": 171.926583
+            },
+            "device": {
+              "median_ms": 18.1400425,
+              "p95_ms": 21.36846
+            },
+            "nbt_cpu_sum": {
+              "median_ms": 151.808693,
+              "p95_ms": 222.552497
+            },
+            "lighting_host": {
+              "median_ms": 82.89583350000001,
+              "p95_ms": 106.760084
+            },
+            "initialization": {
+              "median_ms": 11.5742705,
+              "p95_ms": 14.387043
+            },
+            "propagation": {
+              "median_ms": 5.338542,
+              "p95_ms": 6.397002
+            },
+            "packing": {
+              "median_ms": 0.9794585,
+              "p95_ms": 1.347333
+            }
+          },
+          "candidate": {
+            "host": {
+              "median_ms": 139.08945849999998,
+              "p95_ms": 175.97425
+            },
+            "device": {
+              "median_ms": 19.559105000000002,
+              "p95_ms": 26.299545
+            },
+            "nbt_cpu_sum": {
+              "median_ms": 104.56635449999999,
+              "p95_ms": 151.808042
+            },
+            "lighting_host": {
+              "median_ms": 86.06677049999999,
+              "p95_ms": 122.6715
+            },
+            "initialization": {
+              "median_ms": 12.459521,
+              "p95_ms": 17.191374
+            },
+            "propagation": {
+              "median_ms": 5.713292,
+              "p95_ms": 13.076919
+            },
+            "packing": {
+              "median_ms": 1.1633765,
+              "p95_ms": 1.790292
+            }
+          }
+        },
+        "speedup": {
+          "host": 1.0447050413960741,
+          "device": 0.9274474726732127,
+          "nbt_cpu_sum": 1.4517929187251146,
+          "lighting_host": 0.9631572442932551,
+          "initialization": 0.9289498769655752,
+          "propagation": 0.9344073434370238,
+          "packing": 0.8419101640784389
+        }
+      }
+    ]
+  },
+  "limitations": [
+    "NBT CPU time sums worker time; it is not wall time.",
+    "GPU nibble packing increases the packing stage slightly while eliminating Rust per-voxel conversion.",
+    "Complete-region wall-time gains were noisy and below 5%; no stable end-to-end throughput claim.",
+    "Very short synthetic GPU passes sometimes report zero timestamp deltas; saved-terrain tile and region comparisons are the performance evidence."
+  ]
+}

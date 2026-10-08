@@ -86,8 +86,10 @@ public final class GenerationMetrics {
             msPerChunk=regionElapsed/(Math.max(1,regionChunks)*1e6);
             rate=regionChunks*1e9/Math.max(1,regionElapsed);
         }
+        long[] orderedRegionNanos=regionTimings.stream().mapToLong(RegionSample::elapsed).sorted().toArray();
+        double p95RegionMs=orderedRegionNanos.length==0?0:orderedRegionNanos[(int)Math.ceil(.95*orderedRegionNanos.length)-1]/1e6;
         return new Snapshot(rate,msPerChunk,nativeTime/divisor,conversion/divisor,inFlight,total,failures,regions,
-                regionElapsed/(Math.max(1,regionTimings.size())*1e6),previewRegions,previewCacheHits,promotions,nativeTimings,
+                regionElapsed/(Math.max(1,regionTimings.size())*1e6),p95RegionMs,previewRegions,previewCacheHits,promotions,nativeTimings,
                 regionTimings.size(),new NativeTimings(flags,regionChunks,gpuColumns,gpuJobs,stages),columnCache/(Math.max(1,regionTimings.size())*1e6));
     }
     private void prune(long now) {
@@ -96,15 +98,15 @@ public final class GenerationMetrics {
     private record Sample(long completedAt,int chunks,long elapsed,long nativeTime,long conversion) { }
     private record RegionSample(int chunks,long elapsed,NativeTimings stages,long columnCacheNanos) { }
     public record Snapshot(double chunksPerSecond,double msPerChunk,double nativeMs,double conversionMs,int inFlight,
-                           long total,long failures,long regions,double averageRegionMs,long previewRegions,long previewCacheHits,
+                           long total,long failures,long regions,double averageRegionMs,double p95RegionMs,long previewRegions,long previewCacheHits,
                            long promotions,NativeTimings stages,int regionSamples,NativeTimings regionStages,double columnCacheMs) {
         public Snapshot(double rate,double ms,double nativeMs,double conversion,int inFlight,long total,long failures,long regions,
                         double averageRegionMs,long previews,long hits,long promotions) {
-            this(rate,ms,nativeMs,conversion,inFlight,total,failures,regions,averageRegionMs,previews,hits,promotions,NativeTimings.EMPTY);
+            this(rate,ms,nativeMs,conversion,inFlight,total,failures,regions,averageRegionMs,0,previews,hits,promotions,NativeTimings.EMPTY);
         }
         public Snapshot(double rate,double ms,double nativeMs,double conversion,int inFlight,long total,long failures,long regions,
-                        double averageRegionMs,long previews,long hits,long promotions,NativeTimings stages) {
-            this(rate,ms,nativeMs,conversion,inFlight,total,failures,regions,averageRegionMs,previews,hits,promotions,stages,0,NativeTimings.EMPTY,0);
+                        double averageRegionMs,double p95RegionMs,long previews,long hits,long promotions,NativeTimings stages) {
+            this(rate,ms,nativeMs,conversion,inFlight,total,failures,regions,averageRegionMs,p95RegionMs,previews,hits,promotions,stages,0,NativeTimings.EMPTY,0);
         }
         public double columnCachePercent() { return 100*columnCacheMs/Math.max(.000001,averageRegionMs); }
         public double regionStageMs(int stage) { return regionStages.nanos(stage)/(Math.max(1,regionSamples)*1e6); }

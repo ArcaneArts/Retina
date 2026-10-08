@@ -1,6 +1,7 @@
 // Minecraft light values: block low nibble, sky high nibble. Four voxels per word.
+// Flags select sky (bit 0), sparse propagation (bit 1), section nibble output (bit 2).
 struct Params { side: u32, height: u32, chunks: u32, crop: u32,
-    core: u32, sky: u32, face_stride: u32, words: u32 }
+    core: u32, flags: u32, face_stride: u32, words: u32 }
 struct State { traits: u32, faces: array<u32, 6>, padding: u32 }
 @group(0) @binding(0) var<uniform> p: Params;
 @group(0) @binding(1) var<storage, read> blocks: array<u32>;
@@ -20,8 +21,10 @@ fn brick_index(x: u32, y: u32, z: u32) -> u32 {
 }
 
 fn material(x: u32, y: u32, z: u32) -> u32 {
-    let i = ((z / 16u) * p.chunks + x / 16u) * p.height * 256u
-        + y * 256u + (z % 16u) * 16u + x % 16u;
+    // Light-only sections are virtual air; only final terrain is uploaded.
+    if y < 16u || y >= p.height - 16u { return 0u; }
+    let i = ((z / 16u) * p.chunks + x / 16u) * (p.height - 32u) * 256u
+        + (y - 16u) * 256u + (z % 16u) * 16u + x % 16u;
     return (blocks[i / 2u] >> ((i % 2u) * 16u)) & 65535u;
 }
 fn occludes(from_material: u32, to_material: u32, direction: u32) -> bool {
@@ -35,12 +38,12 @@ fn light(i: u32) -> u32 { return (source[i / 4u] >> ((i % 4u) * 8u)) & 255u; }
 fn initialize(@builtin(global_invocation_id) id: vec3<u32>) {
     let column = id.x * 4u;
     if column >= p.side * p.side { return; }
-    let has_sky = (p.sky & 1u) != 0u;
-    let sparse = (p.sky & 2u) != 0u;
+    let has_sky = (p.flags & 1u) != 0u;
+    let sparse = (p.flags & 2u) != 0u;
     // Four aligned x lanes always stay inside the same chunk and packed word.
     let x = column % p.side;
     let z = column / p.side;
-    let block_column = ((z / 16u) * p.chunks + x / 16u) * p.height * 128u
+    let block_column = ((z / 16u) * p.chunks + x / 16u) * (p.height - 32u) * 128u
         + (z % 16u) * 8u + (x % 16u) / 2u;
     let plane_words = p.side * p.side / 4u;
     var sun = array<bool, 4>(has_sky, has_sky, has_sky, has_sky);
@@ -48,7 +51,11 @@ fn initialize(@builtin(global_invocation_id) id: vec3<u32>) {
     var above = array<u32, 4>(0u, 0u, 0u, 0u);
     for (var dy = p.height; dy > 0u; dy--) {
         let y = dy - 1u;
-        let materials = vec2<u32>(blocks[block_column + y * 128u], blocks[block_column + y * 128u + 1u]);
+        var materials = vec2<u32>(0u);
+        if y >= 16u && y < p.height - 16u {
+            let row = block_column + (y - 16u) * 128u;
+            materials = vec2<u32>(blocks[row], blocks[row + 1u]);
+        }
         var word = 0u;
         for (var lane = 0u; lane < 4u; lane++) {
             let m = (materials[lane / 2u] >> ((lane % 2u) * 16u)) & 65535u;
@@ -91,16 +98,22 @@ fn compact(@builtin(global_invocation_id) id: vec3<u32>) {
     let flags = atomicLoad(&work.bricks[index]);
     if (flags & 1u) == 0u { return; }
     let x = index % side; let z = (index / side) % side; let y = index / (side * side);
-    var nearby = 0u;
-    for (var by = max(0, i32(y) - 2); by <= min(i32(height) - 1, i32(y) + 2); by++) {
-        for (var bz = max(0, i32(z) - 2); bz <= min(i32(side) - 1, i32(z) + 2); bz++) {
-            for (var bx = max(0, i32(x) - 2); bx <= min(i32(side) - 1, i32(x) + 2); bx++) {
+    let needed = 4u | select(0u, 8u, (p.flags & 1u) != 0u && (flags & 2u) != 0u);
+    var nearby = flags;
+    for (var by = max(0, i32(y) - 2); by <= min(i32(height) - 1, i32(y) + 2) && (nearby & needed) != needed; by++) {
+        for (var bz = max(0, i32(z) - 2); bz <= min(i32(side) - 1, i32(z) + 2) && (nearby & needed) != needed; bz++) {
+            for (var bx = max(0, i32(x) - 2); bx <= min(i32(side) - 1, i32(x) + 2) && (nearby & needed) != needed; bx++) {
+                // Sum the minimum voxel distances between the two bricks.
+                // Cube corners beyond fourteen edges cannot contribute either channel.
+                let distance = max(0, abs(bx - i32(x)) * 8 - 7)
+                    + max(0, abs(by - i32(y)) * 8 - 7) + max(0, abs(bz - i32(z)) * 8 - 7);
+                if distance > 14 { continue; }
                 nearby |= atomicLoad(&work.bricks[brick_index(u32(bx), u32(by), u32(bz))]);
             }
         }
     }
     let block_needed = (nearby & 4u) != 0u;
-    let sky_needed = (flags & 2u) != 0u && (nearby & 8u) != 0u;
+    let sky_needed = (needed & nearby & 8u) != 0u;
     if !block_needed && !sky_needed { return; }
     let slot = atomicAdd(&work.count, 1u);
     active_bricks[slot] = index | select(0u, 1u << 30u, block_needed) | select(0u, 1u << 31u, sky_needed);
@@ -183,9 +196,26 @@ fn pack(@builtin(global_invocation_id) id: vec3<u32>) {
     if word_id >= p.core * p.core * p.height * 64u { return; }
     let chunk = word_id / (p.height * 64u);
     let local = word_id % (p.height * 64u);
+    if (p.flags & 4u) != 0u {
+        // Each section contains Minecraft's 2048-byte block array then sky array.
+        let voxel = (local / 1024u) * 4096u + (local % 512u) * 8u;
+        let x = (p.crop + chunk % p.core) * 16u + voxel % 16u;
+        let z = (p.crop + chunk / p.core) * 16u + (voxel / 16u) % 16u;
+        let y = voxel / 256u;
+        let index = (y * p.side * p.side + z * p.side + x) / 4u;
+        let shift = ((local / 512u) % 2u) * 4u;
+        output[word_id] = nibbles(source[index] >> shift) | (nibbles(source[index + 1u] >> shift) << 16u);
+        return;
+    }
     let x = (p.crop + chunk % p.core) * 4u + local % 4u;
     let z = (p.crop + chunk / p.core) * 16u + (local / 4u) % 16u;
     let y = local / 64u;
     // Crop and row boundaries are multiples of four voxels, so no byte shuffle.
     output[word_id] = source[(y * p.side + z) * (p.side / 4u) + x];
+}
+
+// Gather one channel from four light bytes into four consecutive nibbles.
+fn nibbles(word: u32) -> u32 {
+    return (word & 15u) | ((word >> 4u) & 240u)
+        | ((word >> 8u) & 3840u) | ((word >> 12u) & 61440u);
 }

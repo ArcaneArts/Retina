@@ -21,6 +21,7 @@ final class GenerationMetricsTest {
         var window = metrics.snapshot();
         require(window.regionSamples() == 20 && window.regionStages().chunks() == 20 * 1024, "only the last 20 generated regions contribute");
         close(window.averageRegionMs(), 16.5, "rolling average drops six oldest regions");
+        close(window.p95RegionMs(), 25, "p95 uses the same rolling region window");
         close(window.msPerChunk(), 16.5 / 1024, "amortized time uses the region window");
         close(window.chunksPerSecond(), 1024 * 1000 / 16.5, "rate uses the same region average");
         close(window.regionStagePercent(NBT), 25, "worker share uses average region time");
@@ -39,7 +40,9 @@ final class GenerationMetricsTest {
         close(partial.snapshot().msPerChunk(), 4.0 / 1025, "weighted partial-region amortization");
 
         var lines = TerrainDebugReport.lines(new TerrainStatsPayload(true, "Metal test", "mca", window));
-        require(lines.stream().anyMatch(s -> s.contains("Average region:") && s.contains("16.50 ms") && s.contains("20")), "display reports rolling latency and sample count");
+        require(lines.stream().anyMatch(s -> s.contains("Region latency:") && s.contains("16.50 ms mean") && s.contains("25.00 ms p95") && s.contains("20")), "display reports rolling mean, p95 and sample count");
+        require(lines.stream().anyMatch(s -> s.contains("Lit MCA production:") && s.contains("chunks/s")), "display labels the measured throughput scope");
+        require(lines.stream().anyMatch(s -> s.contains("Promotions:") && s.contains("not production rate")), "display does not conflate promotion with generation");
         require(lines.stream().anyMatch(s -> s.contains("NBT encoding") && s.contains("§6~25.0%")), "NBT share is colored and marked as an estimate");
         require(lines.stream().anyMatch(s -> s.contains("Material layers") && s.startsWith("§d")), "GPU material timing has a dedicated category");
         require(lines.stream().anyMatch(s -> s.contains("Aquifer fields") && s.startsWith("§d")), "GPU aquifer fields have a dedicated category");

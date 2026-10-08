@@ -1386,12 +1386,6 @@ pub unsafe extern "C" fn retina_light_volume(
             return Err("unknown lighting material".into());
         }
         let start = Instant::now();
-        let mut padded = Vec::with_capacity(capacity as usize);
-        for chunk in source.chunks_exact(request.block_count()) {
-            padded.resize(padded.len() + 4096, 0);
-            padded.extend_from_slice(chunk);
-            padded.resize(padded.len() + 4096, 0);
-        }
         let light = engine
             .light_gpu
             .lock()
@@ -1400,10 +1394,11 @@ pub unsafe extern "C" fn retina_light_volume(
                 request.reserved,
                 profile,
                 chunks,
-                request.height + 32,
+                request.height,
                 0,
                 chunks,
-                &padded,
+                source,
+                lighting::OutputFormat::Voxels,
             )?;
         let timings = engine.timings(request.reserved);
         timings.add(timings::LIGHT_HOST, start.elapsed().as_nanos() as u64);
