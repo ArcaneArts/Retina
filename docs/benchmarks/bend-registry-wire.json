@@ -1,0 +1,133 @@
+{
+  "scope": "Registry transport and resident input access, not a terrain generator or performance benchmark",
+  "bend_version": "bend 2.0.36",
+  "java_heap_limit_mib": 256,
+  "profiles": [
+    {
+      "file": "fixture.rbp",
+      "bytes": 596,
+      "strings": 16,
+      "tape_words": 88,
+      "sha256": "8af10a0ff5e71bd8baf5d3b076c3bf1152a69a4f246bf8113bd8f50c10fcf4fa",
+      "node_counts": {
+        "7": 4,
+        "0": 1,
+        "1": 1,
+        "2": 1,
+        "6": 3,
+        "5": 2,
+        "9": 1,
+        "packed_values": 13,
+        "8": 1,
+        "10": 1,
+        "11": 1,
+        "3": 2,
+        "4": 1
+      },
+      "source": "scalar/Unicode fixture",
+      "source_json_sha256": "cb24efbedd5241fe0f79655398775c3e40d3d204aabcda1f06ac28eaa4c1d914"
+    },
+    {
+      "file": "profile-1.rbp",
+      "bytes": 18054360,
+      "strings": 3411,
+      "tape_words": 4458832,
+      "sha256": "39c775ca58b6d084d4de060925df01d170c89caa09b9eaf7d33e55a915c8065a",
+      "node_counts": {
+        "7": 53237,
+        "3": 65266,
+        "4": 19076,
+        "6": 29710,
+        "5": 54022,
+        "10": 34663,
+        "packed_values": 3291442,
+        "8": 41765,
+        "1": 2955,
+        "11": 58,
+        "2": 1975,
+        "9": 9
+      },
+      "source": "vanilla",
+      "source_json_sha256": "aefce6ff0e800966ad55920c5d21510dfa277de4612f67e22d5146d3aa838203"
+    },
+    {
+      "file": "profile-2.rbp",
+      "bytes": 40435520,
+      "strings": 5137,
+      "tape_words": 10034300,
+      "sha256": "cf9ef7e0d83d91c5d99aa914101aad8b156ce9a8caa4050f71e81b190a1c0ca6",
+      "node_counts": {
+        "7": 84675,
+        "3": 161311,
+        "4": 21893,
+        "6": 46437,
+        "5": 75598,
+        "10": 31830,
+        "packed_values": 8512200,
+        "8": 63378,
+        "1": 4419,
+        "11": 153,
+        "2": 2200,
+        "9": 174
+      },
+      "source": "Terralith",
+      "source_json_sha256": "c9abbe97860a394ed899d64967bd0395bb9bb4ec71a9dff43d1bb45893fefd4d"
+    },
+    {
+      "file": "profile-3.rbp",
+      "bytes": 40456820,
+      "strings": 5138,
+      "tape_words": 10039612,
+      "sha256": "d4ac8f9040e39892de12b6fc6ecc46b3d9e961c3cba7f05a2ae9b53262967193",
+      "node_counts": {
+        "7": 84822,
+        "3": 161891,
+        "4": 21903,
+        "6": 46444,
+        "5": 75600,
+        "10": 31976,
+        "packed_values": 8516720,
+        "8": 63381,
+        "1": 4423,
+        "11": 154,
+        "2": 2201,
+        "9": 174
+      },
+      "source": "Terralith + registry supplement",
+      "source_json_sha256": "068fd602ad497128dd3960cb9be76840ebd41882b5b64c25acfa76d65e930c8b"
+    }
+  ],
+  "workers": [
+    {
+      "mode": "cpu",
+      "queries": 90,
+      "malformed_uploads_rejected": 28,
+      "requests_in_one_process": 13859,
+      "old_profile_and_noise_preserved": "pass",
+      "deleted_staging_file": "pass"
+    },
+    {
+      "mode": "gpu_required",
+      "queries": 90,
+      "malformed_uploads_rejected": 28,
+      "requests_in_one_process": 13859,
+      "old_profile_and_noise_preserved": "pass",
+      "deleted_staging_file": "pass"
+    }
+  ],
+  "java_registry_worker_modes": [
+    "CPU: pass",
+    "GPU_REQUIRED: pass"
+  ],
+  "existing_worker_regression": {
+    "transport_concurrency_cancellation_shutdown": "pass",
+    "independent_cpu_gpu_noise_compression_framing": "pass",
+    "observed_metal_command_buffers": 10
+  },
+  "source_sha256": {
+    "bend/registry.bend": "433b4dbb17b127dd322a11465a1111ddadd86a8682597310c062a194aa802296",
+    "bend/engine.bend": "05a7ef6d3ba3c1dd9b6b33a1af5ff91fccae44d5554b6350df8dd8b3ded73d9a",
+    "common/src/main/java/art/arcane/retina/worldgen/BendProfileWire.java": "a9e15613b0ac2c95b8a8b40f0553c9ddc666b8ba01b9a24da7ff1204dfaafb29",
+    "common/src/main/java/art/arcane/retina/worldgen/BendWorker.java": "b00bfcdf0490d9374b069a703f3c0edc7c743ea389adc6b67075b6b1601d6553"
+  }
+}

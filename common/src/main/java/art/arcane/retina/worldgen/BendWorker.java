@@ -69,6 +69,20 @@ public final class BendWorker implements AutoCloseable {
     public Execution execution() { return execution; }
     public long processId() { return process.pid(); }
 
+    /** The caller retains this staged raw registry file until acknowledgement.
+     * Cancellation may still drain an active read: in that case retain the file
+     * until this worker closes. Bend owns the snapshot after acknowledgement;
+     * no large payload enters the queue. Production staging ownership is shared
+     * integration work, not provided by this raw transport convenience method.
+     */
+    public CompletableFuture<byte[]> loadProfile(Path stagedFile) {
+        int[] points = stagedFile.toAbsolutePath().toString().codePoints().toArray();
+        var payload = java.nio.ByteBuffer.allocate(4 + points.length * 4);
+        payload.putInt(points.length);
+        for (int point : points) payload.putInt(point);
+        return request(5, payload.array());
+    }
+
     /** Cancellation skips queued requests; in-flight responses are drained to
      * preserve framing. World shutdown closes the worker and terminates it.
      */
