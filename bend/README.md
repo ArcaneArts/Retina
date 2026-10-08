@@ -190,10 +190,15 @@ produced byte-identical profiles between independent export and Rust registratio
 Counts, hashes and the attempted incompatible Lithosphere input are recorded in
 `docs/benchmarks/bend-registry-export.json`.
 
-This separates registry extraction only. Bend still needs to receive and
-interpret these profiles in its persistent runtime. They are about 13 MB for
-vanilla and 30 MB for Terralith; profile transport must use its own suitable
-bounds rather than the encoder's per-chunk 16 MiB buffer limit.
+The persistent worker now receives complete profiles through the structural
+wire described in [BEND_REGISTRY_WIRE.md](../docs/BEND_REGISTRY_WIRE.md).
+Java streams the exported JSON into a packed tape; Bend validates and retains
+it, then serves field/index and lossless string queries. Independent checks
+compare every transported value with vanilla, Terralith and combined source
+profiles. Application interpretation into terrain programs remains required.
+The JSON profiles are about 13 MB/30 MB; compact input tapes are about 18 MB/40 MB.
+This transport avoids generic object-node allocation, rather than claiming
+smaller files or improved region generation throughput.
 
 ## Seeded noise kernels
 
@@ -277,12 +282,16 @@ Minecraft. Evidence is in `docs/benchmarks/bend-engine-correctness.json`.
 Protocol v1 uses big-endian U32 words. Requests contain `RBND`, payload byte
 length, request ID and opcode. Responses add a status word (0 success, 1 error)
 after opcode. Opcodes are 0 ping, 1 prepare noise, 2 sample grid, 3 compress and
-4 stop. Noise input contains low/high seed words, frequency/amplitude F32 bits,
+4 stop, 5 load a staged registry file, 6 query a registry path and 7 read a
+registry string. Noise input contains low/high seed words, frequency/amplitude
+F32 bits,
 channel, modifier count and modifier F32 bits. Grid input is X, Z, width, height
 and integer step; output contains row-major raw F32 bits. Framed requests are
-limited to 16 MiB; this is **not** the complete registry-upload protocol.
+limited to 16 MiB. Large registry uploads use a separately bounded staged file
+and leave the IPC queue limit intact; see the registry wire document.
 
 This worker is an independently tested component transport, not yet connected
-to world selection or Minecraft generation. Full registry reception, terrain,
-features, structures, lighting, region job coalescing/cache integration and
+to world selection or Minecraft generation. Registry inputs are received and
+read; actual terrain/program interpretation, features, structures, lighting,
+region job coalescing/cache integration and
 complete-region benchmarks remain required. A noise grid is not an MCA region.
