@@ -1,0 +1,1119 @@
+{
+  "scope": "Bend registered interpolation corner selection; component A/B and unlit base/material MCA regression, not full generator parity or Rust-versus-Bend throughput",
+  "base_commit": "cdd0bd7aaa104fa3ff6e9030b006e9b1e9503f19",
+  "baseline_source_commit": "592f7d4dc7ce0ffc0debf3f0c53faee24987a8a7",
+  "baseline_pr": "https://github.com/ArcaneArts/Retina/pull/38",
+  "bend_version": "2.0.36",
+  "host": {
+    "cpu_gpu": "Apple M4 Max",
+    "memory_bytes": 137438953472,
+    "os": "macOS-27.0.1-arm64-arm-64bit",
+    "cpu_workers_per_process": 2,
+    "process_nice": 10
+  },
+  "benchmark_scope": {
+    "metric": "Warm host response around one persistent worker call, including framing/acknowledgment; not isolated GPU device time",
+    "policy": "Both executables compiled before benchmarks; one warmup then five serial alternating A/B repetitions; no concurrent Retina compilation",
+    "external_host_load": "Uncontrolled; full tile correctness timings are observational, not controlled A/B measurements",
+    "full_region_comparison": "Pending complete feature, lighting and Minecraft runtime parity"
+  },
+  "corner_checks_and_component_ab": {
+    "scope": "Registered trilinear corner evaluation and warm resident component calls; no complete-region performance claim",
+    "cpu_workers": 2,
+    "process_nice": 10,
+    "candidate_binary_sha256": "c3d474d0cc07687d964d221c4276b327878b8d357e23c31a7cd5e58d4fa32683",
+    "runs": [
+      {
+        "gpu_required": false,
+        "profiles": [
+          {
+            "profile": "finite",
+            "queries": 96,
+            "max_reference_error": 5.460448380003666e-08,
+            "sha256": "25bc9cf27504907a1b4cdff475cbd9e7060f62009a068042632e04ed0eca4aa8",
+            "repeated_reordered_identical": true
+          },
+          {
+            "profile": "vanilla",
+            "queries": 96,
+            "max_reference_error": 1.0362908407254671e-06,
+            "sha256": "466702407b42245469dade88d1f9b94fec7bc9d8f4f92778cf34841d6011142b",
+            "repeated_reordered_identical": true
+          },
+          {
+            "profile": "terralith",
+            "queries": 96,
+            "max_reference_error": 1.0266102079339867e-06,
+            "sha256": "c379626b7e90cdd574d2fedc7667d2e115bbdce78e72da1b122be0d6fb1a1c5c",
+            "repeated_reordered_identical": true
+          },
+          {
+            "profile": "combined",
+            "queries": 96,
+            "max_reference_error": 9.875477072762706e-07,
+            "sha256": "56a79be5fb076647c99680eac35bca870922b3137ff9ec6af662378347d66bee",
+            "repeated_reordered_identical": true
+          }
+        ],
+        "unused_overflow_axes_checked": 3,
+        "expected_dispatches": 18,
+        "metal_commands_ms": [],
+        "aggregate_sha256": "69dc88d0a11c2dd5695d18c5924f031b92ba967dadbbdaeb3b3612810335feeb"
+      },
+      {
+        "gpu_required": true,
+        "profiles": [
+          {
+            "profile": "finite",
+            "queries": 96,
+            "max_reference_error": 5.460448380003666e-08,
+            "sha256": "25bc9cf27504907a1b4cdff475cbd9e7060f62009a068042632e04ed0eca4aa8",
+            "repeated_reordered_identical": true
+          },
+          {
+            "profile": "vanilla",
+            "queries": 96,
+            "max_reference_error": 1.0362908407254671e-06,
+            "sha256": "466702407b42245469dade88d1f9b94fec7bc9d8f4f92778cf34841d6011142b",
+            "repeated_reordered_identical": true
+          },
+          {
+            "profile": "terralith",
+            "queries": 96,
+            "max_reference_error": 1.0266102079339867e-06,
+            "sha256": "c379626b7e90cdd574d2fedc7667d2e115bbdce78e72da1b122be0d6fb1a1c5c",
+            "repeated_reordered_identical": true
+          },
+          {
+            "profile": "combined",
+            "queries": 96,
+            "max_reference_error": 9.875477072762706e-07,
+            "sha256": "56a79be5fb076647c99680eac35bca870922b3137ff9ec6af662378347d66bee",
+            "repeated_reordered_identical": true
+          }
+        ],
+        "unused_overflow_axes_checked": 3,
+        "expected_dispatches": 18,
+        "metal_commands_ms": [],
+        "aggregate_sha256": "69dc88d0a11c2dd5695d18c5924f031b92ba967dadbbdaeb3b3612810335feeb"
+      }
+    ],
+    "metal_observation": {
+      "diagnostic_only": true,
+      "commands": 18,
+      "output_identical": true,
+      "device_ms": [
+        4.092125,
+        4.014625,
+        4.039083,
+        105.487292,
+        98.091125,
+        98.20575,
+        98.472875,
+        90.355292,
+        92.616125,
+        97.381125,
+        92.524333,
+        91.738333,
+        1.451625,
+        0.53125,
+        1.516708,
+        0.541583,
+        1.449417,
+        0.530458
+      ]
+    },
+    "baseline_binary_sha256": "e65685bdc8d0f5f0a272bb63b52d12262f16ac6317fba6a0ee3cc56bf6280360",
+    "benchmark_policy": "One warmup, five default repeats, serial alternating A/B, no concurrent project compilation; host response time",
+    "benchmarks": [
+      {
+        "gpu_required": false,
+        "rows": [
+          {
+            "profile": "finite",
+            "workload": "mixed_queries",
+            "samples": 96,
+            "warmups": 1,
+            "repeats": 5,
+            "baseline_host_ms": [
+              8.95120797213167,
+              8.1278330180794,
+              6.414083996787667,
+              6.940790917724371,
+              7.767749950289726
+            ],
+            "candidate_host_ms": [
+              2.120874938555062,
+              1.9627920119091868,
+              2.0641660084947944,
+              2.020208048634231,
+              2.0069159800186753
+            ],
+            "baseline_median_ms": 7.767749950289726,
+            "candidate_median_ms": 2.020208048634231,
+            "median_speed_ratio": 3.845024751555238,
+            "compared_bytes_identical": true,
+            "max_reference_error": 5.460448380003666e-08,
+            "output_sha256": "25bc9cf27504907a1b4cdff475cbd9e7060f62009a068042632e04ed0eca4aa8"
+          },
+          {
+            "profile": "finite",
+            "workload": "lattice_vertices",
+            "samples": 3757,
+            "warmups": 1,
+            "repeats": 5,
+            "baseline_host_ms": [
+              332.8447920503095,
+              278.2883750041947,
+              266.4337079040706,
+              311.82083394378424,
+              352.8559170663357
+            ],
+            "candidate_host_ms": [
+              53.66270791273564,
+              49.884874955751,
+              49.84824999701232,
+              49.42366702016443,
+              54.68270892743021
+            ],
+            "baseline_median_ms": 311.82083394378424,
+            "candidate_median_ms": 49.884874955751,
+            "median_speed_ratio": 6.25080917252727,
+            "compared_bytes_identical": true,
+            "max_reference_error": 5.441731084113123e-08,
+            "output_sha256": "f792ad815f6a6a011dabb26abf82ac73a2b9933390814fb858f944ac5c8e088e"
+          },
+          {
+            "profile": "vanilla",
+            "workload": "mixed_queries",
+            "samples": 96,
+            "warmups": 1,
+            "repeats": 5,
+            "baseline_host_ms": [
+              32.2811669902876,
+              25.687332963570952,
+              26.6554580302909,
+              25.834625004790723,
+              26.37904102448374
+            ],
+            "candidate_host_ms": [
+              13.397084083408117,
+              11.782792047597468,
+              12.312125065363944,
+              12.175834039226174,
+              15.418833936564624
+            ],
+            "baseline_median_ms": 26.37904102448374,
+            "candidate_median_ms": 12.312125065363944,
+            "median_speed_ratio": 2.1425254279370805,
+            "compared_bytes_identical": true,
+            "max_reference_error": 1.0362908407254671e-06,
+            "output_sha256": "466702407b42245469dade88d1f9b94fec7bc9d8f4f92778cf34841d6011142b"
+          },
+          {
+            "profile": "vanilla",
+            "workload": "lattice_vertices",
+            "samples": 3757,
+            "warmups": 1,
+            "repeats": 5,
+            "baseline_host_ms": [
+              1807.4676670366898,
+              1400.676375022158,
+              1437.8663749666885,
+              1499.9249998945743,
+              1451.3570829294622
+            ],
+            "candidate_host_ms": [
+              242.72516695782542,
+              215.99133301060647,
+              264.78287496138364,
+              218.2089169509709,
+              175.54204200860113
+            ],
+            "baseline_median_ms": 1451.3570829294622,
+            "candidate_median_ms": 218.2089169509709,
+            "median_speed_ratio": 6.651227196437467,
+            "compared_bytes_identical": true,
+            "max_reference_error": 6.886204232253723e-07,
+            "output_sha256": "0c2395b31e35480d473df1b6e9a682d880987abe9333181cf5158ed30abb20d2"
+          },
+          {
+            "profile": "terralith",
+            "workload": "mixed_queries",
+            "samples": 96,
+            "warmups": 1,
+            "repeats": 5,
+            "baseline_host_ms": [
+              43.41095790732652,
+              38.65758306346834,
+              42.279249988496304,
+              49.414249951951206,
+              41.356584057211876
+            ],
+            "candidate_host_ms": [
+              13.181832968257368,
+              13.357916963286698,
+              13.676874921657145,
+              15.006083995103836,
+              13.601333019323647
+            ],
+            "baseline_median_ms": 42.279249988496304,
+            "candidate_median_ms": 13.601333019323647,
+            "median_speed_ratio": 3.1084637019349093,
+            "compared_bytes_identical": true,
+            "max_reference_error": 1.0266102079339867e-06,
+            "output_sha256": "c379626b7e90cdd574d2fedc7667d2e115bbdce78e72da1b122be0d6fb1a1c5c"
+          },
+          {
+            "profile": "terralith",
+            "workload": "lattice_vertices",
+            "samples": 3757,
+            "warmups": 1,
+            "repeats": 5,
+            "baseline_host_ms": [
+              2461.78845805116,
+              2312.533332966268,
+              2441.525083966553,
+              2326.7454999731854,
+              2162.7163749653846
+            ],
+            "candidate_host_ms": [
+              334.04075005091727,
+              350.68591695744544,
+              291.8736250139773,
+              281.69220802374184,
+              329.7076669987291
+            ],
+            "baseline_median_ms": 2326.7454999731854,
+            "candidate_median_ms": 329.7076669987291,
+            "median_speed_ratio": 7.056995432205567,
+            "compared_bytes_identical": true,
+            "max_reference_error": 6.886204232253723e-07,
+            "output_sha256": "f223ade07c5de98fcf093a28fe8a4168633ab65d0ecda6030271f8c7038f2e57"
+          },
+          {
+            "profile": "combined",
+            "workload": "mixed_queries",
+            "samples": 96,
+            "warmups": 1,
+            "repeats": 5,
+            "baseline_host_ms": [
+              51.648082910105586,
+              70.86908305063844,
+              73.11520795337856,
+              50.56024994701147,
+              52.413832978345454
+            ],
+            "candidate_host_ms": [
+              19.1674999659881,
+              12.909624958410859,
+              15.450375038199127,
+              13.00016709137708,
+              14.021208044141531
+            ],
+            "baseline_median_ms": 52.413832978345454,
+            "candidate_median_ms": 14.021208044141531,
+            "median_speed_ratio": 3.738182388659833,
+            "compared_bytes_identical": true,
+            "max_reference_error": 9.875477072762706e-07,
+            "output_sha256": "56a79be5fb076647c99680eac35bca870922b3137ff9ec6af662378347d66bee"
+          },
+          {
+            "profile": "combined",
+            "workload": "lattice_vertices",
+            "samples": 3757,
+            "warmups": 1,
+            "repeats": 5,
+            "baseline_host_ms": [
+              2335.855458979495,
+              2292.322124936618,
+              2309.6899590454996,
+              2400.6362500367686,
+              2802.9391249874607
+            ],
+            "candidate_host_ms": [
+              263.04445799905807,
+              261.6181669291109,
+              267.6464579999447,
+              312.7779170172289,
+              407.75366593152285
+            ],
+            "baseline_median_ms": 2335.855458979495,
+            "candidate_median_ms": 267.6464579999447,
+            "median_speed_ratio": 8.727391636096218,
+            "compared_bytes_identical": true,
+            "max_reference_error": 6.886204232253723e-07,
+            "output_sha256": "f223ade07c5de98fcf093a28fe8a4168633ab65d0ecda6030271f8c7038f2e57"
+          }
+        ]
+      },
+      {
+        "gpu_required": true,
+        "rows": [
+          {
+            "profile": "finite",
+            "workload": "mixed_queries",
+            "samples": 96,
+            "warmups": 1,
+            "repeats": 5,
+            "baseline_host_ms": [
+              18.10166600625962,
+              18.605625024065375,
+              25.455374969169497,
+              22.916333051398396,
+              28.092124965041876
+            ],
+            "candidate_host_ms": [
+              5.804833024740219,
+              5.453209043480456,
+              28.737291926518083,
+              20.97800001502037,
+              9.331083041615784
+            ],
+            "baseline_median_ms": 22.916333051398396,
+            "candidate_median_ms": 9.331083041615784,
+            "median_speed_ratio": 2.4559135257068907,
+            "compared_bytes_identical": true,
+            "max_reference_error": 5.460448380003666e-08,
+            "output_sha256": "25bc9cf27504907a1b4cdff475cbd9e7060f62009a068042632e04ed0eca4aa8"
+          },
+          {
+            "profile": "finite",
+            "workload": "lattice_vertices",
+            "samples": 3757,
+            "warmups": 1,
+            "repeats": 5,
+            "baseline_host_ms": [
+              40.09987507015467,
+              36.16995899938047,
+              35.67929100245237,
+              35.922624985687435,
+              36.1232910072431
+            ],
+            "candidate_host_ms": [
+              14.193125069141388,
+              9.977541980333626,
+              9.124999982304871,
+              9.334207978099585,
+              9.267625049687922
+            ],
+            "baseline_median_ms": 36.1232910072431,
+            "candidate_median_ms": 9.334207978099585,
+            "median_speed_ratio": 3.869989943656439,
+            "compared_bytes_identical": true,
+            "max_reference_error": 5.441731084113123e-08,
+            "output_sha256": "f792ad815f6a6a011dabb26abf82ac73a2b9933390814fb858f944ac5c8e088e"
+          },
+          {
+            "profile": "vanilla",
+            "workload": "mixed_queries",
+            "samples": 96,
+            "warmups": 1,
+            "repeats": 5,
+            "baseline_host_ms": [
+              108.65712503436953,
+              104.80079206172377,
+              107.06624994054437,
+              105.76395899988711,
+              105.94279190991074
+            ],
+            "candidate_host_ms": [
+              103.12149999663234,
+              101.9154170062393,
+              101.7432080116123,
+              102.38845902495086,
+              102.57345798891038
+            ],
+            "baseline_median_ms": 105.94279190991074,
+            "candidate_median_ms": 102.38845902495086,
+            "median_speed_ratio": 1.0347141945372351,
+            "compared_bytes_identical": true,
+            "max_reference_error": 1.0362908407254671e-06,
+            "output_sha256": "466702407b42245469dade88d1f9b94fec7bc9d8f4f92778cf34841d6011142b"
+          },
+          {
+            "profile": "vanilla",
+            "workload": "lattice_vertices",
+            "samples": 3757,
+            "warmups": 1,
+            "repeats": 5,
+            "baseline_host_ms": [
+              916.0554999252781,
+              881.4720420632511,
+              902.1437090123072,
+              910.969709046185,
+              920.6585839856416
+            ],
+            "candidate_host_ms": [
+              69.42129193339497,
+              68.61333304550499,
+              96.07149998191744,
+              69.40629100427032,
+              103.72745792847127
+            ],
+            "baseline_median_ms": 910.969709046185,
+            "candidate_median_ms": 69.42129193339497,
+            "median_speed_ratio": 13.122338747602088,
+            "compared_bytes_identical": true,
+            "max_reference_error": 6.886204232253723e-07,
+            "output_sha256": "0c2395b31e35480d473df1b6e9a682d880987abe9333181cf5158ed30abb20d2"
+          },
+          {
+            "profile": "terralith",
+            "workload": "mixed_queries",
+            "samples": 96,
+            "warmups": 1,
+            "repeats": 5,
+            "baseline_host_ms": [
+              183.18329099565744,
+              175.9644999401644,
+              176.3471249723807,
+              178.84991597384214,
+              177.6582089951262
+            ],
+            "candidate_host_ms": [
+              95.97129095345736,
+              94.69275001902133,
+              95.80029197968543,
+              95.66383401397616,
+              95.83574999123812
+            ],
+            "baseline_median_ms": 177.6582089951262,
+            "candidate_median_ms": 95.80029197968543,
+            "median_speed_ratio": 1.854464170451577,
+            "compared_bytes_identical": true,
+            "max_reference_error": 1.0266102079339867e-06,
+            "output_sha256": "c379626b7e90cdd574d2fedc7667d2e115bbdce78e72da1b122be0d6fb1a1c5c"
+          },
+          {
+            "profile": "terralith",
+            "workload": "lattice_vertices",
+            "samples": 3757,
+            "warmups": 1,
+            "repeats": 5,
+            "baseline_host_ms": [
+              1612.2554170433432,
+              1625.5598330171779,
+              1629.7972910106182,
+              1614.4081249367446,
+              1603.498708922416
+            ],
+            "candidate_host_ms": [
+              158.6623750627041,
+              134.25220898352563,
+              162.43024996947497,
+              133.64812510553747,
+              157.05429099034518
+            ],
+            "baseline_median_ms": 1614.4081249367446,
+            "candidate_median_ms": 157.05429099034518,
+            "median_speed_ratio": 10.279299691569646,
+            "compared_bytes_identical": true,
+            "max_reference_error": 6.886204232253723e-07,
+            "output_sha256": "f223ade07c5de98fcf093a28fe8a4168633ab65d0ecda6030271f8c7038f2e57"
+          },
+          {
+            "profile": "combined",
+            "workload": "mixed_queries",
+            "samples": 96,
+            "warmups": 1,
+            "repeats": 5,
+            "baseline_host_ms": [
+              178.70566598139703,
+              179.99945802148432,
+              176.16850009653717,
+              183.9429159881547,
+              177.05362499691546
+            ],
+            "candidate_host_ms": [
+              96.34220809675753,
+              92.9156249621883,
+              95.1652079820633,
+              94.17266596574336,
+              95.76075000222772
+            ],
+            "baseline_median_ms": 178.70566598139703,
+            "candidate_median_ms": 95.1652079820633,
+            "median_speed_ratio": 1.877846639236888,
+            "compared_bytes_identical": true,
+            "max_reference_error": 9.875477072762706e-07,
+            "output_sha256": "56a79be5fb076647c99680eac35bca870922b3137ff9ec6af662378347d66bee"
+          },
+          {
+            "profile": "combined",
+            "workload": "lattice_vertices",
+            "samples": 3757,
+            "warmups": 1,
+            "repeats": 5,
+            "baseline_host_ms": [
+              1602.223708992824,
+              1629.7138748923317,
+              1621.8516250373796,
+              1607.730875024572,
+              1622.1619590651244
+            ],
+            "candidate_host_ms": [
+              157.36295899841934,
+              133.67562496569008,
+              157.33091696165502,
+              132.52687500789762,
+              156.2846249435097
+            ],
+            "baseline_median_ms": 1621.8516250373796,
+            "candidate_median_ms": 156.2846249435097,
+            "median_speed_ratio": 10.3775507387474,
+            "compared_bytes_identical": true,
+            "max_reference_error": 6.886204232253723e-07,
+            "output_sha256": "f223ade07c5de98fcf093a28fe8a4168633ab65d0ecda6030271f8c7038f2e57"
+          }
+        ]
+      }
+    ],
+    "profiles": [
+      {
+        "name": "finite",
+        "wire_sha256": "62b3596d72aa5bec066229abbdb5570f91d8c025354ea43dcd64da1fa0009958"
+      },
+      {
+        "name": "vanilla",
+        "wire_sha256": "39c775ca58b6d084d4de060925df01d170c89caa09b9eaf7d33e55a915c8065a"
+      },
+      {
+        "name": "terralith",
+        "wire_sha256": "cf9ef7e0d83d91c5d99aa914101aad8b156ce9a8caa4050f71e81b190a1c0ca6"
+      },
+      {
+        "name": "combined",
+        "wire_sha256": "d4ac8f9040e39892de12b6fc6ecc46b3d9e961c3cba7f05a2ae9b53262967193"
+      }
+    ],
+    "source_sha256": {
+      "bend/density.bend": "01beac1b7443695c1507293a7d916489ac5441235c1e07290330691864b56aae",
+      "scripts/test_bend_interpolation.py": "3ffecfbe16d2ad6e667897cb300452bef45da6246f1204f329bb301232560a2b",
+      "scripts/test_bend_density.py": "5abbf51c93cc1b17059f7d128e1e6f3003bc9a48ebb68b2c7c873a28a37c2776"
+    }
+  },
+  "whole_region_regression": {
+    "scope": "Whole generated unlit base/material MCA output; no full-world parity or performance comparison",
+    "timing_scope": "Observational correctness-test response times; uncontrolled host load, not comparative benchmarks",
+    "bend_version": "existing executable",
+    "runs": [
+      {
+        "gpu_required": false,
+        "regions": [
+          {
+            "name": "ramp",
+            "region": [
+              -1,
+              0
+            ],
+            "chunks": 1024,
+            "world_min": -16,
+            "world_height": 32,
+            "mca_bytes": 4202496,
+            "sha256": "0967df8d1ce02aeffb9edef144b680135bee5d05c7a212d9d0395ad3045c2ba0",
+            "generation_response_host_ms": 4272.732125013135,
+            "encode_compress_write_response_host_ms": 2191.9630829943344,
+            "repeated_file_identical": true
+          },
+          {
+            "name": "islands",
+            "region": [
+              58593,
+              -58594
+            ],
+            "chunks": 1024,
+            "world_min": -16,
+            "world_height": 32,
+            "mca_bytes": 4202496,
+            "sha256": "441b750c0acfe64a7beb0aec810df858c777e18efb16f273864d2763bff175e0",
+            "generation_response_host_ms": 4326.415457995608,
+            "encode_compress_write_response_host_ms": 2511.889374931343,
+            "repeated_file_identical": true
+          }
+        ],
+        "chunk_streams_decoded": 2048,
+        "blocks_compared_to_generated_queries": 114688,
+        "requests_in_one_process": 98,
+        "expected_gpu_dispatches": 6,
+        "metal_commands_ms": [],
+        "sha256": "fcfe45fbf3749f31d58efd923609d9179d37ad0a892c672d749f6257f5ebddf6"
+      },
+      {
+        "gpu_required": true,
+        "regions": [
+          {
+            "name": "ramp",
+            "region": [
+              -1,
+              0
+            ],
+            "chunks": 1024,
+            "world_min": -16,
+            "world_height": 32,
+            "mca_bytes": 4202496,
+            "sha256": "0967df8d1ce02aeffb9edef144b680135bee5d05c7a212d9d0395ad3045c2ba0",
+            "generation_response_host_ms": 2189.760125009343,
+            "encode_compress_write_response_host_ms": 2174.702666932717,
+            "repeated_file_identical": true
+          },
+          {
+            "name": "islands",
+            "region": [
+              58593,
+              -58594
+            ],
+            "chunks": 1024,
+            "world_min": -16,
+            "world_height": 32,
+            "mca_bytes": 4202496,
+            "sha256": "441b750c0acfe64a7beb0aec810df858c777e18efb16f273864d2763bff175e0",
+            "generation_response_host_ms": 883.7168749887496,
+            "encode_compress_write_response_host_ms": 2451.1359579628333,
+            "repeated_file_identical": true
+          },
+          {
+            "name": "vanilla",
+            "region": [
+              -2,
+              3
+            ],
+            "chunks": 1024,
+            "world_min": -64,
+            "world_height": 384,
+            "mca_bytes": 4268032,
+            "sha256": "4e7a7ca1c88d36c95aa7dcbb85f4b8b70b4f5c1becdf29f882952c22c94975e4",
+            "generation_response_host_ms": 56436.05408293661,
+            "encode_compress_write_response_host_ms": 17157.579167047516,
+            "repeated_file_identical": true
+          },
+          {
+            "name": "terralith",
+            "region": [
+              -2,
+              3
+            ],
+            "chunks": 1024,
+            "world_min": -64,
+            "world_height": 384,
+            "mca_bytes": 4321280,
+            "sha256": "1ced9fcd260635ef79dc0aa480d41af1691b3c06a0bfb915fa3f0ebe8d692819",
+            "generation_response_host_ms": 143019.55550001003,
+            "encode_compress_write_response_host_ms": 18746.50854198262,
+            "repeated_file_identical": true
+          },
+          {
+            "name": "combined",
+            "region": [
+              -2,
+              3
+            ],
+            "chunks": 1024,
+            "world_min": -64,
+            "world_height": 384,
+            "mca_bytes": 4366336,
+            "sha256": "82fe58e75fdec83f1e677d9099a79b783c0dcb5bdfe3bc1343be4ef37fe02dd4",
+            "generation_response_host_ms": 154914.7566249594,
+            "encode_compress_write_response_host_ms": 16573.117124964483,
+            "repeated_file_identical": true
+          }
+        ],
+        "chunk_streams_decoded": 5120,
+        "blocks_compared_to_generated_queries": 2179072,
+        "requests_in_one_process": 242,
+        "expected_gpu_dispatches": 15,
+        "metal_commands_ms": [],
+        "sha256": "80e13880f8cb24b9389e86cfe4eb4e362f80fc7db08d91fc727756de0cef77b6"
+      }
+    ],
+    "source_sha256": {
+      "bend/binary.bend": "f716146b3a19403c4ad208ce37c2056f9ba023d6b76a3fecba5c3253185d9b68",
+      "bend/chunk.bend": "7aa37914a3941541f78909d0ab582ab956f972be7804c4abf97fdf07b839fe86",
+      "bend/chunk_catalog.bend": "666d5f98e2128a31a49f36ccdf0a1da7d7cb59067ce58d3cd1d0da3742963df3",
+      "bend/climate.bend": "57074782ae0f82c71d81fc5f21152af124a25c422b6ebd7a0d82037552ff2f19",
+      "bend/climate_batch.bend": "f65fbc7b463f5e093feb2364da0f504fa295088285917f7a04dc205bf1dc34fa",
+      "bend/compression.bend": "e42e1a312180ee0fce6faad39fc82b9a2e43ba05727e04d9a3c8e7651dd14130",
+      "bend/density.bend": "01beac1b7443695c1507293a7d916489ac5441235c1e07290330691864b56aae",
+      "bend/density_batch.bend": "51231a72efa798c9a31f1a6a841176ea50d1ac5644352b389e3d1a9bff30d99c",
+      "bend/density_lattice.bend": "0b02993df32e160b21c50b8ee33e003f2d7f3eb53645c91ab6699bed0e1a9ae8",
+      "bend/engine.bend": "01320e475fb6dabc1284ffd269cf8146acb67fac1087b5a9a262f199a9d4ea89",
+      "bend/generated_chunk.bend": "53c9f0aa02add6f7c207d079481129178c6e2b96eda544f2952eb1744b8cd63f",
+      "bend/generated_region.bend": "a2969fa86cd4fa8becf2192eb3b662cf6415c68e28a272716a2d2627b3f82531",
+      "bend/heightmaps.bend": "0b69c87d24ec3b27cbb082bb394205765154bf78c5c4db2c226fbc4ba3e2d997",
+      "bend/material.bend": "fea1e62174797c5b44634f3674dfc550d0178f207524193ed0d9416fbbf70f64",
+      "bend/material_batch.bend": "e34ee066c23a5328d279c5137ce2d107f2e4df661d63d3de373970d5cbee2073",
+      "bend/material_columns.bend": "3a5e24efd73b7e670982a1038028962d08c60c18ee0ed34d80b4db0dfbacca9b",
+      "bend/material_columns_data.bend": "4d702d0723ca85d6a7ae0dea1dd3873ab67f8d5f248de8dcd9e9442bd6de22ef",
+      "bend/material_program.bend": "f4b7e78629f7eecd991418eb00fa3face480954b300fa996e370d4c16c35128c",
+      "bend/nbt.bend": "7063555acf523d12269bd152e1e32981534009785b6a7653509f1a108b18cb57",
+      "bend/noise.bend": "80485dd8d18580a1044c8e55dbd03dab1b8dbdd9aa6681e1b8f6743fce928c1d",
+      "bend/numbers.bend": "858ea999141639aa26c559a2e06a87d62c58e93d0d8d3a793bb530b629060956",
+      "bend/packed.bend": "b4ebd29bc4d31d53ddcc221f64c84e68c5bde4a0fbbb51acfdaa9ddd01e2c23f",
+      "bend/palette.bend": "4f813fb89317308dc02c70d36cf5e3eeaf6d62a9a82477b781b976be5eee82ff",
+      "bend/precise.bend": "50ba7138300f2c913b2d75a554a78d88bfb09931c6cd58ecc884ab7024c73c01",
+      "bend/reader.bend": "e659a2cac6b8435f02fd0fe91902ceca918055d026ec1908845186bee4fdc0ac",
+      "bend/region.bend": "1455654e09969a0c80b6536b61b8da2f6070c80d007d2a3639b4a42cb873cc35",
+      "bend/registry.bend": "433b4dbb17b127dd322a11465a1111ddadd86a8682597310c062a194aa802296",
+      "bend/registry_chunk_catalog.bend": "032c8411f124d9876a34e2537b7dff1f9ccbd068a53b2e4a7423ae71ffe98652",
+      "bend/registry_climate.bend": "3daed5cbc3da3a4d4f91c65465e899b31fe219fe34af03731fc7ca1c49c572ad",
+      "bend/registry_density.bend": "0c1972222bbcdfead41b30ae0453f7e05e85ab7bb446c113c3a07a8b12f56cb7",
+      "bend/registry_material.bend": "b28952c7b085865d41f853d55e287c0c0bb8000442cc2c94b37325daaab8d29e",
+      "bend/registry_material_columns.bend": "9eb18ecf8327d35a9f1c00da86272b5a18447f203c7b7964377f782648a9846b",
+      "bend/registry_noise.bend": "ae6994d216acc9751c20e4df1e4ff62548c8af99c61e6b006155e2fbc3e1ca94",
+      "bend/registry_surface.bend": "7964afc9153879537d0fed15b811aaf88d1a0b41b210be339122e595ab76bd60",
+      "bend/registry_values.bend": "5bb1d3ab6bfed7cf640af35089a5ec1370cc2f686d7cfb8b210e7643e1b3d97f",
+      "bend/terrain_surface.bend": "26687ac40e62949ca563d7f31117207fa0eb053d82f51b58a14e84b9a2d4d652",
+      "bend/transport.bend": "2d7b2667aaf37b537de8be6c584acaeaec37377da475741bfe790a46d9c76f81",
+      "bend/word64.bend": "62e104fbbc56208d66457789a7f2ed3f5fe122f4a19068c3df9b3bbbf555e139"
+    },
+    "inputs": [
+      {
+        "name": "ramp",
+        "rbp_sha256": "aeaf4d184229f316e26c14a773b43c411f0965e8aab4a59a4cf7d81c57aeabd5"
+      },
+      {
+        "name": "islands",
+        "rbp_sha256": "c8ad8694ec0bab8306b6a83366232da32e902549122f0d2ec455bdc9059a0042"
+      },
+      {
+        "name": "vanilla",
+        "rbp_sha256": "39c775ca58b6d084d4de060925df01d170c89caa09b9eaf7d33e55a915c8065a"
+      },
+      {
+        "name": "terralith",
+        "rbp_sha256": "cf9ef7e0d83d91c5d99aa914101aad8b156ce9a8caa4050f71e81b190a1c0ca6"
+      },
+      {
+        "name": "combined",
+        "rbp_sha256": "d4ac8f9040e39892de12b6fc6ecc46b3d9e961c3cba7f05a2ae9b53262967193"
+      }
+    ]
+  },
+  "whole_mca_sha256_identical_to_pr38": true,
+  "lattice_boundary_cache_regression": {
+    "scope": "Resident top-level GPU density lattice and interpolation; no integrated terrain or complete-region benchmark",
+    "vertex_capacity": 1048576,
+    "maximum_axis_span_blocks": 4096,
+    "cpu_workers": 2,
+    "process_nice": 10,
+    "runs": [
+      {
+        "mode": "cpu",
+        "profiles": [
+          {
+            "name": "mixed",
+            "lattices": 6,
+            "validated_queries": 313,
+            "grid_prepare_host_ms": [
+              1.8014999805018306,
+              2.8371670050546527,
+              1.7108749598264694,
+              13.122707954607904
+            ],
+            "mixed_query_host_ms": [
+              4.750250023789704,
+              2.618500031530857,
+              4.721583100035787,
+              5.353999906219542
+            ],
+            "repeat_reorder_empty": "pass",
+            "overlapping_tiles": "byte-identical",
+            "program_seed_outside_misses": "direct Bend sampler",
+            "rejected_request_retains_cache": "pass",
+            "profile_and_numeric_prepare_invalidation": "pass"
+          },
+          {
+            "name": "vanilla",
+            "lattices": 6,
+            "validated_queries": 313,
+            "grid_prepare_host_ms": [
+              31.675999984145164,
+              6.67749997228384,
+              52.018584101460874,
+              1.7788750119507313
+            ],
+            "mixed_query_host_ms": [
+              3.2277500722557306,
+              4.13637503515929,
+              6.191750057041645,
+              2.918791025876999
+            ],
+            "repeat_reorder_empty": "pass",
+            "overlapping_tiles": "byte-identical",
+            "program_seed_outside_misses": "direct Bend sampler",
+            "rejected_request_retains_cache": "pass",
+            "profile_and_numeric_prepare_invalidation": "pass"
+          },
+          {
+            "name": "terralith",
+            "lattices": 6,
+            "validated_queries": 313,
+            "grid_prepare_host_ms": [
+              26.949833962135017,
+              5.192459095269442,
+              25.523124961182475,
+              0.5191250238567591
+            ],
+            "mixed_query_host_ms": [
+              2.5121670914813876,
+              3.124249982647598,
+              1.6090410063043237,
+              1.7074999632313848
+            ],
+            "repeat_reorder_empty": "pass",
+            "overlapping_tiles": "byte-identical",
+            "program_seed_outside_misses": "direct Bend sampler",
+            "rejected_request_retains_cache": "pass",
+            "profile_and_numeric_prepare_invalidation": "pass"
+          },
+          {
+            "name": "combined",
+            "lattices": 6,
+            "validated_queries": 313,
+            "grid_prepare_host_ms": [
+              25.07054095622152,
+              4.7547080321237445,
+              33.14166597556323,
+              0.38233399391174316
+            ],
+            "mixed_query_host_ms": [
+              2.512790961191058,
+              2.4881669087335467,
+              2.095417003147304,
+              1.714959042146802
+            ],
+            "repeat_reorder_empty": "pass",
+            "overlapping_tiles": "byte-identical",
+            "program_seed_outside_misses": "direct Bend sampler",
+            "rejected_request_retains_cache": "pass",
+            "profile_and_numeric_prepare_invalidation": "pass"
+          },
+          {
+            "name": "analytic",
+            "lattices": 6,
+            "validated_queries": 313,
+            "grid_prepare_host_ms": [
+              0.4075829638168216,
+              0.1953750615939498,
+              0.23166707251220942,
+              0.3645840333774686
+            ],
+            "mixed_query_host_ms": [
+              0.8219160372391343,
+              0.6973749259486794,
+              0.8234170963987708,
+              0.7933330489322543
+            ],
+            "repeat_reorder_empty": "pass",
+            "overlapping_tiles": "byte-identical",
+            "program_seed_outside_misses": "direct Bend sampler",
+            "rejected_request_retains_cache": "pass",
+            "profile_and_numeric_prepare_invalidation": "pass"
+          }
+        ],
+        "maximum_batch_queries": 4096,
+        "invalid_layouts": 65,
+        "requests_in_one_process": 258,
+        "expected_dispatches": 132,
+        "max_relative_or_absolute_error": 1.1118923261693725e-06,
+        "aggregate_sha256": "1fa562be9294622cba8392e4042c6ccb57c56fd7a42d212207c6f4f596ed3402",
+        "observed_metal_command_ms": []
+      },
+      {
+        "mode": "gpu_required",
+        "profiles": [
+          {
+            "name": "mixed",
+            "lattices": 6,
+            "validated_queries": 313,
+            "grid_prepare_host_ms": [
+              61.029916047118604,
+              1.1633329559117556,
+              1.1524170404300094,
+              4.586499999277294
+            ],
+            "mixed_query_host_ms": [
+              8.05008306633681,
+              5.147832911461592,
+              1.564375008456409,
+              5.094708991236985
+            ],
+            "repeat_reorder_empty": "pass",
+            "overlapping_tiles": "byte-identical",
+            "program_seed_outside_misses": "direct Bend sampler",
+            "rejected_request_retains_cache": "pass",
+            "profile_and_numeric_prepare_invalidation": "pass"
+          },
+          {
+            "name": "vanilla",
+            "lattices": 6,
+            "validated_queries": 313,
+            "grid_prepare_host_ms": [
+              61.15970900282264,
+              54.72145800013095,
+              962.7676670206711,
+              5.993708036839962
+            ],
+            "mixed_query_host_ms": [
+              177.20541707240045,
+              166.96937498636544,
+              88.86362495832145,
+              100.75199999846518
+            ],
+            "repeat_reorder_empty": "pass",
+            "overlapping_tiles": "byte-identical",
+            "program_seed_outside_misses": "direct Bend sampler",
+            "rejected_request_retains_cache": "pass",
+            "profile_and_numeric_prepare_invalidation": "pass"
+          },
+          {
+            "name": "terralith",
+            "lattices": 6,
+            "validated_queries": 313,
+            "grid_prepare_host_ms": [
+              76.92745805252343,
+              124.0625421050936,
+              1794.3399579962716,
+              7.934833993203938
+            ],
+            "mixed_query_host_ms": [
+              302.9367079725489,
+              296.8431249028072,
+              171.32120800670236,
+              169.13533303886652
+            ],
+            "repeat_reorder_empty": "pass",
+            "overlapping_tiles": "byte-identical",
+            "program_seed_outside_misses": "direct Bend sampler",
+            "rejected_request_retains_cache": "pass",
+            "profile_and_numeric_prepare_invalidation": "pass"
+          },
+          {
+            "name": "combined",
+            "lattices": 6,
+            "validated_queries": 313,
+            "grid_prepare_host_ms": [
+              73.98279197514057,
+              155.3402499994263,
+              11208.384250057861,
+              10.11725002899766
+            ],
+            "mixed_query_host_ms": [
+              306.37787503656,
+              501.12458399962634,
+              258.0603329697624,
+              221.13187506329268
+            ],
+            "repeat_reorder_empty": "pass",
+            "overlapping_tiles": "byte-identical",
+            "program_seed_outside_misses": "direct Bend sampler",
+            "rejected_request_retains_cache": "pass",
+            "profile_and_numeric_prepare_invalidation": "pass"
+          },
+          {
+            "name": "analytic",
+            "lattices": 6,
+            "validated_queries": 313,
+            "grid_prepare_host_ms": [
+              37.679458037018776,
+              5.875708069652319,
+              5.040457937866449,
+              4.0119580226019025
+            ],
+            "mixed_query_host_ms": [
+              6.147249951027334,
+              5.231499904766679,
+              6.04870798997581,
+              5.083249998278916
+            ],
+            "repeat_reorder_empty": "pass",
+            "overlapping_tiles": "byte-identical",
+            "program_seed_outside_misses": "direct Bend sampler",
+            "rejected_request_retains_cache": "pass",
+            "profile_and_numeric_prepare_invalidation": "pass"
+          }
+        ],
+        "maximum_batch_queries": 4096,
+        "invalid_layouts": 65,
+        "requests_in_one_process": 258,
+        "expected_dispatches": 132,
+        "max_relative_or_absolute_error": 1.1118923261693725e-06,
+        "aggregate_sha256": "1fa562be9294622cba8392e4042c6ccb57c56fd7a42d212207c6f4f596ed3402",
+        "observed_metal_command_ms": []
+      }
+    ],
+    "cpu_gpu_bytes_equal": true,
+    "profiles": [
+      {
+        "name": "mixed",
+        "wire_sha256": "ae4a8ef446edc2c30da8bc99f7937222659d26a87b58d03b41c22ca13457f360"
+      },
+      {
+        "name": "vanilla",
+        "wire_sha256": "39c775ca58b6d084d4de060925df01d170c89caa09b9eaf7d33e55a915c8065a"
+      },
+      {
+        "name": "terralith",
+        "wire_sha256": "cf9ef7e0d83d91c5d99aa914101aad8b156ce9a8caa4050f71e81b190a1c0ca6"
+      },
+      {
+        "name": "combined",
+        "wire_sha256": "d4ac8f9040e39892de12b6fc6ecc46b3d9e961c3cba7f05a2ae9b53262967193"
+      },
+      {
+        "name": "analytic",
+        "wire_sha256": "5870121670c80e62a6d36d5278c6021efc3a37056a58c5ea514114ac9b332d3e"
+      }
+    ],
+    "source_sha256": {
+      "bend/density_lattice.bend": "0b02993df32e160b21c50b8ee33e003f2d7f3eb53645c91ab6699bed0e1a9ae8",
+      "bend/registry_density.bend": "0c1972222bbcdfead41b30ae0453f7e05e85ab7bb446c113c3a07a8b12f56cb7",
+      "bend/engine.bend": "01320e475fb6dabc1284ffd269cf8146acb67fac1087b5a9a262f199a9d4ea89",
+      "scripts/test_bend_density_lattice.py": "be262e0191ac17da3279fda8aaa81ded4d09888cf9066096fe0f5eaf08a125d4"
+    }
+  },
+  "lattice_sha256_identical_to_recorded_baseline": true,
+  "minecraft_validation": {
+    "result": "pass",
+    "files": 7,
+    "chunks_per_file": 1024,
+    "reads_per_chunk": 2,
+    "blocks_verified": 671088640,
+    "running_world_edit_persistence": "Not exercised by component decoder tests"
+  },
+  "host_build": {
+    "command": "RUST_TEST_THREADS=2 CARGO_BUILD_JOBS=2 nice -n 10 ./gradlew gpuTestClasses build -PretinaHostOnly --max-workers=2 --no-parallel",
+    "result": "BUILD SUCCESSFUL in 1m 5s",
+    "native_tests": {
+      "passed": 64,
+      "failed": 0,
+      "ignored_real_gpu_or_fixture_specific": 11
+    },
+    "loaders": [
+      "Fabric 26.3",
+      "NeoForge 26.3"
+    ]
+  },
+  "gradle_interpolation_task": {
+    "command": "nice -n 10 ./gradlew :common:bendInterpolationTest -PbendSkipBuild -PretinaHostOnly --max-workers=2 --no-parallel",
+    "result": "BUILD SUCCESSFUL in 29s"
+  },
+  "semantic_change": "Zero-weight nonfinite corners no longer contaminate finite endpoints; contributing overflow remains nonfinite. Finite regression outputs and full files remain byte-identical.",
+  "remaining_work": [
+    "Per-field reuse and bulk material scaling",
+    "Caves, fluids, features, ores, structures and computed lighting parity",
+    "Atomic publication, shared scheduling, DH cache and backend world-type/runtime integration",
+    "Complete lit/compressed Rust-versus-Bend benchmarks and actual world save/edit tests"
+  ],
+  "java_worker_validation": {
+    "result": "pass",
+    "executions": [
+      "CPU",
+      "GPU_REQUIRED"
+    ],
+    "concurrent_writes_per_execution": 2,
+    "queued_cancellations": 2,
+    "actual_io_open_failure": true,
+    "worker_cleanup": "pass"
+  }
+}

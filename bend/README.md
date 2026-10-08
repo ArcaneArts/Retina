@@ -285,10 +285,29 @@ through `density_batch.bend`, retaining the model between requests. Additional
 material/aquifer programs stay in the lossless input tape. Java only transports
 commands and bytes. Material predicates 40..54, shared GPU lattice caches,
 surface extraction and generated regions remain pending.
-Per-query interpolation currently reevaluates its corners and stores all node
-values; it is deliberately unoptimized. Diagnostic device times are not an
-end-to-end benchmark or evidence of a Rust throughput improvement. Region-sized
-lattice reuse and live-value reuse need measurement during integration.
+Registered interpolation evaluates only contributing corners: one at an exact
+vertex, two on an edge, four on a face and eight in the interior. Fractional
+samples retain the same trilinear formula. Endpoint selection also prevents an
+unused overflowing corner from contaminating a valid sample. This deliberately
+corrects the old zero-times-nonfinite behavior. Fields still store all node
+values and repeat neighboring contributing samples; per-field reuse and
+live-value reuse remain performance work. Diagnostic device times are not an
+end-to-end benchmark or evidence of a Rust throughput improvement.
+
+```sh
+nice -n 10 ./gradlew :common:bendInterpolationTest -PretinaHostOnly --max-workers=2 --no-parallel -PproveMetal \
+  -PbendDensityRegistryProfiles=/absolute/vanilla.json=/absolute/vanilla.rbp,/absolute/terralith.json=/absolute/terralith.rbp
+python3 scripts/test_bend_interpolation.py --skip-build --baseline /absolute/baseline/engine \
+  --profile /absolute/vanilla.json /absolute/vanilla.rbp
+```
+
+Compile both executables before using the optional A/B comparison. It alternates
+serial warm resident query/lattice calls with two CPU workers and nice +10,
+compares every cached lattice vertex byte-for-byte, and independently checks
+arbitrary query probes. The correctness fixtures cover every combination of
+aligned/fractional axes, nested and transformed coordinates, signed/far world
+positions and unused overflow on each axis. They do not claim full generator
+parity or complete-region throughput.
 
 ```sh
 nice -n 10 ./gradlew bendRegistryDensityTest -PretinaHostOnly --max-workers=2 -PproveMetal \

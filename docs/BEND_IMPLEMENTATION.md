@@ -353,3 +353,38 @@ columns and 2 seconds in surface/climate. Host load is uncontrolled and these
 are component response times, not complete lit/featured region comparisons.
 Profile density-field reuse and bulk material evaluation before production
 integration; do not hide this cost behind the earlier small-query results.
+
+The generated-region cycle merged in [PR #38](https://github.com/ArcaneArts/Retina/pull/38),
+commit `cdd0bd7`; both actual push/PR CI builds passed.
+
+Registered trilinear fields now evaluate only contributing corners. Exact
+vertices return one sample directly; edges/faces evaluate two/four rather than
+eight. Fractional interpolation keeps its formula, while endpoints deliberately
+ignore unused nonfinite samples instead of multiplying them by zero. CPU and
+actual Metal checks cover all alignment combinations, nested/transformed fields,
+full seeds and signed/far coordinates. The prior compiled PR38 worker is the A/B
+baseline; both executables use two CPU workers, nice +10, one warmup and five
+serial alternating timed repetitions, with compilation completed first.
+
+On the Apple M4 Max, loaded-profile GPU-required lattice host response improves
+by 10.28–13.12x, and CPU lattice host response by 6.65–8.73x. Mixed-query GPU gains
+range from 1.03–1.88x; do not generalize lattice gains to arbitrary calls or the
+complete generator. All 3,757 cached vertices per profile/backend comparison
+match byte-for-byte, with independent arbitrary probes also passing. The stock
+runtime observer confirms 18 Metal commands for the alignment/overflow checks.
+Evidence is recorded in `docs/benchmarks/bend-interpolation-corners.json`.
+
+Whole generated-region regression checks independently decode 7,168 records and
+compare queried blocks/heightmaps. All seven full MCA file hashes are identical
+to PR38, including vanilla, Terralith and combined full-height outputs; repeated
+writes are also identical. Existing lattice boundary/cache checks pass on both
+CPU and GPU, with their aggregate hashes unchanged from the recorded baseline.
+Minecraft reads/reopens all seven files twice, checking 671,088,640 blocks.
+Concurrent Java region writers, queued cancellation, actual file-open failure
+and worker cleanup also pass. The full host Fabric/NeoForge build and 64 native
+unit tests pass. Full-tile correctness response times remain tens to hundreds
+of seconds, so material-stage scaling still needs substantial improvement.
+
+Neighboring contributing samples still repeat field work. Per-field reuse,
+bulk material evaluation and the original feature/runtime parity items remain
+required; this change does not expose a partial Bend world type.
