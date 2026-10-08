@@ -395,3 +395,68 @@ Java checks concurrent callers on both CPU and GPU. Stock Metal command-buffer
 observation verifies actual execution with output matching the normal binary.
 These are component checks; material context generation, final voxel placement
 and complete-region performance are not established by them.
+
+### Derived material columns (component commands 21..24)
+
+Command **21** takes an empty payload and projects the base stone/water palette
+IDs and `registry_program.surface_noises` (exactly three registered noise IDs)
+in Bend. Numeric and material preparation must already exist. Palette entry
+zero must be `minecraft:air`; IDs and references are checked against the actual
+resident arrays. The six acknowledgement U32s are stone, water, palette count,
+depth-noise ID, secondary-noise ID and band-noise ID. Invalid projection returns
+726 and preserves prior state. Numeric/material preparation errors remain
+716/725. Success drops only derived block runs.
+
+Command **22** takes an empty payload and generates compact vertical material
+runs for the current surface tile on the explicitly selected CPU/GPU backend.
+The matching density lattice must cover one extra column on all four X/Z sides
+for central-difference slopes. Request a descriptor with command 18 for that
+expanded tile, submit it to 13, and generate the central surface tile with 16
+before 22. Signed bounds, full seeds and world limits must match. Work is bounded
+to 134,217,728 voxel positions per tile; larger worlds can use smaller tiles.
+The acknowledgement is width, depth, column count and total run count. Missing
+prepared blocks/surface data returns 727, incompatible halo/seed/spacing or
+oversized work returns 728, and an actual invalid material result/biome returns
+729 without replacing an existing result. No Java terrain evaluation occurs.
+
+Bend caches each column's bilinear density layers once and interpolates Y while
+finding all solid intervals. It derives registered noise-based soil depth,
+secondary depth noise, terracotta offsets, integer-height slopes, preliminary
+surface height, top/bottom stone depth and water context before evaluating the
+per-biome material DAG. Solid intervals and floating islands are preserved.
+Runs are exhaustive, coalesced and bottom-up, with half-open offsets relative
+to the world minimum Y. Each material is an exported palette ID. Queries reuse
+the stored runs rather than reevaluating terrain or materials.
+
+Command **23** takes U32 count (0..4096), then five U32s per query: signed X/Y/Z
+bits and low/high seed words. Each response is `present, material` (two U32s);
+a coordinate/seed/world-height miss returns `0, 0xffffffff`.
+
+Command **24** takes U32 count (0..256), then four U32s per query: signed X/Z bits
+and low/high seed words. A miss is one zero U32. A present result is U32 one,
+signed geometric first-free Y, biome ID, five F32s (soil depth, slope, band
+shift, secondary noise, preliminary surface), U32 run count, then that many
+`startOffset, endOffset, material` U32 triples. Geometric height describes the
+input density, before decorations or later voxel transformations; final NBT
+heightmaps still need to be assembled from final block data. The query bound
+keeps even 4096 one-block runs per column below the frame byte limit.
+
+Successful density-lattice, surface-config or surface-tile replacements drop
+derived runs while retaining material programs and block configuration.
+Successful material/numeric/profile replacements invalidate their dependent
+state. Rejected commands preserve it. These component commands do not yet
+implement cave masks, aquifers, lake barriers, coastline remapping, underground
+biome changes, decorations or complete generated MCA output.
+
+```
+nice -n 10 ./gradlew bendMaterialColumnsTest -PretinaHostOnly --max-workers=2 -PproveMetal \
+  -PbendDensityRegistryProfiles=/absolute/vanilla.json=/absolute/vanilla.rbp,/absolute/terralith.json=/absolute/terralith.rbp
+```
+
+Independent scalar checks cover every queried block and context, floating
+intervals, strict zero-density boundaries, empty/solid/height-mode worlds,
+submerged columns, distant/signed coordinates, invalidation and malformed
+inputs. Java callers also exercise concurrent resident voxel queries. Diagnostic
+stock-runtime timestamps verify real Metal dispatch and identical normal-worker
+output. These are component checks; host timings include preceding lattice and
+surface construction and are not full-region performance measurements.

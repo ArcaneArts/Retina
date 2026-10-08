@@ -69,5 +69,5 @@ def calculate(+model: Q.Model,+materials: M.Model,queries: Array<Request>) -> Ar
 
 @unsafe
 def execute(+model: Q.Model,+materials: M.Model,queries: Array<Request>) -> Computed:
-  rows : Array<Q.Outputs> = calculate!(model,materials,queries)
+  rows : Array<Q.Outputs> = calculate!(model,M.rules(materials),queries)
   Computed{model,materials,rows}

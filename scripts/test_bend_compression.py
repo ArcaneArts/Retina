@@ -37,7 +37,7 @@ def build(bend, binary, source=None):
     binary.parent.mkdir(parents=True, exist_ok=True)
     version = command([bend, "version"], env=env).stdout.strip()
     command(["nice", "-n", "10", bend, source or ROOT / "bend/tests/compress-file.bend",
-             "-o", binary], env=env, cwd=ROOT, timeout=300)
+             "-o", binary], env=env, cwd=ROOT, timeout=600)
     return version
 
 

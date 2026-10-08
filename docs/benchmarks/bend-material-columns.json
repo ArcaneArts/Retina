@@ -1,0 +1,789 @@
+{
+  "scope": "Derived material context and compact block-run component; complete generated regions pending",
+  "bend_version": "bend 2.0.36",
+  "runs": [
+    {
+      "gpu_required": false,
+      "profiles": [
+        {
+          "name": "ramp",
+          "tiles": 3,
+          "build_surface_and_blocks_host_ms": [
+            1.683166017755866,
+            1.234999974258244,
+            0.6877919659018517
+          ]
+        },
+        {
+          "name": "islands",
+          "tiles": 3,
+          "build_surface_and_blocks_host_ms": [
+            1.9863750785589218,
+            0.7686249446123838,
+            0.8862079121172428
+          ]
+        },
+        {
+          "name": "solid",
+          "tiles": 3,
+          "build_surface_and_blocks_host_ms": [
+            1.3899999903514981,
+            1.1936660157516599,
+            1.0707919718697667
+          ]
+        },
+        {
+          "name": "empty",
+          "tiles": 3,
+          "build_surface_and_blocks_host_ms": [
+            1.0793330147862434,
+            1.2493339600041509,
+            0.9835419477894902
+          ]
+        },
+        {
+          "name": "explicit",
+          "tiles": 3,
+          "build_surface_and_blocks_host_ms": [
+            1.0684579610824585,
+            1.2184579391032457,
+            0.36304211243987083
+          ]
+        },
+        {
+          "name": "probe_minimum",
+          "tiles": 3,
+          "build_surface_and_blocks_host_ms": [
+            0.8071248885244131,
+            1.5085829654708505,
+            0.6902919849380851
+          ]
+        },
+        {
+          "name": "non_power_cells",
+          "tiles": 3,
+          "build_surface_and_blocks_host_ms": [
+            3.0990000814199448,
+            1.883666031062603,
+            1.02304108440876
+          ]
+        },
+        {
+          "name": "thin",
+          "tiles": 3,
+          "build_surface_and_blocks_host_ms": [
+            0.5773339653387666,
+            0.6548749515786767,
+            0.33549999352544546
+          ]
+        },
+        {
+          "name": "submerged",
+          "tiles": 3,
+          "build_surface_and_blocks_host_ms": [
+            0.7547499844804406,
+            1.2344169663265347,
+            0.5128750344738364
+          ]
+        },
+        {
+          "name": "no_water",
+          "tiles": 3,
+          "build_surface_and_blocks_host_ms": [
+            1.3496249448508024,
+            1.518749981187284,
+            1.044000033289194
+          ]
+        },
+        {
+          "name": "top_sliver",
+          "tiles": 1,
+          "build_surface_and_blocks_host_ms": [
+            0.9127090452238917
+          ]
+        },
+        {
+          "name": "vanilla",
+          "tiles": 2,
+          "build_surface_and_blocks_host_ms": [
+            299.3469589855522,
+            223.5081249382347
+          ]
+        },
+        {
+          "name": "terralith",
+          "tiles": 2,
+          "build_surface_and_blocks_host_ms": [
+            420.911333989352,
+            361.9378749281168
+          ]
+        },
+        {
+          "name": "combined",
+          "tiles": 2,
+          "build_surface_and_blocks_host_ms": [
+            532.1113750105724,
+            449.9447080306709
+          ]
+        }
+      ],
+      "voxel_queries_checked": 7641,
+      "max_context_normalized_error": 7.203654028703488e-07,
+      "invalid_profiles_rejected": 18,
+      "requests_in_one_process": 1602,
+      "expected_gpu_dispatches": 311,
+      "metal_commands_ms": [],
+      "sha256": "013c7fdb0c3a51406c8748b82efc77a7fd623c46a9430c2749ca01ad22014126"
+    },
+    {
+      "gpu_required": true,
+      "profiles": [
+        {
+          "name": "ramp",
+          "tiles": 3,
+          "build_surface_and_blocks_host_ms": [
+            112.83195798750967,
+            26.52404096443206,
+            13.476749998517334
+          ]
+        },
+        {
+          "name": "islands",
+          "tiles": 3,
+          "build_surface_and_blocks_host_ms": [
+            18.953834078274667,
+            18.678875057958066,
+            17.896790988743305
+          ]
+        },
+        {
+          "name": "solid",
+          "tiles": 3,
+          "build_surface_and_blocks_host_ms": [
+            26.89779200591147,
+            25.972374947741628,
+            25.59816697612405
+          ]
+        },
+        {
+          "name": "empty",
+          "tiles": 3,
+          "build_surface_and_blocks_host_ms": [
+            13.583207968622446,
+            13.98066699039191,
+            12.606375035829842
+          ]
+        },
+        {
+          "name": "explicit",
+          "tiles": 3,
+          "build_surface_and_blocks_host_ms": [
+            15.244833077304065,
+            22.597417002543807,
+            5.6321670999750495
+          ]
+        },
+        {
+          "name": "probe_minimum",
+          "tiles": 3,
+          "build_surface_and_blocks_host_ms": [
+            22.342415992170572,
+            27.148624998517334,
+            13.192375074140728
+          ]
+        },
+        {
+          "name": "non_power_cells",
+          "tiles": 3,
+          "build_surface_and_blocks_host_ms": [
+            24.535208009183407,
+            28.160625020973384,
+            15.904915984719992
+          ]
+        },
+        {
+          "name": "thin",
+          "tiles": 3,
+          "build_surface_and_blocks_host_ms": [
+            5.647166050039232,
+            5.413625040091574,
+            5.166167044080794
+          ]
+        },
+        {
+          "name": "submerged",
+          "tiles": 3,
+          "build_surface_and_blocks_host_ms": [
+            22.942500072531402,
+            27.11470890790224,
+            13.35804199334234
+          ]
+        },
+        {
+          "name": "no_water",
+          "tiles": 3,
+          "build_surface_and_blocks_host_ms": [
+            22.715792059898376,
+            27.31195802334696,
+            13.034207979217172
+          ]
+        },
+        {
+          "name": "top_sliver",
+          "tiles": 1,
+          "build_surface_and_blocks_host_ms": [
+            22.06112490966916
+          ]
+        },
+        {
+          "name": "vanilla",
+          "tiles": 2,
+          "build_surface_and_blocks_host_ms": [
+            686.5527079207823,
+            1073.8040840951726
+          ]
+        },
+        {
+          "name": "terralith",
+          "tiles": 2,
+          "build_surface_and_blocks_host_ms": [
+            1564.1400419408455,
+            4248.831207980402
+          ]
+        },
+        {
+          "name": "combined",
+          "tiles": 2,
+          "build_surface_and_blocks_host_ms": [
+            1555.932458024472,
+            5153.274958953261
+          ]
+        }
+      ],
+      "voxel_queries_checked": 7641,
+      "max_context_normalized_error": 7.203654028703488e-07,
+      "invalid_profiles_rejected": 18,
+      "requests_in_one_process": 1602,
+      "expected_gpu_dispatches": 311,
+      "metal_commands_ms": [],
+      "sha256": "013c7fdb0c3a51406c8748b82efc77a7fd623c46a9430c2749ca01ad22014126"
+    }
+  ],
+  "actual_metal_proof": {
+    "gpu_required": true,
+    "profiles": [
+      {
+        "name": "ramp",
+        "tiles": 3,
+        "build_surface_and_blocks_host_ms": [
+          89.77295795921236,
+          26.43070789054036,
+          12.834042077884078
+        ]
+      },
+      {
+        "name": "islands",
+        "tiles": 3,
+        "build_surface_and_blocks_host_ms": [
+          17.907958012074232,
+          18.057124922052026,
+          17.64804101549089
+        ]
+      },
+      {
+        "name": "solid",
+        "tiles": 3,
+        "build_surface_and_blocks_host_ms": [
+          26.117625064216554,
+          26.138041983358562,
+          25.406082975678146
+        ]
+      },
+      {
+        "name": "empty",
+        "tiles": 3,
+        "build_surface_and_blocks_host_ms": [
+          13.92345898784697,
+          13.036082964390516,
+          12.361416942439973
+        ]
+      },
+      {
+        "name": "explicit",
+        "tiles": 3,
+        "build_surface_and_blocks_host_ms": [
+          14.579083072021604,
+          21.789666963741183,
+          5.540166050195694
+        ]
+      },
+      {
+        "name": "probe_minimum",
+        "tiles": 3,
+        "build_surface_and_blocks_host_ms": [
+          22.205332992598414,
+          26.493833982385695,
+          12.686499976553023
+        ]
+      },
+      {
+        "name": "non_power_cells",
+        "tiles": 3,
+        "build_surface_and_blocks_host_ms": [
+          23.257417022250593,
+          27.782958932220936,
+          15.485457959584892
+        ]
+      },
+      {
+        "name": "thin",
+        "tiles": 3,
+        "build_surface_and_blocks_host_ms": [
+          5.801332998089492,
+          5.412957980297506,
+          4.632290918380022
+        ]
+      },
+      {
+        "name": "submerged",
+        "tiles": 3,
+        "build_surface_and_blocks_host_ms": [
+          21.811542101204395,
+          26.394334039650857,
+          12.725499924272299
+        ]
+      },
+      {
+        "name": "no_water",
+        "tiles": 3,
+        "build_surface_and_blocks_host_ms": [
+          21.742583019658923,
+          26.48716699331999,
+          12.867833022028208
+        ]
+      },
+      {
+        "name": "top_sliver",
+        "tiles": 1,
+        "build_surface_and_blocks_host_ms": [
+          20.782541017979383
+        ]
+      },
+      {
+        "name": "vanilla",
+        "tiles": 2,
+        "build_surface_and_blocks_host_ms": [
+          679.0461249183863,
+          1078.430708963424
+        ]
+      },
+      {
+        "name": "terralith",
+        "tiles": 2,
+        "build_surface_and_blocks_host_ms": [
+          1559.4191659474745,
+          4273.007957963273
+        ]
+      },
+      {
+        "name": "combined",
+        "tiles": 2,
+        "build_surface_and_blocks_host_ms": [
+          1553.970207925886,
+          4960.552416974679
+        ]
+      }
+    ],
+    "voxel_queries_checked": 7641,
+    "max_context_normalized_error": 7.203654028703488e-07,
+    "invalid_profiles_rejected": 18,
+    "requests_in_one_process": 1602,
+    "expected_gpu_dispatches": 311,
+    "metal_commands_ms": [
+      3.440917,
+      2.525375,
+      20.662,
+      0.49375,
+      18.490667,
+      1.146833,
+      18.616333,
+      0.934375,
+      0.952625,
+      23.678375,
+      0.488625,
+      23.696083,
+      0.936708,
+      24.0375,
+      0.95775,
+      1.326417,
+      9.8245,
+      0.543958,
+      9.667917,
+      1.33775,
+      9.745625,
+      0.934167,
+      1.227042,
+      1.048208,
+      1.097708,
+      14.930667,
+      0.536625,
+      15.061125,
+      1.103375,
+      14.898167,
+      1.037167,
+      1.0935,
+      15.069958,
+      0.494417,
+      14.93375,
+      1.079208,
+      14.883375,
+      1.019292,
+      1.216292,
+      14.537875,
+      0.510542,
+      14.496875,
+      1.049208,
+      14.589875,
+      1.127083,
+      0.958208,
+      10.387,
+      1.09325,
+      0.891583,
+      10.141208,
+      1.232125,
+      1.28975,
+      10.594625,
+      0.98025,
+      1.17825,
+      0.672917,
+      0.982083,
+      23.716125,
+      0.508083,
+      23.824375,
+      0.952875,
+      23.801,
+      0.66725,
+      0.956708,
+      23.783625,
+      0.511083,
+      23.800667,
+      1.00775,
+      23.762417,
+      0.660292,
+      0.881375,
+      23.148042,
+      0.51775,
+      23.18875,
+      0.899875,
+      23.3365,
+      0.63675,
+      1.020375,
+      0.67575,
+      1.443083,
+      10.183583,
+      0.51325,
+      10.361667,
+      1.50425,
+      10.17475,
+      0.686125,
+      1.449375,
+      10.027583,
+      0.516083,
+      10.058,
+      1.502917,
+      9.961375,
+      0.668583,
+      1.31625,
+      9.70225,
+      0.521125,
+      9.749583,
+      1.356583,
+      9.786,
+      0.623125,
+      1.397,
+      0.959958,
+      1.006583,
+      11.940792,
+      0.553667,
+      11.918458,
+      1.024,
+      12.128,
+      0.893042,
+      0.993583,
+      18.972292,
+      0.549083,
+      19.00625,
+      1.024208,
+      19.015542,
+      0.926083,
+      1.003375,
+      2.797375,
+      0.507833,
+      2.82425,
+      0.956625,
+      2.739625,
+      0.631375,
+      1.25175,
+      0.992875,
+      1.233125,
+      18.651,
+      0.531333,
+      18.731417,
+      1.228125,
+      18.894,
+      0.980875,
+      1.017417,
+      23.631208,
+      0.521083,
+      23.854833,
+      0.997125,
+      23.714875,
+      0.969625,
+      1.319417,
+      9.703167,
+      0.53075,
+      9.72275,
+      1.459667,
+      9.68625,
+      0.943,
+      1.239625,
+      1.044,
+      1.290625,
+      20.180375,
+      0.5025,
+      20.17075,
+      1.327625,
+      20.22175,
+      1.029042,
+      0.936667,
+      25.13375,
+      0.511875,
+      25.627125,
+      1.077875,
+      25.072375,
+      1.093833,
+      1.624375,
+      12.065875,
+      0.50825,
+      12.15525,
+      1.524292,
+      12.192583,
+      1.118667,
+      1.4635,
+      1.066125,
+      0.991125,
+      2.641625,
+      0.525083,
+      2.692,
+      1.015292,
+      2.629375,
+      0.87775,
+      1.005,
+      2.5955,
+      0.5205,
+      2.600833,
+      0.958125,
+      2.719792,
+      0.935542,
+      1.006542,
+      2.119125,
+      0.519708,
+      2.1075,
+      0.935,
+      2.0775,
+      0.653125,
+      0.976417,
+      0.985542,
+      1.168792,
+      18.625625,
+      0.505292,
+      18.877,
+      1.2015,
+      18.718125,
+      0.985833,
+      0.937708,
+      23.775375,
+      0.5075,
+      24.131458,
+      1.026958,
+      23.656625,
+      0.972,
+      1.31975,
+      9.698125,
+      0.522125,
+      9.767625,
+      1.351417,
+      10.019875,
+      0.943125,
+      1.243875,
+      0.9845,
+      1.229625,
+      18.723792,
+      0.523125,
+      18.728625,
+      1.19975,
+      18.645292,
+      1.01175,
+      0.967333,
+      23.831542,
+      0.531417,
+      23.875583,
+      0.970375,
+      23.729875,
+      0.970667,
+      1.334583,
+      9.66125,
+      0.523333,
+      9.688292,
+      1.354958,
+      9.698083,
+      0.938167,
+      1.215625,
+      0.970375,
+      1.027875,
+      17.576417,
+      0.552625,
+      17.300125,
+      1.056625,
+      17.46625,
+      0.88125,
+      1.00725,
+      290.68225,
+      16.131333,
+      339.23325,
+      1.04225,
+      342.917125,
+      16.02175,
+      338.338,
+      283.522708,
+      25.803417,
+      768.021375,
+      1.079667,
+      764.136375,
+      24.966292,
+      762.598792,
+      182.198,
+      29.172625,
+      490.867,
+      19.00475,
+      1016.55725,
+      2.979542,
+      1010.8845,
+      18.776042,
+      1004.34775,
+      496.962458,
+      24.412042,
+      3750.189333,
+      3.094625,
+      3689.39475,
+      23.90275,
+      3738.445125,
+      315.072,
+      37.81675,
+      494.433417,
+      19.082375,
+      1007.150042,
+      2.904208,
+      1005.641583,
+      18.652625,
+      1006.854042,
+      493.44525,
+      23.56975,
+      4442.335167,
+      5.54075,
+      4413.282625,
+      23.421417,
+      4433.594042,
+      312.46475,
+      37.207417,
+      0.976208,
+      0.87275,
+      7.182042,
+      1.00125,
+      0.835792,
+      7.192375,
+      0.987,
+      0.769125,
+      7.515125,
+      0.99275,
+      0.769,
+      9.903875,
+      0.995125,
+      0.868625,
+      4.962583
+    ],
+    "sha256": "013c7fdb0c3a51406c8748b82efc77a7fd623c46a9430c2749ca01ad22014126"
+  },
+  "validated_on": "macOS arm64, Apple M4 Max Metal; two Bend CPU workers; reduced priority",
+  "invalid_evaluated_cases_per_backend": [
+    "result_outside_palette",
+    "result_fraction",
+    "result_nonfinite",
+    "context_nonfinite",
+    "missing_biome"
+  ],
+  "source_sha256": {
+    "bend/binary.bend": "f716146b3a19403c4ad208ce37c2056f9ba023d6b76a3fecba5c3253185d9b68",
+    "bend/chunk.bend": "7aa37914a3941541f78909d0ab582ab956f972be7804c4abf97fdf07b839fe86",
+    "bend/climate.bend": "57074782ae0f82c71d81fc5f21152af124a25c422b6ebd7a0d82037552ff2f19",
+    "bend/climate_batch.bend": "f65fbc7b463f5e093feb2364da0f504fa295088285917f7a04dc205bf1dc34fa",
+    "bend/compression.bend": "e42e1a312180ee0fce6faad39fc82b9a2e43ba05727e04d9a3c8e7651dd14130",
+    "bend/density.bend": "0c0a88958c71598112c879b587112bd00e97d838b57262f74496f772150df620",
+    "bend/density_batch.bend": "51231a72efa798c9a31f1a6a841176ea50d1ac5644352b389e3d1a9bff30d99c",
+    "bend/density_lattice.bend": "0b02993df32e160b21c50b8ee33e003f2d7f3eb53645c91ab6699bed0e1a9ae8",
+    "bend/engine.bend": "acfd6033a3a11976d693f3b6a16d60a9f14aac1e0eb6016d606b63fd66ee4b4c",
+    "bend/heightmaps.bend": "0b69c87d24ec3b27cbb082bb394205765154bf78c5c4db2c226fbc4ba3e2d997",
+    "bend/material.bend": "fea1e62174797c5b44634f3674dfc550d0178f207524193ed0d9416fbbf70f64",
+    "bend/material_batch.bend": "e34ee066c23a5328d279c5137ce2d107f2e4df661d63d3de373970d5cbee2073",
+    "bend/material_columns.bend": "3a5e24efd73b7e670982a1038028962d08c60c18ee0ed34d80b4db0dfbacca9b",
+    "bend/material_columns_data.bend": "a53d7c52503e624c0b8f0be2f24ba132366c9521c54d50dbb4ebc08cab488c0e",
+    "bend/material_program.bend": "f4b7e78629f7eecd991418eb00fa3face480954b300fa996e370d4c16c35128c",
+    "bend/nbt.bend": "7063555acf523d12269bd152e1e32981534009785b6a7653509f1a108b18cb57",
+    "bend/noise.bend": "80485dd8d18580a1044c8e55dbd03dab1b8dbdd9aa6681e1b8f6743fce928c1d",
+    "bend/numbers.bend": "858ea999141639aa26c559a2e06a87d62c58e93d0d8d3a793bb530b629060956",
+    "bend/packed.bend": "b4ebd29bc4d31d53ddcc221f64c84e68c5bde4a0fbbb51acfdaa9ddd01e2c23f",
+    "bend/palette.bend": "4f813fb89317308dc02c70d36cf5e3eeaf6d62a9a82477b781b976be5eee82ff",
+    "bend/precise.bend": "50ba7138300f2c913b2d75a554a78d88bfb09931c6cd58ecc884ab7024c73c01",
+    "bend/reader.bend": "e659a2cac6b8435f02fd0fe91902ceca918055d026ec1908845186bee4fdc0ac",
+    "bend/region.bend": "1455654e09969a0c80b6536b61b8da2f6070c80d007d2a3639b4a42cb873cc35",
+    "bend/registry.bend": "433b4dbb17b127dd322a11465a1111ddadd86a8682597310c062a194aa802296",
+    "bend/registry_climate.bend": "3daed5cbc3da3a4d4f91c65465e899b31fe219fe34af03731fc7ca1c49c572ad",
+    "bend/registry_density.bend": "0c1972222bbcdfead41b30ae0453f7e05e85ab7bb446c113c3a07a8b12f56cb7",
+    "bend/registry_material.bend": "b28952c7b085865d41f853d55e287c0c0bb8000442cc2c94b37325daaab8d29e",
+    "bend/registry_material_columns.bend": "9eb18ecf8327d35a9f1c00da86272b5a18447f203c7b7964377f782648a9846b",
+    "bend/registry_noise.bend": "ae6994d216acc9751c20e4df1e4ff62548c8af99c61e6b006155e2fbc3e1ca94",
+    "bend/registry_surface.bend": "7964afc9153879537d0fed15b811aaf88d1a0b41b210be339122e595ab76bd60",
+    "bend/registry_values.bend": "5bb1d3ab6bfed7cf640af35089a5ec1370cc2f686d7cfb8b210e7643e1b3d97f",
+    "bend/terrain_surface.bend": "26687ac40e62949ca563d7f31117207fa0eb053d82f51b58a14e84b9a2d4d652",
+    "bend/transport.bend": "2d7b2667aaf37b537de8be6c584acaeaec37377da475741bfe790a46d9c76f81",
+    "bend/word64.bend": "62e104fbbc56208d66457789a7f2ed3f5fe122f4a19068c3df9b3bbbf555e139"
+  },
+  "reference_sha256": "9272d17a88ac9c8908c1d3502f1634cbc9d51f50ea9f9188ef2380a3a0c3579e",
+  "inputs": [
+    {
+      "profile": "vanilla",
+      "json_sha256": "aefce6ff0e800966ad55920c5d21510dfa277de4612f67e22d5146d3aa838203",
+      "wire_sha256": "39c775ca58b6d084d4de060925df01d170c89caa09b9eaf7d33e55a915c8065a"
+    },
+    {
+      "profile": "terralith",
+      "json_sha256": "c9abbe97860a394ed899d64967bd0395bb9bb4ec71a9dff43d1bb45893fefd4d",
+      "wire_sha256": "cf9ef7e0d83d91c5d99aa914101aad8b156ce9a8caa4050f71e81b190a1c0ca6"
+    },
+    {
+      "profile": "combined",
+      "json_sha256": "068fd602ad497128dd3960cb9be76840ebd41882b5b64c25acfa76d65e930c8b",
+      "wire_sha256": "d4ac8f9040e39892de12b6fc6ecc46b3d9e961c3cba7f05a2ae9b53262967193"
+    }
+  ],
+  "regressions": {
+    "material_queries_per_cpu_gpu_run": 7116,
+    "java_registry_worker_cpu": "pass",
+    "java_registry_worker_gpu_required": "pass",
+    "concurrent_resident_voxel_requests_per_java_backend": 12,
+    "host_loader_build": "pass: Fabric and NeoForge",
+    "native_unit_tests_passed": 64,
+    "native_gpu_or_fixture_tests_ignored": 11
+  },
+  "build_note": "Pinned normal C compilation completed; its initial combined build exceeded 300 seconds while the host build ran. The normal stock GPU build then completed separately. Diagnostic C/Metal build completed with extended bounded deadlines. Compilation is excluded from these component test timings."
+}

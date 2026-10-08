@@ -42,7 +42,7 @@ def complete(-A: Type,result: Result<&1,&1,U32,List<&2,Q.Program>>,doc: P.Docume
 def finish(-A: Type,+ok: Bool,doc: P.Document,programs: List<&2,Q.Program>,bands: List<&2,U32>,+sea: U32,+layered: Bool,next: P.Document -> Result<&1,&1,U32,M.Model> -> A) -> A:
   match ok:
     case False{}: next(doc,Fail{724})
-    case True{}: next(doc,Done{M.Model{Q.prepared_table(Q.Program,programs),Q.prepared_table(U32,bands),sea,layered}})
+    case True{}: next(doc,Done{M.Model{Q.prepared_table(Q.Program,programs),Q.prepared_table(U32,bands),sea,layered,None{}}})
 
 @unsafe
 def skip(-A: Type,n: Nat,doc: P.Document,+at: U32,+count: U32,keys: RD.Keys,+model: Q.Model,bands: List<&2,U32>,+sea: U32,+layered: Bool,next: P.Document -> Result<&1,&1,U32,M.Model> -> A) -> A:

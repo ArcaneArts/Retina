@@ -31,10 +31,10 @@ more deeply; retain the original requested scope.
 
 | Requirement | Current Rust/shared source | Bend implementation / completion evidence |
 | --- | --- | --- |
-| Shared loaded registry export, including palette properties and climate intervals | `TerrainProfileData.java`, `RegistryGpuProgram.java`, `native/src/profile.rs` | Export decoupled from Rust initialization; actual vanilla, Terralith and Terralith+supplement registries pass with native library unavailable. Explicit Rust adapter receives byte-identical data and passes real Metal queries. Full structural profiles now stream into a resident Bend word tape with lossless field/array/string access and independent full-value checks. Loaded climate/ridge stacks now resolve schema keys and convert numeric parameters entirely in Bend; numeric terrain DAGs now project and execute in the resident worker; material predicates now project and execute on CPU/GPU; bulk layer generation and terrain integration pending |
-| Noise stacks, density bytecode, splines and GPU interpolation | `native/src/program.rs`, `program/`, `program.wgsl`, `noise3.wgsl`, `simplex.wgsl` | Reusable Bend seeded simplex/3D gradient kernels, weighted octave stacks and trilinear primitive implemented and independently checked on CPU and actual Metal. Integer/fraction coordinate handling checked through signed-i32 extremes. Numeric density opcodes 0..31, registered noise, ordered Hermite splines and nested trilinear fields implemented and independently checked with actual vanilla/Terralith/combined climate and terrain graphs on CPU/Metal. Compensated transformed coordinates preserve distant neighbors. Resident typed model projection and bounded persistent CPU/GPU queries implemented with reload invalidation; bounded top-level GPU lattices now retain samples for independently checked trilinear queries. GPU surface-height scans now consume the resident lattice; per-field caching, bulk material layers and runtime integration pending |
-| Climate targets, biome selection, smooth boundaries and underground biomes | `climate.rs`, `climate.wgsl`, `RetinaBiomeSource.java` | Pure Bend balanced interval indices and surface/underground/coastal lookup implemented, checked against independent linear search with actual registered intervals on CPU and Metal. Typed resident-tape projection and persistent query commands implemented with explicit reload invalidation. GPU spatial climate fields and surface biome selection now consume resident density tiles; blended boundaries, bulk material layers and world integration pending |
-| Coastlines, shore materials, rivers and material predicates/layers | `ShoreMaterialProfile.java`, `column_program.rs`, `materials.wgsl` | Pure Bend resident per-biome material DAGs and predicates (40..54) implemented with shared numeric evaluation, registered bands/sea/layer mode and bounded CPU/GPU query batches. Independent synthetic and actual loaded-profile checks cover supplied contexts; bulk context generation, material layers, coastlines and voxel integration remain required |
+| Shared loaded registry export, including palette properties and climate intervals | `TerrainProfileData.java`, `RegistryGpuProgram.java`, `native/src/profile.rs` | Export decoupled from Rust initialization; actual vanilla, Terralith and Terralith+supplement registries pass with native library unavailable. Explicit Rust adapter receives byte-identical data and passes real Metal queries. Full structural profiles now stream into a resident Bend word tape with lossless field/array/string access and independent full-value checks. Loaded climate/ridge stacks now resolve schema keys and convert numeric parameters entirely in Bend; numeric terrain DAGs now project and execute in the resident worker; material predicates now project and execute on CPU/GPU; GPU-derived material contexts and exhaustive compact vertical block runs implemented; final terrain integration pending |
+| Noise stacks, density bytecode, splines and GPU interpolation | `native/src/program.rs`, `program/`, `program.wgsl`, `noise3.wgsl`, `simplex.wgsl` | Reusable Bend seeded simplex/3D gradient kernels, weighted octave stacks and trilinear primitive implemented and independently checked on CPU and actual Metal. Integer/fraction coordinate handling checked through signed-i32 extremes. Numeric density opcodes 0..31, registered noise, ordered Hermite splines and nested trilinear fields implemented and independently checked with actual vanilla/Terralith/combined climate and terrain graphs on CPU/Metal. Compensated transformed coordinates preserve distant neighbors. Resident typed model projection and bounded persistent CPU/GPU queries implemented with reload invalidation; bounded top-level GPU lattices now retain samples for independently checked trilinear queries. GPU surface-height scans now consume the resident lattice; GPU-derived compact material layers implemented; per-field caching and runtime integration pending |
+| Climate targets, biome selection, smooth boundaries and underground biomes | `climate.rs`, `climate.wgsl`, `RetinaBiomeSource.java` | Pure Bend balanced interval indices and surface/underground/coastal lookup implemented, checked against independent linear search with actual registered intervals on CPU and Metal. Typed resident-tape projection and persistent query commands implemented with explicit reload invalidation. GPU spatial climate fields and surface biome selection now consume resident density tiles; compact material layers implemented; blended boundaries and world integration pending |
+| Coastlines, shore materials, rivers and material predicates/layers | `ShoreMaterialProfile.java`, `column_program.rs`, `materials.wgsl` | Pure Bend resident per-biome material DAGs and predicates (40..54) implemented with shared numeric evaluation, registered bands/sea/layer mode and bounded CPU/GPU query batches. Independent synthetic and actual loaded-profile checks cover supplied contexts; GPU context/compact block-run generation now implemented and independently checked; coastline remapping, 3D biome material assignment and final voxel integration remain required |
 | Caves, ravines, rare surface entrances and cave decoration | `GeologyProfile.java`, `geology.rs`, `features.rs`, `caves.wgsl` | Pending |
 | Lakes, aquifer fields and fluid barriers | `TerrainFeatureProfile.java`, `program/lake_sparse.rs`, `aquifers.wgsl` | Pending |
 | Ore height/count/replacement/discard rules and GPU rasterization | `geology/`, `ore.wgsl` | Pending |
@@ -256,6 +256,8 @@ more deeply; retain the original requested scope.
    sees all 85 expected Metal command buffers with normal GPU bytes unchanged.
    Concurrent Java transport checks and the full host loader build pass.
    Evidence is in `docs/benchmarks/bend-material-programs.json`.
+   Merged in [PR #35](https://github.com/ArcaneArts/Retina/pull/35), commit
+   `2aff1a6`; both CI builds passed.
 
 5. **Registered features and structures.** Port ordered decorations, geology,
    jigsaw/templates/processors and metadata with cross-region tests.
@@ -277,3 +279,22 @@ compression component do not satisfy the generator goal. Before completion,
 inspect current code and runtime evidence for every row, all original objective
 requirements and each final deliverable. Do not substitute green narrow tests,
 fallback execution or documentation for a complete independent backend.
+
+Derived material columns now consume the resident surface/density snapshots and
+apply per-biome material programs inside Bend. One-column halos supply integer
+slope context; cached bilinear density layers avoid eight full lattice reads
+per voxel. Independent CPU/Metal checks validate compact exhaustive runs and
+raw voxel queries, including floating solid intervals and context/state rules.
+Each CPU/GPU run validates 7,641 voxel queries across 11 synthetic profiles and
+actual vanilla, Terralith and combined inputs, rejects 18 malformed projections
+and five invalid evaluated results, and handles 1,602 requests in one process.
+All 311 expected Metal command buffers were observed; diagnostic and normal
+GPU output is identical. Maximum normalized context error is 7.21e-7. Existing
+material-rule regression checks (7,116 queries per backend), concurrent Java
+voxel queries and the full host Fabric/NeoForge build also pass. Compile deadlines
+were extended without increasing worker counts after a loaded build timed out.
+The worker reports palette/biome failures after actual generation and keeps old
+results on failure. This is still a component: caves, fluids beyond the base sea,
+coast remapping, underground biome changes and generated-region integration
+remain on the parity checklist. Evidence is recorded in
+`docs/benchmarks/bend-material-columns.json`.

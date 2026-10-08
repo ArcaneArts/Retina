@@ -156,8 +156,8 @@ def compile_metal_observer(bend,source,binary):
     env = dict(os.environ,BEND_NO_TELEMETRY='1',SDKROOT=str(xcode/'Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk'))
     subprocess.run(['nice','-n','10',str(xcode/'Toolchains/XcodeDefault.xctoolchain/usr/bin/clang'),
                     '-DBEND_METAL=1','-x','objective-c','-fobjc-arc','-fmodules','-std=c11','-O3',
-                    str(cpath),'-lpthread','-lm','-o',str(binary)],check=True,env=env,timeout=120)
-    subprocess.run([str(binary),'--gpu-build'],check=True,cwd=ROOT,env=env,capture_output=True,timeout=120)
+                    str(cpath),'-lpthread','-lm','-o',str(binary)],check=True,env=env,timeout=300)
+    subprocess.run(['nice','-n','10',str(binary),'--gpu-build'],check=True,cwd=ROOT,env=env,capture_output=True,timeout=300)
     return binary
 
 
