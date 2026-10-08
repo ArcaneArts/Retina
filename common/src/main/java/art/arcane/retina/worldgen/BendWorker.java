@@ -83,6 +83,16 @@ public final class BendWorker implements AutoCloseable {
         return request(5, payload.array());
     }
 
+    /** Select a resident profile's climate stack (0..3) or ridge stack (4).
+     * The bridge carries seed words and the index; Bend resolves and converts
+     * registry parameters. A rejected selection preserves the prepared stack.
+     */
+    public CompletableFuture<byte[]> prepareProfileNoise(long seed, int channel) {
+        var payload = java.nio.ByteBuffer.allocate(12);
+        payload.putInt((int) seed).putInt((int) (seed >>> 32)).putInt(channel);
+        return request(8, payload.array());
+    }
+
     /** Cancellation skips queued requests; in-flight responses are drained to
      * preserve framing. World shutdown closes the worker and terminates it.
      */

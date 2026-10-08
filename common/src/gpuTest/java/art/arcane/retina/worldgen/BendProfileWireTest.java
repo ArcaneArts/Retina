@@ -16,6 +16,9 @@ public final class BendProfileWireTest {
             """;
         Files.writeString(output.resolve("fixture.json"), fixture);
         encode(output, "fixture", fixture);
+        String noise = "{\"frequency\":0.0035,\"amplitude\":0.8,\"modifiers\":[1.0,0.0,0.25,1.0,-1.0,0.5]}";
+        encode(output, "noise", "{\"noises\":[" + String.join(",", java.util.Collections.nCopies(4, noise))
+                + "],\"weirdness_noise\":" + noise + "}");
         for (int i = 1; i < args.length; i++) {
             if (args[i].equals("--worker")) { worker(output.resolve("fixture.rbp"), Path.of(args[++i])); continue; }
             try (var source = Files.newBufferedReader(Path.of(args[i]))) {
@@ -37,6 +40,19 @@ public final class BendProfileWireTest {
             for (var request : requests) {
                 var root = java.nio.ByteBuffer.wrap(request.get(10, java.util.concurrent.TimeUnit.SECONDS));
                 if (root.getInt() != 7 || root.getInt() != 12) throw new AssertionError("resident registry root");
+            }
+            worker.loadProfile(profile.resolveSibling("noise.rbp")).get(30, java.util.concurrent.TimeUnit.SECONDS);
+            var grid = java.nio.ByteBuffer.allocate(20).putInt(-33).putInt(63).putInt(16).putInt(16).putInt(1).array();
+            long seed = 0x8000000112345678L;
+            for (int channel : new int[]{0, 4}) {
+                worker.prepareProfileNoise(seed, channel).get(10, java.util.concurrent.TimeUnit.SECONDS);
+                byte[] loaded = worker.request(2, grid).get(10, java.util.concurrent.TimeUnit.SECONDS);
+                var explicit = java.nio.ByteBuffer.allocate(48).putInt((int) seed).putInt((int) (seed >>> 32))
+                        .putFloat(0.0035f).putFloat(0.8f).putInt(channel).putInt(6);
+                for (float value : new float[]{1, 0, .25f, 1, -1, .5f}) explicit.putFloat(value);
+                worker.request(1, explicit.array()).get(10, java.util.concurrent.TimeUnit.SECONDS);
+                if (!java.util.Arrays.equals(loaded, worker.request(2, grid).get(10, java.util.concurrent.TimeUnit.SECONDS)))
+                    throw new AssertionError("typed registry stack/seed transport");
             }
             if (worker.processId() != pid) throw new AssertionError("worker replaced");
             System.out.println("Java registry worker " + mode + " pass");

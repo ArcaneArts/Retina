@@ -1,0 +1,43 @@
+{
+  "scope": "Registry numeric conversion correctness; not terrain generation or a benchmark",
+  "runs": [
+    {
+      "requested_gpu": "off",
+      "threads": 1,
+      "rows": 65536,
+      "scalar_conversions": 131072,
+      "sha256": "1ad3e4d23c159ff24169cc35857063295715c0d513b33af8c2925934dace77f0"
+    },
+    {
+      "requested_gpu": "off",
+      "threads": 2,
+      "rows": 65536,
+      "scalar_conversions": 131072,
+      "sha256": "1ad3e4d23c159ff24169cc35857063295715c0d513b33af8c2925934dace77f0"
+    },
+    {
+      "requested_gpu": "on",
+      "threads": 2,
+      "rows": 65536,
+      "scalar_conversions": 131072,
+      "sha256": "1ad3e4d23c159ff24169cc35857063295715c0d513b33af8c2925934dace77f0"
+    }
+  ],
+  "cpu_gpu_bytes_equal": true,
+  "metal_observation": {
+    "diagnostic_only": true,
+    "command_buffers": 1,
+    "device_ms": [
+      26.454583
+    ],
+    "output": {
+      "rows": 65536,
+      "scalar_conversions": 131072,
+      "sha256": "1ad3e4d23c159ff24169cc35857063295715c0d513b33af8c2925934dace77f0"
+    }
+  },
+  "source_sha256": {
+    "bend/numbers.bend": "858ea999141639aa26c559a2e06a87d62c58e93d0d8d3a793bb530b629060956",
+    "bend/tests/numeric-fixtures.bend": "42020c7fa26ab3222fead6d3abcd5b88a98cb4201526575b03e4bc2d6172e471"
+  }
+}
