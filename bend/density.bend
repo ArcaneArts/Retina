@@ -267,19 +267,52 @@ def interpolate(noises: Table<Noise>,points: Table<Vec4>,fields: Table<Field>,fi
       +a = lattice(x,horizontal)
       +b = lattice(y,vertical)
       +c = lattice(z,horizontal)
-      corners(noises,points,fields,program,Point{a,b,c},horizontal,vertical,low,high,0,[],
+      interpolation_start(noises,points,fields,program,Point{a,b,c},horizontal,vertical,low,high,
         D.value(D.divide(D.sub(x,a),D.scalar(U32.to_f32(horizontal)))),
         D.value(D.divide(D.sub(y,b),D.scalar(U32.to_f32(vertical)))),
         D.value(D.divide(D.sub(z,c),D.scalar(U32.to_f32(horizontal)))))
+
+# A vertex needs one field evaluation, an edge two and a face four. Besides
+# avoiding expensive nested graphs, zero-weight corners must not contaminate
+# an endpoint with nonfinite values from a sample that does not contribute.
+@unsafe
+def interpolation_start(+noises: Table<Noise>,+points: Table<Vec4>,+fields: Table<Field>,+program: Program,+origin: Point,+horizontal: U32,+vertical: U32,+low: U32,+high: U32,+x: F32,+y: F32,+z: F32) -> D.Number:
+  interpolation_vertex(Bool.and(F32.is_eq(x,0.0),Bool.and(F32.is_eq(y,0.0),F32.is_eq(z,0.0))),
+    noises,points,fields,program,origin,horizontal,vertical,low,high,x,y,z)
+
+@unsafe
+def interpolation_vertex(vertex: Bool,noises: Table<Noise>,points: Table<Vec4>,fields: Table<Field>,program: Program,origin: Point,horizontal: U32,vertical: U32,low: U32,high: U32,x: F32,y: F32,z: F32) -> D.Number:
+  match vertex:
+    case True{}: interpolation_value(run_parts(noises,points,fields,program,origin,low,high))
+    case False{}: corners(noises,points,fields,program,origin,horizontal,vertical,low,high,0,[],x,y,z)
+
+def interpolation_value(output: Outputs) -> D.Number:
+  match output:
+    case Outputs{a,_,_,_,_,_}: a
+
+def corner_axis_used(upper: U32,t: F32) -> Bool:
+  match upper:
+    case 0: F32.is_ne(t,1.0)
+    case _: F32.is_ne(t,0.0)
+
+def corner_used(+i: U32,x: F32,y: F32,z: F32) -> Bool:
+  Bool.and(corner_axis_used(U32.and(i,1),x),Bool.and(
+    corner_axis_used(U32.and(U32.shrn(i,1n),1),y),corner_axis_used(U32.and(U32.shrn(i,2n),1),z)))
 
 @unsafe
 def corners(+noises: Table<Noise>,+points: Table<Vec4>,+fields: Table<Field>,+program: Program,+origin: Point,+horizontal: U32,+vertical: U32,+low: U32,+high: U32,+i: U32,acc: List<&2,D.Number>,x: F32,y: F32,z: F32) -> D.Number:
   corners_more(U32.is_lt(i,8),noises,points,fields,program,origin,horizontal,vertical,low,high,i,acc,x,y,z)
 
 @unsafe
-def corners_more(more: Bool,+noises: Table<Noise>,+points: Table<Vec4>,+fields: Table<Field>,+program: Program,+origin: Point,+horizontal: U32,+vertical: U32,+low: U32,+high: U32,+i: U32,acc: List<&2,D.Number>,x: F32,y: F32,z: F32) -> D.Number:
+def corners_more(more: Bool,+noises: Table<Noise>,+points: Table<Vec4>,+fields: Table<Field>,+program: Program,+origin: Point,+horizontal: U32,+vertical: U32,+low: U32,+high: U32,+i: U32,acc: List<&2,D.Number>,+x: F32,+y: F32,+z: F32) -> D.Number:
   match more:
     case False{}: corner_mix(List.reverse(&2,D.Number,acc),x,y,z)
+    case True{}: corner_sample(corner_used(i,x,y,z),noises,points,fields,program,origin,horizontal,vertical,low,high,i,acc,x,y,z)
+
+@unsafe
+def corner_sample(used: Bool,+noises: Table<Noise>,+points: Table<Vec4>,+fields: Table<Field>,+program: Program,+origin: Point,+horizontal: U32,+vertical: U32,+low: U32,+high: U32,+i: U32,acc: List<&2,D.Number>,x: F32,y: F32,z: F32) -> D.Number:
+  match used:
+    case False{}: corners(noises,points,fields,program,origin,horizontal,vertical,low,high,U32.inc(i),D.scalar(0.0) <> acc,x,y,z)
     case True{}: corners_output(noises,points,fields,program,origin,horizontal,vertical,low,high,i,acc,x,y,z,
       run_parts(noises,points,fields,program,shifted(origin,D.scalar(U32.to_f32(U32.mul(U32.and(i,1),horizontal))),
         D.scalar(U32.to_f32(U32.mul(U32.and(U32.shrn(i,1n),1),vertical))),
@@ -290,11 +323,24 @@ def corners_output(+noises: Table<Noise>,+points: Table<Vec4>,+fields: Table<Fie
   match output:
     case Outputs{a,_,_,_,_,_}: corners(noises,points,fields,program,origin,horizontal,vertical,low,high,U32.inc(i),a <> acc,x,y,z)
 
+def corner_lerp_end(last: Bool,a: D.Number,b: D.Number,t: F32) -> D.Number:
+  match last:
+    case True{}: b
+    case False{}: D.mix(a,b,D.scalar(t))
+
+def corner_lerp_start(first: Bool,a: D.Number,b: D.Number,+t: F32) -> D.Number:
+  match first:
+    case True{}: a
+    case False{}: corner_lerp_end(F32.is_eq(t,1.0),a,b,t)
+
+def corner_lerp(a: D.Number,b: D.Number,+t: F32) -> D.Number:
+  corner_lerp_start(F32.is_eq(t,0.0),a,b,t)
+
 def corner_mix(values: List<&2,D.Number>,+x: F32,+y: F32,z: F32) -> D.Number:
   match values:
     case a <> b <> c <> d <> e <> f <> g <> h <> Nil{}:
-      D.mix(D.mix(D.mix(a,b,D.scalar(x)),D.mix(c,d,D.scalar(x)),D.scalar(y)),
-        D.mix(D.mix(e,f,D.scalar(x)),D.mix(g,h,D.scalar(x)),D.scalar(y)),D.scalar(z))
+      corner_lerp(corner_lerp(corner_lerp(a,b,x),corner_lerp(c,d,x),y),
+        corner_lerp(corner_lerp(e,f,x),corner_lerp(g,h,x),y),z)
     case _: D.scalar(0.0)
 
 @unsafe

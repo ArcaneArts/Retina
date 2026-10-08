@@ -436,6 +436,19 @@ tasks.register('bendRegistryDensityTest', Exec) {
     mustRunAfter 'bendRegistryWireTest', 'bendRegistryNoiseTest', 'bendRegistryClimateTest', 'bendEngineTest', 'bendNoiseTest', 'bendClimateTest', 'bendNumericTest', 'bendDensityTest'
 }
 
+tasks.register('bendInterpolationTest', Exec) {
+    group = 'verification'
+    description = 'Check Bend vertex/edge/face interpolation, nested fields and unused nonfinite corners on CPU/GPU.'
+    workingDir rootProject.projectDir
+    commandLine providers.gradleProperty('pythonExecutable').getOrElse('python3'), 'scripts/test_bend_interpolation.py'
+    if (providers.gradleProperty('bendSkipBuild').isPresent()) args '--skip-build'
+    if (providers.gradleProperty('proveMetal').isPresent()) args '--prove-metal'
+    if (!registryDensityProfiles.isEmpty()) registryDensityProfiles.split(',').each { pair ->
+        pair.split('=', 2).with { paths -> args '--profile', paths[0], paths[1] }
+    }
+    mustRunAfter 'bendRegistryWireTest', 'bendRegistryNoiseTest', 'bendRegistryClimateTest', 'bendEngineTest', 'bendNoiseTest', 'bendClimateTest', 'bendNumericTest', 'bendDensityTest', 'bendRegistryDensityTest'
+}
+
 tasks.register('bendDensityLatticeTest', Exec) {
     group = 'verification'
     description = 'Check resident Bend GPU density lattices, interpolation, global boundaries and invalidation.'
@@ -445,7 +458,7 @@ tasks.register('bendDensityLatticeTest', Exec) {
     if (!registryDensityProfiles.isEmpty()) registryDensityProfiles.split(',').each { pair ->
         pair.split('=', 2).with { paths -> args '--profile', paths[0], paths[1] }
     }
-    mustRunAfter 'bendRegistryWireTest', 'bendRegistryNoiseTest', 'bendRegistryClimateTest', 'bendEngineTest', 'bendNoiseTest', 'bendClimateTest', 'bendNumericTest', 'bendDensityTest', 'bendRegistryDensityTest'
+    mustRunAfter 'bendRegistryWireTest', 'bendRegistryNoiseTest', 'bendRegistryClimateTest', 'bendEngineTest', 'bendNoiseTest', 'bendClimateTest', 'bendNumericTest', 'bendDensityTest', 'bendRegistryDensityTest', 'bendInterpolationTest'
 }
 
 tasks.register('bendSurfaceTest', Exec) {
@@ -457,7 +470,7 @@ tasks.register('bendSurfaceTest', Exec) {
     if (!registryDensityProfiles.isEmpty()) registryDensityProfiles.split(',').each { pair ->
         pair.split('=', 2).with { paths -> args '--profile', paths[0], paths[1] }
     }
-    mustRunAfter 'bendRegistryWireTest', 'bendRegistryNoiseTest', 'bendRegistryClimateTest', 'bendEngineTest', 'bendNoiseTest', 'bendClimateTest', 'bendNumericTest', 'bendDensityTest', 'bendRegistryDensityTest', 'bendDensityLatticeTest'
+    mustRunAfter 'bendRegistryWireTest', 'bendRegistryNoiseTest', 'bendRegistryClimateTest', 'bendEngineTest', 'bendNoiseTest', 'bendClimateTest', 'bendNumericTest', 'bendDensityTest', 'bendRegistryDensityTest', 'bendInterpolationTest', 'bendDensityLatticeTest'
 }
 
 tasks.register('bendMaterialTest', Exec) {
@@ -469,7 +482,7 @@ tasks.register('bendMaterialTest', Exec) {
     if (!registryDensityProfiles.isEmpty()) registryDensityProfiles.split(',').each { pair ->
         pair.split('=', 2).with { paths -> args '--profile', paths[0], paths[1] }
     }
-    mustRunAfter 'bendRegistryWireTest', 'bendRegistryNoiseTest', 'bendRegistryClimateTest', 'bendEngineTest', 'bendNoiseTest', 'bendClimateTest', 'bendNumericTest', 'bendDensityTest', 'bendRegistryDensityTest', 'bendDensityLatticeTest', 'bendSurfaceTest'
+    mustRunAfter 'bendRegistryWireTest', 'bendRegistryNoiseTest', 'bendRegistryClimateTest', 'bendEngineTest', 'bendNoiseTest', 'bendClimateTest', 'bendNumericTest', 'bendDensityTest', 'bendRegistryDensityTest', 'bendInterpolationTest', 'bendDensityLatticeTest', 'bendSurfaceTest'
 }
 
 tasks.register('bendMaterialColumnsTest', Exec) {
@@ -481,7 +494,7 @@ tasks.register('bendMaterialColumnsTest', Exec) {
     if (!registryDensityProfiles.isEmpty()) registryDensityProfiles.split(',').each { pair ->
         pair.split('=', 2).with { paths -> args '--profile', paths[0], paths[1] }
     }
-    mustRunAfter 'bendRegistryWireTest', 'bendRegistryNoiseTest', 'bendRegistryClimateTest', 'bendEngineTest', 'bendNoiseTest', 'bendClimateTest', 'bendNumericTest', 'bendDensityTest', 'bendRegistryDensityTest', 'bendDensityLatticeTest', 'bendSurfaceTest', 'bendMaterialTest'
+    mustRunAfter 'bendRegistryWireTest', 'bendRegistryNoiseTest', 'bendRegistryClimateTest', 'bendEngineTest', 'bendNoiseTest', 'bendClimateTest', 'bendNumericTest', 'bendDensityTest', 'bendRegistryDensityTest', 'bendInterpolationTest', 'bendDensityLatticeTest', 'bendSurfaceTest', 'bendMaterialTest'
 }
 
 tasks.register('bendNumericTest', Exec) {
@@ -571,7 +584,7 @@ tasks.register('bendGeneratedChunkFixtures', Exec) {
     if (providers.gradleProperty('proveMetal').isPresent()) args '--prove-metal'
     if (!registryDensityProfiles.isEmpty())
         registryDensityProfiles.split(',').each { pair -> args '--profile', *pair.split('=', 2) }
-    mustRunAfter 'bendRegistryWireTest', 'bendRegistryNoiseTest', 'bendRegistryClimateTest', 'bendEngineTest', 'bendNoiseTest', 'bendClimateTest', 'bendNumericTest', 'bendDensityTest', 'bendRegistryDensityTest', 'bendDensityLatticeTest', 'bendSurfaceTest', 'bendMaterialTest', 'bendMaterialColumnsTest'
+    mustRunAfter 'bendRegistryWireTest', 'bendRegistryNoiseTest', 'bendRegistryClimateTest', 'bendEngineTest', 'bendNoiseTest', 'bendClimateTest', 'bendNumericTest', 'bendDensityTest', 'bendRegistryDensityTest', 'bendInterpolationTest', 'bendDensityLatticeTest', 'bendSurfaceTest', 'bendMaterialTest', 'bendMaterialColumnsTest'
 }
 
 tasks.register('bendGeneratedChunkTest', JavaExec) {
@@ -600,7 +613,7 @@ tasks.register('bendGeneratedRegionFixtures', Exec) {
     if (providers.gradleProperty('proveMetal').isPresent()) args '--prove-metal'
     if (!registryDensityProfiles.isEmpty())
         registryDensityProfiles.split(',').each { pair -> args '--profile', *pair.split('=', 2) }
-    mustRunAfter 'bendRegistryWireTest', 'bendRegistryNoiseTest', 'bendRegistryClimateTest', 'bendEngineTest', 'bendNoiseTest', 'bendClimateTest', 'bendNumericTest', 'bendDensityTest', 'bendRegistryDensityTest', 'bendDensityLatticeTest', 'bendSurfaceTest', 'bendMaterialTest', 'bendMaterialColumnsTest', 'bendGeneratedChunkFixtures'
+    mustRunAfter 'bendRegistryWireTest', 'bendRegistryNoiseTest', 'bendRegistryClimateTest', 'bendEngineTest', 'bendNoiseTest', 'bendClimateTest', 'bendNumericTest', 'bendDensityTest', 'bendRegistryDensityTest', 'bendInterpolationTest', 'bendDensityLatticeTest', 'bendSurfaceTest', 'bendMaterialTest', 'bendMaterialColumnsTest', 'bendGeneratedChunkFixtures'
 }
 
 tasks.register('bendGeneratedRegionTest', JavaExec) {

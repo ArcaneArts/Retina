@@ -81,8 +81,14 @@ class Oracle:
         h,v=self.model['interpolations'][index]['cell'];steps=(h,v,h)
         origin=[math.floor(x/s)*s for x,s in zip(point,steps)]
         t=[(x-a)/s for x,a,s in zip(point,origin,steps)]
-        return sum(self.field_node(index,tuple(origin[j]+steps[j]*((k>>j)&1) for j in range(3)),low,high)*
-            math.prod(t[j] if (k>>j)&1 else 1-t[j] for j in range(3)) for k in range(8))
+        # Endpoints do not sample zero-weight corners. In particular an
+        # overflowing unused field value must not turn a finite vertex into NaN.
+        total = 0.
+        for k in range(8):
+            weight = math.prod(t[j] if (k>>j)&1 else 1-t[j] for j in range(3))
+            if weight:
+                total += self.field_node(index,tuple(origin[j]+steps[j]*((k>>j)&1) for j in range(3)),low,high)*weight
+        return total
 
     def evaluate(self,program,point,low,high):
         values=[]
