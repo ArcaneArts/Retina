@@ -1,0 +1,673 @@
+{
+  "scope": "Whole generated unlit base/material MCA output; no full-world parity or performance comparison",
+  "bend_version": "bend 2.0.36",
+  "runs": [
+    {
+      "gpu_required": false,
+      "regions": [
+        {
+          "name": "ramp",
+          "region": [
+            -1,
+            0
+          ],
+          "chunks": 1024,
+          "world_min": -16,
+          "world_height": 32,
+          "mca_bytes": 4202496,
+          "sha256": "0967df8d1ce02aeffb9edef144b680135bee5d05c7a212d9d0395ad3045c2ba0",
+          "generation_response_host_ms": 5194.731624913402,
+          "encode_compress_write_response_host_ms": 2447.166375000961,
+          "repeated_file_identical": true
+        },
+        {
+          "name": "islands",
+          "region": [
+            58593,
+            -58594
+          ],
+          "chunks": 1024,
+          "world_min": -16,
+          "world_height": 32,
+          "mca_bytes": 4202496,
+          "sha256": "441b750c0acfe64a7beb0aec810df858c777e18efb16f273864d2763bff175e0",
+          "generation_response_host_ms": 5334.24262504559,
+          "encode_compress_write_response_host_ms": 2566.5800829883665,
+          "repeated_file_identical": true
+        }
+      ],
+      "chunk_streams_decoded": 2048,
+      "blocks_compared_to_generated_queries": 114688,
+      "requests_in_one_process": 98,
+      "expected_gpu_dispatches": 6,
+      "metal_commands_ms": [],
+      "sha256": "fcfe45fbf3749f31d58efd923609d9179d37ad0a892c672d749f6257f5ebddf6"
+    },
+    {
+      "gpu_required": true,
+      "regions": [
+        {
+          "name": "ramp",
+          "region": [
+            -1,
+            0
+          ],
+          "chunks": 1024,
+          "world_min": -16,
+          "world_height": 32,
+          "mca_bytes": 4202496,
+          "sha256": "0967df8d1ce02aeffb9edef144b680135bee5d05c7a212d9d0395ad3045c2ba0",
+          "generation_response_host_ms": 2520.3617910156026,
+          "encode_compress_write_response_host_ms": 2267.799208057113,
+          "repeated_file_identical": true
+        },
+        {
+          "name": "islands",
+          "region": [
+            58593,
+            -58594
+          ],
+          "chunks": 1024,
+          "world_min": -16,
+          "world_height": 32,
+          "mca_bytes": 4202496,
+          "sha256": "441b750c0acfe64a7beb0aec810df858c777e18efb16f273864d2763bff175e0",
+          "generation_response_host_ms": 946.9078750116751,
+          "encode_compress_write_response_host_ms": 2524.3062500376254,
+          "repeated_file_identical": true
+        },
+        {
+          "name": "vanilla",
+          "region": [
+            -2,
+            3
+          ],
+          "chunks": 1024,
+          "world_min": -64,
+          "world_height": 384,
+          "mca_bytes": 4268032,
+          "sha256": "4e7a7ca1c88d36c95aa7dcbb85f4b8b70b4f5c1becdf29f882952c22c94975e4",
+          "generation_response_host_ms": 168363.51308296435,
+          "encode_compress_write_response_host_ms": 17736.849208944477,
+          "repeated_file_identical": true
+        },
+        {
+          "name": "terralith",
+          "region": [
+            -2,
+            3
+          ],
+          "chunks": 1024,
+          "world_min": -64,
+          "world_height": 384,
+          "mca_bytes": 4321280,
+          "sha256": "1ced9fcd260635ef79dc0aa480d41af1691b3c06a0bfb915fa3f0ebe8d692819",
+          "generation_response_host_ms": 310294.4791249465,
+          "encode_compress_write_response_host_ms": 19300.469624926336,
+          "repeated_file_identical": true
+        },
+        {
+          "name": "combined",
+          "region": [
+            -2,
+            3
+          ],
+          "chunks": 1024,
+          "world_min": -64,
+          "world_height": 384,
+          "mca_bytes": 4366336,
+          "sha256": "82fe58e75fdec83f1e677d9099a79b783c0dcb5bdfe3bc1343be4ef37fe02dd4",
+          "generation_response_host_ms": 293884.08808398526,
+          "encode_compress_write_response_host_ms": 16673.282917006873,
+          "repeated_file_identical": true
+        }
+      ],
+      "chunk_streams_decoded": 5120,
+      "blocks_compared_to_generated_queries": 2179072,
+      "requests_in_one_process": 242,
+      "expected_gpu_dispatches": 15,
+      "metal_commands_ms": [],
+      "sha256": "80e13880f8cb24b9389e86cfe4eb4e362f80fc7db08d91fc727756de0cef77b6"
+    }
+  ],
+  "source_sha256": {
+    "bend/binary.bend": "f716146b3a19403c4ad208ce37c2056f9ba023d6b76a3fecba5c3253185d9b68",
+    "bend/chunk.bend": "7aa37914a3941541f78909d0ab582ab956f972be7804c4abf97fdf07b839fe86",
+    "bend/chunk_catalog.bend": "666d5f98e2128a31a49f36ccdf0a1da7d7cb59067ce58d3cd1d0da3742963df3",
+    "bend/climate.bend": "57074782ae0f82c71d81fc5f21152af124a25c422b6ebd7a0d82037552ff2f19",
+    "bend/climate_batch.bend": "f65fbc7b463f5e093feb2364da0f504fa295088285917f7a04dc205bf1dc34fa",
+    "bend/compression.bend": "e42e1a312180ee0fce6faad39fc82b9a2e43ba05727e04d9a3c8e7651dd14130",
+    "bend/density.bend": "0c0a88958c71598112c879b587112bd00e97d838b57262f74496f772150df620",
+    "bend/density_batch.bend": "51231a72efa798c9a31f1a6a841176ea50d1ac5644352b389e3d1a9bff30d99c",
+    "bend/density_lattice.bend": "0b02993df32e160b21c50b8ee33e003f2d7f3eb53645c91ab6699bed0e1a9ae8",
+    "bend/engine.bend": "01320e475fb6dabc1284ffd269cf8146acb67fac1087b5a9a262f199a9d4ea89",
+    "bend/generated_chunk.bend": "53c9f0aa02add6f7c207d079481129178c6e2b96eda544f2952eb1744b8cd63f",
+    "bend/generated_region.bend": "a2969fa86cd4fa8becf2192eb3b662cf6415c68e28a272716a2d2627b3f82531",
+    "bend/heightmaps.bend": "0b69c87d24ec3b27cbb082bb394205765154bf78c5c4db2c226fbc4ba3e2d997",
+    "bend/material.bend": "fea1e62174797c5b44634f3674dfc550d0178f207524193ed0d9416fbbf70f64",
+    "bend/material_batch.bend": "e34ee066c23a5328d279c5137ce2d107f2e4df661d63d3de373970d5cbee2073",
+    "bend/material_columns.bend": "3a5e24efd73b7e670982a1038028962d08c60c18ee0ed34d80b4db0dfbacca9b",
+    "bend/material_columns_data.bend": "4d702d0723ca85d6a7ae0dea1dd3873ab67f8d5f248de8dcd9e9442bd6de22ef",
+    "bend/material_program.bend": "f4b7e78629f7eecd991418eb00fa3face480954b300fa996e370d4c16c35128c",
+    "bend/nbt.bend": "7063555acf523d12269bd152e1e32981534009785b6a7653509f1a108b18cb57",
+    "bend/noise.bend": "80485dd8d18580a1044c8e55dbd03dab1b8dbdd9aa6681e1b8f6743fce928c1d",
+    "bend/numbers.bend": "858ea999141639aa26c559a2e06a87d62c58e93d0d8d3a793bb530b629060956",
+    "bend/packed.bend": "b4ebd29bc4d31d53ddcc221f64c84e68c5bde4a0fbbb51acfdaa9ddd01e2c23f",
+    "bend/palette.bend": "4f813fb89317308dc02c70d36cf5e3eeaf6d62a9a82477b781b976be5eee82ff",
+    "bend/precise.bend": "50ba7138300f2c913b2d75a554a78d88bfb09931c6cd58ecc884ab7024c73c01",
+    "bend/reader.bend": "e659a2cac6b8435f02fd0fe91902ceca918055d026ec1908845186bee4fdc0ac",
+    "bend/region.bend": "1455654e09969a0c80b6536b61b8da2f6070c80d007d2a3639b4a42cb873cc35",
+    "bend/registry.bend": "433b4dbb17b127dd322a11465a1111ddadd86a8682597310c062a194aa802296",
+    "bend/registry_chunk_catalog.bend": "032c8411f124d9876a34e2537b7dff1f9ccbd068a53b2e4a7423ae71ffe98652",
+    "bend/registry_climate.bend": "3daed5cbc3da3a4d4f91c65465e899b31fe219fe34af03731fc7ca1c49c572ad",
+    "bend/registry_density.bend": "0c1972222bbcdfead41b30ae0453f7e05e85ab7bb446c113c3a07a8b12f56cb7",
+    "bend/registry_material.bend": "b28952c7b085865d41f853d55e287c0c0bb8000442cc2c94b37325daaab8d29e",
+    "bend/registry_material_columns.bend": "9eb18ecf8327d35a9f1c00da86272b5a18447f203c7b7964377f782648a9846b",
+    "bend/registry_noise.bend": "ae6994d216acc9751c20e4df1e4ff62548c8af99c61e6b006155e2fbc3e1ca94",
+    "bend/registry_surface.bend": "7964afc9153879537d0fed15b811aaf88d1a0b41b210be339122e595ab76bd60",
+    "bend/registry_values.bend": "5bb1d3ab6bfed7cf640af35089a5ec1370cc2f686d7cfb8b210e7643e1b3d97f",
+    "bend/terrain_surface.bend": "26687ac40e62949ca563d7f31117207fa0eb053d82f51b58a14e84b9a2d4d652",
+    "bend/transport.bend": "2d7b2667aaf37b537de8be6c584acaeaec37377da475741bfe790a46d9c76f81",
+    "bend/word64.bend": "62e104fbbc56208d66457789a7f2ed3f5fe122f4a19068c3df9b3bbbf555e139"
+  },
+  "inputs": [
+    {
+      "name": "ramp",
+      "rbp_sha256": "aeaf4d184229f316e26c14a773b43c411f0965e8aab4a59a4cf7d81c57aeabd5"
+    },
+    {
+      "name": "islands",
+      "rbp_sha256": "c8ad8694ec0bab8306b6a83366232da32e902549122f0d2ec455bdc9059a0042"
+    },
+    {
+      "name": "vanilla",
+      "rbp_sha256": "39c775ca58b6d084d4de060925df01d170c89caa09b9eaf7d33e55a915c8065a"
+    },
+    {
+      "name": "terralith",
+      "rbp_sha256": "cf9ef7e0d83d91c5d99aa914101aad8b156ce9a8caa4050f71e81b190a1c0ca6"
+    },
+    {
+      "name": "combined",
+      "rbp_sha256": "d4ac8f9040e39892de12b6fc6ecc46b3d9e961c3cba7f05a2ae9b53262967193"
+    }
+  ],
+  "actual_metal_proof": {
+    "gpu_required": true,
+    "regions": [
+      {
+        "name": "ramp",
+        "region": [
+          -1,
+          0
+        ],
+        "chunks": 1024,
+        "world_min": -16,
+        "world_height": 32,
+        "mca_bytes": 4202496,
+        "sha256": "0967df8d1ce02aeffb9edef144b680135bee5d05c7a212d9d0395ad3045c2ba0",
+        "generation_response_host_ms": 2225.7580420700833,
+        "encode_compress_write_response_host_ms": 2219.1017910372466,
+        "repeated_file_identical": null
+      },
+      {
+        "name": "islands",
+        "region": [
+          58593,
+          -58594
+        ],
+        "chunks": 1024,
+        "world_min": -16,
+        "world_height": 32,
+        "mca_bytes": 4202496,
+        "sha256": "441b750c0acfe64a7beb0aec810df858c777e18efb16f273864d2763bff175e0",
+        "generation_response_host_ms": 924.3099170271307,
+        "encode_compress_write_response_host_ms": 2523.6502499319613,
+        "repeated_file_identical": null
+      },
+      {
+        "name": "vanilla",
+        "region": [
+          -2,
+          3
+        ],
+        "chunks": 1024,
+        "world_min": -64,
+        "world_height": 384,
+        "mca_bytes": 4268032,
+        "sha256": "4e7a7ca1c88d36c95aa7dcbb85f4b8b70b4f5c1becdf29f882952c22c94975e4",
+        "generation_response_host_ms": 117105.31812498812,
+        "encode_compress_write_response_host_ms": 16114.462708006613,
+        "repeated_file_identical": null
+      }
+    ],
+    "chunk_streams_decoded": 3072,
+    "blocks_compared_to_generated_queries": 802816,
+    "requests_in_one_process": 143,
+    "expected_gpu_dispatches": 9,
+    "metal_commands_ms": [
+      10.743375,
+      70.565083,
+      2070.943375,
+      9.98375,
+      12.115625,
+      853.4085,
+      66323.636458,
+      2209.416375,
+      48514.186125
+    ],
+    "sha256": "a645f8fc1e64119877985de88802d74ead5c6c27b907c78655b19d8f8d1c0d97"
+  },
+  "timing_scope": "Observational correctness-test response times; uncontrolled host load, not comparative benchmarks",
+  "host": "macOS arm64 / Apple M4 Max; two Bend CPU workers, nice +10",
+  "normal_executable_sha256": "e65685bdc8d0f5f0a272bb63b52d12262f16ac6317fba6a0ee3cc56bf6280360",
+  "metal_observer_executable_sha256": "40a7e7178bf4fb372e38f20c2dc1d71d0e7ef986cca0a0b117bdfd8b6ec8798d",
+  "metal_observer_scope": "Diagnostic stock-runtime command-buffer timestamps only; synthetic whole regions and actual vanilla profile; output SHA256 matches normal GPU execution. Terralith/combined run normal GPU-required checks without additional observer claims.",
+  "minecraft_validation": {
+    "result": "pass",
+    "files": 7,
+    "chunks_per_file": 1024,
+    "reads_per_chunk": 2,
+    "blocks_verified": 671088640,
+    "data_version": 5023,
+    "running_world_gameplay_edits_tested": false,
+    "classes": [
+      "RegionFileStorage",
+      "SerializableChunkData",
+      "PalettedContainer",
+      "Heightmap.Types"
+    ]
+  },
+  "java_worker_validation": {
+    "result": "pass",
+    "executions": [
+      "CPU",
+      "GPU_REQUIRED"
+    ],
+    "concurrent_writes_per_execution": 2,
+    "queued_cancellations": 2,
+    "snapshot_retained": true,
+    "actual_missing_parent_open_failure": true,
+    "process_cleanup": true
+  },
+  "generated_chunk_regression": {
+    "cpu": {
+      "gpu_required": false,
+      "profiles": [
+        {
+          "name": "ramp",
+          "chunks": [
+            {
+              "chunk": [
+                -2,
+                3
+              ],
+              "blocks": 16384,
+              "nbt_bytes": 8570,
+              "zlib_bytes": 992,
+              "encode_response_host_ms": 13.333417009562254
+            },
+            {
+              "chunk": [
+                1875000,
+                -1875001
+              ],
+              "blocks": 16384,
+              "nbt_bytes": 6470,
+              "zlib_bytes": 632,
+              "encode_response_host_ms": 13.596500037238002
+            }
+          ]
+        },
+        {
+          "name": "islands",
+          "chunks": [
+            {
+              "chunk": [
+                -2,
+                3
+              ],
+              "blocks": 16384,
+              "nbt_bytes": 6714,
+              "zlib_bytes": 715,
+              "encode_response_host_ms": 14.83695802744478
+            },
+            {
+              "chunk": [
+                1875000,
+                -1875001
+              ],
+              "blocks": 16384,
+              "nbt_bytes": 6714,
+              "zlib_bytes": 731,
+              "encode_response_host_ms": 14.66495799832046
+            }
+          ]
+        },
+        {
+          "name": "solid",
+          "chunks": [
+            {
+              "chunk": [
+                -1,
+                -1
+              ],
+              "blocks": 16384,
+              "nbt_bytes": 6470,
+              "zlib_bytes": 608,
+              "encode_response_host_ms": 13.790833996608853
+            }
+          ]
+        },
+        {
+          "name": "empty",
+          "chunks": [
+            {
+              "chunk": [
+                -1,
+                -1
+              ],
+              "blocks": 16384,
+              "nbt_bytes": 4401,
+              "zlib_bytes": 535,
+              "encode_response_host_ms": 13.287542038597167
+            },
+            {
+              "chunk": [
+                134217726,
+                -134217727
+              ],
+              "blocks": 16384,
+              "nbt_bytes": 4401,
+              "zlib_bytes": 545,
+              "encode_response_host_ms": 12.991957948543131
+            }
+          ]
+        },
+        {
+          "name": "non_power_cells",
+          "chunks": [
+            {
+              "chunk": [
+                -1,
+                -1
+              ],
+              "blocks": 16384,
+              "nbt_bytes": 8570,
+              "zlib_bytes": 996,
+              "encode_response_host_ms": 16.439792001619935
+            }
+          ]
+        },
+        {
+          "name": "unicode",
+          "chunks": [
+            {
+              "chunk": [
+                -1,
+                -1
+              ],
+              "blocks": 16384,
+              "nbt_bytes": 6484,
+              "zlib_bytes": 624,
+              "encode_response_host_ms": 12.460541911423206
+            }
+          ]
+        },
+        {
+          "name": "vanilla",
+          "chunks": [
+            {
+              "chunk": [
+                -1,
+                -1
+              ],
+              "blocks": 98304,
+              "nbt_bytes": 22344,
+              "zlib_bytes": 2732,
+              "encode_response_host_ms": 58.69125004392117
+            }
+          ]
+        },
+        {
+          "name": "terralith",
+          "chunks": [
+            {
+              "chunk": [
+                -1,
+                -1
+              ],
+              "blocks": 98304,
+              "nbt_bytes": 22388,
+              "zlib_bytes": 2847,
+              "encode_response_host_ms": 56.35762505698949
+            }
+          ]
+        },
+        {
+          "name": "combined",
+          "chunks": [
+            {
+              "chunk": [
+                -1,
+                -1
+              ],
+              "blocks": 98304,
+              "nbt_bytes": 22388,
+              "zlib_bytes": 2847,
+              "encode_response_host_ms": 54.31254196446389
+            }
+          ]
+        }
+      ],
+      "blocks_verified": 442368,
+      "invalid_catalogs_rejected": 14,
+      "requests_in_one_process": 458,
+      "expected_gpu_dispatches": 54,
+      "metal_commands_ms": [],
+      "sha256": "24918d3a814982b6f7340be2b332753de70dd1b024aafeb01f464cd7313de02e"
+    },
+    "gpu": {
+      "gpu_required": true,
+      "profiles": [
+        {
+          "name": "ramp",
+          "chunks": [
+            {
+              "chunk": [
+                -2,
+                3
+              ],
+              "blocks": 16384,
+              "nbt_bytes": 8570,
+              "zlib_bytes": 992,
+              "encode_response_host_ms": 10.55270794313401
+            },
+            {
+              "chunk": [
+                1875000,
+                -1875001
+              ],
+              "blocks": 16384,
+              "nbt_bytes": 6470,
+              "zlib_bytes": 632,
+              "encode_response_host_ms": 9.021917008794844
+            }
+          ]
+        },
+        {
+          "name": "islands",
+          "chunks": [
+            {
+              "chunk": [
+                -2,
+                3
+              ],
+              "blocks": 16384,
+              "nbt_bytes": 6714,
+              "zlib_bytes": 715,
+              "encode_response_host_ms": 10.097833001054823
+            },
+            {
+              "chunk": [
+                1875000,
+                -1875001
+              ],
+              "blocks": 16384,
+              "nbt_bytes": 6714,
+              "zlib_bytes": 731,
+              "encode_response_host_ms": 10.329124983400106
+            }
+          ]
+        },
+        {
+          "name": "solid",
+          "chunks": [
+            {
+              "chunk": [
+                -1,
+                -1
+              ],
+              "blocks": 16384,
+              "nbt_bytes": 6470,
+              "zlib_bytes": 608,
+              "encode_response_host_ms": 9.51491598971188
+            }
+          ]
+        },
+        {
+          "name": "empty",
+          "chunks": [
+            {
+              "chunk": [
+                -1,
+                -1
+              ],
+              "blocks": 16384,
+              "nbt_bytes": 4401,
+              "zlib_bytes": 535,
+              "encode_response_host_ms": 8.711833972483873
+            },
+            {
+              "chunk": [
+                134217726,
+                -134217727
+              ],
+              "blocks": 16384,
+              "nbt_bytes": 4401,
+              "zlib_bytes": 545,
+              "encode_response_host_ms": 8.592374972067773
+            }
+          ]
+        },
+        {
+          "name": "non_power_cells",
+          "chunks": [
+            {
+              "chunk": [
+                -1,
+                -1
+              ],
+              "blocks": 16384,
+              "nbt_bytes": 8570,
+              "zlib_bytes": 996,
+              "encode_response_host_ms": 10.875207954086363
+            }
+          ]
+        },
+        {
+          "name": "unicode",
+          "chunks": [
+            {
+              "chunk": [
+                -1,
+                -1
+              ],
+              "blocks": 16384,
+              "nbt_bytes": 6484,
+              "zlib_bytes": 624,
+              "encode_response_host_ms": 9.581750025972724
+            }
+          ]
+        },
+        {
+          "name": "vanilla",
+          "chunks": [
+            {
+              "chunk": [
+                -1,
+                -1
+              ],
+              "blocks": 98304,
+              "nbt_bytes": 22344,
+              "zlib_bytes": 2732,
+              "encode_response_host_ms": 57.87804105784744
+            }
+          ]
+        },
+        {
+          "name": "terralith",
+          "chunks": [
+            {
+              "chunk": [
+                -1,
+                -1
+              ],
+              "blocks": 98304,
+              "nbt_bytes": 22388,
+              "zlib_bytes": 2847,
+              "encode_response_host_ms": 55.62429199926555
+            }
+          ]
+        },
+        {
+          "name": "combined",
+          "chunks": [
+            {
+              "chunk": [
+                -1,
+                -1
+              ],
+              "blocks": 98304,
+              "nbt_bytes": 22388,
+              "zlib_bytes": 2847,
+              "encode_response_host_ms": 57.743582990951836
+            }
+          ]
+        }
+      ],
+      "blocks_verified": 442368,
+      "invalid_catalogs_rejected": 14,
+      "requests_in_one_process": 458,
+      "expected_gpu_dispatches": 54,
+      "metal_commands_ms": [],
+      "sha256": "24918d3a814982b6f7340be2b332753de70dd1b024aafeb01f464cd7313de02e"
+    }
+  },
+  "host_build": {
+    "result": "pass",
+    "command": "RUST_TEST_THREADS=2 CARGO_BUILD_JOBS=2 nice -n 10 ./gradlew bendProfileWireClasses gpuTestClasses build -PretinaHostOnly --max-workers=2 --no-parallel",
+    "native_tests_passed": 64,
+    "native_gpu_tests_explicitly_ignored": 11,
+    "loaders": [
+      "Fabric",
+      "NeoForge"
+    ]
+  },
+  "reproduction_harness_sha256": {
+    "scripts/test_bend_generated_regions.py": "24c3787fddfc640050abd9399d577f91404d6db158fa6568e51ef28a597b5c51",
+    "common/src/gpuTest/java/art/arcane/retina/worldgen/BendGeneratedChunkIntegrationTest.java": "fcdbd29c4f2ad1f52b9759b40fc6b9cffa2980bad5048e69600b53e61dd44da5",
+    "common/src/gpuTest/java/art/arcane/retina/worldgen/BendGeneratedRegionWorkerTest.java": "bdb060e0089d518b3a2d36c3e1e855b0be57d0ec95647b4c96498f2653b7f3b6"
+  },
+  "limits": [
+    "Unlit base/material output only; final generation/lighting/parity incomplete",
+    "Private new-file staging only; not safe for existing saves; publication and external records pending",
+    "Full loaded-profile GPU construction takes minutes; these uncontrolled correctness timings are not complete-region Rust-versus-Bend benchmarks",
+    "Retains up to 1024 compressed inline records and padded record buffers; expanded chunks limited to eight fork-tree leaves per batch"
+  ],
+  "generated_chunk_bytes_match_pr37": {
+    "cpu": true,
+    "gpu": true,
+    "baseline": "docs/benchmarks/bend-generated-chunks.json"
+  }
+}

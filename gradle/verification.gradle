@@ -591,6 +591,48 @@ tasks.register('bendGeneratedChunkTest', JavaExec) {
     }
 }
 
+tasks.register('bendGeneratedRegionFixtures', Exec) {
+    group = 'verification'
+    description = 'Validate whole generated Bend MCA output with independent NBT/zlib readers and chunk queries.'
+    workingDir rootProject.projectDir
+    commandLine providers.gradleProperty('pythonExecutable').getOrElse('python3'), 'scripts/test_bend_generated_regions.py'
+    if (providers.gradleProperty('bendSkipBuild').isPresent()) args '--skip-build'
+    if (providers.gradleProperty('proveMetal').isPresent()) args '--prove-metal'
+    if (!registryDensityProfiles.isEmpty())
+        registryDensityProfiles.split(',').each { pair -> args '--profile', *pair.split('=', 2) }
+    mustRunAfter 'bendRegistryWireTest', 'bendRegistryNoiseTest', 'bendRegistryClimateTest', 'bendEngineTest', 'bendNoiseTest', 'bendClimateTest', 'bendNumericTest', 'bendDensityTest', 'bendRegistryDensityTest', 'bendDensityLatticeTest', 'bendSurfaceTest', 'bendMaterialTest', 'bendMaterialColumnsTest', 'bendGeneratedChunkFixtures'
+}
+
+tasks.register('bendGeneratedRegionTest', JavaExec) {
+    group = 'verification'
+    description = 'Read and reopen every generated MCA chunk through actual Minecraft region/palette/heightmap decoders.'
+    dependsOn 'gpuTestClasses', 'bendGeneratedRegionFixtures'
+    classpath = sourceSets.gpuTest.runtimeClasspath
+    mainClass = 'art.arcane.retina.worldgen.BendGeneratedChunkIntegrationTest'
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
+    jvmArgs '-XX:ActiveProcessorCount=2'
+    args '--regions', rootProject.file('build/bend/generated-regions').absolutePath,
+            providers.gradleProperty('bendGeneratedRegionProfiles').getOrElse('ramp,islands,vanilla')
+    if (providers.gradleProperty('testDatapack').isPresent()) args providers.gradleProperty('testDatapack').get()
+    if (providers.gradleProperty('testSupplement').isPresent()) args providers.gradleProperty('testSupplement').get()
+    if (providers.gradleProperty('testRegistrySupplement').isPresent()) {
+        dependsOn 'registryExportSupplement'
+        args rootProject.file('build/registry-fixtures/registry-supplement.zip').absolutePath
+    }
+}
+
+tasks.register('bendGeneratedRegionWorkerTest', JavaExec) {
+    group = 'verification'
+    description = 'Exercise concurrent Bend region writes, queued cancellation, actual IO failure and worker cleanup.'
+    dependsOn 'gpuTestClasses', 'bendGeneratedRegionFixtures'
+    classpath = sourceSets.gpuTest.runtimeClasspath
+    mainClass = 'art.arcane.retina.worldgen.BendGeneratedRegionWorkerTest'
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
+    jvmArgs '-XX:ActiveProcessorCount=2'
+    args rootProject.file('build/bend/engine').absolutePath, rootProject.file('build/bend/generated-regions/ramp.rbp').absolutePath
+    mustRunAfter 'bendGeneratedRegionTest'
+}
+
 tasks.register('bendChunkTest', JavaExec) {
     group = 'verification'
     description = 'Decode pure Bend MCA chunks with Minecraft palettes, heightmap predicates and SerializableChunkData.'

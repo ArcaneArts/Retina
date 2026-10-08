@@ -510,3 +510,52 @@ and supply their registry packs using `-PtestDatapack`/`-PtestSupplement`.
 `-PbendSkipBuild` reuses an explicitly already-built worker during local checks.
 These are generated-chunk component checks, not running-world save/edit tests
 or complete-region benchmarks.
+
+### Whole generated MCA staging (component command 28)
+
+Command **28** takes seven U32s followed by Unicode scalar words:
+`regionX, regionZ, seedLow, seedHigh, DataVersion, timestamp, pathLength`, then
+`pathLength` U32 code points for a private output staging path (1..4096 scalars,
+no NUL/surrogates/out-of-range values). Region coordinates are signed bits;
+the request must cover a complete 512x512 region in signed-i32 block space.
+All 1,024 chunks must already be covered by the resident generated block tile
+with the same full seed and section-aligned world limits. The existing chunk
+metadata errors remain **603**, **731**, **732** and **733**; missing numeric
+preparation remains **716**. Invalid requests preserve the generation snapshot
+and do not create an output file.
+
+Bend encodes/compresses eight independent chunks per fork/join batch, retaining
+compressed streams rather than expanded region blocks/NBT. It plans sector
+locations and timestamps with `region.bend`, then writes the header and padded
+records sequentially using stock file IO. Only the success acknowledgement,
+`chunkCount=1024, sectorCount`, returns through IPC. Seeds, coordinates,
+DataVersion, timestamps and paths are raw Java metadata; all format computation
+and output bytes remain Bend. CPU Bend performs serialization/compression even
+when the resident terrain was produced by GPU. No extra lighting rewrite occurs.
+
+**Staging ownership is mandatory.** File mode `w` creates/truncates the provided
+path. This component must never receive an existing saved region path. The
+caller owns the private staging file until successful acknowledgement and later
+publication. On actual open/write failure the stock IO error terminates the
+worker and reaches pending Java callers as a transport failure. A partial staged
+file may exist after a write failure; it is never acknowledged as complete.
+In-flight cancellation drains the response and does not cancel the write, so
+retain staging ownership until completion or worker shutdown before cleanup.
+Queued cancellation skips the request. Atomic publication, existing/external
+record preservation and Minecraft lifecycle integration are later work.
+
+`bendGeneratedRegionTest` independently decodes whole generated files and then
+reads/reopens all chunks through Minecraft. `bendGeneratedRegionWorkerTest`
+exercises real concurrent Java writes, queued cancellation, unchanged snapshots,
+an actual missing-parent open failure and worker shutdown. Add actual profiles
+with `-PbendDensityRegistryProfiles`; select Minecraft decoder inputs using
+`-PbendGeneratedRegionProfiles=ramp,islands,vanilla,terralith,combined` and load
+the corresponding packs with the existing test pack arguments. These are unlit
+base/material regions; final generation and running-world acceptance remain
+explicitly incomplete.
+
+`-PproveMetal` additionally instruments the stock runtime to observe complete
+GPU command buffers for both synthetic full tiles and the first supplied actual
+registry profile. Observed output files must match the normal GPU-required run.
+The report lists the exact observed profiles; other supplied profiles still run
+the normal independent checks, without a claim of additional device observation.

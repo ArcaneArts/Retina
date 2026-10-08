@@ -46,9 +46,9 @@ more deeply; retain the original requested scope.
 | Full 64-bit seeds, signed/distant coordinates and repeatable ordering | `ChunkRequest`, native hash/random routines | Exact word-pair add/subtract/multiply/bit operations implemented; 3,689 operations independently verified. Typed i64/f64-to-F32 rounding independently verifies 131,072 scalar conversions per CPU/GPU run, including distant-value midpoint cases. Integration and coordinate/order checks pending |
 | Block/biome palettes, bit-packed long arrays, heightmaps, modified UTF-8 NBT and current data versions | `region.rs`, `nbt.rs` | Pure Bend palette remapping (49,664 indices), final-block heightmaps and complete fixture chunk encoding implemented. Minecraft 26.3 (data version 5023) reads/reopens mixed and prelit fixture chunks through actual region, palette and SerializableChunkData decoders. Resident generated base/material columns now encode into current-version NBT/zlib with exact state properties, quart surface biomes and final-block heightmaps; final generated-region/runtime integration remains pending |
 | LZ77, fixed-Huffman DEFLATE, zlib/Adler-32 and stored fallback | `region.rs` uses libdeflater | Implemented in `bend/compression.bend`; independent fixture tests pass |
-| Independent parallel chunk compression | Rayon chunk assembly in `region.rs` | Implemented Bend fork/join API; four streams verified at 1/2/4 workers; region integration pending |
+| Independent parallel chunk compression | Rayon chunk assembly in `region.rs` | Implemented Bend fork/join API; generated MCA staging now compresses eight independent chunk tasks per batch; final voxel/light integration pending |
 | GPU lighting, interior-chunk validity, boundary handling and one final region write | `lighting.rs`, `lighting.wgsl`, `region.rs`, `LightSeams.java` | Serialization of supplied light arrays/padding and completion flags validated with Minecraft. Lighting computation, interior/boundary policy and actual generation integration remain pending |
-| MCA sector tables, external records, preserving existing chunks and atomic publication | `region.rs` | Pure Bend new-file inline planning/streaming validated with 1024 full, 3 sparse and empty record containers. Existing/external-record preservation and atomic publication pending |
+| MCA sector tables, external records, preserving existing chunks and atomic publication | `region.rs` | Pure Bend new-file inline planning/streaming now writes whole generated base/material regions from resident snapshots; independent and actual Minecraft decoders cover all 1024 chunks. Existing/external-record preservation and atomic publication pending |
 | Persistent engine, bounded scheduling/singleflight, cleanup and actionable failure propagation | `NativeTerrain.java`, `RegionCoordinator.java`, `TerrainQueries.java` | Persistent Bend component worker and bounded raw Java transport implemented: resident noise stacks, GPU grids, Bend compression, 16 queued requests/32 MiB retained request payloads, cancellation, shutdown and fatal protocol/process failure checks. Full registry file loading and input queries implemented; actual region commands, coalescing and Minecraft lifecycle integration pending |
 | DH surface/height requests generate temporary whole regions, 1024-region cache, eviction and promotion | `TemporaryRegions.java`, `RegionCoordinator.java` | Pending: share coordinator/cache with selected backend |
 | Backend selection survives datapacks, codecs, save/reopen and server lifecycle | `RetinaChunkGenerator.java`, preset/platform mixins | Pending |
@@ -319,3 +319,37 @@ outputs twice and checks 1,703,936 blocks using its actual heightmap predicates.
 Java raw transport checks twelve concurrent chunk requests per backend. The full
 host Fabric/NeoForge build and existing material-column regressions pass.
 Evidence is recorded in `docs/benchmarks/bend-generated-chunks.json`.
+
+The generated-chunk cycle merged in [PR #37](https://github.com/ArcaneArts/Retina/pull/37),
+commit `bb46a65`; both actual push/PR CI builds passed.
+
+Whole generated base/material regions now use the pure Bend chunk encoder,
+parallel compression and MCA planner in one staged-file command. Batches retain
+compressed records while releasing expanded chunk arrays; final bytes stream
+through stock Bend file IO. The Java bridge carries raw metadata/path and owns
+staging lifetime only. The command never reads or overwrites a game save and
+does not claim final cave/feature/structure/light parity. Existing/external
+record preservation, atomic publication, scheduling/coalescing, cache promotion,
+world selection and actual gameplay save/edit tests remain required.
+
+Independent checks decode 7,168 chunk streams across two synthetic CPU/GPU
+regions and full vanilla/Terralith/combined GPU-required regions. Selected chunks
+match raw/compressed chunk commands and every queried block/heightmap; repeated
+whole writes are identical. The observer confirms all nine expected actual Metal
+commands for three complete files (synthetic plus vanilla), with byte-identical
+normal GPU output. Minecraft reads all seven files twice, checking 671,088,640
+blocks against its actual palette and heightmap predicates without changing file
+bytes. Concurrent Java writers, queued cancellation, snapshot reuse, actual file
+open failure and worker cleanup pass. Existing generated-chunk CPU/GPU catalog,
+coordinate and cache regressions also pass, along with the full host loader
+build and 64 native unit tests. Evidence is in
+`docs/benchmarks/bend-generated-regions.json`.
+
+These checks expose a material scaling problem rather than a performance win.
+Full loaded-profile construction took roughly 168–310 seconds in the normal
+correctness run; encoding/compression/writing took 17–19 seconds. A separate
+observed vanilla run spent about 66 seconds in density, 49 seconds in material
+columns and 2 seconds in surface/climate. Host load is uncontrolled and these
+are component response times, not complete lit/featured region comparisons.
+Profile density-field reuse and bulk material evaluation before production
+integration; do not hide this cost behind the earlier small-query results.
