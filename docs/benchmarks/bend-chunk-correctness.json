@@ -1,0 +1,33 @@
+{
+  "bend_version": "bend 2.0.36",
+  "palettes": {
+    "cases": 20,
+    "indices_verified": 49664
+  },
+  "chunks": 2,
+  "blocks_verified": 196608,
+  "biomes_verified": 3072,
+  "heightmap_values_verified": 3072,
+  "invalid_requests_rejected": 27,
+  "uncompressed_chunk_bytes": 12644,
+  "mca_bytes": 16384,
+  "mca_sha256": "5c2ba9420a99af8e91835bcaec0844369f0f1ff3d7464c145c6e3876cfe4c322",
+  "scope": "chunk serializer and supplied lighting; not terrain generation or lighting computation",
+  "minecraft_decoder_validation": {
+    "command": "./gradlew bendChunkTest -PretinaHostOnly --max-workers=2 --no-parallel",
+    "minecraft_version": "26.3",
+    "data_version": 5023,
+    "chunks": 2,
+    "reopens": 2,
+    "result": "pass",
+    "checks": [
+      "RegionFileStorage",
+      "PalettedContainer block properties",
+      "quart biome indices",
+      "SimpleBitStorage heightmaps against registered predicates",
+      "SerializableChunkData status/light flags",
+      "light section padding and exact nibble bytes",
+      "negative coordinates and full 64-bit loot seed"
+    ]
+  }
+}
