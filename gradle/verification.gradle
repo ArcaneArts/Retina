@@ -412,6 +412,35 @@ tasks.register('bendNoiseTest', Exec) {
     if (providers.gradleProperty('proveMetal').isPresent()) args '--prove-metal'
 }
 
+tasks.register('bendEngineTest', Exec) {
+    group = 'verification'
+    description = 'Compile and exercise the persistent Bend worker and independent CPU/GPU protocol checks.'
+    workingDir rootProject.projectDir
+    commandLine providers.gradleProperty('pythonExecutable').getOrElse('python3'), 'scripts/test_bend_engine.py'
+    if (providers.gradleProperty('proveMetal').isPresent()) args '--prove-metal'
+}
+
+def bendWorkerClasses = tasks.register('bendWorkerClasses', JavaCompile) {
+    // This transport has no Minecraft/native dependencies. Check it with Rust
+    // absent instead of initializing the existing backend just to test Bend.
+    source rootProject.file('common/src/main/java/art/arcane/retina/worldgen/BendWorker.java'),
+            rootProject.file('common/src/gpuTest/java/art/arcane/retina/worldgen/BendWorkerTest.java')
+    classpath = files()
+    destinationDirectory = rootProject.layout.buildDirectory.dir('bend/java')
+    javaCompiler = javaToolchains.compilerFor { languageVersion = JavaLanguageVersion.of(25) }
+    options.release = 25
+}
+
+tasks.register('bendWorkerTest', JavaExec) {
+    group = 'verification'
+    description = 'Verify actual Bend IPC, bounded Java scheduling, cancellation, shutdown and failure recovery.'
+    dependsOn 'bendEngineTest', bendWorkerClasses
+    classpath = files(bendWorkerClasses.flatMap { it.destinationDirectory })
+    mainClass = 'art.arcane.retina.worldgen.BendWorkerTest'
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
+    maxHeapSize = '256m'
+}
+
 tasks.register('bendChunkTest', JavaExec) {
     group = 'verification'
     description = 'Decode pure Bend MCA chunks with Minecraft palettes, heightmap predicates and SerializableChunkData.'

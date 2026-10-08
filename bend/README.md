@@ -232,3 +232,57 @@ output against the normal executable. This confirms actual dispatch; it is not
 a production runtime modification or a performance benchmark. The report is in
 `docs/benchmarks/bend-noise-correctness.json`. Runtime terrain integration and
 complete lit/compressed-region measurements remain required.
+
+## Persistent component worker
+
+`engine.bend` runs one stock-runtime process across requests. It caches a
+prepared noise stack, samples arbitrary grids up to 512×512 through a GPU bang
+call (or explicit Bend CPU execution), and compresses supplied chunk payloads
+with the Bend encoder. `reader.bend` checks bounds before reading words and
+preserves supplied F32 bit patterns. `transport.bend` handles partial reads,
+clean EOF and truncated frames using only stock binary file IO.
+
+`BendWorker.java` is a raw process/transport adapter. It contains no generation,
+noise, NBT or compression algorithms. One IO lane serializes frames from
+parallel callers; the Bend job itself can run in parallel. The queue holds at
+most 16 waiting requests, with a 32 MiB budget for retained cloned request
+payloads including the active job. Responses are bounded separately. Canceled
+queued jobs are skipped; canceled in-flight responses are drained so subsequent
+frames stay aligned. Closing rejects pending requests and terminates the child.
+Fatal framing/IO/process failures close the worker. An ordinary rejected command
+returns an error while leaving its previous configuration intact.
+
+CPU execution is explicit (`--gpu off`). `GPU_REQUIRED` uses `--gpu on`: the
+stock Bend runtime rejects unavailable GPU execution before running this program,
+which contains GPU bang calls. There is no Rust/vanilla fallback. The Java bridge
+passes matching execution arguments and validates the actual worker handshake.
+The current pipe entry points use `/dev/stdin` and `/dev/stdout`, so this worker
+is POSIX-specific; a Windows transport and production packaging remain pending.
+
+```sh
+python3 scripts/test_bend_engine.py --prove-metal
+./gradlew bendWorkerTest -PretinaHostOnly --max-workers=2 --no-parallel -PproveMetal
+```
+
+The independent runner completes 127 requests in one process for each of CPU and
+GPU, verifies odd-sized/negative/distant grids plus a 512×512 grid, round-trips
+four compressed payloads including 1 MiB random data, and rejects five malformed
+streams. The diagnostic observer sees ten actual Metal command buffers, with
+identical grids to the normal executable. Java tests run four concurrent callers
+and verify cancellation, cloned-input ownership, queue/byte limits and budget
+recovery, pending-request shutdown, corrupted frames/status, crashes and process
+termination within a 256 MiB test heap. These checks do not initialize Rust or
+Minecraft. Evidence is in `docs/benchmarks/bend-engine-correctness.json`.
+
+Protocol v1 uses big-endian U32 words. Requests contain `RBND`, payload byte
+length, request ID and opcode. Responses add a status word (0 success, 1 error)
+after opcode. Opcodes are 0 ping, 1 prepare noise, 2 sample grid, 3 compress and
+4 stop. Noise input contains low/high seed words, frequency/amplitude F32 bits,
+channel, modifier count and modifier F32 bits. Grid input is X, Z, width, height
+and integer step; output contains row-major raw F32 bits. Framed requests are
+limited to 16 MiB; this is **not** the complete registry-upload protocol.
+
+This worker is an independently tested component transport, not yet connected
+to world selection or Minecraft generation. Full registry reception, terrain,
+features, structures, lighting, region job coalescing/cache integration and
+complete-region benchmarks remain required. A noise grid is not an MCA region.
