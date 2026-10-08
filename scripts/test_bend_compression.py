@@ -25,7 +25,7 @@ def command(args, **kwargs):
                           text=True, timeout=120, **kwargs)
 
 
-def build(bend, binary):
+def build(bend, binary, source=None):
     env = dict(os.environ, BEND_NO_TELEMETRY="1")
     xcode = Path("/Applications/Xcode.app/Contents/Developer")
     if xcode.exists():
@@ -34,7 +34,7 @@ def build(bend, binary):
     # Compile before running any checks. One native compiler at reduced priority.
     binary.parent.mkdir(parents=True, exist_ok=True)
     version = command([bend, "version"], env=env).stdout.strip()
-    command(["nice", "-n", "10", bend, ROOT / "bend/tests/compress-file.bend",
+    command(["nice", "-n", "10", bend, source or ROOT / "bend/tests/compress-file.bend",
              "-o", binary], env=env, cwd=ROOT)
     return version
 

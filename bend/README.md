@@ -66,3 +66,28 @@ full-region benchmarks remain required before the backend is complete.
 
 The current byte buffers use one Bend U32 per byte. Compact packing, memory
 limits and reusable per-worker buffers will be evaluated with actual NBT data.
+
+## Binary and NBT primitives
+
+`word64.bend` represents exact 64-bit values as two U32 words, with wrapping
+addition, subtraction, multiplication, bitwise operations and Java-compatible
+masked shifts. These values preserve Minecraft seed bits and packed NBT longs.
+
+`binary.bend` provides a growable big-endian chunk buffer with a 16 MiB limit.
+`nbt.bend` encodes all twelve NBT payload types, including homogeneous lists,
+compounds and typed arrays. Long/double values and floating NaN payloads retain
+their supplied bits. Strings use Java modified UTF-8, including NUL, supplementary
+surrogate pairs and isolated UTF-16 surrogates. Oversized strings, invalid list
+types/counts, out-of-capacity arrays and excessive nesting return errors instead
+of wrapping array indices or producing a successful partial buffer.
+
+```sh
+python3 scripts/test_bend_binary.py
+```
+
+The independent Python reader checks every NBT type and exact full-buffer
+consumption. It also compares 527 rows of seven 64-bit operations (3,689 results)
+with Python integer arithmetic, covering all shift counts and carry/borrow/sign
+boundaries. Nine invalid-input fixtures check error propagation. This does not
+yet prove Minecraft chunk schema, palette packing or MCA-file compatibility;
+those remain separate required integration work.
