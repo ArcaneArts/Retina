@@ -545,6 +545,40 @@ tasks.register('bendGeologyTest', Exec) {
     mustRunAfter 'bendRegistryWireTest', 'bendRegistryNoiseTest', 'bendRegistryClimateTest', 'bendEngineTest', 'bendNoiseTest', 'bendClimateTest', 'bendNumericTest', 'bendDensityTest', 'bendRegistryDensityTest', 'bendInterpolationTest', 'bendDensityLatticeTest', 'bendSurfaceTest', 'bendMaterialTest', 'bendMaterialColumnsTest', 'bendLazyMaterialTest', 'bendShorelineTest'
 }
 
+tasks.register('bendCaveTest', Exec) {
+    group = 'verification'
+    description = 'Check Bend cave lattices, rounded ravines, exact carved voxels and compressed chunks on CPU/GPU.'
+    workingDir rootProject.projectDir
+    commandLine providers.gradleProperty('pythonExecutable').getOrElse('python3'), 'scripts/test_bend_caves.py'
+    if (providers.gradleProperty('bendSkipBuild').isPresent()) args '--skip-build'
+    if (providers.gradleProperty('proveMetal').isPresent()) args '--prove-metal'
+    if (providers.gradleProperty('bendMetalProbe').isPresent()) args '--metal-probe', providers.gradleProperty('bendMetalProbe').get()
+    if (!registryDensityProfiles.isEmpty()) registryDensityProfiles.split(',').each { pair ->
+        pair.split('=', 2).with { paths -> args '--profile', paths[0], paths[1] }
+    }
+    mustRunAfter 'bendGeologyTest'
+}
+
+tasks.register('bendCaveRegionFixtures', Exec) {
+    group = 'verification'
+    description = 'Independently decode all 1024 chunks of a complete carved Bend MCA file on CPU/GPU.'
+    workingDir rootProject.projectDir
+    commandLine providers.gradleProperty('pythonExecutable').getOrElse('python3'), 'scripts/test_bend_cave_regions.py'
+    if (providers.gradleProperty('bendMetalProbe').isPresent()) args '--metal-probe', providers.gradleProperty('bendMetalProbe').get()
+    mustRunAfter 'bendCaveTest'
+}
+
+tasks.register('bendCaveRegionTest', JavaExec) {
+    group = 'verification'
+    description = 'Read/reopen complete carved Bend MCA chunks through actual Minecraft decoders.'
+    dependsOn 'gpuTestClasses', 'bendCaveRegionFixtures'
+    classpath = sourceSets.gpuTest.runtimeClasspath
+    mainClass = 'art.arcane.retina.worldgen.BendGeneratedChunkIntegrationTest'
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
+    jvmArgs '-XX:ActiveProcessorCount=2'
+    args '--regions', rootProject.file('build/bend/cave-regions').absolutePath, 'caves'
+}
+
 def climateProfiles = providers.gradleProperty('bendClimateProfiles').getOrElse('')
 tasks.register('bendClimateTest', Exec) {
     group = 'verification'
@@ -597,7 +631,8 @@ def bendWorkerClasses = tasks.register('bendWorkerClasses', JavaCompile) {
     // This transport has no Minecraft/native dependencies. Check it with Rust
     // absent instead of initializing the existing backend just to test Bend.
     source rootProject.file('common/src/main/java/art/arcane/retina/worldgen/BendWorker.java'),
-            rootProject.file('common/src/gpuTest/java/art/arcane/retina/worldgen/BendWorkerTest.java')
+            rootProject.file('common/src/gpuTest/java/art/arcane/retina/worldgen/BendWorkerTest.java'),
+            rootProject.file('common/src/gpuTest/java/art/arcane/retina/worldgen/BendCaveWorkerTest.java')
     classpath = files()
     destinationDirectory = rootProject.layout.buildDirectory.dir('bend/java')
     javaCompiler = javaToolchains.compilerFor { languageVersion = JavaLanguageVersion.of(25) }
@@ -612,6 +647,19 @@ tasks.register('bendWorkerTest', JavaExec) {
     mainClass = 'art.arcane.retina.worldgen.BendWorkerTest'
     javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
     maxHeapSize = '256m'
+}
+
+tasks.register('bendCaveWorkerTest', JavaExec) {
+    group = 'verification'
+    description = 'Exercise actual Java cave callers, concurrent queries, carved NBT/zlib and cache invalidation.'
+    dependsOn 'bendCaveTest', bendWorkerClasses
+    classpath = files(bendWorkerClasses.flatMap { it.destinationDirectory })
+    mainClass = 'art.arcane.retina.worldgen.BendCaveWorkerTest'
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
+    jvmArgs '-XX:ActiveProcessorCount=2'
+    maxHeapSize = '256m'
+    args rootProject.file('build/bend/engine').absolutePath,
+            rootProject.file('build/bend/cave-profiles/ellipsoid.rbp').absolutePath
 }
 
 tasks.register('bendGeneratedChunkFixtures', Exec) {

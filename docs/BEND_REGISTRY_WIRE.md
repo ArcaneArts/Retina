@@ -638,9 +638,9 @@ the normal independent checks, without a claim of additional device observation.
 
 ### Registered cave component (commands 30–32)
 
-These commands prepare and exercise subsurface inputs. They do **not** carve
-resident blocks yet; cave nodes/masks, 3D biomes, ravines, entrances, fluids and
-final region integration remain required.
+These commands prepare and exercise subsurface inputs. Commands 33–35 consume
+them to generate cached fields and carve the resident block snapshot. 3D cave
+biomes, aquifers/decorations and final world integration remain required.
 
 - **30 — prepare geology:** empty payload, after numeric/material/block
   preparation (11/19/21). Bend resolves six `cave_noises`, each biome's `carvers`,
@@ -696,3 +696,71 @@ maximum counts, invalid schemas, malformed uploads and cache invalidation.
 `-PproveMetal` observes actual stock-runtime Metal command buffers and compares
 its output with the ordinary worker. These checks establish a cave input/noise
 component, not complete-region performance or usable Bend world generation.
+
+### Resident cave fields and carving (commands 33–35)
+
+These commands run application logic entirely in Bend. The Java bridge submits
+raw metadata and acknowledgements. No handwritten kernel or Rust/Java generation
+path participates.
+
+- **33 — cave lattice:** empty payload, after numeric, climate, surface, geology
+  preparation and surface generation. Bend derives a globally aligned 4×4×4
+  lattice covering the surface tile and world height. It dispatches surface
+  climate/carver selection and four-channel 3D node generation separately on the
+  selected Bend CPU/GPU backend. The channels are registered program-2 density,
+  two anisotropic registered tunnel stacks with roughness, and finite rounded
+  ravine distance. Cave-noise octave retention follows command 31. Ravines use
+  registered probability, center heights/plateau and shape ranges, with seeded
+  curvature and noisy walls. Compensated coordinates preserve signed and distant
+  local distances. Intermediate node tables remain resident; the acknowledgement
+  is eight U32 words: origin X/Y/Z (signed i32 bits), X/Y/Z node counts, total
+  nodes and channel count (4). Each axis has at least two nodes, including thin
+  tiles. The current cap is 2,097,152 nodes. Missing prerequisites return **739**,
+  an oversized layout **738**, malformed input **603**, and nonfinite computed
+  fields **743**. Rejected generation retains the previous state; successful
+  field generation retains the independently generated block snapshot.
+- **34 — cave field batch:** count (0..4096), then five U32 words per query:
+  X/Y/Z/seed-low/seed-high. Output is presence U32 and four F32 values per query.
+  Bend trilinearly interpolates the cached fields on the selected backend.
+  Queries outside the padded node bounds or with a different seed return
+  presence=0 and four zeros. Missing fields return **740**; invalid framing
+  returns **603**. Diagnostics do not mutate fields or generated blocks.
+- **35 — carve resident columns:** empty payload after material columns (22)
+  and fields (33). Bend forks work over columns, reads the cached fields and
+  applies registered carveable flags, carvers and lava level. Coherent sparse
+  entrance domains relax the near-surface tunnel/roof suppression; the bottom
+  five blocks and top four submerged-floor blocks are protected. Air/lava
+  replacements become compact coalesced runs. The solid surface query is
+  recomputed from the carved result, and later NBT/zlib/MCA commands consume
+  these resident runs and derive final heightmaps. The acknowledgement is four
+  U32 words: width, depth, column count and total runs. Missing prerequisites
+  return **741**, incompatible actual cached bounds/seeds/world heights **742**,
+  and malformed framing **603**.
+
+Surface/lattice/material/geology replacement clears dependent cave fields.
+Block regeneration clears fields and restores the base snapshot; the chunk
+catalog and ordinary queries retain them. A caller must finalize coasts and
+material columns before generating fields/carving. This component uses surface
+biome carvers; underground biome assignment, aquifer barriers, exact composed
+density/exterior handling and cave decorations still require implementation.
+It emits FEATURES status without precomputed light. It is not the finished
+Retina Bend world type.
+
+```sh
+nice -n 10 ./gradlew bendCaveTest bendCaveWorkerTest -PretinaHostOnly \
+  --max-workers=2 --no-parallel -PbendSkipBuild -PproveMetal \
+  -PbendMetalProbe=/absolute/path/to/current-source-metal-observer \
+  -PbendDensityRegistryProfiles=/absolute/vanilla.json=/absolute/vanilla.rbp
+nice -n 10 ./gradlew bendCaveRegionTest -PretinaHostOnly --max-workers=2 \
+  --no-parallel -PbendMetalProbe=/absolute/path/to/current-source-metal-observer
+```
+
+The region fixture task uses an already compiled `build/bend/engine`; compile
+the current source once with `bend bend/engine.bend -o build/bend/engine` before
+using it. Only the optional observer modifies generated code, to log stock
+runtime command completion; computational code is unchanged. CPU and Metal
+transcendental roundoff may differ. Tests require independent numerical and
+voxel correctness and repeatability within each backend, plus identical normal
+GPU/observer output; cross-backend byte determinism is not required. See
+`docs/benchmarks/bend-caves-correctness.json` for source/input/binary hashes,
+actual Metal observations and independent/Minecraft decoding evidence.
