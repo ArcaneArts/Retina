@@ -3,6 +3,7 @@ import ./density.bend as Q
 import ./terrain_surface.bend as S
 import ./chunk_catalog.bend as C
 import ./geology.bend as G
+import ./cave_lattice.bend as CV
 
 # Offsets are relative to the world's minimum Y. Runs are bottom-up, half-open,
 # exhaustive and coalesced. Their palette IDs remain the exported registry IDs.
@@ -15,20 +16,25 @@ type Column is Data:
 type Grid is Data:
   Grid{tile: S.Tile,minimum: U32,height: U32,columns: Q.Table<Column>}
 type State is Data:
-  State{config: Config,grid: Maybe<&2,Grid>,catalog: Maybe<&2,C.Catalog>,geology: Maybe<&2,G.Profile>}
+  State{config: Config,grid: Maybe<&2,Grid>,catalog: Maybe<&2,C.Catalog>,geology: Maybe<&2,G.Profile>,caves: Maybe<&2,CV.Grid>}
 
 def clear(state: Maybe<&2,State>) -> Maybe<&2,State>:
   match state:
     case None{}: None{}
-    case Some{State{config,_,catalog,geology}}: Some{State{config,None{},catalog,geology}}
+    case Some{State{config,_,catalog,geology,_}}: Some{State{config,None{},catalog,geology,None{}}}
 
 def catalog(state: Maybe<&2,State>) -> Maybe<&2,C.Catalog>:
   match state:
     case None{}: None{}
-    case Some{State{_,_,catalog,_}}: catalog
+    case Some{State{_,_,catalog,_,_}}: catalog
 
 
 def geology(state: Maybe<&2,State>) -> Maybe<&2,G.Profile>:
   match state:
     case None{}: None{}
-    case Some{State{_,_,_,geology}}: geology
+    case Some{State{_,_,_,geology,_}}: geology
+
+def caves(state: Maybe<&2,State>) -> Maybe<&2,CV.Grid>:
+  match state:
+    case None{}: None{}
+    case Some{State{_,_,_,_,caves}}: caves

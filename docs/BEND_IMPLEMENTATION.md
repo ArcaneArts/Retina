@@ -35,7 +35,7 @@ more deeply; retain the original requested scope.
 | Noise stacks, density bytecode, splines and GPU interpolation | `native/src/program.rs`, `program/`, `program.wgsl`, `noise3.wgsl`, `simplex.wgsl` | Reusable Bend seeded simplex/3D gradient kernels, weighted octave stacks and trilinear primitive implemented and independently checked on CPU and actual Metal. Integer/fraction coordinate handling checked through signed-i32 extremes. Numeric density opcodes 0..31, registered noise, ordered Hermite splines and nested trilinear fields implemented and independently checked with actual vanilla/Terralith/combined climate and terrain graphs on CPU/Metal. Compensated transformed coordinates preserve distant neighbors. Resident typed model projection and bounded persistent CPU/GPU queries implemented with reload invalidation; bounded top-level GPU lattices now retain samples for independently checked trilinear queries. GPU surface-height scans now consume the resident lattice; GPU-derived compact material layers implemented; per-field caching and runtime integration pending |
 | Climate targets, biome selection, smooth boundaries and underground biomes | `climate.rs`, `climate.wgsl`, `RetinaBiomeSource.java` | Pure Bend balanced interval indices and surface/underground/coastal lookup implemented, checked against independent linear search with actual registered intervals on CPU and Metal. Typed resident-tape projection and persistent query commands implemented with explicit reload invalidation. GPU spatial climate fields and surface biome selection now consume resident density tiles; compact material layers implemented; blended boundaries and world integration pending |
 | Coastlines, shore materials, rivers and material predicates/layers | `ShoreMaterialProfile.java`, `column_program.rs`, `materials.wgsl` | Pure Bend resident per-biome material DAGs and predicates (40..54) implemented with shared numeric evaluation, registered bands/sea/layer mode and bounded CPU/GPU query batches. GPU context/compact block runs implemented. Resident GPU coastal finalization now uses exact generated occupancy, six-block disk probes and registered climate alternatives before material generation; independent CPU/Metal checks cover inland/ocean exclusion, distinct materials and cache/coordinate rules. Inland rivers, ocean remapping, 3D biome material assignment and final integration remain required |
-| Caves, ravines, rare surface entrances and cave decoration | `GeologyProfile.java`, `geology.rs`, `features.rs`, `caves.wgsl` | Typed resident cave/carver projection and six-channel Bend CPU/GPU sampling implemented; cave lattice/masks, 3D biomes, ravines/entrances, decorations and terrain integration remain pending |
+| Caves, ravines, rare surface entrances and cave decoration | `GeologyProfile.java`, `geology.rs`, `features.rs`, `caves.wgsl` | Typed geology, cached globally aligned GPU/CPU cave fields, rounded noisy ravines and registered column carving implemented; independent voxel/serialized-region and actual Minecraft decoder checks pass. Surface carvers and sparse tunnel-entry roof suppression are implemented. 3D cave biomes, composed-density/exterior refinements, decorations and running-world integration remain pending |
 | Lakes, aquifer fields and fluid barriers | `TerrainFeatureProfile.java`, `program/lake_sparse.rs`, `aquifers.wgsl` | Pending |
 | Ore height/count/replacement/discard rules and GPU rasterization | `geology/`, `ore.wgsl` | Pending |
 | Ordered decoration, registered counts, provider noise and placement modifiers | `DecorationProfile.java`, `decoration/placement*`, `counts/`, `provider_noise/` | Pending |
@@ -593,3 +593,45 @@ Resident cave lattices/masks, 3D cave biomes, ravines/rare entrances, fluids,
 decorations and the remaining full-generator requirements are still pending.
 No complete generator or Rust-versus-Bend performance claim follows from these
 component checks.
+
+The next cave component consumes that typed geology in globally aligned 4³
+resident fields, then carves the actual material-column snapshot on the selected
+Bend CPU/GPU backend. It evaluates registered program-2 chamber density, paired
+anisotropic tunnel stacks and finite rounded ravines with registered center/
+shape ranges, seeded curvature and noisy walls. Global lattice coordinates and
+compensated local distances preserve overlap coherence and distant neighbors.
+Only layout/count acknowledgements leave the engine between these stages.
+Carving honors material flags, carver height/probability/shape inputs, protected
+foundations/submerged floors and registered lava level; sparse coherent entrance
+domains relax near-surface tunnel suppression. Resulting runs are coalesced,
+surface queries are recomputed, and existing Bend NBT/zlib/MCA writers consume
+the carved snapshot and derive its final heightmaps.
+
+Six controlled fixtures and actual vanilla/Terralith/combined registries pass
+on CPU, GPU and a stock-runtime Metal observer. Each run independently verifies
+4,392 field scalars and checks all 884,736 carved voxel classifications against
+separate rules, including analytic chambers, protected materials, positive
+ravines, lava and submerged roofs. Maximum relative field error is 9.251e-7.
+Tests cover overlapping/reordered tiles, one-column/narrow tiles, signed-i32
+extremes, distant coordinates, both seed words, bounded/reordered batches,
+malformed commands, repeated carving and cache replacement. All nine serialized
+sample chunks match between CPU and GPU; ravine field F32 roundoff differs, as
+permitted by the goal. Ordinary GPU and observer aggregate bytes match, and all
+448 expected Metal commands are observed. Java callers verify concurrent field
+queries, actual carved NBT/zlib, errors, cache invalidation and worker shutdown.
+
+Three complete 32-block-high analytic MCA runs (CPU/GPU/observer) each independently
+decode 1,024 records and compare 57,344 blocks/heightmap queries. A chamber spans
+multiple chunks, changes an interior probe to air and retains the foundation,
+roof and exterior probes. The three file hashes match. Minecraft's actual
+region/palette/SerializableChunkData readers reopen the two retained files,
+reading every chunk twice and verifying 33,554,432 blocks. The dedicated Gradle
+cave task passes, as do the previous geology checks and the full host Fabric/
+NeoForge build, including 64 native tests (11 explicit device/fixture tests
+remain ignored). Evidence is in `docs/benchmarks/bend-caves-correctness.json`.
+
+This remains an unlit component using surface biome carvers. Underground biome
+assignment, aquifers/lakes, composed-density/exterior refinements, cave
+decorations, the remaining feature/structure/light pipeline and usable world
+types are still required. Correctness-run response times are observational;
+they do not establish final generator throughput or a Rust-versus-Bend result.

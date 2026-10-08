@@ -236,7 +236,8 @@ public final class BendWorker implements AutoCloseable {
      * lava/world-height metadata in Bend. Requires numeric/material/block models.
      * Eight raw acknowledgement words: noise, biome, carver and material counts,
      * lava ID, lava level, minimum Y and height. Successful preparation invalidates
-     * generated block columns; this component does not yet carve terrain.
+     * generated block columns and cave fields. Generate fields and carve columns
+     * explicitly after regenerating the base block snapshot.
      */
     public CompletableFuture<byte[]> prepareProfileGeology() {
         return request(30, new byte[0]);
@@ -255,6 +256,27 @@ public final class BendWorker implements AutoCloseable {
      */
     public CompletableFuture<byte[]> queryBiomeCarvers(byte[] batch) {
         return request(32, batch);
+    }
+
+    /** Build globally aligned cave density/tunnel/ravine fields over the
+     * resident surface tile, entirely in Bend. Returns eight layout words.
+     */
+    public CompletableFuture<byte[]> generateCaveLattice() {
+        return request(33, new byte[0]);
+    }
+
+    /** Query the resident four-channel cave field using raw five-word
+     * x/y/z/seed queries. Results are presence plus four F32 words.
+     */
+    public CompletableFuture<byte[]> queryCaveFields(byte[] batch) {
+        return request(34, batch);
+    }
+
+    /** Carve the resident generated columns using cached cave fields and
+     * registered materials/carvers on the selected Bend CPU/GPU backend.
+     */
+    public CompletableFuture<byte[]> carveColumns() {
+        return request(35, new byte[0]);
     }
 
     /** Cancellation skips queued requests; in-flight responses are drained to
