@@ -392,6 +392,17 @@ public final class BendWorker implements AutoCloseable {
         return request(49, batch);
     }
 
+    /** Apply globally anchored registered ore veins to a whole-chunk core of
+     * the resident block snapshot. Bend filters surface/cave biome membership,
+     * builds compact neighboring vein masks and replays replacement rules.
+     * A one-block immutable exposure halo is required around the core. Only
+     * the core changes; the reply is resident width/depth/columns/run count.
+     * Coordinate the complete build sequence against other state replacements.
+     */
+    public CompletableFuture<byte[]> applyOreCore(int x, int z, int width, int depth, long seed) {
+        return request(50, surfaceTilePayload(x, z, width, depth, seed));
+    }
+
     /** Cancellation skips queued requests; in-flight responses are drained to
      * preserve framing. World shutdown closes the worker and terminates it.
      */

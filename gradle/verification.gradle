@@ -587,6 +587,20 @@ tasks.register('bendOreMaskTest', Exec) {
     mustRunAfter 'bendOrePlanningTest'
 }
 
+tasks.register('bendOrePlacementTest', Exec) {
+    group = 'verification'
+    description = 'Check pure Bend spatial ore replay, halo seams and ore-bearing NBT/zlib on CPU/GPU.'
+    workingDir rootProject.projectDir
+    commandLine providers.gradleProperty('pythonExecutable').getOrElse('python3'), 'scripts/test_bend_ore_placement.py'
+    if (providers.gradleProperty('bendSkipBuild').isPresent()) args '--skip-build'
+    if (providers.gradleProperty('proveMetal').isPresent()) args '--prove-metal'
+    if (providers.gradleProperty('bendMetalProbe').isPresent()) args '--metal-probe', providers.gradleProperty('bendMetalProbe').get()
+    if (!registryDensityProfiles.isEmpty()) registryDensityProfiles.split(',').each { pair ->
+        pair.split('=', 2).with { paths -> args '--profile', paths[0], paths[1] }
+    }
+    mustRunAfter 'bendOreMaskTest'
+}
+
 tasks.register('bendCaveTest', Exec) {
     group = 'verification'
     description = 'Check Bend cave lattices, rounded ravines, exact carved voxels and compressed chunks on CPU/GPU.'
@@ -781,7 +795,8 @@ def bendWorkerClasses = tasks.register('bendWorkerClasses', JavaCompile) {
             rootProject.file('common/src/gpuTest/java/art/arcane/retina/worldgen/BendCaveWorkerTest.java'),
             rootProject.file('common/src/gpuTest/java/art/arcane/retina/worldgen/BendAquiferWorkerTest.java'),
             rootProject.file('common/src/gpuTest/java/art/arcane/retina/worldgen/BendLakeWorkerTest.java'),
-            rootProject.file('common/src/gpuTest/java/art/arcane/retina/worldgen/BendOreWorkerTest.java')
+            rootProject.file('common/src/gpuTest/java/art/arcane/retina/worldgen/BendOreWorkerTest.java'),
+            rootProject.file('common/src/gpuTest/java/art/arcane/retina/worldgen/BendOrePlacementWorkerTest.java')
     classpath = files()
     destinationDirectory = rootProject.layout.buildDirectory.dir('bend/java')
     javaCompiler = javaToolchains.compilerFor { languageVersion = JavaLanguageVersion.of(25) }
@@ -875,6 +890,19 @@ tasks.register('bendOreMaskWorkerTest', JavaExec) {
     maxHeapSize = '256m'
     args rootProject.file('build/bend/engine').absolutePath,
             rootProject.file('build/bend/ore-mask-profiles/mixed.rbp').absolutePath
+}
+
+tasks.register('bendOrePlacementWorkerTest', JavaExec) {
+    group = 'verification'
+    description = 'Exercise actual Java ore application, saved chunks, concurrency, reload and shutdown.'
+    dependsOn 'bendOrePlacementTest', bendWorkerClasses
+    classpath = files(bendWorkerClasses.flatMap { it.destinationDirectory })
+    mainClass = 'art.arcane.retina.worldgen.BendOrePlacementWorkerTest'
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
+    jvmArgs '-XX:ActiveProcessorCount=2'
+    maxHeapSize = '256m'
+    args rootProject.file('build/bend/engine').absolutePath,
+            rootProject.file('build/bend/ore-placement-profiles/regular.rbp').absolutePath
 }
 
 tasks.register('bendCaveWorkerTest', JavaExec) {
