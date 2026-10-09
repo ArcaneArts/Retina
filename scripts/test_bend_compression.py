@@ -59,7 +59,7 @@ def build(bend, binary, source=None):
         generated = binary.with_suffix('.c')
         command(["nice", "-n", "10", bend, bend_source, "-o", generated], env=env, cwd=ROOT, timeout=600)
         command(metal_compiler_command(generated, binary), env=env, cwd=ROOT, timeout=600)
-        command(["nice", "-n", "10", binary, "--threads", "2", "--gpu-build"], env=env, cwd=ROOT, timeout=600)
+        command(["nice", "-n", "10", binary, "--threads", "2", "--gpu-build"], env=env, cwd=ROOT, timeout=1800)
     else:
         command(["nice", "-n", "10", bend, bend_source, "-o", binary], env=env, cwd=ROOT, timeout=600)
     return version

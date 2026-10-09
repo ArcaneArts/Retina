@@ -601,6 +601,20 @@ tasks.register('bendOrePlacementTest', Exec) {
     mustRunAfter 'bendOreMaskTest'
 }
 
+tasks.register('bendCaveDressingTest', Exec) {
+    group = 'verification'
+    description = 'Check registered cave coatings, plants, vines and dripstone on Bend CPU/GPU.'
+    workingDir rootProject.projectDir
+    commandLine providers.gradleProperty('pythonExecutable').getOrElse('python3'), 'scripts/test_bend_cave_dressing.py'
+    if (providers.gradleProperty('bendSkipBuild').isPresent()) args '--skip-build'
+    if (providers.gradleProperty('proveMetal').isPresent()) args '--prove-metal'
+    if (providers.gradleProperty('bendMetalProbe').isPresent()) args '--metal-probe', providers.gradleProperty('bendMetalProbe').get()
+    if (!registryDensityProfiles.isEmpty()) registryDensityProfiles.split(',').each { pair ->
+        pair.split('=', 2).with { paths -> args '--profile', paths[0], paths[1] }
+    }
+    mustRunAfter 'bendCaveBiomeTest', 'bendOrePlacementTest'
+}
+
 tasks.register('bendCaveTest', Exec) {
     group = 'verification'
     description = 'Check Bend cave lattices, rounded ravines, exact carved voxels and compressed chunks on CPU/GPU.'
@@ -796,7 +810,8 @@ def bendWorkerClasses = tasks.register('bendWorkerClasses', JavaCompile) {
             rootProject.file('common/src/gpuTest/java/art/arcane/retina/worldgen/BendAquiferWorkerTest.java'),
             rootProject.file('common/src/gpuTest/java/art/arcane/retina/worldgen/BendLakeWorkerTest.java'),
             rootProject.file('common/src/gpuTest/java/art/arcane/retina/worldgen/BendOreWorkerTest.java'),
-            rootProject.file('common/src/gpuTest/java/art/arcane/retina/worldgen/BendOrePlacementWorkerTest.java')
+            rootProject.file('common/src/gpuTest/java/art/arcane/retina/worldgen/BendOrePlacementWorkerTest.java'),
+            rootProject.file('common/src/gpuTest/java/art/arcane/retina/worldgen/BendCaveDressingWorkerTest.java')
     classpath = files()
     destinationDirectory = rootProject.layout.buildDirectory.dir('bend/java')
     javaCompiler = javaToolchains.compilerFor { languageVersion = JavaLanguageVersion.of(25) }
@@ -903,6 +918,19 @@ tasks.register('bendOrePlacementWorkerTest', JavaExec) {
     maxHeapSize = '256m'
     args rootProject.file('build/bend/engine').absolutePath,
             rootProject.file('build/bend/ore-placement-profiles/regular.rbp').absolutePath
+}
+
+tasks.register('bendCaveDressingWorkerTest', JavaExec) {
+    group = 'verification'
+    description = 'Exercise actual Java cave decoration calls, saved chunks, concurrent readers and lifecycle.'
+    dependsOn 'bendCaveDressingTest', bendWorkerClasses
+    classpath = files(bendWorkerClasses.flatMap { it.destinationDirectory })
+    mainClass = 'art.arcane.retina.worldgen.BendCaveDressingWorkerTest'
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
+    jvmArgs '-XX:ActiveProcessorCount=2'
+    maxHeapSize = '256m'
+    args rootProject.file('build/bend/engine').absolutePath,
+            rootProject.file('build/bend/cave-dressing-profiles/lush.rbp').absolutePath
 }
 
 tasks.register('bendCaveWorkerTest', JavaExec) {
@@ -1060,3 +1088,26 @@ tasks.register('bendRegistryWireTest', Exec) {
 // Both explicit harnesses build build/bend/engine; serialize them when selected
 // together, including Gradle configurations that allow parallel task execution.
 tasks.named('bendEngineTest') { mustRunAfter 'bendRegistryWireTest', 'bendRegistryNoiseTest' }
+
+
+tasks.register('bendWorldIntegrationTest', JavaExec) {
+    group = 'verification'
+    description = 'Generate and promote a combined Bend world region with Rust unavailable.'
+    dependsOn 'gpuTestClasses'
+    classpath = sourceSets.gpuTest.runtimeClasspath
+    mainClass = 'art.arcane.retina.worldgen.BendWorldIntegrationTest'
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
+    maxHeapSize = '2g'
+    systemProperty 'retina.bend.executable', rootProject.file('build/bend/engine').absolutePath
+    workingDir rootProject.projectDir
+}
+
+tasks.register('bendPackagedRuntimeTest', JavaExec) {
+    group = 'verification'
+    description = 'Start the actual packaged Bend worker twice with persistent Metal library caching.'
+    dependsOn 'gpuTestClasses'
+    classpath = sourceSets.gpuTest.runtimeClasspath
+    mainClass = 'art.arcane.retina.worldgen.BendPackagedRuntimeTest'
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
+    maxHeapSize = '512m'
+}

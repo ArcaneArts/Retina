@@ -65,7 +65,7 @@ def carver_found(found: Bool,n: U32,i: U32,settings: Q.Table<G.Carver>,y: U32,ro
 @unsafe
 def cavity(values: Q.Vec4,+biome: G.Biome,+y: U32,+height: U32,+aperture: F32) -> Bool:
   match values biome:
-    case Q.Vec4{+chamber,+a,+b,+ribbon} G.Biome{+settings,_}:
+    case Q.Vec4{+chamber,+a,+b,+ribbon} G.Biome{+settings,_,_}:
       +roof = F32.mul(F32.sub(1.0,aperture),F32.sub(1.0,smooth(0.0,24.0,D.value(D.sub(D.integer(U32.sub(height,1)),D.integer(y))))))
       Bool.or(Bool.and(D.less(D.integer(y),D.integer(U32.sub(height,1))),F32.is_lt(chamber,F32.neg(F32.mul(roof,0.20)))),
         carvers(Q.table_size(G.Carver,settings),0,settings,y,roof,Q.Vec4{chamber,a,b,ribbon}))

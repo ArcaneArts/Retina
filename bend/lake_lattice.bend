@@ -114,7 +114,7 @@ def flag_biome(row: S.Row,biomes: Q.Table<G.Biome>) -> U32:
 
 def biome_flags(biome: G.Biome) -> U32:
   match biome:
-    case G.Biome{_,LD.Params{_,_,_,_,flags}}: flags
+    case G.Biome{_,LD.Params{_,_,_,_,flags},_}: flags
 
 @unsafe
 def flags(+n: U32,+base: U32,+tile: S.Tile,+config: S.Config,+density: L.Grid,+model: Q.Model,+programs: Q.Table<Q.Program>,+climate: C.Model,+biomes: Q.Table<G.Biome>) -> Q.Table<U32>:

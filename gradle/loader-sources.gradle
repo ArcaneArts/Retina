@@ -5,6 +5,7 @@ sourceSets.main {
 }
 processResources {
     from rootProject.tasks.named('packageNative')
+    from rootProject.tasks.named('packageBendRuntime')
 }
 base { archivesName = "retina-${project.name}-${minecraft_version}" }
 tasks.named('jar') {

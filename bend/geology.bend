@@ -5,6 +5,7 @@ import ./noise.bend as N
 import ./aquifer.bend as A
 import ./lake_data.bend as Lakes
 import ./ore_data.bend as O
+import ./cave_features_data.bend as F
 
 # Loaded geology is immutable Data. The registry tape and file effects stay on
 # the host; these records can be consumed unchanged by Bend CPU or GPU code.
@@ -15,7 +16,7 @@ type Noise is Data:
 type Carver is Data:
   Carver{id: U32,kind: U32,height: Height,probability: F32,shape: Q.Vec4,detail: Q.Vec4,variation: Q.Vec4,distance: Q.Vec4,axis: Q.Vec4}
 type Biome is Data:
-  Biome{carvers: Q.Table<Carver>,lakes: Lakes.Params}
+  Biome{carvers: Q.Table<Carver>,lakes: Lakes.Params,features: F.Config}
 type Profile is Data:
   Profile{noises: Q.Table<Noise>,biomes: Q.Table<Biome>,data: O.Store,lava: U32,lava_level: U32,minimum: U32,height: U32,aquifer: Maybe<&2,A.Prepared>,lakes: Maybe<&2,Lakes.Cache>}
 
@@ -131,16 +132,16 @@ def lakes(profile: Maybe<&2,Profile>) -> Maybe<&2,Lakes.Cache>:
 def carver_count(biomes: Q.Table<Biome>) -> U32:
   match biomes:
     case Q.Empty{}: 0
-    case Q.Leaf{Biome{carvers,_}}: Q.table_size(Carver,carvers)
+    case Q.Leaf{Biome{carvers,_,_}}: Q.table_size(Carver,carvers)
     case Q.Branch{_,a,b}: U32.add(carver_count(a),carver_count(b))
 
 def empty_biome() -> Biome:
-  Biome{Q.Empty{},Lakes.empty()}
+  Biome{Q.Empty{},Lakes.empty(),F.empty()}
 
 def biomes_valid(biomes: Q.Table<Biome>,+palette: U32) -> Bool:
   match biomes:
     case Q.Empty{}: True{}
-    case Q.Leaf{Biome{_,lakes}}: Lakes.valid(lakes,palette)
+    case Q.Leaf{Biome{_,lakes,_}}: Lakes.valid(lakes,palette)
     case Q.Branch{_,a,b}: Bool.and(biomes_valid(a,palette),biomes_valid(b,palette))
 
 
@@ -155,3 +156,24 @@ def clear_geometry(profile: Maybe<&2,Profile>) -> Maybe<&2,Profile>:
   match profile:
     case None{}: None{}
     case Some{profile}: Some{clear_aquifer(profile)}
+
+
+@unsafe
+def feature_biomes(+n: U32,+base: U32,+biomes: Q.Table<Biome>,+features: Q.Table<F.Config>) -> Q.Table<Biome>:
+  match n:
+    case 0: Q.Empty{}
+    case 1: Q.Leaf{feature_biome(Q.get(Biome,biomes,base,empty_biome()),Q.get(F.Config,features,base,F.empty()))}
+    case _:
+      +half = U32.div(n,2)
+      a b = feature_biomes(half,base,biomes,features) feature_biomes(U32.sub(n,half),U32.add(base,half),biomes,features)
+      Q.Branch{n,a,b}
+
+def feature_biome(biome: Biome,features: F.Config) -> Biome:
+  match biome:
+    case Biome{carvers,lakes,_}: Biome{carvers,lakes,features}
+
+@unsafe
+def with_features(profile: Profile,features: Q.Table<F.Config>) -> Profile:
+  match profile:
+    case Profile{noises,+biomes,flags,lava,level,minimum,height,aquifer,lakes}:
+      Profile{noises,feature_biomes(Q.table_size(Biome,biomes),0,biomes,features),flags,lava,level,minimum,height,aquifer,lakes}

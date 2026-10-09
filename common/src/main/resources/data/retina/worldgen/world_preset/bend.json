@@ -1,0 +1,69 @@
+{
+  "dimensions": {
+    "minecraft:overworld": {
+      "type": "minecraft:overworld",
+      "generator": {
+        "type": "retina:gpu",
+        "biome_source": {
+          "type": "retina:voronoi",
+          "biomes": [
+            "minecraft:plains",
+            "minecraft:forest",
+            "minecraft:birch_forest",
+            "minecraft:taiga",
+            "minecraft:old_growth_pine_taiga",
+            "minecraft:snowy_plains",
+            "minecraft:desert",
+            "minecraft:savanna",
+            "minecraft:badlands",
+            "minecraft:jungle",
+            "minecraft:mangrove_swamp",
+            "minecraft:windswept_hills",
+            "minecraft:jagged_peaks",
+            "minecraft:ocean",
+            "minecraft:warm_ocean",
+            "minecraft:frozen_ocean",
+            "minecraft:beach",
+            "minecraft:snowy_beach",
+            "minecraft:stony_shore"
+          ],
+          "biome_scale": 128.0,
+          "blend": 0.55,
+          "registry_source": {
+            "type": "minecraft:multi_noise",
+            "preset": "minecraft:overworld"
+          },
+          "use_registry_biomes": true
+        },
+        "min_y": -64,
+        "height": 384,
+        "base_height": 64.0,
+        "amplitude": 48.0,
+        "frequency": 0.008,
+        "mode": "bend",
+        "density_composition": true
+      }
+    },
+    "minecraft:the_nether": {
+      "type": "minecraft:the_nether",
+      "generator": {
+        "type": "minecraft:noise",
+        "biome_source": {
+          "type": "minecraft:multi_noise",
+          "preset": "minecraft:nether"
+        },
+        "settings": "minecraft:nether"
+      }
+    },
+    "minecraft:the_end": {
+      "type": "minecraft:the_end",
+      "generator": {
+        "type": "minecraft:noise",
+        "biome_source": {
+          "type": "minecraft:the_end"
+        },
+        "settings": "minecraft:end"
+      }
+    }
+  }
+}

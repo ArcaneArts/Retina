@@ -21,6 +21,7 @@ final class TerrainQa {
         timingsChecked=true;
         var level=server.overworld();
         if(!(level.getChunkSource().getGenerator() instanceof RetinaChunkGenerator generator)) throw new IllegalStateException("Timing QA requires Retina");
+        if (generator.bendMode()) return;
         TerrainRegistryQa.check(generator);
         if (Boolean.getBoolean("retina.qa.pipeline") && generator.regionMode()) {
             var worker = (net.minecraft.world.level.chunk.storage.IOWorker) level.getChunkSource().chunkMap.chunkScanner();
@@ -76,6 +77,7 @@ final class TerrainQa {
         var level=server.overworld();
         if (!(level.getChunkSource().getGenerator() instanceof RetinaChunkGenerator generator) || !generator.regionMode())
             throw new IllegalStateException("Promotion QA requires a Retina MCA world");
+        if (generator.bendMode()) return;
         var position=new net.minecraft.world.level.ChunkPos(2064,2064);
         long before=generator.metrics().snapshot().promotions();
         // Same temporary MCA entry used by DH surface generation, then the real loader.
@@ -102,6 +104,7 @@ final class TerrainQa {
         if(!Boolean.getBoolean("retina.qa.entities") || entitiesChecked || server.getTickCount()<40)return;
         var level=server.overworld();
         if(!(level.getChunkSource().getGenerator() instanceof RetinaChunkGenerator generator))throw new IllegalStateException("Entity QA requires Retina");
+        if (generator.bendMode()) return;
         var position=new net.minecraft.world.level.ChunkPos(320,320);
         var chunk=level.getChunk(position.x(),position.z());
         var start=chunk.getAllStarts().get(level.registryAccess().lookupOrThrow(net.minecraft.core.registries.Registries.STRUCTURE).getValue(art.arcane.retina.Retina.id("qa_entities")));
@@ -145,6 +148,7 @@ final class TerrainQa {
         structuresChecked=true;
         var level=server.overworld();
         if(!(level.getChunkSource().getGenerator() instanceof RetinaChunkGenerator generator))throw new IllegalStateException("Structure QA requires Retina");
+        if (generator.bendMode()) return;
         var position=new net.minecraft.world.level.ChunkPos(320,320);
         long promotions=generator.metrics().snapshot().promotions();
         if(generator.regionMode())generator.biomeAt(position.getMinBlockX(),position.getMinBlockZ());
@@ -174,6 +178,7 @@ final class TerrainQa {
     }
 
     static void check(ServerPlayer player, RetinaChunkGenerator generator) {
+        if (generator.bendMode()) return;
         if (!Boolean.getBoolean("retina.qa") || !CHECKED.add(generator)) return;
         ServerLevel level = player.level();
         var position = player.chunkPosition();

@@ -14,6 +14,7 @@ import net.minecraft.world.level.dimension.LevelStem;
 import net.minecraft.world.level.biome.*;
 
 import java.nio.file.Path;
+import java.nio.file.Files;
 import java.util.*;
 import java.util.concurrent.Executors;
 
@@ -54,7 +55,10 @@ public final class NativeRegistryLoadingTest {
             require(deferred.possibleBiomes().equals(reference.possibleBiomes()), "deferred pool resolves after binding");
             require(imported.possibleBiomes().equals(reference.possibleBiomes()), "imported pool resolves after binding");
             var presets = registry.lookupOrThrow(Registries.WORLD_PRESET);
-            for (String name : List.of("gpu", "gpu_chunk")) {
+            var choices = com.google.gson.JsonParser.parseString(Files.readString(Path.of("common/src/main/resources/data/minecraft/tags/worldgen/world_preset/normal.json")))
+                    .getAsJsonObject().getAsJsonArray("values").asList().stream().map(com.google.gson.JsonElement::getAsString).toList();
+            require(choices.equals(List.of("retina:gpu", "retina:bend")), "selector exposes Rust first and Bend, with legacy chunk mode hidden");
+            for (String name : List.of("gpu", "gpu_chunk", "bend")) {
                 var key = ResourceKey.create(Registries.WORLD_PRESET, Identifier.parse("retina:" + name));
                 var preset = presets.getValueOrThrow(key);
                 var generator = preset.createWorldDimensions().dimensions().get(LevelStem.OVERWORLD).generator();
@@ -63,12 +67,13 @@ public final class NativeRegistryLoadingTest {
                 var expected = source.climateParameters(registry).stream().map(com.mojang.datafixers.util.Pair::getSecond)
                         .collect(java.util.stream.Collectors.toSet());
                 require(source.possibleBiomes().equals(expected), "complete registered pool after preset loading " + name);
-                require(((RetinaChunkGenerator) generator).mode().equals(name.equals("gpu") ? "mca" : "chunk"), "mode preserved");
+                require(((RetinaChunkGenerator) generator).mode().equals(name.equals("gpu") ? "mca" : name.equals("bend") ? "bend" : "chunk"), "mode preserved");
                 var retina = (RetinaChunkGenerator) generator;
                 require(retina.densityComposition(), "new preset enables registered field composition");
                 var ops = registry.createSerializationContext(com.mojang.serialization.JsonOps.INSTANCE);
                 var encoded = net.minecraft.world.level.chunk.ChunkGenerator.CODEC.encodeStart(ops, retina).getOrThrow();
                 var reopened = (RetinaChunkGenerator) net.minecraft.world.level.chunk.ChunkGenerator.CODEC.parse(ops, encoded).getOrThrow();
+                require(reopened.mode().equals(retina.mode()), "backend mode survives save/reopen");
                 require(reopened.densityComposition(), "composition survives save/reopen");
                 var legacy = encoded.deepCopy().getAsJsonObject();
                 legacy.remove("density_composition");
@@ -79,7 +84,7 @@ public final class NativeRegistryLoadingTest {
                         "datapack import preserves legacy selection");
             }
             System.out.println("QA_EVT {\"event\":\"retina_preset_registry_loading\",\"status\":\"pass\",\"context\":{\"pack\":\""
-                    + (args.length == 0 ? "vanilla" : "terralith") + "\",\"presets\":2}}");
+                    + (args.length == 0 ? "vanilla" : "terralith") + "\",\"presets\":3}}");
         }
     }
 

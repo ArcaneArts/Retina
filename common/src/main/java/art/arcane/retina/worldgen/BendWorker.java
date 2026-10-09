@@ -39,6 +39,10 @@ public final class BendWorker implements AutoCloseable {
     private final Execution execution;
 
     public BendWorker(Path executable, Execution execution, int threads) throws IOException {
+        this(executable,execution,threads,ignored -> { });
+    }
+
+    BendWorker(Path executable, Execution execution, int threads,java.util.function.Consumer<BendWorker> started) throws IOException {
         if (threads < 1 || threads > 64) throw new IllegalArgumentException("Bend threads must be 1..64");
         this.execution = java.util.Objects.requireNonNull(execution);
         var command = List.of("nice", "-n", "10", executable.toAbsolutePath().toString(),
@@ -54,8 +58,11 @@ public final class BendWorker implements AutoCloseable {
                 Thread.ofPlatform().daemon().name("retina-bend-transport").unstarted(runnable));
         Thread.ofPlatform().daemon().name("retina-bend-diagnostics").start(this::drainDiagnostics);
         try {
+            // Publish the process before the first Metal library compilation so
+            // world shutdown can cancel startup as well as generation.
+            started.accept(this);
             var hello = new DataInputStream(new java.io.ByteArrayInputStream(request(0, new byte[0])
-                    .get(Duration.ofSeconds(30).toMillis(), TimeUnit.MILLISECONDS)));
+                    .get(Duration.ofMinutes(20).toMillis(), TimeUnit.MILLISECONDS)));
             if (hello.readInt() != 1 || hello.readInt() != 2 || hello.readInt() != 0 || hello.readInt() != 36
                     || hello.readInt() != (execution == Execution.CPU ? 0 : 1) || hello.available() != 0)
                 throw new IOException("Unexpected Bend worker protocol/version/execution handshake");
@@ -232,6 +239,16 @@ public final class BendWorker implements AutoCloseable {
         return request(28, payload.array());
     }
 
+    /** Encode the whole chunks covered by the resident tile into a new sparse
+     * MCA. This is a private preview batch, never an existing save path. */
+    public CompletableFuture<byte[]> writeGeneratedBatch(int regionX,int regionZ,long seed,int dataVersion,int timestamp,Path stagedFile) {
+        int[] points=stagedFile.toAbsolutePath().toString().codePoints().toArray();
+        var payload=java.nio.ByteBuffer.allocate(28+points.length*4).putInt(regionX).putInt(regionZ)
+                .putInt((int)seed).putInt((int)(seed>>>32)).putInt(dataVersion).putInt(timestamp).putInt(points.length);
+        for(int point:points)payload.putInt(point);
+        return request(52,payload.array());
+    }
+
     /** Project registered cave noise, per-biome carvers, carveable materials and
      * lava/world-height metadata in Bend. Requires numeric/material/block models.
      * Eight raw acknowledgement words: noise, biome, carver and material counts,
@@ -401,6 +418,14 @@ public final class BendWorker implements AutoCloseable {
      */
     public CompletableFuture<byte[]> applyOreCore(int x, int z, int width, int depth, long seed) {
         return request(50, surfaceTilePayload(x, z, width, depth, seed));
+    }
+
+    /** Dress enclosed cave cavities using registered Bend floor, ceiling and
+     * plant recipes. The resident snapshot must retain its cave biome volume.
+     * Hold a complete build/application lease against other state replacements.
+     */
+    public CompletableFuture<byte[]> applyCaveDecorations(int x, int z, int width, int depth, long seed) {
+        return request(51, surfaceTilePayload(x, z, width, depth, seed));
     }
 
     /** Cancellation skips queued requests; in-flight responses are drained to

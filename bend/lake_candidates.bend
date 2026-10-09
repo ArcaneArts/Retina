@@ -53,7 +53,7 @@ def selected(choice: C.Choice,biomes: Q.Table<G.Biome>,x: U32,z: U32,point: Q.Po
 @unsafe
 def parameters(biome: G.Biome,x: U32,z: U32,point: Q.Point,+h: U32,id: U32) -> Candidate:
   match biome:
-    case G.Biome{_,LD.Params{total,+lava,barrier,water,flags}}:
+    case G.Biome{_,LD.Params{total,+lava,barrier,water,flags},_}:
       candidate(x,z,point,F32.add(24.0,U32.to_f32(U32.and(h,7))),id,F32.div(U32.to_f32(U32.and(U32.shrn(h,16n),65535)),65535.0),total,lava,barrier,water,flags)
 
 @unsafe
@@ -123,7 +123,7 @@ def metadata_id(ok: Bool,n: Nat,cursor: R.Cursor,+biomes: Q.Table<G.Biome>,id: U
 @unsafe
 def metadata_biome(biome: G.Biome,n: Nat,cursor: R.Cursor,biomes: Q.Table<G.Biome>,writer: B.Writer) -> Result<&1,&1,U32,B.Writer>:
   match biome:
-    case G.Biome{_,params}: metadata(n,cursor,biomes,metadata_row(params,writer))
+    case G.Biome{_,params,_}: metadata(n,cursor,biomes,metadata_row(params,writer))
 
 @unsafe
 def metadata_count(ok: Bool,n: U32,cursor: R.Cursor,biomes: Q.Table<G.Biome>) -> Result<&1,&1,U32,B.Writer>:
