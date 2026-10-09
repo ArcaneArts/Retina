@@ -118,9 +118,12 @@ slower in those runs; a single language does not imply faster generation.
 
 The effective registry exports already contain the data needed for surface
 features: the inspected vanilla profile has 182 decoration recipes (63 trees),
-and Terralith has 553 (289 trees). The count/offset, build-relative height-provider and registered
-spatial-count noise libraries now project the original instructions in Bend.
-Port the ordered placement walker and shared selector/count budgets next, then
+and Terralith has 553 (289 trees). The count/offset, build-relative height-provider
+and registered spatial-count noise libraries now project the original instructions
+in Bend. Typed ordered programs and terrain-dependent checks now preserve full
+placement salts, selector groups, predicates, heightmaps and biome memberships.
+A persistent live block overlay provides current materials/heights to those checks.
+Port the lazy ordered placement walker and shared selector/count budgets next, then
 block providers, trunk/foliage variants and
 decorators into resident block runs. Preserve globally seeded neighboring
 contributions and actual support checks instead of replacing these recipes with
@@ -168,7 +171,7 @@ more deeply; retain the original requested scope.
 | Caves, ravines, rare surface entrances and cave decoration | `GeologyProfile.java`, `geology.rs`, `features.rs`, `caves.wgsl` | Typed geology, cached globally aligned GPU/CPU cave fields, rounded noisy ravines and registered column carving implemented; independent voxel/serialized-region and actual Minecraft decoder checks pass. GPU/CPU depth-dependent cave-biome volumes now select registered carvers and serialize actual 3D quart IDs, retaining finalized surface biomes near the roof. Resident aquifers now supply carved cavity materials. Registered floor/ceiling cave dressing, vines, blossoms, dripstone and sparse plant survival now execute on the selected CPU/GPU backend. Playable terrain integration implemented; composed-density/exterior refinements and ordered surface decorations remain pending |
 | Lakes, aquifer fields and fluid barriers | `TerrainFeatureProfile.java`, `program/lake_sparse.rs`, `aquifers.wgsl` | Typed aquifer graph projection and GPU/CPU flooding, erosion, spread, lava, barrier and preliminary-surface evaluation implemented. Globally hashed resident fluid centers, trilinear barrier fields and nearest-center pressure now place registered cavity fluids while preserving protected/pressure-barrier materials. Registered lake budgets/materials, globally seeded candidates, five bank probes, bounded fluid levels and noisy basin/rim placement implemented on CPU/GPU before material coating. Independent block/NBT/zlib checks cover fluids, barriers, overlap and signed/distant coordinates; lake exclusions now use finalized pre-carving coast selection, including global probes outside the resident tile. Out-of-tile bank vertices now execute in bulk with exact prior geometry and material bytes, improving measured GPU lake-stage latency by 10.1–14.6×. Playable terrain integration implemented; full parity and performance work remain required |
 | Ore height/count/replacement/discard rules and GPU rasterization | `geology/`, `ore.wgsl` | Registered recipe projection, packed membership/material tables and selected-backend ordered replacement/exposure policy implemented. Registered count/rarity/height attempts and local sphere-chain/scattered geometry now execute on CPU/GPU. Local sphere-union masks and ordered scattered points now calculate in the same selected-backend evaluation as geometry. Spatial surface/cave membership filtering, stable neighboring contribution buckets and ordered resident-block replay now run in one selected CPU/GPU evaluation, with immutable exposure halo checks and independent voxel/NBT/zlib validation. Playable terrain integration implemented; full parity and performance work remain required |
-| Ordered decoration, registered counts, provider noise and placement modifiers | `DecorationProfile.java`, `decoration/placement*`, `counts/`, `provider_noise/` | Registered recursive integer providers, count/offset projection, build-relative height distributions and actual-permutation spatial count noise independently checked on CPU/Metal. Ordered/live-overlay walker, shared selector budgets, block-provider noise and world integration remain pending |
+| Ordered decoration, registered counts, provider noise and placement modifiers | `DecorationProfile.java`, `decoration/placement*`, `counts/`, `provider_noise/` | Registered recursive integer providers, count/offset projection, build-relative height distributions and actual-permutation spatial count noise independently checked on CPU/Metal. Typed ordered-program projection, exact placement-salt grouping, recursive predicates, live block/heightmap overlay and terrain-dependent checks now independently checked on CPU/Metal. Lazy walker execution, shared selector budgets, block-provider noise and world integration remain pending |
 | Trees and decorators, giant mushrooms, fallen trees, disks, vegetation patches, block columns, bamboo, aquatic plants and attachments | `decoration.rs`, `decoration/`, `tree_shapes.rs` | Pending; port actual supported recipe variants, not only grass/tree examples |
 | Jigsaw pools/templates/processors, structures spanning regions and locate queries | `StructureProfile.java`, `structures.rs`, `structure_processors.rs`, `queries.rs` | Pending |
 | Structure entities/block entities/loot and attachment rotations | `nbt.rs`, `structures.rs`, `structure_processors.rs` | Pending |
@@ -1407,8 +1410,9 @@ weighted lists. `registry_placement_height.bend` reads their original schema fro
 the resident registry tape. `registry_decoration_heights.bend` retains each
 height-range instruction's recipe/modifier address in the ordered program.
 Projection never substitutes an average height or clips a provider to sea level.
-These libraries are not yet imported by the playable world worker; the ordered
-placement walker and its live block overlay remain the next integration step.
+These libraries are not yet imported by the playable world worker. The typed
+program and live-overlay libraries described below now supply the next layer;
+ordered walker execution and feature integration remain required.
 
 All sampling uses integer arithmetic and exact 64-bit random words. The returned
 random state preserves sequential modifier draws; weighted totals can exceed
@@ -1439,3 +1443,62 @@ all provider controls, with matching normal-program hashes. These are component
 correctness checks, not complete-region benchmarks. Source/input/executable
 hashes and results are in
 `docs/benchmarks/bend-decoration-height-correctness.json`.
+
+### Typed placement programs and live terrain checks
+
+`registry_placement.bend` projects the original ordered modifier arrays without
+collapsing them into a biome density. It joins the existing count/offset and
+height-provider projections by recipe/modifier address, parses cuboid providers,
+and retains square/layer/count expansion instructions, selectors, rarity/chance,
+heightmap/height-range placement, offsets, recursive block predicates, water-depth
+filters, relative thresholds, biome filters and environment scans. Full signed
+64-bit placement salts group flattened selector branches by their first recipe
+address; original recipe and modifier order remain intact. Missing/null placement
+programs are inactive, and an explicit empty program remains active.
+
+`registry_placement_policy.bend` retains registered material flags, all six
+heightmap occupancy masks, biome recipe memberships, fluid/bedrock IDs and the
+optional 3D-decoration-biome setting. Registry-tape projection runs in Bend on
+the host; the resulting programs/policies are reusable by selected CPU/GPU
+evaluations. `placement_world.bend` provides a persistent
+treap of final block overrides over compact resident material runs. Rewrites
+replace an existing key, earlier writes affect later material/height/ground
+queries, and the original terrain snapshot remains unchanged. The write primitive
+checks resident-domain and palette bounds; feature-specific replacement/support
+rules still belong to the future feature writers.
+
+`placement_checks.bend` implements terrain-dependent modifiers against that live
+view. Recursive predicates retain unknown results for probes outside resident
+terrain, with decisive all/any branches handled explicitly. Environment scans
+check initial search permission, build bounds and the final blocked target.
+Water-depth and relative thresholds use signed 64-bit intermediates. Offset
+probes reject unrepresentable coordinates. Surface-biome restrictions use the
+finalized column biome; enabled 3D biome queries apply below the existing
+12-block surface band and fall back to the column biome when the cave sample is
+unavailable. Layer ground queries find empty-to-solid transitions, excluding
+registered bedrock.
+
+Run `scripts/test_bend_placement_programs.py --profile <profile.json>` for each
+original loaded registry snapshot, with `--prove-metal` to observe actual Metal
+commands using the identical normal GPU archive. The independent reference
+compares projected instruction order and parameters, full salts/groups,
+provider sample values/random states, nested predicates, every policy table and
+1,024 live-world queries per profile. Controls include every modifier variant,
+inactive/empty programs, nested boolean predicates, all six heightmaps, fluid
+depth, layer grounds, surface/cave biome restrictions, repeated overlay writes,
+immutable source queries, out-of-domain probes and signed/distant coordinates.
+
+Vanilla, Terralith, their combined profile and controls pass 8,903 modifier
+instruction comparisons and 5,120 live-world queries per backend. CPU/Metal
+output agrees, as do reversed evaluation order and one-thread CPU controls.
+All 44 malformed profiles reject in both runtime configurations. The diagnostic
+observer records five actual Metal command buffers across the loaded profiles
+and controls, with output matching the normal program and an identical GPU
+archive. These command times include fixture construction/serialization and
+are correctness evidence rather than generation benchmarks.
+
+This is a component library, not an integrated surface feature generator. Lazy
+count/layer/cuboid expansion, parent-check caching, shared selector attempt
+budgets, feature writers and playable worker integration remain required. No
+complete-region speed or memory claim follows from these correctness checks.
+Evidence is in `docs/benchmarks/bend-placement-program-correctness.json`.
