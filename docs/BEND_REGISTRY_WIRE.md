@@ -117,7 +117,7 @@ The existing `RBND` IPC framing remains version 1. Additional opcodes:
   1..32 coefficients, 65,536 spline points, 128 ordered interpolation fields,
   1..1,024 instructions/program and 0..6 output roots. Fields have one root
   and may reference earlier fields; cyclic/forward references fail. Additional
-  material/aquifer programs remain in the tape for future projections.
+  material/aquifer programs remain in the tape for their separate projections.
   Typed invalid models return 715; absent profile returns 708 and nonempty
   command body returns 603.
 - **12 — density batch:** U32 query count (0..4,096), followed by six U32 words
@@ -801,4 +801,50 @@ nice -n 10 ./gradlew bendCaveBiomeTest bendCaveWorkerTest \
   -PproveMetal -PbendMetalProbe=/absolute/path/to/current-source-metal-observer
 nice -n 10 ./gradlew bendCaveBiomeRegionTest -PretinaHostOnly \
   --max-workers=2 --no-parallel
+```
+
+
+Aquifer graph projection and field diagnostics now use the same registered
+numeric model, with their own immutable five-program cache. The initial numeric
+stage still retains only its three main terrain graphs; aquifer preparation
+resolves and loads the actual `registry_program.aquifer.program` range rather
+than treating that index as an index into the terrain cache.
+
+- **37 — profile aquifer:** empty payload, after geology preparation. Returns
+  seven U32 words: enabled, absolute registered graph index, surface bottom,
+  search step, explicit-height mode, world minimum and world height. Missing
+  aquifer metadata means disabled. Present settings require boolean enabled,
+  a complete five-graph range, signed surface bottom, step 1..4096 and mode 0/1.
+  Enabled graphs are decoded and validated against the existing numeric model;
+  flooding needs two roots, spread/lava/barrier one each, and surface one root
+  for explicit height or two for density plus upper bound. Invalid settings or
+  graphs return **742**; missing prepared geology/density returns **743**.
+  Failure retains existing state. Success adds the cache without regenerating
+  columns or cave fields.
+- **38 — aquifer field batch:** count 0..4096 followed by five U32 words per
+  query (X, Y, Z, seed-low, seed-high). Each result is six F32 words: flooding,
+  erosion, fluid spread, lava, barrier and preliminary surface level. Disabled
+  profiles return zero fields. Missing aquifer preparation returns **744**;
+  malformed payloads return **603**. Evaluation runs on the selected Bend CPU/
+  GPU backend. The five graphs stay cached; Java only transports raw batches.
+
+Preliminary surfaces use the registered explicit-height graph or descending
+registered density/upper-bound search. Searches retain global step alignment
+and evaluate only layers within the world's physical vertical bounds. No
+positive layer returns the registered bottom. Explicit heights are floored.
+Compensated coordinates preserve negative/distant neighbors and both seed words.
+This preliminary coarse level is distinct from the exact first-free material
+height used by the cave-biome roof cutoff.
+
+Catalog preparation and ordinary field/noise queries preserve aquifer inputs;
+re-preparing geology clears them and requires another command 37. Loading a
+profile or rebuilding the numeric/material models clears dependent geology.
+These are field components, not final fluids: nearest fluid centers, pressure
+barriers, cavity material assignment and lake generation still need integration.
+
+```sh
+nice -n 10 ./gradlew bendAquiferTest bendAquiferWorkerTest -PretinaHostOnly \
+  --max-workers=2 --no-parallel -PbendSkipBuild -PproveMetal \
+  -PbendMetalProbe=/absolute/path/to/current-source-metal-observer \
+  -PbendDensityRegistryProfiles=/absolute/vanilla.json=/absolute/vanilla.rbp
 ```

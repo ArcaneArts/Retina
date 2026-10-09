@@ -288,6 +288,23 @@ public final class BendWorker implements AutoCloseable {
         return request(35, new byte[0]);
     }
 
+    /** Prepare the registered aquifer graph range and surface-search settings
+     * in Bend after geology preparation. Seven acknowledgement words: enabled,
+     * program, surface bottom/step/mode, world minimum and height. Missing aquifer
+     * metadata means disabled; invalid metadata fails without replacing state.
+     */
+    public CompletableFuture<byte[]> prepareProfileAquifer() {
+        return request(37, new byte[0]);
+    }
+
+    /** Query flooding, erosion, spread, lava, barrier and preliminary surface
+     * height on the selected Bend CPU/GPU backend. Raw five-word XYZ/seed queries
+     * return six F32 values each. Java performs no graph or surface search work.
+     */
+    public CompletableFuture<byte[]> sampleAquiferFields(byte[] batch) {
+        return request(38, batch);
+    }
+
     /** Cancellation skips queued requests; in-flight responses are drained to
      * preserve framing. World shutdown closes the worker and terminates it.
      */
