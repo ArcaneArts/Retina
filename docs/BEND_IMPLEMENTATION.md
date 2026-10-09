@@ -129,10 +129,11 @@ and registered spatial-count noise libraries now project the original instructio
 in Bend. Typed ordered programs and terrain-dependent checks now preserve full
 placement salts, selector groups, predicates, heightmaps and biome memberships.
 A persistent live block overlay provides current materials/heights to those checks.
-Port the lazy ordered placement walker and shared selector/count budgets next, then
-block providers, trunk/foliage variants and
-decorators into resident block runs. Preserve globally seeded neighboring
-contributions and actual support checks instead of replacing these recipes with
+The lazy ordered walker and shared selector/count budgets now have a checked
+component implementation, as do all ten registered block-provider families and
+their initialized spatial noise stacks. Port the actual feature writers,
+trunk/foliage variants and decorators into resident block runs next. Preserve
+globally seeded neighboring contributions and actual support checks instead of replacing these recipes with
 fixed biome densities. The existing cave survival policy provides a starting
 point for final unsupported-plant cleanup.
 
@@ -177,7 +178,7 @@ more deeply; retain the original requested scope.
 | Caves, ravines, rare surface entrances and cave decoration | `GeologyProfile.java`, `geology.rs`, `features.rs`, `caves.wgsl` | Typed geology, cached globally aligned GPU/CPU cave fields, rounded noisy ravines and registered column carving implemented; independent voxel/serialized-region and actual Minecraft decoder checks pass. GPU/CPU depth-dependent cave-biome volumes now select registered carvers and serialize actual 3D quart IDs, retaining finalized surface biomes near the roof. Resident aquifers now supply carved cavity materials. Registered floor/ceiling cave dressing, vines, blossoms, dripstone and sparse plant survival now execute on the selected CPU/GPU backend. Playable terrain integration implemented; composed-density/exterior refinements and ordered surface decorations remain pending |
 | Lakes, aquifer fields and fluid barriers | `TerrainFeatureProfile.java`, `program/lake_sparse.rs`, `aquifers.wgsl` | Typed aquifer graph projection and GPU/CPU flooding, erosion, spread, lava, barrier and preliminary-surface evaluation implemented. Globally hashed resident fluid centers, trilinear barrier fields and nearest-center pressure now place registered cavity fluids while preserving protected/pressure-barrier materials. Registered lake budgets/materials, globally seeded candidates, five bank probes, bounded fluid levels and noisy basin/rim placement implemented on CPU/GPU before material coating. Independent block/NBT/zlib checks cover fluids, barriers, overlap and signed/distant coordinates; lake exclusions now use finalized pre-carving coast selection, including global probes outside the resident tile. Out-of-tile bank vertices now execute in bulk with exact prior geometry and material bytes, improving measured GPU lake-stage latency by 10.1–14.6×. Playable terrain integration implemented; full parity and performance work remain required |
 | Ore height/count/replacement/discard rules and GPU rasterization | `geology/`, `ore.wgsl` | Registered recipe projection, packed membership/material tables and selected-backend ordered replacement/exposure policy implemented. Registered count/rarity/height attempts and local sphere-chain/scattered geometry now execute on CPU/GPU. Local sphere-union masks and ordered scattered points now calculate in the same selected-backend evaluation as geometry. Spatial surface/cave membership filtering, stable neighboring contribution buckets and ordered resident-block replay now run in one selected CPU/GPU evaluation, with immutable exposure halo checks and independent voxel/NBT/zlib validation. Playable terrain integration implemented; full parity and performance work remain required |
-| Ordered decoration, registered counts, provider noise and placement modifiers | `DecorationProfile.java`, `decoration/placement*`, `counts/`, `provider_noise/` | Registered recursive integer providers, count/offset projection, build-relative height distributions and actual-permutation spatial count noise independently checked on CPU/Metal. Typed ordered-program projection, exact placement-salt grouping, recursive predicates, live block/heightmap overlay and terrain-dependent checks now independently checked on CPU/Metal. Lazy ordered count/layer/cuboid execution and shared selector budgets now have an independent CPU/Metal component harness. Block-provider noise, feature writers and playable world integration remain pending |
+| Ordered decoration, registered counts, provider noise and placement modifiers | `DecorationProfile.java`, `decoration/placement*`, `counts/`, `provider_noise/` | Registered recursive integer providers, count/offset projection, build-relative height distributions and actual-permutation spatial count noise independently checked on CPU/Metal. Typed ordered-program projection, exact placement-salt grouping, recursive predicates, live block/heightmap overlay and terrain-dependent checks now independently checked on CPU/Metal. Lazy ordered count/layer/cuboid execution and shared selector budgets now have an independent CPU/Metal component harness. All ten block-provider families, full 64-bit weighted decisions, current-state property transforms and initialized permutation/offset noise now independently checked on CPU/Metal. Feature writers and playable world integration remain pending |
 | Trees and decorators, giant mushrooms, fallen trees, disks, vegetation patches, block columns, bamboo, aquatic plants and attachments | `decoration.rs`, `decoration/`, `tree_shapes.rs` | Pending; port actual supported recipe variants, not only grass/tree examples |
 | Jigsaw pools/templates/processors, structures spanning regions and locate queries | `StructureProfile.java`, `structures.rs`, `structure_processors.rs`, `queries.rs` | Pending |
 | Structure entities/block entities/loot and attachment rotations | `nbt.rs`, `structures.rs`, `structure_processors.rs` | Pending |
@@ -1565,6 +1566,58 @@ include fixture setup and queries; they are correctness evidence, not a
 placement-stage or generator performance comparison.
 
 This component does not place actual trees/surface features and is not yet
-imported by the playable worker. Block-provider noise, feature writers, ordering
-across neighboring anchor contributions and world integration remain required.
+imported by the playable worker. Registered block providers and their noise are
+now covered by the following component. Feature writers, ordering across
+neighboring anchor contributions and world integration remain required.
 Evidence is in `docs/benchmarks/bend-placement-walker-correctness.json`.
+
+
+### Registered block providers and provider noise
+
+`registry_block_provider.bend` projects the shared export into immutable typed
+providers. `block_provider.bend` implements state, weighted, randomized integer,
+rule-based, rotated, property-copy, random-block, noise, dual-noise and
+noise-threshold selection. It consumes the existing live `placement_world` view
+and returns the updated complete 64-bit random state beside an optional material.
+`optional` preserves nullable results so matching rules may fall through;
+`sample` performs the registered current-substrate fallback. Rotation consumes
+its direction draw before the nested source, absent/noninteger properties consume
+no value draw, and property copies use the current overlay material. Validation
+checks palette/program references, transform coverage, integer-property ranges,
+predicate shapes, replacement ordering and nullable weighted children before
+sampling. Declared integer rows must cover their provider range even when the
+source may read the current substrate.
+
+`registry_provider_noise.bend` retains original f64 frequency bits, initialized
+256-entry permutations, offsets and F32 amplitudes from
+`decoration_provider_noises`. `provider_noise.bend` evaluates those actual
+Minecraft gradient stacks without substituting the seeded hash-based terrain
+noise. Integer coordinates multiply rounded Q40 coefficients modulo 256;
+scaled dual-noise coordinates first round to F32, then multiply the original
+f64 significand using integer limbs. Both paths retain far and signed phases
+without native f64 arithmetic. Dual providers select the slow-noise sample after
+the registered wrapping coordinate shift; compensated arithmetic preserves the
+variety-count integer boundary. No Rust, Java computational work, native codec
+or handwritten shader is involved in these library algorithms.
+
+Run `scripts/test_bend_block_providers.py --profile <loaded-profile.json> --prove-metal` for the independent Python rational-phase/F32 interpreter and
+CPU/actual-Metal comparisons. Original vanilla, Terralith and combined profiles
+are transported unchanged. The fixture traverses every provider in their
+original decoration subtree, including nested sources and rules; it does not
+substitute representative biome densities or normalized provider recipes.
+Together with synthetic rare-provider and empty controls, 1,109 providers make
+35,488 state/RNG decisions and 4,864 direct noise queries per backend. The
+independent output matches exactly on the captured host, including the direct
+F32 noise values; CPU/Metal bytes and the single-thread CPU control agree.
+There are 544 explicit draw-count controls, and 29 malformed projections fail
+without producing output. Actual Metal command buffers are observed with normal
+program output and an identical GPU archive. Signed/distant coordinates, full
+64-bit weight sums, nullable fallthrough, live property copying, fixed/random
+rotations, threshold draws, scaled dual noise, negative frequencies, subnormal
+frequencies and Q40 midpoint phases are exercised. These are component
+correctness checks, not a feature-stage or whole-generator speed comparison.
+Evidence is in `docs/benchmarks/bend-block-providers-correctness.json`.
+
+The playable worker is unchanged by this cycle. Surface feature writers, trees,
+neighboring contribution ordering, structures, snow/freezing, full GPU lighting,
+full-region caching and equivalent complete-region benchmarks remain required.

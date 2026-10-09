@@ -1,0 +1,212 @@
+{
+  "scope": "Registered block-provider decisions/noise versus independent CPU references.\n\nOriginal full profiles cross the registry wire unchanged. This component does\nnot place surface features or change the playable world worker. Metal command\nbuffers, not merely a runtime flag, establish actual GPU execution.",
+  "bend_version": "bend 2.0.36",
+  "runs": [
+    {
+      "profile": "profile-0",
+      "gpu_required": false,
+      "providers": 180,
+      "decisions": 5760,
+      "noise_queries": 256,
+      "max_noise_error": 0.0,
+      "sha256": "3cec61c7ad922397d083488da3e22bb49191f55cffbd0f3981ec2407c937d6f0"
+    },
+    {
+      "profile": "profile-1",
+      "gpu_required": false,
+      "providers": 433,
+      "decisions": 13856,
+      "noise_queries": 2048,
+      "max_noise_error": 0.0,
+      "sha256": "e2f0524c73ddbfa513122c588c8053c78f2b50bb84b8fa02aa6dc4ec6cd9fdad"
+    },
+    {
+      "profile": "profile-2",
+      "gpu_required": false,
+      "providers": 433,
+      "decisions": 13856,
+      "noise_queries": 2048,
+      "max_noise_error": 0.0,
+      "sha256": "e2f0524c73ddbfa513122c588c8053c78f2b50bb84b8fa02aa6dc4ec6cd9fdad"
+    },
+    {
+      "profile": "fixture",
+      "gpu_required": false,
+      "providers": 63,
+      "decisions": 2016,
+      "noise_queries": 512,
+      "max_noise_error": 0.0,
+      "sha256": "efb31f51e6eca85b43720446e6b2184b35f0265c21a5fd131605b25c485b6203"
+    },
+    {
+      "profile": "empty",
+      "gpu_required": false,
+      "providers": 0,
+      "decisions": 0,
+      "noise_queries": 0,
+      "max_noise_error": 0.0,
+      "sha256": "af5570f5a1810b7af78caf4bc70a660f0df51e42baf91d4de5b2328de0e83dfc"
+    },
+    {
+      "profile": "profile-0",
+      "gpu_required": true,
+      "providers": 180,
+      "decisions": 5760,
+      "noise_queries": 256,
+      "max_noise_error": 0.0,
+      "sha256": "3cec61c7ad922397d083488da3e22bb49191f55cffbd0f3981ec2407c937d6f0"
+    },
+    {
+      "profile": "profile-1",
+      "gpu_required": true,
+      "providers": 433,
+      "decisions": 13856,
+      "noise_queries": 2048,
+      "max_noise_error": 0.0,
+      "sha256": "e2f0524c73ddbfa513122c588c8053c78f2b50bb84b8fa02aa6dc4ec6cd9fdad"
+    },
+    {
+      "profile": "profile-2",
+      "gpu_required": true,
+      "providers": 433,
+      "decisions": 13856,
+      "noise_queries": 2048,
+      "max_noise_error": 0.0,
+      "sha256": "e2f0524c73ddbfa513122c588c8053c78f2b50bb84b8fa02aa6dc4ec6cd9fdad"
+    },
+    {
+      "profile": "fixture",
+      "gpu_required": true,
+      "providers": 63,
+      "decisions": 2016,
+      "noise_queries": 512,
+      "max_noise_error": 0.0,
+      "sha256": "efb31f51e6eca85b43720446e6b2184b35f0265c21a5fd131605b25c485b6203"
+    },
+    {
+      "profile": "empty",
+      "gpu_required": true,
+      "providers": 0,
+      "decisions": 0,
+      "noise_queries": 0,
+      "max_noise_error": 0.0,
+      "sha256": "af5570f5a1810b7af78caf4bc70a660f0df51e42baf91d4de5b2328de0e83dfc"
+    }
+  ],
+  "provider_kinds": [
+    "state",
+    "weighted",
+    "randomized_int",
+    "rule_based",
+    "rotated",
+    "copy_properties",
+    "random_block",
+    "noise",
+    "dual_noise",
+    "noise_threshold"
+  ],
+  "semantic_controls": {
+    "full_64bit_weights": "pass",
+    "optional_rule_fallthrough": "pass",
+    "nullable_substrate_fallback": "pass",
+    "passthrough_draws": "pass",
+    "rotation_draw_order": "pass",
+    "live_property_copy": "pass",
+    "threshold_draws": "pass",
+    "maximum_dual_variety": "pass",
+    "draw_count_controls": 544
+  },
+  "malformed_rejected": 29,
+  "cpu_gpu_bytes_equal": true,
+  "one_cpu_thread": "pass",
+  "metal_observation": [
+    {
+      "profile": "profile-0",
+      "device_ms": [
+        86.583042,
+        140.183375,
+        156.34875,
+        175.174125,
+        160.4165,
+        125.356542,
+        153.62975,
+        159.67675,
+        3.524792
+      ],
+      "command_buffers": 9,
+      "sha256": "3cec61c7ad922397d083488da3e22bb49191f55cffbd0f3981ec2407c937d6f0"
+    },
+    {
+      "profile": "profile-1",
+      "device_ms": [
+        125.114,
+        226.265417,
+        217.7635,
+        274.18825,
+        241.867375,
+        217.863,
+        277.9825,
+        284.415958,
+        23.391
+      ],
+      "command_buffers": 9,
+      "sha256": "e2f0524c73ddbfa513122c588c8053c78f2b50bb84b8fa02aa6dc4ec6cd9fdad"
+    },
+    {
+      "profile": "profile-2",
+      "device_ms": [
+        170.266417,
+        243.433625,
+        209.915333,
+        284.445667,
+        280.946375,
+        315.295792,
+        200.363125,
+        289.695167,
+        20.457
+      ],
+      "command_buffers": 9,
+      "sha256": "e2f0524c73ddbfa513122c588c8053c78f2b50bb84b8fa02aa6dc4ec6cd9fdad"
+    },
+    {
+      "profile": "fixture",
+      "device_ms": [
+        34.6825,
+        60.285792,
+        62.734083,
+        61.376875,
+        57.892792,
+        57.064667,
+        55.282625,
+        60.497792,
+        2.530958
+      ],
+      "command_buffers": 9,
+      "sha256": "efb31f51e6eca85b43720446e6b2184b35f0265c21a5fd131605b25c485b6203"
+    },
+    {
+      "profile": "empty",
+      "device_ms": [
+        0.185042,
+        0.114792
+      ],
+      "command_buffers": 2,
+      "sha256": "af5570f5a1810b7af78caf4bc70a660f0df51e42baf91d4de5b2328de0e83dfc"
+    }
+  ],
+  "profiles": {
+    "/Users/cyberpwn/.local/share/retina-bend/2.0.36/backend-artifacts/placement-programs-20261009/profiles/profile-0.json": "aefce6ff0e800966ad55920c5d21510dfa277de4612f67e22d5146d3aa838203",
+    "/Users/cyberpwn/.local/share/retina-bend/2.0.36/backend-artifacts/placement-programs-20261009/profiles/profile-1.json": "c9abbe97860a394ed899d64967bd0395bb9bb4ec71a9dff43d1bb45893fefd4d",
+    "/Users/cyberpwn/.local/share/retina-bend/2.0.36/backend-artifacts/placement-programs-20261009/profiles/profile-2.json": "068fd602ad497128dd3960cb9be76840ebd41882b5b64c25acfa76d65e930c8b"
+  },
+  "sources": {
+    "bend/provider_noise.bend": "2df2205ef0d156fd4b353d186524ecd399ced49d02ae8f0110eedc447056a564",
+    "bend/registry_provider_noise.bend": "b0925be11095d875e222daccc8d62439ed959e10d031da2159bf05b69ee5a219",
+    "bend/block_provider.bend": "2f2e29bd9c911b6babacdaef6024d6479918f241473890677bcd98a970eb6d3f",
+    "bend/registry_block_provider.bend": "472a6b4d9fde6d988d35d0c0db3cc8ce7434937865c12ee7d03393d1d03e1d3f",
+    "bend/tests/block-providers.bend": "273f9fdcc34811737cee8101804ca2e7505a7fa03118abfeab59514e6ca54497",
+    "scripts/test_bend_block_providers.py": "12e7bc56dc2a93ba60f68ff86191a3e44b4aca454710f1176d67173575b3f863"
+  },
+  "native_sha256": "66752d6e2c3b709a16d12182c539aa0cf6bcf31fea5cd5d91f0227883c862814",
+  "gpu_sha256": "c77c4658f5f06f31a0ec85da0283afc62103cc66a20a1d96dbdc3ddbe8540566"
+}
