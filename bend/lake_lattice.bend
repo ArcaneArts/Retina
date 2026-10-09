@@ -4,6 +4,7 @@ import ./lake_candidates.bend as LC
 import ./density.bend as Q
 import ./density_lattice.bend as L
 import ./terrain_surface.bend as S
+import ./terrain_height.bend as H
 import ./cave_lattice.bend as CV
 import ./climate.bend as C
 import ./shoreline.bend as Shore
@@ -67,13 +68,117 @@ def bank(value: LC.Candidate,which: U32,+config: S.Config,density: L.Grid,model:
     case _ S.Config{minimum,_,_,_,_,_} _: minimum
 
 @unsafe
-def banks(+n: U32,+base: U32,+values: Q.Table<LC.Candidate>,+config: S.Config,+density: L.Grid,+model: Q.Model,+programs: Q.Table<Q.Program>,+layout: LD.Layout) -> Q.Table<U32>:
+def direct_banks(+n: U32,+base: U32,+values: Q.Table<LC.Candidate>,+config: S.Config,+density: L.Grid,+model: Q.Model,+programs: Q.Table<Q.Program>,+layout: LD.Layout) -> Q.Table<U32>:
   match n:
     case 1: Q.Leaf{bank(Q.get(LC.Candidate,values,U32.div(base,5),empty_candidate()),U32.mod(base,5),config,density,model,programs,layout)}
     case _:
       +half = U32.div(n,2)
-      a b = banks(half,base,values,config,density,model,programs,layout) banks(U32.sub(n,half),U32.add(base,half),values,config,density,model,programs,layout)
+      a b = direct_banks(half,base,values,config,density,model,programs,layout) direct_banks(U32.sub(n,half),U32.add(base,half),values,config,density,model,programs,layout)
       Q.Branch{n,a,b}
+
+# Each out-of-tile bank formerly built its 2 x ny x 2 lattice serially inside
+# one GPU task. Evaluate those exact vertices as a single bulk frontier instead,
+# then reduce the already resident values into the same integer bank height.
+# Covered probes keep the original resident lattice; inactive probes do no noise.
+@unsafe
+def bank_layout(+config: S.Config,point: Q.Point,layout: LD.Layout) -> L.Layout:
+  match config point layout:
+    case S.Config{_,_,_,+h,+v,_} Q.Point{x,_,z} LD.Layout{_,_,_,_,low,high}:
+      bank_y(S.y_bounds(config),Q.lattice(x,h),Q.lattice(z,h),h,v,low,high)
+
+@unsafe
+def bank_y(pair: D.Number & D.Number,x: D.Number,z: D.Number,h: U32,+v: U32,low: U32,high: U32) -> L.Layout:
+  (minimum,maximum) = pair
+  +origin = Q.lattice(minimum,v)
+  L.Layout{Q.Point{x,origin,z},2,L.count(maximum,origin,v),2,h,v,1,low,high}
+
+def bank_size(config: S.Config) -> U32:
+  L.size(bank_layout(config,Q.world(0,0,0),LD.Layout{0,0,0,0,0,0}))
+
+@unsafe
+def bank_covered(density: L.Grid,+point: Q.Point) -> Bool:
+  match density:
+    case L.Grid{L.Layout{origin,nx,_,nz,h,v,_,_,_},_}: bank_relative(L.relative(point,origin,h,v),nx,nz)
+
+def bank_relative(point: Q.Point,nx: U32,nz: U32) -> Bool:
+  match point:
+    case Q.Point{x,_,z}: Bool.and(L.contains(x,nx),L.contains(z,nz))
+
+def empty_vertex() -> Q.Outputs:
+  Q.Outputs{D.scalar(0.0),D.scalar(0.0),D.scalar(0.0),D.scalar(0.0),D.scalar(0.0),D.scalar(0.0)}
+
+@unsafe
+def bank_vertex(value: LC.Candidate,which: U32,index: U32,+config: S.Config,+density: L.Grid,model: Q.Model,programs: Q.Table<Q.Program>,+layout: LD.Layout) -> Q.Outputs:
+  match value:
+    case LC.Candidate{True{},_,_,point,radius,_,True{},_,_,_,_}:
+      +point = probe(point,radius,which)
+      bank_vertex_kind(bank_covered(density,point),bank_layout(config,point,layout),model,programs,index)
+    case _: empty_vertex()
+
+def bank_vertex_kind(covered: Bool,layout: L.Layout,model: Q.Model,programs: Q.Table<Q.Program>,index: U32) -> Q.Outputs:
+  match covered:
+    case True{}: empty_vertex()
+    case False{}: L.vertex(model,programs,layout,index)
+
+@unsafe
+def bank_sample(+i: U32,+span: U32,values: Q.Table<LC.Candidate>,config: S.Config,density: L.Grid,model: Q.Model,programs: Q.Table<Q.Program>,layout: LD.Layout) -> Q.Outputs:
+  +probe_index = U32.div(i,span)
+  bank_vertex(Q.get(LC.Candidate,values,U32.div(probe_index,5),empty_candidate()),U32.mod(probe_index,5),U32.mod(i,span),config,density,model,programs,layout)
+
+@unsafe
+def bank_vertices(+limit: U32,+n: U32,+base: U32,+span: U32,+values: Q.Table<LC.Candidate>,+config: S.Config,+density: L.Grid,+model: Q.Model,+programs: Q.Table<Q.Program>,+layout: LD.Layout) -> Q.Table<Q.Outputs>:
+  match n:
+    case 1: Q.Leaf{bank_sample(base,span,values,config,density,model,programs,layout)}
+    case _: bank_vertex_split(U32.is_le(n,limit),limit,n,base,span,values,config,density,model,programs,layout)
+
+@unsafe
+def bank_vertex_split(serial: Bool,+limit: U32,+n: U32,+base: U32,+span: U32,+values: Q.Table<LC.Candidate>,+config: S.Config,+density: L.Grid,+model: Q.Model,+programs: Q.Table<Q.Program>,+layout: LD.Layout) -> Q.Table<Q.Outputs>:
+  match serial:
+    case True{}: Q.Branch{n,bank_vertices(limit,U32.div(n,2),base,span,values,config,density,model,programs,layout),
+      bank_vertices(limit,U32.sub(n,U32.div(n,2)),U32.add(base,U32.div(n,2)),span,values,config,density,model,programs,layout)}
+    case False{}:
+      +half = U32.div(n,2)
+      a b = bank_vertices(limit,half,base,span,values,config,density,model,programs,layout) bank_vertices(limit,U32.sub(n,half),U32.add(base,half),span,values,config,density,model,programs,layout)
+      Q.Branch{n,a,b}
+
+@unsafe
+def bank_slice(+n: U32,+base: U32,+values: Q.Table<Q.Outputs>) -> Q.Table<Q.Outputs>:
+  match n:
+    case 1: Q.Leaf{L.value_at(values,base)}
+    case _: Q.Branch{n,bank_slice(U32.div(n,2),base,values),bank_slice(U32.sub(n,U32.div(n,2)),U32.add(base,U32.div(n,2)),values)}
+
+@unsafe
+def cached_bank(value: LC.Candidate,which: U32,+base: U32,+span: U32,+config: S.Config,+density: L.Grid,layout: LD.Layout,samples: Q.Table<Q.Outputs>) -> U32:
+  match value config:
+    case LC.Candidate{True{},_,_,point,radius,_,True{},_,_,_,_} _:
+      +point = probe(point,radius,which)
+      bank_height(bank_covered(density,point),point,config,density,bank_layout(config,point,layout),U32.mul(base,span),span,samples)
+    case _ S.Config{minimum,_,_,_,_,_}: minimum
+
+def bank_height(covered: Bool,point: Q.Point,config: S.Config,density: L.Grid,layout: L.Layout,base: U32,span: U32,samples: Q.Table<Q.Outputs>) -> U32:
+  match covered:
+    case True{}: H.height(config,density,point)
+    case False{}: H.height(config,L.Grid{layout,bank_slice(span,base,samples)},point)
+
+@unsafe
+def cached_banks(+n: U32,+base: U32,+span: U32,+values: Q.Table<LC.Candidate>,+config: S.Config,+density: L.Grid,+layout: LD.Layout,+samples: Q.Table<Q.Outputs>) -> Q.Table<U32>:
+  match n:
+    case 1: Q.Leaf{cached_bank(Q.get(LC.Candidate,values,U32.div(base,5),empty_candidate()),U32.mod(base,5),base,span,config,density,layout,samples)}
+    case _:
+      +half = U32.div(n,2)
+      a b = cached_banks(half,base,span,values,config,density,layout,samples) cached_banks(U32.sub(n,half),U32.add(base,half),span,values,config,density,layout,samples)
+      Q.Branch{n,a,b}
+
+@unsafe
+def planned_banks(bounded: Bool,+n: U32,+span: U32,+values: Q.Table<LC.Candidate>,+config: S.Config,+density: L.Grid,+model: Q.Model,+programs: Q.Table<Q.Program>,+layout: LD.Layout) -> Q.Table<U32>:
+  match bounded:
+    # Very tall/wide custom profiles retain the existing bounded-memory probe
+    # algorithm instead of allocating an unbounded simultaneous vertex cache.
+    case False{}: direct_banks!(n,0,values,config,density,model,programs,layout)
+    case True{}:
+      +total = U32.mul(n,span)
+      samples : Q.Table<Q.Outputs> = bank_vertices!(U32.max(1,U32.div(U32.add(total,16383),16384)),total,0,span,values,config,density,model,programs,layout)
+      cached_banks!(n,0,span,values,config,density,layout,samples)
 
 @unsafe
 def five(+n: U32,+base: U32,+values: Q.Table<U32>) -> Q.Table<U32>:
@@ -132,7 +237,9 @@ def floor(config: S.Config) -> U32:
 @unsafe
 def execute(+layout: LD.Layout,+tile: S.Tile,+config: S.Config,+density: L.Grid,+model: Q.Model,+programs: Q.Table<Q.Program>,+climate: C.Model,+biomes: Q.Table<G.Biome>) -> Computed:
   +candidates : Q.Table<LC.Candidate> = candidates!(size(layout),0,layout,model,programs,climate,biomes)
-  banks : Q.Table<U32> = banks!(U32.mul(size(layout),5),0,candidates,config,density,model,programs,layout)
+  +bank_count = U32.mul(size(layout),5)
+  +bank_span = bank_size(config)
+  banks : Q.Table<U32> = planned_banks(U32.is_le(bank_span,U32.div(1048576,bank_count)),bank_count,bank_span,candidates,config,density,model,programs,layout)
   basins : Q.Table<LD.Basin> = basins!(size(layout),0,candidates,banks,floor(config))
   +expanded = halo(tile)
   flags : Q.Table<U32> = flags!(S.total(expanded),0,expanded,config,density,model,programs,climate,biomes)

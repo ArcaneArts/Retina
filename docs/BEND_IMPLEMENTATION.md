@@ -107,11 +107,12 @@ completed in 22 seconds. Treat this as a slow experimental preview, not a
 replacement for Rust performance. A prepared local example save avoids waiting
 for that first spawn while inspecting the existing terrain.
 
-The combined functional test on this shared Apple M4 Max observed 16.6/17.0 s
+Before the parallel lake-bank change, the combined functional test on this shared
+Apple M4 Max observed 16.6/17.0 s
 for two CPU batches and 25.7/23.3 s for two GPU batches. GPU lake geometry alone
 accounted for about 14 s in the second batch. These are functional-test timings,
-not an isolated or equivalent-workload Rust/Bend benchmark. GPU execution is
-currently slower here; a single language does not imply faster generation.
+not an isolated or equivalent-workload Rust/Bend benchmark. GPU execution was
+slower in those runs; a single language does not imply faster generation.
 
 ### Next integration work
 
@@ -165,7 +166,7 @@ more deeply; retain the original requested scope.
 | Climate targets, biome selection, smooth boundaries and underground biomes | `climate.rs`, `climate.wgsl`, `RetinaBiomeSource.java` | Pure Bend balanced interval indices and surface/underground/coastal lookup implemented, checked against independent linear search with actual registered intervals on CPU and Metal. Typed resident-tape projection and persistent query commands implemented with explicit reload invalidation. GPU spatial climate fields and surface biome selection now consume resident density tiles; compact material layers implemented; interpolated terrain and selectable preview integration implemented; full parity pending |
 | Coastlines, shore materials, rivers and material predicates/layers | `ShoreMaterialProfile.java`, `column_program.rs`, `materials.wgsl` | Pure Bend resident per-biome material DAGs and predicates (40..54) implemented with shared numeric evaluation, registered bands/sea/layer mode and bounded CPU/GPU query batches. GPU context/compact block runs implemented. Resident GPU coastal finalization now uses exact generated occupancy, six-block disk probes and registered climate alternatives before material generation; independent CPU/Metal checks cover inland/ocean exclusion, distinct materials and cache/coordinate rules. Playable terrain and 3D cave-biome integration implemented; inland river/ocean parity and full material parity remain required |
 | Caves, ravines, rare surface entrances and cave decoration | `GeologyProfile.java`, `geology.rs`, `features.rs`, `caves.wgsl` | Typed geology, cached globally aligned GPU/CPU cave fields, rounded noisy ravines and registered column carving implemented; independent voxel/serialized-region and actual Minecraft decoder checks pass. GPU/CPU depth-dependent cave-biome volumes now select registered carvers and serialize actual 3D quart IDs, retaining finalized surface biomes near the roof. Resident aquifers now supply carved cavity materials. Registered floor/ceiling cave dressing, vines, blossoms, dripstone and sparse plant survival now execute on the selected CPU/GPU backend. Playable terrain integration implemented; composed-density/exterior refinements and ordered surface decorations remain pending |
-| Lakes, aquifer fields and fluid barriers | `TerrainFeatureProfile.java`, `program/lake_sparse.rs`, `aquifers.wgsl` | Typed aquifer graph projection and GPU/CPU flooding, erosion, spread, lava, barrier and preliminary-surface evaluation implemented. Globally hashed resident fluid centers, trilinear barrier fields and nearest-center pressure now place registered cavity fluids while preserving protected/pressure-barrier materials. Registered lake budgets/materials, globally seeded candidates, five bank probes, bounded fluid levels and noisy basin/rim placement implemented on CPU/GPU before material coating. Independent block/NBT/zlib checks cover fluids, barriers, overlap and signed/distant coordinates; lake exclusions now use finalized pre-carving coast selection, including global probes outside the resident tile. Playable terrain integration implemented; full parity and performance work remain required |
+| Lakes, aquifer fields and fluid barriers | `TerrainFeatureProfile.java`, `program/lake_sparse.rs`, `aquifers.wgsl` | Typed aquifer graph projection and GPU/CPU flooding, erosion, spread, lava, barrier and preliminary-surface evaluation implemented. Globally hashed resident fluid centers, trilinear barrier fields and nearest-center pressure now place registered cavity fluids while preserving protected/pressure-barrier materials. Registered lake budgets/materials, globally seeded candidates, five bank probes, bounded fluid levels and noisy basin/rim placement implemented on CPU/GPU before material coating. Independent block/NBT/zlib checks cover fluids, barriers, overlap and signed/distant coordinates; lake exclusions now use finalized pre-carving coast selection, including global probes outside the resident tile. Out-of-tile bank vertices now execute in bulk with exact prior geometry and material bytes, improving measured GPU lake-stage latency by 10.1–14.6×. Playable terrain integration implemented; full parity and performance work remain required |
 | Ore height/count/replacement/discard rules and GPU rasterization | `geology/`, `ore.wgsl` | Registered recipe projection, packed membership/material tables and selected-backend ordered replacement/exposure policy implemented. Registered count/rarity/height attempts and local sphere-chain/scattered geometry now execute on CPU/GPU. Local sphere-union masks and ordered scattered points now calculate in the same selected-backend evaluation as geometry. Spatial surface/cave membership filtering, stable neighboring contribution buckets and ordered resident-block replay now run in one selected CPU/GPU evaluation, with immutable exposure halo checks and independent voxel/NBT/zlib validation. Playable terrain integration implemented; full parity and performance work remain required |
 | Ordered decoration, registered counts, provider noise and placement modifiers | `DecorationProfile.java`, `decoration/placement*`, `counts/`, `provider_noise/` | Registered recursive integer providers, count/offset projection and actual-permutation spatial count noise independently checked on CPU/Metal. Ordered/live-overlay walker, shared selector budgets, block-provider noise and world integration remain pending |
 | Trees and decorators, giant mushrooms, fallen trees, disks, vegetation patches, block columns, bamboo, aquatic plants and attachments | `decoration.rs`, `decoration/`, `tree_shapes.rs` | Pending; port actual supported recipe variants, not only grass/tree examples |
@@ -1043,6 +1044,72 @@ tests ignored). Source, input and executable hashes are retained in
 `--output` so a registry run can retain its report separately from the Gradle
 control run.
 
+
+### Parallel lake bank density probes
+
+Lake-bank probes outside the resident density tile previously built a small
+`2 x ny x 2` density lattice serially inside each bank task. Those probes are
+necessary because a lake's center and banks can lie beyond the requested batch.
+The worker now evaluates their exact density vertices in one balanced Bend
+fork tree, then reduces the resident samples into the same five bank heights.
+Covered probes still use the existing terrain lattice, and inactive candidates
+skip density evaluation. Candidate selection, coordinates, interpolation,
+integer height rules, fluid levels and material decisions are unchanged.
+
+The additional vertex cache is local to one lake preparation. It is limited to
+1,048,576 entries; larger custom workloads use the existing direct bank routine.
+The common path adds one stock selected-backend dispatch, with no extra Java
+transport or explicit intermediate readback. On the tested Metal runtime the
+vertex cache uses the existing shared memory corpus. Both paths remain pure Bend.
+
+`scripts/benchmark_bend_lakes.py` alternates preserved and candidate workers with
+identical exported registry profiles, two CPU workers and reduced priority.
+Preparation and final block queries are outside the timed command-43 interval.
+It compares all bank geometry and final material-column bytes before and after
+repeated construction. Its optional stock-runtime Metal observer also checks
+the candidate's output and actual device commands outside measured intervals.
+This is lake-stage evidence, not an equivalent complete lit Rust/Bend region
+benchmark. Compilation and other task-owned tests must finish before measuring;
+other applications on the shared host remain uncontrolled.
+
+Measured warm lake-stage medians on this Apple M4 Max (66x66 columns):
+
+| Backend | Profile | Before (ms) | After (ms) | Before / after |
+| --- | --- | ---: | ---: | ---: |
+| CPU (2 workers) | vanilla | 586.86 | 611.39 | 0.96x |
+| CPU (2 workers) | terralith | 625.81 | 647.84 | 0.97x |
+| CPU (2 workers) | combined | 645.34 | 636.60 | 1.01x |
+| Metal | vanilla | 11334.38 | 1120.16 | 10.12x |
+| Metal | terralith | 19603.34 | 1386.89 | 14.13x |
+| Metal | combined | 19693.82 | 1349.94 | 14.59x |
+
+Each profile has five warmups and five measured alternating runs. GPU medians
+improved 10.1–14.6x. CPU medians ranged from 4.2% slower to 1.4% faster; their
+mixed results and shared-host variation do not establish a CPU speedup. All bank
+geometry and all 4,356 final material columns are byte-identical to the preserved
+worker within each backend, before and after repeated preparation.
+
+Independent CPU and GPU regressions retain the previous aggregate hashes for
+1,490 bank heights, 1,160 final columns and three NBT/zlib chunks, plus the
+shoreline suite's 1,694 material columns and 795 finalized surface columns.
+The host-only observer uses the exact normal GPU archive, matches normal output
+on all three real profiles and observes 12 Metal commands per benchmark workload.
+
+Minecraft decoder, height-query, promotion, saved-NBT-edit/reopen and unfinished
+probe replacement checks pass with Rust unavailable. Fabric and NeoForge host
+builds pass. The packaged worker's cold start took 167.9 s before measurements;
+the warmed start took 305 ms, and startup cancellation passes. The current
+functional GPU integration generated its two 16-chunk batches in 11.94/12.51 s
+under concurrent test load; these are functional timings, not a whole-pipeline
+A/B comparison. The installed precompiled worker and its warmed content-addressed
+cache are ready for plain `./gradlew runClient`.
+
+Source/input/executable hashes, raw samples, p95 values, actual command traces,
+validation and limitations are in
+`docs/benchmarks/bend-lake-bank-parallel.json`. Oversized direct fallback workloads
+are not included in this benchmark. Surface decorations, structures, snow/freezing,
+field lighting, full 1024-chunk batches and equivalent complete lit Rust/Bend
+region benchmarks remain required.
 
 ### Registered ore recipes and GPU replacement policy
 
