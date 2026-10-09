@@ -10,6 +10,8 @@ import ./registry_lakes.bend as Lakes
 import ./lake_data.bend as LD
 import ./ore_data.bend as O
 import ./registry_ores.bend as RO
+import ./registry_cave_features.bend as RF
+import ./cave_features_data.bend as F
 
 # Resolve schema names once, then visit arrays sequentially. Projection happens
 # in Bend on the host; immutable numeric records are usable on either backend.
@@ -243,7 +245,7 @@ def flags_result(-A: Type,result: Result<&1,&1,U32,Bool>,count: U32,doc: P.Docum
 @unsafe
 def biome_result(-A: Type,result: Result<&1,&1,U32,Q.Table<G.Carver>>,lakes: Result<&1,&1,U32,LD.Params>,doc: P.Document,next: P.Document -> Result<&1,&1,U32,G.Biome> -> A) -> A:
   match result lakes:
-    case Done{carvers} Done{lakes}: next(doc,Done{G.Biome{carvers,lakes}})
+    case Done{carvers} Done{lakes}: next(doc,Done{G.Biome{carvers,lakes,F.empty()}})
     case _ _: next(doc,Fail{736})
 
 @unsafe
@@ -283,11 +285,18 @@ def ores_ready(-A: Type,result: Result<&1,&1,U32,O.Store>,profile: G.Profile,doc
     case Done{ores}: next(doc,Done{G.with_ores(profile,ores)})
 
 @unsafe
-def caves_ready(-A: Type,result: Result<&1,&1,U32,G.Profile>,doc: P.Document,palette: U32,biomes: U32,next: P.Document -> Result<&1,&1,U32,G.Profile> -> A) -> A:
+def caves_ready(-A: Type,result: Result<&1,&1,U32,G.Profile>,doc: P.Document,+palette: U32,+biomes: U32,next: P.Document -> Result<&1,&1,U32,G.Profile> -> A) -> A:
   match result:
     case Fail{code}: next(doc,Fail{code})
-    case Done{profile}: RO.prepare(A,doc,palette,biomes,doc => result => ores_ready(A,result,profile,doc,next))
+    case Done{profile}: RF.prepare(A,doc,palette,biomes,doc => result => features_ready(A,result,profile,doc,palette,biomes,next))
 
 @unsafe
 def prepare(-A: Type,doc: P.Document,+palette: U32,+biome_count: U32,next: P.Document -> Result<&1,&1,U32,G.Profile> -> A) -> A:
   cave_profile(A,doc,palette,biome_count,doc => result => caves_ready(A,result,doc,palette,biome_count,next))
+
+
+@unsafe
+def features_ready(-A: Type,result: Result<&1,&1,U32,Q.Table<F.Config>>,profile: G.Profile,doc: P.Document,palette: U32,biomes: U32,next: P.Document -> Result<&1,&1,U32,G.Profile> -> A) -> A:
+  match result:
+    case Fail{code}: next(doc,Fail{code})
+    case Done{features}: RO.prepare(A,doc,palette,biomes,doc => result => ores_ready(A,result,G.with_features(profile,features),doc,next))

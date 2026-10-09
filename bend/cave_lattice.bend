@@ -179,7 +179,7 @@ def distance(+x: F32,+y: F32,+t: F32) -> F32:
 @unsafe
 def ravines(biome: G.Biome,+point: Q.Point,seed: U32) -> F32:
   match biome:
-    case G.Biome{+carvers,_}: carver_distances(Q.table_size(G.Carver,carvers),0,carvers,point,seed,1000.0)
+    case G.Biome{+carvers,_,_}: carver_distances(Q.table_size(G.Carver,carvers),0,carvers,point,seed,1000.0)
 
 @unsafe
 def carver_distances(n: U32,+i: U32,+carvers: Q.Table<G.Carver>,+point: Q.Point,+seed: U32,+best: F32) -> F32:

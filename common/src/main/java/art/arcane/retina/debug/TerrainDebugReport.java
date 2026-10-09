@@ -16,15 +16,16 @@ public final class TerrainDebugReport {
     private static final String[] WORKERS={"Base terrain","Ores","Cave decorations","Vegetation / sediments","Structure placement","Snow","NBT encoding","Zlib compression"};
     private TerrainDebugReport() { }
     public static List<String> lines(TerrainStatsPayload payload) {
-        var stats=payload.stats();var lines=new ArrayList<String>();boolean mca=payload.mode().equals("mca");
-        lines.add("§b§lRetina "+payload.mode().toUpperCase(Locale.ROOT)+RESET);
-        if(mca)lines.add(LABEL+"Region latency: "+DATA+format("%.2f ms mean",stats.averageRegionMs())+LABEL+" / "+DATA+format("%.2f ms p95",stats.p95RegionMs())+LABEL+" (last "+DATA+stats.regionSamples()+LABEL+" / 20)");
-        lines.add(LABEL+(mca?"Lit MCA production: §a":"Chunk-mode completion: §a")+format("%.1f chunks/s",stats.chunksPerSecond())+(mca?LABEL+" from region latency":LABEL+" (5s)"));
+        var stats=payload.stats();var lines=new ArrayList<String>();boolean bend=payload.mode().equals("bend"),mca=payload.mode().equals("mca") || bend;
+        lines.add("§b§lRetina "+(bend?"Bend (preview)":payload.mode().equals("mca")?"Rust":payload.mode().toUpperCase(Locale.ROOT))+RESET);
+        if(bend)lines.add("§eTerrain preview: no trees / structures; Minecraft lighting");
+        if(mca)lines.add(LABEL+(bend?"Batch latency: ":"Region latency: ")+DATA+format("%.2f ms mean",stats.averageRegionMs())+LABEL+" / "+DATA+format("%.2f ms p95",stats.p95RegionMs())+LABEL+" (last "+DATA+stats.regionSamples()+LABEL+" / 20)");
+        lines.add(LABEL+(bend?"Bend MCA production: §a":mca?"Lit MCA production: §a":"Chunk-mode completion: §a")+format("%.1f chunks/s",stats.chunksPerSecond())+(mca?LABEL+(bend?" from batch latency":" from region latency"):LABEL+" (5s)"));
         lines.add(LABEL+(mca?"Amortized chunk: ":"Chunk time: ")+DATA+format("%.3f ms",stats.msPerChunk()));
-        lines.add(LABEL+"Regions: §a"+stats.regions()+LABEL+"   In flight: §e"+stats.inFlight());
-        lines.add(LABEL+"Temporary regions: §a"+stats.previewRegions()+LABEL+"   Hits: §a"+stats.previewCacheHits()+LABEL+"   Promotions: §a"+stats.promotions()+LABEL+" (publication count, not production rate)");
+        lines.add(LABEL+(bend?"Published batches: §a":"Regions: §a")+stats.regions()+LABEL+"   In flight: §e"+stats.inFlight());
+        lines.add(LABEL+(bend?"Temporary batches: §a":"Temporary regions: §a")+stats.previewRegions()+LABEL+"   Hits: §a"+stats.previewCacheHits()+LABEL+"   Promotions: §a"+stats.promotions()+LABEL+" (publication count, not production rate)");
         lines.add(LABEL+"Terrain chunks: §a"+stats.total()+LABEL+"   Failed: "+(stats.failures()>0?"§c":"§a")+stats.failures());
-        lines.add(GPU+"GPU: "+DATA+payload.backend());
+        lines.add(GPU+(bend?"Runtime: ":"GPU: ")+DATA+payload.backend());
         var gpu=payload.diagnostics();
         if(gpu.nodes()>0) {
             lines.add(GPU+"GPU programs: "+(gpu.status()==3?"§c":DATA)+gpu.execution());
@@ -36,7 +37,7 @@ public final class TerrainDebugReport {
             lines.add(GPU+"GPU profile upload total: "+DATA+format("%.2f MiB",gpu.uploadBytes()/1048576.0));
             lines.add(GPU+"GPU profile readback total: "+DATA+format("%.2f MiB",gpu.readbackBytes()/1048576.0));
         }
-        if(mca && stats.regionSamples()>0) {
+        if(mca && !bend && stats.regionSamples()>0) {
             lines.add(HEADER+"GPU host (% of average region)"+RESET);
             for(int stage=QUEUE;stage<=WAIT_COPY;stage++)lines.add(share(GPU,GPU_HOST[stage],stats.regionStagePercent(stage),false));
             lines.add(share(GPU,"GPU lighting / upload / readback",stats.regionStagePercent(LIGHT_HOST),false));

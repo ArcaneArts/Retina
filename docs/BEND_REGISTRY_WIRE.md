@@ -1221,3 +1221,72 @@ starts from the captured pre-ore block snapshot, which earlier material/cave
 suites validate separately. It compares every resulting voxel, coalesced runs,
 heights, unchanged halo, ordered overlap and four adjacent independently built
 cores. Component timing evidence does not establish full region throughput.
+
+
+## Sparse generated MCA batches (52)
+
+Opcode **52** accepts the same raw region coordinates, seed, data version,
+timestamp and UTF-32 staging path as opcode 28. It writes only chunks fully
+covered by the resident material grid and matching seed into a new sparse MCA.
+It never accepts an existing live save for mutation. The acknowledgement is two
+U32 words: written chunk count and sector count. Each record uses the existing
+Bend chunk encoder, zlib compressor and MCA planner. Empty/unmatched coverage
+returns **732**; invalid world/region alignment or range returns **733**;
+malformed input returns **603**. The original full-region opcode 28 is unchanged.
+
+The world preview uses 64x64 cores and per-batch private paths. The Java I/O
+coordinator merges opaque encoded records atomically into the live region,
+preserving nonzero saved slots. It performs no NBT generation or compression.
+
+## Resident cave decorations (51)
+
+Geology preparation (30) now also projects each biome's optional `cave_kind` and
+`cave_features` from the shared registry tape. Registered floor/ceiling/vine flags,
+replaceable materials, floor/clay/blossom IDs, plant/vine choices, dripstone state
+arrays, lengths and probabilities remain immutable Bend data. Optional absent
+recipes are empty. Root `material_flags`, signed `plant_halves` identities and
+`plant_floor_masks` supply survival rules. Optional arrays must be empty or match
+the material palette. Malformed recipes or policy return **757** without replacing
+the previous prepared state. Dripstone directions must have four shape states
+when present; an upward set also requires the downward set.
+
+**51 — cave decoration core:** six raw U32 words, using the surface tile format:
+signed block X/Z, width/depth, seed-low/seed-high. The core must contain whole
+16x16 chunks, have dimensions 16..512 in multiples of 16, and fit the resident
+material snapshot. The snapshot must retain the cave-biome volume attached by
+carving and agree with prepared geology's vertical span and the full seed. No
+extra horizontal halo is required because every feature stays in its column.
+Malformed frames return **603**, absent preparation/biome volume **758**, and
+incompatible cores/seeds/spans **759**. Rejections preserve resident state.
+
+One selected-backend Bend calculation scans compact enclosed air spans, with at
+least two air blocks, a roof and a floor at least six blocks above world minimum.
+It chooses the actual cave floor and ceiling biomes independently. Fluid spans
+and surface air are excluded. Registered fallback suppression is retained so the
+later ordered feature stage can supply those registered patches and vines.
+Existing block states stay in the palette; Java sends no generated recipes or
+block updates. Sparse support and paired-block checks remove invalid floor
+plants. A final survival pass after all later feature/structure stages is still
+required by the complete backend.
+
+Success returns four U32 acknowledgement words: source width/depth, column count
+and compact run count. Only core columns change. Material context, halo columns,
+cave biomes and reusable profile remain intact. Generated chunk commands 26/27
+and new-file region command 28 consume the updated block snapshot. Rebuild the
+pre-decoration snapshot before repeating an application. The caller must hold a
+whole build/application/encoding lease against other snapshot replacements.
+One Bend calculation can require multiple stock-runtime Metal command buffers;
+the test observer reports actual buffers rather than inferring device work.
+
+```bash
+RETINA_BEND_CC=/opt/homebrew/opt/llvm/bin/clang \
+  nice -n 10 python3 scripts/test_bend_cave_dressing.py
+./gradlew bendCaveDressingWorkerTest -PretinaHostOnly --max-workers=2 --no-parallel -PbendSkipBuild
+```
+
+The harness accepts `--profile JSON RBP`, `--prove-metal`, and `--metal-probe PATH`.
+It independently replays recipes into captured pre-decoration blocks and checks
+negative/distant coordinates, nonaligned vertical spans, protected/fluid spans,
+registered suppression, orphan/support repair, reverse adjacent tile order,
+rebuilds, rejected frames, quart biomes, NBT and zlib. These are unlit component
+checks, not complete-region throughput measurements or a usable Bend preset.

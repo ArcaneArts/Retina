@@ -1,7 +1,8 @@
 {
-  "generator.retina.gpu": "Retina GPU Simplex (MCA)",
+  "generator.retina.gpu": "Retina Rust",
   "debug.entry.retina.generation": "Retina terrain generation",
-  "generator.retina.gpu_chunk": "Retina GPU Simplex (Chunks)",
+  "generator.retina.gpu_chunk": "Retina Rust (Legacy Chunks)",
   "retina.locate.busy": "The Retina locate queue is full. Try again shortly.",
-  "retina.locate.failed": "Retina could not complete the search for %s. See the server log for details."
+  "retina.locate.failed": "Retina could not complete the search for %s. See the server log for details.",
+  "generator.retina.bend": "Retina Bend"
 }

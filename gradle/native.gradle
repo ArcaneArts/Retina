@@ -102,3 +102,20 @@ ext.crossNativeResources = crossNativeResources
 ext.nativeDirectory = nativeDirectory
 ext.nativeTarget = nativeTarget
 ext.nativeCargoCommand = nativeCargoCommand
+
+// Explicit host preview packaging; this copies a previously compiled stock Bend
+// worker and never starts another compiler as part of an ordinary Java build.
+tasks.register('packageBendRuntime', Sync) {
+    def executable = providers.gradleProperty('retinaBendExecutable')
+    if (executable.isPresent()) {
+        from(rootProject.file(executable.get())) {
+            into "bend/${nativeOs}-${nativeArch}"
+            rename { 'engine' }
+        }
+        from(rootProject.file(executable.get() + '.gpu')) {
+            into "bend/${nativeOs}-${nativeArch}"
+            rename { 'engine.gpu' }
+        }
+    }
+    into layout.buildDirectory.dir("generated/bend-resources")
+}

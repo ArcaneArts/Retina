@@ -17,6 +17,7 @@ type Request is Data:
 type Input is Type:
   Input{request: Request,path: String,valid: Bool}
 type Batch is Type:
+  Empty{}
   Leaf{result: Result<&1,&1,U32,R.Record>}
   Node{left: Batch,right: Batch}
 
@@ -75,6 +76,7 @@ def batch(+n: Nat,+base: U32,+grid: M.Grid,+catalog: C.Catalog,+request: Request
 @unsafe
 def flatten(tree: Batch,acc: List<R.Record>) -> Result<&1,&1,U32,List<R.Record>>:
   match tree:
+    case Empty{}: Done{acc}
     case Leaf{Fail{code}}: Fail{code}
     case Leaf{Done{record}}: Done{record <> acc}
     case Node{left,right}: left_done(flatten(left,acc),right)
@@ -127,3 +129,55 @@ def run(input: Input,+grid: M.Grid,catalog: C.Catalog) -> IO(Result<&1,&1,U32,U3
   match input:
     case Input{_,_,False{}}: IO.pure(Result<&1,&1,U32,U32 & U32>,Fail{603})
     case Input{+request,path,True{}}: accepted(validation(grid,request),grid,catalog,request,path)
+
+
+# Preview batches serialize only covered chunks into a new sparse MCA. Chunk
+# records still use the same Bend encoder/compressor and sector planner.
+@unsafe
+def partial_leaf(covered: Bool,grid: M.Grid,catalog: C.Catalog,+request: Request,+slot: U32) -> Batch:
+  match covered:
+    case False{}: Empty{}
+    case True{}: Leaf{record(G.compress_result(True{},G.encode(grid,catalog,chunk(request,slot))),slot,request)}
+
+@unsafe
+def partial_batch(+n: Nat,+base: U32,+grid: M.Grid,+catalog: C.Catalog,+request: Request) -> Batch:
+  match n:
+    case 0n: partial_leaf(G.covered(grid,chunk(request,base)),grid,catalog,request,base)
+    case 1n+p:
+      left right = partial_batch(p,base,grid,catalog,request) partial_batch(p,U32.add(base,U32.shln(1,p)),grid,catalog,request)
+      Node{left,right}
+
+@unsafe
+def partial_collected(result: Result<&1,&1,U32,List<R.Record>>,base: U32,grid: M.Grid,catalog: C.Catalog,request: Request) -> Result<&1,&1,U32,R.Plan>:
+  match result:
+    case Fail{code}: Fail{code}
+    case Done{acc}: partial_collect(base,grid,catalog,request,acc)
+
+@unsafe
+def partial_collect(+base: U32,+grid: M.Grid,+catalog: C.Catalog,+request: Request,acc: List<R.Record>) -> Result<&1,&1,U32,R.Plan>:
+  match base:
+    case 1024: R.plan(acc)
+    case _: partial_collected(flatten(partial_batch(3n,base,grid,catalog,request),acc),U32.add(base,8),grid,catalog,request)
+
+@unsafe
+def partial_save(result: Result<&1,&1,U32,R.Plan>,path: String) -> IO(Result<&1,&1,U32,U32 & U32>):
+  match result:
+    case Done{R.Plan{_,_,0}}: IO.pure(Result<&1,&1,U32,U32 & U32>,Fail{732})
+    case _: save(result,path)
+
+@unsafe
+def partial_accepted(ok: Bool,grid: M.Grid,catalog: C.Catalog,request: Request,path: String) -> IO(Result<&1,&1,U32,U32 & U32>):
+  match ok:
+    case False{}: IO.pure(Result<&1,&1,U32,U32 & U32>,Fail{733})
+    case True{}: partial_save(partial_collect(0,grid,catalog,request,[]),path)
+
+@unsafe
+def run_partial(input: Input,+grid: M.Grid,catalog: C.Catalog) -> IO(Result<&1,&1,U32,U32 & U32>):
+  match input:
+    case Input{_,_,False{}}: IO.pure(Result<&1,&1,U32,U32 & U32>,Fail{603})
+    case Input{+request,path,True{}}: partial_request(request,path,grid,catalog)
+
+@unsafe
+def partial_request(+request: Request,path: String,+grid: M.Grid,catalog: C.Catalog) -> IO(Result<&1,&1,U32,U32 & U32>):
+  match request:
+    case Request{+x,+z,_,_,_,_}: partial_accepted(Bool.and(coordinate(x),Bool.and(coordinate(z),aligned(grid))),grid,catalog,request,path)

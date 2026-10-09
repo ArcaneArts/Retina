@@ -25,6 +25,7 @@ public final class RegionCoordinator {
             Thread.ofPlatform().daemon().name("retina-region-prepare-", 0).factory());
     private final Map<Long, CompletableFuture<AutoCloseable>> pending = new HashMap<>();
     private boolean closed;
+    private final Set<Long> demanded = java.util.concurrent.ConcurrentHashMap.newKeySet();
     // Confined to the IOWorker's consecutive executor, including all MCA publication.
     private final Set<Long> prepared = java.util.concurrent.ConcurrentHashMap.newKeySet();
 
@@ -35,11 +36,13 @@ public final class RegionCoordinator {
         this.previews = generator.previewCache();
     }
 
-    /** Called before a load is enqueued, so the next actual request can run during current assembly.
-     * Existing files still use the normal queue and its validation; this only chooses prefetch work.
-     */
+    /** A terrain-stage request, unlike Minecraft's wide status-probing ring. */
+    public void demand(ChunkPos position) { demanded.add(generator.cacheKey(position)); }
+
+    /** Prefetch an actual request; publication remains on the owning I/O queue. */
     public synchronized void request(ChunkPos position) {
-        long key = ChunkPos.pack(position.getRegionX(), position.getRegionZ());
+        long key = generator.cacheKey(position);
+        if (generator.bendMode() && !demanded.contains(key)) return;
         if (closed || previews == null || prepared.contains(key) || pending.containsKey(key) || pending.size() >= 4) return;
         Path destination = folder.resolve("r." + position.getRegionX() + "." + position.getRegionZ() + ".mca");
         if (!Files.notExists(destination)) return;
@@ -57,7 +60,10 @@ public final class RegionCoordinator {
     }
 
     public void prepare(ChunkPos position, RegionStorageBridge storage) throws IOException {
-        long key = ChunkPos.pack(position.getRegionX(), position.getRegionZ());
+        long key = generator.cacheKey(position);
+        // Loading EMPTY/status dependencies must never assemble unrequested terrain.
+        // Existing saved chunks still flow through the ordinary storage read below.
+        if (generator.bendMode() && !demanded.contains(key)) return;
         if (prepared.contains(key)) {
             CompletableFuture<AutoCloseable> unused;
             synchronized (this) { unused = pending.remove(key); }
@@ -71,7 +77,11 @@ public final class RegionCoordinator {
         generator.metrics().begin();
         long started = System.nanoTime();
         try {
+            if (generator.bendMode() && BendRegionFiles.complete(destination,position,BendRegionBackend.BATCH_CHUNKS)) {
+                prepared.add(key); generator.metrics().completedRegion(0,System.nanoTime()-started); return;
+            }
             if (preparation != null) lease = preparation.join();
+            else if (generator.bendMode()) lease = previews.prepare(position);
             // Includes cached misses. All reads/writes in this storage run on this same queue.
             storage.retina$closeRegion(position);
             var cached = generator.publishPreview(position, destination);
@@ -86,6 +96,7 @@ public final class RegionCoordinator {
                 } else generator.metrics().completedRegion(0, elapsed);
                 return;
             }
+            if (generator.bendMode()) throw new IOException("Bend region preparation did not publish: "+destination);
             var report = NativeTerrain.instance().generateRegion(
                     generator.request(seed, position.x(), position.z()), destination,
                     SharedConstants.getCurrentVersion().dataVersion().version(), generator.regionBiome());
@@ -105,7 +116,7 @@ public final class RegionCoordinator {
             if (error instanceof IOException io) throw io;
             // IOWorker completes failed tasks for Exceptions. This also carries native-loader
             // initialization errors back to its future instead of abandoning the waiting read.
-            throw new IOException("Rust MCA generation failed for " + destination, error);
+            throw new IOException("Retina MCA generation failed for " + destination, error);
         } finally {
             synchronized (this) { pending.remove(key); }
             release(lease);

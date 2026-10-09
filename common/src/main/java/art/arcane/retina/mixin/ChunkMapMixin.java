@@ -37,6 +37,18 @@ public abstract class ChunkMapMixin {
             var storage = (RegionStorageBridge) (Object) ((IOWorkerAccessor) worker).retina$storage();
             var coordinator = new RegionCoordinator(retina, level.getSeed(), storage.retina$folder());
             storage.retina$configure(coordinator);
+            if (retina.bendMode()) retina.bindBendStorage(coordinator, ((ChunkMap)(Object)this)::read);
+        }
+    }
+
+    @Inject(method = "save", at = @At("HEAD"), cancellable = true)
+    private void retina$skipBendStatusOnlySave(ChunkAccess chunk, CallbackInfoReturnable<Boolean> callback) {
+        if (generator() instanceof RetinaChunkGenerator retina && retina.bendMode()
+                && chunk.getPersistedStatus().isBefore(net.minecraft.world.level.chunk.status.ChunkStatus.TERRAIN)) {
+            // These holders only contain preliminary biome/status data. Saving
+            // them would overwrite a completed neighbor from Bend's sparse batch.
+            chunk.tryMarkSaved();
+            callback.setReturnValue(false);
         }
     }
 
