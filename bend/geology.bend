@@ -2,6 +2,7 @@ import Base
 import ./density.bend as Q
 import ./precise.bend as D
 import ./noise.bend as N
+import ./aquifer.bend as A
 
 # Loaded geology is immutable Data. The registry tape and file effects stay on
 # the host; these records can be consumed unchanged by Bend CPU or GPU code.
@@ -14,7 +15,7 @@ type Carver is Data:
 type Biome is Data:
   Biome{carvers: Q.Table<Carver>}
 type Profile is Data:
-  Profile{noises: Q.Table<Noise>,biomes: Q.Table<Biome>,carveable: Q.Table<Bool>,lava: U32,lava_level: U32,minimum: U32,height: U32}
+  Profile{noises: Q.Table<Noise>,biomes: Q.Table<Biome>,carveable: Q.Table<Bool>,lava: U32,lava_level: U32,minimum: U32,height: U32,aquifer: Maybe<&2,A.Prepared>}
 
 def finite(value: F32) -> Bool:
   U32.is_ne(U32.and(F32.bits(value),2139095040),2139095040)
@@ -106,7 +107,11 @@ def sample_noise(noise: Noise,channel: U32,x: U32,y: U32,z: U32,low: U32,high: U
 @unsafe
 def sample(profile: Profile,+channel: U32,x: U32,y: U32,z: U32,low: U32,high: U32) -> F32:
   match profile:
-    case Profile{noises,_,_,_,_,_,_}: sample_noise(Q.get(Noise,noises,channel,Noise{0.0,0.0,[0.0]}),channel,x,y,z,low,high)
+    case Profile{noises,_,_,_,_,_,_,_}: sample_noise(Q.get(Noise,noises,channel,Noise{0.0,0.0,[0.0]}),channel,x,y,z,low,high)
+
+def with_aquifer(profile: Profile,config: A.Prepared) -> Profile:
+  match profile:
+    case Profile{noises,biomes,flags,lava,level,minimum,height,_}: Profile{noises,biomes,flags,lava,level,minimum,height,Some{config}}
 
 def carver_count(biomes: Q.Table<Biome>) -> U32:
   match biomes:

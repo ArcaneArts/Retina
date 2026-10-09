@@ -101,7 +101,7 @@ def height(runs: List<&2,MD.Run>,+minimum: U32,+water: U32,+lava: U32,+highest: 
 @unsafe
 def column(column: MD.Column,+point: Q.Point,grid: CV.Grid,+profile: G.Profile,sea: U32,water: U32,span: U32,+low: U32,+high: U32) -> MD.Column:
   match column profile:
-    case MD.Column{height,+biome,depth,slope,band,secondary,preliminary,original,_,valid} G.Profile{_,biomes,flags,lava,level,minimum,_}:
+    case MD.Column{height,+biome,depth,slope,band,secondary,preliminary,original,_,valid} G.Profile{_,biomes,flags,lava,level,minimum,_,_}:
       completed(runs(span,[],original,minimum,height,sea,flags,lava,level,grid,biomes,biome,point,
         entrance(point,U32.xor(low,N.hash(high))),low,high),minimum,water,lava,biome,depth,slope,band,secondary,preliminary,valid)
 
@@ -132,7 +132,7 @@ def split(serial: Bool,+limit: U32,+n: U32,+base: U32,+source: Q.Table<MD.Column
 @unsafe
 def compatible(+source: MD.Grid,+grid: CV.Grid,+profile: G.Profile) -> Bool:
   match source profile:
-    case MD.Grid{+tile,+minimum,+span,_,_} G.Profile{_,_,_,_,_,gmin,gspan}:
+    case MD.Grid{+tile,+minimum,+span,_,_} G.Profile{_,_,_,_,_,gmin,gspan,_}:
       Bool.and(Bool.and(U32.is_eq(minimum,gmin),U32.is_eq(span,gspan)),covered(tile,minimum,span,grid))
 
 @unsafe

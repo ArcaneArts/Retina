@@ -582,6 +582,20 @@ tasks.register('bendCaveBiomeRegionFixtures', Exec) {
     mustRunAfter 'bendCaveBiomeTest'
 }
 
+tasks.register('bendAquiferTest', Exec) {
+    group = 'verification'
+    description = 'Check registered aquifer fields and bounded surface search on Bend CPU/GPU.'
+    workingDir rootProject.projectDir
+    commandLine providers.gradleProperty('pythonExecutable').getOrElse('python3'), 'scripts/test_bend_aquifers.py'
+    if (providers.gradleProperty('bendSkipBuild').isPresent()) args '--skip-build'
+    if (providers.gradleProperty('proveMetal').isPresent()) args '--prove-metal'
+    if (providers.gradleProperty('bendMetalProbe').isPresent()) args '--metal-probe', providers.gradleProperty('bendMetalProbe').get()
+    if (!registryDensityProfiles.isEmpty()) registryDensityProfiles.split(',').each { pair ->
+        pair.split('=', 2).with { paths -> args '--profile', paths[0], paths[1] }
+    }
+    mustRunAfter 'bendCaveBiomeTest'
+}
+
 tasks.register('bendCaveBiomeRegionTest', JavaExec) {
     group = 'verification'
     description = 'Read and reopen Bend cave biome MCA files through actual Minecraft decoders.'
@@ -666,7 +680,8 @@ def bendWorkerClasses = tasks.register('bendWorkerClasses', JavaCompile) {
     // absent instead of initializing the existing backend just to test Bend.
     source rootProject.file('common/src/main/java/art/arcane/retina/worldgen/BendWorker.java'),
             rootProject.file('common/src/gpuTest/java/art/arcane/retina/worldgen/BendWorkerTest.java'),
-            rootProject.file('common/src/gpuTest/java/art/arcane/retina/worldgen/BendCaveWorkerTest.java')
+            rootProject.file('common/src/gpuTest/java/art/arcane/retina/worldgen/BendCaveWorkerTest.java'),
+            rootProject.file('common/src/gpuTest/java/art/arcane/retina/worldgen/BendAquiferWorkerTest.java')
     classpath = files()
     destinationDirectory = rootProject.layout.buildDirectory.dir('bend/java')
     javaCompiler = javaToolchains.compilerFor { languageVersion = JavaLanguageVersion.of(25) }
@@ -681,6 +696,19 @@ tasks.register('bendWorkerTest', JavaExec) {
     mainClass = 'art.arcane.retina.worldgen.BendWorkerTest'
     javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
     maxHeapSize = '256m'
+}
+
+tasks.register('bendAquiferWorkerTest', JavaExec) {
+    group = 'verification'
+    description = 'Exercise concurrent Java aquifer callers, errors, cache retention and worker shutdown.'
+    dependsOn 'bendAquiferTest', bendWorkerClasses
+    classpath = files(bendWorkerClasses.flatMap { it.destinationDirectory })
+    mainClass = 'art.arcane.retina.worldgen.BendAquiferWorkerTest'
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
+    jvmArgs '-XX:ActiveProcessorCount=2'
+    maxHeapSize = '256m'
+    args rootProject.file('build/bend/engine').absolutePath,
+            rootProject.file('build/bend/aquifer-profiles/analytic.rbp').absolutePath
 }
 
 tasks.register('bendCaveWorkerTest', JavaExec) {

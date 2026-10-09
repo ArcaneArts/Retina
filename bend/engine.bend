@@ -33,6 +33,9 @@ import ./geology_batch.bend as GB
 import ./cave_lattice.bend as CV
 import ./cave_batch.bend as CAV
 import ./cave_biome_batch.bend as CBIO
+import ./aquifer.bend as AQ
+import ./registry_aquifer.bend as RAQ
+import ./aquifer_batch.bend as AB
 import ./cave_carve.bend as Carve
 import ./precise.bend as D
 
@@ -50,7 +53,8 @@ import ./precise.bend as D
 # CHUNK_NBT=26, CHUNK_ZLIB=27, REGION_MCA=28 (private staged path),
 # SHORELINE_COLUMNS=29 (resident exact heights and coastal biome selection),
 # PROFILE_GEOLOGY=30, CAVE_NOISE_BATCH=31, CARVER_BATCH=32,
-# CAVE_LATTICE=33, CAVE_FIELD_BATCH=34, CARVE_COLUMNS=35, CAVE_BIOME_BATCH=36.
+# CAVE_LATTICE=33, CAVE_FIELD_BATCH=34, CARVE_COLUMNS=35, CAVE_BIOME_BATCH=36,
+# PROFILE_AQUIFER=37, AQUIFER_FIELD_BATCH=38.
 # Requests: RBND magic, payload length, request ID, opcode (all BE u32).
 # Responses add a status u32 after opcode. stdout contains frames only.
 type Settings is Data:
@@ -792,7 +796,7 @@ def geology_ready(result: Result<&1,&1,U32,G.Profile>,doc: P.Document,prepared: 
 @unsafe
 def geology_ack(geology: G.Profile,doc: P.Document,prepared: RD.Prepared,noise: Maybe<&2,N.Stack>,climate: Maybe<&2,C.Model>,input: File,output: File,backend: U32,id: U32,opcode: U32) -> IO(Unit):
   match geology:
-    case G.Profile{noises,+biomes,flags,lava,level,minimum,height}:
+    case G.Profile{noises,+biomes,flags,lava,level,minimum,height,_}:
       do IO<Unit>:
         body : Z.Bytes <- payload(B.int(B.int(B.int(B.int(B.int(B.int(B.int(B.int(B.new(),
           Q.table_size(G.Noise,noises)),Q.table_size(G.Biome,biomes)),G.carver_count(biomes)),Q.table_size(Bool,flags)),lava),level),minimum),height))
@@ -979,6 +983,62 @@ def carve_build(valid: Bool,input: File,output: File,+old: State,backend: U32,id
     case _ _: error(input,output,old,backend,id,opcode,741)
 
 @unsafe
+def aquifer_attach(prepared: RD.Prepared,config: AQ.Prepared) -> RD.Prepared:
+  match prepared:
+    case RD.Prepared{model,programs,noises,points,fields,density,surface,Some{M.Model{materials,bands,sea,layered,Some{MD.State{palette,grid,catalog,Some{geology},caves}}}}}:
+      RD.Prepared{model,programs,noises,points,fields,density,surface,Some{M.Model{materials,bands,sea,layered,Some{MD.State{palette,grid,catalog,Some{G.with_aquifer(geology,config)},caves}}}}}
+    case _: prepared
+
+@unsafe
+def aquifer_ready(result: Result<&1,&1,U32,AQ.Prepared>,doc: P.Document,prepared: RD.Prepared,noise: Maybe<&2,N.Stack>,climate: Maybe<&2,C.Model>,input: File,output: File,backend: U32,id: U32,opcode: U32) -> IO(Unit):
+  match result:
+    case Fail{code}: error(input,output,State{Settings{noise,climate,Some{prepared}},Some{doc}},backend,id,opcode,code)
+    case Done{+config}: aquifer_ack(config,doc,aquifer_attach(prepared,config),noise,climate,input,output,backend,id,opcode)
+
+@unsafe
+def aquifer_ack(config: AQ.Prepared,doc: P.Document,prepared: RD.Prepared,noise: Maybe<&2,N.Stack>,climate: Maybe<&2,C.Model>,input: File,output: File,backend: U32,id: U32,opcode: U32) -> IO(Unit):
+  match config:
+    case AQ.Prepared{AQ.Config{enabled,program,bottom,step,explicit,minimum,height},_}:
+      do IO<Unit>:
+        body : Z.Bytes <- payload(B.int(B.int(B.int(B.int(B.int(B.int(B.int(B.new(),N.word(enabled,1,0)),program),bottom),step),N.word(explicit,1,0)),minimum),height))
+        finish(input,output,State{Settings{noise,climate,Some{prepared}},Some{doc}},backend,id,opcode,0,body,True{})
+
+@unsafe
+def aquifer_prepare(+prepared: RD.Prepared,doc: P.Document,noise: Maybe<&2,N.Stack>,climate: Maybe<&2,C.Model>,input: File,output: File,backend: U32,id: U32,opcode: U32) -> IO(Unit):
+  match prepared:
+    case RD.Prepared{model,_,_,_,_,_,_,Some{M.Model{_,_,_,_,Some{MD.State{_,_,_,Some{G.Profile{_,_,_,_,_,minimum,height,_}},_}}}}}:
+      RAQ.prepare(IO(Unit),doc,model,minimum,height,doc => result => aquifer_ready(result,doc,prepared,noise,climate,input,output,backend,id,opcode))
+    case _: error(input,output,State{Settings{noise,climate,Some{prepared}},Some{doc}},backend,id,opcode,743)
+
+@unsafe
+def aquifer_profile(valid: Bool,input: File,output: File,old: State,backend: U32,id: U32,opcode: U32) -> IO(Unit):
+  match valid old:
+    case False{} _: error(input,output,old,backend,id,opcode,603)
+    case True{} State{Settings{noise,climate,Some{prepared}},Some{doc}}: aquifer_prepare(prepared,doc,noise,climate,input,output,backend,id,opcode)
+    case _ _: error(input,output,old,backend,id,opcode,743)
+
+@unsafe
+def aquifer_computed(computed: AB.Computed,count: U32,old: State,input: File,output: File,backend: U32,id: U32,opcode: U32) -> IO(Unit):
+  match computed:
+    case AB.Computed{rows}:
+      do IO<Unit>:
+        body : Z.Bytes <- payload(DB.encode(U32.to_nat(count),rows,B.new(),0))
+        finish(input,output,old,backend,id,opcode,0,body,True{})
+
+@unsafe
+def aquifer_queries(queries: MC.Input,config: AQ.Prepared,model: Q.Model,old: State,input: File,output: File,backend: U32,id: U32,opcode: U32) -> IO(Unit):
+  match queries:
+    case MC.Input{_,_,False{}}: error(input,output,old,backend,id,opcode,603)
+    case MC.Input{queries,count,True{}}: aquifer_computed(AB.execute(config,model,queries),count,old,input,output,backend,id,opcode)
+
+@unsafe
+def aquifer_batch(input: File,output: File,+old: State,backend: U32,id: U32,opcode: U32,body: Z.Bytes) -> IO(Unit):
+  match old:
+    case State{Settings{_,_,Some{RD.Prepared{model,programs,_,_,_,_,_,Some{M.Model{_,_,_,_,Some{MD.State{_,_,_,Some{G.Profile{_,_,_,_,_,_,_,Some{config}}},_}}}}}}},_}:
+      aquifer_queries(MC.decode(body),config,model,old,input,output,backend,id,opcode)
+    case _: error(input,output,old,backend,id,opcode,744)
+
+@unsafe
 def dispatch(input: File,output: File,stack: State,backend: U32,id: U32,opcode: U32,body: Z.Bytes) -> IO(Unit):
   match opcode:
     case 0: empty_command(R.end(R.start(body)),input,output,stack,backend,id,0)
@@ -1017,6 +1077,8 @@ def dispatch(input: File,output: File,stack: State,backend: U32,id: U32,opcode: 
     case 34: cave_batch(input,output,stack,backend,id,34,body)
     case 35: carve_build(R.end(R.start(body)),input,output,stack,backend,id,35)
     case 36: cave_biome_batch(input,output,stack,backend,id,36,body)
+    case 37: aquifer_profile(R.end(R.start(body)),input,output,stack,backend,id,37)
+    case 38: aquifer_batch(input,output,stack,backend,id,38,body)
     case 4: empty_command(R.end(R.start(body)),input,output,stack,backend,id,4)
     case _: error(input,output,stack,backend,id,opcode,605)
 
