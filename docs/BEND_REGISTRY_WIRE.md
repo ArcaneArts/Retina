@@ -1140,3 +1140,43 @@ The script also accepts actual loaded profile pairs through `--profile JSON RBP`
 `--prove-metal`, `--metal-probe` and `--output`. The worker test exercises the real
 Java transport on CPU and GPU, concurrent callers, invalid requests, surface
 rebuilding, reload and shutdown.
+
+
+## Compact local ore masks (49)
+
+Command 49 shares command 48's raw request: BE U32 count 0..256, followed by
+`recipe, geometry_seed_high, geometry_seed_low` for each query. Prepared geology
+is required (754 otherwise); malformed frames/IDs return 603. Rejected requests
+and successful read-only queries retain the current profile and all snapshots.
+
+Each response row starts with eight words:
+`kind, signed_local_x, signed_local_y, signed_local_z, size_x, size_y, size_z, count`.
+For kind 0, count is the number of following U32 union-mask words. The linear
+voxel index is `(y * size_z + z) * size_x + x`, relative to the row's local
+origin; bit `i % 32` in word `i / 32` marks a voxel inside any surviving sphere.
+Voxel centers use +0.5, the normalized squared-distance test is strictly <1,
+and unused high bits in the final word are zero. The local origin is relative
+to the eventual globally anchored attempt, avoiding distant world F32 rounding.
+A zero-size recipe returns zero dimensions and no mask words.
+
+Kind 1's count is the number of following four-word scattered points, with
+signed local XYZ offsets and an exposure-random word, exactly as command 48.
+Duplicates and point order are retained. Bounds cover all emitted points;
+empty point rows have zero origin/dimensions. These are not union-mask words.
+
+Registered size <=64 bounds regular masks conservatively to at most 32x16x32
+voxels/512 words; scattered offsets are within +/-7 and have at most 64 points.
+The full 256-row response is bounded by 532,480 bytes. Empty batches return an
+empty payload. One selected-backend dispatch generates shapes and masks, with
+parallel per-query/per-word work and no application computation or intermediate
+geometry reconstruction in Java, Rust or handwritten kernels.
+
+Run the component and real Java transport checks with:
+
+```sh
+./gradlew bendOreMaskWorkerTest -PretinaHostOnly --max-workers=2 --no-parallel -PbendSkipBuild
+```
+
+The Python script also takes `--profile JSON RBP`, `--prove-metal`, `--metal-probe` and
+`--output`. This command does not yet filter spatial biome membership or modify
+resident block runs; regional planning and replay remain on the parity checklist.

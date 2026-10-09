@@ -1,0 +1,802 @@
+{
+  "scope": "Independently check pure Bend local ore-union masks on CPU and actual GPU.\n\nMasks remain a component: spatial biome filtering and resident block replay are\nnot implemented by this harness, and response times are not region throughput.",
+  "runs": [
+    {
+      "gpu_required": false,
+      "profiles": [
+        {
+          "name": "mixed",
+          "veins": 21,
+          "mask_voxels": 13155,
+          "set_voxels": 4117,
+          "scattered_points": 20
+        },
+        {
+          "name": "unpacked",
+          "veins": 21,
+          "mask_voxels": 13155,
+          "set_voxels": 4117,
+          "scattered_points": 20
+        },
+        {
+          "name": "layout_one",
+          "veins": 21,
+          "mask_voxels": 13155,
+          "set_voxels": 4117,
+          "scattered_points": 20
+        },
+        {
+          "name": "empty",
+          "veins": 0,
+          "mask_voxels": 0,
+          "set_voxels": 0,
+          "scattered_points": 0
+        },
+        {
+          "name": "optional",
+          "veins": 0,
+          "mask_voxels": 0,
+          "set_voxels": 0,
+          "scattered_points": 0
+        },
+        {
+          "name": "tiny",
+          "veins": 21,
+          "mask_voxels": 56,
+          "set_voxels": 0,
+          "scattered_points": 20
+        },
+        {
+          "name": "large_scattered",
+          "veins": 21,
+          "mask_voxels": 0,
+          "set_voxels": 0,
+          "scattered_points": 229
+        },
+        {
+          "name": "vanilla",
+          "veins": 210,
+          "mask_voxels": 106201,
+          "set_voxels": 31894,
+          "scattered_points": 0
+        },
+        {
+          "name": "terralith",
+          "veins": 189,
+          "mask_voxels": 48643,
+          "set_voxels": 13516,
+          "scattered_points": 0
+        },
+        {
+          "name": "combined",
+          "veins": 189,
+          "mask_voxels": 48643,
+          "set_voxels": 13516,
+          "scattered_points": 0
+        }
+      ],
+      "veins_checked": 693,
+      "mask_voxels_checked": 243008,
+      "set_voxels": 71277,
+      "ambiguous_boundary_voxels": 0,
+      "scattered_points": 309,
+      "maximum_geometry_error": 0.0,
+      "maximum_batch_bytes": 60416,
+      "sha256": "b5599a7bea4aafc1092420350b53a27beacad358e365d66d80dd1e3c3842c050",
+      "expected_gpu_dispatches": 94,
+      "metal_commands_ms": []
+    },
+    {
+      "gpu_required": true,
+      "profiles": [
+        {
+          "name": "mixed",
+          "veins": 21,
+          "mask_voxels": 13155,
+          "set_voxels": 4117,
+          "scattered_points": 20
+        },
+        {
+          "name": "unpacked",
+          "veins": 21,
+          "mask_voxels": 13155,
+          "set_voxels": 4117,
+          "scattered_points": 20
+        },
+        {
+          "name": "layout_one",
+          "veins": 21,
+          "mask_voxels": 13155,
+          "set_voxels": 4117,
+          "scattered_points": 20
+        },
+        {
+          "name": "empty",
+          "veins": 0,
+          "mask_voxels": 0,
+          "set_voxels": 0,
+          "scattered_points": 0
+        },
+        {
+          "name": "optional",
+          "veins": 0,
+          "mask_voxels": 0,
+          "set_voxels": 0,
+          "scattered_points": 0
+        },
+        {
+          "name": "tiny",
+          "veins": 21,
+          "mask_voxels": 56,
+          "set_voxels": 0,
+          "scattered_points": 20
+        },
+        {
+          "name": "large_scattered",
+          "veins": 21,
+          "mask_voxels": 0,
+          "set_voxels": 0,
+          "scattered_points": 229
+        },
+        {
+          "name": "vanilla",
+          "veins": 210,
+          "mask_voxels": 106201,
+          "set_voxels": 31894,
+          "scattered_points": 0
+        },
+        {
+          "name": "terralith",
+          "veins": 189,
+          "mask_voxels": 48643,
+          "set_voxels": 13516,
+          "scattered_points": 0
+        },
+        {
+          "name": "combined",
+          "veins": 189,
+          "mask_voxels": 48643,
+          "set_voxels": 13516,
+          "scattered_points": 0
+        }
+      ],
+      "veins_checked": 693,
+      "mask_voxels_checked": 243008,
+      "set_voxels": 71277,
+      "ambiguous_boundary_voxels": 0,
+      "scattered_points": 309,
+      "maximum_geometry_error": 9.5367431640625e-07,
+      "maximum_batch_bytes": 60416,
+      "sha256": "b5599a7bea4aafc1092420350b53a27beacad358e365d66d80dd1e3c3842c050",
+      "expected_gpu_dispatches": 94,
+      "metal_commands_ms": []
+    }
+  ],
+  "boundary_policy": "Float classifications within 0.00001 of the unit sphere are recorded as ambiguous; all other voxels must match the independent F32 union. Repeat and reordered outputs must match exactly within each backend.",
+  "dispatch_accounting": "CPU counts are logical batches; only observed command buffers establish actual Metal work.",
+  "actual_metal_proof": {
+    "gpu_required": true,
+    "profiles": [
+      {
+        "name": "mixed",
+        "veins": 21,
+        "mask_voxels": 13155,
+        "set_voxels": 4117,
+        "scattered_points": 20
+      },
+      {
+        "name": "unpacked",
+        "veins": 21,
+        "mask_voxels": 13155,
+        "set_voxels": 4117,
+        "scattered_points": 20
+      },
+      {
+        "name": "layout_one",
+        "veins": 21,
+        "mask_voxels": 13155,
+        "set_voxels": 4117,
+        "scattered_points": 20
+      },
+      {
+        "name": "empty",
+        "veins": 0,
+        "mask_voxels": 0,
+        "set_voxels": 0,
+        "scattered_points": 0
+      },
+      {
+        "name": "optional",
+        "veins": 0,
+        "mask_voxels": 0,
+        "set_voxels": 0,
+        "scattered_points": 0
+      },
+      {
+        "name": "tiny",
+        "veins": 21,
+        "mask_voxels": 56,
+        "set_voxels": 0,
+        "scattered_points": 20
+      },
+      {
+        "name": "large_scattered",
+        "veins": 21,
+        "mask_voxels": 0,
+        "set_voxels": 0,
+        "scattered_points": 229
+      },
+      {
+        "name": "vanilla",
+        "veins": 210,
+        "mask_voxels": 106201,
+        "set_voxels": 31894,
+        "scattered_points": 0
+      },
+      {
+        "name": "terralith",
+        "veins": 189,
+        "mask_voxels": 48643,
+        "set_voxels": 13516,
+        "scattered_points": 0
+      },
+      {
+        "name": "combined",
+        "veins": 189,
+        "mask_voxels": 48643,
+        "set_voxels": 13516,
+        "scattered_points": 0
+      }
+    ],
+    "veins_checked": 693,
+    "mask_voxels_checked": 243008,
+    "set_voxels": 71277,
+    "ambiguous_boundary_voxels": 0,
+    "scattered_points": 309,
+    "maximum_geometry_error": 9.5367431640625e-07,
+    "maximum_batch_bytes": 60416,
+    "sha256": "b5599a7bea4aafc1092420350b53a27beacad358e365d66d80dd1e3c3842c050",
+    "expected_gpu_dispatches": 94,
+    "metal_commands_ms": [
+      8.996917,
+      17.267375,
+      15.067125,
+      9.557583,
+      0.861625,
+      4.017125,
+      5.547875,
+      7.8935,
+      4.162333,
+      9.735208,
+      13.997875,
+      9.585542,
+      1.587875,
+      7.506375,
+      6.62525,
+      4.138542,
+      9.825375,
+      9.907625,
+      20.189917,
+      10.678208,
+      0.915625,
+      4.151167,
+      5.651083,
+      4.607125,
+      1.180625,
+      0.941042,
+      2.163958,
+      1.989667,
+      1.839,
+      1.7395,
+      0.791625,
+      1.011917,
+      1.903792,
+      1.045208,
+      7.061375,
+      3.998917,
+      2.602208,
+      2.63525,
+      0.867583,
+      0.928583,
+      1.786208,
+      1.785375,
+      6.380625,
+      13.657833,
+      8.883917,
+      8.727375,
+      2.2815,
+      5.480125,
+      10.812375,
+      7.078542,
+      3.456,
+      10.75775,
+      5.874375,
+      6.20425,
+      3.102875,
+      7.120833,
+      17.046292,
+      13.181625,
+      1.399125,
+      5.497625,
+      5.934583,
+      8.241625,
+      12.541625,
+      14.966792,
+      16.910875,
+      15.233,
+      2.14325,
+      5.723208,
+      5.726125,
+      5.546625,
+      7.49875,
+      38.164042,
+      27.6375,
+      40.904333,
+      0.81675,
+      3.06075,
+      4.143875,
+      5.567375,
+      11.059125,
+      16.943,
+      23.072375,
+      16.318083,
+      2.112917,
+      5.474167,
+      12.51375,
+      5.593333,
+      7.299042,
+      19.401042,
+      22.65125,
+      17.355,
+      0.805667,
+      2.912417,
+      3.971375,
+      8.633
+    ]
+  },
+  "metal_probe_sha256": "2e755c4c66b6b7a52807c133863971e3da77cb60b861f1ddc9cc92bf7369d8b0",
+  "source_sha256": {
+    "bend/aquifer.bend": "a9537fa65402553acec5578d4a2474036f2190142a6e9d9c1faf3c7c0cc03e36",
+    "bend/aquifer_batch.bend": "427a559a15ebfd33e7d1c1e7d1894149112c61e3fa8e04089bf0326015b50b99",
+    "bend/aquifer_lattice.bend": "cc43ecd6d6c5893f351f51e1a56f8830fbeaa5f923f23e9bfa0b967cad8c1a85",
+    "bend/aquifer_substance.bend": "e76e48268fdb219e8c86afffec9568e65453af84489d47466ca5408e34051bae",
+    "bend/aquifer_substance_batch.bend": "bb2e7f1e8369341943dfde375ec001a0a331812efbc86284dad9a46e20ee0973",
+    "bend/binary.bend": "f716146b3a19403c4ad208ce37c2056f9ba023d6b76a3fecba5c3253185d9b68",
+    "bend/cave_batch.bend": "ab0a49204220415a0bfe5ceb9553a933b983ff0a94ab54f9c175e9865417bcc6",
+    "bend/cave_biome_batch.bend": "fa35ed814595a48cb5761738ec9730b14e49dc329df5e95dd48ae1bce8d8b84c",
+    "bend/cave_carve.bend": "c34fb3aec6cd2c0cae383f9030a6ce73c119b3eae7d518783d16c8e552a84dcd",
+    "bend/cave_lattice.bend": "cefc064c507c09a96c3d43819a444aea32aead0ab84dacf1fa159066869e5dbb",
+    "bend/chunk.bend": "7aa37914a3941541f78909d0ab582ab956f972be7804c4abf97fdf07b839fe86",
+    "bend/chunk_catalog.bend": "666d5f98e2128a31a49f36ccdf0a1da7d7cb59067ce58d3cd1d0da3742963df3",
+    "bend/climate.bend": "842160f64b796f6288e59e24e8a81515a450d3778900982bdfc6a633671a4680",
+    "bend/climate_batch.bend": "f65fbc7b463f5e093feb2364da0f504fa295088285917f7a04dc205bf1dc34fa",
+    "bend/compression.bend": "e42e1a312180ee0fce6faad39fc82b9a2e43ba05727e04d9a3c8e7651dd14130",
+    "bend/density.bend": "01beac1b7443695c1507293a7d916489ac5441235c1e07290330691864b56aae",
+    "bend/density_batch.bend": "51231a72efa798c9a31f1a6a841176ea50d1ac5644352b389e3d1a9bff30d99c",
+    "bend/density_lattice.bend": "0b02993df32e160b21c50b8ee33e003f2d7f3eb53645c91ab6699bed0e1a9ae8",
+    "bend/engine.bend": "75648370aa69279425c5caa1371a6078bb39e3d9b6778506c93a9c86ac1d5738",
+    "bend/generated_chunk.bend": "ebb9ee79025bf9a45a34ff5f7eb798be1a19af8820bbb4a877f3f6ef8d9f7f59",
+    "bend/generated_region.bend": "e1212456aa06b8ed09e81737bf925ce6ade0b04226fb4f892b78eed371e98110",
+    "bend/geology.bend": "a38c9fd7b2605cf96c6cfec6b0be5b132a92ed2ce911d49fc0dd744932eece2c",
+    "bend/geology_batch.bend": "16031d9c91758c6e098253491a9a5d09d55dada82df531bcd746f06a379a96c8",
+    "bend/heightmaps.bend": "0b69c87d24ec3b27cbb082bb394205765154bf78c5c4db2c226fbc4ba3e2d997",
+    "bend/lake_candidates.bend": "577e2e5c9090cb8cd7ee4ba2106e5cbd894f6c402c66d140a85d27d23e8a2048",
+    "bend/lake_data.bend": "2951da8dbd6b05ede1d4f038579d5a89d79b6ce7d34d45d56da82a8bd7d84492",
+    "bend/lake_lattice.bend": "8f278dfe9134411bbc2e272de88dab573be73ec66eca04d79d2d58415f8a2cd8",
+    "bend/lake_terrain.bend": "a1fc29c8f9ba0cebece840423ca9b9208c986186239736f771f336a4aeebe316",
+    "bend/material.bend": "fea1e62174797c5b44634f3674dfc550d0178f207524193ed0d9416fbbf70f64",
+    "bend/material_batch.bend": "e34ee066c23a5328d279c5137ce2d107f2e4df661d63d3de373970d5cbee2073",
+    "bend/material_columns.bend": "14c807fb1f7e41a60570c9a674f7ef756d3551799e7f9a81fef56d5d9095b73b",
+    "bend/material_columns_data.bend": "309ad22f3858ba801421073319a671b218b473ee6887d3ca75bef5ccd1e26a9a",
+    "bend/material_lazy.bend": "8675a4ea5d3e1b164d1d2a71b248c9ec23078c05da9880fb5470b543a6de1f10",
+    "bend/material_program.bend": "f4b7e78629f7eecd991418eb00fa3face480954b300fa996e370d4c16c35128c",
+    "bend/nbt.bend": "7063555acf523d12269bd152e1e32981534009785b6a7653509f1a108b18cb57",
+    "bend/noise.bend": "80485dd8d18580a1044c8e55dbd03dab1b8dbdd9aa6681e1b8f6743fce928c1d",
+    "bend/numbers.bend": "858ea999141639aa26c559a2e06a87d62c58e93d0d8d3a793bb530b629060956",
+    "bend/ore_attempts.bend": "d18a6f9c42da6dca2244ba4e5be2f2c2e21d5fcabbc061413956f5efb52bee57",
+    "bend/ore_batch.bend": "b807a8f03bf5846140a54c8e5f35ae13d39c46313ff9d4da998f6885a70f19c2",
+    "bend/ore_data.bend": "de874dc61201a0414c2c37a95bc84d1405d9b9e055197c10f2e7e64540bb4e29",
+    "bend/ore_geometry.bend": "5fb458abba5df500c054ad08a5a8f63ed7b96e150ffaee8c54c2765fa994413f",
+    "bend/ore_random.bend": "12913efa87c40f6a6f1b3deb0ce992f5be02a9d8e8bac1547e52025b31a307d5",
+    "bend/ore_raster.bend": "2395a6a365adbcda989e1b6c02eed3a2c510bd157872dd3f37abc5423fa12b30",
+    "bend/packed.bend": "b4ebd29bc4d31d53ddcc221f64c84e68c5bde4a0fbbb51acfdaa9ddd01e2c23f",
+    "bend/palette.bend": "4f813fb89317308dc02c70d36cf5e3eeaf6d62a9a82477b781b976be5eee82ff",
+    "bend/precise.bend": "50ba7138300f2c913b2d75a554a78d88bfb09931c6cd58ecc884ab7024c73c01",
+    "bend/reader.bend": "e659a2cac6b8435f02fd0fe91902ceca918055d026ec1908845186bee4fdc0ac",
+    "bend/region.bend": "1455654e09969a0c80b6536b61b8da2f6070c80d007d2a3639b4a42cb873cc35",
+    "bend/registry.bend": "433b4dbb17b127dd322a11465a1111ddadd86a8682597310c062a194aa802296",
+    "bend/registry_aquifer.bend": "5b474507135a0180f41e19f0b87df98111d87f7a6cfa0deb242f4614d65e5905",
+    "bend/registry_chunk_catalog.bend": "032c8411f124d9876a34e2537b7dff1f9ccbd068a53b2e4a7423ae71ffe98652",
+    "bend/registry_climate.bend": "3daed5cbc3da3a4d4f91c65465e899b31fe219fe34af03731fc7ca1c49c572ad",
+    "bend/registry_density.bend": "0c1972222bbcdfead41b30ae0453f7e05e85ab7bb446c113c3a07a8b12f56cb7",
+    "bend/registry_geology.bend": "73524d1c09403ddf7305e5eb8c99d3696e1de14c295248abd6c396fc28309cda",
+    "bend/registry_lakes.bend": "1994ed48ac044fa174f98653af807920e591192a32a6f00d67ff6471892aa5a4",
+    "bend/registry_material.bend": "b28952c7b085865d41f853d55e287c0c0bb8000442cc2c94b37325daaab8d29e",
+    "bend/registry_material_columns.bend": "9eb18ecf8327d35a9f1c00da86272b5a18447f203c7b7964377f782648a9846b",
+    "bend/registry_noise.bend": "ae6994d216acc9751c20e4df1e4ff62548c8af99c61e6b006155e2fbc3e1ca94",
+    "bend/registry_ores.bend": "405e9ab60fdb938bde70c051b63161740b656ac93c0f54a29213221023cb6988",
+    "bend/registry_surface.bend": "7964afc9153879537d0fed15b811aaf88d1a0b41b210be339122e595ab76bd60",
+    "bend/registry_values.bend": "5bb1d3ab6bfed7cf640af35089a5ec1370cc2f686d7cfb8b210e7643e1b3d97f",
+    "bend/shoreline.bend": "932383d2add618bbc94b6b5ddd6f75030a3853e0def8fa2e78764405185cb888",
+    "bend/terrain_height.bend": "bc5400f024c86b34294cc628b364d7ceb67fd9675cb2de77a3cbe06b519be8a2",
+    "bend/terrain_surface.bend": "26687ac40e62949ca563d7f31117207fa0eb053d82f51b58a14e84b9a2d4d652",
+    "bend/transport.bend": "2d7b2667aaf37b537de8be6c584acaeaec37377da475741bfe790a46d9c76f81",
+    "bend/word64.bend": "62e104fbbc56208d66457789a7f2ed3f5fe122f4a19068c3df9b3bbbf555e139"
+  },
+  "inputs": [
+    {
+      "name": "mixed",
+      "rbp_sha256": "b5cb562402369823d4e74c6bdbf11defeff2f396c397235ff9ec15fcbf880ecb"
+    },
+    {
+      "name": "unpacked",
+      "rbp_sha256": "3aeac50106f16bb7480c2c19a2aca15586e53df6dfdcd5da35dcd71da8caa2af"
+    },
+    {
+      "name": "layout_one",
+      "rbp_sha256": "64d8964fe66c3e302cbe6e43a94051c0f8371c091a3ef6bbd59d2f17f4308f03"
+    },
+    {
+      "name": "empty",
+      "rbp_sha256": "bafb52b48c0074a0df12645d27ba5f1a27fe20b5090ff0bd6bb3101dc5d622f4"
+    },
+    {
+      "name": "optional",
+      "rbp_sha256": "9a3c4d0d658fa068dd1f58b117e5c145010173fcaef29df8cae5333f76ed9c9c"
+    },
+    {
+      "name": "tiny",
+      "rbp_sha256": "54602ea196691cf3c88346583934a9cce5b92dbc3c5d46dc2e5b9f93c937ca43"
+    },
+    {
+      "name": "large_scattered",
+      "rbp_sha256": "3e3060869cff909b82557318b87ecb0da460c91730ae46cefc63336130eff159"
+    },
+    {
+      "name": "vanilla",
+      "rbp_sha256": "39c775ca58b6d084d4de060925df01d170c89caa09b9eaf7d33e55a915c8065a"
+    },
+    {
+      "name": "terralith",
+      "rbp_sha256": "cf9ef7e0d83d91c5d99aa914101aad8b156ce9a8caa4050f71e81b190a1c0ca6"
+    },
+    {
+      "name": "combined",
+      "rbp_sha256": "d4ac8f9040e39892de12b6fc6ecc46b3d9e961c3cba7f05a2ae9b53262967193"
+    }
+  ],
+  "executable_sha256": "a554bcfc3034d70e9fb52c5047a966797e94239f7f60a73074498f7306a8bc2e",
+  "bend_version": "2.0.36",
+  "test_script_sha256": {
+    "test_bend_ore_masks.py": "000eac9f4543b509d40296cdfe3e8e07354d82a3a9c115c9432899c69e5d3ead",
+    "test_bend_ore_planning.py": "7f93c77358bb3f04a7c2be979b6fbf87152410a6469dcad0f0116acbe2493ca5",
+    "test_bend_engine.py": "1f79081285ac5f4ca3f2ba8b1065fc0f23782cf824c411f6cee03ec337ff6bd7",
+    "test_bend_compression.py": "225f12c5a85e2e9e3a39bd47c6837680b1f9759279ea827d260b53dafb1597ac"
+  },
+  "observer_scope": "Normal and observer stock-generated C differ by exactly one command-buffer timing print; normal and observed GPU aggregates match. No application kernel or runtime algorithm is handwritten.",
+  "compiler": {
+    "bend": "2.0.36",
+    "native_clang": "23.1.2",
+    "native_optimization": "-O3",
+    "generated_application_code": "unmodified stock Bend output",
+    "observer_difference": "one command-buffer timing print only",
+    "parallel_native_compilers": 1,
+    "nice": 10,
+    "runtime_threads": 2,
+    "generated_c_sha256": "bc3ac34cfdcf22953f9422e1b40907156d499ccb607ebca7020fc4d70a38c5ab",
+    "observer_c_sha256": "b6b1471dd7fceda0141bd6e7de6492f83d918747fda07fb428e29c7bddeec292"
+  },
+  "validation": {
+    "fabric_neoforge_host_build": "pass",
+    "native_unit_tests": {
+      "passed": 64,
+      "failed": 0,
+      "ignored": 11
+    },
+    "gradle_worker_task": "bendOreMaskWorkerTest: BUILD SUCCESSFUL; actual Java CPU/GPU concurrent callers, malformed requests, surface preparation, reload and shutdown passed",
+    "maximum_exercised_response_bytes": 60416,
+    "log_sha256": {
+      "build/bend/ore-masks-build.log": "47947f5dec7a518a90236330e84df73de3f279b3ff53eb62187b65634ab20aa2",
+      "build/bend/ore-masks-cpu-stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "build/bend/ore-masks-gpu-stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "build/bend/ore-masks-gradle-tests.log": "293e153253a58f04cd9571f25a29d33fbc64b67a694c10d5aa1492a0f0d1f3e7",
+      "build/bend/ore-masks-host-build.log": "53988bbf8953ed4f96c47575216ddd88e03f140a548930bc3d08e21ea775dc7b",
+      "build/bend/ore-masks-metal-tests.log": "bae85a1196905c403c7ff37d8bbf394986f7a2d7f333a0fe67aa5a1285d45456",
+      "build/bend/ore-masks-observer-build.log": "80f7bfddbfbdf8e4383963be1efa331f5ddf3b1bf67f17a65c4ae957211008c7",
+      "build/bend/ore-masks-planning-regressions.log": "d44fd6333500d7baeb332a6576f62ce74763db00af4eea14a3003a3f3d681c91",
+      "build/bend/ore-masks-tests.log": "9eee523bc3cce814a77ccbb39db5a908d9777dc9df3852c1758f4e0c17dbe429"
+    }
+  },
+  "regressions": {
+    "ore_planning": {
+      "scope": "Raw registered Bend ore attempts and local vein geometry; spatial membership, rasterization and block replay remain pending",
+      "runs": [
+        {
+          "gpu_required": false,
+          "profiles": [
+            {
+              "name": "mixed",
+              "attempts": 7775,
+              "pieces": 3252
+            },
+            {
+              "name": "unpacked",
+              "attempts": 7775,
+              "pieces": 3252
+            },
+            {
+              "name": "layout_one",
+              "attempts": 7775,
+              "pieces": 3252
+            },
+            {
+              "name": "empty",
+              "attempts": 0,
+              "pieces": 0
+            },
+            {
+              "name": "optional",
+              "attempts": 0,
+              "pieces": 0
+            },
+            {
+              "name": "uniform_full",
+              "attempts": 336,
+              "pieces": 4532
+            },
+            {
+              "name": "triangle",
+              "attempts": 336,
+              "pieces": 4532
+            },
+            {
+              "name": "flat",
+              "attempts": 336,
+              "pieces": 4532
+            },
+            {
+              "name": "plateau",
+              "attempts": 336,
+              "pieces": 4532
+            },
+            {
+              "name": "maximum_count",
+              "attempts": 25761,
+              "pieces": 4532
+            },
+            {
+              "name": "vanilla",
+              "attempts": 11686,
+              "pieces": 39915
+            },
+            {
+              "name": "terralith",
+              "attempts": 12782,
+              "pieces": 26539
+            },
+            {
+              "name": "combined",
+              "attempts": 12782,
+              "pieces": 26539
+            }
+          ],
+          "attempts_checked": 87680,
+          "pieces_checked": 125409,
+          "regular_spheres": 123457,
+          "contained_spheres": 68734,
+          "scattered_points": 1952,
+          "maximum_geometry_error": 0.0,
+          "attempt_sha256": "ea6e44c3b59738765a5b01cb7f54fd1c87077f119bdb1092d7f1b7bf838af2f1",
+          "sha256": "3274b86911ad3247326fde359eccfd569dc156719ba774ee85ff1dd1175a9b5a",
+          "expected_gpu_dispatches": 153,
+          "metal_commands_ms": []
+        },
+        {
+          "gpu_required": true,
+          "profiles": [
+            {
+              "name": "mixed",
+              "attempts": 7775,
+              "pieces": 3252
+            },
+            {
+              "name": "unpacked",
+              "attempts": 7775,
+              "pieces": 3252
+            },
+            {
+              "name": "layout_one",
+              "attempts": 7775,
+              "pieces": 3252
+            },
+            {
+              "name": "empty",
+              "attempts": 0,
+              "pieces": 0
+            },
+            {
+              "name": "optional",
+              "attempts": 0,
+              "pieces": 0
+            },
+            {
+              "name": "uniform_full",
+              "attempts": 336,
+              "pieces": 4532
+            },
+            {
+              "name": "triangle",
+              "attempts": 336,
+              "pieces": 4532
+            },
+            {
+              "name": "flat",
+              "attempts": 336,
+              "pieces": 4532
+            },
+            {
+              "name": "plateau",
+              "attempts": 336,
+              "pieces": 4532
+            },
+            {
+              "name": "maximum_count",
+              "attempts": 25761,
+              "pieces": 4532
+            },
+            {
+              "name": "vanilla",
+              "attempts": 11686,
+              "pieces": 39915
+            },
+            {
+              "name": "terralith",
+              "attempts": 12782,
+              "pieces": 26539
+            },
+            {
+              "name": "combined",
+              "attempts": 12782,
+              "pieces": 26539
+            }
+          ],
+          "attempts_checked": 87680,
+          "pieces_checked": 125409,
+          "regular_spheres": 123457,
+          "contained_spheres": 68734,
+          "scattered_points": 1952,
+          "maximum_geometry_error": 9.5367431640625e-07,
+          "attempt_sha256": "ea6e44c3b59738765a5b01cb7f54fd1c87077f119bdb1092d7f1b7bf838af2f1",
+          "sha256": "c9b5a6e22087319f29f3e713e6d1b9c1ff509073d62a4d901f9b70edf0d7aab7",
+          "expected_gpu_dispatches": 153,
+          "metal_commands_ms": []
+        }
+      ],
+      "dispatch_accounting": "CPU counters are logical batches; only observer diagnostics establish actual Metal work.",
+      "source_sha256": {
+        "bend/aquifer.bend": "a9537fa65402553acec5578d4a2474036f2190142a6e9d9c1faf3c7c0cc03e36",
+        "bend/aquifer_batch.bend": "427a559a15ebfd33e7d1c1e7d1894149112c61e3fa8e04089bf0326015b50b99",
+        "bend/aquifer_lattice.bend": "cc43ecd6d6c5893f351f51e1a56f8830fbeaa5f923f23e9bfa0b967cad8c1a85",
+        "bend/aquifer_substance.bend": "e76e48268fdb219e8c86afffec9568e65453af84489d47466ca5408e34051bae",
+        "bend/aquifer_substance_batch.bend": "bb2e7f1e8369341943dfde375ec001a0a331812efbc86284dad9a46e20ee0973",
+        "bend/binary.bend": "f716146b3a19403c4ad208ce37c2056f9ba023d6b76a3fecba5c3253185d9b68",
+        "bend/cave_batch.bend": "ab0a49204220415a0bfe5ceb9553a933b983ff0a94ab54f9c175e9865417bcc6",
+        "bend/cave_biome_batch.bend": "fa35ed814595a48cb5761738ec9730b14e49dc329df5e95dd48ae1bce8d8b84c",
+        "bend/cave_carve.bend": "c34fb3aec6cd2c0cae383f9030a6ce73c119b3eae7d518783d16c8e552a84dcd",
+        "bend/cave_lattice.bend": "cefc064c507c09a96c3d43819a444aea32aead0ab84dacf1fa159066869e5dbb",
+        "bend/chunk.bend": "7aa37914a3941541f78909d0ab582ab956f972be7804c4abf97fdf07b839fe86",
+        "bend/chunk_catalog.bend": "666d5f98e2128a31a49f36ccdf0a1da7d7cb59067ce58d3cd1d0da3742963df3",
+        "bend/climate.bend": "842160f64b796f6288e59e24e8a81515a450d3778900982bdfc6a633671a4680",
+        "bend/climate_batch.bend": "f65fbc7b463f5e093feb2364da0f504fa295088285917f7a04dc205bf1dc34fa",
+        "bend/compression.bend": "e42e1a312180ee0fce6faad39fc82b9a2e43ba05727e04d9a3c8e7651dd14130",
+        "bend/density.bend": "01beac1b7443695c1507293a7d916489ac5441235c1e07290330691864b56aae",
+        "bend/density_batch.bend": "51231a72efa798c9a31f1a6a841176ea50d1ac5644352b389e3d1a9bff30d99c",
+        "bend/density_lattice.bend": "0b02993df32e160b21c50b8ee33e003f2d7f3eb53645c91ab6699bed0e1a9ae8",
+        "bend/engine.bend": "75648370aa69279425c5caa1371a6078bb39e3d9b6778506c93a9c86ac1d5738",
+        "bend/generated_chunk.bend": "ebb9ee79025bf9a45a34ff5f7eb798be1a19af8820bbb4a877f3f6ef8d9f7f59",
+        "bend/generated_region.bend": "e1212456aa06b8ed09e81737bf925ce6ade0b04226fb4f892b78eed371e98110",
+        "bend/geology.bend": "a38c9fd7b2605cf96c6cfec6b0be5b132a92ed2ce911d49fc0dd744932eece2c",
+        "bend/geology_batch.bend": "16031d9c91758c6e098253491a9a5d09d55dada82df531bcd746f06a379a96c8",
+        "bend/heightmaps.bend": "0b69c87d24ec3b27cbb082bb394205765154bf78c5c4db2c226fbc4ba3e2d997",
+        "bend/lake_candidates.bend": "577e2e5c9090cb8cd7ee4ba2106e5cbd894f6c402c66d140a85d27d23e8a2048",
+        "bend/lake_data.bend": "2951da8dbd6b05ede1d4f038579d5a89d79b6ce7d34d45d56da82a8bd7d84492",
+        "bend/lake_lattice.bend": "8f278dfe9134411bbc2e272de88dab573be73ec66eca04d79d2d58415f8a2cd8",
+        "bend/lake_terrain.bend": "a1fc29c8f9ba0cebece840423ca9b9208c986186239736f771f336a4aeebe316",
+        "bend/material.bend": "fea1e62174797c5b44634f3674dfc550d0178f207524193ed0d9416fbbf70f64",
+        "bend/material_batch.bend": "e34ee066c23a5328d279c5137ce2d107f2e4df661d63d3de373970d5cbee2073",
+        "bend/material_columns.bend": "14c807fb1f7e41a60570c9a674f7ef756d3551799e7f9a81fef56d5d9095b73b",
+        "bend/material_columns_data.bend": "309ad22f3858ba801421073319a671b218b473ee6887d3ca75bef5ccd1e26a9a",
+        "bend/material_lazy.bend": "8675a4ea5d3e1b164d1d2a71b248c9ec23078c05da9880fb5470b543a6de1f10",
+        "bend/material_program.bend": "f4b7e78629f7eecd991418eb00fa3face480954b300fa996e370d4c16c35128c",
+        "bend/nbt.bend": "7063555acf523d12269bd152e1e32981534009785b6a7653509f1a108b18cb57",
+        "bend/noise.bend": "80485dd8d18580a1044c8e55dbd03dab1b8dbdd9aa6681e1b8f6743fce928c1d",
+        "bend/numbers.bend": "858ea999141639aa26c559a2e06a87d62c58e93d0d8d3a793bb530b629060956",
+        "bend/ore_attempts.bend": "d18a6f9c42da6dca2244ba4e5be2f2c2e21d5fcabbc061413956f5efb52bee57",
+        "bend/ore_batch.bend": "b807a8f03bf5846140a54c8e5f35ae13d39c46313ff9d4da998f6885a70f19c2",
+        "bend/ore_data.bend": "de874dc61201a0414c2c37a95bc84d1405d9b9e055197c10f2e7e64540bb4e29",
+        "bend/ore_geometry.bend": "5fb458abba5df500c054ad08a5a8f63ed7b96e150ffaee8c54c2765fa994413f",
+        "bend/ore_random.bend": "12913efa87c40f6a6f1b3deb0ce992f5be02a9d8e8bac1547e52025b31a307d5",
+        "bend/ore_raster.bend": "2395a6a365adbcda989e1b6c02eed3a2c510bd157872dd3f37abc5423fa12b30",
+        "bend/packed.bend": "b4ebd29bc4d31d53ddcc221f64c84e68c5bde4a0fbbb51acfdaa9ddd01e2c23f",
+        "bend/palette.bend": "4f813fb89317308dc02c70d36cf5e3eeaf6d62a9a82477b781b976be5eee82ff",
+        "bend/precise.bend": "50ba7138300f2c913b2d75a554a78d88bfb09931c6cd58ecc884ab7024c73c01",
+        "bend/reader.bend": "e659a2cac6b8435f02fd0fe91902ceca918055d026ec1908845186bee4fdc0ac",
+        "bend/region.bend": "1455654e09969a0c80b6536b61b8da2f6070c80d007d2a3639b4a42cb873cc35",
+        "bend/registry.bend": "433b4dbb17b127dd322a11465a1111ddadd86a8682597310c062a194aa802296",
+        "bend/registry_aquifer.bend": "5b474507135a0180f41e19f0b87df98111d87f7a6cfa0deb242f4614d65e5905",
+        "bend/registry_chunk_catalog.bend": "032c8411f124d9876a34e2537b7dff1f9ccbd068a53b2e4a7423ae71ffe98652",
+        "bend/registry_climate.bend": "3daed5cbc3da3a4d4f91c65465e899b31fe219fe34af03731fc7ca1c49c572ad",
+        "bend/registry_density.bend": "0c1972222bbcdfead41b30ae0453f7e05e85ab7bb446c113c3a07a8b12f56cb7",
+        "bend/registry_geology.bend": "73524d1c09403ddf7305e5eb8c99d3696e1de14c295248abd6c396fc28309cda",
+        "bend/registry_lakes.bend": "1994ed48ac044fa174f98653af807920e591192a32a6f00d67ff6471892aa5a4",
+        "bend/registry_material.bend": "b28952c7b085865d41f853d55e287c0c0bb8000442cc2c94b37325daaab8d29e",
+        "bend/registry_material_columns.bend": "9eb18ecf8327d35a9f1c00da86272b5a18447f203c7b7964377f782648a9846b",
+        "bend/registry_noise.bend": "ae6994d216acc9751c20e4df1e4ff62548c8af99c61e6b006155e2fbc3e1ca94",
+        "bend/registry_ores.bend": "405e9ab60fdb938bde70c051b63161740b656ac93c0f54a29213221023cb6988",
+        "bend/registry_surface.bend": "7964afc9153879537d0fed15b811aaf88d1a0b41b210be339122e595ab76bd60",
+        "bend/registry_values.bend": "5bb1d3ab6bfed7cf640af35089a5ec1370cc2f686d7cfb8b210e7643e1b3d97f",
+        "bend/shoreline.bend": "932383d2add618bbc94b6b5ddd6f75030a3853e0def8fa2e78764405185cb888",
+        "bend/terrain_height.bend": "bc5400f024c86b34294cc628b364d7ceb67fd9675cb2de77a3cbe06b519be8a2",
+        "bend/terrain_surface.bend": "26687ac40e62949ca563d7f31117207fa0eb053d82f51b58a14e84b9a2d4d652",
+        "bend/transport.bend": "2d7b2667aaf37b537de8be6c584acaeaec37377da475741bfe790a46d9c76f81",
+        "bend/word64.bend": "62e104fbbc56208d66457789a7f2ed3f5fe122f4a19068c3df9b3bbbf555e139"
+      },
+      "inputs": [
+        {
+          "name": "mixed",
+          "rbp_sha256": "b5cb562402369823d4e74c6bdbf11defeff2f396c397235ff9ec15fcbf880ecb"
+        },
+        {
+          "name": "unpacked",
+          "rbp_sha256": "3aeac50106f16bb7480c2c19a2aca15586e53df6dfdcd5da35dcd71da8caa2af"
+        },
+        {
+          "name": "layout_one",
+          "rbp_sha256": "64d8964fe66c3e302cbe6e43a94051c0f8371c091a3ef6bbd59d2f17f4308f03"
+        },
+        {
+          "name": "empty",
+          "rbp_sha256": "bafb52b48c0074a0df12645d27ba5f1a27fe20b5090ff0bd6bb3101dc5d622f4"
+        },
+        {
+          "name": "optional",
+          "rbp_sha256": "9a3c4d0d658fa068dd1f58b117e5c145010173fcaef29df8cae5333f76ed9c9c"
+        },
+        {
+          "name": "uniform_full",
+          "rbp_sha256": "6a626efdb8f84091c92215bb01700c86db0aaaba31f5d7531c3570936c7597c6"
+        },
+        {
+          "name": "triangle",
+          "rbp_sha256": "6e45d4233495a414dfe4c4a871851b128a95b04d2e2427c4f50d18b08680bc81"
+        },
+        {
+          "name": "flat",
+          "rbp_sha256": "b3742c7a0038de1b1b20d7997213626effba6625e09b75c9093b87fbb6c6cd6a"
+        },
+        {
+          "name": "plateau",
+          "rbp_sha256": "72680bad4a003cae8ff548205505997f2102d0e386bc196360718dbc3c3e1201"
+        },
+        {
+          "name": "maximum_count",
+          "rbp_sha256": "30e0aa0e5756770afa714c48b1baec60fdc8eb52c31540401301aef6fe7f8e2e"
+        },
+        {
+          "name": "vanilla",
+          "rbp_sha256": "39c775ca58b6d084d4de060925df01d170c89caa09b9eaf7d33e55a915c8065a"
+        },
+        {
+          "name": "terralith",
+          "rbp_sha256": "cf9ef7e0d83d91c5d99aa914101aad8b156ce9a8caa4050f71e81b190a1c0ca6"
+        },
+        {
+          "name": "combined",
+          "rbp_sha256": "d4ac8f9040e39892de12b6fc6ecc46b3d9e961c3cba7f05a2ae9b53262967193"
+        }
+      ],
+      "executable_sha256": "a554bcfc3034d70e9fb52c5047a966797e94239f7f60a73074498f7306a8bc2e",
+      "bend_version": "2.0.36"
+    }
+  }
+}

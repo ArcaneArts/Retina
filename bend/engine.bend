@@ -33,6 +33,7 @@ import ./ore_data.bend as O
 import ./ore_batch.bend as OB
 import ./ore_attempts.bend as OA
 import ./ore_geometry.bend as OG
+import ./ore_raster.bend as OR
 import ./geology_batch.bend as GB
 import ./cave_lattice.bend as CV
 import ./cave_batch.bend as CAV
@@ -67,7 +68,7 @@ import ./precise.bend as D
 # AQUIFER_SUBSTANCE_BATCH=40, LAKE_SETTINGS=41, LAKE_CANDIDATES=42,
 # LAKE_GEOMETRY=43, LAKE_GEOMETRY_BATCH=44, ORE_METADATA=45,
 # ORE_REPLACEMENT_BATCH=46 (resident membership, bands and exposure policy),
-# ORE_ATTEMPT_BATCH=47, ORE_GEOMETRY_BATCH=48.
+# ORE_ATTEMPT_BATCH=47, ORE_GEOMETRY_BATCH=48, ORE_MASK_BATCH=49.
 # Requests: RBND magic, payload length, request ID, opcode (all BE u32).
 # Responses add a status u32 after opcode. stdout contains frames only.
 type Settings is Data:
@@ -1275,16 +1276,31 @@ def ore_geometry_queries(queries: OG.Input,store: O.Store,old: State,input: File
     case OG.Input{queries,count,True{}}: ore_geometry_rows(OG.execute(store,queries),count,old,input,output,backend,id,opcode)
 
 @unsafe
-def ore_plan_request(geometry: Bool,+store: O.Store,old: State,input: File,output: File,backend: U32,id: U32,opcode: U32,body: Z.Bytes) -> IO(Unit):
-  match geometry:
-    case False{}: ore_attempt_queries(OA.decode(body,store),store,old,input,output,backend,id,opcode)
-    case True{}: ore_geometry_queries(OG.decode(body,store),store,old,input,output,backend,id,opcode)
+def ore_mask_rows(computed: OR.Computed,count: U32,old: State,input: File,output: File,backend: U32,id: U32,opcode: U32) -> IO(Unit):
+  match computed:
+    case OR.Computed{rows}:
+      do IO<Unit>:
+        body : Z.Bytes <- payload(OR.encode(U32.to_nat(count),rows,B.new(),0))
+        finish(input,output,old,backend,id,opcode,0,body,True{})
 
 @unsafe
-def ore_plan(geometry: Bool,input: File,output: File,+old: State,backend: U32,id: U32,opcode: U32,body: Z.Bytes) -> IO(Unit):
+def ore_mask_queries(queries: OG.Input,store: O.Store,old: State,input: File,output: File,backend: U32,id: U32,opcode: U32) -> IO(Unit):
+  match queries:
+    case OG.Input{_,_,False{}}: error(input,output,old,backend,id,opcode,603)
+    case OG.Input{queries,count,True{}}: ore_mask_rows(OR.execute(store,queries),count,old,input,output,backend,id,opcode)
+
+@unsafe
+def ore_plan_request(mode: U32,+store: O.Store,old: State,input: File,output: File,backend: U32,id: U32,opcode: U32,body: Z.Bytes) -> IO(Unit):
+  match mode:
+    case 47: ore_attempt_queries(OA.decode(body,store),store,old,input,output,backend,id,opcode)
+    case 48: ore_geometry_queries(OG.decode(body,store),store,old,input,output,backend,id,opcode)
+    case _: ore_mask_queries(OG.decode(body,store),store,old,input,output,backend,id,opcode)
+
+@unsafe
+def ore_plan(mode: U32,input: File,output: File,+old: State,backend: U32,id: U32,opcode: U32,body: Z.Bytes) -> IO(Unit):
   match old:
     case State{Settings{_,_,Some{RD.Prepared{_,_,_,_,_,_,_,Some{M.Model{_,_,_,_,Some{MD.State{_,_,_,Some{G.Profile{_,_,ores,_,_,_,_,_,_}},_}}}}}}},_}:
-      ore_plan_request(geometry,ores,old,input,output,backend,id,opcode,body)
+      ore_plan_request(mode,ores,old,input,output,backend,id,opcode,body)
     case _: error(input,output,old,backend,id,opcode,754)
 
 @unsafe
@@ -1336,8 +1352,9 @@ def dispatch(input: File,output: File,stack: State,backend: U32,id: U32,opcode: 
     case 44: lake_geometry_batch(input,output,stack,backend,id,44,body)
     case 45: ore_batch(True{},input,output,stack,backend,id,45,body)
     case 46: ore_batch(False{},input,output,stack,backend,id,46,body)
-    case 47: ore_plan(False{},input,output,stack,backend,id,47,body)
-    case 48: ore_plan(True{},input,output,stack,backend,id,48,body)
+    case 47: ore_plan(47,input,output,stack,backend,id,47,body)
+    case 48: ore_plan(48,input,output,stack,backend,id,48,body)
+    case 49: ore_plan(49,input,output,stack,backend,id,49,body)
     case 4: empty_command(R.end(R.start(body)),input,output,stack,backend,id,4)
     case _: error(input,output,stack,backend,id,opcode,605)
 
