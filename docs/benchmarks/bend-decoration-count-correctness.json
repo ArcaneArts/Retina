@@ -1,0 +1,114 @@
+{
+  "scope": "Independently check registered Bend count/offset providers on CPU and Metal.\n\nThis is a library correctness test. It does not place surface features or claim\ncomplete generator parity/performance. Full input profiles cross the registry\nwire unchanged; all typed projection and sampling happens in Bend.",
+  "runs": [
+    {
+      "profile": "profile-0",
+      "gpu_required": false,
+      "reverse_order": "pass",
+      "rules": 442,
+      "samples": 14144,
+      "maximum_noise_error": 0.0,
+      "sampling_sha256": "1ba838e919bf11e1d8e7d992bea061604e70abaac35bace61240763557c1a9e5"
+    },
+    {
+      "profile": "profile-1",
+      "gpu_required": false,
+      "reverse_order": "pass",
+      "rules": 1284,
+      "samples": 41088,
+      "maximum_noise_error": 0.0,
+      "sampling_sha256": "c245f25564c87c576a21ac5d748e265f966874b3062511772e7b985019764888"
+    },
+    {
+      "profile": "profile-2",
+      "gpu_required": false,
+      "reverse_order": "pass",
+      "rules": 1284,
+      "samples": 41088,
+      "maximum_noise_error": 0.0,
+      "sampling_sha256": "c245f25564c87c576a21ac5d748e265f966874b3062511772e7b985019764888"
+    },
+    {
+      "profile": "fixture",
+      "gpu_required": false,
+      "reverse_order": "pass",
+      "rules": 23,
+      "samples": 736,
+      "maximum_noise_error": 0.0,
+      "sampling_sha256": "892619120b551f5efe515a60d45a8dee007f66da856ac182afcb3bc1d9f050d4"
+    },
+    {
+      "profile": "empty",
+      "gpu_required": false,
+      "reverse_order": "pass",
+      "rules": 0,
+      "samples": 0,
+      "maximum_noise_error": 0.0,
+      "sampling_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+    },
+    {
+      "profile": "profile-0",
+      "gpu_required": true,
+      "reverse_order": "pass",
+      "rules": 442,
+      "samples": 14144,
+      "maximum_noise_error": 0.0,
+      "sampling_sha256": "1ba838e919bf11e1d8e7d992bea061604e70abaac35bace61240763557c1a9e5"
+    },
+    {
+      "profile": "profile-1",
+      "gpu_required": true,
+      "reverse_order": "pass",
+      "rules": 1284,
+      "samples": 41088,
+      "maximum_noise_error": 0.0,
+      "sampling_sha256": "c245f25564c87c576a21ac5d748e265f966874b3062511772e7b985019764888"
+    },
+    {
+      "profile": "profile-2",
+      "gpu_required": true,
+      "reverse_order": "pass",
+      "rules": 1284,
+      "samples": 41088,
+      "maximum_noise_error": 0.0,
+      "sampling_sha256": "c245f25564c87c576a21ac5d748e265f966874b3062511772e7b985019764888"
+    },
+    {
+      "profile": "fixture",
+      "gpu_required": true,
+      "reverse_order": "pass",
+      "rules": 23,
+      "samples": 736,
+      "maximum_noise_error": 0.0,
+      "sampling_sha256": "892619120b551f5efe515a60d45a8dee007f66da856ac182afcb3bc1d9f050d4"
+    },
+    {
+      "profile": "empty",
+      "gpu_required": true,
+      "reverse_order": "pass",
+      "rules": 0,
+      "samples": 0,
+      "maximum_noise_error": 0.0,
+      "sampling_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+    }
+  ],
+  "invalid_profiles_per_backend": 21,
+  "observed_metal_device_ms": [
+    22.793
+  ],
+  "profiles": {
+    "/Users/cyberpwn/.local/share/retina-bend/2.0.36/backend-artifacts/d74e16e/vanilla/profile.json": "aefce6ff0e800966ad55920c5d21510dfa277de4612f67e22d5146d3aa838203",
+    "/Users/cyberpwn/.local/share/retina-bend/2.0.36/backend-artifacts/d74e16e/terralith/profile.json": "c9abbe97860a394ed899d64967bd0395bb9bb4ec71a9dff43d1bb45893fefd4d",
+    "/Users/cyberpwn/.local/share/retina-bend/2.0.36/backend-artifacts/d74e16e/combined/profile.json": "068fd602ad497128dd3960cb9be76840ebd41882b5b64c25acfa76d65e930c8b"
+  },
+  "sources": {
+    "bend/placement_random.bend": "1336014e813d127c88dce79374ccd2ed952d9d5a7a9d784454b81d28416b0c35",
+    "bend/int_provider.bend": "402c00ca9af5eeeb0fbfd61e5556f336ea0e2daad3b69c29f645be118820d860",
+    "bend/registry_int_provider.bend": "7eb3d6eb32414dc239d034cbf6ce658c3f8a51bb4f997758a89ba52d678ab859",
+    "bend/decoration_counts.bend": "95e8f0c32fa410ca22b54ba0d142a048be27f174ecc186a566dc20238a30d6bd",
+    "bend/registry_decoration_counts.bend": "722286810301bf58e7e8010473c2c73afe25904790285c500724933226faa799",
+    "bend/tests/decoration-counts.bend": "e670ab9ce56444ca23b6e83b0cff68d92b2ec1b6b7364dc8b54558c17ab6e790",
+    "scripts/test_bend_decoration_counts.py": "831078659a0c3563c2f9798db61e5dacbe42531154640192787625129be13a65"
+  },
+  "executable_sha256": "1c03d9494b0353741a6b7958b7e79efe354bfaf8f09004892c221555c4cf3e0f"
+}

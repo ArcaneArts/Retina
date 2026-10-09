@@ -1,0 +1,32 @@
+{
+  "scope": "Start Bend lighting with registry-derived optical/face rules, not full lighting.\n\nAn explicit loaded registry export supplies every trait and face-pair bit. The\nindependent Python reference checks 65,536 transitions/sky seeds/nibble packs on\nCPU and GPU-required execution. This is correctness evidence, not a benchmark.",
+  "profile_sha256": "aefce6ff0e800966ad55920c5d21510dfa277de4612f67e22d5146d3aa838203",
+  "sources": {
+    "bend/light_rules.bend": "64a597da4a64699c950798a7cb3d9ca37b344acc1bdd53f3a62a4c0742a43943",
+    "scripts/test_bend_light_rules.py": "375d7e318e0137f9f43e0115859233a5cbb594ec7a11a3ef373e546567371351"
+  },
+  "executable_sha256": "d2ea280421d9c5e796cb0677fa8261a2158118c7d36644d3121f8742f1685e9d",
+  "states": 2438,
+  "face_shapes": 42,
+  "runs": [
+    {
+      "gpu_required": false,
+      "rows": 65536,
+      "blocked_edges": 6746,
+      "direct_sky": 10182,
+      "emissive_states": 5854,
+      "sha256": "f6e25708ee35726edfdd7a05353885af4571f108a3e2459d8e063cab6feb9fa8"
+    },
+    {
+      "gpu_required": true,
+      "rows": 65536,
+      "blocked_edges": 6746,
+      "direct_sky": 10182,
+      "emissive_states": 5854,
+      "sha256": "f6e25708ee35726edfdd7a05353885af4571f108a3e2459d8e063cab6feb9fa8"
+    }
+  ],
+  "observed_metal_device_ms": [
+    152.844042
+  ]
+}

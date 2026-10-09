@@ -117,8 +117,10 @@ currently slower here; a single language does not imply faster generation.
 
 The effective registry exports already contain the data needed for surface
 features: the inspected vanilla profile has 182 decoration recipes (63 trees),
-and Terralith has 553 (289 trees). Port ordered placement modifiers and shared
-selector/count budgets first, then providers, trunk/foliage variants and
+and Terralith has 553 (289 trees). The count/offset provider and registered
+spatial-count noise libraries now project the original instructions in Bend.
+Port the ordered placement walker and shared selector/count budgets next, then
+block providers, trunk/foliage variants and
 decorators into resident block runs. Preserve globally seeded neighboring
 contributions and actual support checks instead of replacing these recipes with
 fixed biome densities. The existing cave survival policy provides a starting
@@ -165,7 +167,7 @@ more deeply; retain the original requested scope.
 | Caves, ravines, rare surface entrances and cave decoration | `GeologyProfile.java`, `geology.rs`, `features.rs`, `caves.wgsl` | Typed geology, cached globally aligned GPU/CPU cave fields, rounded noisy ravines and registered column carving implemented; independent voxel/serialized-region and actual Minecraft decoder checks pass. GPU/CPU depth-dependent cave-biome volumes now select registered carvers and serialize actual 3D quart IDs, retaining finalized surface biomes near the roof. Resident aquifers now supply carved cavity materials. Registered floor/ceiling cave dressing, vines, blossoms, dripstone and sparse plant survival now execute on the selected CPU/GPU backend. Playable terrain integration implemented; composed-density/exterior refinements and ordered surface decorations remain pending |
 | Lakes, aquifer fields and fluid barriers | `TerrainFeatureProfile.java`, `program/lake_sparse.rs`, `aquifers.wgsl` | Typed aquifer graph projection and GPU/CPU flooding, erosion, spread, lava, barrier and preliminary-surface evaluation implemented. Globally hashed resident fluid centers, trilinear barrier fields and nearest-center pressure now place registered cavity fluids while preserving protected/pressure-barrier materials. Registered lake budgets/materials, globally seeded candidates, five bank probes, bounded fluid levels and noisy basin/rim placement implemented on CPU/GPU before material coating. Independent block/NBT/zlib checks cover fluids, barriers, overlap and signed/distant coordinates; lake exclusions now use finalized pre-carving coast selection, including global probes outside the resident tile. Playable terrain integration implemented; full parity and performance work remain required |
 | Ore height/count/replacement/discard rules and GPU rasterization | `geology/`, `ore.wgsl` | Registered recipe projection, packed membership/material tables and selected-backend ordered replacement/exposure policy implemented. Registered count/rarity/height attempts and local sphere-chain/scattered geometry now execute on CPU/GPU. Local sphere-union masks and ordered scattered points now calculate in the same selected-backend evaluation as geometry. Spatial surface/cave membership filtering, stable neighboring contribution buckets and ordered resident-block replay now run in one selected CPU/GPU evaluation, with immutable exposure halo checks and independent voxel/NBT/zlib validation. Playable terrain integration implemented; full parity and performance work remain required |
-| Ordered decoration, registered counts, provider noise and placement modifiers | `DecorationProfile.java`, `decoration/placement*`, `counts/`, `provider_noise/` | Pending |
+| Ordered decoration, registered counts, provider noise and placement modifiers | `DecorationProfile.java`, `decoration/placement*`, `counts/`, `provider_noise/` | Registered recursive integer providers, count/offset projection and actual-permutation spatial count noise independently checked on CPU/Metal. Ordered/live-overlay walker, shared selector budgets, block-provider noise and world integration remain pending |
 | Trees and decorators, giant mushrooms, fallen trees, disks, vegetation patches, block columns, bamboo, aquatic plants and attachments | `decoration.rs`, `decoration/`, `tree_shapes.rs` | Pending; port actual supported recipe variants, not only grass/tree examples |
 | Jigsaw pools/templates/processors, structures spanning regions and locate queries | `StructureProfile.java`, `structures.rs`, `structure_processors.rs`, `queries.rs` | Pending |
 | Structure entities/block entities/loot and attachment rotations | `nbt.rs`, `structures.rs`, `structure_processors.rs` | Pending |
@@ -1278,3 +1280,53 @@ actual vanilla/Terralith registry loading, Minecraft decoding and saved edits,
 packaged runtime reuse/cancellation, both host-loader builds and actual Fabric
 client join/save/reopen. The separate lighting rules library begins the next
 component; surface trees and a complete lighting implementation remain required.
+
+
+### Registered decoration count and offset providers
+
+`registry_decoration_counts.bend` projects counts and offsets from the original
+ordered recipe programs, retaining their recipe/modifier/slot addresses. It
+also distinguishes `count_on_every_layer` from ordinary counts; the later walker
+must resume that modifier against its live block overlay. This component does
+not independently multiply flattened selector branches or place any feature.
+The shared selector budget and final world-worker integration remain pending.
+
+`registry_int_provider.bend` parses the registered constant, uniform, biased to
+bottom, trapezoid, clamped, clamped normal and recursive weighted-list forms.
+Signed bounds and modifier-specific count/layer limits are checked in Bend.
+Sampling returns both its value and the advanced random state. Seeds and random
+words retain all 64 bits, including weighted totals above 2^32; constants consume
+no random draws. Zero-weight entries remain inactive. F32 normal sampling is an
+approximation, consistent with the absence of cross-backend determinism.
+
+Spatial count rules use the exported, validated 256-entry BIOME_INFO_NOISE
+permutation and its twelve gradients, rather than the terrain noise hash or a
+fixed average. Noise-threshold and noise-based counts retain loaded levels,
+factors, offsets and signed ratios. Integer/fraction coordinates preserve local
+variation at negative, distant and signed-i32-edge positions; negative noise
+scales reverse the compensated axes. Scales whose reciprocal exceeds the
+coordinate kernel's 2^30 limit are explicitly unsupported by this component.
+
+The independent local harness checks 97,056 samples per execution over full
+vanilla, Terralith and combined input profiles plus controlled providers, and
+rejects 21 malformed profiles on each backend. Each profile also passes reversed
+evaluation order and CPU/GPU equality. The diagnostic stock-runtime observer
+records a real Metal command buffer and matches the normal output hash. The
+inputs are transported unchanged through the test-only wire encoder; all typed
+projection and sampling decisions execute in Bend. Evidence is recorded in
+`docs/benchmarks/bend-decoration-count-correctness.json`.
+
+The observer initially caught that merely selecting `--gpu on` did not dispatch
+this new fixture. The harness now invokes an explicit Bend `rows!` calculation
+after host preparation. The earlier lighting-rules harness had the same omission;
+it now uses an explicit `batch!` and offers `--prove-metal` to check actual command
+buffers. These are component correctness checks, not complete-region benchmarks
+or surface-feature/lighting completion claims.
+
+The lighting harness now loads the 19,504 optical words as registry data before
+its compute evaluation, rather than embedding them as shader constants. This
+avoids the exceptionally slow Metal compilation encountered with the earlier
+fixture. All 65,536 transitions pass independent CPU/Metal checks and the
+observer confirms actual device execution with identical output. Its observer
+reuses the stock GPU archive from the same source, since only host logging
+changes. Evidence is in `docs/benchmarks/bend-light-rules-correctness.json`.
