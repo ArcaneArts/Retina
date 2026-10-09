@@ -14,7 +14,7 @@ type Run is Data:
 type Column is Data:
   Column{height: U32,biome: U32,depth: F32,slope: F32,band: F32,secondary: F32,preliminary: F32,runs: List<&2,Run>,count: U32,valid: Bool}
 type Grid is Data:
-  Grid{tile: S.Tile,minimum: U32,height: U32,columns: Q.Table<Column>}
+  Grid{tile: S.Tile,minimum: U32,height: U32,columns: Q.Table<Column>,biomes: Maybe<&2,CV.Grid>}
 type State is Data:
   State{config: Config,grid: Maybe<&2,Grid>,catalog: Maybe<&2,C.Catalog>,geology: Maybe<&2,G.Profile>,caves: Maybe<&2,CV.Grid>}
 

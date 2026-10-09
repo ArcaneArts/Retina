@@ -279,3 +279,20 @@ def lookup(model: Model,+q: Query) -> Choice:
 def coast(model: Model,point: Axes) -> Choice:
   match model point:
     case Model{_,_,shores} Axes{a,b,_,c,d,e}: search(shores,Query{Axes{a,b,0.0,c,d,e},False{},False{},False{},False{}},Missing{})
+
+# Only enable depth-dependent selection when registered cave targets exist.
+# Otherwise retain the surface biome, as the Rust path does.
+def underground_targets(xs: List<&2,Target>) -> Bool:
+  match xs:
+    case Nil{}: False{}
+    case Target{_,_,_,_,flags,_} <> rest: Bool.or(U32.is_ne(U32.and(flags,16),0),underground_targets(rest))
+
+def underground_tree(tree: Tree) -> Bool:
+  match tree:
+    case Empty{}: False{}
+    case Leaf{_,targets}: underground_targets(targets)
+    case Branch{_,a,b}: Bool.or(underground_tree(a),underground_tree(b))
+
+def has_underground(model: Model) -> Bool:
+  match model:
+    case Model{_,tree,_}: underground_tree(tree)

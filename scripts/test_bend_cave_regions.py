@@ -15,7 +15,8 @@ import signal
 import struct
 
 import test_bend_generated_regions as regions
-from test_bend_caves import fixtures as cave_fixtures, encode
+from test_bend_caves import fixtures as cave_fixtures, encode, Reference
+from test_bend_cave_biomes import strata
 from test_bend_density import ins
 from test_bend_registry_noise import fixture_wire
 from test_bend_compression import ROOT
@@ -47,8 +48,9 @@ class CaveWorker(regions.Worker):
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--metal-probe',type=Path)
+    parser.add_argument('--biomes',action='store_true')
     args=parser.parse_args()
-    folder=ROOT/'build/bend/cave-regions';folder.mkdir(parents=True,exist_ok=True)
+    folder=ROOT/('build/bend/cave-biome-regions' if args.biomes else 'build/bend/cave-regions');folder.mkdir(parents=True,exist_ok=True)
     _,source,_=regions.fixtures(folder/'fixtures')[0];source=copy.deepcopy(source)
     geology=cave_fixtures(folder/'caves')[0][1]
     source.update(sea_level=0,cave_noises=geology['cave_noises'],
@@ -64,16 +66,26 @@ def main():
         squared=node(6,d,d);scale=node(0,p=(1/(radius*radius),0,0,0));terms.append(node(6,squared,scale))
     xy=node(4,terms[0],terms[1]);xyz=node(4,xy,terms[2]);one=node(0,p=(1,0,0,0));root=node(5,xyz,one)
     source['registry_program']['programs'][2]=dict(nodes=nodes,roots=[root])
+    biome_reference=None
+    if args.biomes:
+        source=strata(source);ref=Reference(source)
+        ids={y:ref.node_biome((-1024,y,1536),regions.LOW,regions.HIGH) for y in range(-16,16,4)}
+        # This analytic profile has X/Z-independent climate and a flat height.
+        # Check every saved quart entry against independently computed Y strata.
+        def biome_reference(x,y,z,low,high):
+            assert (low,high)==(regions.LOW,regions.HIGH)
+            id=ids[y];return 0 if id==0xffffffff else id
+        assert set(biome_reference(-1024,y,1536,regions.LOW,regions.HIGH) for y in ids)=={0,1}
     wire=folder/'caves.rbp';wire.write_bytes(fixture_wire(source,True));profiles=[('caves',source,wire)]
     regions.Worker=CaveWorker;binary=ROOT/'build/bend/engine'
     report=dict(scope=__doc__.strip(),runs=[])
     for gpu in (False,True):
-        run=regions.exercise(binary,profiles,gpu,folder,5023,repeat=False)
+        run=regions.exercise(binary,profiles,gpu,folder,5023,repeat=False,biome_reference=biome_reference)
         run['expected_gpu_dispatches']+=3
         report['runs'].append(run)
     assert report['runs'][0]['sha256']==report['runs'][1]['sha256']
     if args.metal_probe:
-        result=regions.exercise(args.metal_probe,profiles,True,folder,5023,repeat=False)
+        result=regions.exercise(args.metal_probe,profiles,True,folder,5023,repeat=False,biome_reference=biome_reference)
         result['expected_gpu_dispatches']+=3
         assert len(result['metal_commands_ms'])==result['expected_gpu_dispatches']
         assert result['sha256']==report['runs'][1]['sha256'];report['actual_metal_proof']=result
@@ -81,7 +93,7 @@ def main():
     report['executable_sha256']=hashlib.sha256(binary.read_bytes()).hexdigest()
     report['input_sha256']=hashlib.sha256(wire.read_bytes()).hexdigest()
     report['source_sha256']={str(p.relative_to(ROOT)):hashlib.sha256(p.read_bytes()).hexdigest() for p in sorted((ROOT/'bend').glob('*.bend'))}
-    output=ROOT/'build/bend/cave-region-tests.json';output.write_text(json.dumps(report,indent=2)+'\n')
+    output=ROOT/('build/bend/cave-biome-region-tests.json' if args.biomes else 'build/bend/cave-region-tests.json');output.write_text(json.dumps(report,indent=2)+'\n')
     print('PASS: complete carved MCA decoding;',output)
 
 

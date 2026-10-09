@@ -72,25 +72,25 @@ def sampled(found: Maybe<&2,Q.Vec4>,biome: G.Biome,y: U32,height: U32,aperture: 
     case Some{values}: cavity(values,biome,y,height,aperture)
 
 @unsafe
-def carved(ok: Bool,grid: CV.Grid,biome: G.Biome,+point: Q.Point,+y: U32,height: U32,aperture: F32,low: U32,high: U32) -> Bool:
+def carved(ok: Bool,+grid: CV.Grid,biomes: Q.Table<G.Biome>,surface: U32,+point: Q.Point,+y: U32,height: U32,aperture: F32,+low: U32,+high: U32) -> Bool:
   match ok:
     case False{}: False{}
-    case True{}: sampled(CV.lookup(grid,MC.at(point,y),low,high),biome,y,height,aperture)
+    case True{}: sampled(CV.lookup(grid,MC.at(point,y),low,high),Q.get(G.Biome,biomes,CV.inherit(CV.biome(grid,MC.at(point,y),low,high),surface),G.Biome{Q.Empty{}}),y,height,aperture)
 
 @unsafe
-def material(+offset: U32,+original: U32,+minimum: U32,+height: U32,+sea: U32,flags: Q.Table<Bool>,lava: U32,+level: U32,grid: CV.Grid,biome: G.Biome,point: Q.Point,aperture: F32,low: U32,high: U32) -> U32:
+def material(+offset: U32,+original: U32,+minimum: U32,+height: U32,+sea: U32,flags: Q.Table<Bool>,lava: U32,+level: U32,grid: CV.Grid,biomes: Q.Table<G.Biome>,surface: U32,point: Q.Point,aperture: F32,low: U32,high: U32) -> U32:
   +y = U32.add(minimum,offset)
   N.word(carved(Bool.and(Q.get(Bool,flags,original,False{}),Bool.and(U32.is_ge(offset,5),
       Bool.and(D.less(D.integer(y),D.integer(height)),Bool.not(Bool.and(Bool.not(D.less(D.integer(sea),D.integer(height))),
-        Bool.not(D.less(D.integer(y),D.sub(D.integer(height),D.scalar(4.0))))))))),grid,biome,point,y,height,aperture,low,high),
+        Bool.not(D.less(D.integer(y),D.sub(D.integer(height),D.scalar(4.0))))))))),grid,biomes,surface,point,y,height,aperture,low,high),
     N.word(D.less(D.integer(y),D.integer(level)),lava,0),original)
 
 @unsafe
-def runs(+n: U32,acc: List<&2,MD.Run>,+original: List<&2,MD.Run>,+minimum: U32,+height: U32,+sea: U32,+flags: Q.Table<Bool>,+lava: U32,+level: U32,+grid: CV.Grid,+biome: G.Biome,+point: Q.Point,+aperture: F32,+low: U32,+high: U32) -> List<&2,MD.Run>:
+def runs(+n: U32,acc: List<&2,MD.Run>,+original: List<&2,MD.Run>,+minimum: U32,+height: U32,+sea: U32,+flags: Q.Table<Bool>,+lava: U32,+level: U32,+grid: CV.Grid,+biomes: Q.Table<G.Biome>,+surface: U32,+point: Q.Point,+aperture: F32,+low: U32,+high: U32) -> List<&2,MD.Run>:
   match n:
     case 0: acc
-    case _: runs(U32.sub(n,1),MC.push(U32.sub(n,1),n,material(U32.sub(n,1),MC.material_at(original,U32.sub(n,1)),minimum,height,sea,flags,lava,level,grid,biome,point,aperture,low,high),acc),
-      original,minimum,height,sea,flags,lava,level,grid,biome,point,aperture,low,high)
+    case _: runs(U32.sub(n,1),MC.push(U32.sub(n,1),n,material(U32.sub(n,1),MC.material_at(original,U32.sub(n,1)),minimum,height,sea,flags,lava,level,grid,biomes,surface,point,aperture,low,high),acc),
+      original,minimum,height,sea,flags,lava,level,grid,biomes,surface,point,aperture,low,high)
 
 @unsafe
 def height(runs: List<&2,MD.Run>,+minimum: U32,+water: U32,+lava: U32,+highest: U32) -> U32:
@@ -102,7 +102,7 @@ def height(runs: List<&2,MD.Run>,+minimum: U32,+water: U32,+lava: U32,+highest: 
 def column(column: MD.Column,+point: Q.Point,grid: CV.Grid,+profile: G.Profile,sea: U32,water: U32,span: U32,+low: U32,+high: U32) -> MD.Column:
   match column profile:
     case MD.Column{height,+biome,depth,slope,band,secondary,preliminary,original,_,valid} G.Profile{_,biomes,flags,lava,level,minimum,_}:
-      completed(runs(span,[],original,minimum,height,sea,flags,lava,level,grid,Q.get(G.Biome,biomes,biome,G.Biome{Q.Empty{}}),point,
+      completed(runs(span,[],original,minimum,height,sea,flags,lava,level,grid,biomes,biome,point,
         entrance(point,U32.xor(low,N.hash(high))),low,high),minimum,water,lava,biome,depth,slope,band,secondary,preliminary,valid)
 
 @unsafe
@@ -132,7 +132,7 @@ def split(serial: Bool,+limit: U32,+n: U32,+base: U32,+source: Q.Table<MD.Column
 @unsafe
 def compatible(+source: MD.Grid,+grid: CV.Grid,+profile: G.Profile) -> Bool:
   match source profile:
-    case MD.Grid{+tile,+minimum,+span,_} G.Profile{_,_,_,_,_,gmin,gspan}:
+    case MD.Grid{+tile,+minimum,+span,_,_} G.Profile{_,_,_,_,_,gmin,gspan}:
       Bool.and(Bool.and(U32.is_eq(minimum,gmin),U32.is_eq(span,gspan)),covered(tile,minimum,span,grid))
 
 @unsafe
@@ -146,12 +146,12 @@ def present(value: Maybe<&2,Q.Vec4>) -> Bool:
     case None{}: False{}
     case Some{_}: True{}
 
-def execute(source: MD.Grid,grid: CV.Grid,profile: G.Profile,sea: U32,water: U32) -> Computed:
+def execute(source: MD.Grid,+grid: CV.Grid,profile: G.Profile,sea: U32,water: U32) -> Computed:
   match source:
-    case MD.Grid{+tile,minimum,+span,values}:
+    case MD.Grid{+tile,minimum,+span,values,_}:
       result : Q.Table<MD.Column> = columns!(U32.max(1,U32.div(U32.add(S.total(tile),16383),16384)),S.total(tile),0,values,tile,grid,profile,sea,water,span)
-      Computed{MD.Grid{tile,minimum,span,result}}
+      Computed{MD.Grid{tile,minimum,span,result,Some{grid}}}
 
 def values(grid: MD.Grid) -> Q.Table<MD.Column>:
   match grid:
-    case MD.Grid{_,_,_,values}: values
+    case MD.Grid{_,_,_,values,_}: values

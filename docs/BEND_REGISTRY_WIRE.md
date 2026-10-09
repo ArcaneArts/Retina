@@ -740,9 +740,9 @@ path participates.
 Surface/lattice/material/geology replacement clears dependent cave fields.
 Block regeneration clears fields and restores the base snapshot; the chunk
 catalog and ordinary queries retain them. A caller must finalize coasts and
-material columns before generating fields/carving. This component uses surface
-biome carvers; underground biome assignment, aquifer barriers, exact composed
-density/exterior handling and cave decorations still require implementation.
+material columns before generating fields/carving. Carved snapshots now retain a 3D cave-biome volume as described below. Aquifer
+barriers, exact composed density/exterior handling and cave decorations still
+require implementation.
 It emits FEATURES status without precomputed light. It is not the finished
 Retina Bend world type.
 
@@ -764,3 +764,41 @@ voxel correctness and repeatability within each backend, plus identical normal
 GPU/observer output; cross-backend byte determinism is not required. See
 `docs/benchmarks/bend-caves-correctness.json` for source/input/binary hashes,
 actual Metal observations and independent/Minecraft decoding evidence.
+
+
+Cave command 33 now fuses registered underground biome selection into its 3D
+node dispatch. It searches climate program 0 at XYZ when registered targets
+include a cave biome (flag 16). Selection uses six climate dimensions including
+depth. In the top twelve blocks, or when no registered cave target exists, a
+node stores U32 MAX as an explicit instruction to inherit the finalized surface
+biome of the actual column. This retains shoreline biome decisions. Height
+probes use the same exact integer terrain geometry as material columns, with
+globally aligned local evaluation for quart anchors outside a thin tile's
+resident density coverage. Cave fields still have the same four channels and
+the same opcode-33/34 acknowledgement/query formats.
+
+- **36 — cave biome batch:** the same count (0..4096) and five-word
+  X/Y/Z/seed-low/seed-high queries as command 34. Each result is two U32 words:
+  presence and registry biome ID. Present MAX means surface inheritance; absent
+  queries return presence=0 and MAX. IDs use the containing globally aligned
+  four-block cell, with the inclusive final node also queryable. Both seed words
+  and all three cached bounds are checked. Missing fields return **740** and
+  malformed payloads **603**. Queries run on the selected Bend CPU/GPU backend
+  without altering any snapshot.
+
+Command 35 now selects per-voxel registered carvers using these IDs and attaches
+the immutable biome volume to the carved block snapshot. Chunk/MCA encoders
+store the resulting 4x4x4 biome indices in each section using Minecraft's XYZ
+quart ordering. Near the roof they resolve inheritance from the actual surface
+column. Field regeneration retains that carved snapshot and its biome volume;
+base block regeneration removes the volume and clears diagnostic cave fields.
+Preparing the chunk catalog retains both. There is no biome readback between
+these stages, and Java only transports raw diagnostics.
+
+```sh
+nice -n 10 ./gradlew bendCaveBiomeTest bendCaveWorkerTest \
+  -PretinaHostOnly --max-workers=2 --no-parallel -PbendSkipBuild \
+  -PproveMetal -PbendMetalProbe=/absolute/path/to/current-source-metal-observer
+nice -n 10 ./gradlew bendCaveBiomeRegionTest -PretinaHostOnly \
+  --max-workers=2 --no-parallel
+```

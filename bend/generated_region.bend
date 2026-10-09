@@ -51,7 +51,7 @@ def coordinate(+value: U32) -> Bool:
 
 def aligned(+grid: M.Grid) -> Bool:
   match grid:
-    case M.Grid{_,+minimum,+height,_}: Bool.and(U32.is_zero(U32.mod(minimum,16)),U32.is_zero(U32.mod(height,16)))
+    case M.Grid{_,+minimum,+height,_,_}: Bool.and(U32.is_zero(U32.mod(minimum,16)),U32.is_zero(U32.mod(height,16)))
 
 def validation(+grid: M.Grid,+request: Request) -> U32:
   match request:

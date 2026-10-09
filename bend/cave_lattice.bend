@@ -3,6 +3,7 @@ import ./geology.bend as G
 import ./density.bend as Q
 import ./density_lattice.bend as L
 import ./terrain_surface.bend as S
+import ./terrain_height.bend as H
 import ./climate.bend as C
 import ./precise.bend as D
 import ./noise.bend as N
@@ -11,8 +12,12 @@ import ./noise.bend as N
 # noise and rounded finite canyons are evaluated at nodes, not per block.
 type Layout is Data:
   Layout{origin: Q.Point,nx: U32,ny: U32,nz: U32,low: U32,high: U32}
+type Sample is Data:
+  Sample{fields: Q.Vec4,biome: U32}
+type Surface is Data:
+  Surface{height: D.Number,carvers: G.Biome}
 type Grid is Data:
-  Grid{layout: Layout,values: Q.Table<Q.Vec4>}
+  Grid{layout: Layout,values: Q.Table<Sample>}
 type Computed is Type:
   Computed{model: Q.Model,programs: Q.Table<Q.Program>,climate: C.Model,geology: G.Profile,grid: Grid}
 
@@ -225,11 +230,33 @@ def point(layout: Layout,+i: U32) -> Q.Point:
     case Layout{origin,+nx,+ny,_,_,_}: Q.shifted(origin,D.unsigned(U32.mul(U32.mod(i,nx),4)),
       D.unsigned(U32.mul(U32.mod(U32.div(i,nx),ny),4)),D.unsigned(U32.mul(U32.div(i,U32.mul(nx,ny)),4)))
 
+# Height probes reuse the resident terrain lattice. For a quart anchor outside
+# its X/Z coverage (thin/nonaligned tiles), evaluate the same global cells in a
+# tiny local lattice on this GPU task. Never clamp to a tile edge or extrapolate.
 @unsafe
-def choice(+layout: Layout,+model: Q.Model,+programs: Q.Table<Q.Program>,+climate: C.Model,+biomes: Q.Table<G.Biome>,+i: U32) -> G.Biome:
-  match layout:
-    case Layout{_,+nx,+ny,_,+low,+high}:
-      chosen(C.lookup(climate,C.Query{S.axes(Q.run_index(model,programs,0,horizontal(point(layout,U32.add(U32.mod(i,nx),U32.mul(U32.div(i,nx),U32.mul(nx,ny))))),low,high)),False{},False{},False{},False{}}),biomes)
+def global_height(+config: S.Config,+density: L.Grid,+model: Q.Model,+programs: Q.Table<Q.Program>,+point: Q.Point,+low: U32,+high: U32) -> D.Number:
+  match density:
+    case L.Grid{L.Layout{+origin,+nx,_,+nz,+h,+v,_,_,_},_}:
+      height_relative(L.relative(point,origin,h,v),nx,nz,config,density,model,programs,point,low,high)
+
+@unsafe
+def height_relative(relative: Q.Point,nx: U32,nz: U32,config: S.Config,density: L.Grid,model: Q.Model,programs: Q.Table<Q.Program>,point: Q.Point,low: U32,high: U32) -> D.Number:
+  match relative:
+    case Q.Point{x,_,z}: height_covered(Bool.and(L.contains(x,nx),L.contains(z,nz)),config,density,model,programs,point,low,high)
+
+@unsafe
+def height_covered(covered: Bool,+config: S.Config,density: L.Grid,model: Q.Model,programs: Q.Table<Q.Program>,+point: Q.Point,low: U32,high: U32) -> D.Number:
+  match covered config point:
+    case True{} _ _: D.integer(H.height(config,density,point))
+    case False{} S.Config{_,_,_,+h,+v,_} Q.Point{+x,_,+z}:
+      height_local(S.y_bounds(config),config,model,programs,Q.lattice(x,h),Q.lattice(z,h),h,v,point,low,high)
+
+@unsafe
+def height_local(pair: D.Number & D.Number,+config: S.Config,+model: Q.Model,+programs: Q.Table<Q.Program>,x: D.Number,z: D.Number,h: U32,+v: U32,+point: Q.Point,low: U32,high: U32) -> D.Number:
+  (minimum,+maximum) = pair
+  +origin = Q.lattice(minimum,v)
+  +layout : L.Layout = L.Layout{Q.Point{x,origin,z},2,L.count(maximum,origin,v),2,h,v,1,low,high}
+  D.integer(H.height(config,L.Grid{layout,L.serial(L.size(layout),0,model,programs,layout)},point))
 
 def horizontal(point: Q.Point) -> Q.Point:
   match point:
@@ -241,52 +268,88 @@ def chosen(choice: C.Choice,biomes: Q.Table<G.Biome>) -> G.Biome:
     case C.Choice{_,id,_,_}: Q.get(G.Biome,biomes,id,G.Biome{Q.Empty{}})
 
 @unsafe
-def choices(+limit: U32,+n: U32,+base: U32,+layout: Layout,+model: Q.Model,+programs: Q.Table<Q.Program>,+climate: C.Model,+biomes: Q.Table<G.Biome>) -> Q.Table<G.Biome>:
-  match n:
-    case 1: Q.Leaf{choice(layout,model,programs,climate,biomes,base)}
-    case _: choice_split(U32.is_le(n,limit),limit,n,base,layout,model,programs,climate,biomes)
+def choice(+layout: Layout,+config: S.Config,+density: L.Grid,+enabled: Bool,+model: Q.Model,+programs: Q.Table<Q.Program>,+climate: C.Model,+biomes: Q.Table<G.Biome>,+i: U32) -> Surface:
+  match layout:
+    case Layout{_,+nx,+ny,_,+low,+high}:
+      +p = horizontal(point(layout,U32.add(U32.mod(i,nx),U32.mul(U32.div(i,nx),U32.mul(nx,ny)))))
+      Surface{surface_height(enabled,config,density,model,programs,p,low,high),
+        chosen(C.lookup(climate,C.Query{S.axes(Q.run_index(model,programs,0,p,low,high)),False{},False{},False{},False{}}),biomes)}
 
 @unsafe
-def choice_split(serial: Bool,+limit: U32,+n: U32,+base: U32,+layout: Layout,+model: Q.Model,+programs: Q.Table<Q.Program>,+climate: C.Model,+biomes: Q.Table<G.Biome>) -> Q.Table<G.Biome>:
+def surface_height(enabled: Bool,config: S.Config,density: L.Grid,model: Q.Model,programs: Q.Table<Q.Program>,point: Q.Point,low: U32,high: U32) -> D.Number:
+  match enabled:
+    case False{}: D.scalar(0.0)
+    case True{}: global_height(config,density,model,programs,point,low,high)
+
+@unsafe
+def choices(+limit: U32,+n: U32,+base: U32,+layout: Layout,+config: S.Config,+density: L.Grid,+enabled: Bool,+model: Q.Model,+programs: Q.Table<Q.Program>,+climate: C.Model,+biomes: Q.Table<G.Biome>) -> Q.Table<Surface>:
+  match n:
+    case 1: Q.Leaf{choice(layout,config,density,enabled,model,programs,climate,biomes,base)}
+    case _: choice_split(U32.is_le(n,limit),limit,n,base,layout,config,density,enabled,model,programs,climate,biomes)
+
+@unsafe
+def choice_split(serial: Bool,+limit: U32,+n: U32,+base: U32,+layout: Layout,+config: S.Config,+density: L.Grid,+enabled: Bool,+model: Q.Model,+programs: Q.Table<Q.Program>,+climate: C.Model,+biomes: Q.Table<G.Biome>) -> Q.Table<Surface>:
   match serial:
-    case True{}: Q.Branch{n,choices(limit,U32.div(n,2),base,layout,model,programs,climate,biomes),choices(limit,U32.sub(n,U32.div(n,2)),U32.add(base,U32.div(n,2)),layout,model,programs,climate,biomes)}
+    case True{}: Q.Branch{n,choices(limit,U32.div(n,2),base,layout,config,density,enabled,model,programs,climate,biomes),choices(limit,U32.sub(n,U32.div(n,2)),U32.add(base,U32.div(n,2)),layout,config,density,enabled,model,programs,climate,biomes)}
     case False{}:
       +half = U32.div(n,2)
-      a b = choices(limit,half,base,layout,model,programs,climate,biomes) choices(limit,U32.sub(n,half),U32.add(base,half),layout,model,programs,climate,biomes)
+      a b = choices(limit,half,base,layout,config,density,enabled,model,programs,climate,biomes) choices(limit,U32.sub(n,half),U32.add(base,half),layout,config,density,enabled,model,programs,climate,biomes)
       Q.Branch{n,a,b}
 
+# MAX means inherit the finalized surface biome of the actual block column.
+# This preserves coastal remapping above ground instead of redoing it at Y=0.
 @unsafe
-def vertex(+layout: Layout,+model: Q.Model,+programs: Q.Table<Q.Program>,+noises: Q.Table<G.Noise>,+biomes: Q.Table<G.Biome>,+i: U32) -> Q.Vec4:
+def selected_biome(enabled: Bool,+surface: Surface,+point: Q.Point,model: Q.Model,programs: Q.Table<Q.Program>,climate: C.Model,low: U32,high: U32) -> U32:
+  match surface point:
+    case Surface{height,_} Q.Point{+x,+y,+z}:
+      underground(Bool.and(enabled,D.less(y,D.sub(height,D.scalar(12.0)))),model,programs,climate,Q.Point{x,y,z},low,high)
+
+@unsafe
+def underground(active: Bool,model: Q.Model,programs: Q.Table<Q.Program>,climate: C.Model,point: Q.Point,low: U32,high: U32) -> U32:
+  match active:
+    case False{}: 4294967295
+    case True{}: S.biome(C.lookup(climate,C.Query{S.axes(Q.run_index(model,programs,0,point,low,high)),False{},True{},False{},False{}}))
+
+def carver_biome(id: U32,surface: Surface,biomes: Q.Table<G.Biome>) -> G.Biome:
+  match id surface:
+    case 4294967295 Surface{_,carvers}: carvers
+    case _ _: Q.get(G.Biome,biomes,id,G.Biome{Q.Empty{}})
+
+@unsafe
+def vertex(+layout: Layout,+enabled: Bool,+model: Q.Model,+programs: Q.Table<Q.Program>,+climate: C.Model,+noises: Q.Table<G.Noise>,+biomes: Q.Table<G.Biome>,+surfaces: Q.Table<Surface>,+i: U32) -> Sample:
   match layout:
     case Layout{_,+nx,+ny,_,+low,+high}:
       +p = point(layout,i)
+      +surface = Q.get(Surface,surfaces,U32.add(U32.mod(i,nx),U32.mul(nx,U32.div(i,U32.mul(nx,ny)))),Surface{D.scalar(0.0),G.Biome{Q.Empty{}}})
+      +id = selected_biome(enabled,surface,p,model,programs,climate,low,high)
       +seed = U32.xor(low,N.hash(high))
       +rough = noise(noises,4,p,seed)
-      Q.Vec4{D.value(S.first(Q.run_index(model,programs,2,p,low,high))),
+      Sample{Q.Vec4{D.value(S.first(Q.run_index(model,programs,2,p,low,high))),
         F32.add(noise(noises,1,scale(p,1.6,1.0),seed),F32.mul(rough,0.06)),
         F32.sub(noise(noises,2,scale(p,1.6,1.0),seed),F32.mul(rough,0.06)),
-        ravines(Q.get(G.Biome,biomes,U32.add(U32.mod(i,nx),U32.mul(nx,U32.div(i,U32.mul(nx,ny)))),G.Biome{Q.Empty{}}),p,seed)}
+        ravines(carver_biome(id,surface,biomes),p,seed)},id}
 
 @unsafe
-def vertices(+limit: U32,+n: U32,+base: U32,+layout: Layout,+model: Q.Model,+programs: Q.Table<Q.Program>,+noises: Q.Table<G.Noise>,+biomes: Q.Table<G.Biome>) -> Q.Table<Q.Vec4>:
+def vertices(+limit: U32,+n: U32,+base: U32,+layout: Layout,+enabled: Bool,+model: Q.Model,+programs: Q.Table<Q.Program>,+climate: C.Model,+noises: Q.Table<G.Noise>,+biomes: Q.Table<G.Biome>,+surfaces: Q.Table<Surface>) -> Q.Table<Sample>:
   match n:
-    case 1: Q.Leaf{vertex(layout,model,programs,noises,biomes,base)}
-    case _: vertex_split(U32.is_le(n,limit),limit,n,base,layout,model,programs,noises,biomes)
+    case 1: Q.Leaf{vertex(layout,enabled,model,programs,climate,noises,biomes,surfaces,base)}
+    case _: vertex_split(U32.is_le(n,limit),limit,n,base,layout,enabled,model,programs,climate,noises,biomes,surfaces)
 
 @unsafe
-def vertex_split(serial: Bool,+limit: U32,+n: U32,+base: U32,+layout: Layout,+model: Q.Model,+programs: Q.Table<Q.Program>,+noises: Q.Table<G.Noise>,+biomes: Q.Table<G.Biome>) -> Q.Table<Q.Vec4>:
+def vertex_split(serial: Bool,+limit: U32,+n: U32,+base: U32,+layout: Layout,+enabled: Bool,+model: Q.Model,+programs: Q.Table<Q.Program>,+climate: C.Model,+noises: Q.Table<G.Noise>,+biomes: Q.Table<G.Biome>,+surfaces: Q.Table<Surface>) -> Q.Table<Sample>:
   match serial:
-    case True{}: Q.Branch{n,vertices(limit,U32.div(n,2),base,layout,model,programs,noises,biomes),vertices(limit,U32.sub(n,U32.div(n,2)),U32.add(base,U32.div(n,2)),layout,model,programs,noises,biomes)}
+    case True{}: Q.Branch{n,vertices(limit,U32.div(n,2),base,layout,enabled,model,programs,climate,noises,biomes,surfaces),vertices(limit,U32.sub(n,U32.div(n,2)),U32.add(base,U32.div(n,2)),layout,enabled,model,programs,climate,noises,biomes,surfaces)}
     case False{}:
       +half = U32.div(n,2)
-      a b = vertices(limit,half,base,layout,model,programs,noises,biomes) vertices(limit,U32.sub(n,half),U32.add(base,half),layout,model,programs,noises,biomes)
+      a b = vertices(limit,half,base,layout,enabled,model,programs,climate,noises,biomes,surfaces) vertices(limit,U32.sub(n,half),U32.add(base,half),layout,enabled,model,programs,climate,noises,biomes,surfaces)
       Q.Branch{n,a,b}
 
-def generate(+layout: Layout,+model: Q.Model,+programs: Q.Table<Q.Program>,+climate: C.Model,geology: G.Profile) -> Computed:
+def generate(+layout: Layout,+config: S.Config,+density: L.Grid,+model: Q.Model,+programs: Q.Table<Q.Program>,+climate: C.Model,geology: G.Profile) -> Computed:
   match layout geology:
     case Layout{_,+nx,_,+nz,_,_} G.Profile{+noises,+biomes,+flags,+lava,+level,+minimum,+height}:
-      selected : Q.Table<G.Biome> = choices!(U32.max(1,U32.div(U32.add(U32.mul(nx,nz),16383),16384)),U32.mul(nx,nz),0,layout,model,programs,climate,biomes)
-      values : Q.Table<Q.Vec4> = vertices!(U32.max(1,U32.div(U32.add(size(layout),16383),16384)),size(layout),0,layout,model,programs,noises,selected)
+      +enabled = C.has_underground(climate)
+      selected : Q.Table<Surface> = choices!(U32.max(1,U32.div(U32.add(U32.mul(nx,nz),16383),16384)),U32.mul(nx,nz),0,layout,config,density,enabled,model,programs,climate,biomes)
+      values : Q.Table<Sample> = vertices!(U32.max(1,U32.div(U32.add(size(layout),16383),16384)),size(layout),0,layout,enabled,model,programs,climate,noises,biomes,selected)
       Computed{model,programs,climate,G.Profile{noises,biomes,flags,lava,level,minimum,height},Grid{layout,values}}
 
 def mix(a: Q.Vec4,b: Q.Vec4,+t: F32) -> Q.Vec4:
@@ -294,16 +357,20 @@ def mix(a: Q.Vec4,b: Q.Vec4,+t: F32) -> Q.Vec4:
     case Q.Vec4{a,b,c,d} Q.Vec4{e,f,g,h}: Q.Vec4{N.mix(a,e,t),N.mix(b,f,t),N.mix(c,g,t),N.mix(d,h,t)}
 
 @unsafe
-def get(+values: Q.Table<Q.Vec4>,i: U32) -> Q.Vec4:
-  Q.get(Q.Vec4,values,i,Q.Vec4{0.0,0.0,0.0,1000.0})
+def get(+values: Q.Table<Sample>,i: U32) -> Q.Vec4:
+  fields(Q.get(Sample,values,i,Sample{Q.Vec4{0.0,0.0,0.0,1000.0},4294967295}))
+
+def fields(sample: Sample) -> Q.Vec4:
+  match sample:
+    case Sample{fields,_}: fields
 
 @unsafe
-def interpolate(+values: Q.Table<Q.Vec4>,+i: U32,+nx: U32,+xy: U32,+x: F32,+y: F32,z: F32) -> Q.Vec4:
+def interpolate(+values: Q.Table<Sample>,+i: U32,+nx: U32,+xy: U32,+x: F32,+y: F32,z: F32) -> Q.Vec4:
   mix(mix(mix(get(values,i),get(values,U32.inc(i)),x),mix(get(values,U32.add(i,nx)),get(values,U32.inc(U32.add(i,nx))),x),y),
     mix(mix(get(values,U32.add(i,xy)),get(values,U32.inc(U32.add(i,xy))),x),mix(get(values,U32.add(U32.add(i,xy),nx)),get(values,U32.inc(U32.add(U32.add(i,xy),nx))),x),y),z)
 
 @unsafe
-def located(ok: Bool,relative: Q.Point,+nx: U32,+ny: U32,nz: U32,values: Q.Table<Q.Vec4>) -> Maybe<&2,Q.Vec4>:
+def located(ok: Bool,relative: Q.Point,+nx: U32,+ny: U32,nz: U32,values: Q.Table<Sample>) -> Maybe<&2,Q.Vec4>:
   match ok relative:
     case False{} _: None{}
     case True{} Q.Point{+x,+y,+z}:
@@ -319,7 +386,7 @@ def lookup(+grid: Grid,+point: Q.Point,+low: U32,+high: U32) -> Maybe<&2,Q.Vec4>
       relative_checked(Bool.and(U32.is_eq(low,lo),U32.is_eq(high,hi)),L.relative(point,origin,4,4),nx,ny,nz,values)
 
 @unsafe
-def relative_checked(ok: Bool,+relative: Q.Point,+nx: U32,+ny: U32,+nz: U32,values: Q.Table<Q.Vec4>) -> Maybe<&2,Q.Vec4>:
+def relative_checked(ok: Bool,+relative: Q.Point,+nx: U32,+ny: U32,+nz: U32,values: Q.Table<Sample>) -> Maybe<&2,Q.Vec4>:
   match relative:
     case Q.Point{+x,+y,+z}: located(Bool.and(ok,Bool.and(L.contains(x,nx),Bool.and(L.contains(y,ny),L.contains(z,nz)))),Q.Point{x,y,z},nx,ny,nz,values)
 
@@ -327,12 +394,42 @@ def grid_layout(grid: Grid) -> Layout:
   match grid:
     case Grid{layout,_}: layout
 
-def finite_values(values: Q.Table<Q.Vec4>) -> Bool:
+def finite_values(values: Q.Table<Sample>) -> Bool:
   match values:
     case Q.Empty{}: True{}
-    case Q.Leaf{Q.Vec4{a,b,c,d}}: Bool.and(Bool.and(D.finite(a),D.finite(b)),Bool.and(D.finite(c),D.finite(d)))
+    case Q.Leaf{Sample{Q.Vec4{a,b,c,d},_}}: Bool.and(Bool.and(D.finite(a),D.finite(b)),Bool.and(D.finite(c),D.finite(d)))
     case Q.Branch{_,a,b}: Bool.and(finite_values(a),finite_values(b))
 
 def finite(grid: Grid) -> Bool:
   match grid:
     case Grid{_,values}: finite_values(values)
+
+# Discrete quart IDs use the containing global four-block cell. Field values
+# interpolate independently. The inclusive final node is a valid sample too.
+@unsafe
+def biome(+grid: Grid,+point: Q.Point,+low: U32,+high: U32) -> Maybe<&2,U32>:
+  match grid:
+    case Grid{Layout{origin,+nx,+ny,+nz,lo,hi},values}:
+      biome_relative(Bool.and(U32.is_eq(low,lo),U32.is_eq(high,hi)),L.relative(point,origin,4,4),nx,ny,nz,values)
+
+@unsafe
+def biome_relative(ok: Bool,+relative: Q.Point,+nx: U32,+ny: U32,+nz: U32,values: Q.Table<Sample>) -> Maybe<&2,U32>:
+  match relative:
+    case Q.Point{+x,+y,+z}: biome_located(Bool.and(ok,Bool.and(L.contains(x,nx),Bool.and(L.contains(y,ny),L.contains(z,nz)))),Q.Point{x,y,z},nx,ny,values)
+
+@unsafe
+def biome_located(ok: Bool,relative: Q.Point,+nx: U32,+ny: U32,values: Q.Table<Sample>) -> Maybe<&2,U32>:
+  match ok relative:
+    case False{} _: None{}
+    case True{} Q.Point{x,y,z}:
+      sample_biome(Q.get(Sample,values,U32.add(F32.to_u32(D.value(D.floor(x))),U32.mul(nx,U32.add(F32.to_u32(D.value(D.floor(y))),U32.mul(ny,F32.to_u32(D.value(D.floor(z))))))),Sample{Q.Vec4{0.0,0.0,0.0,1000.0},4294967295}))
+
+def sample_biome(sample: Sample) -> Maybe<&2,U32>:
+  match sample:
+    case Sample{_,id}: Some{id}
+
+def inherit(found: Maybe<&2,U32>,surface: U32) -> U32:
+  match found:
+    case None{}: surface
+    case Some{4294967295}: surface
+    case Some{id}: id

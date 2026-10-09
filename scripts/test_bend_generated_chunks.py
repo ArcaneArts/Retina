@@ -71,7 +71,7 @@ def state(value):
     return {'id':value} if isinstance(value,str) else value
 
 
-def validate(raw, source, columns, x, z, version):
+def validate(raw, source, columns, x, z, version, biome_ids=None):
     tag = read_nbt(raw); minimum = source['geology_min_y']; height = source['geology_height']
     assert (tag['xPos'],tag['zPos'],tag['yPos'],tag['DataVersion']) == (x,z,minimum//16,version)
     assert tag['Status'] == 'minecraft:features' and tag['isLightOn'] == 0
@@ -95,7 +95,8 @@ def validate(raw, source, columns, x, z, version):
         biomes = palette(section['biomes'],64,1)
         for i,actual in enumerate(biomes):
             c=(i%4)*4+((i//4)%4)*4*16
-            assert actual == source['biomes'][columns[c]['biome']]['id'],(s,i,actual)
+            id=columns[c]['biome'] if biome_ids is None else biome_ids[s*64+i]
+            assert actual == source['biomes'][id]['id'],(s,i,actual,id)
         count+=4096
     bits=height.bit_length()
     assert set(tag['Heightmaps']) == set(MAP_NAMES)
