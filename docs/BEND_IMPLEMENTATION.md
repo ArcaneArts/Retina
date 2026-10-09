@@ -11,6 +11,12 @@ This checklist tracks the full goal across separately reviewed and merged PR
 cycles. A checked library component does not imply a usable Bend generator.
 Exact vanilla or cross-backend seed agreement is not required.
 
+The playable backend currently uses Base and local modules, without bend-kit
+dependencies. [The package evaluation](BEND_PACKAGES.md) pins and tests bytes and
+pure zlib on real generated NBT in an isolated fixture. Packed growable buffers
+are promising; the package codec makes smaller output but measured slower.
+Production adoption and complete NBT/region benchmarking remain separate work.
+
 ## Playable terrain preview
 
 The current integration exposes **Retina Rust** and **Retina Bend** in the world
