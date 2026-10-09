@@ -107,6 +107,13 @@ public final class BendLakeWorkerTest {
                         "cave lattice preparation retains lake plans");
                 require(Arrays.equals(withLakes, await(worker.encodeGeneratedChunk(0, 0, seed, 5023, false))),
                         "cave lattice preparation retains generated lake snapshot");
+                await(worker.finalizeShorelineColumns());
+                rejected(worker.sampleLakeGeometry(query), 752);
+                rejected(worker.encodeGeneratedChunk(0, 0, seed, 5023, false), 731);
+                await(worker.generateLakeGeometry());
+                await(worker.generateBlockColumns());
+                require(Arrays.equals(withLakes, await(worker.encodeGeneratedChunk(0, 0, seed, 5023, false))),
+                        "shoreline finalization invalidates derived caches and lake rebuilding is repeatable");
                 await(worker.generateSurfaceColumns(0, 0, 16, 16, seed));
                 rejected(worker.sampleLakeGeometry(query), 752);
                 await(worker.prepareProfileGeology());

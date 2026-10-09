@@ -36,7 +36,7 @@ more deeply; retain the original requested scope.
 | Climate targets, biome selection, smooth boundaries and underground biomes | `climate.rs`, `climate.wgsl`, `RetinaBiomeSource.java` | Pure Bend balanced interval indices and surface/underground/coastal lookup implemented, checked against independent linear search with actual registered intervals on CPU and Metal. Typed resident-tape projection and persistent query commands implemented with explicit reload invalidation. GPU spatial climate fields and surface biome selection now consume resident density tiles; compact material layers implemented; blended boundaries and world integration pending |
 | Coastlines, shore materials, rivers and material predicates/layers | `ShoreMaterialProfile.java`, `column_program.rs`, `materials.wgsl` | Pure Bend resident per-biome material DAGs and predicates (40..54) implemented with shared numeric evaluation, registered bands/sea/layer mode and bounded CPU/GPU query batches. GPU context/compact block runs implemented. Resident GPU coastal finalization now uses exact generated occupancy, six-block disk probes and registered climate alternatives before material generation; independent CPU/Metal checks cover inland/ocean exclusion, distinct materials and cache/coordinate rules. Inland rivers, ocean remapping, 3D biome material assignment and final integration remain required |
 | Caves, ravines, rare surface entrances and cave decoration | `GeologyProfile.java`, `geology.rs`, `features.rs`, `caves.wgsl` | Typed geology, cached globally aligned GPU/CPU cave fields, rounded noisy ravines and registered column carving implemented; independent voxel/serialized-region and actual Minecraft decoder checks pass. GPU/CPU depth-dependent cave-biome volumes now select registered carvers and serialize actual 3D quart IDs, retaining finalized surface biomes near the roof. Resident aquifers now supply carved cavity materials. Composed-density/exterior refinements, decorations and running-world integration remain pending |
-| Lakes, aquifer fields and fluid barriers | `TerrainFeatureProfile.java`, `program/lake_sparse.rs`, `aquifers.wgsl` | Typed aquifer graph projection and GPU/CPU flooding, erosion, spread, lava, barrier and preliminary-surface evaluation implemented. Globally hashed resident fluid centers, trilinear barrier fields and nearest-center pressure now place registered cavity fluids while preserving protected/pressure-barrier materials. Registered lake budgets/materials, globally seeded candidates, five bank probes, bounded fluid levels and noisy basin/rim placement implemented on CPU/GPU before material coating. Independent block/NBT/zlib checks cover fluids, barriers, overlap and signed/distant coordinates; finalized coastline integration and complete running-world integration remain pending |
+| Lakes, aquifer fields and fluid barriers | `TerrainFeatureProfile.java`, `program/lake_sparse.rs`, `aquifers.wgsl` | Typed aquifer graph projection and GPU/CPU flooding, erosion, spread, lava, barrier and preliminary-surface evaluation implemented. Globally hashed resident fluid centers, trilinear barrier fields and nearest-center pressure now place registered cavity fluids while preserving protected/pressure-barrier materials. Registered lake budgets/materials, globally seeded candidates, five bank probes, bounded fluid levels and noisy basin/rim placement implemented on CPU/GPU before material coating. Independent block/NBT/zlib checks cover fluids, barriers, overlap and signed/distant coordinates; lake exclusions now use finalized pre-carving coast selection, including global probes outside the resident tile. Complete running-world integration remains pending |
 | Ore height/count/replacement/discard rules and GPU rasterization | `geology/`, `ore.wgsl` | Pending |
 | Ordered decoration, registered counts, provider noise and placement modifiers | `DecorationProfile.java`, `decoration/placement*`, `counts/`, `provider_noise/` | Pending |
 | Trees and decorators, giant mushrooms, fallen trees, disks, vegetation patches, block columns, bamboo, aquatic plants and attachments | `decoration.rs`, `decoration/`, `tree_shapes.rs` | Pending; port actual supported recipe variants, not only grass/tree examples |
@@ -834,10 +834,11 @@ The cache clears with a successful profile/model, density, surface or geology
 replacement; cave/aquifer preparation retains it where geometry is unchanged.
 Bad commands retain state. Empty climate indices, excluded biome flags, small
 world heights, low waterlines and distant/negative coordinates are covered.
-The current lake flag projection corresponds to raw surface command 16;
-coastline command 29 finalization still needs to be reconciled in complete
-pipeline orchestration. This component does not expose a finished Bend world
-preset, light regions or establish complete Rust-versus-Bend performance.
+The per-column lake exclusion flags now use the same pre-carving shoreline
+selection as command 29, even when a caller has only run raw surface command 16.
+The separate shoreline cycle below records that integration. This component
+does not expose a finished Bend world preset, light regions or establish complete
+Rust-versus-Bend performance.
 
 Reproduce independent bank, material and serialization checks with
 `scripts/test_bend_lake_basins.py` / `bendLakeBasinTest`; the existing
@@ -861,3 +862,54 @@ placement retains its earlier hash across 332,060 substance queries and 442,512
 carved voxels. Observed Metal runs account for all expected commands in each
 regression suite. These counts describe component validation, not generation
 throughput.
+
+The lake-basin cycle merged in
+[PR #49](https://github.com/ArcaneArts/Retina/pull/49), commit `5bc3817`.
+Both actual push and PR CI builds passed.
+
+### Lake exclusions follow finalized pre-carving coasts
+
+The lake flag pass now shares shoreline selection with command 29. Shore targets
+are excluded from inland climate selection when an inland target exists; real
+land/water transitions within the existing six-block probe disk select the
+registered coastal alternative. Shore-only profiles retain their existing
+fallback. Candidate-center recipe budgets and five-bank waterlines remain
+unchanged. A high lake waterline alone cannot classify an individual column as
+inland: the original terrain may dip to a genuine coast near the basin rim.
+
+All heights and climate selection execute inside the existing Bend flag
+dispatch. Probes beyond a small resident density tile evaluate the same globally
+aligned density cells in Bend, retaining signed/distant coordinates instead of
+clamping. Profiles without shore targets keep the raw lookup path. No extra
+dispatch, intermediate upload/readback or Java terrain calculation is added.
+Shoreline's existing integer-height fallback now calls its underlying shared
+height module directly, avoiding a module dependency cycle.
+
+The new regression fixture reproduced the old bug before the source change:
+a raw beach target allowed a lake in columns that finalized to an excluded
+swamp target. Independent integer-height and climate-search checks cover both
+orders (16/43/22 and 16/29/43/22), coastal gullies, inverse coastal exclusions,
+small/overlapping density tiles, shore-only and no-shore inputs. The independent
+material oracle also now accounts for neighboring lake slopes in untouched
+columns and preserves their original below-sea fluids. Those cases exposed
+previous oracle omissions, rather than requiring production material changes.
+
+Reproduce with `scripts/test_bend_lake_shorelines.py` /
+`bendLakeShorelineTest`. The Java lake-worker test checks that successful
+shoreline finalization invalidates both block and lake caches and that rebuilding
+them preserves the generated chunk bytes. Component lakes/shorelines remain
+unlit; complete terrain composition, vegetation, structures, lighting and the
+production backend/world presets are still required.
+
+Validation covers six controls plus actual vanilla, Terralith and combined
+profiles on CPU, GPU and observed Metal: 1,694 material columns and 795 finalized
+surface columns per backend, identical result hashes and all 548 expected device
+commands observed. The existing shoreline aggregate is unchanged across 3,342
+columns/158,080 material voxels (290 observed commands). Basin output is unchanged
+across 1,490 bank heights, 1,160 columns and three NBT/zlib chunks per backend
+(715 observed commands). The Gradle control task, actual Java lifecycle test and
+Fabric/NeoForge host build pass, including 64 native tests (11 existing explicit
+tests ignored). Source, input and executable hashes are retained in
+`docs/benchmarks/bend-lake-shorelines-correctness.json`. The new harness accepts
+`--output` so a registry run can retain its report separately from the Gradle
+control run.

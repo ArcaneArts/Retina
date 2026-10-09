@@ -6,6 +6,7 @@ import ./density_lattice.bend as L
 import ./terrain_surface.bend as S
 import ./cave_lattice.bend as CV
 import ./climate.bend as C
+import ./shoreline.bend as Shore
 import ./geology.bend as G
 import ./precise.bend as D
 import ./noise.bend as N
@@ -106,22 +107,22 @@ def halo(tile: S.Tile) -> S.Tile:
     case S.Tile{x,z,width,depth,low,high}: S.Tile{U32.sub(x,1),U32.sub(z,1),U32.add(width,2),U32.add(depth,2),low,high}
 
 @unsafe
-def flag_biome(choice: C.Choice,biomes: Q.Table<G.Biome>) -> U32:
-  match choice:
-    case C.Missing{}: 4294967295
-    case C.Choice{_,biome,_,_}: biome_flags(Q.get(G.Biome,biomes,biome,G.empty_biome()))
+def flag_biome(row: S.Row,biomes: Q.Table<G.Biome>) -> U32:
+  match row:
+    case S.Row{_,_,4294967295}: 4294967295
+    case S.Row{_,_,biome}: biome_flags(Q.get(G.Biome,biomes,biome,G.empty_biome()))
 
 def biome_flags(biome: G.Biome) -> U32:
   match biome:
     case G.Biome{_,LD.Params{_,_,_,_,flags}}: flags
 
 @unsafe
-def flags(+n: U32,+base: U32,+tile: S.Tile,+model: Q.Model,+programs: Q.Table<Q.Program>,+climate: C.Model,+biomes: Q.Table<G.Biome>) -> Q.Table<U32>:
+def flags(+n: U32,+base: U32,+tile: S.Tile,+config: S.Config,+density: L.Grid,+model: Q.Model,+programs: Q.Table<Q.Program>,+climate: C.Model,+biomes: Q.Table<G.Biome>) -> Q.Table<U32>:
   match n tile:
-    case 1 S.Tile{_,_,_,_,low,high}: Q.Leaf{flag_biome(C.lookup(climate,C.Query{S.axes(Q.run_index(model,programs,0,S.point(tile,base),low,high)),False{},False{},False{},False{}}),biomes)}
+    case 1 S.Tile{_,_,_,_,low,high}: Q.Leaf{flag_biome(Shore.global_row(config,density,model,programs,climate,S.point(tile,base),low,high),biomes)}
     case _ _:
       +half = U32.div(n,2)
-      a b = flags(half,base,tile,model,programs,climate,biomes) flags(U32.sub(n,half),U32.add(base,half),tile,model,programs,climate,biomes)
+      a b = flags(half,base,tile,config,density,model,programs,climate,biomes) flags(U32.sub(n,half),U32.add(base,half),tile,config,density,model,programs,climate,biomes)
       Q.Branch{n,a,b}
 
 def floor(config: S.Config) -> U32:
@@ -129,12 +130,12 @@ def floor(config: S.Config) -> U32:
     case S.Config{minimum,_,_,_,_,_}: minimum
 
 @unsafe
-def execute(+layout: LD.Layout,+tile: S.Tile,+config: S.Config,density: L.Grid,+model: Q.Model,+programs: Q.Table<Q.Program>,+climate: C.Model,+biomes: Q.Table<G.Biome>) -> Computed:
+def execute(+layout: LD.Layout,+tile: S.Tile,+config: S.Config,+density: L.Grid,+model: Q.Model,+programs: Q.Table<Q.Program>,+climate: C.Model,+biomes: Q.Table<G.Biome>) -> Computed:
   +candidates : Q.Table<LC.Candidate> = candidates!(size(layout),0,layout,model,programs,climate,biomes)
   banks : Q.Table<U32> = banks!(U32.mul(size(layout),5),0,candidates,config,density,model,programs,layout)
   basins : Q.Table<LD.Basin> = basins!(size(layout),0,candidates,banks,floor(config))
   +expanded = halo(tile)
-  flags : Q.Table<U32> = flags!(S.total(expanded),0,expanded,model,programs,climate,biomes)
+  flags : Q.Table<U32> = flags!(S.total(expanded),0,expanded,config,density,model,programs,climate,biomes)
   Computed{LD.Cache{packed(U32.add(U32.add(10,U32.mul(size(layout),16)),S.total(expanded)),0,layout,expanded,basins,flags)}}
 
 # A compact resident word buffer keeps the persistent state's captured arity
@@ -283,7 +284,8 @@ def next(pair: Array<Maybe<&2,LD.Basin>> & Maybe<&2,LD.Basin>,n: U32,i: U32,writ
   encoded(U32.sub(n,1),U32.inc(i),values,encoded_row(value,writer))
 
 # Finalized per-column biome flags include the one-column slope halo. The
-# climate lookup is identical to S.row, including missing-target rejection.
+# selection matches shoreline finalization on unchanged pre-lake geometry,
+# including globally evaluated probes beyond the resident tile.
 @unsafe
 def column_flags(cache: LD.Cache,point: Q.Point) -> U32:
   match cache point:
