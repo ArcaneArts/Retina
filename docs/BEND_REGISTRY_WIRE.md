@@ -1088,3 +1088,55 @@ and GPU compilation run sequentially at reduced priority; no application C or
 shader implementation is substituted. The override is opt-in and an actual
 compiler failure remains visible. This is tested toolchain support for the
 component harness, not completed production packaging or additional GPU targets.
+
+
+## Raw ore attempt and geometry planning (47/48)
+
+These read-only commands require geology preparation (30) and use its resident
+registered ore store. Missing preparation returns error 754. Malformed frames,
+IDs or dimensions return 603 without changing the current profile/caches.
+Application computation runs entirely in Bend on the selected CPU/GPU backend.
+These are diagnostic views of reusable planning routines; they do not yet filter
+spatial biome membership, rasterize masks or replace generated blocks.
+
+Command 47 accepts a BE u32 count (0..256), followed by five words per query:
+`recipe, signed_chunk_x, signed_chunk_z, world_seed_low, world_seed_high`.
+A chunk anchor must be in -134217728..134217727, so all 16 absolute block
+coordinates fit signed i32. Registered rarity, inclusive count and height
+sampling determine the output. Each response row begins with its attempt count,
+followed by six words per attempt:
+`attempt_index, signed_block_x, signed_block_y, signed_block_z, geometry_seed_high, geometry_seed_low`.
+Uniform sampling handles the entire signed-i32 range. Triangular sampling uses
+the loaded plateau and falls back to uniform when the plateau spans the range.
+Even the maximum registered count (1024) fits a full diagnostic batch within
+6,292,480 response bytes. A zero request count produces an empty response.
+
+Command 48 accepts a BE u32 count (0..256), followed by three words per query:
+`recipe, geometry_seed_high, geometry_seed_low`. It consumes a recipe's size and
+scattered flag. Each response row begins with `kind, piece_count`, then four
+words per piece. Kind 0 contains F32 bit patterns for local sphere X/Y/Z and
+radius; zero radius marks a contained sphere. Kind 1 contains signed integer
+X/Y/Z offsets and the exposure-random word for a scattered point. There are at
+most 64 pieces per row; the maximum response is 264,192 bytes. Local geometry
+avoids converting a distant absolute world position to F32.
+
+Both ore-layout schemas use stable independent attempt streams in Bend. Seed
+and random state are exact u64 word pairs. Exact Rust-seed matching is not an
+acceptance requirement; registered count, rarity, height, size and shape rules
+are preserved. Anchor and attempt leaves calculate in parallel within one selected-backend
+dispatch per batch, retaining input order. Exact additive state jumps preserve
+the sequential count/coordinate/height draw sequence. Balanced returned trees
+avoid a deep GPU-result reconstruction stack. Profiling the raw transport calls is
+not a replacement for an end-to-end region benchmark.
+
+Run after the pinned engine build (use the documented macOS Clang override when
+needed):
+
+```sh
+./gradlew bendOrePlanningWorkerTest -PretinaHostOnly --max-workers=2 --no-parallel -PbendSkipBuild
+```
+
+The script also accepts actual loaded profile pairs through `--profile JSON RBP`,
+`--prove-metal`, `--metal-probe` and `--output`. The worker test exercises the real
+Java transport on CPU and GPU, concurrent callers, invalid requests, surface
+rebuilding, reload and shutdown.

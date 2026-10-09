@@ -369,6 +369,21 @@ public final class BendWorker implements AutoCloseable {
         return request(46, batch);
     }
 
+    /** Generate raw registered count/rarity/height attempts for globally anchored
+     * chunks in Bend. The bridge transports bytes; biome filtering and final
+     * block replay are subsequent stages, not performed by this query.
+     */
+    public CompletableFuture<byte[]> sampleOreAttempts(byte[] batch) {
+        return request(47, batch);
+    }
+
+    /** Build local sphere-chain or scattered geometry in Bend from recipe IDs
+     * and exact per-attempt seed words. Does not modify generated blocks.
+     */
+    public CompletableFuture<byte[]> sampleOreGeometry(byte[] batch) {
+        return request(48, batch);
+    }
+
     /** Cancellation skips queued requests; in-flight responses are drained to
      * preserve framing. World shutdown closes the worker and terminates it.
      */
