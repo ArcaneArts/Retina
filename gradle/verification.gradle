@@ -638,6 +638,20 @@ tasks.register('bendLakeBasinTest', Exec) {
     mustRunAfter 'bendLakeTest'
 }
 
+tasks.register('bendLakeShorelineTest', Exec) {
+    group = 'verification'
+    description = 'Check Bend lake exclusions against finalized coasts, including probes beyond small density tiles.'
+    workingDir rootProject.projectDir
+    commandLine providers.gradleProperty('pythonExecutable').getOrElse('python3'), 'scripts/test_bend_lake_shorelines.py'
+    if (providers.gradleProperty('bendSkipBuild').isPresent()) args '--skip-build'
+    if (providers.gradleProperty('proveMetal').isPresent()) args '--prove-metal'
+    if (providers.gradleProperty('bendMetalProbe').isPresent()) args '--metal-probe', providers.gradleProperty('bendMetalProbe').get()
+    if (!registryDensityProfiles.isEmpty()) registryDensityProfiles.split(',').each { pair ->
+        pair.split('=', 2).with { paths -> args '--profile', paths[0], paths[1] }
+    }
+    mustRunAfter 'bendLakeBasinTest', 'bendShorelineTest'
+}
+
 tasks.register('bendCaveBiomeRegionTest', JavaExec) {
     group = 'verification'
     description = 'Read and reopen Bend cave biome MCA files through actual Minecraft decoders.'

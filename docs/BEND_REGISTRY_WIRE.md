@@ -958,8 +958,8 @@ nice -n 10 ./gradlew bendLakeTest bendLakeWorkerTest -PretinaHostOnly \
   **603** malformed body. The result is four U32 words: signed global cell X/Z
   origin, then cell width/depth. The layout includes a one-cell candidate halo.
   Four selected CPU/GPU dispatches compute candidates, five bank probes per
-  candidate, minimum-bank level reduction, and raw surface-climate biome flags
-  for the tile plus its one-column slope halo. Bend packs resident metadata.
+  candidate, minimum-bank level reduction, and finalized pre-carving coastal biome
+  flags for the tile plus its one-column slope halo. Bend packs resident metadata.
 - **44 — query lake geometry:** U32 count (0–4096), then signed world X/Z and
   full seed low/high words per query, like command 42. Requires a resident lake
   plan (**752** otherwise); malformed batches return **603**. One selected
@@ -990,12 +990,24 @@ than carving the previous result. Replacing geometry/profile/geology clears the
 plan; querying before a new build returns 752. No new runtime opcode performs
 application computation in Java, Rust or handwritten device code.
 
-This component's per-column flags match command 16's raw climate lookup.
-Final shoreline selection, vegetation, lighting and running-world integration
-remain tracked requirements; these commands alone are not a complete backend.
+Per-column exclusion flags use command 29's shoreline selection from original
+terrain, independently of whether command 29 has already run. Existing registered
+shore targets are excluded inland where possible; a physical land/water
+transition in the six-block disk permits coastal remapping. Only-shore inputs
+retain their fallback. Candidate-center budgets still use their raw climate
+lookup. Lake cuts cannot manufacture shore selection.
+
+Command 43's one-column density halo requirement is unchanged. Coastal flag
+probes beyond it evaluate the same globally aligned density cells in Bend.
+Command 29 still requires its own six-column halo for cached full-tile
+finalization; a rejected 29 retains the lake/block snapshots. A successful 29
+invalidates those derived caches, so rebuild 43 before 22 afterward. No
+additional device dispatch or intermediate transfer is needed by the flags.
+Vegetation, lighting and running-world integration remain required; these
+commands alone are not a complete backend.
 
 ```sh
-nice -n 10 ./gradlew bendLakeBasinTest bendLakeWorkerTest -PretinaHostOnly \
+nice -n 10 ./gradlew bendLakeBasinTest bendLakeShorelineTest bendLakeWorkerTest -PretinaHostOnly \
   --max-workers=2 --no-parallel -PbendSkipBuild -PproveMetal \
   -PbendMetalProbe=/absolute/path/to/current-source-metal-observer \
   -PbendDensityRegistryProfiles=/absolute/vanilla.json=/absolute/vanilla.rbp

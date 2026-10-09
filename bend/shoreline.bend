@@ -2,9 +2,60 @@ import Base
 import ./density.bend as Q
 import ./density_lattice.bend as L
 import ./terrain_surface.bend as S
-import ./material_columns.bend as MC
+import ./terrain_height.bend as H
+import ./cave_lattice.bend as CV
 import ./climate.bend as C
 import ./precise.bend as D
+
+
+def point_y(point: Q.Point,y: U32) -> Q.Point:
+  match point:
+    case Q.Point{x,_,z}: Q.Point{x,D.integer(y),z}
+
+# The global variant is for consumers with a small resident tile. It samples
+# the same pre-carving integer occupancy outside that tile, rather than clamping
+# shoreline probes to an available vertex. All calculations stay in Bend.
+@unsafe
+def global_probes(+index: U32,+height: U32,+sea: U32,+config: S.Config,+density: L.Grid,+model: Q.Model,+programs: Q.Table<Q.Program>,+point: Q.Point,+low: U32,+high: U32) -> Bool:
+  match index:
+    case 24: False{}
+    case _: global_probe_done(opposite(height,CV.word(D.axis(CV.global_height(config,density,model,programs,shifted(point,offset(index)),low,high))),sea),U32.inc(index),height,sea,config,density,model,programs,point,low,high)
+
+@unsafe
+def global_probe_done(found: Bool,index: U32,height: U32,sea: U32,config: S.Config,density: L.Grid,model: Q.Model,programs: Q.Table<Q.Program>,point: Q.Point,low: U32,high: U32) -> Bool:
+  match found:
+    case True{}: True{}
+    case False{}: global_probes(index,height,sea,config,density,model,programs,point,low,high)
+
+@unsafe
+def global_near(active: Bool,height: U32,sea: U32,config: S.Config,density: L.Grid,model: Q.Model,programs: Q.Table<Q.Program>,point: Q.Point,low: U32,high: U32) -> Bool:
+  match active:
+    case False{}: False{}
+    case True{}: global_probes(0,height,sea,config,density,model,programs,point,low,high)
+
+@unsafe
+def global_at(+height: U32,config: S.Config,density: L.Grid,model: Q.Model,programs: Q.Table<Q.Program>,+climate: C.Model,point: Q.Point,low: U32,high: U32,+axes: C.Axes) -> S.Row:
+  match config:
+    case S.Config{_,_,+sea,_,_,_}:
+      S.Row{D.value(D.integer(height)),axes,biome(selected(global_near(coast_height(height,sea),height,sea,config,density,model,programs,point,low,high),climate,axes,inland(climate,axes)))}
+
+@unsafe
+def global_kind(coasts: Bool,+config: S.Config,+density: L.Grid,+model: Q.Model,+programs: Q.Table<Q.Program>,+climate: C.Model,+point: Q.Point,+low: U32,+high: U32) -> S.Row:
+  match coasts:
+    case False{}: raw_row(S.axes(Q.run_index(model,programs,0,point,low,high)),climate)
+    case True{}: global_at(CV.word(D.axis(CV.global_height(config,density,model,programs,point,low,high))),config,density,model,programs,climate,point,low,high,S.axes(Q.run_index(model,programs,0,point,low,high)))
+
+@unsafe
+def raw_row(+axes: C.Axes,climate: C.Model) -> S.Row:
+  S.Row{0.0,axes,biome(C.lookup(climate,C.Query{axes,False{},False{},False{},False{}}))}
+
+@unsafe
+def global_row(config: S.Config,density: L.Grid,model: Q.Model,programs: Q.Table<Q.Program>,+climate: C.Model,point: Q.Point,low: U32,high: U32) -> S.Row:
+  global_kind(has_shores(climate),config,density,model,programs,climate,point,low,high)
+
+@unsafe
+def coast_height(+height: U32,+sea: U32) -> Bool:
+  Bool.and(Bool.not(D.less(D.integer(height),D.sub(D.integer(sea),D.scalar(2.0)))),Bool.not(D.less(D.add(D.integer(sea),D.scalar(3.0)),D.integer(height))))
 
 type Heights is Data:
   Heights{tile: S.Tile,values: Q.Table<U32>}
@@ -109,7 +160,7 @@ def solid_relative(relative: Q.Point,+nx: U32,+ny: U32,+nz: U32,+values: Q.Table
       +iz = U32.min(F32.to_u32(D.value(D.floor(z))),U32.sub(nz,2))
       +tx = D.sub(x,D.unsigned(ix))
       +tz = D.sub(z,D.unsigned(iz))
-      # Keep MC.vertical_at's bilinear-XZ-then-Y operation order exactly.
+      # Keep material vertical sampling's bilinear-XZ-then-Y operation order exactly.
       D.less(D.scalar(0.0),D.mix(S.layer(values,ix,iz,nx,ny,iy,tx,tz),
         S.layer(values,ix,iz,nx,ny,U32.inc(iy),tx,tz),D.sub(y,D.unsigned(iy))))
 
@@ -117,7 +168,7 @@ def solid_relative(relative: Q.Point,+nx: U32,+ny: U32,+nz: U32,+values: Q.Table
 def solid(density: L.Grid,point: Q.Point,y: U32) -> Bool:
   match density:
     case L.Grid{L.Layout{origin,nx,ny,nz,h,v,_,_,_},values}:
-      solid_relative(L.relative(MC.at(point,y),origin,h,v),nx,ny,nz,values)
+      solid_relative(L.relative(point_y(point,y),origin,h,v),nx,ny,nz,values)
 
 # Reuse the topmost continuous crossing (or a previously finalized height), but
 # never treat its rounded F32 floor as occupancy. Verify adjacent integer signs
@@ -136,25 +187,25 @@ def corrected(below: Bool,+candidate: U32,+offset: U32,+config: S.Config,+densit
 def bracket(ok: Bool,candidate: U32,config: S.Config,density: L.Grid,model: Q.Model,programs: Q.Table<Q.Program>,point: Q.Point,low: U32,high: U32) -> U32:
   match ok:
     case True{}: candidate
-    case False{}: MC.height(config,density,model,programs,point,low,high)
+    case False{}: H.height(config,density,point)
 
 @unsafe
 def lower_candidate(valid: Bool,+candidate: U32,+config: S.Config,+density: L.Grid,+model: Q.Model,+programs: Q.Table<Q.Program>,+point: Q.Point,+low: U32,+high: U32) -> U32:
   match valid:
-    case False{}: MC.height(config,density,model,programs,point,low,high)
+    case False{}: H.height(config,density,point)
     case True{}: bracket(solid(density,point,U32.sub(candidate,2)),U32.sub(candidate,1),config,density,model,programs,point,low,high)
 
 @unsafe
 def candidate(nonempty: Bool,+offset: U32,+config: S.Config,+density: L.Grid,+model: Q.Model,+programs: Q.Table<Q.Program>,+point: Q.Point,+low: U32,+high: U32) -> U32:
   match nonempty config:
-    case False{} _: MC.height(config,density,model,programs,point,low,high)
+    case False{} _: H.height(config,density,point)
     case True{} S.Config{+minimum,_,_,_,_,_}:
       corrected(solid(density,point,U32.add(minimum,U32.sub(offset,1))),U32.add(minimum,offset),offset,config,density,model,programs,point,low,high)
 
 @unsafe
 def guessed_kind(fast: Bool,hint: D.Number,+config: S.Config,density: L.Grid,model: Q.Model,programs: Q.Table<Q.Program>,point: Q.Point,low: U32,high: U32) -> U32:
   match fast config:
-    case False{} _: MC.height(config,density,model,programs,point,low,high)
+    case False{} _: H.height(config,density,point)
     case True{} S.Config{+minimum,+span,_,_,_,_}:
       +offset = F32.to_u32(D.value(D.maximum(D.scalar(0.0),D.minimum(D.unsigned(span),D.sub(D.floor(hint),D.integer(minimum))))))
       candidate(U32.is_gt(offset,0),offset,config,density,model,programs,point,low,high)
@@ -162,7 +213,7 @@ def guessed_kind(fast: Bool,hint: D.Number,+config: S.Config,density: L.Grid,mod
 @unsafe
 def guessed(+hint: D.Number,+config: S.Config,density: L.Grid,model: Q.Model,programs: Q.Table<Q.Program>,point: Q.Point,low: U32,high: U32) -> U32:
   match config:
-    case S.Config{_,_,_,_,_,True{}}: MC.height(config,density,model,programs,point,low,high)
+    case S.Config{_,_,_,_,_,True{}}: H.height(config,density,point)
     case S.Config{+minimum,+span,_,_,_,False{}}:
       # Raw surface rows use F32. Outside its sub-block precision range, retain
       # the full compensated scan instead of trusting a rounded height hint.
@@ -245,8 +296,7 @@ def at(+height: U32,+config: S.Config,cache: Heights,+climate: C.Model,point: Q.
   match config:
     case S.Config{_,_,+sea,_,_,_}:
       S.Row{D.value(D.integer(height)),axes,biome(selected(near(Bool.and(has_shores(climate),
-        Bool.and(Bool.not(D.less(D.integer(height),D.sub(D.integer(sea),D.scalar(2.0)))),
-          Bool.not(D.less(D.add(D.integer(sea),D.scalar(3.0)),D.integer(height))))),
+        coast_height(height,sea)),
         height,sea,cache,point),climate,axes,inland(climate,axes)))}
 
 @unsafe

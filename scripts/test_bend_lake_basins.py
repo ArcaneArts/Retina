@@ -117,10 +117,26 @@ class Reference(Materials):
         points=[(x,z),(x+r+5,z),(x-r-5,z),(x,z+(r+5)/f32(.78)),(x,z-(r+5)/f32(.78))]
         banks=[self.height_at(px,pz,lo,hi) for px,pz in points] if c['eligible'] else [minimum]*5
         return dict(c,level=max(minimum,min(banks)-2),banks=banks)
+    @lru_cache(maxsize=50000)
+    def finalized_biome(self,x,z,lo,hi):
+        axes=list(self.vertex(0,(x,0,z),lo,hi))
+        base=expected(self.targets,axes,8) or expected(self.targets,axes,0)
+        shore=expected(self.targets,axes,16);height=self.height_at(x,z,lo,hi);sea=self.source['sea_level']
+        coastal=False
+        if shore is not None and sea-2<=height<=sea+3:
+            for radius in (2,4,6):
+                step=math.floor(radius/math.sqrt(2)+.5)
+                for dx,dz in ((radius,0),(-radius,0),(0,radius),(0,-radius),(step,step),(-step,step),(step,-step),(-step,-step)):
+                    probe=self.height_at(x+dx,z+dz,lo,hi)
+                    if (probe<sea)!=(height<sea):coastal=True;break
+                if coastal:break
+        if coastal:
+            axes[2]=shore[2];base=expected(self.targets,axes,0) or base
+        return MASK if base is None else base[0]['biome']
     def shape(self,x,z,lo,hi):
         original=self.height_at(x,z,lo,hi)
-        choice=expected(self.targets,self.vertex(0,(x,0,z),lo,hi),0)
-        if choice is None or self.source['biomes'][choice[0]['biome']].get('flags',0)&30:return None
+        biome=self.finalized_biome(x,z,lo,hi)
+        if biome==MASK or self.source['biomes'][biome].get('flags',0)&30:return None
         noise=f32(world_simplex(x&MASK,z&MASK,f32(.055),(lo+9913)&MASK,hi)*f32(.09));best=None;previous=f32(1.35)
         for dz in (-1,0,1):
             for dx in (-1,0,1):
@@ -137,18 +153,22 @@ class Reference(Materials):
             target=math.floor(level+(original-level)*smooth+.5)
         target=max(self.minimum+6,min(self.maximum-1,target))
         return dict(best,inner=inner,original=original,height=target,distance=d)
-    def column(self,x,z,desc):
-        lo,hi=desc[-2:];sh=self.shape(x,z,lo,hi)
-        if sh is None:return super().column(x,z,desc)
-        base=super().column(x,z,desc);geometry={y:self.solid(x,y,z,desc) for y in range(self.minimum,self.maximum)}
-        fill=min(sh['original'],sh['height']-2)
-        for y in range(fill,sh['height']):geometry[y]=True
-        for y in range(sh['height'],self.maximum):geometry[y]=False
+    def column(self,x,z,desc,biome=None):
+        lo,hi=desc[-2:];sh=self.shape(x,z,lo,hi);reshaped=sh is not None
+        base=super().column(x,z,desc,biome);geometry={y:self.solid(x,y,z,desc) for y in range(self.minimum,self.maximum)}
+        if sh is None:
+            # A neighboring basin still changes the final slope/material context
+            # of an untouched column. Keep its original occupancy here.
+            sh=dict(original=base['height'],height=base['height'],inner=False,level=0,lava=False,barrier=0)
+        else:
+            fill=min(sh['original'],sh['height']-2)
+            for y in range(fill,sh['height']):geometry[y]=True
+            for y in range(sh['height'],self.maximum):geometry[y]=False
         slope=max(abs(self.new_height(x+1,z,lo,hi)-self.new_height(x-1,z,lo,hi)),abs(self.new_height(x,z+1,lo,hi)-self.new_height(x,z-1,lo,hi)))
         depth,_,band,secondary,_=base['context'];preliminary=sh['height']-9+depth;level=-(1<<31);above=0;below=self.maximum;ids={}
         for y in range(self.maximum-1,self.minimum-1,-1):
             if not geometry[y]:
-                fluid=(sh['inner'] and sh['height']<=y<sh['level']) or (y<self.source['sea_level'] and y<sh['height'])
+                fluid=(sh['inner'] and sh['height']<=y<sh['level']) or (y<self.source['sea_level'] and (not reshaped or y<sh['height']))
                 material=self.source['water'] if fluid else 0
                 if material==0:level=-(1<<31);above=0
                 elif level==-(1<<31):level=y+1

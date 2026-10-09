@@ -111,10 +111,11 @@ class Reference(SurfaceReference):
     def first_free(self,x,z,desc):
         return next((y+1 for y in range(self.maximum-1,self.minimum-1,-1) if self.solid(x,y,z,desc)),self.minimum)
 
-    def column(self,x,z,desc):
+    def column(self,x,z,desc,biome=None):
         low,high=desc[-2:];point=(x,0,z);s=self.source;p=s['registry_program']
         first=self.first_free(x,z,desc)
-        choice=expected(self.targets,self.vertex(0,point,low,high),0);biome=MASK if choice is None else choice[0]['biome']
+        if biome is None:
+            choice=expected(self.targets,self.vertex(0,point,low,high),0);biome=MASK if choice is None else choice[0]['biome']
         a,b,c=p['surface_noises']
         h=mix_hash(((x*2654435769)^(z*2246822507)^((low+1381)&MASK)^mix_hash(high))&MASK)
         depth=math.trunc(f32(f32(f32(self.materials.noise(point,a,low,high))*f32(2.75))+f32(3.))+f32((h&65535)/65535*.25))
