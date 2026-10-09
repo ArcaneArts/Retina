@@ -1,0 +1,200 @@
+{
+  "scope": "Independent ordered-placement interpreter versus Bend CPU and observed Metal.\n\nChecks candidate streams and live marker writes, not actual tree/feature writers\nor the playable worker. Original registry profiles are transported unchanged.\nFixture limits report explicit prefixes; production cursors remain resumable.",
+  "bend_version": "bend 2.0.36",
+  "runs": [
+    {
+      "profile": "profile-0",
+      "gpu_required": false,
+      "reverse_order": "pass",
+      "one_task_pauses": "pass",
+      "cases": 33,
+      "candidates": 138,
+      "exhausted": 31,
+      "explicit_prefixes": 2,
+      "max_tasks": 8192,
+      "sha256": "e5b98f5feb21cf17339d7d20cd4c7724c8ac2e2f85d77bfa00f0716fd6b11cde"
+    },
+    {
+      "profile": "profile-1",
+      "gpu_required": false,
+      "reverse_order": "pass",
+      "one_task_pauses": "pass",
+      "cases": 33,
+      "candidates": 198,
+      "exhausted": 31,
+      "explicit_prefixes": 2,
+      "max_tasks": 3797,
+      "sha256": "a16ffa4968bde68e04a5dd74b4bf6d25080c1032ba3f53d9c63516d1c5a0e792"
+    },
+    {
+      "profile": "profile-2",
+      "gpu_required": false,
+      "reverse_order": "pass",
+      "one_task_pauses": "pass",
+      "cases": 33,
+      "candidates": 167,
+      "exhausted": 31,
+      "explicit_prefixes": 2,
+      "max_tasks": 3727,
+      "sha256": "6b1e34047bdc2bce078104147198eb0fbe44495bdcaf64690f32a6ea4026a695"
+    },
+    {
+      "profile": "fixture",
+      "gpu_required": false,
+      "reverse_order": "pass",
+      "one_task_pauses": "pass",
+      "cases": 33,
+      "candidates": 315,
+      "exhausted": 30,
+      "explicit_prefixes": 3,
+      "max_tasks": 261,
+      "sha256": "6c85f74cc4c01ccc4bf6b05722bf56bf8c9f0cc25af87d978aef2b1c6c22590f"
+    },
+    {
+      "profile": "empty",
+      "gpu_required": false,
+      "reverse_order": "pass",
+      "one_task_pauses": "pass",
+      "cases": 33,
+      "candidates": 0,
+      "exhausted": 33,
+      "explicit_prefixes": 0,
+      "max_tasks": 0,
+      "sha256": "400ba448054832d81e15a3c2979305d09df45ddcabff103dc981de853e1101ee"
+    },
+    {
+      "profile": "profile-0",
+      "gpu_required": true,
+      "reverse_order": "pass",
+      "one_task_pauses": "pass",
+      "cases": 33,
+      "candidates": 138,
+      "exhausted": 31,
+      "explicit_prefixes": 2,
+      "max_tasks": 8192,
+      "sha256": "e5b98f5feb21cf17339d7d20cd4c7724c8ac2e2f85d77bfa00f0716fd6b11cde"
+    },
+    {
+      "profile": "profile-1",
+      "gpu_required": true,
+      "reverse_order": "pass",
+      "one_task_pauses": "pass",
+      "cases": 33,
+      "candidates": 198,
+      "exhausted": 31,
+      "explicit_prefixes": 2,
+      "max_tasks": 3797,
+      "sha256": "a16ffa4968bde68e04a5dd74b4bf6d25080c1032ba3f53d9c63516d1c5a0e792"
+    },
+    {
+      "profile": "profile-2",
+      "gpu_required": true,
+      "reverse_order": "pass",
+      "one_task_pauses": "pass",
+      "cases": 33,
+      "candidates": 167,
+      "exhausted": 31,
+      "explicit_prefixes": 2,
+      "max_tasks": 3727,
+      "sha256": "6b1e34047bdc2bce078104147198eb0fbe44495bdcaf64690f32a6ea4026a695"
+    },
+    {
+      "profile": "fixture",
+      "gpu_required": true,
+      "reverse_order": "pass",
+      "one_task_pauses": "pass",
+      "cases": 33,
+      "candidates": 315,
+      "exhausted": 30,
+      "explicit_prefixes": 3,
+      "max_tasks": 261,
+      "sha256": "6c85f74cc4c01ccc4bf6b05722bf56bf8c9f0cc25af87d978aef2b1c6c22590f"
+    },
+    {
+      "profile": "empty",
+      "gpu_required": true,
+      "reverse_order": "pass",
+      "one_task_pauses": "pass",
+      "cases": 33,
+      "candidates": 0,
+      "exhausted": 33,
+      "explicit_prefixes": 0,
+      "max_tasks": 0,
+      "sha256": "400ba448054832d81e15a3c2979305d09df45ddcabff103dc981de853e1101ee"
+    }
+  ],
+  "semantic_controls": {
+    "live_height": "pass",
+    "parent_height": "pass",
+    "live_and_parent_filters": "pass",
+    "shared_layer_grounds": 4,
+    "selector_shared_budget": 8,
+    "layer_resampling": "pass",
+    "failed_parent_cache": "pass",
+    "cuboid_flag_combinations": "pass",
+    "signed_overflow": "pass",
+    "final_y_clip": "pass",
+    "nested_candidates": 16777216,
+    "prefix_candidates": 64,
+    "prefix_queue": 2,
+    "prefix_tasks": 131
+  },
+  "one_cpu_thread": "pass",
+  "cpu_gpu_bytes_equal": true,
+  "metal_observation": [
+    {
+      "profile": "profile-0",
+      "command_buffers": 1,
+      "device_ms": [
+        8055.146417
+      ],
+      "sha256": "e5b98f5feb21cf17339d7d20cd4c7724c8ac2e2f85d77bfa00f0716fd6b11cde"
+    },
+    {
+      "profile": "profile-1",
+      "command_buffers": 1,
+      "device_ms": [
+        2022.65225
+      ],
+      "sha256": "a16ffa4968bde68e04a5dd74b4bf6d25080c1032ba3f53d9c63516d1c5a0e792"
+    },
+    {
+      "profile": "profile-2",
+      "command_buffers": 1,
+      "device_ms": [
+        1992.966625
+      ],
+      "sha256": "6b1e34047bdc2bce078104147198eb0fbe44495bdcaf64690f32a6ea4026a695"
+    },
+    {
+      "profile": "fixture",
+      "command_buffers": 1,
+      "device_ms": [
+        136.412375
+      ],
+      "sha256": "6c85f74cc4c01ccc4bf6b05722bf56bf8c9f0cc25af87d978aef2b1c6c22590f"
+    },
+    {
+      "profile": "empty",
+      "command_buffers": 1,
+      "device_ms": [
+        28.738792
+      ],
+      "sha256": "400ba448054832d81e15a3c2979305d09df45ddcabff103dc981de853e1101ee"
+    }
+  ],
+  "profiles": {
+    "/Users/cyberpwn/.local/share/retina-bend/2.0.36/backend-artifacts/placement-programs-20261009/profiles/profile-0.json": "aefce6ff0e800966ad55920c5d21510dfa277de4612f67e22d5146d3aa838203",
+    "/Users/cyberpwn/.local/share/retina-bend/2.0.36/backend-artifacts/placement-programs-20261009/profiles/profile-1.json": "c9abbe97860a394ed899d64967bd0395bb9bb4ec71a9dff43d1bb45893fefd4d",
+    "/Users/cyberpwn/.local/share/retina-bend/2.0.36/backend-artifacts/placement-programs-20261009/profiles/profile-2.json": "068fd602ad497128dd3960cb9be76840ebd41882b5b64c25acfa76d65e930c8b"
+  },
+  "sources": {
+    "bend/placement_cursor.bend": "936df8e90fd45db8416b6da670f9cd6e03124c756f8fc64d11eb2aac4d92b550",
+    "bend/placement_walk.bend": "d01bca32425cafd47383b348bcdb2a84d2be22877a3ac4a35281e4ae8705e9a4",
+    "bend/tests/placement-walker.bend": "0e1b2139e5c54957040aee8b9780957a5be224ad717c7c5f0ca0d8f8d1087550",
+    "bend/tests/placement-walker-world.bend": "c8b57c9bde255a69c30e1d52094938c6cb56fe5ffad9f293bd045c1ea182114d",
+    "scripts/test_bend_placement_walker.py": "211bd3ec81729504b2205c817244cddedc1596d2c2e11a4860fbb27433cbdbec"
+  },
+  "native_sha256": "8c92ffb1576a0e25f78d5cef5e73381adedcf157cc571bfcb4c769c51ead3443",
+  "gpu_sha256": "c86b9577bae14f4be4751bb1e6eba0a9de2df5a10525315cbd2df8538bf36d0d"
+}

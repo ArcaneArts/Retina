@@ -171,7 +171,7 @@ more deeply; retain the original requested scope.
 | Caves, ravines, rare surface entrances and cave decoration | `GeologyProfile.java`, `geology.rs`, `features.rs`, `caves.wgsl` | Typed geology, cached globally aligned GPU/CPU cave fields, rounded noisy ravines and registered column carving implemented; independent voxel/serialized-region and actual Minecraft decoder checks pass. GPU/CPU depth-dependent cave-biome volumes now select registered carvers and serialize actual 3D quart IDs, retaining finalized surface biomes near the roof. Resident aquifers now supply carved cavity materials. Registered floor/ceiling cave dressing, vines, blossoms, dripstone and sparse plant survival now execute on the selected CPU/GPU backend. Playable terrain integration implemented; composed-density/exterior refinements and ordered surface decorations remain pending |
 | Lakes, aquifer fields and fluid barriers | `TerrainFeatureProfile.java`, `program/lake_sparse.rs`, `aquifers.wgsl` | Typed aquifer graph projection and GPU/CPU flooding, erosion, spread, lava, barrier and preliminary-surface evaluation implemented. Globally hashed resident fluid centers, trilinear barrier fields and nearest-center pressure now place registered cavity fluids while preserving protected/pressure-barrier materials. Registered lake budgets/materials, globally seeded candidates, five bank probes, bounded fluid levels and noisy basin/rim placement implemented on CPU/GPU before material coating. Independent block/NBT/zlib checks cover fluids, barriers, overlap and signed/distant coordinates; lake exclusions now use finalized pre-carving coast selection, including global probes outside the resident tile. Out-of-tile bank vertices now execute in bulk with exact prior geometry and material bytes, improving measured GPU lake-stage latency by 10.1–14.6×. Playable terrain integration implemented; full parity and performance work remain required |
 | Ore height/count/replacement/discard rules and GPU rasterization | `geology/`, `ore.wgsl` | Registered recipe projection, packed membership/material tables and selected-backend ordered replacement/exposure policy implemented. Registered count/rarity/height attempts and local sphere-chain/scattered geometry now execute on CPU/GPU. Local sphere-union masks and ordered scattered points now calculate in the same selected-backend evaluation as geometry. Spatial surface/cave membership filtering, stable neighboring contribution buckets and ordered resident-block replay now run in one selected CPU/GPU evaluation, with immutable exposure halo checks and independent voxel/NBT/zlib validation. Playable terrain integration implemented; full parity and performance work remain required |
-| Ordered decoration, registered counts, provider noise and placement modifiers | `DecorationProfile.java`, `decoration/placement*`, `counts/`, `provider_noise/` | Registered recursive integer providers, count/offset projection, build-relative height distributions and actual-permutation spatial count noise independently checked on CPU/Metal. Typed ordered-program projection, exact placement-salt grouping, recursive predicates, live block/heightmap overlay and terrain-dependent checks now independently checked on CPU/Metal. Lazy walker execution, shared selector budgets, block-provider noise and world integration remain pending |
+| Ordered decoration, registered counts, provider noise and placement modifiers | `DecorationProfile.java`, `decoration/placement*`, `counts/`, `provider_noise/` | Registered recursive integer providers, count/offset projection, build-relative height distributions and actual-permutation spatial count noise independently checked on CPU/Metal. Typed ordered-program projection, exact placement-salt grouping, recursive predicates, live block/heightmap overlay and terrain-dependent checks now independently checked on CPU/Metal. Lazy ordered count/layer/cuboid execution and shared selector budgets now have an independent CPU/Metal component harness. Block-provider noise, feature writers and playable world integration remain pending |
 | Trees and decorators, giant mushrooms, fallen trees, disks, vegetation patches, block columns, bamboo, aquatic plants and attachments | `decoration.rs`, `decoration/`, `tree_shapes.rs` | Pending; port actual supported recipe variants, not only grass/tree examples |
 | Jigsaw pools/templates/processors, structures spanning regions and locate queries | `StructureProfile.java`, `structures.rs`, `structure_processors.rs`, `queries.rs` | Pending |
 | Structure entities/block entities/loot and attachment rotations | `nbt.rs`, `structures.rs`, `structure_processors.rs` | Pending |
@@ -1497,8 +1497,68 @@ and controls, with output matching the normal program and an identical GPU
 archive. These command times include fixture construction/serialization and
 are correctness evidence rather than generation benchmarks.
 
-This is a component library, not an integrated surface feature generator. Lazy
-count/layer/cuboid expansion, parent-check caching, shared selector attempt
-budgets, feature writers and playable worker integration remain required. No
+This is a component library, not an integrated surface feature generator. The
+following placement-walker component adds lazy expansion and shared parent
+checks. Feature writers and playable worker integration remain required. No
 complete-region speed or memory claim follows from these correctness checks.
 Evidence is in `docs/benchmarks/bend-placement-program-correctness.json`.
+
+
+### Lazy ordered placement cursor
+
+`placement_walk.bend` executes the projected modifier programs against the live
+resident `placement_world.bend` view. `new` takes a prepared model, selected
+recipe IDs, an anchor position and the full world seed. Invalid IDs and duplicate
+IDs are ignored; missing/null programs remain inactive. Roots use signed chunk
+coordinates and full 64-bit placement salts. A persistent leftist heap orders
+work by group, expansion path, task role and recipe ID, independently of input
+order. Each anchor owns its world overlay and persistent parent-result cache.
+
+`next(cursor, model, world, fuel)` returns one candidate, an exhausted cursor or
+a paused cursor. Fuel limits task work per call and never discards remaining
+candidates. Callers may apply a successful feature's block writes to the live
+world before asking for the next candidate. The cursor's wrapping 32-bit task
+counter is diagnostic; the per-call fuel is independent of that counter.
+
+Count and cuboid families retain one continuation per active family instead of
+allocating every future candidate. Count children inherit independent full-word
+random seeds. Cuboid dimensions sample height, width and length, traverse the
+inclusive X/Y/Z volume and retain the registered edge/interior rules. Layer
+attempts resample their count provider at every loop test, including termination,
+and resolve shared selector grounds before either branch can write. Later attempts
+observe earlier block edits. Terrain checks before a future expansion cache their
+parent result, including rejection; checks after the expansion observe the live
+world separately for each child. Final candidate Y bounds use the loaded build
+height. Offset probes reject signed coordinate overflow.
+
+Run `scripts/test_bend_placement_walker.py --profile <profile.json>` for original
+loaded snapshots; add `--prove-metal` to observe command buffers with the same
+GPU archive as the normal program. The independent Python interpreter uses native
+wide integers, dictionaries and `heapq`, and compares candidates, full random
+states, paths, queue/cache counts, task counts and live height queries. Controls
+also assert expected outcomes for live versus parent heights/filters, shared
+selector budgets, layer-provider resampling, cuboid faces/edges/interiors, signed
+coordinate overflow, final build-height clipping, inactive/empty programs and
+invalid/duplicate recipe IDs. The fixture starts with a zero-fuel pause and checks
+one-task resumptions against larger work slices. Its 64-candidate and 8,192-task
+limits explicitly report prefixes and do not apply to the production cursor.
+
+The 4,096-by-4,096 nested-count control represents 16,777,216 candidates. Producing
+its first 64 uses 131 task units, two queued continuations and no parent-cache
+entries. This is a bounded-queue correctness result, not a whole-region memory
+or generation-speed benchmark. Test setup uses balanced column tables and tail
+loops to avoid deep sequential setup stacks in the stock GPU runtime.
+
+Vanilla, Terralith, their combined profile and the two controls compare 818
+emitted candidates across 165 anchor cases per backend. Of those cases, 156
+exhaust their streams and nine explicitly report a bounded prefix. CPU/Metal
+bytes agree, as do reversed input/anchor order, one-task pauses and the
+single-thread CPU control. The observer records five actual Metal command buffers
+with matching normal-program output and an identical GPU archive. Their times
+include fixture setup and queries; they are correctness evidence, not a
+placement-stage or generator performance comparison.
+
+This component does not place actual trees/surface features and is not yet
+imported by the playable worker. Block-provider noise, feature writers, ordering
+across neighboring anchor contributions and world integration remain required.
+Evidence is in `docs/benchmarks/bend-placement-walker-correctness.json`.
