@@ -118,7 +118,7 @@ slower in those runs; a single language does not imply faster generation.
 
 The effective registry exports already contain the data needed for surface
 features: the inspected vanilla profile has 182 decoration recipes (63 trees),
-and Terralith has 553 (289 trees). The count/offset provider and registered
+and Terralith has 553 (289 trees). The count/offset, build-relative height-provider and registered
 spatial-count noise libraries now project the original instructions in Bend.
 Port the ordered placement walker and shared selector/count budgets next, then
 block providers, trunk/foliage variants and
@@ -168,7 +168,7 @@ more deeply; retain the original requested scope.
 | Caves, ravines, rare surface entrances and cave decoration | `GeologyProfile.java`, `geology.rs`, `features.rs`, `caves.wgsl` | Typed geology, cached globally aligned GPU/CPU cave fields, rounded noisy ravines and registered column carving implemented; independent voxel/serialized-region and actual Minecraft decoder checks pass. GPU/CPU depth-dependent cave-biome volumes now select registered carvers and serialize actual 3D quart IDs, retaining finalized surface biomes near the roof. Resident aquifers now supply carved cavity materials. Registered floor/ceiling cave dressing, vines, blossoms, dripstone and sparse plant survival now execute on the selected CPU/GPU backend. Playable terrain integration implemented; composed-density/exterior refinements and ordered surface decorations remain pending |
 | Lakes, aquifer fields and fluid barriers | `TerrainFeatureProfile.java`, `program/lake_sparse.rs`, `aquifers.wgsl` | Typed aquifer graph projection and GPU/CPU flooding, erosion, spread, lava, barrier and preliminary-surface evaluation implemented. Globally hashed resident fluid centers, trilinear barrier fields and nearest-center pressure now place registered cavity fluids while preserving protected/pressure-barrier materials. Registered lake budgets/materials, globally seeded candidates, five bank probes, bounded fluid levels and noisy basin/rim placement implemented on CPU/GPU before material coating. Independent block/NBT/zlib checks cover fluids, barriers, overlap and signed/distant coordinates; lake exclusions now use finalized pre-carving coast selection, including global probes outside the resident tile. Out-of-tile bank vertices now execute in bulk with exact prior geometry and material bytes, improving measured GPU lake-stage latency by 10.1–14.6×. Playable terrain integration implemented; full parity and performance work remain required |
 | Ore height/count/replacement/discard rules and GPU rasterization | `geology/`, `ore.wgsl` | Registered recipe projection, packed membership/material tables and selected-backend ordered replacement/exposure policy implemented. Registered count/rarity/height attempts and local sphere-chain/scattered geometry now execute on CPU/GPU. Local sphere-union masks and ordered scattered points now calculate in the same selected-backend evaluation as geometry. Spatial surface/cave membership filtering, stable neighboring contribution buckets and ordered resident-block replay now run in one selected CPU/GPU evaluation, with immutable exposure halo checks and independent voxel/NBT/zlib validation. Playable terrain integration implemented; full parity and performance work remain required |
-| Ordered decoration, registered counts, provider noise and placement modifiers | `DecorationProfile.java`, `decoration/placement*`, `counts/`, `provider_noise/` | Registered recursive integer providers, count/offset projection and actual-permutation spatial count noise independently checked on CPU/Metal. Ordered/live-overlay walker, shared selector budgets, block-provider noise and world integration remain pending |
+| Ordered decoration, registered counts, provider noise and placement modifiers | `DecorationProfile.java`, `decoration/placement*`, `counts/`, `provider_noise/` | Registered recursive integer providers, count/offset projection, build-relative height distributions and actual-permutation spatial count noise independently checked on CPU/Metal. Ordered/live-overlay walker, shared selector budgets, block-provider noise and world integration remain pending |
 | Trees and decorators, giant mushrooms, fallen trees, disks, vegetation patches, block columns, bamboo, aquatic plants and attachments | `decoration.rs`, `decoration/`, `tree_shapes.rs` | Pending; port actual supported recipe variants, not only grass/tree examples |
 | Jigsaw pools/templates/processors, structures spanning regions and locate queries | `StructureProfile.java`, `structures.rs`, `structure_processors.rs`, `queries.rs` | Pending |
 | Structure entities/block entities/loot and attachment rotations | `nbt.rs`, `structures.rs`, `structure_processors.rs` | Pending |
@@ -1397,3 +1397,45 @@ fixture. All 65,536 transitions pass independent CPU/Metal checks and the
 observer confirms actual device execution with identical output. Its observer
 reuses the stock GPU archive from the same source, since only host logging
 changes. Evidence is in `docs/benchmarks/bend-light-rules-correctness.json`.
+
+
+### Registered placement-height providers
+
+`placement_height.bend` implements absolute, above-bottom and below-top anchors,
+constant/uniform/biased/very-biased/trapezoid height distributions and recursive
+weighted lists. `registry_placement_height.bend` reads their original schema from
+the resident registry tape. `registry_decoration_heights.bend` retains each
+height-range instruction's recipe/modifier address in the ordered program.
+Projection never substitutes an average height or clips a provider to sea level.
+These libraries are not yet imported by the playable world worker; the ordered
+placement walker and its live block overlay remain the next integration step.
+
+All sampling uses integer arithmetic and exact 64-bit random words. The returned
+random state preserves sequential modifier draws; weighted totals can exceed
+2^32. Providers resolve against each actual build interval at invocation, so a
+prepared profile can serve different minimum Y/height contexts. Empty/equal
+ranges retain their lower endpoint without a random draw. Full signed-i32 uniform
+ranges avoid a wrapped modulo-zero span. Relative anchor arithmetic saturates at
+signed-i32 bounds, as does the very-biased intermediate upper endpoint for extreme
+custom inputs. Ordinary registry ranges retain the current approximation's draw
+contract; exact vanilla or Rust seed agreement is not required. Build clipping
+belongs to the final placement walker rather than the provider.
+
+Run `scripts/test_bend_decoration_heights.py --profile <profile.json>` with each
+loaded registry snapshot (repeat `--profile` for multiple inputs). Add
+`--prove-metal` to check actual stock-runtime command buffers, not just a GPU
+selection flag. Compilation uses one reduced-priority native compiler. The
+observer only adds host timing diagnostics and reuses the normal program's exact
+GPU archive.
+
+Independent Python integer/random-state checks passed for 89,600 sample records
+per backend across actual vanilla, Terralith and combined profiles plus controls.
+They cover eight build intervals, signed-i32 extremes, saturation, nested weighted
+lists, totals above 2^32 and chains of one through four sequential samples. CPU
+and GPU bytes agree; reversed evaluation order and a one-thread CPU run also
+agree. All 53 malformed profiles reject on both backends. The diagnostic observer
+records four actual Metal command buffers across the three loaded profiles and
+all provider controls, with matching normal-program hashes. These are component
+correctness checks, not complete-region benchmarks. Source/input/executable
+hashes and results are in
+`docs/benchmarks/bend-decoration-height-correctness.json`.
