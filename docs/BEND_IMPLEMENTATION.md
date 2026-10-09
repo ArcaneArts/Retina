@@ -37,7 +37,7 @@ more deeply; retain the original requested scope.
 | Coastlines, shore materials, rivers and material predicates/layers | `ShoreMaterialProfile.java`, `column_program.rs`, `materials.wgsl` | Pure Bend resident per-biome material DAGs and predicates (40..54) implemented with shared numeric evaluation, registered bands/sea/layer mode and bounded CPU/GPU query batches. GPU context/compact block runs implemented. Resident GPU coastal finalization now uses exact generated occupancy, six-block disk probes and registered climate alternatives before material generation; independent CPU/Metal checks cover inland/ocean exclusion, distinct materials and cache/coordinate rules. Inland rivers, ocean remapping, 3D biome material assignment and final integration remain required |
 | Caves, ravines, rare surface entrances and cave decoration | `GeologyProfile.java`, `geology.rs`, `features.rs`, `caves.wgsl` | Typed geology, cached globally aligned GPU/CPU cave fields, rounded noisy ravines and registered column carving implemented; independent voxel/serialized-region and actual Minecraft decoder checks pass. GPU/CPU depth-dependent cave-biome volumes now select registered carvers and serialize actual 3D quart IDs, retaining finalized surface biomes near the roof. Resident aquifers now supply carved cavity materials. Composed-density/exterior refinements, decorations and running-world integration remain pending |
 | Lakes, aquifer fields and fluid barriers | `TerrainFeatureProfile.java`, `program/lake_sparse.rs`, `aquifers.wgsl` | Typed aquifer graph projection and GPU/CPU flooding, erosion, spread, lava, barrier and preliminary-surface evaluation implemented. Globally hashed resident fluid centers, trilinear barrier fields and nearest-center pressure now place registered cavity fluids while preserving protected/pressure-barrier materials. Registered lake budgets/materials, globally seeded candidates, five bank probes, bounded fluid levels and noisy basin/rim placement implemented on CPU/GPU before material coating. Independent block/NBT/zlib checks cover fluids, barriers, overlap and signed/distant coordinates; lake exclusions now use finalized pre-carving coast selection, including global probes outside the resident tile. Complete running-world integration remains pending |
-| Ore height/count/replacement/discard rules and GPU rasterization | `geology/`, `ore.wgsl` | Registered recipe projection, packed membership/material tables and selected-backend ordered replacement/exposure policy implemented. Sparse vein planning/rasterization and final block replay remain pending |
+| Ore height/count/replacement/discard rules and GPU rasterization | `geology/`, `ore.wgsl` | Registered recipe projection, packed membership/material tables and selected-backend ordered replacement/exposure policy implemented. Registered count/rarity/height attempts and local sphere-chain/scattered geometry now execute on CPU/GPU. Spatial membership filtering, sparse rasterization and final block replay remain pending |
 | Ordered decoration, registered counts, provider noise and placement modifiers | `DecorationProfile.java`, `decoration/placement*`, `counts/`, `provider_noise/` | Pending |
 | Trees and decorators, giant mushrooms, fallen trees, disks, vegetation patches, block columns, bamboo, aquatic plants and attachments | `decoration.rs`, `decoration/`, `tree_shapes.rs` | Pending; port actual supported recipe variants, not only grass/tree examples |
 | Jigsaw pools/templates/processors, structures spanning regions and locate queries | `StructureProfile.java`, `structures.rs`, `structure_processors.rs`, `queries.rs` | Pending |
@@ -960,3 +960,55 @@ columns and 795 finalized surface columns per backend. These regression runs
 use the normal CPU/GPU engines; the new 190-command observer proof applies to
 the ore suite. Evidence is in
 `docs/benchmarks/bend-ore-inputs-correctness.json`.
+
+
+The registered ore-input cycle merged in
+[PR #51](https://github.com/ArcaneArts/Retina/pull/51), commit `702e698`.
+Both actual push and PR CI builds passed.
+
+### Registered ore attempts and local GPU vein geometry
+
+Pure Bend planning now reads each registered recipe's rarity, inclusive count
+range, uniform or triangular height range and plateau. SplitMix64 state and
+sign-extended global chunk anchors use exact word-pair arithmetic. Both accepted
+ore-layout schemas use independent per-attempt geometry streams in Bend;
+geometry draws cannot move a later attempt when a candidate is clipped. Attempt
+outputs use balanced trees and exact additive random-state jumps, so individual
+attempts can evaluate in parallel without a deep returned list. Exact
+Rust seed matching is not required by the approximation contract.
+
+Sphere-chain veins and scattered deposits execute on the selected CPU/GPU
+backend. Sphere centers use local offsets, retaining fine shape at distant
+world coordinates. Strict sphere containment pruning preserves the union;
+scattered deposits retain bounded offsets and per-point exposure random words.
+The same reusable Bend routines will feed resident rasterization and replay.
+Commands 47/48 currently expose raw diagnostic batches; Java only transports
+bytes. They neither change existing caches nor generate ore in a running world.
+Spatial biome filtering, region clipping, sparse raster masks and ordered final
+block replay remain required, alongside the rest of the full parity checklist.
+
+Reproduce component checks with `scripts/test_bend_ore_planning.py` or
+`bendOrePlanningWorkerTest`. The independent Python reference checks full seeds,
+negative/distant anchors, signed height extremes, count/rarity rules, geometry,
+repeat/reordered batches and malformed input. These correctness checks do not
+establish complete-region throughput or a usable Bend preset.
+
+Validation covers ten controls plus actual vanilla, Terralith and combined
+profiles: 87,680 attempts and 125,409 geometry pieces per backend. The exact
+attempt aggregate matches CPU/GPU. Maximum GPU geometry error against the
+independent reference is 0.00000095367431640625 blocks; geometry repeats exactly
+within each backend. All 153 expected Metal commands are observed with the
+single-line diagnostic program. An earlier deep returned attempt list failed
+with a stock-runtime memory fault on a 741-attempt GPU result; balanced trees
+and additive random-state jumps pass that case and the registered maximum of
+1,024 attempts. Evidence and source/input/executable hashes are retained in
+`docs/benchmarks/bend-ore-planning-correctness.json`.
+
+The real Java CPU/GPU worker concurrency/reload/shutdown checks and full host
+Fabric/NeoForge build pass (64 native tests passed; 11 existing explicit tests
+ignored). Normal CPU/GPU ore-input, cave-biome and lake-basin regressions retain
+their previous aggregate hashes with all three actual registry profiles. These
+cover 511,250 ore replacement queries, 838,656 cave-biome voxels/839,673 biome
+IDs, and 1,490 lake bank heights/1,160 final columns plus three serialized chunk
+round trips per backend. Compilation ran separately at reduced priority, with
+one Bend native compiler and two-job Rust builds.
