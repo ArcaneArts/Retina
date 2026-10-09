@@ -624,6 +624,20 @@ tasks.register('bendLakeTest', Exec) {
     mustRunAfter 'bendAquiferPlacementTest'
 }
 
+tasks.register('bendLakeBasinTest', Exec) {
+    group = 'verification'
+    description = 'Check contained Bend lake banks, shaped geometry, registered materials and final NBT/zlib.'
+    workingDir rootProject.projectDir
+    commandLine providers.gradleProperty('pythonExecutable').getOrElse('python3'), 'scripts/test_bend_lake_basins.py'
+    if (providers.gradleProperty('bendSkipBuild').isPresent()) args '--skip-build'
+    if (providers.gradleProperty('proveMetal').isPresent()) args '--prove-metal'
+    if (providers.gradleProperty('bendMetalProbe').isPresent()) args '--metal-probe', providers.gradleProperty('bendMetalProbe').get()
+    if (!registryDensityProfiles.isEmpty()) registryDensityProfiles.split(',').each { pair ->
+        pair.split('=', 2).with { paths -> args '--profile', paths[0], paths[1] }
+    }
+    mustRunAfter 'bendLakeTest'
+}
+
 tasks.register('bendCaveBiomeRegionTest', JavaExec) {
     group = 'verification'
     description = 'Read and reopen Bend cave biome MCA files through actual Minecraft decoders.'

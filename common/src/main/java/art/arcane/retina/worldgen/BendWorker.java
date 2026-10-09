@@ -341,6 +341,18 @@ public final class BendWorker implements AutoCloseable {
         return request(42, batch);
     }
 
+    /** Build resident bank probes and contained lake levels for the surface
+     * tile. Bend retains neighboring cells and all numeric calculations.
+     */
+    public CompletableFuture<byte[]> generateLakeGeometry() {
+        return request(43, new byte[0]);
+    }
+
+    /** Read cached lake banks/levels for raw X/Z/full-seed batches. */
+    public CompletableFuture<byte[]> sampleLakeGeometry(byte[] batch) {
+        return request(44, batch);
+    }
+
     /** Cancellation skips queued requests; in-flight responses are drained to
      * preserve framing. World shutdown closes the worker and terminates it.
      */

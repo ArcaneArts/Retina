@@ -20,6 +20,8 @@ public final class BendLakeWorkerTest {
             try (var worker = new BendWorker(binary, execution, 2)) {
                 pid = worker.processId();
                 rejected(worker.queryLakeSettings(ids), 748);
+                rejected(worker.generateLakeGeometry(), 750);
+                rejected(worker.sampleLakeGeometry(query), 752);
                 rejected(worker.sampleLakeCandidates(query), 749);
                 await(worker.loadProfile(profile));await(worker.prepareProfileDensity());
                 await(worker.prepareProfileMaterials());await(worker.prepareProfileBlocks());
@@ -72,11 +74,47 @@ public final class BendLakeWorkerTest {
                 await(worker.queryLakeSettings(ids));
                 require(Arrays.equals(chunk, await(worker.encodeGeneratedChunk(0, 0, seed, 5023, false))),
                         "read-only planning preserves saved terrain");
+                byte[] plan = await(worker.generateLakeGeometry());
+                var descriptorRow = ByteBuffer.wrap(plan);
+                require(plan.length == 16 && descriptorRow.getInt() == -1 && descriptorRow.getInt() == -1
+                        && descriptorRow.getInt() == 3 && descriptorRow.getInt() == 3, "lake cell halo");
+                byte[] basin = await(worker.sampleLakeGeometry(query));
+                require(basin.length == 48 && ByteBuffer.wrap(basin).getInt() == 1, "resident bank geometry");
+                require(Arrays.equals(chunk, await(worker.encodeGeneratedChunk(0, 0, seed, 5023, false))),
+                        "building lake plans preserves generated snapshot");
+                reads.clear();
+                for (int i = 0; i < 8; i++) reads.add(worker.sampleLakeGeometry(query));
+                for (var read : reads) require(Arrays.equals(basin, await(read)), "concurrent bank queries");
+                require(Arrays.equals(new byte[48], await(worker.sampleLakeGeometry(query(0, 0, seed ^ (1L << 32))))),
+                        "bank cache rejects a different full seed");
+                rejected(worker.sampleLakeGeometry(new byte[] {0}), 603);
+                require(Arrays.equals(basin, await(worker.sampleLakeGeometry(query))), "malformed query retains cache");
+                await(worker.generateBlockColumns());
+                byte[] withLakes = await(worker.encodeGeneratedChunk(0, 0, seed, 5023, false));
+                await(worker.generateLakeGeometry());
+                require(Arrays.equals(withLakes, await(worker.encodeGeneratedChunk(0, 0, seed, 5023, false))),
+                        "replanning retains saved lake terrain");
+                await(worker.generateBlockColumns());
+                require(Arrays.equals(withLakes, await(worker.encodeGeneratedChunk(0, 0, seed, 5023, false))),
+                        "lake material generation is repeatable");
+                await(worker.prepareProfileAquifer());
+                require(Arrays.equals(basin, await(worker.sampleLakeGeometry(query))),
+                        "aquifer preparation retains lake plans");
+                require(Arrays.equals(withLakes, await(worker.encodeGeneratedChunk(0, 0, seed, 5023, false))),
+                        "aquifer preparation retains generated lake snapshot");
+                await(worker.generateCaveLattice());
+                require(Arrays.equals(basin, await(worker.sampleLakeGeometry(query))),
+                        "cave lattice preparation retains lake plans");
+                require(Arrays.equals(withLakes, await(worker.encodeGeneratedChunk(0, 0, seed, 5023, false))),
+                        "cave lattice preparation retains generated lake snapshot");
+                await(worker.generateSurfaceColumns(0, 0, 16, 16, seed));
+                rejected(worker.sampleLakeGeometry(query), 752);
                 await(worker.prepareProfileGeology());
                 require(Arrays.equals(first, await(worker.sampleLakeCandidates(query))), "geology re-preparation is repeatable");
                 await(worker.loadProfile(profile));
                 rejected(worker.queryLakeSettings(ids), 748);
                 rejected(worker.sampleLakeCandidates(query), 749);
+                rejected(worker.sampleLakeGeometry(query), 752);
             }
             var handle = ProcessHandle.of(pid);
             if (handle.isPresent()) handle.get().onExit().get(5, TimeUnit.SECONDS);

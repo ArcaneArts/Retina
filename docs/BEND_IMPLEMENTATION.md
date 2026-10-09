@@ -36,7 +36,7 @@ more deeply; retain the original requested scope.
 | Climate targets, biome selection, smooth boundaries and underground biomes | `climate.rs`, `climate.wgsl`, `RetinaBiomeSource.java` | Pure Bend balanced interval indices and surface/underground/coastal lookup implemented, checked against independent linear search with actual registered intervals on CPU and Metal. Typed resident-tape projection and persistent query commands implemented with explicit reload invalidation. GPU spatial climate fields and surface biome selection now consume resident density tiles; compact material layers implemented; blended boundaries and world integration pending |
 | Coastlines, shore materials, rivers and material predicates/layers | `ShoreMaterialProfile.java`, `column_program.rs`, `materials.wgsl` | Pure Bend resident per-biome material DAGs and predicates (40..54) implemented with shared numeric evaluation, registered bands/sea/layer mode and bounded CPU/GPU query batches. GPU context/compact block runs implemented. Resident GPU coastal finalization now uses exact generated occupancy, six-block disk probes and registered climate alternatives before material generation; independent CPU/Metal checks cover inland/ocean exclusion, distinct materials and cache/coordinate rules. Inland rivers, ocean remapping, 3D biome material assignment and final integration remain required |
 | Caves, ravines, rare surface entrances and cave decoration | `GeologyProfile.java`, `geology.rs`, `features.rs`, `caves.wgsl` | Typed geology, cached globally aligned GPU/CPU cave fields, rounded noisy ravines and registered column carving implemented; independent voxel/serialized-region and actual Minecraft decoder checks pass. GPU/CPU depth-dependent cave-biome volumes now select registered carvers and serialize actual 3D quart IDs, retaining finalized surface biomes near the roof. Resident aquifers now supply carved cavity materials. Composed-density/exterior refinements, decorations and running-world integration remain pending |
-| Lakes, aquifer fields and fluid barriers | `TerrainFeatureProfile.java`, `program/lake_sparse.rs`, `aquifers.wgsl` | Typed aquifer graph projection and GPU/CPU flooding, erosion, spread, lava, barrier and preliminary-surface evaluation implemented. Globally hashed resident fluid centers, trilinear barrier fields and nearest-center pressure now place registered cavity fluids while preserving protected/pressure-barrier materials. Registered lake budgets/materials and globally seeded CPU/GPU candidates implemented; lake bank probing, contained fluid levels, basin carving and complete running-world integration remain pending |
+| Lakes, aquifer fields and fluid barriers | `TerrainFeatureProfile.java`, `program/lake_sparse.rs`, `aquifers.wgsl` | Typed aquifer graph projection and GPU/CPU flooding, erosion, spread, lava, barrier and preliminary-surface evaluation implemented. Globally hashed resident fluid centers, trilinear barrier fields and nearest-center pressure now place registered cavity fluids while preserving protected/pressure-barrier materials. Registered lake budgets/materials, globally seeded candidates, five bank probes, bounded fluid levels and noisy basin/rim placement implemented on CPU/GPU before material coating. Independent block/NBT/zlib checks cover fluids, barriers, overlap and signed/distant coordinates; finalized coastline integration and complete running-world integration remain pending |
 | Ore height/count/replacement/discard rules and GPU rasterization | `geology/`, `ore.wgsl` | Pending |
 | Ordered decoration, registered counts, provider noise and placement modifiers | `DecorationProfile.java`, `decoration/placement*`, `counts/`, `provider_noise/` | Pending |
 | Trees and decorators, giant mushrooms, fallen trees, disks, vegetation patches, block columns, bamboo, aquatic plants and attachments | `decoration.rs`, `decoration/`, `tree_shapes.rs` | Pending; port actual supported recipe variants, not only grass/tree examples |
@@ -807,3 +807,57 @@ This is candidate planning, not lake placement: bank probes, contained fluid
 levels, basin carving and material/fluid application remain required. The
 production Bend world type, remaining feature/light pipeline and complete
 Rust-versus-Bend region benchmarks remain pending.
+
+### Resident lake basins and material integration
+
+The lake cache now retains five exact bank heights per global candidate and a
+bounded waterline (`max(world_min, min(banks) - 2)`). The selected CPU/GPU runs
+candidate planning, bank probes, level reduction and surface-climate biome flags
+as four bulk dispatches. Fractional centers and bank probes use compensated
+coordinates; probes outside the density tile evaluate the same globally aligned
+lattice, avoiding tile-edge clamping. One neighboring 128-block cell on each side
+covers the full noisy ellipse and rim. Resident metadata is packed in Bend into
+one word table, keeping the stock compiler's captured arity below its limit.
+
+Command 43 prepares the immutable plan; command 44 is a bounded read-only bank
+query. Building/rebuilding plans preserves generated snapshots. Command 22 uses
+the plan, if present, to reshape raw geometry before registered surface material
+rules run. It searches neighboring candidates in a fixed order, chooses the
+nearest eligible basin, adds seeded simplex edge noise, and smooths a short rim.
+Water/lava volumes, two-block solid floors and optional loaded barrier materials
+are included in the final block runs. Ordinary columns keep their existing
+geometry. CPU execution with a lake cache uses the same two-pass geometry and
+coating arrangement as GPU execution so slope neighbors see the reshaped ground.
+No intermediate block data leaves the Bend worker.
+
+The cache clears with a successful profile/model, density, surface or geology
+replacement; cave/aquifer preparation retains it where geometry is unchanged.
+Bad commands retain state. Empty climate indices, excluded biome flags, small
+world heights, low waterlines and distant/negative coordinates are covered.
+The current lake flag projection corresponds to raw surface command 16;
+coastline command 29 finalization still needs to be reconciled in complete
+pipeline orchestration. This component does not expose a finished Bend world
+preset, light regions or establish complete Rust-versus-Bend performance.
+
+Reproduce independent bank, material and serialization checks with
+`scripts/test_bend_lake_basins.py` / `bendLakeBasinTest`; the existing
+`bendLakeWorkerTest` also checks actual Java concurrent bank callers, plan
+rebuilds, generated snapshots, cache invalidation and process shutdown.
+
+The independent oracle checks 1,490 bank heights and 1,160 final columns per
+backend across 13 controlled profiles plus vanilla, Terralith and their combined
+registry. CPU, normal GPU and observed Metal output agree, including three full
+chunk NBT/zlib round trips per run. All 715 expected device commands were
+observed. Cases include lakes spanning a region edge, reversed/repeated queries,
+seed changes, negative/distant coordinates, exclusion flags and empty/thin worlds.
+The Java worker lifecycle checks and Fabric/NeoForge host build pass (64 native
+tests, 11 ignored). Evidence is recorded in
+`docs/benchmarks/bend-lake-basins-correctness.json`.
+
+Existing candidate output is unchanged (2,331 candidate queries and 389 metadata
+rows per backend). Cave-biome output matches all eight prior profile records,
+now checked together across 838,656 carved voxels and 839,673 biome IDs. Aquifer
+placement retains its earlier hash across 332,060 substance queries and 442,512
+carved voxels. Observed Metal runs account for all expected commands in each
+regression suite. These counts describe component validation, not generation
+throughput.

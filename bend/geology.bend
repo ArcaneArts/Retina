@@ -16,7 +16,7 @@ type Carver is Data:
 type Biome is Data:
   Biome{carvers: Q.Table<Carver>,lakes: Lakes.Params}
 type Profile is Data:
-  Profile{noises: Q.Table<Noise>,biomes: Q.Table<Biome>,carveable: Q.Table<Bool>,lava: U32,lava_level: U32,minimum: U32,height: U32,aquifer: Maybe<&2,A.Prepared>}
+  Profile{noises: Q.Table<Noise>,biomes: Q.Table<Biome>,carveable: Q.Table<Bool>,lava: U32,lava_level: U32,minimum: U32,height: U32,aquifer: Maybe<&2,A.Prepared>,lakes: Maybe<&2,Lakes.Cache>}
 
 def finite(value: F32) -> Bool:
   U32.is_ne(U32.and(F32.bits(value),2139095040),2139095040)
@@ -108,11 +108,20 @@ def sample_noise(noise: Noise,channel: U32,x: U32,y: U32,z: U32,low: U32,high: U
 @unsafe
 def sample(profile: Profile,+channel: U32,x: U32,y: U32,z: U32,low: U32,high: U32) -> F32:
   match profile:
-    case Profile{noises,_,_,_,_,_,_,_}: sample_noise(Q.get(Noise,noises,channel,Noise{0.0,0.0,[0.0]}),channel,x,y,z,low,high)
+    case Profile{noises,_,_,_,_,_,_,_,_}: sample_noise(Q.get(Noise,noises,channel,Noise{0.0,0.0,[0.0]}),channel,x,y,z,low,high)
 
 def with_aquifer(profile: Profile,config: A.Prepared) -> Profile:
   match profile:
-    case Profile{noises,biomes,flags,lava,level,minimum,height,_}: Profile{noises,biomes,flags,lava,level,minimum,height,Some{config}}
+    case Profile{noises,biomes,flags,lava,level,minimum,height,_,lakes}: Profile{noises,biomes,flags,lava,level,minimum,height,Some{config},lakes}
+
+def with_lakes(profile: Profile,cache: Lakes.Cache) -> Profile:
+  match profile:
+    case Profile{noises,biomes,flags,lava,level,minimum,height,aquifer,_}: Profile{noises,biomes,flags,lava,level,minimum,height,aquifer,Some{cache}}
+
+def lakes(profile: Maybe<&2,Profile>) -> Maybe<&2,Lakes.Cache>:
+  match profile:
+    case Some{Profile{_,_,_,_,_,_,_,_,lakes}}: lakes
+    case None{}: None{}
 
 def carver_count(biomes: Q.Table<Biome>) -> U32:
   match biomes:
@@ -132,9 +141,10 @@ def biomes_valid(biomes: Q.Table<Biome>,+palette: U32) -> Bool:
 
 def clear_aquifer(profile: Profile) -> Profile:
   match profile:
-    case Profile{noises,biomes,flags,lava,level,minimum,height,Some{aquifer}}:
-      Profile{noises,biomes,flags,lava,level,minimum,height,Some{A.clear(aquifer)}}
-    case _: profile
+    case Profile{noises,biomes,flags,lava,level,minimum,height,Some{aquifer},_}:
+      Profile{noises,biomes,flags,lava,level,minimum,height,Some{A.clear(aquifer)},None{}}
+    case Profile{noises,biomes,flags,lava,level,minimum,height,None{},_}:
+      Profile{noises,biomes,flags,lava,level,minimum,height,None{},None{}}
 
 def clear_geometry(profile: Maybe<&2,Profile>) -> Maybe<&2,Profile>:
   match profile:

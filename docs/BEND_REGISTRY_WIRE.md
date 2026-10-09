@@ -948,3 +948,55 @@ nice -n 10 ./gradlew bendLakeTest bendLakeWorkerTest -PretinaHostOnly \
   -PbendMetalProbe=/absolute/path/to/current-source-metal-observer \
   -PbendDensityRegistryProfiles=/absolute/vanilla.json=/absolute/vanilla.rbp
 ```
+
+## Resident lake basins (commands 43–44)
+
+- **43 — build lake geometry:** empty body. Requires prepared numeric programs,
+  climate, geology, surface columns and compatible density covering the material
+  pass's one-column halo. Geology and surface physical bounds must agree.
+  **750** means missing prerequisites, **751** incompatible geometry/halo, and
+  **603** malformed body. The result is four U32 words: signed global cell X/Z
+  origin, then cell width/depth. The layout includes a one-cell candidate halo.
+  Four selected CPU/GPU dispatches compute candidates, five bank probes per
+  candidate, minimum-bank level reduction, and raw surface-climate biome flags
+  for the tile plus its one-column slope halo. Bend packs resident metadata.
+- **44 — query lake geometry:** U32 count (0–4096), then signed world X/Z and
+  full seed low/high words per query, like command 42. Requires a resident lake
+  plan (**752** otherwise); malformed batches return **603**. One selected
+  CPU/GPU dispatch reads the plan. Each result is 48 bytes:
+
+  | Words | Value |
+  | --- | --- |
+  | 0 | U32 cache coverage (distinct from candidate eligibility) |
+  | 1 | Signed U32-bit-pattern fluid level |
+  | 2–6 | Signed bank heights: center, +X, -X, +Z, -Z |
+  | 7 | U32 center biome ID (`0xffffffff` when no target) |
+  | 8–10 | U32 eligibility, lava flag, selected barrier ID |
+  | 11 | F32 radius |
+
+A foreign seed or uncovered cell produces 48 zero bytes. For ineligible or
+absent candidates, bank heights and level are the world minimum. Eligible
+levels are `max(min_y, minimum_bank - 2)`. Bank probes use actual integer solid
+heights, including on fractional X/Z, with identical globally aligned density
+outside the resident tile. Plans never clip their ellipse at a global cell edge.
+
+Successful command 43 preserves previous generated block/cave snapshots;
+command 44 is read-only. A later command 22 incorporates the plan before
+material coating, then applies registered lava and optional floor barrier IDs.
+It preserves exhaustive coalesced runs and final NBT/zlib serialization. CPU
+command 22 uses two dispatches when a lake plan is present, matching GPU geometry
+and slope evaluation. Repeated generation starts from original density rather
+than carving the previous result. Replacing geometry/profile/geology clears the
+plan; querying before a new build returns 752. No new runtime opcode performs
+application computation in Java, Rust or handwritten device code.
+
+This component's per-column flags match command 16's raw climate lookup.
+Final shoreline selection, vegetation, lighting and running-world integration
+remain tracked requirements; these commands alone are not a complete backend.
+
+```sh
+nice -n 10 ./gradlew bendLakeBasinTest bendLakeWorkerTest -PretinaHostOnly \
+  --max-workers=2 --no-parallel -PbendSkipBuild -PproveMetal \
+  -PbendMetalProbe=/absolute/path/to/current-source-metal-observer \
+  -PbendDensityRegistryProfiles=/absolute/vanilla.json=/absolute/vanilla.rbp
+```

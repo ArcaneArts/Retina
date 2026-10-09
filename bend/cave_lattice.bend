@@ -346,11 +346,11 @@ def vertex_split(serial: Bool,+limit: U32,+n: U32,+base: U32,+layout: Layout,+en
 
 def generate(+layout: Layout,+config: S.Config,+density: L.Grid,+model: Q.Model,+programs: Q.Table<Q.Program>,+climate: C.Model,geology: G.Profile) -> Computed:
   match layout geology:
-    case Layout{_,+nx,_,+nz,_,_} G.Profile{+noises,+biomes,+flags,+lava,+level,+minimum,+height,aquifer}:
+    case Layout{_,+nx,_,+nz,_,_} G.Profile{+noises,+biomes,+flags,+lava,+level,+minimum,+height,aquifer,lakes}:
       +enabled = C.has_underground(climate)
       selected : Q.Table<Surface> = choices!(U32.max(1,U32.div(U32.add(U32.mul(nx,nz),16383),16384)),U32.mul(nx,nz),0,layout,config,density,enabled,model,programs,climate,biomes)
       values : Q.Table<Sample> = vertices!(U32.max(1,U32.div(U32.add(size(layout),16383),16384)),size(layout),0,layout,enabled,model,programs,climate,noises,biomes,selected)
-      Computed{model,programs,climate,G.Profile{noises,biomes,flags,lava,level,minimum,height,aquifer},Grid{layout,values}}
+      Computed{model,programs,climate,G.Profile{noises,biomes,flags,lava,level,minimum,height,aquifer,lakes},Grid{layout,values}}
 
 def mix(a: Q.Vec4,b: Q.Vec4,+t: F32) -> Q.Vec4:
   match a b:
