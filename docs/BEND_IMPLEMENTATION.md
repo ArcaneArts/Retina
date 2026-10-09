@@ -131,8 +131,10 @@ placement salts, selector groups, predicates, heightmaps and biome memberships.
 A persistent live block overlay provides current materials/heights to those checks.
 The lazy ordered walker and shared selector/count budgets now have a checked
 component implementation, as do all ten registered block-provider families and
-their initialized spatial noise stacks. Port the actual feature writers,
-trunk/foliage variants and decorators into resident block runs next. Preserve
+their initialized spatial noise stacks. Simple-block, block-column and disk
+writers now have checked implementations against the live world overlay. Port
+the remaining feature families, trunk/foliage variants and decorators, then
+merge their actual writes into resident block runs. Preserve
 globally seeded neighboring contributions and actual support checks instead of replacing these recipes with
 fixed biome densities. The existing cave survival policy provides a starting
 point for final unsupported-plant cleanup.
@@ -178,8 +180,8 @@ more deeply; retain the original requested scope.
 | Caves, ravines, rare surface entrances and cave decoration | `GeologyProfile.java`, `geology.rs`, `features.rs`, `caves.wgsl` | Typed geology, cached globally aligned GPU/CPU cave fields, rounded noisy ravines and registered column carving implemented; independent voxel/serialized-region and actual Minecraft decoder checks pass. GPU/CPU depth-dependent cave-biome volumes now select registered carvers and serialize actual 3D quart IDs, retaining finalized surface biomes near the roof. Resident aquifers now supply carved cavity materials. Registered floor/ceiling cave dressing, vines, blossoms, dripstone and sparse plant survival now execute on the selected CPU/GPU backend. Playable terrain integration implemented; composed-density/exterior refinements and ordered surface decorations remain pending |
 | Lakes, aquifer fields and fluid barriers | `TerrainFeatureProfile.java`, `program/lake_sparse.rs`, `aquifers.wgsl` | Typed aquifer graph projection and GPU/CPU flooding, erosion, spread, lava, barrier and preliminary-surface evaluation implemented. Globally hashed resident fluid centers, trilinear barrier fields and nearest-center pressure now place registered cavity fluids while preserving protected/pressure-barrier materials. Registered lake budgets/materials, globally seeded candidates, five bank probes, bounded fluid levels and noisy basin/rim placement implemented on CPU/GPU before material coating. Independent block/NBT/zlib checks cover fluids, barriers, overlap and signed/distant coordinates; lake exclusions now use finalized pre-carving coast selection, including global probes outside the resident tile. Out-of-tile bank vertices now execute in bulk with exact prior geometry and material bytes, improving measured GPU lake-stage latency by 10.1–14.6×. Playable terrain integration implemented; full parity and performance work remain required |
 | Ore height/count/replacement/discard rules and GPU rasterization | `geology/`, `ore.wgsl` | Registered recipe projection, packed membership/material tables and selected-backend ordered replacement/exposure policy implemented. Registered count/rarity/height attempts and local sphere-chain/scattered geometry now execute on CPU/GPU. Local sphere-union masks and ordered scattered points now calculate in the same selected-backend evaluation as geometry. Spatial surface/cave membership filtering, stable neighboring contribution buckets and ordered resident-block replay now run in one selected CPU/GPU evaluation, with immutable exposure halo checks and independent voxel/NBT/zlib validation. Playable terrain integration implemented; full parity and performance work remain required |
-| Ordered decoration, registered counts, provider noise and placement modifiers | `DecorationProfile.java`, `decoration/placement*`, `counts/`, `provider_noise/` | Registered recursive integer providers, count/offset projection, build-relative height distributions and actual-permutation spatial count noise independently checked on CPU/Metal. Typed ordered-program projection, exact placement-salt grouping, recursive predicates, live block/heightmap overlay and terrain-dependent checks now independently checked on CPU/Metal. Lazy ordered count/layer/cuboid execution and shared selector budgets now have an independent CPU/Metal component harness. All ten block-provider families, full 64-bit weighted decisions, current-state property transforms and initialized permutation/offset noise now independently checked on CPU/Metal. Feature writers and playable world integration remain pending |
-| Trees and decorators, giant mushrooms, fallen trees, disks, vegetation patches, block columns, bamboo, aquatic plants and attachments | `decoration.rs`, `decoration/`, `tree_shapes.rs` | Pending; port actual supported recipe variants, not only grass/tree examples |
+| Ordered decoration, registered counts, provider noise and placement modifiers | `DecorationProfile.java`, `decoration/placement*`, `counts/`, `provider_noise/` | Registered recursive integer providers, count/offset projection, build-relative height distributions and actual-permutation spatial count noise independently checked on CPU/Metal. Typed ordered-program projection, exact placement-salt grouping, recursive predicates, live block/heightmap overlay and terrain-dependent checks now independently checked on CPU/Metal. Lazy ordered count/layer/cuboid execution and shared selector budgets now have an independent CPU/Metal component harness. All ten block-provider families, full 64-bit weighted decisions, current-state property transforms and initialized permutation/offset noise now independently checked on CPU/Metal. Simple-block, block-column and disk writers now independently replay live material changes and RNG state on CPU/Metal; remaining feature families and playable integration are pending |
+| Trees and decorators, giant mushrooms, fallen trees, disks, vegetation patches, block columns, bamboo, aquatic plants and attachments | `decoration.rs`, `decoration/`, `tree_shapes.rs` | Simple-block, block-column and disk writers and registry projections independently checked on CPU/Metal, including nested recipes. Trees/decorators, mushrooms, fallen trees, vegetation patches, bamboo, aquatic plants, attachments and playable integration remain pending |
 | Jigsaw pools/templates/processors, structures spanning regions and locate queries | `StructureProfile.java`, `structures.rs`, `structure_processors.rs`, `queries.rs` | Pending |
 | Structure entities/block entities/loot and attachment rotations | `nbt.rs`, `structures.rs`, `structure_processors.rs` | Pending |
 | Snow, freezing, plant support and path/gravel restrictions | `LightingProfile.java`, profile material/survival tables, `region.rs` | Pending |
@@ -1621,3 +1623,66 @@ Evidence is in `docs/benchmarks/bend-block-providers-correctness.json`.
 The playable worker is unchanged by this cycle. Surface feature writers, trees,
 neighboring contribution ordering, structures, snow/freezing, full GPU lighting,
 full-region caching and equivalent complete-region benchmarks remain required.
+
+
+### Simple-block, block-column and disk writers
+
+`surface_feature.bend` now performs actual registered feature writes against the
+persistent `placement_world.World`. Each call returns the updated world, full
+64-bit RNG state and feature success result. Later checks and provider samples
+see earlier writes immediately. Independent recipes may execute in parallel;
+ordered writes inside a recipe retain their dependency on current block state.
+The current component does not yet change the playable worker.
+
+`registry_surface_feature.bend` projects original simple-block, block-column and
+disk recipes, including their recursive block/int providers and predicates. It
+also projects the optional palette-indexed `simple_current_states` table; null
+survival rows remain unsupported rather than being assumed safe. Unknown feature
+kinds fail this parser. The component harness explicitly selects the three
+implemented families while traversing the original decorations subtree, including
+nested feature recipes; it does not claim to implement the other families.
+
+Simple blocks honor optional provider results, registered survival predicates,
+upper-space restrictions and separate dry/wet variants for both halves. Block
+columns sample every layer height before checking the *next* position, truncate
+from the base or tip according to `prioritize_tip`, and use the live world for
+subsequent provider decisions. Their original success semantics and random draws
+are retained even when an obstruction removes all retained blocks or the actual
+build domain clips writes. Disks retain Z/X/descending-Y replay order, circular
+bounds, target predicates and nullable providers. All writers publish only
+resident columns and valid build heights, and reject coordinate overflow before
+shifting. Final plant partner/support cleanup still belongs to the forthcoming
+complete decoration pipeline.
+
+Run locally with unchanged captured registry profiles:
+
+```sh
+python3 scripts/test_bend_surface_features.py \
+  --profile <vanilla-profile.json> \
+  --profile <terralith-profile.json> \
+  --profile <combined-profile.json> --prove-metal
+```
+
+The independent Python implementation uses integer coordinates, a dictionary of
+voxels and its own feature loops. It checks every written position/material,
+feature success and RNG state across two successive calls in 16 contexts per
+recipe. Fixtures cover soil, water, obstacles, missing/neighboring columns,
+build limits, negative/distant coordinates and signed-coordinate boundaries.
+Explicit controls cover wet pairs, upper-space rejection, unsupported shared
+survival, base/tip truncation, nullable providers, live disk dependencies and
+provider draws for writes clipped out of build height.
+
+The original inputs contain 34/135/135 applicable recipes, respectively. With
+26 synthetic recipes and an empty control, each backend checks **10,560 writer
+calls**. Two-thread CPU, one-thread fixture execution and GPU-required outputs
+agree byte for byte. Twenty-four malformed recipes/tables reject before output.
+The observer uses identical stock GPU pipeline archives and records actual Metal
+command-buffer completions alongside matching normal-program output hashes.
+Sources, inputs, executables and results are recorded in
+`docs/benchmarks/bend-surface-features-correctness.json`.
+
+These are correctness checks of isolated writers on constructed terrain, not a
+complete terrain benchmark or evidence of a GPU speedup. The installed world
+worker, neighboring anchor scheduling, remaining surface features/trees,
+structures, snow/freezing, lighting, full 1024-chunk regions and equivalent
+complete Rust/Bend performance measurements remain required.
