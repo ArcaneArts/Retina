@@ -1,0 +1,219 @@
+{
+  "scope": "Check pure Bend registered height providers against an independent integer model.\n\nThis component projects the original ordered placement programs and samples their\nheight providers. It does not place surface features or establish full backend\nparity/throughput. JSON profiles cross the registry wire without simplification.",
+  "bend_version": "bend 2.0.36",
+  "runs": [
+    {
+      "profile": "profile-0",
+      "gpu_required": false,
+      "reverse_order": "pass",
+      "providers": 10,
+      "checked_samples": 2560,
+      "build_contexts": 8,
+      "sequential_draw_lengths": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "context_validation": "pass",
+      "sampling_sha256": "07f27aa703c904aeb7293a3b3a152d918eb8c612be7fa2f8784fa181c4f9f306"
+    },
+    {
+      "profile": "profile-1",
+      "gpu_required": false,
+      "reverse_order": "pass",
+      "providers": 55,
+      "checked_samples": 14080,
+      "build_contexts": 8,
+      "sequential_draw_lengths": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "context_validation": "pass",
+      "sampling_sha256": "097886187bafe523d0f53a270feb1e40b7ef37020d4427a614c7f0409bd48c74"
+    },
+    {
+      "profile": "profile-2",
+      "gpu_required": false,
+      "reverse_order": "pass",
+      "providers": 55,
+      "checked_samples": 14080,
+      "build_contexts": 8,
+      "sequential_draw_lengths": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "context_validation": "pass",
+      "sampling_sha256": "097886187bafe523d0f53a270feb1e40b7ef37020d4427a614c7f0409bd48c74"
+    },
+    {
+      "profile": "fixture",
+      "gpu_required": false,
+      "reverse_order": "pass",
+      "providers": 230,
+      "checked_samples": 58880,
+      "build_contexts": 8,
+      "sequential_draw_lengths": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "context_validation": "pass",
+      "sampling_sha256": "a9867c304199241b4ffbf1885d29c142743e1a1879c2fa1885d808e49f9e8ee4"
+    },
+    {
+      "profile": "empty",
+      "gpu_required": false,
+      "reverse_order": "pass",
+      "providers": 0,
+      "checked_samples": 0,
+      "build_contexts": 8,
+      "sequential_draw_lengths": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "context_validation": "pass",
+      "sampling_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+    },
+    {
+      "profile": "profile-0",
+      "gpu_required": true,
+      "reverse_order": "pass",
+      "providers": 10,
+      "checked_samples": 2560,
+      "build_contexts": 8,
+      "sequential_draw_lengths": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "context_validation": "pass",
+      "sampling_sha256": "07f27aa703c904aeb7293a3b3a152d918eb8c612be7fa2f8784fa181c4f9f306"
+    },
+    {
+      "profile": "profile-1",
+      "gpu_required": true,
+      "reverse_order": "pass",
+      "providers": 55,
+      "checked_samples": 14080,
+      "build_contexts": 8,
+      "sequential_draw_lengths": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "context_validation": "pass",
+      "sampling_sha256": "097886187bafe523d0f53a270feb1e40b7ef37020d4427a614c7f0409bd48c74"
+    },
+    {
+      "profile": "profile-2",
+      "gpu_required": true,
+      "reverse_order": "pass",
+      "providers": 55,
+      "checked_samples": 14080,
+      "build_contexts": 8,
+      "sequential_draw_lengths": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "context_validation": "pass",
+      "sampling_sha256": "097886187bafe523d0f53a270feb1e40b7ef37020d4427a614c7f0409bd48c74"
+    },
+    {
+      "profile": "fixture",
+      "gpu_required": true,
+      "reverse_order": "pass",
+      "providers": 230,
+      "checked_samples": 58880,
+      "build_contexts": 8,
+      "sequential_draw_lengths": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "context_validation": "pass",
+      "sampling_sha256": "a9867c304199241b4ffbf1885d29c142743e1a1879c2fa1885d808e49f9e8ee4"
+    },
+    {
+      "profile": "empty",
+      "gpu_required": true,
+      "reverse_order": "pass",
+      "providers": 0,
+      "checked_samples": 0,
+      "build_contexts": 8,
+      "sequential_draw_lengths": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "context_validation": "pass",
+      "sampling_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+    }
+  ],
+  "invalid_profiles_per_backend": 53,
+  "one_cpu_thread": "pass",
+  "cpu_gpu_bytes_equal": true,
+  "metal_observation": [
+    {
+      "profile": "profile-0",
+      "command_buffers": 1,
+      "device_ms": [
+        7.258
+      ],
+      "sampling_sha256": "07f27aa703c904aeb7293a3b3a152d918eb8c612be7fa2f8784fa181c4f9f306"
+    },
+    {
+      "profile": "profile-1",
+      "command_buffers": 1,
+      "device_ms": [
+        8.392167
+      ],
+      "sampling_sha256": "097886187bafe523d0f53a270feb1e40b7ef37020d4427a614c7f0409bd48c74"
+    },
+    {
+      "profile": "profile-2",
+      "command_buffers": 1,
+      "device_ms": [
+        8.14725
+      ],
+      "sampling_sha256": "097886187bafe523d0f53a270feb1e40b7ef37020d4427a614c7f0409bd48c74"
+    },
+    {
+      "profile": "fixture",
+      "command_buffers": 1,
+      "device_ms": [
+        9.462875
+      ],
+      "sampling_sha256": "a9867c304199241b4ffbf1885d29c142743e1a1879c2fa1885d808e49f9e8ee4"
+    }
+  ],
+  "profiles": {
+    "/Users/cyberpwn/.local/share/retina-bend/2.0.36/backend-artifacts/lake-bank-parallel-20261009/inputs/vanilla/profile.json": "aefce6ff0e800966ad55920c5d21510dfa277de4612f67e22d5146d3aa838203",
+    "/Users/cyberpwn/.local/share/retina-bend/2.0.36/backend-artifacts/lake-bank-parallel-20261009/inputs/terralith/profile.json": "c9abbe97860a394ed899d64967bd0395bb9bb4ec71a9dff43d1bb45893fefd4d",
+    "/Users/cyberpwn/.local/share/retina-bend/2.0.36/backend-artifacts/lake-bank-parallel-20261009/inputs/combined/profile.json": "068fd602ad497128dd3960cb9be76840ebd41882b5b64c25acfa76d65e930c8b"
+  },
+  "sources": {
+    "bend/placement_height.bend": "4cd946214e516cf2d26f101f5c20b826250b33a810d5658de07a1c4dda9ea4e8",
+    "bend/registry_placement_height.bend": "a598b429813e6fe13223557972ff13f9c68095c79af1454edffc9e61c9bed441",
+    "bend/registry_decoration_heights.bend": "e30557de40d11bda6d5eff8ee570d9095ac53a200ffa45d3406a39f5077c2652",
+    "bend/placement_random.bend": "1336014e813d127c88dce79374ccd2ed952d9d5a7a9d784454b81d28416b0c35",
+    "bend/word64.bend": "62e104fbbc56208d66457789a7f2ed3f5fe122f4a19068c3df9b3bbbf555e139",
+    "bend/tests/decoration-heights.bend": "7abe68aee0b1105b604db4249b3bdbdcd1cae0235e1b9111e7ac5fb4963a2e9e",
+    "scripts/test_bend_decoration_heights.py": "4cb881179de796fde2229200dab00a4bd46d75a337d787240fb788329b701c3f"
+  },
+  "executable_sha256": "cedab6b7985b0676ff16d01404a88982e2ca7a0bdfce9faf6a43d92371994555",
+  "gpu_archive_sha256": "65315753a3227d6988659867c842320c7da79d7cffcb5a22f70c045c35ff553c"
+}
