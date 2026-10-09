@@ -38,6 +38,7 @@ import ./registry_aquifer.bend as RAQ
 import ./aquifer_batch.bend as AB
 import ./aquifer_lattice.bend as AL
 import ./aquifer_substance_batch.bend as ASB
+import ./lake_candidates.bend as Lakes
 import ./cave_carve.bend as Carve
 import ./precise.bend as D
 
@@ -1106,6 +1107,34 @@ def aquifer_substance_batch(input: File,output: File,+old: State,backend: U32,id
     case _: error(input,output,old,backend,id,opcode,747)
 
 @unsafe
+def lake_settings(input: File,output: File,+old: State,backend: U32,id: U32,opcode: U32,body: Z.Bytes) -> IO(Unit):
+  match old:
+    case State{Settings{_,_,Some{RD.Prepared{_,_,_,_,_,_,_,Some{M.Model{_,_,_,_,Some{MD.State{_,_,_,Some{G.Profile{_,biomes,_,_,_,_,_,_}},_}}}}}}},_}:
+      geology_metadata(Lakes.metadata_decode(body,biomes),old,input,output,backend,id,opcode)
+    case _: error(input,output,old,backend,id,opcode,748)
+
+@unsafe
+def lake_rows(computed: Lakes.Computed,count: U32,old: State,input: File,output: File,backend: U32,id: U32,opcode: U32) -> IO(Unit):
+  match computed:
+    case Lakes.Computed{rows}:
+      do IO<Unit>:
+        body : Z.Bytes <- payload(Lakes.encode(U32.to_nat(count),rows,B.new(),0))
+        finish(input,output,old,backend,id,opcode,0,body,True{})
+
+@unsafe
+def lake_queries(queries: S.Input,model: Q.Model,programs: Q.Table<Q.Program>,climate: C.Model,biomes: Q.Table<G.Biome>,old: State,input: File,output: File,backend: U32,id: U32,opcode: U32) -> IO(Unit):
+  match queries:
+    case S.Input{_,_,False{}}: error(input,output,old,backend,id,opcode,603)
+    case S.Input{queries,count,True{}}: lake_rows(Lakes.execute(model,programs,climate,biomes,queries),count,old,input,output,backend,id,opcode)
+
+@unsafe
+def lake_batch(input: File,output: File,+old: State,backend: U32,id: U32,opcode: U32,body: Z.Bytes) -> IO(Unit):
+  match old:
+    case State{Settings{_,Some{climate},Some{RD.Prepared{model,programs,_,_,_,_,_,Some{M.Model{_,_,_,_,Some{MD.State{_,_,_,Some{G.Profile{_,biomes,_,_,_,_,_,_}},_}}}}}}},_}:
+      lake_queries(S.query_decode(body),model,programs,climate,biomes,old,input,output,backend,id,opcode)
+    case _: error(input,output,old,backend,id,opcode,749)
+
+@unsafe
 def dispatch(input: File,output: File,stack: State,backend: U32,id: U32,opcode: U32,body: Z.Bytes) -> IO(Unit):
   match opcode:
     case 0: empty_command(R.end(R.start(body)),input,output,stack,backend,id,0)
@@ -1148,6 +1177,8 @@ def dispatch(input: File,output: File,stack: State,backend: U32,id: U32,opcode: 
     case 38: aquifer_batch(input,output,stack,backend,id,38,body)
     case 39: aquifer_cache_build(R.end(R.start(body)),input,output,stack,backend,id,39)
     case 40: aquifer_substance_batch(input,output,stack,backend,id,40,body)
+    case 41: lake_settings(input,output,stack,backend,id,41,body)
+    case 42: lake_batch(input,output,stack,backend,id,42,body)
     case 4: empty_command(R.end(R.start(body)),input,output,stack,backend,id,4)
     case _: error(input,output,stack,backend,id,opcode,605)
 

@@ -894,3 +894,57 @@ nice -n 10 ./gradlew bendAquiferPlacementTest bendAquiferPlacementWorkerTest \
   -PbendMetalProbe=/absolute/path/to/current-source-metal-observer \
   -PbendDensityRegistryProfiles=/absolute/vanilla.json=/absolute/vanilla.rbp
 ```
+
+## Registered surface-lake candidates
+
+Geology preparation (30) also projects each biome's optional `lakes` pair,
+`lake_barrier`, `lake_water_barrier` and `flags`. The two chances are finite
+values in `[0, 1]`; barrier IDs must reference the loaded palette. Missing lake
+fields default to zero budgets/material IDs. Malformed fields reject geology
+with **736**, preserving the preceding prepared snapshot. The lava chance may
+exceed the total chance: lava selection has priority, following the current
+Rust approximator. Projection and validation execute in Bend.
+
+- **41 — lake settings:** U32 count (0–256) followed by biome IDs. Each output
+  row contains total and lava F32 chances, then U32 lava barrier, water barrier
+  and biome flags (20 bytes). Requires prepared geology (**748** otherwise).
+  Invalid IDs or malformed batches return **603**. This reads the immutable
+  projected settings on the host without a GPU dispatch.
+- **42 — sparse lake candidates:** U32 count (0–4096), followed by four U32
+  words per query: signed world X, signed world Z, seed low and seed high.
+  Requires numeric density, climate and geology preparation (**749** otherwise).
+  Malformed batches return **603**. One selected CPU/GPU dispatch evaluates the
+  batch. Each output row is 56 bytes:
+
+  | Words | Value |
+  | --- | --- |
+  | 0 | U32 presence (a loaded climate target exists) |
+  | 1–2 | Signed U32-bit-pattern global 128-block cell X/Z |
+  | 3–6 | F32 center X high/low, then Z high/low |
+  | 7 | F32 radius |
+  | 8 | U32 center biome ID (`0xffffffff` if absent) |
+  | 9–10 | U32 eligible and lava flags |
+  | 11–12 | U32 selected barrier material ID and biome flags |
+  | 13 | F32 seeded placement chance |
+
+Candidate positions, full-seed hashing, registered climate program 0 lookup,
+placement budgets, material choice and radius are computed in Bend. A global
+cell has one candidate regardless of query order or tile boundaries. Water
+radii are 24–31 blocks; lava radii are one quarter of that, as in the existing
+Rust backend. Compensated coordinates retain fractional centers and negative
+flooring through signed-i32 extremes. Empty climate indices produce absent
+rows, rather than inventing a biome. An ineligible row still describes the
+candidate geometry; callers must check eligibility before later placement.
+
+These commands are read-only and retain saved terrain, caves and fluid caches.
+Re-preparing geology refreshes the settings; successful profile/model reloads
+clear dependent settings. Java transports raw query/result bytes only. This
+stage does **not** probe banks, select contained fluid levels or carve/place a
+lake; those steps remain required before the Bend terrain pipeline is complete.
+
+```sh
+nice -n 10 ./gradlew bendLakeTest bendLakeWorkerTest -PretinaHostOnly \
+  --max-workers=2 --no-parallel -PbendSkipBuild -PproveMetal \
+  -PbendMetalProbe=/absolute/path/to/current-source-metal-observer \
+  -PbendDensityRegistryProfiles=/absolute/vanilla.json=/absolute/vanilla.rbp
+```

@@ -179,7 +179,7 @@ def distance(+x: F32,+y: F32,+t: F32) -> F32:
 @unsafe
 def ravines(biome: G.Biome,+point: Q.Point,seed: U32) -> F32:
   match biome:
-    case G.Biome{+carvers}: carver_distances(Q.table_size(G.Carver,carvers),0,carvers,point,seed,1000.0)
+    case G.Biome{+carvers,_}: carver_distances(Q.table_size(G.Carver,carvers),0,carvers,point,seed,1000.0)
 
 @unsafe
 def carver_distances(n: U32,+i: U32,+carvers: Q.Table<G.Carver>,+point: Q.Point,+seed: U32,+best: F32) -> F32:
@@ -264,8 +264,8 @@ def horizontal(point: Q.Point) -> Q.Point:
 
 def chosen(choice: C.Choice,biomes: Q.Table<G.Biome>) -> G.Biome:
   match choice:
-    case C.Missing{}: G.Biome{Q.Empty{}}
-    case C.Choice{_,id,_,_}: Q.get(G.Biome,biomes,id,G.Biome{Q.Empty{}})
+    case C.Missing{}: G.empty_biome()
+    case C.Choice{_,id,_,_}: Q.get(G.Biome,biomes,id,G.empty_biome())
 
 @unsafe
 def choice(+layout: Layout,+config: S.Config,+density: L.Grid,+enabled: Bool,+model: Q.Model,+programs: Q.Table<Q.Program>,+climate: C.Model,+biomes: Q.Table<G.Biome>,+i: U32) -> Surface:
@@ -313,14 +313,14 @@ def underground(active: Bool,model: Q.Model,programs: Q.Table<Q.Program>,climate
 def carver_biome(id: U32,surface: Surface,biomes: Q.Table<G.Biome>) -> G.Biome:
   match id surface:
     case 4294967295 Surface{_,carvers}: carvers
-    case _ _: Q.get(G.Biome,biomes,id,G.Biome{Q.Empty{}})
+    case _ _: Q.get(G.Biome,biomes,id,G.empty_biome())
 
 @unsafe
 def vertex(+layout: Layout,+enabled: Bool,+model: Q.Model,+programs: Q.Table<Q.Program>,+climate: C.Model,+noises: Q.Table<G.Noise>,+biomes: Q.Table<G.Biome>,+surfaces: Q.Table<Surface>,+i: U32) -> Sample:
   match layout:
     case Layout{_,+nx,+ny,_,+low,+high}:
       +p = point(layout,i)
-      +surface = Q.get(Surface,surfaces,U32.add(U32.mod(i,nx),U32.mul(nx,U32.div(i,U32.mul(nx,ny)))),Surface{D.scalar(0.0),G.Biome{Q.Empty{}}})
+      +surface = Q.get(Surface,surfaces,U32.add(U32.mod(i,nx),U32.mul(nx,U32.div(i,U32.mul(nx,ny)))),Surface{D.scalar(0.0),G.empty_biome()})
       +id = selected_biome(enabled,surface,p,model,programs,climate,low,high)
       +seed = U32.xor(low,N.hash(high))
       +rough = noise(noises,4,p,seed)
