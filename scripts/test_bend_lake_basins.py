@@ -204,7 +204,7 @@ def exercise(binary,profiles,gpu):
             assert r==struct.pack('>I',error),(op,error,r)
             if op==22 and error==729:dispatches+=2 if gpu or resident else 1
         else:
-            dispatches+={13:1,16:1,22:2 if gpu or resident else 1,43:4,44:1}.get(op,0)
+            dispatches+={13:1,16:1,22:2 if gpu or resident else 1,43:5,44:1}.get(op,0)
             if op in (5,13,16,30):resident=False
             if op==43:resident=True
         return r
