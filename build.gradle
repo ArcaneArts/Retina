@@ -33,7 +33,7 @@ tasks.named('build') { dependsOn ':common:build', ':fabric:build', ':neoforge:bu
     }
     tasks.register("runNeoForge${side}") {
         group = 'neoforge'
-        dependsOn ":neoforge:run${side}"
+        dependsOn ":neoforge:runNeoForge${side}"
     }
 }
 tasks.register('exportFabricBenchmarkProfile') {
