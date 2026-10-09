@@ -47,6 +47,7 @@ def fixtures(folder):
     s=copy.deepcopy(source);s['registry_program']['aquifer']['surface'][2]=1
     s['registry_program']['programs'][base+4]['roots']=[8];good('explicit_height',s)
     s=copy.deepcopy(source);s['registry_program']['aquifer']['enabled']=False;good('disabled',s)
+    s=copy.deepcopy(source);s['registry_program']['aquifer']=dict(enabled=False);good('disabled_minimal',s)
     s=copy.deepcopy(source);del s['registry_program']['aquifer'];good('absent',s)
     # Zero/constant fields exercise no-positive-density and world ceiling bounds.
     s=copy.deepcopy(source);s['registry_program']['programs'][base+4]=dict(nodes=[ins(0,p=(-1,0,0,0)),ins(0,p=(1e9,0,0,0))],roots=[0,1]);good('empty_search',s)
@@ -103,7 +104,7 @@ def exercise(binary,profiles,bad,gpu):
         signal.alarm(300)
         reply=worker.call(op,data,status=int(status!=0))
         if status:assert reply==struct.pack('>I',status),(op,reply,status)
-        if status==0:dispatches+={13:1,16:1,22:2 if gpu else 1,31:1,33:2,35:1,38:1}.get(op,0)
+        if status==0:dispatches+={13:1,16:1,22:2 if gpu else 1,31:1,33:2,35:1,38:1,39:3}.get(op,0)
         return reply
     def prepare(path):
         call(5,path_request(path));call(11);call(19);call(21);call(30)
@@ -113,7 +114,7 @@ def exercise(binary,profiles,bad,gpu):
             print('checking','GPU' if gpu else 'CPU',name,flush=True)
             prepare(path);call(38,encode([]),744)
             meta=struct.unpack('>7I',call(37));a=source['registry_program'].get('aquifer')
-            want=([int(a['enabled']),a['program'],a['surface'][0]&MASK,a['surface'][1],a['surface'][2]] if a else [0,0,source['geology_min_y']&MASK,1,0])+[source['geology_min_y']&MASK,source['geology_height']]
+            want=([int(a['enabled']),a['program'],a['surface'][0]&MASK,a['surface'][1],a['surface'][2]] if a and a['enabled'] else [0,0,source['geology_min_y']&MASK,1,0])+[source['geology_min_y']&MASK,source['geology_height']]
             assert list(meta)==want,(meta,want)
             rng=random.Random(91871);lo,hi=0x87654321,0x80000001
             qs=[(rng.randrange(-512,513),rng.randrange(-32,32),rng.randrange(-512,513),lo,hi) for _ in range(48)]
@@ -138,7 +139,7 @@ def exercise(binary,profiles,bad,gpu):
             if name=='analytic':
                 call(9);call(15)
                 desc=call(18,tile_bytes((-1,-1,26,26,lo,hi)));call(13,desc)
-                call(16,tile_bytes((0,0,24,24,lo,hi)));call(22);call(33);call(35)
+                call(16,tile_bytes((0,0,24,24,lo,hi)));call(22);call(33);call(39);call(35)
                 chunk=chunk_request(0,0,lo,hi,5023);saved=call(26,chunk)
                 assert call(38,encode(qs))==raw
                 call(37);assert saved==call(26,chunk)

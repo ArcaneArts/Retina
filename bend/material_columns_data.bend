@@ -21,7 +21,7 @@ type State is Data:
 def clear(state: Maybe<&2,State>) -> Maybe<&2,State>:
   match state:
     case None{}: None{}
-    case Some{State{config,_,catalog,geology,_}}: Some{State{config,None{},catalog,geology,None{}}}
+    case Some{State{config,_,catalog,geology,_}}: Some{State{config,None{},catalog,G.clear_geometry(geology),None{}}}
 
 def catalog(state: Maybe<&2,State>) -> Maybe<&2,C.Catalog>:
   match state:

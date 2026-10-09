@@ -36,6 +36,8 @@ import ./cave_biome_batch.bend as CBIO
 import ./aquifer.bend as AQ
 import ./registry_aquifer.bend as RAQ
 import ./aquifer_batch.bend as AB
+import ./aquifer_lattice.bend as AL
+import ./aquifer_substance_batch.bend as ASB
 import ./cave_carve.bend as Carve
 import ./precise.bend as D
 
@@ -54,7 +56,8 @@ import ./precise.bend as D
 # SHORELINE_COLUMNS=29 (resident exact heights and coastal biome selection),
 # PROFILE_GEOLOGY=30, CAVE_NOISE_BATCH=31, CARVER_BATCH=32,
 # CAVE_LATTICE=33, CAVE_FIELD_BATCH=34, CARVE_COLUMNS=35, CAVE_BIOME_BATCH=36,
-# PROFILE_AQUIFER=37, AQUIFER_FIELD_BATCH=38.
+# PROFILE_AQUIFER=37, AQUIFER_FIELD_BATCH=38, AQUIFER_LATTICE=39,
+# AQUIFER_SUBSTANCE_BATCH=40.
 # Requests: RBND magic, payload length, request ID, opcode (all BE u32).
 # Responses add a status u32 after opcode. stdout contains frames only.
 type Settings is Data:
@@ -998,7 +1001,7 @@ def aquifer_ready(result: Result<&1,&1,U32,AQ.Prepared>,doc: P.Document,prepared
 @unsafe
 def aquifer_ack(config: AQ.Prepared,doc: P.Document,prepared: RD.Prepared,noise: Maybe<&2,N.Stack>,climate: Maybe<&2,C.Model>,input: File,output: File,backend: U32,id: U32,opcode: U32) -> IO(Unit):
   match config:
-    case AQ.Prepared{AQ.Config{enabled,program,bottom,step,explicit,minimum,height},_}:
+    case AQ.Prepared{AQ.Config{enabled,program,bottom,step,explicit,minimum,height},_,_}:
       do IO<Unit>:
         body : Z.Bytes <- payload(B.int(B.int(B.int(B.int(B.int(B.int(B.int(B.new(),N.word(enabled,1,0)),program),bottom),step),N.word(explicit,1,0)),minimum),height))
         finish(input,output,State{Settings{noise,climate,Some{prepared}},Some{doc}},backend,id,opcode,0,body,True{})
@@ -1037,6 +1040,70 @@ def aquifer_batch(input: File,output: File,+old: State,backend: U32,id: U32,opco
     case State{Settings{_,_,Some{RD.Prepared{model,programs,_,_,_,_,_,Some{M.Model{_,_,_,_,Some{MD.State{_,_,_,Some{G.Profile{_,_,_,_,_,_,_,Some{config}}},_}}}}}}},_}:
       aquifer_queries(MC.decode(body),config,model,old,input,output,backend,id,opcode)
     case _: error(input,output,old,backend,id,opcode,744)
+
+@unsafe
+def aquifer_cache_ack(computed: AL.Computed,old: State,input: File,output: File,backend: U32,id: U32,opcode: U32) -> IO(Unit):
+  match computed old:
+    case AL.Computed{+aq} State{Settings{noise,climate,Some{prepared}},profile}:
+      aquifer_cache_reply(aq,State{Settings{noise,climate,Some{aquifer_attach(prepared,aq)}},profile},input,output,backend,id,opcode)
+    case _ _: error(input,output,old,backend,id,opcode,745)
+
+@unsafe
+def aquifer_cache_reply(aq: AQ.Prepared,old: State,input: File,output: File,backend: U32,id: U32,opcode: U32) -> IO(Unit):
+  match aq:
+    case AQ.Prepared{_,_,Some{AQ.Cache{layout,_,AQ.Volume{barrier,_},_}}}:
+      do IO<Unit>:
+        body : Z.Bytes <- payload(B.int(B.int(B.new(),AL.size(layout)),AL.size(barrier)))
+        finish(input,output,old,backend,id,opcode,0,body,True{})
+    case _:
+      do IO<Unit>:
+        body : Z.Bytes <- payload(B.int(B.int(B.new(),0),0))
+        finish(input,output,old,backend,id,opcode,0,body,True{})
+
+@unsafe
+def aquifer_water(catalog: CC.Catalog,water: U32) -> Bool:
+  match catalog:
+    case CC.Catalog{materials,_}: aquifer_water_material(Q.get(Material.Material,materials,water,CC.empty_material()))
+
+def aquifer_water_material(material: Material.Material) -> Bool:
+  match material:
+    case Material.Material{Material.State{name,_},_}: String.eq(name,"minecraft:water")
+
+@unsafe
+def aquifer_cache_valid(valid: Bool,aq: AQ.Prepared,model: Q.Model,tile: S.Tile,minimum: U32,height: U32,params: AQ.Params,old: State,input: File,output: File,backend: U32,id: U32,opcode: U32) -> IO(Unit):
+  match valid aq:
+    case False{} _: error(input,output,old,backend,id,opcode,746)
+    case True{} AQ.Prepared{AQ.Config{False{},_,_,_,_,_,_},_,_}: aquifer_cache_reply(aq,old,input,output,backend,id,opcode)
+    case True{} _: aquifer_cache_ack(AL.execute(aq,model,tile,minimum,height,params),old,input,output,backend,id,opcode)
+
+@unsafe
+def aquifer_cache_build(valid: Bool,input: File,output: File,+old: State,backend: U32,id: U32,opcode: U32) -> IO(Unit):
+  match valid old:
+    case False{} _: error(input,output,old,backend,id,opcode,603)
+    case True{} State{Settings{_,_,Some{RD.Prepared{model,_,_,_,_,_,_,Some{M.Model{_,_,+sea,_,Some{MD.State{MD.Config{_,+water,_,_,_,_},Some{MD.Grid{+tile,minimum,height,_,_}},Some{+catalog},Some{G.Profile{_,_,_,+lava,+level,_,_,Some{aq}}},_}}}}}}},_}:
+      aquifer_cache_valid(AL.compatible(tile,minimum,height),aq,model,tile,minimum,height,AQ.Params{sea,water,lava,level,aquifer_water(catalog,water)},old,input,output,backend,id,opcode)
+    case _ _: error(input,output,old,backend,id,opcode,745)
+
+@unsafe
+def aquifer_substance_rows(computed: ASB.Computed,count: U32,old: State,input: File,output: File,backend: U32,id: U32,opcode: U32) -> IO(Unit):
+  match computed:
+    case ASB.Computed{rows}:
+      do IO<Unit>:
+        body : Z.Bytes <- payload(ASB.encode(U32.to_nat(count),rows,B.new(),0))
+        finish(input,output,old,backend,id,opcode,0,body,True{})
+
+@unsafe
+def aquifer_substance_queries(queries: MC.Input,cache: AQ.Cache,caves: CV.Grid,old: State,input: File,output: File,backend: U32,id: U32,opcode: U32) -> IO(Unit):
+  match queries:
+    case MC.Input{_,_,False{}}: error(input,output,old,backend,id,opcode,603)
+    case MC.Input{queries,count,True{}}: aquifer_substance_rows(ASB.execute(cache,caves,queries),count,old,input,output,backend,id,opcode)
+
+@unsafe
+def aquifer_substance_batch(input: File,output: File,+old: State,backend: U32,id: U32,opcode: U32,body: Z.Bytes) -> IO(Unit):
+  match old:
+    case State{Settings{_,_,Some{RD.Prepared{_,_,_,_,_,_,_,Some{M.Model{_,_,_,_,Some{MD.State{_,_,_,Some{G.Profile{_,_,_,_,_,_,_,Some{AQ.Prepared{_,_,Some{cache}}}}},Some{caves}}}}}}}},_}:
+      aquifer_substance_queries(MC.decode(body),cache,caves,old,input,output,backend,id,opcode)
+    case _: error(input,output,old,backend,id,opcode,747)
 
 @unsafe
 def dispatch(input: File,output: File,stack: State,backend: U32,id: U32,opcode: U32,body: Z.Bytes) -> IO(Unit):
@@ -1079,6 +1146,8 @@ def dispatch(input: File,output: File,stack: State,backend: U32,id: U32,opcode: 
     case 36: cave_biome_batch(input,output,stack,backend,id,36,body)
     case 37: aquifer_profile(R.end(R.start(body)),input,output,stack,backend,id,37)
     case 38: aquifer_batch(input,output,stack,backend,id,38,body)
+    case 39: aquifer_cache_build(R.end(R.start(body)),input,output,stack,backend,id,39)
+    case 40: aquifer_substance_batch(input,output,stack,backend,id,40,body)
     case 4: empty_command(R.end(R.start(body)),input,output,stack,backend,id,4)
     case _: error(input,output,stack,backend,id,opcode,605)
 

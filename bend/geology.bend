@@ -118,3 +118,15 @@ def carver_count(biomes: Q.Table<Biome>) -> U32:
     case Q.Empty{}: 0
     case Q.Leaf{Biome{carvers}}: Q.table_size(Carver,carvers)
     case Q.Branch{_,a,b}: U32.add(carver_count(a),carver_count(b))
+
+
+def clear_aquifer(profile: Profile) -> Profile:
+  match profile:
+    case Profile{noises,biomes,flags,lava,level,minimum,height,Some{aquifer}}:
+      Profile{noises,biomes,flags,lava,level,minimum,height,Some{A.clear(aquifer)}}
+    case _: profile
+
+def clear_geometry(profile: Maybe<&2,Profile>) -> Maybe<&2,Profile>:
+  match profile:
+    case None{}: None{}
+    case Some{profile}: Some{clear_aquifer(profile)}

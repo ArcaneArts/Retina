@@ -596,6 +596,20 @@ tasks.register('bendAquiferTest', Exec) {
     mustRunAfter 'bendCaveBiomeTest'
 }
 
+tasks.register('bendAquiferPlacementTest', Exec) {
+    group = 'verification'
+    description = 'Check resident Bend aquifer centers, pressure decisions and actual carved fluids.'
+    workingDir rootProject.projectDir
+    commandLine providers.gradleProperty('pythonExecutable').getOrElse('python3'), 'scripts/test_bend_aquifer_placement.py'
+    if (providers.gradleProperty('bendSkipBuild').isPresent()) args '--skip-build'
+    if (providers.gradleProperty('proveMetal').isPresent()) args '--prove-metal'
+    if (providers.gradleProperty('bendMetalProbe').isPresent()) args '--metal-probe', providers.gradleProperty('bendMetalProbe').get()
+    if (!registryDensityProfiles.isEmpty()) registryDensityProfiles.split(',').each { pair ->
+        pair.split('=', 2).with { paths -> args '--profile', paths[0], paths[1] }
+    }
+    mustRunAfter 'bendAquiferTest'
+}
+
 tasks.register('bendCaveBiomeRegionTest', JavaExec) {
     group = 'verification'
     description = 'Read and reopen Bend cave biome MCA files through actual Minecraft decoders.'
@@ -709,6 +723,20 @@ tasks.register('bendAquiferWorkerTest', JavaExec) {
     maxHeapSize = '256m'
     args rootProject.file('build/bend/engine').absolutePath,
             rootProject.file('build/bend/aquifer-profiles/analytic.rbp').absolutePath
+}
+
+tasks.register('bendAquiferPlacementWorkerTest', JavaExec) {
+    group = 'verification'
+    description = 'Exercise Java concurrent resident aquifer callers and carved snapshot lifecycle.'
+    dependsOn 'bendAquiferTest', 'bendAquiferPlacementTest', bendWorkerClasses
+    classpath = files(bendWorkerClasses.flatMap { it.destinationDirectory })
+    mainClass = 'art.arcane.retina.worldgen.BendAquiferWorkerTest'
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
+    jvmArgs '-XX:ActiveProcessorCount=2'
+    maxHeapSize = '256m'
+    args rootProject.file('build/bend/engine').absolutePath,
+            rootProject.file('build/bend/aquifer-profiles/analytic.rbp').absolutePath,
+            rootProject.file('build/bend/aquifer-placement-profiles/full.rbp').absolutePath
 }
 
 tasks.register('bendCaveWorkerTest', JavaExec) {

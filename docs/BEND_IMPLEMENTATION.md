@@ -35,8 +35,8 @@ more deeply; retain the original requested scope.
 | Noise stacks, density bytecode, splines and GPU interpolation | `native/src/program.rs`, `program/`, `program.wgsl`, `noise3.wgsl`, `simplex.wgsl` | Reusable Bend seeded simplex/3D gradient kernels, weighted octave stacks and trilinear primitive implemented and independently checked on CPU and actual Metal. Integer/fraction coordinate handling checked through signed-i32 extremes. Numeric density opcodes 0..31, registered noise, ordered Hermite splines and nested trilinear fields implemented and independently checked with actual vanilla/Terralith/combined climate and terrain graphs on CPU/Metal. Compensated transformed coordinates preserve distant neighbors. Resident typed model projection and bounded persistent CPU/GPU queries implemented with reload invalidation; bounded top-level GPU lattices now retain samples for independently checked trilinear queries. GPU surface-height scans now consume the resident lattice; GPU-derived compact material layers implemented; per-field caching and runtime integration pending |
 | Climate targets, biome selection, smooth boundaries and underground biomes | `climate.rs`, `climate.wgsl`, `RetinaBiomeSource.java` | Pure Bend balanced interval indices and surface/underground/coastal lookup implemented, checked against independent linear search with actual registered intervals on CPU and Metal. Typed resident-tape projection and persistent query commands implemented with explicit reload invalidation. GPU spatial climate fields and surface biome selection now consume resident density tiles; compact material layers implemented; blended boundaries and world integration pending |
 | Coastlines, shore materials, rivers and material predicates/layers | `ShoreMaterialProfile.java`, `column_program.rs`, `materials.wgsl` | Pure Bend resident per-biome material DAGs and predicates (40..54) implemented with shared numeric evaluation, registered bands/sea/layer mode and bounded CPU/GPU query batches. GPU context/compact block runs implemented. Resident GPU coastal finalization now uses exact generated occupancy, six-block disk probes and registered climate alternatives before material generation; independent CPU/Metal checks cover inland/ocean exclusion, distinct materials and cache/coordinate rules. Inland rivers, ocean remapping, 3D biome material assignment and final integration remain required |
-| Caves, ravines, rare surface entrances and cave decoration | `GeologyProfile.java`, `geology.rs`, `features.rs`, `caves.wgsl` | Typed geology, cached globally aligned GPU/CPU cave fields, rounded noisy ravines and registered column carving implemented; independent voxel/serialized-region and actual Minecraft decoder checks pass. GPU/CPU depth-dependent cave-biome volumes now select registered carvers and serialize actual 3D quart IDs, retaining finalized surface biomes near the roof. Composed-density/exterior refinements, aquifers, decorations and running-world integration remain pending |
-| Lakes, aquifer fields and fluid barriers | `TerrainFeatureProfile.java`, `program/lake_sparse.rs`, `aquifers.wgsl` | Typed aquifer graph projection and GPU/CPU flooding, erosion, spread, lava, barrier and preliminary-surface evaluation implemented. Resident fluid centers, pressure barriers, final fluid placement and lakes remain pending |
+| Caves, ravines, rare surface entrances and cave decoration | `GeologyProfile.java`, `geology.rs`, `features.rs`, `caves.wgsl` | Typed geology, cached globally aligned GPU/CPU cave fields, rounded noisy ravines and registered column carving implemented; independent voxel/serialized-region and actual Minecraft decoder checks pass. GPU/CPU depth-dependent cave-biome volumes now select registered carvers and serialize actual 3D quart IDs, retaining finalized surface biomes near the roof. Resident aquifers now supply carved cavity materials. Composed-density/exterior refinements, decorations and running-world integration remain pending |
+| Lakes, aquifer fields and fluid barriers | `TerrainFeatureProfile.java`, `program/lake_sparse.rs`, `aquifers.wgsl` | Typed aquifer graph projection and GPU/CPU flooding, erosion, spread, lava, barrier and preliminary-surface evaluation implemented. Globally hashed resident fluid centers, trilinear barrier fields and nearest-center pressure now place registered cavity fluids while preserving protected/pressure-barrier materials. Lakes and complete running-world integration remain pending |
 | Ore height/count/replacement/discard rules and GPU rasterization | `geology/`, `ore.wgsl` | Pending |
 | Ordered decoration, registered counts, provider noise and placement modifiers | `DecorationProfile.java`, `decoration/placement*`, `counts/`, `provider_noise/` | Pending |
 | Trees and decorators, giant mushrooms, fallen trees, disks, vegetation patches, block columns, bamboo, aquatic plants and attachments | `decoration.rs`, `decoration/`, `tree_shapes.rs` | Pending; port actual supported recipe variants, not only grass/tree examples |
@@ -702,10 +702,10 @@ snapshots retain the immutable aquifer inputs; re-preparing geology or loading a
 new profile requires explicit aquifer preparation. Raw field queries and
 re-preparation do not mutate already generated chunk bytes.
 
-These fields prepare the next resident stage. Fluid centers, interpolation of
-barrier fields, nearest-center pressure decisions, final cavity fluid placement
-and lakes remain required. This is not a usable Bend world type or a complete
-Rust-versus-Bend performance result.
+These field checks were merged in
+[PR #46](https://github.com/ArcaneArts/Retina/pull/46), commit `fd96650`.
+Both actual push and PR CI builds passed. The following resident stage now
+consumes these fields; lakes and running-world integration remain required.
 
 Eight controlled profiles and actual vanilla/Terralith/combined registries pass
 on CPU, GPU and the stock-runtime Metal observer. Each run checks 3,630 field
@@ -720,3 +720,48 @@ callers, shutdown, existing geology/cave-biome regressions and the full host
 Fabric/NeoForge build pass, including 64 native tests (11 explicit tests remain
 ignored). Evidence is in
 `docs/benchmarks/bend-aquifer-fields-correctness.json`.
+
+### Resident aquifer geometry and cavity fluids
+
+The worker builds preliminary surface heights, randomized fluid centers and
+pressure-barrier vertices in three selected-backend dispatches. Center cells
+are globally aligned to 16 × 12 × 16 blocks, seeded with both world-seed words.
+Thirteen cached surface probes and the loaded flood/erosion/spread/lava graphs
+determine each center's fluid level and material. Four-block-aligned barrier
+vertices remain resident alongside the centers; preliminary heights are
+discarded after construction.
+
+Carving examines the nearest three of twelve centers, interpolates the cached
+barrier field and applies the current Rust approximator's pressure curve.
+Eligible cavity voxels become air, registered default fluid or registered lava;
+pressure barriers retain the original material. The existing foundation,
+underwater-floor and non-carveable-material rules still apply. Pressure uses
+the interpolated cave chamber density clamped to at most -0.02, matching the
+negative-carver proxy rather than reevaluating terrain programs per voxel.
+Explicitly disabled or absent aquifer settings, once prepared, use the global
+fluid picker. No fluid calculation is delegated to Java, Rust or custom shaders.
+
+Resident caches cover both interpolation endpoints and all twelve center
+candidates. Globally aligned layouts and compensated positions preserve shared
+values across overlapping tiles and distant/negative coordinates. Queries
+require matching coverage/seed, and enabled carving rejects stale or missing
+fluid geometry. Surface/shore rebuilding clears old geometry while retaining
+typed aquifer inputs. Cache rebuilding or input re-preparation leaves saved
+material/cave snapshots and encoded chunks unchanged.
+
+Eight controlled profiles plus actual vanilla/Terralith/combined exports pass
+on CPU, ordinary GPU execution and a stock-runtime Metal observer. Each run
+independently checks 332,060 substance decisions and 442,512 carved voxels,
+including air, default-fluid, lava and solid-pressure outcomes. Complete fixture
+chunk NBT, zlib round trips, final-block heightmaps and 3D biome IDs are decoded;
+chunk hashes match across all three runs. All 524 expected Metal commands are
+observed. Additional cases cover overlapping/reordered tiles, thin tiles,
+negative/distant coordinates near signed-i32 limits, seed mismatches, malformed
+queries and snapshot/cache invalidation. Concurrent Java callers, rebuilding
+and shutdown pass, as do host Fabric/NeoForge builds and 64 native tests
+(11 existing explicit tests remain ignored). Reproducible inputs, source hashes
+and results are in `docs/benchmarks/bend-aquifer-placement-correctness.json`.
+
+This remains unlit component work. Lakes, full composed-density refinements,
+decorations, structures, lighting and the production world backend remain
+required before advertising a usable Retina Bend world type.
