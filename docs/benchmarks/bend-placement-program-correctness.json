@@ -1,0 +1,169 @@
+{
+  "scope": "Check Bend placement-program projection and live terrain queries independently.\n\nOriginal registry profiles cross the structural wire unchanged. This component\ndoes not execute the ordered placement walker or place trees/surface features.",
+  "bend_version": "bend 2.0.36",
+  "runs": [
+    {
+      "profile": "profile-0",
+      "gpu_required": false,
+      "reverse_order": "pass",
+      "recipes": 182,
+      "modifiers": 1261,
+      "world_queries": 1024,
+      "bytes": 231888,
+      "sha256": "4c880f784972d0ff8d848165212213779c7ce5e1f44a603b8e19be6dba4790a1"
+    },
+    {
+      "profile": "profile-1",
+      "gpu_required": false,
+      "reverse_order": "pass",
+      "recipes": 553,
+      "modifiers": 3796,
+      "world_queries": 1024,
+      "bytes": 754684,
+      "sha256": "2b5fd62b157d304832b76cb0294785090caf78f9272dc46221d194397ddfcabc"
+    },
+    {
+      "profile": "profile-2",
+      "gpu_required": false,
+      "reverse_order": "pass",
+      "recipes": 553,
+      "modifiers": 3796,
+      "world_queries": 1024,
+      "bytes": 754692,
+      "sha256": "b99e8e7fe990e3801ca3165b6f250065937978e6d89381f2c94cdf2ba1a24e2b"
+    },
+    {
+      "profile": "fixture",
+      "gpu_required": false,
+      "reverse_order": "pass",
+      "recipes": 5,
+      "modifiers": 50,
+      "world_queries": 1024,
+      "bytes": 6228,
+      "sha256": "08100c9c7fdb8f9ef38d1316f684187d4590e7497acb37847f1b75b62c92f947"
+    },
+    {
+      "profile": "empty",
+      "gpu_required": false,
+      "reverse_order": "pass",
+      "recipes": 0,
+      "modifiers": 0,
+      "world_queries": 1024,
+      "bytes": 4196,
+      "sha256": "080f24cedc8d1de63bcf7d0febba39c342bade155bd8f21db4a3e24f663e557a"
+    },
+    {
+      "profile": "profile-0",
+      "gpu_required": true,
+      "reverse_order": "pass",
+      "recipes": 182,
+      "modifiers": 1261,
+      "world_queries": 1024,
+      "bytes": 231888,
+      "sha256": "4c880f784972d0ff8d848165212213779c7ce5e1f44a603b8e19be6dba4790a1"
+    },
+    {
+      "profile": "profile-1",
+      "gpu_required": true,
+      "reverse_order": "pass",
+      "recipes": 553,
+      "modifiers": 3796,
+      "world_queries": 1024,
+      "bytes": 754684,
+      "sha256": "2b5fd62b157d304832b76cb0294785090caf78f9272dc46221d194397ddfcabc"
+    },
+    {
+      "profile": "profile-2",
+      "gpu_required": true,
+      "reverse_order": "pass",
+      "recipes": 553,
+      "modifiers": 3796,
+      "world_queries": 1024,
+      "bytes": 754692,
+      "sha256": "b99e8e7fe990e3801ca3165b6f250065937978e6d89381f2c94cdf2ba1a24e2b"
+    },
+    {
+      "profile": "fixture",
+      "gpu_required": true,
+      "reverse_order": "pass",
+      "recipes": 5,
+      "modifiers": 50,
+      "world_queries": 1024,
+      "bytes": 6228,
+      "sha256": "08100c9c7fdb8f9ef38d1316f684187d4590e7497acb37847f1b75b62c92f947"
+    },
+    {
+      "profile": "empty",
+      "gpu_required": true,
+      "reverse_order": "pass",
+      "recipes": 0,
+      "modifiers": 0,
+      "world_queries": 1024,
+      "bytes": 4196,
+      "sha256": "080f24cedc8d1de63bcf7d0febba39c342bade155bd8f21db4a3e24f663e557a"
+    }
+  ],
+  "invalid_profiles_per_backend": 44,
+  "one_cpu_thread": "pass",
+  "cpu_gpu_bytes_equal": true,
+  "metal_observation": [
+    {
+      "profile": "profile-0",
+      "command_buffers": 1,
+      "device_ms": [
+        865.401125
+      ],
+      "sha256": "4c880f784972d0ff8d848165212213779c7ce5e1f44a603b8e19be6dba4790a1"
+    },
+    {
+      "profile": "profile-1",
+      "command_buffers": 1,
+      "device_ms": [
+        1898.063458
+      ],
+      "sha256": "2b5fd62b157d304832b76cb0294785090caf78f9272dc46221d194397ddfcabc"
+    },
+    {
+      "profile": "profile-2",
+      "command_buffers": 1,
+      "device_ms": [
+        1889.385708
+      ],
+      "sha256": "b99e8e7fe990e3801ca3165b6f250065937978e6d89381f2c94cdf2ba1a24e2b"
+    },
+    {
+      "profile": "fixture",
+      "command_buffers": 1,
+      "device_ms": [
+        89.7785
+      ],
+      "sha256": "08100c9c7fdb8f9ef38d1316f684187d4590e7497acb37847f1b75b62c92f947"
+    },
+    {
+      "profile": "empty",
+      "command_buffers": 1,
+      "device_ms": [
+        45.119333
+      ],
+      "sha256": "080f24cedc8d1de63bcf7d0febba39c342bade155bd8f21db4a3e24f663e557a"
+    }
+  ],
+  "profiles": {
+    "/Users/cyberpwn/.local/share/retina-bend/2.0.36/backend-artifacts/lake-bank-parallel-20261009/inputs/vanilla/profile.json": "aefce6ff0e800966ad55920c5d21510dfa277de4612f67e22d5146d3aa838203",
+    "/Users/cyberpwn/.local/share/retina-bend/2.0.36/backend-artifacts/lake-bank-parallel-20261009/inputs/terralith/profile.json": "c9abbe97860a394ed899d64967bd0395bb9bb4ec71a9dff43d1bb45893fefd4d",
+    "/Users/cyberpwn/.local/share/retina-bend/2.0.36/backend-artifacts/lake-bank-parallel-20261009/inputs/combined/profile.json": "068fd602ad497128dd3960cb9be76840ebd41882b5b64c25acfa76d65e930c8b"
+  },
+  "sources": {
+    "bend/placement_data.bend": "57cfe91b1ac652eae6a8e551cf76846700fed5ec18d2b1d76f7c3bb4a9882142",
+    "bend/placement_world.bend": "84ebef382abf100b3d8b29f7d3c33c4b0b7f4d679aae5f2eb5b369175352077b",
+    "bend/placement_checks.bend": "e9e41195ec6972979855488c446697c086b1b45b5ad4f1b157acb41dfc9d2e84",
+    "bend/registry_placement.bend": "0dd10eee84ece0f331bc7271dee9efd89dfc78e7a4b48dfaa035dd2ebcd8f34e",
+    "bend/registry_placement_predicate.bend": "0f1ad10f8fd935e2bc6abbc71508bf9cfb404f0d115b3a7c06298b7eb7ea86bc",
+    "bend/registry_placement_policy.bend": "802b38a1c778de5dde66f8927e00a142c712c3ec029b6c01c7a9d3acd80983bd",
+    "bend/tests/placement-programs.bend": "4fed7abef7b3a5861720aa51f3acc3df70c4636b70b49d0552a14b6d304fd588",
+    "bend/tests/placement-world-fixtures.bend": "7af07391f5cec7119ad91c7ab9002d40757a2a132437d36c385a314857d17497",
+    "scripts/test_bend_placement_programs.py": "db77f2b1232aaf3a4cd335539f7c2c5ed0ee465aef7e6d470e12e529c138893d"
+  },
+  "native_sha256": "dc35f9b5dc50b0f19b38d20999a92eb1442d30fd2a7172a92a53799a28deb591",
+  "gpu_sha256": "f9f339fcaaaa01a7864b99a1e5cbec97a7339362e224728c7c02819d6f797973"
+}
