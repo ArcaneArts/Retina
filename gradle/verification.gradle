@@ -573,6 +573,20 @@ tasks.register('bendOrePlanningTest', Exec) {
     mustRunAfter 'bendOreTest'
 }
 
+tasks.register('bendOreMaskTest', Exec) {
+    group = 'verification'
+    description = 'Check pure Bend local vein union masks and ordered scattered points on CPU/GPU.'
+    workingDir rootProject.projectDir
+    commandLine providers.gradleProperty('pythonExecutable').getOrElse('python3'), 'scripts/test_bend_ore_masks.py'
+    if (providers.gradleProperty('bendSkipBuild').isPresent()) args '--skip-build'
+    if (providers.gradleProperty('proveMetal').isPresent()) args '--prove-metal'
+    if (providers.gradleProperty('bendMetalProbe').isPresent()) args '--metal-probe', providers.gradleProperty('bendMetalProbe').get()
+    if (!registryDensityProfiles.isEmpty()) registryDensityProfiles.split(',').each { pair ->
+        pair.split('=', 2).with { paths -> args '--profile', paths[0], paths[1] }
+    }
+    mustRunAfter 'bendOrePlanningTest'
+}
+
 tasks.register('bendCaveTest', Exec) {
     group = 'verification'
     description = 'Check Bend cave lattices, rounded ravines, exact carved voxels and compressed chunks on CPU/GPU.'
@@ -848,6 +862,19 @@ tasks.register('bendOrePlanningWorkerTest', JavaExec) {
     maxHeapSize = '256m'
     args rootProject.file('build/bend/engine').absolutePath,
             rootProject.file('build/bend/ore-planning-profiles/mixed.rbp').absolutePath
+}
+
+tasks.register('bendOreMaskWorkerTest', JavaExec) {
+    group = 'verification'
+    description = 'Exercise actual Java ore mask callers, concurrency, reload and Bend shutdown.'
+    dependsOn 'bendOreMaskTest', bendWorkerClasses
+    classpath = files(bendWorkerClasses.flatMap { it.destinationDirectory })
+    mainClass = 'art.arcane.retina.worldgen.BendOreWorkerTest'
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
+    jvmArgs '-XX:ActiveProcessorCount=2'
+    maxHeapSize = '256m'
+    args rootProject.file('build/bend/engine').absolutePath,
+            rootProject.file('build/bend/ore-mask-profiles/mixed.rbp').absolutePath
 }
 
 tasks.register('bendCaveWorkerTest', JavaExec) {

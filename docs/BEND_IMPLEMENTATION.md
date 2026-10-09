@@ -37,7 +37,7 @@ more deeply; retain the original requested scope.
 | Coastlines, shore materials, rivers and material predicates/layers | `ShoreMaterialProfile.java`, `column_program.rs`, `materials.wgsl` | Pure Bend resident per-biome material DAGs and predicates (40..54) implemented with shared numeric evaluation, registered bands/sea/layer mode and bounded CPU/GPU query batches. GPU context/compact block runs implemented. Resident GPU coastal finalization now uses exact generated occupancy, six-block disk probes and registered climate alternatives before material generation; independent CPU/Metal checks cover inland/ocean exclusion, distinct materials and cache/coordinate rules. Inland rivers, ocean remapping, 3D biome material assignment and final integration remain required |
 | Caves, ravines, rare surface entrances and cave decoration | `GeologyProfile.java`, `geology.rs`, `features.rs`, `caves.wgsl` | Typed geology, cached globally aligned GPU/CPU cave fields, rounded noisy ravines and registered column carving implemented; independent voxel/serialized-region and actual Minecraft decoder checks pass. GPU/CPU depth-dependent cave-biome volumes now select registered carvers and serialize actual 3D quart IDs, retaining finalized surface biomes near the roof. Resident aquifers now supply carved cavity materials. Composed-density/exterior refinements, decorations and running-world integration remain pending |
 | Lakes, aquifer fields and fluid barriers | `TerrainFeatureProfile.java`, `program/lake_sparse.rs`, `aquifers.wgsl` | Typed aquifer graph projection and GPU/CPU flooding, erosion, spread, lava, barrier and preliminary-surface evaluation implemented. Globally hashed resident fluid centers, trilinear barrier fields and nearest-center pressure now place registered cavity fluids while preserving protected/pressure-barrier materials. Registered lake budgets/materials, globally seeded candidates, five bank probes, bounded fluid levels and noisy basin/rim placement implemented on CPU/GPU before material coating. Independent block/NBT/zlib checks cover fluids, barriers, overlap and signed/distant coordinates; lake exclusions now use finalized pre-carving coast selection, including global probes outside the resident tile. Complete running-world integration remains pending |
-| Ore height/count/replacement/discard rules and GPU rasterization | `geology/`, `ore.wgsl` | Registered recipe projection, packed membership/material tables and selected-backend ordered replacement/exposure policy implemented. Registered count/rarity/height attempts and local sphere-chain/scattered geometry now execute on CPU/GPU. Spatial membership filtering, sparse rasterization and final block replay remain pending |
+| Ore height/count/replacement/discard rules and GPU rasterization | `geology/`, `ore.wgsl` | Registered recipe projection, packed membership/material tables and selected-backend ordered replacement/exposure policy implemented. Registered count/rarity/height attempts and local sphere-chain/scattered geometry now execute on CPU/GPU. Local sphere-union masks and ordered scattered points now calculate in the same selected-backend dispatch as geometry. Spatial membership filtering and final block replay remain pending |
 | Ordered decoration, registered counts, provider noise and placement modifiers | `DecorationProfile.java`, `decoration/placement*`, `counts/`, `provider_noise/` | Pending |
 | Trees and decorators, giant mushrooms, fallen trees, disks, vegetation patches, block columns, bamboo, aquatic plants and attachments | `decoration.rs`, `decoration/`, `tree_shapes.rs` | Pending; port actual supported recipe variants, not only grass/tree examples |
 | Jigsaw pools/templates/processors, structures spanning regions and locate queries | `StructureProfile.java`, `structures.rs`, `structure_processors.rs`, `queries.rs` | Pending |
@@ -1012,3 +1012,48 @@ cover 511,250 ore replacement queries, 838,656 cave-biome voxels/839,673 biome
 IDs, and 1,490 lake bank heights/1,160 final columns plus three serialized chunk
 round trips per backend. Compilation ran separately at reduced priority, with
 one Bend native compiler and two-job Rust builds.
+
+
+The ore-attempt/local-geometry cycle merged in
+[PR #52](https://github.com/ArcaneArts/Retina/pull/52), commit `b3b1be9`.
+Both actual push and PR CI builds passed. Its preserved artifact snapshot is
+identified by source commit `1a69916`.
+
+### Compact local ore union masks
+
+`bend/ore_raster.bend` now consumes registered geometry inside one selected
+CPU/GPU dispatch. It removes contained spheres, computes local integer bounds
+and precomputes reciprocal radii. Balanced parallel leaves each own one U32
+word of 32 voxel-union bits in Y/Z/X order. Overlaps produce a single bit and
+padding remains zero. Geometry never crosses the host bridge between shape
+construction and rasterization. Scattered deposits retain their original point
+order and exposure random words, with local bounds for later chunk bucketing.
+
+Read-only command 49 and the Java bridge expose raw diagnostics of these reusable
+Bend routines. Spatial biome filtering, stable regional contribution buckets and
+final resident-block replay remain required. This component alone places no ore
+in a running world and establishes no complete-region performance advantage.
+
+The independent harness checks registered sphere/scatter generation, conservative
+bounds, local half-block voxel centers, every mask bit outside a recorded narrow
+floating boundary band, scatter ordering, padding, repeated/reordered batches,
+maximum batches, malformed requests, surface preparation, reload and worker
+shutdown. It accepts the same actual vanilla/Terralith/combined registry pairs
+and has an observed-Metal mode; Java performs raw transport only.
+
+Validation covers seven controls plus actual vanilla, Terralith and combined
+profiles: 693 veins, 243,008 mask voxels, 71,277 occupied voxels and 309 scattered
+points per backend. There are zero ambiguous boundary voxels in these inputs.
+CPU and GPU mask bytes match, and the normal GPU aggregate matches the observer
+build with all 94 expected Metal command buffers recorded. The largest exercised
+response is 60,416 bytes, including a full 256-row batch. This is correctness
+evidence, not a region throughput measurement. Source, input, executable and
+compiler evidence is in `docs/benchmarks/bend-ore-masks-correctness.json`.
+
+The real Java CPU/GPU worker concurrency, reload, malformed-request, surface
+preparation and shutdown checks pass. The full Fabric/NeoForge host build passes
+with 64 native tests passed and 11 existing explicit tests ignored. Earlier ore
+attempt/geometry regression aggregates remain unchanged across 87,680 attempts
+and 125,409 geometry pieces per backend, including all three actual registry
+profiles. Compilation used one Bend compiler and two Rust jobs at reduced
+priority, separately from measurements.

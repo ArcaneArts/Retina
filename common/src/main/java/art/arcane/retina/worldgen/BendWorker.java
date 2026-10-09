@@ -384,6 +384,14 @@ public final class BendWorker implements AutoCloseable {
         return request(48, batch);
     }
 
+    /** Build compact local sphere-union masks or ordered scattered points in
+     * one Bend CPU/GPU dispatch, without host-side geometry reconstruction.
+     * These diagnostic masks do not yet modify the resident block snapshot.
+     */
+    public CompletableFuture<byte[]> sampleOreMasks(byte[] batch) {
+        return request(49, batch);
+    }
+
     /** Cancellation skips queued requests; in-flight responses are drained to
      * preserve framing. World shutdown closes the worker and terminates it.
      */

@@ -34,6 +34,7 @@ public final class BendOreWorkerTest {
                 rejected(worker.sampleOreReplacements(batch), 754);
                 rejected(worker.sampleOreAttempts(attemptRequest), 754);
                 rejected(worker.sampleOreGeometry(geometryRequest), 754);
+                rejected(worker.sampleOreMasks(geometryRequest), 754);
                 await(worker.loadProfile(profile));await(worker.prepareProfileDensity());
                 await(worker.prepareProfileMaterials());await(worker.prepareProfileBlocks());
                 await(worker.prepareProfileGeology());
@@ -61,6 +62,19 @@ public final class BendOreWorkerTest {
                 var geometryWords = ByteBuffer.wrap(geometry);
                 require(geometryWords.getInt() == 0 && geometryWords.getInt() == 64 && geometry.length == 1032,
                         "registered regular vein size and framing");
+                byte[] masks = await(worker.sampleOreMasks(geometryRequest));
+                var maskWords = ByteBuffer.wrap(masks);
+                require(maskWords.getInt() == 0, "regular union-mask kind");
+                maskWords.getInt(); maskWords.getInt(); maskWords.getInt();
+                int nx = maskWords.getInt(), ny = maskWords.getInt(), nz = maskWords.getInt();
+                int wordCount = maskWords.getInt(), volume = nx * ny * nz;
+                require(nx > 0 && nx <= 32 && ny > 0 && ny <= 16 && nz > 0 && nz <= 32
+                        && wordCount == (volume + 31) / 32 && masks.length == 32 + wordCount * 4,
+                        "bounded local mask dimensions and raw framing");
+                int hits = 0, last = 0;
+                for (int i = 0; i < wordCount; i++) { last = maskWords.getInt(); hits += Integer.bitCount(last); }
+                require(hits > 0 && (volume % 32 == 0 || (last >>> (volume % 32)) == 0),
+                        "nonempty union and zero mask padding");
                 var calls = new ArrayList<CompletableFuture<byte[]>>();
                 for (int i = 0; i < 8; i++) calls.add(worker.sampleOreReplacements(batch));
                 for (var call : calls) require(Arrays.equals(expected, await(call)), "concurrent replacement callers");
@@ -73,32 +87,39 @@ public final class BendOreWorkerTest {
                 calls.clear();
                 for (int i = 0; i < 8; i++) calls.add(worker.sampleOreGeometry(geometryRequest));
                 for (var call : calls) require(Arrays.equals(geometry, await(call)), "concurrent geometry callers");
+                calls.clear();
+                for (int i = 0; i < 8; i++) calls.add(worker.sampleOreMasks(geometryRequest));
+                for (var call : calls) require(Arrays.equals(masks, await(call)), "concurrent union-mask callers");
                 rejected(worker.queryOreMetadata(new byte[] {0}), 603);
                 rejected(worker.sampleOreReplacements(new byte[] {0}), 603);
                 rejected(worker.sampleOreAttempts(new byte[] {0}), 603);
                 rejected(worker.sampleOreGeometry(new byte[] {0}), 603);
+                rejected(worker.sampleOreMasks(new byte[] {0}), 603);
                 rejected(worker.prepareProfileGeology().thenCompose(ignored -> worker.request(30, new byte[] {0})), 603);
                 require(Arrays.equals(expected, await(worker.sampleOreReplacements(batch))), "rejected requests preserve ore inputs");
                 await(worker.prepareProfileClimate());await(worker.prepareProfileSurface());
                 require(Arrays.equals(info, await(worker.queryOreMetadata(infoRequest))), "surface preparation retains ore inputs");
                 require(Arrays.equals(attempts, await(worker.sampleOreAttempts(attemptRequest)))
                         && Arrays.equals(geometry, await(worker.sampleOreGeometry(geometryRequest))), "surface preparation retains planning");
+                require(Arrays.equals(masks, await(worker.sampleOreMasks(geometryRequest))), "surface preparation retains masks");
                 await(worker.loadProfile(profile));
                 rejected(worker.queryOreMetadata(infoRequest), 754);
                 rejected(worker.sampleOreReplacements(batch), 754);
                 rejected(worker.sampleOreAttempts(attemptRequest), 754);
                 rejected(worker.sampleOreGeometry(geometryRequest), 754);
+                rejected(worker.sampleOreMasks(geometryRequest), 754);
                 await(worker.prepareProfileDensity());await(worker.prepareProfileMaterials());
                 await(worker.prepareProfileBlocks());await(worker.prepareProfileGeology());
                 require(Arrays.equals(info, await(worker.queryOreMetadata(infoRequest)))
                         && Arrays.equals(expected, await(worker.sampleOreReplacements(batch))), "reload is repeatable");
                 require(Arrays.equals(attempts, await(worker.sampleOreAttempts(attemptRequest)))
                         && Arrays.equals(geometry, await(worker.sampleOreGeometry(geometryRequest))), "planning reload is repeatable");
+                require(Arrays.equals(masks, await(worker.sampleOreMasks(geometryRequest))), "mask reload is repeatable");
                 require(worker.processId() == pid, "one persistent process");
             }
             require(!ProcessHandle.of(pid).map(ProcessHandle::isAlive).orElse(false), "closed worker process");
         }
-        System.out.println("PASS: Bend ore CPU/GPU concurrent callers, policy, attempts, geometry, reload and shutdown");
+        System.out.println("PASS: Bend ore CPU/GPU concurrent callers, policy, attempts, geometry, masks, reload and shutdown");
     }
 
     private static byte[] await(CompletableFuture<byte[]> future) throws Exception {
