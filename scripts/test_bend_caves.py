@@ -7,6 +7,7 @@ pending. Correctness-run timings are not a generator benchmark.
 """
 import argparse
 import copy
+from collections import Counter
 import functools
 import hashlib
 import itertools
@@ -29,6 +30,7 @@ from test_bend_geology import fixtures as geology_fixtures, encode
 from test_bend_density import Oracle, ins
 from test_bend_registry_climate import projected
 from test_bend_climate import expected
+from test_bend_surface import SurfaceReference
 from test_bend_surface import tile_bytes, query_bytes
 from test_bend_material_columns import decode as decode_columns
 from test_bend_generated_chunks import request as chunk_request, validate as validate_chunk
@@ -109,12 +111,40 @@ class Reference:
     def __init__(self,source):
         self.source=source;self.model=json.loads(json.dumps(source['registry_program']),parse_float=lambda x:f32(float(x)))
         self.oracle=Oracle(self.model);self.targets=projected(source)
+        self.surface=SurfaceReference(source);self.has_caves=any(t["flags"]&16 for t in self.targets)
+    @functools.lru_cache(maxsize=100000)
+    def node_biome(self,point,low,high):
+        if not self.has_caves:return MASK
+        x,y,z=point;source=self.source;bottom=source['geology_min_y'];top=bottom+source['geology_height']
+        if source['registry_program']['surface'][2]:bottom=top=0
+        desc=(1,x,bottom,z,x,top,z,*source['registry_program']['terrain_cell'],low,high)
+        height=self.integer_height(x,z,low,high,desc)
+        if y>=height-12:return MASK
+        climate=self.oracle.evaluate(self.model['programs'][0],point,low,high)
+        choice=expected(self.targets,list(climate),2)
+        return MASK if choice is None else choice[0]['biome']
+    @functools.lru_cache(maxsize=100000)
+    def integer_height(self,x,z,low,high,desc):
+        minimum=self.source['geology_min_y'];maximum=minimum+self.source['geology_height']
+        height=math.floor(self.surface.height(x,z,desc))
+        if self.source['registry_program']['surface'][2]:return height
+        # Continuous crossings only supply a search hint. Independent integer
+        # density tests decide the exact first-free block, including zero density.
+        while height>minimum and self.surface.query((1,x,height-1,z,low,high),desc)[0]<=0:height-=1
+        while height<maximum and self.surface.query((1,x,height,z,low,high),desc)[0]>0:height+=1
+        return height
+    def biome(self,q,layout):
+        x,y,z,low,high=q;origin,counts,seeds=layout
+        if (low,high)!=seeds or not all(o<=p<=o+4*(n-1) for p,o,n in zip((x,y,z),origin,counts)):return (0,MASK)
+        return (1,self.node_biome(tuple(o+math.floor((p-o)/4)*4 for p,o in zip((x,y,z),origin)),low,high))
     @functools.lru_cache(maxsize=100000)
     def node(self,point,low,high):
         seed=low^mix_hash(high);rough=stack(self.source,4,point,seed)
         climate=self.oracle.evaluate(self.model['programs'][0],(point[0],0,point[2]),low,high)
         choice=expected(self.targets,list(climate),0)
-        carvers=[] if choice is None else self.source['biomes'][choice[0]['biome']]['carvers']
+        id=self.node_biome(point,low,high)
+        if id==MASK:id=MASK if choice is None else choice[0]['biome']
+        carvers=[] if id==MASK else self.source['biomes'][id]['carvers']
         return [self.oracle.evaluate(self.model['programs'][2],point,low,high)[0],
             stack(self.source,1,(point[0]*f32(1.6),point[1],point[2]*f32(1.6)),seed)+rough*f32(.06),
             stack(self.source,2,(point[0]*f32(1.6),point[1],point[2]*f32(1.6)),seed)-rough*f32(.06),
@@ -135,14 +165,14 @@ def smooth(a,b,x):
     t=max(0.,min(1.,(x-a)/(b-a)));return t*t*(3-2*t)
 
 
-def expected_carve(source,column,x,y,z,values,low,high):
+def expected_carve(source,column,x,y,z,values,low,high,biome=None):
     height=column['height'];minimum=source['geology_min_y'];material=next(m for a,b,m in column['runs'] if a<=y-minimum<b)
     if not source['carveable'][material] or y<minimum+5 or y>=height or (height<=source['sea_level'] and y>=height-4):return material
     seed=low^mix_hash(high)
     aperture=gradient_noise((x,0,z),f32(.012),(seed+43117)&MASK)+gradient_noise((x,0,z),f32(.026),(seed+53731)&MASK)*.25
     roof=(1-smooth(.18,.45,aperture))*(1-smooth(0,24,height-1-y))
     chamber,a,b,ribbon=values;carved=y<height-1 and chamber<-.20*roof
-    for c in source['biomes'][column['biome']]['carvers']:
+    for c in source['biomes'][column['biome'] if biome is None or biome==MASK else biome]['carvers']:
         if c['probability']<=0:continue
         if c['kind']==1:carved|=ribbon<1.-roof*.25;continue
         margin=max(4.,c['thickness']*c['vertical']*4);lower=c['height']['min']-margin;upper=c['height']['max']+margin
@@ -192,7 +222,7 @@ def fixtures(folder):
 
 
 def exercise(binary,profiles,gpu):
-    worker=Worker(binary,gpu);dispatches=0;hashes=[];records=[];checks=blocks=0;maximum=0.
+    worker=Worker(binary,gpu);dispatches=0;hashes=[];records=[];checks=blocks=biome_checks=0;maximum=0.
     diagnostic_bytes=bytearray()
     # A full loaded-profile run observes hundreds of commands. Drain actual
     # diagnostics while the process runs so stderr pipe capacity cannot stall it.
@@ -202,7 +232,7 @@ def exercise(binary,profiles,gpu):
         nonlocal dispatches
         signal.alarm(300)
         out=worker.call(op,data,status=status)
-        if status==0:dispatches+={13:1,16:1,22:2 if gpu else 1,33:2,34:1,35:1}.get(op,0)
+        if status==0:dispatches+={13:1,16:1,22:2 if gpu else 1,29:2,33:2,34:1,35:1,36:1}.get(op,0)
         return out
     def error(op,data,code):assert call(op,data,1)==struct.pack('>I',code),(op,code)
     def fields(points):
@@ -216,7 +246,7 @@ def exercise(binary,profiles,gpu):
         call(13,desc);call(16,tile_bytes(tile));call(22)
         return struct.unpack('>8I',call(33))
     def verify_fields(ref,qs,ack,low,high):
-        nonlocal checks,maximum
+        nonlocal checks,maximum,biome_checks
         origin=tuple(v-(1<<32) if v&(1<<31) else v for v in ack[:3]);counts=ack[3:6]
         layout=(origin,counts,(low,high));raw=call(34,encode(qs));actual=list(struct.iter_unpack('>I4f',raw))
         for q,row in zip(qs,actual):
@@ -227,16 +257,23 @@ def exercise(binary,profiles,gpu):
                 error_value=abs(a-b)/max(1,abs(b));maximum=max(maximum,error_value)
                 assert math.isfinite(a) and error_value<.002,(q,k,a,b,error_value)
                 checks+=1
+        biome_rows=list(struct.iter_unpack('>2I',call(36,encode(qs))))
+        assert biome_rows==[ref.biome(q,layout) for q in qs],[(q,row,ref.biome(q,layout)) for q,row in zip(qs,biome_rows) if row!=ref.biome(q,layout)]
+        biome_checks+=len(qs)
+        assert call(36,encode(qs[::-1]))==b''.join(struct.pack('>2I',*row) for row in biome_rows[::-1])
         return raw,actual
     try:
-        error(33,b'',739);error(34,encode([]),740);error(35,b'',741)
+        error(33,b'',739);error(34,encode([]),740);error(36,encode([]),740);error(35,b'',741)
         for name,source,path in profiles:
             print('checking', 'GPU' if gpu else 'CPU',name,flush=True)
             call(5,path_request(path));call(11);call(19);call(21);call(25);call(9);call(15);call(30)
             low,high=0x87654321,0x80000001
-            ox,oz=(32,32) if name=='ravines' else (0,0)
+            ox,oz=(32,32) if name=='ravines' else ((-16,0) if name=='shore_surface_biomes' else (0,0))
             tile=(ox,oz,24,24,low,high)
-            desc=call(18,tile_bytes((ox-1,oz-1,26,26,low,high)));call(13,desc);call(16,tile_bytes(tile));call(22)
+            halo=6 if name=='shore_surface_biomes' else 1
+            desc=call(18,tile_bytes((ox-halo,oz-halo,24+2*halo,24+2*halo,low,high)));call(13,desc);call(16,tile_bytes(tile))
+            if name=='shore_surface_biomes':call(29)
+            call(22)
             points=[(ox+i%24,oz+i//24,low,high) for i in range(24*24)]
             before_bytes=columns(points);before=decode_columns(before_bytes)
             ack=struct.unpack('>8I',call(33));origin=tuple(v-(1<<32) if v&(1<<31) else v for v in ack[:3]);counts=ack[3:6]
@@ -252,23 +289,36 @@ def exercise(binary,profiles,gpu):
             assert fields(qs[::-1])==actual[::-1]
             assert call(34,encode([qs[0]]*4096))==raw[:20]*4096
             assert call(34,encode([]))==b''
-            for op,data in [(33,b'\0'),(34,b''),(34,encode(qs[:1])+b'\0'),(34,struct.pack('>I',4097)),(35,b'\0')]:error(op,data,603)
+            assert call(36,encode([]))==b''
+            assert call(36,encode([qs[0]]*4096))==struct.pack('>2I',*ref.biome(qs[0],(origin,counts,(low,high))))*4096
+            for op,data in [(33,b'\0'),(34,b''),(34,encode(qs[:1])+b'\0'),(34,struct.pack('>I',4097)),(35,b'\0'),(36,b''),(36,encode(qs[:1])+b'\0'),(36,struct.pack('>I',4097))]:error(op,data,603)
             assert columns(points)==before_bytes
             # Check every carved voxel against independently written rules using
             # separately verified sampled field values. No threshold epsilon or
             # classification mismatch is permitted in the carved block result.
             voxels=[(x,y,z,low,high) for z in range(oz,oz+24) for x in range(ox,ox+24) for y in range(source['geology_min_y'],source['geology_min_y']+source['geology_height'])]
-            sampled=[]
-            for start in range(0,len(voxels),4096):sampled+=fields(voxels[start:start+4096])
+            sampled=[];biomes=[]
+            for start in range(0,len(voxels),4096):
+                group=voxels[start:start+4096];sampled+=fields(group)
+                actual_biomes=list(struct.iter_unpack('>2I',call(36,encode(group))))
+                wanted_biomes=[ref.biome(q,(origin,counts,(low,high))) for q in group]
+                assert actual_biomes==wanted_biomes,(name,group[0],actual_biomes[:8],wanted_biomes[:8])
+                biomes+=actual_biomes;biome_checks+=len(group)
             call(35);after=decode_columns(columns(points))
             removed=0
-            for q,row in zip(voxels,sampled):
-                x,y,z,_,_=q;index=(z-oz)*24+x-ox;col=before[index];want=expected_carve(source,col,x,y,z,row[1:],low,high)
+            for q,row,biome in zip(voxels,sampled,biomes):
+                x,y,z,_,_=q;index=(z-oz)*24+x-ox;col=before[index];want=expected_carve(source,col,x,y,z,row[1:],low,high,biome[1])
                 actual_block=next(m for a,b,m in after[index]['runs'] if a<=y-source['geology_min_y']<b)
                 assert actual_block==want,(name,q,actual_block,want,row,col)
                 removed+=want!=next(m for a,b,m in col['runs'] if a<=y-source['geology_min_y']<b);blocks+=1
+            if name=='shore_surface_biomes':
+                assert any(source['biomes'][col['biome']]['flags']&64 for col in before)
+                assert any(row[1]==4 for row in biomes)
             if name=='ellipsoid':assert removed>100
             if name=='protected':assert removed==0
+            if name=='strata':
+                assert removed>100
+                assert set(row[1] for row in biomes)=={0,1,2,3,MASK}
             if name=='ravines':assert removed>100,removed
             if name in ('dry_roof','wet_roof'):
                 assert any(m==source['lava'] for c in after for a,b,m in c['runs'])
@@ -278,16 +328,22 @@ def exercise(binary,profiles,gpu):
             # Final NBT/heightmaps and zlib consume the carved resident columns.
             chunk=chunk_request(ox//16,oz//16,low,high,5023);raw_chunk=call(26,chunk)
             chunk_columns=[after[z*24+x] for z in range(16) for x in range(16)]
-            validate_chunk(raw_chunk,source,chunk_columns,ox//16,oz//16,5023)
+            chunk_biomes=[]
+            for sy in range(source['geology_height']//16):
+                for i in range(64):
+                    q=(ox+(i%4)*4,source['geology_min_y']+sy*16+(i//16)*4,oz+((i//4)%4)*4,low,high)
+                    id=ref.biome(q,(origin,counts,(low,high)))[1]
+                    chunk_biomes.append(chunk_columns[(i%4)*4+((i//4)%4)*4*16]['biome'] if id==MASK else id)
+            validate_chunk(raw_chunk,source,chunk_columns,ox//16,oz//16,5023,chunk_biomes)
             assert zlib.decompress(call(27,chunk))==raw_chunk
             old=columns(points);call(35);assert old==columns(points)
             call(25);assert raw==call(34,encode(qs))
             call(22);error(34,encode(qs),740)
-            call(33);call(21);error(34,encode(qs),740)
+            call(33);call(21);error(34,encode(qs),740);error(36,encode(qs),740)
             hashes.extend([hashlib.sha256(raw).hexdigest(),hashlib.sha256(raw_chunk).hexdigest()])
-            records.append(dict(name=name,cave_layout=list(ack),voxels_checked=len(voxels),changed_voxels=removed,
+            records.append(dict(name=name,cave_layout=list(ack),voxels_checked=len(voxels),changed_voxels=removed,biome_id_counts=dict(Counter(row[1] for row in biomes)),
                 field_sha256=hashlib.sha256(raw).hexdigest(),chunk_sha256=hashlib.sha256(raw_chunk).hexdigest()))
-            if name=='ellipsoid':
+            if name in ('ellipsoid','non_power_biomes'):
                 # Global node alignment must make overlapping tile results
                 # byte-identical regardless of which tile was requested first.
                 common=[(x,y,z,low,high) for x in (13,16,19) for z in (13,16,19) for y in (-31,-8,11)]
@@ -296,17 +352,17 @@ def exercise(binary,profiles,gpu):
                 assert first==second
                 generate((8,8,17,17,low,high));assert first==call(34,encode(common))
                 for x,z,width,depth in [(-513,-511,17,19),(-30000000,29999968,24,24),
-                        (-2147483644,2147483620,17,17),(0,0,1,1),(3,-3,1,9),(3,-3,9,1)]:
+                        (-2147483644,2147483620,17,17),(0,0,1,1),(3,-3,1,9),(3,-3,9,1),(7,7,1,9),(7,7,9,1)]:
                     edge=generate((x,z,width,depth,low,high))
                     probes=[(px,py,pz,low,high) for px in (x,x+width-1) for pz in (z,z+depth-1) for py in (-32,-9,31)]
                     data,_=verify_fields(ref,probes,edge,low,high);hashes.append(hashlib.sha256(data).hexdigest())
                 changed=generate((8,8,17,17,low,high^1));other,_=verify_fields(ref,[(x,y,z,lo,hi^1) for x,y,z,lo,hi in common],changed,low,high^1)
-                assert other!=first
+                if name=='ellipsoid':assert other!=first
                 error(35,b'\0',603)
         call(4);assert worker.process.wait(timeout=10)==0
         diagnostics_reader.join(timeout=5);assert not diagnostics_reader.is_alive()
         diagnostics=diagnostic_bytes.decode()
-        return dict(gpu_required=gpu,profiles=records,field_scalars_checked=checks,carved_voxels_checked=blocks,maximum_relative_reference_error=maximum,
+        return dict(gpu_required=gpu,profiles=records,field_scalars_checked=checks,carved_voxels_checked=blocks,biome_ids_checked=biome_checks,maximum_relative_reference_error=maximum,
             expected_gpu_dispatches=dispatches,metal_commands_ms=[float(v) for v in re.findall(r'BEND_METAL_DISPATCH device_ms=([0-9.]+)',diagnostics)],
             sha256=hashlib.sha256(''.join(hashes).encode()).hexdigest(),requests_in_one_process=worker.id)
     finally:signal.alarm(0);worker.close()

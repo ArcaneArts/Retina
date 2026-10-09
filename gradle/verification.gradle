@@ -559,6 +559,40 @@ tasks.register('bendCaveTest', Exec) {
     mustRunAfter 'bendGeologyTest'
 }
 
+tasks.register('bendCaveBiomeTest', Exec) {
+    group = 'verification'
+    description = 'Check GPU/CPU cave biome strata, registered carving and serialized quart IDs.'
+    workingDir rootProject.projectDir
+    commandLine providers.gradleProperty('pythonExecutable').getOrElse('python3'), 'scripts/test_bend_cave_biomes.py'
+    if (providers.gradleProperty('bendSkipBuild').isPresent()) args '--skip-build'
+    if (providers.gradleProperty('proveMetal').isPresent()) args '--prove-metal'
+    if (providers.gradleProperty('bendMetalProbe').isPresent()) args '--metal-probe', providers.gradleProperty('bendMetalProbe').get()
+    if (!registryDensityProfiles.isEmpty()) registryDensityProfiles.split(',').each { pair ->
+        pair.split('=', 2).with { paths -> args '--profile', paths[0], paths[1] }
+    }
+    mustRunAfter 'bendCaveTest'
+}
+
+tasks.register('bendCaveBiomeRegionFixtures', Exec) {
+    group = 'verification'
+    description = 'Decode complete carved Bend MCA files and every underground quart biome.'
+    workingDir rootProject.projectDir
+    commandLine providers.gradleProperty('pythonExecutable').getOrElse('python3'), 'scripts/test_bend_cave_regions.py', '--biomes'
+    if (providers.gradleProperty('bendMetalProbe').isPresent()) args '--metal-probe', providers.gradleProperty('bendMetalProbe').get()
+    mustRunAfter 'bendCaveBiomeTest'
+}
+
+tasks.register('bendCaveBiomeRegionTest', JavaExec) {
+    group = 'verification'
+    description = 'Read and reopen Bend cave biome MCA files through actual Minecraft decoders.'
+    dependsOn 'gpuTestClasses', 'bendCaveBiomeRegionFixtures'
+    classpath = sourceSets.gpuTest.runtimeClasspath
+    mainClass = 'art.arcane.retina.worldgen.BendGeneratedChunkIntegrationTest'
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
+    jvmArgs '-XX:ActiveProcessorCount=2'
+    args '--regions', rootProject.file('build/bend/cave-biome-regions').absolutePath, 'caves'
+}
+
 tasks.register('bendCaveRegionFixtures', Exec) {
     group = 'verification'
     description = 'Independently decode all 1024 chunks of a complete carved Bend MCA file on CPU/GPU.'
@@ -652,14 +686,15 @@ tasks.register('bendWorkerTest', JavaExec) {
 tasks.register('bendCaveWorkerTest', JavaExec) {
     group = 'verification'
     description = 'Exercise actual Java cave callers, concurrent queries, carved NBT/zlib and cache invalidation.'
-    dependsOn 'bendCaveTest', bendWorkerClasses
+    dependsOn 'bendCaveTest', 'bendCaveBiomeTest', bendWorkerClasses
     classpath = files(bendWorkerClasses.flatMap { it.destinationDirectory })
     mainClass = 'art.arcane.retina.worldgen.BendCaveWorkerTest'
     javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
     jvmArgs '-XX:ActiveProcessorCount=2'
     maxHeapSize = '256m'
     args rootProject.file('build/bend/engine').absolutePath,
-            rootProject.file('build/bend/cave-profiles/ellipsoid.rbp').absolutePath
+            rootProject.file('build/bend/cave-profiles/ellipsoid.rbp').absolutePath,
+            rootProject.file('build/bend/cave-biome-profiles/strata.rbp').absolutePath
 }
 
 tasks.register('bendGeneratedChunkFixtures', Exec) {

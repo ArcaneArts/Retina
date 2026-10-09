@@ -272,6 +272,15 @@ public final class BendWorker implements AutoCloseable {
         return request(34, batch);
     }
 
+    /** Query the resident discrete four-block cave-biome volume. Raw five-word
+     * queries match queryCaveFields; replies are presence and biome ID. A present
+     * -1 ID inherits the actual column's finalized surface biome, preserving shores.
+     * IDs and field values stay resident during carving and NBT/MCA encoding.
+     */
+    public CompletableFuture<byte[]> queryCaveBiomes(byte[] batch) {
+        return request(36, batch);
+    }
+
     /** Carve the resident generated columns using cached cave fields and
      * registered materials/carvers on the selected Bend CPU/GPU backend.
      */

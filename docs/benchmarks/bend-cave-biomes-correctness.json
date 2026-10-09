@@ -1,0 +1,1547 @@
+{
+  "scope": "Resident Bend cave-biome selection/carving and unlit compressed MCA correctness. No complete backend or Rust-versus-Bend performance claim.",
+  "bend_version": "2.0.36",
+  "platform": "macOS arm64 / Apple M4 Max / stock Bend Metal runtime",
+  "reports": {
+    "cave-biome-full-tests": {
+      "scope": "Validate resident Bend cave-biome volumes, biome-specific carving and NBT.\n\nIndependent climate interval search covers vertical strata and registered\nprofiles. This is unlit component QA, not complete worldgen or a speed claim.",
+      "runs": [
+        {
+          "gpu_required": false,
+          "profiles": [
+            {
+              "name": "strata",
+              "cave_layout": [
+                0,
+                4294967264,
+                0,
+                7,
+                17,
+                7,
+                833,
+                4
+              ],
+              "voxels_checked": 36864,
+              "changed_voxels": 6912,
+              "biome_id_counts": {
+                "3": 4608,
+                "2": 4608,
+                "1": 6912,
+                "0": 2304,
+                "4294967295": 18432
+              },
+              "field_sha256": "7a609c7ee0c2f1f0e641f7f399fa39a4696c11155a94a9f35945c79ed379332d",
+              "chunk_sha256": "be17c9ef53a7034ca9f0d8644b40559f4296d90c68a991227195c4c3e84deef9"
+            },
+            {
+              "name": "non_power_biomes",
+              "cave_layout": [
+                0,
+                4294967264,
+                0,
+                7,
+                17,
+                7,
+                833,
+                4
+              ],
+              "voxels_checked": 36864,
+              "changed_voxels": 6912,
+              "biome_id_counts": {
+                "3": 4608,
+                "2": 4608,
+                "1": 6912,
+                "0": 4608,
+                "4294967295": 16128
+              },
+              "field_sha256": "7a609c7ee0c2f1f0e641f7f399fa39a4696c11155a94a9f35945c79ed379332d",
+              "chunk_sha256": "8838562c2d93d955eb2077f61fbac4f73986614f278a3b0fd13a1d984c8eb6f8"
+            },
+            {
+              "name": "explicit_biomes",
+              "cave_layout": [
+                0,
+                4294967264,
+                0,
+                7,
+                17,
+                7,
+                833,
+                4
+              ],
+              "voxels_checked": 36864,
+              "changed_voxels": 6912,
+              "biome_id_counts": {
+                "3": 4608,
+                "2": 4608,
+                "1": 6912,
+                "0": 2304,
+                "4294967295": 18432
+              },
+              "field_sha256": "7a609c7ee0c2f1f0e641f7f399fa39a4696c11155a94a9f35945c79ed379332d",
+              "chunk_sha256": "be17c9ef53a7034ca9f0d8644b40559f4296d90c68a991227195c4c3e84deef9"
+            },
+            {
+              "name": "no_cave_targets",
+              "cave_layout": [
+                0,
+                4294967264,
+                0,
+                7,
+                17,
+                7,
+                833,
+                4
+              ],
+              "voxels_checked": 36864,
+              "changed_voxels": 0,
+              "biome_id_counts": {
+                "4294967295": 36864
+              },
+              "field_sha256": "7a609c7ee0c2f1f0e641f7f399fa39a4696c11155a94a9f35945c79ed379332d",
+              "chunk_sha256": "92b7eb1d3048ffd94ac0cead5f241c420e4ded07668909211e046d2738ea62d5"
+            },
+            {
+              "name": "vanilla",
+              "cave_layout": [
+                0,
+                4294967232,
+                0,
+                7,
+                97,
+                7,
+                4753,
+                4
+              ],
+              "voxels_checked": 221184,
+              "changed_voxels": 252,
+              "biome_id_counts": {
+                "36": 47040,
+                "4294967295": 155264,
+                "17": 18880
+              },
+              "field_sha256": "96e358490858886c41b9e43cf71c93d4256b2a6436f4bce4b0c40f8249c513cd",
+              "chunk_sha256": "ca41359f70406c73714230d8e4d37bf5d4776bc12242e7459bbf41594687a9b8"
+            },
+            {
+              "name": "terralith",
+              "cave_layout": [
+                0,
+                4294967232,
+                0,
+                7,
+                97,
+                7,
+                4753,
+                4
+              ],
+              "voxels_checked": 221184,
+              "changed_voxels": 490,
+              "biome_id_counts": {
+                "72": 33664,
+                "36": 22976,
+                "4294967295": 155136,
+                "17": 9408
+              },
+              "field_sha256": "6863dc2266de4cf2cbdb54fa1e7e9d9ea086c32e6f4725d86e2b657ef40cf401",
+              "chunk_sha256": "f0342896a2993c86499086c7f642ec3d5eb3e065705f6830ccc98c1a5c1963d1"
+            },
+            {
+              "name": "combined",
+              "cave_layout": [
+                0,
+                4294967232,
+                0,
+                7,
+                97,
+                7,
+                4753,
+                4
+              ],
+              "voxels_checked": 221184,
+              "changed_voxels": 490,
+              "biome_id_counts": {
+                "72": 33664,
+                "36": 22976,
+                "4294967295": 155136,
+                "17": 9408
+              },
+              "field_sha256": "6863dc2266de4cf2cbdb54fa1e7e9d9ea086c32e6f4725d86e2b657ef40cf401",
+              "chunk_sha256": "f0342896a2993c86499086c7f642ec3d5eb3e065705f6830ccc98c1a5c1963d1"
+            }
+          ],
+          "field_scalars_checked": 3648,
+          "carved_voxels_checked": 811008,
+          "biome_ids_checked": 811920,
+          "maximum_relative_reference_error": 9.250519104053723e-07,
+          "expected_gpu_dispatches": 630,
+          "sha256": "326394ba4cf52292f198434194edc7b9eb263e1069bc0984ffa4b224744fb510",
+          "requests_in_one_process": 895,
+          "metal_commands_ms_count": 0
+        },
+        {
+          "gpu_required": true,
+          "profiles": [
+            {
+              "name": "strata",
+              "cave_layout": [
+                0,
+                4294967264,
+                0,
+                7,
+                17,
+                7,
+                833,
+                4
+              ],
+              "voxels_checked": 36864,
+              "changed_voxels": 6912,
+              "biome_id_counts": {
+                "3": 4608,
+                "2": 4608,
+                "1": 6912,
+                "0": 2304,
+                "4294967295": 18432
+              },
+              "field_sha256": "7a609c7ee0c2f1f0e641f7f399fa39a4696c11155a94a9f35945c79ed379332d",
+              "chunk_sha256": "be17c9ef53a7034ca9f0d8644b40559f4296d90c68a991227195c4c3e84deef9"
+            },
+            {
+              "name": "non_power_biomes",
+              "cave_layout": [
+                0,
+                4294967264,
+                0,
+                7,
+                17,
+                7,
+                833,
+                4
+              ],
+              "voxels_checked": 36864,
+              "changed_voxels": 6912,
+              "biome_id_counts": {
+                "3": 4608,
+                "2": 4608,
+                "1": 6912,
+                "0": 4608,
+                "4294967295": 16128
+              },
+              "field_sha256": "7a609c7ee0c2f1f0e641f7f399fa39a4696c11155a94a9f35945c79ed379332d",
+              "chunk_sha256": "8838562c2d93d955eb2077f61fbac4f73986614f278a3b0fd13a1d984c8eb6f8"
+            },
+            {
+              "name": "explicit_biomes",
+              "cave_layout": [
+                0,
+                4294967264,
+                0,
+                7,
+                17,
+                7,
+                833,
+                4
+              ],
+              "voxels_checked": 36864,
+              "changed_voxels": 6912,
+              "biome_id_counts": {
+                "3": 4608,
+                "2": 4608,
+                "1": 6912,
+                "0": 2304,
+                "4294967295": 18432
+              },
+              "field_sha256": "7a609c7ee0c2f1f0e641f7f399fa39a4696c11155a94a9f35945c79ed379332d",
+              "chunk_sha256": "be17c9ef53a7034ca9f0d8644b40559f4296d90c68a991227195c4c3e84deef9"
+            },
+            {
+              "name": "no_cave_targets",
+              "cave_layout": [
+                0,
+                4294967264,
+                0,
+                7,
+                17,
+                7,
+                833,
+                4
+              ],
+              "voxels_checked": 36864,
+              "changed_voxels": 0,
+              "biome_id_counts": {
+                "4294967295": 36864
+              },
+              "field_sha256": "7a609c7ee0c2f1f0e641f7f399fa39a4696c11155a94a9f35945c79ed379332d",
+              "chunk_sha256": "92b7eb1d3048ffd94ac0cead5f241c420e4ded07668909211e046d2738ea62d5"
+            },
+            {
+              "name": "vanilla",
+              "cave_layout": [
+                0,
+                4294967232,
+                0,
+                7,
+                97,
+                7,
+                4753,
+                4
+              ],
+              "voxels_checked": 221184,
+              "changed_voxels": 252,
+              "biome_id_counts": {
+                "36": 47040,
+                "4294967295": 155264,
+                "17": 18880
+              },
+              "field_sha256": "96e358490858886c41b9e43cf71c93d4256b2a6436f4bce4b0c40f8249c513cd",
+              "chunk_sha256": "ca41359f70406c73714230d8e4d37bf5d4776bc12242e7459bbf41594687a9b8"
+            },
+            {
+              "name": "terralith",
+              "cave_layout": [
+                0,
+                4294967232,
+                0,
+                7,
+                97,
+                7,
+                4753,
+                4
+              ],
+              "voxels_checked": 221184,
+              "changed_voxels": 490,
+              "biome_id_counts": {
+                "72": 33664,
+                "36": 22976,
+                "4294967295": 155136,
+                "17": 9408
+              },
+              "field_sha256": "6863dc2266de4cf2cbdb54fa1e7e9d9ea086c32e6f4725d86e2b657ef40cf401",
+              "chunk_sha256": "f0342896a2993c86499086c7f642ec3d5eb3e065705f6830ccc98c1a5c1963d1"
+            },
+            {
+              "name": "combined",
+              "cave_layout": [
+                0,
+                4294967232,
+                0,
+                7,
+                97,
+                7,
+                4753,
+                4
+              ],
+              "voxels_checked": 221184,
+              "changed_voxels": 490,
+              "biome_id_counts": {
+                "72": 33664,
+                "36": 22976,
+                "4294967295": 155136,
+                "17": 9408
+              },
+              "field_sha256": "6863dc2266de4cf2cbdb54fa1e7e9d9ea086c32e6f4725d86e2b657ef40cf401",
+              "chunk_sha256": "f0342896a2993c86499086c7f642ec3d5eb3e065705f6830ccc98c1a5c1963d1"
+            }
+          ],
+          "field_scalars_checked": 3648,
+          "carved_voxels_checked": 811008,
+          "biome_ids_checked": 811920,
+          "maximum_relative_reference_error": 9.250519104053723e-07,
+          "expected_gpu_dispatches": 656,
+          "sha256": "326394ba4cf52292f198434194edc7b9eb263e1069bc0984ffa4b224744fb510",
+          "requests_in_one_process": 895,
+          "metal_commands_ms_count": 0
+        }
+      ],
+      "actual_metal_proof": {
+        "gpu_required": true,
+        "profiles": [
+          {
+            "name": "strata",
+            "cave_layout": [
+              0,
+              4294967264,
+              0,
+              7,
+              17,
+              7,
+              833,
+              4
+            ],
+            "voxels_checked": 36864,
+            "changed_voxels": 6912,
+            "biome_id_counts": {
+              "3": 4608,
+              "2": 4608,
+              "1": 6912,
+              "0": 2304,
+              "4294967295": 18432
+            },
+            "field_sha256": "7a609c7ee0c2f1f0e641f7f399fa39a4696c11155a94a9f35945c79ed379332d",
+            "chunk_sha256": "be17c9ef53a7034ca9f0d8644b40559f4296d90c68a991227195c4c3e84deef9"
+          },
+          {
+            "name": "non_power_biomes",
+            "cave_layout": [
+              0,
+              4294967264,
+              0,
+              7,
+              17,
+              7,
+              833,
+              4
+            ],
+            "voxels_checked": 36864,
+            "changed_voxels": 6912,
+            "biome_id_counts": {
+              "3": 4608,
+              "2": 4608,
+              "1": 6912,
+              "0": 4608,
+              "4294967295": 16128
+            },
+            "field_sha256": "7a609c7ee0c2f1f0e641f7f399fa39a4696c11155a94a9f35945c79ed379332d",
+            "chunk_sha256": "8838562c2d93d955eb2077f61fbac4f73986614f278a3b0fd13a1d984c8eb6f8"
+          },
+          {
+            "name": "explicit_biomes",
+            "cave_layout": [
+              0,
+              4294967264,
+              0,
+              7,
+              17,
+              7,
+              833,
+              4
+            ],
+            "voxels_checked": 36864,
+            "changed_voxels": 6912,
+            "biome_id_counts": {
+              "3": 4608,
+              "2": 4608,
+              "1": 6912,
+              "0": 2304,
+              "4294967295": 18432
+            },
+            "field_sha256": "7a609c7ee0c2f1f0e641f7f399fa39a4696c11155a94a9f35945c79ed379332d",
+            "chunk_sha256": "be17c9ef53a7034ca9f0d8644b40559f4296d90c68a991227195c4c3e84deef9"
+          },
+          {
+            "name": "no_cave_targets",
+            "cave_layout": [
+              0,
+              4294967264,
+              0,
+              7,
+              17,
+              7,
+              833,
+              4
+            ],
+            "voxels_checked": 36864,
+            "changed_voxels": 0,
+            "biome_id_counts": {
+              "4294967295": 36864
+            },
+            "field_sha256": "7a609c7ee0c2f1f0e641f7f399fa39a4696c11155a94a9f35945c79ed379332d",
+            "chunk_sha256": "92b7eb1d3048ffd94ac0cead5f241c420e4ded07668909211e046d2738ea62d5"
+          },
+          {
+            "name": "vanilla",
+            "cave_layout": [
+              0,
+              4294967232,
+              0,
+              7,
+              97,
+              7,
+              4753,
+              4
+            ],
+            "voxels_checked": 221184,
+            "changed_voxels": 252,
+            "biome_id_counts": {
+              "36": 47040,
+              "4294967295": 155264,
+              "17": 18880
+            },
+            "field_sha256": "96e358490858886c41b9e43cf71c93d4256b2a6436f4bce4b0c40f8249c513cd",
+            "chunk_sha256": "ca41359f70406c73714230d8e4d37bf5d4776bc12242e7459bbf41594687a9b8"
+          },
+          {
+            "name": "terralith",
+            "cave_layout": [
+              0,
+              4294967232,
+              0,
+              7,
+              97,
+              7,
+              4753,
+              4
+            ],
+            "voxels_checked": 221184,
+            "changed_voxels": 490,
+            "biome_id_counts": {
+              "72": 33664,
+              "36": 22976,
+              "4294967295": 155136,
+              "17": 9408
+            },
+            "field_sha256": "6863dc2266de4cf2cbdb54fa1e7e9d9ea086c32e6f4725d86e2b657ef40cf401",
+            "chunk_sha256": "f0342896a2993c86499086c7f642ec3d5eb3e065705f6830ccc98c1a5c1963d1"
+          },
+          {
+            "name": "combined",
+            "cave_layout": [
+              0,
+              4294967232,
+              0,
+              7,
+              97,
+              7,
+              4753,
+              4
+            ],
+            "voxels_checked": 221184,
+            "changed_voxels": 490,
+            "biome_id_counts": {
+              "72": 33664,
+              "36": 22976,
+              "4294967295": 155136,
+              "17": 9408
+            },
+            "field_sha256": "6863dc2266de4cf2cbdb54fa1e7e9d9ea086c32e6f4725d86e2b657ef40cf401",
+            "chunk_sha256": "f0342896a2993c86499086c7f642ec3d5eb3e065705f6830ccc98c1a5c1963d1"
+          }
+        ],
+        "field_scalars_checked": 3648,
+        "carved_voxels_checked": 811008,
+        "biome_ids_checked": 811920,
+        "maximum_relative_reference_error": 9.250519104053723e-07,
+        "expected_gpu_dispatches": 656,
+        "sha256": "326394ba4cf52292f198434194edc7b9eb263e1069bc0984ffa4b224744fb510",
+        "requests_in_one_process": 895,
+        "metal_commands_ms_count": 656
+      },
+      "metal_probe_sha256": "98b718e28918ca916a082348f43be6a95b9dc25bfc26af382649451ce0c9da92",
+      "source_sha256": {
+        "bend/binary.bend": "f716146b3a19403c4ad208ce37c2056f9ba023d6b76a3fecba5c3253185d9b68",
+        "bend/cave_batch.bend": "ab0a49204220415a0bfe5ceb9553a933b983ff0a94ab54f9c175e9865417bcc6",
+        "bend/cave_biome_batch.bend": "fa35ed814595a48cb5761738ec9730b14e49dc329df5e95dd48ae1bce8d8b84c",
+        "bend/cave_carve.bend": "b119cfff3a04b12eb2e9fe0ecef49f81a255599170e43f5420a2d238e862e7c9",
+        "bend/cave_lattice.bend": "2f335e05094f3fedb9556f0c654b921e2f948db6537735c48e716045c2afef5e",
+        "bend/chunk.bend": "7aa37914a3941541f78909d0ab582ab956f972be7804c4abf97fdf07b839fe86",
+        "bend/chunk_catalog.bend": "666d5f98e2128a31a49f36ccdf0a1da7d7cb59067ce58d3cd1d0da3742963df3",
+        "bend/climate.bend": "842160f64b796f6288e59e24e8a81515a450d3778900982bdfc6a633671a4680",
+        "bend/climate_batch.bend": "f65fbc7b463f5e093feb2364da0f504fa295088285917f7a04dc205bf1dc34fa",
+        "bend/compression.bend": "e42e1a312180ee0fce6faad39fc82b9a2e43ba05727e04d9a3c8e7651dd14130",
+        "bend/density.bend": "01beac1b7443695c1507293a7d916489ac5441235c1e07290330691864b56aae",
+        "bend/density_batch.bend": "51231a72efa798c9a31f1a6a841176ea50d1ac5644352b389e3d1a9bff30d99c",
+        "bend/density_lattice.bend": "0b02993df32e160b21c50b8ee33e003f2d7f3eb53645c91ab6699bed0e1a9ae8",
+        "bend/engine.bend": "ce3cf6b0224bd128e832bdfc0be7e2aa7a4bdd2e33c8966e66788df3b9268679",
+        "bend/generated_chunk.bend": "ebb9ee79025bf9a45a34ff5f7eb798be1a19af8820bbb4a877f3f6ef8d9f7f59",
+        "bend/generated_region.bend": "e1212456aa06b8ed09e81737bf925ce6ade0b04226fb4f892b78eed371e98110",
+        "bend/geology.bend": "0569fb1c04167b14bb0ebac7d5e77a3c469e464ee25b4b1dbd3945d0be4326cd",
+        "bend/geology_batch.bend": "bc6dacea444aa973c1cfca738c7ef45efaeaae83ad835a8e19d570c6e888e482",
+        "bend/heightmaps.bend": "0b69c87d24ec3b27cbb082bb394205765154bf78c5c4db2c226fbc4ba3e2d997",
+        "bend/material.bend": "fea1e62174797c5b44634f3674dfc550d0178f207524193ed0d9416fbbf70f64",
+        "bend/material_batch.bend": "e34ee066c23a5328d279c5137ce2d107f2e4df661d63d3de373970d5cbee2073",
+        "bend/material_columns.bend": "ab03917f8c928804a4e4978cdebea887a5b66a939ea7d11545baf8cc2d098c91",
+        "bend/material_columns_data.bend": "611537614e448a87d81c0ba8ff98e6cf43af9148d5be81e697f71d9be3628f32",
+        "bend/material_lazy.bend": "8675a4ea5d3e1b164d1d2a71b248c9ec23078c05da9880fb5470b543a6de1f10",
+        "bend/material_program.bend": "f4b7e78629f7eecd991418eb00fa3face480954b300fa996e370d4c16c35128c",
+        "bend/nbt.bend": "7063555acf523d12269bd152e1e32981534009785b6a7653509f1a108b18cb57",
+        "bend/noise.bend": "80485dd8d18580a1044c8e55dbd03dab1b8dbdd9aa6681e1b8f6743fce928c1d",
+        "bend/numbers.bend": "858ea999141639aa26c559a2e06a87d62c58e93d0d8d3a793bb530b629060956",
+        "bend/packed.bend": "b4ebd29bc4d31d53ddcc221f64c84e68c5bde4a0fbbb51acfdaa9ddd01e2c23f",
+        "bend/palette.bend": "4f813fb89317308dc02c70d36cf5e3eeaf6d62a9a82477b781b976be5eee82ff",
+        "bend/precise.bend": "50ba7138300f2c913b2d75a554a78d88bfb09931c6cd58ecc884ab7024c73c01",
+        "bend/reader.bend": "e659a2cac6b8435f02fd0fe91902ceca918055d026ec1908845186bee4fdc0ac",
+        "bend/region.bend": "1455654e09969a0c80b6536b61b8da2f6070c80d007d2a3639b4a42cb873cc35",
+        "bend/registry.bend": "433b4dbb17b127dd322a11465a1111ddadd86a8682597310c062a194aa802296",
+        "bend/registry_chunk_catalog.bend": "032c8411f124d9876a34e2537b7dff1f9ccbd068a53b2e4a7423ae71ffe98652",
+        "bend/registry_climate.bend": "3daed5cbc3da3a4d4f91c65465e899b31fe219fe34af03731fc7ca1c49c572ad",
+        "bend/registry_density.bend": "0c1972222bbcdfead41b30ae0453f7e05e85ab7bb446c113c3a07a8b12f56cb7",
+        "bend/registry_geology.bend": "a32f7721fdeee0c56b908861de4c4a20c55b489c333c5670528fad5876f1a7b6",
+        "bend/registry_material.bend": "b28952c7b085865d41f853d55e287c0c0bb8000442cc2c94b37325daaab8d29e",
+        "bend/registry_material_columns.bend": "9eb18ecf8327d35a9f1c00da86272b5a18447f203c7b7964377f782648a9846b",
+        "bend/registry_noise.bend": "ae6994d216acc9751c20e4df1e4ff62548c8af99c61e6b006155e2fbc3e1ca94",
+        "bend/registry_surface.bend": "7964afc9153879537d0fed15b811aaf88d1a0b41b210be339122e595ab76bd60",
+        "bend/registry_values.bend": "5bb1d3ab6bfed7cf640af35089a5ec1370cc2f686d7cfb8b210e7643e1b3d97f",
+        "bend/shoreline.bend": "936e978072ad2a0f32e6a85b6fe30d2dc2eb1773757e2d43f6b5fa6106681041",
+        "bend/terrain_height.bend": "bc5400f024c86b34294cc628b364d7ceb67fd9675cb2de77a3cbe06b519be8a2",
+        "bend/terrain_surface.bend": "26687ac40e62949ca563d7f31117207fa0eb053d82f51b58a14e84b9a2d4d652",
+        "bend/transport.bend": "2d7b2667aaf37b537de8be6c584acaeaec37377da475741bfe790a46d9c76f81",
+        "bend/word64.bend": "62e104fbbc56208d66457789a7f2ed3f5fe122f4a19068c3df9b3bbbf555e139"
+      },
+      "inputs": [
+        {
+          "name": "strata",
+          "rbp_sha256": "01891531168380583c6f8b1842c0b9b40ad3399411e6c66d890af9ff74cb4962"
+        },
+        {
+          "name": "non_power_biomes",
+          "rbp_sha256": "db59b832f6945e7b93f243c96121c311dd62542985a954b4e8a5ccd6676a14ac"
+        },
+        {
+          "name": "explicit_biomes",
+          "rbp_sha256": "73d05047bccc899878bcbf6733d78f2fbef4b07b38b6a6fd2c099e2490d0dfd9"
+        },
+        {
+          "name": "no_cave_targets",
+          "rbp_sha256": "c50ea2a2e577a2fdb2f9735eb4b0c3640b6cb8de94ecb805df77a9ec92845fc6"
+        },
+        {
+          "name": "vanilla",
+          "rbp_sha256": "39c775ca58b6d084d4de060925df01d170c89caa09b9eaf7d33e55a915c8065a"
+        },
+        {
+          "name": "terralith",
+          "rbp_sha256": "cf9ef7e0d83d91c5d99aa914101aad8b156ce9a8caa4050f71e81b190a1c0ca6"
+        },
+        {
+          "name": "combined",
+          "rbp_sha256": "d4ac8f9040e39892de12b6fc6ecc46b3d9e961c3cba7f05a2ae9b53262967193"
+        }
+      ],
+      "executable_sha256": "1843e2007109a5c91417d634a41ac920adeee3b02abf93462c9a9a97abc14de5",
+      "bend_version": "bend 2.0.36"
+    },
+    "cave-biome-shore-tests": {
+      "scope": "Coastal surface biomes preserved above resident cave-biome cells",
+      "runs": [
+        {
+          "gpu_required": false,
+          "profiles": [
+            {
+              "name": "shore_surface_biomes",
+              "cave_layout": [
+                4294967280,
+                4294967280,
+                0,
+                7,
+                13,
+                7,
+                637,
+                4
+              ],
+              "voxels_checked": 27648,
+              "changed_voxels": 0,
+              "biome_id_counts": {
+                "4": 6912,
+                "4294967295": 20352,
+                "1": 256,
+                "3": 128
+              },
+              "field_sha256": "7a609c7ee0c2f1f0e641f7f399fa39a4696c11155a94a9f35945c79ed379332d",
+              "chunk_sha256": "8b6540b3fdf465c859849ce13bb19cb11885e8a6b8aabcb107fb31ede8ec9dc3"
+            }
+          ],
+          "field_scalars_checked": 420,
+          "carved_voxels_checked": 27648,
+          "biome_ids_checked": 27753,
+          "maximum_relative_reference_error": 0.0,
+          "expected_gpu_dispatches": 36,
+          "sha256": "b8bc16e80ff0581c05a0be1e399c154ae0beee837f4a5bd16c91558b20f613f9",
+          "requests_in_one_process": 77,
+          "metal_commands_ms_count": 0
+        },
+        {
+          "gpu_required": true,
+          "profiles": [
+            {
+              "name": "shore_surface_biomes",
+              "cave_layout": [
+                4294967280,
+                4294967280,
+                0,
+                7,
+                13,
+                7,
+                637,
+                4
+              ],
+              "voxels_checked": 27648,
+              "changed_voxels": 0,
+              "biome_id_counts": {
+                "4": 6912,
+                "4294967295": 20352,
+                "1": 256,
+                "3": 128
+              },
+              "field_sha256": "7a609c7ee0c2f1f0e641f7f399fa39a4696c11155a94a9f35945c79ed379332d",
+              "chunk_sha256": "8b6540b3fdf465c859849ce13bb19cb11885e8a6b8aabcb107fb31ede8ec9dc3"
+            }
+          ],
+          "field_scalars_checked": 420,
+          "carved_voxels_checked": 27648,
+          "biome_ids_checked": 27753,
+          "maximum_relative_reference_error": 0.0,
+          "expected_gpu_dispatches": 38,
+          "sha256": "b8bc16e80ff0581c05a0be1e399c154ae0beee837f4a5bd16c91558b20f613f9",
+          "requests_in_one_process": 77,
+          "metal_commands_ms_count": 0
+        }
+      ],
+      "actual_metal_proof": {
+        "gpu_required": true,
+        "profiles": [
+          {
+            "name": "shore_surface_biomes",
+            "cave_layout": [
+              4294967280,
+              4294967280,
+              0,
+              7,
+              13,
+              7,
+              637,
+              4
+            ],
+            "voxels_checked": 27648,
+            "changed_voxels": 0,
+            "biome_id_counts": {
+              "4": 6912,
+              "4294967295": 20352,
+              "1": 256,
+              "3": 128
+            },
+            "field_sha256": "7a609c7ee0c2f1f0e641f7f399fa39a4696c11155a94a9f35945c79ed379332d",
+            "chunk_sha256": "8b6540b3fdf465c859849ce13bb19cb11885e8a6b8aabcb107fb31ede8ec9dc3"
+          }
+        ],
+        "field_scalars_checked": 420,
+        "carved_voxels_checked": 27648,
+        "biome_ids_checked": 27753,
+        "maximum_relative_reference_error": 0.0,
+        "expected_gpu_dispatches": 38,
+        "sha256": "b8bc16e80ff0581c05a0be1e399c154ae0beee837f4a5bd16c91558b20f613f9",
+        "requests_in_one_process": 77,
+        "metal_commands_ms_count": 38
+      },
+      "source_sha256": {
+        "bend/binary.bend": "f716146b3a19403c4ad208ce37c2056f9ba023d6b76a3fecba5c3253185d9b68",
+        "bend/cave_batch.bend": "ab0a49204220415a0bfe5ceb9553a933b983ff0a94ab54f9c175e9865417bcc6",
+        "bend/cave_biome_batch.bend": "fa35ed814595a48cb5761738ec9730b14e49dc329df5e95dd48ae1bce8d8b84c",
+        "bend/cave_carve.bend": "b119cfff3a04b12eb2e9fe0ecef49f81a255599170e43f5420a2d238e862e7c9",
+        "bend/cave_lattice.bend": "2f335e05094f3fedb9556f0c654b921e2f948db6537735c48e716045c2afef5e",
+        "bend/chunk.bend": "7aa37914a3941541f78909d0ab582ab956f972be7804c4abf97fdf07b839fe86",
+        "bend/chunk_catalog.bend": "666d5f98e2128a31a49f36ccdf0a1da7d7cb59067ce58d3cd1d0da3742963df3",
+        "bend/climate.bend": "842160f64b796f6288e59e24e8a81515a450d3778900982bdfc6a633671a4680",
+        "bend/climate_batch.bend": "f65fbc7b463f5e093feb2364da0f504fa295088285917f7a04dc205bf1dc34fa",
+        "bend/compression.bend": "e42e1a312180ee0fce6faad39fc82b9a2e43ba05727e04d9a3c8e7651dd14130",
+        "bend/density.bend": "01beac1b7443695c1507293a7d916489ac5441235c1e07290330691864b56aae",
+        "bend/density_batch.bend": "51231a72efa798c9a31f1a6a841176ea50d1ac5644352b389e3d1a9bff30d99c",
+        "bend/density_lattice.bend": "0b02993df32e160b21c50b8ee33e003f2d7f3eb53645c91ab6699bed0e1a9ae8",
+        "bend/engine.bend": "ce3cf6b0224bd128e832bdfc0be7e2aa7a4bdd2e33c8966e66788df3b9268679",
+        "bend/generated_chunk.bend": "ebb9ee79025bf9a45a34ff5f7eb798be1a19af8820bbb4a877f3f6ef8d9f7f59",
+        "bend/generated_region.bend": "e1212456aa06b8ed09e81737bf925ce6ade0b04226fb4f892b78eed371e98110",
+        "bend/geology.bend": "0569fb1c04167b14bb0ebac7d5e77a3c469e464ee25b4b1dbd3945d0be4326cd",
+        "bend/geology_batch.bend": "bc6dacea444aa973c1cfca738c7ef45efaeaae83ad835a8e19d570c6e888e482",
+        "bend/heightmaps.bend": "0b69c87d24ec3b27cbb082bb394205765154bf78c5c4db2c226fbc4ba3e2d997",
+        "bend/material.bend": "fea1e62174797c5b44634f3674dfc550d0178f207524193ed0d9416fbbf70f64",
+        "bend/material_batch.bend": "e34ee066c23a5328d279c5137ce2d107f2e4df661d63d3de373970d5cbee2073",
+        "bend/material_columns.bend": "ab03917f8c928804a4e4978cdebea887a5b66a939ea7d11545baf8cc2d098c91",
+        "bend/material_columns_data.bend": "611537614e448a87d81c0ba8ff98e6cf43af9148d5be81e697f71d9be3628f32",
+        "bend/material_lazy.bend": "8675a4ea5d3e1b164d1d2a71b248c9ec23078c05da9880fb5470b543a6de1f10",
+        "bend/material_program.bend": "f4b7e78629f7eecd991418eb00fa3face480954b300fa996e370d4c16c35128c",
+        "bend/nbt.bend": "7063555acf523d12269bd152e1e32981534009785b6a7653509f1a108b18cb57",
+        "bend/noise.bend": "80485dd8d18580a1044c8e55dbd03dab1b8dbdd9aa6681e1b8f6743fce928c1d",
+        "bend/numbers.bend": "858ea999141639aa26c559a2e06a87d62c58e93d0d8d3a793bb530b629060956",
+        "bend/packed.bend": "b4ebd29bc4d31d53ddcc221f64c84e68c5bde4a0fbbb51acfdaa9ddd01e2c23f",
+        "bend/palette.bend": "4f813fb89317308dc02c70d36cf5e3eeaf6d62a9a82477b781b976be5eee82ff",
+        "bend/precise.bend": "50ba7138300f2c913b2d75a554a78d88bfb09931c6cd58ecc884ab7024c73c01",
+        "bend/reader.bend": "e659a2cac6b8435f02fd0fe91902ceca918055d026ec1908845186bee4fdc0ac",
+        "bend/region.bend": "1455654e09969a0c80b6536b61b8da2f6070c80d007d2a3639b4a42cb873cc35",
+        "bend/registry.bend": "433b4dbb17b127dd322a11465a1111ddadd86a8682597310c062a194aa802296",
+        "bend/registry_chunk_catalog.bend": "032c8411f124d9876a34e2537b7dff1f9ccbd068a53b2e4a7423ae71ffe98652",
+        "bend/registry_climate.bend": "3daed5cbc3da3a4d4f91c65465e899b31fe219fe34af03731fc7ca1c49c572ad",
+        "bend/registry_density.bend": "0c1972222bbcdfead41b30ae0453f7e05e85ab7bb446c113c3a07a8b12f56cb7",
+        "bend/registry_geology.bend": "a32f7721fdeee0c56b908861de4c4a20c55b489c333c5670528fad5876f1a7b6",
+        "bend/registry_material.bend": "b28952c7b085865d41f853d55e287c0c0bb8000442cc2c94b37325daaab8d29e",
+        "bend/registry_material_columns.bend": "9eb18ecf8327d35a9f1c00da86272b5a18447f203c7b7964377f782648a9846b",
+        "bend/registry_noise.bend": "ae6994d216acc9751c20e4df1e4ff62548c8af99c61e6b006155e2fbc3e1ca94",
+        "bend/registry_surface.bend": "7964afc9153879537d0fed15b811aaf88d1a0b41b210be339122e595ab76bd60",
+        "bend/registry_values.bend": "5bb1d3ab6bfed7cf640af35089a5ec1370cc2f686d7cfb8b210e7643e1b3d97f",
+        "bend/shoreline.bend": "936e978072ad2a0f32e6a85b6fe30d2dc2eb1773757e2d43f6b5fa6106681041",
+        "bend/terrain_height.bend": "bc5400f024c86b34294cc628b364d7ceb67fd9675cb2de77a3cbe06b519be8a2",
+        "bend/terrain_surface.bend": "26687ac40e62949ca563d7f31117207fa0eb053d82f51b58a14e84b9a2d4d652",
+        "bend/transport.bend": "2d7b2667aaf37b537de8be6c584acaeaec37377da475741bfe790a46d9c76f81",
+        "bend/word64.bend": "62e104fbbc56208d66457789a7f2ed3f5fe122f4a19068c3df9b3bbbf555e139"
+      },
+      "inputs": [
+        {
+          "name": "shore_surface_biomes",
+          "rbp_sha256": "f6a043864b74d64fe84dbbefb65fd5583e0d3381c3e8bfc0e64dd5492eef6cf6"
+        }
+      ],
+      "executable_sha256": "1843e2007109a5c91417d634a41ac920adeee3b02abf93462c9a9a97abc14de5",
+      "metal_probe_sha256": "98b718e28918ca916a082348f43be6a95b9dc25bfc26af382649451ce0c9da92"
+    },
+    "cave-biome-region-tests": {
+      "scope": "Decode complete Bend MCA output after GPU/CPU cave carving.\n\nThe analytic chamber crosses many chunks in a full 512x512 resident tile. All\n1024 records are independently decoded; selected chunks must match resident\ncarved queries and heightmaps. This is unlit component output, not completed\ngeneration or a Rust-versus-Bend benchmark.",
+      "runs": [
+        {
+          "gpu_required": false,
+          "regions": [
+            {
+              "name": "caves",
+              "region": [
+                -2,
+                3
+              ],
+              "chunks": 1024,
+              "world_min": -16,
+              "world_height": 32,
+              "mca_bytes": 4202496,
+              "sha256": "f7c25ae6b28f23372d7d389e9c549debed0fca2c3130145dde2fed0df35c5878",
+              "generation_response_host_ms": 24653.604625025764,
+              "encode_compress_write_response_host_ms": 3525.0439590308815,
+              "biome_quart_counts": {
+                "minecraft:lush_caves": 49152,
+                "minecraft:plains": 81920
+              },
+              "repeated_file_identical": null
+            }
+          ],
+          "chunk_streams_decoded": 1024,
+          "blocks_compared_to_generated_queries": 57344,
+          "requests_in_one_process": 55,
+          "expected_gpu_dispatches": 9,
+          "sha256": "3324f786c2399cac0cfa2fb794ec2142148e024fd9e390596512b4235a801537",
+          "metal_commands_ms_count": 0
+        },
+        {
+          "gpu_required": true,
+          "regions": [
+            {
+              "name": "caves",
+              "region": [
+                -2,
+                3
+              ],
+              "chunks": 1024,
+              "world_min": -16,
+              "world_height": 32,
+              "mca_bytes": 4202496,
+              "sha256": "f7c25ae6b28f23372d7d389e9c549debed0fca2c3130145dde2fed0df35c5878",
+              "generation_response_host_ms": 8674.442334100604,
+              "encode_compress_write_response_host_ms": 3607.2659170022234,
+              "biome_quart_counts": {
+                "minecraft:lush_caves": 49152,
+                "minecraft:plains": 81920
+              },
+              "repeated_file_identical": null
+            }
+          ],
+          "chunk_streams_decoded": 1024,
+          "blocks_compared_to_generated_queries": 57344,
+          "requests_in_one_process": 55,
+          "expected_gpu_dispatches": 9,
+          "sha256": "3324f786c2399cac0cfa2fb794ec2142148e024fd9e390596512b4235a801537",
+          "metal_commands_ms_count": 0
+        }
+      ],
+      "actual_metal_proof": {
+        "gpu_required": true,
+        "regions": [
+          {
+            "name": "caves",
+            "region": [
+              -2,
+              3
+            ],
+            "chunks": 1024,
+            "world_min": -16,
+            "world_height": 32,
+            "mca_bytes": 4202496,
+            "sha256": "f7c25ae6b28f23372d7d389e9c549debed0fca2c3130145dde2fed0df35c5878",
+            "generation_response_host_ms": 8397.484665969387,
+            "encode_compress_write_response_host_ms": 3635.403166990727,
+            "biome_quart_counts": {
+              "minecraft:lush_caves": 49152,
+              "minecraft:plains": 81920
+            },
+            "repeated_file_identical": null
+          }
+        ],
+        "chunk_streams_decoded": 1024,
+        "blocks_compared_to_generated_queries": 57344,
+        "requests_in_one_process": 55,
+        "expected_gpu_dispatches": 9,
+        "sha256": "3324f786c2399cac0cfa2fb794ec2142148e024fd9e390596512b4235a801537",
+        "metal_commands_ms_count": 9
+      },
+      "metal_probe_sha256": "98b718e28918ca916a082348f43be6a95b9dc25bfc26af382649451ce0c9da92",
+      "executable_sha256": "1843e2007109a5c91417d634a41ac920adeee3b02abf93462c9a9a97abc14de5",
+      "input_sha256": "2d42b941731d7ead5ec4224fc31d08d0a94d82f7c07ac35c7a207653c79f96de",
+      "source_sha256": {
+        "bend/binary.bend": "f716146b3a19403c4ad208ce37c2056f9ba023d6b76a3fecba5c3253185d9b68",
+        "bend/cave_batch.bend": "ab0a49204220415a0bfe5ceb9553a933b983ff0a94ab54f9c175e9865417bcc6",
+        "bend/cave_biome_batch.bend": "fa35ed814595a48cb5761738ec9730b14e49dc329df5e95dd48ae1bce8d8b84c",
+        "bend/cave_carve.bend": "b119cfff3a04b12eb2e9fe0ecef49f81a255599170e43f5420a2d238e862e7c9",
+        "bend/cave_lattice.bend": "2f335e05094f3fedb9556f0c654b921e2f948db6537735c48e716045c2afef5e",
+        "bend/chunk.bend": "7aa37914a3941541f78909d0ab582ab956f972be7804c4abf97fdf07b839fe86",
+        "bend/chunk_catalog.bend": "666d5f98e2128a31a49f36ccdf0a1da7d7cb59067ce58d3cd1d0da3742963df3",
+        "bend/climate.bend": "842160f64b796f6288e59e24e8a81515a450d3778900982bdfc6a633671a4680",
+        "bend/climate_batch.bend": "f65fbc7b463f5e093feb2364da0f504fa295088285917f7a04dc205bf1dc34fa",
+        "bend/compression.bend": "e42e1a312180ee0fce6faad39fc82b9a2e43ba05727e04d9a3c8e7651dd14130",
+        "bend/density.bend": "01beac1b7443695c1507293a7d916489ac5441235c1e07290330691864b56aae",
+        "bend/density_batch.bend": "51231a72efa798c9a31f1a6a841176ea50d1ac5644352b389e3d1a9bff30d99c",
+        "bend/density_lattice.bend": "0b02993df32e160b21c50b8ee33e003f2d7f3eb53645c91ab6699bed0e1a9ae8",
+        "bend/engine.bend": "ce3cf6b0224bd128e832bdfc0be7e2aa7a4bdd2e33c8966e66788df3b9268679",
+        "bend/generated_chunk.bend": "ebb9ee79025bf9a45a34ff5f7eb798be1a19af8820bbb4a877f3f6ef8d9f7f59",
+        "bend/generated_region.bend": "e1212456aa06b8ed09e81737bf925ce6ade0b04226fb4f892b78eed371e98110",
+        "bend/geology.bend": "0569fb1c04167b14bb0ebac7d5e77a3c469e464ee25b4b1dbd3945d0be4326cd",
+        "bend/geology_batch.bend": "bc6dacea444aa973c1cfca738c7ef45efaeaae83ad835a8e19d570c6e888e482",
+        "bend/heightmaps.bend": "0b69c87d24ec3b27cbb082bb394205765154bf78c5c4db2c226fbc4ba3e2d997",
+        "bend/material.bend": "fea1e62174797c5b44634f3674dfc550d0178f207524193ed0d9416fbbf70f64",
+        "bend/material_batch.bend": "e34ee066c23a5328d279c5137ce2d107f2e4df661d63d3de373970d5cbee2073",
+        "bend/material_columns.bend": "ab03917f8c928804a4e4978cdebea887a5b66a939ea7d11545baf8cc2d098c91",
+        "bend/material_columns_data.bend": "611537614e448a87d81c0ba8ff98e6cf43af9148d5be81e697f71d9be3628f32",
+        "bend/material_lazy.bend": "8675a4ea5d3e1b164d1d2a71b248c9ec23078c05da9880fb5470b543a6de1f10",
+        "bend/material_program.bend": "f4b7e78629f7eecd991418eb00fa3face480954b300fa996e370d4c16c35128c",
+        "bend/nbt.bend": "7063555acf523d12269bd152e1e32981534009785b6a7653509f1a108b18cb57",
+        "bend/noise.bend": "80485dd8d18580a1044c8e55dbd03dab1b8dbdd9aa6681e1b8f6743fce928c1d",
+        "bend/numbers.bend": "858ea999141639aa26c559a2e06a87d62c58e93d0d8d3a793bb530b629060956",
+        "bend/packed.bend": "b4ebd29bc4d31d53ddcc221f64c84e68c5bde4a0fbbb51acfdaa9ddd01e2c23f",
+        "bend/palette.bend": "4f813fb89317308dc02c70d36cf5e3eeaf6d62a9a82477b781b976be5eee82ff",
+        "bend/precise.bend": "50ba7138300f2c913b2d75a554a78d88bfb09931c6cd58ecc884ab7024c73c01",
+        "bend/reader.bend": "e659a2cac6b8435f02fd0fe91902ceca918055d026ec1908845186bee4fdc0ac",
+        "bend/region.bend": "1455654e09969a0c80b6536b61b8da2f6070c80d007d2a3639b4a42cb873cc35",
+        "bend/registry.bend": "433b4dbb17b127dd322a11465a1111ddadd86a8682597310c062a194aa802296",
+        "bend/registry_chunk_catalog.bend": "032c8411f124d9876a34e2537b7dff1f9ccbd068a53b2e4a7423ae71ffe98652",
+        "bend/registry_climate.bend": "3daed5cbc3da3a4d4f91c65465e899b31fe219fe34af03731fc7ca1c49c572ad",
+        "bend/registry_density.bend": "0c1972222bbcdfead41b30ae0453f7e05e85ab7bb446c113c3a07a8b12f56cb7",
+        "bend/registry_geology.bend": "a32f7721fdeee0c56b908861de4c4a20c55b489c333c5670528fad5876f1a7b6",
+        "bend/registry_material.bend": "b28952c7b085865d41f853d55e287c0c0bb8000442cc2c94b37325daaab8d29e",
+        "bend/registry_material_columns.bend": "9eb18ecf8327d35a9f1c00da86272b5a18447f203c7b7964377f782648a9846b",
+        "bend/registry_noise.bend": "ae6994d216acc9751c20e4df1e4ff62548c8af99c61e6b006155e2fbc3e1ca94",
+        "bend/registry_surface.bend": "7964afc9153879537d0fed15b811aaf88d1a0b41b210be339122e595ab76bd60",
+        "bend/registry_values.bend": "5bb1d3ab6bfed7cf640af35089a5ec1370cc2f686d7cfb8b210e7643e1b3d97f",
+        "bend/shoreline.bend": "936e978072ad2a0f32e6a85b6fe30d2dc2eb1773757e2d43f6b5fa6106681041",
+        "bend/terrain_height.bend": "bc5400f024c86b34294cc628b364d7ceb67fd9675cb2de77a3cbe06b519be8a2",
+        "bend/terrain_surface.bend": "26687ac40e62949ca563d7f31117207fa0eb053d82f51b58a14e84b9a2d4d652",
+        "bend/transport.bend": "2d7b2667aaf37b537de8be6c584acaeaec37377da475741bfe790a46d9c76f81",
+        "bend/word64.bend": "62e104fbbc56208d66457789a7f2ed3f5fe122f4a19068c3df9b3bbbf555e139"
+      }
+    },
+    "cave-tests": {
+      "scope": "Independent cave-field, carving and compressed-chunk checks.\n\nThis component uses registered density/carvers, coherent tunnel noise and finite\nrounded ravines. Cave biomes, aquifers, decorations and world integration remain\npending. Correctness-run timings are not a generator benchmark.",
+      "runs": [
+        {
+          "gpu_required": false,
+          "profiles": [
+            {
+              "name": "ellipsoid",
+              "cave_layout": [
+                0,
+                4294967264,
+                0,
+                7,
+                17,
+                7,
+                833,
+                4
+              ],
+              "voxels_checked": 36864,
+              "changed_voxels": 2353,
+              "biome_id_counts": {
+                "4294967295": 36864
+              },
+              "field_sha256": "95775b547dbd52550c266fc770dbaf89e8dcdb5122c3709153cebb01f120f361",
+              "chunk_sha256": "989134a18c036d91491dca901b4027d6e4cc386d61e2358c83b243217d21dee8"
+            },
+            {
+              "name": "protected",
+              "cave_layout": [
+                0,
+                4294967264,
+                0,
+                7,
+                17,
+                7,
+                833,
+                4
+              ],
+              "voxels_checked": 36864,
+              "changed_voxels": 0,
+              "biome_id_counts": {
+                "4294967295": 36864
+              },
+              "field_sha256": "95775b547dbd52550c266fc770dbaf89e8dcdb5122c3709153cebb01f120f361",
+              "chunk_sha256": "cdc7571e031b4178ee956b6616be7bdfea397f5a6647b8953a24ffd9e09a024f"
+            },
+            {
+              "name": "tunnels",
+              "cave_layout": [
+                0,
+                4294967264,
+                0,
+                7,
+                17,
+                7,
+                833,
+                4
+              ],
+              "voxels_checked": 36864,
+              "changed_voxels": 3417,
+              "biome_id_counts": {
+                "4294967295": 36864
+              },
+              "field_sha256": "95775b547dbd52550c266fc770dbaf89e8dcdb5122c3709153cebb01f120f361",
+              "chunk_sha256": "70e6a8403933c41c009e29279e769524e83f80ec97acaf55d829217f81c1a536"
+            },
+            {
+              "name": "ravines",
+              "cave_layout": [
+                32,
+                4294967264,
+                32,
+                7,
+                17,
+                7,
+                833,
+                4
+              ],
+              "voxels_checked": 36864,
+              "changed_voxels": 4417,
+              "biome_id_counts": {
+                "4294967295": 36864
+              },
+              "field_sha256": "d11b271bf7f18a47147bb3898e98c481e42e6c6457070e24ec366485fd830b4e",
+              "chunk_sha256": "54c70da34287aac243881214af87b6327e9be0db636da8da4fb703cf65518e6d"
+            },
+            {
+              "name": "dry_roof",
+              "cave_layout": [
+                0,
+                4294967264,
+                0,
+                7,
+                17,
+                7,
+                833,
+                4
+              ],
+              "voxels_checked": 36864,
+              "changed_voxels": 21888,
+              "biome_id_counts": {
+                "4294967295": 36864
+              },
+              "field_sha256": "4412d2b7f94db3490b26cfb644ac9076fb200938366bc255cc11d83dbaf7bbb4",
+              "chunk_sha256": "8961af2060a9cd4f23871ad043dd620a917c42ec5e5b8a8c97fd6121f80e6189"
+            },
+            {
+              "name": "wet_roof",
+              "cave_layout": [
+                0,
+                4294967264,
+                0,
+                7,
+                17,
+                7,
+                833,
+                4
+              ],
+              "voxels_checked": 36864,
+              "changed_voxels": 20160,
+              "biome_id_counts": {
+                "4294967295": 36864
+              },
+              "field_sha256": "4412d2b7f94db3490b26cfb644ac9076fb200938366bc255cc11d83dbaf7bbb4",
+              "chunk_sha256": "f346adee5f01df05331bced1ab7247087550db0902f695f57a653e0b0e95ce6a"
+            }
+          ],
+          "field_scalars_checked": 3228,
+          "carved_voxels_checked": 221184,
+          "biome_ids_checked": 221991,
+          "maximum_relative_reference_error": 3.975433368156807e-07,
+          "expected_gpu_dispatches": 322,
+          "sha256": "319ccc8bdff7ee901d971ab3062917b310003be5dfeabbd190b19e31e269c674",
+          "requests_in_one_process": 550,
+          "metal_commands_ms_count": 0
+        },
+        {
+          "gpu_required": true,
+          "profiles": [
+            {
+              "name": "ellipsoid",
+              "cave_layout": [
+                0,
+                4294967264,
+                0,
+                7,
+                17,
+                7,
+                833,
+                4
+              ],
+              "voxels_checked": 36864,
+              "changed_voxels": 2353,
+              "biome_id_counts": {
+                "4294967295": 36864
+              },
+              "field_sha256": "95775b547dbd52550c266fc770dbaf89e8dcdb5122c3709153cebb01f120f361",
+              "chunk_sha256": "989134a18c036d91491dca901b4027d6e4cc386d61e2358c83b243217d21dee8"
+            },
+            {
+              "name": "protected",
+              "cave_layout": [
+                0,
+                4294967264,
+                0,
+                7,
+                17,
+                7,
+                833,
+                4
+              ],
+              "voxels_checked": 36864,
+              "changed_voxels": 0,
+              "biome_id_counts": {
+                "4294967295": 36864
+              },
+              "field_sha256": "95775b547dbd52550c266fc770dbaf89e8dcdb5122c3709153cebb01f120f361",
+              "chunk_sha256": "cdc7571e031b4178ee956b6616be7bdfea397f5a6647b8953a24ffd9e09a024f"
+            },
+            {
+              "name": "tunnels",
+              "cave_layout": [
+                0,
+                4294967264,
+                0,
+                7,
+                17,
+                7,
+                833,
+                4
+              ],
+              "voxels_checked": 36864,
+              "changed_voxels": 3417,
+              "biome_id_counts": {
+                "4294967295": 36864
+              },
+              "field_sha256": "95775b547dbd52550c266fc770dbaf89e8dcdb5122c3709153cebb01f120f361",
+              "chunk_sha256": "70e6a8403933c41c009e29279e769524e83f80ec97acaf55d829217f81c1a536"
+            },
+            {
+              "name": "ravines",
+              "cave_layout": [
+                32,
+                4294967264,
+                32,
+                7,
+                17,
+                7,
+                833,
+                4
+              ],
+              "voxels_checked": 36864,
+              "changed_voxels": 4417,
+              "biome_id_counts": {
+                "4294967295": 36864
+              },
+              "field_sha256": "3879445f1622f968749a083cefac99e9768e9f7e38c68845ac09331fb2c6892e",
+              "chunk_sha256": "54c70da34287aac243881214af87b6327e9be0db636da8da4fb703cf65518e6d"
+            },
+            {
+              "name": "dry_roof",
+              "cave_layout": [
+                0,
+                4294967264,
+                0,
+                7,
+                17,
+                7,
+                833,
+                4
+              ],
+              "voxels_checked": 36864,
+              "changed_voxels": 21888,
+              "biome_id_counts": {
+                "4294967295": 36864
+              },
+              "field_sha256": "4412d2b7f94db3490b26cfb644ac9076fb200938366bc255cc11d83dbaf7bbb4",
+              "chunk_sha256": "8961af2060a9cd4f23871ad043dd620a917c42ec5e5b8a8c97fd6121f80e6189"
+            },
+            {
+              "name": "wet_roof",
+              "cave_layout": [
+                0,
+                4294967264,
+                0,
+                7,
+                17,
+                7,
+                833,
+                4
+              ],
+              "voxels_checked": 36864,
+              "changed_voxels": 20160,
+              "biome_id_counts": {
+                "4294967295": 36864
+              },
+              "field_sha256": "4412d2b7f94db3490b26cfb644ac9076fb200938366bc255cc11d83dbaf7bbb4",
+              "chunk_sha256": "f346adee5f01df05331bced1ab7247087550db0902f695f57a653e0b0e95ce6a"
+            }
+          ],
+          "field_scalars_checked": 3228,
+          "carved_voxels_checked": 221184,
+          "biome_ids_checked": 221991,
+          "maximum_relative_reference_error": 4.1037828749678835e-07,
+          "expected_gpu_dispatches": 346,
+          "sha256": "b3f1c8ccf2099eeb84a10c2fd8de8d6249e9591e2efc8971b3e8d7a6aaa4fac6",
+          "requests_in_one_process": 550,
+          "metal_commands_ms_count": 0
+        }
+      ],
+      "cross_backend_byte_identical": false,
+      "source_sha256": {
+        "bend/binary.bend": "f716146b3a19403c4ad208ce37c2056f9ba023d6b76a3fecba5c3253185d9b68",
+        "bend/cave_batch.bend": "ab0a49204220415a0bfe5ceb9553a933b983ff0a94ab54f9c175e9865417bcc6",
+        "bend/cave_biome_batch.bend": "fa35ed814595a48cb5761738ec9730b14e49dc329df5e95dd48ae1bce8d8b84c",
+        "bend/cave_carve.bend": "b119cfff3a04b12eb2e9fe0ecef49f81a255599170e43f5420a2d238e862e7c9",
+        "bend/cave_lattice.bend": "2f335e05094f3fedb9556f0c654b921e2f948db6537735c48e716045c2afef5e",
+        "bend/chunk.bend": "7aa37914a3941541f78909d0ab582ab956f972be7804c4abf97fdf07b839fe86",
+        "bend/chunk_catalog.bend": "666d5f98e2128a31a49f36ccdf0a1da7d7cb59067ce58d3cd1d0da3742963df3",
+        "bend/climate.bend": "842160f64b796f6288e59e24e8a81515a450d3778900982bdfc6a633671a4680",
+        "bend/climate_batch.bend": "f65fbc7b463f5e093feb2364da0f504fa295088285917f7a04dc205bf1dc34fa",
+        "bend/compression.bend": "e42e1a312180ee0fce6faad39fc82b9a2e43ba05727e04d9a3c8e7651dd14130",
+        "bend/density.bend": "01beac1b7443695c1507293a7d916489ac5441235c1e07290330691864b56aae",
+        "bend/density_batch.bend": "51231a72efa798c9a31f1a6a841176ea50d1ac5644352b389e3d1a9bff30d99c",
+        "bend/density_lattice.bend": "0b02993df32e160b21c50b8ee33e003f2d7f3eb53645c91ab6699bed0e1a9ae8",
+        "bend/engine.bend": "ce3cf6b0224bd128e832bdfc0be7e2aa7a4bdd2e33c8966e66788df3b9268679",
+        "bend/generated_chunk.bend": "ebb9ee79025bf9a45a34ff5f7eb798be1a19af8820bbb4a877f3f6ef8d9f7f59",
+        "bend/generated_region.bend": "e1212456aa06b8ed09e81737bf925ce6ade0b04226fb4f892b78eed371e98110",
+        "bend/geology.bend": "0569fb1c04167b14bb0ebac7d5e77a3c469e464ee25b4b1dbd3945d0be4326cd",
+        "bend/geology_batch.bend": "bc6dacea444aa973c1cfca738c7ef45efaeaae83ad835a8e19d570c6e888e482",
+        "bend/heightmaps.bend": "0b69c87d24ec3b27cbb082bb394205765154bf78c5c4db2c226fbc4ba3e2d997",
+        "bend/material.bend": "fea1e62174797c5b44634f3674dfc550d0178f207524193ed0d9416fbbf70f64",
+        "bend/material_batch.bend": "e34ee066c23a5328d279c5137ce2d107f2e4df661d63d3de373970d5cbee2073",
+        "bend/material_columns.bend": "ab03917f8c928804a4e4978cdebea887a5b66a939ea7d11545baf8cc2d098c91",
+        "bend/material_columns_data.bend": "611537614e448a87d81c0ba8ff98e6cf43af9148d5be81e697f71d9be3628f32",
+        "bend/material_lazy.bend": "8675a4ea5d3e1b164d1d2a71b248c9ec23078c05da9880fb5470b543a6de1f10",
+        "bend/material_program.bend": "f4b7e78629f7eecd991418eb00fa3face480954b300fa996e370d4c16c35128c",
+        "bend/nbt.bend": "7063555acf523d12269bd152e1e32981534009785b6a7653509f1a108b18cb57",
+        "bend/noise.bend": "80485dd8d18580a1044c8e55dbd03dab1b8dbdd9aa6681e1b8f6743fce928c1d",
+        "bend/numbers.bend": "858ea999141639aa26c559a2e06a87d62c58e93d0d8d3a793bb530b629060956",
+        "bend/packed.bend": "b4ebd29bc4d31d53ddcc221f64c84e68c5bde4a0fbbb51acfdaa9ddd01e2c23f",
+        "bend/palette.bend": "4f813fb89317308dc02c70d36cf5e3eeaf6d62a9a82477b781b976be5eee82ff",
+        "bend/precise.bend": "50ba7138300f2c913b2d75a554a78d88bfb09931c6cd58ecc884ab7024c73c01",
+        "bend/reader.bend": "e659a2cac6b8435f02fd0fe91902ceca918055d026ec1908845186bee4fdc0ac",
+        "bend/region.bend": "1455654e09969a0c80b6536b61b8da2f6070c80d007d2a3639b4a42cb873cc35",
+        "bend/registry.bend": "433b4dbb17b127dd322a11465a1111ddadd86a8682597310c062a194aa802296",
+        "bend/registry_chunk_catalog.bend": "032c8411f124d9876a34e2537b7dff1f9ccbd068a53b2e4a7423ae71ffe98652",
+        "bend/registry_climate.bend": "3daed5cbc3da3a4d4f91c65465e899b31fe219fe34af03731fc7ca1c49c572ad",
+        "bend/registry_density.bend": "0c1972222bbcdfead41b30ae0453f7e05e85ab7bb446c113c3a07a8b12f56cb7",
+        "bend/registry_geology.bend": "a32f7721fdeee0c56b908861de4c4a20c55b489c333c5670528fad5876f1a7b6",
+        "bend/registry_material.bend": "b28952c7b085865d41f853d55e287c0c0bb8000442cc2c94b37325daaab8d29e",
+        "bend/registry_material_columns.bend": "9eb18ecf8327d35a9f1c00da86272b5a18447f203c7b7964377f782648a9846b",
+        "bend/registry_noise.bend": "ae6994d216acc9751c20e4df1e4ff62548c8af99c61e6b006155e2fbc3e1ca94",
+        "bend/registry_surface.bend": "7964afc9153879537d0fed15b811aaf88d1a0b41b210be339122e595ab76bd60",
+        "bend/registry_values.bend": "5bb1d3ab6bfed7cf640af35089a5ec1370cc2f686d7cfb8b210e7643e1b3d97f",
+        "bend/shoreline.bend": "936e978072ad2a0f32e6a85b6fe30d2dc2eb1773757e2d43f6b5fa6106681041",
+        "bend/terrain_height.bend": "bc5400f024c86b34294cc628b364d7ceb67fd9675cb2de77a3cbe06b519be8a2",
+        "bend/terrain_surface.bend": "26687ac40e62949ca563d7f31117207fa0eb053d82f51b58a14e84b9a2d4d652",
+        "bend/transport.bend": "2d7b2667aaf37b537de8be6c584acaeaec37377da475741bfe790a46d9c76f81",
+        "bend/word64.bend": "62e104fbbc56208d66457789a7f2ed3f5fe122f4a19068c3df9b3bbbf555e139"
+      },
+      "inputs": [
+        {
+          "name": "ellipsoid",
+          "rbp_sha256": "23f86833fca70f8e8e7e8cd4056c771e5689436c11517093f22a35c1272a1d46"
+        },
+        {
+          "name": "protected",
+          "rbp_sha256": "8e0c7f2c8b542f52280dbaab57fb8c727a61cce68aecbf374464dd7b33d0b0ab"
+        },
+        {
+          "name": "tunnels",
+          "rbp_sha256": "d8e5707eed2c6ac57fbb775cd12bbab6e7ec2baadf7ec3db12131c90fdc44f37"
+        },
+        {
+          "name": "ravines",
+          "rbp_sha256": "ec15e00e50ce9dfeaf1dd9beaddadaae3f86dd36a9f4fac2e157947a562abb5a"
+        },
+        {
+          "name": "dry_roof",
+          "rbp_sha256": "78aee94cef250653a1314c1f9834ca360787af66080ba855688a5271d14b241d"
+        },
+        {
+          "name": "wet_roof",
+          "rbp_sha256": "72f63cb1840cffcf44059f2179309610d70ac7e02db4ffac9c6b1eb6204adf37"
+        }
+      ],
+      "executable_sha256": "1843e2007109a5c91417d634a41ac920adeee3b02abf93462c9a9a97abc14de5",
+      "bend_version": "bend 2.0.36"
+    },
+    "material-columns-tests": {
+      "scope": "Derived material context and compact block-run component; complete generated regions pending",
+      "bend_version": "existing executable",
+      "runs": [
+        {
+          "gpu_required": false,
+          "profiles": [
+            {
+              "name": "ramp",
+              "tiles": 6,
+              "build_surface_and_blocks_host_ms": [
+                0.8437080541625619,
+                1.107583986595273,
+                0.33720897044986486,
+                0.3113750135526061,
+                0.8109579794108868,
+                0.7951670559123158
+              ]
+            },
+            {
+              "name": "islands",
+              "tiles": 6,
+              "build_surface_and_blocks_host_ms": [
+                0.5599999567493796,
+                0.5084580043330789,
+                0.41570805478841066,
+                0.34504092764109373,
+                0.5616251146420836,
+                0.6902500754222274
+              ]
+            },
+            {
+              "name": "solid",
+              "tiles": 3,
+              "build_surface_and_blocks_host_ms": [
+                0.9494579862803221,
+                1.2545419158414006,
+                0.7013330468907952
+              ]
+            },
+            {
+              "name": "empty",
+              "tiles": 3,
+              "build_surface_and_blocks_host_ms": [
+                0.39233395364135504,
+                0.41266693733632565,
+                0.32929203007370234
+              ]
+            },
+            {
+              "name": "explicit",
+              "tiles": 6,
+              "build_surface_and_blocks_host_ms": [
+                0.6571250269189477,
+                1.4688330702483654,
+                0.3125420771539211,
+                0.2965000458061695,
+                0.658332952298224,
+                0.7155830971896648
+              ]
+            },
+            {
+              "name": "probe_minimum",
+              "tiles": 3,
+              "build_surface_and_blocks_host_ms": [
+                0.768834026530385,
+                0.8911249460652471,
+                0.360082951374352
+              ]
+            },
+            {
+              "name": "non_power_cells",
+              "tiles": 3,
+              "build_surface_and_blocks_host_ms": [
+                0.8373750606551766,
+                1.05291698127985,
+                0.4237500252202153
+              ]
+            },
+            {
+              "name": "thin",
+              "tiles": 3,
+              "build_surface_and_blocks_host_ms": [
+                0.3136669984087348,
+                0.2957090036943555,
+                0.27312501333653927
+              ]
+            },
+            {
+              "name": "submerged",
+              "tiles": 3,
+              "build_surface_and_blocks_host_ms": [
+                0.7667919853702188,
+                1.0068750707432628,
+                0.3755419747903943
+              ]
+            },
+            {
+              "name": "no_water",
+              "tiles": 3,
+              "build_surface_and_blocks_host_ms": [
+                0.7564579136669636,
+                1.0533749591559172,
+                0.3400410059839487
+              ]
+            },
+            {
+              "name": "top_sliver",
+              "tiles": 1,
+              "build_surface_and_blocks_host_ms": [
+                0.542833935469389
+              ]
+            }
+          ],
+          "voxel_queries_checked": 4005,
+          "max_context_normalized_error": 7.551904392597009e-07,
+          "invalid_profiles_rejected": 18,
+          "requests_in_one_process": 1662,
+          "expected_gpu_dispatches": 454,
+          "sha256": "1fd22296255821fa66a74ed3adaff2ecb214a7ec736cd9795c9820b23c47cfdc",
+          "metal_commands_ms_count": 0
+        },
+        {
+          "gpu_required": true,
+          "profiles": [
+            {
+              "name": "ramp",
+              "tiles": 6,
+              "build_surface_and_blocks_host_ms": [
+                84.70683300402015,
+                30.557666905224323,
+                9.091000072658062,
+                13.874125084839761,
+                32.87891601212323,
+                22.89037499576807
+              ]
+            },
+            {
+              "name": "islands",
+              "tiles": 6,
+              "build_surface_and_blocks_host_ms": [
+                17.67329196445644,
+                17.1010420890525,
+                16.665208037011325,
+                11.771541088819504,
+                22.519791964441538,
+                18.004790996201336
+              ]
+            },
+            {
+              "name": "solid",
+              "tiles": 3,
+              "build_surface_and_blocks_host_ms": [
+                30.558541999198496,
+                30.56099999230355,
+                30.237166909500957
+              ]
+            },
+            {
+              "name": "empty",
+              "tiles": 3,
+              "build_surface_and_blocks_host_ms": [
+                9.514125064015388,
+                9.046041988767684,
+                8.893584017641842
+              ]
+            },
+            {
+              "name": "explicit",
+              "tiles": 6,
+              "build_surface_and_blocks_host_ms": [
+                19.361792015843093,
+                28.415750013664365,
+                6.738750031217933,
+                11.66662503965199,
+                29.934207908809185,
+                19.96104104910046
+              ]
+            },
+            {
+              "name": "probe_minimum",
+              "tiles": 3,
+              "build_surface_and_blocks_host_ms": [
+                22.042041993699968,
+                31.01241705007851,
+                9.299958008341491
+              ]
+            },
+            {
+              "name": "non_power_cells",
+              "tiles": 3,
+              "build_surface_and_blocks_host_ms": [
+                22.662334027700126,
+                31.394625082612038,
+                9.812750038690865
+              ]
+            },
+            {
+              "name": "thin",
+              "tiles": 3,
+              "build_surface_and_blocks_host_ms": [
+                6.868290947750211,
+                6.203041994012892,
+                5.698041059076786
+              ]
+            },
+            {
+              "name": "submerged",
+              "tiles": 3,
+              "build_surface_and_blocks_host_ms": [
+                21.72929106745869,
+                30.965749989263713,
+                9.285457897931337
+              ]
+            },
+            {
+              "name": "no_water",
+              "tiles": 3,
+              "build_surface_and_blocks_host_ms": [
+                21.991083049215376,
+                30.98229190800339,
+                9.187875082716346
+              ]
+            },
+            {
+              "name": "top_sliver",
+              "tiles": 1,
+              "build_surface_and_blocks_host_ms": [
+                10.440750047564507
+              ]
+            }
+          ],
+          "voxel_queries_checked": 4005,
+          "max_context_normalized_error": 7.551904392597009e-07,
+          "invalid_profiles_rejected": 18,
+          "requests_in_one_process": 1662,
+          "expected_gpu_dispatches": 454,
+          "sha256": "1fd22296255821fa66a74ed3adaff2ecb214a7ec736cd9795c9820b23c47cfdc",
+          "metal_commands_ms_count": 0
+        }
+      ]
+    }
+  },
+  "java_verification": {
+    "worker_cpu_gpu": true,
+    "concurrent_queries_per_backend": 8,
+    "snapshot_cache_lifecycle": true,
+    "region_files": 2,
+    "chunks_per_file": 1024,
+    "reads_per_chunk": 2,
+    "blocks_decoded": 33554432
+  },
+  "host_build": {
+    "fabric": true,
+    "neoforge": true,
+    "native_tests_passed": 64,
+    "native_tests_explicitly_ignored": 11
+  },
+  "log_sha256": {
+    "retina-cave-biomes-full-tests.log": "dee37305746993c87887d8c5472184c6504c1978cef4a6078d0a61dce340f87c",
+    "retina-cave-biomes-shore-tests.log": "bbbd07e8fab15ad41b87e5be339e95193e6e3ae083df5cb9358d5f8a5745cc50",
+    "retina-cave-biomes-regions.log": "c80b18872dabdee1b09c79489b7a1dd9fd833417c635b91e04fc12f05cc92d09",
+    "retina-cave-biomes-java-tests.log": "169e07de16560165aae76c2b29e43c9bf194abf0ff9d1558aa0758829f39175d",
+    "retina-cave-biomes-host-build.log": "6715948f6734b3eb3386da5f92f60ad1a761901a364280fef94294a4d1fb9f1a"
+  }
+}

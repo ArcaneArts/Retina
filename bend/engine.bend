@@ -32,6 +32,7 @@ import ./registry_geology.bend as RG
 import ./geology_batch.bend as GB
 import ./cave_lattice.bend as CV
 import ./cave_batch.bend as CAV
+import ./cave_biome_batch.bend as CBIO
 import ./cave_carve.bend as Carve
 import ./precise.bend as D
 
@@ -49,7 +50,7 @@ import ./precise.bend as D
 # CHUNK_NBT=26, CHUNK_ZLIB=27, REGION_MCA=28 (private staged path),
 # SHORELINE_COLUMNS=29 (resident exact heights and coastal biome selection),
 # PROFILE_GEOLOGY=30, CAVE_NOISE_BATCH=31, CARVER_BATCH=32,
-# CAVE_LATTICE=33, CAVE_FIELD_BATCH=34, CARVE_COLUMNS=35.
+# CAVE_LATTICE=33, CAVE_FIELD_BATCH=34, CARVE_COLUMNS=35, CAVE_BIOME_BATCH=36.
 # Requests: RBND magic, payload length, request ID, opcode (all BE u32).
 # Responses add a status u32 after opcode. stdout contains frames only.
 type Settings is Data:
@@ -648,8 +649,8 @@ def columns_valid(valid: Bool,computed: MC.Computed,runs: U32,palette: MD.Config
   match valid computed:
     case False{} MC.Computed{model,programs,density,surface,materials,_}:
       error(input,output,State{Settings{noise,climate,Some{RD.Prepared{model,programs,noises,points,fields,Some{density},Some{S.State{config,Some{surface}}},Some{materials}}}},profile},backend,id,opcode,729)
-    case True{} MC.Computed{model,programs,density,surface,M.Model{materials,bands,sea,layered,+old},MD.Grid{+tile,+minimum,+height,+values}}:
-      columns_ack(tile,MD.Grid{tile,minimum,height,values},MD.catalog(old),MD.geology(old),model,programs,density,surface,materials,bands,sea,layered,runs,palette,config,noises,points,fields,noise,climate,profile,input,output,backend,id,opcode)
+    case True{} MC.Computed{model,programs,density,surface,M.Model{materials,bands,sea,layered,+old},MD.Grid{+tile,+minimum,+height,+values,+biomes}}:
+      columns_ack(tile,MD.Grid{tile,minimum,height,values,biomes},MD.catalog(old),MD.geology(old),model,programs,density,surface,materials,bands,sea,layered,runs,palette,config,noises,points,fields,noise,climate,profile,input,output,backend,id,opcode)
 
 @unsafe
 def columns_ack(tile: S.Tile,grid: MD.Grid,catalog: Maybe<&2,CC.Catalog>,geology: Maybe<&2,G.Profile>,model: Q.Model,programs: Q.Table<Q.Program>,density: L.Grid,surface: S.Grid,materials: Q.Table<Q.Program>,bands: Q.Table<U32>,sea: U32,layered: Bool,runs: U32,palette: MD.Config,config: S.Config,noises: U32,points: U32,fields: U32,noise: Maybe<&2,N.Stack>,climate: Maybe<&2,C.Model>,profile: Maybe<&1,P.Document>,input: File,output: File,backend: U32,id: U32,opcode: U32) -> IO(Unit):
@@ -663,8 +664,8 @@ def columns_ack(tile: S.Tile,grid: MD.Grid,catalog: Maybe<&2,CC.Catalog>,geology
 @unsafe
 def columns_computed(computed: MC.Computed,palette: MD.Config,config: S.Config,noises: U32,points: U32,fields: U32,noise: Maybe<&2,N.Stack>,climate: Maybe<&2,C.Model>,profile: Maybe<&1,P.Document>,input: File,output: File,backend: U32,id: U32,opcode: U32) -> IO(Unit):
   match computed:
-    case MC.Computed{model,programs,density,surface,materials,MD.Grid{tile,minimum,height,+values}}:
-      columns_finished(MC.summary(values),MC.Computed{model,programs,density,surface,materials,MD.Grid{tile,minimum,height,values}},palette,config,noises,points,fields,noise,climate,profile,input,output,backend,id,opcode)
+    case MC.Computed{model,programs,density,surface,materials,MD.Grid{tile,minimum,height,+values,+biomes}}:
+      columns_finished(MC.summary(values),MC.Computed{model,programs,density,surface,materials,MD.Grid{tile,minimum,height,values,biomes}},palette,config,noises,points,fields,noise,climate,profile,input,output,backend,id,opcode)
 
 @unsafe
 def columns_generate(ok: Bool,prepared: RD.Prepared,noise: Maybe<&2,N.Stack>,climate: Maybe<&2,C.Model>,profile: Maybe<&1,P.Document>,input: File,output: File,+backend: U32,id: U32,opcode: U32) -> IO(Unit):
@@ -883,18 +884,18 @@ def cave_finite(ok: Bool,grid: CV.Grid,old: State,input: File,output: File,backe
     case True{}: cave_ack(grid,old,input,output,backend,id,opcode)
 
 @unsafe
-def cave_layout(result: Result<&1,&1,U32,CV.Layout>,model: Q.Model,programs: Q.Table<Q.Program>,climate: C.Model,geology: G.Profile,old: State,input: File,output: File,backend: U32,id: U32,opcode: U32) -> IO(Unit):
+def cave_layout(result: Result<&1,&1,U32,CV.Layout>,config: S.Config,density: L.Grid,model: Q.Model,programs: Q.Table<Q.Program>,climate: C.Model,geology: G.Profile,old: State,input: File,output: File,backend: U32,id: U32,opcode: U32) -> IO(Unit):
   match result:
     case Fail{code}: error(input,output,old,backend,id,opcode,code)
-    case Done{layout}: cave_computed(CV.generate(layout,model,programs,climate,geology),old,input,output,backend,id,opcode)
+    case Done{layout}: cave_computed(CV.generate(layout,config,density,model,programs,climate,geology),old,input,output,backend,id,opcode)
 
 @unsafe
 def cave_build(valid: Bool,input: File,output: File,+old: State,backend: U32,id: U32,opcode: U32) -> IO(Unit):
   match valid old:
     case False{} _: error(input,output,old,backend,id,opcode,603)
-    case True{} State{Settings{_,Some{climate},Some{RD.Prepared{model,programs,_,_,_,_,Some{S.State{config,Some{S.Grid{tile,_}}}},
+    case True{} State{Settings{_,Some{climate},Some{RD.Prepared{model,programs,_,_,_,Some{density},Some{S.State{config,Some{S.Grid{tile,_}}}},
       Some{M.Model{_,_,_,_,Some{MD.State{_,_,_,Some{geology},_}}}}}}},_}:
-      cave_layout(CV.layout(config,tile),model,programs,climate,geology,old,input,output,backend,id,opcode)
+      cave_layout(CV.layout(config,tile),config,density,model,programs,climate,geology,old,input,output,backend,id,opcode)
     case _ _: error(input,output,old,backend,id,opcode,739)
 
 @unsafe
@@ -919,6 +920,27 @@ def cave_batch(input: File,output: File,+old: State,backend: U32,id: U32,opcode:
     case _: error(input,output,old,backend,id,opcode,740)
 
 @unsafe
+def cave_biome_rows(computed: CBIO.Computed,count: U32,old: State,input: File,output: File,backend: U32,id: U32,opcode: U32) -> IO(Unit):
+  match computed:
+    case CBIO.Computed{_,rows}:
+      do IO<Unit>:
+        body : Z.Bytes <- payload(CBIO.encode(U32.to_nat(count),rows,B.new(),0))
+        finish(input,output,old,backend,id,opcode,0,body,True{})
+
+@unsafe
+def cave_biome_queries(queries: MC.Input,grid: CV.Grid,old: State,input: File,output: File,backend: U32,id: U32,opcode: U32) -> IO(Unit):
+  match queries:
+    case MC.Input{_,_,False{}}: error(input,output,old,backend,id,opcode,603)
+    case MC.Input{queries,count,True{}}: cave_biome_rows(CBIO.execute(grid,queries),count,old,input,output,backend,id,opcode)
+
+@unsafe
+def cave_biome_batch(input: File,output: File,+old: State,backend: U32,id: U32,opcode: U32,body: Z.Bytes) -> IO(Unit):
+  match old:
+    case State{Settings{_,_,Some{RD.Prepared{_,_,_,_,_,_,_,Some{M.Model{_,_,_,_,Some{MD.State{_,_,_,_,Some{grid}}}}}}}},_}:
+      cave_biome_queries(MC.decode(body),grid,old,input,output,backend,id,opcode)
+    case _: error(input,output,old,backend,id,opcode,740)
+
+@unsafe
 def carved_attach(grid: MD.Grid,+old: State) -> State:
   match old:
     case State{Settings{noise,climate,Some{RD.Prepared{model,programs,noises,points,fields,density,surface,
@@ -936,7 +958,7 @@ def carved_ack(computed: Carve.Computed,old: State,input: File,output: File,back
 def carved_summary(pair: U32 & U32,+grid: MD.Grid,old: State,input: File,output: File,backend: U32,id: U32,opcode: U32) -> IO(Unit):
   (runs,invalid) = pair
   match grid:
-    case MD.Grid{S.Tile{_,_,+width,+depth,_,_},_,_,_}:
+    case MD.Grid{S.Tile{_,_,+width,+depth,_,_},_,_,_,_}:
       do IO<Unit>:
         body : Z.Bytes <- payload(B.int(B.int(B.int(B.int(B.new(),width),depth),U32.mul(width,depth)),runs))
         finish(input,output,carved_attach(grid,old),backend,id,opcode,0,body,True{})
@@ -994,6 +1016,7 @@ def dispatch(input: File,output: File,stack: State,backend: U32,id: U32,opcode: 
     case 33: cave_build(R.end(R.start(body)),input,output,stack,backend,id,33)
     case 34: cave_batch(input,output,stack,backend,id,34,body)
     case 35: carve_build(R.end(R.start(body)),input,output,stack,backend,id,35)
+    case 36: cave_biome_batch(input,output,stack,backend,id,36,body)
     case 4: empty_command(R.end(R.start(body)),input,output,stack,backend,id,4)
     case _: error(input,output,stack,backend,id,opcode,605)
 

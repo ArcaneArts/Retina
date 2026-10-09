@@ -60,7 +60,7 @@ def compressed(data, record):
     return data[at+5:at+4+size]
 
 
-def exercise(binary, profiles, gpu, folder, version, repeat=True):
+def exercise(binary, profiles, gpu, folder, version, repeat=True, biome_reference=None):
     worker=Worker(binary,gpu);rows=[];dispatches=0;hashes=[];blocks=0
     def call(op,data=b'',status=0):
         nonlocal dispatches
@@ -111,7 +111,13 @@ def exercise(binary, profiles, gpu, folder, version, repeat=True):
                     # Decode every packed index independently, including entries
                     # crossing 64-bit words. Complete block comparison below.
                     palette(section['block_states'],4096,4)
-                    biome_counts.update(palette(section['biomes'],64,1))
+                    quart_biomes=palette(section['biomes'],64,1)
+                    biome_counts.update(quart_biomes)
+                    if biome_reference is not None:
+                        for i,actual in enumerate(quart_biomes):
+                            id=biome_reference(cx*16+(i%4)*4,source['geology_min_y']+s*16+(i//16)*4,
+                                cz*16+((i//4)%4)*4,low,high)
+                            assert actual==source['biomes'][id]['id'],(slot,s,i,actual,id)
             if name=='coastal':
                 total=sum(biome_counts.values());inland=biome_counts['minecraft:plains']
                 assert total*.95<inland<total,(name,biome_counts)
@@ -122,7 +128,10 @@ def exercise(binary, profiles, gpu, folder, version, repeat=True):
                 encoded=call(27,chunk_request(cx,cz,low,high,version))
                 assert encoded==compressed(data,records[slot]) and zlib.decompress(encoded)==raw
                 columns=decode(call(24,query_bytes([(cx*16+i%16,cz*16+i//16,low,high) for i in range(256)])))
-                blocks+=validate(raw,source,columns,cx,cz,version)
+                ids=None if biome_reference is None else [biome_reference(cx*16+(i%4)*4,
+                    source['geology_min_y']+s*16+(i//16)*4,cz*16+((i//4)%4)*4,low,high)
+                    for s in range(source['geology_height']//16) for i in range(64)]
+                blocks+=validate(raw,source,columns,cx,cz,version,ids)
             # A reordered read does not mutate the snapshot or output. Keep a
             # Unicode path to cover scalar path transport and a second full write.
             identical=True

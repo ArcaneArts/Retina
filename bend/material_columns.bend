@@ -1,6 +1,7 @@
 import Base
 import ./density.bend as Q
 import ./density_lattice.bend as L
+import ./terrain_height.bend as H
 import ./terrain_surface.bend as S
 import ./material_program.bend as M
 import ./material_lazy.bend as ML
@@ -15,10 +16,6 @@ import ./noise.bend as N
 
 type Computed is Type:
   Computed{model: Q.Model,programs: Q.Table<Q.Program>,density: L.Grid,surface: S.Grid,materials: M.Model,grid: MD.Grid}
-# Cache each column's bilinear density layers once, then interpolate only Y.
-# This avoids fetching eight six-root lattice outputs for every single block.
-type Vertical is Data:
-  Vertical{origin: D.Number,step: U32,values: Q.Table<D.Number>,explicit: Maybe<&2,D.Number>}
 # Immutable pre-material spans plus exact heights for the central tile and its
 # one-column slope halo. Both device steps remain inside command 22.
 type Geometry is Data:
@@ -59,52 +56,21 @@ def at(+point: Q.Point,+world_y: U32) -> Q.Point:
     case Q.Point{x,_,z}: Q.Point{x,D.integer(world_y),z}
 
 @unsafe
-def vertical_values(+n: U32,+base: U32,+values: Q.Table<Q.Outputs>,+ix: U32,+iz: U32,+nx: U32,+ny: U32,+tx: D.Number,+tz: D.Number) -> Q.Table<D.Number>:
-  match n:
-    case 1: Q.Leaf{S.layer(values,ix,iz,nx,ny,base,tx,tz)}
-    case _: Q.Branch{n,vertical_values(U32.div(n,2),base,values,ix,iz,nx,ny,tx,tz),
-      vertical_values(U32.sub(n,U32.div(n,2)),U32.add(base,U32.div(n,2)),values,ix,iz,nx,ny,tx,tz)}
-
-@unsafe
-def vertical_relative(relative: Q.Point,+origin: Q.Point,+nx: U32,+ny: U32,+nz: U32,+v: U32,+values: Q.Table<Q.Outputs>) -> Vertical:
-  match relative origin:
-    case Q.Point{+x,_,+z} Q.Point{_,+oy,_}:
-      +ix = U32.min(F32.to_u32(D.value(D.floor(x))),U32.sub(nx,2))
-      +iz = U32.min(F32.to_u32(D.value(D.floor(z))),U32.sub(nz,2))
-      Vertical{oy,v,vertical_values(ny,0,values,ix,iz,nx,ny,D.sub(x,D.unsigned(ix)),D.sub(z,D.unsigned(iz))),None{}}
-
-@unsafe
-def vertical(+config: S.Config,+grid: L.Grid,+point: Q.Point) -> Vertical:
-  match config grid:
-    case S.Config{_,_,_,_,_,True{}} _: Vertical{D.scalar(0.0),1,Q.Empty{},Some{D.floor(S.height(config,point,grid))}}
-    case _ L.Grid{L.Layout{+origin,+nx,+ny,+nz,+h,+v,_,_,_},+values}:
-      vertical_relative(L.relative(point,origin,h,v),origin,nx,ny,nz,v,values)
-
-@unsafe
-def vertical_at(+field: Vertical,+py: D.Number) -> Bool:
-  match field:
-    case Vertical{_,_,_,Some{first_free}}: D.less(py,first_free)
-    case Vertical{+origin,+step,+values,None{}}:
-      +relative = D.divide(D.sub(py,origin),D.unsigned(step))
-      +i = U32.min(F32.to_u32(D.value(D.floor(relative))),U32.sub(Q.table_size(D.Number,values),2))
-      D.less(D.scalar(0.0),D.mix(Q.get(D.Number,values,i,D.scalar(0.0)),Q.get(D.Number,values,U32.inc(i),D.scalar(0.0)),D.sub(relative,D.unsigned(i))))
-
-@unsafe
-def geometry(+n: U32,+end: U32,+previous: U32,acc: List<&2,MD.Run>,+field: Vertical,+minimum: U32,+sea: U32) -> List<&2,MD.Run>:
+def geometry(+n: U32,+end: U32,+previous: U32,acc: List<&2,MD.Run>,+field: H.Vertical,+minimum: U32,+sea: U32) -> List<&2,MD.Run>:
   match n:
     case 0: List.reverse(&2,MD.Run,MD.Run{0,end,previous} <> acc)
     case _:
       +py = D.integer(U32.add(minimum,U32.sub(n,1)))
-      geometry_next(Z.word(vertical_at(field,py),2,Z.word(D.less(py,D.integer(sea)),1,0)),n,end,previous,acc,field,minimum,sea)
+      geometry_next(Z.word(H.vertical_at(field,py),2,Z.word(D.less(py,D.integer(sea)),1,0)),n,end,previous,acc,field,minimum,sea)
 
 @unsafe
-def geometry_next(+value: U32,+n: U32,+end: U32,+previous: U32,acc: List<&2,MD.Run>,field: Vertical,minimum: U32,sea: U32) -> List<&2,MD.Run>:
+def geometry_next(+value: U32,+n: U32,+end: U32,+previous: U32,acc: List<&2,MD.Run>,field: H.Vertical,minimum: U32,sea: U32) -> List<&2,MD.Run>:
   match previous:
     case 4294967295: geometry(U32.sub(n,1),end,value,acc,field,minimum,sea)
     case _: geometry_change(U32.is_ne(value,previous),value,n,end,previous,acc,field,minimum,sea)
 
 @unsafe
-def geometry_change(changed: Bool,value: U32,+n: U32,end: U32,previous: U32,acc: List<&2,MD.Run>,field: Vertical,minimum: U32,sea: U32) -> List<&2,MD.Run>:
+def geometry_change(changed: Bool,value: U32,+n: U32,end: U32,previous: U32,acc: List<&2,MD.Run>,field: H.Vertical,minimum: U32,sea: U32) -> List<&2,MD.Run>:
   match changed:
     case False{}: geometry(U32.sub(n,1),end,previous,acc,field,minimum,sea)
     case True{}: geometry(U32.sub(n,1),n,value,MD.Run{n,end,previous} <> acc,field,minimum,sea)
@@ -121,53 +87,7 @@ def highest(runs: List<&2,MD.Run>,minimum: U32) -> U32:
 @unsafe
 def height(+config: S.Config,density: L.Grid,model: Q.Model,programs: Q.Table<Q.Program>,point: Q.Point,low: U32,high: U32) -> U32:
   match config:
-    case S.Config{+minimum,+span,_,_,_,_}: height_field(vertical(config,density,point),minimum,span)
-
-@unsafe
-def height_field(+field: Vertical,+minimum: U32,+span: U32) -> U32:
-  match field:
-    case Vertical{_,_,_,Some{first_free}}: U32.add(minimum,F32.to_u32(D.value(D.maximum(D.scalar(0.0),D.minimum(D.unsigned(span),D.sub(first_free,D.integer(minimum)))))))
-    case Vertical{_,_,_,None{}}: highest_cell(span,field,minimum)
-
-@unsafe
-def highest_cell(+end: U32,+field: Vertical,+minimum: U32) -> U32:
-  match end field:
-    case 0 _: minimum
-    case _ Vertical{+origin,+step,_,_}:
-      +top = D.integer(U32.add(minimum,U32.sub(end,1)))
-      +i = D.floor(D.divide(D.sub(top,origin),D.unsigned(step)))
-      +start = F32.to_u32(D.value(D.maximum(D.scalar(0.0),D.sub(D.add(origin,D.multiply(i,D.unsigned(step))),D.integer(minimum)))))
-      highest_top(vertical_at(field,top),start,end,field,minimum)
-
-@unsafe
-def highest_top(solid: Bool,+start: U32,+end: U32,+field: Vertical,+minimum: U32) -> U32:
-  match solid:
-    case True{}: U32.add(minimum,end)
-    case False{}: highest_bottom(vertical_at(field,D.integer(U32.add(minimum,start))),start,U32.sub(end,1),field,minimum)
-
-@unsafe
-def highest_bottom(solid: Bool,+start: U32,+top: U32,+field: Vertical,+minimum: U32) -> U32:
-  match solid:
-    case False{}: highest_cell(start,field,minimum)
-    case True{}: crossing_search(start,top,field,minimum)
-
-@unsafe
-def crossing_search(+low: U32,+high: U32,+field: Vertical,+minimum: U32) -> U32:
-  crossing_done(U32.is_le(U32.sub(high,low),1),low,high,field,minimum)
-
-@unsafe
-def crossing_done(done: Bool,+low: U32,+high: U32,+field: Vertical,+minimum: U32) -> U32:
-  match done:
-    case True{}: U32.add(minimum,high)
-    case False{}:
-      +middle = U32.div(U32.add(low,high),2)
-      crossing_half(vertical_at(field,D.integer(U32.add(minimum,middle))),low,high,middle,field,minimum)
-
-@unsafe
-def crossing_half(solid: Bool,low: U32,high: U32,+middle: U32,field: Vertical,minimum: U32) -> U32:
-  match solid:
-    case True{}: crossing_search(middle,high,field,minimum)
-    case False{}: crossing_search(low,middle,field,minimum)
+    case S.Config{+minimum,+span,_,_,_,_}: H.height_field(H.vertical(config,density,point),minimum,span)
 
 @unsafe
 def slope(+config: S.Config,+density: L.Grid,+model: Q.Model,+programs: Q.Table<Q.Program>,+point: Q.Point,+low: U32,+high: U32) -> F32:
@@ -184,7 +104,7 @@ def geometry_halo(tile: S.Tile) -> S.Tile:
 def geometry_column(+config: S.Config,density: L.Grid,point: Q.Point) -> Geometry:
   match config:
     case S.Config{+minimum,+span,+sea,_,_,_}:
-      +runs = geometry(span,span,4294967295,[],vertical(config,density,point),minimum,sea)
+      +runs = geometry(span,span,4294967295,[],H.vertical(config,density,point),minimum,sea)
       Geometry{runs,highest(runs,minimum)}
 
 @unsafe
@@ -371,7 +291,7 @@ def cached_execute(+config: S.Config,+palette: MD.Config,+density: L.Grid,+surfa
       +expanded = geometry_halo(tile)
       geometry : Q.Table<Geometry> = geometry_rows!(U32.max(1,U32.div(U32.add(S.total(expanded),16383),16384)),S.total(expanded),0,config,density,expanded)
       values : Q.Table<MD.Column> = columns!(U32.max(1,U32.div(U32.add(S.total(tile),16383),16384)),S.total(tile),0,config,palette,GeometryCache{expanded,geometry},surface,model,programs,prepared)
-      Computed{model,programs,density,surface,materials,MD.Grid{tile,minimum,span,values}}
+      Computed{model,programs,density,surface,materials,MD.Grid{tile,minimum,span,values,None{}}}
 
 @unsafe
 def direct_column(+config: S.Config,+palette: MD.Config,+density: L.Grid,+surface: S.Grid,+model: Q.Model,+programs: Q.Table<Q.Program>,+materials: ML.Prepared,+i: U32) -> MD.Column:
@@ -383,7 +303,7 @@ def direct_column(+config: S.Config,+palette: MD.Config,+density: L.Grid,+surfac
 def direct_sampled(row: S.Row,+config: S.Config,+palette: MD.Config,+density: L.Grid,+model: Q.Model,+programs: Q.Table<Q.Program>,+materials: ML.Prepared,+point: Q.Point,tile: S.Tile,+span: U32) -> MD.Column:
   match row config tile:
     case S.Row{_,_,+biome} S.Config{+minimum,_,+sea,_,_,_} S.Tile{_,_,_,_,+low,+high}:
-      +spans = geometry(span,span,4294967295,[],vertical(config,density,point),minimum,sea)
+      +spans = geometry(span,span,4294967295,[],H.vertical(config,density,point),minimum,sea)
       column_ready(spans,config,palette,model,materials,point,low,high,biome,
         context_at(palette,model,point,low,high,highest(spans,minimum),slope(config,density,model,programs,point,low,high)))
 
@@ -409,7 +329,7 @@ def direct_execute(+config: S.Config,+palette: MD.Config,+density: L.Grid,+surfa
     case S.Config{+minimum,+span,_,_,_,_} S.Grid{+tile,_}:
       +prepared = ML.prepare(M.rules(materials))
       values : Q.Table<MD.Column> = direct_columns!(U32.max(1,U32.div(U32.add(S.total(tile),16383),16384)),S.total(tile),0,config,palette,density,surface,model,programs,prepared)
-      Computed{model,programs,density,surface,materials,MD.Grid{tile,minimum,span,values}}
+      Computed{model,programs,density,surface,materials,MD.Grid{tile,minimum,span,values,None{}}}
 
 def execute(cached: Bool,config: S.Config,palette: MD.Config,density: L.Grid,surface: S.Grid,model: Q.Model,programs: Q.Table<Q.Program>,materials: M.Model) -> Computed:
   match cached:
@@ -431,7 +351,7 @@ def sum(left: U32 & U32,right: U32 & U32) -> U32 & U32:
 @unsafe
 def lookup(+grid: MD.Grid,query: S.Query) -> Maybe<&2,MD.Column>:
   match grid query:
-    case MD.Grid{S.Tile{+ox,+oz,+width,+depth,+lo,+hi},_,_,+values} S.Query{+x,+z,+qlo,+qhi}:
+    case MD.Grid{S.Tile{+ox,+oz,+width,+depth,+lo,+hi},_,_,+values,_} S.Query{+x,+z,+qlo,+qhi}:
       +dx = D.sub(D.integer(x),D.integer(ox))
       +dz = D.sub(D.integer(z),D.integer(oz))
       located(Bool.and(Bool.and(U32.is_eq(lo,qlo),U32.is_eq(hi,qhi)),Bool.and(L.contains(dx,width),L.contains(dz,depth))),values,dx,dz,width)
@@ -482,7 +402,7 @@ def run_at(found: Bool,material: U32,rest: List<&2,MD.Run>,offset: U32) -> U32:
 @unsafe
 def voxel(+grid: MD.Grid,+query: Query) -> U32:
   match grid query:
-    case MD.Grid{_,+minimum,+height,_} Query{+x,+py,+z,+low,+high}:
+    case MD.Grid{_,+minimum,+height,_,_} Query{+x,+py,+z,+low,+high}:
       voxel_column(lookup(grid,S.Query{x,z,low,high}),D.sub(D.integer(py),D.integer(minimum)),height)
 
 @unsafe
