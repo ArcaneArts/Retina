@@ -64,7 +64,7 @@ def carver_found(found: Bool,n: U32,i: U32,settings: Q.Table<G.Carver>,y: U32,ro
 @unsafe
 def cavity(values: Q.Vec4,+biome: G.Biome,+y: U32,+height: U32,+aperture: F32) -> Bool:
   match values biome:
-    case Q.Vec4{+chamber,+a,+b,+ribbon} G.Biome{+settings}:
+    case Q.Vec4{+chamber,+a,+b,+ribbon} G.Biome{+settings,_}:
       +roof = F32.mul(F32.sub(1.0,aperture),F32.sub(1.0,smooth(0.0,24.0,D.value(D.sub(D.integer(U32.sub(height,1)),D.integer(y))))))
       Bool.or(Bool.and(D.less(D.integer(y),D.integer(U32.sub(height,1))),F32.is_lt(chamber,F32.neg(F32.mul(roof,0.20)))),
         carvers(Q.table_size(G.Carver,settings),0,settings,y,roof,Q.Vec4{chamber,a,b,ribbon}))
@@ -79,7 +79,7 @@ def sampled(found: Maybe<&2,Q.Vec4>,biome: G.Biome,y: U32,height: U32,aperture: 
 def carved(ok: Bool,+grid: CV.Grid,biomes: Q.Table<G.Biome>,surface: U32,+point: Q.Point,+y: U32,height: U32,aperture: F32,+low: U32,+high: U32) -> Bool:
   match ok:
     case False{}: False{}
-    case True{}: sampled(CV.lookup(grid,MC.at(point,y),low,high),Q.get(G.Biome,biomes,CV.inherit(CV.biome(grid,MC.at(point,y),low,high),surface),G.Biome{Q.Empty{}}),y,height,aperture)
+    case True{}: sampled(CV.lookup(grid,MC.at(point,y),low,high),Q.get(G.Biome,biomes,CV.inherit(CV.biome(grid,MC.at(point,y),low,high),surface),G.empty_biome()),y,height,aperture)
 
 @unsafe
 def chamber(found: Maybe<&2,Q.Vec4>) -> F32:

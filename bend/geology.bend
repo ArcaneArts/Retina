@@ -3,6 +3,7 @@ import ./density.bend as Q
 import ./precise.bend as D
 import ./noise.bend as N
 import ./aquifer.bend as A
+import ./lake_data.bend as Lakes
 
 # Loaded geology is immutable Data. The registry tape and file effects stay on
 # the host; these records can be consumed unchanged by Bend CPU or GPU code.
@@ -13,7 +14,7 @@ type Noise is Data:
 type Carver is Data:
   Carver{id: U32,kind: U32,height: Height,probability: F32,shape: Q.Vec4,detail: Q.Vec4,variation: Q.Vec4,distance: Q.Vec4,axis: Q.Vec4}
 type Biome is Data:
-  Biome{carvers: Q.Table<Carver>}
+  Biome{carvers: Q.Table<Carver>,lakes: Lakes.Params}
 type Profile is Data:
   Profile{noises: Q.Table<Noise>,biomes: Q.Table<Biome>,carveable: Q.Table<Bool>,lava: U32,lava_level: U32,minimum: U32,height: U32,aquifer: Maybe<&2,A.Prepared>}
 
@@ -116,8 +117,17 @@ def with_aquifer(profile: Profile,config: A.Prepared) -> Profile:
 def carver_count(biomes: Q.Table<Biome>) -> U32:
   match biomes:
     case Q.Empty{}: 0
-    case Q.Leaf{Biome{carvers}}: Q.table_size(Carver,carvers)
+    case Q.Leaf{Biome{carvers,_}}: Q.table_size(Carver,carvers)
     case Q.Branch{_,a,b}: U32.add(carver_count(a),carver_count(b))
+
+def empty_biome() -> Biome:
+  Biome{Q.Empty{},Lakes.empty()}
+
+def biomes_valid(biomes: Q.Table<Biome>,+palette: U32) -> Bool:
+  match biomes:
+    case Q.Empty{}: True{}
+    case Q.Leaf{Biome{_,lakes}}: Lakes.valid(lakes,palette)
+    case Q.Branch{_,a,b}: Bool.and(biomes_valid(a,palette),biomes_valid(b,palette))
 
 
 def clear_aquifer(profile: Profile) -> Profile:

@@ -6,6 +6,8 @@ import ./registry_material.bend as RM
 import ./density.bend as Q
 import ./precise.bend as D
 import ./geology.bend as G
+import ./registry_lakes.bend as Lakes
+import ./lake_data.bend as LD
 
 # Resolve schema names once, then visit arrays sequentially. Projection happens
 # in Bend on the host; immutable numeric records are usable on either backend.
@@ -14,7 +16,8 @@ def keys(-A: Type,doc: P.Document,next: P.Document -> RD.Keys -> A) -> A:
   RD.resolved(A,["cave_noises","biomes","carveable","lava","lava_level","geology_min_y","geology_height",
     "frequency","amplitude","modifiers","carvers","kind","probability","height","min","max","triangle","plateau",
     "count","thickness","horizontal","vertical","floor","room","width_smoothness","vertical_default","vertical_center",
-    "thickness_range","horizontal_range","distance_range","vertical_range","rotation_range","id"],doc,[],next)
+    "thickness_range","horizontal_range","distance_range","vertical_range","rotation_range","id",
+    "lakes","lake_barrier","lake_water_barrier","flags"],doc,[],next)
 
 @unsafe
 def valid(-A: Type,-T: Data,ok: Bool,value: T,doc: P.Document,next: P.Document -> Result<&1,&1,U32,T> -> A) -> A:
@@ -236,14 +239,15 @@ def flags_result(-A: Type,result: Result<&1,&1,U32,Bool>,count: U32,doc: P.Docum
     case Done{value}: flags_read(A,count,doc,at,keys,value <> acc,next)
 
 @unsafe
-def biome_result(-A: Type,result: Result<&1,&1,U32,Q.Table<G.Carver>>,doc: P.Document,next: P.Document -> Result<&1,&1,U32,G.Biome> -> A) -> A:
-  match result:
-    case Fail{_}: next(doc,Fail{736})
-    case Done{carvers}: next(doc,Done{G.Biome{carvers}})
+def biome_result(-A: Type,result: Result<&1,&1,U32,Q.Table<G.Carver>>,lakes: Result<&1,&1,U32,LD.Params>,doc: P.Document,next: P.Document -> Result<&1,&1,U32,G.Biome> -> A) -> A:
+  match result lakes:
+    case Done{carvers} Done{lakes}: next(doc,Done{G.Biome{carvers,lakes}})
+    case _ _: next(doc,Fail{736})
 
 @unsafe
-def biome(-A: Type,doc: P.Document,value: P.Value,+keys: RD.Keys,next: P.Document -> Result<&1,&1,U32,G.Biome> -> A) -> A:
-  RD.named(A,doc,value,keys,10n,doc => found => carvers(A,found,doc,keys,0,4,doc => result => biome_result(A,result,doc,next)))
+def biome(-A: Type,doc: P.Document,+value: P.Value,+keys: RD.Keys,next: P.Document -> Result<&1,&1,U32,G.Biome> -> A) -> A:
+  RD.named(A,doc,value,keys,10n,doc => found => carvers(A,found,doc,keys,0,4,doc => result =>
+    Lakes.biome(A,doc,value,keys,doc => lakes => biome_result(A,result,lakes,doc,next))))
 
 @unsafe
 def flag(-A: Type,doc: P.Document,value: P.Value,keys: RD.Keys,next: P.Document -> Result<&1,&1,U32,Bool> -> A) -> A:
@@ -253,11 +257,11 @@ def flag(-A: Type,doc: P.Document,value: P.Value,keys: RD.Keys,next: P.Document 
 def profile_values(-A: Type,noises: Result<&1,&1,U32,Q.Table<G.Noise>>,biomes: Result<&1,&1,U32,Q.Table<G.Biome>>,flags: Result<&1,&1,U32,Q.Table<Bool>>,
     lava: Result<&1,&1,U32,U32>,level: Result<&1,&1,U32,U32>,minimum: Result<&1,&1,U32,U32>,height: Result<&1,&1,U32,U32>,+palette: U32,doc: P.Document,next: P.Document -> Result<&1,&1,U32,G.Profile> -> A) -> A:
   match noises biomes flags lava level minimum height:
-    case Done{noises} Done{biomes} Done{flags} Done{+lava} Done{+level} Done{+minimum} Done{+height}:
-      valid(A,G.Profile,Bool.and(U32.is_lt(lava,palette),Bool.and(Bool.and(U32.is_gt(height,0),U32.is_le(height,4096)),
+    case Done{noises} Done{+biomes} Done{flags} Done{+lava} Done{+level} Done{+minimum} Done{+height}:
+      valid(A,G.Profile,Bool.and(G.biomes_valid(biomes,palette),Bool.and(U32.is_lt(lava,palette),Bool.and(Bool.and(U32.is_gt(height,0),U32.is_le(height,4096)),
         Bool.and(Bool.not(D.less(D.integer(level),D.integer(minimum))),
           Bool.and(D.less(D.integer(level),D.add(D.integer(minimum),D.unsigned(height))),
-            Bool.not(D.less(D.integer(2147483647),D.add(D.integer(minimum),D.unsigned(height)))))))),
+            Bool.not(D.less(D.integer(2147483647),D.add(D.integer(minimum),D.unsigned(height))))))))),
         G.Profile{noises,biomes,flags,lava,level,minimum,height,None{}},doc,next)
     case _ _ _ _ _ _ _: next(doc,Fail{736})
 

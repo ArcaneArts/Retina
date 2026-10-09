@@ -325,6 +325,22 @@ public final class BendWorker implements AutoCloseable {
         return request(40, batch);
     }
 
+    /** Read registered lake budgets/barriers for raw biome-ID batches. Each
+     * result contains total/lava F32 chances, two material IDs and biome flags.
+     * Geology preparation projects these settings in Bend.
+     */
+    public CompletableFuture<byte[]> queryLakeSettings(byte[] batch) {
+        return request(41, batch);
+    }
+
+    /** Sample globally seeded lake candidates from raw X/Z/seed batches.
+     * Bend owns climate selection, positions, radii, eligibility and materials.
+     * This does not carve basins or modify resident terrain.
+     */
+    public CompletableFuture<byte[]> sampleLakeCandidates(byte[] batch) {
+        return request(42, batch);
+    }
+
     /** Cancellation skips queued requests; in-flight responses are drained to
      * preserve framing. World shutdown closes the worker and terminates it.
      */

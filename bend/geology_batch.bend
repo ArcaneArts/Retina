@@ -86,7 +86,7 @@ def empty_carver() -> G.Carver:
 @unsafe
 def metadata_row(biome: G.Biome,w: B.Writer) -> B.Writer:
   match biome:
-    case G.Biome{+values}: carvers(Q.table_size(G.Carver,values),values,B.int(w,Q.table_size(G.Carver,values)),0)
+    case G.Biome{+values,_}: carvers(Q.table_size(G.Carver,values),values,B.int(w,Q.table_size(G.Carver,values)),0)
 
 @unsafe
 def metadata(n: Nat,cursor: R.Cursor,+biomes: Q.Table<G.Biome>,w: B.Writer) -> Result<&1,&1,U32,B.Writer>:
@@ -99,7 +99,7 @@ def metadata(n: Nat,cursor: R.Cursor,+biomes: Q.Table<G.Biome>,w: B.Writer) -> R
 def metadata_valid(ok: Bool,n: Nat,cursor: R.Cursor,+biomes: Q.Table<G.Biome>,id: U32,w: B.Writer) -> Result<&1,&1,U32,B.Writer>:
   match ok:
     case False{}: Fail{603}
-    case True{}: metadata(n,cursor,biomes,metadata_row(Q.get(G.Biome,biomes,id,G.Biome{Q.Empty{}}),w))
+    case True{}: metadata(n,cursor,biomes,metadata_row(Q.get(G.Biome,biomes,id,G.empty_biome()),w))
 
 @unsafe
 def metadata_end(ok: Bool,w: B.Writer) -> Result<&1,&1,U32,B.Writer>:
