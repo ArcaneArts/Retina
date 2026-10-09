@@ -1,0 +1,280 @@
+{
+  "scope": "Actual simple-block, block-column and disk writes on CPU and observed Metal.\n\nUnmodified captured registry profiles cross the binary transport. Independent\nPython voxel/RNG replay checks every touched block and successive writer calls.\nThis component is not yet wired into the playable vegetation pipeline.",
+  "bend_version": "bend 2.0.36",
+  "runs": [
+    {
+      "profile": "profile-0",
+      "gpu_required": false,
+      "features": 34,
+      "kinds": {
+        "disk": 5,
+        "block_column": 18,
+        "simple_block": 11
+      },
+      "writer_calls": 1088,
+      "successful_calls": 787,
+      "touched_blocks": 4974,
+      "bytes": 96996,
+      "sha256": "f7b84eb87819a2791ad29986805faf6795e7b1a9c1bc0b74f383c5b53a471664"
+    },
+    {
+      "profile": "profile-1",
+      "gpu_required": false,
+      "features": 135,
+      "kinds": {
+        "disk": 29,
+        "block_column": 63,
+        "simple_block": 43
+      },
+      "writer_calls": 4320,
+      "successful_calls": 3008,
+      "touched_blocks": 46082,
+      "bytes": 806436,
+      "sha256": "1d915377f245a37575bcd62aa1cbd8c1495d0f5b33b867517a4016cff8fe1c4b"
+    },
+    {
+      "profile": "profile-2",
+      "gpu_required": false,
+      "features": 135,
+      "kinds": {
+        "disk": 29,
+        "block_column": 63,
+        "simple_block": 43
+      },
+      "writer_calls": 4320,
+      "successful_calls": 3008,
+      "touched_blocks": 46082,
+      "bytes": 806436,
+      "sha256": "1d915377f245a37575bcd62aa1cbd8c1495d0f5b33b867517a4016cff8fe1c4b"
+    },
+    {
+      "profile": "fixture",
+      "gpu_required": false,
+      "features": 26,
+      "kinds": {
+        "simple_block": 8,
+        "block_column": 11,
+        "disk": 7
+      },
+      "writer_calls": 832,
+      "successful_calls": 616,
+      "touched_blocks": 21613,
+      "bytes": 359124,
+      "sha256": "30fd6aff3cd061b7b250266f85e486a2d20f8302507afa165c129e3dad866dbe"
+    },
+    {
+      "profile": "empty",
+      "gpu_required": false,
+      "features": 0,
+      "kinds": {},
+      "writer_calls": 0,
+      "successful_calls": 0,
+      "touched_blocks": 0,
+      "bytes": 4,
+      "sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119"
+    },
+    {
+      "profile": "profile-0",
+      "gpu_required": true,
+      "features": 34,
+      "kinds": {
+        "disk": 5,
+        "block_column": 18,
+        "simple_block": 11
+      },
+      "writer_calls": 1088,
+      "successful_calls": 787,
+      "touched_blocks": 4974,
+      "bytes": 96996,
+      "sha256": "f7b84eb87819a2791ad29986805faf6795e7b1a9c1bc0b74f383c5b53a471664"
+    },
+    {
+      "profile": "profile-1",
+      "gpu_required": true,
+      "features": 135,
+      "kinds": {
+        "disk": 29,
+        "block_column": 63,
+        "simple_block": 43
+      },
+      "writer_calls": 4320,
+      "successful_calls": 3008,
+      "touched_blocks": 46082,
+      "bytes": 806436,
+      "sha256": "1d915377f245a37575bcd62aa1cbd8c1495d0f5b33b867517a4016cff8fe1c4b"
+    },
+    {
+      "profile": "profile-2",
+      "gpu_required": true,
+      "features": 135,
+      "kinds": {
+        "disk": 29,
+        "block_column": 63,
+        "simple_block": 43
+      },
+      "writer_calls": 4320,
+      "successful_calls": 3008,
+      "touched_blocks": 46082,
+      "bytes": 806436,
+      "sha256": "1d915377f245a37575bcd62aa1cbd8c1495d0f5b33b867517a4016cff8fe1c4b"
+    },
+    {
+      "profile": "fixture",
+      "gpu_required": true,
+      "features": 26,
+      "kinds": {
+        "simple_block": 8,
+        "block_column": 11,
+        "disk": 7
+      },
+      "writer_calls": 832,
+      "successful_calls": 616,
+      "touched_blocks": 21613,
+      "bytes": 359124,
+      "sha256": "30fd6aff3cd061b7b250266f85e486a2d20f8302507afa165c129e3dad866dbe"
+    },
+    {
+      "profile": "empty",
+      "gpu_required": true,
+      "features": 0,
+      "kinds": {},
+      "writer_calls": 0,
+      "successful_calls": 0,
+      "touched_blocks": 0,
+      "bytes": 4,
+      "sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119"
+    }
+  ],
+  "semantic_controls": {
+    "waterlogged_pairs": "pass",
+    "upper_obstruction": "pass",
+    "current_survival": "pass",
+    "nullable": "pass",
+    "base_tip_truncation": "pass",
+    "unsupported_current_state": "pass",
+    "live_repeated_writes": "pass",
+    "unknown_columns": "pass",
+    "build_height_clipping": "pass",
+    "ordered_disk_writes": "pass",
+    "signed_overflow": "pass"
+  },
+  "malformed_rejected": 24,
+  "cpu_gpu_bytes_equal": true,
+  "one_cpu_thread": "pass",
+  "metal_observation": [
+    {
+      "profile": "profile-0",
+      "device_ms": [
+        1707.5085,
+        436.664542,
+        707.48,
+        87.512458,
+        93.909625,
+        428.31275,
+        247.485,
+        114.011,
+        128.264958,
+        1729.16025,
+        885.840875,
+        107.38875,
+        79.510167,
+        343.299708,
+        449.319792,
+        124.128708
+      ],
+      "command_buffers": 16,
+      "sha256": "f7b84eb87819a2791ad29986805faf6795e7b1a9c1bc0b74f383c5b53a471664"
+    },
+    {
+      "profile": "profile-1",
+      "device_ms": [
+        470.938083,
+        2070.149375,
+        1524.99175,
+        858.616208,
+        948.44975,
+        1440.276917,
+        1165.392083,
+        747.680792,
+        1341.626708,
+        3279.733375,
+        2613.543083,
+        1082.8655,
+        890.93425,
+        1326.54775,
+        1629.869375,
+        1046.227708
+      ],
+      "command_buffers": 16,
+      "sha256": "1d915377f245a37575bcd62aa1cbd8c1495d0f5b33b867517a4016cff8fe1c4b"
+    },
+    {
+      "profile": "profile-2",
+      "device_ms": [
+        474.917167,
+        1818.80575,
+        1750.906292,
+        1090.055958,
+        941.69125,
+        1051.343375,
+        1061.78425,
+        947.495375,
+        1896.291208,
+        3034.531625,
+        2389.821,
+        857.012958,
+        804.306875,
+        1995.061708,
+        1613.708042,
+        1044.660708
+      ],
+      "command_buffers": 16,
+      "sha256": "1d915377f245a37575bcd62aa1cbd8c1495d0f5b33b867517a4016cff8fe1c4b"
+    },
+    {
+      "profile": "fixture",
+      "device_ms": [
+        437.893708,
+        480.970125,
+        466.067417,
+        239.683417,
+        270.46825,
+        258.31175,
+        304.227458,
+        298.900958,
+        432.028875,
+        427.315583,
+        438.8,
+        271.291875,
+        243.488208,
+        294.4015,
+        304.997875,
+        222.374875
+      ],
+      "command_buffers": 16,
+      "sha256": "30fd6aff3cd061b7b250266f85e486a2d20f8302507afa165c129e3dad866dbe"
+    },
+    {
+      "profile": "empty",
+      "device_ms": [
+        0.212208
+      ],
+      "command_buffers": 1,
+      "sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119"
+    }
+  ],
+  "profiles": {
+    "/Users/cyberpwn/.local/share/retina-bend/2.0.36/backend-artifacts/block-providers-20261009/profiles/profile-0.json": "aefce6ff0e800966ad55920c5d21510dfa277de4612f67e22d5146d3aa838203",
+    "/Users/cyberpwn/.local/share/retina-bend/2.0.36/backend-artifacts/block-providers-20261009/profiles/profile-1.json": "c9abbe97860a394ed899d64967bd0395bb9bb4ec71a9dff43d1bb45893fefd4d",
+    "/Users/cyberpwn/.local/share/retina-bend/2.0.36/backend-artifacts/block-providers-20261009/profiles/profile-2.json": "068fd602ad497128dd3960cb9be76840ebd41882b5b64c25acfa76d65e930c8b"
+  },
+  "sources": {
+    "bend/surface_feature.bend": "b66dddbaffc0c25470f5c4bb03635c93d7efdaa5d3038ac6e99341a3e7912af4",
+    "bend/registry_surface_feature.bend": "c64134bc014468d0f1b5cc0b4c4e8f41739555a76312a07e817bae27e1efdfa1",
+    "bend/tests/surface-features.bend": "bb87d19d66431325bfe68db2141fb0c7658f23ec58bc0eea8f8a7b989650cde3",
+    "bend/tests/surface-feature-world.bend": "a6ce0c24e1ce5f00c82c9a8469d7865683f2b14447d408e7aa733ca75b3a77c0",
+    "scripts/test_bend_surface_features.py": "7256f2e528fa15896b0f9c374a293f74e41a26f1d79aa9ae8c591ea8afa67ca0"
+  },
+  "native_sha256": "f52e43e153cb770c4321becd0ab80e6540e1d1da755eecac302ebff4d86706d7",
+  "gpu_sha256": "d5307e23b4a05e03ce00a6c07409fe93282b3187cf6b8980402221e49f02313b"
+}
