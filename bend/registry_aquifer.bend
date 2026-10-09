@@ -26,9 +26,16 @@ def complete(enabled: Result<&1,&1,U32,Bool>,program: Result<&1,&1,U32,U32>,surf
 def entry(-T: Type,found: Maybe<&2,P.Value>,doc: P.Document,count: U32,+minimum: U32,height: U32,next: P.Document -> Result<&1,&1,U32,A.Config> -> T) -> T:
   match found:
     case None{}: next(doc,Done{A.Config{False{},0,minimum,1,False{},minimum,height}})
-    case Some{+value}: V.field(T,doc,value,"enabled",doc => enabled => V.field(T,doc,value,"program",doc => program =>
+    case Some{+value}: V.field(T,doc,value,"enabled",doc => enabled => enabled_entry(T,RM.boolean(enabled),value,doc,count,minimum,height,next))
+
+@unsafe
+def enabled_entry(-T: Type,enabled: Result<&1,&1,U32,Bool>,+value: P.Value,doc: P.Document,count: U32,+minimum: U32,height: U32,next: P.Document -> Result<&1,&1,U32,A.Config> -> T) -> T:
+  match enabled:
+    case Done{False{}}: next(doc,Done{A.Config{False{},0,minimum,1,False{},minimum,height}})
+    case Done{True{}}: V.field(T,doc,value,"program",doc => program =>
       V.field(T,doc,value,"surface",doc => found => RS.surface_value(T,doc,found,doc => surface =>
-        next(doc,complete(RM.boolean(enabled),RD.integer(program),surface,count,minimum,height))))))
+        next(doc,complete(Done{True{}},RD.integer(program),surface,count,minimum,height)))))
+    case Fail{_}: next(doc,Fail{742})
 
 @unsafe
 def roots(program: Q.Program) -> Nat:
@@ -46,7 +53,7 @@ def arities(xs: List<&2,Q.Program>,config: A.Config) -> Bool:
 @unsafe
 def projected(-T: Type,result: Result<&1,&1,U32,List<&2,Q.Program>>,doc: P.Document,+config: A.Config,+model: Q.Model,next: P.Document -> Result<&1,&1,U32,A.Prepared> -> T) -> T:
   match result model:
-    case Done{+programs} Q.Model{_,_,fields}: projected_valid(T,Bool.and(arities(programs,config),RD.valid_programs(model,programs,Q.table_size(Q.Field,fields))),doc,A.Prepared{config,Q.prepared_table(Q.Program,programs)},next)
+    case Done{+programs} Q.Model{_,_,fields}: projected_valid(T,Bool.and(arities(programs,config),RD.valid_programs(model,programs,Q.table_size(Q.Field,fields))),doc,A.Prepared{config,Q.prepared_table(Q.Program,programs),None{}},next)
     case _ _: next(doc,Fail{742})
 
 @unsafe
@@ -65,7 +72,7 @@ def skip(-T: Type,n: Nat,doc: P.Document,+at: U32,+keys: RD.Keys,+config: A.Conf
 def configured(-T: Type,result: Result<&1,&1,U32,A.Config>,doc: P.Document,at: U32,model: Q.Model,next: P.Document -> Result<&1,&1,U32,A.Prepared> -> T) -> T:
   match result:
     case Fail{_}: next(doc,Fail{742})
-    case Done{A.Config{False{},program,bottom,step,explicit,minimum,height}}: next(doc,Done{A.Prepared{A.Config{False{},program,bottom,step,explicit,minimum,height},Q.Empty{}}})
+    case Done{A.Config{False{},program,bottom,step,explicit,minimum,height}}: next(doc,Done{A.Prepared{A.Config{False{},program,bottom,step,explicit,minimum,height},Q.Empty{},None{}}})
     case Done{+config}: enabled_config(T,config,doc,at,model,next)
 
 @unsafe

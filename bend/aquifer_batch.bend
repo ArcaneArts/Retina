@@ -20,6 +20,6 @@ def calculate(+config: A.Config,+model: Q.Model,+programs: Q.Table<Q.Program>,qu
 
 def execute(prepared: A.Prepared,model: Q.Model,queries: Array<MC.Query>) -> Computed:
   match prepared:
-    case A.Prepared{config,programs}:
+    case A.Prepared{config,programs,_}:
       rows : Array<Q.Outputs> = calculate!(config,model,programs,queries)
       Computed{rows}

@@ -7,7 +7,7 @@ import ./precise.bend as D
 type Config is Data:
   Config{enabled: Bool,program: U32,bottom: U32,step: U32,explicit: Bool,minimum: U32,height: U32}
 type Prepared is Data:
-  Prepared{config: Config,programs: Q.Table<Q.Program>}
+  Prepared{config: Config,programs: Q.Table<Q.Program>,cache: Maybe<&2,Cache>}
 
 def first(outputs: Q.Outputs) -> D.Number:
   match outputs:
@@ -62,3 +62,28 @@ def fields(+config: Config,+model: Q.Model,+programs: Q.Table<Q.Program>,+point:
   match config:
     case Config{False{},_,_,_,_,_,_}: Q.Outputs{D.scalar(0.0),D.scalar(0.0),D.scalar(0.0),D.scalar(0.0),D.scalar(0.0),D.scalar(0.0)}
     case Config{True{},+program,_,_,_,_,_}: combined(Q.run_index(model,programs,0,point,low,high),config,model,programs,0,point,low,high)
+
+
+# Resident aquifer geometry is immutable. Compensated positions permit halo
+# centers just outside signed-i32 world coordinates without wrapping.
+type Layout is Data:
+  Layout{origin: Q.Point,nx: U32,ny: U32,nz: U32,dx: U32,dy: U32,dz: U32,low: U32,high: U32}
+type Status is Data:
+  Status{level: D.Number,material: U32}
+type Center is Data:
+  Center{point: Q.Point,status: Status}
+type Volume is Data:
+  Volume{layout: Layout,values: Q.Table<D.Number>}
+type Params is Data:
+  Params{sea: U32,water: U32,lava: U32,level: U32,water_barriers: Bool}
+type Cache is Data:
+  Cache{layout: Layout,centers: Q.Table<Center>,barriers: Volume,params: Params}
+
+def cached(prepared: Prepared,cache: Cache) -> Prepared:
+  match prepared:
+    case Prepared{config,programs,_}: Prepared{config,programs,Some{cache}}
+
+
+def clear(prepared: Prepared) -> Prepared:
+  match prepared:
+    case Prepared{config,programs,_}: Prepared{config,programs,None{}}

@@ -305,6 +305,26 @@ public final class BendWorker implements AutoCloseable {
         return request(38, batch);
     }
 
+    /** Cache registered preliminary surfaces, randomized fluid centers and
+     * interpolated barrier fields in Bend on the selected CPU/GPU backend.
+     * Requires generated block columns, chunk catalog and aquifer preparation.
+     * Replies contain center and barrier-vertex counts. Disabled profiles
+     * return zero counts and use global fluid levels when carving.
+     */
+    public CompletableFuture<byte[]> generateAquiferLattice() {
+        return request(39, new byte[0]);
+    }
+
+    /** Query cached cavity substance decisions without altering block data.
+     * Raw five-word XYZ/seed queries return presence and class: air (0),
+     * registered default fluid (1), lava (2) or solid pressure barrier (3).
+     * The cavity's density comes from the resident cave field. This does not
+     * classify whether the point itself is a cavity; carving decides that.
+     */
+    public CompletableFuture<byte[]> queryAquiferSubstance(byte[] batch) {
+        return request(40, batch);
+    }
+
     /** Cancellation skips queued requests; in-flight responses are drained to
      * preserve framing. World shutdown closes the worker and terminates it.
      */

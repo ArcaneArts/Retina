@@ -813,8 +813,10 @@ than treating that index as an index into the terrain cache.
 - **37 — profile aquifer:** empty payload, after geology preparation. Returns
   seven U32 words: enabled, absolute registered graph index, surface bottom,
   search step, explicit-height mode, world minimum and world height. Missing
-  aquifer metadata means disabled. Present settings require boolean enabled,
-  a complete five-graph range, signed surface bottom, step 1..4096 and mode 0/1.
+  aquifer metadata means disabled. Explicit `enabled: false` also needs no
+  unused graph/settings fields and returns disabled defaults (graph 0, world
+  minimum, step 1, density mode). Enabled settings require a complete five-graph
+  range, signed surface bottom, step 1..4096 and mode 0/1.
   Enabled graphs are decoded and validated against the existing numeric model;
   flooding needs two roots, spread/lava/barrier one each, and surface one root
   for explicit height or two for density plus upper bound. Invalid settings or
@@ -839,12 +841,56 @@ height used by the cave-biome roof cutoff.
 Catalog preparation and ordinary field/noise queries preserve aquifer inputs;
 re-preparing geology clears them and requires another command 37. Loading a
 profile or rebuilding the numeric/material models clears dependent geology.
-These are field components, not final fluids: nearest fluid centers, pressure
-barriers, cavity material assignment and lake generation still need integration.
+Surface/shore rebuilding retains the typed aquifer inputs but clears geometry
+that belongs to the old tile. Repeating command 37 also clears fluid geometry;
+it leaves already generated material/cave snapshots and encoded chunk bytes
+unchanged.
+
+- **39 — aquifer lattice:** empty payload after aquifer preparation and surface
+  column generation, with a prepared chunk catalog. Returns two U32 counts:
+  randomized fluid centers and barrier vertices. Enabled aquifers use three
+  selected-backend dispatches: globally four-block-aligned preliminary heights,
+  fluid centers on 16 × 12 × 16 cells, then globally four-block-aligned barrier
+  vertices. The transient preliminary-height grid is released after constructing
+  the centers. Each layout is bounded to 2,097,152 elements; incompatible sizes
+  return **746**, missing prerequisites **745**, malformed payloads **603**.
+  Disabled aquifers return `0, 0` without GPU dispatches. Rebuilding this cache
+  does not alter existing columns, cave snapshots or encoded chunk bytes.
+- **40 — aquifer substance batch:** the same count and five-word query format
+  as command 38. Each result is two U32 words: coverage, then substance class
+  (`0` air, `1` registered default fluid, `2` registered lava, `3` pressure
+  barrier retaining the original material). Requires resident fluid geometry
+  and cave fields; otherwise **747**. Queries outside either snapshot or with
+  different seed words return `0, 0`. Malformed batches return **603**. One
+  selected-backend dispatch evaluates each raw batch; diagnostics do not change
+  the saved column snapshot.
+
+Command 35 now consumes prepared aquifers while carving. Enabled aquifers need
+command 39 for the current tile/seed, otherwise carving rejects with **742**.
+Nearest-three selection examines twelve globally hashed centers, interpolates
+cached pressure-barrier values, and chooses air, registered fluid/lava or the
+original solid material for eligible cavity voxels. The pressure density is
+the interpolated cave chamber field clamped to at most -0.02, following the
+current Rust approximator's negative-carver proxy rather than executing full
+terrain graphs again for every voxel. Water/lava barriers and the water-above-
+lava exception apply only when the registered default fluid is
+`minecraft:water`. Disabled/missing metadata prepared by command 37 uses the
+global fluid picker. Omitting aquifer preparation altogether preserves the
+previous cave-only component behavior.
+
+Coordinates retain compensated integer residuals, including cache halos beyond
+signed-i32 world coordinates. Layouts are global rather than tile relative;
+overlapping tiles therefore share centers and barrier vertices. This integrates
+local fluids with generated component chunks; lakes, final composed-density
+refinements and the running-world backend still remain to be implemented.
 
 ```sh
 nice -n 10 ./gradlew bendAquiferTest bendAquiferWorkerTest -PretinaHostOnly \
   --max-workers=2 --no-parallel -PbendSkipBuild -PproveMetal \
+  -PbendMetalProbe=/absolute/path/to/current-source-metal-observer \
+  -PbendDensityRegistryProfiles=/absolute/vanilla.json=/absolute/vanilla.rbp
+nice -n 10 ./gradlew bendAquiferPlacementTest bendAquiferPlacementWorkerTest \
+  -PretinaHostOnly --max-workers=2 --no-parallel -PbendSkipBuild -PproveMetal \
   -PbendMetalProbe=/absolute/path/to/current-source-metal-observer \
   -PbendDensityRegistryProfiles=/absolute/vanilla.json=/absolute/vanilla.rbp
 ```
