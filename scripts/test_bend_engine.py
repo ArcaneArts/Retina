@@ -143,7 +143,7 @@ def malformed_streams(binary):
     return len(cases)
 
 
-def compile_metal_observer(bend,source,binary):
+def compile_metal_observer(bend,source,binary,gpu_archive=None):
     # Diagnostic observation only; exactly the same one-line stock-runtime
     # observer used by the earlier simplex experiment and noise verification.
     cpath = binary.with_suffix('.c')
@@ -155,7 +155,14 @@ def compile_metal_observer(bend,source,binary):
     xcode = Path('/Applications/Xcode.app/Contents/Developer')
     env = dict(os.environ,BEND_NO_TELEMETRY='1',SDKROOT=str(xcode/'Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk'))
     subprocess.run(metal_compiler_command(cpath,binary),check=True,env=env,timeout=600)
-    subprocess.run(['nice','-n','10',str(binary),'--threads','2','--gpu-build'],check=True,cwd=ROOT,env=env,capture_output=True,timeout=300)
+    if gpu_archive is None:
+        subprocess.run(['nice','-n','10',str(binary),'--threads','2','--gpu-build'],check=True,cwd=ROOT,env=env,capture_output=True,timeout=300)
+    else:
+        # Caller supplies the archive built from this exact Bend source. The
+        # observer changes only host logging, leaving generated GPU code intact.
+        # Runtime loading/execution still verifies the supplied artifact.
+        import shutil
+        shutil.copy2(gpu_archive,binary.with_suffix('.gpu'))
     return binary
 
 
