@@ -262,7 +262,7 @@ def profile_values(-A: Type,noises: Result<&1,&1,U32,Q.Table<G.Noise>>,biomes: R
         Bool.and(Bool.not(D.less(D.integer(level),D.integer(minimum))),
           Bool.and(D.less(D.integer(level),D.add(D.integer(minimum),D.unsigned(height))),
             Bool.not(D.less(D.integer(2147483647),D.add(D.integer(minimum),D.unsigned(height))))))))),
-        G.Profile{noises,biomes,flags,lava,level,minimum,height,None{}},doc,next)
+        G.Profile{noises,biomes,flags,lava,level,minimum,height,None{},None{}},doc,next)
     case _ _ _ _ _ _ _: next(doc,Fail{736})
 
 @unsafe

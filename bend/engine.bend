@@ -39,6 +39,8 @@ import ./aquifer_batch.bend as AB
 import ./aquifer_lattice.bend as AL
 import ./aquifer_substance_batch.bend as ASB
 import ./lake_candidates.bend as Lakes
+import ./lake_data.bend as LD
+import ./lake_lattice.bend as LL
 import ./cave_carve.bend as Carve
 import ./precise.bend as D
 
@@ -58,7 +60,8 @@ import ./precise.bend as D
 # PROFILE_GEOLOGY=30, CAVE_NOISE_BATCH=31, CARVER_BATCH=32,
 # CAVE_LATTICE=33, CAVE_FIELD_BATCH=34, CARVE_COLUMNS=35, CAVE_BIOME_BATCH=36,
 # PROFILE_AQUIFER=37, AQUIFER_FIELD_BATCH=38, AQUIFER_LATTICE=39,
-# AQUIFER_SUBSTANCE_BATCH=40.
+# AQUIFER_SUBSTANCE_BATCH=40, LAKE_SETTINGS=41, LAKE_CANDIDATES=42,
+# LAKE_GEOMETRY=43, LAKE_GEOMETRY_BATCH=44.
 # Requests: RBND magic, payload length, request ID, opcode (all BE u32).
 # Responses add a status u32 after opcode. stdout contains frames only.
 type Settings is Data:
@@ -800,7 +803,7 @@ def geology_ready(result: Result<&1,&1,U32,G.Profile>,doc: P.Document,prepared: 
 @unsafe
 def geology_ack(geology: G.Profile,doc: P.Document,prepared: RD.Prepared,noise: Maybe<&2,N.Stack>,climate: Maybe<&2,C.Model>,input: File,output: File,backend: U32,id: U32,opcode: U32) -> IO(Unit):
   match geology:
-    case G.Profile{noises,+biomes,flags,lava,level,minimum,height,_}:
+    case G.Profile{noises,+biomes,flags,lava,level,minimum,height,_,_}:
       do IO<Unit>:
         body : Z.Bytes <- payload(B.int(B.int(B.int(B.int(B.int(B.int(B.int(B.int(B.new(),
           Q.table_size(G.Noise,noises)),Q.table_size(G.Biome,biomes)),G.carver_count(biomes)),Q.table_size(Bool,flags)),lava),level),minimum),height))
@@ -1010,7 +1013,7 @@ def aquifer_ack(config: AQ.Prepared,doc: P.Document,prepared: RD.Prepared,noise:
 @unsafe
 def aquifer_prepare(+prepared: RD.Prepared,doc: P.Document,noise: Maybe<&2,N.Stack>,climate: Maybe<&2,C.Model>,input: File,output: File,backend: U32,id: U32,opcode: U32) -> IO(Unit):
   match prepared:
-    case RD.Prepared{model,_,_,_,_,_,_,Some{M.Model{_,_,_,_,Some{MD.State{_,_,_,Some{G.Profile{_,_,_,_,_,minimum,height,_}},_}}}}}:
+    case RD.Prepared{model,_,_,_,_,_,_,Some{M.Model{_,_,_,_,Some{MD.State{_,_,_,Some{G.Profile{_,_,_,_,_,minimum,height,_,_}},_}}}}}:
       RAQ.prepare(IO(Unit),doc,model,minimum,height,doc => result => aquifer_ready(result,doc,prepared,noise,climate,input,output,backend,id,opcode))
     case _: error(input,output,State{Settings{noise,climate,Some{prepared}},Some{doc}},backend,id,opcode,743)
 
@@ -1038,7 +1041,7 @@ def aquifer_queries(queries: MC.Input,config: AQ.Prepared,model: Q.Model,old: St
 @unsafe
 def aquifer_batch(input: File,output: File,+old: State,backend: U32,id: U32,opcode: U32,body: Z.Bytes) -> IO(Unit):
   match old:
-    case State{Settings{_,_,Some{RD.Prepared{model,programs,_,_,_,_,_,Some{M.Model{_,_,_,_,Some{MD.State{_,_,_,Some{G.Profile{_,_,_,_,_,_,_,Some{config}}},_}}}}}}},_}:
+    case State{Settings{_,_,Some{RD.Prepared{model,programs,_,_,_,_,_,Some{M.Model{_,_,_,_,Some{MD.State{_,_,_,Some{G.Profile{_,_,_,_,_,_,_,Some{config},_}},_}}}}}}},_}:
       aquifer_queries(MC.decode(body),config,model,old,input,output,backend,id,opcode)
     case _: error(input,output,old,backend,id,opcode,744)
 
@@ -1081,7 +1084,7 @@ def aquifer_cache_valid(valid: Bool,aq: AQ.Prepared,model: Q.Model,tile: S.Tile,
 def aquifer_cache_build(valid: Bool,input: File,output: File,+old: State,backend: U32,id: U32,opcode: U32) -> IO(Unit):
   match valid old:
     case False{} _: error(input,output,old,backend,id,opcode,603)
-    case True{} State{Settings{_,_,Some{RD.Prepared{model,_,_,_,_,_,_,Some{M.Model{_,_,+sea,_,Some{MD.State{MD.Config{_,+water,_,_,_,_},Some{MD.Grid{+tile,minimum,height,_,_}},Some{+catalog},Some{G.Profile{_,_,_,+lava,+level,_,_,Some{aq}}},_}}}}}}},_}:
+    case True{} State{Settings{_,_,Some{RD.Prepared{model,_,_,_,_,_,_,Some{M.Model{_,_,+sea,_,Some{MD.State{MD.Config{_,+water,_,_,_,_},Some{MD.Grid{+tile,minimum,height,_,_}},Some{+catalog},Some{G.Profile{_,_,_,+lava,+level,_,_,Some{aq},_}},_}}}}}}},_}:
       aquifer_cache_valid(AL.compatible(tile,minimum,height),aq,model,tile,minimum,height,AQ.Params{sea,water,lava,level,aquifer_water(catalog,water)},old,input,output,backend,id,opcode)
     case _ _: error(input,output,old,backend,id,opcode,745)
 
@@ -1102,14 +1105,14 @@ def aquifer_substance_queries(queries: MC.Input,cache: AQ.Cache,caves: CV.Grid,o
 @unsafe
 def aquifer_substance_batch(input: File,output: File,+old: State,backend: U32,id: U32,opcode: U32,body: Z.Bytes) -> IO(Unit):
   match old:
-    case State{Settings{_,_,Some{RD.Prepared{_,_,_,_,_,_,_,Some{M.Model{_,_,_,_,Some{MD.State{_,_,_,Some{G.Profile{_,_,_,_,_,_,_,Some{AQ.Prepared{_,_,Some{cache}}}}},Some{caves}}}}}}}},_}:
+    case State{Settings{_,_,Some{RD.Prepared{_,_,_,_,_,_,_,Some{M.Model{_,_,_,_,Some{MD.State{_,_,_,Some{G.Profile{_,_,_,_,_,_,_,Some{AQ.Prepared{_,_,Some{cache}}},_}},Some{caves}}}}}}}},_}:
       aquifer_substance_queries(MC.decode(body),cache,caves,old,input,output,backend,id,opcode)
     case _: error(input,output,old,backend,id,opcode,747)
 
 @unsafe
 def lake_settings(input: File,output: File,+old: State,backend: U32,id: U32,opcode: U32,body: Z.Bytes) -> IO(Unit):
   match old:
-    case State{Settings{_,_,Some{RD.Prepared{_,_,_,_,_,_,_,Some{M.Model{_,_,_,_,Some{MD.State{_,_,_,Some{G.Profile{_,biomes,_,_,_,_,_,_}},_}}}}}}},_}:
+    case State{Settings{_,_,Some{RD.Prepared{_,_,_,_,_,_,_,Some{M.Model{_,_,_,_,Some{MD.State{_,_,_,Some{G.Profile{_,biomes,_,_,_,_,_,_,_}},_}}}}}}},_}:
       geology_metadata(Lakes.metadata_decode(body,biomes),old,input,output,backend,id,opcode)
     case _: error(input,output,old,backend,id,opcode,748)
 
@@ -1130,9 +1133,76 @@ def lake_queries(queries: S.Input,model: Q.Model,programs: Q.Table<Q.Program>,cl
 @unsafe
 def lake_batch(input: File,output: File,+old: State,backend: U32,id: U32,opcode: U32,body: Z.Bytes) -> IO(Unit):
   match old:
-    case State{Settings{_,Some{climate},Some{RD.Prepared{model,programs,_,_,_,_,_,Some{M.Model{_,_,_,_,Some{MD.State{_,_,_,Some{G.Profile{_,biomes,_,_,_,_,_,_}},_}}}}}}},_}:
+    case State{Settings{_,Some{climate},Some{RD.Prepared{model,programs,_,_,_,_,_,Some{M.Model{_,_,_,_,Some{MD.State{_,_,_,Some{G.Profile{_,biomes,_,_,_,_,_,_,_}},_}}}}}}},_}:
       lake_queries(S.query_decode(body),model,programs,climate,biomes,old,input,output,backend,id,opcode)
     case _: error(input,output,old,backend,id,opcode,749)
+
+@unsafe
+def lake_cache_attach(+old: State,cache: LD.Cache) -> State:
+  match old:
+    case State{Settings{noise,climate,Some{RD.Prepared{model,programs,noises,points,fields,density,surface,
+      Some{M.Model{materials,bands,sea,layered,Some{MD.State{palette,grid,catalog,Some{geology},caves}}}}}}},profile}:
+      State{Settings{noise,climate,Some{RD.Prepared{model,programs,noises,points,fields,density,surface,
+        Some{M.Model{materials,bands,sea,layered,Some{MD.State{palette,grid,catalog,Some{G.with_lakes(geology,cache)},caves}}}}}}},profile}
+    case _: old
+
+@unsafe
+def lake_cache_ack(computed: LL.Computed,old: State,input: File,output: File,backend: U32,id: U32,opcode: U32) -> IO(Unit):
+  match computed:
+    case LL.Computed{+cache}: lake_cache_reply(cache,lake_cache_attach(old,cache),input,output,backend,id,opcode)
+
+@unsafe
+def lake_cache_reply(cache: LD.Cache,old: State,input: File,output: File,backend: U32,id: U32,opcode: U32) -> IO(Unit):
+  lake_cache_descriptor(LL.cache_layout(cache),old,input,output,backend,id,opcode)
+
+@unsafe
+def lake_cache_descriptor(layout: LD.Layout,old: State,input: File,output: File,backend: U32,id: U32,opcode: U32) -> IO(Unit):
+  match layout:
+    case LD.Layout{x,z,nx,nz,_,_}:
+      do IO<Unit>:
+        body : Z.Bytes <- payload(B.int(B.int(B.int(B.int(B.new(),x),z),nx),nz))
+        finish(input,output,old,backend,id,opcode,0,body,True{})
+
+@unsafe
+def lake_cache_valid(ok: Bool,+tile: S.Tile,config: S.Config,density: L.Grid,model: Q.Model,programs: Q.Table<Q.Program>,climate: C.Model,biomes: Q.Table<G.Biome>,old: State,input: File,output: File,backend: U32,id: U32,opcode: U32) -> IO(Unit):
+  match ok:
+    case False{}: error(input,output,old,backend,id,opcode,751)
+    case True{}: lake_cache_ack(LL.execute(LL.layout(tile),tile,config,density,model,programs,climate,biomes),old,input,output,backend,id,opcode)
+
+@unsafe
+def lake_cache_build(valid: Bool,input: File,output: File,+old: State,backend: U32,id: U32,opcode: U32) -> IO(Unit):
+  match valid old:
+    case False{} _: error(input,output,old,backend,id,opcode,603)
+    case True{} State{Settings{_,Some{climate},Some{RD.Prepared{model,programs,_,_,_,Some{+density},Some{S.State{+config,Some{S.Grid{+tile,_}}}},
+      Some{M.Model{_,_,_,_,Some{MD.State{_,_,_,Some{G.Profile{_,biomes,_,_,_,minimum,span,_,_}},_}}}}}}},_}:
+      lake_cache_config(config,tile,density,model,programs,climate,biomes,minimum,span,old,input,output,backend,id,opcode)
+    case _ _: error(input,output,old,backend,id,opcode,750)
+
+@unsafe
+def lake_cache_config(+config: S.Config,+tile: S.Tile,+density: L.Grid,model: Q.Model,programs: Q.Table<Q.Program>,climate: C.Model,biomes: Q.Table<G.Biome>,minimum: U32,span: U32,old: State,input: File,output: File,backend: U32,id: U32,opcode: U32) -> IO(Unit):
+  match config:
+    case S.Config{cmin,cspan,_,_,_,_}: lake_cache_valid(Bool.and(MC.halo_valid(config,tile,density),Bool.and(U32.is_eq(cmin,minimum),U32.is_eq(cspan,span))),tile,config,density,model,programs,climate,biomes,old,input,output,backend,id,opcode)
+
+@unsafe
+def lake_geometry_rows(computed: LL.Rows,count: U32,old: State,input: File,output: File,backend: U32,id: U32,opcode: U32) -> IO(Unit):
+  match computed:
+    case LL.Rows{values}:
+      do IO<Unit>:
+        body : Z.Bytes <- payload(LL.encoded(count,0,values,B.new()))
+        finish(input,output,old,backend,id,opcode,0,body,True{})
+
+@unsafe
+def lake_geometry_queries(queries: S.Input,cache: LD.Cache,old: State,input: File,output: File,backend: U32,id: U32,opcode: U32) -> IO(Unit):
+  match queries:
+    case S.Input{_,_,False{}}: error(input,output,old,backend,id,opcode,603)
+    case S.Input{queries,count,True{}}: lake_geometry_rows(LL.queries(cache,queries),count,old,input,output,backend,id,opcode)
+
+@unsafe
+def lake_geometry_batch(input: File,output: File,+old: State,backend: U32,id: U32,opcode: U32,body: Z.Bytes) -> IO(Unit):
+  match old:
+    case State{Settings{_,_,Some{RD.Prepared{_,_,_,_,_,_,_,Some{M.Model{_,_,_,_,Some{MD.State{_,_,_,Some{G.Profile{_,_,_,_,_,_,_,_,Some{cache}}},_}}}}}}},_}:
+      lake_geometry_queries(S.query_decode(body),cache,old,input,output,backend,id,opcode)
+    case _: error(input,output,old,backend,id,opcode,752)
 
 @unsafe
 def dispatch(input: File,output: File,stack: State,backend: U32,id: U32,opcode: U32,body: Z.Bytes) -> IO(Unit):
@@ -1179,6 +1249,8 @@ def dispatch(input: File,output: File,stack: State,backend: U32,id: U32,opcode: 
     case 40: aquifer_substance_batch(input,output,stack,backend,id,40,body)
     case 41: lake_settings(input,output,stack,backend,id,41,body)
     case 42: lake_batch(input,output,stack,backend,id,42,body)
+    case 43: lake_cache_build(R.end(R.start(body)),input,output,stack,backend,id,43)
+    case 44: lake_geometry_batch(input,output,stack,backend,id,44,body)
     case 4: empty_command(R.end(R.start(body)),input,output,stack,backend,id,4)
     case _: error(input,output,stack,backend,id,opcode,605)
 

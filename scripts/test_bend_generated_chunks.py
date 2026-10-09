@@ -71,7 +71,7 @@ def state(value):
     return {'id':value} if isinstance(value,str) else value
 
 
-def validate(raw, source, columns, x, z, version, biome_ids=None):
+def validate(raw, source, columns, x, z, version, biome_ids=None, fluid_materials=None):
     tag = read_nbt(raw); minimum = source['geology_min_y']; height = source['geology_height']
     assert (tag['xPos'],tag['zPos'],tag['yPos'],tag['DataVersion']) == (x,z,minimum//16,version)
     assert tag['Status'] == 'minecraft:features' and tag['isLightOn'] == 0
@@ -102,8 +102,9 @@ def validate(raw, source, columns, x, z, version, biome_ids=None):
     assert set(tag['Heightmaps']) == set(MAP_NAMES)
     for kind,name in enumerate(MAP_NAMES): assert unpack(tag['Heightmaps'][name],256,bits)==heights[kind],name
     # Every height-query value agrees with the actual integer solid surface.
+    fluid_materials={source['water']} if fluid_materials is None else fluid_materials
     for c,col in enumerate(columns):
-        solid=[i+1+minimum for i,m in enumerate(expected[c]) if m and m != source['water']]
+        solid=[i+1+minimum for i,m in enumerate(expected[c]) if m and m not in fluid_materials]
         assert col['height'] == (max(solid) if solid else minimum),(c,col['height'],solid[-1:])
     return count
 

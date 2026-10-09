@@ -55,9 +55,9 @@ def calculate(+noises: Q.Table<G.Noise>,queries: Array<Request>) -> Array<Q.Outp
 @unsafe
 def execute(profile: G.Profile,queries: Array<Request>) -> Computed:
   match profile:
-    case G.Profile{+noises,biomes,flags,lava,level,minimum,height,aquifer}:
+    case G.Profile{+noises,biomes,flags,lava,level,minimum,height,aquifer,lakes}:
       rows : Array<Q.Outputs> = calculate!(noises,queries)
-      Computed{G.Profile{noises,biomes,flags,lava,level,minimum,height,aquifer},rows}
+      Computed{G.Profile{noises,biomes,flags,lava,level,minimum,height,aquifer,lakes},rows}
 
 # Bounded raw metadata queries expose the projected carvers without rewalking
 # the registry tape. The numeric data is also the input to subsequent carving.
@@ -116,5 +116,5 @@ def metadata_size(ok: Bool,count: U32,cursor: R.Cursor,biomes: Q.Table<G.Biome>)
 @unsafe
 def metadata_decode(bytes: Z.Bytes,profile: G.Profile) -> Result<&1,&1,U32,B.Writer>:
   match profile:
-    case G.Profile{_,biomes,_,_,_,_,_,_}: R.word(Result<&1,&1,U32,B.Writer>,R.start(bytes),cursor => +count =>
+    case G.Profile{_,biomes,_,_,_,_,_,_,_}: R.word(Result<&1,&1,U32,B.Writer>,R.start(bytes),cursor => +count =>
       metadata_size(U32.is_le(count,256),count,cursor,biomes))

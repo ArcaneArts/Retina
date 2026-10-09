@@ -13,13 +13,16 @@ import ./registry.bend as P
 import ./compression.bend as Z
 import ./binary.bend as B
 import ./noise.bend as N
+import ./lake_data.bend as LD
+import ./lake_terrain.bend as LT
+import ./geology.bend as G
 
 type Computed is Type:
   Computed{model: Q.Model,programs: Q.Table<Q.Program>,density: L.Grid,surface: S.Grid,materials: M.Model,grid: MD.Grid}
 # Immutable pre-material spans plus exact heights for the central tile and its
 # one-column slope halo. Both device steps remain inside command 22.
 type Geometry is Data:
-  Geometry{runs: List<&2,MD.Run>,height: U32}
+  Geometry{runs: List<&2,MD.Run>,height: U32,shape: LD.Shape}
 type GeometryCache is Data:
   GeometryCache{tile: S.Tile,values: Q.Table<Geometry>}
 type Query is Data:
@@ -101,27 +104,39 @@ def geometry_halo(tile: S.Tile) -> S.Tile:
     case S.Tile{x,z,width,depth,low,high}: S.Tile{U32.sub(x,1),U32.sub(z,1),U32.add(width,2),U32.add(depth,2),low,high}
 
 @unsafe
-def geometry_column(+config: S.Config,density: L.Grid,point: Q.Point) -> Geometry:
+def geometry_column(+config: S.Config,density: L.Grid,+point: Q.Point,lakes: LT.Input,low: U32,high: U32) -> Geometry:
   match config:
     case S.Config{+minimum,+span,+sea,_,_,_}:
       +runs = geometry(span,span,4294967295,[],H.vertical(config,density,point),minimum,sea)
-      Geometry{runs,highest(runs,minimum)}
+      lake_geometry(LT.shape(lakes,config,point,low,high,highest(runs,minimum)),config,runs)
 
 @unsafe
-def geometry_rows(+limit: U32,+n: U32,+base: U32,+config: S.Config,+density: L.Grid,+tile: S.Tile) -> Q.Table<Geometry>:
+def lake_geometry(+shape: LD.Shape,+config: S.Config,runs: List<&2,MD.Run>) -> Geometry:
+  match config:
+    case S.Config{+minimum,_,_,_,_,_}:
+      +spans = LT.geometry(shape,config,runs)
+      Geometry{spans,highest(spans,minimum),shape}
+
+@unsafe
+def geometry_seed(config: S.Config,density: L.Grid,+tile: S.Tile,i: U32,lakes: LT.Input) -> Geometry:
+  match tile:
+    case S.Tile{_,_,_,_,low,high}: geometry_column(config,density,S.point(tile,i),lakes,low,high)
+
+@unsafe
+def geometry_rows(+limit: U32,+n: U32,+base: U32,+config: S.Config,+density: L.Grid,+tile: S.Tile,+lakes: LT.Input) -> Q.Table<Geometry>:
   match n:
-    case 1: Q.Leaf{geometry_column(config,density,S.point(tile,base))}
-    case _: geometry_split(U32.is_le(n,limit),limit,n,base,config,density,tile)
+    case 1: Q.Leaf{geometry_seed(config,density,tile,base,lakes)}
+    case _: geometry_split(U32.is_le(n,limit),limit,n,base,config,density,tile,lakes)
 
 @unsafe
-def geometry_split(serial: Bool,+limit: U32,+n: U32,+base: U32,+config: S.Config,+density: L.Grid,+tile: S.Tile) -> Q.Table<Geometry>:
+def geometry_split(serial: Bool,+limit: U32,+n: U32,+base: U32,+config: S.Config,+density: L.Grid,+tile: S.Tile,+lakes: LT.Input) -> Q.Table<Geometry>:
   match serial:
-    case True{}: Q.Branch{n,geometry_rows(limit,U32.div(n,2),base,config,density,tile),
-      geometry_rows(limit,U32.sub(n,U32.div(n,2)),U32.add(base,U32.div(n,2)),config,density,tile)}
+    case True{}: Q.Branch{n,geometry_rows(limit,U32.div(n,2),base,config,density,tile,lakes),
+      geometry_rows(limit,U32.sub(n,U32.div(n,2)),U32.add(base,U32.div(n,2)),config,density,tile,lakes)}
     case False{}:
       +half = U32.div(n,2)
-      a b = geometry_rows(limit,half,base,config,density,tile)
-        geometry_rows(limit,U32.sub(n,half),U32.add(base,half),config,density,tile)
+      a b = geometry_rows(limit,half,base,config,density,tile,lakes)
+        geometry_rows(limit,U32.sub(n,half),U32.add(base,half),config,density,tile,lakes)
       Q.Branch{n,a,b}
 
 @unsafe
@@ -129,11 +144,11 @@ def geometry_at(cache: GeometryCache,point: Q.Point) -> Geometry:
   match cache point:
     case GeometryCache{S.Tile{x,z,width,_,_,_},values} Q.Point{px,_,pz}:
       Q.get(Geometry,values,U32.add(F32.to_u32(D.value(D.sub(px,D.integer(x)))),
-        U32.mul(width,F32.to_u32(D.value(D.sub(pz,D.integer(z)))))),Geometry{[],0})
+        U32.mul(width,F32.to_u32(D.value(D.sub(pz,D.integer(z)))))),Geometry{[],0,LD.no_shape(0)})
 
 def geometry_height(column: Geometry) -> U32:
   match column:
-    case Geometry{_,height}: height
+    case Geometry{_,height,_}: height
 
 @unsafe
 def cached_slope(+cache: GeometryCache,+point: Q.Point) -> F32:
@@ -259,9 +274,17 @@ def column(+config: S.Config,+palette: MD.Config,+cache: GeometryCache,+surface:
 def sampled(row: S.Row,+config: S.Config,+palette: MD.Config,+cache: GeometryCache,+model: Q.Model,+programs: Q.Table<Q.Program>,+materials: ML.Prepared,+point: Q.Point,tile: S.Tile,+span: U32) -> MD.Column:
   match row config tile:
     case S.Row{_,_,+biome} S.Config{+minimum,_,+sea,_,_,_} S.Tile{_,_,_,_,+low,+high}:
-      +spans = cached_runs(geometry_at(cache,point))
-      column_ready(spans,config,palette,model,materials,point,low,high,biome,
-        context(config,palette,cache,model,programs,point,low,high,highest(spans,minimum)))
+      +geometry = geometry_at(cache,point)
+      +spans = cached_runs(geometry)
+      lake_completed(column_ready(spans,config,palette,model,materials,point,low,high,biome,
+        context(config,palette,cache,model,programs,point,low,high,highest(spans,minimum))),geometry,minimum)
+
+@unsafe
+def lake_completed(column: MD.Column,geometry: Geometry,minimum: U32) -> MD.Column:
+  match column geometry:
+    case MD.Column{height,biome,depth,slope,band,secondary,preliminary,runs,_,valid} Geometry{_,_,shape}:
+      +finished = LT.finish(shape,minimum,runs)
+      MD.Column{height,biome,depth,slope,band,secondary,preliminary,finished,U32.from_nat(List.length(&2,MD.Run,finished)),valid}
 
 @unsafe
 def columns(+limit: U32,+n: U32,+base: U32,+config: S.Config,+palette: MD.Config,+cache: GeometryCache,+surface: S.Grid,+model: Q.Model,+programs: Q.Table<Q.Program>,+materials: ML.Prepared) -> Q.Table<MD.Column>:
@@ -282,14 +305,19 @@ def split(serial: Bool,+limit: U32,+n: U32,+base: U32,+config: S.Config,+palette
 
 def cached_runs(column: Geometry) -> List<&2,MD.Run>:
   match column:
-    case Geometry{runs,_}: runs
+    case Geometry{runs,_,_}: runs
+
+def lake_input(materials: M.Model) -> LT.Input:
+  match materials:
+    case M.Model{_,_,_,_,Some{MD.State{_,_,_,Some{G.Profile{_,_,_,lava,_,_,_,_,lakes}},_}}}: LT.Input{lakes,lava}
+    case _: LT.empty()
 
 def cached_execute(+config: S.Config,+palette: MD.Config,+density: L.Grid,+surface: S.Grid,+model: Q.Model,+programs: Q.Table<Q.Program>,+materials: M.Model) -> Computed:
   match config surface:
     case S.Config{+minimum,+span,_,_,_,_} S.Grid{+tile,_}:
       +prepared = ML.prepare(M.rules(materials))
       +expanded = geometry_halo(tile)
-      geometry : Q.Table<Geometry> = geometry_rows!(U32.max(1,U32.div(U32.add(S.total(expanded),16383),16384)),S.total(expanded),0,config,density,expanded)
+      geometry : Q.Table<Geometry> = geometry_rows!(U32.max(1,U32.div(U32.add(S.total(expanded),16383),16384)),S.total(expanded),0,config,density,expanded,lake_input(materials))
       values : Q.Table<MD.Column> = columns!(U32.max(1,U32.div(U32.add(S.total(tile),16383),16384)),S.total(tile),0,config,palette,GeometryCache{expanded,geometry},surface,model,programs,prepared)
       Computed{model,programs,density,surface,materials,MD.Grid{tile,minimum,span,values,None{}}}
 
@@ -331,10 +359,16 @@ def direct_execute(+config: S.Config,+palette: MD.Config,+density: L.Grid,+surfa
       values : Q.Table<MD.Column> = direct_columns!(U32.max(1,U32.div(U32.add(S.total(tile),16383),16384)),S.total(tile),0,config,palette,density,surface,model,programs,prepared)
       Computed{model,programs,density,surface,materials,MD.Grid{tile,minimum,span,values,None{}}}
 
-def execute(cached: Bool,config: S.Config,palette: MD.Config,density: L.Grid,surface: S.Grid,model: Q.Model,programs: Q.Table<Q.Program>,materials: M.Model) -> Computed:
+@unsafe
+def execute(cached: Bool,config: S.Config,palette: MD.Config,density: L.Grid,surface: S.Grid,model: Q.Model,programs: Q.Table<Q.Program>,+materials: M.Model) -> Computed:
   match cached:
     case True{}: cached_execute(config,palette,density,surface,model,programs,materials)
-    case False{}: direct_execute(config,palette,density,surface,model,programs,materials)
+    case False{}: choose_direct(lake_input(materials),config,palette,density,surface,model,programs,materials)
+
+def choose_direct(input: LT.Input,config: S.Config,palette: MD.Config,density: L.Grid,surface: S.Grid,model: Q.Model,programs: Q.Table<Q.Program>,+materials: M.Model) -> Computed:
+  match input:
+    case LT.Input{None{},_}: direct_execute(config,palette,density,surface,model,programs,materials)
+    case _: cached_execute(config,palette,density,surface,model,programs,materials)
 
 @unsafe
 def summary(columns: Q.Table<MD.Column>) -> U32 & U32:
