@@ -29,6 +29,8 @@ import ./generated_chunk.bend as GC
 import ./generated_region.bend as GR
 import ./geology.bend as G
 import ./registry_geology.bend as RG
+import ./ore_data.bend as O
+import ./ore_batch.bend as OB
 import ./geology_batch.bend as GB
 import ./cave_lattice.bend as CV
 import ./cave_batch.bend as CAV
@@ -61,7 +63,8 @@ import ./precise.bend as D
 # CAVE_LATTICE=33, CAVE_FIELD_BATCH=34, CARVE_COLUMNS=35, CAVE_BIOME_BATCH=36,
 # PROFILE_AQUIFER=37, AQUIFER_FIELD_BATCH=38, AQUIFER_LATTICE=39,
 # AQUIFER_SUBSTANCE_BATCH=40, LAKE_SETTINGS=41, LAKE_CANDIDATES=42,
-# LAKE_GEOMETRY=43, LAKE_GEOMETRY_BATCH=44.
+# LAKE_GEOMETRY=43, LAKE_GEOMETRY_BATCH=44, ORE_METADATA=45,
+# ORE_REPLACEMENT_BATCH=46 (resident membership, bands and exposure policy).
 # Requests: RBND magic, payload length, request ID, opcode (all BE u32).
 # Responses add a status u32 after opcode. stdout contains frames only.
 type Settings is Data:
@@ -806,24 +809,33 @@ def geology_ack(geology: G.Profile,doc: P.Document,prepared: RD.Prepared,noise: 
     case G.Profile{noises,+biomes,flags,lava,level,minimum,height,_,_}:
       do IO<Unit>:
         body : Z.Bytes <- payload(B.int(B.int(B.int(B.int(B.int(B.int(B.int(B.int(B.new(),
-          Q.table_size(G.Noise,noises)),Q.table_size(G.Biome,biomes)),G.carver_count(biomes)),Q.table_size(Bool,flags)),lava),level),minimum),height))
+          Q.table_size(G.Noise,noises)),Q.table_size(G.Biome,biomes)),G.carver_count(biomes)),O.palette(flags)),lava),level),minimum),height))
         finish(input,output,State{Settings{noise,climate,Some{prepared}},Some{doc}},backend,id,opcode,0,body,True{})
 
 @unsafe
 def geology_profile(valid: Bool,input: File,output: File,old: State,backend: U32,id: U32,opcode: U32) -> IO(Unit):
   match valid old:
     case False{} _: error(input,output,old,backend,id,opcode,603)
-    case True{} State{Settings{noise,climate,Some{RD.Prepared{model,programs,noises,points,fields,density,surface,
-        Some{M.Model{+materials,bands,sea,layered,Some{MD.State{+config,grid,catalog,geology,caves}}}}}}},Some{doc}}:
-      geology_prepare(config,materials,model,programs,noises,points,fields,density,surface,bands,sea,layered,grid,catalog,geology,caves,doc,noise,climate,input,output,backend,id,opcode)
+    case True{} State{+settings,Some{doc}}:
+      geology_dimensions(settings,State{settings,None{}},doc,input,output,backend,id,opcode)
     case _ _: error(input,output,old,backend,id,opcode,727)
 
+# Retain the old state as an opaque owned Type while projecting the profile.
+# Capturing its fully expanded Data fields in every registry continuation can
+# generate native functions with enormous argument lists in the stock compiler.
 @unsafe
-def geology_prepare(+config: MD.Config,+materials: Q.Table<Q.Program>,model: Q.Model,programs: Q.Table<Q.Program>,noises: U32,points: U32,fields: U32,density: Maybe<&2,L.Grid>,surface: Maybe<&2,S.State>,bands: Q.Table<U32>,sea: U32,layered: Bool,grid: Maybe<&2,MD.Grid>,catalog: Maybe<&2,CC.Catalog>,geology: Maybe<&2,G.Profile>,caves: Maybe<&2,CV.Grid>,doc: P.Document,noise: Maybe<&2,N.Stack>,climate: Maybe<&2,C.Model>,input: File,output: File,backend: U32,id: U32,opcode: U32) -> IO(Unit):
-  match config:
-    case MD.Config{stone,water,+palette,a,b,c}: RG.prepare(IO(Unit),doc,palette,Q.table_size(Q.Program,materials),doc => result =>
-      geology_ready(result,doc,RD.Prepared{model,programs,noises,points,fields,density,surface,
-        Some{M.Model{materials,bands,sea,layered,Some{MD.State{MD.Config{stone,water,palette,a,b,c},grid,catalog,geology,caves}}}}},noise,climate,input,output,backend,id,opcode))
+def geology_dimensions(settings: Settings,old: State,doc: P.Document,input: File,output: File,backend: U32,id: U32,opcode: U32) -> IO(Unit):
+  match settings:
+    case Settings{_,_,Some{RD.Prepared{_,_,_,_,_,_,_,Some{M.Model{materials,_,_,_,Some{MD.State{MD.Config{_,_,palette,_,_,_},_,_,_,_}}}}}}}:
+      RG.prepare(IO(Unit),doc,palette,Q.table_size(Q.Program,materials),doc => result =>
+        geology_loaded(result,doc,old,input,output,backend,id,opcode))
+    case _: geology_loaded(Fail{727},doc,old,input,output,backend,id,opcode)
+
+@unsafe
+def geology_loaded(result: Result<&1,&1,U32,G.Profile>,doc: P.Document,old: State,input: File,output: File,backend: U32,id: U32,opcode: U32) -> IO(Unit):
+  match old:
+    case State{Settings{noise,climate,Some{prepared}},_}: geology_ready(result,doc,prepared,noise,climate,input,output,backend,id,opcode)
+    case State{settings,_}: error(input,output,State{settings,Some{doc}},backend,id,opcode,727)
 
 @unsafe
 def geology_computed(computed: GB.Computed,count: U32,old: State,input: File,output: File,backend: U32,id: U32,opcode: U32) -> IO(Unit):
@@ -1205,6 +1217,33 @@ def lake_geometry_batch(input: File,output: File,+old: State,backend: U32,id: U3
     case _: error(input,output,old,backend,id,opcode,752)
 
 @unsafe
+def ore_computed(computed: OB.Computed,count: U32,old: State,input: File,output: File,backend: U32,id: U32,opcode: U32) -> IO(Unit):
+  match computed:
+    case OB.Computed{rows}:
+      do IO<Unit>:
+        body : Z.Bytes <- payload(OB.encoded(U32.to_nat(count),rows,B.new(),0))
+        finish(input,output,old,backend,id,opcode,0,body,True{})
+
+@unsafe
+def ore_queries(queries: OB.Input,store: O.Store,old: State,input: File,output: File,backend: U32,id: U32,opcode: U32) -> IO(Unit):
+  match queries:
+    case OB.Input{_,_,False{}}: error(input,output,old,backend,id,opcode,603)
+    case OB.Input{queries,count,True{}}: ore_computed(OB.execute(store,queries),count,old,input,output,backend,id,opcode)
+
+@unsafe
+def ore_request(metadata: Bool,+store: O.Store,old: State,input: File,output: File,backend: U32,id: U32,opcode: U32,body: Z.Bytes) -> IO(Unit):
+  match metadata:
+    case True{}: geology_metadata(OB.metadata_decode(body,store),old,input,output,backend,id,opcode)
+    case False{}: ore_queries(OB.decode(body,store),store,old,input,output,backend,id,opcode)
+
+@unsafe
+def ore_batch(metadata: Bool,input: File,output: File,+old: State,backend: U32,id: U32,opcode: U32,body: Z.Bytes) -> IO(Unit):
+  match old:
+    case State{Settings{_,_,Some{RD.Prepared{_,_,_,_,_,_,_,Some{M.Model{_,_,_,_,Some{MD.State{_,_,_,Some{G.Profile{_,_,ores,_,_,_,_,_,_}},_}}}}}}},_}:
+      ore_request(metadata,ores,old,input,output,backend,id,opcode,body)
+    case _: error(input,output,old,backend,id,opcode,754)
+
+@unsafe
 def dispatch(input: File,output: File,stack: State,backend: U32,id: U32,opcode: U32,body: Z.Bytes) -> IO(Unit):
   match opcode:
     case 0: empty_command(R.end(R.start(body)),input,output,stack,backend,id,0)
@@ -1251,6 +1290,8 @@ def dispatch(input: File,output: File,stack: State,backend: U32,id: U32,opcode: 
     case 42: lake_batch(input,output,stack,backend,id,42,body)
     case 43: lake_cache_build(R.end(R.start(body)),input,output,stack,backend,id,43)
     case 44: lake_geometry_batch(input,output,stack,backend,id,44,body)
+    case 45: ore_batch(True{},input,output,stack,backend,id,45,body)
+    case 46: ore_batch(False{},input,output,stack,backend,id,46,body)
     case 4: empty_command(R.end(R.start(body)),input,output,stack,backend,id,4)
     case _: error(input,output,stack,backend,id,opcode,605)
 

@@ -25,6 +25,24 @@ def command(args, timeout=120, **kwargs):
                           text=True, timeout=timeout, **kwargs)
 
 
+def metal_compiler_command(source, binary):
+    """Stock generated code, with an explicitly selected macOS toolchain.
+
+    LLVM's installed default config may select a different SDK/linker. Explicit
+    paths keep normal and diagnostic builds on the same Xcode SDK. The optional
+    compiler override is used after an actual Apple Clang code-generation crash;
+    it does not change generated application/runtime code or optimization level.
+    """
+    xcode = Path('/Applications/Xcode.app/Contents/Developer')
+    compiler = os.environ.get('RETINA_BEND_CC', str(xcode/'Toolchains/XcodeDefault.xctoolchain/usr/bin/clang'))
+    options = ['--no-default-config'] if os.environ.get('RETINA_BEND_CC') else []
+    return ['nice', '-n', '10', compiler, *options,
+            '-isysroot', str(xcode/'Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk'),
+            '--ld-path='+str(xcode/'Toolchains/XcodeDefault.xctoolchain/usr/bin/ld'),
+            '-DBEND_METAL=1', '-x', 'objective-c', '-fobjc-arc', '-fmodules', '-std=c11', '-O3',
+            str(source), '-lpthread', '-lm', '-o', str(binary)]
+
+
 def build(bend, binary, source=None):
     env = dict(os.environ, BEND_NO_TELEMETRY="1")
     xcode = Path("/Applications/Xcode.app/Contents/Developer")
@@ -36,8 +54,14 @@ def build(bend, binary, source=None):
     # concurrent limited Cargo build can extend its single-compiler wall time.
     binary.parent.mkdir(parents=True, exist_ok=True)
     version = command([bend, "version"], env=env).stdout.strip()
-    command(["nice", "-n", "10", bend, source or ROOT / "bend/tests/compress-file.bend",
-             "-o", binary], env=env, cwd=ROOT, timeout=600)
+    bend_source = source or ROOT / "bend/tests/compress-file.bend"
+    if os.environ.get('RETINA_BEND_CC') and xcode.exists() and binary.suffix != '.c':
+        generated = binary.with_suffix('.c')
+        command(["nice", "-n", "10", bend, bend_source, "-o", generated], env=env, cwd=ROOT, timeout=600)
+        command(metal_compiler_command(generated, binary), env=env, cwd=ROOT, timeout=600)
+        command(["nice", "-n", "10", binary, "--threads", "2", "--gpu-build"], env=env, cwd=ROOT, timeout=600)
+    else:
+        command(["nice", "-n", "10", bend, bend_source, "-o", binary], env=env, cwd=ROOT, timeout=600)
     return version
 
 

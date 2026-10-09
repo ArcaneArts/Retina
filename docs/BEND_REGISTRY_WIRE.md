@@ -1012,3 +1012,79 @@ nice -n 10 ./gradlew bendLakeBasinTest bendLakeShorelineTest bendLakeWorkerTest 
   -PbendMetalProbe=/absolute/path/to/current-source-metal-observer \
   -PbendDensityRegistryProfiles=/absolute/vanilla.json=/absolute/vanilla.rbp
 ```
+
+## Registered ore inputs and replacement policy (commands 45–46)
+
+Geology preparation (30) also projects top-level `ores`, optional `ore_layout`
+(default 2), and each biome's optional `ores` recipe-ID list. Missing ore arrays
+mean no recipes or memberships. Recipe order and duplicate membership entries
+are retained. Projection uses the shared raw input; Java does not choose ore
+types or synthesize distributions from biome names.
+
+Recipes retain their nonempty registered ID, size 0–64, finite discard chance
+0–1, scattered flag, inclusive attempt range 0–1024, positive rarity divisor,
+signed inclusive height bounds, triangle flag and nonnegative signed plateau.
+Every ordered replacement band has signed inclusive bounds and exactly one
+valid replacement ID per loaded palette material. Zero replacement means skip.
+The first height-matching band wins even when that band's material is zero;
+later overlapping bands do not rescue the attempt. These are the current Rust
+approximator's supported rules, not exact vanilla seeded replay.
+
+The persistent geology profile packs recipe headers, band maps, sparse biome
+memberships and carveable flags into one immutable Bend word table. Recipe and
+band arrays each support up to 4096 entries; total packed data, including flags,
+is bounded to 4,194,304 words (16 MiB). This bounds raw data rather than total
+runtime memory. Invalid schemas, references, dimensions or budgets reject
+preparation with **753**. Cave errors still use **736**. Failed preparation
+retains the preceding snapshot. Successful profile/model replacement clears
+dependent ore inputs; surface rebuilding retains them.
+
+- **45 — ore metadata:** mode 0 has no trailing payload and returns seven U32
+  words: layout, recipe count, biome count, palette count, biome-directory word
+  offset, carveable-flag word offset and total packed words. Mode 1 takes count
+  (0–256) and recipe IDs. Each recipe returns 12 words: dictionary string ID,
+  size, discard F32 bits, scattered flag, count minimum/maximum, rarity, signed
+  height minimum/maximum, triangle flag, plateau and band count; then two signed
+  bounds per band. Mode 2 takes count and biome IDs, returning each membership
+  count followed by the original ordered IDs. No GPU dispatch is needed.
+  Invalid framing/IDs or a response exceeding 16 MiB return **603** without
+  disturbing the worker.
+- **46 — replacement batch:** U32 count (0–4096), then six U32 words per query:
+  recipe ID, biome ID, signed Y, current host material, random word and exposed
+  flag (0/1). Output is one U32 replacement per query, with zero meaning skip.
+  Bend checks membership, selects the first inclusive height band and indexes
+  the host-material map. An exposed attempt is discarded when its upper
+  24 random bits divided by 16,777,216 are below the loaded discard chance.
+  Evaluation uses one selected CPU/GPU dispatch; malformed framing or invalid
+  IDs/flags return **603** before dispatch.
+
+Both commands require prepared geology (**754** otherwise) and are read-only.
+They retain generated block/NBT snapshots, lake inputs and cave state. The host
+supplies raw diagnostic coordinates/materials/exposure only; the production
+ore pipeline will derive those in Bend when sparse plans and replay are added.
+These commands do not yet generate veins, place ore blocks or complete the
+Retina Bend backend.
+
+```sh
+nice -n 10 ./gradlew bendOreTest bendOreWorkerTest -PretinaHostOnly \
+  --max-workers=2 --no-parallel -PbendSkipBuild -PproveMetal \
+  -PbendMetalProbe=/absolute/path/to/current-source-metal-observer \
+  -PbendDensityRegistryProfiles=/absolute/vanilla.json=/absolute/vanilla.rbp
+```
+
+On the tested arm64 macOS host, Apple Clang 21.0.0 fails compiling this enlarged
+stock-generated program with `live register clobbered by inserted prologue
+instructions`. LLVM Clang 23.1.2 builds the same generated source at `-O3`.
+Select it explicitly for a fresh worker or observer build:
+
+```sh
+RETINA_BEND_CC=/opt/homebrew/opt/llvm/bin/clang \
+  python3 scripts/test_bend_ores.py --prove-metal
+```
+
+The build helper generates ordinary Bend C, compiles it with the selected Clang
+and the explicit Xcode SDK/linker, then runs the stock `--gpu-build` step. Host
+and GPU compilation run sequentially at reduced priority; no application C or
+shader implementation is substituted. The override is opt-in and an actual
+compiler failure remains visible. This is tested toolchain support for the
+component harness, not completed production packaging or additional GPU targets.

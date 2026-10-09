@@ -12,7 +12,7 @@ import struct
 import subprocess
 import zlib
 
-from test_bend_compression import ROOT, DEFAULT_BEND, build
+from test_bend_compression import ROOT, DEFAULT_BEND, build, metal_compiler_command
 from test_bend_noise import f32, world_simplex
 
 MAGIC = 0x52424e44
@@ -154,10 +154,8 @@ def compile_metal_observer(bend,source,binary):
     cpath.write_text(code.replace(needle,needle+'\n    fprintf(stderr, "BEND_METAL_DISPATCH device_ms=%.6f\\n", ([cb GPUEndTime]-[cb GPUStartTime])*1000.0);'))
     xcode = Path('/Applications/Xcode.app/Contents/Developer')
     env = dict(os.environ,BEND_NO_TELEMETRY='1',SDKROOT=str(xcode/'Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk'))
-    subprocess.run(['nice','-n','10',str(xcode/'Toolchains/XcodeDefault.xctoolchain/usr/bin/clang'),
-                    '-DBEND_METAL=1','-x','objective-c','-fobjc-arc','-fmodules','-std=c11','-O3',
-                    str(cpath),'-lpthread','-lm','-o',str(binary)],check=True,env=env,timeout=300)
-    subprocess.run(['nice','-n','10',str(binary),'--gpu-build'],check=True,cwd=ROOT,env=env,capture_output=True,timeout=300)
+    subprocess.run(metal_compiler_command(cpath,binary),check=True,env=env,timeout=600)
+    subprocess.run(['nice','-n','10',str(binary),'--threads','2','--gpu-build'],check=True,cwd=ROOT,env=env,capture_output=True,timeout=300)
     return binary
 
 
