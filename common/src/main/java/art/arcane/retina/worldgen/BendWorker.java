@@ -353,6 +353,22 @@ public final class BendWorker implements AutoCloseable {
         return request(44, batch);
     }
 
+    /** Read Bend's packed ore profile, recipe headers or biome memberships.
+     * The raw mode/count/ID request is validated and interpreted in Bend.
+     */
+    public CompletableFuture<byte[]> queryOreMetadata(byte[] batch) {
+        return request(45, batch);
+    }
+
+    /** Evaluate registered ore membership, ordered height/material bands and
+     * exposure discard rules in Bend. Count followed by recipe/biome/Y/host/
+     * random/exposed words; each result is a replacement ID (zero means skip).
+     * This diagnostic does not yet rasterize veins or alter generated blocks.
+     */
+    public CompletableFuture<byte[]> sampleOreReplacements(byte[] batch) {
+        return request(46, batch);
+    }
+
     /** Cancellation skips queued requests; in-flight responses are drained to
      * preserve framing. World shutdown closes the worker and terminates it.
      */

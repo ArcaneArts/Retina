@@ -1,6 +1,7 @@
 import Base
 import ./cave_lattice.bend as CV
 import ./geology.bend as G
+import ./ore_data.bend as O
 import ./density.bend as Q
 import ./material_columns_data.bend as MD
 import ./material_columns.bend as MC
@@ -115,15 +116,15 @@ def aquifer_covered(aquifer: Maybe<&2,AQ.Prepared>,tile: S.Tile,+minimum: U32,sp
     case _ _: False{}
 
 @unsafe
-def material(+offset: U32,+original: U32,+minimum: U32,+height: U32,+sea: U32,water: U32,flags: Q.Table<Bool>,lava: U32,+level: U32,+aquifer: Maybe<&2,AQ.Prepared>,+grid: CV.Grid,biomes: Q.Table<G.Biome>,surface: U32,+point: Q.Point,aperture: F32,+low: U32,+high: U32) -> U32:
+def material(+offset: U32,+original: U32,+minimum: U32,+height: U32,+sea: U32,water: U32,flags: O.Store,lava: U32,+level: U32,+aquifer: Maybe<&2,AQ.Prepared>,+grid: CV.Grid,biomes: Q.Table<G.Biome>,surface: U32,+point: Q.Point,aperture: F32,+low: U32,+high: U32) -> U32:
   +y = U32.add(minimum,offset)
-  replacement(carved(Bool.and(Q.get(Bool,flags,original,False{}),Bool.and(U32.is_ge(offset,5),
+  replacement(carved(Bool.and(O.carveable(flags,original),Bool.and(U32.is_ge(offset,5),
       Bool.and(D.less(D.integer(y),D.integer(height)),Bool.not(Bool.and(Bool.not(D.less(D.integer(sea),D.integer(height))),
         Bool.not(D.less(D.integer(y),D.sub(D.integer(height),D.scalar(4.0))))))))),grid,biomes,surface,point,y,height,aperture,low,high),
     aquifer,grid,point,y,sea,water,lava,level,low,high,original)
 
 @unsafe
-def runs(+n: U32,+acc: List<&2,MD.Run>,+original: List<&2,MD.Run>,+minimum: U32,+height: U32,+sea: U32,+water: U32,+flags: Q.Table<Bool>,+lava: U32,+level: U32,+aquifer: Maybe<&2,AQ.Prepared>,+grid: CV.Grid,+biomes: Q.Table<G.Biome>,+surface: U32,+point: Q.Point,+aperture: F32,+low: U32,+high: U32) -> List<&2,MD.Run>:
+def runs(+n: U32,+acc: List<&2,MD.Run>,+original: List<&2,MD.Run>,+minimum: U32,+height: U32,+sea: U32,+water: U32,+flags: O.Store,+lava: U32,+level: U32,+aquifer: Maybe<&2,AQ.Prepared>,+grid: CV.Grid,+biomes: Q.Table<G.Biome>,+surface: U32,+point: Q.Point,+aperture: F32,+low: U32,+high: U32) -> List<&2,MD.Run>:
   match n:
     case 0: acc
     case _: runs(U32.sub(n,1),MC.push(U32.sub(n,1),n,material(U32.sub(n,1),MC.material_at(original,U32.sub(n,1)),minimum,height,sea,water,flags,lava,level,aquifer,grid,biomes,surface,point,aperture,low,high),acc),

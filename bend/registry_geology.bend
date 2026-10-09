@@ -8,6 +8,8 @@ import ./precise.bend as D
 import ./geology.bend as G
 import ./registry_lakes.bend as Lakes
 import ./lake_data.bend as LD
+import ./ore_data.bend as O
+import ./registry_ores.bend as RO
 
 # Resolve schema names once, then visit arrays sequentially. Projection happens
 # in Bend on the host; immutable numeric records are usable on either backend.
@@ -262,14 +264,30 @@ def profile_values(-A: Type,noises: Result<&1,&1,U32,Q.Table<G.Noise>>,biomes: R
         Bool.and(Bool.not(D.less(D.integer(level),D.integer(minimum))),
           Bool.and(D.less(D.integer(level),D.add(D.integer(minimum),D.unsigned(height))),
             Bool.not(D.less(D.integer(2147483647),D.add(D.integer(minimum),D.unsigned(height))))))))),
-        G.Profile{noises,biomes,flags,lava,level,minimum,height,None{},None{}},doc,next)
+        G.Profile{noises,biomes,O.from_flags(flags),lava,level,minimum,height,None{},None{}},doc,next)
     case _ _ _ _ _ _ _: next(doc,Fail{736})
 
 @unsafe
-def prepare(-A: Type,doc: P.Document,+palette: U32,+biome_count: U32,next: P.Document -> Result<&1,&1,U32,G.Profile> -> A) -> A:
+def cave_profile(-A: Type,doc: P.Document,+palette: U32,+biome_count: U32,next: P.Document -> Result<&1,&1,U32,G.Profile> -> A) -> A:
   keys(A,doc,doc => +keys => V.root(A,doc,doc => +root => RD.named(A,doc,root,keys,0n,doc => found =>
     noises(A,found,doc,keys,6,6,doc => noises => RD.named(A,doc,root,keys,1n,doc => found =>
     biomes(A,found,doc,keys,biome_count,biome_count,doc => biomes => RD.named(A,doc,root,keys,2n,doc => found =>
     flags(A,found,doc,keys,palette,palette,doc => flags => RD.named(A,doc,root,keys,3n,doc => lava =>
     RD.named(A,doc,root,keys,4n,doc => level => RD.named(A,doc,root,keys,5n,doc => minimum =>
     RD.named(A,doc,root,keys,6n,doc => height => profile_values(A,noises,biomes,flags,RD.integer(lava),RD.signed(level),RD.signed(minimum),RD.integer(height),palette,doc,next)))))))))))))
+
+@unsafe
+def ores_ready(-A: Type,result: Result<&1,&1,U32,O.Store>,profile: G.Profile,doc: P.Document,next: P.Document -> Result<&1,&1,U32,G.Profile> -> A) -> A:
+  match result:
+    case Fail{code}: next(doc,Fail{code})
+    case Done{ores}: next(doc,Done{G.with_ores(profile,ores)})
+
+@unsafe
+def caves_ready(-A: Type,result: Result<&1,&1,U32,G.Profile>,doc: P.Document,palette: U32,biomes: U32,next: P.Document -> Result<&1,&1,U32,G.Profile> -> A) -> A:
+  match result:
+    case Fail{code}: next(doc,Fail{code})
+    case Done{profile}: RO.prepare(A,doc,palette,biomes,doc => result => ores_ready(A,result,profile,doc,next))
+
+@unsafe
+def prepare(-A: Type,doc: P.Document,+palette: U32,+biome_count: U32,next: P.Document -> Result<&1,&1,U32,G.Profile> -> A) -> A:
+  cave_profile(A,doc,palette,biome_count,doc => result => caves_ready(A,result,doc,palette,biome_count,next))

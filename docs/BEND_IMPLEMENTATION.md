@@ -37,7 +37,7 @@ more deeply; retain the original requested scope.
 | Coastlines, shore materials, rivers and material predicates/layers | `ShoreMaterialProfile.java`, `column_program.rs`, `materials.wgsl` | Pure Bend resident per-biome material DAGs and predicates (40..54) implemented with shared numeric evaluation, registered bands/sea/layer mode and bounded CPU/GPU query batches. GPU context/compact block runs implemented. Resident GPU coastal finalization now uses exact generated occupancy, six-block disk probes and registered climate alternatives before material generation; independent CPU/Metal checks cover inland/ocean exclusion, distinct materials and cache/coordinate rules. Inland rivers, ocean remapping, 3D biome material assignment and final integration remain required |
 | Caves, ravines, rare surface entrances and cave decoration | `GeologyProfile.java`, `geology.rs`, `features.rs`, `caves.wgsl` | Typed geology, cached globally aligned GPU/CPU cave fields, rounded noisy ravines and registered column carving implemented; independent voxel/serialized-region and actual Minecraft decoder checks pass. GPU/CPU depth-dependent cave-biome volumes now select registered carvers and serialize actual 3D quart IDs, retaining finalized surface biomes near the roof. Resident aquifers now supply carved cavity materials. Composed-density/exterior refinements, decorations and running-world integration remain pending |
 | Lakes, aquifer fields and fluid barriers | `TerrainFeatureProfile.java`, `program/lake_sparse.rs`, `aquifers.wgsl` | Typed aquifer graph projection and GPU/CPU flooding, erosion, spread, lava, barrier and preliminary-surface evaluation implemented. Globally hashed resident fluid centers, trilinear barrier fields and nearest-center pressure now place registered cavity fluids while preserving protected/pressure-barrier materials. Registered lake budgets/materials, globally seeded candidates, five bank probes, bounded fluid levels and noisy basin/rim placement implemented on CPU/GPU before material coating. Independent block/NBT/zlib checks cover fluids, barriers, overlap and signed/distant coordinates; lake exclusions now use finalized pre-carving coast selection, including global probes outside the resident tile. Complete running-world integration remains pending |
-| Ore height/count/replacement/discard rules and GPU rasterization | `geology/`, `ore.wgsl` | Pending |
+| Ore height/count/replacement/discard rules and GPU rasterization | `geology/`, `ore.wgsl` | Registered recipe projection, packed membership/material tables and selected-backend ordered replacement/exposure policy implemented. Sparse vein planning/rasterization and final block replay remain pending |
 | Ordered decoration, registered counts, provider noise and placement modifiers | `DecorationProfile.java`, `decoration/placement*`, `counts/`, `provider_noise/` | Pending |
 | Trees and decorators, giant mushrooms, fallen trees, disks, vegetation patches, block columns, bamboo, aquatic plants and attachments | `decoration.rs`, `decoration/`, `tree_shapes.rs` | Pending; port actual supported recipe variants, not only grass/tree examples |
 | Jigsaw pools/templates/processors, structures spanning regions and locate queries | `StructureProfile.java`, `structures.rs`, `structure_processors.rs`, `queries.rs` | Pending |
@@ -913,3 +913,50 @@ tests ignored). Source, input and executable hashes are retained in
 `docs/benchmarks/bend-lake-shorelines-correctness.json`. The new harness accepts
 `--output` so a registry run can retain its report separately from the Gradle
 control run.
+
+
+### Registered ore recipes and GPU replacement policy
+
+Geology preparation now projects registered ore IDs, count/rarity and height
+parameters, ordered replacement bands, air-exposure discard chances and sparse
+biome memberships entirely in Bend. Optional absent ore lists remain empty.
+The resident profile retains the packed ore/material/flag table across read-only
+queries and surface rebuilding; successful reload or model replacement clears
+it. CPU and GPU batches select the first matching inclusive band, preserve zero
+replacement and apply the loaded exposure rule. Java carries raw query bytes.
+Sparse vein planning, rasterization and replay into generated blocks remain
+required; this cycle does not yet create ore in a usable Bend world preset.
+
+Array projection keeps ordinary Data parameters across entries instead of
+copying a linear parser closure, which the stock runtime rejects. Geology
+preparation retains the prior worker state as an opaque owned value while its
+registry continuations run, reducing captured argument expansion. Existing
+carveable material flags share the packed store and retain their previous
+semantics. No Rust generator or encoder is used by the Bend component.
+
+The current macOS generated program exposes an Apple Clang 21 code-generation
+failure. The harness supports an explicit `RETINA_BEND_CC` override; LLVM Clang
+23.1.2 builds the unmodified generated code at `-O3` with the Xcode SDK/linker.
+A separate observer adds only stock Metal command-buffer timing diagnostics.
+See `docs/BEND_REGISTRY_WIRE.md` for reproducible compilation commands. Compiler
+and test evidence are recorded with the component correctness report.
+
+Validation checks 93 registered recipes, 7,079 membership entries and 511,250
+replacement queries per backend across five controls plus actual vanilla,
+Terralith and combined profiles. All 27 malformed schemas reject cleanly.
+Normal CPU, GPU and observed Metal outputs agree; the observer accounts for all
+190 expected device commands. Concurrent Java queries, malformed requests,
+surface rebuilding, snapshot retention, profile reload and process shutdown
+pass through the Gradle worker task. The Fabric/NeoForge host build passes,
+including 64 native unit tests (11 existing explicit tests ignored).
+
+Cave checks cover 884,736 carved voxels per backend. Cave-biome and aquifer
+regression aggregates retain their earlier hashes across 838,656 cave-biome
+voxels/839,673 biome IDs and 332,060 aquifer substance queries/442,512 carved
+voxels respectively. Lake-basin aggregates also retain their earlier hashes,
+including final columns and three full chunk NBT/zlib round trips per backend.
+Lake/shoreline composition retains its earlier aggregate across 1,694 material
+columns and 795 finalized surface columns per backend. These regression runs
+use the normal CPU/GPU engines; the new 190-command observer proof applies to
+the ore suite. Evidence is in
+`docs/benchmarks/bend-ore-inputs-correctness.json`.

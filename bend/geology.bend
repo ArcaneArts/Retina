@@ -4,6 +4,7 @@ import ./precise.bend as D
 import ./noise.bend as N
 import ./aquifer.bend as A
 import ./lake_data.bend as Lakes
+import ./ore_data.bend as O
 
 # Loaded geology is immutable Data. The registry tape and file effects stay on
 # the host; these records can be consumed unchanged by Bend CPU or GPU code.
@@ -16,7 +17,7 @@ type Carver is Data:
 type Biome is Data:
   Biome{carvers: Q.Table<Carver>,lakes: Lakes.Params}
 type Profile is Data:
-  Profile{noises: Q.Table<Noise>,biomes: Q.Table<Biome>,carveable: Q.Table<Bool>,lava: U32,lava_level: U32,minimum: U32,height: U32,aquifer: Maybe<&2,A.Prepared>,lakes: Maybe<&2,Lakes.Cache>}
+  Profile{noises: Q.Table<Noise>,biomes: Q.Table<Biome>,data: O.Store,lava: U32,lava_level: U32,minimum: U32,height: U32,aquifer: Maybe<&2,A.Prepared>,lakes: Maybe<&2,Lakes.Cache>}
 
 def finite(value: F32) -> Bool:
   U32.is_ne(U32.and(F32.bits(value),2139095040),2139095040)
@@ -117,6 +118,10 @@ def with_aquifer(profile: Profile,config: A.Prepared) -> Profile:
 def with_lakes(profile: Profile,cache: Lakes.Cache) -> Profile:
   match profile:
     case Profile{noises,biomes,flags,lava,level,minimum,height,aquifer,_}: Profile{noises,biomes,flags,lava,level,minimum,height,aquifer,Some{cache}}
+
+def with_ores(profile: Profile,ores: O.Store) -> Profile:
+  match profile:
+    case Profile{noises,biomes,flags,lava,level,minimum,height,aquifer,lakes}: Profile{noises,biomes,O.with_flags(ores,flags),lava,level,minimum,height,aquifer,lakes}
 
 def lakes(profile: Maybe<&2,Profile>) -> Maybe<&2,Lakes.Cache>:
   match profile:
