@@ -34,6 +34,8 @@ import ./ore_batch.bend as OB
 import ./ore_attempts.bend as OA
 import ./ore_geometry.bend as OG
 import ./ore_raster.bend as OR
+import ./ore_spatial.bend as OP
+import ./ore_apply.bend as OreApply
 import ./geology_batch.bend as GB
 import ./cave_lattice.bend as CV
 import ./cave_batch.bend as CAV
@@ -68,7 +70,8 @@ import ./precise.bend as D
 # AQUIFER_SUBSTANCE_BATCH=40, LAKE_SETTINGS=41, LAKE_CANDIDATES=42,
 # LAKE_GEOMETRY=43, LAKE_GEOMETRY_BATCH=44, ORE_METADATA=45,
 # ORE_REPLACEMENT_BATCH=46 (resident membership, bands and exposure policy),
-# ORE_ATTEMPT_BATCH=47, ORE_GEOMETRY_BATCH=48, ORE_MASK_BATCH=49.
+# ORE_ATTEMPT_BATCH=47, ORE_GEOMETRY_BATCH=48, ORE_MASK_BATCH=49,
+# ORE_APPLY_CORE=50 (globally anchored masks into resident block runs).
 # Requests: RBND magic, payload length, request ID, opcode (all BE u32).
 # Responses add a status u32 after opcode. stdout contains frames only.
 type Settings is Data:
@@ -1304,6 +1307,32 @@ def ore_plan(mode: U32,input: File,output: File,+old: State,backend: U32,id: U32
     case _: error(input,output,old,backend,id,opcode,754)
 
 @unsafe
+def ore_applied(computed: OreApply.Computed,old: State,input: File,output: File,backend: U32,id: U32,opcode: U32) -> IO(Unit):
+  match computed:
+    case OreApply.Computed{grid}: carved_ack(Carve.Computed{grid},old,input,output,backend,id,opcode)
+
+@unsafe
+def ore_apply_valid(ok: Bool,env: OP.Env,old: State,input: File,output: File,backend: U32,id: U32,opcode: U32) -> IO(Unit):
+  match ok:
+    case False{}: error(input,output,old,backend,id,opcode,756)
+    case True{}: ore_applied(OreApply.execute(env),old,input,output,backend,id,opcode)
+
+@unsafe
+def ore_apply_core(decoded: Result<&1,&1,U32,S.Tile>,input: File,output: File,+old: State,backend: U32,id: U32,opcode: U32) -> IO(Unit):
+  match decoded old:
+    case Fail{_} _: error(input,output,old,backend,id,opcode,603)
+    case Done{+core} State{Settings{_,Some{climate},Some{RD.Prepared{model,programs,_,_,_,Some{density},Some{S.State{config,_}},
+      Some{M.Model{_,_,_,_,Some{MD.State{MD.Config{_,water,_,_,_,_},Some{+source},_,Some{G.Profile{_,_,ores,lava,_,minimum,height,_,_}},_}}}}}}},_}:
+      ore_apply_source(core,source,config,density,model,programs,climate,ores,water,lava,minimum,height,old,input,output,backend,id,opcode)
+    case _ _: error(input,output,old,backend,id,opcode,755)
+
+@unsafe
+def ore_apply_source(+core: S.Tile,+source: MD.Grid,config: S.Config,density: L.Grid,model: Q.Model,programs: Q.Table<Q.Program>,climate: C.Model,ores: O.Store,water: U32,lava: U32,minimum: U32,height: U32,old: State,input: File,output: File,backend: U32,id: U32,opcode: U32) -> IO(Unit):
+  match source:
+    case MD.Grid{_,smin,span,_,_}: ore_apply_valid(Bool.and(OreApply.compatible(core,source),Bool.and(U32.is_eq(smin,minimum),U32.is_eq(span,height))),
+      OP.Env{config,density,model,programs,climate,source,ores,core,water,lava},old,input,output,backend,id,opcode)
+
+@unsafe
 def dispatch(input: File,output: File,stack: State,backend: U32,id: U32,opcode: U32,body: Z.Bytes) -> IO(Unit):
   match opcode:
     case 0: empty_command(R.end(R.start(body)),input,output,stack,backend,id,0)
@@ -1355,6 +1384,7 @@ def dispatch(input: File,output: File,stack: State,backend: U32,id: U32,opcode: 
     case 47: ore_plan(47,input,output,stack,backend,id,47,body)
     case 48: ore_plan(48,input,output,stack,backend,id,48,body)
     case 49: ore_plan(49,input,output,stack,backend,id,49,body)
+    case 50: ore_apply_core(S.decode(body),input,output,stack,backend,id,50)
     case 4: empty_command(R.end(R.start(body)),input,output,stack,backend,id,4)
     case _: error(input,output,stack,backend,id,opcode,605)
 

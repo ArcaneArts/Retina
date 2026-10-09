@@ -1180,3 +1180,44 @@ Run the component and real Java transport checks with:
 The Python script also takes `--profile JSON RBP`, `--prove-metal`, `--metal-probe` and
 `--output`. This command does not yet filter spatial biome membership or modify
 resident block runs; regional planning and replay remain on the parity checklist.
+
+
+## Resident spatial ore placement (50)
+
+Request six BE U32 words: signed `x,z`, `width,depth`, `seed_low,seed_high`.
+The core origin and dimensions must align to whole 16x16 chunks, dimensions must
+be 16..512 in multiples of 16, and the resident material snapshot must cover the core plus one block
+on every X/Z side. At signed-world coordinate endpoints only, that halo clamps
+to the valid world extent. Full seeds and world Y limits must match the snapshot
+and prepared geology. Missing prepared inputs return 755; an incompatible core,
+seed, world span or missing halo returns 756. Malformed frames return 603.
+Rejected requests retain the existing snapshot.
+
+The four-word acknowledgement contains resident source width, depth, column
+count and run count. Only core blocks change. No attempt, geometry, mask or block
+array passes through Java during application. Existing generated chunk commands
+26/27 and new-file region command 28 serialize the updated snapshot. Cave-biome
+storage, source material context and halo runs are preserved.
+
+Bend generates globally seeded attempts, applies actual surface/cave-biome
+membership, constructs local union masks and builds target-chunk contribution
+buckets inside one selected-backend evaluation. The stock GPU runtime may submit
+multiple command buffers while advancing its frontier; no application-level
+geometry or mask readback occurs between these turns. Stable anchor Z/X, recipe and
+attempt ordering controls overlapping replacements. Exposure uses the immutable
+pre-ore snapshot, including the required halo. The operation can change height
+when custom registered bands replace air. Reapplication to an already changed
+snapshot is not promised to be idempotent; rebuild base blocks before repeat.
+
+Run independent voxel/serialization and actual Java transport checks with:
+
+```sh
+./gradlew bendOrePlacementWorkerTest -PretinaHostOnly --max-workers=2 --no-parallel -PbendSkipBuild
+```
+
+`scripts/test_bend_ore_placement.py` also accepts `--profile JSON RBP`,
+`--prove-metal`, `--metal-probe` and `--output`. Its independent Python replay
+starts from the captured pre-ore block snapshot, which earlier material/cave
+suites validate separately. It compares every resulting voxel, coalesced runs,
+heights, unchanged halo, ordered overlap and four adjacent independently built
+cores. Component timing evidence does not establish full region throughput.

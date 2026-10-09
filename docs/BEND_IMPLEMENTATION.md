@@ -37,7 +37,7 @@ more deeply; retain the original requested scope.
 | Coastlines, shore materials, rivers and material predicates/layers | `ShoreMaterialProfile.java`, `column_program.rs`, `materials.wgsl` | Pure Bend resident per-biome material DAGs and predicates (40..54) implemented with shared numeric evaluation, registered bands/sea/layer mode and bounded CPU/GPU query batches. GPU context/compact block runs implemented. Resident GPU coastal finalization now uses exact generated occupancy, six-block disk probes and registered climate alternatives before material generation; independent CPU/Metal checks cover inland/ocean exclusion, distinct materials and cache/coordinate rules. Inland rivers, ocean remapping, 3D biome material assignment and final integration remain required |
 | Caves, ravines, rare surface entrances and cave decoration | `GeologyProfile.java`, `geology.rs`, `features.rs`, `caves.wgsl` | Typed geology, cached globally aligned GPU/CPU cave fields, rounded noisy ravines and registered column carving implemented; independent voxel/serialized-region and actual Minecraft decoder checks pass. GPU/CPU depth-dependent cave-biome volumes now select registered carvers and serialize actual 3D quart IDs, retaining finalized surface biomes near the roof. Resident aquifers now supply carved cavity materials. Composed-density/exterior refinements, decorations and running-world integration remain pending |
 | Lakes, aquifer fields and fluid barriers | `TerrainFeatureProfile.java`, `program/lake_sparse.rs`, `aquifers.wgsl` | Typed aquifer graph projection and GPU/CPU flooding, erosion, spread, lava, barrier and preliminary-surface evaluation implemented. Globally hashed resident fluid centers, trilinear barrier fields and nearest-center pressure now place registered cavity fluids while preserving protected/pressure-barrier materials. Registered lake budgets/materials, globally seeded candidates, five bank probes, bounded fluid levels and noisy basin/rim placement implemented on CPU/GPU before material coating. Independent block/NBT/zlib checks cover fluids, barriers, overlap and signed/distant coordinates; lake exclusions now use finalized pre-carving coast selection, including global probes outside the resident tile. Complete running-world integration remains pending |
-| Ore height/count/replacement/discard rules and GPU rasterization | `geology/`, `ore.wgsl` | Registered recipe projection, packed membership/material tables and selected-backend ordered replacement/exposure policy implemented. Registered count/rarity/height attempts and local sphere-chain/scattered geometry now execute on CPU/GPU. Local sphere-union masks and ordered scattered points now calculate in the same selected-backend dispatch as geometry. Spatial membership filtering and final block replay remain pending |
+| Ore height/count/replacement/discard rules and GPU rasterization | `geology/`, `ore.wgsl` | Registered recipe projection, packed membership/material tables and selected-backend ordered replacement/exposure policy implemented. Registered count/rarity/height attempts and local sphere-chain/scattered geometry now execute on CPU/GPU. Local sphere-union masks and ordered scattered points now calculate in the same selected-backend evaluation as geometry. Spatial surface/cave membership filtering, stable neighboring contribution buckets and ordered resident-block replay now run in one selected CPU/GPU evaluation, with immutable exposure halo checks and independent voxel/NBT/zlib validation. Running-world integration remains pending |
 | Ordered decoration, registered counts, provider noise and placement modifiers | `DecorationProfile.java`, `decoration/placement*`, `counts/`, `provider_noise/` | Pending |
 | Trees and decorators, giant mushrooms, fallen trees, disks, vegetation patches, block columns, bamboo, aquatic plants and attachments | `decoration.rs`, `decoration/`, `tree_shapes.rs` | Pending; port actual supported recipe variants, not only grass/tree examples |
 | Jigsaw pools/templates/processors, structures spanning regions and locate queries | `StructureProfile.java`, `structures.rs`, `structure_processors.rs`, `queries.rs` | Pending |
@@ -1057,3 +1057,61 @@ attempt/geometry regression aggregates remain unchanged across 87,680 attempts
 and 125,409 geometry pieces per backend, including all three actual registry
 profiles. Compilation used one Bend compiler and two Rust jobs at reduced
 priority, separately from measurements.
+
+
+### Resident spatial ore placement
+
+Command 50 now modifies the resident generated material snapshot entirely in
+Bend. Globally anchored chunk/recipe/attempt contributions retain stable Z/X
+priority. Registered count, rarity and height rules feed surface/cave-biome
+membership filtering, local geometry and union masks inside the same selected
+CPU/GPU evaluation. Per-target-chunk buckets contain only intersecting masks from
+the surrounding 3x3 anchor chunks. Different output columns replay in parallel;
+within a column, ordered recipes read the current host material before applying
+registered height bands and exposure-discard rules.
+
+The core must contain whole chunks and have a resident one-block exposure halo.
+Exposure reads the immutable pre-ore snapshot, so earlier ore replacements cannot
+change later exposure decisions. Only core columns change; halo columns, material
+context, cave biomes and the reusable profile stay intact. Compensated coordinates
+preserve local geometry at signed-i32 limits. Regular-vein exposure draws derive
+from attempt seed and local mask index; scattered points retain their ordered
+geometry draws. Final first-free heights are recomputed for custom recipes that
+replace air. Generated NBT/zlib and MCA serialization consume the resulting block
+runs through the existing Bend encoders.
+
+The Java bridge transports only a raw core descriptor and acknowledgement. A
+complete region coordinator still needs to serialize each build/application
+sequence as one lease; independent Java method calls alone do not provide that
+lease. Rebuild the pre-ore snapshot before repeating an application, since custom
+replacement chains need not be idempotent. This component is not yet a selectable
+Bend world, a lighting implementation or a complete-region throughput result.
+
+The density field should also cover neighboring anchor/quart biome probes and
+the six-block coastal sampling disk. Actual-profile QA uses a 23-block density
+halo around the ore core, while the material exposure halo remains one block.
+Outside-resident density probes are correct but can repeatedly rebuild height
+lattices and become very expensive. Descriptor bounds must still respect the
+signed world limits. A single Bend `calculate!` evaluation may advance through
+several stock-runtime GPU frontier turns: controlled command-50 probes observed
+three Metal command buffers, rather than one device dispatch. No application
+geometry or mask round trip through Java is needed between those turns.
+
+
+Independent placement checks passed for eight controlled profiles and actual
+vanilla, Terralith and combined registry snapshots on CPU, GPU and an instrumented
+Metal observer. Each run checked 633,856 voxels, 6,888 eligible attempts, 30,103
+candidate writes and 14,019 successful writes, including 2,487 contributions from
+neighboring anchors. Four generated chunks per run passed independent NBT,
+heightmap, 3D-biome and zlib checks. A 32x32 core matched four separately generated
+16x16 cores requested in reverse order. Repeat builds, malformed requests, seed
+mismatches and halo rejection preserved the expected snapshot. The observer
+recorded 276 actual Metal command buffers for 216 expected minimum commands;
+its final voxel hash matched the normal GPU and CPU runs exactly.
+
+The Gradle Java worker task and Fabric/NeoForge host build pass; native tests
+reported 64 passed, zero failed and 11 existing explicit ignores. Ore-mask
+regressions retained their earlier hashes across all actual profiles. Compiler,
+input, source, executable and validation evidence is recorded in
+`docs/benchmarks/bend-ore-placement-correctness.json`. QA ran under concurrent
+load; these timings do not establish full-region performance.
