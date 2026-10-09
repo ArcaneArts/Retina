@@ -38,11 +38,11 @@ neoForge {
                 }
             }
         }
-        client {
+        neoForgeClient {
             client()
             gameDirectory = rootProject.file(providers.gradleProperty('retinaClientRunDir').getOrElse('run/neoforge-client'))
         }
-        server {
+        neoForgeServer {
             server()
             gameDirectory = rootProject.file(providers.gradleProperty('retinaDatapackQa').getOrElse('run/neoforge-server'))
             programArguments.add '--nogui'

@@ -49,6 +49,13 @@ availability; substantial performance work remains before parity with Rust.
 
 ### Running the preview
 
+On the prepared development host, use `./gradlew runClient` from the repository
+root and select **Retina Rust** or **Retina Bend** while creating a world. This
+launches Fabric only. Gradle reuses the installed precompiled host worker at
+`~/.local/share/retina-bend/2.0.36/playable/engine` and its adjacent `engine.gpu`;
+no extra launch flags or Bend compiler invocation are needed. Gradle defaults to
+two workers without parallel project execution; Cargo remains limited to two jobs.
+
 Build the stock worker once, then explicitly package it; ordinary Java builds do
 not start Bend compilation. On this Apple Silicon host the pinned runtime is
 `~/.local/share/retina-bend/2.0.36/bin/bend`. The worker binary and adjacent

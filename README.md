@@ -2,17 +2,15 @@
 
 Fabric and NeoForge 26.3 terrain generation with GPU registry density programs, biome climates, surface materials, caves, registry-derived features and Rust chunk/MCA assembly.
 
-An independent pure Bend backend is in development. Its compression, Minecraft
-chunk encoding, persistent registry transport, loaded climate selection and
-numeric terrain programs, reusable GPU density lattices and GPU surface/climate
-tiles are verified. Bend now writes whole compressed base/material MCA regions
-from resident generated blocks. A resident GPU pass now selects narrow shores
-from registered coastal targets using nearby solid terrain, before material
-assignment; final features and lighting remain in progress.
-It is not yet a selectable or complete generator.
+The world type selector offers **Retina Rust**, the existing generator, and
+**Retina Bend**, an experimental independent Bend terrain pipeline. Bend combines
+registered density/interpolation, biomes, materials/shorelines, lakes, cave
+biomes/aquifers, carving, ores and cave dressing with Bend NBT/zlib/MCA writing.
+Surface trees/vegetation, structures, snow/freezing and full Bend lighting remain
+in progress; Minecraft lights the preview. Fresh spawn preparation currently
+takes several minutes. Rust remains the default Retina selection.
 See the [implementation checklist](docs/BEND_IMPLEMENTATION.md) for remaining
-parity and integration work. The working Rust world types below remain available
-until the Bend pipeline is ready.
+parity and integration work.
 
 ## Run it
 
@@ -24,7 +22,7 @@ runtime installation is needed.
 ```sh
 ./gradlew build
 ./gradlew gpuTest regionTest biomeTest geologyTest featureTest previewTest structureTest shoreTest lightingTest
-./gradlew runClient -PretinaQa
+./gradlew runClient
 ```
 
 Shared Java, client display code, Minecraft-reference tests and resources live
@@ -35,13 +33,19 @@ API dependency. `native/` remains the single Rust/WGSL engine, with native build
 packaging and unit-test work shared by the root build.
 
 Root `runClient`, `runServer` and `test` commands remain Fabric aliases.
+NeoForge run tasks have distinct names so Gradle's unqualified `runClient` task
+selector starts Fabric only. Ordinary launches reuse the installed Bend 2.0.36
+worker at `~/.local/share/retina-bend/2.0.36/playable/engine`, including its adjacent
+`engine.gpu` archive; they do not compile Bend. `-PretinaBendExecutable=...` or
+`RETINA_BEND_EXECUTABLE` can override that location. This host's preview runtime
+is installed there; other hosts must install their own compatible worker.
 `runFabricClient` and `runFabricServer` make the loader explicit. Use
 `:fabric:runClient`, `:fabric:runServer` or `:fabric:test` when passing task-specific
 options such as `--args` or `--tests`. Existing development worlds remain in the
 root `run/` directory; `-PretinaClientRunDir=/absolute/fresh/directory` selects an
 isolated client directory. `runNeoForgeClient` and `runNeoForgeServer` use
 `run/neoforge-client/` and `run/neoforge-server/` by default. NeoForge task-specific
-arguments use `:neoforge:runClient` or `:neoforge:runServer`.
+arguments use `:neoforge:runNeoForgeClient` or `:neoforge:runNeoForgeServer`.
 
 The combined build produces `fabric/build/libs/retina-fabric-26.3-0.1.0.jar` and
 `neoforge/build/libs/retina-neoforge-26.3-0.1.0.jar`. Install the jar matching
@@ -74,8 +78,10 @@ including when it uses an already-running Gradle daemon.
 
 Create a new single-player world and select a Retina world type in the **World** tab:
 
-- **Retina GPU Simplex (MCA)**: the default Retina mode; Rust writes whole regions.
-- **Retina GPU Simplex (Chunks)**: the original per-chunk buffer/conversion mode.
+- **Retina Rust**: the default Retina mode; Rust writes whole regions.
+- **Retina Bend**: the experimental Bend terrain implementation with small cached batches.
+
+The old chunk preset still decodes existing saves but is no longer selectable.
 
 Both generate the same biome terrain model in the overworld. Nether and End remain vanilla.
 The default biome set includes plains, forests, taiga, snowy plains, desert, savanna,
