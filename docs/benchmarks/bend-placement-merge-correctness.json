@@ -3,7 +3,7 @@
   "bend_version": "bend 2.0.36",
   "runs": [
     {
-      "profile": "/Users/cyberpwn/.local/share/retina-bend/2.0.36/backend-artifacts/surface-features-20261009/profiles/profile-0.json",
+      "profile": "/Users/cyberpwn/.local/share/retina-bend/2.0.36/backend-artifacts/placement-merge-20261012/profiles/profile-0.json",
       "gpu": false,
       "cases": [
         {
@@ -56,10 +56,11 @@
         }
       ],
       "mca": {
+        "surface_writer_families": 4,
         "blocks_checked": 32768,
         "quart_biomes": 512,
         "heightmaps": 6,
-        "compressed_bytes": 1152,
+        "compressed_bytes": 1162,
         "mca_bytes": 12288,
         "removed_plants": 10
       },
@@ -73,11 +74,11 @@
         "5d46256a4189586c8f54dca9b1fe3e480262c11c5013fe53ea4ae8d84613bf52",
         "012b2d6c9e014bcb44bd33b1d1ad510b3e06fd8270c7dd50d2d8525cf584bf34",
         "4b972cc857a86559c44ec91d19fe8fd9443e908c6ee7aa1fac617013ff3b8349",
-        "4ed0b24346ffafb8cc133e65cee3405c43a0b73f206b3f240f1fb5ec19f1091b"
+        "a5cad1b49e9d0e8d23ccf74ffa5ed29ca7994b6c6db1c57cc7f486b720cba6ef"
       ]
     },
     {
-      "profile": "/Users/cyberpwn/.local/share/retina-bend/2.0.36/backend-artifacts/surface-features-20261009/profiles/profile-0.json",
+      "profile": "/Users/cyberpwn/.local/share/retina-bend/2.0.36/backend-artifacts/placement-merge-20261012/profiles/profile-0.json",
       "gpu": true,
       "cases": [
         {
@@ -130,10 +131,11 @@
         }
       ],
       "mca": {
+        "surface_writer_families": 4,
         "blocks_checked": 32768,
         "quart_biomes": 512,
         "heightmaps": 6,
-        "compressed_bytes": 1152,
+        "compressed_bytes": 1162,
         "mca_bytes": 12288,
         "removed_plants": 10
       },
@@ -147,11 +149,11 @@
         "5d46256a4189586c8f54dca9b1fe3e480262c11c5013fe53ea4ae8d84613bf52",
         "012b2d6c9e014bcb44bd33b1d1ad510b3e06fd8270c7dd50d2d8525cf584bf34",
         "4b972cc857a86559c44ec91d19fe8fd9443e908c6ee7aa1fac617013ff3b8349",
-        "4ed0b24346ffafb8cc133e65cee3405c43a0b73f206b3f240f1fb5ec19f1091b"
+        "a5cad1b49e9d0e8d23ccf74ffa5ed29ca7994b6c6db1c57cc7f486b720cba6ef"
       ]
     },
     {
-      "profile": "/Users/cyberpwn/.local/share/retina-bend/2.0.36/backend-artifacts/surface-features-20261009/profiles/profile-1.json",
+      "profile": "/Users/cyberpwn/.local/share/retina-bend/2.0.36/backend-artifacts/placement-merge-20261012/profiles/profile-1.json",
       "gpu": false,
       "cases": [
         {
@@ -204,10 +206,11 @@
         }
       ],
       "mca": {
+        "surface_writer_families": 4,
         "blocks_checked": 32768,
         "quart_biomes": 512,
         "heightmaps": 6,
-        "compressed_bytes": 1212,
+        "compressed_bytes": 1226,
         "mca_bytes": 12288,
         "removed_plants": 12
       },
@@ -221,11 +224,11 @@
         "640737a92ca613f60d2eac55b18ce8fd5a53ef1889f094eb60008f1ad3de2195",
         "2dc61b0a1e530ddfd52780725266dbb03e2181bf78a53165216853258df1d978",
         "4e0e7b5e04bc861aabb59c8fb4e94d6710b79570636ee5254ca491a7272caa8f",
-        "830d59ff64d2fa8c0e3d6398fde12d2990684f3f53304af3ef8e833ba6c66c3d"
+        "7386999e33ded6137953094323df75d28b0f273f1cba9d8b89ce9bff8576db1c"
       ]
     },
     {
-      "profile": "/Users/cyberpwn/.local/share/retina-bend/2.0.36/backend-artifacts/surface-features-20261009/profiles/profile-1.json",
+      "profile": "/Users/cyberpwn/.local/share/retina-bend/2.0.36/backend-artifacts/placement-merge-20261012/profiles/profile-1.json",
       "gpu": true,
       "cases": [
         {
@@ -278,10 +281,11 @@
         }
       ],
       "mca": {
+        "surface_writer_families": 4,
         "blocks_checked": 32768,
         "quart_biomes": 512,
         "heightmaps": 6,
-        "compressed_bytes": 1212,
+        "compressed_bytes": 1226,
         "mca_bytes": 12288,
         "removed_plants": 12
       },
@@ -295,11 +299,11 @@
         "640737a92ca613f60d2eac55b18ce8fd5a53ef1889f094eb60008f1ad3de2195",
         "2dc61b0a1e530ddfd52780725266dbb03e2181bf78a53165216853258df1d978",
         "4e0e7b5e04bc861aabb59c8fb4e94d6710b79570636ee5254ca491a7272caa8f",
-        "830d59ff64d2fa8c0e3d6398fde12d2990684f3f53304af3ef8e833ba6c66c3d"
+        "7386999e33ded6137953094323df75d28b0f273f1cba9d8b89ce9bff8576db1c"
       ]
     },
     {
-      "profile": "/Users/cyberpwn/.local/share/retina-bend/2.0.36/backend-artifacts/surface-features-20261009/profiles/profile-2.json",
+      "profile": "/Users/cyberpwn/.local/share/retina-bend/2.0.36/backend-artifacts/placement-merge-20261012/profiles/profile-2.json",
       "gpu": false,
       "cases": [
         {
@@ -352,10 +356,11 @@
         }
       ],
       "mca": {
+        "surface_writer_families": 4,
         "blocks_checked": 32768,
         "quart_biomes": 512,
         "heightmaps": 6,
-        "compressed_bytes": 1194,
+        "compressed_bytes": 1208,
         "mca_bytes": 12288,
         "removed_plants": 12
       },
@@ -369,11 +374,11 @@
         "640737a92ca613f60d2eac55b18ce8fd5a53ef1889f094eb60008f1ad3de2195",
         "2dc61b0a1e530ddfd52780725266dbb03e2181bf78a53165216853258df1d978",
         "4e0e7b5e04bc861aabb59c8fb4e94d6710b79570636ee5254ca491a7272caa8f",
-        "db234df8ad615f3609a83c5c0215f36dd1e1c48e2800e06b4412cb6f13e72e9e"
+        "04fa9e6f271c7ed82a82250058602fdacc1e1d75dec549c4c02e74295faadd3f"
       ]
     },
     {
-      "profile": "/Users/cyberpwn/.local/share/retina-bend/2.0.36/backend-artifacts/surface-features-20261009/profiles/profile-2.json",
+      "profile": "/Users/cyberpwn/.local/share/retina-bend/2.0.36/backend-artifacts/placement-merge-20261012/profiles/profile-2.json",
       "gpu": true,
       "cases": [
         {
@@ -426,10 +431,11 @@
         }
       ],
       "mca": {
+        "surface_writer_families": 4,
         "blocks_checked": 32768,
         "quart_biomes": 512,
         "heightmaps": 6,
-        "compressed_bytes": 1194,
+        "compressed_bytes": 1208,
         "mca_bytes": 12288,
         "removed_plants": 12
       },
@@ -443,7 +449,7 @@
         "640737a92ca613f60d2eac55b18ce8fd5a53ef1889f094eb60008f1ad3de2195",
         "2dc61b0a1e530ddfd52780725266dbb03e2181bf78a53165216853258df1d978",
         "4e0e7b5e04bc861aabb59c8fb4e94d6710b79570636ee5254ca491a7272caa8f",
-        "db234df8ad615f3609a83c5c0215f36dd1e1c48e2800e06b4412cb6f13e72e9e"
+        "04fa9e6f271c7ed82a82250058602fdacc1e1d75dec549c4c02e74295faadd3f"
       ]
     }
   ],
@@ -451,19 +457,19 @@
   "one_cpu_thread": "pass",
   "metal_observation": [
     {
-      "profile": "/Users/cyberpwn/.local/share/retina-bend/2.0.36/backend-artifacts/surface-features-20261009/profiles/profile-0.json",
+      "profile": "/Users/cyberpwn/.local/share/retina-bend/2.0.36/backend-artifacts/placement-merge-20261012/profiles/profile-0.json",
       "command_buffers": 10,
       "device_ms": [
-        18.414875,
-        1.087125,
-        7.299958,
-        0.926167,
-        7.085208,
-        6.71925,
-        24.8765,
-        19.650125,
-        20.337167,
-        25.649125
+        18.4905,
+        3.803167,
+        8.000167,
+        0.99975,
+        8.702625,
+        7.36025,
+        25.57275,
+        19.888208,
+        20.732375,
+        25.899625
       ],
       "output_sha256": [
         "20fd945d61e4844fb5e9bf7bbe6275c4fef42513d982e78023fc40f3b8f4d130",
@@ -474,23 +480,23 @@
         "5d46256a4189586c8f54dca9b1fe3e480262c11c5013fe53ea4ae8d84613bf52",
         "012b2d6c9e014bcb44bd33b1d1ad510b3e06fd8270c7dd50d2d8525cf584bf34",
         "4b972cc857a86559c44ec91d19fe8fd9443e908c6ee7aa1fac617013ff3b8349",
-        "4ed0b24346ffafb8cc133e65cee3405c43a0b73f206b3f240f1fb5ec19f1091b"
+        "a5cad1b49e9d0e8d23ccf74ffa5ed29ca7994b6c6db1c57cc7f486b720cba6ef"
       ]
     },
     {
-      "profile": "/Users/cyberpwn/.local/share/retina-bend/2.0.36/backend-artifacts/surface-features-20261009/profiles/profile-1.json",
+      "profile": "/Users/cyberpwn/.local/share/retina-bend/2.0.36/backend-artifacts/placement-merge-20261012/profiles/profile-1.json",
       "command_buffers": 10,
       "device_ms": [
-        19.143292,
-        1.095625,
-        7.470875,
-        0.9445,
-        7.29,
-        7.163708,
-        25.4765,
-        20.158125,
-        20.858,
-        26.499708
+        16.722875,
+        2.53925,
+        7.418458,
+        1.010833,
+        7.42325,
+        7.31825,
+        25.751667,
+        20.39375,
+        21.00825,
+        26.697875
       ],
       "output_sha256": [
         "3c008c205e5462e44d2c8b105bece1aef4f4c7110fd61a34bbbd60fe06abf29b",
@@ -501,23 +507,23 @@
         "640737a92ca613f60d2eac55b18ce8fd5a53ef1889f094eb60008f1ad3de2195",
         "2dc61b0a1e530ddfd52780725266dbb03e2181bf78a53165216853258df1d978",
         "4e0e7b5e04bc861aabb59c8fb4e94d6710b79570636ee5254ca491a7272caa8f",
-        "830d59ff64d2fa8c0e3d6398fde12d2990684f3f53304af3ef8e833ba6c66c3d"
+        "7386999e33ded6137953094323df75d28b0f273f1cba9d8b89ce9bff8576db1c"
       ]
     },
     {
-      "profile": "/Users/cyberpwn/.local/share/retina-bend/2.0.36/backend-artifacts/surface-features-20261009/profiles/profile-2.json",
+      "profile": "/Users/cyberpwn/.local/share/retina-bend/2.0.36/backend-artifacts/placement-merge-20261012/profiles/profile-2.json",
       "command_buffers": 10,
       "device_ms": [
-        19.496375,
-        1.221125,
-        7.096,
-        0.93575,
-        7.29125,
-        7.14525,
-        25.427125,
-        20.080458,
-        20.772125,
-        26.449792
+        17.621083,
+        2.571,
+        6.659375,
+        1.027417,
+        7.487208,
+        7.328417,
+        25.796417,
+        20.324167,
+        21.078375,
+        26.624458
       ],
       "output_sha256": [
         "3c008c205e5462e44d2c8b105bece1aef4f4c7110fd61a34bbbd60fe06abf29b",
@@ -528,14 +534,14 @@
         "640737a92ca613f60d2eac55b18ce8fd5a53ef1889f094eb60008f1ad3de2195",
         "2dc61b0a1e530ddfd52780725266dbb03e2181bf78a53165216853258df1d978",
         "4e0e7b5e04bc861aabb59c8fb4e94d6710b79570636ee5254ca491a7272caa8f",
-        "db234df8ad615f3609a83c5c0215f36dd1e1c48e2800e06b4412cb6f13e72e9e"
+        "04fa9e6f271c7ed82a82250058602fdacc1e1d75dec549c4c02e74295faadd3f"
       ]
     }
   ],
   "original_profiles": {
-    "/Users/cyberpwn/.local/share/retina-bend/2.0.36/backend-artifacts/surface-features-20261009/profiles/profile-0.json": "aefce6ff0e800966ad55920c5d21510dfa277de4612f67e22d5146d3aa838203",
-    "/Users/cyberpwn/.local/share/retina-bend/2.0.36/backend-artifacts/surface-features-20261009/profiles/profile-1.json": "c9abbe97860a394ed899d64967bd0395bb9bb4ec71a9dff43d1bb45893fefd4d",
-    "/Users/cyberpwn/.local/share/retina-bend/2.0.36/backend-artifacts/surface-features-20261009/profiles/profile-2.json": "068fd602ad497128dd3960cb9be76840ebd41882b5b64c25acfa76d65e930c8b"
+    "/Users/cyberpwn/.local/share/retina-bend/2.0.36/backend-artifacts/placement-merge-20261012/profiles/profile-0.json": "aefce6ff0e800966ad55920c5d21510dfa277de4612f67e22d5146d3aa838203",
+    "/Users/cyberpwn/.local/share/retina-bend/2.0.36/backend-artifacts/placement-merge-20261012/profiles/profile-1.json": "c9abbe97860a394ed899d64967bd0395bb9bb4ec71a9dff43d1bb45893fefd4d",
+    "/Users/cyberpwn/.local/share/retina-bend/2.0.36/backend-artifacts/placement-merge-20261012/profiles/profile-2.json": "068fd602ad497128dd3960cb9be76840ebd41882b5b64c25acfa76d65e930c8b"
   },
   "sources": {
     "bend/aquifer.bend": "a9537fa65402553acec5578d4a2474036f2190142a6e9d9c1faf3c7c0cc03e36",
@@ -597,18 +603,19 @@
     "bend/registry_placement_predicate.bend": "0f1ad10f8fd935e2bc6abbc71508bf9cfb404f0d115b3a7c06298b7eb7ea86bc",
     "bend/registry_values.bend": "5bb1d3ab6bfed7cf640af35089a5ec1370cc2f686d7cfb8b210e7643e1b3d97f",
     "bend/shoreline.bend": "932383d2add618bbc94b6b5ddd6f75030a3853e0def8fa2e78764405185cb888",
-    "bend/surface_feature.bend": "b66dddbaffc0c25470f5c4bb03635c93d7efdaa5d3038ac6e99341a3e7912af4",
+    "bend/surface_feature.bend": "0504444b8ad57a8d3eec09d2ea98d4397005637bc2c69552d954ad4b0c8a3522",
+    "bend/surface_plants.bend": "089f4e828f24ac7bd34bf38287bceeb114495d7c978802311e9d4486151eb20c",
     "bend/terrain_height.bend": "bc5400f024c86b34294cc628b364d7ceb67fd9675cb2de77a3cbe06b519be8a2",
     "bend/terrain_surface.bend": "26687ac40e62949ca563d7f31117207fa0eb053d82f51b58a14e84b9a2d4d652",
     "bend/tests/binary-fixtures.bend": "02ea592c9b590739c40cb07211e321520ae70207f3212d97257ea16ad74e3207",
     "bend/tests/compress-file.bend": "1a7ffa73eda62ac1ef59306247705e2ab25cffd2048dc6b50f6b77326d29a51d",
-    "bend/tests/placement-merge.bend": "79fc0545670eba9db53bdb9f77ce32644ba575ebb8970d22930f5baf359309c7",
+    "bend/tests/placement-merge.bend": "97f982c2f0636528d00eb7be6a09a432dfde2801113ec6c114c4d0a2bdade9c2",
     "bend/tests/placement-world-fixtures.bend": "7af07391f5cec7119ad91c7ab9002d40757a2a132437d36c385a314857d17497",
-    "bend/tests/surface-feature-world.bend": "a6ce0c24e1ce5f00c82c9a8469d7865683f2b14447d408e7aa733ca75b3a77c0",
+    "bend/tests/surface-feature-world.bend": "4110bd3b6e6375e0ee7a3ccb38ecc773860bd9b24db3f7fb065119961d19a6fa",
     "bend/transport.bend": "2d7b2667aaf37b537de8be6c584acaeaec37377da475741bfe790a46d9c76f81",
     "bend/word64.bend": "62e104fbbc56208d66457789a7f2ed3f5fe122f4a19068c3df9b3bbbf555e139",
-    "scripts/test_bend_placement_merge.py": "7c0906745861d5ec6d73b1ec2bcbc8de6f5e78876912702c446f7e94ca283c9a"
+    "scripts/test_bend_placement_merge.py": "6df32393168a09ad00ed4616ffa91636e9b382b950b5d9e3dac5836bdce089c5"
   },
-  "native_sha256": "02c972b44a9e66171e5d2030c6586f5bce540631abc2b2df18b6f1ea8b170e86",
-  "gpu_sha256": "2300a537568b1bd17509600974b7a4db6c74168a4bd7c4f110713ad40491f0a5"
+  "native_sha256": "3b4088054d592048ad8c5a3e20e80b44e64d2abb48a33b77db340f1cef747ae1",
+  "gpu_sha256": "7733202688302061d1db7132fc5028751a72af57ee8dab17c302f8ef2ca31e6e"
 }

@@ -97,7 +97,7 @@ def base(source, width, context):
             meta=(-40,(15-i)%len(source['biomes']),6,int(i!=15))
         else:
             cells=([source['bedrock']]+[1]*54+[10]*8+[9]+[0]*64)
-            meta=(0,i%len(source['biomes']),6,int(i!=1023))
+            meta=(0,i%len(source['biomes']),6|(1<<27),int(i!=1023))
         assert len(cells)==HEIGHT
         voxels.append(cells); metadata.append(meta)
     return voxels, metadata
@@ -180,8 +180,14 @@ def check_mca(path,source,patches):
     assert (tag['xPos'],tag['zPos'],tag['yPos'],tag['DataVersion'])==(cx,cz,-4,5023)
     assert tag['Status']=='minecraft:features' and tag['isLightOn']==0
     assert len(tag['sections'])==8 and tag['block_entities']==tag['entities']==[]
-    # The final anchor is emitted by F.place(Column) in the Bend fixture.
+    # The final accepted overlay is emitted by four F.place writers in Bend.
     writer=[(ox+8,y,oz+8,1) for y in range(4)]
+    # Same four writers as the Bend merge fixture. Weighted plants consume one
+    # draw each; bamboo draws its height and probability even at probability 0.
+    from test_bend_decoration_counts import Random
+    rng=Random(123);rng.unit();rng.unit();bamboo_height=rng.integer(5,16);rng.unit()
+    writer.extend([(ox+9,0,oz+8,1),(ox+10,0,oz+8,1),(ox+10,1,oz+8,1)])
+    writer.extend((ox+11,y,oz+8,1) for y in range(bamboo_height+1))
     voxels,metadata,removed=merge(source,0,[*patches,writer],width=32)
     heights=[[0]*256 for _ in range(6)];checked=0
     for section_index,section in enumerate(tag['sections']):
@@ -204,7 +210,9 @@ def check_mca(path,source,patches):
     assert set(tag['Heightmaps'])==set(MAP_NAMES)
     for kind,key in enumerate(MAP_NAMES):assert unpack(tag['Heightmaps'][key],256,HEIGHT.bit_length())==heights[kind]
     assert heights[0][8+8*16]==68,('actual feature writer did not raise heightmap',heights[0][8+8*16])
-    return dict(blocks_checked=checked,quart_biomes=512,heightmaps=6,compressed_bytes=len(encoded),mca_bytes=len(data),removed_plants=removed)
+    assert heights[0][9+8*16]==65 and heights[0][10+8*16]==66, 'plant and aquatic pair heightmaps'
+    assert heights[0][11+8*16]==65+bamboo_height, 'bamboo crown heightmap'
+    return dict(surface_writer_families=4,blocks_checked=checked,quart_biomes=512,heightmaps=6,compressed_bytes=len(encoded),mca_bytes=len(data),removed_plants=removed)
 
 
 def exercise(binary,folder,name,source,cases,gpu,threads=2):

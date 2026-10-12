@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Actual simple-block, block-column and disk writes on CPU and observed Metal.
+"""Actual registered surface, plant, aquatic and bamboo writes on CPU and observed Metal.
 
 Unmodified captured registry profiles cross the binary transport. Independent
 Python voxel/RNG replay checks every touched block and successive writer calls.
@@ -15,16 +15,17 @@ import re
 import struct
 import subprocess
 
-from test_bend_compression import ROOT, DEFAULT_BEND, build, command
+from test_bend_compression import ROOT, DEFAULT_BEND, build, command, metal_compiler_command
 from test_bend_decoration_counts import Random, provider as integer, MASK64
 from test_bend_engine import compile_metal_observer
-from test_bend_noise import MASK, mix_hash
+from test_bend_noise import MASK, mix_hash, f32
 from test_bend_placement_programs import fixtures as placement_fixtures, origin, signed
 from test_bend_placement_walker import World as BaseWorld, predicate, shift
 from test_bend_block_providers import sample
 from test_bend_registry_noise import fixture_wire
+from test_bend_placement_merge import sources
 
-KINDS = ('simple_block', 'block_column', 'disk')
+KINDS = ('simple_block', 'block_column', 'disk', 'plant', 'aquatic', 'bamboo')
 
 
 def features(node):
@@ -44,7 +45,7 @@ class World(BaseWorld):
         if offset == 0: return self.source['bedrock']
         if offset < 55: return 1
         if offset < 63: return 10 if len(self.source['materials']) > 8 else 1
-        if offset == 63: return 9 if len(self.source['materials']) > 8 else 1
+        if offset == 63: return 9 if len(self.source['materials']) > 8 else (7 if self.context >= 8 else 1)
         if self.context % 4 == 1 and offset < 68: return self.source['water']
         if self.context % 4 == 2 and offset == 66: return 1
         return 0
@@ -106,6 +107,50 @@ def place(f, rng, world, at, source):
                         if value is not None:
                             world.put(*pos,value);any_=True
         return any_
+    if kind in ('plant','aquatic'):
+        band = (1 if world.context % 4 == 0 else 2) if world.column(at[0],at[2]) is not None else None
+        states = [s for s in f['states'] if band is not None and s['band'] in (0,band)]
+        scale = max([f32(s['weight']) for s in states],default=0.)
+        scale = max(scale,f32(1.17549435e-38));total=0.
+        for s in states: total=f32(total+f32(f32(s['weight'])/scale))
+        choice=f32(rng.unit()*total);row=None
+        for s in states:
+            row=s;weight=f32(f32(s['weight'])/scale)
+            if choice<weight:break
+            choice=f32(choice-weight)
+        if row is None:return False
+        above=shift(at,(0,1,0));paired=row['upper']!=0
+        if kind=='plant':
+            ground=shift(at,(0,-1,0));soil=world.material(*ground) if ground is not None else None
+            if not -64<=at[1]<64 or world.material(*at)!=0 or soil is None or not source['material_flags'][soil]&(2 if row['dry'] else 1):return False
+            if paired and (above is None or not -64<=above[1]<64 or world.material(*above)!=0):return False
+        elif not test(row['survival'],at) or paired and (above is None or not test(row['upper_allowed'],above)):return False
+        if paired:world.put(*above,row['upper'])
+        world.put(*at,row['lower']);return True
+    if kind=='bamboo':
+        if world.material(*at)!=0 or not test(f['survival'],at):return False
+        height=rng.integer(5,16);writes=[]
+        if rng.unit()<f32(f['probability']):
+            radius=rng.integer(1,4)
+            for dx in range(-radius,radius+1):
+                for dz in range(-radius,radius+1):
+                    if dx*dx+dz*dz>radius*radius:continue
+                    pos=shift(at,(dx,0,dz))
+                    if pos is None:continue
+                    h=world.height(pos[0],pos[2],1)
+                    pos=shift((pos[0],h,pos[2]),(0,-1,0)) if h is not None else None
+                    if pos is not None and test(f['podzol_allowed'],pos):writes.append((pos,f['podzol']))
+        count=0
+        while count<height:
+            pos=shift(at,(0,count,0))
+            if pos is None or world.material(*pos)!=0:break
+            writes.append((pos,f['trunk']));count+=1
+        if count>=3:
+            for dy,material in enumerate(f['crown']):
+                pos=shift(at,(0,count-dy,0))
+                if pos is not None:writes.append((pos,material))
+        for pos,m in writes:world.put(*pos,m)
+        return True
     raise AssertionError(kind)
 
 
@@ -171,6 +216,24 @@ def fixtures(permutation):
         fs.append(column([layer(3,weighted)],direction,allowed=yes))
     # A long valid vertical column exercises clipped writes without clipping RNG.
     fs.append(column([layer(192,weighted)],allowed=yes))
+    sprout=lambda lower=5,upper=0,weight=1.,band=0,dry=False:dict(lower=lower,upper=upper,weight=weight,band=band,dry=dry)
+    land=lambda rows:dict(kind='plant',states=rows)
+    aquatic=lambda rows:dict(kind='aquatic',states=rows)
+    waterplant=lambda lower=5,upper=0,weight=1.,band=0,survival=mat([2]),allowed=mat([2]):dict(lower=lower,upper=upper,weight=weight,band=band,survival=survival,upper_allowed=allowed)
+    bamboo=lambda **kw:dict(kind='bamboo',probability=kw.get('probability',1.),trunk=kw.get('trunk',5),crown=kw.get('crown',[4,5,7]),podzol=kw.get('podzol',7),survival=kw.get('survival',mat([1,7],(0,-1,0))),podzol_allowed=kw.get('podzol_allowed',mat([1,7])))
+    fs += [land([sprout()]),land([sprout(5,4)]),land([sprout(dry=True)]),
+           land([sprout(5,weight=.25,band=1),sprout(7,weight=.75,band=2)]),
+           land([sprout(band=1)]),land([sprout(band=2)]),
+           land([sprout(5,weight=3e38),sprout(7,weight=3e38)]),
+           land([sprout(5,weight=1e-30),sprout(7,weight=3e-30)]),
+           aquatic([waterplant()]),aquatic([waterplant(5,7)]),
+           aquatic([waterplant(5,7,allowed=mat([1]))]),
+           aquatic([waterplant(5,weight=.25,band=1,survival=yes),waterplant(7,weight=.75,band=2,survival=yes)]),
+           bamboo(),bamboo(probability=0.),bamboo(probability=.5),bamboo(survival=yes),
+           # Podzol removes a heightmap block; all probes must still read the
+           # pre-feature snapshot, even for unusual registered materials.
+           bamboo(podzol=0),bamboo(podzol_allowed=mat([1],(-1,0,0)))]
+    source['material_flags'][1]=1
     fs += [plant(state(5),[row(5,(5,4),(7,6),yes,mat([1]))]),
            plant(state(4),[],current_survival=True)]
     source['decorations']=[dict(f,salt=i,placement=[]) for i,f in enumerate(fs)]
@@ -189,7 +252,13 @@ def fixtures(permutation):
               column([layer(16,state(5))],(1,0,0)),column([layer(1,state(8))]),
               disk(state(5),radius=-1),disk(state(5),radius=9),disk(state(5),half_height=5),
               disk(state(5),target=mat([8]))]: bad(f)
-    for key,value in [('direction',[1,0]),('prioritize_tip',1),('layers',None)]:
+    for f in [land([]),aquatic([]),land([sprout(lower=8)]),land([sprout(upper=8)]),
+              land([sprout(weight=0.)]),land([sprout(weight=-1.)]),land([sprout(weight=1e40)]),
+              land([sprout(band=3)]),land([sprout(dry=1)]),
+              aquatic([waterplant(survival=mat([8]))]),aquatic([waterplant(allowed=mat([0],(18,0,0)))]),
+              bamboo(probability=-.1),bamboo(probability=1.1),bamboo(trunk=8),bamboo(podzol=8),
+              bamboo(crown=[4,5]),bamboo(crown=[4,5,8]),bamboo(survival=mat([8])),bamboo(podzol_allowed=mat([8]))]:bad(f)
+    for key,value in [('direction' ,[1,0]),('prioritize_tip',1),('layers',None)]:
         f=copy.deepcopy(fs[6]);f[key]=value;bad(f)
     for mutate in ('length','index','bounds','null'):
         p=copy.deepcopy(source)
@@ -222,12 +291,37 @@ def controls(source):
     assert not get(len(fs)-1,0)[1] and not get(len(fs)-1,0)[2], 'unsupported shared survival never guesses'
     x,y,z=point(0)
     assert get(17,0)[2][x,y+1,z-1]==5, 'disk sees previous X write in this row'
-    return dict(waterlogged_pairs='pass',upper_obstruction='pass',current_survival='pass',nullable='pass',
+    assert get(24,0)[1] and not get(24,0,1)[1], 'ordinary plants cannot overwrite earlier plants'
+    assert not get(24,10)[1] and get(26,10)[1], 'dry material flag has a distinct substrate'
+    assert get(27,0)[2][point(0)]==5 and get(27,2)[2][point(2)]==7, 'registered low/high bands'
+    assert not get(28,2)[1] and not get(29,0)[1], 'ineligible bands never fall back to another state'
+    seed=((((0x80000000^(28*7919))&MASK)<<32)|mix_hash((2*811+28)&MASK))
+    assert get(28,2)[0]==(seed+0x9e3779b97f4a7c15)&MASK64, 'empty band still consumes one selection draw'
+    assert get(30,0)[1] and get(31,0)[1], 'large and small finite weights remain selectable'
+    assert get(33,1)[2][point(1)]==5 and get(33,1)[2][shift(point(1),(0,1,0))]==7, 'aquatic pair replaces water'
+    assert not get(34,1)[1] and not get(34,1)[2], 'aquatic upper predicate rejects both halves'
+    assert get(35,4)[1] and get(35,4)[2], 'aquatic feature replacement can write a nonair target'
+    x,y,z=point(0);stem=get(37,0)[2];top=max(py for px,py,pz in stem if px==x and pz==z)
+    assert (stem[x,top,z],stem[x,top-1,z],stem[x,top-2,z])==(4,5,7), 'complete bamboo crown'
+    seed=((((0x80000000^(37*7919))&MASK)<<32)|mix_hash(37))
+    assert get(37,0)[0]==(seed+2*0x9e3779b97f4a7c15)&MASK64, 'probability zero still consumes the chance draw'
+    assert get(37,0,1)[0]==get(37,0)[0] and not get(37,0,1)[1], 'bamboo rejects occupied origin before RNG'
+    assert len(get(37,2)[2])==2 and shift(point(2),(0,2,0)) not in get(37,2)[2], 'blocked bamboo has no crown'
+    assert get(40,0)[2][x,-1,z]==0 and get(40,0)[2][x,0,z]==5, 'podzol snapshot preserves the stem anchor'
+    # Neighbor tests must not see a preceding podzol write in this same patch.
+    soil_patch=get(41,0)[2]
+    assert all(m==7 for (px,py,pz),m in soil_patch.items() if py==-1)
+    assert sum(py==-1 for px,py,pz in soil_patch)>5, 'snapshot podzol circle is not an alternating scan'
+    return dict(ordinary_plant_replacement='pass',dry_substrates='pass',weighted_bands='pass',empty_band_rng='pass',
+                finite_weight_scaling='pass',aquatic_pair_predicates='pass',aquatic_replacement='pass',
+                bamboo_crown='pass',bamboo_rng='pass',bamboo_obstruction='pass',podzol_snapshot='pass',
+                waterlogged_pairs='pass',upper_obstruction='pass',current_survival='pass',nullable='pass',
                 base_tip_truncation='pass',unsupported_current_state='pass',live_repeated_writes='pass',unknown_columns='pass',
                 build_height_clipping='pass',ordered_disk_writes='pass',signed_overflow='pass')
 
 
 def exercise(binary,folder,name,source,gpu,threads=2):
+    print(f'{name}: {"Metal" if gpu else "CPU"}, {threads} threads',flush=True)
     path=folder/f'{name}.rbp';path.write_bytes(fixture_wire(source,True))
     output=folder/f'{name}-{int(gpu)}-{threads}.bin'
     run=command(['nice','-n','10',binary,path,output,'--threads',threads,'--gpu','on' if gpu else 'off'],timeout=600)
@@ -239,7 +333,11 @@ def main():
     parser.add_argument('--skip-build',action='store_true',help='Reuse both normal and observer binaries');parser.add_argument('--prove-metal',action='store_true');args=parser.parse_args()
     folder=ROOT/'build/bend/surface-feature-tests';folder.mkdir(parents=True,exist_ok=True)
     binary=ROOT/'build/bend/surface-features';driver=ROOT/'bend/tests/surface-features.bend'
-    if not args.skip_build:build(DEFAULT_BEND,binary,driver)
+    if not args.skip_build:
+        print('Compiling stock Bend surface fixture at nice +10 (one compiler)',flush=True)
+        generated=binary.with_suffix('.c');build(DEFAULT_BEND,generated,driver)
+        command(metal_compiler_command(generated,binary),timeout=600,cwd=ROOT)
+        command(['nice','-n','10',binary,'--threads','2','--gpu-build'],timeout=1800,cwd=ROOT)
     profiles=[(f'profile-{i}',json.loads(p.read_text())) for i,p in enumerate(args.profile)]
     fixture,empty,invalid=fixtures(profiles[0][1]['decoration_noise']['permutation']);semantics=controls(fixture)
     profiles += [('fixture',fixture),('empty',empty)];runs=[];outputs={}
@@ -266,7 +364,7 @@ def main():
             commands=[float(n) for n in re.findall(r'BEND_METAL_DISPATCH device_ms=([0-9.]+)',stderr)]
             if result['features']:assert commands,(name,'no actual Metal command buffers')
             observed.append(dict(profile=name,device_ms=commands,command_buffers=len(commands),sha256=result['sha256']))
-    paths=[ROOT/p for p in ('bend/surface_feature.bend','bend/registry_surface_feature.bend','bend/tests/surface-features.bend','bend/tests/surface-feature-world.bend','scripts/test_bend_surface_features.py')]
+    paths=sorted(sources(driver)|{Path(__file__).resolve()})
     report=dict(scope=__doc__.strip(),bend_version=command([DEFAULT_BEND,'version']).stdout.strip(),runs=runs,semantic_controls=semantics,
                 malformed_rejected=len(invalid),cpu_gpu_bytes_equal=True,one_cpu_thread='pass',metal_observation=observed,
                 profiles={str(p):hashlib.sha256(p.read_bytes()).hexdigest() for p in args.profile},
