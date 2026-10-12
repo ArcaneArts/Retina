@@ -19,6 +19,7 @@ import ../generated_chunk.bend as GC
 import ../generated_region.bend as GR
 import ../region.bend as Region
 import ../surface_feature.bend as F
+import ../surface_plants.bend as Plants
 import ../block_provider.bend as BP
 import ../int_provider.bend as I
 import ./binary-fixtures.bend as Output
@@ -130,7 +131,24 @@ def writer_patch(+source: M.Grid,+policy: P.Policy) -> E.Patch:
 @unsafe
 def writer_at(origin: W.U64,+source: M.Grid,+policy: P.Policy) -> E.Patch:
   match origin:
-    case W.U64{x,z}: writer_done(F.place(F.Column{[F.Layer{I.Constant{4},BP.State{1}}],P.Position{0,1,0},P.Always{},False{}},W.U64{0,123},F.Model{Q.Empty{},Q.Empty{}},E.World{source,policy,E.Empty{}},P.Position{U32.add(x,8),0,U32.add(z,8)}))
+    case W.U64{+x,+z}: writer_plants(F.place(F.Column{[F.Layer{I.Constant{4},BP.State{1}}],P.Position{0,1,0},P.Always{},False{}},W.U64{0,123},F.Model{Q.Empty{},Q.Empty{}},E.World{source,policy,E.Empty{}},P.Position{U32.add(x,8),0,U32.add(z,8)}),x,z,0)
+
+# Accepted ordinary plants, aquatic pairs and bamboo also pass through compact
+# merging and independent MCA decoding. Materials are intentionally synthetic
+# stone states; registry-specific writer validation lives in surface-features.
+@unsafe
+def writer_plants(+result: F.Placement,+x: U32,+z: U32,+i: U32) -> E.Patch:
+  match result i:
+    case _ 3: writer_done(result)
+    case F.Placement{state,world,_} _:
+      writer_plants(F.place(writer_feature(i),state,F.Model{Q.Empty{},Q.Empty{}},world,P.Position{U32.add(x,U32.add(9,i)),0,U32.add(z,8)}),x,z,U32.inc(i))
+
+@unsafe
+def writer_feature(i: U32) -> F.Feature:
+  match i:
+    case 0: F.Plant{[Plants.State{1,0,1.0,0,False{},P.Always{},P.Always{}}]}
+    case 1: F.Aquatic{[Plants.State{1,1,1.0,0,False{},P.Always{},P.Always{}}]}
+    case _: F.Bamboo{Plants.Bamboo{0.0,1,Q.prepared_table(U32,[1,1,1]),1,P.Always{},P.Always{}}}
 
 @unsafe
 def writer_done(result: F.Placement) -> E.Patch:

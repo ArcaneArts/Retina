@@ -8,6 +8,7 @@ import ./placement_random.bend as R
 import ./density.bend as Q
 import ./word64.bend as W
 import ./int_provider.bend as I
+import ./surface_plants.bend as V
 
 # Pure writers share the live placement world. The caller retains the returned
 # RNG state and world before asking its placement cursor for the next candidate.
@@ -18,6 +19,9 @@ type Layer is Data:
 type Feature is Data:
   Simple{provider: B.Provider,states: List<&2,PlantState>,water: P.Predicate,current_survival: Bool}
   Column{layers: List<&2,Layer>,direction: P.Position,allowed: P.Predicate,prioritize_tip: Bool}
+  Plant{states: List<&2,V.State>}
+  Aquatic{states: List<&2,V.State>}
+  Bamboo{recipe: V.Bamboo}
   Disk{provider: B.Provider,target: P.Predicate,radius: I.Provider,half_height: U32}
 type Model is Data:
   Model{noises: Q.Table<N.Program>,current_states: Q.Table<Maybe<&2,PlantState>>}
@@ -126,6 +130,9 @@ def vertical_limit(direction: P.Position) -> U32:
 @unsafe
 def valid(feature: Feature,+palette: U32,+noises: U32) -> Bool:
   match feature:
+    case Plant{states}: V.valid(states,palette)
+    case Aquatic{states}: V.valid(states,palette)
+    case Bamboo{recipe}: V.bamboo_valid(recipe,palette)
     case Simple{+provider,+states,water,current}:
       Bool.and(B.valid(provider,palette,noises),Bool.and(plants_valid(states,palette),Bool.and(P.predicate_valid(water,palette),
         Bool.or(current,covered(B.outputs(provider),states)))))
@@ -332,8 +339,16 @@ def disk_draw(draw: B.Sample,+p: P.Position,+y: U32,+x: U32,+z: U32,+radius: U32
     case B.Sample{state,Some{m}}: disk_blocks(U32.inc(y),x,z,radius,provider,target,half,state,model,E.put(world,p,m),at,True{})
 
 @unsafe
+def vegetation(result: V.Placement) -> Placement:
+  match result:
+    case V.Placement{state,world,placed}: Placement{state,world,placed}
+
+@unsafe
 def place(feature: Feature,+state: W.U64,+model: Model,+world: E.World,+at: P.Position) -> Placement:
   match feature model:
     case Simple{provider,states,water,current} Model{noises,_}: simple_sample(B.optional(provider,state,at,world,noises),states,water,current,model,world,at)
     case Column{layers,direction,allowed,tip} _: column_heights(heights(layers,state,[],0),direction,allowed,tip,model,world,at)
+    case Plant{states} _: vegetation(V.place(states,False{},state,world,at))
+    case Aquatic{states} _: vegetation(V.place(states,True{},state,world,at))
+    case Bamboo{recipe} _: vegetation(V.bamboo(recipe,state,world,at))
     case Disk{provider,target,radius,half} _: disk_radius(I.sample(radius,state),provider,target,half,model,world,at)

@@ -12,13 +12,14 @@ import ./placement_data.bend as P
 import ./block_provider.bend as B
 import ./int_provider.bend as I
 import ./density.bend as Q
+import ./surface_plants.bend as S
 
 type Context is Data:
   Context{keys: D.Keys,providers: RB.Context}
 
 @unsafe
 def context(-T: Type,doc: R.Document,next: R.Document -> Context -> T) -> T:
-  D.resolved(T,["kind","provider","states","water","current_survival","source","lower","upper","survival","upper_allowed","layers","direction","allowed","prioritize_tip","height","target","radius","half_height","simple_current_states","simple_block","block_column","disk"],doc,[],doc => keys => RB.context(T,doc,doc => providers => next(doc,Context{keys,providers})))
+  D.resolved(T,["kind","provider","states","water","current_survival","source","lower","upper","survival","upper_allowed","layers","direction","allowed","prioritize_tip","height","target","radius","half_height","simple_current_states","simple_block","block_column","disk","plant","aquatic","bamboo","weight","band","dry","probability","trunk","crown","podzol","podzol_allowed"],doc,[],doc => keys => RB.context(T,doc,doc => providers => next(doc,Context{keys,providers})))
 
 @unsafe
 def name(+keys: D.Keys,+id: U32,+i: U32) -> U32:
@@ -28,7 +29,7 @@ def name(+keys: D.Keys,+id: U32,+i: U32) -> U32:
 def named(equal: Bool,+keys: D.Keys,+id: U32,+i: U32) -> U32:
   match equal:
     case True{}: i
-    case False{}: name_more(U32.is_lt(i,2),keys,id,U32.inc(i))
+    case False{}: name_more(U32.is_lt(i,5),keys,id,U32.inc(i))
 
 @unsafe
 def name_more(more: Bool,+keys: D.Keys,+id: U32,+i: U32) -> U32:
@@ -198,6 +199,11 @@ def collected(-T: Type,kind: U32,values: List<&2,Maybe<&2,R.Value>>,doc: R.Docum
     case 2 provider <> target <> radius <> half <> Nil{} Context{_,RB.Context{_,integers,predicates}}:
       RB.parse(T,provider,doc,providers(context),doc => provider => RP.parse(T,target,doc,predicates,doc => target =>
         RI.prepare(T,radius,doc,integers,doc => radius => disk_results(T,provider,target,radius,D.integer(half),doc,next))))
+    case 3 states <> Nil{} _: sprouts(T,states,False{},doc,context,doc => result => sprouts_feature(T,result,False{},doc,next))
+    case 4 states <> Nil{} _: sprouts(T,states,True{},doc,context,doc => result => sprouts_feature(T,result,True{},doc,next))
+    case 5 probability <> trunk <> crown <> podzol <> survival <> allowed <> Nil{} Context{_,RB.Context{_,_,predicates}}:
+      RB.array(T,crown,doc,doc => crown => RP.parse(T,survival,doc,predicates,doc => survival =>
+        RP.parse(T,allowed,doc,predicates,doc => allowed => bamboo_results(T,D.number(probability),D.integer(trunk),crown,D.integer(podzol),survival,allowed,doc,next))))
     case _ _ _: next(doc,Fail{765})
 
 @unsafe
@@ -206,6 +212,9 @@ def kind(-T: Type,+kind: U32,doc: R.Document,value: R.Value,+context: Context,ne
     case 0: fields(T,[1,2,3,4],doc,value,context,[],doc => values => collected(T,kind,values,doc,context,next))
     case 1: fields(T,[10,11,12,13],doc,value,context,[],doc => values => collected(T,kind,values,doc,context,next))
     case 2: fields(T,[1,15,16,17],doc,value,context,[],doc => values => collected(T,kind,values,doc,context,next))
+    case 3: fields(T,[2],doc,value,context,[],doc => values => collected(T,kind,values,doc,context,next))
+    case 4: fields(T,[2],doc,value,context,[],doc => values => collected(T,kind,values,doc,context,next))
+    case 5: fields(T,[28,29,30,31,8,32],doc,value,context,[],doc => values => collected(T,kind,values,doc,context,next))
     case _: next(doc,Fail{765})
 
 @unsafe
@@ -270,3 +279,53 @@ def current_found(-T: Type,found: Maybe<&2,R.Value>,doc: R.Document,+context: Co
 @unsafe
 def current_states(-T: Type,doc: R.Document,+context: Context,+palette: U32,next: R.Document -> Result<&1,&1,U32,Q.Table<Maybe<&2,F.PlantState>>> -> T) -> T:
   V.root(T,doc,doc => root => V.field(T,doc,root,"simple_current_states",doc => found => current_found(T,found,doc,context,palette,next)))
+
+
+@unsafe
+def sprout_results(-T: Type,lower: Result<&1,&1,U32,U32>,upper: Result<&1,&1,U32,U32>,weight: Result<&1,&1,U32,F32>,band: Result<&1,&1,U32,U32>,dry: Result<&1,&1,U32,Bool>,survival: Result<&1,&1,U32,P.Predicate>,allowed: Result<&1,&1,U32,P.Predicate>,doc: R.Document,next: R.Document -> Result<&1,&1,U32,S.State> -> T) -> T:
+  match lower upper weight band dry survival allowed:
+    case Done{l} Done{u} Done{w} Done{b} Done{d} Done{s} Done{a}: next(doc,Done{S.State{l,u,w,b,d,s,a}})
+    case _ _ _ _ _ _ _: next(doc,Fail{765})
+
+@unsafe
+def sprout_fields(-T: Type,aquatic: Bool,values: List<&2,Maybe<&2,R.Value>>,doc: R.Document,+context: Context,next: R.Document -> Result<&1,&1,U32,S.State> -> T) -> T:
+  match aquatic values context:
+    case False{} lower <> upper <> weight <> band <> dry <> _ <> _ <> Nil{} _:
+      sprout_results(T,D.integer(lower),D.integer(upper),D.number(weight),D.integer(band),M.boolean(dry),Done{P.Always{}},Done{P.Always{}},doc,next)
+    case True{} lower <> upper <> weight <> band <> _ <> survival <> allowed <> Nil{} Context{_,RB.Context{_,_,predicates}}:
+      RP.parse(T,survival,doc,predicates,doc => survival => RP.parse(T,allowed,doc,predicates,doc => allowed =>
+        sprout_results(T,D.integer(lower),D.integer(upper),D.number(weight),D.integer(band),Done{False{}},survival,allowed,doc,next)))
+    case _ _ _: next(doc,Fail{765})
+
+@unsafe
+def sprouts(-T: Type,found: Maybe<&2,R.Value>,+aquatic: Bool,doc: R.Document,+context: Context,next: R.Document -> Result<&1,&1,U32,List<&2,S.State>> -> T) -> T:
+  match found:
+    case Some{R.Value{6,n,_,at}}: sprouts_items(T,n,U32.add(at,3),aquatic,doc,context,[],next)
+    case _: next(doc,Fail{765})
+
+@unsafe
+def sprouts_items(-T: Type,+n: U32,+at: U32,+aquatic: Bool,doc: R.Document,+context: Context,acc: List<&2,S.State>,next: R.Document -> Result<&1,&1,U32,List<&2,S.State>> -> T) -> T:
+  match n:
+    case 0: next(doc,Done{List.reverse(&2,S.State,acc)})
+    case _: R.value(T,doc,at,doc => value => R.get(T,doc,U32.inc(at),doc => span =>
+      fields(T,[6,7,25,26,27,8,9],doc,value,context,[],doc => values =>
+        sprout_fields(T,aquatic,values,doc,context,doc => result => sprouts_item(T,result,U32.sub(n,1),U32.add(at,span),aquatic,doc,context,acc,next)))))
+
+@unsafe
+def sprouts_item(-T: Type,result: Result<&1,&1,U32,S.State>,+n: U32,+at: U32,+aquatic: Bool,doc: R.Document,+context: Context,acc: List<&2,S.State>,next: R.Document -> Result<&1,&1,U32,List<&2,S.State>> -> T) -> T:
+  match result:
+    case Fail{_}: next(doc,Fail{765})
+    case Done{x}: sprouts_items(T,n,at,aquatic,doc,context,x <> acc,next)
+
+@unsafe
+def sprouts_feature(-T: Type,result: Result<&1,&1,U32,List<&2,S.State>>,aquatic: Bool,doc: R.Document,next: R.Document -> Result<&1,&1,U32,F.Feature> -> T) -> T:
+  match result aquatic:
+    case Fail{_} _: next(doc,Fail{765})
+    case Done{xs} False{}: next(doc,Done{F.Plant{xs}})
+    case Done{xs} True{}: next(doc,Done{F.Aquatic{xs}})
+
+@unsafe
+def bamboo_results(-T: Type,probability: Result<&1,&1,U32,F32>,trunk: Result<&1,&1,U32,U32>,crown: Result<&1,&1,U32,Q.Table<U32>>,podzol: Result<&1,&1,U32,U32>,survival: Result<&1,&1,U32,P.Predicate>,allowed: Result<&1,&1,U32,P.Predicate>,doc: R.Document,next: R.Document -> Result<&1,&1,U32,F.Feature> -> T) -> T:
+  match probability trunk crown podzol survival allowed:
+    case Done{p} Done{t} Done{c} Done{d} Done{s} Done{a}: next(doc,Done{F.Bamboo{S.Bamboo{p,t,c,d,s,a}}})
+    case _ _ _ _ _ _: next(doc,Fail{765})
