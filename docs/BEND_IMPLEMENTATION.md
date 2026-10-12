@@ -132,12 +132,15 @@ A persistent live block overlay provides current materials/heights to those chec
 The lazy ordered walker and shared selector/count budgets now have a checked
 component implementation, as do all ten registered block-provider families and
 their initialized spatial noise stacks. Simple-block, block-column and disk
-writers now have checked implementations against the live world overlay. Port
-the remaining feature families, trunk/foliage variants and decorators, then
-merge their actual writes into resident block runs. Preserve
+writers now have checked implementations against the live world overlay. An
+ordered patch-to-run merger, final plant support/pair repair and core cropping
+now connect accepted feature overlays to the existing chunk serializer in a
+component harness. Port the remaining feature families, trunk/foliage variants
+and decorators, then connect the complete neighboring-anchor coordinator to
+the resident worker. Preserve
 globally seeded neighboring contributions and actual support checks instead of replacing these recipes with
-fixed biome densities. The existing cave survival policy provides a starting
-point for final unsupported-plant cleanup.
+fixed biome densities. The final repair pass uses the loaded plant floor masks and signed pair IDs;
+production integration must run it after all decoration and structure writes.
 
 For lighting, the exported `lighting` section supplies sky, optical state,
 blocked-face and face-shape tables. `bend/light_rules.bend` now implements local
@@ -180,11 +183,11 @@ more deeply; retain the original requested scope.
 | Caves, ravines, rare surface entrances and cave decoration | `GeologyProfile.java`, `geology.rs`, `features.rs`, `caves.wgsl` | Typed geology, cached globally aligned GPU/CPU cave fields, rounded noisy ravines and registered column carving implemented; independent voxel/serialized-region and actual Minecraft decoder checks pass. GPU/CPU depth-dependent cave-biome volumes now select registered carvers and serialize actual 3D quart IDs, retaining finalized surface biomes near the roof. Resident aquifers now supply carved cavity materials. Registered floor/ceiling cave dressing, vines, blossoms, dripstone and sparse plant survival now execute on the selected CPU/GPU backend. Playable terrain integration implemented; composed-density/exterior refinements and ordered surface decorations remain pending |
 | Lakes, aquifer fields and fluid barriers | `TerrainFeatureProfile.java`, `program/lake_sparse.rs`, `aquifers.wgsl` | Typed aquifer graph projection and GPU/CPU flooding, erosion, spread, lava, barrier and preliminary-surface evaluation implemented. Globally hashed resident fluid centers, trilinear barrier fields and nearest-center pressure now place registered cavity fluids while preserving protected/pressure-barrier materials. Registered lake budgets/materials, globally seeded candidates, five bank probes, bounded fluid levels and noisy basin/rim placement implemented on CPU/GPU before material coating. Independent block/NBT/zlib checks cover fluids, barriers, overlap and signed/distant coordinates; lake exclusions now use finalized pre-carving coast selection, including global probes outside the resident tile. Out-of-tile bank vertices now execute in bulk with exact prior geometry and material bytes, improving measured GPU lake-stage latency by 10.1–14.6×. Playable terrain integration implemented; full parity and performance work remain required |
 | Ore height/count/replacement/discard rules and GPU rasterization | `geology/`, `ore.wgsl` | Registered recipe projection, packed membership/material tables and selected-backend ordered replacement/exposure policy implemented. Registered count/rarity/height attempts and local sphere-chain/scattered geometry now execute on CPU/GPU. Local sphere-union masks and ordered scattered points now calculate in the same selected-backend evaluation as geometry. Spatial surface/cave membership filtering, stable neighboring contribution buckets and ordered resident-block replay now run in one selected CPU/GPU evaluation, with immutable exposure halo checks and independent voxel/NBT/zlib validation. Playable terrain integration implemented; full parity and performance work remain required |
-| Ordered decoration, registered counts, provider noise and placement modifiers | `DecorationProfile.java`, `decoration/placement*`, `counts/`, `provider_noise/` | Registered recursive integer providers, count/offset projection, build-relative height distributions and actual-permutation spatial count noise independently checked on CPU/Metal. Typed ordered-program projection, exact placement-salt grouping, recursive predicates, live block/heightmap overlay and terrain-dependent checks now independently checked on CPU/Metal. Lazy ordered count/layer/cuboid execution and shared selector budgets now have an independent CPU/Metal component harness. All ten block-provider families, full 64-bit weighted decisions, current-state property transforms and initialized permutation/offset noise now independently checked on CPU/Metal. Simple-block, block-column and disk writers now independently replay live material changes and RNG state on CPU/Metal; remaining feature families and playable integration are pending |
+| Ordered decoration, registered counts, provider noise and placement modifiers | `DecorationProfile.java`, `decoration/placement*`, `counts/`, `provider_noise/` | Registered recursive integer providers, count/offset projection, build-relative height distributions and actual-permutation spatial count noise independently checked on CPU/Metal. Typed ordered-program projection, exact placement-salt grouping, recursive predicates, live block/heightmap overlay and terrain-dependent checks now independently checked on CPU/Metal. Lazy ordered count/layer/cuboid execution and shared selector budgets now have an independent CPU/Metal component harness. All ten block-provider families, full 64-bit weighted decisions, current-state property transforms and initialized permutation/offset noise now independently checked on CPU/Metal. Simple-block, block-column and disk writers now independently replay live material changes and RNG state on CPU/Metal. Ordered accepted FEATURE overlays now merge into resident runs with final plant repair, core cropping and independently decoded MCA checks; remaining feature families, neighboring-anchor coordination and playable integration are pending |
 | Trees and decorators, giant mushrooms, fallen trees, disks, vegetation patches, block columns, bamboo, aquatic plants and attachments | `decoration.rs`, `decoration/`, `tree_shapes.rs` | Simple-block, block-column and disk writers and registry projections independently checked on CPU/Metal, including nested recipes. Trees/decorators, mushrooms, fallen trees, vegetation patches, bamboo, aquatic plants, attachments and playable integration remain pending |
 | Jigsaw pools/templates/processors, structures spanning regions and locate queries | `StructureProfile.java`, `structures.rs`, `structure_processors.rs`, `queries.rs` | Pending |
 | Structure entities/block entities/loot and attachment rotations | `nbt.rs`, `structures.rs`, `structure_processors.rs` | Pending |
-| Snow, freezing, plant support and path/gravel restrictions | `LightingProfile.java`, profile material/survival tables, `region.rs` | Pending |
+| Snow, freezing, plant support and path/gravel restrictions | `LightingProfile.java`, profile material/survival tables, `region.rs` | Final registered plant floor-mask and signed-pair cleanup implemented in the overlay merger and independently checked on CPU/Metal, including paths and crop/build boundaries. Snow/freezing and complete playable placement restrictions remain pending |
 | Full 64-bit seeds, signed/distant coordinates and repeatable ordering | `ChunkRequest`, native hash/random routines | Exact word-pair add/subtract/multiply/bit operations implemented; 3,689 operations independently verified. Typed i64/f64-to-F32 rounding independently verifies 131,072 scalar conversions per CPU/GPU run, including distant-value midpoint cases. Integration and coordinate/order checks pending |
 | Block/biome palettes, bit-packed long arrays, heightmaps, modified UTF-8 NBT and current data versions | `region.rs`, `nbt.rs` | Pure Bend palette remapping (49,664 indices), final-block heightmaps and complete fixture chunk encoding implemented. Minecraft 26.3 (data version 5023) reads/reopens mixed and prelit fixture chunks through actual region, palette and SerializableChunkData decoders. Resident generated base/material columns now encode into current-version NBT/zlib with exact state properties, quart surface biomes and final-block heightmaps; sparse generated-region/runtime integration implemented and checked in a running Fabric world |
 | LZ77, fixed-Huffman DEFLATE, zlib/Adler-32 and stored fallback | `region.rs` uses libdeflater | Implemented in `bend/compression.bend`; independent fixture tests pass |
@@ -1686,3 +1689,66 @@ complete terrain benchmark or evidence of a GPU speedup. The installed world
 worker, neighboring anchor scheduling, remaining surface features/trees,
 structures, snow/freezing, lighting, full 1024-chunk regions and equivalent
 complete Rust/Bend performance measurements remain required.
+
+
+### Ordered overlay merge and final plant repair
+
+`bend/placement_merge.bend` connects accepted feature overlays to the compact
+resident block runs consumed by the existing chunk encoder. `apply` takes an
+immutable source grid, a table of anchor patches in global anchor order and
+registered material flags, plant floor masks and signed pair IDs. Later patches
+replace earlier values, including explicit air. Completion order and treap shape
+do not choose the winner. Columns fork independently, prune irrelevant branches
+of the coordinate-ordered treaps and edit coalesced runs without allocating a
+whole region of expanded voxels.
+
+This merger currently accepts unconditional `FEATURE` writes. Tree/plant roles
+with conditional replacement still need their corresponding final replay policy;
+passing those plans directly as unconditional patches would be incorrect. The
+module is a component of the upcoming coordinator, not a substitute for it.
+
+The final two-pass repair first removes plants whose actual supporting material
+fails the registered floor mask, then removes mismatched or missing partners.
+A signed pair ID identifies a pair family; its sign chooses the neighboring
+block, and its magnitude must match the opposite half. Runs containing checked
+plants are scanned individually; other terrain remains proportional to run count.
+The same repair covers packs that use checked plants as base materials. Invalid
+columns and writes outside resident/build bounds are left untouched or clipped.
+Terrain metadata and the existing cave-biome lattice are carried through unchanged.
+
+`crop` extracts resident core columns after all halo contributions and repairs;
+nonresident or empty rectangles return error 766. It retains the original cave
+lattice for subsequent biome queries. Final serialized heightmaps come from the
+merged block runs rather than the preserved original surface-height metadata.
+
+Run the component validation locally:
+
+```sh
+python3 scripts/test_bend_placement_merge.py \
+  --profile <vanilla-profile.json> \
+  --profile <terralith-profile.json> \
+  --profile <combined-profile.json> --prove-metal
+```
+
+The harness adds constructed anchor patches to copies of the captured profiles;
+it leaves their recipes, material flags, floor masks and pair tables unchanged.
+Independent Python dense voxels check overlapping anchors, reversed ordering,
+empty patches, duplicate/air writes, missing columns, negative/distant/signed-limit
+coordinates, floor/build edges, paths, mismatched pair families and core crops.
+Original and merged cave/surface biome probes agree. An actual Bend block-column
+writer is included in a larger merge, then saved through Bend NBT, zlib and MCA;
+an independent decoder checks every block, quart biome and heightmap, along with
+coordinates, sectors and metadata. The explicit merge GPU boundary is observed
+using stock Metal command buffers and matching normal/diagnostic pipeline archives.
+Serialization in this component harness runs on the Bend CPU path.
+
+Across vanilla, Terralith and combined profiles, each backend checks 147,456
+voxels, including three serialized chunks; the small merge fixtures remove 588
+unsupported or unmatched plants. Two-thread CPU and Metal outputs match, as does
+the one-thread vanilla control. The observer records 30 Metal command buffers.
+Evidence and source/input/executable hashes are recorded in
+`docs/benchmarks/bend-placement-merge-correctness.json`. These are component
+correctness results, not full-region or generator performance measurements.
+The installed playable worker is unchanged. The complete coordinator, remaining
+surface features/trees, structures, snow/freezing, lighting, full-region caching
+and equivalent complete Rust/Bend benchmarks remain required.
