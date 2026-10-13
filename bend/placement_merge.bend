@@ -126,13 +126,18 @@ def clean(+runs: List<&2,M.Run>,+height: U32,+repair: Repair) -> List<&2,M.Run>:
   partners(repair_runs(runs,0,height,repair,runs),height,repair)
 
 @unsafe
+def rebuilt(h: U32,b: U32,a: F32,c: F32,d: F32,e: F32,f: F32,+runs: List<&2,M.Run>) -> M.Column:
+  M.Column{h,b,a,c,d,e,f,runs,U32.from_nat(List.length(&2,M.Run,runs)),True{}}
+
+@unsafe
 def column(column: M.Column,patches: Q.Table<E.Patch>,x: U32,z: U32,minimum: U32,+height: U32,+repair: Repair) -> M.Column:
   match column:
-    case M.Column{h,b,a,c,d,e,f,runs,p,True{}}: M.Column{h,b,a,c,d,e,f,clean(ordered(patches,x,z,minimum,height,runs),height,repair),p,True{}}
+    case M.Column{h,b,a,c,d,e,f,runs,_,True{}}: rebuilt(h,b,a,c,d,e,f,clean(ordered(patches,x,z,minimum,height,runs),height,repair))
     case _: column
 
-# Columns fork independently. Metadata and the cave-biome lattice are carried
-# through unchanged; final NBT heightmaps are derived from the resulting runs.
+# Columns fork independently. Refresh the response-framing run count after all
+# writes and repairs; geometric metadata and the cave-biome lattice are retained.
+# Final NBT heightmaps are derived from the resulting runs.
 @unsafe
 def columns(+n: U32,+base: U32,+source: M.Grid,+patches: Q.Table<E.Patch>,+repair: Repair) -> Q.Table<M.Column>:
   split(U32.is_gt(n,1),n,base,source,patches,repair)

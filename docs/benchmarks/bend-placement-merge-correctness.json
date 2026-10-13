@@ -3,56 +3,72 @@
   "bend_version": "bend 2.0.36",
   "runs": [
     {
-      "profile": "/Users/cyberpwn/.local/share/retina-bend/2.0.36/backend-artifacts/placement-merge-20261012/profiles/profile-0.json",
+      "profile": "build/bend/profiles/profile-0.json",
       "gpu": false,
       "cases": [
         {
           "voxels_checked": 2048,
           "removed_plants": 9,
           "biome_queries": 32,
-          "crop_columns": 4
+          "crop_columns": 4,
+          "real_column_queries": 28,
+          "changed_run_counts": 8
         },
         {
           "voxels_checked": 2048,
           "removed_plants": 0,
           "biome_queries": 32,
-          "crop_columns": 4
+          "crop_columns": 4,
+          "real_column_queries": 28,
+          "changed_run_counts": 0
         },
         {
           "voxels_checked": 2048,
           "removed_plants": 2,
           "biome_queries": 32,
-          "crop_columns": 4
+          "crop_columns": 4,
+          "real_column_queries": 28,
+          "changed_run_counts": 8
         },
         {
           "voxels_checked": 2048,
           "removed_plants": 9,
           "biome_queries": 32,
-          "crop_columns": 4
+          "crop_columns": 4,
+          "real_column_queries": 28,
+          "changed_run_counts": 8
         },
         {
           "voxels_checked": 2048,
           "removed_plants": 48,
           "biome_queries": 32,
-          "crop_columns": 4
+          "crop_columns": 4,
+          "real_column_queries": 28,
+          "changed_run_counts": 15
         },
         {
           "voxels_checked": 2048,
           "removed_plants": 34,
           "biome_queries": 32,
-          "crop_columns": 4
+          "crop_columns": 4,
+          "real_column_queries": 28,
+          "changed_run_counts": 15
         },
         {
           "voxels_checked": 2048,
           "removed_plants": 38,
           "biome_queries": 32,
-          "crop_columns": 4
+          "crop_columns": 4,
+          "real_column_queries": 28,
+          "changed_run_counts": 15
         },
         {
           "voxels_checked": 2048,
           "removed_plants": 48,
           "biome_queries": 32,
-          "crop_columns": 4
+          "crop_columns": 4,
+          "real_column_queries": 28,
+          "changed_run_counts": 15
         }
       ],
       "mca": {
@@ -66,68 +82,84 @@
       },
       "input_sha256": "bab4d903286af5cf5b795049a10748fc3cefd3d52121e99e837216113883594f",
       "output_sha256": [
-        "20fd945d61e4844fb5e9bf7bbe6275c4fef42513d982e78023fc40f3b8f4d130",
-        "8564700744c689d58bb8e2bc0b26b6b7bdefcfaba5a1ec7e2300a4e54e8e6874",
-        "33f0b7789e91993cba6c533d39072a988e80236c609b459eea0b9cf3b56c3456",
-        "425ffc62426d4539f6c5819d8dafa41350296d8fb95930f41a6441b299a346fb",
-        "cf064bbc09d824679418061ecd022f414540cfbfd52c65c6fbd7327825a24442",
-        "5d46256a4189586c8f54dca9b1fe3e480262c11c5013fe53ea4ae8d84613bf52",
-        "012b2d6c9e014bcb44bd33b1d1ad510b3e06fd8270c7dd50d2d8525cf584bf34",
-        "4b972cc857a86559c44ec91d19fe8fd9443e908c6ee7aa1fac617013ff3b8349",
+        "18d3b663505fc4a71427e2b6815193771f7097924bfb40ba452d27e55fcbc15a",
+        "1588f5fc20f0954319432273f8109bd23403c447709ec04f05d85230e402c494",
+        "fc3a7b5ba9e08f2c5903d9451aaef9d699d9010df1e0328fb81cf194853c9a21",
+        "d1f132b5769c5e25106a77db56325ef317994ac60afac1a1550c07685ab8188e",
+        "d05cd63d307ac2b234127ba5e20bdfdd86782acdf1bde3ba18840e1c324324a5",
+        "3e24be757f398fe9b83f24e16f90337f64261c92b27bc515ef0b72ff8a6f8ff1",
+        "903107b094d703e2504608f84aec30179899e8f5ba8270370dc1f903ea6d78e8",
+        "f8ff9c4513ff314175a8bbb1ad4d83d2df4ee40c34416f287902f0fa0cad4528",
         "a5cad1b49e9d0e8d23ccf74ffa5ed29ca7994b6c6db1c57cc7f486b720cba6ef"
       ]
     },
     {
-      "profile": "/Users/cyberpwn/.local/share/retina-bend/2.0.36/backend-artifacts/placement-merge-20261012/profiles/profile-0.json",
+      "profile": "build/bend/profiles/profile-0.json",
       "gpu": true,
       "cases": [
         {
           "voxels_checked": 2048,
           "removed_plants": 9,
           "biome_queries": 32,
-          "crop_columns": 4
+          "crop_columns": 4,
+          "real_column_queries": 28,
+          "changed_run_counts": 8
         },
         {
           "voxels_checked": 2048,
           "removed_plants": 0,
           "biome_queries": 32,
-          "crop_columns": 4
+          "crop_columns": 4,
+          "real_column_queries": 28,
+          "changed_run_counts": 0
         },
         {
           "voxels_checked": 2048,
           "removed_plants": 2,
           "biome_queries": 32,
-          "crop_columns": 4
+          "crop_columns": 4,
+          "real_column_queries": 28,
+          "changed_run_counts": 8
         },
         {
           "voxels_checked": 2048,
           "removed_plants": 9,
           "biome_queries": 32,
-          "crop_columns": 4
+          "crop_columns": 4,
+          "real_column_queries": 28,
+          "changed_run_counts": 8
         },
         {
           "voxels_checked": 2048,
           "removed_plants": 48,
           "biome_queries": 32,
-          "crop_columns": 4
+          "crop_columns": 4,
+          "real_column_queries": 28,
+          "changed_run_counts": 15
         },
         {
           "voxels_checked": 2048,
           "removed_plants": 34,
           "biome_queries": 32,
-          "crop_columns": 4
+          "crop_columns": 4,
+          "real_column_queries": 28,
+          "changed_run_counts": 15
         },
         {
           "voxels_checked": 2048,
           "removed_plants": 38,
           "biome_queries": 32,
-          "crop_columns": 4
+          "crop_columns": 4,
+          "real_column_queries": 28,
+          "changed_run_counts": 15
         },
         {
           "voxels_checked": 2048,
           "removed_plants": 48,
           "biome_queries": 32,
-          "crop_columns": 4
+          "crop_columns": 4,
+          "real_column_queries": 28,
+          "changed_run_counts": 15
         }
       ],
       "mca": {
@@ -141,68 +173,84 @@
       },
       "input_sha256": "bab4d903286af5cf5b795049a10748fc3cefd3d52121e99e837216113883594f",
       "output_sha256": [
-        "20fd945d61e4844fb5e9bf7bbe6275c4fef42513d982e78023fc40f3b8f4d130",
-        "8564700744c689d58bb8e2bc0b26b6b7bdefcfaba5a1ec7e2300a4e54e8e6874",
-        "33f0b7789e91993cba6c533d39072a988e80236c609b459eea0b9cf3b56c3456",
-        "425ffc62426d4539f6c5819d8dafa41350296d8fb95930f41a6441b299a346fb",
-        "cf064bbc09d824679418061ecd022f414540cfbfd52c65c6fbd7327825a24442",
-        "5d46256a4189586c8f54dca9b1fe3e480262c11c5013fe53ea4ae8d84613bf52",
-        "012b2d6c9e014bcb44bd33b1d1ad510b3e06fd8270c7dd50d2d8525cf584bf34",
-        "4b972cc857a86559c44ec91d19fe8fd9443e908c6ee7aa1fac617013ff3b8349",
+        "18d3b663505fc4a71427e2b6815193771f7097924bfb40ba452d27e55fcbc15a",
+        "1588f5fc20f0954319432273f8109bd23403c447709ec04f05d85230e402c494",
+        "fc3a7b5ba9e08f2c5903d9451aaef9d699d9010df1e0328fb81cf194853c9a21",
+        "d1f132b5769c5e25106a77db56325ef317994ac60afac1a1550c07685ab8188e",
+        "d05cd63d307ac2b234127ba5e20bdfdd86782acdf1bde3ba18840e1c324324a5",
+        "3e24be757f398fe9b83f24e16f90337f64261c92b27bc515ef0b72ff8a6f8ff1",
+        "903107b094d703e2504608f84aec30179899e8f5ba8270370dc1f903ea6d78e8",
+        "f8ff9c4513ff314175a8bbb1ad4d83d2df4ee40c34416f287902f0fa0cad4528",
         "a5cad1b49e9d0e8d23ccf74ffa5ed29ca7994b6c6db1c57cc7f486b720cba6ef"
       ]
     },
     {
-      "profile": "/Users/cyberpwn/.local/share/retina-bend/2.0.36/backend-artifacts/placement-merge-20261012/profiles/profile-1.json",
+      "profile": "build/bend/profiles/profile-1.json",
       "gpu": false,
       "cases": [
         {
           "voxels_checked": 2048,
           "removed_plants": 11,
           "biome_queries": 32,
-          "crop_columns": 4
+          "crop_columns": 4,
+          "real_column_queries": 28,
+          "changed_run_counts": 9
         },
         {
           "voxels_checked": 2048,
           "removed_plants": 0,
           "biome_queries": 32,
-          "crop_columns": 4
+          "crop_columns": 4,
+          "real_column_queries": 28,
+          "changed_run_counts": 0
         },
         {
           "voxels_checked": 2048,
           "removed_plants": 2,
           "biome_queries": 32,
-          "crop_columns": 4
+          "crop_columns": 4,
+          "real_column_queries": 28,
+          "changed_run_counts": 9
         },
         {
           "voxels_checked": 2048,
           "removed_plants": 11,
           "biome_queries": 32,
-          "crop_columns": 4
+          "crop_columns": 4,
+          "real_column_queries": 28,
+          "changed_run_counts": 9
         },
         {
           "voxels_checked": 2048,
           "removed_plants": 50,
           "biome_queries": 32,
-          "crop_columns": 4
+          "crop_columns": 4,
+          "real_column_queries": 28,
+          "changed_run_counts": 15
         },
         {
           "voxels_checked": 2048,
           "removed_plants": 36,
           "biome_queries": 32,
-          "crop_columns": 4
+          "crop_columns": 4,
+          "real_column_queries": 28,
+          "changed_run_counts": 15
         },
         {
           "voxels_checked": 2048,
           "removed_plants": 40,
           "biome_queries": 32,
-          "crop_columns": 4
+          "crop_columns": 4,
+          "real_column_queries": 28,
+          "changed_run_counts": 15
         },
         {
           "voxels_checked": 2048,
           "removed_plants": 50,
           "biome_queries": 32,
-          "crop_columns": 4
+          "crop_columns": 4,
+          "real_column_queries": 28,
+          "changed_run_counts": 15
         }
       ],
       "mca": {
@@ -216,68 +264,84 @@
       },
       "input_sha256": "7d67887b635e167234dfd455607cde175b838ef29f480fbbc78204ba0c4147f6",
       "output_sha256": [
-        "3c008c205e5462e44d2c8b105bece1aef4f4c7110fd61a34bbbd60fe06abf29b",
-        "8564700744c689d58bb8e2bc0b26b6b7bdefcfaba5a1ec7e2300a4e54e8e6874",
-        "9a684911a7716121bcb33602f0c3312b4363a70e5486e43a89c11df243fde914",
-        "06b2d241efb8bd00af238fdab9416be7aab7607f1c18ffed7e2c3a6bda64d4ec",
-        "bfad4a8b1b5e588cce8a8043d30653db4a877aa75fe6938fbc99178ce8cfa2b0",
-        "640737a92ca613f60d2eac55b18ce8fd5a53ef1889f094eb60008f1ad3de2195",
-        "2dc61b0a1e530ddfd52780725266dbb03e2181bf78a53165216853258df1d978",
-        "4e0e7b5e04bc861aabb59c8fb4e94d6710b79570636ee5254ca491a7272caa8f",
+        "96be27ab42764bf95da03d38429a9b8e931840ed5a5f1b3a55a8a12a2783a5ff",
+        "1588f5fc20f0954319432273f8109bd23403c447709ec04f05d85230e402c494",
+        "a88ecc0d522ab0b4ee07a937d9691ff76d2ac5129e051859422902c76cf7edcf",
+        "d9370fb30bfbd58d9337d60a00d27f6835d8e01a5c278b97bbcd0d71f79ad0ef",
+        "65fa0ff0b4aa71b220b291fac949604909a712daf0f975ec9a5479cdfb18badb",
+        "fc672d973f7b4cd744eb5d4257a5a5c0272d67a64c531a174534882cb66c4d03",
+        "7d1ca45e963e61926925fe59e1cdd873022ab160aeb33539f701d963d50cc997",
+        "3ffc56a8bedea93df2e2bbb2fbd97871f8dba061d30ff08f7e925052a8474be0",
         "7386999e33ded6137953094323df75d28b0f273f1cba9d8b89ce9bff8576db1c"
       ]
     },
     {
-      "profile": "/Users/cyberpwn/.local/share/retina-bend/2.0.36/backend-artifacts/placement-merge-20261012/profiles/profile-1.json",
+      "profile": "build/bend/profiles/profile-1.json",
       "gpu": true,
       "cases": [
         {
           "voxels_checked": 2048,
           "removed_plants": 11,
           "biome_queries": 32,
-          "crop_columns": 4
+          "crop_columns": 4,
+          "real_column_queries": 28,
+          "changed_run_counts": 9
         },
         {
           "voxels_checked": 2048,
           "removed_plants": 0,
           "biome_queries": 32,
-          "crop_columns": 4
+          "crop_columns": 4,
+          "real_column_queries": 28,
+          "changed_run_counts": 0
         },
         {
           "voxels_checked": 2048,
           "removed_plants": 2,
           "biome_queries": 32,
-          "crop_columns": 4
+          "crop_columns": 4,
+          "real_column_queries": 28,
+          "changed_run_counts": 9
         },
         {
           "voxels_checked": 2048,
           "removed_plants": 11,
           "biome_queries": 32,
-          "crop_columns": 4
+          "crop_columns": 4,
+          "real_column_queries": 28,
+          "changed_run_counts": 9
         },
         {
           "voxels_checked": 2048,
           "removed_plants": 50,
           "biome_queries": 32,
-          "crop_columns": 4
+          "crop_columns": 4,
+          "real_column_queries": 28,
+          "changed_run_counts": 15
         },
         {
           "voxels_checked": 2048,
           "removed_plants": 36,
           "biome_queries": 32,
-          "crop_columns": 4
+          "crop_columns": 4,
+          "real_column_queries": 28,
+          "changed_run_counts": 15
         },
         {
           "voxels_checked": 2048,
           "removed_plants": 40,
           "biome_queries": 32,
-          "crop_columns": 4
+          "crop_columns": 4,
+          "real_column_queries": 28,
+          "changed_run_counts": 15
         },
         {
           "voxels_checked": 2048,
           "removed_plants": 50,
           "biome_queries": 32,
-          "crop_columns": 4
+          "crop_columns": 4,
+          "real_column_queries": 28,
+          "changed_run_counts": 15
         }
       ],
       "mca": {
@@ -291,68 +355,84 @@
       },
       "input_sha256": "7d67887b635e167234dfd455607cde175b838ef29f480fbbc78204ba0c4147f6",
       "output_sha256": [
-        "3c008c205e5462e44d2c8b105bece1aef4f4c7110fd61a34bbbd60fe06abf29b",
-        "8564700744c689d58bb8e2bc0b26b6b7bdefcfaba5a1ec7e2300a4e54e8e6874",
-        "9a684911a7716121bcb33602f0c3312b4363a70e5486e43a89c11df243fde914",
-        "06b2d241efb8bd00af238fdab9416be7aab7607f1c18ffed7e2c3a6bda64d4ec",
-        "bfad4a8b1b5e588cce8a8043d30653db4a877aa75fe6938fbc99178ce8cfa2b0",
-        "640737a92ca613f60d2eac55b18ce8fd5a53ef1889f094eb60008f1ad3de2195",
-        "2dc61b0a1e530ddfd52780725266dbb03e2181bf78a53165216853258df1d978",
-        "4e0e7b5e04bc861aabb59c8fb4e94d6710b79570636ee5254ca491a7272caa8f",
+        "96be27ab42764bf95da03d38429a9b8e931840ed5a5f1b3a55a8a12a2783a5ff",
+        "1588f5fc20f0954319432273f8109bd23403c447709ec04f05d85230e402c494",
+        "a88ecc0d522ab0b4ee07a937d9691ff76d2ac5129e051859422902c76cf7edcf",
+        "d9370fb30bfbd58d9337d60a00d27f6835d8e01a5c278b97bbcd0d71f79ad0ef",
+        "65fa0ff0b4aa71b220b291fac949604909a712daf0f975ec9a5479cdfb18badb",
+        "fc672d973f7b4cd744eb5d4257a5a5c0272d67a64c531a174534882cb66c4d03",
+        "7d1ca45e963e61926925fe59e1cdd873022ab160aeb33539f701d963d50cc997",
+        "3ffc56a8bedea93df2e2bbb2fbd97871f8dba061d30ff08f7e925052a8474be0",
         "7386999e33ded6137953094323df75d28b0f273f1cba9d8b89ce9bff8576db1c"
       ]
     },
     {
-      "profile": "/Users/cyberpwn/.local/share/retina-bend/2.0.36/backend-artifacts/placement-merge-20261012/profiles/profile-2.json",
+      "profile": "build/bend/profiles/profile-2.json",
       "gpu": false,
       "cases": [
         {
           "voxels_checked": 2048,
           "removed_plants": 11,
           "biome_queries": 32,
-          "crop_columns": 4
+          "crop_columns": 4,
+          "real_column_queries": 28,
+          "changed_run_counts": 9
         },
         {
           "voxels_checked": 2048,
           "removed_plants": 0,
           "biome_queries": 32,
-          "crop_columns": 4
+          "crop_columns": 4,
+          "real_column_queries": 28,
+          "changed_run_counts": 0
         },
         {
           "voxels_checked": 2048,
           "removed_plants": 2,
           "biome_queries": 32,
-          "crop_columns": 4
+          "crop_columns": 4,
+          "real_column_queries": 28,
+          "changed_run_counts": 9
         },
         {
           "voxels_checked": 2048,
           "removed_plants": 11,
           "biome_queries": 32,
-          "crop_columns": 4
+          "crop_columns": 4,
+          "real_column_queries": 28,
+          "changed_run_counts": 9
         },
         {
           "voxels_checked": 2048,
           "removed_plants": 50,
           "biome_queries": 32,
-          "crop_columns": 4
+          "crop_columns": 4,
+          "real_column_queries": 28,
+          "changed_run_counts": 15
         },
         {
           "voxels_checked": 2048,
           "removed_plants": 36,
           "biome_queries": 32,
-          "crop_columns": 4
+          "crop_columns": 4,
+          "real_column_queries": 28,
+          "changed_run_counts": 15
         },
         {
           "voxels_checked": 2048,
           "removed_plants": 40,
           "biome_queries": 32,
-          "crop_columns": 4
+          "crop_columns": 4,
+          "real_column_queries": 28,
+          "changed_run_counts": 15
         },
         {
           "voxels_checked": 2048,
           "removed_plants": 50,
           "biome_queries": 32,
-          "crop_columns": 4
+          "crop_columns": 4,
+          "real_column_queries": 28,
+          "changed_run_counts": 15
         }
       ],
       "mca": {
@@ -366,68 +446,84 @@
       },
       "input_sha256": "71da0bf674483b73182b4e9e83684b4724596e75c690d65d3fbbf0aeab6d84f6",
       "output_sha256": [
-        "3c008c205e5462e44d2c8b105bece1aef4f4c7110fd61a34bbbd60fe06abf29b",
-        "8564700744c689d58bb8e2bc0b26b6b7bdefcfaba5a1ec7e2300a4e54e8e6874",
-        "9a684911a7716121bcb33602f0c3312b4363a70e5486e43a89c11df243fde914",
-        "06b2d241efb8bd00af238fdab9416be7aab7607f1c18ffed7e2c3a6bda64d4ec",
-        "bfad4a8b1b5e588cce8a8043d30653db4a877aa75fe6938fbc99178ce8cfa2b0",
-        "640737a92ca613f60d2eac55b18ce8fd5a53ef1889f094eb60008f1ad3de2195",
-        "2dc61b0a1e530ddfd52780725266dbb03e2181bf78a53165216853258df1d978",
-        "4e0e7b5e04bc861aabb59c8fb4e94d6710b79570636ee5254ca491a7272caa8f",
+        "96be27ab42764bf95da03d38429a9b8e931840ed5a5f1b3a55a8a12a2783a5ff",
+        "1588f5fc20f0954319432273f8109bd23403c447709ec04f05d85230e402c494",
+        "a88ecc0d522ab0b4ee07a937d9691ff76d2ac5129e051859422902c76cf7edcf",
+        "d9370fb30bfbd58d9337d60a00d27f6835d8e01a5c278b97bbcd0d71f79ad0ef",
+        "65fa0ff0b4aa71b220b291fac949604909a712daf0f975ec9a5479cdfb18badb",
+        "fc672d973f7b4cd744eb5d4257a5a5c0272d67a64c531a174534882cb66c4d03",
+        "7d1ca45e963e61926925fe59e1cdd873022ab160aeb33539f701d963d50cc997",
+        "3ffc56a8bedea93df2e2bbb2fbd97871f8dba061d30ff08f7e925052a8474be0",
         "04fa9e6f271c7ed82a82250058602fdacc1e1d75dec549c4c02e74295faadd3f"
       ]
     },
     {
-      "profile": "/Users/cyberpwn/.local/share/retina-bend/2.0.36/backend-artifacts/placement-merge-20261012/profiles/profile-2.json",
+      "profile": "build/bend/profiles/profile-2.json",
       "gpu": true,
       "cases": [
         {
           "voxels_checked": 2048,
           "removed_plants": 11,
           "biome_queries": 32,
-          "crop_columns": 4
+          "crop_columns": 4,
+          "real_column_queries": 28,
+          "changed_run_counts": 9
         },
         {
           "voxels_checked": 2048,
           "removed_plants": 0,
           "biome_queries": 32,
-          "crop_columns": 4
+          "crop_columns": 4,
+          "real_column_queries": 28,
+          "changed_run_counts": 0
         },
         {
           "voxels_checked": 2048,
           "removed_plants": 2,
           "biome_queries": 32,
-          "crop_columns": 4
+          "crop_columns": 4,
+          "real_column_queries": 28,
+          "changed_run_counts": 9
         },
         {
           "voxels_checked": 2048,
           "removed_plants": 11,
           "biome_queries": 32,
-          "crop_columns": 4
+          "crop_columns": 4,
+          "real_column_queries": 28,
+          "changed_run_counts": 9
         },
         {
           "voxels_checked": 2048,
           "removed_plants": 50,
           "biome_queries": 32,
-          "crop_columns": 4
+          "crop_columns": 4,
+          "real_column_queries": 28,
+          "changed_run_counts": 15
         },
         {
           "voxels_checked": 2048,
           "removed_plants": 36,
           "biome_queries": 32,
-          "crop_columns": 4
+          "crop_columns": 4,
+          "real_column_queries": 28,
+          "changed_run_counts": 15
         },
         {
           "voxels_checked": 2048,
           "removed_plants": 40,
           "biome_queries": 32,
-          "crop_columns": 4
+          "crop_columns": 4,
+          "real_column_queries": 28,
+          "changed_run_counts": 15
         },
         {
           "voxels_checked": 2048,
           "removed_plants": 50,
           "biome_queries": 32,
-          "crop_columns": 4
+          "crop_columns": 4,
+          "real_column_queries": 28,
+          "changed_run_counts": 15
         }
       ],
       "mca": {
@@ -441,14 +537,14 @@
       },
       "input_sha256": "71da0bf674483b73182b4e9e83684b4724596e75c690d65d3fbbf0aeab6d84f6",
       "output_sha256": [
-        "3c008c205e5462e44d2c8b105bece1aef4f4c7110fd61a34bbbd60fe06abf29b",
-        "8564700744c689d58bb8e2bc0b26b6b7bdefcfaba5a1ec7e2300a4e54e8e6874",
-        "9a684911a7716121bcb33602f0c3312b4363a70e5486e43a89c11df243fde914",
-        "06b2d241efb8bd00af238fdab9416be7aab7607f1c18ffed7e2c3a6bda64d4ec",
-        "bfad4a8b1b5e588cce8a8043d30653db4a877aa75fe6938fbc99178ce8cfa2b0",
-        "640737a92ca613f60d2eac55b18ce8fd5a53ef1889f094eb60008f1ad3de2195",
-        "2dc61b0a1e530ddfd52780725266dbb03e2181bf78a53165216853258df1d978",
-        "4e0e7b5e04bc861aabb59c8fb4e94d6710b79570636ee5254ca491a7272caa8f",
+        "96be27ab42764bf95da03d38429a9b8e931840ed5a5f1b3a55a8a12a2783a5ff",
+        "1588f5fc20f0954319432273f8109bd23403c447709ec04f05d85230e402c494",
+        "a88ecc0d522ab0b4ee07a937d9691ff76d2ac5129e051859422902c76cf7edcf",
+        "d9370fb30bfbd58d9337d60a00d27f6835d8e01a5c278b97bbcd0d71f79ad0ef",
+        "65fa0ff0b4aa71b220b291fac949604909a712daf0f975ec9a5479cdfb18badb",
+        "fc672d973f7b4cd744eb5d4257a5a5c0272d67a64c531a174534882cb66c4d03",
+        "7d1ca45e963e61926925fe59e1cdd873022ab160aeb33539f701d963d50cc997",
+        "3ffc56a8bedea93df2e2bbb2fbd97871f8dba061d30ff08f7e925052a8474be0",
         "04fa9e6f271c7ed82a82250058602fdacc1e1d75dec549c4c02e74295faadd3f"
       ]
     }
@@ -457,91 +553,91 @@
   "one_cpu_thread": "pass",
   "metal_observation": [
     {
-      "profile": "/Users/cyberpwn/.local/share/retina-bend/2.0.36/backend-artifacts/placement-merge-20261012/profiles/profile-0.json",
+      "profile": "build/bend/profiles/profile-0.json",
       "command_buffers": 10,
       "device_ms": [
-        18.4905,
-        3.803167,
-        8.000167,
-        0.99975,
-        8.702625,
-        7.36025,
-        25.57275,
-        19.888208,
-        20.732375,
-        25.899625
+        19.718458,
+        2.774708,
+        7.662417,
+        1.144542,
+        7.396,
+        7.121167,
+        25.343167,
+        20.290958,
+        20.689,
+        26.689542
       ],
       "output_sha256": [
-        "20fd945d61e4844fb5e9bf7bbe6275c4fef42513d982e78023fc40f3b8f4d130",
-        "8564700744c689d58bb8e2bc0b26b6b7bdefcfaba5a1ec7e2300a4e54e8e6874",
-        "33f0b7789e91993cba6c533d39072a988e80236c609b459eea0b9cf3b56c3456",
-        "425ffc62426d4539f6c5819d8dafa41350296d8fb95930f41a6441b299a346fb",
-        "cf064bbc09d824679418061ecd022f414540cfbfd52c65c6fbd7327825a24442",
-        "5d46256a4189586c8f54dca9b1fe3e480262c11c5013fe53ea4ae8d84613bf52",
-        "012b2d6c9e014bcb44bd33b1d1ad510b3e06fd8270c7dd50d2d8525cf584bf34",
-        "4b972cc857a86559c44ec91d19fe8fd9443e908c6ee7aa1fac617013ff3b8349",
+        "18d3b663505fc4a71427e2b6815193771f7097924bfb40ba452d27e55fcbc15a",
+        "1588f5fc20f0954319432273f8109bd23403c447709ec04f05d85230e402c494",
+        "fc3a7b5ba9e08f2c5903d9451aaef9d699d9010df1e0328fb81cf194853c9a21",
+        "d1f132b5769c5e25106a77db56325ef317994ac60afac1a1550c07685ab8188e",
+        "d05cd63d307ac2b234127ba5e20bdfdd86782acdf1bde3ba18840e1c324324a5",
+        "3e24be757f398fe9b83f24e16f90337f64261c92b27bc515ef0b72ff8a6f8ff1",
+        "903107b094d703e2504608f84aec30179899e8f5ba8270370dc1f903ea6d78e8",
+        "f8ff9c4513ff314175a8bbb1ad4d83d2df4ee40c34416f287902f0fa0cad4528",
         "a5cad1b49e9d0e8d23ccf74ffa5ed29ca7994b6c6db1c57cc7f486b720cba6ef"
       ]
     },
     {
-      "profile": "/Users/cyberpwn/.local/share/retina-bend/2.0.36/backend-artifacts/placement-merge-20261012/profiles/profile-1.json",
+      "profile": "build/bend/profiles/profile-1.json",
       "command_buffers": 10,
       "device_ms": [
-        16.722875,
-        2.53925,
-        7.418458,
-        1.010833,
-        7.42325,
-        7.31825,
-        25.751667,
-        20.39375,
-        21.00825,
-        26.697875
+        24.42275,
+        2.59725,
+        8.030667,
+        1.17825,
+        7.574833,
+        7.547792,
+        25.941875,
+        20.58875,
+        21.13925,
+        26.913625
       ],
       "output_sha256": [
-        "3c008c205e5462e44d2c8b105bece1aef4f4c7110fd61a34bbbd60fe06abf29b",
-        "8564700744c689d58bb8e2bc0b26b6b7bdefcfaba5a1ec7e2300a4e54e8e6874",
-        "9a684911a7716121bcb33602f0c3312b4363a70e5486e43a89c11df243fde914",
-        "06b2d241efb8bd00af238fdab9416be7aab7607f1c18ffed7e2c3a6bda64d4ec",
-        "bfad4a8b1b5e588cce8a8043d30653db4a877aa75fe6938fbc99178ce8cfa2b0",
-        "640737a92ca613f60d2eac55b18ce8fd5a53ef1889f094eb60008f1ad3de2195",
-        "2dc61b0a1e530ddfd52780725266dbb03e2181bf78a53165216853258df1d978",
-        "4e0e7b5e04bc861aabb59c8fb4e94d6710b79570636ee5254ca491a7272caa8f",
+        "96be27ab42764bf95da03d38429a9b8e931840ed5a5f1b3a55a8a12a2783a5ff",
+        "1588f5fc20f0954319432273f8109bd23403c447709ec04f05d85230e402c494",
+        "a88ecc0d522ab0b4ee07a937d9691ff76d2ac5129e051859422902c76cf7edcf",
+        "d9370fb30bfbd58d9337d60a00d27f6835d8e01a5c278b97bbcd0d71f79ad0ef",
+        "65fa0ff0b4aa71b220b291fac949604909a712daf0f975ec9a5479cdfb18badb",
+        "fc672d973f7b4cd744eb5d4257a5a5c0272d67a64c531a174534882cb66c4d03",
+        "7d1ca45e963e61926925fe59e1cdd873022ab160aeb33539f701d963d50cc997",
+        "3ffc56a8bedea93df2e2bbb2fbd97871f8dba061d30ff08f7e925052a8474be0",
         "7386999e33ded6137953094323df75d28b0f273f1cba9d8b89ce9bff8576db1c"
       ]
     },
     {
-      "profile": "/Users/cyberpwn/.local/share/retina-bend/2.0.36/backend-artifacts/placement-merge-20261012/profiles/profile-2.json",
+      "profile": "build/bend/profiles/profile-2.json",
       "command_buffers": 10,
       "device_ms": [
-        17.621083,
-        2.571,
-        6.659375,
-        1.027417,
-        7.487208,
-        7.328417,
-        25.796417,
-        20.324167,
-        21.078375,
-        26.624458
+        18.859125,
+        2.640375,
+        8.986542,
+        1.15125,
+        7.634917,
+        7.521917,
+        25.9115,
+        20.616583,
+        21.185833,
+        26.968792
       ],
       "output_sha256": [
-        "3c008c205e5462e44d2c8b105bece1aef4f4c7110fd61a34bbbd60fe06abf29b",
-        "8564700744c689d58bb8e2bc0b26b6b7bdefcfaba5a1ec7e2300a4e54e8e6874",
-        "9a684911a7716121bcb33602f0c3312b4363a70e5486e43a89c11df243fde914",
-        "06b2d241efb8bd00af238fdab9416be7aab7607f1c18ffed7e2c3a6bda64d4ec",
-        "bfad4a8b1b5e588cce8a8043d30653db4a877aa75fe6938fbc99178ce8cfa2b0",
-        "640737a92ca613f60d2eac55b18ce8fd5a53ef1889f094eb60008f1ad3de2195",
-        "2dc61b0a1e530ddfd52780725266dbb03e2181bf78a53165216853258df1d978",
-        "4e0e7b5e04bc861aabb59c8fb4e94d6710b79570636ee5254ca491a7272caa8f",
+        "96be27ab42764bf95da03d38429a9b8e931840ed5a5f1b3a55a8a12a2783a5ff",
+        "1588f5fc20f0954319432273f8109bd23403c447709ec04f05d85230e402c494",
+        "a88ecc0d522ab0b4ee07a937d9691ff76d2ac5129e051859422902c76cf7edcf",
+        "d9370fb30bfbd58d9337d60a00d27f6835d8e01a5c278b97bbcd0d71f79ad0ef",
+        "65fa0ff0b4aa71b220b291fac949604909a712daf0f975ec9a5479cdfb18badb",
+        "fc672d973f7b4cd744eb5d4257a5a5c0272d67a64c531a174534882cb66c4d03",
+        "7d1ca45e963e61926925fe59e1cdd873022ab160aeb33539f701d963d50cc997",
+        "3ffc56a8bedea93df2e2bbb2fbd97871f8dba061d30ff08f7e925052a8474be0",
         "04fa9e6f271c7ed82a82250058602fdacc1e1d75dec549c4c02e74295faadd3f"
       ]
     }
   ],
   "original_profiles": {
-    "/Users/cyberpwn/.local/share/retina-bend/2.0.36/backend-artifacts/placement-merge-20261012/profiles/profile-0.json": "aefce6ff0e800966ad55920c5d21510dfa277de4612f67e22d5146d3aa838203",
-    "/Users/cyberpwn/.local/share/retina-bend/2.0.36/backend-artifacts/placement-merge-20261012/profiles/profile-1.json": "c9abbe97860a394ed899d64967bd0395bb9bb4ec71a9dff43d1bb45893fefd4d",
-    "/Users/cyberpwn/.local/share/retina-bend/2.0.36/backend-artifacts/placement-merge-20261012/profiles/profile-2.json": "068fd602ad497128dd3960cb9be76840ebd41882b5b64c25acfa76d65e930c8b"
+    "build/bend/profiles/profile-0.json": "aefce6ff0e800966ad55920c5d21510dfa277de4612f67e22d5146d3aa838203",
+    "build/bend/profiles/profile-1.json": "c9abbe97860a394ed899d64967bd0395bb9bb4ec71a9dff43d1bb45893fefd4d",
+    "build/bend/profiles/profile-2.json": "068fd602ad497128dd3960cb9be76840ebd41882b5b64c25acfa76d65e930c8b"
   },
   "sources": {
     "bend/aquifer.bend": "a9537fa65402553acec5578d4a2474036f2190142a6e9d9c1faf3c7c0cc03e36",
@@ -582,7 +678,7 @@
     "bend/placement_checks.bend": "e9e41195ec6972979855488c446697c086b1b45b5ad4f1b157acb41dfc9d2e84",
     "bend/placement_data.bend": "57cfe91b1ac652eae6a8e551cf76846700fed5ec18d2b1d76f7c3bb4a9882142",
     "bend/placement_height.bend": "4cd946214e516cf2d26f101f5c20b826250b33a810d5658de07a1c4dda9ea4e8",
-    "bend/placement_merge.bend": "da3a55dfa081402e3aa2351857939808f76f337b82dd0ede2fe63624abbe8cb7",
+    "bend/placement_merge.bend": "16299fdd3a8ce1a3a23efdc393cda8647f17fb58328bfb5031840b93f42c2002",
     "bend/placement_random.bend": "1336014e813d127c88dce79374ccd2ed952d9d5a7a9d784454b81d28416b0c35",
     "bend/placement_world.bend": "84ebef382abf100b3d8b29f7d3c33c4b0b7f4d679aae5f2eb5b369175352077b",
     "bend/precise.bend": "50ba7138300f2c913b2d75a554a78d88bfb09931c6cd58ecc884ab7024c73c01",
@@ -603,19 +699,24 @@
     "bend/registry_placement_predicate.bend": "0f1ad10f8fd935e2bc6abbc71508bf9cfb404f0d115b3a7c06298b7eb7ea86bc",
     "bend/registry_values.bend": "5bb1d3ab6bfed7cf640af35089a5ec1370cc2f686d7cfb8b210e7643e1b3d97f",
     "bend/shoreline.bend": "932383d2add618bbc94b6b5ddd6f75030a3853e0def8fa2e78764405185cb888",
-    "bend/surface_feature.bend": "0504444b8ad57a8d3eec09d2ea98d4397005637bc2c69552d954ad4b0c8a3522",
-    "bend/surface_plants.bend": "089f4e828f24ac7bd34bf38287bceeb114495d7c978802311e9d4486151eb20c",
+    "bend/surface_feature.bend": "5dc5744988ad4e5681deba142ebd2cf837a38d58f0a2c01a18d96fd8bcf121d1",
+    "bend/surface_plants.bend": "81369dce84f2d54915272ac70a454565d873dfc5b2177857518ab35cb7aae734",
     "bend/terrain_height.bend": "bc5400f024c86b34294cc628b364d7ceb67fd9675cb2de77a3cbe06b519be8a2",
     "bend/terrain_surface.bend": "26687ac40e62949ca563d7f31117207fa0eb053d82f51b58a14e84b9a2d4d652",
     "bend/tests/binary-fixtures.bend": "02ea592c9b590739c40cb07211e321520ae70207f3212d97257ea16ad74e3207",
     "bend/tests/compress-file.bend": "1a7ffa73eda62ac1ef59306247705e2ab25cffd2048dc6b50f6b77326d29a51d",
-    "bend/tests/placement-merge.bend": "97f982c2f0636528d00eb7be6a09a432dfde2801113ec6c114c4d0a2bdade9c2",
+    "bend/tests/placement-merge.bend": "08e208ee66532bc08a94cc10c50a802baf861ffb0f1f0a230de2253193aef928",
     "bend/tests/placement-world-fixtures.bend": "7af07391f5cec7119ad91c7ab9002d40757a2a132437d36c385a314857d17497",
-    "bend/tests/surface-feature-world.bend": "4110bd3b6e6375e0ee7a3ccb38ecc773860bd9b24db3f7fb065119961d19a6fa",
+    "bend/tests/surface-feature-world.bend": "174a2a016f701d53b0aaf787b1a9fbbf50aa200e9ffc0f31780a7f4ae949d051",
     "bend/transport.bend": "2d7b2667aaf37b537de8be6c584acaeaec37377da475741bfe790a46d9c76f81",
+    "bend/tree.bend": "c58ebe274d6516fd0a61240bfbbf73ad51ee5a0ca8ab8496e628626cc42533ec",
+    "bend/tree_data.bend": "d07220936f54df8e8300bf40ca59c1357b36c2c1ae9754d3e3d7ba50c1f5a9e1",
+    "bend/tree_decorators.bend": "3421dca0070728a1689f9b926e60602ece65c590326d9c9bef466acba9316bea",
+    "bend/tree_foliage.bend": "e2384717b58a06959a141c21a03a86797aef6516ebf9616400561f133a053f04",
+    "bend/tree_geometry.bend": "4325085f19a58caba1fce591caf60dc0b66ade88c910887c45237ccb5af7e26a",
     "bend/word64.bend": "62e104fbbc56208d66457789a7f2ed3f5fe122f4a19068c3df9b3bbbf555e139",
-    "scripts/test_bend_placement_merge.py": "6df32393168a09ad00ed4616ffa91636e9b382b950b5d9e3dac5836bdce089c5"
+    "scripts/test_bend_placement_merge.py": "078cc7fb4c8ae1e3c6d4686b9536747227e0d4467b944696ed8d0d80a18a83f7"
   },
-  "native_sha256": "3b4088054d592048ad8c5a3e20e80b44e64d2abb48a33b77db340f1cef747ae1",
-  "gpu_sha256": "7733202688302061d1db7132fc5028751a72af57ee8dab17c302f8ef2ca31e6e"
+  "native_sha256": "621685f9b55305fc461127f3341451cbeed4160919c511afc19ea142f4532771",
+  "gpu_sha256": "6c9386ede9d94cb9c3af48858992155334eaa0ca0bf22e386333416a3edc31f8"
 }

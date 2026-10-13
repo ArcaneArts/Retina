@@ -1909,12 +1909,35 @@ Bend-only test configuration. The host's `cc` launcher currently fails because
 Xcode requires license acceptance, so this cycle uses that configuration rather
 than changing the host's license or the Rust implementation.
 
-Before wiring the surface coordinator, correct two discovered input-model issues:
-`MD.Column.count` is a run count, while the current plant-band helper interprets
-it as native packed flag bits; the run merger also preserves the old count after
-changing runs. Add real material-column response checks during that integration.
-These do not affect this cycle's tree placement or MCA encoding, which reads the
-actual run lists, but they must not become the playable vegetation data contract.
+The column metadata prerequisite for surface coordination is now corrected.
+`MD.Column.count` is the serialized run count. The merger recomputes it after
+ordered writes and plant support/pair repair, preserving invalid columns and
+geometric/cave metadata. Its test now also uses the actual
+`material_columns.encode` query response, including crops, misses and repeated
+hits; the independent reader checks every framed run and consumes the stream to
+EOF. Vanilla, Terralith and combined profiles pass 672 queries per backend,
+alongside the dense voxel, plant repair, cave-biome, NBT/MCA and heightmap checks.
+
+Legacy flattened plant bands no longer interpret the run count as native flag
+bits. They sample compensated world-coordinate simplex noise in Bend, using the
+existing native approximation's fixed frequency/seed/threshold. Modern registered
+noise-threshold block providers continue to evaluate their own registered noise
+programs and parameters. This does not introduce a native shader or a GPU
+readback. The surface fixture now has 20 contexts with real low/high noise
+locations near the origin and around 30 million blocks, plus the existing signed
+extrema, unknown columns and placement restrictions; its column counts contain
+only the eight actual source runs.
+
+The expanded six-writer suite passes 24,560 calls per backend and rejects 43
+malformed recipes. CPU two-thread, CPU one-thread controls and actual Metal
+outputs agree. Observers record 30 merge-suite and 81 surface-suite Metal command
+buffers, with byte-identical normal/observer GPU archives. Updated source hashes and
+results are in `docs/benchmarks/bend-placement-merge-correctness.json` and
+`docs/benchmarks/bend-surface-features-correctness.json`. Compilation used one
+compiler at nice +10; runtime checks used two CPU threads. These are component
+correctness checks; the installed preview worker is unchanged. The surface
+coordinator, remaining feature families, structures, snow/freezing, lighting,
+full-region scheduling and equivalent complete-region benchmarks remain required.
 
 
 All three actual Minecraft decoder configurations pass: 9 MCA files / 36 chunks,
