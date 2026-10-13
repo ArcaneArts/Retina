@@ -184,7 +184,7 @@ more deeply; retain the original requested scope.
 | Lakes, aquifer fields and fluid barriers | `TerrainFeatureProfile.java`, `program/lake_sparse.rs`, `aquifers.wgsl` | Typed aquifer graph projection and GPU/CPU flooding, erosion, spread, lava, barrier and preliminary-surface evaluation implemented. Globally hashed resident fluid centers, trilinear barrier fields and nearest-center pressure now place registered cavity fluids while preserving protected/pressure-barrier materials. Registered lake budgets/materials, globally seeded candidates, five bank probes, bounded fluid levels and noisy basin/rim placement implemented on CPU/GPU before material coating. Independent block/NBT/zlib checks cover fluids, barriers, overlap and signed/distant coordinates; lake exclusions now use finalized pre-carving coast selection, including global probes outside the resident tile. Out-of-tile bank vertices now execute in bulk with exact prior geometry and material bytes, improving measured GPU lake-stage latency by 10.1–14.6×. Playable terrain integration implemented; full parity and performance work remain required |
 | Ore height/count/replacement/discard rules and GPU rasterization | `geology/`, `ore.wgsl` | Registered recipe projection, packed membership/material tables and selected-backend ordered replacement/exposure policy implemented. Registered count/rarity/height attempts and local sphere-chain/scattered geometry now execute on CPU/GPU. Local sphere-union masks and ordered scattered points now calculate in the same selected-backend evaluation as geometry. Spatial surface/cave membership filtering, stable neighboring contribution buckets and ordered resident-block replay now run in one selected CPU/GPU evaluation, with immutable exposure halo checks and independent voxel/NBT/zlib validation. Playable terrain integration implemented; full parity and performance work remain required |
 | Ordered decoration, registered counts, provider noise and placement modifiers | `DecorationProfile.java`, `decoration/placement*`, `counts/`, `provider_noise/` | Registered recursive integer providers, count/offset projection, build-relative height distributions and actual-permutation spatial count noise independently checked on CPU/Metal. Typed ordered-program projection, exact placement-salt grouping, recursive predicates, live block/heightmap overlay and terrain-dependent checks now independently checked on CPU/Metal. Lazy ordered count/layer/cuboid execution and shared selector budgets now have an independent CPU/Metal component harness. All ten block-provider families, full 64-bit weighted decisions, current-state property transforms and initialized permutation/offset noise now independently checked on CPU/Metal. Simple-block, block-column, disk, ordinary plant, aquatic and bamboo writers now independently replay live material changes and RNG state on CPU/Metal. Ordered accepted FEATURE overlays now merge into resident runs with final plant repair, core cropping and independently decoded MCA checks; remaining feature families, neighboring-anchor coordination and playable integration are pending |
-| Trees and decorators, giant mushrooms, fallen trees, disks, vegetation patches, block columns, bamboo, aquatic plants and attachments | `decoration.rs`, `decoration/`, `tree_shapes.rs` | Simple-block, block-column, disk, ordinary plant, aquatic and bamboo writers and registry projections independently checked on CPU/Metal, including nested recipes and accepted writes through MCA serialization. Trees/decorators, mushrooms, fallen trees, vegetation patches, attachments and playable integration remain pending |
+| Trees and decorators, giant mushrooms, fallen trees, disks, vegetation patches, block columns, bamboo, aquatic plants and attachments | `decoration.rs`, `decoration/`, `tree_shapes.rs` | Simple-block, block-column, disk, ordinary plant, aquatic and bamboo writers and registry projections independently checked on CPU/Metal, including nested recipes and accepted writes through MCA serialization. Registered tree trunks/crowns, weighted axis/distance states, connected leaves, roots, vines and cocoa now have pure Bend writers and ordered role replay. Mushrooms, fallen trees, vegetation patches, attachments and playable integration remain pending |
 | Jigsaw pools/templates/processors, structures spanning regions and locate queries | `StructureProfile.java`, `structures.rs`, `structure_processors.rs`, `queries.rs` | Pending |
 | Structure entities/block entities/loot and attachment rotations | `nbt.rs`, `structures.rs`, `structure_processors.rs` | Pending |
 | Snow, freezing, plant support and path/gravel restrictions | `LightingProfile.java`, profile material/survival tables, `region.rs` | Final registered plant floor-mask and signed-pair cleanup implemented in the overlay merger and independently checked on CPU/Metal, including paths and crop/build boundaries. Snow/freezing and complete playable placement restrictions remain pending |
@@ -1797,3 +1797,128 @@ combining independent anchors. The complete neighboring-anchor coordinator,
 remaining feature/tree families and playable vegetation wiring are still pending.
 The installed world worker is unchanged, and these correctness checks make no
 whole-generator performance claim.
+
+
+### Registered trees, connected foliage and decorators
+
+`bend/registry_tree.bend` prepares the original exported tree recipes in Bend.
+The shared surface dispatcher now accepts `tree` beside the six earlier writer
+families. It retains height/radius/offset intervals, weighted log-axis and
+leaf-distance tables, soil/root states, root offsets and registered trunk-vine,
+leaf-vine and cocoa decorators. Shape names select the current Rust
+approximation's supported trunk/foliage families; the remaining exported placers
+retain its simple trunk or general crown approximation. This is not an exact
+vanilla tree-placer interpreter.
+
+`tree_geometry.bend` builds straight/giant, forked/branching, fancy, dark-oak and
+mega-jungle trunks and attachment crowns. Branch math uses local F32 offsets;
+world positions and full random states remain integer words. Checked additions
+prevent probes or writes from wrapping across signed coordinate limits.
+`tree_foliage.bend` implements the corresponding layered crown rules, including
+dark-oak upper rows and the tapered 2x2 jungle crown. Radius/height distributions
+and conditional corner draws advance the same Bend random stream as placement.
+
+`tree.bend` validates the complete trunk against resident terrain, water levels
+and earlier feature writes before publishing anything. Six-neighbor breadth-first
+connectivity starts at unique trunk cells and emits registered leaf states for
+distances 1..6, without persistent-leaf substitution. Soil, logs, leaves, cocoa
+and vines retain separate roles in a `Plan`; ordered replay checks their actual
+replacement/support rules against the live world. The accepted overlay can then
+use the existing compact-run merger. Raw plans from independent anchors must
+still pass role replay before they become unconditional merged patches.
+
+`tree_decorators.bend` sorts/deduplicates attachment positions by Y/X/Z and uses
+full-word coordinate-derived random streams for vines and cocoa. Cocoa ages use
+the registered directional states. Hanging vines require adjacent registered
+support or the matching vine above. Unknown columns and signed overflow stop
+attachments, and publication clips to the actual resident/build domain.
+
+Large write lists use reverse-and-prepend concatenation. A diagnostic run found
+that Base's ordinary `List.append` exhausted the stock Metal evaluator's 2048-word
+continuation stack on fancy/large trees. The Bend algorithm now keeps these joins
+tail-recursive. Tall-trunk validation also short-circuits with a tail-recursive
+walk rather than retaining one conjunction per wood cell. The compiler/runtime
+and computational kernels are unmodified.
+The correctness harness streams bounded batches of all recipe/context pairs,
+rather than retaining every profile's tree results inside the default 2 GiB
+GPU heap at once.
+
+Run the checks locally with the original captured profiles:
+
+```sh
+python3 scripts/test_bend_trees.py --prove-metal \
+  --profile <vanilla-profile.json> \
+  --profile <terralith-profile.json> \
+  --profile <combined-profile.json>
+python3 scripts/test_bend_tree_mca.py --prove-metal \
+  --profile <vanilla-profile.json> \
+  --profile <terralith-profile.json> \
+  --profile <combined-profile.json>
+```
+
+The tree harness compares every accepted voxel, success flag and full RNG state
+against independent Python replay. It traverses nested recipes in each unchanged
+registry export and also exercises constructed shape combinations, large/small
+weights, roots, obstruction, snow/soil, water, build limits, missing columns,
+negative/distant/signed-limit coordinates and repeat placement. The MCA harness
+uses actual registered fancy, dark-oak and mega-jungle writers at a chunk corner,
+then checks all four serialized chunks' blocks, properties, biomes, six
+heightmaps, zlib framing and MCA sectors with independent decoders. Its files are
+explicitly unlit component fixtures; they do not satisfy the required complete
+lit-region performance comparison.
+
+The installed playable worker still omits surface decorations. Neighboring-anchor
+coordination and integration of these writers into that worker remain required,
+along with mushrooms, fallen trees, vegetation patches, attachments, structures,
+snow/freezing, lighting, full-region caching and final equivalent Rust/Bend
+benchmarks. No full-generator speed improvement is claimed by this cycle.
+
+
+The tree correctness run checks 17,544 writer calls and 1,563,611 accepted-overlay
+voxels per backend across 63 vanilla, 289 Terralith, 289 combined and 90 synthetic
+recipes. All CPU/Metal outputs match, including a one-thread CPU control; 36
+malformed recipes reject explicitly. The separate connectivity control checks
+48,104 leaves, and 64 jungle seeds produce 64 trunk variants. The stock-runtime
+observer records 185 actual Metal command buffers. Source/input/executable hashes
+and full results are in `docs/benchmarks/bend-trees-correctness.json`.
+
+The MCA run independently checks 3,538,944 final voxels per backend across 36
+serialized chunks. Actual tree placement and compact-run merging share a selected
+CPU/Metal evaluation; NBT/zlib/MCA serialization remains on Bend CPU. Its observer
+records 18 Metal command buffers, with byte-identical normal/observer GPU archives
+and identical CPU/Metal MCA files. A real IO boundary separates host registry
+preparation from the dispatched computation; an earlier fixture without that
+boundary executed on CPU despite its GPU flag, and the observer correctly rejected
+that as GPU evidence. Results are in
+`docs/benchmarks/bend-tree-mca-correctness.json`.
+
+`bendTreeMcaDecodeTest` reads the generated sparse fixtures through Minecraft's
+actual region storage, palette codecs, registered biome IDs/heightmap predicates
+and `SerializableChunkData`, opening each file twice and checking that reads do
+not change its bytes. Run it after `scripts/test_bend_tree_mca.py`:
+
+```sh
+./gradlew :common:bendTreeMcaDecodeTest --max-workers=2 --no-parallel
+```
+
+Use `-PbendTreeMcaProfiles=trees-1-1,trees-1-2,trees-1-3` and `-PtestDatapack=<path>`
+for the Terralith fixtures, or `trees-2-1,trees-2-2,trees-2-3` plus
+`-PtestRegistrySupplement` for the combined capture. This decoder test does not
+need a Rust library; `-x buildNative -x packageNative` permits that deliberate
+Bend-only test configuration. The host's `cc` launcher currently fails because
+Xcode requires license acceptance, so this cycle uses that configuration rather
+than changing the host's license or the Rust implementation.
+
+Before wiring the surface coordinator, correct two discovered input-model issues:
+`MD.Column.count` is a run count, while the current plant-band helper interprets
+it as native packed flag bits; the run merger also preserves the old count after
+changing runs. Add real material-column response checks during that integration.
+These do not affect this cycle's tree placement or MCA encoding, which reads the
+actual run lists, but they must not become the playable vegetation data contract.
+
+
+All three actual Minecraft decoder configurations pass: 9 MCA files / 36 chunks,
+two opens per chunk and 7,077,888 block decodes. The final vanilla MCA bytes match
+the files from its earlier successful reader run. Datapack files, tested source
+and input-file hashes are captured in
+`docs/benchmarks/bend-tree-minecraft-decoding.json`.

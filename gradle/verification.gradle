@@ -1111,3 +1111,24 @@ tasks.register('bendPackagedRuntimeTest', JavaExec) {
     javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
     maxHeapSize = '512m'
 }
+
+
+// Decoding only: scripts/test_bend_tree_mca.py produces these fixtures first.
+// Read the sparse files directly instead of re-encoding them through Java.
+tasks.register('bendTreeMcaDecodeTest', JavaExec) {
+    group = 'verification'
+    description = 'Read/reopen Bend tree MCA fixtures with actual Minecraft region and block/biome decoders.'
+    dependsOn 'gpuTestClasses'
+    classpath = sourceSets.gpuTest.runtimeClasspath
+    mainClass = 'art.arcane.retina.worldgen.BendGeneratedChunkIntegrationTest'
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
+    jvmArgs '-XX:ActiveProcessorCount=2'
+    args '--sparse-regions', rootProject.file('build/bend/tree-mca-loader').absolutePath,
+            providers.gradleProperty('bendTreeMcaProfiles').getOrElse('trees-0-1,trees-0-2,trees-0-3')
+    if (providers.gradleProperty('testDatapack').isPresent()) args providers.gradleProperty('testDatapack').get()
+    if (providers.gradleProperty('testSupplement').isPresent()) args providers.gradleProperty('testSupplement').get()
+    if (providers.gradleProperty('testRegistrySupplement').isPresent()) {
+        dependsOn 'registryExportSupplement'
+        args rootProject.file('build/registry-fixtures/registry-supplement.zip').absolutePath
+    }
+}

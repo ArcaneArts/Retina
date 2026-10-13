@@ -13,23 +13,25 @@ import ./block_provider.bend as B
 import ./int_provider.bend as I
 import ./density.bend as Q
 import ./surface_plants.bend as S
+import ./registry_tree.bend as RT
+import ./tree_data.bend as TD
 
 type Context is Data:
-  Context{keys: D.Keys,providers: RB.Context}
+  Context{keys: D.Keys,providers: RB.Context,trees: RT.Context}
 
 @unsafe
 def context(-T: Type,doc: R.Document,next: R.Document -> Context -> T) -> T:
-  D.resolved(T,["kind","provider","states","water","current_survival","source","lower","upper","survival","upper_allowed","layers","direction","allowed","prioritize_tip","height","target","radius","half_height","simple_current_states","simple_block","block_column","disk","plant","aquatic","bamboo","weight","band","dry","probability","trunk","crown","podzol","podzol_allowed"],doc,[],doc => keys => RB.context(T,doc,doc => providers => next(doc,Context{keys,providers})))
+  D.resolved(T,["kind","provider","states","water","current_survival","source","lower","upper","survival","upper_allowed","layers","direction","allowed","prioritize_tip","height","target","radius","half_height","simple_current_states","simple_block","block_column","disk","plant","aquatic","bamboo","weight","band","dry","probability","trunk","crown","podzol","podzol_allowed","tree"],doc,[],doc => keys => RB.context(T,doc,doc => providers => RT.context(T,doc,doc => trees => next(doc,Context{keys,providers,trees}))))
 
 @unsafe
 def name(+keys: D.Keys,+id: U32,+i: U32) -> U32:
-  named(U32.is_eq(id,D.key(keys,U32.to_nat(U32.add(i,19)))),keys,id,i)
+  named(U32.is_eq(id,D.key(keys,U32.to_nat(family_key(i)))),keys,id,i)
 
 @unsafe
 def named(equal: Bool,+keys: D.Keys,+id: U32,+i: U32) -> U32:
   match equal:
     case True{}: i
-    case False{}: name_more(U32.is_lt(i,5),keys,id,U32.inc(i))
+    case False{}: name_more(U32.is_lt(i,6),keys,id,U32.inc(i))
 
 @unsafe
 def name_more(more: Bool,+keys: D.Keys,+id: U32,+i: U32) -> U32:
@@ -41,7 +43,7 @@ def name_more(more: Bool,+keys: D.Keys,+id: U32,+i: U32) -> U32:
 def fields(-T: Type,indices: List<&2,U32>,doc: R.Document,+value: R.Value,+context: Context,acc: List<&2,Maybe<&2,R.Value>>,next: R.Document -> List<&2,Maybe<&2,R.Value>> -> T) -> T:
   match indices context:
     case Nil{} _: next(doc,List.reverse(&2,Maybe<&2,R.Value>,acc))
-    case i <> rest Context{keys,_}: D.named(T,doc,value,keys,U32.to_nat(i),doc => found => fields(T,rest,doc,value,context,found <> acc,next))
+    case i <> rest Context{keys,_,_}: D.named(T,doc,value,keys,U32.to_nat(i),doc => found => fields(T,rest,doc,value,context,found <> acc,next))
 
 @unsafe
 def vector(-T: Type,found: Maybe<&2,R.Value>,doc: R.Document,next: R.Document -> Result<&1,&1,U32,P.Position> -> T) -> T:
@@ -62,7 +64,7 @@ def vector_shape(-T: Type,ok: Bool,+xs: Q.Table<U32>,doc: R.Document,next: R.Doc
 @unsafe
 def plant_fields(-T: Type,values: List<&2,Maybe<&2,R.Value>>,doc: R.Document,+context: Context,next: R.Document -> Result<&1,&1,U32,F.PlantState> -> T) -> T:
   match values context:
-    case source <> lower <> upper <> survival <> allowed <> Nil{} Context{_,RB.Context{_,_,predicates}}:
+    case source <> lower <> upper <> survival <> allowed <> Nil{} Context{_,RB.Context{_,_,predicates},_}:
       RB.array(T,lower,doc,doc => lower => RB.array(T,upper,doc,doc => upper =>
         RP.parse(T,survival,doc,predicates,doc => survival => RP.parse(T,allowed,doc,predicates,doc => allowed =>
         plant_results(T,D.integer(source),lower,upper,survival,allowed,doc,next)))))
@@ -81,14 +83,14 @@ def plant(-T: Type,doc: R.Document,value: R.Value,+context: Context,next: R.Docu
 @unsafe
 def layer_fields(-T: Type,values: List<&2,Maybe<&2,R.Value>>,doc: R.Document,+context: Context,next: R.Document -> Result<&1,&1,U32,F.Layer> -> T) -> T:
   match values context:
-    case height <> provider <> Nil{} Context{_,RB.Context{_,integers,_}}:
+    case height <> provider <> Nil{} Context{_,RB.Context{_,integers,_},_}:
       RI.prepare(T,height,doc,integers,doc => height => RB.parse(T,provider,doc,providers(context),doc => provider => layer_results(T,height,provider,doc,next)))
     case _ _: next(doc,Fail{765})
 
 @unsafe
 def providers(context: Context) -> RB.Context:
   match context:
-    case Context{_,p}: p
+    case Context{_,p,_}: p
 
 @unsafe
 def layer_results(-T: Type,height: Result<&1,&1,U32,I.Provider>,provider: Result<&1,&1,U32,B.Provider>,doc: R.Document,next: R.Document -> Result<&1,&1,U32,F.Layer> -> T) -> T:
@@ -190,21 +192,37 @@ def disk_results(-T: Type,provider: Result<&1,&1,U32,B.Provider>,target: Result<
 @unsafe
 def collected(-T: Type,kind: U32,values: List<&2,Maybe<&2,R.Value>>,doc: R.Document,+context: Context,next: R.Document -> Result<&1,&1,U32,F.Feature> -> T) -> T:
   match kind values context:
-    case 0 provider <> states <> water <> current <> Nil{} Context{_,RB.Context{_,_,predicates}}:
+    case 0 provider <> states <> water <> current <> Nil{} Context{_,RB.Context{_,_,predicates},_}:
       RB.parse(T,provider,doc,providers(context),doc => provider => plants(T,states,doc,context,doc => states =>
         RP.parse(T,water,doc,predicates,doc => water => simple_results(T,provider,states,water,RB.passthrough(current),doc,next))))
-    case 1 ls <> direction <> allowed <> tip <> Nil{} Context{_,RB.Context{_,_,predicates}}:
+    case 1 ls <> direction <> allowed <> tip <> Nil{} Context{_,RB.Context{_,_,predicates},_}:
       layers(T,ls,doc,context,doc => ls => vector(T,direction,doc,doc => direction =>
         RP.parse(T,allowed,doc,predicates,doc => allowed => column_results(T,ls,direction,allowed,M.boolean(tip),doc,next))))
-    case 2 provider <> target <> radius <> half <> Nil{} Context{_,RB.Context{_,integers,predicates}}:
+    case 2 provider <> target <> radius <> half <> Nil{} Context{_,RB.Context{_,integers,predicates},_}:
       RB.parse(T,provider,doc,providers(context),doc => provider => RP.parse(T,target,doc,predicates,doc => target =>
         RI.prepare(T,radius,doc,integers,doc => radius => disk_results(T,provider,target,radius,D.integer(half),doc,next))))
     case 3 states <> Nil{} _: sprouts(T,states,False{},doc,context,doc => result => sprouts_feature(T,result,False{},doc,next))
     case 4 states <> Nil{} _: sprouts(T,states,True{},doc,context,doc => result => sprouts_feature(T,result,True{},doc,next))
-    case 5 probability <> trunk <> crown <> podzol <> survival <> allowed <> Nil{} Context{_,RB.Context{_,_,predicates}}:
+    case 5 probability <> trunk <> crown <> podzol <> survival <> allowed <> Nil{} Context{_,RB.Context{_,_,predicates},_}:
       RB.array(T,crown,doc,doc => crown => RP.parse(T,survival,doc,predicates,doc => survival =>
         RP.parse(T,allowed,doc,predicates,doc => allowed => bamboo_results(T,D.number(probability),D.integer(trunk),crown,D.integer(podzol),survival,allowed,doc,next))))
     case _ _ _: next(doc,Fail{765})
+
+def family_key(i: U32) -> U32:
+  match i:
+    case 6: 33
+    case _: U32.add(i,19)
+
+@unsafe
+def tree_result(-T: Type,result: Result<&1,&1,U32,TD.Recipe>,doc: R.Document,next: R.Document -> Result<&1,&1,U32,F.Feature> -> T) -> T:
+  match result:
+    case Fail{_}: next(doc,Fail{765})
+    case Done{recipe}: next(doc,Done{F.Tree{recipe}})
+
+@unsafe
+def tree_parse(-T: Type,doc: R.Document,value: R.Value,context: Context,next: R.Document -> Result<&1,&1,U32,F.Feature> -> T) -> T:
+  match context:
+    case Context{_,_,trees}: RT.parse(T,doc,value,trees,doc => result => tree_result(T,result,doc,next))
 
 @unsafe
 def kind(-T: Type,+kind: U32,doc: R.Document,value: R.Value,+context: Context,next: R.Document -> Result<&1,&1,U32,F.Feature> -> T) -> T:
@@ -215,18 +233,19 @@ def kind(-T: Type,+kind: U32,doc: R.Document,value: R.Value,+context: Context,ne
     case 3: fields(T,[2],doc,value,context,[],doc => values => collected(T,kind,values,doc,context,next))
     case 4: fields(T,[2],doc,value,context,[],doc => values => collected(T,kind,values,doc,context,next))
     case 5: fields(T,[28,29,30,31,8,32],doc,value,context,[],doc => values => collected(T,kind,values,doc,context,next))
+    case 6: tree_parse(T,doc,value,context,next)
     case _: next(doc,Fail{765})
 
 @unsafe
 def typed(-T: Type,found: Maybe<&2,R.Value>,doc: R.Document,value: R.Value,+context: Context,next: R.Document -> Result<&1,&1,U32,F.Feature> -> T) -> T:
   match found context:
-    case Some{R.Value{5,id,_,_}} Context{keys,_}: kind(T,name(keys,id,0),doc,value,context,next)
+    case Some{R.Value{5,id,_,_}} Context{keys,_,_}: kind(T,name(keys,id,0),doc,value,context,next)
     case _ _: next(doc,Fail{765})
 
 @unsafe
 def parse(-T: Type,found: Maybe<&2,R.Value>,doc: R.Document,+context: Context,next: R.Document -> Result<&1,&1,U32,F.Feature> -> T) -> T:
   match found context:
-    case Some{+value} Context{keys,_}: D.named(T,doc,value,keys,0n,doc => found => typed(T,found,doc,value,context,next))
+    case Some{+value} Context{keys,_,_}: D.named(T,doc,value,keys,0n,doc => found => typed(T,found,doc,value,context,next))
     case _ _: next(doc,Fail{765})
 
 @unsafe
@@ -292,7 +311,7 @@ def sprout_fields(-T: Type,aquatic: Bool,values: List<&2,Maybe<&2,R.Value>>,doc:
   match aquatic values context:
     case False{} lower <> upper <> weight <> band <> dry <> _ <> _ <> Nil{} _:
       sprout_results(T,D.integer(lower),D.integer(upper),D.number(weight),D.integer(band),M.boolean(dry),Done{P.Always{}},Done{P.Always{}},doc,next)
-    case True{} lower <> upper <> weight <> band <> _ <> survival <> allowed <> Nil{} Context{_,RB.Context{_,_,predicates}}:
+    case True{} lower <> upper <> weight <> band <> _ <> survival <> allowed <> Nil{} Context{_,RB.Context{_,_,predicates},_}:
       RP.parse(T,survival,doc,predicates,doc => survival => RP.parse(T,allowed,doc,predicates,doc => allowed =>
         sprout_results(T,D.integer(lower),D.integer(upper),D.number(weight),D.integer(band),Done{False{}},survival,allowed,doc,next)))
     case _ _ _: next(doc,Fail{765})

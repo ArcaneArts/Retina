@@ -9,6 +9,8 @@ import ./density.bend as Q
 import ./word64.bend as W
 import ./int_provider.bend as I
 import ./surface_plants.bend as V
+import ./tree.bend as Tree
+import ./tree_data.bend as TD
 
 # Pure writers share the live placement world. The caller retains the returned
 # RNG state and world before asking its placement cursor for the next candidate.
@@ -22,6 +24,7 @@ type Feature is Data:
   Plant{states: List<&2,V.State>}
   Aquatic{states: List<&2,V.State>}
   Bamboo{recipe: V.Bamboo}
+  Tree{recipe: TD.Recipe}
   Disk{provider: B.Provider,target: P.Predicate,radius: I.Provider,half_height: U32}
 type Model is Data:
   Model{noises: Q.Table<N.Program>,current_states: Q.Table<Maybe<&2,PlantState>>}
@@ -133,6 +136,7 @@ def valid(feature: Feature,+palette: U32,+noises: U32) -> Bool:
     case Plant{states}: V.valid(states,palette)
     case Aquatic{states}: V.valid(states,palette)
     case Bamboo{recipe}: V.bamboo_valid(recipe,palette)
+    case Tree{recipe}: TD.valid(recipe,palette)
     case Simple{+provider,+states,water,current}:
       Bool.and(B.valid(provider,palette,noises),Bool.and(plants_valid(states,palette),Bool.and(P.predicate_valid(water,palette),
         Bool.or(current,covered(B.outputs(provider),states)))))
@@ -351,4 +355,5 @@ def place(feature: Feature,+state: W.U64,+model: Model,+world: E.World,+at: P.Po
     case Plant{states} _: vegetation(V.place(states,False{},state,world,at))
     case Aquatic{states} _: vegetation(V.place(states,True{},state,world,at))
     case Bamboo{recipe} _: vegetation(V.bamboo(recipe,state,world,at))
+    case Tree{recipe} _: vegetation(Tree.place(recipe,state,world,at))
     case Disk{provider,target,radius,half} _: disk_radius(I.sample(radius,state),provider,target,half,model,world,at)

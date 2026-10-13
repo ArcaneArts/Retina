@@ -55,7 +55,8 @@ public final class BendGeneratedChunkIntegrationTest {
     public static void main(String[] args) throws Exception {
         SharedConstants.tryDetectVersion();
         Bootstrap.bootStrap();
-        boolean regions = args.length > 0 && args[0].equals("--regions");
+        boolean sparse = args.length > 0 && args[0].equals("--sparse-regions");
+        boolean regions = sparse || args.length > 0 && args[0].equals("--regions");
         int offset = regions ? 1 : 0;
         var folder = Path.of(args.length == offset ? "build/bend/generated-chunks" : args[offset]);
         var names = Set.copyOf(Arrays.asList((args.length < offset + 2
@@ -85,7 +86,7 @@ public final class BendGeneratedChunkIntegrationTest {
             var factory = new PalettedContainerFactory(blocks, Blocks.AIR.defaultBlockState(), blockCodec,
                     biomes, plains, PalettedContainer.codecRO(biomeCodec, biomes, plains));
             if (regions) {
-                checkRegions(folder, names, factory, blockCodec, biomeCodec);
+                checkRegions(folder, names, factory, blockCodec, biomeCodec, sparse);
                 return;
             }
             int chunks = 0; long verified = 0;
@@ -116,8 +117,8 @@ public final class BendGeneratedChunkIntegrationTest {
     }
 
     private static void checkRegions(Path folder, Set<String> names, PalettedContainerFactory factory,
-            Codec<PalettedContainer<BlockState>> blockCodec, Codec<Holder<Biome>> biomeCodec) throws Exception {
-        long verified = 0;
+            Codec<PalettedContainer<BlockState>> blockCodec, Codec<Holder<Biome>> biomeCodec, boolean sparse) throws Exception {
+        long verified = 0, chunkReads = 0;
         int files = 0;
         var pattern = java.util.regex.Pattern.compile("r\\.(-?\\d+)\\.(-?\\d+)\\.mca");
         var info = new RegionStorageInfo("retina-bend-generated-test", Level.OVERWORLD, "chunk");
@@ -133,9 +134,11 @@ public final class BendGeneratedChunkIntegrationTest {
                         for (int slot = 0; slot < 1024; slot++) {
                             var pos = new ChunkPos(rx * 32 + slot % 32, rz * 32 + slot / 32);
                             var tag = storage.read(pos);
+                            if (tag == null && sparse) continue;
                             require(tag != null && tag.getIntOr("xPos", Integer.MAX_VALUE) == pos.x()
                                     && tag.getIntOr("zPos", Integer.MAX_VALUE) == pos.z(), "region slot coordinates");
                             verified += check(tag, factory, blockCodec, biomeCodec);
+                            chunkReads++;
                         }
                     }
                 }
@@ -143,9 +146,11 @@ public final class BendGeneratedChunkIntegrationTest {
                 files++;
             }
         }
-        require(files > 0, "generated region files found");
-        System.out.println("QA_EVT {\"event\":\"bend_generated_region_decoding\",\"status\":\"pass\",\"context\":{\"files\":"
-                + files + ",\"chunks_per_file\":1024,\"reads_per_chunk\":2,\"blocks_verified\":" + verified + "}}");
+        require(files > 0 && chunkReads > 0, "generated region chunks found");
+        String event = sparse ? "bend_sparse_region_decoding" : "bend_generated_region_decoding";
+        String count = sparse ? ",\"chunks\":" + chunkReads / 2 : ",\"chunks_per_file\":1024";
+        System.out.println("QA_EVT {\"event\":\"" + event + "\",\"status\":\"pass\",\"context\":{\"files\":"
+                + files + count + ",\"reads_per_chunk\":2,\"blocks_verified\":" + verified + "}}");
     }
 
     private static long check(CompoundTag tag, PalettedContainerFactory factory, Codec<PalettedContainer<BlockState>> codec, Codec<Holder<Biome>> biomeCodec) {
