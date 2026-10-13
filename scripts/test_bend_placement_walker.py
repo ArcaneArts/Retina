@@ -86,7 +86,7 @@ def terrain(op, world, at, recipe):
             if predicate(target, world, at) is True: return at
             if i == op['max_steps']: return None
             at = shift(at, (0, op['direction'], 0))
-            if at is None or not -64 <= at[1] < 64: return None
+            if at is None or not getattr(world,'minimum',-64) <= at[1] < getattr(world,'maximum',64): return None
             if predicate(allowed, world, at) is not True:
                 return at if predicate(target, world, at) is True else None
         raise AssertionError('unreachable')
@@ -111,7 +111,8 @@ def count(op, source, rng, at):
     return max(0, min((1 << 31)-1, math.ceil(f32(f32(noise + f32(op.get('noise_offset', 0))) * f32(op['noise_to_count_ratio'])))))
 
 
-def walk(source, context):
+def walk(source, context, *, world=None, selection=None, anchor=None, seed=None,
+         visitor=None, height=128, limit_steps=8192, limit_candidates=64):
     """Small-step reference, with Python integers/dicts and heapq rather than
     Bend word-pairs, persistent treaps or a leftist heap. Each task is one unit.
     """
@@ -120,11 +121,14 @@ def walk(source, context):
     for i, recipe in enumerate(recipes):
         salt = recipe.get('placement_salt', recipe['salt']) & MASK64
         groups.append(seen_salts.setdefault(salt, i))
-    selected = range(len(recipes)) if context in (0, 32) else [context-1]
-    ox, oz = origin(context)
-    world, cache, heap = World(source, context), {}, []
-    world_seed = (((0x80000000 ^ (context * 7919)) & MASK) << 32) | mix_hash((context * 811) & MASK)
+    selected = (range(len(recipes)) if context in (0, 32) else [context-1]) if selection is None else selection
+    selected = list(dict.fromkeys(selected))
+    ox,oz = origin(context) if anchor is None else (anchor[0],anchor[2])
+    start_y = -40 if anchor is None else anchor[1]
+    world, cache, heap = World(source,context) if world is None else world, {}, []
+    world_seed = ((((0x80000000 ^ (context * 7919)) & MASK) << 32) | mix_hash((context * 811) & MASK)) if seed is None else seed
     serial, steps, result = 0, 0, []
+    missing = None
 
     def push(recipe, index, at, state, path, family=None):
         nonlocal serial
@@ -139,9 +143,9 @@ def walk(source, context):
         if r >= len(recipes) or recipes[r].get('placement') is None: continue
         salt = recipes[r].get('placement_salt', recipes[r]['salt']) & MASK64
         seed = world_seed ^ salt ^ mixed((ox >> 4) & MASK) ^ mixed(((oz >> 4) & MASK) << 32)
-        push(r, 0, (ox, -40, oz), seed, ())
+        push(r, 0, (ox, start_y, oz), seed, ())
 
-    while heap and steps < 8192 and len(result) < 64:
+    while heap and steps < limit_steps and len(result) < limit_candidates:
         group, _, _, _, _, entry = heapq.heappop(heap)
         r, index, at, state, path, family = entry
         program = recipes[r]['placement']
@@ -181,9 +185,12 @@ def walk(source, context):
                 push(r, index+1, value, rng.state, path+(layer, attempt))
             continue
         if index == len(program):
-            if -64 <= at[1] < 64:
+            if -64 <= at[1] < -64+height:
                 before = world.height(at[0], at[2], 4)
-                world.edit(at)
+                if visitor is None: world.edit(at)
+                elif not visitor(r,at,state):
+                    missing=r
+                    break
                 after = world.height(at[0], at[2], 4)
                 result.append([r, group, *at, state >> 32, state & MASK, len(path), *path,
                                MASK if before is None else before, MASK if after is None else after, len(heap), steps])
@@ -200,7 +207,7 @@ def walk(source, context):
             push(r, index, at, state, path, ('layer', 0, 0, False)); continue
         if kind == 'in_square': at = shift(at, (rng.integer(0, 15), 0, rng.integer(0, 15)))
         elif kind == 'offset': at = shift(at, tuple(provider(op.get(axis, 0), rng) for axis in ('x', 'y', 'z')))
-        elif kind == 'height_range': at = (at[0], height_sample(op['height'], rng, -64, 128), at[2])
+        elif kind == 'height_range': at = (at[0], height_sample(op['height'], rng, -64, height), at[2])
         elif kind in ('select', 'rarity_filter', 'random_chance'):
             unit = rng.unit()
             low, high = (f32(op['min']), f32(op['max'])) if kind == 'select' else (0, f32(1/f32(op['chance'])) if kind == 'rarity_filter' else f32(op['chance']))
@@ -213,7 +220,9 @@ def walk(source, context):
                 if key not in cache: cache[key] = terrain(op, world, at, r)
                 at = cache[key]
         push(r, index+1, at, rng.state, path)
-    status = 0 if not heap else 1 if len(result) == 64 else 2
+    status = 3 if missing is not None else 0 if not heap else 1 if len(result) == limit_candidates else 2
+    if visitor is not None:
+        return dict(status=status,steps=steps,queue=len(heap),cache=len(cache),candidates=len(result),missing=missing,records=result)
     probes = [world.height(ox, oz, m) for m in range(6)]
     return [context, len(result), status, steps, len(heap), len(cache),
             *(v for row in result for v in row), *(MASK if v is None else v for v in probes)]
