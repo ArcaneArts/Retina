@@ -27,13 +27,13 @@ type Samples is Data:
 @unsafe
 def visit(-T: Type,doc: R.Document,+value: R.Value,+context: RS.Context,+palette: U32,+noises: U32,acc: List<&2,F.Feature>,next: R.Document -> Result<&1,&1,U32,List<&2,F.Feature>> -> T) -> T:
   match value context:
-    case R.Value{7,_,_,_} RS.Context{keys,_}: D.named(T,doc,value,keys,0n,doc => found => identified(T,found,doc,value,context,palette,noises,acc,next))
+    case R.Value{7,_,_,_} RS.Context{keys,_,_}: D.named(T,doc,value,keys,0n,doc => found => identified(T,found,doc,value,context,palette,noises,acc,next))
     case _ _: descend(T,doc,value,context,palette,noises,acc,next)
 
 @unsafe
 def identified(-T: Type,found: Maybe<&2,R.Value>,doc: R.Document,+value: R.Value,+context: RS.Context,+palette: U32,+noises: U32,acc: List<&2,F.Feature>,next: R.Document -> Result<&1,&1,U32,List<&2,F.Feature>> -> T) -> T:
   match found context:
-    case Some{R.Value{5,id,_,_}} RS.Context{keys,_}: known(T,U32.is_ne(RS.name(keys,id,0),4294967295),doc,value,context,palette,noises,acc,next)
+    case Some{R.Value{5,id,_,_}} RS.Context{keys,_,_}: known(T,U32.is_lt(RS.name(keys,id,0),6),doc,value,context,palette,noises,acc,next)
     case _ _: descend(T,doc,value,context,palette,noises,acc,next)
 
 @unsafe
