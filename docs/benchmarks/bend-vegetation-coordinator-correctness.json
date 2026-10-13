@@ -1,14 +1,14 @@
 {
-  "scope": "Coordinate real placement programs and feature writers on CPU/observed Metal.\n\nComplete CPU replay and bounded observed-Metal replay use independent Python\nheap/voxel checks for live heightmaps, RNG, recipe IDs, work-slice resumption,\nunavailable families and biome membership. A seven-family fixture completes on\nboth backends; completed single-anchor overlays cross merge/NBT/zlib/MCA. Independent\nanchors still need role-aware global merging before playable integration; this\nfixture does not claim complete-region generation or lighting.",
+  "scope": "Coordinate real placement programs and feature writers on CPU/observed Metal.\n\nComplete CPU replay and bounded observed-Metal replay use independent Python\nheap/voxel checks for live heightmaps, RNG, recipe IDs, work-slice resumption,\nunavailable families and biome membership. A nine-family fixture completes on\nboth backends; completed single-anchor overlays cross merge/NBT/zlib/MCA. Independent\nanchors still need role-aware global merging before playable integration; this\nfixture does not claim complete-region generation or lighting.",
   "runs": [
     {
-      "profile": "profile-0",
       "workload": "complete CPU replay",
+      "profile": "profile-0",
       "gpu": false,
       "cases": [
         {
           "status": 0,
-          "steps": 9564,
+          "steps": 10694,
           "candidates": 75,
           "placed": 22,
           "writes": 1128,
@@ -17,11 +17,11 @@
             "plant",
             "tree"
           ],
-          "sha256": "88947ab78fb06999a49707a89a28851e9acf8b5935fce7b05a8ff8c18c4a92d4"
+          "sha256": "66a5fcf67aa1d8c3a5f92068d03720be74dc7c1ef9bc8c9b100a29917778f6c9"
         },
         {
           "status": 0,
-          "steps": 9564,
+          "steps": 10694,
           "candidates": 75,
           "placed": 22,
           "writes": 1128,
@@ -30,11 +30,11 @@
             "plant",
             "tree"
           ],
-          "sha256": "714f2b89b2b826b526a4746bcd5d4900bcf22417d00bf68c3ba6c3188694776b"
+          "sha256": "9b2e634dbb398d2e007469fec74317f89d752e16fd8bad3f7e9ca8c0501a481e"
         },
         {
           "status": 0,
-          "steps": 9564,
+          "steps": 10694,
           "candidates": 75,
           "placed": 22,
           "writes": 1128,
@@ -43,24 +43,25 @@
             "plant",
             "tree"
           ],
-          "sha256": "97458d71d6e9acd8c9658a5191e6d15d980de2c1bee622c62bd7a981004db04f"
+          "sha256": "9c16298657c61bfa5df1fe029efa5424b2ab8927c3a94577df689cada144f3fa"
         },
         {
           "status": 0,
-          "steps": 9578,
-          "candidates": 101,
+          "steps": 10699,
+          "candidates": 102,
           "placed": 9,
           "writes": 736,
           "kinds": [
             "bamboo",
+            "huge_mushroom",
             "plant",
             "tree"
           ],
-          "sha256": "989dc27f4251643eedc93d65ac777392890845dabcbe5cb0b5ce20168d6cf536"
+          "sha256": "d666845e5472c8c6384579b460e5ac6dfc67779619dfea031aff5138d91774f0"
         },
         {
           "status": 0,
-          "steps": 9556,
+          "steps": 10688,
           "candidates": 97,
           "placed": 39,
           "writes": 658,
@@ -69,11 +70,11 @@
             "plant",
             "tree"
           ],
-          "sha256": "9e20973159205b8b16b006705fe1f4a064b272acc8fc21a73c366f39ffdfdde9"
+          "sha256": "99fb9ede429f78f5b4aa7bdeab9af214db644d62b864571519a2b6833972bd0d"
         },
         {
           "status": 0,
-          "steps": 10300,
+          "steps": 11468,
           "candidates": 182,
           "placed": 41,
           "writes": 496,
@@ -83,7 +84,7 @@
             "plant",
             "tree"
           ],
-          "sha256": "0ac43bb1c54d0f14a1043b3387c916d07cfaebcea0e736c592b13f0a5022a617"
+          "sha256": "d28d11834c595882f3a4517ff40a6b27c66936b71c1978cb607c317ff4eebd29"
         },
         {
           "status": 2,
@@ -92,7 +93,7 @@
           "placed": 0,
           "writes": 0,
           "kinds": [],
-          "sha256": "2207a4a55d467419de17bc529936f597e4bf0b445842ca8939525d4916c4d0df"
+          "sha256": "03e385b2b2dbfc6ba196a2782d9205e70534891611c052341e67709ede4322f7"
         },
         {
           "status": 2,
@@ -101,7 +102,7 @@
           "placed": 0,
           "writes": 0,
           "kinds": [],
-          "sha256": "320021e63eca2185603f14d1a482dae15e553870c77cc059214c18fe5bc6e925"
+          "sha256": "776d897029bc8d7d1b4e1c891dffd80fbeb163af6682766db5422b4b588bae10"
         },
         {
           "status": 0,
@@ -119,7 +120,7 @@
           "placed": 0,
           "writes": 0,
           "kinds": [],
-          "sha256": "7da5c91683e621fd7edb8b2193c7441a5d2b07e8a2c44ad7383da228aeafba7c"
+          "sha256": "82cbe9800692cac20ad681961f5a41932119ef68d199c10ef65c1a5f64096075"
         }
       ],
       "mca": {
@@ -132,157 +133,13 @@
       "cave_memberships": 17
     },
     {
-      "profile": "profile-0",
-      "workload": "GPU workload CPU control",
-      "gpu": false,
-      "cases": [
-        {
-          "status": 0,
-          "steps": 0,
-          "candidates": 0,
-          "placed": 0,
-          "writes": 0,
-          "kinds": [],
-          "sha256": "f07518fd12070091b4234288f40c654acdcb5749192225e65c1032337ec8dc95"
-        },
-        {
-          "status": 2,
-          "steps": 2048,
-          "candidates": 44,
-          "placed": 15,
-          "writes": 854,
-          "kinds": [
-            "bamboo",
-            "plant",
-            "tree"
-          ],
-          "sha256": "f6d51ea060afd061985312b43386cf3f1fc93faa128023f0ed3a8883c9ff5122"
-        },
-        {
-          "status": 2,
-          "steps": 2048,
-          "candidates": 44,
-          "placed": 15,
-          "writes": 854,
-          "kinds": [
-            "bamboo",
-            "plant",
-            "tree"
-          ],
-          "sha256": "291b3a44fbc0cd98b736989114ecd1930b79ec6d660be262262b87b733539b37"
-        },
-        {
-          "status": 2,
-          "steps": 2048,
-          "candidates": 44,
-          "placed": 15,
-          "writes": 854,
-          "kinds": [
-            "bamboo",
-            "plant",
-            "tree"
-          ],
-          "sha256": "0078610d4dff078be356b5253889dee834d8e3000b50e757fea19c3b3d09e448"
-        },
-        {
-          "status": 1,
-          "steps": 27,
-          "candidates": 0,
-          "placed": 0,
-          "writes": 0,
-          "kinds": [],
-          "sha256": "9a9fe034825ee8409d89aa23926691670c5a9cf3f0d88e8db26e1f3e046da625"
-        }
-      ],
-      "mca": {
-        "chunks": 4,
-        "blocks_checked": 393216,
-        "changed_voxels": 0,
-        "heightmaps": 24,
-        "sha256": "247610e0e6e73344d3d81dfa62514e4ee0fc8cf5cabd1e852f65792e6657a7b3"
-      },
-      "cave_memberships": 17
-    },
-    {
-      "profile": "profile-0",
-      "workload": "bounded replay prefix",
-      "gpu": true,
-      "cases": [
-        {
-          "status": 0,
-          "steps": 0,
-          "candidates": 0,
-          "placed": 0,
-          "writes": 0,
-          "kinds": [],
-          "sha256": "f07518fd12070091b4234288f40c654acdcb5749192225e65c1032337ec8dc95"
-        },
-        {
-          "status": 2,
-          "steps": 2048,
-          "candidates": 44,
-          "placed": 15,
-          "writes": 854,
-          "kinds": [
-            "bamboo",
-            "plant",
-            "tree"
-          ],
-          "sha256": "f6d51ea060afd061985312b43386cf3f1fc93faa128023f0ed3a8883c9ff5122"
-        },
-        {
-          "status": 2,
-          "steps": 2048,
-          "candidates": 44,
-          "placed": 15,
-          "writes": 854,
-          "kinds": [
-            "bamboo",
-            "plant",
-            "tree"
-          ],
-          "sha256": "291b3a44fbc0cd98b736989114ecd1930b79ec6d660be262262b87b733539b37"
-        },
-        {
-          "status": 2,
-          "steps": 2048,
-          "candidates": 44,
-          "placed": 15,
-          "writes": 854,
-          "kinds": [
-            "bamboo",
-            "plant",
-            "tree"
-          ],
-          "sha256": "0078610d4dff078be356b5253889dee834d8e3000b50e757fea19c3b3d09e448"
-        },
-        {
-          "status": 1,
-          "steps": 27,
-          "candidates": 0,
-          "placed": 0,
-          "writes": 0,
-          "kinds": [],
-          "sha256": "9a9fe034825ee8409d89aa23926691670c5a9cf3f0d88e8db26e1f3e046da625"
-        }
-      ],
-      "mca": {
-        "chunks": 4,
-        "blocks_checked": 393216,
-        "changed_voxels": 0,
-        "heightmaps": 24,
-        "sha256": "247610e0e6e73344d3d81dfa62514e4ee0fc8cf5cabd1e852f65792e6657a7b3"
-      },
-      "cave_memberships": 17
-    },
-    {
-      "profile": "profile-1",
       "workload": "complete CPU replay",
+      "profile": "profile-1",
       "gpu": false,
       "cases": [
         {
           "status": 0,
-          "steps": 183408,
+          "steps": 185640,
           "candidates": 119,
           "placed": 29,
           "writes": 518,
@@ -292,11 +149,11 @@
             "simple_block",
             "tree"
           ],
-          "sha256": "7a1b560d8035678b76d7f56b067723f02050bd280ee8ffdf069e397f9b8a0d72"
+          "sha256": "ce1c21b05847bcd88436b594265c2b8f09949c2b4706bb4e2000303ed369607c"
         },
         {
           "status": 0,
-          "steps": 183408,
+          "steps": 185640,
           "candidates": 119,
           "placed": 29,
           "writes": 518,
@@ -306,11 +163,11 @@
             "simple_block",
             "tree"
           ],
-          "sha256": "a3a2fb668cfb542ca87be540b8f1f94e3556ce0ad8d336b44bdaba2b92254942"
+          "sha256": "9d33581cd2c198934b4fad0b9007355a5b82471b5e0ccaa3d31be183da87a700"
         },
         {
           "status": 0,
-          "steps": 183408,
+          "steps": 185640,
           "candidates": 119,
           "placed": 29,
           "writes": 518,
@@ -320,11 +177,11 @@
             "simple_block",
             "tree"
           ],
-          "sha256": "f25e350c6a7d7daddae9fef218f29ccdd5a08fc3c122ecde8f7baa18902127f2"
+          "sha256": "069e1cac3876fa6922baf4c7bd1458a2b1f381e6c5c667533f771fea02344d30"
         },
         {
           "status": 0,
-          "steps": 192928,
+          "steps": 195135,
           "candidates": 131,
           "placed": 42,
           "writes": 819,
@@ -334,11 +191,11 @@
             "simple_block",
             "tree"
           ],
-          "sha256": "dc85be5275a5baea5dce39253320f7eab745aefe50ee2278e5019678323d8fe0"
+          "sha256": "d1343f0c6d90948bfe6d2474aa4a442731ba6b9a0802afeaefe8496d89166eb3"
         },
         {
           "status": 0,
-          "steps": 181713,
+          "steps": 183865,
           "candidates": 127,
           "placed": 35,
           "writes": 1143,
@@ -349,11 +206,11 @@
             "simple_block",
             "tree"
           ],
-          "sha256": "c73b963a71281c9a4f601f0704fb4faffa8e1700fbfc0eab6b0db10a99fc94df"
+          "sha256": "945327a787e41cb2c1d98eb24d907d984a612666c9cbd19e757ae7fd4d1068d6"
         },
         {
           "status": 0,
-          "steps": 198520,
+          "steps": 200701,
           "candidates": 101,
           "placed": 40,
           "writes": 1552,
@@ -363,7 +220,7 @@
             "simple_block",
             "tree"
           ],
-          "sha256": "f265720354eb8792c705209370ddf0182fbd1d723bb6c954e4a45352c4beb024"
+          "sha256": "694110c48b0bd3cd953ee387154fac98ac742383aef44f3a088c03c2073e2b8d"
         },
         {
           "status": 2,
@@ -372,7 +229,7 @@
           "placed": 0,
           "writes": 0,
           "kinds": [],
-          "sha256": "606f6934d9c93c0fd9111397e636d0e58b7a2131ebe75fd1ffe4861fdfabd86e"
+          "sha256": "63facefef2925b969ebbb85cc81a4ada91b3129cf01eecdfde9e05291797061e"
         },
         {
           "status": 2,
@@ -381,7 +238,7 @@
           "placed": 0,
           "writes": 0,
           "kinds": [],
-          "sha256": "124be8006b7288d2ea1f6146810e4e3170e82b140b09200e414fa5766c394327"
+          "sha256": "c8973aa29e51d1cfa994ba22a41133c1b801aa330d5212bca269cf25ecd52db4"
         },
         {
           "status": 0,
@@ -399,7 +256,7 @@
           "placed": 0,
           "writes": 0,
           "kinds": [],
-          "sha256": "3bcf622f173b1cf50d5c062180246049b6f63d58d3be0e89483927df14210caf"
+          "sha256": "b6f1bc98b35ed7e38f96295ab9c53d6cfbd92145e2a0dc8d8d7072c92103ec2e"
         }
       ],
       "mca": {
@@ -412,196 +269,61 @@
       "cave_memberships": 20
     },
     {
-      "profile": "profile-1",
-      "workload": "GPU workload CPU control",
-      "gpu": false,
-      "cases": [
-        {
-          "status": 0,
-          "steps": 0,
-          "candidates": 0,
-          "placed": 0,
-          "writes": 0,
-          "kinds": [],
-          "sha256": "799f84e6309560bf3531eb81fc51704e5c77d1ab93fcc72a7ca0b7ff765199c6"
-        },
-        {
-          "status": 2,
-          "steps": 2048,
-          "candidates": 37,
-          "placed": 15,
-          "writes": 33,
-          "kinds": [
-            "bamboo",
-            "plant"
-          ],
-          "sha256": "7666395d447179b740b9efc9e04324ed56f0cab018f3956b93c28476d79f0449"
-        },
-        {
-          "status": 2,
-          "steps": 2048,
-          "candidates": 37,
-          "placed": 15,
-          "writes": 33,
-          "kinds": [
-            "bamboo",
-            "plant"
-          ],
-          "sha256": "715a2f7f5d66c01459d1e430b3f617a1f7ab3e542175f45c71f424144cb9ff27"
-        },
-        {
-          "status": 2,
-          "steps": 2048,
-          "candidates": 37,
-          "placed": 15,
-          "writes": 33,
-          "kinds": [
-            "bamboo",
-            "plant"
-          ],
-          "sha256": "c15c181695608ca0c98f22daaaed45f37e4a4b0c8fce818af65a9448fbd70d66"
-        },
-        {
-          "status": 1,
-          "steps": 27,
-          "candidates": 0,
-          "placed": 0,
-          "writes": 0,
-          "kinds": [],
-          "sha256": "f38ec4e9ac208e314724b7f43a65eb3f0be47b8e970d48c456b2df97e9dcc8c5"
-        }
-      ],
-      "mca": {
-        "chunks": 4,
-        "blocks_checked": 393216,
-        "changed_voxels": 0,
-        "heightmaps": 24,
-        "sha256": "645b6942bbfb198f1999d01ec0f4f7be1e75143c42b1bf57b52959009836426f"
-      },
-      "cave_memberships": 20
-    },
-    {
-      "profile": "profile-1",
-      "workload": "bounded replay prefix",
-      "gpu": true,
-      "cases": [
-        {
-          "status": 0,
-          "steps": 0,
-          "candidates": 0,
-          "placed": 0,
-          "writes": 0,
-          "kinds": [],
-          "sha256": "799f84e6309560bf3531eb81fc51704e5c77d1ab93fcc72a7ca0b7ff765199c6"
-        },
-        {
-          "status": 2,
-          "steps": 2048,
-          "candidates": 37,
-          "placed": 15,
-          "writes": 33,
-          "kinds": [
-            "bamboo",
-            "plant"
-          ],
-          "sha256": "7666395d447179b740b9efc9e04324ed56f0cab018f3956b93c28476d79f0449"
-        },
-        {
-          "status": 2,
-          "steps": 2048,
-          "candidates": 37,
-          "placed": 15,
-          "writes": 33,
-          "kinds": [
-            "bamboo",
-            "plant"
-          ],
-          "sha256": "715a2f7f5d66c01459d1e430b3f617a1f7ab3e542175f45c71f424144cb9ff27"
-        },
-        {
-          "status": 2,
-          "steps": 2048,
-          "candidates": 37,
-          "placed": 15,
-          "writes": 33,
-          "kinds": [
-            "bamboo",
-            "plant"
-          ],
-          "sha256": "c15c181695608ca0c98f22daaaed45f37e4a4b0c8fce818af65a9448fbd70d66"
-        },
-        {
-          "status": 1,
-          "steps": 27,
-          "candidates": 0,
-          "placed": 0,
-          "writes": 0,
-          "kinds": [],
-          "sha256": "f38ec4e9ac208e314724b7f43a65eb3f0be47b8e970d48c456b2df97e9dcc8c5"
-        }
-      ],
-      "mca": {
-        "chunks": 4,
-        "blocks_checked": 393216,
-        "changed_voxels": 0,
-        "heightmaps": 24,
-        "sha256": "645b6942bbfb198f1999d01ec0f4f7be1e75143c42b1bf57b52959009836426f"
-      },
-      "cave_memberships": 20
-    },
-    {
-      "profile": "profile-2",
       "workload": "complete CPU replay",
+      "profile": "profile-2",
       "gpu": false,
       "cases": [
         {
           "status": 0,
-          "steps": 183616,
+          "steps": 185801,
           "candidates": 76,
-          "placed": 28,
-          "writes": 563,
+          "placed": 29,
+          "writes": 408,
           "kinds": [
             "aquatic",
             "bamboo",
+            "huge_mushroom",
             "plant",
             "simple_block",
             "tree"
           ],
-          "sha256": "5858bd5d0bf284738f5d0475f2e7acb45bd2f91010e4bb6d6d86d59a087c00cf"
+          "sha256": "d2a899c9145d3fb7646734d9efda549a29ca9ada862be555db3907b0341c0b59"
         },
         {
           "status": 0,
-          "steps": 183616,
+          "steps": 185801,
           "candidates": 76,
-          "placed": 28,
-          "writes": 563,
+          "placed": 29,
+          "writes": 408,
           "kinds": [
             "aquatic",
             "bamboo",
+            "huge_mushroom",
             "plant",
             "simple_block",
             "tree"
           ],
-          "sha256": "f08b47b7030d30d34b304c7f517cd533bf0989cabf92e4939ba93e41595f108d"
+          "sha256": "fc00b5cca56028f361a9010f3b32620fab6e1f47c04e70d8a0b1dc499c73abb5"
         },
         {
           "status": 0,
-          "steps": 183616,
+          "steps": 185801,
           "candidates": 76,
-          "placed": 28,
-          "writes": 563,
+          "placed": 29,
+          "writes": 408,
           "kinds": [
             "aquatic",
             "bamboo",
+            "huge_mushroom",
             "plant",
             "simple_block",
             "tree"
           ],
-          "sha256": "1068b0ec98f6c30ec3b7cf333a146e2d419a257b34e072efd1afea259054e851"
+          "sha256": "1ccdd0b64f90d6e7a1e31a9b276684b06c7535c90ee6987f54b06720ce1cfd78"
         },
         {
           "status": 0,
-          "steps": 193231,
+          "steps": 195334,
           "candidates": 135,
           "placed": 42,
           "writes": 801,
@@ -610,11 +332,11 @@
             "simple_block",
             "tree"
           ],
-          "sha256": "4de08ee7c07f7a6623b5847531ddd82c79833e30d3150abcc5b76fcbe6434432"
+          "sha256": "75e7a4f63e61241cf2dbe820874112bfa5b53dbf7ecb28d027f4935e0d0368fd"
         },
         {
           "status": 0,
-          "steps": 179133,
+          "steps": 181381,
           "candidates": 114,
           "placed": 39,
           "writes": 542,
@@ -625,11 +347,11 @@
             "simple_block",
             "tree"
           ],
-          "sha256": "bb18bd7d303e35356ab20f98cf23b09d07a1edca2fb610153d517c2e4b9f0534"
+          "sha256": "4f35c50062165cbcd07bd598507342e215a3fa73729d512c6cc23946fba3eabc"
         },
         {
           "status": 0,
-          "steps": 192228,
+          "steps": 194413,
           "candidates": 101,
           "placed": 36,
           "writes": 270,
@@ -639,7 +361,7 @@
             "simple_block",
             "tree"
           ],
-          "sha256": "03d76f769f0a9591b1553b6a9f5c6daff93ef7a8b4993e64fbb25353e59f34c1"
+          "sha256": "5bfd392086ec8d3f77de2a2b3f4f686a81b630d3466c3b31aa6a7b8a0ede97ca"
         },
         {
           "status": 2,
@@ -648,7 +370,7 @@
           "placed": 0,
           "writes": 0,
           "kinds": [],
-          "sha256": "d5f7c394405e8f887aad36e8e25203c46c9958b93164d26d8d75158fc59431db"
+          "sha256": "8ab8e64f28a4f79188c17d48612adbc851d911d6c2afdb115241f18d2766fccf"
         },
         {
           "status": 2,
@@ -657,7 +379,7 @@
           "placed": 0,
           "writes": 0,
           "kinds": [],
-          "sha256": "a5f7ece3cb4faa219518bf2d29482df6d46c5b4cbb27f5f11c489d496136a669"
+          "sha256": "e3b463e211242973cc3cbb8e7c94b96fa9ca6d1e66a66940a2cc25f5c9656d68"
         },
         {
           "status": 0,
@@ -675,15 +397,495 @@
           "placed": 0,
           "writes": 0,
           "kinds": [],
-          "sha256": "5f5eec64de39110ade4d7a6e29efc0fbacf1970bcf3ffd5d3dec3a19ded773cd"
+          "sha256": "d125632878c040a0b2e5ee6d90f4dfdefdbc4866b900af24076db6f4c1adc784"
         }
       ],
       "mca": {
         "chunks": 4,
         "blocks_checked": 393216,
-        "changed_voxels": 563,
+        "changed_voxels": 408,
         "heightmaps": 24,
-        "sha256": "d26eb11ff2493dbff9366ec262474c6e54abb62d7d94a1c304751e14d4e539e1"
+        "sha256": "e6943d14491fb918bd0b67b3ec8e5c7b71a74915412db2152f78c7a22c3300f0"
+      },
+      "cave_memberships": 20
+    },
+    {
+      "workload": "complete CPU replay",
+      "profile": "fixture",
+      "gpu": false,
+      "cases": [
+        {
+          "status": 0,
+          "steps": 46,
+          "candidates": 14,
+          "placed": 14,
+          "writes": 195,
+          "kinds": [
+            "aquatic",
+            "bamboo",
+            "block_column",
+            "disk",
+            "fallen_tree",
+            "huge_mushroom",
+            "plant",
+            "simple_block",
+            "tree"
+          ],
+          "sha256": "95446f8282fc291f3907b85e2d9ff482e40903ce33ce07340fb9b00abbf98037"
+        },
+        {
+          "status": 0,
+          "steps": 46,
+          "candidates": 14,
+          "placed": 14,
+          "writes": 195,
+          "kinds": [
+            "aquatic",
+            "bamboo",
+            "block_column",
+            "disk",
+            "fallen_tree",
+            "huge_mushroom",
+            "plant",
+            "simple_block",
+            "tree"
+          ],
+          "sha256": "dbe4e9a10033cbd67a2c30caab539a16a1d9cb5bda33cd40ce4e629213939f29"
+        },
+        {
+          "status": 0,
+          "steps": 46,
+          "candidates": 14,
+          "placed": 14,
+          "writes": 195,
+          "kinds": [
+            "aquatic",
+            "bamboo",
+            "block_column",
+            "disk",
+            "fallen_tree",
+            "huge_mushroom",
+            "plant",
+            "simple_block",
+            "tree"
+          ],
+          "sha256": "971be582bb720ec0a7deda0aec1eb8032c4b247b9fb34fa4b599c0a34b902294"
+        },
+        {
+          "status": 0,
+          "steps": 46,
+          "candidates": 14,
+          "placed": 14,
+          "writes": 187,
+          "kinds": [
+            "aquatic",
+            "bamboo",
+            "block_column",
+            "disk",
+            "fallen_tree",
+            "huge_mushroom",
+            "plant",
+            "simple_block",
+            "tree"
+          ],
+          "sha256": "8c2ba164644fe5be24a5f7cb64ace981dd2819c2b843c226aa12f8972f339750"
+        },
+        {
+          "status": 0,
+          "steps": 46,
+          "candidates": 14,
+          "placed": 14,
+          "writes": 190,
+          "kinds": [
+            "aquatic",
+            "bamboo",
+            "block_column",
+            "disk",
+            "fallen_tree",
+            "huge_mushroom",
+            "plant",
+            "simple_block",
+            "tree"
+          ],
+          "sha256": "d935af24d6af96f671f9bf1b73a6916468d9b6eb63840c316049f63a405b3142"
+        },
+        {
+          "status": 0,
+          "steps": 46,
+          "candidates": 14,
+          "placed": 14,
+          "writes": 198,
+          "kinds": [
+            "aquatic",
+            "bamboo",
+            "block_column",
+            "disk",
+            "fallen_tree",
+            "huge_mushroom",
+            "plant",
+            "simple_block",
+            "tree"
+          ],
+          "sha256": "da584724c623fe4ad6c99b77b5de5017eea07ff46746478e1a3ca81c99fd300e"
+        },
+        {
+          "status": 2,
+          "steps": 1,
+          "candidates": 0,
+          "placed": 0,
+          "writes": 0,
+          "kinds": [],
+          "sha256": "b93765663845bd5544bf48526b2ed41b2ae730637b651df174b992cbbc1bf5f8"
+        },
+        {
+          "status": 2,
+          "steps": 0,
+          "candidates": 0,
+          "placed": 0,
+          "writes": 0,
+          "kinds": [],
+          "sha256": "a7b37fcb8e18fdc2ca2f606e5b2f15b1ffacb53e95d93e5561706267ad5832d2"
+        },
+        {
+          "status": 0,
+          "steps": 0,
+          "candidates": 0,
+          "placed": 0,
+          "writes": 0,
+          "kinds": [],
+          "sha256": "80e72759433576e87b3d583e1d5c423e4dde87476973701ea09778dc27c5d84a"
+        },
+        {
+          "status": 1,
+          "steps": 3,
+          "candidates": 0,
+          "placed": 0,
+          "writes": 0,
+          "kinds": [],
+          "sha256": "d5e4958589d0901cddb3c2912db4574788e248a6aaf199d1007abbb17597f02a"
+        },
+        {
+          "status": 2,
+          "steps": 64,
+          "candidates": 20,
+          "placed": 20,
+          "writes": 20,
+          "kinds": [
+            "block_column"
+          ],
+          "sha256": "3fdfa6252617b671352547135d918dbeb1a24eb97f3ce066538727aaa27ebb68"
+        },
+        {
+          "status": 2,
+          "steps": 64,
+          "candidates": 20,
+          "placed": 20,
+          "writes": 20,
+          "kinds": [
+            "block_column"
+          ],
+          "sha256": "54cd46aafbf6eeefd015552018fc04cfbdf1720b65781d41113a1704a3c167ae"
+        },
+        {
+          "status": 2,
+          "steps": 64,
+          "candidates": 20,
+          "placed": 20,
+          "writes": 20,
+          "kinds": [
+            "block_column"
+          ],
+          "sha256": "85dcf895c54c6d2cfcd80088295339775d754e48d6ac33d283bd0cb5c7d994fc"
+        }
+      ],
+      "mca": {
+        "chunks": 4,
+        "blocks_checked": 393216,
+        "changed_voxels": 195,
+        "heightmaps": 24,
+        "sha256": "7d76796057e31386f1375a6659374866ffe352226a8a01baf2b48a78782dde98"
+      },
+      "cave_memberships": 12
+    },
+    {
+      "profile": "profile-0",
+      "workload": "GPU workload CPU control",
+      "gpu": false,
+      "cases": [
+        {
+          "status": 0,
+          "steps": 0,
+          "candidates": 0,
+          "placed": 0,
+          "writes": 0,
+          "kinds": [],
+          "sha256": "f07518fd12070091b4234288f40c654acdcb5749192225e65c1032337ec8dc95"
+        },
+        {
+          "status": 2,
+          "steps": 2048,
+          "candidates": 44,
+          "placed": 15,
+          "writes": 854,
+          "kinds": [
+            "bamboo",
+            "plant",
+            "tree"
+          ],
+          "sha256": "e1eef076edd6e3bf5e48bbc99a2d410a965922a1246bbe1bec079d2a8f28df67"
+        },
+        {
+          "status": 2,
+          "steps": 2048,
+          "candidates": 44,
+          "placed": 15,
+          "writes": 854,
+          "kinds": [
+            "bamboo",
+            "plant",
+            "tree"
+          ],
+          "sha256": "abee0fcd2943a2e8c1d73fad8aff8b5261a49bb696c3f3f9e20b90f918582164"
+        },
+        {
+          "status": 2,
+          "steps": 2048,
+          "candidates": 44,
+          "placed": 15,
+          "writes": 854,
+          "kinds": [
+            "bamboo",
+            "plant",
+            "tree"
+          ],
+          "sha256": "1e292f137f1a961740f639fc59ca5655c8eb0ed4d35363a19dd457748de0455f"
+        },
+        {
+          "status": 1,
+          "steps": 27,
+          "candidates": 0,
+          "placed": 0,
+          "writes": 0,
+          "kinds": [],
+          "sha256": "d8ffee531a7df06e3e1f0a5115822999dfa043087c4d524234aecf170d0b4fc2"
+        }
+      ],
+      "mca": {
+        "chunks": 4,
+        "blocks_checked": 393216,
+        "changed_voxels": 0,
+        "heightmaps": 24,
+        "sha256": "247610e0e6e73344d3d81dfa62514e4ee0fc8cf5cabd1e852f65792e6657a7b3"
+      },
+      "cave_memberships": 17
+    },
+    {
+      "profile": "profile-0",
+      "workload": "bounded replay prefix",
+      "gpu": true,
+      "cases": [
+        {
+          "status": 0,
+          "steps": 0,
+          "candidates": 0,
+          "placed": 0,
+          "writes": 0,
+          "kinds": [],
+          "sha256": "f07518fd12070091b4234288f40c654acdcb5749192225e65c1032337ec8dc95"
+        },
+        {
+          "status": 2,
+          "steps": 2048,
+          "candidates": 44,
+          "placed": 15,
+          "writes": 854,
+          "kinds": [
+            "bamboo",
+            "plant",
+            "tree"
+          ],
+          "sha256": "e1eef076edd6e3bf5e48bbc99a2d410a965922a1246bbe1bec079d2a8f28df67"
+        },
+        {
+          "status": 2,
+          "steps": 2048,
+          "candidates": 44,
+          "placed": 15,
+          "writes": 854,
+          "kinds": [
+            "bamboo",
+            "plant",
+            "tree"
+          ],
+          "sha256": "abee0fcd2943a2e8c1d73fad8aff8b5261a49bb696c3f3f9e20b90f918582164"
+        },
+        {
+          "status": 2,
+          "steps": 2048,
+          "candidates": 44,
+          "placed": 15,
+          "writes": 854,
+          "kinds": [
+            "bamboo",
+            "plant",
+            "tree"
+          ],
+          "sha256": "1e292f137f1a961740f639fc59ca5655c8eb0ed4d35363a19dd457748de0455f"
+        },
+        {
+          "status": 1,
+          "steps": 27,
+          "candidates": 0,
+          "placed": 0,
+          "writes": 0,
+          "kinds": [],
+          "sha256": "d8ffee531a7df06e3e1f0a5115822999dfa043087c4d524234aecf170d0b4fc2"
+        }
+      ],
+      "mca": {
+        "chunks": 4,
+        "blocks_checked": 393216,
+        "changed_voxels": 0,
+        "heightmaps": 24,
+        "sha256": "247610e0e6e73344d3d81dfa62514e4ee0fc8cf5cabd1e852f65792e6657a7b3"
+      },
+      "cave_memberships": 17
+    },
+    {
+      "profile": "profile-1",
+      "workload": "GPU workload CPU control",
+      "gpu": false,
+      "cases": [
+        {
+          "status": 0,
+          "steps": 0,
+          "candidates": 0,
+          "placed": 0,
+          "writes": 0,
+          "kinds": [],
+          "sha256": "799f84e6309560bf3531eb81fc51704e5c77d1ab93fcc72a7ca0b7ff765199c6"
+        },
+        {
+          "status": 2,
+          "steps": 2048,
+          "candidates": 37,
+          "placed": 15,
+          "writes": 33,
+          "kinds": [
+            "bamboo",
+            "plant"
+          ],
+          "sha256": "bd18754f6ecded5de5b082201ec0aadd09fe8a0e1df17a30463634c8821021c3"
+        },
+        {
+          "status": 2,
+          "steps": 2048,
+          "candidates": 37,
+          "placed": 15,
+          "writes": 33,
+          "kinds": [
+            "bamboo",
+            "plant"
+          ],
+          "sha256": "bb6a7b73259dabe181fe63862c72fba3da0901f796a43a2e11d37ffac08a0695"
+        },
+        {
+          "status": 2,
+          "steps": 2048,
+          "candidates": 37,
+          "placed": 15,
+          "writes": 33,
+          "kinds": [
+            "bamboo",
+            "plant"
+          ],
+          "sha256": "6accb11b4812da2cc42927596d4a50872b6a1e6350f4ceeb7212742792adc032"
+        },
+        {
+          "status": 1,
+          "steps": 27,
+          "candidates": 0,
+          "placed": 0,
+          "writes": 0,
+          "kinds": [],
+          "sha256": "60164c7678f10ede8914e98f5382cde6437b4f361e9ef5d3ec584b2566eb2e65"
+        }
+      ],
+      "mca": {
+        "chunks": 4,
+        "blocks_checked": 393216,
+        "changed_voxels": 0,
+        "heightmaps": 24,
+        "sha256": "645b6942bbfb198f1999d01ec0f4f7be1e75143c42b1bf57b52959009836426f"
+      },
+      "cave_memberships": 20
+    },
+    {
+      "profile": "profile-1",
+      "workload": "bounded replay prefix",
+      "gpu": true,
+      "cases": [
+        {
+          "status": 0,
+          "steps": 0,
+          "candidates": 0,
+          "placed": 0,
+          "writes": 0,
+          "kinds": [],
+          "sha256": "799f84e6309560bf3531eb81fc51704e5c77d1ab93fcc72a7ca0b7ff765199c6"
+        },
+        {
+          "status": 2,
+          "steps": 2048,
+          "candidates": 37,
+          "placed": 15,
+          "writes": 33,
+          "kinds": [
+            "bamboo",
+            "plant"
+          ],
+          "sha256": "bd18754f6ecded5de5b082201ec0aadd09fe8a0e1df17a30463634c8821021c3"
+        },
+        {
+          "status": 2,
+          "steps": 2048,
+          "candidates": 37,
+          "placed": 15,
+          "writes": 33,
+          "kinds": [
+            "bamboo",
+            "plant"
+          ],
+          "sha256": "bb6a7b73259dabe181fe63862c72fba3da0901f796a43a2e11d37ffac08a0695"
+        },
+        {
+          "status": 2,
+          "steps": 2048,
+          "candidates": 37,
+          "placed": 15,
+          "writes": 33,
+          "kinds": [
+            "bamboo",
+            "plant"
+          ],
+          "sha256": "6accb11b4812da2cc42927596d4a50872b6a1e6350f4ceeb7212742792adc032"
+        },
+        {
+          "status": 1,
+          "steps": 27,
+          "candidates": 0,
+          "placed": 0,
+          "writes": 0,
+          "kinds": [],
+          "sha256": "60164c7678f10ede8914e98f5382cde6437b4f361e9ef5d3ec584b2566eb2e65"
+        }
+      ],
+      "mca": {
+        "chunks": 4,
+        "blocks_checked": 393216,
+        "changed_voxels": 0,
+        "heightmaps": 24,
+        "sha256": "645b6942bbfb198f1999d01ec0f4f7be1e75143c42b1bf57b52959009836426f"
       },
       "cave_memberships": 20
     },
@@ -711,7 +913,7 @@
             "bamboo",
             "plant"
           ],
-          "sha256": "74568afbaec8374e8955c82f5a09a8fd992e479b8e48d5e28b8c3df5b6ddac57"
+          "sha256": "6c3bc2040692be0df80effb67e9e206cfb72eba52f10f8ddf29e2a4a2e84341d"
         },
         {
           "status": 2,
@@ -723,7 +925,7 @@
             "bamboo",
             "plant"
           ],
-          "sha256": "68a88541ff177cf2eefb2e5b757e902ac51cfe08783c843b9272d7bf0fe35f61"
+          "sha256": "49f865405a2484b584cb9b098997deceb8f4d4752e2ea2536f354a2acd08f200"
         },
         {
           "status": 2,
@@ -735,7 +937,7 @@
             "bamboo",
             "plant"
           ],
-          "sha256": "0954749ca8bef9de4c3e3735ede2c0c6965f9f04a51bcd02479c24f682e41523"
+          "sha256": "659c636f2a5aa4abedeb1b0a1af8341da1750fc929b5cf7ba41dac2904ab35e4"
         },
         {
           "status": 1,
@@ -744,7 +946,7 @@
           "placed": 0,
           "writes": 0,
           "kinds": [],
-          "sha256": "453a98125ec884bfd663b6bfa17b36623966abb9edf2faea1c8b4e871e2fe5ac"
+          "sha256": "c00281a09be496261c951d55cdb5c95bf6d4685192e670b2215ae0084551696f"
         }
       ],
       "mca": {
@@ -780,7 +982,7 @@
             "bamboo",
             "plant"
           ],
-          "sha256": "74568afbaec8374e8955c82f5a09a8fd992e479b8e48d5e28b8c3df5b6ddac57"
+          "sha256": "6c3bc2040692be0df80effb67e9e206cfb72eba52f10f8ddf29e2a4a2e84341d"
         },
         {
           "status": 2,
@@ -792,7 +994,7 @@
             "bamboo",
             "plant"
           ],
-          "sha256": "68a88541ff177cf2eefb2e5b757e902ac51cfe08783c843b9272d7bf0fe35f61"
+          "sha256": "49f865405a2484b584cb9b098997deceb8f4d4752e2ea2536f354a2acd08f200"
         },
         {
           "status": 2,
@@ -804,7 +1006,7 @@
             "bamboo",
             "plant"
           ],
-          "sha256": "0954749ca8bef9de4c3e3735ede2c0c6965f9f04a51bcd02479c24f682e41523"
+          "sha256": "659c636f2a5aa4abedeb1b0a1af8341da1750fc929b5cf7ba41dac2904ab35e4"
         },
         {
           "status": 1,
@@ -813,7 +1015,7 @@
           "placed": 0,
           "writes": 0,
           "kinds": [],
-          "sha256": "453a98125ec884bfd663b6bfa17b36623966abb9edf2faea1c8b4e871e2fe5ac"
+          "sha256": "c00281a09be496261c951d55cdb5c95bf6d4685192e670b2215ae0084551696f"
         }
       ],
       "mca": {
@@ -827,296 +1029,122 @@
     },
     {
       "profile": "fixture",
-      "workload": "complete CPU replay",
-      "gpu": false,
-      "cases": [
-        {
-          "status": 0,
-          "steps": 40,
-          "candidates": 12,
-          "placed": 12,
-          "writes": 140,
-          "kinds": [
-            "aquatic",
-            "bamboo",
-            "block_column",
-            "disk",
-            "plant",
-            "simple_block",
-            "tree"
-          ],
-          "sha256": "cc54a2feeb76d57fa0e9678de4e72f0f8795a71052d72dc295103cbca075b918"
-        },
-        {
-          "status": 0,
-          "steps": 40,
-          "candidates": 12,
-          "placed": 12,
-          "writes": 140,
-          "kinds": [
-            "aquatic",
-            "bamboo",
-            "block_column",
-            "disk",
-            "plant",
-            "simple_block",
-            "tree"
-          ],
-          "sha256": "478866517490df7cc0c1518af3307568f04200a0a98a8325bb6c72696f8a4938"
-        },
-        {
-          "status": 0,
-          "steps": 40,
-          "candidates": 12,
-          "placed": 12,
-          "writes": 140,
-          "kinds": [
-            "aquatic",
-            "bamboo",
-            "block_column",
-            "disk",
-            "plant",
-            "simple_block",
-            "tree"
-          ],
-          "sha256": "db03bb0fda30a207424301c8c6d18e54d6011afac238abef6037bcff76f9c583"
-        },
-        {
-          "status": 0,
-          "steps": 40,
-          "candidates": 12,
-          "placed": 12,
-          "writes": 137,
-          "kinds": [
-            "aquatic",
-            "bamboo",
-            "block_column",
-            "disk",
-            "plant",
-            "simple_block",
-            "tree"
-          ],
-          "sha256": "e25b1ebea5e34f4d0fb914ae30ffd1d82b9de3764f561cd5ab91ae97841f6665"
-        },
-        {
-          "status": 0,
-          "steps": 40,
-          "candidates": 12,
-          "placed": 12,
-          "writes": 133,
-          "kinds": [
-            "aquatic",
-            "bamboo",
-            "block_column",
-            "disk",
-            "plant",
-            "simple_block",
-            "tree"
-          ],
-          "sha256": "4d671507123ee4e094b868be22c4a51413867bd15a68cb05f41137ebf7cb1159"
-        },
-        {
-          "status": 0,
-          "steps": 40,
-          "candidates": 12,
-          "placed": 12,
-          "writes": 143,
-          "kinds": [
-            "aquatic",
-            "bamboo",
-            "block_column",
-            "disk",
-            "plant",
-            "simple_block",
-            "tree"
-          ],
-          "sha256": "52f86186db6f4b078029c35772afb908381c1b60372d8c9f11f8817404efdda1"
-        },
-        {
-          "status": 2,
-          "steps": 1,
-          "candidates": 0,
-          "placed": 0,
-          "writes": 0,
-          "kinds": [],
-          "sha256": "510d36b52e7d515a596f9629242320c2be4868165a6ff8d67581403aea1adf78"
-        },
-        {
-          "status": 2,
-          "steps": 0,
-          "candidates": 0,
-          "placed": 0,
-          "writes": 0,
-          "kinds": [],
-          "sha256": "a94561f50f1aa06594bce9cf2694b397461ec90eb63b242fee1bd2b4f370bd51"
-        },
-        {
-          "status": 0,
-          "steps": 0,
-          "candidates": 0,
-          "placed": 0,
-          "writes": 0,
-          "kinds": [],
-          "sha256": "bd9d03770827ab2587b6e558a46ca85f26a853c0f1f042cb9288485b5139f55a"
-        },
-        {
-          "status": 1,
-          "steps": 3,
-          "candidates": 0,
-          "placed": 0,
-          "writes": 0,
-          "kinds": [],
-          "sha256": "1026fd51c6ebe1d98b6c96ddaa59b7aff44dbc22f6b2491b844e4cb672f7434b"
-        },
-        {
-          "status": 2,
-          "steps": 64,
-          "candidates": 20,
-          "placed": 20,
-          "writes": 20,
-          "kinds": [
-            "block_column"
-          ],
-          "sha256": "5d9fe89f9cb4d5607e1a9428ff92c5f7d8c9406e496738eca53e727e1b8ce52b"
-        },
-        {
-          "status": 2,
-          "steps": 64,
-          "candidates": 20,
-          "placed": 20,
-          "writes": 20,
-          "kinds": [
-            "block_column"
-          ],
-          "sha256": "f33e70cd4332b158b674bf5bfe9486938264aef385f7902ccb04030a5e133254"
-        },
-        {
-          "status": 2,
-          "steps": 64,
-          "candidates": 20,
-          "placed": 20,
-          "writes": 20,
-          "kinds": [
-            "block_column"
-          ],
-          "sha256": "3a1941951dd6136300d65644cba06cbc685d939550bc9701cac37f117b84c3e5"
-        }
-      ],
-      "mca": {
-        "chunks": 4,
-        "blocks_checked": 393216,
-        "changed_voxels": 140,
-        "heightmaps": 24,
-        "sha256": "3b21a5d9828e86361f67ce9f01d33b041f15974f5cd1917a2f9c38f720b865b6"
-      },
-      "cave_memberships": 10
-    },
-    {
-      "profile": "fixture",
       "workload": "GPU workload CPU control",
       "gpu": false,
       "cases": [
         {
           "status": 0,
-          "steps": 40,
-          "candidates": 12,
-          "placed": 12,
-          "writes": 140,
+          "steps": 46,
+          "candidates": 14,
+          "placed": 14,
+          "writes": 195,
           "kinds": [
             "aquatic",
             "bamboo",
             "block_column",
             "disk",
+            "fallen_tree",
+            "huge_mushroom",
             "plant",
             "simple_block",
             "tree"
           ],
-          "sha256": "cc54a2feeb76d57fa0e9678de4e72f0f8795a71052d72dc295103cbca075b918"
+          "sha256": "95446f8282fc291f3907b85e2d9ff482e40903ce33ce07340fb9b00abbf98037"
         },
         {
           "status": 0,
-          "steps": 40,
-          "candidates": 12,
-          "placed": 12,
-          "writes": 140,
+          "steps": 46,
+          "candidates": 14,
+          "placed": 14,
+          "writes": 195,
           "kinds": [
             "aquatic",
             "bamboo",
             "block_column",
             "disk",
+            "fallen_tree",
+            "huge_mushroom",
             "plant",
             "simple_block",
             "tree"
           ],
-          "sha256": "478866517490df7cc0c1518af3307568f04200a0a98a8325bb6c72696f8a4938"
+          "sha256": "dbe4e9a10033cbd67a2c30caab539a16a1d9cb5bda33cd40ce4e629213939f29"
         },
         {
           "status": 0,
-          "steps": 40,
-          "candidates": 12,
-          "placed": 12,
-          "writes": 140,
+          "steps": 46,
+          "candidates": 14,
+          "placed": 14,
+          "writes": 195,
           "kinds": [
             "aquatic",
             "bamboo",
             "block_column",
             "disk",
+            "fallen_tree",
+            "huge_mushroom",
             "plant",
             "simple_block",
             "tree"
           ],
-          "sha256": "db03bb0fda30a207424301c8c6d18e54d6011afac238abef6037bcff76f9c583"
+          "sha256": "971be582bb720ec0a7deda0aec1eb8032c4b247b9fb34fa4b599c0a34b902294"
         },
         {
           "status": 0,
-          "steps": 40,
-          "candidates": 12,
-          "placed": 12,
-          "writes": 137,
+          "steps": 46,
+          "candidates": 14,
+          "placed": 14,
+          "writes": 187,
           "kinds": [
             "aquatic",
             "bamboo",
             "block_column",
             "disk",
+            "fallen_tree",
+            "huge_mushroom",
             "plant",
             "simple_block",
             "tree"
           ],
-          "sha256": "e25b1ebea5e34f4d0fb914ae30ffd1d82b9de3764f561cd5ab91ae97841f6665"
+          "sha256": "8c2ba164644fe5be24a5f7cb64ace981dd2819c2b843c226aa12f8972f339750"
         },
         {
           "status": 0,
-          "steps": 40,
-          "candidates": 12,
-          "placed": 12,
-          "writes": 133,
+          "steps": 46,
+          "candidates": 14,
+          "placed": 14,
+          "writes": 190,
           "kinds": [
             "aquatic",
             "bamboo",
             "block_column",
             "disk",
+            "fallen_tree",
+            "huge_mushroom",
             "plant",
             "simple_block",
             "tree"
           ],
-          "sha256": "4d671507123ee4e094b868be22c4a51413867bd15a68cb05f41137ebf7cb1159"
+          "sha256": "d935af24d6af96f671f9bf1b73a6916468d9b6eb63840c316049f63a405b3142"
         },
         {
           "status": 0,
-          "steps": 40,
-          "candidates": 12,
-          "placed": 12,
-          "writes": 143,
+          "steps": 46,
+          "candidates": 14,
+          "placed": 14,
+          "writes": 198,
           "kinds": [
             "aquatic",
             "bamboo",
             "block_column",
             "disk",
+            "fallen_tree",
+            "huge_mushroom",
             "plant",
             "simple_block",
             "tree"
           ],
-          "sha256": "52f86186db6f4b078029c35772afb908381c1b60372d8c9f11f8817404efdda1"
+          "sha256": "da584724c623fe4ad6c99b77b5de5017eea07ff46746478e1a3ca81c99fd300e"
         },
         {
           "status": 2,
@@ -1125,7 +1153,7 @@
           "placed": 0,
           "writes": 0,
           "kinds": [],
-          "sha256": "510d36b52e7d515a596f9629242320c2be4868165a6ff8d67581403aea1adf78"
+          "sha256": "b93765663845bd5544bf48526b2ed41b2ae730637b651df174b992cbbc1bf5f8"
         },
         {
           "status": 2,
@@ -1134,7 +1162,7 @@
           "placed": 0,
           "writes": 0,
           "kinds": [],
-          "sha256": "a94561f50f1aa06594bce9cf2694b397461ec90eb63b242fee1bd2b4f370bd51"
+          "sha256": "a7b37fcb8e18fdc2ca2f606e5b2f15b1ffacb53e95d93e5561706267ad5832d2"
         },
         {
           "status": 0,
@@ -1143,7 +1171,7 @@
           "placed": 0,
           "writes": 0,
           "kinds": [],
-          "sha256": "bd9d03770827ab2587b6e558a46ca85f26a853c0f1f042cb9288485b5139f55a"
+          "sha256": "80e72759433576e87b3d583e1d5c423e4dde87476973701ea09778dc27c5d84a"
         },
         {
           "status": 1,
@@ -1152,7 +1180,7 @@
           "placed": 0,
           "writes": 0,
           "kinds": [],
-          "sha256": "1026fd51c6ebe1d98b6c96ddaa59b7aff44dbc22f6b2491b844e4cb672f7434b"
+          "sha256": "d5e4958589d0901cddb3c2912db4574788e248a6aaf199d1007abbb17597f02a"
         },
         {
           "status": 2,
@@ -1163,7 +1191,7 @@
           "kinds": [
             "block_column"
           ],
-          "sha256": "5d9fe89f9cb4d5607e1a9428ff92c5f7d8c9406e496738eca53e727e1b8ce52b"
+          "sha256": "3fdfa6252617b671352547135d918dbeb1a24eb97f3ce066538727aaa27ebb68"
         },
         {
           "status": 2,
@@ -1174,7 +1202,7 @@
           "kinds": [
             "block_column"
           ],
-          "sha256": "f33e70cd4332b158b674bf5bfe9486938264aef385f7902ccb04030a5e133254"
+          "sha256": "54cd46aafbf6eeefd015552018fc04cfbdf1720b65781d41113a1704a3c167ae"
         },
         {
           "status": 2,
@@ -1185,124 +1213,136 @@
           "kinds": [
             "block_column"
           ],
-          "sha256": "3a1941951dd6136300d65644cba06cbc685d939550bc9701cac37f117b84c3e5"
+          "sha256": "85dcf895c54c6d2cfcd80088295339775d754e48d6ac33d283bd0cb5c7d994fc"
         }
       ],
       "mca": {
         "chunks": 4,
         "blocks_checked": 393216,
-        "changed_voxels": 140,
+        "changed_voxels": 195,
         "heightmaps": 24,
-        "sha256": "3b21a5d9828e86361f67ce9f01d33b041f15974f5cd1917a2f9c38f720b865b6"
+        "sha256": "7d76796057e31386f1375a6659374866ffe352226a8a01baf2b48a78782dde98"
       },
-      "cave_memberships": 10
+      "cave_memberships": 12
     },
     {
       "profile": "fixture",
-      "workload": "complete seven-family fixture",
+      "workload": "complete nine-family fixture",
       "gpu": true,
       "cases": [
         {
           "status": 0,
-          "steps": 40,
-          "candidates": 12,
-          "placed": 12,
-          "writes": 140,
+          "steps": 46,
+          "candidates": 14,
+          "placed": 14,
+          "writes": 195,
           "kinds": [
             "aquatic",
             "bamboo",
             "block_column",
             "disk",
+            "fallen_tree",
+            "huge_mushroom",
             "plant",
             "simple_block",
             "tree"
           ],
-          "sha256": "cc54a2feeb76d57fa0e9678de4e72f0f8795a71052d72dc295103cbca075b918"
+          "sha256": "95446f8282fc291f3907b85e2d9ff482e40903ce33ce07340fb9b00abbf98037"
         },
         {
           "status": 0,
-          "steps": 40,
-          "candidates": 12,
-          "placed": 12,
-          "writes": 140,
+          "steps": 46,
+          "candidates": 14,
+          "placed": 14,
+          "writes": 195,
           "kinds": [
             "aquatic",
             "bamboo",
             "block_column",
             "disk",
+            "fallen_tree",
+            "huge_mushroom",
             "plant",
             "simple_block",
             "tree"
           ],
-          "sha256": "478866517490df7cc0c1518af3307568f04200a0a98a8325bb6c72696f8a4938"
+          "sha256": "dbe4e9a10033cbd67a2c30caab539a16a1d9cb5bda33cd40ce4e629213939f29"
         },
         {
           "status": 0,
-          "steps": 40,
-          "candidates": 12,
-          "placed": 12,
-          "writes": 140,
+          "steps": 46,
+          "candidates": 14,
+          "placed": 14,
+          "writes": 195,
           "kinds": [
             "aquatic",
             "bamboo",
             "block_column",
             "disk",
+            "fallen_tree",
+            "huge_mushroom",
             "plant",
             "simple_block",
             "tree"
           ],
-          "sha256": "db03bb0fda30a207424301c8c6d18e54d6011afac238abef6037bcff76f9c583"
+          "sha256": "971be582bb720ec0a7deda0aec1eb8032c4b247b9fb34fa4b599c0a34b902294"
         },
         {
           "status": 0,
-          "steps": 40,
-          "candidates": 12,
-          "placed": 12,
-          "writes": 137,
+          "steps": 46,
+          "candidates": 14,
+          "placed": 14,
+          "writes": 187,
           "kinds": [
             "aquatic",
             "bamboo",
             "block_column",
             "disk",
+            "fallen_tree",
+            "huge_mushroom",
             "plant",
             "simple_block",
             "tree"
           ],
-          "sha256": "e25b1ebea5e34f4d0fb914ae30ffd1d82b9de3764f561cd5ab91ae97841f6665"
+          "sha256": "8c2ba164644fe5be24a5f7cb64ace981dd2819c2b843c226aa12f8972f339750"
         },
         {
           "status": 0,
-          "steps": 40,
-          "candidates": 12,
-          "placed": 12,
-          "writes": 133,
+          "steps": 46,
+          "candidates": 14,
+          "placed": 14,
+          "writes": 190,
           "kinds": [
             "aquatic",
             "bamboo",
             "block_column",
             "disk",
+            "fallen_tree",
+            "huge_mushroom",
             "plant",
             "simple_block",
             "tree"
           ],
-          "sha256": "4d671507123ee4e094b868be22c4a51413867bd15a68cb05f41137ebf7cb1159"
+          "sha256": "d935af24d6af96f671f9bf1b73a6916468d9b6eb63840c316049f63a405b3142"
         },
         {
           "status": 0,
-          "steps": 40,
-          "candidates": 12,
-          "placed": 12,
-          "writes": 143,
+          "steps": 46,
+          "candidates": 14,
+          "placed": 14,
+          "writes": 198,
           "kinds": [
             "aquatic",
             "bamboo",
             "block_column",
             "disk",
+            "fallen_tree",
+            "huge_mushroom",
             "plant",
             "simple_block",
             "tree"
           ],
-          "sha256": "52f86186db6f4b078029c35772afb908381c1b60372d8c9f11f8817404efdda1"
+          "sha256": "da584724c623fe4ad6c99b77b5de5017eea07ff46746478e1a3ca81c99fd300e"
         },
         {
           "status": 2,
@@ -1311,7 +1351,7 @@
           "placed": 0,
           "writes": 0,
           "kinds": [],
-          "sha256": "510d36b52e7d515a596f9629242320c2be4868165a6ff8d67581403aea1adf78"
+          "sha256": "b93765663845bd5544bf48526b2ed41b2ae730637b651df174b992cbbc1bf5f8"
         },
         {
           "status": 2,
@@ -1320,7 +1360,7 @@
           "placed": 0,
           "writes": 0,
           "kinds": [],
-          "sha256": "a94561f50f1aa06594bce9cf2694b397461ec90eb63b242fee1bd2b4f370bd51"
+          "sha256": "a7b37fcb8e18fdc2ca2f606e5b2f15b1ffacb53e95d93e5561706267ad5832d2"
         },
         {
           "status": 0,
@@ -1329,7 +1369,7 @@
           "placed": 0,
           "writes": 0,
           "kinds": [],
-          "sha256": "bd9d03770827ab2587b6e558a46ca85f26a853c0f1f042cb9288485b5139f55a"
+          "sha256": "80e72759433576e87b3d583e1d5c423e4dde87476973701ea09778dc27c5d84a"
         },
         {
           "status": 1,
@@ -1338,7 +1378,7 @@
           "placed": 0,
           "writes": 0,
           "kinds": [],
-          "sha256": "1026fd51c6ebe1d98b6c96ddaa59b7aff44dbc22f6b2491b844e4cb672f7434b"
+          "sha256": "d5e4958589d0901cddb3c2912db4574788e248a6aaf199d1007abbb17597f02a"
         },
         {
           "status": 2,
@@ -1349,7 +1389,7 @@
           "kinds": [
             "block_column"
           ],
-          "sha256": "5d9fe89f9cb4d5607e1a9428ff92c5f7d8c9406e496738eca53e727e1b8ce52b"
+          "sha256": "3fdfa6252617b671352547135d918dbeb1a24eb97f3ce066538727aaa27ebb68"
         },
         {
           "status": 2,
@@ -1360,7 +1400,7 @@
           "kinds": [
             "block_column"
           ],
-          "sha256": "f33e70cd4332b158b674bf5bfe9486938264aef385f7902ccb04030a5e133254"
+          "sha256": "54cd46aafbf6eeefd015552018fc04cfbdf1720b65781d41113a1704a3c167ae"
         },
         {
           "status": 2,
@@ -1371,17 +1411,17 @@
           "kinds": [
             "block_column"
           ],
-          "sha256": "3a1941951dd6136300d65644cba06cbc685d939550bc9701cac37f117b84c3e5"
+          "sha256": "85dcf895c54c6d2cfcd80088295339775d754e48d6ac33d283bd0cb5c7d994fc"
         }
       ],
       "mca": {
         "chunks": 4,
         "blocks_checked": 393216,
-        "changed_voxels": 140,
+        "changed_voxels": 195,
         "heightmaps": 24,
-        "sha256": "3b21a5d9828e86361f67ce9f01d33b041f15974f5cd1917a2f9c38f720b865b6"
+        "sha256": "7d76796057e31386f1375a6659374866ffe352226a8a01baf2b48a78782dde98"
       },
-      "cave_memberships": 10
+      "cave_memberships": 12
     }
   ],
   "metal_observation": [
@@ -1389,60 +1429,60 @@
       "profile": 0,
       "command_buffers": 7,
       "device_ms": [
-        35.95275,
-        597.782625,
-        8.62175,
-        2202.660875,
-        2269.493,
-        2258.964167,
-        611.2365
+        33.518042,
+        664.116208,
+        9.033375,
+        2412.900875,
+        2491.604958,
+        2504.453333,
+        665.84475
       ]
     },
     {
       "profile": 1,
       "command_buffers": 7,
       "device_ms": [
-        33.838833,
-        727.854625,
-        9.755875,
-        1872.191167,
-        1864.959333,
-        2215.519167,
-        728.467625
+        35.912292,
+        805.654708,
+        9.229625,
+        2082.545208,
+        2066.31225,
+        2473.322125,
+        796.896167
       ]
     },
     {
       "profile": 2,
       "command_buffers": 7,
       "device_ms": [
-        28.008667,
-        787.066417,
-        8.203125,
-        1971.969,
-        1960.376042,
-        2288.198708,
-        798.238333
+        36.313958,
+        861.133125,
+        9.213042,
+        2165.975375,
+        2140.134958,
+        2552.767625,
+        885.692583
       ]
     },
     {
       "profile": 3,
       "command_buffers": 15,
       "device_ms": [
-        30.3555,
-        489.269958,
-        9.854333,
-        488.676792,
-        486.720125,
-        489.383708,
-        488.204125,
-        486.945208,
-        402.61625,
-        401.524875,
-        401.283,
-        403.423083,
-        422.184667,
-        422.412125,
-        421.325
+        33.73025,
+        660.58625,
+        10.995042,
+        662.546,
+        656.028833,
+        654.65475,
+        668.92475,
+        670.101708,
+        535.042375,
+        535.99925,
+        531.20125,
+        529.939542,
+        548.818958,
+        547.351625,
+        551.447958
       ]
     }
   ],
@@ -1463,10 +1503,13 @@
     "bend/density.bend": "01beac1b7443695c1507293a7d916489ac5441235c1e07290330691864b56aae",
     "bend/density_batch.bend": "51231a72efa798c9a31f1a6a841176ea50d1ac5644352b389e3d1a9bff30d99c",
     "bend/density_lattice.bend": "0b02993df32e160b21c50b8ee33e003f2d7f3eb53645c91ab6699bed0e1a9ae8",
+    "bend/fallen_tree.bend": "b3775fb3138c7ad40595ed6da4c6fbbb4968232c344b4bd591b582be4fd13674",
+    "bend/forest_data.bend": "b485df8e0eb4eb7b55971f9c1f3b4322e3db575ab398850d1255514a9ac26cc6",
     "bend/generated_chunk.bend": "ebb9ee79025bf9a45a34ff5f7eb798be1a19af8820bbb4a877f3f6ef8d9f7f59",
     "bend/generated_region.bend": "c4bc2e78f53efa8886b276ab661b086baf60116cb80b2ac489d6e363aca1f29f",
     "bend/geology.bend": "9cb01c921b02127b84593f6c52a19f9ab4de88fdf8bfd660ff5f69d02379e414",
     "bend/heightmaps.bend": "0b69c87d24ec3b27cbb082bb394205765154bf78c5c4db2c226fbc4ba3e2d997",
+    "bend/huge_mushroom.bend": "4a03ae66d209ea9306e08a23a94e59f3a19154a6cb8364b6edb7c12aee1a02fd",
     "bend/int_provider.bend": "402c00ca9af5eeeb0fbfd61e5556f336ea0e2daad3b69c29f645be118820d860",
     "bend/lake_candidates.bend": "2ade065dbeffb8e20bf4a44ad5acd8a7759855be344a79e991c6e0c90c3085d8",
     "bend/lake_data.bend": "2951da8dbd6b05ede1d4f038579d5a89d79b6ce7d34d45d56da82a8bd7d84492",
@@ -1503,6 +1546,7 @@
     "bend/registry_decoration_counts.bend": "722286810301bf58e7e8010473c2c73afe25904790285c500724933226faa799",
     "bend/registry_decoration_heights.bend": "e30557de40d11bda6d5eff8ee570d9095ac53a200ffa45d3406a39f5077c2652",
     "bend/registry_density.bend": "0c1972222bbcdfead41b30ae0453f7e05e85ab7bb446c113c3a07a8b12f56cb7",
+    "bend/registry_forest.bend": "c4ffb421266999fcd4c48bf308e9cd160ad2d587cd8cda6411efd8d2cdba983e",
     "bend/registry_int_provider.bend": "7eb3d6eb32414dc239d034cbf6ce658c3f8a51bb4f997758a89ba52d678ab859",
     "bend/registry_material.bend": "b28952c7b085865d41f853d55e287c0c0bb8000442cc2c94b37325daaab8d29e",
     "bend/registry_placement.bend": "0dd10eee84ece0f331bc7271dee9efd89dfc78e7a4b48dfaa035dd2ebcd8f34e",
@@ -1510,12 +1554,12 @@
     "bend/registry_placement_policy.bend": "802b38a1c778de5dde66f8927e00a142c712c3ec029b6c01c7a9d3acd80983bd",
     "bend/registry_placement_predicate.bend": "0f1ad10f8fd935e2bc6abbc71508bf9cfb404f0d115b3a7c06298b7eb7ea86bc",
     "bend/registry_provider_noise.bend": "b0925be11095d875e222daccc8d62439ed959e10d031da2159bf05b69ee5a219",
-    "bend/registry_surface_feature.bend": "18dfc54fef01851f83d5f74370eb5c4f6e908706587999556481ed857f6a8e2c",
+    "bend/registry_surface_feature.bend": "169d9ca4cb4b5c6fdd4c9c732ccc5edb8b3fa9b7b7cea184a821e1decf3f171f",
     "bend/registry_tree.bend": "febb51a4186b17228619f29f8a0af49e13d0c33cfa8b2d837ace96ad4b8e6ca1",
     "bend/registry_values.bend": "5bb1d3ab6bfed7cf640af35089a5ec1370cc2f686d7cfb8b210e7643e1b3d97f",
-    "bend/registry_vegetation.bend": "4432f505ee775496b4159021c66cef7b94a5f42f461532bcb211b0336100b82b",
+    "bend/registry_vegetation.bend": "440cc020b97c2ed1fb6a4641d52357c6c521f93c1cab4603d9fa3bb57cc8d0dc",
     "bend/shoreline.bend": "932383d2add618bbc94b6b5ddd6f75030a3853e0def8fa2e78764405185cb888",
-    "bend/surface_feature.bend": "5dc5744988ad4e5681deba142ebd2cf837a38d58f0a2c01a18d96fd8bcf121d1",
+    "bend/surface_feature.bend": "2b6d1301775b4ceeb1d95db41a58867159414bf3154df65367e47bdb675efb6f",
     "bend/surface_plants.bend": "81369dce84f2d54915272ac70a454565d873dfc5b2177857518ab35cb7aae734",
     "bend/terrain_height.bend": "bc5400f024c86b34294cc628b364d7ceb67fd9675cb2de77a3cbe06b519be8a2",
     "bend/terrain_surface.bend": "26687ac40e62949ca563d7f31117207fa0eb053d82f51b58a14e84b9a2d4d652",
@@ -1536,16 +1580,17 @@
     "bend/tree_geometry.bend": "4325085f19a58caba1fce591caf60dc0b66ade88c910887c45237ccb5af7e26a",
     "bend/vegetation.bend": "931a5fd7e0d55e81fa166d5383bac0e12a5f41272382eadb6435d0ce62fe97a0",
     "bend/word64.bend": "62e104fbbc56208d66457789a7f2ed3f5fe122f4a19068c3df9b3bbbf555e139",
+    "scripts/bend_forest_reference.py": "5482f31b280cc99f5f6bb3db4031da5202cafb1c74e0d72956f7ac51b2f020ed",
     "scripts/test_bend_placement_walker.py": "b35ad71a0d02b14ed53f48c0b999fe5098806f01adcdb4e78c9737c8f981e459",
     "scripts/test_bend_surface_features.py": "8b49b2f5dc6b1bd45806ba3f9ddddb896b995937c2b0d6b4a2658a44847b5b21",
     "scripts/test_bend_trees.py": "3b5f792c77ed67bec2beecfaf19e1cc174e79bf5828e00651dd39c6d404c7453",
-    "scripts/test_bend_vegetation.py": "3e37f2bf21af030952ae25cc3d78adfdddce1865c71a1db7884dc6353b878c55"
+    "scripts/test_bend_vegetation.py": "69612274f9fb0b1c73793f392672cd54b02cdc840e1be1cd098ef2ed1a557d06"
   },
   "profiles": {
-    "build/bend/profiles/profile-0.json": "aefce6ff0e800966ad55920c5d21510dfa277de4612f67e22d5146d3aa838203",
-    "build/bend/profiles/profile-1.json": "c9abbe97860a394ed899d64967bd0395bb9bb4ec71a9dff43d1bb45893fefd4d",
-    "build/bend/profiles/profile-2.json": "068fd602ad497128dd3960cb9be76840ebd41882b5b64c25acfa76d65e930c8b"
+    "/Users/cyberpwn/.codex/worktrees/bend-forest-features/Retina/build/bend/profiles/profile-0.json": "aefce6ff0e800966ad55920c5d21510dfa277de4612f67e22d5146d3aa838203",
+    "/Users/cyberpwn/.codex/worktrees/bend-forest-features/Retina/build/bend/profiles/profile-1.json": "c9abbe97860a394ed899d64967bd0395bb9bb4ec71a9dff43d1bb45893fefd4d",
+    "/Users/cyberpwn/.codex/worktrees/bend-forest-features/Retina/build/bend/profiles/profile-2.json": "068fd602ad497128dd3960cb9be76840ebd41882b5b64c25acfa76d65e930c8b"
   },
-  "native_sha256": "776fa2f945ce95fda4580612a40bbf84f3b5950a07bb3341eff4593086f824ee",
-  "gpu_sha256": "f6dd89d439ed1784367529fa4934218535a11a3d8f5b39dfc0e2afa38a990e68"
+  "native_sha256": "4c5687c5c129c30333cb51ce75673a9d775d33485878a5486e700c57197aa05b",
+  "gpu_sha256": "88600e6e2d109b7f7273c13708d39217ec25d7f76b452d144489c3f89d86affb"
 }

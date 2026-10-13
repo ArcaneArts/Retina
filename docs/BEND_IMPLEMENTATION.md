@@ -184,7 +184,7 @@ more deeply; retain the original requested scope.
 | Lakes, aquifer fields and fluid barriers | `TerrainFeatureProfile.java`, `program/lake_sparse.rs`, `aquifers.wgsl` | Typed aquifer graph projection and GPU/CPU flooding, erosion, spread, lava, barrier and preliminary-surface evaluation implemented. Globally hashed resident fluid centers, trilinear barrier fields and nearest-center pressure now place registered cavity fluids while preserving protected/pressure-barrier materials. Registered lake budgets/materials, globally seeded candidates, five bank probes, bounded fluid levels and noisy basin/rim placement implemented on CPU/GPU before material coating. Independent block/NBT/zlib checks cover fluids, barriers, overlap and signed/distant coordinates; lake exclusions now use finalized pre-carving coast selection, including global probes outside the resident tile. Out-of-tile bank vertices now execute in bulk with exact prior geometry and material bytes, improving measured GPU lake-stage latency by 10.1–14.6×. Playable terrain integration implemented; full parity and performance work remain required |
 | Ore height/count/replacement/discard rules and GPU rasterization | `geology/`, `ore.wgsl` | Registered recipe projection, packed membership/material tables and selected-backend ordered replacement/exposure policy implemented. Registered count/rarity/height attempts and local sphere-chain/scattered geometry now execute on CPU/GPU. Local sphere-union masks and ordered scattered points now calculate in the same selected-backend evaluation as geometry. Spatial surface/cave membership filtering, stable neighboring contribution buckets and ordered resident-block replay now run in one selected CPU/GPU evaluation, with immutable exposure halo checks and independent voxel/NBT/zlib validation. Playable terrain integration implemented; full parity and performance work remain required |
 | Ordered decoration, registered counts, provider noise and placement modifiers | `DecorationProfile.java`, `decoration/placement*`, `counts/`, `provider_noise/` | Registered recursive integer providers, count/offset projection, build-relative height distributions and actual-permutation spatial count noise independently checked on CPU/Metal. Typed ordered-program projection, exact placement-salt grouping, recursive predicates, live block/heightmap overlay and terrain-dependent checks now independently checked on CPU/Metal. Lazy ordered count/layer/cuboid execution and shared selector budgets now have an independent CPU/Metal component harness. All ten block-provider families, full 64-bit weighted decisions, current-state property transforms and initialized permutation/offset noise now independently checked on CPU/Metal. Simple-block, block-column, disk, ordinary plant, aquatic and bamboo writers now independently replay live material changes and RNG state on CPU/Metal. Ordered accepted FEATURE overlays now merge into resident runs with final plant repair, core cropping and independently decoded MCA checks; remaining feature families, neighboring-anchor coordination and playable integration are pending |
-| Trees and decorators, giant mushrooms, fallen trees, disks, vegetation patches, block columns, bamboo, aquatic plants and attachments | `decoration.rs`, `decoration/`, `tree_shapes.rs` | Simple-block, block-column, disk, ordinary plant, aquatic and bamboo writers and registry projections independently checked on CPU/Metal, including nested recipes and accepted writes through MCA serialization. Registered tree trunks/crowns, weighted axis/distance states, connected leaves, roots, vines and cocoa now have pure Bend writers and ordered role replay. Resident anchor coordination now combines registered placement streams with the seven implemented writers, preserving live heightmaps, cached parent queries, recipe identities, bounded resumption and explicit unavailable-family outcomes; original-profile replay is validated on CPU, with bounded Metal controls and a complete seven-family fixture. Mushrooms, fallen trees, vegetation patches, attachments, role-aware global anchor merging and playable integration remain pending |
+| Trees and decorators, giant mushrooms, fallen trees, disks, vegetation patches, block columns, bamboo, aquatic plants and attachments | `decoration.rs`, `decoration/`, `tree_shapes.rs` | Simple-block, block-column, disk, ordinary plant, aquatic and bamboo writers and registry projections independently checked on CPU/Metal, including nested recipes and accepted writes through MCA serialization. Registered tree trunks/crowns, weighted axis/distance states, connected leaves, roots, vines and cocoa now have pure Bend writers and ordered role replay. Resident anchor coordination now combines registered placement streams with the nine implemented writer families, preserving live heightmaps, cached parent queries, recipe identities, bounded resumption and explicit unavailable-family outcomes; original-profile replay is validated on CPU, with bounded Metal controls and a complete nine-family fixture. Registered huge mushrooms and fallen logs now preserve cap-face/axis properties, ordered live providers and decorators on CPU/Metal. Vegetation patches, attachments, role-aware global anchor merging and playable integration remain pending |
 | Jigsaw pools/templates/processors, structures spanning regions and locate queries | `StructureProfile.java`, `structures.rs`, `structure_processors.rs`, `queries.rs` | Pending |
 | Structure entities/block entities/loot and attachment rotations | `nbt.rs`, `structures.rs`, `structure_processors.rs` | Pending |
 | Snow, freezing, plant support and path/gravel restrictions | `LightingProfile.java`, profile material/survival tables, `region.rs` | Final registered plant floor-mask and signed-pair cleanup implemented in the overlay merger and independently checked on CPU/Metal, including paths and crop/build boundaries. Snow/freezing and complete playable placement restrictions remain pending |
@@ -1975,9 +1975,9 @@ requirement. See `docs/benchmarks/bend-vegetation-gpu-pilot.json`.
 
 `scripts/test_bend_vegetation.py` independently replays heap tasks and feature
 writes. Complete streams of the implemented writers pass against vanilla,
-Terralith, combined and synthetic inputs: 2,031 CPU candidate applications across
-those cases. GPU controls cover 411 candidate applications through bounded
-original-profile prefixes and a complete seven-family fixture, with matching CPU
+Terralith, combined and synthetic inputs: 2,044 CPU candidate applications across
+those cases. GPU controls cover 423 candidate applications through bounded
+original-profile prefixes and a complete nine-family fixture, with matching CPU
 outputs and 36 observed Metal command buffers. Reverse/duplicate input IDs and
 slice sizes of 1, 7 and 64 preserve completed results. The fixture distinguishes
 live child heightmaps from shared cached parent heightmaps; a 4096-by-4096 count
@@ -2002,3 +2002,54 @@ through deterministic neighboring-anchor merging: leaves must not overwrite logs
 from another anchor, and plant pairs/support must survive final replay. Halo/core
 composition, snow/freezing, structures, GPU lighting, full-region scheduling and
 equivalent complete lit-region benchmarks remain required by the full goal.
+
+## Registered huge mushrooms and fallen logs
+
+`forest_data`, `registry_forest`, `huge_mushroom` and `fallen_tree` add typed pure
+Bend writers for the loaded `huge_mushroom` and `fallen_tree` recipes. The shared
+registry exporter and original profiles are unchanged. Cap-face tables, log-axis
+states, block/int providers, support/clearance/replacement predicates and all three
+fallen-log decorators come from the registered recipe. No biome-name heuristic or
+native generation call supplies those values.
+
+Mushrooms preserve the native approximation's height draws, red/brown cap shape,
+individual cap properties and stem order. Providers observe earlier accepted
+feature writes while replacement predicates retain the pre-feature snapshot.
+Fallen logs preserve the stump when horizontal placement fails, settle within the
+registered clearance/support rules, reject unsupported gaps, and replay attached
+blocks, trunk vines and shelf mushrooms in the native decorator order. Equal-Y
+logs use the stable Java HashSet bucket order used by the Rust approximation.
+Coordinate offsets are checked at signed-i32 boundaries, and unknown columns and
+out-of-height writes remain clipped to the caller's available world.
+
+The independent Python voxel/RNG replay passes 3,120 calls and 88,084 accepted
+patch voxels per backend across unchanged vanilla, Terralith and combined profiles
+plus 45 synthetic recipes. CPU two-thread, CPU one-thread control and Metal output
+bytes agree. All 35 malformed recipes reject explicitly. Controls exercise face
+masks, axis transforms, current-state and weighted providers, zero-length logs,
+probabilities, obstruction, retained stumps, repeated writes, missing columns,
+world ceilings and signed/distant coordinates. The stock-runtime observer records
+35 actual Metal command buffers with an identical normal/observer GPU archive.
+See `docs/benchmarks/bend-forest-features-correctness.json`.
+
+These two families also join the resident vegetation coordinator. The coordinator
+continues to run on CPU for complete loaded placement streams; Metal correctness
+checks use bounded original-profile prefixes and a complete nine-family fixture.
+This preserves the measured decision against dispatching a serial live placement
+walk wholesale to Metal. The independent forest writers themselves remain usable
+in selected-backend bounded parallel batches.
+
+The installed playable worker is unchanged in this library cycle. Attachments,
+vegetation patches and nested feature dispatch, role-aware neighboring-anchor
+merging, playable vegetation, structures, snow/freezing, GPU lighting and full
+1024-chunk region execution/benchmarks remain required by the goal.
+
+The expanded coordinator check passes 2,044 complete CPU candidate applications
+and 423 matched GPU-control candidate applications, with 36 observed Metal command
+buffers. The complete nine-family fixture executes both forest writers alongside
+trees and the six prior surface writers. Its final registered blocks, including
+cap properties and fallen-log axes, survive Bend NBT/zlib/MCA serialization.
+Minecraft opens/reopens all four fixtures (16 chunks, 3,145,728 block decodes)
+without changing their file bytes; vanilla, Terralith and combined codec checks
+all pass. The coordinator and Minecraft decoding reports contain current source
+and fixture hashes.

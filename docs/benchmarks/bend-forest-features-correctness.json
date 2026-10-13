@@ -1,0 +1,293 @@
+{
+  "scope": "Registered huge mushrooms and fallen logs: independent voxel/RNG replay.\n\nCaptured profiles stay unchanged. CPU and actual observed Metal checks cover\ncap faces, axes, live providers/decorators, failed horizontal logs, bounds and\nrepeated calls. These writers do not yet enable playable vegetation.",
+  "runs": [
+    {
+      "profile": "profile-0",
+      "gpu": false,
+      "features": 27,
+      "kinds": {
+        "fallen_tree": 23,
+        "huge_mushroom": 4
+      },
+      "writer_calls": 648,
+      "successful_calls": 568,
+      "touched_blocks": 5921,
+      "sha256": "6ed6afcfdcbaf4972b46918aab6ba992b3a14205529bdf6591d93f4ed4057a4c"
+    },
+    {
+      "profile": "profile-1",
+      "gpu": false,
+      "features": 29,
+      "kinds": {
+        "fallen_tree": 21,
+        "huge_mushroom": 8
+      },
+      "writer_calls": 696,
+      "successful_calls": 536,
+      "touched_blocks": 7569,
+      "sha256": "73ea5c2925a9036ebb21ed38353397a1a73935df7e7454086d3159270a9380e6"
+    },
+    {
+      "profile": "profile-2",
+      "gpu": false,
+      "features": 29,
+      "kinds": {
+        "fallen_tree": 21,
+        "huge_mushroom": 8
+      },
+      "writer_calls": 696,
+      "successful_calls": 536,
+      "touched_blocks": 7569,
+      "sha256": "73ea5c2925a9036ebb21ed38353397a1a73935df7e7454086d3159270a9380e6"
+    },
+    {
+      "profile": "fixture",
+      "gpu": false,
+      "features": 45,
+      "kinds": {
+        "huge_mushroom": 23,
+        "fallen_tree": 22
+      },
+      "writer_calls": 1080,
+      "successful_calls": 926,
+      "touched_blocks": 67025,
+      "sha256": "af187ea2adff2f1b5f9520f0566835175adeedc88cbcda66ff0e8adb66d22043"
+    },
+    {
+      "profile": "empty",
+      "gpu": false,
+      "features": 0,
+      "kinds": {},
+      "writer_calls": 0,
+      "successful_calls": 0,
+      "touched_blocks": 0,
+      "sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119"
+    },
+    {
+      "profile": "profile-0",
+      "gpu": true,
+      "features": 27,
+      "kinds": {
+        "fallen_tree": 23,
+        "huge_mushroom": 4
+      },
+      "writer_calls": 648,
+      "successful_calls": 568,
+      "touched_blocks": 5921,
+      "sha256": "6ed6afcfdcbaf4972b46918aab6ba992b3a14205529bdf6591d93f4ed4057a4c"
+    },
+    {
+      "profile": "profile-1",
+      "gpu": true,
+      "features": 29,
+      "kinds": {
+        "fallen_tree": 21,
+        "huge_mushroom": 8
+      },
+      "writer_calls": 696,
+      "successful_calls": 536,
+      "touched_blocks": 7569,
+      "sha256": "73ea5c2925a9036ebb21ed38353397a1a73935df7e7454086d3159270a9380e6"
+    },
+    {
+      "profile": "profile-2",
+      "gpu": true,
+      "features": 29,
+      "kinds": {
+        "fallen_tree": 21,
+        "huge_mushroom": 8
+      },
+      "writer_calls": 696,
+      "successful_calls": 536,
+      "touched_blocks": 7569,
+      "sha256": "73ea5c2925a9036ebb21ed38353397a1a73935df7e7454086d3159270a9380e6"
+    },
+    {
+      "profile": "fixture",
+      "gpu": true,
+      "features": 45,
+      "kinds": {
+        "huge_mushroom": 23,
+        "fallen_tree": 22
+      },
+      "writer_calls": 1080,
+      "successful_calls": 926,
+      "touched_blocks": 67025,
+      "sha256": "af187ea2adff2f1b5f9520f0566835175adeedc88cbcda66ff0e8adb66d22043"
+    },
+    {
+      "profile": "empty",
+      "gpu": true,
+      "features": 0,
+      "kinds": {},
+      "writer_calls": 0,
+      "successful_calls": 0,
+      "touched_blocks": 0,
+      "sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119"
+    }
+  ],
+  "semantic_controls": {
+    "cap_faces": "pass",
+    "mushroom_ceiling": "pass",
+    "retained_failed_stump": "pass",
+    "empty_log_rng": "pass",
+    "repeated_live_writes": "pass"
+  },
+  "malformed_rejected": 35,
+  "metal_observation": [
+    {
+      "profile": "profile-0",
+      "command_buffers": 7,
+      "device_ms": [
+        129.175042,
+        110.80575,
+        121.686958,
+        152.613167,
+        121.882375,
+        139.547625,
+        100.328125
+      ]
+    },
+    {
+      "profile": "profile-1",
+      "command_buffers": 8,
+      "device_ms": [
+        189.75175,
+        159.66975,
+        128.027875,
+        165.632708,
+        195.341583,
+        174.748625,
+        179.0335,
+        74.696625
+      ]
+    },
+    {
+      "profile": "profile-2",
+      "command_buffers": 8,
+      "device_ms": [
+        188.638417,
+        161.646375,
+        128.653125,
+        163.2405,
+        205.146625,
+        172.077,
+        177.514125,
+        72.191083
+      ]
+    },
+    {
+      "profile": "fixture",
+      "command_buffers": 12,
+      "device_ms": [
+        109.360417,
+        442.752458,
+        74.423625,
+        482.78575,
+        65.347542,
+        68.25775,
+        46.300125,
+        69.413125,
+        76.861042,
+        78.682,
+        95.558125,
+        59.17525
+      ]
+    },
+    {
+      "profile": "empty",
+      "command_buffers": 0,
+      "device_ms": []
+    }
+  ],
+  "cpu_gpu_bytes_equal": true,
+  "one_cpu_thread": true,
+  "sources": {
+    "bend/aquifer.bend": "a9537fa65402553acec5578d4a2474036f2190142a6e9d9c1faf3c7c0cc03e36",
+    "bend/aquifer_lattice.bend": "cc43ecd6d6c5893f351f51e1a56f8830fbeaa5f923f23e9bfa0b967cad8c1a85",
+    "bend/binary.bend": "f716146b3a19403c4ad208ce37c2056f9ba023d6b76a3fecba5c3253185d9b68",
+    "bend/block_provider.bend": "2f2e29bd9c911b6babacdaef6024d6479918f241473890677bcd98a970eb6d3f",
+    "bend/cave_features_data.bend": "d46ac6fd858755318de508c48eb60f07a5ba10352d0e393c340429f49b9c4abc",
+    "bend/cave_lattice.bend": "7dce03f819639b033658d26dc142b957f2e59e6a6406e4d85743cbec04192a41",
+    "bend/chunk.bend": "7aa37914a3941541f78909d0ab582ab956f972be7804c4abf97fdf07b839fe86",
+    "bend/chunk_catalog.bend": "666d5f98e2128a31a49f36ccdf0a1da7d7cb59067ce58d3cd1d0da3742963df3",
+    "bend/climate.bend": "842160f64b796f6288e59e24e8a81515a450d3778900982bdfc6a633671a4680",
+    "bend/compression.bend": "e42e1a312180ee0fce6faad39fc82b9a2e43ba05727e04d9a3c8e7651dd14130",
+    "bend/decoration_counts.bend": "95e8f0c32fa410ca22b54ba0d142a048be27f174ecc186a566dc20238a30d6bd",
+    "bend/density.bend": "01beac1b7443695c1507293a7d916489ac5441235c1e07290330691864b56aae",
+    "bend/density_batch.bend": "51231a72efa798c9a31f1a6a841176ea50d1ac5644352b389e3d1a9bff30d99c",
+    "bend/density_lattice.bend": "0b02993df32e160b21c50b8ee33e003f2d7f3eb53645c91ab6699bed0e1a9ae8",
+    "bend/fallen_tree.bend": "b3775fb3138c7ad40595ed6da4c6fbbb4968232c344b4bd591b582be4fd13674",
+    "bend/forest_data.bend": "b485df8e0eb4eb7b55971f9c1f3b4322e3db575ab398850d1255514a9ac26cc6",
+    "bend/geology.bend": "9cb01c921b02127b84593f6c52a19f9ab4de88fdf8bfd660ff5f69d02379e414",
+    "bend/heightmaps.bend": "0b69c87d24ec3b27cbb082bb394205765154bf78c5c4db2c226fbc4ba3e2d997",
+    "bend/huge_mushroom.bend": "4a03ae66d209ea9306e08a23a94e59f3a19154a6cb8364b6edb7c12aee1a02fd",
+    "bend/int_provider.bend": "402c00ca9af5eeeb0fbfd61e5556f336ea0e2daad3b69c29f645be118820d860",
+    "bend/lake_candidates.bend": "2ade065dbeffb8e20bf4a44ad5acd8a7759855be344a79e991c6e0c90c3085d8",
+    "bend/lake_data.bend": "2951da8dbd6b05ede1d4f038579d5a89d79b6ce7d34d45d56da82a8bd7d84492",
+    "bend/lake_lattice.bend": "7eb8771cf7a6ba10cf47b911cb66028c405b8ad27845f80fb16e54a00dd7e648",
+    "bend/lake_terrain.bend": "a1fc29c8f9ba0cebece840423ca9b9208c986186239736f771f336a4aeebe316",
+    "bend/material.bend": "fea1e62174797c5b44634f3674dfc550d0178f207524193ed0d9416fbbf70f64",
+    "bend/material_batch.bend": "e34ee066c23a5328d279c5137ce2d107f2e4df661d63d3de373970d5cbee2073",
+    "bend/material_columns.bend": "14c807fb1f7e41a60570c9a674f7ef756d3551799e7f9a81fef56d5d9095b73b",
+    "bend/material_columns_data.bend": "309ad22f3858ba801421073319a671b218b473ee6887d3ca75bef5ccd1e26a9a",
+    "bend/material_lazy.bend": "8675a4ea5d3e1b164d1d2a71b248c9ec23078c05da9880fb5470b543a6de1f10",
+    "bend/material_program.bend": "f4b7e78629f7eecd991418eb00fa3face480954b300fa996e370d4c16c35128c",
+    "bend/nbt.bend": "7063555acf523d12269bd152e1e32981534009785b6a7653509f1a108b18cb57",
+    "bend/noise.bend": "80485dd8d18580a1044c8e55dbd03dab1b8dbdd9aa6681e1b8f6743fce928c1d",
+    "bend/numbers.bend": "858ea999141639aa26c559a2e06a87d62c58e93d0d8d3a793bb530b629060956",
+    "bend/ore_data.bend": "de874dc61201a0414c2c37a95bc84d1405d9b9e055197c10f2e7e64540bb4e29",
+    "bend/packed.bend": "b4ebd29bc4d31d53ddcc221f64c84e68c5bde4a0fbbb51acfdaa9ddd01e2c23f",
+    "bend/palette.bend": "4f813fb89317308dc02c70d36cf5e3eeaf6d62a9a82477b781b976be5eee82ff",
+    "bend/placement_checks.bend": "e9e41195ec6972979855488c446697c086b1b45b5ad4f1b157acb41dfc9d2e84",
+    "bend/placement_data.bend": "57cfe91b1ac652eae6a8e551cf76846700fed5ec18d2b1d76f7c3bb4a9882142",
+    "bend/placement_height.bend": "4cd946214e516cf2d26f101f5c20b826250b33a810d5658de07a1c4dda9ea4e8",
+    "bend/placement_random.bend": "1336014e813d127c88dce79374ccd2ed952d9d5a7a9d784454b81d28416b0c35",
+    "bend/placement_world.bend": "84ebef382abf100b3d8b29f7d3c33c4b0b7f4d679aae5f2eb5b369175352077b",
+    "bend/precise.bend": "50ba7138300f2c913b2d75a554a78d88bfb09931c6cd58ecc884ab7024c73c01",
+    "bend/provider_noise.bend": "2df2205ef0d156fd4b353d186524ecd399ced49d02ae8f0110eedc447056a564",
+    "bend/reader.bend": "e659a2cac6b8435f02fd0fe91902ceca918055d026ec1908845186bee4fdc0ac",
+    "bend/registry.bend": "433b4dbb17b127dd322a11465a1111ddadd86a8682597310c062a194aa802296",
+    "bend/registry_block_provider.bend": "472a6b4d9fde6d988d35d0c0db3cc8ce7434937865c12ee7d03393d1d03e1d3f",
+    "bend/registry_cave_features.bend": "1f8da67590819855d967eb306e9859a5751c7b339b723bff77856ea882c239f2",
+    "bend/registry_decoration_counts.bend": "722286810301bf58e7e8010473c2c73afe25904790285c500724933226faa799",
+    "bend/registry_decoration_heights.bend": "e30557de40d11bda6d5eff8ee570d9095ac53a200ffa45d3406a39f5077c2652",
+    "bend/registry_density.bend": "0c1972222bbcdfead41b30ae0453f7e05e85ab7bb446c113c3a07a8b12f56cb7",
+    "bend/registry_forest.bend": "c4ffb421266999fcd4c48bf308e9cd160ad2d587cd8cda6411efd8d2cdba983e",
+    "bend/registry_int_provider.bend": "7eb3d6eb32414dc239d034cbf6ce658c3f8a51bb4f997758a89ba52d678ab859",
+    "bend/registry_material.bend": "b28952c7b085865d41f853d55e287c0c0bb8000442cc2c94b37325daaab8d29e",
+    "bend/registry_placement.bend": "0dd10eee84ece0f331bc7271dee9efd89dfc78e7a4b48dfaa035dd2ebcd8f34e",
+    "bend/registry_placement_height.bend": "a598b429813e6fe13223557972ff13f9c68095c79af1454edffc9e61c9bed441",
+    "bend/registry_placement_policy.bend": "802b38a1c778de5dde66f8927e00a142c712c3ec029b6c01c7a9d3acd80983bd",
+    "bend/registry_placement_predicate.bend": "0f1ad10f8fd935e2bc6abbc71508bf9cfb404f0d115b3a7c06298b7eb7ea86bc",
+    "bend/registry_provider_noise.bend": "b0925be11095d875e222daccc8d62439ed959e10d031da2159bf05b69ee5a219",
+    "bend/registry_surface_feature.bend": "169d9ca4cb4b5c6fdd4c9c732ccc5edb8b3fa9b7b7cea184a821e1decf3f171f",
+    "bend/registry_tree.bend": "febb51a4186b17228619f29f8a0af49e13d0c33cfa8b2d837ace96ad4b8e6ca1",
+    "bend/registry_values.bend": "5bb1d3ab6bfed7cf640af35089a5ec1370cc2f686d7cfb8b210e7643e1b3d97f",
+    "bend/shoreline.bend": "932383d2add618bbc94b6b5ddd6f75030a3853e0def8fa2e78764405185cb888",
+    "bend/surface_feature.bend": "2b6d1301775b4ceeb1d95db41a58867159414bf3154df65367e47bdb675efb6f",
+    "bend/surface_plants.bend": "81369dce84f2d54915272ac70a454565d873dfc5b2177857518ab35cb7aae734",
+    "bend/terrain_height.bend": "bc5400f024c86b34294cc628b364d7ceb67fd9675cb2de77a3cbe06b519be8a2",
+    "bend/terrain_surface.bend": "26687ac40e62949ca563d7f31117207fa0eb053d82f51b58a14e84b9a2d4d652",
+    "bend/tests/binary-fixtures.bend": "02ea592c9b590739c40cb07211e321520ae70207f3212d97257ea16ad74e3207",
+    "bend/tests/compress-file.bend": "1a7ffa73eda62ac1ef59306247705e2ab25cffd2048dc6b50f6b77326d29a51d",
+    "bend/tests/forest-features.bend": "567b08079661e56dd155aa3dcb2e03f030e4d9e4f79b43e579b84abc650f8ca5",
+    "bend/tests/tree-world.bend": "cb326f308e273a079e94c702f4a12b1629e458cba69c12bc0005f51d1810e065",
+    "bend/transport.bend": "2d7b2667aaf37b537de8be6c584acaeaec37377da475741bfe790a46d9c76f81",
+    "bend/tree.bend": "c58ebe274d6516fd0a61240bfbbf73ad51ee5a0ca8ab8496e628626cc42533ec",
+    "bend/tree_data.bend": "d07220936f54df8e8300bf40ca59c1357b36c2c1ae9754d3e3d7ba50c1f5a9e1",
+    "bend/tree_decorators.bend": "3421dca0070728a1689f9b926e60602ece65c590326d9c9bef466acba9316bea",
+    "bend/tree_foliage.bend": "e2384717b58a06959a141c21a03a86797aef6516ebf9616400561f133a053f04",
+    "bend/tree_geometry.bend": "4325085f19a58caba1fce591caf60dc0b66ade88c910887c45237ccb5af7e26a",
+    "bend/word64.bend": "62e104fbbc56208d66457789a7f2ed3f5fe122f4a19068c3df9b3bbbf555e139",
+    "scripts/bend_forest_reference.py": "5482f31b280cc99f5f6bb3db4031da5202cafb1c74e0d72956f7ac51b2f020ed",
+    "scripts/test_bend_forest_features.py": "b0bcd19a142853274162017dc201398e4ccf07de5556cab178e87c336eb2b150"
+  },
+  "profiles": {
+    "build/bend/profiles/profile-0.json": "aefce6ff0e800966ad55920c5d21510dfa277de4612f67e22d5146d3aa838203",
+    "build/bend/profiles/profile-1.json": "c9abbe97860a394ed899d64967bd0395bb9bb4ec71a9dff43d1bb45893fefd4d",
+    "build/bend/profiles/profile-2.json": "068fd602ad497128dd3960cb9be76840ebd41882b5b64c25acfa76d65e930c8b"
+  },
+  "native_sha256": "3456efe531ff2709711889f9313952f05c346c9c6bbe202b9dc8aea94b1c53d9",
+  "gpu_sha256": "ef0bed18db1c833e63a0d2daf8c355863e52ad640b002a1895da9ccfb4f59fb0"
+}
