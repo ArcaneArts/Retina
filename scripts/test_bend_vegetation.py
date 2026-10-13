@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 """Coordinate real placement programs and feature writers on CPU/observed Metal.
 
-Complete CPU replay and bounded observed-Metal replay use independent Python
+Complete CPU replay and optional bounded observed-Metal replay use independent Python
 heap/voxel checks for live heightmaps, RNG, recipe IDs, work-slice resumption,
-unavailable families and biome membership. A nine-family fixture completes on
-both backends; completed single-anchor overlays cross merge/NBT/zlib/MCA. Independent
+unavailable families and biome membership. A ten-family fixture composes the
+implemented writers; completed overlays cross merge/NBT/zlib/MCA. --cpu-only
+checks the production serial coordinator without Metal; the report records the
+actual execution mode. Independent
 anchors still need role-aware global merging before playable integration; this
 fixture does not claim complete-region generation or lighting.
 """
@@ -26,11 +28,12 @@ from test_bend_placement_walker import walk
 from test_bend_surface_features import place,KINDS
 from test_bend_trees import World as TreeWorld,origin,plan,replay,Random
 from bend_forest_reference import place as forest_place
+from bend_attachment_reference import place as attachment_place
 from test_bend_noise import MASK
 from test_bend_chunks import palette,unpack,MAP_NAMES
 from test_bend_formats import read_region
 
-KNOWN=(*KINDS,'tree','huge_mushroom','fallen_tree')
+KNOWN=(*KINDS,'tree','huge_mushroom','fallen_tree','attachment_growth')
 SEED=0x80000000075bcd15
 
 
@@ -95,6 +98,7 @@ def fixture(base):
     bamboo.update(probability=0.,survival=yes,podzol_allowed=yes)
     mushroom=copy.deepcopy(next(r for r in base['decorations'] if r['kind']=='huge_mushroom' and not r['red']))
     fallen=copy.deepcopy(next(r for r in base['decorations'] if r['kind']=='fallen_tree'))
+    attachment=copy.deepcopy(next(r for r in base['decorations'] if r['kind']=='attachment_growth' and not r['vines'] and 0 in r['directions']))
     rows=[(column(2),[offset(8,8),height]),
           (column(1),[offset(8,8),dict(type='count',count=3),height]),
           (simple,[offset(12,8),height,dict(type='count',count=3)]),
@@ -102,7 +106,7 @@ def fixture(base):
           (aquatic,[offset(3,3),height]),
           (dict(kind='disk',provider=dict(type='state',material=1),target=yes,radius=2,half_height=1),[offset(24,8),height]),
           (bamboo,[offset(16,8),height]),(mushroom,[offset(4,24),height]),
-          (fallen,[offset(21,4),height]),(dict(kind='retina:future_feature'),[offset(8,8),height])]
+          (fallen,[offset(21,4),height]),(column(1),[offset(8,24),height]),(attachment,[offset(8,24),height]),(dict(kind='retina:future_feature'),[offset(8,8),height])]
     source['coordinator_prefix_recipe']=len(rows)
     rows.append((column(1),[dict(type='count',count=4096),dict(type='count',count=4096),height]))
     source['decorations']=[dict(feature,source='retina:coordinator_'+str(i),salt=i+1,placement_salt=i+1,placement=program,
@@ -132,6 +136,8 @@ def reference(source,spec):
         rng=Random(state)
         if feature['kind']=='tree':
             ok,writes=plan(feature,rng,world,at);replay(writes,world)
+        elif feature['kind']=='attachment_growth':
+            ok=attachment_place(feature,rng,world,at)
         elif feature['kind'] in ('huge_mushroom','fallen_tree'):
             ok=forest_place(feature,rng,world,at)
         else:ok=place(feature,rng,world,at,source)
@@ -231,7 +237,9 @@ def exercise(binary,folder,name,source,gpu,threads=2,specs=None):
         baseline=data[compare[0]];raw=data[i]
         assert raw[:8]==baseline[:8] and raw[12:]==baseline[12:],'work slices/order/duplicates change results'
     if 'coordinator_prefix_recipe' in source:
-        assert records[0]['kinds']==sorted(KNOWN),'all nine feature families must execute together'
+        assert records[0]['kinds']==sorted(KNOWN),'all ten feature families must execute together'
+        attached={row['source'] for feature in source['decorations'] if feature['kind']=='attachment_growth' for row in feature['states']}
+        assert any(m in attached for m in first.patch.values()),'registered attachment face states must reach MCA'
         assert records[9]['status']==1,'unavailable feature must be explicit'
         assert all(r['status']==2 and r['steps']==64 for r in records[10:]),'large count stream must pause'
         for raw in data[11:13]:assert raw[:8]==data[10][:8] and raw[12:]==data[10][12:]
@@ -251,12 +259,14 @@ def exercise(binary,folder,name,source,gpu,threads=2,specs=None):
 
 def main():
     p=argparse.ArgumentParser(description=__doc__);p.add_argument('--profile',type=Path,action='append',required=True)
-    p.add_argument('--skip-build',action='store_true');p.add_argument('--prove-metal',action='store_true');args=p.parse_args()
+    p.add_argument('--skip-build',action='store_true')
+    mode=p.add_mutually_exclusive_group();mode.add_argument('--prove-metal',action='store_true');mode.add_argument('--cpu-only',action='store_true',help='Validate the production CPU coordinator without building/running its Metal archive.')
+    p.add_argument('--report',type=Path,default=ROOT/'docs/benchmarks/bend-vegetation-coordinator-correctness.json');args=p.parse_args()
     binary=ROOT/'build/bend/vegetation';driver=ROOT/'bend/tests/vegetation.bend';observer=ROOT/'build/bend/vegetation-observer'
     folder=ROOT/'build/bend/vegetation-tests';folder.mkdir(parents=True,exist_ok=True)
     if not args.skip_build:
         build(DEFAULT_BEND,binary.with_suffix('.c'),driver);command(metal_compiler_command(binary.with_suffix('.c'),binary),timeout=600)
-        command(['nice','-n','10',binary,'--threads','2','--gpu-build'],timeout=1800)
+        if not args.cpu_only:command(['nice','-n','10',binary,'--threads','2','--gpu-build'],timeout=1800)
     runs=[];observed=[]
     if args.prove_metal:compile_metal_observer(DEFAULT_BEND,driver,observer,gpu_archive=binary.with_suffix('.gpu'))
     profiles=[(f'profile-{i}',json.loads(path.read_text())) for i,path in enumerate(args.profile)]
@@ -265,21 +275,22 @@ def main():
         cpu,record,_=exercise(binary,folder,name,source,False);runs.append(dict(profile=name,workload='complete CPU replay',gpu=False,**record))
         if i==0:
             single,_,_=exercise(binary,folder,name,source,False,threads=1);assert single==cpu
+        if args.cpu_only:continue
         specs=gpu_cases(source)
         control,record,_=exercise(binary,folder,'gpu-control-'+name,source,False,specs=specs)
         runs.append(dict(profile=name,workload='GPU workload CPU control',gpu=False,**record))
         gpu,record,_=exercise(binary,folder,'gpu-'+name,source,True,specs=specs);assert control==gpu
-        runs.append(dict(profile=name,workload='complete nine-family fixture' if name=='fixture' else 'bounded replay prefix',gpu=True,**record))
+        runs.append(dict(profile=name,workload='complete ten-family fixture' if name=='fixture' else 'bounded replay prefix',gpu=True,**record))
         if args.prove_metal:
             assert observer.with_suffix('.gpu').read_bytes()==binary.with_suffix('.gpu').read_bytes()
             output,record,stderr=exercise(observer,folder,'observer-'+name,source,True,specs=specs);assert output==control
             times=[float(x) for x in re.findall(r'BEND_METAL_DISPATCH device_ms=([0-9.]+)',stderr)];assert times
             observed.append(dict(profile=i,command_buffers=len(times),device_ms=times))
-    paths=sources(driver)|{Path(__file__).resolve(),ROOT/'scripts/test_bend_placement_walker.py',ROOT/'scripts/test_bend_surface_features.py',ROOT/'scripts/test_bend_trees.py',ROOT/'scripts/bend_forest_reference.py'}
-    report=dict(scope=__doc__.strip(),runs=runs,metal_observation=observed,matched_gpu_workloads_equal=True,one_cpu_thread=True,
+    paths=sources(driver)|{Path(__file__).resolve(),ROOT/'scripts/test_bend_placement_walker.py',ROOT/'scripts/test_bend_surface_features.py',ROOT/'scripts/test_bend_trees.py',ROOT/'scripts/bend_forest_reference.py',ROOT/'scripts/bend_attachment_reference.py'}
+    report=dict(scope=__doc__.strip(),runs=runs,metal_observation=observed,execution_mode='cpu-only' if args.cpu_only else 'cpu-and-metal',matched_gpu_workloads_equal=None if args.cpu_only else True,one_cpu_thread=True,
                 sources={str(p.relative_to(ROOT)):hashlib.sha256(p.read_bytes()).hexdigest() for p in sorted(paths)},
-                profiles={str(p):hashlib.sha256(p.read_bytes()).hexdigest() for p in args.profile},native_sha256=hashlib.sha256(binary.read_bytes()).hexdigest(),gpu_sha256=hashlib.sha256(binary.with_suffix('.gpu').read_bytes()).hexdigest())
-    (ROOT/'docs/benchmarks/bend-vegetation-coordinator-correctness.json').write_text(json.dumps(report,indent=2)+'\n')
+                profiles={str(p):hashlib.sha256(p.read_bytes()).hexdigest() for p in args.profile},native_sha256=hashlib.sha256(binary.read_bytes()).hexdigest(),gpu_sha256=None if args.cpu_only else hashlib.sha256(binary.with_suffix('.gpu').read_bytes()).hexdigest())
+    args.report.write_text(json.dumps(report,indent=2)+'\n')
     print(json.dumps(dict(runs=len(runs),command_buffers=sum(r['command_buffers'] for r in observed)),indent=2))
 
 
