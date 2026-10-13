@@ -14,6 +14,8 @@ import ./tree_data.bend as TD
 import ./forest_data.bend as FD
 import ./huge_mushroom.bend as Mushroom
 import ./fallen_tree.bend as Fallen
+import ./attachment_data.bend as AD
+import ./attachment.bend as Attachment
 
 # Pure writers share the live placement world. The caller retains the returned
 # RNG state and world before asking its placement cursor for the next candidate.
@@ -30,6 +32,7 @@ type Feature is Data:
   Tree{recipe: TD.Recipe}
   HugeMushroom{recipe: FD.Mushroom}
   FallenTree{recipe: FD.Fallen}
+  Attachment{recipe: AD.Recipe}
   Disk{provider: B.Provider,target: P.Predicate,radius: I.Provider,half_height: U32}
 type Model is Data:
   Model{noises: Q.Table<N.Program>,current_states: Q.Table<Maybe<&2,PlantState>>}
@@ -144,6 +147,7 @@ def valid(feature: Feature,+palette: U32,+noises: U32) -> Bool:
     case Tree{recipe}: TD.valid(recipe,palette)
     case HugeMushroom{recipe}: FD.mushroom_valid(recipe,palette,noises)
     case FallenTree{recipe}: FD.fallen_valid(recipe,palette,noises)
+    case Attachment{recipe}: AD.valid(recipe,palette)
     case Simple{+provider,+states,water,current}:
       Bool.and(B.valid(provider,palette,noises),Bool.and(plants_valid(states,palette),Bool.and(P.predicate_valid(water,palette),
         Bool.or(current,covered(B.outputs(provider),states)))))
@@ -365,4 +369,5 @@ def place(feature: Feature,+state: W.U64,+model: Model,+world: E.World,+at: P.Po
     case Tree{recipe} _: vegetation(Tree.place(recipe,state,world,at))
     case HugeMushroom{recipe} Model{noises,_}: vegetation(Mushroom.place(recipe,state,noises,world,at))
     case FallenTree{recipe} Model{noises,_}: vegetation(Fallen.place(recipe,state,noises,world,at))
+    case Attachment{recipe} _: vegetation(Attachment.place(recipe,state,world,at))
     case Disk{provider,target,radius,half} _: disk_radius(I.sample(radius,state),provider,target,half,model,world,at)
