@@ -15,13 +15,17 @@ import ./density.bend as Q
 import ./surface_plants.bend as S
 import ./registry_tree.bend as RT
 import ./tree_data.bend as TD
+import ./registry_forest.bend as Forest
+import ./forest_data.bend as FD
 
 type Context is Data:
-  Context{keys: D.Keys,providers: RB.Context,trees: RT.Context}
+  Context{keys: D.Keys,providers: RB.Context,extensions: Extensions}
+type Extensions is Data:
+  Extensions{trees: RT.Context,forest: Forest.Context}
 
 @unsafe
 def context(-T: Type,doc: R.Document,next: R.Document -> Context -> T) -> T:
-  D.resolved(T,["kind","provider","states","water","current_survival","source","lower","upper","survival","upper_allowed","layers","direction","allowed","prioritize_tip","height","target","radius","half_height","simple_current_states","simple_block","block_column","disk","plant","aquatic","bamboo","weight","band","dry","probability","trunk","crown","podzol","podzol_allowed","tree"],doc,[],doc => keys => RB.context(T,doc,doc => providers => RT.context(T,doc,doc => trees => next(doc,Context{keys,providers,trees}))))
+  D.resolved(T,["kind","provider","states","water","current_survival","source","lower","upper","survival","upper_allowed","layers","direction","allowed","prioritize_tip","height","target","radius","half_height","simple_current_states","simple_block","block_column","disk","plant","aquatic","bamboo","weight","band","dry","probability","trunk","crown","podzol","podzol_allowed","tree","huge_mushroom","fallen_tree"],doc,[],doc => keys => RB.context(T,doc,doc => +providers => RT.context(T,doc,doc => trees => Forest.context(T,doc,providers,doc => forest => next(doc,Context{keys,providers,Extensions{trees,forest}})))))
 
 @unsafe
 def name(+keys: D.Keys,+id: U32,+i: U32) -> U32:
@@ -31,7 +35,7 @@ def name(+keys: D.Keys,+id: U32,+i: U32) -> U32:
 def named(equal: Bool,+keys: D.Keys,+id: U32,+i: U32) -> U32:
   match equal:
     case True{}: i
-    case False{}: name_more(U32.is_lt(i,6),keys,id,U32.inc(i))
+    case False{}: name_more(U32.is_lt(i,8),keys,id,U32.inc(i))
 
 @unsafe
 def name_more(more: Bool,+keys: D.Keys,+id: U32,+i: U32) -> U32:
@@ -211,6 +215,8 @@ def collected(-T: Type,kind: U32,values: List<&2,Maybe<&2,R.Value>>,doc: R.Docum
 def family_key(i: U32) -> U32:
   match i:
     case 6: 33
+    case 7: 34
+    case 8: 35
     case _: U32.add(i,19)
 
 @unsafe
@@ -222,7 +228,23 @@ def tree_result(-T: Type,result: Result<&1,&1,U32,TD.Recipe>,doc: R.Document,nex
 @unsafe
 def tree_parse(-T: Type,doc: R.Document,value: R.Value,context: Context,next: R.Document -> Result<&1,&1,U32,F.Feature> -> T) -> T:
   match context:
-    case Context{_,_,trees}: RT.parse(T,doc,value,trees,doc => result => tree_result(T,result,doc,next))
+    case Context{_,_,Extensions{trees,_}}: RT.parse(T,doc,value,trees,doc => result => tree_result(T,result,doc,next))
+
+def mushroom_result(-T: Type,result: Result<&1,&1,U32,FD.Mushroom>,doc: R.Document,next: R.Document -> Result<&1,&1,U32,F.Feature> -> T) -> T:
+  match result:
+    case Fail{_}: next(doc,Fail{765})
+    case Done{recipe}: next(doc,Done{F.HugeMushroom{recipe}})
+
+def fallen_result(-T: Type,result: Result<&1,&1,U32,FD.Fallen>,doc: R.Document,next: R.Document -> Result<&1,&1,U32,F.Feature> -> T) -> T:
+  match result:
+    case Fail{_}: next(doc,Fail{765})
+    case Done{recipe}: next(doc,Done{F.FallenTree{recipe}})
+
+@unsafe
+def forest_parse(-T: Type,kind: U32,doc: R.Document,value: R.Value,context: Context,next: R.Document -> Result<&1,&1,U32,F.Feature> -> T) -> T:
+  match kind context:
+    case 7 Context{_,_,Extensions{_,forest}}: Forest.mushroom(T,doc,value,forest,doc => result => mushroom_result(T,result,doc,next))
+    case _ Context{_,_,Extensions{_,forest}}: Forest.fallen(T,doc,value,forest,doc => result => fallen_result(T,result,doc,next))
 
 @unsafe
 def kind(-T: Type,+kind: U32,doc: R.Document,value: R.Value,+context: Context,next: R.Document -> Result<&1,&1,U32,F.Feature> -> T) -> T:
@@ -234,6 +256,8 @@ def kind(-T: Type,+kind: U32,doc: R.Document,value: R.Value,+context: Context,ne
     case 4: fields(T,[2],doc,value,context,[],doc => values => collected(T,kind,values,doc,context,next))
     case 5: fields(T,[28,29,30,31,8,32],doc,value,context,[],doc => values => collected(T,kind,values,doc,context,next))
     case 6: tree_parse(T,doc,value,context,next)
+    case 7: forest_parse(T,kind,doc,value,context,next)
+    case 8: forest_parse(T,kind,doc,value,context,next)
     case _: next(doc,Fail{765})
 
 @unsafe
