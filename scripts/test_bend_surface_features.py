@@ -46,6 +46,7 @@ def features(node):
 
 
 class World(BaseWorld):
+    minimum,maximum=-64,64
     def __init__(self,source,context):
         super().__init__(source,context)
         self.ox,self.oz=origin(context)
@@ -136,8 +137,8 @@ def place(f, rng, world, at, source):
         above=shift(at,(0,1,0));paired=row['upper']!=0
         if kind=='plant':
             ground=shift(at,(0,-1,0));soil=world.material(*ground) if ground is not None else None
-            if not -64<=at[1]<64 or world.material(*at)!=0 or soil is None or not source['material_flags'][soil]&(2 if row['dry'] else 1):return False
-            if paired and (above is None or not -64<=above[1]<64 or world.material(*above)!=0):return False
+            if not world.minimum<=at[1]<world.maximum or world.material(*at)!=0 or soil is None or not source['material_flags'][soil]&(2 if row['dry'] else 1):return False
+            if paired and (above is None or not world.minimum<=above[1]<world.maximum or world.material(*above)!=0):return False
         elif not test(row['survival'],at) or paired and (above is None or not test(row['upper_allowed'],above)):return False
         if paired:world.put(*above,row['upper'])
         world.put(*at,row['lower']);return True

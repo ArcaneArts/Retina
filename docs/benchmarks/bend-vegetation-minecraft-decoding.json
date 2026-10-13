@@ -1,0 +1,47 @@
+{
+  "scope": "Actual Minecraft sparse-region loading, registered block/biome codecs and heightmaps; each chunk opened twice without changing the MCA bytes. Generated fixtures are unlit, single-anchor component output.",
+  "runs": [
+    {
+      "lane": "vanilla",
+      "files": 2,
+      "chunks": 8,
+      "reads_per_chunk": 2,
+      "blocks_verified": 1572864,
+      "log_sha256": "109e11141e7dc6427d8d6e3d77a4d71b5ef46c9501fa1d830532bf8f60396ed2"
+    },
+    {
+      "lane": "terralith",
+      "files": 1,
+      "chunks": 4,
+      "reads_per_chunk": 2,
+      "blocks_verified": 786432,
+      "log_sha256": "5989f33b09e7a84c66fa3918f1bbfe96d69af81504b88c9dfd01e298586f19b7"
+    },
+    {
+      "lane": "combined",
+      "files": 1,
+      "chunks": 4,
+      "reads_per_chunk": 2,
+      "blocks_verified": 786432,
+      "log_sha256": "313d4993b34ae17f9476c207b458b30472ebfd34d148c48fb25925cdafb744b3"
+    }
+  ],
+  "inputs": {
+    "build/bend/tree-mca-loader/vegetation-fixture/r.58574.-58594.mca": "3b21a5d9828e86361f67ce9f01d33b041f15974f5cd1917a2f9c38f720b865b6",
+    "build/bend/tree-mca-loader/vegetation-profile-0/r.58574.-58594.mca": "7cbd4ff24e5dcfd01ffeb465192d86c4672de452389c18bdc2580a41775e82fe",
+    "build/bend/tree-mca-loader/vegetation-profile-1/r.58574.-58594.mca": "4ea04e8c5791e4fea6750020fc3e275a0a6ba06db7903b69d1f6cca26a102328",
+    "build/bend/tree-mca-loader/vegetation-profile-2/r.58574.-58594.mca": "d26eb11ff2493dbff9366ec262474c6e54abb62d7d94a1c304751e14d4e539e1"
+  },
+  "sources": {
+    "common/src/gpuTest/java/art/arcane/retina/worldgen/BendGeneratedChunkIntegrationTest.java": "62a812db7ba94ea7381f268ae7fd13da29b54c370d904017891917601f70fd16",
+    "gradle/verification.gradle": "f26c17f69f55ae0041360682ac00983ffc995265d51f18a8b25578444026788f"
+  },
+  "datapacks": {
+    "/Users/cyberpwn/development/workspace/ArcaneArts/Retina/run/datapacks/Terralith.zip": "9764f1d11a0bfe99c2cd96cd54f346fe756165d14a6f855b394954c171d603d5",
+    "/Users/cyberpwn/.codex/worktrees/bend-vegetation-coordinator/Retina/build/registry-fixtures/registry-supplement.zip": "5e0ca65dbae348db7fd93e88b062b4c9305504e6f746991ba2a0c8a9690f3b29"
+  },
+  "total_files": 4,
+  "total_chunks": 16,
+  "blocks_verified": 3145728,
+  "configuration": "Java ActiveProcessorCount=2; Gradle --max-workers=2 --no-parallel; -x buildNative -x packageNative because this decoder does not use Rust."
+}

@@ -1,0 +1,38 @@
+{
+  "scope": "Adding optional coordinator callbacks and world bounds preserves both references default behavior.",
+  "parent_commit": "65d0affabad51f621fe3c22727506c8bd9beae20",
+  "files": {
+    "scripts/test_bend_placement_walker.py": {
+      "parent_sha256": "211bd3ec81729504b2205c817244cddedc1596d2c2e11a4860fbb27433cbdbec",
+      "current_sha256": "b35ad71a0d02b14ed53f48c0b999fe5098806f01adcdb4e78c9737c8f981e459"
+    },
+    "scripts/test_bend_surface_features.py": {
+      "parent_sha256": "ed2f603263dab58d1e91a1009d29b93f9745ff57a6e4232b5ac5aaff9d35ffe4",
+      "current_sha256": "8b49b2f5dc6b1bd45806ba3f9ddddb896b995937c2b0d6b4a2658a44847b5b21"
+    }
+  },
+  "profiles": [
+    {
+      "profile": "build/bend/profiles/profile-0.json",
+      "input_sha256": "aefce6ff0e800966ad55920c5d21510dfa277de4612f67e22d5146d3aa838203",
+      "walker_bytes": 9044,
+      "surface_calls": 3840,
+      "surface_output_sha256": "91838acf7eff0ce7a092d309ad2c5d27f7d4da6a4e68a46cb74365be33be0b85"
+    },
+    {
+      "profile": "build/bend/profiles/profile-1.json",
+      "input_sha256": "c9abbe97860a394ed899d64967bd0395bb9bb4ec71a9dff43d1bb45893fefd4d",
+      "walker_bytes": 12440,
+      "surface_calls": 9480,
+      "surface_output_sha256": "6ef61c1b6d2b67b3a2dfbc4363f0bab97c814c03924696cbdd7f5470dda86f84"
+    },
+    {
+      "profile": "build/bend/profiles/profile-2.json",
+      "input_sha256": "068fd602ad497128dd3960cb9be76840ebd41882b5b64c25acfa76d65e930c8b",
+      "walker_bytes": 10764,
+      "surface_calls": 9480,
+      "surface_output_sha256": "6ef61c1b6d2b67b3a2dfbc4363f0bab97c814c03924696cbdd7f5470dda86f84"
+    }
+  ],
+  "default_outputs_equal": true
+}

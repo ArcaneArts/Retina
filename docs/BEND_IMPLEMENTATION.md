@@ -184,7 +184,7 @@ more deeply; retain the original requested scope.
 | Lakes, aquifer fields and fluid barriers | `TerrainFeatureProfile.java`, `program/lake_sparse.rs`, `aquifers.wgsl` | Typed aquifer graph projection and GPU/CPU flooding, erosion, spread, lava, barrier and preliminary-surface evaluation implemented. Globally hashed resident fluid centers, trilinear barrier fields and nearest-center pressure now place registered cavity fluids while preserving protected/pressure-barrier materials. Registered lake budgets/materials, globally seeded candidates, five bank probes, bounded fluid levels and noisy basin/rim placement implemented on CPU/GPU before material coating. Independent block/NBT/zlib checks cover fluids, barriers, overlap and signed/distant coordinates; lake exclusions now use finalized pre-carving coast selection, including global probes outside the resident tile. Out-of-tile bank vertices now execute in bulk with exact prior geometry and material bytes, improving measured GPU lake-stage latency by 10.1–14.6×. Playable terrain integration implemented; full parity and performance work remain required |
 | Ore height/count/replacement/discard rules and GPU rasterization | `geology/`, `ore.wgsl` | Registered recipe projection, packed membership/material tables and selected-backend ordered replacement/exposure policy implemented. Registered count/rarity/height attempts and local sphere-chain/scattered geometry now execute on CPU/GPU. Local sphere-union masks and ordered scattered points now calculate in the same selected-backend evaluation as geometry. Spatial surface/cave membership filtering, stable neighboring contribution buckets and ordered resident-block replay now run in one selected CPU/GPU evaluation, with immutable exposure halo checks and independent voxel/NBT/zlib validation. Playable terrain integration implemented; full parity and performance work remain required |
 | Ordered decoration, registered counts, provider noise and placement modifiers | `DecorationProfile.java`, `decoration/placement*`, `counts/`, `provider_noise/` | Registered recursive integer providers, count/offset projection, build-relative height distributions and actual-permutation spatial count noise independently checked on CPU/Metal. Typed ordered-program projection, exact placement-salt grouping, recursive predicates, live block/heightmap overlay and terrain-dependent checks now independently checked on CPU/Metal. Lazy ordered count/layer/cuboid execution and shared selector budgets now have an independent CPU/Metal component harness. All ten block-provider families, full 64-bit weighted decisions, current-state property transforms and initialized permutation/offset noise now independently checked on CPU/Metal. Simple-block, block-column, disk, ordinary plant, aquatic and bamboo writers now independently replay live material changes and RNG state on CPU/Metal. Ordered accepted FEATURE overlays now merge into resident runs with final plant repair, core cropping and independently decoded MCA checks; remaining feature families, neighboring-anchor coordination and playable integration are pending |
-| Trees and decorators, giant mushrooms, fallen trees, disks, vegetation patches, block columns, bamboo, aquatic plants and attachments | `decoration.rs`, `decoration/`, `tree_shapes.rs` | Simple-block, block-column, disk, ordinary plant, aquatic and bamboo writers and registry projections independently checked on CPU/Metal, including nested recipes and accepted writes through MCA serialization. Registered tree trunks/crowns, weighted axis/distance states, connected leaves, roots, vines and cocoa now have pure Bend writers and ordered role replay. Mushrooms, fallen trees, vegetation patches, attachments and playable integration remain pending |
+| Trees and decorators, giant mushrooms, fallen trees, disks, vegetation patches, block columns, bamboo, aquatic plants and attachments | `decoration.rs`, `decoration/`, `tree_shapes.rs` | Simple-block, block-column, disk, ordinary plant, aquatic and bamboo writers and registry projections independently checked on CPU/Metal, including nested recipes and accepted writes through MCA serialization. Registered tree trunks/crowns, weighted axis/distance states, connected leaves, roots, vines and cocoa now have pure Bend writers and ordered role replay. Resident anchor coordination now combines registered placement streams with the seven implemented writers, preserving live heightmaps, cached parent queries, recipe identities, bounded resumption and explicit unavailable-family outcomes; original-profile replay is validated on CPU, with bounded Metal controls and a complete seven-family fixture. Mushrooms, fallen trees, vegetation patches, attachments, role-aware global anchor merging and playable integration remain pending |
 | Jigsaw pools/templates/processors, structures spanning regions and locate queries | `StructureProfile.java`, `structures.rs`, `structure_processors.rs`, `queries.rs` | Pending |
 | Structure entities/block entities/loot and attachment rotations | `nbt.rs`, `structures.rs`, `structure_processors.rs` | Pending |
 | Snow, freezing, plant support and path/gravel restrictions | `LightingProfile.java`, profile material/survival tables, `region.rs` | Final registered plant floor-mask and signed-pair cleanup implemented in the overlay merger and independently checked on CPU/Metal, including paths and crop/build boundaries. Snow/freezing and complete playable placement restrictions remain pending |
@@ -1945,3 +1945,60 @@ two opens per chunk and 7,077,888 block decodes. The final vanilla MCA bytes mat
 the files from its earlier successful reader run. Datapack files, tested source
 and input-file hashes are captured in
 `docs/benchmarks/bend-tree-minecraft-decoding.json`.
+
+
+## Resident vegetation anchor coordination
+
+`bend/registry_vegetation.bend` prepares a typed placement/feature model directly
+from the original registry tape. Top-level recipe indices and placement-salt
+sharing are preserved. Unsupported families retain explicit `None` entries; an
+actually reached unsupported candidate returns `Unavailable` with its recipe,
+position and RNG state. It never aliases that feature to another writer or falls
+back to Rust/Java generation.
+
+`bend/vegetation.bend` owns one persistent placement cursor and live overlay per
+anchor. Each accepted feature is visible to subsequent heightmap, survival and
+placement queries. A work slice pauses the same cursor without truncating its
+remaining count/layer tasks. Feature RNG remains separate from forked placement
+streams. Anchor recipe membership samples the global four-block surface lattice
+and, when requested, the cave-biome volume; results are a sorted union of the
+registered recipe IDs.
+
+The coordinator is deliberately a CPU phase. An initial Metal run of the same
+Terralith anchor produced matching results but took about 91.86 seconds between
+two result writes, versus about 0.25 seconds on CPU. This is one preliminary
+result-write interval including host/runtime waiting and transport, with
+uncontrolled host load; it does not separate device time or measure a complete
+generator. The full-profile GPU run was deliberately stopped. Forcing this
+serial live walk onto the GPU would conflict with the measured-work-placement
+requirement. See `docs/benchmarks/bend-vegetation-gpu-pilot.json`.
+
+`scripts/test_bend_vegetation.py` independently replays heap tasks and feature
+writes. Complete streams of the implemented writers pass against vanilla,
+Terralith, combined and synthetic inputs: 2,031 CPU candidate applications across
+those cases. GPU controls cover 411 candidate applications through bounded
+original-profile prefixes and a complete seven-family fixture, with matching CPU
+outputs and 36 observed Metal command buffers. Reverse/duplicate input IDs and
+slice sizes of 1, 7 and 64 preserve completed results. The fixture distinguishes
+live child heightmaps from shared cached parent heightmaps; a 4096-by-4096 count
+stream pauses at the same 64-task prefix under three slice sizes instead of
+allocating or truncating its 16,777,216 potential candidates. Unavailable features,
+zero fuel, empty input, signed extrema and three-dimensional biome membership are
+also checked. Existing Python reference defaults were compared with the parent
+commit on all three original profiles before reusing them for the coordinator.
+
+A completed single-anchor overlay passes ordered merge/plant repair, palettes,
+all six heightmaps, NBT, Bend zlib and MCA assembly. The independent decoder checks
+every serialized voxel. Minecraft's actual sparse-region decoder then opens all
+four completed CPU fixtures twice: 4 files, 16 chunks and 3,145,728 block decodes,
+with registered block/biome codecs and unchanged MCA bytes. These fixtures are
+unlit and do not claim complete-region or cross-anchor generation. Results and
+source/input hashes are in the vegetation coordinator, reference compatibility
+and Minecraft decoding reports under `docs/benchmarks/`.
+
+The installed preview worker remains unchanged. Before enabling playable
+vegetation, implement the remaining feature families and retain write roles
+through deterministic neighboring-anchor merging: leaves must not overwrite logs
+from another anchor, and plant pairs/support must survive final replay. Halo/core
+composition, snow/freezing, structures, GPU lighting, full-region scheduling and
+equivalent complete lit-region benchmarks remain required by the full goal.
