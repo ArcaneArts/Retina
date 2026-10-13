@@ -18,14 +18,23 @@ import subprocess
 from test_bend_compression import ROOT, DEFAULT_BEND, build, command, metal_compiler_command
 from test_bend_decoration_counts import Random, provider as integer, MASK64
 from test_bend_engine import compile_metal_observer
-from test_bend_noise import MASK, mix_hash, f32
-from test_bend_placement_programs import fixtures as placement_fixtures, origin, signed
+from test_bend_noise import MASK, mix_hash, f32, world_simplex
+from test_bend_placement_programs import fixtures as placement_fixtures, origin as old_origin, signed
 from test_bend_placement_walker import World as BaseWorld, predicate, shift
 from test_bend_block_providers import sample
 from test_bend_registry_noise import fixture_wire
 from test_bend_placement_merge import sources
 
 KINDS = ('simple_block', 'block_column', 'disk', 'plant', 'aquatic', 'bamboo')
+CONTEXTS = 20
+
+
+def origin(context):
+    return {16:(-424,-1008),17:(29990064,-30000008)}.get(context,old_origin(context))
+
+
+def band(x,z):
+    return 1 if world_simplex(x&MASK,z&MASK,f32(.005),2345,0)<f32(-.8) else 2
 
 
 def features(node):
@@ -37,6 +46,10 @@ def features(node):
 
 
 class World(BaseWorld):
+    def __init__(self,source,context):
+        super().__init__(source,context)
+        self.ox,self.oz=origin(context)
+
     def material(self, x, y, z):
         if not -64 <= y < 64: return 0
         if (x,y,z) in self.patch: return self.patch[x,y,z]
@@ -45,7 +58,7 @@ class World(BaseWorld):
         if offset == 0: return self.source['bedrock']
         if offset < 55: return 1
         if offset < 63: return 10 if len(self.source['materials']) > 8 else 1
-        if offset == 63: return 9 if len(self.source['materials']) > 8 else (7 if self.context >= 8 else 1)
+        if offset == 63: return 9 if len(self.source['materials']) > 8 else (7 if 8 <= self.context < 16 else 1)
         if self.context % 4 == 1 and offset < 68: return self.source['water']
         if self.context % 4 == 2 and offset == 66: return 1
         return 0
@@ -53,6 +66,7 @@ class World(BaseWorld):
 
 def point(context):
     x,z=origin(context);i=context%8
+    if context>=16: return signed((x+8)&MASK),0,signed((z+8)&MASK)
     return (signed((x+[8,8,8,8,0,31,32,8][i])&MASK),
             [1 if context>=8 else 0,0,0,63,-64,0,0,64 if context>=8 else -65][i],
             signed((z+(31 if i==5 else 8))&MASK))
@@ -108,8 +122,8 @@ def place(f, rng, world, at, source):
                             world.put(*pos,value);any_=True
         return any_
     if kind in ('plant','aquatic'):
-        band = (1 if world.context % 4 == 0 else 2) if world.column(at[0],at[2]) is not None else None
-        states = [s for s in f['states'] if band is not None and s['band'] in (0,band)]
+        selected_band = band(at[0],at[2]) if world.column(at[0],at[2]) is not None else None
+        states = [s for s in f['states'] if selected_band is not None and s['band'] in (0,selected_band)]
         scale = max([f32(s['weight']) for s in states],default=0.)
         scale = max(scale,f32(1.17549435e-38));total=0.
         for s in states: total=f32(total+f32(f32(s['weight'])/scale))
@@ -157,7 +171,7 @@ def place(f, rng, world, at, source):
 def expected(source):
     fs=list(features(source.get('decorations',[])));rows=[]
     for i,f in enumerate(fs):
-        for context in range(16):
+        for context in range(CONTEXTS):
             seed=((((0x80000000^(i*7919))&MASK)<<32)|mix_hash((context*811+i)&MASK))
             rng=Random(seed);world=World(source,context);at=point(context)
             for repeat in range(2):
@@ -182,7 +196,7 @@ def check(data,source):
             actual[x,y,z]=m;last=key
         assert observed==state, ('rng',i,observed,state)
         assert ok==placed, ('placed',i,ok,placed)
-        assert actual==patch, ('voxels',i,fs[i//32]['kind'],list(actual.items())[:8], list(patch.items())[:8])
+        assert actual==patch, ('voxels',i,fs[i//(CONTEXTS*2)]['kind'],list(actual.items())[:8], list(patch.items())[:8])
         changed+=len(patch)
     assert at==len(data),(at,len(data))
     return dict(features=len(fs),kinds=dict(Counter(f['kind'] for f in fs)),writer_calls=len(rows),
@@ -272,7 +286,7 @@ def fixtures(permutation):
 
 def controls(source):
     fs,rows=expected(source)
-    def get(i,c,r=0):return rows[i*32+c*2+r]
+    def get(i,c,r=0):return rows[i*(CONTEXTS*2)+c*2+r]
     p=point(1);above=shift(p,(0,1,0))
     assert get(1,1)[2][p]==4 and get(1,1)[2][above]==6, 'waterlogged paired plant'
     assert not get(1,3)[2], 'paired support rejects top boundary'
@@ -293,8 +307,10 @@ def controls(source):
     assert get(17,0)[2][x,y+1,z-1]==5, 'disk sees previous X write in this row'
     assert get(24,0)[1] and not get(24,0,1)[1], 'ordinary plants cannot overwrite earlier plants'
     assert not get(24,10)[1] and get(26,10)[1], 'dry material flag has a distinct substrate'
-    assert get(27,0)[2][point(0)]==5 and get(27,2)[2][point(2)]==7, 'registered low/high bands'
-    assert not get(28,2)[1] and not get(29,0)[1], 'ineligible bands never fall back to another state'
+    assert [band(point(c)[0],point(c)[2]) for c in (16,17,18,19)]==[1,1,2,2], 'independent near/distant noise bands'
+    assert get(27,16)[2][point(16)]==5 and get(27,18)[2][point(18)]==7, 'procedural low/high bands'
+    assert get(35,17)[2][point(17)]==5, 'distant low-band aquatic selection'
+    assert not get(28,2)[1] and not get(29,16)[1], 'ineligible bands never fall back to another state'
     seed=((((0x80000000^(28*7919))&MASK)<<32)|mix_hash((2*811+28)&MASK))
     assert get(28,2)[0]==(seed+0x9e3779b97f4a7c15)&MASK64, 'empty band still consumes one selection draw'
     assert get(30,0)[1] and get(31,0)[1], 'large and small finite weights remain selectable'
@@ -312,7 +328,8 @@ def controls(source):
     soil_patch=get(41,0)[2]
     assert all(m==7 for (px,py,pz),m in soil_patch.items() if py==-1)
     assert sum(py==-1 for px,py,pz in soil_patch)>5, 'snapshot podzol circle is not an alternating scan'
-    return dict(ordinary_plant_replacement='pass',dry_substrates='pass',weighted_bands='pass',empty_band_rng='pass',
+    return dict(ordinary_plant_replacement='pass',dry_substrates='pass',weighted_bands='pass',
+                procedural_near_and_distant_bands='pass',empty_band_rng='pass',
                 finite_weight_scaling='pass',aquatic_pair_predicates='pass',aquatic_replacement='pass',
                 bamboo_crown='pass',bamboo_rng='pass',bamboo_obstruction='pass',podzol_snapshot='pass',
                 waterlogged_pairs='pass',upper_obstruction='pass',current_survival='pass',nullable='pass',

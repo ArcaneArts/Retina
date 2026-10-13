@@ -9,6 +9,7 @@ import ../placement_data.bend as P
 import ../placement_world.bend as E
 import ../placement_merge.bend as Merge
 import ../material_columns_data.bend as M
+import ../material_columns.bend as MC
 import ../terrain_surface.bend as S
 import ../density.bend as Q
 import ../binary.bend as B
@@ -90,7 +91,40 @@ def biome_probes(+n: U32,+source: E.World,+merged: E.World,+origin: W.U64,writer
 def crop_result(result: Result<&1,&1,U32,M.Grid>,writer: B.Writer) -> B.Writer:
   match result:
     case Fail{code}: B.fail(writer,code)
-    case Done{grid}: write(grid,writer)
+    case Done{+grid}: responses(grid,write(grid,writer))
+
+# Exercise the production query encoder, which frames each column with its own
+# run count. Misses and repeated hits ensure a bad count cannot hide at EOF.
+@unsafe
+def response_query(+i: U32,+tile: S.Tile) -> S.Query:
+  query_kind(U32.is_lt(i,S.total(tile)),i,tile)
+
+@unsafe
+def query_kind(ordinary: Bool,+i: U32,+tile: S.Tile) -> S.Query:
+  match ordinary tile:
+    case True{} S.Tile{x,z,w,_,lo,hi}: S.Query{U32.add(x,U32.mod(i,w)),U32.add(z,U32.div(i,w)),lo,hi}
+    case False{} _: extra_query(U32.sub(i,S.total(tile)),tile)
+
+@unsafe
+def extra_query(i: U32,+tile: S.Tile) -> S.Query:
+  match i tile:
+    case 0 S.Tile{x,z,_,_,lo,hi}: S.Query{U32.sub(x,1),z,lo,hi}
+    case 1 S.Tile{x,z,_,_,lo,hi}: S.Query{x,z,U32.xor(lo,1),hi}
+    case 2 _: response_query(0,tile)
+    case _ _: response_query(U32.sub(S.total(tile),2),tile)
+
+@unsafe
+def response_queries(+n: U32,+i: U32,+tile: S.Tile,a: Array<S.Query>) -> Array<S.Query>:
+  match n:
+    case 0: a
+    case _: response_queries(U32.sub(n,1),U32.inc(i),tile,Array.set(S.Query,a,i,response_query(i,tile)))
+
+@unsafe
+def responses(+grid: M.Grid,writer: B.Writer) -> B.Writer:
+  match grid:
+    case M.Grid{+tile,_,_,_,_}:
+      +n = U32.add(S.total(tile),4)
+      MC.encode(U32.to_nat(n),response_queries(n,0,tile,Array.new(S.Query,Nat.add(U32.log2(n),1n),S.Query{0,0,0,0})),grid,B.int(writer,n),0)
 
 @unsafe
 def cropped(+source: M.Grid,+merged: M.Grid,+policy: P.Policy,+context: U32,output: String) -> IO(Unit):
@@ -105,7 +139,7 @@ def cropped_at(+origin: W.U64,+source: M.Grid,+merged: M.Grid,+policy: P.Policy,
         _ : Unit <- Output.expected(rejected(Merge.crop(merged,x,z,0,2)))
         _ : Unit <- Output.expected(rejected(Merge.crop(merged,x,z,5,1)))
         _ : Unit <- Output.expected(rejected(Merge.crop(merged,U32.add(x,3),z,2,2)))
-        Output.unwrapped(B.done(crop_result(Merge.crop(merged,U32.inc(x),U32.inc(z),2,2),biome_probes(32,E.World{source,policy,E.Empty{}},E.World{merged,policy,E.Empty{}},origin,write(merged,B.new())))),output)
+        Output.unwrapped(B.done(responses(merged,crop_result(Merge.crop(merged,U32.inc(x),U32.inc(z),2,2),biome_probes(32,E.World{source,policy,E.Empty{}},E.World{merged,policy,E.Empty{}},origin,write(merged,B.new()))))),output)
 
 @unsafe
 def rejected(r: Result<&1,&1,U32,M.Grid>) -> Bool:

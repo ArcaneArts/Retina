@@ -97,7 +97,7 @@ def base(source, width, context):
             meta=(-40,(15-i)%len(source['biomes']),6,int(i!=15))
         else:
             cells=([source['bedrock']]+[1]*54+[10]*8+[9]+[0]*64)
-            meta=(0,i%len(source['biomes']),6|(1<<27),int(i!=1023))
+            meta=(0,i%len(source['biomes']),8,int(i!=1023))
         assert len(cells)==HEIGHT
         voxels.append(cells); metadata.append(meta)
     return voxels, metadata
@@ -126,6 +126,10 @@ def merge(source, context, patches, width=4):
                 partner=offset+(1 if half>0 else -1)
                 if not 0<=partner<HEIGHT or source['plant_halves'][cells[partner]] != -half:
                     cells[offset]=0; removed+=1
+    for i,(cells,meta) in enumerate(zip(voxels,metadata)):
+        if meta[3]:
+            count=1+sum(a!=b for a,b in zip(cells,cells[1:]))
+            metadata[i]=(*meta[:2],count,meta[3])
     return voxels,metadata,removed
 
 
@@ -147,6 +151,27 @@ class Reader:
             rows.append((tuple(meta),cells))
         return header,rows
 
+    def responses(self,rows):
+        total=len(rows)
+        assert self.words(1)==(total+4,)
+        for i in range(total+4):
+            if i in (total,total+1):
+                assert self.words(1)==(0,),('expected query miss',i)
+                continue
+            expected=rows[i if i<total else (0 if i==total+2 else total-2)]
+            meta,cells=expected
+            assert self.words(1)==(1,),('expected query hit',i)
+            h,b,depth,slope,band,secondary,preliminary,count=self.words(8)
+            assert (h,b,count)==meta[:3],('column response metadata',i,(h,b,count),meta)
+            assert (depth,slope,band,secondary,preliminary)==(0,0,0,0,0)
+            decoded=[]
+            for _ in range(count):
+                start,end,material=self.words(3)
+                assert start==len(decoded) and start<end<=HEIGHT,('column response framing',i,start,end)
+                decoded += [material]*(end-start)
+            assert decoded==cells,('column response voxels/count',i)
+        return total+4
+
 
 def check_output(data,source,context,patches):
     voxels,metadata,removed=merge(source,context,patches)
@@ -162,8 +187,13 @@ def check_output(data,source,context,patches):
     crop,subset=reader.grid()
     assert crop==((ox+1)&MASK,(oz+1)&MASK,2,2,*header[4:])
     assert subset==[rows[z*4+x] for z in (1,2) for x in (1,2)]
+    queries=reader.responses(subset)+reader.responses(rows)
     assert reader.at==len(data)
-    return dict(voxels_checked=len(voxels)*HEIGHT,removed_plants=removed,biome_queries=32,crop_columns=4)
+    changed=sum(meta[2]!=6 for meta,cells in rows)
+    if context!=1: assert changed,('fixture must change run counts',context)
+    assert rows[15][0][2:]==(6,0),'invalid column metadata stays untouched'
+    return dict(voxels_checked=len(voxels)*HEIGHT,removed_plants=removed,biome_queries=32,crop_columns=4,
+                real_column_queries=queries,changed_run_counts=changed)
 
 
 def check_mca(path,source,patches):

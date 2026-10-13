@@ -14,11 +14,11 @@
         "bamboo": 2,
         "aquatic": 17
       },
-      "writer_calls": 3072,
-      "successful_calls": 1033,
-      "touched_blocks": 5807,
-      "bytes": 142068,
-      "sha256": "643fcde68c668bc9b1df520f0dd989cdb3cd0b3e7512ffc4a399db90731eb7d9"
+      "writer_calls": 3840,
+      "successful_calls": 1480,
+      "touched_blocks": 9090,
+      "bytes": 206884,
+      "sha256": "0be3c08f7d4bec883a0ce3d075d67bbd72d22aa296c3993d41b4be84251b3b8c"
     },
     {
       "profile": "profile-1",
@@ -32,11 +32,11 @@
         "bamboo": 4,
         "aquatic": 19
       },
-      "writer_calls": 7584,
-      "successful_calls": 3364,
-      "touched_blocks": 49841,
-      "bytes": 918804,
-      "sha256": "a5aecce648319a7de6f54744ccc12a6d0243e9259b5eef4ebd7b16e712c13bae"
+      "writer_calls": 9480,
+      "successful_calls": 4614,
+      "touched_blocks": 77101,
+      "bytes": 1385300,
+      "sha256": "2956a5fa867689d8076410ef92a3ad673a280320683abb144ac74b1cf082056f"
     },
     {
       "profile": "profile-2",
@@ -50,11 +50,11 @@
         "bamboo": 4,
         "aquatic": 19
       },
-      "writer_calls": 7584,
-      "successful_calls": 3364,
-      "touched_blocks": 49841,
-      "bytes": 918804,
-      "sha256": "a5aecce648319a7de6f54744ccc12a6d0243e9259b5eef4ebd7b16e712c13bae"
+      "writer_calls": 9480,
+      "successful_calls": 4614,
+      "touched_blocks": 77101,
+      "bytes": 1385300,
+      "sha256": "2956a5fa867689d8076410ef92a3ad673a280320683abb144ac74b1cf082056f"
     },
     {
       "profile": "fixture",
@@ -68,11 +68,11 @@
         "aquatic": 4,
         "bamboo": 6
       },
-      "writer_calls": 1408,
-      "successful_calls": 680,
-      "touched_blocks": 21275,
-      "bytes": 362932,
-      "sha256": "c7494b39131c624771178bfde3fd3e0e2e707d22326dac3c5a7d173d1827c649"
+      "writer_calls": 1760,
+      "successful_calls": 883,
+      "touched_blocks": 31267,
+      "bytes": 528436,
+      "sha256": "369e4dd548b6aaf45e7274d1399ad614acfdf9f905cf7c047bdc7e9d90fc0f96"
     },
     {
       "profile": "empty",
@@ -97,11 +97,11 @@
         "bamboo": 2,
         "aquatic": 17
       },
-      "writer_calls": 3072,
-      "successful_calls": 1033,
-      "touched_blocks": 5807,
-      "bytes": 142068,
-      "sha256": "643fcde68c668bc9b1df520f0dd989cdb3cd0b3e7512ffc4a399db90731eb7d9"
+      "writer_calls": 3840,
+      "successful_calls": 1480,
+      "touched_blocks": 9090,
+      "bytes": 206884,
+      "sha256": "0be3c08f7d4bec883a0ce3d075d67bbd72d22aa296c3993d41b4be84251b3b8c"
     },
     {
       "profile": "profile-1",
@@ -115,11 +115,11 @@
         "bamboo": 4,
         "aquatic": 19
       },
-      "writer_calls": 7584,
-      "successful_calls": 3364,
-      "touched_blocks": 49841,
-      "bytes": 918804,
-      "sha256": "a5aecce648319a7de6f54744ccc12a6d0243e9259b5eef4ebd7b16e712c13bae"
+      "writer_calls": 9480,
+      "successful_calls": 4614,
+      "touched_blocks": 77101,
+      "bytes": 1385300,
+      "sha256": "2956a5fa867689d8076410ef92a3ad673a280320683abb144ac74b1cf082056f"
     },
     {
       "profile": "profile-2",
@@ -133,11 +133,11 @@
         "bamboo": 4,
         "aquatic": 19
       },
-      "writer_calls": 7584,
-      "successful_calls": 3364,
-      "touched_blocks": 49841,
-      "bytes": 918804,
-      "sha256": "a5aecce648319a7de6f54744ccc12a6d0243e9259b5eef4ebd7b16e712c13bae"
+      "writer_calls": 9480,
+      "successful_calls": 4614,
+      "touched_blocks": 77101,
+      "bytes": 1385300,
+      "sha256": "2956a5fa867689d8076410ef92a3ad673a280320683abb144ac74b1cf082056f"
     },
     {
       "profile": "fixture",
@@ -151,11 +151,11 @@
         "aquatic": 4,
         "bamboo": 6
       },
-      "writer_calls": 1408,
-      "successful_calls": 680,
-      "touched_blocks": 21275,
-      "bytes": 362932,
-      "sha256": "c7494b39131c624771178bfde3fd3e0e2e707d22326dac3c5a7d173d1827c649"
+      "writer_calls": 1760,
+      "successful_calls": 883,
+      "touched_blocks": 31267,
+      "bytes": 528436,
+      "sha256": "369e4dd548b6aaf45e7274d1399ad614acfdf9f905cf7c047bdc7e9d90fc0f96"
     },
     {
       "profile": "empty",
@@ -173,6 +173,7 @@
     "ordinary_plant_replacement": "pass",
     "dry_substrates": "pass",
     "weighted_bands": "pass",
+    "procedural_near_and_distant_bands": "pass",
     "empty_band_rng": "pass",
     "finite_weight_scaling": "pass",
     "aquatic_pair_predicates": "pass",
@@ -200,108 +201,124 @@
     {
       "profile": "profile-0",
       "device_ms": [
-        1240.447375,
-        2086.224625,
-        1834.609167,
-        472.979375,
-        457.181375,
-        762.3965,
-        1245.072542,
-        476.070167,
-        494.613542,
-        1626.661,
-        999.795625,
-        525.740292,
-        436.395125,
-        807.360333,
-        1021.878875,
-        482.393833
+        1247.741667,
+        2110.394917,
+        1819.295125,
+        428.457,
+        417.330167,
+        746.4675,
+        1220.376792,
+        451.569875,
+        487.787542,
+        1605.243708,
+        956.861208,
+        483.44475,
+        431.380375,
+        779.516208,
+        994.734375,
+        376.74075,
+        1393.299417,
+        1056.139292,
+        1273.827667,
+        1423.032792
       ],
-      "command_buffers": 16,
-      "sha256": "643fcde68c668bc9b1df520f0dd989cdb3cd0b3e7512ffc4a399db90731eb7d9"
+      "command_buffers": 20,
+      "sha256": "0be3c08f7d4bec883a0ce3d075d67bbd72d22aa296c3993d41b4be84251b3b8c"
     },
     {
       "profile": "profile-1",
       "device_ms": [
-        795.822042,
-        2342.55475,
-        4229.770583,
-        920.104875,
-        667.598417,
-        1771.499125,
-        1224.705167,
-        649.978708,
-        1388.21925,
-        2171.289917,
-        2560.153792,
-        821.042083,
-        782.248083,
-        1136.650458,
-        1185.129958,
-        1038.052875
+        807.138375,
+        2354.643333,
+        4175.384625,
+        959.279,
+        764.360667,
+        1468.409875,
+        1093.69475,
+        793.439667,
+        1259.422833,
+        1739.022792,
+        2872.440917,
+        956.255625,
+        758.267667,
+        1269.047417,
+        1098.09125,
+        726.033375,
+        2009.828167,
+        1643.523625,
+        1539.579917,
+        2748.9695
       ],
-      "command_buffers": 16,
-      "sha256": "a5aecce648319a7de6f54744ccc12a6d0243e9259b5eef4ebd7b16e712c13bae"
+      "command_buffers": 20,
+      "sha256": "2956a5fa867689d8076410ef92a3ad673a280320683abb144ac74b1cf082056f"
     },
     {
       "profile": "profile-2",
       "device_ms": [
-        795.487167,
-        2153.083708,
-        4287.868625,
-        856.417375,
-        850.606875,
-        1484.066875,
-        1305.169625,
-        1048.172292,
-        1965.41375,
-        2161.845375,
-        2657.903,
-        1092.066375,
-        726.719083,
-        1284.084625,
-        1256.021875,
-        1492.175
+        811.669708,
+        2235.893208,
+        3369.677375,
+        1019.626792,
+        881.413125,
+        1426.122375,
+        1128.3535,
+        1026.002375,
+        1357.691417,
+        2229.961667,
+        3000.669167,
+        1027.994875,
+        928.001625,
+        1443.790625,
+        1356.208,
+        863.41575,
+        2602.040667,
+        2043.591375,
+        1997.608458,
+        3254.182375
       ],
-      "command_buffers": 16,
-      "sha256": "a5aecce648319a7de6f54744ccc12a6d0243e9259b5eef4ebd7b16e712c13bae"
+      "command_buffers": 20,
+      "sha256": "2956a5fa867689d8076410ef92a3ad673a280320683abb144ac74b1cf082056f"
     },
     {
       "profile": "fixture",
       "device_ms": [
-        363.109375,
-        356.431458,
-        394.7925,
-        265.52275,
-        197.713958,
-        241.105625,
-        275.61575,
-        265.210083,
-        337.59575,
-        386.571208,
-        385.803667,
-        292.670083,
-        238.091583,
-        236.262125,
-        244.401125,
-        254.106
+        371.936375,
+        391.325,
+        389.749708,
+        279.837667,
+        241.875583,
+        243.594042,
+        274.556625,
+        270.899042,
+        383.514625,
+        413.371125,
+        356.568792,
+        282.905417,
+        282.193125,
+        209.249167,
+        244.23725,
+        261.070208,
+        400.832542,
+        358.9455,
+        398.585875,
+        351.147125
       ],
-      "command_buffers": 16,
-      "sha256": "c7494b39131c624771178bfde3fd3e0e2e707d22326dac3c5a7d173d1827c649"
+      "command_buffers": 20,
+      "sha256": "369e4dd548b6aaf45e7274d1399ad614acfdf9f905cf7c047bdc7e9d90fc0f96"
     },
     {
       "profile": "empty",
       "device_ms": [
-        1.004083
+        1.010583
       ],
       "command_buffers": 1,
       "sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119"
     }
   ],
   "profiles": {
-    "/Users/cyberpwn/.local/share/retina-bend/2.0.36/backend-artifacts/surface-plants-20261012/profiles/profile-0.json": "aefce6ff0e800966ad55920c5d21510dfa277de4612f67e22d5146d3aa838203",
-    "/Users/cyberpwn/.local/share/retina-bend/2.0.36/backend-artifacts/surface-plants-20261012/profiles/profile-1.json": "c9abbe97860a394ed899d64967bd0395bb9bb4ec71a9dff43d1bb45893fefd4d",
-    "/Users/cyberpwn/.local/share/retina-bend/2.0.36/backend-artifacts/surface-plants-20261012/profiles/profile-2.json": "068fd602ad497128dd3960cb9be76840ebd41882b5b64c25acfa76d65e930c8b"
+    "build/bend/profiles/profile-0.json": "aefce6ff0e800966ad55920c5d21510dfa277de4612f67e22d5146d3aa838203",
+    "build/bend/profiles/profile-1.json": "c9abbe97860a394ed899d64967bd0395bb9bb4ec71a9dff43d1bb45893fefd4d",
+    "build/bend/profiles/profile-2.json": "068fd602ad497128dd3960cb9be76840ebd41882b5b64c25acfa76d65e930c8b"
   },
   "sources": {
     "bend/aquifer.bend": "a9537fa65402553acec5578d4a2474036f2190142a6e9d9c1faf3c7c0cc03e36",
@@ -363,14 +380,14 @@
     "bend/registry_values.bend": "5bb1d3ab6bfed7cf640af35089a5ec1370cc2f686d7cfb8b210e7643e1b3d97f",
     "bend/shoreline.bend": "932383d2add618bbc94b6b5ddd6f75030a3853e0def8fa2e78764405185cb888",
     "bend/surface_feature.bend": "5dc5744988ad4e5681deba142ebd2cf837a38d58f0a2c01a18d96fd8bcf121d1",
-    "bend/surface_plants.bend": "089f4e828f24ac7bd34bf38287bceeb114495d7c978802311e9d4486151eb20c",
+    "bend/surface_plants.bend": "81369dce84f2d54915272ac70a454565d873dfc5b2177857518ab35cb7aae734",
     "bend/terrain_height.bend": "bc5400f024c86b34294cc628b364d7ceb67fd9675cb2de77a3cbe06b519be8a2",
     "bend/terrain_surface.bend": "26687ac40e62949ca563d7f31117207fa0eb053d82f51b58a14e84b9a2d4d652",
     "bend/tests/binary-fixtures.bend": "02ea592c9b590739c40cb07211e321520ae70207f3212d97257ea16ad74e3207",
     "bend/tests/compress-file.bend": "1a7ffa73eda62ac1ef59306247705e2ab25cffd2048dc6b50f6b77326d29a51d",
     "bend/tests/placement-world-fixtures.bend": "7af07391f5cec7119ad91c7ab9002d40757a2a132437d36c385a314857d17497",
-    "bend/tests/surface-feature-world.bend": "4110bd3b6e6375e0ee7a3ccb38ecc773860bd9b24db3f7fb065119961d19a6fa",
-    "bend/tests/surface-features.bend": "a0e86d43e007e25a1dcab4ec6fc5ba5e86fb65e999b989cb84d5b7a0ee101d5a",
+    "bend/tests/surface-feature-world.bend": "174a2a016f701d53b0aaf787b1a9fbbf50aa200e9ffc0f31780a7f4ae949d051",
+    "bend/tests/surface-features.bend": "2a4f88b9db4cfc0c068b83219d4fb5d32d076b93cdc6c3f7d3aac1d29605283c",
     "bend/transport.bend": "2d7b2667aaf37b537de8be6c584acaeaec37377da475741bfe790a46d9c76f81",
     "bend/tree.bend": "c58ebe274d6516fd0a61240bfbbf73ad51ee5a0ca8ab8496e628626cc42533ec",
     "bend/tree_data.bend": "d07220936f54df8e8300bf40ca59c1357b36c2c1ae9754d3e3d7ba50c1f5a9e1",
@@ -378,8 +395,8 @@
     "bend/tree_foliage.bend": "e2384717b58a06959a141c21a03a86797aef6516ebf9616400561f133a053f04",
     "bend/tree_geometry.bend": "4325085f19a58caba1fce591caf60dc0b66ade88c910887c45237ccb5af7e26a",
     "bend/word64.bend": "62e104fbbc56208d66457789a7f2ed3f5fe122f4a19068c3df9b3bbbf555e139",
-    "scripts/test_bend_surface_features.py": "584eeb2966cf6cae6915e5ecc911200d85df99226ecf26754c2512b605c17442"
+    "scripts/test_bend_surface_features.py": "ed2f603263dab58d1e91a1009d29b93f9745ff57a6e4232b5ac5aaff9d35ffe4"
   },
-  "native_sha256": "ebf6ab738a103016f78f9c4ca0dce66ade315d17911f5905db9ee556a56f8096",
-  "gpu_sha256": "ff00c09ad690f4c76d84d31aa3ea939502c6d3f98aa811f2af4f3a4f4ab7ce8b"
+  "native_sha256": "d2d0c323195e67e5edef725382a24dac78a6b1be13dd3aa05738ba564bd885d5",
+  "gpu_sha256": "326db46c2776163692073ca56e5259969d25272afbe1e9e9682ac0dbd42bde28"
 }

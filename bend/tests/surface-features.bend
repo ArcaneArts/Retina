@@ -85,7 +85,7 @@ def repeated(+first: F.Placement,+feature: F.Feature,+model: F.Model,+at: P.Posi
 @unsafe
 def contexts(+feature: F.Feature,+model: F.Model,+policy: P.Policy,+id: U32,+context: U32,acc: List<&2,Snapshot>) -> Samples:
   match context:
-    case 16: Samples{List.reverse(&2,Snapshot,acc)}
+    case 20: Samples{List.reverse(&2,Snapshot,acc)}
     case _:
       +at = World.point(context)
       +world = World.world(policy,context)

@@ -7,6 +7,7 @@ import ./material_columns_data.bend as MD
 import ./density.bend as Q
 import ./word64.bend as W
 import ./int_provider.bend as I
+import ./noise.bend as N
 
 # Registered weighted surface plants and aquatic states share selection, but
 # retain different replacement rules. All arithmetic belongs to Bend's stream.
@@ -52,10 +53,14 @@ def bamboo_valid(recipe: Bamboo,+palette: U32) -> Bool:
           Bool.and(crown_valid(crown,palette),Bool.and(P.predicate_valid(survival,palette),P.predicate_valid(allowed,palette)))))))))
 
 @unsafe
-def column_band(column: Maybe<&2,MD.Column>) -> U32:
+# Legacy flattened plant bands approximate the native column threshold field.
+# Modern registered noise-threshold providers evaluate their own noise program.
+# Column.count is serialization framing, never native packed flags. Compensated
+# coordinate sampling preserves coherent bands at distant signed coordinates.
+def column_band(column: Maybe<&2,MD.Column>,x: U32,z: U32) -> U32:
   match column:
     case None{}: 4294967295
-    case Some{MD.Column{_,_,_,_,_,_,_,_,packed,_}}: band_flag(U32.is_ne(U32.and(packed,134217728),0))
+    case Some{_}: band_flag(F32.is_lt(N.world_simplex(x,z,0.005,2345,0),F32.neg(0.8)))
 
 def band_flag(low: Bool) -> U32:
   match low:
@@ -65,7 +70,7 @@ def band_flag(low: Bool) -> U32:
 @unsafe
 def band(+world: E.World,at: P.Position) -> U32:
   match world at:
-    case E.World{source,_,_} P.Position{x,_,z}: column_band(E.column(source,x,z))
+    case E.World{source,_,_} P.Position{+x,_,+z}: column_band(E.column(source,x,z),x,z)
 
 @unsafe
 def eligible(+entry: U32,+band: U32) -> Bool:
