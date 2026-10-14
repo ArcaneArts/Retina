@@ -5,8 +5,8 @@ Fabric and NeoForge 26.3 terrain generation with GPU registry density programs, 
 The world type selector offers **Retina Rust**, the existing generator, and
 **Retina Bend**, an experimental independent Bend terrain pipeline. Bend combines
 registered density/interpolation, biomes, materials/shorelines, lakes, cave
-biomes/aquifers, carving, ores and cave dressing with Bend NBT/zlib/MCA writing.
-Surface trees/vegetation, structures, snow/freezing and full Bend lighting remain
+biomes/aquifers, carving, ores, cave dressing and surface trees/vegetation with
+Bend NBT/zlib/MCA writing. Structures, snow/freezing and full Bend lighting remain
 in progress; Minecraft lights the preview. Fresh spawn preparation currently
 takes several minutes. Rust remains the default Retina selection.
 See the [implementation checklist](docs/BEND_IMPLEMENTATION.md) for remaining

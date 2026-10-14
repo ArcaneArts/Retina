@@ -1290,3 +1290,31 @@ negative/distant coordinates, nonaligned vertical spans, protected/fluid spans,
 registered suppression, orphan/support repair, reverse adjacent tile order,
 rebuilds, rejected frames, quart biomes, NBT and zlib. These are unlit component
 checks, not complete-region throughput measurements or a usable Bend preset.
+
+
+## Resident surface vegetation and trees (53)
+
+**53 — vegetation core:** six raw U32 words in the surface tile format: signed
+block X/Z, width/depth, seed-low/seed-high. Dimensions must be whole 16x16 chunks,
+16..512, aligned to chunk coordinates. The resident material snapshot must cover
+the requested core plus 32 blocks on each X/Z side and match both seed words.
+Actual out-of-tile context is never treated as known air. Malformed frames return
+**603**, unavailable profile/material state **775**, and incompatible geometry or
+seed **776**; errors preserve the preceding snapshot.
+
+Bend projects the retained profile's complete vegetation model and registered
+`material_flags`, `plant_halves` and `plant_floor_masks`. CPU fork/join plans one
+neighboring ring of chunk anchors against identical terrain, resumes cursor
+slices until completion and captures chronological role-aware commands. Canonical
+signed-coordinate replay precedes floor/pair repair and core cropping. A reached
+unavailable writer returns **774**, preventing final file publication. Typed
+projection currently repeats on each command; CPU placement is deliberate even
+when the session selects GPU bulk terrain.
+
+Success returns five U32 words: anchor count, candidate count, successful feature
+applications, final compact run count and invalid-column count. The cropped
+resident grid retains its cave-biome volume. Opcode 52 serializes this final core
+through Bend NBT/zlib/MCA. Rebuild an expanded pre-decoration snapshot before
+applying another core; the previous successful crop no longer supplies the halo.
+Keep the existing whole build/application/serialization lease. Java transports
+only the descriptor/acknowledgement and opaque file bytes, not generated blocks.
