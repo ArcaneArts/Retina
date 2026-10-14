@@ -50,7 +50,7 @@ def world(+policy: P.Policy,+context: U32) -> E.World:
 @unsafe
 def located(at: W.U64,+policy: P.Policy,+context: U32) -> E.World:
   match at:
-    case W.U64{x,z}: edited(E.World{MD.Grid{S.Tile{x,z,32,32,123456789,2147483648},4294967232,384,columns(1024,0,policy,context),None{}},policy,E.Empty{}},context)
+    case W.U64{x,z}: edited(E.World{MD.Grid{S.Tile{x,z,32,32,123456789,2147483648},4294967232,384,columns(1024,0,policy,context),None{}},policy,E.Empty{},[]},context)
 
 @unsafe
 def edited(+world: E.World,+context: U32) -> E.World:

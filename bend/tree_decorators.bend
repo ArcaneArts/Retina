@@ -147,7 +147,7 @@ def drop_position(next: Maybe<&2,P.Position>,+i: U32,+length: U32,+at: P.Positio
 def drop_above(found: Maybe<&2,U32>,+next: P.Position,+i: U32,+length: U32,+at: P.Position,+side: U32,+material: U32,+role: U32,+world: E.World,occupied: E.Patch,writes: List<&2,T.Write>) -> Decorated:
   match found next world:
     case Some{1} _ _: Decorated{occupied,writes}
-    case _ P.Position{x,y,z} E.World{source,policy,_}: drop_allowed(height_allows(E.height(E.World{source,policy,E.Empty{}},x,z,1),y),next,i,length,at,side,material,role,world,occupied,writes)
+    case _ P.Position{x,y,z} E.World{source,policy,_,_}: drop_allowed(height_allows(E.height(E.World{source,policy,E.Empty{},[]},x,z,1),y),next,i,length,at,side,material,role,world,occupied,writes)
 
 @unsafe
 def height_allows(height: Maybe<&2,U32>,+y: U32) -> Bool:
@@ -193,5 +193,5 @@ def support_position(at: Maybe<&2,P.Position>,+world: E.World,+cocoa: Bool) -> B
 @unsafe
 def support_value(value: Maybe<&2,U32>,+world: E.World,+cocoa: Bool) -> Bool:
   match value world:
-    case Some{m} E.World{_,P.Policy{_,flags,_,_,_,_,_},_}: U32.is_ne(U32.and(Q.get(U32,flags,m,0),N.word(cocoa,32,12)),0)
+    case Some{m} E.World{_,P.Policy{_,flags,_,_,_,_,_},_,_}: U32.is_ne(U32.and(Q.get(U32,flags,m,0),N.word(cocoa,32,12)),0)
     case _ _: False{}

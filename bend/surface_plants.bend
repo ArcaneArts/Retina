@@ -70,7 +70,7 @@ def band_flag(low: Bool) -> U32:
 @unsafe
 def band(+world: E.World,at: P.Position) -> U32:
   match world at:
-    case E.World{source,_,_} P.Position{+x,_,+z}: column_band(E.column(source,x,z),x,z)
+    case E.World{source,_,_,_} P.Position{+x,_,+z}: column_band(E.column(source,x,z),x,z)
 
 @unsafe
 def eligible(+entry: U32,+band: U32) -> Bool:
@@ -129,7 +129,7 @@ def is_air(material: Maybe<&2,U32>) -> Bool:
 @unsafe
 def soil(material: Maybe<&2,U32>,+world: E.World,+dry: Bool) -> Bool:
   match material world:
-    case Some{m} E.World{_,P.Policy{_,flags,_,_,_,_,_},_}: soil_flag(dry,Q.get(U32,flags,m,0))
+    case Some{m} E.World{_,P.Policy{_,flags,_,_,_,_,_},_,_}: soil_flag(dry,Q.get(U32,flags,m,0))
     case _ _: False{}
 
 @unsafe
@@ -147,7 +147,7 @@ def ground(at: Maybe<&2,P.Position>,+world: E.World,+dry: Bool) -> Bool:
 @unsafe
 def inside(+world: E.World,at: P.Position) -> Bool:
   match world at:
-    case E.World{source,_,_} P.Position{_,y,_}: E.inside_y(source,y)
+    case E.World{source,_,_,_} P.Position{_,y,_}: E.inside_y(source,y)
 
 @unsafe
 def support(aquatic: Bool,+row: State,+world: E.World,+at: P.Position) -> Bool:
@@ -171,20 +171,20 @@ def selected(row: Maybe<&2,State>,+aquatic: Bool,+state: W.U64,+world: E.World,+
 def supported(ok: Bool,+row: State,+aquatic: Bool,+state: W.U64,+world: E.World,+at: P.Position) -> Placement:
   match ok row:
     case False{} _: Placement{state,world,False{}}
-    case True{} State{lower,0,_,_,_,_,_}: Placement{state,E.put(world,at,lower),True{}}
+    case True{} State{lower,0,_,_,_,_,_}: Placement{state,write_single(aquatic,world,at,lower),True{}}
     case True{} State{lower,upper,_,_,_,_,_}: above(P.shift(at,P.Position{0,1,0}),row,aquatic,state,world,at,lower,upper)
 
 @unsafe
 def above(above: Maybe<&2,P.Position>,+row: State,+aquatic: Bool,+state: W.U64,+world: E.World,+at: P.Position,+lower: U32,+upper: U32) -> Placement:
   match above:
     case None{}: Placement{state,world,False{}}
-    case Some{+p}: paired(top_allowed(aquatic,row,world,p),state,world,at,p,lower,upper)
+    case Some{+p}: paired(top_allowed(aquatic,row,world,p),aquatic,state,world,at,p,lower,upper)
 
 @unsafe
-def paired(ok: Bool,+state: W.U64,+world: E.World,+at: P.Position,+above: P.Position,+lower: U32,+upper: U32) -> Placement:
+def paired(ok: Bool,+aquatic: Bool,+state: W.U64,+world: E.World,+at: P.Position,+above: P.Position,+lower: U32,+upper: U32) -> Placement:
   match ok:
     case False{}: Placement{state,world,False{}}
-    case True{}: Placement{state,E.put(E.put(world,above,upper),at,lower),True{}}
+    case True{}: Placement{state,write_pair(aquatic,world,at,above,lower,upper),True{}}
 
 @unsafe
 def drawn(draw: R.Draw,+states: List<&2,State>,+aquatic: Bool,+world: E.World,+at: P.Position,+band: U32,+scale: F32) -> Placement:
@@ -323,3 +323,15 @@ def crown_position(pos: Maybe<&2,P.Position>,+i: U32,+count: U32,+crown: Q.Table
   match pos:
     case None{}: crown_blocks(U32.inc(i),count,crown,world,at)
     case Some{p}: crown_blocks(U32.inc(i),count,crown,E.put(world,p,Q.get(U32,crown,i,0)),at)
+
+@unsafe
+def write_single(aquatic: Bool,world: E.World,at: P.Position,lower: U32) -> E.World:
+  match aquatic:
+    case True{}: E.put(world,at,lower)
+    case False{}: E.put_role(world,at,lower,5,0)
+
+@unsafe
+def write_pair(aquatic: Bool,world: E.World,at: P.Position,above: P.Position,lower: U32,upper: U32) -> E.World:
+  match aquatic:
+    case True{}: E.put(E.put(world,above,upper),at,lower)
+    case False{}: E.put_pair(world,at,lower,upper)

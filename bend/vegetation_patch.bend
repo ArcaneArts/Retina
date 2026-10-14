@@ -298,7 +298,7 @@ def enclosed_keep(+keep: Bool,+p: P.Position,+rest: List<&2,P.Position>,+predica
 def flood(+xs: List<&2,P.Position>,+work: Work) -> Work:
   match xs work:
     case Nil{} _: work
-    case p <> rest Work{_,E.World{_,P.Policy{_,_,_,water,_,_,_},_},_}: flood(rest,write(p,water,work))
+    case p <> rest Work{_,E.World{_,P.Policy{_,_,_,water,_,_,_},_,_},_}: flood(rest,write(p,water,work))
 
 @unsafe
 def finish_ground(-A: Data,-C: Type,+work: Work,+recipe: Recipe<A>,+context: C,+generate: C -> A -> W.U64 -> E.World -> P.Position -> S.Placement) -> S.Placement:

@@ -28,7 +28,7 @@ def start(+model: Model,source: MD.Grid,ids: List<&2,U32>,origin: P.Position,see
 @unsafe
 def started(+placement: P.Model,source: MD.Grid,ids: List<&2,U32>,origin: P.Position,+seed: W.U64) -> Anchor:
   match placement:
-    case P.Model{_,_,policy}: Anchor{Walk.new(placement,ids,origin,seed),E.World{source,policy,E.Empty{}},0,0,seed}
+    case P.Model{_,_,policy}: Anchor{Walk.new(placement,ids,origin,seed),E.World{source,policy,E.Empty{},[]},0,0,seed}
 
 def steps(cursor: K.Cursor) -> U32:
   match cursor:
@@ -83,7 +83,7 @@ def membership(xs: Q.Table<U32>,acc: E.Patch) -> E.Patch:
 def biome(found: Maybe<&2,U32>,+world: E.World,acc: E.Patch) -> E.Patch:
   match found world:
     case None{} _: acc
-    case Some{id} E.World{_,P.Policy{_,_,biomes,_,_,_,_},_}: membership(Q.get(Q.Table<U32>,biomes,id,Q.Empty{}),acc)
+    case Some{id} E.World{_,P.Policy{_,_,biomes,_,_,_,_},_,_}: membership(Q.get(Q.Table<U32>,biomes,id,Q.Empty{}),acc)
 
 @unsafe
 def surface(column: Maybe<&2,MD.Column>,world: E.World,acc: E.Patch) -> E.Patch:
@@ -102,7 +102,7 @@ def sampled(point: Maybe<&2,P.Position>,+i: U32,+at: P.Position,+world: E.World,
   match point world volume:
     case None{} _ _: layer(U32.inc(i),at,world,volume,acc)
     case Some{+p} _ True{}: layer(U32.inc(i),at,world,volume,biome(E.biome(world,p),world,acc))
-    case Some{P.Position{x,_,z}} E.World{source,_,_} False{}:
+    case Some{P.Position{x,_,z}} E.World{source,_,_,_} False{}:
       layer(U32.inc(i),at,world,volume,surface(E.column(source,x,z),world,acc))
 
 @unsafe
@@ -124,7 +124,7 @@ def all_ids(+world: E.World,+origin: P.Position) -> List<&2,U32>:
 @unsafe
 def volume_ids(+world: E.World,origin: P.Position,acc: E.Patch) -> List<&2,U32>:
   match world origin:
-    case E.World{MD.Grid{_,+minimum,height,_,_},P.Policy{_,_,_,_,_,_,True{}},_} P.Position{x,_,z}:
+    case E.World{MD.Grid{_,+minimum,height,_,_},P.Policy{_,_,_,_,_,_,True{}},_,_} P.Position{x,_,z}:
       ids(volume(U32.div(U32.add(U32.add(height,U32.and(minimum,3)),3),4),P.Position{x,U32.and(minimum,4294967292),z},world,acc),[])
     case _ _: ids(acc,[])
 

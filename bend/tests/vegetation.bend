@@ -10,6 +10,7 @@ import ../placement_data.bend as P
 import ../placement_world.bend as E
 import ../placement_cursor.bend as K
 import ../placement_merge.bend as Merge
+import ../placement_replay.bend as Replay
 import ../material_columns_data.bend as MD
 import ../surface_feature.bend as F
 import ../density.bend as Q
@@ -53,7 +54,7 @@ def started(+origin: W.U64,+context: U32,+fuel: U32,limit: U32,ids: List<&2,U32>
 @unsafe
 def start_world(+world: E.World,+at: P.Position,+fuel: U32,limit: U32,ids: List<&2,U32>,+model: G.Model) -> Case:
   match world:
-    case E.World{source,_,_}: drive(G.start(model,source,ids,at,W.U64{2147483648,123456789}),model,fuel,limit,0,G.all_ids(world,at))
+    case E.World{source,_,_,_}: drive(G.start(model,source,ids,at,W.U64{2147483648,123456789}),model,fuel,limit,0,G.all_ids(world,at))
 
 @unsafe
 def run(+xs: Q.Table<U32>,model: G.Model) -> Case:
@@ -69,15 +70,15 @@ def words(xs: List<&2,U32>,writer: B.Writer) -> B.Writer:
 @unsafe
 def write(row: Case,writer: B.Writer) -> B.Writer:
   match row:
-    case Case{status,missing,slices,G.Anchor{K.Cursor{queue,_,steps},E.World{_,_,+patch},n,placed,state},+members}:
+    case Case{status,missing,slices,G.Anchor{K.Cursor{queue,_,steps},E.World{_,_,+patch,_},n,placed,state},+members}:
       w = B.int(B.int(B.int(B.int(B.int(B.int(B.int(writer,status),missing),slices),steps),K.size(queue)),n),placed)
       w = B.int(B.long(w,state),U32.from_nat(List.length(&2,U32,members)))
       Output.write_patch(patch,B.int(words(members,w),Output.patch_size(patch)))
 
 @unsafe
-def merged(row: Case,repair: Merge.Repair) -> MD.Grid:
+def merged(row: Case,repair: Merge.Repair) -> Result<&1,&1,U32,MD.Grid>:
   match row:
-    case Case{_,_,_,G.Anchor{_,E.World{source,_,patch},_,_,_},_}: Merge.apply(source,Q.Leaf{patch},repair)
+    case Case{_,_,_,G.Anchor{_,+world,_,_,_},_}: merged_world(world,repair)
 
 @unsafe
 def save_first(first: Bool,row: Case,repair: Merge.Repair,catalog: CC.Catalog,output: String) -> IO(Unit):
@@ -85,8 +86,8 @@ def save_first(first: Bool,row: Case,repair: Merge.Repair,catalog: CC.Catalog,ou
     case False{}: IO.pure(Unit,Unit{})
     case True{}:
       do IO<Unit>:
-        grid : MD.Grid = merged!(row,repair)
-        Mca.save(World.origin(12),grid,catalog,output ++ ".mca")
+        grid : Result<&1,&1,U32,MD.Grid> = merged!(row,repair)
+        saved_grid(grid,catalog,output ++ ".mca")
 
 @unsafe
 def case_ready(result: Result<&1,&1,U32,Q.Table<U32>>,+n: U32,+at: U32,+i: U32,doc: R.Document,+model: G.Model,+repair: Merge.Repair,+catalog: CC.Catalog,+output: String) -> IO(Unit):
@@ -120,7 +121,7 @@ def ready(result: Result<&1,&1,U32,CC.Catalog>,doc: R.Document,+model: G.Model,+
     case Done{catalog} G.Model{P.Model{_,_,+policy},_,_}:
       do IO<Unit>:
         _ : Unit <- IO.print("Vegetation membership")
-        _ : Unit <- membership(E.World{Small.source(policy,0),policy,E.Empty{}},output ++ ".members")
+        _ : Unit <- membership(E.World{Small.source(policy,0),policy,E.Empty{},[]},output ++ ".members")
         V.root(IO(Unit),doc,doc => root => V.field(IO(Unit),doc,root,"vegetation_cases",doc => found => found_cases(found,doc,model,repair,catalog,output)))
 
 @unsafe
@@ -160,3 +161,14 @@ def main() -> IO(Unit):
   do IO<Unit>:
     args : List<String> <- IO.args()
     arguments(args)
+
+@unsafe
+def merged_world(+world: E.World,repair: Merge.Repair) -> Result<&1,&1,U32,MD.Grid>:
+  match world:
+    case E.World{+source,+policy,_,_}: Replay.apply(source,policy,Q.Leaf{Replay.capture(P.Position{0,0,0},world)},repair)
+
+@unsafe
+def saved_grid(result: Result<&1,&1,U32,MD.Grid>,catalog: CC.Catalog,output: String) -> IO(Unit):
+  match result:
+    case Fail{code}: IO.die(Unit,code,"invalid anchor command replay")
+    case Done{grid}: Mca.save(World.origin(12),grid,catalog,output)

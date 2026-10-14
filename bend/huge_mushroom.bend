@@ -29,7 +29,7 @@ def height_second(draw: R.Draw,+height: U32,+recipe: D.Mushroom,+noises: Q.Table
 @unsafe
 def bounded(top: Maybe<&2,P.Position>,+height: U32,+recipe: D.Mushroom,+state: W.U64,+noises: Q.Table<N.Program>,+world: E.World,+at: P.Position) -> S.Placement:
   match top world at:
-    case Some{P.Position{_,top,_}} E.World{+source,_,_} P.Position{_,y,_}:
+    case Some{P.Position{_,top,_}} E.World{+source,_,_,_} P.Position{_,y,_}:
       bounds(Bool.and(E.inside_y(source,top),base_inside(source,y)),height,recipe,state,noises,world,at)
     case _ _ _: S.Placement{state,world,False{}}
 

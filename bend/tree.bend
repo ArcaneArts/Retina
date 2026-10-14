@@ -21,7 +21,7 @@ type Connected is Data:
 @unsafe
 def flags(+world: E.World,+material: U32) -> U32:
   match world:
-    case E.World{_,P.Policy{_,values,_,_,_,_,_},_}: Q.get(U32,values,material,0)
+    case E.World{_,P.Policy{_,values,_,_,_,_,_},_,_}: Q.get(U32,values,material,0)
 
 @unsafe
 def ground(+material: Maybe<&2,U32>,+world: E.World,+at: P.Position,+snow: U32) -> Bool:
@@ -85,7 +85,7 @@ def root_position(root: Maybe<&2,P.Position>,+height: U32,+recipe: T.Recipe,+sta
 @unsafe
 def room(top: Maybe<&2,P.Position>,+root: P.Position,+height: U32,+recipe: T.Recipe,+state: W.U64,+world: E.World,+at: P.Position) -> T.Plan:
   match top recipe world:
-    case Some{P.Position{_,y,_}} T.Recipe{_,_,_,_,_,_,_,logs,_,_,_,_,_,_} E.World{source,_,_}:
+    case Some{P.Position{_,y,_}} T.Recipe{_,_,_,_,_,_,_,logs,_,_,_,_,_,_} E.World{source,_,_,_}:
       room_valid(E.inside_y(source,y),root,height,recipe,state,world,at,logs)
     case _ _ _: T.Plan{state,[],False{}}
 
@@ -115,7 +115,7 @@ def chosen_leaf(chosen: T.Chosen,+log: Q.Table<U32>,+root: P.Position,+height: U
 @unsafe
 def above_ground(+world: E.World,+at: P.Position) -> Bool:
   match world at:
-    case E.World{source,policy,_} P.Position{x,y,z}: above_height(E.height(E.World{source,policy,E.Empty{}},x,z,1),y)
+    case E.World{source,policy,_,_} P.Position{x,y,z}: above_height(E.height(E.World{source,policy,E.Empty{},[]},x,z,1),y)
 
 @unsafe
 def above_height(height: Maybe<&2,U32>,+y: U32) -> Bool:
@@ -322,7 +322,7 @@ def roots_direction(dir: P.Position,+i: U32,+material: U32,+root: P.Position,+wo
 def roots_position(p: Maybe<&2,P.Position>,+i: U32,+material: U32,+root: P.Position,+world: E.World,acc: List<&2,T.Write>) -> List<&2,T.Write>:
   match p world:
     case None{} _: roots(U32.inc(i),material,root,world,acc)
-    case Some{+p} E.World{source,_,_}: roots_column(column_at(source,p),p,i,material,root,world,acc)
+    case Some{+p} E.World{source,_,_,_}: roots_column(column_at(source,p),p,i,material,root,world,acc)
 
 @unsafe
 def column_at(+source: MD.Grid,at: P.Position) -> Maybe<&2,MD.Column>:
@@ -409,7 +409,7 @@ def replay_allowed(ok: Bool,+write: T.Write,rest: List<&2,T.Write>,+phase: U32,+
 def replay_supported(ok: Bool,write: T.Write,rest: List<&2,T.Write>,+phase: U32,+snow: U32,+world: E.World) -> E.World:
   match ok write:
     case False{} _: replay_phase(rest,phase,snow,world)
-    case True{} T.Write{at,material,_,_}: replay_phase(rest,phase,snow,E.put(world,at,material))
+    case True{} T.Write{at,material,+role,side}: replay_phase(rest,phase,snow,E.put_role(world,at,material,role,replay_extra(role,snow,side)))
 
 @unsafe
 def placed(result: T.Plan,+snow: U32,+world: E.World) -> S.Placement:
@@ -433,3 +433,10 @@ def prepend(xs: List<&2,T.Write>,acc: List<&2,T.Write>) -> List<&2,T.Write>:
 @unsafe
 def append(xs: List<&2,T.Write>,rest: List<&2,T.Write>) -> List<&2,T.Write>:
   prepend(List.reverse(&2,T.Write,xs),rest)
+
+# Preserve the role of this accepted write; material IDs alone cannot distinguish
+# a generic block feature from the same state used by a tree.
+def replay_extra(role: U32,snow: U32,side: U32) -> U32:
+  match role:
+    case 0: snow
+    case _: side

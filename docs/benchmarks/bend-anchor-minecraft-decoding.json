@@ -1,0 +1,50 @@
+{
+  "scope": "Actual Minecraft loading and reopening of unlit role-aware neighboring-anchor and 17-family coordinator output. Registered block/biome codecs, properties and heightmaps decode; files retain their bytes. Component decoding, not complete-region gameplay acceptance.",
+  "runs": [
+    {
+      "lane": "vanilla",
+      "files": 3,
+      "chunks": 12,
+      "reads_per_chunk": 2,
+      "blocks_verified": 1835008,
+      "log_sha256": "7c57450aa932a06631fd634c0651d1a8492eaceeda910f1419a77eef8cc11465"
+    },
+    {
+      "lane": "terralith",
+      "files": 2,
+      "chunks": 8,
+      "reads_per_chunk": 2,
+      "blocks_verified": 1048576,
+      "log_sha256": "f01b53d2710970f7b66b43b9c10cb8a55143837e0b00bc508a2ed6d8ad29b0b0"
+    },
+    {
+      "lane": "combined",
+      "files": 2,
+      "chunks": 8,
+      "reads_per_chunk": 2,
+      "blocks_verified": 1048576,
+      "log_sha256": "25eb39bc5d48782dba593352f7ef10d335447b736fb277216e24399dbe6eeadc"
+    }
+  ],
+  "inputs": {
+    "build/bend/tree-mca-loader/anchor-coordinator-fixture/r.58574.-58594.mca": "9a8b33c346383f5d94326f737c01a914a6c8832d12dcdf465de4d2e166e59570",
+    "build/bend/tree-mca-loader/anchor-coordinator-profile-0/r.58574.-58594.mca": "7cbd4ff24e5dcfd01ffeb465192d86c4672de452389c18bdc2580a41775e82fe",
+    "build/bend/tree-mca-loader/anchor-coordinator-profile-1/r.58574.-58594.mca": "4ea04e8c5791e4fea6750020fc3e275a0a6ba06db7903b69d1f6cca26a102328",
+    "build/bend/tree-mca-loader/anchor-coordinator-profile-2/r.58574.-58594.mca": "e6943d14491fb918bd0b67b3ec8e5c7b71a74915412db2152f78c7a22c3300f0",
+    "build/bend/tree-mca-loader/anchor-replay-profile-0/r.58574.-58594.mca": "8ab1d21909ae10f137f9e549afcc69fb2e1d0949ffab55398975b153fe40f95d",
+    "build/bend/tree-mca-loader/anchor-replay-profile-1/r.58574.-58594.mca": "72ed9b5ba49e55ba6881bae9d682f8b72cf0ec2d13575c8def02499b986297b8",
+    "build/bend/tree-mca-loader/anchor-replay-profile-2/r.58574.-58594.mca": "28b0235d312ba70927146645293f1a8b9d507250549a867a31fa297e32853dca"
+  },
+  "sources": {
+    "common/src/gpuTest/java/art/arcane/retina/worldgen/BendGeneratedChunkIntegrationTest.java": "62a812db7ba94ea7381f268ae7fd13da29b54c370d904017891917601f70fd16",
+    "gradle/verification.gradle": "f26c17f69f55ae0041360682ac00983ffc995265d51f18a8b25578444026788f"
+  },
+  "datapacks": {
+    "/Users/cyberpwn/development/workspace/ArcaneArts/Retina/run/datapacks/Terralith.zip": "9764f1d11a0bfe99c2cd96cd54f346fe756165d14a6f855b394954c171d603d5",
+    "build/registry-fixtures/registry-supplement.zip": "5e0ca65dbae348db7fd93e88b062b4c9305504e6f746991ba2a0c8a9690f3b29"
+  },
+  "total_files": 7,
+  "total_chunks": 28,
+  "blocks_verified": 3932160,
+  "configuration": "Java ActiveProcessorCount=2; Gradle --max-workers=2 --no-parallel; -x buildNative -x packageNative; no game UI."
+}

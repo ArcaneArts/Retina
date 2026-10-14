@@ -55,13 +55,13 @@ def samples(+n: U32,+i: U32,+biomes: U32) -> List<&2,CV.Sample>:
 def edit(+world: E.World,+n: U32,+i: U32,+origin: W.U64) -> E.World:
   match world n origin:
     case _ 0 _: world
-    case E.World{_,P.Policy{_,_,_,water,_,_,_},_} _ W.U64{x,z}:
+    case E.World{_,P.Policy{_,_,_,water,_,_,_},_,_} _ W.U64{x,z}:
       edit(E.put(world,P.Position{U32.add(x,U32.mod(i,4)),U32.add(4294967236,U32.mod(U32.mul(U32.mod(i,8),17),40)),U32.add(z,U32.mod(U32.div(i,4),2))},
         N.word(U32.is_zero(U32.mod(i,3)),0,N.word(U32.is_eq(U32.mod(i,3),1),1,water))),U32.sub(n,1),U32.inc(i),origin)
 
 @unsafe
 def world(+policy: P.Policy,+i: U32) -> E.World:
-  edit(E.World{source(policy,i),policy,E.Empty{}},i,0,origin(i))
+  edit(E.World{source(policy,i),policy,E.Empty{},[]},i,0,origin(i))
 
 def optional(value: Maybe<&2,U32>) -> U32:
   match value:
@@ -85,7 +85,7 @@ def match_material(+offset: P.Position,+id: U32) -> P.Predicate:
 @unsafe
 def query(+world: E.World,+kind: U32,+at: P.Position) -> U32:
   match world kind at:
-    case E.World{+grid,+policy,_} 0 _: optional(E.material(world,at))
+    case E.World{+grid,+policy,_,_} 0 _: optional(E.material(world,at))
     case _ 1 P.Position{x,_,z}: optional(E.height(world,x,z,0))
     case _ 2 P.Position{x,_,z}: optional(E.height(world,x,z,1))
     case _ 3 P.Position{x,_,z}: optional(E.height(world,x,z,2))
@@ -113,9 +113,9 @@ def query(+world: E.World,+kind: U32,+at: P.Position) -> U32:
     case _ 25 _: y(Check.evaluate(P.WaterDepth{4},world,at,0))
     case _ 26 _: y(Check.evaluate(P.Biome{},world,at,0))
     case _ 27 _: y(Check.evaluate(P.Heightmap{4},world,at,0))
-    case E.World{_,P.Policy{masks,_,_,_,_,_,_},_} 28 _: optional(E.material(E.put(world,at,Q.table_size(U32,masks)),at))
+    case E.World{_,P.Policy{masks,_,_,_,_,_,_},_,_} 28 _: optional(E.material(E.put(world,at,Q.table_size(U32,masks)),at))
     case _ 29 _: y(P.shift(P.Position{2147483647,0,0},P.Position{1,0,0}))
-    case E.World{grid,policy,_} 30 P.Position{x,_,z}: optional(E.height(E.World{grid,policy,E.Empty{}},x,z,4))
+    case E.World{grid,policy,_,_} 30 P.Position{x,_,z}: optional(E.height(E.World{grid,policy,E.Empty{},[]},x,z,4))
     case _ _ P.Position{x,_,z}: optional(E.material(world,P.Position{x,64,z}))
 
 @unsafe

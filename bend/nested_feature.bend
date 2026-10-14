@@ -273,8 +273,8 @@ def op(-A: Data,-C: Data,+m: P.Modifier,+row: Placed<Feature<A>>,+index: U32,+st
     case P.Rarity{n} _ _: chance_draw(A,C,R.next(state),F32.div(1.0,U32.to_f32(n)),row,index,noises,world,at,runtime)
     case P.Square{} _ _: square_x(A,C,R.integer(state,0,15),row,index,noises,world,at,runtime)
     case P.Offset{x,y,z} _ _: offset_x(A,C,I.sample(x,state),y,z,row,index,noises,world,at,runtime)
-    case P.HeightRange{p} E.World{MD.Grid{_,minimum,height,_,_},_,_} _: height_draw(A,C,H.sample(p,state,minimum,height),row,index,noises,world,at,runtime)
-    case P.Heightmap{map} E.World{MD.Grid{_,minimum,_,_,_},_,_} P.Position{x,_,z}: jump(A,C,mapped_height(E.height(world,x,z,map),minimum,at),row,index,state,noises,world,runtime)
+    case P.HeightRange{p} E.World{MD.Grid{_,minimum,height,_,_},_,_,_} _: height_draw(A,C,H.sample(p,state,minimum,height),row,index,noises,world,at,runtime)
+    case P.Heightmap{map} E.World{MD.Grid{_,minimum,_,_,_},_,_,_} P.Position{x,_,z}: jump(A,C,mapped_height(E.height(world,x,z,map),minimum,at),row,index,state,noises,world,runtime)
     case _ _ _: jump(A,C,Check.evaluate(m,world,at,0),row,index,state,noises,world,runtime)
 
 @unsafe

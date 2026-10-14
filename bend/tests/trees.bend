@@ -77,7 +77,7 @@ def seeded(+id: U32,+context: U32) -> W.U64:
 @unsafe
 def snapshot(result: F.Placement) -> Snapshot:
   match result:
-    case F.Placement{state,E.World{_,_,patch},placed}: Snapshot{state,placed,patch}
+    case F.Placement{state,E.World{_,_,patch,_},placed}: Snapshot{state,placed,patch}
 
 @unsafe
 def repeated(+first: F.Placement,+feature: F.Feature,+model: F.Model,+at: P.Position) -> List<&2,Snapshot>:
