@@ -114,6 +114,7 @@ final class BendRegionBackend implements AutoCloseable {
         await("ores", worker.applyOreCore(x-margin,z-margin,BATCH_BLOCKS+2*margin,BATCH_BLOCKS+2*margin,settings.seed()));
         await("cave dressing", worker.applyCaveDecorations(x-margin,z-margin,BATCH_BLOCKS+2*margin,BATCH_BLOCKS+2*margin,settings.seed()));
         await("surface vegetation / trees (CPU)", worker.applySurfaceVegetation(x,z,BATCH_BLOCKS,BATCH_BLOCKS,settings.seed()));
+        await("snow / freezing", worker.applySnowAndFreeze());
         long writeStart = System.nanoTime();
         var written=java.nio.ByteBuffer.wrap(await("NBT / zlib / MCA", worker.writeGeneratedBatch(Math.floorDiv(request.chunkX(),32),Math.floorDiv(request.chunkZ(),32),
                 settings.seed(),dataVersion,(int)Instant.now().getEpochSecond(),path)));

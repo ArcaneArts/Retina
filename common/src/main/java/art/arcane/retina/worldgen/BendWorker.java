@@ -256,6 +256,10 @@ public final class BendWorker implements AutoCloseable {
         return request(53,surfaceTilePayload(x,z,width,depth,seed));
     }
 
+    /** Apply registered snow/freezing to the final resident block snapshot.
+     * Returns width, depth, compact run count and invalid-column count. */
+    public CompletableFuture<byte[]> applySnowAndFreeze() { return request(54,new byte[0]); }
+
     /** Project registered cave noise, per-biome carvers, carveable materials and
      * lava/world-height metadata in Bend. Requires numeric/material/block models.
      * Eight raw acknowledgement words: noise, biome, carver and material counts,

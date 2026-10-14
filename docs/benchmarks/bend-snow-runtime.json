@@ -1,0 +1,48 @@
+{
+  "scope": "Local host worker/package correctness, cache warm-up and build reproducibility; not a terrain throughput benchmark or support claim for other platforms.",
+  "bend_version": "bend 2.0.36",
+  "host_compiler": "Homebrew clang version 23.1.2\nTarget: arm64-apple-darwin27.0.0\nThread model: posix\nInstalledDir: /opt/homebrew/Cellar/llvm/23.1.2/bin\nConfiguration file: /opt/homebrew/Cellar/llvm/23.1.2/etc/clang/arm64-apple-darwin27.cfg",
+  "build": "Stock generated Objective-C -O3, explicit Xcode SDK/linker, existing LLVM override, one nice +10 compiler. Local Fabric/NeoForge host builds/checks used explicit installed Xcode CC/AR/linker/SDK, two Cargo jobs and two Gradle workers; unchanged Cargo cache was reused.",
+  "jars": [
+    {
+      "path": "fabric/build/libs/retina-fabric-26.3-0.1.0.jar",
+      "sha256": "11c4c5cfdfba40fa588c496c33d4d703a7ae8f57c77db04f97fc987f74a74f0b",
+      "worker_equal": true,
+      "archive_equal": true
+    },
+    {
+      "path": "neoforge/build/libs/retina-neoforge-26.3-0.1.0.jar",
+      "sha256": "15b8c18c029c1cce7e2217648c42a32668f1cfdf9de5e51752db05dee267465f",
+      "worker_equal": true,
+      "archive_equal": true
+    }
+  ],
+  "packaged_start_ms": [
+    75067.04,
+    74.09
+  ],
+  "startup_cancellation": "pass",
+  "worker_sha256": "a2a4478d38482d854abca8f9b9d82688e949a991690f8c0770071d3d5ecda205",
+  "gpu_archive_sha256": "0d224bd9dc0ad2a38c3bea187b7278dac4e6eb7ffb87c035786f74f6f8ab216a",
+  "host_observer": "Generated C differs by exactly one host logging line; identical GPU archive and final MCA.",
+  "profile_sha256": {
+    "build/bend/profiles/profile-0.json": "aefce6ff0e800966ad55920c5d21510dfa277de4612f67e22d5146d3aa838203",
+    "build/bend/profiles/profile-1.json": "c9abbe97860a394ed899d64967bd0395bb9bb4ec71a9dff43d1bb45893fefd4d",
+    "build/bend/profiles/profile-2.json": "068fd602ad497128dd3960cb9be76840ebd41882b5b64c25acfa76d65e930c8b"
+  },
+  "sources": {
+    "bend/engine.bend": "b563f7af0330358ef3be7d32ed60833a79e4cc3530af858a744fdeb9ff1fafd8",
+    "bend/snow.bend": "697016acb380c1f8d69c26e94d29bba973db52a6500339a46917047788236a8e",
+    "bend/registry_snow.bend": "76244edf5940910ce43830b39b6636ed6ef12faf4104d415ee6abd4a4656172b",
+    "common/src/gpuTest/java/art/arcane/retina/worldgen/BendPackagedRuntimeTest.java": "65bb3aff2bb31426e018e9256a70080558e49e89958362b34c674b7f7e9a07f1",
+    "scripts/test_bend_snow.py": "57f5c4b2aed55593b90f547750eb6c4266e99862ae095bf12e227d1cc1900ccb",
+    "scripts/test_bend_snow_worker.py": "5b1b4d3cee75c2f0f6d50a30a0c9fcc1038fc2f7c2281db9971d20f146843613",
+    "scripts/test_bend_density.py": "5abbf51c93cc1b17059f7d128e1e6f3003bc9a48ebb68b2c7c873a28a37c2776",
+    "scripts/test_bend_noise.py": "496aa5bfd2319e48a22f55cd320a6ae8a148150f35a937b17218a3fe148caccb",
+    "scripts/test_bend_vegetation_worker.py": "8e719473ae274af2ced60f970a258b6cc5e0de0e2515de19d55e9b21470b4990"
+  },
+  "logs_sha256": {
+    "build/bend/snow-packaged-runtime.log": "9425ee244182e0bb5cae11c780d27cbc46c9803bdacd64ea7b83717d32c5e6fa",
+    "build/bend/snow-host-builds.log": "45c07631d1191f22e3c6fefdbefae15d16480e3e65889261e0080d32d7038145"
+  }
+}
