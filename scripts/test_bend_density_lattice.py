@@ -197,7 +197,7 @@ def main():
     source={'registry_program':{'noises':[],'points':[],'programs':[dict(nodes=nodes,roots=[0,1,2,3,4,1]) for _ in range(3)]}}
     path=folder/'analytic.rbp';path.write_bytes(fixture_wire(source,True));profiles.append(('analytic',source,path))
     report={'scope':'Resident top-level GPU density lattice and interpolation; no integrated terrain or complete-region benchmark',
-            'vertex_capacity':1048576,'maximum_axis_span_blocks':4096,'cpu_workers':2,'process_nice':10,
+            'vertex_capacity':2097152,'maximum_axis_span_blocks':4096,'cpu_workers':2,'process_nice':10,
             'runs':[exercise(binary,profiles,gpu) for gpu in (False,True)]}
     report['cpu_gpu_bytes_equal']=report['runs'][0]['aggregate_sha256']==report['runs'][1]['aggregate_sha256']
     if args.prove_metal:

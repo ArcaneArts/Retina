@@ -31,7 +31,7 @@ def axis_valid(+a: D.Number,+b: D.Number) -> Bool:
 def total_valid(ok: Bool,layout: Layout,xy: U32,nz: U32) -> Result<&1,&1,U32,Layout>:
   match ok:
     case False{}: Fail{717}
-    case True{}: limited(U32.is_le(xy,U32.div(1048576,nz)),layout)
+    case True{}: limited(U32.is_le(xy,U32.div(2097152,nz)),layout)
 
 @unsafe
 def limited(ok: Bool,layout: Layout) -> Result<&1,&1,U32,Layout>:
@@ -43,7 +43,9 @@ def limited(ok: Bool,layout: Layout) -> Result<&1,&1,U32,Layout>:
 def sized(layout: Layout) -> Result<&1,&1,U32,Layout>:
   match layout:
     case Layout{_,+nx,+ny,+nz,_,_,_,_,_}:
-      total_valid(U32.is_le(nx,U32.div(1048576,ny)),layout,U32.mul(nx,ny),nz)
+      # A normal full region plus the existing vegetation/coast context needs
+      # about 1.2M vertices. Keep a finite, overflow-safe bound above that size.
+      total_valid(U32.is_le(nx,U32.div(2097152,ny)),layout,U32.mul(nx,ny),nz)
 
 @unsafe
 def aligned(ok: Bool,minimum: Q.Point,maximum: Q.Point,+h: U32,+v: U32,program: U32,low: U32,high: U32) -> Result<&1,&1,U32,Layout>:

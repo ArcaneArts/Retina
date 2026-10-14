@@ -24,10 +24,10 @@ LO,HI=123456789,0x80000000
 
 class ObservedWorker(Worker):
     """A regular file avoids a full diagnostic stderr pipe blocking the worker."""
-    def __init__(self,binary,gpu,log):
+    def __init__(self,binary,gpu,log,gpu_memory='on'):
         self.log=log;self.trace=log.open('wb')
         self.process=subprocess.Popen(['nice','-n','10',str(binary),'gpu' if gpu else 'cpu',
-            '--threads','2','--gpu','on' if gpu else 'off'],cwd=ROOT,stdin=subprocess.PIPE,
+            '--threads','2','--gpu',gpu_memory if gpu else 'off'],cwd=ROOT,stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,stderr=self.trace,env=dict(os.environ,BEND_NO_TELEMETRY='1'))
         self.id=0
     def dispatches(self):

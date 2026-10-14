@@ -199,6 +199,20 @@ def calculate(+env: P.Env) -> MD.Grid:
 
 @unsafe
 def execute(+env: P.Env) -> Computed:
+  match env:
+    case P.Env{_,_,_,_,_,_,_,core,_,_}: execute_mode(U32.is_gt(S.total(core),16384),env)
+
+# The verified 128x128 cores fit the stock 2GiB GPU heap. A full-region core
+# exhausted it while the same ordered CPU calculation completed successfully.
+# Keep the same fork tree and data, with two runtime CPU workers for large cores.
+@unsafe
+def execute_mode(cpu: Bool,env: P.Env) -> Computed:
+  match cpu:
+    case True{}: Computed{calculate(env)}
+    case False{}: execute_gpu(env)
+
+@unsafe
+def execute_gpu(env: P.Env) -> Computed:
   grid : MD.Grid = calculate!(env)
   Computed{grid}
 
@@ -210,7 +224,7 @@ def compatible(+core: S.Tile,+source: MD.Grid) -> Bool:
     case S.Tile{+x,+z,+width,+depth,+low,+high} MD.Grid{S.Tile{+ox,+oz,+ow,+od,lo,hi},_,_,_,_}:
       Bool.and(Bool.and(U32.is_eq(U32.and(x,15),0),U32.is_eq(U32.and(z,15),0)),
         Bool.and(Bool.and(U32.is_eq(U32.mod(width,16),0),U32.is_eq(U32.mod(depth,16),0)),
-          Bool.and(Bool.and(U32.is_le(width,512),U32.is_le(depth,512)),
+          Bool.and(Bool.and(U32.is_le(width,1024),U32.is_le(depth,1024)),
             Bool.and(Bool.and(U32.is_eq(low,lo),U32.is_eq(high,hi)),
               Bool.and(Bool.and(Bool.not(D.less(D.maximum(D.integer(2147483648),D.sub(D.integer(x),D.scalar(1.0))),D.integer(ox))),
                 Bool.not(D.less(D.maximum(D.integer(2147483648),D.sub(D.integer(z),D.scalar(1.0))),D.integer(oz)))),

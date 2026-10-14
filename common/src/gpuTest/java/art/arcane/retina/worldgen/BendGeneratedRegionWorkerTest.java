@@ -21,6 +21,7 @@ public final class BendGeneratedRegionWorkerTest {
         var folder = Files.createTempDirectory("retina-bend-region-worker-");
         long seed = 0x8000000012345678L;
         try {
+            rawHeaderLifecycle(folder);
             for (var execution : BendWorker.Execution.values()) {
                 long pid;
                 try (var worker = new BendWorker(binary, execution, 2)) {
@@ -37,21 +38,23 @@ public final class BendGeneratedRegionWorkerTest {
                     var first = folder.resolve(execution + "-first.mca");
                     var cancelledPath = folder.resolve(execution + "-cancelled.mca");
                     var second = folder.resolve(execution + "-é 🌍.mca");
-                    var a = worker.writeGeneratedRegion(-1, 0, seed, 5023, -1, first);
-                    var cancelled = worker.writeGeneratedRegion(-1, 0, seed, 5023, -1, cancelledPath);
-                    var b = worker.writeGeneratedRegion(-1, 0, seed, 5023, -1, second);
+                    var a = worker.writeStreamedRegion(-1, 0, seed, 5023, -1, first);
+                    var cancelled = worker.writeStreamedRegion(-1, 0, seed, 5023, -1, cancelledPath);
+                    var b = worker.writeStreamedRegion(-1, 0, seed, 5023, -1, second);
                     require(cancelled.cancel(false), "cancel queued region request");
                     byte[] ack = await(a);
                     require(Arrays.equals(ack, await(b)), "concurrent raw callers receive matching acknowledgements");
                     var counts = ByteBuffer.wrap(ack);
                     require(counts.getInt() == 1024 && counts.getInt() * 4096L == Files.size(first), "complete staged region acknowledgement");
+                    BendRegionFiles.finishStream(first,ack,1024);
+                    BendRegionFiles.finishStream(second,ack,1024);
                     require(Arrays.equals(Files.readAllBytes(first), Files.readAllBytes(second)), "parallel callers preserve snapshot bytes");
                     require(!Files.exists(cancelledPath), "queued cancellation does not write a file");
                     require(Arrays.equals(chunk, await(worker.encodeGeneratedChunk(-32, 0, seed, 5023, true))), "region writes preserve query snapshot");
                     if (execution == BendWorker.Execution.CPU) {
                         // An actual open failure, not a path-existence preflight.
                         try {
-                            await(worker.writeGeneratedRegion(-1, 0, seed, 5023, -1, folder.resolve("missing/region.mca")));
+                            await(worker.writeStreamedRegion(-1, 0, seed, 5023, -1, folder.resolve("missing/region.mca")));
                             throw new AssertionError("Missing destination parent accepted");
                         } catch (ExecutionException expected) {
                             require(expected.getCause() instanceof java.io.IOException, "IO failure reaches raw caller");
@@ -70,6 +73,24 @@ public final class BendGeneratedRegionWorkerTest {
                 for (var path : paths.sorted(Comparator.reverseOrder()).toList()) Files.delete(path);
             }
         }
+    }
+
+    private static void rawHeaderLifecycle(Path folder) throws Exception {
+        var path=folder.resolve("opaque-body");
+        byte[] body=new byte[12288];Arrays.fill(body,8192,body.length,(byte)0x5a);Files.write(path,body);
+        byte[] ack=new byte[8200];Arrays.fill(ack,8,ack.length,(byte)0x37);
+        ByteBuffer.wrap(ack).putInt(1).putInt(3);
+        BendRegionFiles.finishStream(path,ack,1);
+        byte[] complete=Files.readAllBytes(path);
+        require(Arrays.equals(Arrays.copyOfRange(complete,8192,complete.length),Arrays.copyOfRange(body,8192,body.length)),"opaque header write preserves every body byte");
+        require(Arrays.equals(Arrays.copyOf(complete,8192),Arrays.copyOfRange(ack,8,ack.length)),"opaque header bytes are installed verbatim");
+        for(byte[] invalid: new byte[][]{new byte[8],ByteBuffer.wrap(ack.clone()).putInt(2).array(),ByteBuffer.wrap(ack.clone()).putInt(4,4).array()}) {
+            try { BendRegionFiles.finishStream(path,invalid,1);throw new AssertionError("Invalid stream accepted"); }
+            catch(java.io.IOException expected) { require(Arrays.equals(complete,Files.readAllBytes(path)),"failed stream does not alter private bytes"); }
+        }
+        var missing=folder.resolve("missing-body");
+        try { BendRegionFiles.finishStream(missing,ack,1);throw new AssertionError("Missing body accepted"); }
+        catch(java.io.IOException expected) { require(Files.notExists(missing),"header installation never creates a body"); }
     }
 
     private static void require(boolean ok, String message) {

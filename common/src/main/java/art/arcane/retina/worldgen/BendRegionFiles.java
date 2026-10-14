@@ -4,10 +4,24 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.file.*;
 
-/** Publication only: copies opaque MCA sectors without decoding/reencoding NBT.
+/** Raw file lifecycle: copies opaque MCA bytes without decoding/reencoding NBT.
  * The caller owns Minecraft's I/O queue and has closed its destination handle. */
 final class BendRegionFiles {
     private BendRegionFiles() { }
+    /** Bend supplies every header byte. The stock Bend file API has no seek or
+     * nontruncating positional write; this bridge adds no MCA layout logic. */
+    static void finishStream(Path path,byte[] response,int expectedChunks) throws IOException {
+        if(response.length!=8200 || java.nio.ByteBuffer.wrap(response).getInt()!=expectedChunks)
+            throw new IOException("Incomplete Bend streamed region response");
+        try(var output=java.nio.channels.FileChannel.open(path,StandardOpenOption.WRITE)) {
+            int sectors=java.nio.ByteBuffer.wrap(response).getInt(4);
+            if(sectors<2 || output.size()!=sectors*4096L)
+                throw new IOException("Incomplete Bend streamed region body");
+            output.position(0);
+            var header=java.nio.ByteBuffer.wrap(response,8,8192);
+            while(header.hasRemaining())output.write(header);
+        }
+    }
     static boolean complete(Path path,net.minecraft.world.level.ChunkPos position,int chunks) throws IOException {
         try (var input = new RandomAccessFile(path.toFile(),"r"); var storage=reader(path)) {
             if(input.length()==0) return false;

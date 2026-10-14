@@ -1,0 +1,38 @@
+{
+  "scope": "Independently verify Bend's bounded MCA body writer against its old planner.",
+  "cases": [
+    {
+      "mode": 0,
+      "chunks": 1024,
+      "sectors": 1026,
+      "bytes": 4202496,
+      "sha256": "288cb2ffb60cdc6d55f5210f2509bf1e7c89f9e32e831e86b4af5fb93d788ebc"
+    },
+    {
+      "mode": 1,
+      "chunks": 3,
+      "sectors": 7,
+      "bytes": 28672,
+      "sha256": "4e9132978dac714c8258e41ad1b2e4e114fe1b18b8c60aae95640fc5130ec31e"
+    },
+    {
+      "mode": 2,
+      "chunks": 0,
+      "sectors": 2,
+      "bytes": 8192,
+      "sha256": "9f1dcbc35c350d6027f98be0f5c8b43b42ca52b7604459c0c42be3aa88913d47"
+    },
+    {
+      "mode": 9,
+      "chunks": 1,
+      "sectors": 3,
+      "bytes": 12288,
+      "sha256": "97d002c989c2b154595af5ec478e38df843e5e1020a7ea769da958249c8674dc"
+    }
+  ],
+  "invalid_records_rejected": 6,
+  "lattice_layout_cases": 4,
+  "body_unchanged_by_header_patch": true,
+  "matches_existing_planner_byte_for_byte": true,
+  "native_sha256": "786dc702911301e01dc113ff3ec60dee2358252ba876bea779d0c73878bc7065"
+}

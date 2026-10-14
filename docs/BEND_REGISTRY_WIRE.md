@@ -1234,9 +1234,54 @@ Bend chunk encoder, zlib compressor and MCA planner. Empty/unmatched coverage
 returns **732**; invalid world/region alignment or range returns **733**;
 malformed input returns **603**. The original full-region opcode 28 is unchanged.
 
-The world preview uses 64x64 cores and per-batch private paths. The Java I/O
-coordinator merges opaque encoded records atomically into the live region,
-preserving nonzero saved slots. It performs no NBT generation or compression.
+The world preview now uses full 512x512 cores and command 55 below. Commands
+28/52 retain their component contracts. The Java I/O coordinator publishes opaque
+records atomically into the live region, preserving completed saved terrain and
+player edits. It performs no NBT generation or compression.
+
+### Bounded streamed MCA writing (55)
+
+Opcode **55** accepts the same request as 28/52 and writes the covered chunks
+into a caller-owned private file. Each group of eight parallel Bend chunk
+encodes/compressions is consumed by a stock file IO effect before the next group
+is constructed. Unlike 52, it retains no whole-region list of compressed records
+or padded packets. All chunk encoding, compression, sector allocation, record
+framing and header construction remain in Bend.
+
+The response is 8,200 bytes: U32 chunk count, U32 sector count, then the exact
+8,192-byte MCA header. Bend writes a zero header placeholder and each body record
+once. The bridge installs the returned opaque header at offset zero before
+publication. Stock Bend 2.0.36 supports r/w/a file modes but no seek/write-at;
+this raw positional write supplies no generation or serialization algorithm.
+The bridge checks the acknowledged count and actual file length, opens without
+creation/truncation, and never rewrites the body. Failed output remains private.
+
+Malformed requests return **603**, invalid coordinates/alignment **733**, and
+empty or seed-mismatched coverage **732**, before opening the file. Record limits
+remain **101** for invalid slots/sizes/sectors and **102** for duplicates. The
+size check occurs before sector arithmetic can overflow. Commands 28 and 52
+remain available for component compatibility.
+
+The top-level density lattice allows at most 2,097,152 vertices, with division
+guards before multiplication. This admits the normal 512-block core plus its
+existing terrain/vegetation halo; the previous 1,048,576 bound rejected that
+actual request with **717**. Ore and cave-dressing cores admit up to 1,024 blocks
+while retaining their real source-coverage, seed and chunk-alignment checks.
+For ore cores larger than 16,384 columns, command 50 runs the same forked
+calculation on CPU Bend. Both the full GPU ore calculation and the CPU variant
+inside a default GPU worker exhausted the shared 2GiB runtime heap. Full-region
+workers use the stock `--gpu 4GB` argument; smaller verified cores retain GPU ore
+execution. The CPU-only runtime uses its stock span. No generated computational
+code or runtime memory constants are patched.
+
+`scripts/test_bend_region_stream.py --build` checks all 1,024 slots, sparse and
+empty files, six invalid records, and density bounds. Applying the opaque header
+produces byte-for-byte identical files to the old planner. The independent
+reader checks zlib/NBT, timestamps, sectors and zero padding. The separate
+`scripts/test_bend_full_region.py --profile JSON --size 512 [--gpu]` exercises
+the original loaded profile through terrain/caves/ores/vegetation/weather and
+the new writer. Structures and computed lighting remain separate pending work;
+this harness does not establish final lit-region performance parity.
 
 ## Resident cave decorations (51)
 

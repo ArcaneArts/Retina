@@ -196,8 +196,7 @@ public final class RetinaChunkGenerator extends ChunkGenerator {
     }
 
     long cacheKey(ChunkPos position) {
-        return bendMode() ? ChunkPos.pack(Math.floorDiv(position.x(),BendRegionBackend.BATCH_CHUNKS),Math.floorDiv(position.z(),BendRegionBackend.BATCH_CHUNKS))
-                : ChunkPos.pack(position.getRegionX(),position.getRegionZ());
+        return ChunkPos.pack(position.getRegionX(),position.getRegionZ());
     }
 
     TemporaryRegions previewCache() { return previews; }

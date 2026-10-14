@@ -377,7 +377,7 @@ def compatible(+core: S.Tile,+source: MD.Grid) -> Bool:
   match core source:
     case S.Tile{+x,+z,+width,+depth,low,high} MD.Grid{+tile,_,_,_,_}:
       compatible_seed(Bool.and(Bool.and(U32.is_zero(U32.and(x,15)),U32.is_zero(U32.and(z,15))),
-        Bool.and(Bool.and(U32.is_zero(U32.mod(width,16)),U32.is_zero(U32.mod(depth,16))),Bool.and(U32.is_le(width,512),U32.is_le(depth,512)))),core,tile,low,high)
+        Bool.and(Bool.and(U32.is_zero(U32.mod(width,16)),U32.is_zero(U32.mod(depth,16))),Bool.and(U32.is_le(width,1024),U32.is_le(depth,1024)))),core,tile,low,high)
 
 @unsafe
 def compatible_seed(+ok: Bool,+core: S.Tile,+source: S.Tile,+low: U32,+high: U32) -> Bool:

@@ -60,6 +60,7 @@ import ./placement_merge.bend as Merge
 import ./placement_data.bend as Placement
 import ./snow.bend as Snow
 import ./registry_snow.bend as RegistrySnow
+import ./region_stream.bend as RegionStream
 
 # Persistent binary world-generation worker and component protocol v1:
 # PING=0, PREPARE_NOISE=1, SAMPLE_GRID=2, COMPRESS=3, STOP=4,
@@ -84,7 +85,8 @@ import ./registry_snow.bend as RegistrySnow
 # ORE_APPLY_CORE=50 (globally anchored masks into resident block runs),
 # CAVE_DRESS_CORE=51 (registered column-owned floor/ceiling decorations),
 # REGION_BATCH=52, VEGETATION_CORE=53 (CPU anchors, role replay and crop),
-# SNOW_AND_FREEZE=54 (registered final column pass).
+# SNOW_AND_FREEZE=54 (registered final column pass),
+# STREAM_REGION=55 (bounded chunk IO, opaque header returned to bridge).
 # Requests: RBND magic, payload length, request ID, opcode (all BE u32).
 # Responses add a status u32 after opcode. stdout contains frames only.
 type Settings is Data:
@@ -1434,6 +1436,7 @@ def dispatch(input: File,output: File,stack: State,backend: U32,id: U32,opcode: 
     case 52: region_generate(input,output,stack,backend,id,52,body)
     case 53: vegetation_core(S.decode(body),input,output,stack,backend,id,53)
     case 54: freezing_core(R.end(R.start(body)),input,output,stack,backend,id,54)
+    case 55: region_stream(input,output,stack,backend,id,55,body)
     case 4: empty_command(R.end(R.start(body)),input,output,stack,backend,id,4)
     case _: error(input,output,stack,backend,id,opcode,605)
 
@@ -1590,3 +1593,24 @@ def freezing_summary(pair: U32 & U32,+grid: MD.Grid,old: State,input: File,outpu
       do IO<Unit>:
         body : Z.Bytes <- payload(B.int(B.int(B.int(B.int(B.new(),width),depth),runs),invalid))
         finish(input,output,carved_attach(grid,old),backend,id,opcode,0,body,True{})
+
+@unsafe
+def region_stream(input: File,output: File,+old: State,backend: U32,id: U32,opcode: U32,body: Z.Bytes) -> IO(Unit):
+  match old:
+    case State{Settings{_,_,Some{RD.Prepared{_,_,_,_,_,_,_,Some{M.Model{_,_,_,_,Some{MD.State{_,Some{grid},Some{catalog},_,_}}}}}}},_}:
+      do IO<Unit>:
+        result : Result<&1,&1,U32,RegionStream.Complete> <- GR.run_stream(GR.decode(body),grid,catalog)
+        streamed(result,old,input,output,backend,id,opcode)
+    case _: error(input,output,old,backend,id,opcode,731)
+
+@unsafe
+def streamed(result: Result<&1,&1,U32,RegionStream.Complete>,old: State,input: File,output: File,backend: U32,id: U32,opcode: U32) -> IO(Unit):
+  match result:
+    case Fail{code}: error(input,output,old,backend,id,opcode,code)
+    case Done{done}: streamed_encoded(RegionStream.encoded(done),old,input,output,backend,id,opcode)
+
+@unsafe
+def streamed_encoded(result: Result<&1,&1,U32,Z.Bytes>,old: State,input: File,output: File,backend: U32,id: U32,opcode: U32) -> IO(Unit):
+  match result:
+    case Fail{code}: error(input,output,old,backend,id,opcode,code)
+    case Done{body}: finish(input,output,old,backend,id,opcode,0,body,True{})

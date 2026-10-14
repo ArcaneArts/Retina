@@ -510,17 +510,21 @@ on the implementation checklist.
 
 ## Whole generated MCA staging
 
-`generated_region.bend` connects the generated block snapshot, chunk encoder,
-parallel compression and MCA planner. Command 28 writes all 1,024 chunks of a
-fully covered region to a caller-owned private staging path. Eight independent
-CPU Bend chunk tasks run per batch; expanded sections/NBT are released after
-compression. The writer retains at most 1,024 compressed records and their
-sector-aligned output buffers, then streams one header and the records through
-stock Bend file IO. It does not concatenate an entire MCA byte-list or send the
-file through IPC. The stock runtime has no seek/write-at API; the header must
-be planned before the final sequential write. Inline records retain the existing
-255-sector limit. Compression, palette/catalog conversion and MCA planning are
-CPU Bend even when preceding terrain passes run on GPU.
+`generated_region.bend` connects resident block runs to the generated chunk
+encoder and parallel compression. Legacy commands 28/52 retain their planned
+full/sparse-file component contracts. The playable bridge uses command **55**:
+it consumes eight independent CPU Bend chunk tasks through stock file IO before
+constructing the next group, avoiding a retained whole-region list of compressed
+records and padded packets. All palette/catalog conversion, NBT, zlib, sector
+allocation, record framing and header construction remain in Bend.
+
+Bend writes one private MCA with an 8KiB zero placeholder, then each body record
+once. The response contains chunk/sector counts plus the exact final header.
+Stock Bend 2.0.36 has no seek/write-at file API, so Java installs these opaque
+header bytes at offset zero before publication. It checks the actual body length
+and chunk acknowledgement and never truncates or rewrites the body. Inline
+records retain the 255-sector limit and reject invalid sizes before arithmetic
+can wrap. This streamed path handles full regions and sparse component fixtures.
 
 ```sh
 nice -n 10 ./gradlew :common:bendGeneratedRegionTest :common:bendGeneratedRegionWorkerTest \
