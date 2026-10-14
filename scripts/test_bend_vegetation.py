@@ -6,8 +6,8 @@ heap/voxel checks for live heightmaps, RNG, recipe IDs, work-slice resumption,
 unavailable families and biome membership. A fixture covering all 17 supported kinds composes the
 implemented writers; completed overlays cross merge/NBT/zlib/MCA. --cpu-only
 checks the production serial coordinator without Metal; the report records the
-actual execution mode. Independent
-anchors still need role-aware global merging before playable integration; this
+actual execution mode. Completed anchors now pass through role-aware command
+replay; neighboring anchor collisions have a separate independent fixture. This
 fixture does not claim complete-region generation or lighting.
 """
 import argparse

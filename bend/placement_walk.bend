@@ -274,7 +274,7 @@ def layer_children(+at: Maybe<&2,P.Position>,+layer: U32,+attempt: U32,+found: B
 @unsafe
 def finished(+entry: K.Entry,+cursor: K.Cursor,+world: E.World) -> K.Action:
   match entry world:
-    case K.Entry{r,g,_,P.Position{_,y,_},state,path} E.World{source,_,_}: finished_inside(E.inside_y(source,y),entry,cursor)
+    case K.Entry{r,g,_,P.Position{_,y,_},state,path} E.World{source,_,_,_}: finished_inside(E.inside_y(source,y),entry,cursor)
 
 @unsafe
 def finished_inside(+inside: Bool,+entry: K.Entry,+cursor: K.Cursor) -> K.Action:
@@ -296,7 +296,7 @@ def modifier(+m: P.Modifier,+entry: K.Entry,+cursor: K.Cursor,+world: E.World,+m
     case P.Cuboid{xz,y,e,i} K.Entry{_,_,_,_,state,_} _ _: cuboid_height(I.sample(y,state),xz,e,i,entry,cursor)
     case P.Square{} K.Entry{_,_,_,_,state,_} _ _: square_x(R.integer(state,0,15),entry,cursor)
     case P.Offset{x,y,z} K.Entry{_,_,_,_,state,_} _ _: offset_x(I.sample(x,state),y,z,entry,cursor)
-    case P.HeightRange{p} K.Entry{_,_,_,_,state,_} E.World{MD.Grid{_,minimum,height,_,_},_,_} _: height_draw(H.sample(p,state,minimum,height),entry,cursor)
+    case P.HeightRange{p} K.Entry{_,_,_,_,state,_} E.World{MD.Grid{_,minimum,height,_,_},_,_,_} _: height_draw(H.sample(p,state,minimum,height),entry,cursor)
     case P.Select{a,b} K.Entry{_,_,_,_,state,_} _ _: selected(R.next(state),a,b,entry,cursor)
     case P.Rarity{chance} K.Entry{_,_,_,_,state,_} _ _: selected(R.next(state),0.0,F32.div(1.0,U32.to_f32(chance)),entry,cursor)
     case P.Chance{chance} K.Entry{_,_,_,_,state,_} _ _: selected(R.next(state),0.0,chance,entry,cursor)

@@ -47,7 +47,7 @@ def finish(result: Growth) -> S.Placement:
 @unsafe
 def inside(world: E.World,at: P.Position) -> Bool:
   match world at:
-    case E.World{source,_,_} P.Position{_,y,_}: E.inside_y(source,y)
+    case E.World{source,_,_,_} P.Position{_,y,_}: E.inside_y(source,y)
 
 @unsafe
 def state_at(states: Q.Table<D.State>,world: E.World,at: P.Position) -> Maybe<&2,D.State>:

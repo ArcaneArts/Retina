@@ -79,7 +79,7 @@ def generate(feature: F.Feature,+policy: P.Policy) -> MD.Grid:
 @unsafe
 def merged(result: F.Placement) -> MD.Grid:
   match result:
-    case F.Placement{_,E.World{source,P.Policy{_,flags,_,_,_,_,_},patch},_}:
+    case F.Placement{_,E.World{source,P.Policy{_,flags,_,_,_,_,_},patch,_},_}:
       Merge.apply(source,Q.Leaf{patch},Merge.Repair{flags,Q.Empty{},Q.Empty{}})
 
 @unsafe

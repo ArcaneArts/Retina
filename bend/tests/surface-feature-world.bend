@@ -41,7 +41,7 @@ def origin(context: U32) -> W.U64:
 @unsafe
 def located(at: W.U64,+policy: P.Policy,+context: U32) -> E.World:
   match at:
-    case W.U64{x,z}: E.World{MD.Grid{S.Tile{x,z,32,32,123456789,2147483648},4294967232,128,columns(1024,0,policy,context),None{}},policy,E.Empty{}}
+    case W.U64{x,z}: E.World{MD.Grid{S.Tile{x,z,32,32,123456789,2147483648},4294967232,128,columns(1024,0,policy,context),None{}},policy,E.Empty{},[]}
 
 @unsafe
 def point(+context: U32) -> P.Position:

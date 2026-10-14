@@ -14,8 +14,14 @@ import ./noise.bend as N
 type Patch is Data:
   Empty{}
   Node{at: P.Position,material: U32,priority: U32,left: Patch,right: Patch}
+# Accepted commands retain role and order independently of the final material
+# map. extra is soil's snow state, attachment side, or a paired plant's upper.
+# Roles follow the shared replay order: soil, log, leaf, cocoa, vine, plant,
+# unconditional feature. The journal is reversed for constant-time append.
+type Command is Data:
+  Command{at: P.Position,material: U32,role: U32,extra: U32}
 type World is Data:
-  World{source: MD.Grid,policy: P.Policy,patch: Patch}
+  World{source: MD.Grid,policy: P.Policy,patch: Patch,commands: List<&2,Command>}
 
 @unsafe
 def priority(+at: P.Position) -> U32:
@@ -119,38 +125,80 @@ def material_patch(+previous: Maybe<&2,U32>,+source: MD.Grid,+at: P.Position) ->
 def material_inside(+inside: Bool,+world: World,+at: P.Position) -> Maybe<&2,U32>:
   match inside world:
     case False{} _: Some{0}
-    case True{} World{source,_,patch}: material_patch(find(patch,at),source,at)
+    case True{} World{source,_,patch,_}: material_patch(find(patch,at),source,at)
 
 @unsafe
 def material(+world: World,+at: P.Position) -> Maybe<&2,U32>:
   match world at:
-    case World{MD.Grid{_,minimum,height,_,_},_,_} P.Position{_,y,_}: material_inside(U32.is_lt(U32.sub(y,minimum),height),world,at)
+    case World{MD.Grid{_,minimum,height,_,_},_,_,_} P.Position{_,y,_}: material_inside(U32.is_lt(U32.sub(y,minimum),height),world,at)
 
 @unsafe
-def put_valid(+ok: Bool,+world: World,+at: P.Position,+material: U32) -> World:
-  match ok world:
-    case False{} _: world
-    case True{} World{source,policy,patch}: World{source,policy,insert(patch,at,material)}
+def put_valid(+ok: Bool,+world: World,+command: Command) -> World:
+  match ok world command:
+    case False{} _ _: world
+    case True{} World{source,policy,patch,commands} Command{at,material,_,_}:
+      World{source,policy,insert(patch,at,material),command <> commands}
 
 @unsafe
-def put_column(+known: Maybe<&2,MD.Column>,+world: World,+at: P.Position,+material: U32) -> World:
+def put_column(+known: Maybe<&2,MD.Column>,+world: World,+command: Command) -> World:
   match known:
     case None{}: world
-    case Some{_}: put_valid(True{},world,at,material)
+    case Some{_}: put_valid(True{},world,command)
 
-# Feature writers still decide their own replacement/support policy. This
-# primitive only enforces the actual resident domain and palette bounds.
+# The primitive enforces the resident domain and palette, while the writer
+# decides acceptance. Even identical material/air writes retain their role.
 @unsafe
 def put(+world: World,+at: P.Position,+value: U32) -> World:
-  match world at:
-    case World{+source,P.Policy{masks,_,_,_,_,_,_},_} P.Position{x,y,z}:
-      put_checked(Bool.and(U32.is_lt(value,Q.table_size(U32,masks)),inside_y(source,y)),source,world,at,value,x,z)
+  put_role(world,at,value,6,0)
 
 @unsafe
-def put_checked(+ok: Bool,+source: MD.Grid,+world: World,+at: P.Position,+value: U32,+x: U32,+z: U32) -> World:
+def put_role(+world: World,+at: P.Position,+value: U32,+role: U32,+extra: U32) -> World:
+  match world at:
+    case World{+source,P.Policy{masks,_,_,_,_,_,_},_,_} P.Position{x,y,z}:
+      put_checked(Bool.and(U32.is_lt(value,Q.table_size(U32,masks)),inside_y(source,y)),source,world,Command{at,value,role,extra},x,z)
+
+@unsafe
+def put_checked(+ok: Bool,+source: MD.Grid,+world: World,+command: Command,+x: U32,+z: U32) -> World:
   match ok:
     case False{}: world
-    case True{}: put_column(column(source,x,z),world,at,value)
+    case True{}: put_column(column(source,x,z),world,command)
+
+@unsafe
+def known_column(value: Maybe<&2,MD.Column>) -> Bool:
+  match value:
+    case None{}: False{}
+    case Some{_}: True{}
+
+# Record both halves atomically as one command. Independent upper/lower writes
+# would allow a later anchor to leave half a double plant over an occupied cell.
+@unsafe
+def put_pair(+world: World,+at: P.Position,+lower: U32,+upper: U32) -> World:
+  pair_point(P.shift(at,P.Position{0,1,0}),world,at,lower,upper)
+
+@unsafe
+def pair_point(point: Maybe<&2,P.Position>,+world: World,+at: P.Position,+lower: U32,+upper: U32) -> World:
+  match point world at:
+    case None{} _ _: world
+    case Some{+above} World{+source,P.Policy{masks,_,_,_,_,_,_},_,_} P.Position{x,y,z}:
+      pair_allowed(Bool.and(Bool.and(U32.is_lt(lower,Q.table_size(U32,masks)),U32.is_lt(upper,Q.table_size(U32,masks))),
+        Bool.and(inside_y(source,y),Bool.and(pair_height(source,above),known_column(column(source,x,z))))),world,at,above,lower,upper)
+
+@unsafe
+def pair_height(source: MD.Grid,point: P.Position) -> Bool:
+  match point:
+    case P.Position{_,y,_}: inside_y(source,y)
+
+@unsafe
+def pair_allowed(ok: Bool,world: World,+at: P.Position,+above: P.Position,+lower: U32,+upper: U32) -> World:
+  match ok world:
+    case False{} _: world
+    case True{} World{source,policy,patch,commands}:
+      World{source,policy,insert(insert(patch,above,upper),at,lower),Command{at,lower,5,upper} <> commands}
+
+@unsafe
+def journal(world: World) -> List<&2,Command>:
+  match world:
+    case World{_,_,_,commands}: List.reverse(&2,Command,commands)
 
 @unsafe
 def inside_y(+source: MD.Grid,+y: U32) -> Bool:
@@ -192,7 +240,7 @@ def scan_height(+offset: U32,+world: World,+x: U32,+z: U32,+map: U32,+minimum: U
 def scan_material(+value: Maybe<&2,U32>,+offset: U32,+world: World,+x: U32,+z: U32,+map: U32,+minimum: U32) -> Maybe<&2,U32>:
   match value world:
     case None{} _: None{}
-    case Some{value} World{_,policy,_}: scan_present(masked(policy,value,map),offset,world,x,z,map,minimum)
+    case Some{value} World{_,policy,_,_}: scan_present(masked(policy,value,map),offset,world,x,z,map,minimum)
 
 @unsafe
 def scan_present(+present: Bool,+offset: U32,+world: World,+x: U32,+z: U32,+map: U32,+minimum: U32) -> Maybe<&2,U32>:
@@ -210,13 +258,13 @@ def height_representable(+ok: Bool,+minimum: U32,+offset: U32) -> Maybe<&2,U32>:
 def height_column(+column: Maybe<&2,MD.Column>,+world: World,+x: U32,+z: U32,+map: U32) -> Maybe<&2,U32>:
   match column world:
     case None{} _: None{}
-    case Some{MD.Column{_,_,_,_,_,_,_,runs,_,_}} World{MD.Grid{_,minimum,_,_,_},policy,patch}:
+    case Some{MD.Column{_,_,_,_,_,_,_,runs,_,_}} World{MD.Grid{_,minimum,_,_,_},policy,patch,_}:
       scan_height(patch_height(patch,x,z,minimum,base_height(runs,policy,map,0)),world,x,z,map,minimum)
 
 @unsafe
 def height(+world: World,+x: U32,+z: U32,+map: U32) -> Maybe<&2,U32>:
   match world:
-    case World{source,_,_}: height_column(column(source,x,z),world,x,z,map)
+    case World{source,_,_,_}: height_column(column(source,x,z),world,x,z,map)
 
 @unsafe
 def biome_column(+column: Maybe<&2,MD.Column>) -> Maybe<&2,U32>:
@@ -227,19 +275,19 @@ def biome_column(+column: Maybe<&2,MD.Column>) -> Maybe<&2,U32>:
 @unsafe
 def biome(+world: World,+at: P.Position) -> Maybe<&2,U32>:
   match world at:
-    case World{source,_,_} P.Position{x,_,z}: biome_surface(column(source,x,z),world,at)
+    case World{source,_,_,_} P.Position{x,_,z}: biome_surface(column(source,x,z),world,at)
 
 @unsafe
 def biome_surface(+column: Maybe<&2,MD.Column>,+world: World,+at: P.Position) -> Maybe<&2,U32>:
   match column world at:
     case None{} _ _: None{}
-    case Some{MD.Column{height,surface,_,_,_,_,_,_,_,_}} World{_,P.Policy{_,_,_,_,_,_,volume},_} P.Position{_,y,_}:
+    case Some{MD.Column{height,surface,_,_,_,_,_,_,_,_}} World{_,P.Policy{_,_,_,_,_,_,volume},_,_} P.Position{_,y,_}:
       biome_deep(Bool.and(volume,H.signed_less(y,H.subtract(height,12))),world,at,surface)
 
 @unsafe
 def biome_deep(+deep: Bool,+world: World,+at: P.Position,+surface: U32) -> Maybe<&2,U32>:
   match deep world at:
-    case True{} World{MD.Grid{S.Tile{_,_,_,_,low,high},_,_,_,Some{grid}},_,_} P.Position{x,y,z}:
+    case True{} World{MD.Grid{S.Tile{_,_,_,_,low,high},_,_,_,Some{grid}},_,_,_} P.Position{x,y,z}:
       biome_fallback(CV.biome(grid,Q.Point{D.integer(x),D.integer(y),D.integer(z)},low,high),surface)
     case _ _ _: Some{surface}
 
@@ -272,7 +320,7 @@ def ground_start(+start: Maybe<&2,U32>,+world: World,+x: U32,+z: U32,+layer: U32
 @unsafe
 def ground_scan(+world: World,+x: U32,+z: U32,+y: U32,+layer: U32,+current: Maybe<&2,U32>) -> Maybe<&2,U32>:
   match world:
-    case World{MD.Grid{_,minimum,_,_,_},_,_}: ground_more(H.signed_less(minimum,y),world,x,z,y,layer,current)
+    case World{MD.Grid{_,minimum,_,_,_},_,_,_}: ground_more(H.signed_less(minimum,y),world,x,z,y,layer,current)
 
 @unsafe
 def ground_more(+more: Bool,+world: World,+x: U32,+z: U32,+y: U32,+layer: U32,+current: Maybe<&2,U32>) -> Maybe<&2,U32>:
@@ -283,7 +331,7 @@ def ground_more(+more: Bool,+world: World,+x: U32,+z: U32,+y: U32,+layer: U32,+c
 @unsafe
 def ground_below(+below: Maybe<&2,U32>,+world: World,+x: U32,+z: U32,+y: U32,+layer: U32,+current: Maybe<&2,U32>) -> Maybe<&2,U32>:
   match below world current:
-    case Some{+b} World{_,policy,_} Some{c}: ground_found(Bool.and(empty_material(policy,c),Bool.and(Bool.not(empty_material(policy,b)),Bool.not(bedrock(policy,b)))),world,x,z,y,layer,below)
+    case Some{+b} World{_,policy,_,_} Some{c}: ground_found(Bool.and(empty_material(policy,c),Bool.and(Bool.not(empty_material(policy,b)),Bool.not(bedrock(policy,b)))),world,x,z,y,layer,below)
     case _ _ _: None{}
 
 @unsafe

@@ -37,7 +37,7 @@ def size(patch: E.Patch) -> U32:
 
 def written(result: S.Placement) -> IO(Unit):
   match result:
-    case S.Placement{state,E.World{_,_,patch},ok}: IO.print(U32.show(W.flag(ok)) ++ " " ++ U32.show(R.low(state)) ++ " " ++ U32.show(size(patch)))
+    case S.Placement{state,E.World{_,_,patch,_},ok}: IO.print(U32.show(W.flag(ok)) ++ " " ++ U32.show(R.low(state)) ++ " " ++ U32.show(size(patch)))
 
 def main() -> IO(Unit):
   do IO<Unit>:

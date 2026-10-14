@@ -96,7 +96,7 @@ def water_depth(+surface: Maybe<&2,U32>,+floor: Maybe<&2,U32>,+maximum: U32,+at:
 @unsafe
 def biome(+id: Maybe<&2,U32>,+world: E.World,+at: P.Position,+recipe: U32) -> Maybe<&2,P.Position>:
   match id world:
-    case Some{id} E.World{_,P.Policy{_,_,biomes,_,_,_,_},_}: retain(P.member(Q.get(Q.Table<U32>,biomes,id,Q.Empty{}),recipe),at)
+    case Some{id} E.World{_,P.Policy{_,_,biomes,_,_,_,_},_,_}: retain(P.member(Q.get(Q.Table<U32>,biomes,id,Q.Empty{}),recipe),at)
     case None{} _: None{}
 
 @unsafe
@@ -110,7 +110,7 @@ def scan_target(+targeted: Bool,+n: U32,+world: E.World,+at: P.Position,+directi
 def scan_shift(+at: Maybe<&2,P.Position>,+n: U32,+world: E.World,+direction: U32,+target: P.Predicate,+allowed: P.Predicate) -> Maybe<&2,P.Position>:
   match at world:
     case None{} _: None{}
-    case Some{+at} E.World{source,_,_}: scan_inside(E.inside_y(source,position_y(at)),n,world,at,direction,target,allowed)
+    case Some{+at} E.World{source,_,_,_}: scan_inside(E.inside_y(source,position_y(at)),n,world,at,direction,target,allowed)
 
 def position_y(+at: P.Position) -> U32:
   match at:

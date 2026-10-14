@@ -139,7 +139,7 @@ def cropped_at(+origin: W.U64,+source: M.Grid,+merged: M.Grid,+policy: P.Policy,
         _ : Unit <- Output.expected(rejected(Merge.crop(merged,x,z,0,2)))
         _ : Unit <- Output.expected(rejected(Merge.crop(merged,x,z,5,1)))
         _ : Unit <- Output.expected(rejected(Merge.crop(merged,U32.add(x,3),z,2,2)))
-        Output.unwrapped(B.done(responses(merged,crop_result(Merge.crop(merged,U32.inc(x),U32.inc(z),2,2),biome_probes(32,E.World{source,policy,E.Empty{}},E.World{merged,policy,E.Empty{}},origin,write(merged,B.new()))))),output)
+        Output.unwrapped(B.done(responses(merged,crop_result(Merge.crop(merged,U32.inc(x),U32.inc(z),2,2),biome_probes(32,E.World{source,policy,E.Empty{},[]},E.World{merged,policy,E.Empty{},[]},origin,write(merged,B.new()))))),output)
 
 @unsafe
 def rejected(r: Result<&1,&1,U32,M.Grid>) -> Bool:
@@ -154,7 +154,7 @@ def wide_source(+policy: P.Policy) -> M.Grid:
 @unsafe
 def source_of(world: E.World) -> M.Grid:
   match world:
-    case E.World{source,_,_}: source
+    case E.World{source,_,_,_}: source
 
 # Exercise an actual feature writer, then merge its accepted overlay together
 # with independent anchor patches before the existing NBT/zlib/MCA path.
@@ -165,7 +165,7 @@ def writer_patch(+source: M.Grid,+policy: P.Policy) -> E.Patch:
 @unsafe
 def writer_at(origin: W.U64,+source: M.Grid,+policy: P.Policy) -> E.Patch:
   match origin:
-    case W.U64{+x,+z}: writer_plants(F.place(F.Column{[F.Layer{I.Constant{4},BP.State{1}}],P.Position{0,1,0},P.Always{},False{}},W.U64{0,123},F.Model{Q.Empty{},Q.Empty{}},E.World{source,policy,E.Empty{}},P.Position{U32.add(x,8),0,U32.add(z,8)}),x,z,0)
+    case W.U64{+x,+z}: writer_plants(F.place(F.Column{[F.Layer{I.Constant{4},BP.State{1}}],P.Position{0,1,0},P.Always{},False{}},W.U64{0,123},F.Model{Q.Empty{},Q.Empty{}},E.World{source,policy,E.Empty{},[]},P.Position{U32.add(x,8),0,U32.add(z,8)}),x,z,0)
 
 # Accepted ordinary plants, aquatic pairs and bamboo also pass through compact
 # merging and independent MCA decoding. Materials are intentionally synthetic
@@ -187,7 +187,7 @@ def writer_feature(i: U32) -> F.Feature:
 @unsafe
 def writer_done(result: F.Placement) -> E.Patch:
   match result:
-    case F.Placement{_,E.World{_,_,patch},_}: patch
+    case F.Placement{_,E.World{_,_,patch,_},_}: patch
 
 @unsafe
 def wide_merge(+patches: Q.Table<E.Patch>,+repair: Merge.Repair,+policy: P.Policy) -> M.Grid:
