@@ -16,6 +16,7 @@ import ./huge_mushroom.bend as Mushroom
 import ./fallen_tree.bend as Fallen
 import ./attachment_data.bend as AD
 import ./attachment.bend as Attachment
+import ./nested_feature.bend as Nested
 
 # Pure writers share the live placement world. The caller retains the returned
 # RNG state and world before asking its placement cursor for the next candidate.
@@ -33,6 +34,7 @@ type Feature is Data:
   HugeMushroom{recipe: FD.Mushroom}
   FallenTree{recipe: FD.Fallen}
   Attachment{recipe: AD.Recipe}
+  Nested{feature: Nested.Feature<Feature>}
   Disk{provider: B.Provider,target: P.Predicate,radius: I.Provider,half_height: U32}
 type Model is Data:
   Model{noises: Q.Table<N.Program>,current_states: Q.Table<Maybe<&2,PlantState>>}
@@ -148,6 +150,7 @@ def valid(feature: Feature,+palette: U32,+noises: U32) -> Bool:
     case HugeMushroom{recipe}: FD.mushroom_valid(recipe,palette,noises)
     case FallenTree{recipe}: FD.fallen_valid(recipe,palette,noises)
     case Attachment{recipe}: AD.valid(recipe,palette)
+    case Nested{feature}: Nested.valid(Feature,feature,palette,noises,nested_leaf_valid)
     case Simple{+provider,+states,water,current}:
       Bool.and(B.valid(provider,palette,noises),Bool.and(plants_valid(states,palette),Bool.and(P.predicate_valid(water,palette),
         Bool.or(current,covered(B.outputs(provider),states)))))
@@ -370,4 +373,23 @@ def place(feature: Feature,+state: W.U64,+model: Model,+world: E.World,+at: P.Po
     case HugeMushroom{recipe} Model{noises,_}: vegetation(Mushroom.place(recipe,state,noises,world,at))
     case FallenTree{recipe} Model{noises,_}: vegetation(Fallen.place(recipe,state,noises,world,at))
     case Attachment{recipe} _: vegetation(Attachment.place(recipe,state,world,at))
+    case Nested{feature} Model{noises,_}: vegetation(Nested.place(Feature,Model,feature,state,noises,world,at,Nested.Runtime{model,nested_place_leaf}))
     case Disk{provider,target,radius,half} _: disk_radius(I.sample(radius,state),provider,target,half,model,world,at)
+
+@unsafe
+def nested_leaf_valid(feature: Feature,palette: U32,noises: U32) -> Bool:
+  match feature:
+    case Simple{_,_,_,_}: valid(feature,palette,noises)
+    case Column{_,_,_,_}: valid(feature,palette,noises)
+    case Disk{_,_,_,_}: valid(feature,palette,noises)
+    case Attachment{_}: valid(feature,palette,noises)
+    case _: False{}
+
+@unsafe
+def surface_result(result: Placement) -> V.Placement:
+  match result:
+    case Placement{state,world,ok}: V.Placement{state,world,ok}
+
+@unsafe
+def nested_place_leaf(model: Model,feature: Feature,state: W.U64,world: E.World,at: P.Position) -> V.Placement:
+  surface_result(place(feature,state,model,world,at))

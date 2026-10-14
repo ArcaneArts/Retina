@@ -19,15 +19,17 @@ import ./registry_forest.bend as Forest
 import ./forest_data.bend as FD
 import ./registry_attachment.bend as RA
 import ./attachment_data.bend as AD
+import ./registry_nested_feature.bend as RN
+import ./nested_feature.bend as NF
 
 type Context is Data:
   Context{keys: D.Keys,providers: RB.Context,extensions: Extensions}
 type Extensions is Data:
-  Extensions{trees: RT.Context,forest: Forest.Context,attachments: RA.Context}
+  Extensions{trees: RT.Context,forest: Forest.Context,attachments: RA.Context,nested: RN.Context}
 
 @unsafe
 def context(-T: Type,doc: R.Document,next: R.Document -> Context -> T) -> T:
-  D.resolved(T,["kind","provider","states","water","current_survival","source","lower","upper","survival","upper_allowed","layers","direction","allowed","prioritize_tip","height","target","radius","half_height","simple_current_states","simple_block","block_column","disk","plant","aquatic","bamboo","weight","band","dry","probability","trunk","crown","podzol","podzol_allowed","tree","huge_mushroom","fallen_tree","attachment_growth"],doc,[],doc => keys => RB.context(T,doc,doc => +providers => RT.context(T,doc,doc => trees => Forest.context(T,doc,providers,doc => forest => RA.context(T,doc,doc => attachments => next(doc,Context{keys,providers,Extensions{trees,forest,attachments}}))))))
+  D.resolved(T,["kind","provider","states","water","current_survival","source","lower","upper","survival","upper_allowed","layers","direction","allowed","prioritize_tip","height","target","radius","half_height","simple_current_states","simple_block","block_column","disk","plant","aquatic","bamboo","weight","band","dry","probability","trunk","crown","podzol","podzol_allowed","tree","huge_mushroom","fallen_tree","attachment_growth","vegetation_patch","sequence","overlay","random_selector","simple_selector","boolean_selector","weighted_selector"],doc,[],doc => keys => RB.context(T,doc,doc => +providers => RT.context(T,doc,doc => trees => Forest.context(T,doc,providers,doc => forest => RA.context(T,doc,doc => attachments => RN.context(T,doc,providers,doc => nested => next(doc,Context{keys,providers,Extensions{trees,forest,attachments,nested}})))))))
 
 @unsafe
 def name(+keys: D.Keys,+id: U32,+i: U32) -> U32:
@@ -37,7 +39,7 @@ def name(+keys: D.Keys,+id: U32,+i: U32) -> U32:
 def named(equal: Bool,+keys: D.Keys,+id: U32,+i: U32) -> U32:
   match equal:
     case True{}: i
-    case False{}: name_more(U32.is_lt(i,9),keys,id,U32.inc(i))
+    case False{}: name_more(U32.is_lt(i,16),keys,id,U32.inc(i))
 
 @unsafe
 def name_more(more: Bool,+keys: D.Keys,+id: U32,+i: U32) -> U32:
@@ -220,6 +222,13 @@ def family_key(i: U32) -> U32:
     case 7: 34
     case 8: 35
     case 9: 36
+    case 10: 37
+    case 11: 38
+    case 12: 39
+    case 13: 40
+    case 14: 41
+    case 15: 42
+    case 16: 43
     case _: U32.add(i,19)
 
 @unsafe
@@ -231,7 +240,7 @@ def tree_result(-T: Type,result: Result<&1,&1,U32,TD.Recipe>,doc: R.Document,nex
 @unsafe
 def tree_parse(-T: Type,doc: R.Document,value: R.Value,context: Context,next: R.Document -> Result<&1,&1,U32,F.Feature> -> T) -> T:
   match context:
-    case Context{_,_,Extensions{trees,_,_}}: RT.parse(T,doc,value,trees,doc => result => tree_result(T,result,doc,next))
+    case Context{_,_,Extensions{trees,_,_,_}}: RT.parse(T,doc,value,trees,doc => result => tree_result(T,result,doc,next))
 
 def mushroom_result(-T: Type,result: Result<&1,&1,U32,FD.Mushroom>,doc: R.Document,next: R.Document -> Result<&1,&1,U32,F.Feature> -> T) -> T:
   match result:
@@ -246,8 +255,8 @@ def fallen_result(-T: Type,result: Result<&1,&1,U32,FD.Fallen>,doc: R.Document,n
 @unsafe
 def forest_parse(-T: Type,kind: U32,doc: R.Document,value: R.Value,context: Context,next: R.Document -> Result<&1,&1,U32,F.Feature> -> T) -> T:
   match kind context:
-    case 7 Context{_,_,Extensions{_,forest,_}}: Forest.mushroom(T,doc,value,forest,doc => result => mushroom_result(T,result,doc,next))
-    case _ Context{_,_,Extensions{_,forest,_}}: Forest.fallen(T,doc,value,forest,doc => result => fallen_result(T,result,doc,next))
+    case 7 Context{_,_,Extensions{_,forest,_,_}}: Forest.mushroom(T,doc,value,forest,doc => result => mushroom_result(T,result,doc,next))
+    case _ Context{_,_,Extensions{_,forest,_,_}}: Forest.fallen(T,doc,value,forest,doc => result => fallen_result(T,result,doc,next))
 
 @unsafe
 def kind(-T: Type,+kind: U32,doc: R.Document,value: R.Value,+context: Context,next: R.Document -> Result<&1,&1,U32,F.Feature> -> T) -> T:
@@ -262,6 +271,13 @@ def kind(-T: Type,+kind: U32,doc: R.Document,value: R.Value,+context: Context,ne
     case 7: forest_parse(T,kind,doc,value,context,next)
     case 8: forest_parse(T,kind,doc,value,context,next)
     case 9: attachment_parse(T,doc,value,context,next)
+    case 10: nested_parse(T,doc,value,context,next)
+    case 11: nested_parse(T,doc,value,context,next)
+    case 12: nested_parse(T,doc,value,context,next)
+    case 13: nested_parse(T,doc,value,context,next)
+    case 14: nested_parse(T,doc,value,context,next)
+    case 15: nested_parse(T,doc,value,context,next)
+    case 16: nested_parse(T,doc,value,context,next)
     case _: next(doc,Fail{765})
 
 @unsafe
@@ -380,9 +396,43 @@ def bamboo_results(-T: Type,probability: Result<&1,&1,U32,F32>,trunk: Result<&1,
 @unsafe
 def attachment_parse(-T: Type,doc: R.Document,value: R.Value,context: Context,next: R.Document -> Result<&1,&1,U32,F.Feature> -> T) -> T:
   match context:
-    case Context{_,_,Extensions{_,_,attachments}}: RA.parse(T,doc,value,attachments,doc => result => attachment_result(T,result,doc,next))
+    case Context{_,_,Extensions{_,_,attachments,_}}: RA.parse(T,doc,value,attachments,doc => result => attachment_result(T,result,doc,next))
 
 def attachment_result(-T: Type,result: Result<&1,&1,U32,AD.Recipe>,doc: R.Document,next: R.Document -> Result<&1,&1,U32,F.Feature> -> T) -> T:
   match result:
     case Fail{_}: next(doc,Fail{765})
     case Done{recipe}: next(doc,Done{F.Attachment{recipe}})
+
+@unsafe
+def nested_parse(-T: Type,doc: R.Document,value: R.Value,+context: Context,next: R.Document -> Result<&1,&1,U32,F.Feature> -> T) -> T:
+  match context:
+    case Context{_,_,Extensions{_,_,_,nested}}: RN.parse(T,F.Feature,Context,doc,value,nested,context,nested_leaf_factory(T),doc => result => nested_result(T,result,doc,next))
+
+def nested_result(-T: Type,result: Result<&1,&1,U32,NF.Feature<F.Feature>>,doc: R.Document,next: R.Document -> Result<&1,&1,U32,F.Feature> -> T) -> T:
+  match result:
+    case Fail{_}: next(doc,Fail{765})
+    case Done{feature}: next(doc,Done{F.Nested{feature}})
+
+@unsafe
+def nested_leaf(-T: Type,doc: R.Document,+value: R.Value,+context: Context,next: R.Document -> Result<&1,&1,U32,F.Feature> -> T) -> T:
+  match context:
+    case Context{keys,_,_}: D.named(T,doc,value,keys,0n,doc => found => nested_leaf_kind(T,found,doc,value,context,next))
+
+@unsafe
+def nested_leaf_kind(-T: Type,found: Maybe<&2,R.Value>,doc: R.Document,+value: R.Value,+context: Context,next: R.Document -> Result<&1,&1,U32,F.Feature> -> T) -> T:
+  match found context:
+    case Some{R.Value{5,id,_,_}} Context{keys,_,_}: nested_leaf_known(T,name(keys,id,0),doc,value,context,next)
+    case _ _: next(doc,Fail{765})
+
+@unsafe
+def nested_leaf_known(-T: Type,+id: U32,doc: R.Document,value: R.Value,context: Context,next: R.Document -> Result<&1,&1,U32,F.Feature> -> T) -> T:
+  match id:
+    case 0: kind(T,id,doc,value,context,next)
+    case 1: kind(T,id,doc,value,context,next)
+    case 2: kind(T,id,doc,value,context,next)
+    case 9: kind(T,id,doc,value,context,next)
+    case _: next(doc,Fail{765})
+
+@unsafe
+def nested_leaf_factory(-T: Type,context: Context,doc: R.Document,value: R.Value,next: R.Document -> Result<&1,&1,U32,F.Feature> -> T) -> T:
+  nested_leaf(T,doc,value,context,next)

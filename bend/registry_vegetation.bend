@@ -25,7 +25,7 @@ def items(-T: Type,+n: U32,+at: U32,doc: R.Document,+context: RF.Context,+palett
 def kind(-T: Type,found: Maybe<&2,R.Value>,+value: R.Value,+n: U32,+at: U32,doc: R.Document,+context: RF.Context,+palette: U32,+noises: U32,acc: List<&2,Maybe<&2,F.Feature>>,next: R.Document -> Result<&1,&1,U32,Q.Table<Maybe<&2,F.Feature>>> -> T) -> T:
   match found context:
     case Some{R.Value{5,id,_,_}} RF.Context{keys,_,_}:
-      known(T,U32.is_le(RF.name(keys,id,0),9),value,n,at,doc,context,palette,noises,acc,next)
+      known(T,U32.is_le(RF.name(keys,id,0),16),value,n,at,doc,context,palette,noises,acc,next)
     case _ _: next(doc,Fail{766})
 
 @unsafe
