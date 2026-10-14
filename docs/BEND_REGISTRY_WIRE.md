@@ -1318,3 +1318,35 @@ through Bend NBT/zlib/MCA. Rebuild an expanded pre-decoration snapshot before
 applying another core; the previous successful crop no longer supplies the halo.
 Keep the existing whole build/application/serialization lease. Java transports
 only the descriptor/acknowledgement and opaque file bytes, not generated blocks.
+
+
+## Final snow and freezing (54)
+
+**54 — snow/freezing:** empty request body. The resident profile must supply the
+material palette, heightmap masks, water/ice/lava IDs, sea level and biome array.
+`terrain_features.snow_layer`, biome `temperature`, `flags` and `snow_surface`,
+and the optional `snow_support` table are projected in Bend. Missing optional
+feature/biome values are inactive/zero, matching the native approximation's
+optional profile fields. An empty support table retains its legacy fallback,
+including rejecting ordinary ice; current registry exports supply exact support
+predicates for every palette entry. Malformed typed weather data returns **777**;
+missing profile/surface/material snapshot returns **778**; nonempty body **603**.
+The shared registry transport rejects nonfinite numeric values before projection.
+Errors retain the preceding resident snapshot.
+
+The selected Bend backend scans independent compact column runs after vegetation
+and future structure writes. The registered feature flag and altitude-adjusted
+base temperature govern freezing; the loaded precipitation flag separately gates
+snow. Active surface-lake geometry retains the native approximation's exclusion.
+Only exposed default-water blocks immediately below the registered sea level
+become the registered ice state. Snow uses the top motion-blocking surface and
+loaded support predicate, requires air above, excludes water/lava, and fits the
+build height. A covered or unsupported upper surface never exposes lower soil.
+This pass is idempotent, retains geometric metadata and the cave-biome volume,
+and rebuilds compact run counts. All final serialized heightmaps use the new runs.
+
+Success returns four U32 words: width, depth, compact run count and invalid-column
+count. The caller retains its whole generation/application/serialization lease;
+opcode 52 writes the final weathered snapshot once. Weather is not prelighting:
+preview MCA chunks still use `isLightOn=false` until the separate Bend lighting
+field and boundary policy are implemented and verified.

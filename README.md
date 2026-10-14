@@ -6,7 +6,7 @@ The world type selector offers **Retina Rust**, the existing generator, and
 **Retina Bend**, an experimental independent Bend terrain pipeline. Bend combines
 registered density/interpolation, biomes, materials/shorelines, lakes, cave
 biomes/aquifers, carving, ores, cave dressing and surface trees/vegetation with
-Bend NBT/zlib/MCA writing. Structures, snow/freezing and full Bend lighting remain
+Bend NBT/zlib/MCA writing and registered snow/freezing. Structures and full Bend lighting remain
 in progress; Minecraft lights the preview. Fresh spawn preparation currently
 takes several minutes. Rust remains the default Retina selection.
 See the [implementation checklist](docs/BEND_IMPLEMENTATION.md) for remaining

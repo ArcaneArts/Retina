@@ -58,6 +58,8 @@ import ./vegetation.bend as Vegetation
 import ./vegetation_region.bend as VegetationRegion
 import ./placement_merge.bend as Merge
 import ./placement_data.bend as Placement
+import ./snow.bend as Snow
+import ./registry_snow.bend as RegistrySnow
 
 # Persistent binary world-generation worker and component protocol v1:
 # PING=0, PREPARE_NOISE=1, SAMPLE_GRID=2, COMPRESS=3, STOP=4,
@@ -81,7 +83,8 @@ import ./placement_data.bend as Placement
 # ORE_ATTEMPT_BATCH=47, ORE_GEOMETRY_BATCH=48, ORE_MASK_BATCH=49,
 # ORE_APPLY_CORE=50 (globally anchored masks into resident block runs),
 # CAVE_DRESS_CORE=51 (registered column-owned floor/ceiling decorations),
-# REGION_BATCH=52, VEGETATION_CORE=53 (CPU anchors, role replay and crop).
+# REGION_BATCH=52, VEGETATION_CORE=53 (CPU anchors, role replay and crop),
+# SNOW_AND_FREEZE=54 (registered final column pass).
 # Requests: RBND magic, payload length, request ID, opcode (all BE u32).
 # Responses add a status u32 after opcode. stdout contains frames only.
 type Settings is Data:
@@ -1430,6 +1433,7 @@ def dispatch(input: File,output: File,stack: State,backend: U32,id: U32,opcode: 
     case 51: dressing_core(S.decode(body),input,output,stack,backend,id,51)
     case 52: region_generate(input,output,stack,backend,id,52,body)
     case 53: vegetation_core(S.decode(body),input,output,stack,backend,id,53)
+    case 54: freezing_core(R.end(R.start(body)),input,output,stack,backend,id,54)
     case 4: empty_command(R.end(R.start(body)),input,output,stack,backend,id,4)
     case _: error(input,output,stack,backend,id,opcode,605)
 
@@ -1549,3 +1553,40 @@ def vegetation_summary(pair: U32 & U32,+grid: MD.Grid,anchors: U32,candidates: U
   do IO<Unit>:
     body : Z.Bytes <- payload(B.int(B.int(B.int(B.int(B.int(B.new(),anchors),candidates),placed),runs),invalid))
     finish(input,output,carved_attach(grid,old),backend,id,opcode,0,body,True{})
+
+@unsafe
+def freezing_core(valid: Bool,input: File,output: File,old: State,backend: U32,id: U32,opcode: U32) -> IO(Unit):
+  match valid old:
+    case False{} _: error(input,output,old,backend,id,opcode,603)
+    case True{} State{settings,Some{doc}}:
+      RegistrySnow.prepare(IO(Unit),doc,doc => result => freezing_prepared(result,restored(State{settings,None{}},doc),input,output,backend,id,opcode))
+    case _ _: error(input,output,old,backend,id,opcode,778)
+
+@unsafe
+def freezing_prepared(result: Result<&1,&1,U32,Snow.Model>,+old: State,input: File,output: File,backend: U32,id: U32,opcode: U32) -> IO(Unit):
+  match result old:
+    case Done{model} State{Settings{_,_,Some{RD.Prepared{_,_,_,_,_,_,Some{S.State{config,_}},Some{+materials}}}},_}:
+      freezing_materials(model,materials,config,old,input,output,backend,id,opcode)
+    case Fail{code} _: error(input,output,old,backend,id,opcode,code)
+    case _ _: error(input,output,old,backend,id,opcode,778)
+
+@unsafe
+def freezing_materials(model: Snow.Model,+materials: M.Model,config: S.Config,old: State,input: File,output: File,backend: U32,id: U32,opcode: U32) -> IO(Unit):
+  match materials:
+    case M.Model{_,_,_,_,Some{MD.State{_,Some{source},_,_,_}}}:
+      freezing_computed(Snow.execute(source,model,config,MC.lake_input(materials)),old,input,output,backend,id,opcode)
+    case _: error(input,output,old,backend,id,opcode,778)
+
+@unsafe
+def freezing_computed(computed: Snow.Computed,old: State,input: File,output: File,backend: U32,id: U32,opcode: U32) -> IO(Unit):
+  match computed:
+    case Snow.Computed{+grid}: freezing_summary(MC.summary(Carve.values(grid)),grid,old,input,output,backend,id,opcode)
+
+@unsafe
+def freezing_summary(pair: U32 & U32,+grid: MD.Grid,old: State,input: File,output: File,backend: U32,id: U32,opcode: U32) -> IO(Unit):
+  (runs,invalid) = pair
+  match grid:
+    case MD.Grid{S.Tile{_,_,width,depth,_,_},_,_,_,_}:
+      do IO<Unit>:
+        body : Z.Bytes <- payload(B.int(B.int(B.int(B.int(B.new(),width),depth),runs),invalid))
+        finish(input,output,carved_attach(grid,old),backend,id,opcode,0,body,True{})

@@ -28,14 +28,15 @@ mode; registry/datapack dimension import preserves that mode.
 The Bend Overworld preview combines registered density graphs, GPU interpolation,
 climate/biomes, coastal materials, lakes, material layers, cave fields, cave biomes,
 aquifers, carving, ores, cave floor/ceiling decoration and surface vegetation,
-including trees. Bulk terrain executes on the selected Bend backend; irregular
+including trees, followed by registered snow/freezing. Bulk terrain and the final
+weather pass execute on the selected Bend backend; irregular
 surface placement and neighboring-anchor composition execute on the Bend CPU.
 Chunk NBT, zlib compression and initial MCA sector assembly also execute in Bend.
 Java extracts the effective Minecraft registries and handles
 requests, decoding and atomic publication of opaque MCA sectors. Rust is never a
 fallback for this mode. Nether/End retain the preset's vanilla generators.
 
-Structures, snow/freezing and Bend lighting are still pending. Preview chunks
+Structures and Bend lighting are still pending. Preview chunks
 explicitly have `isLightOn=false`; Minecraft lights them.
 F3 names the backend and stage, labels the preview limitations and reports the
 last 20 **batch** latencies and their actual chunk counts. These figures must not
@@ -188,7 +189,7 @@ more deeply; retain the original requested scope.
 | Trees and decorators, giant mushrooms, fallen trees, disks, vegetation patches, block columns, bamboo, aquatic plants and attachments | `decoration.rs`, `decoration/`, `tree_shapes.rs` | Simple-block, block-column, disk, ordinary plant, aquatic and bamboo writers and registry projections independently checked on CPU/Metal, including nested recipes and accepted writes through MCA serialization. Registered tree trunks/crowns, weighted axis/distance states, connected leaves, roots, vines and cocoa now have pure Bend writers and ordered role replay. Resident anchor coordination now combines registered placement streams with the ten implemented writer families, preserving live heightmaps, cached parent queries, recipe identities, bounded resumption and explicit unavailable-family outcomes; original-profile replay and a complete ten-family fixture are validated on CPU; earlier nine-family Metal controls retain their historical hashes. Registered huge mushrooms and fallen logs now preserve cap-face/axis properties, ordered live providers and decorators on CPU/Metal. Registered vines/multiface attachments now have independent CPU/Metal writer checks and join the ten-family CPU coordinator. Registered vegetation patches and all nested selector/composite/placement programs now have independent CPU voxel/RNG checks and join the complete 17-family CPU coordinator. Accepted-command journals preserve write roles and transient writes through canonical neighboring-anchor replay, final repair and MCA encoding on CPU. The persistent playable worker now executes all 17 families with coherent neighboring terrain before cropping; full-region parity remains pending |
 | Jigsaw pools/templates/processors, structures spanning regions and locate queries | `StructureProfile.java`, `structures.rs`, `structure_processors.rs`, `queries.rs` | Pending |
 | Structure entities/block entities/loot and attachment rotations | `nbt.rs`, `structures.rs`, `structure_processors.rs` | Pending |
-| Snow, freezing, plant support and path/gravel restrictions | `LightingProfile.java`, profile material/survival tables, `region.rs` | Final registered plant floor-mask and signed-pair cleanup implemented in the overlay merger and independently checked on CPU/Metal, including paths and crop/build boundaries. Snow/freezing and complete playable placement restrictions remain pending |
+| Snow, freezing, plant support and path/gravel restrictions | `LightingProfile.java`, profile material/survival tables, `region.rs` | Final registered plant floor-mask and signed-pair cleanup implemented in the overlay merger and independently checked on CPU/Metal, including paths and crop/build boundaries. Registered final snow/freezing now projects loaded temperatures, feature/precipitation flags, layer IDs, height masks and support rules in Bend. Independent per-column run scans execute on the selected CPU/GPU backend after vegetation and before MCA serialization; snow avoids ordinary frozen-ocean ice and active lake columns. Complete structure-stage placement restrictions remain pending |
 | Full 64-bit seeds, signed/distant coordinates and repeatable ordering | `ChunkRequest`, native hash/random routines | Exact word-pair add/subtract/multiply/bit operations implemented; 3,689 operations independently verified. Typed i64/f64-to-F32 rounding independently verifies 131,072 scalar conversions per CPU/GPU run, including distant-value midpoint cases. Integration and coordinate/order checks pending |
 | Block/biome palettes, bit-packed long arrays, heightmaps, modified UTF-8 NBT and current data versions | `region.rs`, `nbt.rs` | Pure Bend palette remapping (49,664 indices), final-block heightmaps and complete fixture chunk encoding implemented. Minecraft 26.3 (data version 5023) reads/reopens mixed and prelit fixture chunks through actual region, palette and SerializableChunkData decoders. Resident generated base/material columns now encode into current-version NBT/zlib with exact state properties, quart surface biomes and final-block heightmaps; sparse generated-region/runtime integration implemented and checked in a running Fabric world |
 | LZ77, fixed-Huffman DEFLATE, zlib/Adler-32 and stored fallback | `region.rs` uses libdeflater | Implemented in `bend/compression.bend`; independent fixture tests pass |
@@ -2363,3 +2364,88 @@ Structures, their entities/metadata, snow/freezing, computed GPU lighting before
 the one final write, full 1024-chunk region generation/cache/timings and equivalent
 complete lit Rust/Bend benchmarks remain required. The selectable vegetation
 preview is progress toward that end state, not a completed backend.
+
+
+## Final registered snow and freezing
+
+The playable worker now runs opcode **54** after CPU vegetation composition and
+before the single final MCA write. `registry_snow` reads the existing effective
+registry tape: sea level, water/ice/lava and snow-layer palette IDs, biome base
+temperatures, registered snow/freezing-feature flags, precipitation, motion-blocking
+height masks and snow-support predicates. No Java block generation or block-name
+heuristic is added. Typed projection currently repeats per command; caching it
+with the other prepared world models remains a performance opportunity.
+
+`snow` processes independent compact columns on the selected CPU/GPU backend.
+It shares the existing altitude/temperature noise predicate, excludes active
+surface-lake geometry, freezes exposed default water just below sea level and
+places snow only above the highest eligible motion-blocking surface. Loaded
+support rules keep ordinary frozen-ocean ice clear and allow canopy snow where
+registered. Covered/unsupported surfaces do not expose lower soil. Build-height
+limits, invalid columns, geometric metadata and cave-biome volumes are preserved.
+Run counts and all serialized heightmaps reflect the final blocks. Reapplying
+weather is idempotent. Future structure writes must precede this final pass.
+
+The original vanilla, Terralith and combined profiles pass **306 CPU/GPU cases
+and 28,950,528 independent voxel comparisons**. Controlled columns cover every
+loaded material and biome row, exposed/covered/support surfaces, sea water,
+signed/distant positions, upper/lower build limits and invalid columns. A resident
+basin fixture exercises the actual production lake lookup and exclusion. CPU and
+GPU output bytes match; 18,216 snow layers and 1,344 frozen-water writes exercise
+both operations. **11 malformed profiles** reject before output publication;
+nonfinite temperatures reject in the shared registry transport. See
+`docs/benchmarks/bend-snow-correctness.json`.
+
+The actual persistent CPU and normal Metal workers combine terrain, caves,
+aquifers, ores, cave decoration, vegetation, weather and one final MCA write.
+Analytic geometry and a cold-forest temperature control isolate observable
+weather: 245 snow layers on eligible land/canopy surfaces, 256 exposed frozen-ocean
+water blocks and no snow on that ice. Warm forest receives no weather writes.
+Malformed body/support inputs preserve the prior snapshot; repeat application
+preserves output. These controls retain loaded recipe/material/support tables
+and are separate from the unmodified-profile component checks. See
+`docs/benchmarks/bend-snow-worker-cpu.json` and
+`docs/benchmarks/bend-snow-worker-gpu.json`.
+
+A host-only diagnostic logger observes one actual Metal command buffer for each
+successful weather application, including its repeated idempotence check. The
+logger differs from normal compiler-generated host code by exactly one line,
+uses the unchanged GPU archive and produces identical MCA output. No custom
+computational C/Metal kernel or runtime modification is shipped.
+
+Minecraft's actual readers open and reopen **306 MCA files and 306 chunks**,
+validating **57,901,056 block decodes**, registered properties/biomes and all six
+heightmaps across vanilla, Terralith and combined registries. The combined
+headless world lifecycle also passes on both CPU and GPU, including column/block
+agreement, temporary-cache promotion, neighboring batch merge and saved edit
+preservation with Rust deliberately unavailable. See
+`docs/benchmarks/bend-snow-minecraft.json`. No game UI is launched.
+
+Using a built pinned worker, reproduce the independent checks locally:
+
+```sh
+RETINA_BEND_CC=/opt/homebrew/opt/llvm/bin/clang \
+  nice -n 10 python3 scripts/test_bend_snow.py \
+  --profile build/bend/profiles/profile-0.json \
+  --profile build/bend/profiles/profile-1.json \
+  --profile build/bend/profiles/profile-2.json
+nice -n 10 python3 scripts/test_bend_snow_worker.py \
+  --profile build/bend/profiles/profile-0.json --gpu
+```
+
+The normal worker and fixtures still use stock Bend 2.0.36 and the existing LLVM
+23.1.2 compiler override at -O3 with the explicit Xcode SDK/linker. Compilation
+remains serial at nice +10; Cargo/Gradle retain two workers. These correctness
+runs and stage observations are not equivalent complete lit-region benchmarks.
+Structures/entities/metadata, computed GPU lighting, full-region execution and
+DH caching/timings, final performance work and the complete Rust/Bend comparison
+remain required. Preview chunks remain unlit feature-status records for Minecraft
+until Bend's actual lighting field is integrated and verified.
+
+Both local host-loader builds/checks pass, and each jar contains byte-identical
+normal worker/archive resources. The updated installed worker is warmed at its
+content-addressed extraction path. Packaged Metal startup took 75.07 s initially
+and 74.09 ms on reuse; startup cancellation passes. These startup observations
+do not measure world-generation throughput. Plain `./gradlew runClient` remains
+the Fabric-only development command after this cycle merges. See
+`docs/benchmarks/bend-snow-runtime.json`.
