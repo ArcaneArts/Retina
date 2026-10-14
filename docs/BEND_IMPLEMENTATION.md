@@ -208,7 +208,7 @@ more deeply; retain the original requested scope.
 | Ore height/count/replacement/discard rules and GPU rasterization | `geology/`, `ore.wgsl` | Registered recipe projection, packed membership/material tables and selected-backend ordered replacement/exposure policy implemented. Registered count/rarity/height attempts and local sphere-chain/scattered geometry now execute on CPU/GPU. Local sphere-union masks and ordered scattered points now calculate in the same selected-backend evaluation as geometry. Spatial surface/cave membership filtering, stable neighboring contribution buckets and ordered resident-block replay now run in one selected CPU/GPU evaluation, with immutable exposure halo checks and independent voxel/NBT/zlib validation. Playable terrain integration implemented; full parity and performance work remain required |
 | Ordered decoration, registered counts, provider noise and placement modifiers | `DecorationProfile.java`, `decoration/placement*`, `counts/`, `provider_noise/` | Registered recursive integer providers, count/offset projection, build-relative height distributions and actual-permutation spatial count noise independently checked on CPU/Metal. Typed ordered-program projection, exact placement-salt grouping, recursive predicates, live block/heightmap overlay and terrain-dependent checks now independently checked on CPU/Metal. Lazy ordered count/layer/cuboid execution and shared selector budgets now have an independent CPU/Metal component harness. All ten block-provider families, full 64-bit weighted decisions, current-state property transforms and initialized permutation/offset noise now independently checked on CPU/Metal. Simple-block, block-column, disk, ordinary plant, aquatic and bamboo writers now independently replay live material changes and RNG state on CPU/Metal. Ordered accepted FEATURE overlays now merge into resident runs with final plant repair, core cropping and independently decoded MCA checks; all 17 registered feature families now join canonical neighboring-anchor replay in the playable CPU vegetation stage; full-region parity remains pending |
 | Trees and decorators, giant mushrooms, fallen trees, disks, vegetation patches, block columns, bamboo, aquatic plants and attachments | `decoration.rs`, `decoration/`, `tree_shapes.rs` | Simple-block, block-column, disk, ordinary plant, aquatic and bamboo writers and registry projections independently checked on CPU/Metal, including nested recipes and accepted writes through MCA serialization. Registered tree trunks/crowns, weighted axis/distance states, connected leaves, roots, vines and cocoa now have pure Bend writers and ordered role replay. Resident anchor coordination now combines registered placement streams with the ten implemented writer families, preserving live heightmaps, cached parent queries, recipe identities, bounded resumption and explicit unavailable-family outcomes; original-profile replay and a complete ten-family fixture are validated on CPU; earlier nine-family Metal controls retain their historical hashes. Registered huge mushrooms and fallen logs now preserve cap-face/axis properties, ordered live providers and decorators on CPU/Metal. Registered vines/multiface attachments now have independent CPU/Metal writer checks and join the ten-family CPU coordinator. Registered vegetation patches and all nested selector/composite/placement programs now have independent CPU voxel/RNG checks and join the complete 17-family CPU coordinator. Accepted-command journals preserve write roles and transient writes through canonical neighboring-anchor replay, final repair and MCA encoding on CPU. The persistent playable worker now executes all 17 families with coherent neighboring terrain before cropping; full-region parity remains pending |
-| Jigsaw pools/templates/processors, structures spanning regions and locate queries | `StructureProfile.java`, `structures.rs`, `structure_processors.rs`, `queries.rs` | Pending |
+| Jigsaw pools/templates/processors, structures spanning regions and locate queries | `StructureProfile.java`, `structures.rs`, `structure_processors.rs`, `queries.rs` | Pure Bend structure-set candidates, frequency/exclusions, weighted biome selection and full jigsaw/standalone layouts implemented and independently checked against original vanilla/Terralith/combined profiles. Block/processor replay, terrain adaptation, metadata/locate and playable integration remain pending |
 | Structure entities/block entities/loot and attachment rotations | `nbt.rs`, `structures.rs`, `structure_processors.rs` | Pending |
 | Snow, freezing, plant support and path/gravel restrictions | `LightingProfile.java`, profile material/survival tables, `region.rs` | Final registered plant floor-mask and signed-pair cleanup implemented in the overlay merger and independently checked on CPU/Metal, including paths and crop/build boundaries. Registered final snow/freezing now projects loaded temperatures, feature/precipitation flags, layer IDs, height masks and support rules in Bend. Independent per-column run scans execute on the selected CPU/GPU backend after vegetation and before MCA serialization; snow avoids ordinary frozen-ocean ice and active lake columns. Complete structure-stage placement restrictions remain pending |
 | Full 64-bit seeds, signed/distant coordinates and repeatable ordering | `ChunkRequest`, native hash/random routines | Exact word-pair add/subtract/multiply/bit operations implemented; 3,689 operations independently verified. Typed i64/f64-to-F32 rounding independently verifies 131,072 scalar conversions per CPU/GPU run, including distant-value midpoint cases. Integration and coordinate/order checks pending |
@@ -2546,3 +2546,70 @@ to production. Its final MCA matches the normal worker byte for byte. See
 vanilla/Terralith/combined profiles complete with the delivered 4GiB worker.
 The verified normal worker/archive pair is installed for plain `runClient`;
 the prior installation is retained with local artifacts.
+
+
+### Structure candidates and jigsaw layout
+
+The structure planning library now consumes the shared registry export in pure
+Bend. It implements random-spread candidates, uniform/triangular spread, all four
+frequency methods, recursive exclusion zones, weighted biome rejection and
+reach-based region halos. Seeds use paired-U32 arithmetic throughout. Negative
+coordinates use floor division, and the Java 48-bit structure RNG preserves
+rejection draws, signed nextLong halves and Fisher–Yates ordering. Frequency
+comparisons retain the source F64 probability; legacy reciprocal selection
+includes its rounding before integer conversion. A reciprocal above the signed
+nextInt range uses unbiased 32-bit rejection sampling; copying the native
+31-bit loop for that exceptional bound would never terminate. Normal pool and
+frequency streams retain their existing draw order.
+
+The immutable planning view retains template and processor references into the
+original owned registry tape. Large palettes, block lists, tags, processors and
+entities are not copied into the layout graph. The original document must remain
+alive for later block replay. Schema validation checks the consumed geometry,
+references, direction ranges, positive weights and aggregate weight limits; it
+does not claim to validate opaque NBT/entity/processor payloads for placement.
+
+Jigsaw layouts support weighted root and fallback pools, empty terminators,
+rotated connectors, aligned/rollable attachment, stable selection/placement
+priorities, nested collision contexts, internal expansion space, start-jigsaw
+names and direct/random/group pool aliases. Terrain matching takes a supplied
+height tile; it does not compute CPU noise. Standalone templates use the same
+rotation and projection contract. Height tiles and per-definition biome samples
+will come from the Bend terrain backend during integration. The caller currently
+must supply the appropriate height tile for projected structures and no tile for
+underground starts, and a biome sample for each definition during selection.
+
+Two local fixtures run on the pinned stock Bend 2.0.36 CPU runtime with two
+threads, one compiler at a time, at reduced priority. No Minecraft UI or GitHub
+Actions runs. The layout fixture tests all 30 vanilla and 58 Terralith/combined
+definitions against an independent Python reference derived from the native
+planning behavior. It uses flat, sloped and uneven tiles at zero, negative and
+near-world-border coordinates, plus full-width seeds. All 438 layouts and 8,954
+pieces agree, including their final RNG states, positions, rotations, boxes,
+palette selections, collision contexts, depths and priorities. Original template
+and pool payloads are preserved, not simplified to make layouts pass.
+
+The candidate fixture exercises the original three profiles, synthetic frequency
+boundaries, true exclusion cycles, unknown exclusions, weighted biome rejection,
+region halos, rejection-sampling bounds and malformed schemas. Independent
+reference calculations check every returned candidate and region-start list.
+Reports include executable, source and input hashes:
+`docs/benchmarks/bend-structure-plans.json` and
+`docs/benchmarks/bend-structure-candidates.json`. Recorded driver durations include
+registry loading and fixture output; they are not generator performance results.
+
+Reproduce with the complete original registry captures in
+`build/bend/profiles/profile-{0,1,2}.json` (vanilla, Terralith, combined), or pass
+`--profiles DIRECTORY` to each command:
+
+```sh
+RETINA_BEND_CC=/opt/homebrew/opt/llvm/bin/clang python3 scripts/test_bend_structures.py --build
+RETINA_BEND_CC=/opt/homebrew/opt/llvm/bin/clang python3 scripts/test_bend_structure_candidates.py --build
+```
+
+This cycle is a planning component, not completed structure generation. The
+playable bridge still omits structures until ordered template/processor block
+replay, terrain adaptation, entity/block-entity/loot records, structure metadata
+and locate integration are implemented and checked. No installed worker or Rust
+behavior is changed. Computed GPU lighting and complete lit-region Rust/Bend
+benchmarks also remain required by the full goal.
