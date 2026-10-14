@@ -12,6 +12,7 @@ import java.util.concurrent.CompletionException;
 final class BendRegionBackend implements AutoCloseable {
     static final int BATCH_CHUNKS = 4;
     static final int BATCH_BLOCKS = BATCH_CHUNKS * 16;
+    private static final int VEGETATION_MARGIN = 32;
     private final TerrainRequest settings;
     private final BiomeTerrainProfile profile;
     private volatile BendWorker worker;
@@ -43,10 +44,10 @@ final class BendRegionBackend implements AutoCloseable {
         if (closed) { next.close(); throw new IOException("Bend world closed during startup"); }
         try {
             registryFile = Files.createTempFile("retina-bend-registry-", ".rbp");
-            // Unimplemented structure/decorations are explicitly absent in this
-            // preview. Numeric graphs, materials and geological recipes remain intact.
+            // Structures remain a separate pending Bend component. Decorations
+            // are passed through unchanged for the pure Bend surface writers.
             var json = com.google.gson.JsonParser.parseString(profile.json()).getAsJsonObject();
-            json.remove("structures"); json.remove("decorations");
+            json.remove("structures");
             BendProfileWire.write(registryFile, json.toString());
             await("registry upload", next.loadProfile(registryFile));
             await("density programs", next.prepareProfileDensity());
@@ -98,19 +99,21 @@ final class BendRegionBackend implements AutoCloseable {
         int x = request.chunkX() * 16, z = request.chunkZ() * 16;
         long start = System.nanoTime();
         Retina.LOGGER.info("Bend batch at chunk {},{}: starting combined terrain generation", request.chunkX(), request.chunkZ());
-        // One block of material/exposure context, plus neighboring ore anchors
-        // and the six-block coastal stencil. All intermediate fields stay resident.
-        byte[] descriptor = await("density descriptor", worker.surfaceDensityDescriptor(x-23,z-23,BATCH_BLOCKS+46,BATCH_BLOCKS+46,settings.seed()));
+        // Neighboring vegetation anchors need complete terrain footprints before
+        // cropping. The density stencil also covers ores and coastal samples.
+        int margin = VEGETATION_MARGIN;
+        byte[] descriptor = await("density descriptor", worker.surfaceDensityDescriptor(x-margin-23,z-margin-23,BATCH_BLOCKS+2*margin+46,BATCH_BLOCKS+2*margin+46,settings.seed()));
         await("density lattice", worker.request(13,descriptor));
-        await("surface and climate", worker.generateSurfaceColumns(x-1,z-1,BATCH_BLOCKS+2,BATCH_BLOCKS+2,settings.seed()));
+        await("surface and climate", worker.generateSurfaceColumns(x-margin-1,z-margin-1,BATCH_BLOCKS+2*margin+2,BATCH_BLOCKS+2*margin+2,settings.seed()));
         await("shorelines", worker.finalizeShorelineColumns());
         await("lake geometry", worker.generateLakeGeometry());
         await("base materials and lakes", worker.generateBlockColumns());
         await("cave fields and biomes", worker.generateCaveLattice());
         await("aquifer fields", worker.generateAquiferLattice());
         await("cave carving", worker.carveColumns());
-        await("ores", worker.applyOreCore(x,z,BATCH_BLOCKS,BATCH_BLOCKS,settings.seed()));
-        await("cave dressing", worker.applyCaveDecorations(x,z,BATCH_BLOCKS,BATCH_BLOCKS,settings.seed()));
+        await("ores", worker.applyOreCore(x-margin,z-margin,BATCH_BLOCKS+2*margin,BATCH_BLOCKS+2*margin,settings.seed()));
+        await("cave dressing", worker.applyCaveDecorations(x-margin,z-margin,BATCH_BLOCKS+2*margin,BATCH_BLOCKS+2*margin,settings.seed()));
+        await("surface vegetation / trees (CPU)", worker.applySurfaceVegetation(x,z,BATCH_BLOCKS,BATCH_BLOCKS,settings.seed()));
         long writeStart = System.nanoTime();
         var written=java.nio.ByteBuffer.wrap(await("NBT / zlib / MCA", worker.writeGeneratedBatch(Math.floorDiv(request.chunkX(),32),Math.floorDiv(request.chunkZ(),32),
                 settings.seed(),dataVersion,(int)Instant.now().getEpochSecond(),path)));

@@ -249,6 +249,13 @@ public final class BendWorker implements AutoCloseable {
         return request(52,payload.array());
     }
 
+    /** Plan neighboring surface anchors, replay accepted commands on the CPU,
+     * repair plants and crop the resident block snapshot to the requested core.
+     * Returns anchor, candidate, placed, run and invalid-column counts. */
+    public CompletableFuture<byte[]> applySurfaceVegetation(int x,int z,int width,int depth,long seed) {
+        return request(53,surfaceTilePayload(x,z,width,depth,seed));
+    }
+
     /** Project registered cave noise, per-biome carvers, carveable materials and
      * lava/world-height metadata in Bend. Requires numeric/material/block models.
      * Eight raw acknowledgement words: noise, biome, carver and material counts,

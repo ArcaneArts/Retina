@@ -18,7 +18,7 @@ public final class TerrainDebugReport {
     public static List<String> lines(TerrainStatsPayload payload) {
         var stats=payload.stats();var lines=new ArrayList<String>();boolean bend=payload.mode().equals("bend"),mca=payload.mode().equals("mca") || bend;
         lines.add("§b§lRetina "+(bend?"Bend (preview)":payload.mode().equals("mca")?"Rust":payload.mode().toUpperCase(Locale.ROOT))+RESET);
-        if(bend)lines.add("§eTerrain preview: no trees / structures; Minecraft lighting");
+        if(bend)lines.add("§eVegetation preview; structures / snow pending; Minecraft lighting");
         if(mca)lines.add(LABEL+(bend?"Batch latency: ":"Region latency: ")+DATA+format("%.2f ms mean",stats.averageRegionMs())+LABEL+" / "+DATA+format("%.2f ms p95",stats.p95RegionMs())+LABEL+" (last "+DATA+stats.regionSamples()+LABEL+" / 20)");
         lines.add(LABEL+(bend?"Bend MCA production: §a":mca?"Lit MCA production: §a":"Chunk-mode completion: §a")+format("%.1f chunks/s",stats.chunksPerSecond())+(mca?LABEL+(bend?" from batch latency":" from region latency"):LABEL+" (5s)"));
         lines.add(LABEL+(mca?"Amortized chunk: ":"Chunk time: ")+DATA+format("%.3f ms",stats.msPerChunk()));

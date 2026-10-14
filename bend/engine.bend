@@ -51,9 +51,16 @@ import ./lake_data.bend as LD
 import ./lake_lattice.bend as LL
 import ./cave_carve.bend as Carve
 import ./precise.bend as D
+import ./registry_vegetation.bend as RVG
+import ./registry_values.bend as Values
+import ./registry_cave_features.bend as Arrays
+import ./vegetation.bend as Vegetation
+import ./vegetation_region.bend as VegetationRegion
+import ./placement_merge.bend as Merge
+import ./placement_data.bend as Placement
 
-# Persistent binary worker. Protocol v1 is a component transport, not yet a
-# world generator: PING=0, PREPARE_NOISE=1, SAMPLE_GRID=2, COMPRESS=3, STOP=4,
+# Persistent binary world-generation worker and component protocol v1:
+# PING=0, PREPARE_NOISE=1, SAMPLE_GRID=2, COMPRESS=3, STOP=4,
 # LOAD_PROFILE=5 (staged path), QUERY_PROFILE=6 (dictionary/index path),
 # PROFILE_TEXT=7 (lossless packed UTF-16 string),
 # PROFILE_NOISE=8 (prepare a loaded climate/ridge stack using both seed words),
@@ -73,7 +80,8 @@ import ./precise.bend as D
 # ORE_REPLACEMENT_BATCH=46 (resident membership, bands and exposure policy),
 # ORE_ATTEMPT_BATCH=47, ORE_GEOMETRY_BATCH=48, ORE_MASK_BATCH=49,
 # ORE_APPLY_CORE=50 (globally anchored masks into resident block runs),
-# CAVE_DRESS_CORE=51 (registered column-owned floor/ceiling decorations).
+# CAVE_DRESS_CORE=51 (registered column-owned floor/ceiling decorations),
+# REGION_BATCH=52, VEGETATION_CORE=53 (CPU anchors, role replay and crop).
 # Requests: RBND magic, payload length, request ID, opcode (all BE u32).
 # Responses add a status u32 after opcode. stdout contains frames only.
 type Settings is Data:
@@ -1421,6 +1429,7 @@ def dispatch(input: File,output: File,stack: State,backend: U32,id: U32,opcode: 
     case 50: ore_apply_core(S.decode(body),input,output,stack,backend,id,50)
     case 51: dressing_core(S.decode(body),input,output,stack,backend,id,51)
     case 52: region_generate(input,output,stack,backend,id,52,body)
+    case 53: vegetation_core(S.decode(body),input,output,stack,backend,id,53)
     case 4: empty_command(R.end(R.start(body)),input,output,stack,backend,id,4)
     case _: error(input,output,stack,backend,id,opcode,605)
 
@@ -1477,3 +1486,66 @@ def main() -> IO(Unit):
   do IO<Unit>:
     args : List<String> <- IO.args()
     arguments(args)
+
+
+# Keep the session as an owned Type while projecting loaded vegetation. This
+# avoids expanding all resident terrain fields into every parser continuation.
+@unsafe
+def vegetation_core(core: Result<&1,&1,U32,S.Tile>,input: File,output: File,old: State,backend: U32,id: U32,opcode: U32) -> IO(Unit):
+  match core old:
+    case Fail{code} _: error(input,output,old,backend,id,opcode,code)
+    case Done{core} State{settings,Some{doc}}: vegetation_prepare(doc,State{settings,None{}},core,input,output,backend,id,opcode)
+    case _ _: error(input,output,old,backend,id,opcode,775)
+
+@unsafe
+def vegetation_prepare(doc: P.Document,old: State,+core: S.Tile,input: File,output: File,backend: U32,id: U32,opcode: U32) -> IO(Unit):
+  RVG.prepare(IO(Unit),doc,doc => result => vegetation_projected(result,doc,old,core,input,output,backend,id,opcode))
+
+@unsafe
+def restored(old: State,doc: P.Document) -> State:
+  match old:
+    case State{settings,_}: State{settings,Some{doc}}
+
+@unsafe
+def vegetation_projected(result: Result<&1,&1,U32,Vegetation.Model>,doc: P.Document,old: State,+core: S.Tile,input: File,output: File,backend: U32,id: U32,opcode: U32) -> IO(Unit):
+  match result:
+    case Fail{code}: error(input,output,restored(old,doc),backend,id,opcode,code)
+    case Done{+model}:
+      Values.root(IO(Unit),doc,doc => +root => Values.field(IO(Unit),doc,root,"plant_halves",doc => found => Arrays.array(IO(Unit),found,doc,2,doc => halves =>
+        Values.field(IO(Unit),doc,root,"plant_floor_masks",doc => found => Arrays.array(IO(Unit),found,doc,0,doc => floors => vegetation_repairs(halves,floors,model,doc,old,core,input,output,backend,id,opcode))))))
+
+@unsafe
+def vegetation_repairs(halves: Result<&1,&1,U32,Q.Table<U32>>,floors: Result<&1,&1,U32,Q.Table<U32>>,+model: Vegetation.Model,doc: P.Document,old: State,core: S.Tile,input: File,output: File,backend: U32,id: U32,opcode: U32) -> IO(Unit):
+  match halves floors model:
+    case Done{halves} Done{floors} Vegetation.Model{Placement.Model{_,_,Placement.Policy{_,+flags,_,_,_,_,_}},_,_}:
+      vegetation_source(model,Merge.Repair{flags,halves,floors},restored(old,doc),core,input,output,backend,id,opcode)
+    case _ _ _: error(input,output,restored(old,doc),backend,id,opcode,775)
+
+@unsafe
+def vegetation_source(+model: Vegetation.Model,repair: Merge.Repair,+old: State,+core: S.Tile,input: File,output: File,backend: U32,id: U32,opcode: U32) -> IO(Unit):
+  match old:
+    case State{Settings{_,_,Some{RD.Prepared{_,_,_,_,_,_,_,Some{M.Model{_,_,_,_,Some{MD.State{_,Some{+grid},_,_,_}}}}}}},_}:
+      vegetation_compatible(VegetationRegion.compatible(core,grid),core,grid,model,repair,old,input,output,backend,id,opcode)
+    case _: error(input,output,old,backend,id,opcode,775)
+
+@unsafe
+def vegetation_compatible(ok: Bool,core: S.Tile,grid: MD.Grid,model: Vegetation.Model,repair: Merge.Repair,old: State,input: File,output: File,backend: U32,id: U32,opcode: U32) -> IO(Unit):
+  match ok:
+    case False{}: error(input,output,old,backend,id,opcode,776)
+    case True{}:
+      # No GPU bang: these shared-stream live writers are the measured CPU phase.
+      +result : Result<&1,&1,U32,VegetationRegion.Computed> = VegetationRegion.execute(core,grid,model,repair)
+      vegetation_computed(result,old,input,output,backend,id,opcode)
+
+@unsafe
+def vegetation_computed(result: Result<&1,&1,U32,VegetationRegion.Computed>,old: State,input: File,output: File,backend: U32,id: U32,opcode: U32) -> IO(Unit):
+  match result:
+    case Fail{code}: error(input,output,old,backend,id,opcode,code)
+    case Done{VegetationRegion.Computed{+grid,anchors,candidates,placed}}: vegetation_summary(MC.summary(Carve.values(grid)),grid,anchors,candidates,placed,old,input,output,backend,id,opcode)
+
+@unsafe
+def vegetation_summary(pair: U32 & U32,+grid: MD.Grid,anchors: U32,candidates: U32,placed: U32,old: State,input: File,output: File,backend: U32,id: U32,opcode: U32) -> IO(Unit):
+  (runs,invalid) = pair
+  do IO<Unit>:
+    body : Z.Bytes <- payload(B.int(B.int(B.int(B.int(B.int(B.new(),anchors),candidates),placed),runs),invalid))
+    finish(input,output,carved_attach(grid,old),backend,id,opcode,0,body,True{})
