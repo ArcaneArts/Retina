@@ -1,0 +1,47 @@
+{
+  "scope": "Actual Minecraft loading and reopening of unlit single-anchor, 17-family Bend vegetation output. Registered block/biome codecs, block properties and all heightmaps decode; each file retains its bytes. Component decoding, not full-region gameplay acceptance.",
+  "runs": [
+    {
+      "lane": "vanilla",
+      "files": 2,
+      "chunks": 8,
+      "reads_per_chunk": 2,
+      "blocks_verified": 1572864,
+      "log_sha256": "ee33753dca3d4ca84463ee268439bdeaee5edc8bd3b0eb978e2de368169eb3bd"
+    },
+    {
+      "lane": "terralith",
+      "files": 1,
+      "chunks": 4,
+      "reads_per_chunk": 2,
+      "blocks_verified": 786432,
+      "log_sha256": "a7e181a3b48f3f281f59621d9cca6739a38cc04bb5ef1ae8a40aa694514fd4ea"
+    },
+    {
+      "lane": "combined",
+      "files": 1,
+      "chunks": 4,
+      "reads_per_chunk": 2,
+      "blocks_verified": 786432,
+      "log_sha256": "8ffc0695d3d3024396c946b0e9eef1ad6d5787b0751ac5ca1e34f51bec267850"
+    }
+  ],
+  "inputs": {
+    "build/bend/tree-mca-loader/nested-fixture/r.58574.-58594.mca": "9a8b33c346383f5d94326f737c01a914a6c8832d12dcdf465de4d2e166e59570",
+    "build/bend/tree-mca-loader/nested-profile-0/r.58574.-58594.mca": "7cbd4ff24e5dcfd01ffeb465192d86c4672de452389c18bdc2580a41775e82fe",
+    "build/bend/tree-mca-loader/nested-profile-1/r.58574.-58594.mca": "4ea04e8c5791e4fea6750020fc3e275a0a6ba06db7903b69d1f6cca26a102328",
+    "build/bend/tree-mca-loader/nested-profile-2/r.58574.-58594.mca": "e6943d14491fb918bd0b67b3ec8e5c7b71a74915412db2152f78c7a22c3300f0"
+  },
+  "sources": {
+    "common/src/gpuTest/java/art/arcane/retina/worldgen/BendGeneratedChunkIntegrationTest.java": "62a812db7ba94ea7381f268ae7fd13da29b54c370d904017891917601f70fd16",
+    "gradle/verification.gradle": "f26c17f69f55ae0041360682ac00983ffc995265d51f18a8b25578444026788f"
+  },
+  "datapacks": {
+    "/Users/cyberpwn/development/workspace/ArcaneArts/Retina/run/datapacks/Terralith.zip": "9764f1d11a0bfe99c2cd96cd54f346fe756165d14a6f855b394954c171d603d5",
+    "build/registry-fixtures/registry-supplement.zip": "5e0ca65dbae348db7fd93e88b062b4c9305504e6f746991ba2a0c8a9690f3b29"
+  },
+  "total_files": 4,
+  "total_chunks": 16,
+  "blocks_verified": 3145728,
+  "configuration": "Java ActiveProcessorCount=2; Gradle --max-workers=2 --no-parallel; -x buildNative -x packageNative because this reader does not use Rust."
+}

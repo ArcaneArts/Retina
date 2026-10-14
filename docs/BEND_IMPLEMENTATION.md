@@ -184,7 +184,7 @@ more deeply; retain the original requested scope.
 | Lakes, aquifer fields and fluid barriers | `TerrainFeatureProfile.java`, `program/lake_sparse.rs`, `aquifers.wgsl` | Typed aquifer graph projection and GPU/CPU flooding, erosion, spread, lava, barrier and preliminary-surface evaluation implemented. Globally hashed resident fluid centers, trilinear barrier fields and nearest-center pressure now place registered cavity fluids while preserving protected/pressure-barrier materials. Registered lake budgets/materials, globally seeded candidates, five bank probes, bounded fluid levels and noisy basin/rim placement implemented on CPU/GPU before material coating. Independent block/NBT/zlib checks cover fluids, barriers, overlap and signed/distant coordinates; lake exclusions now use finalized pre-carving coast selection, including global probes outside the resident tile. Out-of-tile bank vertices now execute in bulk with exact prior geometry and material bytes, improving measured GPU lake-stage latency by 10.1–14.6×. Playable terrain integration implemented; full parity and performance work remain required |
 | Ore height/count/replacement/discard rules and GPU rasterization | `geology/`, `ore.wgsl` | Registered recipe projection, packed membership/material tables and selected-backend ordered replacement/exposure policy implemented. Registered count/rarity/height attempts and local sphere-chain/scattered geometry now execute on CPU/GPU. Local sphere-union masks and ordered scattered points now calculate in the same selected-backend evaluation as geometry. Spatial surface/cave membership filtering, stable neighboring contribution buckets and ordered resident-block replay now run in one selected CPU/GPU evaluation, with immutable exposure halo checks and independent voxel/NBT/zlib validation. Playable terrain integration implemented; full parity and performance work remain required |
 | Ordered decoration, registered counts, provider noise and placement modifiers | `DecorationProfile.java`, `decoration/placement*`, `counts/`, `provider_noise/` | Registered recursive integer providers, count/offset projection, build-relative height distributions and actual-permutation spatial count noise independently checked on CPU/Metal. Typed ordered-program projection, exact placement-salt grouping, recursive predicates, live block/heightmap overlay and terrain-dependent checks now independently checked on CPU/Metal. Lazy ordered count/layer/cuboid execution and shared selector budgets now have an independent CPU/Metal component harness. All ten block-provider families, full 64-bit weighted decisions, current-state property transforms and initialized permutation/offset noise now independently checked on CPU/Metal. Simple-block, block-column, disk, ordinary plant, aquatic and bamboo writers now independently replay live material changes and RNG state on CPU/Metal. Ordered accepted FEATURE overlays now merge into resident runs with final plant repair, core cropping and independently decoded MCA checks; remaining feature families, neighboring-anchor coordination and playable integration are pending |
-| Trees and decorators, giant mushrooms, fallen trees, disks, vegetation patches, block columns, bamboo, aquatic plants and attachments | `decoration.rs`, `decoration/`, `tree_shapes.rs` | Simple-block, block-column, disk, ordinary plant, aquatic and bamboo writers and registry projections independently checked on CPU/Metal, including nested recipes and accepted writes through MCA serialization. Registered tree trunks/crowns, weighted axis/distance states, connected leaves, roots, vines and cocoa now have pure Bend writers and ordered role replay. Resident anchor coordination now combines registered placement streams with the ten implemented writer families, preserving live heightmaps, cached parent queries, recipe identities, bounded resumption and explicit unavailable-family outcomes; original-profile replay and a complete ten-family fixture are validated on CPU; earlier nine-family Metal controls retain their historical hashes. Registered huge mushrooms and fallen logs now preserve cap-face/axis properties, ordered live providers and decorators on CPU/Metal. Registered vines/multiface attachments now have independent CPU/Metal writer checks and join the ten-family CPU coordinator. Vegetation patches, nested feature programs, role-aware global anchor merging and playable integration remain pending |
+| Trees and decorators, giant mushrooms, fallen trees, disks, vegetation patches, block columns, bamboo, aquatic plants and attachments | `decoration.rs`, `decoration/`, `tree_shapes.rs` | Simple-block, block-column, disk, ordinary plant, aquatic and bamboo writers and registry projections independently checked on CPU/Metal, including nested recipes and accepted writes through MCA serialization. Registered tree trunks/crowns, weighted axis/distance states, connected leaves, roots, vines and cocoa now have pure Bend writers and ordered role replay. Resident anchor coordination now combines registered placement streams with the ten implemented writer families, preserving live heightmaps, cached parent queries, recipe identities, bounded resumption and explicit unavailable-family outcomes; original-profile replay and a complete ten-family fixture are validated on CPU; earlier nine-family Metal controls retain their historical hashes. Registered huge mushrooms and fallen logs now preserve cap-face/axis properties, ordered live providers and decorators on CPU/Metal. Registered vines/multiface attachments now have independent CPU/Metal writer checks and join the ten-family CPU coordinator. Registered vegetation patches and all nested selector/composite/placement programs now have independent CPU voxel/RNG checks and join the complete 17-family CPU coordinator. Role-aware global anchor merging and playable integration remain pending |
 | Jigsaw pools/templates/processors, structures spanning regions and locate queries | `StructureProfile.java`, `structures.rs`, `structure_processors.rs`, `queries.rs` | Pending |
 | Structure entities/block entities/loot and attachment rotations | `nbt.rs`, `structures.rs`, `structure_processors.rs` | Pending |
 | Snow, freezing, plant support and path/gravel restrictions | `LightingProfile.java`, profile material/survival tables, `region.rs` | Final registered plant floor-mask and signed-pair cleanup implemented in the overlay merger and independently checked on CPU/Metal, including paths and crop/build boundaries. Snow/freezing and complete playable placement restrictions remain pending |
@@ -2115,3 +2115,86 @@ and checking 3,145,728 block decodes without changing the saved bytes. All three
 registry configurations pass; hashes and logs are recorded in
 `docs/benchmarks/bend-attachment-minecraft-decoding.json`. These are still unlit
 single-anchor component fixtures, rather than full-region or gameplay evidence.
+
+
+## Registered vegetation patches and nested feature programs
+
+`vegetation_patch`, `placement_set_order`, `nested_feature`,
+`registry_nested_placement` and `registry_nested_feature` add the remaining
+registered surface feature families. The surface dispatcher and resident CPU
+coordinator now accept all 17 exported families, including patches, sequence and
+overlay composites, random/simple/boolean/weighted selectors. Their typed
+registry preparation consumes the original vanilla, Terralith and combined
+profiles; no fixture normalization substitutes different registered recipes.
+
+Nested placement deliberately shares its feature RNG and live overlay. Counts,
+count-on-every-layer, cuboids, offsets, height providers, scans and predicates do
+not borrow the top-level planner's fork/cache semantics. Layer counts are sampled
+on every loop condition; singleton simple selectors consume no draw while a
+weighted singleton still consumes its full 64-bit draw. Sequence failure retains
+prior writes and stops; overlays continue after failed children. Child heightmaps
+see earlier child writes, while the outer placement cursor retains its shared
+parent cache.
+
+Patches sample X/Z radii independently, scan floor or ceiling support, evaluate
+live block providers and preserve nullable/same-block cursor behavior and partial
+fills. A stable merge sort reproduces the native approximation's Java HashSet
+bucket order without scanning every bucket for every position. Water pools
+filter all enclosure predicates before flooding, reorder the retained surface
+with its new set capacity, and only apply registered wet-state replacements after
+successful vegetation placement. Default omitted offset components remain zero;
+loaded integer-provider bounds match the native nested placement subset.
+
+Reusable callback functions receive their model/context as explicit data. Copying
+a callback that captured that context caused a stock Bend reference-count
+fail-stop during selector-list parsing. Noncapturing function references now
+preserve the generic writer/parser architecture without changing generated
+runtime code. The actual crashing selector case and unchanged full profiles pass
+with the ordinary compiler/runtime.
+
+Verification uses two CPU threads, one compiler at a time and reduced priority.
+The independent writer replay passes **3,232 calls and 2,122,639 voxel
+comparisons**, across the three original profiles and 69 recursively collected
+fixture features. Sixteen coordinate/build-height contexts and repeated writes
+cover signed limits, dense radius/depth maxima, RNG order, dynamic layers,
+nullable providers, incomplete fills, enclosure and waterlogging. **50 malformed
+recipes** reject before output publication. One-thread and two-thread original
+vanilla results match. See
+`docs/benchmarks/bend-nested-features-correctness.json`.
+
+The complete 17-family coordinator independently passes **2,986 candidate
+applications** and final MCA/heightmap checks. It retains reverse/duplicate recipe
+ordering, one-thread execution, zero fuel, unavailable future families, 3D biome
+membership, live/cached heights and the bounded 64-task pause of a
+16,777,216-potential-candidate stream. See
+`docs/benchmarks/bend-nested-coordinator-correctness.json`. This remains the CPU
+phase selected by the earlier serial-walk measurements; no current Metal
+execution or new throughput gain is claimed for this cycle.
+
+Minecraft's actual region reader opens and reopens all four completed CPU MCA
+fixtures: **4 files, 16 chunks and 3,145,728 block decodes**, including the complete
+17-family fixture and unchanged vanilla, Terralith and combined registry inputs.
+Registered block properties, biome palettes, all six heightmaps and unchanged MCA
+bytes pass. These are unlit, four-chunk, single-anchor component fixtures; they
+do not claim full-region gameplay or cross-anchor acceptance. See
+`docs/benchmarks/bend-nested-minecraft-decoding.json`.
+
+Reproduce the CPU checks locally:
+
+```sh
+nice -n 10 python3 scripts/test_bend_nested_features.py \
+  --profile build/bend/profiles/profile-0.json \
+  --profile build/bend/profiles/profile-1.json \
+  --profile build/bend/profiles/profile-2.json
+nice -n 10 python3 scripts/test_bend_vegetation.py --cpu-only \
+  --profile build/bend/profiles/profile-0.json \
+  --profile build/bend/profiles/profile-1.json \
+  --profile build/bend/profiles/profile-2.json \
+  --report docs/benchmarks/bend-nested-coordinator-correctness.json
+```
+
+The installed preview worker remains unchanged. Role-aware global anchor merging
+and playable vegetation composition are next; structures, snow/freezing, GPU
+lighting before the final write, full 1024-chunk regions, DH full-region caching
+and equivalent complete lit Rust/Bend benchmarks remain required. Single-anchor
+component tests do not prove those requirements.
