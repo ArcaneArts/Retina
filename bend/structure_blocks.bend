@@ -52,9 +52,13 @@ def rotate(+v: W.U64,+n: U32) -> W.U64:
 
 @unsafe
 def place(+template: T.Template,+ctx: Context,+world: E.World) -> Placement:
-  match template:
-    case T.Template{blocks,_,True{}}: rows(blocks,ctx,Placement{world,[],[],True{}})
-    case _: Placement{world,[],[],False{}}
+  place_after(template,ctx,Placement{world,[],[],True{}})
+
+@unsafe
+def place_after(+template: T.Template,+ctx: Context,+out: Placement) -> Placement:
+  match template out:
+    case T.Template{blocks,_,True{}} Placement{_,_,_,True{}}: rows(blocks,ctx,out)
+    case _ Placement{world,tags,counts,_}: Placement{world,tags,counts,False{}}
 
 @unsafe
 def rows(+blocks: List<&2,T.Block>,+ctx: Context,+out: Placement) -> Placement:

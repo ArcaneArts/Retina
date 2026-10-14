@@ -1,0 +1,42 @@
+{
+  "results": [
+    {
+      "profile": "profile-0.json",
+      "cases": 1200,
+      "writes": 32639,
+      "biomes": 56,
+      "worker_wall_seconds": 2.06929625000339,
+      "profile_sha256": "aefce6ff0e800966ad55920c5d21510dfa277de4612f67e22d5146d3aa838203",
+      "input_sha256": "1cf17d67c6f442719125220d4a1f95e605179d4cd92d5e3acebbc13015d14b1a",
+      "output_sha256": "cd9fd404991f353ebdc2b1776158a64fba08d8f8f76aac56ec40cab752bb334d"
+    },
+    {
+      "profile": "profile-1.json",
+      "cases": 3100,
+      "writes": 68359,
+      "biomes": 151,
+      "worker_wall_seconds": 4.799584458000027,
+      "profile_sha256": "c9abbe97860a394ed899d64967bd0395bb9bb4ec71a9dff43d1bb45893fefd4d",
+      "input_sha256": "d28cea8b2a1ad2107f5461a59eb9de45e845af9c6042531cec9b7c8a41d2a317",
+      "output_sha256": "82e357d4869781274fa31fa9963bbd466ca915c903e0dba579f585350bfe0693"
+    },
+    {
+      "profile": "profile-2.json",
+      "cases": 3120,
+      "writes": 68735,
+      "biomes": 152,
+      "worker_wall_seconds": 4.843734125024639,
+      "profile_sha256": "068fd602ad497128dd3960cb9be76840ebd41882b5b64c25acfa76d65e930c8b",
+      "input_sha256": "0f6777fdfaa7bf1d33435e38b7597dd95c819c6e546d578a44aecbf00a39523e",
+      "output_sha256": "67cd13f12ebda7d7eacbcb0907137cd992756f51e03e77c4127eb4c348ee9cdc"
+    }
+  ],
+  "status": "pass",
+  "executable_sha256": "29baca2d454c949c3b122f87668d3978bc898611c2d6aaf9d3f8fa4ebf270000",
+  "sources": {
+    "bend/structure_supports.bend": "6ec0c7df1a5b0e69d30fd61b27d83cb330e74486c15340ab1df3a429a9a3ca4a",
+    "bend/structure_blocks.bend": "f9bd62d81313ff0518161058e287ea9b3993151b309496e34976656301861543",
+    "bend/tests/structure-supports.bend": "50b7073f523030a8cf7c95e7693eb86fcfe56d7da4f8bb03957f2b703abb0673",
+    "scripts/test_bend_structure_supports.py": "6b8e16fd34f938013ac0b1099385c1e88189dee265d44f6c8e77f3a9625e596c"
+  }
+}

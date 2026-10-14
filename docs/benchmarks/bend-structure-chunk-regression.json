@@ -1,0 +1,23 @@
+{
+  "bend_version": "bend 2.0.36",
+  "palettes": {
+    "cases": 20,
+    "indices_verified": 49664
+  },
+  "chunks": 2,
+  "blocks_verified": 196608,
+  "biomes_verified": 3072,
+  "heightmap_values_verified": 3072,
+  "invalid_requests_rejected": 27,
+  "uncompressed_chunk_bytes": 12644,
+  "mca_bytes": 16384,
+  "mca_sha256": "01fb75e253e2f8d1c9e2d7dbfe7c9ec19b78a180f611c0d1a506410330de4be8",
+  "scope": "chunk serializer and supplied lighting; not terrain generation or lighting computation",
+  "execution": "stock CPU runtime, two workers; existing fixture built without Metal",
+  "executable_sha256": "446960ada6169af58a5676773f4d745384755a1a68f9d351335d2f21b3d82d90",
+  "sources": {
+    "bend/chunk.bend": "9f4e2609758c67dfa3dccd7234ef8c6655e9e34ac298a75d76c1ff2a9c3018c1",
+    "bend/tests/chunk-fixtures.bend": "05427cf33a3a8d5c002f1111b7c352fd34c882310ccee3e6fe35ce144e7369c0",
+    "scripts/test_bend_chunks.py": "c6c54343405381bb645f6b2acfdb5eb45c82763204dc291586dfc0a468614b50"
+  }
+}

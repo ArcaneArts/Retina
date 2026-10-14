@@ -18,6 +18,7 @@ type Section is Type:
   Section{blocks: Array<U32>, biomes: Array<U32>, light: Maybe<&1, Light>}
 type Metadata is Type:
   Metadata{starts: List<N.Field>, references: List<N.Field>, entities: List<N.Tag>, block_entities: List<N.Tag>}
+  EncodedMetadata{fields: Result<&1,&1,U32,Z.Bytes>}
 type Chunk is Type:
   Chunk{version: U32, x: U32, z: U32, min_section: U32, section_count: U32,
     sections: List<Section>, boundary: Maybe<&1, Boundary>, metadata: Metadata}
@@ -223,8 +224,28 @@ def metadata_entities(entities: List<N.Tag>, block_entities: List<N.Tag>, w: B.W
   # List<Tag> is affine: use a structural counter that returns the same list.
   counted_entities(count(entities),block_entities,w)
 
+# Registry-backed metadata is encoded by Bend while its string dictionary is
+# resident. Reuse those exact bytes during chunk packing and propagate failures.
+@unsafe
+def metadata_bytes(a: Array<U32>,+i: U32,n: U32,w: B.Writer) -> B.Writer:
+  match n:
+    case 0: w
+    case _: Z.read(B.Writer,a,i,a => byte => metadata_bytes(a,U32.inc(i),U32.sub(n,1),B.byte(w,byte)))
+
+def metadata_capacity(valid: Bool,a: Array<U32>,n: U32,w: B.Writer) -> B.Writer:
+  match valid:
+    case True{}: metadata_bytes(a,0,n,w)
+    case False{}: B.fail(w,407)
+
+def encoded_metadata(fields: Result<&1,&1,U32,Z.Bytes>,w: B.Writer) -> B.Writer:
+  match fields:
+    case Fail{code}: B.fail(w,code)
+    case Done{Z.Bytes{a,+n}}: Z.result(B.Writer,Array.size(U32,a),a => capacity =>
+      metadata_capacity(Bool.and(U32.is_le(n,capacity),U32.is_le(n,16777216)),a,n,w))
+
 def metadata(value: Metadata, w: B.Writer) -> B.Writer:
   match value:
+    case EncodedMetadata{fields}: encoded_metadata(fields,w)
     case Metadata{starts,refs,entities,block_entities}:
       # Lengths are counted from the owned lists instead of trusting a caller.
       metadata_entities(entities,block_entities,

@@ -208,8 +208,8 @@ more deeply; retain the original requested scope.
 | Ore height/count/replacement/discard rules and GPU rasterization | `geology/`, `ore.wgsl` | Registered recipe projection, packed membership/material tables and selected-backend ordered replacement/exposure policy implemented. Registered count/rarity/height attempts and local sphere-chain/scattered geometry now execute on CPU/GPU. Local sphere-union masks and ordered scattered points now calculate in the same selected-backend evaluation as geometry. Spatial surface/cave membership filtering, stable neighboring contribution buckets and ordered resident-block replay now run in one selected CPU/GPU evaluation, with immutable exposure halo checks and independent voxel/NBT/zlib validation. Playable terrain integration implemented; full parity and performance work remain required |
 | Ordered decoration, registered counts, provider noise and placement modifiers | `DecorationProfile.java`, `decoration/placement*`, `counts/`, `provider_noise/` | Registered recursive integer providers, count/offset projection, build-relative height distributions and actual-permutation spatial count noise independently checked on CPU/Metal. Typed ordered-program projection, exact placement-salt grouping, recursive predicates, live block/heightmap overlay and terrain-dependent checks now independently checked on CPU/Metal. Lazy ordered count/layer/cuboid execution and shared selector budgets now have an independent CPU/Metal component harness. All ten block-provider families, full 64-bit weighted decisions, current-state property transforms and initialized permutation/offset noise now independently checked on CPU/Metal. Simple-block, block-column, disk, ordinary plant, aquatic and bamboo writers now independently replay live material changes and RNG state on CPU/Metal. Ordered accepted FEATURE overlays now merge into resident runs with final plant repair, core cropping and independently decoded MCA checks; all 17 registered feature families now join canonical neighboring-anchor replay in the playable CPU vegetation stage; full-region parity remains pending |
 | Trees and decorators, giant mushrooms, fallen trees, disks, vegetation patches, block columns, bamboo, aquatic plants and attachments | `decoration.rs`, `decoration/`, `tree_shapes.rs` | Simple-block, block-column, disk, ordinary plant, aquatic and bamboo writers and registry projections independently checked on CPU/Metal, including nested recipes and accepted writes through MCA serialization. Registered tree trunks/crowns, weighted axis/distance states, connected leaves, roots, vines and cocoa now have pure Bend writers and ordered role replay. Resident anchor coordination now combines registered placement streams with the ten implemented writer families, preserving live heightmaps, cached parent queries, recipe identities, bounded resumption and explicit unavailable-family outcomes; original-profile replay and a complete ten-family fixture are validated on CPU; earlier nine-family Metal controls retain their historical hashes. Registered huge mushrooms and fallen logs now preserve cap-face/axis properties, ordered live providers and decorators on CPU/Metal. Registered vines/multiface attachments now have independent CPU/Metal writer checks and join the ten-family CPU coordinator. Registered vegetation patches and all nested selector/composite/placement programs now have independent CPU voxel/RNG checks and join the complete 17-family CPU coordinator. Accepted-command journals preserve write roles and transient writes through canonical neighboring-anchor replay, final repair and MCA encoding on CPU. The persistent playable worker now executes all 17 families with coherent neighboring terrain before cropping; full-region parity remains pending |
-| Jigsaw pools/templates/processors, structures spanning regions and locate queries | `StructureProfile.java`, `structures.rs`, `structure_processors.rs`, `queries.rs` | Pure Bend structure-set candidates, frequency/exclusions, weighted biome selection and full jigsaw/standalone layouts implemented and independently checked against original vanilla/Terralith/combined profiles. Rotated template block replay and ordered processors now write the resident terrain overlay and emit serialized block-entity updates. Terrain supports, whole-start replay/metadata/locate and playable integration remain pending |
-| Structure entities/block entities/loot and attachment rotations | `nbt.rs`, `structures.rs`, `structure_processors.rs` | Processor tag changes, block-entity coordinates/keepPacked/loot seeds, and lossless typed-NBT output implemented and independently decoded. Original template entities are retained and their untransformed tags serialize correctly; entity placement/transforms, UUIDs and whole-region metadata integration remain pending |
+| Jigsaw pools/templates/processors, structures spanning regions and locate queries | `StructureProfile.java`, `structures.rs`, `structure_processors.rs`, `queries.rs` | Pure Bend structure-set candidates, frequency/exclusions, weighted biome selection and full jigsaw/standalone layouts implemented and independently checked against original vanilla/Terralith/combined profiles. Rotated template block replay and ordered processors now write the resident terrain overlay and emit serialized block-entity updates. Terrain supports and serialized start/reference records now have independently checked Bend implementations. Whole-start replay/caching, locate and playable integration remain pending |
+| Structure entities/block entities/loot and attachment rotations | `nbt.rs`, `structures.rs`, `structure_processors.rs` | Processor tag changes, block-entity coordinates/keepPacked/loot seeds, and lossless typed-NBT output implemented and independently decoded. Template entity transforms, deterministic UUIDs and attachment rotations now serialize into actual generated chunk NBT. Whole-region coordination and live Minecraft loading remain pending |
 | Snow, freezing, plant support and path/gravel restrictions | `LightingProfile.java`, profile material/survival tables, `region.rs` | Final registered plant floor-mask and signed-pair cleanup implemented in the overlay merger and independently checked on CPU/Metal, including paths and crop/build boundaries. Registered final snow/freezing now projects loaded temperatures, feature/precipitation flags, layer IDs, height masks and support rules in Bend. Independent per-column run scans execute on the selected CPU/GPU backend after vegetation and before MCA serialization; snow avoids ordinary frozen-ocean ice and active lake columns. Complete structure-stage placement restrictions remain pending |
 | Full 64-bit seeds, signed/distant coordinates and repeatable ordering | `ChunkRequest`, native hash/random routines | Exact word-pair add/subtract/multiply/bit operations implemented; 3,689 operations independently verified. Typed i64/f64-to-F32 rounding independently verifies 131,072 scalar conversions per CPU/GPU run, including distant-value midpoint cases. Integration and coordinate/order checks pending |
 | Block/biome palettes, bit-packed long arrays, heightmaps, modified UTF-8 NBT and current data versions | `region.rs`, `nbt.rs` | Pure Bend palette remapping (49,664 indices), final-block heightmaps and complete fixture chunk encoding implemented. Minecraft 26.3 (data version 5023) reads/reopens mixed and prelit fixture chunks through actual region, palette and SerializableChunkData decoders. Resident generated base/material columns now encode into current-version NBT/zlib with exact state properties, quart surface biomes and final-block heightmaps; sparse generated-region/runtime integration implemented and checked in a running Fabric world |
@@ -2702,3 +2702,87 @@ was run for this library-only cycle; actual structure-bearing MCA loading and
 save/reopen checks must run when the region pipeline is connected. GPU lighting,
 backend stage distribution and equivalent complete lit-region benchmarks also
 remain part of the full goal.
+
+
+### Structure entity placement, foundations and chunk records
+
+The next component adds pure Bend entity placement and rigid-piece foundations,
+and connects generated structure metadata to the existing chunk serializer.
+This remains a library component: the installed preview worker still omits
+structures. The whole-start/region coordinator must connect these operations
+before they become visible in newly generated worlds.
+
+`structure_entities.bend` rotates and translates the original template entities,
+preserves their typed NBT, generates stable UUIDs, and updates hanging-entity
+anchors, frame/painting facing and yaw. Chunk ownership uses the exported
+normalized blockPos when present, otherwise the floor of the final position.
+`float64.bend` implements the needed binary64 addition/subtraction and integer
+conversion over paired U32 words. This preserves sub-block entity positions near
+the world border instead of rounding positions through F32. Nonfinite final
+positions are omitted. This is a small arithmetic component, not a general
+replacement for every floating-point operation in the generator.
+
+`structure_supports.bend` extends eligible rigid template floors down by at most
+12 blocks, stopping at solid terrain and cropping writes to the resident chunk.
+It uses the source terrain column's subsurface material, with registered biome
+filler fallback and the badlands filler exception. Air, fluids and replaceable
+vegetation can be filled; logs/leaves/plants and jigsaw markers are not used as
+foundation floor blocks. The preparation pass reads only biome filler/flags and
+material flags. It does not project each biome's large feature definitions.
+Support writes and their block-entity removals feed `structure_blocks.place_after`
+before normal template replay.
+
+`structure_metadata.bend` carries each start's seed, height tile and ordered
+pieces together. It produces owner-chunk start records and intersecting-chunk
+references, including signed packed chunk coordinates and the registered
+retina:template child records. Ordered block-entity updates use last-write-wins
+replacement/removal and signed x/y/z ordering. The named fields are encoded with
+the resident registry string dictionary, then passed to
+`generated_chunk.encode_metadata` and the normal chunk serializer. Bounds checks
+and upstream NBT failures propagate through the existing encoder result.
+
+The future coordinator must derive foundation eligibility from each definition's
+terrain_adaptation, retain canonical start/piece/part order, supply the original
+GPU-derived height tile, and reverse each block replay's update journal before
+applying metadata updates. It must cache selected templates/programs rather than
+reprojecting them per block, replay the final plant-support cleanup, and integrate
+structure queries and Minecraft loading. These callers are not implemented by
+this component. No installed worker, Java integration or Rust code changed.
+
+Validation ran locally with stock Bend 2.0.36, one compiler at a time at nice +10,
+and two CPU runtime workers with GPU disabled:
+
+- 45,444 binary64 operand pairs: 90,888 arithmetic results and 181,776 integer
+  conversions agree with independent host calculations, including subnormals,
+  ties, cancellation, signed zero, infinities and distant coordinates.
+- 20,024 entity placement cases emit 24,048 independently decoded and compared
+  entities. Inputs include every entity-bearing template in the original
+  vanilla, Terralith and combined profiles, all rotations, chunk cropping,
+  distant positions, attachment faces, malformed wrappers and Unicode.
+- 7,420 foundation/template cases produce 169,733 verified writes across every
+  loaded biome in the three profiles, including water/lava, badlands filler,
+  disabled foundations, terrain matching, boundaries and original templates.
+- 4,948 actual generated chunk NBT encodes verify 503 start records and 9,008
+  references, plus entity/block-entity ordering, removals and metadata failures.
+  Existing palette, heightmap and trailing chunk fields remain readable.
+- Regressions pass for 849 template block replays, 7,030 typed-NBT roots, and
+  the original chunk fixture's 20 palettes, two complete chunks, six heightmaps
+  and 27 invalid inputs.
+
+The source/executable/input/output hashes and fixture results are in
+`docs/benchmarks/bend-float64.json`, `bend-structure-entities.json`,
+`bend-structure-supports.json`, `bend-structure-metadata.json` and
+`bend-structure-chunk-regression.json` in that directory. Fixture timings include
+setup and transport; they do not measure complete generation performance.
+Reproduce sequentially using the original profile captures:
+
+```sh
+RETINA_BEND_CC=/opt/homebrew/opt/llvm/bin/clang python3 scripts/test_bend_float64.py --build
+RETINA_BEND_CC=/opt/homebrew/opt/llvm/bin/clang python3 scripts/test_bend_structure_entities.py --build
+RETINA_BEND_CC=/opt/homebrew/opt/llvm/bin/clang python3 scripts/test_bend_structure_supports.py --build
+RETINA_BEND_CC=/opt/homebrew/opt/llvm/bin/clang python3 scripts/test_bend_structure_metadata.py --build
+```
+
+No game UI, Gradle build or live structure-bearing MCA loading was run in this
+cycle. Whole-region structure integration, locate/save/reopen checks, GPU
+lighting and equivalent complete lit-region benchmarks remain required.
