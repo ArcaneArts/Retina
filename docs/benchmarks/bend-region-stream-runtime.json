@@ -1,0 +1,27 @@
+{
+  "scope": "Packaged stock Bend runtime on Apple M4 Max/Metal; startup only, not generation throughput.",
+  "worker_sha256": "e72b397ad351510654523b61b5606ae998b096b5189973257760b1a00532a2db",
+  "gpu_archive_sha256": "d9a57b26f2c3c4e2462441d39a596dce40eee8f276b7e37d575eb796459548fa",
+  "packaged_starts_ms": [
+    70668.03,
+    69.5
+  ],
+  "startup_cancellation": "pass",
+  "log_sha256": "930b970770506372c34968b8935d3d5175b7daa53047b7b916fde66820bf2b94",
+  "ui_launched": false,
+  "cpu_workers": 2,
+  "full_region_gpu_heap": "stock --gpu 4GB",
+  "full_cpu_mode_heap": "stock --gpu off (8GiB)",
+  "other_hardware_verified": false,
+  "runClient_dry_run": {
+    "fabric_only": true,
+    "log_sha256": "c30e82bc6feffa47a1d875ba7814e702298a7ca60476b83aad473d8013b2d917"
+  },
+  "installed_worker_and_archive_match": true,
+  "installation": "Atomic directory exchange of normal worker and archive; previous installation retained locally.",
+  "default_packaging": {
+    "passed": true,
+    "explicit_worker_override": false,
+    "log_sha256": "6b19fc4acd7c6db126cc4bec5f2cccc934e416754abde4af049167521571d583"
+  }
+}

@@ -43,11 +43,15 @@ public final class BendWorker implements AutoCloseable {
     }
 
     BendWorker(Path executable, Execution execution, int threads,java.util.function.Consumer<BendWorker> started) throws IOException {
+        this(executable,execution,threads,"on",started);
+    }
+
+    BendWorker(Path executable,Execution execution,int threads,String gpuMemory,java.util.function.Consumer<BendWorker> started) throws IOException {
         if (threads < 1 || threads > 64) throw new IllegalArgumentException("Bend threads must be 1..64");
         this.execution = java.util.Objects.requireNonNull(execution);
         var command = List.of("nice", "-n", "10", executable.toAbsolutePath().toString(),
                 execution == Execution.CPU ? "cpu" : "gpu", "--threads", Integer.toString(threads),
-                "--gpu", execution == Execution.CPU ? "off" : "on");
+                "--gpu", execution == Execution.CPU ? "off" : gpuMemory);
         var builder = new ProcessBuilder(command);
         builder.environment().put("BEND_NO_TELEMETRY", "1");
         process = builder.start();
@@ -231,22 +235,28 @@ public final class BendWorker implements AutoCloseable {
      */
     public CompletableFuture<byte[]> writeGeneratedRegion(int regionX, int regionZ, long seed,
             int dataVersion, int timestamp, Path stagedFile) {
-        int[] points = stagedFile.toAbsolutePath().toString().codePoints().toArray();
-        var payload = java.nio.ByteBuffer.allocate(28 + points.length * 4)
-                .putInt(regionX).putInt(regionZ).putInt((int) seed).putInt((int) (seed >>> 32))
-                .putInt(dataVersion).putInt(timestamp).putInt(points.length);
-        for (int point : points) payload.putInt(point);
-        return request(28, payload.array());
+        return writeRegionCommand(28,regionX,regionZ,seed,dataVersion,timestamp,stagedFile);
     }
 
     /** Encode the whole chunks covered by the resident tile into a new sparse
      * MCA. This is a private preview batch, never an existing save path. */
     public CompletableFuture<byte[]> writeGeneratedBatch(int regionX,int regionZ,long seed,int dataVersion,int timestamp,Path stagedFile) {
+        return writeRegionCommand(52,regionX,regionZ,seed,dataVersion,timestamp,stagedFile);
+    }
+
+    /** Stream bounded chunk batches into one private MCA body. The response is
+     * chunk/sector counts followed by 8192 opaque header bytes. The bridge must
+     * write those bytes at offset zero before publishing the completed file. */
+    public CompletableFuture<byte[]> writeStreamedRegion(int regionX,int regionZ,long seed,int dataVersion,int timestamp,Path stagedFile) {
+        return writeRegionCommand(55,regionX,regionZ,seed,dataVersion,timestamp,stagedFile);
+    }
+
+    private CompletableFuture<byte[]> writeRegionCommand(int opcode,int regionX,int regionZ,long seed,int dataVersion,int timestamp,Path stagedFile) {
         int[] points=stagedFile.toAbsolutePath().toString().codePoints().toArray();
         var payload=java.nio.ByteBuffer.allocate(28+points.length*4).putInt(regionX).putInt(regionZ)
                 .putInt((int)seed).putInt((int)(seed>>>32)).putInt(dataVersion).putInt(timestamp).putInt(points.length);
         for(int point:points)payload.putInt(point);
-        return request(52,payload.array());
+        return request(opcode,payload.array());
     }
 
     /** Plan neighboring surface anchors, replay accepted commands on the CPU,

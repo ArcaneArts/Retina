@@ -7,11 +7,12 @@ import ./region.bend as R
 import ./reader.bend as B
 import ./precise.bend as D
 import ./transport.bend as T
+import ./region_stream.bend as Stream
 
 # New-file component writer. The caller owns a private staging path and only
 # publishes it after acknowledgement. No existing world file may be passed.
-# Keep eight independent chunk tasks in a fork tree; only compressed records
-# survive each batch. Never retain a region of expanded block/NBT arrays.
+# Both writers fork eight independent chunk tasks. The legacy planner retains
+# all compressed records; the streamed writer below consumes each batch in IO.
 type Request is Data:
   Request{x: U32,z: U32,low: U32,high: U32,version: U32,timestamp: U32}
 type Input is Type:
@@ -181,3 +182,63 @@ def run_partial(input: Input,+grid: M.Grid,catalog: C.Catalog) -> IO(Result<&1,&
 def partial_request(+request: Request,path: String,+grid: M.Grid,catalog: C.Catalog) -> IO(Result<&1,&1,U32,U32 & U32>):
   match request:
     case Request{+x,+z,_,_,_,_}: partial_accepted(Bool.and(coordinate(x),Bool.and(coordinate(z),aligned(grid))),grid,catalog,request,path)
+
+
+# The IO write in each batch forces and consumes its records before the next
+# eight tasks are constructed. A pure recursive list of batches is not a
+# memory bound: lazy record payloads can remain reachable until final planning.
+@unsafe
+def stream_written(result: Result<&1,&1,U32,Stream.State>,base: U32,grid: M.Grid,catalog: C.Catalog,request: Request) -> IO(Result<&1,&1,U32,Stream.Complete>):
+  match result:
+    case Fail{code}: IO.pure(Result<&1,&1,U32,Stream.Complete>,Fail{code})
+    case Done{state}: stream_collect(base,grid,catalog,request,state)
+
+@unsafe
+def stream_batch(result: Result<&1,&1,U32,List<R.Record>>,base: U32,grid: M.Grid,catalog: C.Catalog,request: Request,state: Stream.State) -> IO(Result<&1,&1,U32,Stream.Complete>):
+  match result:
+    case Fail{code}: stream_failed(state,code)
+    case Done{records}:
+      do IO<Result<&1,&1,U32,Stream.Complete>>:
+        result : Result<&1,&1,U32,Stream.State> <- Stream.records(List.reverse(&1,R.Record,records),state)
+        stream_written(result,base,grid,catalog,request)
+
+def stream_failed(state: Stream.State,code: U32) -> IO(Result<&1,&1,U32,Stream.Complete>):
+  match state:
+    case Stream.State{file,_,_,_,_}:
+      do IO<Result<&1,&1,U32,Stream.Complete>>:
+        _ : Unit <- File.close(file)
+        IO.pure(Result<&1,&1,U32,Stream.Complete>,Fail{code})
+
+@unsafe
+def stream_collect(+base: U32,+grid: M.Grid,+catalog: C.Catalog,+request: Request,state: Stream.State) -> IO(Result<&1,&1,U32,Stream.Complete>):
+  match base:
+    case 1024: Stream.complete(state)
+    case _: stream_batch(flatten(partial_batch(3n,base,grid,catalog,request),[]),U32.add(base,8),grid,catalog,request,state)
+
+@unsafe
+def coverage_count(+n: U32,+grid: M.Grid,+request: Request,acc: U32) -> U32:
+  match n:
+    case 0: acc
+    case _: coverage_count(U32.sub(n,1),grid,request,U32.add(acc,Z.word(G.covered(grid,chunk(request,U32.sub(n,1))),1,0)))
+
+@unsafe
+def stream_accepted(code: U32,grid: M.Grid,catalog: C.Catalog,request: Request,path: String) -> IO(Result<&1,&1,U32,Stream.Complete>):
+  match code:
+    case 0:
+      do IO<Result<&1,&1,U32,Stream.Complete>>:
+        state : Stream.State <- Stream.begin(path)
+        stream_collect(0,grid,catalog,request,state)
+    case _: IO.pure(Result<&1,&1,U32,Stream.Complete>,Fail{code})
+
+@unsafe
+def stream_request(+request: Request,path: String,+grid: M.Grid,catalog: C.Catalog) -> IO(Result<&1,&1,U32,Stream.Complete>):
+  match request:
+    case Request{+x,+z,_,_,_,_}:
+      stream_accepted(Z.word(Bool.not(Bool.and(coordinate(x),Bool.and(coordinate(z),aligned(grid)))),733,
+        Z.word(U32.is_zero(coverage_count(1024,grid,request,0)),732,0)),grid,catalog,request,path)
+
+@unsafe
+def run_stream(input: Input,+grid: M.Grid,catalog: C.Catalog) -> IO(Result<&1,&1,U32,Stream.Complete>):
+  match input:
+    case Input{_,_,False{}}: IO.pure(Result<&1,&1,U32,Stream.Complete>,Fail{603})
+    case Input{request,path,True{}}: stream_request(request,path,grid,catalog)

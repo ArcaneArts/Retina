@@ -77,7 +77,7 @@ public final class RegionCoordinator {
         generator.metrics().begin();
         long started = System.nanoTime();
         try {
-            if (generator.bendMode() && BendRegionFiles.complete(destination,position,BendRegionBackend.BATCH_CHUNKS)) {
+            if (generator.bendMode() && BendRegionFiles.complete(destination,position,BendRegionBackend.REGION_CHUNKS)) {
                 prepared.add(key); generator.metrics().completedRegion(0,System.nanoTime()-started); return;
             }
             if (preparation != null) lease = preparation.join();

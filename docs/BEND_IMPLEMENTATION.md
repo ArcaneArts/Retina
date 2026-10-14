@@ -39,22 +39,37 @@ fallback for this mode. Nether/End retain the preset's vanilla generators.
 Structures and Bend lighting are still pending. Preview chunks
 explicitly have `isLightOn=false`; Minecraft lights them.
 F3 names the backend and stage, labels the preview limitations and reports the
-last 20 **batch** latencies and their actual chunk counts. These figures must not
-be compared to lit 1024-chunk Rust regions as equivalent workloads.
+last 20 completed **region** latencies, derived chunks/second and amortized
+chunk time. These unlit figures must not be compared to lit Rust regions as
+equivalent workloads.
 
-Whole-region composition exhausted the stock GPU heap during NBT encoding after
-several minutes. The preview therefore generates globally aligned 4x4-chunk
-batches, resident intermediate fields and a private sparse MCA per cached batch.
-Neighboring batches append to the same normal world MCA, preserving existing
-chunks (including edits and external records). Cached batches also service DH
-queries and promote through the existing I/O queue. Minecraft's wide status-probe
-ring only reads existing files. Preliminary biome-only holders use a small Bend
-surface-climate query; a real terrain-stage request triggers assembly/publication
-and replaces them with the final saved 3D cave biomes. Those preliminary holders
-are not saved over completed neighboring chunks. Legacy pre-terrain records can
-be replaced during publication, while completed terrain and edits are preserved.
-The cache limit is 1024 batches in Bend mode, not 1024 complete regions. This prioritizes first terrain
-availability; substantial performance work remains before parity with Rust.
+The preview generates globally aligned 32x32-chunk regions, with resident
+intermediate fields and one private MCA per cached region. All generation and
+encoding remain in Bend. The streamed writer consumes eight independent chunk
+encodes/compressions through file IO before constructing the next batch; only
+the small region header remains live across all output batches. The Java bridge
+installs Bend's opaque header before publication, without rewriting chunk bodies.
+
+Large ore cores use the identical ordered Bend calculation on two CPU workers.
+The original whole-region GPU ore step exhausted the default 2GiB heap, while
+the same CPU calculation completed with the stock CPU span. Moving this stage
+to CPU within a GPU worker still hit its shared 2GiB bound. Full-region GPU
+workers therefore use stock `--gpu 4GB`; no runtime/kernel constants are changed.
+Verified cores of at most 128x128 blocks retain GPU ore execution. Terrain, interpolation, lakes, caves, aquifers, carving, cave
+dressing and snow/freezing still use the selected Bend backend; irregular
+vegetation, NBT, compression and MCA output use CPU Bend.
+
+Cached whole regions service DH and chunk/height requests and promote through
+the existing I/O queue. Publication preserves completed chunks, player edits and
+external records, replacing only unfinished terrain records. Minecraft's wide
+status-probe ring reads existing files without generating terrain. Preliminary
+biome-only holders use small Bend climate queries; real terrain requests replace
+them with final saved 3D cave biomes. Those holders never overwrite completed
+neighbors. The cache limit is 1024 complete regions in Bend mode as well as Rust.
+Whole-region coalescing also applies at negative coordinates. Generation remains
+slow and experimental; this is a memory/correctness change, not a claim of Rust
+performance parity. Custom dimensions remain subject to the documented finite
+lattice and voxel-work bounds.
 
 ### Running the preview
 
@@ -83,7 +98,11 @@ active work. Existing Rust saves remain Rust saves. The packaged preview is
 host-specific; it does not claim a tested runtime for other operating systems.
 An explicit worker can be supplied with `RETINA_BEND_EXECUTABLE` or JVM property
 `retina.bend.executable`. GPU is required by default; explicit CPU experiments use
-`-Dretina.bend.execution=cpu` and two worker threads.
+`-Dretina.bend.execution=cpu` and two worker threads. Full-region GPU mode
+requires a device that can address the 4GiB stock runtime span; only the Apple
+M4 Max/Metal host is verified here. The advanced `retina.bend.gpuMemory` JVM
+property changes that stock runtime argument. Invalid/unsupported requests
+report actual runtime errors; they never select Rust or vanilla.
 
 Packaged workers extract to a content-addressed directory under
 `~/.cache/retina/bend-2.0.36/`. Metal's source-library cache is tied to executable
@@ -96,14 +115,16 @@ includes the [pinned Bend 2.0.36 license](https://github.com/bendlang/bend/blob/
 Focused local integration checks (using an already compiled worker):
 
 ```sh
-nice -n 10 python3 scripts/test_bend_partial_regions.py
+nice -n 10 python3 scripts/test_bend_region_stream.py
+nice -n 10 python3 scripts/test_bend_full_region.py \
+  --profile build/bend/profiles/profile-0.json --gpu
 ./gradlew :common:bendWorldIntegrationTest -PretinaHostOnly \
   --max-workers=2 --no-parallel
 ```
 
 The integration harness deliberately makes Rust unavailable. It checks combined
-terrain loading, base-column agreement, unlit feature-status chunks, sparse MCA
-promotion, adjacent batch merge and saved edit preservation. Component harnesses
+terrain loading, base-column agreement, unlit feature-status chunks, whole-region
+coalescing/promotion, unfinished-probe repair and saved edit preservation. Component harnesses
 add independent CPU/Metal voxel and NBT/zlib validation. These checks do not prove
 full generator parity or a completed Bend goal.
 
@@ -140,7 +161,7 @@ ordered patch-to-run merger, final plant support/pair repair and core cropping
 now connect accepted feature overlays to the chunk serializer. All 17 currently
 registered feature families and their trunk/foliage/decorator subsets join the
 neighboring-anchor coordinator in the playable worker. Retain that registered
-placement behavior while extending full-region execution and adding structures.
+placement behavior while adding structures and final GPU lighting.
 The final repair pass uses the loaded plant floor masks and signed pair IDs;
 it must also run after future structure writes.
 
@@ -197,10 +218,10 @@ more deeply; retain the original requested scope.
 | GPU lighting, interior-chunk validity, boundary handling and one final region write | `lighting.rs`, `lighting.wgsl`, `region.rs`, `LightSeams.java` | Serialization of supplied light arrays/padding and completion flags validated with Minecraft. Local optical/face/seed/attenuation/nibble rules independently checked on CPU/Metal. Full field computation and interior/boundary validity remain pending; preview uses Minecraft lighting |
 | MCA sector tables, external records, preserving existing chunks and atomic publication | `region.rs` | Pure Bend new-file inline planning/streaming now writes whole generated base/material regions from resident snapshots; independent and actual Minecraft decoders cover all 1024 chunks. Sparse batch merging, completed/external-record preservation and atomic publication implemented; Minecraft edit/reopen tests pass |
 | Persistent engine, bounded scheduling/singleflight, cleanup and actionable failure propagation | `NativeTerrain.java`, `RegionCoordinator.java`, `TerrainQueries.java` | Persistent Bend component worker and bounded raw Java transport implemented: resident noise stacks, GPU grids, Bend compression, 16 queued requests/32 MiB retained request payloads, cancellation, shutdown and fatal protocol/process failure checks. Full registry file loading and input queries implemented; actual sparse region commands, coalescing, lifecycle and cancellation integrated in the playable preview |
-| DH surface/height requests generate temporary whole regions, 1024-region cache, eviction and promotion | `TemporaryRegions.java`, `RegionCoordinator.java` | Selected-backend coordinator/cache and promotion implemented for 1024 temporary 4x4 batches. Whole-region Bend caching/performance parity remains pending |
+| DH surface/height requests generate temporary whole regions, 1024-region cache, eviction and promotion | `TemporaryRegions.java`, `RegionCoordinator.java` | Selected-backend coordinator/cache now stores 1024 complete 32x32 regions. Overlapping/distant same-region requests coalesce and promotion preserves edits and completed terrain. Full performance/lighting parity remains pending |
 | Backend selection survives datapacks, codecs, save/reopen and server lifecycle | `RetinaChunkGenerator.java`, preset/platform mixins | Bend codec/preset and registry-import preservation implemented; vanilla/Terralith registry checks and actual Fabric save/reopen pass. Full datapack gameplay combinations remain required |
 | Exactly two selectable world types; Rust default; legacy chunk-save migration aliases | `world_preset/gpu*.json`, world preset tag, language keys and generator codec | Exactly two selectable presets implemented; Rust remains default, legacy chunk aliases decode existing saves, Bend explicitly labels its preview limitations |
-| Color-coded stage report and last-20-region derived throughput | `GenerationMetrics.java`, `TerrainDebugReport.java`, `timings.rs` | Bend preview reports backend/stage and last-20 batch latencies with actual chunk counts; detailed stage distribution and complete-region parity remain pending |
+| Color-coded stage report and last-20-region derived throughput | `GenerationMetrics.java`, `TerrainDebugReport.java`, `timings.rs` | Bend preview reports backend/stage and last-20 full-region latencies with actual 1024-chunk counts; detailed stage distribution and full lighting parity remain pending |
 | Reproducible pinned runtime, packaging, licensing and supported-loader builds | `gradle/native.gradle`, Fabric/NeoForge modules, CI | Pinned stock 2.0.36 host-worker packaging and license implemented; Fabric/NeoForge host builds pass. Other host binaries and production integration remain pending |
 | Independent format tests, region/concurrency/query/cache tests, actual Minecraft loading, edit persistence and datapack combinations | shared unit/GPU tests and QA harnesses | Primitive tests and Minecraft decoder/reopen tests of complete fixture chunks implemented. Actual generated-world terrain, F3 telemetry, edit persistence and save/reopen pass on Fabric. Full feature/light parity, DH gameplay and NeoForge gameplay remain required |
 | Complete lit/compressed region comparison: startup, warm latency, throughput, memory, output sizes and load-in | existing native benchmark scripts | Pending; simplex experiment and file-driver timing are insufficient |
@@ -2449,3 +2470,79 @@ and 74.09 ms on reuse; startup cancellation passes. These startup observations
 do not measure world-generation throughput. Plain `./gradlew runClient` remains
 the Fabric-only development command after this cycle merges. See
 `docs/benchmarks/bend-snow-runtime.json`.
+
+
+## Full-region execution and bounded MCA output
+
+The playable Bend path now generates a full 512x512-block core (1,024 chunks)
+for each globally aligned MCA coordinate. Chunk, surface and height requests
+share that cached region. Temporary-cache keys, promotion, and the last-20
+latency window use the same region boundaries, including negative coordinates.
+The existing cache capacity now means 1,024 complete regions for both backends.
+Status-only Minecraft probes still avoid terrain generation.
+
+Command 55 replaces the playable writer's retained whole-region record list.
+It forks eight independent chunk encoding/compression tasks and consumes each
+group through stock file IO before constructing the next group. Bend constructs
+all NBT, zlib, MCA record framing, sector locations and timestamps. The stock
+2.0.36 file API lacks positional writing, so the Java bridge installs an opaque
+8KiB header returned by Bend at offset zero in the private file. It does not
+truncate or rewrite the chunk bodies. There is one generated MCA representation;
+computed lighting remains pending and no separate lit copy is introduced.
+
+The original full-region request exceeded the old density-lattice capacity. The
+bounded maximum is now 2,097,152 vertices, checked without overflowing products.
+Core geometry accepts the existing 32-block neighboring-feature context. A full
+GPU ore pass exhausted the stock 2GiB runtime heap. Large cores now execute the
+same ordered calculation on Bend CPU workers; the shared GPU-worker heap still
+needed the stock 4GiB span. Full vanilla, Terralith and combined-pack pipelines pass with this
+configuration. These are measured resource limits, not device preflight checks.
+The two-worker CPU fallback also passes full-region world integration.
+
+Independent container fixtures cover all 1,024 slots, sparse/multisector, empty
+and last-slot files, six invalid records and four lattice-bound cases. They
+match the existing planner byte for byte. Full original-profile terrain tests
+parse every palette/biome index in every chunk and compare 884,736 sampled block
+values plus nine independent compressed chunk commands to the resident snapshot.
+Malformed requests, wrong seeds and out-of-range regions fail before opening an
+output file. Sampled worker RSS and incremental body-file growth are recorded;
+worker RSS does not include all GPU memory. The initial 64-block runs and first
+full CPU run retain their historical source/binary hashes; final full GPU runs
+and both Minecraft world tests exercise the delivered worker.
+
+Minecraft's actual readers open and reopen the full CPU vanilla and full GPU
+vanilla/Terralith/combined files, validating 805,306,368 block decodes. CPU and GPU world
+lifecycle tests run with Rust unavailable: overlapping first requests coalesce;
+far corners share one cache entry; promotion copies all 1,024 chunks; repeat
+promotion preserves them; an unfinished probe is repaired while 1,023 completed
+chunks and a saved edit remain intact. Height queries agree with loaded blocks.
+F3 reports one completed region and the actual 1,024-chunk count. Raw-worker tests
+also cover concurrent output requests, queued cancellation, real file-open
+failure, cleanup and nontruncating opaque-header installation. No game UI runs.
+
+Both host-loader builds pass with byte-identical normal worker/archive resources.
+The packaged Metal worker starts in 70.67 seconds at its new extraction path and
+69.50 milliseconds on reuse; startup cancellation also passes. The production
+worker contains no diagnostic logger. Compilation remains serial at nice +10,
+with two Cargo/Gradle workers and two runtime CPU workers. Existing
+`./gradlew runClient` still selects Fabric and packages the installed worker.
+
+Evidence: `docs/benchmarks/bend-region-stream*.json`,
+`docs/benchmarks/bend-full-region*.json`. These functional runs shared the host
+with other work, and their output is unlit. They do not establish equivalent
+lit-region throughput or Rust performance parity. Structures, entities/loot and
+locate metadata, computed GPU lighting, detailed Bend stage distributions and
+the complete lit Rust/Bend performance comparison remain required.
+
+
+A separate host-only logger observes actual Metal dispatches for density,
+surface climate, shoreline selection, lakes, block columns, cave fields, aquifer
+fields, carving, cave dressing and weather across a complete 1,024-chunk region.
+Large ores, irregular vegetation and streamed serialization execute on CPU as
+intended. The observer differs from compiler-generated host code by one timing
+print after the stock command-buffer wait, and its GPU archive is byte-identical
+to production. Its final MCA matches the normal worker byte for byte. See
+`docs/benchmarks/bend-full-region-metal-observed.json`. All three original
+vanilla/Terralith/combined profiles complete with the delivered 4GiB worker.
+The verified normal worker/archive pair is installed for plain `runClient`;
+the prior installation is retained with local artifacts.

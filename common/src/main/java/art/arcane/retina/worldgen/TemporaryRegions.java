@@ -96,8 +96,7 @@ final class TemporaryRegions implements AutoCloseable {
     }
 
     private long key(ChunkPos position) {
-        int chunks=bend==null?32:BendRegionBackend.BATCH_CHUNKS;
-        return ChunkPos.pack(Math.floorDiv(position.x(),chunks),Math.floorDiv(position.z(),chunks));
+        return ChunkPos.pack(position.getRegionX(),position.getRegionZ());
     }
 
     private final class Entry {
@@ -115,10 +114,8 @@ final class TemporaryRegions implements AutoCloseable {
         boolean retired;
         Entry(ChunkPos position) {
             key = key(position);
-            int chunks=bend==null?32:BendRegionBackend.BATCH_CHUNKS;
-            origin = new ChunkPos(Math.floorDiv(position.x(),chunks)*chunks,Math.floorDiv(position.z(),chunks)*chunks);
-            entryFolder=bend==null?folder:folder.resolve("batch."+origin.x()+"."+origin.z());
-            if(bend!=null)try {Files.createDirectories(entryFolder);}catch(IOException error){throw new UncheckedIOException(error);}
+            origin = new ChunkPos(position.getRegionX()*32,position.getRegionZ()*32);
+            entryFolder=folder;
             path = entryFolder.resolve("r." + position.getRegionX() + "." + position.getRegionZ() + ".mca");
             columnPath = entryFolder.resolve("r." + position.getRegionX() + "." + position.getRegionZ() + ".columns.z");
             materialPath = entryFolder.resolve("r." + position.getRegionX() + "." + position.getRegionZ() + ".materials");
@@ -159,7 +156,7 @@ final class TemporaryRegions implements AutoCloseable {
         }
         synchronized void dispose() {
             cool();
-            try { Files.deleteIfExists(path); Files.deleteIfExists(columnPath); Files.deleteIfExists(materialPath); if(bend!=null)Files.deleteIfExists(entryFolder); }
+            try { Files.deleteIfExists(path); Files.deleteIfExists(columnPath); Files.deleteIfExists(materialPath); }
             catch (IOException error) { Retina.LOGGER.warn("Could not remove temporary Retina region {}", path, error); }
         }
 

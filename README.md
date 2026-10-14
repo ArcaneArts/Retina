@@ -79,7 +79,7 @@ including when it uses an already-running Gradle daemon.
 Create a new single-player world and select a Retina world type in the **World** tab:
 
 - **Retina Rust**: the default Retina mode; Rust writes whole regions.
-- **Retina Bend**: the experimental Bend terrain implementation with small cached batches.
+- **Retina Bend**: the experimental Bend terrain implementation with complete cached MCA regions.
 
 The old chunk preset still decodes existing saves but is no longer selectable.
 

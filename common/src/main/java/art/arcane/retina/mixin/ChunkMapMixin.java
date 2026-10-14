@@ -46,7 +46,7 @@ public abstract class ChunkMapMixin {
         if (generator() instanceof RetinaChunkGenerator retina && retina.bendMode()
                 && chunk.getPersistedStatus().isBefore(net.minecraft.world.level.chunk.status.ChunkStatus.TERRAIN)) {
             // These holders only contain preliminary biome/status data. Saving
-            // them would overwrite a completed neighbor from Bend's sparse batch.
+            // them would overwrite a completed neighbor from Bend's completed region.
             chunk.tryMarkSaved();
             callback.setReturnValue(false);
         }

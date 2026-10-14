@@ -75,7 +75,9 @@ public final class BendWorldIntegrationTest {
             });
             require(generator.metrics().snapshot().previewRegions()==0,"status probes do not assemble terrain");
             coordinator.close();
+            var overlapping=CompletableFuture.supplyAsync(() -> generator.previewCache().read(new ChunkPos(-1,31)));
             generator.buildTerrain(proto,Blender.empty(),random,null,null,null,Set.copyOf(biomes)).join();
+            require(overlapping.join()!=null,"a distant surface request shares the active region build");
             require(generator.metrics().snapshot().previewRegions()==1,"one shared region build");
             var tag=generator.previewCache().read(position);
             require(tag.getStringOr("Status","").equals("minecraft:features") && !tag.getBooleanOr("isLightOn",true),"Minecraft owns preview lighting");
@@ -86,12 +88,12 @@ public final class BendWorldIntegrationTest {
             var destination=folder.resolve("r.-1.0.mca");
             Files.createFile(destination);
             var report=generator.publishPreview(position,destination);
-            require(report.generated()==16 && BendRegionFiles.complete(destination,position,4),"empty placeholder is promoted");
+            require(report.generated()==1024 && BendRegionFiles.complete(destination,position,32),"entire temporary region is promoted");
             try(var storage=new RegionFileStorage(new RegionStorageInfo("bend-preview-test",Level.OVERWORLD,"chunk"),folder,false)) {
                 var edited=storage.read(position);edited.putString("retina_edit","preserved");storage.write(position,edited);
             }
             var again=generator.publishPreview(position,destination);
-            require(again.generated()==0 && again.preserved()==16,"repeat promotion preserves all saved chunks");
+            require(again.generated()==0 && again.preserved()==1024,"repeat promotion preserves all saved chunks");
             try(var storage=new RegionFileStorage(new RegionStorageInfo("bend-preview-test",Level.OVERWORLD,"chunk"),folder,false)) {
                 require(storage.read(position).getStringOr("retina_edit","").equals("preserved"),"edit survives reopen and promotion");
             }
@@ -99,23 +101,30 @@ public final class BendWorldIntegrationTest {
             try(var storage=new RegionFileStorage(new RegionStorageInfo("bend-preview-test",Level.OVERWORLD,"chunk"),folder,false)) {
                 var partial=storage.read(unfinished);partial.putString("Status","minecraft:biomes");partial.putString("retina_probe","discard");storage.write(unfinished,partial);
             }
-            require(!BendRegionFiles.complete(destination,position,4),"saved biome-only probe is not completed terrain");
+            require(!BendRegionFiles.complete(destination,position,32),"saved biome-only probe is not completed terrain");
             var repaired=generator.publishPreview(position,destination);
-            require(repaired.generated()==1 && repaired.preserved()==15 && BendRegionFiles.complete(destination,position,4),"only unfinished probe data is replaced");
+            require(repaired.generated()==1 && repaired.preserved()==1023 && BendRegionFiles.complete(destination,position,32),"only unfinished probe data is replaced");
             try(var storage=new RegionFileStorage(new RegionStorageInfo("bend-preview-test",Level.OVERWORLD,"chunk"),folder,false)) {
                 require(!storage.read(unfinished).contains("retina_probe") && storage.read(position).getStringOr("retina_edit","").equals("preserved"),"repair preserves finished chunk edits");
             }
-            var neighbor=new ChunkPos(-28,0);
-            generator.previewCache().read(neighbor);
+            var neighbor=new ChunkPos(-1,31);
+            var reads=new ArrayList<CompletableFuture<net.minecraft.nbt.CompoundTag>>();
+            for(var next:List.of(neighbor,new ChunkPos(-16,16),new ChunkPos(-32,31),new ChunkPos(-1,0)))
+                reads.add(CompletableFuture.supplyAsync(() -> generator.previewCache().read(next)));
+            CompletableFuture.allOf(reads.toArray(CompletableFuture[]::new)).join();
+            require(generator.previewCache().size()==1 && generator.metrics().snapshot().previewRegions()==1,"different and concurrent chunk requests reuse the whole region");
+            require(generator.cacheKey(position)==generator.cacheKey(neighbor) && generator.cacheKey(position)!=generator.cacheKey(new ChunkPos(0,0)),"region keys use signed 32-chunk boundaries");
             var merged=generator.publishPreview(neighbor,destination);
-            require(merged.generated()==16 && BendRegionFiles.complete(destination,neighbor,4),"adjacent sparse batches merge into one MCA");
+            require(merged.generated()==0 && merged.preserved()==1024 && BendRegionFiles.complete(destination,neighbor,32),"distant chunk promotion reuses the completed MCA");
             try(var storage=new RegionFileStorage(new RegionStorageInfo("bend-preview-test",Level.OVERWORLD,"chunk"),folder,false)) {
-                require(storage.read(neighbor)!=null && storage.read(position).getStringOr("retina_edit","").equals("preserved"),"merge preserves earlier edits and loads new terrain");
+                require(storage.read(neighbor)!=null && storage.read(position).getStringOr("retina_edit","").equals("preserved"),"full-region promotion preserves edits and loads distant terrain");
             }
             var decoded=net.minecraft.world.level.chunk.storage.SerializableChunkData.parse(proto,factory,tag);
             require(decoded!=null && decoded.sectionData().size()>=24,"Minecraft decodes all Bend sections");
             var lines=art.arcane.retina.debug.TerrainDebugReport.lines(new TerrainStatsPayload(true,generator.backend(),"bend",generator.metrics().snapshot()));
             require(lines.stream().anyMatch(s -> s.contains("Bend (preview)")) && lines.stream().anyMatch(s -> s.contains("Minecraft lighting")),"F3 labels incomplete preview honestly");
+            require(lines.stream().anyMatch(s -> s.contains("Region latency:")) && lines.stream().noneMatch(s -> s.contains("batch latency") || s.contains("Temporary batches")),"F3 reports full regions");
+            require(generator.metrics().snapshot().total()==1024 && generator.metrics().snapshot().regionSamples()==1,"promotions and cached reads do not change the region timing window");
             System.out.println("PASS: combined Bend terrain, Minecraft decode, height queries, promotion and saved edit preservation; Rust unavailable");
         } finally {
             generator.closePreviews();
