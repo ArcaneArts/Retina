@@ -90,12 +90,15 @@ def sections(+n: U32,+dx: U32,+dz: U32,+width: U32,+columns: Q.Table<MD.Column>,
       blocks(256,dx,dz,width,U32.mul(U32.sub(n,1),16),columns,[0:U32*4096n]),
       biomes(64,dx,dz,width,columns,caves,Q.shifted(point,D.scalar(0.0),D.unsigned(U32.mul(U32.sub(n,1),16)),D.scalar(0.0)),low,high,[0:U32*64n]),None{}} <> acc)
 
-def encode(grid: MD.Grid,catalog: CC.Catalog,request: Request) -> Result<&1,&1,U32,Z.Bytes>:
+def encode_metadata(grid: MD.Grid,catalog: CC.Catalog,request: Request,metadata: C.Metadata) -> Result<&1,&1,U32,Z.Bytes>:
   match grid request:
     case MD.Grid{S.Tile{+ox,+oz,+width,_,_,_},+minimum,+height,columns,caves} Request{+x,+z,+low,+high,version}:
       C.encode(C.Chunk{version,x,z,N.signed(F32.div(D.value(D.integer(minimum)),16.0)),U32.div(height,16),
         sections(U32.div(height,16),F32.to_u32(D.value(D.sub(world(x),D.integer(ox)))),
-          F32.to_u32(D.value(D.sub(world(z),D.integer(oz)))),width,columns,caves,Q.Point{world(x),D.integer(minimum),world(z)},low,high,[]),None{},C.Metadata{[],[],[],[]}},CC.profile(catalog))
+          F32.to_u32(D.value(D.sub(world(z),D.integer(oz)))),width,columns,caves,Q.Point{world(x),D.integer(minimum),world(z)},low,high,[]),None{},metadata},CC.profile(catalog))
+
+def encode(grid: MD.Grid,catalog: CC.Catalog,request: Request) -> Result<&1,&1,U32,Z.Bytes>:
+  encode_metadata(grid,catalog,request,C.Metadata{[],[],[],[]})
 
 def compress_result(compress: Bool,result: Result<&1,&1,U32,Z.Bytes>) -> Result<&1,&1,U32,Z.Bytes>:
   match compress result:

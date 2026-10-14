@@ -1,0 +1,14 @@
+{
+  "cases": 45444,
+  "arithmetic_results": 90888,
+  "integer_results": 181776,
+  "status": "pass",
+  "executable_sha256": "fc53920803fe212588160fb58d5f0ac60fe0b87eccb3f64b8cc5f77f0f3dc849",
+  "input_sha256": "b86c245d3494e1049db45b09e8b864014ae52da21ba74292de2d323e8e4536d0",
+  "output_sha256": "3052d6b5835b675dd58bbedc088658d7581c3bfa0c08cf3bd2bbe190c31081b6",
+  "sources": {
+    "bend/float64.bend": "57cb4b5cb5a2bbf170d4c09eccfa57f8e4f98c64270d570b48b1c60c3367fc3c",
+    "bend/tests/float64.bend": "6515fe566a255cf69df451120931c6556bf674fc7a30de9247afc2499e87b1b5",
+    "scripts/test_bend_float64.py": "77ddd520fef8e2065b9e5ff898bd3fd6e1b4ff3b9e8ba66147592e77246c607e"
+  }
+}

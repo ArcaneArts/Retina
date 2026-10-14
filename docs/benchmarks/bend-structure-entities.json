@@ -1,0 +1,52 @@
+{
+  "results": [
+    {
+      "profile": "synthetic",
+      "templates": 1,
+      "cases": 68,
+      "entities": 504,
+      "worker_wall_seconds": 0.08881550002843142,
+      "input_sha256": "2a039702605895a7ab8dbccc3d35f24eededd9a32d0f0fe6289fd91b4933d062",
+      "output_sha256": "daf1998d38f9393f845b627623349a1df2c8900af9c2a15e76d2dfe5ec892408"
+    },
+    {
+      "profile": "profile-0",
+      "templates": 167,
+      "cases": 6012,
+      "entities": 6792,
+      "worker_wall_seconds": 0.48455029202159494,
+      "input_sha256": "ab43a8be2129cf0343f79e22a5ef0861614b59b5b3cca4fb4024b22a02eeb637",
+      "output_sha256": "a037bdeddeb74c4cbe2e14351f8797eee29e787ca0672f1ae0b70ee8c26f8ec7",
+      "profile_sha256": "aefce6ff0e800966ad55920c5d21510dfa277de4612f67e22d5146d3aa838203"
+    },
+    {
+      "profile": "profile-1",
+      "templates": 190,
+      "cases": 6972,
+      "entities": 8376,
+      "worker_wall_seconds": 0.6319664169568568,
+      "input_sha256": "06be254a65db30231db103f7e4bbf772d861855f46564983141385f681e5ac73",
+      "output_sha256": "8f90498ed7812a06104cd4f4eccd7662e880e5aa68afa59cf0c03cc25c7990e8",
+      "profile_sha256": "c9abbe97860a394ed899d64967bd0395bb9bb4ec71a9dff43d1bb45893fefd4d"
+    },
+    {
+      "profile": "profile-2",
+      "templates": 190,
+      "cases": 6972,
+      "entities": 8376,
+      "worker_wall_seconds": 0.6307329999981448,
+      "input_sha256": "06be254a65db30231db103f7e4bbf772d861855f46564983141385f681e5ac73",
+      "output_sha256": "8f90498ed7812a06104cd4f4eccd7662e880e5aa68afa59cf0c03cc25c7990e8",
+      "profile_sha256": "068fd602ad497128dd3960cb9be76840ebd41882b5b64c25acfa76d65e930c8b"
+    }
+  ],
+  "status": "pass",
+  "executable_sha256": "891d62cdc830c44b7236b63f93a0731a8e904d65ebcc97023ad673dd2f5a5ea4",
+  "sources": {
+    "bend/float64.bend": "57cb4b5cb5a2bbf170d4c09eccfa57f8e4f98c64270d570b48b1c60c3367fc3c",
+    "bend/structure_entities.bend": "56bdcb377974d730e06efc2e1c1dc829e81f5f14400195ac74b072ce4ae7388b",
+    "bend/structure_nbt.bend": "81fe581f0a89aceebeae0db54947da8f7648ca3494873b1e2026a6de6a14cc3c",
+    "bend/tests/structure-entities.bend": "8b173fed37134e48f80167557897f1c67a9a80a6ff73ebe736863ed68fc25160",
+    "scripts/test_bend_structure_entities.py": "704fa48deb440709124d15f15466487661d0a71ac6ed2f4e0736cc3424f4f2c3"
+  }
+}

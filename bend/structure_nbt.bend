@@ -80,12 +80,30 @@ def float_bits(value: R.Value) -> U32:
 @unsafe
 def string(-A: Type,doc: R.Document,id: U32,w: B.Writer,next: R.Document -> B.Writer -> A) -> A:
   match id:
+    case 4294967232: next(doc,Nbt.text(w,"id"))
+    case 4294967233: next(doc,Nbt.text(w,"ChunkX"))
+    case 4294967234: next(doc,Nbt.text(w,"ChunkZ"))
+    case 4294967235: next(doc,Nbt.text(w,"references"))
+    case 4294967236: next(doc,Nbt.text(w,"Children"))
+    case 4294967237: next(doc,Nbt.text(w,"BB"))
+    case 4294967238: next(doc,Nbt.text(w,"O"))
+    case 4294967239: next(doc,Nbt.text(w,"GD"))
+    case 4294967240: next(doc,Nbt.text(w,"template"))
+    case 4294967241: next(doc,Nbt.text(w,"starts"))
+    case 4294967242: next(doc,Nbt.text(w,"References"))
+    case 4294967243: next(doc,Nbt.text(w,"structures"))
+    case 4294967244: next(doc,Nbt.text(w,"entities"))
+    case 4294967245: next(doc,Nbt.text(w,"block_entities"))
+    case 4294967246: next(doc,Nbt.text(w,"retina:template"))
     case 4294967280: next(doc,Nbt.text(w,"LootTable"))
     case 4294967281: next(doc,Nbt.text(w,"x"))
     case 4294967282: next(doc,Nbt.text(w,"y"))
     case 4294967283: next(doc,Nbt.text(w,"z"))
     case 4294967284: next(doc,Nbt.text(w,"keepPacked"))
     case 4294967285: next(doc,Nbt.text(w,"LootTableSeed"))
+    case 4294967286: next(doc,Nbt.text(w,"Pos"))
+    case 4294967287: next(doc,Nbt.text(w,"UUID"))
+    case 4294967288: next(doc,Nbt.text(w,"Rotation"))
     case _: R.string(A,doc,id,doc => reference => string_ref(A,doc,reference,w,next))
 
 @unsafe
