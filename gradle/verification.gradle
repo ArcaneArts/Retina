@@ -1132,3 +1132,18 @@ tasks.register('bendTreeMcaDecodeTest', JavaExec) {
         args rootProject.file('build/registry-fixtures/registry-supplement.zip').absolutePath
     }
 }
+
+// Decoding only: scripts/test_bend_structure_replay.py produces these files.
+tasks.register('bendStructureMcaDecodeTest', JavaExec) {
+    group = 'verification'
+    description = 'Read/reopen Bend structure MCA fixtures using Minecraft region and chunk decoders.'
+    dependsOn 'gpuTestClasses'
+    classpath = sourceSets.gpuTest.runtimeClasspath
+    mainClass = 'art.arcane.retina.worldgen.BendGeneratedChunkIntegrationTest'
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
+    jvmArgs '-XX:ActiveProcessorCount=2'
+    args '--sparse-regions', rootProject.file('build/bend/structure-mca-loader').absolutePath,
+            (0..2).collectMany { profile -> (0..2).collect { sample -> "profile-${profile}-${sample}" } }.join(',')
+    if (providers.gradleProperty('testDatapack').isPresent()) args providers.gradleProperty('testDatapack').get()
+    if (providers.gradleProperty('testSupplement').isPresent()) args providers.gradleProperty('testSupplement').get()
+}
