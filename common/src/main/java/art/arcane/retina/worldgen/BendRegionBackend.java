@@ -5,11 +5,10 @@ import java.io.IOException;
 import java.nio.file.*;
 import java.time.Instant;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionException;
 
 /** Per-world build lease. Java transports registry data and schedules Bend stages;
  * all generated blocks, biome selection, NBT, zlib and MCA bytes belong to Bend. */
-final class BendRegionBackend implements AutoCloseable {
+final class BendRegionBackend implements AutoCloseable, TerrainQueries.Backend {
     static final int REGION_CHUNKS = 32;
     static final int REGION_BLOCKS = REGION_CHUNKS * 16;
     private static final int VEGETATION_MARGIN = 32;
@@ -63,7 +62,10 @@ final class BendRegionBackend implements AutoCloseable {
         }
     }
 
+    @Override public java.util.List<net.minecraft.core.Holder<net.minecraft.world.level.biome.Biome>> biomes(java.util.List<net.minecraft.core.BlockPos> points) { return queryBiomes(points); }
+
     synchronized java.util.List<net.minecraft.core.Holder<net.minecraft.world.level.biome.Biome>> queryBiomes(java.util.List<net.minecraft.core.BlockPos> points) {
+        if(Thread.currentThread().isInterrupted()) throw new java.util.concurrent.CancellationException("Bend query interrupted");
         try {
             initialize();
             var result = new java.util.ArrayList<net.minecraft.core.Holder<net.minecraft.world.level.biome.Biome>>(points.size());
@@ -85,11 +87,48 @@ final class BendRegionBackend implements AutoCloseable {
             }
             stage="ready"; return java.util.List.copyOf(result);
         } catch(IOException error) { discardWorker(); throw new java.io.UncheckedIOException(error); }
+        catch(java.util.concurrent.CancellationException error) { discardWorker(); throw error; }
+    }
+
+    @Override public java.util.List<net.minecraft.world.level.ChunkPos> candidates(TerrainQueries.SearchSet set, java.util.List<net.minecraft.world.level.ChunkPos> cells) {
+        int[] input=new int[cells.size()*3];
+        for(int i=0;i<cells.size();i++) { var p=cells.get(i); input[i*3]=p.x(); input[i*3+1]=p.z(); input[i*3+2]=set.index(); }
+        int[] output=structureQuery(57,input,2);
+        var result=new java.util.ArrayList<net.minecraft.world.level.ChunkPos>(cells.size());
+        for(int i=0;i<output.length;i+=2) result.add(new net.minecraft.world.level.ChunkPos(output[i],output[i+1]));
+        return java.util.List.copyOf(result);
+    }
+
+    @Override public int[] starts(int[] candidates) { return structureQuery(58,candidates,1); }
+
+    synchronized net.minecraft.nbt.CompoundTag structureStarts(net.minecraft.world.level.ChunkPos position) {
+        if(Thread.currentThread().isInterrupted()) throw new java.util.concurrent.CancellationException("Bend query interrupted");
+        try {
+            initialize();
+            byte[] bytes=await("structure start metadata",worker.queryStructures(59,settings.seed(),new int[]{position.x(),position.z(),0}),false);
+            var result=net.minecraft.nbt.NbtIo.read(new java.io.DataInputStream(new java.io.ByteArrayInputStream(bytes)));
+            stage="ready";return result;
+        } catch(IOException error) { discardWorker(); throw new java.io.UncheckedIOException(error); }
+        catch(java.util.concurrent.CancellationException error) { discardWorker(); throw error; }
+    }
+
+    private synchronized int[] structureQuery(int opcode,int[] input,int stride) {
+        if(Thread.currentThread().isInterrupted()) throw new java.util.concurrent.CancellationException("Bend query interrupted");
+        try {
+            initialize();
+            byte[] bytes=await(opcode==57 ? "structure candidates" : "structure layouts",worker.queryStructures(opcode,settings.seed(),input),false);
+            int count=input.length/3;
+            if(bytes.length!=count*stride*4) throw new IOException("Invalid Bend structure query length");
+            int[] result=new int[count*stride];var buffer=java.nio.ByteBuffer.wrap(bytes);
+            for(int i=0;i<result.length;i++)result[i]=buffer.getInt();
+            stage="ready";return result;
+        } catch(IOException error) { discardWorker(); throw new java.io.UncheckedIOException(error); }
+        catch(java.util.concurrent.CancellationException error) { discardWorker(); throw error; }
     }
 
     synchronized NativeTerrain.RegionReport generate(TerrainRequest request, Path path, int dataVersion) throws IOException {
         try { return generateRegion(request,path,dataVersion); }
-        catch (IOException failure) { discardWorker(); throw failure; }
+        catch (IOException | java.util.concurrent.CancellationException failure) { discardWorker(); throw failure; }
     }
 
     private NativeTerrain.RegionReport generateRegion(TerrainRequest request, Path path, int dataVersion) throws IOException {
@@ -131,8 +170,12 @@ final class BendRegionBackend implements AutoCloseable {
     private byte[] await(String label, CompletableFuture<byte[]> request,boolean logTiming) throws IOException {
         stage = label;
         long start = System.nanoTime();
-        try { return request.join(); }
-        catch (CompletionException failure) { throw new IOException("Bend stage failed: " + label, failure.getCause()); }
+        try { return request.get(); }
+        catch (InterruptedException failure) {
+            Thread.currentThread().interrupt();
+            throw new java.util.concurrent.CancellationException("Bend stage interrupted: " + label);
+        }
+        catch (java.util.concurrent.ExecutionException failure) { throw new IOException("Bend stage failed: " + label, failure.getCause()); }
         finally { if(logTiming) Retina.LOGGER.info("Bend stage {}: {} ms", label,(System.nanoTime()-start)/1e6); }
     }
 

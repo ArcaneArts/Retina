@@ -36,8 +36,9 @@ Java extracts the effective Minecraft registries and handles
 requests, decoding and atomic publication of opaque MCA sectors. Rust is never a
 fallback for this mode. Nether/End retain the preset's vanilla generators.
 
-Bend structure location and computed lighting are still pending. Preview chunks
-explicitly have `isLightOn=false`; Minecraft lights them.
+Bend structure lookup uses the same candidate and layout planner as region generation.
+Computed lighting is still pending. Preview chunks explicitly have
+`isLightOn=false`; Minecraft lights them.
 F3 names the backend and stage, labels the preview limitations and reports the
 last 20 completed **region** latencies, derived chunks/second and amortized
 chunk time. These unlit figures must not be compared to lit Rust regions as
@@ -208,7 +209,7 @@ more deeply; retain the original requested scope.
 | Ore height/count/replacement/discard rules and GPU rasterization | `geology/`, `ore.wgsl` | Registered recipe projection, packed membership/material tables and selected-backend ordered replacement/exposure policy implemented. Registered count/rarity/height attempts and local sphere-chain/scattered geometry now execute on CPU/GPU. Local sphere-union masks and ordered scattered points now calculate in the same selected-backend evaluation as geometry. Spatial surface/cave membership filtering, stable neighboring contribution buckets and ordered resident-block replay now run in one selected CPU/GPU evaluation, with immutable exposure halo checks and independent voxel/NBT/zlib validation. Playable terrain integration implemented; full parity and performance work remain required |
 | Ordered decoration, registered counts, provider noise and placement modifiers | `DecorationProfile.java`, `decoration/placement*`, `counts/`, `provider_noise/` | Registered recursive integer providers, count/offset projection, build-relative height distributions and actual-permutation spatial count noise independently checked on CPU/Metal. Typed ordered-program projection, exact placement-salt grouping, recursive predicates, live block/heightmap overlay and terrain-dependent checks now independently checked on CPU/Metal. Lazy ordered count/layer/cuboid execution and shared selector budgets now have an independent CPU/Metal component harness. All ten block-provider families, full 64-bit weighted decisions, current-state property transforms and initialized permutation/offset noise now independently checked on CPU/Metal. Simple-block, block-column, disk, ordinary plant, aquatic and bamboo writers now independently replay live material changes and RNG state on CPU/Metal. Ordered accepted FEATURE overlays now merge into resident runs with final plant repair, core cropping and independently decoded MCA checks; all 17 registered feature families now join canonical neighboring-anchor replay in the playable CPU vegetation stage; full-region parity remains pending |
 | Trees and decorators, giant mushrooms, fallen trees, disks, vegetation patches, block columns, bamboo, aquatic plants and attachments | `decoration.rs`, `decoration/`, `tree_shapes.rs` | Simple-block, block-column, disk, ordinary plant, aquatic and bamboo writers and registry projections independently checked on CPU/Metal, including nested recipes and accepted writes through MCA serialization. Registered tree trunks/crowns, weighted axis/distance states, connected leaves, roots, vines and cocoa now have pure Bend writers and ordered role replay. Resident anchor coordination now combines registered placement streams with the ten implemented writer families, preserving live heightmaps, cached parent queries, recipe identities, bounded resumption and explicit unavailable-family outcomes; original-profile replay and a complete ten-family fixture are validated on CPU; earlier nine-family Metal controls retain their historical hashes. Registered huge mushrooms and fallen logs now preserve cap-face/axis properties, ordered live providers and decorators on CPU/Metal. Registered vines/multiface attachments now have independent CPU/Metal writer checks and join the ten-family CPU coordinator. Registered vegetation patches and all nested selector/composite/placement programs now have independent CPU voxel/RNG checks and join the complete 17-family CPU coordinator. Accepted-command journals preserve write roles and transient writes through canonical neighboring-anchor replay, final repair and MCA encoding on CPU. The persistent playable worker now executes all 17 families with coherent neighboring terrain before cropping; full-region parity remains pending |
-| Jigsaw pools/templates/processors, structures spanning regions and locate queries | `StructureProfile.java`, `structures.rs`, `structure_processors.rs`, `queries.rs` | Pure Bend structure-set candidates, frequency/exclusions, weighted biome selection and full jigsaw/standalone layouts implemented and independently checked against original vanilla/Terralith/combined profiles. Cached whole-start replay now combines rotated templates, ordered processors, foundations, final plant repair and start/reference records into compressed MCA chunks. Region candidate/height orchestration and bounded start reuse now feed the playable worker; independently checked GPU probes and canonical CPU layouts retain full seed identity across neighboring regions. Structure location and live-world visual acceptance remain pending |
+| Jigsaw pools/templates/processors, structures spanning regions and locate queries | `StructureProfile.java`, `structures.rs`, `structure_processors.rs`, `queries.rs` | Pure Bend structure-set candidates, frequency/exclusions, weighted biome selection and full jigsaw/standalone layouts implemented and independently checked against original vanilla/Terralith/combined profiles. Cached whole-start replay now combines rotated templates, ordered processors, foundations, final plant repair and start/reference records into compressed MCA chunks. Region candidate/height orchestration and bounded start reuse now feed the playable worker; independently checked GPU probes and canonical CPU layouts retain full seed identity across neighboring regions. Batched structure location and metadata-only start queries now share the Bend layout cache; live-world visual acceptance remains pending |
 | Structure entities/block entities/loot and attachment rotations | `nbt.rs`, `structures.rs`, `structure_processors.rs` | Processor tag changes, block-entity coordinates/keepPacked/loot seeds, and lossless typed-NBT output implemented and independently decoded. Template entity transforms, deterministic UUIDs and attachment rotations now serialize through whole-start replay into compressed MCA chunks. The playable region stage retains structure blocks and encoded metadata before weather and serialization. Minecraft metadata installation is shared by both backends; live-level entity behavior remains to be verified |
 | Snow, freezing, plant support and path/gravel restrictions | `LightingProfile.java`, profile material/survival tables, `region.rs` | Final registered plant floor-mask and signed-pair cleanup implemented in the overlay merger and independently checked on CPU/Metal, including paths and crop/build boundaries. Registered final snow/freezing now projects loaded temperatures, feature/precipitation flags, layer IDs, height masks and support rules in Bend. Independent per-column run scans execute on the selected CPU/GPU backend after vegetation and before MCA serialization; snow avoids ordinary frozen-ocean ice and active lake columns. Structure replay now runs the same loaded support/pair cleanup before final weather |
 | Full 64-bit seeds, signed/distant coordinates and repeatable ordering | `ChunkRequest`, native hash/random routines | Exact word-pair add/subtract/multiply/bit operations implemented; 3,689 operations independently verified. Typed i64/f64-to-F32 rounding independently verifies 131,072 scalar conversions per CPU/GPU run, including distant-value midpoint cases. Integration and coordinate/order checks pending |
@@ -2876,8 +2877,8 @@ metadata. Preparing projections of the same loaded profile keeps layout reuse.
 The Java bridge exports the world's structure context rather than suppressing
 it, calls worker opcode 56 after vegetation, and installs starts/references,
 block-entity NBT and entities for already allocated protochunks. Existing
-Rust behavior stays on its existing backend. `/locate` support for Bend remains
-unfinished and is labelled as such in F3.
+Rust behavior stays on its existing backend. The subsequent structure-query cycle
+below connects Bend layouts to `/locate` and early chunk metadata requests.
 
 The original vanilla, Terralith and combined-profile coordinator tests check
 candidate membership, full-seed selection, every piece transform, unclamped
@@ -2909,3 +2910,40 @@ are recorded in `docs/benchmarks/bend-structure-worker.json`; coordinator eviden
 is in `docs/benchmarks/bend-structure-region.json`. Reproduce locally with
 `python3 scripts/test_bend_structure_worker.py --binary build/bend/engine --gpu`
 and `./gradlew :common:bendWorldIntegrationTest --max-workers=2 --no-parallel`.
+
+
+### Bend structure lookup and early start metadata
+
+The persistent worker now accepts bounded potential-candidate queries (57),
+actual nonempty-layout queries (58), and owner-chunk start NBT requests (59).
+All three use the registered Bend structure model and full seed. Layout queries
+share the region planner, GPU biome/height probes, and 64-entry accepted/rejected
+start cache. They can run before the first terrain tile exists. Cache eviction
+cannot remove a hit from the current response; profile reload invalidates reuse.
+Queries preserve the resident block grid and its serialized output metadata.
+
+The shared Java search checks saved start records first, including saved empty
+results and explorer-map reference counts. For unknown candidates, Bend computes
+candidate coordinates and accepts only layouts with actual pieces. Java handles
+search ordering, saved-file access, and Minecraft's reference mutation. The
+`STRUCTURE_STARTS` step requests only Bend start NBT, avoiding full-region
+creation for Minecraft's dependency probes. Later feature metadata preserves
+reference counts already changed by Minecraft. Interrupting a Bend query closes
+the active worker instead of leaving a blocking transport request behind.
+
+These additions do not change terrain or structure layout algorithms. Computed
+lighting, final biome-query parity, live-level entity acceptance and equivalent
+complete lit-region performance measurements remain required by the full goal.
+
+
+A full-region integration run with early queries exposed a Metal GPU hang in
+cave carving. The previous carver submitted all region columns in one device
+command. It now divides that independent column work into sequential dispatches
+of at most 16,384 columns, retaining global coordinates, immutable input fields,
+and the same ordered output tree. This bounds per-dispatch work without moving
+carving to a CPU or changing its material decisions. The controlled 130x130
+column test observes two actual Metal command buffers and retains identical
+CPU/GPU MCA bytes. The complete 1,024-chunk Minecraft integration test passes
+with Rust unavailable, including early start queries, loaded structure metadata,
+reference-count preservation, temporary-region promotion and save/reopen edits.
+This is functional evidence, not an equivalent lit-region performance benchmark.

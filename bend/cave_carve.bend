@@ -184,12 +184,28 @@ def present(value: Maybe<&2,Q.Vec4>) -> Bool:
     case None{}: False{}
     case Some{_}: True{}
 
+# Each column is independent and reads the same immutable terrain/cave fields.
+# A full region used one long-running GPU command, which can trigger Metal's
+# watchdog. Bound dispatch work while keeping global indices and output order.
+@unsafe
+def batches(+n: U32,+base: U32,+source: Q.Table<MD.Column>,+tile: S.Tile,+grid: CV.Grid,+profile: G.Profile,+sea: U32,+water: U32,+span: U32) -> Q.Table<MD.Column>:
+  batch_size(U32.is_le(n,16384),n,base,source,tile,grid,profile,sea,water,span)
+
+@unsafe
+def batch_size(small: Bool,+n: U32,+base: U32,+source: Q.Table<MD.Column>,+tile: S.Tile,+grid: CV.Grid,+profile: G.Profile,+sea: U32,+water: U32,+span: U32) -> Q.Table<MD.Column>:
+  match small:
+    case True{}: columns!(1,n,base,source,tile,grid,profile,sea,water,span)
+    case False{}:
+      +half = U32.div(n,2)
+      # No fork here: complete one bounded dispatch before submitting the next.
+      Q.Branch{n,batches(half,base,source,tile,grid,profile,sea,water,span),
+        batches(U32.sub(n,half),U32.add(base,half),source,tile,grid,profile,sea,water,span)}
+
 @unsafe
 def execute(source: MD.Grid,+grid: CV.Grid,profile: G.Profile,sea: U32,water: U32) -> Computed:
   match source:
     case MD.Grid{+tile,minimum,+span,values,_}:
-      result : Q.Table<MD.Column> = columns!(U32.max(1,U32.div(U32.add(S.total(tile),16383),16384)),S.total(tile),0,values,tile,grid,profile,sea,water,span)
-      Computed{MD.Grid{tile,minimum,span,result,Some{grid}}}
+      Computed{MD.Grid{tile,minimum,span,batches(S.total(tile),0,values,tile,grid,profile,sea,water,span),Some{grid}}}
 
 def values(grid: MD.Grid) -> Q.Table<MD.Column>:
   match grid:

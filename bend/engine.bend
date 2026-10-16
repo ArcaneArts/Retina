@@ -63,6 +63,9 @@ import ./registry_snow.bend as RegistrySnow
 import ./region_stream.bend as RegionStream
 import ./structure_stage.bend as Structures
 import ./structure_terrain.bend as StructureTerrain
+import ./structure_query.bend as StructureQuery
+import ./structure_nbt.bend as StructureNbt
+import ./structure_registry.bend as StructureRegistry
 import ./chunk_metadata.bend as ChunkTags
 import ./word64.bend as Word64
 
@@ -1446,6 +1449,9 @@ def dispatch(input: File,output: File,stack: State,backend: U32,id: U32,opcode: 
     case 54: freezing_core(R.end(R.start(body)),input,output,stack,backend,id,54)
     case 55: region_stream(input,output,stack,backend,id,55,body)
     case 56: structures_core(R.end(R.start(body)),input,output,stack,backend,id,56)
+    case 57: structure_query(StructureQuery.decode(body),input,output,stack,backend,id,57)
+    case 58: structure_query(StructureQuery.decode(body),input,output,stack,backend,id,58)
+    case 59: structure_query(StructureQuery.decode(body),input,output,stack,backend,id,59)
     case 4: empty_command(R.end(R.start(body)),input,output,stack,backend,id,4)
     case _: error(input,output,stack,backend,id,opcode,605)
 
@@ -1696,3 +1702,55 @@ def clear_structure_tags(old: State) -> State:
 @unsafe
 def carved_attach(grid: MD.Grid,old: State) -> State:
   grid_attach(grid,clear_structure_tags(old))
+
+@unsafe
+def structure_query(decoded: Result<&1,&1,U32,StructureQuery.Query>,input: File,output: File,old: State,backend: U32,id: U32,opcode: U32) -> IO(Unit):
+  match decoded old:
+    case Fail{code} _: error(input,output,old,backend,id,opcode,code)
+    case Done{query} State{+settings,Some{doc}}:
+      structure_query_cached(structure_session(State{settings,None{}}),query,doc,State{settings,None{}},input,output,backend,id,opcode)
+    case _ _: error(input,output,old,backend,id,opcode,881)
+
+@unsafe
+def structure_query_cached(found: Maybe<&2,Structures.Session>,query: StructureQuery.Query,doc: P.Document,old: State,input: File,output: File,backend: U32,id: U32,opcode: U32) -> IO(Unit):
+  match found:
+    case Some{session}: structure_query_prepared(Done{session},query,doc,old,input,output,backend,id,opcode)
+    case None{}: Structures.prepare(IO(Unit),doc,doc => result => structure_query_prepared(result,query,doc,old,input,output,backend,id,opcode))
+
+def query_density(found: Maybe<&2,L.Grid>) -> L.Grid:
+  match found:
+    case Some{grid}: grid
+    # Program zero cannot pass surface compatibility; each needed probe builds
+    # a globally aligned local lattice, even before the first region exists.
+    case None{}: L.Grid{L.Layout{Q.world(0,0,0),2,2,2,1,1,0,0,0},Q.Empty{}}
+
+@unsafe
+def structure_query_prepared(result: Result<&1,&1,U32,Structures.Session>,+query: StructureQuery.Query,doc: P.Document,+old: State,input: File,output: File,backend: U32,id: U32,+opcode: U32) -> IO(Unit):
+  match result query old:
+    case Fail{code} _ _: error(input,output,restored(old,doc),backend,id,opcode,code)
+    case Done{session} StructureQuery.Query{seed,_} State{Settings{_,Some{climate},Some{RD.Prepared{model,programs,_,_,_,density,Some{S.State{config,_}},_}}},_}:
+      do IO<Unit>:
+        _ : Nat <- IO.now()
+        structure_query_computed(StructureQuery.run(opcode,session,StructureTerrain.Environment{config,query_density(density),model,programs,climate,seed},query),restored(old,doc),input,output,backend,id,opcode)
+    case _ _ _: error(input,output,restored(old,doc),backend,id,opcode,881)
+
+def structure_query_attached(session: Structures.Session,old: State) -> State:
+  match old:
+    case State{Settings{Common{noise,_,tags},climate,density},profile}: State{Settings{Common{noise,Q.Leaf{session},tags},climate,density},profile}
+
+@unsafe
+def structure_query_computed(result: Result<&1,&1,U32,StructureQuery.Computed>,old: State,input: File,output: File,backend: U32,id: U32,opcode: U32) -> IO(Unit):
+  match result:
+    case Fail{code}: error(input,output,old,backend,id,opcode,code)
+    case Done{StructureQuery.Computed{session,writer}}:
+      do IO<Unit>:
+        body : Z.Bytes <- payload(writer)
+        finish(input,output,structure_query_attached(session,old),backend,id,opcode,0,body,True{})
+    case Done{StructureQuery.Metadata{session,root}}: structure_query_metadata(session,root,old,input,output,backend,id,opcode)
+
+@unsafe
+def structure_query_metadata(session: Structures.Session,root: StructureRegistry.Node,old: State,input: File,output: File,backend: U32,id: U32,opcode: U32) -> IO(Unit):
+  match old:
+    case State{settings,Some{doc}}:
+      StructureNbt.root(IO(Unit),doc,root,B.new(),doc => writer => structure_query_computed(Done{StructureQuery.Computed{session,writer}},State{settings,Some{doc}},input,output,backend,id,opcode))
+    case _: error(input,output,old,backend,id,opcode,881)
