@@ -202,7 +202,7 @@ more deeply; retain the original requested scope.
 | --- | --- | --- |
 | Shared loaded registry export, including palette properties and climate intervals | `TerrainProfileData.java`, `RegistryGpuProgram.java`, `native/src/profile.rs` | Export decoupled from Rust initialization; actual vanilla, Terralith and Terralith+supplement registries pass with native library unavailable. Explicit Rust adapter receives byte-identical data and passes real Metal queries. Full structural profiles now stream into a resident Bend word tape with lossless field/array/string access and independent full-value checks. Loaded climate/ridge stacks now resolve schema keys and convert numeric parameters entirely in Bend; numeric terrain DAGs now project and execute in the resident worker; material predicates now project and execute on CPU/GPU; GPU-derived material contexts and exhaustive compact vertical block runs implemented; playable terrain preview integration implemented; full feature/light parity pending |
 | Noise stacks, density bytecode, splines and GPU interpolation | `native/src/program.rs`, `program/`, `program.wgsl`, `noise3.wgsl`, `simplex.wgsl` | Reusable Bend seeded simplex/3D gradient kernels, weighted octave stacks and trilinear primitive implemented and independently checked on CPU and actual Metal. Integer/fraction coordinate handling checked through signed-i32 extremes. Numeric density opcodes 0..31, registered noise, ordered Hermite splines and nested trilinear fields implemented and independently checked with actual vanilla/Terralith/combined climate and terrain graphs on CPU/Metal. Compensated transformed coordinates preserve distant neighbors. Resident typed model projection and bounded persistent CPU/GPU queries implemented with reload invalidation; bounded top-level GPU lattices now retain samples for independently checked trilinear queries. GPU surface-height scans now consume the resident lattice; GPU-derived compact material layers implemented; resident lattice caching and playable preview integration implemented; full parity pending |
-| Climate targets, biome selection, smooth boundaries and underground biomes | `climate.rs`, `climate.wgsl`, `RetinaBiomeSource.java` | Pure Bend balanced interval indices and surface/underground/coastal lookup implemented, checked against independent linear search with actual registered intervals on CPU and Metal. Typed resident-tape projection and persistent query commands implemented with explicit reload invalidation. GPU spatial climate fields and surface biome selection now consume resident density tiles; compact material layers implemented; interpolated terrain and selectable preview integration implemented; full parity pending |
+| Climate targets, biome selection, smooth boundaries and underground biomes | `climate.rs`, `climate.wgsl`, `RetinaBiomeSource.java` | Pure Bend balanced interval indices and surface/underground/coastal lookup implemented, checked against independent linear search with actual registered intervals on CPU and Metal. Typed resident-tape projection and persistent query commands implemented with explicit reload invalidation. GPU spatial climate fields and surface biome selection now consume resident density tiles; compact material layers implemented; interpolated terrain and selectable preview integration implemented. Final bounded quart-biome queries now match saved coastal/cave palettes and actual Minecraft decoding, with resident light preservation; broader parity remains under audit |
 | Coastlines, shore materials, rivers and material predicates/layers | `ShoreMaterialProfile.java`, `column_program.rs`, `materials.wgsl` | Pure Bend resident per-biome material DAGs and predicates (40..54) implemented with shared numeric evaluation, registered bands/sea/layer mode and bounded CPU/GPU query batches. GPU context/compact block runs implemented. Resident GPU coastal finalization now uses exact generated occupancy, six-block disk probes and registered climate alternatives before material generation; independent CPU/Metal checks cover inland/ocean exclusion, distinct materials and cache/coordinate rules. Playable terrain and 3D cave-biome integration implemented; inland river/ocean parity and full material parity remain required |
 | Caves, ravines, rare surface entrances and cave decoration | `GeologyProfile.java`, `geology.rs`, `features.rs`, `caves.wgsl` | Typed geology, cached globally aligned GPU/CPU cave fields, rounded noisy ravines and registered column carving implemented; independent voxel/serialized-region and actual Minecraft decoder checks pass. GPU/CPU depth-dependent cave-biome volumes now select registered carvers and serialize actual 3D quart IDs, retaining finalized surface biomes near the roof. Resident aquifers now supply carved cavity materials. Registered floor/ceiling cave dressing, vines, blossoms, dripstone and sparse plant survival now execute on the selected CPU/GPU backend. Playable terrain integration implemented; composed-density/exterior refinements and ordered surface decorations remain pending |
 | Lakes, aquifer fields and fluid barriers | `TerrainFeatureProfile.java`, `program/lake_sparse.rs`, `aquifers.wgsl` | Typed aquifer graph projection and GPU/CPU flooding, erosion, spread, lava, barrier and preliminary-surface evaluation implemented. Globally hashed resident fluid centers, trilinear barrier fields and nearest-center pressure now place registered cavity fluids while preserving protected/pressure-barrier materials. Registered lake budgets/materials, globally seeded candidates, five bank probes, bounded fluid levels and noisy basin/rim placement implemented on CPU/GPU before material coating. Independent block/NBT/zlib checks cover fluids, barriers, overlap and signed/distant coordinates; lake exclusions now use finalized pre-carving coast selection, including global probes outside the resident tile. Out-of-tile bank vertices now execute in bulk with exact prior geometry and material bytes, improving measured GPU lake-stage latency by 10.1–14.6×. Playable terrain integration implemented; full parity and performance work remain required |
@@ -3037,14 +3037,43 @@ preservation, changed-voxel invalidation and agreement between direct chunk and
 streamed MCA bytes. Equivalent complete lit Rust/Bend benchmarks and the other
 remaining parity items are still required.
 
-### Remaining integration findings
+## Final biome queries
 
-The current `BendRegionBackend.queryBiomes` still combines raw climate sampling
-(command 12) and nearest climate lookup (command 10). It does not finalize
-shoreline alternatives or underground biomes, or align query coordinates to the
-same quart cells as the saved chunks. Final generated chunk biomes are present,
-but preliminary holders and biome searches still require matching bounded
-queries and comparisons against decoded coastal and cave quart samples.
+`biome_query.bend` replaces the bridge's raw climate lookup with command 63.
+Bend clamps the requested height to the loaded build bounds, floors signed
+coordinates to their containing four-block biome cells, and evaluates the same
+coastal and underground selectors used by generated chunk palettes. It reuses
+a compatible resident density lattice or builds a small globally aligned local
+lattice on the selected CPU/GPU backend. Queries before generation need no MCA.
+Only registered biome IDs return to Java.
+
+The command accepts at most 64 points and retains the entire previous worker
+state, including final blocks, structure metadata and computed light. Different
+seed queries cannot replace the resident region. The per-world Java bridge
+deduplicates misses within each batch and retains at most 8,192 cached results;
+worker disposal clears the cache. Coordinate normalization remains in Bend.
+
+Ten independent analytic fixtures pass on CPU and Metal, covering shore and
+cave selection, non-power-of-two cells, vertical clamping, negative coordinates,
+positions near +/-30 million, both seed words, and reversed request order.
+Five malformed frames and an unprepared query are rejected. Saved vanilla,
+Terralith and combined-profile MCA files supply another 708 checked positions
+per backend, including offsets inside each quart. The vanilla file contains a
+full 1,024 chunks; the other two contain 16 chunks each. Actual Minecraft region
+and biome decoders agree with 192 additional queries, duplicate/reordered cache
+hits and closed-context rejection, with Rust unavailable and zero generated
+temporary regions.
+
+Fresh 64x64 terrain tests on CPU and Metal check all 384 sampled section biomes
+against serialized palettes. Rejected queries and a different-seed query retain
+byte-identical resident chunks and their interior lighting. A process sample
+during repeated biome queries captures the stock Bend runtime in `cube_run`
+waiting for a submitted Metal command buffer. These are functional checks;
+they are not controlled throughput measurements. Evidence and source hashes are
+in `docs/benchmarks/bend-final-biome-queries.json` and the updated lit vanilla
+64x64 reports.
+
+### Remaining integration findings
 
 The F3 region average is connected, but `TerrainDebugReport` excludes Bend from
 the detailed stage report. Existing Bend request timings are host wall time and

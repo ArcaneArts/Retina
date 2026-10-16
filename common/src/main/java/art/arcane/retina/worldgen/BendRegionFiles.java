@@ -41,7 +41,7 @@ final class BendRegionFiles {
             throw missing;
         }
     }
-    private static net.minecraft.world.level.ChunkPos regionPosition(Path path) throws IOException {
+    static net.minecraft.world.level.ChunkPos regionPosition(Path path) throws IOException {
         var parts=path.getFileName().toString().split("\\.");
         try { return new net.minecraft.world.level.ChunkPos(Integer.parseInt(parts[1]),Integer.parseInt(parts[2])); }
         catch(RuntimeException malformed) { throw new IOException("Invalid MCA filename: "+path,malformed); }

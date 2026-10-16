@@ -1,6 +1,6 @@
 {
   "scope": "Real loaded terrain -> caves/ores/vegetation/weather -> streamed MCA.\n\nLoaded structure registries are passed through intact. No analytic terrain or\nprofile changes. This checks current feature integration and\nbounded output, with optional computed interior lighting. This functional run\nis not a controlled Rust/Bend throughput comparison. RSS is sampled from the worker, not total GPU memory.",
-  "native_sha256": "a732a61dee57c054f47911ea8e8704a1dff10b4b9e5a391144bbd743dfb79810",
+  "native_sha256": "65a1160fb9fa35df3110869555f3c6f3de6d8eeda92c0c4c982eed7e233d910c",
   "sources": {
     "bend/aquifer.bend": "a9537fa65402553acec5578d4a2474036f2190142a6e9d9c1faf3c7c0cc03e36",
     "bend/aquifer_batch.bend": "427a559a15ebfd33e7d1c1e7d1894149112c61e3fa8e04089bf0326015b50b99",
@@ -10,6 +10,7 @@
     "bend/attachment.bend": "2e4c588bac2ca58912285abbf769a88f14883d187e31d6df3de18a9ae9c1bdd4",
     "bend/attachment_data.bend": "6dad0752a8de8a5b71864b0b5118900aaf35b32935e24c13a6caa5b3baeabc9b",
     "bend/binary.bend": "f716146b3a19403c4ad208ce37c2056f9ba023d6b76a3fecba5c3253185d9b68",
+    "bend/biome_query.bend": "5feb8e3988a45084e2ecc384a5759a33a9b116b9eeb89379c7ce9429fa3d1306",
     "bend/block_provider.bend": "2f2e29bd9c911b6babacdaef6024d6479918f241473890677bcd98a970eb6d3f",
     "bend/cave_batch.bend": "ab0a49204220415a0bfe5ceb9553a933b983ff0a94ab54f9c175e9865417bcc6",
     "bend/cave_biome_batch.bend": "fa35ed814595a48cb5761738ec9730b14e49dc329df5e95dd48ae1bce8d8b84c",
@@ -27,7 +28,7 @@
     "bend/density.bend": "01beac1b7443695c1507293a7d916489ac5441235c1e07290330691864b56aae",
     "bend/density_batch.bend": "51231a72efa798c9a31f1a6a841176ea50d1ac5644352b389e3d1a9bff30d99c",
     "bend/density_lattice.bend": "b361b8d9eef91105cc60990e39d7f2630efa1bcb5049837b1b5ab6b650db9b49",
-    "bend/engine.bend": "af76af6945980c32c38d5bc46c62ee98ea276f11d6361bf9ae96010dc91bfd9e",
+    "bend/engine.bend": "8cdf4b36bcc45733be4c6d9e52ea0cb860f4ed6511de99888946806c310b9599",
     "bend/fallen_tree.bend": "b3775fb3138c7ad40595ed6da4c6fbbb4968232c344b4bd591b582be4fd13674",
     "bend/float64.bend": "57cb4b5cb5a2bbf170d4c09eccfa57f8e4f98c64270d570b48b1c60c3367fc3c",
     "bend/forest_data.bend": "b485df8e0eb4eb7b55971f9c1f3b4322e3db575ab398850d1255514a9ac26cc6",
@@ -149,13 +150,15 @@
     "bend/vegetation_patch.bend": "67d48d9e555d823cd5499b06b71ea9952541fd330354bb876ade04fd3689c471",
     "bend/vegetation_region.bend": "aaf6bd6072c89a025935275e23f5b92813f65010254431a23808d403421b140d",
     "bend/word64.bend": "62e104fbbc56208d66457789a7f2ed3f5fe122f4a19068c3df9b3bbbf555e139",
-    "scripts/test_bend_full_region.py": "c34ae7a03909eb9cd5fddc353d3bd570cbde71204f3f8ad79be27828191a5da1"
+    "scripts/test_bend_full_region.py": "91d969d719a66c55f1501957c24994697bcea35342ffe5c1b244f34650613594"
   },
   "run": {
     "lighting": true,
     "lit_chunks": 4,
     "successful_voxel_pass_invalidates_light": true,
     "outside_terrain_queries_rejected": true,
+    "final_biome_queries_checked": 384,
+    "cross_seed_biome_queries_preserve_light": true,
     "metadata": {
       "starts": 0,
       "references": 0,
@@ -170,369 +173,361 @@
     "bytes": 143360,
     "sha256": "062e3f282522207421d03f6fa0f3dd97f1201f469fd59e1e6765db0d8708b2cc",
     "selected_blocks_checked": 884736,
-    "invalid_requests_rejected": 39,
+    "invalid_requests_rejected": 40,
     "rejected_commands_preserve_chunks": true,
     "profile_reload_invalidates_grid": true,
     "stages": [
       {
         "name": "profile",
         "opcode": 5,
-        "wall_ms": 15267.628457862884,
-        "sampled_peak_rss": 243367936,
+        "wall_ms": 11235.142832854763,
+        "sampled_peak_rss": 243810304,
         "observed_metal_ms": []
       },
       {
         "name": "density model",
         "opcode": 11,
-        "wall_ms": 36.08358302153647,
-        "sampled_peak_rss": 243892224,
+        "wall_ms": 26.71887492761016,
+        "sampled_peak_rss": 243810304,
         "observed_metal_ms": []
       },
       {
         "name": "materials",
         "opcode": 19,
-        "wall_ms": 77.17891712673008,
-        "sampled_peak_rss": 243892224,
+        "wall_ms": 58.586084051057696,
+        "sampled_peak_rss": 243810304,
         "observed_metal_ms": []
       },
       {
         "name": "palette",
         "opcode": 21,
-        "wall_ms": 3.7242500111460686,
-        "sampled_peak_rss": 243892224,
+        "wall_ms": 2.8806671034544706,
+        "sampled_peak_rss": 243810304,
         "observed_metal_ms": []
       },
       {
         "name": "geology",
         "opcode": 30,
-        "wall_ms": 343.3469161391258,
-        "sampled_peak_rss": 243892224,
+        "wall_ms": 270.679083885625,
+        "sampled_peak_rss": 243810304,
         "observed_metal_ms": []
       },
       {
         "name": "aquifers",
         "opcode": 37,
-        "wall_ms": 18.031959189102054,
-        "sampled_peak_rss": 243892224,
+        "wall_ms": 13.496874831616879,
+        "sampled_peak_rss": 243810304,
         "observed_metal_ms": []
       },
       {
         "name": "climate",
         "opcode": 9,
-        "wall_ms": 323.41520907357335,
-        "sampled_peak_rss": 261783552,
+        "wall_ms": 262.3852090910077,
+        "sampled_peak_rss": 264437760,
         "observed_metal_ms": []
       },
       {
         "name": "surface bounds",
         "opcode": 15,
-        "wall_ms": 6.904750131070614,
-        "sampled_peak_rss": 261783552,
+        "wall_ms": 5.205749999731779,
+        "sampled_peak_rss": 264437760,
         "observed_metal_ms": []
       },
       {
         "name": "chunk catalog",
         "opcode": 25,
-        "wall_ms": 139.9053749628365,
-        "sampled_peak_rss": 261783552,
+        "wall_ms": 106.42354190349579,
+        "sampled_peak_rss": 264437760,
         "observed_metal_ms": []
       },
       {
         "name": "lighting optics",
         "opcode": 60,
-        "wall_ms": 32.09000010974705,
-        "sampled_peak_rss": 261783552,
+        "wall_ms": 24.903292069211602,
+        "sampled_peak_rss": 264437760,
         "observed_metal_ms": []
       },
       {
         "name": "density descriptor",
         "opcode": 18,
-        "wall_ms": 0.12733391486108303,
-        "sampled_peak_rss": 261783552,
+        "wall_ms": 0.13091601431369781,
+        "sampled_peak_rss": 264437760,
         "observed_metal_ms": []
       },
       {
         "name": "density lattice",
         "opcode": 13,
-        "wall_ms": 1669.7082079481333,
-        "sampled_peak_rss": 271171584,
+        "wall_ms": 827.0322498865426,
+        "sampled_peak_rss": 273334272,
         "observed_metal_ms": []
       },
       {
         "name": "surface climate",
         "opcode": 16,
-        "wall_ms": 332.6666250359267,
-        "sampled_peak_rss": 271171584,
+        "wall_ms": 130.77662489376962,
+        "sampled_peak_rss": 273334272,
         "observed_metal_ms": []
       },
       {
         "name": "shorelines",
         "opcode": 29,
-        "wall_ms": 716.6613340377808,
-        "sampled_peak_rss": 271351808,
+        "wall_ms": 236.85579118318856,
+        "sampled_peak_rss": 273514496,
         "observed_metal_ms": []
       },
       {
         "name": "lakes",
         "opcode": 43,
-        "wall_ms": 3808.1437919754535,
-        "sampled_peak_rss": 271466496,
+        "wall_ms": 874.0296249743551,
+        "sampled_peak_rss": 273629184,
         "observed_metal_ms": []
       },
       {
         "name": "block columns",
         "opcode": 22,
-        "wall_ms": 9011.436834000051,
-        "sampled_peak_rss": 359956480,
+        "wall_ms": 2876.5970829408616,
+        "sampled_peak_rss": 361627648,
         "observed_metal_ms": []
       },
       {
         "name": "cave fields",
         "opcode": 33,
-        "wall_ms": 6512.03624997288,
-        "sampled_peak_rss": 385204224,
+        "wall_ms": 2722.7170418482274,
+        "sampled_peak_rss": 385564672,
         "observed_metal_ms": []
       },
       {
         "name": "aquifer fields",
         "opcode": 39,
-        "wall_ms": 700.5092920735478,
-        "sampled_peak_rss": 405078016,
+        "wall_ms": 160.52654199302197,
+        "sampled_peak_rss": 406618112,
         "observed_metal_ms": []
       },
       {
         "name": "carving",
         "opcode": 35,
-        "wall_ms": 9677.6267089881,
-        "sampled_peak_rss": 405258240,
+        "wall_ms": 2583.0499578732997,
+        "sampled_peak_rss": 406749184,
         "observed_metal_ms": []
       },
       {
         "name": "ores including halo",
         "opcode": 50,
-        "wall_ms": 20757.82054080628,
-        "sampled_peak_rss": 408403968,
+        "wall_ms": 6304.788375040516,
+        "sampled_peak_rss": 410320896,
         "observed_metal_ms": []
       },
       {
         "name": "cave dressing including halo",
         "opcode": 51,
-        "wall_ms": 36.77933290600777,
-        "sampled_peak_rss": 408403968,
+        "wall_ms": 17.249917145818472,
+        "sampled_peak_rss": 410320896,
         "observed_metal_ms": []
       },
       {
         "name": "vegetation core",
         "opcode": 53,
-        "wall_ms": 2360.6424999888986,
-        "sampled_peak_rss": 456589312,
+        "wall_ms": 1171.2640000041574,
+        "sampled_peak_rss": 454524928,
         "observed_metal_ms": []
       },
       {
         "name": "structures",
         "opcode": 56,
-        "wall_ms": 1423.5568749718368,
-        "sampled_peak_rss": 458850304,
+        "wall_ms": 815.958958119154,
+        "sampled_peak_rss": 461176832,
         "observed_metal_ms": []
       },
       {
         "name": "weather",
         "opcode": 54,
-        "wall_ms": 84.13870795629919,
-        "sampled_peak_rss": 481230848,
+        "wall_ms": 47.76087496429682,
+        "sampled_peak_rss": 461176832,
         "observed_metal_ms": []
       },
       {
         "name": "interior lighting",
         "opcode": 61,
-        "wall_ms": 23094.05320812948,
-        "sampled_peak_rss": 482377728,
+        "wall_ms": 8088.619166985154,
+        "sampled_peak_rss": 485212160,
         "observed_metal_ms": []
       },
       {
         "name": "repair light metadata",
         "opcode": 62,
-        "wall_ms": 609.8888330161572,
-        "sampled_peak_rss": 487948288,
+        "wall_ms": 382.7758750412613,
+        "sampled_peak_rss": 490569728,
         "observed_metal_ms": []
       },
       {
         "name": "stream NBT/zlib/MCA",
         "opcode": 55,
-        "wall_ms": 1251.698249951005,
-        "sampled_peak_rss": 505724928,
+        "wall_ms": 642.2600829973817,
+        "sampled_peak_rss": 500629504,
         "observed_metal_ms": []
       },
       {
         "name": "selected block columns",
         "opcode": 24,
-        "wall_ms": 80.84604097530246,
-        "sampled_peak_rss": 505724928,
+        "wall_ms": 42.02645807527006,
+        "sampled_peak_rss": 518750208,
         "observed_metal_ms": []
       },
       {
         "name": "selected independent chunk command",
         "opcode": 27,
-        "wall_ms": 324.24641610123217,
-        "sampled_peak_rss": 505905152,
+        "wall_ms": 155.47183295711875,
+        "sampled_peak_rss": 518750208,
         "observed_metal_ms": []
       },
       {
         "name": "selected block columns",
         "opcode": 24,
-        "wall_ms": 78.81004200316966,
-        "sampled_peak_rss": 505905152,
+        "wall_ms": 41.58291686326265,
+        "sampled_peak_rss": 518750208,
         "observed_metal_ms": []
       },
       {
         "name": "selected independent chunk command",
         "opcode": 27,
-        "wall_ms": 280.0151670817286,
-        "sampled_peak_rss": 505905152,
+        "wall_ms": 154.41945800557733,
+        "sampled_peak_rss": 524894208,
         "observed_metal_ms": []
       },
       {
         "name": "selected block columns",
         "opcode": 24,
-        "wall_ms": 65.72841689921916,
-        "sampled_peak_rss": 505905152,
+        "wall_ms": 38.00974995829165,
+        "sampled_peak_rss": 524894208,
         "observed_metal_ms": []
       },
       {
         "name": "selected independent chunk command",
         "opcode": 27,
-        "wall_ms": 262.5889591872692,
-        "sampled_peak_rss": 505905152,
+        "wall_ms": 156.29970794543624,
+        "sampled_peak_rss": 524894208,
         "observed_metal_ms": []
       },
       {
         "name": "selected block columns",
         "opcode": 24,
-        "wall_ms": 68.57670797035098,
-        "sampled_peak_rss": 505905152,
+        "wall_ms": 41.773583041504025,
+        "sampled_peak_rss": 524894208,
         "observed_metal_ms": []
       },
       {
         "name": "selected independent chunk command",
         "opcode": 27,
-        "wall_ms": 248.34804190322757,
-        "sampled_peak_rss": 505905152,
+        "wall_ms": 161.75633389502764,
+        "sampled_peak_rss": 525008896,
         "observed_metal_ms": []
       },
       {
         "name": "selected block columns",
         "opcode": 24,
-        "wall_ms": 60.27816701680422,
-        "sampled_peak_rss": 505905152,
+        "wall_ms": 41.675624903291464,
+        "sampled_peak_rss": 525008896,
         "observed_metal_ms": []
       },
       {
         "name": "selected independent chunk command",
         "opcode": 27,
-        "wall_ms": 538.7038749177009,
-        "sampled_peak_rss": 505905152,
+        "wall_ms": 314.7463328205049,
+        "sampled_peak_rss": 525008896,
         "observed_metal_ms": []
       },
       {
         "name": "selected block columns",
         "opcode": 24,
-        "wall_ms": 72.34462513588369,
-        "sampled_peak_rss": 505905152,
+        "wall_ms": 41.5715838316828,
+        "sampled_peak_rss": 525008896,
         "observed_metal_ms": []
       },
       {
         "name": "selected independent chunk command",
         "opcode": 27,
-        "wall_ms": 334.33091710321605,
-        "sampled_peak_rss": 505921536,
+        "wall_ms": 160.35991697572172,
+        "sampled_peak_rss": 525008896,
         "observed_metal_ms": []
       },
       {
         "name": "selected block columns",
         "opcode": 24,
-        "wall_ms": 76.15445903502405,
-        "sampled_peak_rss": 505921536,
+        "wall_ms": 38.38729113340378,
+        "sampled_peak_rss": 525008896,
         "observed_metal_ms": []
       },
       {
         "name": "selected independent chunk command",
         "opcode": 27,
-        "wall_ms": 324.2329580243677,
-        "sampled_peak_rss": 505921536,
+        "wall_ms": 156.37191710993648,
+        "sampled_peak_rss": 525008896,
         "observed_metal_ms": []
       },
       {
         "name": "selected block columns",
         "opcode": 24,
-        "wall_ms": 74.53891704790294,
-        "sampled_peak_rss": 505921536,
+        "wall_ms": 40.22037493996322,
+        "sampled_peak_rss": 525008896,
         "observed_metal_ms": []
       },
       {
         "name": "selected independent chunk command",
         "opcode": 27,
-        "wall_ms": 296.522333053872,
-        "sampled_peak_rss": 505921536,
+        "wall_ms": 157.30300010181963,
+        "sampled_peak_rss": 525008896,
         "observed_metal_ms": []
       },
       {
         "name": "selected block columns",
         "opcode": 24,
-        "wall_ms": 82.13208382949233,
-        "sampled_peak_rss": 505921536,
+        "wall_ms": 41.02687491104007,
+        "sampled_peak_rss": 525008896,
         "observed_metal_ms": []
       },
       {
         "name": "selected independent chunk command",
         "opcode": 27,
-        "wall_ms": 393.1092079728842,
-        "sampled_peak_rss": 505921536,
+        "wall_ms": 159.05887493863702,
+        "sampled_peak_rss": 525074432,
         "observed_metal_ms": []
       },
       {
         "name": "weather invalidates light",
         "opcode": 54,
-        "wall_ms": 199.93729214183986,
-        "sampled_peak_rss": 505921536,
+        "wall_ms": 102.26833308115602,
+        "sampled_peak_rss": 525074432,
         "observed_metal_ms": []
       },
       {
         "name": "reload profile",
         "opcode": 5,
-        "wall_ms": 25783.567249774933,
-        "sampled_peak_rss": 565297152,
+        "wall_ms": 14722.172999987379,
+        "sampled_peak_rss": 569556992,
         "observed_metal_ms": []
       },
       {
         "name": "stop",
         "opcode": 4,
-        "wall_ms": 0.14129211194813251,
-        "sampled_peak_rss": 565297152,
+        "wall_ms": 0.05870801396667957,
+        "sampled_peak_rss": 569556992,
         "observed_metal_ms": []
       }
     ],
     "observed_metal_buffers": 0,
-    "sampled_peak_worker_rss": 565297152,
+    "sampled_peak_worker_rss": 569556992,
     "body_growth_samples": [
       {
-        "elapsed_seconds": 138.60953325009905,
-        "bytes": 8192
+        "elapsed_seconds": 60.9531334170606,
+        "bytes": 40960
       },
       {
-        "elapsed_seconds": 139.12202162505127,
-        "bytes": 49152
-      },
-      {
-        "elapsed_seconds": 139.628872375004,
-        "bytes": 110592
-      },
-      {
-        "elapsed_seconds": 140.17037129215896,
+        "elapsed_seconds": 61.48677616706118,
         "bytes": 143360
       }
     ],
     "chunk_bytes_unchanged_by_header_patch": true,
     "profile_sha256": "0dabbc089531d8e41f03e7f08fea5d70a6332f3db30edc17ba6ea2313c5e4f7a"
   },
-  "gpu_archive_sha256": "15010807c6894411210aacb6614f0df99296c800854a3a840d743c5f2c1c23e0"
+  "gpu_archive_sha256": "0803470005055044a178d4f1a9b9b342c4b0a3067d7af80f1055412ca511ee7e"
 }

@@ -1467,3 +1467,24 @@ Minecraft uses this for `STRUCTURE_STARTS`, including explorer-map references;
 broad chunk dependency probes therefore still create zero temporary MCAs.
 Wrong count/reserved word returns 883. Later feature metadata retains an already
 increased reference count on the same valid start.
+
+## Final quart-biome queries (63)
+
+Command 63 takes big-endian U32 `seed_low, seed_high, count`, followed by
+`block_x, block_y, block_z` per point. Count is 0..64; coordinates use signed i32
+bit patterns. It returns one registered biome index per point in input order.
+An empty prepared query returns an empty payload. Missing density/climate/surface
+preparation returns **881**, malformed frames **603**, and excessive count **887**.
+
+Bend clamps Y to the loaded build interval and floors X/Y/Z to their containing
+four-block biome cell. The result includes finalized shoreline selection and
+underground climate biomes, matching generated chunk quart palettes. The shared
+terrain probe uses compatible resident density data when available; otherwise
+it builds a small globally aligned lattice. Both seed words participate in this
+compatibility check. This command never assembles terrain or writes an MCA.
+
+Successful and rejected calls preserve resident terrain, structure metadata and
+lighting. Profile replacement continues to clear the resident state. The Java
+bridge coalesces duplicate batch misses and keeps a bounded per-world cache of
+8,192 point results, cleared on worker disposal. It transports IDs without
+implementing climate, coast or cave selection in Java.

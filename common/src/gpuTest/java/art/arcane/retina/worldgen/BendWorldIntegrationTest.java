@@ -56,6 +56,12 @@ public final class BendWorldIntegrationTest {
         generator.bindWorld(registry,seed,factory,StructureProfile.Context.of(resources));
         var random=RandomState.create(registry.lookupOrThrow(Registries.NOISE),seed,settings.value());
         var bounds=LevelHeightAccessor.create(-64,384);
+        String biomeFixture=System.getProperty("retina.bend.biomeFixture");
+        if(biomeFixture!=null) {
+            try { verifyBiomeFixture(Path.of(biomeFixture),generator,factory,bounds); }
+            finally { generator.closePreviews(); }
+            return;
+        }
         String repairFixture=System.getProperty("retina.bend.lightingFixture");
         if(repairFixture!=null) {
             try { verifyRepairFixture(Path.of(repairFixture),generator,factory,bounds); }
@@ -211,6 +217,41 @@ public final class BendWorldIntegrationTest {
             try(var files=Files.walk(folder)) { for(var path:files.sorted(Comparator.reverseOrder()).toList())Files.delete(path); }
         }
     }
+    private static void verifyBiomeFixture(Path source,RetinaChunkGenerator generator,
+            PalettedContainerFactory factory,LevelHeightAccessor bounds) throws Exception {
+        var points=new ArrayList<net.minecraft.core.BlockPos>();
+        var expected=new ArrayList<Holder<Biome>>();
+        try(var storage=new RegionFileStorage(new RegionStorageInfo("bend-biome-query",Level.OVERWORLD,"chunk"),source.getParent(),false)) {
+            var region=BendRegionFiles.regionPosition(source);
+            for(int slot:new int[]{0,1,33,255,511,528,991,1023}) {
+                var position=new ChunkPos(region.x()*32+slot%32,region.z()*32+slot/32);
+                var tag=storage.read(position);
+                require(tag!=null,"biome fixture includes selected chunk");
+                var parsed=net.minecraft.world.level.chunk.storage.SerializableChunkData.parse(bounds,factory,tag);
+                require(parsed!=null,"Minecraft decodes biome fixture");
+                for(var section:parsed.sectionData()) {
+                    if(section.chunkSection()==null)continue;
+                    int x=Math.floorMod(slot+section.y(),4),z=Math.floorMod(slot/4-section.y(),4),y=Math.floorMod(section.y(),4);
+                    points.add(new net.minecraft.core.BlockPos(position.getMinBlockX()+x*4+3,section.y()*16+y*4+3,position.getMinBlockZ()+z*4+3));
+                    expected.add(section.chunkSection().getNoiseBiome(x,y,z));
+                }
+            }
+        }
+        var queries=generator.queries();
+        require(queries.biomes(points).equals(expected),"bounded Bend queries match Minecraft decoded quart biomes");
+        var repeated=new ArrayList<net.minecraft.core.BlockPos>(points);repeated.addAll(points);
+        var repeatedExpected=new ArrayList<Holder<Biome>>(expected);repeatedExpected.addAll(expected);
+        require(queries.biomes(repeated).equals(repeatedExpected),"cached and duplicate batches retain input order");
+        Collections.reverse(repeated);Collections.reverse(repeatedExpected);
+        require(queries.biomes(repeated).equals(repeatedExpected),"reordered cache hits match saved biomes");
+        require(generator.metrics().snapshot().previewRegions()==0,"biome queries never assemble an MCA");
+        require(generator.profile().nativeId()==-1,"biome lookup leaves Rust unavailable");
+        queries.close();
+        try { queries.biomes(points);throw new AssertionError("closed query context must reject work"); }
+        catch(java.util.concurrent.CancellationException expectedFailure) { }
+        System.out.println("PASS: "+points.size()+" final Bend biome queries match Minecraft; duplicate/reordered batches, no MCA generation, closed lifecycle");
+    }
+
     private static void verifyRepairFixture(Path cached,RetinaChunkGenerator generator,
             PalettedContainerFactory factory,LevelHeightAccessor bounds) throws Exception {
         var folder=Files.createTempDirectory("retina-bend-light-repair-");
