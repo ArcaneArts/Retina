@@ -537,7 +537,7 @@ public final class RetinaChunkGenerator extends ChunkGenerator {
     public void addDebugScreenInfo(List<String> lines, RandomState state, BlockPos pos, SamplerContext context) {
         var stats = metrics.snapshot();
         lines.add(String.format(java.util.Locale.ROOT, "Retina %s: %.1f chunks/s, %.2f ms/chunk",
-                bendMode()?"Bend preview (MC lighting)":regionMode()?"lit MCA production":"chunk-mode completion",stats.chunksPerSecond(), stats.msPerChunk()));
+                bendMode()?"Bend preview (interior lighting)":regionMode()?"lit MCA production":"chunk-mode completion",stats.chunksPerSecond(), stats.msPerChunk()));
     }
 
     private record HeightKey(long seed, int x, int z) { }

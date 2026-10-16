@@ -87,11 +87,19 @@ public final class BendWorker implements AutoCloseable {
      * integration work, not provided by this raw transport convenience method.
      */
     public CompletableFuture<byte[]> loadProfile(Path stagedFile) {
+        return stagedRequest(5,stagedFile);
+    }
+
+    public CompletableFuture<byte[]> resetLighting(Path stagedFile) {
+        return stagedRequest(62,stagedFile);
+    }
+
+    private CompletableFuture<byte[]> stagedRequest(int opcode,Path stagedFile) {
         int[] points = stagedFile.toAbsolutePath().toString().codePoints().toArray();
         var payload = java.nio.ByteBuffer.allocate(4 + points.length * 4);
         payload.putInt(points.length);
         for (int point : points) payload.putInt(point);
-        return request(5, payload.array());
+        return request(opcode, payload.array());
     }
 
     /** Select a resident profile's climate stack (0..3) or ridge stack (4).
@@ -215,8 +223,8 @@ public final class BendWorker implements AutoCloseable {
     /** Encode a chunk fully covered by the resident generated block tile.
      * Bend owns block/biome packing, heightmaps, NBT and optional zlib. Seed,
      * chunk coordinates and the running game's DataVersion are raw metadata.
-     * This component currently emits FEATURES status without precomputed light;
-     * final generation and region scheduling are separate integration work.
+     * Includes completed resident lighting when available; the region boundary
+     * remains at FEATURES until Minecraft can resolve neighboring regions.
      */
     public CompletableFuture<byte[]> encodeGeneratedChunk(int chunkX, int chunkZ, long seed,
             int dataVersion, boolean compressed) {
@@ -283,6 +291,16 @@ public final class BendWorker implements AutoCloseable {
     /** Apply registered snow/freezing to the final resident block snapshot.
      * Returns width, depth, compact run count and invalid-column count. */
     public CompletableFuture<byte[]> applySnowAndFreeze() { return request(54,new byte[0]); }
+
+    /** Project loaded opacity, emissions and paired face-occlusion rules once. */
+    public CompletableFuture<byte[]> prepareProfileLighting() { return request(60,new byte[0]); }
+
+    /** Light the interior chunk ring using bounded GPU tiles over final blocks.
+     * Returns width, depth, lit chunk count and tile count. */
+    public CompletableFuture<byte[]> lightRegion(int x,int z,int width,int depth,long seed) {
+        return request(61,surfaceTilePayload(x,z,width,depth,seed));
+    }
+
 
     /** Project registered cave noise, per-biome carvers, carveable materials and
      * lava/world-height metadata in Bend. Requires numeric/material/block models.

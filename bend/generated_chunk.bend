@@ -11,9 +11,10 @@ import ./cave_lattice.bend as CV
 import ./compression.bend as Z
 import ./reader.bend as R
 import ./chunk_metadata.bend as Tags
+import ./light_region.bend as Light
 
 # Component serializer: immutable final block runs and optional cave-biome volume.
-# Features/lighting are later producers.
+# Final lighting and structure metadata are supplied by their resident producers.
 type Request is Data:
   Request{x: U32,z: U32,low: U32,high: U32,version: U32}
 
@@ -84,19 +85,29 @@ def biomes(+n: U32,+dx: U32,+dz: U32,+width: U32,+columns: Q.Table<MD.Column>,+c
           U32.mul(width,U32.add(dz,U32.mul(U32.mod(U32.div(U32.sub(n,1),4),4),4)))),MC.empty())))))
 
 @unsafe
-def sections(+n: U32,+dx: U32,+dz: U32,+width: U32,+columns: Q.Table<MD.Column>,+caves: Maybe<&2,CV.Grid>,+point: Q.Point,+low: U32,+high: U32,acc: List<C.Section>) -> List<C.Section>:
+def sections(+n: U32,+dx: U32,+dz: U32,+width: U32,+columns: Q.Table<MD.Column>,+caves: Maybe<&2,CV.Grid>,+point: Q.Point,+low: U32,+high: U32,+lighting: Maybe<&2,Light.View>,acc: List<C.Section>) -> List<C.Section>:
   match n:
     case 0: acc
-    case _: sections(U32.sub(n,1),dx,dz,width,columns,caves,point,low,high,C.Section{
+    case _: sections(U32.sub(n,1),dx,dz,width,columns,caves,point,low,high,lighting,C.Section{
       blocks(256,dx,dz,width,U32.mul(U32.sub(n,1),16),columns,[0:U32*4096n]),
-      biomes(64,dx,dz,width,columns,caves,Q.shifted(point,D.scalar(0.0),D.unsigned(U32.mul(U32.sub(n,1),16)),D.scalar(0.0)),low,high,[0:U32*64n]),None{}} <> acc)
+      biomes(64,dx,dz,width,columns,caves,Q.shifted(point,D.scalar(0.0),D.unsigned(U32.mul(U32.sub(n,1),16)),D.scalar(0.0)),low,high,[0:U32*64n]),Light.section(lighting,U32.sub(n,1))} <> acc)
 
+@unsafe
 def encode_metadata(grid: MD.Grid,catalog: CC.Catalog,request: Request,metadata: C.Metadata) -> Result<&1,&1,U32,Z.Bytes>:
+  encode_metadata_light(grid,catalog,request,metadata,None{})
+
+@unsafe
+def encode_metadata_light(+grid: MD.Grid,catalog: CC.Catalog,+request: Request,metadata: C.Metadata,store: Maybe<&2,Light.Store>) -> Result<&1,&1,U32,Z.Bytes>:
+  match grid request:
+    case MD.Grid{_,minimum,height,_,_} Request{x,z,low,high,_}:
+      encode_view(grid,catalog,request,metadata,Light.view(store,x,z,low,high,minimum,height))
+
+def encode_view(grid: MD.Grid,catalog: CC.Catalog,request: Request,metadata: C.Metadata,+lighting: Maybe<&2,Light.View>) -> Result<&1,&1,U32,Z.Bytes>:
   match grid request:
     case MD.Grid{S.Tile{+ox,+oz,+width,_,_,_},+minimum,+height,columns,caves} Request{+x,+z,+low,+high,version}:
       C.encode(C.Chunk{version,x,z,N.signed(F32.div(D.value(D.integer(minimum)),16.0)),U32.div(height,16),
         sections(U32.div(height,16),F32.to_u32(D.value(D.sub(world(x),D.integer(ox)))),
-          F32.to_u32(D.value(D.sub(world(z),D.integer(oz)))),width,columns,caves,Q.Point{world(x),D.integer(minimum),world(z)},low,high,[]),None{},metadata},CC.profile(catalog))
+          F32.to_u32(D.value(D.sub(world(z),D.integer(oz)))),width,columns,caves,Q.Point{world(x),D.integer(minimum),world(z)},low,high,lighting,[]),Light.boundary(lighting),metadata},CC.profile(catalog))
 
 def encode(grid: MD.Grid,catalog: CC.Catalog,request: Request) -> Result<&1,&1,U32,Z.Bytes>:
   encode_metadata(grid,catalog,request,C.Metadata{[],[],[],[]})
@@ -137,26 +148,34 @@ def bounded(ok: Bool,+grid: MD.Grid,catalog: CC.Catalog,+request: Request,compre
     case True{}: coverage(covered(grid,request),grid,catalog,request,compress)
 
 # All output modes consult the same metadata captured from structure replay.
+@unsafe
 def encode_store(grid: MD.Grid,catalog: CC.Catalog,+request: Request,store: Maybe<&2,Tags.Store>) -> Result<&1,&1,U32,Z.Bytes>:
+  encode_context(grid,catalog,request,store,None{})
+
+def encode_context(grid: MD.Grid,catalog: CC.Catalog,+request: Request,store: Maybe<&2,Tags.Store>,lighting: Maybe<&2,Light.Store>) -> Result<&1,&1,U32,Z.Bytes>:
   match request:
-    case Request{x,z,low,high,_}: encode_metadata(grid,catalog,request,Tags.get(store,x,z,low,high))
+    case Request{x,z,low,high,_}: encode_metadata_light(grid,catalog,request,Tags.get(store,x,z,low,high),lighting)
 
 @unsafe
-def store_covered(ok: Bool,grid: MD.Grid,catalog: CC.Catalog,request: Request,compress: Bool,store: Maybe<&2,Tags.Store>) -> Result<&1,&1,U32,Z.Bytes>:
+def store_covered(ok: Bool,grid: MD.Grid,catalog: CC.Catalog,request: Request,compress: Bool,store: Maybe<&2,Tags.Store>,lighting: Maybe<&2,Light.Store>) -> Result<&1,&1,U32,Z.Bytes>:
   match ok:
     case False{}: Fail{732}
-    case True{}: compress_result(compress,encode_store(grid,catalog,request,store))
+    case True{}: compress_result(compress,encode_context(grid,catalog,request,store,lighting))
 
 @unsafe
-def store_bounded(ok: Bool,+grid: MD.Grid,catalog: CC.Catalog,+request: Request,compress: Bool,store: Maybe<&2,Tags.Store>) -> Result<&1,&1,U32,Z.Bytes>:
+def store_bounded(ok: Bool,+grid: MD.Grid,catalog: CC.Catalog,+request: Request,compress: Bool,store: Maybe<&2,Tags.Store>,lighting: Maybe<&2,Light.Store>) -> Result<&1,&1,U32,Z.Bytes>:
   match ok:
     case False{}: Fail{733}
-    case True{}: store_covered(covered(grid,request),grid,catalog,request,compress,store)
+    case True{}: store_covered(covered(grid,request),grid,catalog,request,compress,store,lighting)
 
 @unsafe
-def run_store(found: Maybe<&2,Request>,+grid: MD.Grid,catalog: CC.Catalog,compress: Bool,store: Maybe<&2,Tags.Store>) -> Result<&1,&1,U32,Z.Bytes>:
+def run_store(found: Maybe<&2,Request>,grid: MD.Grid,catalog: CC.Catalog,compress: Bool,store: Maybe<&2,Tags.Store>) -> Result<&1,&1,U32,Z.Bytes>:
+  run_context(found,grid,catalog,compress,store,None{})
+
+@unsafe
+def run_context(found: Maybe<&2,Request>,+grid: MD.Grid,catalog: CC.Catalog,compress: Bool,store: Maybe<&2,Tags.Store>,lighting: Maybe<&2,Light.Store>) -> Result<&1,&1,U32,Z.Bytes>:
   match found grid:
     case None{} _: Fail{603}
     case Some{+request} MD.Grid{_,+minimum,+height,_,_}:
       store_bounded(Bool.and(Bool.and(signed_bounds(world(x(request))),signed_bounds(world(z(request)))),
-        Bool.and(U32.is_zero(U32.mod(minimum,16)),U32.is_zero(U32.mod(height,16)))),grid,catalog,request,compress,store)
+        Bool.and(U32.is_zero(U32.mod(minimum,16)),U32.is_zero(U32.mod(height,16)))),grid,catalog,request,compress,store,lighting)

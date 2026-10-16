@@ -1,0 +1,525 @@
+{
+  "scope": "Real loaded terrain -> caves/ores/vegetation/weather -> streamed MCA.\n\nLoaded structure registries are passed through intact. No analytic terrain or\nprofile changes. This checks current feature integration and\nbounded output, with optional computed interior lighting. This functional run\nis not a controlled Rust/Bend throughput comparison. RSS is sampled from the worker, not total GPU memory.",
+  "native_sha256": "0cfd575cc7c78c0eab71ca63fea34406ea5eaf1810128f515e95c9c0a1a15a09",
+  "sources": {
+    "bend/aquifer.bend": "a9537fa65402553acec5578d4a2474036f2190142a6e9d9c1faf3c7c0cc03e36",
+    "bend/aquifer_batch.bend": "427a559a15ebfd33e7d1c1e7d1894149112c61e3fa8e04089bf0326015b50b99",
+    "bend/aquifer_lattice.bend": "cc43ecd6d6c5893f351f51e1a56f8830fbeaa5f923f23e9bfa0b967cad8c1a85",
+    "bend/aquifer_substance.bend": "e76e48268fdb219e8c86afffec9568e65453af84489d47466ca5408e34051bae",
+    "bend/aquifer_substance_batch.bend": "bb2e7f1e8369341943dfde375ec001a0a331812efbc86284dad9a46e20ee0973",
+    "bend/attachment.bend": "2e4c588bac2ca58912285abbf769a88f14883d187e31d6df3de18a9ae9c1bdd4",
+    "bend/attachment_data.bend": "6dad0752a8de8a5b71864b0b5118900aaf35b32935e24c13a6caa5b3baeabc9b",
+    "bend/binary.bend": "f716146b3a19403c4ad208ce37c2056f9ba023d6b76a3fecba5c3253185d9b68",
+    "bend/block_provider.bend": "2f2e29bd9c911b6babacdaef6024d6479918f241473890677bcd98a970eb6d3f",
+    "bend/cave_batch.bend": "ab0a49204220415a0bfe5ceb9553a933b983ff0a94ab54f9c175e9865417bcc6",
+    "bend/cave_biome_batch.bend": "fa35ed814595a48cb5761738ec9730b14e49dc329df5e95dd48ae1bce8d8b84c",
+    "bend/cave_carve.bend": "d00b4e2540c46dc698e8720d0c04d6ee3f4c11cceb391b43b1c7cd7cf66794f0",
+    "bend/cave_dressing.bend": "9aeaa11f4c80cd715309d05dd274b107bfc3be40e4447ba3fefac7233ea7148c",
+    "bend/cave_features_data.bend": "d46ac6fd858755318de508c48eb60f07a5ba10352d0e393c340429f49b9c4abc",
+    "bend/cave_lattice.bend": "7dce03f819639b033658d26dc142b957f2e59e6a6406e4d85743cbec04192a41",
+    "bend/chunk.bend": "9f4e2609758c67dfa3dccd7234ef8c6655e9e34ac298a75d76c1ff2a9c3018c1",
+    "bend/chunk_catalog.bend": "666d5f98e2128a31a49f36ccdf0a1da7d7cb59067ce58d3cd1d0da3742963df3",
+    "bend/chunk_metadata.bend": "ff9128e6989c44141a8fe685788ba7bd7ceda86ee2c7bee4fb251ac8ee381dba",
+    "bend/climate.bend": "842160f64b796f6288e59e24e8a81515a450d3778900982bdfc6a633671a4680",
+    "bend/climate_batch.bend": "f65fbc7b463f5e093feb2364da0f504fa295088285917f7a04dc205bf1dc34fa",
+    "bend/compression.bend": "e42e1a312180ee0fce6faad39fc82b9a2e43ba05727e04d9a3c8e7651dd14130",
+    "bend/decoration_counts.bend": "95e8f0c32fa410ca22b54ba0d142a048be27f174ecc186a566dc20238a30d6bd",
+    "bend/density.bend": "01beac1b7443695c1507293a7d916489ac5441235c1e07290330691864b56aae",
+    "bend/density_batch.bend": "51231a72efa798c9a31f1a6a841176ea50d1ac5644352b389e3d1a9bff30d99c",
+    "bend/density_lattice.bend": "b361b8d9eef91105cc60990e39d7f2630efa1bcb5049837b1b5ab6b650db9b49",
+    "bend/engine.bend": "e63f7d454c18cac4f5eeea7194d8308e63582f799bbb7b12a599a138d7fde3ed",
+    "bend/fallen_tree.bend": "b3775fb3138c7ad40595ed6da4c6fbbb4968232c344b4bd591b582be4fd13674",
+    "bend/float64.bend": "57cb4b5cb5a2bbf170d4c09eccfa57f8e4f98c64270d570b48b1c60c3367fc3c",
+    "bend/forest_data.bend": "b485df8e0eb4eb7b55971f9c1f3b4322e3db575ab398850d1255514a9ac26cc6",
+    "bend/generated_chunk.bend": "9d02c212ee3e59d7584127f56668fdc450499f703bbca3b4996ff4d0910afde6",
+    "bend/generated_region.bend": "f1e2664703470e8404a4c5203d81fcc2cf7f9a90469c80fe44b6f85e24661e7c",
+    "bend/geology.bend": "9cb01c921b02127b84593f6c52a19f9ab4de88fdf8bfd660ff5f69d02379e414",
+    "bend/geology_batch.bend": "75bfca549f44f0d8f8994b457e3643d907444fb3dd593cb2ffd66ebf4b762caa",
+    "bend/heightmaps.bend": "0b69c87d24ec3b27cbb082bb394205765154bf78c5c4db2c226fbc4ba3e2d997",
+    "bend/huge_mushroom.bend": "daa2a40260f86a3ba3010e7c2196bbecb46eb4ee6e9b155fcf072891c54c7e21",
+    "bend/int_provider.bend": "402c00ca9af5eeeb0fbfd61e5556f336ea0e2daad3b69c29f645be118820d860",
+    "bend/lake_candidates.bend": "2ade065dbeffb8e20bf4a44ad5acd8a7759855be344a79e991c6e0c90c3085d8",
+    "bend/lake_data.bend": "2951da8dbd6b05ede1d4f038579d5a89d79b6ce7d34d45d56da82a8bd7d84492",
+    "bend/lake_lattice.bend": "7eb8771cf7a6ba10cf47b911cb66028c405b8ad27845f80fb16e54a00dd7e648",
+    "bend/lake_terrain.bend": "a1fc29c8f9ba0cebece840423ca9b9208c986186239736f771f336a4aeebe316",
+    "bend/light_region.bend": "dee1eb1ad08c6efce7bff4831e061b51549ffb50b0a0fd5c2c5c7f2e0d55f980",
+    "bend/light_rules.bend": "64a597da4a64699c950798a7cb3d9ca37b344acc1bdd53f3a62a4c0742a43943",
+    "bend/light_volume.bend": "4a1905cb235b3ff8fb4e76f6b547d09e187eb1e353f4be4d7ce22a44e37391a8",
+    "bend/material.bend": "fea1e62174797c5b44634f3674dfc550d0178f207524193ed0d9416fbbf70f64",
+    "bend/material_batch.bend": "e34ee066c23a5328d279c5137ce2d107f2e4df661d63d3de373970d5cbee2073",
+    "bend/material_columns.bend": "14c807fb1f7e41a60570c9a674f7ef756d3551799e7f9a81fef56d5d9095b73b",
+    "bend/material_columns_data.bend": "309ad22f3858ba801421073319a671b218b473ee6887d3ca75bef5ccd1e26a9a",
+    "bend/material_lazy.bend": "8675a4ea5d3e1b164d1d2a71b248c9ec23078c05da9880fb5470b543a6de1f10",
+    "bend/material_program.bend": "f4b7e78629f7eecd991418eb00fa3face480954b300fa996e370d4c16c35128c",
+    "bend/nbt.bend": "7063555acf523d12269bd152e1e32981534009785b6a7653509f1a108b18cb57",
+    "bend/nested_feature.bend": "a3640919630f96e29a547fba26cd351f229b764ada3ae400f20faaabe3e65ae2",
+    "bend/noise.bend": "80485dd8d18580a1044c8e55dbd03dab1b8dbdd9aa6681e1b8f6743fce928c1d",
+    "bend/numbers.bend": "858ea999141639aa26c559a2e06a87d62c58e93d0d8d3a793bb530b629060956",
+    "bend/ore_apply.bend": "360f21ae364fbab345091098c273b5ce050d9cde40eb5af40f53e74ddf2bcea8",
+    "bend/ore_attempts.bend": "d18a6f9c42da6dca2244ba4e5be2f2c2e21d5fcabbc061413956f5efb52bee57",
+    "bend/ore_batch.bend": "b807a8f03bf5846140a54c8e5f35ae13d39c46313ff9d4da998f6885a70f19c2",
+    "bend/ore_data.bend": "de874dc61201a0414c2c37a95bc84d1405d9b9e055197c10f2e7e64540bb4e29",
+    "bend/ore_geometry.bend": "5fb458abba5df500c054ad08a5a8f63ed7b96e150ffaee8c54c2765fa994413f",
+    "bend/ore_random.bend": "12913efa87c40f6a6f1b3deb0ce992f5be02a9d8e8bac1547e52025b31a307d5",
+    "bend/ore_raster.bend": "2395a6a365adbcda989e1b6c02eed3a2c510bd157872dd3f37abc5423fa12b30",
+    "bend/ore_spatial.bend": "70ecf504aedd5ad0872758ef26fbe9aa643e2e91760c19fbfdf893eb96ae18e3",
+    "bend/packed.bend": "b4ebd29bc4d31d53ddcc221f64c84e68c5bde4a0fbbb51acfdaa9ddd01e2c23f",
+    "bend/palette.bend": "4f813fb89317308dc02c70d36cf5e3eeaf6d62a9a82477b781b976be5eee82ff",
+    "bend/placement_checks.bend": "899e86943310f2a1e829c5e59dbd4cffe8cd8bab09329788959386699308a00b",
+    "bend/placement_cursor.bend": "936df8e90fd45db8416b6da670f9cd6e03124c756f8fc64d11eb2aac4d92b550",
+    "bend/placement_data.bend": "57cfe91b1ac652eae6a8e551cf76846700fed5ec18d2b1d76f7c3bb4a9882142",
+    "bend/placement_height.bend": "4cd946214e516cf2d26f101f5c20b826250b33a810d5658de07a1c4dda9ea4e8",
+    "bend/placement_merge.bend": "16299fdd3a8ce1a3a23efdc393cda8647f17fb58328bfb5031840b93f42c2002",
+    "bend/placement_random.bend": "1336014e813d127c88dce79374ccd2ed952d9d5a7a9d784454b81d28416b0c35",
+    "bend/placement_replay.bend": "c8c4cd7f1fa3c5bc30911c8558a3a2d57567e0c17628c12b14d8de817a4f9b6c",
+    "bend/placement_set_order.bend": "79b6b2e099ad2f13c9b0c36588650b0f69bee71f8ac571750e00d59b44a84fe2",
+    "bend/placement_shuffle.bend": "374676ef080833aad37b4fdfe337dc43af1e264261bab46bb6979ee65ef97f5b",
+    "bend/placement_walk.bend": "aff28b0f2bb3acb19ed936b63f2031f6bfbace68bf158506ec2e8e87cc45a339",
+    "bend/placement_world.bend": "a0cf8fa9bcc98412c7b73b11ad820926564892319a31818d1f0e90564fa23b71",
+    "bend/precise.bend": "50ba7138300f2c913b2d75a554a78d88bfb09931c6cd58ecc884ab7024c73c01",
+    "bend/provider_noise.bend": "2df2205ef0d156fd4b353d186524ecd399ced49d02ae8f0110eedc447056a564",
+    "bend/reader.bend": "e659a2cac6b8435f02fd0fe91902ceca918055d026ec1908845186bee4fdc0ac",
+    "bend/region.bend": "1455654e09969a0c80b6536b61b8da2f6070c80d007d2a3639b4a42cb873cc35",
+    "bend/region_stream.bend": "cb03784c35a18e2459e79458e41c28dbe745c255209a5b998c63d52f1e8735ec",
+    "bend/registry.bend": "433b4dbb17b127dd322a11465a1111ddadd86a8682597310c062a194aa802296",
+    "bend/registry_aquifer.bend": "5b474507135a0180f41e19f0b87df98111d87f7a6cfa0deb242f4614d65e5905",
+    "bend/registry_attachment.bend": "f51869474412b7be94d502f5d5900cdc5120e18b123dcc7b03d4f1d369fe12fc",
+    "bend/registry_block_provider.bend": "472a6b4d9fde6d988d35d0c0db3cc8ce7434937865c12ee7d03393d1d03e1d3f",
+    "bend/registry_cave_features.bend": "1f8da67590819855d967eb306e9859a5751c7b339b723bff77856ea882c239f2",
+    "bend/registry_chunk_catalog.bend": "032c8411f124d9876a34e2537b7dff1f9ccbd068a53b2e4a7423ae71ffe98652",
+    "bend/registry_climate.bend": "3daed5cbc3da3a4d4f91c65465e899b31fe219fe34af03731fc7ca1c49c572ad",
+    "bend/registry_decoration_counts.bend": "722286810301bf58e7e8010473c2c73afe25904790285c500724933226faa799",
+    "bend/registry_decoration_heights.bend": "e30557de40d11bda6d5eff8ee570d9095ac53a200ffa45d3406a39f5077c2652",
+    "bend/registry_density.bend": "0c1972222bbcdfead41b30ae0453f7e05e85ab7bb446c113c3a07a8b12f56cb7",
+    "bend/registry_forest.bend": "c4ffb421266999fcd4c48bf308e9cd160ad2d587cd8cda6411efd8d2cdba983e",
+    "bend/registry_geology.bend": "2a68d00c1ca3247edfef40e2d18b189e1bd36b7dc5ffdedd14692d8c64d5b870",
+    "bend/registry_int_provider.bend": "7eb3d6eb32414dc239d034cbf6ce658c3f8a51bb4f997758a89ba52d678ab859",
+    "bend/registry_lakes.bend": "1994ed48ac044fa174f98653af807920e591192a32a6f00d67ff6471892aa5a4",
+    "bend/registry_lighting.bend": "9bf6dbfbc7c1c24cbaa535d7adde385cc56c61028cc85d5ecbb3fbb66e015f12",
+    "bend/registry_material.bend": "b28952c7b085865d41f853d55e287c0c0bb8000442cc2c94b37325daaab8d29e",
+    "bend/registry_material_columns.bend": "9eb18ecf8327d35a9f1c00da86272b5a18447f203c7b7964377f782648a9846b",
+    "bend/registry_nested_feature.bend": "dadc68758699ae52511226ba187ed16482265256bebc145388d2290147c69eea",
+    "bend/registry_nested_placement.bend": "c3cbb624956635bc9efa7dee44e29f6be396ab6c7a09d13fb16ddbc00948209a",
+    "bend/registry_noise.bend": "ae6994d216acc9751c20e4df1e4ff62548c8af99c61e6b006155e2fbc3e1ca94",
+    "bend/registry_ores.bend": "405e9ab60fdb938bde70c051b63161740b656ac93c0f54a29213221023cb6988",
+    "bend/registry_placement.bend": "0dd10eee84ece0f331bc7271dee9efd89dfc78e7a4b48dfaa035dd2ebcd8f34e",
+    "bend/registry_placement_height.bend": "a598b429813e6fe13223557972ff13f9c68095c79af1454edffc9e61c9bed441",
+    "bend/registry_placement_policy.bend": "802b38a1c778de5dde66f8927e00a142c712c3ec029b6c01c7a9d3acd80983bd",
+    "bend/registry_placement_predicate.bend": "0f1ad10f8fd935e2bc6abbc71508bf9cfb404f0d115b3a7c06298b7eb7ea86bc",
+    "bend/registry_provider_noise.bend": "b0925be11095d875e222daccc8d62439ed959e10d031da2159bf05b69ee5a219",
+    "bend/registry_snow.bend": "76244edf5940910ce43830b39b6636ed6ef12faf4104d415ee6abd4a4656172b",
+    "bend/registry_surface.bend": "7964afc9153879537d0fed15b811aaf88d1a0b41b210be339122e595ab76bd60",
+    "bend/registry_surface_feature.bend": "b5ad9ab938a4d1930a7174d77b72050819a895a0d7e63c3f8e4bde0de289adf4",
+    "bend/registry_tree.bend": "febb51a4186b17228619f29f8a0af49e13d0c33cfa8b2d837ace96ad4b8e6ca1",
+    "bend/registry_values.bend": "5bb1d3ab6bfed7cf640af35089a5ec1370cc2f686d7cfb8b210e7643e1b3d97f",
+    "bend/registry_vegetation.bend": "b59531f73535aa7c1c2b688f422363a0ca8e080fdcf2a6877dedb270dfcc9b2e",
+    "bend/shoreline.bend": "932383d2add618bbc94b6b5ddd6f75030a3853e0def8fa2e78764405185cb888",
+    "bend/snow.bend": "697016acb380c1f8d69c26e94d29bba973db52a6500339a46917047788236a8e",
+    "bend/structure_blocks.bend": "f9bd62d81313ff0518161058e287ea9b3993151b309496e34976656301861543",
+    "bend/structure_cache.bend": "369ecad76661f8df02c55c2be42d12221900d6cc14454d5940c9b9aeb4e1be8a",
+    "bend/structure_candidates.bend": "e0dcac5fc7c663dc0f6807ba022a6fb6d24e46e84f37e56f41187ba5cf1ee983",
+    "bend/structure_entities.bend": "56bdcb377974d730e06efc2e1c1dc829e81f5f14400195ac74b072ce4ae7388b",
+    "bend/structure_geometry.bend": "32c85a260381db2e76638543774637047d7fbb902f6f3eacca1146970beee8cd",
+    "bend/structure_metadata.bend": "762bd210905783117a2980312f6296e0a107855b2bbddd7b48ba0cf989a8fa93",
+    "bend/structure_nbt.bend": "81fe581f0a89aceebeae0db54947da8f7648ca3494873b1e2026a6de6a14cc3c",
+    "bend/structure_plan.bend": "55847a23023a4e76214016ca28f4bb4f93ee06c61cf12df921e4a5ecc2bbc0ec",
+    "bend/structure_processors.bend": "af5c8a0011af0045782a97d329ac38a733d85a4f31d30be9d5291d0162d861ab",
+    "bend/structure_query.bend": "f42a6b7f12d5d7cbd0e40377a7af2e93cebb95eeaba7c5c4c836b5e6cbd4028d",
+    "bend/structure_random.bend": "edef5bd116a3e14093693514a241fe3dfa444f964894f1be3b41ec7814e2ce37",
+    "bend/structure_region.bend": "4b4660e6dc816866f1720cbfff8317f0434b074ff675bf16e3721bea2e9264ec",
+    "bend/structure_registry.bend": "e78561563564ce3e2f9a221eb6db2692f47a2725697fc21a05cd1cf5b6f3c0a6",
+    "bend/structure_replay.bend": "44eb0ee4a36a60ebcdac91bcf77b658c79813eeaa442eaf487e6295a05bb6a78",
+    "bend/structure_stage.bend": "6dbe9850e5d322a7251c0709d6ba68ae50b6342deb56d69e6600b9f0d2a71a23",
+    "bend/structure_supports.bend": "6ec0c7df1a5b0e69d30fd61b27d83cb330e74486c15340ab1df3a429a9a3ca4a",
+    "bend/structure_template.bend": "059620722212e0417d71599bcfe6ac4d34720ed5e95823fc749d03ea0b5fa378",
+    "bend/structure_terrain.bend": "fa7ce6c03b37e38b1b6f384756235177c52b2266db5c32de9f76e7112ecdf424",
+    "bend/structure_values.bend": "71a598da03385940d0bef30682af9df2e9ff96771beaa8d8b6adf15bfafe6285",
+    "bend/surface_feature.bend": "098212a62acee0ee6e1b6907e807a8a862b58df99343c986bea998d2431d5b7b",
+    "bend/surface_plants.bend": "183b4563d20ed9143e5668570899cb38f4c2f3e4490c17bcb50bdbab5f6c2095",
+    "bend/terrain_height.bend": "bc5400f024c86b34294cc628b364d7ceb67fd9675cb2de77a3cbe06b519be8a2",
+    "bend/terrain_surface.bend": "26687ac40e62949ca563d7f31117207fa0eb053d82f51b58a14e84b9a2d4d652",
+    "bend/transport.bend": "2d7b2667aaf37b537de8be6c584acaeaec37377da475741bfe790a46d9c76f81",
+    "bend/tree.bend": "5cc2c5a156649be9d68a0030092759cc3048ff6ca7b061fd20179a9104e3ecb3",
+    "bend/tree_data.bend": "d07220936f54df8e8300bf40ca59c1357b36c2c1ae9754d3e3d7ba50c1f5a9e1",
+    "bend/tree_decorators.bend": "49ee68f335b2d9524c8de6597a3adaee4195440830c1d0f5d54f8460cb12c013",
+    "bend/tree_foliage.bend": "e2384717b58a06959a141c21a03a86797aef6516ebf9616400561f133a053f04",
+    "bend/tree_geometry.bend": "4325085f19a58caba1fce591caf60dc0b66ade88c910887c45237ccb5af7e26a",
+    "bend/vegetation.bend": "6023bc29afb6d84381326135f011b916255e686508756bf30ebb6cbdba34466e",
+    "bend/vegetation_patch.bend": "67d48d9e555d823cd5499b06b71ea9952541fd330354bb876ade04fd3689c471",
+    "bend/vegetation_region.bend": "aaf6bd6072c89a025935275e23f5b92813f65010254431a23808d403421b140d",
+    "bend/word64.bend": "62e104fbbc56208d66457789a7f2ed3f5fe122f4a19068c3df9b3bbbf555e139",
+    "scripts/test_bend_full_region.py": "bc54d68338f443b5a5fffb62c4498beaab7b7d839252c626821e3a6c2699bea5"
+  },
+  "run": {
+    "lighting": true,
+    "lit_chunks": 4,
+    "successful_voxel_pass_invalidates_light": true,
+    "outside_terrain_queries_rejected": true,
+    "metadata": {
+      "starts": 0,
+      "references": 0,
+      "block_entities": 0,
+      "entities": 0
+    },
+    "gpu_required": false,
+    "gpu_memory": "off",
+    "size": 64,
+    "chunks": 16,
+    "sectors": 33,
+    "bytes": 135168,
+    "sha256": "43ccf19a5f36420c58d4037b47c3859983fcd9350c2171cad9faff5b3e21ffee",
+    "selected_blocks_checked": 884736,
+    "invalid_requests_rejected": 38,
+    "rejected_commands_preserve_chunks": true,
+    "profile_reload_invalidates_grid": true,
+    "stages": [
+      {
+        "name": "profile",
+        "opcode": 5,
+        "wall_ms": 43151.704207994044,
+        "sampled_peak_rss": 80232448,
+        "observed_metal_ms": []
+      },
+      {
+        "name": "density model",
+        "opcode": 11,
+        "wall_ms": 66.2987909745425,
+        "sampled_peak_rss": 80232448,
+        "observed_metal_ms": []
+      },
+      {
+        "name": "materials",
+        "opcode": 19,
+        "wall_ms": 549.8007079586387,
+        "sampled_peak_rss": 81395712,
+        "observed_metal_ms": []
+      },
+      {
+        "name": "palette",
+        "opcode": 21,
+        "wall_ms": 7.1032908745110035,
+        "sampled_peak_rss": 81395712,
+        "observed_metal_ms": []
+      },
+      {
+        "name": "geology",
+        "opcode": 30,
+        "wall_ms": 1131.1794579960406,
+        "sampled_peak_rss": 108347392,
+        "observed_metal_ms": []
+      },
+      {
+        "name": "aquifers",
+        "opcode": 37,
+        "wall_ms": 35.632875049486756,
+        "sampled_peak_rss": 108347392,
+        "observed_metal_ms": []
+      },
+      {
+        "name": "climate",
+        "opcode": 9,
+        "wall_ms": 82.67500018700957,
+        "sampled_peak_rss": 108347392,
+        "observed_metal_ms": []
+      },
+      {
+        "name": "surface bounds",
+        "opcode": 15,
+        "wall_ms": 13.223124900832772,
+        "sampled_peak_rss": 136478720,
+        "observed_metal_ms": []
+      },
+      {
+        "name": "chunk catalog",
+        "opcode": 25,
+        "wall_ms": 302.9882910195738,
+        "sampled_peak_rss": 136478720,
+        "observed_metal_ms": []
+      },
+      {
+        "name": "lighting optics",
+        "opcode": 60,
+        "wall_ms": 75.96100005321205,
+        "sampled_peak_rss": 136478720,
+        "observed_metal_ms": []
+      },
+      {
+        "name": "density descriptor",
+        "opcode": 18,
+        "wall_ms": 0.1832079142332077,
+        "sampled_peak_rss": 136478720,
+        "observed_metal_ms": []
+      },
+      {
+        "name": "density lattice",
+        "opcode": 13,
+        "wall_ms": 15652.710166061297,
+        "sampled_peak_rss": 159629312,
+        "observed_metal_ms": []
+      },
+      {
+        "name": "surface climate",
+        "opcode": 16,
+        "wall_ms": 745.0152090750635,
+        "sampled_peak_rss": 160874496,
+        "observed_metal_ms": []
+      },
+      {
+        "name": "shorelines",
+        "opcode": 29,
+        "wall_ms": 87.02983311377466,
+        "sampled_peak_rss": 160874496,
+        "observed_metal_ms": []
+      },
+      {
+        "name": "lakes",
+        "opcode": 43,
+        "wall_ms": 1705.6677090004086,
+        "sampled_peak_rss": 167821312,
+        "observed_metal_ms": []
+      },
+      {
+        "name": "block columns",
+        "opcode": 22,
+        "wall_ms": 11679.649541852996,
+        "sampled_peak_rss": 183533568,
+        "observed_metal_ms": []
+      },
+      {
+        "name": "cave fields",
+        "opcode": 33,
+        "wall_ms": 19243.93712496385,
+        "sampled_peak_rss": 191545344,
+        "observed_metal_ms": []
+      },
+      {
+        "name": "aquifer fields",
+        "opcode": 39,
+        "wall_ms": 640.3910841327161,
+        "sampled_peak_rss": 192020480,
+        "observed_metal_ms": []
+      },
+      {
+        "name": "carving",
+        "opcode": 35,
+        "wall_ms": 21239.97262492776,
+        "sampled_peak_rss": 210485248,
+        "observed_metal_ms": []
+      },
+      {
+        "name": "ores including halo",
+        "opcode": 50,
+        "wall_ms": 6227.918291930109,
+        "sampled_peak_rss": 226639872,
+        "observed_metal_ms": []
+      },
+      {
+        "name": "cave dressing including halo",
+        "opcode": 51,
+        "wall_ms": 22.53020810894668,
+        "sampled_peak_rss": 226639872,
+        "observed_metal_ms": []
+      },
+      {
+        "name": "vegetation core",
+        "opcode": 53,
+        "wall_ms": 2010.3136249817908,
+        "sampled_peak_rss": 255639552,
+        "observed_metal_ms": []
+      },
+      {
+        "name": "structures",
+        "opcode": 56,
+        "wall_ms": 15357.823041966185,
+        "sampled_peak_rss": 257867776,
+        "observed_metal_ms": []
+      },
+      {
+        "name": "weather",
+        "opcode": 54,
+        "wall_ms": 64.84420807100832,
+        "sampled_peak_rss": 257867776,
+        "observed_metal_ms": []
+      },
+      {
+        "name": "interior lighting",
+        "opcode": 61,
+        "wall_ms": 7803.266457980499,
+        "sampled_peak_rss": 259260416,
+        "observed_metal_ms": []
+      },
+      {
+        "name": "stream NBT/zlib/MCA",
+        "opcode": 55,
+        "wall_ms": 1081.7462501581758,
+        "sampled_peak_rss": 266289152,
+        "observed_metal_ms": []
+      },
+      {
+        "name": "selected block columns",
+        "opcode": 24,
+        "wall_ms": 58.6667088791728,
+        "sampled_peak_rss": 266600448,
+        "observed_metal_ms": []
+      },
+      {
+        "name": "selected independent chunk command",
+        "opcode": 27,
+        "wall_ms": 259.5165001694113,
+        "sampled_peak_rss": 266600448,
+        "observed_metal_ms": []
+      },
+      {
+        "name": "selected block columns",
+        "opcode": 24,
+        "wall_ms": 56.14758306182921,
+        "sampled_peak_rss": 266600448,
+        "observed_metal_ms": []
+      },
+      {
+        "name": "selected independent chunk command",
+        "opcode": 27,
+        "wall_ms": 258.8683750946075,
+        "sampled_peak_rss": 266665984,
+        "observed_metal_ms": []
+      },
+      {
+        "name": "selected block columns",
+        "opcode": 24,
+        "wall_ms": 52.512832917273045,
+        "sampled_peak_rss": 266665984,
+        "observed_metal_ms": []
+      },
+      {
+        "name": "selected independent chunk command",
+        "opcode": 27,
+        "wall_ms": 250.04425016231835,
+        "sampled_peak_rss": 266665984,
+        "observed_metal_ms": []
+      },
+      {
+        "name": "selected block columns",
+        "opcode": 24,
+        "wall_ms": 53.03695797920227,
+        "sampled_peak_rss": 266665984,
+        "observed_metal_ms": []
+      },
+      {
+        "name": "selected independent chunk command",
+        "opcode": 27,
+        "wall_ms": 237.05120803788304,
+        "sampled_peak_rss": 266665984,
+        "observed_metal_ms": []
+      },
+      {
+        "name": "selected block columns",
+        "opcode": 24,
+        "wall_ms": 51.80537514388561,
+        "sampled_peak_rss": 266665984,
+        "observed_metal_ms": []
+      },
+      {
+        "name": "selected independent chunk command",
+        "opcode": 27,
+        "wall_ms": 471.17725014686584,
+        "sampled_peak_rss": 266665984,
+        "observed_metal_ms": []
+      },
+      {
+        "name": "selected block columns",
+        "opcode": 24,
+        "wall_ms": 51.120417192578316,
+        "sampled_peak_rss": 266665984,
+        "observed_metal_ms": []
+      },
+      {
+        "name": "selected independent chunk command",
+        "opcode": 27,
+        "wall_ms": 239.52308320440352,
+        "sampled_peak_rss": 266665984,
+        "observed_metal_ms": []
+      },
+      {
+        "name": "selected block columns",
+        "opcode": 24,
+        "wall_ms": 48.28283307142556,
+        "sampled_peak_rss": 266665984,
+        "observed_metal_ms": []
+      },
+      {
+        "name": "selected independent chunk command",
+        "opcode": 27,
+        "wall_ms": 231.82041617110372,
+        "sampled_peak_rss": 266665984,
+        "observed_metal_ms": []
+      },
+      {
+        "name": "selected block columns",
+        "opcode": 24,
+        "wall_ms": 49.98079198412597,
+        "sampled_peak_rss": 266665984,
+        "observed_metal_ms": []
+      },
+      {
+        "name": "selected independent chunk command",
+        "opcode": 27,
+        "wall_ms": 234.19004096649587,
+        "sampled_peak_rss": 266665984,
+        "observed_metal_ms": []
+      },
+      {
+        "name": "selected block columns",
+        "opcode": 24,
+        "wall_ms": 49.848082941025496,
+        "sampled_peak_rss": 266665984,
+        "observed_metal_ms": []
+      },
+      {
+        "name": "selected independent chunk command",
+        "opcode": 27,
+        "wall_ms": 241.359582869336,
+        "sampled_peak_rss": 266665984,
+        "observed_metal_ms": []
+      },
+      {
+        "name": "weather invalidates light",
+        "opcode": 54,
+        "wall_ms": 61.35979085229337,
+        "sampled_peak_rss": 266665984,
+        "observed_metal_ms": []
+      },
+      {
+        "name": "reload profile",
+        "opcode": 5,
+        "wall_ms": 44382.120833033696,
+        "sampled_peak_rss": 334299136,
+        "observed_metal_ms": []
+      },
+      {
+        "name": "stop",
+        "opcode": 4,
+        "wall_ms": 0.07870793342590332,
+        "sampled_peak_rss": 334299136,
+        "observed_metal_ms": []
+      }
+    ],
+    "observed_metal_buffers": 0,
+    "sampled_peak_worker_rss": 334299136,
+    "body_growth_samples": [
+      {
+        "elapsed_seconds": 176.53435791679658,
+        "bytes": 36864
+      },
+      {
+        "elapsed_seconds": 177.04810741683468,
+        "bytes": 69632
+      },
+      {
+        "elapsed_seconds": 177.56193450000137,
+        "bytes": 135168
+      }
+    ],
+    "chunk_bytes_unchanged_by_header_patch": true,
+    "profile_sha256": "124eef16c77f536f9c5c29e411d693c6bd878b93ac6452744b7494d485e4d23c"
+  }
+}

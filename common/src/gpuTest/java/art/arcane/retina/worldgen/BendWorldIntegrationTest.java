@@ -56,6 +56,12 @@ public final class BendWorldIntegrationTest {
         generator.bindWorld(registry,seed,factory,StructureProfile.Context.of(resources));
         var random=RandomState.create(registry.lookupOrThrow(Registries.NOISE),seed,settings.value());
         var bounds=LevelHeightAccessor.create(-64,384);
+        String repairFixture=System.getProperty("retina.bend.lightingFixture");
+        if(repairFixture!=null) {
+            try { verifyRepairFixture(Path.of(repairFixture),generator,factory,bounds); }
+            finally { generator.closePreviews(); }
+            return;
+        }
         var position=new ChunkPos(-32,0);
         var folder=Files.createTempDirectory("retina-bend-world-test-");
         try {
@@ -100,7 +106,7 @@ public final class BendWorldIntegrationTest {
             var pieceContext=new net.minecraft.world.level.levelgen.structure.pieces.StructurePieceSerializationContext(resources,registry,null);
             generator.installDecorationData(proto,tag,pieceContext,registry);
             require(proto.getAllStarts().size()==tag.getCompoundOrEmpty("structures").getCompoundOrEmpty("starts").size(),"existing protochunk receives Bend starts");
-            require(tag.getStringOr("Status","").equals("minecraft:features") && !tag.getBooleanOr("isLightOn",true),"Minecraft owns preview lighting");
+            require(tag.getStringOr("Status","").equals("minecraft:features") && !tag.getBooleanOr("isLightOn",true),"Minecraft owns lighting on the outer region ring");
             for(int z:new int[]{0,7,15})for(int x:new int[]{0,8,15}) {
                 var column=generator.getBaseColumn(position.getMinBlockX()+x,z,bounds,random);
                 for(int y=-64;y<320;y++) require(column.getBlock(y).equals(proto.getBlockState(new net.minecraft.core.BlockPos(position.getMinBlockX()+x,y,z))),"saved Bend column matches loaded chunk");
@@ -109,10 +115,26 @@ public final class BendWorldIntegrationTest {
             Files.createFile(destination);
             var report=generator.publishPreview(position,destination);
             require(report.generated()==1024 && BendRegionFiles.complete(destination,position,32),"entire temporary region is promoted");
-            int structureStarts=0,structurePieces=0,blockEntities=0,entities=0;
+            String exported=System.getProperty("retina.bend.testOutput");
+            if(exported!=null) {
+                var output=Path.of(exported);Files.createDirectories(output.toAbsolutePath().getParent());
+                Files.copy(destination,output,StandardCopyOption.REPLACE_EXISTING);
+            }
+            int structureStarts=0,structurePieces=0,blockEntities=0,entities=0,litChunks=0;
+            var lightingChunks=new ArrayList<net.minecraft.world.level.chunk.storage.SerializableChunkData>();
             try(var storage=new RegionFileStorage(new RegionStorageInfo("bend-preview-test",Level.OVERWORLD,"chunk"),folder,false)) {
                 for(int cz=0;cz<32;cz++)for(int cx=-32;cx<0;cx++) {
                     var pos=new ChunkPos(cx,cz);var stored=storage.read(pos);
+                    var parsed=net.minecraft.world.level.chunk.storage.SerializableChunkData.parse(bounds,factory,stored);
+                    boolean interior=cx>-32 && cx<-1 && cz>0 && cz<31;
+                    require(parsed!=null && parsed.lightCorrect()==interior,"Minecraft accepts computed interior lighting");
+                    require(parsed.chunkStatus()==(interior?net.minecraft.world.level.chunk.status.ChunkStatus.LIGHT:net.minecraft.world.level.chunk.status.ChunkStatus.FEATURES),"saved light status matches halo ownership");
+                    require(parsed.sectionData().size()==(interior?26:24),"interior includes virtual light sections");
+                    if(interior) {
+                        litChunks++;
+                        for(var section:parsed.sectionData())require(section.blockLight()!=null && section.skyLight()!=null,"all interior sections have both light layers");
+                    }
+                    lightingChunks.add(parsed);
                     var target=new ProtoChunk(pos,UpgradeData.EMPTY,bounds,factory,null);
                     if(!stored.getCompoundOrEmpty("structures").getCompoundOrEmpty("starts").isEmpty()) {
                         generator.createStructures(registry,null,null,target,null,Level.OVERWORLD);
@@ -141,6 +163,8 @@ public final class BendWorldIntegrationTest {
                 }
                 var edited=storage.read(position);edited.putString("retina_edit","preserved");storage.write(position,edited);
             }
+            require(litChunks==900,"900 interior chunks lit and 124 boundary chunks delegated");
+            verifyLighting(factory,lightingChunks,bounds);
             require(generatedHit!=null,"initial locate finds actual trial chamber without terrain");
             require(structureStarts>0 && structurePieces>0 && blockEntities>0,"real registered structures and block entities generated");
             System.out.println("Bend structure metadata: starts="+structureStarts+" pieces="+structurePieces+" block_entities="+blockEntities+" entities="+entities);
@@ -149,7 +173,7 @@ public final class BendWorldIntegrationTest {
             try(var storage=new RegionFileStorage(new RegionStorageInfo("bend-preview-test",Level.OVERWORLD,"chunk"),folder,false)) {
                 require(storage.read(position).getStringOr("retina_edit","").equals("preserved"),"edit survives reopen and promotion");
             }
-            var unfinished=new ChunkPos(-31,0);
+            var unfinished=new ChunkPos(-30,2);
             try(var storage=new RegionFileStorage(new RegionStorageInfo("bend-preview-test",Level.OVERWORLD,"chunk"),folder,false)) {
                 var partial=storage.read(unfinished);partial.putString("Status","minecraft:biomes");partial.putString("retina_probe","discard");storage.write(unfinished,partial);
             }
@@ -158,6 +182,10 @@ public final class BendWorldIntegrationTest {
             require(repaired.generated()==1 && repaired.preserved()==1023 && BendRegionFiles.complete(destination,position,32),"only unfinished probe data is replaced");
             try(var storage=new RegionFileStorage(new RegionStorageInfo("bend-preview-test",Level.OVERWORLD,"chunk"),folder,false)) {
                 require(!storage.read(unfinished).contains("retina_probe") && storage.read(position).getStringOr("retina_edit","").equals("preserved"),"repair preserves finished chunk edits");
+                var reset=storage.read(unfinished);
+                require(!reset.getBooleanOr("isLightOn",true) && reset.getStringOr("Status","").equals("minecraft:features"),"repair delegates lighting around actual saved neighbors");
+                require(reset.getListOrEmpty("sections").size()==24,"repair removes light-only padding");
+                for(var section:reset.getListOrEmpty("sections"))require(!((net.minecraft.nbt.CompoundTag)section).contains("BlockLight") && !((net.minecraft.nbt.CompoundTag)section).contains("SkyLight"),"repair drops cached arrays");
             }
             var neighbor=new ChunkPos(-1,31);
             var reads=new ArrayList<CompletableFuture<net.minecraft.nbt.CompoundTag>>();
@@ -174,7 +202,7 @@ public final class BendWorldIntegrationTest {
             var decoded=net.minecraft.world.level.chunk.storage.SerializableChunkData.parse(proto,factory,tag);
             require(decoded!=null && decoded.sectionData().size()>=24,"Minecraft decodes all Bend sections");
             var lines=art.arcane.retina.debug.TerrainDebugReport.lines(new TerrainStatsPayload(true,generator.backend(),"bend",generator.metrics().snapshot()));
-            require(lines.stream().anyMatch(s -> s.contains("Bend (preview)")) && lines.stream().anyMatch(s -> s.contains("Minecraft lighting")),"F3 labels incomplete preview honestly");
+            require(lines.stream().anyMatch(s -> s.contains("Bend (preview)")) && lines.stream().anyMatch(s -> s.contains("Bend lighting: interior chunks")),"F3 labels Bend lighting and remaining preview status honestly");
             require(lines.stream().anyMatch(s -> s.contains("Region latency:")) && lines.stream().noneMatch(s -> s.contains("batch latency") || s.contains("Temporary batches")),"F3 reports full regions");
             require(generator.metrics().snapshot().total()==1024 && generator.metrics().snapshot().regionSamples()==1,"promotions and cached reads do not change the region timing window");
             System.out.println("PASS: combined Bend terrain, Minecraft decode, height queries, promotion and saved edit preservation; Rust unavailable");
@@ -183,6 +211,80 @@ public final class BendWorldIntegrationTest {
             try(var files=Files.walk(folder)) { for(var path:files.sorted(Comparator.reverseOrder()).toList())Files.delete(path); }
         }
     }
+    private static void verifyRepairFixture(Path cached,RetinaChunkGenerator generator,
+            PalettedContainerFactory factory,LevelHeightAccessor bounds) throws Exception {
+        var folder=Files.createTempDirectory("retina-bend-light-repair-");
+        var before=Files.readAllBytes(cached);
+        var position=new ChunkPos(-31,1);var neighbor=new ChunkPos(-30,1);
+        // Real generated lit chunks, copied through the same atomic publication
+        // path. The staged typed data is reencoded/compressed solely in Bend.
+        var backend=new BendRegionBackend(generator.request(123456789L,position.x(),position.z()),generator.profile());
+        try {
+            var destination=folder.resolve("r.-1.0.mca");
+            var fresh=BendRegionFiles.publish(cached,destination,backend::resetLighting);
+            require(fresh.generated()==16,"small real-region fixture has 16 chunks");
+            try(var storage=new RegionFileStorage(new RegionStorageInfo("bend-light-repair",Level.OVERWORLD,"chunk"),folder,false)) {
+                require(storage.read(position).getBooleanOr("isLightOn",false),"fresh copy keeps Bend lighting");
+                var edited=storage.read(neighbor);edited.putString("retina_edit","preserved");storage.write(neighbor,edited);
+                storage.write(position,null);
+            }
+            var incomplete=Files.readAllBytes(destination);
+            try {
+                BendRegionFiles.publish(cached,destination,chunk -> { throw new java.io.IOException("injected repair failure"); });
+                throw new AssertionError("repair encoder failure must abort publication");
+            } catch(java.io.IOException failure) {
+                require(failure.getMessage().equals("injected repair failure"),"actual repair encoder reached");
+            }
+            require(Arrays.equals(incomplete,Files.readAllBytes(destination)),"failed repair preserves destination bytes");
+            var repaired=BendRegionFiles.publish(cached,destination,backend::resetLighting);
+            require(repaired.generated()==1 && repaired.preserved()==15,"repair replaces only missing chunk");
+            try(var storage=new RegionFileStorage(new RegionStorageInfo("bend-light-repair",Level.OVERWORLD,"chunk"),folder,false);
+                var original=new RegionFileStorage(new RegionStorageInfo("bend-light-source",Level.OVERWORLD,"chunk"),cached.getParent(),false)) {
+                var reset=storage.read(position);var wanted=original.read(position);
+                wanted.putBoolean("isLightOn",false);wanted.putString("Status","minecraft:features");
+                var sections=wanted.getListOrEmpty("sections");
+                for(int i=sections.size()-1;i>=0;i--) {
+                    var section=(net.minecraft.nbt.CompoundTag)sections.get(i);
+                    section.remove("BlockLight");section.remove("SkyLight");
+                    if(section.size()==1 && section.contains("Y"))sections.remove(i);
+                }
+                require(reset.equals(wanted),"repair preserves all non-light NBT through Bend compression");
+                require(storage.read(neighbor).getStringOr("retina_edit","").equals("preserved"),"repair keeps neighboring edits");
+                var parsed=net.minecraft.world.level.chunk.storage.SerializableChunkData.parse(bounds,factory,reset);
+                require(parsed!=null && !parsed.lightCorrect() && parsed.sectionData().size()==24,"Minecraft accepts repaired unlit chunk");
+            }
+            require(Arrays.equals(before,Files.readAllBytes(cached)),"repair leaves temporary lit region unchanged");
+            System.out.println("PASS: Bend lit-cache repair, actual Minecraft NBT decode, neighboring edits and immutable cached bytes");
+        } finally {
+            backend.close();
+            try(var files=Files.walk(folder)){for(var path:files.sorted(Comparator.reverseOrder()).toList())Files.deleteIfExists(path);}
+        }
+    }
+    private static void verifyLighting(PalettedContainerFactory factory,
+            List<net.minecraft.world.level.chunk.storage.SerializableChunkData> saved,LevelHeightAccessor bounds) {
+        var grid=new NativeLightingIntegrationTest.SavedGrid(factory,saved,bounds);
+        var recomputed=grid.engine(false);
+        var imported=grid.engine(true);
+        var origin=saved.getFirst().chunkPos();var random=new Random(31579);
+        for(int i=0;i<30000;i++) {
+            var pos=new net.minecraft.core.BlockPos(origin.getMinBlockX()+random.nextInt(512),
+                    bounds.getMinY()+random.nextInt(bounds.getHeight()),origin.getMinBlockZ()+random.nextInt(512));
+            for(var layer:net.minecraft.world.level.LightLayer.values())require(
+                    recomputed.getLayerListener(layer).getLightValue(pos)==imported.getLayerListener(layer).getLightValue(pos),
+                    "Bend prelit MCA / boundary lighting differs from Minecraft recomputation at "+pos+" "+layer);
+        }
+        var torch=new net.minecraft.core.BlockPos(origin.getMinBlockX()+256,bounds.getMaxY(),origin.getMinBlockZ()+256);
+        var chunk=grid.chunks[16*32+16];var original=chunk.getBlockState(torch);
+        int before=imported.getLayerListener(net.minecraft.world.level.LightLayer.BLOCK).getLightValue(torch);
+        chunk.setBlockState(torch,Blocks.TORCH.defaultBlockState(),0);
+        imported.checkBlock(torch);imported.runLightUpdates();
+        require(imported.getLayerListener(net.minecraft.world.level.LightLayer.BLOCK).getLightValue(torch)>=14,"placed torch updates Bend-prelit chunk");
+        chunk.setBlockState(torch,original,0);
+        imported.checkBlock(torch);imported.runLightUpdates();
+        require(imported.getLayerListener(net.minecraft.world.level.LightLayer.BLOCK).getLightValue(torch)==before,"restored block clears added light in Bend-prelit chunk");
+        System.out.println("PASS: 900 Bend-lit chunks, 124 boundary chunks; 60000 Minecraft light comparisons");
+    }
+
     private static void registerStructurePiece() throws Exception {
         // Headless bootstrap freezes builtins before mod initialization.
         var registry=net.minecraft.core.registries.BuiltInRegistries.STRUCTURE_PIECE;

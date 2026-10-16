@@ -1,4 +1,5 @@
 import Base
+import ./light_region.bend as Light
 import ./generated_chunk.bend as G
 import ./chunk_catalog.bend as C
 import ./material_columns_data.bend as M
@@ -247,17 +248,17 @@ def run_stream_context(input: Input,+grid: M.Grid,catalog: Context) -> IO(Result
 # Keep component entry points available while the persistent worker carries
 # structure metadata through every full, partial and streamed output path.
 type Context is Data:
-  Context{catalog: C.Catalog,metadata: Maybe<&2,Tags.Store>}
+  Context{catalog: C.Catalog,metadata: Maybe<&2,Tags.Store>,lighting: Maybe<&2,Light.Store>}
 
 def encode(grid: M.Grid,catalog: Context,request: G.Request) -> Result<&1,&1,U32,Z.Bytes>:
   match catalog:
-    case Context{catalog,metadata}: G.encode_store(grid,catalog,request,metadata)
+    case Context{catalog,metadata,lighting}: G.encode_context(grid,catalog,request,metadata,lighting)
 
 def run(input: Input,grid: M.Grid,catalog: C.Catalog) -> IO(Result<&1,&1,U32,U32 & U32>):
-  run_context(input,grid,Context{catalog,None{}})
+  run_context(input,grid,Context{catalog,None{},None{}})
 
 def run_partial(input: Input,grid: M.Grid,catalog: C.Catalog) -> IO(Result<&1,&1,U32,U32 & U32>):
-  run_partial_context(input,grid,Context{catalog,None{}})
+  run_partial_context(input,grid,Context{catalog,None{},None{}})
 
 def run_stream(input: Input,grid: M.Grid,catalog: C.Catalog) -> IO(Result<&1,&1,U32,Stream.Complete>):
-  run_stream_context(input,grid,Context{catalog,None{}})
+  run_stream_context(input,grid,Context{catalog,None{},None{}})

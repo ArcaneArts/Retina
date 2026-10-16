@@ -68,6 +68,10 @@ import ./structure_nbt.bend as StructureNbt
 import ./structure_registry.bend as StructureRegistry
 import ./chunk_metadata.bend as ChunkTags
 import ./word64.bend as Word64
+import ./light_volume.bend as LightVolume
+import ./light_region.bend as LightRegion
+import ./registry_lighting.bend as RegistryLighting
+import ./light_reset.bend as LightReset
 
 # Persistent binary world-generation worker and component protocol v1:
 # PING=0, PREPARE_NOISE=1, SAMPLE_GRID=2, COMPRESS=3, STOP=4,
@@ -97,8 +101,11 @@ import ./word64.bend as Word64
 # STRUCTURES=56 (cached GPU terrain probes, CPU layouts/replay, resident metadata).
 # Requests: RBND magic, payload length, request ID, opcode (all BE u32).
 # Responses add a status u32 after opcode. stdout contains frames only.
+type LightingState is Data:
+  LightingState{model: Maybe<&2,LightVolume.Model>,lit: Maybe<&2,LightRegion.Store>}
+
 type Common is Data:
-  Common{noise: Maybe<&2,N.Stack>,structures: Q.Table<Structures.Session>,metadata: Q.Table<ChunkTags.Store>}
+  Common{noise: Maybe<&2,N.Stack>,structures: Q.Table<Structures.Session>,metadata: Q.Table<ChunkTags.Store>,lighting: Q.Table<LightingState>}
 
 type Settings is Data:
   Settings{noise: Common,climate: Maybe<&2,C.Model>,density: Maybe<&2,RD.Prepared>}
@@ -213,7 +220,7 @@ def set_ended(valid: Bool,input: File,output: File,old: State,backend: U32,id: U
 
 def replace_noise(old: State,noise: N.Stack) -> State:
   match old:
-    case State{Settings{Common{_,structures,metadata},climate,density},profile}: State{Settings{Common{Some{noise},structures,metadata},climate,density},profile}
+    case State{Settings{Common{_,structures,metadata,lighting},climate,density},profile}: State{Settings{Common{Some{noise},structures,metadata,lighting},climate,density},profile}
 
 @unsafe
 def set_result(result: Result<&1,&1,U32,N.Stack>,input: File,output: File,old: State,backend: U32,id: U32,opcode: U32) -> IO(Unit):
@@ -234,12 +241,12 @@ def grid_valid(valid: Bool,input: File,output: File,old: State,backend: U32,id: 
     x: U32,z: U32,+width: U32,+height: U32,step: U32) -> IO(Unit):
   match valid old:
     case False{} _: error(input,output,old,backend,id,opcode,603)
-    case True{} State{Settings{Common{None{},structures,metadata},climate,density},profile}: error(input,output,State{Settings{Common{None{},structures,metadata},climate,density},profile},backend,id,opcode,604)
-    case True{} State{Settings{Common{Some{+stack},structures,metadata},climate,density},profile}:
+    case True{} State{Settings{Common{None{},structures,metadata,lighting},climate,density},profile}: error(input,output,State{Settings{Common{None{},structures,metadata,lighting},climate,density},profile},backend,id,opcode,604)
+    case True{} State{Settings{Common{Some{+stack},structures,metadata,lighting},climate,density},profile}:
       do IO<Unit>:
         samples : Samples = sample!(depth(U32.mul(width,height),256,0n),0,Grid{x,z,width,U32.mul(width,height),step},stack,U32.mul(width,height))
         body : Z.Bytes <- payload(encode(samples,B.new(),U32.mul(width,height)))
-        finish(input,output,State{Settings{Common{Some{stack},structures,metadata},climate,density},profile},backend,id,opcode,0,body,True{})
+        finish(input,output,State{Settings{Common{Some{stack},structures,metadata,lighting},climate,density},profile},backend,id,opcode,0,body,True{})
 
 @unsafe
 def grid(input: File,output: File,old: State,backend: U32,id: U32,opcode: U32,body: Z.Bytes) -> IO(Unit):
@@ -261,7 +268,7 @@ def empty_command(valid: Bool,input: File,output: File,stack: State,+backend: U3
 
 def clear_indices(noise: Settings) -> Settings:
   match noise:
-    case Settings{Common{stack,_,_},_,_}: Settings{Common{stack,Q.Empty{},Q.Empty{}},None{},None{}}
+    case Settings{Common{stack,_,_,_},_,_}: Settings{Common{stack,Q.Empty{},Q.Empty{},Q.Empty{}},None{},None{}}
 
 # Profile uploads are staged raw files, so large structure registries do not
 # bypass the bounded frame queue. The worker owns one validated resident tape.
@@ -286,7 +293,13 @@ def profile_path(valid: Bool,input: File,output: File,old: State,backend: U32,id
     case True{}:
       do IO<Unit>:
         result : Result<&1,&1,U32,P.Document> <- P.load(path)
-        profile_result(result,input,output,old,backend,id,opcode)
+        profile_command(result,input,output,old,backend,id,opcode)
+
+@unsafe
+def profile_command(result: Result<&1,&1,U32,P.Document>,input: File,output: File,old: State,backend: U32,id: U32,+opcode: U32) -> IO(Unit):
+  match opcode:
+    case 62: chunk_encoded(LightReset.loaded(result),old,input,output,backend,id,opcode)
+    case _: profile_result(result,input,output,old,backend,id,opcode)
 
 def path_words(-A: Type,n: Nat,cursor: R.Cursor,path: String,+valid: Bool,next: R.Cursor -> String -> Bool -> A) -> A:
   match n:
@@ -801,7 +814,7 @@ def chunk_generate(compress: Bool,input: File,output: File,old: State,backend: U
       Some{M.Model{materials,bands,sea,layered,Some{MD.State{config,Some{+grid},Some{+catalog},geology,caves}}}}}}},profile}:
       prepared : RD.Prepared = RD.Prepared{model,programs,noises,points,fields,density,surface,
         Some{M.Model{materials,bands,sea,layered,Some{MD.State{config,Some{grid},Some{catalog},geology,caves}}}}}
-      chunk_encoded(GC.run_store(GC.decode(body),grid,catalog,compress,chunk_tags(noise)),State{Settings{noise,climate,Some{prepared}},profile},input,output,backend,id,opcode)
+      chunk_encoded(GC.run_context(GC.decode(body),grid,catalog,compress,chunk_tags(noise),chunk_light(noise)),State{Settings{noise,climate,Some{prepared}},profile},input,output,backend,id,opcode)
     case _: error(input,output,old,backend,id,opcode,731)
 
 @unsafe
@@ -828,7 +841,7 @@ def region_generate(input: File,output: File,old: State,backend: U32,id: U32,+op
       prepared : RD.Prepared = RD.Prepared{model,programs,noises,points,fields,density,surface,
         Some{M.Model{materials,bands,sea,layered,Some{MD.State{config,Some{grid},Some{catalog},geology,caves}}}}}
       do IO<Unit>:
-        result : Result<&1,&1,U32,U32 & U32> <- region_run(U32.is_eq(opcode,52),GR.decode(body),grid,GR.Context{catalog,chunk_tags(noise)})
+        result : Result<&1,&1,U32,U32 & U32> <- region_run(U32.is_eq(opcode,52),GR.decode(body),grid,GR.Context{catalog,chunk_tags(noise),chunk_light(noise)})
         region_saved(result,State{Settings{noise,climate,Some{prepared}},profile},input,output,backend,id,opcode)
     case _: error(input,output,old,backend,id,opcode,731)
 
@@ -1006,7 +1019,7 @@ def grid_attach(grid: MD.Grid,+old: State) -> State:
   match old:
     case State{Settings{noise,climate,Some{RD.Prepared{model,programs,noises,points,fields,density,surface,
       Some{M.Model{materials,bands,sea,layered,Some{MD.State{config,_,catalog,geology,caves}}}}}}},profile}:
-      State{Settings{noise,climate,Some{RD.Prepared{model,programs,noises,points,fields,density,surface,
+      State{Settings{clear_light(noise),climate,Some{RD.Prepared{model,programs,noises,points,fields,density,surface,
         Some{M.Model{materials,bands,sea,layered,Some{MD.State{config,Some{grid},catalog,geology,caves}}}}}}},profile}
     case _: old
 
@@ -1452,6 +1465,9 @@ def dispatch(input: File,output: File,stack: State,backend: U32,id: U32,opcode: 
     case 57: structure_query(StructureQuery.decode(body),input,output,stack,backend,id,57)
     case 58: structure_query(StructureQuery.decode(body),input,output,stack,backend,id,58)
     case 59: structure_query(StructureQuery.decode(body),input,output,stack,backend,id,59)
+    case 60: lighting_profile(R.end(R.start(body)),input,output,stack,backend,id,60)
+    case 61: lighting_core(S.decode(body),input,output,stack,backend,id,61)
+    case 62: profile_load(input,output,stack,backend,id,62,body)
     case 4: empty_command(R.end(R.start(body)),input,output,stack,backend,id,4)
     case _: error(input,output,stack,backend,id,opcode,605)
 
@@ -1490,7 +1506,7 @@ def launch(backend: U32) -> IO(Unit):
   do IO<Unit>:
     input : File <- IO.try(File,File.open("/dev/stdin","r"))
     output : File <- IO.try(File,File.open("/dev/stdout","w"))
-    loop(input,output,State{Settings{Common{None{},Q.Empty{},Q.Empty{}},None{},None{}},None{}},backend)
+    loop(input,output,State{Settings{Common{None{},Q.Empty{},Q.Empty{},Q.Empty{}},None{},None{}},None{}},backend)
 
 def modes(cpu: Bool,gpu: Bool) -> IO(Unit):
   match cpu gpu:
@@ -1614,7 +1630,7 @@ def region_stream(input: File,output: File,+old: State,backend: U32,id: U32,opco
   match old:
     case State{Settings{noise,_,Some{RD.Prepared{_,_,_,_,_,_,_,Some{M.Model{_,_,_,_,Some{MD.State{_,Some{grid},Some{catalog},_,_}}}}}}},_}:
       do IO<Unit>:
-        result : Result<&1,&1,U32,RegionStream.Complete> <- GR.run_stream_context(GR.decode(body),grid,GR.Context{catalog,chunk_tags(noise)})
+        result : Result<&1,&1,U32,RegionStream.Complete> <- GR.run_stream_context(GR.decode(body),grid,GR.Context{catalog,chunk_tags(noise),chunk_light(noise)})
         streamed(result,old,input,output,backend,id,opcode)
     case _: error(input,output,old,backend,id,opcode,731)
 
@@ -1633,13 +1649,13 @@ def streamed_encoded(result: Result<&1,&1,U32,Z.Bytes>,old: State,input: File,ou
 
 def chunk_tags(common: Common) -> Maybe<&2,ChunkTags.Store>:
   match common:
-    case Common{_,_,Q.Leaf{tags}}: Some{tags}
+    case Common{_,_,Q.Leaf{tags},_}: Some{tags}
     case _: None{}
 
 @unsafe
 def structure_session(old: State) -> Maybe<&2,Structures.Session>:
   match old:
-    case State{Settings{Common{_,Q.Leaf{session},_},_,_},_}: Some{session}
+    case State{Settings{Common{_,Q.Leaf{session},_,_},_,_},_}: Some{session}
     case _: None{}
 
 @unsafe
@@ -1677,7 +1693,7 @@ def structures_compatible(ok: Bool,session: Structures.Session,doc: P.Document,o
 @unsafe
 def structures_attached(session: Structures.Session,tags: ChunkTags.Store,old: State) -> State:
   match old:
-    case State{Settings{Common{noise,_,_},climate,density},profile}: State{Settings{Common{noise,Q.Leaf{session},Q.Leaf{tags}},climate,density},profile}
+    case State{Settings{Common{noise,_,_,lighting},climate,density},profile}: State{Settings{Common{noise,Q.Leaf{session},Q.Leaf{tags},lighting},climate,density},profile}
 
 @unsafe
 def structures_computed(result: Result<&1,&1,U32,Structures.Computed>,old: State,input: File,output: File,backend: U32,id: U32,opcode: U32) -> IO(Unit):
@@ -1690,9 +1706,10 @@ def structures_computed(result: Result<&1,&1,U32,Structures.Computed>,old: State
 
 # LOAD_PROFILE clears all caches only after a successful load. New block grids
 # clear output metadata on successful attachment, never on request rejection.
+@unsafe
 def fresh_common(common: Common) -> Common:
   match common:
-    case Common{noise,session,_}: Common{noise,session,Q.Empty{}}
+    case Common{noise,session,_,lighting}: Common{noise,session,Q.Empty{},clear_lighting(lighting)}
 
 @unsafe
 def clear_structure_tags(old: State) -> State:
@@ -1736,7 +1753,7 @@ def structure_query_prepared(result: Result<&1,&1,U32,Structures.Session>,+query
 
 def structure_query_attached(session: Structures.Session,old: State) -> State:
   match old:
-    case State{Settings{Common{noise,_,tags},climate,density},profile}: State{Settings{Common{noise,Q.Leaf{session},tags},climate,density},profile}
+    case State{Settings{Common{noise,_,tags,lighting},climate,density},profile}: State{Settings{Common{noise,Q.Leaf{session},tags,lighting},climate,density},profile}
 
 @unsafe
 def structure_query_computed(result: Result<&1,&1,U32,StructureQuery.Computed>,old: State,input: File,output: File,backend: U32,id: U32,opcode: U32) -> IO(Unit):
@@ -1754,3 +1771,82 @@ def structure_query_metadata(session: Structures.Session,root: StructureRegistry
     case State{settings,Some{doc}}:
       StructureNbt.root(IO(Unit),doc,root,B.new(),doc => writer => structure_query_computed(Done{StructureQuery.Computed{session,writer}},State{settings,Some{doc}},input,output,backend,id,opcode))
     case _: error(input,output,old,backend,id,opcode,881)
+
+
+# Optics are profile-scoped; completed light is scoped to the current final grid.
+def chunk_light(common: Common) -> Maybe<&2,LightRegion.Store>:
+  match common:
+    case Common{_,_,_,Q.Leaf{LightingState{_,lit}}}: lit
+    case _: None{}
+
+@unsafe
+def clear_light(common: Common) -> Common:
+  match common:
+    case Common{noise,structures,tags,lighting}: Common{noise,structures,tags,clear_lighting(lighting)}
+
+def lighting_attach(model: LightVolume.Model,old: State) -> State:
+  match old:
+    case State{Settings{Common{noise,structures,tags,_},climate,density},profile}:
+      State{Settings{Common{noise,structures,tags,Q.Leaf{LightingState{Some{model},None{}}}},climate,density},profile}
+
+@unsafe
+def lighting_profile(ok: Bool,input: File,output: File,old: State,backend: U32,id: U32,opcode: U32) -> IO(Unit):
+  match ok old:
+    case False{} _: error(input,output,old,backend,id,opcode,603)
+    case True{} State{settings,Some{doc}}:
+      RegistryLighting.prepare(IO(Unit),doc,doc => result => lighting_prepared(result,restored(State{settings,None{}},doc),input,output,backend,id,opcode))
+    case _ _: error(input,output,old,backend,id,opcode,884)
+
+@unsafe
+def lighting_prepared(result: Result<&1,&1,U32,LightVolume.Model>,old: State,input: File,output: File,backend: U32,id: U32,opcode: U32) -> IO(Unit):
+  match result:
+    case Fail{code}: error(input,output,old,backend,id,opcode,code)
+    case Done{+model}:
+      do IO<Unit>:
+        body : Z.Bytes <- payload(lighting_info(model))
+        finish(input,output,lighting_attach(model,old),backend,id,opcode,0,body,True{})
+
+def lighting_info(model: LightVolume.Model) -> B.Writer:
+  match model:
+    case LightVolume.Model{sky,stride,states,coverage}: B.int(B.int(B.int(B.int(B.new(),Z.word(sky,1,0)),stride),Q.table_size(LightVolume.Optics,states)),Q.table_size(U32,coverage))
+
+@unsafe
+def lighting_core(request: Result<&1,&1,U32,S.Tile>,input: File,output: File,+old: State,backend: U32,id: U32,opcode: U32) -> IO(Unit):
+  match request old:
+    case Fail{code} _: error(input,output,old,backend,id,opcode,code)
+    case Done{area} State{Settings{Common{_,_,_,Q.Leaf{LightingState{Some{model},_}}},_,Some{RD.Prepared{_,_,_,_,_,_,_,Some{M.Model{_,_,_,_,Some{MD.State{_,Some{grid},_,_,_}}}}}}},_}:
+      do IO<Unit>:
+        result : Result<&1,&1,U32,LightRegion.Store> <- LightRegion.run(area,grid,model)
+        lighting_computed(result,old,input,output,backend,id,opcode)
+    case _ _: error(input,output,old,backend,id,opcode,885)
+
+@unsafe
+def lighting_computed(result: Result<&1,&1,U32,LightRegion.Store>,old: State,input: File,output: File,backend: U32,id: U32,opcode: U32) -> IO(Unit):
+  match result:
+    case Fail{code}: error(input,output,old,backend,id,opcode,code)
+    case Done{+store}:
+      do IO<Unit>:
+        body : Z.Bytes <- payload(lit_info(store))
+        finish(input,output,lit_attach(store,old),backend,id,opcode,0,body,True{})
+
+def lit_info(store: LightRegion.Store) -> B.Writer:
+  match store:
+    case LightRegion.Store{S.Tile{_,_,+width,+depth,_,_},_,_,tiles}:
+      B.int(B.int(B.int(B.int(B.new(),width),depth),U32.mul(U32.sub(U32.div(width,16),2),U32.sub(U32.div(depth,16),2))),Q.table_size(LightRegion.Tile,tiles))
+
+@unsafe
+def lit_attach(store: LightRegion.Store,old: State) -> State:
+  match old:
+    case State{Settings{Common{noise,structures,tags,lighting},climate,density},profile}:
+      State{Settings{Common{noise,structures,tags,stored_lighting(lighting,store)},climate,density},profile}
+
+
+def clear_lighting(state: Q.Table<LightingState>) -> Q.Table<LightingState>:
+  match state:
+    case Q.Leaf{LightingState{model,_}}: Q.Leaf{LightingState{model,None{}}}
+    case _: Q.Empty{}
+
+def stored_lighting(state: Q.Table<LightingState>,store: LightRegion.Store) -> Q.Table<LightingState>:
+  match state:
+    case Q.Leaf{LightingState{model,_}}: Q.Leaf{LightingState{model,Some{store}}}
+    case _: Q.Empty{}
