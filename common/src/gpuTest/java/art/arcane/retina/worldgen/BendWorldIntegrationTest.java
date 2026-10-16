@@ -60,10 +60,25 @@ public final class BendWorldIntegrationTest {
         var folder=Files.createTempDirectory("retina-bend-world-test-");
         try {
             require(generator.bendMode() && generator.regionMode(),"Bend selects MCA backend");
-            require(generator.profile().nativeId()==-1 && generator.queries()==null,"Bend never registers a Rust profile");
+            require(generator.profile().nativeId()==-1 && generator.queries()!=null,"Bend never registers a Rust profile");
+            var query=generator.queries();
+            var trial=registry.lookupOrThrow(Registries.STRUCTURE).getOrThrow(ResourceKey.create(Registries.STRUCTURE,Identifier.withDefaultNamespace("trial_chambers")));
+            var search=query.prepareStructures(registry,net.minecraft.core.HolderSet.direct(trial),new net.minecraft.core.BlockPos(-512,64,0),0);
+            require(!search.sets().isEmpty(),"registered Bend query set");
+            var scanned=new ArrayList<ChunkPos>();
+            require(query.structures(search,p -> {scanned.add(p);return new TerrainQueries.SavedStarts(true,Map.of());})==null,"saved empty starts override planner");
+            require(scanned.equals(search.sets().stream().map(set -> set.placement().getPotentialStructureChunk(seed,-32,0)).toList()),"Bend potential candidates match independent Minecraft RNG");
+            var savedHit=query.structures(search,p -> new TerrainQueries.SavedStarts(true,Map.of("minecraft:trial_chambers",1)));
+            require(savedHit!=null,"saved nonempty starts win without regeneration");
+            int[] referenced={0};
+            require(query.structures(search,p -> new TerrainQueries.SavedStarts(true,Map.of("minecraft:trial_chambers",1)),true,(p,st) -> {referenced[0]++;return true;})==null && referenced[0]==0,"explorer search skips already referenced starts");
+            var generatedHit=query.structures(search,p -> TerrainQueries.SavedStarts.MISSING);
+            require(generator.metrics().snapshot().previewRegions()==0,"Bend locate queries do not create a temporary MCA");
             ((RetinaBiomeSource)generator.getBiomeSource()).findBiomeHorizontal(0,64,0,32,16,b -> false,net.minecraft.util.RandomSource.create(42),false,random);
             require(generator.metrics().snapshot().previewRegions()==0,"biome search evaluates Bend climate without MCA assembly");
             var proto=new ProtoChunk(position,UpgradeData.EMPTY,bounds,factory,null);
+            generator.createStructures(registry,null,null,proto,null,Level.OVERWORLD);
+            require(generator.metrics().snapshot().previewRegions()==0,"STRUCTURE_STARTS metadata does not assemble terrain");
             generator.createBiomes(random,Blender.empty(),null,proto).join();
             require(generator.metrics().snapshot().previewRegions()==0,"biome-only dependencies do not assemble terrain");
             var coordinator=new RegionCoordinator(generator,seed,folder);
@@ -99,9 +114,24 @@ public final class BendWorldIntegrationTest {
                 for(int cz=0;cz<32;cz++)for(int cx=-32;cx<0;cx++) {
                     var pos=new ChunkPos(cx,cz);var stored=storage.read(pos);
                     var target=new ProtoChunk(pos,UpgradeData.EMPTY,bounds,factory,null);
+                    if(!stored.getCompoundOrEmpty("structures").getCompoundOrEmpty("starts").isEmpty()) {
+                        generator.createStructures(registry,null,null,target,null,Level.OVERWORLD);
+                        require(!target.getAllStarts().isEmpty(),"early structure metadata creates actual Minecraft starts");
+                    }
                     generator.installDecorationData(target,stored,pieceContext,registry);
                     for(var start:target.getAllStarts().values()) {
                         require(start.isValid(),"Minecraft instantiates Bend structure starts");
+                        var holder=registry.lookupOrThrow(Registries.STRUCTURE).wrapAsHolder(start.getStructure());
+                        var at=query.prepareStructures(registry,net.minecraft.core.HolderSet.direct(holder),pos.getWorldPosition(),0);
+                        var located=query.structures(at,p -> TerrainQueries.SavedStarts.MISSING);
+                        require(located!=null && located.getSecond().equals(holder),"Bend locate accepts actual generated layout");
+                        require(at.sets().stream().anyMatch(set -> located.getFirst().equals(set.placement().getLocatePos(pos))),"located position agrees with generated start");
+                        // Installing later FEATURES data must not reset an explorer
+                        // map reference created at STRUCTURE_STARTS.
+                        start.addReference();
+                        var startOnly=stored.copy();startOnly.remove("entities");startOnly.remove("block_entities");
+                        generator.installDecorationData(target,startOnly,pieceContext,registry);
+                        require(target.getAllStarts().get(start.getStructure()).getReferences()==1,"decoration retains start reference mutation");
                         structureStarts++;structurePieces+=start.getPieces().size();
                     }
                     blockEntities+=stored.getListOrEmpty("block_entities").size();
@@ -111,6 +141,7 @@ public final class BendWorldIntegrationTest {
                 }
                 var edited=storage.read(position);edited.putString("retina_edit","preserved");storage.write(position,edited);
             }
+            require(generatedHit!=null,"initial locate finds actual trial chamber without terrain");
             require(structureStarts>0 && structurePieces>0 && blockEntities>0,"real registered structures and block entities generated");
             System.out.println("Bend structure metadata: starts="+structureStarts+" pieces="+structurePieces+" block_entities="+blockEntities+" entities="+entities);
             var again=generator.publishPreview(position,destination);

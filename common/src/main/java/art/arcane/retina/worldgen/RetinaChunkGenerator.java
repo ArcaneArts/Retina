@@ -162,10 +162,10 @@ public final class RetinaChunkGenerator extends ChunkGenerator {
                 var data = TerrainProfileData.export(registry,biomes,minY,height,seed,noiseSettings,structures,densityComposition,skyLight);
                 profile = new BiomeTerrainProfile(-1,data.seaLevel(),data.materials(),data.biomes(),data.json());
                 bend = new BendRegionBackend(request(seed,0,0),profile);
-                queries = null;
+                queries = new TerrainQueries(request(seed,0,0),profile,bend);
                 var backend = bend;
                 biomes.bind((x,y,z) -> biomeAt(x*4,y*4,z*4), (x,y,z) -> backend.queryBiomes(List.of(new BlockPos(x*4,y*4,z*4))).getFirst());
-                biomes.bindQueries(backend::queryBiomes);
+                biomes.bindQueries(queries::biomes);
             } else {
                 profile = BiomeTerrainProfile.load(registry,biomes,minY,height,seed,noiseSettings,structures,densityComposition,skyLight);
                 queries = new TerrainQueries(request(seed,0,0),profile);
@@ -419,9 +419,9 @@ public final class RetinaChunkGenerator extends ChunkGenerator {
 
     @Override
     public ChunkGeneratorStructureState createState(HolderLookup<StructureSet> structures, RandomState state, long seed) {
-        // Only advertise layouts Rust can generate. In particular, vanilla stronghold rings
+        // Only advertise layouts the selected Retina backend can generate. In particular, vanilla stronghold rings
         // would launch thousands of GPU biome searches during ServerLevel construction.
-        var supported=structures.listElements().filter(s -> !bendMode() && StructureProfile.supportedSet(s.value())).map(s -> (Holder<StructureSet>)s);
+        var supported=structures.listElements().filter(s -> StructureProfile.supportedSet(s.value())).map(s -> (Holder<StructureSet>)s);
         return ChunkGeneratorStructureState.createForFlat(state, seed, getOrigin(state), getBiomeSource(), supported);
     }
 
@@ -449,7 +449,11 @@ public final class RetinaChunkGenerator extends ChunkGenerator {
         var startTags = nativeStructures.getCompoundOrEmpty("starts");
         for (String key : startTags.keySet()) {
             var start = net.minecraft.world.level.levelgen.structure.StructureStart.loadStaticStart(context, startTags.getCompoundOrEmpty(key), worldSeed);
-            if (start != null && start.isValid()) starts.put(start.getStructure(), start);
+            if (start != null && start.isValid()) {
+                var prior=chunk.getAllStarts().get(start.getStructure());
+                if(bendMode() && prior!=null && prior.isValid() && prior.getChunkPos().equals(start.getChunkPos()) && prior.getReferences()>start.getReferences()) start=prior;
+                starts.put(start.getStructure(), start);
+            }
         }
         chunk.setAllStarts(starts);
         var references = new java.util.HashMap<net.minecraft.world.level.levelgen.structure.Structure, it.unimi.dsi.fastutil.longs.LongSet>();
@@ -468,27 +472,43 @@ public final class RetinaChunkGenerator extends ChunkGenerator {
             net.minecraft.server.level.ServerLevel level, net.minecraft.core.HolderSet<net.minecraft.world.level.levelgen.structure.Structure> wanted,
             BlockPos origin, int radius, boolean createReference) {
         // Explorer maps need Minecraft's reference mutation and retain its lifecycle.
-        if (bendMode()) return null;
+        if (bendMode()) return prepareStructureSearch(level,wanted,origin,radius,createReference).get();
         if (createReference || queries == null) return super.findNearestMapStructure(level,wanted,origin,radius,createReference);
         return prepareStructureSearch(level,wanted,origin,radius).get();
     }
 
     public java.util.function.Supplier<com.mojang.datafixers.util.Pair<BlockPos,Holder<net.minecraft.world.level.levelgen.structure.Structure>>> prepareStructureSearch(
             net.minecraft.server.level.ServerLevel level, net.minecraft.core.HolderSet<net.minecraft.world.level.levelgen.structure.Structure> wanted, BlockPos origin, int radius) {
+        return prepareStructureSearch(level,wanted,origin,radius,false);
+    }
+
+    private java.util.function.Supplier<com.mojang.datafixers.util.Pair<BlockPos,Holder<net.minecraft.world.level.levelgen.structure.Structure>>> prepareStructureSearch(
+            net.minecraft.server.level.ServerLevel level, net.minecraft.core.HolderSet<net.minecraft.world.level.levelgen.structure.Structure> wanted,
+            BlockPos origin,int radius,boolean createReference) {
         var query=queries;
         if (query==null || net.minecraft.SharedConstants.DEBUG_DISABLE_FEATURES || !level.getServer().getWorldGenSettings().options().generateStructures()) return () -> null;
         var search=query.prepareStructures(level.registryAccess(),wanted,origin,radius);
         var scanner=level.getChunkSource().chunkMap.chunkScanner();
         var fixContext=net.minecraft.server.level.ChunkMap.getChunkDataFixContextTag(level.dimension(),getTypeNameForDataFixer());
-        return () -> query.structures(search,position -> TerrainQueries.readSaved(scanner,fixContext,position));
+        return () -> query.structures(search,position -> TerrainQueries.readSaved(scanner,fixContext,position),createReference,(position,structure) -> {
+            if(!createReference)return true;
+            // Only an accepted Bend start may load a chunk. Minecraft owns the
+            // explorer-map reference mutation; Bend still supplies its layout.
+            var chunk=level.getChunk(position.x(),position.z(),net.minecraft.world.level.chunk.status.ChunkStatus.STRUCTURE_STARTS);
+            var manager=level.structureManager();
+            var start=manager.getStartForStructure(structure.value(),chunk);
+            if(start==null || !start.isValid() || !start.canBeReferenced())return false;
+            manager.addReference(start);return true;
+        });
     }
 
     @Override
     public void createStructures(RegistryAccess registry, ChunkGeneratorStructureState state, StructureManager structures,
                                  ChunkAccess chunk, net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplateManager templates,
                                  net.minecraft.resources.ResourceKey<net.minecraft.world.level.Level> dimension) {
-        if(profile==null || bendMode())return;
-        var data=NativeTerrain.instance().structureStarts(request(worldSeed,chunk.getPos().x(),chunk.getPos().z()));
+        if(profile==null)return;
+        var data=bendMode() ? bend.structureStarts(chunk.getPos())
+                : NativeTerrain.instance().structureStarts(request(worldSeed,chunk.getPos().x(),chunk.getPos().z()));
         var context=new net.minecraft.world.level.levelgen.structure.pieces.StructurePieceSerializationContext(null,registry,templates);
         installStructures(chunk,data,context,registry);
     }

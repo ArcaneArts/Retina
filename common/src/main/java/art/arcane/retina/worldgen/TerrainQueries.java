@@ -24,10 +24,22 @@ public final class TerrainQueries implements AutoCloseable {
     private final BiomeTerrainProfile profile;
     private final List<String> definitions;
     private final List<String> sets;
+    private final Backend backend;
     private final AtomicBoolean closed = new AtomicBoolean();
     static final int BATCH = 64;
 
+    interface Backend {
+        List<Holder<Biome>> biomes(List<BlockPos> points);
+        List<ChunkPos> candidates(SearchSet set, List<ChunkPos> cells);
+        int[] starts(int[] candidates);
+    }
+
     TerrainQueries(TerrainRequest request, BiomeTerrainProfile profile) {
+        this(request,profile,null);
+    }
+
+    TerrainQueries(TerrainRequest request, BiomeTerrainProfile profile, Backend backend) {
+        this.backend=backend;
         this.request = request;
         this.profile = profile;
         var structures = JsonParser.parseString(profile.json()).getAsJsonObject().getAsJsonObject("structures");
@@ -45,6 +57,9 @@ public final class TerrainQueries implements AutoCloseable {
 
     public List<Holder<Biome>> biomes(List<BlockPos> points) {
         checkActive();
+        if (backend!=null) {
+            var result=backend.biomes(points); checkActive(); return result;
+        }
         var output = new ArrayList<Holder<Biome>>(points.size());
         for (int start=0;start<points.size();start+=BATCH) {
             checkActive();
@@ -104,6 +119,11 @@ public final class TerrainQueries implements AutoCloseable {
     }
 
     Pair<BlockPos,Holder<Structure>> structures(StructureSearch search, SavedLookup saved) {
+        return structures(search,saved,false,(position,structure) -> true);
+    }
+
+    Pair<BlockPos,Holder<Structure>> structures(StructureSearch search, SavedLookup saved, boolean unreferenced,
+                                               java.util.function.BiPredicate<ChunkPos,Holder<Structure>> accept) {
         var stored=new LinkedHashMap<Long,SavedStarts>(128,.75f,true) {
             @Override protected boolean removeEldestEntry(Map.Entry<Long,SavedStarts> entry) { return size()>8192; }
         };
@@ -117,15 +137,15 @@ public final class TerrainQueries implements AutoCloseable {
                 Pair<BlockPos,Holder<Structure>> found=null;
                 outer: for (int x=-radius;x<=radius;x++) for (int z=-radius;z<=radius;z++) {
                     if (Math.abs(x)!=radius && Math.abs(z)!=radius) continue;
-                    var position=set.placement.getPotentialStructureChunk(request.seed(),originX+set.placement.spacing()*x,originZ+set.placement.spacing()*z);
+                    var position=new ChunkPos(originX+set.placement.spacing()*x,originZ+set.placement.spacing()*z);
                     candidates.add(position);
                     if (candidates.size()==BATCH) {
-                        found=structureBatch(set,candidates,saved,stored);
+                        found=structureBatch(set,candidates,saved,stored,unreferenced,accept);
                         candidates.clear();
                         if (found!=null) break outer;
                     }
                 }
-                if (found==null && !candidates.isEmpty()) found=structureBatch(set,candidates,saved,stored);
+                if (found==null && !candidates.isEmpty()) found=structureBatch(set,candidates,saved,stored,unreferenced,accept);
                 if (found!=null && search.origin.distSqr(found.getFirst())<distance) {
                     distance=search.origin.distSqr(found.getFirst()); nearest=found;
                 }
@@ -135,7 +155,12 @@ public final class TerrainQueries implements AutoCloseable {
         return null;
     }
 
-    private Pair<BlockPos,Holder<Structure>> structureBatch(SearchSet set, List<ChunkPos> candidates, SavedLookup saved, Map<Long,SavedStarts> stored) {
+    private Pair<BlockPos,Holder<Structure>> structureBatch(SearchSet set, List<ChunkPos> cells, SavedLookup saved, Map<Long,SavedStarts> stored,
+                                                          boolean unreferenced, java.util.function.BiPredicate<ChunkPos,Holder<Structure>> accept) {
+        checkActive();
+        var candidates=backend==null ? cells.stream().map(p -> set.placement.getPotentialStructureChunk(request.seed(),p.x(),p.z())).toList()
+                : backend.candidates(set,cells);
+        if(candidates.size()!=cells.size()) throw new IllegalStateException("Structure candidate count mismatch");
         checkActive();
         var matches=new ArrayList<Holder<Structure>>(Collections.nCopies(candidates.size(),null));
         var unknown=new ArrayList<Integer>();
@@ -144,19 +169,21 @@ public final class TerrainQueries implements AutoCloseable {
             var position=candidates.get(i);
             var starts=stored.computeIfAbsent(position.pack(),key -> saved.read(position));
             if (!starts.known) unknown.add(i);
-            else for (var target : set.wanted.entrySet()) if (starts.references.containsKey(target.getKey())) { matches.set(i,target.getValue()); break; }
+            else for (var target : set.wanted.entrySet()) if (starts.references.containsKey(target.getKey()) && (!unreferenced || starts.references.get(target.getKey())==0)) { matches.set(i,target.getValue()); break; }
             // Only earlier unknown candidates can precede this saved hit.
-            if (matches.get(i)!=null) break;
+            if (!unreferenced && matches.get(i)!=null) break;
         }
         if (!unknown.isEmpty()) {
             int[] input=new int[unknown.size()*3];
             for (int i=0;i<unknown.size();i++) {
                 var position=candidates.get(unknown.get(i));input[i*3]=position.x();input[i*3+1]=position.z();input[i*3+2]=set.index;
             }
-            int[] selected=NativeTerrain.instance().queryStructureStarts(request,input);
+            int[] selected=backend==null ? NativeTerrain.instance().queryStructureStarts(request,input) : backend.starts(input);
+            checkActive();
+            if(selected.length!=unknown.size()) throw new IllegalStateException("Structure result count mismatch");
             for (int i=0;i<selected.length;i++) if (selected[i]>=0) matches.set(unknown.get(i),set.wanted.get(definitions.get(selected[i])));
         }
-        for (int i=0;i<matches.size();i++) if (matches.get(i)!=null) return Pair.of(set.placement.getLocatePos(candidates.get(i)),matches.get(i));
+        for (int i=0;i<matches.size();i++) if (matches.get(i)!=null && accept.test(candidates.get(i),matches.get(i))) return Pair.of(set.placement.getLocatePos(candidates.get(i)),matches.get(i));
         return null;
     }
 }

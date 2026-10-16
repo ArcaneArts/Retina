@@ -266,6 +266,16 @@ public final class BendWorker implements AutoCloseable {
         return request(53,surfaceTilePayload(x,z,width,depth,seed));
     }
 
+    /** Potential candidate cells (57), actual layout acceptance (58), or start NBT (59).
+     * Input triples are chunk X, chunk Z, exported structure-set index. */
+    public CompletableFuture<byte[]> queryStructures(int opcode,long seed,int[] candidates) {
+        if((opcode!=57 && opcode!=58 && opcode!=59) || candidates.length%3!=0 || candidates.length>64*3 || (opcode==59 && candidates.length!=3))
+            return CompletableFuture.failedFuture(new IllegalArgumentException("Invalid Bend structure batch"));
+        var payload=java.nio.ByteBuffer.allocate(12+candidates.length*4).putInt((int)seed).putInt((int)(seed>>>32)).putInt(candidates.length/3);
+        for(int value:candidates)payload.putInt(value);
+        return request(opcode,payload.array());
+    }
+
     /** Plan, replay and retain structure blocks/metadata in the resident grid.
      * Returns planned start count and chunk/piece intersection count. */
     public CompletableFuture<byte[]> applyStructures() { return request(56,new byte[0]); }

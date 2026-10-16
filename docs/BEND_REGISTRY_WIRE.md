@@ -1426,5 +1426,44 @@ generation/application/serialization lease.
 
 Java exports registered data, invokes the stage after vegetation and before
 weather, and installs serialized metadata into Minecraft chunks. It performs no
-structure planning or placement for Bend. Structure location and Bend-computed
-lighting remain separate pending integrations.
+structure planning or placement for Bend. Bend-computed lighting remains pending.
+
+
+## Read-only structure lookup (57–59)
+
+Commands 57 and 58 take big-endian U32 seed-low, seed-high, count (0..64), then
+`chunk_x, chunk_z, structure_set_index` per item. Coordinates are signed i32
+bit patterns. The set index addresses the loaded exported structure registry.
+They require the profile, density programs, climate and surface bounds, but
+**no generated terrain**. Missing preparation returns 881, malformed byte length
+603, and an oversized batch or invalid set index 883.
+
+- **57 — potential candidates:** inputs are placement-cell coordinates. Bend
+  applies the loaded random-spread placement and returns signed chunk X/Z pairs
+  in input order. Frequency/exclusion/biome tests are deferred to command 58 so
+  the bridge can first honor saved starts at these candidate positions.
+- **58 — actual starts:** inputs are exact candidate chunk coordinates. Bend
+  applies candidate, frequency and exclusion rules, samples registered biomes,
+  chooses a weighted definition and builds its actual projected layout. Output
+  is one definition index per input, or `0xffffffff` when no nonempty layout
+  exists. A compatible resident density lattice is reused; other probes build
+  small globally aligned GPU lattices without replacing it.
+
+Query and generation share the 64-entry accepted/rejected layout cache. Both
+seed words participate in identity. Responses retain the input order, including
+hits evicted by later misses in the same batch. Successful profile replacement
+invalidates the cache. Query commands, including rejected commands, preserve
+resident block grids, weather and serialized structure/entity metadata. They do
+not generate or write MCA data. Java serializes query batches with full region
+builds, uses saved-start records before predicting unknown starts, and manages
+cancellation and Minecraft's explorer-map reference mutation.
+
+**59 — chunk start metadata:** the same seed/count/triple envelope, but exactly
+one triple `chunk_x, chunk_z, 0`. Bend checks every registered structure set at
+that chunk, reuses/builds accepted layouts and returns a complete unnamed-root
+NBT compound with `structures.starts` plus empty `structures.References`,
+`entities` and `block_entities`. It does not replay blocks or generate terrain.
+Minecraft uses this for `STRUCTURE_STARTS`, including explorer-map references;
+broad chunk dependency probes therefore still create zero temporary MCAs.
+Wrong count/reserved word returns 883. Later feature metadata retains an already
+increased reference count on the same valid start.

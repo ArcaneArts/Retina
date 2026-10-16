@@ -77,10 +77,20 @@ def exercise(binary,path,gpu,folder,size,gpu_memory='on',region_origin=(-1,0)):
         # particular, invalidating at dispatch time used to lose structure tags.
         first_chunk=chunk_request(rx*32,rz*32,lo,hi)
         snapshot=w.call(27,first_chunk)
-        rejected_ops=[5,9,11,13,15,16,19,21,22,25,29,30,33,35,37,39,41,43,50,51,53,56]
+        rejected_ops=[5,9,11,13,15,16,19,21,22,25,29,30,33,35,37,39,41,43,50,51,53,56,57,58,59]
         for op in rejected_ops:
             assert len(w.call(op,b'\x01',status=1))==4
             assert w.call(27,first_chunk)==snapshot,('rejected command changed chunk',op)
+        if source.get('structures',{}).get('sets'):
+            # Cross-seed distant lookup must not replace this final voxel grid
+            # or its retained structure/entity metadata.
+            raw=struct.pack('>6I',0xffffffff,0x80000000,1,(-1874000)&0xffffffff,1874000,0)
+            coords=w.call(57,raw)
+            assert len(coords)==8
+            selected=w.call(58,raw[:12]+coords+struct.pack('>I',0))
+            assert len(selected)==4 and w.call(27,first_chunk)==snapshot
+            w.call(59,raw[:12]+coords+struct.pack('>I',0))
+            assert w.call(27,first_chunk)==snapshot
         invalid=folder/'invalid.mca'
         invalid.unlink(missing_ok=True)
         assert w.call(55,request(rx,rz,invalid,lo^1,hi),status=1)==struct.pack('>I',732)
@@ -94,6 +104,14 @@ def exercise(binary,path,gpu,folder,size,gpu_memory='on',region_origin=(-1,0)):
         with output.open('r+b') as stream:assert stream.write(ack[8:])==8192
         data=output.read_bytes();assert data[8192:]==before[8192:],'bridge rewrote chunk bytes'
         records=check(data,source,rx,rz,size)
+        from test_bend_binary import NbtReader
+        for record in records.values():
+            tag=record['tag']
+            if not tag['structures']['starts']:continue
+            raw=w.call(59,struct.pack('>6I',lo,hi,1,tag['xPos']&0xffffffff,tag['zPos']&0xffffffff,0))
+            reader=NbtReader(raw);assert reader.number('>B')==10 and reader.text()==''
+            early=reader.tag(10);assert reader.offset==len(raw)
+            assert early['structures']['starts']==tag['structures']['starts'],'STRUCTURE_STARTS differs from final MCA'
         metadata=dict(starts=sum(len(r['tag']['structures']['starts']) for r in records.values()),references=sum(sum(map(len,r['tag']['structures']['References'].values())) for r in records.values()),block_entities=sum(len(r['tag']['block_entities']) for r in records.values()),entities=sum(len(r['tag']['entities']) for r in records.values()))
         materials={key(m):i for i,m in enumerate(source['materials'])};checked=0
         edge=size//16-1
