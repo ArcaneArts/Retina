@@ -104,19 +104,22 @@ class Planner:
                     if e['parts']:
                         b=self.bounds(e,(0,0,0),0);answer=max(answer,b[4]-b[1]+1)
         return answer
-    def run(self,definition,context):
+    def run(self,definition,context=0,*,rng=None,coordinate=None,z=None,terrain=None):
         seed=[123456789,MASK,(1<<63)|0xffffffff][context]
-        coordinate=[0,-15,1874000][context];r=Random((seed+definition)&MASK)
+        coordinate=[0,-15,1874000][context] if coordinate is None else coordinate
+        z=-coordinate if z is None else z
+        r=Random((seed+definition)&MASK) if rng is None else rng
         d=self.p['definitions'][definition];config=d['config']
         if d['kind']=='jigsaw':root=weighted(self.pool(d['pool'])['entries'],r)
         else:root={'parts':[{'template':d['template']}],'terrain_matching':False,'weight':1}
         if not root or not root['parts']:return r.state,[]
         rotation=r.integer(4);t=self.template(root)
-        pos=(coordinate*16,height(config.get('start_height'),r),-coordinate*16)
+        pos=(coordinate*16,height(config.get('start_height'),r),z*16)
         projected=d['kind']!='jigsaw' or 'project_start_to_heightmap' in config
-        def terrain(x,z):
+        def fixture_terrain(x,z):
             x=max(0,min(511,x-(coordinate*16-256)));z=max(0,min(511,z-(-coordinate*16-256)))
             return 64 if context==0 else 40+x//16+z//24 if context==1 else 50+(x//8+z//8)%11
+        terrain=fixture_terrain if terrain is None else terrain
         if projected:
             b=self.bounds(root,pos,rotation)
             pos=add(pos,(0,terrain(trunc(b[0]+b[3],2),trunc(b[2]+b[5],2))-t['ground'],0))

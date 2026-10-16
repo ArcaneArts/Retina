@@ -8,6 +8,7 @@ import ./reader.bend as B
 import ./precise.bend as D
 import ./transport.bend as T
 import ./region_stream.bend as Stream
+import ./chunk_metadata.bend as Tags
 
 # New-file component writer. The caller owns a private staging path and only
 # publishes it after acknowledgement. No existing world file may be passed.
@@ -67,9 +68,9 @@ def record(result: Result<&1,&1,U32,Z.Bytes>,slot: U32,request: Request) -> Resu
     case Done{bytes} Request{_,_,_,_,_,timestamp}: Done{R.Record{slot,timestamp,bytes}}
 
 @unsafe
-def batch(+n: Nat,+base: U32,+grid: M.Grid,+catalog: C.Catalog,+request: Request) -> Batch:
+def batch(+n: Nat,+base: U32,+grid: M.Grid,+catalog: Context,+request: Request) -> Batch:
   match n:
-    case 0n: Leaf{record(G.compress_result(True{},G.encode(grid,catalog,chunk(request,base))),base,request)}
+    case 0n: Leaf{record(G.compress_result(True{},encode(grid,catalog,chunk(request,base))),base,request)}
     case 1n+p:
       left right = batch(p,base,grid,catalog,request) batch(p,U32.add(base,U32.shln(1,p)),grid,catalog,request)
       Node{left,right}
@@ -89,13 +90,13 @@ def left_done(result: Result<&1,&1,U32,List<R.Record>>,right: Batch) -> Result<&
     case Done{acc}: flatten(right,acc)
 
 @unsafe
-def collected(result: Result<&1,&1,U32,List<R.Record>>,base: U32,grid: M.Grid,catalog: C.Catalog,request: Request) -> Result<&1,&1,U32,R.Plan>:
+def collected(result: Result<&1,&1,U32,List<R.Record>>,base: U32,grid: M.Grid,catalog: Context,request: Request) -> Result<&1,&1,U32,R.Plan>:
   match result:
     case Fail{code}: Fail{code}
     case Done{acc}: collect(base,grid,catalog,request,acc)
 
 @unsafe
-def collect(+base: U32,+grid: M.Grid,+catalog: C.Catalog,+request: Request,acc: List<R.Record>) -> Result<&1,&1,U32,R.Plan>:
+def collect(+base: U32,+grid: M.Grid,+catalog: Context,+request: Request,acc: List<R.Record>) -> Result<&1,&1,U32,R.Plan>:
   match base:
     case 1024: R.plan(acc)
     case _: collected(flatten(batch(3n,base,grid,catalog,request),acc),U32.add(base,8),grid,catalog,request)
@@ -121,12 +122,12 @@ def save(result: Result<&1,&1,U32,R.Plan>,path: String) -> IO(Result<&1,&1,U32,U
         file : File <- T.unwrap(File,opened)
         segments(file,parts,chunks,sectors)
 
-def accepted(code: U32,grid: M.Grid,catalog: C.Catalog,request: Request,path: String) -> IO(Result<&1,&1,U32,U32 & U32>):
+def accepted(code: U32,grid: M.Grid,catalog: Context,request: Request,path: String) -> IO(Result<&1,&1,U32,U32 & U32>):
   match code:
     case 0: save(collect(0,grid,catalog,request,[]),path)
     case _: IO.pure(Result<&1,&1,U32,U32 & U32>,Fail{code})
 
-def run(input: Input,+grid: M.Grid,catalog: C.Catalog) -> IO(Result<&1,&1,U32,U32 & U32>):
+def run_context(input: Input,+grid: M.Grid,catalog: Context) -> IO(Result<&1,&1,U32,U32 & U32>):
   match input:
     case Input{_,_,False{}}: IO.pure(Result<&1,&1,U32,U32 & U32>,Fail{603})
     case Input{+request,path,True{}}: accepted(validation(grid,request),grid,catalog,request,path)
@@ -135,13 +136,13 @@ def run(input: Input,+grid: M.Grid,catalog: C.Catalog) -> IO(Result<&1,&1,U32,U3
 # Preview batches serialize only covered chunks into a new sparse MCA. Chunk
 # records still use the same Bend encoder/compressor and sector planner.
 @unsafe
-def partial_leaf(covered: Bool,grid: M.Grid,catalog: C.Catalog,+request: Request,+slot: U32) -> Batch:
+def partial_leaf(covered: Bool,grid: M.Grid,catalog: Context,+request: Request,+slot: U32) -> Batch:
   match covered:
     case False{}: Empty{}
-    case True{}: Leaf{record(G.compress_result(True{},G.encode(grid,catalog,chunk(request,slot))),slot,request)}
+    case True{}: Leaf{record(G.compress_result(True{},encode(grid,catalog,chunk(request,slot))),slot,request)}
 
 @unsafe
-def partial_batch(+n: Nat,+base: U32,+grid: M.Grid,+catalog: C.Catalog,+request: Request) -> Batch:
+def partial_batch(+n: Nat,+base: U32,+grid: M.Grid,+catalog: Context,+request: Request) -> Batch:
   match n:
     case 0n: partial_leaf(G.covered(grid,chunk(request,base)),grid,catalog,request,base)
     case 1n+p:
@@ -149,13 +150,13 @@ def partial_batch(+n: Nat,+base: U32,+grid: M.Grid,+catalog: C.Catalog,+request:
       Node{left,right}
 
 @unsafe
-def partial_collected(result: Result<&1,&1,U32,List<R.Record>>,base: U32,grid: M.Grid,catalog: C.Catalog,request: Request) -> Result<&1,&1,U32,R.Plan>:
+def partial_collected(result: Result<&1,&1,U32,List<R.Record>>,base: U32,grid: M.Grid,catalog: Context,request: Request) -> Result<&1,&1,U32,R.Plan>:
   match result:
     case Fail{code}: Fail{code}
     case Done{acc}: partial_collect(base,grid,catalog,request,acc)
 
 @unsafe
-def partial_collect(+base: U32,+grid: M.Grid,+catalog: C.Catalog,+request: Request,acc: List<R.Record>) -> Result<&1,&1,U32,R.Plan>:
+def partial_collect(+base: U32,+grid: M.Grid,+catalog: Context,+request: Request,acc: List<R.Record>) -> Result<&1,&1,U32,R.Plan>:
   match base:
     case 1024: R.plan(acc)
     case _: partial_collected(flatten(partial_batch(3n,base,grid,catalog,request),acc),U32.add(base,8),grid,catalog,request)
@@ -167,19 +168,19 @@ def partial_save(result: Result<&1,&1,U32,R.Plan>,path: String) -> IO(Result<&1,
     case _: save(result,path)
 
 @unsafe
-def partial_accepted(ok: Bool,grid: M.Grid,catalog: C.Catalog,request: Request,path: String) -> IO(Result<&1,&1,U32,U32 & U32>):
+def partial_accepted(ok: Bool,grid: M.Grid,catalog: Context,request: Request,path: String) -> IO(Result<&1,&1,U32,U32 & U32>):
   match ok:
     case False{}: IO.pure(Result<&1,&1,U32,U32 & U32>,Fail{733})
     case True{}: partial_save(partial_collect(0,grid,catalog,request,[]),path)
 
 @unsafe
-def run_partial(input: Input,+grid: M.Grid,catalog: C.Catalog) -> IO(Result<&1,&1,U32,U32 & U32>):
+def run_partial_context(input: Input,+grid: M.Grid,catalog: Context) -> IO(Result<&1,&1,U32,U32 & U32>):
   match input:
     case Input{_,_,False{}}: IO.pure(Result<&1,&1,U32,U32 & U32>,Fail{603})
     case Input{+request,path,True{}}: partial_request(request,path,grid,catalog)
 
 @unsafe
-def partial_request(+request: Request,path: String,+grid: M.Grid,catalog: C.Catalog) -> IO(Result<&1,&1,U32,U32 & U32>):
+def partial_request(+request: Request,path: String,+grid: M.Grid,catalog: Context) -> IO(Result<&1,&1,U32,U32 & U32>):
   match request:
     case Request{+x,+z,_,_,_,_}: partial_accepted(Bool.and(coordinate(x),Bool.and(coordinate(z),aligned(grid))),grid,catalog,request,path)
 
@@ -188,13 +189,13 @@ def partial_request(+request: Request,path: String,+grid: M.Grid,catalog: C.Cata
 # eight tasks are constructed. A pure recursive list of batches is not a
 # memory bound: lazy record payloads can remain reachable until final planning.
 @unsafe
-def stream_written(result: Result<&1,&1,U32,Stream.State>,base: U32,grid: M.Grid,catalog: C.Catalog,request: Request) -> IO(Result<&1,&1,U32,Stream.Complete>):
+def stream_written(result: Result<&1,&1,U32,Stream.State>,base: U32,grid: M.Grid,catalog: Context,request: Request) -> IO(Result<&1,&1,U32,Stream.Complete>):
   match result:
     case Fail{code}: IO.pure(Result<&1,&1,U32,Stream.Complete>,Fail{code})
     case Done{state}: stream_collect(base,grid,catalog,request,state)
 
 @unsafe
-def stream_batch(result: Result<&1,&1,U32,List<R.Record>>,base: U32,grid: M.Grid,catalog: C.Catalog,request: Request,state: Stream.State) -> IO(Result<&1,&1,U32,Stream.Complete>):
+def stream_batch(result: Result<&1,&1,U32,List<R.Record>>,base: U32,grid: M.Grid,catalog: Context,request: Request,state: Stream.State) -> IO(Result<&1,&1,U32,Stream.Complete>):
   match result:
     case Fail{code}: stream_failed(state,code)
     case Done{records}:
@@ -210,7 +211,7 @@ def stream_failed(state: Stream.State,code: U32) -> IO(Result<&1,&1,U32,Stream.C
         IO.pure(Result<&1,&1,U32,Stream.Complete>,Fail{code})
 
 @unsafe
-def stream_collect(+base: U32,+grid: M.Grid,+catalog: C.Catalog,+request: Request,state: Stream.State) -> IO(Result<&1,&1,U32,Stream.Complete>):
+def stream_collect(+base: U32,+grid: M.Grid,+catalog: Context,+request: Request,state: Stream.State) -> IO(Result<&1,&1,U32,Stream.Complete>):
   match base:
     case 1024: Stream.complete(state)
     case _: stream_batch(flatten(partial_batch(3n,base,grid,catalog,request),[]),U32.add(base,8),grid,catalog,request,state)
@@ -222,7 +223,7 @@ def coverage_count(+n: U32,+grid: M.Grid,+request: Request,acc: U32) -> U32:
     case _: coverage_count(U32.sub(n,1),grid,request,U32.add(acc,Z.word(G.covered(grid,chunk(request,U32.sub(n,1))),1,0)))
 
 @unsafe
-def stream_accepted(code: U32,grid: M.Grid,catalog: C.Catalog,request: Request,path: String) -> IO(Result<&1,&1,U32,Stream.Complete>):
+def stream_accepted(code: U32,grid: M.Grid,catalog: Context,request: Request,path: String) -> IO(Result<&1,&1,U32,Stream.Complete>):
   match code:
     case 0:
       do IO<Result<&1,&1,U32,Stream.Complete>>:
@@ -231,14 +232,32 @@ def stream_accepted(code: U32,grid: M.Grid,catalog: C.Catalog,request: Request,p
     case _: IO.pure(Result<&1,&1,U32,Stream.Complete>,Fail{code})
 
 @unsafe
-def stream_request(+request: Request,path: String,+grid: M.Grid,catalog: C.Catalog) -> IO(Result<&1,&1,U32,Stream.Complete>):
+def stream_request(+request: Request,path: String,+grid: M.Grid,catalog: Context) -> IO(Result<&1,&1,U32,Stream.Complete>):
   match request:
     case Request{+x,+z,_,_,_,_}:
       stream_accepted(Z.word(Bool.not(Bool.and(coordinate(x),Bool.and(coordinate(z),aligned(grid)))),733,
         Z.word(U32.is_zero(coverage_count(1024,grid,request,0)),732,0)),grid,catalog,request,path)
 
 @unsafe
-def run_stream(input: Input,+grid: M.Grid,catalog: C.Catalog) -> IO(Result<&1,&1,U32,Stream.Complete>):
+def run_stream_context(input: Input,+grid: M.Grid,catalog: Context) -> IO(Result<&1,&1,U32,Stream.Complete>):
   match input:
     case Input{_,_,False{}}: IO.pure(Result<&1,&1,U32,Stream.Complete>,Fail{603})
     case Input{request,path,True{}}: stream_request(request,path,grid,catalog)
+
+# Keep component entry points available while the persistent worker carries
+# structure metadata through every full, partial and streamed output path.
+type Context is Data:
+  Context{catalog: C.Catalog,metadata: Maybe<&2,Tags.Store>}
+
+def encode(grid: M.Grid,catalog: Context,request: G.Request) -> Result<&1,&1,U32,Z.Bytes>:
+  match catalog:
+    case Context{catalog,metadata}: G.encode_store(grid,catalog,request,metadata)
+
+def run(input: Input,grid: M.Grid,catalog: C.Catalog) -> IO(Result<&1,&1,U32,U32 & U32>):
+  run_context(input,grid,Context{catalog,None{}})
+
+def run_partial(input: Input,grid: M.Grid,catalog: C.Catalog) -> IO(Result<&1,&1,U32,U32 & U32>):
+  run_partial_context(input,grid,Context{catalog,None{}})
+
+def run_stream(input: Input,grid: M.Grid,catalog: C.Catalog) -> IO(Result<&1,&1,U32,Stream.Complete>):
+  run_stream_context(input,grid,Context{catalog,None{}})

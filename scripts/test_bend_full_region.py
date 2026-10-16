@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Real loaded terrain -> caves/ores/vegetation/weather -> streamed MCA.
 
-Only the pending structure field is omitted, as in the playable bridge. No
-analytic terrain/profile changes. This checks current feature integration and
+Loaded structure registries are passed through intact. No analytic terrain or
+profile changes. This checks current feature integration and
 bounded output; unlit output is not final generator parity or a lit Rust/Bend
 throughput comparison. RSS is sampled from the worker, not total GPU memory.
 """
@@ -43,10 +43,10 @@ def check(data,source,rx,rz,size):
     return records
 
 
-def exercise(binary,path,gpu,folder,size,gpu_memory='on'):
-    source=json.loads(path.read_text());source.pop('structures',None);folder.mkdir(parents=True,exist_ok=True)
+def exercise(binary,path,gpu,folder,size,gpu_memory='on',region_origin=(-1,0)):
+    source=json.loads(path.read_text());folder.mkdir(parents=True,exist_ok=True)
     inp=folder/'profile.rbp';inp.write_bytes(fixture_wire(source,True));w=ObservedWorker(binary,gpu,folder/'worker.log',gpu_memory)
-    rx,rz=-1,0;x,z=rx*512,rz*512;lo,hi=123456789,0;output=folder/f'r.{rx}.{rz}.mca'
+    rx,rz=region_origin;x,z=rx*512,rz*512;lo,hi=123456789,0;output=folder/f'r.{rx}.{rz}.mca'
     output.unlink(missing_ok=True)
     stages=[];peak=[0];growth=[];stopped=threading.Event();started=time.monotonic()
     def sample():
@@ -72,7 +72,15 @@ def exercise(binary,path,gpu,folder,size,gpu_memory='on'):
         for name,op in [('shorelines',29),('lakes',43),('block columns',22),('cave fields',33),('aquifer fields',39),('carving',35)]:call(name,op)
         expanded=tile_bytes((x-pad,z-pad,size+pad*2,size+pad*2,lo,hi))
         call('ores including halo',50,expanded);call('cave dressing including halo',51,expanded)
-        call('vegetation core',53,tile_bytes((x,z,size,size,lo,hi)));call('weather',54)
+        call('vegetation core',53,tile_bytes((x,z,size,size,lo,hi)));call('structures',56);call('weather',54)
+        # Rejected commands must preserve the final grid and its metadata. In
+        # particular, invalidating at dispatch time used to lose structure tags.
+        first_chunk=chunk_request(rx*32,rz*32,lo,hi)
+        snapshot=w.call(27,first_chunk)
+        rejected_ops=[5,9,11,13,15,16,19,21,22,25,29,30,33,35,37,39,41,43,50,51,53,56]
+        for op in rejected_ops:
+            assert len(w.call(op,b'\x01',status=1))==4
+            assert w.call(27,first_chunk)==snapshot,('rejected command changed chunk',op)
         invalid=folder/'invalid.mca'
         invalid.unlink(missing_ok=True)
         assert w.call(55,request(rx,rz,invalid,lo^1,hi),status=1)==struct.pack('>I',732)
@@ -86,6 +94,7 @@ def exercise(binary,path,gpu,folder,size,gpu_memory='on'):
         with output.open('r+b') as stream:assert stream.write(ack[8:])==8192
         data=output.read_bytes();assert data[8192:]==before[8192:],'bridge rewrote chunk bytes'
         records=check(data,source,rx,rz,size)
+        metadata=dict(starts=sum(len(r['tag']['structures']['starts']) for r in records.values()),references=sum(sum(map(len,r['tag']['structures']['References'].values())) for r in records.values()),block_entities=sum(len(r['tag']['block_entities']) for r in records.values()),entities=sum(len(r['tag']['entities']) for r in records.values()))
         materials={key(m):i for i,m in enumerate(source['materials'])};checked=0
         edge=size//16-1
         for cz in sorted({0,edge//2,edge}):
@@ -98,8 +107,10 @@ def exercise(binary,path,gpu,folder,size,gpu_memory='on'):
                         m=next(m for a,b,m in column['runs'] if a<=y<b);assert materials[key(state)]==m;checked+=1
                 standalone=call('selected independent chunk command',27,chunk_request(rx*32+cx,rz*32+cz,lo,hi))
                 assert standalone==compressed(data,records[slot]),'stream and existing chunk encoder differ'
+        call('reload profile',5,path_request(inp))
+        assert w.call(27,first_chunk,status=1)==struct.pack('>I',716),'reload retained a previous generated grid'
         call('stop',4);assert w.process.wait(timeout=30)==0
-        return dict(gpu_required=gpu,gpu_memory=gpu_memory if gpu else 'off',size=size,chunks=chunks,sectors=sectors,bytes=len(data),sha256=hashlib.sha256(data).hexdigest(),selected_blocks_checked=checked,invalid_requests_rejected=3,stages=stages,observed_metal_buffers=sum(len(s['observed_metal_ms']) for s in stages),sampled_peak_worker_rss=peak[0],body_growth_samples=growth,chunk_bytes_unchanged_by_header_patch=True,profile_sha256=hashlib.sha256(inp.read_bytes()).hexdigest())
+        return dict(metadata=metadata,gpu_required=gpu,gpu_memory=gpu_memory if gpu else 'off',size=size,chunks=chunks,sectors=sectors,bytes=len(data),sha256=hashlib.sha256(data).hexdigest(),selected_blocks_checked=checked,invalid_requests_rejected=3+len(rejected_ops),rejected_commands_preserve_chunks=True,profile_reload_invalidates_grid=True,stages=stages,observed_metal_buffers=sum(len(s['observed_metal_ms']) for s in stages),sampled_peak_worker_rss=peak[0],body_growth_samples=growth,chunk_bytes_unchanged_by_header_patch=True,profile_sha256=hashlib.sha256(inp.read_bytes()).hexdigest())
     finally:
         stopped.set();monitor.join(timeout=3);signal.alarm(0)
         w.process.stdin.close()

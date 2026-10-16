@@ -59,7 +59,7 @@ final class StructureProfile {
         if(context.enabled){out.load();out.finishProcessors(out.pools);}
         var result=new JsonObject();result.add("templates",out.templates);result.add("definitions",out.definitions);
         result.add("pools",out.pools);result.add("sets",out.sets);
-        Retina.LOGGER.info("Exported Rust structures: {} definitions, {} pools, {} templates, {} placement sets; omissions {}",
+        Retina.LOGGER.info("Exported registered structures: {} definitions, {} pools, {} templates, {} placement sets; omissions {}",
                 out.definitions.size(),out.pools.size(),out.templates.size(),out.sets.size(),out.omitted);
         return result;
     }

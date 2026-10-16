@@ -10,6 +10,7 @@ import ./noise.bend as N
 import ./cave_lattice.bend as CV
 import ./compression.bend as Z
 import ./reader.bend as R
+import ./chunk_metadata.bend as Tags
 
 # Component serializer: immutable final block runs and optional cave-biome volume.
 # Features/lighting are later producers.
@@ -134,3 +135,28 @@ def bounded(ok: Bool,+grid: MD.Grid,catalog: CC.Catalog,+request: Request,compre
   match ok:
     case False{}: Fail{733}
     case True{}: coverage(covered(grid,request),grid,catalog,request,compress)
+
+# All output modes consult the same metadata captured from structure replay.
+def encode_store(grid: MD.Grid,catalog: CC.Catalog,+request: Request,store: Maybe<&2,Tags.Store>) -> Result<&1,&1,U32,Z.Bytes>:
+  match request:
+    case Request{x,z,low,high,_}: encode_metadata(grid,catalog,request,Tags.get(store,x,z,low,high))
+
+@unsafe
+def store_covered(ok: Bool,grid: MD.Grid,catalog: CC.Catalog,request: Request,compress: Bool,store: Maybe<&2,Tags.Store>) -> Result<&1,&1,U32,Z.Bytes>:
+  match ok:
+    case False{}: Fail{732}
+    case True{}: compress_result(compress,encode_store(grid,catalog,request,store))
+
+@unsafe
+def store_bounded(ok: Bool,+grid: MD.Grid,catalog: CC.Catalog,+request: Request,compress: Bool,store: Maybe<&2,Tags.Store>) -> Result<&1,&1,U32,Z.Bytes>:
+  match ok:
+    case False{}: Fail{733}
+    case True{}: store_covered(covered(grid,request),grid,catalog,request,compress,store)
+
+@unsafe
+def run_store(found: Maybe<&2,Request>,+grid: MD.Grid,catalog: CC.Catalog,compress: Bool,store: Maybe<&2,Tags.Store>) -> Result<&1,&1,U32,Z.Bytes>:
+  match found grid:
+    case None{} _: Fail{603}
+    case Some{+request} MD.Grid{_,+minimum,+height,_,_}:
+      store_bounded(Bool.and(Bool.and(signed_bounds(world(x(request))),signed_bounds(world(z(request)))),
+        Bool.and(U32.is_zero(U32.mod(minimum,16)),U32.is_zero(U32.mod(height,16)))),grid,catalog,request,compress,store)

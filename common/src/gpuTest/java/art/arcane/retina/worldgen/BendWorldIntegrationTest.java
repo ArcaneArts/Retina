@@ -32,6 +32,7 @@ import java.util.concurrent.*;
 public final class BendWorldIntegrationTest {
     public static void main(String[] args) throws Exception {
         SharedConstants.tryDetectVersion(); Bootstrap.bootStrap();
+        registerStructurePiece();
         var resources = new net.minecraft.server.packs.resources.FallbackResourceManager(net.minecraft.server.packs.PackType.SERVER_DATA, "minecraft");
         resources.push(net.minecraft.server.packs.repository.ServerPacksSource.createVanillaPackSource().fullResources());
         net.minecraft.tags.TagLoader.loadTagsForExistingRegistries(resources, net.minecraft.core.RegistryAccess.fromRegistryOfRegistries(net.minecraft.core.registries.BuiltInRegistries.REGISTRY)).forEach(net.minecraft.core.Registry.PendingTags::apply);
@@ -52,7 +53,7 @@ public final class BendWorldIntegrationTest {
         long seed=123456789L;
         var settings=registry.lookupOrThrow(Registries.NOISE_SETTINGS).getOrThrow(NoiseGeneratorSettings.OVERWORLD);
         var generator=new RetinaChunkGenerator(RetinaBiomeSource.fromRegistry(net.minecraft.world.level.biome.MultiNoiseBiomeSource.createFromPreset(registry.lookupOrThrow(Registries.MULTI_NOISE_BIOME_SOURCE_PARAMETER_LIST).getOrThrow(net.minecraft.world.level.biome.MultiNoiseBiomeSourceParameterLists.OVERWORLD)),128,.55F),-64,384,64,48,.008F,"bend",Optional.of(settings),true);
-        generator.bindWorld(registry,seed,factory);
+        generator.bindWorld(registry,seed,factory,StructureProfile.Context.of(resources));
         var random=RandomState.create(registry.lookupOrThrow(Registries.NOISE),seed,settings.value());
         var bounds=LevelHeightAccessor.create(-64,384);
         var position=new ChunkPos(-32,0);
@@ -80,6 +81,10 @@ public final class BendWorldIntegrationTest {
             require(overlapping.join()!=null,"a distant surface request shares the active region build");
             require(generator.metrics().snapshot().previewRegions()==1,"one shared region build");
             var tag=generator.previewCache().read(position);
+            require(com.google.gson.JsonParser.parseString(generator.profile().json()).getAsJsonObject().getAsJsonObject("structures").getAsJsonArray("definitions").size()>0,"Bend receives registered structure definitions");
+            var pieceContext=new net.minecraft.world.level.levelgen.structure.pieces.StructurePieceSerializationContext(resources,registry,null);
+            generator.installDecorationData(proto,tag,pieceContext,registry);
+            require(proto.getAllStarts().size()==tag.getCompoundOrEmpty("structures").getCompoundOrEmpty("starts").size(),"existing protochunk receives Bend starts");
             require(tag.getStringOr("Status","").equals("minecraft:features") && !tag.getBooleanOr("isLightOn",true),"Minecraft owns preview lighting");
             for(int z:new int[]{0,7,15})for(int x:new int[]{0,8,15}) {
                 var column=generator.getBaseColumn(position.getMinBlockX()+x,z,bounds,random);
@@ -89,9 +94,25 @@ public final class BendWorldIntegrationTest {
             Files.createFile(destination);
             var report=generator.publishPreview(position,destination);
             require(report.generated()==1024 && BendRegionFiles.complete(destination,position,32),"entire temporary region is promoted");
+            int structureStarts=0,structurePieces=0,blockEntities=0,entities=0;
             try(var storage=new RegionFileStorage(new RegionStorageInfo("bend-preview-test",Level.OVERWORLD,"chunk"),folder,false)) {
+                for(int cz=0;cz<32;cz++)for(int cx=-32;cx<0;cx++) {
+                    var pos=new ChunkPos(cx,cz);var stored=storage.read(pos);
+                    var target=new ProtoChunk(pos,UpgradeData.EMPTY,bounds,factory,null);
+                    generator.installDecorationData(target,stored,pieceContext,registry);
+                    for(var start:target.getAllStarts().values()) {
+                        require(start.isValid(),"Minecraft instantiates Bend structure starts");
+                        structureStarts++;structurePieces+=start.getPieces().size();
+                    }
+                    blockEntities+=stored.getListOrEmpty("block_entities").size();
+                    entities+=stored.getListOrEmpty("entities").size();
+                    require(target.getBlockEntitiesPos().size()==stored.getListOrEmpty("block_entities").size(),"block entity NBT reaches protochunk");
+                    require(target.getEntities().size()==stored.getListOrEmpty("entities").size(),"entity NBT reaches protochunk");
+                }
                 var edited=storage.read(position);edited.putString("retina_edit","preserved");storage.write(position,edited);
             }
+            require(structureStarts>0 && structurePieces>0 && blockEntities>0,"real registered structures and block entities generated");
+            System.out.println("Bend structure metadata: starts="+structureStarts+" pieces="+structurePieces+" block_entities="+blockEntities+" entities="+entities);
             var again=generator.publishPreview(position,destination);
             require(again.generated()==0 && again.preserved()==1024,"repeat promotion preserves all saved chunks");
             try(var storage=new RegionFileStorage(new RegionStorageInfo("bend-preview-test",Level.OVERWORLD,"chunk"),folder,false)) {
@@ -130,6 +151,16 @@ public final class BendWorldIntegrationTest {
             generator.closePreviews();
             try(var files=Files.walk(folder)) { for(var path:files.sorted(Comparator.reverseOrder()).toList())Files.delete(path); }
         }
+    }
+    private static void registerStructurePiece() throws Exception {
+        // Headless bootstrap freezes builtins before mod initialization.
+        var registry=net.minecraft.core.registries.BuiltInRegistries.STRUCTURE_PIECE;
+        var frozen=net.minecraft.core.MappedRegistry.class.getDeclaredField("frozen");
+        frozen.setAccessible(true);frozen.setBoolean(registry,false);
+        RetinaStructurePiece.register();
+        var bind=Holder.Reference.class.getDeclaredMethod("bindValue",Object.class);bind.setAccessible(true);
+        bind.invoke(registry.get(Identifier.parse("retina:template")).orElseThrow(),RetinaStructurePiece.TYPE);
+        frozen.setBoolean(registry,true);
     }
     private static void require(boolean value,String message) { if(!value)throw new AssertionError(message); }
 }

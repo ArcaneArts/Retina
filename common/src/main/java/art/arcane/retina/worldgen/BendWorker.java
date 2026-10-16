@@ -266,6 +266,10 @@ public final class BendWorker implements AutoCloseable {
         return request(53,surfaceTilePayload(x,z,width,depth,seed));
     }
 
+    /** Plan, replay and retain structure blocks/metadata in the resident grid.
+     * Returns planned start count and chunk/piece intersection count. */
+    public CompletableFuture<byte[]> applyStructures() { return request(56,new byte[0]); }
+
     /** Apply registered snow/freezing to the final resident block snapshot.
      * Returns width, depth, compact run count and invalid-column count. */
     public CompletableFuture<byte[]> applySnowAndFreeze() { return request(54,new byte[0]); }

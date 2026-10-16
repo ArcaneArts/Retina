@@ -46,11 +46,7 @@ final class BendRegionBackend implements AutoCloseable {
         if (closed) { next.close(); throw new IOException("Bend world closed during startup"); }
         try {
             registryFile = Files.createTempFile("retina-bend-registry-", ".rbp");
-            // Structures remain a separate pending Bend component. Decorations
-            // are passed through unchanged for the pure Bend surface writers.
-            var json = com.google.gson.JsonParser.parseString(profile.json()).getAsJsonObject();
-            json.remove("structures");
-            BendProfileWire.write(registryFile, json.toString());
+            BendProfileWire.write(registryFile, profile.json());
             await("registry upload", next.loadProfile(registryFile));
             await("density programs", next.prepareProfileDensity());
             await("material programs", next.prepareProfileMaterials());
@@ -116,6 +112,7 @@ final class BendRegionBackend implements AutoCloseable {
         await("ores (CPU)", worker.applyOreCore(x-margin,z-margin,REGION_BLOCKS+2*margin,REGION_BLOCKS+2*margin,settings.seed()));
         await("cave dressing", worker.applyCaveDecorations(x-margin,z-margin,REGION_BLOCKS+2*margin,REGION_BLOCKS+2*margin,settings.seed()));
         await("surface vegetation / trees (CPU)", worker.applySurfaceVegetation(x,z,REGION_BLOCKS,REGION_BLOCKS,settings.seed()));
+        await("structures (GPU terrain / CPU replay)", worker.applyStructures());
         await("snow / freezing", worker.applySnowAndFreeze());
         long writeStart = System.nanoTime();
         var written=await("NBT / zlib / MCA", worker.writeStreamedRegion(Math.floorDiv(request.chunkX(),32),Math.floorDiv(request.chunkZ(),32),
