@@ -37,12 +37,14 @@ requests, decoding and atomic publication of opaque MCA sectors. Rust is never a
 fallback for this mode. Nether/End retain the preset's vanilla generators.
 
 Bend structure lookup uses the same candidate and layout planner as region generation.
-Computed lighting is still pending. Preview chunks explicitly have
-`isLightOn=false`; Minecraft lights them.
+The lighting integration computes and serializes the 900 interior chunks of each
+region in Bend; Minecraft lights the 124 boundary chunks. The installed Metal
+worker passes both the 64x64 terrain/lighting/repair checks and the full
+1,024-chunk Minecraft comparison, including later torch updates and cache repair.
 F3 names the backend and stage, labels the preview limitations and reports the
 last 20 completed **region** latencies, derived chunks/second and amortized
-chunk time. These unlit figures must not be compared to lit Rust regions as
-equivalent workloads.
+chunk time. Historical unlit measurements must not be compared to lit Rust
+regions as equivalent workloads.
 
 The preview generates globally aligned 32x32-chunk regions, with resident
 intermediate fields and one private MCA per cached region. All generation and
@@ -173,12 +175,10 @@ attenuating block/sky edges and Minecraft nibble packing. The independent
 `scripts/test_bend_light_rules.py --profile <loaded-profile.json>` harness checks
 65,536 cases on CPU and GPU-required execution using all 2,438 optical state rows
 and 42 face shapes from the inspected vanilla registry; both output hashes match.
-This library is not yet imported by the world worker. The next implementation
-must consume those tables and final decorated block runs, converge the resident
-light field and handle neighbor boundaries before chunk serialization.
-Keep `isLightOn=false` until Bend computes and validates the required light
-arrays and boundary policy; the current preview intentionally relies on the
-Minecraft light engine.
+The new region producer imports these rules into the worker, consumes the final
+decorated block runs, and emits interior light arrays before MCA serialization.
+The installed preview still uses the earlier unlit worker while final validation
+of the complete worker pair finishes.
 
 ## Inspected starting point
 
@@ -215,8 +215,8 @@ more deeply; retain the original requested scope.
 | Full 64-bit seeds, signed/distant coordinates and repeatable ordering | `ChunkRequest`, native hash/random routines | Exact word-pair add/subtract/multiply/bit operations implemented; 3,689 operations independently verified. Typed i64/f64-to-F32 rounding independently verifies 131,072 scalar conversions per CPU/GPU run, including distant-value midpoint cases. Integration and coordinate/order checks pending |
 | Block/biome palettes, bit-packed long arrays, heightmaps, modified UTF-8 NBT and current data versions | `region.rs`, `nbt.rs` | Pure Bend palette remapping (49,664 indices), final-block heightmaps and complete fixture chunk encoding implemented. Minecraft 26.3 (data version 5023) reads/reopens mixed and prelit fixture chunks through actual region, palette and SerializableChunkData decoders. Resident generated base/material columns now encode into current-version NBT/zlib with exact state properties, quart surface biomes and final-block heightmaps; sparse generated-region/runtime integration implemented and checked in a running Fabric world |
 | LZ77, fixed-Huffman DEFLATE, zlib/Adler-32 and stored fallback | `region.rs` uses libdeflater | Implemented in `bend/compression.bend`; independent fixture tests pass |
-| Independent parallel chunk compression | Rayon chunk assembly in `region.rs` | Implemented Bend fork/join API; generated MCA staging now compresses eight independent chunk tasks per batch; final voxel/light integration pending |
-| GPU lighting, interior-chunk validity, boundary handling and one final region write | `lighting.rs`, `lighting.wgsl`, `region.rs`, `LightSeams.java` | Serialization of supplied light arrays/padding and completion flags validated with Minecraft. Local optical/face/seed/attenuation/nibble rules independently checked on CPU/Metal. Full field computation and interior/boundary validity remain pending; preview uses Minecraft lighting |
+| Independent parallel chunk compression | Rayon chunk assembly in `region.rs` | Implemented Bend fork/join API; generated MCA staging compresses eight independent chunk tasks per batch after final voxels and lighting. Full 1024-chunk output passes Minecraft decoding; equivalent complete-region performance comparison remains pending |
+| GPU lighting, interior-chunk validity, boundary handling and one final region write | `lighting.rs`, `lighting.wgsl`, `region.rs`, `LightSeams.java` | Computed brick lighting and halo-tiled region producer implemented in Bend. Independent full-volume oracle and compressed MCA component tests pass on CPU/GPU. Final Metal worker passes 900/124 light status, 60000 Minecraft recomputation comparisons, torch placement/removal and safe mixed-region repair with Rust unavailable. One final MCA write retains valid interior light. Performance remains substantially below Rust; controlled comparison and gameplay checks are still required |
 | MCA sector tables, external records, preserving existing chunks and atomic publication | `region.rs` | Pure Bend new-file inline planning/streaming now writes whole generated base/material regions from resident snapshots; independent and actual Minecraft decoders cover all 1024 chunks. Sparse batch merging, completed/external-record preservation and atomic publication implemented; Minecraft edit/reopen tests pass |
 | Persistent engine, bounded scheduling/singleflight, cleanup and actionable failure propagation | `NativeTerrain.java`, `RegionCoordinator.java`, `TerrainQueries.java` | Persistent Bend component worker and bounded raw Java transport implemented: resident noise stacks, GPU grids, Bend compression, 16 queued requests/32 MiB retained request payloads, cancellation, shutdown and fatal protocol/process failure checks. Full registry file loading and input queries implemented; actual sparse region commands, coalescing, lifecycle and cancellation integrated in the playable preview |
 | DH surface/height requests generate temporary whole regions, 1024-region cache, eviction and promotion | `TemporaryRegions.java`, `RegionCoordinator.java` | Selected-backend coordinator/cache now stores 1024 complete 32x32 regions. Overlapping/distant same-region requests coalesce and promotion preserves edits and completed terrain. Full performance/lighting parity remains pending |
@@ -2947,3 +2947,108 @@ CPU/GPU MCA bytes. The complete 1,024-chunk Minecraft integration test passes
 with Rust unavailable, including early start queries, loaded structure metadata,
 reference-count preservation, temporary-region promotion and save/reopen edits.
 This is functional evidence, not an equivalent lit-region performance benchmark.
+
+
+## Computed interior lighting
+
+`registry_lighting.bend` projects the loaded shared `LightingProfile`: opacity,
+emission, skylight availability and paired directional face coverage. Vanilla,
+Terralith and combined exports round-trip every optical row and coverage word;
+thirteen malformed profile cases are rejected by the actual projection.
+
+`light_volume.bend` seeds direct vertical skylight and block emissions in 8x8x8
+bricks, identifies reachable propagation channels, and performs fourteen
+attenuating neighbor passes through Bend GPU calls. Four combined sky/block
+bytes share a word, with uniform subtrees collapsed. A bounded parallel fork
+frontier distributes voxel work without returning owned material/brick subtrees
+from the inner lookup loop. The CPU path uses the same application algorithm.
+An independent Python queue flood verifies all light bytes in ten fixtures,
+including every registered vanilla optical state, partial faces, fluids,
+opaque emitters and virtual top/bottom sections. Initial Metal observation
+confirmed the seed, classification and fourteen propagation commands. A process
+sample during the full worker's lighting request also captured the stock runtime
+waiting on a submitted Metal command buffer; this establishes GPU execution,
+without treating host request duration as device timing.
+
+`light_region.bend` operates on final resident material runs. It divides the
+interior into cores of at most 96x96 columns and supplies a 16-column halo from
+already generated terrain. It retains only cropped packed light words. Thus a
+512x512 region produces 900 lit interior chunks and delegates the 124 boundary
+chunks to Minecraft, without generating extra terrain for lighting or writing
+a second MCA. Component tests cover a single interior chunk and a two-tile
+seam at negative region coordinates. Their independently decoded compressed MCA
+files match between CPU and GPU; all 147,456 emitted light values and 319,488
+block states match the reference inputs/output.
+
+The worker protocol adds 60 (prepare lighting optics; empty payload) and 61
+(light the requested surface tile; the existing six-word tile descriptor).
+Optics preparation returns sky, face-matrix stride, material count and coverage
+word count. Lighting returns width, depth, lit chunk count and GPU tile count.
+The final pipeline requests lighting after structures and snow/freezing, before
+the one streamed MCA write. Successful voxel mutations invalidate stored light;
+rejected requests and read-only structure lookups preserve it. Profile reload
+clears both optics and completed light. Chunk, partial-region and streamed-region
+serializers use the same retained lighting view, including light-only sections
+below and above the build height.
+
+The final 1,024-chunk Minecraft API run passed the 900/124 completion flags,
+60,000 imported-versus-recomputed light comparisons, subsequent torch
+placement/removal, and cache promotion/save/reopen/edit checks with Rust
+unavailable. Its generated start contained 254 pieces and 161 block entities;
+it contained no entities, so it does not establish live entity acceptance.
+An unsigned negative-boundary guard correction passes a 14-case direct
+regression. Component CPU/GPU outputs retain identical bytes; 64x64 terrain
+passes with all three original profiles on CPU and vanilla on Metal.
+
+The final full-region run took 2,779,026 ms: lighting accounted for 2,066,726 ms
+and NBT/zlib/MCA for 79,936 ms. A small GPU validation overlapped the early
+terrain stages; other host activity was uncontrolled. These are functional-run
+observations, not controlled Rust/Bend benchmarks. They show a substantial
+lighting performance problem, not an overall speedup. The earlier integrated
+run and its source hashes remain recorded separately rather than attributed to
+the final binary.
+
+Repairing a partially saved region must not trust cached light computed against
+different neighbors. Command 62 accepts a separate typed-NBT transport file,
+removes cached light arrays and light-only padding in Bend, marks the chunk for
+Minecraft lighting, and returns a newly compressed, padded MCA record. It does
+not replace the resident registry, terrain or light cache. The Java publisher
+preserves completed chunks and invokes this only for new prelit records merged
+beside existing terrain. Fresh regions retain their computed light and still
+have one final write; repair does not modify the temporary lit MCA.
+Independent codec checks cover retained typed metadata, idempotence and invalid
+input. The updated worker passes actual Minecraft repair publication against a
+generated 16-chunk fixture: one missing prelit chunk is replaced while fifteen
+existing chunks and neighboring edits are preserved. Repaired NBT equals the
+original except for lighting, the cached MCA stays byte-identical, and an
+injected encoder failure leaves the destination unchanged. A resident terrain
+test also verifies command 62 leaves its loaded registry, blocks and light intact.
+The final worker's Metal archive passes the 64x64 terrain/lighting/repair test.
+A sample taken during its full-region lighting request records the stock
+`cube_run` waiting for a submitted Metal command buffer. The updated full-region
+test also replaces one missing prelit chunk while preserving 1,023 saved chunks
+and edits. The retained original MCA is 10,080,256 bytes. Fabric and NeoForge
+host jars build with the final worker and the existing local Rust library;
+this cycle does not rebuild Rust. Detailed source-qualified evidence is in
+`docs/benchmarks/bend-interior-lighting.json`.
+
+The original-profile harness supports `--lighting` and checks rejected-command
+preservation, changed-voxel invalidation and agreement between direct chunk and
+streamed MCA bytes. Equivalent complete lit Rust/Bend benchmarks and the other
+remaining parity items are still required.
+
+### Remaining integration findings
+
+The current `BendRegionBackend.queryBiomes` still combines raw climate sampling
+(command 12) and nearest climate lookup (command 10). It does not finalize
+shoreline alternatives or underground biomes, or align query coordinates to the
+same quart cells as the saved chunks. Final generated chunk biomes are present,
+but preliminary holders and biome searches still require matching bounded
+queries and comparisons against decoded coastal and cave quart samples.
+
+The F3 region average is connected, but `TerrainDebugReport` excludes Bend from
+the detailed stage report. Existing Bend request timings are host wall time and
+must be labeled accordingly when connected; production device timestamps are
+not available from those request spans. The full-region fixture also contains
+no entities, so its successful block-entity installation cannot establish live
+template-entity behavior. These remain separate integration requirements.

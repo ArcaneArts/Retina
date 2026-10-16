@@ -3,8 +3,8 @@
 
 Loaded structure registries are passed through intact. No analytic terrain or
 profile changes. This checks current feature integration and
-bounded output; unlit output is not final generator parity or a lit Rust/Bend
-throughput comparison. RSS is sampled from the worker, not total GPU memory.
+bounded output, with optional computed interior lighting. This functional run
+is not a controlled Rust/Bend throughput comparison. RSS is sampled from the worker, not total GPU memory.
 """
 import argparse,hashlib,json,signal,struct,subprocess,threading,time
 from pathlib import Path
@@ -27,15 +27,20 @@ def key(state):
     return state['id'],tuple(sorted(state.get('properties',{}).items()))
 
 
-def check(data,source,rx,rz,size):
+def check(data,source,rx,rz,size,lighting=False):
     records=read_region(data);expected={(z*32+x) for z in range(size//16) for x in range(size//16)}
     assert set(records)==expected
     materials={key(m) for m in source['materials']};biomes={b['id'] for b in source['biomes']}
     for slot,r in records.items():
         t=r['tag'];assert (t['xPos'],t['zPos'],t['yPos'],t['DataVersion'])==(rx*32+slot%32,rz*32+slot//32,source['geology_min_y']//16,5023)
-        assert t['Status']=='minecraft:features' and t['isLightOn']==0 and set(t['Heightmaps'])==set(MAP_NAMES)
-        assert len(t['sections'])==source['geology_height']//16
+        lit=lighting and 0<slot%32<size//16-1 and 0<slot//32<size//16-1
+        assert t['Status']==('minecraft:light' if lit else 'minecraft:features') and t['isLightOn']==int(lit) and set(t['Heightmaps'])==set(MAP_NAMES)
+        assert len(t['sections'])==source['geology_height']//16+(2 if lit else 0)
         for section in t['sections']:
+            if lit:assert len(section['BlockLight'])==len(section['SkyLight'])==2048
+            else:assert 'BlockLight' not in section and 'SkyLight' not in section
+            if section['Y'] in (source['geology_min_y']//16-1,(source['geology_min_y']+source['geology_height'])//16):
+                assert lit and set(section)=={'Y','BlockLight','SkyLight'};continue
             states=section['block_states']
             assert all(key(s) in materials for s in states['palette'])
             palette(states,4096,4) # independently unpack/bounds-check every index
@@ -43,7 +48,7 @@ def check(data,source,rx,rz,size):
     return records
 
 
-def exercise(binary,path,gpu,folder,size,gpu_memory='on',region_origin=(-1,0)):
+def exercise(binary,path,gpu,folder,size,gpu_memory='on',region_origin=(-1,0),lighting=False):
     source=json.loads(path.read_text());folder.mkdir(parents=True,exist_ok=True)
     inp=folder/'profile.rbp';inp.write_bytes(fixture_wire(source,True));w=ObservedWorker(binary,gpu,folder/'worker.log',gpu_memory)
     rx,rz=region_origin;x,z=rx*512,rz*512;lo,hi=123456789,0;output=folder/f'r.{rx}.{rz}.mca'
@@ -66,6 +71,7 @@ def exercise(binary,path,gpu,folder,size,gpu_memory='on',region_origin=(-1,0)):
     try:
         call('profile',5,path_request(inp))
         for name,op in [('density model',11),('materials',19),('palette',21),('geology',30),('aquifers',37),('climate',9),('surface bounds',15),('chunk catalog',25)]:call(name,op)
+        if lighting:call('lighting optics',60)
         pad=32;source_width=size+pad*2+2
         descriptor=call('density descriptor',18,tile_bytes((x-pad-23,z-pad-23,size+pad*2+46,size+pad*2+46,lo,hi)))
         call('density lattice',13,descriptor);call('surface climate',16,tile_bytes((x-pad-1,z-pad-1,source_width,source_width,lo,hi)))
@@ -73,14 +79,26 @@ def exercise(binary,path,gpu,folder,size,gpu_memory='on',region_origin=(-1,0)):
         expanded=tile_bytes((x-pad,z-pad,size+pad*2,size+pad*2,lo,hi))
         call('ores including halo',50,expanded);call('cave dressing including halo',51,expanded)
         call('vegetation core',53,tile_bytes((x,z,size,size,lo,hi)));call('structures',56);call('weather',54)
+        if lighting:
+            ack=call('interior lighting',61,tile_bytes((x,z,size,size,lo,hi)))
+            assert struct.unpack('>4I',ack)==(size,size,(size//16-2)**2,((size-32+95)//96)**2)
         # Rejected commands must preserve the final grid and its metadata. In
         # particular, invalidating at dispatch time used to lose structure tags.
         first_chunk=chunk_request(rx*32,rz*32,lo,hi)
         snapshot=w.call(27,first_chunk)
-        rejected_ops=[5,9,11,13,15,16,19,21,22,25,29,30,33,35,37,39,41,43,50,51,53,56,57,58,59]
+        interior_chunk=chunk_request(rx*32+1,rz*32+1,lo,hi)
+        interior_snapshot=w.call(27,interior_chunk)
+        rejected_ops=[5,9,11,13,15,16,19,21,22,25,29,30,33,35,37,39,41,43,50,51,53,56,57,58,59,60,61,62]
         for op in rejected_ops:
             assert len(w.call(op,b'\x01',status=1))==4
             assert w.call(27,first_chunk)==snapshot,('rejected command changed chunk',op)
+            assert w.call(27,interior_chunk)==interior_snapshot,('rejected command lost interior light',op)
+        if lighting:
+            from test_bend_light_reset import fixture,verify
+            tag=fixture();repair=folder/'repair.rbp'
+            repair.write_bytes(fixture_wire({'chunk':tag,'unlit_status':'minecraft:features'},True))
+            verify(call('repair light metadata',62,path_request(repair)),tag)
+            assert w.call(27,first_chunk)==snapshot and w.call(27,interior_chunk)==interior_snapshot,'repair changed resident terrain/light state'
         if source.get('structures',{}).get('sets'):
             # Cross-seed distant lookup must not replace this final voxel grid
             # or its retained structure/entity metadata.
@@ -89,8 +107,21 @@ def exercise(binary,path,gpu,folder,size,gpu_memory='on',region_origin=(-1,0)):
             assert len(coords)==8
             selected=w.call(58,raw[:12]+coords+struct.pack('>I',0))
             assert len(selected)==4 and w.call(27,first_chunk)==snapshot
+            assert w.call(27,interior_chunk)==interior_snapshot,'structure query lost interior light'
             w.call(59,raw[:12]+coords+struct.pack('>I',0))
             assert w.call(27,first_chunk)==snapshot
+            assert w.call(27,interior_chunk)==interior_snapshot,'structure metadata query lost interior light'
+        if lighting:
+            for invalid_tile in ((x+1,z,size,size,lo,hi),(x,z,32,32,lo,hi),
+                                 (x-512,z,size,size,lo,hi),(x,z,size,size,lo^1,hi)):
+                assert w.call(61,tile_bytes(invalid_tile),status=1)==struct.pack('>I',885)
+                assert w.call(27,interior_chunk)==interior_snapshot,'rejected light geometry changed saved light'
+            # Final vegetation replay crops away the generation halo. Adjacent
+            # requests must be rejected without disturbing the lit interior.
+            for cx,cz in ((rx*32-1,rz*32+1),(rx*32+1,rz*32-1),
+                          (rx*32+size//16,rz*32+1),(rx*32+1,rz*32+size//16)):
+                assert w.call(27,chunk_request(cx,cz,lo,hi),status=1)==struct.pack('>I',732),(cx,cz)
+                assert w.call(27,interior_chunk)==interior_snapshot,'outside chunk request changed cached lighting'
         invalid=folder/'invalid.mca'
         invalid.unlink(missing_ok=True)
         assert w.call(55,request(rx,rz,invalid,lo^1,hi),status=1)==struct.pack('>I',732)
@@ -103,7 +134,7 @@ def exercise(binary,path,gpu,folder,size,gpu_memory='on',region_origin=(-1,0)):
         before=output.read_bytes();assert before[:8192]==bytes(8192)
         with output.open('r+b') as stream:assert stream.write(ack[8:])==8192
         data=output.read_bytes();assert data[8192:]==before[8192:],'bridge rewrote chunk bytes'
-        records=check(data,source,rx,rz,size)
+        records=check(data,source,rx,rz,size,lighting)
         from test_bend_binary import NbtReader
         for record in records.values():
             tag=record['tag']
@@ -119,16 +150,25 @@ def exercise(binary,path,gpu,folder,size,gpu_memory='on',region_origin=(-1,0)):
             for cx in sorted({0,edge//2,edge}):
                 slot=cz*32+cx;tag=records[slot]['tag'];points=[(x+cx*16+dx,z+cz*16+dz,lo,hi) for dz in range(16) for dx in range(16)]
                 columns=decode(call('selected block columns',24,query_bytes(points)))
-                for s,section in enumerate(tag['sections']):
+                for section in tag['sections']:
+                    if 'block_states' not in section:continue
+                    s=section['Y']-source['geology_min_y']//16
                     for j,state in enumerate(palette(section['block_states'],4096,4)):
                         column=columns[j%256];assert column is not None;y=s*16+j//256
                         m=next(m for a,b,m in column['runs'] if a<=y<b);assert materials[key(state)]==m;checked+=1
                 standalone=call('selected independent chunk command',27,chunk_request(rx*32+cx,rz*32+cz,lo,hi))
                 assert standalone==compressed(data,records[slot]),'stream and existing chunk encoder differ'
+        if lighting:
+            # A successful voxel pass invalidates previously computed lighting.
+            call('weather invalidates light',54)
+            from test_bend_chunks import read_nbt
+            import zlib
+            dirty=read_nbt(zlib.decompress(w.call(27,interior_chunk)))
+            assert dirty['isLightOn']==0 and all('BlockLight' not in s and 'SkyLight' not in s for s in dirty['sections'])
         call('reload profile',5,path_request(inp))
         assert w.call(27,first_chunk,status=1)==struct.pack('>I',716),'reload retained a previous generated grid'
         call('stop',4);assert w.process.wait(timeout=30)==0
-        return dict(metadata=metadata,gpu_required=gpu,gpu_memory=gpu_memory if gpu else 'off',size=size,chunks=chunks,sectors=sectors,bytes=len(data),sha256=hashlib.sha256(data).hexdigest(),selected_blocks_checked=checked,invalid_requests_rejected=3+len(rejected_ops),rejected_commands_preserve_chunks=True,profile_reload_invalidates_grid=True,stages=stages,observed_metal_buffers=sum(len(s['observed_metal_ms']) for s in stages),sampled_peak_worker_rss=peak[0],body_growth_samples=growth,chunk_bytes_unchanged_by_header_patch=True,profile_sha256=hashlib.sha256(inp.read_bytes()).hexdigest())
+        return dict(lighting=lighting,lit_chunks=sum(r['tag']['isLightOn'] for r in records.values()),successful_voxel_pass_invalidates_light=lighting,outside_terrain_queries_rejected=lighting,metadata=metadata,gpu_required=gpu,gpu_memory=gpu_memory if gpu else 'off',size=size,chunks=chunks,sectors=sectors,bytes=len(data),sha256=hashlib.sha256(data).hexdigest(),selected_blocks_checked=checked,invalid_requests_rejected=3+len(rejected_ops)+(8 if lighting else 0),rejected_commands_preserve_chunks=True,profile_reload_invalidates_grid=True,stages=stages,observed_metal_buffers=sum(len(s['observed_metal_ms']) for s in stages),sampled_peak_worker_rss=peak[0],body_growth_samples=growth,chunk_bytes_unchanged_by_header_patch=True,profile_sha256=hashlib.sha256(inp.read_bytes()).hexdigest())
     finally:
         stopped.set();monitor.join(timeout=3);signal.alarm(0)
         w.process.stdin.close()
@@ -139,17 +179,17 @@ def exercise(binary,path,gpu,folder,size,gpu_memory='on',region_origin=(-1,0)):
 
 
 def main():
-    p=argparse.ArgumentParser(description=__doc__);p.add_argument('--profile',type=Path,required=True);p.add_argument('--binary',type=Path,default=ROOT/'build/bend/engine');p.add_argument('--gpu',action='store_true');p.add_argument('--gpu-memory',default='4GB');p.add_argument('--size',type=int,default=512,choices=[64,128,256,512]);p.add_argument('--metal-probe',type=Path);p.add_argument('--label',choices=['vanilla','terralith','combined']);a=p.parse_args()
+    p=argparse.ArgumentParser(description=__doc__);p.add_argument('--profile',type=Path,required=True);p.add_argument('--binary',type=Path,default=ROOT/'build/bend/engine');p.add_argument('--gpu',action='store_true');p.add_argument('--gpu-memory',default='4GB');p.add_argument('--size',type=int,default=512,choices=[64,128,256,512]);p.add_argument('--metal-probe',type=Path);p.add_argument('--lighting',action='store_true');p.add_argument('--label',choices=['vanilla','terralith','combined']);a=p.parse_args()
     signal.signal(signal.SIGALRM,lambda *_:(_ for _ in ()).throw(TimeoutError('full region stage timed out')))
-    name=(a.label+'-' if a.label else '')+('gpu' if a.gpu else 'cpu')+'-'+str(a.size);folder=ROOT/'build/bend/full-region-tests'/name
+    name=('lit-' if a.lighting else '')+(a.label+'-' if a.label else '')+('gpu' if a.gpu else 'cpu')+'-'+str(a.size);folder=ROOT/'build/bend/full-region-tests'/name
     paths=sources(ROOT/'bend/engine.bend')|{Path(__file__).resolve()}
     report=dict(scope=__doc__.strip(),native_sha256=hashlib.sha256(a.binary.read_bytes()).hexdigest())
     report['sources']={str(p.relative_to(ROOT)):hashlib.sha256(p.read_bytes()).hexdigest() for p in sorted(paths)}
-    report['run']=exercise(a.binary,a.profile,a.gpu,folder,a.size,a.gpu_memory)
+    report['run']=exercise(a.binary,a.profile,a.gpu,folder,a.size,a.gpu_memory,lighting=a.lighting)
     if a.gpu:report['gpu_archive_sha256']=hashlib.sha256(a.binary.with_suffix('.gpu').read_bytes()).hexdigest()
     if a.metal_probe:
         assert a.gpu and a.metal_probe.with_suffix('.gpu').read_bytes()==a.binary.with_suffix('.gpu').read_bytes()
-        report['observer']=exercise(a.metal_probe,a.profile,True,folder/'observer',a.size,a.gpu_memory)
+        report['observer']=exercise(a.metal_probe,a.profile,True,folder/'observer',a.size,a.gpu_memory,lighting=a.lighting)
         assert report['observer']['observed_metal_buffers']>0,'no Metal execution observed'
         ore=next(s for s in report['observer']['stages'] if s['opcode']==50)
         assert bool(ore['observed_metal_ms'])==(a.size+64<=128),'large ore core execution policy differs'

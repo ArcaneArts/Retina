@@ -55,6 +55,7 @@ final class BendRegionBackend implements AutoCloseable, TerrainQueries.Backend {
             await("biome climate", next.prepareProfileClimate());
             await("world bounds", next.prepareProfileSurface());
             await("chunk catalog", next.prepareProfileChunks());
+            await("lighting optics", next.prepareProfileLighting());
             Files.delete(registryFile); registryFile = null;
         } catch (Throwable failure) {
             discardWorker();
@@ -131,6 +132,23 @@ final class BendRegionBackend implements AutoCloseable, TerrainQueries.Backend {
         catch (IOException | java.util.concurrent.CancellationException failure) { discardWorker(); throw failure; }
     }
 
+    synchronized byte[] resetLighting(net.minecraft.nbt.CompoundTag chunk) throws IOException {
+        initialize();
+        var staged=Files.createTempFile("retina-bend-light-reset-", ".rbp");
+        try {
+            var value=new com.google.gson.JsonObject();
+            value.add("chunk",StructureProfile.tag(chunk));
+            value.addProperty("unlit_status","minecraft:features");
+            BendProfileWire.write(staged,value.toString());
+            var record=await("repair lighting metadata",worker.resetLighting(staged));
+            stage="ready";
+            return record;
+        } catch(IOException | java.util.concurrent.CancellationException failure) {
+            discardWorker();
+            throw failure;
+        } finally { Files.deleteIfExists(staged); }
+    }
+
     private NativeTerrain.RegionReport generateRegion(TerrainRequest request, Path path, int dataVersion) throws IOException {
         initialize();
         int x = request.chunkX() * 16, z = request.chunkZ() * 16;
@@ -153,6 +171,7 @@ final class BendRegionBackend implements AutoCloseable, TerrainQueries.Backend {
         await("surface vegetation / trees (CPU)", worker.applySurfaceVegetation(x,z,REGION_BLOCKS,REGION_BLOCKS,settings.seed()));
         await("structures (GPU terrain / CPU replay)", worker.applyStructures());
         await("snow / freezing", worker.applySnowAndFreeze());
+        await("lighting", worker.lightRegion(x,z,REGION_BLOCKS,REGION_BLOCKS,settings.seed()));
         long writeStart = System.nanoTime();
         var written=await("NBT / zlib / MCA", worker.writeStreamedRegion(Math.floorDiv(request.chunkX(),32),Math.floorDiv(request.chunkZ(),32),
                 settings.seed(),dataVersion,(int)Instant.now().getEpochSecond(),path));

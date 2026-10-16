@@ -370,7 +370,7 @@ final class TemporaryRegions implements AutoCloseable {
             var r = new TerrainRequest(settings.seed(), position.x(), position.z(), settings.minY(), settings.height(),
                     settings.baseHeight(), settings.amplitude(), settings.frequency(), settings.profile());
             return bend == null ? NativeTerrain.instance().publishCachedRegion(r, destination, lease.entry.path)
-                    : BendRegionFiles.publish(lease.entry.path,destination);
+                    : BendRegionFiles.publish(lease.entry.path,destination,bend::resetLighting);
         } catch (IOException error) { throw new UncheckedIOException(error); }
     }
 

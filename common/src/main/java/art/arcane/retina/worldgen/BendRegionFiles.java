@@ -56,7 +56,10 @@ final class BendRegionFiles {
         if(status==null)throw new IOException("Saved MCA chunk has an unknown status");
         return status.isOrAfter(net.minecraft.world.level.chunk.status.ChunkStatus.TERRAIN);
     }
-    static NativeTerrain.RegionReport publish(Path cached, Path destination) throws IOException {
+    @FunctionalInterface interface LightReset {
+        byte[] record(net.minecraft.nbt.CompoundTag chunk) throws IOException;
+    }
+    static NativeTerrain.RegionReport publish(Path cached, Path destination,LightReset reset) throws IOException {
         Files.createDirectories(destination.getParent());
         var staged = Files.createTempFile(destination.getParent(),".retina-bend-", ".mca");
         int generated=0,preserved=0;
@@ -66,26 +69,38 @@ final class BendRegionFiles {
                 try(var source=new RandomAccessFile(cached.toFile(),"r")) { for(int i=0;i<1024;i++) if(source.readInt()!=0)generated++; }
             } else {
                 Files.copy(destination,staged,StandardCopyOption.REPLACE_EXISTING);
-                try (var source = new RandomAccessFile(cached.toFile(),"r"); var output = new RandomAccessFile(staged.toFile(),"rw"); var existingChunks=reader(destination)) {
+                try (var source = new RandomAccessFile(cached.toFile(),"r"); var output = new RandomAccessFile(staged.toFile(),"rw"); var existingChunks=reader(destination);var cachedChunks=reader(cached)) {
                     if (source.length()<8192 || output.length()<8192) throw new IOException("Incomplete MCA header");
+                    var region=regionPosition(destination);
+                    var keep=new boolean[1024];boolean mixed=false;
+                    for(int i=0;i<1024;i++) {
+                        output.seek(i*4L);int existing=output.readInt();
+                        if(existing==0)continue;
+                        long offset=(existing>>>8)*4096L;int count=existing&255;
+                        if(offset<8192 || count==0 || offset+count*4096L>output.length()) throw new IOException("Invalid saved MCA location at slot "+i);
+                        keep[i]=hasTerrain(existingChunks.read(new net.minecraft.world.level.ChunkPos(region.x()*32+i%32,region.z()*32+i/32)));
+                        mixed|=keep[i];
+                    }
                     for(int i=0;i<1024;i++) {
                         source.seek(i*4L);int location=source.readInt();
                         if(location==0)continue;
-                        output.seek(i*4L);int existing=output.readInt();
-                        if(existing!=0) {
-                            long offset=(existing>>>8)*4096L;int count=existing&255;
-                            if(offset<8192 || count==0 || offset+count*4096L>output.length()) throw new IOException("Invalid saved MCA location at slot "+i);
-                            var region=regionPosition(destination);
-                            if(hasTerrain(existingChunks.read(new net.minecraft.world.level.ChunkPos(region.x()*32+i%32,region.z()*32+i/32)))) {
-                                preserved++;continue;
-                            }
-                        }
+                        if(keep[i]) { preserved++;continue; }
                         int count=location&255;
                         long offset=(location>>>8)*4096L;
                         if(offset<8192 || count==0 || offset+count*4096L>source.length()) throw new IOException("Invalid Bend MCA location at slot "+i);
                         long sector=(output.length()+4095)/4096;
                         if(sector>0xffffffL) throw new IOException("MCA sector offset overflow");
                         var bytes=new byte[count*4096];source.seek(offset);source.readFully(bytes);
+                        if(mixed) {
+                            var tag=cachedChunks.read(new net.minecraft.world.level.ChunkPos(region.x()*32+i%32,region.z()*32+i/32));
+                            if(tag==null)throw new IOException("Missing cached Bend chunk at slot "+i);
+                            if(tag.getBooleanOr("isLightOn",false)) {
+                                bytes=reset.record(tag);
+                                if(bytes.length==0 || bytes.length%4096!=0 || bytes.length/4096>255)
+                                    throw new IOException("Invalid Bend relighting record at slot "+i);
+                                count=bytes.length/4096;
+                            }
+                        }
                         output.seek(sector*4096);output.write(bytes);
                         output.seek(i*4L);output.writeInt(((int)sector<<8)|count);
                         source.seek(4096+i*4L);int timestamp=source.readInt();output.seek(4096+i*4L);output.writeInt(timestamp);

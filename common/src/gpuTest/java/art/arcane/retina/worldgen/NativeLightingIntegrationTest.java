@@ -234,7 +234,7 @@ public final class NativeLightingIntegrationTest {
             System.out.println("QA_EVT {\"event\":\"gpu_lighting_single_mca_publish\",\"status\":\"pass\",\"context\":{\"lit\":900,\"unlit\":124,\"lighting_ms\":"+report.stages().nanos(NativeTimings.LIGHT_HOST)/1e6+"}}");
         } finally {try(var paths=Files.walk(directory)){for(var p:paths.sorted(Comparator.reverseOrder()).toList())Files.deleteIfExists(p);}}
     }
-    private static final class SavedGrid implements LightChunkGetter {
+    static final class SavedGrid implements LightChunkGetter {
         final ProtoChunk[] chunks=new ProtoChunk[1024];final List<SerializableChunkData> saved;
         final LevelHeightAccessor bounds;
         SavedGrid(PalettedContainerFactory factory,List<SerializableChunkData> saved) {
