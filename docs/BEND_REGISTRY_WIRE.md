@@ -1380,7 +1380,7 @@ The shared registry transport rejects nonfinite numeric values before projection
 Errors retain the preceding resident snapshot.
 
 The selected Bend backend scans independent compact column runs after vegetation
-and future structure writes. The registered feature flag and altitude-adjusted
+and structure writes. The registered feature flag and altitude-adjusted
 base temperature govern freezing; the loaded precipitation flag separately gates
 snow. Active surface-lake geometry retains the native approximation's exclusion.
 Only exposed default-water blocks immediately below the registered sea level
@@ -1395,3 +1395,36 @@ count. The caller retains its whole generation/application/serialization lease;
 opcode 52 writes the final weathered snapshot once. Weather is not prelighting:
 preview MCA chunks still use `isLightOn=false` until the separate Bend lighting
 field and boundary policy are implemented and verified.
+
+## Resident structure planning and replay (56)
+
+**56 — structures:** empty request body. Requires the loaded registry, climate,
+surface configuration, density lattice and final vegetation core. The core must
+be square, chunk aligned, and 16..512 blocks wide. Nonempty bodies return **603**,
+missing state or invalid placement-policy projection **881**, and incompatible
+core geometry **882**. Existing planner/replay failures propagate unchanged.
+Rejected commands preserve the preceding grid and structure metadata.
+
+Bend projects the loaded structure sets, definitions, templates and processors.
+GPU dispatches sample candidate surface/cave biomes and terrain projection,
+including globally aligned local density lattices outside the resident tile.
+CPU weighted selection and jigsaw planning retain 64 accepted/rejected starts,
+keyed by both seed words, structure set and start chunk. Independent chunk crops
+replay in CPU fork batches, preserving canonical start order. The final resident
+grid includes structure writes and plant support/pair repair. Structure starts,
+references, block entities and entities remain encoded alongside that grid.
+
+Success returns two big-endian U32 words: planned start count and total
+chunk/piece intersections. This count is not a unique-piece count. Commands
+26/27/28/52/55 consume the same metadata and block snapshot; weather command 54
+preserves metadata. A successful new terrain/feature snapshot drops old output
+metadata. A successful LOAD_PROFILE drops all structure caches and generated
+grids; a rejected load does not. Regenerating another region under the same
+profile retains the template/layout caches. As with vegetation, rebuild the
+pre-structure snapshot before repeating placement and hold the whole
+generation/application/serialization lease.
+
+Java exports registered data, invokes the stage after vegetation and before
+weather, and installs serialized metadata into Minecraft chunks. It performs no
+structure planning or placement for Bend. Structure location and Bend-computed
+lighting remain separate pending integrations.

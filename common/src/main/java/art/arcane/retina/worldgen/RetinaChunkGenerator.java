@@ -159,7 +159,7 @@ public final class RetinaChunkGenerator extends ChunkGenerator {
         if (getBiomeSource() instanceof RetinaBiomeSource biomes) {
             var noiseSettings = settings.orElseGet(() -> registry.lookupOrThrow(net.minecraft.core.registries.Registries.NOISE_SETTINGS).getOrThrow(NoiseGeneratorSettings.OVERWORLD)).value();
             if (bendMode()) {
-                var data = TerrainProfileData.export(registry,biomes,minY,height,seed,noiseSettings,StructureProfile.Context.NONE,densityComposition,skyLight);
+                var data = TerrainProfileData.export(registry,biomes,minY,height,seed,noiseSettings,structures,densityComposition,skyLight);
                 profile = new BiomeTerrainProfile(-1,data.seaLevel(),data.materials(),data.biomes(),data.json());
                 bend = new BendRegionBackend(request(seed,0,0),profile);
                 queries = null;
@@ -427,9 +427,15 @@ public final class RetinaChunkGenerator extends ChunkGenerator {
 
     @Override
     public void applyBiomeDecoration(WorldGenLevel level, ChunkAccess chunk, StructureManager structures) {
-        if (profile == null || bendMode()) return;
+        if (profile == null) return;
         var data = regionMode() ? previews.read(chunk.getPos()) : NativeTerrain.instance().structureData(request(worldSeed, chunk.getPos().x(), chunk.getPos().z()));
-        installStructures(chunk,data,net.minecraft.world.level.levelgen.structure.pieces.StructurePieceSerializationContext.fromLevel(level.getLevel()),level.registryAccess());
+        installDecorationData(chunk,data,net.minecraft.world.level.levelgen.structure.pieces.StructurePieceSerializationContext.fromLevel(level.getLevel()),level.registryAccess());
+    }
+
+    void installDecorationData(ChunkAccess chunk, net.minecraft.nbt.CompoundTag data,
+                              net.minecraft.world.level.levelgen.structure.pieces.StructurePieceSerializationContext context,
+                              RegistryAccess registries) {
+        installStructures(chunk,data,context,registries);
         for (var value : data.getListOrEmpty("block_entities")) chunk.setBlockEntityNbt((net.minecraft.nbt.CompoundTag)value);
         if (chunk instanceof net.minecraft.world.level.chunk.ProtoChunk proto)
             for (var value : data.getListOrEmpty("entities")) proto.addEntity((net.minecraft.nbt.CompoundTag)value);
