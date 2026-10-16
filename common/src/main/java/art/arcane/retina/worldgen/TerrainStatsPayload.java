@@ -36,6 +36,7 @@ public record TerrainStatsPayload(boolean active, String backend, String mode, G
         buffer.writeVarInt(stats.regionSamples());
         stats.regionStages().write(buffer);
         buffer.writeDouble(stats.columnCacheMs());
+        stats.bendStages().write(buffer);
         diagnostics.write(buffer);
     }
 
@@ -45,7 +46,7 @@ public record TerrainStatsPayload(boolean active, String backend, String mode, G
         String mode = buffer.readUtf(16);
         return new TerrainStatsPayload(active, backend, mode, new GenerationMetrics.Snapshot(
                 buffer.readDouble(), buffer.readDouble(), buffer.readDouble(), buffer.readDouble(),
-                buffer.readVarInt(), buffer.readVarLong(), buffer.readVarLong(), buffer.readVarLong(), buffer.readDouble(), buffer.readDouble(), buffer.readVarLong(), buffer.readVarLong(), buffer.readVarLong(), NativeTimings.read(buffer),buffer.readVarInt(),NativeTimings.read(buffer),buffer.readDouble()),NativeGpuDiagnostics.read(buffer));
+                buffer.readVarInt(), buffer.readVarLong(), buffer.readVarLong(), buffer.readVarLong(), buffer.readDouble(), buffer.readDouble(), buffer.readVarLong(), buffer.readVarLong(), buffer.readVarLong(), NativeTimings.read(buffer),buffer.readVarInt(),NativeTimings.read(buffer),buffer.readDouble(),BendTimings.read(buffer)),NativeGpuDiagnostics.read(buffer));
     }
 
     @Override
