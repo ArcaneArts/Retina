@@ -3075,9 +3075,40 @@ in `docs/benchmarks/bend-final-biome-queries.json` and the updated lit vanilla
 
 ### Remaining integration findings
 
-The F3 region average is connected, but `TerrainDebugReport` excludes Bend from
-the detailed stage report. Existing Bend request timings are host wall time and
-must be labeled accordingly when connected; production device timestamps are
-not available from those request spans. The full-region fixture also contains
-no entities, so its successful block-entity installation cannot establish live
-template-entity behavior. These remain separate integration requirements.
+The full-region fixture contains no entities, so its successful block-entity
+installation cannot establish live template-entity behavior. Live-level entity
+acceptance and controlled equivalent complete lit-region benchmarks remain
+separate integration requirements.
+
+## Bend F3 stage timings
+
+`BendTimings` records eighteen sequential host spans: runtime/registry setup,
+density layout and lattice, surface/climate, shorelines, lakes, materials, caves,
+aquifers, carving, ores, cave decoration, vegetation, structures, weather,
+lighting, combined NBT/zlib/MCA output, and final header validation. Request
+measurement begins before construction/enqueueing and finishes after its result
+is received. A completed report travels with the generated region through the
+temporary-region cache into `GenerationMetrics` and the client payload.
+
+F3 displays one colored line per stage, with average milliseconds and percentage
+of average region elapsed time. These use exactly the same last twenty completed
+regions as region mean/p95, chunks per second and amortized chunk time. Setup
+appears only when it occurs inside a region request and ages out with that
+sample. Failed builds, cache hits and promotion do not add generation samples.
+Java cache work and remaining host scheduling time have separate rows.
+
+The report explicitly labels these as host elapsed spans, including transfers,
+worker CPU/GPU work and waiting. It does not infer device time from a GPU mode
+flag or present summed CPU worker estimates. The existing Rust report retains
+its separate host/device measurements. Bend device timestamps and separate
+codec substage spans remain unavailable in the current stock worker protocol;
+NBT, compression and streamed writing are therefore shown as one combined span.
+
+`generationMetricsTest` runs without a native library or compute device. It
+checks recording, propagated failures, immutable snapshots, window eviction,
+stage averages/percentages, cold-setup eviction, promotion/failure exclusion,
+world isolation, colors, and complete packet round trips for Bend/Rust/inactive
+reports. The existing Rust formatting and rolling-window checks still pass.
+Common, Fabric/client and NeoForge compile locally. This is instrumentation and
+deterministic telemetry validation; no new generator performance result is
+claimed and no native worker recompilation is needed.

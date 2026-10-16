@@ -1,6 +1,7 @@
 package art.arcane.retina.debug;
 
 import art.arcane.retina.worldgen.TerrainStatsPayload;
+import art.arcane.retina.worldgen.BendTimings;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -37,7 +38,17 @@ public final class TerrainDebugReport {
             lines.add(GPU+"GPU profile upload total: "+DATA+format("%.2f MiB",gpu.uploadBytes()/1048576.0));
             lines.add(GPU+"GPU profile readback total: "+DATA+format("%.2f MiB",gpu.readbackBytes()/1048576.0));
         }
-        if(mca && !bend && stats.regionSamples()>0) {
+        if(bend && stats.bendStages().regions()>0) {
+            lines.add(HEADER+"Bend stages (host elapsed / average region)"+RESET);
+            for(var stage:BendTimings.Stage.values())
+                lines.add(elapsedShare(RUST,stage.label(),stats.bendStageMs(stage),stats.bendStagePercent(stage)));
+            lines.add(elapsedShare("§9","Java column cache",stats.columnCacheMs(),stats.columnCachePercent()));
+            double accounted=stats.bendStages().totalNanos()/(Math.max(1,stats.regionSamples())*1e6)+stats.columnCacheMs();
+            double other=Math.max(0,stats.averageRegionMs()-accounted);
+            lines.add(elapsedShare(LABEL,"Other / scheduling",other,100*other/Math.max(.000001,stats.averageRegionMs())));
+            lines.add(LABEL+"Host spans include CPU/GPU work, transfers and waiting");
+            lines.add(LABEL+"GPU device timestamps: "+DATA+"unavailable; included in host spans");
+        } else if(mca && !bend && stats.regionSamples()>0) {
             lines.add(HEADER+"GPU host (% of average region)"+RESET);
             for(int stage=QUEUE;stage<=WAIT_COPY;stage++)lines.add(share(GPU,GPU_HOST[stage],stats.regionStagePercent(stage),false));
             lines.add(share(GPU,"GPU lighting / upload / readback",stats.regionStagePercent(LIGHT_HOST),false));
@@ -86,8 +97,11 @@ public final class TerrainDebugReport {
         return List.copyOf(lines);
     }
     private static String share(String category,String name,double percent,boolean estimate) {
-        String color=percent>=50?"§c":percent>=25?"§6":percent>=10?"§e":"§a";
-        return category+name+LABEL+": "+color+(estimate?"~":"")+format("%.1f%%",percent)+RESET;
+        return category+name+LABEL+": "+shareColor(percent)+(estimate?"~":"")+format("%.1f%%",percent)+RESET;
     }
+    private static String elapsedShare(String category,String name,double ms,double percent) {
+        return category+name+LABEL+": "+DATA+format("%.2f ms",ms)+LABEL+" ("+shareColor(percent)+format("%.1f%%",percent)+LABEL+")"+RESET;
+    }
+    private static String shareColor(double percent) { return percent>=50?"§c":percent>=25?"§6":percent>=10?"§e":"§a"; }
     private static String format(String pattern,Object... values) { return String.format(Locale.ROOT,pattern,values); }
 }

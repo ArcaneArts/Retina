@@ -167,36 +167,47 @@ final class BendRegionBackend implements AutoCloseable, TerrainQueries.Backend {
     }
 
     private NativeTerrain.RegionReport generateRegion(TerrainRequest request, Path path, int dataVersion) throws IOException {
-        initialize();
-        int x = request.chunkX() * 16, z = request.chunkZ() * 16;
+        var timings = new BendTimings.Recorder();
         long start = System.nanoTime();
+        timings.measure(BendTimings.Stage.INITIALIZE, () -> { initialize(); return null; });
+        int x = request.chunkX() * 16, z = request.chunkZ() * 16;
         Retina.LOGGER.info("Bend region at chunk {},{}: starting combined terrain generation", request.chunkX(), request.chunkZ());
         // Neighboring vegetation anchors need complete terrain footprints before
         // cropping. The density stencil also covers ores and coastal samples.
         int margin = VEGETATION_MARGIN;
-        byte[] descriptor = await("density descriptor", worker.surfaceDensityDescriptor(x-margin-23,z-margin-23,REGION_BLOCKS+2*margin+46,REGION_BLOCKS+2*margin+46,settings.seed()));
-        await("density lattice", worker.request(13,descriptor));
-        await("surface and climate", worker.generateSurfaceColumns(x-margin-1,z-margin-1,REGION_BLOCKS+2*margin+2,REGION_BLOCKS+2*margin+2,settings.seed()));
-        await("shorelines", worker.finalizeShorelineColumns());
-        await("lake geometry", worker.generateLakeGeometry());
-        await("base materials and lakes", worker.generateBlockColumns());
-        await("cave fields and biomes", worker.generateCaveLattice());
-        await("aquifer fields", worker.generateAquiferLattice());
-        await("cave carving", worker.carveColumns());
-        await("ores (CPU)", worker.applyOreCore(x-margin,z-margin,REGION_BLOCKS+2*margin,REGION_BLOCKS+2*margin,settings.seed()));
-        await("cave dressing", worker.applyCaveDecorations(x-margin,z-margin,REGION_BLOCKS+2*margin,REGION_BLOCKS+2*margin,settings.seed()));
-        await("surface vegetation / trees (CPU)", worker.applySurfaceVegetation(x,z,REGION_BLOCKS,REGION_BLOCKS,settings.seed()));
-        await("structures (GPU terrain / CPU replay)", worker.applyStructures());
-        await("snow / freezing", worker.applySnowAndFreeze());
-        await("lighting", worker.lightRegion(x,z,REGION_BLOCKS,REGION_BLOCKS,settings.seed()));
+        byte[] descriptor = timed(timings, BendTimings.Stage.DENSITY_PLAN, () -> worker.surfaceDensityDescriptor(x-margin-23,z-margin-23,REGION_BLOCKS+2*margin+46,REGION_BLOCKS+2*margin+46,settings.seed()));
+        timed(timings, BendTimings.Stage.DENSITY, () -> worker.request(13,descriptor));
+        timed(timings, BendTimings.Stage.SURFACE, () -> worker.generateSurfaceColumns(x-margin-1,z-margin-1,REGION_BLOCKS+2*margin+2,REGION_BLOCKS+2*margin+2,settings.seed()));
+        timed(timings, BendTimings.Stage.SHORES, () -> worker.finalizeShorelineColumns());
+        timed(timings, BendTimings.Stage.LAKES, () -> worker.generateLakeGeometry());
+        timed(timings, BendTimings.Stage.MATERIALS, () -> worker.generateBlockColumns());
+        timed(timings, BendTimings.Stage.CAVES, () -> worker.generateCaveLattice());
+        timed(timings, BendTimings.Stage.AQUIFERS, () -> worker.generateAquiferLattice());
+        timed(timings, BendTimings.Stage.CARVING, () -> worker.carveColumns());
+        timed(timings, BendTimings.Stage.ORES, () -> worker.applyOreCore(x-margin,z-margin,REGION_BLOCKS+2*margin,REGION_BLOCKS+2*margin,settings.seed()));
+        timed(timings, BendTimings.Stage.CAVE_DECORATION, () -> worker.applyCaveDecorations(x-margin,z-margin,REGION_BLOCKS+2*margin,REGION_BLOCKS+2*margin,settings.seed()));
+        timed(timings, BendTimings.Stage.VEGETATION, () -> worker.applySurfaceVegetation(x,z,REGION_BLOCKS,REGION_BLOCKS,settings.seed()));
+        timed(timings, BendTimings.Stage.STRUCTURES, () -> worker.applyStructures());
+        timed(timings, BendTimings.Stage.WEATHER, () -> worker.applySnowAndFreeze());
+        timed(timings, BendTimings.Stage.LIGHTING, () -> worker.lightRegion(x,z,REGION_BLOCKS,REGION_BLOCKS,settings.seed()));
         long writeStart = System.nanoTime();
-        var written=await("NBT / zlib / MCA", worker.writeStreamedRegion(Math.floorDiv(request.chunkX(),32),Math.floorDiv(request.chunkZ(),32),
+        var written=timed(timings, BendTimings.Stage.SERIALIZE, () -> worker.writeStreamedRegion(Math.floorDiv(request.chunkX(),32),Math.floorDiv(request.chunkZ(),32),
                 settings.seed(),dataVersion,(int)Instant.now().getEpochSecond(),path));
-        BendRegionFiles.finishStream(path,written,REGION_CHUNKS*REGION_CHUNKS);
+        long bytes=timings.measure(BendTimings.Stage.HEADER, () -> {
+            BendRegionFiles.finishStream(path,written,REGION_CHUNKS*REGION_CHUNKS);
+            return Files.size(path);
+        });
         stage = "ready";
-        long elapsed = System.nanoTime()-start;
-        Retina.LOGGER.info("Bend region at chunk {},{}: complete in {} ms",request.chunkX(),request.chunkZ(),elapsed/1e6);
-        return new NativeTerrain.RegionReport(REGION_CHUNKS*REGION_CHUNKS,0,0,writeStart-start,System.nanoTime()-writeStart,Files.size(path));
+        long finished = System.nanoTime();
+        Retina.LOGGER.info("Bend region at chunk {},{}: complete in {} ms",request.chunkX(),request.chunkZ(),(finished-start)/1e6);
+        return new NativeTerrain.RegionReport(REGION_CHUNKS*REGION_CHUNKS,0,0,writeStart-start,finished-writeStart,bytes,NativeTimings.EMPTY,timings.snapshot());
+    }
+
+    private byte[] timed(BendTimings.Recorder timings, BendTimings.Stage stage,
+                         BendTimings.Work<CompletableFuture<byte[]>> request) throws IOException {
+        // Begin before constructing/enqueuing the request. This is the complete
+        // host span, including transport and execution, not GPU device time.
+        return timings.measure(stage, () -> await(stage.label(), request.run()));
     }
 
     private byte[] await(String label, CompletableFuture<byte[]> request) throws IOException {

@@ -2,6 +2,15 @@ def nativeDirectory = rootProject.ext.nativeDirectory
 def nativeTarget = rootProject.ext.nativeTarget
 def nativeCargoCommand = rootProject.ext.nativeCargoCommand
 
+tasks.register('generationMetricsTest', JavaExec) {
+    group = 'verification'
+    description = 'Check rolling Rust/Bend timings, F3 formatting and packet transport without a native runtime.'
+    dependsOn 'gpuTestClasses'
+    classpath = sourceSets.gpuTest.runtimeClasspath
+    mainClass = 'art.arcane.retina.worldgen.GenerationMetricsTest'
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
+}
+
 tasks.register('nativeUnitTest', Exec) {
     group = 'verification'
     dependsOn ':buildNative'

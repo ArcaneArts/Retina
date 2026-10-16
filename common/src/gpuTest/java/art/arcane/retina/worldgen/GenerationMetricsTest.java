@@ -4,7 +4,8 @@ import art.arcane.retina.debug.TerrainDebugReport;
 import static art.arcane.retina.worldgen.NativeTimings.*;
 
 /** Deterministic rolling-window and display checks, invoked by gpuTest. */
-final class GenerationMetricsTest {
+public final class GenerationMetricsTest {
+    public static void main(String[] args) { run(); }
     static void run() {
         var metrics = new GenerationMetrics();
         metrics.begin();
@@ -72,7 +73,67 @@ final class GenerationMetricsTest {
         var mixed=TerrainDebugReport.lines(new TerrainStatsPayload(true,"Metal test","mca",window,new NativeGpuDiagnostics(4,123_000_000,43210,1500,900,12,7,3,1048576,2097152)));
         require(mixed.stream().anyMatch(s->s.contains("GPU programs:") && s.contains("mixed (terrain interpreter)")),"F3 reports mixed GPU stage selection");
         require(empty.stream().noneMatch(s -> s.contains("NaN") || s.contains("Infinity")), "empty window formats finite values");
+        bend();
         System.out.println("QA_EVT {\"event\":\"rolling_region_metrics_and_f3_format\",\"status\":\"pass\"}");
+    }
+
+    private static void bend() {
+        var clock=new java.util.concurrent.atomic.AtomicLong(10);
+        var recorder=new BendTimings.Recorder(clock::get);
+        try {
+            require(recorder.measure(BendTimings.Stage.LIGHTING,()->{clock.addAndGet(17);return 42;})==42,"recording retains result");
+            try {
+                recorder.measure(BendTimings.Stage.SERIALIZE,()->{clock.addAndGet(7);throw new java.io.IOException("expected");});
+                throw new AssertionError("recording swallowed failure");
+            } catch(java.io.IOException expected) { require(expected.getMessage().equals("expected"),"original failure propagates"); }
+        } catch(java.io.IOException error) { throw new AssertionError(error); }
+        var recorded=recorder.snapshot();
+        require(recorded.nanos(BendTimings.Stage.LIGHTING)==17 && recorded.nanos(BendTimings.Stage.SERIALIZE)==7,"elapsed includes full action and failure path");
+        long[] detached=recorded.nanos();detached[0]=123;
+        require(recorded.nanos(BendTimings.Stage.INITIALIZE)==0,"timing snapshot protects its arrays");
+
+        var metrics=new GenerationMetrics();
+        for(int i=1;i<=26;i++) {
+            long nanos=i*1_000_000L;long[] values=new long[BendTimings.STAGES];
+            values[BendTimings.Stage.LIGHTING.ordinal()]=nanos/2;
+            values[BendTimings.Stage.SERIALIZE.ordinal()]=nanos/4;
+            values[BendTimings.Stage.INITIALIZE.ordinal()]=i==1?nanos/10:0;
+            var sample=new BendTimings(1,values);values[BendTimings.Stage.LIGHTING.ordinal()]=0;
+            metrics.begin();metrics.completedPreviewRegion(1024,nanos,NativeTimings.EMPTY,0,sample);
+        }
+        var snapshot=metrics.snapshot();
+        require(snapshot.regionSamples()==20 && snapshot.bendStages().regions()==20,"Bend shares the last 20 completed region window");
+        close(snapshot.averageRegionMs(),16.5,"Bend average region time");
+        close(snapshot.bendStageMs(BendTimings.Stage.LIGHTING),8.25,"Bend averaged host milliseconds");
+        close(snapshot.bendStagePercent(BendTimings.Stage.LIGHTING),50,"Bend percentage uses region elapsed denominator");
+        close(snapshot.bendStageMs(BendTimings.Stage.INITIALIZE),0,"cold setup ages out with its region");
+        close(snapshot.chunksPerSecond(),1024*1000/16.5,"Bend throughput derives from the same window");
+        close(snapshot.msPerChunk(),16.5/1024,"Bend amortized time uses the same window");
+        metrics.begin();metrics.completedPromotion(200_000_000);
+        metrics.begin();metrics.failed();
+        require(metrics.snapshot().bendStages().totalNanos()==snapshot.bendStages().totalNanos(),"failures and promotions do not pollute stage samples");
+        require(metrics.snapshot().inFlight()==0 && metrics.snapshot().failures()==1,"failed work closes its metrics lease");
+        require(new GenerationMetrics().snapshot().bendStages().regions()==0,"worlds do not share Bend counters");
+        var payload=new TerrainStatsPayload(true,"Bend 2.0.36 / GPU_REQUIRED","bend",snapshot);
+        var lines=TerrainDebugReport.lines(payload);
+        for(var stage:BendTimings.Stage.values())require(lines.stream().filter(s->s.startsWith("§b"+stage.label()+"§7:")).count()==1,"one line per Bend stage");
+        require(lines.stream().anyMatch(s->s.contains("Lighting§7:") && s.contains("§f8.25 ms") && s.contains("§c50.0%")),"Bend milliseconds and percentages use distinct colors");
+        require(lines.stream().anyMatch(s->s.contains("NBT / zlib / MCA") && s.contains("§625.0%")),"combined serialization span is labeled honestly");
+        require(lines.stream().anyMatch(s->s.contains("Other / scheduling") && s.contains("25.0%")),"unaccounted region time stays visible");
+        require(lines.stream().anyMatch(s->s.contains("GPU device timestamps:") && s.contains("unavailable")),"host time is not reported as device time");
+        require(lines.stream().noneMatch(s->s.contains("~") || s.contains("worker estimates")),"Bend elapsed spans are not Rust CPU estimates");
+        for(var line:lines)require(line.chars().filter(c->c=='%').count()<=1 && line.contains("§"),"Bend report has one colored percentage per row");
+        for(var candidate:java.util.List.of(payload,TerrainStatsPayload.INACTIVE,new TerrainStatsPayload(true,"Metal","mca",snapshot))) {
+            var buffer=new net.minecraft.network.RegistryFriendlyByteBuf(io.netty.buffer.Unpooled.buffer(),net.minecraft.core.RegistryAccess.EMPTY);
+            try {
+                TerrainStatsPayload.CODEC.encode(buffer,candidate);
+                var decoded=TerrainStatsPayload.CODEC.decode(buffer);
+                require(decoded.mode().equals(candidate.mode()) && decoded.stats().bendStages().regions()==candidate.stats().bendStages().regions(),"Bend timing count survives packet round trip");
+                require(java.util.Arrays.equals(decoded.stats().bendStages().nanos(),candidate.stats().bendStages().nanos()),"all Bend stage counters survive transport");
+                require(decoded.diagnostics().equals(candidate.diagnostics()) && !buffer.isReadable(),"extended packet preserves following diagnostics and consumes schema");
+                require(TerrainDebugReport.lines(decoded).equals(TerrainDebugReport.lines(candidate)),"client decodes the exact same timing display");
+            } finally { buffer.release(); }
+        }
     }
 
     static NativeTimings stages(long nanos) {
