@@ -20,6 +20,9 @@ final class BendRegionBackend implements AutoCloseable, TerrainQueries.Backend {
     private Path registryFile;
     private volatile boolean closed;
     private volatile String stage = "waiting for first region";
+    private final java.util.LinkedHashMap<net.minecraft.core.BlockPos,
+            net.minecraft.core.Holder<net.minecraft.world.level.biome.Biome>> biomeCache = new java.util.LinkedHashMap<>();
+    private static final int BIOME_CACHE_SIZE = 8192;
 
     BendRegionBackend(TerrainRequest settings, BiomeTerrainProfile profile) {
         this.settings = settings;
@@ -72,19 +75,33 @@ final class BendRegionBackend implements AutoCloseable, TerrainQueries.Backend {
             var result = new java.util.ArrayList<net.minecraft.core.Holder<net.minecraft.world.level.biome.Biome>>(points.size());
             for(int start=0;start<points.size();start+=64) {
                 int count=Math.min(64,points.size()-start);
-                var input=java.nio.ByteBuffer.allocate(4+count*24).putInt(count);
-                for(int i=0;i<count;i++) { var p=points.get(start+i); input.putInt(0).putInt(p.getX()).putInt(p.getY()).putInt(p.getZ()).putInt((int)settings.seed()).putInt((int)(settings.seed()>>>32)); }
-                var axes=await("biome query climate",worker.request(12,input.array()),false);
-                if(axes.length!=count*24)throw new IOException("Invalid Bend climate query length");
-                var lookup=java.nio.ByteBuffer.allocate(4+count*28).putInt(count);
-                for(int i=0;i<count;i++)lookup.put(axes,i*24,24).putInt(0);
-                var selected=java.nio.ByteBuffer.wrap(await("biome query lookup",worker.request(10,lookup.array()),false));
-                if(selected.remaining()!=count*20)throw new IOException("Invalid Bend biome query length");
+                var batch=new java.util.LinkedHashMap<net.minecraft.core.BlockPos,
+                        net.minecraft.core.Holder<net.minecraft.world.level.biome.Biome>>();
+                var missing=new java.util.LinkedHashSet<net.minecraft.core.BlockPos>();
                 for(int i=0;i<count;i++) {
-                    int present=selected.getInt(),id=selected.getInt();selected.position(selected.position()+12);
-                    if(present!=1 || id<0 || id>=profile.biomes().size())throw new IOException("Bend biome query has no registered match");
-                    result.add(profile.biomes().get(id));
+                    var point=points.get(start+i).immutable();
+                    var cached=biomeCache.get(point);
+                    if(cached==null) missing.add(point);
+                    else batch.put(point,cached);
                 }
+                if(!missing.isEmpty()) {
+                    var input=java.nio.ByteBuffer.allocate(12+missing.size()*12)
+                            .putInt((int)settings.seed()).putInt((int)(settings.seed()>>>32)).putInt(missing.size());
+                    for(var point:missing) input.putInt(point.getX()).putInt(point.getY()).putInt(point.getZ());
+                    var selected=java.nio.ByteBuffer.wrap(await("final biome queries",worker.request(63,input.array()),false));
+                    if(selected.remaining()!=missing.size()*4)throw new IOException("Invalid Bend biome query length");
+                    for(var point:missing) {
+                        int id=selected.getInt();
+                        if(id<0 || id>=profile.biomes().size())throw new IOException("Bend biome query has no registered match");
+                        var biome=profile.biomes().get(id);
+                        batch.put(point,biome);
+                        biomeCache.put(point,biome);
+                    }
+                    while(biomeCache.size()>BIOME_CACHE_SIZE)biomeCache.pollFirstEntry();
+                }
+                // Preserve hits from this batch even when subsequent misses evict
+                // their cache entries. Coordinate normalization stays in Bend.
+                for(int i=0;i<count;i++)result.add(batch.get(points.get(start+i)));
             }
             stage="ready"; return java.util.List.copyOf(result);
         } catch(IOException error) { discardWorker(); throw new java.io.UncheckedIOException(error); }
@@ -202,6 +219,7 @@ final class BendRegionBackend implements AutoCloseable, TerrainQueries.Backend {
         var active = worker;
         if (active != null) active.close();
         worker = null;
+        biomeCache.clear();
         stage = closed ? "closed" : "failed; next request restarts worker";
         if (registryFile != null) try { Files.deleteIfExists(registryFile); registryFile=null; }
         catch (IOException error) { Retina.LOGGER.warn("Could not remove Bend registry staging file",error); }

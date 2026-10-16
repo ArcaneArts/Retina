@@ -88,7 +88,7 @@ def exercise(binary,path,gpu,folder,size,gpu_memory='on',region_origin=(-1,0),li
         snapshot=w.call(27,first_chunk)
         interior_chunk=chunk_request(rx*32+1,rz*32+1,lo,hi)
         interior_snapshot=w.call(27,interior_chunk)
-        rejected_ops=[5,9,11,13,15,16,19,21,22,25,29,30,33,35,37,39,41,43,50,51,53,56,57,58,59,60,61,62]
+        rejected_ops=[5,9,11,13,15,16,19,21,22,25,29,30,33,35,37,39,41,43,50,51,53,56,57,58,59,60,61,62,63]
         for op in rejected_ops:
             assert len(w.call(op,b'\x01',status=1))==4
             assert w.call(27,first_chunk)==snapshot,('rejected command changed chunk',op)
@@ -135,6 +135,21 @@ def exercise(binary,path,gpu,folder,size,gpu_memory='on',region_origin=(-1,0),li
         with output.open('r+b') as stream:assert stream.write(ack[8:])==8192
         data=output.read_bytes();assert data[8192:]==before[8192:],'bridge rewrote chunk bytes'
         records=check(data,source,rx,rz,size,lighting)
+        from test_bend_biome_queries import query as biome_query, payload as biome_payload
+        biome_points=[];wanted_biomes=[]
+        for slot,record in records.items():
+            tag=record['tag']
+            for section in tag['sections']:
+                if 'biomes' not in section:continue
+                i=(slot+section['Y'])%64
+                biome_points.append((tag['xPos']*16+(i%4)*4+3,section['Y']*16+(i//16)*4+3,tag['zPos']*16+((i//4)%4)*4+3))
+                wanted_biomes.append(palette(section['biomes'],64,1)[i])
+        selected_biomes=biome_query(w.call,(hi<<32)|lo,biome_points)
+        assert [source['biomes'][id]['id'] for id in selected_biomes]==wanted_biomes,'final biome queries differ from saved quart palettes'
+        # A different seed must build local query lattices without replacing the
+        # resident final block/cave/light state or its serialized bytes.
+        w.call(63,biome_payload(((hi^1)<<32)|lo,biome_points[:2]))
+        assert w.call(27,first_chunk)==snapshot and w.call(27,interior_chunk)==interior_snapshot,'biome query changed resident terrain/light'
         from test_bend_binary import NbtReader
         for record in records.values():
             tag=record['tag']
@@ -168,7 +183,7 @@ def exercise(binary,path,gpu,folder,size,gpu_memory='on',region_origin=(-1,0),li
         call('reload profile',5,path_request(inp))
         assert w.call(27,first_chunk,status=1)==struct.pack('>I',716),'reload retained a previous generated grid'
         call('stop',4);assert w.process.wait(timeout=30)==0
-        return dict(lighting=lighting,lit_chunks=sum(r['tag']['isLightOn'] for r in records.values()),successful_voxel_pass_invalidates_light=lighting,outside_terrain_queries_rejected=lighting,metadata=metadata,gpu_required=gpu,gpu_memory=gpu_memory if gpu else 'off',size=size,chunks=chunks,sectors=sectors,bytes=len(data),sha256=hashlib.sha256(data).hexdigest(),selected_blocks_checked=checked,invalid_requests_rejected=3+len(rejected_ops)+(8 if lighting else 0),rejected_commands_preserve_chunks=True,profile_reload_invalidates_grid=True,stages=stages,observed_metal_buffers=sum(len(s['observed_metal_ms']) for s in stages),sampled_peak_worker_rss=peak[0],body_growth_samples=growth,chunk_bytes_unchanged_by_header_patch=True,profile_sha256=hashlib.sha256(inp.read_bytes()).hexdigest())
+        return dict(lighting=lighting,lit_chunks=sum(r['tag']['isLightOn'] for r in records.values()),successful_voxel_pass_invalidates_light=lighting,outside_terrain_queries_rejected=lighting,final_biome_queries_checked=len(biome_points),cross_seed_biome_queries_preserve_light=True,metadata=metadata,gpu_required=gpu,gpu_memory=gpu_memory if gpu else 'off',size=size,chunks=chunks,sectors=sectors,bytes=len(data),sha256=hashlib.sha256(data).hexdigest(),selected_blocks_checked=checked,invalid_requests_rejected=3+len(rejected_ops)+(8 if lighting else 0),rejected_commands_preserve_chunks=True,profile_reload_invalidates_grid=True,stages=stages,observed_metal_buffers=sum(len(s['observed_metal_ms']) for s in stages),sampled_peak_worker_rss=peak[0],body_growth_samples=growth,chunk_bytes_unchanged_by_header_patch=True,profile_sha256=hashlib.sha256(inp.read_bytes()).hexdigest())
     finally:
         stopped.set();monitor.join(timeout=3);signal.alarm(0)
         w.process.stdin.close()

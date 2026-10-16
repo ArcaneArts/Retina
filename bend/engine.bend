@@ -72,6 +72,7 @@ import ./light_volume.bend as LightVolume
 import ./light_region.bend as LightRegion
 import ./registry_lighting.bend as RegistryLighting
 import ./light_reset.bend as LightReset
+import ./biome_query.bend as BiomeQuery
 
 # Persistent binary world-generation worker and component protocol v1:
 # PING=0, PREPARE_NOISE=1, SAMPLE_GRID=2, COMPRESS=3, STOP=4,
@@ -1468,6 +1469,7 @@ def dispatch(input: File,output: File,stack: State,backend: U32,id: U32,opcode: 
     case 60: lighting_profile(R.end(R.start(body)),input,output,stack,backend,id,60)
     case 61: lighting_core(S.decode(body),input,output,stack,backend,id,61)
     case 62: profile_load(input,output,stack,backend,id,62,body)
+    case 63: biome_query(BiomeQuery.decode(body),input,output,stack,backend,id,63)
     case 4: empty_command(R.end(R.start(body)),input,output,stack,backend,id,4)
     case _: error(input,output,stack,backend,id,opcode,605)
 
@@ -1740,6 +1742,17 @@ def query_density(found: Maybe<&2,L.Grid>) -> L.Grid:
     # Program zero cannot pass surface compatibility; each needed probe builds
     # a globally aligned local lattice, even before the first region exists.
     case None{}: L.Grid{L.Layout{Q.world(0,0,0),2,2,2,1,1,0,0,0},Q.Empty{}}
+
+@unsafe
+def biome_query(decoded: Result<&1,&1,U32,BiomeQuery.Query>,input: File,output: File,+old: State,backend: U32,id: U32,opcode: U32) -> IO(Unit):
+  match decoded old:
+    case Fail{code} _: error(input,output,old,backend,id,opcode,code)
+    case Done{+query} State{Settings{_,Some{climate},Some{RD.Prepared{model,programs,_,_,_,density,Some{S.State{config,_}},_}}},_}:
+      do IO<Unit>:
+        _ : Nat <- IO.now()
+        body : Z.Bytes <- payload(BiomeQuery.run(query,StructureTerrain.Environment{config,query_density(density),model,programs,climate,Word64.U64{0,0}}))
+        finish(input,output,old,backend,id,opcode,0,body,True{})
+    case _ _: error(input,output,old,backend,id,opcode,881)
 
 @unsafe
 def structure_query_prepared(result: Result<&1,&1,U32,Structures.Session>,+query: StructureQuery.Query,doc: P.Document,+old: State,input: File,output: File,backend: U32,id: U32,+opcode: U32) -> IO(Unit):
