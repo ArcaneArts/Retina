@@ -1,0 +1,1176 @@
+{
+  "schema": "retina.finished-nbt-compression-comparison.v1",
+  "status": "passed",
+  "recorded_utc": "2026-10-17T19:24:37.991302+00:00",
+  "scope": "Serial persistent CPU compression requests on identical saved finished NBT. Includes framing and byte transport; excludes startup, validation, output writes and compilation. Not full-region throughput or codec-only time.",
+  "source_parent_commit": "884a2c8aa555cda2e43425eea1da29eacf599d32",
+  "compiler": {
+    "bend": "2.0.37 (installed precompiled full worker; no Bend build)",
+    "rust": "rustc 1.93.0 (254b59607 2026-01-19)",
+    "libdeflater": "1.26.1",
+    "libdeflate_sys": "1.26.1",
+    "level": 1
+  },
+  "build": {
+    "initial": {
+      "schema": "retina.benchmark-control.v1",
+      "status": "failed",
+      "max_seconds": 30,
+      "termination_grace_seconds": 1.0,
+      "command": [
+        "nice",
+        "-n",
+        "10",
+        "cargo",
+        "build",
+        "--release",
+        "--offline",
+        "--manifest-path",
+        "build/compression-corpus/rust-codec/Cargo.toml",
+        "--jobs",
+        "2"
+      ],
+      "started_unix": 1792264262.389044,
+      "pid": 64698,
+      "exit_code": 101,
+      "elapsed_seconds": 2.3996169578749686
+    },
+    "fixed": {
+      "schema": "retina.benchmark-control.v1",
+      "status": "completed",
+      "max_seconds": 30,
+      "termination_grace_seconds": 1.0,
+      "command": [
+        "nice",
+        "-n",
+        "10",
+        "cargo",
+        "build",
+        "--release",
+        "--offline",
+        "--locked",
+        "--manifest-path",
+        "build/compression-corpus/rust-codec/Cargo.toml",
+        "--jobs",
+        "2"
+      ],
+      "started_unix": 1792264375.008978,
+      "pid": 65817,
+      "exit_code": 0,
+      "elapsed_seconds": 0.1860997909680009
+    },
+    "note": "The previously unbuilt benchmark endpoint used ? with CompressionLvlError, which does not implement std::error::Error. Fixed constant-level initialization, then built only the isolated endpoint with the production codec versions. No wgpu or terrain library build.",
+    "fixture_sha256": {
+      "compression_worker.rs": "1ae1da7f37e4b3e62e7da8f467ca6b9e0101122da5e8884ec093b998a11d5edc",
+      "Cargo.toml": "ed87176b8e1f5e731f9768d6821c077a3f211814a7f8d1328e41d53ec8a0c53a",
+      "Cargo.lock": "abefc50dd32c2eb7ec32a86324e120072e54225e7ae16b4bd2b8147de8ccd54d"
+    },
+    "source_note": "Compiled fixture source precedes rustfmt; only line wrapping differs from committed native/examples/compression_worker.rs."
+  },
+  "corpus": {
+    "schema": "retina.finished-nbt-corpus.v1",
+    "selection": "six fixed slots per complete region; four interior and two boundary chunks",
+    "slots": [
+      0,
+      33,
+      264,
+      528,
+      792,
+      1023
+    ],
+    "sources": [
+      {
+        "backend": "rust",
+        "profile_sha256": "aefce6ff0e800966ad55920c5d21510dfa277de4612f67e22d5146d3aa838203",
+        "report_sha256": "e477090fb668abe65c04827216179f27d8bac1d99de61405248c712d0f190632",
+        "generation_status": "passed",
+        "saved_validation": null,
+        "artifact_sha256": "a39fb51cfa6d409af72bf78bf0382c119bea751df464983257d749e11d5e8385"
+      },
+      {
+        "backend": "bend",
+        "profile_sha256": "aefce6ff0e800966ad55920c5d21510dfa277de4612f67e22d5146d3aa838203",
+        "report_sha256": "3845da4380a9b65bf8ea92fa126a3c1e1f0a6fe2b8e831aec115fac80223a8cd",
+        "generation_status": "interrupted",
+        "saved_validation": {
+          "path": "docs/benchmarks/bend-saved-output-audit.json",
+          "sha256": "1acd5579217b508f9905ef23f8d09542323e535d24edb05bd7d74625faef8acc"
+        },
+        "artifact_sha256": "65a1160fb9fa35df3110869555f3c6f3de6d8eeda92c0c4c982eed7e233d910c"
+      }
+    ],
+    "samples": [
+      {
+        "file": "0-rust-8-8-0.nbt",
+        "bytes": 28677,
+        "sha256": "bf6d05faec783035fde16660fe5fad3bb81b198c2bd1367587ee1f35a2a0c006",
+        "source": 0,
+        "region_file": "/Users/cyberpwn/.local/share/retina-bend/2.0.36/backend-artifacts/region-comparison-0731aec/rust-two/first/r.8.8.mca",
+        "region_sha256": "966c1d3b17b2edd7ab0238edf00d05b0ad0d92d8c0ca667d6814dd6e060130d0",
+        "slot": 0,
+        "lit": false,
+        "sections": 24,
+        "block_entities": 0,
+        "entities": 0
+      },
+      {
+        "file": "0-rust-8-8-33.nbt",
+        "bytes": 68713,
+        "sha256": "d4194435efae97d292b09db129c103e6644f9b1f23f79b0484fe60e30b3baab0",
+        "source": 0,
+        "region_file": "/Users/cyberpwn/.local/share/retina-bend/2.0.36/backend-artifacts/region-comparison-0731aec/rust-two/first/r.8.8.mca",
+        "region_sha256": "966c1d3b17b2edd7ab0238edf00d05b0ad0d92d8c0ca667d6814dd6e060130d0",
+        "slot": 33,
+        "lit": true,
+        "sections": 26,
+        "block_entities": 0,
+        "entities": 0
+      },
+      {
+        "file": "0-rust-8-8-264.nbt",
+        "bytes": 69859,
+        "sha256": "16263d33b7e9ab8250dd3eaab892de08c6e4fa1238de2ab5610658d30005a823",
+        "source": 0,
+        "region_file": "/Users/cyberpwn/.local/share/retina-bend/2.0.36/backend-artifacts/region-comparison-0731aec/rust-two/first/r.8.8.mca",
+        "region_sha256": "966c1d3b17b2edd7ab0238edf00d05b0ad0d92d8c0ca667d6814dd6e060130d0",
+        "slot": 264,
+        "lit": true,
+        "sections": 26,
+        "block_entities": 0,
+        "entities": 0
+      },
+      {
+        "file": "0-rust-8-8-528.nbt",
+        "bytes": 81752,
+        "sha256": "b508b926e00743799e6ed2817da137c22e378ef3031815102282484f3a118263",
+        "source": 0,
+        "region_file": "/Users/cyberpwn/.local/share/retina-bend/2.0.36/backend-artifacts/region-comparison-0731aec/rust-two/first/r.8.8.mca",
+        "region_sha256": "966c1d3b17b2edd7ab0238edf00d05b0ad0d92d8c0ca667d6814dd6e060130d0",
+        "slot": 528,
+        "lit": true,
+        "sections": 26,
+        "block_entities": 0,
+        "entities": 0
+      },
+      {
+        "file": "0-rust-8-8-792.nbt",
+        "bytes": 73224,
+        "sha256": "67930532e0ccac6c5f601d0a7c81500c152795e8afe2d6da9f111fc964db6dc8",
+        "source": 0,
+        "region_file": "/Users/cyberpwn/.local/share/retina-bend/2.0.36/backend-artifacts/region-comparison-0731aec/rust-two/first/r.8.8.mca",
+        "region_sha256": "966c1d3b17b2edd7ab0238edf00d05b0ad0d92d8c0ca667d6814dd6e060130d0",
+        "slot": 792,
+        "lit": true,
+        "sections": 26,
+        "block_entities": 0,
+        "entities": 0
+      },
+      {
+        "file": "0-rust-8-8-1023.nbt",
+        "bytes": 35370,
+        "sha256": "7fb9db80d7f3ff94943c581cfb209a66507fd87ae85991e3757eafd2f5dd6e5f",
+        "source": 0,
+        "region_file": "/Users/cyberpwn/.local/share/retina-bend/2.0.36/backend-artifacts/region-comparison-0731aec/rust-two/first/r.8.8.mca",
+        "region_sha256": "966c1d3b17b2edd7ab0238edf00d05b0ad0d92d8c0ca667d6814dd6e060130d0",
+        "slot": 1023,
+        "lit": false,
+        "sections": 24,
+        "block_entities": 1,
+        "entities": 0
+      },
+      {
+        "file": "0-rust--1-0-0.nbt",
+        "bytes": 23699,
+        "sha256": "422ef976d6ff4983c17211d3042a08eed6add42dbd7cf1ba5069ee6b6e6e8b5d",
+        "source": 0,
+        "region_file": "/Users/cyberpwn/.local/share/retina-bend/2.0.36/backend-artifacts/region-comparison-0731aec/rust-two/warm-1/r.-1.0.mca",
+        "region_sha256": "8dd1456a0d991225b37cbad65ae075bb791f045974b3e2d9da3e93e4749251d0",
+        "slot": 0,
+        "lit": false,
+        "sections": 24,
+        "block_entities": 0,
+        "entities": 0
+      },
+      {
+        "file": "0-rust--1-0-33.nbt",
+        "bytes": 62239,
+        "sha256": "7ca153a6916e4dbaa1c72406966a738872107961562688edccc8ab430d072203",
+        "source": 0,
+        "region_file": "/Users/cyberpwn/.local/share/retina-bend/2.0.36/backend-artifacts/region-comparison-0731aec/rust-two/warm-1/r.-1.0.mca",
+        "region_sha256": "8dd1456a0d991225b37cbad65ae075bb791f045974b3e2d9da3e93e4749251d0",
+        "slot": 33,
+        "lit": true,
+        "sections": 26,
+        "block_entities": 0,
+        "entities": 0
+      },
+      {
+        "file": "0-rust--1-0-264.nbt",
+        "bytes": 67198,
+        "sha256": "2fab3297943088364fef6a1a6d6431e7a6cf28654ee7346d6511b7d768fb2550",
+        "source": 0,
+        "region_file": "/Users/cyberpwn/.local/share/retina-bend/2.0.36/backend-artifacts/region-comparison-0731aec/rust-two/warm-1/r.-1.0.mca",
+        "region_sha256": "8dd1456a0d991225b37cbad65ae075bb791f045974b3e2d9da3e93e4749251d0",
+        "slot": 264,
+        "lit": true,
+        "sections": 26,
+        "block_entities": 0,
+        "entities": 0
+      },
+      {
+        "file": "0-rust--1-0-528.nbt",
+        "bytes": 66837,
+        "sha256": "385c60fdec3681e07fb93cb3392df285e494bb75832ddef27f56a8100d801d55",
+        "source": 0,
+        "region_file": "/Users/cyberpwn/.local/share/retina-bend/2.0.36/backend-artifacts/region-comparison-0731aec/rust-two/warm-1/r.-1.0.mca",
+        "region_sha256": "8dd1456a0d991225b37cbad65ae075bb791f045974b3e2d9da3e93e4749251d0",
+        "slot": 528,
+        "lit": true,
+        "sections": 26,
+        "block_entities": 0,
+        "entities": 0
+      },
+      {
+        "file": "0-rust--1-0-792.nbt",
+        "bytes": 65450,
+        "sha256": "82126434aae6ad69619627ed2d61b37f8473c28e577b7d65ec492769b64a0321",
+        "source": 0,
+        "region_file": "/Users/cyberpwn/.local/share/retina-bend/2.0.36/backend-artifacts/region-comparison-0731aec/rust-two/warm-1/r.-1.0.mca",
+        "region_sha256": "8dd1456a0d991225b37cbad65ae075bb791f045974b3e2d9da3e93e4749251d0",
+        "slot": 792,
+        "lit": true,
+        "sections": 26,
+        "block_entities": 0,
+        "entities": 0
+      },
+      {
+        "file": "0-rust--1-0-1023.nbt",
+        "bytes": 24982,
+        "sha256": "5c8505e7b6d956b08f2bf422396098d648a905e06d4e5fc9850d6fd1d22743b7",
+        "source": 0,
+        "region_file": "/Users/cyberpwn/.local/share/retina-bend/2.0.36/backend-artifacts/region-comparison-0731aec/rust-two/warm-1/r.-1.0.mca",
+        "region_sha256": "8dd1456a0d991225b37cbad65ae075bb791f045974b3e2d9da3e93e4749251d0",
+        "slot": 1023,
+        "lit": false,
+        "sections": 24,
+        "block_entities": 0,
+        "entities": 0
+      },
+      {
+        "file": "0-rust-0-0-0.nbt",
+        "bytes": 27277,
+        "sha256": "27a8bcf8dddfc686fb7294ac4615cdccc7c5ef34d2e20ad5ada60eceb3ba1093",
+        "source": 0,
+        "region_file": "/Users/cyberpwn/.local/share/retina-bend/2.0.36/backend-artifacts/region-comparison-0731aec/rust-two/warm-2/r.0.0.mca",
+        "region_sha256": "8a556230e1516fc1ad3d81c049caa4555056e9968c32e1e4140784d4b6076335",
+        "slot": 0,
+        "lit": false,
+        "sections": 24,
+        "block_entities": 0,
+        "entities": 0
+      },
+      {
+        "file": "0-rust-0-0-33.nbt",
+        "bytes": 71590,
+        "sha256": "2b76ffe274026ce38f42a34d1541387d92eb302e6456c05272953f81dede0ade",
+        "source": 0,
+        "region_file": "/Users/cyberpwn/.local/share/retina-bend/2.0.36/backend-artifacts/region-comparison-0731aec/rust-two/warm-2/r.0.0.mca",
+        "region_sha256": "8a556230e1516fc1ad3d81c049caa4555056e9968c32e1e4140784d4b6076335",
+        "slot": 33,
+        "lit": true,
+        "sections": 26,
+        "block_entities": 0,
+        "entities": 0
+      },
+      {
+        "file": "0-rust-0-0-264.nbt",
+        "bytes": 80375,
+        "sha256": "eac6eb16267c3073410d6847767b3012fb92d85c9c80c8cc04af8c12f1741ab1",
+        "source": 0,
+        "region_file": "/Users/cyberpwn/.local/share/retina-bend/2.0.36/backend-artifacts/region-comparison-0731aec/rust-two/warm-2/r.0.0.mca",
+        "region_sha256": "8a556230e1516fc1ad3d81c049caa4555056e9968c32e1e4140784d4b6076335",
+        "slot": 264,
+        "lit": true,
+        "sections": 26,
+        "block_entities": 0,
+        "entities": 0
+      },
+      {
+        "file": "0-rust-0-0-528.nbt",
+        "bytes": 70742,
+        "sha256": "99d2a4923231f80a3bb1c085e798464af00d21d5f48bc69efadcc451af634bcf",
+        "source": 0,
+        "region_file": "/Users/cyberpwn/.local/share/retina-bend/2.0.36/backend-artifacts/region-comparison-0731aec/rust-two/warm-2/r.0.0.mca",
+        "region_sha256": "8a556230e1516fc1ad3d81c049caa4555056e9968c32e1e4140784d4b6076335",
+        "slot": 528,
+        "lit": true,
+        "sections": 26,
+        "block_entities": 0,
+        "entities": 0
+      },
+      {
+        "file": "0-rust-0-0-792.nbt",
+        "bytes": 68143,
+        "sha256": "61b0d2207ad220c298b7e785ffeec1f4cbb3658599c8c353f849d6078832b72d",
+        "source": 0,
+        "region_file": "/Users/cyberpwn/.local/share/retina-bend/2.0.36/backend-artifacts/region-comparison-0731aec/rust-two/warm-2/r.0.0.mca",
+        "region_sha256": "8a556230e1516fc1ad3d81c049caa4555056e9968c32e1e4140784d4b6076335",
+        "slot": 792,
+        "lit": true,
+        "sections": 26,
+        "block_entities": 0,
+        "entities": 0
+      },
+      {
+        "file": "0-rust-0-0-1023.nbt",
+        "bytes": 29298,
+        "sha256": "d74f46570701b5adf11abceb1ae45fbef0c9113d2778d4647747f6a91c709797",
+        "source": 0,
+        "region_file": "/Users/cyberpwn/.local/share/retina-bend/2.0.36/backend-artifacts/region-comparison-0731aec/rust-two/warm-2/r.0.0.mca",
+        "region_sha256": "8a556230e1516fc1ad3d81c049caa4555056e9968c32e1e4140784d4b6076335",
+        "slot": 1023,
+        "lit": false,
+        "sections": 24,
+        "block_entities": 0,
+        "entities": 0
+      },
+      {
+        "file": "0-rust-1-0-0.nbt",
+        "bytes": 31730,
+        "sha256": "6be8530b6f69389e521b2e79a47d76e57301a449db5d4c2dde1f7350c4d1747f",
+        "source": 0,
+        "region_file": "/Users/cyberpwn/.local/share/retina-bend/2.0.36/backend-artifacts/region-comparison-0731aec/rust-two/warm-3/r.1.0.mca",
+        "region_sha256": "9297295d9d1a40cc630e5eb6915a4427b1f9acc04cd1fdfa6221d26f2aa45ca0",
+        "slot": 0,
+        "lit": false,
+        "sections": 24,
+        "block_entities": 0,
+        "entities": 0
+      },
+      {
+        "file": "0-rust-1-0-33.nbt",
+        "bytes": 79571,
+        "sha256": "e81f4b2e3124653698bc1412f9d1dec07b81be865135aa6cb89deff14b1cb9aa",
+        "source": 0,
+        "region_file": "/Users/cyberpwn/.local/share/retina-bend/2.0.36/backend-artifacts/region-comparison-0731aec/rust-two/warm-3/r.1.0.mca",
+        "region_sha256": "9297295d9d1a40cc630e5eb6915a4427b1f9acc04cd1fdfa6221d26f2aa45ca0",
+        "slot": 33,
+        "lit": true,
+        "sections": 26,
+        "block_entities": 0,
+        "entities": 0
+      },
+      {
+        "file": "0-rust-1-0-264.nbt",
+        "bytes": 73339,
+        "sha256": "67ded7f8949677c7f58e588de4b2599c0e5a0dd3b801215eb9641095ce85cc43",
+        "source": 0,
+        "region_file": "/Users/cyberpwn/.local/share/retina-bend/2.0.36/backend-artifacts/region-comparison-0731aec/rust-two/warm-3/r.1.0.mca",
+        "region_sha256": "9297295d9d1a40cc630e5eb6915a4427b1f9acc04cd1fdfa6221d26f2aa45ca0",
+        "slot": 264,
+        "lit": true,
+        "sections": 26,
+        "block_entities": 0,
+        "entities": 0
+      },
+      {
+        "file": "0-rust-1-0-528.nbt",
+        "bytes": 73381,
+        "sha256": "25d246e959fe3bd9db1162eba2d401e3031d3d2c6023d0abc7857330f902fbe0",
+        "source": 0,
+        "region_file": "/Users/cyberpwn/.local/share/retina-bend/2.0.36/backend-artifacts/region-comparison-0731aec/rust-two/warm-3/r.1.0.mca",
+        "region_sha256": "9297295d9d1a40cc630e5eb6915a4427b1f9acc04cd1fdfa6221d26f2aa45ca0",
+        "slot": 528,
+        "lit": true,
+        "sections": 26,
+        "block_entities": 0,
+        "entities": 0
+      },
+      {
+        "file": "0-rust-1-0-792.nbt",
+        "bytes": 66127,
+        "sha256": "111d937f5a20303d9a2591cffc2b742791067ed2fb18ef52ace8b02b2de5dbb7",
+        "source": 0,
+        "region_file": "/Users/cyberpwn/.local/share/retina-bend/2.0.36/backend-artifacts/region-comparison-0731aec/rust-two/warm-3/r.1.0.mca",
+        "region_sha256": "9297295d9d1a40cc630e5eb6915a4427b1f9acc04cd1fdfa6221d26f2aa45ca0",
+        "slot": 792,
+        "lit": true,
+        "sections": 26,
+        "block_entities": 0,
+        "entities": 0
+      },
+      {
+        "file": "0-rust-1-0-1023.nbt",
+        "bytes": 26457,
+        "sha256": "766964b96ad079a7f036a4039f7ee04bad3f08e80c3d4f2283db852d04d9c2ff",
+        "source": 0,
+        "region_file": "/Users/cyberpwn/.local/share/retina-bend/2.0.36/backend-artifacts/region-comparison-0731aec/rust-two/warm-3/r.1.0.mca",
+        "region_sha256": "9297295d9d1a40cc630e5eb6915a4427b1f9acc04cd1fdfa6221d26f2aa45ca0",
+        "slot": 1023,
+        "lit": false,
+        "sections": 24,
+        "block_entities": 0,
+        "entities": 0
+      },
+      {
+        "file": "1-bend-8-8-0.nbt",
+        "bytes": 27998,
+        "sha256": "fef208dee01c569333aa9ef41dca788bbee311a4d7cb5eaa9bbdf604a06e81c1",
+        "source": 1,
+        "region_file": "/Users/cyberpwn/.local/share/retina-bend/2.0.36/backend-artifacts/region-comparison-0731aec/bend/first/r.8.8.mca",
+        "region_sha256": "38955925849c7ac82e0384258ffd55222c6e67aca2287638cedd3cacd0e59e11",
+        "slot": 0,
+        "lit": false,
+        "sections": 24,
+        "block_entities": 0,
+        "entities": 0
+      },
+      {
+        "file": "1-bend-8-8-33.nbt",
+        "bytes": 132382,
+        "sha256": "ab7e0227eaff783c4aa79e9d588340a305b1f222653e78da3b51c4d3ceecd2a6",
+        "source": 1,
+        "region_file": "/Users/cyberpwn/.local/share/retina-bend/2.0.36/backend-artifacts/region-comparison-0731aec/bend/first/r.8.8.mca",
+        "region_sha256": "38955925849c7ac82e0384258ffd55222c6e67aca2287638cedd3cacd0e59e11",
+        "slot": 33,
+        "lit": true,
+        "sections": 26,
+        "block_entities": 0,
+        "entities": 0
+      },
+      {
+        "file": "1-bend-8-8-264.nbt",
+        "bytes": 134723,
+        "sha256": "99e07a787978167fad54ef3b42328adc698f5b3a443b868ec0947c36c9255ad8",
+        "source": 1,
+        "region_file": "/Users/cyberpwn/.local/share/retina-bend/2.0.36/backend-artifacts/region-comparison-0731aec/bend/first/r.8.8.mca",
+        "region_sha256": "38955925849c7ac82e0384258ffd55222c6e67aca2287638cedd3cacd0e59e11",
+        "slot": 264,
+        "lit": true,
+        "sections": 26,
+        "block_entities": 0,
+        "entities": 0
+      },
+      {
+        "file": "1-bend-8-8-528.nbt",
+        "bytes": 139656,
+        "sha256": "9ea44e32163d4147a7c949e4a767f2294caf21ee213037f4e30488bfda6a84fa",
+        "source": 1,
+        "region_file": "/Users/cyberpwn/.local/share/retina-bend/2.0.36/backend-artifacts/region-comparison-0731aec/bend/first/r.8.8.mca",
+        "region_sha256": "38955925849c7ac82e0384258ffd55222c6e67aca2287638cedd3cacd0e59e11",
+        "slot": 528,
+        "lit": true,
+        "sections": 26,
+        "block_entities": 0,
+        "entities": 0
+      },
+      {
+        "file": "1-bend-8-8-792.nbt",
+        "bytes": 138735,
+        "sha256": "4941cceeec44a99f11ac0dc60a9f027a979d7b18617fa7ef96a95996974d21ad",
+        "source": 1,
+        "region_file": "/Users/cyberpwn/.local/share/retina-bend/2.0.36/backend-artifacts/region-comparison-0731aec/bend/first/r.8.8.mca",
+        "region_sha256": "38955925849c7ac82e0384258ffd55222c6e67aca2287638cedd3cacd0e59e11",
+        "slot": 792,
+        "lit": true,
+        "sections": 26,
+        "block_entities": 0,
+        "entities": 0
+      },
+      {
+        "file": "1-bend-8-8-1023.nbt",
+        "bytes": 33665,
+        "sha256": "cec7757e25194ad17a28ea10a3fe1e773b22a6750a83e784493f7256ee9cf424",
+        "source": 1,
+        "region_file": "/Users/cyberpwn/.local/share/retina-bend/2.0.36/backend-artifacts/region-comparison-0731aec/bend/first/r.8.8.mca",
+        "region_sha256": "38955925849c7ac82e0384258ffd55222c6e67aca2287638cedd3cacd0e59e11",
+        "slot": 1023,
+        "lit": false,
+        "sections": 24,
+        "block_entities": 1,
+        "entities": 0
+      },
+      {
+        "file": "1-bend--1-0-0.nbt",
+        "bytes": 23381,
+        "sha256": "bfc6d5ad556c050a8f3c66fd65b7a63798cc30d185a237c8621b964fd478066e",
+        "source": 1,
+        "region_file": "/Users/cyberpwn/.local/share/retina-bend/2.0.36/backend-artifacts/region-comparison-0731aec/bend/warm-1/r.-1.0.mca",
+        "region_sha256": "18d7ce200b48cffdfa0ed6d4eb1e2db19944b9ab019ca93a2788eefc1e7d583d",
+        "slot": 0,
+        "lit": false,
+        "sections": 24,
+        "block_entities": 0,
+        "entities": 0
+      },
+      {
+        "file": "1-bend--1-0-33.nbt",
+        "bytes": 130866,
+        "sha256": "b1c6b7322a7c933ff7bb2a3e168a90b1e7d3c25a477aea73783b0ce4a99b8fd0",
+        "source": 1,
+        "region_file": "/Users/cyberpwn/.local/share/retina-bend/2.0.36/backend-artifacts/region-comparison-0731aec/bend/warm-1/r.-1.0.mca",
+        "region_sha256": "18d7ce200b48cffdfa0ed6d4eb1e2db19944b9ab019ca93a2788eefc1e7d583d",
+        "slot": 33,
+        "lit": true,
+        "sections": 26,
+        "block_entities": 0,
+        "entities": 0
+      },
+      {
+        "file": "1-bend--1-0-264.nbt",
+        "bytes": 133845,
+        "sha256": "f3eab06ffb51fb37395bb6344fd39258ca9fdc13b0139a431a01ada95e321123",
+        "source": 1,
+        "region_file": "/Users/cyberpwn/.local/share/retina-bend/2.0.36/backend-artifacts/region-comparison-0731aec/bend/warm-1/r.-1.0.mca",
+        "region_sha256": "18d7ce200b48cffdfa0ed6d4eb1e2db19944b9ab019ca93a2788eefc1e7d583d",
+        "slot": 264,
+        "lit": true,
+        "sections": 26,
+        "block_entities": 0,
+        "entities": 0
+      },
+      {
+        "file": "1-bend--1-0-528.nbt",
+        "bytes": 130817,
+        "sha256": "157116107e927b0fd9d9fbce9a9521efda77a655705c5a09c6554ea87c2e0e94",
+        "source": 1,
+        "region_file": "/Users/cyberpwn/.local/share/retina-bend/2.0.36/backend-artifacts/region-comparison-0731aec/bend/warm-1/r.-1.0.mca",
+        "region_sha256": "18d7ce200b48cffdfa0ed6d4eb1e2db19944b9ab019ca93a2788eefc1e7d583d",
+        "slot": 528,
+        "lit": true,
+        "sections": 26,
+        "block_entities": 0,
+        "entities": 0
+      },
+      {
+        "file": "1-bend--1-0-792.nbt",
+        "bytes": 133627,
+        "sha256": "dac77fb6711e7346f7435f55a458d03106fb192d1a9ee1c812c96a3b65617642",
+        "source": 1,
+        "region_file": "/Users/cyberpwn/.local/share/retina-bend/2.0.36/backend-artifacts/region-comparison-0731aec/bend/warm-1/r.-1.0.mca",
+        "region_sha256": "18d7ce200b48cffdfa0ed6d4eb1e2db19944b9ab019ca93a2788eefc1e7d583d",
+        "slot": 792,
+        "lit": true,
+        "sections": 26,
+        "block_entities": 0,
+        "entities": 0
+      },
+      {
+        "file": "1-bend--1-0-1023.nbt",
+        "bytes": 24646,
+        "sha256": "efb7342d4329b25f824ec93b592421022960885677b18f5cd0b323c449490381",
+        "source": 1,
+        "region_file": "/Users/cyberpwn/.local/share/retina-bend/2.0.36/backend-artifacts/region-comparison-0731aec/bend/warm-1/r.-1.0.mca",
+        "region_sha256": "18d7ce200b48cffdfa0ed6d4eb1e2db19944b9ab019ca93a2788eefc1e7d583d",
+        "slot": 1023,
+        "lit": false,
+        "sections": 24,
+        "block_entities": 0,
+        "entities": 0
+      }
+    ]
+  },
+  "bend": {
+    "schema": "retina.compression-corpus.v1",
+    "status": "passed",
+    "backend": "bend",
+    "max_seconds": 30.0,
+    "corpus_sha256": "2baaaea663a66aa21cd4c2205fe6cd76c679408f46f7a1796efefd70d59f0ad0",
+    "input_bytes": 2550371,
+    "chunks": 36,
+    "artifact": "/Users/cyberpwn/.local/share/retina-bend/2.0.37/playable/engine",
+    "artifact_sha256": "671cf9b6b56ee6a62bb568f8699bdb6d31cfa1339661414ed0e724f6528843ce",
+    "harness_sha256": "fce4145faa732214f0b914accb6c02be8d74263a42c27bcfc77e6ee07da74d39",
+    "source_revision": "884a2c8aa555cda2e43425eea1da29eacf599d32",
+    "environment": {
+      "platform": "macOS-27.0.1-arm64-arm-64bit",
+      "priority": 10
+    },
+    "scope": "Compare the actual Rust/Bend codecs on identical finished chunk NBT.\n\nThis measures serial persistent-process compression requests, including framing\nand pipe transport, not codec-only time or parallel region throughput. Corpus\npreparation, compilation, startup, independent validation and disk output are\noutside the measured requests. Run after complete-region benchmarks finish.",
+    "samples": [
+      3130.000667180866,
+      3158.7635420728475,
+      3148.3189589343965
+    ],
+    "warmups": 1,
+    "repeats": 3,
+    "execution": "CPU; serial compression requests; Bend runtime has two workers; Rust codec is single-threaded",
+    "startup_ms": 563.7729170266539,
+    "memory": {
+      "sampled_peak_rss_bytes": 119881728,
+      "samples": 24,
+      "load_min": [
+        3.1298828125,
+        2.76953125,
+        3.33935546875
+      ],
+      "load_max": [
+        3.154296875,
+        2.7763671875,
+        3.34423828125
+      ],
+      "scope": "sum of driver and engine RSS; shared pages may be double-counted; GPU allocations are not measured"
+    },
+    "post_run_rss_bytes": 120274944,
+    "outputs": [
+      {
+        "file": "0-rust-8-8-0.nbt.zlib",
+        "bytes": 7356,
+        "sha256": "83940849e9a93f810172acd1a785b5dfc23b00f88d4a6b5ad97398cf9b04e0fb"
+      },
+      {
+        "file": "0-rust-8-8-33.nbt.zlib",
+        "bytes": 8625,
+        "sha256": "05ae25ff95ad27920e7e798ab462b23657bb9944c56000423ef796664e26ac4e"
+      },
+      {
+        "file": "0-rust-8-8-264.nbt.zlib",
+        "bytes": 8701,
+        "sha256": "0397ef503148929fa1b82ec3d947a24d701841071aa3349a159900c97bacb90a"
+      },
+      {
+        "file": "0-rust-8-8-528.nbt.zlib",
+        "bytes": 13532,
+        "sha256": "f3ba86caeb38932ffc3d14db48cc6416c95f2eb4bb7feeaa48dbac0981410707"
+      },
+      {
+        "file": "0-rust-8-8-792.nbt.zlib",
+        "bytes": 9686,
+        "sha256": "1bfa4d615f930419838b13644e5bfa7541b68945760b34c672a888275b960223"
+      },
+      {
+        "file": "0-rust-8-8-1023.nbt.zlib",
+        "bytes": 9560,
+        "sha256": "203ad2b41be8928a6b0a8db6088c565434e7512f82121b7508e8edeed47cc0df"
+      },
+      {
+        "file": "0-rust--1-0-0.nbt.zlib",
+        "bytes": 5560,
+        "sha256": "53fd119b26c7383d577ed720b4dbededef9a1667166e9f6abde7c6af44e983c5"
+      },
+      {
+        "file": "0-rust--1-0-33.nbt.zlib",
+        "bytes": 5614,
+        "sha256": "031b189ffb556574ed02e3f2a5d45703f1d4dbabc7a738ce3e910841c56fd997"
+      },
+      {
+        "file": "0-rust--1-0-264.nbt.zlib",
+        "bytes": 8481,
+        "sha256": "61e2c2ba55fdb54438b81c1b788970ada0495cb01d16837206c272cb4ea6d673"
+      },
+      {
+        "file": "0-rust--1-0-528.nbt.zlib",
+        "bytes": 6821,
+        "sha256": "99e3755c2916421049d6253bd181d53171c346705a15fcc3aaa07d0c3cb9dbd8"
+      },
+      {
+        "file": "0-rust--1-0-792.nbt.zlib",
+        "bytes": 7579,
+        "sha256": "c2f96b084fb0ed0045f502ddd1956d603427ca0a3b1529866d9032a30b91521b"
+      },
+      {
+        "file": "0-rust--1-0-1023.nbt.zlib",
+        "bytes": 5951,
+        "sha256": "70fa159fd5ce9c0cf8d3aa9f5af1f58b2397f1b42c90726ada78c850113a2a5a"
+      },
+      {
+        "file": "0-rust-0-0-0.nbt.zlib",
+        "bytes": 7202,
+        "sha256": "e9ffaedcbe13e470afa4085266870f68bed50bc20472f276e16e98a0f91722fd"
+      },
+      {
+        "file": "0-rust-0-0-33.nbt.zlib",
+        "bytes": 10505,
+        "sha256": "9e4b5d72c609630968dbc6731c8849759a7de33689854744f4c1cde662a4fd69"
+      },
+      {
+        "file": "0-rust-0-0-264.nbt.zlib",
+        "bytes": 11557,
+        "sha256": "0224be1dedca2f6383a5c2ee17750ed7af6758d319abc9a7da72d11ec88d9288"
+      },
+      {
+        "file": "0-rust-0-0-528.nbt.zlib",
+        "bytes": 9223,
+        "sha256": "9cce89d794540998000e4560cec12d846d0109048ac3ffd2da91e607848a68bf"
+      },
+      {
+        "file": "0-rust-0-0-792.nbt.zlib",
+        "bytes": 7780,
+        "sha256": "be538dee138e7dd08aee72afebad1f06e2e0cdd26abb6b7bc71932d5ba1edb83"
+      },
+      {
+        "file": "0-rust-0-0-1023.nbt.zlib",
+        "bytes": 9189,
+        "sha256": "d5ca3886067e39818f068bf5d5fb7e2e3def632737c078d2dfa6566b5e014af3"
+      },
+      {
+        "file": "0-rust-1-0-0.nbt.zlib",
+        "bytes": 9899,
+        "sha256": "11fe2921a4a6d3a9c4500f1ae3bcf413bf390ea6a4cfe9fb635ca090624c4a9e"
+      },
+      {
+        "file": "0-rust-1-0-33.nbt.zlib",
+        "bytes": 12349,
+        "sha256": "155e63ba41d466063e03c3eefd0638d5819bf33e6755eb77bbd75d442a9d7cc2"
+      },
+      {
+        "file": "0-rust-1-0-264.nbt.zlib",
+        "bytes": 9967,
+        "sha256": "237f8fff1a2b6e04f1f34d06e56130fee31e0c496e31bfbde345679d05a0c6ed"
+      },
+      {
+        "file": "0-rust-1-0-528.nbt.zlib",
+        "bytes": 10110,
+        "sha256": "564856712e1670143b4002b9ce5487d1447c160de125db8387d84c9fa02c822b"
+      },
+      {
+        "file": "0-rust-1-0-792.nbt.zlib",
+        "bytes": 7617,
+        "sha256": "decefb9b3d447a75d7846ef5310367da2e066c4fcb18a0b4952aa7af56b47508"
+      },
+      {
+        "file": "0-rust-1-0-1023.nbt.zlib",
+        "bytes": 6518,
+        "sha256": "168235d5c58a4819d32dab7e0338f7596a13b2608faa078f3f39e9547b998c49"
+      },
+      {
+        "file": "1-bend-8-8-0.nbt.zlib",
+        "bytes": 6845,
+        "sha256": "535fc4aab1051ccc8267f88d295bac3ae181adc4e30ee5b1430d3dd2885f1bd7"
+      },
+      {
+        "file": "1-bend-8-8-33.nbt.zlib",
+        "bytes": 8908,
+        "sha256": "1163b5afb2d90b555ff7e5e4c32b5ec1a57a73c64b0534f71fb8987eb89007df"
+      },
+      {
+        "file": "1-bend-8-8-264.nbt.zlib",
+        "bytes": 9236,
+        "sha256": "9e3895b3872a62da48306796e13f9b7068cd6b8d330e3d8e834cff9567611138"
+      },
+      {
+        "file": "1-bend-8-8-528.nbt.zlib",
+        "bytes": 13090,
+        "sha256": "83d4d4a50a907085157fd0da4d0f95b1dd8f924398133c545c6edfa429ad3e37"
+      },
+      {
+        "file": "1-bend-8-8-792.nbt.zlib",
+        "bytes": 10018,
+        "sha256": "655622b02c95f9655b828b8124127cdd9171b0a4f0fbd449104eafe3b5a7ca96"
+      },
+      {
+        "file": "1-bend-8-8-1023.nbt.zlib",
+        "bytes": 9070,
+        "sha256": "a491578aa99c7d67d1ec181412451129ac1a020476d52d5cff151c87450474ef"
+      },
+      {
+        "file": "1-bend--1-0-0.nbt.zlib",
+        "bytes": 5479,
+        "sha256": "0891663207d7295b3b22ca8ad9359ab200d10eb4d611d30979ad3d59032147a2"
+      },
+      {
+        "file": "1-bend--1-0-33.nbt.zlib",
+        "bytes": 7316,
+        "sha256": "eb2cae6c67bd1b98527cc707192e498aaeb810bd962fbdac0de86faa7e76abdd"
+      },
+      {
+        "file": "1-bend--1-0-264.nbt.zlib",
+        "bytes": 9406,
+        "sha256": "a85df32e7baf9da3ac7c0420b11cc4773925fed9bedf226868955cee623b6aed"
+      },
+      {
+        "file": "1-bend--1-0-528.nbt.zlib",
+        "bytes": 7616,
+        "sha256": "b6e9c783d05acd9c5eeb96ff14b3e07384db01fed4ec898020f2eb4e8425f5cb"
+      },
+      {
+        "file": "1-bend--1-0-792.nbt.zlib",
+        "bytes": 8415,
+        "sha256": "c76834b8f761493d53bd6c3b3f25b5058270471a522ea6dfe8d12dcba670677d"
+      },
+      {
+        "file": "1-bend--1-0-1023.nbt.zlib",
+        "bytes": 5738,
+        "sha256": "a7d84d6dfa21636ded009fc07c5b02d9543cd2646148ed81f5058fb2ce224a23"
+      }
+    ],
+    "compressed_bytes": 310519,
+    "mean_ms": 3145.6943893960365,
+    "median_ms": 3148.3189589343965,
+    "p95_ms": 3157.7190837590024,
+    "chunks_per_second": 11.444214072846373,
+    "mib_per_second": 0.7731912318648041
+  },
+  "rust": {
+    "schema": "retina.compression-corpus.v1",
+    "status": "passed",
+    "backend": "rust",
+    "max_seconds": 30.0,
+    "corpus_sha256": "2baaaea663a66aa21cd4c2205fe6cd76c679408f46f7a1796efefd70d59f0ad0",
+    "input_bytes": 2550371,
+    "chunks": 36,
+    "artifact": "/Users/cyberpwn/.codex/worktrees/bend-compression-corpus/Retina/build/compression-corpus/rust-codec/target/release/compression_worker",
+    "artifact_sha256": "7feed83ae9a993d7ab8ed0c62565d45db0b95978a27f3d2cc558e947133c49fe",
+    "harness_sha256": "fce4145faa732214f0b914accb6c02be8d74263a42c27bcfc77e6ee07da74d39",
+    "source_revision": "884a2c8aa555cda2e43425eea1da29eacf599d32",
+    "environment": {
+      "platform": "macOS-27.0.1-arm64-arm-64bit",
+      "priority": 10
+    },
+    "scope": "Compare the actual Rust/Bend codecs on identical finished chunk NBT.\n\nThis measures serial persistent-process compression requests, including framing\nand pipe transport, not codec-only time or parallel region throughput. Corpus\npreparation, compilation, startup, independent validation and disk output are\noutside the measured requests. Run after complete-region benchmarks finish.",
+    "samples": [
+      4.30245790630579,
+      4.155042115598917,
+      4.140542121604085
+    ],
+    "warmups": 1,
+    "repeats": 3,
+    "execution": "CPU; serial compression requests; Bend runtime has two workers; Rust codec is single-threaded",
+    "startup_ms": 226.96641692891717,
+    "memory": {
+      "sampled_peak_rss_bytes": 0,
+      "samples": 0,
+      "load_min": null,
+      "load_max": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scope": "sum of driver and engine RSS; shared pages may be double-counted; GPU allocations are not measured"
+    },
+    "post_run_rss_bytes": 37273600,
+    "outputs": [
+      {
+        "file": "0-rust-8-8-0.nbt.zlib",
+        "bytes": 5594,
+        "sha256": "ac598e00a49047120c4e61edb4a0dfc526039b13dae24ab056ec3312188a8074"
+      },
+      {
+        "file": "0-rust-8-8-33.nbt.zlib",
+        "bytes": 6235,
+        "sha256": "a17ae083a78a4fe971dadcf1f5fdd22f5c8b5ccb2059189e58c42aa21e60e900"
+      },
+      {
+        "file": "0-rust-8-8-264.nbt.zlib",
+        "bytes": 6126,
+        "sha256": "6713fa935654df0e1aa511e73ebea7860c8687539a1721dbed573e2a379aa417"
+      },
+      {
+        "file": "0-rust-8-8-528.nbt.zlib",
+        "bytes": 9494,
+        "sha256": "49a522445e28a46b4ce291c40ccd3097596a73110ca856cc3fe9b84d013c1646"
+      },
+      {
+        "file": "0-rust-8-8-792.nbt.zlib",
+        "bytes": 7045,
+        "sha256": "6b5a8dcef00f2fca744b27d35e1f448f7ab41ffc4ff8ce80ab28468df34bafc8"
+      },
+      {
+        "file": "0-rust-8-8-1023.nbt.zlib",
+        "bytes": 7328,
+        "sha256": "a2a1e261293753d50d7ac83ca2de035b5668a58c4085247bd474a348b975d10b"
+      },
+      {
+        "file": "0-rust--1-0-0.nbt.zlib",
+        "bytes": 3997,
+        "sha256": "96170e05f09391d2ea5621b00f49c68ecc788765602c32cb07ea0a296cfad113"
+      },
+      {
+        "file": "0-rust--1-0-33.nbt.zlib",
+        "bytes": 3877,
+        "sha256": "ad6fd61131076756c8d9bb447b10d833e4eb5462139aa3c1c3e61021a352fe04"
+      },
+      {
+        "file": "0-rust--1-0-264.nbt.zlib",
+        "bytes": 6338,
+        "sha256": "bd7b21e2c90a841bfdd45c8883746f81742cc1a7c0d750112e5ce9cc8d778b5d"
+      },
+      {
+        "file": "0-rust--1-0-528.nbt.zlib",
+        "bytes": 4729,
+        "sha256": "0a017a6432210be9393c9888f386d5f83936e24a51e04f44194279c6f53ed027"
+      },
+      {
+        "file": "0-rust--1-0-792.nbt.zlib",
+        "bytes": 5268,
+        "sha256": "c43c7d74d042e088ee17f35dfc49bdab46f9ca4b21003283e21aa2e045dc475b"
+      },
+      {
+        "file": "0-rust--1-0-1023.nbt.zlib",
+        "bytes": 4229,
+        "sha256": "1c70bc3db7de554c237c2bc646d928ba12b61953671376f091bee2ed1e4cd496"
+      },
+      {
+        "file": "0-rust-0-0-0.nbt.zlib",
+        "bytes": 5343,
+        "sha256": "031a60aaa8cf39347fcd36a3b5f713f1d1bbc551b2cb2ba668b62d25d871974b"
+      },
+      {
+        "file": "0-rust-0-0-33.nbt.zlib",
+        "bytes": 7806,
+        "sha256": "678126e3e0010b1ae0d3beadd9289b9eb167153d41240e34a661791b5908d150"
+      },
+      {
+        "file": "0-rust-0-0-264.nbt.zlib",
+        "bytes": 8895,
+        "sha256": "bf5faa2c27c9c1ba61b90f51554424fbb600f6f1b11cc0188aac2abb39972e31"
+      },
+      {
+        "file": "0-rust-0-0-528.nbt.zlib",
+        "bytes": 6755,
+        "sha256": "c5085a34f01d363aa7f13903a789e25aff5b527dd5b7a481a2bc4c2bb1d8251f"
+      },
+      {
+        "file": "0-rust-0-0-792.nbt.zlib",
+        "bytes": 5588,
+        "sha256": "32eec4707b08aa4666cb7abadc86a9abe3661cc4d09fae8e9067921683d0c204"
+      },
+      {
+        "file": "0-rust-0-0-1023.nbt.zlib",
+        "bytes": 6883,
+        "sha256": "e8240f0f31160538789771988a2ca877d3c2a30836e36b3075aae4fbecd416ab"
+      },
+      {
+        "file": "0-rust-1-0-0.nbt.zlib",
+        "bytes": 7242,
+        "sha256": "d8efc42aea8ecb58468b7cc7400d2de0bdf789a84ba280a526ea6ec68680ba4b"
+      },
+      {
+        "file": "0-rust-1-0-33.nbt.zlib",
+        "bytes": 9064,
+        "sha256": "190ad8821f36a25f7c4004f6c5208cfdcd2fb7192f99bd842f0e527cc4fab616"
+      },
+      {
+        "file": "0-rust-1-0-264.nbt.zlib",
+        "bytes": 6963,
+        "sha256": "f65ddfffbcee0e77e6a97bc1b429ae6c05f27b663c3ca9ac11164cc339af6574"
+      },
+      {
+        "file": "0-rust-1-0-528.nbt.zlib",
+        "bytes": 7492,
+        "sha256": "a2d6e031453ce73306a55aaa47f97ff594f0ed03420bc23dd7ec84b26bf31c37"
+      },
+      {
+        "file": "0-rust-1-0-792.nbt.zlib",
+        "bytes": 5489,
+        "sha256": "b62a91595008e8ad21c69407d54b65255cf22b99eb8c269493178eaf1317f83a"
+      },
+      {
+        "file": "0-rust-1-0-1023.nbt.zlib",
+        "bytes": 4761,
+        "sha256": "1ff5e4dfbc1e35f195e25aafb7442e3cd3fcaf2cb60f4acb541b356c8a86015c"
+      },
+      {
+        "file": "1-bend-8-8-0.nbt.zlib",
+        "bytes": 5096,
+        "sha256": "6668322ebb54935366973f45207c0311b2e4a7a10beca464467b7d247cac61cc"
+      },
+      {
+        "file": "1-bend-8-8-33.nbt.zlib",
+        "bytes": 6042,
+        "sha256": "06210ec20f54b0a8d28be8348af4422d59ff8cb750276d30d75649620dacc07f"
+      },
+      {
+        "file": "1-bend-8-8-264.nbt.zlib",
+        "bytes": 6060,
+        "sha256": "3144626c34724dda645e86c5cd9d580bab87115cf1fb25fa1a29f357ac722de1"
+      },
+      {
+        "file": "1-bend-8-8-528.nbt.zlib",
+        "bytes": 8990,
+        "sha256": "af572e728f2fb527fefb1ac2d55c88a522baf72291a71a09689dae2c4aea3513"
+      },
+      {
+        "file": "1-bend-8-8-792.nbt.zlib",
+        "bytes": 6912,
+        "sha256": "27b39424781feca3dd04bbf057ee1990fcdb0d35e9ee100bea40998ffad95f3d"
+      },
+      {
+        "file": "1-bend-8-8-1023.nbt.zlib",
+        "bytes": 6861,
+        "sha256": "95d47e0eb4dc4ef75564816be6e2867c873f6906795ebb3fdaee0656fc0f7996"
+      },
+      {
+        "file": "1-bend--1-0-0.nbt.zlib",
+        "bytes": 3960,
+        "sha256": "34a30ddb5218c7e7af8f23015354c1fef9ee0722fe545c6b6432451dac7e5363"
+      },
+      {
+        "file": "1-bend--1-0-33.nbt.zlib",
+        "bytes": 4818,
+        "sha256": "61d4c93784697be1c6a8ef07ad538f045f22c839bb42196ed3ba8849f300ed8d"
+      },
+      {
+        "file": "1-bend--1-0-264.nbt.zlib",
+        "bytes": 6714,
+        "sha256": "b869f8a6118f48d442bacd209548bd8d7a704a15ebf1ef83da438c57498bcae9"
+      },
+      {
+        "file": "1-bend--1-0-528.nbt.zlib",
+        "bytes": 4952,
+        "sha256": "7dcccc6ca0433532d38d33e8bd8679501604944d5f059d10e58eaca5d4467b1b"
+      },
+      {
+        "file": "1-bend--1-0-792.nbt.zlib",
+        "bytes": 5473,
+        "sha256": "2f24319c6df13f655ea26a2cdf7d0489a753bb6351ea5e84310c4f38fcabe195"
+      },
+      {
+        "file": "1-bend--1-0-1023.nbt.zlib",
+        "bytes": 4075,
+        "sha256": "0230513841f1f83d85a752d457688969520fc008029e23439c55a68254b8bd1c"
+      }
+    ],
+    "compressed_bytes": 222494,
+    "mean_ms": 4.199347381169598,
+    "median_ms": 4.155042115598917,
+    "p95_ms": 4.287716327235103,
+    "chunks_per_second": 8572.760653578824,
+    "mib_per_second": 579.1907882909901
+  },
+  "transport": {
+    "status": "passed",
+    "scope": "Measure Bend ingress with existing protocol rejection, without recompiling.\n\nEach nonempty NBT payload is sent to the empty-only handshake command. The\nengine consumes the entire frame, rejects it with error 603, and remains usable.\nThis includes pipe IO, input allocation/decoding, disposal and a four-byte error\nreply. It excludes compression and normal compressed-output transport; it is\nnot an exact quantity to subtract from compression timings.",
+    "source_revision": "884a2c8aa555cda2e43425eea1da29eacf599d32",
+    "corpus_sha256": "2baaaea663a66aa21cd4c2205fe6cd76c679408f46f7a1796efefd70d59f0ad0",
+    "artifact_sha256": "671cf9b6b56ee6a62bb568f8699bdb6d31cfa1339661414ed0e724f6528843ce",
+    "harness_sha256": "da8d63d93857fd81868a8690d007b4b6b44f388222055a67922d9f8a7efb9ca1",
+    "threads": 2,
+    "gpu": false,
+    "chunks": 36,
+    "input_bytes": 2550371,
+    "warmups": 1,
+    "repeats": 3,
+    "samples_ms": [
+      1253.2400840427727,
+      1248.6143328715116,
+      1260.7457500416785
+    ],
+    "mean_ms": 1254.2000556519877
+  },
+  "controls": {
+    "bend": {
+      "schema": "retina.benchmark-control.v1",
+      "status": "completed",
+      "max_seconds": 30.0,
+      "termination_grace_seconds": 1.0,
+      "command": [
+        "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3",
+        "/Users/cyberpwn/.codex/worktrees/bend-compression-corpus/Retina/scripts/benchmark_compression_corpus.py",
+        "run",
+        "--backend",
+        "bend",
+        "--artifact",
+        "/Users/cyberpwn/.local/share/retina-bend/2.0.37/playable/engine",
+        "--corpus",
+        "build/compression-corpus/corpus",
+        "--out",
+        "build/compression-corpus/bend",
+        "--warmups",
+        "1",
+        "--repeats",
+        "3",
+        "--max-seconds",
+        "30"
+      ],
+      "started_unix": 1792264513.4953558,
+      "pid": 66935,
+      "exit_code": 0,
+      "elapsed_seconds": 13.333512125071138
+    },
+    "rust": {
+      "schema": "retina.benchmark-control.v1",
+      "status": "completed",
+      "max_seconds": 30.0,
+      "termination_grace_seconds": 1.0,
+      "command": [
+        "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3",
+        "/Users/cyberpwn/.codex/worktrees/bend-compression-corpus/Retina/scripts/benchmark_compression_corpus.py",
+        "run",
+        "--backend",
+        "rust",
+        "--artifact",
+        "build/compression-corpus/rust-codec/target/release/compression_worker",
+        "--corpus",
+        "build/compression-corpus/corpus",
+        "--out",
+        "build/compression-corpus/rust",
+        "--warmups",
+        "1",
+        "--repeats",
+        "3",
+        "--max-seconds",
+        "30"
+      ],
+      "started_unix": 1792264716.659976,
+      "pid": 75906,
+      "exit_code": 0,
+      "elapsed_seconds": 0.3577115419320762
+    },
+    "transport": {
+      "schema": "retina.benchmark-control.v1",
+      "status": "completed",
+      "max_seconds": 30.0,
+      "termination_grace_seconds": 1.0,
+      "command": [
+        "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3",
+        "/Users/cyberpwn/.codex/worktrees/bend-compression-corpus/Retina/scripts/check_bend_corpus_transport.py",
+        "--artifact",
+        "/Users/cyberpwn/.local/share/retina-bend/2.0.37/playable/engine",
+        "--corpus",
+        "build/compression-corpus/corpus",
+        "--out",
+        "build/compression-corpus/transport",
+        "--max-seconds",
+        "30"
+      ],
+      "started_unix": 1792264957.4727821,
+      "pid": 78057,
+      "exit_code": 0,
+      "elapsed_seconds": 5.11571512487717
+    }
+  },
+  "comparison": {
+    "raw_bytes": 2550371,
+    "chunks": 36,
+    "lit_chunks": 24,
+    "warmups": 1,
+    "repeats": 3,
+    "bend_ms_per_chunk": 87.38039970544546,
+    "rust_ms_per_chunk": 0.11664853836582216,
+    "request_time_ratio": 749.0912524888334,
+    "compressed_size_ratio": 1.3956286461657392,
+    "bend_bytes_per_raw_byte": 0.1217544427849909,
+    "rust_bytes_per_raw_byte": 0.08723985647578333,
+    "ingress_control_fraction": 0.39870372019603284
+  },
+  "validation": {
+    "decoded_streams": 288,
+    "byte_identical_round_trips": true,
+    "complete_zlib_consumption": true,
+    "repeat_output_hashes_stable": true,
+    "rejected_frames": 144,
+    "valid_handshake_after_rejections": true,
+    "python_tests": 5
+  },
+  "limitations": [
+    "Only six fixed chunks per region, from six existing vanilla-profile regions; not a statistical world corpus or a datapack compression comparison.",
+    "Original region generation remains historical and partly interrupted. Two Bend files were independently audited; no incomplete region is used.",
+    "Both lanes compress each exact same original payload; generated terrain itself differs between source backends.",
+    "Three measured corpus repetitions; other applications were not controlled. Rust is shorter than the 500 ms RSS sampling interval, so its sampled peak is unavailable.",
+    "RSS totals include driver and worker and may double-count shared pages; post-run RSS is a lower bound, not peak or working memory.",
+    "Ingress rejection includes allocation/disposal/error handling but lacks normal compressed output. Do not subtract it as an exact codec time.",
+    "Production region encoding batches independent chunks and keeps NBT resident. Do not extrapolate serial pipe throughput to region generation.",
+    "No GPU, terrain generation, game launch, worker rebuild or GitHub Actions in this cycle."
+  ],
+  "retained_artifacts": "/Users/cyberpwn/.local/share/retina-bend/2.0.37/backend-artifacts/compression-corpus-884a2c8",
+  "source_sha256": {
+    "native/examples/compression_worker.rs": "a479b01ddd74195a8997202376e2cf4165381697b249106b40a0080d68977069",
+    "scripts/benchmark_compression_corpus.py": "fce4145faa732214f0b914accb6c02be8d74263a42c27bcfc77e6ee07da74d39",
+    "scripts/check_bend_corpus_transport.py": "da8d63d93857fd81868a8690d007b4b6b44f388222055a67922d9f8a7efb9ca1",
+    "scripts/test_compression_corpus.py": "e0f4ab7d1da195e8427ab4e5b45d9675b9b60b789e18b56b085fdb608e78ec1f",
+    "bend/compression.bend": "e42e1a312180ee0fce6faad39fc82b9a2e43ba05727e04d9a3c8e7651dd14130",
+    "bend/transport.bend": "2d7b2667aaf37b537de8be6c584acaeaec37377da475741bfe790a46d9c76f81",
+    "bend/binary.bend": "f716146b3a19403c4ad208ce37c2056f9ba023d6b76a3fecba5c3253185d9b68"
+  }
+}

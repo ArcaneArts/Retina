@@ -39,16 +39,40 @@ def inflate(data):
     return result
 
 
-def prepare(reports, corpus):
+def region_sources(reports, saved_validations=()):
+    """Keep completed offline audits separate from interrupted generation reports."""
+    for folder in reports:
+        path = folder / 'report.json'
+        report = json.loads(path.read_text())
+        yield path, report, report['regions'], None
+    for path in saved_validations:
+        document = json.loads(path.read_text())
+        audit = document.get('checkpoint', document)
+        assert audit['schema'] == 'retina.saved-output-validation.v1'
+        source = Path(audit['source_report'])
+        assert digest(source.read_bytes()) == audit['source_report_sha256'], 'Changed source report'
+        report = json.loads(source.read_text())
+        assert report['artifact_sha256'] == audit['recorded_artifact_sha256']
+        assert report['profile_sha256'] == audit['profile_sha256']
+        recorded = {(row['path'], row['rx'], row['rz']) for row in report['regions']}
+        # Only completed region records have validation. Never consume an audit's
+        # current_region checkpoint, and never relabel generation as completed.
+        for row in audit['regions']:
+            assert (row['path'], row['rx'], row['rz']) in recorded
+            assert row['validation']['chunks'] == 1024
+        yield source, report, audit['regions'], dict(path=str(path), sha256=digest(path.read_bytes()))
+
+
+def prepare(reports, corpus, saved_validations=()):
     corpus.mkdir(parents=True, exist_ok=False)
     sources, samples = [], []
-    for folder in reports:
-        report = json.loads((folder / 'report.json').read_text())
+    for source, report, regions, audit in region_sources(reports, saved_validations):
         source_index = len(sources)
         sources.append(dict(backend=report['backend'], profile_sha256=report['profile_sha256'],
-                            report_sha256=digest((folder / 'report.json').read_bytes()),
+                            report_sha256=digest(source.read_bytes()),
+                            generation_status=report['status'], saved_validation=audit,
                             artifact_sha256=report['artifact_sha256']))
-        for row in report['regions']:
+        for row in regions:
             path = Path(row['path'])
             data = path.read_bytes()
             region_hash = digest(data)
@@ -197,7 +221,9 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest='command', required=True)
     prep = commands.add_parser('prepare')
-    prep.add_argument('--regions', nargs='+', type=Path, required=True)
+    prep.add_argument('--regions', nargs='+', type=Path, default=[])
+    prep.add_argument('--saved-validation', nargs='+', type=Path, default=[],
+                      help='Completed region audits, including checkpoints from interrupted generation')
     prep.add_argument('--corpus', type=Path, required=True)
     bench = commands.add_parser('run')
     bench.add_argument('--backend', choices=('rust', 'bend'), required=True)
@@ -209,7 +235,9 @@ def main():
     add_time_limit(bench)
     args = parser.parse_args()
     if args.command == 'prepare':
-        prepare(args.regions, args.corpus)
+        if not args.regions and not args.saved_validation:
+            parser.error('prepare requires --regions and/or --saved-validation')
+        prepare(args.regions, args.corpus, args.saved_validation)
     else:
         if args.warmups < 0 or args.repeats < 1:
             parser.error('warmups must be nonnegative and repeats must be positive')

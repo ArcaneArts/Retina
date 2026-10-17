@@ -17,6 +17,14 @@ pure zlib on real generated NBT in an isolated fixture. Packed growable buffers
 are promising; the package codec makes smaller output but measured slower.
 Production adoption and complete NBT/region benchmarking remain separate work.
 
+The [finished-NBT comparison](benchmarks/bend-compression-corpus.md) now runs both
+production codecs on 36 identical saved chunk payloads, including light arrays.
+Bend's serial requests take 3,145.69 ms per batch versus Rust's 4.20 ms and produce
+39.6% more compressed bytes. An ingress-only control takes 1,254.20 ms; these
+request timings include transport and are not codec-only or region throughput.
+The corpus and independent round-trip checks provide a bounded baseline for
+resident-buffer/codec improvements without regenerating terrain.
+
 ## Playable terrain preview
 
 The current integration exposes **Retina Rust** and **Retina Bend** in the world
@@ -38,9 +46,10 @@ fallback for this mode. Nether/End retain the preset's vanilla generators.
 
 Bend structure lookup uses the same candidate and layout planner as region generation.
 The lighting integration computes and serializes the 900 interior chunks of each
-region in Bend; Minecraft lights the 124 boundary chunks. The installed Metal
-worker passes both the 64x64 terrain/lighting/repair checks and the full
-1,024-chunk Minecraft comparison, including later torch updates and cache repair.
+region in Bend; Minecraft lights the 124 boundary chunks. The installed 2.0.37
+Metal worker passes the 64x64 terrain/lighting/repair checks. The earlier 2.0.36
+worker passed the full 1,024-chunk Minecraft comparison, including later torch
+updates and cache repair; that full check has not been repeated on 2.0.37.
 F3 names the backend and stage, labels the preview limitations and reports the
 last 20 completed **region** latencies, derived chunks/second and amortized
 chunk time. Historical unlit measurements must not be compared to lit Rust
