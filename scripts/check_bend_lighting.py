@@ -9,7 +9,7 @@ Host-only command-buffer logging proves device execution; computation is still
 the compiler's output. The supervisor limits emission, compilation and all
 checks together. No retries, terrain engine, benchmark or game launch occurs.
 
-Obtain authorization before running while native checks are stopped.
+Run explicitly within the caller's agreed resource limits.
 """
 import argparse
 import hashlib
@@ -108,7 +108,7 @@ def main():
     parser.add_argument('--bend',type=Path,default=DEFAULT_BEND)
     parser.add_argument('--profile',type=Path,required=True)
     parser.add_argument('--output',type=Path,required=True,help='New directory for source, logs and results')
-    parser.add_argument('--metal',action='store_true',help='Explicitly build a diagnostic Metal fixture and GPU archive, then check two scenes; requires separate approval')
+    parser.add_argument('--metal',action='store_true',help='Explicitly build a diagnostic Metal fixture and GPU archive, then check two scenes; includes shader compilation within the deadline')
     parser.add_argument('--max-seconds',type=positive_seconds,default=30.,help='Total emit/build/check deadline (default: 30 seconds)')
     args = parser.parse_args()
     supervised = supervise(str(Path(__file__).resolve()),args.max_seconds,args.output)

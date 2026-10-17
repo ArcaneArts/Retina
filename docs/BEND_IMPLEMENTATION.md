@@ -277,14 +277,15 @@ redundant brick/optical reads and reuses destination attenuation while preservin
 the existing propagation rules. Its separately approved bounded CPU check passes
 all eleven scenes (485,376 packed-light voxels) in 11.61 seconds including native
 compilation. [The report](benchmarks/bend-lighting-work-cpu.json) records exact
-source and output hashes. GPU execution, full-region integration and any speedup
-remain unverified for this change. The installed playable worker has not been
-rebuilt with this lighting change or the preceding climate fix. No additional
-native work is covered by the completed fixture-test approvals.
-The lighting harness now has an explicitly selected `--metal` mode for two
-small diagnostic scenes under one 30-second deadline, including shader/native
-compilation. Its Python orchestration tests pass; native execution still needs
-separate approval. This does not rebuild or update the playable worker.
+source and output hashes. The subsequent [bounded Metal check](benchmarks/bend-lighting-work-metal.json)
+passes both diagnostic scenes (113,664 packed-light voxels) in 27.55 seconds
+including native/shader compilation. Its outputs match the independent flood
+fill and prior CPU hashes, with 32 successfully completed Metal command buffers
+and positive device durations. The five Python orchestration tests also pass.
+Full-region integration and any speedup remain unverified for this change.
+The installed playable worker has not been rebuilt with this lighting change
+or the preceding climate fix. Routine work continues with bounded checks and
+reduced priority under the user's resource limits.
 
 | Requirement | Current Rust/shared source | Bend implementation / completion evidence |
 | --- | --- | --- |
