@@ -272,6 +272,16 @@ not complete backend parity. GPU execution, persistent-worker lifecycle and
 final surface/region integration checks remain outstanding. Existing reference
 and fixture-only checks are retained as separate, narrower evidence.
 
+The [lighting optimization candidate](BEND_LIGHTING_OPTIMIZATION.md) removes
+redundant brick/optical reads and reuses destination attenuation while preserving
+the existing propagation rules. Its separately approved bounded CPU check passes
+all eleven scenes (485,376 packed-light voxels) in 11.61 seconds including native
+compilation. [The report](benchmarks/bend-lighting-work-cpu.json) records exact
+source and output hashes. GPU execution, full-region integration and any speedup
+remain unverified for this change. The installed playable worker has not been
+rebuilt with this lighting change or the preceding climate fix. No additional
+native work is covered by the completed fixture-test approvals.
+
 | Requirement | Current Rust/shared source | Bend implementation / completion evidence |
 | --- | --- | --- |
 | Shared loaded registry export, including palette properties and climate intervals | `TerrainProfileData.java`, `RegistryGpuProgram.java`, `native/src/profile.rs` | Export decoupled from Rust initialization; actual vanilla, Terralith and Terralith+supplement registries pass with native library unavailable. Explicit Rust adapter receives byte-identical data and passes real Metal queries. Full structural profiles now stream into a resident Bend word tape with lossless field/array/string access and independent full-value checks. Loaded climate/ridge stacks now resolve schema keys and convert numeric parameters entirely in Bend; numeric terrain DAGs now project and execute in the resident worker; material predicates now project and execute on CPU/GPU; GPU-derived material contexts and exhaustive compact vertical block runs implemented; playable terrain preview integration implemented; full feature/light parity pending |

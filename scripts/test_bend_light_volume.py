@@ -33,6 +33,7 @@ def fixtures(profile):
     stone, water = material('stone'), material('water')
     leaves = material('oak_leaves')
     emitter = next(i for i, s in enumerate(states) if (s[0] >> 4) == 15)
+    opaque_emitter = next(i for i, s in enumerate(states) if (s[0] & 255) == 255)
     partial = [i for i, s in enumerate(states) if any(s[1:7]) and (s[0] & 15) < 15]
     assert partial and states[emitter][0] >> 4 == 15
     rng = random.Random(20261016)
@@ -56,6 +57,13 @@ def fixtures(profile):
             for y in range(32):
                 if x in (0,23) or z in (0,23) or y in (0,31): put(x,y,z,stone)
     put(7,15,8,emitter)
+    # A completely opaque brick must keep its own emission even when skipped
+    # by propagation; adjacent air must still receive light from that brick.
+    put, _ = new('opaque-emitter-brick',False)
+    for z in range(8,16):
+        for x in range(8,16):
+            for y in range(8,16): put(x,y,z,stone)
+    put(15,11,11,opaque_emitter)
     put, _ = new('water-leaves-and-partial-faces')
     for z in range(24):
         for x in range(24):

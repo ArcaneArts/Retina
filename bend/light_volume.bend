@@ -48,9 +48,33 @@ def face_pick(d: U32,a: U32,b: U32,c: U32,e: U32,f: U32,g: U32) -> U32:
     case 4: f
     case _: g
 
+# Read a scalar without returning an owned Optics record from the shared table.
+# Field zero is traits; fields one through six are directional face indices.
+def optical_word(state: Optics,+field: U32) -> U32:
+  match state field:
+    case Optics{t,_,_,_,_,_,_} 0: t
+    case Optics{_,a,b,c,d,e,f} _: face_pick(U32.sub(field,1),a,b,c,d,e,f)
+
+@unsafe
+def optical_at(states: Q.Table<Optics>,+i: U32,+field: U32) -> U32:
+  match states:
+    case Q.Empty{}: Z.word(U32.is_zero(field),15,0)
+    case Q.Leaf{state}: optical_word(state,field)
+    case Q.Branch{_,+a,b}: optical_side(U32.is_lt(i,Q.table_size(Optics,a)),a,b,i,field)
+
+@unsafe
+def optical_side(left: Bool,+a: Q.Table<Optics>,b: Q.Table<Optics>,i: U32,field: U32) -> U32:
+  match left:
+    case True{}: optical_at(a,i,field)
+    case False{}: optical_at(b,U32.sub(i,Q.table_size(Optics,a)),field)
+
+def optical(model: Model,id: U32,field: U32) -> U32:
+  match model:
+    case Model{_,_,states,_}: optical_at(states,id,field)
+
 @unsafe
 def occludes(+model: Model,a: U32,b: U32,+d: U32) -> Bool:
-  blocked(model,face(optics(model,a),d),face(optics(model,b),U32.xor(d,1)))
+  blocked(model,optical(model,a,U32.inc(d)),optical(model,b,U32.inc(U32.xor(d,1))))
 
 def blocked(model: Model,a: U32,+b: U32) -> Bool:
   match model:
@@ -63,7 +87,7 @@ def ceiling(runs: List<&2,MD.Run>,+above: U32,+model: Model) -> U32:
   match runs:
     case Nil{}: Z.word(occludes(model,above,0,0),16,0)
     case MD.Run{+a,+b,+m} <> rest:
-      ceiling_edge(Bool.or(U32.is_ne(Rules.opacity(traits(optics(model,m))),0),occludes(model,above,m,0)),a,b,m,rest,model)
+      ceiling_edge(Bool.or(U32.is_ne(Rules.opacity(optical(model,m,0)),0),occludes(model,above,m,0)),a,b,m,rest,model)
 
 @unsafe
 def ceiling_edge(stop: Bool,+a: U32,+b: U32,+m: U32,rest: List<&2,MD.Run>,+model: Model) -> U32:
@@ -103,7 +127,7 @@ def voxel(+column: Column,+y: U32,height: U32,+model: Model) -> Cells:
 
 @unsafe
 def voxel_value(+m: U32,+sun: Bool,model: Model) -> Cells:
-  voxel_traits(m,sun,traits(optics(model,m)))
+  voxel_traits(m,sun,optical(model,m,0))
 
 def voxel_traits(m: U32,+sun: Bool,+t: U32) -> Cells:
   UniformCells{m,0,U32.or(Rules.emission(t),Z.word(sun,240,0)),flags(t,sun)}
@@ -228,6 +252,30 @@ def brick_flags(b: Brick) -> U32:
   match b:
     case Brick{c,_,_}: cell_flags(c)
 
+# Classification needs only four scalar flags, not ownership of a whole brick.
+@unsafe
+def table_flags(values: Q.Table<Brick>,+i: U32) -> U32:
+  match values:
+    case Q.Empty{}: 0
+    case Q.Leaf{b}: brick_flags(b)
+    case Q.Branch{_,+a,b}: flags_side(U32.is_lt(i,Q.table_size(Brick,a)),a,b,i)
+
+@unsafe
+def flags_side(left: Bool,+a: Q.Table<Brick>,b: Q.Table<Brick>,i: U32) -> U32:
+  match left:
+    case True{}: table_flags(a,i)
+    case False{}: table_flags(b,U32.sub(i,Q.table_size(Brick,a)))
+
+def valid_flags(valid: Bool,values: Q.Table<Brick>,i: U32) -> U32:
+  match valid:
+    case False{}: 0
+    case True{}: table_flags(values,i)
+
+def nearby_flags(grid: Grid,+x: U32,+y: U32,+z: U32) -> U32:
+  match grid:
+    case Grid{+sx,sy,+sz,values}: valid_flags(Bool.and(U32.is_lt(x,sx),Bool.and(U32.is_lt(y,sy),U32.is_lt(z,sz))),
+      values,U32.add(x,U32.mul(sx,U32.add(z,U32.mul(sz,y)))))
+
 @unsafe
 def nearby(+n: U32,+x: U32,+y: U32,+z: U32,+grid: Grid,flags: U32) -> U32:
   match n:
@@ -237,7 +285,13 @@ def nearby(+n: U32,+x: U32,+y: U32,+z: U32,+grid: Grid,flags: U32) -> U32:
 
 @unsafe
 def nearby_at(n: U32,+nx: U32,+ny: U32,+nz: U32,+x: U32,+y: U32,+z: U32,+grid: Grid,flags: U32) -> U32:
-  nearby(n,x,y,z,grid,U32.or(flags,Z.word(U32.is_le(U32.add(gap(x,nx),U32.add(gap(y,ny),gap(z,nz))),14),brick_flags(brick(grid,nx,ny,nz)),0)))
+  nearby_inside(U32.is_le(U32.add(gap(x,nx),U32.add(gap(y,ny),gap(z,nz))),14),n,nx,ny,nz,x,y,z,grid,flags)
+
+@unsafe
+def nearby_inside(inside: Bool,n: U32,nx: U32,ny: U32,nz: U32,x: U32,y: U32,z: U32,+grid: Grid,flags: U32) -> U32:
+  match inside:
+    case False{}: nearby(n,x,y,z,grid,flags)
+    case True{}: nearby(n,x,y,z,grid,U32.or(flags,nearby_flags(grid,nx,ny,nz)))
 
 def channels(+own: U32,+near: U32) -> U32:
   Z.word(U32.is_zero(U32.and(own,1)),0,U32.or(Z.word(U32.is_ne(U32.and(near,4),0),1,0),
@@ -255,8 +309,16 @@ def classify(+n: U32,+base: U32,+sx: U32,+sz: U32,+grid: Grid) -> Q.Table<Brick>
       a b = classify(U32.div(n,2),base,sx,sz,grid) classify(U32.sub(n,U32.div(n,2)),U32.add(base,U32.div(n,2)),sx,sz,grid)
       Q.Branch{n,a,b}
 
+def classify_passable(passable: Bool,b: Brick,x: U32,y: U32,z: U32,grid: Grid) -> Q.Table<Brick>:
+  match passable:
+    case False{}: Q.Leaf{classified(b,0)}
+    case True{}: Q.Leaf{classified(b,nearby(125,x,y,z,grid,0))}
+
+def classify_brick(+b: Brick,x: U32,y: U32,z: U32,grid: Grid) -> Q.Table<Brick>:
+  classify_passable(U32.is_ne(U32.and(brick_flags(b),1),0),b,x,y,z,grid)
+
 def classify_at(+x: U32,+y: U32,+z: U32,+grid: Grid) -> Q.Table<Brick>:
-  Q.Leaf{classified(brick(grid,x,y,z),nearby(125,x,y,z,grid,0))}
+  classify_brick(brick(grid,x,y,z),x,y,z,grid)
 
 def active(+grid: Grid) -> Grid:
   match grid:
@@ -299,37 +361,37 @@ def outside(d: U32,x: U32,y: U32,z: U32) -> Bool:
 # Select a scalar contribution, never return a neighboring Brick per edge.
 # This keeps the six cached bricks borrowed throughout the hot voxel loop.
 @unsafe
-def edge_from(out: Bool,b: Brick,ns: Neighbors,+d: U32,at: U32,m: U32,model: Model,channels: U32,current: U32) -> U32:
+def edge_from(out: Bool,b: Brick,ns: Neighbors,+d: U32,at: U32,m: U32,model: Model,channels: U32,current: U32,loss: U32) -> U32:
   match out:
-    case False{}: edge(b,d,at,m,model,channels,current)
-    case True{}: edge_neighbor(ns,d,at,m,model,channels,current)
+    case False{}: edge(b,d,at,m,model,channels,current,loss)
+    case True{}: edge_neighbor(ns,d,at,m,model,channels,current,loss)
 
 @unsafe
-def edge_neighbor(ns: Neighbors,+d: U32,at: U32,m: U32,model: Model,channels: U32,current: U32) -> U32:
+def edge_neighbor(ns: Neighbors,+d: U32,at: U32,m: U32,model: Model,channels: U32,current: U32,loss: U32) -> U32:
   match ns:
-    case Neighbors{a,b,c,e,f,g}: edge_pick(d,at,m,model,channels,current,a,b,c,e,f,g)
+    case Neighbors{a,b,c,e,f,g}: edge_pick(d,at,m,model,channels,current,loss,a,b,c,e,f,g)
 
 @unsafe
-def edge_pick(+d: U32,at: U32,m: U32,model: Model,channels: U32,current: U32,a: Brick,b: Brick,c: Brick,e: Brick,f: Brick,g: Brick) -> U32:
+def edge_pick(+d: U32,at: U32,m: U32,model: Model,channels: U32,current: U32,loss: U32,a: Brick,b: Brick,c: Brick,e: Brick,f: Brick,g: Brick) -> U32:
   match d:
-    case 0: edge(a,d,at,m,model,channels,current)
-    case 1: edge(b,d,at,m,model,channels,current)
-    case 2: edge(c,d,at,m,model,channels,current)
-    case 3: edge(e,d,at,m,model,channels,current)
-    case 4: edge(f,d,at,m,model,channels,current)
-    case _: edge(g,d,at,m,model,channels,current)
+    case 0: edge(a,d,at,m,model,channels,current,loss)
+    case 1: edge(b,d,at,m,model,channels,current,loss)
+    case 2: edge(c,d,at,m,model,channels,current,loss)
+    case 3: edge(e,d,at,m,model,channels,current,loss)
+    case 4: edge(f,d,at,m,model,channels,current,loss)
+    case _: edge(g,d,at,m,model,channels,current,loss)
 
 @unsafe
-def edges(+n: U32,+i: U32,+m: U32,+b: Brick,+ns: Neighbors,+model: Model,+channels: U32,current: U32) -> U32:
+def edges(+n: U32,+i: U32,+m: U32,+b: Brick,+ns: Neighbors,+model: Model,+channels: U32,current: U32,+loss: U32) -> U32:
   match n:
     case 0: current
     case _: edges(U32.sub(n,1),i,m,b,ns,model,channels,
       edge_from(outside(U32.sub(n,1),U32.mod(i,8),U32.div(i,64),U32.mod(U32.div(i,8),8)),b,ns,U32.sub(n,1),
-        adjacent(U32.sub(n,1),U32.mod(i,8),U32.div(i,64),U32.mod(U32.div(i,8),8)),m,model,channels,current))
+        adjacent(U32.sub(n,1),U32.mod(i,8),U32.div(i,64),U32.mod(U32.div(i,8),8)),m,model,channels,current,loss),loss)
 
 @unsafe
-def edge(+other: Brick,d: U32,+at: U32,+m: U32,+model: Model,channels: U32,current: U32) -> U32:
-  edge_value(value(other,at),other,d,at,m,model,channels,current,U32.max(1,Rules.opacity(traits(optics(model,m)))))
+def edge(+other: Brick,d: U32,+at: U32,m: U32,model: Model,channels: U32,current: U32,loss: U32) -> U32:
+  edge_value(value(other,at),other,d,at,m,model,channels,current,loss)
 
 @unsafe
 def edge_value(+incoming: U32,other: Brick,d: U32,at: U32,m: U32,model: Model,+channels: U32,+current: U32,+loss: U32) -> U32:
@@ -344,12 +406,14 @@ def edge_needed(needed: Bool,incoming: U32,other: Brick,d: U32,at: U32,m: U32,mo
 
 @unsafe
 def spread_voxel(+i: U32,+b: Brick,ns: Neighbors,+model: Model,channels: U32) -> U32:
-  spread_passable(U32.is_lt(Rules.opacity(traits(optics(model,block(b,i)))),15),i,b,ns,model,channels)
+  +m = block(b,i)
+  +opacity = Rules.opacity(optical(model,m,0))
+  spread_passable(U32.is_lt(opacity,15),i,m,b,ns,model,channels,U32.max(1,opacity))
 
-def spread_passable(passable: Bool,+i: U32,+b: Brick,ns: Neighbors,model: Model,channels: U32) -> U32:
+def spread_passable(passable: Bool,+i: U32,m: U32,+b: Brick,ns: Neighbors,model: Model,channels: U32,loss: U32) -> U32:
   match passable:
     case False{}: value(b,i)
-    case True{}: edges(6,i,block(b,i),b,ns,model,channels,value(b,i))
+    case True{}: edges(6,i,m,b,ns,model,channels,value(b,i),loss)
 
 @unsafe
 def spread_words(+n: U32,+base: U32,+b: Brick,+ns: Neighbors,+model: Model,+channels: U32,+cutoff: U32) -> Words:
@@ -381,8 +445,13 @@ def spread(+n: U32,+base: U32,+sx: U32,+sz: U32,+grid: Grid,+model: Model,+cutof
       a b = spread(U32.div(n,2),base,sx,sz,grid,model,cutoff) spread(U32.sub(n,U32.div(n,2)),U32.add(base,U32.div(n,2)),sx,sz,grid,model,cutoff)
       Q.Branch{n,a,b}
 
+def spread_ready(+b: Brick,x: U32,y: U32,z: U32,grid: Grid,model: Model,cutoff: U32) -> Q.Table<Brick>:
+  match b:
+    case Brick{_,_,0}: Q.Leaf{b}
+    case _: Q.Leaf{spread_brick(b,neighbors(grid,x,y,z),model,cutoff)}
+
 def spread_at(+x: U32,+y: U32,+z: U32,+grid: Grid,model: Model,cutoff: U32) -> Q.Table<Brick>:
-  Q.Leaf{spread_brick(brick(grid,x,y,z),neighbors(grid,x,y,z),model,cutoff)}
+  spread_ready(brick(grid,x,y,z),x,y,z,grid,model,cutoff)
 
 def step(+grid: Grid,+model: Model) -> Grid:
   match grid:
