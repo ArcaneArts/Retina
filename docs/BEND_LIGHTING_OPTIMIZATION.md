@@ -44,7 +44,7 @@ These are source-derived work counts, not measured device instructions. The
 candidate removes the excluded reads, skips opaque classification, and avoids
 inactive propagation neighbors; it does not claim a measured speedup.
 
-## Validation status and next run
+## Validation status
 
 **The changed Bend source passes the compiled CPU correctness check.** The
 explicitly approved run completed in 11.61 seconds including C emission, one
@@ -67,11 +67,49 @@ Bend C, compiles one native fixture binary, then compares two-thread CPU output
 to the independent flood fill. Direct native compilation avoids the Bend CLI's
 automatic GPU archive build. All subprocesses run at reduced priority. There
 is no automatic retry, GPU execution, terrain engine or game launch. The approved
-CPU run is complete; additional native work requires separate approval under
-the current resource limit.
-
-A separately approved bounded GPU check is still needed to validate device
-execution and measure this candidate. Do not restart the multi-minute
-complete-region benchmark to decide whether these
-local changes are promising. Full-region and complete-backend acceptance remain
+CPU run is complete. Keep subsequent checks explicitly bounded and reduced in
+priority; there is no need for repeated approval of routine work within the
+user's resource limits. Full-region and complete-backend acceptance remain
 outstanding in [the parity inventory](BEND_IMPLEMENTATION.md).
+
+### Completed Metal correctness check
+
+`scripts/check_bend_lighting.py --metal` passed on 2026-10-17 in **27.55 seconds**
+including native/shader compilation and both scenes, inside the single 30-second
+deadline. The default remains the eleven-scene CPU-only check.
+Metal mode performs one stock C emission, one native fixture compilation, one
+stock GPU archive build and two small scenes: `opaque-emitter-brick` and
+`registered-optics-gallery`. It uses two Bend CPU runtime threads, reduced
+priority and the existing 4 GiB GPU heap setting. It does not invoke the terrain
+engine, generate a region, run a benchmark or launch Minecraft.
+
+The same external supervisor covers the entire sequence with a 30-second
+deadline and one-second termination grace. There are no automatic retries.
+Metal's system compiler may use additional threads; the two-thread setting
+limits Bend execution, not Apple's shader compilation services. A cold shader
+compile may consume the deadline before either scene runs.
+
+The diagnostic C copy adds only a host log after the stock command-buffer wait;
+the original generated source is retained. No application/device algorithm,
+scheduler or runtime tuning is changed. Each scene must match the independent
+flood fill and record successful completed Metal command buffers with a positive
+device timestamp duration. A GPU flag or compiled archive alone cannot pass.
+Source, binary, archive and output hashes are retained by the reports. Diagnostic
+timestamps are not production speed measurements or evidence of a speedup.
+
+The five Python-only orchestration tests cover the unchanged CPU mode, explicit
+GPU build/scene order, failure without retry, exact host logging insertion, and
+rejection of missing/failed/nonfinite GPU observations. All pass without invoking
+any compiler or GPU. The logging insertion also applies to the retained actual
+CPU-generated C and removes exactly back to the original text.
+
+[The Metal report](benchmarks/bend-lighting-work-metal.json) records **113,664
+packed-light voxels** matching both the independent flood fill and the prior CPU
+output hashes. Each scene records sixteen successfully completed Metal command
+buffers with positive device durations (32 total), proving actual GPU execution.
+The tested source commit is `8f62e98`; the exact harness, generated C, compiled
+binary, GPU archive, logs and outputs are retained outside the worktree. Later
+wording changes to the harness help do not alter the recorded tested hash.
+The installed playable worker has not been rebuilt with this lighting change
+or the climate fallback fix. Full-region integration and a paired performance
+comparison remain outstanding; these diagnostic times do not measure a speedup.
