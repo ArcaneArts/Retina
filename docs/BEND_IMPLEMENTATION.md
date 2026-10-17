@@ -241,6 +241,26 @@ It still needs an approved rebuild and execution, followed by final biome-query
 consistency checks. Existing interval-only and saved-biome tests cannot prove
 coverage of biomes omitted from the old model. Combined-pack parity remains open.
 
+An isolated CPU check is available in `scripts/check_bend_climate_coverage.py`.
+It builds `bend/tests/climate-coverage.bend`, which calls the production registry
+projection and climate lookup without importing the terrain engine or invoking
+GPU work. Eight synthetic profiles produce 24 original/reversed/empty query
+cases, with batches capped at 512 queries; 39 malformed profiles check rejection.
+Optional saved JSON profiles contribute only unchanged biome/climate fields.
+The driver runs all cases in one process with two CPU threads at reduced
+priority. An external supervisor limits the entire build, run and verification
+to 30 seconds by default, followed by up to one second for termination; it does
+not retry after failure or timeout. Native compilation is a single compiler
+invocation at reduced priority. This is an explicitly invoked correctness check,
+not a benchmark or part of normal client startup.
+
+**The isolated Bend driver has not been compiled or run.** Only Python syntax,
+CLI help, construction of its 63 cases and a small constructed-output decoder
+check have run. The decoder also rejects a truncated result. These checks do
+not establish Bend execution correctness. An approved native build/run is still
+needed; even a successful CPU component run would leave GPU, persistent-worker
+lifecycle and final surface/region integration checks outstanding.
+
 | Requirement | Current Rust/shared source | Bend implementation / completion evidence |
 | --- | --- | --- |
 | Shared loaded registry export, including palette properties and climate intervals | `TerrainProfileData.java`, `RegistryGpuProgram.java`, `native/src/profile.rs` | Export decoupled from Rust initialization; actual vanilla, Terralith and Terralith+supplement registries pass with native library unavailable. Explicit Rust adapter receives byte-identical data and passes real Metal queries. Full structural profiles now stream into a resident Bend word tape with lossless field/array/string access and independent full-value checks. Loaded climate/ridge stacks now resolve schema keys and convert numeric parameters entirely in Bend; numeric terrain DAGs now project and execute in the resident worker; material predicates now project and execute on CPU/GPU; GPU-derived material contexts and exhaustive compact vertical block runs implemented; playable terrain preview integration implemented; full feature/light parity pending |
