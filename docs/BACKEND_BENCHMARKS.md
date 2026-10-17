@@ -112,3 +112,42 @@ Repeat using the Rust output and a separate destination, removing the deliberate
 missing-native-library override. Compile both loaders before measuring, keep
 worker limits identical, and do not run servers concurrently with generation
 benchmarks. No interactive client needs to be launched.
+
+## Identical-payload compression comparison
+
+The complete-region outputs contain different generated terrain. To compare the
+codecs on identical inputs, extract six fixed chunks from every completed region
+in both reports: four lit interior chunks and two unlit boundary chunks. This
+retains the original final NBT, including lighting and any feature metadata in
+those chunks. It does not synthesize simpler benchmark terrain.
+
+```sh
+python3 scripts/benchmark_compression_corpus.py prepare \
+  --regions build/backend-benchmark/rust build/backend-benchmark/bend \
+  --corpus build/backend-compression/corpus
+CARGO_BUILD_JOBS=2 CARGO_TARGET_DIR=build/native-target nice -n 10 \
+  cargo build --manifest-path native/Cargo.toml --release --example compression_worker -j 2
+
+nice -n 10 python3 scripts/benchmark_compression_corpus.py run --backend rust \
+  --artifact build/native-target/release/examples/compression_worker \
+  --corpus build/backend-compression/corpus --out build/backend-compression/rust
+nice -n 10 python3 scripts/benchmark_compression_corpus.py run --backend bend \
+  --artifact "$RETINA_BEND_EXECUTABLE" \
+  --corpus build/backend-compression/corpus --out build/backend-compression/bend
+```
+
+Run these only after generation timing has finished. The Rust benchmark endpoint
+uses production's `libdeflater` level 1 and retained compressor/scratch buffers.
+The Bend endpoint is the actual installed worker's compression command with GPU
+execution disabled. No native compression is substituted into Bend.
+
+Both endpoints receive the exact same payload bytes through the same framing
+and persistent pipes. Five warmups precede twenty measured corpus passes. The
+interval includes request transport and compression; it is **not codec-only
+time** and does not measure parallel region compression. Each request is serial;
+Bend's CPU runtime uses two workers and Rust's codec is single-threaded. Actual
+parallel region throughput is covered by the full generation benchmark above.
+All streams are independently decompressed and compared byte for byte after
+each pass, outside its interval. Output hashes, sizes, warm samples, startup and
+sampled process RSS are retained. A post-run live RSS snapshot is reported
+separately if a fast run finishes before a monitor sample; it is not a peak.
