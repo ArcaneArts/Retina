@@ -231,13 +231,14 @@ def exercise(binary,profiles,invalid,gpu):
         for name,path in invalid:
             signal.alarm(300);call(5,path_request(path));call(11);call(19);error(21,b'',726)
         # Material validation occurs after evaluation; malformed results never
-        # become a usable column cache. Missing biome targets behave likewise.
+        # become a usable column cache. A cave-only source has no surface biome;
+        # an empty target list with ordinary climate centers is now valid.
         base=copy.deepcopy(profiles[0][1])
         for name,change in [('result_outside_palette',lambda s:s['registry_program']['programs'].__setitem__(3,dict(nodes=[ins(0,p=(100,0,0,0))],roots=[0]))),
                 ('result_fraction',lambda s:s['registry_program']['programs'].__setitem__(3,dict(nodes=[ins(0,p=(2.5,0,0,0))],roots=[0]))),
                 ('result_nonfinite',lambda s:s['registry_program']['programs'].__setitem__(3,dict(nodes=[ins(0,p=(1e20,0,0,0)),ins(12)],roots=[1]))),
                 ('context_nonfinite',lambda s:s['registry_program']['noises'][0].update(amplitude=1e38,coefficients=[1e38])),
-                ('missing_biome',lambda s:s.__setitem__('climate_targets',[]))]:
+                ('missing_biome',lambda s:(s.__setitem__('climate_targets',[]),[b.update(flags=16) for b in s['biomes']]))]:
             source=copy.deepcopy(base);change(source);path=ROOT/'build/bend/material-column-profiles'/('invalid-evaluated-'+name+'.rbp')
             path.write_bytes(fixture_wire(source,True));call(5,path_request(path));call(11);call(19);call(21);call(9);call(15)
             tile=(0,0,2,2,LOW,HIGH);desc=call(18,tile_bytes((-1,-1,4,4,LOW,HIGH)));call(13,desc);call(16,tile_bytes(tile));error(22,b'',729);error(23,voxel_bytes([]),727)

@@ -1,0 +1,91 @@
+{
+  "schema": "retina.bend-climate-coverage-source.v1",
+  "status": "source_implemented_worker_validation_pending",
+  "scope": "Source review and independent Python reference only; no Bend compiler, engine, GPU, Minecraft or benchmark was run",
+  "previous_audit": "bend-climate-coverage-audit.json",
+  "profiles": [
+    {
+      "name": "profile-0.json",
+      "sha256": "aefce6ff0e800966ad55920c5d21510dfa277de4612f67e22d5146d3aa838203",
+      "ordinary_unmapped_biomes": [],
+      "python_reference_counterexamples": []
+    },
+    {
+      "name": "profile-1.json",
+      "sha256": "c9abbe97860a394ed899d64967bd0395bb9bb4ec71a9dff43d1bb45893fefd4d",
+      "ordinary_unmapped_biomes": [
+        "terralith:deep_warm_ocean"
+      ],
+      "python_reference_counterexamples": [
+        {
+          "point": [
+            0.0,
+            0.0,
+            0.20000000298023224,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "selected_biome": "terralith:deep_warm_ocean",
+          "fitness": -0.029999999329447746
+        }
+      ]
+    },
+    {
+      "name": "profile-2.json",
+      "sha256": "068fd602ad497128dd3960cb9be76840ebd41882b5b64c25acfa76d65e930c8b",
+      "ordinary_unmapped_biomes": [
+        "retina_test:export_probe",
+        "terralith:deep_warm_ocean"
+      ],
+      "python_reference_counterexamples": [
+        {
+          "point": [
+            0.1499999761581421,
+            0.5,
+            0.20000000298023224,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "selected_biome": "retina_test:export_probe",
+          "fitness": -0.029999999329447746
+        },
+        {
+          "point": [
+            0.0,
+            0.0,
+            0.20000000298023224,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "selected_biome": "terralith:deep_warm_ocean",
+          "fitness": -0.029999999329447746
+        }
+      ]
+    }
+  ],
+  "source_sha256": {
+    "bend/climate.bend": "8a99705fca490c5a9ef597f98b9ddf53a0729e5b7a6300ab62853bfadf7e82a2",
+    "bend/registry_climate.bend": "8776eece58d0565ae2ce1578f96883dd5f756e6000efec9dd626ecadbea22574",
+    "bend/shoreline.bend": "1d5eecef867d52e443597ffe8fffef7077bd9203742bdba7804e8f6c06fa5aeb",
+    "scripts/test_bend_climate.py": "98415466008e6d2867157a09e91755116a543c637a7235149f30a550853da354",
+    "scripts/test_bend_registry_climate.py": "a8765adf97533e83f4c9259164f7df2b9ee073d24e093d7e6ce71aa1ba36d31d",
+    "scripts/test_bend_climate_coverage.py": "e897b7555ef95f9db74b91513be8d107f515091ad1b267d9914990b5bf1f39ef"
+  },
+  "validation": {
+    "python_reference_unit_tests": 11,
+    "synthetic_fixture_projections": 42,
+    "python_syntax": "pass",
+    "bend_compile": "not_run",
+    "bend_cpu": "not_run",
+    "bend_gpu": "not_run",
+    "minecraft": "not_run"
+  },
+  "required_followup": [
+    "Compile the changed Bend sources after user approval.",
+    "Run focused persistent-worker projection/query checks against the independent reference, including original vanilla/Terralith/combined profiles.",
+    "Verify final surface/coastal/cave and saved-biome query consistency with the rebuilt worker."
+  ]
+}

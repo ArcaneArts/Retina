@@ -34,7 +34,11 @@ def fitness(t,p,mode):
     weights = (2.5,1.5,2.,.5) if mode&1 else (1.,)*4
     a,b,c,d = [f32(deltas[i]*weights[i]) for i in range(4)]
     distance = f32(f32(a+b)+f32(c+d))
-    result = f32(f32(distance+deltas[4])+f32((deltas[5] if mode&2 else 0.)+f32(t['offset']**2)))
+    if t.get('unmapped'):
+        bias = (.12 if mode&1 else .03) if t['niche'] else 0.
+        result = f32(distance-f32(bias))
+    else:
+        result = f32(f32(distance+deltas[4])+f32((deltas[5] if mode&2 else 0.)+f32(t['offset']**2)))
     if mode&4 and bool(t['flags']&4) != (p[2]<f32(-.25)): result = f32(result+8.)
     return result
 
@@ -43,16 +47,20 @@ def expected(targets,p,mode):
     candidates = []
     if mode&16:
         for t in targets:
-            if t['flags']&16 or not t['flags']&64: continue
+            if t.get('unmapped') or t['flags']&16 or not t['flags']&64: continue
             q = dict(t,lo=t['lo'].copy(),hi=t['hi'].copy())
             q['lo'][5],q['hi'][5] = q['lo'][2],q['hi'][2]
             q['lo'][2] = q['hi'][2] = 0.
             candidates.append(q)
         p = p.copy();p[2]=0.;mode=0
     else:
-        candidates = [t for t in targets if (mode&2 or not t['flags']&16) and not (mode&8 and t['flags']&64)]
+        candidates = [t for t in targets if (mode&2 or not t['flags']&16) and not (mode&8 and t['flags']&64)
+                      and not (mode&2 and t.get('unmapped'))]
     if not candidates: return None
-    best = min(candidates,key=lambda t:(fitness(t,p,mode),t['order']))
+    # Rust's initial surface candidate wins an exact tie with any interval.
+    # Within the initial set, original biome index still resolves equal scores.
+    best = min(candidates,key=lambda t:(fitness(t,p,mode),0 if t.get('unmapped') else 1,t['order']))
+    if best.get('unmapped'): best = dict(best,order=0)
     return best,fitness(best,p,mode),f32(f32(best['lo'][5]*.5)+f32(best['hi'][5]*.5))
 
 

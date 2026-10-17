@@ -18,6 +18,7 @@ from test_bend_generated_regions import request
 from test_bend_formats import read_region
 from test_bend_chunks import palette,unpack,MAP_NAMES
 from test_bend_placement_merge import sources
+from test_bend_registry_climate import force_biome
 
 LO,HI=123456789,0x80000000
 
@@ -43,7 +44,7 @@ class ObservedWorker(Worker):
 
 def fixture(source):
     source=copy.deepcopy(source);forest=next(i for i,b in enumerate(source['biomes']) if b['id']=='minecraft:forest')
-    source['climate_targets']=[dict(min=[-10000]*4,max=[10000]*4,weirdness=[-10000,10000],depth=[-10000,10000],offset=0,biome=forest)]
+    force_biome(source,forest)
     source['registry_program']['programs'][1]=dict(nodes=[ins(29,1),ins(0,p=(80,0,0,0)),ins(5,1,0)],roots=[2])
     source['registry_program']['programs'][2]=dict(nodes=[ins(0,p=(1,0,0,0))],roots=[0])
     for n in source['cave_noises']:n['amplitude']=0.

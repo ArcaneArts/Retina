@@ -200,19 +200,39 @@ registered programs and feature families below, not just representative terrain.
 All unmarked items remain required. Update this inventory as code is inspected
 more deeply; retain the original requested scope.
 
-The complete-region benchmark review found a concrete remaining climate gap:
+The complete-region benchmark review found a concrete climate coverage gap:
 `native/src/simplex.wgsl::registered_biome_filtered` considers ordinary registered
 biomes absent from `climate_targets`, using their exported climate center and a
-small fitness preference. `bend/registry_climate.bend` currently projects only
+small fitness preference. The previously compiled Bend model projects only
 explicit targets. The retained vanilla profile maps all 56 biomes, but Terralith
 leaves `terralith:deep_warm_ocean` unmapped and the combined fixture also leaves
-`retina_test:export_probe` unmapped. Bend cannot select those ordinary surface
-biomes through its current climate model. The source hashes, profile hashes and
+`retina_test:export_probe` unmapped. That worker cannot select those ordinary
+surface biomes through its climate model. The original source hashes, profile hashes and
 independent fitness counterexamples are recorded in
-`docs/benchmarks/bend-climate-coverage-audit.json`; these are source-audit evidence,
-not a new worker execution test. Fix and validate this path before claiming
-combined-pack parity. Existing interval tests and saved-biome consistency checks
-do not prove coverage of biomes omitted from the model.
+`docs/benchmarks/bend-climate-coverage-audit.json`.
+
+The current source adds a separate climate-center index for eligible unmapped
+biomes. Any registered target, including an underground target, marks a biome
+as mapped. Cave biomes never enter the surface fallback; unreferenced shore
+biomes are excluded when registered surface intervals exist. Lookup uses the
+same four-axis distance and small unweighted/weighted preferences as the Rust
+source, with original-biome-order ties and an initial-candidate win on exact
+interval ties. Underground and coastal-only searches retain their explicit
+target semantics. All current surface, shoreline, lake and feature consumers
+use this shared lookup. No Java registry or Rust behavior changes are involved.
+
+**This source change has not been compiled or executed in Bend.** Compilation,
+benchmarks and heavy tests remain stopped at the user's request. Eleven small
+Python reference tests pass, and 42 synthetic fixture projections remain valid.
+The same independent reference selects the missing candidates at all three
+saved-profile counterexamples. Source/profile hashes and these limited results
+are recorded in `docs/benchmarks/bend-climate-coverage-source.json`; they do not
+establish executable parity. The persistent worker harness now includes omitted
+biomes, a multi-node fallback tree, rounded ties, invalid centers, absent surface
+intervals and direct queries at the original profiles' omitted climate centers.
+It still needs an approved rebuild and execution, followed by final biome-query
+consistency checks. Existing interval-only and saved-biome tests cannot prove
+coverage of biomes omitted from the old model. Combined-pack parity remains open.
 
 | Requirement | Current Rust/shared source | Bend implementation / completion evidence |
 | --- | --- | --- |

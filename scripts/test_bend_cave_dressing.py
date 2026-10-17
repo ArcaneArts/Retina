@@ -92,6 +92,8 @@ def registered_recipe(name,source,folder):
     land=next(i for i,b in enumerate(s['biomes']) if not b['flags']&(1|2|8|16))
     s['climate_targets']=[dict(min=[-1]*4,max=[1]*4,weirdness=[-1,1],depth=depth,offset=0,biome=id)
         for id,depth in ((land,[-.25,.25]),(cave,[.5,2.]))]
+    from test_bend_registry_climate import complete_control_mapping
+    complete_control_mapping(s)
     programs=s['registry_program']['programs']
     programs[0]=dict(nodes=[ins(0),ins(0,p=(1,0,0,0))],roots=[0,0,0,0,0,1])
     programs[1]=dict(nodes=[ins(0,p=(112,0,0,0)),ins(29,1),ins(5,0,1)],roots=[2])

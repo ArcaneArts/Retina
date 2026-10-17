@@ -36,7 +36,7 @@ def source_profile(folder):
         materials=['minecraft:air', 'minecraft:stone', 'minecraft:grass_block', 'minecraft:dirt',
                    'minecraft:sand', 'minecraft:water', 'minecraft:gravel', 'minecraft:snow_block'],
         heightmap_masks=[0,63,63,63,63,51,63,63])
-    source['biomes'] = [dict(flags=flags, id=name) for flags,name in
+    source['biomes'] = [dict(flags=flags, id=name, climate=[0.,0.,.8,0.]) for flags,name in
         [(0,'minecraft:plains'), (64,'minecraft:beach'), (64,'minecraft:snowy_beach'), (64,'minecraft:stony_shore')]]
     source['climate_targets'] = []
     for biome, temp, humidity, continental in [(0,[-1,1],[-1,1],[.7,1]),
@@ -77,7 +77,8 @@ def fixtures(folder):
         s['registry_program']['programs'][1]['nodes'][3].update(p=[8.0625,0,0,0])))
     add('no_shores',lambda s:[b.update(flags=0) for b in s['biomes']])
     add('unreferenced_shores',lambda s:s.update(climate_targets=s['climate_targets'][:1]))
-    add('shore_only',lambda s:s.update(climate_targets=s['climate_targets'][1:]))
+    add('unreferenced_inland',lambda s:s.update(climate_targets=s['climate_targets'][1:]))
+    add('shore_only',lambda s:(s.update(climate_targets=s['climate_targets'][1:]),s['biomes'][0].update(flags=16)))
     # Two disjoint solid intervals, including an exact-zero upper crossing.
     def island(s):
         p=dict(nodes=[ins(29,1),ins(0,p=(8,0,0,0)),ins(5,0,1),ins(11,2),ins(0,p=(3,0,0,0)),
