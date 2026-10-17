@@ -1,0 +1,339 @@
+{
+  "schema": "retina.bend-frame-build.v1",
+  "date": "2026-10-17",
+  "base": "c254d8c1c2e8f34d7efb1ffaee95187b23c0ee98",
+  "retained_artifacts": "/Users/cyberpwn/.local/share/retina-bend/2.0.36/backend-artifacts/worker-build-scaling-c254d8c",
+  "compiler_version": "2.0.36",
+  "compiler_runtime": "Bun 1.3.14",
+  "fixture": {
+    "result": {
+      "status": "passed",
+      "commands": [
+        [
+          "nice",
+          "-n",
+          "10",
+          "/Users/cyberpwn/.local/share/retina-bend/2.0.36/bin/bend",
+          "/Users/cyberpwn/.codex/worktrees/bend-worker-build-scaling/Retina/bend/tests/frame.bend",
+          "-o",
+          "/Users/cyberpwn/.codex/worktrees/bend-worker-build-scaling/Retina/build/bend/frame-reader-final/frame.c"
+        ],
+        [
+          "nice",
+          "-n",
+          "10",
+          "cc",
+          "-std=c11",
+          "-O1",
+          "/Users/cyberpwn/.codex/worktrees/bend-worker-build-scaling/Retina/build/bend/frame-reader-final/frame.c",
+          "-lpthread",
+          "-lm",
+          "-o",
+          "/Users/cyberpwn/.codex/worktrees/bend-worker-build-scaling/Retina/build/bend/frame-reader-final/frame"
+        ],
+        [
+          "nice",
+          "-n",
+          "10",
+          "/Users/cyberpwn/.local/share/retina-bend/2.0.36/bin/bend",
+          "/Users/cyberpwn/.codex/worktrees/bend-worker-build-scaling/Retina/bend/tests/frame-read.bend",
+          "-o",
+          "/Users/cyberpwn/.codex/worktrees/bend-worker-build-scaling/Retina/build/bend/frame-reader-final/frame-read.c"
+        ],
+        [
+          "nice",
+          "-n",
+          "10",
+          "cc",
+          "-std=c11",
+          "-O1",
+          "/Users/cyberpwn/.codex/worktrees/bend-worker-build-scaling/Retina/build/bend/frame-reader-final/frame-read.c",
+          "-lpthread",
+          "-lm",
+          "-o",
+          "/Users/cyberpwn/.codex/worktrees/bend-worker-build-scaling/Retina/build/bend/frame-reader-final/frame-read"
+        ],
+        [
+          "nice",
+          "-n",
+          "10",
+          "/Users/cyberpwn/.codex/worktrees/bend-worker-build-scaling/Retina/build/bend/frame-reader-final/frame",
+          "--threads",
+          "2",
+          "--gpu",
+          "off"
+        ],
+        [
+          "nice",
+          "-n",
+          "10",
+          "/Users/cyberpwn/.codex/worktrees/bend-worker-build-scaling/Retina/build/bend/frame-reader-final/frame-read",
+          "--threads",
+          "2",
+          "--gpu",
+          "off"
+        ],
+        [
+          "nice",
+          "-n",
+          "10",
+          "/Users/cyberpwn/.codex/worktrees/bend-worker-build-scaling/Retina/build/bend/frame-reader-final/frame-read",
+          "--threads",
+          "2",
+          "--gpu",
+          "off"
+        ],
+        [
+          "nice",
+          "-n",
+          "10",
+          "/Users/cyberpwn/.codex/worktrees/bend-worker-build-scaling/Retina/build/bend/frame-reader-final/frame-read",
+          "--threads",
+          "2",
+          "--gpu",
+          "off"
+        ],
+        [
+          "nice",
+          "-n",
+          "10",
+          "/Users/cyberpwn/.codex/worktrees/bend-worker-build-scaling/Retina/build/bend/frame-reader-final/frame-read",
+          "--threads",
+          "2",
+          "--gpu",
+          "off"
+        ],
+        [
+          "nice",
+          "-n",
+          "10",
+          "/Users/cyberpwn/.codex/worktrees/bend-worker-build-scaling/Retina/build/bend/frame-reader-final/frame-read",
+          "--threads",
+          "2",
+          "--gpu",
+          "off"
+        ],
+        [
+          "nice",
+          "-n",
+          "10",
+          "/Users/cyberpwn/.codex/worktrees/bend-worker-build-scaling/Retina/build/bend/frame-reader-final/frame-read",
+          "--threads",
+          "2",
+          "--gpu",
+          "off"
+        ],
+        [
+          "nice",
+          "-n",
+          "10",
+          "/Users/cyberpwn/.codex/worktrees/bend-worker-build-scaling/Retina/build/bend/frame-reader-final/frame-read",
+          "--threads",
+          "2",
+          "--gpu",
+          "off"
+        ]
+      ],
+      "steps": [
+        {
+          "name": "frame-emit",
+          "seconds": 0.3273758750874549,
+          "exit_code": 0
+        },
+        {
+          "name": "frame-compile",
+          "seconds": 0.20215870789252222,
+          "exit_code": 0
+        },
+        {
+          "name": "frame-read-emit",
+          "seconds": 0.3350410838611424,
+          "exit_code": 0
+        },
+        {
+          "name": "frame-read-compile",
+          "seconds": 0.2549915830604732,
+          "exit_code": 0
+        },
+        {
+          "name": "headers",
+          "seconds": 0.1677489171270281,
+          "exit_code": 0
+        },
+        {
+          "name": "round-trip",
+          "seconds": 0.1926487081218511,
+          "exit_code": 0
+        },
+        {
+          "name": "clean-eof",
+          "seconds": 0.007482166867703199,
+          "exit_code": 0
+        },
+        {
+          "name": "reject-0",
+          "seconds": 0.005786333000287414,
+          "exit_code": 94
+        },
+        {
+          "name": "reject-1",
+          "seconds": 0.004866709001362324,
+          "exit_code": 94
+        },
+        {
+          "name": "reject-2",
+          "seconds": 0.00439004204235971,
+          "exit_code": 94
+        },
+        {
+          "name": "reject-3",
+          "seconds": 0.004336041864007711,
+          "exit_code": 90
+        },
+        {
+          "name": "reject-4",
+          "seconds": 0.004193957895040512,
+          "exit_code": 90
+        }
+      ],
+      "scope": "CPU frame correctness only; no terrain, GPU or benchmark.",
+      "active_step": null,
+      "header_cases": 24,
+      "stream_frames": 3,
+      "malformed_streams": 5,
+      "clean_eof": true,
+      "compiler_sha256": "4d7280f366661d9b63b418eb70ca54ea1a867a23b196cc4b5f1f75e049cb80d1",
+      "artifacts": {
+        "frame-read": "1938b3c689df366ac228025fc13664c0828d82915bef632af0434bf44d54136b",
+        "frame": "cc077944a6507c4c3bb34e1e07cc17fd4f31c9dde8c27ffbb07223a751f0b407",
+        "frame.c": "90c2ce6134a2caac9e966667f0e7355ddc4a18d276301d3ee5d64b68259ca491",
+        "frame-read.c": "d1fa68102ff6ebf379b62f8a91f35d6016964f635ac69ecc86eaa50612b9d82b"
+      },
+      "sources": {
+        "bend/frame.bend": "be1b3cff7dea7511b6672301618e6bf0942ca0ff22089c50ce8f015664111cd2",
+        "bend/engine.bend": "db0126262698bb855ec18b2c4aced9a3cc9235dab47a9f2ee27ff93d971f0e48",
+        "bend/tests/frame.bend": "06bfebd949fb01d108a4e951ff05ae1365ec356c620b63c389743057e1299ef4",
+        "bend/tests/frame-read.bend": "bc62ae026e7a3fab1b088d768ffc8725fb63d9a511e95687ab4926104fcdbbaf"
+      }
+    },
+    "run_control": {
+      "schema": "retina.benchmark-control.v1",
+      "status": "completed",
+      "max_seconds": 30.0,
+      "termination_grace_seconds": 1.0,
+      "command": [
+        "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3",
+        "/Users/cyberpwn/.codex/worktrees/bend-worker-build-scaling/Retina/scripts/check_bend_frames.py",
+        "--output",
+        "build/bend/frame-reader-final"
+      ],
+      "started_unix": 1792256860.1448011,
+      "pid": 70277,
+      "exit_code": 0,
+      "elapsed_seconds": 1.5959034168627113
+    }
+  },
+  "python_tests": {
+    "count": 19,
+    "status": "passed",
+    "command": "PYTHONPATH=scripts python3 -m unittest test_build_bend_worker test_check_bend_lighting test_benchmark_limits"
+  },
+  "full_worker": {
+    "status": "not_built",
+    "c_emission_control": {
+      "schema": "retina.benchmark-control.v1",
+      "status": "timed_out",
+      "max_seconds": 90,
+      "termination_grace_seconds": 1.0,
+      "command": [
+        "nice",
+        "-n",
+        "10",
+        "python3",
+        "build/bend/compiler-inspection/bounded-reader-native.py"
+      ],
+      "started_unix": 1792256617.2178519,
+      "pid": 67873,
+      "exit_code": 124,
+      "reason": "Total runtime limit reached; no automatic retry",
+      "elapsed_seconds": 90.08019545814022
+    },
+    "memory_policy": {
+      "sampled_rss_stop_gib": 8,
+      "sample_interval_seconds": 0.5,
+      "jsc_ram_heuristic_bytes": 4294967296,
+      "hard_heap_cap": false
+    },
+    "environment": {
+      "BUN_OPTIONS": "--smol",
+      "BUN_JSC_forceRAMSize": "4294967296",
+      "BUN_JSC_numberOfGCMarkers": "1",
+      "BUN_JSC_useConcurrentJIT": "false",
+      "BEND_NO_TELEMETRY": "1"
+    },
+    "one_external_process_sample": {
+      "elapsed_display": "01:21",
+      "cpu_percent": 99.1,
+      "rss_kib": 7244080,
+      "nice": 10,
+      "peak": false
+    },
+    "c_output_exists": false,
+    "proof_check": {
+      "control": {
+        "schema": "retina.benchmark-control.v1",
+        "status": "failed",
+        "max_seconds": 15,
+        "termination_grace_seconds": 1.0,
+        "command": [
+          "nice",
+          "-n",
+          "10",
+          "/Users/cyberpwn/.local/share/retina-bend/2.0.36/bin/bend",
+          "bend/engine.bend",
+          "--check-only"
+        ],
+        "started_unix": 1792256895.244181,
+        "pid": 70521,
+        "exit_code": 1,
+        "elapsed_seconds": 7.392500041984022
+      },
+      "result": "Rejected 3956 definitions relying on unsafe/foreign code; not a passing formal proof"
+    },
+    "js_emission": {
+      "control": {
+        "schema": "retina.benchmark-control.v1",
+        "status": "timed_out",
+        "max_seconds": 15,
+        "termination_grace_seconds": 1.0,
+        "command": [
+          "nice",
+          "-n",
+          "10",
+          "/Users/cyberpwn/.local/share/retina-bend/2.0.36/bin/bend",
+          "bend/engine.bend",
+          "-o",
+          "build/bend/engine-js-check/engine.js"
+        ],
+        "started_unix": 1792256996.6848269,
+        "pid": 71330,
+        "exit_code": 124,
+        "reason": "Total runtime limit reached; no automatic retry",
+        "elapsed_seconds": 15.085866958135739
+      },
+      "executed": false
+    }
+  },
+  "installed_worker_sha256": "65a1160fb9fa35df3110869555f3c6f3de6d8eeda92c0c4c982eed7e233d910c",
+  "findings": [
+    "Pinned compiler is bundled JavaScript; Rayon does not limit its compilation.",
+    "Exploratory logging showed dependency traversal finishes, followed by repeated native-emission passes converging ownership facts.",
+    "Frame parsing and IO no longer capture resident world state; no build-speed improvement established."
+  ],
+  "limitations": [
+    "No generated terrain, native full-worker binary, GPU execution or game launch in this cycle.",
+    "No compiler fork or modified runtime is installed.",
+    "Playable worker still predates climate PR88 and lighting PR89.",
+    "Small fixtures do not establish full-worker or region acceptance."
+  ]
+}

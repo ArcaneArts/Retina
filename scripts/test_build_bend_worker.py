@@ -25,7 +25,8 @@ class WorkerBuildTest(unittest.TestCase):
         def execute(command, **kwargs):
             commands.append(command)
             self.assertEqual(command[:3], ['nice', '-n', '10'])
-            self.assertEqual(kwargs['env']['RAYON_NUM_THREADS'], '2')
+            self.assertEqual(kwargs['env']['BUN_JSC_numberOfGCMarkers'], '1')
+            self.assertEqual(kwargs['env']['BUN_JSC_useConcurrentJIT'], 'false')
             if fail_at == len(commands):
                 raise RuntimeError('intentional compiler failure')
             if command[3] == str(compiler):
