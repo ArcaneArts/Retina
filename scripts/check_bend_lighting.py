@@ -15,13 +15,13 @@ import argparse
 import hashlib
 import json
 import math
-import os
 from pathlib import Path
 import re
 import subprocess
 import sys
 
 from benchmark_limits import positive_seconds, supervise
+from bend_compiler import compiler_environment
 from test_bend_compression import DEFAULT_BEND, ROOT, metal_compiler_command
 
 
@@ -55,7 +55,7 @@ def run(args):
     output = args.output.resolve()
     source = ROOT/'bend/tests/light-volume.bend'
     generated, binary = output/'volume.c', output/'volume'
-    env = dict(os.environ,BEND_NO_TELEMETRY='1',RAYON_NUM_THREADS='2')
+    env = compiler_environment()
     commands = []
     def execute(command, name):
         commands.append(command)

@@ -42,7 +42,8 @@ class BoundedLightingTest(unittest.TestCase):
         def fake_run(command, **kwargs):
             observed.append(command)
             self.assertEqual(command[:3], ['nice', '-n', '10'])
-            self.assertEqual(kwargs['env']['RAYON_NUM_THREADS'], '2')
+            self.assertEqual(kwargs['env']['BUN_JSC_numberOfGCMarkers'], '1')
+            self.assertEqual(kwargs['env']['BUN_JSC_useConcurrentJIT'], 'false')
             if fail_at == len(observed): raise RuntimeError('intentional failure')
             if command[3] == str(compiler):
                 Path(command[-1]).write_text('GENERATED_APPLICATION\n'+check.METAL_WAIT)

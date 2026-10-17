@@ -10,13 +10,13 @@ while local compilation/runtime checks are stopped.
 import argparse
 import hashlib
 import json
-import os
 from pathlib import Path
 import random
 import struct
 import subprocess
 
 from benchmark_limits import positive_seconds, supervise
+from bend_compiler import compiler_environment
 from test_bend_compression import ROOT, DEFAULT_BEND
 from test_bend_registry_climate import fixtures, projected, request
 from test_bend_registry_noise import fixture_wire
@@ -99,7 +99,7 @@ def run(args):
     cases, originals = build_cases(output,args.profile)
     source = ROOT/'bend/tests/climate-coverage.bend'
     binary = output/'climate-coverage'
-    env = dict(os.environ,BEND_NO_TELEMETRY='1',RAYON_NUM_THREADS='2')
+    env = compiler_environment()
     xcode = Path('/Applications/Xcode.app/Contents/Developer')
     if xcode.exists():
         env['CC'] = str(xcode/'Toolchains/XcodeDefault.xctoolchain/usr/bin/clang')

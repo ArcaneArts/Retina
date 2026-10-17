@@ -18,6 +18,7 @@ import sys
 import time
 
 from benchmark_limits import positive_seconds, supervise
+from bend_compiler import compiler_environment
 from test_bend_compression import DEFAULT_BEND, ROOT, metal_compiler_command
 
 
@@ -55,7 +56,7 @@ def record_control(output):
 def run(args):
     output = args.output.resolve()
     binary = output/'engine'
-    env = dict(os.environ, BEND_NO_TELEMETRY='1', RAYON_NUM_THREADS='2')
+    env = compiler_environment()
     report = dict(scope=__doc__.strip(), status='running', stage=args.stage,
                   harness_sha256=digest(Path(__file__)),
                   commands=[], steps=[], limitations=[

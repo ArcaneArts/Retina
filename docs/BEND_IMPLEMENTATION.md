@@ -98,8 +98,13 @@ For development builds, `scripts/build_bend_worker.py` separates native C
 emission/compilation from Metal archive construction. Both stages default to a
 30-second external deadline and one-second termination grace; `--max-seconds`
 explicitly changes the total stage deadline. Native mode uses one compiler at
-reduced priority, caps the Bend compiler's Rayon pool at two threads, and checks
-three CPU protocol requests with two runtime threads and the GPU disabled. Metal
+reduced priority and checks three CPU protocol requests with two runtime threads
+and the GPU disabled. The pinned Bend compiler is a bundled Bun 1.3.14 JavaScript
+program: `RAYON_NUM_THREADS` does **not** limit its compilation. The bounded build,
+climate, lighting and frame-check scripts now use serial JSC garbage-collection
+marking and synchronous JIT compilation through `scripts/bend_compiler.py`.
+These pinned runtime options reduce compiler concurrency; they are neither CPU
+affinity nor a hard memory limit. Metal
 mode takes `--binary`, copies that engine into its new output directory, and
 builds only its matching archive. Apple's Metal compiler can use additional
 system threads. Each stage keeps commands, source/artifact hashes, progress,
@@ -125,6 +130,34 @@ still attempts the final kill; a genuinely denied termination signal remains
 an error. The second run stopped at its deadline with normal cleanup. Fourteen
 Python build/supervisor tests cover bounded cleanup, failure reporting and
 orchestration; full-engine build and runtime acceptance remain outstanding.
+
+The subsequent [frame-reader/build investigation](benchmarks/bend-worker-frame-reader.json)
+moved fixed-header parsing and frame IO into `bend/frame.bend`. Those parser and
+IO continuations now return a small packet rather than capture the resident
+terrain, structure and lighting state. Wire framing, limits and error behavior
+are preserved. `scripts/check_bend_frames.py --output build/bend/frame-check`
+compiled and ran two small CPU fixtures in **1.60 seconds**: 24 header cases,
+three exact stream round trips (including a payload spanning the 64 KiB read
+boundary), clean EOF and five malformed streams. Nineteen Python orchestration
+and cleanup tests also passed.
+
+This refactor is **not a verified build-speed improvement**. Instrumentation of
+an extracted compiler copy showed dependency traversal finishing and native
+emission repeating to converge ownership facts. A later stock full-worker C
+emission attempt, with the final frame reader, stopped at its 90-second deadline.
+One sample at 81 seconds measured 99.1% CPU, nice 10 and 7,244,080 KiB RSS; this is
+a sample, not a peak. The attempt had an 8 GiB sampled RSS stop and used a 4 GiB
+JSC RAM heuristic, which is not itself a memory cap. It produced no C or binary.
+The diagnostic compiler copy was never installed or used to build a playable
+worker, and no runtime algorithm was modified. Compiler convergence/allocation
+still needs investigation before another full build.
+
+`--check-only` reached the compiler's formal-proof rejection for the engine's
+existing unsafe/foreign dependencies (3,956 definitions); it was not reported
+as a passing proof. JS source emission also exceeded a separate 15-second
+deadline. Neither ran the engine. The installed playable binary remains
+unchanged, so the newer climate fallback and lighting optimizations still need
+full-worker packaging and runtime validation.
 
 Install the corresponding jar, create a fresh Creative world and select **Retina
 Bend**. Start with a small render distance. Initial runtime/profile preparation

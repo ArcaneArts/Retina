@@ -4,6 +4,7 @@ import ./binary.bend as B
 import ./compression.bend as Z
 import ./reader.bend as R
 import ./transport.bend as T
+import ./frame.bend as Frame
 import ./registry.bend as P
 import ./registry_noise.bend as RN
 import ./registry_climate.bend as RC
@@ -1474,35 +1475,16 @@ def dispatch(input: File,output: File,stack: State,backend: U32,id: U32,opcode: 
     case _: error(input,output,stack,backend,id,opcode,605)
 
 @unsafe
-def body_read(read: T.Read,output: File,stack: State,backend: U32,id: U32,opcode: U32) -> IO(Unit):
+def frame_read(read: Frame.Read,output: File,stack: State,backend: U32) -> IO(Unit):
   match read:
-    case T.End{_}: IO.die(Unit,602,"Bend transport ended before request body")
-    case T.Complete{input,body}: dispatch(input,output,stack,backend,id,opcode,body)
-
-@unsafe
-def header_valid(valid: Bool,input: File,output: File,stack: State,backend: U32,+length: U32,id: U32,opcode: U32) -> IO(Unit):
-  match valid:
-    case False{}: IO.die(Unit,606,"Invalid Bend frame magic or payload size")
-    case True{}:
-      do IO<Unit>:
-        read : T.Read <- T.exact(input,length,B.new(),False{})
-        body_read(read,output,stack,backend,id,opcode)
-
-@unsafe
-def header_read(read: T.Read,output: File,stack: State,backend: U32) -> IO(Unit):
-  match read:
-    case T.End{input}: continued(False{},input,output,stack,backend)
-    case T.Complete{input,header}:
-      R.word(IO(Unit),R.start(header),cursor => +magic => R.word(IO(Unit),cursor,cursor => +length =>
-        R.word(IO(Unit),cursor,cursor => id => R.word(IO(Unit),cursor,cursor => opcode =>
-          header_valid(Bool.and(R.end(cursor),Bool.and(U32.is_eq(magic,1380077124),U32.is_le(length,16777216))),
-            input,output,stack,backend,length,id,opcode)))))
+    case Frame.End{input}: continued(False{},input,output,stack,backend)
+    case Frame.Packet{input,id,opcode,body}: dispatch(input,output,stack,backend,id,opcode,body)
 
 @unsafe
 def loop(input: File,output: File,stack: State,backend: U32) -> IO(Unit):
   do IO<Unit>:
-    read : T.Read <- T.exact(input,16,B.new(),True{})
-    header_read(read,output,stack,backend)
+    read : Frame.Read <- Frame.read(input)
+    frame_read(read,output,stack,backend)
 
 def launch(backend: U32) -> IO(Unit):
   do IO<Unit>:
