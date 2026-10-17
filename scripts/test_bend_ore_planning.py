@@ -252,7 +252,7 @@ def main():
     parser.add_argument('--profile',nargs=2,action='append',default=[],metavar=('JSON','RBP'))
     parser.add_argument('--output',type=Path);args=parser.parse_args()
     binary=ROOT/'build/bend/engine'
-    if not args.skip_build:build(DEFAULT_BEND,binary,ROOT/'bend/engine.bend')
+    version=build(DEFAULT_BEND,binary,ROOT/'bend/engine.bend') if not args.skip_build else 'existing executable (see executable_sha256)'
     folder=ROOT/'build/bend/ore-planning-profiles';folder.mkdir(parents=True,exist_ok=True)
     profiles=fixtures(folder)
     for source,wire in args.profile:profiles.append((Path(source).parent.name,json.loads(Path(source).read_text()),Path(wire)))
@@ -268,7 +268,7 @@ def main():
         report['actual_metal_proof']=proof;report['metal_probe_sha256']=hashlib.sha256(probe.read_bytes()).hexdigest()
     report['source_sha256']={str(p.relative_to(ROOT)):hashlib.sha256(p.read_bytes()).hexdigest() for p in sorted((ROOT/'bend').glob('*.bend'))}
     report['inputs']=[dict(name=n,rbp_sha256=hashlib.sha256(p.read_bytes()).hexdigest()) for n,s,p in profiles]
-    report['executable_sha256']=hashlib.sha256(binary.read_bytes()).hexdigest();report['bend_version']='2.0.36'
+    report['executable_sha256']=hashlib.sha256(binary.read_bytes()).hexdigest();report['bend_version']=version
     output=args.output or ROOT/'build/bend/ore-planning-tests.json';output.write_text(json.dumps(report,indent=2)+'\n');print('PASS:',output,flush=True)
 
 

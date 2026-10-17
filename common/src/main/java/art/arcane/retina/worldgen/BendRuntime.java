@@ -16,7 +16,7 @@ final class BendRuntime {
         String platform = (os.contains("mac") ? "macos" : os.contains("win") ? "windows" : "linux")
                 + "-" + (arch.equals("arm64") ? "aarch64" : arch.equals("amd64") ? "x86_64" : arch);
         try (var binary = BendRuntime.class.getResourceAsStream("/bend/"+platform+"/engine")) {
-            if (binary == null) return Path.of(System.getProperty("user.home"),".local/share/retina-bend/2.0.36/playable/engine");
+            if (binary == null) return Path.of(System.getProperty("user.home"),".local/share/retina-bend/2.0.37/playable/engine");
             var bytes=binary.readAllBytes();
             byte[] archive;
             try(var gpu=BendRuntime.class.getResourceAsStream("/bend/"+platform+"/engine.gpu")) {
@@ -26,7 +26,7 @@ final class BendRuntime {
             // fresh temporary path on every launch recompiles the entire program,
             // even with Bend's pipeline archive present. Keep a content-addressed
             // executable location across world/client restarts.
-            var folder=Path.of(System.getProperty("user.home"),".cache","retina","bend-2.0.36",platform,digest(bytes));
+            var folder=Path.of(System.getProperty("user.home"),".cache","retina","bend-2.0.37",platform,digest(bytes));
             Files.createDirectories(folder);
             var path=folder.resolve("engine");
             install(path,bytes);

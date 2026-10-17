@@ -1,25 +1,29 @@
 # Retina Bend backend
 
-This is the production-bound Bend implementation under development. It is **not
-yet a selectable world type or a complete generator**. The existing Rust backend
-continues to serve every current world. Progress and the complete parity target
-are tracked in [the implementation checklist](../docs/BEND_IMPLEMENTATION.md).
+This independent implementation is selectable as **Retina Bend** alongside
+**Retina Rust**. It remains experimental and slower than Rust. Current behavior,
+validation and remaining work are tracked in [the implementation checklist](../docs/BEND_IMPLEMENTATION.md).
 
 ## Toolchain
 
-The initial implementation pins **Bend 2.0.36**, the release already used by the
-simplex experiment. No compiler, runtime binary or generated C is checked in.
-The pinned official macOS arm64 installer is available through:
+Production pins the official **Bend 2.0.37** release. No compiler, runtime binary
+or generated C is checked in. Install it without changing PATH:
 
 ```sh
-python3 experiments/bend-simplex/bench.py --install
+python3 scripts/install_bend.py
 ```
 
-It installs into `~/.local/share/retina-bend/2.0.36`, verifies the release SHA256
-and leaves the shell PATH unchanged. This installer currently covers macOS
-arm64; production packaging and other supported targets remain outstanding.
-Bend currently exposes Metal and CUDA GPU targets; we have measured Metal only.
-Rust's broader platform coverage remains independent of this implementation.
+The installer verifies the official release SHA256 and installs the compiler,
+standard library and guide into `~/.local/share/retina-bend/2.0.37`. Existing
+installations are preserved. It supports official macOS/Linux arm64/x64 archives;
+this does not imply Retina's worker has been verified on all four hosts.
+The original simplex experiment retains its own historical 2.0.36 pin.
+
+See [worker build stages](../docs/BEND_IMPLEMENTATION.md#running-the-preview)
+for emission, native compilation and Metal archive construction. Ordinary
+`./gradlew runClient` launches Fabric using the installed precompiled worker;
+it does not compile Bend. Metal is verified on this Apple Silicon host. CUDA
+remains unverified; Bend does not provide Rust/wgpu's Vulkan compatibility.
 
 ## Compression
 

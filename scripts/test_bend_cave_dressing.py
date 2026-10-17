@@ -261,7 +261,7 @@ def exercise(binary,profiles,bad,gpu):
 def main():
     p=argparse.ArgumentParser(description=__doc__);p.add_argument('--skip-build',action='store_true');p.add_argument('--prove-metal',action='store_true');p.add_argument('--metal-probe',type=Path);p.add_argument('--profile',nargs=2,action='append',default=[]);p.add_argument('--output',type=Path);p.add_argument('--execution',choices=('cpu','gpu','both'),default='both');a=p.parse_args()
     binary=ROOT/'build/bend/engine'
-    if not a.skip_build:build(DEFAULT_BEND,binary,ROOT/'bend/engine.bend')
+    version=build(DEFAULT_BEND,binary,ROOT/'bend/engine.bend') if not a.skip_build else 'existing executable (see executable_sha256)'
     profiles,bad=fixtures(ROOT/'build/bend/cave-dressing-profiles')
     for js,rbp in a.profile:
         name=Path(js).parent.name;source=json.loads(Path(js).read_text())
@@ -272,7 +272,7 @@ def main():
         probe=a.metal_probe or ROOT/'build/bend/cave-dressing-metal-probe'
         if a.metal_probe is None:compile_metal_observer(DEFAULT_BEND,ROOT/'bend/engine.bend',probe)
         r=exercise(probe,profiles,bad,True);assert len(r['metal_commands_ms'])>=r['minimum_gpu_commands'];assert r['sha256']==report['runs'][-1]['sha256'];report['actual_metal_proof']=r
-    report.update(bend_version='2.0.36',source_sha256={str(p.relative_to(ROOT)):hashlib.sha256(p.read_bytes()).hexdigest() for p in sorted((ROOT/'bend').glob('*.bend'))},inputs=[dict(name=n,rbp_sha256=hashlib.sha256(p.read_bytes()).hexdigest()) for n,s,p in profiles],executable_sha256=hashlib.sha256(binary.read_bytes()).hexdigest())
+    report.update(bend_version=version,source_sha256={str(p.relative_to(ROOT)):hashlib.sha256(p.read_bytes()).hexdigest() for p in sorted((ROOT/'bend').glob('*.bend'))},inputs=[dict(name=n,rbp_sha256=hashlib.sha256(p.read_bytes()).hexdigest()) for n,s,p in profiles],executable_sha256=hashlib.sha256(binary.read_bytes()).hexdigest())
     output=a.output or ROOT/'build/bend/cave-dressing-tests.json';output.write_text(json.dumps(report,indent=2)+'\n');print('PASS:',output,flush=True)
 
 

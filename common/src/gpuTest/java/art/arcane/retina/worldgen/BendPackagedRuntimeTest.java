@@ -4,7 +4,7 @@ package art.arcane.retina.worldgen;
 public final class BendPackagedRuntimeTest {
     public static void main(String[] args) throws Exception {
         var path=BendRuntime.executable();
-        if(!path.toString().contains(".cache/retina/bend-2.0.36"))throw new AssertionError("Expected packaged content-addressed worker: "+path);
+        if(!path.toString().contains(".cache/retina/bend-2.0.37"))throw new AssertionError("Expected packaged content-addressed worker: "+path);
         var before=java.nio.file.Files.getLastModifiedTime(path);
         var metadata=java.nio.file.Files.getAttribute(path,"unix:ctime");
         // Simulate the resolver in a new client JVM. Even a redundant chmod

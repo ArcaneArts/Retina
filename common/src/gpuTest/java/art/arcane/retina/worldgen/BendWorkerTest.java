@@ -103,7 +103,7 @@ public final class BendWorkerTest {
                         (root/'entered').touch()
                         while not (root/'release').exists():time.sleep(.01)
                     if op==9:sys.exit(4)
-                    body=struct.pack('>5I',1,2,0,36,0) if op==0 else payload if op==3 else b''
+                    body=struct.pack('>5I',1,2,0,37,0) if op==0 else payload if op==3 else b''
                     sys.stdout.buffer.write(struct.pack('>5I',0 if op==8 else magic,len(body),id,op,2 if op==10 else 0)+body)
                     sys.stdout.buffer.flush()
                 """);

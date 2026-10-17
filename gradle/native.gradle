@@ -109,7 +109,7 @@ ext.nativeCargoCommand = nativeCargoCommand
 tasks.register('packageBendRuntime', Sync) {
     def executable = providers.gradleProperty('retinaBendExecutable')
             .orElse(providers.environmentVariable('RETINA_BEND_EXECUTABLE'))
-            .orElse("${System.getProperty('user.home')}/.local/share/retina-bend/2.0.36/playable/engine")
+            .orElse("${System.getProperty('user.home')}/.local/share/retina-bend/2.0.37/playable/engine")
     from(rootProject.file(executable.get())) {
         into "bend/${nativeOs}-${nativeArch}"
         rename { 'engine' }

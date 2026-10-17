@@ -67,7 +67,7 @@ public final class BendWorker implements AutoCloseable {
             started.accept(this);
             var hello = new DataInputStream(new java.io.ByteArrayInputStream(request(0, new byte[0])
                     .get(Duration.ofMinutes(20).toMillis(), TimeUnit.MILLISECONDS)));
-            if (hello.readInt() != 1 || hello.readInt() != 2 || hello.readInt() != 0 || hello.readInt() != 36
+            if (hello.readInt() != 1 || hello.readInt() != 2 || hello.readInt() != 0 || hello.readInt() != 37
                     || hello.readInt() != (execution == Execution.CPU ? 0 : 1) || hello.available() != 0)
                 throw new IOException("Unexpected Bend worker protocol/version/execution handshake");
         } catch (Exception failure) {

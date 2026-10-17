@@ -114,7 +114,7 @@ public final class GenerationMetricsTest {
         require(metrics.snapshot().bendStages().totalNanos()==snapshot.bendStages().totalNanos(),"failures and promotions do not pollute stage samples");
         require(metrics.snapshot().inFlight()==0 && metrics.snapshot().failures()==1,"failed work closes its metrics lease");
         require(new GenerationMetrics().snapshot().bendStages().regions()==0,"worlds do not share Bend counters");
-        var payload=new TerrainStatsPayload(true,"Bend 2.0.36 / GPU_REQUIRED","bend",snapshot);
+        var payload=new TerrainStatsPayload(true,"Bend 2.0.37 / GPU_REQUIRED","bend",snapshot);
         var lines=TerrainDebugReport.lines(payload);
         for(var stage:BendTimings.Stage.values())require(lines.stream().filter(s->s.startsWith("§b"+stage.label()+"§7:")).count()==1,"one line per Bend stage");
         require(lines.stream().anyMatch(s->s.contains("Lighting§7:") && s.contains("§f8.25 ms") && s.contains("§c50.0%")),"Bend milliseconds and percentages use distinct colors");

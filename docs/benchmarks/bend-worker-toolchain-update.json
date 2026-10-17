@@ -1,0 +1,1298 @@
+{
+  "scope": "Official Bend 2.0.37 full-worker build and bounded correctness validation. No full region, game launch or throughput benchmark.",
+  "status": "passed",
+  "source_parent_commit": "224c3da09f372a6e9d70f785c556a5b056fcab4e",
+  "engine_source_sha256": "9314ee60c2782fc5ab39e25d5a92f683328a7fb15340e5b32cf2f42c76531d96",
+  "source_manifest_sha256": "0973fa0a7dd8fddc49ac9312043b9788eb2993f06672ea8d00defd9ba37ce504",
+  "compiler": {
+    "version": "2.0.37",
+    "release": "https://github.com/bendlang/bend/releases/tag/v2.0.37",
+    "archive_sha256": "846d25ccf0c12d5d1e5e648c0b3ba4c8397fdb852812ac00ef8135998f8e194b",
+    "binary_sha256": "0b5d350546132665742dfa36785752ac170601c6228858d77323b9a4f6761af9",
+    "bun": "1.4.0",
+    "priority": 10,
+    "gc_markers": 1,
+    "concurrent_jit": false,
+    "ram_heuristic_bytes": 2147483648,
+    "limits": "JSC concurrency/heap heuristic, not CPU affinity or a hard RSS cap."
+  },
+  "emission": {
+    "schema": "retina.benchmark-control.v1",
+    "status": "completed",
+    "max_seconds": 600,
+    "termination_grace_seconds": 1.0,
+    "command": [
+      "nice",
+      "-n",
+      "10",
+      "/Users/cyberpwn/.codex/worktrees/bend-compiler-convergence/Retina/build/bend/compiler-convergence/bend/bin/bend",
+      "/Users/cyberpwn/.codex/worktrees/bend-compiler-convergence/Retina/bend/engine.bend",
+      "-o",
+      "/Users/cyberpwn/.codex/worktrees/bend-compiler-convergence/Retina/build/bend/compiler-convergence/official-emission/engine.c"
+    ],
+    "started_unix": 1792259668.337742,
+    "pid": 96350,
+    "exit_code": 0,
+    "elapsed_seconds": 291.6194695830345
+  },
+  "native": {
+    "scope": "Build the stock Bend worker in separately bounded emission/native/Metal stages.\n\nNative mode emits the complete engine, compiles one binary at reduced priority,\nand checks CPU protocol startup/shutdown. Metal mode copies that binary into a\nnew output directory and asks its stock runtime to build its matching archive.\nEmit mode saves C without native compilation. Compile mode accepts that saved C\nwithout re-emitting the worker. No mode generates terrain, installs a worker,\nor launches Minecraft.",
+    "status": "passed",
+    "stage": "compile",
+    "harness_sha256": "e36bb74867f2b0af46c51029d93be22f268f8c08e3682aed79a7aa0ad72b4f93",
+    "commands": [
+      [
+        "nice",
+        "-n",
+        "10",
+        "/opt/homebrew/opt/llvm/bin/clang",
+        "--no-default-config",
+        "-isysroot",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk",
+        "--ld-path=/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/ld",
+        "-DBEND_METAL=1",
+        "-x",
+        "objective-c",
+        "-fobjc-arc",
+        "-fmodules",
+        "-std=c11",
+        "-O3",
+        "/Users/cyberpwn/.codex/worktrees/bend-compiler-convergence/Retina/build/bend/compiler-convergence/official-emission/engine.c",
+        "-lpthread",
+        "-lm",
+        "-o",
+        "/Users/cyberpwn/.codex/worktrees/bend-compiler-convergence/Retina/build/bend/compiler-convergence/native/engine"
+      ],
+      [
+        "nice",
+        "-n",
+        "10",
+        "/Users/cyberpwn/.codex/worktrees/bend-compiler-convergence/Retina/build/bend/compiler-convergence/native/engine",
+        "cpu",
+        "--threads",
+        "2",
+        "--gpu",
+        "off"
+      ]
+    ],
+    "steps": [
+      {
+        "name": "compile",
+        "elapsed_seconds": 243.90382716595195
+      },
+      {
+        "name": "cpu-protocol",
+        "elapsed_seconds": 0.7395042909774929
+      }
+    ],
+    "limitations": [
+      "Build and protocol smoke only; no terrain correctness or performance claim.",
+      "Metal archive construction does not prove device execution.",
+      "No installation or packaging is performed."
+    ],
+    "input_source": "/Users/cyberpwn/.codex/worktrees/bend-compiler-convergence/Retina/build/bend/compiler-convergence/official-emission/engine.c",
+    "generated_c_sha256": "2cf42047807e33e479345d6127fa4272226d189f8cc7fe4cb8606286869eef3f",
+    "active_step": null,
+    "cpu_protocol": {
+      "requests": 3,
+      "threads": 2,
+      "gpu": false,
+      "output_sha256": "a1080c11a5c1abe3363b0ed8e3c546f2894fa3aa89b6d60cfe59081fa18a50a7"
+    },
+    "binary_sha256": "671cf9b6b56ee6a62bb568f8699bdb6d31cfa1339661414ed0e724f6528843ce",
+    "run_control": {
+      "schema": "retina.benchmark-control.v1",
+      "status": "completed",
+      "max_seconds": 600.0,
+      "termination_grace_seconds": 1.0,
+      "command": [
+        "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3",
+        "/Users/cyberpwn/.codex/worktrees/bend-compiler-convergence/Retina/scripts/build_bend_worker.py",
+        "compile",
+        "--source",
+        "build/bend/compiler-convergence/official-emission/engine.c",
+        "--output",
+        "build/bend/compiler-convergence/native",
+        "--max-seconds",
+        "600"
+      ],
+      "started_unix": 1792260002.9892879,
+      "pid": 2126,
+      "exit_code": 0,
+      "elapsed_seconds": 244.7724285828881
+    }
+  },
+  "cpu_runtime": {
+    "engine": {
+      "gpu_required": false,
+      "grids": [
+        {
+          "width": 16,
+          "height": 16,
+          "step": 1,
+          "sha256": "ea1898c42bad031d70f518b6b64f57f23a6e20d9b824c06249291905a4fd4e83"
+        },
+        {
+          "width": 13,
+          "height": 17,
+          "step": 1,
+          "sha256": "fc83619d0ebecb76109b34063db3a6ce5249a01b2ed5b5733aa68427f17c6780"
+        },
+        {
+          "width": 64,
+          "height": 64,
+          "step": 3,
+          "sha256": "773c9791ec0e61659ff994490ac3ba543883583df1bc6b928df663e8690e4eef"
+        },
+        {
+          "width": 512,
+          "height": 512,
+          "step": 1,
+          "sha256": "0e1ecfbbf6e60a3abb36ae2a3da353d330450396cfbc999dd8f8bb0d198cfd6a"
+        }
+      ],
+      "max_reference_error": 3.6100139255701436e-07,
+      "compression": [
+        {
+          "input_bytes": 0,
+          "compressed_bytes": 8
+        },
+        {
+          "input_bytes": 131072,
+          "compressed_bytes": 1482
+        },
+        {
+          "input_bytes": 65536,
+          "compressed_bytes": 65552
+        },
+        {
+          "input_bytes": 1048576,
+          "compressed_bytes": 1048667
+        }
+      ],
+      "requests_in_one_process": 127,
+      "observed_metal_command_ms": []
+    },
+    "malformed_rejected": 5,
+    "elapsed_seconds": 4.7927745000924915
+  },
+  "profile_climate_cpu": {
+    "completed_profile_checks": [
+      {
+        "name": "vanilla",
+        "queries": 32,
+        "unmapped_biomes": 0,
+        "sha256": "fc4da75d38ede54626ca8a01dd85974af431343bc8cfdf18d0860820e99de2e4",
+        "elapsed_seconds": 12.460690832929686
+      },
+      {
+        "name": "terralith",
+        "queries": 37,
+        "unmapped_biomes": 1,
+        "sha256": "1814e87aa242b2e1441cacbe815e21af7aad04ec38bd3a727091f95e68a68fc6",
+        "elapsed_seconds": 27.28334162500687
+      },
+      {
+        "name": "combined",
+        "queries": 42,
+        "unmapped_biomes": 2,
+        "sha256": "d26d1abe85c7e465bc54fcf8bad09c7c6bb96b3351c18c86c017efffc1f4c78d",
+        "elapsed_seconds": 27.77977112494409
+      }
+    ],
+    "control": [
+      {
+        "schema": "retina.benchmark-control.v1",
+        "status": "timed_out",
+        "max_seconds": 60,
+        "termination_grace_seconds": 1.0,
+        "command": [
+          "nice",
+          "-n",
+          "10",
+          "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3",
+          "build/bend/compiler-convergence/probe-profile-climate.py",
+          "cpu"
+        ],
+        "started_unix": 1792260970.478956,
+        "pid": 12099,
+        "exit_code": 124,
+        "reason": "Total runtime limit reached; no automatic retry",
+        "elapsed_seconds": 60.027772249886766
+      },
+      {
+        "schema": "retina.benchmark-control.v1",
+        "status": "completed",
+        "max_seconds": 45,
+        "termination_grace_seconds": 1.0,
+        "command": [
+          "nice",
+          "-n",
+          "10",
+          "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3",
+          "build/bend/compiler-convergence/probe-profile-climate.py",
+          "cpu",
+          "combined"
+        ],
+        "started_unix": 1792261250.465782,
+        "pid": 15305,
+        "exit_code": 0,
+        "elapsed_seconds": 27.94561545900069
+      }
+    ],
+    "note": "First run completed vanilla and Terralith, then reached its total deadline during combined. Only completed profile checkpoints count. Combined was completed in a separate bounded run; no already-passed profile was rerun."
+  },
+  "lighting_cpu": {
+    "status": "passed",
+    "mode": "cpu",
+    "compiler_sha256": "0b5d350546132665742dfa36785752ac170601c6228858d77323b9a4f6761af9",
+    "generated_c_sha256": "b8def44c95cb8bc59fb7764879e1bcb4a8223eb8da0073490bf42a86932f1b5e",
+    "native_source_sha256": "b8def44c95cb8bc59fb7764879e1bcb4a8223eb8da0073490bf42a86932f1b5e",
+    "result": {
+      "scope": "Compare Bend's brick lighting to an independent scalar flood fill.\n\nUses actual exported Minecraft optics and paired face coverage. Tests both light\nchannels, opaque emitters, fluids/leaves, partial shapes, isolated cavities,\nbrick boundaries and virtual top/bottom sections. No MCA/whole-region claim.",
+      "cpu_threads": 2,
+      "gpu_requested": false,
+      "profile_sha256": "aefce6ff0e800966ad55920c5d21510dfa277de4612f67e22d5146d3aa838203",
+      "binary_sha256": "33cd582a1244b1267acb452556020fb6a0ac2c41c39878a4a072c8f9e453fea5",
+      "results": [
+        {
+          "name": "open-sky",
+          "voxels": 36864,
+          "sha256": "52454e0d3da29b572e562f45cdbf572f2163c5a23ab2e6bae0059704dddbc727",
+          "wall_ms": 267.6995419897139,
+          "metal_dispatch_ms": []
+        },
+        {
+          "name": "dark-air",
+          "voxels": 36864,
+          "sha256": "1c0273095382988333e2f2b5ae487cea460737ed9be65cbad9c5de537f95bf75",
+          "wall_ms": 48.91483299434185,
+          "metal_dispatch_ms": []
+        },
+        {
+          "name": "opaque-roof-and-sideways-sky",
+          "voxels": 36864,
+          "sha256": "6a61b86b5e1f69651eb26e512c96ec70061f957e81393b8cbdc72ea7ee6959be",
+          "wall_ms": 577.1778749767691,
+          "metal_dispatch_ms": []
+        },
+        {
+          "name": "sealed-emitter",
+          "voxels": 36864,
+          "sha256": "11004bf1d4d243c1468676d06a694ecef319fb8b9d0139d2f6042155955d28bb",
+          "wall_ms": 388.3964999113232,
+          "metal_dispatch_ms": []
+        },
+        {
+          "name": "opaque-emitter-brick",
+          "voxels": 36864,
+          "sha256": "a641588e1126e83ee6791b2e85de8394a8279b743b76b4cd65f45739731602f7",
+          "wall_ms": 495.0891660992056,
+          "metal_dispatch_ms": []
+        },
+        {
+          "name": "water-leaves-and-partial-faces",
+          "voxels": 36864,
+          "sha256": "82539c805d3b9a6f6ee56e44da66aec7aeae5fbedfbd09faf9a25b203f7a5ce2",
+          "wall_ms": 348.6297079361975,
+          "metal_dispatch_ms": []
+        },
+        {
+          "name": "emitters-across-brick-faces",
+          "voxels": 76800,
+          "sha256": "a9639f5ec743aab290baa90d6f85aaa6ce71f86cda0ea8d0ce67eccd76ac11f0",
+          "wall_ms": 1008.8079159613699,
+          "metal_dispatch_ms": []
+        },
+        {
+          "name": "sun-through-world-bottom",
+          "voxels": 36864,
+          "sha256": "119378b1c70da1d9435ea58bf7090386f380445602ec51ca5d0eacb862b1ffaa",
+          "wall_ms": 289.890541927889,
+          "metal_dispatch_ms": []
+        },
+        {
+          "name": "random-optics-False",
+          "voxels": 36864,
+          "sha256": "c7e6f8c9780f030e078ef157f2105f936f7f7ebaea9ea04e5d97cec156f95057",
+          "wall_ms": 771.5329588390887,
+          "metal_dispatch_ms": []
+        },
+        {
+          "name": "random-optics-True",
+          "voxels": 36864,
+          "sha256": "4520a15cf01405c438c55501cafa1dd3c1274d08f78734fb13c8c2ba398c49f1",
+          "wall_ms": 605.2924999967217,
+          "metal_dispatch_ms": []
+        },
+        {
+          "name": "registered-optics-gallery",
+          "voxels": 76800,
+          "sha256": "9affd93163ad457cd0a89246401c050a5da74955a4a1e141c3974f52afcfcb62",
+          "wall_ms": 910.1934579666704,
+          "metal_dispatch_ms": []
+        }
+      ],
+      "sources": {
+        "bend/terrain_surface.bend": "26687ac40e62949ca563d7f31117207fa0eb053d82f51b58a14e84b9a2d4d652",
+        "bend/numbers.bend": "858ea999141639aa26c559a2e06a87d62c58e93d0d8d3a793bb530b629060956",
+        "bend/ore_data.bend": "de874dc61201a0414c2c37a95bc84d1405d9b9e055197c10f2e7e64540bb4e29",
+        "bend/climate.bend": "c3310f5baab096dfce69c001e968f03eec42c5cf4c2716a4b4c7d84334db0a3a",
+        "bend/material.bend": "fea1e62174797c5b44634f3674dfc550d0178f207524193ed0d9416fbbf70f64",
+        "bend/tests/compress-file.bend": "1a7ffa73eda62ac1ef59306247705e2ab25cffd2048dc6b50f6b77326d29a51d",
+        "bend/lake_data.bend": "2951da8dbd6b05ede1d4f038579d5a89d79b6ce7d34d45d56da82a8bd7d84492",
+        "bend/transport.bend": "2d7b2667aaf37b537de8be6c584acaeaec37377da475741bfe790a46d9c76f81",
+        "bend/density_lattice.bend": "b361b8d9eef91105cc60990e39d7f2630efa1bcb5049837b1b5ab6b650db9b49",
+        "bend/cave_features_data.bend": "d46ac6fd858755318de508c48eb60f07a5ba10352d0e393c340429f49b9c4abc",
+        "bend/shoreline.bend": "1d5eecef867d52e443597ffe8fffef7077bd9203742bdba7804e8f6c06fa5aeb",
+        "bend/density.bend": "01beac1b7443695c1507293a7d916489ac5441235c1e07290330691864b56aae",
+        "bend/geology.bend": "9cb01c921b02127b84593f6c52a19f9ab4de88fdf8bfd660ff5f69d02379e414",
+        "bend/registry_values.bend": "5bb1d3ab6bfed7cf640af35089a5ec1370cc2f686d7cfb8b210e7643e1b3d97f",
+        "bend/nbt.bend": "7063555acf523d12269bd152e1e32981534009785b6a7653509f1a108b18cb57",
+        "bend/light_volume.bend": "e4dafad89ecaa9274a016f889dfdc89328b15911fae0a2a7a20e1438e0602df1",
+        "bend/material_columns_data.bend": "309ad22f3858ba801421073319a671b218b473ee6887d3ca75bef5ccd1e26a9a",
+        "bend/aquifer_lattice.bend": "cc43ecd6d6c5893f351f51e1a56f8830fbeaa5f923f23e9bfa0b967cad8c1a85",
+        "bend/tests/binary-fixtures.bend": "02ea592c9b590739c40cb07211e321520ae70207f3212d97257ea16ad74e3207",
+        "bend/reader.bend": "e659a2cac6b8435f02fd0fe91902ceca918055d026ec1908845186bee4fdc0ac",
+        "bend/tests/light-volume.bend": "5a7e10eff7226dfc31dd651c94d2c2d5bf2c6d35d2821f84953763d2f66a0d20",
+        "bend/palette.bend": "4f813fb89317308dc02c70d36cf5e3eeaf6d62a9a82477b781b976be5eee82ff",
+        "bend/packed.bend": "b4ebd29bc4d31d53ddcc221f64c84e68c5bde4a0fbbb51acfdaa9ddd01e2c23f",
+        "bend/material_batch.bend": "e34ee066c23a5328d279c5137ce2d107f2e4df661d63d3de373970d5cbee2073",
+        "bend/binary.bend": "f716146b3a19403c4ad208ce37c2056f9ba023d6b76a3fecba5c3253185d9b68",
+        "bend/word64.bend": "62e104fbbc56208d66457789a7f2ed3f5fe122f4a19068c3df9b3bbbf555e139",
+        "bend/registry.bend": "433b4dbb17b127dd322a11465a1111ddadd86a8682597310c062a194aa802296",
+        "bend/chunk_catalog.bend": "666d5f98e2128a31a49f36ccdf0a1da7d7cb59067ce58d3cd1d0da3742963df3",
+        "bend/terrain_height.bend": "bc5400f024c86b34294cc628b364d7ceb67fd9675cb2de77a3cbe06b519be8a2",
+        "bend/aquifer.bend": "a9537fa65402553acec5578d4a2474036f2190142a6e9d9c1faf3c7c0cc03e36",
+        "bend/heightmaps.bend": "0b69c87d24ec3b27cbb082bb394205765154bf78c5c4db2c226fbc4ba3e2d997",
+        "bend/lake_terrain.bend": "a1fc29c8f9ba0cebece840423ca9b9208c986186239736f771f336a4aeebe316",
+        "bend/light_rules.bend": "64a597da4a64699c950798a7cb3d9ca37b344acc1bdd53f3a62a4c0742a43943",
+        "bend/registry_density.bend": "0c1972222bbcdfead41b30ae0453f7e05e85ab7bb446c113c3a07a8b12f56cb7",
+        "bend/material_columns.bend": "14c807fb1f7e41a60570c9a674f7ef756d3551799e7f9a81fef56d5d9095b73b",
+        "bend/registry_cave_features.bend": "1f8da67590819855d967eb306e9859a5751c7b339b723bff77856ea882c239f2",
+        "bend/registry_material.bend": "b28952c7b085865d41f853d55e287c0c0bb8000442cc2c94b37325daaab8d29e",
+        "bend/lake_candidates.bend": "2ade065dbeffb8e20bf4a44ad5acd8a7759855be344a79e991c6e0c90c3085d8",
+        "bend/precise.bend": "50ba7138300f2c913b2d75a554a78d88bfb09931c6cd58ecc884ab7024c73c01",
+        "bend/compression.bend": "e42e1a312180ee0fce6faad39fc82b9a2e43ba05727e04d9a3c8e7651dd14130",
+        "bend/chunk.bend": "9f4e2609758c67dfa3dccd7234ef8c6655e9e34ac298a75d76c1ff2a9c3018c1",
+        "bend/material_program.bend": "f4b7e78629f7eecd991418eb00fa3face480954b300fa996e370d4c16c35128c",
+        "bend/density_batch.bend": "51231a72efa798c9a31f1a6a841176ea50d1ac5644352b389e3d1a9bff30d99c",
+        "bend/lake_lattice.bend": "7eb8771cf7a6ba10cf47b911cb66028c405b8ad27845f80fb16e54a00dd7e648",
+        "scripts/test_bend_light_volume.py": "6298a9f651685cd81a614c593ad2aefae12c8f74663350c62172f575f1443f47",
+        "bend/material_lazy.bend": "8675a4ea5d3e1b164d1d2a71b248c9ec23078c05da9880fb5470b543a6de1f10",
+        "bend/cave_lattice.bend": "7dce03f819639b033658d26dc142b957f2e59e6a6406e4d85743cbec04192a41",
+        "bend/noise.bend": "80485dd8d18580a1044c8e55dbd03dab1b8dbdd9aa6681e1b8f6743fce928c1d"
+      }
+    },
+    "limitations": [
+      "Small fixture correctness only; no full region or speedup claim.",
+      "CPU execution only; GPU behavior unverified."
+    ]
+  },
+  "lighting_cpu_control": {
+    "schema": "retina.benchmark-control.v1",
+    "status": "completed",
+    "max_seconds": 30.0,
+    "termination_grace_seconds": 1.0,
+    "command": [
+      "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3",
+      "/Users/cyberpwn/.codex/worktrees/bend-compiler-convergence/Retina/scripts/check_bend_lighting.py",
+      "--profile",
+      "/Users/cyberpwn/.local/share/retina-bend/2.0.36/backend-artifacts/final-biome-queries-9209182f30d7/build/bend/profiles/profile-0.json",
+      "--output",
+      "build/bend/compiler-convergence/lighting-cpu",
+      "--max-seconds",
+      "30"
+    ],
+    "started_unix": 1792261463.159394,
+    "pid": 23433,
+    "exit_code": 0,
+    "elapsed_seconds": 16.723039709031582
+  },
+  "lighting_metal": {
+    "status": "passed",
+    "mode": "metal",
+    "compiler_sha256": "0b5d350546132665742dfa36785752ac170601c6228858d77323b9a4f6761af9",
+    "generated_c_sha256": "b8def44c95cb8bc59fb7764879e1bcb4a8223eb8da0073490bf42a86932f1b5e",
+    "native_source_sha256": "f14901da3fe35bcc340588a47c333fa07b5cd2fa4f9e4f84a2b3b16268c89989",
+    "result": {
+      "checks": [
+        {
+          "scope": "Compare Bend's brick lighting to an independent scalar flood fill.\n\nUses actual exported Minecraft optics and paired face coverage. Tests both light\nchannels, opaque emitters, fluids/leaves, partial shapes, isolated cavities,\nbrick boundaries and virtual top/bottom sections. No MCA/whole-region claim.",
+          "cpu_threads": 2,
+          "gpu_requested": true,
+          "profile_sha256": "aefce6ff0e800966ad55920c5d21510dfa277de4612f67e22d5146d3aa838203",
+          "binary_sha256": "8ec62516bbb0f5a055abe7660a6dbb8d8dcfbf1c7806e7704ca7c99ca788eb0e",
+          "results": [
+            {
+              "name": "opaque-emitter-brick",
+              "voxels": 36864,
+              "sha256": "a641588e1126e83ee6791b2e85de8394a8279b743b76b4cd65f45739731602f7",
+              "wall_ms": 892.0934998895973,
+              "metal_dispatch_ms": [
+                195.793375,
+                12.197625,
+                26.343917,
+                29.235125,
+                28.056,
+                26.116875,
+                26.377167,
+                38.20325,
+                33.493708,
+                29.203125,
+                38.147125,
+                44.41975,
+                46.3115,
+                45.625375,
+                46.769458,
+                47.142375
+              ]
+            }
+          ],
+          "sources": {
+            "bend/shoreline.bend": "1d5eecef867d52e443597ffe8fffef7077bd9203742bdba7804e8f6c06fa5aeb",
+            "bend/chunk.bend": "9f4e2609758c67dfa3dccd7234ef8c6655e9e34ac298a75d76c1ff2a9c3018c1",
+            "bend/cave_lattice.bend": "7dce03f819639b033658d26dc142b957f2e59e6a6406e4d85743cbec04192a41",
+            "bend/nbt.bend": "7063555acf523d12269bd152e1e32981534009785b6a7653509f1a108b18cb57",
+            "bend/aquifer.bend": "a9537fa65402553acec5578d4a2474036f2190142a6e9d9c1faf3c7c0cc03e36",
+            "bend/light_rules.bend": "64a597da4a64699c950798a7cb3d9ca37b344acc1bdd53f3a62a4c0742a43943",
+            "bend/compression.bend": "e42e1a312180ee0fce6faad39fc82b9a2e43ba05727e04d9a3c8e7651dd14130",
+            "bend/heightmaps.bend": "0b69c87d24ec3b27cbb082bb394205765154bf78c5c4db2c226fbc4ba3e2d997",
+            "bend/lake_lattice.bend": "7eb8771cf7a6ba10cf47b911cb66028c405b8ad27845f80fb16e54a00dd7e648",
+            "bend/word64.bend": "62e104fbbc56208d66457789a7f2ed3f5fe122f4a19068c3df9b3bbbf555e139",
+            "bend/precise.bend": "50ba7138300f2c913b2d75a554a78d88bfb09931c6cd58ecc884ab7024c73c01",
+            "bend/tests/light-volume.bend": "5a7e10eff7226dfc31dd651c94d2c2d5bf2c6d35d2821f84953763d2f66a0d20",
+            "bend/binary.bend": "f716146b3a19403c4ad208ce37c2056f9ba023d6b76a3fecba5c3253185d9b68",
+            "bend/numbers.bend": "858ea999141639aa26c559a2e06a87d62c58e93d0d8d3a793bb530b629060956",
+            "bend/material_program.bend": "f4b7e78629f7eecd991418eb00fa3face480954b300fa996e370d4c16c35128c",
+            "bend/aquifer_lattice.bend": "cc43ecd6d6c5893f351f51e1a56f8830fbeaa5f923f23e9bfa0b967cad8c1a85",
+            "bend/tests/compress-file.bend": "1a7ffa73eda62ac1ef59306247705e2ab25cffd2048dc6b50f6b77326d29a51d",
+            "bend/material_columns_data.bend": "309ad22f3858ba801421073319a671b218b473ee6887d3ca75bef5ccd1e26a9a",
+            "bend/noise.bend": "80485dd8d18580a1044c8e55dbd03dab1b8dbdd9aa6681e1b8f6743fce928c1d",
+            "bend/registry.bend": "433b4dbb17b127dd322a11465a1111ddadd86a8682597310c062a194aa802296",
+            "bend/terrain_height.bend": "bc5400f024c86b34294cc628b364d7ceb67fd9675cb2de77a3cbe06b519be8a2",
+            "bend/registry_cave_features.bend": "1f8da67590819855d967eb306e9859a5751c7b339b723bff77856ea882c239f2",
+            "bend/packed.bend": "b4ebd29bc4d31d53ddcc221f64c84e68c5bde4a0fbbb51acfdaa9ddd01e2c23f",
+            "bend/material_batch.bend": "e34ee066c23a5328d279c5137ce2d107f2e4df661d63d3de373970d5cbee2073",
+            "bend/palette.bend": "4f813fb89317308dc02c70d36cf5e3eeaf6d62a9a82477b781b976be5eee82ff",
+            "bend/cave_features_data.bend": "d46ac6fd858755318de508c48eb60f07a5ba10352d0e393c340429f49b9c4abc",
+            "bend/lake_terrain.bend": "a1fc29c8f9ba0cebece840423ca9b9208c986186239736f771f336a4aeebe316",
+            "bend/lake_candidates.bend": "2ade065dbeffb8e20bf4a44ad5acd8a7759855be344a79e991c6e0c90c3085d8",
+            "bend/registry_material.bend": "b28952c7b085865d41f853d55e287c0c0bb8000442cc2c94b37325daaab8d29e",
+            "bend/geology.bend": "9cb01c921b02127b84593f6c52a19f9ab4de88fdf8bfd660ff5f69d02379e414",
+            "bend/tests/binary-fixtures.bend": "02ea592c9b590739c40cb07211e321520ae70207f3212d97257ea16ad74e3207",
+            "bend/chunk_catalog.bend": "666d5f98e2128a31a49f36ccdf0a1da7d7cb59067ce58d3cd1d0da3742963df3",
+            "bend/material.bend": "fea1e62174797c5b44634f3674dfc550d0178f207524193ed0d9416fbbf70f64",
+            "bend/density.bend": "01beac1b7443695c1507293a7d916489ac5441235c1e07290330691864b56aae",
+            "bend/registry_values.bend": "5bb1d3ab6bfed7cf640af35089a5ec1370cc2f686d7cfb8b210e7643e1b3d97f",
+            "bend/transport.bend": "2d7b2667aaf37b537de8be6c584acaeaec37377da475741bfe790a46d9c76f81",
+            "bend/light_volume.bend": "e4dafad89ecaa9274a016f889dfdc89328b15911fae0a2a7a20e1438e0602df1",
+            "scripts/test_bend_light_volume.py": "6298a9f651685cd81a614c593ad2aefae12c8f74663350c62172f575f1443f47",
+            "bend/lake_data.bend": "2951da8dbd6b05ede1d4f038579d5a89d79b6ce7d34d45d56da82a8bd7d84492",
+            "bend/registry_density.bend": "0c1972222bbcdfead41b30ae0453f7e05e85ab7bb446c113c3a07a8b12f56cb7",
+            "bend/reader.bend": "e659a2cac6b8435f02fd0fe91902ceca918055d026ec1908845186bee4fdc0ac",
+            "bend/ore_data.bend": "de874dc61201a0414c2c37a95bc84d1405d9b9e055197c10f2e7e64540bb4e29",
+            "bend/terrain_surface.bend": "26687ac40e62949ca563d7f31117207fa0eb053d82f51b58a14e84b9a2d4d652",
+            "bend/climate.bend": "c3310f5baab096dfce69c001e968f03eec42c5cf4c2716a4b4c7d84334db0a3a",
+            "bend/material_lazy.bend": "8675a4ea5d3e1b164d1d2a71b248c9ec23078c05da9880fb5470b543a6de1f10",
+            "bend/density_lattice.bend": "b361b8d9eef91105cc60990e39d7f2630efa1bcb5049837b1b5ab6b650db9b49",
+            "bend/density_batch.bend": "51231a72efa798c9a31f1a6a841176ea50d1ac5644352b389e3d1a9bff30d99c",
+            "bend/material_columns.bend": "14c807fb1f7e41a60570c9a674f7ef756d3551799e7f9a81fef56d5d9095b73b"
+          },
+          "observed_metal": {
+            "completed_buffers": 16,
+            "device_ms": [
+              195.793375,
+              12.197625,
+              26.343917,
+              29.235125,
+              28.056,
+              26.116875,
+              26.377167,
+              38.20325,
+              33.493708,
+              29.203125,
+              38.147125,
+              44.41975,
+              46.3115,
+              45.625375,
+              46.769458,
+              47.142375
+            ]
+          }
+        },
+        {
+          "scope": "Compare Bend's brick lighting to an independent scalar flood fill.\n\nUses actual exported Minecraft optics and paired face coverage. Tests both light\nchannels, opaque emitters, fluids/leaves, partial shapes, isolated cavities,\nbrick boundaries and virtual top/bottom sections. No MCA/whole-region claim.",
+          "cpu_threads": 2,
+          "gpu_requested": true,
+          "profile_sha256": "aefce6ff0e800966ad55920c5d21510dfa277de4612f67e22d5146d3aa838203",
+          "binary_sha256": "8ec62516bbb0f5a055abe7660a6dbb8d8dcfbf1c7806e7704ca7c99ca788eb0e",
+          "results": [
+            {
+              "name": "registered-optics-gallery",
+              "voxels": 76800,
+              "sha256": "9affd93163ad457cd0a89246401c050a5da74955a4a1e141c3974f52afcfcb62",
+              "wall_ms": 892.5966250244528,
+              "metal_dispatch_ms": [
+                229.418292,
+                4.311,
+                38.08275,
+                35.430792,
+                32.088292,
+                33.613,
+                34.527042,
+                33.736625,
+                35.2825,
+                34.96625,
+                33.437375,
+                29.698583,
+                29.581125,
+                29.193875,
+                26.23875,
+                24.499625
+              ]
+            }
+          ],
+          "sources": {
+            "bend/packed.bend": "b4ebd29bc4d31d53ddcc221f64c84e68c5bde4a0fbbb51acfdaa9ddd01e2c23f",
+            "bend/heightmaps.bend": "0b69c87d24ec3b27cbb082bb394205765154bf78c5c4db2c226fbc4ba3e2d997",
+            "bend/chunk.bend": "9f4e2609758c67dfa3dccd7234ef8c6655e9e34ac298a75d76c1ff2a9c3018c1",
+            "bend/terrain_surface.bend": "26687ac40e62949ca563d7f31117207fa0eb053d82f51b58a14e84b9a2d4d652",
+            "bend/terrain_height.bend": "bc5400f024c86b34294cc628b364d7ceb67fd9675cb2de77a3cbe06b519be8a2",
+            "bend/nbt.bend": "7063555acf523d12269bd152e1e32981534009785b6a7653509f1a108b18cb57",
+            "bend/binary.bend": "f716146b3a19403c4ad208ce37c2056f9ba023d6b76a3fecba5c3253185d9b68",
+            "bend/transport.bend": "2d7b2667aaf37b537de8be6c584acaeaec37377da475741bfe790a46d9c76f81",
+            "bend/lake_terrain.bend": "a1fc29c8f9ba0cebece840423ca9b9208c986186239736f771f336a4aeebe316",
+            "bend/geology.bend": "9cb01c921b02127b84593f6c52a19f9ab4de88fdf8bfd660ff5f69d02379e414",
+            "bend/material_columns.bend": "14c807fb1f7e41a60570c9a674f7ef756d3551799e7f9a81fef56d5d9095b73b",
+            "bend/lake_candidates.bend": "2ade065dbeffb8e20bf4a44ad5acd8a7759855be344a79e991c6e0c90c3085d8",
+            "bend/cave_features_data.bend": "d46ac6fd858755318de508c48eb60f07a5ba10352d0e393c340429f49b9c4abc",
+            "bend/noise.bend": "80485dd8d18580a1044c8e55dbd03dab1b8dbdd9aa6681e1b8f6743fce928c1d",
+            "bend/ore_data.bend": "de874dc61201a0414c2c37a95bc84d1405d9b9e055197c10f2e7e64540bb4e29",
+            "bend/palette.bend": "4f813fb89317308dc02c70d36cf5e3eeaf6d62a9a82477b781b976be5eee82ff",
+            "bend/light_volume.bend": "e4dafad89ecaa9274a016f889dfdc89328b15911fae0a2a7a20e1438e0602df1",
+            "bend/material_lazy.bend": "8675a4ea5d3e1b164d1d2a71b248c9ec23078c05da9880fb5470b543a6de1f10",
+            "bend/light_rules.bend": "64a597da4a64699c950798a7cb3d9ca37b344acc1bdd53f3a62a4c0742a43943",
+            "bend/climate.bend": "c3310f5baab096dfce69c001e968f03eec42c5cf4c2716a4b4c7d84334db0a3a",
+            "bend/tests/light-volume.bend": "5a7e10eff7226dfc31dd651c94d2c2d5bf2c6d35d2821f84953763d2f66a0d20",
+            "bend/density_batch.bend": "51231a72efa798c9a31f1a6a841176ea50d1ac5644352b389e3d1a9bff30d99c",
+            "bend/registry_material.bend": "b28952c7b085865d41f853d55e287c0c0bb8000442cc2c94b37325daaab8d29e",
+            "bend/numbers.bend": "858ea999141639aa26c559a2e06a87d62c58e93d0d8d3a793bb530b629060956",
+            "bend/density.bend": "01beac1b7443695c1507293a7d916489ac5441235c1e07290330691864b56aae",
+            "bend/lake_lattice.bend": "7eb8771cf7a6ba10cf47b911cb66028c405b8ad27845f80fb16e54a00dd7e648",
+            "bend/reader.bend": "e659a2cac6b8435f02fd0fe91902ceca918055d026ec1908845186bee4fdc0ac",
+            "bend/compression.bend": "e42e1a312180ee0fce6faad39fc82b9a2e43ba05727e04d9a3c8e7651dd14130",
+            "bend/tests/compress-file.bend": "1a7ffa73eda62ac1ef59306247705e2ab25cffd2048dc6b50f6b77326d29a51d",
+            "bend/material_program.bend": "f4b7e78629f7eecd991418eb00fa3face480954b300fa996e370d4c16c35128c",
+            "bend/material_batch.bend": "e34ee066c23a5328d279c5137ce2d107f2e4df661d63d3de373970d5cbee2073",
+            "bend/word64.bend": "62e104fbbc56208d66457789a7f2ed3f5fe122f4a19068c3df9b3bbbf555e139",
+            "scripts/test_bend_light_volume.py": "6298a9f651685cd81a614c593ad2aefae12c8f74663350c62172f575f1443f47",
+            "bend/lake_data.bend": "2951da8dbd6b05ede1d4f038579d5a89d79b6ce7d34d45d56da82a8bd7d84492",
+            "bend/material.bend": "fea1e62174797c5b44634f3674dfc550d0178f207524193ed0d9416fbbf70f64",
+            "bend/chunk_catalog.bend": "666d5f98e2128a31a49f36ccdf0a1da7d7cb59067ce58d3cd1d0da3742963df3",
+            "bend/tests/binary-fixtures.bend": "02ea592c9b590739c40cb07211e321520ae70207f3212d97257ea16ad74e3207",
+            "bend/material_columns_data.bend": "309ad22f3858ba801421073319a671b218b473ee6887d3ca75bef5ccd1e26a9a",
+            "bend/density_lattice.bend": "b361b8d9eef91105cc60990e39d7f2630efa1bcb5049837b1b5ab6b650db9b49",
+            "bend/shoreline.bend": "1d5eecef867d52e443597ffe8fffef7077bd9203742bdba7804e8f6c06fa5aeb",
+            "bend/registry_values.bend": "5bb1d3ab6bfed7cf640af35089a5ec1370cc2f686d7cfb8b210e7643e1b3d97f",
+            "bend/registry_cave_features.bend": "1f8da67590819855d967eb306e9859a5751c7b339b723bff77856ea882c239f2",
+            "bend/registry_density.bend": "0c1972222bbcdfead41b30ae0453f7e05e85ab7bb446c113c3a07a8b12f56cb7",
+            "bend/registry.bend": "433b4dbb17b127dd322a11465a1111ddadd86a8682597310c062a194aa802296",
+            "bend/cave_lattice.bend": "7dce03f819639b033658d26dc142b957f2e59e6a6406e4d85743cbec04192a41",
+            "bend/aquifer_lattice.bend": "cc43ecd6d6c5893f351f51e1a56f8830fbeaa5f923f23e9bfa0b967cad8c1a85",
+            "bend/precise.bend": "50ba7138300f2c913b2d75a554a78d88bfb09931c6cd58ecc884ab7024c73c01",
+            "bend/aquifer.bend": "a9537fa65402553acec5578d4a2474036f2190142a6e9d9c1faf3c7c0cc03e36"
+          },
+          "observed_metal": {
+            "completed_buffers": 16,
+            "device_ms": [
+              229.418292,
+              4.311,
+              38.08275,
+              35.430792,
+              32.088292,
+              33.613,
+              34.527042,
+              33.736625,
+              35.2825,
+              34.96625,
+              33.437375,
+              29.698583,
+              29.581125,
+              29.193875,
+              26.23875,
+              24.499625
+            ]
+          }
+        }
+      ]
+    },
+    "limitations": [
+      "Small fixture correctness only; no full region or speedup claim.",
+      "Metal mode uses host timing diagnostics; it is not a production performance measurement."
+    ],
+    "gpu_archive_sha256": "d6e55022d6194fae6c8604060c2bfd76ee0c2510db722680da9087cd9b91c905"
+  },
+  "lighting_metal_control": {
+    "schema": "retina.benchmark-control.v1",
+    "status": "completed",
+    "max_seconds": 45.0,
+    "termination_grace_seconds": 1.0,
+    "command": [
+      "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3",
+      "/Users/cyberpwn/.codex/worktrees/bend-compiler-convergence/Retina/scripts/check_bend_lighting.py",
+      "--metal",
+      "--profile",
+      "/Users/cyberpwn/.local/share/retina-bend/2.0.36/backend-artifacts/final-biome-queries-9209182f30d7/build/bend/profiles/profile-0.json",
+      "--output",
+      "build/bend/compiler-convergence/lighting-metal",
+      "--max-seconds",
+      "45"
+    ],
+    "started_unix": 1792261555.517667,
+    "pid": 24406,
+    "exit_code": 0,
+    "elapsed_seconds": 23.07026187493466
+  },
+  "java": {
+    "command": ":common:compileJava --max-workers=2 --no-parallel -Dorg.gradle.jvmargs='-Xmx2G -XX:ActiveProcessorCount=2'",
+    "result": "BUILD SUCCESSFUL",
+    "elapsed_seconds": 9
+  },
+  "python_tests": {
+    "installer": 2,
+    "build_stages": 8,
+    "supervisor": 8,
+    "lighting_harness": 5
+  },
+  "metal_archive_attempts": [
+    {
+      "schema": "retina.benchmark-control.v1",
+      "status": "timed_out",
+      "max_seconds": 180.0,
+      "termination_grace_seconds": 1.0,
+      "command": [
+        "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3",
+        "/Users/cyberpwn/.codex/worktrees/bend-compiler-convergence/Retina/scripts/build_bend_worker.py",
+        "metal",
+        "--binary",
+        "build/bend/compiler-convergence/native/engine",
+        "--output",
+        "build/bend/compiler-convergence/metal",
+        "--max-seconds",
+        "180"
+      ],
+      "started_unix": 1792260300.932912,
+      "pid": 6204,
+      "exit_code": 124,
+      "reason": "Total runtime limit reached; no automatic retry",
+      "elapsed_seconds": 180.03064283402637
+    },
+    {
+      "schema": "retina.benchmark-control.v1",
+      "status": "timed_out",
+      "max_seconds": 600,
+      "termination_grace_seconds": 1.0,
+      "command": [
+        "nice",
+        "-n",
+        "10",
+        "/Users/cyberpwn/.codex/worktrees/bend-compiler-convergence/Retina/build/bend/compiler-convergence/metal/engine",
+        "--threads",
+        "2",
+        "--gpu-build"
+      ],
+      "started_unix": 1792260664.896619,
+      "pid": 9115,
+      "exit_code": 124,
+      "reason": "Total runtime limit reached; no automatic retry",
+      "elapsed_seconds": 600.0261708339676
+    }
+  ],
+  "limitations": [
+    "The terrain integration sample is 64x64 blocks (16 chunks); no new complete-region performance or gameplay claim.",
+    "Complete-region throughput, Minecraft gameplay, and DH acceptance remain separate goal work.",
+    "The earlier broad climate harnesses reached 60/45-second deadlines; their partial output is not reported as a full harness pass."
+  ],
+  "diagnostic_emission": {
+    "purpose": "Logging-only extracted compiler copy; not the source of the native worker.",
+    "passes_to_convergence": 13,
+    "source_definitions_and_types": 4902,
+    "final_owned_parameters": 8587,
+    "final_hot_keys": 1158,
+    "final_static_constructors": 42,
+    "elapsed_seconds": 293.5443267081864,
+    "max_sampled_rss_bytes": 4456644608,
+    "note": "Official, unmodified compiler emitted the production candidate separately. Compiler convergence is finite, not a hang. No build-speed comparison is claimed."
+  },
+  "gpu_runtime": {
+    "engine": {
+      "gpu_required": true,
+      "grids": [
+        {
+          "width": 16,
+          "height": 16,
+          "step": 1,
+          "sha256": "ea1898c42bad031d70f518b6b64f57f23a6e20d9b824c06249291905a4fd4e83"
+        },
+        {
+          "width": 13,
+          "height": 17,
+          "step": 1,
+          "sha256": "fc83619d0ebecb76109b34063db3a6ce5249a01b2ed5b5733aa68427f17c6780"
+        },
+        {
+          "width": 64,
+          "height": 64,
+          "step": 3,
+          "sha256": "773c9791ec0e61659ff994490ac3ba543883583df1bc6b928df663e8690e4eef"
+        },
+        {
+          "width": 512,
+          "height": 512,
+          "step": 1,
+          "sha256": "0e1ecfbbf6e60a3abb36ae2a3da353d330450396cfbc999dd8f8bb0d198cfd6a"
+        }
+      ],
+      "max_reference_error": 3.6100139255701436e-07,
+      "compression": [
+        {
+          "input_bytes": 0,
+          "compressed_bytes": 8
+        },
+        {
+          "input_bytes": 131072,
+          "compressed_bytes": 1482
+        },
+        {
+          "input_bytes": 65536,
+          "compressed_bytes": 65552
+        },
+        {
+          "input_bytes": 1048576,
+          "compressed_bytes": 1048667
+        }
+      ],
+      "requests_in_one_process": 127,
+      "observed_metal_command_ms": []
+    },
+    "elapsed_seconds": 5.103150583105162
+  },
+  "combined_climate_gpu": {
+    "status": "passed",
+    "mode": "gpu",
+    "profiles": [
+      {
+        "name": "combined",
+        "queries": 42,
+        "unmapped_biomes": 2,
+        "sha256": "d26d1abe85c7e465bc54fcf8bad09c7c6bb96b3351c18c86c017efffc1f4c78d",
+        "elapsed_seconds": 26.81328733288683
+      }
+    ]
+  },
+  "combined_climate_gpu_control": {
+    "schema": "retina.benchmark-control.v1",
+    "status": "completed",
+    "max_seconds": 45,
+    "termination_grace_seconds": 1.0,
+    "command": [
+      "nice",
+      "-n",
+      "10",
+      "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3",
+      "build/bend/compiler-convergence/probe-profile-climate.py",
+      "gpu",
+      "combined"
+    ],
+    "started_unix": 1792262528.245265,
+    "pid": 40021,
+    "exit_code": 0,
+    "elapsed_seconds": 26.985465708188713
+  },
+  "terrain_integration": {
+    "scope": "One 64x64-block integration tile (16 chunks), not a full region benchmark.",
+    "binary_sha256": "671cf9b6b56ee6a62bb568f8699bdb6d31cfa1339661414ed0e724f6528843ce",
+    "run": {
+      "lighting": true,
+      "lit_chunks": 4,
+      "successful_voxel_pass_invalidates_light": true,
+      "outside_terrain_queries_rejected": true,
+      "final_biome_queries_checked": 384,
+      "cross_seed_biome_queries_preserve_light": true,
+      "metadata": {
+        "starts": 0,
+        "references": 0,
+        "block_entities": 0,
+        "entities": 0
+      },
+      "gpu_required": true,
+      "gpu_memory": "4GB",
+      "size": 64,
+      "chunks": 16,
+      "sectors": 35,
+      "bytes": 143360,
+      "sha256": "062e3f282522207421d03f6fa0f3dd97f1201f469fd59e1e6765db0d8708b2cc",
+      "selected_blocks_checked": 884736,
+      "invalid_requests_rejected": 40,
+      "rejected_commands_preserve_chunks": true,
+      "profile_reload_invalidates_grid": true,
+      "stages": [
+        {
+          "name": "profile",
+          "opcode": 5,
+          "wall_ms": 11014.985917136073,
+          "sampled_peak_rss": 244465664,
+          "observed_metal_ms": []
+        },
+        {
+          "name": "density model",
+          "opcode": 11,
+          "wall_ms": 27.695124968886375,
+          "sampled_peak_rss": 244465664,
+          "observed_metal_ms": []
+        },
+        {
+          "name": "materials",
+          "opcode": 19,
+          "wall_ms": 59.14520914666355,
+          "sampled_peak_rss": 244465664,
+          "observed_metal_ms": []
+        },
+        {
+          "name": "palette",
+          "opcode": 21,
+          "wall_ms": 2.843833062797785,
+          "sampled_peak_rss": 244465664,
+          "observed_metal_ms": []
+        },
+        {
+          "name": "geology",
+          "opcode": 30,
+          "wall_ms": 258.5742911323905,
+          "sampled_peak_rss": 247349248,
+          "observed_metal_ms": []
+        },
+        {
+          "name": "aquifers",
+          "opcode": 37,
+          "wall_ms": 12.783084064722061,
+          "sampled_peak_rss": 247349248,
+          "observed_metal_ms": []
+        },
+        {
+          "name": "climate",
+          "opcode": 9,
+          "wall_ms": 231.72687483020127,
+          "sampled_peak_rss": 247349248,
+          "observed_metal_ms": []
+        },
+        {
+          "name": "surface bounds",
+          "opcode": 15,
+          "wall_ms": 4.966874839738011,
+          "sampled_peak_rss": 247349248,
+          "observed_metal_ms": []
+        },
+        {
+          "name": "chunk catalog",
+          "opcode": 25,
+          "wall_ms": 104.20754086226225,
+          "sampled_peak_rss": 272089088,
+          "observed_metal_ms": []
+        },
+        {
+          "name": "lighting optics",
+          "opcode": 60,
+          "wall_ms": 23.523041047155857,
+          "sampled_peak_rss": 272089088,
+          "observed_metal_ms": []
+        },
+        {
+          "name": "density descriptor",
+          "opcode": 18,
+          "wall_ms": 0.13145804405212402,
+          "sampled_peak_rss": 272089088,
+          "observed_metal_ms": []
+        },
+        {
+          "name": "density lattice",
+          "opcode": 13,
+          "wall_ms": 839.6725829225034,
+          "sampled_peak_rss": 274300928,
+          "observed_metal_ms": []
+        },
+        {
+          "name": "surface climate",
+          "opcode": 16,
+          "wall_ms": 132.19566689804196,
+          "sampled_peak_rss": 274432000,
+          "observed_metal_ms": []
+        },
+        {
+          "name": "shorelines",
+          "opcode": 29,
+          "wall_ms": 234.08112511970103,
+          "sampled_peak_rss": 274432000,
+          "observed_metal_ms": []
+        },
+        {
+          "name": "lakes",
+          "opcode": 43,
+          "wall_ms": 893.0648330133408,
+          "sampled_peak_rss": 274661376,
+          "observed_metal_ms": []
+        },
+        {
+          "name": "block columns",
+          "opcode": 22,
+          "wall_ms": 2964.450208004564,
+          "sampled_peak_rss": 362905600,
+          "observed_metal_ms": []
+        },
+        {
+          "name": "cave fields",
+          "opcode": 33,
+          "wall_ms": 2774.0705420728773,
+          "sampled_peak_rss": 386924544,
+          "observed_metal_ms": []
+        },
+        {
+          "name": "aquifer fields",
+          "opcode": 39,
+          "wall_ms": 164.07470894046128,
+          "sampled_peak_rss": 386924544,
+          "observed_metal_ms": []
+        },
+        {
+          "name": "carving",
+          "opcode": 35,
+          "wall_ms": 2698.0233748909086,
+          "sampled_peak_rss": 407470080,
+          "observed_metal_ms": []
+        },
+        {
+          "name": "ores including halo",
+          "opcode": 50,
+          "wall_ms": 6205.7152080815285,
+          "sampled_peak_rss": 410681344,
+          "observed_metal_ms": []
+        },
+        {
+          "name": "cave dressing including halo",
+          "opcode": 51,
+          "wall_ms": 14.021167065948248,
+          "sampled_peak_rss": 410681344,
+          "observed_metal_ms": []
+        },
+        {
+          "name": "vegetation core",
+          "opcode": 53,
+          "wall_ms": 1153.6970420274884,
+          "sampled_peak_rss": 452198400,
+          "observed_metal_ms": []
+        },
+        {
+          "name": "structures",
+          "opcode": 56,
+          "wall_ms": 831.7856669891626,
+          "sampled_peak_rss": 458997760,
+          "observed_metal_ms": []
+        },
+        {
+          "name": "weather",
+          "opcode": 54,
+          "wall_ms": 54.31895796209574,
+          "sampled_peak_rss": 458997760,
+          "observed_metal_ms": []
+        },
+        {
+          "name": "interior lighting",
+          "opcode": 61,
+          "wall_ms": 3135.9883749391884,
+          "sampled_peak_rss": 481951744,
+          "observed_metal_ms": []
+        },
+        {
+          "name": "repair light metadata",
+          "opcode": 62,
+          "wall_ms": 345.6914168782532,
+          "sampled_peak_rss": 487440384,
+          "observed_metal_ms": []
+        },
+        {
+          "name": "stream NBT/zlib/MCA",
+          "opcode": 55,
+          "wall_ms": 655.9537500143051,
+          "sampled_peak_rss": 503496704,
+          "observed_metal_ms": []
+        },
+        {
+          "name": "selected block columns",
+          "opcode": 24,
+          "wall_ms": 47.02549986541271,
+          "sampled_peak_rss": 514981888,
+          "observed_metal_ms": []
+        },
+        {
+          "name": "selected independent chunk command",
+          "opcode": 27,
+          "wall_ms": 173.25308406725526,
+          "sampled_peak_rss": 521797632,
+          "observed_metal_ms": []
+        },
+        {
+          "name": "selected block columns",
+          "opcode": 24,
+          "wall_ms": 42.74316690862179,
+          "sampled_peak_rss": 521797632,
+          "observed_metal_ms": []
+        },
+        {
+          "name": "selected independent chunk command",
+          "opcode": 27,
+          "wall_ms": 166.9855839572847,
+          "sampled_peak_rss": 521797632,
+          "observed_metal_ms": []
+        },
+        {
+          "name": "selected block columns",
+          "opcode": 24,
+          "wall_ms": 40.78404093161225,
+          "sampled_peak_rss": 521797632,
+          "observed_metal_ms": []
+        },
+        {
+          "name": "selected independent chunk command",
+          "opcode": 27,
+          "wall_ms": 167.37883281894028,
+          "sampled_peak_rss": 521797632,
+          "observed_metal_ms": []
+        },
+        {
+          "name": "selected block columns",
+          "opcode": 24,
+          "wall_ms": 46.32850014604628,
+          "sampled_peak_rss": 521797632,
+          "observed_metal_ms": []
+        },
+        {
+          "name": "selected independent chunk command",
+          "opcode": 27,
+          "wall_ms": 173.452541930601,
+          "sampled_peak_rss": 521797632,
+          "observed_metal_ms": []
+        },
+        {
+          "name": "selected block columns",
+          "opcode": 24,
+          "wall_ms": 43.027125066146255,
+          "sampled_peak_rss": 521797632,
+          "observed_metal_ms": []
+        },
+        {
+          "name": "selected independent chunk command",
+          "opcode": 27,
+          "wall_ms": 324.06958285719156,
+          "sampled_peak_rss": 522027008,
+          "observed_metal_ms": []
+        },
+        {
+          "name": "selected block columns",
+          "opcode": 24,
+          "wall_ms": 43.63795812241733,
+          "sampled_peak_rss": 522027008,
+          "observed_metal_ms": []
+        },
+        {
+          "name": "selected independent chunk command",
+          "opcode": 27,
+          "wall_ms": 171.39425012283027,
+          "sampled_peak_rss": 522027008,
+          "observed_metal_ms": []
+        },
+        {
+          "name": "selected block columns",
+          "opcode": 24,
+          "wall_ms": 46.72720795497298,
+          "sampled_peak_rss": 522027008,
+          "observed_metal_ms": []
+        },
+        {
+          "name": "selected independent chunk command",
+          "opcode": 27,
+          "wall_ms": 179.2806249577552,
+          "sampled_peak_rss": 522027008,
+          "observed_metal_ms": []
+        },
+        {
+          "name": "selected block columns",
+          "opcode": 24,
+          "wall_ms": 47.05987498164177,
+          "sampled_peak_rss": 522027008,
+          "observed_metal_ms": []
+        },
+        {
+          "name": "selected independent chunk command",
+          "opcode": 27,
+          "wall_ms": 175.40429206565022,
+          "sampled_peak_rss": 522027008,
+          "observed_metal_ms": []
+        },
+        {
+          "name": "selected block columns",
+          "opcode": 24,
+          "wall_ms": 49.32208405807614,
+          "sampled_peak_rss": 522027008,
+          "observed_metal_ms": []
+        },
+        {
+          "name": "selected independent chunk command",
+          "opcode": 27,
+          "wall_ms": 177.58429097011685,
+          "sampled_peak_rss": 522027008,
+          "observed_metal_ms": []
+        },
+        {
+          "name": "weather invalidates light",
+          "opcode": 54,
+          "wall_ms": 120.34354195930064,
+          "sampled_peak_rss": 522027008,
+          "observed_metal_ms": []
+        },
+        {
+          "name": "reload profile",
+          "opcode": 5,
+          "wall_ms": 16090.619249967858,
+          "sampled_peak_rss": 570359808,
+          "observed_metal_ms": []
+        },
+        {
+          "name": "stop",
+          "opcode": 4,
+          "wall_ms": 0.09679212234914303,
+          "sampled_peak_rss": 570359808,
+          "observed_metal_ms": []
+        }
+      ],
+      "observed_metal_buffers": 0,
+      "sampled_peak_worker_rss": 570359808,
+      "body_growth_samples": [
+        {
+          "elapsed_seconds": 55.863770874915645,
+          "bytes": 8192
+        },
+        {
+          "elapsed_seconds": 56.36818970902823,
+          "bytes": 110592
+        },
+        {
+          "elapsed_seconds": 56.87791795888916,
+          "bytes": 143360
+        }
+      ],
+      "chunk_bytes_unchanged_by_header_patch": true,
+      "profile_sha256": "0dabbc089531d8e41f03e7f08fea5d70a6332f3db30edc17ba6ea2313c5e4f7a"
+    }
+  },
+  "terrain_control": {
+    "schema": "retina.benchmark-control.v1",
+    "status": "completed",
+    "max_seconds": 120,
+    "termination_grace_seconds": 1.0,
+    "command": [
+      "nice",
+      "-n",
+      "10",
+      "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3",
+      "build/bend/compiler-convergence/probe-terrain-64.py"
+    ],
+    "started_unix": 1792262635.152577,
+    "pid": 40795,
+    "exit_code": 0,
+    "elapsed_seconds": 78.17413537506945
+  },
+  "metal_archive": {
+    "schema": "retina.benchmark-control.v1",
+    "status": "completed",
+    "max_seconds": 1800,
+    "termination_grace_seconds": 1.0,
+    "command": [
+      "nice",
+      "-n",
+      "10",
+      "/Users/cyberpwn/.cache/retina/bend-2.0.37/macos-aarch64/671cf9b6b56ee6a62bb568f8699bdb6d31cfa1339661414ed0e724f6528843ce/engine",
+      "--threads",
+      "2",
+      "--gpu-build"
+    ],
+    "started_unix": 1792261414.503602,
+    "pid": 22895,
+    "exit_code": 0,
+    "elapsed_seconds": 793.8190742088482
+  },
+  "gpu_archive_sha256": "624fb2228b19db644f44694ac690b3228a5d3dc732be3b7a3b59332ead971822",
+  "gpu_archive_bytes": 24664496,
+  "installation": {
+    "path": "/Users/cyberpwn/.local/share/retina-bend/2.0.37/playable/engine",
+    "binary_sha256": "671cf9b6b56ee6a62bb568f8699bdb6d31cfa1339661414ed0e724f6528843ce",
+    "gpu_archive_sha256": "624fb2228b19db644f44694ac690b3228a5d3dc732be3b7a3b59332ead971822",
+    "gradle_packaged_byte_identical": true,
+    "prior_version_preserved": true
+  },
+  "java_runtime": [
+    {
+      "test": "BendWorkerTest",
+      "elapsed_seconds": 1.0082472080830485,
+      "command": [
+        "nice",
+        "-n",
+        "10",
+        "/Library/Java/JavaVirtualMachines/jdk-25.jdk/Contents/Home/bin/java",
+        "-XX:ActiveProcessorCount=2",
+        "-Xmx512m",
+        "-cp",
+        "build/bend/compiler-convergence/java:build/generated/bend-resources",
+        "art.arcane.retina.worldgen.BendWorkerTest",
+        "/Users/cyberpwn/.cache/retina/bend-2.0.37/macos-aarch64/671cf9b6b56ee6a62bb568f8699bdb6d31cfa1339661414ed0e724f6528843ce/engine"
+      ],
+      "status": "passed"
+    },
+    {
+      "test": "BendPackagedRuntimeTest",
+      "elapsed_seconds": 0.5097252919804305,
+      "command": [
+        "nice",
+        "-n",
+        "10",
+        "/Library/Java/JavaVirtualMachines/jdk-25.jdk/Contents/Home/bin/java",
+        "-XX:ActiveProcessorCount=2",
+        "-Xmx512m",
+        "-cp",
+        "build/bend/compiler-convergence/java:build/generated/bend-resources",
+        "art.arcane.retina.worldgen.BendPackagedRuntimeTest"
+      ],
+      "status": "passed"
+    }
+  ],
+  "java_runtime_control": {
+    "schema": "retina.benchmark-control.v1",
+    "status": "completed",
+    "max_seconds": 60,
+    "termination_grace_seconds": 1.0,
+    "command": [
+      "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3",
+      "build/bend/compiler-convergence/probe-java.py"
+    ],
+    "started_unix": 1792262821.4278111,
+    "pid": 43200,
+    "exit_code": 0,
+    "elapsed_seconds": 1.5744139580056071
+  },
+  "packaged_gpu_start_ms": [
+    85.93,
+    75.14
+  ],
+  "package_task": "packageBendRuntime --max-workers=2 --no-parallel",
+  "source_cache_preserved": true
+}
