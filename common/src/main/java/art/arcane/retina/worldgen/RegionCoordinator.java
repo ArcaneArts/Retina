@@ -23,7 +23,7 @@ public final class RegionCoordinator {
     // Two requested regions can overlap GPU/planning with the shared Rust assembly pool.
     private static final ExecutorService PREPARERS = Executors.newFixedThreadPool(2,
             Thread.ofPlatform().daemon().name("retina-region-prepare-", 0).factory());
-    private final Map<Long, CompletableFuture<AutoCloseable>> pending = new HashMap<>();
+    private final Map<Long, RegionPreparation> pending = new HashMap<>();
     private boolean closed;
     private final Set<Long> demanded = java.util.concurrent.ConcurrentHashMap.newKeySet();
     // Confined to the IOWorker's consecutive executor, including all MCA publication.
@@ -46,12 +46,13 @@ public final class RegionCoordinator {
         if (closed || previews == null || prepared.contains(key) || pending.containsKey(key) || pending.size() >= 4) return;
         Path destination = folder.resolve("r." + position.getRegionX() + "." + position.getRegionZ() + ".mca");
         if (!Files.notExists(destination)) return;
-        pending.put(key, CompletableFuture.supplyAsync(() -> previews.prepare(position), PREPARERS));
+        pending.put(key, new RegionPreparation(
+                CompletableFuture.supplyAsync(() -> previews.prepare(position), PREPARERS), RegionCoordinator::release));
     }
 
     public synchronized void close() {
         closed = true;
-        for (var future : pending.values()) future.thenAccept(RegionCoordinator::release);
+        for (var preparation : pending.values()) preparation.close();
         pending.clear();
     }
     private static void release(AutoCloseable lease) {
@@ -65,13 +66,13 @@ public final class RegionCoordinator {
         // Existing saved chunks still flow through the ordinary storage read below.
         if (generator.bendMode() && !demanded.contains(key)) return;
         if (prepared.contains(key)) {
-            CompletableFuture<AutoCloseable> unused;
+            RegionPreparation unused;
             synchronized (this) { unused = pending.remove(key); }
-            if (unused != null) unused.thenAccept(RegionCoordinator::release);
+            if (unused != null) unused.close();
             return;
         }
         var destination = storage.retina$folder().resolve("r." + position.getRegionX() + "." + position.getRegionZ() + ".mca");
-        CompletableFuture<AutoCloseable> preparation;
+        RegionPreparation preparation;
         synchronized (this) { preparation = pending.get(key); }
         AutoCloseable lease = null;
         generator.metrics().begin();
@@ -80,7 +81,7 @@ public final class RegionCoordinator {
             if (generator.bendMode() && BendRegionFiles.complete(destination,position,BendRegionBackend.REGION_CHUNKS)) {
                 prepared.add(key); generator.metrics().completedRegion(0,System.nanoTime()-started); return;
             }
-            if (preparation != null) lease = preparation.join();
+            if (preparation != null) preparation.await();
             else if (generator.bendMode()) lease = previews.prepare(position);
             // Includes cached misses. All reads/writes in this storage run on this same queue.
             storage.retina$closeRegion(position);
@@ -118,7 +119,13 @@ public final class RegionCoordinator {
             // initialization errors back to its future instead of abandoning the waiting read.
             throw new IOException("Retina MCA generation failed for " + destination, error);
         } finally {
-            synchronized (this) { pending.remove(key); }
+            // A completed on-disk region can skip await(), and request() may
+            // enqueue a prefetch after the initial lookup. Release both owners;
+            // an identical preparation (or concurrent close()) releases once.
+            RegionPreparation unused;
+            synchronized (this) { unused = pending.remove(key); }
+            if (unused != null) unused.close();
+            if (preparation != null) preparation.close();
             release(lease);
         }
     }

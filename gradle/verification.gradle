@@ -2,6 +2,28 @@ def nativeDirectory = rootProject.ext.nativeDirectory
 def nativeTarget = rootProject.ext.nativeTarget
 def nativeCargoCommand = rootProject.ext.nativeCargoCommand
 
+def regionPreparationClasses = tasks.register('regionPreparationClasses', JavaCompile) {
+    // Lease ownership is independent of Minecraft and either native backend.
+    source file('src/main/java/art/arcane/retina/worldgen/RegionPreparation.java'),
+            file('src/gpuTest/java/art/arcane/retina/worldgen/RegionPreparationTest.java')
+    classpath = files()
+    destinationDirectory = layout.buildDirectory.dir('region-preparation-test/classes')
+    javaCompiler = javaToolchains.compilerFor { languageVersion = JavaLanguageVersion.of(25) }
+    options.release = 25
+}
+
+tasks.register('regionPreparationTest', JavaExec) {
+    group = 'verification'
+    description = 'Check prefetched region lease release, skipped waits, failures and concurrent shutdown.'
+    dependsOn regionPreparationClasses
+    classpath = files(regionPreparationClasses.flatMap { it.destinationDirectory })
+    mainClass = 'art.arcane.retina.worldgen.RegionPreparationTest'
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
+    jvmArgs '-XX:ActiveProcessorCount=2'
+    maxHeapSize = '64m'
+    timeout = Duration.ofSeconds(10)
+}
+
 tasks.register('generationMetricsTest', JavaExec) {
     group = 'verification'
     description = 'Check rolling Rust/Bend timings, F3 formatting and packet transport without a native runtime.'

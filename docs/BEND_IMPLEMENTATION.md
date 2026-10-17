@@ -3354,3 +3354,21 @@ Rust/Bend compilation, game client or GitHub Actions ran for this cycle.
 worker/source hashes, independent entity-storage results and limitations.
 Fresh NeoForge generation, broader gameplay/datapack acceptance, the complete
 parity audit and equivalent controlled lit-region benchmarks remain required.
+
+### Prefetched region lease cleanup
+
+The shared region coordinator now owns each asynchronous prefetch through a
+`RegionPreparation`. Closing it releases its cache lease exactly once, including
+when generation finishes after cleanup. This covers Bend's already-complete
+saved-region path, which can skip waiting for a prefetch, and a request arriving
+between the publication path's initial lookup and final cleanup. Overlapping
+shutdown/publication cleanup cannot decrement the same cache pin twice.
+
+`:common:regionPreparationTest` compiles only the two dependency-free Java
+classes. It checks normal use, skipped waits, late completion, failure propagation,
+cancellation and concurrent cleanup with deterministic barriers. It and
+`:common:compileJava` passed locally under one 60-second deadline, two visible
+processors/two Gradle workers and reduced priority. No native compilation,
+terrain generation, GPU work, game launch or benchmark ran. This establishes
+lease ownership correctness; it does not add end-to-end gameplay or throughput
+evidence.
