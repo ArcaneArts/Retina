@@ -81,3 +81,34 @@ This decoder measurement is **not live chunk activation**: it excludes schedulin
 outer-ring lighting, entities entering a level and rendering. Actual dedicated
 server load-in measurements and the final Rust/Bend results belong in the
 comparison report once both runs and live loading have completed.
+
+## Live vanilla load-in
+
+After completing the generation measurements, `qa/backend_load_world.py` copies
+the three warm files into a new disposable world using their original seed and
+the selected Retina preset. It writes only QA metadata and server settings;
+the region files must match their recorded SHA-256 hashes. The world starts at
+the center of the existing (0,0) region. This fixture is for the vanilla corpus;
+datapack gameplay needs the corresponding packs and dimension settings as well.
+
+```sh
+python3 qa/backend_load_world.py build/backend-benchmark/bend build/backend-load-bend
+JAVA_TOOL_OPTIONS='-XX:ActiveProcessorCount=2 -Dretina.qa.loadBenchmark=true -Dretina.native.path=/retina-qa/no-rust-library' \
+  ./gradlew :fabric:runServer --args nogui -PretinaHostOnly \
+  -PretinaDatapackQa=build/backend-load-bend --max-workers=2 --no-parallel
+```
+
+The dedicated check requests 12 complete chunks, including both sides of two
+region seams, verifies active light and terrain, places a diamond-block edit,
+and saves/exits. Generation counters must stay zero. Repeat with
+`-Dretina.qa.loadBenchmark.reopen=true` to verify the saved edit and measure
+reloading. Results are saved under `world/retina-load-benchmark-first.json` and
+`world/retina-load-benchmark-reopen.json`; require the actual
+`minecraft_backend_load_benchmark` pass event. The JVM uptime includes bootstrap
+and normal spawn activation; per-request timings isolate synchronous full chunk
+activation. These are headless measurements, not rendering/FPS measurements.
+
+Repeat using the Rust output and a separate destination, removing the deliberate
+missing-native-library override. Compile both loaders before measuring, keep
+worker limits identical, and do not run servers concurrently with generation
+benchmarks. No interactive client needs to be launched.
