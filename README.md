@@ -6,9 +6,9 @@ The world type selector offers **Retina Rust**, the existing generator, and
 **Retina Bend**, an experimental independent Bend terrain pipeline. Bend combines
 registered density/interpolation, biomes, materials/shorelines, lakes, cave
 biomes/aquifers, carving, ores, cave dressing and surface trees/vegetation with
-Bend NBT/zlib/MCA writing and registered snow/freezing. Structures and full Bend lighting remain
-in progress; Minecraft lights the preview. Fresh spawn preparation currently
-takes several minutes. Rust remains the default Retina selection.
+Bend NBT/zlib/MCA writing, registered structures, snow/freezing and interior
+region lighting. Minecraft lights the boundary chunks. Generation is still slow
+and experimental; Rust remains the default Retina selection.
 See the [implementation checklist](docs/BEND_IMPLEMENTATION.md) for remaining
 parity and integration work.
 
@@ -34,8 +34,8 @@ packaging and unit-test work shared by the root build.
 
 Root `runClient`, `runServer` and `test` commands remain Fabric aliases.
 NeoForge run tasks have distinct names so Gradle's unqualified `runClient` task
-selector starts Fabric only. Ordinary launches reuse the installed Bend 2.0.36
-worker at `~/.local/share/retina-bend/2.0.36/playable/engine`, including its adjacent
+selector starts Fabric only. Ordinary launches reuse the installed Bend 2.0.37
+worker at `~/.local/share/retina-bend/2.0.37/playable/engine`, including its adjacent
 `engine.gpu` archive; they do not compile Bend. `-PretinaBendExecutable=...` or
 `RETINA_BEND_EXECUTABLE` can override that location. This host's preview runtime
 is installed there; other hosts must install their own compatible worker.

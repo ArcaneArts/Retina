@@ -15,8 +15,10 @@ import tempfile
 import time
 import zlib
 
+from bend_compiler import compiler_environment
+
 ROOT = Path(__file__).resolve().parents[1]
-VERSION = "2.0.36"
+VERSION = "2.0.37"
 DEFAULT_BEND = Path.home() / f".local/share/retina-bend/{VERSION}/bin/bend"
 
 
@@ -44,7 +46,7 @@ def metal_compiler_command(source, binary):
 
 
 def build(bend, binary, source=None):
-    env = dict(os.environ, BEND_NO_TELEMETRY="1")
+    env = compiler_environment()
     xcode = Path("/Applications/Xcode.app/Contents/Developer")
     if xcode.exists():
         env["CC"] = str(xcode / "Toolchains/XcodeDefault.xctoolchain/usr/bin/clang")

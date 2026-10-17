@@ -88,7 +88,7 @@ class Bend:
         self.event('worker', pid=self.worker.process.pid)
         try:
             handshake = struct.unpack('>5I', self.call('runtime handshake', 0))
-            assert handshake == (1, 2, 0, 36, 1), handshake
+            assert handshake == (1, 2, 0, 37, 1), handshake
             self.call('registry upload', 5, path_request(wire))
             for name, opcode in [('density programs', 11), ('material programs', 19),
                                  ('block palette', 21), ('geology recipes', 30), ('aquifer programs', 37),
@@ -98,7 +98,7 @@ class Bend:
         except BaseException:
             self.abort()
             raise
-        self.info = dict(execution='Bend 2.0.36 GPU_REQUIRED; irregular stages on CPU',
+        self.info = dict(execution='Bend 2.0.37 GPU_REQUIRED; irregular stages on CPU',
                          threads=2, gpu_heap='4GB', gpu_archive_sha256=sha(artifact.with_suffix('.gpu')),
                          startup_stages=self.stages)
 

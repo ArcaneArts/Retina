@@ -30,7 +30,7 @@ final class BendRegionBackend implements AutoCloseable, TerrainQueries.Backend {
     }
 
     String stage() { return stage; }
-    String backend() { return "Bend 2.0.36 / " + execution() + (execution()==BendWorker.Execution.CPU?"":" / "+gpuMemory+" heap") + " / " + stage; }
+    String backend() { return "Bend 2.0.37 / " + execution() + (execution()==BendWorker.Execution.CPU?"":" / "+gpuMemory+" heap") + " / " + stage; }
     private static BendWorker.Execution execution() {
         return System.getProperty("retina.bend.execution", "gpu").equals("cpu")
                 ? BendWorker.Execution.CPU : BendWorker.Execution.GPU_REQUIRED;

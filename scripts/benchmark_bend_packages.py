@@ -109,7 +109,7 @@ def main():
     parser.add_argument('--guard-lane', choices=['local', 'package'],
                         help='Stable-output equivalent compression driver for perf_guard.py capture.')
     args = parser.parse_args()
-    version = build(args.bend, args.binary, ROOT/'bend/tests/package-evaluation.bend') if args.build else 'bend 2.0.36 (prebuilt; see executable hash)'
+    version = build(args.bend, args.binary, ROOT/'bend/tests/package-evaluation.bend') if args.build else 'existing executable (see executable hash)'
     folder = args.output.parent/'outputs'
     folder.mkdir(parents=True, exist_ok=True)
     payloads = inputs(args.manifest)

@@ -79,13 +79,14 @@ lattice and voxel-work bounds.
 On the prepared development host, use `./gradlew runClient` from the repository
 root and select **Retina Rust** or **Retina Bend** while creating a world. This
 launches Fabric only. Gradle reuses the installed precompiled host worker at
-`~/.local/share/retina-bend/2.0.36/playable/engine` and its adjacent `engine.gpu`;
+`~/.local/share/retina-bend/2.0.37/playable/engine` and its adjacent `engine.gpu`;
 no extra launch flags or Bend compiler invocation are needed. Gradle defaults to
 two workers without parallel project execution; Cargo remains limited to two jobs.
 
+Install the official checksum-pinned compiler with `python3 scripts/install_bend.py`.
 Build the stock worker once, then explicitly package it; ordinary Java builds do
 not start Bend compilation. On this Apple Silicon host the pinned runtime is
-`~/.local/share/retina-bend/2.0.36/bin/bend`. The worker binary and adjacent
+`~/.local/share/retina-bend/2.0.37/bin/bend`. The worker binary and adjacent
 `engine.gpu` archive are copied as platform resources by:
 
 ```sh
@@ -95,14 +96,15 @@ CARGO_BUILD_JOBS=2 ./gradlew :fabric:build :neoforge:build \
 ```
 
 For development builds, `scripts/build_bend_worker.py` separates native C
-emission/compilation from Metal archive construction. Both stages default to a
+emission, native compilation and Metal archive construction. Each stage defaults to a
 30-second external deadline and one-second termination grace; `--max-seconds`
 explicitly changes the total stage deadline. Native mode uses one compiler at
 reduced priority and checks three CPU protocol requests with two runtime threads
-and the GPU disabled. The pinned Bend compiler is a bundled Bun 1.3.14 JavaScript
+and the GPU disabled. The pinned Bend compiler is a bundled Bun 1.4.0 JavaScript
 program: `RAYON_NUM_THREADS` does **not** limit its compilation. The bounded build,
 climate, lighting and frame-check scripts now use serial JSC garbage-collection
-marking and synchronous JIT compilation through `scripts/bend_compiler.py`.
+marking, synchronous JIT compilation and a 2 GiB JSC RAM heuristic through
+`scripts/bend_compiler.py`. The heuristic encourages earlier collection.
 These pinned runtime options reduce compiler concurrency; they are neither CPU
 affinity nor a hard memory limit. Metal
 mode takes `--binary`, copies that engine into its new output directory, and
@@ -111,15 +113,37 @@ system threads. Each stage keeps commands, source/artifact hashes, progress,
 logs and the supervisor outcome, without retrying or installing anything.
 
 ```sh
-python3 scripts/build_bend_worker.py native --output build/bend/native-worker
+python3 scripts/build_bend_worker.py emit --output build/bend/emitted --max-seconds 600
+RETINA_BEND_CC=/opt/homebrew/opt/llvm/bin/clang python3 scripts/build_bend_worker.py compile \
+  --source build/bend/emitted/engine.c --output build/bend/native-worker --max-seconds 600
 python3 scripts/build_bend_worker.py metal --binary build/bend/native-worker/engine \
-  --output build/bend/metal-worker
+  --output build/bend/metal-worker --max-seconds 1800
 ```
 
 These commands build development artifacts; they do not generate terrain or
 launch the client. A native protocol check or compiled GPU archive alone does
 not prove world-generation correctness or GPU execution. Keep the previous
 playable worker installed until the replacement pair has passed runtime checks.
+
+The example uses this host's LLVM workaround for an observed Apple Clang crash.
+Omit `RETINA_BEND_CC` on hosts where the default compiler works. Emission and
+compilation can be resumed separately using their real saved artifacts; neither
+stage fabricates success or reruns a completed stage automatically. `native`
+still combines emission and compilation when a single total deadline is wanted.
+
+The current 2.0.37 build emits the complete worker with the **unmodified
+release compiler** in 291.62 seconds; one LLVM native compilation takes 243.90
+seconds. Apple Metal archive compilation takes 793.82 seconds on this host.
+These are local build observations, not generation benchmarks or a controlled
+compiler-version comparison. A logging-only diagnostic compiler copy separately
+showed finite convergence after 13 ownership-analysis passes. It is not installed
+or used for the playable binary. The final archive is built at the same
+content-addressed path used by `BendRuntime`, allowing normal launches to reuse
+Metal's expensive compilation cache.
+
+See [the toolchain validation report](benchmarks/bend-worker-toolchain-update.json)
+for compiler/artifact hashes, completed checks and interrupted attempts. The
+following 2.0.36 investigations are historical and precede this rebuild.
 
 The 2026-10-17 [bounded rebuild attempts](benchmarks/bend-worker-bounded-build.json)
 did not finish C emission within 30 or 120 seconds. Neither produced a native
@@ -150,7 +174,7 @@ a sample, not a peak. The attempt had an 8 GiB sampled RSS stop and used a 4 GiB
 JSC RAM heuristic, which is not itself a memory cap. It produced no C or binary.
 The diagnostic compiler copy was never installed or used to build a playable
 worker, and no runtime algorithm was modified. Compiler convergence/allocation
-still needs investigation before another full build.
+was unresolved in that cycle; the subsequent 2.0.37 rebuild above completed.
 
 `--check-only` reached the compiler's formal-proof rejection for the engine's
 existing unsafe/foreign dependencies (3,956 definitions); it was not reported
@@ -173,12 +197,12 @@ property changes that stock runtime argument. Invalid/unsupported requests
 report actual runtime errors; they never select Rust or vanilla.
 
 Packaged workers extract to a content-addressed directory under
-`~/.cache/retina/bend-2.0.36/`. Metal's source-library cache is tied to executable
+`~/.cache/retina/bend-2.0.37/`. Metal's source-library cache is tied to executable
 location, so a new binary's first GPU start can take several minutes even with
 the packaged pipeline archive; subsequent starts reuse that location. The worker
 startup timeout allows this compilation and world shutdown can cancel it. Local
 preview delivery warms this cache before the gameplay test. The packaged runtime
-includes the [pinned Bend 2.0.36 license](https://github.com/bendlang/bend/blob/v2.0.36/LICENSE).
+includes the [pinned Bend 2.0.37 license](https://github.com/bendlang/bend/blob/v2.0.37/LICENSE).
 
 Focused local integration checks (using an already compiled worker):
 
@@ -332,10 +356,11 @@ terrain engine, Minecraft launch or benchmark ran. The compiled binary, fixtures
 and logs are retained outside the worktree; hashes, exact command, deadline and
 results are in `docs/benchmarks/bend-climate-coverage-cpu.json`.
 
-This establishes CPU execution of the changed climate projection and lookup,
-not complete backend parity. GPU execution, persistent-worker lifecycle and
-final surface/region integration checks remain outstanding. Existing reference
-and fixture-only checks are retained as separate, narrower evidence.
+That component check established CPU execution, not complete backend parity.
+The subsequent 2.0.37 worker rebuild also checks loaded vanilla/Terralith/combined
+profiles on CPU, the combined profile on the GPU, and a small vanilla terrain
+tile with final biome queries. Full-region coverage of this change remains
+outstanding. Existing narrower checks are retained separately.
 
 The [lighting optimization candidate](BEND_LIGHTING_OPTIMIZATION.md) removes
 redundant brick/optical reads and reuses destination attenuation while preserving
@@ -348,9 +373,16 @@ including native/shader compilation. Its outputs match the independent flood
 fill and prior CPU hashes, with 32 successfully completed Metal command buffers
 and positive device durations. The five Python orchestration tests also pass.
 Full-region integration and any speedup remain unverified for this change.
-The installed playable worker has not been rebuilt with this lighting change
-or the preceding climate fix. Routine work continues with bounded checks and
-reduced priority under the user's resource limits.
+The installed **2.0.37** worker now includes this lighting change and the climate
+fix. The [current rebuild report](benchmarks/bend-worker-toolchain-update.json)
+records 11 CPU and two observed Metal lighting scenes, full-worker CPU/GPU
+protocol checks, and a 64x64-block terrain integration sample. All 16 chunks
+parse, with four valid prelit interior chunks, 884,736 selected-block checks,
+384 final biome-query checks and 40 rejected-command checks. This is not a
+complete-region throughput benchmark. Java transport cancellation/failure tests
+and two actual packaged GPU starts pass; the warmed starts take 85.93 and 75.14
+ms. Both tested files are installed for ordinary `./gradlew runClient`; no game
+was launched. The old 2.0.36 installation remains available separately.
 
 | Requirement | Current Rust/shared source | Bend implementation / completion evidence |
 | --- | --- | --- |
@@ -377,7 +409,7 @@ reduced priority under the user's resource limits.
 | Backend selection survives datapacks, codecs, save/reopen and server lifecycle | `RetinaChunkGenerator.java`, preset/platform mixins | Bend codec/preset and registry-import preservation implemented; vanilla/Terralith registry checks and actual Fabric save/reopen pass. Full datapack gameplay combinations remain required |
 | Exactly two selectable world types; Rust default; legacy chunk-save migration aliases | `world_preset/gpu*.json`, world preset tag, language keys and generator codec | Exactly two selectable presets implemented; Rust remains default, legacy chunk aliases decode existing saves, Bend explicitly labels its preview limitations |
 | Color-coded stage report and last-20-region derived throughput | `GenerationMetrics.java`, `TerrainDebugReport.java`, `timings.rs` | Bend reports 18 colored host elapsed stages, rolling last-20 full-region latencies and derived throughput with actual 1024-chunk counts. Unit/packet checks and a fresh Fabric dedicated run verify every stage and packet round trip. GPU device timestamps remain explicitly unavailable for Bend, and visual client acceptance remains pending |
-| Reproducible pinned runtime, packaging, licensing and supported-loader builds | `gradle/native.gradle`, Fabric/NeoForge modules, CI | Pinned stock 2.0.36 host-worker packaging and license implemented; Fabric/NeoForge host builds pass. Other host binaries and production integration remain pending |
+| Reproducible pinned runtime, packaging, licensing and supported-loader builds | `gradle/native.gradle`, Fabric/NeoForge modules, CI | Pinned stock 2.0.37 host-worker packaging/license installed and resource-backed GPU startup verified; shared Java compilation passes. Prior Fabric/NeoForge builds remain recorded separately. Other host binaries and wider production integration remain pending |
 | Independent format tests, region/concurrency/query/cache tests, actual Minecraft loading, edit persistence and datapack combinations | shared unit/GPU tests and QA harnesses | Primitive tests and Minecraft decoder/reopen tests of complete fixture chunks implemented. Actual generated-world terrain, F3 telemetry, edit persistence and save/reopen pass on Fabric. Full feature/light parity, DH gameplay and NeoForge gameplay remain required |
 | Complete lit/compressed region comparison: startup, warm latency, throughput, memory, output sizes and load-in | existing native benchmark scripts | [Interrupted complete-region samples](benchmarks/bend-region-interrupted.md) retain matched coordinates and actual startup/warm/size/RSS evidence. A bounded offline audit now validates all 2,048 Bend chunks in the first two saved files; the third remains partial. No new generation ran. Controlled comparison, remaining sample, identical-NBT compression and actual load-in timings remain pending |
 

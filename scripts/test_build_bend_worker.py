@@ -19,7 +19,8 @@ class WorkerBuildTest(unittest.TestCase):
         output = root/'output'; output.mkdir()
         compiler = root/'bend'; compiler.write_bytes(b'compiler')
         binary = root/'engine'; binary.write_bytes(b'original engine')
-        args = argparse.Namespace(stage=stage, output=output, bend=compiler, binary=binary)
+        source = root/'engine.c'; source.write_text('saved stock source')
+        args = argparse.Namespace(stage=stage, output=output, bend=compiler, binary=binary, source=source)
         commands = []
 
         def execute(command, **kwargs):
@@ -49,6 +50,7 @@ class WorkerBuildTest(unittest.TestCase):
             else:
                 build.run(args)
         self.assertEqual(binary.read_bytes(), b'original engine')
+        self.assertEqual(source.read_text(), 'saved stock source')
         return commands, json.loads((output/'report.json').read_text())
 
     def test_native_build_has_one_compiler_cpu_smoke_and_no_gpu_build(self):
@@ -66,6 +68,21 @@ class WorkerBuildTest(unittest.TestCase):
         self.assertEqual(report['status'], 'passed')
         self.assertEqual(report['input_binary_sha256'], report['binary_sha256'])
         self.assertIn('gpu_archive_sha256', report)
+
+    def test_emit_does_not_compile_or_run_worker(self):
+        commands, report = self.exercise('emit')
+        self.assertEqual(len(commands), 1)
+        self.assertEqual(report['status'], 'passed')
+        self.assertIn('generated_c_sha256', report)
+        self.assertNotIn('binary_sha256', report)
+
+    def test_compile_reuses_source_and_checks_cpu_protocol(self):
+        commands, report = self.exercise('compile')
+        self.assertEqual(len(commands), 2)
+        self.assertIn('-O3', commands[0])
+        self.assertEqual(report['status'], 'passed')
+        self.assertEqual(report['cpu_protocol']['requests'], 3)
+        self.assertIn('input_source', report)
 
     def test_failed_compile_does_not_run_or_retry(self):
         commands, report = self.exercise('native', fail_at=2)

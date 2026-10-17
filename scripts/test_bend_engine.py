@@ -81,7 +81,7 @@ def exercise(binary, gpu):
     worker = Worker(binary,gpu)
     rows, maximum = [], 0.
     try:
-        assert struct.unpack('>5I',worker.call(0,fragment=True)) == (1,2,0,36,int(gpu))
+        assert struct.unpack('>5I',worker.call(0,fragment=True)) == (1,2,0,37,int(gpu))
         assert worker.call(2,struct.pack('>5I',0,0,16,16,1),status=1) == struct.pack('>I',604)
         assert worker.call(1,b'\0'*8,status=1) == struct.pack('>I',603)
         assert worker.call(0,b'\0',status=1) == struct.pack('>I',603)

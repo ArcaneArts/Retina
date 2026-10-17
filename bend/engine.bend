@@ -265,7 +265,7 @@ def empty_command(valid: Bool,input: File,output: File,stack: State,+backend: U3
     case False{}: error(input,output,stack,backend,id,opcode,603)
     case True{}:
       do IO<Unit>:
-        body : Z.Bytes <- payload(B.int(B.int(B.int(B.int(B.int(B.new(),1),2),0),36),backend))
+        body : Z.Bytes <- payload(B.int(B.int(B.int(B.int(B.int(B.new(),1),2),0),37),backend))
         finish(input,output,stack,backend,id,opcode,0,body,U32.is_zero(opcode))
 
 def clear_indices(noise: Settings) -> Settings:

@@ -138,7 +138,7 @@ def run(args):
         worker = Endpoint(artifact, args.backend, args.out / 'worker.log')
         handshake = worker.call(0)
         if args.backend == 'bend':
-            assert struct.unpack('>5I', handshake) == (1, 2, 0, 36, 0)
+            assert struct.unpack('>5I', handshake) == (1, 2, 0, 37, 0)
         else:
             assert handshake == b'Rust libdeflater; compression level 1; serial requests'
         report['startup_ms'] = (time.perf_counter()-start)*1000
