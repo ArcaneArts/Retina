@@ -221,8 +221,9 @@ interval ties. Underground and coastal-only searches retain their explicit
 target semantics. All current surface, shoreline, lake and feature consumers
 use this shared lookup. No Java registry or Rust behavior changes are involved.
 
-**This source change has not been built into a native worker or executed.**
-Native builds, benchmarks and heavy tests remain stopped at the user's request.
+**The changed climate model passes a compiled CPU component test.**
+It has not yet been rebuilt or exercised in the full native terrain worker.
+Benchmarks and heavy tests remain stopped at the user's request.
 The user separately approved source-only compiler checks with a 15-second total
 budget. Those checks took 9.315 seconds, including an unchanged-main comparison,
 and caught computed-match and definition-order errors that are now corrected.
@@ -233,8 +234,8 @@ Eleven small Python reference tests pass, and 50 synthetic fixture projections
 remain valid, including material/density fixtures that also prepare climate.
 The same independent reference selects the missing candidates at all three
 saved-profile counterexamples. Source/profile hashes and these limited results
-are recorded in `docs/benchmarks/bend-climate-coverage-source.json`; they do not
-establish executable parity. The persistent worker harness now includes omitted
+are recorded in `docs/benchmarks/bend-climate-coverage-source.json`; that earlier
+source-only report does not establish executable parity. The persistent worker harness now includes omitted
 biomes, a multi-node fallback tree, rounded ties, invalid centers, absent surface
 intervals and direct queries at the original profiles' omitted climate centers.
 It still needs an approved rebuild and execution, followed by final biome-query
@@ -254,12 +255,22 @@ not retry after failure or timeout. Native compilation is a single compiler
 invocation at reduced priority. This is an explicitly invoked correctness check,
 not a benchmark or part of normal client startup.
 
-**The isolated Bend driver has not been compiled or run.** Only Python syntax,
-CLI help, construction of its 63 cases and a small constructed-output decoder
-check have run. The decoder also rejects a truncated result. These checks do
-not establish Bend execution correctness. An approved native build/run is still
-needed; even a successful CPU component run would leave GPU, persistent-worker
-lifecycle and final surface/region integration checks outstanding.
+The user approved one bounded native CPU test. At commit `28a778e`, compilation,
+execution and independent result validation completed in **8.256 seconds total**
+under the 30-second deadline. All **72 cases passed**: 24 synthetic query cases,
+nine cases using the saved vanilla/Terralith/combined-pack climate fields, and
+39 malformed-profile rejections. All **2,188 query rows** matched the independent
+reference, with zero measured fitness error; reversed-order outputs matched and
+empty batches remained empty. The compiler and fixture logs were empty, both
+processes exited successfully, and the supervisor completed cleanup. No GPU,
+terrain engine, Minecraft launch or benchmark ran. The compiled binary, fixtures
+and logs are retained outside the worktree; hashes, exact command, deadline and
+results are in `docs/benchmarks/bend-climate-coverage-cpu.json`.
+
+This establishes CPU execution of the changed climate projection and lookup,
+not complete backend parity. GPU execution, persistent-worker lifecycle and
+final surface/region integration checks remain outstanding. Existing reference
+and fixture-only checks are retained as separate, narrower evidence.
 
 | Requirement | Current Rust/shared source | Bend implementation / completion evidence |
 | --- | --- | --- |
