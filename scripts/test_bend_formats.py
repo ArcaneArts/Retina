@@ -37,10 +37,10 @@ def validate_packed(data):
             "sha256": hashlib.sha256(data).hexdigest()}
 
 
-def read_region(data):
+def iter_region(data):
+    """Decode one chunk at a time; exhaust the iterator to check all sectors."""
     assert len(data) >= 8192 and len(data) % 4096 == 0
     claimed = {0, 1}
-    chunks = {}
     for slot in range(1024):
         location = int.from_bytes(data[slot * 4:slot * 4 + 4], "big")
         timestamp = int.from_bytes(data[4096 + slot * 4:4100 + slot * 4], "big")
@@ -64,9 +64,12 @@ def read_region(data):
         assert reader.number(">B") == 10 and reader.text() == ""
         tag = reader.tag(10)
         assert reader.offset == len(nbt)
-        chunks[slot] = {"tag": tag, "offset": offset, "sectors": sectors, "timestamp": timestamp}
+        yield slot, {"tag": tag, "offset": offset, "sectors": sectors, "timestamp": timestamp}
     assert claimed == set(range(len(data) // 4096))
-    return chunks
+
+
+def read_region(data):
+    return dict(iter_region(data))
 
 
 def validate_chunk(slot, chunk):
