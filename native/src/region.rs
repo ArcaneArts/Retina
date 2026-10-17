@@ -79,9 +79,18 @@ impl Drop for RegionGuard<'_> {
 fn assemblers() -> Result<&'static rayon::ThreadPool, String> {
     ASSEMBLERS
         .get_or_init(|| {
-            let threads = std::thread::available_parallelism()
-                .map_or(2, usize::from)
-                .clamp(2, 16);
+            // Optional runtime budget for shared hosts and matched backend
+            // benchmarks. Unset/invalid values retain the existing default.
+            let threads = std::env::var("RETINA_REGION_THREADS")
+                .ok()
+                .and_then(|value| value.parse::<usize>().ok())
+                .filter(|&value| value > 0)
+                .map(|value| value.min(16))
+                .unwrap_or_else(|| {
+                    std::thread::available_parallelism()
+                        .map_or(2, usize::from)
+                        .clamp(2, 16)
+                });
             rayon::ThreadPoolBuilder::new()
                 .num_threads(threads)
                 .thread_name(|i| format!("retina-mca-{i}"))
