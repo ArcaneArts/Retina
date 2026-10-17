@@ -95,7 +95,7 @@ def run_case(binary, folder, data, extra=(), threads=2):
     return encoded, (time.perf_counter() - started) * 1000
 
 
-def test(binary, folder):
+def test(binary, folder, parallel_threads=(1, 2, 4)):
     rng = random.Random(20261008)
     cases = [
         ("empty", b""), ("one_zero", b"\0"), ("one_ff", b"\xff"),
@@ -142,10 +142,10 @@ def test(binary, folder):
             data.append(data[-distance])
         run_case(binary, folder, bytes(data), (length, distance))
 
-    # Decode every leaf, compare independent streams at 1/2/4 worker settings.
+    # Decode every leaf and compare streams at the requested worker settings.
     parallel = (bytes(range(256)) + b"minecraft:deepslate\0" * 64) * 32
     results = [run_case(binary, folder, parallel, ("parallel",), workers)[0]
-               for workers in (1, 2, 4)]
+               for workers in parallel_threads]
     assert len(set(results)) == 1
 
     # Invalid calls must fail rather than wrap array indices or emit a stream.
@@ -163,7 +163,7 @@ def test(binary, folder):
                             capture_output=True, timeout=10)
     assert result.returncode != 0 and not destination.exists()
     return {"payload_cases": rows, "backreference_cases": len(references),
-            "parallel_streams_verified": 12,
+            "parallel_streams_verified": 4 * len(parallel_threads),
             "invalid_requests_rejected": len(invalid) + 1,
             "decoder": f"Python zlib {zlib.ZLIB_RUNTIME_VERSION}"}
 

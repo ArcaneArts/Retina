@@ -32,6 +32,14 @@ EOF and five malformed streams using small CPU fixtures. No benchmark was run
 and no speedup is claimed. This source change awaits the next full-worker build;
 the installed 2.0.37 executable described below is unchanged.
 
+The [codec symbol check](benchmarks/bend-codec-symbols.json) replaces per-match
+length/distance list construction and linear searches with direct integer group
+calculation. All 256 lengths and 32,768 distances match the RFC 1951 tables.
+The existing stream suite passes, and a single correctness pass over the 36
+saved finished-NBT payloads produces byte-identical compressed streams to the
+installed worker's retained outputs. No benchmark ran and no speedup is claimed.
+This change, like the frame-buffer reserve, awaits the next full-worker build.
+
 ## Playable terrain preview
 
 The current integration exposes **Retina Rust** and **Retina Bend** in the world

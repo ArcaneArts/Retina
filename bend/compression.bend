@@ -75,31 +75,36 @@ def literal(b: Bits, +symbol: U32) -> Bits:
       word(U32.is_lt(symbol, 280), U32.sub(symbol, 256), U32.sub(symbol, 88))))
   put(b, reverse(width, code, 0), width)
 
-@unsafe
-def slot_done(done: Bool, bases: List<U32>, widths: List<Nat>,
-    +value: U32, +symbol: U32, base: U32, width: Nat) -> Code:
-  match done:
-    case True{}: Code{symbol, U32.sub(value, base), width}
-    case False{}: slot(bases, widths, value, U32.inc(symbol))
+# RFC 1951 3.2.5: four length codes share each extra-bit width after length
+# ten. Compute the group directly instead of allocating and walking two lists
+# for every LZ77 match. Valid input is 3..257; 258 has its own terminal code.
+def length_group(small: Bool, +value: U32) -> Code:
+  match small:
+    case True{}: Code{U32.add(value, 254), 0, 0n}
+    case False{}:
+      +offset = U32.sub(value, 3)
+      +width = Nat.sub(U32.log2(offset), 2n)
+      Code{U32.add(257, U32.add(U32.mul(4, U32.from_nat(width)), U32.shrn(offset, width))),
+        U32.and(offset, U32.sub(U32.shln(1, width), 1)), width}
 
-@unsafe
-def slot(bases: List<U32>, widths: List<Nat>, +value: U32, +symbol: U32) -> Code:
-  match bases widths:
-    case +base <> rest +width <> more:
-      slot_done(U32.is_le(value, U32.add(base, U32.sub(U32.shln(1, width), 1))),
-        rest, more, value, symbol, base, width)
-    case _ _: Code{symbol, 0, 0n}
-
-def length_code(maximum: Bool, value: U32) -> Code:
+def length_code(maximum: Bool, +value: U32) -> Code:
   match maximum:
     case True{}: Code{285, 0, 0n}
-    case False{}:
-      slot([3,4,5,6,7,8,9,10,11,13,15,17,19,23,27,31,35,43,51,59,67,83,99,115,131,163,195,227],
-        [0n,0n,0n,0n,0n,0n,0n,0n,1n,1n,1n,1n,2n,2n,2n,2n,3n,3n,3n,3n,4n,4n,4n,4n,5n,5n,5n,5n], value, 257)
+    case False{}: length_group(U32.is_le(value, 10), value)
 
-def distance_code(value: U32) -> Code:
-  slot([1,2,3,4,5,7,9,13,17,25,33,49,65,97,129,193,257,385,513,769,1025,1537,2049,3073,4097,6145,8193,12289,16385,24577],
-    [0n,0n,0n,0n,1n,1n,2n,2n,3n,3n,4n,4n,5n,5n,6n,6n,7n,7n,8n,8n,9n,9n,10n,10n,11n,11n,12n,12n,13n,13n], value, 0)
+# After distances 1..4, each power-of-two interval has two equally sized codes.
+def distance_group(small: Bool, +value: U32) -> Code:
+  match small:
+    case True{}: Code{U32.sub(value, 1), 0, 0n}
+    case False{}:
+      +offset = U32.sub(value, 1)
+      +order = U32.log2(offset)
+      +width = Nat.sub(order, 1n)
+      Code{U32.add(U32.mul(2, U32.from_nat(order)), U32.and(U32.shrn(offset, width), 1)),
+        U32.and(offset, U32.sub(U32.shln(1, width), 1)), width}
+
+def distance_code(+value: U32) -> Code:
+  distance_group(U32.is_le(value, 4), value)
 
 def emit_length(c: Code, b: Bits) -> Bits:
   match c:
