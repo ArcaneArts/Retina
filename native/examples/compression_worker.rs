@@ -10,7 +10,8 @@ const MAX_INPUT: usize = 16 * 1024 * 1024;
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut input = io::stdin().lock();
     let mut output = io::stdout().lock();
-    let mut compressor = Compressor::new(CompressionLvl::new(1)?);
+    let mut compressor =
+        Compressor::new(CompressionLvl::new(1).expect("valid constant compression level"));
     let mut source = Vec::new();
     let mut compressed = Vec::new();
     loop {
