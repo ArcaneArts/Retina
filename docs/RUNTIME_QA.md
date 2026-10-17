@@ -70,6 +70,45 @@ then saves and stops normally. The packaged equivalents are
 `-Dretina.qa.entities.reopen=true`. Keep entity QA separate from the structure
 and timing checks, which can stop the dedicated server earlier.
 
+### Bend template entities
+
+The same check now runs for Bend. First launch captures the three generated
+entity tags in `world/retina-qa-entities.nbt`, and reopening reads that QA-only
+expectation without regenerating terrain. Both launches verify UUID, entity
+type, transformed attachment, direction, item/painting variant, survival after
+120 server ticks and absence of duplicate occupants. A diamond-block edit must
+survive reopening.
+Fresh Bend generation also checks all 18 host timing stages and their F3 packet
+round trip, with no registered Rust profile.
+
+For a focused dedicated test, create a disposable world from the installed
+Minecraft 26.3 jar:
+
+```sh
+python3 qa/bend_entity_world.py build/bend-entity-qa /absolute/path/to/minecraft-merged.jar
+JAVA_TOOL_OPTIONS='-XX:ActiveProcessorCount=2 -Dretina.qa.entities.cell=0 -Dretina.native.path=/retina-qa/no-rust-library' \
+  ./gradlew :fabric:runServer --args nogui --max-workers=2 --no-parallel \
+  -PretinaQa -PretinaEntitiesQa -PretinaDatapackQa=build/bend-entity-qa \
+  -x buildNative -x packageNative
+```
+
+Repeat the server command with `-PretinaEntitiesReopenQa`. Require the
+`minecraft_live_template_entities` pass event with `mode:bend` and the expected
+`reopen` value; Gradle succeeding alone does not prove that Minecraft loaded.
+The generated fixture uses a registered flat density plane, a plains source,
+no surface features and disabled unrelated structure placement. It retains
+the normal world height, full 32x32-chunk Bend region generation, lighting and
+compressed MCA output. This isolates entity loading, not terrain visual parity
+or production throughput. The server binds localhost only and saves/exits
+normally when the checks pass. No game client is launched.
+
+To check the other loader, copy the stopped world and its server properties to
+another isolated directory, and run `runNeoForgeServer` with the same QA
+properties and the copied directory (omit Fabric's `--args nogui`). The
+fixture builder also accepts `--backend rust` for a separate Rust regression
+control; use the normal native library for that control instead of the deliberate
+missing-library override. These are functional tests, not Rust/Bend benchmarks.
+
 ## Dedicated connections and packaged artifacts
 
 Start an isolated matching dedicated server. With a fresh client run directory,

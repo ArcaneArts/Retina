@@ -1,0 +1,508 @@
+{
+  "recorded_utc": "2026-10-17T00:06:46.739278+00:00",
+  "purpose": "Functional live entity, persistence, loader and timing validation; not a performance benchmark",
+  "minecraft": "26.3",
+  "fabric_loader": "0.19.5",
+  "neoforge": "26.3.0.51-beta",
+  "fixture": {
+    "seed": 123456789,
+    "start_chunk": [
+      18,
+      16
+    ],
+    "plane_height": 64,
+    "world_min_y": -64,
+    "world_height": 384,
+    "region_chunks": 1024
+  },
+  "runs": {
+    "bend_fabric_fresh": {
+      "log": "build/entity-first.log",
+      "sha256": "4fcf1119dc322dde7cc294a2d4399cad3b26b9bece3480544db7f4625f309542",
+      "events": [
+        {
+          "event": "temporary_mca_region",
+          "status": "pass",
+          "context": {
+            "x": -1,
+            "z": -1,
+            "chunks": 1024,
+            "ms": 162323.680958,
+            "bytes": 4202496
+          }
+        },
+        {
+          "event": "minecraft_mca_preview_promoted",
+          "status": "pass",
+          "context": {
+            "x": -1,
+            "z": -1,
+            "copied": 1024,
+            "preserved": 0,
+            "ms": 162327.155083
+          }
+        },
+        {
+          "event": "minecraft_temporary_mca_chunk",
+          "status": "pass",
+          "context": {
+            "x": -2,
+            "z": -2,
+            "ms": 162345.111792
+          }
+        },
+        {
+          "event": "temporary_mca_region",
+          "status": "pass",
+          "context": {
+            "x": -1,
+            "z": 0,
+            "chunks": 1024,
+            "ms": 369926.301042,
+            "bytes": 4202496
+          }
+        },
+        {
+          "event": "minecraft_mca_preview_promoted",
+          "status": "pass",
+          "context": {
+            "x": -1,
+            "z": 0,
+            "copied": 1024,
+            "preserved": 0,
+            "ms": 207581.844125
+          }
+        },
+        {
+          "event": "temporary_mca_region",
+          "status": "pass",
+          "context": {
+            "x": 0,
+            "z": -1,
+            "chunks": 1024,
+            "ms": 467532.061,
+            "bytes": 4202496
+          }
+        },
+        {
+          "event": "minecraft_mca_preview_promoted",
+          "status": "pass",
+          "context": {
+            "x": 0,
+            "z": -1,
+            "copied": 1024,
+            "preserved": 0,
+            "ms": 259920.782459
+          }
+        },
+        {
+          "event": "temporary_mca_region",
+          "status": "pass",
+          "context": {
+            "x": 0,
+            "z": 0,
+            "chunks": 1024,
+            "ms": 525799.692875,
+            "bytes": 4202496
+          }
+        },
+        {
+          "event": "minecraft_mca_preview_promoted",
+          "status": "pass",
+          "context": {
+            "x": 0,
+            "z": 0,
+            "copied": 1024,
+            "preserved": 0,
+            "ms": 265867.4665
+          }
+        },
+        {
+          "event": "minecraft_live_bend_stage_timings",
+          "status": "pass",
+          "context": {
+            "stages": 18,
+            "regions": 4,
+            "average_region_ms": 381395.43396875
+          }
+        },
+        {
+          "event": "minecraft_live_template_entities",
+          "status": "pass",
+          "context": {
+            "mode": "bend",
+            "backend": "Bend 2.0.36 / GPU_REQUIRED / 4GB heap / ready",
+            "entities": 3,
+            "reopen": false,
+            "generated_regions": 4,
+            "edit_preserved": false
+          }
+        }
+      ],
+      "gradle_success": true,
+      "normal_shutdown": true
+    },
+    "bend_fabric_reopen": {
+      "log": "build/entity-reopen.log",
+      "sha256": "8ec4df1cd89fd7a3b0d54f9e2ae1fed60e83768264d2458de426cc447b3ba7d0",
+      "events": [
+        {
+          "event": "minecraft_live_template_entities",
+          "status": "pass",
+          "context": {
+            "mode": "bend",
+            "backend": "Bend 2.0.36 / GPU_REQUIRED / 4GB heap / waiting for first region",
+            "entities": 3,
+            "reopen": true,
+            "generated_regions": 0,
+            "edit_preserved": true
+          }
+        }
+      ],
+      "gradle_success": true,
+      "normal_shutdown": true
+    },
+    "bend_neoforge_reopen": {
+      "log": "build/entity-neoforge-reopen.log",
+      "sha256": "9c3445e9a0a106fae9d476c4161ed3ac08c2cc82bca2de47ce7681de4546b050",
+      "events": [
+        {
+          "event": "minecraft_live_template_entities",
+          "status": "pass",
+          "context": {
+            "mode": "bend",
+            "backend": "Bend 2.0.36 / GPU_REQUIRED / 4GB heap / waiting for first region",
+            "entities": 3,
+            "reopen": true,
+            "generated_regions": 0,
+            "edit_preserved": true
+          }
+        }
+      ],
+      "gradle_success": true,
+      "normal_shutdown": true
+    },
+    "rust_fabric_fresh": {
+      "log": "build/entity-rust-first.log",
+      "sha256": "be564c525531d5f3a2d3430929667afa5553e98f83ce616c611b5226696e71e8",
+      "events": [
+        {
+          "event": "registry_biome_profile",
+          "status": "pass",
+          "context": {
+            "biomes": 4,
+            "materials": 1460,
+            "profile": 1
+          }
+        },
+        {
+          "event": "temporary_mca_region",
+          "status": "pass",
+          "context": {
+            "x": -1,
+            "z": -1,
+            "chunks": 1024,
+            "ms": 1841.59525,
+            "bytes": 4202496
+          }
+        },
+        {
+          "event": "minecraft_mca_preview_promoted",
+          "status": "pass",
+          "context": {
+            "x": -1,
+            "z": -1,
+            "copied": 1024,
+            "preserved": 0,
+            "ms": 1856.483666
+          }
+        },
+        {
+          "event": "temporary_mca_region",
+          "status": "pass",
+          "context": {
+            "x": -1,
+            "z": 0,
+            "chunks": 1024,
+            "ms": 1880.298959,
+            "bytes": 4202496
+          }
+        },
+        {
+          "event": "minecraft_mca_preview_promoted",
+          "status": "pass",
+          "context": {
+            "x": -1,
+            "z": 0,
+            "copied": 1024,
+            "preserved": 0,
+            "ms": 31.886041
+          }
+        },
+        {
+          "event": "temporary_mca_region",
+          "status": "pass",
+          "context": {
+            "x": 0,
+            "z": -1,
+            "chunks": 1024,
+            "ms": 201.618375,
+            "bytes": 4202496
+          }
+        },
+        {
+          "event": "minecraft_mca_preview_promoted",
+          "status": "pass",
+          "context": {
+            "x": 0,
+            "z": -1,
+            "copied": 1024,
+            "preserved": 0,
+            "ms": 162.847041
+          }
+        },
+        {
+          "event": "temporary_mca_region",
+          "status": "pass",
+          "context": {
+            "x": 0,
+            "z": 0,
+            "chunks": 1024,
+            "ms": 247.22325,
+            "bytes": 4202496
+          }
+        },
+        {
+          "event": "minecraft_mca_preview_promoted",
+          "status": "pass",
+          "context": {
+            "x": 0,
+            "z": 0,
+            "copied": 1024,
+            "preserved": 0,
+            "ms": 82.187375
+          }
+        },
+        {
+          "event": "minecraft_live_template_entities",
+          "status": "pass",
+          "context": {
+            "mode": "mca",
+            "backend": "Metal: Apple M4 Max",
+            "entities": 3,
+            "reopen": false,
+            "generated_regions": 4,
+            "edit_preserved": false
+          }
+        }
+      ],
+      "gradle_success": true,
+      "normal_shutdown": true
+    },
+    "rust_fabric_reopen": {
+      "log": "build/entity-rust-reopen.log",
+      "sha256": "7f13d3e5911ce2774875d321dc7ee80eaef886717f5f9f12664d4b8020c5925a",
+      "events": [
+        {
+          "event": "registry_biome_profile",
+          "status": "pass",
+          "context": {
+            "biomes": 4,
+            "materials": 1460,
+            "profile": 1
+          }
+        },
+        {
+          "event": "minecraft_live_template_entities",
+          "status": "pass",
+          "context": {
+            "mode": "mca",
+            "backend": "Metal: Apple M4 Max",
+            "entities": 3,
+            "reopen": true,
+            "generated_regions": 0,
+            "edit_preserved": true
+          }
+        }
+      ],
+      "gradle_success": true,
+      "normal_shutdown": true
+    }
+  },
+  "independent_storage": {
+    "bend_fabric": {
+      "mca_sha256": "6a4b92ec5eac80bd404b8a022fbe661e6f047c4b50ab9fdfc06857aaa214770e",
+      "expected_sha256": "63ba471e06c9bdbfc84d2436545747f8f5f13499cedc2076910a43eb013df799",
+      "entities": [
+        {
+          "id": "minecraft:item_frame",
+          "UUID": [
+            396123243,
+            797448512,
+            1880995273,
+            -750697529
+          ],
+          "block_pos": [
+            291,
+            121,
+            254
+          ]
+        },
+        {
+          "id": "minecraft:glow_item_frame",
+          "UUID": [
+            -2001681103,
+            -650049931,
+            832848560,
+            1774657981
+          ],
+          "block_pos": [
+            291,
+            121,
+            253
+          ]
+        },
+        {
+          "id": "minecraft:painting",
+          "UUID": [
+            -1430006465,
+            854809185,
+            981986439,
+            -468057438
+          ],
+          "block_pos": [
+            291,
+            121,
+            252
+          ]
+        }
+      ],
+      "contents_preserved": true
+    },
+    "bend_neoforge": {
+      "mca_sha256": "c5696c8bc55916670e11249f9c63613f63069ab7a57cd5d278dd13bf6f1cdc32",
+      "expected_sha256": "63ba471e06c9bdbfc84d2436545747f8f5f13499cedc2076910a43eb013df799",
+      "entities": [
+        {
+          "id": "minecraft:item_frame",
+          "UUID": [
+            396123243,
+            797448512,
+            1880995273,
+            -750697529
+          ],
+          "block_pos": [
+            291,
+            121,
+            254
+          ]
+        },
+        {
+          "id": "minecraft:glow_item_frame",
+          "UUID": [
+            -2001681103,
+            -650049931,
+            832848560,
+            1774657981
+          ],
+          "block_pos": [
+            291,
+            121,
+            253
+          ]
+        },
+        {
+          "id": "minecraft:painting",
+          "UUID": [
+            -1430006465,
+            854809185,
+            981986439,
+            -468057438
+          ],
+          "block_pos": [
+            291,
+            121,
+            252
+          ]
+        }
+      ],
+      "contents_preserved": true
+    },
+    "rust_fabric": {
+      "mca_sha256": "15bacbd0cc240a12c5f4fece31a6ed49f55d223f1f195b767dda772c02d71754",
+      "expected_sha256": "75770b5a0401c788c01dce397350eecabc61d3d532dd0c085338f9377d46e816",
+      "entities": [
+        {
+          "id": "minecraft:item_frame",
+          "UUID": [
+            396123243,
+            797448512,
+            1880995273,
+            -750697529
+          ],
+          "block_pos": [
+            291,
+            121,
+            254
+          ]
+        },
+        {
+          "id": "minecraft:glow_item_frame",
+          "UUID": [
+            -2001681103,
+            -650049931,
+            832848560,
+            1774657981
+          ],
+          "block_pos": [
+            291,
+            121,
+            253
+          ]
+        },
+        {
+          "id": "minecraft:painting",
+          "UUID": [
+            -1430006465,
+            854809185,
+            981986439,
+            -468057438
+          ],
+          "block_pos": [
+            291,
+            121,
+            252
+          ]
+        }
+      ],
+      "contents_preserved": true
+    }
+  },
+  "worker": {
+    "version": "2.0.36",
+    "threads": 2,
+    "gpu_heap": "4GB",
+    "engine_sha256": "65a1160fb9fa35df3110869555f3c6f3de6d8eeda92c0c4c982eed7e233d910c",
+    "gpu_sha256": "0803470005055044a178d4f1a9b9b342c4b0a3067d7af80f1055412ca511ee7e",
+    "rust_library_available_in_bend_runs": false
+  },
+  "gpu_evidence": {
+    "sample": "build/entity-metal-active.sample.txt",
+    "sha256": "a81a49eada594c75db580c4b58cb68d1ca981755b97589c63b3ab462b18a6674",
+    "stack": [
+      "cube_run",
+      "-[_MTLCommandBuffer waitUntilCompleted]"
+    ],
+    "not_a_device_timing_measurement": true
+  },
+  "source_sha256": {
+    "common/src/main/java/art/arcane/retina/worldgen/TerrainEntityQa.java": "bd4a91d8fc1d6f5e7badd2f9c393b8f0bd3a117dabf9114a9e96408c811c91e9",
+    "qa/bend_entity_world.py": "697f0d3dcf40b8ddbc7bf79e0a5e6cf132df1c01a8814c4db6617112bec84710"
+  },
+  "limitations": [
+    "Synthetic flat-density datapack isolates attachments; does not establish broad terrain visual parity.",
+    "NeoForge reopens the Fabric-generated world; fresh NeoForge generation was not measured in this cycle.",
+    "No player/client was launched; packet codec validation is not a visual F3 check.",
+    "Other host workloads were uncontrolled; reported host latencies are functional observations, not benchmark comparisons."
+  ]
+}
