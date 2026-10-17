@@ -64,6 +64,12 @@ def run_bounded(command, seconds, output, *, env=None, grace_seconds=1.):
         except ProcessLookupError:
             return False
         except PermissionError:
+            # Signal zero only probes existence. EPERM still means a group
+            # exists; allow the grace loop to wait for it to exit. On macOS a
+            # successful SIGTERM can be followed briefly by EPERM here while
+            # the child is exiting. Raising would skip the final SIGKILL.
+            if signum == 0:
+                return True
             # macOS can report EPERM while an exiting group is disappearing.
             # Check the actual process table before treating it as terminal;
             # a live group with a permissions failure must still report failure.

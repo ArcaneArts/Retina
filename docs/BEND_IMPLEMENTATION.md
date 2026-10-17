@@ -94,6 +94,38 @@ CARGO_BUILD_JOBS=2 ./gradlew :fabric:build :neoforge:build \
   --max-workers=2 --no-parallel
 ```
 
+For development builds, `scripts/build_bend_worker.py` separates native C
+emission/compilation from Metal archive construction. Both stages default to a
+30-second external deadline and one-second termination grace; `--max-seconds`
+explicitly changes the total stage deadline. Native mode uses one compiler at
+reduced priority, caps the Bend compiler's Rayon pool at two threads, and checks
+three CPU protocol requests with two runtime threads and the GPU disabled. Metal
+mode takes `--binary`, copies that engine into its new output directory, and
+builds only its matching archive. Apple's Metal compiler can use additional
+system threads. Each stage keeps commands, source/artifact hashes, progress,
+logs and the supervisor outcome, without retrying or installing anything.
+
+```sh
+python3 scripts/build_bend_worker.py native --output build/bend/native-worker
+python3 scripts/build_bend_worker.py metal --binary build/bend/native-worker/engine \
+  --output build/bend/metal-worker
+```
+
+These commands build development artifacts; they do not generate terrain or
+launch the client. A native protocol check or compiled GPU archive alone does
+not prove world-generation correctness or GPU execution. Keep the previous
+playable worker installed until the replacement pair has passed runtime checks.
+
+The 2026-10-17 [bounded rebuild attempts](benchmarks/bend-worker-bounded-build.json)
+did not finish C emission within 30 or 120 seconds. Neither produced a native
+binary, ran terrain generation, or changed the installed worker. The first run
+exposed a macOS cleanup race: a signal-zero existence probe returned `EPERM`
+after successful termination. The supervisor now keeps waiting in that case and
+still attempts the final kill; a genuinely denied termination signal remains
+an error. The second run stopped at its deadline with normal cleanup. Fourteen
+Python build/supervisor tests cover bounded cleanup, failure reporting and
+orchestration; full-engine build and runtime acceptance remain outstanding.
+
 Install the corresponding jar, create a fresh Creative world and select **Retina
 Bend**. Start with a small render distance. Initial runtime/profile preparation
 and generation are slower than Rust; F3 and `Bend stage ...` log entries show the
