@@ -61,18 +61,26 @@ full-region experiments.
 ## Verification limits and retained artifacts
 
 All 4,096 Rust chunks passed independent MCA/zlib/NBT validation. Bend produced
-three closed region files, but its full independent validation phase did not
-run. Ten previously inspected chunk records from the first two Bend files had
-valid zlib/NBT, coordinates, statuses and expected light-section counts. That
-sample does not prove every chunk valid. The old driver's final worker-EOF
-error followed the deliberate termination; it is not evidence of an unsolicited
-engine crash.
+three closed region files; its original validation phase did not run. A later
+[offline audit](bend-saved-output-audit.json) verified **all 2,048 chunks in the
+first two files**, including MCA allocation, complete zlib/NBT streams, every
+palette index, registry membership, coordinates, section ranges, heightmap
+packing/ranges and light-array layouts. Each file has 900 lit interior chunks.
+This checks serialized structure, not light propagation or heightmap agreement
+with the actual blocks.
+
+The single low-priority Python audit stopped at its ten-second deadline after
+192 chunks of the third file. That file is not counted as fully validated.
+No generator, native compiler, GPU work or Minecraft run was invoked. The
+original benchmark report and timing samples remain unchanged and interrupted.
+The old driver's final worker-EOF error followed the deliberate termination; it
+is not evidence of an unsolicited engine crash.
 
 Minecraft decoder timing passed on an earlier Rust corpus. The new live-load
 fixture and standalone Rust compression endpoint have not been compiled/run;
 the heavy-work stop remains in force. Live chunk activation, the identical-NBT
-codec comparison, the remaining Bend region and full Bend validation are still
-unverified. This report does not satisfy the full goal's completion audit.
+codec comparison, the remaining Bend generation sample and third-file
+validation are still unverified. This report does not satisfy the full goal's completion audit.
 
 On the development host, immutable original reports, relocated working copies,
 completed MCA files, the profile, GPU stack sample and Rust artifact are retained
@@ -84,3 +92,27 @@ The updated opt-in benchmark harnesses enforce a 60-second runtime limit and
 terminate their entire process group on timeout or cancellation. Their
 `run-control.json` is authoritative for interruption; checkpoint files never
 turn a partial run into a successful experiment.
+
+### Offline file validation
+
+`scripts/validate_backend_output.py` can audit completed files recorded by an
+interrupted run without needing the original executable or a complete sample
+schedule. It runs at reduced priority, decodes one chunk at a time, and defaults
+to a ten-second deadline with up to one second for process cleanup. It never
+restarts generation or retries on timeout. Use a new output directory:
+
+```sh
+python3 scripts/validate_backend_output.py \
+  --report /path/to/saved/bend/report.json \
+  --profile /path/to/saved/profile.json \
+  --out build/bend/saved-output-audit --max-seconds 10
+```
+
+The audit keeps completed-region results and partial progress separately. Its
+supervisor's `run-control.json` determines whether the audit completed; timeout
+or cancellation never becomes a pass. Source/profile/output hashes tie results
+to the bytes checked. The original report, generation errors and timings are
+read-only. `benchmark_backends.py --validate-only` now delegates to this same
+bounded path; `--validation-out` selects its new report directory and
+`--artifact` is unnecessary for that mode. A passing offline audit does not
+complete the original benchmark or establish runtime/gameplay correctness.

@@ -17,14 +17,14 @@ import platform
 import statistics
 import struct
 import subprocess
+import sys
 import threading
 import time
 
 from benchmark_support import percentile
 from benchmark_limits import add_time_limit, supervise
 from test_bend_compression import ROOT
-from test_bend_chunks import palette, MAP_NAMES
-from test_bend_formats import read_region
+from validate_backend_output import validate
 from test_bend_generated_regions import request as region_request
 from test_bend_registry import path_request
 from test_bend_registry_noise import fixture_wire
@@ -200,75 +200,32 @@ class Rust:
         pass  # Process lifetime owns the native singleton.
 
 
-def validate(path, profile, rx, rz):
-    data = path.read_bytes()
-    records = read_region(data)
-    assert set(records) == set(range(1024))
-    def key(state):
-        return (state, ()) if isinstance(state,str) else (state['id'],tuple(sorted(state.get('properties',{}).items())))
-    materials = {key(state) for state in profile['materials']}
-    biomes = {biome['id'] for biome in profile['biomes']}
-    first = profile['geology_min_y']//16
-    end = first+profile['geology_height']//16
-    for slot,record in records.items():
-        tag = record['tag']
-        lit = 0 < slot%32 < 31 and 0 < slot//32 < 31
-        assert (tag['xPos'],tag['zPos'],tag['yPos'],tag['DataVersion']) == (rx*32+slot%32,rz*32+slot//32,first,5023)
-        assert tag['Status'] == ('minecraft:light' if lit else 'minecraft:features') and tag['isLightOn'] == int(lit)
-        assert set(tag['Heightmaps']) == set(MAP_NAMES)
-        sections = tag['sections']
-        assert len(sections) == end-first+(2 if lit else 0)
-        assert {s['Y'] for s in sections} == set(range(first-int(lit),end+int(lit)))
-        for section in sections:
-            for channel in ('SkyLight','BlockLight'):
-                # Minecraft permits absent all-zero light arrays. Rust omits
-                # these; Bend emits explicit zero arrays. Both are valid.
-                if channel in section: assert lit and len(section[channel]) == 2048
-            if first <= section['Y'] < end:
-                states = section['block_states']
-                assert all(key(state) in materials for state in states['palette'])
-                palette(states,4096,4)
-                assert all(biome in biomes for biome in palette(section['biomes'],64,1))
-        if lit and profile['lighting']['sky']:
-            assert any(any(s.get('SkyLight',b'')) for s in sections), 'No sunlight in a lit Overworld chunk'
-    return dict(chunks=len(records),lit_chunks=sum(r['tag']['isLightOn'] for r in records.values()),
-                bytes=len(data),sha256=hashlib.sha256(data).hexdigest(),
-                structure_starts=sum(len(r['tag']['structures']['starts']) for r in records.values()),
-                block_entities=sum(len(r['tag']['block_entities']) for r in records.values()),
-                entities=sum(len(r['tag'].get('entities',[])) for r in records.values()))
-
-
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--backend',choices=['rust','bend'],required=True)
-    parser.add_argument('--artifact',type=Path,required=True)
+    parser.add_argument('--artifact',type=Path,help='Required for generation; unused by --validate-only')
     parser.add_argument('--profile',type=Path,required=True)
     parser.add_argument('--out',type=Path,required=True)
     parser.add_argument('--count',type=int,default=3,help='Warm regions, after one separately reported first region')
-    parser.add_argument('--validate-only',action='store_true',help='Validate completed files without rerunning generation')
+    parser.add_argument('--validate-only',action='store_true',help='Audit recorded files, including interrupted runs, without changing the original report')
+    parser.add_argument('--validation-out',type=Path,help='New offline audit directory (default: OUT/validation)')
     add_time_limit(parser)
     args = parser.parse_args()
-    if args.count < 1: parser.error('--count must be positive')
-    args.artifact = args.artifact.resolve()
     args.out = args.out.resolve()
-    if not args.validate_only:
-        result = supervise(__file__, args.max_seconds, args.out)
-        if result is not None:
-            return result
-    source = json.loads(args.profile.read_text())
     if args.validate_only:
-        report = json.loads((args.out/'report.json').read_text())
-        assert report['profile_sha256'] == sha(args.profile)
-        assert report['backend'] == args.backend and report['artifact_sha256'] == sha(args.artifact)
-        assert len(report['regions']) == args.count+1 and 'warm' in report
-        for row in report['regions']:
-            row['validation'] = validate(Path(row['path']),source,row['rx'],row['rz'])
-        report['validation_harness_sha256'] = sha(Path(__file__))
-        report.pop('error',None)
-        report['status'] = 'passed'
-        write_json(args.out/'report.json',report)
-        print('PASS independent full-region validation',flush=True)
-        return
+        # A file audit does not need the original executable or a completed
+        # sample schedule. Keep all generation status/timings immutable.
+        return subprocess.call([sys.executable, str(ROOT/'scripts/validate_backend_output.py'),
+            '--report', str(args.out/'report.json'), '--profile', str(args.profile),
+            '--out', str(args.validation_out or args.out/'validation'),
+            '--backend', args.backend, '--max-seconds', str(args.max_seconds)])
+    if args.count < 1: parser.error('--count must be positive')
+    if args.artifact is None: parser.error('--artifact is required for generation')
+    args.artifact = args.artifact.resolve()
+    result = supervise(__file__, args.max_seconds, args.out)
+    if result is not None:
+        return result
+    source = json.loads(args.profile.read_text())
     report = dict(schema='retina.complete-backend-benchmark.v1',status='running',backend=args.backend,
                   max_seconds=args.max_seconds,
                   artifact=str(args.artifact),artifact_sha256=sha(args.artifact),profile_sha256=sha(args.profile),
