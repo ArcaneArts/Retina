@@ -65,7 +65,7 @@ type Heights is Data:
 # No coarse biome quart, CPU noise or downloaded height map controls a shore.
 def has_shores(climate: C.Model) -> Bool:
   match climate:
-    case C.Model{_,_,C.Empty{}}: False{}
+    case C.Model{_,_,C.Empty{},_,_}: False{}
     case _: True{}
 
 def halo(+tile: S.Tile) -> S.Tile:

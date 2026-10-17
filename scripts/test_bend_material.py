@@ -112,7 +112,7 @@ def fixtures(folder):
         for count in (0.,1.,30.,10000.):add([ins(0,p=(count,0,0,0)),ins(53,0,0x9abcdef0,mode,(-64,100,6,3))])
     add([ins(0,p=(0,0,0,0)),ins(1,0,0,0,(0,1,1,0)),ins(44,1,p=(-.25,.25,0,0)),ins(0,p=(4,0,0,0)),ins(40,2,3)], [1,2,4])
     ramp=dict(nodes=[ins(0,p=(64,0,0,0)),ins(29,1),ins(5,0,1)],roots=[2])
-    base=dict(geology_min_y=-64,geology_height=384,sea_level=63,biomes=[{'flags':0} for _ in programs],
+    base=dict(geology_min_y=-64,geology_height=384,sea_level=63,biomes=[{'flags':0,'climate':[0.,0.,.2,0.]} for _ in programs],
         materials=[{} for _ in range(17)],climate_targets=[],terrain_features=dict(bands=[2,5,7,11,16]),
         registry_program=dict(material_layers=True,surface=[-64,8,0],terrain_cell=[4,8],
             noises=[dict(frequency=.0035,amplitude=.8,salt=-12345,coefficients=[1.,0.,.5])],points=[],programs=[ramp]*3+programs))

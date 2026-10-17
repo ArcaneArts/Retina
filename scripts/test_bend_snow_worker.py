@@ -19,6 +19,7 @@ from test_bend_material_columns import decode
 from test_bend_generated_regions import request
 from test_bend_snow import oracle,check_mca
 from test_bend_placement_merge import sources
+from test_bend_registry_climate import force_biome
 
 
 def exercise(binary,path,gpu,folder,mode,observe=False):
@@ -26,7 +27,7 @@ def exercise(binary,path,gpu,folder,mode,observe=False):
     biome=next(i for i,b in enumerate(source['biomes']) if b['id']==('minecraft:frozen_ocean' if mode=='ocean' else 'minecraft:forest'))
     if mode in ('land','invalid'):source['biomes'][biome]['temperature']=-.5
     for b in source['biomes']:b['lakes']=[0,0]
-    source['climate_targets'][0]['biome']=biome
+    force_biome(source,biome)
     top=48 if mode=='ocean' else 80
     source['registry_program']['programs'][1]=dict(nodes=[ins(29,1),ins(0,p=(top,0,0,0)),ins(5,1,0)],roots=[2])
     if mode=='invalid':source['snow_support']=[False]

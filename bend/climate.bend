@@ -19,7 +19,7 @@ type Tree is Data:
   Branch{box: Box,left: Tree,right: Tree}
 
 type Model is Data:
-  Model{surface: Tree,underground: Tree,shores: Tree}
+  Model{surface: Tree,underground: Tree,shores: Tree,unmapped: Tree,niches: Bool}
 
 type Query is Data:
   Query{point: Axes,weighted: Bool,underground: Bool,ocean_penalty: Bool,exclude_shores: Bool}
@@ -177,12 +177,25 @@ def shores(xs: List<&2,Target>) -> List<&2,Target>:
       include(Bool.and(U32.is_zero(U32.and(flags,16)),U32.is_ne(U32.and(flags,64),0)),
         coastal(Target{lo,hi,offset,biome,flags,order}),shores(rest))
 
-def prepare(+targets: List<&2,Target>) -> Model:
+def has_surface(targets: List<&2,Target>) -> Bool:
+  match targets:
+    case Nil{}: False{}
+    case Target{_,_,_,_,flags,_} <> rest:
+      Bool.or(U32.is_zero(U32.and(flags,16)),has_surface(rest))
+
+# Unmapped targets are point centers in the first four climate dimensions.
+# Their order is the original biome index; the registered interval order remains
+# unchanged. A separate tree avoids assigning fake intervals or noise parameters.
+def with_unmapped(+targets: List<&2,Target>,+unmapped: List<&2,Target>) -> Model:
   +surface_targets = surface(targets)
   +coastal_targets = shores(targets)
   Model{tree(surface_targets,U32.from_nat(List.length(&2,Target,surface_targets)),5n),
     tree(targets,U32.from_nat(List.length(&2,Target,targets)),6n),
-    tree(coastal_targets,U32.from_nat(List.length(&2,Target,coastal_targets)),5n)}
+    tree(coastal_targets,U32.from_nat(List.length(&2,Target,coastal_targets)),5n),
+    tree(unmapped,U32.from_nat(List.length(&2,Target,unmapped)),4n),has_surface(targets)}
+
+def prepare(targets: List<&2,Target>) -> Model:
+  with_unmapped(targets,[])
 
 def delta(+x: F32,lo: F32,hi: F32) -> F32:
   +d = F32.sub(x,F32.clamp(x,lo,hi))
@@ -213,10 +226,10 @@ def ocean(mismatch: Bool) -> F32:
     case False{}: 0.0
     case True{}: 8.0
 
-def leaf_fitness(+target: Target,q: Query) -> F32:
+def leaf_fitness(+target: Target,q: Query,bias: F32) -> F32:
   match target q:
     case Target{_,_,_,_,flags,_} Query{+p,+weighted,+underground,+penalty,exclude}:
-      F32.add(fitness(bound(target),Query{p,weighted,underground,penalty,exclude}),ocean(Bool.and(penalty,
+      F32.add(F32.sub(fitness(bound(target),Query{p,weighted,underground,penalty,exclude}),bias),ocean(Bool.and(penalty,
         Bool.xor(U32.is_ne(U32.and(flags,4),0),F32.is_lt(axis(p,2),F32.neg(0.25))))))
 
 def replace(better: Bool,candidate: Choice,current: Choice) -> Choice:
@@ -236,49 +249,71 @@ def allowed(target: Target,q: Query) -> Bool:
     case Target{_,_,_,_,flags,_} Query{_,_,_,_,exclude}:
       Bool.not(Bool.and(exclude,U32.is_ne(U32.and(flags,64),0)))
 
-def evaluate(allowed: Bool,+target: Target,q: Query,current: Choice) -> Choice:
+def evaluate(allowed: Bool,+target: Target,q: Query,bias: F32,current: Choice) -> Choice:
   match allowed target:
     case False{} _: current
     case True{} Target{+lo,+hi,_,biome,_,order}:
-      choose(Choice{leaf_fitness(target,q),biome,order,axis(midpoint(lo,hi),5)},current)
+      choose(Choice{leaf_fitness(target,q,bias),biome,order,axis(midpoint(lo,hi),5)},current)
 
-def leaves(xs: List<&2,Target>,+q: Query,current: Choice) -> Choice:
+def leaves(xs: List<&2,Target>,+q: Query,+bias: F32,current: Choice) -> Choice:
   match xs:
     case Nil{}: current
-    case +x <> rest: leaves(rest,q,evaluate(allowed(x,q),x,q,current))
+    case +x <> rest: leaves(rest,q,bias,evaluate(allowed(x,q),x,q,bias,current))
 
-def visit(box: Box,q: Query,current: Choice) -> Bool:
+def visit(box: Box,q: Query,bias: F32,current: Choice) -> Bool:
   match current:
     case Missing{}: True{}
-    case Choice{best,_,_,_}: F32.is_le(fitness(box,q),best)
+    case Choice{best,_,_,_}: F32.is_le(F32.sub(fitness(box,q),bias),best)
 
 @unsafe
-def search(tree: Tree,+q: Query,+current: Choice) -> Choice:
+def search_biased(tree: Tree,+q: Query,+bias: F32,+current: Choice) -> Choice:
   match tree:
     case Empty{}: current
-    case Leaf{box,targets}: visit_leaf(visit(box,q,current),targets,q,current)
-    case Branch{box,left,right}: visit_branch(visit(box,q,current),left,right,q,current)
+    case Leaf{box,targets}: visit_leaf(visit(box,q,bias,current),targets,q,bias,current)
+    case Branch{box,left,right}: visit_branch(visit(box,q,bias,current),left,right,q,bias,current)
 
 @unsafe
-def visit_leaf(yes: Bool,targets: List<&2,Target>,q: Query,current: Choice) -> Choice:
+def visit_leaf(yes: Bool,targets: List<&2,Target>,q: Query,bias: F32,current: Choice) -> Choice:
   match yes:
     case False{}: current
-    case True{}: leaves(targets,q,current)
+    case True{}: leaves(targets,q,bias,current)
 
 @unsafe
-def visit_branch(yes: Bool,left: Tree,right: Tree,+q: Query,current: Choice) -> Choice:
+def visit_branch(yes: Bool,left: Tree,right: Tree,+q: Query,+bias: F32,current: Choice) -> Choice:
   match yes:
     case False{}: current
-    case True{}: search(right,q,search(left,q,current))
+    case True{}: search_biased(right,q,bias,search_biased(left,q,bias,current))
+
+def search(tree: Tree,q: Query,current: Choice) -> Choice:
+  search_biased(tree,q,0.0,current)
+
+def niche_bias(enabled: Bool,weighted: Bool) -> F32:
+  match enabled weighted:
+    case False{} _: 0.0
+    case True{} False{}: 0.03
+    case True{} True{}: 0.12
+
+def unmapped_choice(choice: Choice) -> Choice:
+  match choice:
+    case Missing{}: Missing{}
+    # Rust starts the interval search with order zero: an exact fitness tie
+    # preserves this candidate, regardless of its original biome index.
+    case Choice{fitness,biome,_,_}: Choice{fitness,biome,0,0.0}
+
+def unmapped_lookup(tree: Tree,niches: Bool,q: Query) -> Choice:
+  match q:
+    case Query{Axes{a,b,c,d,_,_},+weighted,_,penalty,exclude}:
+      unmapped_choice(search_biased(tree,Query{Axes{a,b,c,d,0.0,0.0},weighted,False{},penalty,exclude},niche_bias(niches,weighted),Missing{}))
 
 def lookup(model: Model,+q: Query) -> Choice:
   match model q:
-    case Model{surface,_,_} Query{_,_,False{},_,_}: search(surface,q,Missing{})
-    case Model{_,underground,_} _: search(underground,q,Missing{})
+    case Model{surface,_,_,unmapped,niches} Query{_,_,False{},_,_}:
+      search(surface,q,unmapped_lookup(unmapped,niches,q))
+    case Model{_,underground,_,_,_} _: search(underground,q,Missing{})
 
 def coast(model: Model,point: Axes) -> Choice:
   match model point:
-    case Model{_,_,shores} Axes{a,b,_,c,d,e}: search(shores,Query{Axes{a,b,0.0,c,d,e},False{},False{},False{},False{}},Missing{})
+    case Model{_,_,shores,_,_} Axes{a,b,_,c,d,e}: search(shores,Query{Axes{a,b,0.0,c,d,e},False{},False{},False{},False{}},Missing{})
 
 # Only enable depth-dependent selection when registered cave targets exist.
 # Otherwise retain the surface biome, as the Rust path does.
@@ -295,4 +330,4 @@ def underground_tree(tree: Tree) -> Bool:
 
 def has_underground(model: Model) -> Bool:
   match model:
-    case Model{_,tree,_}: underground_tree(tree)
+    case Model{_,tree,_,_,_}: underground_tree(tree)

@@ -52,7 +52,7 @@ def fixtures(folder):
     model['programs'] = [dict(nodes=nodes, roots=[6, 10, 19, 26, 32, 37]), programs[-4], programs[-1],
                          dict(nodes=[ins(40)], roots=[0])]
     source = {'unrelated': '🌍 nodes is a schema key', 'registry_program': model,
-              'biomes': [{'flags': 0}], 'climate_targets': []}
+              'biomes': [{'flags': 0, 'climate': [0.,0.,.2,0.]}], 'climate_targets': []}
     constant = copy.deepcopy(source)
     constant['registry_program'] = {'noises': [], 'points': [[1<<40,0,0,0]],
         'programs': [dict(nodes=[ins(0, p=((1<<40) * (-1 if i%2 else 1), 0, 0, 0))], roots=[]) for i in range(3)]}

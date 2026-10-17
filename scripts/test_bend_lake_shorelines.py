@@ -45,7 +45,8 @@ def fixtures(folder):
         s=copy.deepcopy(base);change(s);p=folder/(name+'.rbp');p.write_bytes(fixture_wire(s,True));result.append((name,s,p))
     add('inland_excluded')
     add('inland_allowed',lambda s:s['biomes'][1].update(flags=0,id='minecraft:plains'))
-    add('shore_only',lambda s:s.update(climate_targets=s['climate_targets'][:1]))
+    add('unreferenced_inland',lambda s:s.update(climate_targets=s['climate_targets'][:1]))
+    add('shore_only',lambda s:(s.update(climate_targets=s['climate_targets'][:1]),s['biomes'][1].update(flags=16)))
     add('no_shores',lambda s:[b.update(flags=0) for b in s['biomes']])
     add('coast_allowed',lambda s:s['registry_program']['programs'].__setitem__(slice(1,3),[pit,pit]))
     def coast_blocked(s):

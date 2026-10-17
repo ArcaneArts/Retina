@@ -35,7 +35,7 @@ from test_bend_noise import MASK,f32,mix_hash,signed
 def fixtures(folder):
     folder.mkdir(parents=True,exist_ok=True);base=copy.deepcopy(geology_fixtures(folder/'geology')[0][0][1])
     for i,b in enumerate(base['biomes']):
-        b.update(flags=0,lakes=[1.,float(i)],lake_barrier=1, lake_water_barrier=4)
+        b.update(flags=0,climate=[-1. if i==0 else 1.,0.,0.,0.],lakes=[1.,float(i)],lake_barrier=1, lake_water_barrier=4)
     base['climate_targets']=[dict(min=[-1. if i==0 else 1.,0.,0.,0.],max=[-1. if i==0 else 1.,0.,0.,0.],weirdness=[0.,0.],depth=[0.,0.],offset=0.,biome=i) for i in range(2)]
     base['registry_program']['programs'][0]=dict(nodes=[ins(29,0),ins(0,p=(.00390625,0,0,0)),ins(6,0,1),ins(0)],roots=[2,3,3,3,3,3])
     good=[];bad=[]

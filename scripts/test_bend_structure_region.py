@@ -103,9 +103,11 @@ def check_output(path,output,gpu,elapsed=None,stderr=''):
     return dict(profile=path.name,profile_sha256=hashlib.sha256(path.read_bytes()).hexdigest(),output_sha256=hashlib.sha256(raw).hexdigest(),gpu=gpu,wall_seconds=elapsed,pieces=total,height_values=heights_checked,repeated_starts_checked=repeated,regions=regions,metal_device_ms=times)
 
 def control(original):
+    from test_bend_registry_climate import complete_control_mapping
     s=copy.deepcopy(original)
     s['biomes'][0]['flags']=0;s['biomes'][1]['flags']=16
     s['climate_targets']=[dict(min=[-10000]*4,max=[10000]*4,weirdness=[-10000,10000],depth=depth,offset=0,biome=b) for b,depth in [(0,[100,100]),(1,[0,0])]]
+    complete_control_mapping(s)
     s['registry_program']['programs'][0]=dict(nodes=[ins(0)],roots=[0]*6)
     s['registry_program']['programs'][1]=dict(nodes=[ins(29,1),ins(0,p=(32.25,0,0,0)),ins(5,1,0)],roots=[2])
     t=dict(id='test:house',ground=1,size=[5,6,5],palettes=[[[1,1,1,1]]],blocks=[0,0,0,0],tags={},entities=[],joints=[])

@@ -50,7 +50,7 @@ def fixture_profiles(folder):
         ins(0,p=(-8,0,0,0)),ins(5,0,6),ins(11,7),ins(0,p=(4,0,0,0)),ins(5,9,8),ins(9,5,10)],roots=[11])
     targets=[dict(min=[-1]*4,max=[1]*4,weirdness=[-1,1],depth=[0,0],offset=0,biome=0),
              dict(min=[-1]*4,max=[1]*4,weirdness=[-1,1],depth=[0,0],offset=0,biome=1)]
-    base={'geology_min_y':-17,'geology_height':36,'sea_level':1,'biomes':[{'flags':0},{'flags':0}],
+    base={'geology_min_y':-17,'geology_height':36,'sea_level':1,'biomes':[{'flags':0,'climate':[-1.,0.,0.,0.]},{'flags':0,'climate':[1.,0.,0.,0.]}],
           'climate_targets':targets,'registry_program':{'surface':[-17,8,0],'terrain_cell':[4,8],
           'noises':[],'points':[],'programs':[climate,ramp,ramp]}}
     result=[]

@@ -200,19 +200,77 @@ registered programs and feature families below, not just representative terrain.
 All unmarked items remain required. Update this inventory as code is inspected
 more deeply; retain the original requested scope.
 
-The complete-region benchmark review found a concrete remaining climate gap:
+The complete-region benchmark review found a concrete climate coverage gap:
 `native/src/simplex.wgsl::registered_biome_filtered` considers ordinary registered
 biomes absent from `climate_targets`, using their exported climate center and a
-small fitness preference. `bend/registry_climate.bend` currently projects only
+small fitness preference. The previously compiled Bend model projects only
 explicit targets. The retained vanilla profile maps all 56 biomes, but Terralith
 leaves `terralith:deep_warm_ocean` unmapped and the combined fixture also leaves
-`retina_test:export_probe` unmapped. Bend cannot select those ordinary surface
-biomes through its current climate model. The source hashes, profile hashes and
+`retina_test:export_probe` unmapped. That worker cannot select those ordinary
+surface biomes through its climate model. The original source hashes, profile hashes and
 independent fitness counterexamples are recorded in
-`docs/benchmarks/bend-climate-coverage-audit.json`; these are source-audit evidence,
-not a new worker execution test. Fix and validate this path before claiming
-combined-pack parity. Existing interval tests and saved-biome consistency checks
-do not prove coverage of biomes omitted from the model.
+`docs/benchmarks/bend-climate-coverage-audit.json`.
+
+The current source adds a separate climate-center index for eligible unmapped
+biomes. Any registered target, including an underground target, marks a biome
+as mapped. Cave biomes never enter the surface fallback; unreferenced shore
+biomes are excluded when registered surface intervals exist. Lookup uses the
+same four-axis distance and small unweighted/weighted preferences as the Rust
+source, with original-biome-order ties and an initial-candidate win on exact
+interval ties. Underground and coastal-only searches retain their explicit
+target semantics. All current surface, shoreline, lake and feature consumers
+use this shared lookup. No Java registry or Rust behavior changes are involved.
+
+**The changed climate model passes a compiled CPU component test.**
+It has not yet been rebuilt or exercised in the full native terrain worker.
+Benchmarks and heavy tests remain stopped at the user's request.
+The user separately approved source-only compiler checks with a 15-second total
+budget. Those checks took 9.315 seconds, including an unchanged-main comparison,
+and caught computed-match and definition-order errors that are now corrected.
+The final `bend bend/engine.bend --check-only` and unchanged main both exit 1,
+reporting only unsafe/foreign-code proof restrictions (3944 and 3935 definitions,
+respectively). This is not a passing proof check or a native compilation result.
+Eleven small Python reference tests pass, and 50 synthetic fixture projections
+remain valid, including material/density fixtures that also prepare climate.
+The same independent reference selects the missing candidates at all three
+saved-profile counterexamples. Source/profile hashes and these limited results
+are recorded in `docs/benchmarks/bend-climate-coverage-source.json`; that earlier
+source-only report does not establish executable parity. The persistent worker harness now includes omitted
+biomes, a multi-node fallback tree, rounded ties, invalid centers, absent surface
+intervals and direct queries at the original profiles' omitted climate centers.
+It still needs an approved rebuild and execution, followed by final biome-query
+consistency checks. Existing interval-only and saved-biome tests cannot prove
+coverage of biomes omitted from the old model. Combined-pack parity remains open.
+
+An isolated CPU check is available in `scripts/check_bend_climate_coverage.py`.
+It builds `bend/tests/climate-coverage.bend`, which calls the production registry
+projection and climate lookup without importing the terrain engine or invoking
+GPU work. Eight synthetic profiles produce 24 original/reversed/empty query
+cases, with batches capped at 512 queries; 39 malformed profiles check rejection.
+Optional saved JSON profiles contribute only unchanged biome/climate fields.
+The driver runs all cases in one process with two CPU threads at reduced
+priority. An external supervisor limits the entire build, run and verification
+to 30 seconds by default, followed by up to one second for termination; it does
+not retry after failure or timeout. Native compilation is a single compiler
+invocation at reduced priority. This is an explicitly invoked correctness check,
+not a benchmark or part of normal client startup.
+
+The user approved one bounded native CPU test. At commit `28a778e`, compilation,
+execution and independent result validation completed in **8.256 seconds total**
+under the 30-second deadline. All **72 cases passed**: 24 synthetic query cases,
+nine cases using the saved vanilla/Terralith/combined-pack climate fields, and
+39 malformed-profile rejections. All **2,188 query rows** matched the independent
+reference, with zero measured fitness error; reversed-order outputs matched and
+empty batches remained empty. The compiler and fixture logs were empty, both
+processes exited successfully, and the supervisor completed cleanup. No GPU,
+terrain engine, Minecraft launch or benchmark ran. The compiled binary, fixtures
+and logs are retained outside the worktree; hashes, exact command, deadline and
+results are in `docs/benchmarks/bend-climate-coverage-cpu.json`.
+
+This establishes CPU execution of the changed climate projection and lookup,
+not complete backend parity. GPU execution, persistent-worker lifecycle and
+final surface/region integration checks remain outstanding. Existing reference
+and fixture-only checks are retained as separate, narrower evidence.
 
 | Requirement | Current Rust/shared source | Bend implementation / completion evidence |
 | --- | --- | --- |

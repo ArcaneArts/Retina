@@ -8,6 +8,7 @@ import argparse
 import copy
 import hashlib
 import json
+import math
 from pathlib import Path
 import random
 import re
@@ -18,13 +19,43 @@ from test_bend_compression import ROOT,DEFAULT_BEND,build
 from test_bend_engine import Worker,configuration,compile_metal_observer
 from test_bend_registry import path_request
 from test_bend_registry_noise import fixture_wire
-from test_bend_climate import target,queries,verify
+from test_bend_climate import target,queries,verify,f32
 
 
 def projected(source):
-    return [target(t['min']+t['weirdness'][:1]+t.get('depth',[0.,0.])[:1],
+    targets = [target(t['min']+t['weirdness'][:1]+t.get('depth',[0.,0.])[:1],
                    t['max']+t['weirdness'][1:]+t.get('depth',[0.,0.])[1:],t['offset'],t['biome'],
                    source['biomes'][t['biome']]['flags'],i) for i,t in enumerate(source.get('climate_targets',[]))]
+    mapped = {t['biome'] for t in targets}
+    niches = any(not t['flags']&16 for t in targets)
+    for i,biome in enumerate(source['biomes']):
+        flags = biome['flags']
+        if i in mapped or flags&16 or (niches and flags&64): continue
+        center = biome.get('climate')
+        if not isinstance(center,list) or len(center) != 4 or any(type(x) not in (int,float) or not math.isfinite(f32(x)) for x in center):
+            raise ValueError('Unmapped biome needs four finite climate coordinates')
+        fallback = target(center+[0.,0.],center+[0.,0.],0.,i,flags,i)
+        targets.append(dict(fallback,unmapped=True,niche=niches))
+    return targets
+
+
+def force_biome(source,biome):
+    """Analytic single-biome QA: keep every other biome explicitly mapped away.
+
+    Removing their targets would now intentionally enable the production
+    unmapped-biome niches and invalidate the fixture's single-biome premise.
+    """
+    source['climate_targets']=[dict(min=[-10000.]*4,max=[10000.]*4,weirdness=[-10000.,10000.],
+                                    depth=[-10000.,10000.],offset=0.,biome=biome)]
+    complete_control_mapping(source)
+
+
+def complete_control_mapping(source):
+    """Keep unused biomes out of analytic controls without creating niches."""
+    used={t['biome'] for t in source['climate_targets']}
+    source['climate_targets'] += [dict(min=[20000.]*4,max=[20000.]*4,weirdness=[20000.,20000.],
+                                       depth=[20000.,20000.],offset=0.,biome=i)
+                                  for i in range(len(source['biomes'])) if i not in used]
 
 
 def request(points):
@@ -35,7 +66,7 @@ def fixtures(folder):
     folder.mkdir(parents=True,exist_ok=True)
     rng=random.Random(20261008)
     base={'unrelated':'🌍 min is a schema key but this is not',
-          'biomes':[{'flags':v} for v in (0,4,16,64,68,80,84)],'climate_targets':[]}
+          'biomes':[{'flags':v,'climate':[0.,0.,.2,0.]} for v in (0,4,16,64,68,80,84)],'climate_targets':[]}
     for i in range(129):
         lo=[rng.randrange(-8,4)/4 for _ in range(4)]
         hi=[x+rng.randrange(0,7)/4 for x in lo]
@@ -48,10 +79,25 @@ def fixtures(folder):
     base['climate_targets'] += [{'min':[-1]*4,'max':[1]*4,'weirdness':[-1,1],
         'depth':[0,0],'offset':0,'biome':0}, {'min':[1<<40]*4,'max':[1<<41]*4,
         'weirdness':[-1,1],'offset':0,'biome':1}]
+    fallback=copy.deepcopy(base)
+    fallback['biomes'] += [dict(flags=0,climate=[0.,0.,0.,0.]),dict(flags=0,climate=[0.,0.,0.,0.]),
+                          dict(flags=4,climate=[0.,0.,-.5,0.]),dict(flags=16),dict(flags=64)]
+    many=copy.deepcopy(base)
+    many['biomes'] += [dict(flags=0,climate=[i/16-2.,0.,.2,0.]) for i in range(65)]
+    no_targets={'biomes':[dict(flags=0,climate=[0.,0.,.2,0.]),dict(flags=64,climate=[1.,0.,0.,0.]),dict(flags=16)]}
+    # At this distance, F32 rounds away the niche bias. The initial unmapped
+    # candidate must still win a tie with registered interval order zero.
+    tie_center=[4096.,0.,0.,0.]
+    tie={'biomes':[dict(flags=0),dict(flags=0,climate=tie_center),dict(flags=0,climate=tie_center)],
+         'climate_targets':[dict(min=tie_center,max=tie_center,weirdness=[0.,0.],depth=[0.,0.],offset=0.,biome=0)]}
+    cave_only={'biomes':[dict(flags=16),dict(flags=0,climate=[0.,0.,.2,0.])],
+               'climate_targets':[dict(min=[0.]*4,max=[0.]*4,weirdness=[0.,0.],depth=[0.,0.],offset=0.,biome=0)]}
     result=[]
     for name,source,packed in [('mixed',base,False),('packed',base,True),
-        ('empty',{'biomes':[{'flags':0}],'climate_targets':[]},True),
-        ('missing_targets',{'biomes':[{'flags':0}]},False)]:
+        ('unmapped',fallback,True),('unmapped_tree',many,False),
+        ('unmapped_interval_tie',tie,True),('only_underground_targets',cave_only,False),
+        ('empty',dict(no_targets,climate_targets=[]),True),
+        ('missing_targets',no_targets,False)]:
         path=folder/f'{name}.rbp';path.write_bytes(fixture_wire(source,packed));result.append((name,source,path))
     bad=[None,{}, {'biomes':[]}, {'biomes':[{}]}, {'biomes':[{'flags':True}]},
         {'biomes':[{'flags':-1}]}, {'biomes':[{'flags':1.0}]}, {'biomes':[{'flags':1<<32}]},
@@ -63,6 +109,9 @@ def fixtures(folder):
         source=copy.deepcopy(base);source['climate_targets'][0][field]=value;bad.append(source)
     for field in ('min','max','weirdness','offset','biome'):
         source=copy.deepcopy(base);del source['climate_targets'][0][field];bad.append(source)
+    for center in (None,[],[0.]*3,[0.]*5,[True,0.,0.,0.],[1.e200,0.,0.,0.]):
+        source=copy.deepcopy(base);source['biomes'].append(dict(flags=0,climate=center));bad.append(source)
+    source=copy.deepcopy(base);source['biomes'].append(dict(flags=0));bad.append(source)
     invalid=[]
     for i,source in enumerate(bad):
         path=folder/f'invalid-{i}.rbp';path.write_bytes(fixture_wire(source,bool(i%2)));invalid.append(path)
@@ -91,6 +140,9 @@ def exercise(binary,profiles,invalid,gpu):
             expected=struct.pack('>2I',len(source.get('climate_targets',[])),len(source['biomes']))
             assert worker.call(9)==expected
             targets=projected(source);points=queries(rng,256)
+            # Directly exercise every previously omitted ordinary biome, rather
+            # than hoping a random query lands in its small registered niche.
+            points += [(t['lo'].copy(),mode) for t in targets if t.get('unmapped') for mode in (0,1,2,8,16)]
             canonical=None
             for group in (points,points[:13],[],points):
                 data=worker.call(10,request(group))
