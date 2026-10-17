@@ -281,6 +281,10 @@ source and output hashes. GPU execution, full-region integration and any speedup
 remain unverified for this change. The installed playable worker has not been
 rebuilt with this lighting change or the preceding climate fix. No additional
 native work is covered by the completed fixture-test approvals.
+The lighting harness now has an explicitly selected `--metal` mode for two
+small diagnostic scenes under one 30-second deadline, including shader/native
+compilation. Its Python orchestration tests pass; native execution still needs
+separate approval. This does not rebuild or update the playable worker.
 
 | Requirement | Current Rust/shared source | Bend implementation / completion evidence |
 | --- | --- | --- |

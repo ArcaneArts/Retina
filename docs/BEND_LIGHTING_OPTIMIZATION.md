@@ -75,3 +75,34 @@ execution and measure this candidate. Do not restart the multi-minute
 complete-region benchmark to decide whether these
 local changes are promising. Full-region and complete-backend acceptance remain
 outstanding in [the parity inventory](BEND_IMPLEMENTATION.md).
+
+### Prepared Metal correctness check
+
+`scripts/check_bend_lighting.py --metal` is an explicit, separately authorized
+mode; it has not been run. The default remains the eleven-scene CPU-only check.
+Metal mode performs one stock C emission, one native fixture compilation, one
+stock GPU archive build and two small scenes: `opaque-emitter-brick` and
+`registered-optics-gallery`. It uses two Bend CPU runtime threads, reduced
+priority and the existing 4 GiB GPU heap setting. It does not invoke the terrain
+engine, generate a region, run a benchmark or launch Minecraft.
+
+The same external supervisor covers the entire sequence with a 30-second
+deadline and one-second termination grace. There are no automatic retries.
+Metal's system compiler may use additional threads; the two-thread setting
+limits Bend execution, not Apple's shader compilation services. A cold shader
+compile may consume the deadline before either scene runs.
+
+The diagnostic C copy adds only a host log after the stock command-buffer wait;
+the original generated source is retained. No application/device algorithm,
+scheduler or runtime tuning is changed. Each scene must match the independent
+flood fill and record successful completed Metal command buffers with a positive
+device timestamp duration. A GPU flag or compiled archive alone cannot pass.
+Source, binary, archive and output hashes are retained by the reports. Diagnostic
+timestamps are not production speed measurements or evidence of a speedup.
+
+The five Python-only orchestration tests cover the unchanged CPU mode, explicit
+GPU build/scene order, failure without retry, exact host logging insertion, and
+rejection of missing/failed/nonfinite GPU observations. All pass without invoking
+any compiler or GPU. The logging insertion also applies to the retained actual
+CPU-generated C and removes exactly back to the original text. Native and Metal
+validation of this mode remain pending.
