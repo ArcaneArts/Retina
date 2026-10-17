@@ -33,8 +33,6 @@ final class TemporaryRegions implements AutoCloseable {
     static final int MAX_REGIONS = 1024;
     // Bound dense native region fields across DH and ordinary asynchronous requests.
     private static final java.util.concurrent.Semaphore GENERATORS = new java.util.concurrent.Semaphore(2, true);
-    private final BendRegionBackend bend;
-    private final net.minecraft.world.level.chunk.PalettedContainerFactory containerFactory;
     private final TerrainRequest settings;
     private final String biome;
     private final GenerationMetrics metrics;
@@ -56,16 +54,6 @@ final class TemporaryRegions implements AutoCloseable {
     }
 
     TemporaryRegions(TerrainRequest settings, String biome, BiomeTerrainProfile profile, GenerationMetrics metrics, int capacity, int memoryCapacity) {
-        this(settings,biome,profile,metrics,capacity,memoryCapacity,null,null);
-    }
-
-    TemporaryRegions(TerrainRequest settings,String biome,BiomeTerrainProfile profile,GenerationMetrics metrics,int capacity,
-                     BendRegionBackend bend,net.minecraft.world.level.chunk.PalettedContainerFactory factory) {
-        this(settings,biome,profile,metrics,capacity,Math.min(capacity,16),bend,factory);
-    }
-    private TemporaryRegions(TerrainRequest settings,String biome,BiomeTerrainProfile profile,GenerationMetrics metrics,int capacity,int memoryCapacity,
-                             BendRegionBackend bend,net.minecraft.world.level.chunk.PalettedContainerFactory factory) {
-        this.bend = bend; this.containerFactory = factory;
         this.settings = settings;
         this.biome = biome;
         this.profile = profile;
@@ -205,14 +193,14 @@ final class TemporaryRegions implements AutoCloseable {
             try {
                 var r = new TerrainRequest(settings.seed(), entry.origin.x(), entry.origin.z(), settings.minY(), settings.height(),
                         settings.baseHeight(), settings.amplitude(), settings.frequency(), settings.profile());
-                var data = bend == null ? NativeTerrain.instance().generateRegionColumns(r, entry.path,
-                        SharedConstants.getCurrentVersion().dataVersion().version(), biome) : null;
-                var report = bend == null ? data.report() : bend.generate(r,entry.path,SharedConstants.getCurrentVersion().dataVersion().version());
+                var data = NativeTerrain.instance().generateRegionColumns(r, entry.path,
+                        SharedConstants.getCurrentVersion().dataVersion().version(), biome);
+                var report = data.report();
                 long cacheStarted=System.nanoTime();
-                if (data != null) entry.storeColumns(data.columns());
+                entry.storeColumns(data.columns());
                 long columnCacheNanos=System.nanoTime()-cacheStarted;
                 long elapsed = System.nanoTime() - start;
-                metrics.completedPreviewRegion(report.generated(), elapsed, report.stages(), columnCacheNanos,report.bendStages());
+                metrics.completedPreviewRegion(report.generated(), elapsed, report.stages(), columnCacheNanos);
                 entry.generated.complete(report);
                 synchronized (this) { if (!entry.retired) warm.put(entry.key, entry); trimWarm(); }
                 if (Boolean.getBoolean("retina.qa")) Retina.LOGGER.info(
@@ -261,7 +249,6 @@ final class TemporaryRegions implements AutoCloseable {
     NativeTerrain.Columns columns(ChunkPos position) {
         try (var lease = acquire(position)) {
             lease.data();
-            if (bend != null) return bendColumns(position,lease.entry.read(position));
             var columns = lease.entry.columns();
             int start = (Math.floorMod(position.z(), 32) * 32 + Math.floorMod(position.x(), 32)) * 256;
             return new NativeTerrain.Columns(Arrays.copyOfRange(columns.heights(), start, start + 256),
@@ -274,19 +261,6 @@ final class TemporaryRegions implements AutoCloseable {
             lease.data();
             return lease.entry.read(position);
         } catch (IOException error) { throw new UncheckedIOException(error); }
-    }
-
-    private NativeTerrain.Columns bendColumns(ChunkPos position,CompoundTag tag) {
-        int[] heights=new int[256],packed=new int[256],materials=new int[256];
-        int bits=32-Integer.numberOfLeadingZeros(settings.height());
-        var heightmap=new net.minecraft.util.SimpleBitStorage(bits,256,tag.getCompoundOrEmpty("Heightmaps").getLongArray("OCEAN_FLOOR_WG").orElseThrow());
-        var ids=biomes(position);
-        for(int i=0;i<256;i++) {
-            heights[i]=settings.minY()+heightmap.get(i);
-            int layer=Math.clamp((heights[i]-1-settings.minY())/4,0,settings.height()/4-1);
-            packed[i]=Short.toUnsignedInt(ids[layer*16+(i/16/4)*4+(i%16/4)]);
-        }
-        return new NativeTerrain.Columns(heights,packed,materials);
     }
 
     short[] biomes(ChunkPos position) {
@@ -306,26 +280,6 @@ final class TemporaryRegions implements AutoCloseable {
     }
 
     BlockState[] baseColumn(ChunkPos position, NativeTerrain.Columns columns, int index) {
-        if (bend != null) {
-            try (var lease = acquire(position)) {
-                lease.data();
-                var tag = lease.entry.read(position);
-                var chunk = new net.minecraft.world.level.chunk.ProtoChunk(position,net.minecraft.world.level.chunk.UpgradeData.EMPTY,
-                        new net.minecraft.world.level.LevelHeightAccessor() {
-                            public int getMinY() { return settings.minY(); }
-                            public int getHeight() { return settings.height(); }
-                        },containerFactory,null);
-                var saved = net.minecraft.world.level.chunk.storage.SerializableChunkData.parse(chunk,containerFactory,tag);
-                if (saved == null) throw new IOException("Bend MCA chunk has no saved status: "+position);
-                var states = new BlockState[settings.height()]; Arrays.fill(states,Blocks.AIR.defaultBlockState());
-                for (var section : saved.sectionData()) if (section.chunkSection() != null) {
-                    int base = section.y()*16-settings.minY();
-                    if(base<0 || base+16>states.length)continue;
-                    for(int y=0;y<16;y++)states[base+y]=section.chunkSection().getBlockState(index%16,y,index/16);
-                }
-                return states;
-            } catch (IOException error) { throw new UncheckedIOException(error); }
-        }
         if (layeredMaterials) {
             try (var lease = acquire(position)) {
                 lease.data();return lease.entry.baseColumn(position,index);
@@ -369,9 +323,8 @@ final class TemporaryRegions implements AutoCloseable {
             lease.data();
             var r = new TerrainRequest(settings.seed(), position.x(), position.z(), settings.minY(), settings.height(),
                     settings.baseHeight(), settings.amplitude(), settings.frequency(), settings.profile());
-            return bend == null ? NativeTerrain.instance().publishCachedRegion(r, destination, lease.entry.path)
-                    : BendRegionFiles.publish(lease.entry.path,destination,bend::resetLighting);
-        } catch (IOException error) { throw new UncheckedIOException(error); }
+            return NativeTerrain.instance().publishCachedRegion(r, destination, lease.entry.path);
+        }
     }
 
     @Override public synchronized void close() {

@@ -2,15 +2,8 @@
 
 Fabric and NeoForge 26.3 terrain generation with GPU registry density programs, biome climates, surface materials, caves, registry-derived features and Rust chunk/MCA assembly.
 
-The world type selector offers **Retina Rust**, the existing generator, and
-**Retina Bend**, an experimental independent Bend terrain pipeline. Bend combines
-registered density/interpolation, biomes, materials/shorelines, lakes, cave
-biomes/aquifers, carving, ores, cave dressing and surface trees/vegetation with
-Bend NBT/zlib/MCA writing, registered structures, snow/freezing and interior
-region lighting. Minecraft lights the boundary chunks. Generation is still slow
-and experimental; Rust remains the default Retina selection.
-See the [implementation checklist](docs/BEND_IMPLEMENTATION.md) for remaining
-parity and integration work.
+Select **Retina** to use the Rust/GPU region generator. Rust assembles and writes
+MCA regions; compute shaders handle bulk terrain and lighting work.
 
 ## Run it
 
@@ -34,11 +27,7 @@ packaging and unit-test work shared by the root build.
 
 Root `runClient`, `runServer` and `test` commands remain Fabric aliases.
 NeoForge run tasks have distinct names so Gradle's unqualified `runClient` task
-selector starts Fabric only. Ordinary launches reuse the installed Bend 2.0.37
-worker at `~/.local/share/retina-bend/2.0.37/playable/engine`, including its adjacent
-`engine.gpu` archive; they do not compile Bend. `-PretinaBendExecutable=...` or
-`RETINA_BEND_EXECUTABLE` can override that location. This host's preview runtime
-is installed there; other hosts must install their own compatible worker.
+selector starts Fabric only.
 `runFabricClient` and `runFabricServer` make the loader explicit. Use
 `:fabric:runClient`, `:fabric:runServer` or `:fabric:test` when passing task-specific
 options such as `--args` or `--tests`. Existing development worlds remain in the
@@ -76,19 +65,20 @@ changing compiler settings rebuilds dependencies.
 Gradle also starts Cargo at lower process priority (`nice +10`) on macOS/Linux,
 including when it uses an already-running Gradle daemon.
 
-Create a new single-player world and select a Retina world type in the **World** tab:
+Create a new single-player world and select **Retina** in the **World** tab.
+The overworld uses the Rust/GPU generator; Nether and End remain vanilla.
 
-- **Retina Rust**: the default Retina mode; Rust writes whole regions.
-- **Retina Bend**: the experimental Bend terrain implementation with complete cached MCA regions.
+Hidden legacy preset identifiers remain readable for saved worlds and server
+configurations. Worlds created with the retired Bend experiment now generate new
+terrain with Rust; existing saved chunks and player edits are preserved. The two
+generators produce different terrain, so new terrain can meet old terrain at a seam.
+The old per-chunk preset remains a hidden compatibility option for existing saves.
 
-The old chunk preset still decodes existing saves but is no longer selectable.
-
-Both generate the same biome terrain model in the overworld. Nether and End remain vanilla.
 The default biome set includes plains, forests, taiga, snowy plains, desert, savanna,
 badlands, jungle, mangrove swamp, windswept hills, jagged peaks, three oceans,
 sandy/snowy beaches and stony shores. New presets select these biomes using the
 registered Overworld climate intervals. Enabled packs can replace those intervals,
-material rules and shoreline sediment recipes; the GPU evaluates them in both modes.
+material rules and shoreline sediment recipes; the GPU evaluates them.
 See [shoreline generation](docs/SHORELINES.md) for the projection and its limits.
 Surfaces include grass/dirt, podzol, sand, red sand/striped terracotta, mud, snow and stone.
 Underground, GPU-selected lush caves, dripstone caves and deep dark contain moss,
@@ -120,8 +110,7 @@ Development files live in `run/`. The optional `-PretinaQa` logs structured
 checkpoints and validates decorated Minecraft heightmaps and paired tall plants. Use a fresh world for the boundary checks.
 A plain `./gradlew runClient` omits QA checkpoints.
 
-For a fresh dedicated world, use `level-type=retina:gpu` for MCA, or
-`level-type=retina:gpu_chunk` for per-chunk generation. Launch using
+For a fresh dedicated world, use `level-type=retina:gpu`. Launch using
 `./gradlew runServer`; Minecraft's EULA must be accepted separately.
 `./gradlew genSources` generates Minecraft sources for IDE navigation.
 

@@ -52,17 +52,12 @@ public final class TerrainClientQa {
     public static void tick(Minecraft minecraft) {
         if (!ENABLED || phase == 6) return;
         if (started == 0) started = System.nanoTime();
-        if (System.nanoTime() - started > (MODE.equals("bend") ? 900_000_000_000L : 300_000_000_000L)) throw new IllegalStateException("Retina client gameplay QA timed out in phase " + phase);
+        if (System.nanoTime() - started > 300_000_000_000L) throw new IllegalStateException("Retina client gameplay QA timed out in phase " + phase);
         switch (phase) {
             case 0 -> {
                 if (!(minecraft.gui.screen() instanceof TitleScreen) || minecraft.gui.overlay() != null) return;
                 phase = 1;
                 minecraft.options.pauseOnLostFocus = false;
-                if (MODE.equals("bend")) {
-                    // Confined to this disposable QA run; the first preview is slow.
-                    minecraft.options.renderDistance().set(2);
-                    minecraft.options.simulationDistance().set(5);
-                }
                 if (!SERVER.isBlank()) {
                     connect(minecraft);
                     return;
@@ -79,7 +74,7 @@ public final class TerrainClientQa {
                         LevelSettings.DifficultySettings.DEFAULT, true, configuration);
                 minecraft.createWorldOpenFlows().createFreshLevel(WORLD, settings, new WorldOptions(123456789L, true, false),
                         registries -> registries.lookupOrThrow(Registries.WORLD_PRESET)
-                                .getOrThrow(ResourceKey.create(Registries.WORLD_PRESET, Retina.id(MODE.equals("bend") ? "bend" : MODE.equals("chunk") ? "gpu_chunk" : "gpu")))
+                                .getOrThrow(ResourceKey.create(Registries.WORLD_PRESET, Retina.id(MODE.equals("chunk") ? "gpu_chunk" : "gpu")))
                                 .value().createWorldDimensions(), new TitleScreen());
             }
             case 1 -> {
@@ -163,7 +158,7 @@ public final class TerrainClientQa {
     private static boolean ready(Minecraft minecraft) {
         var payload = TerrainDebugEntry.remoteStats();
         return minecraft.level != null && minecraft.player != null && (!SERVER.isBlank() || minecraft.getSingleplayerServer() != null)
-                && payload.active() && (MODE.equals("bend") || payload.stats().stages().chunks() > 0);
+                && payload.active() && payload.stats().stages().chunks() > 0;
     }
 
     private static void connect(Minecraft minecraft) {
@@ -187,14 +182,6 @@ public final class TerrainClientQa {
                 var generator = (RetinaChunkGenerator) level.getChunkSource().getGenerator();
                 require(generator.mode().equals(MODE), "integrated world retains generation mode");
                 TerrainRegistryQa.check(generator);
-                if (MODE.equals("bend")) {
-                    var chunk=level.getChunk(Math.floorDiv(EDIT.getX(),16),Math.floorDiv(EDIT.getZ(),16));
-                    int terrain=0;
-                    for(int z=0;z<16;z++)for(int x=0;x<16;x++)
-                        if(!chunk.getBlockState(new BlockPos(chunk.getPos().getMinBlockX()+x,level.getMinY()+8,chunk.getPos().getMinBlockZ()+z)).isAir())terrain++;
-                    require(terrain>=16,"Bend client loads terrain rather than a biome-only placeholder");
-                    event("minecraft_client_bend_terrain","\"reopened\":"+reopened);
-                }
                 if (reopened) require(level.getBlockState(EDIT).is(Blocks.DIAMOND_BLOCK), "saved negative-coordinate chunk preserves edit");
                 else {
                     level.setBlock(EDIT, Blocks.DIAMOND_BLOCK.defaultBlockState(), 3);

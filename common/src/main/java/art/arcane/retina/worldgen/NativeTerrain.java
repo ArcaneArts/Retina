@@ -348,10 +348,7 @@ public final class NativeTerrain {
     }
 
     public record RegionReport(int generated, int preserved, long gpuNanos, long assemblyNanos,
-                               long writeNanos, long bytes, NativeTimings stages, BendTimings bendStages) {
-        public RegionReport(int generated, int preserved, long gpuNanos, long assemblyNanos, long writeNanos, long bytes, NativeTimings stages) {
-            this(generated,preserved,gpuNanos,assemblyNanos,writeNanos,bytes,stages,BendTimings.EMPTY);
-        }
+                               long writeNanos, long bytes, NativeTimings stages) {
         public RegionReport(int generated, int preserved, long gpuNanos, long assemblyNanos, long writeNanos, long bytes) {
             this(generated,preserved,gpuNanos,assemblyNanos,writeNanos,bytes,NativeTimings.EMPTY);
         }

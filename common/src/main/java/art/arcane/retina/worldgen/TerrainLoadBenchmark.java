@@ -42,8 +42,6 @@ final class TerrainLoadBenchmark {
         var stats=generator.metrics().snapshot();
         if(stats.previewRegions()!=0 || stats.total()!=0 || stats.failures()!=0 || stats.inFlight()!=0)
             throw new IllegalStateException("Load benchmark regenerated terrain or failed: "+stats);
-        if(generator.bendMode() && generator.profile()!=null && generator.profile().nativeId()!=-1)
-            throw new IllegalStateException("Bend load benchmark initialized Rust");
         var result=Map.of("mode",generator.mode(),"reopen",reopen,"generated_chunks",stats.total(),
             "samples",samples,"edit_preserved",reopen,"jvm_uptime_ms",java.lang.management.ManagementFactory.getRuntimeMXBean().getUptime(),
             "scope","synchronous full LevelChunk activation, including normal boundary lighting; excludes rendering");

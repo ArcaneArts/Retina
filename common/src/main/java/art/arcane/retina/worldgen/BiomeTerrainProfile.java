@@ -31,7 +31,7 @@ public record BiomeTerrainProfile(int nativeId, int seaLevel, BlockState[] mater
         return register(TerrainProfileData.export(registry, source, minY, height, seed, settings, structures, densityComposition, skyLight));
     }
 
-    /** Explicit Rust adapter. Bend consumes TerrainProfileData without calling this. */
+    /** Register the exported world profile with the Rust generator. */
     public static BiomeTerrainProfile register(TerrainProfileData data) {
         int nativeId = NativeTerrain.instance().registerProfile(data.json());
         var materials = data.materials();
