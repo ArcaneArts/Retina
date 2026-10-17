@@ -20,6 +20,7 @@ import zlib
 
 from benchmark_backends import Monitor, write_json
 from benchmark_support import percentile
+from benchmark_limits import add_time_limit, supervise
 from test_bend_binary import NbtReader
 from test_bend_compression import ROOT
 from test_bend_engine import Worker
@@ -119,9 +120,9 @@ def run(args):
     assert inputs
     for row, data in zip(manifest['samples'], inputs):
         assert len(data) == row['bytes'] and digest(data) == row['sha256'], row['file']
-    args.out.mkdir(parents=True, exist_ok=False)
     artifact = args.artifact.resolve()
     report = dict(schema='retina.compression-corpus.v1', status='running', backend=args.backend,
+                  max_seconds=args.max_seconds,
                   corpus_sha256=digest(manifest_path.read_bytes()), input_bytes=sum(map(len, inputs)),
                   chunks=len(inputs), artifact=str(artifact), artifact_sha256=digest(artifact.read_bytes()),
                   harness_sha256=digest(Path(__file__).read_bytes()),
@@ -205,14 +206,18 @@ def main():
     bench.add_argument('--out', type=Path, required=True)
     bench.add_argument('--warmups', type=int, default=5)
     bench.add_argument('--repeats', type=int, default=20)
+    add_time_limit(bench)
     args = parser.parse_args()
     if args.command == 'prepare':
         prepare(args.regions, args.corpus)
     else:
         if args.warmups < 0 or args.repeats < 1:
             parser.error('warmups must be nonnegative and repeats must be positive')
+        result = supervise(__file__, args.max_seconds, args.out)
+        if result is not None:
+            return result
         run(args)
 
 
 if __name__ == '__main__':
-    main()
+    raise SystemExit(main())

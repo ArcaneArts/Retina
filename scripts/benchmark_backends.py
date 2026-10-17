@@ -21,6 +21,7 @@ import threading
 import time
 
 from benchmark_support import percentile
+from benchmark_limits import add_time_limit, supervise
 from test_bend_compression import ROOT
 from test_bend_chunks import palette, MAP_NAMES
 from test_bend_formats import read_region
@@ -245,10 +246,15 @@ def main():
     parser.add_argument('--out',type=Path,required=True)
     parser.add_argument('--count',type=int,default=3,help='Warm regions, after one separately reported first region')
     parser.add_argument('--validate-only',action='store_true',help='Validate completed files without rerunning generation')
+    add_time_limit(parser)
     args = parser.parse_args()
     if args.count < 1: parser.error('--count must be positive')
     args.artifact = args.artifact.resolve()
     args.out = args.out.resolve()
+    if not args.validate_only:
+        result = supervise(__file__, args.max_seconds, args.out)
+        if result is not None:
+            return result
     source = json.loads(args.profile.read_text())
     if args.validate_only:
         report = json.loads((args.out/'report.json').read_text())
@@ -263,8 +269,8 @@ def main():
         write_json(args.out/'report.json',report)
         print('PASS independent full-region validation',flush=True)
         return
-    args.out.mkdir(parents=True,exist_ok=False)
     report = dict(schema='retina.complete-backend-benchmark.v1',status='running',backend=args.backend,
+                  max_seconds=args.max_seconds,
                   artifact=str(args.artifact),artifact_sha256=sha(args.artifact),profile_sha256=sha(args.profile),
                   harness_sha256=sha(Path(__file__)),
                   seed=123456789,region_blocks=[512,512],min_y=source['geology_min_y'],height=source['geology_height'],
@@ -332,4 +338,4 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    raise SystemExit(main())

@@ -7,6 +7,26 @@ Every region contains 1024 chunks; 900 interior chunks have generated light and
 124 boundary chunks retain normal Minecraft lighting. Noise-only timings and
 analytic/flat fixture terrain are not substitutes for this workload.
 
+**Current host policy: do not run heavy benchmarks, compilers or servers without
+the user's approval.** The full Bend run was stopped at the user's request after
+three completed regions; its saved measurements already identify lighting as the
+dominant bottleneck. See [the interrupted comparison](benchmarks/bend-region-interrupted.md).
+
+Both generation and compression commands now have a **60-second total runtime
+limit**, including startup. `--max-seconds N` explicitly changes that budget;
+zero/infinite budgets are rejected. A separate supervisor terminates the driver
+and its whole worker process group, even if a native call is blocked, with a
+one-second termination grace period. There is no automatic retry. This is a
+runtime limit, not a CPU/GPU utilization cap; `--threads 2` does not limit GPU
+occupancy. The small supervisor tests launch sleeping Python fixtures only:
+`python3 -m unittest discover -s scripts -p test_benchmark_limits.py`.
+
+`run-control.json` records completion, timeout or cancellation separately from
+`report.json`, which retains the child's completed samples. A timeout/cancellation
+is an incomplete experiment even if some region files exist. Do not resume it
+automatically or use partial samples to claim full verification. The current
+Bend implementation cannot complete a full region inside the default budget.
+
 Compile and export before timing. Keep native compilation at two jobs and run
 backends sequentially. The profile exporter supports `-PtestDatapack=/path/pack.zip`.
 

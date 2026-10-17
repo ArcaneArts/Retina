@@ -1,0 +1,563 @@
+{
+  "schema": "retina.interrupted-backend-comparison.v1",
+  "status": "incomplete_stopped_by_user",
+  "reason": "User stopped the slow Bend run because it disrupted other work. No retry is authorized.",
+  "host": "Apple M4 Max, macOS 27.0.1",
+  "constraints": "Rust region and global Rayon pools: 2 workers; Bend: 2 CPU workers, stock GPU-required Metal, 4 GiB GPU heap. These do not cap GPU utilization.",
+  "validation": "Rust: all 4096 generated chunks independently validated. Bend: completed output from 3 regions; full post-run validation did not run. Previously inspected 10 sample records from the first two files only. No live loading or identical-payload codec results for this cycle.",
+  "lanes": {
+    "rust-two": {
+      "original_report_sha256": "201cbd27f066387dbe62a624358d20262e3db6964b9ed25881465b0fd974d650",
+      "artifact_sha256": "a39fb51cfa6d409af72bf78bf0382c119bea751df464983257d749e11d5e8385",
+      "profile_sha256": "aefce6ff0e800966ad55920c5d21510dfa277de4612f67e22d5146d3aa838203",
+      "harness_sha256": "dcddd2f56e03e1cf9b3c752054d6e643be3f93c3cf7e0710b8a197e9ff089e7a",
+      "startup_ms": 2477.5333751458675,
+      "memory": {
+        "sampled_peak_rss_bytes": 1556758528,
+        "samples": 17,
+        "load_min": [
+          10.27880859375,
+          10.1279296875,
+          9.71630859375
+        ],
+        "load_max": [
+          10.57666015625,
+          10.19189453125,
+          9.7412109375
+        ],
+        "scope": "sum of driver and engine RSS; shared pages may be double-counted; GPU allocations are not measured"
+      },
+      "regions": [
+        {
+          "index": 0,
+          "kind": "first",
+          "rx": 8,
+          "rz": 8,
+          "ms": 2188.904416980222,
+          "bytes": 8392704,
+          "generated_chunks": 1024,
+          "stage_flags": 15,
+          "stages_ms": {
+            "queue": 0.074,
+            "encode": 70.619625,
+            "wait_copy": 409.159583,
+            "height": 31.624125,
+            "sites": 0.767167,
+            "columns": 4.670791,
+            "cave_density": 14.881791,
+            "cave_mask": 112.21475,
+            "structure_plan": 39.0775,
+            "vegetation_plan": 385.640125,
+            "ore_plan": 144.841916,
+            "assembly": 73.319165,
+            "geology": 86.703673,
+            "cave_features": 14.310206,
+            "vegetation": 48.723733,
+            "structures": 24.641158,
+            "snow": 0.186742,
+            "nbt": 223.909384,
+            "compress": 302.850895,
+            "io": 26.050084,
+            "materials": 121.979126,
+            "aquifer_fields": 1.458083,
+            "aquifer_mask": 25.261791,
+            "feature_counts": 0.0,
+            "ore_mask": 10.198333,
+            "provider_noise": 0.006667,
+            "lake_candidates": 1.565583,
+            "lake_density": 21.775125,
+            "lake_reduce": 0.06075,
+            "light_host": 311.425333,
+            "light_sky": 9.011582,
+            "light_spread": 27.893833,
+            "light_pack": 1.005042
+          },
+          "note": "Rust stage counters mix parallel worker sums, host spans and overlapping GPU device time; do not sum them",
+          "validation": {
+            "chunks": 1024,
+            "lit_chunks": 900,
+            "bytes": 8392704,
+            "sha256": "966c1d3b17b2edd7ab0238edf00d05b0ad0d92d8c0ca667d6814dd6e060130d0",
+            "structure_starts": 0,
+            "block_entities": 46,
+            "entities": 0
+          }
+        },
+        {
+          "index": 1,
+          "kind": "warm",
+          "rx": -1,
+          "rz": 0,
+          "ms": 1408.934999955818,
+          "bytes": 7884800,
+          "generated_chunks": 1024,
+          "stage_flags": 15,
+          "stages_ms": {
+            "queue": 0.038542,
+            "encode": 2.112958,
+            "wait_copy": 377.135958,
+            "height": 38.310875,
+            "sites": 0.76575,
+            "columns": 4.133292,
+            "cave_density": 14.955708,
+            "cave_mask": 120.442417,
+            "structure_plan": 83.629583,
+            "vegetation_plan": 256.852875,
+            "ore_plan": 141.224458,
+            "assembly": 44.508528,
+            "geology": 44.405949,
+            "cave_features": 3.351917,
+            "vegetation": 1.198942,
+            "structures": 32.194886,
+            "snow": 7.515849,
+            "nbt": 91.325267,
+            "compress": 149.880991,
+            "io": 18.584459,
+            "materials": 121.286292,
+            "aquifer_fields": 1.741333,
+            "aquifer_mask": 24.848417,
+            "feature_counts": 0.01225,
+            "ore_mask": 10.584875,
+            "provider_noise": 0.007291,
+            "lake_candidates": 1.449292,
+            "lake_density": 26.607166,
+            "lake_reduce": 0.088083,
+            "light_host": 135.580041,
+            "light_sky": 10.93204,
+            "light_spread": 28.248626,
+            "light_pack": 1.186001
+          },
+          "note": "Rust stage counters mix parallel worker sums, host spans and overlapping GPU device time; do not sum them",
+          "validation": {
+            "chunks": 1024,
+            "lit_chunks": 900,
+            "bytes": 7884800,
+            "sha256": "8dd1456a0d991225b37cbad65ae075bb791f045974b3e2d9da3e93e4749251d0",
+            "structure_starts": 1,
+            "block_entities": 161,
+            "entities": 0
+          }
+        },
+        {
+          "index": 2,
+          "kind": "warm",
+          "rx": 0,
+          "rz": 0,
+          "ms": 1597.3488329909742,
+          "bytes": 9277440,
+          "generated_chunks": 1024,
+          "stage_flags": 15,
+          "stages_ms": {
+            "queue": 0.029,
+            "encode": 4.349793,
+            "wait_copy": 194.425165,
+            "height": 11.742084,
+            "sites": 0.86175,
+            "columns": 5.117917,
+            "cave_density": 25.885959,
+            "cave_mask": 33.014375,
+            "structure_plan": 25.839583,
+            "vegetation_plan": 492.485167,
+            "ore_plan": 136.659875,
+            "assembly": 58.907396,
+            "geology": 57.878125,
+            "cave_features": 15.534689,
+            "vegetation": 38.207609,
+            "structures": 17.443567,
+            "snow": 0.455856,
+            "nbt": 156.657521,
+            "compress": 190.319316,
+            "io": 21.832375,
+            "materials": 33.866125,
+            "aquifer_fields": 2.810583,
+            "aquifer_mask": 23.428083,
+            "feature_counts": 0.014208,
+            "ore_mask": 10.138541,
+            "provider_noise": 0.007541,
+            "lake_candidates": 2.170708,
+            "lake_density": 1.5775,
+            "lake_reduce": 0.159792,
+            "light_host": 159.509458,
+            "light_sky": 9.187247,
+            "light_spread": 30.432458,
+            "light_pack": 1.056997
+          },
+          "note": "Rust stage counters mix parallel worker sums, host spans and overlapping GPU device time; do not sum them",
+          "validation": {
+            "chunks": 1024,
+            "lit_chunks": 900,
+            "bytes": 9277440,
+            "sha256": "8a556230e1516fc1ad3d81c049caa4555056e9968c32e1e4140784d4b6076335",
+            "structure_starts": 2,
+            "block_entities": 167,
+            "entities": 12
+          }
+        },
+        {
+          "index": 3,
+          "kind": "warm",
+          "rx": 1,
+          "rz": 0,
+          "ms": 1893.497999990359,
+          "bytes": 8900608,
+          "generated_chunks": 1024,
+          "stage_flags": 15,
+          "stages_ms": {
+            "queue": 0.034208,
+            "encode": 3.866166,
+            "wait_copy": 157.228542,
+            "height": 11.298041,
+            "sites": 0.838,
+            "columns": 4.88725,
+            "cave_density": 18.28275,
+            "cave_mask": 26.954334,
+            "structure_plan": 39.114542,
+            "vegetation_plan": 875.448167,
+            "ore_plan": 169.264917,
+            "assembly": 54.10326,
+            "geology": 50.491737,
+            "cave_features": 8.196068,
+            "vegetation": 2.983885,
+            "structures": 7.466518,
+            "snow": 0.191078,
+            "nbt": 117.599299,
+            "compress": 198.653319,
+            "io": 26.192334,
+            "materials": 30.613251,
+            "aquifer_fields": 2.285959,
+            "aquifer_mask": 18.519625,
+            "feature_counts": 0.010917,
+            "ore_mask": 9.158291,
+            "provider_noise": 0.077333,
+            "lake_candidates": 2.105375,
+            "lake_density": 1.028917,
+            "lake_reduce": 0.152042,
+            "light_host": 154.812542,
+            "light_sky": 8.590959,
+            "light_spread": 27.648332,
+            "light_pack": 1.882332
+          },
+          "note": "Rust stage counters mix parallel worker sums, host spans and overlapping GPU device time; do not sum them",
+          "validation": {
+            "chunks": 1024,
+            "lit_chunks": 900,
+            "bytes": 8900608,
+            "sha256": "9297295d9d1a40cc630e5eb6915a4427b1f9acc04cd1fdfa6221d26f2aa45ca0",
+            "structure_starts": 1,
+            "block_entities": 137,
+            "entities": 0
+          }
+        }
+      ]
+    },
+    "bend": {
+      "original_report_sha256": "dc7867278fb46a96c22a680152de8b96a332d62b5d3fd83086e79ea6e87ba84b",
+      "artifact_sha256": "65a1160fb9fa35df3110869555f3c6f3de6d8eeda92c0c4c982eed7e233d910c",
+      "profile_sha256": "aefce6ff0e800966ad55920c5d21510dfa277de4612f67e22d5146d3aa838203",
+      "harness_sha256": "acabf51740461f67cfc0f00664f988219881ff2807601b9f8c51c4648f87bc90",
+      "startup_ms": 34346.643124939874,
+      "memory": {
+        "sampled_peak_rss_bytes": 2570223616,
+        "samples": 10100,
+        "load_min": [
+          1.77685546875,
+          2.84423828125,
+          3.521484375
+        ],
+        "load_max": [
+          31.08349609375,
+          16.22265625,
+          13.1787109375
+        ],
+        "scope": "sum of driver and engine RSS; shared pages may be double-counted; GPU allocations are not measured"
+      },
+      "regions": [
+        {
+          "index": 0,
+          "kind": "first",
+          "rx": 8,
+          "rz": 8,
+          "ms": 1990126.6637088265,
+          "bytes": 11014144,
+          "stages": [
+            {
+              "name": "density descriptor",
+              "opcode": 18,
+              "host_ms": 0.4202921409159899
+            },
+            {
+              "name": "density lattice",
+              "opcode": 13,
+              "host_ms": 29123.423333046958
+            },
+            {
+              "name": "surface climate",
+              "opcode": 16,
+              "host_ms": 7735.0882911123335
+            },
+            {
+              "name": "shorelines",
+              "opcode": 29,
+              "host_ms": 14975.844250060618
+            },
+            {
+              "name": "lakes",
+              "opcode": 43,
+              "host_ms": 136333.5222909227
+            },
+            {
+              "name": "materials",
+              "opcode": 22,
+              "host_ms": 89925.46908301301
+            },
+            {
+              "name": "caves",
+              "opcode": 33,
+              "host_ms": 87236.81783303618
+            },
+            {
+              "name": "aquifers",
+              "opcode": 39,
+              "host_ms": 1057.7641248237342
+            },
+            {
+              "name": "carving",
+              "opcode": 35,
+              "host_ms": 190284.48879206553
+            },
+            {
+              "name": "ores",
+              "opcode": 50,
+              "host_ms": 159736.36691691354
+            },
+            {
+              "name": "cave decorations",
+              "opcode": 51,
+              "host_ms": 886.2197080161422
+            },
+            {
+              "name": "vegetation",
+              "opcode": 53,
+              "host_ms": 20090.310374973342
+            },
+            {
+              "name": "structures",
+              "opcode": 56,
+              "host_ms": 62076.468916842714
+            },
+            {
+              "name": "snow and freezing",
+              "opcode": 54,
+              "host_ms": 1676.3290001545101
+            },
+            {
+              "name": "lighting",
+              "opcode": 61,
+              "host_ms": 1126182.1927500423
+            },
+            {
+              "name": "NBT/zlib/MCA",
+              "opcode": 55,
+              "host_ms": 62795.96883314662
+            },
+            {
+              "name": "opaque header publication",
+              "host_ms": 0.05629193037748337
+            }
+          ],
+          "generated_chunks": 1024
+        },
+        {
+          "index": 1,
+          "kind": "warm",
+          "rx": -1,
+          "rz": 0,
+          "ms": 1299951.1147500016,
+          "bytes": 10080256,
+          "stages": [
+            {
+              "name": "density descriptor",
+              "opcode": 18,
+              "host_ms": 0.0963329803198576
+            },
+            {
+              "name": "density lattice",
+              "opcode": 13,
+              "host_ms": 13609.001999953762
+            },
+            {
+              "name": "surface climate",
+              "opcode": 16,
+              "host_ms": 2972.3106250166893
+            },
+            {
+              "name": "shorelines",
+              "opcode": 29,
+              "host_ms": 4368.366291979328
+            },
+            {
+              "name": "lakes",
+              "opcode": 43,
+              "host_ms": 35036.59104090184
+            },
+            {
+              "name": "materials",
+              "opcode": 22,
+              "host_ms": 39011.754292063415
+            },
+            {
+              "name": "caves",
+              "opcode": 33,
+              "host_ms": 49456.27920888364
+            },
+            {
+              "name": "aquifers",
+              "opcode": 39,
+              "host_ms": 671.7448339331895
+            },
+            {
+              "name": "carving",
+              "opcode": 35,
+              "host_ms": 80440.38487481885
+            },
+            {
+              "name": "ores",
+              "opcode": 50,
+              "host_ms": 64207.72954192944
+            },
+            {
+              "name": "cave decorations",
+              "opcode": 51,
+              "host_ms": 383.9007909409702
+            },
+            {
+              "name": "vegetation",
+              "opcode": 53,
+              "host_ms": 14144.344208063558
+            },
+            {
+              "name": "structures",
+              "opcode": 56,
+              "host_ms": 27707.78129203245
+            },
+            {
+              "name": "snow and freezing",
+              "opcode": 54,
+              "host_ms": 1193.6363340355456
+            },
+            {
+              "name": "lighting",
+              "opcode": 61,
+              "host_ms": 904951.9540420733
+            },
+            {
+              "name": "NBT/zlib/MCA",
+              "opcode": 55,
+              "host_ms": 61787.580917123705
+            },
+            {
+              "name": "opaque header publication",
+              "host_ms": 0.05929102189838886
+            }
+          ],
+          "generated_chunks": 1024
+        },
+        {
+          "index": 2,
+          "kind": "warm",
+          "rx": 0,
+          "rz": 0,
+          "ms": 1399459.0206658468,
+          "bytes": 11952128,
+          "stages": [
+            {
+              "name": "density descriptor",
+              "opcode": 18,
+              "host_ms": 0.09404192678630352
+            },
+            {
+              "name": "density lattice",
+              "opcode": 13,
+              "host_ms": 14286.17237508297
+            },
+            {
+              "name": "surface climate",
+              "opcode": 16,
+              "host_ms": 3430.0598341505975
+            },
+            {
+              "name": "shorelines",
+              "opcode": 29,
+              "host_ms": 5508.357415907085
+            },
+            {
+              "name": "lakes",
+              "opcode": 43,
+              "host_ms": 54259.543125052005
+            },
+            {
+              "name": "materials",
+              "opcode": 22,
+              "host_ms": 44223.88462512754
+            },
+            {
+              "name": "caves",
+              "opcode": 33,
+              "host_ms": 64166.19212506339
+            },
+            {
+              "name": "aquifers",
+              "opcode": 39,
+              "host_ms": 716.5264580398798
+            },
+            {
+              "name": "carving",
+              "opcode": 35,
+              "host_ms": 93367.34491586685
+            },
+            {
+              "name": "ores",
+              "opcode": 50,
+              "host_ms": 79067.58733396418
+            },
+            {
+              "name": "cave decorations",
+              "opcode": 51,
+              "host_ms": 636.8001671507955
+            },
+            {
+              "name": "vegetation",
+              "opcode": 53,
+              "host_ms": 21656.602749833837
+            },
+            {
+              "name": "structures",
+              "opcode": 56,
+              "host_ms": 16403.772125020623
+            },
+            {
+              "name": "snow and freezing",
+              "opcode": 54,
+              "host_ms": 842.5457919947803
+            },
+            {
+              "name": "lighting",
+              "opcode": 61,
+              "host_ms": 915529.1401669383
+            },
+            {
+              "name": "NBT/zlib/MCA",
+              "opcode": 55,
+              "host_ms": 85356.38579213992
+            },
+            {
+              "name": "opaque header publication",
+              "host_ms": 0.06854208186268806
+            }
+          ],
+          "generated_chunks": 1024
+        }
+      ]
+    }
+  }
+}

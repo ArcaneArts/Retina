@@ -82,6 +82,12 @@ def prepare(benchmark,destination):
         shutil.copyfile(source,target)
         assert hashlib.sha256(target.read_bytes()).hexdigest()==digest
         files.append(dict(file=str(target.relative_to(world)),sha256=digest))
+    # The fixed activation probes require all three physical files. In
+    # particular, a stopped two-warm-region benchmark must not accidentally
+    # launch fresh generation while being measured as a load-only fixture.
+    for rx in (-1,0,1):
+        required=world/'dimensions/minecraft/overworld/region'/f'r.{rx}.0.mca'
+        if not required.is_file(): raise FileNotFoundError(f'Missing terrain for load-only probes: {required}')
     # All benchmark probes lie away from north/south boundaries, and both sides
     # of the tested X seams have real generated neighbors.
     (destination/'eula.txt').write_text('eula=true\n')
