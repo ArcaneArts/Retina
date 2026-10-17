@@ -221,9 +221,16 @@ interval ties. Underground and coastal-only searches retain their explicit
 target semantics. All current surface, shoreline, lake and feature consumers
 use this shared lookup. No Java registry or Rust behavior changes are involved.
 
-**This source change has not been compiled or executed in Bend.** Compilation,
-benchmarks and heavy tests remain stopped at the user's request. Eleven small
-Python reference tests pass, and 42 synthetic fixture projections remain valid.
+**This source change has not been built into a native worker or executed.**
+Native builds, benchmarks and heavy tests remain stopped at the user's request.
+The user separately approved source-only compiler checks with a 15-second total
+budget. Those checks took 9.315 seconds, including an unchanged-main comparison,
+and caught computed-match and definition-order errors that are now corrected.
+The final `bend bend/engine.bend --check-only` and unchanged main both exit 1,
+reporting only unsafe/foreign-code proof restrictions (3944 and 3935 definitions,
+respectively). This is not a passing proof check or a native compilation result.
+Eleven small Python reference tests pass, and 50 synthetic fixture projections
+remain valid, including material/density fixtures that also prepare climate.
 The same independent reference selects the missing candidates at all three
 saved-profile counterexamples. Source/profile hashes and these limited results
 are recorded in `docs/benchmarks/bend-climate-coverage-source.json`; they do not

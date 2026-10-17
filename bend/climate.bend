@@ -178,12 +178,10 @@ def shores(xs: List<&2,Target>) -> List<&2,Target>:
         coastal(Target{lo,hi,offset,biome,flags,order}),shores(rest))
 
 def has_surface(targets: List<&2,Target>) -> Bool:
-  match surface(targets):
+  match targets:
     case Nil{}: False{}
-    case _: True{}
-
-def prepare(targets: List<&2,Target>) -> Model:
-  with_unmapped(targets,[])
+    case Target{_,_,_,_,flags,_} <> rest:
+      Bool.or(U32.is_zero(U32.and(flags,16)),has_surface(rest))
 
 # Unmapped targets are point centers in the first four climate dimensions.
 # Their order is the original biome index; the registered interval order remains
@@ -195,6 +193,9 @@ def with_unmapped(+targets: List<&2,Target>,+unmapped: List<&2,Target>) -> Model
     tree(targets,U32.from_nat(List.length(&2,Target,targets)),6n),
     tree(coastal_targets,U32.from_nat(List.length(&2,Target,coastal_targets)),5n),
     tree(unmapped,U32.from_nat(List.length(&2,Target,unmapped)),4n),has_surface(targets)}
+
+def prepare(targets: List<&2,Target>) -> Model:
+  with_unmapped(targets,[])
 
 def delta(+x: F32,lo: F32,hi: F32) -> F32:
   +d = F32.sub(x,F32.clamp(x,lo,hi))
@@ -264,9 +265,6 @@ def visit(box: Box,q: Query,bias: F32,current: Choice) -> Bool:
     case Missing{}: True{}
     case Choice{best,_,_,_}: F32.is_le(F32.sub(fitness(box,q),bias),best)
 
-def search(tree: Tree,q: Query,current: Choice) -> Choice:
-  search_biased(tree,q,0.0,current)
-
 @unsafe
 def search_biased(tree: Tree,+q: Query,+bias: F32,+current: Choice) -> Choice:
   match tree:
@@ -285,6 +283,9 @@ def visit_branch(yes: Bool,left: Tree,right: Tree,+q: Query,+bias: F32,current: 
   match yes:
     case False{}: current
     case True{}: search_biased(right,q,bias,search_biased(left,q,bias,current))
+
+def search(tree: Tree,q: Query,current: Choice) -> Choice:
+  search_biased(tree,q,0.0,current)
 
 def niche_bias(enabled: Bool,weighted: Bool) -> F32:
   match enabled weighted:

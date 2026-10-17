@@ -126,6 +126,54 @@ def target(-A: Type,doc: P.Document,flags: Array<U32>,+count: U32,+value: P.Valu
     case Keys{low_key,_,_,_,_,_,_}: P.field(A,doc,value,low_key,doc => low =>
       vector(A,doc,low,4,False{},doc => result => target_low(A,result,doc,flags,count,value,keys,order,next)))
 
+# Coverage follows every registered target, including underground targets. Only
+# ordinary unreferenced biomes get a fallback climate center. No per-query tape
+# access or Java-side approximation is needed after this projection.
+def mark_mapped(targets: List<&2,C.Target>,mapped: Array<U32>) -> Array<U32>:
+  match targets:
+    case Nil{}: mapped
+    case C.Target{_,_,_,biome,_,_} <> rest: mark_mapped(rest,Array.set(U32,mapped,biome,1))
+
+def include_unmapped(mapped: U32,+flags: U32,niches: Bool) -> Bool:
+  Bool.and(U32.is_zero(mapped),Bool.and(U32.is_zero(U32.and(flags,16)),
+    Bool.not(Bool.and(niches,U32.is_ne(U32.and(flags,64),0)))))
+
+@unsafe
+def unmapped_entries(-A: Type,n: Nat,doc: P.Document,+at: U32,flags: Array<U32>,mapped: Array<U32>,+i: U32,+targets: List<&2,C.Target>,+count: U32,+biomes: U32,+key: U32,+niches: Bool,acc: List<&2,C.Target>,next: P.Document -> Result<&1,&1,U32,Prepared> -> A) -> A:
+  match n:
+    case 0n: next(doc,Done{Prepared{C.with_unmapped(targets,List.reverse(&2,C.Target,acc)),count,biomes}})
+    case 1n+p: P.get(A,doc,U32.inc(at),doc => +span => Z.read(A,mapped,i,mapped => referenced =>
+      Z.read(A,flags,i,flags => +flag => unmapped_selected(A,include_unmapped(referenced,flag,niches),p,doc,at,span,flags,mapped,i,targets,count,biomes,key,niches,flag,acc,next))))
+
+@unsafe
+def unmapped_selected(-A: Type,active: Bool,n: Nat,doc: P.Document,+at: U32,+span: U32,flags: Array<U32>,mapped: Array<U32>,+i: U32,+targets: List<&2,C.Target>,+count: U32,+biomes: U32,+key: U32,+niches: Bool,+flag: U32,acc: List<&2,C.Target>,next: P.Document -> Result<&1,&1,U32,Prepared> -> A) -> A:
+  match active:
+    case False{}: unmapped_entries(A,n,doc,U32.add(at,span),flags,mapped,U32.inc(i),targets,count,biomes,key,niches,acc,next)
+    case True{}: P.value(A,doc,at,doc => value => P.field(A,doc,value,key,doc => found =>
+      vector(A,doc,found,4,False{},doc => result => unmapped_vector(A,result,n,doc,U32.add(at,span),flags,mapped,i,targets,count,biomes,key,niches,flag,acc,next))))
+
+@unsafe
+def unmapped_vector(-A: Type,result: Result<&1,&1,U32,Vector>,n: Nat,doc: P.Document,at: U32,flags: Array<U32>,mapped: Array<U32>,+i: U32,targets: List<&2,C.Target>,count: U32,biomes: U32,key: U32,niches: Bool,flag: U32,acc: List<&2,C.Target>,next: P.Document -> Result<&1,&1,U32,Prepared> -> A) -> A:
+  match result:
+    case Fail{_}: next(doc,Fail{713})
+    case Done{+center}: unmapped_valid(A,C.finite_axes(axes(center,0.0,0.0)),axes(center,0.0,0.0),n,doc,at,flags,mapped,i,targets,count,biomes,key,niches,flag,acc,next)
+
+@unsafe
+def unmapped_valid(-A: Type,valid: Bool,+center: C.Axes,n: Nat,doc: P.Document,at: U32,flags: Array<U32>,mapped: Array<U32>,+i: U32,targets: List<&2,C.Target>,count: U32,biomes: U32,key: U32,niches: Bool,flag: U32,acc: List<&2,C.Target>,next: P.Document -> Result<&1,&1,U32,Prepared> -> A) -> A:
+  match valid:
+    case False{}: next(doc,Fail{713})
+    case True{}: unmapped_entries(A,n,doc,at,flags,mapped,U32.inc(i),targets,count,biomes,key,niches,C.Target{center,center,0.0,i,flag,i} <> acc,next)
+
+def unmapped_start(-A: Type,found: Maybe<&2,P.Value>,doc: P.Document,flags: Array<U32>,mapped: Array<U32>,+targets: List<&2,C.Target>,count: U32,biomes: U32,key: U32,next: P.Document -> Result<&1,&1,U32,Prepared> -> A) -> A:
+  match found:
+    case Some{P.Value{6,n,_,at}}: unmapped_entries(A,U32.to_nat(n),doc,U32.add(at,3),flags,mapped,0,targets,count,biomes,key,C.has_surface(targets),[],next)
+    case _: next(doc,Fail{713})
+
+def prepare_unmapped(-A: Type,doc: P.Document,flags: Array<U32>,+targets: List<&2,C.Target>,+count: U32,+biomes: U32,next: P.Document -> Result<&1,&1,U32,Prepared> -> A) -> A:
+  V.key(A,doc,"climate",doc => key => V.root(A,doc,doc => root =>
+    V.field(A,doc,root,"biomes",doc => found => unmapped_start(A,found,doc,flags,
+      mark_mapped(targets,Array.new(U32,P.capacity(biomes,1,0n),0)),targets,count,biomes,key_id(key),next))))
+
 @unsafe
 def targets(-A: Type,n: Nat,doc: P.Document,+at: U32,flags: Array<U32>,+biomes: U32,+keys: Keys,+order: U32,+count: U32,acc: List<&2,C.Target>,next: P.Document -> Result<&1,&1,U32,Prepared> -> A) -> A:
   match n:
@@ -177,51 +225,3 @@ def biomes(-A: Type,value: Maybe<&2,P.Value>,doc: P.Document,+keys: Keys,+root: 
 def prepare(-A: Type,doc: P.Document,next: P.Document -> Result<&1,&1,U32,Prepared> -> A) -> A:
   keys(A,doc,doc => +keys => V.root(A,doc,doc => +root =>
     V.field(A,doc,root,"biomes",doc => value => biomes(A,value,doc,keys,root,next))))
-
-# Coverage follows every registered target, including underground targets. Only
-# ordinary unreferenced biomes get a fallback climate center. No per-query tape
-# access or Java-side approximation is needed after this projection.
-def mark_mapped(targets: List<&2,C.Target>,mapped: Array<U32>) -> Array<U32>:
-  match targets:
-    case Nil{}: mapped
-    case C.Target{_,_,_,biome,_,_} <> rest: mark_mapped(rest,Array.set(U32,mapped,biome,1))
-
-def include_unmapped(mapped: U32,+flags: U32,niches: Bool) -> Bool:
-  Bool.and(U32.is_zero(mapped),Bool.and(U32.is_zero(U32.and(flags,16)),
-    Bool.not(Bool.and(niches,U32.is_ne(U32.and(flags,64),0)))))
-
-def prepare_unmapped(-A: Type,doc: P.Document,flags: Array<U32>,+targets: List<&2,C.Target>,+count: U32,+biomes: U32,next: P.Document -> Result<&1,&1,U32,Prepared> -> A) -> A:
-  V.key(A,doc,"climate",doc => key => V.root(A,doc,doc => root =>
-    V.field(A,doc,root,"biomes",doc => found => unmapped_start(A,found,doc,flags,
-      mark_mapped(targets,Array.new(U32,P.capacity(biomes,1,0n),0)),targets,count,biomes,key_id(key),next))))
-
-def unmapped_start(-A: Type,found: Maybe<&2,P.Value>,doc: P.Document,flags: Array<U32>,mapped: Array<U32>,+targets: List<&2,C.Target>,count: U32,biomes: U32,key: U32,next: P.Document -> Result<&1,&1,U32,Prepared> -> A) -> A:
-  match found:
-    case Some{P.Value{6,n,_,at}}: unmapped_entries(A,U32.to_nat(n),doc,U32.add(at,3),flags,mapped,0,targets,count,biomes,key,C.has_surface(targets),[],next)
-    case _: next(doc,Fail{713})
-
-@unsafe
-def unmapped_entries(-A: Type,n: Nat,doc: P.Document,+at: U32,flags: Array<U32>,mapped: Array<U32>,+i: U32,+targets: List<&2,C.Target>,+count: U32,+biomes: U32,+key: U32,+niches: Bool,acc: List<&2,C.Target>,next: P.Document -> Result<&1,&1,U32,Prepared> -> A) -> A:
-  match n:
-    case 0n: next(doc,Done{Prepared{C.with_unmapped(targets,List.reverse(&2,C.Target,acc)),count,biomes}})
-    case 1n+p: P.get(A,doc,U32.inc(at),doc => +span => Z.read(A,mapped,i,mapped => referenced =>
-      Z.read(A,flags,i,flags => +flag => unmapped_selected(A,include_unmapped(referenced,flag,niches),p,doc,at,span,flags,mapped,i,targets,count,biomes,key,niches,flag,acc,next))))
-
-@unsafe
-def unmapped_selected(-A: Type,active: Bool,n: Nat,doc: P.Document,+at: U32,+span: U32,flags: Array<U32>,mapped: Array<U32>,+i: U32,+targets: List<&2,C.Target>,+count: U32,+biomes: U32,+key: U32,+niches: Bool,+flag: U32,acc: List<&2,C.Target>,next: P.Document -> Result<&1,&1,U32,Prepared> -> A) -> A:
-  match active:
-    case False{}: unmapped_entries(A,n,doc,U32.add(at,span),flags,mapped,U32.inc(i),targets,count,biomes,key,niches,acc,next)
-    case True{}: P.value(A,doc,at,doc => value => P.field(A,doc,value,key,doc => found =>
-      vector(A,doc,found,4,False{},doc => result => unmapped_vector(A,result,n,doc,U32.add(at,span),flags,mapped,i,targets,count,biomes,key,niches,flag,acc,next))))
-
-@unsafe
-def unmapped_vector(-A: Type,result: Result<&1,&1,U32,Vector>,n: Nat,doc: P.Document,at: U32,flags: Array<U32>,mapped: Array<U32>,+i: U32,targets: List<&2,C.Target>,count: U32,biomes: U32,key: U32,niches: Bool,flag: U32,acc: List<&2,C.Target>,next: P.Document -> Result<&1,&1,U32,Prepared> -> A) -> A:
-  match result:
-    case Fail{_}: next(doc,Fail{713})
-    case Done{center}: unmapped_valid(A,axes(center,0.0,0.0),n,doc,at,flags,mapped,i,targets,count,biomes,key,niches,flag,acc,next)
-
-@unsafe
-def unmapped_valid(-A: Type,+center: C.Axes,n: Nat,doc: P.Document,at: U32,flags: Array<U32>,mapped: Array<U32>,+i: U32,targets: List<&2,C.Target>,count: U32,biomes: U32,key: U32,niches: Bool,flag: U32,acc: List<&2,C.Target>,next: P.Document -> Result<&1,&1,U32,Prepared> -> A) -> A:
-  match C.finite_axes(center):
-    case False{}: next(doc,Fail{713})
-    case True{}: unmapped_entries(A,n,doc,at,flags,mapped,U32.inc(i),targets,count,biomes,key,niches,C.Target{center,center,0.0,i,flag,i} <> acc,next)
