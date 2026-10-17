@@ -51,7 +51,7 @@ import java.util.stream.Stream;
 
 import static java.lang.foreign.ValueLayout.JAVA_SHORT;
 
-/** Minecraft owns chunk lifecycle; the selected backend owns terrain decisions. */
+/** Minecraft owns chunk lifecycle; Rust and the GPU own terrain decisions. */
 public final class RetinaChunkGenerator extends ChunkGenerator {
     public static final MapCodec<RetinaChunkGenerator> CODEC = RecordCodecBuilder.mapCodec(instance -> instance.group(
             BiomeSource.CODEC.fieldOf("biome_source").forGetter(RetinaChunkGenerator::getBiomeSource),
@@ -61,7 +61,7 @@ public final class RetinaChunkGenerator extends ChunkGenerator {
             Codec.floatRange(0, 4096).optionalFieldOf("amplitude", 48.0F).forGetter(generator -> generator.amplitude),
             Codec.floatRange(0.000001F, 1).optionalFieldOf("frequency", 0.008F).forGetter(generator -> generator.frequency),
             Codec.STRING.validate(mode -> mode.equals("mca") || mode.equals("chunk") || mode.equals("bend")
-                    ? DataResult.success(mode) : DataResult.error(() -> "Retina mode must be mca, legacy chunk or bend"))
+                    ? DataResult.success(mode) : DataResult.error(() -> "Retina mode must be mca or a recognized legacy mode"))
                     .optionalFieldOf("mode", "mca").forGetter(generator -> generator.mode),
             NoiseGeneratorSettings.CODEC.optionalFieldOf("settings").forGetter(generator -> generator.settings),
             Codec.BOOL.optionalFieldOf("density_composition", false).forGetter(RetinaChunkGenerator::densityComposition)
@@ -79,8 +79,6 @@ public final class RetinaChunkGenerator extends ChunkGenerator {
     private final Optional<Holder<NoiseGeneratorSettings>> settings;
     private final boolean densityComposition;
     private volatile TemporaryRegions previews;
-    private volatile BendRegionBackend bend;
-    private volatile java.util.function.Function<ChunkPos,CompletableFuture<Optional<net.minecraft.nbt.CompoundTag>>> bendStorage;
     private volatile TerrainQueries queries;
     private PalettedContainerFactory containerFactory;
     private volatile BiomeTerrainProfile profile;
@@ -118,8 +116,8 @@ public final class RetinaChunkGenerator extends ChunkGenerator {
         this.baseHeight = baseHeight;
         this.amplitude = amplitude;
         this.frequency = frequency;
-        this.mode = mode;
-        if (bendMode() && !(biomes instanceof RetinaBiomeSource)) throw new IllegalArgumentException("Retina Bend requires a registered Retina biome source");
+        // Migrate the retired experimental backend; existing saved chunks remain untouched.
+        this.mode = mode.equals("bend") ? "mca" : mode;
         if (!(biomes instanceof FixedBiomeSource) && !(biomes instanceof RetinaBiomeSource)) {
             throw new IllegalArgumentException("Retina requires a fixed or Retina GPU biome source");
         }
@@ -158,24 +156,14 @@ public final class RetinaChunkGenerator extends ChunkGenerator {
         worldSeed = seed;
         if (getBiomeSource() instanceof RetinaBiomeSource biomes) {
             var noiseSettings = settings.orElseGet(() -> registry.lookupOrThrow(net.minecraft.core.registries.Registries.NOISE_SETTINGS).getOrThrow(NoiseGeneratorSettings.OVERWORLD)).value();
-            if (bendMode()) {
-                var data = TerrainProfileData.export(registry,biomes,minY,height,seed,noiseSettings,structures,densityComposition,skyLight);
-                profile = new BiomeTerrainProfile(-1,data.seaLevel(),data.materials(),data.biomes(),data.json());
-                bend = new BendRegionBackend(request(seed,0,0),profile);
-                queries = new TerrainQueries(request(seed,0,0),profile,bend);
-                var backend = bend;
-                biomes.bind((x,y,z) -> biomeAt(x*4,y*4,z*4), (x,y,z) -> backend.queryBiomes(List.of(new BlockPos(x*4,y*4,z*4))).getFirst());
-                biomes.bindQueries(queries::biomes);
-            } else {
-                profile = BiomeTerrainProfile.load(registry,biomes,minY,height,seed,noiseSettings,structures,densityComposition,skyLight);
-                queries = new TerrainQueries(request(seed,0,0),profile);
-                var query = queries;
-                biomes.bind((x,y,z) -> biomeAt(x*4,y*4,z*4),(x,y,z) -> query.biomes(List.of(new BlockPos(x*4,y*4,z*4))).getFirst());
-                biomes.bindQueries(query::biomes);
-            }
+            profile = BiomeTerrainProfile.load(registry,biomes,minY,height,seed,noiseSettings,structures,densityComposition,skyLight);
+            queries = new TerrainQueries(request(seed,0,0),profile);
+            var query = queries;
+            biomes.bind((x,y,z) -> biomeAt(x*4,y*4,z*4),(x,y,z) -> query.biomes(List.of(new BlockPos(x*4,y*4,z*4))).getFirst());
+            biomes.bindQueries(query::biomes);
         }
-        if (!bendMode()) metrics.startNativeTimings(NativeTerrain.instance().timings(profile == null ? 0 : profile.nativeId()));
-        if (regionMode()) previews = new TemporaryRegions(request(seed, 0, 0), regionBiome(), profile, metrics, TemporaryRegions.MAX_REGIONS, bend, factory);
+        metrics.startNativeTimings(NativeTerrain.instance().timings(profile == null ? 0 : profile.nativeId()));
+        if (regionMode()) previews = new TemporaryRegions(request(seed, 0, 0), regionBiome(), profile, metrics, TemporaryRegions.MAX_REGIONS);
     }
 
     public TerrainQueries queries() { return queries; }
@@ -185,14 +173,7 @@ public final class RetinaChunkGenerator extends ChunkGenerator {
         if (query != null) query.close();
         var cache = previews;
         if (cache != null) cache.close();
-        var backend = bend;
-        if (backend != null) backend.close();
-        bend = null; previews = null; queries = null; bendStorage = null;
-    }
-
-    public void bindBendStorage(RegionCoordinator coordinator,
-            java.util.function.Function<ChunkPos,CompletableFuture<Optional<net.minecraft.nbt.CompoundTag>>> reader) {
-        bendStorage = position -> { coordinator.demand(position); return reader.apply(position); };
+        previews = null; queries = null;
     }
 
     long cacheKey(ChunkPos position) {
@@ -255,20 +236,6 @@ public final class RetinaChunkGenerator extends ChunkGenerator {
             chunk.fillBiomesFromNoise((x, y, z) -> fixed);
             return CompletableFuture.completedFuture(chunk);
         }
-        if (bendMode()) {
-            var backend = bend;
-            return CompletableFuture.supplyAsync(() -> {
-                // Preliminary biome-only dependencies do not need an assembled MCA.
-                // buildTerrain replaces these with Bend's final saved 3D cave biomes.
-                var points = new java.util.ArrayList<BlockPos>(16);
-                var pos = chunk.getPos();
-                for(int z=0; z<16; z+=4) for(int x=0; x<16; x+=4)
-                    points.add(new BlockPos(pos.getMinBlockX()+x,profile.seaLevel()+1,pos.getMinBlockZ()+z));
-                var samples = backend.queryBiomes(points);
-                chunk.fillBiomesFromNoise((x,y,z) -> samples.get(Math.floorMod(z,4)*4+Math.floorMod(x,4)));
-                return chunk;
-            },WORKERS);
-        }
         java.util.function.Supplier<ChunkAccess> fill = () -> {
             var position = chunk.getPos();
             var samples = biomeSamples(seed(random), position.x(), position.z());
@@ -280,10 +247,7 @@ public final class RetinaChunkGenerator extends ChunkGenerator {
         return regionMode() ? CompletableFuture.completedFuture(fill.get()) : CompletableFuture.supplyAsync(fill, WORKERS);
     }
 
-    public boolean regionMode() { return mode.equals("mca") || bendMode(); }
-
-    public boolean bendMode() { return mode.equals("bend"); }
-    public String bendStage() { return bend == null ? "not bound" : bend.stage(); }
+    public boolean regionMode() { return mode.equals("mca"); }
 
     public String mode() { return mode; }
 
@@ -298,7 +262,7 @@ public final class RetinaChunkGenerator extends ChunkGenerator {
     }
 
     public String backend() {
-        return bendMode() ? (bend == null ? "Bend (starting)" : bend.backend()) : NativeTerrain.instance().backend();
+        return NativeTerrain.instance().backend();
     }
 
     @Override
@@ -313,11 +277,7 @@ public final class RetinaChunkGenerator extends ChunkGenerator {
         var cache = previews;
         if (regionMode() && cache != null) {
             long started = System.nanoTime();
-            var reader = bendStorage;
-            CompletableFuture<net.minecraft.nbt.CompoundTag> data = bendMode() && reader != null
-                    ? reader.apply(chunk.getPos()).thenApply(found -> found.orElseThrow(() -> new IllegalStateException("Bend MCA publication is missing " + chunk.getPos())))
-                    : CompletableFuture.completedFuture(cache.read(chunk.getPos()));
-            return data.thenApply(tag -> {
+            return CompletableFuture.completedFuture(cache.read(chunk.getPos())).thenApply(tag -> {
                 var saved = SerializableChunkData.parse(chunk, containerFactory, tag);
                 if (saved == null) throw new IllegalStateException("Temporary MCA has no chunk status: " + chunk.getPos());
                 for (var section : saved.sectionData()) {
@@ -450,8 +410,6 @@ public final class RetinaChunkGenerator extends ChunkGenerator {
         for (String key : startTags.keySet()) {
             var start = net.minecraft.world.level.levelgen.structure.StructureStart.loadStaticStart(context, startTags.getCompoundOrEmpty(key), worldSeed);
             if (start != null && start.isValid()) {
-                var prior=chunk.getAllStarts().get(start.getStructure());
-                if(bendMode() && prior!=null && prior.isValid() && prior.getChunkPos().equals(start.getChunkPos()) && prior.getReferences()>start.getReferences()) start=prior;
                 starts.put(start.getStructure(), start);
             }
         }
@@ -472,34 +430,18 @@ public final class RetinaChunkGenerator extends ChunkGenerator {
             net.minecraft.server.level.ServerLevel level, net.minecraft.core.HolderSet<net.minecraft.world.level.levelgen.structure.Structure> wanted,
             BlockPos origin, int radius, boolean createReference) {
         // Explorer maps need Minecraft's reference mutation and retain its lifecycle.
-        if (bendMode()) return prepareStructureSearch(level,wanted,origin,radius,createReference).get();
         if (createReference || queries == null) return super.findNearestMapStructure(level,wanted,origin,radius,createReference);
         return prepareStructureSearch(level,wanted,origin,radius).get();
     }
 
     public java.util.function.Supplier<com.mojang.datafixers.util.Pair<BlockPos,Holder<net.minecraft.world.level.levelgen.structure.Structure>>> prepareStructureSearch(
             net.minecraft.server.level.ServerLevel level, net.minecraft.core.HolderSet<net.minecraft.world.level.levelgen.structure.Structure> wanted, BlockPos origin, int radius) {
-        return prepareStructureSearch(level,wanted,origin,radius,false);
-    }
-
-    private java.util.function.Supplier<com.mojang.datafixers.util.Pair<BlockPos,Holder<net.minecraft.world.level.levelgen.structure.Structure>>> prepareStructureSearch(
-            net.minecraft.server.level.ServerLevel level, net.minecraft.core.HolderSet<net.minecraft.world.level.levelgen.structure.Structure> wanted,
-            BlockPos origin,int radius,boolean createReference) {
         var query=queries;
         if (query==null || net.minecraft.SharedConstants.DEBUG_DISABLE_FEATURES || !level.getServer().getWorldGenSettings().options().generateStructures()) return () -> null;
         var search=query.prepareStructures(level.registryAccess(),wanted,origin,radius);
         var scanner=level.getChunkSource().chunkMap.chunkScanner();
         var fixContext=net.minecraft.server.level.ChunkMap.getChunkDataFixContextTag(level.dimension(),getTypeNameForDataFixer());
-        return () -> query.structures(search,position -> TerrainQueries.readSaved(scanner,fixContext,position),createReference,(position,structure) -> {
-            if(!createReference)return true;
-            // Only an accepted Bend start may load a chunk. Minecraft owns the
-            // explorer-map reference mutation; Bend still supplies its layout.
-            var chunk=level.getChunk(position.x(),position.z(),net.minecraft.world.level.chunk.status.ChunkStatus.STRUCTURE_STARTS);
-            var manager=level.structureManager();
-            var start=manager.getStartForStructure(structure.value(),chunk);
-            if(start==null || !start.isValid() || !start.canBeReferenced())return false;
-            manager.addReference(start);return true;
-        });
+        return () -> query.structures(search,position -> TerrainQueries.readSaved(scanner,fixContext,position));
     }
 
     @Override
@@ -507,8 +449,7 @@ public final class RetinaChunkGenerator extends ChunkGenerator {
                                  ChunkAccess chunk, net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplateManager templates,
                                  net.minecraft.resources.ResourceKey<net.minecraft.world.level.Level> dimension) {
         if(profile==null)return;
-        var data=bendMode() ? bend.structureStarts(chunk.getPos())
-                : NativeTerrain.instance().structureStarts(request(worldSeed,chunk.getPos().x(),chunk.getPos().z()));
+        var data=NativeTerrain.instance().structureStarts(request(worldSeed,chunk.getPos().x(),chunk.getPos().z()));
         var context=new net.minecraft.world.level.levelgen.structure.pieces.StructurePieceSerializationContext(null,registry,templates);
         installStructures(chunk,data,context,registry);
     }
@@ -537,7 +478,7 @@ public final class RetinaChunkGenerator extends ChunkGenerator {
     public void addDebugScreenInfo(List<String> lines, RandomState state, BlockPos pos, SamplerContext context) {
         var stats = metrics.snapshot();
         lines.add(String.format(java.util.Locale.ROOT, "Retina %s: %.1f chunks/s, %.2f ms/chunk",
-                bendMode()?"Bend preview (interior lighting)":regionMode()?"lit MCA production":"chunk-mode completion",stats.chunksPerSecond(), stats.msPerChunk()));
+                regionMode()?"lit MCA production":"chunk-mode completion",stats.chunksPerSecond(), stats.msPerChunk()));
     }
 
     private record HeightKey(long seed, int x, int z) { }

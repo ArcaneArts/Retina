@@ -25,7 +25,7 @@ public final class TerrainWorldgen {
         TerrainLoadBenchmark.check(server);
         if (server.getTickCount() % 20 != 0) return;
         for (var level : server.getAllLevels()) {
-            if (level.getChunkSource().getGenerator() instanceof RetinaChunkGenerator retina && !retina.bendMode()) {
+            if (level.getChunkSource().getGenerator() instanceof RetinaChunkGenerator retina) {
                 retina.metrics().nativeTimings(NativeTerrain.instance().timings(retina.profile() == null ? 0 : retina.profile().nativeId()));
             }
         }
@@ -36,7 +36,7 @@ public final class TerrainWorldgen {
                 TerrainQa.check(player, retina);
             }
             var payload = generator instanceof RetinaChunkGenerator retina
-                    ? new TerrainStatsPayload(true, retina.backend(), retina.mode(), retina.metrics().snapshot(),retina.bendMode()?NativeGpuDiagnostics.EMPTY:NativeTerrain.instance().gpuDiagnostics(retina.profile()==null?0:retina.profile().nativeId()))
+                    ? new TerrainStatsPayload(true, retina.backend(), retina.mode(), retina.metrics().snapshot(),NativeTerrain.instance().gpuDiagnostics(retina.profile()==null?0:retina.profile().nativeId()))
                     : TerrainStatsPayload.INACTIVE;
             platform.sendTerrainStats(player, payload);
         }

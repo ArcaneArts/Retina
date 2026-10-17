@@ -24,22 +24,10 @@ public final class TerrainQueries implements AutoCloseable {
     private final BiomeTerrainProfile profile;
     private final List<String> definitions;
     private final List<String> sets;
-    private final Backend backend;
     private final AtomicBoolean closed = new AtomicBoolean();
     static final int BATCH = 64;
 
-    interface Backend {
-        List<Holder<Biome>> biomes(List<BlockPos> points);
-        List<ChunkPos> candidates(SearchSet set, List<ChunkPos> cells);
-        int[] starts(int[] candidates);
-    }
-
     TerrainQueries(TerrainRequest request, BiomeTerrainProfile profile) {
-        this(request,profile,null);
-    }
-
-    TerrainQueries(TerrainRequest request, BiomeTerrainProfile profile, Backend backend) {
-        this.backend=backend;
         this.request = request;
         this.profile = profile;
         var structures = JsonParser.parseString(profile.json()).getAsJsonObject().getAsJsonObject("structures");
@@ -57,9 +45,6 @@ public final class TerrainQueries implements AutoCloseable {
 
     public List<Holder<Biome>> biomes(List<BlockPos> points) {
         checkActive();
-        if (backend!=null) {
-            var result=backend.biomes(points); checkActive(); return result;
-        }
         var output = new ArrayList<Holder<Biome>>(points.size());
         for (int start=0;start<points.size();start+=BATCH) {
             checkActive();
@@ -158,8 +143,7 @@ public final class TerrainQueries implements AutoCloseable {
     private Pair<BlockPos,Holder<Structure>> structureBatch(SearchSet set, List<ChunkPos> cells, SavedLookup saved, Map<Long,SavedStarts> stored,
                                                           boolean unreferenced, java.util.function.BiPredicate<ChunkPos,Holder<Structure>> accept) {
         checkActive();
-        var candidates=backend==null ? cells.stream().map(p -> set.placement.getPotentialStructureChunk(request.seed(),p.x(),p.z())).toList()
-                : backend.candidates(set,cells);
+        var candidates=cells.stream().map(p -> set.placement.getPotentialStructureChunk(request.seed(),p.x(),p.z())).toList();
         if(candidates.size()!=cells.size()) throw new IllegalStateException("Structure candidate count mismatch");
         checkActive();
         var matches=new ArrayList<Holder<Structure>>(Collections.nCopies(candidates.size(),null));
@@ -178,7 +162,7 @@ public final class TerrainQueries implements AutoCloseable {
             for (int i=0;i<unknown.size();i++) {
                 var position=candidates.get(unknown.get(i));input[i*3]=position.x();input[i*3+1]=position.z();input[i*3+2]=set.index;
             }
-            int[] selected=backend==null ? NativeTerrain.instance().queryStructureStarts(request,input) : backend.starts(input);
+            int[] selected=NativeTerrain.instance().queryStructureStarts(request,input);
             checkActive();
             if(selected.length!=unknown.size()) throw new IllegalStateException("Structure result count mismatch");
             for (int i=0;i<selected.length;i++) if (selected[i]>=0) matches.set(unknown.get(i),set.wanted.get(definitions.get(selected[i])));

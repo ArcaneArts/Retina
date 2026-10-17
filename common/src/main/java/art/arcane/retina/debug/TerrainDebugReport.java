@@ -1,7 +1,6 @@
 package art.arcane.retina.debug;
 
 import art.arcane.retina.worldgen.TerrainStatsPayload;
-import art.arcane.retina.worldgen.BendTimings;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -17,16 +16,15 @@ public final class TerrainDebugReport {
     private static final String[] WORKERS={"Base terrain","Ores","Cave decorations","Vegetation / sediments","Structure placement","Snow","NBT encoding","Zlib compression"};
     private TerrainDebugReport() { }
     public static List<String> lines(TerrainStatsPayload payload) {
-        var stats=payload.stats();var lines=new ArrayList<String>();boolean bend=payload.mode().equals("bend"),mca=payload.mode().equals("mca") || bend;
-        lines.add("§b§lRetina "+(bend?"Bend (preview)":payload.mode().equals("mca")?"Rust":payload.mode().toUpperCase(Locale.ROOT))+RESET);
-        if(bend)lines.add("§eBend lighting: interior chunks; Minecraft: region edges");
+        var stats=payload.stats();var lines=new ArrayList<String>();boolean mca=payload.mode().equals("mca");
+        lines.add("§b§lRetina"+RESET);
         if(mca)lines.add(LABEL+"Region latency: "+DATA+format("%.2f ms mean",stats.averageRegionMs())+LABEL+" / "+DATA+format("%.2f ms p95",stats.p95RegionMs())+LABEL+" (last "+DATA+stats.regionSamples()+LABEL+" / 20)");
-        lines.add(LABEL+(bend?"Bend MCA production: §a":mca?"Lit MCA production: §a":"Chunk-mode completion: §a")+format("%.1f chunks/s",stats.chunksPerSecond())+(mca?LABEL+" from region latency":LABEL+" (5s)"));
+        lines.add(LABEL+(mca?"Lit MCA production: §a":"Chunk-mode completion: §a")+format("%.1f chunks/s",stats.chunksPerSecond())+(mca?LABEL+" from region latency":LABEL+" (5s)"));
         lines.add(LABEL+(mca?"Amortized chunk: ":"Chunk time: ")+DATA+format("%.3f ms",stats.msPerChunk()));
         lines.add(LABEL+"Regions: §a"+stats.regions()+LABEL+"   In flight: §e"+stats.inFlight());
         lines.add(LABEL+"Temporary regions: §a"+stats.previewRegions()+LABEL+"   Hits: §a"+stats.previewCacheHits()+LABEL+"   Promotions: §a"+stats.promotions()+LABEL+" (publication count, not production rate)");
         lines.add(LABEL+"Terrain chunks: §a"+stats.total()+LABEL+"   Failed: "+(stats.failures()>0?"§c":"§a")+stats.failures());
-        lines.add(GPU+(bend?"Runtime: ":"GPU: ")+DATA+payload.backend());
+        lines.add(GPU+"GPU: "+DATA+payload.backend());
         var gpu=payload.diagnostics();
         if(gpu.nodes()>0) {
             lines.add(GPU+"GPU programs: "+(gpu.status()==3?"§c":DATA)+gpu.execution());
@@ -38,17 +36,7 @@ public final class TerrainDebugReport {
             lines.add(GPU+"GPU profile upload total: "+DATA+format("%.2f MiB",gpu.uploadBytes()/1048576.0));
             lines.add(GPU+"GPU profile readback total: "+DATA+format("%.2f MiB",gpu.readbackBytes()/1048576.0));
         }
-        if(bend && stats.bendStages().regions()>0) {
-            lines.add(HEADER+"Bend stages (host elapsed / average region)"+RESET);
-            for(var stage:BendTimings.Stage.values())
-                lines.add(elapsedShare(RUST,stage.label(),stats.bendStageMs(stage),stats.bendStagePercent(stage)));
-            lines.add(elapsedShare("§9","Java column cache",stats.columnCacheMs(),stats.columnCachePercent()));
-            double accounted=stats.bendStages().totalNanos()/(Math.max(1,stats.regionSamples())*1e6)+stats.columnCacheMs();
-            double other=Math.max(0,stats.averageRegionMs()-accounted);
-            lines.add(elapsedShare(LABEL,"Other / scheduling",other,100*other/Math.max(.000001,stats.averageRegionMs())));
-            lines.add(LABEL+"Host spans include CPU/GPU work, transfers and waiting");
-            lines.add(LABEL+"GPU device timestamps: "+DATA+"unavailable; included in host spans");
-        } else if(mca && !bend && stats.regionSamples()>0) {
+        if(mca && stats.regionSamples()>0) {
             lines.add(HEADER+"GPU host (% of average region)"+RESET);
             for(int stage=QUEUE;stage<=WAIT_COPY;stage++)lines.add(share(GPU,GPU_HOST[stage],stats.regionStagePercent(stage),false));
             lines.add(share(GPU,"GPU lighting / upload / readback",stats.regionStagePercent(LIGHT_HOST),false));
@@ -98,9 +86,6 @@ public final class TerrainDebugReport {
     }
     private static String share(String category,String name,double percent,boolean estimate) {
         return category+name+LABEL+": "+shareColor(percent)+(estimate?"~":"")+format("%.1f%%",percent)+RESET;
-    }
-    private static String elapsedShare(String category,String name,double ms,double percent) {
-        return category+name+LABEL+": "+DATA+format("%.2f ms",ms)+LABEL+" ("+shareColor(percent)+format("%.1f%%",percent)+LABEL+")"+RESET;
     }
     private static String shareColor(double percent) { return percent>=50?"§c":percent>=25?"§6":percent>=10?"§e":"§a"; }
     private static String format(String pattern,Object... values) { return String.format(Locale.ROOT,pattern,values); }

@@ -1,8 +1,8 @@
 {
-  "generator.retina.gpu": "Retina Rust",
+  "generator.retina.gpu": "Retina",
   "debug.entry.retina.generation": "Retina terrain generation",
-  "generator.retina.gpu_chunk": "Retina Rust (Legacy Chunks)",
+  "generator.retina.gpu_chunk": "Retina",
   "retina.locate.busy": "The Retina locate queue is full. Try again shortly.",
   "retina.locate.failed": "Retina could not complete the search for %s. See the server log for details.",
-  "generator.retina.bend": "Retina Bend"
+  "generator.retina.bend": "Retina"
 }

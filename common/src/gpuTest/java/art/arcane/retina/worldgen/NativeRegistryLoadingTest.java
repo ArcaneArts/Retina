@@ -41,7 +41,7 @@ public final class NativeRegistryLoadingTest {
         stack.add(new PathPackResources(location, Path.of("common/src/main/resources")));
         if (args.length > 0) stack.add((PackResources) new FilePackResources.FileResourcesSupplier(Path.of(args[0])).openMetadata(location));
         try (var resources = new MultiPackResourceManager(PackType.SERVER_DATA, stack);
-             var workers = Executors.newFixedThreadPool(8)) {
+             var workers = Executors.newFixedThreadPool(2)) {
             var builtin = RegistryAccess.fromRegistryOfRegistries(BuiltInRegistries.REGISTRY);
             net.minecraft.tags.TagLoader.loadTagsForExistingRegistries(resources, builtin).forEach(Registry.PendingTags::apply);
             var loaded = RegistryDataLoader.load(resources, builtin.listRegistries().toList(),
@@ -57,7 +57,9 @@ public final class NativeRegistryLoadingTest {
             var presets = registry.lookupOrThrow(Registries.WORLD_PRESET);
             var choices = com.google.gson.JsonParser.parseString(Files.readString(Path.of("common/src/main/resources/data/minecraft/tags/worldgen/world_preset/normal.json")))
                     .getAsJsonObject().getAsJsonArray("values").asList().stream().map(com.google.gson.JsonElement::getAsString).toList();
-            require(choices.equals(List.of("retina:gpu", "retina:bend")), "selector exposes Rust first and Bend, with legacy chunk mode hidden");
+            require(choices.equals(List.of("retina:gpu")), "selector exposes only Retina, with compatibility aliases hidden");
+            var labels = com.google.gson.JsonParser.parseString(Files.readString(Path.of("common/src/main/resources/assets/retina/lang/en_us.json"))).getAsJsonObject();
+            require(labels.get("generator.retina.gpu").getAsString().equals("Retina"), "selector label is Retina");
             for (String name : List.of("gpu", "gpu_chunk", "bend")) {
                 var key = ResourceKey.create(Registries.WORLD_PRESET, Identifier.parse("retina:" + name));
                 var preset = presets.getValueOrThrow(key);
@@ -67,7 +69,7 @@ public final class NativeRegistryLoadingTest {
                 var expected = source.climateParameters(registry).stream().map(com.mojang.datafixers.util.Pair::getSecond)
                         .collect(java.util.stream.Collectors.toSet());
                 require(source.possibleBiomes().equals(expected), "complete registered pool after preset loading " + name);
-                require(((RetinaChunkGenerator) generator).mode().equals(name.equals("gpu") ? "mca" : name.equals("bend") ? "bend" : "chunk"), "mode preserved");
+                require(((RetinaChunkGenerator) generator).mode().equals(name.equals("gpu_chunk") ? "chunk" : "mca"), "mode preserved");
                 var retina = (RetinaChunkGenerator) generator;
                 require(retina.densityComposition(), "new preset enables registered field composition");
                 var ops = registry.createSerializationContext(com.mojang.serialization.JsonOps.INSTANCE);
@@ -75,6 +77,16 @@ public final class NativeRegistryLoadingTest {
                 var reopened = (RetinaChunkGenerator) net.minecraft.world.level.chunk.ChunkGenerator.CODEC.parse(ops, encoded).getOrThrow();
                 require(reopened.mode().equals(retina.mode()), "backend mode survives save/reopen");
                 require(reopened.densityComposition(), "composition survives save/reopen");
+                var retired = encoded.deepCopy().getAsJsonObject();
+                retired.addProperty("mode", "bend");
+                var migrated = (RetinaChunkGenerator) net.minecraft.world.level.chunk.ChunkGenerator.CODEC.parse(ops, retired).getOrThrow();
+                require(migrated.mode().equals("mca") && migrated.regionMode(), "retired backend decodes into Rust MCA");
+                var resaved = net.minecraft.world.level.chunk.ChunkGenerator.CODEC.encodeStart(ops, migrated).getOrThrow();
+                require(!resaved.getAsJsonObject().has("mode") || resaved.getAsJsonObject().get("mode").getAsString().equals("mca"),
+                        "saving writes the canonical Rust mode");
+                require(migrated.withDatapackGenerator(referenceGenerator(registry), registry.lookupOrThrow(Registries.DIMENSION_TYPE)
+                        .getValueOrThrow(net.minecraft.world.level.dimension.BuiltinDimensionTypes.OVERWORLD)).mode().equals("mca"),
+                        "datapack import keeps the migrated Rust generator");
                 var legacy = encoded.deepCopy().getAsJsonObject();
                 legacy.remove("density_composition");
                 var oldWorld = (RetinaChunkGenerator) net.minecraft.world.level.chunk.ChunkGenerator.CODEC.parse(ops, legacy).getOrThrow();

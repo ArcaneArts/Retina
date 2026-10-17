@@ -26,8 +26,6 @@ sourceSets {
 // Native resources are provided lazily, after the root tasks have been defined.
 processResources { from rootProject.tasks.named('packageNative') }
 processResources.dependsOn ':packageNative'
-processResources { from rootProject.tasks.named('packageBendRuntime') }
-processResources.dependsOn ':packageBendRuntime'
 tasks.named('build') { dependsOn 'clientClasses' }
 
 apply from: rootProject.file('gradle/verification.gradle')

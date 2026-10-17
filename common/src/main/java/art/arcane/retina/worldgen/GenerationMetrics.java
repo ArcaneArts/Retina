@@ -38,13 +38,10 @@ public final class GenerationMetrics {
         completedPreviewRegion(chunks,elapsedNanos,stages,0);
     }
     public synchronized void completedPreviewRegion(int chunks, long elapsedNanos, NativeTimings stages, long columnCacheNanos) {
-        completedPreviewRegion(chunks,elapsedNanos,stages,columnCacheNanos,BendTimings.EMPTY);
-    }
-    public synchronized void completedPreviewRegion(int chunks, long elapsedNanos, NativeTimings stages, long columnCacheNanos, BendTimings bendStages) {
         inFlight--;
         if(chunks==0)return;
         previewRegions++;
-        recordRegion(chunks,elapsedNanos,stages,columnCacheNanos,bendStages);
+        recordRegion(chunks,elapsedNanos,stages,columnCacheNanos);
     }
     public synchronized void previewCacheHit() { previewCacheHits++; }
     public synchronized void completedPromotion(long elapsedNanos) {
@@ -55,11 +52,8 @@ public final class GenerationMetrics {
         recordRegion(chunks,elapsedNanos,stages,0);
     }
     private void recordRegion(int chunks, long elapsedNanos, NativeTimings stages, long columnCacheNanos) {
-        recordRegion(chunks,elapsedNanos,stages,columnCacheNanos,BendTimings.EMPTY);
-    }
-    private void recordRegion(int chunks, long elapsedNanos, NativeTimings stages, long columnCacheNanos, BendTimings bendStages) {
         record(chunks,elapsedNanos,elapsedNanos,0);
-        regionTimings.addLast(new RegionSample(chunks,elapsedNanos,stages,columnCacheNanos,bendStages));
+        regionTimings.addLast(new RegionSample(chunks,elapsedNanos,stages,columnCacheNanos));
         if(regionTimings.size()>REGION_WINDOW)regionTimings.removeFirst();
     }
     private void record(int chunks, long elapsedNanos, long nativeNanos, long conversionNanos) {
@@ -83,13 +77,10 @@ public final class GenerationMetrics {
         double msPerChunk=elapsed/divisor,rate=samples.stream().mapToLong(Sample::chunks).sum()/windowSeconds;
         long regionElapsed=0,regionChunks=0,gpuColumns=0,gpuJobs=0,columnCache=0;
         int flags=0;long[] stages=new long[NativeTimings.STAGES];
-        int bendRegions=0;long[] bendNanos=new long[BendTimings.STAGES];
         for(var sample:regionTimings) {
             regionElapsed+=sample.elapsed;regionChunks+=sample.chunks;columnCache+=sample.columnCacheNanos;
             gpuColumns+=sample.stages.gpuColumns();gpuJobs+=sample.stages.gpuJobs();flags|=sample.stages.flags();
             for(int i=0;i<stages.length;i++)stages[i]+=sample.stages.nanos(i);
-            bendRegions+=sample.bendStages.regions();
-            for(var stage:BendTimings.Stage.values())bendNanos[stage.ordinal()]+=sample.bendStages.nanos(stage);
         }
         if(!regionTimings.isEmpty()) {
             msPerChunk=regionElapsed/(Math.max(1,regionChunks)*1e6);
@@ -99,21 +90,16 @@ public final class GenerationMetrics {
         double p95RegionMs=orderedRegionNanos.length==0?0:orderedRegionNanos[(int)Math.ceil(.95*orderedRegionNanos.length)-1]/1e6;
         return new Snapshot(rate,msPerChunk,nativeTime/divisor,conversion/divisor,inFlight,total,failures,regions,
                 regionElapsed/(Math.max(1,regionTimings.size())*1e6),p95RegionMs,previewRegions,previewCacheHits,promotions,nativeTimings,
-                regionTimings.size(),new NativeTimings(flags,regionChunks,gpuColumns,gpuJobs,stages),columnCache/(Math.max(1,regionTimings.size())*1e6),new BendTimings(bendRegions,bendNanos));
+                regionTimings.size(),new NativeTimings(flags,regionChunks,gpuColumns,gpuJobs,stages),columnCache/(Math.max(1,regionTimings.size())*1e6));
     }
     private void prune(long now) {
         while(!samples.isEmpty() && now-samples.peekFirst().completedAt>WINDOW_NANOS)samples.removeFirst();
     }
     private record Sample(long completedAt,int chunks,long elapsed,long nativeTime,long conversion) { }
-    private record RegionSample(int chunks,long elapsed,NativeTimings stages,long columnCacheNanos,BendTimings bendStages) { }
+    private record RegionSample(int chunks,long elapsed,NativeTimings stages,long columnCacheNanos) { }
     public record Snapshot(double chunksPerSecond,double msPerChunk,double nativeMs,double conversionMs,int inFlight,
                            long total,long failures,long regions,double averageRegionMs,double p95RegionMs,long previewRegions,long previewCacheHits,
-                           long promotions,NativeTimings stages,int regionSamples,NativeTimings regionStages,double columnCacheMs,BendTimings bendStages) {
-        public Snapshot(double rate,double ms,double nativeMs,double conversion,int inFlight,long total,long failures,long regions,
-                        double averageRegionMs,double p95RegionMs,long previews,long hits,long promotions,NativeTimings stages,
-                        int regionSamples,NativeTimings regionStages,double columnCacheMs) {
-            this(rate,ms,nativeMs,conversion,inFlight,total,failures,regions,averageRegionMs,p95RegionMs,previews,hits,promotions,stages,regionSamples,regionStages,columnCacheMs,BendTimings.EMPTY);
-        }
+                           long promotions,NativeTimings stages,int regionSamples,NativeTimings regionStages,double columnCacheMs) {
         public Snapshot(double rate,double ms,double nativeMs,double conversion,int inFlight,long total,long failures,long regions,
                         double averageRegionMs,long previews,long hits,long promotions) {
             this(rate,ms,nativeMs,conversion,inFlight,total,failures,regions,averageRegionMs,0,previews,hits,promotions,NativeTimings.EMPTY);
@@ -125,7 +111,5 @@ public final class GenerationMetrics {
         public double columnCachePercent() { return 100*columnCacheMs/Math.max(.000001,averageRegionMs); }
         public double regionStageMs(int stage) { return regionStages.nanos(stage)/(Math.max(1,regionSamples)*1e6); }
         public double regionStagePercent(int stage) { return 100*regionStageMs(stage)/Math.max(.000001,averageRegionMs); }
-        public double bendStageMs(BendTimings.Stage stage) { return bendStages.nanos(stage)/(Math.max(1,regionSamples)*1e6); }
-        public double bendStagePercent(BendTimings.Stage stage) { return 100*bendStageMs(stage)/Math.max(.000001,averageRegionMs); }
     }
 }

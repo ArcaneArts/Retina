@@ -40,7 +40,7 @@
         "base_height": 64.0,
         "amplitude": 48.0,
         "frequency": 0.008,
-        "mode": "bend",
+        "mode": "mca",
         "density_composition": true
       }
     },

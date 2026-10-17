@@ -117,31 +117,10 @@ final class TerrainEntityQa {
         for (var entity : level.getAllEntities())
             if (entity instanceof HangingEntity hanging && anchors.contains(hanging.getPos())) occupants++;
         if (occupants != expected.size()) throw new IllegalStateException("Duplicate hanging entities at fixture anchors: " + occupants);
-        if (generator.bendMode()) {
-            if (generator.profile().nativeId() != -1) throw new IllegalStateException("Bend entity QA registered a Rust profile");
-            if (!reopen) checkTimings(generator, level.registryAccess());
-        }
         checked = true;
         Retina.LOGGER.info("QA_EVT {\"event\":\"minecraft_live_template_entities\",\"status\":\"pass\",\"context\":{\"mode\":\"{}\",\"backend\":\"{}\",\"entities\":{},\"reopen\":{},\"generated_regions\":{},\"edit_preserved\":{}}}",
                 generator.mode(), generator.backend(), expected.size(), reopen, generator.metrics().snapshot().previewRegions(), reopen);
         if (server.isDedicatedServer()) server.halt(false);
     }
 
-    private static void checkTimings(RetinaChunkGenerator generator, net.minecraft.core.RegistryAccess registry) {
-        var snapshot = generator.metrics().snapshot();
-        if (snapshot.regionSamples() == 0 || snapshot.averageRegionMs() <= 0 || snapshot.bendStages().regions() == 0)
-            throw new IllegalStateException("Bend regions did not enter the rolling timing window");
-        for (var stage : BendTimings.Stage.values()) if (snapshot.bendStages().nanos(stage) <= 0)
-            throw new IllegalStateException("Bend stage was not measured: " + stage);
-        var buffer = new net.minecraft.network.RegistryFriendlyByteBuf(io.netty.buffer.Unpooled.buffer(), registry);
-        try {
-            TerrainStatsPayload.CODEC.encode(buffer, new TerrainStatsPayload(true, generator.backend(), generator.mode(), snapshot));
-            var decoded = TerrainStatsPayload.CODEC.decode(buffer).stats();
-            if (decoded.regionSamples() != snapshot.regionSamples() || decoded.averageRegionMs() != snapshot.averageRegionMs()
-                    || !java.util.Arrays.equals(decoded.bendStages().nanos(), snapshot.bendStages().nanos()))
-                throw new IllegalStateException("Live F3 packet lost Bend stage measurements");
-        } finally { buffer.release(); }
-        Retina.LOGGER.info("QA_EVT {\"event\":\"minecraft_live_bend_stage_timings\",\"status\":\"pass\",\"context\":{\"stages\":{},\"regions\":{},\"average_region_ms\":{}}}",
-                BendTimings.STAGES, snapshot.regionSamples(), snapshot.averageRegionMs());
-    }
 }
