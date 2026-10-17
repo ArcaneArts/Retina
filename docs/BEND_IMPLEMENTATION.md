@@ -200,6 +200,20 @@ registered programs and feature families below, not just representative terrain.
 All unmarked items remain required. Update this inventory as code is inspected
 more deeply; retain the original requested scope.
 
+The complete-region benchmark review found a concrete remaining climate gap:
+`native/src/simplex.wgsl::registered_biome_filtered` considers ordinary registered
+biomes absent from `climate_targets`, using their exported climate center and a
+small fitness preference. `bend/registry_climate.bend` currently projects only
+explicit targets. The retained vanilla profile maps all 56 biomes, but Terralith
+leaves `terralith:deep_warm_ocean` unmapped and the combined fixture also leaves
+`retina_test:export_probe` unmapped. Bend cannot select those ordinary surface
+biomes through its current climate model. The source hashes, profile hashes and
+independent fitness counterexamples are recorded in
+`docs/benchmarks/bend-climate-coverage-audit.json`; these are source-audit evidence,
+not a new worker execution test. Fix and validate this path before claiming
+combined-pack parity. Existing interval tests and saved-biome consistency checks
+do not prove coverage of biomes omitted from the model.
+
 | Requirement | Current Rust/shared source | Bend implementation / completion evidence |
 | --- | --- | --- |
 | Shared loaded registry export, including palette properties and climate intervals | `TerrainProfileData.java`, `RegistryGpuProgram.java`, `native/src/profile.rs` | Export decoupled from Rust initialization; actual vanilla, Terralith and Terralith+supplement registries pass with native library unavailable. Explicit Rust adapter receives byte-identical data and passes real Metal queries. Full structural profiles now stream into a resident Bend word tape with lossless field/array/string access and independent full-value checks. Loaded climate/ridge stacks now resolve schema keys and convert numeric parameters entirely in Bend; numeric terrain DAGs now project and execute in the resident worker; material predicates now project and execute on CPU/GPU; GPU-derived material contexts and exhaustive compact vertical block runs implemented; playable terrain preview integration implemented; full feature/light parity pending |
