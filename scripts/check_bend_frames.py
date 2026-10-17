@@ -52,31 +52,34 @@ def run(args):
             execute(f'{fixture}-compile', ['nice', '-n', '10', os.environ.get('CC', 'cc'),
                     '-std=c11', '-O1', str(generated), '-lpthread', '-lm', '-o', str(binary)])
             binaries.append(['nice', '-n', '10', str(binary), '--threads', '2', '--gpu', 'off'])
-        assert b'PASS: 24 frame header cases' in execute('headers', binaries[0])
+        assert b'PASS: 24 frame header cases and 13 buffer capacity cases' in execute('headers', binaries[0])
 
         def frame(body=b'', identity=0, opcode=0, magic=0x52424e44, length=None):
             return struct.pack('>4I', magic, len(body) if length is None else length,
                                identity, opcode)+body
 
-        # Empty, unsigned IDs/opcodes, consecutive frames, and payloads crossing
-        # the transport's 64 KiB read boundary. Compare opaque bytes exactly.
-        payload = bytes(range(256))*256+b'\x00\xff\x80'
-        requests = frame()+frame(b'\x00\xff', 0xffffffff, 0xffffffff)+frame(payload, 7, 55)
+        # Empty, unsigned IDs/opcodes, consecutive frames, exact array capacities,
+        # and the transport's 64 KiB read boundary. Compare opaque bytes exactly.
+        sizes = (0, 1, 2, 255, 256, 257, 511, 512, 513, 65535, 65536, 65537)
+        requests = b''.join(frame((bytes(range(256))*((size+255)//256))[:size],
+                                  0xffffffff-i, 0xffffffff-i) for i, size in enumerate(sizes))
         assert execute('round-trip', binaries[1], data=requests) == requests
         assert execute('clean-eof', binaries[1], data=b'') == b''
         for i, data in enumerate((frame(magic=0), frame(length=16777217),
                                   frame(length=0xffffffff), frame()[:7], frame(b'ab')[:-1])):
             execute(f'reject-{i}', binaries[1], data=data, valid=False)
         report.update(status='passed', active_step=None, header_cases=24,
-                      stream_frames=3, malformed_streams=5, clean_eof=True,
+                      capacity_cases=13, stream_frames=len(sizes), payload_sizes=sizes,
+                      malformed_streams=5, clean_eof=True,
                       compiler_sha256=hashlib.sha256(args.bend.read_bytes()).hexdigest(),
                       artifacts={p.name: hashlib.sha256(p.read_bytes()).hexdigest()
                                  for p in output.iterdir() if p.suffix == '.c' or p.name in ('frame', 'frame-read')},
                       sources={str(p.relative_to(ROOT)): hashlib.sha256(p.read_bytes()).hexdigest()
                                for p in [ROOT/'bend/frame.bend', ROOT/'bend/engine.bend',
+                                         ROOT/'bend/binary.bend', ROOT/'bend/transport.bend',
                                          ROOT/'bend/tests/frame.bend', ROOT/'bend/tests/frame-read.bend']})
         save()
-        print('PASS: 24 headers, 3 round-trip frames, clean EOF and 5 malformed streams')
+        print('PASS: 24 headers, 13 capacities, 12 round-trip frames, clean EOF and 5 malformed streams')
     except BaseException as error:
         report.update(status='failed', error=repr(error))
         save()
