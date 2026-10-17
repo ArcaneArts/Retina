@@ -37,15 +37,28 @@ def truncations(+n: Nat) -> U32:
 
 def result(failures: U32) -> IO(Unit):
   match failures:
-    case 0: IO.print("PASS: 24 frame header cases")
+    case 0: IO.print("PASS: 24 frame header cases and 13 buffer capacity cases")
     case _: IO.die(Unit,1,"frame header regression")
 
+type Capacity is Data:
+  Capacity{length: U32,expected: U32}
+
+def capacities(cases: List<&2,Capacity>) -> U32:
+  match cases:
+    case Nil{}: 0
+    case pair <> rest:
+      Capacity{length,expected} = pair
+      U32.add(Z.word(U32.is_eq(F.body_capacity(length),expected),0,1),capacities(rest))
+
 def main() -> IO(Unit):
-  result(U32.add(U32.add(truncations(16n),invalid_size(canonical(),17)),
+  result(U32.add(capacities([Capacity{0,256},Capacity{1,256},Capacity{255,256},Capacity{256,256},Capacity{257,512},
+    Capacity{511,512},Capacity{512,512},Capacity{513,1024},Capacity{65535,65536},Capacity{65536,65536},Capacity{65537,131072},
+    Capacity{16777215,16777216},Capacity{16777216,16777216}]),
+    U32.add(U32.add(truncations(16n),invalid_size(canonical(),17)),
     U32.add(header(1380077124,0,0,0,True{}),
     U32.add(header(1380077124,16777216,4294967295,4294967295,True{}),
     U32.add(header(1380077124,16777217,123,4,False{}),
     U32.add(header(1380077124,4294967295,456,999,False{}),
     U32.add(header(0,0,123,0,False{}),
     U32.add(header(1380077125,1,456,55,False{}),
-      header(1380077124,1,2147483648,999,True{})))))))))
+      header(1380077124,1,2147483648,999,True{}))))))))))

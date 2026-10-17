@@ -25,6 +25,13 @@ request timings include transport and are not codec-only or region throughput.
 The corpus and independent round-trip checks provide a bounded baseline for
 resident-buffer/codec improvements without regenerating terrain.
 
+The subsequent [frame-buffer correctness check](benchmarks/bend-frame-reserve.json)
+reserves the known request length once, avoiding the input writer's intermediate
+growth/copy passes. It verifies 24 headers, 13 capacities, 12 exact byte round-trips,
+EOF and five malformed streams using small CPU fixtures. No benchmark was run
+and no speedup is claimed. This source change awaits the next full-worker build;
+the installed 2.0.37 executable described below is unchanged.
+
 ## Playable terrain preview
 
 The current integration exposes **Retina Rust** and **Retina Bend** in the world
