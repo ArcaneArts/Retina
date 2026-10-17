@@ -1042,6 +1042,31 @@ def registryExportSupplement = tasks.register('registryExportSupplement', Zip) {
     archiveFileName = 'registry-supplement.zip'
 }
 
+tasks.register('regionBenchmarkProfile', JavaExec) {
+    group = 'verification'
+    description = 'Export the loaded vanilla or datapack profile for complete-region backend benchmarks.'
+    dependsOn 'gpuTestClasses'
+    classpath = sourceSets.gpuTest.runtimeClasspath
+    mainClass = 'art.arcane.retina.worldgen.NativeProfileExport'
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
+    workingDir rootProject.projectDir
+    args rootProject.layout.buildDirectory.file('backend-benchmark/profile.json').get().asFile.absolutePath
+    if (providers.gradleProperty('testDatapack').isPresent()) args providers.gradleProperty('testDatapack').get()
+}
+
+tasks.register('regionDecodeBenchmark', JavaExec) {
+    group = 'verification'
+    description = 'Measure actual Minecraft decoding of completed backend benchmark regions.'
+    dependsOn 'gpuTestClasses'
+    classpath = sourceSets.gpuTest.runtimeClasspath
+    mainClass = 'art.arcane.retina.worldgen.RegionDecodeBenchmark'
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
+    workingDir rootProject.projectDir
+    def input = providers.gradleProperty('benchmarkRegions').orElse('build/backend-benchmark/rust')
+    args rootProject.file(input.get()).absolutePath, rootProject.file(input.get()+'/minecraft-decode.json').absolutePath
+    if (providers.gradleProperty('testDatapack').isPresent()) args providers.gradleProperty('testDatapack').get()
+}
+
 ['registryExportTest': false, 'registryExportRustTest': true].each { taskName, rust ->
     tasks.register(taskName, JavaExec) {
         group = 'verification'

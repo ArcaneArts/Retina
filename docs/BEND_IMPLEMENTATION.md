@@ -163,8 +163,8 @@ writers now have checked implementations against the live world overlay. An
 ordered patch-to-run merger, final plant support/pair repair and core cropping
 now connect accepted feature overlays to the chunk serializer. All 17 currently
 registered feature families and their trunk/foliage/decorator subsets join the
-neighboring-anchor coordinator in the playable worker. Retain that registered
-placement behavior while completing structure location and final GPU lighting.
+neighboring-anchor coordinator in the playable worker. Structure location and
+final GPU lighting are now integrated with that registered placement behavior.
 The final repair pass uses the loaded plant floor masks and signed pair IDs
 after vegetation and structure writes.
 
@@ -177,8 +177,10 @@ attenuating block/sky edges and Minecraft nibble packing. The independent
 and 42 face shapes from the inspected vanilla registry; both output hashes match.
 The new region producer imports these rules into the worker, consumes the final
 decorated block runs, and emits interior light arrays before MCA serialization.
-The installed preview still uses the earlier unlit worker while final validation
-of the complete worker pair finishes.
+The installed preview includes this producer and has passed the full-region
+lighting checks described below. The equivalent Rust/Bend region benchmark and
+live load-in measurements are now being completed with the reproducible
+[backend benchmark harness](BACKEND_BENCHMARKS.md).
 
 ## Inspected starting point
 
@@ -197,6 +199,20 @@ registered programs and feature families below, not just representative terrain.
 
 All unmarked items remain required. Update this inventory as code is inspected
 more deeply; retain the original requested scope.
+
+The complete-region benchmark review found a concrete remaining climate gap:
+`native/src/simplex.wgsl::registered_biome_filtered` considers ordinary registered
+biomes absent from `climate_targets`, using their exported climate center and a
+small fitness preference. `bend/registry_climate.bend` currently projects only
+explicit targets. The retained vanilla profile maps all 56 biomes, but Terralith
+leaves `terralith:deep_warm_ocean` unmapped and the combined fixture also leaves
+`retina_test:export_probe` unmapped. Bend cannot select those ordinary surface
+biomes through its current climate model. The source hashes, profile hashes and
+independent fitness counterexamples are recorded in
+`docs/benchmarks/bend-climate-coverage-audit.json`; these are source-audit evidence,
+not a new worker execution test. Fix and validate this path before claiming
+combined-pack parity. Existing interval tests and saved-biome consistency checks
+do not prove coverage of biomes omitted from the model.
 
 | Requirement | Current Rust/shared source | Bend implementation / completion evidence |
 | --- | --- | --- |

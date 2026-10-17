@@ -1,0 +1,88 @@
+{
+  "schema": "retina.bend-climate-coverage-audit.v1",
+  "scope": "Source-level coverage audit and independent fitness counterexamples; not a new worker execution test",
+  "status": "confirmed_missing_surface_fallback",
+  "profiles": [
+    {
+      "name": "profile-0.json",
+      "sha256": "aefce6ff0e800966ad55920c5d21510dfa277de4612f67e22d5146d3aa838203",
+      "biomes": 56,
+      "mapped_biomes": 56,
+      "omitted_surface_biomes": [],
+      "counterexamples": []
+    },
+    {
+      "name": "profile-1.json",
+      "sha256": "c9abbe97860a394ed899d64967bd0395bb9bb4ec71a9dff43d1bb45893fefd4d",
+      "biomes": 151,
+      "mapped_biomes": 146,
+      "omitted_surface_biomes": [
+        "terralith:deep_warm_ocean"
+      ],
+      "counterexamples": [
+        {
+          "point": [
+            0.0,
+            0.0,
+            0.20000000298023224,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rust_surface_candidate": "terralith:deep_warm_ocean",
+          "candidate_fitness": -0.029999999329447746,
+          "bend_interval_result": "minecraft:river",
+          "interval_fitness": 0.0
+        }
+      ]
+    },
+    {
+      "name": "profile-2.json",
+      "sha256": "068fd602ad497128dd3960cb9be76840ebd41882b5b64c25acfa76d65e930c8b",
+      "biomes": 152,
+      "mapped_biomes": 146,
+      "omitted_surface_biomes": [
+        "retina_test:export_probe",
+        "terralith:deep_warm_ocean"
+      ],
+      "counterexamples": [
+        {
+          "point": [
+            0.1499999761581421,
+            0.5,
+            0.20000000298023224,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rust_surface_candidate": "retina_test:export_probe",
+          "candidate_fitness": -0.029999999329447746,
+          "bend_interval_result": "minecraft:river",
+          "interval_fitness": 0.0
+        },
+        {
+          "point": [
+            0.0,
+            0.0,
+            0.20000000298023224,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rust_surface_candidate": "terralith:deep_warm_ocean",
+          "candidate_fitness": -0.029999999329447746,
+          "bend_interval_result": "minecraft:river",
+          "interval_fitness": 0.0
+        }
+      ]
+    }
+  ],
+  "sources": {
+    "native/src/simplex.wgsl": "e84184165007edd37253c6afe0852bb9e6c7eff05db960ec0d277b4c02ff4309",
+    "native/src/profile.rs": "0f9193fbb7a88fe2baddfd4115c3f909c85077fc581698793c2b055285fb6717",
+    "bend/registry_climate.bend": "3daed5cbc3da3a4d4f91c65465e899b31fe219fe34af03731fc7ca1c49c572ad",
+    "bend/climate.bend": "842160f64b796f6288e59e24e8a81515a450d3778900982bdfc6a633671a4680",
+    "scripts/test_bend_registry_climate.py": "66ae7d5109cf0376cab9bab211060b283d0de640e9cafac90123c8993ea6c86c",
+    "scripts/test_bend_climate.py": "5486a251744b58a4a05f054ff4e9db267f98581232cf2746292bc265652e9c9b"
+  }
+}
