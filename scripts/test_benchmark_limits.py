@@ -9,11 +9,41 @@ import sys
 import tempfile
 import time
 import unittest
+from unittest import mock
 
 from benchmark_limits import positive_seconds, run_bounded, supervise
 
 
 class BenchmarkLimitsTest(unittest.TestCase):
+    def test_eperm_existence_probe_does_not_abort_group_cleanup(self):
+        process = mock.Mock(pid=12345)
+        process.wait.return_value = 0
+        signals = []
+        def killpg(pid, signum):
+            self.assertEqual(pid, process.pid)
+            signals.append(signum)
+            if signum == 0:
+                raise PermissionError('group is still exiting')
+        with tempfile.TemporaryDirectory() as folder, \
+                mock.patch('benchmark_limits.subprocess.Popen', return_value=process), \
+                mock.patch('benchmark_limits.os.killpg', side_effect=killpg):
+            self.assertEqual(run_bounded(['mock-command'], 1, Path(folder), grace_seconds=.01), 0)
+        self.assertEqual(signals[0], signal.SIGTERM)
+        self.assertIn(0, signals)
+        self.assertEqual(signals[-1], signal.SIGKILL)
+
+    def test_actual_signal_denied_for_live_group_still_reports_failure(self):
+        process = mock.Mock(pid=12345)
+        process.wait.return_value = 0
+        with tempfile.TemporaryDirectory() as folder, \
+                mock.patch('benchmark_limits.subprocess.Popen', return_value=process), \
+                mock.patch('benchmark_limits.os.killpg', side_effect=PermissionError('denied')), \
+                mock.patch('benchmark_limits.subprocess.check_output', return_value='12345 S\n'):
+            with self.assertRaises(PermissionError):
+                run_bounded(['mock-command'], 1, Path(folder), grace_seconds=.01)
+            control = json.loads((Path(folder)/'run-control.json').read_text())
+            self.assertEqual(control['status'], 'cleanup_failed')
+
     def test_limit_rejects_unbounded_values(self):
         for value in ('0', '-1', 'inf', 'nan'):
             with self.assertRaises(argparse.ArgumentTypeError):
