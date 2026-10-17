@@ -46,22 +46,32 @@ inactive propagation neighbors; it does not claim a measured speedup.
 
 ## Validation status and next run
 
-**The changed Bend source has not been compiled or executed.** Python syntax,
-CLI help, and construction of eleven lighting fixtures pass. The added fixture
-contains an entirely opaque 8³ brick with an emitting block on its boundary;
-the existing suite covers open sky, dark air, roofs, fluids/leaves, partial
-shapes, registered optics, virtual sections and brick boundaries.
+**The changed Bend source passes the compiled CPU correctness check.** The
+explicitly approved run completed in 11.61 seconds including C emission, one
+native compilation and all eleven fixtures, within its 30-second deadline.
+Both packed light channels match the independent queue-based flood fill across
+485,376 voxels. The added fixture contains an entirely opaque 8³ brick with an
+emitting block on its boundary; the suite also covers open sky, dark air, roofs,
+fluids/leaves, partial shapes, registered optics, virtual sections and brick
+boundaries. Python syntax, CLI help and source-hash verification also pass.
+
+[The retained report](benchmarks/bend-lighting-work-cpu.json) records the tested
+source commit, compiler/binary/source/profile hashes, commands, per-fixture
+output hashes and supervisor result. Logs, emitted C, binary and fixture outputs
+are retained outside the worktree at the report's `retained_artifacts` path.
+These incidental correctness-run times are not a paired performance comparison.
 
 `scripts/check_bend_lighting.py` prepares an explicitly invoked CPU check with
 a 30-second total deadline and up to one second for termination. It emits stock
 Bend C, compiles one native fixture binary, then compares two-thread CPU output
 to the independent flood fill. Direct native compilation avoids the Bend CLI's
 automatic GPU archive build. All subprocesses run at reduced priority. There
-is no automatic retry, GPU execution, terrain engine or game launch. Running
-this native check requires separate approval under the current resource limit.
+is no automatic retry, GPU execution, terrain engine or game launch. The approved
+CPU run is complete; additional native work requires separate approval under
+the current resource limit.
 
-After CPU correctness is established, a separately approved bounded GPU check
-is still needed to validate device execution and measure this candidate. Do not
-restart the multi-minute complete-region benchmark to decide whether these
+A separately approved bounded GPU check is still needed to validate device
+execution and measure this candidate. Do not restart the multi-minute
+complete-region benchmark to decide whether these
 local changes are promising. Full-region and complete-backend acceptance remain
 outstanding in [the parity inventory](BEND_IMPLEMENTATION.md).

@@ -272,11 +272,15 @@ not complete backend parity. GPU execution, persistent-worker lifecycle and
 final surface/region integration checks remain outstanding. Existing reference
 and fixture-only checks are retained as separate, narrower evidence.
 
-The next [lighting optimization candidate](BEND_LIGHTING_OPTIMIZATION.md) removes
+The [lighting optimization candidate](BEND_LIGHTING_OPTIMIZATION.md) removes
 redundant brick/optical reads and reuses destination attenuation while preserving
-the existing propagation rules. Its source and bounded CPU correctness harness
-are prepared; native/GPU validation and any performance gain remain unverified.
-No further native work is covered by the completed climate-test approval.
+the existing propagation rules. Its separately approved bounded CPU check passes
+all eleven scenes (485,376 packed-light voxels) in 11.61 seconds including native
+compilation. [The report](benchmarks/bend-lighting-work-cpu.json) records exact
+source and output hashes. GPU execution, full-region integration and any speedup
+remain unverified for this change. The installed playable worker has not been
+rebuilt with this lighting change or the preceding climate fix. No additional
+native work is covered by the completed fixture-test approvals.
 
 | Requirement | Current Rust/shared source | Bend implementation / completion evidence |
 | --- | --- | --- |
