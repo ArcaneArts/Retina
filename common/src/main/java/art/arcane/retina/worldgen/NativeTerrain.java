@@ -122,7 +122,7 @@ public final class NativeTerrain {
             var out=arena.allocate(64,Long.BYTES);
             check((int)gpuDiagnostics.invokeExact(profile,out));
             if(out.get(JAVA_INT,0)!=1)throw new IllegalStateException("Unsupported GPU diagnostic version");
-            return new NativeGpuDiagnostics(out.get(JAVA_INT,4),out.get(JAVA_LONG,8),out.get(JAVA_LONG,16),out.get(JAVA_INT,24),out.get(JAVA_INT,28),out.get(JAVA_INT,32),out.get(JAVA_INT,36),out.get(JAVA_LONG,40),out.get(JAVA_LONG,48),out.get(JAVA_LONG,56));
+            return new NativeGpuDiagnostics(out.get(JAVA_INT,4),out.get(JAVA_LONG,8),out.get(JAVA_LONG,16),out.get(JAVA_INT,24),out.get(JAVA_INT,28),out.get(JAVA_INT,32),out.get(JAVA_INT,36),out.get(JAVA_LONG,40),out.get(JAVA_LONG,48),out.get(JAVA_LONG,56),timings(profile).chunks());
         }catch(Throwable error){throw failure(error);}
     }
 
