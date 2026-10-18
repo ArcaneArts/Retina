@@ -2,13 +2,11 @@ package art.arcane.retina.worldgen;
 
 import art.arcane.retina.Retina;
 import net.minecraft.SharedConstants;
-import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.level.ChunkPos;
 
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Files;
-import java.util.Optional;
 import java.util.Set;
 import java.util.function.Supplier;
 import java.util.concurrent.CompletableFuture;
@@ -21,10 +19,10 @@ public final class RegionCoordinator {
     private final long seed;
     private final Path folder;
     private final TemporaryRegions previews;
-    // Two requested regions can overlap GPU/planning with the shared Rust assembly pool.
-    private static final ExecutorService PREPARERS = Executors.newFixedThreadPool(2,
+    // One shared preparation pool; native concurrency is separately bounded for ordinary/bulk work.
+    private static final ExecutorService PREPARERS = Executors.newFixedThreadPool(RegionGenerationBudget.BULK_LIMIT,
             Thread.ofPlatform().daemon().name("retina-region-prepare-", 0).factory());
-    private final RegionLoadScheduler loads = new RegionLoadScheduler(PREPARERS, 4, RegionCoordinator::release);
+    private final RegionLoadScheduler loads = new RegionLoadScheduler(PREPARERS, 16, RegionCoordinator::release);
     // Written on the I/O queue; request admission can read this from other threads.
     private final Set<Long> prepared = java.util.concurrent.ConcurrentHashMap.newKeySet();
 
@@ -36,8 +34,8 @@ public final class RegionCoordinator {
     }
 
     /** Await immutable preparation outside the I/O queue; only publication accesses live MCA files. */
-    public CompletableFuture<Optional<CompoundTag>> loadAsync(
-            ChunkPos position, Supplier<CompletableFuture<Optional<CompoundTag>>> read) {
+    public <T> CompletableFuture<T> loadAsync(
+            ChunkPos position, Supplier<CompletableFuture<T>> read) {
         long key = generator.cacheKey(position);
         return loads.load(key, () -> previews != null && !prepared.contains(key) && Files.notExists(
                         folder.resolve("r." + position.getRegionX() + "." + position.getRegionZ() + ".mca")),
@@ -71,9 +69,13 @@ public final class RegionCoordinator {
                 } else generator.metrics().completedRegion(0, elapsed);
                 return;
             }
-            var report = NativeTerrain.instance().generateRegion(
-                    generator.request(seed, position.x(), position.z()), destination,
-                    SharedConstants.getCurrentVersion().dataVersion().version(), generator.regionBiome());
+            NativeTerrain.RegionReport report;
+            var releaseGeneration = RegionGenerationBudget.SHARED.acquire();
+            try {
+                report = NativeTerrain.instance().generateRegion(
+                        generator.request(seed, position.x(), position.z()), destination,
+                        SharedConstants.getCurrentVersion().dataVersion().version(), generator.regionBiome());
+            } finally { releaseGeneration.run(); }
             long elapsed = System.nanoTime() - started;
             prepared.add(key);
             generator.metrics().completedRegion(report.generated(), elapsed, report.stages());

@@ -27,6 +27,7 @@ public final class RegionPreparationTest {
 
     public static void main(String[] args) throws Exception {
         RegionLoadSchedulerTest.main(args);
+        RegionAheadPumpTest.main(args);
         var used = new Lease();
         var ready = preparation(CompletableFuture.completedFuture(used));
         ready.await();

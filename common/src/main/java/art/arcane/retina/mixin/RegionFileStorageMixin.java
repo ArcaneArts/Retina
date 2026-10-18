@@ -43,6 +43,9 @@ public abstract class RegionFileStorageMixin implements RegionStorageBridge {
     }
 
     @Override
+    public RegionCoordinator retina$coordinator() { return retina$coordinator; }
+
+    @Override
     public Path retina$folder() { return folder; }
 
     @Override
