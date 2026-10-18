@@ -6,6 +6,7 @@ import net.minecraft.SharedConstants;
 import net.minecraft.core.Holder;
 import net.minecraft.core.IdMapper;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.Bootstrap;
@@ -27,6 +28,7 @@ import java.lang.foreign.ValueLayout;
 import java.nio.file.*;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.function.Supplier;
 
 /** Real GPU/MCA integration: DH-style synchronous protochunk calls never publish preview terrain. */
 public final class NativePreviewIntegrationTest {
@@ -101,7 +103,8 @@ public final class NativePreviewIntegrationTest {
             var bridge = new RegionStorageBridge() {
                 public void retina$configure(RegionCoordinator coordinator) { }
                 public Path retina$folder() { return save; }
-                public void retina$request(ChunkPos position) { }
+                public CompletableFuture<Optional<CompoundTag>> retina$loadAsync(
+                        ChunkPos position, Supplier<CompletableFuture<Optional<CompoundTag>>> read) { return read.get(); }
                 public void retina$closeRegion(ChunkPos position) { }
             };
             Files.createFile(save.resolve("r.-1.0.mca")); // DH probes leave empty RegionFile placeholders.
@@ -122,7 +125,14 @@ public final class NativePreviewIntegrationTest {
             var next = new ChunkPos(64, 0);
             var following = new ChunkPos(96, 0);
             long before = generator.metrics().snapshot().previewRegions();
-            coordinator.request(next); coordinator.request(next); coordinator.request(following);
+            var readsReady = new CountDownLatch(3);
+            var reads = new CompletableFuture<Optional<CompoundTag>>();
+            Supplier<CompletableFuture<Optional<CompoundTag>>> enqueue = () -> {
+                readsReady.countDown(); return reads;
+            };
+            var firstRead = coordinator.loadAsync(next, enqueue);
+            var duplicateRead = coordinator.loadAsync(next, enqueue);
+            var secondRead = coordinator.loadAsync(following, enqueue);
             long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(15);
             boolean parallel = false;
             while (generator.metrics().snapshot().previewRegions() < before + 2 && System.nanoTime() < deadline) {
@@ -131,6 +141,7 @@ public final class NativePreviewIntegrationTest {
             }
             require(generator.metrics().snapshot().previewRegions() == before + 2 && parallel,
                     "two requested regions prepare concurrently and duplicate loads coalesce");
+            require(readsReady.await(5, TimeUnit.SECONDS), "prepared reads enqueue after background assembly");
             var concurrentMetrics=generator.metrics().snapshot();
             require(concurrentMetrics.regionSamples()==3 && concurrentMetrics.regionStages().chunks()==3072, "parallel regions do not leak session counters into each other");
             require(concurrentMetrics.regionStagePercent(NativeTimings.NBT)>0 && concurrentMetrics.regionStagePercent(NativeTimings.COMPRESS)>0, "concurrent job wall shares reach F3");
@@ -150,6 +161,8 @@ public final class NativePreviewIntegrationTest {
                 require(storage.read(new ChunkPos(65, 0)) != null && storage.read(following) != null,
                         "both prepared regions load all missing chunks");
             }
+            reads.complete(Optional.empty());
+            firstRead.join(); duplicateRead.join(); secondRead.join();
             coordinator.close();
             System.out.println("QA_EVT {\"event\":\"requested_region_pipeline_and_concurrent_edit\",\"status\":\"pass\"}");
         } finally { generator.closePreviews(); }

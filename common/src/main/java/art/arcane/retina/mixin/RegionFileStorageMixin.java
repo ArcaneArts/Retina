@@ -19,6 +19,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+import java.util.function.Supplier;
 
 @Mixin(RegionFileStorage.class)
 public abstract class RegionFileStorageMixin implements RegionStorageBridge {
@@ -30,8 +32,9 @@ public abstract class RegionFileStorageMixin implements RegionStorageBridge {
     public void retina$configure(RegionCoordinator coordinator) { retina$coordinator = coordinator; }
 
     @Override
-    public void retina$request(ChunkPos position) {
-        if (retina$coordinator != null) retina$coordinator.request(position);
+    public CompletableFuture<Optional<CompoundTag>> retina$loadAsync(ChunkPos position,
+            Supplier<CompletableFuture<Optional<CompoundTag>>> read) {
+        return retina$coordinator == null ? read.get() : retina$coordinator.loadAsync(position, read);
     }
 
     @Inject(method = "close", at = @At("HEAD"))

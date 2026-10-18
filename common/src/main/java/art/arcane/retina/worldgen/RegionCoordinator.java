@@ -2,19 +2,20 @@ package art.arcane.retina.worldgen;
 
 import art.arcane.retina.Retina;
 import net.minecraft.SharedConstants;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.level.ChunkPos;
 
 import java.io.IOException;
-import java.util.Set;
 import java.nio.file.Path;
 import java.nio.file.Files;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.function.Supplier;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ExecutorService;
 
-/** Requests in one region share its first I/O job; subsequent jobs read the published MCA. */
+/** Requests share region preparation before enqueueing their serialized MCA publication/read jobs. */
 public final class RegionCoordinator {
     private final RetinaChunkGenerator generator;
     private final long seed;
@@ -23,9 +24,8 @@ public final class RegionCoordinator {
     // Two requested regions can overlap GPU/planning with the shared Rust assembly pool.
     private static final ExecutorService PREPARERS = Executors.newFixedThreadPool(2,
             Thread.ofPlatform().daemon().name("retina-region-prepare-", 0).factory());
-    private final Map<Long, RegionPreparation> pending = new HashMap<>();
-    private boolean closed;
-    // Confined to the IOWorker's consecutive executor, including all MCA publication.
+    private final RegionLoadScheduler loads = new RegionLoadScheduler(PREPARERS, 4, RegionCoordinator::release);
+    // Written on the I/O queue; request admission can read this from other threads.
     private final Set<Long> prepared = java.util.concurrent.ConcurrentHashMap.newKeySet();
 
     public RegionCoordinator(RetinaChunkGenerator generator, long seed, Path folder) {
@@ -35,21 +35,16 @@ public final class RegionCoordinator {
         this.previews = generator.previewCache();
     }
 
-    /** Prefetch an actual request; publication remains on the owning I/O queue. */
-    public synchronized void request(ChunkPos position) {
+    /** Await immutable preparation outside the I/O queue; only publication accesses live MCA files. */
+    public CompletableFuture<Optional<CompoundTag>> loadAsync(
+            ChunkPos position, Supplier<CompletableFuture<Optional<CompoundTag>>> read) {
         long key = generator.cacheKey(position);
-        if (closed || previews == null || prepared.contains(key) || pending.containsKey(key) || pending.size() >= 4) return;
-        Path destination = folder.resolve("r." + position.getRegionX() + "." + position.getRegionZ() + ".mca");
-        if (!Files.notExists(destination)) return;
-        pending.put(key, new RegionPreparation(
-                CompletableFuture.supplyAsync(() -> previews.prepare(position), PREPARERS), RegionCoordinator::release));
+        return loads.load(key, () -> previews != null && !prepared.contains(key) && Files.notExists(
+                        folder.resolve("r." + position.getRegionX() + "." + position.getRegionZ() + ".mca")),
+                () -> previews.prepare(position), read);
     }
 
-    public synchronized void close() {
-        closed = true;
-        for (var preparation : pending.values()) preparation.close();
-        pending.clear();
-    }
+    public void close() { loads.close(); }
     private static void release(AutoCloseable lease) {
         try { if (lease != null) lease.close(); }
         catch (Exception error) { Retina.LOGGER.warn("Could not release prepared Retina region", error); }
@@ -57,19 +52,11 @@ public final class RegionCoordinator {
 
     public void prepare(ChunkPos position, RegionStorageBridge storage) throws IOException {
         long key = generator.cacheKey(position);
-        if (prepared.contains(key)) {
-            RegionPreparation unused;
-            synchronized (this) { unused = pending.remove(key); }
-            if (unused != null) unused.close();
-            return;
-        }
+        if (prepared.contains(key)) return;
         var destination = storage.retina$folder().resolve("r." + position.getRegionX() + "." + position.getRegionZ() + ".mca");
-        RegionPreparation preparation;
-        synchronized (this) { preparation = pending.get(key); }
         generator.metrics().begin();
         long started = System.nanoTime();
         try {
-            if (preparation != null) preparation.await();
             // Includes cached misses. All reads/writes in this storage run on this same queue.
             storage.retina$closeRegion(position);
             var cached = generator.publishPreview(position, destination);
@@ -104,14 +91,6 @@ public final class RegionCoordinator {
             // IOWorker completes failed tasks for Exceptions. This also carries native-loader
             // initialization errors back to its future instead of abandoning the waiting read.
             throw new IOException("Retina MCA generation failed for " + destination, error);
-        } finally {
-            // A completed on-disk region can skip await(), and request() may
-            // enqueue a prefetch after the initial lookup. Release both owners;
-            // an identical preparation (or concurrent close()) releases once.
-            RegionPreparation unused;
-            synchronized (this) { unused = pending.remove(key); }
-            if (unused != null) unused.close();
-            if (preparation != null) preparation.close();
         }
     }
 }
