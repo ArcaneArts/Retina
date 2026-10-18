@@ -19,8 +19,8 @@ public final class RegionCoordinator {
     private final long seed;
     private final Path folder;
     private final TemporaryRegions previews;
-    // One shared preparation pool; native concurrency is separately bounded for ordinary/bulk work.
-    private static final ExecutorService PREPARERS = Executors.newFixedThreadPool(RegionGenerationBudget.BULK_LIMIT,
+    // One shared preparation pool and native budget across ordinary, DH and bulk work.
+    private static final ExecutorService PREPARERS = Executors.newFixedThreadPool(RegionGenerationBudget.LIMIT,
             Thread.ofPlatform().daemon().name("retina-region-prepare-", 0).factory());
     private final RegionLoadScheduler loads = new RegionLoadScheduler(PREPARERS, 16, RegionCoordinator::release);
     // Written on the I/O queue; request admission can read this from other threads.

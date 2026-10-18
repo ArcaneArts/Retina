@@ -28,19 +28,20 @@ in `lighting.rs`, `region.rs`, `gpu_worker.rs`, `gpu.rs`,
 
 ## Completion rate and latency
 
-F3 retains the rolling last-20-region mean, nearest-rank p95, latency-derived
-chunks/sec, amortized chunk time and stage percentages. A separate **Completed
-terrain** row now reports actual completed chunks divided by elapsed wall time
-over the last five seconds, or elapsed session time during startup. The displayed
-window length makes the startup denominator explicit (clamped to 1 ms).
+F3 retains the rolling last-20-region mean, nearest-rank p95 and stage
+percentages. **Completed terrain** is the only MCA chunks/sec row: completed
+chunks divided by elapsed wall time over the last ten seconds, or elapsed session
+time during startup. The displayed window length makes the startup denominator
+explicit (clamped to 1 ms). Latency-derived throughput and amortized chunk-time
+rows are removed because parallel region jobs overlap.
 
-For example, two 1-second regions finishing together have 1,024 chunks/sec from
-region latency and 2,048 completed chunks/sec over the first wall second. Neither
-number replaces the other. Temporary generation and direct generation count once;
-promotion, cache hits, failed generation and zero-chunk saves do not contribute.
-Partial repairs contribute only newly generated chunks. An idle window reaches
-zero while the last-20 latency samples remain available. Completions are discrete,
-so the short wall window can fluctuate around large batch boundaries.
+For example, two 1-second regions finishing together contribute 2,048 completed
+chunks/sec over the first wall second while mean region latency remains 1 second.
+Temporary generation and direct generation count once; promotion, cache hits,
+failed generation and zero-chunk saves do not contribute. Partial repairs
+contribute only newly generated chunks. An idle window reaches zero while the
+last-20 latency samples remain available. Completions are discrete, so the wall
+window can fluctuate around large batch boundaries.
 
 This reuses the existing completion deque and adds no generation queue, worker,
 GPU dispatch or per-chunk clock read. Two doubles are carried in the debug packet;
@@ -80,7 +81,8 @@ has a 30-second timeout, two JVM processors and a 128 MiB heap.
   batch edges, malformed input, Unicode paths and concurrent writers. The real
   cache lifecycle test covers cold reload without generation, LRU deletion,
   promotion, preserved edits/partial saves, pinned shutdown and a sidecar write
-  failure after MCA creation. The existing two-region permit limit is unchanged.
+  failure after MCA creation. The later [region scheduling update](CHUNKY_REGION_SCHEDULING.md)
+  allows eight native regions globally for all callers.
 - Native unit validation reached 71 passing tests in the ore cycle. Cache work
   then passed its focused C-ABI/Java tests and native release build. The metrics
   cycle changes no native algorithms and does not repeat GPU benchmarks.

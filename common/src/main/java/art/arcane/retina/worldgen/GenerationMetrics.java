@@ -4,9 +4,9 @@ import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.function.LongSupplier;
 
-/** Five-second completed throughput; MCA latency and stages from the last 20 generated regions. */
+/** Ten-second completed throughput; MCA latency and stages from the last 20 generated regions. */
 public final class GenerationMetrics {
-    private static final long WINDOW_NANOS = 5_000_000_000L;
+    private static final long WINDOW_NANOS = 10_000_000_000L;
     public static final int REGION_WINDOW = 20;
     private final LongSupplier clock;
     private final long started;
@@ -83,7 +83,7 @@ public final class GenerationMetrics {
         double windowSeconds=Math.max(.001,Math.min(WINDOW_NANOS,now-started)/1e9);
         double divisor=Math.max(1,timedChunks)*1e6;
         double completedRate=samples.stream().mapToLong(Sample::chunks).sum()/windowSeconds;
-        double msPerChunk=elapsed/divisor,rate=completedRate;
+        double msPerChunk=elapsed/divisor;
         long regionElapsed=0,regionChunks=0,gpuColumns=0,gpuJobs=0,columnCache=0;
         int flags=0;long[] stages=new long[NativeTimings.STAGES];
         for(var sample:regionTimings) {
@@ -93,11 +93,10 @@ public final class GenerationMetrics {
         }
         if(!regionTimings.isEmpty()) {
             msPerChunk=regionElapsed/(Math.max(1,regionChunks)*1e6);
-            rate=regionChunks*1e9/Math.max(1,regionElapsed);
         }
         long[] orderedRegionNanos=regionTimings.stream().mapToLong(RegionSample::elapsed).sorted().toArray();
         double p95RegionMs=orderedRegionNanos.length==0?0:orderedRegionNanos[(int)Math.ceil(.95*orderedRegionNanos.length)-1]/1e6;
-        return new Snapshot(rate,msPerChunk,nativeTime/divisor,conversion/divisor,inFlight,total,failures,regions,
+        return new Snapshot(completedRate,msPerChunk,nativeTime/divisor,conversion/divisor,inFlight,total,failures,regions,
                 regionElapsed/(Math.max(1,regionTimings.size())*1e6),p95RegionMs,previewRegions,previewCacheHits,promotions,nativeTimings,
                 regionTimings.size(),new NativeTimings(flags,regionChunks,gpuColumns,gpuJobs,stages),columnCache/(Math.max(1,regionTimings.size())*1e6),
                 completedRate,windowSeconds);

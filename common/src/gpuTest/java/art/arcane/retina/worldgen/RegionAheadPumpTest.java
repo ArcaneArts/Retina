@@ -53,8 +53,7 @@ public final class RegionAheadPumpTest {
         require(result.get().failure() != null && result.get().completed() == 0, "publication failure stops new admissions");
 
         // Eight sleeping permit holders prove the limit without running a native region or CPU workload.
-        var budget = new RegionGenerationBudget(2, 8);
-        var closeBulk = budget.bulk();
+        var budget = new RegionGenerationBudget();
         var workers = Executors.newFixedThreadPool(8);
         var entered = new CountDownLatch(8);
         var release = new CountDownLatch(1);
@@ -67,22 +66,34 @@ public final class RegionAheadPumpTest {
                 catch (InterruptedException error) { throw new AssertionError(error); }
                 finally { active.decrementAndGet(); done.run(); done.run(); }
             });
-            require(entered.await(2, TimeUnit.SECONDS) && active.get() == 8, "bulk budget permits eight regions");
-            closeBulk.run(); closeBulk.run();
+            require(entered.await(2, TimeUnit.SECONDS) && active.get() == 8, "eight regions run without a Chunky task");
         } finally { release.countDown(); workers.shutdown(); require(workers.awaitTermination(2, TimeUnit.SECONDS), "workers stopped"); }
-        var first = budget.acquire(); var second = budget.acquire();
+        var held = new ArrayList<Runnable>();
+        for (int i = 0; i < 8; i++) held.add(budget.acquire());
         var waiting = new CompletableFuture<Runnable>();
-        var waiter = new Thread(() -> waiting.complete(budget.acquire()));
-        waiter.start();
+        var waiter = Thread.ofPlatform().daemon().start(() -> waiting.complete(budget.acquire()));
         try {
-            waiting.get(50, TimeUnit.MILLISECONDS);
-            throw new AssertionError("ordinary work exceeded its two-region budget");
-        } catch (java.util.concurrent.TimeoutException expected) { }
-        // Re-enable bulk: a third acquisition must be released without completing either ordinary region.
-        var bulkAgain = budget.bulk();
-        waiting.get(2, TimeUnit.SECONDS).run();
-        first.run(); second.run(); bulkAgain.run(); waiter.join(2000);
-        require(!waiter.isAlive(), "budget can expand and contract across tasks");
+            try {
+                waiting.get(50, TimeUnit.MILLISECONDS);
+                throw new AssertionError("shared work exceeded its eight-region budget");
+            } catch (java.util.concurrent.TimeoutException expected) { }
+            held.getFirst().run(); held.getFirst().run();
+            var ninth = waiting.get(2, TimeUnit.SECONDS);
+            var tenth = new CompletableFuture<Runnable>();
+            var nextWaiter = Thread.ofPlatform().daemon().start(() -> tenth.complete(budget.acquire()));
+            try {
+                tenth.get(50, TimeUnit.MILLISECONDS);
+                throw new AssertionError("duplicate release created an extra permit");
+            } catch (java.util.concurrent.TimeoutException expected) { }
+            finally { ninth.run(); }
+            tenth.get(2, TimeUnit.SECONDS).run();
+            nextWaiter.join(2000);
+            require(!nextWaiter.isAlive(), "waiting work resumes after a permit is released");
+        } finally {
+            held.forEach(Runnable::run);
+            waiting.get(2, TimeUnit.SECONDS).run();
+            waiter.join(2000);
+        }
         System.out.println("PASS: eight-region ahead pump, refill, pause, failures, immediate saves and shared budget");
     }
 }
