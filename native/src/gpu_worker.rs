@@ -53,12 +53,15 @@ fn reply(batch: Vec<Job>, result: Result<gpu::GpuSample, String>) {
         }
     }
 }
-fn complete(gpu: &mut gpu::Gpu, batch: Vec<Job>, pending: gpu::PendingSample) {
-    let result = catch_unwind(AssertUnwindSafe(|| {
-        gpu.complete(pending, &batch[0].timings)
-    }))
-    .unwrap_or_else(|_| Err("GPU completion panicked; see native stderr".into()));
-    reply(batch, result);
+fn advance(gpu: &mut gpu::Gpu, flights: &mut VecDeque<(Vec<Job>, gpu::PendingSample)>) {
+    let (batch, pending) = flights.pop_front().unwrap();
+    let result = catch_unwind(AssertUnwindSafe(|| gpu.advance(pending, &batch[0].timings)))
+        .unwrap_or_else(|_| Err("GPU completion panicked; see native stderr".into()));
+    match result {
+        Ok(gpu::Progress::Pending(next)) => flights.push_back((batch, next)),
+        Ok(gpu::Progress::Complete(sample)) => reply(batch, Ok(sample)),
+        Err(error) => reply(batch, Err(error)),
+    }
 }
 pub(crate) fn run(
     receiver: mpsc::Receiver<Job>,
@@ -103,8 +106,12 @@ pub(crate) fn run(
     let mut flights: VecDeque<(Vec<Job>, gpu::PendingSample)> = VecDeque::new();
     loop {
         if flights.len() == depth {
-            let (batch, pending) = flights.pop_front().unwrap();
-            complete(&mut gpu, batch, pending);
+            // Only wait for one submission. A dependent material pass joins
+            // the back of the queue, behind other already-submitted terrain.
+            advance(&mut gpu, &mut flights);
+            if flights.len() == depth {
+                continue;
+            }
         }
         let first = if let Some(job) = queued.take() {
             Some(job)
@@ -119,8 +126,7 @@ pub(crate) fn run(
                 Err(mpsc::TryRecvError::Empty) => {
                     match gpu.ready(&mut flights.front_mut().unwrap().1) {
                         Ok(true) => {
-                            let (batch, pending) = flights.pop_front().unwrap();
-                            complete(&mut gpu, batch, pending);
+                            advance(&mut gpu, &mut flights);
                             continue;
                         }
                         Err(error) => {
@@ -139,8 +145,8 @@ pub(crate) fn run(
             }
         };
         let Some(first) = first else {
-            while let Some((batch, pending)) = flights.pop_front() {
-                complete(&mut gpu, batch, pending);
+            while !flights.is_empty() {
+                advance(&mut gpu, &mut flights);
             }
             break;
         };
@@ -215,6 +221,85 @@ pub(crate) fn run(
                 metrics.in_flight(flights.len());
             }
             Err(error) => reply(batch, Err(error)),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    #[ignore = "requires RETINA_MATERIAL_PROFILE and a real GPU"]
+    fn material_continuations_drain_after_sender_closes() {
+        let source = std::fs::read(std::env::var("RETINA_MATERIAL_PROFILE").unwrap()).unwrap();
+        let mut value: serde_json::Value = serde_json::from_slice(&source).unwrap();
+        value["program_execution"] = "interpreter".into();
+        let profile = Arc::new(
+            crate::profile::WorldProfile::parse(&serde_json::to_vec(&value).unwrap()).unwrap(),
+        );
+        let metrics = Arc::new(pipeline::Metrics::default());
+        let times = Arc::new(timings::Timings::default());
+        for depth in [1, 2] {
+            let before = metrics.snapshot().completed;
+            let (send, receive) = mpsc::channel();
+            let (ready, startup) = mpsc::sync_channel(1);
+            let worker_metrics = metrics.clone();
+            let worker = std::thread::spawn(move || run(receive, ready, worker_metrics, depth));
+            let devices = startup
+                .recv_timeout(std::time::Duration::from_secs(10))
+                .unwrap()
+                .unwrap();
+            let (reply, result) = mpsc::channel();
+            for x in [-33, 4095] {
+                send.send(Job {
+                    requests: vec![crate::ChunkRequest {
+                        seed: 123456789,
+                        chunk_x: x,
+                        chunk_z: -33,
+                        min_y: -64,
+                        height: 128,
+                        base_height: 48.,
+                        amplitude: 24.,
+                        frequency: 0.008,
+                        reserved: 1,
+                    }],
+                    profile: Some(profile.clone()),
+                    tile_side: 3,
+                    cave_side: 1,
+                    probe_mode: 0,
+                    probe_y: Vec::new(),
+                    probe_points: Vec::new(),
+                    reply: reply.clone(),
+                    queued: Instant::now(),
+                    queue_nanos: 0,
+                    timings: times.clone(),
+                })
+                .unwrap();
+            }
+            drop(send);
+            drop(reply);
+            for _ in 0..2 {
+                let sample = result
+                    .recv_timeout(std::time::Duration::from_secs(10))
+                    .unwrap()
+                    .unwrap();
+                sample
+                    .mask
+                    .as_ref()
+                    .unwrap()
+                    .validate_material_runs()
+                    .unwrap();
+            }
+            assert!(
+                result
+                    .recv_timeout(std::time::Duration::from_secs(10))
+                    .is_err()
+            );
+            worker.join().unwrap();
+            assert_eq!(metrics.snapshot().completed, before + 2);
+            assert!(metrics.snapshot().peak_in_flight <= depth as u32);
+            drop(devices);
         }
     }
 }

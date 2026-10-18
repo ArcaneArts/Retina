@@ -52,6 +52,7 @@ pub(crate) struct Gpu {
     sites: wgpu::Buffer,
     timestamp_support: bool,
     readback_pool: Vec<ReadbackSlot>,
+    material_pool: Vec<MaterialSlot>,
     pipeline: std::sync::Arc<crate::pipeline::Metrics>,
     last_device_tick: Option<u64>,
     pub(crate) backend: String,
@@ -414,6 +415,7 @@ impl Gpu {
             output,
             sites,
             readback_pool: Vec::new(),
+            material_pool: Vec::new(),
             pipeline: metrics,
             last_device_tick: None,
             timestamp_support,
@@ -1637,43 +1639,64 @@ impl Gpu {
             .as_ref()
             .map(|t| Mapping::new(&t.readback, query_bytes));
         Ok(PendingSample {
-            slot,
-            submission,
-            columns_map,
-            mask_map,
-            query_map,
+            stage: PendingStage::Terrain(TerrainReadback {
+                slot,
+                submission,
+                columns_map,
+                mask_map,
+                query_map,
+                request: requests[0],
+                cave_width,
+                cave_height,
+                underground_probe,
+                size,
+                mask_size,
+                query_bytes,
+                measured,
+                materials,
+                aquifer: aquifer.is_some(),
+            }),
             wait_start,
-            request: requests[0],
-            cave_width,
-            cave_height,
-            underground_probe,
-            size,
-            mask_size,
-            query_bytes,
-            measured,
             timings: job_timings,
-            materials,
-            aquifer: aquifer.is_some(),
         })
     }
     fn emit_materials(
         &mut self,
-        job: &MaterialPending,
+        job: MaterialPending,
         request: GpuRequest,
         count: usize,
         timings: &timings::Timings,
         trace: &mut timings::Snapshot,
-    ) -> Result<Vec<u32>, String> {
+    ) -> MaterialReadback {
         let start = Instant::now();
         let size = count as u64 * 4;
-        let buffer = self.device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("Retina exact material runs"),
-            size: job.mask.size() + size,
-            usage: wgpu::BufferUsages::STORAGE
-                | wgpu::BufferUsages::COPY_DST
-                | wgpu::BufferUsages::COPY_SRC,
-            mapped_at_creation: false,
+        // A slot belongs to exactly one pending continuation. Reuse it only
+        // after both mapping guards have been dropped by completion.
+        let storage_size = job.mask.size() + size;
+        let storage = || {
+            self.device.create_buffer(&wgpu::BufferDescriptor {
+                label: Some("Retina exact material runs"),
+                size: storage_size,
+                usage: wgpu::BufferUsages::STORAGE
+                    | wgpu::BufferUsages::COPY_DST
+                    | wgpu::BufferUsages::COPY_SRC,
+                mapped_at_creation: false,
+            })
+        };
+        let mut slot = self.material_pool.pop().unwrap_or_else(|| MaterialSlot {
+            storage: storage(),
+            readback: self.readback_buffer("Retina compact material runs", size),
+            timestamps: self.timestamp_support.then(|| self.create_timestamps()),
         });
+        if slot.storage.size() < storage_size {
+            slot.storage = storage();
+        }
+        if slot.readback.size() < size {
+            slot.readback = self.readback_buffer("Retina compact material runs", size);
+        }
+        let buffer = &slot.storage;
+        let out = &slot.readback;
+        let timestamps = &slot.timestamps;
         let group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("Retina material emission"),
             layout: &self.cave_layout,
@@ -1701,7 +1724,11 @@ impl Gpu {
                 },
                 wgpu::BindGroupEntry {
                     binding: 4,
-                    resource: buffer.as_entire_binding(),
+                    resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
+                        buffer,
+                        offset: 0,
+                        size: std::num::NonZeroU64::new(storage_size),
+                    }),
                 },
                 wgpu::BindGroupEntry {
                     binding: 5,
@@ -1717,12 +1744,10 @@ impl Gpu {
                 },
             ],
         });
-        let out = self.readback_buffer("Retina compact material runs", size);
-        let timestamps = self.timestamp_support.then(|| self.create_timestamps());
         let mut encoder = self
             .device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
-        encoder.copy_buffer_to_buffer(&job.mask, 0, &buffer, 0, job.mask.size());
+        encoder.copy_buffer_to_buffer(&job.mask, 0, buffer, 0, job.mask.size());
         {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
                 label: Some("Retina GPU material run emission"),
@@ -1736,8 +1761,8 @@ impl Gpu {
             pass.set_bind_group(0, &group, &[]);
             pass.dispatch_workgroups((request.padding * 16).pow(2).div_ceil(64), 1, 1);
         }
-        encoder.copy_buffer_to_buffer(&buffer, job.mask.size(), &out, 0, size);
-        if let Some(t) = &timestamps {
+        encoder.copy_buffer_to_buffer(buffer, job.mask.size(), out, 0, size);
+        if let Some(t) = timestamps {
             encoder.resolve_query_set(&t.queries, 0..2, &t.resolve, 0);
             encoder.copy_buffer_to_buffer(&t.resolve, 0, &t.readback, 0, 16);
         }
@@ -1745,25 +1770,51 @@ impl Gpu {
         timings.add(timings::ENCODE, encode);
         trace.nanos[timings::ENCODE] += encode;
         let submission = self.queue.submit([encoder.finish()]);
-        let mut mapping = Mapping::new(&out, size);
-        let mut query = timestamps.as_ref().map(|t| Mapping::new(&t.readback, 16));
-        self.device
-            .poll(wgpu::PollType::Wait {
-                submission_index: Some(submission),
-                timeout: Some(Duration::from_secs(30)),
-            })
-            .map_err(|e| format!("GPU material poll: {e}"))?;
-        mapping.check()?;
-        let words = {
-            let view = out
-                .slice(..size)
+        let mapping = Mapping::new(out, size);
+        let query = timestamps.as_ref().map(|t| Mapping::new(&t.readback, 16));
+        self.pipeline.transfer(
+            request.profile,
+            0,
+            size + if timestamps.is_some() { 16 } else { 0 },
+        );
+        MaterialReadback {
+            slot,
+            submission,
+            mapping,
+            query,
+            size,
+            submitted: Instant::now(),
+            // Keep every input alive and isolated until this dispatch finishes.
+            _inputs: job,
+            columns: Vec::new(),
+            mask: None,
+        }
+    }
+    fn complete_materials(
+        &mut self,
+        mut pending: MaterialReadback,
+        timings: &timings::Timings,
+        trace: &mut timings::Snapshot,
+    ) -> Result<(Vec<Column>, Option<crate::geology::CaveMask>), String> {
+        pending.mapping.check()?;
+        {
+            let view = pending
+                .slot
+                .readback
+                .slice(..pending.size)
                 .get_mapped_range()
                 .map_err(|e| e.to_string())?;
-            bytemuck::cast_slice::<u8, u32>(&view).to_vec()
-        };
-        if let Some(m) = &mut query {
+            // Append mapped runs directly; avoid an intermediate run vector.
+            let mask = pending.mask.as_mut().ok_or("missing material mask")?;
+            mask.words
+                .extend_from_slice(bytemuck::cast_slice::<u8, u32>(&view));
+            mask.validate_material_runs()?;
+        }
+        if let Some(m) = &mut pending.query {
             m.check()?;
-            let view = timestamps
+            let view = pending
+                .slot
+                .timestamps
                 .as_ref()
                 .unwrap()
                 .readback
@@ -1776,20 +1827,20 @@ impl Gpu {
                     * self.queue.get_timestamp_period() as f64) as u64;
                 timings.add(timings::MATERIALS, nanos);
                 trace.nanos[timings::MATERIALS] += nanos;
-                // Emission can follow another pending job's first submission.
-                // Count its span, without labelling that intervening job as idle.
+                // Another job may execute between counting and emission.
+                // Include this pass without treating that work as idle time.
                 self.pipeline.device(nanos, 0);
                 self.last_device_tick = Some(self.last_device_tick.unwrap_or(0).max(values[1]));
             } else {
                 self.pipeline.unavailable();
             }
         }
-        self.pipeline.transfer(
-            request.profile,
-            0,
-            size + if timestamps.is_some() { 16 } else { 0 },
-        );
-        Ok(words)
+        drop(pending.mapping);
+        drop(pending.query);
+        if self.material_pool.len() < 2 {
+            self.material_pool.push(pending.slot);
+        }
+        Ok((pending.columns, pending.mask))
     }
     fn create_timestamps(&self) -> Timestamps {
         Timestamps {
@@ -1823,24 +1874,94 @@ impl Gpu {
             .poll(wgpu::PollType::Poll)
             .map_err(|e| format!("GPU poll failed: {e}"))?;
         let ready = pending.ready();
-        if !ready && pending.wait_start.elapsed() > Duration::from_secs(30) {
+        if !ready && pending.stage_start().elapsed() > Duration::from_secs(30) {
             return Err("GPU mapping timed out".into());
         }
         Ok(ready)
     }
+    /// Synchronous adapter for focused diagnostics. The production worker uses
+    /// advance() so a material submission yields to other pending jobs.
+    #[cfg(test)]
     pub(crate) fn complete(
         &mut self,
         mut pending: PendingSample,
         timings: &timings::Timings,
     ) -> Result<GpuSample, String> {
+        loop {
+            match self.advance(pending, timings)? {
+                Progress::Complete(sample) => return Ok(sample),
+                Progress::Pending(next) => pending = next,
+            }
+        }
+    }
+    pub(crate) fn advance(
+        &mut self,
+        mut pending: PendingSample,
+        timings: &timings::Timings,
+    ) -> Result<Progress, String> {
         if !pending.ready() {
             self.device
                 .poll(wgpu::PollType::Wait {
-                    submission_index: Some(pending.submission.clone()),
+                    submission_index: Some(pending.submission().clone()),
                     timeout: Some(Duration::from_secs(30)),
                 })
                 .map_err(|e| format!("GPU poll failed: {e}"))?;
         }
+        let (columns, mask) = match pending.stage {
+            PendingStage::Terrain(terrain) => {
+                let (columns, mask, materials, request) =
+                    self.complete_terrain(terrain, timings, &mut pending.timings)?;
+                if let Some(materials) = materials {
+                    let count = mask
+                        .as_ref()
+                        .and_then(|mask| mask.material_run_count())
+                        .ok_or("missing GPU material run header")?;
+                    let mut next = self.emit_materials(
+                        materials,
+                        request,
+                        count,
+                        timings,
+                        &mut pending.timings,
+                    );
+                    next.columns = columns;
+                    next.mask = mask;
+                    pending.stage = PendingStage::Materials(next);
+                    return Ok(Progress::Pending(pending));
+                }
+                (columns, mask)
+            }
+            PendingStage::Materials(materials) => {
+                self.complete_materials(materials, timings, &mut pending.timings)?
+            }
+        };
+        pending.timings.flags = u32::from(self.timestamp_support);
+        pending.timings.nanos[timings::WAIT_COPY] = pending.wait_start.elapsed().as_nanos() as u64;
+        timings.add(
+            timings::WAIT_COPY,
+            pending.timings.nanos[timings::WAIT_COPY],
+        );
+        timings.gpu(pending.timings.gpu_columns, self.timestamp_support);
+        self.pipeline.completed();
+        Ok(Progress::Complete(GpuSample {
+            columns,
+            mask,
+            timings: pending.timings,
+        }))
+    }
+    fn complete_terrain(
+        &mut self,
+        mut pending: TerrainReadback,
+        timings: &timings::Timings,
+        trace: &mut timings::Snapshot,
+    ) -> Result<
+        (
+            Vec<Column>,
+            Option<crate::geology::CaveMask>,
+            Option<MaterialPending>,
+            GpuRequest,
+        ),
+        String,
+    > {
         pending.columns_map.check()?;
         let mut columns = {
             let mapped = pending
@@ -1851,7 +1972,7 @@ impl Gpu {
                 .map_err(|e| e.to_string())?;
             bytemuck::cast_slice::<u8, Column>(&mapped).to_vec()
         };
-        let mut mask = if let Some(mapping) = &mut pending.mask_map {
+        let mask = if let Some(mapping) = &mut pending.mask_map {
             mapping.check()?;
             let words = {
                 let mapped = pending
@@ -1912,7 +2033,7 @@ impl Gpu {
                 last = last.max(end);
                 let nanos = ((end - start) as f64 * period) as u64;
                 timings.add(*stage, nanos);
-                pending.timings.nanos[*stage] += nanos;
+                trace.nanos[*stage] += nanos;
             }
             if last > 0 {
                 let gap = self
@@ -1925,37 +2046,13 @@ impl Gpu {
                 );
             }
         }
-        if let (Some(materials), Some(mask)) = (&pending.materials, &mut mask) {
-            let count = mask
-                .material_run_count()
-                .ok_or("missing GPU material run header")?;
-            let runs = self.emit_materials(
-                materials,
-                pending.request,
-                count,
-                timings,
-                &mut pending.timings,
-            )?;
-            mask.words.extend(runs);
-            mask.validate_material_runs()?;
-        }
         drop(pending.columns_map);
         drop(pending.mask_map);
         drop(pending.query_map);
-        pending.timings.flags = u32::from(self.timestamp_support);
-        pending.timings.nanos[timings::WAIT_COPY] = pending.wait_start.elapsed().as_nanos() as u64;
-        timings.add(
-            timings::WAIT_COPY,
-            pending.timings.nanos[timings::WAIT_COPY],
-        );
-        timings.gpu(pending.timings.gpu_columns, self.timestamp_support);
-        self.pipeline.completed();
-        self.readback_pool.push(pending.slot);
-        Ok(GpuSample {
-            columns,
-            mask,
-            timings: pending.timings,
-        })
+        if self.readback_pool.len() < 2 {
+            self.readback_pool.push(pending.slot);
+        }
+        Ok((columns, mask, pending.materials, pending.request))
     }
 }
 
@@ -2017,12 +2114,24 @@ impl Drop for Mapping {
 }
 
 pub(crate) struct PendingSample {
+    stage: PendingStage,
+    wait_start: Instant,
+    timings: timings::Snapshot,
+}
+pub(crate) enum Progress {
+    Complete(GpuSample),
+    Pending(PendingSample),
+}
+enum PendingStage {
+    Terrain(TerrainReadback),
+    Materials(MaterialReadback),
+}
+struct TerrainReadback {
     slot: ReadbackSlot,
     submission: wgpu::SubmissionIndex,
     columns_map: Mapping,
     mask_map: Option<Mapping>,
     query_map: Option<Mapping>,
-    wait_start: Instant,
     request: GpuRequest,
     cave_width: u32,
     cave_height: u32,
@@ -2031,9 +2140,24 @@ pub(crate) struct PendingSample {
     mask_size: u64,
     query_bytes: u64,
     measured: Vec<usize>,
-    timings: timings::Snapshot,
     materials: Option<MaterialPending>,
     aquifer: bool,
+}
+struct MaterialSlot {
+    storage: wgpu::Buffer,
+    readback: wgpu::Buffer,
+    timestamps: Option<Timestamps>,
+}
+struct MaterialReadback {
+    slot: MaterialSlot,
+    submission: wgpu::SubmissionIndex,
+    mapping: Mapping,
+    query: Option<Mapping>,
+    size: u64,
+    submitted: Instant,
+    _inputs: MaterialPending,
+    columns: Vec<Column>,
+    mask: Option<crate::geology::CaveMask>,
 }
 struct MaterialPending {
     columns: wgpu::Buffer,
@@ -2044,9 +2168,28 @@ struct MaterialPending {
 }
 impl PendingSample {
     fn ready(&mut self) -> bool {
-        self.columns_map.ready()
-            && self.mask_map.as_mut().is_none_or(|m| m.ready())
-            && self.query_map.as_mut().is_none_or(|m| m.ready())
+        match &mut self.stage {
+            PendingStage::Terrain(p) => {
+                p.columns_map.ready()
+                    && p.mask_map.as_mut().is_none_or(|m| m.ready())
+                    && p.query_map.as_mut().is_none_or(|m| m.ready())
+            }
+            PendingStage::Materials(p) => {
+                p.mapping.ready() && p.query.as_mut().is_none_or(|m| m.ready())
+            }
+        }
+    }
+    fn submission(&self) -> &wgpu::SubmissionIndex {
+        match &self.stage {
+            PendingStage::Terrain(p) => &p.submission,
+            PendingStage::Materials(p) => &p.submission,
+        }
+    }
+    fn stage_start(&self) -> Instant {
+        match &self.stage {
+            PendingStage::Terrain(_) => self.wait_start,
+            PendingStage::Materials(p) => p.submitted,
+        }
     }
 }
 
@@ -2056,6 +2199,8 @@ mod aquifer_columns_tests;
 mod column_interpreter_tests;
 #[cfg(test)]
 mod lake_sparse_tests;
+#[cfg(test)]
+mod material_continuation_tests;
 
 #[cfg(test)]
 mod mapping_tests {
