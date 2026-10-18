@@ -1,11 +1,16 @@
 //! Real GPU terrain, registered feature planning, and ordered-output validation.
-//! decoration_plan_benchmark <profile.json> [seed] [chunk_x] [chunk_z] [iterations]
+//! decoration_plan_benchmark <profile.json> [seed] [chunk_x] [chunk_z] [iterations=3] [side=4] [workers=2]
+//! Run under a process-group deadline. This diagnostic forces interpreter terrain
+//! to avoid starting expensive asynchronous shader specialization.
 use retina_worldgen::{ChunkRequest, TerrainEngine};
 use std::time::Instant;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut args = std::env::args().skip(1);
-    let source = std::fs::read(args.next().ok_or("profile path required")?)?;
+    let mut source: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(args.next().ok_or("profile path required")?)?)?;
+    source["program_execution"] = "interpreter".into();
+    let source = serde_json::to_vec(&source)?;
     let seed = args
         .next()
         .map(|v| v.parse())
@@ -13,9 +18,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .unwrap_or(123456789);
     let chunk_x = args.next().map(|v| v.parse()).transpose()?.unwrap_or(0);
     let chunk_z = args.next().map(|v| v.parse()).transpose()?.unwrap_or(0);
-    let iterations: usize = args.next().map(|v| v.parse()).transpose()?.unwrap_or(25);
-    if iterations == 0 {
-        return Err("iterations must be positive".into());
+    let iterations: usize = args.next().map(|v| v.parse()).transpose()?.unwrap_or(3);
+    let side: usize = args.next().map(|v| v.parse()).transpose()?.unwrap_or(4);
+    let threads: usize = args.next().map(|v| v.parse()).transpose()?.unwrap_or(2);
+    if !(1..=9).contains(&iterations) || !(1..=32).contains(&side) || !(1..=2).contains(&threads) {
+        return Err("use iterations 1..9, side 1..32 and workers 1..2".into());
     }
     let engine = TerrainEngine::new()?;
     let reserved = engine.register_profile(&source)?;
@@ -31,17 +38,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         frequency: 0.008,
         reserved,
     };
-    let (field, mask) = engine.terrain_field(request, 32)?;
-    let workers = rayon::ThreadPoolBuilder::new().num_threads(16).build()?;
+    let (field, mask) = engine.terrain_field(request, side as u32)?;
+    let workers = rayon::ThreadPoolBuilder::new()
+        .num_threads(threads)
+        .build()?;
     let mut samples = Vec::new();
     let mut expected = None;
     let mut placements = 0;
-    for iteration in 0..iterations + 5 {
+    for iteration in 0..iterations + 1 {
         let begin = Instant::now();
-        let plan = workers
-            .install(|| engine.plan_decorations(&field, &profile, request, 32, mask.as_deref()))?;
+        let plan = workers.install(|| {
+            engine.plan_decorations(&field, &profile, request, side, mask.as_deref())
+        })?;
         let ms = begin.elapsed().as_secs_f64() * 1000.;
-        if iteration >= 5 {
+        if iteration >= 1 {
             samples.push(ms);
         }
         // Hashing is outside the measured interval. Every role and ordered write counts.
@@ -67,14 +77,23 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             expected = Some(hash);
         }
     }
+    let reference = workers
+        .install(|| engine.plan_decorations(&field, &profile, request, side, mask.as_deref()))?;
+    let (detailed, phases) = workers.install(|| {
+        engine.plan_decorations_detailed(&field, &profile, request, side, mask.as_deref())
+    })?;
+    assert_eq!(
+        reference, detailed,
+        "diagnostics must preserve every ordered placement"
+    );
     let mut sorted = samples.clone();
     sorted.sort_by(f64::total_cmp);
     println!(
         "{}",
         serde_json::json!({"backend":engine.backend(),"seed":seed,
-        "chunk_x":chunk_x,"chunk_z":chunk_z,"workers":16,"warmups":5,"iterations":iterations,
+        "chunk_x":chunk_x,"chunk_z":chunk_z,"workers":threads,"side":side,"warmups":1,"iterations":iterations,"phases":phases,
         "placements":placements,"signature":format!("{:016x}", expected.unwrap()),
-        "median_ms":sorted[iterations/2],"p95_ms":sorted[(iterations*95/100).min(iterations-1)],
+        "median_ms":sorted[iterations/2],"max_ms":sorted[iterations-1],
         "samples_ms":samples})
     );
     Ok(())

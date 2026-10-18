@@ -11,6 +11,8 @@ use std::collections::{HashSet, VecDeque};
 mod attachment;
 mod blocks;
 pub mod counts;
+pub mod diagnostics;
+mod distribution;
 mod fallen;
 mod mushroom;
 pub mod pairs;
@@ -320,7 +322,7 @@ impl Field {
         Some(y)
     }
 }
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Placement {
     pub index: u32,
     pub material: u16,
@@ -528,14 +530,24 @@ impl<'a> Replay<'a> {
         samples: &provider_noise::Samples,
         counts: Option<&counts::Counts>,
     ) -> Queries {
+        self.poll_measured(samples, counts, None)
+    }
+    pub(crate) fn poll_measured(
+        &mut self,
+        samples: &provider_noise::Samples,
+        counts: Option<&counts::Counts>,
+        mut details: Option<&mut diagnostics::Planning>,
+    ) -> Queries {
+        let measuring = details.is_some();
         let generate = |(index, completed): (usize, &mut Option<Vec<WorldBlock>>)| {
             if completed.is_some() {
-                return Queries::default();
+                return (Queries::default(), None);
             }
             let x = self.field.origin_x + (index % self.field.side) as i32;
             let z = self.field.origin_z + (index / self.field.side) as i32;
             let noise = provider_noise::Context::new(samples);
             let mut count_queries = Vec::new();
+            let mut worker = measuring.then(diagnostics::Worker::default);
             let blocks = anchors_sampled(
                 self.field,
                 self.profile,
@@ -547,15 +559,19 @@ impl<'a> Replay<'a> {
                 self.ids.map(|a| a[index].as_slice()),
                 &noise,
                 &mut count_queries,
+                worker.as_mut(),
             );
             let missing = noise.missing();
             if missing.is_empty() && count_queries.is_empty() {
                 *completed = Some(blocks);
             }
-            Queries {
-                noise: missing,
-                counts: count_queries,
-            }
+            (
+                Queries {
+                    noise: missing,
+                    counts: count_queries,
+                },
+                worker,
+            )
         };
         let batches: Vec<_> = if self.side > 1 {
             self.blocks
@@ -567,7 +583,12 @@ impl<'a> Replay<'a> {
             self.blocks.iter_mut().enumerate().map(generate).collect()
         };
         let mut queries = Queries::default();
-        for batch in batches {
+        for (batch, worker) in batches {
+            if let (Some(details), Some(worker)) = (details.as_mut(), worker) {
+                details.anchor_attempts += 1;
+                details.repeated_anchor_attempts += u64::from(details.rounds > 0);
+                details.worker.add(&worker);
+            }
             queries.noise.extend(batch.noise);
             queries.counts.extend(batch.counts);
         }
@@ -575,6 +596,9 @@ impl<'a> Replay<'a> {
         queries.noise.dedup();
         queries.counts.sort_unstable();
         queries.counts.dedup();
+        if let Some(details) = details {
+            details.rounds += 1;
+        }
         queries
     }
     pub(crate) fn finish(self) -> Vec<Vec<Placement>> {
@@ -586,33 +610,16 @@ impl<'a> Replay<'a> {
             blocks,
             ..
         } = self;
-        let mut targets = vec![Vec::new(); side * side];
-        for block in blocks
-            .into_iter()
-            .flat_map(|b| b.expect("unfinished provider replay"))
-        {
-            let cx = block.x.div_euclid(16) - origin_x;
-            let cz = block.z.div_euclid(16) - origin_z;
-            let y = block.y - request.min_y;
-            if cx < 0
-                || cz < 0
-                || cx as usize >= side
-                || cz as usize >= side
-                || y < 0
-                || y >= request.height as i32
-            {
-                continue;
-            }
-            targets[cz as usize * side + cx as usize].push(Placement {
-                index: y as u32 * 256
-                    + block.z.rem_euclid(16) as u32 * 16
-                    + block.x.rem_euclid(16) as u32,
-                material: block.material,
-                upper: block.upper,
-                role: block.role,
-            });
-        }
-        targets
+        distribution::distribute(
+            blocks
+                .into_iter()
+                .map(|b| b.expect("unfinished provider replay"))
+                .collect(),
+            request,
+            origin_x,
+            origin_z,
+            side,
+        )
     }
 }
 
@@ -638,6 +645,7 @@ fn anchors(
         None,
         &noise,
         &mut Vec::new(),
+        None,
     );
     assert!(noise.missing().is_empty());
     blocks
@@ -748,7 +756,9 @@ fn anchors_sampled(
     ids: Option<&[u32]>,
     noise: &provider_noise::Context,
     missing: &mut Vec<counts::Query>,
+    mut timing: Option<&mut diagnostics::Worker>,
 ) -> Vec<WorldBlock> {
+    let expansion = diagnostics::start(timing.is_some());
     let ids = ids
         .map(std::borrow::Cow::Borrowed)
         .unwrap_or_else(|| std::borrow::Cow::Owned(anchor_ids(field, profile, chunk_x, chunk_z)));
@@ -874,12 +884,18 @@ fn anchors_sampled(
                     &mut blocks,
                     mask,
                     None,
+                    timing.as_deref_mut(),
                 ),
                 _ => unreachable!("registered block features require placement programs"),
             }
         }
     }
+    if let Some(timing) = timing.as_mut() {
+        timing.candidates += candidates.len() as u64;
+    }
     let mut candidates = placement::Queue::new(candidates);
+    diagnostics::record(expansion, timing.as_mut().map(|t| &mut t.expansion_nanos));
+    let evaluation = diagnostics::start(timing.is_some());
     let mut overlay = placement::Overlay::default();
     let mut evaluation_cache = placement::EvaluationCache::default();
     while let Some(candidate) = candidates.next(
@@ -937,6 +953,7 @@ fn anchors_sampled(
                 &mut blocks,
                 mask,
                 Some((y, &overlay)),
+                timing.as_deref_mut(),
             ),
             Kind::Plant { states } => {
                 let low = column.packed & (1 << 27) != 0;
@@ -1018,6 +1035,7 @@ fn anchors_sampled(
         }
         overlay.commit(&blocks, start, field, profile, request);
     }
+    diagnostics::record(evaluation, timing.as_mut().map(|t| &mut t.evaluation_nanos));
     blocks
 }
 
@@ -1128,7 +1146,16 @@ fn tree(
     blocks: &mut Vec<WorldBlock>,
     mask: Option<&crate::geology::CaveMask>,
     placed: Option<(i32, &placement::Overlay)>,
+    timing: Option<&mut diagnostics::Worker>,
 ) {
+    let (tree_time, leaf_time) = match timing {
+        Some(t) => {
+            t.tree_attempts += 1;
+            (Some(&mut t.tree_nanos), Some(&mut t.leaf_nanos))
+        }
+        None => (None, None),
+    };
+    let _tree_time = diagnostics::span(tree_time);
     let Kind::Tree {
         trunk_shape,
         foliage_shape,
@@ -1319,6 +1346,7 @@ fn tree(
         }
     }
     // Real six-neighbor leaf connectivity, not persistent leaves: chopping logs can decay them.
+    let leaf_time = diagnostics::span(leaf_time);
     let mut occupancy = LeafOccupancy::new(&leaf_positions);
     let mut frontier = VecDeque::new();
     let mut seen = spatial::Set::default();
@@ -1355,6 +1383,7 @@ fn tree(
             }
         }
     }
+    drop(leaf_time);
     if !decorators.is_empty() {
         decorate_tree(
             field,
@@ -1836,6 +1865,7 @@ mod tests {
                 &mut blocks,
                 None,
                 Some((64, &placement::Overlay::default())),
+                None,
             );
             let top = blocks
                 .iter()
@@ -1975,6 +2005,7 @@ mod tests {
                 16,
                 &mut Rng::new(seed),
                 &mut blocks,
+                None,
                 None,
                 None,
             );
