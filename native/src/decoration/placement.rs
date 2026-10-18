@@ -6,6 +6,7 @@ use super::*;
 use std::ops::Range;
 use std::sync::Arc;
 mod layers;
+mod stream;
 pub(super) use layers::{Queue, QueueCheckpoint};
 
 #[derive(Clone, Deserialize)]
@@ -504,6 +505,8 @@ pub struct Program {
     noise_rules: Vec<Option<counts::Rule>>,
     last_noise: Option<usize>,
     expansion_end: usize,
+    terminal_count: Option<usize>,
+    random_suffix: Vec<stream::Step>,
 }
 #[derive(Clone)]
 struct Evaluation {
@@ -532,6 +535,34 @@ impl From<Vec<Modifier>> for Program {
                 )
             })
             .map_or(0, |last| last + 1);
+        let terminal_count = modifiers
+            .iter()
+            .rposition(|op| {
+                matches!(
+                    op,
+                    Modifier::Count { .. }
+                        | Modifier::NoiseThresholdCount { .. }
+                        | Modifier::NoiseBasedCount { .. }
+                        | Modifier::CountOnEveryLayer { .. }
+                        | Modifier::Cuboid { .. }
+                )
+            })
+            .filter(|&index| {
+                matches!(
+                    modifiers[index],
+                    Modifier::Count { .. }
+                        | Modifier::NoiseThresholdCount { .. }
+                        | Modifier::NoiseBasedCount { .. }
+                )
+            });
+        let random_suffix = terminal_count.map_or_else(Vec::new, |index| {
+            modifiers
+                .iter()
+                .enumerate()
+                .skip(index + 1)
+                .filter_map(|(index, op)| stream::Step::compile(index, op))
+                .collect()
+        });
         let mut parents = 0;
         for (index, op) in modifiers.iter().enumerate() {
             evaluation_offsets.push(evaluation.len());
@@ -559,6 +590,8 @@ impl From<Vec<Modifier>> for Program {
             noise_rules,
             last_noise,
             expansion_end,
+            terminal_count,
+            random_suffix,
         }
     }
 }
@@ -603,9 +636,10 @@ pub(super) struct Candidate {
     pub order: Order,
     pub seed: u64,
     origin: [i32; 3],
-    draws: Arc<[[i32; 3]]>,
+    draws: Draws,
     evaluation: Range<usize>,
     layer: Option<layers::Attempt>,
+    stream: Option<Box<stream::Count>>,
 }
 pub(super) fn expand(
     program: &Program,
@@ -663,6 +697,46 @@ fn expand_from(
         queries: &'a mut Vec<counts::Query>,
     }
     impl Walker<'_> {
+        fn count(
+            &mut self,
+            index: usize,
+            count: usize,
+            at: [i32; 3],
+            mut rng: Rng,
+            draws: &mut DrawStack,
+            order: &mut Order,
+        ) {
+            if self.program.terminal_count == Some(index) && count > 1 {
+                if let Some(output) = self.output.as_mut() {
+                    let mut stream = Box::new(stream::Count::new(count, rng.0, draws.freeze()));
+                    if let Some((child_index, seed, child_draws)) =
+                        stream.next(self.program, self.request)
+                    {
+                        order.push(child_index);
+                        output.push(Candidate {
+                            recipe: self.recipe,
+                            group: self.group,
+                            order: order.clone(),
+                            seed,
+                            origin: self.origin,
+                            draws: child_draws,
+                            evaluation: self.evaluation_start..self.program.evaluation.len(),
+                            layer: None,
+                            stream: Some(stream),
+                        });
+                        order.pop();
+                    }
+                }
+                // There is no downstream count query in this terminal suffix.
+                return;
+            }
+            for i in 0..count {
+                let child = Rng::new(rng.next());
+                order.push(i);
+                self.step(index + 1, at, child, draws, order);
+                order.pop();
+            }
+        }
         fn step(
             &mut self,
             index: usize,
@@ -682,9 +756,10 @@ fn expand_from(
                         order: order.clone(),
                         seed: rng.0,
                         origin: self.origin,
-                        draws: draws.freeze(),
+                        draws: Draws::from_slice(&draws.values),
                         evaluation: self.evaluation_start..self.program.evaluation.len(),
                         layer: None,
+                        stream: None,
                     });
                 }
                 return;
@@ -704,9 +779,10 @@ fn expand_from(
                             order: path,
                             seed: rng.0,
                             origin: self.origin,
-                            draws: draws.freeze(),
+                            draws: Draws::from_slice(&draws.values),
                             evaluation: self.evaluation_start
                                 ..self.program.evaluation_offsets[index],
+                            stream: None,
                             layer: Some(layers::Attempt {
                                 index,
                                 layer: 0,
@@ -719,12 +795,8 @@ fn expand_from(
                     return;
                 }
                 Modifier::Count { count } => {
-                    for i in 0..count.sample(&mut rng).max(0) as usize {
-                        let child = Rng::new(rng.next());
-                        order.push(i);
-                        self.step(index + 1, at, child, draws, order);
-                        order.pop();
-                    }
+                    let count = count.sample(&mut rng).max(0) as usize;
+                    self.count(index, count, at, rng, draws, order);
                     return;
                 }
                 Modifier::Cuboid {
@@ -784,12 +856,7 @@ fn expand_from(
                     } else {
                         panic!("noise-based placement requires a prepared GPU count batch");
                     };
-                    for i in 0..count.max(0) as usize {
-                        let child = Rng::new(rng.next());
-                        order.push(i);
-                        self.step(index + 1, at, child, draws, order);
-                        order.pop();
-                    }
+                    self.count(index, count.max(0) as usize, at, rng, draws, order);
                     return;
                 }
                 Modifier::RarityFilter { chance } => {
@@ -847,6 +914,7 @@ fn expand_from(
 // Three nested counts cover the common registered programs without allocating.
 // Arbitrarily deep placement/layer paths spill to the heap without truncation.
 pub(super) type Order = smallvec::SmallVec<[usize; 3]>;
+pub(super) type Draws = smallvec::SmallVec<[[i32; 3]; 2]>;
 pub(super) fn order_heap_bytes(order: &Order) -> usize {
     if order.spilled() {
         order.capacity() * std::mem::size_of::<usize>() + 32
@@ -1191,7 +1259,7 @@ mod tests {
     use super::*;
     use serde_json::json;
 
-    fn fixture() -> (WorldProfile, Field, ChunkRequest, Recipe) {
+    pub(super) fn fixture() -> (WorldProfile, Field, ChunkRequest, Recipe) {
         let mut profile: WorldProfile = serde_json::from_value(json!({
             "biome_scale":256,"blend":0.55,"sea_level":63,
             "stone":1,"water":7,"bedrock":1,"deepslate":1,"snow":1,"ice":7,
@@ -1255,14 +1323,31 @@ mod tests {
             Some(&mut out),
             &mut Vec::new(),
         );
-        out
+        let (mut profile, _, request, mut r) = fixture();
+        r.placement = Some(program.clone());
+        profile.decorations.resize(recipe as usize + 1, r.clone());
+        profile.decorations[recipe as usize] = r;
+        let mut queue = Queue::new(out);
+        let mut expanded = Vec::new();
+        while let Some(c) = queue.next(
+            field,
+            &profile,
+            request,
+            &Overlay::default(),
+            &mut EvaluationCache::default(),
+            None,
+            &mut Vec::new(),
+        ) {
+            expanded.push(c);
+        }
+        expanded
     }
     fn ops(value: serde_json::Value) -> Program {
         serde_json::from_value(value).unwrap()
     }
 
     #[test]
-    fn compiled_candidates_share_draws_without_sharing_random_streams() {
+    fn compiled_candidates_keep_inline_draws_without_sharing_random_streams() {
         let (profile, field, request, mut recipe) = fixture();
         let program = ops(json!([
             {"type":"count","count":3}, {"type":"in_square"},
@@ -1280,7 +1365,8 @@ mod tests {
                 let c = &found[parent * 11 + child];
                 assert_eq!(c.order.as_slice(), &[parent, child]);
                 assert_eq!(c.seed, Rng::new(rng.next()).0);
-                assert!(Arc::ptr_eq(&c.draws, &found[parent * 11].draws));
+                assert_eq!(c.draws, found[parent * 11].draws);
+                assert!(!c.draws.spilled());
                 assert_eq!(
                     position(
                         c,
@@ -1295,7 +1381,7 @@ mod tests {
                 );
             }
         }
-        assert!(!Arc::ptr_eq(&found[0].draws, &found[11].draws));
+        assert_ne!(found[0].draws, found[11].draws);
     }
 
     #[test]
@@ -1584,13 +1670,14 @@ mod tests {
     #[test]
     fn sparse_noise_queries_preserve_nested_count_streams_and_selector_budgets() {
         let (_, field, _, _) = fixture();
-        let program = ops(json!([
+        let mut program = ops(json!([
             {"type":"count","count":7},{"type":"in_square"},
             {"type":"noise_threshold_count","noise_level":0.02,"below_noise":2,"above_noise":3},
             {"type":"in_square"},
             {"type":"noise_based_count","noise_to_count_ratio":-8,"noise_factor":30,"noise_offset":-0.5},
             {"type":"heightmap","map":1}
         ]));
+        program.terminal_count = None;
         validate(&program, 8).unwrap();
         let run = |program: &Program, counts: Option<&counts::Counts>, output: bool| {
             let mut found = Vec::new();
@@ -1636,7 +1723,9 @@ mod tests {
         baseline[4] = Modifier::Count {
             count: IntProvider::Value(3),
         };
-        let (expected, _) = run(&baseline.into(), None, true);
+        let mut baseline: Program = baseline.into();
+        baseline.terminal_count = None;
+        let (expected, _) = run(&baseline, None, true);
         assert_eq!(actual.len(), 42);
         assert_eq!(
             actual
@@ -1654,8 +1743,10 @@ mod tests {
             let mut branch = program.to_vec();
             branch.push(Modifier::Select { min, max });
             let mut missing = Vec::new();
+            let mut branch: Program = branch.into();
+            branch.terminal_count = None;
             expand(
-                &branch.into(),
+                &branch,
                 id as u32,
                 0,
                 [0, 0, 0],

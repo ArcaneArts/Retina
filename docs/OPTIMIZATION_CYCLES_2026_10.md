@@ -13,7 +13,7 @@ from that report. Retained baseline library SHA-256:
 
 | Area | Status | Required evidence |
 | --- | --- | --- |
-| Compact/compile decoration programs | [PR #115](https://github.com/ArcaneArts/Retina/pull/115) validated; streaming remains | Dense/sparse planning, exact ordered output/RNG, memory, vanilla/Terralith lit-MCA |
+| Compact/compile decoration programs | [PR #115](https://github.com/ArcaneArts/Retina/pull/115) and [PR #116](https://github.com/ArcaneArts/Retina/pull/116): validated eligible streaming | Dense/sparse planning, exact ordered output/RNG, memory, vanilla/Terralith lit-MCA |
 | Complete feature-anchor GPU evaluation | Pending | Meaningful supported programs, exact fallback/overflow/order, end-to-end benefit |
 | Compact lighting transport | Pending | Complete light-array parity, uniform/dense payloads, memory and lit-MCA throughput |
 | GPU-driven material emission | Pending | Exact runs, overflow/failure/interleaved ownership, synchronization and throughput |
@@ -42,3 +42,14 @@ recursive expansion. [Results and limitations](COMPACT_DECORATION_PROGRAMS.md)
 include repeated full lit-MCA comparisons. General candidate streaming and
 complete GPU-anchor evaluation remain outstanding; this is an initial delivery,
 not completion of the optimization goal.
+
+The streaming follow-up replaces terminal count expansion with ordered cursors,
+including random positional/filter suffixes, and keeps common draw traces inline.
+Two matched Terralith lit-MCA trials improved throughput another 6–8% against
+PR #115 with exact decompressed NBT. The final dense planner comparison was
+738 → 603 ms and estimated replay retention fell from 45.7 to 6.7 MiB.
+The initial narrow fixed-position implementation had negligible coverage; a
+general cursor retaining per-child `Arc` allocations was also superseded by
+the final inline-draw version. [Results](STREAMED_DECORATION_CANDIDATES.md)
+separate these experiments from the accepted implementation. Complete GPU-anchor
+evaluation and the other areas above remain outstanding.

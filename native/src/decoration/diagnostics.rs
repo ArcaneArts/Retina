@@ -24,7 +24,7 @@ pub struct Worker {
     pub evaluation_nanos: u64,
     pub tree_nanos: u64,
     pub leaf_nanos: u64,
-    pub candidates: u64,
+    pub queued_entries: u64,
     pub tree_attempts: u64,
     pub evaluated_candidates: u64,
     pub resumed_anchors: u64,
@@ -37,7 +37,7 @@ impl Worker {
         self.evaluation_nanos += b.evaluation_nanos;
         self.tree_nanos += b.tree_nanos;
         self.leaf_nanos += b.leaf_nanos;
-        self.candidates += b.candidates;
+        self.queued_entries += b.queued_entries;
         self.tree_attempts += b.tree_attempts;
         self.evaluated_candidates += b.evaluated_candidates;
         self.resumed_anchors += b.resumed_anchors;
