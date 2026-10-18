@@ -87,5 +87,7 @@ Run the ignored native tests `combined_samples_match_separate_dispatches` and
 `combined_samples_benchmark` explicitly under a process-group deadline. The latter
 prints the raw alternating A/B samples and verifies outputs outside the timings.
 
-Worker scratch reuse, GPU tree/leaf investigation, GPU ore preparation and Java
-column-cache optimization remain follow-up cycles.
+Worker scratch reuse is covered in
+[DECORATION_SCRATCH_REUSE.md](DECORATION_SCRATCH_REUSE.md). GPU tree/leaf
+investigation, GPU ore preparation and Java column-cache optimization remain
+follow-up cycles.

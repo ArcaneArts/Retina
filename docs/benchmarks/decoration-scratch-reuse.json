@@ -1,0 +1,619 @@
+{
+  "scope": "Release CPU tree construction, 64 independent trees per batch; excludes candidate expansion, GPU sampling, placement merging and region saving",
+  "method": "five warmups and 21 alternating fresh/reused pairs; every ordered block command and RNG tail compared outside timing",
+  "environment": "M4 Max, reduced priority, no GPU used by microbenchmark, 30-second process-group deadline",
+  "runs": [
+    {
+      "run": "initial",
+      "cases": [
+        {
+          "case": "oak",
+          "equal_commands_and_rng": true,
+          "fresh_ms": [
+            0.435791,
+            0.450083,
+            0.409167,
+            0.429042,
+            0.435875,
+            0.429333,
+            0.422458,
+            0.38249999999999995,
+            0.343625,
+            0.342667,
+            0.41133400000000003,
+            0.365416,
+            0.355875,
+            0.35362499999999997,
+            0.412083,
+            0.390708,
+            0.369292,
+            0.389583,
+            0.401458,
+            0.398084,
+            0.321416
+          ],
+          "pairs": 21,
+          "retained_bytes": 9936,
+          "reused_ms": [
+            0.38825,
+            0.38725,
+            0.38787499999999997,
+            0.38249999999999995,
+            0.37875000000000003,
+            0.38329199999999997,
+            0.381916,
+            0.352542,
+            0.313542,
+            0.311417,
+            0.362875,
+            0.32329199999999997,
+            0.34004199999999996,
+            0.333333,
+            0.35104199999999997,
+            0.346459,
+            0.32825,
+            0.328708,
+            0.312417,
+            0.347583,
+            0.294083
+          ],
+          "trees_per_batch": 64,
+          "warmups": 5,
+          "summary_ms": {
+            "fresh": {
+              "median": 0.398084,
+              "mean": 0.3928292857142857,
+              "p95_sample": 0.435875,
+              "max": 0.450083
+            },
+            "reused": {
+              "median": 0.347583,
+              "mean": 0.34930561904761903,
+              "p95_sample": 0.38787499999999997,
+              "max": 0.38825
+            }
+          }
+        },
+        {
+          "case": "jungle",
+          "equal_commands_and_rng": true,
+          "fresh_ms": [
+            4.795292,
+            4.847416,
+            5.733583,
+            5.478542,
+            5.369917,
+            4.985834,
+            5.140792,
+            5.899042000000001,
+            5.042291,
+            5.39925,
+            5.254291,
+            5.083749999999999,
+            5.615584,
+            5.633834,
+            4.803624999999999,
+            5.221583,
+            5.077208,
+            5.4092080000000005,
+            5.097708,
+            5.4655830000000005,
+            5.5969169999999995
+          ],
+          "pairs": 21,
+          "retained_bytes": 112128,
+          "reused_ms": [
+            4.835,
+            5.566542,
+            5.192167,
+            5.1711659999999995,
+            4.965167,
+            4.7754579999999995,
+            5.055542,
+            4.741833,
+            4.9037500000000005,
+            5.220375,
+            5.004333,
+            4.488041,
+            4.911874999999999,
+            5.190292,
+            4.670917,
+            5.264833,
+            5.244709,
+            5.190583,
+            4.600458,
+            4.787625,
+            5.588958
+          ],
+          "trees_per_batch": 64,
+          "warmups": 5,
+          "summary_ms": {
+            "fresh": {
+              "median": 5.254291,
+              "mean": 5.283392857142857,
+              "p95_sample": 5.733583,
+              "max": 5.899042000000001
+            },
+            "reused": {
+              "median": 5.004333,
+              "mean": 5.017601142857143,
+              "p95_sample": 5.566542,
+              "max": 5.588958
+            }
+          }
+        },
+        {
+          "case": "mixed",
+          "equal_commands_and_rng": true,
+          "fresh_ms": [
+            2.056375,
+            3.1055829999999998,
+            1.8353329999999999,
+            1.784417,
+            1.734333,
+            1.8044580000000001,
+            1.518916,
+            1.479334,
+            1.503792,
+            1.568959,
+            1.932292,
+            2.040833,
+            1.7314159999999998,
+            1.5772920000000001,
+            1.439834,
+            1.450083,
+            2.026583,
+            1.9725,
+            1.7055,
+            1.744875,
+            1.5692499999999998
+          ],
+          "pairs": 21,
+          "retained_bytes": 143728,
+          "reused_ms": [
+            5.984416,
+            1.7309999999999999,
+            1.632792,
+            1.494584,
+            1.717625,
+            1.47425,
+            1.4339579999999998,
+            1.438541,
+            1.3522079999999999,
+            1.441583,
+            1.696459,
+            1.617667,
+            1.679375,
+            1.453916,
+            1.35925,
+            1.328458,
+            1.512625,
+            1.760875,
+            1.863708,
+            1.5066249999999999,
+            1.443333
+          ],
+          "trees_per_batch": 64,
+          "warmups": 5,
+          "summary_ms": {
+            "fresh": {
+              "median": 1.734333,
+              "mean": 1.7896170476190476,
+              "p95_sample": 2.056375,
+              "max": 3.1055829999999998
+            },
+            "reused": {
+              "median": 1.5066249999999999,
+              "mean": 1.7582499047619047,
+              "p95_sample": 1.863708,
+              "max": 5.984416
+            }
+          }
+        }
+      ],
+      "process_maxrss_bytes": 19644416
+    },
+    {
+      "run": "tail_followup",
+      "cases": [
+        {
+          "case": "oak",
+          "equal_commands_and_rng": true,
+          "fresh_ms": [
+            0.322625,
+            0.35100000000000003,
+            0.33837500000000004,
+            0.339,
+            0.336125,
+            0.328708,
+            0.328292,
+            0.336667,
+            0.34775,
+            0.336583,
+            0.33870900000000004,
+            0.330042,
+            0.33375,
+            0.33675000000000005,
+            0.34025,
+            0.344583,
+            0.34650000000000003,
+            0.339417,
+            0.347125,
+            0.34058299999999997,
+            0.340208
+          ],
+          "pairs": 21,
+          "retained_bytes": 9936,
+          "reused_ms": [
+            0.323208,
+            0.300416,
+            0.287541,
+            0.288833,
+            0.299875,
+            0.297583,
+            0.295791,
+            0.296125,
+            0.28662499999999996,
+            0.290458,
+            0.301583,
+            0.307333,
+            0.297625,
+            0.3005,
+            0.29870800000000003,
+            0.2985,
+            0.298792,
+            0.299625,
+            0.30374999999999996,
+            0.30737499999999995,
+            0.297542
+          ],
+          "trees_per_batch": 64,
+          "warmups": 5,
+          "summary_ms": {
+            "fresh": {
+              "median": 0.33870900000000004,
+              "mean": 0.33824009523809523,
+              "p95_sample": 0.34775,
+              "max": 0.35100000000000003
+            },
+            "reused": {
+              "median": 0.29870800000000003,
+              "mean": 0.2989422857142857,
+              "p95_sample": 0.30737499999999995,
+              "max": 0.323208
+            }
+          }
+        },
+        {
+          "case": "jungle",
+          "equal_commands_and_rng": true,
+          "fresh_ms": [
+            4.499083,
+            4.518999999999999,
+            4.464583,
+            4.4445,
+            4.556916999999999,
+            4.446166,
+            4.442375,
+            4.457417,
+            4.4178749999999996,
+            4.483292,
+            4.456042,
+            4.4657919999999995,
+            4.490374999999999,
+            4.470167,
+            4.48125,
+            4.479625,
+            4.520792,
+            4.482042000000001,
+            4.4861249999999995,
+            4.4786660000000005,
+            4.4895
+          ],
+          "pairs": 21,
+          "retained_bytes": 112128,
+          "reused_ms": [
+            4.208125,
+            4.29,
+            4.1742919999999994,
+            4.201916,
+            4.179125,
+            4.1837089999999995,
+            4.1566670000000006,
+            4.157208,
+            4.229542,
+            4.2110840000000005,
+            4.2397920000000004,
+            4.209957999999999,
+            4.197542,
+            4.216042,
+            4.224041000000001,
+            4.197792,
+            4.2161669999999996,
+            4.202042,
+            4.218917,
+            4.1991249999999996,
+            4.1855
+          ],
+          "trees_per_batch": 64,
+          "warmups": 5,
+          "summary_ms": {
+            "fresh": {
+              "median": 4.479625,
+              "mean": 4.477694476190476,
+              "p95_sample": 4.520792,
+              "max": 4.556916999999999
+            },
+            "reused": {
+              "median": 4.202042,
+              "mean": 4.204694571428571,
+              "p95_sample": 4.2397920000000004,
+              "max": 4.29
+            }
+          }
+        },
+        {
+          "case": "mixed",
+          "equal_commands_and_rng": true,
+          "fresh_ms": [
+            1.452416,
+            1.433334,
+            1.394333,
+            1.361542,
+            1.3683750000000001,
+            1.35925,
+            1.361125,
+            1.354958,
+            1.358459,
+            1.357708,
+            1.388333,
+            1.356208,
+            1.363667,
+            1.3689170000000002,
+            1.3719999999999999,
+            1.383375,
+            1.373917,
+            1.3625,
+            1.366125,
+            1.374584,
+            1.366833
+          ],
+          "pairs": 21,
+          "retained_bytes": 143728,
+          "reused_ms": [
+            1.277791,
+            1.254542,
+            1.260875,
+            1.245791,
+            1.275625,
+            1.2472500000000002,
+            1.262041,
+            1.2617909999999999,
+            1.2726250000000001,
+            1.265125,
+            1.258833,
+            1.2722499999999999,
+            1.251209,
+            1.260209,
+            1.250208,
+            1.247666,
+            1.262041,
+            1.250917,
+            1.2640419999999999,
+            1.257167,
+            1.268834
+          ],
+          "trees_per_batch": 64,
+          "warmups": 5,
+          "summary_ms": {
+            "fresh": {
+              "median": 1.366833,
+              "mean": 1.3751409047619048,
+              "p95_sample": 1.433334,
+              "max": 1.452416
+            },
+            "reused": {
+              "median": 1.260875,
+              "mean": 1.2603253333333333,
+              "p95_sample": 1.275625,
+              "max": 1.277791
+            }
+          }
+        }
+      ],
+      "process_maxrss_bytes": 15155200
+    }
+  ],
+  "tail_note": "Initial mixed reuse maximum 5.984ms versus 3.106ms fresh; one bounded follow-up had lower reuse median/sample p95/max. Both runs retained; not a stable production-tail estimate.",
+  "memory_note": "RSS includes both paths and retained output vectors, not a paired-memory measurement. Accounted retained scratch per batch was 9936/112128/143728 bytes; cap 2MiB excluding transient active tree data and allocator overhead.",
+  "retained_libraries": {
+    "vanilla": {
+      "profile": "/Users/cyberpwn/development/workspace/ArcaneArts/Retina/build/task-vanilla-profile.json",
+      "profile_sha256": "df6c26088d8c3647dfdd0f9a7ef5dc03bd977a783c9093f1d0bf66764834a509",
+      "library_sha256": {
+        "baseline": "26a22c956747be1b5639ffa63bc85ff0d9d5e042908765271877fc8e2d35639f",
+        "candidate": "9bd11a5aba4d19d4dfcaf5dc989ba47477b7a372e70c09b5d1403a2b580a8843"
+      },
+      "height": 384,
+      "chunks_per_batch": 2,
+      "callers": 2,
+      "samples": {
+        "baseline": [
+          {
+            "wall_ms": 95.709625,
+            "request_ms": [
+              95.653584,
+              58.581375
+            ],
+            "peak_in_flight": 2,
+            "gpu_jobs": 5,
+            "device_span_ms": 127.655124
+          },
+          {
+            "wall_ms": 61.38175,
+            "request_ms": [
+              61.327792,
+              56.023041
+            ],
+            "peak_in_flight": 2,
+            "gpu_jobs": 4,
+            "device_span_ms": 96.696707
+          },
+          {
+            "wall_ms": 67.272417,
+            "request_ms": [
+              67.213292,
+              63.849416
+            ],
+            "peak_in_flight": 2,
+            "gpu_jobs": 6,
+            "device_span_ms": 209.038041
+          }
+        ],
+        "candidate": [
+          {
+            "wall_ms": 95.263791,
+            "request_ms": [
+              95.205375,
+              58.857875
+            ],
+            "peak_in_flight": 2,
+            "gpu_jobs": 5,
+            "device_span_ms": 126.219124
+          },
+          {
+            "wall_ms": 62.23425,
+            "request_ms": [
+              62.186834,
+              56.888333
+            ],
+            "peak_in_flight": 2,
+            "gpu_jobs": 4,
+            "device_span_ms": 97.2225
+          },
+          {
+            "wall_ms": 68.761042,
+            "request_ms": [
+              68.701167,
+              65.496583
+            ],
+            "peak_in_flight": 2,
+            "gpu_jobs": 6,
+            "device_span_ms": 211.995125
+          }
+        ]
+      },
+      "output_sha256": [
+        "a0dfc6282c67eb0a751778a6d79bef29a05feb3f0e77cd29215b9dc5b2df1185",
+        "9048b4d9811215b9074c88cc9be439c3b5f8c6e72b5346056f0cfc3f1cd2452c",
+        "6dad59f873d01042afa882014b00b896051a3c03378f2d9048ae434c8be7fe48"
+      ],
+      "exact_outputs": true,
+      "median_batch_ms": {
+        "baseline": 67.272417,
+        "candidate": 68.761042
+      },
+      "max_request_ms": {
+        "baseline": 95.653584,
+        "candidate": 95.205375
+      },
+      "combined_process_maxrss": 516292608,
+      "scope": "uncached material-bearing chunks; excludes MCA encoding/lighting; maxrss includes both libraries"
+    },
+    "terralith": {
+      "profile": "/Users/cyberpwn/development/workspace/ArcaneArts/Retina/build/terralith-profile.json",
+      "profile_sha256": "7f4b5092e2d589d030ff4c2f579ccd6b853cbe314fb758d3ca8711249da87b7d",
+      "library_sha256": {
+        "baseline": "26a22c956747be1b5639ffa63bc85ff0d9d5e042908765271877fc8e2d35639f",
+        "candidate": "9bd11a5aba4d19d4dfcaf5dc989ba47477b7a372e70c09b5d1403a2b580a8843"
+      },
+      "height": 384,
+      "chunks_per_batch": 2,
+      "callers": 2,
+      "samples": {
+        "baseline": [
+          {
+            "wall_ms": 90.071708,
+            "request_ms": [
+              88.72875,
+              90.010583
+            ],
+            "peak_in_flight": 2,
+            "gpu_jobs": 2,
+            "device_span_ms": 330.012791
+          },
+          {
+            "wall_ms": 95.867708,
+            "request_ms": [
+              95.071833,
+              95.803458
+            ],
+            "peak_in_flight": 2,
+            "gpu_jobs": 2,
+            "device_span_ms": 292.489333
+          },
+          {
+            "wall_ms": 99.105916,
+            "request_ms": [
+              97.86025,
+              99.049292
+            ],
+            "peak_in_flight": 2,
+            "gpu_jobs": 2,
+            "device_span_ms": 102.275834
+          }
+        ],
+        "candidate": [
+          {
+            "wall_ms": 89.208791,
+            "request_ms": [
+              87.800333,
+              89.150292
+            ],
+            "peak_in_flight": 2,
+            "gpu_jobs": 2,
+            "device_span_ms": 92.10929
+          },
+          {
+            "wall_ms": 94.63175,
+            "request_ms": [
+              93.516291,
+              94.577042
+            ],
+            "peak_in_flight": 2,
+            "gpu_jobs": 2,
+            "device_span_ms": 96.549959
+          },
+          {
+            "wall_ms": 97.631416,
+            "request_ms": [
+              96.385791,
+              97.561583
+            ],
+            "peak_in_flight": 2,
+            "gpu_jobs": 2,
+            "device_span_ms": 100.842833
+          }
+        ]
+      },
+      "output_sha256": [
+        "2f22deeb30ee20aadd3460798a8285ffdcab3e1c13ea60d3c5a3964d5834b068",
+        "533240ca228d2cad52166202b2cf2938ed166b8414da554dad848f418c89154c",
+        "e461be272e32d8afee4163efb3b0c306eba4c085aa186f46f227d542ebec1fec"
+      ],
+      "exact_outputs": true,
+      "median_batch_ms": {
+        "baseline": 95.867708,
+        "candidate": 94.63175
+      },
+      "max_request_ms": {
+        "baseline": 99.049292,
+        "candidate": 97.561583
+      },
+      "combined_process_maxrss": 198803456,
+      "scope": "uncached material-bearing chunks; excludes MCA encoding/lighting; maxrss includes both libraries"
+    }
+  },
+  "validation": "70 native unit tests; exact fresh/reused tree commands and RNG across six shapes and three origins; empty/dense/sparse/log-state resets and oversize recycling; full blocks/columns equal in vanilla/Terralith retained-release comparisons",
+  "resources": "2 compiler jobs/codegen units, nice 10, builds <=60s; runtime <=30s, planner 2 workers; no game or full-region run"
+}
