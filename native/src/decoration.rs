@@ -1020,7 +1020,7 @@ fn expand_anchor(
         }
     }
     if let Some(timing) = timing.as_mut() {
-        timing.candidates += candidates.len() as u64;
+        timing.queued_entries += candidates.len() as u64;
     }
     let candidates = placement::Queue::new(candidates);
     diagnostics::record(expansion, timing.as_mut().map(|t| &mut t.expansion_nanos));

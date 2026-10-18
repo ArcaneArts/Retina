@@ -276,7 +276,11 @@ vanilla/Terralith, concurrent callers, specialization and transfer costs, and
 ranks the next optimization opportunities. The first follow-up
 [compacts decoration programs](docs/COMPACT_DECORATION_PROGRAMS.md): two matched
 Terralith trials improved native lit-MCA throughput by 11–14% with identical chunk
-NBT. Vanilla's smaller measured difference is inconclusive. The
+NBT. Vanilla's smaller measured difference is inconclusive. The next follow-up
+[streams decoration candidates](docs/STREAMED_DECORATION_CANDIDATES.md), improving
+two matched Terralith trials by a further 6–8% against that implementation and
+reducing dense replay retention from about 46 to 6.7 MiB. These are separate
+comparisons, not an additive overall speedup. The
 [cycle tracker](docs/OPTIMIZATION_CYCLES_2026_10.md) records remaining work.
 
 ## Building and testing

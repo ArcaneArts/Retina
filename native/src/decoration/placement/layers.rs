@@ -1,5 +1,5 @@
-//! Lazy terrain-dependent expansion. Ordinary programs retain a sorted vector;
-//! only resumed layer attempts enter the small ordered heap.
+//! Lazy count and terrain-dependent expansion. Ready entries use a sorted vector;
+//! interleaved count cursors and resumed layer attempts use a small ordered heap.
 use super::*;
 use std::cmp::{Ordering, Reverse};
 use std::collections::BinaryHeap;
@@ -56,13 +56,15 @@ impl Queue {
             .iter()
             .chain(self.resumed.iter().map(|v| &v.0))
             .chain(self.retry.iter());
-        let mut seen = std::collections::HashSet::new();
         (self.ready.capacity() + self.resumed.capacity()) * std::mem::size_of::<Candidate>()
             + candidates
                 .map(|c| {
                     order_heap_bytes(&c.order)
-                        + if seen.insert(c.draws.as_ptr()) {
-                            c.draws.len() * std::mem::size_of::<[i32; 3]>() + 32
+                        + c.stream
+                            .as_ref()
+                            .map_or(0, |cursor| cursor.retained_bytes())
+                        + if c.draws.spilled() {
+                            c.draws.capacity() * std::mem::size_of::<[i32; 3]>() + 32
                         } else {
                             0
                         }
@@ -123,6 +125,34 @@ impl Queue {
         mut checkpoint: Option<&mut Option<QueueCheckpoint>>,
     ) -> Option<Candidate> {
         while let Some(mut candidate) = self.pop() {
+            if let Some(mut cursor) = candidate.stream.take() {
+                let program = profile.decorations[candidate.recipe as usize]
+                    .placement
+                    .as_ref()
+                    .unwrap();
+                if let Some((child_index, seed, child_draws)) = cursor.next(program, request) {
+                    let mut order = candidate.order.clone();
+                    *order.last_mut().unwrap() = child_index;
+                    let next = Candidate {
+                        recipe: candidate.recipe,
+                        group: candidate.group,
+                        order,
+                        seed,
+                        origin: candidate.origin,
+                        draws: child_draws,
+                        evaluation: candidate.evaluation.clone(),
+                        layer: None,
+                        stream: Some(cursor),
+                    };
+                    // Most streams precede the next parent/group already in the
+                    // sorted vector. Avoid a heap operation for that common case.
+                    if self.ready.last().is_none_or(|ready| next <= *ready) {
+                        self.ready.push(next);
+                    } else {
+                        self.resumed.push(Reverse(next));
+                    }
+                }
+            }
             let Some(mut state) = candidate.layer.take() else {
                 return Some(candidate);
             };
@@ -134,7 +164,7 @@ impl Queue {
                     continue;
                 };
                 candidate.origin = at;
-                candidate.draws = Arc::from([]);
+                candidate.draws.clear();
                 candidate.evaluation = 0..0;
                 state.resolved = true;
             }
@@ -313,9 +343,10 @@ mod tests {
             order: Order::new(),
             seed,
             origin: [0, 0, 0],
-            draws: Arc::from([]),
+            draws: Draws::new(),
             evaluation: 0..0,
             layer: None,
+            stream: None,
         };
         let mut queue = Queue::new(vec![candidate(1), candidate(2)]);
         let chosen = queue.pop().unwrap();
