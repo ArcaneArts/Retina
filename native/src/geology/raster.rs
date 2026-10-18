@@ -2,6 +2,7 @@
 //! Exposure-sensitive recipes retain CPU random/traversal order. GPU bulk masks
 //! are consumed directly, with uncertain floating boundaries resolved in Rust.
 use super::*;
+use std::{sync::OnceLock, time::Instant};
 
 #[repr(C)]
 #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
@@ -9,7 +10,7 @@ pub struct Descriptor {
     pub minimum: [i32; 4],
     /// X/Y/Z sizes and offset into output u32 words.
     pub dimensions: [u32; 4],
-    /// Sphere offset/count, recipe ID, unused.
+    /// Sphere/seed offset, sphere count, recipe ID, seed-driven flag.
     pub source: [u32; 4],
 }
 enum Prepared {
@@ -22,6 +23,7 @@ enum Prepared {
         sizes: [u32; 3],
         /// Range within this anchor's shared sphere vector.
         spheres: [usize; 2],
+        seed: Option<seeded::Seed>,
     },
     Scattered {
         recipe: u32,
@@ -46,6 +48,11 @@ struct Host {
     initial_random: u64,
     exposure_random: u64,
 }
+#[derive(Default, serde::Serialize)]
+pub struct PreparationTimings {
+    pub prepare_nanos: u64,
+    pub merge_nanos: u64,
+}
 pub struct Batch {
     pub descriptors: Vec<Descriptor>,
     /// Center X/Y/Z and original CPU radius (also used for boundary repair).
@@ -53,6 +60,9 @@ pub struct Batch {
     pub words: usize,
     pub ordered: bool,
     pub guarded: bool,
+    pub preparation: PreparationTimings,
+    pub(crate) seeds: Vec<seeded::Seed>,
+    repairs: Vec<OnceLock<Vec<[f32; 4]>>>,
     anchors: Vec<Vec<Attempt>>,
     hosts: Vec<Host>,
     request: ChunkRequest,
@@ -60,6 +70,55 @@ pub struct Batch {
     targets: Vec<Vec<Contribution>>,
 }
 impl Batch {
+    #[cfg(test)]
+    pub(crate) fn repair_statistics(&self) -> (usize, usize) {
+        self.repairs
+            .iter()
+            .filter_map(OnceLock::get)
+            .fold((0, 0), |(count, bytes), s| {
+                (count + 1, bytes + s.capacity() * 16)
+            })
+    }
+    #[cfg(test)]
+    pub(crate) fn check_seeded_headers(&self, words: &[u32], profile: &WorldProfile) {
+        for (i, d) in self.descriptors.iter().enumerate() {
+            if d.source[3] == 0 {
+                continue;
+            }
+            let host = &self.hosts[i];
+            let mut spheres = Vec::new();
+            vein_spheres(
+                &profile.geology.ores[d.source[2] as usize],
+                host.origin[0],
+                host.origin[1],
+                host.origin[2],
+                &mut Random(host.initial_random),
+                &mut spheres,
+            );
+            let mut kept = [0u32; 2];
+            let mut low = [i32::MAX; 3];
+            let mut high = [i32::MIN; 3];
+            for (j, s) in spheres.iter().enumerate().filter(|(_, s)| s[3] > 0.) {
+                kept[j / 32] |= 1 << (j % 32);
+                for k in 0..3 {
+                    low[k] = low[k].min((s[k] - s[3]).floor() as i32);
+                    high[k] = high[k].max((s[k] + s[3]).floor() as i32);
+                }
+            }
+            let at = d.dimensions[3] as usize;
+            assert_eq!(
+                [words[at + 3], words[at + 7]],
+                kept,
+                "GPU pruning differs for vein {i}"
+            );
+            for k in 0..3 {
+                assert_eq!(words[at + k] as i32, low[k]);
+                assert_eq!(words[at + 4 + k], (high[k] - low[k] + 1) as u32);
+                assert!(low[k] >= d.minimum[k]);
+                assert!((high[k] as i64) < d.minimum[k] as i64 + d.dimensions[k] as i64);
+            }
+        }
+    }
     pub fn prepare(
         field: &Field,
         profile: &WorldProfile,
@@ -68,7 +127,7 @@ impl Batch {
         mask: Option<&CaveMask>,
         ordered: bool,
     ) -> Self {
-        Self::prepare_inner(field, profile, request, side, mask, ordered, false)
+        Self::prepare_inner(field, profile, request, side, mask, ordered, false, false)
     }
     /// Direct-mask assembly. Only zero-discard recipes go to the GPU;
     /// exposure-sensitive recipes retain their exact CPU traversal/random draws.
@@ -79,7 +138,30 @@ impl Batch {
         side: usize,
         mask: Option<&CaveMask>,
     ) -> Self {
-        Self::prepare_inner(field, profile, request, side, mask, false, true)
+        Self::prepare_inner(field, profile, request, side, mask, false, true, false)
+    }
+    pub fn prepare_seeded(
+        field: &Field,
+        profile: &WorldProfile,
+        request: ChunkRequest,
+        side: usize,
+        mask: Option<&CaveMask>,
+    ) -> Self {
+        // Preserve the existing path outside the validated finite geometry domain.
+        let within = |v: i64| v.abs() <= 30_001_024;
+        if !within(i64::from(field.origin_x) * 16)
+            || !within(i64::from(field.origin_z) * 16)
+            || !within((i64::from(field.origin_x) + field.side as i64) * 16)
+            || !within((i64::from(field.origin_z) + field.side as i64) * 16)
+            || profile
+                .geology
+                .ores
+                .iter()
+                .any(|r| r.height.min < -1_000_000 || r.height.max > 1_000_000)
+        {
+            return Self::prepare_compact(field, profile, request, side, mask);
+        }
+        Self::prepare_inner(field, profile, request, side, mask, false, true, true)
     }
     fn prepare_inner(
         field: &Field,
@@ -89,7 +171,9 @@ impl Batch {
         mask: Option<&CaveMask>,
         ordered: bool,
         compact: bool,
+        seeded: bool,
     ) -> Self {
+        let start = Instant::now();
         assert_eq!(profile.geology.ore_layout, 2);
         let tops: Vec<_> = field
             .columns
@@ -155,6 +239,19 @@ impl Batch {
                                 recipe: id as u32,
                                 points,
                             });
+                        } else if seeded {
+                            let seed = seeded::Seed::new([x, y, z], recipe.size, initial_random);
+                            let (minimum, sizes) = seed.bounds();
+                            output.attempts.push(Prepared::Regular {
+                                origin: [x, y, z],
+                                recipe: id as u32,
+                                initial_random,
+                                exposure_random: 0,
+                                minimum,
+                                sizes,
+                                spheres: [0, recipe.size as usize],
+                                seed: Some(seed),
+                            });
                         } else {
                             vein_spheres(recipe, x, y, z, &mut local, &mut scratch.spheres);
                             let mut minimum = [i32::MAX; 3];
@@ -179,6 +276,7 @@ impl Batch {
                                     minimum,
                                     sizes,
                                     spheres: [first, count],
+                                    seed: None,
                                 });
                             }
                         }
@@ -187,6 +285,7 @@ impl Batch {
                 output
             })
             .collect();
+        let prepared_at = Instant::now();
         let regular_count = prepared
             .iter()
             .map(|a| {
@@ -203,6 +302,9 @@ impl Batch {
             words: 0,
             ordered,
             guarded: compact,
+            preparation: PreparationTimings::default(),
+            seeds: Vec::with_capacity(if seeded { regular_count } else { 0 }),
+            repairs: Vec::with_capacity(if seeded { regular_count } else { 0 }),
             anchors: Vec::new(),
             hosts: Vec::new(),
             request,
@@ -237,22 +339,34 @@ impl Batch {
                         minimum,
                         sizes,
                         spheres,
+                        seed,
                     } => {
                         let index = batch.descriptors.len();
+                        if let Some(seed) = seed {
+                            batch.seeds.push(seed);
+                            batch.repairs.push(OnceLock::new());
+                        }
                         batch.descriptors.push(Descriptor {
                             minimum: [minimum[0], minimum[1], minimum[2], 0],
                             dimensions: [sizes[0], sizes[1], sizes[2], batch.words as u32],
                             source: [
-                                (sphere_base + spheres[0]) as u32,
+                                if seeded {
+                                    index as u32
+                                } else {
+                                    (sphere_base + spheres[0]) as u32
+                                },
                                 spheres[1] as u32,
                                 recipe,
-                                0,
+                                u32::from(seeded),
                             ],
                         });
                         batch.words += (sizes[0] as usize * sizes[1] as usize * sizes[2] as usize)
                             .div_ceil(if ordered { 4 } else { 32 })
                             * if compact { 2 } else { 1 };
-                        if !compact {
+                        if seeded {
+                            batch.words += 8;
+                        }
+                        if !compact || seeded {
                             batch.hosts.push(Host {
                                 origin,
                                 initial_random,
@@ -286,6 +400,10 @@ impl Batch {
                 batch.anchors.push(attempts);
             }
         }
+        batch.preparation = PreparationTimings {
+            prepare_nanos: (prepared_at - start).as_nanos() as u64,
+            merge_nanos: prepared_at.elapsed().as_nanos() as u64,
+        };
         batch
     }
 
@@ -309,7 +427,16 @@ impl Batch {
             match contribution {
                 Contribution::Cpu(ores) => apply_ores(request, field, profile, mask, ores, blocks),
                 Contribution::Regular(index) => {
-                    let d = &self.descriptors[*index];
+                    let mut descriptor = self.descriptors[*index];
+                    if descriptor.source[3] != 0 {
+                        let at = descriptor.dimensions[3] as usize;
+                        for k in 0..3 {
+                            descriptor.minimum[k] = words[at + k] as i32;
+                        }
+                        descriptor.dimensions[..3].copy_from_slice(&words[at + 4..at + 7]);
+                        descriptor.dimensions[3] += 8;
+                    }
+                    let d = &descriptor;
                     let recipe = &profile.geology.ores[d.source[2] as usize];
                     assert_eq!(recipe.discard, 0.);
                     let low_x = d.minimum[0].max(request.chunk_x * 16);
@@ -321,6 +448,9 @@ impl Batch {
                     let low_y = d.minimum[1].max(request.min_y);
                     let high_y = (d.minimum[1] + d.dimensions[1] as i32)
                         .min(request.min_y + request.height as i32);
+                    if low_x >= high_x || low_y >= high_y || low_z >= high_z {
+                        continue;
+                    }
                     for y in low_y..high_y {
                         let Some(band) = recipe
                             .replacement_bands
@@ -364,8 +494,27 @@ impl Batch {
                                     // including negative/far world-coordinate rounding.
                                     let at = [low_x + dx as i32, y, z];
                                     let p = at.map(|v| v as f32 + 0.5);
-                                    let spheres = &self.spheres[d.source[0] as usize
-                                        ..(d.source[0] + d.source[1]) as usize];
+                                    let spheres = if d.source[3] != 0 {
+                                        self.repairs[*index]
+                                            .get_or_init(|| {
+                                                let host = &self.hosts[*index];
+                                                let mut spheres = Vec::new();
+                                                vein_spheres(
+                                                    recipe,
+                                                    host.origin[0],
+                                                    host.origin[1],
+                                                    host.origin[2],
+                                                    &mut Random(host.initial_random),
+                                                    &mut spheres,
+                                                );
+                                                spheres.retain(|s| s[3] > 0.);
+                                                spheres
+                                            })
+                                            .as_slice()
+                                    } else {
+                                        &self.spheres[d.source[0] as usize
+                                            ..(d.source[0] + d.source[1]) as usize]
+                                    };
                                     if !spheres.iter().any(|s| {
                                         if (0..3).any(|k| {
                                             at[k] < (s[k] - s[3]).floor() as i32

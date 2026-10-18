@@ -53,7 +53,7 @@ public final class GenerationMetricsTest {
         require(lines.stream().anyMatch(s -> s.startsWith("§dDecoration planning (CPU + GPU)")), "mixed decoration planner is labeled and colored as GPU work");
         require(lines.stream().anyMatch(s -> s.startsWith("§dFeature counts")), "sparse feature device timing has its own colored row");
         require(lines.stream().anyMatch(s -> s.startsWith("§dProvider noise") && s.contains("2.5%")), "provider noise has its own colored averaged timing row");
-        require(lines.stream().anyMatch(s -> s.startsWith("§dOre masks") && s.contains("5.0%")), "ore device timing uses its own color and averaged region denominator");
+        require(lines.stream().anyMatch(s -> s.startsWith("§dOre preparation / masks") && s.contains("5.0%")), "ore device timing uses its own color and averaged region denominator");
         require(lines.stream().anyMatch(s -> s.startsWith("§dLake candidates") && s.contains("1.0%")), "lake classification uses the region average");
         require(lines.stream().anyMatch(s -> s.startsWith("§dLake density probes") && s.contains("7.5%")), "lake probes have a separate colored percentage");
         require(lines.stream().anyMatch(s -> s.startsWith("§dGPU lighting / upload / readback") && s.contains("10.0%")), "lighting host share uses averaged region wall time");

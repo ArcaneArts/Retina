@@ -10,6 +10,9 @@ use serde::Deserialize;
 
 pub mod raster;
 pub(crate) mod raster_gpu;
+#[cfg(test)]
+mod seed_probe;
+mod seeded;
 
 #[cfg(feature = "ore-raster-benchmark")]
 pub mod raster_benchmark;

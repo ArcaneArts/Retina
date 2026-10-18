@@ -1,0 +1,222 @@
+{
+  "base_commit": "97552103c2d1b957bba37d476863d3d8a7c5aee2",
+  "scope": "Initial direct-float rejection and assisted arithmetic evidence; final production evidence is in gpu-ore-preparation.json.",
+  "runs": [
+    {
+      "variant": "seed",
+      "results": [
+        {
+          "adapter": "Apple M4 Max",
+          "different_centers": 11246,
+          "different_pruning": 890,
+          "different_radii": 7944,
+          "inputs": 768,
+          "maximum_center_delta": 2.0,
+          "maximum_radius_delta": 7.152557373046875e-07,
+          "note": "Geometry diagnostics only; no mask equivalence or speed claim.",
+          "pruning_examples": [
+            {
+              "cpu": [
+                -524289.625,
+                66.21739196777344,
+                524287.90625,
+                0.6105860471725464
+              ],
+              "gpu": [
+                -524289.625,
+                66.21739196777344,
+                524287.90625,
+                -1.0
+              ],
+              "input": [
+                -524288,
+                68,
+                524288,
+                23
+              ],
+              "seed": 0,
+              "sphere": 18
+            },
+            {
+              "cpu": [
+                -524288.875,
+                66.40540313720703,
+                524287.9375,
+                -1.0
+              ],
+              "gpu": [
+                -524288.875,
+                66.40540313720703,
+                524287.90625,
+                2.4375479221343994
+              ],
+              "input": [
+                -524288,
+                68,
+                524288,
+                37
+              ],
+              "seed": 0,
+              "sphere": 22
+            },
+            {
+              "cpu": [
+                -524288.25,
+                66.0,
+                524288.0625,
+                -1.0
+              ],
+              "gpu": [
+                -524288.25,
+                66.0,
+                524288.0,
+                0.7927286624908447
+              ],
+              "input": [
+                -524288,
+                68,
+                524288,
+                16
+              ],
+              "seed": 1,
+              "sphere": 9
+            },
+            {
+              "cpu": [
+                -524287.875,
+                66.0,
+                524288.0,
+                0.5861883759498596
+              ],
+              "gpu": [
+                -524287.875,
+                66.0,
+                524287.96875,
+                -1.0
+              ],
+              "input": [
+                -524288,
+                68,
+                524288,
+                17
+              ],
+              "seed": 1,
+              "sphere": 8
+            },
+            {
+              "cpu": [
+                -524287.90625,
+                66.0,
+                524287.96875,
+                -1.0
+              ],
+              "gpu": [
+                -524287.875,
+                66.0,
+                524287.96875,
+                1.4335187673568726
+              ],
+              "input": [
+                -524288,
+                68,
+                524288,
+                33
+              ],
+              "seed": 1,
+              "sphere": 16
+            },
+            {
+              "cpu": [
+                -524290.6875,
+                66.0,
+                524288.3125,
+                -1.0
+              ],
+              "gpu": [
+                -524290.75,
+                66.0,
+                524288.3125,
+                1.364606499671936
+              ],
+              "input": [
+                -524288,
+                68,
+                524288,
+                44
+              ],
+              "seed": 1,
+              "sphere": 33
+            },
+            {
+              "cpu": [
+                -524291.6875,
+                66.0,
+                524288.4375,
+                1.803751826286316
+              ],
+              "gpu": [
+                -524291.75,
+                66.0,
+                524288.4375,
+                -1.0
+              ],
+              "input": [
+                -524288,
+                68,
+                524288,
+                50
+              ],
+              "seed": 1,
+              "sphere": 40
+            },
+            {
+              "cpu": [
+                -524291.5625,
+                66.0,
+                524288.375,
+                1.8626068830490112
+              ],
+              "gpu": [
+                -524291.625,
+                66.0,
+                524288.375,
+                -1.0
+              ],
+              "input": [
+                -524288,
+                68,
+                524288,
+                51
+              ],
+              "seed": 1,
+              "sphere": 40
+            }
+          ],
+          "random_streams_match": true,
+          "spheres": 24960
+        }
+      ],
+      "log": "\nrunning 1 test\ntest geology::seed_probe::seed_geometry_probe ... {\"adapter\":\"Apple M4 Max\",\"different_centers\":11246,\"different_pruning\":890,\"different_radii\":7944,\"inputs\":768,\"maximum_center_delta\":2.0,\"maximum_radius_delta\":7.152557373046875e-7,\"note\":\"Geometry diagnostics only; no mask equivalence or speed claim.\",\"pruning_examples\":[{\"cpu\":[-524289.625,66.21739196777344,524287.90625,0.6105860471725464],\"gpu\":[-524289.625,66.21739196777344,524287.90625,-1.0],\"input\":[-524288,68,524288,23],\"seed\":0,\"sphere\":18},{\"cpu\":[-524288.875,66.40540313720703,524287.9375,-1.0],\"gpu\":[-524288.875,66.40540313720703,524287.90625,2.4375479221343994],\"input\":[-524288,68,524288,37],\"seed\":0,\"sphere\":22},{\"cpu\":[-524288.25,66.0,524288.0625,-1.0],\"gpu\":[-524288.25,66.0,524288.0,0.7927286624908447],\"input\":[-524288,68,524288,16],\"seed\":1,\"sphere\":9},{\"cpu\":[-524287.875,66.0,524288.0,0.5861883759498596],\"gpu\":[-524287.875,66.0,524287.96875,-1.0],\"input\":[-524288,68,524288,17],\"seed\":1,\"sphere\":8},{\"cpu\":[-524287.90625,66.0,524287.96875,-1.0],\"gpu\":[-524287.875,66.0,524287.96875,1.4335187673568726],\"input\":[-524288,68,524288,33],\"seed\":1,\"sphere\":16},{\"cpu\":[-524290.6875,66.0,524288.3125,-1.0],\"gpu\":[-524290.75,66.0,524288.3125,1.364606499671936],\"input\":[-524288,68,524288,44],\"seed\":1,\"sphere\":33},{\"cpu\":[-524291.6875,66.0,524288.4375,1.803751826286316],\"gpu\":[-524291.75,66.0,524288.4375,-1.0],\"input\":[-524288,68,524288,50],\"seed\":1,\"sphere\":40},{\"cpu\":[-524291.5625,66.0,524288.375,1.8626068830490112],\"gpu\":[-524291.625,66.0,524288.375,-1.0],\"input\":[-524288,68,524288,51],\"seed\":1,\"sphere\":40}],\"random_streams_match\":true,\"spheres\":24960}\nok\n\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 93 filtered out; finished in 0.12s\n\n"
+    },
+    {
+      "variant": "assisted",
+      "results": [
+        {
+          "adapter": "Apple M4 Max",
+          "assisted": true,
+          "different_centers": 0,
+          "different_pruning": 0,
+          "different_radii": 0,
+          "inputs": 768,
+          "maximum_center_delta": 0.0,
+          "maximum_radius_delta": 0.0,
+          "note": "Geometry diagnostics only; no mask equivalence or speed claim.",
+          "pruning_examples": [],
+          "random_streams_match": true,
+          "spheres": 24960
+        }
+      ],
+      "log": "\nrunning 1 test\ntest geology::seed_probe::seed_geometry_probe ... {\"adapter\":\"Apple M4 Max\",\"assisted\":true,\"different_centers\":0,\"different_pruning\":0,\"different_radii\":0,\"inputs\":768,\"maximum_center_delta\":0.0,\"maximum_radius_delta\":0.0,\"note\":\"Geometry diagnostics only; no mask equivalence or speed claim.\",\"pruning_examples\":[],\"random_streams_match\":true,\"spheres\":24960}\nok\n\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 93 filtered out; finished in 0.14s\n\n"
+    }
+  ]
+}
