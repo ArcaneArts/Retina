@@ -83,5 +83,7 @@ two jobs/codegen units with 60-second deadlines. Planner checks used two workers
 No Minecraft or full-region benchmark was launched.
 
 This completes the worker-scratch portion of decoration planning. The GPU
-geometry/leaf-distance investigation remains separate, followed by GPU ore
-preparation and Java column-cache optimization.
+geometry/leaf-distance investigation is documented in
+[GPU_TREE_LEAF_EVALUATION.md](GPU_TREE_LEAF_EVALUATION.md); its measured GPU paths
+were slower and remain diagnostic-only. GPU ore preparation and Java column-cache
+optimization follow separately.

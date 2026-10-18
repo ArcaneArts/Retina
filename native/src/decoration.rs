@@ -19,6 +19,8 @@ mod mushroom;
 pub mod pairs;
 mod patch;
 pub(crate) use patch::SimpleState;
+#[cfg(test)]
+mod gpu_leaf_probe;
 pub mod placement;
 mod placement_height;
 pub mod provider_noise;
