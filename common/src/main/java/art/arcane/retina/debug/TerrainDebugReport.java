@@ -60,8 +60,8 @@ public final class TerrainDebugReport {
                 lines.add(share(GPU,"Aquifer fluids / barriers",stats.regionStagePercent(AQUIFER_MASK),false));
                 lines.add(share(GPU,"Feature counts",stats.regionStagePercent(FEATURE_COUNTS),false));
                 if(stats.regionStages().providerMeasured())lines.add(share(GPU,"Provider noise",stats.regionStagePercent(PROVIDER_NOISE),false));
-                if(stats.regionStages().oreMeasured())lines.add(share(GPU,"Ore masks",stats.regionStagePercent(ORE_MASK),false));
-                else lines.add(LABEL+"Ore masks: "+DATA+"not measured");
+                if(stats.regionStages().oreMeasured())lines.add(share(GPU,"Ore preparation / masks",stats.regionStagePercent(ORE_MASK),false));
+                else lines.add(LABEL+"Ore preparation / masks: "+DATA+"not measured");
                 if(stats.regionStages().lightingMeasured()) {
                     lines.add(share(GPU,"Lighting: sky / sources",stats.regionStagePercent(LIGHT_SKY),false));
                     lines.add(share(GPU,"Lighting: propagation",stats.regionStagePercent(LIGHT_SPREAD),false));

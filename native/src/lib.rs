@@ -225,17 +225,32 @@ impl TerrainEngine {
                 field, profile, request, side, mask,
             )));
         }
-        let batch = geology::raster::Batch::prepare_compact(field, profile, request, side, mask);
-        let result = self
-            .ore_gpu
-            .lock()
-            .map_err(|_| "ore GPU lock poisoned")?
-            .run(&batch)?;
-        self.pipeline.transfer(
-            request.reserved,
-            (batch.descriptors.len() * 48 + batch.spheres.len() * 16) as u64,
-            result.readback_bytes,
-        );
+        let batch = if side >= 4 {
+            geology::raster::Batch::prepare_seeded(field, profile, request, side, mask)
+        } else {
+            geology::raster::Batch::prepare_compact(field, profile, request, side, mask)
+        };
+        let waiting = Instant::now();
+        let mut gpu = self.ore_gpu.lock().map_err(|_| "ore GPU lock poisoned")?;
+        let lock_wait_nanos = waiting.elapsed().as_nanos() as u64;
+        let result = gpu.run(&batch)?;
+        drop(gpu);
+        static ORE_DIAGNOSTICS: OnceLock<bool> = OnceLock::new();
+        if *ORE_DIAGNOSTICS
+            .get_or_init(|| std::env::var("RETINA_ORE_DIAGNOSTICS").as_deref() == Ok("1"))
+        {
+            eprintln!(
+                "Retina ore plan {}",
+                serde_json::json!({
+                    "chunk_x":request.chunk_x,"chunk_z":request.chunk_z,"side":side,
+                    "preparation":batch.preparation,"lock_wait_nanos":lock_wait_nanos,
+                    "host":result.host,"device_nanos":result.device_nanos,
+                    "seeded_veins":batch.seeds.len(),"upload_bytes":result.upload_bytes,"readback_bytes":result.readback_bytes,
+                })
+            );
+        }
+        self.pipeline
+            .transfer(request.reserved, result.upload_bytes, result.readback_bytes);
         if let Some(nanos) = result.device_nanos {
             self.timings(request.reserved)
                 .device(timings::ORE_MASK, nanos);

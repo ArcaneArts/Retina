@@ -4,7 +4,30 @@ use std::{
     sync::mpsc,
     time::{Duration, Instant},
 };
+#[cfg(test)]
+#[path = "seed_benchmark.rs"]
+mod seed_benchmark;
 
+fn seed_source() -> std::borrow::Cow<'static, str> {
+    #[cfg(test)]
+    if let Ok(path) = std::env::var("RETINA_ORE_MASK_SHADER_DIR") {
+        let path = std::path::Path::new(&path);
+        return ["float_bits.wgsl", "seed_math.wgsl", "seeded_masks.wgsl"]
+            .iter()
+            .map(|file| std::fs::read_to_string(path.join(file)).unwrap())
+            .collect::<Vec<_>>()
+            .join("\n")
+            .into();
+    }
+    concat!(
+        include_str!("float_bits.wgsl"),
+        "\n",
+        include_str!("seed_math.wgsl"),
+        "\n",
+        include_str!("seeded_masks.wgsl")
+    )
+    .into()
+}
 pub(crate) struct Gpu {
     device: wgpu::Device,
     queue: wgpu::Queue,
@@ -12,6 +35,18 @@ pub(crate) struct Gpu {
     layout: wgpu::BindGroupLayout,
     buffers: Option<Buffers>,
     timestamps: Option<Timestamps>,
+    seeded: Option<SeedPipeline>,
+}
+struct SeedPipeline {
+    pipeline: wgpu::ComputePipeline,
+    layout: wgpu::BindGroupLayout,
+    coefficients: wgpu::Buffer,
+}
+#[derive(Clone, Copy, Default, serde::Serialize)]
+pub(crate) struct HostTimings {
+    pub upload_encode_nanos: u64,
+    pub wait_readback_nanos: u64,
+    pub copy_nanos: u64,
 }
 struct Timestamps {
     queries: wgpu::QuerySet,
@@ -22,6 +57,8 @@ pub(crate) struct ResultMasks {
     pub words: Vec<u32>,
     pub device_nanos: Option<u64>,
     pub readback_bytes: u64,
+    pub upload_bytes: u64,
+    pub host: HostTimings,
 }
 struct Buffers {
     descriptors: wgpu::Buffer,
@@ -104,7 +141,69 @@ impl Gpu {
             layout,
             buffers: None,
             timestamps,
+            seeded: None,
         }
+    }
+    fn initialize_seeded(&mut self) {
+        if self.seeded.is_some() {
+            return;
+        }
+        let layout = self
+            .device
+            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("Retina seeded ore masks"),
+                entries: &(0..4)
+                    .map(|binding| wgpu::BindGroupLayoutEntry {
+                        binding,
+                        visibility: wgpu::ShaderStages::COMPUTE,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage {
+                                read_only: binding != 2,
+                            },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    })
+                    .collect::<Vec<_>>(),
+            });
+        let shader = self
+            .device
+            .create_shader_module(wgpu::ShaderModuleDescriptor {
+                label: Some("Retina seed geometry and masks"),
+                source: wgpu::ShaderSource::Wgsl(seed_source()),
+            });
+        let pipeline_layout = self
+            .device
+            .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("Retina seeded ore masks"),
+                bind_group_layouts: &[Some(&layout)],
+                immediate_size: 0,
+            });
+        let pipeline = self
+            .device
+            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some("Retina seeded ore masks"),
+                layout: Some(&pipeline_layout),
+                module: &shader,
+                entry_point: Some("seeded_masks"),
+                compilation_options: Default::default(),
+                cache: None,
+            });
+        let data = super::seeded::coefficients();
+        let coefficients = self.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("Retina ore size coefficients"),
+            size: (data.len() * 8) as u64,
+            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+        self.queue
+            .write_buffer(&coefficients, 0, bytemuck::cast_slice(&data));
+        self.seeded = Some(SeedPipeline {
+            pipeline,
+            layout,
+            coefficients,
+        });
     }
     pub(crate) fn run(&mut self, batch: &Batch) -> Result<ResultMasks, String> {
         if batch.descriptors.is_empty() {
@@ -112,12 +211,27 @@ impl Gpu {
                 words: Vec::new(),
                 device_nanos: None,
                 readback_bytes: 0,
+                upload_bytes: 0,
+                host: HostTimings::default(),
             });
         }
         let start = Instant::now();
+        let seeded = !batch.seeds.is_empty();
+        let coefficient_bytes = if seeded && self.seeded.is_none() {
+            65 * 64 * 8
+        } else {
+            0
+        };
+        if seeded {
+            self.initialize_seeded();
+        }
         let sizes = [
             (batch.descriptors.len() * 48) as u64,
-            (batch.spheres.len() * 16) as u64,
+            if seeded {
+                (batch.seeds.len() * 48) as u64
+            } else {
+                (batch.spheres.len() * 16) as u64
+            },
             (batch.words * 4) as u64,
         ];
         if self
@@ -167,31 +281,46 @@ impl Gpu {
                 size: std::num::NonZeroU64::new(size),
             })
         };
+        let mut entries = vec![
+            wgpu::BindGroupEntry {
+                binding: 0,
+                resource: binding(&buffers.descriptors, sizes[0]),
+            },
+            wgpu::BindGroupEntry {
+                binding: 1,
+                resource: binding(&buffers.spheres, sizes[1]),
+            },
+            wgpu::BindGroupEntry {
+                binding: 2,
+                resource: binding(&buffers.output, sizes[2]),
+            },
+        ];
+        let state = self.seeded.as_ref().filter(|_| seeded);
+        if let Some(state) = state {
+            entries.push(wgpu::BindGroupEntry {
+                binding: 3,
+                resource: state.coefficients.as_entire_binding(),
+            });
+        }
         let bindings = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("Retina ore masks"),
-            layout: &self.layout,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: binding(&buffers.descriptors, sizes[0]),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: binding(&buffers.spheres, sizes[1]),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 2,
-                    resource: binding(&buffers.output, sizes[2]),
-                },
-            ],
+            layout: state.map_or(&self.layout, |s| &s.layout),
+            entries: &entries,
         });
         self.queue.write_buffer(
             &buffers.descriptors,
             0,
             bytemuck::cast_slice(&batch.descriptors),
         );
-        self.queue
-            .write_buffer(&buffers.spheres, 0, bytemuck::cast_slice(&batch.spheres));
+        self.queue.write_buffer(
+            &buffers.spheres,
+            0,
+            if seeded {
+                bytemuck::cast_slice(&batch.seeds)
+            } else {
+                bytemuck::cast_slice(&batch.spheres)
+            },
+        );
         let mut encoder = self
             .device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor {
@@ -208,7 +337,7 @@ impl Gpu {
                     }
                 }),
             });
-            pass.set_pipeline(&self.pipeline);
+            pass.set_pipeline(state.map_or(&self.pipeline, |s| &s.pipeline));
             pass.set_bind_group(0, &bindings, &[]);
             // Allocation may retain extra capacity: dispatch only active descriptors.
             pass.dispatch_workgroups(256, (batch.descriptors.len() as u32).div_ceil(256), 1);
@@ -219,6 +348,7 @@ impl Gpu {
             encoder.copy_buffer_to_buffer(&t.resolve, 0, &t.readback, 0, 16);
         }
         let submission = self.queue.submit([encoder.finish()]);
+        let submitted = Instant::now();
         let (sender, receiver) = mpsc::channel();
         if let Some(t) = &self.timestamps {
             let sender = sender.clone();
@@ -247,6 +377,7 @@ impl Gpu {
                     .map_err(|e| format!("ore GPU mapping timed out: {e}"))?
                     .map_err(|e| format!("ore GPU mapping failed: {e}"))?;
             }
+            let ready = Instant::now();
             let mapped = buffers
                 .readback
                 .slice(..sizes[2])
@@ -268,10 +399,17 @@ impl Gpu {
             } else {
                 None
             };
+            let words = bytemuck::cast_slice::<u8, u32>(&mapped).to_vec();
             Ok(ResultMasks {
-                words: bytemuck::cast_slice::<u8, u32>(&mapped).to_vec(),
+                words,
                 device_nanos,
                 readback_bytes: sizes[2] + if self.timestamps.is_some() { 16 } else { 0 },
+                upload_bytes: sizes[0] + sizes[1] + coefficient_bytes,
+                host: HostTimings {
+                    upload_encode_nanos: (submitted - start).as_nanos() as u64,
+                    wait_readback_nanos: (ready - submitted).as_nanos() as u64,
+                    copy_nanos: ready.elapsed().as_nanos() as u64,
+                },
             })
         })();
         buffers.readback.unmap();
@@ -296,6 +434,14 @@ mod tests {
     #[test]
     #[ignore = "requires a real compute device; run explicitly with --ignored"]
     fn real_gpu_compact_ores_preserve_hosts_exposure_edges_and_reused_buffers() {
+        check_ore_masks(false);
+    }
+    #[test]
+    #[ignore = "actual GPU seed preparation; use a 30-second process-group deadline"]
+    fn real_gpu_seeded_ores_preserve_hosts_exposure_edges_and_reused_buffers() {
+        check_ore_masks(true);
+    }
+    fn check_ore_masks(seeded: bool) {
         let terrain = crate::gpu::Gpu::new(Default::default()).unwrap();
         let mut gpu = terrain.ore_planner();
         let mut profile:WorldProfile=serde_json::from_value(json!({
@@ -366,8 +512,15 @@ mod tests {
                     .collect(),
             };
             let expected = plan(&field, &profile, request, side, None);
-            let batch = Batch::prepare_compact(&field, &profile, request, side, None);
+            let batch = if seeded {
+                Batch::prepare_seeded(&field, &profile, request, side, None)
+            } else {
+                Batch::prepare_compact(&field, &profile, request, side, None)
+            };
             let result = gpu.run(&batch).unwrap();
+            if seeded {
+                batch.check_seeded_headers(&result.words, &profile);
+            }
             assert_eq!(result.words.len(), batch.words);
             assert_eq!(
                 result.readback_bytes,
@@ -407,7 +560,30 @@ mod tests {
             }
             // Force every candidate to be resolved on the CPU. Deliberately set
             // GPU occupancy wrong too: both sides of a float boundary must repair.
-            let mut uncertain = vec![u32::MAX; batch.words];
+            let mut uncertain = words.clone();
+            for d in &batch.descriptors {
+                let at = d.dimensions[3] as usize;
+                let (offset, size) = if d.source[3] != 0 {
+                    let dimensions = &words[at + 4..at + 7];
+                    (
+                        at + 8,
+                        dimensions.iter().map(|v| *v as usize).product::<usize>(),
+                    )
+                } else {
+                    (
+                        at,
+                        d.dimensions[..3]
+                            .iter()
+                            .map(|v| *v as usize)
+                            .product::<usize>(),
+                    )
+                };
+                let length = size.div_ceil(32) * 2;
+                for bits in uncertain[offset..offset + length].chunks_exact_mut(2) {
+                    bits[0] = 0;
+                    bits[1] = u32::MAX;
+                }
+            }
             for target in 0..side * side {
                 let r = ChunkRequest {
                     chunk_x: cx + (target % side) as i32,
@@ -424,9 +600,6 @@ mod tests {
                     .collect();
                 let mut actual = reference.clone();
                 apply_ores(r, &field, &profile, None, &expected[target], &mut reference);
-                for mask in uncertain.chunks_exact_mut(2) {
-                    mask[0] = 0;
-                }
                 batch.apply_compact(&uncertain, &field, &profile, None, target, &mut actual);
                 let differences: Vec<_> = actual
                     .iter()

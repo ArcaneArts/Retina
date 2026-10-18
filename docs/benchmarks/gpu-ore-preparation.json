@@ -1,0 +1,3125 @@
+{
+  "base_commit": "97552103c2d1b957bba37d476863d3d8a7c5aee2",
+  "adapter": "Apple M4 Max / Metal",
+  "scope": "Complete ore preparation, merge, GPU masks/readback and final application on retained real terrain; not whole-region generation. Two warmup pairs and seven alternating measured pairs, two CPU workers, no game or full-region benchmark.",
+  "resource_limits": {
+    "compile_jobs": 2,
+    "nice": 10,
+    "build_deadline_seconds": 60,
+    "runtime_deadline_seconds": 30,
+    "termination_grace_seconds": 1
+  },
+  "profiles": [
+    {
+      "file": "task-vanilla-profile.json",
+      "sha256": "2949064f5f62fc889b706b2c7911727e94e76c0cb40cf92f3e7340dd7732fea3",
+      "bytes": 13400900
+    },
+    {
+      "file": "terralith-profile.json",
+      "sha256": "c0aeaf8302fe33f6c43eb3fe87a58d54c5e4088574cc478984ca9042c0734918",
+      "bytes": 4594543
+    }
+  ],
+  "geometry_probe": {
+    "adapter": "Apple M4 Max",
+    "arithmetic_pairs": 2192,
+    "assisted": true,
+    "different_centers": 0,
+    "different_pruning": 0,
+    "different_radii": 0,
+    "inputs": 2560,
+    "maximum_center_delta": 0.0,
+    "maximum_radius_delta": 0.0,
+    "note": "Geometry diagnostics only; no mask equivalence or speed claim.",
+    "pruning_examples": [],
+    "random_streams_match": true,
+    "spheres": 83200
+  },
+  "validation": {
+    "native_unit": "71 passed, 26 ignored",
+    "actual_gpu_masks": "2 passed; each checks 26 chunks, replacement chains, exposure, scattered, far/negative coordinates, reuse, forced CPU repair",
+    "normal_plan_selector": "Final A/B warmup invokes TerrainEngine::plan_ores and compares all ore blocks to baseline",
+    "java_metrics": "generationMetricsTest passed; rolling window, p95, throughput scope, packet/display checks",
+    "native_release_library": "cargo build --release --lib --locked passed; 22.77 seconds"
+  },
+  "measurement_limits": [
+    "Device timestamps may be absent and overlap host timings; end-to-end host wall time is the performance measure.",
+    "Process resources include both variants, fixture, profile, driver and harness. They are not paired memory deltas. The final time command wraps Python, so peak memory footprint is not an authoritative GPU/process-tree peak.",
+    "retained_gpu_bytes measures shared reusable ore buffers plus coefficient table. Both variants share capacity; not standalone baseline/candidate memory comparison.",
+    "GPU pruning survivor bitmap and exact bounds compared against CPU for the first warmup of each profile/size; every pair compares final blocks.",
+    "No whole-generator or MCA throughput improvement is inferred."
+  ],
+  "runs": [
+    {
+      "phase": "rejected_all_bit_pruning",
+      "profile": "vanilla",
+      "raw_log_sha256": "cd6e40ce1f59f7605c94182b8ff6b4f0c44a388f989980dbcaff9ae0d94474e2",
+      "reported_process_resources": {
+        "maximum resident set size": 343949312,
+        "peak memory footprint": 980960408
+      },
+      "summary": [
+        {
+          "side": 8,
+          "mode": "baseline",
+          "median_ms": {
+            "total_ms": 5.001042,
+            "prepare_ms": 2.585667,
+            "gpu_host_ms": 1.2775,
+            "apply_ms": 1.140041
+          },
+          "max_total_ms": 5.211416
+        },
+        {
+          "side": 8,
+          "mode": "seeded",
+          "median_ms": {
+            "total_ms": 6.102333,
+            "prepare_ms": 1.4585,
+            "gpu_host_ms": 3.388,
+            "apply_ms": 1.228292
+          },
+          "max_total_ms": 6.264333000000001
+        }
+      ],
+      "cases": [
+        {
+          "backend": "Metal: Apple M4 Max",
+          "baseline": [
+            {
+              "apply_ms": 1.172541,
+              "cpu_spheres": 49936,
+              "device_nanos": 535417,
+              "gpu_host_ms": 1.306125,
+              "host": {
+                "copy_nanos": 9375,
+                "upload_encode_nanos": 167458,
+                "wait_readback_nanos": 1128500
+              },
+              "lock_wait_ms": 4.2e-05,
+              "preparation": {
+                "merge_nanos": 276417,
+                "prepare_nanos": 2300125
+              },
+              "prepare_ms": 2.585667,
+              "readback_bytes": 584088,
+              "repair_capacity_bytes": 0,
+              "repair_veins": 0,
+              "retained_gpu_bytes": 3589744,
+              "total_ms": 5.064375,
+              "upload_bytes": 1052608,
+              "veins": 5284
+            },
+            {
+              "apply_ms": 1.140041,
+              "cpu_spheres": 49936,
+              "device_nanos": null,
+              "gpu_host_ms": 1.244834,
+              "host": {
+                "copy_nanos": 8208,
+                "upload_encode_nanos": 163292,
+                "wait_readback_nanos": 1072750
+              },
+              "lock_wait_ms": 0.0,
+              "preparation": {
+                "merge_nanos": 271625,
+                "prepare_nanos": 2216875
+              },
+              "prepare_ms": 2.495708,
+              "readback_bytes": 584088,
+              "repair_capacity_bytes": 0,
+              "repair_veins": 0,
+              "retained_gpu_bytes": 3589744,
+              "total_ms": 4.880583,
+              "upload_bytes": 1052608,
+              "veins": 5284
+            },
+            {
+              "apply_ms": 1.0809579999999999,
+              "cpu_spheres": 49936,
+              "device_nanos": 555083,
+              "gpu_host_ms": 1.2750000000000001,
+              "host": {
+                "copy_nanos": 9666,
+                "upload_encode_nanos": 147042,
+                "wait_readback_nanos": 1117542
+              },
+              "lock_wait_ms": 4.2e-05,
+              "preparation": {
+                "merge_nanos": 272500,
+                "prepare_nanos": 2349750
+              },
+              "prepare_ms": 2.6298329999999996,
+              "readback_bytes": 584088,
+              "repair_capacity_bytes": 0,
+              "repair_veins": 0,
+              "retained_gpu_bytes": 3589744,
+              "total_ms": 4.985833,
+              "upload_bytes": 1052608,
+              "veins": 5284
+            },
+            {
+              "apply_ms": 1.177291,
+              "cpu_spheres": 49936,
+              "device_nanos": null,
+              "gpu_host_ms": 1.36925,
+              "host": {
+                "copy_nanos": 9917,
+                "upload_encode_nanos": 224500,
+                "wait_readback_nanos": 1133791
+              },
+              "lock_wait_ms": 0.000125,
+              "preparation": {
+                "merge_nanos": 296541,
+                "prepare_nanos": 2358917
+              },
+              "prepare_ms": 2.66475,
+              "readback_bytes": 584088,
+              "repair_capacity_bytes": 0,
+              "repair_veins": 0,
+              "retained_gpu_bytes": 3589744,
+              "total_ms": 5.211416,
+              "upload_bytes": 1052608,
+              "veins": 5284
+            },
+            {
+              "apply_ms": 1.145458,
+              "cpu_spheres": 49936,
+              "device_nanos": 534375,
+              "gpu_host_ms": 1.375458,
+              "host": {
+                "copy_nanos": 10083,
+                "upload_encode_nanos": 287250,
+                "wait_readback_nanos": 1077125
+              },
+              "lock_wait_ms": 4.2e-05,
+              "preparation": {
+                "merge_nanos": 287458,
+                "prepare_nanos": 2237084
+              },
+              "prepare_ms": 2.5371669999999997,
+              "readback_bytes": 584088,
+              "repair_capacity_bytes": 0,
+              "repair_veins": 0,
+              "retained_gpu_bytes": 3589744,
+              "total_ms": 5.058125,
+              "upload_bytes": 1052608,
+              "veins": 5284
+            },
+            {
+              "apply_ms": 1.1100420000000002,
+              "cpu_spheres": 49936,
+              "device_nanos": null,
+              "gpu_host_ms": 1.2775,
+              "host": {
+                "copy_nanos": 8000,
+                "upload_encode_nanos": 168834,
+                "wait_readback_nanos": 1099958
+              },
+              "lock_wait_ms": 0.000125,
+              "preparation": {
+                "merge_nanos": 274417,
+                "prepare_nanos": 2328500
+              },
+              "prepare_ms": 2.613375,
+              "readback_bytes": 584088,
+              "repair_capacity_bytes": 0,
+              "repair_veins": 0,
+              "retained_gpu_bytes": 3589744,
+              "total_ms": 5.001042,
+              "upload_bytes": 1052608,
+              "veins": 5284
+            },
+            {
+              "apply_ms": 1.134417,
+              "cpu_spheres": 49936,
+              "device_nanos": 525916,
+              "gpu_host_ms": 1.258541,
+              "host": {
+                "copy_nanos": 7833,
+                "upload_encode_nanos": 169625,
+                "wait_readback_nanos": 1080500
+              },
+              "lock_wait_ms": 0.000125,
+              "preparation": {
+                "merge_nanos": 280042,
+                "prepare_nanos": 2254416
+              },
+              "prepare_ms": 2.548959,
+              "readback_bytes": 584088,
+              "repair_capacity_bytes": 0,
+              "repair_veins": 0,
+              "retained_gpu_bytes": 3589744,
+              "total_ms": 4.942042,
+              "upload_bytes": 1052608,
+              "veins": 5284
+            }
+          ],
+          "chunk_x": -33,
+          "chunk_z": -33,
+          "height": 384,
+          "outputs_equal": true,
+          "pairs": 7,
+          "profile": "vanilla",
+          "seeded": [
+            {
+              "apply_ms": 1.226208,
+              "cpu_spheres": 0,
+              "device_nanos": 557875,
+              "gpu_host_ms": 3.2819580000000004,
+              "host": {
+                "copy_nanos": 16333,
+                "upload_encode_nanos": 138334,
+                "wait_readback_nanos": 3126208
+              },
+              "lock_wait_ms": 4.2e-05,
+              "preparation": {
+                "merge_nanos": 297625,
+                "prepare_nanos": 1147500
+              },
+              "prepare_ms": 1.4585,
+              "readback_bytes": 1251944,
+              "repair_capacity_bytes": 78640,
+              "repair_veins": 87,
+              "retained_gpu_bytes": 3589744,
+              "total_ms": 5.966708000000001,
+              "upload_bytes": 507264,
+              "veins": 5284
+            },
+            {
+              "apply_ms": 1.1872079999999998,
+              "cpu_spheres": 0,
+              "device_nanos": 2609500,
+              "gpu_host_ms": 3.500084,
+              "host": {
+                "copy_nanos": 19292,
+                "upload_encode_nanos": 109667,
+                "wait_readback_nanos": 3370458
+              },
+              "lock_wait_ms": 4.1e-05,
+              "preparation": {
+                "merge_nanos": 269833,
+                "prepare_nanos": 1136584
+              },
+              "prepare_ms": 1.415,
+              "readback_bytes": 1251944,
+              "repair_capacity_bytes": 78640,
+              "repair_veins": 87,
+              "retained_gpu_bytes": 3589744,
+              "total_ms": 6.102333,
+              "upload_bytes": 507264,
+              "veins": 5284
+            },
+            {
+              "apply_ms": 1.17425,
+              "cpu_spheres": 0,
+              "device_nanos": 551333,
+              "gpu_host_ms": 3.487417,
+              "host": {
+                "copy_nanos": 17583,
+                "upload_encode_nanos": 119167,
+                "wait_readback_nanos": 3350000
+              },
+              "lock_wait_ms": 4.1e-05,
+              "preparation": {
+                "merge_nanos": 280458,
+                "prepare_nanos": 1143292
+              },
+              "prepare_ms": 1.4308750000000001,
+              "readback_bytes": 1251944,
+              "repair_capacity_bytes": 78640,
+              "repair_veins": 87,
+              "retained_gpu_bytes": 3589744,
+              "total_ms": 6.092583,
+              "upload_bytes": 507264,
+              "veins": 5284
+            },
+            {
+              "apply_ms": 1.330208,
+              "cpu_spheres": 0,
+              "device_nanos": 2757208,
+              "gpu_host_ms": 3.35575,
+              "host": {
+                "copy_nanos": 16667,
+                "upload_encode_nanos": 120084,
+                "wait_readback_nanos": 3217708
+              },
+              "lock_wait_ms": 0.0,
+              "preparation": {
+                "merge_nanos": 277166,
+                "prepare_nanos": 1094250
+              },
+              "prepare_ms": 1.378625,
+              "readback_bytes": 1251944,
+              "repair_capacity_bytes": 78640,
+              "repair_veins": 87,
+              "retained_gpu_bytes": 3589744,
+              "total_ms": 6.064583,
+              "upload_bytes": 507264,
+              "veins": 5284
+            },
+            {
+              "apply_ms": 1.2334170000000002,
+              "cpu_spheres": 0,
+              "device_nanos": 530125,
+              "gpu_host_ms": 3.386167,
+              "host": {
+                "copy_nanos": 16208,
+                "upload_encode_nanos": 117542,
+                "wait_readback_nanos": 3251750
+              },
+              "lock_wait_ms": 4.1e-05,
+              "preparation": {
+                "merge_nanos": 285500,
+                "prepare_nanos": 1205542
+              },
+              "prepare_ms": 1.49875,
+              "readback_bytes": 1251944,
+              "repair_capacity_bytes": 78640,
+              "repair_veins": 87,
+              "retained_gpu_bytes": 3589744,
+              "total_ms": 6.1183749999999995,
+              "upload_bytes": 507264,
+              "veins": 5284
+            },
+            {
+              "apply_ms": 1.228292,
+              "cpu_spheres": 0,
+              "device_nanos": 2729375,
+              "gpu_host_ms": 3.5015,
+              "host": {
+                "copy_nanos": 15708,
+                "upload_encode_nanos": 129417,
+                "wait_readback_nanos": 3355792
+              },
+              "lock_wait_ms": 4.1e-05,
+              "preparation": {
+                "merge_nanos": 272042,
+                "prepare_nanos": 1254667
+              },
+              "prepare_ms": 1.5345,
+              "readback_bytes": 1251944,
+              "repair_capacity_bytes": 78640,
+              "repair_veins": 87,
+              "retained_gpu_bytes": 3589744,
+              "total_ms": 6.264333000000001,
+              "upload_bytes": 507264,
+              "veins": 5284
+            },
+            {
+              "apply_ms": 1.264167,
+              "cpu_spheres": 0,
+              "device_nanos": 524667,
+              "gpu_host_ms": 3.388,
+              "host": {
+                "copy_nanos": 16333,
+                "upload_encode_nanos": 155375,
+                "wait_readback_nanos": 3215667
+              },
+              "lock_wait_ms": 0.0,
+              "preparation": {
+                "merge_nanos": 292083,
+                "prepare_nanos": 1217875
+              },
+              "prepare_ms": 1.5212080000000001,
+              "readback_bytes": 1251944,
+              "repair_capacity_bytes": 78640,
+              "repair_veins": 87,
+              "retained_gpu_bytes": 3589744,
+              "total_ms": 6.173375,
+              "upload_bytes": 507264,
+              "veins": 5284
+            }
+          ],
+          "side": 8,
+          "warmups": 2,
+          "workers": 2
+        }
+      ]
+    },
+    {
+      "phase": "rejected_all_bit_pruning",
+      "profile": "terralith",
+      "raw_log_sha256": "31ef21e88a27d5430ba50d4900805ac38f4c2ecbf45928e6886495d9c37aa4fc",
+      "reported_process_resources": {
+        "maximum resident set size": 298893312,
+        "peak memory footprint": 937346224
+      },
+      "summary": [
+        {
+          "side": 8,
+          "mode": "baseline",
+          "median_ms": {
+            "total_ms": 3.845292,
+            "prepare_ms": 2.1305,
+            "gpu_host_ms": 1.12675,
+            "apply_ms": 0.605542
+          },
+          "max_total_ms": 4.063708
+        },
+        {
+          "side": 8,
+          "mode": "seeded",
+          "median_ms": {
+            "total_ms": 4.695416,
+            "prepare_ms": 1.41475,
+            "gpu_host_ms": 2.6653330000000004,
+            "apply_ms": 0.649083
+          },
+          "max_total_ms": 4.848791
+        }
+      ],
+      "cases": [
+        {
+          "backend": "Metal: Apple M4 Max",
+          "baseline": [
+            {
+              "apply_ms": 0.605542,
+              "cpu_spheres": 44485,
+              "device_nanos": 409875,
+              "gpu_host_ms": 1.119416,
+              "host": {
+                "copy_nanos": 20791,
+                "upload_encode_nanos": 162459,
+                "wait_readback_nanos": 935500
+              },
+              "lock_wait_ms": 4.2e-05,
+              "preparation": {
+                "merge_nanos": 280375,
+                "prepare_nanos": 1836958
+              },
+              "prepare_ms": 2.1305,
+              "readback_bytes": 252608,
+              "repair_capacity_bytes": 0,
+              "repair_veins": 0,
+              "retained_gpu_bytes": 2265952,
+              "total_ms": 3.8555,
+              "upload_bytes": 968608,
+              "veins": 5351
+            },
+            {
+              "apply_ms": 0.638,
+              "cpu_spheres": 44485,
+              "device_nanos": null,
+              "gpu_host_ms": 1.151459,
+              "host": {
+                "copy_nanos": 5167,
+                "upload_encode_nanos": 165792,
+                "wait_readback_nanos": 979291
+              },
+              "lock_wait_ms": 4.1e-05,
+              "preparation": {
+                "merge_nanos": 322083,
+                "prepare_nanos": 1824875
+              },
+              "prepare_ms": 2.1555,
+              "readback_bytes": 252608,
+              "repair_capacity_bytes": 0,
+              "repair_veins": 0,
+              "retained_gpu_bytes": 2265952,
+              "total_ms": 3.945,
+              "upload_bytes": 968608,
+              "veins": 5351
+            },
+            {
+              "apply_ms": 0.601791,
+              "cpu_spheres": 44485,
+              "device_nanos": 406417,
+              "gpu_host_ms": 1.1876250000000002,
+              "host": {
+                "copy_nanos": 4958,
+                "upload_encode_nanos": 194083,
+                "wait_readback_nanos": 987667
+              },
+              "lock_wait_ms": 4.2e-05,
+              "preparation": {
+                "merge_nanos": 287542,
+                "prepare_nanos": 1978875
+              },
+              "prepare_ms": 2.27425,
+              "readback_bytes": 252608,
+              "repair_capacity_bytes": 0,
+              "repair_veins": 0,
+              "retained_gpu_bytes": 2265952,
+              "total_ms": 4.063708,
+              "upload_bytes": 968608,
+              "veins": 5351
+            },
+            {
+              "apply_ms": 0.618166,
+              "cpu_spheres": 44485,
+              "device_nanos": null,
+              "gpu_host_ms": 1.103167,
+              "host": {
+                "copy_nanos": 4833,
+                "upload_encode_nanos": 158292,
+                "wait_readback_nanos": 939125
+              },
+              "lock_wait_ms": 4.2e-05,
+              "preparation": {
+                "merge_nanos": 242250,
+                "prepare_nanos": 1790583
+              },
+              "prepare_ms": 2.043583,
+              "readback_bytes": 252608,
+              "repair_capacity_bytes": 0,
+              "repair_veins": 0,
+              "retained_gpu_bytes": 2265952,
+              "total_ms": 3.764958,
+              "upload_bytes": 968608,
+              "veins": 5351
+            },
+            {
+              "apply_ms": 0.59925,
+              "cpu_spheres": 44485,
+              "device_nanos": 427792,
+              "gpu_host_ms": 1.143791,
+              "host": {
+                "copy_nanos": 3542,
+                "upload_encode_nanos": 154834,
+                "wait_readback_nanos": 984666
+              },
+              "lock_wait_ms": 8.4e-05,
+              "preparation": {
+                "merge_nanos": 245917,
+                "prepare_nanos": 1819625
+              },
+              "prepare_ms": 2.078791,
+              "readback_bytes": 252608,
+              "repair_capacity_bytes": 0,
+              "repair_veins": 0,
+              "retained_gpu_bytes": 2265952,
+              "total_ms": 3.821916,
+              "upload_bytes": 968608,
+              "veins": 5351
+            },
+            {
+              "apply_ms": 0.576875,
+              "cpu_spheres": 44485,
+              "device_nanos": null,
+              "gpu_host_ms": 1.0876670000000002,
+              "host": {
+                "copy_nanos": 4833,
+                "upload_encode_nanos": 142208,
+                "wait_readback_nanos": 939792
+              },
+              "lock_wait_ms": 4.2e-05,
+              "preparation": {
+                "merge_nanos": 257209,
+                "prepare_nanos": 1866500
+              },
+              "prepare_ms": 2.130708,
+              "readback_bytes": 252608,
+              "repair_capacity_bytes": 0,
+              "repair_veins": 0,
+              "retained_gpu_bytes": 2265952,
+              "total_ms": 3.795292,
+              "upload_bytes": 968608,
+              "veins": 5351
+            },
+            {
+              "apply_ms": 0.634417,
+              "cpu_spheres": 44485,
+              "device_nanos": 398042,
+              "gpu_host_ms": 1.12675,
+              "host": {
+                "copy_nanos": 4541,
+                "upload_encode_nanos": 157125,
+                "wait_readback_nanos": 964250
+              },
+              "lock_wait_ms": 4.2e-05,
+              "preparation": {
+                "merge_nanos": 249750,
+                "prepare_nanos": 1826458
+              },
+              "prepare_ms": 2.084083,
+              "readback_bytes": 252608,
+              "repair_capacity_bytes": 0,
+              "repair_veins": 0,
+              "retained_gpu_bytes": 2265952,
+              "total_ms": 3.845292,
+              "upload_bytes": 968608,
+              "veins": 5351
+            }
+          ],
+          "chunk_x": -33,
+          "chunk_z": -33,
+          "height": 384,
+          "outputs_equal": true,
+          "pairs": 7,
+          "profile": "terralith",
+          "seeded": [
+            {
+              "apply_ms": 0.656,
+              "cpu_spheres": 0,
+              "device_nanos": 423250,
+              "gpu_host_ms": 2.7390000000000003,
+              "host": {
+                "copy_nanos": 10791,
+                "upload_encode_nanos": 101125,
+                "wait_readback_nanos": 2626417
+              },
+              "lock_wait_ms": 4.1e-05,
+              "preparation": {
+                "merge_nanos": 270958,
+                "prepare_nanos": 1165250
+              },
+              "prepare_ms": 1.4415840000000002,
+              "readback_bytes": 632048,
+              "repair_capacity_bytes": 23200,
+              "repair_veins": 32,
+              "retained_gpu_bytes": 2265952,
+              "total_ms": 4.836625,
+              "upload_bytes": 513696,
+              "veins": 5351
+            },
+            {
+              "apply_ms": 0.616042,
+              "cpu_spheres": 0,
+              "device_nanos": 2013917,
+              "gpu_host_ms": 2.6653330000000004,
+              "host": {
+                "copy_nanos": 10375,
+                "upload_encode_nanos": 101250,
+                "wait_readback_nanos": 2553083
+              },
+              "lock_wait_ms": 4.2e-05,
+              "preparation": {
+                "merge_nanos": 255625,
+                "prepare_nanos": 1148792
+              },
+              "prepare_ms": 1.416625,
+              "readback_bytes": 632048,
+              "repair_capacity_bytes": 23200,
+              "repair_veins": 32,
+              "retained_gpu_bytes": 2265952,
+              "total_ms": 4.698042,
+              "upload_bytes": 513696,
+              "veins": 5351
+            },
+            {
+              "apply_ms": 0.649083,
+              "cpu_spheres": 0,
+              "device_nanos": 425625,
+              "gpu_host_ms": 2.762958,
+              "host": {
+                "copy_nanos": 45958,
+                "upload_encode_nanos": 105792,
+                "wait_readback_nanos": 2610625
+              },
+              "lock_wait_ms": 4.2e-05,
+              "preparation": {
+                "merge_nanos": 251208,
+                "prepare_nanos": 1176042
+              },
+              "prepare_ms": 1.436708,
+              "readback_bytes": 632048,
+              "repair_capacity_bytes": 23200,
+              "repair_veins": 32,
+              "retained_gpu_bytes": 2265952,
+              "total_ms": 4.848791,
+              "upload_bytes": 513696,
+              "veins": 5351
+            },
+            {
+              "apply_ms": 0.617791,
+              "cpu_spheres": 0,
+              "device_nanos": 1942958,
+              "gpu_host_ms": 2.6336250000000003,
+              "host": {
+                "copy_nanos": 10500,
+                "upload_encode_nanos": 108958,
+                "wait_readback_nanos": 2513417
+              },
+              "lock_wait_ms": 4.2e-05,
+              "preparation": {
+                "merge_nanos": 245625,
+                "prepare_nanos": 1095167
+              },
+              "prepare_ms": 1.353583,
+              "readback_bytes": 632048,
+              "repair_capacity_bytes": 23200,
+              "repair_veins": 32,
+              "retained_gpu_bytes": 2265952,
+              "total_ms": 4.605041,
+              "upload_bytes": 513696,
+              "veins": 5351
+            },
+            {
+              "apply_ms": 0.627167,
+              "cpu_spheres": 0,
+              "device_nanos": 454542,
+              "gpu_host_ms": 2.652167,
+              "host": {
+                "copy_nanos": 35541,
+                "upload_encode_nanos": 105875,
+                "wait_readback_nanos": 2510084
+              },
+              "lock_wait_ms": 4.1e-05,
+              "preparation": {
+                "merge_nanos": 273708,
+                "prepare_nanos": 1132250
+              },
+              "prepare_ms": 1.41475,
+              "readback_bytes": 632048,
+              "repair_capacity_bytes": 23200,
+              "repair_veins": 32,
+              "retained_gpu_bytes": 2265952,
+              "total_ms": 4.6941250000000005,
+              "upload_bytes": 513696,
+              "veins": 5351
+            },
+            {
+              "apply_ms": 0.655291,
+              "cpu_spheres": 0,
+              "device_nanos": 1983625,
+              "gpu_host_ms": 2.706042,
+              "host": {
+                "copy_nanos": 10625,
+                "upload_encode_nanos": 105959,
+                "wait_readback_nanos": 2588500
+              },
+              "lock_wait_ms": 4.2e-05,
+              "preparation": {
+                "merge_nanos": 246583,
+                "prepare_nanos": 1076167
+              },
+              "prepare_ms": 1.334041,
+              "readback_bytes": 632048,
+              "repair_capacity_bytes": 23200,
+              "repair_veins": 32,
+              "retained_gpu_bytes": 2265952,
+              "total_ms": 4.695416,
+              "upload_bytes": 513696,
+              "veins": 5351
+            },
+            {
+              "apply_ms": 0.666041,
+              "cpu_spheres": 0,
+              "device_nanos": 395000,
+              "gpu_host_ms": 2.6389590000000003,
+              "host": {
+                "copy_nanos": 43291,
+                "upload_encode_nanos": 104500,
+                "wait_readback_nanos": 2490584
+              },
+              "lock_wait_ms": 4.1e-05,
+              "preparation": {
+                "merge_nanos": 297583,
+                "prepare_nanos": 1048042
+              },
+              "prepare_ms": 1.35425,
+              "readback_bytes": 632048,
+              "repair_capacity_bytes": 23200,
+              "repair_veins": 32,
+              "retained_gpu_bytes": 2265952,
+              "total_ms": 4.6592910000000005,
+              "upload_bytes": 513696,
+              "veins": 5351
+            }
+          ],
+          "side": 8,
+          "warmups": 2,
+          "workers": 2
+        }
+      ]
+    },
+    {
+      "phase": "guarded_pruning",
+      "profile": "vanilla",
+      "raw_log_sha256": "d67c46335dbd5b8d79ce3ced6283d09346834dbec1883e50397bd759e16d26ab",
+      "reported_process_resources": {
+        "maximum resident set size": 358580224,
+        "peak memory footprint": 995656880
+      },
+      "summary": [
+        {
+          "side": 8,
+          "mode": "baseline",
+          "median_ms": {
+            "total_ms": 5.072958,
+            "prepare_ms": 2.610709,
+            "gpu_host_ms": 1.2927920000000002,
+            "apply_ms": 1.150875
+          },
+          "max_total_ms": 5.231959
+        },
+        {
+          "side": 8,
+          "mode": "seeded",
+          "median_ms": {
+            "total_ms": 4.287292,
+            "prepare_ms": 1.463583,
+            "gpu_host_ms": 1.591875,
+            "apply_ms": 1.222709
+          },
+          "max_total_ms": 4.375875000000001
+        }
+      ],
+      "cases": [
+        {
+          "backend": "Metal: Apple M4 Max",
+          "baseline": [
+            {
+              "apply_ms": 1.238,
+              "cpu_spheres": 49936,
+              "device_nanos": 540125,
+              "gpu_host_ms": 1.3284589999999998,
+              "host": {
+                "copy_nanos": 9583,
+                "upload_encode_nanos": 205208,
+                "wait_readback_nanos": 1112375
+              },
+              "lock_wait_ms": 8.3e-05,
+              "preparation": {
+                "merge_nanos": 295166,
+                "prepare_nanos": 2302459
+              },
+              "prepare_ms": 2.607208,
+              "readback_bytes": 584088,
+              "repair_capacity_bytes": 0,
+              "repair_veins": 0,
+              "retained_gpu_bytes": 3589744,
+              "total_ms": 5.17375,
+              "upload_bytes": 1052608,
+              "veins": 5284
+            },
+            {
+              "apply_ms": 1.145,
+              "cpu_spheres": 49936,
+              "device_nanos": 886917,
+              "gpu_host_ms": 0.911417,
+              "host": {
+                "copy_nanos": 7958,
+                "upload_encode_nanos": 183500,
+                "wait_readback_nanos": 719250
+              },
+              "lock_wait_ms": 0.000125,
+              "preparation": {
+                "merge_nanos": 291000,
+                "prepare_nanos": 2256208
+              },
+              "prepare_ms": 2.555,
+              "readback_bytes": 584088,
+              "repair_capacity_bytes": 0,
+              "repair_veins": 0,
+              "retained_gpu_bytes": 3589744,
+              "total_ms": 4.611542,
+              "upload_bytes": 1052608,
+              "veins": 5284
+            },
+            {
+              "apply_ms": 1.177875,
+              "cpu_spheres": 49936,
+              "device_nanos": 542292,
+              "gpu_host_ms": 1.2486249999999999,
+              "host": {
+                "copy_nanos": 8917,
+                "upload_encode_nanos": 159625,
+                "wait_readback_nanos": 1078666
+              },
+              "lock_wait_ms": 4.2e-05,
+              "preparation": {
+                "merge_nanos": 281875,
+                "prepare_nanos": 2234209
+              },
+              "prepare_ms": 2.52375,
+              "readback_bytes": 584088,
+              "repair_capacity_bytes": 0,
+              "repair_veins": 0,
+              "retained_gpu_bytes": 3589744,
+              "total_ms": 4.950292,
+              "upload_bytes": 1052608,
+              "veins": 5284
+            },
+            {
+              "apply_ms": 1.127333,
+              "cpu_spheres": 49936,
+              "device_nanos": 898959,
+              "gpu_host_ms": 1.265167,
+              "host": {
+                "copy_nanos": 9458,
+                "upload_encode_nanos": 166334,
+                "wait_readback_nanos": 1088125
+              },
+              "lock_wait_ms": 4.1e-05,
+              "preparation": {
+                "merge_nanos": 275083,
+                "prepare_nanos": 2328792
+              },
+              "prepare_ms": 2.610709,
+              "readback_bytes": 584088,
+              "repair_capacity_bytes": 0,
+              "repair_veins": 0,
+              "retained_gpu_bytes": 3589744,
+              "total_ms": 5.0032499999999995,
+              "upload_bytes": 1052608,
+              "veins": 5284
+            },
+            {
+              "apply_ms": 1.090833,
+              "cpu_spheres": 49936,
+              "device_nanos": 530917,
+              "gpu_host_ms": 1.2927920000000002,
+              "host": {
+                "copy_nanos": 7959,
+                "upload_encode_nanos": 167958,
+                "wait_readback_nanos": 1116000
+              },
+              "lock_wait_ms": 8.3e-05,
+              "preparation": {
+                "merge_nanos": 284583,
+                "prepare_nanos": 2395125
+              },
+              "prepare_ms": 2.68925,
+              "readback_bytes": 584088,
+              "repair_capacity_bytes": 0,
+              "repair_veins": 0,
+              "retained_gpu_bytes": 3589744,
+              "total_ms": 5.072958,
+              "upload_bytes": 1052608,
+              "veins": 5284
+            },
+            {
+              "apply_ms": 1.158459,
+              "cpu_spheres": 49936,
+              "device_nanos": 889459,
+              "gpu_host_ms": 1.336041,
+              "host": {
+                "copy_nanos": 9709,
+                "upload_encode_nanos": 191000,
+                "wait_readback_nanos": 1134666
+              },
+              "lock_wait_ms": 8.4e-05,
+              "preparation": {
+                "merge_nanos": 292917,
+                "prepare_nanos": 2436458
+              },
+              "prepare_ms": 2.7373749999999997,
+              "readback_bytes": 584088,
+              "repair_capacity_bytes": 0,
+              "repair_veins": 0,
+              "retained_gpu_bytes": 3589744,
+              "total_ms": 5.231959,
+              "upload_bytes": 1052608,
+              "veins": 5284
+            },
+            {
+              "apply_ms": 1.150875,
+              "cpu_spheres": 49936,
+              "device_nanos": 536417,
+              "gpu_host_ms": 1.3085410000000002,
+              "host": {
+                "copy_nanos": 9750,
+                "upload_encode_nanos": 160084,
+                "wait_readback_nanos": 1137750
+              },
+              "lock_wait_ms": 4.2e-05,
+              "preparation": {
+                "merge_nanos": 284917,
+                "prepare_nanos": 2347250
+              },
+              "prepare_ms": 2.6385829999999997,
+              "readback_bytes": 584088,
+              "repair_capacity_bytes": 0,
+              "repair_veins": 0,
+              "retained_gpu_bytes": 3589744,
+              "total_ms": 5.098041,
+              "upload_bytes": 1052608,
+              "veins": 5284
+            }
+          ],
+          "chunk_x": -33,
+          "chunk_z": -33,
+          "height": 384,
+          "outputs_equal": true,
+          "pairs": 7,
+          "profile": "vanilla",
+          "seeded": [
+            {
+              "apply_ms": 1.260334,
+              "cpu_spheres": 0,
+              "device_nanos": 521041,
+              "gpu_host_ms": 1.636041,
+              "host": {
+                "copy_nanos": 18375,
+                "upload_encode_nanos": 110041,
+                "wait_readback_nanos": 1507042
+              },
+              "lock_wait_ms": 4.2e-05,
+              "preparation": {
+                "merge_nanos": 283166,
+                "prepare_nanos": 1170667
+              },
+              "prepare_ms": 1.461125,
+              "readback_bytes": 1251944,
+              "repair_capacity_bytes": 78640,
+              "repair_veins": 87,
+              "retained_gpu_bytes": 3589744,
+              "total_ms": 4.357542,
+              "upload_bytes": 507264,
+              "veins": 5284
+            },
+            {
+              "apply_ms": 1.290834,
+              "cpu_spheres": 0,
+              "device_nanos": 936833,
+              "gpu_host_ms": 1.6214160000000002,
+              "host": {
+                "copy_nanos": 18209,
+                "upload_encode_nanos": 147542,
+                "wait_readback_nanos": 1454958
+              },
+              "lock_wait_ms": 4.2e-05,
+              "preparation": {
+                "merge_nanos": 287291,
+                "prepare_nanos": 1167792
+              },
+              "prepare_ms": 1.463583,
+              "readback_bytes": 1251944,
+              "repair_capacity_bytes": 78640,
+              "repair_veins": 87,
+              "retained_gpu_bytes": 3589744,
+              "total_ms": 4.375875000000001,
+              "upload_bytes": 507264,
+              "veins": 5284
+            },
+            {
+              "apply_ms": 1.2249590000000001,
+              "cpu_spheres": 0,
+              "device_nanos": 545416,
+              "gpu_host_ms": 1.583416,
+              "host": {
+                "copy_nanos": 14916,
+                "upload_encode_nanos": 129416,
+                "wait_readback_nanos": 1438334
+              },
+              "lock_wait_ms": 8.4e-05,
+              "preparation": {
+                "merge_nanos": 282500,
+                "prepare_nanos": 1189250
+              },
+              "prepare_ms": 1.4788329999999998,
+              "readback_bytes": 1251944,
+              "repair_capacity_bytes": 78640,
+              "repair_veins": 87,
+              "retained_gpu_bytes": 3589744,
+              "total_ms": 4.287292,
+              "upload_bytes": 507264,
+              "veins": 5284
+            },
+            {
+              "apply_ms": 1.222709,
+              "cpu_spheres": 0,
+              "device_nanos": 901583,
+              "gpu_host_ms": 1.589041,
+              "host": {
+                "copy_nanos": 19250,
+                "upload_encode_nanos": 135000,
+                "wait_readback_nanos": 1434125
+              },
+              "lock_wait_ms": 8.4e-05,
+              "preparation": {
+                "merge_nanos": 277500,
+                "prepare_nanos": 1225583
+              },
+              "prepare_ms": 1.510916,
+              "readback_bytes": 1251944,
+              "repair_capacity_bytes": 78640,
+              "repair_veins": 87,
+              "retained_gpu_bytes": 3589744,
+              "total_ms": 4.32275,
+              "upload_bytes": 507264,
+              "veins": 5284
+            },
+            {
+              "apply_ms": 1.176042,
+              "cpu_spheres": 0,
+              "device_nanos": 559208,
+              "gpu_host_ms": 1.564208,
+              "host": {
+                "copy_nanos": 16042,
+                "upload_encode_nanos": 104292,
+                "wait_readback_nanos": 1443208
+              },
+              "lock_wait_ms": 4.2e-05,
+              "preparation": {
+                "merge_nanos": 283958,
+                "prepare_nanos": 1180375
+              },
+              "prepare_ms": 1.471125,
+              "readback_bytes": 1251944,
+              "repair_capacity_bytes": 78640,
+              "repair_veins": 87,
+              "retained_gpu_bytes": 3589744,
+              "total_ms": 4.211417,
+              "upload_bytes": 507264,
+              "veins": 5284
+            },
+            {
+              "apply_ms": 1.162875,
+              "cpu_spheres": 0,
+              "device_nanos": 904250,
+              "gpu_host_ms": 1.591875,
+              "host": {
+                "copy_nanos": 18416,
+                "upload_encode_nanos": 100542,
+                "wait_readback_nanos": 1472375
+              },
+              "lock_wait_ms": 0.000125,
+              "preparation": {
+                "merge_nanos": 276250,
+                "prepare_nanos": 1146834
+              },
+              "prepare_ms": 1.430417,
+              "readback_bytes": 1251944,
+              "repair_capacity_bytes": 78640,
+              "repair_veins": 87,
+              "retained_gpu_bytes": 3589744,
+              "total_ms": 4.1852920000000005,
+              "upload_bytes": 507264,
+              "veins": 5284
+            },
+            {
+              "apply_ms": 1.20225,
+              "cpu_spheres": 0,
+              "device_nanos": 561000,
+              "gpu_host_ms": 1.608875,
+              "host": {
+                "copy_nanos": 18708,
+                "upload_encode_nanos": 98875,
+                "wait_readback_nanos": 1490667
+              },
+              "lock_wait_ms": 0.0,
+              "preparation": {
+                "merge_nanos": 281792,
+                "prepare_nanos": 1167292
+              },
+              "prepare_ms": 1.455333,
+              "readback_bytes": 1251944,
+              "repair_capacity_bytes": 78640,
+              "repair_veins": 87,
+              "retained_gpu_bytes": 3589744,
+              "total_ms": 4.266458,
+              "upload_bytes": 507264,
+              "veins": 5284
+            }
+          ],
+          "side": 8,
+          "warmups": 2,
+          "workers": 2
+        }
+      ]
+    },
+    {
+      "phase": "guarded_pruning",
+      "profile": "terralith",
+      "raw_log_sha256": "d175effb0610c53e8cc3bf8c975f5830ff01596c163f51704709c05f96aa52ee",
+      "reported_process_resources": {
+        "maximum resident set size": 276496384,
+        "peak memory footprint": 914998448
+      },
+      "summary": [
+        {
+          "side": 8,
+          "mode": "baseline",
+          "median_ms": {
+            "total_ms": 4.163375,
+            "prepare_ms": 2.314333,
+            "gpu_host_ms": 1.190917,
+            "apply_ms": 0.663167
+          },
+          "max_total_ms": 4.242542
+        },
+        {
+          "side": 8,
+          "mode": "seeded",
+          "median_ms": {
+            "total_ms": 3.616084,
+            "prepare_ms": 1.538125,
+            "gpu_host_ms": 1.425958,
+            "apply_ms": 0.699083
+          },
+          "max_total_ms": 3.714542
+        }
+      ],
+      "cases": [
+        {
+          "backend": "Metal: Apple M4 Max",
+          "baseline": [
+            {
+              "apply_ms": 0.627583,
+              "cpu_spheres": 44485,
+              "device_nanos": 437709,
+              "gpu_host_ms": 1.221834,
+              "host": {
+                "copy_nanos": 4209,
+                "upload_encode_nanos": 226792,
+                "wait_readback_nanos": 990041
+              },
+              "lock_wait_ms": 0.0,
+              "preparation": {
+                "merge_nanos": 288084,
+                "prepare_nanos": 2058625
+              },
+              "prepare_ms": 2.355166,
+              "readback_bytes": 252608,
+              "repair_capacity_bytes": 0,
+              "repair_veins": 0,
+              "retained_gpu_bytes": 2265952,
+              "total_ms": 4.2045829999999995,
+              "upload_bytes": 968608,
+              "veins": 5351
+            },
+            {
+              "apply_ms": 0.6456660000000001,
+              "cpu_spheres": 44485,
+              "device_nanos": 714416,
+              "gpu_host_ms": 1.198917,
+              "host": {
+                "copy_nanos": 4125,
+                "upload_encode_nanos": 196666,
+                "wait_readback_nanos": 997125
+              },
+              "lock_wait_ms": 4.2e-05,
+              "preparation": {
+                "merge_nanos": 278667,
+                "prepare_nanos": 1859583
+              },
+              "prepare_ms": 2.1514580000000003,
+              "readback_bytes": 252608,
+              "repair_capacity_bytes": 0,
+              "repair_veins": 0,
+              "retained_gpu_bytes": 2265952,
+              "total_ms": 3.996083,
+              "upload_bytes": 968608,
+              "veins": 5351
+            },
+            {
+              "apply_ms": 0.676958,
+              "cpu_spheres": 44485,
+              "device_nanos": 436167,
+              "gpu_host_ms": 1.219125,
+              "host": {
+                "copy_nanos": 4875,
+                "upload_encode_nanos": 259542,
+                "wait_readback_nanos": 953125
+              },
+              "lock_wait_ms": 4.2e-05,
+              "preparation": {
+                "merge_nanos": 282083,
+                "prepare_nanos": 2022167
+              },
+              "prepare_ms": 2.314333,
+              "readback_bytes": 252608,
+              "repair_capacity_bytes": 0,
+              "repair_veins": 0,
+              "retained_gpu_bytes": 2265952,
+              "total_ms": 4.210458,
+              "upload_bytes": 968608,
+              "veins": 5351
+            },
+            {
+              "apply_ms": 0.70025,
+              "cpu_spheres": 44485,
+              "device_nanos": 710750,
+              "gpu_host_ms": 1.16475,
+              "host": {
+                "copy_nanos": 4334,
+                "upload_encode_nanos": 217584,
+                "wait_readback_nanos": 941791
+              },
+              "lock_wait_ms": 4.2e-05,
+              "preparation": {
+                "merge_nanos": 293292,
+                "prepare_nanos": 1866541
+              },
+              "prepare_ms": 2.1723749999999997,
+              "readback_bytes": 252608,
+              "repair_capacity_bytes": 0,
+              "repair_veins": 0,
+              "retained_gpu_bytes": 2265952,
+              "total_ms": 4.037417,
+              "upload_bytes": 968608,
+              "veins": 5351
+            },
+            {
+              "apply_ms": 0.663167,
+              "cpu_spheres": 44485,
+              "device_nanos": 413167,
+              "gpu_host_ms": 1.13075,
+              "host": {
+                "copy_nanos": 4833,
+                "upload_encode_nanos": 190042,
+                "wait_readback_nanos": 934458
+              },
+              "lock_wait_ms": 4.1e-05,
+              "preparation": {
+                "merge_nanos": 298875,
+                "prepare_nanos": 2048833
+              },
+              "prepare_ms": 2.358875,
+              "readback_bytes": 252608,
+              "repair_capacity_bytes": 0,
+              "repair_veins": 0,
+              "retained_gpu_bytes": 2265952,
+              "total_ms": 4.152833,
+              "upload_bytes": 968608,
+              "veins": 5351
+            },
+            {
+              "apply_ms": 0.726792,
+              "cpu_spheres": 44485,
+              "device_nanos": 733667,
+              "gpu_host_ms": 1.164333,
+              "host": {
+                "copy_nanos": 5042,
+                "upload_encode_nanos": 174583,
+                "wait_readback_nanos": 983750
+              },
+              "lock_wait_ms": 0.0,
+              "preparation": {
+                "merge_nanos": 278041,
+                "prepare_nanos": 1985084
+              },
+              "prepare_ms": 2.27225,
+              "readback_bytes": 252608,
+              "repair_capacity_bytes": 0,
+              "repair_veins": 0,
+              "retained_gpu_bytes": 2265952,
+              "total_ms": 4.163375,
+              "upload_bytes": 968608,
+              "veins": 5351
+            },
+            {
+              "apply_ms": 0.6611250000000001,
+              "cpu_spheres": 44485,
+              "device_nanos": 424333,
+              "gpu_host_ms": 1.190917,
+              "host": {
+                "copy_nanos": 5083,
+                "upload_encode_nanos": 207375,
+                "wait_readback_nanos": 977000
+              },
+              "lock_wait_ms": 4.1e-05,
+              "preparation": {
+                "merge_nanos": 299458,
+                "prepare_nanos": 2069208
+              },
+              "prepare_ms": 2.3904590000000003,
+              "readback_bytes": 252608,
+              "repair_capacity_bytes": 0,
+              "repair_veins": 0,
+              "retained_gpu_bytes": 2265952,
+              "total_ms": 4.242542,
+              "upload_bytes": 968608,
+              "veins": 5351
+            }
+          ],
+          "chunk_x": -33,
+          "chunk_z": -33,
+          "height": 384,
+          "outputs_equal": true,
+          "pairs": 7,
+          "profile": "terralith",
+          "seeded": [
+            {
+              "apply_ms": 0.693291,
+              "cpu_spheres": 0,
+              "device_nanos": 412375,
+              "gpu_host_ms": 1.415084,
+              "host": {
+                "copy_nanos": 51583,
+                "upload_encode_nanos": 117125,
+                "wait_readback_nanos": 1245500
+              },
+              "lock_wait_ms": 0.0,
+              "preparation": {
+                "merge_nanos": 340459,
+                "prepare_nanos": 1228958
+              },
+              "prepare_ms": 1.5805,
+              "readback_bytes": 632048,
+              "repair_capacity_bytes": 23200,
+              "repair_veins": 32,
+              "retained_gpu_bytes": 2265952,
+              "total_ms": 3.688875,
+              "upload_bytes": 513696,
+              "veins": 5351
+            },
+            {
+              "apply_ms": 0.706375,
+              "cpu_spheres": 0,
+              "device_nanos": 730625,
+              "gpu_host_ms": 1.43225,
+              "host": {
+                "copy_nanos": 9375,
+                "upload_encode_nanos": 137250,
+                "wait_readback_nanos": 1284291
+              },
+              "lock_wait_ms": 8.4e-05,
+              "preparation": {
+                "merge_nanos": 265416,
+                "prepare_nanos": 1199417
+              },
+              "prepare_ms": 1.475958,
+              "readback_bytes": 632048,
+              "repair_capacity_bytes": 23200,
+              "repair_veins": 32,
+              "retained_gpu_bytes": 2265952,
+              "total_ms": 3.614667,
+              "upload_bytes": 513696,
+              "veins": 5351
+            },
+            {
+              "apply_ms": 0.707042,
+              "cpu_spheres": 0,
+              "device_nanos": 408584,
+              "gpu_host_ms": 1.44975,
+              "host": {
+                "copy_nanos": 53458,
+                "upload_encode_nanos": 121167,
+                "wait_readback_nanos": 1274458
+              },
+              "lock_wait_ms": 4.2e-05,
+              "preparation": {
+                "merge_nanos": 337208,
+                "prepare_nanos": 1211125
+              },
+              "prepare_ms": 1.557708,
+              "readback_bytes": 632048,
+              "repair_capacity_bytes": 23200,
+              "repair_veins": 32,
+              "retained_gpu_bytes": 2265952,
+              "total_ms": 3.714542,
+              "upload_bytes": 513696,
+              "veins": 5351
+            },
+            {
+              "apply_ms": 0.7045410000000001,
+              "cpu_spheres": 0,
+              "device_nanos": 764958,
+              "gpu_host_ms": 1.366959,
+              "host": {
+                "copy_nanos": 10625,
+                "upload_encode_nanos": 140042,
+                "wait_readback_nanos": 1215125
+              },
+              "lock_wait_ms": 4.1e-05,
+              "preparation": {
+                "merge_nanos": 280791,
+                "prepare_nanos": 1224000
+              },
+              "prepare_ms": 1.518125,
+              "readback_bytes": 632048,
+              "repair_capacity_bytes": 23200,
+              "repair_veins": 32,
+              "retained_gpu_bytes": 2265952,
+              "total_ms": 3.5896660000000002,
+              "upload_bytes": 513696,
+              "veins": 5351
+            },
+            {
+              "apply_ms": 0.654709,
+              "cpu_spheres": 0,
+              "device_nanos": 395292,
+              "gpu_host_ms": 1.4038329999999999,
+              "host": {
+                "copy_nanos": 44500,
+                "upload_encode_nanos": 123875,
+                "wait_readback_nanos": 1234625
+              },
+              "lock_wait_ms": 0.0,
+              "preparation": {
+                "merge_nanos": 309584,
+                "prepare_nanos": 1241625
+              },
+              "prepare_ms": 1.557542,
+              "readback_bytes": 632048,
+              "repair_capacity_bytes": 23200,
+              "repair_veins": 32,
+              "retained_gpu_bytes": 2265952,
+              "total_ms": 3.616084,
+              "upload_bytes": 513696,
+              "veins": 5351
+            },
+            {
+              "apply_ms": 0.676167,
+              "cpu_spheres": 0,
+              "device_nanos": 714250,
+              "gpu_host_ms": 1.425958,
+              "host": {
+                "copy_nanos": 8750,
+                "upload_encode_nanos": 124875,
+                "wait_readback_nanos": 1291708
+              },
+              "lock_wait_ms": 4.2e-05,
+              "preparation": {
+                "merge_nanos": 273584,
+                "prepare_nanos": 1208000
+              },
+              "prepare_ms": 1.488542,
+              "readback_bytes": 632048,
+              "repair_capacity_bytes": 23200,
+              "repair_veins": 32,
+              "retained_gpu_bytes": 2265952,
+              "total_ms": 3.590709,
+              "upload_bytes": 513696,
+              "veins": 5351
+            },
+            {
+              "apply_ms": 0.699083,
+              "cpu_spheres": 0,
+              "device_nanos": 398917,
+              "gpu_host_ms": 1.462375,
+              "host": {
+                "copy_nanos": 30417,
+                "upload_encode_nanos": 152334,
+                "wait_readback_nanos": 1276416
+              },
+              "lock_wait_ms": 4.2e-05,
+              "preparation": {
+                "merge_nanos": 307375,
+                "prepare_nanos": 1224000
+              },
+              "prepare_ms": 1.538125,
+              "readback_bytes": 632048,
+              "repair_capacity_bytes": 23200,
+              "repair_veins": 32,
+              "retained_gpu_bytes": 2265952,
+              "total_ms": 3.6996249999999997,
+              "upload_bytes": 513696,
+              "veins": 5351
+            }
+          ],
+          "side": 8,
+          "warmups": 2,
+          "workers": 2
+        }
+      ]
+    },
+    {
+      "phase": "final_production_path",
+      "profile": "vanilla",
+      "raw_log_sha256": "8e31125cfbbd86c5bf8f7f0e11c87029c98764730ed036d1038adcbdcdebda4f",
+      "reported_process_resources": {
+        "maximum resident set size": 361381888,
+        "peak memory footprint": 9650704
+      },
+      "summary": [
+        {
+          "side": 4,
+          "mode": "baseline",
+          "median_ms": {
+            "total_ms": 2.390292,
+            "prepare_ms": 1.072833,
+            "gpu_host_ms": 0.93275,
+            "apply_ms": 0.345708
+          },
+          "max_total_ms": 2.524792
+        },
+        {
+          "side": 4,
+          "mode": "seeded",
+          "median_ms": {
+            "total_ms": 1.837666,
+            "prepare_ms": 0.624333,
+            "gpu_host_ms": 0.8009999999999999,
+            "apply_ms": 0.369792
+          },
+          "max_total_ms": 1.917708
+        },
+        {
+          "side": 8,
+          "mode": "baseline",
+          "median_ms": {
+            "total_ms": 5.800542,
+            "prepare_ms": 3.071833,
+            "gpu_host_ms": 1.41275,
+            "apply_ms": 1.272375
+          },
+          "max_total_ms": 5.952542
+        },
+        {
+          "side": 8,
+          "mode": "seeded",
+          "median_ms": {
+            "total_ms": 4.90925,
+            "prepare_ms": 1.738458,
+            "gpu_host_ms": 1.701667,
+            "apply_ms": 1.4525000000000001
+          },
+          "max_total_ms": 5.040458
+        }
+      ],
+      "cases": [
+        {
+          "backend": "Metal: Apple M4 Max",
+          "baseline": [
+            {
+              "apply_ms": 0.345708,
+              "cpu_spheres": 17745,
+              "device_nanos": 283916,
+              "gpu_host_ms": 0.926458,
+              "host": {
+                "copy_nanos": 3917,
+                "upload_encode_nanos": 132000,
+                "wait_readback_nanos": 789583
+              },
+              "lock_wait_ms": 4.2e-05,
+              "preparation": {
+                "merge_nanos": 115333,
+                "prepare_nanos": 930583
+              },
+              "prepare_ms": 1.054708,
+              "readback_bytes": 213048,
+              "repair_capacity_bytes": 0,
+              "repair_veins": 0,
+              "retained_gpu_bytes": 1309168,
+              "total_ms": 2.326916,
+              "upload_bytes": 370848,
+              "veins": 1811
+            },
+            {
+              "apply_ms": 0.335417,
+              "cpu_spheres": 17745,
+              "device_nanos": 491167,
+              "gpu_host_ms": 1.015125,
+              "host": {
+                "copy_nanos": 9458,
+                "upload_encode_nanos": 179667,
+                "wait_readback_nanos": 822917
+              },
+              "lock_wait_ms": 8.3e-05,
+              "preparation": {
+                "merge_nanos": 141625,
+                "prepare_nanos": 1021084
+              },
+              "prepare_ms": 1.174167,
+              "readback_bytes": 213048,
+              "repair_capacity_bytes": 0,
+              "repair_veins": 0,
+              "retained_gpu_bytes": 1309168,
+              "total_ms": 2.524792,
+              "upload_bytes": 370848,
+              "veins": 1811
+            },
+            {
+              "apply_ms": 0.34212499999999996,
+              "cpu_spheres": 17745,
+              "device_nanos": 273292,
+              "gpu_host_ms": 0.9875420000000001,
+              "host": {
+                "copy_nanos": 4625,
+                "upload_encode_nanos": 180333,
+                "wait_readback_nanos": 800542
+              },
+              "lock_wait_ms": 0.000166,
+              "preparation": {
+                "merge_nanos": 121625,
+                "prepare_nanos": 985834
+              },
+              "prepare_ms": 1.118417,
+              "readback_bytes": 213048,
+              "repair_capacity_bytes": 0,
+              "repair_veins": 0,
+              "retained_gpu_bytes": 1309168,
+              "total_ms": 2.44825,
+              "upload_bytes": 370848,
+              "veins": 1811
+            },
+            {
+              "apply_ms": 0.34625,
+              "cpu_spheres": 17745,
+              "device_nanos": 513083,
+              "gpu_host_ms": 0.93275,
+              "host": {
+                "copy_nanos": 4583,
+                "upload_encode_nanos": 132292,
+                "wait_readback_nanos": 794750
+              },
+              "lock_wait_ms": 8.3e-05,
+              "preparation": {
+                "merge_nanos": 116792,
+                "prepare_nanos": 942166
+              },
+              "prepare_ms": 1.068625,
+              "readback_bytes": 213048,
+              "repair_capacity_bytes": 0,
+              "repair_veins": 0,
+              "retained_gpu_bytes": 1309168,
+              "total_ms": 2.347708,
+              "upload_bytes": 370848,
+              "veins": 1811
+            },
+            {
+              "apply_ms": 0.349833,
+              "cpu_spheres": 17745,
+              "device_nanos": 307625,
+              "gpu_host_ms": 0.9292499999999999,
+              "host": {
+                "copy_nanos": 3625,
+                "upload_encode_nanos": 143334,
+                "wait_readback_nanos": 781375
+              },
+              "lock_wait_ms": 4.2e-05,
+              "preparation": {
+                "merge_nanos": 112792,
+                "prepare_nanos": 950625
+              },
+              "prepare_ms": 1.072833,
+              "readback_bytes": 213048,
+              "repair_capacity_bytes": 0,
+              "repair_veins": 0,
+              "retained_gpu_bytes": 1309168,
+              "total_ms": 2.3519579999999998,
+              "upload_bytes": 370848,
+              "veins": 1811
+            },
+            {
+              "apply_ms": 0.379917,
+              "cpu_spheres": 17745,
+              "device_nanos": 519667,
+              "gpu_host_ms": 0.920333,
+              "host": {
+                "copy_nanos": 5125,
+                "upload_encode_nanos": 106583,
+                "wait_readback_nanos": 806500
+              },
+              "lock_wait_ms": 0.0,
+              "preparation": {
+                "merge_nanos": 112167,
+                "prepare_nanos": 968083
+              },
+              "prepare_ms": 1.090042,
+              "readback_bytes": 213048,
+              "repair_capacity_bytes": 0,
+              "repair_veins": 0,
+              "retained_gpu_bytes": 1309168,
+              "total_ms": 2.390292,
+              "upload_bytes": 370848,
+              "veins": 1811
+            },
+            {
+              "apply_ms": 0.338167,
+              "cpu_spheres": 17745,
+              "device_nanos": 290250,
+              "gpu_host_ms": 1.001125,
+              "host": {
+                "copy_nanos": 4625,
+                "upload_encode_nanos": 166291,
+                "wait_readback_nanos": 828792
+              },
+              "lock_wait_ms": 0.0,
+              "preparation": {
+                "merge_nanos": 94500,
+                "prepare_nanos": 966875
+              },
+              "prepare_ms": 1.071875,
+              "readback_bytes": 213048,
+              "repair_capacity_bytes": 0,
+              "repair_veins": 0,
+              "retained_gpu_bytes": 1309168,
+              "total_ms": 2.4111670000000003,
+              "upload_bytes": 370848,
+              "veins": 1811
+            }
+          ],
+          "chunk_x": 0,
+          "chunk_z": 0,
+          "height": 384,
+          "outputs_equal": true,
+          "pairs": 7,
+          "profile": "vanilla",
+          "seeded": [
+            {
+              "apply_ms": 0.369792,
+              "cpu_spheres": 0,
+              "device_nanos": 281334,
+              "gpu_host_ms": 0.8815000000000001,
+              "host": {
+                "copy_nanos": 41584,
+                "upload_encode_nanos": 151875,
+                "wait_readback_nanos": 687208
+              },
+              "lock_wait_ms": 0.0,
+              "preparation": {
+                "merge_nanos": 123000,
+                "prepare_nanos": 478042
+              },
+              "prepare_ms": 0.609708,
+              "readback_bytes": 452536,
+              "repair_capacity_bytes": 15920,
+              "repair_veins": 17,
+              "retained_gpu_bytes": 1309168,
+              "total_ms": 1.861,
+              "upload_bytes": 173856,
+              "veins": 1811
+            },
+            {
+              "apply_ms": 0.33808299999999997,
+              "cpu_spheres": 0,
+              "device_nanos": 522042,
+              "gpu_host_ms": 0.882292,
+              "host": {
+                "copy_nanos": 7292,
+                "upload_encode_nanos": 106708,
+                "wait_readback_nanos": 766417
+              },
+              "lock_wait_ms": 8.3e-05,
+              "preparation": {
+                "merge_nanos": 109708,
+                "prepare_nanos": 551667
+              },
+              "prepare_ms": 0.671709,
+              "readback_bytes": 452536,
+              "repair_capacity_bytes": 15920,
+              "repair_veins": 17,
+              "retained_gpu_bytes": 1309168,
+              "total_ms": 1.892167,
+              "upload_bytes": 173856,
+              "veins": 1811
+            },
+            {
+              "apply_ms": 0.42874999999999996,
+              "cpu_spheres": 0,
+              "device_nanos": 283584,
+              "gpu_host_ms": 0.7863749999999999,
+              "host": {
+                "copy_nanos": 8084,
+                "upload_encode_nanos": 109375,
+                "wait_readback_nanos": 667750
+              },
+              "lock_wait_ms": 4.1e-05,
+              "preparation": {
+                "merge_nanos": 124459,
+                "prepare_nanos": 564750
+              },
+              "prepare_ms": 0.702542,
+              "readback_bytes": 452536,
+              "repair_capacity_bytes": 15920,
+              "repair_veins": 17,
+              "retained_gpu_bytes": 1309168,
+              "total_ms": 1.917708,
+              "upload_bytes": 173856,
+              "veins": 1811
+            },
+            {
+              "apply_ms": 0.357958,
+              "cpu_spheres": 0,
+              "device_nanos": 482792,
+              "gpu_host_ms": 0.8009999999999999,
+              "host": {
+                "copy_nanos": 8333,
+                "upload_encode_nanos": 109709,
+                "wait_readback_nanos": 681708
+              },
+              "lock_wait_ms": 4.2e-05,
+              "preparation": {
+                "merge_nanos": 111291,
+                "prepare_nanos": 546500
+              },
+              "prepare_ms": 0.6683330000000001,
+              "readback_bytes": 452536,
+              "repair_capacity_bytes": 15920,
+              "repair_veins": 17,
+              "retained_gpu_bytes": 1309168,
+              "total_ms": 1.827333,
+              "upload_bytes": 173856,
+              "veins": 1811
+            },
+            {
+              "apply_ms": 0.374541,
+              "cpu_spheres": 0,
+              "device_nanos": 297458,
+              "gpu_host_ms": 0.767875,
+              "host": {
+                "copy_nanos": 8167,
+                "upload_encode_nanos": 121500,
+                "wait_readback_nanos": 636292
+              },
+              "lock_wait_ms": 0.000125,
+              "preparation": {
+                "merge_nanos": 121709,
+                "prepare_nanos": 464041
+              },
+              "prepare_ms": 0.5983339999999999,
+              "readback_bytes": 452536,
+              "repair_capacity_bytes": 15920,
+              "repair_veins": 17,
+              "retained_gpu_bytes": 1309168,
+              "total_ms": 1.740875,
+              "upload_bytes": 173856,
+              "veins": 1811
+            },
+            {
+              "apply_ms": 0.405833,
+              "cpu_spheres": 0,
+              "device_nanos": 459083,
+              "gpu_host_ms": 0.807417,
+              "host": {
+                "copy_nanos": 5916,
+                "upload_encode_nanos": 118833,
+                "wait_readback_nanos": 681584
+              },
+              "lock_wait_ms": 8.3e-05,
+              "preparation": {
+                "merge_nanos": 103291,
+                "prepare_nanos": 513209
+              },
+              "prepare_ms": 0.624333,
+              "readback_bytes": 452536,
+              "repair_capacity_bytes": 15920,
+              "repair_veins": 17,
+              "retained_gpu_bytes": 1309168,
+              "total_ms": 1.837666,
+              "upload_bytes": 173856,
+              "veins": 1811
+            },
+            {
+              "apply_ms": 0.328083,
+              "cpu_spheres": 0,
+              "device_nanos": 280708,
+              "gpu_host_ms": 0.759792,
+              "host": {
+                "copy_nanos": 6458,
+                "upload_encode_nanos": 130041,
+                "wait_readback_nanos": 622334
+              },
+              "lock_wait_ms": 0.0,
+              "preparation": {
+                "merge_nanos": 99667,
+                "prepare_nanos": 490666
+              },
+              "prepare_ms": 0.597167,
+              "readback_bytes": 452536,
+              "repair_capacity_bytes": 15920,
+              "repair_veins": 17,
+              "retained_gpu_bytes": 1309168,
+              "total_ms": 1.6850420000000002,
+              "upload_bytes": 173856,
+              "veins": 1811
+            }
+          ],
+          "side": 4,
+          "warmups": 2,
+          "workers": 2
+        },
+        {
+          "backend": "Metal: Apple M4 Max",
+          "baseline": [
+            {
+              "apply_ms": 1.438,
+              "cpu_spheres": 49936,
+              "device_nanos": 567167,
+              "gpu_host_ms": 1.442667,
+              "host": {
+                "copy_nanos": 10583,
+                "upload_encode_nanos": 301291,
+                "wait_readback_nanos": 1129167
+              },
+              "lock_wait_ms": 4.2e-05,
+              "preparation": {
+                "merge_nanos": 356583,
+                "prepare_nanos": 2705042
+              },
+              "prepare_ms": 3.071833,
+              "readback_bytes": 584088,
+              "repair_capacity_bytes": 0,
+              "repair_veins": 0,
+              "retained_gpu_bytes": 3589744,
+              "total_ms": 5.952542,
+              "upload_bytes": 1052608,
+              "veins": 5284
+            },
+            {
+              "apply_ms": 1.3390419999999998,
+              "cpu_spheres": 49936,
+              "device_nanos": 930584,
+              "gpu_host_ms": 1.338333,
+              "host": {
+                "copy_nanos": 11917,
+                "upload_encode_nanos": 237917,
+                "wait_readback_nanos": 1086500
+              },
+              "lock_wait_ms": 0.000209,
+              "preparation": {
+                "merge_nanos": 326458,
+                "prepare_nanos": 2780958
+              },
+              "prepare_ms": 3.1229579999999997,
+              "readback_bytes": 584088,
+              "repair_capacity_bytes": 0,
+              "repair_veins": 0,
+              "retained_gpu_bytes": 3589744,
+              "total_ms": 5.800542,
+              "upload_bytes": 1052608,
+              "veins": 5284
+            },
+            {
+              "apply_ms": 1.272375,
+              "cpu_spheres": 49936,
+              "device_nanos": 532708,
+              "gpu_host_ms": 1.41275,
+              "host": {
+                "copy_nanos": 11458,
+                "upload_encode_nanos": 255458,
+                "wait_readback_nanos": 1143750
+              },
+              "lock_wait_ms": 4.2e-05,
+              "preparation": {
+                "merge_nanos": 344000,
+                "prepare_nanos": 2777708
+              },
+              "prepare_ms": 3.131333,
+              "readback_bytes": 584088,
+              "repair_capacity_bytes": 0,
+              "repair_veins": 0,
+              "retained_gpu_bytes": 3589744,
+              "total_ms": 5.8165,
+              "upload_bytes": 1052608,
+              "veins": 5284
+            },
+            {
+              "apply_ms": 1.226375,
+              "cpu_spheres": 49936,
+              "device_nanos": 960750,
+              "gpu_host_ms": 1.3567500000000001,
+              "host": {
+                "copy_nanos": 9042,
+                "upload_encode_nanos": 241667,
+                "wait_readback_nanos": 1104833
+              },
+              "lock_wait_ms": 4.2e-05,
+              "preparation": {
+                "merge_nanos": 343916,
+                "prepare_nanos": 2673667
+              },
+              "prepare_ms": 3.026375,
+              "readback_bytes": 584088,
+              "repair_capacity_bytes": 0,
+              "repair_veins": 0,
+              "retained_gpu_bytes": 3589744,
+              "total_ms": 5.609542,
+              "upload_bytes": 1052608,
+              "veins": 5284
+            },
+            {
+              "apply_ms": 1.2463330000000001,
+              "cpu_spheres": 49936,
+              "device_nanos": 540584,
+              "gpu_host_ms": 1.4393340000000001,
+              "host": {
+                "copy_nanos": 10916,
+                "upload_encode_nanos": 298500,
+                "wait_readback_nanos": 1128459
+              },
+              "lock_wait_ms": 4.1e-05,
+              "preparation": {
+                "merge_nanos": 364542,
+                "prepare_nanos": 2859708
+              },
+              "prepare_ms": 3.237084,
+              "readback_bytes": 584088,
+              "repair_capacity_bytes": 0,
+              "repair_veins": 0,
+              "retained_gpu_bytes": 3589744,
+              "total_ms": 5.922791999999999,
+              "upload_bytes": 1052608,
+              "veins": 5284
+            },
+            {
+              "apply_ms": 1.305875,
+              "cpu_spheres": 49936,
+              "device_nanos": 923166,
+              "gpu_host_ms": 1.365584,
+              "host": {
+                "copy_nanos": 11625,
+                "upload_encode_nanos": 239417,
+                "wait_readback_nanos": 1112542
+              },
+              "lock_wait_ms": 0.000125,
+              "preparation": {
+                "merge_nanos": 346667,
+                "prepare_nanos": 2706875
+              },
+              "prepare_ms": 3.0669579999999996,
+              "readback_bytes": 584088,
+              "repair_capacity_bytes": 0,
+              "repair_veins": 0,
+              "retained_gpu_bytes": 3589744,
+              "total_ms": 5.738542,
+              "upload_bytes": 1052608,
+              "veins": 5284
+            },
+            {
+              "apply_ms": 1.2698749999999999,
+              "cpu_spheres": 49936,
+              "device_nanos": 521417,
+              "gpu_host_ms": 1.418583,
+              "host": {
+                "copy_nanos": 11333,
+                "upload_encode_nanos": 249083,
+                "wait_readback_nanos": 1155792
+              },
+              "lock_wait_ms": 8.3e-05,
+              "preparation": {
+                "merge_nanos": 346750,
+                "prepare_nanos": 2662042
+              },
+              "prepare_ms": 3.02275,
+              "readback_bytes": 584088,
+              "repair_capacity_bytes": 0,
+              "repair_veins": 0,
+              "retained_gpu_bytes": 3589744,
+              "total_ms": 5.711291,
+              "upload_bytes": 1052608,
+              "veins": 5284
+            }
+          ],
+          "chunk_x": -33,
+          "chunk_z": -33,
+          "height": 384,
+          "outputs_equal": true,
+          "pairs": 7,
+          "profile": "vanilla",
+          "seeded": [
+            {
+              "apply_ms": 1.487667,
+              "cpu_spheres": 0,
+              "device_nanos": 537709,
+              "gpu_host_ms": 1.623417,
+              "host": {
+                "copy_nanos": 17208,
+                "upload_encode_nanos": 179625,
+                "wait_readback_nanos": 1425209
+              },
+              "lock_wait_ms": 8.3e-05,
+              "preparation": {
+                "merge_nanos": 381542,
+                "prepare_nanos": 1346250
+              },
+              "prepare_ms": 1.738458,
+              "readback_bytes": 1251944,
+              "repair_capacity_bytes": 78640,
+              "repair_veins": 87,
+              "retained_gpu_bytes": 3589744,
+              "total_ms": 4.849625,
+              "upload_bytes": 507264,
+              "veins": 5284
+            },
+            {
+              "apply_ms": 1.391167,
+              "cpu_spheres": 0,
+              "device_nanos": 904458,
+              "gpu_host_ms": 1.751041,
+              "host": {
+                "copy_nanos": 60458,
+                "upload_encode_nanos": 164416,
+                "wait_readback_nanos": 1523959
+              },
+              "lock_wait_ms": 4.2e-05,
+              "preparation": {
+                "merge_nanos": 329750,
+                "prepare_nanos": 1341167
+              },
+              "prepare_ms": 1.684875,
+              "readback_bytes": 1251944,
+              "repair_capacity_bytes": 78640,
+              "repair_veins": 87,
+              "retained_gpu_bytes": 3589744,
+              "total_ms": 4.827125,
+              "upload_bytes": 507264,
+              "veins": 5284
+            },
+            {
+              "apply_ms": 1.506959,
+              "cpu_spheres": 0,
+              "device_nanos": 550209,
+              "gpu_host_ms": 1.687375,
+              "host": {
+                "copy_nanos": 20209,
+                "upload_encode_nanos": 173084,
+                "wait_readback_nanos": 1492166
+              },
+              "lock_wait_ms": 8.3e-05,
+              "preparation": {
+                "merge_nanos": 319541,
+                "prepare_nanos": 1382334
+              },
+              "prepare_ms": 1.714833,
+              "readback_bytes": 1251944,
+              "repair_capacity_bytes": 78640,
+              "repair_veins": 87,
+              "retained_gpu_bytes": 3589744,
+              "total_ms": 4.90925,
+              "upload_bytes": 507264,
+              "veins": 5284
+            },
+            {
+              "apply_ms": 1.383375,
+              "cpu_spheres": 0,
+              "device_nanos": 888959,
+              "gpu_host_ms": 1.722166,
+              "host": {
+                "copy_nanos": 20500,
+                "upload_encode_nanos": 144000,
+                "wait_readback_nanos": 1555959
+              },
+              "lock_wait_ms": 4.2e-05,
+              "preparation": {
+                "merge_nanos": 297750,
+                "prepare_nanos": 1281166
+              },
+              "prepare_ms": 1.597208,
+              "readback_bytes": 1251944,
+              "repair_capacity_bytes": 78640,
+              "repair_veins": 87,
+              "retained_gpu_bytes": 3589744,
+              "total_ms": 4.7027909999999995,
+              "upload_bytes": 507264,
+              "veins": 5284
+            },
+            {
+              "apply_ms": 1.4470830000000001,
+              "cpu_spheres": 0,
+              "device_nanos": 526916,
+              "gpu_host_ms": 1.701667,
+              "host": {
+                "copy_nanos": 21542,
+                "upload_encode_nanos": 199041,
+                "wait_readback_nanos": 1479417
+              },
+              "lock_wait_ms": 0.000125,
+              "preparation": {
+                "merge_nanos": 387292,
+                "prepare_nanos": 1482875
+              },
+              "prepare_ms": 1.887125,
+              "readback_bytes": 1251944,
+              "repair_capacity_bytes": 78640,
+              "repair_veins": 87,
+              "retained_gpu_bytes": 3589744,
+              "total_ms": 5.036,
+              "upload_bytes": 507264,
+              "veins": 5284
+            },
+            {
+              "apply_ms": 1.4525000000000001,
+              "cpu_spheres": 0,
+              "device_nanos": 907833,
+              "gpu_host_ms": 1.764666,
+              "host": {
+                "copy_nanos": 21917,
+                "upload_encode_nanos": 201542,
+                "wait_readback_nanos": 1539708
+              },
+              "lock_wait_ms": 4.2e-05,
+              "preparation": {
+                "merge_nanos": 367750,
+                "prepare_nanos": 1440208
+              },
+              "prepare_ms": 1.82325,
+              "readback_bytes": 1251944,
+              "repair_capacity_bytes": 78640,
+              "repair_veins": 87,
+              "retained_gpu_bytes": 3589744,
+              "total_ms": 5.040458,
+              "upload_bytes": 507264,
+              "veins": 5284
+            },
+            {
+              "apply_ms": 1.510208,
+              "cpu_spheres": 0,
+              "device_nanos": 534500,
+              "gpu_host_ms": 1.655458,
+              "host": {
+                "copy_nanos": 20708,
+                "upload_encode_nanos": 189584,
+                "wait_readback_nanos": 1443458
+              },
+              "lock_wait_ms": 4.2e-05,
+              "preparation": {
+                "merge_nanos": 368500,
+                "prepare_nanos": 1392542
+              },
+              "prepare_ms": 1.77,
+              "readback_bytes": 1251944,
+              "repair_capacity_bytes": 78640,
+              "repair_veins": 87,
+              "retained_gpu_bytes": 3589744,
+              "total_ms": 4.935708,
+              "upload_bytes": 507264,
+              "veins": 5284
+            }
+          ],
+          "side": 8,
+          "warmups": 2,
+          "workers": 2
+        }
+      ]
+    },
+    {
+      "phase": "final_production_path",
+      "profile": "terralith",
+      "raw_log_sha256": "9bc17b79bac2f3028d193a5d695131b55b199bdcd68f25b8ee69279793183830",
+      "reported_process_resources": {
+        "maximum resident set size": 284999680,
+        "peak memory footprint": 9945640
+      },
+      "summary": [
+        {
+          "side": 4,
+          "mode": "baseline",
+          "median_ms": {
+            "total_ms": 1.5639589999999999,
+            "prepare_ms": 0.885417,
+            "gpu_host_ms": 0.537625,
+            "apply_ms": 0.200959
+          },
+          "max_total_ms": 1.684166
+        },
+        {
+          "side": 4,
+          "mode": "seeded",
+          "median_ms": {
+            "total_ms": 1.5098749999999999,
+            "prepare_ms": 0.603667,
+            "gpu_host_ms": 0.6677919999999999,
+            "apply_ms": 0.218666
+          },
+          "max_total_ms": 1.582125
+        },
+        {
+          "side": 8,
+          "mode": "baseline",
+          "median_ms": {
+            "total_ms": 4.523,
+            "prepare_ms": 2.596375,
+            "gpu_host_ms": 1.207958,
+            "apply_ms": 0.752209
+          },
+          "max_total_ms": 4.7206660000000005
+        },
+        {
+          "side": 8,
+          "mode": "seeded",
+          "median_ms": {
+            "total_ms": 4.111083,
+            "prepare_ms": 1.8316249999999998,
+            "gpu_host_ms": 1.522291,
+            "apply_ms": 0.741458
+          },
+          "max_total_ms": 4.153542
+        }
+      ],
+      "cases": [
+        {
+          "backend": "Metal: Apple M4 Max",
+          "baseline": [
+            {
+              "apply_ms": 0.192417,
+              "cpu_spheres": 13702,
+              "device_nanos": 199459,
+              "gpu_host_ms": 0.547875,
+              "host": {
+                "copy_nanos": 2041,
+                "upload_encode_nanos": 135792,
+                "wait_readback_nanos": 409000
+              },
+              "lock_wait_ms": 0.000125,
+              "preparation": {
+                "merge_nanos": 87083,
+                "prepare_nanos": 689334
+              },
+              "prepare_ms": 0.787,
+              "readback_bytes": 88320,
+              "repair_capacity_bytes": 0,
+              "repair_veins": 0,
+              "retained_gpu_bytes": 754480,
+              "total_ms": 1.527417,
+              "upload_bytes": 295168,
+              "veins": 1582
+            },
+            {
+              "apply_ms": 0.216167,
+              "cpu_spheres": 13702,
+              "device_nanos": 376958,
+              "gpu_host_ms": 0.484208,
+              "host": {
+                "copy_nanos": 5250,
+                "upload_encode_nanos": 109250,
+                "wait_readback_nanos": 368541
+              },
+              "lock_wait_ms": 0.0,
+              "preparation": {
+                "merge_nanos": 111917,
+                "prepare_nanos": 796958
+              },
+              "prepare_ms": 0.918542,
+              "readback_bytes": 88320,
+              "repair_capacity_bytes": 0,
+              "repair_veins": 0,
+              "retained_gpu_bytes": 754480,
+              "total_ms": 1.6189170000000002,
+              "upload_bytes": 295168,
+              "veins": 1582
+            },
+            {
+              "apply_ms": 0.198875,
+              "cpu_spheres": 13702,
+              "device_nanos": 207958,
+              "gpu_host_ms": 0.47675,
+              "host": {
+                "copy_nanos": 1916,
+                "upload_encode_nanos": 110750,
+                "wait_readback_nanos": 363167
+              },
+              "lock_wait_ms": 8.3e-05,
+              "preparation": {
+                "merge_nanos": 91875,
+                "prepare_nanos": 705750
+              },
+              "prepare_ms": 0.810542,
+              "readback_bytes": 88320,
+              "repair_capacity_bytes": 0,
+              "repair_veins": 0,
+              "retained_gpu_bytes": 754480,
+              "total_ms": 1.4862499999999998,
+              "upload_bytes": 295168,
+              "veins": 1582
+            },
+            {
+              "apply_ms": 0.21800000000000003,
+              "cpu_spheres": 13702,
+              "device_nanos": 386250,
+              "gpu_host_ms": 0.547875,
+              "host": {
+                "copy_nanos": 4583,
+                "upload_encode_nanos": 148459,
+                "wait_readback_nanos": 393083
+              },
+              "lock_wait_ms": 0.000125,
+              "preparation": {
+                "merge_nanos": 101625,
+                "prepare_nanos": 799625
+              },
+              "prepare_ms": 0.915209,
+              "readback_bytes": 88320,
+              "repair_capacity_bytes": 0,
+              "repair_veins": 0,
+              "retained_gpu_bytes": 754480,
+              "total_ms": 1.681209,
+              "upload_bytes": 295168,
+              "veins": 1582
+            },
+            {
+              "apply_ms": 0.200959,
+              "cpu_spheres": 13702,
+              "device_nanos": 207084,
+              "gpu_host_ms": 0.537625,
+              "host": {
+                "copy_nanos": 2542,
+                "upload_encode_nanos": 154333,
+                "wait_readback_nanos": 379000
+              },
+              "lock_wait_ms": 0.0,
+              "preparation": {
+                "merge_nanos": 93917,
+                "prepare_nanos": 720708
+              },
+              "prepare_ms": 0.8253750000000001,
+              "readback_bytes": 88320,
+              "repair_capacity_bytes": 0,
+              "repair_veins": 0,
+              "retained_gpu_bytes": 754480,
+              "total_ms": 1.5639589999999999,
+              "upload_bytes": 295168,
+              "veins": 1582
+            },
+            {
+              "apply_ms": 0.20491600000000001,
+              "cpu_spheres": 13702,
+              "device_nanos": 417458,
+              "gpu_host_ms": 0.555959,
+              "host": {
+                "copy_nanos": 5083,
+                "upload_encode_nanos": 160125,
+                "wait_readback_nanos": 389042
+              },
+              "lock_wait_ms": 4.1e-05,
+              "preparation": {
+                "merge_nanos": 100375,
+                "prepare_nanos": 812750
+              },
+              "prepare_ms": 0.92325,
+              "readback_bytes": 88320,
+              "repair_capacity_bytes": 0,
+              "repair_veins": 0,
+              "retained_gpu_bytes": 754480,
+              "total_ms": 1.684166,
+              "upload_bytes": 295168,
+              "veins": 1582
+            },
+            {
+              "apply_ms": 0.156417,
+              "cpu_spheres": 13702,
+              "device_nanos": 210750,
+              "gpu_host_ms": 0.5151249999999999,
+              "host": {
+                "copy_nanos": 2708,
+                "upload_encode_nanos": 118209,
+                "wait_readback_nanos": 392250
+              },
+              "lock_wait_ms": 8.3e-05,
+              "preparation": {
+                "merge_nanos": 100375,
+                "prepare_nanos": 774458
+              },
+              "prepare_ms": 0.885417,
+              "readback_bytes": 88320,
+              "repair_capacity_bytes": 0,
+              "repair_veins": 0,
+              "retained_gpu_bytes": 754480,
+              "total_ms": 1.557042,
+              "upload_bytes": 295168,
+              "veins": 1582
+            }
+          ],
+          "chunk_x": 0,
+          "chunk_z": 0,
+          "height": 384,
+          "outputs_equal": true,
+          "pairs": 7,
+          "profile": "terralith",
+          "seeded": [
+            {
+              "apply_ms": 0.219041,
+              "cpu_spheres": 0,
+              "device_nanos": 213292,
+              "gpu_host_ms": 0.687042,
+              "host": {
+                "copy_nanos": 3958,
+                "upload_encode_nanos": 106542,
+                "wait_readback_nanos": 575333
+              },
+              "lock_wait_ms": 0.000125,
+              "preparation": {
+                "merge_nanos": 102125,
+                "prepare_nanos": 486917
+              },
+              "prepare_ms": 0.603667,
+              "readback_bytes": 213032,
+              "repair_capacity_bytes": 2608,
+              "repair_veins": 4,
+              "retained_gpu_bytes": 754480,
+              "total_ms": 1.5098749999999999,
+              "upload_bytes": 151872,
+              "veins": 1582
+            },
+            {
+              "apply_ms": 0.21854200000000001,
+              "cpu_spheres": 0,
+              "device_nanos": 378416,
+              "gpu_host_ms": 0.6881250000000001,
+              "host": {
+                "copy_nanos": 3875,
+                "upload_encode_nanos": 143083,
+                "wait_readback_nanos": 540042
+              },
+              "lock_wait_ms": 4.2e-05,
+              "preparation": {
+                "merge_nanos": 108167,
+                "prepare_nanos": 455417
+              },
+              "prepare_ms": 0.572916,
+              "readback_bytes": 213032,
+              "repair_capacity_bytes": 2608,
+              "repair_veins": 4,
+              "retained_gpu_bytes": 754480,
+              "total_ms": 1.479625,
+              "upload_bytes": 151872,
+              "veins": 1582
+            },
+            {
+              "apply_ms": 0.213792,
+              "cpu_spheres": 0,
+              "device_nanos": 213791,
+              "gpu_host_ms": 0.615333,
+              "host": {
+                "copy_nanos": 3667,
+                "upload_encode_nanos": 74292,
+                "wait_readback_nanos": 536666
+              },
+              "lock_wait_ms": 4.2e-05,
+              "preparation": {
+                "merge_nanos": 108833,
+                "prepare_nanos": 454875
+              },
+              "prepare_ms": 0.571041,
+              "readback_bytes": 213032,
+              "repair_capacity_bytes": 2608,
+              "repair_veins": 4,
+              "retained_gpu_bytes": 754480,
+              "total_ms": 1.4002080000000001,
+              "upload_bytes": 151872,
+              "veins": 1582
+            },
+            {
+              "apply_ms": 0.231916,
+              "cpu_spheres": 0,
+              "device_nanos": 388583,
+              "gpu_host_ms": 0.6677919999999999,
+              "host": {
+                "copy_nanos": 3792,
+                "upload_encode_nanos": 96291,
+                "wait_readback_nanos": 567000
+              },
+              "lock_wait_ms": 4.2e-05,
+              "preparation": {
+                "merge_nanos": 103958,
+                "prepare_nanos": 476584
+              },
+              "prepare_ms": 0.595541,
+              "readback_bytes": 213032,
+              "repair_capacity_bytes": 2608,
+              "repair_veins": 4,
+              "retained_gpu_bytes": 754480,
+              "total_ms": 1.495291,
+              "upload_bytes": 151872,
+              "veins": 1582
+            },
+            {
+              "apply_ms": 0.224875,
+              "cpu_spheres": 0,
+              "device_nanos": 206333,
+              "gpu_host_ms": 0.660375,
+              "host": {
+                "copy_nanos": 3667,
+                "upload_encode_nanos": 106125,
+                "wait_readback_nanos": 549083
+              },
+              "lock_wait_ms": 0.000167,
+              "preparation": {
+                "merge_nanos": 89042,
+                "prepare_nanos": 540208
+              },
+              "prepare_ms": 0.636083,
+              "readback_bytes": 213032,
+              "repair_capacity_bytes": 2608,
+              "repair_veins": 4,
+              "retained_gpu_bytes": 754480,
+              "total_ms": 1.5215,
+              "upload_bytes": 151872,
+              "veins": 1582
+            },
+            {
+              "apply_ms": 0.218666,
+              "cpu_spheres": 0,
+              "device_nanos": 409667,
+              "gpu_host_ms": 0.7345,
+              "host": {
+                "copy_nanos": 4541,
+                "upload_encode_nanos": 128875,
+                "wait_readback_nanos": 599500
+              },
+              "lock_wait_ms": 8.4e-05,
+              "preparation": {
+                "merge_nanos": 105875,
+                "prepare_nanos": 513042
+              },
+              "prepare_ms": 0.628875,
+              "readback_bytes": 213032,
+              "repair_capacity_bytes": 2608,
+              "repair_veins": 4,
+              "retained_gpu_bytes": 754480,
+              "total_ms": 1.582125,
+              "upload_bytes": 151872,
+              "veins": 1582
+            },
+            {
+              "apply_ms": 0.207666,
+              "cpu_spheres": 0,
+              "device_nanos": 204250,
+              "gpu_host_ms": 0.659875,
+              "host": {
+                "copy_nanos": 4667,
+                "upload_encode_nanos": 103542,
+                "wait_readback_nanos": 550208
+              },
+              "lock_wait_ms": 4.2e-05,
+              "preparation": {
+                "merge_nanos": 109792,
+                "prepare_nanos": 539041
+              },
+              "prepare_ms": 0.658375,
+              "readback_bytes": 213032,
+              "repair_capacity_bytes": 2608,
+              "repair_veins": 4,
+              "retained_gpu_bytes": 754480,
+              "total_ms": 1.525958,
+              "upload_bytes": 151872,
+              "veins": 1582
+            }
+          ],
+          "side": 4,
+          "warmups": 2,
+          "workers": 2
+        },
+        {
+          "backend": "Metal: Apple M4 Max",
+          "baseline": [
+            {
+              "apply_ms": 0.7600410000000001,
+              "cpu_spheres": 44485,
+              "device_nanos": 404916,
+              "gpu_host_ms": 1.216,
+              "host": {
+                "copy_nanos": 5500,
+                "upload_encode_nanos": 198750,
+                "wait_readback_nanos": 1009833
+              },
+              "lock_wait_ms": 8.4e-05,
+              "preparation": {
+                "merge_nanos": 341667,
+                "prepare_nanos": 2310500
+              },
+              "prepare_ms": 2.663791,
+              "readback_bytes": 252608,
+              "repair_capacity_bytes": 0,
+              "repair_veins": 0,
+              "retained_gpu_bytes": 2265952,
+              "total_ms": 4.639916,
+              "upload_bytes": 968608,
+              "veins": 5351
+            },
+            {
+              "apply_ms": 0.764292,
+              "cpu_spheres": 44485,
+              "device_nanos": 736166,
+              "gpu_host_ms": 1.153666,
+              "host": {
+                "copy_nanos": 5250,
+                "upload_encode_nanos": 213875,
+                "wait_readback_nanos": 933333
+              },
+              "lock_wait_ms": 8.4e-05,
+              "preparation": {
+                "merge_nanos": 360791,
+                "prepare_nanos": 1999042
+              },
+              "prepare_ms": 2.373291,
+              "readback_bytes": 252608,
+              "repair_capacity_bytes": 0,
+              "repair_veins": 0,
+              "retained_gpu_bytes": 2265952,
+              "total_ms": 4.291333,
+              "upload_bytes": 968608,
+              "veins": 5351
+            },
+            {
+              "apply_ms": 0.752209,
+              "cpu_spheres": 44485,
+              "device_nanos": 410458,
+              "gpu_host_ms": 1.155541,
+              "host": {
+                "copy_nanos": 5875,
+                "upload_encode_nanos": 174041,
+                "wait_readback_nanos": 973334
+              },
+              "lock_wait_ms": 4.2e-05,
+              "preparation": {
+                "merge_nanos": 330542,
+                "prepare_nanos": 2198083
+              },
+              "prepare_ms": 2.539792,
+              "readback_bytes": 252608,
+              "repair_capacity_bytes": 0,
+              "repair_veins": 0,
+              "retained_gpu_bytes": 2265952,
+              "total_ms": 4.447584,
+              "upload_bytes": 968608,
+              "veins": 5351
+            },
+            {
+              "apply_ms": 0.7470410000000001,
+              "cpu_spheres": 44485,
+              "device_nanos": 731791,
+              "gpu_host_ms": 1.1539169999999999,
+              "host": {
+                "copy_nanos": 5000,
+                "upload_encode_nanos": 185541,
+                "wait_readback_nanos": 961625
+              },
+              "lock_wait_ms": 0.000167,
+              "preparation": {
+                "merge_nanos": 376042,
+                "prepare_nanos": 2235916
+              },
+              "prepare_ms": 2.621875,
+              "readback_bytes": 252608,
+              "repair_capacity_bytes": 0,
+              "repair_veins": 0,
+              "retained_gpu_bytes": 2265952,
+              "total_ms": 4.523,
+              "upload_bytes": 968608,
+              "veins": 5351
+            },
+            {
+              "apply_ms": 0.7183750000000001,
+              "cpu_spheres": 44485,
+              "device_nanos": 404292,
+              "gpu_host_ms": 1.292667,
+              "host": {
+                "copy_nanos": 4667,
+                "upload_encode_nanos": 267875,
+                "wait_readback_nanos": 1018500
+              },
+              "lock_wait_ms": 0.00025,
+              "preparation": {
+                "merge_nanos": 324917,
+                "prepare_nanos": 2258792
+              },
+              "prepare_ms": 2.596375,
+              "readback_bytes": 252608,
+              "repair_capacity_bytes": 0,
+              "repair_veins": 0,
+              "retained_gpu_bytes": 2265952,
+              "total_ms": 4.607667,
+              "upload_bytes": 968608,
+              "veins": 5351
+            },
+            {
+              "apply_ms": 0.779334,
+              "cpu_spheres": 44485,
+              "device_nanos": 724834,
+              "gpu_host_ms": 1.207958,
+              "host": {
+                "copy_nanos": 6208,
+                "upload_encode_nanos": 207958,
+                "wait_readback_nanos": 991667
+              },
+              "lock_wait_ms": 0.0,
+              "preparation": {
+                "merge_nanos": 323791,
+                "prepare_nanos": 2169917
+              },
+              "prepare_ms": 2.507792,
+              "readback_bytes": 252608,
+              "repair_capacity_bytes": 0,
+              "repair_veins": 0,
+              "retained_gpu_bytes": 2265952,
+              "total_ms": 4.495084,
+              "upload_bytes": 968608,
+              "veins": 5351
+            },
+            {
+              "apply_ms": 0.7024159999999999,
+              "cpu_spheres": 44485,
+              "device_nanos": 406708,
+              "gpu_host_ms": 1.406167,
+              "host": {
+                "copy_nanos": 4667,
+                "upload_encode_nanos": 267958,
+                "wait_readback_nanos": 1132333
+              },
+              "lock_wait_ms": 4.2e-05,
+              "preparation": {
+                "merge_nanos": 340208,
+                "prepare_nanos": 2262292
+              },
+              "prepare_ms": 2.612041,
+              "readback_bytes": 252608,
+              "repair_capacity_bytes": 0,
+              "repair_veins": 0,
+              "retained_gpu_bytes": 2265952,
+              "total_ms": 4.7206660000000005,
+              "upload_bytes": 968608,
+              "veins": 5351
+            }
+          ],
+          "chunk_x": -33,
+          "chunk_z": -33,
+          "height": 384,
+          "outputs_equal": true,
+          "pairs": 7,
+          "profile": "terralith",
+          "seeded": [
+            {
+              "apply_ms": 0.8272079999999999,
+              "cpu_spheres": 0,
+              "device_nanos": 413917,
+              "gpu_host_ms": 1.510083,
+              "host": {
+                "copy_nanos": 9500,
+                "upload_encode_nanos": 178833,
+                "wait_readback_nanos": 1320375
+              },
+              "lock_wait_ms": 4.2e-05,
+              "preparation": {
+                "merge_nanos": 368625,
+                "prepare_nanos": 1427000
+              },
+              "prepare_ms": 1.809042,
+              "readback_bytes": 632048,
+              "repair_capacity_bytes": 23200,
+              "repair_veins": 32,
+              "retained_gpu_bytes": 2265952,
+              "total_ms": 4.146375,
+              "upload_bytes": 513696,
+              "veins": 5351
+            },
+            {
+              "apply_ms": 0.7625419999999999,
+              "cpu_spheres": 0,
+              "device_nanos": 721791,
+              "gpu_host_ms": 1.528375,
+              "host": {
+                "copy_nanos": 9500,
+                "upload_encode_nanos": 214417,
+                "wait_readback_nanos": 1302666
+              },
+              "lock_wait_ms": 8.3e-05,
+              "preparation": {
+                "merge_nanos": 345125,
+                "prepare_nanos": 1500167
+              },
+              "prepare_ms": 1.862542,
+              "readback_bytes": 632048,
+              "repair_capacity_bytes": 23200,
+              "repair_veins": 32,
+              "retained_gpu_bytes": 2265952,
+              "total_ms": 4.153542,
+              "upload_bytes": 513696,
+              "veins": 5351
+            },
+            {
+              "apply_ms": 0.7357079999999999,
+              "cpu_spheres": 0,
+              "device_nanos": 413250,
+              "gpu_host_ms": 1.581459,
+              "host": {
+                "copy_nanos": 9417,
+                "upload_encode_nanos": 206750,
+                "wait_readback_nanos": 1363875
+              },
+              "lock_wait_ms": 8.3e-05,
+              "preparation": {
+                "merge_nanos": 365875,
+                "prepare_nanos": 1453584
+              },
+              "prepare_ms": 1.8316249999999998,
+              "readback_bytes": 632048,
+              "repair_capacity_bytes": 23200,
+              "repair_veins": 32,
+              "retained_gpu_bytes": 2265952,
+              "total_ms": 4.148874999999999,
+              "upload_bytes": 513696,
+              "veins": 5351
+            },
+            {
+              "apply_ms": 0.741458,
+              "cpu_spheres": 0,
+              "device_nanos": 718458,
+              "gpu_host_ms": 1.4645000000000001,
+              "host": {
+                "copy_nanos": 11750,
+                "upload_encode_nanos": 179750,
+                "wait_readback_nanos": 1271667
+              },
+              "lock_wait_ms": 0.000125,
+              "preparation": {
+                "merge_nanos": 346375,
+                "prepare_nanos": 1472375
+              },
+              "prepare_ms": 1.831709,
+              "readback_bytes": 632048,
+              "repair_capacity_bytes": 23200,
+              "repair_veins": 32,
+              "retained_gpu_bytes": 2265952,
+              "total_ms": 4.0377920000000005,
+              "upload_bytes": 513696,
+              "veins": 5351
+            },
+            {
+              "apply_ms": 0.7207920000000001,
+              "cpu_spheres": 0,
+              "device_nanos": 410250,
+              "gpu_host_ms": 1.522291,
+              "host": {
+                "copy_nanos": 9334,
+                "upload_encode_nanos": 196584,
+                "wait_readback_nanos": 1314791
+              },
+              "lock_wait_ms": 8.4e-05,
+              "preparation": {
+                "merge_nanos": 355709,
+                "prepare_nanos": 1503000
+              },
+              "prepare_ms": 1.8679160000000001,
+              "readback_bytes": 632048,
+              "repair_capacity_bytes": 23200,
+              "repair_veins": 32,
+              "retained_gpu_bytes": 2265952,
+              "total_ms": 4.111083,
+              "upload_bytes": 513696,
+              "veins": 5351
+            },
+            {
+              "apply_ms": 0.7413339999999999,
+              "cpu_spheres": 0,
+              "device_nanos": 734584,
+              "gpu_host_ms": 1.486875,
+              "host": {
+                "copy_nanos": 10250,
+                "upload_encode_nanos": 170584,
+                "wait_readback_nanos": 1304250
+              },
+              "lock_wait_ms": 0.00033299999999999996,
+              "preparation": {
+                "merge_nanos": 335333,
+                "prepare_nanos": 1347417
+              },
+              "prepare_ms": 1.693375,
+              "readback_bytes": 632048,
+              "repair_capacity_bytes": 23200,
+              "repair_veins": 32,
+              "retained_gpu_bytes": 2265952,
+              "total_ms": 3.9219169999999997,
+              "upload_bytes": 513696,
+              "veins": 5351
+            },
+            {
+              "apply_ms": 0.7835420000000001,
+              "cpu_spheres": 0,
+              "device_nanos": 408125,
+              "gpu_host_ms": 1.5230409999999999,
+              "host": {
+                "copy_nanos": 11333,
+                "upload_encode_nanos": 178625,
+                "wait_readback_nanos": 1331584
+              },
+              "lock_wait_ms": 0.000125,
+              "preparation": {
+                "merge_nanos": 343916,
+                "prepare_nanos": 1358125
+              },
+              "prepare_ms": 1.7122089999999999,
+              "readback_bytes": 632048,
+              "repair_capacity_bytes": 23200,
+              "repair_veins": 32,
+              "retained_gpu_bytes": 2265952,
+              "total_ms": 4.018917,
+              "upload_bytes": 513696,
+              "veins": 5351
+            }
+          ],
+          "side": 8,
+          "warmups": 2,
+          "workers": 2
+        }
+      ]
+    }
+  ]
+}
