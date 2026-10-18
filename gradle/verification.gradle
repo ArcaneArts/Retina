@@ -3,8 +3,10 @@ def nativeTarget = rootProject.ext.nativeTarget
 def nativeCargoCommand = rootProject.ext.nativeCargoCommand
 
 def regionPreparationClasses = tasks.register('regionPreparationClasses', JavaCompile) {
-    // Lease ownership is independent of Minecraft and the native generator.
+    // Scheduling and lease ownership are independent of Minecraft and the native generator.
     source file('src/main/java/art/arcane/retina/worldgen/RegionPreparation.java'),
+            file('src/main/java/art/arcane/retina/worldgen/RegionLoadScheduler.java'),
+            file('src/gpuTest/java/art/arcane/retina/worldgen/RegionLoadSchedulerTest.java'),
             file('src/gpuTest/java/art/arcane/retina/worldgen/RegionPreparationTest.java')
     classpath = files()
     destinationDirectory = layout.buildDirectory.dir('region-preparation-test/classes')
@@ -14,7 +16,7 @@ def regionPreparationClasses = tasks.register('regionPreparationClasses', JavaCo
 
 tasks.register('regionPreparationTest', JavaExec) {
     group = 'verification'
-    description = 'Check prefetched region lease release, skipped waits, failures and concurrent shutdown.'
+    description = 'Check bounded asynchronous region reads, lease ownership, failures and concurrent shutdown.'
     dependsOn regionPreparationClasses
     classpath = files(regionPreparationClasses.flatMap { it.destinationDirectory })
     mainClass = 'art.arcane.retina.worldgen.RegionPreparationTest'
