@@ -3,8 +3,9 @@
 Chunky Fabric 1.5.3 checks chunk status, then requests chunks through Minecraft at
 `FULL` status. Retina supplies MCA terrain, while Chunky still owns tickets,
 loading, remaining generation stages and completion events. Its chunks/second
-therefore differs from F3's native terrain production rate. MCA records retain
-their actual generation/lighting status; they are not falsely marked FULL.
+therefore differs from F3's native terrain production rate, measured over a
+ten-second wall-clock window (elapsed observation time during startup). MCA records
+retain their actual generation/lighting status; they are not falsely marked FULL.
 
 ## Generate the selection ahead
 
@@ -34,10 +35,10 @@ or stop, separately from Chunky's FULL-chunk progress.
 ## Concurrency and save ownership
 
 The shared Java preparation pool has eight threads. A global region budget allows
-up to eight native region generations while bulk tasks are active, and two
-otherwise; it covers both temporary generation and direct save repair. Pausing
-does not cancel native work midway through a file: the bulk lease is released
-when admitted jobs drain. Multiple worlds/tasks share this budget. Rust's existing
+up to eight native region generations at all times, covering ordinary loads, DH
+temporary generation, direct save repair and Chunky. Pausing Chunky stops its new
+admissions while admitted jobs drain; it does not reduce the shared limit.
+Multiple worlds/tasks share this fair budget. Rust's existing
 shared assembly pool and GPU submission slots are reused, not multiplied eight
 fold. More overlap does not imply eight times the throughput.
 
@@ -70,7 +71,8 @@ still limit Chunky's own displayed rate after terrain is already on disk.
 - `:common:regionPreparationTest` covers bounded scheduling, ready-first reads,
   deduplication, cancellation, failures and late cleanup. The new pump fixture
   verifies eight immediate admissions, independent refill, pause/drain, failure,
-  10,000 already-completed requests without recursion, and bulk/ordinary budgets.
+  10,000 already-completed requests without recursion, and the always-on
+  eight-region budget (including blocking a ninth job and idempotent release).
 - Actual `Chunky-Fabric-1.5.3.jar` tests compare the region sequence against its
   own chunk iteration for six shapes, negative coordinates, boundary crossings
   and resumed offsets. They also load the actual GenerationTask mixin.

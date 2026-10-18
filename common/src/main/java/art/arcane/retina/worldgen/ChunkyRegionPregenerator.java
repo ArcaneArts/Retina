@@ -17,22 +17,18 @@ public final class ChunkyRegionPregenerator {
             if (!(selection.world instanceof ServerLevel level)
                     || !(level.getChunkSource().chunkScanner() instanceof RegionIoBridge io)
                     || !io.retina$regionMode()) return () -> {};
-            var release = RegionGenerationBudget.SHARED.bulk();
-            try {
-                var pump = new RegionAheadPump(DISPATCHER, RegionGenerationBudget.BULK_LIMIT, selection::regions,
-                        key -> io.retina$generateAhead(new ChunkPos(((int) key) << 5, ((int) (key >> 32)) << 5)), result -> {
-                            release.run();
-                            if (result.failure() != null) Retina.LOGGER.warn(
-                                    "Retina Chunky region pre-generation stopped after {} regions; ordinary chunk loading remains active",
-                                    result.completed(), result.failure());
-                            else Retina.LOGGER.info("Retina Chunky region pre-generation {}: {} region requests published",
-                                    result.stopped() ? "stopped" : "complete", result.completed());
-                        });
-                pump.start();
-                Retina.LOGGER.info("Retina is generating Chunky's selection ahead to MCA: up to {} regions in flight",
-                        RegionGenerationBudget.BULK_LIMIT);
-                return pump;
-            } catch (Throwable error) { release.run(); throw error; }
+            var pump = new RegionAheadPump(DISPATCHER, RegionGenerationBudget.LIMIT, selection::regions,
+                    key -> io.retina$generateAhead(new ChunkPos(((int) key) << 5, ((int) (key >> 32)) << 5)), result -> {
+                        if (result.failure() != null) Retina.LOGGER.warn(
+                                "Retina Chunky region pre-generation stopped after {} regions; ordinary chunk loading remains active",
+                                result.completed(), result.failure());
+                        else Retina.LOGGER.info("Retina Chunky region pre-generation {}: {} region requests published",
+                                result.stopped() ? "stopped" : "complete", result.completed());
+                    });
+            pump.start();
+            Retina.LOGGER.info("Retina is generating Chunky's selection ahead to MCA: up to {} regions in flight",
+                    RegionGenerationBudget.LIMIT);
+            return pump;
         } catch (Exception error) {
             Retina.LOGGER.warn("Could not start Retina's optional Chunky region pre-generation", error);
             return () -> {};

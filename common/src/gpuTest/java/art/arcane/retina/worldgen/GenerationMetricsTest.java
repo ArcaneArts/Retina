@@ -7,7 +7,9 @@ import static art.arcane.retina.worldgen.NativeTimings.*;
 public final class GenerationMetricsTest {
     public static void main(String[] args) { run(); }
     static void run() {
-        var metrics = new GenerationMetrics();
+        var initialClock = new java.util.concurrent.atomic.AtomicLong();
+        var metrics = new GenerationMetrics(initialClock::get);
+        initialClock.set(1_000_000_000L);
         metrics.begin();
         metrics.completedRegion(1024, 1_000_000, stages(1_000_000));
         var first = metrics.snapshot();
@@ -24,7 +26,7 @@ public final class GenerationMetricsTest {
         close(window.averageRegionMs(), 16.5, "rolling average drops six oldest regions");
         close(window.p95RegionMs(), 25, "p95 uses the same rolling region window");
         close(window.msPerChunk(), 16.5 / 1024, "amortized time uses the region window");
-        close(window.chunksPerSecond(), 1024 * 1000 / 16.5, "rate uses the same region average");
+        close(window.chunksPerSecond(), 26 * 1024, "throughput uses all completions in the wall window");
         close(window.regionStagePercent(NBT), 25, "worker share uses average region time");
         close(window.columnCacheMs(), .85, "cache writes use the same rolling window");
         close(window.columnCachePercent(), 100*.85/16.5, "column cache shares region latency");
@@ -33,16 +35,17 @@ public final class GenerationMetricsTest {
         var unchanged = metrics.snapshot();
         close(unchanged.averageRegionMs(), 16.5, "promotion and existing saves do not skew generation speed");
         require(unchanged.regionSamples() == 20 && unchanged.inFlight() == 0 && unchanged.total() == 26 * 1024, "cached terrain is not counted twice");
-        var partial = new GenerationMetrics();
+        var partial = new GenerationMetrics(initialClock::get);
+        initialClock.addAndGet(1_000_000_000L);
         partial.begin(); partial.completedRegion(1024, 1_000_000);
         partial.begin(); partial.completedRegion(1, 3_000_000);
         close(partial.snapshot().averageRegionMs(), 2, "partial regions are valid latency samples");
-        close(partial.snapshot().chunksPerSecond(), 1025 / .004, "partial regions use actual chunk counts");
+        close(partial.snapshot().chunksPerSecond(), 1025, "partial regions use actual chunk counts per wall second");
         close(partial.snapshot().msPerChunk(), 4.0 / 1025, "weighted partial-region amortization");
 
         var lines = TerrainDebugReport.lines(new TerrainStatsPayload(true, "Metal test", "mca", window));
         require(lines.stream().anyMatch(s -> s.contains("Region latency:") && s.contains("16.50 ms mean") && s.contains("25.00 ms p95") && s.contains("20")), "display reports rolling mean, p95 and sample count");
-        require(lines.stream().anyMatch(s -> s.contains("Lit MCA production:") && s.contains("chunks/s")), "display labels the measured throughput scope");
+        require(lines.stream().anyMatch(s -> s.contains("Completed terrain:") && s.contains("chunks/s")), "display labels the measured throughput scope");
         require(lines.stream().anyMatch(s -> s.contains("Promotions:") && s.contains("not production rate")), "display does not conflate promotion with generation");
         require(lines.stream().anyMatch(s -> s.contains("NBT encoding") && s.contains("§6~25.0%")), "NBT share is colored and marked as an estimate");
         require(lines.stream().anyMatch(s -> s.contains("Material layers") && s.startsWith("§d")), "GPU material timing has a dedicated category");
@@ -88,7 +91,7 @@ public final class GenerationMetricsTest {
         metrics.completedRegion(1024,1_000_000_000L);
         metrics.completedPreviewRegion(1024,1_000_000_000L,NativeTimings.EMPTY);
         var overlap = metrics.snapshot();
-        close(overlap.chunksPerSecond(),1024,"overlap preserves latency-derived rate");
+        close(overlap.chunksPerSecond(),2048,"public throughput includes overlapping completions");
         close(overlap.completedChunksPerSecond(),2048,"both completed regions count against one wall second");
         close(overlap.completionWindowSeconds(),1,"startup exposes actual observation duration");
         close(overlap.averageRegionMs(),1000,"overlap does not halve request latency");
@@ -101,19 +104,27 @@ public final class GenerationMetricsTest {
         metrics.begin(); metrics.completedRegion(1,500_000_000L);
         close(metrics.snapshot().completedChunksPerSecond(),2049.0/2,"partial repairs count only their generated chunks");
         clock.addAndGet(4_000_000_000L);
-        close(metrics.snapshot().completedChunksPerSecond(),2049.0/5,"completion at exact window boundary remains included");
-        close(metrics.snapshot().completionWindowSeconds(),5,"wall observation is capped at five seconds");
+        close(metrics.snapshot().completedChunksPerSecond(),2049.0/6,"completions older than five seconds remain in the ten-second window");
+        clock.addAndGet(5_000_000_000L);
+        close(metrics.snapshot().completedChunksPerSecond(),2049.0/10,"completion at exact window boundary remains included");
+        close(metrics.snapshot().completionWindowSeconds(),10,"wall observation is capped at ten seconds");
+        var fullWindow = metrics.snapshot();
         clock.incrementAndGet();
-        close(metrics.snapshot().completedChunksPerSecond(),.2,"old completions expire by wall time");
+        close(metrics.snapshot().completedChunksPerSecond(),.1,"old completions expire by wall time");
         clock.addAndGet(1_000_000_000L);
         var idle = metrics.snapshot();
         close(idle.completedChunksPerSecond(),0,"idle production rate reaches zero");
-        close(idle.chunksPerSecond(),2049/2.5,"idle retains the last twenty latency samples");
+        close(idle.chunksPerSecond(),0,"all throughput fields decay to zero when idle");
+        close(idle.averageRegionMs(),2500.0/3,"idle retains the last twenty latency samples");
         require(idle.inFlight()==0 && idle.total()==2049 && idle.failures()==1,"completion accounting stays balanced");
         var lines=TerrainDebugReport.lines(new TerrainStatsPayload(true,"test","mca",overlap));
         require(lines.stream().anyMatch(s->s.contains("Completed terrain: §a2048.0 chunks/s") && s.contains("1.0s wall window")),"completion throughput has its own colored wall-time label");
-        require(lines.stream().anyMatch(s->s.contains("1024.0 chunks/s") && s.contains("from region latency")),"latency rate remains separately visible");
+        require(lines.stream().filter(s->s.contains("chunks/s")).count()==1,"only the wall-time throughput is displayed");
+        require(lines.stream().noneMatch(s->s.contains("from region latency") || s.contains("Amortized chunk")),"latency-derived chunk figures are removed");
+        require(TerrainDebugReport.lines(new TerrainStatsPayload(true,"test","mca",fullWindow)).stream()
+                .anyMatch(s->s.contains("204.9 chunks/s") && s.contains("10.0s wall window")),"steady state shows the ten-second window");
         packetRoundTrip(overlap);
+        packetRoundTrip(fullWindow);
         packetRoundTrip(idle);
         var chunk = new GenerationMetrics(clock::get);
         chunk.begin(); clock.addAndGet(1_000_000_000L); chunk.completed(5,3,2);
