@@ -56,12 +56,16 @@ impl Queue {
             .iter()
             .chain(self.resumed.iter().map(|v| &v.0))
             .chain(self.retry.iter());
+        let mut seen = std::collections::HashSet::new();
         (self.ready.capacity() + self.resumed.capacity()) * std::mem::size_of::<Candidate>()
             + candidates
                 .map(|c| {
-                    c.order.capacity() * std::mem::size_of::<usize>()
-                        + c.actions.capacity() * std::mem::size_of::<Action>()
-                        + 64
+                    order_heap_bytes(&c.order)
+                        + if seen.insert(c.draws.as_ptr()) {
+                            c.draws.len() * std::mem::size_of::<[i32; 3]>() + 32
+                        } else {
+                            0
+                        }
                 })
                 .sum::<usize>()
     }
@@ -130,7 +134,8 @@ impl Queue {
                     continue;
                 };
                 candidate.origin = at;
-                candidate.actions.clear();
+                candidate.draws = Arc::from([]);
+                candidate.evaluation = 0..0;
                 state.resolved = true;
             }
             let program = recipe.placement.as_ref().unwrap();
@@ -140,11 +145,7 @@ impl Queue {
             let retry = checkpoint
                 .as_ref()
                 .filter(|c| {
-                    c.is_none()
-                        && counts.is_some()
-                        && program[state.index + 1..]
-                            .iter()
-                            .any(|op| op.noise_rule().is_some())
+                    c.is_none() && counts.is_some() && program.has_noise_from(state.index + 1)
                 })
                 .map(|_| {
                     let mut retry = candidate.clone();
@@ -193,7 +194,6 @@ impl Queue {
                     Some(&mut children),
                     queries,
                     state.index + 1,
-                    Vec::new(),
                     candidate.order.clone(),
                 );
                 if queries.len() != before {
@@ -310,10 +310,11 @@ mod tests {
         let candidate = |seed| Candidate {
             recipe: 0,
             group: 0,
-            order: Vec::new(),
+            order: Order::new(),
             seed,
             origin: [0, 0, 0],
-            actions: Vec::new(),
+            draws: Arc::from([]),
+            evaluation: 0..0,
             layer: None,
         };
         let mut queue = Queue::new(vec![candidate(1), candidate(2)]);

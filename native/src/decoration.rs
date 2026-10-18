@@ -70,7 +70,7 @@ pub struct Recipe {
     #[serde(default)]
     pub placement_salt: Option<i64>,
     #[serde(default)]
-    pub placement: Option<Vec<placement::Modifier>>,
+    pub placement: Option<placement::Program>,
     #[serde(flatten)]
     pub feature: Kind,
 }
@@ -845,7 +845,7 @@ pub(crate) fn count_queries(
                 let Some(program) = &recipe.placement else {
                     continue;
                 };
-                if !program.iter().any(|op| op.noise_rule().is_some()) {
+                if !program.has_noise_from(0) {
                     continue;
                 }
                 let salt = recipe.placement_salt.unwrap_or(recipe.salt) as u64;
@@ -1048,11 +1048,11 @@ impl Anchor {
             + self.candidates.retained_bytes()
             + self.overlay.retained_bytes()
             + self.evaluation_cache.capacity()
-                * (std::mem::size_of::<((u32, usize, Vec<usize>), Option<[i32; 3]>)>() + 16)
+                * (std::mem::size_of::<((u32, usize, placement::Order), Option<[i32; 3]>)>() + 16)
             + self
                 .evaluation_cache
                 .keys()
-                .map(|key| key.2.capacity() * std::mem::size_of::<usize>() + 32)
+                .map(|key| placement::order_heap_bytes(&key.2))
                 .sum::<usize>()
     }
 }
