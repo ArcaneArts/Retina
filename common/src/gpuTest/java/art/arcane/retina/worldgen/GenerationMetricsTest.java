@@ -75,7 +75,51 @@ public final class GenerationMetricsTest {
         require(mixed.stream().anyMatch(s->s.contains("GPU programs:") && s.contains("mixed (terrain interpreter)")),"F3 reports mixed GPU stage selection");
         require(empty.stream().noneMatch(s -> s.contains("NaN") || s.contains("Infinity")), "empty window formats finite values");
         packetRoundTrip(window);
+        completedThroughput();
         System.out.println("QA_EVT {\"event\":\"rolling_region_metrics_and_f3_format\",\"status\":\"pass\"}");
+    }
+
+    private static void completedThroughput() {
+        var clock = new java.util.concurrent.atomic.AtomicLong(-9_000_000_000L);
+        var metrics = new GenerationMetrics(clock::get);
+        close(metrics.snapshot().completedChunksPerSecond(),0,"empty completion window is finite");
+        metrics.begin(); metrics.begin();
+        clock.addAndGet(1_000_000_000L);
+        metrics.completedRegion(1024,1_000_000_000L);
+        metrics.completedPreviewRegion(1024,1_000_000_000L,NativeTimings.EMPTY);
+        var overlap = metrics.snapshot();
+        close(overlap.chunksPerSecond(),1024,"overlap preserves latency-derived rate");
+        close(overlap.completedChunksPerSecond(),2048,"both completed regions count against one wall second");
+        close(overlap.completionWindowSeconds(),1,"startup exposes actual observation duration");
+        close(overlap.averageRegionMs(),1000,"overlap does not halve request latency");
+        metrics.begin(); metrics.completedPromotion(1);
+        metrics.previewCacheHit();
+        metrics.begin(); metrics.completedRegion(0,1);
+        metrics.begin(); metrics.failed();
+        close(metrics.snapshot().completedChunksPerSecond(),2048,"promotion, hits, failures and existing slots do not count as generation");
+        clock.addAndGet(1_000_000_000L);
+        metrics.begin(); metrics.completedRegion(1,500_000_000L);
+        close(metrics.snapshot().completedChunksPerSecond(),2049.0/2,"partial repairs count only their generated chunks");
+        clock.addAndGet(4_000_000_000L);
+        close(metrics.snapshot().completedChunksPerSecond(),2049.0/5,"completion at exact window boundary remains included");
+        close(metrics.snapshot().completionWindowSeconds(),5,"wall observation is capped at five seconds");
+        clock.incrementAndGet();
+        close(metrics.snapshot().completedChunksPerSecond(),.2,"old completions expire by wall time");
+        clock.addAndGet(1_000_000_000L);
+        var idle = metrics.snapshot();
+        close(idle.completedChunksPerSecond(),0,"idle production rate reaches zero");
+        close(idle.chunksPerSecond(),2049/2.5,"idle retains the last twenty latency samples");
+        require(idle.inFlight()==0 && idle.total()==2049 && idle.failures()==1,"completion accounting stays balanced");
+        var lines=TerrainDebugReport.lines(new TerrainStatsPayload(true,"test","mca",overlap));
+        require(lines.stream().anyMatch(s->s.contains("Completed terrain: §a2048.0 chunks/s") && s.contains("1.0s wall window")),"completion throughput has its own colored wall-time label");
+        require(lines.stream().anyMatch(s->s.contains("1024.0 chunks/s") && s.contains("from region latency")),"latency rate remains separately visible");
+        packetRoundTrip(overlap);
+        packetRoundTrip(idle);
+        var chunk = new GenerationMetrics(clock::get);
+        chunk.begin(); clock.addAndGet(1_000_000_000L); chunk.completed(5,3,2);
+        close(chunk.snapshot().chunksPerSecond(),1,"existing chunk-mode window is preserved");
+        require(TerrainDebugReport.lines(new TerrainStatsPayload(true,"test","chunk",chunk.snapshot())).stream()
+                .noneMatch(s->s.contains("Completed terrain:")),"chunk mode does not duplicate its existing completion row");
     }
 
     private static void packetRoundTrip(GenerationMetrics.Snapshot snapshot) {
@@ -89,6 +133,8 @@ public final class GenerationMetricsTest {
                 require(decoded.mode().equals(candidate.mode()),"mode survives packet round trip");
                 require(decoded.stats().regionSamples()==candidate.stats().regionSamples(),"rolling region count survives transport");
                 close(decoded.stats().averageRegionMs(),candidate.stats().averageRegionMs(),"region latency survives transport");
+                close(decoded.stats().completedChunksPerSecond(),candidate.stats().completedChunksPerSecond(),"aggregate completions survive transport");
+                close(decoded.stats().completionWindowSeconds(),candidate.stats().completionWindowSeconds(),"wall window survives transport");
                 require(decoded.diagnostics().equals(candidate.diagnostics()) && !buffer.isReadable(),"packet preserves GPU diagnostics and consumes schema");
                 require(TerrainDebugReport.lines(decoded).equals(TerrainDebugReport.lines(candidate)),"client decodes the exact same timing display");
                 require(TerrainDebugReport.lines(decoded).getFirst().equals("§b§lRetina§r"),"F3 uses the unified generator name");

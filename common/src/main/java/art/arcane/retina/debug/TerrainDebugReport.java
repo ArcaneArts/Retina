@@ -20,6 +20,7 @@ public final class TerrainDebugReport {
         lines.add("§b§lRetina"+RESET);
         if(mca)lines.add(LABEL+"Region latency: "+DATA+format("%.2f ms mean",stats.averageRegionMs())+LABEL+" / "+DATA+format("%.2f ms p95",stats.p95RegionMs())+LABEL+" (last "+DATA+stats.regionSamples()+LABEL+" / 20)");
         lines.add(LABEL+(mca?"Lit MCA production: §a":"Chunk-mode completion: §a")+format("%.1f chunks/s",stats.chunksPerSecond())+(mca?LABEL+" from region latency":LABEL+" (5s)"));
+        if(mca)lines.add(LABEL+"Completed terrain: §a"+format("%.1f chunks/s",stats.completedChunksPerSecond())+LABEL+format(" (%.1fs wall window)",stats.completionWindowSeconds()));
         lines.add(LABEL+(mca?"Amortized chunk: ":"Chunk time: ")+DATA+format("%.3f ms",stats.msPerChunk()));
         lines.add(LABEL+"Regions: §a"+stats.regions()+LABEL+"   In flight: §e"+stats.inFlight());
         lines.add(LABEL+"Temporary regions: §a"+stats.previewRegions()+LABEL+"   Hits: §a"+stats.previewCacheHits()+LABEL+"   Promotions: §a"+stats.promotions()+LABEL+" (publication count, not production rate)");
