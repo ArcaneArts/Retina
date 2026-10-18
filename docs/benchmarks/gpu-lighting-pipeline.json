@@ -1,0 +1,54 @@
+{
+  "date": "2026-10-17",
+  "hardware": "Apple M4 Max / Metal",
+  "scope": "Three retained 12x12 chunk tiles, height 384, core 10x10; one warmup pair and five alternating measured pairs; dev opt-level=1 test harness; no generation benchmark",
+  "sequential_ms": [
+    19.28925,
+    19.48,
+    19.360708000000002,
+    19.710375,
+    19.654
+  ],
+  "depth_two_ms": [
+    13.500458,
+    13.329583000000001,
+    12.830375,
+    13.540083,
+    13.228541
+  ],
+  "sequential_median_ms": 19.48,
+  "depth_two_median_ms": 13.329583000000001,
+  "median_reduction_percent": 31.572982546201224,
+  "sequential_p95_nearest_rank_ms": 19.710375,
+  "depth_two_p95_nearest_rank_ms": 13.540083,
+  "p95_caveat": "Only five samples; these are sample maxima, not a stable tail-latency estimate.",
+  "maximum_rss_bytes": 307331072,
+  "peak_process_footprint_bytes": 538772488,
+  "memory_caveat": "Whole four-test process, including retained reference outputs; no paired memory comparison.",
+  "all_lighting_bytes_equal": true,
+  "fixtures": [
+    {
+      "name": "region-0.json",
+      "profile_sha256": "d58f29122575a2405b8b320d1dcc381b7a55e0d81e167a5a8fdf6d75a7b9212c",
+      "blocks_sha256": "8c1e7fbb8093d75b3da2bdd9fd40d2f6fc085cfab4249f3a9b0fb59b066910a8"
+    },
+    {
+      "name": "region-10.json",
+      "profile_sha256": "55adb4a72b60ed4b4d6ba5c3649b5e97da9e2e97152e4ac54e496b251a8c13f7",
+      "blocks_sha256": "d937362857f88bddcd02559210d793d33595708d54e3e1cf93295e01f4c4039e"
+    },
+    {
+      "name": "region-20.json",
+      "profile_sha256": "ee85c0418b57fbdd65a5fd11f6127c6840dc685822f67c9ec37f8a95b83b1866",
+      "blocks_sha256": "babf43ddbc11c8bd85638137624d86d1c42ac1923ba6de8f0fccbdc00e15fd19"
+    }
+  ],
+  "mca_correctness": {
+    "fresh_records_equal": 1024,
+    "repair_records_equal": 1024,
+    "existing_records_preserved": 1023,
+    "unchanged_region_noop": true,
+    "reference_sha256": "2a75413ef69dbcc5c3e91b568982d76d92f92e10c3cfddbaf7663cdc487fadfd",
+    "candidate_sha256": "0fa220547bc33b07c353aa635a224702ff63e17047199b080e9414ae338633ff"
+  }
+}
