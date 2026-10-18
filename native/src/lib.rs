@@ -358,7 +358,54 @@ impl TerrainEngine {
         mask: Option<&geology::CaveMask>,
         job: Option<&timings::Timings>,
     ) -> Result<Vec<Vec<decoration::Placement>>, String> {
+        self.plan_decorations_measured(field, profile, request, side, mask, job, None)
+    }
+    /// Bounded diagnostic callers can inspect planner phases without changing
+    /// the production timing ABI or paying per-tree clock reads in normal play.
+    pub fn plan_decorations_detailed(
+        &self,
+        field: &decoration::Field,
+        profile: &WorldProfile,
+        request: ChunkRequest,
+        side: usize,
+        mask: Option<&geology::CaveMask>,
+    ) -> Result<
+        (
+            Vec<Vec<decoration::Placement>>,
+            decoration::diagnostics::Planning,
+        ),
+        String,
+    > {
+        let mut details = decoration::diagnostics::Planning::default();
+        let result = self.plan_decorations_measured(
+            field,
+            profile,
+            request,
+            side,
+            mask,
+            None,
+            Some(&mut details),
+        )?;
+        Ok((result, details))
+    }
+    fn plan_decorations_measured(
+        &self,
+        field: &decoration::Field,
+        profile: &WorldProfile,
+        request: ChunkRequest,
+        side: usize,
+        mask: Option<&geology::CaveMask>,
+        job: Option<&timings::Timings>,
+        mut details: Option<&mut decoration::diagnostics::Planning>,
+    ) -> Result<Vec<Vec<decoration::Placement>>, String> {
+        use decoration::diagnostics::{record, start};
+        let measuring = details.is_some();
+        let anchor_start = start(measuring);
         let anchors = decoration::anchor_recipes(field, profile);
+        record(
+            anchor_start,
+            details.as_mut().map(|d| &mut d.anchors_wall_nanos),
+        );
         let mut counts = decoration::counts::Counts::default();
         if profile.decoration_noise.is_some()
             && profile.decorations.iter().any(|r| {
@@ -368,12 +415,25 @@ impl TerrainEngine {
             })
         {
             loop {
+                let expansion = start(measuring);
                 let queries = decoration::count_queries(field, profile, request, &counts, &anchors);
+                record(
+                    expansion,
+                    details.as_mut().map(|d| &mut d.count_expansion_wall_nanos),
+                );
                 if queries.is_empty() {
                     break;
                 }
+                let sampling = start(measuring);
                 let values = self.feature_counts(profile, request, &queries, job)?;
+                if let Some(d) = details.as_mut() {
+                    d.count_queries += queries.len() as u64;
+                }
                 counts.extend(queries.into_iter().zip(values));
+                record(
+                    sampling,
+                    details.as_mut().map(|d| &mut d.sampling_wall_nanos),
+                );
             }
         }
         let mut replay = decoration::Replay::new(
@@ -388,9 +448,29 @@ impl TerrainEngine {
         );
         let mut samples = decoration::provider_noise::Samples::default();
         loop {
-            let queries = replay.poll(&samples, profile.decoration_noise.as_ref().map(|_| &counts));
+            let replay_start = start(measuring);
+            let queries = replay.poll_measured(
+                &samples,
+                profile.decoration_noise.as_ref().map(|_| &counts),
+                details.as_deref_mut(),
+            );
+            record(
+                replay_start,
+                details.as_mut().map(|d| &mut d.replay_wall_nanos),
+            );
             if queries.is_empty() {
-                return Ok(replay.finish());
+                let merge_start = start(measuring);
+                let result = replay.finish();
+                record(
+                    merge_start,
+                    details.as_mut().map(|d| &mut d.distribution_wall_nanos),
+                );
+                return Ok(result);
+            }
+            let sampling = start(measuring);
+            if let Some(d) = details.as_mut() {
+                d.count_queries += queries.counts.len() as u64;
+                d.noise_queries += queries.noise.len() as u64;
             }
             if !queries.counts.is_empty() {
                 let values = self.feature_counts(profile, request, &queries.counts, job)?;
@@ -400,6 +480,10 @@ impl TerrainEngine {
                 let values = self.provider_noise(request, &queries.noise, job)?;
                 samples.extend(queries.noise.into_iter().zip(values));
             }
+            record(
+                sampling,
+                details.as_mut().map(|d| &mut d.sampling_wall_nanos),
+            );
         }
     }
 
