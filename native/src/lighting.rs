@@ -1,8 +1,7 @@
 //! Final-block GPU lighting. The outer MCA ring is input only, never marked lit.
 use serde::Deserialize;
 use std::{
-    collections::HashMap,
-    sync::mpsc,
+    collections::{HashMap, VecDeque},
     time::{Duration, Instant},
 };
 use wgpu::util::DeviceExt;
@@ -34,7 +33,7 @@ pub(crate) struct Gpu {
     device: wgpu::Device,
     queue: wgpu::Queue,
     pipelines: Option<Pipelines>,
-    timing: Option<Timing>,
+    readbacks: Vec<Readback>,
     profiles: HashMap<u32, (wgpu::Buffer, wgpu::Buffer)>,
     bind_groups: HashMap<u32, (wgpu::BindGroup, wgpu::BindGroup)>,
     buffers: Option<Buffers>,
@@ -59,11 +58,66 @@ struct Buffers {
     a: wgpu::Buffer,
     b: wgpu::Buffer,
     output: wgpu::Buffer,
-    readback: wgpu::Buffer,
     work: wgpu::Buffer,
     active: wgpu::Buffer,
     indirect: wgpu::Buffer,
     capacities: [u64; 4],
+}
+struct Readback {
+    buffer: wgpu::Buffer,
+    timing: Option<Timing>,
+}
+struct Pending {
+    slot: Readback,
+    submission: wgpu::SubmissionIndex,
+    mapping: crate::gpu::Mapping,
+    timing_map: Option<crate::gpu::Mapping>,
+    size: u64,
+    upload: u64,
+}
+impl Pending {
+    fn finish(
+        &mut self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+    ) -> Result<ResultLight, String> {
+        device
+            .poll(wgpu::PollType::Wait {
+                submission_index: Some(self.submission.clone()),
+                timeout: Some(Duration::from_secs(60)),
+            })
+            .map_err(|e| format!("lighting GPU poll: {e}"))?;
+        self.mapping.check()?;
+        if let Some(mapping) = &mut self.timing_map {
+            mapping.check()?;
+        }
+        let bytes = self
+            .slot
+            .buffer
+            .slice(..self.size)
+            .get_mapped_range()
+            .map_err(|e| e.to_string())?
+            .to_vec();
+        let device_nanos = if let Some(t) = &self.slot.timing {
+            let data = t
+                .readback
+                .slice(..)
+                .get_mapped_range()
+                .map_err(|e| e.to_string())?;
+            let ticks: &[u64] = bytemuck::cast_slice(&data);
+            Some(std::array::from_fn(|i| {
+                (ticks[i * 2 + 1].saturating_sub(ticks[i * 2]) as f64
+                    * queue.get_timestamp_period() as f64) as u64
+            }))
+        } else {
+            None
+        };
+        Ok(ResultLight {
+            bytes,
+            device_nanos,
+            upload: self.upload,
+        })
+    }
 }
 pub(crate) enum OutputFormat {
     Voxels,
@@ -80,7 +134,7 @@ impl Gpu {
             device,
             queue,
             pipelines: None,
-            timing: None,
+            readbacks: Vec::new(),
             profiles: HashMap::new(),
             bind_groups: HashMap::new(),
             buffers: None,
@@ -146,33 +200,43 @@ impl Gpu {
             pack: pipeline("pack"),
             layout,
         });
-        // Runs are serialized and both readbacks are unmapped before returning.
-        self.timing = self
-            .device
-            .features()
-            .contains(wgpu::Features::TIMESTAMP_QUERY)
-            .then(|| Timing {
-                queries: self.device.create_query_set(&wgpu::QuerySetDescriptor {
-                    label: Some("Retina light timing"),
-                    ty: wgpu::QueryType::Timestamp,
-                    count: 6,
-                }),
-                resolve: self.device.create_buffer(&wgpu::BufferDescriptor {
-                    label: Some("Retina light resolve"),
-                    size: 48,
-                    usage: wgpu::BufferUsages::QUERY_RESOLVE | wgpu::BufferUsages::COPY_SRC,
-                    mapped_at_creation: false,
-                }),
-                readback: self.device.create_buffer(&wgpu::BufferDescriptor {
-                    label: Some("Retina light times"),
-                    size: 48,
-                    usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
-                    mapped_at_creation: false,
-                }),
-            });
     }
-    /// Unpadded chunk-major materials; the GPU supplies the two air sections.
-    /// Crop/core are measured in chunks. No CPU propagation.
+    fn readback(&mut self, size: u64) -> Readback {
+        if let Some(slot) = self.readbacks.pop().filter(|s| s.buffer.size() >= size) {
+            return slot;
+        }
+        Readback {
+            buffer: self.device.create_buffer(&wgpu::BufferDescriptor {
+                label: Some("Retina light readback slot"),
+                size,
+                usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
+                mapped_at_creation: false,
+            }),
+            timing: self
+                .device
+                .features()
+                .contains(wgpu::Features::TIMESTAMP_QUERY)
+                .then(|| Timing {
+                    queries: self.device.create_query_set(&wgpu::QuerySetDescriptor {
+                        label: Some("Retina light timing"),
+                        ty: wgpu::QueryType::Timestamp,
+                        count: 6,
+                    }),
+                    resolve: self.device.create_buffer(&wgpu::BufferDescriptor {
+                        label: Some("Retina light resolve"),
+                        size: 48,
+                        usage: wgpu::BufferUsages::QUERY_RESOLVE | wgpu::BufferUsages::COPY_SRC,
+                        mapped_at_creation: false,
+                    }),
+                    readback: self.device.create_buffer(&wgpu::BufferDescriptor {
+                        label: Some("Retina light times"),
+                        size: 48,
+                        usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
+                        mapped_at_creation: false,
+                    }),
+                }),
+        }
+    }
     pub(crate) fn run(
         &mut self,
         handle: u32,
@@ -184,6 +248,22 @@ impl Gpu {
         blocks: &[u16],
         format: OutputFormat,
     ) -> Result<ResultLight, String> {
+        let pending = self.submit(handle, profile, chunks, height, crop, core, blocks, format)?;
+        self.complete(pending)
+    }
+    /// Unpadded chunk-major materials; the GPU supplies the two air sections.
+    /// Crop/core are measured in chunks. No CPU propagation.
+    fn submit(
+        &mut self,
+        handle: u32,
+        profile: &Profile,
+        chunks: u32,
+        height: u32,
+        crop: u32,
+        core: u32,
+        blocks: &[u16],
+        format: OutputFormat,
+    ) -> Result<Pending, String> {
         if chunks == 0
             || height == 0
             || core == 0
@@ -267,11 +347,6 @@ impl Gpu {
                     capacities[2],
                     wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
                 ),
-                readback: buffer(
-                    "Retina light readback",
-                    capacities[2],
-                    wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
-                ),
                 work: buffer(
                     "Retina light brick classification / indirect dispatch",
                     capacities[3] + 16,
@@ -295,6 +370,7 @@ impl Gpu {
             // invalidates every profile's cached pair.
             self.bind_groups.clear();
         }
+        let slot = self.readback(sizes[2]);
         let buffers = self.buffers.as_ref().unwrap();
         let pipelines = self.pipelines.as_ref().unwrap();
         let bind_groups = self.bind_groups.entry(handle).or_insert_with(|| {
@@ -346,9 +422,8 @@ impl Gpu {
         self.queue
             .write_buffer(&buffers.blocks, 0, bytemuck::cast_slice(blocks));
         upload += sizes[0] + 32;
-        let timestamp = self.timing.is_some();
-        let queries = self.timing.as_ref().map(|t| &t.queries);
-        let times = self.timing.as_ref().map(|t| (&t.resolve, &t.readback));
+        let queries = slot.timing.as_ref().map(|t| &t.queries);
+        let times = slot.timing.as_ref().map(|t| (&t.resolve, &t.readback));
         let mut encoder = self
             .device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor {
@@ -437,81 +512,63 @@ impl Gpu {
             pass.set_bind_group(0, ba, &[]);
             pass.dispatch_workgroups(256, (sizes[2] as u32 / 4).div_ceil(16384), 1);
         }
-        encoder.copy_buffer_to_buffer(&buffers.output, 0, &buffers.readback, 0, sizes[2]);
+        encoder.copy_buffer_to_buffer(&buffers.output, 0, &slot.buffer, 0, sizes[2]);
         if let (Some(q), Some((resolve, readback))) = (queries, &times) {
             encoder.resolve_query_set(q, 0..6, resolve, 0);
             encoder.copy_buffer_to_buffer(resolve, 0, readback, 0, 48);
         }
         let submission = self.queue.submit([encoder.finish()]);
-        let (send, recv) = mpsc::channel();
-        buffers
-            .readback
-            .slice(..sizes[2])
-            .map_async(wgpu::MapMode::Read, {
-                let send = send.clone();
-                move |r| {
-                    let _ = send.send(r);
-                }
-            });
-        if let Some((_, t)) = &times {
-            t.slice(..).map_async(wgpu::MapMode::Read, move |r| {
-                let _ = send.send(r);
-            });
-        }
-        let result = (|| {
-            self.device
-                .poll(wgpu::PollType::Wait {
-                    submission_index: Some(submission),
-                    timeout: Some(Duration::from_secs(60)),
-                })
-                .map_err(|e| format!("lighting GPU poll: {e}"))?;
-            for _ in 0..1 + usize::from(timestamp) {
-                recv.recv_timeout(Duration::from_secs(60))
-                    .map_err(|e| e.to_string())?
-                    .map_err(|e| e.to_string())?;
-            }
-            let bytes = buffers
-                .readback
-                .slice(..sizes[2])
-                .get_mapped_range()
-                .map_err(|e| e.to_string())?
-                .to_vec();
-            let device_nanos = times.as_ref().map(|(_, t)| {
-                let data = t.slice(..).get_mapped_range().unwrap();
-                let ticks: &[u64] = bytemuck::cast_slice(&data);
-                std::array::from_fn(|i| {
-                    (ticks[i * 2 + 1].saturating_sub(ticks[i * 2]) as f64
-                        * self.queue.get_timestamp_period() as f64) as u64
-                })
-            });
-            Ok(ResultLight {
-                bytes,
-                device_nanos,
-                upload,
-            })
-        })();
-        buffers.readback.unmap();
-        if let Some((_, t)) = &times {
-            t.unmap();
+        let mapping = crate::gpu::Mapping::new(&slot.buffer, sizes[2]);
+        let timing_map = slot
+            .timing
+            .as_ref()
+            .map(|t| crate::gpu::Mapping::new(&t.readback, 48));
+        Ok(Pending {
+            slot,
+            submission,
+            mapping,
+            timing_map,
+            size: sizes[2],
+            upload,
+        })
+    }
+    fn complete(&mut self, mut pending: Pending) -> Result<ResultLight, String> {
+        let result = pending.finish(&self.device, &self.queue);
+        // Always unmap, including map/poll failures. An abandoned pending slot
+        // also unmaps on drop, so failure never poisons the next region.
+        drop(pending.mapping);
+        drop(pending.timing_map);
+        if result.is_ok() && self.readbacks.len() < 2 {
+            self.readbacks.push(pending.slot);
         }
         result
     }
 }
 
+/// Chunk indices and section-packed bytes share one tile allocation.
+/// Consumers can encode a completed tile while later tiles execute on the GPU.
+pub(crate) struct Tile {
+    pub slots: Vec<usize>,
+    pub bytes: Vec<u8>,
+    pub chunk_bytes: usize,
+}
+
 /// Reuses only the 32x32 region's final blocks; a one-chunk ring guarantees the core.
+/// At most two readbacks per region are in flight; scratch buffers remain shared on the ordered queue.
 pub(crate) fn region(
     engine: &crate::TerrainEngine,
     request: crate::ChunkRequest,
     profile: &Profile,
     chunks: &[Vec<u16>],
     job: &crate::timings::Timings,
-) -> Result<Vec<Option<Vec<u8>>>, String> {
+    mut consume: impl FnMut(Tile) -> Result<(), String>,
+) -> Result<(), String> {
     let start = Instant::now();
-    let mut gpu = engine
+    let mut consuming = Duration::ZERO;
+    let gpu = engine
         .light_gpu
         .lock()
         .map_err(|_| "lighting GPU lock poisoned")?;
-    let mut output = vec![None; 1024];
     let core = [10usize, 6, 5, 3, 2, 1]
         .into_iter()
         .find(|&core| {
@@ -519,57 +576,307 @@ pub(crate) fn region(
                 <= gpu.device.limits().max_storage_buffer_binding_size as u64
         })
         .unwrap_or(1);
+    let device = gpu.device.clone();
+    let queue = gpu.queue.clone();
+    drop(gpu);
     let count = (request.height as usize + 32) * 256;
     let mut input = Vec::with_capacity((core + 2).pow(2) * request.block_count());
-    for cz in (1..31).step_by(core) {
-        for cx in (1..31).step_by(core) {
+    let mut tiles = (1..31)
+        .step_by(core)
+        .flat_map(|cz| (1..31).step_by(core).map(move |cx| (cx, cz)));
+    let mut flights = VecDeque::new();
+    loop {
+        // Submit ahead before CPU encoding; GPU scratch reuse is safe because
+        // write_buffer + submit preserve queue order, and each flight owns its readback.
+        while flights.len() < 2 {
+            let Some((cx, cz)) = tiles.next() else { break };
             input.clear();
             for z in cz - 1..cz + core + 1 {
                 for x in cx - 1..cx + core + 1 {
                     input.extend_from_slice(&chunks[z * 32 + x]);
                 }
             }
-            let result = gpu.run(
-                request.reserved,
-                profile,
-                (core + 2) as u32,
-                request.height,
-                1,
-                core as u32,
-                &input,
-                OutputFormat::Sections,
-            )?;
-            engine
-                .pipeline
-                .transfer(request.reserved, result.upload, result.bytes.len() as u64);
-            if let Some(nanos) = result.device_nanos {
-                for (i, value) in nanos.into_iter().enumerate() {
-                    engine
-                        .timings(request.reserved)
-                        .device(crate::timings::LIGHT_SKY + i, value);
-                    job.device(crate::timings::LIGHT_SKY + i, value);
-                }
-            }
-            for z in 0..core {
-                for x in 0..core {
-                    let i = (z * core + x) * count;
-                    output[(cz + z) * 32 + cx + x] = Some(result.bytes[i..i + count].to_vec());
-                }
+            let pending = engine
+                .light_gpu
+                .lock()
+                .map_err(|_| "lighting GPU lock poisoned")?
+                .submit(
+                    request.reserved,
+                    profile,
+                    (core + 2) as u32,
+                    request.height,
+                    1,
+                    core as u32,
+                    &input,
+                    OutputFormat::Sections,
+                )?;
+            flights.push_back((cx, cz, pending));
+        }
+        let Some((cx, cz, mut pending)) = flights.pop_front() else {
+            break;
+        };
+        let result = pending.finish(&device, &queue)?;
+        drop(pending.mapping);
+        drop(pending.timing_map);
+        {
+            let mut gpu = engine
+                .light_gpu
+                .lock()
+                .map_err(|_| "lighting GPU lock poisoned")?;
+            if gpu.readbacks.len() < 2 {
+                gpu.readbacks.push(pending.slot);
             }
         }
+        engine
+            .pipeline
+            .transfer(request.reserved, result.upload, result.bytes.len() as u64);
+        if let Some(nanos) = result.device_nanos {
+            for (i, value) in nanos.into_iter().enumerate() {
+                engine
+                    .timings(request.reserved)
+                    .device(crate::timings::LIGHT_SKY + i, value);
+                job.device(crate::timings::LIGHT_SKY + i, value);
+            }
+        }
+        let slots = (0..core)
+            .flat_map(|z| (0..core).map(move |x| (cz + z) * 32 + cx + x))
+            .collect();
+        let consuming_start = Instant::now();
+        consume(Tile {
+            slots,
+            bytes: result.bytes,
+            chunk_bytes: count,
+        })?;
+        consuming += consuming_start.elapsed();
     }
-    let elapsed = start.elapsed().as_nanos() as u64;
+    // Encoding is accounted by its worker phase, not twice as lighting host time.
+    let elapsed = start.elapsed().saturating_sub(consuming).as_nanos() as u64;
     engine
         .timings(request.reserved)
         .add(crate::timings::LIGHT_HOST, elapsed);
     job.add(crate::timings::LIGHT_HOST, elapsed);
-    Ok(output)
+    Ok(())
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
+    fn fixture_profile(sky: bool) -> Profile {
+        let mut states = vec![[0; 8]; 4];
+        states[1][0] = 15; // opaque
+        states[2][0] = 240; // emitter
+        states[3][0] = 1; // attenuating transparent material
+        Profile {
+            sky,
+            faces: 1,
+            states,
+            blocked: vec![0],
+        }
+    }
+    fn fixture_blocks(chunks: usize, height: usize, salt: usize) -> Vec<u16> {
+        (0..chunks * chunks * height * 256)
+            .map(|i| {
+                let y = (i / 256) % height;
+                if y < height / 3 && (i * 17 + salt) % 19 > 2 {
+                    1
+                } else if (i * 13 + salt) % 977 == 0 {
+                    2
+                } else if y == height / 2 && (i + salt) % 7 == 0 {
+                    3
+                } else {
+                    0
+                }
+            })
+            .collect()
+    }
+    #[test]
+    #[ignore = "requires a supported GPU"]
+    fn pipeline_slots_survive_growth_interleaving_and_abandonment() {
+        let engine = crate::TerrainEngine::new().unwrap();
+        let mut gpu = engine.light_gpu.lock().unwrap();
+        let profiles = [fixture_profile(true), fixture_profile(false)];
+        let small = fixture_blocks(3, 32, 3);
+        let large = fixture_blocks(4, 64, 7);
+        let expected_a = gpu
+            .run(1, &profiles[0], 3, 32, 1, 1, &small, OutputFormat::Sections)
+            .unwrap()
+            .bytes;
+        let expected_b = gpu
+            .run(2, &profiles[1], 4, 64, 0, 4, &large, OutputFormat::Sections)
+            .unwrap()
+            .bytes;
+        gpu.buffers = None;
+        gpu.bind_groups.clear();
+        gpu.readbacks.clear();
+        let a = gpu
+            .submit(1, &profiles[0], 3, 32, 1, 1, &small, OutputFormat::Sections)
+            .unwrap();
+        let b = gpu
+            .submit(2, &profiles[1], 4, 64, 0, 4, &large, OutputFormat::Sections)
+            .unwrap();
+        assert_eq!(gpu.complete(b).unwrap().bytes, expected_b);
+        assert_eq!(gpu.complete(a).unwrap().bytes, expected_a);
+        let abandoned = gpu
+            .submit(1, &profiles[0], 3, 32, 1, 1, &small, OutputFormat::Sections)
+            .unwrap();
+        drop(abandoned);
+        assert_eq!(
+            gpu.run(2, &profiles[1], 4, 64, 0, 4, &large, OutputFormat::Sections)
+                .unwrap()
+                .bytes,
+            expected_b
+        );
+        assert!(gpu.readbacks.len() <= 2);
+    }
+    #[test]
+    #[ignore = "requires a supported GPU"]
+    fn streamed_region_matches_sequential_tiles_and_recovers_from_consumer_error() {
+        let engine = crate::TerrainEngine::new().unwrap();
+        let profile = fixture_profile(true);
+        let request = crate::ChunkRequest {
+            seed: 1,
+            chunk_x: -32,
+            chunk_z: 32,
+            min_y: -16,
+            height: 32,
+            base_height: 0.,
+            amplitude: 0.,
+            frequency: 0.01,
+            reserved: 1,
+        };
+        let chunks: Vec<_> = (0..1024).map(|i| fixture_blocks(1, 32, i)).collect();
+        let mut expected = vec![None; 1024];
+        {
+            let mut gpu = engine.light_gpu.lock().unwrap();
+            for cz in (1..31).step_by(10) {
+                for cx in (1..31).step_by(10) {
+                    let mut input = Vec::new();
+                    for z in cz - 1..cz + 11 {
+                        for x in cx - 1..cx + 11 {
+                            input.extend_from_slice(&chunks[z * 32 + x]);
+                        }
+                    }
+                    let result = gpu
+                        .run(1, &profile, 12, 32, 1, 10, &input, OutputFormat::Sections)
+                        .unwrap();
+                    for z in 0..10 {
+                        for x in 0..10 {
+                            let index = (z * 10 + x) * 64 * 256;
+                            expected[(cz + z) * 32 + cx + x] =
+                                Some(result.bytes[index..index + 64 * 256].to_vec());
+                        }
+                    }
+                }
+            }
+        }
+        let job = crate::timings::Timings::default();
+        assert!(
+            region(&engine, request, &profile, &chunks, &job, |_| Err(
+                "consumer failure".into()
+            ))
+            .is_err()
+        );
+        let mut seen = vec![false; 1024];
+        region(&engine, request, &profile, &chunks, &job, |tile| {
+            assert!(
+                engine.light_gpu.try_lock().is_ok(),
+                "consumer must not hold GPU mutex"
+            );
+            for (index, &slot) in tile.slots.iter().enumerate() {
+                assert!(!seen[slot]);
+                seen[slot] = true;
+                assert_eq!(
+                    &tile.bytes[index * tile.chunk_bytes..(index + 1) * tile.chunk_bytes],
+                    expected[slot].as_ref().unwrap()
+                );
+            }
+            Ok(())
+        })
+        .unwrap();
+        assert_eq!(seen.iter().filter(|&&v| v).count(), 900);
+        for i in 0..1024 {
+            assert_eq!(seen[i], expected[i].is_some());
+        }
+    }
+    #[test]
+    #[ignore = "bounded GPU replay timing; not a world-generation benchmark"]
+    fn pipeline_replay_timing() {
+        let engine = crate::TerrainEngine::new().unwrap();
+        let mut gpu = engine.light_gpu.lock().unwrap();
+        let (profiles, inputs, height): (Vec<Profile>, Vec<Vec<u16>>, u32) = if let Ok(directory) =
+            std::env::var("RETINA_LIGHTING_FIXTURES")
+        {
+            let mut profiles = Vec::new();
+            let mut inputs = Vec::new();
+            for name in ["region-0.json", "region-10.json", "region-20.json"] {
+                let directory = std::path::Path::new(&directory);
+                let fixture: serde_json::Value =
+                    serde_json::from_slice(&std::fs::read(directory.join(name)).unwrap()).unwrap();
+                assert_eq!(fixture["side"], 12);
+                assert_eq!(fixture["height"], 384);
+                profiles
+                    .push(serde_json::from_value(fixture["profile"]["lighting"].clone()).unwrap());
+                let raw =
+                    std::fs::read(directory.join(fixture["blocks"].as_str().unwrap())).unwrap();
+                inputs.push(
+                    raw.chunks_exact(2)
+                        .map(|p| u16::from_le_bytes([p[0], p[1]]))
+                        .collect(),
+                );
+            }
+            (profiles, inputs, 384)
+        } else {
+            (
+                (0..3).map(|_| fixture_profile(true)).collect(),
+                (0..3).map(|salt| fixture_blocks(12, 128, salt)).collect(),
+                128,
+            )
+        };
+        let mut expected: Vec<Vec<u8>> = Vec::new();
+        let mut samples = [Vec::new(), Vec::new()];
+        for iteration in 0..6 {
+            for depth in if iteration % 2 == 0 { [1, 2] } else { [2, 1] } {
+                let start = Instant::now();
+                let mut pending = VecDeque::new();
+                let mut next = 0;
+                let mut outputs = Vec::new();
+                loop {
+                    while pending.len() < depth && next < inputs.len() {
+                        pending.push_back(
+                            gpu.submit(
+                                next as u32 + 1,
+                                &profiles[next],
+                                12,
+                                height,
+                                1,
+                                10,
+                                &inputs[next],
+                                OutputFormat::Sections,
+                            )
+                            .unwrap(),
+                        );
+                        next += 1;
+                    }
+                    let Some(p) = pending.pop_front() else { break };
+                    outputs.push(gpu.complete(p).unwrap().bytes);
+                }
+                let elapsed = start.elapsed().as_secs_f64() * 1000.;
+                if expected.is_empty() {
+                    expected = outputs;
+                } else {
+                    assert_eq!(outputs, expected);
+                }
+                if iteration > 0 {
+                    samples[depth - 1].push(elapsed);
+                }
+            }
+        }
+        println!(
+            "lighting tile replay milliseconds: sequential={:?}, depth_two={:?}; all bytes equal",
+            samples[0], samples[1]
+        );
+    }
     #[test]
     #[ignore = "requires a supported GPU"]
     fn section_packing_matches_voxels_with_crop_padding_and_reuse() {

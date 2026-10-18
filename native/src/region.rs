@@ -481,41 +481,66 @@ fn generate_region_inner(
                         PreparedRecord::Compressed(_) => unreachable!(),
                     })
                     .unzip();
-                // GPU lighting completes before any chunk is encoded/compressed or published.
-                let lights = crate::lighting::region(engine, origin, lighting, &blocks, &job)?;
-                let encoding_start = Instant::now();
-                let records = requests
-                    .par_iter()
-                    .enumerate()
-                    .with_min_len(8)
-                    .map_init(ChunkScratch::default, |scratch, (i, &request)| {
-                        timings.time(timings::NBT, || {
-                            encode_chunk(
-                                request,
-                                field.chunk(request.chunk_x, request.chunk_z),
-                                &blocks[i],
-                                data_version,
-                                biome,
-                                profile.as_deref(),
-                                cave_mask.as_deref(),
-                                structures[i].as_ref(),
-                                lights[i].as_deref(),
-                                scratch,
-                            )
-                        });
-                        timings.time(timings::COMPRESS, || {
-                            let bound = scratch.compressor.zlib_compress_bound(scratch.nbt.0.len());
-                            scratch.compressed.resize(bound, 0);
-                            let size = scratch
-                                .compressor
-                                .zlib_compress(&scratch.nbt.0, &mut scratch.compressed)
-                                .map_err(|e| e.to_string())?;
-                            Ok(scratch.compressed[..size].to_vec())
+                let mut records: Vec<Option<Vec<u8>>> = (0..requests.len()).map(|_| None).collect();
+                let encode = |indices: &[usize], light: Option<&crate::lighting::Tile>| {
+                    indices
+                        .par_iter()
+                        .enumerate()
+                        .with_min_len(8)
+                        .map_init(ChunkScratch::default, |scratch, (tile_index, &i)| {
+                            let request = requests[i];
+                            let lighting = light.map(|tile| {
+                                &tile.bytes[tile_index * tile.chunk_bytes
+                                    ..(tile_index + 1) * tile.chunk_bytes]
+                            });
+                            timings.time(timings::NBT, || {
+                                encode_chunk(
+                                    request,
+                                    field.chunk(request.chunk_x, request.chunk_z),
+                                    &blocks[i],
+                                    data_version,
+                                    biome,
+                                    profile.as_deref(),
+                                    cave_mask.as_deref(),
+                                    structures[i].as_ref(),
+                                    lighting,
+                                    scratch,
+                                )
+                            });
+                            timings.time(timings::COMPRESS, || {
+                                let bound =
+                                    scratch.compressor.zlib_compress_bound(scratch.nbt.0.len());
+                                scratch.compressed.resize(bound, 0);
+                                let size = scratch
+                                    .compressor
+                                    .zlib_compress(&scratch.nbt.0, &mut scratch.compressed)
+                                    .map_err(|e| e.to_string())?;
+                                Ok((i, scratch.compressed[..size].to_vec()))
+                            })
                         })
-                    })
+                        .collect::<Result<Vec<_>, String>>()
+                };
+                crate::lighting::region(engine, origin, lighting, &blocks, &job, |tile| {
+                    let encoding_start = Instant::now();
+                    for (i, bytes) in encode(&tile.slots, Some(&tile))? {
+                        records[i] = Some(bytes);
+                    }
+                    parallel_nanos += encoding_start.elapsed().as_nanos() as u64;
+                    Ok(())
+                })?;
+                // The outer ring remains unlit and uses Minecraft's normal seam path.
+                let edge: Vec<_> = (0..1024)
+                    .filter(|&i| i % 32 == 0 || i % 32 == 31 || i / 32 == 0 || i / 32 == 31)
                     .collect();
+                let encoding_start = Instant::now();
+                for (i, bytes) in encode(&edge, None)? {
+                    records[i] = Some(bytes);
+                }
                 parallel_nanos += encoding_start.elapsed().as_nanos() as u64;
                 records
+                    .into_iter()
+                    .map(|r| r.ok_or_else(|| "lighting omitted a region chunk".into()))
+                    .collect()
             } else {
                 Ok(records
                     .into_iter()

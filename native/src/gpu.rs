@@ -1964,13 +1964,13 @@ struct ReadbackSlot {
     mask: Option<wgpu::Buffer>,
     timestamps: Option<Timestamps>,
 }
-struct Mapping {
+pub(crate) struct Mapping {
     buffer: wgpu::Buffer,
     receiver: mpsc::Receiver<Result<(), String>>,
     result: Option<Result<(), String>>,
 }
 impl Mapping {
-    fn new(buffer: &wgpu::Buffer, size: u64) -> Self {
+    pub(crate) fn new(buffer: &wgpu::Buffer, size: u64) -> Self {
         let (sender, receiver) = mpsc::channel();
         buffer
             .slice(..size)
@@ -1995,7 +1995,7 @@ impl Mapping {
         }
         self.result.is_some()
     }
-    fn check(&mut self) -> Result<(), String> {
+    pub(crate) fn check(&mut self) -> Result<(), String> {
         if self.result.is_none() {
             match self.receiver.recv_timeout(Duration::from_secs(30)) {
                 Ok(r) => self.result = Some(r),

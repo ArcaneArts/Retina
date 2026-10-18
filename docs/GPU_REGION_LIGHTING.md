@@ -241,3 +241,52 @@ benchmarks four alternating runs. Only use private test copies of saves.
 For a fresh dedicated Retina world, `runServer -PretinaQa -PretinaTimingsQa
 -PretinaLightingQa` exercises the actual Fabric seam hook and timing packet. Use
 `-PretinaDatapackQa=<private run directory>` to isolate this smoke test from saves.
+
+
+## Bounded tile submission and streaming MCA encoding
+
+Lighting now keeps at most two tile submissions in flight per region. Each owns
+its readback buffer, mapping guards, and timestamp resources; compute scratch and
+pipelines remain shared on the ordered GPU queue. The cache retains at most two
+idle readback slots. The existing Java two-region generation limit is unchanged,
+so normal generation has at most four active lighting readbacks across regions.
+No new CPU workers or extra terrain chunks are introduced.
+
+Only submission and recycling hold the lighting mutex. GPU waits, CPU input
+packing, and tile consumers run outside it. Each completed tile goes directly to
+parallel NBT encoding/compression while later submitted lighting executes. Records
+are assigned to their original MCA slots and published only after the entire
+region succeeds, through the existing single atomic save. The 124 edge chunks
+remain unlit; partial-region repairs still use the old unlit path.
+
+The encoder borrows chunk light slices from one tile rather than retaining 900
+separate chunk arrays. At height 384, the former complete interior light collection
+was 91.4 MiB; the streamed tile is 10.2 MiB, plus the additional readback slot.
+These are allocation sizes, not a measured total-process memory reduction.
+Lighting host timing excludes time inside the encoder callback, which is already
+accounted by NBT/compression worker timings. GPU device timings still overlap CPU
+work and must not be added to host time as independent stages.
+
+On the M4 Max/Metal, a bounded replay of three saved 384-height terrain tiles
+compared sequential and two-slot submissions, alternating order. One warmup pair
+preceded five measured pairs. Median batch host time fell from 19.48 to 13.33 ms
+(31.6%). Sample maxima were 19.71 and 13.54 ms; five samples do not establish a
+stable p95. Every output byte matched. This is a lighting replay result, not a
+whole-generator throughput claim. Raw samples, fixture hashes, and whole-test
+process memory measurements are in
+[the result record](benchmarks/gpu-lighting-pipeline.json).
+
+Validation covered buffer growth between outstanding submissions, different
+profiles/dimensions, out-of-order completion, abandoned maps, consumer failure and
+recovery, and all 900 interior/124 edge chunk assignments. All 64 non-ignored Rust
+unit tests and four focused GPU tests passed. A separate bounded comparison with
+a retained native library matched 1,024 fresh decoded chunk records and a partial
+repair, preserving 1,023 existing records. An already-complete region remained
+byte-for-byte unchanged. No game client or GitHub Actions ran.
+
+The ignored `lighting::tests::pipeline_replay_timing` test uses three small
+synthetic tiles by default. Set `RETINA_LIGHTING_FIXTURES` to the existing exported
+fixture directory containing `region-0.json`, `region-10.json`, `region-20.json`
+and their block files for the saved-terrain comparison. Run with
+`RETINA_INTERPRETER_PRELOAD=0`, two runtime threads, reduced priority, and an
+external 30-second process-group deadline. Compilation is a separate bounded step.
