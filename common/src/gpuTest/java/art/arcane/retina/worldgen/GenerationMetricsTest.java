@@ -73,13 +73,43 @@ public final class GenerationMetricsTest {
         require(specialized.stream().anyMatch(s->s.contains("GPU programs:") && s.contains("specialized")),"F3 shows completed specialization");
         require(specialized.stream().anyMatch(s->s.contains("GPU compilation:") && s.contains("123.0 ms")),"shader warmup cost is separate from region timings");
         require(specialized.stream().anyMatch(s->s.contains("Horizontal cache fields:") && s.contains("7")),"F3 reports resident horizontal reuse");
-        require(specialized.stream().anyMatch(s->s.contains("GPU profile readback total:") && s.contains("2.00 MiB")),"readback volume has units and scope");
+        require(specialized.stream().anyMatch(s->s.contains("Waiting for generated terrain")),"transfers without a denominator wait for terrain");
         var mixed=TerrainDebugReport.lines(new TerrainStatsPayload(true,"Metal test","mca",window,new NativeGpuDiagnostics(4,123_000_000,43210,1500,900,12,7,3,1048576,2097152)));
         require(mixed.stream().anyMatch(s->s.contains("GPU programs:") && s.contains("mixed (terrain interpreter)")),"F3 reports mixed GPU stage selection");
         require(empty.stream().noneMatch(s -> s.contains("NaN") || s.contains("Infinity")), "empty window formats finite values");
         packetRoundTrip(window);
+        transferVolume(window);
         completedThroughput();
         System.out.println("QA_EVT {\"event\":\"rolling_region_metrics_and_f3_format\",\"status\":\"pass\"}");
+    }
+
+    private static void transferVolume(GenerationMetrics.Snapshot session) {
+        long mib=1048576L;
+        var gpu=new NativeGpuDiagnostics(4,0,0,0,0,0,0,0,250L*100*mib,140L*100*mib,100L*1024);
+        close(gpu.uploadMiBPerRegion(),250,"upload uses all native profile chunks, not session regions");
+        close(gpu.readbackMiBPerRegion(),140,"readback counters above 32 bits retain their size");
+        close(gpu.totalMiBPerRegion(),390,"total includes both directions");
+        var lines=TerrainDebugReport.lines(new TerrainStatsPayload(true,"Metal","mca",session,gpu));
+        require(lines.stream().anyMatch(s->s.contains("~ profile avg, 1024 chunks")),"F3 labels the approximate lifetime scope");
+        require(lines.stream().anyMatch(s->s.equals("§dUpload: §f250.00 MiB")),"upload has its own colored row");
+        require(lines.stream().anyMatch(s->s.equals("§dReadback: §f140.00 MiB")),"readback has its own colored row");
+        require(lines.stream().anyMatch(s->s.equals("§dTotal logical transfer: §f390.00 MiB")),"total uses MiB and does not imply PCIe traffic");
+        var reopened=new GenerationMetrics();
+        reopened.begin();reopened.completedPromotion(1);reopened.previewCacheHit();
+        var afterPromotion=TerrainDebugReport.lines(new TerrainStatsPayload(true,"Metal","mca",reopened.snapshot(),gpu));
+        require(afterPromotion.stream().anyMatch(s->s.equals("§dTotal logical transfer: §f390.00 MiB")),"reopening, hits and promotions do not dilute the native mean");
+        var partial=new NativeGpuDiagnostics(0,0,0,0,0,0,0,0,125*mib,70*mib,512);
+        close(partial.totalMiBPerRegion(),390,"partial generation normalizes to a 1024-chunk region");
+        var empty=new NativeGpuDiagnostics(0,0,0,0,0,0,0,0,mib,0,0);
+        close(empty.totalMiBPerRegion(),0,"startup with uploads but no completed chunks stays finite");
+        var buffer=new net.minecraft.network.RegistryFriendlyByteBuf(io.netty.buffer.Unpooled.buffer(),net.minecraft.core.RegistryAccess.EMPTY);
+        try {
+            var payload=new TerrainStatsPayload(true,"Metal","mca",session,gpu);
+            TerrainStatsPayload.CODEC.encode(buffer,payload);
+            var decoded=TerrainStatsPayload.CODEC.decode(buffer);
+            require(decoded.diagnostics().equals(gpu) && !buffer.isReadable(),"native chunk denominator survives telemetry transport");
+            require(TerrainDebugReport.lines(decoded).equals(lines),"client displays the same transfer average");
+        } finally { buffer.release(); }
     }
 
     private static void completedThroughput() {

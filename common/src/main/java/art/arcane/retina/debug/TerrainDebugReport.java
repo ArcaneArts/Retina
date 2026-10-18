@@ -32,7 +32,14 @@ public final class TerrainDebugReport {
             lines.add(GPU+"Graph nodes: "+DATA+gpu.emittedNodes()+LABEL+" emitted / "+DATA+gpu.nodes()+LABEL+" registered");
             if(gpu.horizontalFields()>0)lines.add(GPU+"Horizontal cache fields: "+DATA+gpu.horizontalFields());
         }
-        if(gpu.readbackBytes()>0) {
+        if(mca && (gpu.generatedChunks()>0 || gpu.uploadBytes()>0 || gpu.readbackBytes()>0)) {
+            lines.add(HEADER+"GPU transfers / region (~ profile avg, 1024 chunks)"+RESET);
+            if(gpu.generatedChunks()>0) {
+                lines.add(GPU+"Upload: "+DATA+format("%.2f MiB",gpu.uploadMiBPerRegion()));
+                lines.add(GPU+"Readback: "+DATA+format("%.2f MiB",gpu.readbackMiBPerRegion()));
+                lines.add(GPU+"Total logical transfer: "+DATA+format("%.2f MiB",gpu.totalMiBPerRegion()));
+            } else lines.add(LABEL+"Waiting for generated terrain");
+        } else if(!mca && (gpu.uploadBytes()>0 || gpu.readbackBytes()>0)) {
             lines.add(GPU+"GPU profile upload total: "+DATA+format("%.2f MiB",gpu.uploadBytes()/1048576.0));
             lines.add(GPU+"GPU profile readback total: "+DATA+format("%.2f MiB",gpu.readbackBytes()/1048576.0));
         }

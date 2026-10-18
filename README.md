@@ -258,13 +258,22 @@ to assemble whole terrain regions. See [locate queries](docs/GPU_LOCATE_QUERIES.
 - **Regions, temporary regions, hits, promotions, terrain chunks, failures and
   in-flight jobs** distinguish generation from cache reuse and publication.
 - **GPU diagnostics** show backend, program execution/compilation state, graph
-  sizes, cached horizontal fields and profile upload/readback totals when available.
+  sizes and cached horizontal fields. **GPU transfers / region** shows upload,
+  readback and total logical MiB, normalized to 1,024 newly generated chunks over
+  the native profile's lifetime. It reuses existing counters at the telemetry
+  cadence, with no GPU readbacks added for measurement. Promotions and cache hits
+  do not increase the denominator. This is an estimate: setup, probes and work
+  still in flight contribute bytes, and partial regions count by generated chunks.
+  Logical transfer volume is not physical PCIe traffic on unified-memory GPUs.
 
 Dedicated servers send these stats to modded clients once per second. Terrain
 production is distinct from Minecraft's fully loaded/rendered throughput.
 Performance evidence and workload-specific limits are collected in the
 [Rust/GPU performance report](docs/PERFORMANCE_PASS_2026_10.md); historical stage
 benchmarks are not a promise of current end-to-end chunks/sec.
+The [current benchmark triage](docs/PERFORMANCE_TRIAGE_2026_10_18.md) compares
+vanilla/Terralith, concurrent callers, specialization and transfer costs, and
+ranks the next optimization opportunities.
 
 ## Building and testing
 
