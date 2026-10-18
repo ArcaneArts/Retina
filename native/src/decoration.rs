@@ -7,6 +7,7 @@ use crate::{
 use rayon::prelude::*;
 use serde::Deserialize;
 use std::collections::{HashSet, VecDeque};
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 mod attachment;
 mod blocks;
@@ -21,6 +22,8 @@ pub(crate) use patch::SimpleState;
 pub mod placement;
 mod placement_height;
 pub mod provider_noise;
+#[cfg(test)]
+mod replay_tests;
 mod spatial;
 
 #[derive(Clone, Deserialize)]
@@ -489,7 +492,9 @@ impl Queries {
     }
 }
 
-/// Completed anchors are retained while only unresolved ordered overlays retry.
+/// Completed anchors and stable prefixes are retained across sparse GPU rounds.
+/// A per-replay budget caps retained prefixes; active worker snapshots are
+/// transient and bounded by the same anchor inputs as the original planner.
 /// Provisional writes never leave a replay with missing GPU samples.
 pub(crate) struct Replay<'a> {
     field: &'a Field,
@@ -501,6 +506,11 @@ pub(crate) struct Replay<'a> {
     mask: Option<&'a crate::geology::CaveMask>,
     ids: Option<&'a [Vec<u32>]>,
     blocks: Vec<Option<Vec<WorldBlock>>>,
+    pending: Vec<Option<(Anchor, usize)>>,
+    retain_prefix: bool,
+    retained_bytes: AtomicUsize,
+    peak_retained_bytes: AtomicUsize,
+    retained_limit: usize,
 }
 impl<'a> Replay<'a> {
     pub(crate) fn new(
@@ -523,7 +533,21 @@ impl<'a> Replay<'a> {
             mask,
             ids,
             blocks: (0..field.side * field.side).map(|_| None).collect(),
+            pending: (0..field.side * field.side).map(|_| None).collect(),
+            retain_prefix: true,
+            retained_bytes: AtomicUsize::new(0),
+            peak_retained_bytes: AtomicUsize::new(0),
+            retained_limit: 64 * 1024 * 1024,
         }
+    }
+    pub(crate) fn with_prefix_resume(mut self, enabled: bool) -> Self {
+        self.retain_prefix = enabled;
+        self
+    }
+    #[cfg(test)]
+    pub(crate) fn without_prefix_resume(mut self) -> Self {
+        self.retain_prefix = false;
+        self
     }
     pub(crate) fn poll(
         &mut self,
@@ -539,7 +563,10 @@ impl<'a> Replay<'a> {
         mut details: Option<&mut diagnostics::Planning>,
     ) -> Queries {
         let measuring = details.is_some();
-        let generate = |(index, completed): (usize, &mut Option<Vec<WorldBlock>>)| {
+        let generate = |(index, (completed, pending)): (
+            usize,
+            (&mut Option<Vec<WorldBlock>>, &mut Option<(Anchor, usize)>),
+        )| {
             if completed.is_some() {
                 return (Queries::default(), None);
             }
@@ -548,22 +575,60 @@ impl<'a> Replay<'a> {
             let noise = provider_noise::Context::new(samples);
             let mut count_queries = Vec::new();
             let mut worker = measuring.then(diagnostics::Worker::default);
-            let blocks = anchors_sampled(
+            let state = if let Some((state, bytes)) = pending.take() {
+                self.retained_bytes.fetch_sub(bytes, Ordering::Relaxed);
+                if let Some(worker) = worker.as_mut() {
+                    worker.resumed_anchors += 1;
+                    worker.resumed_candidates += state.completed;
+                }
+                state
+            } else {
+                expand_anchor(
+                    self.field,
+                    self.profile,
+                    self.request,
+                    x,
+                    z,
+                    self.mask,
+                    counts,
+                    self.ids.map(|a| a[index].as_slice()),
+                    &mut count_queries,
+                    worker.as_mut(),
+                )
+            };
+            let retain = self.retain_prefix && count_queries.is_empty();
+            let (blocks, saved) = evaluate_anchor(
+                state,
                 self.field,
                 self.profile,
                 self.request,
-                x,
-                z,
                 self.mask,
                 counts,
-                self.ids.map(|a| a[index].as_slice()),
                 &noise,
                 &mut count_queries,
+                retain,
                 worker.as_mut(),
             );
             let missing = noise.missing();
             if missing.is_empty() && count_queries.is_empty() {
                 *completed = Some(blocks);
+            } else if let Some(saved) = saved {
+                let bytes = saved.retained_bytes();
+                if let Ok(previous) =
+                    self.retained_bytes
+                        .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |used| {
+                            used.checked_add(bytes)
+                                .filter(|total| *total <= self.retained_limit)
+                        })
+                {
+                    self.peak_retained_bytes
+                        .fetch_max(previous + bytes, Ordering::Relaxed);
+                    *pending = Some((saved, bytes));
+                } else if let Some(worker) = worker.as_mut() {
+                    // Memory pressure changes reuse only; the original full replay
+                    // remains the correctness path and consumes the same samples.
+                    worker.discarded_checkpoints += 1;
+                }
             }
             (
                 Queries {
@@ -576,11 +641,17 @@ impl<'a> Replay<'a> {
         let batches: Vec<_> = if self.side > 1 {
             self.blocks
                 .par_iter_mut()
+                .zip(self.pending.par_iter_mut())
                 .enumerate()
                 .map(generate)
                 .collect()
         } else {
-            self.blocks.iter_mut().enumerate().map(generate).collect()
+            self.blocks
+                .iter_mut()
+                .zip(self.pending.iter_mut())
+                .enumerate()
+                .map(generate)
+                .collect()
         };
         let mut queries = Queries::default();
         for (batch, worker) in batches {
@@ -598,6 +669,7 @@ impl<'a> Replay<'a> {
         queries.counts.dedup();
         if let Some(details) = details {
             details.rounds += 1;
+            details.peak_retained_bytes = self.peak_retained_bytes.load(Ordering::Relaxed) as u64;
         }
         queries
     }
@@ -634,7 +706,8 @@ fn anchors(
 ) -> Vec<WorldBlock> {
     let samples = provider_noise::Samples::default();
     let noise = provider_noise::Context::new(&samples);
-    let blocks = anchors_sampled(
+    let mut missing = Vec::new();
+    let state = expand_anchor(
         field,
         profile,
         request,
@@ -643,8 +716,19 @@ fn anchors(
         mask,
         None,
         None,
+        &mut missing,
+        None,
+    );
+    let (blocks, _) = evaluate_anchor(
+        state,
+        field,
+        profile,
+        request,
+        mask,
+        None,
         &noise,
-        &mut Vec::new(),
+        &mut missing,
+        false,
         None,
     );
     assert!(noise.missing().is_empty());
@@ -745,7 +829,7 @@ pub(crate) fn count_queries(
     queries.dedup();
     queries
 }
-fn anchors_sampled(
+fn expand_anchor(
     field: &Field,
     profile: &WorldProfile,
     request: ChunkRequest,
@@ -754,10 +838,9 @@ fn anchors_sampled(
     mask: Option<&crate::geology::CaveMask>,
     counts: Option<&counts::Counts>,
     ids: Option<&[u32]>,
-    noise: &provider_noise::Context,
     missing: &mut Vec<counts::Query>,
     mut timing: Option<&mut diagnostics::Worker>,
-) -> Vec<WorldBlock> {
+) -> Anchor {
     let expansion = diagnostics::start(timing.is_some());
     let ids = ids
         .map(std::borrow::Cow::Borrowed)
@@ -893,20 +976,92 @@ fn anchors_sampled(
     if let Some(timing) = timing.as_mut() {
         timing.candidates += candidates.len() as u64;
     }
-    let mut candidates = placement::Queue::new(candidates);
+    let candidates = placement::Queue::new(candidates);
     diagnostics::record(expansion, timing.as_mut().map(|t| &mut t.expansion_nanos));
+    Anchor {
+        blocks,
+        candidates,
+        overlay: Default::default(),
+        evaluation_cache: Default::default(),
+        completed: 0,
+    }
+}
+
+struct Anchor {
+    blocks: Vec<WorldBlock>,
+    candidates: placement::Queue,
+    overlay: placement::Overlay,
+    evaluation_cache: placement::EvaluationCache,
+    completed: u64,
+}
+impl Anchor {
+    fn retained_bytes(&self) -> usize {
+        std::mem::size_of::<Self>()
+            + 128
+            + self.blocks.capacity() * std::mem::size_of::<WorldBlock>()
+            + self.candidates.retained_bytes()
+            + self.overlay.retained_bytes()
+            + self.evaluation_cache.capacity()
+                * (std::mem::size_of::<((u32, usize, Vec<usize>), Option<[i32; 3]>)>() + 16)
+            + self
+                .evaluation_cache
+                .keys()
+                .map(|key| key.2.capacity() * std::mem::size_of::<usize>() + 32)
+                .sum::<usize>()
+    }
+}
+fn evaluate_anchor(
+    state: Anchor,
+    field: &Field,
+    profile: &WorldProfile,
+    request: ChunkRequest,
+    mask: Option<&crate::geology::CaveMask>,
+    counts: Option<&counts::Counts>,
+    noise: &provider_noise::Context,
+    missing: &mut Vec<counts::Query>,
+    retain: bool,
+    mut timing: Option<&mut diagnostics::Worker>,
+) -> (Vec<WorldBlock>, Option<Anchor>) {
+    let Anchor {
+        mut blocks,
+        mut candidates,
+        mut overlay,
+        mut evaluation_cache,
+        mut completed,
+    } = state;
     let evaluation = diagnostics::start(timing.is_some());
-    let mut overlay = placement::Overlay::default();
-    let mut evaluation_cache = placement::EvaluationCache::default();
-    while let Some(candidate) = candidates.next(
-        field,
-        profile,
-        request,
-        &overlay,
-        &mut evaluation_cache,
-        counts,
-        missing,
-    ) {
+    let mut saved = None;
+    let mut invalid = false;
+    loop {
+        let mut queue_checkpoint = None;
+        let next = candidates.next_checkpoint(
+            field,
+            profile,
+            request,
+            &overlay,
+            &mut evaluation_cache,
+            counts,
+            missing,
+            (retain && !invalid).then_some(&mut queue_checkpoint),
+        );
+        if let Some(placement::QueueCheckpoint { queue, cache }) = queue_checkpoint {
+            invalid = true;
+            saved = Some(Anchor {
+                blocks: blocks.clone(),
+                candidates: queue,
+                overlay: overlay.snapshot(),
+                evaluation_cache: cache,
+                completed,
+            });
+        }
+        let Some(candidate) = next else {
+            break;
+        };
+        let before_candidate = completed;
+        completed += 1;
+        if let Some(timing) = timing.as_mut() {
+            timing.evaluated_candidates += 1;
+        }
         let recipe = &profile.decorations[candidate.recipe as usize];
         let Some(position) = placement::position(
             &candidate,
@@ -927,6 +1082,13 @@ fn anchors_sampled(
             continue;
         }
         let start = blocks.len();
+        let record = retain
+            && !invalid
+            && !profile.decoration_provider_noises.is_empty()
+            && !matches!(recipe.feature, Kind::Tree { .. } | Kind::Plant { .. });
+        if record {
+            overlay.record_feature();
+        }
         let mut rng = Rng::new(candidate.seed);
         match &recipe.feature {
             Kind::Disk { .. } | Kind::Sequence { .. } | Kind::Overlay { .. } => {
@@ -1017,6 +1179,21 @@ fn anchors_sampled(
                 noise,
             ),
         }
+        if retain && !invalid && noise.is_missing() {
+            invalid = true;
+            let mut queue = candidates.clone();
+            queue.retry(candidate);
+            saved = Some(Anchor {
+                blocks: blocks[..start].to_vec(),
+                candidates: queue,
+                overlay: overlay.before_feature(),
+                evaluation_cache: evaluation_cache.clone(),
+                completed: before_candidate,
+            });
+        }
+        if record {
+            overlay.finish_feature();
+        }
         if profile.ordered_decorations {
             // Preserve the same within-feature replay as the live overlay,
             // while retaining complete feature command order across anchors.
@@ -1036,7 +1213,7 @@ fn anchors_sampled(
         overlay.commit(&blocks, start, field, profile, request);
     }
     diagnostics::record(evaluation, timing.as_mut().map(|t| &mut t.evaluation_nanos));
-    blocks
+    (blocks, saved)
 }
 
 /// Invoke one registered feature against the same column/overlay substrate as

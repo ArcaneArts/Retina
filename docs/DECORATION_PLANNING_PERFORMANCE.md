@@ -111,9 +111,13 @@ child processes were subject to the same deadline. Minecraft was not launched.
 
 ## Remaining decoration work
 
-Retain completed prefixes within unresolved anchors without disturbing lazy
-count expansion, live overlays, provider-dependent branches, or random streams.
-Investigate sharing worker scratch and additional compatible query batching.
+The subsequent [anchor-resume cycle](DECORATION_REPLAY_RESUME.md) implements
+bounded prefix retention and validates unchanged query batching. The remaining
+items below describe the next opportunities identified by this first cycle.
+
+Prefix retention now preserves lazy count expansion, live overlays,
+provider-dependent branches and random streams. Investigate sharing worker
+scratch and additional compatible query batching.
 Tree/leaf GPU offload still needs representative dense-tree measurements and
 exact-order/dependency validation before a production decision. The phase
 diagnostics are evidence for those follow-up cycles, not completion of them.

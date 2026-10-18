@@ -4,7 +4,7 @@ use super::placement_height::HeightProvider;
 use super::spatial::Map;
 use super::*;
 mod layers;
-pub(super) use layers::Queue;
+pub(super) use layers::{Queue, QueueCheckpoint};
 
 #[derive(Clone, Deserialize)]
 #[serde(untagged)]
@@ -919,8 +919,58 @@ pub(super) struct Overlay {
     blocks: Map<[i32; 3], u16>,
     tops: Map<(i32, i32), [i32; 6]>,
     grounds: std::cell::RefCell<Map<(i32, i32), Vec<i32>>>,
+    recording: bool,
+    undo: Vec<OverlayUndo>,
+}
+struct OverlayUndo {
+    at: [i32; 3],
+    material: Option<u16>,
+    tops: Option<[i32; 6]>,
 }
 impl Overlay {
+    pub(super) fn retained_bytes(&self) -> usize {
+        // Capacity rather than length, with allowance for hash control bytes,
+        // load factor and allocator overhead. Snapshots omit derived ground caches.
+        self.blocks.capacity() * (std::mem::size_of::<([i32; 3], u16)>() + 16)
+            + self.tops.capacity() * (std::mem::size_of::<((i32, i32), [i32; 6])>() + 16)
+    }
+    pub(super) fn snapshot(&self) -> Self {
+        Self {
+            blocks: self.blocks.clone(),
+            tops: self.tops.clone(),
+            // Ground transitions are memoized from blocks/tops, not generation
+            // state. Recomputing them avoids copying their potentially large lists.
+            ..Self::default()
+        }
+    }
+    pub(super) fn record_feature(&mut self) {
+        debug_assert!(!self.recording && self.undo.is_empty());
+        self.recording = true;
+    }
+    pub(super) fn finish_feature(&mut self) {
+        self.recording = false;
+        self.undo.clear();
+    }
+    /// Snapshot the stable overlay preceding a feature with missing providers.
+    /// Keep the speculative overlay alive to collect the rest of this round's
+    /// queries. Reverse repeated writes to the same block/column exactly.
+    pub(super) fn before_feature(&self) -> Self {
+        let mut before = self.snapshot();
+        for change in self.undo.iter().rev() {
+            if let Some(material) = change.material {
+                before.blocks.insert(change.at, material);
+            } else {
+                before.blocks.remove(&change.at);
+            }
+            let column = (change.at[0], change.at[2]);
+            if let Some(tops) = change.tops {
+                before.tops.insert(column, tops);
+            } else {
+                before.tops.remove(&column);
+            }
+        }
+        before
+    }
     pub(super) fn material(
         &self,
         field: &Field,
@@ -965,6 +1015,13 @@ impl Overlay {
         Some(y)
     }
     pub(super) fn write(&mut self, profile: &WorldProfile, at: [i32; 3], material: u16) {
+        if self.recording {
+            self.undo.push(OverlayUndo {
+                at,
+                material: self.blocks.get(&at).copied(),
+                tops: self.tops.get(&(at[0], at[2])).copied(),
+            });
+        }
         self.grounds.get_mut().remove(&(at[0], at[2]));
         self.blocks.insert(at, material);
         let masks = profile.heightmap_masks[material as usize];
