@@ -14,6 +14,7 @@ pub struct Planning {
     pub repeated_anchor_attempts: u64,
     pub noise_queries: u64,
     pub count_queries: u64,
+    pub combined_sample_batches: u64,
     pub peak_retained_bytes: u64,
     pub worker: Worker,
 }

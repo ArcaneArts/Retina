@@ -29,6 +29,18 @@ struct Buffers {
     readback: wgpu::Buffer,
     capacity: usize,
 }
+struct Input {
+    table: wgpu::Buffer,
+    points: Vec<[u32; 4]>,
+    upload: u64,
+}
+pub(crate) struct BatchSamples {
+    pub counts: Vec<u32>,
+    pub providers: Vec<u32>,
+    pub upload: u64,
+    pub readback: u64,
+    pub device_nanos: [Option<u64>; 2],
+}
 pub(crate) struct ResultSamples {
     pub values: Vec<u32>,
     pub upload: u64,
@@ -78,17 +90,17 @@ impl Gpu {
                 queries: device.create_query_set(&wgpu::QuerySetDescriptor {
                     label: Some("Retina feature count timestamps"),
                     ty: wgpu::QueryType::Timestamp,
-                    count: 2,
+                    count: 4,
                 }),
                 resolve: device.create_buffer(&wgpu::BufferDescriptor {
                     label: Some("Retina feature timestamp resolve"),
-                    size: 16,
+                    size: 32,
                     usage: wgpu::BufferUsages::QUERY_RESOLVE | wgpu::BufferUsages::COPY_SRC,
                     mapped_at_creation: false,
                 }),
                 readback: device.create_buffer(&wgpu::BufferDescriptor {
                     label: Some("Retina feature timestamp readback"),
-                    size: 16,
+                    size: 32,
                     usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
                     mapped_at_creation: false,
                 }),
@@ -112,14 +124,16 @@ impl Gpu {
         noise: &Noise,
         queries: &[Query],
     ) -> Result<ResultSamples, String> {
-        if queries.is_empty() {
-            return Ok(ResultSamples {
-                values: Vec::new(),
-                upload: 0,
-                readback: 0,
-                device_nanos: None,
-            });
-        }
+        let batch = self.run_batch(id, Some(noise), queries, &[], &[])?;
+        Ok(ResultSamples {
+            values: batch.counts,
+            upload: batch.upload,
+            readback: batch.readback,
+            device_nanos: batch.device_nanos[0],
+        })
+    }
+
+    fn prepare_counts(&mut self, id: u32, noise: &Noise, queries: &[Query]) -> Input {
         let mut upload = 0;
         let resident = self.profiles.entry(id).or_insert_with(|| Resident {
             rules: Map::default(),
@@ -150,7 +164,11 @@ impl Gpu {
             upload += (resident.words.len() * 4) as u64;
         }
         let table = resident.buffer.as_ref().unwrap().clone();
-        self.run_words(&table, &input, upload, false)
+        Input {
+            table,
+            points: input,
+            upload,
+        }
     }
 
     pub(crate) fn run_providers(
@@ -159,20 +177,21 @@ impl Gpu {
         programs: &[crate::decoration::provider_noise::Program],
         points: &[[i32; 4]],
     ) -> Result<ResultSamples, String> {
-        if points.is_empty() {
-            return Ok(ResultSamples {
-                values: Vec::new(),
-                upload: 0,
-                readback: 0,
-                device_nanos: None,
-            });
-        }
-        if points
-            .iter()
-            .any(|p| p[3] < 0 || p[3] as usize >= programs.len())
-        {
-            return Err("invalid provider noise program ID".into());
-        }
+        let batch = self.run_batch(id, None, &[], programs, points)?;
+        Ok(ResultSamples {
+            values: batch.providers,
+            upload: batch.upload,
+            readback: batch.readback,
+            device_nanos: batch.device_nanos[1],
+        })
+    }
+
+    fn prepare_providers(
+        &mut self,
+        id: u32,
+        programs: &[crate::decoration::provider_noise::Program],
+        points: &[[i32; 4]],
+    ) -> Input {
         let mut upload = 0;
         let table = self
             .provider_profiles
@@ -189,17 +208,52 @@ impl Gpu {
             })
             .clone();
         let input: Vec<[u32; 4]> = points.iter().map(|p| p.map(|v| v as u32)).collect();
-        self.run_words(&table, &input, upload, true)
+        Input {
+            table,
+            points: input,
+            upload,
+        }
     }
 
-    fn run_words(
+    /// Counts and provider samples in one replay round have no dependency on
+    /// each other. Keep two dispatches/timings, but share submission and mapping.
+    pub(crate) fn run_batch(
         &mut self,
-        table: &wgpu::Buffer,
-        input: &[[u32; 4]],
-        mut upload: u64,
-        providers: bool,
-    ) -> Result<ResultSamples, String> {
-        if providers && self.provider_pipeline.is_none() {
+        id: u32,
+        noise: Option<&Noise>,
+        queries: &[Query],
+        programs: &[crate::decoration::provider_noise::Program],
+        points: &[[i32; 4]],
+    ) -> Result<BatchSamples, String> {
+        if points
+            .iter()
+            .any(|p| p[3] < 0 || p[3] as usize >= programs.len())
+        {
+            return Err("invalid provider noise program ID".into());
+        }
+        let count_input = if queries.is_empty() {
+            None
+        } else {
+            Some(self.prepare_counts(
+                id,
+                noise.ok_or("profile has no registered placement noise")?,
+                queries,
+            ))
+        };
+        let provider_input =
+            (!points.is_empty()).then(|| self.prepare_providers(id, programs, points));
+        let inputs = [count_input, provider_input];
+        let dispatches = inputs.iter().filter(|i| i.is_some()).count();
+        if dispatches == 0 {
+            return Ok(BatchSamples {
+                counts: Vec::new(),
+                providers: Vec::new(),
+                upload: 0,
+                readback: 0,
+                device_nanos: [None; 2],
+            });
+        }
+        if inputs[1].is_some() && self.provider_pipeline.is_none() {
             let shader = self
                 .device
                 .create_shader_module(wgpu::ShaderModuleDescriptor {
@@ -226,7 +280,18 @@ impl Gpu {
                 },
             ));
         }
-        let active = input.len();
+        // Storage binding offsets must be aligned for BOTH word outputs and
+        // four-word inputs. Padding is never exposed to the shader or caller.
+        let provider_start = if points.is_empty() {
+            queries.len()
+        } else {
+            let alignment =
+                (self.device.limits().min_storage_buffer_offset_alignment as usize / 4).max(1);
+            queries.len().div_ceil(alignment) * alignment
+        };
+        let starts = [0, provider_start];
+        let active = provider_start + points.len();
+        let mut upload = 0;
         if self.buffers.as_ref().is_none_or(|b| b.capacity < active) {
             let capacity = active.max(self.buffers.as_ref().map_or(1, |b| b.capacity));
             let buffer = |label, size, usage| {
@@ -257,75 +322,87 @@ impl Gpu {
             });
         }
         let buffers = self.buffers.as_ref().unwrap();
-        let binding = |buffer, size| {
-            wgpu::BindingResource::Buffer(wgpu::BufferBinding {
-                buffer,
-                offset: 0,
-                size: std::num::NonZeroU64::new(size),
-            })
-        };
         let bytes = (active * 4) as u64;
-        let group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("Retina active feature count batch"),
-            layout: &self.layout,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: table.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: binding(&buffers.input, bytes * 4),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 2,
-                    resource: binding(&buffers.output, bytes),
-                },
-            ],
-        });
-        self.queue
-            .write_buffer(&buffers.input, 0, bytemuck::cast_slice(input));
-        upload += bytes * 4;
         let mut encoder = self
             .device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("Retina registered feature counts"),
+                label: Some("Retina sparse decoration samples"),
             });
-        {
+        let mut timing_index = 0;
+        for (kind, input) in inputs.iter().enumerate() {
+            let Some(input) = input else { continue };
+            let start = starts[kind] as u64;
+            let count = input.points.len();
+            let binding = |buffer, stride| {
+                wgpu::BindingResource::Buffer(wgpu::BufferBinding {
+                    buffer,
+                    offset: start * stride,
+                    size: std::num::NonZeroU64::new(count as u64 * stride),
+                })
+            };
+            let group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some("Retina active sparse decoration batch"),
+                layout: &self.layout,
+                entries: &[
+                    wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: input.table.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 1,
+                        resource: binding(&buffers.input, 16),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 2,
+                        resource: binding(&buffers.output, 4),
+                    },
+                ],
+            });
+            self.queue.write_buffer(
+                &buffers.input,
+                start * 16,
+                bytemuck::cast_slice(&input.points),
+            );
+            upload += input.upload + (count * 16) as u64;
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                label: Some("Retina registered feature counts"),
+                label: Some(if kind == 0 {
+                    "Retina registered feature counts"
+                } else {
+                    "Retina registered provider noise"
+                }),
                 timestamp_writes: self.timestamps.as_ref().map(|t| {
                     wgpu::ComputePassTimestampWrites {
                         query_set: &t.queries,
-                        beginning_of_pass_write_index: Some(0),
-                        end_of_pass_write_index: Some(1),
+                        beginning_of_pass_write_index: Some(timing_index),
+                        end_of_pass_write_index: Some(timing_index + 1),
                     }
                 }),
             });
-            pass.set_pipeline(if providers {
-                self.provider_pipeline.as_ref().unwrap()
-            } else {
+            timing_index += 2;
+            pass.set_pipeline(if kind == 0 {
                 &self.pipeline
+            } else {
+                self.provider_pipeline.as_ref().unwrap()
             });
             pass.set_bind_group(0, &group, &[]);
             // Two-dimensional dispatch also supports large sparse custom-feature batches.
             pass.dispatch_workgroups(
-                (active as u32).div_ceil(64).min(256),
-                (active as u32).div_ceil(64 * 256),
+                (count as u32).div_ceil(64).min(256),
+                (count as u32).div_ceil(64 * 256),
                 1,
             );
         }
         encoder.copy_buffer_to_buffer(&buffers.output, 0, &buffers.readback, 0, bytes);
         if let Some(t) = &self.timestamps {
-            encoder.resolve_query_set(&t.queries, 0..2, &t.resolve, 0);
-            encoder.copy_buffer_to_buffer(&t.resolve, 0, &t.readback, 0, 16);
+            encoder.resolve_query_set(&t.queries, 0..timing_index, &t.resolve, 0);
+            encoder.copy_buffer_to_buffer(&t.resolve, 0, &t.readback, 0, timing_index as u64 * 8);
         }
         let submission = self.queue.submit([encoder.finish()]);
         let (sender, receiver) = mpsc::channel();
         if let Some(t) = &self.timestamps {
             let sender = sender.clone();
             t.readback
-                .slice(..)
+                .slice(..timing_index as u64 * 8)
                 .map_async(wgpu::MapMode::Read, move |r| {
                     let _ = sender.send(r);
                 });
@@ -354,24 +431,37 @@ impl Gpu {
                 .slice(..bytes)
                 .get_mapped_range()
                 .map_err(|e| e.to_string())?;
-            let device_nanos = if let Some(t) = &self.timestamps {
+            let mut device_nanos = [None; 2];
+            if let Some(t) = &self.timestamps {
                 let mapped = t
                     .readback
-                    .slice(..)
+                    .slice(..timing_index as u64 * 8)
                     .get_mapped_range()
                     .map_err(|e| e.to_string())?;
                 let ticks = bytemuck::cast_slice::<u8, u64>(&mapped);
-                Some(
-                    (ticks[1].saturating_sub(ticks[0]) as f64
-                        * self.queue.get_timestamp_period() as f64) as u64,
-                )
-            } else {
-                None
-            };
-            Ok(ResultSamples {
-                values: bytemuck::cast_slice::<u8, u32>(&mapped).to_vec(),
+                let mut offset = 0;
+                for (kind, input) in inputs.iter().enumerate() {
+                    if input.is_some() {
+                        device_nanos[kind] = Some(
+                            (ticks[offset + 1].saturating_sub(ticks[offset]) as f64
+                                * self.queue.get_timestamp_period() as f64)
+                                as u64,
+                        );
+                        offset += 2;
+                    }
+                }
+            }
+            let values = bytemuck::cast_slice::<u8, u32>(&mapped);
+            Ok(BatchSamples {
+                counts: values[..queries.len()].to_vec(),
+                providers: values[provider_start..].to_vec(),
                 upload,
-                readback: bytes + if self.timestamps.is_some() { 16 } else { 0 },
+                readback: bytes
+                    + if self.timestamps.is_some() {
+                        timing_index as u64 * 8
+                    } else {
+                        0
+                    },
                 device_nanos,
             })
         })();

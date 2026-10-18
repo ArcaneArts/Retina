@@ -1,0 +1,400 @@
+{
+  "scope": "Sparse GPU query dispatch A/B, dev opt-level=1, actual Metal M4 Max; not whole-region throughput",
+  "method": "1 warmup then 7 alternating pairs per shape; full u32/f32-bit result vectors compared each pair",
+  "sparse_query_batches": [
+    {
+      "all_outputs_equal": true,
+      "combined_ms": [
+        0.307208,
+        0.26454099999999997,
+        0.273958,
+        0.26449999999999996,
+        0.26629200000000003,
+        0.246333,
+        0.269291
+      ],
+      "counts": 64,
+      "last_transfer_and_device_nanos": [
+        3072,
+        800,
+        [
+          14917,
+          26208
+        ]
+      ],
+      "providers": 128,
+      "separate_ms": [
+        0.462417,
+        0.47225,
+        0.440875,
+        0.47316600000000003,
+        0.43204099999999995,
+        0.5370830000000001,
+        0.482958
+      ],
+      "median_ms": {
+        "separate": 0.47225,
+        "combined": 0.26629200000000003
+      },
+      "max_ms": {
+        "separate": 0.5370830000000001,
+        "combined": 0.307208
+      }
+    },
+    {
+      "all_outputs_equal": true,
+      "combined_ms": [
+        0.264667,
+        0.268291,
+        0.266084,
+        0.261333,
+        0.269042,
+        0.258,
+        0.27079200000000003
+      ],
+      "counts": 1024,
+      "last_transfer_and_device_nanos": [
+        81920,
+        20512,
+        [
+          14750,
+          25875
+        ]
+      ],
+      "providers": 4096,
+      "separate_ms": [
+        0.427875,
+        0.41895899999999997,
+        0.546,
+        0.42075,
+        0.427292,
+        0.41800000000000004,
+        0.43195799999999995
+      ],
+      "median_ms": {
+        "separate": 0.427292,
+        "combined": 0.266084
+      },
+      "max_ms": {
+        "separate": 0.546,
+        "combined": 0.27079200000000003
+      }
+    },
+    {
+      "all_outputs_equal": true,
+      "combined_ms": [
+        0.22495800000000002,
+        0.2075,
+        0.20049999999999998,
+        0.199,
+        0.200375,
+        0.21604099999999998,
+        0.2125
+      ],
+      "counts": 67,
+      "last_transfer_and_device_nanos": [
+        1072,
+        284,
+        [
+          14292,
+          null
+        ]
+      ],
+      "providers": 0,
+      "separate_ms": [
+        0.20325000000000001,
+        0.318417,
+        0.201125,
+        0.202541,
+        0.20670899999999998,
+        0.218167,
+        0.212625
+      ],
+      "median_ms": {
+        "separate": 0.20670899999999998,
+        "combined": 0.2075
+      },
+      "max_ms": {
+        "separate": 0.318417,
+        "combined": 0.22495800000000002
+      }
+    },
+    {
+      "all_outputs_equal": true,
+      "combined_ms": [
+        0.223792,
+        0.227084,
+        0.224417,
+        0.223375,
+        0.222958,
+        0.22370800000000002,
+        0.21804199999999999
+      ],
+      "counts": 0,
+      "last_transfer_and_device_nanos": [
+        65536,
+        16400,
+        [
+          null,
+          25667
+        ]
+      ],
+      "providers": 4096,
+      "separate_ms": [
+        0.228333,
+        0.2265,
+        0.291584,
+        0.225333,
+        0.221583,
+        0.225625,
+        0.222416
+      ],
+      "median_ms": {
+        "separate": 0.225625,
+        "combined": 0.22370800000000002
+      },
+      "max_ms": {
+        "separate": 0.291584,
+        "combined": 0.227084
+      }
+    }
+  ],
+  "sparse_process_maxrss_bytes": 23494656,
+  "sparse_process_peak_footprint_bytes": 181453592,
+  "memory_limitations": "Single process includes both paths and driver allocations; not paired memory or total device memory.",
+  "terralith_planner": {
+    "backend": "Metal: Apple M4 Max",
+    "chunk_x": 0,
+    "chunk_z": 0,
+    "iterations": 3,
+    "max_ms": 7.046417,
+    "median_ms": 7.009167000000001,
+    "phases": {
+      "anchor_attempts": 121,
+      "anchors_wall_nanos": 628375,
+      "combined_sample_batches": 0,
+      "count_expansion_wall_nanos": 26541,
+      "count_queries": 68,
+      "distribution_wall_nanos": 32958,
+      "noise_queries": 82,
+      "peak_retained_bytes": 341684,
+      "repeated_anchor_attempts": 21,
+      "replay_wall_nanos": 5504042,
+      "rounds": 2,
+      "sampling_wall_nanos": 823417,
+      "worker": {
+        "candidates": 47523,
+        "discarded_checkpoints": 0,
+        "evaluated_candidates": 48300,
+        "evaluation_nanos": 5847203,
+        "expansion_nanos": 3817204,
+        "leaf_nanos": 174293,
+        "resumed_anchors": 21,
+        "resumed_candidates": 10288,
+        "tree_attempts": 98,
+        "tree_nanos": 357622
+      }
+    },
+    "placements": 2868,
+    "samples_ms": [
+      7.009167000000001,
+      7.046417,
+      6.527749999999999
+    ],
+    "seed": 123456789,
+    "side": 8,
+    "signature": "2541ce5d59cf3f3f",
+    "warmups": 1,
+    "workers": 2
+  },
+  "retained_library_checks": {
+    "vanilla": {
+      "profile": "/Users/cyberpwn/development/workspace/ArcaneArts/Retina/build/task-vanilla-profile.json",
+      "profile_sha256": "df6c26088d8c3647dfdd0f9a7ef5dc03bd977a783c9093f1d0bf66764834a509",
+      "library_sha256": {
+        "baseline": "ce578d2a3429c8f4cea1ae6ee8011947be1dcb3f98196dc522de7dabcb0296e3",
+        "candidate": "26a22c956747be1b5639ffa63bc85ff0d9d5e042908765271877fc8e2d35639f"
+      },
+      "height": 384,
+      "chunks_per_batch": 2,
+      "callers": 2,
+      "samples": {
+        "baseline": [
+          {
+            "wall_ms": 97.008875,
+            "request_ms": [
+              96.939208,
+              58.954083
+            ],
+            "peak_in_flight": 2,
+            "gpu_jobs": 5,
+            "device_span_ms": 129.917208
+          },
+          {
+            "wall_ms": 61.109791,
+            "request_ms": [
+              61.053875,
+              55.969
+            ],
+            "peak_in_flight": 2,
+            "gpu_jobs": 4,
+            "device_span_ms": 95.149959
+          },
+          {
+            "wall_ms": 67.688084,
+            "request_ms": [
+              67.638334,
+              64.246125
+            ],
+            "peak_in_flight": 2,
+            "gpu_jobs": 6,
+            "device_span_ms": 210.978084
+          }
+        ],
+        "candidate": [
+          {
+            "wall_ms": 96.214583,
+            "request_ms": [
+              96.14575,
+              59.426708
+            ],
+            "peak_in_flight": 2,
+            "gpu_jobs": 5,
+            "device_span_ms": 128.264375
+          },
+          {
+            "wall_ms": 60.330916,
+            "request_ms": [
+              60.270708,
+              55.49825
+            ],
+            "peak_in_flight": 2,
+            "gpu_jobs": 4,
+            "device_span_ms": 93.855126
+          },
+          {
+            "wall_ms": 69.102333,
+            "request_ms": [
+              69.028792,
+              62.411625
+            ],
+            "peak_in_flight": 2,
+            "gpu_jobs": 4,
+            "device_span_ms": 98.000043
+          }
+        ]
+      },
+      "output_sha256": [
+        "a0dfc6282c67eb0a751778a6d79bef29a05feb3f0e77cd29215b9dc5b2df1185",
+        "9048b4d9811215b9074c88cc9be439c3b5f8c6e72b5346056f0cfc3f1cd2452c",
+        "6dad59f873d01042afa882014b00b896051a3c03378f2d9048ae434c8be7fe48"
+      ],
+      "exact_outputs": true,
+      "median_batch_ms": {
+        "baseline": 67.688084,
+        "candidate": 69.102333
+      },
+      "max_request_ms": {
+        "baseline": 96.939208,
+        "candidate": 96.14575
+      },
+      "combined_process_maxrss": 536281088,
+      "scope": "uncached material-bearing chunks; excludes MCA encoding/lighting; maxrss includes both libraries"
+    },
+    "terralith": {
+      "profile": "/Users/cyberpwn/development/workspace/ArcaneArts/Retina/build/terralith-profile.json",
+      "profile_sha256": "7f4b5092e2d589d030ff4c2f579ccd6b853cbe314fb758d3ca8711249da87b7d",
+      "library_sha256": {
+        "baseline": "ce578d2a3429c8f4cea1ae6ee8011947be1dcb3f98196dc522de7dabcb0296e3",
+        "candidate": "26a22c956747be1b5639ffa63bc85ff0d9d5e042908765271877fc8e2d35639f"
+      },
+      "height": 384,
+      "chunks_per_batch": 2,
+      "callers": 2,
+      "samples": {
+        "baseline": [
+          {
+            "wall_ms": 89.549458,
+            "request_ms": [
+              87.753833,
+              89.48475
+            ],
+            "peak_in_flight": 2,
+            "gpu_jobs": 2,
+            "device_span_ms": 92.099168
+          },
+          {
+            "wall_ms": 95.93,
+            "request_ms": [
+              95.280708,
+              95.871125
+            ],
+            "peak_in_flight": 2,
+            "gpu_jobs": 2,
+            "device_span_ms": 98.07
+          },
+          {
+            "wall_ms": 98.770417,
+            "request_ms": [
+              97.259583,
+              98.703333
+            ],
+            "peak_in_flight": 2,
+            "gpu_jobs": 2,
+            "device_span_ms": 101.196707
+          }
+        ],
+        "candidate": [
+          {
+            "wall_ms": 90.736167,
+            "request_ms": [
+              88.955791,
+              90.672292
+            ],
+            "peak_in_flight": 2,
+            "gpu_jobs": 2,
+            "device_span_ms": 93.682334
+          },
+          {
+            "wall_ms": 96.010166,
+            "request_ms": [
+              95.282042,
+              95.952917
+            ],
+            "peak_in_flight": 2,
+            "gpu_jobs": 2,
+            "device_span_ms": 98.043376
+          },
+          {
+            "wall_ms": 98.762666,
+            "request_ms": [
+              97.727875,
+              98.698542
+            ],
+            "peak_in_flight": 2,
+            "gpu_jobs": 2,
+            "device_span_ms": 102.057542
+          }
+        ]
+      },
+      "output_sha256": [
+        "2f22deeb30ee20aadd3460798a8285ffdcab3e1c13ea60d3c5a3964d5834b068",
+        "533240ca228d2cad52166202b2cf2938ed166b8414da554dad848f418c89154c",
+        "e461be272e32d8afee4163efb3b0c306eba4c085aa186f46f227d542ebec1fec"
+      ],
+      "exact_outputs": true,
+      "median_batch_ms": {
+        "baseline": 95.93,
+        "candidate": 96.010166
+      },
+      "max_request_ms": {
+        "baseline": 98.703333,
+        "candidate": 98.698542
+      },
+      "combined_process_maxrss": 211697664,
+      "scope": "uncached material-bearing chunks; excludes MCA encoding/lighting; maxrss includes both libraries"
+    }
+  },
+  "correctness": "68 native tests; actual GPU separate/combined results, complete replay outputs at 0/-33/700000, two profile callers, invalid then valid requests, timestamp enabled/disabled devices",
+  "limits": "2 compiler/codegen jobs, nice 10; runtime 2 planner workers, tests <=30s process group deadlines; build <=60s; no Minecraft/region benchmark"
+}

@@ -486,15 +486,47 @@ impl TerrainEngine {
             if let Some(d) = details.as_mut() {
                 d.count_queries += queries.counts.len() as u64;
                 d.noise_queries += queries.noise.len() as u64;
+                d.combined_sample_batches +=
+                    u64::from(!queries.counts.is_empty() && !queries.noise.is_empty());
             }
-            if !queries.counts.is_empty() {
-                let values = self.feature_counts(profile, request, &queries.counts, job)?;
-                counts.extend(queries.counts.into_iter().zip(values));
+            // Both query sets were collected against the same provisional
+            // anchor pass; neither depends on the other's newly sampled values.
+            let result = self
+                .feature_gpu
+                .lock()
+                .map_err(|_| "feature GPU lock poisoned")?
+                .run_batch(
+                    request.reserved,
+                    profile.decoration_noise.as_ref(),
+                    &queries.counts,
+                    &profile.decoration_provider_noises,
+                    &queries.noise,
+                )?;
+            self.pipeline
+                .transfer(request.reserved, result.upload, result.readback);
+            for (slot, nanos) in [timings::FEATURE_COUNTS, timings::PROVIDER_NOISE]
+                .into_iter()
+                .zip(result.device_nanos)
+            {
+                if let Some(nanos) = nanos {
+                    self.timings(request.reserved).device(slot, nanos);
+                    if let Some(job) = job {
+                        job.device(slot, nanos);
+                    }
+                }
             }
-            if !queries.noise.is_empty() {
-                let values = self.provider_noise(request, &queries.noise, job)?;
-                samples.extend(queries.noise.into_iter().zip(values));
-            }
+            counts.extend(
+                queries
+                    .counts
+                    .into_iter()
+                    .zip(result.counts.into_iter().map(|v| v as i32)),
+            );
+            samples.extend(
+                queries
+                    .noise
+                    .into_iter()
+                    .zip(result.providers.into_iter().map(f32::from_bits)),
+            );
             record(
                 sampling,
                 details.as_mut().map(|d| &mut d.sampling_wall_nanos),

@@ -17,7 +17,7 @@ fn recipe(id: usize, placement: Value, feature: Value) -> Value {
         .extend(feature.as_object().unwrap().clone());
     r
 }
-fn fixture(seed: u64, origin: i32) -> (WorldProfile, Field, ChunkRequest) {
+pub(super) fn fixture(seed: u64, origin: i32) -> (WorldProfile, Field, ChunkRequest) {
     let plant =
         json!({"kind":"plant","states":[{"lower":6,"upper":8,"weight":1,"band":0,"dry":false}]});
     let trees = recipe(
