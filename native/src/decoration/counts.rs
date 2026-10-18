@@ -74,3 +74,6 @@ impl Counts {
         self.values.get(&Query { x, z, rule }).copied()
     }
 }
+
+#[cfg(test)]
+mod gpu_tests;

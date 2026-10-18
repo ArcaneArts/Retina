@@ -98,5 +98,6 @@ The example forces interpreter terrain so it does not start background shader
 specialization. Builds used two jobs/codegen units and 60-second deadlines,
 separately from runtime tests. Minecraft was not launched.
 
-Worker scratch reuse, combining compatible GPU query submissions, and the
-tree/leaf GPU investigation remain separate follow-up work.
+Compatible GPU query submission batching is covered in
+[DECORATION_QUERY_BATCHES.md](DECORATION_QUERY_BATCHES.md). Worker scratch reuse
+and the tree/leaf GPU investigation remain separate follow-up work.
