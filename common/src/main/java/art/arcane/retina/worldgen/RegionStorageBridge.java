@@ -13,6 +13,7 @@ import java.util.function.Supplier;
 public interface RegionStorageBridge {
     void retina$configure(RegionCoordinator coordinator);
     Path retina$folder();
+    default RegionCoordinator retina$coordinator() { return null; }
     CompletableFuture<Optional<CompoundTag>> retina$loadAsync(ChunkPos position,
             Supplier<CompletableFuture<Optional<CompoundTag>>> read);
     void retina$closeRegion(ChunkPos position) throws IOException;

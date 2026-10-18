@@ -63,6 +63,17 @@ dependencies {
     testImplementation "net.fabricmc:fabric-loader-junit:${loader_version}"
 }
 test { useJUnitPlatform() }
+// Optional integration fixtures use an actual installed Chunky jar; it is never packaged with Retina.
+if (providers.gradleProperty('retinaChunkyJar').isPresent()) {
+    dependencies { testRuntimeOnly files(providers.gradleProperty('retinaChunkyJar').get()) }
+    test { systemProperty 'retina.chunky.tests', 'true' }
+}
+if (providers.gradleProperty('retinaNativePath').isPresent()) {
+    test {
+        systemProperty 'retina.native.path', providers.gradleProperty('retinaNativePath').get()
+        jvmArgs '--enable-native-access=ALL-UNNAMED'
+    }
+}
 processResources {
     def metadata = [version: project.version, minecraft_version: minecraft_version, loader_version: loader_version]
     inputs.properties(metadata)
