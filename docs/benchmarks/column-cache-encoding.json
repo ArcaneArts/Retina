@@ -1,0 +1,1268 @@
+{
+  "base_commit": "30fa85c49bbbc423cc944a107ca120fa83944fa9",
+  "host": "Apple M4 Max, macOS, JDK 25",
+  "scope": "CPU-only column sidecar encode/compress/write and reload. Real GPU column fixtures extracted once; no terrain, MCA generation, lighting or publication in benchmark timing.",
+  "modes": {
+    "0": "Original per-integer DataOutputStream and Java Deflater BEST_SPEED",
+    "1": "Bulk Java packing and 64 KiB compression output buffer (test-only alternative)",
+    "2": "Native big-endian packing, libdeflater level 1 and file write through production FFM helper; existing native column buffer reused"
+  },
+  "limits": {
+    "compile_jobs": 2,
+    "nice": 10,
+    "jvm_processors": 2,
+    "heap_mib": 256,
+    "build_deadline_seconds": 60,
+    "runtime_deadline_seconds": 30,
+    "termination_grace_seconds": 1
+  },
+  "fixtures": [
+    {
+      "name": "vanilla",
+      "columns": 262144,
+      "bytes": 3145728,
+      "sha256": "599252e5c7497c7c14525a8dc4dcb15b501715b19b398c69ef424c389e06cef8",
+      "profile_file": "task-vanilla-profile.json",
+      "profile_sha256": "2949064f5f62fc889b706b2c7911727e94e76c0cb40cf92f3e7340dd7732fea3",
+      "seed": 123456789,
+      "region": [
+        -1,
+        -1
+      ],
+      "height": 384
+    },
+    {
+      "name": "terralith",
+      "columns": 262144,
+      "bytes": 3145728,
+      "sha256": "ed33d0bfa5baf42102ac179face71cce6dba07482e6d7ace4ffb209f41ab1cbc",
+      "profile_file": "terralith-profile.json",
+      "profile_sha256": "c0aeaf8302fe33f6c43eb3fe87a58d54c5e4088574cc478984ca9042c0734918",
+      "seed": 123456789,
+      "region": [
+        -1,
+        -1
+      ],
+      "height": 384
+    }
+  ],
+  "validation": {
+    "codec": "Empty/one/4095/4096/4097 columns, arbitrary signed/unsigned bit patterns, unicode paths, old/new reader-writer compatibility, truncated/checksum/excess data, native null/oversize/I/O errors, two concurrent writers, file cleanup",
+    "lifecycle": "Actual TemporaryRegions and NativeTerrain on 16-block-tall legacy terrain: cold reload without regeneration, LRU, MCA promotion, player edits, partial promotion, held lease shutdown, native sidecar write failure after MCA success",
+    "metrics": "generationMetricsTest; existing rolling20 mean,p95,latency-derived rate,cache share and packet format",
+    "build": "release native library/example; common main/test compilation; cargo fmt and diff checks"
+  },
+  "limits_of_evidence": [
+    "Seven measured samples per mode after two warmups; order rotated. Maxima retained, not robust production p95 estimates.",
+    "Writes use the normal filesystem cache and do not fsync; both variants follow existing sidecar durability behavior.",
+    "Native input preparation is outside timing because production already owns the native column buffer. Baseline Java arrays likewise exist before timing.",
+    "RSS/peak footprint measure the entire JVM with all variants and fixtures, not paired native-memory savings.",
+    "No whole-region throughput claim."
+  ],
+  "runs": [
+    {
+      "phase": "initial",
+      "log_sha256": "268c32060d8324837355b063b9ec1f3829c1f8a98ea838da8cfb8190c13cc16f",
+      "process_resources": {
+        "maximum resident set size": 160497664,
+        "peak memory footprint": 137053048
+      },
+      "cases": [
+        {
+          "fixture": "vanilla.columns",
+          "columns": 262144,
+          "warmups": 2,
+          "samples": [
+            {
+              "mode": 2,
+              "write_nanos": 4350292,
+              "read_nanos": 4106792,
+              "bytes": 350798,
+              "native_stages": [
+                74916,
+                3988000,
+                232417,
+                350798
+              ]
+            },
+            {
+              "mode": 0,
+              "write_nanos": 19042667,
+              "read_nanos": 4882750,
+              "bytes": 447882,
+              "native_stages": [
+                0,
+                0,
+                0,
+                0
+              ]
+            },
+            {
+              "mode": 1,
+              "write_nanos": 11339334,
+              "read_nanos": 4609291,
+              "bytes": 447882,
+              "native_stages": [
+                0,
+                0,
+                0,
+                0
+              ]
+            },
+            {
+              "mode": 0,
+              "write_nanos": 15290833,
+              "read_nanos": 4792500,
+              "bytes": 447882,
+              "native_stages": [
+                0,
+                0,
+                0,
+                0
+              ]
+            },
+            {
+              "mode": 1,
+              "write_nanos": 27207917,
+              "read_nanos": 4762541,
+              "bytes": 447882,
+              "native_stages": [
+                0,
+                0,
+                0,
+                0
+              ]
+            },
+            {
+              "mode": 2,
+              "write_nanos": 4370291,
+              "read_nanos": 4193792,
+              "bytes": 350798,
+              "native_stages": [
+                79167,
+                4056375,
+                163458,
+                350798
+              ]
+            },
+            {
+              "mode": 1,
+              "write_nanos": 11133500,
+              "read_nanos": 4452875,
+              "bytes": 447882,
+              "native_stages": [
+                0,
+                0,
+                0,
+                0
+              ]
+            },
+            {
+              "mode": 2,
+              "write_nanos": 4363041,
+              "read_nanos": 4339917,
+              "bytes": 350798,
+              "native_stages": [
+                75250,
+                4038833,
+                165417,
+                350798
+              ]
+            },
+            {
+              "mode": 0,
+              "write_nanos": 15323750,
+              "read_nanos": 4683292,
+              "bytes": 447882,
+              "native_stages": [
+                0,
+                0,
+                0,
+                0
+              ]
+            },
+            {
+              "mode": 2,
+              "write_nanos": 4307959,
+              "read_nanos": 4150750,
+              "bytes": 350798,
+              "native_stages": [
+                75375,
+                4017417,
+                154750,
+                350798
+              ]
+            },
+            {
+              "mode": 0,
+              "write_nanos": 14937083,
+              "read_nanos": 4926875,
+              "bytes": 447882,
+              "native_stages": [
+                0,
+                0,
+                0,
+                0
+              ]
+            },
+            {
+              "mode": 1,
+              "write_nanos": 9558292,
+              "read_nanos": 5622791,
+              "bytes": 447882,
+              "native_stages": [
+                0,
+                0,
+                0,
+                0
+              ]
+            },
+            {
+              "mode": 0,
+              "write_nanos": 14961042,
+              "read_nanos": 4442583,
+              "bytes": 447882,
+              "native_stages": [
+                0,
+                0,
+                0,
+                0
+              ]
+            },
+            {
+              "mode": 1,
+              "write_nanos": 9649667,
+              "read_nanos": 4757666,
+              "bytes": 447882,
+              "native_stages": [
+                0,
+                0,
+                0,
+                0
+              ]
+            },
+            {
+              "mode": 2,
+              "write_nanos": 4336042,
+              "read_nanos": 4042250,
+              "bytes": 350798,
+              "native_stages": [
+                74917,
+                4035083,
+                144417,
+                350798
+              ]
+            },
+            {
+              "mode": 1,
+              "write_nanos": 9667333,
+              "read_nanos": 4693958,
+              "bytes": 447882,
+              "native_stages": [
+                0,
+                0,
+                0,
+                0
+              ]
+            },
+            {
+              "mode": 2,
+              "write_nanos": 4311125,
+              "read_nanos": 4004334,
+              "bytes": 350798,
+              "native_stages": [
+                77375,
+                4020083,
+                153125,
+                350798
+              ]
+            },
+            {
+              "mode": 0,
+              "write_nanos": 14697500,
+              "read_nanos": 4499833,
+              "bytes": 447882,
+              "native_stages": [
+                0,
+                0,
+                0,
+                0
+              ]
+            },
+            {
+              "mode": 2,
+              "write_nanos": 4285167,
+              "read_nanos": 3957833,
+              "bytes": 350798,
+              "native_stages": [
+                76000,
+                4005875,
+                150166,
+                350798
+              ]
+            },
+            {
+              "mode": 0,
+              "write_nanos": 14974208,
+              "read_nanos": 4515625,
+              "bytes": 447882,
+              "native_stages": [
+                0,
+                0,
+                0,
+                0
+              ]
+            },
+            {
+              "mode": 1,
+              "write_nanos": 18073500,
+              "read_nanos": 4457708,
+              "bytes": 447882,
+              "native_stages": [
+                0,
+                0,
+                0,
+                0
+              ]
+            }
+          ],
+          "old_read_nanos": [
+            11300125,
+            9164833,
+            10289750,
+            9020750,
+            9116542,
+            8980667,
+            9061125
+          ],
+          "bulk_read_nanos": [
+            3837375,
+            3813167,
+            3903709,
+            3900459,
+            3823500,
+            3740666,
+            4068125
+          ],
+          "summary": {
+            "old_java_stream": {
+              "median_write_ms": 14.974208,
+              "max_write_ms": 19.042667,
+              "bytes": 447882
+            },
+            "bulk_java_candidate": {
+              "median_write_ms": 11.1335,
+              "max_write_ms": 27.207917,
+              "bytes": 447882
+            },
+            "native": {
+              "median_write_ms": 4.336042,
+              "max_write_ms": 4.370291,
+              "bytes": 350798
+            },
+            "median_old_read_ms": 9.116542,
+            "median_bulk_read_ms": 3.837375
+          }
+        },
+        {
+          "fixture": "terralith.columns",
+          "columns": 262144,
+          "warmups": 2,
+          "samples": [
+            {
+              "mode": 2,
+              "write_nanos": 4493750,
+              "read_nanos": 4831208,
+              "bytes": 371689,
+              "native_stages": [
+                74333,
+                4235500,
+                132417,
+                371689
+              ]
+            },
+            {
+              "mode": 0,
+              "write_nanos": 18463250,
+              "read_nanos": 4698500,
+              "bytes": 472451,
+              "native_stages": [
+                0,
+                0,
+                0,
+                0
+              ]
+            },
+            {
+              "mode": 1,
+              "write_nanos": 9970709,
+              "read_nanos": 4749875,
+              "bytes": 472451,
+              "native_stages": [
+                0,
+                0,
+                0,
+                0
+              ]
+            },
+            {
+              "mode": 0,
+              "write_nanos": 15280792,
+              "read_nanos": 4768708,
+              "bytes": 472451,
+              "native_stages": [
+                0,
+                0,
+                0,
+                0
+              ]
+            },
+            {
+              "mode": 1,
+              "write_nanos": 9978708,
+              "read_nanos": 4603167,
+              "bytes": 472451,
+              "native_stages": [
+                0,
+                0,
+                0,
+                0
+              ]
+            },
+            {
+              "mode": 2,
+              "write_nanos": 4485917,
+              "read_nanos": 4057417,
+              "bytes": 371689,
+              "native_stages": [
+                76125,
+                4215333,
+                125709,
+                371689
+              ]
+            },
+            {
+              "mode": 1,
+              "write_nanos": 10060292,
+              "read_nanos": 4804083,
+              "bytes": 472451,
+              "native_stages": [
+                0,
+                0,
+                0,
+                0
+              ]
+            },
+            {
+              "mode": 2,
+              "write_nanos": 4496000,
+              "read_nanos": 4086291,
+              "bytes": 371689,
+              "native_stages": [
+                75458,
+                4234542,
+                137666,
+                371689
+              ]
+            },
+            {
+              "mode": 0,
+              "write_nanos": 29539917,
+              "read_nanos": 4757125,
+              "bytes": 472451,
+              "native_stages": [
+                0,
+                0,
+                0,
+                0
+              ]
+            },
+            {
+              "mode": 2,
+              "write_nanos": 4508333,
+              "read_nanos": 4111750,
+              "bytes": 371689,
+              "native_stages": [
+                78875,
+                4228500,
+                139708,
+                371689
+              ]
+            },
+            {
+              "mode": 0,
+              "write_nanos": 15360250,
+              "read_nanos": 4691417,
+              "bytes": 472451,
+              "native_stages": [
+                0,
+                0,
+                0,
+                0
+              ]
+            },
+            {
+              "mode": 1,
+              "write_nanos": 10001500,
+              "read_nanos": 4584000,
+              "bytes": 472451,
+              "native_stages": [
+                0,
+                0,
+                0,
+                0
+              ]
+            },
+            {
+              "mode": 0,
+              "write_nanos": 15675042,
+              "read_nanos": 4823042,
+              "bytes": 472451,
+              "native_stages": [
+                0,
+                0,
+                0,
+                0
+              ]
+            },
+            {
+              "mode": 1,
+              "write_nanos": 9981167,
+              "read_nanos": 4749375,
+              "bytes": 472451,
+              "native_stages": [
+                0,
+                0,
+                0,
+                0
+              ]
+            },
+            {
+              "mode": 2,
+              "write_nanos": 4561583,
+              "read_nanos": 4161417,
+              "bytes": 371689,
+              "native_stages": [
+                76041,
+                4272292,
+                143625,
+                371689
+              ]
+            },
+            {
+              "mode": 1,
+              "write_nanos": 10069708,
+              "read_nanos": 4744083,
+              "bytes": 472451,
+              "native_stages": [
+                0,
+                0,
+                0,
+                0
+              ]
+            },
+            {
+              "mode": 2,
+              "write_nanos": 11953333,
+              "read_nanos": 4238250,
+              "bytes": 371689,
+              "native_stages": [
+                76000,
+                4258041,
+                7554834,
+                371689
+              ]
+            },
+            {
+              "mode": 0,
+              "write_nanos": 16558334,
+              "read_nanos": 4749666,
+              "bytes": 472451,
+              "native_stages": [
+                0,
+                0,
+                0,
+                0
+              ]
+            },
+            {
+              "mode": 2,
+              "write_nanos": 4451958,
+              "read_nanos": 4772083,
+              "bytes": 371689,
+              "native_stages": [
+                73292,
+                4203250,
+                131792,
+                371689
+              ]
+            },
+            {
+              "mode": 0,
+              "write_nanos": 15405292,
+              "read_nanos": 4701833,
+              "bytes": 472451,
+              "native_stages": [
+                0,
+                0,
+                0,
+                0
+              ]
+            },
+            {
+              "mode": 1,
+              "write_nanos": 10023708,
+              "read_nanos": 4581125,
+              "bytes": 472451,
+              "native_stages": [
+                0,
+                0,
+                0,
+                0
+              ]
+            }
+          ],
+          "old_read_nanos": [
+            9157208,
+            9452625,
+            9386208,
+            9226000,
+            9297334,
+            9942084,
+            9390666
+          ],
+          "bulk_read_nanos": [
+            4428334,
+            4187084,
+            4073625,
+            3991125,
+            3974917,
+            3889167,
+            4070708
+          ],
+          "summary": {
+            "old_java_stream": {
+              "median_write_ms": 15.675042,
+              "max_write_ms": 29.539917,
+              "bytes": 472451
+            },
+            "bulk_java_candidate": {
+              "median_write_ms": 10.0015,
+              "max_write_ms": 10.069708,
+              "bytes": 472451
+            },
+            "native": {
+              "median_write_ms": 4.496,
+              "max_write_ms": 11.953333,
+              "bytes": 371689
+            },
+            "median_old_read_ms": 9.386208,
+            "median_bulk_read_ms": 4.070708
+          }
+        }
+      ]
+    },
+    {
+      "phase": "production_bridge",
+      "log_sha256": "22214265e72fcdfe09537af46738dd3a02298d32e4b34f8064af56a9ee8fa9ea",
+      "process_resources": {
+        "maximum resident set size": 157466624,
+        "peak memory footprint": 134120384
+      },
+      "cases": [
+        {
+          "fixture": "vanilla.columns",
+          "columns": 262144,
+          "warmups": 2,
+          "samples": [
+            {
+              "mode": 2,
+              "write_nanos": 4493875,
+              "read_nanos": 4299209,
+              "bytes": 350798,
+              "native_stages": [
+                76625,
+                4201208,
+                157875,
+                350798
+              ]
+            },
+            {
+              "mode": 0,
+              "write_nanos": 19474916,
+              "read_nanos": 5009584,
+              "bytes": 447882,
+              "native_stages": [
+                0,
+                0,
+                0,
+                0
+              ]
+            },
+            {
+              "mode": 1,
+              "write_nanos": 12408709,
+              "read_nanos": 4890750,
+              "bytes": 447882,
+              "native_stages": [
+                0,
+                0,
+                0,
+                0
+              ]
+            },
+            {
+              "mode": 0,
+              "write_nanos": 15762959,
+              "read_nanos": 5010541,
+              "bytes": 447882,
+              "native_stages": [
+                0,
+                0,
+                0,
+                0
+              ]
+            },
+            {
+              "mode": 1,
+              "write_nanos": 11165625,
+              "read_nanos": 4849125,
+              "bytes": 447882,
+              "native_stages": [
+                0,
+                0,
+                0,
+                0
+              ]
+            },
+            {
+              "mode": 2,
+              "write_nanos": 4493375,
+              "read_nanos": 4261625,
+              "bytes": 350798,
+              "native_stages": [
+                80417,
+                4155750,
+                188250,
+                350798
+              ]
+            },
+            {
+              "mode": 1,
+              "write_nanos": 9515750,
+              "read_nanos": 5727833,
+              "bytes": 447882,
+              "native_stages": [
+                0,
+                0,
+                0,
+                0
+              ]
+            },
+            {
+              "mode": 2,
+              "write_nanos": 4584292,
+              "read_nanos": 4068208,
+              "bytes": 350798,
+              "native_stages": [
+                77000,
+                4246500,
+                199959,
+                350798
+              ]
+            },
+            {
+              "mode": 0,
+              "write_nanos": 14362584,
+              "read_nanos": 4632708,
+              "bytes": 447882,
+              "native_stages": [
+                0,
+                0,
+                0,
+                0
+              ]
+            },
+            {
+              "mode": 2,
+              "write_nanos": 4357084,
+              "read_nanos": 3975125,
+              "bytes": 350798,
+              "native_stages": [
+                77625,
+                4063000,
+                158875,
+                350798
+              ]
+            },
+            {
+              "mode": 0,
+              "write_nanos": 14292125,
+              "read_nanos": 4571166,
+              "bytes": 447882,
+              "native_stages": [
+                0,
+                0,
+                0,
+                0
+              ]
+            },
+            {
+              "mode": 1,
+              "write_nanos": 9354458,
+              "read_nanos": 4588333,
+              "bytes": 447882,
+              "native_stages": [
+                0,
+                0,
+                0,
+                0
+              ]
+            },
+            {
+              "mode": 0,
+              "write_nanos": 14275084,
+              "read_nanos": 4446791,
+              "bytes": 447882,
+              "native_stages": [
+                0,
+                0,
+                0,
+                0
+              ]
+            },
+            {
+              "mode": 1,
+              "write_nanos": 9350125,
+              "read_nanos": 4410000,
+              "bytes": 447882,
+              "native_stages": [
+                0,
+                0,
+                0,
+                0
+              ]
+            },
+            {
+              "mode": 2,
+              "write_nanos": 4340500,
+              "read_nanos": 3927792,
+              "bytes": 350798,
+              "native_stages": [
+                75791,
+                4050334,
+                141333,
+                350798
+              ]
+            },
+            {
+              "mode": 1,
+              "write_nanos": 9424917,
+              "read_nanos": 4900208,
+              "bytes": 447882,
+              "native_stages": [
+                0,
+                0,
+                0,
+                0
+              ]
+            },
+            {
+              "mode": 2,
+              "write_nanos": 4736667,
+              "read_nanos": 4320333,
+              "bytes": 350798,
+              "native_stages": [
+                80750,
+                4441959,
+                154250,
+                350798
+              ]
+            },
+            {
+              "mode": 0,
+              "write_nanos": 14713125,
+              "read_nanos": 4466959,
+              "bytes": 447882,
+              "native_stages": [
+                0,
+                0,
+                0,
+                0
+              ]
+            },
+            {
+              "mode": 2,
+              "write_nanos": 4308250,
+              "read_nanos": 3886125,
+              "bytes": 350798,
+              "native_stages": [
+                73167,
+                4071208,
+                125583,
+                350798
+              ]
+            },
+            {
+              "mode": 0,
+              "write_nanos": 14209125,
+              "read_nanos": 4582250,
+              "bytes": 447882,
+              "native_stages": [
+                0,
+                0,
+                0,
+                0
+              ]
+            },
+            {
+              "mode": 1,
+              "write_nanos": 9326084,
+              "read_nanos": 4499000,
+              "bytes": 447882,
+              "native_stages": [
+                0,
+                0,
+                0,
+                0
+              ]
+            }
+          ],
+          "old_read_nanos": [
+            11504125,
+            9390625,
+            9503833,
+            9169042,
+            9071167,
+            9906709,
+            9597417
+          ],
+          "bulk_read_nanos": [
+            3868375,
+            3806542,
+            3939000,
+            3866625,
+            3750875,
+            3803750,
+            3955584
+          ],
+          "summary": {
+            "old_java_stream": {
+              "median_write_ms": 14.362584,
+              "max_write_ms": 19.474916,
+              "bytes": 447882
+            },
+            "bulk_java_candidate": {
+              "median_write_ms": 9.424917,
+              "max_write_ms": 12.408709,
+              "bytes": 447882
+            },
+            "native": {
+              "median_write_ms": 4.493375,
+              "max_write_ms": 4.736667,
+              "bytes": 350798
+            },
+            "median_old_read_ms": 9.503833,
+            "median_bulk_read_ms": 3.866625
+          }
+        },
+        {
+          "fixture": "terralith.columns",
+          "columns": 262144,
+          "warmups": 2,
+          "samples": [
+            {
+              "mode": 2,
+              "write_nanos": 4645000,
+              "read_nanos": 4166375,
+              "bytes": 371689,
+              "native_stages": [
+                74375,
+                4347541,
+                161084,
+                371689
+              ]
+            },
+            {
+              "mode": 0,
+              "write_nanos": 15130500,
+              "read_nanos": 4826833,
+              "bytes": 472451,
+              "native_stages": [
+                0,
+                0,
+                0,
+                0
+              ]
+            },
+            {
+              "mode": 1,
+              "write_nanos": 10165584,
+              "read_nanos": 4683833,
+              "bytes": 472451,
+              "native_stages": [
+                0,
+                0,
+                0,
+                0
+              ]
+            },
+            {
+              "mode": 0,
+              "write_nanos": 15233667,
+              "read_nanos": 4912292,
+              "bytes": 472451,
+              "native_stages": [
+                0,
+                0,
+                0,
+                0
+              ]
+            },
+            {
+              "mode": 1,
+              "write_nanos": 10221958,
+              "read_nanos": 4938125,
+              "bytes": 472451,
+              "native_stages": [
+                0,
+                0,
+                0,
+                0
+              ]
+            },
+            {
+              "mode": 2,
+              "write_nanos": 4691750,
+              "read_nanos": 4189375,
+              "bytes": 371689,
+              "native_stages": [
+                81542,
+                4387666,
+                150584,
+                371689
+              ]
+            },
+            {
+              "mode": 1,
+              "write_nanos": 10311625,
+              "read_nanos": 4864792,
+              "bytes": 472451,
+              "native_stages": [
+                0,
+                0,
+                0,
+                0
+              ]
+            },
+            {
+              "mode": 2,
+              "write_nanos": 4937667,
+              "read_nanos": 4384000,
+              "bytes": 371689,
+              "native_stages": [
+                82417,
+                4630250,
+                170167,
+                371689
+              ]
+            },
+            {
+              "mode": 0,
+              "write_nanos": 16089541,
+              "read_nanos": 4924584,
+              "bytes": 472451,
+              "native_stages": [
+                0,
+                0,
+                0,
+                0
+              ]
+            },
+            {
+              "mode": 2,
+              "write_nanos": 4616292,
+              "read_nanos": 4157541,
+              "bytes": 371689,
+              "native_stages": [
+                76709,
+                4334416,
+                149917,
+                371689
+              ]
+            },
+            {
+              "mode": 0,
+              "write_nanos": 15252792,
+              "read_nanos": 4826583,
+              "bytes": 472451,
+              "native_stages": [
+                0,
+                0,
+                0,
+                0
+              ]
+            },
+            {
+              "mode": 1,
+              "write_nanos": 9887708,
+              "read_nanos": 4623917,
+              "bytes": 472451,
+              "native_stages": [
+                0,
+                0,
+                0,
+                0
+              ]
+            },
+            {
+              "mode": 0,
+              "write_nanos": 15161958,
+              "read_nanos": 5396792,
+              "bytes": 472451,
+              "native_stages": [
+                0,
+                0,
+                0,
+                0
+              ]
+            },
+            {
+              "mode": 1,
+              "write_nanos": 10003083,
+              "read_nanos": 4825750,
+              "bytes": 472451,
+              "native_stages": [
+                0,
+                0,
+                0,
+                0
+              ]
+            },
+            {
+              "mode": 2,
+              "write_nanos": 4535208,
+              "read_nanos": 4098375,
+              "bytes": 371689,
+              "native_stages": [
+                76666,
+                4237709,
+                148791,
+                371689
+              ]
+            },
+            {
+              "mode": 1,
+              "write_nanos": 9900042,
+              "read_nanos": 4767791,
+              "bytes": 472451,
+              "native_stages": [
+                0,
+                0,
+                0,
+                0
+              ]
+            },
+            {
+              "mode": 2,
+              "write_nanos": 4540250,
+              "read_nanos": 4183834,
+              "bytes": 371689,
+              "native_stages": [
+                73417,
+                4283458,
+                134917,
+                371689
+              ]
+            },
+            {
+              "mode": 0,
+              "write_nanos": 15026583,
+              "read_nanos": 4694375,
+              "bytes": 472451,
+              "native_stages": [
+                0,
+                0,
+                0,
+                0
+              ]
+            },
+            {
+              "mode": 2,
+              "write_nanos": 4531666,
+              "read_nanos": 4026917,
+              "bytes": 371689,
+              "native_stages": [
+                74000,
+                4230333,
+                172875,
+                371689
+              ]
+            },
+            {
+              "mode": 0,
+              "write_nanos": 15047125,
+              "read_nanos": 4895666,
+              "bytes": 472451,
+              "native_stages": [
+                0,
+                0,
+                0,
+                0
+              ]
+            },
+            {
+              "mode": 1,
+              "write_nanos": 10139291,
+              "read_nanos": 4528084,
+              "bytes": 472451,
+              "native_stages": [
+                0,
+                0,
+                0,
+                0
+              ]
+            }
+          ],
+          "old_read_nanos": [
+            9077250,
+            9546250,
+            10155833,
+            10059334,
+            10206250,
+            9674167,
+            9459708
+          ],
+          "bulk_read_nanos": [
+            3931292,
+            3918666,
+            4386291,
+            4496708,
+            4463708,
+            4527042,
+            4239834
+          ],
+          "summary": {
+            "old_java_stream": {
+              "median_write_ms": 15.161958,
+              "max_write_ms": 16.089541,
+              "bytes": 472451
+            },
+            "bulk_java_candidate": {
+              "median_write_ms": 10.139291,
+              "max_write_ms": 10.311625,
+              "bytes": 472451
+            },
+            "native": {
+              "median_write_ms": 4.616292,
+              "max_write_ms": 4.937667,
+              "bytes": 371689
+            },
+            "median_old_read_ms": 9.674167,
+            "median_bulk_read_ms": 4.386291
+          }
+        }
+      ]
+    }
+  ]
+}

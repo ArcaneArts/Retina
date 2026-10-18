@@ -32,6 +32,7 @@ public final class NativeTerrain {
     private final MethodHandle sample;
     private final MethodHandle profiledRegion;
     private final MethodHandle publishRegionCache;
+    private final MethodHandle writeColumnCache;
     private final MethodHandle registerProfile;
     private final MethodHandle sampleColumns;
     private final MethodHandle lightVolume;
@@ -61,6 +62,8 @@ public final class NativeTerrain {
                 FunctionDescriptor.of(JAVA_INT, ADDRESS, ADDRESS));
         profiledRegion = linker.downcallHandle(symbols.findOrThrow("retina_generate_region_profiled"),
                 FunctionDescriptor.of(JAVA_INT, ADDRESS, ADDRESS, JAVA_LONG, JAVA_INT, ADDRESS, JAVA_LONG, ADDRESS, ADDRESS));
+        writeColumnCache = linker.downcallHandle(symbols.findOrThrow("retina_write_column_cache"),
+                FunctionDescriptor.of(JAVA_INT, ADDRESS, JAVA_LONG, ADDRESS, JAVA_LONG, ADDRESS));
         publishRegionCache = linker.downcallHandle(symbols.findOrThrow("retina_publish_region_cache"),
                 FunctionDescriptor.of(JAVA_INT, ADDRESS, ADDRESS, JAVA_LONG, ADDRESS, JAVA_LONG, ADDRESS));
         registerProfile = linker.downcallHandle(symbols.findOrThrow("retina_register_profile"),
@@ -321,6 +324,11 @@ public final class NativeTerrain {
 
     /** Caller owns a temporary destination. Returns the same GPU columns used by the MCA writer. */
     public RegionData generateRegionColumns(TerrainRequest request, Path destination, int dataVersion, String biome) {
+        return generateRegionColumns(request, destination, dataVersion, biome, null);
+    }
+
+    /** Writes the private sidecar while native columns are still available; publication stays with the cache lease. */
+    RegionData generateRegionColumns(TerrainRequest request, Path destination, int dataVersion, String biome, Path columnCache) {
         try (var arena = Arena.ofConfined()) {
             var pathBytes = destination.toAbsolutePath().toString().getBytes(StandardCharsets.UTF_8);
             var biomeBytes = biome.getBytes(StandardCharsets.UTF_8);
@@ -328,11 +336,23 @@ public final class NativeTerrain {
             var report = arena.allocate(40 + NativeTimings.BYTES, Long.BYTES);
             check((int) profiledRegion.invokeExact(encode(arena, request), arena.allocateFrom(JAVA_BYTE, pathBytes), (long) pathBytes.length,
                     dataVersion, arena.allocateFrom(JAVA_BYTE, biomeBytes), (long) biomeBytes.length, report, output));
-            return new RegionData(decodeRegionReport(report), decodeColumns(output));
-        } catch (Throwable error) { throw failure(error); }
+            long cacheNanos = 0;
+            if (columnCache != null) {
+                var stats = ColumnCache.writeNative(columnCache, output, ColumnCache.REGION_COLUMNS, writeColumnCache, lastError);
+                cacheNanos = stats.elapsedNanos();
+                if (Boolean.getBoolean("retina.columnCacheDiagnostics"))
+                    System.getLogger("retina").log(System.Logger.Level.INFO, "Column cache: " + stats);
+            }
+            return new RegionData(decodeRegionReport(report), decodeColumns(output), cacheNanos);
+        } catch (Throwable error) {
+            if (error instanceof IOException io) throw new java.io.UncheckedIOException(io);
+            throw failure(error);
+        }
     }
 
-    public record RegionData(RegionReport report, Columns columns) { }
+    public record RegionData(RegionReport report, Columns columns, long columnCacheNanos) {
+        public RegionData(RegionReport report, Columns columns) { this(report, columns, 0); }
+    }
 
     /** Copy cached compressed records into missing save slots while preserving existing chunks. */
     public RegionReport publishCachedRegion(TerrainRequest request, Path destination, Path cached) {

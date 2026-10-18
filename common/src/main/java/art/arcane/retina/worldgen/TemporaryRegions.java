@@ -12,13 +12,6 @@ import net.minecraft.world.level.chunk.storage.RegionFileStorage;
 import net.minecraft.world.level.chunk.storage.RegionStorageInfo;
 
 import java.io.IOException;
-import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
-import java.util.zip.Deflater;
-import java.util.zip.DeflaterOutputStream;
-import java.util.zip.InflaterInputStream;
 import java.io.UncheckedIOException;
 import java.nio.file.*;
 import java.util.Arrays;
@@ -114,21 +107,13 @@ final class TemporaryRegions implements AutoCloseable {
             if (tag == null) throw new IOException("Missing chunk in completed temporary MCA: " + position);
             return tag;
         }
-        synchronized void storeColumns(NativeTerrain.Columns columns) throws IOException {
-            var deflater = new Deflater(Deflater.BEST_SPEED);
-            try (var output = new DataOutputStream(new BufferedOutputStream(new DeflaterOutputStream(Files.newOutputStream(columnPath), deflater)))) {
-                for (int i = 0; i < columns.heights().length; i++) {
-                    output.writeInt(columns.heights()[i]); output.writeInt(columns.packed()[i]); output.writeInt(columns.materials()[i]);
-                }
-            } finally { deflater.end(); }
+        synchronized void retainColumns(NativeTerrain.Columns columns) {
             this.columns = columns;
         }
         synchronized NativeTerrain.Columns columns() throws IOException {
             if (columns == null) {
                 int[] heights = new int[1024 * 256], packed = new int[1024 * 256], materials = new int[1024 * 256];
-                try (var input = new DataInputStream(new BufferedInputStream(new InflaterInputStream(Files.newInputStream(columnPath))))) {
-                    for (int i = 0; i < heights.length; i++) { heights[i] = input.readInt(); packed[i] = input.readInt(); materials[i] = input.readInt(); }
-                }
+                ColumnCache.read(columnPath, heights, packed, materials);
                 columns = new NativeTerrain.Columns(heights, packed, materials);
             }
             return columns;
@@ -194,11 +179,10 @@ final class TemporaryRegions implements AutoCloseable {
                 var r = new TerrainRequest(settings.seed(), entry.origin.x(), entry.origin.z(), settings.minY(), settings.height(),
                         settings.baseHeight(), settings.amplitude(), settings.frequency(), settings.profile());
                 var data = NativeTerrain.instance().generateRegionColumns(r, entry.path,
-                        SharedConstants.getCurrentVersion().dataVersion().version(), biome);
+                        SharedConstants.getCurrentVersion().dataVersion().version(), biome, entry.columnPath);
                 var report = data.report();
-                long cacheStarted=System.nanoTime();
-                entry.storeColumns(data.columns());
-                long columnCacheNanos=System.nanoTime()-cacheStarted;
+                entry.retainColumns(data.columns());
+                long columnCacheNanos=data.columnCacheNanos();
                 long elapsed = System.nanoTime() - start;
                 metrics.completedPreviewRegion(report.generated(), elapsed, report.stages(), columnCacheNanos);
                 entry.generated.complete(report);

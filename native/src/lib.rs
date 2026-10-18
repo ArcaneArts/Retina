@@ -1,4 +1,5 @@
 mod climate;
+mod column_cache;
 mod column_program;
 mod nbt;
 mod program;
@@ -1965,6 +1966,38 @@ pub unsafe extern "C" fn retina_generate_region_profiled(
             biome,
             columns,
         )?;
+        unsafe {
+            *report = result;
+        }
+        Ok(())
+    })
+}
+
+/// Write the existing big-endian zlib column sidecar without a Java array round trip.
+/// # Safety
+/// columns points to count valid Column records (at most one region), path points
+/// to path_len UTF-8 bytes, and report points to a writable four-u64 record.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn retina_write_column_cache(
+    columns: *const Column,
+    count: u64,
+    path: *const u8,
+    path_len: u64,
+    report: *mut column_cache::Report,
+) -> i32 {
+    boundary(|| {
+        if columns.is_null() || path.is_null() || report.is_null() {
+            return Err("null column cache buffer".into());
+        }
+        if count > column_cache::MAX_COLUMNS as u64 {
+            return Err("column cache exceeds one region".into());
+        }
+        let path =
+            std::str::from_utf8(unsafe { std::slice::from_raw_parts(path, path_len as usize) })
+                .map_err(|e| e.to_string())?;
+        let result = column_cache::write(std::path::Path::new(path), unsafe {
+            std::slice::from_raw_parts(columns, count as usize)
+        })?;
         unsafe {
             *report = result;
         }

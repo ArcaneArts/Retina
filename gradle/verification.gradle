@@ -33,6 +33,46 @@ tasks.register('generationMetricsTest', JavaExec) {
     javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
 }
 
+def columnCacheClasses = tasks.register('columnCacheClasses', JavaCompile) {
+    source file('src/main/java/art/arcane/retina/worldgen/ColumnCache.java'),
+            file('src/gpuTest/java/art/arcane/retina/worldgen/ColumnCacheTest.java')
+    classpath = files()
+    destinationDirectory = layout.buildDirectory.dir('column-cache-test/classes')
+    javaCompiler = javaToolchains.compilerFor { languageVersion = JavaLanguageVersion.of(25) }
+    options.release = 25
+}
+tasks.register('columnCacheTest', JavaExec) {
+    group = 'verification'
+    description = 'Check compatible bulk column sidecars and native compression without initializing the GPU.'
+    dependsOn columnCacheClasses
+    def library = providers.gradleProperty('retinaNativePath')
+            .orElse(nativeTarget.map { it.file("release/${System.mapLibraryName('retina_worldgen')}").asFile.absolutePath })
+    if (!providers.gradleProperty('retinaNativePath').isPresent()) dependsOn ':buildNative'
+    classpath = files(columnCacheClasses.flatMap { it.destinationDirectory })
+    mainClass = 'art.arcane.retina.worldgen.ColumnCacheTest'
+    args library.get()
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
+    jvmArgs '--enable-native-access=ALL-UNNAMED', '-XX:ActiveProcessorCount=2'
+    maxHeapSize = '256m'
+    timeout = Duration.ofSeconds(30)
+}
+tasks.register('columnCacheLifecycleTest', JavaExec) {
+    group = 'verification'
+    description = 'Check sidecar reload, eviction, promotion, failure and shutdown on small real terrain.'
+    dependsOn 'gpuTestClasses'
+    if (providers.gradleProperty('retinaNativePath').isPresent())
+        systemProperty 'retina.native.path', providers.gradleProperty('retinaNativePath').get()
+    else dependsOn ':packageNative'
+    classpath = sourceSets.gpuTest.runtimeClasspath
+    mainClass = 'art.arcane.retina.worldgen.ColumnCacheLifecycleTest'
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
+    jvmArgs '--enable-native-access=ALL-UNNAMED', '-XX:ActiveProcessorCount=2'
+    environment 'RAYON_NUM_THREADS', '2'
+    environment 'RETINA_REGION_THREADS', '2'
+    maxHeapSize = '256m'
+    timeout = Duration.ofSeconds(30)
+}
+
 tasks.register('nativeUnitTest', Exec) {
     group = 'verification'
     dependsOn ':buildNative'
