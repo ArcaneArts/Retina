@@ -188,3 +188,70 @@ region, biome, geology, vegetation, preview/promotion, Terralith and structure
 suites passed again. A final 20-region comparison matched 20,480 decompressed
 chunk NBT records against the preceding ring build and measured 8,332 native
 chunks/s serially. The JAR's native library is byte-identical to that release.
+
+## Material emission continuations (October 2026)
+
+The two-slot owner now treats terrain/count readback and material emission as
+separate stages. Completing the first stage releases its readback slot, submits
+emission from immutable request/column/mask snapshots, and queues that continuation
+behind already submitted work. The owner can advance another terrain result or
+accept an independent request before consuming the material result. A request
+remains in flight until its complete material runs are validated; continuations
+do not increase the configured one/two-request limit.
+
+Emission storage, readback and timestamp buffers are reused through a pool capped
+at two slots. Each active continuation exclusively owns its slot. Larger jobs grow
+the buffers, smaller jobs bind/copy only their logical range, and failed or
+cancelled jobs discard their slots. The first-stage readback pool is also capped
+at two. Mapped runs append directly into the final mask rather than passing through
+an intermediate vector. The second pass still uses the existing material shader,
+registered programs and immutable snapshots; this changes scheduling and storage,
+not material evaluation.
+
+This trades retention of up to two largest-seen emission slots for allocation
+reuse and overlap. Two active material stages can also retain two CPU results and
+GPU input snapshots. Pools remain bounded, but this is not a claim of reduced
+whole-region peak memory. Readback guards are dropped before pooling. Shutdown
+drains both stages, and completion/error replies retain the original ownership.
+
+Bounded local evidence on Apple M4 Max / Metal, retained release library from
+`e2c1a95` versus the continuation build:
+
+| Small material-bearing chunk workload | Baseline median | Continuation median | Reduction |
+| --- | ---: | ---: | ---: |
+| Eight uncached chunks, height 128, two callers | 23.75 ms | 18.60 ms | 21.7% |
+| Eight uncached chunks, height 384, two callers | 28.65 ms | 23.12 ms | 19.3% |
+
+Each height used one warmup pair and five alternating measured pairs, disjoint
+coordinates to avoid cache hits, and byte-for-byte final block/column comparisons.
+The raw samples, library/profile hashes and output hashes are in
+[`gpu-material-continuation.json`](benchmarks/gpu-material-continuation.json).
+Largest measured request latency was 6.22 vs 6.09 ms at height 128 and 7.52 vs
+7.36 ms at height 384. These few samples do not establish a stable p95. Combined
+process maximum RSS was 147.2 and 190.6 MiB respectively, including both libraries
+and their caches; this cannot attribute memory changes to either implementation.
+Raw Metal device spans were noisy and were not used for the speedup calculation.
+
+An isolated two-tile replay with buffer reuse enabled in both modes was nearly
+flat (6.947 vs 6.900 ms median). The production-worker comparison above includes
+allocation reuse, direct append and the different worker scheduling; it is the
+relevant measured benefit. These are small material-fixture results, not complete
+region production or game-load speedups.
+
+Local checks cover serialized/interleaved exact columns and mask runs, distinct
+profiles, negative/distant coordinates, growing/shrinking dimensions, reversed
+completion, sparse height queries, cancellation in either stage, an invalid result,
+timestamp-free execution, and closed-sender draining at depths one and two.
+The interleaving suite also passed against retained vanilla and Terralith registry
+profiles. The normal Rust unit suite passed. No Minecraft session or GitHub Actions
+run was needed.
+
+To reproduce with retained libraries, run `scripts/native-material-continuation-check.py`
+with `--baseline`, `--candidate`, `--profile` and `--out`; `--height 384` selects the
+second workload. Run it under a 30-second process-group deadline at reduced
+priority with `RETINA_INTERPRETER_PRELOAD=0`, `RETINA_REGION_THREADS=2` and
+`RAYON_NUM_THREADS=2`. Use two Cargo jobs for builds. The opt-in Rust tests are
+`material_continuations_preserve_interleaved_output`,
+`material_continuations_drain_after_sender_closes`, and
+`material_continuation_replay`, with `RETINA_MATERIAL_PROFILE` pointing to an
+exported material-layer profile. Run GPU checks sequentially.

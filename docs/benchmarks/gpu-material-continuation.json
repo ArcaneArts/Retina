@@ -1,0 +1,404 @@
+{
+  "baseline_commit": "e2c1a9525fc306f4fc62959abf73882ae3e15869",
+  "backend": "Metal: Apple M4 Max",
+  "execution": "interpreter",
+  "validation": "one warmup pair, five alternating measured pairs per height; two callers; bounded local runs",
+  "workloads": [
+    {
+      "profile": "registry-material-profile.json",
+      "profile_sha256": "4d3959d69721f73c796927e0060895e78d9717a6079e1c6815958220211fa6fd",
+      "library_sha256": {
+        "baseline": "0fa220547bc33b07c353aa635a224702ff63e17047199b080e9414ae338633ff",
+        "candidate": "693457aebd60cbe764cb44a2892788de5b5609f1dafb9d7e98e9cc0ea05535bc"
+      },
+      "height": 128,
+      "chunks_per_batch": 8,
+      "callers": 2,
+      "samples": {
+        "baseline": [
+          {
+            "wall_ms": 23.749166,
+            "request_ms": [
+              4.17575,
+              6.001792,
+              5.92575,
+              5.940125,
+              5.864,
+              5.872291,
+              5.87875,
+              5.843167
+            ],
+            "peak_in_flight": 2,
+            "gpu_jobs": 8,
+            "device_span_ms": 19.99525
+          },
+          {
+            "wall_ms": 23.958042,
+            "request_ms": [
+              4.14775,
+              6.011334,
+              6.043,
+              5.950917,
+              5.860208,
+              5.928708,
+              5.999083,
+              5.99125
+            ],
+            "peak_in_flight": 2,
+            "gpu_jobs": 8,
+            "device_span_ms": 99.127458
+          },
+          {
+            "wall_ms": 23.271541,
+            "request_ms": [
+              4.073583,
+              5.91,
+              5.8385,
+              5.769709,
+              5.743,
+              5.738375,
+              5.722625,
+              5.776792
+            ],
+            "peak_in_flight": 2,
+            "gpu_jobs": 8,
+            "device_span_ms": 16.450168
+          },
+          {
+            "wall_ms": 23.926,
+            "request_ms": [
+              4.1805,
+              5.953625,
+              5.781875,
+              5.794458,
+              5.816541,
+              6.014833,
+              6.216209,
+              6.067334
+            ],
+            "peak_in_flight": 2,
+            "gpu_jobs": 8,
+            "device_span_ms": 15.830665
+          },
+          {
+            "wall_ms": 23.520625,
+            "request_ms": [
+              4.160792,
+              5.936834,
+              5.803084,
+              5.818083,
+              5.805583,
+              5.821958,
+              5.848041,
+              5.855
+            ],
+            "peak_in_flight": 2,
+            "gpu_jobs": 8,
+            "device_span_ms": 25.466498
+          }
+        ],
+        "candidate": [
+          {
+            "wall_ms": 18.878084,
+            "request_ms": [
+              4.258542,
+              6.06875,
+              4.257708,
+              4.233042,
+              4.275291,
+              4.2615,
+              4.368458,
+              4.209333
+            ],
+            "peak_in_flight": 2,
+            "gpu_jobs": 8,
+            "device_span_ms": 54.13546
+          },
+          {
+            "wall_ms": 18.595041,
+            "request_ms": [
+              4.122208,
+              5.920584,
+              4.327125,
+              4.249083,
+              4.221333,
+              4.283541,
+              4.196292,
+              4.055334
+            ],
+            "peak_in_flight": 2,
+            "gpu_jobs": 8,
+            "device_span_ms": 32.278124
+          },
+          {
+            "wall_ms": 18.560833,
+            "request_ms": [
+              4.279459,
+              6.087459,
+              4.171916,
+              4.154666,
+              4.214459,
+              4.238542,
+              4.187792,
+              4.003333
+            ],
+            "peak_in_flight": 2,
+            "gpu_jobs": 8,
+            "device_span_ms": 40.032711
+          },
+          {
+            "wall_ms": 18.6375,
+            "request_ms": [
+              4.086,
+              5.864792,
+              4.214042,
+              4.213667,
+              4.438209,
+              4.5415,
+              4.199125,
+              3.94825
+            ],
+            "peak_in_flight": 2,
+            "gpu_jobs": 8,
+            "device_span_ms": 32.575127
+          },
+          {
+            "wall_ms": 18.496625,
+            "request_ms": [
+              4.15675,
+              5.923917,
+              4.257,
+              4.382375,
+              4.255208,
+              4.150666,
+              4.132958,
+              3.952041
+            ],
+            "peak_in_flight": 2,
+            "gpu_jobs": 8,
+            "device_span_ms": 82.645417
+          }
+        ]
+      },
+      "output_sha256": [
+        "261007a35c4fde1f82460e7f677a610670b3e37369db3f458640a999d23b703c",
+        "adc51c4c29f924db4a9ab0c0ce010db244bfec319adc66f847d8eec6a69957cf",
+        "74ecf38d01d1a78d21b16bb8f92a651a2303f0309477d97f5caf7e438ff6e218",
+        "64de9f266d135f97ab94be4664e41ada9b7ff687d2c50e86133a1bb4971a6bc0",
+        "14cf8aa6ee17aefb1d1f5f888a213c86917bc3284c513c623de64c50754571b7"
+      ],
+      "exact_outputs": true,
+      "median_batch_ms": {
+        "baseline": 23.749166,
+        "candidate": 18.595041
+      },
+      "max_request_ms": {
+        "baseline": 6.216209,
+        "candidate": 6.087459
+      },
+      "combined_process_maxrss": 154320896,
+      "scope": "uncached material-bearing chunks; excludes MCA encoding/lighting; maxrss includes both libraries"
+    },
+    {
+      "profile": "registry-material-profile.json",
+      "profile_sha256": "4d3959d69721f73c796927e0060895e78d9717a6079e1c6815958220211fa6fd",
+      "library_sha256": {
+        "baseline": "0fa220547bc33b07c353aa635a224702ff63e17047199b080e9414ae338633ff",
+        "candidate": "693457aebd60cbe764cb44a2892788de5b5609f1dafb9d7e98e9cc0ea05535bc"
+      },
+      "height": 384,
+      "chunks_per_batch": 8,
+      "callers": 2,
+      "samples": {
+        "baseline": [
+          {
+            "wall_ms": 28.868083,
+            "request_ms": [
+              5.1885,
+              7.308334,
+              6.986,
+              6.986625,
+              6.999458,
+              7.151167,
+              7.249041,
+              7.309375
+            ],
+            "peak_in_flight": 2,
+            "gpu_jobs": 8,
+            "device_span_ms": 17.720458
+          },
+          {
+            "wall_ms": 28.799833,
+            "request_ms": [
+              5.1555,
+              7.319084,
+              7.0585,
+              7.050083,
+              7.016833,
+              7.122875,
+              7.225083,
+              7.206417
+            ],
+            "peak_in_flight": 2,
+            "gpu_jobs": 8,
+            "device_span_ms": 19.815208
+          },
+          {
+            "wall_ms": 28.649458,
+            "request_ms": [
+              5.341042,
+              7.522375,
+              7.060333,
+              7.009792,
+              6.978708,
+              7.018,
+              6.9905,
+              6.987709
+            ],
+            "peak_in_flight": 2,
+            "gpu_jobs": 8,
+            "device_span_ms": 32.835542
+          },
+          {
+            "wall_ms": 28.588667,
+            "request_ms": [
+              5.098667,
+              7.2315,
+              7.031458,
+              7.074417,
+              7.236125,
+              7.125459,
+              6.913875,
+              7.060875
+            ],
+            "peak_in_flight": 2,
+            "gpu_jobs": 8,
+            "device_span_ms": 17.794751
+          },
+          {
+            "wall_ms": 28.3355,
+            "request_ms": [
+              5.0345,
+              7.199458,
+              7.182166,
+              7.141958,
+              6.963459,
+              6.941584,
+              6.91725,
+              6.97075
+            ],
+            "peak_in_flight": 2,
+            "gpu_jobs": 8,
+            "device_span_ms": 26.875627
+          }
+        ],
+        "candidate": [
+          {
+            "wall_ms": 23.238709,
+            "request_ms": [
+              5.1495,
+              7.307709,
+              5.283208,
+              5.298542,
+              5.26725,
+              5.190166,
+              5.247666,
+              5.322625
+            ],
+            "peak_in_flight": 2,
+            "gpu_jobs": 8,
+            "device_span_ms": 39.545542
+          },
+          {
+            "wall_ms": 23.0935,
+            "request_ms": [
+              5.079584,
+              7.337791,
+              5.238958,
+              5.277333,
+              5.292167,
+              5.11525,
+              5.320334,
+              5.257334
+            ],
+            "peak_in_flight": 2,
+            "gpu_jobs": 8,
+            "device_span_ms": 34.528916
+          },
+          {
+            "wall_ms": 23.119208,
+            "request_ms": [
+              5.193875,
+              7.3565,
+              5.384708,
+              5.3705,
+              5.212959,
+              5.239541,
+              5.281083,
+              5.048958
+            ],
+            "peak_in_flight": 2,
+            "gpu_jobs": 8,
+            "device_span_ms": 39.414125
+          },
+          {
+            "wall_ms": 23.192917,
+            "request_ms": [
+              5.060167,
+              7.182,
+              5.194209,
+              5.231125,
+              5.20275,
+              5.1735,
+              5.317084,
+              5.521834
+            ],
+            "peak_in_flight": 2,
+            "gpu_jobs": 8,
+            "device_span_ms": 33.822623
+          },
+          {
+            "wall_ms": 22.7815,
+            "request_ms": [
+              5.113334,
+              7.324,
+              5.2495,
+              5.155875,
+              5.176333,
+              5.255042,
+              5.171125,
+              4.936375
+            ],
+            "peak_in_flight": 2,
+            "gpu_jobs": 8,
+            "device_span_ms": 95.979918
+          }
+        ]
+      },
+      "output_sha256": [
+        "afa44d8c6f6bcb26d9419dfe516820cb8bf84fd61047a3e954fac88035d30d22",
+        "9114fc96020652259b61f96a08c026b9113832e7a4dbf63671deef4f775bce38",
+        "a760c796ea12e1c3fe0f7d1aa9acbeb87f30f7e98e1f3c747f19aff541e553ef",
+        "5fbbd0c7ee639bdda05a3a3cbaebe7bc2bb7d6507e39260cecc50c2c97b1a9cb",
+        "f5b07c191c3e79469728562f4bc76e612eec9602d23e18a8b92e3678a1151de1"
+      ],
+      "exact_outputs": true,
+      "median_batch_ms": {
+        "baseline": 28.649458,
+        "candidate": 23.119208
+      },
+      "max_request_ms": {
+        "baseline": 7.522375,
+        "candidate": 7.3565
+      },
+      "combined_process_maxrss": 199835648,
+      "scope": "uncached material-bearing chunks; excludes MCA encoding/lighting; maxrss includes both libraries"
+    }
+  ],
+  "limitations": [
+    "Small exported material fixture, not complete MCA production.",
+    "Five samples per mode cannot establish stable p95; per-request maxima are included.",
+    "Combined process maxrss contains both native libraries, GPU resources and cache entries; it is not a paired memory comparison.",
+    "Raw device spans include noisy Metal timestamp samples and are not used to calculate the speedup."
+  ]
+}
