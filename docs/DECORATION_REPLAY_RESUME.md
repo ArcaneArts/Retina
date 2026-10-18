@@ -99,5 +99,6 @@ specialization. Builds used two jobs/codegen units and 60-second deadlines,
 separately from runtime tests. Minecraft was not launched.
 
 Compatible GPU query submission batching is covered in
-[DECORATION_QUERY_BATCHES.md](DECORATION_QUERY_BATCHES.md). Worker scratch reuse
-and the tree/leaf GPU investigation remain separate follow-up work.
+[DECORATION_QUERY_BATCHES.md](DECORATION_QUERY_BATCHES.md). Worker scratch reuse is covered in
+[DECORATION_SCRATCH_REUSE.md](DECORATION_SCRATCH_REUSE.md). The tree/leaf GPU
+investigation remains separate follow-up work.

@@ -25,6 +25,8 @@ pub mod provider_noise;
 #[cfg(test)]
 mod replay_tests;
 mod spatial;
+#[cfg(test)]
+mod tree_scratch_tests;
 
 #[derive(Clone, Deserialize)]
 pub struct TreeDecorator {
@@ -353,6 +355,7 @@ const SIDES: [(i32, i32); 4] = [(1, 0), (-1, 0), (0, 1), (0, -1)];
 /// A crown occupies a small local box. Direct byte lookup avoids hashing a world
 /// coordinate six times for every visited leaf. State 2 includes trunk positions
 /// so leaves never overwrite logs; traversal order still comes from the BFS.
+#[derive(Default)]
 struct LeafOccupancy {
     minimum: [i32; 3],
     sizes: [usize; 3],
@@ -360,14 +363,19 @@ struct LeafOccupancy {
     sparse: Option<spatial::Set<(i32, i32, i32)>>,
 }
 impl LeafOccupancy {
+    #[cfg(test)]
     fn new(positions: &[(i32, i32, i32)]) -> Self {
+        let mut result = Self::default();
+        result.reset(positions);
+        result
+    }
+    fn reset(&mut self, positions: &[(i32, i32, i32)]) {
+        self.cells.clear();
         if positions.is_empty() {
-            return Self {
-                minimum: [0; 3],
-                sizes: [0; 3],
-                cells: Vec::new(),
-                sparse: None,
-            };
+            self.minimum = [0; 3];
+            self.sizes = [0; 3];
+            self.sparse = None;
+            return;
         }
         let mut minimum = [i32::MAX; 3];
         let mut maximum = [i32::MIN; 3];
@@ -377,29 +385,23 @@ impl LeafOccupancy {
                 maximum[i] = maximum[i].max(v);
             }
         }
-        let sizes = std::array::from_fn(|i| (maximum[i] as i64 - minimum[i] as i64 + 1) as usize);
-        let count = sizes.iter().try_fold(1usize, |n, s| n.checked_mul(*s));
+        self.minimum = minimum;
+        self.sizes = std::array::from_fn(|i| (maximum[i] as i64 - minimum[i] as i64 + 1) as usize);
+        let count = self.sizes.iter().try_fold(1usize, |n, s| n.checked_mul(*s));
         if count.is_none_or(|n| n > 1_048_576) {
             // Unusual offsets can put crowns far apart or across an integer
             // wrap. Keep sparse membership rather than allocating empty gaps.
-            return Self {
-                minimum,
-                sizes,
-                cells: Vec::new(),
-                sparse: Some(positions.iter().copied().collect()),
-            };
+            let sparse = self.sparse.get_or_insert_with(Default::default);
+            sparse.clear();
+            sparse.extend(positions.iter().copied());
+            return;
         }
-        let mut result = Self {
-            minimum,
-            sizes,
-            cells: vec![0; count.unwrap()],
-            sparse: None,
-        };
+        self.sparse = None;
+        self.cells.resize(count.unwrap(), 0);
         for &p in positions {
-            let index = result.index(p).unwrap();
-            result.cells[index] = 1;
+            let index = self.index(p).unwrap();
+            self.cells[index] = 1;
         }
-        result
     }
     fn index(&self, (x, y, z): (i32, i32, i32)) -> Option<usize> {
         let at = [x, y, z];
@@ -431,6 +433,40 @@ impl LeafOccupancy {
         }
         self.cells[i] = 2;
         true
+    }
+}
+
+/// Mutable workspace belongs to one Rayon job, never an anchor checkpoint.
+/// Reuse cannot affect samples, RNG state, overlay history or placement order.
+#[derive(Default)]
+struct TreeScratch {
+    leaves: Vec<(i32, i32, i32)>,
+    occupancy: LeafOccupancy,
+    frontier: VecDeque<((i32, i32, i32), u8)>,
+    seen: spatial::Set<(i32, i32, i32)>,
+    decorator_positions: Vec<(i32, i32, i32)>,
+}
+impl TreeScratch {
+    const RETAIN_LIMIT: usize = 2 * 1024 * 1024;
+
+    fn retained_bytes(&self) -> usize {
+        self.leaves.capacity() * std::mem::size_of::<(i32, i32, i32)>()
+            + self.occupancy.cells.capacity()
+            + self
+                .occupancy
+                .sparse
+                .as_ref()
+                .map_or(0, |s| s.capacity() * 32)
+            + self.frontier.capacity() * std::mem::size_of::<((i32, i32, i32), u8)>()
+            + self.seen.capacity() * 32
+            + self.decorator_positions.capacity() * std::mem::size_of::<(i32, i32, i32)>()
+    }
+    fn recycle(&mut self) {
+        // Oversized custom trees still work; their temporary storage is released
+        // before the next tree. No thread-local storage survives the planner job.
+        if self.retained_bytes() > Self::RETAIN_LIMIT {
+            *self = Self::default();
+        }
     }
 }
 
@@ -563,7 +599,8 @@ impl<'a> Replay<'a> {
         mut details: Option<&mut diagnostics::Planning>,
     ) -> Queries {
         let measuring = details.is_some();
-        let generate = |(index, (completed, pending)): (
+        let generate = |scratch: &mut TreeScratch,
+                        (index, (completed, pending)): (
             usize,
             (&mut Option<Vec<WorldBlock>>, &mut Option<(Anchor, usize)>),
         )| {
@@ -594,6 +631,7 @@ impl<'a> Replay<'a> {
                     self.ids.map(|a| a[index].as_slice()),
                     &mut count_queries,
                     worker.as_mut(),
+                    scratch,
                 )
             };
             let retain = self.retain_prefix && count_queries.is_empty();
@@ -608,6 +646,7 @@ impl<'a> Replay<'a> {
                 &mut count_queries,
                 retain,
                 worker.as_mut(),
+                scratch,
             );
             let missing = noise.missing();
             if missing.is_empty() && count_queries.is_empty() {
@@ -643,14 +682,15 @@ impl<'a> Replay<'a> {
                 .par_iter_mut()
                 .zip(self.pending.par_iter_mut())
                 .enumerate()
-                .map(generate)
+                .map_init(TreeScratch::default, generate)
                 .collect()
         } else {
+            let mut scratch = TreeScratch::default();
             self.blocks
                 .iter_mut()
                 .zip(self.pending.iter_mut())
                 .enumerate()
-                .map(generate)
+                .map(|item| generate(&mut scratch, item))
                 .collect()
         };
         let mut queries = Queries::default();
@@ -718,6 +758,7 @@ fn anchors(
         None,
         &mut missing,
         None,
+        &mut TreeScratch::default(),
     );
     let (blocks, _) = evaluate_anchor(
         state,
@@ -730,6 +771,7 @@ fn anchors(
         &mut missing,
         false,
         None,
+        &mut TreeScratch::default(),
     );
     assert!(noise.missing().is_empty());
     blocks
@@ -840,6 +882,7 @@ fn expand_anchor(
     ids: Option<&[u32]>,
     missing: &mut Vec<counts::Query>,
     mut timing: Option<&mut diagnostics::Worker>,
+    scratch: &mut TreeScratch,
 ) -> Anchor {
     let expansion = diagnostics::start(timing.is_some());
     let ids = ids
@@ -968,6 +1011,7 @@ fn expand_anchor(
                     mask,
                     None,
                     timing.as_deref_mut(),
+                    scratch,
                 ),
                 _ => unreachable!("registered block features require placement programs"),
             }
@@ -1021,6 +1065,7 @@ fn evaluate_anchor(
     missing: &mut Vec<counts::Query>,
     retain: bool,
     mut timing: Option<&mut diagnostics::Worker>,
+    scratch: &mut TreeScratch,
 ) -> (Vec<WorldBlock>, Option<Anchor>) {
     let Anchor {
         mut blocks,
@@ -1116,6 +1161,7 @@ fn evaluate_anchor(
                 mask,
                 Some((y, &overlay)),
                 timing.as_deref_mut(),
+                scratch,
             ),
             Kind::Plant { states } => {
                 let low = column.packed & (1 << 27) != 0;
@@ -1324,6 +1370,7 @@ fn tree(
     mask: Option<&crate::geology::CaveMask>,
     placed: Option<(i32, &placement::Overlay)>,
     timing: Option<&mut diagnostics::Worker>,
+    scratch: &mut TreeScratch,
 ) {
     let (tree_time, leaf_time) = match timing {
         Some(t) => {
@@ -1451,7 +1498,14 @@ fn tree(
         rng.range(*foliage_height).max(2)
     }
     .min(h + 2);
-    let mut leaf_positions = Vec::new();
+    let TreeScratch {
+        leaves: leaf_positions,
+        occupancy,
+        frontier,
+        seen,
+        decorator_positions,
+    } = scratch;
+    leaf_positions.clear();
     for crown in &crowns {
         if dark_oak {
             leaf_positions.extend(
@@ -1524,9 +1578,9 @@ fn tree(
     }
     // Real six-neighbor leaf connectivity, not persistent leaves: chopping logs can decay them.
     let leaf_time = diagnostics::span(leaf_time);
-    let mut occupancy = LeafOccupancy::new(&leaf_positions);
-    let mut frontier = VecDeque::new();
-    let mut seen = spatial::Set::default();
+    occupancy.reset(leaf_positions);
+    frontier.clear();
+    seen.clear();
     for &(wx, wy, wz, _) in &wood {
         if seen.insert((wx, wy, wz)) {
             occupancy.mark_log((wx, wy, wz));
@@ -1562,20 +1616,26 @@ fn tree(
     }
     drop(leaf_time);
     if !decorators.is_empty() {
+        leaf_positions.clear();
+        leaf_positions.extend(
+            blocks[tree_start..]
+                .iter()
+                .filter(|b| b.role == LEAF)
+                .map(|b| (b.x, b.y, b.z)),
+        );
         decorate_tree(
             field,
             profile,
             decorators,
             &wood,
-            &blocks[tree_start..]
-                .iter()
-                .filter(|b| b.role == LEAF)
-                .map(|b| (b.x, b.y, b.z))
-                .collect::<Vec<_>>(),
+            leaf_positions,
             rng.next(),
             blocks,
+            seen,
+            decorator_positions,
         );
     }
+    scratch.recycle();
 }
 
 fn decorate_tree(
@@ -1586,29 +1646,33 @@ fn decorate_tree(
     leaves: &[(i32, i32, i32)],
     seed: u64,
     blocks: &mut Vec<WorldBlock>,
+    occupied: &mut spatial::Set<(i32, i32, i32)>,
+    positions: &mut Vec<(i32, i32, i32)>,
 ) {
     if decorators.is_empty() {
         return;
     }
-    let mut occupied: spatial::Set<_> = wood
-        .iter()
-        .map(|w| (w.0, w.1, w.2))
-        .chain(leaves.iter().copied())
-        .collect();
+    occupied.clear();
+    occupied.extend(
+        wood.iter()
+            .map(|w| (w.0, w.1, w.2))
+            .chain(leaves.iter().copied()),
+    );
     let base_y = wood.iter().map(|w| w.1).min().unwrap();
     for (index, decorator) in decorators.iter().enumerate() {
         let seed = seed ^ mix(index as u64);
         if decorator.kind == "cocoa" && Rng::new(seed).unit() >= decorator.probability {
             continue;
         }
-        let mut positions: Vec<_> = if decorator.kind == "leaf_vine" {
-            leaves.to_vec()
+        positions.clear();
+        if decorator.kind == "leaf_vine" {
+            positions.extend_from_slice(leaves);
         } else {
-            wood.iter().map(|w| (w.0, w.1, w.2)).collect()
-        };
+            positions.extend(wood.iter().map(|w| (w.0, w.1, w.2)));
+        }
         positions.sort_unstable_by_key(|p| (p.1, p.0, p.2));
         positions.dedup();
-        for (x, y, z) in positions {
+        for &(x, y, z) in positions.iter() {
             if decorator.kind == "cocoa" && y - base_y > 2 {
                 continue;
             }
@@ -2043,6 +2107,7 @@ mod tests {
                 None,
                 Some((64, &placement::Overlay::default())),
                 None,
+                &mut TreeScratch::default(),
             );
             let top = blocks
                 .iter()
@@ -2185,6 +2250,7 @@ mod tests {
                 None,
                 None,
                 None,
+                &mut TreeScratch::default(),
             );
             let leaves: HashSet<_> = blocks
                 .iter()
