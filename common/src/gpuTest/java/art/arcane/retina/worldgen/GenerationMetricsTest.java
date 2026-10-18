@@ -27,7 +27,7 @@ public final class GenerationMetricsTest {
         close(window.chunksPerSecond(), 1024 * 1000 / 16.5, "rate uses the same region average");
         close(window.regionStagePercent(NBT), 25, "worker share uses average region time");
         close(window.columnCacheMs(), .85, "cache writes use the same rolling window");
-        close(window.columnCachePercent(), 100*.85/16.5, "Java cache shares region latency");
+        close(window.columnCachePercent(), 100*.85/16.5, "column cache shares region latency");
         metrics.begin(); metrics.completedPromotion(1);
         metrics.begin(); metrics.completedRegion(0, 999_000_000, NativeTimings.EMPTY);
         var unchanged = metrics.snapshot();
@@ -48,6 +48,7 @@ public final class GenerationMetricsTest {
         require(lines.stream().anyMatch(s -> s.contains("Material layers") && s.startsWith("§d")), "GPU material timing has a dedicated category");
         require(lines.stream().anyMatch(s -> s.contains("Aquifer fields") && s.startsWith("§d")), "GPU aquifer fields have a dedicated category");
         require(lines.stream().anyMatch(s -> s.contains("Aquifer fluids / barriers") && s.startsWith("§d")), "GPU aquifer classification has a dedicated category");
+        require(lines.stream().anyMatch(s -> s.startsWith("§9Column cache")), "cache timing does not imply Java-only work");
         require(lines.stream().anyMatch(s -> s.contains("GPU device") && s.contains("overlaps")), "device timing overlap is explicit");
         require(lines.stream().anyMatch(s -> s.startsWith("§dOre planning (CPU + GPU)")), "mixed ore planner is labeled and colored as GPU work");
         require(lines.stream().anyMatch(s -> s.startsWith("§dDecoration planning (CPU + GPU)")), "mixed decoration planner is labeled and colored as GPU work");

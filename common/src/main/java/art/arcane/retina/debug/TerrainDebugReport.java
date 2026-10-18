@@ -44,7 +44,7 @@ public final class TerrainDebugReport {
             for(int stage=STRUCTURE_PLAN;stage<=ORE_PLAN;stage++)lines.add(share(stage>=VEGETATION_PLAN?GPU:RUST,PLANS[stage-STRUCTURE_PLAN],stats.regionStagePercent(stage),false));
             for(int stage=ASSEMBLY;stage<=COMPRESS;stage++)lines.add(share(RUST,WORKERS[stage-ASSEMBLY],stats.regionStagePercent(stage),true));
             lines.add(share(RUST,"File I/O",stats.regionStagePercent(IO),false));
-            lines.add(share("§9","Java column cache",stats.columnCachePercent(),false));
+            lines.add(share("§9","Column cache",stats.columnCachePercent(),false));
             double accounted=stats.columnCacheMs();
             accounted+=stats.regionStageMs(LIGHT_HOST);
             for(int stage=0;stage<STAGES;stage++)if(stage<HEIGHT || stage>=STRUCTURE_PLAN && stage<MATERIALS)accounted+=stats.regionStageMs(stage);
