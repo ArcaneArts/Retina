@@ -3,6 +3,8 @@
 use super::placement_height::HeightProvider;
 use super::spatial::Map;
 use super::*;
+use std::ops::Range;
+use std::sync::Arc;
 mod layers;
 pub(super) use layers::{Queue, QueueCheckpoint};
 
@@ -359,7 +361,7 @@ pub(crate) fn sample(
         .placement
         .as_ref()
         .ok_or("placement sample requires a program")?;
-    if program.iter().any(|op| op.noise_rule().is_some()) {
+    if program.has_noise_from(0) {
         return Err("spatial count diagnostics use the GPU count sampler".into());
     }
     let mut candidates = Vec::new();
@@ -491,24 +493,122 @@ pub(super) fn validate(program: &[Modifier], palette: usize) -> Result<(), Strin
     }
     Ok(())
 }
+/// Immutable evaluation steps and count metadata compiled once when a profile
+/// is decoded. Counts/selectors still execute in their original RNG order.
+#[derive(Clone, Deserialize)]
+#[serde(from = "Vec<Modifier>")]
+pub struct Program {
+    modifiers: Vec<Modifier>,
+    evaluation: Vec<Evaluation>,
+    evaluation_offsets: Vec<usize>,
+    noise_rules: Vec<Option<counts::Rule>>,
+    last_noise: Option<usize>,
+    expansion_end: usize,
+}
 #[derive(Clone)]
-enum Action {
-    Shift([i32; 3]),
-    SetY(i32),
-    Modifier { index: usize, parents: usize },
+struct Evaluation {
+    index: usize,
+    parents: usize,
+}
+impl From<Vec<Modifier>> for Program {
+    fn from(modifiers: Vec<Modifier>) -> Self {
+        let mut evaluation = Vec::new();
+        let mut evaluation_offsets = Vec::with_capacity(modifiers.len() + 1);
+        let noise_rules: Vec<_> = modifiers.iter().map(Modifier::noise_rule).collect();
+        let last_noise = noise_rules.iter().rposition(Option::is_some);
+        // A suffix of live evaluation steps consumes no RNG and produces no
+        // additional branches. Emit its compact reference directly.
+        let expansion_end = modifiers
+            .iter()
+            .rposition(|op| {
+                !matches!(
+                    op,
+                    Modifier::Heightmap { .. }
+                        | Modifier::BlockPredicateFilter { .. }
+                        | Modifier::Biome
+                        | Modifier::SurfaceWaterDepthFilter { .. }
+                        | Modifier::SurfaceRelativeThresholdFilter { .. }
+                        | Modifier::EnvironmentScan { .. }
+                )
+            })
+            .map_or(0, |last| last + 1);
+        let mut parents = 0;
+        for (index, op) in modifiers.iter().enumerate() {
+            evaluation_offsets.push(evaluation.len());
+            match op {
+                Modifier::Count { .. }
+                | Modifier::NoiseThresholdCount { .. }
+                | Modifier::NoiseBasedCount { .. } => parents += 1,
+                Modifier::CountOnEveryLayer { .. } => parents += 2,
+                Modifier::RarityFilter { .. }
+                | Modifier::RandomChance { .. }
+                | Modifier::Select { .. } => {}
+                _ => {
+                    evaluation.push(Evaluation { index, parents });
+                    if matches!(op, Modifier::Cuboid { .. }) {
+                        parents += 1;
+                    }
+                }
+            }
+        }
+        evaluation_offsets.push(evaluation.len());
+        Self {
+            modifiers,
+            evaluation,
+            evaluation_offsets,
+            noise_rules,
+            last_noise,
+            expansion_end,
+        }
+    }
+}
+impl std::ops::Deref for Program {
+    type Target = [Modifier];
+    fn deref(&self) -> &Self::Target {
+        &self.modifiers
+    }
+}
+impl Program {
+    pub(super) fn has_noise_from(&self, start: usize) -> bool {
+        self.last_noise.is_some_and(|last| start <= last)
+    }
+}
+/// All children with the same positional draws share one immutable slice.
+/// Static filters/heightmaps live in Program, never in each candidate.
+#[derive(Default)]
+struct DrawStack {
+    values: Vec<[i32; 3]>,
+    shared: Option<Arc<[[i32; 3]]>>,
+}
+impl DrawStack {
+    fn freeze(&mut self) -> Arc<[[i32; 3]]> {
+        self.shared
+            .get_or_insert_with(|| Arc::from(self.values.as_slice()))
+            .clone()
+    }
+    fn push(&mut self, draw: [i32; 3]) -> Option<Arc<[[i32; 3]]>> {
+        let previous = self.shared.take();
+        self.values.push(draw);
+        previous
+    }
+    fn pop(&mut self, previous: Option<Arc<[[i32; 3]]>>) {
+        self.values.pop();
+        self.shared = previous;
+    }
 }
 #[derive(Clone)]
 pub(super) struct Candidate {
     pub recipe: u32,
     pub group: u32,
-    pub order: Vec<usize>,
+    pub order: Order,
     pub seed: u64,
     origin: [i32; 3],
-    actions: Vec<Action>,
+    draws: Arc<[[i32; 3]]>,
+    evaluation: Range<usize>,
     layer: Option<layers::Attempt>,
 }
 pub(super) fn expand(
-    program: &[Modifier],
+    program: &Program,
     recipe: u32,
     group: u32,
     origin: [i32; 3],
@@ -532,12 +632,11 @@ pub(super) fn expand(
         output,
         queries,
         0,
-        Vec::new(),
-        Vec::new(),
+        Order::new(),
     );
 }
 fn expand_from(
-    program: &[Modifier],
+    program: &Program,
     recipe: u32,
     group: u32,
     origin: [i32; 3],
@@ -549,13 +648,13 @@ fn expand_from(
     output: Option<&mut Vec<Candidate>>,
     queries: &mut Vec<counts::Query>,
     start: usize,
-    mut actions: Vec<Action>,
-    mut order: Vec<usize>,
+    mut order: Order,
 ) {
     struct Walker<'a> {
-        program: &'a [Modifier],
+        program: &'a Program,
         recipe: u32,
         group: u32,
+        evaluation_start: usize,
         origin: [i32; 3],
         field: &'a Field,
         request: ChunkRequest,
@@ -569,17 +668,13 @@ fn expand_from(
             index: usize,
             at: [i32; 3],
             mut rng: Rng,
-            actions: &mut Vec<Action>,
-            order: &mut Vec<usize>,
+            draws: &mut DrawStack,
+            order: &mut Order,
         ) {
-            if self.output.is_none()
-                && !self.program[index..]
-                    .iter()
-                    .any(|op| op.noise_rule().is_some())
-            {
+            if self.output.is_none() && !self.program.has_noise_from(index) {
                 return;
             }
-            if index == self.program.len() {
+            if index >= self.program.expansion_end {
                 if let Some(output) = self.output.as_mut() {
                     output.push(Candidate {
                         recipe: self.recipe,
@@ -587,14 +682,15 @@ fn expand_from(
                         order: order.clone(),
                         seed: rng.0,
                         origin: self.origin,
-                        actions: actions.clone(),
+                        draws: draws.freeze(),
+                        evaluation: self.evaluation_start..self.program.evaluation.len(),
                         layer: None,
                     });
                 }
                 return;
             }
             let mut point = at;
-            let before = actions.len();
+            let mut previous_draws = None;
             match &self.program[index] {
                 Modifier::CountOnEveryLayer { .. } => {
                     // Terrain-dependent expansion is resumed lazily against the
@@ -608,7 +704,9 @@ fn expand_from(
                             order: path,
                             seed: rng.0,
                             origin: self.origin,
-                            actions: actions.clone(),
+                            draws: draws.freeze(),
+                            evaluation: self.evaluation_start
+                                ..self.program.evaluation_offsets[index],
                             layer: Some(layers::Attempt {
                                 index,
                                 layer: 0,
@@ -624,7 +722,7 @@ fn expand_from(
                     for i in 0..count.sample(&mut rng).max(0) as usize {
                         let child = Rng::new(rng.next());
                         order.push(i);
-                        self.step(index + 1, at, child, actions, order);
+                        self.step(index + 1, at, child, draws, order);
                         order.pop();
                     }
                     return;
@@ -642,22 +740,22 @@ fn expand_from(
                         // Use the existing anchored expansion stream convention:
                         // each emitted branch has a stable independent stream.
                         let child = Rng::new(rng.next());
-                        actions.push(Action::Shift(offset));
+                        let previous = draws.push(offset);
                         order.push(i);
                         self.step(
                             index + 1,
                             std::array::from_fn(|axis| at[axis] + offset[axis]),
                             child,
-                            actions,
+                            draws,
                             order,
                         );
                         order.pop();
-                        actions.pop();
+                        draws.pop(previous);
                     }
                     return;
                 }
                 Modifier::NoiseThresholdCount { .. } | Modifier::NoiseBasedCount { .. } => {
-                    let rule = self.program[index].noise_rule().unwrap();
+                    let rule = self.program.noise_rules[index].unwrap();
                     let count = if let Some(counts) = self.counts {
                         let Some(count) = counts.get(rule, at[0], at[2]) else {
                             self.queries.push(counts::Query {
@@ -689,7 +787,7 @@ fn expand_from(
                     for i in 0..count.max(0) as usize {
                         let child = Rng::new(rng.next());
                         order.push(i);
-                        self.step(index + 1, at, child, actions, order);
+                        self.step(index + 1, at, child, draws, order);
                         order.pop();
                     }
                     return;
@@ -706,7 +804,7 @@ fn expand_from(
                 }
                 Modifier::HeightRange { height } => {
                     point[1] = height.sample(&mut rng, self.request);
-                    actions.push(Action::SetY(point[1]));
+                    previous_draws = Some(draws.push([0, point[1], 0]));
                 }
                 Modifier::Select { min, max } => {
                     let n = rng.unit();
@@ -717,24 +815,24 @@ fn expand_from(
                 Modifier::InSquare => {
                     let offset = [rng.below(16), 0, rng.below(16)];
                     point = std::array::from_fn(|i| at[i] + offset[i]);
-                    actions.push(Action::Shift(offset));
+                    previous_draws = Some(draws.push(offset));
                 }
                 Modifier::Offset { x, y, z } => {
                     let offset = [x.sample(&mut rng), y.sample(&mut rng), z.sample(&mut rng)];
                     point = std::array::from_fn(|i| at[i] + offset[i]);
-                    actions.push(Action::Shift(offset));
+                    previous_draws = Some(draws.push(offset));
                 }
-                _ => actions.push(Action::Modifier {
-                    index,
-                    parents: order.len(),
-                }),
+                _ => {}
             }
-            self.step(index + 1, point, rng, actions, order);
-            actions.truncate(before);
+            self.step(index + 1, point, rng, draws, order);
+            if let Some(previous) = previous_draws {
+                draws.pop(previous);
+            }
         }
     }
     Walker {
         program,
+        evaluation_start: program.evaluation_offsets[start],
         recipe,
         group,
         origin,
@@ -744,9 +842,19 @@ fn expand_from(
         output,
         queries,
     }
-    .step(start, at, rng, &mut actions, &mut order);
+    .step(start, at, rng, &mut DrawStack::default(), &mut order);
 }
-pub(super) type EvaluationCache = Map<(u32, usize, Vec<usize>), Option<[i32; 3]>>;
+// Three nested counts cover the common registered programs without allocating.
+// Arbitrarily deep placement/layer paths spill to the heap without truncation.
+pub(super) type Order = smallvec::SmallVec<[usize; 3]>;
+pub(super) fn order_heap_bytes(order: &Order) -> usize {
+    if order.spilled() {
+        order.capacity() * std::mem::size_of::<usize>() + 32
+    } else {
+        0
+    }
+}
+pub(super) type EvaluationCache = Map<(u32, usize, Order), Option<[i32; 3]>>;
 
 pub(super) fn position(
     candidate: &Candidate,
@@ -773,11 +881,15 @@ fn position_inner(
 ) -> Option<[i32; 3]> {
     let mut at = candidate.origin;
     let program = recipe.placement.as_ref()?;
-    for action in &candidate.actions {
-        match action {
-            Action::Shift(offset) => at = std::array::from_fn(|i| at[i] + offset[i]),
-            Action::SetY(y) => at[1] = *y,
-            Action::Modifier { index, parents } => {
+    let mut draws = candidate.draws.iter();
+    for Evaluation { index, parents } in &program.evaluation[candidate.evaluation.clone()] {
+        match &program[*index] {
+            Modifier::InSquare | Modifier::Offset { .. } | Modifier::Cuboid { .. } => {
+                let offset = draws.next().unwrap();
+                at = std::array::from_fn(|i| at[i] + offset[i]);
+            }
+            Modifier::HeightRange { .. } => at[1] = draws.next().unwrap()[1],
+            _ => {
                 // Modifiers before a nested count execute once for the parent,
                 // before any of its children place blocks. Later children inherit
                 // that position/filter outcome even as the live canopy changes.
@@ -785,7 +897,7 @@ fn position_inner(
                     (
                         candidate.group,
                         *index,
-                        candidate.order[..*parents].to_vec(),
+                        Order::from_slice(&candidate.order[..*parents]),
                     )
                 });
                 if let Some(value) = key.as_ref().and_then(|key| cache.get(key)) {
@@ -1129,7 +1241,7 @@ mod tests {
         profile.decorations.push(recipe.clone());
         (profile, field, request, recipe)
     }
-    fn candidates(program: &[Modifier], recipe: u32, field: &Field, seed: u64) -> Vec<Candidate> {
+    fn candidates(program: &Program, recipe: u32, field: &Field, seed: u64) -> Vec<Candidate> {
         let mut out = Vec::new();
         expand(
             program,
@@ -1145,8 +1257,60 @@ mod tests {
         );
         out
     }
-    fn ops(value: serde_json::Value) -> Vec<Modifier> {
+    fn ops(value: serde_json::Value) -> Program {
         serde_json::from_value(value).unwrap()
+    }
+
+    #[test]
+    fn compiled_candidates_share_draws_without_sharing_random_streams() {
+        let (profile, field, request, mut recipe) = fixture();
+        let program = ops(json!([
+            {"type":"count","count":3}, {"type":"in_square"},
+            {"type":"heightmap","map":1}, {"type":"count","count":11},
+            {"type":"block_predicate_filter","predicate":{"type":"true"}}
+        ]));
+        let found = candidates(&program, 0, &field, 42);
+        recipe.placement = Some(program);
+        assert_eq!(found.len(), 33);
+        let mut root = Rng::new(42);
+        for parent in 0..3 {
+            let mut rng = Rng::new(root.next());
+            let expected = [rng.below(16), 64, rng.below(16)];
+            for child in 0..11 {
+                let c = &found[parent * 11 + child];
+                assert_eq!(c.order.as_slice(), &[parent, child]);
+                assert_eq!(c.seed, Rng::new(rng.next()).0);
+                assert!(Arc::ptr_eq(&c.draws, &found[parent * 11].draws));
+                assert_eq!(
+                    position(
+                        c,
+                        &recipe,
+                        &field,
+                        &profile,
+                        request,
+                        &Overlay::default(),
+                        &mut EvaluationCache::default()
+                    ),
+                    Some(expected)
+                );
+            }
+        }
+        assert!(!Arc::ptr_eq(&found[0].draws, &found[11].draws));
+    }
+
+    #[test]
+    fn draw_stack_restores_shared_prefix_after_nested_random_positions() {
+        let mut stack = DrawStack::default();
+        let original = stack.push([1, 2, 3]);
+        let parent = stack.freeze();
+        let saved = stack.push([4, 5, 6]);
+        let child = stack.freeze();
+        stack.pop(saved);
+        assert!(Arc::ptr_eq(&parent, &stack.freeze()));
+        assert_eq!(&*child, &[[1, 2, 3], [4, 5, 6]]);
+        stack.pop(original);
+        assert!(stack.freeze().is_empty());
+        assert_eq!(&*parent, &[[1, 2, 3]]);
     }
 
     #[test]
@@ -1428,7 +1592,7 @@ mod tests {
             {"type":"heightmap","map":1}
         ]));
         validate(&program, 8).unwrap();
-        let run = |program: &[Modifier], counts: Option<&counts::Counts>, output: bool| {
+        let run = |program: &Program, counts: Option<&counts::Counts>, output: bool| {
             let mut found = Vec::new();
             let mut queries = Vec::new();
             expand(
@@ -1465,14 +1629,14 @@ mod tests {
         assert!(run(&program, Some(&counts), false).1.is_empty());
         let (actual, missing) = run(&program, Some(&counts), true);
         assert!(missing.is_empty());
-        let mut baseline = program.clone();
+        let mut baseline = program.to_vec();
         baseline[2] = Modifier::Count {
             count: IntProvider::Value(2),
         };
         baseline[4] = Modifier::Count {
             count: IntProvider::Value(3),
         };
-        let (expected, _) = run(&baseline, None, true);
+        let (expected, _) = run(&baseline.into(), None, true);
         assert_eq!(actual.len(), 42);
         assert_eq!(
             actual
@@ -1487,11 +1651,11 @@ mod tests {
         // One selected branch per parent, after both spatial counts.
         let mut selected = Vec::new();
         for (id, (min, max)) in [(0., 0.25), (0.25, 0.8), (0.8, 1.)].into_iter().enumerate() {
-            let mut branch = program.clone();
+            let mut branch = program.to_vec();
             branch.push(Modifier::Select { min, max });
             let mut missing = Vec::new();
             expand(
-                &branch,
+                &branch.into(),
                 id as u32,
                 0,
                 [0, 0, 0],
@@ -1689,6 +1853,20 @@ mod tests {
             ),
             (
                 json!([{"type":"count","count":2},{"type":"heightmap","map":1}]),
+                70,
+            ),
+            // More than three nested branches spills the compact path to the
+            // heap. Parent filters must still run before their child writes.
+            (
+                json!([{"type":"count","count":1},{"type":"count","count":1},
+                    {"type":"count","count":1},{"type":"count","count":1},
+                    {"type":"heightmap","map":1},{"type":"count","count":2}]),
+                64,
+            ),
+            (
+                json!([{"type":"count","count":1},{"type":"count","count":1},
+                    {"type":"count","count":1},{"type":"count","count":1},
+                    {"type":"count","count":2},{"type":"heightmap","map":1}]),
                 70,
             ),
         ] {

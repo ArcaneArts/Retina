@@ -273,7 +273,11 @@ Performance evidence and workload-specific limits are collected in the
 benchmarks are not a promise of current end-to-end chunks/sec.
 The [current benchmark triage](docs/PERFORMANCE_TRIAGE_2026_10_18.md) compares
 vanilla/Terralith, concurrent callers, specialization and transfer costs, and
-ranks the next optimization opportunities.
+ranks the next optimization opportunities. The first follow-up
+[compacts decoration programs](docs/COMPACT_DECORATION_PROGRAMS.md): two matched
+Terralith trials improved native lit-MCA throughput by 11–14% with identical chunk
+NBT. Vanilla's smaller measured difference is inconclusive. The
+[cycle tracker](docs/OPTIMIZATION_CYCLES_2026_10.md) records remaining work.
 
 ## Building and testing
 
