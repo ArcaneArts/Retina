@@ -31,6 +31,9 @@ tasks.register('generationMetricsTest', JavaExec) {
     classpath = sourceSets.gpuTest.runtimeClasspath
     mainClass = 'art.arcane.retina.worldgen.GenerationMetricsTest'
     javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
+    jvmArgs '-XX:ActiveProcessorCount=2'
+    maxHeapSize = '128m'
+    timeout = Duration.ofSeconds(30)
 }
 
 def columnCacheClasses = tasks.register('columnCacheClasses', JavaCompile) {

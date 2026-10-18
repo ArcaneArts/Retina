@@ -2,12 +2,14 @@ package art.arcane.retina.worldgen;
 
 import java.util.ArrayDeque;
 import java.util.Deque;
+import java.util.function.LongSupplier;
 
-/** Chunk-mode production rate; MCA latency and profiled stages from the last 20 generated regions. */
+/** Five-second completed throughput; MCA latency and stages from the last 20 generated regions. */
 public final class GenerationMetrics {
     private static final long WINDOW_NANOS = 5_000_000_000L;
     public static final int REGION_WINDOW = 20;
-    private final long started = System.nanoTime();
+    private final LongSupplier clock;
+    private final long started;
     private final Deque<Sample> samples = new ArrayDeque<>();
     private final Deque<Sample> timings = new ArrayDeque<>();
     private final Deque<RegionSample> regionTimings = new ArrayDeque<>();
@@ -15,6 +17,12 @@ public final class GenerationMetrics {
     private long total, failures, regions, previewRegions, previewCacheHits, promotions;
     private NativeTimings nativeTimings = NativeTimings.EMPTY;
     private NativeTimings nativeBaseline = NativeTimings.EMPTY;
+
+    public GenerationMetrics() { this(System::nanoTime); }
+    GenerationMetrics(LongSupplier clock) {
+        this.clock=clock;
+        started=clock.getAsLong();
+    }
 
     public synchronized void startNativeTimings(NativeTimings baseline) {
         nativeBaseline=baseline; nativeTimings=NativeTimings.EMPTY;
@@ -58,7 +66,7 @@ public final class GenerationMetrics {
     }
     private void record(int chunks, long elapsedNanos, long nativeNanos, long conversionNanos) {
         total+=chunks;
-        long now=System.nanoTime();
+        long now=clock.getAsLong();
         var sample=new Sample(now,chunks,elapsedNanos,nativeNanos,conversionNanos);
         samples.addLast(sample);timings.addLast(sample);
         if(timings.size()>128)timings.removeFirst();
@@ -66,7 +74,7 @@ public final class GenerationMetrics {
     }
     public synchronized void failed() { inFlight--; failures++; }
     public synchronized Snapshot snapshot() {
-        long now=System.nanoTime();prune(now);
+        long now=clock.getAsLong();prune(now);
         long elapsed=0,nativeTime=0,conversion=0,timedChunks=0;
         for(var sample:timings) {
             timedChunks+=sample.chunks;elapsed+=sample.elapsed;
@@ -74,7 +82,8 @@ public final class GenerationMetrics {
         }
         double windowSeconds=Math.max(.001,Math.min(WINDOW_NANOS,now-started)/1e9);
         double divisor=Math.max(1,timedChunks)*1e6;
-        double msPerChunk=elapsed/divisor,rate=samples.stream().mapToLong(Sample::chunks).sum()/windowSeconds;
+        double completedRate=samples.stream().mapToLong(Sample::chunks).sum()/windowSeconds;
+        double msPerChunk=elapsed/divisor,rate=completedRate;
         long regionElapsed=0,regionChunks=0,gpuColumns=0,gpuJobs=0,columnCache=0;
         int flags=0;long[] stages=new long[NativeTimings.STAGES];
         for(var sample:regionTimings) {
@@ -90,7 +99,8 @@ public final class GenerationMetrics {
         double p95RegionMs=orderedRegionNanos.length==0?0:orderedRegionNanos[(int)Math.ceil(.95*orderedRegionNanos.length)-1]/1e6;
         return new Snapshot(rate,msPerChunk,nativeTime/divisor,conversion/divisor,inFlight,total,failures,regions,
                 regionElapsed/(Math.max(1,regionTimings.size())*1e6),p95RegionMs,previewRegions,previewCacheHits,promotions,nativeTimings,
-                regionTimings.size(),new NativeTimings(flags,regionChunks,gpuColumns,gpuJobs,stages),columnCache/(Math.max(1,regionTimings.size())*1e6));
+                regionTimings.size(),new NativeTimings(flags,regionChunks,gpuColumns,gpuJobs,stages),columnCache/(Math.max(1,regionTimings.size())*1e6),
+                completedRate,windowSeconds);
     }
     private void prune(long now) {
         while(!samples.isEmpty() && now-samples.peekFirst().completedAt>WINDOW_NANOS)samples.removeFirst();
@@ -99,7 +109,14 @@ public final class GenerationMetrics {
     private record RegionSample(int chunks,long elapsed,NativeTimings stages,long columnCacheNanos) { }
     public record Snapshot(double chunksPerSecond,double msPerChunk,double nativeMs,double conversionMs,int inFlight,
                            long total,long failures,long regions,double averageRegionMs,double p95RegionMs,long previewRegions,long previewCacheHits,
-                           long promotions,NativeTimings stages,int regionSamples,NativeTimings regionStages,double columnCacheMs) {
+                           long promotions,NativeTimings stages,int regionSamples,NativeTimings regionStages,double columnCacheMs,
+                           double completedChunksPerSecond,double completionWindowSeconds) {
+        public Snapshot(double rate,double ms,double nativeMs,double conversion,int inFlight,long total,long failures,long regions,
+                        double averageRegionMs,double p95RegionMs,long previews,long hits,long promotions,NativeTimings stages,
+                        int regionSamples,NativeTimings regionStages,double columnCacheMs) {
+            this(rate,ms,nativeMs,conversion,inFlight,total,failures,regions,averageRegionMs,p95RegionMs,previews,hits,promotions,
+                    stages,regionSamples,regionStages,columnCacheMs,0,0);
+        }
         public Snapshot(double rate,double ms,double nativeMs,double conversion,int inFlight,long total,long failures,long regions,
                         double averageRegionMs,long previews,long hits,long promotions) {
             this(rate,ms,nativeMs,conversion,inFlight,total,failures,regions,averageRegionMs,0,previews,hits,promotions,NativeTimings.EMPTY);
