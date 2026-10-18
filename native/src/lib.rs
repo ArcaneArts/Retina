@@ -358,7 +358,7 @@ impl TerrainEngine {
         mask: Option<&geology::CaveMask>,
         job: Option<&timings::Timings>,
     ) -> Result<Vec<Vec<decoration::Placement>>, String> {
-        self.plan_decorations_measured(field, profile, request, side, mask, job, None)
+        self.plan_decorations_measured(field, profile, request, side, mask, job, None, true)
     }
     /// Bounded diagnostic callers can inspect planner phases without changing
     /// the production timing ABI or paying per-tree clock reads in normal play.
@@ -385,8 +385,21 @@ impl TerrainEngine {
             mask,
             None,
             Some(&mut details),
+            true,
         )?;
         Ok((result, details))
+    }
+    /// Diagnostic full-anchor replay reference; never selected by normal generation.
+    #[cfg(feature = "decoration-replay-benchmark")]
+    pub fn plan_decorations_full_replay(
+        &self,
+        field: &decoration::Field,
+        profile: &WorldProfile,
+        request: ChunkRequest,
+        side: usize,
+        mask: Option<&geology::CaveMask>,
+    ) -> Result<Vec<Vec<decoration::Placement>>, String> {
+        self.plan_decorations_measured(field, profile, request, side, mask, None, None, false)
     }
     fn plan_decorations_measured(
         &self,
@@ -397,6 +410,7 @@ impl TerrainEngine {
         mask: Option<&geology::CaveMask>,
         job: Option<&timings::Timings>,
         mut details: Option<&mut decoration::diagnostics::Planning>,
+        retain_prefix: bool,
     ) -> Result<Vec<Vec<decoration::Placement>>, String> {
         use decoration::diagnostics::{record, start};
         let measuring = details.is_some();
@@ -445,7 +459,8 @@ impl TerrainEngine {
             side,
             mask,
             Some(&anchors),
-        );
+        )
+        .with_prefix_resume(retain_prefix);
         let mut samples = decoration::provider_noise::Samples::default();
         loop {
             let replay_start = start(measuring);

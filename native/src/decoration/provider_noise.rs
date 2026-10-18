@@ -99,6 +99,9 @@ impl<'a> Context<'a> {
     pub(crate) fn missing(self) -> Vec<[i32; 4]> {
         self.missing.into_inner()
     }
+    pub(super) fn is_missing(&self) -> bool {
+        !self.missing.borrow().is_empty()
+    }
 }
 
 #[cfg(test)]

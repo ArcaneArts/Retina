@@ -39,19 +39,44 @@ impl Ord for Candidate {
         self.compare(other)
     }
 }
+#[derive(Clone)]
 pub(crate) struct Queue {
     ready: Vec<Candidate>,
     resumed: BinaryHeap<Reverse<Candidate>>,
+    retry: Option<Candidate>,
+}
+pub(in crate::decoration) struct QueueCheckpoint {
+    pub queue: Queue,
+    pub cache: EvaluationCache,
 }
 impl Queue {
+    pub(in crate::decoration) fn retained_bytes(&self) -> usize {
+        let candidates = self
+            .ready
+            .iter()
+            .chain(self.resumed.iter().map(|v| &v.0))
+            .chain(self.retry.iter());
+        (self.ready.capacity() + self.resumed.capacity()) * std::mem::size_of::<Candidate>()
+            + candidates
+                .map(|c| {
+                    c.order.capacity() * std::mem::size_of::<usize>()
+                        + c.actions.capacity() * std::mem::size_of::<Action>()
+                        + 64
+                })
+                .sum::<usize>()
+    }
     pub(in crate::decoration) fn new(mut ready: Vec<Candidate>) -> Self {
         ready.sort_by(|a, b| b.cmp(a));
         Self {
             ready,
             resumed: BinaryHeap::new(),
+            retry: None,
         }
     }
     fn pop(&mut self) -> Option<Candidate> {
+        if let Some(candidate) = self.retry.take() {
+            return Some(candidate);
+        }
         if self
             .resumed
             .peek()
@@ -72,6 +97,27 @@ impl Queue {
         counts: Option<&counts::Counts>,
         queries: &mut Vec<counts::Query>,
     ) -> Option<Candidate> {
+        self.next_checkpoint(
+            field, profile, request, overlay, cache, counts, queries, None,
+        )
+    }
+    pub(in crate::decoration) fn retry(&mut self, candidate: Candidate) {
+        debug_assert!(self.retry.is_none());
+        // This was already selected before suspension. Preserve that selection
+        // even if another ready candidate has an equal comparison key.
+        self.retry = Some(candidate);
+    }
+    pub(in crate::decoration) fn next_checkpoint(
+        &mut self,
+        field: &Field,
+        profile: &WorldProfile,
+        request: ChunkRequest,
+        overlay: &Overlay,
+        cache: &mut EvaluationCache,
+        counts: Option<&counts::Counts>,
+        queries: &mut Vec<counts::Query>,
+        mut checkpoint: Option<&mut Option<QueueCheckpoint>>,
+    ) -> Option<Candidate> {
         while let Some(mut candidate) = self.pop() {
             let Some(mut state) = candidate.layer.take() else {
                 return Some(candidate);
@@ -91,6 +137,20 @@ impl Queue {
             let Modifier::CountOnEveryLayer { count } = &program[state.index] else {
                 unreachable!()
             };
+            let retry = checkpoint
+                .as_ref()
+                .filter(|c| {
+                    c.is_none()
+                        && counts.is_some()
+                        && program[state.index + 1..]
+                            .iter()
+                            .any(|op| op.noise_rule().is_some())
+                })
+                .map(|_| {
+                    let mut retry = candidate.clone();
+                    retry.layer = Some(state.clone());
+                    retry
+                });
             let mut rng = Rng::new(candidate.seed);
             // Minecraft intentionally resamples the provider at every loop test,
             // including the terminating test; this is not one count per layer.
@@ -119,6 +179,7 @@ impl Queue {
             state.found |= at.is_some();
             if let Some(at) = at {
                 let mut children = Vec::new();
+                let before = queries.len();
                 expand_from(
                     program,
                     candidate.recipe,
@@ -135,6 +196,16 @@ impl Queue {
                     Vec::new(),
                     candidate.order.clone(),
                 );
+                if queries.len() != before {
+                    if let (Some(checkpoint), Some(retry)) = (checkpoint.as_deref_mut(), retry) {
+                        let mut queue = self.clone();
+                        queue.retry(retry);
+                        *checkpoint = Some(QueueCheckpoint {
+                            queue,
+                            cache: cache.clone(),
+                        });
+                    }
+                }
                 self.resumed.extend(children.into_iter().map(Reverse));
             }
             state.attempt += 1;
@@ -233,6 +304,26 @@ mod tests {
             reserved: 0,
         };
         (profile, field, request)
+    }
+    #[test]
+    fn retry_precedes_other_candidates_with_equal_order_keys() {
+        let candidate = |seed| Candidate {
+            recipe: 0,
+            group: 0,
+            order: Vec::new(),
+            seed,
+            origin: [0, 0, 0],
+            actions: Vec::new(),
+            layer: None,
+        };
+        let mut queue = Queue::new(vec![candidate(1), candidate(2)]);
+        let chosen = queue.pop().unwrap();
+        let seed = chosen.seed;
+        let remaining = queue.clone().pop().unwrap().seed;
+        queue.retry(chosen);
+        assert_eq!(queue.pop().unwrap().seed, seed);
+        assert_eq!(queue.pop().unwrap().seed, remaining);
+        assert!(queue.pop().is_none());
     }
     #[test]
     fn grounds_use_registered_empty_states_and_invalidate_after_live_writes() {

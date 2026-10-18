@@ -1,0 +1,457 @@
+{
+  "hardware": "Apple M4 Max / Metal",
+  "source_base": "a99060951c4b015a0eb1b5305a90b3be3a119389",
+  "workers": 2,
+  "priority": "nice 10",
+  "runtime_deadline_seconds": 30,
+  "build_deadline_seconds": 60,
+  "planner_pairs": {
+    "vanilla": {
+      "backend": "Metal: Apple M4 Max",
+      "chunk_x": 0,
+      "chunk_z": 0,
+      "exact_order": true,
+      "full_replay_ms": [
+        2.9316250000000004,
+        2.901042,
+        2.778875,
+        2.348666,
+        2.615708
+      ],
+      "max_ms": {
+        "full_replay": 2.9316250000000004,
+        "resumed": 2.911959
+      },
+      "median_ms": {
+        "full_replay": 2.778875,
+        "resumed": 2.7563750000000002
+      },
+      "ordered_signature": "9fee68b05e72595e",
+      "pairs": 5,
+      "phases": {
+        "anchor_attempts": 36,
+        "anchors_wall_nanos": 224458,
+        "count_expansion_wall_nanos": 9000,
+        "count_queries": 2,
+        "distribution_wall_nanos": 36542,
+        "noise_queries": 0,
+        "peak_retained_bytes": 0,
+        "repeated_anchor_attempts": 0,
+        "replay_wall_nanos": 1893334,
+        "rounds": 1,
+        "sampling_wall_nanos": 571291,
+        "worker": {
+          "candidates": 13036,
+          "discarded_checkpoints": 0,
+          "evaluated_candidates": 13036,
+          "evaluation_nanos": 2678958,
+          "expansion_nanos": 869290,
+          "leaf_nanos": 162085,
+          "resumed_anchors": 0,
+          "resumed_candidates": 0,
+          "tree_attempts": 124,
+          "tree_nanos": 328288
+        }
+      },
+      "placements": 5739,
+      "resumed_ms": [
+        2.7563750000000002,
+        2.6145,
+        2.772666,
+        2.911959,
+        2.7117080000000002
+      ],
+      "seed": 123456789,
+      "side": 4,
+      "warmup_pairs": 1,
+      "workers": 2,
+      "maxrss_bytes": 379109376,
+      "scope": "Planner on a retained GPU field; full replay vs resumed, same binary. Outputs compared outside timing."
+    },
+    "terralith": {
+      "backend": "Metal: Apple M4 Max",
+      "chunk_x": 0,
+      "chunk_z": 0,
+      "exact_order": true,
+      "full_replay_ms": [
+        3.64825,
+        3.4121249999999996,
+        3.45125,
+        3.560708,
+        3.311458
+      ],
+      "max_ms": {
+        "full_replay": 3.64825,
+        "resumed": 3.199667
+      },
+      "median_ms": {
+        "full_replay": 3.45125,
+        "resumed": 3.004875
+      },
+      "ordered_signature": "458e9dbc2ec570e7",
+      "pairs": 5,
+      "phases": {
+        "anchor_attempts": 44,
+        "anchors_wall_nanos": 234750,
+        "count_expansion_wall_nanos": 13834,
+        "count_queries": 29,
+        "distribution_wall_nanos": 8125,
+        "noise_queries": 23,
+        "peak_retained_bytes": 165676,
+        "repeated_anchor_attempts": 8,
+        "replay_wall_nanos": 1816208,
+        "rounds": 2,
+        "sampling_wall_nanos": 864125,
+        "worker": {
+          "candidates": 19165,
+          "discarded_checkpoints": 0,
+          "evaluated_candidates": 19617,
+          "evaluation_nanos": 2071417,
+          "expansion_nanos": 1513833,
+          "leaf_nanos": 35915,
+          "resumed_anchors": 8,
+          "resumed_candidates": 3894,
+          "tree_attempts": 25,
+          "tree_nanos": 76997
+        }
+      },
+      "placements": 749,
+      "resumed_ms": [
+        3.199667,
+        3.1146659999999997,
+        3.004875,
+        2.9772079999999996,
+        2.932791
+      ],
+      "seed": 123456789,
+      "side": 4,
+      "warmup_pairs": 1,
+      "workers": 2,
+      "maxrss_bytes": 127008768,
+      "scope": "Planner on a retained GPU field; full replay vs resumed, same binary. Outputs compared outside timing."
+    },
+    "terralith-8": {
+      "backend": "Metal: Apple M4 Max",
+      "chunk_x": -32,
+      "chunk_z": -32,
+      "exact_order": true,
+      "full_replay_ms": [
+        6.115583,
+        6.209041999999999,
+        5.7415840000000005,
+        6.18225,
+        6.30625
+      ],
+      "max_ms": {
+        "full_replay": 6.30625,
+        "resumed": 6.241083
+      },
+      "median_ms": {
+        "full_replay": 6.18225,
+        "resumed": 5.962042
+      },
+      "ordered_signature": "71574fd0622260d3",
+      "pairs": 5,
+      "phases": {
+        "anchor_attempts": 100,
+        "anchors_wall_nanos": 606709,
+        "count_expansion_wall_nanos": 28292,
+        "count_queries": 100,
+        "distribution_wall_nanos": 70500,
+        "noise_queries": 0,
+        "peak_retained_bytes": 0,
+        "repeated_anchor_attempts": 0,
+        "replay_wall_nanos": 4923708,
+        "rounds": 1,
+        "sampling_wall_nanos": 233750,
+        "worker": {
+          "candidates": 54154,
+          "discarded_checkpoints": 0,
+          "evaluated_candidates": 54154,
+          "evaluation_nanos": 5743462,
+          "expansion_nanos": 3731122,
+          "leaf_nanos": 0,
+          "resumed_anchors": 0,
+          "resumed_candidates": 0,
+          "tree_attempts": 0,
+          "tree_nanos": 0
+        }
+      },
+      "placements": 12190,
+      "resumed_ms": [
+        5.962042,
+        6.149959,
+        5.896084,
+        6.241083,
+        5.5009999999999994
+      ],
+      "seed": 123456789,
+      "side": 8,
+      "warmup_pairs": 1,
+      "workers": 2,
+      "maxrss_bytes": 131891200,
+      "scope": "Planner on a retained GPU field; full replay vs resumed, same binary. Outputs compared outside timing."
+    },
+    "terralith-8-origin": {
+      "backend": "Metal: Apple M4 Max",
+      "chunk_x": 0,
+      "chunk_z": 0,
+      "exact_order": true,
+      "full_replay_ms": [
+        8.683417,
+        7.826916999999999,
+        8.534292,
+        7.589417,
+        7.928249999999999
+      ],
+      "max_ms": {
+        "full_replay": 8.683417,
+        "resumed": 7.469833
+      },
+      "median_ms": {
+        "full_replay": 7.928249999999999,
+        "resumed": 7.158083
+      },
+      "ordered_signature": "2541ce5d59cf3f3f",
+      "pairs": 5,
+      "phases": {
+        "anchor_attempts": 121,
+        "anchors_wall_nanos": 556291,
+        "count_expansion_wall_nanos": 27207,
+        "count_queries": 68,
+        "distribution_wall_nanos": 24834,
+        "noise_queries": 82,
+        "peak_retained_bytes": 341684,
+        "repeated_anchor_attempts": 21,
+        "replay_wall_nanos": 5017626,
+        "rounds": 2,
+        "sampling_wall_nanos": 983917,
+        "worker": {
+          "candidates": 47523,
+          "discarded_checkpoints": 0,
+          "evaluated_candidates": 48300,
+          "evaluation_nanos": 5372579,
+          "expansion_nanos": 3369126,
+          "leaf_nanos": 154206,
+          "resumed_anchors": 21,
+          "resumed_candidates": 10288,
+          "tree_attempts": 98,
+          "tree_nanos": 310335
+        }
+      },
+      "placements": 2868,
+      "resumed_ms": [
+        7.469833,
+        6.885208,
+        7.312625,
+        6.576834,
+        7.158083
+      ],
+      "seed": 123456789,
+      "side": 8,
+      "warmup_pairs": 1,
+      "workers": 2,
+      "maxrss_bytes": 131956736,
+      "scope": "Planner on a retained GPU field; full replay vs resumed, same binary. Outputs compared outside timing."
+    }
+  },
+  "retained_library_checks": {
+    "vanilla": {
+      "profile": "task-vanilla-profile.json",
+      "profile_sha256": "df6c26088d8c3647dfdd0f9a7ef5dc03bd977a783c9093f1d0bf66764834a509",
+      "library_sha256": {
+        "baseline": "10762c66ebd3e3d2e39465d3081b425d99f8c3c36e50606cb8ac5341cb7dcb82",
+        "candidate": "ce578d2a3429c8f4cea1ae6ee8011947be1dcb3f98196dc522de7dabcb0296e3"
+      },
+      "height": 384,
+      "chunks_per_batch": 2,
+      "callers": 2,
+      "samples": {
+        "baseline": [
+          {
+            "wall_ms": 95.796459,
+            "request_ms": [
+              95.711625,
+              57.369667
+            ],
+            "peak_in_flight": 2,
+            "gpu_jobs": 5,
+            "device_span_ms": 125.285665
+          },
+          {
+            "wall_ms": 62.32625,
+            "request_ms": [
+              62.246417,
+              57.18675
+            ],
+            "peak_in_flight": 2,
+            "gpu_jobs": 4,
+            "device_span_ms": 97.200292
+          },
+          {
+            "wall_ms": 68.81675,
+            "request_ms": [
+              68.728708,
+              65.531208
+            ],
+            "peak_in_flight": 2,
+            "gpu_jobs": 6,
+            "device_span_ms": 212.82829
+          }
+        ],
+        "candidate": [
+          {
+            "wall_ms": 97.366958,
+            "request_ms": [
+              97.289084,
+              59.080625
+            ],
+            "peak_in_flight": 2,
+            "gpu_jobs": 5,
+            "device_span_ms": 129.102498
+          },
+          {
+            "wall_ms": 62.401583,
+            "request_ms": [
+              62.333583,
+              57.337083
+            ],
+            "peak_in_flight": 2,
+            "gpu_jobs": 4,
+            "device_span_ms": 97.299167
+          },
+          {
+            "wall_ms": 69.079375,
+            "request_ms": [
+              68.990125,
+              65.626959
+            ],
+            "peak_in_flight": 2,
+            "gpu_jobs": 6,
+            "device_span_ms": 212.218457
+          }
+        ]
+      },
+      "output_sha256": [
+        "a0dfc6282c67eb0a751778a6d79bef29a05feb3f0e77cd29215b9dc5b2df1185",
+        "9048b4d9811215b9074c88cc9be439c3b5f8c6e72b5346056f0cfc3f1cd2452c",
+        "6dad59f873d01042afa882014b00b896051a3c03378f2d9048ae434c8be7fe48"
+      ],
+      "exact_outputs": true,
+      "median_batch_ms": {
+        "baseline": 68.81675,
+        "candidate": 69.079375
+      },
+      "max_request_ms": {
+        "baseline": 95.711625,
+        "candidate": 97.289084
+      },
+      "combined_process_maxrss": 543408128,
+      "scope": "uncached material-bearing chunks; excludes MCA encoding/lighting; maxrss includes both libraries"
+    },
+    "terralith": {
+      "profile": "terralith-profile.json",
+      "profile_sha256": "7f4b5092e2d589d030ff4c2f579ccd6b853cbe314fb758d3ca8711249da87b7d",
+      "library_sha256": {
+        "baseline": "10762c66ebd3e3d2e39465d3081b425d99f8c3c36e50606cb8ac5341cb7dcb82",
+        "candidate": "ce578d2a3429c8f4cea1ae6ee8011947be1dcb3f98196dc522de7dabcb0296e3"
+      },
+      "height": 384,
+      "chunks_per_batch": 2,
+      "callers": 2,
+      "samples": {
+        "baseline": [
+          {
+            "wall_ms": 90.406166,
+            "request_ms": [
+              88.679625,
+              90.323709
+            ],
+            "peak_in_flight": 2,
+            "gpu_jobs": 2,
+            "device_span_ms": 92.877708
+          },
+          {
+            "wall_ms": 96.548166,
+            "request_ms": [
+              94.897208,
+              96.462542
+            ],
+            "peak_in_flight": 2,
+            "gpu_jobs": 2,
+            "device_span_ms": 97.421749
+          },
+          {
+            "wall_ms": 99.200041,
+            "request_ms": [
+              98.194292,
+              99.126625
+            ],
+            "peak_in_flight": 2,
+            "gpu_jobs": 2,
+            "device_span_ms": 102.066834
+          }
+        ],
+        "candidate": [
+          {
+            "wall_ms": 92.697625,
+            "request_ms": [
+              89.318042,
+              92.594458
+            ],
+            "peak_in_flight": 2,
+            "gpu_jobs": 2,
+            "device_span_ms": 92.119084
+          },
+          {
+            "wall_ms": 98.2155,
+            "request_ms": [
+              96.200667,
+              98.138209
+            ],
+            "peak_in_flight": 2,
+            "gpu_jobs": 2,
+            "device_span_ms": 98.389125
+          },
+          {
+            "wall_ms": 98.685958,
+            "request_ms": [
+              97.609125,
+              98.611125
+            ],
+            "peak_in_flight": 2,
+            "gpu_jobs": 2,
+            "device_span_ms": 101.691
+          }
+        ]
+      },
+      "output_sha256": [
+        "2f22deeb30ee20aadd3460798a8285ffdcab3e1c13ea60d3c5a3964d5834b068",
+        "533240ca228d2cad52166202b2cf2938ed166b8414da554dad848f418c89154c",
+        "e461be272e32d8afee4163efb3b0c306eba4c085aa186f46f227d542ebec1fec"
+      ],
+      "exact_outputs": true,
+      "median_batch_ms": {
+        "baseline": 96.548166,
+        "candidate": 98.2155
+      },
+      "max_request_ms": {
+        "baseline": 99.126625,
+        "candidate": 98.611125
+      },
+      "combined_process_maxrss": 222167040,
+      "scope": "uncached material-bearing chunks; excludes MCA encoding/lighting; maxrss includes both libraries"
+    }
+  },
+  "source_sha256": {
+    "native/src/decoration.rs": "ed05fb3964a6df0a291401ea04f01872dcfc3b49b65998d6f74aaea424da4160",
+    "native/src/decoration/placement.rs": "1c8b4f25e240e1f95c223a9abf64cd85101c3faff26b416db151840a28b06f1a",
+    "native/src/decoration/placement/layers.rs": "536dbe28d45fa4b0af7ab9cad75513a9dbc398eaa3e2ce4d7a17412d1adaa969"
+  },
+  "limits": [
+    "Planner timings are not whole-region or game-load throughput.",
+    "Five pairs do not establish stable p95.",
+    "Process RSS includes shared GPU setup and both paths; it is not paired memory evidence.",
+    "The full-replay reference retains the new shared data types; retained old-library comparisons separately check integrated output."
+  ]
+}

@@ -8,10 +8,15 @@ publish = false
 [features]
 # Diagnostic reference encodings and standalone GPU ore benchmarks.
 ore-raster-benchmark = []
+decoration-replay-benchmark = []
 
 [[example]]
 name = "ore_raster_benchmark"
 required-features = ["ore-raster-benchmark"]
+
+[[example]]
+name = "decoration_replay_benchmark"
+required-features = ["decoration-replay-benchmark"]
 
 [lib]
 name = "retina_worldgen"

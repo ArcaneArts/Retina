@@ -14,6 +14,7 @@ pub struct Planning {
     pub repeated_anchor_attempts: u64,
     pub noise_queries: u64,
     pub count_queries: u64,
+    pub peak_retained_bytes: u64,
     pub worker: Worker,
 }
 #[derive(Default, Debug, serde::Serialize)]
@@ -24,6 +25,10 @@ pub struct Worker {
     pub leaf_nanos: u64,
     pub candidates: u64,
     pub tree_attempts: u64,
+    pub evaluated_candidates: u64,
+    pub resumed_anchors: u64,
+    pub resumed_candidates: u64,
+    pub discarded_checkpoints: u64,
 }
 impl Worker {
     pub(super) fn add(&mut self, b: &Self) {
@@ -33,6 +38,10 @@ impl Worker {
         self.leaf_nanos += b.leaf_nanos;
         self.candidates += b.candidates;
         self.tree_attempts += b.tree_attempts;
+        self.evaluated_candidates += b.evaluated_candidates;
+        self.resumed_anchors += b.resumed_anchors;
+        self.resumed_candidates += b.resumed_candidates;
+        self.discarded_checkpoints += b.discarded_checkpoints;
     }
 }
 pub(crate) fn start(enabled: bool) -> Option<Instant> {
