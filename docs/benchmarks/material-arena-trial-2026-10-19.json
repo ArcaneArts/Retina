@@ -1,0 +1,2139 @@
+{
+  "schema": "retina.material-arena-trial",
+  "date": "2026-10-19",
+  "base": "1bc1009a450db57b952f7b851675206a9cc3c527",
+  "disposition": "Both prototypes rejected; production continuation retained.",
+  "variants": {
+    "v1": {
+      "source_hashes": {
+        "native/src/gpu.rs": "e9864e481a42245993231d30248b628249d826a77a8740f8e4956a66495cc232",
+        "native/src/materials.wgsl": "bc36aa0fe1ec5595b8306b415aea03f4a692f644159a0a98d05d10678bd512f7",
+        "native/src/pipeline.rs": "d33a093e8b8ca1f6253f7c8dd6c43548c67f18260efc5ac5e1fce6ff4e3182d0",
+        "native/src/lib.rs": "a707f3beb38efcce93c2741c16eab11066d0945ac9fe26adcefc2036a18eac29",
+        "native/src/gpu/material_arena_tests.rs": "49c60faea522957fa797343b7e27de0653e52a09ab377b5c3729e8e01af32bae",
+        "scripts/native-region-benchmark.py": "84611be5e760b6baf8381cd51411d06510c0008173cb4d5687ae92d73462c965"
+      },
+      "patch": "material-arena-v1-2026-10-19.patch",
+      "patch_sha256": "c48bb68daaac2dd4e1b047d8a49b6f61455c61fd335da3495b6ff1969165ce48",
+      "library_sha256": "453d59a16d52ec72b9e3afa827230c66f26e73c1f4ebf82262d773c6aefc7f24"
+    },
+    "v2": {
+      "source_hashes": {
+        "native/src/gpu.rs": "932119f9cc5668b74c664e3e16a9f78a2338db22946271995ff8b573c1366daf",
+        "native/src/materials.wgsl": "60fe571c09d608a3309a778da69e7a86d169d8c2fb598d8c1c98f0d3ee8b8178",
+        "native/src/pipeline.rs": "d33a093e8b8ca1f6253f7c8dd6c43548c67f18260efc5ac5e1fce6ff4e3182d0",
+        "native/src/lib.rs": "a707f3beb38efcce93c2741c16eab11066d0945ac9fe26adcefc2036a18eac29",
+        "native/src/gpu/material_arena_tests.rs": "5f269b428b746567c1be634446c2c56f7211ee9820f8cf426e752f031b62961c",
+        "scripts/native-region-benchmark.py": "84611be5e760b6baf8381cd51411d06510c0008173cb4d5687ae92d73462c965"
+      },
+      "patch": "material-arena-v2-2026-10-19.patch",
+      "patch_sha256": "d1eb92725c499abffc971ef05fd858977232a827904acd7256181c5f05a0f1cf",
+      "library_sha256": "3fc59ccc8bcf3734bb0102da8bf6350782196e522e8587904031ba4f3433423a"
+    }
+  },
+  "resource_limits": {
+    "priority_nice": 10,
+    "cargo_jobs": 2,
+    "cpu_workers": 2,
+    "execution_deadline_seconds": 30,
+    "compile_deadline_seconds": 60
+  },
+  "measurements": {
+    "retina-material-arena-terralith-base-a": {
+      "aquifer_columns": null,
+      "average_region_ms": 1252.5293470437948,
+      "benchmark_scope": "lit-mca",
+      "build": {
+        "harness_dirty": true,
+        "harness_dirty_fingerprint": "d029655e61c0c2b11575c1027bcdff19b42052325cb403f8c8bb8aca0f31d9eb",
+        "harness_revision": "1bc1009a450db57b952f7b851675206a9cc3c527",
+        "library": "/private/tmp/retina-light-output-metal/libretina_worldgen.dylib",
+        "library_revision": "1bc1009; final-crate opt-level=2 lto=off",
+        "library_sha256": "920d3191e92d4aea022e97b8d0b509b5d12c12efa28e2751ed77b96fbfb812ec"
+      },
+      "cached_density_masks": null,
+      "chunks_per_second": 1588.1918215334179,
+      "columns_include_lakes": false,
+      "coordinates": {
+        "grid_width": 3,
+        "origin_x": -1,
+        "origin_z": -1
+      },
+      "corpus": {
+        "algorithm": "sha256",
+        "files": [
+          {
+            "file": "0.mca",
+            "records": 1024,
+            "sha256": "14edae2f79b18cfa1d0dc2a3b413b30df507b39f8fda03dd722af9c49f0ffdb4"
+          },
+          {
+            "file": "1.mca",
+            "records": 1024,
+            "sha256": "7bae81c751556aa1b06075c43d762efd7a4ce7b76f7ca8b7df24fb09a3aa1209"
+          },
+          {
+            "file": "2.mca",
+            "records": 1024,
+            "sha256": "a4b25ba616000aef91c9d0ac9d12c8ceeb18590a6c53e76df6b1ac39057b7f67"
+          },
+          {
+            "file": "3.mca",
+            "records": 1024,
+            "sha256": "171dd8efa808bce9957389f2745639397763eefa350762c0f668a5a39c9bda63"
+          },
+          {
+            "file": "4.mca",
+            "records": 1024,
+            "sha256": "a573b0374773f8bd5a2c51dff95d69892aab1ba0a5cdc98f1dcccc2d7c880bf0"
+          },
+          {
+            "file": "5.mca",
+            "records": 1024,
+            "sha256": "254739492f479c0edb6e7fa3b90e3e6dc69bb07ff5ea4cf30e838b603b42d3bd"
+          }
+        ],
+        "records": 6144,
+        "sha256": "b30d4f4e9ae7f93172a5289e88a0a3c22440d89d57a1856a5df920a75aed8007"
+      },
+      "density_composition": null,
+      "gpu_pipeline": {
+        "completed": 149,
+        "device_gap_ms": 4613.607083,
+        "device_span_ms": 5234.388749,
+        "peak_in_flight": 2,
+        "unavailable_timestamp_pairs": 0
+      },
+      "gpu_program": {
+        "cache_hits": 0,
+        "compile_nanos": 4253387167,
+        "emitted": 17588,
+        "graphs": 91,
+        "horizontal_fields": 23,
+        "nodes": 23220,
+        "readback_bytes": 629099716,
+        "source_bytes": 4873852,
+        "status": 4,
+        "upload_bytes": 825985052
+      },
+      "gpu_timestamps": true,
+      "gpu_transfers": {
+        "readback_bytes": 539987708,
+        "readback_bytes_per_region": 89997951.33333333,
+        "upload_bytes": 720079684,
+        "upload_bytes_per_region": 120013280.66666667
+      },
+      "host": {
+        "machine": "arm64",
+        "python": "3.12.9",
+        "release": "27.0.0",
+        "system": "Darwin"
+      },
+      "interpolation_cache": null,
+      "interpreter_columns": null,
+      "interpreter_dispatch": null,
+      "interpreter_preload": null,
+      "lake_point_cache": null,
+      "lake_primed_corners": null,
+      "lake_sparse_fields": null,
+      "library": "/tmp/retina-light-output-metal/libretina_worldgen.dylib",
+      "lighting": "enabled",
+      "material_dispatch": null,
+      "maximum_region_ms": 1701.691625174135,
+      "median_ms": 1282.2869790252298,
+      "p95_region_ms": 1642.590718867723,
+      "parallel": 2,
+      "peak_rss_bytes": 3033219072,
+      "profile_sha256": "8217ce97735f8646c9c9ce99b66be680c69cd639688975fa711fb7836d22bf4a",
+      "program_execution": null,
+      "readiness": "shader-ready",
+      "readiness_wait_ms": 2674.820249900222,
+      "region_file_bytes": 47702016,
+      "regions": [
+        {
+          "assembly_ms": 762.70775,
+          "generated": 1024,
+          "gpu_ms": 193.217542,
+          "ms": 972.5314581301063,
+          "name": "0",
+          "program_status": 4,
+          "write_ms": 16.499208,
+          "x": -1,
+          "z": -1
+        },
+        {
+          "assembly_ms": 1240.864958,
+          "generated": 1024,
+          "gpu_ms": 208.356625,
+          "ms": 1465.2879999484867,
+          "name": "1",
+          "program_status": 4,
+          "write_ms": 15.914125,
+          "x": 0,
+          "z": -1
+        },
+        {
+          "assembly_ms": 987.548167,
+          "generated": 1024,
+          "gpu_ms": 122.97275,
+          "ms": 1132.512625074014,
+          "name": "2",
+          "program_status": 4,
+          "write_ms": 21.962083,
+          "x": 1,
+          "z": -1
+        },
+        {
+          "assembly_ms": 710.242708,
+          "generated": 1024,
+          "gpu_ms": 86.864,
+          "ms": 811.0910409595817,
+          "name": "3",
+          "program_status": 4,
+          "write_ms": 13.869208,
+          "x": -1,
+          "z": 0
+        },
+        {
+          "assembly_ms": 1583.76425,
+          "generated": 1024,
+          "gpu_ms": 94.955625,
+          "ms": 1701.691625174135,
+          "name": "4",
+          "program_status": 4,
+          "write_ms": 22.894167,
+          "x": 0,
+          "z": 0
+        },
+        {
+          "assembly_ms": 1292.705917,
+          "generated": 1024,
+          "gpu_ms": 117.831583,
+          "ms": 1432.0613329764456,
+          "name": "5",
+          "program_status": 4,
+          "write_ms": 20.775625,
+          "x": 1,
+          "z": 0
+        }
+      ],
+      "schema": "retina.native-region-benchmark",
+      "schema_version": 1,
+      "seed": 123456789,
+      "specialized_interpolation": null,
+      "stage_ms_chunk": {
+        "aquifer_fields": 0.011103651204427084,
+        "aquifer_mask": 0.012041048990885416,
+        "assembly": 0.038423609375,
+        "cave_density": 0.01146122265625,
+        "cave_features": 0.017599671549479168,
+        "cave_mask": 0.02184073876953125,
+        "columns": 0.00967677734375,
+        "compress": 0.08245605729166668,
+        "encode": 0.006033881510416667,
+        "feature_counts": 0.00017944287109375,
+        "geology": 0.026139659505208333,
+        "height": 0.06408843277994791,
+        "io": 0.0182181396484375,
+        "lake_candidates": 0.016190748209635415,
+        "lake_density": 0.015956284830729167,
+        "lake_reduce": 0.0013159508463541668,
+        "light_host": 0.04339992252604166,
+        "light_pack": 0.00039424055989583333,
+        "light_sky": 0.00734086083984375,
+        "light_spread": 0.033976913899739586,
+        "materials": 0.02046652604166667,
+        "nbt": 0.09033355712890626,
+        "ore_mask": 0.00897031640625,
+        "ore_plan": 0.050627902669270836,
+        "provider_noise": 0.0004726490885416667,
+        "queue": 0.015484232421875,
+        "sites": 0.009638651041666666,
+        "snow": 0.0013787478841145832,
+        "structure_plan": 0.1705368790690104,
+        "structures": 0.0121594697265625,
+        "vegetation": 0.0013450008138020833,
+        "vegetation_plan": 0.5464013333333334,
+        "wait_copy": 0.28854386409505206
+      },
+      "startup": {
+        "initialize_ms": 58.85545816272497,
+        "registration_ms": 1196.788917062804,
+        "warmups": [
+          {
+            "assembly_ms": 976.994666,
+            "generated": 1024,
+            "gpu_ms": 603.634417,
+            "ms": 1605.7494999840856,
+            "name": "warm0",
+            "program_status": 1,
+            "write_ms": 25.062667,
+            "x": 8,
+            "z": 8
+          }
+        ]
+      },
+      "terrain_execution": null,
+      "timing_version": 8,
+      "total_ms": 3868.550332961604
+    },
+    "retina-material-arena-terralith-base-b": {
+      "aquifer_columns": null,
+      "average_region_ms": 1214.416243058319,
+      "benchmark_scope": "lit-mca",
+      "build": {
+        "harness_dirty": true,
+        "harness_dirty_fingerprint": "eb7b1149129e20b123c0abece7bf836539cd6736550c4e40dea37f96d769bf1e",
+        "harness_revision": "1bc1009a450db57b952f7b851675206a9cc3c527",
+        "library": "/private/tmp/retina-light-output-metal/libretina_worldgen.dylib",
+        "library_revision": "1bc1009; final-crate opt-level=2 lto=off",
+        "library_sha256": "920d3191e92d4aea022e97b8d0b509b5d12c12efa28e2751ed77b96fbfb812ec"
+      },
+      "cached_density_masks": null,
+      "chunks_per_second": 1599.5733600244125,
+      "columns_include_lakes": false,
+      "coordinates": {
+        "grid_width": 3,
+        "origin_x": -1,
+        "origin_z": -1
+      },
+      "corpus": {
+        "algorithm": "sha256",
+        "files": [
+          {
+            "file": "0.mca",
+            "records": 1024,
+            "sha256": "14edae2f79b18cfa1d0dc2a3b413b30df507b39f8fda03dd722af9c49f0ffdb4"
+          },
+          {
+            "file": "1.mca",
+            "records": 1024,
+            "sha256": "7bae81c751556aa1b06075c43d762efd7a4ce7b76f7ca8b7df24fb09a3aa1209"
+          },
+          {
+            "file": "2.mca",
+            "records": 1024,
+            "sha256": "a4b25ba616000aef91c9d0ac9d12c8ceeb18590a6c53e76df6b1ac39057b7f67"
+          },
+          {
+            "file": "3.mca",
+            "records": 1024,
+            "sha256": "171dd8efa808bce9957389f2745639397763eefa350762c0f668a5a39c9bda63"
+          },
+          {
+            "file": "4.mca",
+            "records": 1024,
+            "sha256": "a573b0374773f8bd5a2c51dff95d69892aab1ba0a5cdc98f1dcccc2d7c880bf0"
+          },
+          {
+            "file": "5.mca",
+            "records": 1024,
+            "sha256": "254739492f479c0edb6e7fa3b90e3e6dc69bb07ff5ea4cf30e838b603b42d3bd"
+          }
+        ],
+        "records": 6144,
+        "sha256": "b30d4f4e9ae7f93172a5289e88a0a3c22440d89d57a1856a5df920a75aed8007"
+      },
+      "density_composition": null,
+      "gpu_pipeline": {
+        "completed": 147,
+        "device_gap_ms": 4553.370379,
+        "device_span_ms": 5285.787881,
+        "peak_in_flight": 2,
+        "unavailable_timestamp_pairs": 0
+      },
+      "gpu_program": {
+        "cache_hits": 0,
+        "compile_nanos": 4288513167,
+        "emitted": 17588,
+        "graphs": 91,
+        "horizontal_fields": 23,
+        "nodes": 23220,
+        "readback_bytes": 629161148,
+        "source_bytes": 4873852,
+        "status": 4,
+        "upload_bytes": 825754412
+      },
+      "gpu_timestamps": true,
+      "gpu_transfers": {
+        "readback_bytes": 540049140,
+        "readback_bytes_per_region": 90008190.0,
+        "upload_bytes": 719849044,
+        "upload_bytes_per_region": 119974840.66666667
+      },
+      "host": {
+        "machine": "arm64",
+        "python": "3.12.9",
+        "release": "27.0.0",
+        "system": "Darwin"
+      },
+      "interpolation_cache": null,
+      "interpreter_columns": null,
+      "interpreter_dispatch": null,
+      "interpreter_preload": null,
+      "lake_point_cache": null,
+      "lake_primed_corners": null,
+      "lake_sparse_fields": null,
+      "library": "/tmp/retina-light-output-metal/libretina_worldgen.dylib",
+      "lighting": "enabled",
+      "material_dispatch": null,
+      "maximum_region_ms": 1818.6930411029607,
+      "median_ms": 1102.7210834436119,
+      "p95_region_ms": 1759.8237911006436,
+      "parallel": 2,
+      "peak_rss_bytes": 2806497280,
+      "profile_sha256": "8217ce97735f8646c9c9ce99b66be680c69cd639688975fa711fb7836d22bf4a",
+      "program_execution": null,
+      "readiness": "shader-ready",
+      "readiness_wait_ms": 2746.683415956795,
+      "region_file_bytes": 47702016,
+      "regions": [
+        {
+          "assembly_ms": 743.493208,
+          "generated": 1024,
+          "gpu_ms": 196.355709,
+          "ms": 957.4244171380997,
+          "name": "0",
+          "program_status": 4,
+          "write_ms": 17.431416,
+          "x": -1,
+          "z": -1
+        },
+        {
+          "assembly_ms": 1321.436833,
+          "generated": 1024,
+          "gpu_ms": 210.290125,
+          "ms": 1583.2160410936922,
+          "name": "1",
+          "program_status": 4,
+          "write_ms": 51.30125,
+          "x": 0,
+          "z": -1
+        },
+        {
+          "assembly_ms": 922.956166,
+          "generated": 1024,
+          "gpu_ms": 121.120459,
+          "ms": 1062.3722090385854,
+          "name": "2",
+          "program_status": 4,
+          "write_ms": 18.260459,
+          "x": 1,
+          "z": -1
+        },
+        {
+          "assembly_ms": 626.107416,
+          "generated": 1024,
+          "gpu_ms": 82.415459,
+          "ms": 721.7217921279371,
+          "name": "3",
+          "program_status": 4,
+          "write_ms": 13.1135,
+          "x": -1,
+          "z": 0
+        },
+        {
+          "assembly_ms": 1702.605417,
+          "generated": 1024,
+          "gpu_ms": 102.997333,
+          "ms": 1818.6930411029607,
+          "name": "4",
+          "program_status": 4,
+          "write_ms": 13.054166,
+          "x": 0,
+          "z": 0
+        },
+        {
+          "assembly_ms": 1040.480459,
+          "generated": 1024,
+          "gpu_ms": 90.793708,
+          "ms": 1143.0699578486383,
+          "name": "5",
+          "program_status": 4,
+          "write_ms": 11.662834,
+          "x": 1,
+          "z": 0
+        }
+      ],
+      "schema": "retina.native-region-benchmark",
+      "schema_version": 1,
+      "seed": 123456789,
+      "specialized_interpolation": null,
+      "stage_ms_chunk": {
+        "aquifer_fields": 0.016833306315104168,
+        "aquifer_mask": 0.012022854166666666,
+        "assembly": 0.038302611490885416,
+        "cave_density": 0.011355245930989584,
+        "cave_features": 0.017901817545572917,
+        "cave_mask": 0.022851318359375,
+        "columns": 0.009682319661458334,
+        "compress": 0.08183761767578125,
+        "encode": 0.006413350260416667,
+        "feature_counts": 3.25048828125e-05,
+        "geology": 0.026012975260416668,
+        "height": 0.06436340999348959,
+        "io": 0.02031882731119792,
+        "lake_candidates": 0.0160701708984375,
+        "lake_density": 0.015228000325520834,
+        "lake_reduce": 0.0008539773763020834,
+        "light_host": 0.032606308919270834,
+        "light_pack": 0.0003504710286458333,
+        "light_sky": 0.006725761881510417,
+        "light_spread": 0.024785502115885417,
+        "materials": 0.020466987141927084,
+        "nbt": 0.09006942805989583,
+        "ore_mask": 0.0122131142578125,
+        "ore_plan": 0.045596279459635417,
+        "provider_noise": 5.38193359375e-05,
+        "queue": 0.01100038623046875,
+        "sites": 0.00959245556640625,
+        "snow": 0.00140163623046875,
+        "structure_plan": 0.13965679915364584,
+        "structures": 0.0133574111328125,
+        "vegetation": 0.00134436279296875,
+        "vegetation_plan": 0.5638902859700521,
+        "wait_copy": 0.2688229239908854
+      },
+      "startup": {
+        "initialize_ms": 59.70045900903642,
+        "registration_ms": 1153.6790421232581,
+        "warmups": [
+          {
+            "assembly_ms": 982.413958,
+            "generated": 1024,
+            "gpu_ms": 602.834667,
+            "ms": 1608.1081661395729,
+            "name": "warm0",
+            "program_status": 1,
+            "write_ms": 22.711625,
+            "x": 8,
+            "z": 8
+          }
+        ]
+      },
+      "terrain_execution": null,
+      "timing_version": 8,
+      "total_ms": 3841.0242090467364
+    },
+    "retina-material-arena-terralith-v1-full": {
+      "aquifer_columns": null,
+      "average_region_ms": 1322.6139719675605,
+      "benchmark_scope": "lit-mca",
+      "build": {
+        "harness_dirty": true,
+        "harness_dirty_fingerprint": "d029655e61c0c2b11575c1027bcdff19b42052325cb403f8c8bb8aca0f31d9eb",
+        "harness_revision": "1bc1009a450db57b952f7b851675206a9cc3c527",
+        "library": "/private/tmp/retina-material-arena-v1/libretina_worldgen.dylib",
+        "library_revision": "1bc1009+bounded-arena; final-crate opt-level=2 lto=off",
+        "library_sha256": "453d59a16d52ec72b9e3afa827230c66f26e73c1f4ebf82262d773c6aefc7f24"
+      },
+      "cached_density_masks": null,
+      "chunks_per_second": 1526.7215407193148,
+      "columns_include_lakes": false,
+      "comparison": {
+        "identical_nbt_chunks": 6144,
+        "membership_identical": true
+      },
+      "coordinates": {
+        "grid_width": 3,
+        "origin_x": -1,
+        "origin_z": -1
+      },
+      "corpus": {
+        "algorithm": "sha256",
+        "files": [
+          {
+            "file": "0.mca",
+            "records": 1024,
+            "sha256": "14edae2f79b18cfa1d0dc2a3b413b30df507b39f8fda03dd722af9c49f0ffdb4"
+          },
+          {
+            "file": "1.mca",
+            "records": 1024,
+            "sha256": "7bae81c751556aa1b06075c43d762efd7a4ce7b76f7ca8b7df24fb09a3aa1209"
+          },
+          {
+            "file": "2.mca",
+            "records": 1024,
+            "sha256": "a4b25ba616000aef91c9d0ac9d12c8ceeb18590a6c53e76df6b1ac39057b7f67"
+          },
+          {
+            "file": "3.mca",
+            "records": 1024,
+            "sha256": "171dd8efa808bce9957389f2745639397763eefa350762c0f668a5a39c9bda63"
+          },
+          {
+            "file": "4.mca",
+            "records": 1024,
+            "sha256": "a573b0374773f8bd5a2c51dff95d69892aab1ba0a5cdc98f1dcccc2d7c880bf0"
+          },
+          {
+            "file": "5.mca",
+            "records": 1024,
+            "sha256": "254739492f479c0edb6e7fa3b90e3e6dc69bb07ff5ea4cf30e838b603b42d3bd"
+          }
+        ],
+        "records": 6144,
+        "sha256": "b30d4f4e9ae7f93172a5289e88a0a3c22440d89d57a1856a5df920a75aed8007"
+      },
+      "density_composition": null,
+      "gpu_pipeline": {
+        "completed": 141,
+        "device_gap_ms": 4727.379206,
+        "device_span_ms": 5366.277797,
+        "peak_in_flight": 2,
+        "unavailable_timestamp_pairs": 0
+      },
+      "gpu_program": {
+        "cache_hits": 0,
+        "compile_nanos": 4145829833,
+        "emitted": 17588,
+        "graphs": 91,
+        "horizontal_fields": 23,
+        "nodes": 23220,
+        "readback_bytes": 696782540,
+        "source_bytes": 4873852,
+        "status": 4,
+        "upload_bytes": 825985052
+      },
+      "gpu_timestamps": true,
+      "gpu_transfers": {
+        "readback_bytes": 598180464,
+        "readback_bytes_per_region": 99696744.0,
+        "upload_bytes": 720079684,
+        "upload_bytes_per_region": 120013280.66666667
+      },
+      "host": {
+        "machine": "arm64",
+        "python": "3.12.9",
+        "release": "27.0.0",
+        "system": "Darwin"
+      },
+      "identical_nbt_chunks": 6144,
+      "interpolation_cache": null,
+      "interpreter_columns": null,
+      "interpreter_dispatch": null,
+      "interpreter_preload": null,
+      "lake_point_cache": null,
+      "lake_primed_corners": null,
+      "lake_sparse_fields": null,
+      "library": "/tmp/retina-material-arena-v1/libretina_worldgen.dylib",
+      "lighting": "enabled",
+      "material_arena_runs": "16",
+      "material_dispatch": null,
+      "material_pipeline": {
+        "arena_hits": 6,
+        "arena_jobs": 6,
+        "continuation_copy_bytes": 0,
+        "continuations": 0,
+        "counted_run_bytes": 69208332,
+        "jobs": 6,
+        "peak_cached_buffer_bytes": 224627680,
+        "reserved_readback_bytes": 127401984,
+        "snapshot_copy_bytes": 358145376
+      },
+      "maximum_region_ms": 1765.3487909119576,
+      "median_ms": 1482.255187467672,
+      "p95_region_ms": 1725.7724056835286,
+      "parallel": 2,
+      "peak_rss_bytes": 3175530496,
+      "profile_sha256": "8217ce97735f8646c9c9ce99b66be680c69cd639688975fa711fb7836d22bf4a",
+      "program_execution": null,
+      "readiness": "shader-ready",
+      "readiness_wait_ms": 2700.584583217278,
+      "region_file_bytes": 47702016,
+      "regions": [
+        {
+          "assembly_ms": 810.834041,
+          "generated": 1024,
+          "gpu_ms": 125.642,
+          "ms": 949.2269998881966,
+          "name": "0",
+          "program_status": 4,
+          "write_ms": 12.666292,
+          "x": -1,
+          "z": -1
+        },
+        {
+          "assembly_ms": 1381.642166,
+          "generated": 1024,
+          "gpu_ms": 206.79075,
+          "ms": 1607.0432499982417,
+          "name": "1",
+          "program_status": 4,
+          "write_ms": 18.572208,
+          "x": 0,
+          "z": -1
+        },
+        {
+          "assembly_ms": 1386.861875,
+          "generated": 1024,
+          "gpu_ms": 115.45975,
+          "ms": 1517.6083750557154,
+          "name": "2",
+          "program_status": 4,
+          "write_ms": 15.25375,
+          "x": 1,
+          "z": -1
+        },
+        {
+          "assembly_ms": 547.801167,
+          "generated": 1024,
+          "gpu_ms": 85.052125,
+          "ms": 649.5544160716236,
+          "name": "3",
+          "program_status": 4,
+          "write_ms": 16.672667,
+          "x": -1,
+          "z": 0
+        },
+        {
+          "assembly_ms": 1653.439875,
+          "generated": 1024,
+          "gpu_ms": 97.079208,
+          "ms": 1765.3487909119576,
+          "name": "4",
+          "program_status": 4,
+          "write_ms": 14.709792,
+          "x": 0,
+          "z": 0
+        },
+        {
+          "assembly_ms": 1343.678792,
+          "generated": 1024,
+          "gpu_ms": 89.080416,
+          "ms": 1446.9019998796284,
+          "name": "5",
+          "program_status": 4,
+          "write_ms": 14.114166,
+          "x": 1,
+          "z": 0
+        }
+      ],
+      "schema": "retina.native-region-benchmark",
+      "schema_version": 1,
+      "seed": 123456789,
+      "specialized_interpolation": null,
+      "stage_ms_chunk": {
+        "aquifer_fields": 0.011786492024739584,
+        "aquifer_mask": 0.012071641764322917,
+        "assembly": 0.03976792626953125,
+        "cave_density": 0.011275942220052085,
+        "cave_features": 0.0188606123046875,
+        "cave_mask": 0.02192630338541667,
+        "columns": 0.00948236767578125,
+        "compress": 0.08430190869140625,
+        "encode": 0.005507217610677083,
+        "feature_counts": 0.0002875432942708333,
+        "geology": 0.02663123225911458,
+        "height": 0.06369778743489583,
+        "io": 0.014974833333333335,
+        "lake_candidates": 0.015320232096354166,
+        "lake_density": 0.0143860830078125,
+        "lake_reduce": 0.0008343645833333333,
+        "light_host": 0.04385932080078125,
+        "light_pack": 0.000631666015625,
+        "light_sky": 0.007610453287760417,
+        "light_spread": 0.035550380859375,
+        "materials": 0.02039383968098958,
+        "nbt": 0.09118209358723958,
+        "ore_mask": 0.010423116048177083,
+        "ore_plan": 0.05157548046875,
+        "provider_noise": 0.00023651106770833334,
+        "queue": 0.010987405924479166,
+        "sites": 0.009174682779947915,
+        "snow": 0.0014828064778645833,
+        "structure_plan": 0.17953241666666667,
+        "structures": 0.012799469889322916,
+        "vegetation": 0.0014737001953125,
+        "vegetation_plan": 0.5745738051757813,
+        "wait_copy": 0.275959552734375
+      },
+      "startup": {
+        "initialize_ms": 53.9312909822911,
+        "registration_ms": 1199.385582935065,
+        "warmups": [
+          {
+            "assembly_ms": 957.99,
+            "generated": 1024,
+            "gpu_ms": 593.974458,
+            "ms": 1570.441500050947,
+            "name": "warm0",
+            "program_status": 1,
+            "write_ms": 18.3385,
+            "x": 8,
+            "z": 8
+          }
+        ]
+      },
+      "terrain_execution": null,
+      "timing_version": 8,
+      "total_ms": 4024.3094998877496
+    },
+    "retina-material-arena-terralith-v1-one": {
+      "aquifer_columns": null,
+      "average_region_ms": 584.9198750220239,
+      "benchmark_scope": "lit-mca",
+      "build": {
+        "harness_dirty": true,
+        "harness_dirty_fingerprint": "d029655e61c0c2b11575c1027bcdff19b42052325cb403f8c8bb8aca0f31d9eb",
+        "harness_revision": "1bc1009a450db57b952f7b851675206a9cc3c527",
+        "library": "/private/tmp/retina-material-arena-v1/libretina_worldgen.dylib",
+        "library_revision": "1bc1009+bounded-arena; final-crate opt-level=2 lto=off",
+        "library_sha256": "453d59a16d52ec72b9e3afa827230c66f26e73c1f4ebf82262d773c6aefc7f24"
+      },
+      "cached_density_masks": null,
+      "chunks_per_second": 1743.7261783564654,
+      "columns_include_lakes": false,
+      "comparison": {
+        "identical_nbt_chunks": 1024,
+        "membership_identical": true
+      },
+      "coordinates": {
+        "grid_width": 3,
+        "origin_x": -1,
+        "origin_z": -1
+      },
+      "corpus": {
+        "algorithm": "sha256",
+        "files": [
+          {
+            "file": "0.mca",
+            "records": 1024,
+            "sha256": "14edae2f79b18cfa1d0dc2a3b413b30df507b39f8fda03dd722af9c49f0ffdb4"
+          }
+        ],
+        "records": 1024,
+        "sha256": "4b43384de02f9b5da81a2e4fd512849c5aa7bbd83049bb2a31ff64bb140244f6"
+      },
+      "density_composition": null,
+      "gpu_pipeline": {
+        "completed": 26,
+        "device_gap_ms": 9983.245872,
+        "device_span_ms": 10603.927627,
+        "peak_in_flight": 2,
+        "unavailable_timestamp_pairs": 0
+      },
+      "gpu_program": {
+        "cache_hits": 0,
+        "compile_nanos": 10915171084,
+        "emitted": 17588,
+        "graphs": 91,
+        "horizontal_fields": 23,
+        "nodes": 23220,
+        "readback_bytes": 190716712,
+        "source_bytes": 4873852,
+        "status": 4,
+        "upload_bytes": 195214444
+      },
+      "gpu_timestamps": true,
+      "gpu_transfers": {
+        "readback_bytes": 92114636,
+        "readback_bytes_per_region": 92114636.0,
+        "upload_bytes": 89309076,
+        "upload_bytes_per_region": 89309076.0
+      },
+      "host": {
+        "machine": "arm64",
+        "python": "3.12.9",
+        "release": "27.0.0",
+        "system": "Darwin"
+      },
+      "identical_nbt_chunks": 1024,
+      "interpolation_cache": null,
+      "interpreter_columns": null,
+      "interpreter_dispatch": null,
+      "interpreter_preload": null,
+      "lake_point_cache": null,
+      "lake_primed_corners": null,
+      "lake_sparse_fields": null,
+      "library": "/tmp/retina-material-arena-v1/libretina_worldgen.dylib",
+      "lighting": "enabled",
+      "material_arena_runs": "16",
+      "material_dispatch": null,
+      "material_pipeline": {
+        "arena_hits": 1,
+        "arena_jobs": 1,
+        "continuation_copy_bytes": 0,
+        "continuations": 0,
+        "counted_run_bytes": 10867604,
+        "jobs": 1,
+        "peak_cached_buffer_bytes": 224627680,
+        "reserved_readback_bytes": 21233664,
+        "snapshot_copy_bytes": 59690896
+      },
+      "maximum_region_ms": 584.9198750220239,
+      "median_ms": 584.9198750220239,
+      "p95_region_ms": 584.9198750220239,
+      "parallel": 1,
+      "peak_rss_bytes": 2309701632,
+      "profile_sha256": "8217ce97735f8646c9c9ce99b66be680c69cd639688975fa711fb7836d22bf4a",
+      "program_execution": null,
+      "readiness": "shader-ready",
+      "readiness_wait_ms": 9398.420667042956,
+      "region_file_bytes": 6414336,
+      "regions": [
+        {
+          "assembly_ms": 414.657916,
+          "generated": 1024,
+          "gpu_ms": 157.070625,
+          "ms": 584.9198750220239,
+          "name": "0",
+          "program_status": 4,
+          "write_ms": 13.149208,
+          "x": -1,
+          "z": -1
+        }
+      ],
+      "schema": "retina.native-region-benchmark",
+      "schema_version": 1,
+      "seed": 123456789,
+      "specialized_interpolation": null,
+      "stage_ms_chunk": {
+        "aquifer_fields": 0.0028837080078125,
+        "aquifer_mask": 0.00969344140625,
+        "assembly": 0.0347934990234375,
+        "cave_density": 0.0092528076171875,
+        "cave_features": 0.0121854287109375,
+        "cave_mask": 0.01639599609375,
+        "columns": 0.0077718134765625,
+        "compress": 0.0695449560546875,
+        "encode": 0.0109481611328125,
+        "feature_counts": 3.79638671875e-05,
+        "geology": 0.0245375517578125,
+        "height": 0.054460486328125,
+        "io": 0.01284423828125,
+        "lake_candidates": 0.0156043291015625,
+        "lake_density": 0.003776287109375,
+        "lake_reduce": 0.0005812978515625,
+        "light_host": 0.0352112197265625,
+        "light_pack": 0.0003093251953125,
+        "light_sky": 0.0073837080078125,
+        "light_spread": 0.0226829833984375,
+        "materials": 0.014556234375,
+        "nbt": 0.087581447265625,
+        "ore_mask": 0.011052734375,
+        "ore_plan": 0.04101688671875,
+        "provider_noise": 3.12099609375e-05,
+        "queue": 0.0136662998046875,
+        "sites": 0.0101875380859375,
+        "snow": 0.000130220703125,
+        "structure_plan": 0.095484130859375,
+        "structures": 0.01841829296875,
+        "vegetation": 0.0012219208984375,
+        "vegetation_plan": 0.094841755859375,
+        "wait_copy": 0.235052244140625
+      },
+      "startup": {
+        "initialize_ms": 59.53679117374122,
+        "registration_ms": 1196.3042910210788,
+        "warmups": [
+          {
+            "assembly_ms": 982.68975,
+            "generated": 1024,
+            "gpu_ms": 598.401625,
+            "ms": 1597.3938331007957,
+            "name": "warm0",
+            "program_status": 1,
+            "write_ms": 16.131666,
+            "x": 8,
+            "z": 8
+          }
+        ]
+      },
+      "terrain_execution": null,
+      "timing_version": 8,
+      "total_ms": 587.2481658589095
+    },
+    "retina-material-arena-terralith-v2-full": {
+      "aquifer_columns": null,
+      "average_region_ms": 1203.6495831950258,
+      "benchmark_scope": "lit-mca",
+      "build": {
+        "harness_dirty": true,
+        "harness_dirty_fingerprint": "eb7b1149129e20b123c0abece7bf836539cd6736550c4e40dea37f96d769bf1e",
+        "harness_revision": "1bc1009a450db57b952f7b851675206a9cc3c527",
+        "library": "/private/tmp/retina-material-arena-v2/libretina_worldgen.dylib",
+        "library_revision": "1bc1009+arena-with-first-pass-runs; final-crate opt-level=2 lto=off",
+        "library_sha256": "3fc59ccc8bcf3734bb0102da8bf6350782196e522e8587904031ba4f3433423a"
+      },
+      "cached_density_masks": null,
+      "chunks_per_second": 1547.5613959523394,
+      "columns_include_lakes": false,
+      "comparison": {
+        "identical_nbt_chunks": 6144,
+        "membership_identical": true
+      },
+      "coordinates": {
+        "grid_width": 3,
+        "origin_x": -1,
+        "origin_z": -1
+      },
+      "corpus": {
+        "algorithm": "sha256",
+        "files": [
+          {
+            "file": "0.mca",
+            "records": 1024,
+            "sha256": "14edae2f79b18cfa1d0dc2a3b413b30df507b39f8fda03dd722af9c49f0ffdb4"
+          },
+          {
+            "file": "1.mca",
+            "records": 1024,
+            "sha256": "7bae81c751556aa1b06075c43d762efd7a4ce7b76f7ca8b7df24fb09a3aa1209"
+          },
+          {
+            "file": "2.mca",
+            "records": 1024,
+            "sha256": "a4b25ba616000aef91c9d0ac9d12c8ceeb18590a6c53e76df6b1ac39057b7f67"
+          },
+          {
+            "file": "3.mca",
+            "records": 1024,
+            "sha256": "171dd8efa808bce9957389f2745639397763eefa350762c0f668a5a39c9bda63"
+          },
+          {
+            "file": "4.mca",
+            "records": 1024,
+            "sha256": "a573b0374773f8bd5a2c51dff95d69892aab1ba0a5cdc98f1dcccc2d7c880bf0"
+          },
+          {
+            "file": "5.mca",
+            "records": 1024,
+            "sha256": "254739492f479c0edb6e7fa3b90e3e6dc69bb07ff5ea4cf30e838b603b42d3bd"
+          }
+        ],
+        "records": 6144,
+        "sha256": "b30d4f4e9ae7f93172a5289e88a0a3c22440d89d57a1856a5df920a75aed8007"
+      },
+      "density_composition": null,
+      "gpu_pipeline": {
+        "completed": 145,
+        "device_gap_ms": 4593.363288,
+        "device_span_ms": 4968.316673,
+        "peak_in_flight": 2,
+        "unavailable_timestamp_pairs": 0
+      },
+      "gpu_program": {
+        "cache_hits": 0,
+        "compile_nanos": 4125206041,
+        "emitted": 17588,
+        "graphs": 91,
+        "horizontal_fields": 23,
+        "nodes": 23220,
+        "readback_bytes": 696865444,
+        "source_bytes": 4873852,
+        "status": 4,
+        "upload_bytes": 825690116
+      },
+      "gpu_timestamps": true,
+      "gpu_transfers": {
+        "readback_bytes": 598263368,
+        "readback_bytes_per_region": 99710561.33333333,
+        "upload_bytes": 719784684,
+        "upload_bytes_per_region": 119964114.0
+      },
+      "host": {
+        "machine": "arm64",
+        "python": "3.12.9",
+        "release": "27.0.0",
+        "system": "Darwin"
+      },
+      "identical_nbt_chunks": 6144,
+      "interpolation_cache": null,
+      "interpreter_columns": null,
+      "interpreter_dispatch": null,
+      "interpreter_preload": null,
+      "lake_point_cache": null,
+      "lake_primed_corners": null,
+      "lake_sparse_fields": null,
+      "library": "/tmp/retina-material-arena-v2/libretina_worldgen.dylib",
+      "lighting": "enabled",
+      "material_arena_runs": "16",
+      "material_dispatch": null,
+      "material_pipeline": {
+        "arena_hits": 6,
+        "arena_jobs": 6,
+        "continuation_copy_bytes": 0,
+        "continuations": 0,
+        "counted_run_bytes": 69208332,
+        "jobs": 6,
+        "peak_cached_buffer_bytes": 245861344,
+        "reserved_readback_bytes": 127401984,
+        "snapshot_copy_bytes": 358144992
+      },
+      "maximum_region_ms": 1679.0656249504536,
+      "median_ms": 1169.5556041086093,
+      "p95_region_ms": 1648.8505519810133,
+      "parallel": 2,
+      "peak_rss_bytes": 3208888320,
+      "profile_sha256": "8217ce97735f8646c9c9ce99b66be680c69cd639688975fa711fb7836d22bf4a",
+      "program_execution": null,
+      "readiness": "shader-ready",
+      "readiness_wait_ms": 2695.657250005752,
+      "region_file_bytes": 47702016,
+      "regions": [
+        {
+          "assembly_ms": 712.668792,
+          "generated": 1024,
+          "gpu_ms": 182.810875,
+          "ms": 914.8950828239322,
+          "name": "0",
+          "program_status": 4,
+          "write_ms": 19.326375,
+          "x": -1,
+          "z": -1
+        },
+        {
+          "assembly_ms": 1413.254875,
+          "generated": 1024,
+          "gpu_ms": 128.829459,
+          "ms": 1558.2053330726922,
+          "name": "1",
+          "program_status": 4,
+          "write_ms": 16.089459,
+          "x": 0,
+          "z": -1
+        },
+        {
+          "assembly_ms": 984.78325,
+          "generated": 1024,
+          "gpu_ms": 104.100625,
+          "ms": 1145.6180831883103,
+          "name": "2",
+          "program_status": 4,
+          "write_ms": 56.701625,
+          "x": 1,
+          "z": -1
+        },
+        {
+          "assembly_ms": 639.021292,
+          "generated": 1024,
+          "gpu_ms": 74.757417,
+          "ms": 730.6202501058578,
+          "name": "3",
+          "program_status": 4,
+          "write_ms": 16.813125,
+          "x": -1,
+          "z": 0
+        },
+        {
+          "assembly_ms": 1095.926,
+          "generated": 1024,
+          "gpu_ms": 80.100791,
+          "ms": 1193.4931250289083,
+          "name": "4",
+          "program_status": 4,
+          "write_ms": 17.433083,
+          "x": 0,
+          "z": 0
+        },
+        {
+          "assembly_ms": 1578.077584,
+          "generated": 1024,
+          "gpu_ms": 82.94125,
+          "ms": 1679.0656249504536,
+          "name": "5",
+          "program_status": 4,
+          "write_ms": 17.961834,
+          "x": 1,
+          "z": 0
+        }
+      ],
+      "schema": "retina.native-region-benchmark",
+      "schema_version": 1,
+      "seed": 123456789,
+      "specialized_interpolation": null,
+      "stage_ms_chunk": {
+        "aquifer_fields": 0.011982272786458335,
+        "aquifer_mask": 0.012013861653645834,
+        "assembly": 0.03911270865885416,
+        "cave_density": 0.011266703450520834,
+        "cave_features": 0.01914787744140625,
+        "cave_mask": 0.021818834147135417,
+        "columns": 0.0095385458984375,
+        "compress": 0.08435143831380208,
+        "encode": 0.005443339029947917,
+        "feature_counts": 0.0002607967122395833,
+        "geology": 0.0270869677734375,
+        "height": 0.06345314518229167,
+        "io": 0.023492818033854168,
+        "lake_candidates": 0.01555318310546875,
+        "lake_density": 0.014217711751302084,
+        "lake_reduce": 0.0008507823893229166,
+        "light_host": 0.03496056380208334,
+        "light_pack": 0.0003568933919270833,
+        "light_sky": 0.006781276692708333,
+        "light_spread": 0.0275020751953125,
+        "materials": 0.011695461751302084,
+        "nbt": 0.09188081363932292,
+        "ore_mask": 0.01188079150390625,
+        "ore_plan": 0.04713795979817709,
+        "provider_noise": 0.00018876139322916667,
+        "queue": 0.011000739908854166,
+        "sites": 0.00947186376953125,
+        "snow": 0.0013965208333333332,
+        "structure_plan": 0.17081495491536458,
+        "structures": 0.013893380045572916,
+        "vegetation": 0.00137222705078125,
+        "vegetation_plan": 0.5696454264322917,
+        "wait_copy": 0.2605638902994792
+      },
+      "startup": {
+        "initialize_ms": 45.610500033944845,
+        "registration_ms": 1198.2424578163773,
+        "warmups": [
+          {
+            "assembly_ms": 977.090333,
+            "generated": 1024,
+            "gpu_ms": 489.399708,
+            "ms": 1487.0656670536846,
+            "name": "warm0",
+            "program_status": 1,
+            "write_ms": 20.447209,
+            "x": 8,
+            "z": 8
+          }
+        ]
+      },
+      "terrain_execution": null,
+      "timing_version": 8,
+      "total_ms": 3970.117124961689
+    },
+    "retina-material-arena-terralith-v2-one": {
+      "aquifer_columns": null,
+      "average_region_ms": 546.9091248232871,
+      "benchmark_scope": "lit-mca",
+      "build": {
+        "harness_dirty": true,
+        "harness_dirty_fingerprint": "eb7b1149129e20b123c0abece7bf836539cd6736550c4e40dea37f96d769bf1e",
+        "harness_revision": "1bc1009a450db57b952f7b851675206a9cc3c527",
+        "library": "/private/tmp/retina-material-arena-v2/libretina_worldgen.dylib",
+        "library_revision": "1bc1009+arena-with-first-pass-runs; final-crate opt-level=2 lto=off",
+        "library_sha256": "3fc59ccc8bcf3734bb0102da8bf6350782196e522e8587904031ba4f3433423a"
+      },
+      "cached_density_masks": null,
+      "chunks_per_second": 1864.7179571897898,
+      "columns_include_lakes": false,
+      "comparison": {
+        "identical_nbt_chunks": 1024,
+        "membership_identical": true
+      },
+      "coordinates": {
+        "grid_width": 3,
+        "origin_x": -1,
+        "origin_z": -1
+      },
+      "corpus": {
+        "algorithm": "sha256",
+        "files": [
+          {
+            "file": "0.mca",
+            "records": 1024,
+            "sha256": "14edae2f79b18cfa1d0dc2a3b413b30df507b39f8fda03dd722af9c49f0ffdb4"
+          }
+        ],
+        "records": 1024,
+        "sha256": "4b43384de02f9b5da81a2e4fd512849c5aa7bbd83049bb2a31ff64bb140244f6"
+      },
+      "density_composition": null,
+      "gpu_pipeline": {
+        "completed": 26,
+        "device_gap_ms": 15604.205331,
+        "device_span_ms": 16087.632961,
+        "peak_in_flight": 2,
+        "unavailable_timestamp_pairs": 0
+      },
+      "gpu_program": {
+        "cache_hits": 0,
+        "compile_nanos": 16472126209,
+        "emitted": 17588,
+        "graphs": 91,
+        "horizontal_fields": 23,
+        "nodes": 23220,
+        "readback_bytes": 190716712,
+        "source_bytes": 4873852,
+        "status": 4,
+        "upload_bytes": 195214572
+      },
+      "gpu_timestamps": true,
+      "gpu_transfers": {
+        "readback_bytes": 92114636,
+        "readback_bytes_per_region": 92114636.0,
+        "upload_bytes": 89309140,
+        "upload_bytes_per_region": 89309140.0
+      },
+      "host": {
+        "machine": "arm64",
+        "python": "3.12.9",
+        "release": "27.0.0",
+        "system": "Darwin"
+      },
+      "identical_nbt_chunks": 1024,
+      "interpolation_cache": null,
+      "interpreter_columns": null,
+      "interpreter_dispatch": null,
+      "interpreter_preload": null,
+      "lake_point_cache": null,
+      "lake_primed_corners": null,
+      "lake_sparse_fields": null,
+      "library": "/tmp/retina-material-arena-v2/libretina_worldgen.dylib",
+      "lighting": "enabled",
+      "material_arena_runs": "16",
+      "material_dispatch": null,
+      "material_pipeline": {
+        "arena_hits": 1,
+        "arena_jobs": 1,
+        "continuation_copy_bytes": 0,
+        "continuations": 0,
+        "counted_run_bytes": 10867604,
+        "jobs": 1,
+        "peak_cached_buffer_bytes": 245861344,
+        "reserved_readback_bytes": 21233664,
+        "snapshot_copy_bytes": 59690832
+      },
+      "maximum_region_ms": 546.9091248232871,
+      "median_ms": 546.9091248232871,
+      "p95_region_ms": 546.9091248232871,
+      "parallel": 1,
+      "peak_rss_bytes": 2708520960,
+      "profile_sha256": "8217ce97735f8646c9c9ce99b66be680c69cd639688975fa711fb7836d22bf4a",
+      "program_execution": null,
+      "readiness": "shader-ready",
+      "readiness_wait_ms": 15036.934332922101,
+      "region_file_bytes": 6414336,
+      "regions": [
+        {
+          "assembly_ms": 409.949083,
+          "generated": 1024,
+          "gpu_ms": 119.482375,
+          "ms": 546.9091248232871,
+          "name": "0",
+          "program_status": 4,
+          "write_ms": 17.440292,
+          "x": -1,
+          "z": -1
+        }
+      ],
+      "schema": "retina.native-region-benchmark",
+      "schema_version": 1,
+      "seed": 123456789,
+      "specialized_interpolation": null,
+      "stage_ms_chunk": {
+        "aquifer_fields": 0.002885498046875,
+        "aquifer_mask": 0.0096840009765625,
+        "assembly": 0.0370123720703125,
+        "cave_density": 0.008950115234375,
+        "cave_features": 0.0133457646484375,
+        "cave_mask": 0.016807861328125,
+        "columns": 0.0078035478515625,
+        "compress": 0.068828220703125,
+        "encode": 0.00597005078125,
+        "feature_counts": 3.81259765625e-05,
+        "geology": 0.025206337890625,
+        "height": 0.0570453681640625,
+        "io": 0.017033609375,
+        "lake_candidates": 0.015441611328125,
+        "lake_density": 0.003793623046875,
+        "lake_reduce": 0.0005655908203125,
+        "light_host": 0.0406576337890625,
+        "light_pack": 0.0003168935546875,
+        "light_sky": 0.0073924560546875,
+        "light_spread": 0.0234828291015625,
+        "materials": 0.0083251953125,
+        "nbt": 0.08794829296875,
+        "ore_mask": 0.0103543701171875,
+        "ore_plan": 0.036331990234375,
+        "provider_noise": 3.1779296875e-05,
+        "queue": 0.0135884609375,
+        "sites": 0.009693767578125,
+        "snow": 0.0001374619140625,
+        "structure_plan": 0.089543986328125,
+        "structures": 0.0180625830078125,
+        "vegetation": 0.0011221826171875,
+        "vegetation_plan": 0.09315360546875,
+        "wait_copy": 0.197936642578125
+      },
+      "startup": {
+        "initialize_ms": 421.0238750092685,
+        "registration_ms": 1217.3367498908192,
+        "warmups": [
+          {
+            "assembly_ms": 966.14525,
+            "generated": 1024,
+            "gpu_ms": 488.622334,
+            "ms": 1468.0311670526862,
+            "name": "warm0",
+            "program_status": 1,
+            "write_ms": 13.077084,
+            "x": 8,
+            "z": 8
+          }
+        ]
+      },
+      "terrain_execution": null,
+      "timing_version": 8,
+      "total_ms": 549.1447090171278
+    },
+    "retina-material-arena-terralith-v2-repeat": {
+      "aquifer_columns": null,
+      "average_region_ms": 1206.0653609999765,
+      "benchmark_scope": "lit-mca",
+      "build": {
+        "harness_dirty": true,
+        "harness_dirty_fingerprint": "eb7b1149129e20b123c0abece7bf836539cd6736550c4e40dea37f96d769bf1e",
+        "harness_revision": "1bc1009a450db57b952f7b851675206a9cc3c527",
+        "library": "/private/tmp/retina-material-arena-v2/libretina_worldgen.dylib",
+        "library_revision": "1bc1009+arena-with-first-pass-runs; final-crate opt-level=2 lto=off",
+        "library_sha256": "3fc59ccc8bcf3734bb0102da8bf6350782196e522e8587904031ba4f3433423a"
+      },
+      "cached_density_masks": null,
+      "chunks_per_second": 1612.70454539853,
+      "columns_include_lakes": false,
+      "comparison": {
+        "identical_nbt_chunks": 6144,
+        "membership_identical": true
+      },
+      "coordinates": {
+        "grid_width": 3,
+        "origin_x": -1,
+        "origin_z": -1
+      },
+      "corpus": {
+        "algorithm": "sha256",
+        "files": [
+          {
+            "file": "0.mca",
+            "records": 1024,
+            "sha256": "14edae2f79b18cfa1d0dc2a3b413b30df507b39f8fda03dd722af9c49f0ffdb4"
+          },
+          {
+            "file": "1.mca",
+            "records": 1024,
+            "sha256": "7bae81c751556aa1b06075c43d762efd7a4ce7b76f7ca8b7df24fb09a3aa1209"
+          },
+          {
+            "file": "2.mca",
+            "records": 1024,
+            "sha256": "a4b25ba616000aef91c9d0ac9d12c8ceeb18590a6c53e76df6b1ac39057b7f67"
+          },
+          {
+            "file": "3.mca",
+            "records": 1024,
+            "sha256": "171dd8efa808bce9957389f2745639397763eefa350762c0f668a5a39c9bda63"
+          },
+          {
+            "file": "4.mca",
+            "records": 1024,
+            "sha256": "a573b0374773f8bd5a2c51dff95d69892aab1ba0a5cdc98f1dcccc2d7c880bf0"
+          },
+          {
+            "file": "5.mca",
+            "records": 1024,
+            "sha256": "254739492f479c0edb6e7fa3b90e3e6dc69bb07ff5ea4cf30e838b603b42d3bd"
+          }
+        ],
+        "records": 6144,
+        "sha256": "b30d4f4e9ae7f93172a5289e88a0a3c22440d89d57a1856a5df920a75aed8007"
+      },
+      "density_composition": null,
+      "gpu_pipeline": {
+        "completed": 147,
+        "device_gap_ms": 4841.868374,
+        "device_span_ms": 5470.239089,
+        "peak_in_flight": 2,
+        "unavailable_timestamp_pairs": 0
+      },
+      "gpu_program": {
+        "cache_hits": 0,
+        "compile_nanos": 4241644667,
+        "emitted": 17588,
+        "graphs": 91,
+        "horizontal_fields": 23,
+        "nodes": 23220,
+        "readback_bytes": 696829668,
+        "source_bytes": 4873852,
+        "status": 4,
+        "upload_bytes": 825890884
+      },
+      "gpu_timestamps": true,
+      "gpu_transfers": {
+        "readback_bytes": 598227592,
+        "readback_bytes_per_region": 99704598.66666667,
+        "upload_bytes": 719985452,
+        "upload_bytes_per_region": 119997575.33333333
+      },
+      "host": {
+        "machine": "arm64",
+        "python": "3.12.9",
+        "release": "27.0.0",
+        "system": "Darwin"
+      },
+      "identical_nbt_chunks": 6144,
+      "interpolation_cache": null,
+      "interpreter_columns": null,
+      "interpreter_dispatch": null,
+      "interpreter_preload": null,
+      "lake_point_cache": null,
+      "lake_primed_corners": null,
+      "lake_sparse_fields": null,
+      "library": "/tmp/retina-material-arena-v2/libretina_worldgen.dylib",
+      "lighting": "enabled",
+      "material_arena_runs": "16",
+      "material_dispatch": null,
+      "material_pipeline": {
+        "arena_hits": 6,
+        "arena_jobs": 6,
+        "continuation_copy_bytes": 0,
+        "continuations": 0,
+        "counted_run_bytes": 69208332,
+        "jobs": 6,
+        "peak_cached_buffer_bytes": 245861344,
+        "reserved_readback_bytes": 127401984,
+        "snapshot_copy_bytes": 358144992
+      },
+      "maximum_region_ms": 1933.8763752020895,
+      "median_ms": 985.6201249640435,
+      "p95_region_ms": 1918.6703333980404,
+      "parallel": 2,
+      "peak_rss_bytes": 3417161728,
+      "profile_sha256": "8217ce97735f8646c9c9ce99b66be680c69cd639688975fa711fb7836d22bf4a",
+      "program_execution": null,
+      "readiness": "shader-ready",
+      "readiness_wait_ms": 2863.1782920565456,
+      "region_file_bytes": 47702016,
+      "regions": [
+        {
+          "assembly_ms": 791.789792,
+          "generated": 1024,
+          "gpu_ms": 122.179208,
+          "ms": 931.7796670366079,
+          "name": "0",
+          "program_status": 4,
+          "write_ms": 17.726541,
+          "x": -1,
+          "z": -1
+        },
+        {
+          "assembly_ms": 1718.636958,
+          "generated": 1024,
+          "gpu_ms": 195.499542,
+          "ms": 1933.8763752020895,
+          "name": "1",
+          "program_status": 4,
+          "write_ms": 19.512833,
+          "x": 0,
+          "z": -1
+        },
+        {
+          "assembly_ms": 698.217042,
+          "generated": 1024,
+          "gpu_ms": 104.858917,
+          "ms": 823.8957079593092,
+          "name": "2",
+          "program_status": 4,
+          "write_ms": 20.791542,
+          "x": 1,
+          "z": -1
+        },
+        {
+          "assembly_ms": 546.970959,
+          "generated": 1024,
+          "gpu_ms": 73.703458,
+          "ms": 634.3276249244809,
+          "name": "3",
+          "program_status": 4,
+          "write_ms": 13.519625,
+          "x": -1,
+          "z": 0
+        },
+        {
+          "assembly_ms": 1780.69775,
+          "generated": 1024,
+          "gpu_ms": 76.606958,
+          "ms": 1873.052207985893,
+          "name": "4",
+          "program_status": 4,
+          "write_ms": 15.59925,
+          "x": 0,
+          "z": 0
+        },
+        {
+          "assembly_ms": 922.575458,
+          "generated": 1024,
+          "gpu_ms": 83.809667,
+          "ms": 1039.4605828914791,
+          "name": "5",
+          "program_status": 4,
+          "write_ms": 33.044917,
+          "x": 1,
+          "z": 0
+        }
+      ],
+      "schema": "retina.native-region-benchmark",
+      "schema_version": 1,
+      "seed": 123456789,
+      "specialized_interpolation": null,
+      "stage_ms_chunk": {
+        "aquifer_fields": 0.016198540364583333,
+        "aquifer_mask": 0.012073472493489584,
+        "assembly": 0.03821076953125,
+        "cave_density": 0.010982293619791667,
+        "cave_features": 0.018387262532552084,
+        "cave_mask": 0.022092434407552083,
+        "columns": 0.009671326171875,
+        "compress": 0.080903232421875,
+        "encode": 0.005236925618489583,
+        "feature_counts": 0.00020397900390625,
+        "geology": 0.02605041813151042,
+        "height": 0.06363891536458334,
+        "io": 0.0195656669921875,
+        "lake_candidates": 0.0163046943359375,
+        "lake_density": 0.014159633626302084,
+        "lake_reduce": 0.00084350537109375,
+        "light_host": 0.042469923177083334,
+        "light_pack": 0.0003595447591145833,
+        "light_sky": 0.006888447591145833,
+        "light_spread": 0.030311964192708332,
+        "materials": 0.0119338994140625,
+        "nbt": 0.08790899072265625,
+        "ore_mask": 0.00941996923828125,
+        "ore_plan": 0.0405563828125,
+        "provider_noise": 0.0006502140299479166,
+        "queue": 0.01123080126953125,
+        "sites": 0.009598287760416666,
+        "snow": 0.0014531318359375,
+        "structure_plan": 0.1474619482421875,
+        "structures": 0.014279314778645833,
+        "vegetation": 0.00131469091796875,
+        "vegetation_plan": 0.5243224418945313,
+        "wait_copy": 0.25468431087239585
+      },
+      "startup": {
+        "initialize_ms": 46.49366601370275,
+        "registration_ms": 1190.051208017394,
+        "warmups": [
+          {
+            "assembly_ms": 998.594375,
+            "generated": 1024,
+            "gpu_ms": 491.416,
+            "ms": 1507.5638329144567,
+            "name": "warm0",
+            "program_status": 1,
+            "write_ms": 17.436875,
+            "x": 8,
+            "z": 8
+          }
+        ]
+      },
+      "terrain_execution": null,
+      "timing_version": 8,
+      "total_ms": 3809.749291976914
+    },
+    "retina-material-arena-vanilla-base": {
+      "aquifer_columns": null,
+      "average_region_ms": 796.2560624582693,
+      "benchmark_scope": "lit-mca",
+      "build": {
+        "harness_dirty": true,
+        "harness_dirty_fingerprint": "eb7b1149129e20b123c0abece7bf836539cd6736550c4e40dea37f96d769bf1e",
+        "harness_revision": "1bc1009a450db57b952f7b851675206a9cc3c527",
+        "library": "/private/tmp/retina-light-output-metal/libretina_worldgen.dylib",
+        "library_revision": "1bc1009; final-crate opt-level=2 lto=off",
+        "library_sha256": "920d3191e92d4aea022e97b8d0b509b5d12c12efa28e2751ed77b96fbfb812ec"
+      },
+      "cached_density_masks": null,
+      "chunks_per_second": 2562.821016730505,
+      "columns_include_lakes": false,
+      "coordinates": {
+        "grid_width": 3,
+        "origin_x": -1,
+        "origin_z": -1
+      },
+      "corpus": {
+        "algorithm": "sha256",
+        "files": [
+          {
+            "file": "0.mca",
+            "records": 1024,
+            "sha256": "9303180edb3265c8f9cc0365aa182a5adc4ae5d1a01dee25e15cd48cc03267c3"
+          },
+          {
+            "file": "1.mca",
+            "records": 1024,
+            "sha256": "cdc895d9d03f0e76856aee7212a5ea8ed57ec019b105546e6c5c03b675a8b156"
+          },
+          {
+            "file": "2.mca",
+            "records": 1024,
+            "sha256": "8b7403e53a46fee2308de1056f87245336f3ee90d4ca8307fcab0f26a77352ec"
+          },
+          {
+            "file": "3.mca",
+            "records": 1024,
+            "sha256": "b89e52879d15261c687c4216689e135f7f688be4cf98750514bb1534df46920d"
+          },
+          {
+            "file": "4.mca",
+            "records": 1024,
+            "sha256": "3ebf373e2e8009ee34c45e990b416d2e286d2ad7be28c5831a9e0d138d350ecf"
+          },
+          {
+            "file": "5.mca",
+            "records": 1024,
+            "sha256": "248081e48524e401504f2c52a0085447a4010c045c5b952b44df1627fc2a8847"
+          }
+        ],
+        "records": 6144,
+        "sha256": "e41e7ff5431aef53655f333aa879ff0834e03d0c9e03083468e2e1713395464f"
+      },
+      "density_composition": null,
+      "gpu_pipeline": {
+        "completed": 28,
+        "device_gap_ms": 1889.813833,
+        "device_span_ms": 2279.043585,
+        "peak_in_flight": 2,
+        "unavailable_timestamp_pairs": 0
+      },
+      "gpu_program": {
+        "cache_hits": 0,
+        "compile_nanos": 908919625,
+        "emitted": 2780,
+        "graphs": 30,
+        "horizontal_fields": 9,
+        "nodes": 3680,
+        "readback_bytes": 661877216,
+        "source_bytes": 982810,
+        "status": 4,
+        "upload_bytes": 730667744
+      },
+      "gpu_timestamps": true,
+      "gpu_transfers": {
+        "readback_bytes": 568644928,
+        "readback_bytes_per_region": 94774154.66666667,
+        "upload_bytes": 628606412,
+        "upload_bytes_per_region": 104767735.33333333
+      },
+      "host": {
+        "machine": "arm64",
+        "python": "3.12.9",
+        "release": "27.0.0",
+        "system": "Darwin"
+      },
+      "interpolation_cache": null,
+      "interpreter_columns": null,
+      "interpreter_dispatch": null,
+      "interpreter_preload": null,
+      "lake_point_cache": null,
+      "lake_primed_corners": null,
+      "lake_sparse_fields": null,
+      "library": "/tmp/retina-light-output-metal/libretina_worldgen.dylib",
+      "lighting": "enabled",
+      "material_dispatch": null,
+      "maximum_region_ms": 918.4789578430355,
+      "median_ms": 786.96941700764,
+      "p95_region_ms": 899.3164683342911,
+      "parallel": 2,
+      "peak_rss_bytes": 2127380480,
+      "profile_sha256": "2949064f5f62fc889b706b2c7911727e94e76c0cb40cf92f3e7340dd7732fea3",
+      "program_execution": null,
+      "readiness": "shader-ready",
+      "readiness_wait_ms": 316.96929200552404,
+      "region_file_bytes": 54157312,
+      "regions": [
+        {
+          "assembly_ms": 617.871667,
+          "generated": 1024,
+          "gpu_ms": 156.650958,
+          "ms": 788.2300419732928,
+          "name": "0",
+          "program_status": 4,
+          "write_ms": 13.556417,
+          "x": -1,
+          "z": -1
+        },
+        {
+          "assembly_ms": 756.223959,
+          "generated": 1024,
+          "gpu_ms": 147.646333,
+          "ms": 918.4789578430355,
+          "name": "1",
+          "program_status": 4,
+          "write_ms": 14.573792,
+          "x": 0,
+          "z": -1
+        },
+        {
+          "assembly_ms": 738.1455,
+          "generated": 1024,
+          "gpu_ms": 88.188459,
+          "ms": 841.8289998080581,
+          "name": "2",
+          "program_status": 4,
+          "write_ms": 15.020459,
+          "x": 1,
+          "z": -1
+        },
+        {
+          "assembly_ms": 597.114667,
+          "generated": 1024,
+          "gpu_ms": 67.931875,
+          "ms": 678.2227500807494,
+          "name": "3",
+          "program_status": 4,
+          "write_ms": 13.071792,
+          "x": -1,
+          "z": 0
+        },
+        {
+          "assembly_ms": 633.790708,
+          "generated": 1024,
+          "gpu_ms": 138.613875,
+          "ms": 785.7087920419872,
+          "name": "4",
+          "program_status": 4,
+          "write_ms": 13.242208,
+          "x": 0,
+          "z": 0
+        },
+        {
+          "assembly_ms": 632.544917,
+          "generated": 1024,
+          "gpu_ms": 115.385458,
+          "ms": 765.0668330024928,
+          "name": "5",
+          "program_status": 4,
+          "write_ms": 17.094167,
+          "x": 1,
+          "z": 0
+        }
+      ],
+      "schema": "retina.native-region-benchmark",
+      "schema_version": 1,
+      "seed": 123456789,
+      "specialized_interpolation": null,
+      "stage_ms_chunk": {
+        "aquifer_fields": 0.008215305013020834,
+        "aquifer_mask": 0.010349114420572916,
+        "assembly": 0.03808017708333333,
+        "cave_density": 0.018023138834635417,
+        "cave_features": 0.008738384114583334,
+        "cave_mask": 0.01609796142578125,
+        "columns": 0.00629858349609375,
+        "compress": 0.09353311800130208,
+        "encode": 0.0015652662760416668,
+        "feature_counts": 1.1983235677083333e-05,
+        "geology": 0.04699022509765625,
+        "height": 0.014848775227864585,
+        "io": 0.014091335774739583,
+        "lake_candidates": 0.0029671494140625,
+        "lake_density": 0.0039086240234375,
+        "lake_reduce": 0.00019797786458333334,
+        "light_host": 0.04217068115234375,
+        "light_pack": 0.0003403929036458333,
+        "light_sky": 0.006340488118489583,
+        "light_spread": 0.027415513346354167,
+        "materials": 0.015614847981770834,
+        "nbt": 0.0925061123046875,
+        "ore_mask": 0.012181660970052084,
+        "ore_plan": 0.055274447916666664,
+        "provider_noise": 2.304410807291667e-05,
+        "queue": 0.0015509373372395833,
+        "sites": 0.00206180859375,
+        "snow": 0.00101051904296875,
+        "structure_plan": 0.02684238671875,
+        "structures": 0.008974719401041666,
+        "vegetation": 0.0018876565755208332,
+        "vegetation_plan": 0.20734346533203124,
+        "wait_copy": 0.1331459822591146
+      },
+      "startup": {
+        "initialize_ms": 52.18620807863772,
+        "registration_ms": 615.7271252013743,
+        "warmups": [
+          {
+            "assembly_ms": 340.091458,
+            "generated": 1024,
+            "gpu_ms": 308.003542,
+            "ms": 661.6285410709679,
+            "name": "warm0",
+            "program_status": 1,
+            "write_ms": 13.390833,
+            "x": 8,
+            "z": 8
+          }
+        ]
+      },
+      "terrain_execution": null,
+      "timing_version": 8,
+      "total_ms": 2397.358207963407
+    },
+    "retina-material-arena-vanilla-v2": {
+      "aquifer_columns": null,
+      "average_region_ms": 794.2008543371534,
+      "benchmark_scope": "lit-mca",
+      "build": {
+        "harness_dirty": true,
+        "harness_dirty_fingerprint": "eb7b1149129e20b123c0abece7bf836539cd6736550c4e40dea37f96d769bf1e",
+        "harness_revision": "1bc1009a450db57b952f7b851675206a9cc3c527",
+        "library": "/private/tmp/retina-material-arena-v2/libretina_worldgen.dylib",
+        "library_revision": "1bc1009+arena-with-first-pass-runs; final-crate opt-level=2 lto=off",
+        "library_sha256": "3fc59ccc8bcf3734bb0102da8bf6350782196e522e8587904031ba4f3433423a"
+      },
+      "cached_density_masks": null,
+      "chunks_per_second": 2379.8022418962646,
+      "columns_include_lakes": false,
+      "comparison": {
+        "identical_nbt_chunks": 6144,
+        "membership_identical": true
+      },
+      "coordinates": {
+        "grid_width": 3,
+        "origin_x": -1,
+        "origin_z": -1
+      },
+      "corpus": {
+        "algorithm": "sha256",
+        "files": [
+          {
+            "file": "0.mca",
+            "records": 1024,
+            "sha256": "9303180edb3265c8f9cc0365aa182a5adc4ae5d1a01dee25e15cd48cc03267c3"
+          },
+          {
+            "file": "1.mca",
+            "records": 1024,
+            "sha256": "cdc895d9d03f0e76856aee7212a5ea8ed57ec019b105546e6c5c03b675a8b156"
+          },
+          {
+            "file": "2.mca",
+            "records": 1024,
+            "sha256": "8b7403e53a46fee2308de1056f87245336f3ee90d4ca8307fcab0f26a77352ec"
+          },
+          {
+            "file": "3.mca",
+            "records": 1024,
+            "sha256": "b89e52879d15261c687c4216689e135f7f688be4cf98750514bb1534df46920d"
+          },
+          {
+            "file": "4.mca",
+            "records": 1024,
+            "sha256": "3ebf373e2e8009ee34c45e990b416d2e286d2ad7be28c5831a9e0d138d350ecf"
+          },
+          {
+            "file": "5.mca",
+            "records": 1024,
+            "sha256": "248081e48524e401504f2c52a0085447a4010c045c5b952b44df1627fc2a8847"
+          }
+        ],
+        "records": 6144,
+        "sha256": "e41e7ff5431aef53655f333aa879ff0834e03d0c9e03083468e2e1713395464f"
+      },
+      "density_composition": null,
+      "gpu_pipeline": {
+        "completed": 27,
+        "device_gap_ms": 3381.123167,
+        "device_span_ms": 2759.765789,
+        "peak_in_flight": 2,
+        "unavailable_timestamp_pairs": 0
+      },
+      "gpu_program": {
+        "cache_hits": 0,
+        "compile_nanos": 1824882250,
+        "emitted": 2780,
+        "graphs": 30,
+        "horizontal_fields": 9,
+        "nodes": 3680,
+        "readback_bytes": 733081808,
+        "source_bytes": 982810,
+        "status": 4,
+        "upload_bytes": 730668192
+      },
+      "gpu_timestamps": true,
+      "gpu_transfers": {
+        "readback_bytes": 630003352,
+        "readback_bytes_per_region": 105000558.66666667,
+        "upload_bytes": 628606796,
+        "upload_bytes_per_region": 104767799.33333333
+      },
+      "host": {
+        "machine": "arm64",
+        "python": "3.12.9",
+        "release": "27.0.0",
+        "system": "Darwin"
+      },
+      "identical_nbt_chunks": 6144,
+      "interpolation_cache": null,
+      "interpreter_columns": null,
+      "interpreter_dispatch": null,
+      "interpreter_preload": null,
+      "lake_point_cache": null,
+      "lake_primed_corners": null,
+      "lake_sparse_fields": null,
+      "library": "/tmp/retina-material-arena-v2/libretina_worldgen.dylib",
+      "lighting": "enabled",
+      "material_arena_runs": "16",
+      "material_dispatch": null,
+      "material_pipeline": {
+        "arena_hits": 6,
+        "arena_jobs": 6,
+        "continuation_copy_bytes": 0,
+        "continuations": 0,
+        "counted_run_bytes": 66043444,
+        "jobs": 6,
+        "peak_cached_buffer_bytes": 245861344,
+        "reserved_readback_bytes": 127401984,
+        "snapshot_copy_bytes": 358144992
+      },
+      "maximum_region_ms": 1446.5705419424921,
+      "median_ms": 725.1629584934562,
+      "p95_region_ms": 1276.0621877387166,
+      "parallel": 2,
+      "peak_rss_bytes": 2363047936,
+      "profile_sha256": "2949064f5f62fc889b706b2c7911727e94e76c0cb40cf92f3e7340dd7732fea3",
+      "program_execution": null,
+      "readiness": "shader-ready",
+      "readiness_wait_ms": 1295.8713329862803,
+      "region_file_bytes": 54157312,
+      "regions": [
+        {
+          "assembly_ms": 654.843666,
+          "generated": 1024,
+          "gpu_ms": 89.33325,
+          "ms": 764.53712512739,
+          "name": "0",
+          "program_status": 4,
+          "write_ms": 20.3235,
+          "x": -1,
+          "z": -1
+        },
+        {
+          "assembly_ms": 1268.662584,
+          "generated": 1024,
+          "gpu_ms": 155.310583,
+          "ms": 1446.5705419424921,
+          "name": "1",
+          "program_status": 4,
+          "write_ms": 22.417959,
+          "x": 0,
+          "z": -1
+        },
+        {
+          "assembly_ms": 572.898583,
+          "generated": 1024,
+          "gpu_ms": 74.584125,
+          "ms": 667.2374999616295,
+          "name": "2",
+          "program_status": 4,
+          "write_ms": 19.720375,
+          "x": 1,
+          "z": -1
+        },
+        {
+          "assembly_ms": 635.758709,
+          "generated": 1024,
+          "gpu_ms": 60.966666,
+          "ms": 710.4273750446737,
+          "name": "3",
+          "program_status": 4,
+          "write_ms": 13.669708,
+          "x": -1,
+          "z": 0
+        },
+        {
+          "assembly_ms": 608.676167,
+          "generated": 1024,
+          "gpu_ms": 112.625333,
+          "ms": 739.8985419422388,
+          "name": "4",
+          "program_status": 4,
+          "write_ms": 18.336625,
+          "x": 0,
+          "z": 0
+        },
+        {
+          "assembly_ms": 357.314666,
+          "generated": 1024,
+          "gpu_ms": 66.062417,
+          "ms": 436.53404200449586,
+          "name": "5",
+          "program_status": 4,
+          "write_ms": 12.818625,
+          "x": 1,
+          "z": 0
+        }
+      ],
+      "schema": "retina.native-region-benchmark",
+      "schema_version": 1,
+      "seed": 123456789,
+      "specialized_interpolation": null,
+      "stage_ms_chunk": {
+        "aquifer_fields": 0.006364529296875,
+        "aquifer_mask": 0.010315280436197916,
+        "assembly": 0.03722166682942708,
+        "cave_density": 0.020314520345052083,
+        "cave_features": 0.008478676595052083,
+        "cave_mask": 0.016010484212239585,
+        "columns": 0.006219502115885417,
+        "compress": 0.09046932584635417,
+        "encode": 0.0018119034830729166,
+        "feature_counts": 1.5801432291666666e-05,
+        "geology": 0.047125286295572916,
+        "height": 0.01471294482421875,
+        "io": 0.017464694661458332,
+        "lake_candidates": 0.0024228037109375,
+        "lake_density": 0.0020403035481770834,
+        "lake_reduce": 0.0001928447265625,
+        "light_host": 0.040657489908854164,
+        "light_pack": 0.00034467903645833334,
+        "light_sky": 0.006400180501302083,
+        "light_spread": 0.02868044677734375,
+        "materials": 0.008959065592447916,
+        "nbt": 0.08867480859375,
+        "ore_mask": 0.012513441569010415,
+        "ore_plan": 0.05315110970052084,
+        "provider_noise": 1.899593098958333e-05,
+        "queue": 0.0025827906901041667,
+        "sites": 0.00197547021484375,
+        "snow": 0.0009842283528645834,
+        "structure_plan": 0.04447401236979166,
+        "structures": 0.009602029134114584,
+        "vegetation": 0.0018090841471354168,
+        "vegetation_plan": 0.19162837027994792,
+        "wait_copy": 0.12315216064453124
+      },
+      "startup": {
+        "initialize_ms": 56.571458000689745,
+        "registration_ms": 609.185584122315,
+        "warmups": [
+          {
+            "assembly_ms": 334.322334,
+            "generated": 1024,
+            "gpu_ms": 279.188458,
+            "ms": 631.5287498291582,
+            "name": "warm0",
+            "program_status": 1,
+            "write_ms": 17.730417,
+            "x": 8,
+            "z": 8
+          }
+        ]
+      },
+      "terrain_execution": null,
+      "timing_version": 8,
+      "total_ms": 2581.727124983445
+    }
+  },
+  "validation_logs": {
+    "retina-material-arena-fixtures": "\nrunning 2 tests\ntest gpu::material_arena_tests::material_arena_preserves_fast_overflow_interleaving_and_reuse ... ok\ntest gpu::material_arena_tests::material_arena_replay ... {\"exact\":true,\"measurements\":[{\"counters\":[2,0,0,2,2125088,1731744,0,545588,29912],\"ms\":110.995417,\"runs_per_column\":0},{\"counters\":[2,2,2,0,2125088,0,1179648,545588,1769472],\"ms\":117.658916,\"runs_per_column\":16},{\"counters\":[2,2,2,0,2125088,0,1179648,545588,0],\"ms\":115.62120800000001,\"runs_per_column\":16},{\"counters\":[2,0,0,2,2125088,1731744,0,545588,0],\"ms\":111.188791,\"runs_per_column\":0},{\"counters\":[2,0,0,2,2125088,1731744,0,545588,0],\"ms\":111.681584,\"runs_per_column\":0},{\"counters\":[2,2,2,0,2125088,0,1179648,545588,0],\"ms\":116.114541,\"runs_per_column\":16}],\"peak_cached_buffer_bytes\":16442432,\"run_counts\":[66329,70068]}\nok\n\ntest result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 116 filtered out; finished in 4.80s\n\n",
+    "retina-material-arena-unit": "\nrunning 118 tests\ntest column_program::tests::scoped_noise_caches_only_when_y_is_replaced ... ok\ntest column_program::tests::shared_horizontal_fields_exclude_y_and_dead_noise ... ok\ntest column_program::tests::spline_offsets_share_but_derivatives_do_not ... ok\ntest decoration::anchor_probe::gpu_anchor_workload_census ... ignored, bounded complete planner census, no GPU anchor offload\ntest decoration::anchor_probe::gpu_complete_plant_anchor_probe ... ignored, bounded actual-GPU whole-program trial\ntest decoration::anchor_probe::gpu_vine_anchor_batch_probe ... ignored, bounded repeated independent-column GPU/CPU comparison\ntest decoration::anchor_probe::gpu_vine_anchor_live_probe ... ignored, bounded exact seeded vine anchors with live sequential growth\ntest decoration::blocks::provider_tests::missing_integer_properties_preserve_source_and_random_stream ... ok\ntest decoration::blocks::provider_tests::nullable_current_transforms_preserve_identity_and_draw_order ... ok\ntest decoration::blocks::provider_tests::property_copies_read_live_position_without_extra_random_draws ... ok\ntest decoration::blocks::provider_tests::rotations_draw_direction_before_nested_state_and_fixed_direction_draws_nothing ... ok\ntest decoration::blocks::provider_tests::rules_continue_after_nullable_matches_and_preserve_draws ... ok\ntest decoration::counts::gpu_tests::combined_samples_benchmark ... ignored, actual GPU, 1 warmup + 7 alternating sparse sample pairs; use 30s process deadline\ntest decoration::counts::gpu_tests::combined_samples_match_separate_dispatches ... ignored, actual GPU, bounded sparse counts/provider correctness; use 30s process deadline\ntest decoration::diagnostics::tests::recipe_counters_merge_unequal_worker_coverage ... ok\ntest decoration::distribution::tests::distribution_replay_benchmark ... ignored, bounded CPU distribution A/B; two workers, no GPU or region generation\ntest decoration::distribution::tests::parallel_distribution_preserves_every_ordered_write ... ok\ntest decoration::gpu_leaf_probe::ordered_gpu_leaf_edge_cases ... ignored, actual GPU ordered leaf checks; use a 30s process-group deadline\ntest decoration::gpu_leaf_probe::ordered_gpu_leaf_evaluation ... ignored, actual GPU leaf evaluation; RETINA_LEAF_PROFILE required, two workers, use 30s deadline\ntest decoration::pairs::tests::final_soil_changes_remove_grass_and_both_halves_without_order_dependence ... ok\ntest decoration::pairs::tests::overlap_bounds_and_different_state_properties_preserve_only_valid_pairs ... ok\ntest decoration::placement::layers::tests::grounds_use_registered_empty_states_and_invalidate_after_live_writes ... ok\ntest decoration::placement::layers::tests::group_handoff_preserves_retry_and_merged_queue_order ... ok\ntest decoration::placement::layers::tests::lazy_layers_share_selector_parent_ground_and_discover_downstream_gpu_counts ... ok\ntest decoration::placement::layers::tests::retry_precedes_other_candidates_with_equal_order_keys ... ok\ntest decoration::placement::stream::tests::cursor_matches_eager_order_rng_live_filters_and_checkpoint_retry ... ok\ntest decoration::placement::stream::tests::terminal_count_uses_one_entry_but_cuboids_keep_eager_fallback ... ok\ntest decoration::placement::tests::compiled_candidates_keep_inline_draws_without_sharing_random_streams ... ok\ntest decoration::placement::tests::count_zero_and_rarity_keep_modifier_order ... ok\ntest decoration::placement::tests::cuboids_preserve_inclusive_faces_order_and_dimension_draws ... ok\ntest decoration::placement::tests::draw_stack_restores_shared_prefix_after_nested_random_positions ... ok\ntest decoration::placement::tests::live_heightmaps_and_soil_filters_reject_canopy_without_density_caps ... ok\ntest decoration::placement::tests::nested_attempts_inherit_parent_height_while_outer_attempts_resample_canopy ... ok\ntest decoration::placement::tests::ordered_forced_writes_lower_live_height_and_preserve_later_features ... ok\ntest decoration::placement::tests::placement_uses_carved_materials_fluids_and_live_heights ... ok\ntest decoration::placement::tests::registered_offsets_and_water_depth_use_the_selected_heightmap ... ok\ntest decoration::placement::tests::selectors_share_the_exact_parent_budget_including_nested_counts ... ok\ntest decoration::placement::tests::sparse_noise_queries_preserve_nested_count_streams_and_selector_budgets ... ok\ntest decoration::provider_noise::tests::signed_phase_products_retain_far_coordinate_fractions ... ok\ntest decoration::replay_tests::overlay_snapshot_restores_repeated_writes_and_heightmaps ... ok\ntest decoration::replay_tests::resumed_prefix_matches_full_replay_and_query_batches ... ok\ntest decoration::tests::crown_grid_preserves_breadth_first_distance_order_and_log_occupancy ... ok\ntest decoration::tests::giant_jungle_crowns_close_above_the_trunk_without_four_interior_holes ... ok\ntest decoration::tests::registered_dark_oak_has_a_closed_crown_above_each_trunk_tip ... ok\ntest decoration::tree_scratch_tests::reused_leaf_grid_clears_dense_sparse_empty_and_log_states ... ok\ntest decoration::tree_scratch_tests::reused_tree_scratch_preserves_commands_rng_and_bounds ... ok\ntest decoration::tree_scratch_tests::tree_scratch_benchmark ... ignored, bounded tree scratch A/B: five warmups, 21 alternating pairs, no GPU; use a 30s deadline\ntest decoration::vine_gpu::tests::eligibility_requires_independence_and_unshared_rng_groups ... ok\ntest decoration::vine_gpu::tests::gpu_vine_planner_handoff ... ignored, bounded Metal planner handoff, overflow and retained-prefix correctness\ntest decoration::vine_gpu::tests::gpu_vine_registered_planner ... ignored, bounded complete registered terrain planning CPU/GPU comparison\ntest features::scan_tests::quart_bounds_preserve_dense_dressing_across_air_spans_and_vertical_alignment ... ok\ntest features::snow_tests::snow_uses_registered_support_and_keeps_frozen_water_clear ... ok\ntest geology::raster_gpu::seed_benchmark::seeded_ore_planning_comparison ... ignored, actual GPU ore A/B; RETINA_ORE_PROFILE required; use 30s process-group deadline\ntest geology::raster_gpu::tests::real_gpu_compact_ores_preserve_hosts_exposure_edges_and_reused_buffers ... ignored, requires a real compute device; run explicitly with --ignored\ntest geology::raster_gpu::tests::real_gpu_seeded_ores_preserve_hosts_exposure_edges_and_reused_buffers ... ignored, actual GPU seed preparation; use a 30-second process-group deadline\ntest geology::seed_probe::seed_geometry_probe ... ignored, actual GPU seed/geometry probe; use a 30-second process-group deadline\ntest geology::seeded::tests::conservative_seed_boxes_contain_cpu_pruned_spheres ... ok\ntest climate::tests::stackless_index_matches_linear_intervals_and_ties ... ok\ntest geology::tests::early_vein_culling_preserves_replay_and_chunk_boundaries ... ok\ntest geology::tests::ore_height_distributions_keep_their_registered_triangle_and_plateau ... ok\ntest gpu::aquifer_columns_tests::aquifer_column_roots_match_raw_gpu ... ignored, requires RETINA_PROGRAM_PARITY_PROFILE and a real GPU\ntest gpu::column_interpreter_tests::column_interpreter_roots_match_raw_gpu ... ignored, requires RETINA_PROGRAM_PARITY_PROFILE and a real GPU\ntest gpu::lake_sparse_tests::sparse_lake_roots_match_uncached_gpu ... ignored, requires an exported profile in RETINA_PROGRAM_PARITY_PROFILE and a real GPU\ntest gpu::mapping_tests::cancelled_mapping_cleanup_allows_buffer_reuse ... ignored, requires an actual GPU compute adapter; run nativeMappingGpuTest\ntest gpu::mapping_tests::rejected_specialization_leaves_interpreter_device_usable ... ignored, requires an actual GPU compute adapter; run nativeMappingGpuTest\ntest gpu::mapping_tests::specialized_roots_match_interpreter_on_real_gpu ... ignored, requires an exported registry profile in RETINA_PROGRAM_PARITY_PROFILE\ntest gpu::material_arena_tests::material_arena_preserves_fast_overflow_interleaving_and_reuse ... ignored, bounded real GPU arena fixtures; requires RETINA_MATERIAL_PROFILE\ntest gpu::material_arena_tests::material_arena_replay ... ignored, bounded arena timing experiment; requires RETINA_MATERIAL_PROFILE\ntest gpu::material_continuation_tests::material_continuation_replay ... ignored, bounded material-only A/B; requires RETINA_MATERIAL_PROFILE and a real GPU\ntest gpu::material_continuation_tests::material_continuations_preserve_interleaved_output ... ignored, requires RETINA_MATERIAL_PROFILE and a real GPU\ntest gpu_worker::tests::material_continuations_drain_after_sender_closes ... ignored, requires RETINA_MATERIAL_PROFILE and a real GPU\ntest lighting::tests::compact_materials_preserve_light_with_faces_padding_and_uniform_sections ... ignored, bounded lossless compact-material GPU comparison\ntest lighting::tests::compact_output_preserves_every_channel_and_pending_layout ... ignored, bounded exact constant-light output and descriptor ownership check\ntest lighting::tests::compact_transport_defaults_use_the_backend_with_adapter_name ... ok\ntest lighting::tests::pipeline_replay_timing ... ignored, bounded GPU replay timing; not a world-generation benchmark\ntest lighting::tests::pipeline_slots_survive_growth_interleaving_and_abandonment ... ignored, requires a supported GPU\ntest lighting::tests::section_packing_matches_voxels_with_crop_padding_and_reuse ... ignored, requires a supported GPU\ntest lighting::tests::streamed_region_matches_sequential_tiles_and_recovers_from_consumer_error ... ignored, requires a supported GPU\ntest lighting::transport::tests::material_transport_retains_uniform_and_mixed_ids_across_sections ... ok\ntest lighting::transport::tests::one_different_material_anywhere_keeps_a_dense_section ... ok\ntest nbt::tests::strings_keep_java_modified_utf8 ... ok\ntest program::column_interpreter::tests::schedule_cuts_cached_dependencies_but_keeps_spline_children_and_implicit_outputs ... ok\ntest program::composition::tests::cached_source_disconnects_raw_input_and_interval_fallbacks ... ok\ntest program::composition::tests::coverage_requires_exact_coordinates_and_complete_fine_fields ... ok\ntest program::interpolation::tests::cache_layout_uses_each_global_lattice_and_skips_unusable_context_or_capacity ... ok\ntest program::interpolation::tests::composed_queries_retain_finer_vertical_input_nodes ... ok\ntest program::interpolation::tests::field_dependencies_are_topological_and_coordinate_operands_stay_live ... ok\ntest program::lake_sparse::tests::sparse_plan_uses_rounded_global_rows_and_rejects_uncovered_contexts ... ok\ntest program::lake_sparse::tests::world_helpers_do_not_leak_into_cave_modules ... ok\ntest program::tests::implicit_root_zero_and_spline_children_remain_live ... ok\ntest program::tests::long_chain_reuses_scratch_without_a_graph_length_limit ... ok\ntest program::tests::mapped_source_handles_nested_root_and_spline_addresses ... ok\ntest program::tests::wide_programs_keep_all_their_inputs ... ok\ntest region::palette_tests::actual_section_palette_encoding_benchmark ... ignored, requires actual MCA section fixtures in RETINA_PALETTE_FIXTURES\ntest region::palette_tests::constant_light_descriptors_encode_identical_nbt_arrays ... ok\ntest region::palette_tests::direct_palette_keeps_indices_order_padding_and_reused_uniform_sections ... ok\ntest specialize::aquifer_columns::tests::explicit_height_disabled_and_constant_searches_keep_original_graphs ... ok\ntest specialize::aquifer_columns::tests::local_values_preserve_y_context_implicit_roots_and_search_scope ... ok\ntest geology::tests::ore_ellipsoids_are_unique_and_fit_the_neighbor_chunk_halo ... ok\ntest specialize::interpreter_dispatch::tests::shared_entrypoints_keep_stage_bodies_and_other_workgroups ... ok\ntest specialize::interpreter_reuse::tests::preloaded_density_inventory_covers_only_actual_compatible_masks ... ok\ntest specialize::interpreter_reuse::tests::shader_call_graphs_keep_interpolation_out_of_unrelated_pipelines ... ok\ntest specialize::interpreter_reuse::tests::unknown_graph_ids_and_new_entrypoints_keep_the_complete_interpreter ... ok\ntest specialize::tests::actual_profile_source_preparation ... ignored, requires an actual exported profile in RETINA_PROGRAM_PREPARATION_PROFILE\ntest specialize::tests::branch_dominance_does_not_reuse_arm_local_values ... ok\ntest specialize::tests::material_dispatch_excludes_direct_aquifer_graphs ... ok\ntest specialize::tests::reachable_nodes_folding_splines_and_shared_graphs ... ok\ntest structures::tests::attached_entities_use_template_anchors_and_rotate_current_direction_codecs ... ok\ntest structures::tests::indexed_templates_preserve_capped_order_across_rotated_negative_chunk_boundaries ... ok\ntest structures::tests::rigid_floors_extend_column_soil_instead_of_repeating_the_floor ... ok\ntest structures::tests::rotations_and_negative_spread_cells_are_consistent ... ok\ntest structures::tests::weighted_pool_shuffle_shares_entries_and_preserves_random_stream ... ok\ntest tests::abi_layout_is_stable ... ok\ntest tests::actual_interpreter_pipeline_compile ... ignored, requires RETINA_PROGRAM_PARITY_PROFILE and a fresh RETINA_COMPILE_OUT directory\ntest tests::assembly_uses_y_z_x_order_and_negative_minimum ... ok\ntest tree_shapes::tests::fancy_oaks_have_supported_distributed_crowns ... ok\ntest tree_shapes::tests::mega_jungle_has_many_branch_levels_and_procedural_variants ... ok\ntest specialize::material_dispatch::tests::shared_materials_preserve_prefix_and_dynamic_scan ... ok\n\ntest result: ok. 82 passed; 0 failed; 36 ignored; 0 measured; 0 filtered out; finished in 0.15s\n\n",
+    "retina-material-arena-continuation": "\nrunning 1 test\ntest gpu::material_continuation_tests::material_continuations_preserve_interleaved_output ... ok\n\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 117 filtered out; finished in 2.07s\n\n",
+    "retina-material-arena-native-build": "   Compiling retina-worldgen v0.1.0 (/private/tmp/retina-material-output-arena/native)\n    Finished `release` profile [optimized] target(s) in 21.61s\n",
+    "retina-material-staging-test-build-fixed": "   Compiling retina-worldgen v0.1.0 (/private/tmp/retina-material-output-arena/native)\n    Finished `release` profile [optimized] target(s) in 43.40s\n  Executable unittests src/lib.rs (/Users/cyberpwn/development/workspace/ArcaneArts/Retina/build/native-target/release/deps/retina_worldgen-842eb14ed7cd7e2f)\n",
+    "retina-material-staging-fixtures-fixed": "\nrunning 2 tests\ntest gpu::material_arena_tests::material_arena_preserves_fast_overflow_interleaving_and_reuse ... ok\ntest gpu::material_arena_tests::material_arena_replay ... {\"exact\":true,\"measurements\":[{\"counters\":[2,0,0,2,2124960,1731744,0,545588,29912],\"ms\":111.471917,\"runs_per_column\":0},{\"counters\":[2,2,2,0,2124960,0,1179648,545588,2359296],\"ms\":100.94300000000001,\"runs_per_column\":16},{\"counters\":[2,2,2,0,2124960,0,1179648,545588,0],\"ms\":100.403375,\"runs_per_column\":16},{\"counters\":[2,0,0,2,2124960,1731744,0,545588,0],\"ms\":111.701875,\"runs_per_column\":0},{\"counters\":[2,0,0,2,2124960,1731744,0,545588,0],\"ms\":111.005375,\"runs_per_column\":0},{\"counters\":[2,2,2,0,2124960,0,1179648,545588,0],\"ms\":99.986542,\"runs_per_column\":16}],\"peak_cached_buffer_bytes\":17032256,\"run_counts\":[66329,70068]}\nok\n\ntest result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 116 filtered out; finished in 4.75s\n\n",
+    "retina-material-staging-unit": "\nrunning 118 tests\ntest column_program::tests::scoped_noise_caches_only_when_y_is_replaced ... ok\ntest column_program::tests::shared_horizontal_fields_exclude_y_and_dead_noise ... ok\ntest column_program::tests::spline_offsets_share_but_derivatives_do_not ... ok\ntest decoration::anchor_probe::gpu_anchor_workload_census ... ignored, bounded complete planner census, no GPU anchor offload\ntest decoration::anchor_probe::gpu_complete_plant_anchor_probe ... ignored, bounded actual-GPU whole-program trial\ntest decoration::anchor_probe::gpu_vine_anchor_batch_probe ... ignored, bounded repeated independent-column GPU/CPU comparison\ntest decoration::anchor_probe::gpu_vine_anchor_live_probe ... ignored, bounded exact seeded vine anchors with live sequential growth\ntest decoration::blocks::provider_tests::missing_integer_properties_preserve_source_and_random_stream ... ok\ntest decoration::blocks::provider_tests::nullable_current_transforms_preserve_identity_and_draw_order ... ok\ntest decoration::blocks::provider_tests::property_copies_read_live_position_without_extra_random_draws ... ok\ntest decoration::blocks::provider_tests::rotations_draw_direction_before_nested_state_and_fixed_direction_draws_nothing ... ok\ntest decoration::blocks::provider_tests::rules_continue_after_nullable_matches_and_preserve_draws ... ok\ntest decoration::counts::gpu_tests::combined_samples_benchmark ... ignored, actual GPU, 1 warmup + 7 alternating sparse sample pairs; use 30s process deadline\ntest decoration::counts::gpu_tests::combined_samples_match_separate_dispatches ... ignored, actual GPU, bounded sparse counts/provider correctness; use 30s process deadline\ntest decoration::diagnostics::tests::recipe_counters_merge_unequal_worker_coverage ... ok\ntest decoration::distribution::tests::distribution_replay_benchmark ... ignored, bounded CPU distribution A/B; two workers, no GPU or region generation\ntest decoration::distribution::tests::parallel_distribution_preserves_every_ordered_write ... ok\ntest decoration::gpu_leaf_probe::ordered_gpu_leaf_edge_cases ... ignored, actual GPU ordered leaf checks; use a 30s process-group deadline\ntest decoration::gpu_leaf_probe::ordered_gpu_leaf_evaluation ... ignored, actual GPU leaf evaluation; RETINA_LEAF_PROFILE required, two workers, use 30s deadline\ntest decoration::pairs::tests::final_soil_changes_remove_grass_and_both_halves_without_order_dependence ... ok\ntest decoration::pairs::tests::overlap_bounds_and_different_state_properties_preserve_only_valid_pairs ... ok\ntest decoration::placement::layers::tests::grounds_use_registered_empty_states_and_invalidate_after_live_writes ... ok\ntest decoration::placement::layers::tests::group_handoff_preserves_retry_and_merged_queue_order ... ok\ntest decoration::placement::layers::tests::lazy_layers_share_selector_parent_ground_and_discover_downstream_gpu_counts ... ok\ntest decoration::placement::layers::tests::retry_precedes_other_candidates_with_equal_order_keys ... ok\ntest decoration::placement::stream::tests::cursor_matches_eager_order_rng_live_filters_and_checkpoint_retry ... ok\ntest decoration::placement::stream::tests::terminal_count_uses_one_entry_but_cuboids_keep_eager_fallback ... ok\ntest decoration::placement::tests::compiled_candidates_keep_inline_draws_without_sharing_random_streams ... ok\ntest decoration::placement::tests::count_zero_and_rarity_keep_modifier_order ... ok\ntest decoration::placement::tests::cuboids_preserve_inclusive_faces_order_and_dimension_draws ... ok\ntest decoration::placement::tests::draw_stack_restores_shared_prefix_after_nested_random_positions ... ok\ntest decoration::placement::tests::live_heightmaps_and_soil_filters_reject_canopy_without_density_caps ... ok\ntest decoration::placement::tests::nested_attempts_inherit_parent_height_while_outer_attempts_resample_canopy ... ok\ntest decoration::placement::tests::ordered_forced_writes_lower_live_height_and_preserve_later_features ... ok\ntest decoration::placement::tests::placement_uses_carved_materials_fluids_and_live_heights ... ok\ntest decoration::placement::tests::registered_offsets_and_water_depth_use_the_selected_heightmap ... ok\ntest decoration::placement::tests::selectors_share_the_exact_parent_budget_including_nested_counts ... ok\ntest decoration::placement::tests::sparse_noise_queries_preserve_nested_count_streams_and_selector_budgets ... ok\ntest decoration::provider_noise::tests::signed_phase_products_retain_far_coordinate_fractions ... ok\ntest decoration::replay_tests::overlay_snapshot_restores_repeated_writes_and_heightmaps ... ok\ntest decoration::replay_tests::resumed_prefix_matches_full_replay_and_query_batches ... ok\ntest decoration::tests::crown_grid_preserves_breadth_first_distance_order_and_log_occupancy ... ok\ntest decoration::tests::giant_jungle_crowns_close_above_the_trunk_without_four_interior_holes ... ok\ntest decoration::tests::registered_dark_oak_has_a_closed_crown_above_each_trunk_tip ... ok\ntest decoration::tree_scratch_tests::reused_leaf_grid_clears_dense_sparse_empty_and_log_states ... ok\ntest decoration::tree_scratch_tests::reused_tree_scratch_preserves_commands_rng_and_bounds ... ok\ntest decoration::tree_scratch_tests::tree_scratch_benchmark ... ignored, bounded tree scratch A/B: five warmups, 21 alternating pairs, no GPU; use a 30s deadline\ntest decoration::vine_gpu::tests::eligibility_requires_independence_and_unshared_rng_groups ... ok\ntest decoration::vine_gpu::tests::gpu_vine_planner_handoff ... ignored, bounded Metal planner handoff, overflow and retained-prefix correctness\ntest decoration::vine_gpu::tests::gpu_vine_registered_planner ... ignored, bounded complete registered terrain planning CPU/GPU comparison\ntest features::scan_tests::quart_bounds_preserve_dense_dressing_across_air_spans_and_vertical_alignment ... ok\ntest features::snow_tests::snow_uses_registered_support_and_keeps_frozen_water_clear ... ok\ntest geology::raster_gpu::seed_benchmark::seeded_ore_planning_comparison ... ignored, actual GPU ore A/B; RETINA_ORE_PROFILE required; use 30s process-group deadline\ntest geology::raster_gpu::tests::real_gpu_compact_ores_preserve_hosts_exposure_edges_and_reused_buffers ... ignored, requires a real compute device; run explicitly with --ignored\ntest geology::raster_gpu::tests::real_gpu_seeded_ores_preserve_hosts_exposure_edges_and_reused_buffers ... ignored, actual GPU seed preparation; use a 30-second process-group deadline\ntest geology::seed_probe::seed_geometry_probe ... ignored, actual GPU seed/geometry probe; use a 30-second process-group deadline\ntest geology::seeded::tests::conservative_seed_boxes_contain_cpu_pruned_spheres ... ok\ntest climate::tests::stackless_index_matches_linear_intervals_and_ties ... ok\ntest geology::tests::early_vein_culling_preserves_replay_and_chunk_boundaries ... ok\ntest geology::tests::ore_height_distributions_keep_their_registered_triangle_and_plateau ... ok\ntest gpu::aquifer_columns_tests::aquifer_column_roots_match_raw_gpu ... ignored, requires RETINA_PROGRAM_PARITY_PROFILE and a real GPU\ntest gpu::column_interpreter_tests::column_interpreter_roots_match_raw_gpu ... ignored, requires RETINA_PROGRAM_PARITY_PROFILE and a real GPU\ntest gpu::lake_sparse_tests::sparse_lake_roots_match_uncached_gpu ... ignored, requires an exported profile in RETINA_PROGRAM_PARITY_PROFILE and a real GPU\ntest gpu::mapping_tests::cancelled_mapping_cleanup_allows_buffer_reuse ... ignored, requires an actual GPU compute adapter; run nativeMappingGpuTest\ntest gpu::mapping_tests::rejected_specialization_leaves_interpreter_device_usable ... ignored, requires an actual GPU compute adapter; run nativeMappingGpuTest\ntest gpu::mapping_tests::specialized_roots_match_interpreter_on_real_gpu ... ignored, requires an exported registry profile in RETINA_PROGRAM_PARITY_PROFILE\ntest gpu::material_arena_tests::material_arena_preserves_fast_overflow_interleaving_and_reuse ... ignored, bounded real GPU arena fixtures; requires RETINA_MATERIAL_PROFILE\ntest gpu::material_arena_tests::material_arena_replay ... ignored, bounded arena timing experiment; requires RETINA_MATERIAL_PROFILE\ntest gpu::material_continuation_tests::material_continuation_replay ... ignored, bounded material-only A/B; requires RETINA_MATERIAL_PROFILE and a real GPU\ntest gpu::material_continuation_tests::material_continuations_preserve_interleaved_output ... ignored, requires RETINA_MATERIAL_PROFILE and a real GPU\ntest gpu_worker::tests::material_continuations_drain_after_sender_closes ... ignored, requires RETINA_MATERIAL_PROFILE and a real GPU\ntest lighting::tests::compact_materials_preserve_light_with_faces_padding_and_uniform_sections ... ignored, bounded lossless compact-material GPU comparison\ntest lighting::tests::compact_output_preserves_every_channel_and_pending_layout ... ignored, bounded exact constant-light output and descriptor ownership check\ntest lighting::tests::compact_transport_defaults_use_the_backend_with_adapter_name ... ok\ntest lighting::tests::pipeline_replay_timing ... ignored, bounded GPU replay timing; not a world-generation benchmark\ntest lighting::tests::pipeline_slots_survive_growth_interleaving_and_abandonment ... ignored, requires a supported GPU\ntest lighting::tests::section_packing_matches_voxels_with_crop_padding_and_reuse ... ignored, requires a supported GPU\ntest lighting::tests::streamed_region_matches_sequential_tiles_and_recovers_from_consumer_error ... ignored, requires a supported GPU\ntest lighting::transport::tests::material_transport_retains_uniform_and_mixed_ids_across_sections ... ok\ntest lighting::transport::tests::one_different_material_anywhere_keeps_a_dense_section ... ok\ntest nbt::tests::strings_keep_java_modified_utf8 ... ok\ntest program::column_interpreter::tests::schedule_cuts_cached_dependencies_but_keeps_spline_children_and_implicit_outputs ... ok\ntest program::composition::tests::cached_source_disconnects_raw_input_and_interval_fallbacks ... ok\ntest program::composition::tests::coverage_requires_exact_coordinates_and_complete_fine_fields ... ok\ntest program::interpolation::tests::cache_layout_uses_each_global_lattice_and_skips_unusable_context_or_capacity ... ok\ntest program::interpolation::tests::composed_queries_retain_finer_vertical_input_nodes ... ok\ntest program::interpolation::tests::field_dependencies_are_topological_and_coordinate_operands_stay_live ... ok\ntest program::lake_sparse::tests::sparse_plan_uses_rounded_global_rows_and_rejects_uncovered_contexts ... ok\ntest program::lake_sparse::tests::world_helpers_do_not_leak_into_cave_modules ... ok\ntest program::tests::implicit_root_zero_and_spline_children_remain_live ... ok\ntest program::tests::long_chain_reuses_scratch_without_a_graph_length_limit ... ok\ntest program::tests::mapped_source_handles_nested_root_and_spline_addresses ... ok\ntest program::tests::wide_programs_keep_all_their_inputs ... ok\ntest region::palette_tests::actual_section_palette_encoding_benchmark ... ignored, requires actual MCA section fixtures in RETINA_PALETTE_FIXTURES\ntest region::palette_tests::constant_light_descriptors_encode_identical_nbt_arrays ... ok\ntest region::palette_tests::direct_palette_keeps_indices_order_padding_and_reused_uniform_sections ... ok\ntest specialize::aquifer_columns::tests::explicit_height_disabled_and_constant_searches_keep_original_graphs ... ok\ntest specialize::aquifer_columns::tests::local_values_preserve_y_context_implicit_roots_and_search_scope ... ok\ntest geology::tests::ore_ellipsoids_are_unique_and_fit_the_neighbor_chunk_halo ... ok\ntest specialize::interpreter_dispatch::tests::shared_entrypoints_keep_stage_bodies_and_other_workgroups ... ok\ntest specialize::interpreter_reuse::tests::preloaded_density_inventory_covers_only_actual_compatible_masks ... ok\ntest specialize::interpreter_reuse::tests::shader_call_graphs_keep_interpolation_out_of_unrelated_pipelines ... ok\ntest specialize::interpreter_reuse::tests::unknown_graph_ids_and_new_entrypoints_keep_the_complete_interpreter ... ok\ntest specialize::tests::actual_profile_source_preparation ... ignored, requires an actual exported profile in RETINA_PROGRAM_PREPARATION_PROFILE\ntest specialize::tests::branch_dominance_does_not_reuse_arm_local_values ... ok\ntest specialize::tests::material_dispatch_excludes_direct_aquifer_graphs ... ok\ntest specialize::tests::reachable_nodes_folding_splines_and_shared_graphs ... ok\ntest structures::tests::attached_entities_use_template_anchors_and_rotate_current_direction_codecs ... ok\ntest structures::tests::indexed_templates_preserve_capped_order_across_rotated_negative_chunk_boundaries ... ok\ntest structures::tests::rigid_floors_extend_column_soil_instead_of_repeating_the_floor ... ok\ntest structures::tests::rotations_and_negative_spread_cells_are_consistent ... ok\ntest structures::tests::weighted_pool_shuffle_shares_entries_and_preserves_random_stream ... ok\ntest tests::abi_layout_is_stable ... ok\ntest tests::actual_interpreter_pipeline_compile ... ignored, requires RETINA_PROGRAM_PARITY_PROFILE and a fresh RETINA_COMPILE_OUT directory\ntest tests::assembly_uses_y_z_x_order_and_negative_minimum ... ok\ntest tree_shapes::tests::fancy_oaks_have_supported_distributed_crowns ... ok\ntest tree_shapes::tests::mega_jungle_has_many_branch_levels_and_procedural_variants ... ok\ntest specialize::material_dispatch::tests::shared_materials_preserve_prefix_and_dynamic_scan ... ok\n\ntest result: ok. 82 passed; 0 failed; 36 ignored; 0 measured; 0 filtered out; finished in 0.15s\n\n",
+    "retina-material-staging-continuation": "\nrunning 1 test\ntest gpu::material_continuation_tests::material_continuations_preserve_interleaved_output ... ok\n\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 117 filtered out; finished in 2.09s\n\n",
+    "retina-material-staging-native-build": "   Compiling retina-worldgen v0.1.0 (/private/tmp/retina-material-output-arena/native)\n    Finished `release` profile [optimized] target(s) in 21.71s\n"
+  },
+  "excluded_evidence": "retina-material-staging-fixtures.log ran a stale v1 binary after an unsuccessful compilation; not used as v2 evidence."
+}
