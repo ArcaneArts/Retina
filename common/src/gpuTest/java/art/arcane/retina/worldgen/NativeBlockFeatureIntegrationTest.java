@@ -426,6 +426,7 @@ public final class NativeBlockFeatureIntegrationTest {
         DecorationProfile.reserveCurrentSurvival(pending,palette);
         DecorationProfile.finishPlacements(synthetic,palette,-64,384);
         DecorationProfile.finishCurrentSurvival(pending,palette);
+        DecorationProfile.finishGenerationLighting(pending,true);
         profile.add("simple_current_states",pending.get("simple_current_states"));
         profile.add("simple_current_omissions",pending.get("simple_current_omissions"));
         DecorationProfile.materialFlags(profile,palette);
@@ -971,6 +972,7 @@ public final class NativeBlockFeatureIntegrationTest {
                     yield y;
                 }
                 case "getMinY" -> fixture.request.minY();
+                case "getRawBrightness" -> 15; // Fresh sky-light column, before INITIALIZE_LIGHT.
                 case "getSeed" -> fixture.request.seed();
                 case "getRandom" -> new Stream(123,false);
                 case "scheduleTick" -> null;

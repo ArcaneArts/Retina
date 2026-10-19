@@ -58,7 +58,7 @@ final class DecorationProfile {
             var features = generation.apply(biomes.get(i)).features();
             int vegetation = GenerationStep.Decoration.VEGETAL_DECORATION.ordinal();
             for(int step=0;step<features.size();step++) for (var holder : features.get(step)) {
-                // Loaded disks and attachments also occur outside vegetation.
+                // Loaded SimpleBlock features, disks and attachments also occur outside vegetation.
                 // Retain their biome feature order; other stages keep their exporters.
                 if(step!=vegetation && !hasOtherStageRecipe(holder.value().feature().value(),0)
                         && !(exporter.flat && (holder.value().feature().value() instanceof LakeFeature || holder.value().feature().value() instanceof VoidStartPlatformFeature)))continue;
@@ -78,7 +78,7 @@ final class DecorationProfile {
 
     private static boolean hasOtherStageRecipe(Feature feature,int depth) {
         if(depth>16)throw new IllegalArgumentException("Recursive other-stage feature");
-        if(feature instanceof MultifaceGrowthFeature || feature instanceof VinesFeature || feature instanceof DiskFeature || NetherFeatureProfile.supports(feature))return true;
+        if(feature instanceof SimpleBlockFeature || feature instanceof MultifaceGrowthFeature || feature instanceof VinesFeature || feature instanceof DiskFeature || NetherFeatureProfile.supports(feature))return true;
         if(feature instanceof SequenceFeature f)return f.features().stream().anyMatch(v->hasOtherStageRecipe(v.value().feature().value(),depth+1));
         if(feature instanceof OverlayFeature f)return f.features().stream().anyMatch(v->hasOtherStageRecipe(v.value().feature().value(),depth+1));
         if(feature instanceof RandomSelectorFeature f)return f.features().stream().anyMatch(v->hasOtherStageRecipe(v.feature().value().feature().value(),depth+1)) || hasOtherStageRecipe(f.defaultFeature().value().feature().value(),depth+1);
@@ -233,14 +233,14 @@ final class DecorationProfile {
                 return;
             }
             var states = provider(encoded, 1, 0, 0);
-            // Nether plants have distinct support tags and weighted providers.
+            // Nether plants and mushrooms need their loaded support/light rules.
             // They cannot use the grass/dry-grass floor-mask fast path.
             if(states.stream().anyMatch(s->s.state.getBlock() instanceof NetherFungusBlock
                     || s.state.getBlock() instanceof NetherRootsBlock || s.state.getBlock() instanceof NetherSproutsBlock
-                    || s.state.getBlock() instanceof NetherWartBlock)) {
+                    || s.state.getBlock() instanceof NetherWartBlock || s.state.getBlock() instanceof MushroomBlock)) {
                 var data=simple(block);
                 if(data!=null)emit(path,p,chance,"simple_block",data,selected);
-                else unsupported.add("SimpleBlockFeature:nether-provider-or-survival");
+                else unsupported.add("SimpleBlockFeature:plant-provider-or-survival");
                 return;
             }
             var variants = new JsonArray();
@@ -257,7 +257,6 @@ final class DecorationProfile {
                 }
                 if (!(state.state.getBlock() instanceof VegetationBlock) || state.state.getBlock() instanceof SaplingBlock) continue;
                 if (!state.state.getFluidState().isEmpty() || state.state.is(Blocks.LILY_PAD)) continue;
-                if (state.state.getBlock() instanceof MushroomBlock) continue; // Their light/underground rules need a separate adapter.
                 var variant = new JsonObject();
                 var lower = state.state;
                 int upper = 0;
@@ -544,6 +543,15 @@ final class DecorationProfile {
         variant.add("upper_allowed",combine("any_of",matching("matching_block_tag","tag","minecraft:air",0,0,0),above));return variant;
     }
     private static JsonObject survivalPredicate(BlockState state) {
+        if(state.getBlock() instanceof MushroomBlock)return combine("any_of",
+                matching("matching_block_tag","tag",BlockTags.OVERRIDES_MUSHROOM_LIGHT_REQUIREMENT.location().toString(),0,-1,0),
+                combine("all_of",test("generation_dark",0,0,0),test("solid_render",0,-1,0)));
+        if(state.getBlock() instanceof SoulFireBlock)return matching("matching_block_tag","tag",BlockTags.SOUL_FIRE_BASE_BLOCKS.location().toString(),0,-1,0);
+        if(state.getBlock() instanceof FireBlock) {
+            var neighbors=new ArrayList<JsonObject>();neighbors.add(matching("has_sturdy_face","direction","up",0,-1,0));
+            for(var d:Direction.values())neighbors.add(matching("fire_can_burn","fire",BuiltInRegistries.BLOCK.getKey(state.getBlock()).toString(),d.getStepX(),d.getStepY(),d.getStepZ()));
+            return combine("any_of",neighbors.toArray(JsonObject[]::new));
+        }
         if(state.getBlock() instanceof SporeBlossomBlock)return combine("all_of",matching("supports_center","direction","down",0,1,0),not(matching("matching_fluids","fluids","#"+FluidTags.WATER.location(),0,0,0)));
         if(state.getBlock() instanceof CactusFlowerBlock)return combine("any_of",matching("matching_block_tag","tag",BlockTags.SUPPORT_OVERRIDE_CACTUS_FLOWER.location().toString(),0,-1,0),matching("supports_center","direction","up",0,-1,0));
         if(state.getBlock() instanceof LeafLitterBlock)return matching("has_sturdy_face","direction","up",0,-1,0);
@@ -625,6 +633,8 @@ final class DecorationProfile {
     private static boolean supportedSurvival(BlockState state) {
         var owner=methodOwner(state,"canSurvive");
         if(owner==net.minecraft.world.level.block.state.BlockBehaviour.class)return true;
+        if(owner==MushroomBlock.class)return methodOwner(state,"mayPlaceOn")==MushroomBlock.class;
+        if(owner==FireBlock.class || owner==SoulFireBlock.class)return true;
         if(Set.of(CarpetBlock.class,SnowLayerBlock.class,CactusBlock.class,SugarCaneBlock.class,BambooStalkBlock.class,SporeBlossomBlock.class,SeaPickleBlock.class,LeafLitterBlock.class).contains(owner))return true;
         if(!Set.of(VegetationBlock.class,DoublePlantBlock.class,MangrovePropaguleBlock.class,SmallDripleafBlock.class,TallSeagrassBlock.class).contains(owner))return false;
         // These source-known methods use loaded support tags or the explicit
@@ -694,6 +704,22 @@ final class DecorationProfile {
         if(!world.has("simple_current_states"))return;
         for(var value:world.getAsJsonArray("simple_current_states"))if(!value.isJsonNull())for(String key:List.of("survival","upper_allowed")) {
             var row=value.getAsJsonObject();row.add(key,predicate(row.getAsJsonObject(key),palette));
+        }
+    }
+    /** FEATURES precedes INITIALIZE_LIGHT. Fresh block-light storage is zero;
+     * an uninitialized sky-light column reads 15 when the dimension has sky. */
+    static void finishGenerationLighting(JsonObject profile,boolean skyLight) {
+        for(String key:List.of("decorations","simple_current_states"))
+            if(profile.has(key))finishGenerationLight(profile.get(key),skyLight);
+    }
+    static void finishGenerationLight(JsonElement value,boolean skyLight) {
+        if(value.isJsonArray())for(var child:value.getAsJsonArray())finishGenerationLight(child,skyLight);
+        else if(value.isJsonObject()) {
+            var object=value.getAsJsonObject();
+            if(object.has("type") && object.get("type").isJsonPrimitive() && type(object).equals("generation_dark")) {
+                object.remove("offset");object.addProperty("type",skyLight?"not":"true");
+                if(skyLight) {var yes=new JsonObject();yes.addProperty("type","true");object.add("predicate",yes);}
+            } else for(var child:object.entrySet())finishGenerationLight(child.getValue(),skyLight);
         }
     }
     private JsonObject patch(VegetationPatchFeature feature,int depth) {
@@ -1109,7 +1135,7 @@ final class DecorationProfile {
             output.add("predicate", predicate(input.getAsJsonObject("predicate"), palette));
             return output;
         }
-        if (kind.equals("true")) return output;
+        if (kind.equals("true") || kind.equals("generation_dark")) return output;
         int[] offset = input.has("offset") ? new Gson().fromJson(input.get("offset"), int[].class) : new int[3];
         if (kind.equals("height_range")) {
             int min=input.getAsJsonObject("min_inclusive").get("absolute").getAsInt();
@@ -1149,6 +1175,8 @@ final class DecorationProfile {
                 case "same_fluid_replaceable" -> state.canBeReplaced() && state.getFluidState().equals(BlockState.CODEC.parse(JsonOps.INSTANCE,input.get("state")).getOrThrow().getFluidState());
                 case "solid_or_lava" -> state.isSolid() || state.getFluidState().is(FluidTags.LAVA);
                 case "solid" -> state.isSolid();
+                case "solid_render" -> state.isSolidRender();
+                case "fire_can_burn" -> fireCanBurn(input.get("fire").getAsString(),state);
                 case "liquid" -> state.liquid();
                 default -> throw new IllegalArgumentException("Unsupported decoration predicate " + input);
             };
@@ -1158,6 +1186,17 @@ final class DecorationProfile {
         output.add("offset", new Gson().toJsonTree(offset));
         output.add("allowed", allowed);
         return output;
+    }
+
+    private static final java.lang.reflect.Method FIRE_CAN_BURN = fireCanBurnMethod();
+    private static java.lang.reflect.Method fireCanBurnMethod() {
+        try {
+            var method=FireBlock.class.getDeclaredMethod("canBurn",BlockState.class);method.setAccessible(true);return method;
+        } catch(ReflectiveOperationException error) {throw new IllegalStateException("Cannot export registered fire survival",error);}
+    }
+    private static boolean fireCanBurn(String fire,BlockState state) {
+        try {return (boolean)FIRE_CAN_BURN.invoke(BuiltInRegistries.BLOCK.getValue(Identifier.parse(fire)),state);}
+        catch(ReflectiveOperationException error) {throw new IllegalStateException("Cannot export fire burnability for "+state,error);}
     }
 
     static boolean matchesBlock(JsonElement choices, BlockState state) {

@@ -78,6 +78,7 @@ public final class NetherFeatureTest {
             Files.writeString(Path.of("build/nether/feature-reference-stats.json"),stats.toString());
             System.out.println("QA_EVT {\"event\":\"nether_block_features_reference\",\"status\":\"pass\",\"context\":"+stats+"}");
             NetherSpringTest.check(registry,exported,generator);
+            NetherSurvivalTest.check(registry,exported,generator);
             NetherFungusTest.check(registry,exported,generator);
             if(Arrays.asList(args).contains("--region")) {
                 NetherRegionTest.check(exported,BiomeTerrainProfile.register(exported),true);
@@ -141,6 +142,7 @@ public final class NetherFeatureTest {
         final java.util.function.Function<BlockPos,BlockState> expected;
         final Map<BlockPos,BlockState> changed=new HashMap<>();
         final List<Tick> ticks=new ArrayList<>();
+        net.minecraft.world.level.lighting.LevelLightEngine lighting=net.minecraft.world.level.lighting.LevelLightEngine.EMPTY;
         final WorldGenLevel level=(WorldGenLevel)Proxy.newProxyInstance(WorldGenLevel.class.getClassLoader(),new Class<?>[]{WorldGenLevel.class},this);
         World(TerrainRequest request,BlockState[] palette,Map<ChunkPos,short[]> terrain) {
             this(request,palette,terrain,p->(p.getY()<32 || p.getY()>=96 && p.getY()<128)?Blocks.NETHERRACK.defaultBlockState():Blocks.AIR.defaultBlockState());
@@ -172,6 +174,7 @@ public final class NetherFeatureTest {
                 case "getBlockState" -> get((BlockPos)args[0]);
                 case "isStateAtPosition" -> ((java.util.function.Predicate<BlockState>)args[1]).test(get((BlockPos)args[0]));
                 case "getFluidState" -> get((BlockPos)args[0]).getFluidState();
+                case "getLightEngine" -> lighting;
                 case "setBlock", "setBlockAndUpdate" -> {var p=((BlockPos)args[0]).immutable();if(p.getY()<request.minY() || p.getY()>=request.minY()+request.height())yield false;changed.put(p,(BlockState)args[1]);yield true;}
                 case "destroyBlock" -> {var p=((BlockPos)args[0]).immutable();if(get(p).isAir() || p.getY()<request.minY() || p.getY()>=request.minY()+request.height())yield false;changed.put(p,Blocks.AIR.defaultBlockState());yield true;}
                 case "isEmptyBlock" -> get((BlockPos)args[0]).isAir();
