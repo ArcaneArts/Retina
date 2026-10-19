@@ -5,9 +5,13 @@ Retina is a Rust and GPU terrain generator for **Minecraft 26.3**, available for
 supported datapack and mod additions, and produces complete Anvil (`.mca`) regions
 with terrain, biomes, decorations, structures and interior lighting.
 
-Select **Retina** when creating a world. The Overworld uses the Rust/GPU generator;
-the Nether and End retain their normal generators. Retina approximates the loaded
-worldgen rules: it does not reproduce vanilla's terrain for the same seed.
+Install Retina and select your usual world type. Supported Overworld generators
+automatically use Retina when creating or reopening a world; there is no disable
+switch. Normal, Large Biomes, Amplified, Single Biome and Superflat are supported.
+The Nether, End, Debug and unsupported custom generators retain their original
+implementation, with a diagnostic identifying the missing adapter. Retina
+approximates noise worldgen rules rather than reproducing vanilla's terrain for
+the same seed. Undecorated Superflat uses the configured layers exactly.
 
 ## Try it
 
@@ -19,12 +23,14 @@ compiler (Clang, GCC or MSVC). Then run:
 ```
 
 This launches **Fabric only**, builds and packages the host native library, and
-uses the root `run/` directory. Create a new world and choose **Retina** in the
-**World** tab. Enable datapacks through the normal world-creation screen. Press
+uses the root `run/` directory. Choose a world type and customize it through the
+normal **World** tab. Enable datapacks through the world-creation screen. Press
 **F3** to see generation throughput and stage timings.
 
-For a new dedicated world, set `level-type=retina:gpu` in `server.properties` and
-run `./gradlew runServer`. Minecraft's EULA must be accepted separately.
+For a dedicated world, use ordinary `level-type` and `generator-settings` values
+in `server.properties` (for example, `level-type=minecraft:normal` or
+`level-type=minecraft:flat`) and run `./gradlew runServer`. Minecraft's EULA must
+be accepted separately.
 
 | Task | Purpose |
 | --- | --- |
@@ -110,6 +116,7 @@ a future Bukkit adapter can select its own file location and YAML codec.
 | Area | Current implementation |
 | --- | --- |
 | Terrain and biomes | GPU density programs, registered noise and splines, climate intervals, biome distribution, rivers and globally aligned interpolation fields |
+| Superflat | Native ordered layers, selected biome, adjusted feature/lake options, structure overrides, void platform, and shared preview, region and lighting pipeline |
 | Surfaces and shores | GPU material rules for complete vertical layers, underwater surfaces, soil depths, badlands terracotta bands, sandy/snowy beaches, stony shores and supported sediment features |
 | Underground | Lush caves, dripstone caves and deep dark, cave/canyon carving, curved ravines, surface entrances, cave decorations, local aquifer fluids and pressure barriers |
 | Lakes and ores | Registered water/lava lake settings and biome ore recipes, with GPU lake probes and supported ore geometry/masks |
@@ -148,11 +155,22 @@ datapacks, mod-provided packs and supported biome modifications. Pack priority
 still determines which definition wins when multiple packs replace the same key.
 Terralith is covered by the project's registry and generation tests.
 
-If a pack replaces the Overworld generator, Retina retains the selected Retina
-generator and imports the replacement's biome source, noise settings and dimension
-bounds. These settings survive save/reopen. Supported density, surface, aquifer,
-feature and structure data continue through Rust and the GPU; enabling a datapack
-does not switch the world back to ordinary Java generation.
+After packs resolve, Retina adapts the effective supported generator before the
+server constructs its chunk system. The original generator definition remains in
+the save, including flat-world metadata and customization. Its biome source,
+noise settings, bounds and effective feature settings feed the runtime profile.
+Single Biome and Superflat retain exactly their selected biome. Normal, Large
+Biomes, Amplified and Terralith retain their actual source biome pools and noise
+programs. This applies to both loaders and integrated or dedicated servers.
+
+Superflat fills constant layers in Rust without density evaluation, then uses
+the shared feature, lighting, NBT, compression and publication machinery.
+Non-motion-blocking layers that Minecraft defers to fill-layer features are
+applied after decoration, preserving existing non-air feature blocks. Air,
+fluids, empty worlds and dimension clipping are supported. Feature/lake switches,
+global structure generation and absent versus empty structure overrides are
+preserved. Optional features and structures retain Retina's approximation and
+coverage limits; they do not invoke vanilla terrain generation.
 
 New Retina worlds enable **density composition**. Each registered interpolation
 field retains its own global lattice and cell sizes; arithmetic and range choices
@@ -174,23 +192,28 @@ Compatibility has limits:
   Matching seeds do not imply matching vanilla layouts, and GPU backends may
   differ. Unsupported custom primitives/features/processors are reported during
   export; arbitrary mod-defined worldgen code is not automatically translated.
-- Biomes absent from the imported climate source can receive an approximate
-  temperature/rainfall niche. Missing placement data cannot be recovered from a
-  biome name or tag alone.
+- Legacy Retina definitions that import additional biomes can assign an
+  approximate temperature/rainfall niche to them. Automatically adapted worlds
+  use only the selected source's biomes. Missing placement data cannot be
+  recovered from a biome name or tag alone.
 - Structures support compatible random-spread/jigsaw sets and the procedural
   families listed above. Non-jigsaw assemblers such as strongholds, mineshafts,
   fortresses, mansions, monuments, end cities, shipwrecks and ruined portals remain
   unsupported. Bastion pools are supported by the assembler, but the standard
-  Retina preset leaves the Nether on its normal generator.
+  activation policy leaves the Nether on its normal generator.
 - Existing saved blocks and player edits are preserved. Generation changes affect
   new terrain; old saved settings retain their legacy behavior where encoded,
   including worlds without the newer density-composition flag.
 
-**Retina is the only visible world type.** The Bend runtime has been removed.
-Old Bend preset identifiers redirect new generation to Rust while preserving saved
-chunks. Hidden per-chunk identifiers remain readable for existing saves and
-compatibility tests; they are not an alternative new-world option. Transitions
-from older generator output can produce terrain seams.
+**The world-type selector contains Minecraft's ordinary choices.** Legacy Retina,
+Bend and per-chunk preset identifiers and codecs remain readable. Existing Retina
+generators are not wrapped again, and retain encoded settings. Unsupported
+generator families pass through only because an adapter is not yet implemented;
+initialization or generation errors in supported Retina worlds surface normally.
+
+Existing non-Retina saves also activate Retina for newly generated supported
+terrain. Saved chunks and player edits remain intact. Transitions from vanilla,
+older Retina output or changed datapacks can produce terrain seams.
 
 ## Region generation and parallelism
 
@@ -426,6 +449,7 @@ explicit GPU integration suites require a compute device.
 | `test` | Fabric loader/mixin tests; use `:fabric:test --tests ...` to select a fixture |
 | `gpuTest` | Native/GPU concurrency, coordinate and interpolation checks, materials, aquifers and related shader fixtures |
 | `regionTest`, `previewTest` | Real MCA decoding, partial saves, saved edits, temporary cache and promotion |
+| `flatTest` | Native built-in/custom layers against Minecraft, flat bounds/options, lakes and void platform, previews/promotion, heightmaps and reference lighting |
 | `biomeTest`, `geologyTest`, `featureTest`, `blockFeatureTest` | Registered biomes, ores, caves, vegetation and supported feature recipes |
 | `structureTest`, `shoreTest`, `snowTest`, `lightingTest` | Structures/metadata, coastal selection, snow support and GPU lighting against Minecraft |
 | `datapackTest -PtestDatapack=/absolute/path/Terralith.zip` | Actual pack loading, Retina retention, save/reopen and native output; `-PtestSupplement=...` adds a higher-priority pack |

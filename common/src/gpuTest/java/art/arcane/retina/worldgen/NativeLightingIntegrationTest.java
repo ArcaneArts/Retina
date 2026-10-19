@@ -24,6 +24,35 @@ import java.util.*;
 /** Actual Minecraft light propagation vs the production WGSL, including mixed saved/unlit seams. */
 public final class NativeLightingIntegrationTest {
     private static final int SIDE=3, HEIGHT=64, COUNT=HEIGHT*256;
+    static void flat(PalettedContainerFactory factory, BiomeTerrainProfile profile) {
+        var fixture = new Fixture(factory, List.of(profile.materials()), true, 3, List.of());
+        var request = new TerrainRequest(42, 0, 0, 0, HEIGHT, 64, 0, .008F, profile.nativeId());
+        try (var generated = NativeTerrain.instance().generate(request)) {
+            var blocks = generated.blocks().toArray(java.lang.foreign.ValueLayout.JAVA_SHORT);
+            for (int i = 0; i < 9; i++) {
+                System.arraycopy(blocks, 0, fixture.materials, i * COUNT, COUNT);
+                for (int y = 0; y < HEIGHT; y++) for (int z = 0; z < 16; z++) for (int x = 0; x < 16; x++)
+                    fixture.put(new BlockPos(i % 3 * 16 + x, y, i / 3 * 16 + z), profile.materials()[Short.toUnsignedInt(blocks[y * 256 + z * 16 + x])]);
+                fixture.chunks[i].initializeLightSources();
+            }
+        }
+        var light = NativeTerrain.instance().lightVolume(request, SIDE, fixture.materials);
+        var expected = fixture.engine(null);
+        var imported = fixture.engine(light);
+        int comparisons = 0;
+        for (int z = 0; z < 48; z++) for (int x = 0; x < 48; x++) for (int y = 0; y < HEIGHT; y++) {
+            int index = (z / 16 * SIDE + x / 16) * (HEIGHT + 32) * 256 + (y + 16) * 256 + z % 16 * 16 + x % 16;
+            int packed = Byte.toUnsignedInt(light[index]);
+            var pos = new BlockPos(x, y, z);
+            for (var layer : LightLayer.values()) {
+                int value = layer == LightLayer.SKY ? packed >> 4 : packed & 15;
+                require(value == expected.getLayerListener(layer).getLightValue(pos), "flat GPU lighting matches Minecraft: " + pos + "/" + layer);
+                require(value == imported.getLayerListener(layer).getLightValue(pos), "flat imported lighting matches Minecraft");
+                comparisons++;
+            }
+        }
+        System.out.println("QA_EVT {\"event\":\"flat_lighting_minecraft_reference\",\"status\":\"pass\",\"context\":{\"comparisons\":" + comparisons + "}}");
+    }
     public static void main(String[] args) throws Exception {
         SharedConstants.tryDetectVersion(); Bootstrap.bootStrap();
         try(var pack=ServerPacksSource.createVanillaPackSource().fullResources()) {

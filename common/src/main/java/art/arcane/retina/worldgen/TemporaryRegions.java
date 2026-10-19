@@ -29,6 +29,7 @@ final class TemporaryRegions implements AutoCloseable {
     private final GenerationMetrics metrics;
     private final BiomeTerrainProfile profile;
     private final boolean layeredMaterials;
+    private final int[] flatLayers;
     private final Path folder;
     private final int capacity;
     private final int memoryCapacity;
@@ -55,6 +56,7 @@ final class TemporaryRegions implements AutoCloseable {
         try { folder = Files.createTempDirectory("retina-preview-"); }
         catch (IOException error) { throw new UncheckedIOException(error); }
         var ids = profile == null ? null : JsonParser.parseString(profile.json()).getAsJsonObject();
+        flatLayers = ids != null && ids.has("flat") ? ids.getAsJsonObject("flat").getAsJsonArray("base_layers").asList().stream().mapToInt(v -> v.getAsInt()).toArray() : null;
         layeredMaterials = ids != null && ids.has("registry_program")
                 && ids.getAsJsonObject("registry_program").has("material_layers")
                 && ids.getAsJsonObject("registry_program").get("material_layers").getAsBoolean();
@@ -262,6 +264,12 @@ final class TemporaryRegions implements AutoCloseable {
     }
 
     BlockState[] baseColumn(ChunkPos position, NativeTerrain.Columns columns, int index) {
+        if (flatLayers != null) {
+            var states = new BlockState[settings.height()];
+            var materials = profile.materials();
+            for (int y = 0; y < states.length; y++) states[y] = materials[y < flatLayers.length ? flatLayers[y] : 0];
+            return states;
+        }
         if (layeredMaterials) {
             try (var lease = acquire(position)) {
                 lease.data();return lease.entry.baseColumn(position,index);

@@ -146,6 +146,7 @@ impl Program {
             outputs: &[u16],
         ) -> Option<()> {
             match p {
+                Predicate::InsideWorldBounds { .. } => return None,
                 Predicate::True => ops.push([0; 8]),
                 Predicate::Material { offset, allowed } => {
                     if offset.iter().any(|v| v.unsigned_abs() > 32) {

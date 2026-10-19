@@ -1,6 +1,4 @@
 {
   "replace": false,
-  "values": [
-    "retina:gpu"
-  ]
+  "values": []
 }

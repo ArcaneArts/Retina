@@ -19,6 +19,7 @@ use std::sync::{Mutex, RwLock};
 
 pub mod decoration;
 mod features;
+pub mod flat;
 pub mod geology;
 mod gpu;
 mod gpu_worker;
@@ -637,6 +638,7 @@ impl TerrainEngine {
             }
         }
         let profile = self.profile(requests[0].reserved)?;
+        if profile.as_deref().is_some_and(|p| p.biomes.len() == 1) { return Ok(vec![0; requests.len()]); }
         let underground = ys.is_some()
             && profile
                 .as_deref()
@@ -705,6 +707,11 @@ impl TerrainEngine {
                 return Err("GPU batch profiles must match".into());
             }
         }
+        if let Some(p) = self.profile(requests[0].reserved)? {
+            if let Some(flat) = &p.flat {
+                return Ok(requests.iter().flat_map(|&r| std::iter::repeat_n(flat.column(r), COLUMNS)).collect());
+            }
+        }
         if let Some(cached) = self
             .cache
             .lock()
@@ -769,6 +776,11 @@ impl TerrainEngine {
             .collect::<Result<_, String>>()?;
         for request in &requests {
             request.validate()?;
+        }
+        if let Some(p) = self.profile(requests[0].reserved)? {
+            if let Some(flat) = &p.flat {
+                return Ok(requests.iter().flat_map(|&r| std::iter::repeat_n(flat.column(r), COLUMNS)).collect());
+            }
         }
         if let Some(cached) = self
             .cache
@@ -844,6 +856,9 @@ impl TerrainEngine {
             })
             .collect::<Result<_, String>>()?;
         let profile = self.profile(request.reserved)?;
+        if let Some(flat) = profile.as_deref().and_then(|p| p.flat.as_ref()) {
+            return Ok(requests.iter().flat_map(|&r| std::iter::repeat_n(flat.column(r).height, COLUMNS)).collect());
+        }
         let cached: Vec<_> = {
             let cache = self.cache.lock().map_err(|_| "column cache poisoned")?;
             let heights = self
@@ -951,6 +966,9 @@ impl TerrainEngine {
         }
         request.validate()?;
         let profile = self.profile(request.reserved)?;
+        if profile.as_deref().is_some_and(|p| p.flat.is_some()) {
+            return Ok((self.decoration_field(request, side)?, None));
+        }
         let material_halo = profile
             .as_deref()
             .is_some_and(|p| p.registry_program.as_ref().is_some_and(|r| r.material_halo));
@@ -1195,6 +1213,7 @@ impl TerrainEngine {
                 features::snow(request, p, &columns, blocks)
             });
             timings.time(timings::VEGETATION, || plant_updates.finish(p, blocks));
+            if let Some(flat) = &p.flat { flat.finish(blocks); }
         }
         let result = columns
             .try_into()

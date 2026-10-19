@@ -569,6 +569,8 @@ pub(super) fn place(
 ) {
     let test = |p: &Predicate, at| p.test(at, field, profile, request, overlay) == Some(true);
     match kind {
+        Kind::FlatLake { lake } => super::flat_features::lake(lake, at, rng, field, profile, request, overlay, blocks, noise),
+        Kind::VoidPlatform { platform } => super::flat_features::platform(*platform, at, request, blocks),
         Kind::AttachmentGrowth { growth } => {
             super::attachment::place(growth, at, rng, field, profile, request, overlay, blocks);
         }

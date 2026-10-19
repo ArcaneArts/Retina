@@ -175,6 +175,11 @@ impl IntProvider {
 #[derive(Clone, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum Predicate {
+    InsideWorldBounds {
+        offset: [i32; 3],
+        min_y: i32,
+        max_y: i32,
+    },
     Material {
         offset: [i32; 3],
         allowed: MaterialSet,
@@ -193,6 +198,7 @@ pub enum Predicate {
 impl Predicate {
     pub(super) fn validate(&self, palette: usize) -> bool {
         match self {
+            Self::InsideWorldBounds { offset, min_y, max_y } => offset.iter().all(|v| (-17..=17).contains(v)) && min_y < max_y,
             Self::Material { offset, allowed } => {
                 offset.iter().all(|v| (-17..=17).contains(v))
                     && allowed.iter().all(|v| (*v as usize) < palette)
@@ -223,6 +229,10 @@ impl Predicate {
         material: &impl Fn([i32; 3]) -> Option<u16>,
     ) -> Option<bool> {
         match self {
+            Self::InsideWorldBounds { offset, min_y, max_y } => {
+                let y = i64::from(at[1]) + i64::from(offset[1]);
+                Some(y >= i64::from(*min_y) && y < i64::from(*max_y))
+            }
             Self::Material { offset, allowed } => {
                 material(std::array::from_fn(|i| at[i] + offset[i])).map(|m| allowed.accepts(m))
             }

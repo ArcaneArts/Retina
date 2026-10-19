@@ -24,7 +24,8 @@ public final class RetinaBiomeSource extends BiomeSource {
             Codec.floatRange(128, 4096).optionalFieldOf("biome_scale", 128F).forGetter(s -> s.scale),
             Codec.floatRange(0.1F, 1F).optionalFieldOf("blend", 0.55F).forGetter(s -> s.blend),
             BiomeSource.CODEC.optionalFieldOf("registry_source").forGetter(s -> s.registrySource),
-            Codec.BOOL.optionalFieldOf("use_registry_biomes", false).forGetter(s -> s.useRegistryBiomes)
+            Codec.BOOL.optionalFieldOf("use_registry_biomes", false).forGetter(s -> s.useRegistryBiomes),
+            Codec.BOOL.optionalFieldOf("source_biomes_only", false).forGetter(s -> s.sourceBiomesOnly)
     ).apply(i, RetinaBiomeSource::new));
     private final List<Holder<Biome>> biomes;
     private final java.util.function.Supplier<List<Holder<Biome>>> registryBiomes;
@@ -32,6 +33,7 @@ public final class RetinaBiomeSource extends BiomeSource {
     private final float blend;
     private final Optional<BiomeSource> registrySource;
     private final boolean useRegistryBiomes;
+    private final boolean sourceBiomesOnly;
     private volatile BiomeResolver resolver;
     private volatile BiomeResolver searchResolver;
     private volatile java.util.function.Function<List<net.minecraft.core.BlockPos>, List<Holder<Biome>>> batchQueries;
@@ -46,6 +48,10 @@ public final class RetinaBiomeSource extends BiomeSource {
         this(biomes, scale, blend, registrySource, false);
     }
     public RetinaBiomeSource(List<Holder<Biome>> biomes, float scale, float blend, Optional<BiomeSource> registrySource, boolean useRegistryBiomes) {
+        this(biomes, scale, blend, registrySource, useRegistryBiomes, false);
+    }
+    public RetinaBiomeSource(List<Holder<Biome>> biomes, float scale, float blend, Optional<BiomeSource> registrySource, boolean useRegistryBiomes, boolean sourceBiomesOnly) {
+        this.sourceBiomesOnly = sourceBiomesOnly;
         this.registrySource = registrySource;
         this.useRegistryBiomes = useRegistryBiomes;
         this.biomes = List.copyOf(biomes);
@@ -63,11 +69,16 @@ public final class RetinaBiomeSource extends BiomeSource {
         if (source instanceof RetinaBiomeSource retina) return retina;
         return new RetinaBiomeSource(List.of(), scale, blend, Optional.of(source), true);
     }
+    static RetinaBiomeSource fromSelected(BiomeSource source) {
+        return new RetinaBiomeSource(List.of(), 128F, .55F, Optional.of(source), true, true);
+    }
+    boolean sourceBiomesOnly() { return sourceBiomesOnly; }
     private static List<Holder<Biome>> choices(BiomeSource source) {
         return source.possibleBiomes().stream().sorted(java.util.Comparator.comparing(b -> b.unwrapKey().orElseThrow().identifier().toString())).toList();
     }
     boolean hasRegistrySource() { return registrySource.isPresent(); }
     void includeRegisteredBiomes(HolderLookup.Provider registry) {
+        if (sourceBiomesOnly) { additional = List.of(); return; }
         additional = registry.lookupOrThrow(Registries.BIOME).listElements()
                 .filter(b -> !b.key().identifier().getNamespace().equals("minecraft"))
                 .filter(b -> java.util.stream.Stream.of("minecraft:is_nether","minecraft:is_end","c:is_nether","c:is_end")
@@ -83,6 +94,7 @@ public final class RetinaBiomeSource extends BiomeSource {
             var key = ResourceKey.create(Registries.MULTI_NOISE_BIOME_SOURCE_PARAMETER_LIST, Identifier.parse(encoded.get("preset").getAsString()));
             return registry.lookupOrThrow(Registries.MULTI_NOISE_BIOME_SOURCE_PARAMETER_LIST).getOrThrow(key).value().parameters().values();
         }
+        if (sourceBiomesOnly) return List.of(); // A fixed source has no climate intervals.
         return registry.lookupOrThrow(Registries.MULTI_NOISE_BIOME_SOURCE_PARAMETER_LIST).getOrThrow(MultiNoiseBiomeSourceParameterLists.OVERWORLD).value().parameters().values();
     }
     public List<Holder<Biome>> biomes() { return registryBiomes == null ? biomes : registryBiomes.get(); }

@@ -114,6 +114,7 @@ impl Compiled {
     }
     fn predicate(&mut self, p: &Predicate, out: &mut Vec<[u32; 8]>) -> Option<()> {
         match p {
+            Predicate::InsideWorldBounds { .. } => return None,
             Predicate::True => out.push([0; 8]),
             Predicate::Material { offset, allowed } => {
                 let i = self.words.len() as u32;

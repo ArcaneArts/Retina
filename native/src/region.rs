@@ -436,6 +436,7 @@ fn generate_region_inner(
                             crate::features::snow(request, p, columns, &mut blocks)
                         });
                         timings.time(timings::VEGETATION, || plant_updates.finish(p, &mut blocks));
+                        if let Some(flat) = &p.flat { flat.finish(&mut blocks); }
                     }
                     if lighting.is_some() {
                         return Ok(PreparedRecord::Blocks(

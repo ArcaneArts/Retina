@@ -23,6 +23,11 @@ import java.util.*;
 final class TerrainFeatureProfile {
     static void export(HolderLookup.Provider registry, List<Holder<Biome>> biomes, JsonArray entries,
                        LinkedHashMap<BlockState,Integer> palette, JsonObject world, MaterialRule materialRule, long seed, List<com.mojang.datafixers.util.Pair<Climate.ParameterPoint, Holder<Biome>>> parameters) {
+        export(registry, biomes, entries, palette, world, materialRule, seed, parameters, b -> b.value().getGenerationSettings());
+    }
+    static void export(HolderLookup.Provider registry, List<Holder<Biome>> biomes, JsonArray entries,
+                       LinkedHashMap<BlockState,Integer> palette, JsonObject world, MaterialRule materialRule, long seed, List<com.mojang.datafixers.util.Pair<Climate.ParameterPoint, Holder<Biome>>> parameters,
+            java.util.function.Function<Holder<Biome>, net.minecraft.world.level.biome.BiomeGenerationSettings> generation) {
         var ops = registry.createSerializationContext(JsonOps.INSTANCE);
         var terrain = new JsonObject();
         var bands = new JsonArray();
@@ -40,7 +45,7 @@ final class TerrainFeatureProfile {
         for (int i = 0; i < biomes.size(); i++) {
             var biome = biomes.get(i); var entry = entries.get(i).getAsJsonObject();
             boolean underground = (entry.get("flags").getAsInt() & 16) != 0;
-            int kind = biome.is(Biomes.LUSH_CAVES) ? 1 : biome.is(Biomes.DRIPSTONE_CAVES) ? 2 : biome.is(Biomes.DEEP_DARK) ? 3 : underground ? 4 : 0;
+            int kind = world.has("flat") ? 0 : biome.is(Biomes.LUSH_CAVES) ? 1 : biome.is(Biomes.DRIPSTONE_CAVES) ? 2 : biome.is(Biomes.DEEP_DARK) ? 3 : underground ? 4 : 0;
             entry.addProperty("cave_kind", kind);
             double depthMin = 2, depthMax = -2;
             for (var pair : parameters) if (pair.getSecond().equals(biome)) {
@@ -50,7 +55,7 @@ final class TerrainFeatureProfile {
             entry.add("cave_depth", array(depthMin <= depthMax ? depthMin : 0.2, depthMin <= depthMax ? depthMax : 1));
             double lavaChance = 0, waterChance = 0;boolean snowSurface=false;
             var collector = new Collector(registry, palette);
-            for (var step : biome.value().getGenerationSettings().features()) for (var placed : step) {
+            for (var step : generation.apply(biome).features()) for (var placed : step) {
                 snowSurface |= placed.value().feature().value() instanceof SnowAndFreezeFeature;
                 if (placed.value().feature().value() instanceof LakeFeature lake) {
                     double rarity = 1;boolean surfaceLake=false;

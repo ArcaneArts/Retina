@@ -35,6 +35,7 @@ final class DecorationProfile {
     private final Map<String, Integer> ids = new LinkedHashMap<>();
     private final Set<String> unsupported = new TreeSet<>();
     private final ProviderNoiseProfile providerNoise;
+    private boolean flat;
     private final Set<PlacedFeature> nativeDisks=Collections.newSetFromMap(new IdentityHashMap<>());
     private DecorationProfile(HolderLookup.Provider registry, LinkedHashMap<BlockState, Integer> materials) {
         this.registry = registry;
@@ -42,15 +43,21 @@ final class DecorationProfile {
         this.providerNoise = new ProviderNoiseProfile(registry);
     }
     static JsonArray export(HolderLookup.Provider registry, List<Holder<Biome>> biomes, JsonArray profiles, LinkedHashMap<BlockState, Integer> materials, JsonObject world, Set<PlacedFeature> nativeDisks) {
+        return export(registry, biomes, profiles, materials, world, nativeDisks, b -> b.value().getGenerationSettings());
+    }
+    static JsonArray export(HolderLookup.Provider registry, List<Holder<Biome>> biomes, JsonArray profiles, LinkedHashMap<BlockState, Integer> materials, JsonObject world, Set<PlacedFeature> nativeDisks,
+            java.util.function.Function<Holder<Biome>, net.minecraft.world.level.biome.BiomeGenerationSettings> generation) {
         var exporter = new DecorationProfile(registry, materials);
+        exporter.flat = world.has("flat");
         for (int i = 0; i < biomes.size(); i++) {
             var selected = new JsonArray();
-            var features = biomes.get(i).value().getGenerationSettings().features();
+            var features = generation.apply(biomes.get(i)).features();
             int vegetation = GenerationStep.Decoration.VEGETAL_DECORATION.ordinal();
             for(int step=0;step<features.size();step++) for (var holder : features.get(step)) {
                 // Loaded disks and attachments also occur outside vegetation.
                 // Retain their biome feature order; other stages keep their exporters.
-                if(step!=vegetation && !hasOtherStageRecipe(holder.value().feature().value(),0))continue;
+                if(step!=vegetation && !hasOtherStageRecipe(holder.value().feature().value(),0)
+                        && !(exporter.flat && (holder.value().feature().value() instanceof LakeFeature || holder.value().feature().value() instanceof VoidStartPlatformFeature)))continue;
                 String name = holder.unwrapKey().map(k -> k.identifier().toString()).orElse("inline/" + biomes.get(i).unwrapKey().map(k -> k.identifier().toString()).orElse(Integer.toString(i)) + "/" + selected.size());
                 var before = new ArrayList<Integer>();
                 exporter.placed(holder.value(), new Placement(), 1, name, before, 0);
@@ -167,6 +174,16 @@ final class DecorationProfile {
         } else if (feature instanceof SequenceFeature || feature instanceof OverlayFeature) {
             var data=composite(feature,depth+1);
             if(data!=null)emit(path,p,chance,data.get("kind").getAsString(),data,selected);
+        } else if (flat && feature instanceof LakeFeature lake) {
+            var data = lake(lake);
+            if (data != null) emit(path, p, chance, "flat_lake", data, selected);
+        } else if (flat && feature instanceof VoidStartPlatformFeature) {
+            var data = new JsonObject();
+            var platform = new JsonArray();
+            platform.add(material(Blocks.STONE.defaultBlockState()));
+            platform.add(material(Blocks.COBBLESTONE.defaultBlockState()));
+            data.add("platform", platform);
+            emit(path, p, chance, "void_platform", data, selected);
         } else if (feature instanceof DiskFeature disk) {
             var data=disk(disk);
             if(data!=null) {emit(path,p,chance,"disk",data,selected);nativeDisks.add(placed);}
@@ -278,14 +295,28 @@ final class DecorationProfile {
         return switch (type(p)) {
             case "all_of", "any_of" -> p.getAsJsonArray("predicates").asList().stream().allMatch(e -> supportedPredicate(e.getAsJsonObject()));
             case "not" -> supportedPredicate(p.getAsJsonObject("predicate"));
-            case "matching_blocks", "matching_block_tag", "matching_fluids", "replaceable", "true", "has_sturdy_face", "solid" -> true;
+            case "matching_blocks", "matching_block_tag", "matching_fluids", "replaceable", "true", "has_sturdy_face", "solid", "inside_world_bounds" -> true;
             case "would_survive" -> BlockState.CODEC.parse(JsonOps.INSTANCE, p.get("state")).result().map(DecorationProfile::supportedSurvival).orElse(false);
             default -> false;
         };
     }
 
     /** Resolve tags/material predicates after every registry exporter has extended the palette. */
-    static void finishPlacements(JsonArray recipes, LinkedHashMap<BlockState, Integer> palette) {
+    static void finishPlacements(JsonArray recipes, LinkedHashMap<BlockState, Integer> palette, int minY, int height) {
+        bindBounds(recipes, minY, Math.addExact(minY, height));
+        finishPlacements(recipes, palette);
+    }
+    static void bindBounds(JsonElement value, int minY, int maxY) {
+        if (value.isJsonArray()) value.getAsJsonArray().forEach(v -> bindBounds(v, minY, maxY));
+        else if (value.isJsonObject()) {
+            var object = value.getAsJsonObject();
+            if (object.has("type") && type(object).equals("inside_world_bounds")) {
+                object.addProperty("min_y", minY); object.addProperty("max_y", maxY);
+            }
+            object.entrySet().forEach(e -> bindBounds(e.getValue(), minY, maxY));
+        }
+    }
+    private static void finishPlacements(JsonArray recipes, LinkedHashMap<BlockState, Integer> palette) {
         ProviderStateTransforms.prepare(recipes,palette);
         for (var element : recipes) {
             var recipe = element.getAsJsonObject();
@@ -334,6 +365,12 @@ final class DecorationProfile {
     }
     private static void finishFeature(JsonObject recipe,LinkedHashMap<BlockState,Integer> palette) {
             switch(recipe.get("kind").getAsString()) {
+                case "flat_lake" -> {
+                    for (String key : List.of("can_place_feature", "can_replace_with_air_or_fluid", "can_replace_with_barrier", "solid", "liquid"))
+                        recipe.add(key, predicate(recipe.getAsJsonObject(key), palette));
+                    finishProvider(recipe.getAsJsonObject("fluid"), palette);
+                    finishProvider(recipe.getAsJsonObject("barrier"), palette);
+                }
                 case "attachment_growth" -> {
                     for(String key:List.of("air","water","source_water","placed_on","spread_replaceable","spread_support"))recipe.add(key,predicate(recipe.getAsJsonObject(key),palette));
                     for(String key:List.of("support","sturdy")) {
@@ -496,6 +533,24 @@ final class DecorationProfile {
             return state.is(Blocks.TALL_SEAGRASS)?combine("all_of",floor,test("full_water",0,0,0)):floor;
         }
         return matching("matching_block_tag","tag",survivalSoil(state).location().toString(),0,state.getBlock() instanceof MangrovePropaguleBlock && state.getValue(MangrovePropaguleBlock.HANGING)?1:-1,0);
+    }
+
+    private JsonObject lake(LakeFeature lake) {
+        var data = Feature.DIRECT_CODEC.encodeStart(registry.createSerializationContext(JsonOps.INSTANCE), lake).getOrThrow().getAsJsonObject();
+        for (String key : List.of("can_place_feature", "can_replace_with_air_or_fluid", "can_replace_with_barrier")) {
+            if (!supportedPredicate(data.getAsJsonObject(key))) { unsupported.add("flat_lake:" + key); return null; }
+        }
+        for (String key : List.of("fluid", "barrier")) {
+            var provider = stateProgram(data.get(key), 0);
+            if (provider == null) { unsupported.add("flat_lake:" + key); return null; }
+            data.add(key, provider);
+        }
+        var solid = new JsonObject(); solid.addProperty("type", "solid"); data.add("solid", solid);
+        var liquid = new JsonObject(); liquid.addProperty("type", "matching_fluids");
+        var fluids = new JsonArray(); fluids.add("minecraft:water"); fluids.add("minecraft:lava");
+        liquid.add("fluids", fluids); data.add("liquid", liquid);
+        data.addProperty("air", material(Blocks.CAVE_AIR.defaultBlockState()));
+        return data;
     }
 
     private JsonObject column(BlockColumnFeature feature) {
@@ -1002,6 +1057,11 @@ final class DecorationProfile {
         }
         if (kind.equals("true")) return output;
         int[] offset = input.has("offset") ? new Gson().fromJson(input.get("offset"), int[].class) : new int[3];
+        if (kind.equals("inside_world_bounds")) {
+            output.add("offset", new Gson().toJsonTree(offset));
+            output.add("min_y", input.get("min_y")); output.add("max_y", input.get("max_y"));
+            return output;
+        }
         var allowed = new JsonArray();
         for (var entry : palette.entrySet()) {
             var state = entry.getKey();

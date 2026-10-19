@@ -33,6 +33,7 @@ import java.util.concurrent.CompletableFuture;
 public final class TerrainClientQa {
     private static final boolean ENABLED = Boolean.getBoolean("retina.qa.client.gameplay");
     private static final String MODE = System.getProperty("retina.qa.client.mode", "mca");
+    private static final String PRESET = System.getProperty("retina.qa.client.preset", MODE.equals("chunk") ? "retina:gpu_chunk" : "minecraft:normal");
     private static final String WORLD = "retina-qa-" + MODE;
     private static final String SERVER = System.getProperty("retina.qa.client.server", "");
     private static final long HOLD_NANOS = Math.max(0, Integer.getInteger("retina.qa.client.holdSeconds", 0)) * 1_000_000_000L;
@@ -74,7 +75,7 @@ public final class TerrainClientQa {
                         LevelSettings.DifficultySettings.DEFAULT, true, configuration);
                 minecraft.createWorldOpenFlows().createFreshLevel(WORLD, settings, new WorldOptions(123456789L, true, false),
                         registries -> registries.lookupOrThrow(Registries.WORLD_PRESET)
-                                .getOrThrow(ResourceKey.create(Registries.WORLD_PRESET, Retina.id(MODE.equals("chunk") ? "gpu_chunk" : "gpu")))
+                                .getOrThrow(ResourceKey.create(Registries.WORLD_PRESET, Identifier.parse(PRESET)))
                                 .value().createWorldDimensions(), new TitleScreen());
             }
             case 1 -> {
@@ -181,6 +182,7 @@ public final class TerrainClientQa {
                 require(level.getChunkSource().getGenerator() instanceof RetinaChunkGenerator, "integrated world retains Retina generator");
                 var generator = (RetinaChunkGenerator) level.getChunkSource().getGenerator();
                 require(generator.mode().equals(MODE), "integrated world retains generation mode");
+                art.arcane.retina.worldgen.AutomaticGenerationQa.check(minecraft.getSingleplayerServer());
                 TerrainRegistryQa.check(generator);
                 if (reopened) require(level.getBlockState(EDIT).is(Blocks.DIAMOND_BLOCK), "saved negative-coordinate chunk preserves edit");
                 else {
