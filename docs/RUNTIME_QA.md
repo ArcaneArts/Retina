@@ -1,6 +1,6 @@
 # Loader runtime QA
 
-Use a fresh, disposable run directory for each loader/mode. These opt-in checks
+Use a fresh, disposable run directory for each loader/world type. These opt-in checks
 create a world named `retina-qa-mca` or `retina-qa-chunk`, save an edit, reopen it,
 and shut down the client. Do not point them at an existing development run.
 
@@ -14,8 +14,14 @@ Run each client separately:
   -PretinaClientRunDir="$RETINA_QA_ROOT/neoforge-mca"
 ```
 
-Repeat with `-PretinaClientQaMode=chunk` and fresh `fabric-chunk` /
-`neoforge-chunk` directories. The pass event `minecraft_client_gameplay_reopen`
+The default selects `minecraft:normal` and exercises automatic activation. Repeat
+with `-PretinaClientPresetQa=minecraft:flat` and fresh `fabric-flat` /
+`neoforge-flat` directories. `minecraft_automatic_activation` verifies the actual
+runtime generator, original saved registry definition, flat metadata, spawn-height
+semantics and unchanged Nether/End generators on creation and reopen.
+
+For legacy-save compatibility, repeat with `-PretinaClientQaMode=chunk` and fresh
+`fabric-chunk` / `neoforge-chunk` directories. The pass event `minecraft_client_gameplay_reopen`
 follows received telemetry, F3 formatting, disconnect reset, saved generator
 settings and a retained diamond-block edit at (-17,120,-17).
 
@@ -47,8 +53,8 @@ loaded biome settings and native profile both contain the added feature.
 
 The `qa/datapacks/structures` fixture forces a registered village at chunk
 (320,320) using loaded vanilla templates and a cobblestone-to-gold processor.
-Place it in a fresh dedicated world's `datapacks` directory, select
-`level-type=retina:gpu` (or `retina:gpu_chunk`) and seed `123456789`, and use
+Place it in a fresh dedicated world's `datapacks` directory, use
+`level-type=minecraft:normal` and seed `123456789`, and use
 `-PretinaQa -PretinaStructuresQa` with the loader's server task. Add
 `-PretinaStructuresReopenQa` on the second launch of the same world. The
 `minecraft_live_rust_structures` check compares every block, checks decoded
@@ -71,6 +77,24 @@ then saves and stops normally. The packaged equivalents are
 and timing checks, which can stop the dedicated server earlier.
 
 ## Dedicated connections and packaged artifacts
+
+For automatic activation without a client, create a disposable dedicated directory
+with ordinary `server.properties`, `level-type=minecraft:normal` or
+`level-type=minecraft:flat`, and a separately accepted EULA. Run the loader's
+server task with `-PretinaQa -PretinaAutomaticQa=true
+-PretinaDatapackQa=/absolute/qa/directory`. It checks the live source/runtime pair,
+writes a diamond-block edit, saves and stops. Run again with
+`-PretinaAutomaticReopenQa=true` to verify the saved edit and activation after
+reopen. These checks use no existing gameplay saves. For packaged installations,
+the properties are `-Dretina.qa.automatic=true` and
+`-Dretina.qa.automatic.reopen=true`.
+
+`flatTest` compares all nine built-in presets and custom layers with actual
+Minecraft flat base terrain, then checks deferred layers, empty worlds, clipping,
+all heightmaps, selected structure sets, global structure disabling, preview/MCA
+parity, partial promotion, protected saved records and propagated native errors.
+It also compares lake/void feature writes and flat block/sky lighting with Minecraft
+references. Run expensive native suites and game launches sequentially.
 
 Start an isolated matching dedicated server. With a fresh client run directory,
 add `-PretinaClientServerQa=127.0.0.1:<port>` to a gameplay QA client command.
@@ -148,3 +172,37 @@ generation during Chunky work and re-enable it afterward. Confirm generated
 MCA files and nonempty DH `FullData` rows in the saved SQLite database after
 normal shutdown. The integrated log should also show DH world-gen workers
 consuming Retina temporary MCA chunks before and after reopening.
+
+## Automatic activation validation — 2026-10-19
+
+Validated on Java 25 / macOS / Metal (Apple M4 Max), using disposable worlds:
+
+| Check | Result |
+| --- | --- |
+| Fabric and NeoForge, integrated Normal and Superflat | Creation, source preservation, telemetry, edit, disconnect and reopen passed |
+| Fabric and NeoForge, dedicated Normal and Superflat | Ordinary level types, initial save and second-process reopen passed |
+| Loader biome modifications | Fabric API addition and NeoForge biome modifier both reached the automatic native profile |
+| Source settings | Normal, Large Biomes, Amplified, Single Biome, legacy codecs and Terralith registry checks passed; Debug/custom subclasses/Nether/End retained their source generators |
+| Flat terrain | Nine built-in presets plus custom air/fluid/non-solid/empty layers matched configured blocks and Minecraft base terrain |
+| Flat integration | Decorated chunk/MCA parity, previews, all heightmaps, partial promotion, saved records, error propagation, clipping and structure switches/overrides passed |
+| Flat feature references | 96 controlled lake/void-platform cases matched Minecraft; platform extent also checked across 25 chunks |
+| Flat lighting | 294,912 block/sky comparisons matched Minecraft, including imported light data |
+| Bounds | A short noise dimension retained its out-of-bounds sea level and Minecraft's empty height-range semantics |
+| Terralith | Automatic generation retained the exact 146-biome source pool and passed MCA/promotion checks; legacy import paths also passed |
+
+Successful suites include `build -PretinaHostOnly`, `flatTest`, `gpuTest`,
+`regionTest`, `previewTest`, `lightingTest`, `blockFeatureTest`, `structureTest`,
+`registryTest` (vanilla and Terralith), `datapackTest` (Terralith),
+`regionPreparationTest`, `columnCacheLifecycleTest`, `generationMetricsTest`,
+and Fabric tests with the installed Chunky 1.5.3 fixture. Native units passed
+86 tests; opt-in GPU tests were run through their corresponding Gradle tasks.
+Compilation and expensive test runs used bounded workers and sequential launches.
+The final build, flat and block-feature suites also include the concurrently
+merged configuration and material-predicate changes. The shared region limiter
+and its default of eight concurrent regions remain intact.
+
+The game checks used development loader launches, and both installable host JARs
+were built. This change was not separately retested in packaged launcher installs
+or on Vulkan/Direct3D. DH coverage here is the real protochunk/temporary-region
+compatibility harness; a third-party DH client was not launched for this change.
+Existing feature/structure approximations remain as described in the README.

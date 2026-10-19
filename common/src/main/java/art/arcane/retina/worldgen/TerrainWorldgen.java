@@ -18,6 +18,7 @@ public final class TerrainWorldgen {
     }
 
     private static void endTick(MinecraftServer server, RetinaPlatform platform) {
+        AutomaticGenerationQa.tick(server);
         TerrainQa.checkPromotion(server);
         TerrainQa.checkTimings(server);
         TerrainQa.checkStructures(server);

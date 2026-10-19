@@ -11,6 +11,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 
 mod attachment;
 mod blocks;
+mod flat_features;
 pub mod counts;
 pub mod diagnostics;
 mod distribution;
@@ -80,6 +81,10 @@ pub struct Recipe {
 #[derive(Clone, Deserialize)]
 #[serde(tag = "kind")]
 pub enum Kind {
+    #[serde(rename = "flat_lake")]
+    FlatLake { #[serde(flatten)] lake: flat_features::Lake },
+    #[serde(rename = "void_platform")]
+    VoidPlatform { platform: [u16; 2] },
     #[serde(rename = "disk")]
     Disk {
         #[serde(flatten)]
@@ -175,6 +180,8 @@ impl Recipe {
         }
         let valid = |id: u16| (id as usize) < material_count;
         let okay = match &self.feature {
+            Kind::FlatLake { lake } => self.placement.is_some() && lake.validate(material_count),
+            Kind::VoidPlatform { platform } => self.placement.is_some() && platform.iter().all(|&id| valid(id)),
             Kind::Disk { disk } => self.placement.is_some() && disk.validate(material_count),
             Kind::Sequence { features } | Kind::Overlay { features } => {
                 self.placement.is_some()
@@ -1394,7 +1401,9 @@ pub(crate) fn feature_sample(
         .ok_or("invalid registered feature")?;
     if !matches!(
         recipe.feature,
-        Kind::Disk { .. }
+        Kind::FlatLake { .. }
+            | Kind::VoidPlatform { .. }
+            | Kind::Disk { .. }
             | Kind::Sequence { .. }
             | Kind::Overlay { .. }
             | Kind::BlockColumn { .. }
@@ -1869,6 +1878,10 @@ pub fn assemble_carved(
         }
         return;
     };
+    if let Some(flat) = &p.flat {
+        flat.assemble(blocks);
+        return;
+    }
     if let Some(mask) = mask.filter(|m| m.material_run_count().is_some()) {
         let runs: [&[u32]; COLUMNS] = std::array::from_fn(|i| {
             mask.material_runs(
@@ -2248,6 +2261,7 @@ mod tests {
     #[test]
     fn giant_jungle_crowns_close_above_the_trunk_without_four_interior_holes() {
         let profile = WorldProfile {
+            flat: None,
             lighting: None,
             simple_current_states: vec![],
             program_execution: crate::specialize::Execution::default(),

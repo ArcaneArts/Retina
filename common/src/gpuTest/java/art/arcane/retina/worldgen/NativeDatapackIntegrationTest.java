@@ -50,6 +50,18 @@ public final class NativeDatapackIntegrationTest {
             var dimensions = RegistryDataLoader.load(resources, context, RegistryDataLoader.DIMENSION_REGISTRIES, Runnable::run).join();
             var packs = dimensions.lookupOrThrow(Registries.LEVEL_STEM);
             var original = packs.getValueOrThrow(LevelStem.OVERWORLD);
+            // The default path adapts the effective pack definition directly, retaining its saved form.
+            var originalOps = world.createSerializationContext(JsonOps.INSTANCE);
+            var originalJson = ChunkGenerator.CODEC.encodeStart(originalOps, original.generator()).getOrThrow();
+            var automatic = (RetinaChunkGenerator) RetinaGenerators.adapt(net.minecraft.world.level.Level.OVERWORLD, original, original.generator());
+            try {
+                automatic.bindWorld(world, 123456789L, net.minecraft.world.level.chunk.PalettedContainerFactory.create(world));
+                require(new HashSet<>(automatic.profile().biomes()).equals(original.generator().getBiomeSource().possibleBiomes()), "automatic datapack source pool remains exact");
+                require(ChunkGenerator.CODEC.encodeStart(originalOps, original.generator()).getOrThrow().equals(originalJson), "automatic datapack profile preserves saved source");
+                automatic.biomeAt(0, 0);
+                checkMca(automatic, automatic.profile(), false);
+                System.out.println("QA_EVT {\"event\":\"automatic_datapack_generation\",\"status\":\"pass\"}");
+            } finally { automatic.closePreviews(); }
             var biome = world.lookupOrThrow(Registries.BIOME).getOrThrow(Biomes.PLAINS);
             for (String mode : List.of("mca", "chunk")) {
                 var chosen = new RetinaChunkGenerator(new RetinaBiomeSource(List.of(biome), 256, .55F), -64, 384, 64, 48, .008F, mode, Optional.empty(), true);

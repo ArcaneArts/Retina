@@ -175,7 +175,7 @@ public final class NativeBlockFeatureIntegrationTest {
             export.invoke(exporter,placed,pc.newInstance(),1.0,"test:disk-composite"+features.size(),selected,0);
             require(selected.size()==1,"disk/composite recipe exports: "+input);features.add(feature);
         }
-        DecorationProfile.finishPlacements(recipes,palette);DecorationProfile.materialFlags(profile,palette);
+        DecorationProfile.finishPlacements(recipes,palette,-64,384);DecorationProfile.materialFlags(profile,palette);
         var materials=palette.keySet().toArray(BlockState[]::new);var serialized=new JsonArray();for(var state:materials)serialized.add(BlockState.CODEC.encodeStart(JsonOps.INSTANCE,state).getOrThrow());profile.add("materials",serialized);
         profile.add("lighting",LightingProfile.export(palette.keySet(),profile.getAsJsonObject("lighting").get("sky").getAsBoolean()));
         var carveable=new JsonArray();for(var state:materials)carveable.add(!state.isAir() && state.getFluidState().isEmpty() && !state.is(BlockTags.UNCARVABLE));profile.add("carveable",carveable);
@@ -243,7 +243,7 @@ public final class NativeBlockFeatureIntegrationTest {
         }
         var flowing=Blocks.WATER.defaultBlockState().setValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.LEVEL,5);
         palette.computeIfAbsent(flowing,ignored->palette.size());
-        DecorationProfile.finishPlacements(recipes,palette);DecorationProfile.materialFlags(profile,palette);
+        DecorationProfile.finishPlacements(recipes,palette,-64,384);DecorationProfile.materialFlags(profile,palette);
         var materials=palette.keySet().toArray(BlockState[]::new);var serialized=new JsonArray();for(var state:materials)serialized.add(BlockState.CODEC.encodeStart(JsonOps.INSTANCE,state).getOrThrow());profile.add("materials",serialized);
         profile.add("lighting",LightingProfile.export(palette.keySet(),profile.getAsJsonObject("lighting").get("sky").getAsBoolean()));
         var carveable=new JsonArray();for(var state:materials)carveable.add(!state.isAir() && state.getFluidState().isEmpty() && !state.is(BlockTags.UNCARVABLE));profile.add("carveable",carveable);
@@ -424,7 +424,7 @@ public final class NativeBlockFeatureIntegrationTest {
         for(var input:copyInputs)palette.computeIfAbsent(input,ignored->palette.size());
         var pending=new JsonObject();pending.add("decorations",synthetic);
         DecorationProfile.reserveCurrentSurvival(pending,palette);
-        DecorationProfile.finishPlacements(synthetic,palette);
+        DecorationProfile.finishPlacements(synthetic,palette,-64,384);
         DecorationProfile.finishCurrentSurvival(pending,palette);
         profile.add("simple_current_states",pending.get("simple_current_states"));
         profile.add("simple_current_omissions",pending.get("simple_current_omissions"));
@@ -679,7 +679,7 @@ public final class NativeBlockFeatureIntegrationTest {
         for(var modifiers:raw.values()) {
             var recipe=JsonParser.parseString("{\"source\":\"test:placement\",\"salt\":0,\"density\":1,\"low_density\":1,\"noise_count\":false,\"rarity\":1,\"tries\":1,\"spread\":[0,0,0],\"kind\":\"plant\",\"states\":[{\"lower\":0,\"upper\":0,\"weight\":1,\"band\":0,\"dry\":false}]}").getAsJsonObject();
             var program=new JsonArray();for(var m:modifiers)program.add(net.minecraft.world.level.levelgen.placement.PlacementModifier.CODEC.encodeStart(ops,m).getOrThrow());recipe.add("placement",program);
-            var singleton=new JsonArray();singleton.add(recipe);DecorationProfile.finishPlacements(singleton,palette);
+            var singleton=new JsonArray();singleton.add(recipe);DecorationProfile.finishPlacements(singleton,palette,-64,384);
             int index=profile.getAsJsonArray("decorations").size();profile.getAsJsonArray("decorations").add(recipe);result.add(new PlacementCase(index,modifiers));
         }
         return result;
@@ -895,6 +895,7 @@ public final class NativeBlockFeatureIntegrationTest {
                 gpu.getAsJsonArray("programs").set(2,JsonParser.parseString("{\"nodes\":[{\"op\":3,\"a\":0,\"b\":0,\"c\":0,\"p\":[-18,-17,1,-1]}],\"roots\":[0]}"));
                 gpu.add("terrain_cell",JsonParser.parseString("[1,1]"));json.add("registry_program",gpu);
             }
+            DecorationProfile.bindBounds(json, -64, -64 + height);
             int id=NativeTerrain.instance().registerProfile(json.toString());
             request=new TerrainRequest(123456789L,-2,-2,-64,height,base,rugged?14:0,rugged?.15f:.008f,id);
             originHeight=boundaryWall?319:cavern?caveOrigin:NativeTerrain.instance().sampleHeights(request)[255];
@@ -974,7 +975,7 @@ public final class NativeBlockFeatureIntegrationTest {
         }
     }
     /** Controlled SplitMix stream, using Retina's integer and floating draws. */
-    private static final class Stream extends LegacyRandomSource {
+    static final class Stream extends LegacyRandomSource {
         long state;final boolean floatingWeights;
         Stream(long seed,boolean floatingWeights){super(0);state=seed;this.floatingWeights=floatingWeights;}
         @Override public long nextLong(){long x=state+=0x9e3779b97f4a7c15L;x=(x^(x>>>30))*0xbf58476d1ce4e5b9L;x=(x^(x>>>27))*0x94d049bb133111ebL;return x^(x>>>31);}

@@ -26,17 +26,22 @@ final class GeologyProfile {
     private record Pending(AbstractOreFeature feature, JsonObject recipe) { }
     static void export(HolderLookup.Provider registry, List<Holder<Biome>> biomes, JsonArray profiles,
                        LinkedHashMap<BlockState, Integer> palette, JsonObject world, int minY, int height, int sea) {
+        export(registry, biomes, profiles, palette, world, minY, height, sea, b -> b.value().getGenerationSettings());
+    }
+    static void export(HolderLookup.Provider registry, List<Holder<Biome>> biomes, JsonArray profiles,
+                       LinkedHashMap<BlockState, Integer> palette, JsonObject world, int minY, int height, int sea,
+            java.util.function.Function<Holder<Biome>, net.minecraft.world.level.biome.BiomeGenerationSettings> generation) {
         var recipes = new JsonArray();
         var pending = new ArrayList<Pending>();
         var ids = new LinkedHashMap<String, Integer>();
         var omitted = new TreeSet<String>();
         var gpuSediments = new HashSet<String>();
-        for (var id : world.getAsJsonObject("registry_program").getAsJsonArray("shore_features")) gpuSediments.add(id.getAsString());
+        if (world.has("registry_program")) for (var id : world.getAsJsonObject("registry_program").getAsJsonArray("shore_features")) gpuSediments.add(id.getAsString());
         var ops = registry.createSerializationContext(JsonOps.INSTANCE);
         for (int i = 0; i < biomes.size(); i++) {
             var oreIds = new JsonArray();
             // Sediment/stone replacement features can appear outside UNDERGROUND_ORES.
-            for (var step : biomes.get(i).value().getGenerationSettings().features()) for (var holder : step) {
+            for (var step : generation.apply(biomes.get(i)).features()) for (var holder : step) {
                 var placed = holder.value();
                 if (!(placed.feature().value() instanceof AbstractOreFeature ore)) continue;
                 String id = holder.unwrapKey().map(k -> k.identifier().toString()).orElse("inline/" + placed.hashCode());
@@ -84,7 +89,7 @@ final class GeologyProfile {
             }
             profiles.get(i).getAsJsonObject().add("ores", oreIds);
             var carvers = new JsonArray();
-            for (var holder : biomes.get(i).value().getGenerationSettings().getCarvers()) {
+            for (var holder : generation.apply(biomes.get(i)).getCarvers()) {
                 var c = new JsonObject();
                 c.addProperty("id", holder.unwrapKey().map(k -> k.identifier().toString()).orElse("inline"));
                 if (holder.value() instanceof CaveWorldCarver cave) {
@@ -121,7 +126,7 @@ final class GeologyProfile {
         world.addProperty("lava_level", Math.min(-54, sea));
         world.addProperty("geology_min_y", minY); world.addProperty("geology_height", height);
         var caveNoises = new JsonArray();
-        for (String id : List.of("cave_cheese", "spaghetti_3d_1", "spaghetti_3d_2", "cave_layer", "spaghetti_roughness", "pillar")) {
+        for (String id : world.has("flat") ? List.<String>of() : List.of("cave_cheese", "spaghetti_3d_1", "spaghetti_3d_2", "cave_layer", "spaghetti_roughness", "pillar")) {
             var noise = registry.lookupOrThrow(Registries.NOISE).getOrThrow(ResourceKey.create(Registries.NOISE, Identifier.withDefaultNamespace(id))).value();
             var data = NormalNoise.DIRECT_CODEC.encodeStart(JsonOps.INSTANCE, noise).getOrThrow().getAsJsonObject();
             var n = new JsonObject(); n.addProperty("frequency", Math.scalb(1.0, data.get("base_octave").getAsInt()));
@@ -197,6 +202,9 @@ final class GeologyProfile {
             result.addProperty("min", anchor(data.get("min_inclusive"), min, height, sea));
             result.addProperty("max", anchor(data.get("max_inclusive"), min, height, sea));
         } else throw new IllegalArgumentException("Unsupported geology height distribution: " + data);
+        // UniformHeight/TrapezoidHeight return the resolved minimum for an empty range.
+        // This occurs naturally when a source's above-bottom/below-top anchors meet a short dimension.
+        if (result.get("min").getAsInt() > result.get("max").getAsInt()) result.add("max", result.get("min"));
         result.addProperty("triangle", kind.equals("trapezoid"));
         result.addProperty("plateau", data.has("plateau") ? data.get("plateau").getAsInt() : 0);
         return result;

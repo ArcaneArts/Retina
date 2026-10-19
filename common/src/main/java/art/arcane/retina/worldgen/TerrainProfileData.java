@@ -46,12 +46,13 @@ public record TerrainProfileData(int seaLevel, BlockState[] materials, List<Hold
             boolean densityComposition, boolean skyLight) {
         source.includeRegisteredBiomes(registry);
         source.underground(List.of());
-        source.underground(List.of(Biomes.LUSH_CAVES, Biomes.DRIPSTONE_CAVES, Biomes.DEEP_DARK).stream()
+        if (!source.sourceBiomesOnly()) source.underground(List.of(Biomes.LUSH_CAVES, Biomes.DRIPSTONE_CAVES, Biomes.DEEP_DARK).stream()
                 .map(key -> (Holder<Biome>) registry.lookupOrThrow(Registries.BIOME).getOrThrow(key))
                 .filter(b -> !source.nativeBiomes().contains(b)).limit(Math.max(0, 65535 - source.nativeBiomes().size())).toList());
         var nativeBiomes = source.nativeBiomes();
         int sea = settings.seaLevel();
-        if (sea < minY || sea > minY + height) throw new IllegalArgumentException("Registry sea level is outside Retina's generation bounds");
+        // Minecraft permits a sea level outside a dimension's vertical slice.
+        // Preserve it; generation and queries clip blocks to the effective dimension bounds.
         var materials = new LinkedHashMap<BlockState, Integer>();
         var profile = new JsonObject();
         profile.addProperty("ore_layout", 2);
@@ -140,7 +141,7 @@ public record TerrainProfileData(int seaLevel, BlockState[] materials, List<Hold
         profile.add("structures",StructureProfile.export(registry,nativeBiomes,materials,structures));
         GeologyProfile.export(registry, nativeBiomes, biomes, materials, profile, minY, height, sea);
         TerrainFeatureProfile.finishReplacementTables(biomes, materials);
-        DecorationProfile.finishPlacements(profile.getAsJsonArray("decorations"), materials);
+        DecorationProfile.finishPlacements(profile.getAsJsonArray("decorations"), materials, minY, height);
         DecorationProfile.finishCurrentSurvival(profile,materials);
         DecorationProfile.materialFlags(profile, materials);
         profile.add("lighting", LightingProfile.export(materials.keySet(), skyLight));

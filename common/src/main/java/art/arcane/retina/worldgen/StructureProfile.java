@@ -26,7 +26,12 @@ import java.util.function.Function;
 
 /** One startup export; Rust owns candidate selection, jigsaw assembly and block placement. */
 final class StructureProfile {
-    record Context(Function<Identifier,Optional<CompoundTag>> templates, boolean enabled) {
+    record Context(Function<Identifier,Optional<CompoundTag>> templates, boolean enabled, Optional<Set<Identifier>> allowedSets) {
+        Context(Function<Identifier,Optional<CompoundTag>> templates, boolean enabled) { this(templates, enabled, Optional.empty()); }
+        Context restrict(Optional<HolderSet<StructureSet>> sets) {
+            return new Context(templates, enabled, sets.map(values -> values.stream()
+                    .map(h -> h.unwrapKey().orElseThrow().identifier()).collect(java.util.stream.Collectors.toUnmodifiableSet())));
+        }
         static final Context NONE=new Context(id->Optional.empty(),false);
         static Context of(StructureTemplateManager manager,boolean enabled) {
             return new Context(id->manager.get(id).map(t->t.save(new CompoundTag())),enabled);
@@ -85,6 +90,7 @@ final class StructureProfile {
             definitionIds.put(name,definitions.size());definitions.add(d);
         }
         for(var holder:registry.lookupOrThrow(Registries.STRUCTURE_SET).listElements().toList()) {
+            if(context.allowedSets.isPresent() && !context.allowedSets.get().contains(holder.key().identifier()))continue;
             var set=holder.value();var placement=net.minecraft.world.level.levelgen.structure.placement.StructurePlacement.CODEC.encodeStart(ops,set.placement()).getOrThrow().getAsJsonObject();
             if(!placement.get("type").getAsString().equals("minecraft:random_spread")) {omitted.add("placement:"+holder.key().identifier());continue;}
             var entries=new JsonArray();

@@ -57,6 +57,8 @@ pub struct ClimateTarget {
 #[derive(Clone, Deserialize)]
 pub struct WorldProfile {
     #[serde(default)]
+    pub flat: Option<crate::flat::Profile>,
+    #[serde(default)]
     pub structures: crate::structures::Profile,
     #[serde(default)]
     pub registry_program: Option<crate::program::RegistryProgram>,
@@ -127,6 +129,10 @@ impl WorldProfile {
     pub fn parse(json: &[u8]) -> Result<Self, String> {
         let mut profile: Self =
             serde_json::from_slice(json).map_err(|e| format!("world profile: {e}"))?;
+        if let Some(flat) = &profile.flat {
+            flat.validate(profile.materials.len())?;
+            if profile.biomes.len() != 1 || profile.registry_program.is_some() { return Err("flat profiles require one biome and no density program".into()); }
+        }
         if profile.biomes.is_empty()
             || profile.biomes.len() > 65535
             || profile.materials.len() < 2
@@ -473,6 +479,7 @@ impl Column {
         let Some(profile) = profile else {
             return if y < self.height { 1 } else { 0 };
         };
+        if let Some(flat) = &profile.flat { return flat.material(y, min_y); }
         if y < min_y + 1 + (self.packed >> 30) as i32 {
             return profile.bedrock;
         }
@@ -528,6 +535,7 @@ impl Column {
 
     pub fn surface_height(self, profile: Option<&WorldProfile>) -> i32 {
         profile.map_or(self.height, |p| {
+            if p.flat.is_some() { return self.height; }
             if self.packed & (1 << 29) != 0 {
                 self.height + ((self.packed >> 24) & 7) as i32
             } else {

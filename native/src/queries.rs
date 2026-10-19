@@ -54,6 +54,10 @@ impl TerrainEngine {
         if request.min_y.rem_euclid(4) != 0 || request.height % 4 != 0 {
             return Err("point queries require quart-aligned vertical bounds".into());
         }
+        if let Some(profile) = self.profile(request.reserved)? {
+            if let Some(flat) = &profile.flat { return Ok(vec![flat.column(request); points.len()]); }
+            if matches!(kind, Kind::Biome) && profile.biomes.len() == 1 { return Ok(vec![Column::default(); points.len()]); }
+        }
         let mut output = Vec::with_capacity(points.len());
         for points in points.chunks(BATCH) {
             let points: Vec<_> = points
