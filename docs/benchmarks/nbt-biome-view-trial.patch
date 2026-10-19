@@ -1,0 +1,425 @@
+diff --git a/native/src/region.rs b/native/src/region.rs
+index 5968271..f81a5b1 100644
+--- a/native/src/region.rs
++++ b/native/src/region.rs
+@@ -24,0 +25 @@ pub mod codec;
++mod biomes;
+@@ -799,0 +801,2 @@ struct ChunkScratch {
++    #[cfg(test)]
++    reference_biomes: bool,
+@@ -809,0 +813,2 @@ impl Default for ChunkScratch {
++            #[cfg(test)]
++            reference_biomes: false,
+@@ -847,0 +853,8 @@ fn encode_chunk(
++    #[cfg(test)]
++    let reuse_biomes = !scratch.reference_biomes;
++    #[cfg(not(test))]
++    let reuse_biomes = true;
++    let biome_view = (reuse_biomes && profile.is_some())
++        .then(|| biomes::ChunkBiomes::new(request, columns, cave_mask));
++    let mut previous_biomes: Option<[u16; 64]> = None;
++    let mut biome_bytes = 0..0;
+@@ -911,9 +924,16 @@ fn encode_chunk(
+-            nbt.compound("biomes");
+-            // GPU quart biomes use Minecraft's x,z,y order.
+-            let values: [u16; 64] = std::array::from_fn(|index| {
+-                cave_mask
+-                    .and_then(|m| {
+-                        m.biome(
+-                            request.chunk_x * 16 + (index % 4) as i32 * 4,
+-                            y + (index / 16) as i32 * 4,
+-                            request.chunk_z * 16 + ((index % 16) / 4) as i32 * 4,
++            // Identical vertical samples have identical palette order and packed data.
++            let values = if let Some(view) = &biome_view {
++                view.section(y)
++            } else {
++                std::array::from_fn(|index| {
++                    cave_mask
++                        .and_then(|m| {
++                            m.biome(
++                                request.chunk_x * 16 + (index % 4) as i32 * 4,
++                                y + (index / 16) as i32 * 4,
++                                request.chunk_z * 16 + ((index % 16) / 4) as i32 * 4,
++                            )
++                        })
++                        .unwrap_or(
++                            columns[((index % 16) / 4) as usize * 64 + (index % 4) as usize * 4].biome()
++                                as u16,
+@@ -921,13 +941,20 @@ fn encode_chunk(
+-                    })
+-                    .unwrap_or(
+-                        columns[((index % 16) / 4) as usize * 64 + (index % 4) as usize * 4].biome()
+-                            as u16,
+-                    )
+-            });
+-            biomes.build(&values, profile.biomes.len());
+-            nbt.list("palette", 8, biomes.palette.len());
+-            for id in &biomes.palette {
+-                nbt.text(&profile.biomes[*id as usize].id);
+-            }
+-            if biomes.palette.len() > 1 {
+-                nbt.packed("data", &biomes.indices, palette_bits(biomes.palette.len()));
++                })
++            };
++            if reuse_biomes && previous_biomes.as_ref() == Some(&values) {
++                nbt.0.extend_from_within(biome_bytes.clone());
++            } else {
++                let start = nbt.0.len();
++                nbt.compound("biomes");
++                biomes.build(&values, profile.biomes.len());
++                nbt.list("palette", 8, biomes.palette.len());
++                for id in &biomes.palette {
++                    nbt.text(&profile.biomes[*id as usize].id);
++                }
++                if biomes.palette.len() > 1 {
++                    nbt.packed("data", &biomes.indices, palette_bits(biomes.palette.len()));
++                }
++                nbt.end();
++                if reuse_biomes {
++                    biome_bytes = start..nbt.0.len();
++                    previous_biomes = Some(values);
++                }
+@@ -935 +961,0 @@ fn encode_chunk(
+-            nbt.end();
+@@ -1321,0 +1348,4 @@ mod palette_tests {
++
++#[cfg(test)]
++#[path = "region/biomes_tests.rs"]
++mod biomes_tests;
+diff --git a/native/src/region/biomes.rs b/native/src/region/biomes.rs
+new file mode 100644
+index 0000000..df2f68d
+--- /dev/null
++++ b/native/src/region/biomes.rs
+@@ -0,0 +1,104 @@
++//! Immutable quart-biome addressing prepared once for an encoded chunk.
++use crate::{ChunkRequest, geology::CaveMask, profile::Column};
++
++pub(super) struct ChunkBiomes<'a> {
++    mask: Option<&'a CaveMask>,
++    x: i32,
++    z: i32,
++    surface: [u16; 16],
++    packed: Option<Packed<'a>>,
++}
++
++struct Packed<'a> {
++    words: &'a [u32],
++    offset: usize,
++    width: usize,
++    row: usize,
++    min_y: i64,
++    layers: usize,
++}
++
++impl<'a> ChunkBiomes<'a> {
++    pub fn new(request: ChunkRequest, columns: &[Column], mask: Option<&'a CaveMask>) -> Self {
++        let x = request.chunk_x * 16;
++        let z = request.chunk_z * 16;
++        let surface = std::array::from_fn(|i| columns[i / 4 * 64 + i % 4 * 4].biome() as u16);
++        let packed = mask.and_then(|mask| {
++            let side = mask.width + 30;
++            let width = side / 4;
++            let dx = i64::from(x) - (i64::from(mask.origin_x) - 15);
++            let dz = i64::from(z) - (i64::from(mask.origin_z) - 15);
++            if dx < 0
++                || dz < 0
++                || dx + 12 >= side as i64
++                || dz + 12 >= side as i64
++                || dx / 4 + 3 >= width as i64
++                || dz / 4 + 3 >= width as i64
++            {
++                return None;
++            }
++            let min_y = i64::from(mask.min_y.div_euclid(4)) * 4;
++            Some(Packed {
++                words: &mask.words,
++                offset: (mask.width * mask.width * mask.height as usize).div_ceil(32)
++                    + (side * side).div_ceil(32),
++                width,
++                row: dz as usize / 4 * width + dx as usize / 4,
++                min_y,
++                layers: ((i64::from(mask.min_y) + i64::from(mask.height) - min_y + 3) / 4) as usize,
++            })
++        });
++        Self {
++            mask,
++            x,
++            z,
++            surface,
++            packed,
++        }
++    }
++
++    pub fn section(&self, y: i32) -> [u16; 64] {
++        if let Some(packed) = &self.packed {
++            let dy = i64::from(y) - packed.min_y;
++            if dy >= 0 && dy as usize / 4 + 3 < packed.layers {
++                let plane = packed.width * packed.width;
++                let start = dy as usize / 4 * plane + packed.row;
++                let mut values = [0; 64];
++                for layer in 0..4 {
++                    for row in 0..4 {
++                        let index = start + layer * plane + row * packed.width;
++                        let words = &packed.words[packed.offset + index / 2..];
++                        let out = &mut values[layer * 16 + row * 4..][..4];
++                        if index & 1 == 0 {
++                            out.copy_from_slice(&[
++                                words[0] as u16,
++                                (words[0] >> 16) as u16,
++                                words[1] as u16,
++                                (words[1] >> 16) as u16,
++                            ]);
++                        } else {
++                            out.copy_from_slice(&[
++                                (words[0] >> 16) as u16,
++                                words[1] as u16,
++                                (words[1] >> 16) as u16,
++                                words[2] as u16,
++                            ]);
++                        }
++                    }
++                }
++                return values;
++            }
++        }
++        std::array::from_fn(|i| {
++            self.mask
++                .and_then(|mask| {
++                    mask.biome(
++                        self.x + (i % 4) as i32 * 4,
++                        y + (i / 16) as i32 * 4,
++                        self.z + (i / 4 % 4) as i32 * 4,
++                    )
++                })
++                .unwrap_or(self.surface[i % 16])
++        })
++    }
++}
+diff --git a/native/src/region/biomes_tests.rs b/native/src/region/biomes_tests.rs
+new file mode 100644
+index 0000000..7bcdbed
+--- /dev/null
++++ b/native/src/region/biomes_tests.rs
+@@ -0,0 +1,221 @@
++use super::*;
++use crate::geology::CaveMask;
++use std::hint::black_box;
++
++fn mask(
++    request: ChunkRequest,
++    width: usize,
++    dx: i32,
++    dz: i32,
++    min_y: i32,
++    height: u32,
++    repeat: bool,
++) -> CaveMask {
++    let surface = width + 30;
++    let q = surface / 4;
++    let layers = ((min_y + height as i32 - min_y.div_euclid(4) * 4 + 3) / 4) as usize;
++    let offset = (width * width * height as usize).div_ceil(32) + (surface * surface).div_ceil(32);
++    // Extra final row lets deliberately non-quart-aligned masks exercise the scalar mapping too.
++    let count = (layers + 1) * q * q;
++    let mut words = vec![0; offset + count.div_ceil(2)];
++    for i in 0..count {
++        let x = i % q;
++        let z = i / q % q;
++        let y = if repeat { 0 } else { i / (q * q) / 4 };
++        let id = ((x * 13 + z * 17 + y * 23) % 3) as u32;
++        words[offset + i / 2] |= id << ((i % 2) * 16);
++    }
++    CaveMask {
++        origin_x: request.chunk_x * 16 + dx,
++        origin_z: request.chunk_z * 16 + dz,
++        min_y,
++        height,
++        width,
++        air_only: true,
++        words,
++        columns: None,
++    }
++}
++
++fn request(x: i32, z: i32) -> ChunkRequest {
++    ChunkRequest {
++        seed: 42,
++        chunk_x: x,
++        chunk_z: z,
++        min_y: -64,
++        height: 96,
++        base_height: 0.,
++        amplitude: 0.,
++        frequency: 0.008,
++        reserved: 0,
++    }
++}
++
++fn columns() -> Vec<Column> {
++    (0..256)
++        .map(|i| Column {
++            height: -24,
++            packed: ((i / 16 + i % 16) % 3) as u32,
++            materials: 1 | (1 << 16),
++        })
++        .collect()
++}
++
++fn scalar(request: ChunkRequest, columns: &[Column], mask: Option<&CaveMask>, y: i32) -> [u16; 64] {
++    std::array::from_fn(|i| {
++        mask.and_then(|m| {
++            m.biome(
++                request.chunk_x * 16 + (i % 4) as i32 * 4,
++                y + (i / 16) as i32 * 4,
++                request.chunk_z * 16 + (i / 4 % 4) as i32 * 4,
++            )
++        })
++        .unwrap_or(columns[i / 4 % 4 * 64 + i % 4 * 4].biome() as u16)
++    })
++}
++
++#[test]
++fn prepared_chunk_biomes_match_scalar_partial_packed_and_distant_samples() {
++    let columns = columns();
++    for request in [request(-2, 3), request(-1_875_000, 1_874_999)] {
++        for width in [18, 30, 34, 35] {
++            for min_y in [-65, -64, -61, 1, 2, 3] {
++                for dx in [-15, -11, -5, 0, 1, 19, 31] {
++                    for dz in [-15, -11, -5, 0, 1, 19, 31] {
++                        let mask = mask(request, width, dx, dz, min_y, 47, false);
++                        let view = biomes::ChunkBiomes::new(request, &columns, Some(&mask));
++                        for dy in [-17, -5, -1, 0, 1, 4, 12, 32, 35, 36, 40, 47, 48] {
++                            let y = min_y + dy;
++                            assert_eq!(
++                                view.section(y),
++                                scalar(request, &columns, Some(&mask), y),
++                                "width={width} min_y={min_y} dx={dx} dz={dz} y={y}"
++                            );
++                        }
++                    }
++                }
++            }
++        }
++        let view = biomes::ChunkBiomes::new(request, &columns, None);
++        assert_eq!(view.section(-64), scalar(request, &columns, None, -64));
++    }
++}
++
++fn profile() -> WorldProfile {
++    let mut profile: WorldProfile = serde_json::from_value(serde_json::json!({
++        "biome_scale":256,"blend":0.55,"sea_level":32,"stone":1,"water":3,
++        "bedrock":1,"deepslate":1,"snow":0,"ice":3,
++        "materials":["minecraft:air","minecraft:stone",{"id":"minecraft:oak_leaves","properties":{"persistent":"true"}},"minecraft:water"],
++        "biomes":(0..3).map(|i| serde_json::json!({"id":format!("test:biome_{i}"),"climate":[0,0,0,0],"terrain":[0,1,1],"top":1,"filler":1,"underwater":1,"flags":0})).collect::<Vec<_>>(),
++        "noises":[],"material_flags":[0,1,1,0],"heightmap_masks":[0,63,31,51]
++    })).unwrap();
++    profile.material_nbt = profile.materials.iter().map(material_nbt).collect();
++    profile
++}
++
++fn blocks(request: ChunkRequest) -> Vec<u16> {
++    (0..request.block_count())
++        .map(|i| match i / 4096 % 4 {
++            0 => 1,
++            1 => (i % 4) as u16,
++            2 => 0,
++            _ => u16::from(i % 13 == 0) * 2,
++        })
++        .collect()
++}
++
++#[test]
++fn biome_metadata_reuse_preserves_complete_nbt_and_resets_between_chunks() {
++    let request = request(-2, 3);
++    let columns = columns();
++    let mut profile = profile();
++    let mut blocks = blocks(request);
++    let mut reference = ChunkScratch {
++        reference_biomes: true,
++        ..Default::default()
++    };
++    let mut candidate = ChunkScratch::default();
++    for (min_y, height) in [(-64, 96), (-61, 47)] {
++        for repeat in [true, false] {
++            let mask = mask(request, 34, -1, -1, min_y, height, repeat);
++            for iteration in 0..4 {
++                // Same numeric palette IDs with different names must never reuse an old chunk's bytes.
++                profile.biomes[0].id = format!("test:renamed_{iteration}");
++                if iteration == 2 {
++                    blocks.fill(3);
++                }
++                for coverage in [Some(&mask), None] {
++                    for scratch in [&mut reference, &mut candidate] {
++                        encode_chunk(
++                            request,
++                            &columns,
++                            &blocks,
++                            123,
++                            "test:biome_0",
++                            Some(&profile),
++                            coverage,
++                            None,
++                            None,
++                            scratch,
++                        );
++                    }
++                    assert_eq!(
++                        candidate.nbt.0,
++                        reference.nbt.0,
++                        "iteration={iteration} repeat={repeat} min_y={min_y} mask={}",
++                        coverage.is_some()
++                    );
++                }
++            }
++        }
++    }
++}
++
++#[test]
++#[ignore = "bounded CPU NBT comparison; run with 30-second process-group deadline"]
++fn biome_metadata_encoding_comparison() {
++    let request = request(-2, 3);
++    let columns = columns();
++    let profile = profile();
++    let blocks = blocks(request);
++    for repeat in [true, false] {
++        let mask = mask(request, 34, -1, -1, -64, 96, repeat);
++        let mut scratch = [
++            ChunkScratch {
++                reference_biomes: true,
++                ..Default::default()
++            },
++            ChunkScratch::default(),
++        ];
++        let mut times = [Vec::new(), Vec::new()];
++        for pair in 0..12 {
++            for step in 0..2 {
++                let variant = (pair + step) % 2;
++                let start = Instant::now();
++                for _ in 0..1024 {
++                    encode_chunk(
++                        request,
++                        black_box(&columns),
++                        black_box(&blocks),
++                        123,
++                        "test:biome_0",
++                        Some(&profile),
++                        Some(&mask),
++                        None,
++                        None,
++                        &mut scratch[variant],
++                    );
++                    black_box(&scratch[variant].nbt.0);
++                }
++                if pair >= 2 {
++                    times[variant].push(start.elapsed().as_secs_f64() * 1000.);
++                }
++            }
++            assert_eq!(scratch[0].nbt.0, scratch[1].nbt.0);
++        }
++        println!(
++            "{}",
++            serde_json::json!({"scope":"1024 synthetic height-96 unlit chunk encodes", "repeated_sections":repeat, "reference_ms":times[0],"candidate_ms":times[1],"exact":true})
++        );
++    }
++}
