@@ -1,5 +1,5 @@
 // Minecraft light values: block low nibble, sky high nibble. Four voxels per word.
-// Flags select sky (bit 0), sparse propagation (bit 1), section nibble output (bit 2).
+// Flags: sky (0), sparse propagation (1), section output (2), section materials (3).
 struct Params { side: u32, height: u32, chunks: u32, crop: u32,
     core: u32, flags: u32, face_stride: u32, words: u32 }
 struct State { traits: u32, faces: array<u32, 6>, padding: u32 }
@@ -20,12 +20,24 @@ fn brick_index(x: u32, y: u32, z: u32) -> u32 {
     return (y * side + z) * side + x;
 }
 
+// Reconstruct the exact pair of registered material IDs without an extra pass,
+// dense device allocation or CPU count/readback synchronization.
+fn material_word(index: u32) -> u32 {
+    if (p.flags & 8u) == 0u { return blocks[index]; }
+    let descriptor = blocks[index / 2048u];
+    if (descriptor & 0x80000000u) != 0u {
+        let material = descriptor & 65535u;
+        return material | (material << 16u);
+    }
+    return blocks[descriptor + index % 2048u];
+}
+
 fn material(x: u32, y: u32, z: u32) -> u32 {
     // Light-only sections are virtual air; only final terrain is uploaded.
     if y < 16u || y >= p.height - 16u { return 0u; }
     let i = ((z / 16u) * p.chunks + x / 16u) * (p.height - 32u) * 256u
         + (y - 16u) * 256u + (z % 16u) * 16u + x % 16u;
-    return (blocks[i / 2u] >> ((i % 2u) * 16u)) & 65535u;
+    return (material_word(i / 2u) >> ((i % 2u) * 16u)) & 65535u;
 }
 fn occludes(from_material: u32, to_material: u32, direction: u32) -> bool {
     let a = states[from_material].faces[direction];
@@ -54,7 +66,7 @@ fn initialize(@builtin(global_invocation_id) id: vec3<u32>) {
         var materials = vec2<u32>(0u);
         if y >= 16u && y < p.height - 16u {
             let row = block_column + (y - 16u) * 128u;
-            materials = vec2<u32>(blocks[row], blocks[row + 1u]);
+            materials = vec2<u32>(material_word(row), material_word(row + 1u));
         }
         var word = 0u;
         for (var lane = 0u; lane < 4u; lane++) {

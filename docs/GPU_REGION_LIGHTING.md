@@ -25,8 +25,10 @@ bitset comes from Minecraft's own `LightEngine` and `Shapes` helpers. These load
 properties include modded/datapack-used blocks in the palette. Sky light follows
 the actual dimension's `hasSkyLight` flag.
 
-Metadata stays resident per native profile. The lighting pass transfers final
-16-bit material IDs and returns one byte per voxel of light data. Region output
+Metadata stays resident per native profile. On Metal, [compact material input](COMPACT_LIGHT_INPUT.md)
+uses descriptors for uniform final sections and exact 16-bit IDs for mixed ones.
+Other backends retain dense material input by default. The lighting pass returns
+one byte per voxel of light data. Region output
 contains section-ordered Minecraft nibble arrays; diagnostic volumes keep their
 interleaved block/sky bytes. Noise data is not read back for CPU lighting.
 
@@ -91,10 +93,11 @@ waiting for the shared lighting mutex. These rows use the existing rolling regio
 average. The Java/native timing ABI is version 8 with 33 stages.
 
 Lighting needs the region's final blocks available together. At a 384-block world
-height, retaining those blocks uses about 192 MiB and retained interior light
-results use about 91 MiB, in addition to existing generation fields and reusable
-GPU tile buffers. Lighting submissions share the existing wgpu device/queue and
-serialize through their own mutex; parallel Rust chunk assembly remains enabled.
+height, retaining those blocks uses about 192 MiB. Interior light is streamed by
+tile rather than retaining the entire 91 MiB result; each standard tile is about
+10.2 MiB. Existing generation fields and reusable GPU tile buffers are additional.
+Lighting submissions share the existing wgpu device/queue; only submission and
+recycling hold their mutex, while waits and Rust encoding can overlap.
 
 Rust reuses the unpadded tile input allocation throughout a region and retains the
 profile bind groups, timestamp query set and fixed-size timestamp resolve/readback
@@ -248,8 +251,8 @@ For a fresh dedicated Retina world, `runServer -PretinaQa -PretinaTimingsQa
 Lighting now keeps at most two tile submissions in flight per region. Each owns
 its readback buffer, mapping guards, and timestamp resources; compute scratch and
 pipelines remain shared on the ordered GPU queue. The cache retains at most two
-idle readback slots. The existing Java two-region generation limit is unchanged,
-so normal generation has at most four active lighting readbacks across regions.
+idle readback slots. The Java admission limit is now eight regions, so at most sixteen lighting
+readbacks can be outstanding across admitted regions.
 No new CPU workers or extra terrain chunks are introduced.
 
 Only submission and recycling hold the lighting mutex. GPU waits, CPU input

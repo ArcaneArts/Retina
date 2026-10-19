@@ -1,4 +1,5 @@
 //! Final-block GPU lighting. The outer MCA ring is input only, never marked lit.
+mod transport;
 use serde::Deserialize;
 use std::{
     collections::{HashMap, VecDeque},
@@ -37,6 +38,7 @@ pub(crate) struct Gpu {
     profiles: HashMap<u32, (wgpu::Buffer, wgpu::Buffer)>,
     bind_groups: HashMap<u32, (wgpu::BindGroup, wgpu::BindGroup)>,
     buffers: Option<Buffers>,
+    compact_input: bool,
 }
 struct Pipelines {
     layout: wgpu::BindGroupLayout,
@@ -129,7 +131,7 @@ pub(crate) struct ResultLight {
     pub upload: u64,
 }
 impl Gpu {
-    pub(crate) fn new(device: wgpu::Device, queue: wgpu::Queue) -> Self {
+    pub(crate) fn new(device: wgpu::Device, queue: wgpu::Queue, backend: &str) -> Self {
         Self {
             device,
             queue,
@@ -138,6 +140,11 @@ impl Gpu {
             profiles: HashMap::new(),
             bind_groups: HashMap::new(),
             buffers: None,
+            compact_input: match std::env::var("RETINA_LIGHTING_INPUT").as_deref() {
+                Ok("dense") => false,
+                Ok("compact") => true,
+                _ => backend.starts_with("Metal:"),
+            },
         }
     }
     fn prepare(&mut self) {
@@ -272,6 +279,53 @@ impl Gpu {
         {
             return Err("invalid GPU lighting volume".into());
         }
+        if self.compact_input && height % 16 == 0 {
+            let descriptors = transport::classify(blocks);
+            let mut words = Vec::new();
+            transport::pack(
+                &mut words,
+                blocks
+                    .chunks_exact(height as usize * 256)
+                    .zip(descriptors.chunks_exact(height as usize / 16)),
+                height,
+            );
+            self.submit_payload(
+                handle,
+                profile,
+                chunks,
+                height,
+                crop,
+                core,
+                bytemuck::cast_slice(&words),
+                true,
+                format,
+            )
+        } else {
+            self.submit_payload(
+                handle,
+                profile,
+                chunks,
+                height,
+                crop,
+                core,
+                bytemuck::cast_slice(blocks),
+                false,
+                format,
+            )
+        }
+    }
+    fn submit_payload(
+        &mut self,
+        handle: u32,
+        profile: &Profile,
+        chunks: u32,
+        height: u32,
+        crop: u32,
+        core: u32,
+        blocks: &[u8],
+        compact: bool,
+        format: OutputFormat,
+    ) -> Result<Pending, String> {
         self.prepare();
         let mut upload = 0;
         if !self.profiles.contains_key(&handle) {
@@ -300,18 +354,39 @@ impl Gpu {
         let voxels = chunks as u64 * chunks as u64 * light_height as u64 * 256;
         let bricks = (chunks * 2).pow(2) * light_height.div_ceil(8);
         let sizes = [
-            (blocks.len() * 2) as u64,
+            blocks.len() as u64,
             voxels,
             core as u64 * core as u64 * light_height as u64 * 256,
             bricks as u64 * 4,
         ];
+        // Compact payload sizes vary between tiles. Grow only their allocation
+        // when the dimensions of the lighting frontiers are already sufficient.
+        // Geometric capacity avoids reallocating it for each denser shoreline.
+        let input_capacity = sizes[0]
+            .next_power_of_two()
+            .min(self.device.limits().max_storage_buffer_binding_size as u64)
+            .max(sizes[0]);
+        if let Some(buffers) = &mut self.buffers {
+            if buffers.capacities[0] < sizes[0] && (1..4).all(|i| buffers.capacities[i] >= sizes[i])
+            {
+                buffers.blocks = self.device.create_buffer(&wgpu::BufferDescriptor {
+                    label: Some("Retina final light blocks"),
+                    size: input_capacity,
+                    usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+                    mapped_at_creation: false,
+                });
+                buffers.capacities[0] = input_capacity;
+                self.bind_groups.clear();
+            }
+        }
         if self
             .buffers
             .as_ref()
             .is_none_or(|b| (0..4).any(|i| b.capacities[i] < sizes[i]))
         {
             let capacities = std::array::from_fn(|i| {
-                sizes[i].max(self.buffers.as_ref().map_or(4, |b| b.capacities[i]))
+                (if i == 0 { input_capacity } else { sizes[i] })
+                    .max(self.buffers.as_ref().map_or(4, |b| b.capacities[i]))
             });
             let buffer = |label, size, usage| {
                 self.device.create_buffer(&wgpu::BufferDescriptor {
@@ -408,6 +483,7 @@ impl Gpu {
             crop,
             core,
             profile.sky as u32
+                | if compact { 8 } else { 0 }
                 | if sparse { 2 } else { 0 }
                 | if matches!(format, OutputFormat::Sections) {
                     4
@@ -419,8 +495,7 @@ impl Gpu {
         ];
         self.queue
             .write_buffer(&buffers.params, 0, bytemuck::cast_slice(&params));
-        self.queue
-            .write_buffer(&buffers.blocks, 0, bytemuck::cast_slice(blocks));
+        self.queue.write_buffer(&buffers.blocks, 0, blocks);
         upload += sizes[0] + 32;
         let queries = slot.timing.as_ref().map(|t| &t.queries);
         let times = slot.timing.as_ref().map(|t| (&t.resolve, &t.readback));
@@ -578,9 +653,21 @@ pub(crate) fn region(
         .unwrap_or(1);
     let device = gpu.device.clone();
     let queue = gpu.queue.clone();
+    let compact = gpu.compact_input && request.height % 16 == 0;
     drop(gpu);
+    // Classify final sections once per region, including the input-only ring.
+    // Overlapping tiles reuse these facts instead of rescanning their halos.
+    let descriptors: Vec<_> = if compact {
+        chunks.iter().map(|b| transport::classify(b)).collect()
+    } else {
+        Vec::new()
+    };
+    let mut packed = Vec::new();
     let count = (request.height as usize + 32) * 256;
-    let mut input = Vec::with_capacity((core + 2).pow(2) * request.block_count());
+    let mut input = Vec::new();
+    if !compact {
+        input.reserve((core + 2).pow(2) * request.block_count());
+    }
     let mut tiles = (1..31)
         .step_by(core)
         .flat_map(|cz| (1..31).step_by(core).map(move |cx| (cx, cz)));
@@ -590,24 +677,38 @@ pub(crate) fn region(
         // write_buffer + submit preserve queue order, and each flight owns its readback.
         while flights.len() < 2 {
             let Some((cx, cz)) = tiles.next() else { break };
-            input.clear();
-            for z in cz - 1..cz + core + 1 {
-                for x in cx - 1..cx + core + 1 {
-                    input.extend_from_slice(&chunks[z * 32 + x]);
+            let indices: Vec<_> = (cz - 1..cz + core + 1)
+                .flat_map(|z| (cx - 1..cx + core + 1).map(move |x| z * 32 + x))
+                .collect();
+            let payload = if compact {
+                transport::pack(
+                    &mut packed,
+                    indices
+                        .iter()
+                        .map(|&i| (&chunks[i][..], &descriptors[i][..])),
+                    request.height,
+                );
+                bytemuck::cast_slice(&packed)
+            } else {
+                input.clear();
+                for i in indices {
+                    input.extend_from_slice(&chunks[i]);
                 }
-            }
+                bytemuck::cast_slice(&input)
+            };
             let pending = engine
                 .light_gpu
                 .lock()
                 .map_err(|_| "lighting GPU lock poisoned")?
-                .submit(
+                .submit_payload(
                     request.reserved,
                     profile,
                     (core + 2) as u32,
                     request.height,
                     1,
                     core as u32,
-                    &input,
+                    payload,
+                    compact,
                     OutputFormat::Sections,
                 )?;
             flights.push_back((cx, cz, pending));
@@ -695,6 +796,7 @@ mod tests {
     fn pipeline_slots_survive_growth_interleaving_and_abandonment() {
         let engine = crate::TerrainEngine::new().unwrap();
         let mut gpu = engine.light_gpu.lock().unwrap();
+        gpu.compact_input = false;
         let profiles = [fixture_profile(true), fixture_profile(false)];
         let small = fixture_blocks(3, 32, 3);
         let large = fixture_blocks(4, 64, 7);
@@ -709,14 +811,17 @@ mod tests {
         gpu.buffers = None;
         gpu.bind_groups.clear();
         gpu.readbacks.clear();
+        gpu.compact_input = true;
         let a = gpu
             .submit(1, &profiles[0], 3, 32, 1, 1, &small, OutputFormat::Sections)
             .unwrap();
+        gpu.compact_input = false;
         let b = gpu
             .submit(2, &profiles[1], 4, 64, 0, 4, &large, OutputFormat::Sections)
             .unwrap();
         assert_eq!(gpu.complete(b).unwrap().bytes, expected_b);
         assert_eq!(gpu.complete(a).unwrap().bytes, expected_a);
+        gpu.compact_input = true;
         let abandoned = gpu
             .submit(1, &profiles[0], 3, 32, 1, 1, &small, OutputFormat::Sections)
             .unwrap();
@@ -749,6 +854,7 @@ mod tests {
         let mut expected = vec![None; 1024];
         {
             let mut gpu = engine.light_gpu.lock().unwrap();
+            gpu.compact_input = false;
             for cz in (1..31).step_by(10) {
                 for cx in (1..31).step_by(10) {
                     let mut input = Vec::new();
@@ -771,6 +877,7 @@ mod tests {
             }
         }
         let job = crate::timings::Timings::default();
+        engine.light_gpu.lock().unwrap().compact_input = true;
         assert!(
             region(&engine, request, &profile, &chunks, &job, |_| Err(
                 "consumer failure".into()
@@ -797,6 +904,67 @@ mod tests {
         assert_eq!(seen.iter().filter(|&&v| v).count(), 900);
         for i in 0..1024 {
             assert_eq!(seen[i], expected[i].is_some());
+        }
+    }
+    #[test]
+    #[ignore = "bounded lossless compact-material GPU comparison"]
+    fn compact_materials_preserve_light_with_faces_padding_and_uniform_sections() {
+        let engine = crate::TerrainEngine::new().unwrap();
+        let mut gpu = engine.light_gpu.lock().unwrap();
+        for sky in [false, true] {
+            let mut profile = fixture_profile(sky);
+            profile.faces = 2;
+            profile.blocked = vec![2, 1];
+            profile.states.push([0, 1, 0, 1, 0, 1, 0, 0]);
+            let handle = 10 + u32::from(sky);
+            for (chunks, height, crop, core, uniform) in [
+                (1, 16, 0, 1, true),
+                (3, 64, 1, 1, false),
+                (2, 32, 0, 2, true),
+                (4, 80, 1, 2, false),
+            ] {
+                let blocks: Vec<u16> = (0..chunks * chunks * height * 256)
+                    .map(|i| {
+                        let section = (i / 4096) % (height / 16);
+                        if uniform || section % 3 != 2 {
+                            (section % 5) as u16
+                        } else {
+                            ((i * 17 + i / 16) % 5) as u16
+                        }
+                    })
+                    .collect();
+                gpu.compact_input = false;
+                let expected = gpu
+                    .run(
+                        handle,
+                        &profile,
+                        chunks,
+                        height,
+                        crop,
+                        core,
+                        &blocks,
+                        OutputFormat::Sections,
+                    )
+                    .unwrap();
+                gpu.compact_input = true;
+                let actual = gpu
+                    .run(
+                        handle,
+                        &profile,
+                        chunks,
+                        height,
+                        crop,
+                        core,
+                        &blocks,
+                        OutputFormat::Sections,
+                    )
+                    .unwrap();
+                assert_eq!(
+                    actual.bytes, expected.bytes,
+                    "sky={sky} chunks={chunks} height={height} crop={crop}"
+                );
+                assert!(actual.upload < expected.upload);
+            }
         }
     }
     #[test]
