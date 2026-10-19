@@ -14,7 +14,7 @@ from that report. Retained baseline library SHA-256:
 | Area | Status | Required evidence |
 | --- | --- | --- |
 | Compact/compile decoration programs | [PR #115](https://github.com/ArcaneArts/Retina/pull/115) and [PR #116](https://github.com/ArcaneArts/Retina/pull/116): validated eligible streaming | Dense/sparse planning, exact ordered output/RNG, memory, vanilla/Terralith lit-MCA |
-| Complete feature-anchor GPU evaluation | [Independent-column vine trial](GPU_FEATURE_ANCHOR_TRIAL.md) measured; production integration pending | Mixed-anchor handoff, exact fallback/overflow/order, end-to-end benefit |
+| Complete feature-anchor GPU evaluation | [Complete registered vine programs](GPU_VINE_PLANNING.md) integrated on Metal; other program classes remain CPU | Mixed-anchor handoff, exact fallback/overflow/order, end-to-end benefit |
 | Compact lighting transport | Pending | Complete light-array parity, uniform/dense payloads, memory and lit-MCA throughput |
 | GPU-driven material emission | Pending | Exact runs, overflow/failure/interleaved ownership, synchronization and throughput |
 | Tighter ore planning/masks | Pending | Seed/distribution/host/exposure/boundary parity, total planning/application cost |
@@ -65,3 +65,19 @@ and distant coordinates, and rejects whole outputs on overflow. Repeated batch
 comparisons include packing and transfers; results are in the
 [trial report](GPU_FEATURE_ANCHOR_TRIAL.md). This remains an isolated-program
 result. It does not complete area 2 or establish a whole-generator speedup.
+
+## Complete vine-program integration
+
+The planner now hands eligible complete recipe groups and their prior overlays to
+a bounded shared GPU arena, then resumes Rust in exact order. Dense batches use
+independent ordered columns; sparse/unsupported/overflowing cases retain CPU
+continuation. Full native lit-MCA comparisons matched 6,144 decompressed chunks
+per corpus for vanilla, Terralith and two callers. Terralith samples improved
+roughly 5–8% serially and 4% with two callers, using matched optimization-level-2,
+non-LTO comparison libraries. Normal-release planner tests also preserve ordered
+output. [Evidence and limitations](GPU_VINE_PLANNING.md) explicitly separate the
+initial inconclusive trial, transfer/memory costs and reduced build settings.
+
+This completes production integration of the measured supported subset, not the
+overall optimization goal. Compact lighting transport is next; material emission,
+ore/section processing and combined lifecycle validation remain outstanding.

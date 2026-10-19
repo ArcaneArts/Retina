@@ -1108,9 +1108,12 @@ struct OverlayUndo {
     tops: Option<[i32; 6]>,
 }
 impl Overlay {
+    pub(super) fn gpu_entries(&self) -> impl Iterator<Item = ([i32; 3], u16)> + '_ {
+        self.blocks.iter().map(|(at, material)| (*at, *material))
+    }
     #[cfg(test)]
     pub(super) fn probe_entries(&self) -> impl Iterator<Item = ([i32; 3], u16)> + '_ {
-        self.blocks.iter().map(|(at, material)| (*at, *material))
+        self.gpu_entries()
     }
     pub(super) fn retained_bytes(&self) -> usize {
         // Capacity rather than length, with allowance for hash control bytes,

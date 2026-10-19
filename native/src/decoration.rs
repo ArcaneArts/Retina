@@ -18,6 +18,7 @@ mod fallen;
 mod mushroom;
 pub mod pairs;
 mod patch;
+pub(crate) mod vine_gpu;
 pub(crate) use patch::SimpleState;
 #[cfg(test)]
 mod anchor_probe;
@@ -525,10 +526,11 @@ pub(crate) fn plan_sampled(
 pub(crate) struct Queries {
     pub noise: Vec<[i32; 4]>,
     pub counts: Vec<counts::Query>,
+    pub vines: Vec<(usize, u32)>,
 }
 impl Queries {
     pub(crate) fn is_empty(&self) -> bool {
-        self.noise.is_empty() && self.counts.is_empty()
+        self.noise.is_empty() && self.counts.is_empty() && self.vines.is_empty()
     }
 }
 
@@ -548,6 +550,8 @@ pub(crate) struct Replay<'a> {
     blocks: Vec<Option<Vec<WorldBlock>>>,
     pending: Vec<Option<(Anchor, usize)>>,
     retain_prefix: bool,
+    gpu: Option<vine_gpu::Programs>,
+    gpu_disabled: Vec<bool>,
     retained_bytes: AtomicUsize,
     peak_retained_bytes: AtomicUsize,
     retained_limit: usize,
@@ -575,10 +579,16 @@ impl<'a> Replay<'a> {
             blocks: (0..field.side * field.side).map(|_| None).collect(),
             pending: (0..field.side * field.side).map(|_| None).collect(),
             retain_prefix: true,
+            gpu: None,
+            gpu_disabled: vec![false; field.side * field.side],
             retained_bytes: AtomicUsize::new(0),
             peak_retained_bytes: AtomicUsize::new(0),
             retained_limit: 64 * 1024 * 1024,
         }
+    }
+    pub(crate) fn with_gpu_programs(mut self, programs: Option<vine_gpu::Programs>) -> Self {
+        self.gpu = programs;
+        self
     }
     pub(crate) fn with_prefix_resume(mut self, enabled: bool) -> Self {
         self.retain_prefix = enabled;
@@ -616,7 +626,7 @@ impl<'a> Replay<'a> {
             let noise = provider_noise::Context::new(samples);
             let mut count_queries = Vec::new();
             let mut worker = measuring.then(diagnostics::Worker::default);
-            let state = if let Some((state, bytes)) = pending.take() {
+            let mut state = if let Some((state, bytes)) = pending.take() {
                 self.retained_bytes.fetch_sub(bytes, Ordering::Relaxed);
                 if let Some(worker) = worker.as_mut() {
                     worker.resumed_anchors += 1;
@@ -638,8 +648,13 @@ impl<'a> Replay<'a> {
                     scratch,
                 )
             };
+            state.gpu = if self.gpu_disabled[index] {
+                None
+            } else {
+                self.gpu.clone()
+            };
             let retain = self.retain_prefix && count_queries.is_empty();
-            let (blocks, saved) = evaluate_anchor(
+            let (mut blocks, mut saved) = evaluate_anchor(
                 state,
                 self.field,
                 self.profile,
@@ -652,6 +667,46 @@ impl<'a> Replay<'a> {
                 worker.as_mut(),
                 scratch,
             );
+            if let Some(recipe) = saved.as_ref().and_then(|state| state.gpu_pause) {
+                let mut state = saved.take().unwrap();
+                let bytes = state.retained_bytes();
+                if let Ok(previous) =
+                    self.retained_bytes
+                        .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |used| {
+                            used.checked_add(bytes)
+                                .filter(|n| *n <= self.retained_limit)
+                        })
+                {
+                    self.peak_retained_bytes
+                        .fetch_max(previous + bytes, Ordering::Relaxed);
+                    *pending = Some((state, bytes));
+                    return (
+                        Queries {
+                            vines: vec![(index, recipe)],
+                            ..Default::default()
+                        },
+                        worker,
+                    );
+                }
+                // An oversized prefix stays on this worker; do not discard it
+                // and repeatedly try the same GPU handoff on the next poll.
+                state.gpu = None;
+                state.gpu_pause = None;
+                state.gpu_after = Some(recipe);
+                (blocks, saved) = evaluate_anchor(
+                    state,
+                    self.field,
+                    self.profile,
+                    self.request,
+                    self.mask,
+                    counts,
+                    &noise,
+                    &mut count_queries,
+                    retain,
+                    worker.as_mut(),
+                    scratch,
+                );
+            }
             let missing = noise.missing();
             if missing.is_empty() && count_queries.is_empty() {
                 *completed = Some(blocks);
@@ -677,6 +732,7 @@ impl<'a> Replay<'a> {
                 Queries {
                     noise: missing,
                     counts: count_queries,
+                    vines: Vec::new(),
                 },
                 worker,
             )
@@ -706,6 +762,7 @@ impl<'a> Replay<'a> {
             }
             queries.noise.extend(batch.noise);
             queries.counts.extend(batch.counts);
+            queries.vines.extend(batch.vines);
         }
         queries.noise.sort_unstable();
         queries.noise.dedup();
@@ -1032,6 +1089,9 @@ fn expand_anchor(
         overlay: Default::default(),
         evaluation_cache: Default::default(),
         completed: 0,
+        gpu: None,
+        gpu_after: None,
+        gpu_pause: None,
     }
 }
 
@@ -1041,6 +1101,9 @@ struct Anchor {
     overlay: placement::Overlay,
     evaluation_cache: placement::EvaluationCache,
     completed: u64,
+    gpu: Option<vine_gpu::Programs>,
+    gpu_after: Option<u32>,
+    gpu_pause: Option<u32>,
 }
 impl Anchor {
     fn retained_bytes(&self) -> usize {
@@ -1077,11 +1140,45 @@ fn evaluate_anchor(
         mut overlay,
         mut evaluation_cache,
         mut completed,
+        gpu,
+        gpu_after,
+        gpu_pause: _,
     } = state;
     let evaluation = diagnostics::start(timing.is_some());
     let mut saved = None;
     let mut invalid = false;
     loop {
+        // Pause before popping or advancing any cursor in the next group. A
+        // pending spatial provider invalidates speculative prefixes, so those
+        // rounds continue on CPU until their inputs are resolved.
+        if gpu.is_some() && !invalid && missing.is_empty() && !noise.is_missing() {
+            if let Some((group, recipe)) = candidates.peek_group() {
+                if group == recipe
+                    && gpu_after.is_none_or(|previous| recipe > previous)
+                    && gpu
+                        .as_ref()
+                        .is_some_and(|programs| programs[recipe as usize].is_some())
+                {
+                    diagnostics::record(
+                        evaluation,
+                        timing.as_mut().map(|t| &mut t.evaluation_nanos),
+                    );
+                    return (
+                        Vec::new(),
+                        Some(Anchor {
+                            blocks,
+                            candidates,
+                            overlay,
+                            evaluation_cache,
+                            completed,
+                            gpu,
+                            gpu_after,
+                            gpu_pause: Some(recipe),
+                        }),
+                    );
+                }
+            }
+        }
         let mut queue_checkpoint = None;
         let next = candidates.next_checkpoint(
             field,
@@ -1101,6 +1198,9 @@ fn evaluate_anchor(
                 overlay: overlay.snapshot(),
                 evaluation_cache: cache,
                 completed,
+                gpu: gpu.clone(),
+                gpu_after,
+                gpu_pause: None,
             });
         }
         let Some(candidate) = next else {
@@ -1247,6 +1347,9 @@ fn evaluate_anchor(
                 overlay: overlay.before_feature(),
                 evaluation_cache: evaluation_cache.clone(),
                 completed: before_candidate,
+                gpu: gpu.clone(),
+                gpu_after,
+                gpu_pause: None,
             });
         }
         if record {
