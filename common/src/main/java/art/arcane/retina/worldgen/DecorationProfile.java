@@ -60,7 +60,7 @@ final class DecorationProfile {
         exporter.generatorDepth = world.get("generator_depth").getAsInt();
         exporter.sourceOrder = world.has("decoration_source_order") && world.get("decoration_source_order").getAsBoolean();
         if (exporter.sourceOrder) {
-            exporter.exportOrdered(biomes, profiles, generation);
+            exporter.exportOrdered(biomes, profiles, generation, world);
         } else for (int i = 0; i < biomes.size(); i++) {
             var selected = new JsonArray();
             var features = generation.apply(biomes.get(i)).features();
@@ -94,7 +94,9 @@ final class DecorationProfile {
      * FeatureSorter also reports an actual ordering cycle with the involved biome sources.
      */
     private void exportOrdered(List<Holder<Biome>> biomes, JsonArray profiles,
-            java.util.function.Function<Holder<Biome>, net.minecraft.world.level.biome.BiomeGenerationSettings> generation) {
+            java.util.function.Function<Holder<Biome>, net.minecraft.world.level.biome.BiomeGenerationSettings> generation, JsonObject world) {
+        var coverage = new DecorationCoverage(registry);
+        var allUnsupported = new TreeSet<String>();
         var settings = new HashMap<Holder<Biome>, net.minecraft.world.level.biome.BiomeGenerationSettings>();
         for (var biome : biomes) settings.put(biome, generation.apply(biome));
         var steps = FeatureSorter.buildFeaturesPerStep(biomes, b -> settings.get(b).features(), true);
@@ -116,19 +118,25 @@ final class DecorationProfile {
             for (var placed : steps.get(step).features()) {
                 generationStep = step;
                 rootSource = names.get(placed);
-                if (includes(step, placed)) {
-                    var selected = new ArrayList<Integer>();
-                    placed(placed, new Placement(), 1, rootSource, selected, 0);
-                    var members = membership.get(placed);
-                    for (int biome = members.nextSetBit(0); biome >= 0; biome = members.nextSetBit(biome + 1)) {
-                        var ids = profiles.get(biome).getAsJsonObject().getAsJsonArray("decorations");
-                        selected.forEach(ids::add);
-                    }
+                unsupported.clear();
+                var selected = new ArrayList<Integer>();
+                // Every source root gets an actual export attempt, including
+                // unsupported kinds outside vegetation that used to be skipped.
+                placed(placed, new Placement(), 1, rootSource, selected, 0);
+                var members = membership.get(placed);
+                for (int biome = members.nextSetBit(0); biome >= 0; biome = members.nextSetBit(biome + 1)) {
+                    var ids = profiles.get(biome).getAsJsonObject().getAsJsonArray("decorations");
+                    selected.forEach(ids::add);
                 }
+                coverage.record(placed, rootSource, step, rootOrder, members, biomes, selected, unsupported);
+                allUnsupported.addAll(unsupported);
                 rootOrder++;
             }
         }
         generationStep = -1;
+        unsupported.clear(); unsupported.addAll(allUnsupported);
+        var report = coverage.finish(); world.add("decoration_coverage", report);
+        Retina.LOGGER.info("Loaded decoration root export: {}; inventory errors: {}", report.get("statuses"), report.get("inventory_errors"));
     }
 
     private boolean nativeFeature(Feature feature) {
