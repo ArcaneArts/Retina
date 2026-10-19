@@ -1,0 +1,610 @@
+diff --git a/native/src/decoration.rs b/native/src/decoration.rs
+index 29b9a76..ae91ce0 100644
+--- a/native/src/decoration.rs
++++ b/native/src/decoration.rs
+@@ -266,7 +266,7 @@ pub struct Field {
+     pub origin_z: i32,
+     pub side: usize,
+     pub columns: Vec<Column>,
+-    pub substrate: Option<std::sync::Arc<crate::geology::CaveMask>>,
++    pub substrate: Option<crate::geology::Substrate>,
+ }
+ impl Field {
+     pub fn biome(&self, profile: &WorldProfile, at: [i32; 3]) -> Option<usize> {
+diff --git a/native/src/decoration/anchor_probe.rs b/native/src/decoration/anchor_probe.rs
+index f668632..f36ace0 100644
+--- a/native/src/decoration/anchor_probe.rs
++++ b/native/src/decoration/anchor_probe.rs
+@@ -1107,7 +1107,7 @@ pub(super) fn vine_field(
+             };
+             span * span * COLUMNS
+         ],
+-        substrate: Some(std::sync::Arc::new(mask)),
++        substrate: Some(std::sync::Arc::new(mask).into()),
+     }
+ }
+
+diff --git a/native/src/decoration/placement.rs b/native/src/decoration/placement.rs
+index 468ac79..eafc672 100644
+--- a/native/src/decoration/placement.rs
++++ b/native/src/decoration/placement.rs
+@@ -1097,22 +1097,31 @@ pub(super) fn environment_scan(
+     request: ChunkRequest,
+     overlay: &Overlay,
+ ) -> Option<[i32; 3]> {
+-    if allowed.test(at, field, profile, request, overlay) != Some(true) {
++    let substrate = field.substrate.as_ref().map(|s| s.lookup());
++    let material = |pos| {
++        overlay.material_with(profile, request, pos, || {
++            substrate.as_ref().map_or_else(
++                || field.material(profile, request, pos),
++                |s| s.material(pos),
++            )
++        })
++    };
++    if allowed.test_with(at, &material) != Some(true) {
+         return None;
+     }
+     for _ in 0..max_steps {
+-        if target.test(at, field, profile, request, overlay) == Some(true) {
++        if target.test_with(at, &material) == Some(true) {
+             return Some(at);
+         }
+         at[1] += direction;
+         if at[1] < request.min_y || at[1] >= request.min_y + request.height as i32 {
+             return None;
+         }
+-        if allowed.test(at, field, profile, request, overlay) != Some(true) {
++        if allowed.test_with(at, &material) != Some(true) {
+             break;
+         }
+     }
+-    (target.test(at, field, profile, request, overlay) == Some(true)).then_some(at)
++    (target.test_with(at, &material) == Some(true)).then_some(at)
+ }
+ #[derive(Default)]
+ pub(super) struct Overlay {
+@@ -1184,16 +1193,24 @@ impl Overlay {
+         profile: &WorldProfile,
+         request: ChunkRequest,
+         at: [i32; 3],
++    ) -> Option<u16> {
++        self.material_with(profile, request, at, || {
++            field.material(profile, request, at)
++        })
++    }
++    fn material_with(
++        &self,
++        profile: &WorldProfile,
++        request: ChunkRequest,
++        at: [i32; 3],
++        base: impl FnOnce() -> Option<u16>,
+     ) -> Option<u16> {
+         if profile.ordered_decorations
+             && (at[1] < request.min_y || at[1] >= request.min_y + request.height as i32)
+         {
+             return Some(0);
+         }
+-        self.blocks
+-            .get(&at)
+-            .copied()
+-            .or_else(|| field.material(profile, request, at))
++        self.blocks.get(&at).copied().or_else(base)
+     }
+     pub(super) fn height(
+         &self,
+@@ -1517,11 +1534,11 @@ mod tests {
+         // retains the precise column biome used by the GPU shoreline coating.
+         let mut underground = profile.biomes[0].clone();
+         underground.id = "test:cave".into();
+-        underground.decorations = vec![1];
++        underground.decorations = vec![1].into();
+         profile.biomes.push(underground);
+         let biome_offset = (50 * 50 * 128 + 31) / 32 + (80 * 80 + 31) / 32;
+         mask.words[biome_offset..base].fill(1 | (1 << 16));
+-        field.substrate = Some(std::sync::Arc::new(mask));
++        field.substrate = Some(std::sync::Arc::new(mask).into());
+         let mut overlay = Overlay::default();
+         let solid = Predicate::Material {
+             offset: [0, 0, 0],
+diff --git a/native/src/decoration/vine_gpu/tests.rs b/native/src/decoration/vine_gpu/tests.rs
+index 419d3dd..f929093 100644
+--- a/native/src/decoration/vine_gpu/tests.rs
++++ b/native/src/decoration/vine_gpu/tests.rs
+@@ -20,7 +20,7 @@ fn fixture() -> (WorldProfile, ChunkRequest) {
+         "support":[support,support,support,support,support,support],"sturdy":[support,support,support,support,support,support]})).unwrap();
+     recipe.validate(p.materials.len()).unwrap();
+     p.decorations.push(recipe);
+-    p.biomes[0].decorations.push(5);
++    p.biomes[0].decorations = p.biomes[0].decorations.iter().copied().chain([5]).collect();
+     (p, r)
+ }
+ #[test]
+diff --git a/native/src/geology.rs b/native/src/geology.rs
+index cf9af45..f0c6136 100644
+--- a/native/src/geology.rs
++++ b/native/src/geology.rs
+@@ -8,6 +8,9 @@ use crate::{
+ use rayon::prelude::*;
+ use serde::Deserialize;
+
++mod material_view;
++pub use material_view::Substrate;
++
+ pub mod raster;
+ pub(crate) mod raster_gpu;
+ #[cfg(test)]
+diff --git a/native/src/geology/material_view.rs b/native/src/geology/material_view.rs
+new file mode 100644
+index 0000000..1bb78a4
+--- /dev/null
++++ b/native/src/geology/material_view.rs
+@@ -0,0 +1,256 @@
++//! Immutable field-local view of packed material runs. The Arc remains private:
++//! prepared offsets cannot outlive or be invalidated by mutable backing words.
++use super::CaveMask;
++use std::{cell::Cell, ops::Deref, sync::Arc};
++
++#[derive(Clone)]
++pub struct Substrate {
++    mask: Arc<CaveMask>,
++    layout: Option<Layout>,
++}
++#[derive(Clone, Copy)]
++struct Layout {
++    width: usize,
++    entries: usize,
++    groups: usize,
++    runs: usize,
++}
++#[derive(Clone, Copy)]
++pub(crate) struct Column<'a> {
++    runs: &'a [u32],
++    min_y: i32,
++    height: u32,
++}
++impl From<Arc<CaveMask>> for Substrate {
++    fn from(mask: Arc<CaveMask>) -> Self {
++        let at = mask.base_words();
++        let layout = mask
++            .words
++            .get(at..at + 4)
++            .filter(|v| v[0] == 0x52554e53)
++            .map(|v| {
++                let width = v[1] as usize;
++                let count = width * width;
++                let groups = count.div_ceil(256);
++                Layout {
++                    width,
++                    entries: at + 4,
++                    groups: at + 4 + count * 2 + groups,
++                    runs: at + 4 + count * 2 + groups * 2,
++                }
++            });
++        Self { mask, layout }
++    }
++}
++impl Deref for Substrate {
++    type Target = CaveMask;
++    fn deref(&self) -> &CaveMask {
++        &self.mask
++    }
++}
++impl Substrate {
++    #[inline]
++    pub(crate) fn material_runs(&self, x: i32, z: i32) -> Option<&[u32]> {
++        let layout = self.layout?;
++        let x = x as i64 - (self.mask.origin_x as i64 + 1);
++        let z = z as i64 - (self.mask.origin_z as i64 + 1);
++        if x < 0 || z < 0 || x as usize >= layout.width || z as usize >= layout.width {
++            return None;
++        }
++        let index = z as usize * layout.width + x as usize;
++        let words = &self.mask.words;
++        let length = words[layout.entries + index * 2] as usize;
++        let start = layout.runs
++            + words[layout.entries + index * 2 + 1] as usize
++            + words[layout.groups + index / 256] as usize;
++        words.get(start..start + length)
++    }
++    #[inline]
++    pub(crate) fn column(&self, x: i32, z: i32) -> Option<Column<'_>> {
++        self.material_runs(x, z).map(|runs| Column {
++            runs,
++            min_y: self.mask.min_y,
++            height: self.mask.height,
++        })
++    }
++    pub(crate) fn material_at(&self, x: i32, y: i32, z: i32) -> Option<u16> {
++        self.column(x, z)?.at(y)
++    }
++    pub(crate) fn height_at(&self, x: i32, z: i32, masks: &[u8], map: u8) -> Option<i32> {
++        self.column(x, z)?.height(masks, map)
++    }
++    pub(crate) fn lookup(&self) -> Lookup<'_> {
++        Lookup {
++            substrate: self,
++            last: Cell::new(None),
++        }
++    }
++}
++impl Column<'_> {
++    #[inline]
++    pub(crate) fn at(&self, y: i32) -> Option<u16> {
++        let y = y as i64 - self.min_y as i64;
++        if y < 0 || y >= self.height as i64 {
++            return Some(0);
++        }
++        let index = self.runs.partition_point(|run| run >> 16 > y as u32);
++        self.runs.get(index).map(|run| *run as u16)
++    }
++    pub(crate) fn height(&self, masks: &[u8], map: u8) -> Option<i32> {
++        let bit = 1u8.checked_shl(map as u32)?;
++        let mut top = self.min_y + self.height as i32;
++        for run in self.runs {
++            if masks.get(*run as u16 as usize)? & bit != 0 {
++                return Some(top);
++            }
++            top = self.min_y + (run >> 16) as i32;
++        }
++        Some(self.min_y)
++    }
++}
++/// Short-lived read-only scan cache. Only the base column is memoized; callers
++/// still check the live overlay first for every queried block.
++pub(crate) struct Lookup<'a> {
++    substrate: &'a Substrate,
++    last: Cell<Option<([i32; 2], Option<Column<'a>>)>>,
++}
++impl Lookup<'_> {
++    pub(crate) fn material(&self, at: [i32; 3]) -> Option<u16> {
++        let key = [at[0], at[2]];
++        let column = match self.last.get() {
++            Some((old, column)) if old == key => column,
++            _ => {
++                let column = self.substrate.column(at[0], at[2]);
++                self.last.set(Some((key, column)));
++                column
++            }
++        };
++        column?.at(at[1])
++    }
++}
++
++#[cfg(test)]
++mod tests {
++    use super::*;
++    fn fixture(origin: i32, min_y: i32) -> Arc<CaveMask> {
++        let mut mask = CaveMask {
++            origin_x: origin,
++            origin_z: -origin,
++            min_y,
++            height: 128,
++            width: 34,
++            air_only: true,
++            words: vec![],
++            columns: None,
++        };
++        let at = mask.base_words();
++        let count = 32usize.pow(2);
++        let groups = count.div_ceil(256);
++        mask.words.resize(at + 4 + count * 2 + groups * 2, 0);
++        mask.words[at..at + 4].copy_from_slice(&[0x52554e53, 32, count as u32, count as u32 * 4]);
++        for index in 0..count {
++            mask.words[at + 4 + index * 2] = 4;
++            mask.words[at + 5 + index * 2] = (index % 256 * 4) as u32;
++            mask.words.extend([112 << 16, 80 << 16 | 3, 5 << 16 | 2, 1]);
++        }
++        for group in 0..groups {
++            mask.words[at + 4 + count * 2 + groups + group] = (group * 256 * 4) as u32;
++        }
++        mask.validate_material_runs().unwrap();
++        Arc::new(mask)
++    }
++    #[test]
++    fn prepared_columns_match_raw_runs_materials_and_all_heightmaps() {
++        for (origin, min_y) in [(-30000000, -62), (30000000, -64), (-17, 0)] {
++            let mask = fixture(origin, min_y);
++            let substrate: Substrate = mask.clone().into();
++            let lookup = substrate.lookup();
++            for dz in 0..34 {
++                for dx in 0..34 {
++                    let (x, z) = (origin + dx, -origin + dz);
++                    assert_eq!(substrate.material_runs(x, z), mask.material_runs(x, z));
++                    for y in min_y - 1..=min_y + 128 {
++                        let expected = mask.material_at(x, y, z);
++                        assert_eq!(substrate.material_at(x, y, z), expected);
++                        assert_eq!(lookup.material([x, y, z]), expected);
++                    }
++                    for map in 0..=6 {
++                        assert_eq!(
++                            substrate.height_at(x, z, &[0, 1, 3, 63], map),
++                            mask.height_at(x, z, &[0, 1, 3, 63], map)
++                        );
++                    }
++                }
++            }
++            assert_eq!(substrate.material_at(i32::MIN, min_y, i32::MAX), None);
++            assert_eq!(
++                substrate.material_at(origin + 1, i32::MIN, -origin + 1),
++                Some(0)
++            );
++            // Holding the prepared view prevents mutable access to its Arc data.
++            let mut owner = mask;
++            assert!(Arc::get_mut(&mut owner).is_none());
++        }
++        let mut missing = fixture(0, -64);
++        Arc::get_mut(&mut missing).unwrap().words.clear();
++        let missing: Substrate = missing.into();
++        assert_eq!(missing.material_at(1, 0, 1), None);
++        assert_eq!(missing.height_at(1, 1, &[0, 1], 1), None);
++    }
++    #[test]
++    #[ignore = "bounded prepared material lookup microbenchmark"]
++    fn prepared_material_lookup_benchmark() {
++        use std::{hint::black_box, time::Instant};
++        let mask = fixture(-30000, -62);
++        let substrate: Substrate = mask.clone().into();
++        let queries: Vec<_> = (0..32)
++            .flat_map(|z| {
++                (0..32).flat_map(move |x| {
++                    (-64..68)
++                        .step_by(3)
++                        .map(move |y| [-29999 + x, y, 30001 + z])
++                })
++            })
++            .collect();
++        let mut raw = Vec::new();
++        let mut prepared = Vec::new();
++        let mut cached = Vec::new();
++        let mut expected = None;
++        for round in 0..25 {
++            for shift in 0..3 {
++                let mode = (round + shift) % 3;
++                let lookup = substrate.lookup();
++                let start = Instant::now();
++                let mut sum = 0u64;
++                for _ in 0..4 {
++                    for &at in black_box(&queries) {
++                        let material = match mode {
++                            0 => black_box(&*mask).material_at(at[0], at[1], at[2]),
++                            1 => black_box(&substrate).material_at(at[0], at[1], at[2]),
++                            _ => black_box(&lookup).material(at),
++                        };
++                        sum += black_box(material).map_or(65536, u64::from);
++                    }
++                }
++                let ms = start.elapsed().as_secs_f64() * 1000.;
++                if let Some(e) = expected {
++                    assert_eq!(sum, e);
++                } else {
++                    expected = Some(sum);
++                }
++                if round >= 5 {
++                    match mode {
++                        0 => raw.push(ms),
++                        1 => prepared.push(ms),
++                        _ => cached.push(ms),
++                    }
++                }
++            }
++        }
++        println!(
++            "PREPARED_MATERIAL_LOOKUPS {}",
++            serde_json::json!({"warmups":5,"iterations":20,
++            "queries":queries.len()*4,"checksum":expected,"raw_ms":raw,"prepared_ms":prepared,"cached_ms":cached})
++        );
++    }
++}
+diff --git a/native/src/lib.rs b/native/src/lib.rs
+index 31f3143..c071d12 100644
+--- a/native/src/lib.rs
++++ b/native/src/lib.rs
+@@ -997,7 +997,7 @@ impl TerrainEngine {
+             if let Some(mask) = cached {
+                 let mut field = self.decoration_field(request, side)?;
+                 if material_halo {
+-                    field.substrate = Some(mask.clone());
++                    field.substrate = Some(mask.clone().into());
+                 }
+                 return Ok((field, Some(mask)));
+             }
+@@ -1091,7 +1091,7 @@ impl TerrainEngine {
+                 origin_z: request.chunk_z - 1,
+                 side: (side + 2) as usize,
+                 columns,
+-                substrate: material_halo.then(|| mask.clone()),
++                substrate: material_halo.then(|| mask.clone().into()),
+             },
+             Some(mask),
+         ))
+diff --git a/native/src/profile.rs b/native/src/profile.rs
+index 348dd7e..22a90d5 100644
+--- a/native/src/profile.rs
++++ b/native/src/profile.rs
+@@ -1,3 +1,6 @@
++mod recipes;
++pub use recipes::RecipeList;
++
+ use crate::decoration::Recipe;
+ use bytemuck::{Pod, Zeroable};
+ use serde::Deserialize;
+@@ -29,7 +32,7 @@ pub struct BiomeProfile {
+     pub underwater: u32,
+     pub flags: u32,
+     #[serde(default)]
+-    pub decorations: Vec<u32>,
++    pub decorations: RecipeList,
+     #[serde(default)]
+     pub ores: Vec<u32>,
+     #[serde(default)]
+diff --git a/native/src/profile/recipes.rs b/native/src/profile/recipes.rs
+new file mode 100644
+index 0000000..7ee7547
+--- /dev/null
++++ b/native/src/profile/recipes.rs
+@@ -0,0 +1,164 @@
++//! Preserve registered recipe order while compiling immutable membership once.
++use serde::{Deserialize, Deserializer};
++use std::{ops::Deref, sync::Arc};
++
++#[derive(Clone, Default)]
++pub struct RecipeList(Arc<Compiled>);
++#[derive(Default)]
++struct Compiled {
++    ordered: Box<[u32]>,
++    membership: Membership,
++}
++#[derive(Default)]
++enum Membership {
++    #[default]
++    Small,
++    Bits {
++        first: usize,
++        words: Box<[u64]>,
++    },
++    Sparse(Box<[u32]>),
++}
++impl From<Vec<u32>> for RecipeList {
++    fn from(ordered: Vec<u32>) -> Self {
++        let membership = if ordered.len() < 8 {
++            Membership::Small
++        } else {
++            let first = *ordered.iter().min().unwrap() as usize / 64;
++            let last = *ordered.iter().max().unwrap() as usize / 64;
++            let count = last - first + 1;
++            // Extra storage never exceeds the original list, even for sparse
++            // IDs. Do not reorder or remove duplicates from the source list.
++            if count * 8 <= ordered.len() * 4 {
++                let mut words = vec![0; count];
++                for &id in &ordered {
++                    words[id as usize / 64 - first] |= 1 << (id % 64);
++                }
++                Membership::Bits {
++                    first,
++                    words: words.into_boxed_slice(),
++                }
++            } else {
++                let mut sorted = ordered.clone();
++                sorted.sort_unstable();
++                sorted.dedup();
++                Membership::Sparse(sorted.into_boxed_slice())
++            }
++        };
++        Self(Arc::new(Compiled {
++            ordered: ordered.into_boxed_slice(),
++            membership,
++        }))
++    }
++}
++impl FromIterator<u32> for RecipeList {
++    fn from_iter<T: IntoIterator<Item = u32>>(values: T) -> Self {
++        values.into_iter().collect::<Vec<_>>().into()
++    }
++}
++impl<'de> Deserialize<'de> for RecipeList {
++    fn deserialize<D: Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
++        Vec::<u32>::deserialize(d).map(Self::from)
++    }
++}
++impl Deref for RecipeList {
++    type Target = [u32];
++    fn deref(&self) -> &[u32] {
++        &self.0.ordered
++    }
++}
++impl RecipeList {
++    #[inline]
++    pub fn contains(&self, id: &u32) -> bool {
++        match &self.0.membership {
++            Membership::Small => self.0.ordered.contains(id),
++            Membership::Bits { first, words } => words
++                .get((*id as usize / 64).wrapping_sub(*first))
++                .is_some_and(|word| word & (1 << (*id % 64)) != 0),
++            Membership::Sparse(sorted) => sorted.binary_search(id).is_ok(),
++        }
++    }
++}
++#[cfg(test)]
++mod tests {
++    use super::*;
++    #[test]
++    fn compiled_membership_keeps_registered_order_duplicates_and_extreme_ids() {
++        for ids in [
++            vec![],
++            vec![3, 0, 3, u32::MAX],
++            (90..260).rev().collect(),
++            vec![u32::MAX, 0, 17, 90000, 1, 2, 3, 4, 5, 1, 0],
++        ] {
++            let list: RecipeList = ids.clone().into();
++            let clone = list.clone();
++            assert_eq!(&*list, ids.as_slice());
++            assert!(Arc::ptr_eq(&list.0, &clone.0));
++            for id in (0..1024).chain([90000, u32::MAX - 1, u32::MAX]) {
++                assert_eq!(list.contains(&id), ids.contains(&id));
++            }
++        }
++        let list: RecipeList = serde_json::from_str("[5,1,5,0]").unwrap();
++        assert_eq!(&*list, &[5, 1, 5, 0]);
++    }
++    #[test]
++    #[ignore = "bounded registered biome recipe membership microbenchmark"]
++    fn registered_recipe_membership_benchmark() {
++        use std::{hint::black_box, time::Instant};
++        let path = std::env::var("RETINA_LOOKUP_PROFILE").unwrap();
++        let profile = crate::profile::WorldProfile::parse(&std::fs::read(path).unwrap()).unwrap();
++        let max = profile.decorations.len() as u32;
++        let queries: Vec<_> = (0..profile.biomes.len())
++            .flat_map(|b| (0..256).map(move |n| (b, (n * 193 + b as u32 * 71) % (max + 1))))
++            .collect();
++        let mut raw = Vec::new();
++        let mut prepared = Vec::new();
++        let mut expected = None;
++        for round in 0..25 {
++            for shift in 0..2 {
++                let mode = (round + shift) % 2;
++                let start = Instant::now();
++                let mut sum = 0u64;
++                for _ in 0..4 {
++                    for &(biome, id) in black_box(&queries) {
++                        let list = black_box(&profile.biomes[biome].decorations);
++                        let found = if mode == 0 {
++                            list.deref().contains(black_box(&id))
++                        } else {
++                            list.contains(black_box(&id))
++                        };
++                        sum += u64::from(black_box(found));
++                    }
++                }
++                let ms = start.elapsed().as_secs_f64() * 1000.;
++                if let Some(e) = expected {
++                    assert_eq!(sum, e);
++                } else {
++                    expected = Some(sum);
++                }
++                if round >= 5 {
++                    if mode == 0 {
++                        raw.push(ms);
++                    } else {
++                        prepared.push(ms);
++                    }
++                }
++            }
++        }
++        let extra: usize = profile
++            .biomes
++            .iter()
++            .map(|b| match &b.decorations.0.membership {
++                Membership::Small => 0,
++                Membership::Bits { words, .. } => words.len() * 8,
++                Membership::Sparse(v) => v.len() * 4,
++            })
++            .sum();
++        println!(
++            "PREPARED_RECIPE_LOOKUPS {}",
++            serde_json::json!({"warmups":5,"iterations":20,
++            "biomes":profile.biomes.len(),"queries":queries.len()*4,"extra_bytes":extra,
++            "checksum":expected,"linear_ms":raw,"prepared_ms":prepared})
++        );
++    }
++}
