@@ -6,8 +6,10 @@ use super::*;
 use std::ops::Range;
 use std::sync::Arc;
 mod layers;
+mod materials;
 mod stream;
 pub(super) use layers::{Queue, QueueCheckpoint};
+pub use materials::MaterialSet;
 
 #[derive(Clone, Deserialize)]
 #[serde(untagged)]
@@ -173,10 +175,19 @@ impl IntProvider {
 #[derive(Clone, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum Predicate {
-    Material { offset: [i32; 3], allowed: Vec<u16> },
-    AllOf { predicates: Vec<Predicate> },
-    AnyOf { predicates: Vec<Predicate> },
-    Not { predicate: Box<Predicate> },
+    Material {
+        offset: [i32; 3],
+        allowed: MaterialSet,
+    },
+    AllOf {
+        predicates: Vec<Predicate>,
+    },
+    AnyOf {
+        predicates: Vec<Predicate>,
+    },
+    Not {
+        predicate: Box<Predicate>,
+    },
     True,
 }
 impl Predicate {
@@ -213,8 +224,7 @@ impl Predicate {
     ) -> Option<bool> {
         match self {
             Self::Material { offset, allowed } => {
-                material(std::array::from_fn(|i| at[i] + offset[i]))
-                    .map(|m| allowed.binary_search(&m).is_ok())
+                material(std::array::from_fn(|i| at[i] + offset[i])).map(|m| allowed.accepts(m))
             }
             Self::AllOf { predicates } | Self::AnyOf { predicates } => {
                 let all = matches!(self, Self::AllOf { .. });
@@ -1505,11 +1515,11 @@ mod tests {
         let mut overlay = Overlay::default();
         let solid = Predicate::Material {
             offset: [0, 0, 0],
-            allowed: vec![1, 3],
+            allowed: vec![1, 3].into(),
         };
         let air = Predicate::Material {
             offset: [0, 0, 0],
-            allowed: vec![0],
+            allowed: vec![0].into(),
         };
         assert_eq!(
             environment_scan(
@@ -1796,7 +1806,7 @@ mod tests {
         assert_eq!(overlay.height(&field, &profile, request, 8, 8, 5), Some(64));
         let soil = Predicate::Material {
             offset: [0, -1, 0],
-            allowed: vec![2, 3],
+            allowed: vec![2, 3].into(),
         };
         assert_eq!(
             soil.test([8, 70, 8], &field, &profile, request, &overlay),
