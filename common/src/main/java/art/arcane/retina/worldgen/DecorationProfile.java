@@ -675,6 +675,7 @@ final class DecorationProfile {
         var json=Feature.DIRECT_CODEC.encodeStart(registry.createSerializationContext(JsonOps.INSTANCE),feature).getOrThrow().getAsJsonObject();
         if(!supportedPredicate(json.getAsJsonObject("allowed_placement"))) {unsupported.add("block_column:predicate:"+json.get("allowed_placement"));return null;}
         var result=new JsonObject();result.add("direction",new Gson().toJsonTree(new int[]{feature.direction().getStepX(),feature.direction().getStepY(),feature.direction().getStepZ()}));
+        result.addProperty("reach",feature.direction().getAxis().isHorizontal()?Math.max(0,maximum-1):0);
         result.add("allowed",json.get("allowed_placement").deepCopy());result.add("prioritize_tip",json.get("prioritize_tip"));var layers=new JsonArray();
         for(var e:json.getAsJsonArray("layers")) {
             var layer=e.getAsJsonObject();if(!supportedIntProvider(layer.get("height"))) {unsupported.add("block_column:height:"+layer.get("height"));return null;}

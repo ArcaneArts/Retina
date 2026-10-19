@@ -221,7 +221,7 @@ impl Recipe {
     }
 }
 struct World<'a> {
-    field: &'a Field,
+    field: &'a Field<'a>,
     profile: &'a WorldProfile,
     request: ChunkRequest,
     overlay: &'a mut Overlay,

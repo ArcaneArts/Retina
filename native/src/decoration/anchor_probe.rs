@@ -1035,7 +1035,7 @@ pub(super) fn vine_field(
     initial: u16,
     request: ChunkRequest,
     side: usize,
-) -> Field {
+) -> Field<'static> {
     let biome = profile
         .biomes
         .iter()
@@ -1098,6 +1098,7 @@ pub(super) fn vine_field(
     };
     mask.validate_material_runs().unwrap();
     Field {
+        prior: None,
         origin_x: request.chunk_x - 1,
         origin_z: request.chunk_z - 1,
         side: span,

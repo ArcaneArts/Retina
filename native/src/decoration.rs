@@ -15,6 +15,7 @@ mod flat_features;
 pub mod counts;
 pub mod diagnostics;
 mod distribution;
+pub(crate) mod dependencies;
 mod fallen;
 mod mushroom;
 pub mod pairs;
@@ -65,6 +66,10 @@ pub struct Recipe {
     pub source: String,
     #[serde(default)]
     pub root_order: u32,
+    /// Horizontal writes from the feature origin; root placement offsets are separate.
+    /// Required by source-root dependency replay; legacy profiles may omit it.
+    #[serde(default)]
+    pub reach: Option<i32>,
     pub salt: i64,
     pub density: f64,
     pub low_density: f64,
@@ -267,15 +272,23 @@ impl Recipe {
     }
 }
 
-pub struct Field {
+pub trait PriorWorld: Sync {
+    fn column(&self, x: i32, z: i32) -> Option<Column>;
+    fn biome(&self, at: [i32; 3]) -> Option<usize>;
+    fn material(&self, at: [i32; 3]) -> Option<u16>;
+    fn height(&self, x: i32, z: i32, map: u8) -> Option<i32>;
+}
+pub struct Field<'a> {
     pub origin_x: i32,
     pub origin_z: i32,
     pub side: usize,
     pub columns: Vec<Column>,
     pub substrate: Option<std::sync::Arc<crate::geology::CaveMask>>,
+    pub prior: Option<&'a dyn PriorWorld>,
 }
-impl Field {
+impl Field<'_> {
     pub fn biome(&self, profile: &WorldProfile, at: [i32; 3]) -> Option<usize> {
+        if let Some(prior) = self.prior { return prior.biome(at); }
         let c = self.column(at[0], at[2])?;
         if profile.decoration_biome_3d && at[1] < c.height - 12 {
             if let Some(id) = self
@@ -296,6 +309,7 @@ impl Field {
             || chunk_x as usize >= self.side
             || chunk_z as usize >= self.side
         {
+            if let Some(prior) = self.prior { return prior.column(x, z); }
             return self.substrate.as_ref()?.columns.as_ref()?.column_at(x, z);
         }
         Some(
@@ -315,6 +329,7 @@ impl Field {
         request: ChunkRequest,
         at: [i32; 3],
     ) -> Option<u16> {
+        if let Some(prior) = self.prior { return prior.material(at); }
         if let Some(mask) = &self.substrate {
             return mask.material_at(at[0], at[1], at[2]);
         }
@@ -329,6 +344,7 @@ impl Field {
         z: i32,
         map: u8,
     ) -> Option<i32> {
+        if let Some(prior) = self.prior { return prior.height(x, z, map); }
         if let Some(mask) = &self.substrate {
             return mask.height_at(x, z, &profile.heightmap_masks, map);
         }
@@ -557,7 +573,7 @@ impl Queries {
 /// transient and bounded by the same anchor inputs as the original planner.
 /// Provisional writes never leave a replay with missing GPU samples.
 pub(crate) struct Replay<'a> {
-    field: &'a Field,
+    field: &'a Field<'a>,
     profile: &'a WorldProfile,
     request: ChunkRequest,
     origin_x: i32,
@@ -577,7 +593,7 @@ pub(crate) struct Replay<'a> {
 }
 impl<'a> Replay<'a> {
     pub(crate) fn new(
-        field: &'a Field,
+        field: &'a Field<'a>,
         profile: &'a WorldProfile,
         request: ChunkRequest,
         origin_x: i32,
@@ -843,6 +859,9 @@ impl<'a> Replay<'a> {
             side,
             source_order,
         )
+    }
+    fn finish_world(self) -> Vec<Vec<WorldBlock>> {
+        self.blocks.into_iter().map(|b| b.expect("unfinished provider replay")).collect()
     }
 }
 
@@ -2338,6 +2357,7 @@ mod tests {
         .unwrap();
         profile.decorations.push(recipe);
         let field = Field {
+            prior: None,
             substrate: None,
             origin_x: -1,
             origin_z: -1,
@@ -2451,6 +2471,7 @@ mod tests {
             ore_membership: Vec::new(),
         };
         let field = Field {
+            prior: None,
             substrate: None,
             origin_x: 0,
             origin_z: 0,
@@ -2466,6 +2487,7 @@ mod tests {
         };
         let recipe = Recipe {
             source: "test:mega_jungle".into(),
+            reach: None,
             root_order: 0,
             placement_salt: None,
             placement: None,

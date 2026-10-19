@@ -1078,6 +1078,7 @@ mod tests {
         }];
         profile.ore_membership = vec![vec![true]];
         let field = Field {
+            prior: None,
             substrate: None,
             origin_x: -2,
             origin_z: -2,

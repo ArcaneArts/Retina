@@ -91,8 +91,9 @@ final class NetherFeatureOrderTest {
         catch (IllegalStateException e) { failed = e.getMessage().contains("Feature order cycle found"); }
         require(failed, "an actual loaded feature cycle fails rather than silently reordering");
         crossAnchor(registry, exported);
+        crossDependencies(registry, exported);
         System.out.println("QA_EVT {\"event\":\"nether_feature_order\",\"status\":\"pass\",\"context\":{\"loaded_recipes\":"
-                + recipes.size() + ",\"loaded_roots\":" + roots.size() + ",\"native_chunks\":54,\"fixture_cases\":11}}");
+                + recipes.size() + ",\"loaded_roots\":" + roots.size() + ",\"native_chunks\":114,\"fixture_cases\":21}}");
     }
 
     private record Export(JsonObject world, JsonArray profiles, JsonArray recipes, LinkedHashMap<BlockState, Integer> palette) {}
@@ -209,6 +210,70 @@ final class NetherFeatureOrderTest {
                             int actual = Short.toUnsignedInt(chunk.blocks().get(ValueLayout.JAVA_SHORT, (64 * 256L + c) * 2));
                             require(profile.states[actual].is(expected), "cross-anchor source order " + Arrays.toString(position) + ":" + c
                                     + " zAxis=" + zAxis + " ordered=" + ordered + ": " + profile.states[actual]);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private static Holder<PlacedFeature> dependent(RegistryAccess registry, String material, String previous,
+            boolean zAxis, int offset, int y, int probe, boolean heightmap) {
+        var ops = registry.createSerializationContext(JsonOps.INSTANCE);
+        var definition = PlacedFeature.DIRECT_CODEC.encodeStart(ops, pillar(registry, material, previous).value()).getOrThrow().getAsJsonObject();
+        var allowed = definition.getAsJsonObject("feature").getAsJsonObject("can_replace");
+        allowed.getAsJsonObject("min_inclusive").addProperty("absolute", y);
+        allowed.getAsJsonObject("max_inclusive").addProperty("absolute", y);
+        var program = definition.getAsJsonArray("placement");
+        program.get(0).getAsJsonObject().getAsJsonObject("height").addProperty("absolute", y);
+        program.get(1).getAsJsonObject().addProperty(zAxis ? "z" : "x", offset);
+        var predicate = program.get(2).getAsJsonObject().getAsJsonObject("predicate");
+        predicate.add("offset", new Gson().toJsonTree(heightmap ? new int[]{0,-1,0} : zAxis ? new int[]{0,0,probe} : new int[]{probe,0,0}));
+        if (offset > 255) {
+            // Each loaded OffsetPlacement allows at most 16 blocks per axis.
+            // A valid chain can still place well beyond the original terrain tile.
+            program.get(1).getAsJsonObject().addProperty(zAxis ? "z" : "x", offset % 16);
+            var chain = new JsonArray(); chain.add(program.get(0)); chain.add(program.get(1));
+            for (int i = 0; i < offset / 16; i++) {
+                var shift = JsonParser.parseString("{\"type\":\"minecraft:offset\",\"x\":0,\"y\":0,\"z\":0}").getAsJsonObject();
+                shift.addProperty(zAxis ? "z" : "x", 16); chain.add(shift);
+            }
+            chain.add(program.get(2)); chain.add(JsonParser.parseString("{\"type\":\"minecraft:biome\"}"));
+            definition.add("placement", chain);
+        }
+        if (heightmap) {
+            var placed = PlacedFeature.DIRECT_CODEC.parse(ops, definition).getOrThrow();
+            return Holder.direct(new PlacedFeature(placed.feature(), List.of(placed.placement().get(1),
+                    net.minecraft.world.level.levelgen.placement.HeightmapPlacement.onHeightmap(net.minecraft.world.level.levelgen.Heightmap.Types.WORLD_SURFACE_WG),
+                    placed.placement().get(2))));
+        }
+        return Holder.direct(PlacedFeature.DIRECT_CODEC.parse(ops, definition).getOrThrow());
+    }
+
+    private static void crossDependencies(RegistryAccess registry, TerrainProfileData source) {
+        for (int variant = 0; variant < 5; variant++) {
+            boolean zAxis = variant == 1 || variant == 4, heightmap = variant == 2;
+            int destination = variant >= 3 ? 511 : 15;
+            // C probes B one chunk away. B depends on A from the next anchor,
+            // so resolving C requires an anchor outside the old one-chunk halo.
+            var a = dependent(registry, "minecraft:basalt", heightmap ? "minecraft:air" : "minecraft:netherrack", zAxis, -1, heightmap ? 160 : 64, 0, false);
+            var b = dependent(registry, "minecraft:gold_block", "minecraft:basalt", zAxis, destination, heightmap ? 161 : 64, 0, heightmap);
+            var settings = new BiomeGenerationSettings.PlainBuilder().addFeature(3, a).addFeature(7, b);
+            if (!heightmap) settings.addFeature(8, dependent(registry, "minecraft:diamond_block", "minecraft:gold_block", zAxis, destination, 64, 16, false));
+            var fixture = export(registry, source, source.biomes().subList(0, 1), List.of(settings.build()));
+            for (boolean ordered : new boolean[]{true, false}) {
+                var profile = replayProfile(registry, source, fixture, false, ordered);
+                for (var position : new int[][]{{0, 0}, {-1, -1}, {-33, 31}, {32, -32}, {31, 32}, {-32, -33}}) {
+                    var request = new TerrainRequest(42, position[0], position[1], 0, 256, 64, 48, .008f, profile.id);
+                    try (var chunk = NativeTerrain.instance().generate(request)) {
+                        int y = heightmap ? 161 : 64;
+                        for (int c = 0; c < 256; c++) {
+                            boolean target = c == (zAxis ? 15 * 16 + 8 : 8 * 16 + 15);
+                            var expected = heightmap ? target && ordered ? Blocks.GOLD_BLOCK : Blocks.AIR
+                                    : target ? ordered ? Blocks.DIAMOND_BLOCK : Blocks.BASALT : Blocks.NETHERRACK;
+                            int actual = Short.toUnsignedInt(chunk.blocks().get(ValueLayout.JAVA_SHORT, (y * 256L + c) * 2));
+                            require(profile.states[actual].is(expected), "cross-anchor read dependency " + Arrays.toString(position) + ":" + c
+                                    + " variant=" + variant + " ordered=" + ordered + ": " + profile.states[actual]);
                         }
                     }
                 }

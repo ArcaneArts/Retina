@@ -94,7 +94,7 @@ fn shift(at: [i32; 3], direction: [i32; 3], n: i32) -> [i32; 3] {
 }
 
 struct Context<'a> {
-    field: &'a Field,
+    field: &'a Field<'a>,
     profile: &'a WorldProfile,
     request: ChunkRequest,
     overlay: &'a Overlay,

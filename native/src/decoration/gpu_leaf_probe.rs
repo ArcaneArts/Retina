@@ -454,7 +454,7 @@ impl Gpu {
 fn fixtures(
     profile: &WorldProfile,
     n: usize,
-) -> (Vec<Canopy>, serde_json::Value, Field, ChunkRequest) {
+) -> (Vec<Canopy>, serde_json::Value, Field<'static>, ChunkRequest) {
     let biome = profile
         .biomes
         .iter()
@@ -462,6 +462,7 @@ fn fixtures(
         .unwrap();
     let soil = &profile.biomes[biome];
     let field = Field {
+        prior: None,
         substrate: None,
         origin_x: -35,
         origin_z: -35,

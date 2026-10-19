@@ -434,6 +434,70 @@ This resolves the order of emitted writes. Feature evaluation still reads its ow
 anchor's earlier writes; dependencies on accepted writes from other anchors remain
 unfinished. Production Nether activation remains deferred.
 
+## Cycle 3i: dependencies on neighboring feature roots
+
+Source-ordered replay now resolves material and heightmap reads against the
+accepted output of preceding loaded roots, including writes from neighboring
+anchors. Dependencies are evaluated on demand and can cross multiple chunk or
+region boundaries; a fixed one-chunk halo no longer truncates the read chain.
+Column and biome queries also resolve distant placement locations through the
+same canonical GPU terrain tiles.
+
+A root is a deterministic batch: anchors evaluate against preceding roots plus
+their own live overlay, and their proposals commit in canonical Z/X anchor and
+original command order. Anchors in the same root do not observe one another's
+provisional attempts. This retains Retina's parallel anchor model rather than
+reproducing Minecraft's chunk scheduling. Later roots see the committed result,
+including ordinary replacement rules, paired plants, and heightmap changes.
+Final distribution uses that same order for blocks and scheduled updates.
+
+The exporter supplies conservative horizontal feature footprints; placement
+program offsets are included separately when discovering possible writers.
+Vertical block columns now explicitly export zero horizontal reach. A missing or
+negative footprint in a source-ordered profile is an actual generation error,
+not an arbitrary fallback radius. Legacy profiles do not require this metadata.
+
+The dependency planner memoizes terrain tiles, anchor biome membership, feature
+outputs, and accepted columns. Columns retain compact material runs, share
+unchanged states across roots, and expand only when a command changes a block.
+Independent target anchors use the existing Rayon pool. Recursive dependencies
+only move to preceding roots; support checks within a committed root use strictly
+earlier command prefixes. Cache locks are released before resolving dependencies.
+GPU provider/count queries retain device timing and transfer accounting; the
+optional detailed planner reports dependency wall time and cache counts separately
+from the legacy replay phases. Nether feature geometry uses the existing native
+implementations, without Java block callbacks or vanilla terrain fallback.
+
+`netherFeatureTest` now checks 114 native chunks in 21 ordering fixtures. New
+fixtures require two-hop neighboring dependencies in X and Z, heightmap reads of
+accepted neighboring writes above the roof, and valid offset chains reaching 31
+chunks away with biome filters. They cover negative coordinates and region edges,
+with the legacy execution mode as an explicit control. Loaded primitive reference
+writes must also remain inside their exported footprints. Native tests compare
+footprint inversion with independent world-coordinate enumeration, rectangular
+writer discovery with individual-column unions, and material-run lookups and all
+six heightmaps with dense columns across offset storage ranges.
+
+All three saved-region fixtures retain 983,040 independent block comparisons,
+ordered fluid-tick parity, and byte-preserving repeated publication. The accepted
+feature layout changes from cycle 3h because later roots can now observe earlier
+neighboring writes. Within this cycle, cache/parallelism improvements preserve
+all feature counts, tick counts and saved sizes relative to the first passing
+implementation. Mixed, Crimson Forest and Warped Forest region generation times
+fell from 14.61/7.88/11.63 seconds to 4.03/2.05/2.58 seconds on Metal / Apple M4 Max.
+These are individual warm harness observations, excluding decoding/assertions;
+they are not complete-Nether gameplay throughput or a repeated benchmark median.
+An observed test-process RSS sample was approximately 4.1 GiB, including the JVM,
+loaded registries and other harness state; it is not isolated planner allocation.
+
+Host Fabric/NeoForge builds, 97 Rust unit tests, three native GPU tests, and
+Nether profile/terrain, Overworld feature and Superflat regression suites pass.
+
+The dependency path remains materially more expensive than cycle 3h's incomplete
+read semantics. Further throughput/memory validation remains necessary before
+production rollout. Structures, automatic activation, gameplay lighting and the
+both-loader runtime matrix remain deferred.
+
 ## Remaining cycles
 
 3. Complete the remaining Nether feature and decoration coverage and ordering.
