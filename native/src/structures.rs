@@ -75,6 +75,9 @@ pub struct Definition {
     pub kind: String,
     pub biomes: Vec<u16>,
     pub config: Value,
+    /// Retain an unavailable family's weighted slot without inventing a start.
+    #[serde(default)]
+    pub unimplemented: bool,
     #[serde(default)]
     pub pool: String,
     #[serde(default)]
@@ -194,6 +197,7 @@ fn rand64(mut x: u64) -> u64 {
     x = (x ^ (x >> 27)).wrapping_mul(0x94d049bb133111eb);
     x ^ (x >> 31)
 }
+#[derive(Clone)]
 pub(crate) struct Random(u64);
 impl Random {
     fn new(seed: u64) -> Self {
@@ -331,7 +335,7 @@ impl Profile {
         }
         for d in &self.definitions {
             if d.biomes.iter().any(|b| *b as usize >= biomes)
-                || d.kind != "jigsaw" && d.template >= self.templates.len()
+                || !d.unimplemented && d.kind != "jigsaw" && d.template >= self.templates.len()
             {
                 return Err("invalid structure definition".into());
             }
@@ -354,6 +358,9 @@ impl Profile {
     }
 }
 fn reach(p: &Profile, d: &Definition) -> i32 {
+    if d.unimplemented {
+        return 0;
+    }
     if d.kind != "jigsaw" {
         return *p.templates[d.template]
             .size
@@ -746,19 +753,11 @@ fn build(
             ^ (request.chunk_z as i64 as u64).wrapping_mul(132897987541)
             ^ value(&s.placement, "salt", 0) as u64,
     );
-    let mut out = Start {
-        definition: 0,
-        chunk: [request.chunk_x, request.chunk_z],
-        seed,
-        pieces: Vec::new(),
-        terrain: None,
-        index: OnceLock::new(),
-    };
     let mut random = Random::new(seed);
     let mut choices = s.entries.clone();
-    let definition = loop {
+    loop {
         if choices.is_empty() {
-            return Ok(out);
+            return Ok(empty_start(request, seed, 0));
         }
         let mut pick = random.int(choices.iter().map(|e| e.weight).sum());
         let mut at = 0;
@@ -780,11 +779,40 @@ fn build(
         } else {
             biome
         };
-        if d.biomes.contains(&candidate_biome) {
-            break choice;
+        if !d.biomes.contains(&candidate_biome) {
+            continue;
         }
-    };
-    out.definition = definition;
+        if d.unimplemented {
+            return Ok(empty_start(request, seed, choice));
+        }
+        // Candidate selection owns its stream. A failed generation attempt must
+        // not consume the random draws used to choose the next weighted entry.
+        let start = build_definition(engine, request, profile, choice, seed, random.clone())?;
+        if !start.pieces.is_empty() {
+            return Ok(start);
+        }
+    }
+}
+fn empty_start(request: ChunkRequest, seed: u64, definition: usize) -> Start {
+    Start {
+        definition,
+        chunk: [request.chunk_x, request.chunk_z],
+        seed,
+        pieces: Vec::new(),
+        terrain: None,
+        index: OnceLock::new(),
+    }
+}
+fn build_definition(
+    engine: &TerrainEngine,
+    request: ChunkRequest,
+    profile: &WorldProfile,
+    definition: usize,
+    seed: u64,
+    mut random: Random,
+) -> Result<Start, String> {
+    let p = &profile.structures;
+    let mut out = empty_start(request, seed, definition);
     let d = &p.definitions[definition];
     let root = if d.kind == "jigsaw" {
         let pool = p.pools.get(&d.pool);
@@ -1533,6 +1561,20 @@ pub fn apply(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn reserved_structure_slots_need_no_executable_template() {
+        let mut profile: Profile = serde_json::from_value(json!({
+            "templates":[], "pools":{},
+            "definitions":[{"id":"test:pending","kind":"fortress","config":{},"biomes":[0],"unimplemented":true}],
+            "sets":[{"id":"test:mixed","placement":{"spacing":27,"separation":4},"entries":[{"definition":0,"weight":2}]}]
+        })).unwrap();
+        profile.validate(1, 1).unwrap();
+        assert_eq!(reach(&profile, &profile.definitions[0]), 0);
+        profile.definitions[0].unimplemented = false;
+        assert_eq!(profile.validate(1, 1).unwrap_err(), "invalid structure definition");
+        let old: Definition = serde_json::from_value(json!({"id":"test:old","kind":"jigsaw","config":{},"biomes":[]})).unwrap();
+        assert!(!old.unimplemented);
+    }
     #[test]
     fn weighted_pool_shuffle_shares_entries_and_preserves_random_stream() {
         let pool: Pool = serde_json::from_value(json!({

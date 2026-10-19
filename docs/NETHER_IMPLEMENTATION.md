@@ -498,6 +498,54 @@ read semantics. Further throughput/memory validation remains necessary before
 production rollout. Structures, automatic activation, gameplay lighting and the
 both-loader runtime matrix remain deferred.
 
+## Cycle 4a: complete weighted structure sets
+
+The exporter now retains every entry of a random-spread structure set that has
+an executable member. Source entry order, weights, biome restrictions and placement
+settings remain intact. Previously the Nether complex set lost fortress weight 2
+and kept only bastion weight 3, assigning every eligible candidate to a bastion.
+
+Definitions without a native adapter are marked `unimplemented` with an explicit
+reason, preserving their source configuration and biome membership. Entries with
+no possible source biome retain identity/weight without compiling an unrelated
+dimension's structure configuration. A selected,
+biome-eligible reserved definition creates no start and does not transfer its
+selection to a supported sibling. Definitions with no possible source biome are
+rejected normally. Fully unsupported sets remain outside the generation and locate
+adapter. Startup diagnostics distinguish executable and reserved definitions.
+
+Native selection also retries remaining weighted entries when an executable
+candidate produces an empty start, as it already did for biome rejection. Each
+attempt receives a copy of the current random state so geometry cannot advance
+the independent candidate-selection stream. Existing successful first-attempt
+geometry retains its random sequence. Empty/reserved candidates never produce
+saved starts or positive locate results.
+
+Run `./gradlew -PretinaHostOnly :common:netherStructureTest`. The fixture exports
+actual Nether registries and templates and writes `build/nether/structure-profile.json`
+and `structure-coverage.json`. It verifies all four loaded Nether families, complete
+weighted entry identities/order/weights, biome membership, placement configuration,
+structures disabled, an explicit empty source-set filter, and a fixed Plains biome
+whose village set retains the other ineligible families. Coverage distinguishes
+executable, reserved and unimplemented families rather than counting reserved
+metadata as generated structures.
+
+The native selection fixtures compare 288 candidate queries across three seeds and
+positive/negative coordinates against an independent Java random-stream reference.
+They cover original and overridden weights, biome rejection, empty pools, empty
+selected elements, and a three-entry retry that consumes geometry randomness.
+Repeated queries must remain identical without assembling chunks. These fixtures
+retain Retina's existing candidate-selection seed mapping; they do not assert
+identical Minecraft structure layouts for the same seed.
+
+Host Fabric/NeoForge builds, 98 Rust unit tests, three native GPU tests, Nether
+profile checks, the existing structure assembly/MCA metadata suite, and Superflat
+regressions pass.
+
+Fortress geometry, fossils, Nether ruined portals, complete Nether bastion gameplay
+validation and automatic activation remain unfinished. Reserved selection slots are
+an intermediate rollout behavior, not implementation of those missing structures.
+
 ## Remaining cycles
 
 3. Complete the remaining Nether feature and decoration coverage and ordering.

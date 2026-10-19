@@ -603,6 +603,19 @@ tasks.register('regionDecodeBenchmark', JavaExec) {
 }
 
 
+tasks.register('netherStructureTest', JavaExec) {
+    group = 'verification'
+    description = 'Check loaded Nether structure families and complete weighted placement sets.'
+    dependsOn 'gpuTestClasses', ':packageNative'
+    classpath = sourceSets.gpuTest.runtimeClasspath
+    mainClass = 'art.arcane.retina.worldgen.NetherStructureTest'
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
+    jvmArgs '--enable-native-access=ALL-UNNAMED', '-XX:ActiveProcessorCount=2'
+    environment 'RAYON_NUM_THREADS', '2'
+    environment 'RETINA_REGION_THREADS', '2'
+    workingDir rootProject.projectDir
+}
+
 tasks.register('netherFeatureTest', JavaExec) {
     group = 'verification'
     description = 'Compare loaded Nether block primitives with Minecraft feature replay.'
