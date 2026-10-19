@@ -5,6 +5,11 @@ NBT worker time consistently, but did not establish faster complete generation.
 Production retains the existing encoder. The experiment is preserved for future
 CPU-focused work; it is not an enabled alternative or a claimed throughput gain.
 
+A later [chunk biome metadata trial](NBT_BIOME_METADATA_TRIAL.md) tested a
+smaller prepared view and serialized-compound reuse without lighting metadata
+copies. It also failed to demonstrate complete-generation gains and is retained
+as a separate rejected experiment.
+
 [Raw measurements](benchmarks/section-encoding-trial-2026-10-19.json) contain all
 twelve whole-generation runs, individual region/stage times, hashes, transfer
 counters, peak RSS, build/test logs and the bounded runner commands. The
