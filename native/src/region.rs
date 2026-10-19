@@ -418,7 +418,7 @@ fn generate_region_inner(
                             plant_updates.placements(p, &overlays[slots[index]]);
                         }
                     });
-                    let structure_data = profile.as_deref().map(|p| {
+                    let mut structure_data = profile.as_deref().map(|p| {
                         timings.time(timings::STRUCTURES, || {
                             let mut data = crate::structures::apply(
                                 request,
@@ -431,6 +431,10 @@ fn generate_region_inner(
                             data
                         })
                     });
+                    if let (Some(p), Some(data)) = (profile.as_deref(), structure_data.as_mut()) {
+                        decoration::ticks::Chunk::collect(request, &p.decoration_ticks, &overlays[slots[index]])?
+                            .write(&mut data.tag);
+                    }
                     if let Some(p) = profile.as_deref() {
                         timings.time(timings::SNOW, || {
                             crate::features::snow(request, p, columns, &mut blocks)
@@ -1046,7 +1050,9 @@ fn encode_chunk(
         crate::nbt::fields(&mut nbt.0, &crate::structures::empty_data());
     }
     for name in ["block_ticks", "fluid_ticks"] {
-        nbt.list(name, 10, 0);
+        if structure_data.and_then(|data| crate::nbt::field(data, name)).is_none() {
+            nbt.list(name, 10, 0);
+        }
     }
     nbt.list("PostProcessing", 9, 0);
     nbt.end();

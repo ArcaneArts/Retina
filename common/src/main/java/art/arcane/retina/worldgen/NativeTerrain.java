@@ -40,6 +40,7 @@ public final class NativeTerrain {
     private final MethodHandle decorationCounts;
     private final MethodHandle providerNoise;
     private final MethodHandle decorationFeature;
+    private final MethodHandle decorationFeatureTicks;
     private final MethodHandle decorationPlacement;
     private final MethodHandle column;
     private final MethodHandle lastError;
@@ -79,6 +80,8 @@ public final class NativeTerrain {
         providerNoise = linker.downcallHandle(symbols.findOrThrow("retina_sample_provider_noise"),
                 FunctionDescriptor.of(JAVA_INT, ADDRESS, ADDRESS, JAVA_LONG, ADDRESS));
         decorationFeature = linker.downcallHandle(symbols.findOrThrow("retina_sample_decoration_feature"),
+                FunctionDescriptor.of(JAVA_INT,ADDRESS,JAVA_INT,ADDRESS,JAVA_LONG,ADDRESS,JAVA_LONG,ADDRESS));
+        decorationFeatureTicks = linker.downcallHandle(symbols.findOrThrow("retina_sample_decoration_feature_ticks"),
                 FunctionDescriptor.of(JAVA_INT,ADDRESS,JAVA_INT,ADDRESS,JAVA_LONG,ADDRESS,JAVA_LONG,ADDRESS));
         decorationPlacement = linker.downcallHandle(symbols.findOrThrow("retina_sample_decoration_placement"),
                 FunctionDescriptor.of(JAVA_INT,ADDRESS,JAVA_INT,ADDRESS,JAVA_LONG,ADDRESS,JAVA_LONG,ADDRESS));
@@ -256,6 +259,9 @@ public final class NativeTerrain {
 
     int[] decorationFeature(TerrainRequest request,int recipe,int[] position,long seed) {
         return decorationSample(decorationFeature,request,recipe,position,seed);
+    }
+    int[] decorationFeatureTicks(TerrainRequest request,int recipe,int[] position,long seed) {
+        return decorationSample(decorationFeatureTicks,request,recipe,position,seed);
     }
     /** Sparse [x,y,z,program] tuples; loaded noise stacks remain resident on the GPU. */
     float[] providerNoise(TerrainRequest request,int[] points) {

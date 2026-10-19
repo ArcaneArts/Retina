@@ -193,9 +193,53 @@ saved regions passed 983,040 independent block comparisons. Host Fabric/NeoForge
 builds, registry export, 88 Rust unit tests, three native GPU integration tests,
 and existing Overworld feature, Nether terrain and Superflat regressions passed.
 
-Cycle 3 still needs springs and required fluid updates, mushroom/fire/soul-fire
-survival, complete feature-root coverage diagnostics, and shared ordering with
-ores. Nether activation, structures and runtime integration remain later cycles.
+At the end of cycle 3b, remaining feature work included springs and required fluid
+updates, mushroom/fire/soul-fire survival, complete feature-root coverage
+diagnostics, and shared ordering with ores.
+
+## Cycle 3c: springs and scheduled updates
+
+The shared native spring adapter reads the loaded fluid state, valid block set,
+required support, and exact rock/air neighbor counts. It preserves source and
+flowing fluid identities, including compatible water overrides. The same adapter
+also handles supported spring definitions outside the Nether. This does not
+change the Nether activation policy.
+
+Feature commands carry a one-based ID into the profile's `decoration_ticks`
+definitions. Distribution, cached replay, native chunk metadata and MCA publication
+retain those updates. The native writer deduplicates by tick kind, registered type
+and position, retaining the first update even if a later feature overwrites its
+block, as Minecraft does. Generation delays and priority are zero/normal.
+Both chunk and region decoration imports use Minecraft's saved-tick codecs and
+chunk tick containers. Previously Retina always wrote empty tick lists.
+
+`netherFeatureTest` checks 8,640 spring cases against Minecraft's actual feature
+implementation: every combination of the six queried neighbors, valid/air/invalid
+origins, all five loaded spring placements, custom counts, optional support,
+source/flowing water and lava, and valid-block sets that include air. Complete
+block-write maps and scheduled fluid identities agree, including rejected cases.
+The installation fixture checks duplicate and foreign-chunk updates, block and
+fluid tick separation, native metadata import, save/reload and the transition to
+runnable ticks. These are native/Minecraft harness checks; actual in-game fluid
+flow after automatic Nether activation remains part of cycle 5.
+
+The `--region` option decodes tick lists in mixed, Crimson Forest and Warped Forest
+regions. It checks type, coordinates, uniqueness, priority and delay; requires
+updates targeting surviving lava; compares ordered lists against independent
+corner/interior chunk generation; and preserves the full region on repeat
+publication. Statistics include total, active and independently compared fluid
+ticks. Rust coverage also checks negative coordinates, storage edges, duplicate
+identities, invalid commands and unchanged command sizes.
+
+On Metal / Apple M4 Max, the three regions retained 21,896 scheduled fluid
+updates, of which 21,686 still targeted lava after decoration. Fifteen independent
+corner/interior chunks matched ordered tick lists and 983,040 blocks. Host
+Fabric/NeoForge builds, registry loading/export, 89 Rust unit tests, three native
+GPU tests, Overworld block/feature tests, Superflat and Nether terrain checks pass.
+
+Cycle 3 still needs mushroom/fire/soul-fire survival, complete feature-root
+coverage diagnostics and shared generation-step ordering with ores. Structures,
+production activation and the final runtime matrix remain later cycles.
 
 ## Remaining cycles
 

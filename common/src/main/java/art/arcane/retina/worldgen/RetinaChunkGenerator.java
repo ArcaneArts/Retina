@@ -424,6 +424,7 @@ public final class RetinaChunkGenerator extends ChunkGenerator {
                               net.minecraft.world.level.levelgen.structure.pieces.StructurePieceSerializationContext context,
                               RegistryAccess registries) {
         installStructures(chunk,data,context,registries);
+        GenerationTicks.install(chunk,data);
         for (var value : data.getListOrEmpty("block_entities")) chunk.setBlockEntityNbt((net.minecraft.nbt.CompoundTag)value);
         if (chunk instanceof net.minecraft.world.level.chunk.ProtoChunk proto)
             for (var value : data.getListOrEmpty("entities")) proto.addEntity((net.minecraft.nbt.CompoundTag)value);

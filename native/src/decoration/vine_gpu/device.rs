@@ -464,6 +464,7 @@ impl Gpu {
                         words[4..4 + words[0] as usize * 5]
                             .chunks_exact(5)
                             .map(|v| WorldBlock {
+                                tick: 0,
                                 x: v[0] as i32,
                                 y: v[1] as i32,
                                 z: v[2] as i32,

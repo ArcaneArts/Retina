@@ -1160,6 +1160,7 @@ impl TerrainEngine {
         let profile = self.profile(request.reserved)?;
         let timings = self.timings(request.reserved);
         let mut plant_updates = decoration::pairs::Updates::default();
+        let mut ticks = decoration::ticks::Chunk::default();
         let columns = if let Some(p) = profile.as_deref().filter(|p| {
             !p.decorations.is_empty()
                 || !p.geology.ores.is_empty()
@@ -1190,6 +1191,7 @@ impl TerrainEngine {
                 decoration::decorate(Some(p), &placements[0], blocks);
                 plant_updates.placements(p, &placements[0]);
             });
+            ticks = decoration::ticks::Chunk::collect(request, &p.decoration_ticks, &placements[0])?;
 
             columns.to_vec()
         } else {
@@ -1204,10 +1206,11 @@ impl TerrainEngine {
         };
         if let Some(p) = profile.as_deref() {
             let plans = structures::plans(self, request, 1)?;
-            let data = timings.time(timings::STRUCTURES, || {
+            let mut data = timings.time(timings::STRUCTURES, || {
                 structures::apply(request, p, &plans, &columns, Some(blocks))
             });
             plant_updates.extend(data.plant_updates);
+            ticks.write(&mut data.tag);
             self.structures
                 .lock()
                 .map_err(|_| "structure cache poisoned")?
@@ -1683,6 +1686,35 @@ pub unsafe extern "C" fn retina_sample_decoration_feature(
     capacity: u64,
     length: *mut u64,
 ) -> i32 {
+    unsafe { sample_decoration_feature(request, recipe, position, seed, output, capacity, length, false) }
+}
+
+/// Sample scheduled [x,y,z,one-based tick definition] feature updates.
+/// # Safety
+/// Uses the same buffer contract as retina_sample_decoration_feature.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn retina_sample_decoration_feature_ticks(
+    request: *const ChunkRequest,
+    recipe: u32,
+    position: *const [i32; 3],
+    seed: u64,
+    output: *mut [i32; 4],
+    capacity: u64,
+    length: *mut u64,
+) -> i32 {
+    unsafe { sample_decoration_feature(request, recipe, position, seed, output, capacity, length, true) }
+}
+
+unsafe fn sample_decoration_feature(
+    request: *const ChunkRequest,
+    recipe: u32,
+    position: *const [i32; 3],
+    seed: u64,
+    output: *mut [i32; 4],
+    capacity: u64,
+    length: *mut u64,
+    ticks: bool,
+) -> i32 {
     let mut too_small = false;
     let status = boundary(|| {
         if request.is_null() || position.is_null() || output.is_null() || length.is_null() {
@@ -1706,6 +1738,7 @@ pub unsafe extern "C" fn retina_sample_decoration_feature(
                 unsafe { *position },
                 seed,
                 &noise,
+                ticks,
             )?;
             let queries = noise.missing();
             if queries.is_empty() {
