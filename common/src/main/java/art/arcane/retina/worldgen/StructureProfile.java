@@ -64,20 +64,27 @@ final class StructureProfile {
         if(context.enabled){out.load();out.finishProcessors(out.pools);}
         var result=new JsonObject();result.add("templates",out.templates);result.add("definitions",out.definitions);
         result.add("pools",out.pools);result.add("sets",out.sets);
-        Retina.LOGGER.info("Exported registered structures: {} definitions, {} pools, {} templates, {} placement sets; omissions {}",
-                out.definitions.size(),out.pools.size(),out.templates.size(),out.sets.size(),out.omitted);
+        long reserved=out.definitions.asList().stream().map(JsonElement::getAsJsonObject).filter(d->d.has("unimplemented")).count();
+        Retina.LOGGER.info("Exported registered structures: {} executable definitions, {} reserved definitions, {} pools, {} templates, {} placement sets; omissions {}",
+                out.definitions.size()-reserved,reserved,out.pools.size(),out.templates.size(),out.sets.size(),out.omitted);
         return result;
     }
     void load() {
         var ops=registry.createSerializationContext(JsonOps.INSTANCE);
+        var unavailable=new HashMap<String,JsonObject>();
         for(var holder:registry.lookupOrThrow(Registries.STRUCTURE).listElements().toList()) {
             var structure=holder.value();var allowed=new JsonArray();
             for(int i=0;i<biomes.size();i++)if(structure.biomes().contains(biomes.get(i)))allowed.add(i);
-            if(allowed.isEmpty())continue;
             String name=holder.key().identifier().toString();
+            var d=new JsonObject();d.addProperty("id",name);d.add("biomes",allowed);
+            if(allowed.isEmpty()) {
+                // A biome-ineligible slot only needs identity and weight. Do not
+                // compile unrelated dimension definitions merely to retain it.
+                d.addProperty("kind","unavailable");d.add("config",new JsonObject());
+                d.addProperty("unimplemented",true);d.addProperty("unavailable_reason","biome-source");unavailable.put(name,d);continue;
+            }
             var config=Structure.DIRECT_CODEC.encodeStart(ops,structure).getOrThrow().getAsJsonObject();
             String type=config.get("type").getAsString().replace("minecraft:","");
-            var d=new JsonObject();d.addProperty("id",name);d.add("biomes",allowed);
             d.addProperty("kind",type);d.add("config",config);
             if(structure instanceof JigsawStructure) {
                 d.addProperty("kind","jigsaw");
@@ -86,17 +93,32 @@ final class StructureProfile {
                 if(config.has("pool_aliases"))aliasPools(config.get("pool_aliases"));
             } else if(type.equals("desert_pyramid") || type.equals("jungle_temple") || type.equals("swamp_hut")) {
                 d.addProperty("template",capture(type));
-            } else {omitted.add("structure:"+name+":"+type);continue;}
+            } else {
+                omitted.add("structure:"+name+":"+type);
+                d.addProperty("unimplemented",true);d.addProperty("unavailable_reason","structure-type");unavailable.put(name,d);continue;
+            }
             definitionIds.put(name,definitions.size());definitions.add(d);
         }
         for(var holder:registry.lookupOrThrow(Registries.STRUCTURE_SET).listElements().toList()) {
             if(context.allowedSets.isPresent() && !context.allowedSets.get().contains(holder.key().identifier()))continue;
             var set=holder.value();var placement=net.minecraft.world.level.levelgen.structure.placement.StructurePlacement.CODEC.encodeStart(ops,set.placement()).getOrThrow().getAsJsonObject();
             if(!placement.get("type").getAsString().equals("minecraft:random_spread")) {omitted.add("placement:"+holder.key().identifier());continue;}
+            // Keep only sets with an executable member, but retain every weighted
+            // slot in those sets. Unsupported families must not become more bastions.
+            boolean executable=set.structures().stream().anyMatch(entry->{
+                Integer id=definitionIds.get(entry.structure().unwrapKey().orElseThrow().identifier().toString());
+                return id!=null && !definitions.get(id).getAsJsonObject().has("unimplemented");
+            });
+            if(!executable)continue;
             var entries=new JsonArray();
             for(var entry:set.structures()) {
-                Integer id=definitionIds.get(entry.structure().unwrapKey().orElseThrow().identifier().toString());
-                if(id!=null){var e=new JsonObject();e.addProperty("definition",id);e.addProperty("weight",entry.weight());entries.add(e);}
+                String name=entry.structure().unwrapKey().orElseThrow().identifier().toString();
+                Integer id=definitionIds.get(name);
+                if(id==null) {
+                    id=definitions.size();definitionIds.put(name,id);
+                    definitions.add(Objects.requireNonNull(unavailable.get(name),"Unexported structure "+name));
+                }
+                var e=new JsonObject();e.addProperty("definition",id);e.addProperty("weight",entry.weight());entries.add(e);
             }
             if(!entries.isEmpty()){var s=new JsonObject();s.addProperty("id",holder.key().identifier().toString());s.add("placement",placement);s.add("entries",entries);sets.add(s);}
         }
