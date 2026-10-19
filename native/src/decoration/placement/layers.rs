@@ -44,6 +44,13 @@ pub(crate) struct Queue {
     ready: Vec<Candidate>,
     resumed: BinaryHeap<Reverse<Candidate>>,
     retry: Option<Candidate>,
+    deferred: Option<DeferredGroup>,
+}
+#[derive(Clone)]
+struct DeferredGroup {
+    recipe: u32,
+    origin: [i32; 3],
+    seed: u64,
 }
 pub(in crate::decoration) struct QueueCheckpoint {
     pub queue: Queue,
@@ -77,9 +84,46 @@ impl Queue {
             ready,
             resumed: BinaryHeap::new(),
             retry: None,
+            deferred: None,
         }
     }
+    /// The proven GPU program owns this entire RNG group and has not consumed
+    /// its first child. Keep only the original seed/origin while it is pending.
+    /// Unsupported/mid-group continuations retain their existing queue exactly.
+    pub(in crate::decoration) fn defer_gpu_group(
+        &mut self,
+        recipe: u32,
+        origin: [i32; 3],
+        seed: u64,
+    ) -> bool {
+        if self.deferred.is_some() || self.peek_group() != Some((recipe, recipe)) {
+            return false;
+        }
+        let first = self.retry.as_ref().or_else(|| {
+            match (self.ready.last(), self.resumed.peek().map(|v| &v.0)) {
+                (Some(a), Some(b)) => Some(if b < a { b } else { a }),
+                (a, b) => a.or(b),
+            }
+        });
+        if first.is_none_or(|c| c.order.as_slice() != [0, 0] || c.layer.is_some()) {
+            return false;
+        }
+        self.remove_group(recipe);
+        // Vec::retain keeps the old expanded capacity; release it before the
+        // saved prefix is charged against the per-region retention budget.
+        self.ready.shrink_to_fit();
+        self.resumed.shrink_to_fit();
+        self.deferred = Some(DeferredGroup {
+            recipe,
+            origin,
+            seed,
+        });
+        true
+    }
     pub(in crate::decoration) fn peek_group(&self) -> Option<(u32, u32)> {
+        if let Some(group) = &self.deferred {
+            return Some((group.recipe, group.recipe));
+        }
         let next = self.retry.as_ref().or_else(|| {
             match (self.ready.last(), self.resumed.peek().map(|v| &v.0)) {
                 (Some(a), Some(b)) => Some(if b < a { b } else { a }),
@@ -89,6 +133,9 @@ impl Queue {
         next.map(|c| (c.group, c.recipe))
     }
     pub(in crate::decoration) fn remove_group(&mut self, group: u32) {
+        if self.deferred.as_ref().is_some_and(|d| d.recipe == group) {
+            self.deferred = None;
+        }
         self.ready.retain(|c| c.group != group);
         self.resumed.retain(|c| c.0.group != group);
         if self.retry.as_ref().is_some_and(|c| c.group == group) {
@@ -120,7 +167,15 @@ impl Queue {
         queries: &mut Vec<counts::Query>,
     ) -> Option<Candidate> {
         self.next_checkpoint(
-            field, profile, request, overlay, cache, counts, queries, None,
+            field,
+            profile,
+            request,
+            overlay,
+            cache,
+            counts,
+            queries,
+            None,
+            |_, _| false,
         )
     }
     pub(in crate::decoration) fn retry(&mut self, candidate: Candidate) {
@@ -139,8 +194,42 @@ impl Queue {
         counts: Option<&counts::Counts>,
         queries: &mut Vec<counts::Query>,
         mut checkpoint: Option<&mut Option<QueueCheckpoint>>,
+        stop_before: impl Fn(u32, u32) -> bool,
     ) -> Option<Candidate> {
-        while let Some(mut candidate) = self.pop() {
+        if let Some(group) = self.deferred.take() {
+            // A failed/sparse GPU job resumes the original CPU stream. This
+            // program has constant counts and no unresolved count providers.
+            let program = profile.decorations[group.recipe as usize]
+                .placement
+                .as_ref()
+                .unwrap();
+            expand(
+                program,
+                group.recipe,
+                group.recipe,
+                group.origin,
+                Rng::new(group.seed),
+                field,
+                request,
+                counts,
+                Some(&mut self.ready),
+                queries,
+            );
+            self.ready.sort_by(|a, b| b.cmp(a));
+        }
+        // The caller checked the initial head already. Recheck only when lazy
+        // expansion loops internally; ordinary streamed candidates return on
+        // the first iteration and need no second GPU eligibility lookup.
+        let mut initial = true;
+        while initial
+            || !self
+                .peek_group()
+                .is_some_and(|(group, recipe)| stop_before(group, recipe))
+        {
+            initial = false;
+            let Some(mut candidate) = self.pop() else {
+                break;
+            };
             if let Some(mut cursor) = candidate.stream.take() {
                 let program = profile.decorations[candidate.recipe as usize]
                     .placement
@@ -336,6 +425,65 @@ mod tests {
         assert!(queue.peek_group().is_none());
     }
 
+    #[test]
+    fn exhausted_layer_returns_control_before_consuming_next_gpu_group() {
+        let (mut profile, field, request) = fixture(json!([
+            {"type":"count_on_every_layer","count":0}
+        ]));
+        profile.decorations[1].placement = Some(
+            serde_json::from_value(json!([
+                {"type":"count","count":2}, {"type":"count","count":3},
+                {"type":"in_square"}
+            ]))
+            .unwrap(),
+        );
+        let mut entries = Vec::new();
+        for id in 0..2 {
+            expand(
+                profile.decorations[id].placement.as_ref().unwrap(),
+                id as u32,
+                id as u32,
+                [0, request.min_y, 0],
+                Rng::new(81),
+                &field,
+                request,
+                None,
+                Some(&mut entries),
+                &mut Vec::new(),
+            );
+        }
+        let mut queue = Queue::new(entries);
+        let mut cache = EvaluationCache::default();
+        assert!(
+            queue
+                .next_checkpoint(
+                    &field,
+                    &profile,
+                    request,
+                    &Overlay::default(),
+                    &mut cache,
+                    None,
+                    &mut Vec::new(),
+                    None,
+                    |g, _| g == 1
+                )
+                .is_none()
+        );
+        assert_eq!(queue.peek_group(), Some((1, 1)));
+        let first = queue
+            .next(
+                &field,
+                &profile,
+                request,
+                &Overlay::default(),
+                &mut cache,
+                None,
+                &mut Vec::new(),
+            )
+            .unwrap();
+        assert_eq!(first.order.as_slice(), [0, 0]);
+    }
+
     fn fixture(program: serde_json::Value) -> (WorldProfile, Field, ChunkRequest) {
         let recipe = json!({"source":"test:layers","salt":0,"density":1,"low_density":1,
             "noise_count":false,"rarity":1,"tries":1,"spread":[0,0,0],"kind":"plant",
@@ -377,6 +525,102 @@ mod tests {
             reserved: 0,
         };
         (profile, field, request)
+    }
+    #[test]
+    fn deferred_gpu_group_reconstructs_all_ordered_candidates_and_skips_success() {
+        let (profile, field, request) = fixture(json!([
+            {"type":"count","count":64}, {"type":"count","count":40},
+            {"type":"in_square"},
+            {"type":"height_range","height":{"type":"uniform",
+                "min_inclusive":{"absolute":-64},"max_inclusive":{"absolute":63}}},
+            {"type":"block_predicate_filter","predicate":{"type":"true"}},
+            {"type":"biome"}
+        ]));
+        let mut entries = Vec::new();
+        for id in 0..2 {
+            expand(
+                profile.decorations[id].placement.as_ref().unwrap(),
+                id as u32,
+                id as u32,
+                [0, request.min_y, 0],
+                Rng::new(1928 + id as u64),
+                &field,
+                request,
+                None,
+                Some(&mut entries),
+                &mut Vec::new(),
+            );
+        }
+        let original = Queue::new(entries);
+        let drain = |mut queue: Queue| {
+            let mut cache = EvaluationCache::default();
+            let overlay = Overlay::default();
+            let mut out = Vec::new();
+            while let Some(c) = queue.next(
+                &field,
+                &profile,
+                request,
+                &overlay,
+                &mut cache,
+                None,
+                &mut Vec::new(),
+            ) {
+                let at = position(
+                    &c,
+                    &profile.decorations[c.recipe as usize],
+                    &field,
+                    &profile,
+                    request,
+                    &overlay,
+                    &mut cache,
+                );
+                out.push((
+                    c.group,
+                    c.recipe,
+                    c.order,
+                    c.seed,
+                    c.origin,
+                    c.draws,
+                    c.evaluation,
+                    at,
+                ));
+            }
+            out
+        };
+        let expected = drain(original.clone());
+        assert_eq!(expected.len(), 5120);
+        let mut compact = original.clone();
+        let before = compact.retained_bytes();
+        assert!(compact.defer_gpu_group(0, [0, request.min_y, 0], 1928));
+        assert!(compact.retained_bytes() <= before / 2);
+        assert_eq!(compact.peek_group(), Some((0, 0)));
+        assert_eq!(
+            drain(compact.clone()),
+            expected,
+            "failed GPU and cloned snapshots resume exactly"
+        );
+        compact.remove_group(0);
+        assert_eq!(
+            drain(compact),
+            expected[2560..],
+            "successful GPU consumes only its own group"
+        );
+        let mut partial = original;
+        partial.next(
+            &field,
+            &profile,
+            request,
+            &Overlay::default(),
+            &mut EvaluationCache::default(),
+            None,
+            &mut Vec::new(),
+        );
+        assert!(!partial.defer_gpu_group(0, [0, request.min_y, 0], 1928));
+        assert_eq!(
+            drain(partial),
+            expected[1..],
+            "never restart a partially consumed group"
+        );
     }
     #[test]
     fn retry_precedes_other_candidates_with_equal_order_keys() {

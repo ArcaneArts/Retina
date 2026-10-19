@@ -40,7 +40,8 @@ def main():
     parser.add_argument("--profile", type=Path, required=True)
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--compare", type=Path, help="A matched baseline output directory; fail on any changed chunk NBT")
-    parser.add_argument("--parallel", type=int, choices=(1,2), default=1)
+    parser.add_argument("--parallel", type=int, choices=(1,2,4,8), default=1,
+                        help="Concurrent callers; CPU worker limits remain separate")
     parser.add_argument("--seed", type=int, default=123456789)
     parser.add_argument("--origin-x", type=int, default=-1, help="First region X coordinate")
     parser.add_argument("--origin-z", type=int, default=-1, help="First region Z coordinate")
