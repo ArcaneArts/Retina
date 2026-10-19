@@ -81,6 +81,8 @@ pub struct Recipe {
 #[derive(Clone, Deserialize)]
 #[serde(tag = "kind")]
 pub enum Kind {
+    #[serde(rename = "nether_feature")]
+    NetherFeature { nether: patch::nether::Feature },
     #[serde(rename = "flat_lake")]
     FlatLake { #[serde(flatten)] lake: flat_features::Lake },
     #[serde(rename = "void_platform")]
@@ -180,6 +182,7 @@ impl Recipe {
         }
         let valid = |id: u16| (id as usize) < material_count;
         let okay = match &self.feature {
+            Kind::NetherFeature { nether } => self.placement.is_some() && nether.validate(material_count),
             Kind::FlatLake { lake } => self.placement.is_some() && lake.validate(material_count),
             Kind::VoidPlatform { platform } => self.placement.is_some() && platform.iter().all(|&id| valid(id)),
             Kind::Disk { disk } => self.placement.is_some() && disk.validate(material_count),
@@ -1345,7 +1348,7 @@ fn evaluate_anchor_impl<const MEASURE: bool>(
         let mut rng = Rng::new(candidate.seed);
         let feature_start = diagnostics::start(MEASURE);
         match &recipe.feature {
-            Kind::Disk { .. } | Kind::Sequence { .. } | Kind::Overlay { .. } => {
+            Kind::NetherFeature { .. } | Kind::Disk { .. } | Kind::Sequence { .. } | Kind::Overlay { .. } => {
                 patch::place_registered(
                     &recipe.feature,
                     position,
@@ -1502,6 +1505,7 @@ pub(crate) fn feature_sample(
     if !matches!(
         recipe.feature,
         Kind::FlatLake { .. }
+            | Kind::NetherFeature { .. }
             | Kind::VoidPlatform { .. }
             | Kind::Disk { .. }
             | Kind::Sequence { .. }
@@ -1524,7 +1528,7 @@ pub(crate) fn feature_sample(
     let mut overlay = placement::Overlay::default();
     let mut rng = Rng::new(seed);
     match &recipe.feature {
-        Kind::Disk { .. } | Kind::Sequence { .. } | Kind::Overlay { .. } => {
+        Kind::NetherFeature { .. } | Kind::Disk { .. } | Kind::Sequence { .. } | Kind::Overlay { .. } => {
             patch::place_registered(
                 &recipe.feature,
                 at,

@@ -24,10 +24,14 @@ import java.util.stream.Collectors;
 /** Persist a complete negative-coordinate Nether region and decode it with Minecraft. */
 final class NetherRegionTest {
     static void check(TerrainProfileData data, BiomeTerrainProfile profile) throws Exception {
+        check(data,profile,false);
+    }
+
+    static void check(TerrainProfileData data, BiomeTerrainProfile profile, boolean features) throws Exception {
         var terrain = NativeTerrain.instance();
         var materials = data.materials();
         Files.createDirectories(Path.of("build/nether"));
-        var directory = Files.createTempDirectory(Path.of("build/nether"), "region-");
+        var directory = Files.createTempDirectory(Path.of("build/nether"), features ? "feature-region-" : "region-");
         var path = directory.resolve("r.-1.0.mca");
         int version = SharedConstants.getCurrentVersion().dataVersion().version();
         long start = System.nanoTime();
@@ -38,7 +42,7 @@ final class NetherRegionTest {
                 Strategy.createForBlockStates(Block.BLOCK_STATE_REGISTRY), Blocks.AIR.defaultBlockState());
         var sourceBiomes = data.biomes().stream().map(b -> b.unwrapKey().orElseThrow().identifier().toString()).collect(Collectors.toSet());
         var probes = Set.of(new ChunkPos(-32, 0), new ChunkPos(-1, 31), new ChunkPos(-1, 0), new ChunkPos(-32, 31), new ChunkPos(-15, 16));
-        long compared = 0;
+        long compared = 0, glowstone = 0, vines = 0;
         try (var storage = new RegionFileStorage(new RegionStorageInfo("nether-terrain-test", Level.NETHER, "chunk"), directory, false)) {
             for (int z = 0; z < 32; z++) for (int x = -32; x < 0; x++) {
                 var position = new ChunkPos(x, z);
@@ -75,6 +79,8 @@ final class NetherRegionTest {
                         for (int yy = 0; yy < 16; yy++) for (int zz = 0; zz < 16; zz++) for (int xx = 0; xx < 16; xx++) {
                             var state = materials[Short.toUnsignedInt(expected[(sy * 16 + yy) * 256 + zz * 16 + xx])];
                             require(blocks.get(xx, yy, zz).equals(state), "region/chunk block parity " + position + " at " + xx + "," + (sy * 16 + yy) + "," + zz);
+                            if(state.is(Blocks.GLOWSTONE))glowstone++;
+                            if(state.is(Blocks.WEEPING_VINES) || state.is(Blocks.WEEPING_VINES_PLANT))vines++;
                             compared++;
                         }
                         var biomes = section.getCompoundOrEmpty("biomes");
@@ -94,9 +100,13 @@ final class NetherRegionTest {
         var repeat = terrain.generateRegion(NetherTerrainTest.request(profile, -1, 0, 0, 256), path, version, "minecraft:nether_wastes");
         require(repeat.generated() == 0 && repeat.preserved() == 1024 && Arrays.equals(saved, Files.readAllBytes(path)), "repeated publication preserves complete region");
         var stats = new JsonObject(); stats.addProperty("chunks", 1024); stats.addProperty("compared_voxels", compared);
+        if(features) {
+            require(glowstone>0,"published feature region contains glowstone in probed chunks");
+            stats.addProperty("probe_glowstone",glowstone);stats.addProperty("probe_weeping_vines",vines);
+        }
         stats.addProperty("generation_ms", ms); stats.addProperty("bytes", report.bytes()); stats.addProperty("region", path.toAbsolutePath().toString());
-        Files.writeString(Path.of("build/nether/region-stats.json"), stats.toString());
-        System.out.println("QA_EVT {\"event\":\"nether_saved_region\",\"status\":\"pass\",\"context\":" + stats + "}");
+        Files.writeString(Path.of(features ? "build/nether/feature-region-stats.json" : "build/nether/region-stats.json"), stats.toString());
+        System.out.println("QA_EVT {\"event\":\""+(features ? "nether_features_saved_region" : "nether_saved_region")+"\",\"status\":\"pass\",\"context\":" + stats + "}");
     }
 
     private static void require(boolean condition, String message) {if (!condition) throw new AssertionError(message);}
