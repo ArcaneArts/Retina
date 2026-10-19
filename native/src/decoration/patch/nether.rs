@@ -1,10 +1,15 @@
 //! Nether block primitives replay against the same live overlay as nested placement.
 use super::*;
 use placement::IntProvider;
+mod fungus;
 
 #[derive(Clone, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum Feature {
+    HugeFungus {
+        #[serde(flatten)]
+        fungus: fungus::Fungus,
+    },
     NeighborSpread {
         provider: Provider,
         neighbors: Predicate,
@@ -57,6 +62,7 @@ fn bounded(p: &IntProvider, min: i32, max: i32) -> bool {
 impl Feature {
     pub(crate) fn validate(&self, palette: usize) -> bool {
         match self {
+            Self::HugeFungus { fungus } => fungus.validate(palette),
             Self::NeighborSpread {
                 provider,
                 neighbors,
@@ -141,6 +147,7 @@ impl Feature {
 
     pub(super) fn place(&self, w: &mut World, at: [i32; 3], rng: &mut Rng) -> bool {
         match self {
+            Self::HugeFungus { fungus } => fungus.place(w, at, rng),
             Self::NeighborSpread {
                 provider,
                 neighbors,

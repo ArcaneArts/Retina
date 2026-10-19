@@ -65,6 +65,7 @@ public final class NetherProfileTest {
                     settings.value(), StructureProfile.Context.NONE, true, false, true);
             var json = JsonParser.parseString(data.json()).getAsJsonObject();
             require(json.getAsJsonObject("generation_bounds").equals(description.getAsJsonObject("bounds")), "shared bounds descriptor");
+            require(json.get("generator_depth").getAsInt()==source.getGenDepth(),"feature limits retain original generator depth");
             require(data.biomes().size() == 5 && new HashSet<>(data.biomes()).equals(biomes.possibleBiomes()), "exact five source biomes");
             require(data.materials()[json.get("stone").getAsInt()].is(Blocks.NETHERRACK), "source solid material");
             require(data.materials()[json.get("water").getAsInt()].is(Blocks.LAVA) && data.seaLevel() == 32, "source lava and sea level");

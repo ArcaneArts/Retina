@@ -18,6 +18,10 @@ Vanilla Nether storage is `[0, 256)`, while its density and anchor contexts are
 smaller of the source and dimension heights; density uses their intersection.
 Those operations are deliberately separate.
 
+`generator_depth` additionally retains the source generator's unmodified depth.
+Huge fungi use that value for Minecraft's absolute-Y growth limit; it is neither
+the dimension's storage height nor a resolved vertical anchor.
+
 Adapted generators expose their original generator's minimum Y and generation
 depth to Minecraft. Native requests continue to carry full dimension storage
 bounds. The source descriptor also retains ceiling, skylight, logical height,
@@ -145,12 +149,53 @@ Its files are named `feature-region-*` and `feature-region-stats.json` under
 `build/nether`. This is partial feature coverage, not a complete Nether milestone.
 
 The loaded feature graph contains 37 reachable named placed features and 14
-feature kinds. Remaining cycle 3 work includes huge fungi, springs and required
+feature kinds. At the end of cycle 3a, remaining work included huge fungi, springs and required
 fluid updates, mushroom/fire/soul-fire survival and other vegetation eligibility,
 complete root coverage diagnostics, and shared generation-step ordering with
 ores. Existing ore and decoration passes do not yet establish that ordering.
 Custom primitive recipes outside the existing 15-block horizontal reach contract
 are reported as unsupported. Production Nether activation remains deferred.
+
+## Cycle 3b: fungi and Nether vegetation
+
+Huge crimson and warped fungi now use native stem, cap, shroomlight, and hanging
+vine replay. The exporter retains configured base, stem, cap, decoration and
+replacement states/predicates, planted behavior, and the source generator depth.
+Thick stems, doubled heights, cap probabilities, vine lengths and tip ages consume
+the same controlled random stream as the Minecraft reference implementation.
+Planted variants can grow above the source noise ceiling while writes remain
+bounded by dimension storage.
+
+Small Nether fungi, roots, sprouts and Nether wart use the shared SimpleBlock
+provider and survival implementation. Their loaded support tags and weighted
+providers now determine placement; they no longer inherit the generic grass
+floor mask.
+
+`netherFeatureTest` also runs the actual Minecraft fungi and three loaded forest
+vegetation recipes on nylium and unsupported substrates, under lava, against
+solid and wart-block obstructions, and near the source ceiling. It checks complete
+write maps, thick/doubled stems, planted variants, all three vine-tip ages,
+shroomlights, and a customized fungus with a different base, oriented stem,
+cap, light block and replacement predicate. This remains a controlled-stream
+comparison rather than a claim of identical Minecraft seed layouts.
+
+The `--region` option additionally publishes fixed Crimson Forest and Warped
+Forest regions. It requires their characteristic stems and vegetation, decodes
+all 1,024 chunks in each region, compares corner/interior chunks with independent
+generation, and verifies repeated publication preserves existing bytes. Counts
+and paths are recorded separately in `feature-region-crimson_forest-stats.json`
+and `feature-region-warped_forest-stats.json`. The mixed-biome region records its
+counts in `feature-region-stats.json`.
+
+On Metal / Apple M4 Max, 69,120 fungus/vegetation reference cases compared
+1,006,035 final block writes, including 39,249 rejected placements. The three
+saved regions passed 983,040 independent block comparisons. Host Fabric/NeoForge
+builds, registry export, 88 Rust unit tests, three native GPU integration tests,
+and existing Overworld feature, Nether terrain and Superflat regressions passed.
+
+Cycle 3 still needs springs and required fluid updates, mushroom/fire/soul-fire
+survival, complete feature-root coverage diagnostics, and shared ordering with
+ores. Nether activation, structures and runtime integration remain later cycles.
 
 ## Remaining cycles
 

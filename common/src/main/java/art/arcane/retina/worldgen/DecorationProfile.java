@@ -36,6 +36,7 @@ final class DecorationProfile {
     private final Set<String> unsupported = new TreeSet<>();
     private final ProviderNoiseProfile providerNoise;
     private boolean flat;
+    private int generatorDepth;
     private final Set<PlacedFeature> nativeDisks=Collections.newSetFromMap(new IdentityHashMap<>());
     private DecorationProfile(HolderLookup.Provider registry, LinkedHashMap<BlockState, Integer> materials) {
         this.registry = registry;
@@ -49,6 +50,7 @@ final class DecorationProfile {
             java.util.function.Function<Holder<Biome>, net.minecraft.world.level.biome.BiomeGenerationSettings> generation) {
         var exporter = new DecorationProfile(registry, materials);
         exporter.flat = world.has("flat");
+        exporter.generatorDepth = world.get("generator_depth").getAsInt();
         for (int i = 0; i < biomes.size(); i++) {
             var selected = new JsonArray();
             var features = generation.apply(biomes.get(i)).features();
@@ -228,6 +230,16 @@ final class DecorationProfile {
                 return;
             }
             var states = provider(encoded, 1, 0, 0);
+            // Nether plants have distinct support tags and weighted providers.
+            // They cannot use the grass/dry-grass floor-mask fast path.
+            if(states.stream().anyMatch(s->s.state.getBlock() instanceof NetherFungusBlock
+                    || s.state.getBlock() instanceof NetherRootsBlock || s.state.getBlock() instanceof NetherSproutsBlock
+                    || s.state.getBlock() instanceof NetherWartBlock)) {
+                var data=simple(block);
+                if(data!=null)emit(path,p,chance,"simple_block",data,selected);
+                else unsupported.add("SimpleBlockFeature:nether-provider-or-survival");
+                return;
+            }
             var variants = new JsonArray();
             var aquatic = new JsonArray();
             var drySimple = new JsonArray();
@@ -756,7 +768,7 @@ final class DecorationProfile {
         var result=new JsonObject();result.add("placement",program);result.add("feature",data);result.addProperty("reach",reach+data.get("reach").getAsInt());return result;
     }
     private JsonObject nether(Feature feature,int depth) {
-        var data=NetherFeatureProfile.export(feature,registry,this::material,value->stateProgram(value,0),child->nested(child,depth+1));
+        var data=NetherFeatureProfile.export(feature,registry,this::material,value->stateProgram(value,0),child->nested(child,depth+1),generatorDepth);
         if(data==null)unsupported.add("nether_feature:provider-predicate-or-reach:"+feature.getClass().getSimpleName());
         return data;
     }
