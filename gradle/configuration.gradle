@@ -1,0 +1,20 @@
+// Shared parsers, also embedded in both loader artifacts for packaged installations.
+repositories { mavenCentral() }
+configurations {
+    configurationLibraries
+    implementation.extendsFrom configurationLibraries
+}
+def parsers = [
+        ['com.electronwill.night-config:core', '3.9.0', '[3.8.3,4.0)'],
+        ['com.electronwill.night-config:toml', '3.9.0', '[3.8.3,4.0)'],
+        ['org.snakeyaml:snakeyaml-engine', '2.10', '[2.10,3.0)']
+]
+parsers.each { parser ->
+    dependencies.add('configurationLibraries', "${parser[0]}:${parser[1]}")
+    if (project.name == 'fabric') dependencies.add('include', "${parser[0]}:${parser[1]}")
+    if (project.name == 'neoforge') {
+        dependencies.add('jarJar', parser[0]) {
+            version { strictly parser[2]; prefer parser[1] }
+        }
+    }
+}

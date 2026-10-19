@@ -1,6 +1,7 @@
 package art.arcane.retina.client;
 
 import art.arcane.retina.Retina;
+import art.arcane.retina.config.RetinaConfiguration;
 import art.arcane.retina.client.mixin.DebugScreenEntriesAccessor;
 import art.arcane.retina.worldgen.RetinaChunkGenerator;
 import art.arcane.retina.worldgen.TerrainStatsPayload;
@@ -19,7 +20,11 @@ public final class TerrainDebugEntry implements DebugScreenEntry {
     public static void initialize(RetinaClientPlatform platform) {
         var id = Retina.id("generation");
         DebugScreenEntriesAccessor.retina$register(id, new TerrainDebugEntry());
-        platform.onClientStarted(() -> Minecraft.getInstance().debugEntries.setStatus(id, DebugScreenEntryStatus.IN_OVERLAY));
+        platform.onClientStarted(() -> {
+            if (RetinaConfiguration.get().f3Overlay()) {
+                Minecraft.getInstance().debugEntries.setStatus(id, DebugScreenEntryStatus.IN_OVERLAY);
+            }
+        });
         platform.registerTerrainStatsReceiver(payload -> { remote = payload; TerrainClientQa.received(); });
         platform.onDisconnect(() -> { remote = TerrainStatsPayload.INACTIVE; TerrainClientQa.disconnected(); });
     }
@@ -28,6 +33,7 @@ public final class TerrainDebugEntry implements DebugScreenEntry {
 
     @Override
     public void display(DebugScreenDisplayer displayer, Level level, LevelChunk clientChunk, LevelChunk serverChunk) {
+        if (!RetinaConfiguration.get().f3Overlay()) return;
         var payload = remote;
         if (level instanceof ServerLevel server && server.getChunkSource().getGenerator() instanceof RetinaChunkGenerator generator) {
             payload = new TerrainStatsPayload(true, generator.backend(), generator.mode(), generator.metrics().snapshot());

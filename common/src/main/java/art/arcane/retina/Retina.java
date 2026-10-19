@@ -1,6 +1,7 @@
 package art.arcane.retina;
 
 import art.arcane.retina.platform.RetinaPlatform;
+import art.arcane.retina.config.RetinaConfiguration;
 import art.arcane.retina.worldgen.TerrainWorldgen;
 import net.minecraft.resources.Identifier;
 import org.slf4j.Logger;
@@ -13,8 +14,16 @@ public final class Retina {
     private Retina() { }
 
     public static void initialize(RetinaPlatform platform) {
+        RetinaConfiguration.initialize(platform.configDirectory());
         TerrainWorldgen.initialize(platform);
         LOGGER.info("Retina initialized");
+        debug("MCA parallelism: {} (configured {}, available processors {})", RetinaConfiguration.get().regionParallelism(),
+                RetinaConfiguration.get().mcaParallelism(), Runtime.getRuntime().availableProcessors());
+    }
+
+    /** Explicit diagnostics switch, independent of the loader's global log level. */
+    public static void debug(String message, Object... arguments) {
+        if (RetinaConfiguration.get().debug()) LOGGER.info("[debug] " + message, arguments);
     }
 
     public static Identifier id(String path) {

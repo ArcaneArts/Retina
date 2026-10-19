@@ -52,30 +52,45 @@ public final class RegionAheadPumpTest {
         failed.start(); dispatch.drain();
         require(result.get().failure() != null && result.get().completed() == 0, "publication failure stops new admissions");
 
-        // Eight sleeping permit holders prove the limit without running a native region or CPU workload.
-        var budget = new RegionGenerationBudget();
-        var workers = Executors.newFixedThreadPool(8);
-        var entered = new CountDownLatch(8);
+        verifyBudget(new RegionGenerationBudget(8));
+        for (int limit : new int[]{1, 3, 32}) {
+            var pending = new ArrayList<CompletableFuture<Void>>();
+            var configured = new RegionAheadPump(dispatch, limit, () -> stopped -> 1L,
+                    key -> { var job = new CompletableFuture<Void>(); pending.add(job); return job; }, ignored -> {});
+            configured.start(); dispatch.drain();
+            require(pending.size() == limit, "ahead pump honors configured limit " + limit);
+            configured.close(); dispatch.drain();
+            pending.forEach(job -> job.complete(null)); dispatch.drain();
+        }
+        require(new RegionGenerationBudget(Integer.MAX_VALUE).admissionCapacity() == Integer.MAX_VALUE,
+                "large configured capacity does not overflow");
+        System.out.println("PASS: configurable ahead pump, refill, pause, failures, immediate saves and shared budget");
+    }
+
+    static void verifyBudget(RegionGenerationBudget budget) throws Exception {
+        int limit = budget.limit();
+        var workers = Executors.newFixedThreadPool(limit);
+        var entered = new CountDownLatch(limit);
         var release = new CountDownLatch(1);
         var active = new AtomicInteger();
         try {
-            for (int i = 0; i < 8; i++) workers.submit(() -> {
+            for (int i = 0; i < limit; i++) workers.submit(() -> {
                 var done = budget.acquire();
                 active.incrementAndGet(); entered.countDown();
                 try { require(release.await(2, TimeUnit.SECONDS), "release barrier"); }
                 catch (InterruptedException error) { throw new AssertionError(error); }
                 finally { active.decrementAndGet(); done.run(); done.run(); }
             });
-            require(entered.await(2, TimeUnit.SECONDS) && active.get() == 8, "eight regions run without a Chunky task");
+            require(entered.await(2, TimeUnit.SECONDS) && active.get() == limit, "configured regions run without a Chunky task");
         } finally { release.countDown(); workers.shutdown(); require(workers.awaitTermination(2, TimeUnit.SECONDS), "workers stopped"); }
         var held = new ArrayList<Runnable>();
-        for (int i = 0; i < 8; i++) held.add(budget.acquire());
+        for (int i = 0; i < limit; i++) held.add(budget.acquire());
         var waiting = new CompletableFuture<Runnable>();
         var waiter = Thread.ofPlatform().daemon().start(() -> waiting.complete(budget.acquire()));
         try {
             try {
                 waiting.get(50, TimeUnit.MILLISECONDS);
-                throw new AssertionError("shared work exceeded its eight-region budget");
+                throw new AssertionError("shared work exceeded its configured region budget");
             } catch (java.util.concurrent.TimeoutException expected) { }
             held.getFirst().run(); held.getFirst().run();
             var ninth = waiting.get(2, TimeUnit.SECONDS);
@@ -94,6 +109,6 @@ public final class RegionAheadPumpTest {
             waiting.get(2, TimeUnit.SECONDS).run();
             waiter.join(2000);
         }
-        System.out.println("PASS: eight-region ahead pump, refill, pause, failures, immediate saves and shared budget");
     }
+
 }

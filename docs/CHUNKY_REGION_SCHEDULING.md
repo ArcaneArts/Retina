@@ -18,7 +18,8 @@ intersecting region is admitted once, in the iterator's order. This also uses
 Chunky's own handling of CSV/world patterns and registered custom shapes; no
 circle, rectangle or bounding-box approximation replaces its selection.
 
-The pump keeps up to **eight region jobs in flight**, refilling on MCA publication
+The pump keeps up to **the configured MCA region limit in flight** (eight by
+default; `mca_parallelism` in `config/retina.toml`), refilling on MCA publication
 rather than waiting for Chunky's individual chunk completions. It can finish the
 selection's terrain while Chunky continues loading it. It keeps one deduplication
 key per selected region and streams the iterator instead of collecting all chunk
@@ -29,21 +30,21 @@ Pause, cancellation and task exit stop new admissions. Already-admitted jobs may
 finish their publication. Errors stop the ahead pump and are logged; ordinary
 chunk loading remains active and still surfaces real generation/read failures.
 No extra command or launch flag is required. Restart the client, then start or
-resume Chunky normally. Logs announce the eight-region pump and its completion
+resume Chunky normally. Logs announce the configured pump limit and its completion
 or stop, separately from Chunky's FULL-chunk progress.
 
 ## Concurrency and save ownership
 
-The shared Java preparation pool has eight threads. A global region budget allows
-up to eight native region generations at all times, covering ordinary loads, DH
+The shared Java preparation pool uses the resolved configuration limit. A global
+region budget enforces that same maximum, covering ordinary loads, DH
 temporary generation, direct save repair and Chunky. Pausing Chunky stops its new
 admissions while admitted jobs drain; it does not reduce the shared limit.
 Multiple worlds/tasks share this fair budget. Rust's existing
-shared assembly pool and GPU submission slots are reused, not multiplied eight
-fold. More overlap does not imply eight times the throughput.
+shared assembly pool and GPU submission slots are reused. More overlap does not
+imply a proportional throughput increase.
 
-The coordinator admits at most sixteen distinct region preparations/reads, so
-foreground requests have room alongside the eight ahead jobs. Requests for the
+The coordinator admits at most twice the configured limit in distinct region
+preparations/reads, so foreground requests have room alongside the ahead jobs. Requests for the
 same region coalesce, including races between Chunky, foreground loads and DH's
 temporary cache. Each job pins its immutable temporary MCA until its attached
 operations finish. Cancellation, failures and shutdown release the lease exactly
@@ -73,6 +74,10 @@ still limit Chunky's own displayed rate after terrain is already on disk.
   verifies eight immediate admissions, independent refill, pause/drain, failure,
   10,000 already-completed requests without recursion, and the always-on
   eight-region budget (including blocking a ninth job and idempotent release).
+  Additional fresh-process checks load actual TOML settings before the shared
+  budget initializes, covering an explicit limit of 3, automatic 32-processor
+  sizing, rounded fractions and the minimum of 1. Sleeping permit holders verify
+  the configured maximum and idempotent release without generating terrain.
 - Actual `Chunky-Fabric-1.5.3.jar` tests compare the region sequence against its
   own chunk iteration for six shapes, negative coordinates, boundary crossings
   and resumed offsets. They also load the actual GenerationTask mixin.

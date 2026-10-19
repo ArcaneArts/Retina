@@ -17,7 +17,7 @@ public final class ChunkyRegionPregenerator {
             if (!(selection.world instanceof ServerLevel level)
                     || !(level.getChunkSource().chunkScanner() instanceof RegionIoBridge io)
                     || !io.retina$regionMode()) return () -> {};
-            var pump = new RegionAheadPump(DISPATCHER, RegionGenerationBudget.LIMIT, selection::regions,
+            var pump = new RegionAheadPump(DISPATCHER, RegionGenerationBudget.SHARED.limit(), selection::regions,
                     key -> io.retina$generateAhead(new ChunkPos(((int) key) << 5, ((int) (key >> 32)) << 5)), result -> {
                         if (result.failure() != null) Retina.LOGGER.warn(
                                 "Retina Chunky region pre-generation stopped after {} regions; ordinary chunk loading remains active",
@@ -27,7 +27,7 @@ public final class ChunkyRegionPregenerator {
                     });
             pump.start();
             Retina.LOGGER.info("Retina is generating Chunky's selection ahead to MCA: up to {} regions in flight",
-                    RegionGenerationBudget.LIMIT);
+                    RegionGenerationBudget.SHARED.limit());
             return pump;
         } catch (Exception error) {
             Retina.LOGGER.warn("Could not start Retina's optional Chunky region pre-generation", error);

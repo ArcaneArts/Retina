@@ -6,9 +6,12 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 
 import java.util.function.Consumer;
+import java.nio.file.Path;
 
 /** Loader hooks used by shared server initialization and telemetry. */
 public interface RetinaPlatform {
+    Path configDirectory();
+
     void registerWorldgen();
 
     void registerTerrainStats();

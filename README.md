@@ -60,6 +60,51 @@ has been exercised on Metal/Apple M4 Max; Vulkan and Direct3D 12 still need runt
 validation. There is no vanilla/CPU terrain fallback when GPU initialization or
 generation fails. Minecraft releases after 26.3 require a separate port.
 
+## Configuration
+
+Fabric and NeoForge create `config/retina.toml` on first startup. Restart the
+game or server after editing it. The defaults are:
+
+```toml
+mca_parallelism = 8
+debug = false
+f3_overlay = true
+```
+
+`mca_parallelism` limits simultaneous native MCA region generations globally,
+including ordinary loads, Distant Horizons, Chunky and partial-save repairs:
+
+| Value | Limit |
+| --- | --- |
+| Positive, such as `3` | Exactly that maximum, independent of CPU count |
+| `0` or `-1` | Available CPU processors reported by Java |
+| Negative, such as `-2` | CPU count divided by the absolute value, rounded up, minimum 1 |
+
+On a 16-processor system, `0` and `-1` resolve to 16, `-2` to 8, and `-3` to 6.
+On a four-processor system, `-32` resolves to 1. This controls region concurrency;
+the shared native assembly pool and GPU submission slots retain their own limits.
+
+`debug` enables extra startup and per-region generation diagnostics in the log.
+Normal lifecycle/registry summaries, compatibility reports, warnings, errors and
+explicitly enabled QA checkpoints remain available with debug off.
+`f3_overlay` controls Retina's F3 information on the local modded client. Servers
+ignore this display preference and continue supplying telemetry to clients.
+
+YAML uses the same keys and values. To use it, replace the TOML file with
+`config/retina.yaml` or `config/retina.yml`:
+
+```yaml
+mca_parallelism: -2
+debug: false
+f3_overlay: true
+```
+
+If several files exist, selection order is TOML, YAML, then YML. Missing settings
+use their defaults; existing files and comments are never rewritten. An invalid
+selected file reports its path and parse/setting error instead of silently using
+defaults. The settings model and codec interface have no loader dependencies;
+a future Bukkit adapter can select its own file location and YAML codec.
+
 ## Generated world features
 
 | Area | Current implementation |
@@ -150,10 +195,11 @@ from older generator output can produce terrain seams.
 ## Region generation and parallelism
 
 One MCA region holds **32 × 32 chunks**: 1,024 chunks covering 512 × 512 columns.
-Retina allows **up to eight native region generations globally at all times**,
-shared fairly between ordinary loads, Distant Horizons and Chunky. Requests for
-the same region share preparation. Eight jobs share the existing GPU submission
-slots and Rust worker pool; they do not create eight separate worker pools.
+Retina defaults to **up to eight native region generations globally**. The
+`mca_parallelism` limit is shared fairly between ordinary loads, Distant Horizons
+and Chunky. Requests for
+the same region share preparation. Jobs share the existing GPU submission
+slots and Rust worker pool; increasing the limit does not create separate pools.
 
 Fresh-region preparation happens **outside Minecraft's serialized I/O queue**.
 Ready reads can proceed while other regions generate. The pipeline:
@@ -223,15 +269,15 @@ retain its own LOD data or create empty MCA placeholders independently.
 
 Starting or resuming a Chunky task starts an independent Retina region pump. It
 uses Chunky's own selection shape and a separate resumed iterator, generating
-intersecting MCA regions **ahead of Chunky's chunk requests**. Up to eight region
-jobs remain in flight, refilling when publication finishes.
+intersecting MCA regions **ahead of Chunky's chunk requests**. Region jobs remain
+in flight up to the configured limit (eight by default), refilling when publication finishes.
 
 Chunky continues to load/finalize chunks and report its own progress. Pause,
 cancellation or task exit stops new ahead admissions; already-admitted jobs drain.
 No extra command or launch flag is required. Chunky's reported chunks/sec can
 remain load-bound even when Retina has already generated the terrain to disk.
 
-The shared eight-region allowance also applies when Chunky is absent or paused.
+The shared configured allowance also applies when Chunky is absent or paused.
 See [scheduling and publication](docs/CHUNKY_REGION_SCHEDULING.md) for lifecycle,
 concurrency and integration checks. An optional compatibility mixin also retries
 DH's Chunky listener registration when their startup order requires it.
@@ -375,7 +421,8 @@ explicit GPU integration suites require a compute device.
 
 | Tasks | Coverage |
 | --- | --- |
-| `regionPreparationTest`, `generationMetricsTest` | Scheduling, leases, eight-region limits, ten-second throughput, F3 formatting and packet transport |
+| `configurationTest` | TOML/YAML loading, defaults, invalid input and CPU-relative parallelism |
+| `regionPreparationTest`, `generationMetricsTest` | Scheduling, leases, configured region limits, ten-second throughput, F3 formatting and packet transport |
 | `test` | Fabric loader/mixin tests; use `:fabric:test --tests ...` to select a fixture |
 | `gpuTest` | Native/GPU concurrency, coordinate and interpolation checks, materials, aquifers and related shader fixtures |
 | `regionTest`, `previewTest` | Real MCA decoding, partial saves, saved edits, temporary cache and promotion |
