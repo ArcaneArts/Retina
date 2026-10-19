@@ -36,6 +36,7 @@ public final class NetherFeatureTest {
             var exported=TerrainProfileData.export(registry,RetinaBiomeSource.fromSelected(source),0,256,42,settings.value(),StructureProfile.Context.NONE,true,false,true);
             var data=JsonParser.parseString(exported.json()).getAsJsonObject();
             Files.createDirectories(Path.of("build/nether"));Files.writeString(Path.of("build/nether/feature-profile.json"),data.toString());
+            NetherFeatureCoverageTest.check(registry,exported);
             NetherFeatureOrderTest.check(registry,exported);
             NetherOreTest.check(registry,exported,generator);
             var kinds=new TreeSet<String>();gather(data.getAsJsonArray("decorations"),kinds);

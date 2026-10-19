@@ -64,6 +64,7 @@ public final class NetherProfileTest {
             var data = TerrainProfileData.export(registry, (RetinaBiomeSource) runtime.getBiomeSource(), 0, 256, 42,
                     settings.value(), StructureProfile.Context.NONE, true, false, true);
             var json = JsonParser.parseString(data.json()).getAsJsonObject();
+            NetherFeatureCoverageTest.check(registry, data);
             require(json.getAsJsonObject("generation_bounds").equals(description.getAsJsonObject("bounds")), "shared bounds descriptor");
             require(json.get("generator_depth").getAsInt()==source.getGenDepth(),"feature limits retain original generator depth");
             require(data.biomes().size() == 5 && new HashSet<>(data.biomes()).equals(biomes.possibleBiomes()), "exact five source biomes");

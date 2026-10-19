@@ -356,6 +356,49 @@ Complete nested-graph coverage diagnostics and dependencies between neighboring
 anchors remain feature-cycle work. Structures, automatic activation and the
 runtime validation matrix remain deferred.
 
+## Cycle 3g: feature graph coverage evidence
+
+Ceiling-world profiles now include `decoration_coverage`, with an export result
+for every loaded root in every generation step. Each result retains its source
+name, step/order, exact biome membership, emitted recipe IDs and omissions.
+Unsupported roots outside vegetation are attempted and reported instead of being
+skipped. Omissions are collected independently for each root, so an unsupported
+child shared by several selectors remains visible on every affected selector.
+
+The report includes the source definition encoded by Minecraft's actual codecs,
+with feature and provider references expanded where possible. `typed_inputs`
+locates feature, provider, distribution, predicate and placement discriminators
+by JSON pointer; the surrounding source values retain their complete settings.
+This captures nested pillar caps that Minecraft's `getSubFeatures()` traversal
+does not expose. The loaded five-biome Nether has 37 roots, 39 emitted recipes,
+14 feature kinds and no export omissions or inventory errors.
+
+Statuses distinguish `exported`, `partial`, `omitted` and `no_commands`. They
+describe adapter output, not proof of complete runtime semantics. Inventory
+encoding limitations are reported separately and never prevent a working
+adapter from running. For example, a tag-backed placed-feature set can retain
+its normal registry definition while reporting that reference expansion failed.
+The source world definitions are not modified by this inventory.
+
+`netherProfileTest` and `netherFeatureTest` verify complete loaded membership and
+recipe attribution, the hidden pillar cap, every typed input's source pointer,
+deterministic repeat export, and preservation of registered definitions. Synthetic
+fixtures exercise an unsupported early-stage root, two partially supported
+selectors sharing an omitted child, an omitted composite, an unsupported placement
+modifier, and a supported tag-backed selector with an inventory limitation.
+Reports are written to `build/nether/feature-coverage*.json`.
+
+The native feature references and three saved-region fixtures pass, retaining
+983,040 independent block comparisons and ordered fluid-tick parity. Exported
+profiles are identical to cycle 3f after removing the new coverage field, and all
+three regions retain their previous feature and tick counts. Host Fabric/NeoForge
+builds, 90 Rust unit tests, three native GPU tests, Nether profile/terrain tests,
+Overworld feature references and Superflat regressions pass.
+
+Dependencies between neighboring anchors remain unfinished: the report's complete
+loaded export coverage does not resolve that ordering requirement. Structures,
+automatic activation and the runtime matrix remain deferred.
+
 ## Remaining cycles
 
 3. Complete the remaining Nether feature and decoration coverage and ordering.
