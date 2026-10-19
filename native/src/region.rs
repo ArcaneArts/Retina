@@ -489,10 +489,7 @@ fn generate_region_inner(
                         .with_min_len(8)
                         .map_init(ChunkScratch::default, |scratch, (tile_index, &i)| {
                             let request = requests[i];
-                            let lighting = light.map(|tile| {
-                                &tile.bytes[tile_index * tile.chunk_bytes
-                                    ..(tile_index + 1) * tile.chunk_bytes]
-                            });
+                            let lighting = light.map(|tile| tile.chunk(tile_index));
                             timings.time(timings::NBT, || {
                                 encode_chunk(
                                     request,
@@ -852,7 +849,7 @@ fn encode_chunk(
     profile: Option<&WorldProfile>,
     cave_mask: Option<&crate::geology::CaveMask>,
     structure_data: Option<&serde_json::Value>,
-    lighting: Option<&[u8]>,
+    lighting: Option<crate::lighting::ChunkLight<'_>>,
     scratch: &mut ChunkScratch,
 ) {
     let heights: [i32; COLUMNS] = std::array::from_fn(|i| columns[i].height);
@@ -889,7 +886,7 @@ fn encode_chunk(
     );
     if let Some(light) = lighting {
         nbt.byte("Y", (request.min_y / 16 - 1) as i8);
-        section_light(nbt, &light[..4096]);
+        section_light(nbt, light.section(0));
         nbt.end();
     }
     let lowest = *heights.iter().min().unwrap();
@@ -968,16 +965,13 @@ fn encode_chunk(
             nbt.end();
         }
         if let Some(light) = lighting {
-            section_light(
-                nbt,
-                &light[(section as usize + 1) * 4096..(section as usize + 2) * 4096],
-            );
+            section_light(nbt, light.section(section as usize + 1));
         }
         nbt.end(); // Section compound.
     }
     if let Some(light) = lighting {
         nbt.byte("Y", ((request.min_y + request.height as i32) / 16) as i8);
-        section_light(nbt, &light[light.len() - 4096..]);
+        section_light(nbt, light.section(request.height as usize / 16 + 1));
         nbt.end();
     }
     nbt.compound("Heightmaps");
@@ -1058,12 +1052,20 @@ fn encode_chunk(
 }
 
 /// GPU-packed Minecraft nibble arrays. Omit uniform zero layers.
-fn section_light(nbt: &mut Nbt, light: &[u8]) {
-    for (name, bytes) in [("BlockLight", &light[..2048]), ("SkyLight", &light[2048..])] {
-        if bytes.iter().any(|&v| v != 0) {
+fn section_light(nbt: &mut Nbt, light: [crate::lighting::Channel<'_>; 2]) {
+    use crate::lighting::Channel;
+    for (name, channel) in ["BlockLight", "SkyLight"].into_iter().zip(light) {
+        let nonzero = match channel {
+            Channel::Constant(value) => value != 0,
+            Channel::Dense(bytes) => bytes.iter().any(|&v| v != 0),
+        };
+        if nonzero {
             nbt.named(7, name);
             nbt.0.extend_from_slice(&2048i32.to_be_bytes());
-            nbt.0.extend_from_slice(bytes);
+            match channel {
+                Channel::Constant(value) => nbt.0.resize(nbt.0.len() + 2048, value * 17),
+                Channel::Dense(bytes) => nbt.0.extend_from_slice(bytes),
+            }
         }
     }
 }
@@ -1141,6 +1143,25 @@ impl Nbt {
 mod palette_tests {
     use super::*;
     use std::hint::black_box;
+
+    #[test]
+    fn constant_light_descriptors_encode_identical_nbt_arrays() {
+        use crate::lighting::Channel;
+        for block in 0..16 {
+            for sky in 0..16 {
+                let mut expected = Nbt::default();
+                let mut actual = Nbt::default();
+                let b = [block * 17; 2048];
+                let s = [sky * 17; 2048];
+                section_light(&mut expected, [Channel::Dense(&b), Channel::Dense(&s)]);
+                section_light(
+                    &mut actual,
+                    [Channel::Constant(block), Channel::Constant(sky)],
+                );
+                assert_eq!(actual.0, expected.0, "block={block} sky={sky}");
+            }
+        }
+    }
 
     fn encode_sections(
         sections: &[Vec<u16>],
