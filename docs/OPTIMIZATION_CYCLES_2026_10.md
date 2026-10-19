@@ -15,7 +15,7 @@ from that report. Retained baseline library SHA-256:
 | --- | --- | --- |
 | Compact/compile decoration programs | [PR #115](https://github.com/ArcaneArts/Retina/pull/115) and [PR #116](https://github.com/ArcaneArts/Retina/pull/116): validated eligible streaming | Dense/sparse planning, exact ordered output/RNG, memory, vanilla/Terralith lit-MCA |
 | Complete feature-anchor GPU evaluation | [Complete registered vine programs](GPU_VINE_PLANNING.md) integrated on Metal; other program classes remain CPU | Mixed-anchor handoff, exact fallback/overflow/order, end-to-end benefit |
-| Compact lighting transport | [Uniform material-section input](COMPACT_LIGHT_INPUT.md) validated on Metal; compact output pending | Complete light-array parity, uniform/dense payloads, memory and lit-MCA throughput |
+| Compact lighting transport | [Uniform material input](COMPACT_LIGHT_INPUT.md) and [constant-light output](COMPACT_LIGHT_OUTPUT.md) validated on Metal; resident halo sharing deferred | Complete light-array parity, uniform/dense payloads, memory and lit-MCA throughput |
 | GPU-driven material emission | Pending | Exact runs, overflow/failure/interleaved ownership, synchronization and throughput |
 | Tighter ore planning/masks | Pending | Seed/distribution/host/exposure/boundary parity, total planning/application cost |
 | Final sections/NBT/compression | Pending | Complete NBT/save parity, memory/copies and whole-region results |
@@ -100,3 +100,20 @@ that limitation and process RSS observations are retained in the report.
 This advances area 3's input transport. Constant-light output representation,
 GPU-driven material emission, ore/section processing and final combined lifecycle
 validation remain outstanding. No earlier stage gains are added to these rates.
+
+## Compact lighting output
+
+Conservative final-material proofs now omit constant channels from GPU packing
+and readback. The NBT encoder consumes constants directly; unknown channels keep
+their complete arrays. There is no extra synchronization. Buffer reuse fixes the
+initial prototype's varying-size allocation overhead. [Results](COMPACT_LIGHT_OUTPUT.md)
+retain that rejected prototype and the accepted variant separately.
+
+Logical traffic falls by another 52–53 MiB/region. Reversed two-caller Terralith
+comparisons improve 5–14%, while vanilla and serial results establish no throughput
+benefit. Process-wide memory peaks do not show a consistent reduction. Exact
+GPU/region/NBT comparisons pass, including constant arrays and registered air
+properties. Resident halo sharing remains deferred because it would require
+broader final-block ownership and memory changes; the useful transport changes
+are implemented without it. Material emission, ores, final sections and combined
+integration remain outstanding.

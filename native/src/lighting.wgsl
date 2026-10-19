@@ -1,7 +1,8 @@
 // Minecraft light values: block low nibble, sky high nibble. Four voxels per word.
-// Flags: sky (0), sparse propagation (1), section output (2), section materials (3).
+// Flags: sky (0), sparse propagation (1), section output (2), section materials (3), compact output (4).
 struct Params { side: u32, height: u32, chunks: u32, crop: u32,
-    core: u32, flags: u32, face_stride: u32, words: u32 }
+    core: u32, flags: u32, face_stride: u32, words: u32,
+    output_table: u32, output_channels: u32, padding1: u32, padding2: u32 }
 struct State { traits: u32, faces: array<u32, 6>, padding: u32 }
 @group(0) @binding(0) var<uniform> p: Params;
 @group(0) @binding(1) var<storage, read> blocks: array<u32>;
@@ -204,7 +205,12 @@ fn spread_sparse(@builtin(workgroup_id) id: vec3<u32>, @builtin(local_invocation
 
 @compute @workgroup_size(64)
 fn pack(@builtin(global_invocation_id) id: vec3<u32>) {
-    let word_id = id.y * 16384u + id.x;
+    let output_word = id.y * 16384u + id.x;
+    var word_id = output_word;
+    if (p.flags & 16u) != 0u {
+        if output_word >= p.output_channels * 512u { return; }
+        word_id = blocks[p.output_table + output_word / 512u] * 512u + output_word % 512u;
+    }
     if word_id >= p.core * p.core * p.height * 64u { return; }
     let chunk = word_id / (p.height * 64u);
     let local = word_id % (p.height * 64u);
@@ -216,7 +222,7 @@ fn pack(@builtin(global_invocation_id) id: vec3<u32>) {
         let y = voxel / 256u;
         let index = (y * p.side * p.side + z * p.side + x) / 4u;
         let shift = ((local / 512u) % 2u) * 4u;
-        output[word_id] = nibbles(source[index] >> shift) | (nibbles(source[index + 1u] >> shift) << 16u);
+        output[output_word] = nibbles(source[index] >> shift) | (nibbles(source[index + 1u] >> shift) << 16u);
         return;
     }
     let x = (p.crop + chunk % p.core) * 4u + local % 4u;

@@ -292,7 +292,11 @@ increased modestly; the report includes memory costs and build limitations.
 The following [compact lighting-input cycle](docs/COMPACT_LIGHT_INPUT.md) reduces
 logical transfer volume by about 37–38% with exact light/NBT output. Matched
 serial vanilla samples improve about 4–5%; concurrent Terralith results are
-inconclusive. Light-output compaction and the remaining cycles are still pending.
+inconclusive. [Compact light output](docs/COMPACT_LIGHT_OUTPUT.md) further reduces
+traffic to about 190 MiB/region for vanilla and 200 MiB for Terralith. Two bounded
+concurrent Terralith comparisons improved 5–14%; serial and vanilla throughput
+did not improve measurably, and process memory was not consistently lower. The
+report retains those limits; remaining optimization cycles are still pending.
 
 ## Building and testing
 
