@@ -18,7 +18,7 @@ from that report. Retained baseline library SHA-256:
 | Compact lighting transport | [Uniform material input](COMPACT_LIGHT_INPUT.md) and [constant-light output](COMPACT_LIGHT_OUTPUT.md) validated on Metal; resident halo sharing deferred | Complete light-array parity, uniform/dense payloads, memory and lit-MCA throughput |
 | GPU-driven material emission | [Two bounded-arena prototypes evaluated and rejected](MATERIAL_ARENA_TRIAL.md); existing continuation retained | Exact runs, overflow/failure/interleaved ownership, synchronization and throughput |
 | Tighter ore planning/masks | [Word-level uncertainty masks evaluated](ORE_WORD_FLAGS_TRIAL.md); smaller transfers but speed inconclusive, production retained | Seed/distribution/host/exposure/boundary parity, total planning/application cost |
-| Final sections/NBT/compression | Pending | Complete NBT/save parity, memory/copies and whole-region results |
+| Final sections/NBT/compression | [Section metadata reuse and bulk biome reads evaluated](SECTION_ENCODING_TRIAL.md); NBT work falls but whole-generation benefit is inconclusive, production retained | Complete NBT/save parity, memory/copies and whole-region results |
 | Combined pipeline integration | Pending | Concurrent jobs, DH promotion, ordinary loading, Chunky, lifecycle checks, final A/B |
 
 Completion requires evidence for every area. Rejected experiments must have
@@ -137,3 +137,15 @@ and repeated Terralith throughput moves in opposite directions.
 [Raw measurements, limits and both patches](ORE_WORD_FLAGS_TRIAL.md) are retained;
 the existing production masks remain. Final sections/NBT and combined lifecycle
 validation are the remaining areas.
+
+
+## Final-section/NBT reuse
+
+The prototype reuses lighting's final uniform/mixed classifications and fetches
+quart biomes section-wise, preserving fallback coverage and exact NBT. Normal
+release synthetic encoding is 18% faster and full-region NBT worker time is
+20–25% lower. Six- and twelve-region complete-generation results disagree,
+including slower final vanilla samples; no reliable overall benefit is established.
+[Measurements, tests and the final patch](SECTION_ENCODING_TRIAL.md) are retained.
+Production source and the shared ignored native library are restored. Combined
+pipeline/lifecycle validation and the final starting-baseline comparison remain.

@@ -1,0 +1,482 @@
+diff --git a/native/src/geology.rs b/native/src/geology.rs
+index e7dc4d1..0aa8390 100644
+--- a/native/src/geology.rs
++++ b/native/src/geology.rs
+@@ -464,6 +464,44 @@ impl CaveMask {
+         let index = (y as usize / 4 * width + z as usize / 4) * width + x as usize / 4;
+         Some(((self.words[offset + index / 2] >> ((index % 2) * 16)) & 65535) as u16)
+     }
++    /// Fetch one section's 4x4x4 biome samples in Minecraft x,z,y order.
++    /// Whole-section bounds and packed-plane offsets are invariant across all
++    /// 64 samples. Partial coverage retains the scalar caller's fallback.
++    pub(crate) fn biome_section(&self, x: i32, y: i32, z: i32) -> Option<[u16; 64]> {
++        let surface = self.width + 30;
++        let width = surface / 4;
++        let x = i64::from(x) - (i64::from(self.origin_x) - 15);
++        let z = i64::from(z) - (i64::from(self.origin_z) - 15);
++        let base_y = i64::from(self.min_y.div_euclid(4)) * 4;
++        let y = i64::from(y) - base_y;
++        let layers = (i64::from(self.min_y) + i64::from(self.height) - base_y + 3) / 4;
++        if x < 0
++            || z < 0
++            || y < 0
++            || x + 12 >= surface as i64
++            || z + 12 >= surface as i64
++            || (x / 4 + 3) >= width as i64
++            || (z / 4 + 3) >= width as i64
++            || y / 4 + 3 >= layers
++        {
++            return None;
++        }
++        let offset = (self.width * self.width * self.height as usize).div_ceil(32)
++            + (surface * surface).div_ceil(32);
++        let start = (y as usize / 4 * width + z as usize / 4) * width + x as usize / 4;
++        let mut values = [0u16; 64];
++        for dy in 0..4 {
++            for dz in 0..4 {
++                let row = start + dy * width * width + dz * width;
++                for dx in 0..4 {
++                    let i = row + dx;
++                    values[dy * 16 + dz * 4 + dx] =
++                        (self.words[offset + i / 2] >> ((i % 2) * 16)) as u16;
++                }
++            }
++        }
++        Some(values)
++    }
+     pub fn surface_carved(&self, x: i32, z: i32) -> bool {
+         let x = x - (self.origin_x - 15);
+         let z = z - (self.origin_z - 15);
+diff --git a/native/src/lighting.rs b/native/src/lighting.rs
+index 8d9aa5f..53b1d56 100644
+--- a/native/src/lighting.rs
++++ b/native/src/lighting.rs
+@@ -686,8 +686,18 @@ pub(crate) struct Tile {
+     pub bytes: Vec<u8>,
+     pub chunk_bytes: usize,
+     layout: Option<output::Layout>,
++    // Existing final-material classification, copied in this tile's chunk order.
++    uniform_materials: Vec<Option<u16>>,
+ }
+ impl Tile {
++    pub(crate) fn uniform_sections(&self, index: usize) -> Option<&[Option<u16>]> {
++        if self.uniform_materials.is_empty() {
++            return None;
++        }
++        let sections = self.uniform_materials.len() / self.slots.len();
++        Some(&self.uniform_materials[index * sections..(index + 1) * sections])
++    }
++
+     pub(crate) fn chunk(&self, index: usize) -> ChunkLight<'_> {
+         if let Some(layout) = &self.layout {
+             let count = self.chunk_bytes / 2048;
+@@ -821,15 +831,27 @@ pub(crate) fn region(
+                 job.device(crate::timings::LIGHT_SKY + i, value);
+             }
+         }
+-        let slots = (0..core)
++        let slots: Vec<_> = (0..core)
+             .flat_map(|z| (0..core).map(move |x| (cz + z) * 32 + cx + x))
+             .collect();
++        let mut uniform_materials = Vec::new();
++        if !descriptors.is_empty() {
++            uniform_materials.reserve_exact(slots.len() * request.height as usize / 16);
++            for &slot in &slots {
++                uniform_materials.extend(
++                    descriptors[slot]
++                        .iter()
++                        .map(|&d| (d & transport::UNIFORM != 0).then_some(d as u16)),
++                );
++            }
++        }
+         let consuming_start = Instant::now();
+         consume(Tile {
+             slots,
+             bytes: result.bytes,
+             chunk_bytes: count,
+             layout: result.layout,
++            uniform_materials,
+         })?;
+         consuming += consuming_start.elapsed();
+     }
+@@ -988,6 +1010,14 @@ mod tests {
+             for (index, &slot) in tile.slots.iter().enumerate() {
+                 assert!(!seen[slot]);
+                 seen[slot] = true;
++                let expected_materials: Vec<_> = chunks[slot]
++                    .chunks_exact(4096)
++                    .map(|s| s.iter().all(|&v| v == s[0]).then_some(s[0]))
++                    .collect();
++                assert_eq!(
++                    tile.uniform_sections(index),
++                    Some(expected_materials.as_slice())
++                );
+                 assert_eq!(
+                     &tile.chunk(index).expanded(tile.chunk_bytes / 4096),
+                     expected[slot].as_ref().unwrap()
+@@ -1096,6 +1126,7 @@ mod tests {
+                                 bytes: result.bytes,
+                                 chunk_bytes,
+                                 layout: result.layout,
++                                uniform_materials: Vec::new(),
+                             };
+                             let actual: Vec<_> = (0..core * core)
+                                 .flat_map(|i| tile.chunk(i).expanded(chunk_bytes / 4096))
+diff --git a/native/src/lighting/output.rs b/native/src/lighting/output.rs
+index e67dabe..9a16d7a 100644
+--- a/native/src/lighting/output.rs
++++ b/native/src/lighting/output.rs
+@@ -113,7 +113,7 @@ pub(crate) struct ChunkLight<'a> {
+     descriptors: Option<&'a [u32]>,
+ }
+ impl<'a> ChunkLight<'a> {
+-    pub(super) fn new(bytes: &'a [u8], descriptors: Option<&'a [u32]>) -> Self {
++    pub(crate) fn new(bytes: &'a [u8], descriptors: Option<&'a [u32]>) -> Self {
+         Self { bytes, descriptors }
+     }
+     pub(crate) fn section(self, section: usize) -> [Channel<'a>; 2] {
+diff --git a/native/src/region.rs b/native/src/region.rs
+index bfdb755..5664f50 100644
+--- a/native/src/region.rs
++++ b/native/src/region.rs
+@@ -454,6 +454,7 @@ fn generate_region_inner(
+                             cave_mask.as_deref(),
+                             structure_data.as_ref().map(|data| &data.tag),
+                             None,
++                            None,
+                             scratch,
+                         )
+                     });
+@@ -501,6 +502,7 @@ fn generate_region_inner(
+                                     cave_mask.as_deref(),
+                                     structures[i].as_ref(),
+                                     lighting,
++                                    light.and_then(|t| t.uniform_sections(tile_index)),
+                                     scratch,
+                                 )
+                             });
+@@ -747,6 +749,7 @@ fn chunk_nbt_blocks(
+         cave_mask,
+         structure_data,
+         None,
++        None,
+         &mut scratch,
+     );
+     scratch.nbt.0
+@@ -763,6 +766,14 @@ impl PaletteScratch {
+         self.build_with_indices::<true>(values, domain);
+     }
+     fn build_with_indices<const INDICES: bool>(&mut self, values: &[u16], domain: usize) {
++        self.build_known::<INDICES>(values, domain, None);
++    }
++    fn build_known<const INDICES: bool>(
++        &mut self,
++        values: &[u16],
++        domain: usize,
++        uniform: Option<Option<u16>>,
++    ) {
+         for &id in &self.palette {
+             self.lookup[id as usize] = u32::MAX;
+         }
+@@ -770,7 +781,9 @@ impl PaletteScratch {
+         self.lookup.resize(domain, u32::MAX);
+         let first = values[0];
+         // Uniform air/stone sections need no index buffer or packed data.
+-        if values.iter().all(|&v| v == first) {
++        if let Some(first) =
++            uniform.unwrap_or_else(|| values.iter().all(|&v| v == first).then_some(first))
++        {
+             self.palette.push(first);
+             self.indices.clear();
+             self.lookup[first as usize] = 0;
+@@ -796,6 +809,8 @@ enum PreparedRecord {
+     Blocks(Vec<u16>, Option<serde_json::Value>),
+ }
+ struct ChunkScratch {
++    #[cfg(test)]
++    reference_sections: bool,
+     blocks: Vec<u16>,
+     nbt: Nbt,
+     palette: PaletteScratch,
+@@ -807,6 +822,8 @@ struct ChunkScratch {
+ impl Default for ChunkScratch {
+     fn default() -> Self {
+         Self {
++            #[cfg(test)]
++            reference_sections: false,
+             blocks: Vec::new(),
+             nbt: Nbt::default(),
+             palette: PaletteScratch::default(),
+@@ -850,8 +867,14 @@ fn encode_chunk(
+     cave_mask: Option<&crate::geology::CaveMask>,
+     structure_data: Option<&serde_json::Value>,
+     lighting: Option<crate::lighting::ChunkLight<'_>>,
++    uniform_sections: Option<&[Option<u16>]>,
+     scratch: &mut ChunkScratch,
+ ) {
++    #[cfg(test)]
++    let reuse_sections = !scratch.reference_sections;
++    #[cfg(not(test))]
++    let reuse_sections = true;
++    let uniform_sections = uniform_sections.filter(|_| reuse_sections);
+     let heights: [i32; COLUMNS] = std::array::from_fn(|i| columns[i].height);
+     let ChunkScratch {
+         nbt,
+@@ -897,7 +920,11 @@ fn encode_chunk(
+         nbt.compound("block_states");
+         if let Some(profile) = profile {
+             let values = &blocks[section as usize * 4096..(section as usize + 1) * 4096];
+-            palette.build_with_indices::<false>(values, profile.materials.len());
++            palette.build_known::<false>(
++                values,
++                profile.materials.len(),
++                uniform_sections.map(|s| s[section as usize]),
++            );
+             occupied.push(
+                 palette.palette.len() != 1
+                     || profile.heightmap_masks[palette.palette[0] as usize] != 0,
+@@ -917,20 +944,25 @@ fn encode_chunk(
+             nbt.end();
+             nbt.compound("biomes");
+             // GPU quart biomes use Minecraft's x,z,y order.
+-            let values: [u16; 64] = std::array::from_fn(|index| {
+-                cave_mask
+-                    .and_then(|m| {
+-                        m.biome(
+-                            request.chunk_x * 16 + (index % 4) as i32 * 4,
+-                            y + (index / 16) as i32 * 4,
+-                            request.chunk_z * 16 + ((index % 16) / 4) as i32 * 4,
+-                        )
++            let values: [u16; 64] = cave_mask
++                .filter(|_| reuse_sections)
++                .and_then(|m| m.biome_section(request.chunk_x * 16, y, request.chunk_z * 16))
++                .unwrap_or_else(|| {
++                    std::array::from_fn(|index| {
++                        cave_mask
++                            .and_then(|m| {
++                                m.biome(
++                                    request.chunk_x * 16 + (index % 4) as i32 * 4,
++                                    y + (index / 16) as i32 * 4,
++                                    request.chunk_z * 16 + ((index % 16) / 4) as i32 * 4,
++                                )
++                            })
++                            .unwrap_or(
++                                columns[((index % 16) / 4) as usize * 64 + (index % 4) as usize * 4]
++                                    .biome() as u16,
++                            )
+                     })
+-                    .unwrap_or(
+-                        columns[((index % 16) / 4) as usize * 64 + (index % 4) as usize * 4].biome()
+-                            as u16,
+-                    )
+-            });
++                });
+             biomes.build(&values, profile.biomes.len());
+             nbt.list("palette", 8, biomes.palette.len());
+             for id in &biomes.palette {
+@@ -1324,3 +1356,7 @@ mod palette_tests {
+         }
+     }
+ }
++
++#[cfg(test)]
++#[path = "section_encoding_tests.rs"]
++mod section_encoding_tests;
+diff --git a/native/src/section_encoding_tests.rs b/native/src/section_encoding_tests.rs
+new file mode 100644
+index 0000000..4f0a0cf
+--- /dev/null
++++ b/native/src/section_encoding_tests.rs
+@@ -0,0 +1,192 @@
++use super::*;
++use crate::geology::CaveMask;
++use std::hint::black_box;
++
++fn mask(min_y: i32, height: u32, origin_x: i32, origin_z: i32) -> CaveMask {
++    let width: usize = 34;
++    let surface = width + 30;
++    let q = surface / 4;
++    let layers = ((min_y + height as i32 - min_y.div_euclid(4) * 4 + 3) / 4) as usize;
++    let offset = (width * width * height as usize).div_ceil(32) + (surface * surface).div_ceil(32);
++    let count = layers * q * q;
++    let mut words = vec![0; offset + count.div_ceil(2)];
++    for i in 0..count {
++        // Vary x/z/y separately and use both halves of each packed word.
++        let id = ((i * 13 + i / q * 17 + i / (q * q) * 23) % 3) as u32;
++        words[offset + i / 2] |= id << ((i % 2) * 16);
++    }
++    CaveMask {
++        origin_x,
++        origin_z,
++        min_y,
++        height,
++        width,
++        air_only: true,
++        words,
++        columns: None,
++    }
++}
++
++#[test]
++fn bulk_biomes_match_scalar_quarts_and_partial_coverage() {
++    for min_y in [-65, -64, -63, 1, 2, 3] {
++        let m = mask(min_y, 47, -30_000_001, 29_999_983);
++        for dx in [-1, 0, 1, 3, 4, 17, 47, 51, 52, 56, 63, 64] {
++            for dz in [-1, 0, 1, 3, 4, 17, 47, 51, 52, 56, 63, 64] {
++                for dy in [-5, -1, 0, 1, 4, 12, 32, 35, 36, 40, 47, 48] {
++                    let (x, y, z) = (m.origin_x - 15 + dx, min_y + dy, m.origin_z - 15 + dz);
++                    let reference: Option<Vec<_>> = (0..64)
++                        .map(|i| m.biome(x + (i % 4) * 4, y + (i / 16) * 4, z + (i / 4 % 4) * 4))
++                        .collect();
++                    assert_eq!(
++                        m.biome_section(x, y, z).as_ref().map(|a| a.as_slice()),
++                        reference.as_deref(),
++                        "{min_y}: {dx},{dy},{dz}"
++                    );
++                }
++            }
++        }
++    }
++}
++
++fn fixture() -> (
++    WorldProfile,
++    ChunkRequest,
++    Vec<Column>,
++    Vec<u16>,
++    CaveMask,
++    Vec<Option<u16>>,
++) {
++    let mut p: WorldProfile = serde_json::from_value(serde_json::json!({
++        "biome_scale":256,"blend":0.55,"sea_level":32,"stone":1,"water":3,
++        "bedrock":1,"deepslate":1,"snow":0,"ice":3,
++        "materials":["minecraft:air","minecraft:stone",{"id":"minecraft:oak_leaves","properties":{"persistent":"true"}},"minecraft:water"],
++        "biomes":(0..3).map(|i| serde_json::json!({"id":format!("test:biome_{i}"),"climate":[0,0,0,0],"terrain":[0,1,1],"top":1,"filler":1,"underwater":1,"flags":0})).collect::<Vec<_>>(),
++        "noises":[],"material_flags":[0,1,1,0],"heightmap_masks":[0,63,31,51]
++    })).unwrap();
++    p.material_nbt = p.materials.iter().map(material_nbt).collect();
++    let request = ChunkRequest {
++        seed: 42,
++        chunk_x: -2,
++        chunk_z: 3,
++        min_y: -64,
++        height: 64,
++        base_height: 0.,
++        amplitude: 0.,
++        frequency: 0.008,
++        reserved: 0,
++    };
++    let columns = vec![
++        Column {
++            height: -32,
++            packed: 3 << 24,
++            materials: 1 | (1 << 16)
++        };
++        256
++    ];
++    let blocks: Vec<u16> = (0..16384)
++        .map(|i| match i / 4096 {
++            0 => 1,
++            1 => (i % 4) as u16,
++            2 => 0,
++            _ => {
++                if i == 16383 {
++                    2
++                } else {
++                    0
++                }
++            }
++        })
++        .collect();
++    let summary = vec![Some(1), None, Some(0), None];
++    let mask = mask(-64, 64, request.chunk_x * 16 - 1, request.chunk_z * 16 - 1);
++    (p, request, columns, blocks, mask, summary)
++}
++
++#[test]
++fn reused_sections_preserve_complete_nbt_and_scratch_reuse() {
++    let (profile, request, columns, mut blocks, mask, mut summary) = fixture();
++    let partial = self::mask(-61, 47, request.chunk_x * 16 - 1, request.chunk_z * 16 - 1);
++    let mut reference = ChunkScratch {
++        reference_sections: true,
++        ..Default::default()
++    };
++    let mut candidate = ChunkScratch::default();
++    let light = vec![0x5f; (request.height as usize / 16 + 2) * 4096];
++    for iteration in 0..4 {
++        if iteration == 2 {
++            blocks.fill(3);
++            summary.fill(Some(3));
++        }
++        for lit in [false, true] {
++            for coverage in [Some(&mask), Some(&partial), None] {
++                for scratch in [&mut reference, &mut candidate] {
++                    encode_chunk(
++                        request,
++                        &columns,
++                        &blocks,
++                        123,
++                        "test:biome_0",
++                        Some(&profile),
++                        coverage,
++                        None,
++                        lit.then(|| crate::lighting::ChunkLight::new(&light, None)),
++                        Some(&summary),
++                        scratch,
++                    );
++                }
++                assert_eq!(
++                    candidate.nbt.0,
++                    reference.nbt.0,
++                    "iteration={iteration} lit={lit} mask={}",
++                    coverage.is_some()
++                );
++            }
++        }
++    }
++}
++
++#[test]
++#[ignore = "bounded CPU NBT comparison; use 30-second process-group deadline"]
++fn section_encoding_comparison() {
++    let (profile, request, columns, blocks, mask, summary) = fixture();
++    let mut scratch = [
++        ChunkScratch {
++            reference_sections: true,
++            ..Default::default()
++        },
++        ChunkScratch::default(),
++    ];
++    let light = vec![0x5f; (request.height as usize / 16 + 2) * 4096];
++    let mut times = [Vec::new(), Vec::new()];
++    for pair in 0..12 {
++        for step in 0..2 {
++            let variant = (pair + step) % 2;
++            let start = Instant::now();
++            for _ in 0..1024 {
++                encode_chunk(
++                    request,
++                    black_box(&columns),
++                    black_box(&blocks),
++                    123,
++                    "test:biome_0",
++                    Some(&profile),
++                    Some(&mask),
++                    None,
++                    Some(crate::lighting::ChunkLight::new(&light, None)),
++                    Some(&summary),
++                    &mut scratch[variant],
++                );
++                black_box(&scratch[variant].nbt.0);
++            }
++            if pair >= 2 {
++                times[variant].push(start.elapsed().as_secs_f64() * 1000.);
++            }
++        }
++        assert_eq!(scratch[0].nbt.0, scratch[1].nbt.0);
++    }
++    println!(
++        "{}",
++        serde_json::json!({"scope":"1024 synthetic height-64 lit chunks; encoding only","reference_ms":times[0],"reuse_ms":times[1],"exact":true})
++    );
++}
