@@ -22,7 +22,12 @@ pub(crate) struct Stats {
     pub invalid_timestamps: u64,
     pub sparse_anchors: u64,
     pub unresolved_substrate_anchors: u64,
+    /// True queue/output capacity overflows, excluding unavailable material.
     pub overflow_anchors: u64,
+    pub unresolved_material_anchors: u64,
+    pub column_queue_overflow_anchors: u64,
+    pub output_capacity_overflow_anchors: u64,
+    pub incomplete_candidate_anchors: u64,
     pub device_failure_anchors: u64,
     pub post_gpu_retained_limit_anchors: u64,
     pub lock_wait_nanos: u64,
@@ -46,6 +51,10 @@ impl Stats {
         self.sparse_anchors += b.sparse_anchors;
         self.unresolved_substrate_anchors += b.unresolved_substrate_anchors;
         self.overflow_anchors += b.overflow_anchors;
+        self.unresolved_material_anchors += b.unresolved_material_anchors;
+        self.column_queue_overflow_anchors += b.column_queue_overflow_anchors;
+        self.output_capacity_overflow_anchors += b.output_capacity_overflow_anchors;
+        self.incomplete_candidate_anchors += b.incomplete_candidate_anchors;
         self.device_failure_anchors += b.device_failure_anchors;
         self.post_gpu_retained_limit_anchors += b.post_gpu_retained_limit_anchors;
         self.lock_wait_nanos += b.lock_wait_nanos;
@@ -285,7 +294,6 @@ impl Gpu {
                 Ok(blocks) => {
                     let overflow = blocks.iter().filter(|b| b.is_none()).count() as u64;
                     stats.fallbacks += overflow;
-                    stats.overflow_anchors += overflow;
                     output.extend(blocks);
                 }
                 Err(error) => {
@@ -457,7 +465,13 @@ impl Gpu {
             let decoded = words
                 .chunks_exact(4 + capacity * 5)
                 .map(|words| {
-                    if words[1] != 0 || words[0] as usize > capacity {
+                    let flags = words[1];
+                    stats.unresolved_material_anchors += u64::from(flags & 1 != 0);
+                    stats.column_queue_overflow_anchors += u64::from(flags & 2 != 0);
+                    stats.output_capacity_overflow_anchors += u64::from(flags & 4 != 0);
+                    stats.incomplete_candidate_anchors += u64::from(flags & 8 != 0);
+                    stats.overflow_anchors += u64::from(flags & 6 != 0);
+                    if flags != 0 || words[0] as usize > capacity {
                         return None;
                     }
                     Some(

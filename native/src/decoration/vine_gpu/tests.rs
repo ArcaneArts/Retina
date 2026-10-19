@@ -177,10 +177,16 @@ fn gpu_vine_planner_handoff() {
         assert!(overflow[0].is_none());
         assert_eq!(stats.fallbacks, 1);
         assert_eq!(stats.overflow_anchors, 1);
+        assert_eq!(stats.output_capacity_overflow_anchors, 1);
+        assert_eq!(stats.column_queue_overflow_anchors, 0);
+        assert_eq!(stats.unresolved_material_anchors, 0);
         input.words[5] = CAP as u32;
         input.words[30] = 1;
-        let (overflow, _) = gpu.lock().unwrap().run(&input, r, prog, &jobs);
+        let (overflow, stats) = gpu.lock().unwrap().run(&input, r, prog, &jobs);
         assert!(overflow[0].is_none());
+        assert_eq!(stats.column_queue_overflow_anchors, 1);
+        assert_eq!(stats.output_capacity_overflow_anchors, 0);
+        assert_eq!(stats.unresolved_material_anchors, 0);
     }
     println!("VINE_HANDOFF {}", serde_json::to_string(&rows).unwrap());
 }
@@ -229,4 +235,39 @@ fn gpu_vine_registered_planner() {
         rows.push(serde_json::json!({"gpu":enabled,"wall_ms":ms}));
     }
     println!("VINE_REGISTERED {}", serde_json::to_string(&rows).unwrap());
+}
+
+#[test]
+#[ignore = "bounded Metal unknown materials versus capacity overflow classification"]
+fn gpu_vine_unknown_material_is_not_overflow() {
+    let engine = crate::TerrainEngine::new().unwrap();
+    let (device, queue) = engine.ore_gpu.lock().unwrap().shared_device();
+    let mut gpu = Gpu::new(device, queue, engine.backend());
+    gpu.enable_for_test(true);
+    let gpu = Mutex::new(gpu);
+    let pool = rayon::ThreadPoolBuilder::new()
+        .num_threads(2)
+        .build()
+        .unwrap();
+    for origin in [0, -17, 1_000_000] {
+        let (mut p, mut r) = fixture();
+        r.chunk_x = origin;
+        r.chunk_z = -origin;
+        let mut ops = p.decorations[5].placement.as_ref().unwrap().to_vec();
+        ops[4] = Modifier::BlockPredicateFilter {
+            predicate: serde_json::from_value(json!({
+                "type":"material", "offset":[-1,0,0], "allowed":[1]
+            }))
+            .unwrap(),
+        };
+        p.decorations[5].placement = Some(ops.into());
+        let field = super::super::anchor_probe::vine_field(&p, 5, 6, r, 1);
+        let (expected, _, _) = pool.install(|| replay(&p, &field, r, None, 64 << 20, None));
+        let (actual, stats, _) = pool.install(|| replay(&p, &field, r, Some(&gpu), 64 << 20, None));
+        assert_eq!(actual, expected, "origin {origin}");
+        assert!(stats.unresolved_material_anchors > 0);
+        assert_eq!(stats.fallbacks, stats.unresolved_material_anchors);
+        assert_eq!(stats.overflow_anchors, 0);
+        assert_eq!(stats.incomplete_candidate_anchors, 0);
+    }
 }
