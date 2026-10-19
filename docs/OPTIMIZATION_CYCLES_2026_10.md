@@ -16,7 +16,7 @@ from that report. Retained baseline library SHA-256:
 | Compact/compile decoration programs | [PR #115](https://github.com/ArcaneArts/Retina/pull/115) and [PR #116](https://github.com/ArcaneArts/Retina/pull/116): validated eligible streaming | Dense/sparse planning, exact ordered output/RNG, memory, vanilla/Terralith lit-MCA |
 | Complete feature-anchor GPU evaluation | [Complete registered vine programs](GPU_VINE_PLANNING.md) integrated on Metal; other program classes remain CPU | Mixed-anchor handoff, exact fallback/overflow/order, end-to-end benefit |
 | Compact lighting transport | [Uniform material input](COMPACT_LIGHT_INPUT.md) and [constant-light output](COMPACT_LIGHT_OUTPUT.md) validated on Metal; resident halo sharing deferred | Complete light-array parity, uniform/dense payloads, memory and lit-MCA throughput |
-| GPU-driven material emission | Pending | Exact runs, overflow/failure/interleaved ownership, synchronization and throughput |
+| GPU-driven material emission | [Two bounded-arena prototypes evaluated and rejected](MATERIAL_ARENA_TRIAL.md); existing continuation retained | Exact runs, overflow/failure/interleaved ownership, synchronization and throughput |
 | Tighter ore planning/masks | Pending | Seed/distribution/host/exposure/boundary parity, total planning/application cost |
 | Final sections/NBT/compression | Pending | Complete NBT/save parity, memory/copies and whole-region results |
 | Combined pipeline integration | Pending | Concurrent jobs, DH promotion, ordinary loading, Chunky, lifecycle checks, final A/B |
@@ -117,3 +117,13 @@ properties. Resident halo sharing remains deferred because it would require
 broader final-block ownership and memory changes; the useful transport changes
 are implemented without it. Material emission, ores, final sections and combined
 integration remain outstanding.
+
+## Bounded material-output arena
+
+Two implemented variants preserved exact material and full-NBT output, including
+overflow and interleaved ownership. Staging first-pass runs shortened material
+device time by about 42–43%, but six-region results showed no reliable Terralith
+throughput gain and a slower vanilla sample, with more transfer and memory.
+[Evidence and reproducible patches](MATERIAL_ARENA_TRIAL.md) are retained; neither
+prototype remains in production. This evaluates area 4 without claiming a runtime
+speedup. Ore masks, final-section processing and combined integration remain.

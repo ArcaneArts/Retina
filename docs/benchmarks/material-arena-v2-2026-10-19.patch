@@ -1,0 +1,719 @@
+diff --git a/native/src/gpu.rs b/native/src/gpu.rs
+index 66d109e..0b22f00 100644
+--- a/native/src/gpu.rs
++++ b/native/src/gpu.rs
+@@ -1,8 +1,8 @@
+-use crate::timings;
+ use crate::{
+     COLUMNS, GpuRequest, MAX_BATCH, MAX_TILES,
+     profile::{Column, WorldProfile},
+ };
++use crate::{pipeline::MaterialMetric, timings};
+ use std::{
+     collections::HashMap,
+     sync::mpsc,
+@@ -10,6 +10,8 @@ use std::{
+ };
+ use wgpu::util::DeviceExt;
+
++const MATERIAL_STAGING: u32 = 1 << 23;
++
+ const SURFACE_METADATA_FLOATS: usize = 8 * if 20000 > MAX_BATCH * 25 {
+     20000
+ } else {
+@@ -53,6 +55,8 @@ pub(crate) struct Gpu {
+     timestamp_support: bool,
+     readback_pool: Vec<ReadbackSlot>,
+     material_pool: Vec<MaterialSlot>,
++    material_arena_runs: u32,
++    material_staging: bool,
+     pipeline: std::sync::Arc<crate::pipeline::Metrics>,
+     last_device_tick: Option<u64>,
+     pub(crate) backend: String,
+@@ -416,6 +420,12 @@ impl Gpu {
+             sites,
+             readback_pool: Vec::new(),
+             material_pool: Vec::new(),
++            material_arena_runs: std::env::var("RETINA_MATERIAL_ARENA_RUNS")
++                .ok()
++                .and_then(|v| v.parse::<u32>().ok())
++                .unwrap_or(0)
++                .min(64),
++            material_staging: std::env::var("RETINA_MATERIAL_STAGING").as_deref() != Ok("0"),
+             pipeline: metrics,
+             last_device_tick: None,
+             timestamp_support,
+@@ -926,6 +936,7 @@ impl Gpu {
+                         .first()
+                         .is_some_and(|(_, header)| plan.covers(&gpu_requests[0], header))
+                 });
++        let cache_request = gpu_requests[0];
+         let cave_pipeline = |entry, fallback| {
+             let cached = if entry == "cave_nodes" {
+                 self.cached_density_masks
+@@ -933,7 +944,7 @@ impl Gpu {
+                     && self.cached_node_plans.get(&profile_id).is_some_and(|plan| {
+                         interpolation_headers
+                             .first()
+-                            .is_some_and(|(_, header)| plan.covers_nodes(&gpu_requests[0], header))
++                            .is_some_and(|(_, header)| plan.covers_nodes(&cache_request, header))
+                     })
+             } else {
+                 cached_masks
+@@ -996,6 +1007,25 @@ impl Gpu {
+             } else {
+                 0
+             };
++        // Reserve a bounded arena without a count readback. An oversized result
++        // keeps the existing exact-size continuation, using immutable snapshots.
++        let staging = self.material_staging && layered;
++        let planes = if staging { 2 } else { 1 };
++        let arena_bytes = if layered {
++            let budget = u64::from(self.material_arena_runs.min(cave_height)).min(
++                u64::from(self.device.limits().max_storage_buffer_binding_size)
++                    .saturating_sub(storage_mask_size)
++                    / (material_columns * 4 * planes),
++            );
++            material_columns * budget * 4
++        } else {
++            0
++        };
++        if staging && arena_bytes > 0 {
++            gpu_requests[0].padding |= MATERIAL_STAGING;
++        }
++        let arena_storage_size = storage_mask_size + arena_bytes * planes;
++        let readback_mask_size = mask_size + arena_bytes;
+         let node_side = requests[0].tile_side * 4 + 1;
+         let node_bottom = requests[0].min_y.div_euclid(4) * 4;
+         let node_height = ((requests[0].max_y - node_bottom + 3) / 4 + 1) as u32;
+@@ -1050,7 +1080,7 @@ impl Gpu {
+             if self
+                 .cave_buffers
+                 .as_ref()
+-                .is_none_or(|b| b.nodes_size < nodes_size || b.mask_size < storage_mask_size)
++                .is_none_or(|b| b.nodes_size < nodes_size || b.mask_size < arena_storage_size)
+             {
+                 let buffer = |label, size, usage| {
+                     self.device.create_buffer(&wgpu::BufferDescriptor {
+@@ -1068,11 +1098,11 @@ impl Gpu {
+                     ),
+                     mask: buffer(
+                         "Retina packed cave mask",
+-                        storage_mask_size,
++                        arena_storage_size,
+                         wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
+                     ),
+                     nodes_size,
+-                    mask_size: storage_mask_size,
++                    mask_size: arena_storage_size,
+                 });
+             }
+         }
+@@ -1097,8 +1127,13 @@ impl Gpu {
+             timestamps: self.timestamp_support.then(|| self.create_timestamps()),
+         });
+         if cave_side > 0 || underground_probe {
+-            if slot.mask.as_ref().is_none_or(|b| b.size() < mask_size) {
+-                slot.mask = Some(self.readback_buffer("Retina slot cave/biome mask", mask_size));
++            if slot
++                .mask
++                .as_ref()
++                .is_none_or(|b| b.size() < readback_mask_size)
++            {
++                slot.mask =
++                    Some(self.readback_buffer("Retina slot cave/biome mask", readback_mask_size));
+             }
+         }
+         let mut materials = None;
+@@ -1131,6 +1166,9 @@ impl Gpu {
+         if aquifer.is_some() {
+             measured.push(timings::AQUIFER_MASK);
+         }
++        if arena_bytes > 0 {
++            measured.push(timings::MATERIALS); // Separate count/emit device spans.
++        }
+         let timestamp_writes = |stage| {
+             slot.timestamps
+                 .as_ref()
+@@ -1397,7 +1435,11 @@ impl Gpu {
+                     },
+                     wgpu::BindGroupEntry {
+                         binding: 4,
+-                        resource: buffers.mask.as_entire_binding(),
++                        resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
++                            buffer: &buffers.mask,
++                            offset: 0,
++                            size: std::num::NonZeroU64::new(arena_storage_size),
++                        }),
+                     },
+                     wgpu::BindGroupEntry {
+                         binding: 5,
+@@ -1573,13 +1615,28 @@ impl Gpu {
+                     "Retina material job mask and run offsets",
+                     storage_mask_size,
+                 );
+-                let requests = snapshot(
+-                    "Retina material job descriptor",
+-                    std::mem::size_of::<GpuRequest>() as u64,
+-                );
++                // A fallback recomputes runs without consulting the optional
++                // first-pass staging area, which is intentionally not snapshotted.
++                let mut fallback_request = gpu_requests[0];
++                fallback_request.padding &= !MATERIAL_STAGING;
++                let requests = self
++                    .device
++                    .create_buffer_init(&wgpu::util::BufferInitDescriptor {
++                        label: Some("Retina material job descriptor"),
++                        contents: bytemuck::bytes_of(&fallback_request),
++                        usage: wgpu::BufferUsages::STORAGE,
++                    });
++                self.pipeline.transfer(profile_id, requests.size(), 0);
+                 encoder.copy_buffer_to_buffer(&self.output, 0, &columns, 0, columns.size());
+                 encoder.copy_buffer_to_buffer(&buffers.mask, 0, &mask, 0, storage_mask_size);
+-                encoder.copy_buffer_to_buffer(&self.requests, 0, &requests, 0, requests.size());
++                self.pipeline.material_add(MaterialMetric::Jobs, 1);
++                self.pipeline
++                    .material_add(MaterialMetric::SnapshotCopies, columns.size() + mask.size());
++                if arena_bytes > 0 {
++                    self.pipeline.material_add(MaterialMetric::ArenaJobs, 1);
++                    self.pipeline
++                        .material_add(MaterialMetric::ReservedReadback, arena_bytes);
++                }
+                 let emit = cave_pipeline("material_emit", &self.material_emit_pipeline);
+                 materials = Some(MaterialPending {
+                     columns,
+@@ -1588,6 +1645,28 @@ impl Gpu {
+                     pipeline: emit.pipeline.clone(),
+                     dispatch: emit.dispatch,
+                 });
++                if arena_bytes > 0 {
++                    let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
++                        label: Some("Retina GPU arena material emission"),
++                        timestamp_writes: slot
++                            .timestamps
++                            .as_ref()
++                            .map(|t| t.writes((measured.len() - 1) as u32)),
++                    });
++                    emit.bind(&mut pass);
++                    pass.set_bind_group(0, &cave_group, &[]);
++                    pass.dispatch_workgroups((material_columns as u32).div_ceil(64), 1, 1);
++                }
++            }
++            if arena_bytes > 0 {
++                // Skip the GPU-only fluid planes: CPU layout remains header + runs.
++                encoder.copy_buffer_to_buffer(
++                    &buffers.mask,
++                    storage_mask_size,
++                    slot.mask.as_ref().unwrap(),
++                    mask_size,
++                    arena_bytes,
++                );
+             }
+             encoder.copy_buffer_to_buffer(
+                 &buffers.mask,
+@@ -1614,7 +1693,7 @@ impl Gpu {
+                     .map(|(_, h)| h.len() as u64 * 4)
+                     .sum::<u64>(),
+             size + if cave_side > 0 || underground_probe {
+-                mask_size
++                readback_mask_size
+             } else {
+                 0
+             } + if slot.timestamps.is_some() {
+@@ -1633,7 +1712,7 @@ impl Gpu {
+         job_timings.nanos[timings::ENCODE] = encode_nanos;
+         let columns_map = Mapping::new(&slot.columns, size);
+         let mask_map = (cave_side > 0 || underground_probe)
+-            .then(|| Mapping::new(slot.mask.as_ref().unwrap(), mask_size));
++            .then(|| Mapping::new(slot.mask.as_ref().unwrap(), readback_mask_size));
+         let query_map = slot
+             .timestamps
+             .as_ref()
+@@ -1650,7 +1729,8 @@ impl Gpu {
+                 cave_height,
+                 underground_probe,
+                 size,
+-                mask_size,
++                mask_size: readback_mask_size,
++                arena_bytes,
+                 query_bytes,
+                 measured,
+                 materials,
+@@ -1672,6 +1752,9 @@ impl Gpu {
+         let size = count as u64 * 4;
+         // A slot belongs to exactly one pending continuation. Reuse it only
+         // after both mapping guards have been dropped by completion.
++        self.pipeline.material_add(MaterialMetric::Continuations, 1);
++        self.pipeline
++            .material_add(MaterialMetric::ContinuationCopies, job.mask.size());
+         let storage_size = job.mask.size() + size;
+         let storage = || {
+             self.device.create_buffer(&wgpu::BufferDescriptor {
+@@ -1934,6 +2017,21 @@ impl Gpu {
+                 self.complete_materials(materials, timings, &mut pending.timings)?
+             }
+         };
++        self.pipeline.material_cached(
++            self.cave_buffers
++                .as_ref()
++                .map_or(0, |b| b.nodes.size() + b.mask.size())
++                + self
++                    .material_pool
++                    .iter()
++                    .map(|s| s.storage.size() + s.readback.size())
++                    .sum::<u64>()
++                + self
++                    .readback_pool
++                    .iter()
++                    .map(|s| s.columns.size() + s.mask.as_ref().map_or(0, |m| m.size()))
++                    .sum::<u64>(),
++        );
+         pending.timings.flags = u32::from(self.timestamp_support);
+         pending.timings.nanos[timings::WAIT_COPY] = pending.wait_start.elapsed().as_nanos() as u64;
+         timings.add(
+@@ -1972,6 +2070,7 @@ impl Gpu {
+                 .map_err(|e| e.to_string())?;
+             bytemuck::cast_slice::<u8, Column>(&mapped).to_vec()
+         };
++        let mut arena_fit = false;
+         let mask = if let Some(mapping) = &mut pending.mask_map {
+             mapping.check()?;
+             let words = {
+@@ -1983,7 +2082,24 @@ impl Gpu {
+                     .slice(..pending.mask_size)
+                     .get_mapped_range()
+                     .map_err(|e| e.to_string())?;
+-                bytemuck::cast_slice::<u8, u32>(&mapped).to_vec()
++                let words = bytemuck::cast_slice::<u8, u32>(&mapped);
++                let length = if pending.arena_bytes > 0 {
++                    let header = ((pending.mask_size - pending.arena_bytes) / 4) as usize;
++                    let columns = ((pending.request.padding & 255) * 16).pow(2) as usize;
++                    let base = header
++                        .checked_sub(4 + columns * 2 + columns.div_ceil(256) * 2)
++                        .ok_or("invalid material arena header")?;
++                    if words.get(base) != Some(&0x52554e53) {
++                        return Err("invalid GPU material arena header".into());
++                    }
++                    let runs = words[base + 3] as usize;
++                    arena_fit = runs <= pending.arena_bytes as usize / 4;
++                    header + if arena_fit { runs } else { 0 }
++                } else {
++                    words.len()
++                };
++                // Do not copy the unused reservation into the CPU material mask.
++                words[..length].to_vec()
+             };
+             if pending.underground_probe {
+                 for (column, biome) in columns.iter_mut().zip(words) {
+@@ -2005,6 +2121,22 @@ impl Gpu {
+         } else {
+             None
+         };
++        if pending.materials.is_some() {
++            self.pipeline.material_add(
++                MaterialMetric::CountedRuns,
++                mask.as_ref()
++                    .and_then(|m| m.material_run_count())
++                    .unwrap_or(0) as u64
++                    * 4,
++            );
++        }
++        if arena_fit {
++            self.pipeline.material_add(MaterialMetric::ArenaHits, 1);
++            mask.as_ref()
++                .ok_or("missing material arena mask")?
++                .validate_material_runs()?;
++            pending.materials = None;
++        }
+         if let Some(mapping) = &mut pending.query_map {
+             mapping.check()?;
+             let mapped = pending
+@@ -2138,6 +2270,7 @@ struct TerrainReadback {
+     underground_probe: bool,
+     size: u64,
+     mask_size: u64,
++    arena_bytes: u64,
+     query_bytes: u64,
+     measured: Vec<usize>,
+     materials: Option<MaterialPending>,
+@@ -2200,6 +2333,8 @@ mod column_interpreter_tests;
+ #[cfg(test)]
+ mod lake_sparse_tests;
+ #[cfg(test)]
++mod material_arena_tests;
++#[cfg(test)]
+ mod material_continuation_tests;
+
+ #[cfg(test)]
+diff --git a/native/src/gpu/material_continuation_tests.rs b/native/src/gpu/material_continuation_tests.rs
+index 858b25b..ef20bee 100644
+--- a/native/src/gpu/material_continuation_tests.rs
++++ b/native/src/gpu/material_continuation_tests.rs
+@@ -1,7 +1,7 @@
+ //! Small real-GPU fixtures: stage scheduling, snapshot isolation and buffer reuse.
+ use super::*;
+
+-fn fixture() -> WorldProfile {
++pub(super) fn fixture() -> WorldProfile {
+     let bytes = std::fs::read(std::env::var("RETINA_MATERIAL_PROFILE").unwrap()).unwrap();
+     let mut value: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+     value["program_execution"] = "interpreter".into();
+@@ -9,7 +9,7 @@ fn fixture() -> WorldProfile {
+     assert!(profile.registry_program.as_ref().unwrap().material_layers);
+     profile
+ }
+-fn request(profile: u32, x: i32, side: u32, height: u32) -> GpuRequest {
++pub(super) fn request(profile: u32, x: i32, side: u32, height: u32) -> GpuRequest {
+     let mut r = GpuRequest::from(crate::ChunkRequest {
+         seed: 123456789,
+         chunk_x: x,
+@@ -25,7 +25,7 @@ fn request(profile: u32, x: i32, side: u32, height: u32) -> GpuRequest {
+     r.padding = side - 2;
+     r
+ }
+-fn equal(a: &GpuSample, b: &GpuSample) {
++pub(super) fn equal(a: &GpuSample, b: &GpuSample) {
+     assert_eq!(
+         bytemuck::cast_slice::<Column, u8>(&a.columns),
+         bytemuck::cast_slice::<Column, u8>(&b.columns)
+diff --git a/native/src/lib.rs b/native/src/lib.rs
+index 9e43166..92f259d 100644
+--- a/native/src/lib.rs
++++ b/native/src/lib.rs
+@@ -1252,6 +1252,22 @@ pub unsafe extern "C" fn retina_gpu_pipeline_snapshot(output: *mut pipeline::Sna
+     })
+ }
+ /// # Safety
++/// output points to a writable 80-byte version-1 material diagnostic snapshot.
++#[unsafe(no_mangle)]
++pub unsafe extern "C" fn retina_material_pipeline_snapshot(
++    output: *mut pipeline::MaterialSnapshot,
++) -> i32 {
++    boundary(|| {
++        if output.is_null() {
++            return Err("null material pipeline snapshot".into());
++        }
++        unsafe {
++            *output = shared_engine()?.pipeline.material_snapshot();
++        }
++        Ok(())
++    })
++}
++/// # Safety
+ /// output points to a writable 64-byte version-1 program diagnostic snapshot.
+ #[unsafe(no_mangle)]
+ pub unsafe extern "C" fn retina_gpu_program_snapshot(
+diff --git a/native/src/materials.wgsl b/native/src/materials.wgsl
+index 91bc0e5..ba2a56d 100644
+--- a/native/src/materials.wgsl
++++ b/native/src/materials.wgsl
+@@ -51,6 +51,23 @@ fn material_column(index:u32,emit:bool,r0:Request) {
+     var r=r0;r.density_side=0u; // This pass owns no density/cache scratch.
+     let width=material_width(r);let count=width*width;
+     if index>=count {return;}
++    let base=material_base_offset(r);let groups=material_groups(r);
++    let offset=material_runs_offset(r);let capacity=arrayLength(&mask);
++    let staged=(r.padding&(1u<<23u))!=0u;
++    var budget=0u;var arena=capacity-offset;
++    if staged {budget=arena/(2u*count);arena=budget*count;}
++    var output=0u;
++    if emit {
++        // Overflow retains the exact continuation. No partial result is accepted.
++        if capacity<offset || mask[base+3u]>arena {return;}
++        output=offset+mask[base+5u+index*2u]+mask[base+4u+count*2u+groups+index/256u];
++        let length=mask[base+4u+index*2u];
++        if staged && length<=budget {
++            let saved=offset+arena+index*budget;
++            for(var i=0u;i<length;i++) {mask[output+i]=mask[saved+i];}
++            return;
++        }
++    } else if staged {output=offset+arena+index*budget;}
+     let x=index%width+16u;let z=index/width+16u;
+     let c=column_at(x,z,r.tile_side);
+     let point=vec2<f32>(f32(r.origin_x+i32(x)),f32(r.origin_z+i32(z)));
+@@ -61,9 +78,6 @@ fn material_column(index:u32,emit:bool,r0:Request) {
+     let slope=max(abs(f32(column_at(x+1u,z,r.tile_side).height-column_at(x-1u,z,r.tile_side).height)),
+                   abs(f32(column_at(x,z+1u,r.tile_side).height-column_at(x,z-1u,r.tile_side).height)));
+     let preliminary=f32(c.height-1)+depth-8.0;
+-    let base=material_base_offset(r);let groups=material_groups(r);
+-    var output=0u;
+-    if emit {output=material_runs_offset(r)+mask[base+5u+index*2u]+mask[base+4u+count*2u+groups+index/256u];}
+     var above=0;var below=r.max_y;var water=-2147483648.0;
+     var previous=0xffffffffu;var runs=0u;
+     for(var y=r.max_y-1;y>=r.min_y;y--) {
+@@ -91,13 +105,13 @@ fn material_column(index:u32,emit:bool,r0:Request) {
+         }
+         if previous!=material {
+             if previous!=0xffffffffu {
+-                if emit {mask[output+runs]=(u32(y+1-r.min_y)<<16u)|previous;}
++                if emit || (staged && runs<budget) {mask[output+runs]=(u32(y+1-r.min_y)<<16u)|previous;}
+                 runs+=1u;
+             }
+             previous=material;
+         }
+     }
+-    if emit {mask[output+runs]=previous;}
++    if emit || (staged && runs<budget) {mask[output+runs]=previous;}
+     runs+=1u;
+     if !emit {mask[base+4u+index*2u]=runs;}
+ }
+diff --git a/native/src/pipeline.rs b/native/src/pipeline.rs
+index 16c1e41..3f91818 100644
+--- a/native/src/pipeline.rs
++++ b/native/src/pipeline.rs
+@@ -39,6 +39,26 @@ pub struct Snapshot {
+     pub device_gap_nanos: u64,
+     pub unavailable_timestamp_pairs: u64,
+ }
++/// Material-stage counters are separate from the established timing ABI.
++#[repr(C)]
++#[derive(Clone, Copy, Default, Debug, serde::Serialize)]
++pub struct MaterialSnapshot {
++    pub version: u32,
++    pub reserved: u32,
++    pub values: [u64; 9],
++}
++#[derive(Clone, Copy)]
++pub(crate) enum MaterialMetric {
++    Jobs,
++    ArenaJobs,
++    ArenaHits,
++    Continuations,
++    SnapshotCopies,
++    ContinuationCopies,
++    ReservedReadback,
++    CountedRuns,
++    CachedBytes,
++}
+ #[derive(Default)]
+ pub(crate) struct Metrics {
+     peak: AtomicU64,
+@@ -47,8 +67,23 @@ pub(crate) struct Metrics {
+     gaps: AtomicU64,
+     unavailable: AtomicU64,
+     profiles: Mutex<HashMap<u32, Arc<ProfileCounters>>>,
++    material: [AtomicU64; 9],
+ }
+ impl Metrics {
++    pub fn material_add(&self, metric: MaterialMetric, value: u64) {
++        self.material[metric as usize].fetch_add(value, Ordering::Relaxed);
++    }
++    pub fn material_cached(&self, bytes: u64) {
++        self.material[MaterialMetric::CachedBytes as usize].fetch_max(bytes, Ordering::Relaxed);
++    }
++    pub fn material_snapshot(&self) -> MaterialSnapshot {
++        MaterialSnapshot {
++            version: 1,
++            reserved: 0,
++            values: std::array::from_fn(|i| self.material[i].load(Ordering::Relaxed)),
++        }
++    }
++
+     fn profile(&self, id: u32) -> Arc<ProfileCounters> {
+         self.profiles
+             .lock()
+diff --git a/scripts/native-region-benchmark.py b/scripts/native-region-benchmark.py
+index 5bd0438..dd1e49b 100644
+--- a/scripts/native-region-benchmark.py
++++ b/scripts/native-region-benchmark.py
+@@ -31,6 +31,10 @@ STAGES = ["queue", "encode", "wait_copy", "height", "sites", "columns", "cave_de
+ class PipelineSnapshot(c.Structure):
+     _fields_ = [("version", c.c_uint32), ("peak_in_flight", c.c_uint32)] + [(s, c.c_uint64) for s in
+                 ("completed", "device_span_nanos", "device_gap_nanos", "unavailable_timestamp_pairs")]
++MATERIAL_FIELDS = ("jobs", "arena_jobs", "arena_hits", "continuations", "snapshot_copy_bytes",
++                   "continuation_copy_bytes", "reserved_readback_bytes", "counted_run_bytes", "peak_cached_buffer_bytes")
++class MaterialSnapshot(c.Structure):
++    _fields_ = [("version", c.c_uint32), ("reserved", c.c_uint32), ("values", c.c_uint64 * 9)]
+ class ProgramSnapshot(c.Structure):
+     _fields_ = [("version", c.c_uint32), ("status", c.c_uint32), ("compile_nanos", c.c_uint64), ("source_bytes", c.c_uint64)] + [(s,c.c_uint32) for s in ("nodes","emitted","graphs","horizontal_fields")] + [(s,c.c_uint64) for s in ("cache_hits","upload_bytes","readback_bytes")]
+
+@@ -162,6 +166,11 @@ def main():
+     if pipeline:
+         pipeline.argtypes = [c.POINTER(PipelineSnapshot)]
+         check(pipeline(c.byref(before_pipeline)))
++    materials = getattr(lib, "retina_material_pipeline_snapshot", None)
++    before_materials = MaterialSnapshot()
++    if materials:
++        materials.argtypes = [c.POINTER(MaterialSnapshot)]
++        check(materials(c.byref(before_materials)))
+     # Adjacent tiles exercise shared structure halos and cold full-region terrain.
+     coords = [(str(i), args.origin_x + i % args.grid_width, args.origin_z + i // args.grid_width)
+               for i in range(args.count)]
+@@ -216,6 +225,11 @@ def main():
+             "device_span_ms": (after_pipeline.device_span_nanos-before_pipeline.device_span_nanos)/1e6,
+             "device_gap_ms": (after_pipeline.device_gap_nanos-before_pipeline.device_gap_nanos)/1e6,
+             "unavailable_timestamp_pairs": after_pipeline.unavailable_timestamp_pairs-before_pipeline.unavailable_timestamp_pairs}
++    if materials:
++        after_materials = MaterialSnapshot(); check(materials(c.byref(after_materials)))
++        data["material_pipeline"] = {name: after_materials.values[i] - (0 if i == 8 else before_materials.values[i])
++                                     for i, name in enumerate(MATERIAL_FIELDS)}
++        data["material_arena_runs"] = os.environ.get("RETINA_MATERIAL_ARENA_RUNS")
+     if program:
+         after_program=ProgramSnapshot();check(program(profile,c.byref(after_program)))
+         data["gpu_program"]={name:getattr(after_program,name) for name,_ in ProgramSnapshot._fields_ if name != "version"}
+diff --git a/native/src/gpu/material_arena_tests.rs b/native/src/gpu/material_arena_tests.rs
+new file mode 100644
+index 0000000..2c98897
+--- /dev/null
++++ b/native/src/gpu/material_arena_tests.rs
+@@ -0,0 +1,160 @@
++//! Exact fast-path/overflow and asynchronous ownership checks on real GPU inputs.
++use super::material_continuation_tests::{equal, fixture, request};
++use super::*;
++
++#[test]
++#[ignore = "bounded real GPU arena fixtures; requires RETINA_MATERIAL_PROFILE"]
++fn material_arena_preserves_fast_overflow_interleaving_and_reuse() {
++    let profile = fixture();
++    let mut other = profile.clone();
++    other.sea_level -= 17;
++    let metrics = std::sync::Arc::new(crate::pipeline::Metrics::default());
++    let mut gpu = Gpu::new(metrics.clone()).unwrap();
++    let times = timings::Timings::default();
++    let a = request(1, -33, 3, 128);
++    let b = request(2, 4095, 5, 192);
++    let selected = |r: GpuRequest| if r.profile == 2 { &other } else { &profile };
++    let mut expected = Vec::new();
++    gpu.material_arena_runs = 0;
++    for r in [a, b] {
++        let p = gpu.submit(&[r], Some(selected(r)), &times).unwrap();
++        expected.push(gpu.complete(p, &times).unwrap());
++    }
++    // Every flight owns its readbacks and fallback snapshots while the shared
++    // arena is overwritten by later submissions. Finish all eight in reverse.
++    gpu.material_arena_runs = 64;
++    let before = metrics.material_snapshot();
++    let mut flights = Vec::new();
++    for r in [a, b, a, b, a, b, a, b] {
++        let p = gpu.submit(&[r], Some(selected(r)), &times).unwrap();
++        flights.push((r, p));
++    }
++    for (r, p) in flights.into_iter().rev() {
++        let Progress::Complete(result) = gpu.advance(p, &times).unwrap() else {
++            panic!("fitting arena must complete without a host continuation");
++        };
++        equal(&expected[usize::from(r.profile == 2)], &result);
++    }
++    let after = metrics.material_snapshot();
++    assert_eq!(
++        after.values[MaterialMetric::ArenaHits as usize]
++            - before.values[MaterialMetric::ArenaHits as usize],
++        8
++    );
++    assert_eq!(
++        after.values[MaterialMetric::Continuations as usize],
++        before.values[MaterialMetric::Continuations as usize]
++    );
++    // A global arena can fit even when individual columns exceed their saved
++    // first-pass quota. Only those columns must be evaluated a second time.
++    let mut exercised = false;
++    for (i, r) in [a, b].into_iter().enumerate() {
++        let mask = expected[i].mask.as_ref().unwrap();
++        let side = mask.width - 2;
++        let budget = mask.material_run_count().unwrap().div_ceil(side * side);
++        let max_column = (0..side)
++            .flat_map(|z| {
++                (0..side).map(move |x| {
++                    mask.material_runs(mask.origin_x + 1 + x as i32, mask.origin_z + 1 + z as i32)
++                        .unwrap()
++                        .len()
++                })
++            })
++            .max()
++            .unwrap();
++        if max_column > budget {
++            gpu.material_arena_runs = budget as u32;
++            let p = gpu.submit(&[r], Some(selected(r)), &times).unwrap();
++            let Progress::Complete(result) = gpu.advance(p, &times).unwrap() else {
++                panic!("fitting total must not need a host continuation");
++            };
++            equal(&expected[i], &result);
++            exercised = true;
++        }
++    }
++    assert!(exercised, "fixture must cover per-column staging overflow");
++    // One slot per column cannot fit these material stacks. The failed attempt
++    // must retain exact counts, fluid planes, profile and private job inputs.
++    gpu.material_arena_runs = 1;
++    let first = gpu.submit(&[a], Some(&profile), &times).unwrap();
++    let second = gpu.submit(&[b], Some(&other), &times).unwrap();
++    let Progress::Pending(first) = gpu.advance(first, &times).unwrap() else {
++        panic!("expected overflow");
++    };
++    let Progress::Pending(second) = gpu.advance(second, &times).unwrap() else {
++        panic!("expected overflow");
++    };
++    equal(&expected[1], &gpu.complete(second, &times).unwrap());
++    equal(&expected[0], &gpu.complete(first, &times).unwrap());
++    // Large retained storage must not turn a subsequent smaller logical arena
++    // into a partial success, or include old words in a fitting result.
++    for (r, budget) in [(b, 64), (a, 1), (a, 64), (b, 1)] {
++        gpu.material_arena_runs = budget;
++        let p = gpu.submit(&[r], Some(selected(r)), &times).unwrap();
++        equal(
++            &expected[usize::from(r.profile == 2)],
++            &gpu.complete(p, &times).unwrap(),
++        );
++    }
++    gpu.material_arena_runs = 64;
++    drop(gpu.submit(&[a], Some(&profile), &times).unwrap());
++    gpu.material_arena_runs = 1;
++    let p = gpu.submit(&[b], Some(&other), &times).unwrap();
++    let Progress::Pending(p) = gpu.advance(p, &times).unwrap() else {
++        panic!("expected overflow");
++    };
++    drop(p);
++    gpu.material_arena_runs = 64;
++    gpu.timestamp_support = false;
++    gpu.readback_pool.clear();
++    gpu.material_pool.clear();
++    let p = gpu.submit(&[a], Some(&profile), &times).unwrap();
++    let result = gpu.complete(p, &times).unwrap();
++    equal(&expected[0], &result);
++    assert_eq!(result.timings.flags, 0);
++    assert!(gpu.readback_pool.len() <= 2 && gpu.material_pool.len() <= 2);
++}
++
++#[test]
++#[ignore = "bounded arena timing experiment; requires RETINA_MATERIAL_PROFILE"]
++fn material_arena_replay() {
++    let profile = fixture();
++    let metrics = std::sync::Arc::new(crate::pipeline::Metrics::default());
++    let mut gpu = Gpu::new(metrics.clone()).unwrap();
++    let times = timings::Timings::default();
++    let requests = [request(1, -33, 8, 192), request(1, 4095, 8, 192)];
++    let mut run = |budget| {
++        gpu.material_arena_runs = budget;
++        let start = Instant::now();
++        let first = gpu.submit(&[requests[0]], Some(&profile), &times).unwrap();
++        let second = gpu.submit(&[requests[1]], Some(&profile), &times).unwrap();
++        let first = gpu.advance(first, &times).unwrap();
++        let second = gpu.advance(second, &times).unwrap();
++        let mut finish = |result| match result {
++            Progress::Complete(sample) => sample,
++            Progress::Pending(p) => gpu.complete(p, &times).unwrap(),
++        };
++        let results = [finish(first), finish(second)];
++        (start.elapsed().as_secs_f64() * 1000., results)
++    };
++    let (_, expected) = run(0);
++    let mut measurements = Vec::new();
++    for round in 0..3 {
++        for budget in if round % 2 == 0 { [0, 16] } else { [16, 0] } {
++            let before = metrics.material_snapshot();
++            let (ms, output) = run(budget);
++            for (a, b) in expected.iter().zip(&output) {
++                equal(a, b);
++            }
++            let after = metrics.material_snapshot();
++            measurements.push(serde_json::json!({"runs_per_column":budget,"ms":ms,
++                "counters": std::array::from_fn::<_,9,_>(|i| after.values[i].saturating_sub(before.values[i]))}));
++        }
++    }
++    println!(
++        "{}",
++        serde_json::json!({"measurements":measurements,"exact":true,
++        "run_counts":expected.iter().map(|s|s.mask.as_ref().unwrap().material_run_count()).collect::<Vec<_>>(),
++        "peak_cached_buffer_bytes":metrics.material_snapshot().values[8]})
++    );
++}

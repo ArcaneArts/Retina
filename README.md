@@ -296,7 +296,10 @@ inconclusive. [Compact light output](docs/COMPACT_LIGHT_OUTPUT.md) further reduc
 traffic to about 190 MiB/region for vanilla and 200 MiB for Terralith. Two bounded
 concurrent Terralith comparisons improved 5–14%; serial and vanilla throughput
 did not improve measurably, and process memory was not consistently lower. The
-report retains those limits; remaining optimization cycles are still pending.
+report retains those limits. A [bounded material-output arena trial](docs/MATERIAL_ARENA_TRIAL.md)
+reduced isolated material work but did not establish faster complete generation;
+the proven continuation path remains. Ore, section-processing and combined
+integration cycles are still pending.
 
 ## Building and testing
 
