@@ -14,7 +14,7 @@ from that report. Retained baseline library SHA-256:
 | Area | Status | Required evidence |
 | --- | --- | --- |
 | Compact/compile decoration programs | [PR #115](https://github.com/ArcaneArts/Retina/pull/115) and [PR #116](https://github.com/ArcaneArts/Retina/pull/116): validated eligible streaming | Dense/sparse planning, exact ordered output/RNG, memory, vanilla/Terralith lit-MCA |
-| Complete feature-anchor GPU evaluation | Pending | Meaningful supported programs, exact fallback/overflow/order, end-to-end benefit |
+| Complete feature-anchor GPU evaluation | [Independent-column vine trial](GPU_FEATURE_ANCHOR_TRIAL.md) measured; production integration pending | Mixed-anchor handoff, exact fallback/overflow/order, end-to-end benefit |
 | Compact lighting transport | Pending | Complete light-array parity, uniform/dense payloads, memory and lit-MCA throughput |
 | GPU-driven material emission | Pending | Exact runs, overflow/failure/interleaved ownership, synchronization and throughput |
 | Tighter ore planning/masks | Pending | Seed/distribution/host/exposure/boundary parity, total planning/application cost |
@@ -53,3 +53,15 @@ general cursor retaining per-child `Arc` allocations was also superseded by
 the final inline-draw version. [Results](STREAMED_DECORATION_CANDIDATES.md)
 separate these experiments from the accepted implementation. Complete GPU-anchor
 evaluation and the other areas above remain outstanding.
+
+## Complete GPU program experiment
+
+The recipe census attributes 6,904,000 of the dense fixture's 8,664,271 candidate
+evaluations to the registered highlands vine-spread program. A test-only GPU
+implementation now supports full plant/vine programs, with an independently
+ordered column path when the loaded predicates prove horizontal independence.
+It preserves ordered output on seeded cascades, prior feature overlays, negative
+and distant coordinates, and rejects whole outputs on overflow. Repeated batch
+comparisons include packing and transfers; results are in the
+[trial report](GPU_FEATURE_ANCHOR_TRIAL.md). This remains an isolated-program
+result. It does not complete area 2 or establish a whole-generator speedup.

@@ -1108,6 +1108,10 @@ struct OverlayUndo {
     tops: Option<[i32; 6]>,
 }
 impl Overlay {
+    #[cfg(test)]
+    pub(super) fn probe_entries(&self) -> impl Iterator<Item = ([i32; 3], u16)> + '_ {
+        self.blocks.iter().map(|(at, material)| (*at, *material))
+    }
     pub(super) fn retained_bytes(&self) -> usize {
         // Capacity rather than length, with allowance for hash control bytes,
         // load factor and allocator overhead. Snapshots omit derived ground caches.

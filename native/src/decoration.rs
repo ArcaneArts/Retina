@@ -20,6 +20,8 @@ pub mod pairs;
 mod patch;
 pub(crate) use patch::SimpleState;
 #[cfg(test)]
+mod anchor_probe;
+#[cfg(test)]
 mod gpu_leaf_probe;
 pub mod placement;
 mod placement_height;
@@ -1108,6 +1110,11 @@ fn evaluate_anchor(
         completed += 1;
         if let Some(timing) = timing.as_mut() {
             timing.evaluated_candidates += 1;
+            let id = candidate.recipe as usize;
+            if timing.recipe_candidates.len() <= id {
+                timing.recipe_candidates.resize(id + 1, [0; 2]);
+            }
+            timing.recipe_candidates[id][0] += 1;
         }
         let recipe = &profile.decorations[candidate.recipe as usize];
         let Some(position) = placement::position(
@@ -1122,6 +1129,9 @@ fn evaluate_anchor(
             continue;
         };
         let [x, y, z] = position;
+        if let Some(timing) = timing.as_mut() {
+            timing.recipe_candidates[candidate.recipe as usize][1] += 1;
+        }
         let Some(column) = field.column(x, z) else {
             continue;
         };

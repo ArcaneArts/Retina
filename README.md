@@ -282,6 +282,10 @@ two matched Terralith trials by a further 6–8% against that implementation and
 reducing dense replay retention from about 46 to 6.7 MiB. These are separate
 comparisons, not an additive overall speedup. The
 [cycle tracker](docs/OPTIMIZATION_CYCLES_2026_10.md) records remaining work.
+The [complete GPU feature-program trial](docs/GPU_FEATURE_ANCHOR_TRIAL.md) adds
+opt-in recipe diagnostics and a measured independent-column vine prototype.
+It is test-only; normal generation retains the existing planner while full
+pipeline integration and end-to-end validation remain pending.
 
 ## Building and testing
 
