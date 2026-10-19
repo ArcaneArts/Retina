@@ -302,6 +302,24 @@ final class DecorationProfile {
     }
 
     /** Resolve tags/material predicates after every registry exporter has extended the palette. */
+    static void finishPlacements(JsonArray recipes, LinkedHashMap<BlockState, Integer> palette, GenerationBounds bounds, int sea) {
+        bindHeightProviders(recipes, bounds, sea);
+        // inside_world_bounds tests the level's storage/build bounds, not its noise volume.
+        finishPlacements(recipes, palette, bounds.storageMinY(), bounds.storageHeight());
+    }
+    private static void bindHeightProviders(JsonElement value, GenerationBounds bounds, int sea) {
+        if (value.isJsonArray()) value.getAsJsonArray().forEach(child -> bindHeightProviders(child, bounds, sea));
+        else if (value.isJsonObject()) {
+            var object = value.getAsJsonObject();
+            if (object.has("placement") && object.get("placement").isJsonArray()) {
+                for (var entry : object.getAsJsonArray("placement")) {
+                    var op = entry.getAsJsonObject();
+                    if (type(op).equals("height_range")) bounds.resolveHeightProvider(op.get("height"), sea);
+                }
+            }
+            object.entrySet().forEach(entry -> bindHeightProviders(entry.getValue(), bounds, sea));
+        }
+    }
     static void finishPlacements(JsonArray recipes, LinkedHashMap<BlockState, Integer> palette, int minY, int height) {
         bindBounds(recipes, minY, Math.addExact(minY, height));
         finishPlacements(recipes, palette);

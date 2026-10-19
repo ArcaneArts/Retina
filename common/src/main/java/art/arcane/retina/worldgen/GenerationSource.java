@@ -10,13 +10,17 @@ import net.minecraft.world.level.levelgen.NoiseBasedChunkGenerator;
 record GenerationSource(ChunkGenerator generator, DimensionType dimension) {
     JsonObject describe() {
         var data = new JsonObject();
-        data.addProperty("version", 1);
+        data.addProperty("version", 2);
         data.addProperty("terrain", flat() ? "flat" : "noise");
         data.addProperty("biomes", generator.getBiomeSource() instanceof FixedBiomeSource ? "fixed" : "climate");
         data.addProperty("min_y", dimension.minY());
         data.addProperty("height", dimension.height());
         data.addProperty("skylight", dimension.hasSkyLight());
         data.addProperty("ceiling", dimension.hasCeiling());
+        data.addProperty("logical_height", dimension.logicalHeight());
+        data.addProperty("coordinate_scale", dimension.coordinateScale());
+        if (!flat()) data.add("bounds", GenerationBounds.noise(noise().generatorSettings().value().noiseSettings(),
+                dimension.minY(), dimension.height()).describe());
         return data;
     }
 

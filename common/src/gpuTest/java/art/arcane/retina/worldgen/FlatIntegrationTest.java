@@ -132,8 +132,10 @@ final class FlatIntegrationTest {
         var bounded = RetinaChunkGenerator.fromSource(new GenerationSource(singleStem.generator(), shallow));
         try {
             bounded.bindWorld(registry, 42);
-            require(bounded.getMinY() == 0 && bounded.getGenDepth() == 32 && bounded.getSeaLevel() == 63,
-                    "custom noise dimension retains bounds and source sea level outside them");
+            require(bounded.request(42, 0, 0).minY() == 0 && bounded.request(42, 0, 0).height() == 32 && bounded.getSeaLevel() == 63,
+                    "custom noise dimension retains storage bounds and source sea level outside them");
+            require(bounded.getMinY() == singleStem.generator().getMinY() && bounded.getGenDepth() == singleStem.generator().getGenDepth(),
+                    "Minecraft generation contexts retain the source generator's bounds");
             require(NativeTerrain.instance().column(bounded.request(42, 0, 0), 0).length == 32,
                     "actual bounded noise generation succeeds");
         } finally { bounded.closePreviews(); }
