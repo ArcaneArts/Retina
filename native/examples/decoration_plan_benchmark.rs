@@ -86,6 +86,22 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         reference, detailed,
         "diagnostics must preserve every ordered placement"
     );
+    // Optional cross-build comparison artifact, outside all measured intervals.
+    if let Some(path) = std::env::var_os("RETINA_PLAN_OUTPUT") {
+        use std::io::Write;
+        let mut out = std::io::BufWriter::new(std::fs::File::create(path)?);
+        out.write_all(&(reference.len() as u32).to_le_bytes())?;
+        for chunk in &reference {
+            out.write_all(&(chunk.len() as u32).to_le_bytes())?;
+            for p in chunk {
+                out.write_all(&p.index.to_le_bytes())?;
+                out.write_all(&p.material.to_le_bytes())?;
+                out.write_all(&p.upper.to_le_bytes())?;
+                out.write_all(&[p.role])?;
+            }
+        }
+        out.flush()?;
+    }
     let mut sorted = samples.clone();
     sorted.sort_by(f64::total_cmp);
     println!(
