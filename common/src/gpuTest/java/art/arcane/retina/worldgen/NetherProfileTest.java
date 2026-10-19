@@ -62,7 +62,7 @@ public final class NetherProfileTest {
                     "Nether activation remains deferred until implementation is complete");
 
             var data = TerrainProfileData.export(registry, (RetinaBiomeSource) runtime.getBiomeSource(), 0, 256, 42,
-                    settings.value(), StructureProfile.Context.NONE, true, false);
+                    settings.value(), StructureProfile.Context.NONE, true, false, true);
             var json = JsonParser.parseString(data.json()).getAsJsonObject();
             require(json.getAsJsonObject("generation_bounds").equals(description.getAsJsonObject("bounds")), "shared bounds descriptor");
             require(data.biomes().size() == 5 && new HashSet<>(data.biomes()).equals(biomes.possibleBiomes()), "exact five source biomes");
@@ -112,7 +112,7 @@ public final class NetherProfileTest {
             var customized = new NoiseBasedChunkGenerator(fixed, Holder.direct(custom));
             checkContext(registry, customized, 96, 128);
             var customData = TerrainProfileData.export(registry, RetinaBiomeSource.fromSelected(fixed), 96, 128, 42,
-                    custom, StructureProfile.Context.NONE, true, false);
+                    custom, StructureProfile.Context.NONE, true, false, true);
             var customProfile = JsonParser.parseString(customData.json()).getAsJsonObject();
             require(customData.biomes().size() == 1 && new HashSet<>(customData.biomes()).equals(fixed.possibleBiomes()), "fixed source stays fixed");
             require(customData.seaLevel() == 91 && customProfile.get("geology_min_y").getAsInt() == 96

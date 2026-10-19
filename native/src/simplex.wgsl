@@ -165,6 +165,11 @@ fn biome_sites(@builtin(global_invocation_id) id: vec3<u32>) {
 // simplex relief, coherent material borders, soil depth, cold-water and bedrock flags.
 struct TerrainSample { height: i32, biome: u32, terrain: vec3<f32>, climate: vec4<f32> }
 fn terrain_base(point: vec2<f32>, request: Request, request_index: u32) -> TerrainSample {
+    if enclosed_world() {
+        let actual=run_program(0u,vec3<f32>(point.x,0.0,point.y),request,vec4<f32>(0.0));
+        let biome=registered_biome(actual,0u);
+        return TerrainSample(request.min_y,biome,vec3<f32>(0.0),vec4<f32>(actual[0],actual[1],actual[2],actual[3]));
+    }
     let scale = world.globals.x;
     let warp = vec2<f32>(
         simplex(point / (scale * 2.0), request.seed_low + 407u, request.seed_high),
@@ -224,6 +229,10 @@ fn registered_biome(actual:array<f32,6>,initial:u32)->u32 {
     return registered_biome_filtered(actual,initial,false);
 }
 fn registered_biome_filtered(actual:array<f32,6>,initial:u32,exclude_shores:bool)->u32 {
+    if enclosed_world() {
+        if climate_table.count.z>climate_table.count.y {return climate_search(actual,false,true,false,initial,1e20);}
+        return initial;
+    }
     var biome=initial;let climate=vec4<f32>(actual[0],actual[1],actual[2],actual[3]);
     if climate_table.count.x>0u {
         var best=1e20;
@@ -250,7 +259,7 @@ fn terrain_probe(point:vec2<f32>,r:Request,index:u32)->TerrainSample {
 fn terrain_cached(point:vec2<f32>,r:Request,index:u32)->TerrainSample {
     var sample=terrain_base(point,r,index);
     if bytecode[0]>0u {sample.height=i32(floor(registered_height_fast(point,r,index)));}
-    if (r.padding&(1u<<28u))!=0u && r.density_side>0u {
+    if !enclosed_world() && (r.padding&(1u<<28u))!=0u && r.density_side>0u {
         let sea=bitcast<i32>(world.ids.y);
         var coastal=false;
         if sample.height>=sea-2 && sample.height<=sea+3 {
@@ -444,7 +453,7 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
         if f32(height)>snowline {temperature-=(noise3(vec3<f32>(point.x,0.0,point.y)*0.125,1234u)*8.0+f32(height)-snowline)*0.00125;}
         frozen=(material.w&32u)!=0u && temperature<0.15;
     }
-    if frozen { flags |= 1u << 28u; }
+    if frozen && !enclosed_world() { flags |= 1u << 28u; }
     // Vanilla vegetation threshold sampling stays on the GPU, sharing this readback.
     if simplex(point * 0.005, 2345u, 0u) < -0.8 { flags |= 1u << 27u; }
     let depth_noise = simplex(point * request.frequency * 3.0, request.seed_low + 559u, request.seed_high);
@@ -456,7 +465,7 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
     // Fixed global cells make rounded, warped basins with a flat waterline.
     // Their geometry is computed here, before any readback or Rust assembly.
     // Surface biome probes need the physical coast, never synthetic lake levels.
-    if height_probe || (request.padding&(1u<<31u))==0u {
+    if !enclosed_world() && (height_probe || (request.padding&(1u<<31u))==0u) {
     let lake_cell = vec2<i32>(floor(point / 128.0));
     let lh = cell_hash(lake_cell, request.seed_low + 8647u, request.seed_high);
     let lake_point = lake_center(lake_cell,request);

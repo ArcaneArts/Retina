@@ -16,6 +16,9 @@ final class ClimateNoiseProfile {
     private record Leaf(Identifier noise, double scale) { }
 
     static JsonArray export(HolderLookup.Provider registry, NoiseGeneratorSettings settings, boolean imported) {
+        return export(registry, settings, imported, false);
+    }
+    static JsonArray export(HolderLookup.Provider registry, NoiseGeneratorSettings settings, boolean imported, boolean exactRouter) {
         var result = new JsonArray();
         var router = settings.noiseRouter();
         var channels = List.of(router.temperature(),router.vegetation(),router.continents(),router.erosion(),router.ridges());
@@ -25,6 +28,17 @@ final class ClimateNoiseProfile {
             var preferred = Identifier.withDefaultNamespace(names.get(i));
             var leaves = new ArrayList<Leaf>();
             if (imported) collect(registry,DensityFunction.CODEC.encodeStart(ops,channels.get(i)).getOrThrow(),new HashSet<>(),leaves,0);
+            if (exactRouter && leaves.isEmpty()) {
+                // The GPU router retains constants and compound expressions. No unrelated noise is needed.
+                var entry = new JsonObject();
+                entry.addProperty("frequency", 0.001);
+                entry.addProperty("amplitude", 0);
+                entry.addProperty("source", "router");
+                entry.addProperty("xz_scale", 1);
+                entry.addProperty("spacing_ratio", 1);
+                var modifiers = new JsonArray(); modifiers.add(0); entry.add("modifiers", modifiers);
+                result.add(entry); continue;
+            }
             var leaf = leaves.stream().filter(l -> l.noise.equals(preferred)).findFirst()
                     .orElseGet(() -> leaves.isEmpty() ? new Leaf(preferred,1) : leaves.getFirst());
             var value = registry.lookupOrThrow(Registries.NOISE).getOrThrow(ResourceKey.create(Registries.NOISE,leaf.noise)).value();
@@ -35,7 +49,7 @@ final class ClimateNoiseProfile {
             entry.addProperty("amplitude",data.has("base_amplitude") ? data.get("base_amplitude").getAsDouble() : 1.0);
             entry.addProperty("source",leaf.noise.toString());
             entry.addProperty("xz_scale",leaf.scale);
-            double reference = Math.scalb(1.0,NormalNoise.DIRECT_CODEC.encodeStart(JsonOps.INSTANCE,
+            double reference = exactRouter ? base*leaf.scale : Math.scalb(1.0,NormalNoise.DIRECT_CODEC.encodeStart(JsonOps.INSTANCE,
                     registry.lookupOrThrow(Registries.NOISE).getOrThrow(ResourceKey.create(Registries.NOISE,preferred)).value()).getOrThrow().getAsJsonObject().get("base_octave").getAsInt());
             entry.addProperty("spacing_ratio",reference/(base*leaf.scale));
             var modifiers = new JsonArray(); var supplied = data.getAsJsonArray("amplitude_modifiers");

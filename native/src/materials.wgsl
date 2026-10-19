@@ -21,6 +21,7 @@ fn material_carved(x:u32,y:i32,z:u32,r:Request)->bool {
 }
 struct MaterialVoxel { id:u32, solid:bool }
 fn material_voxel(x:u32,y:i32,z:u32,c:Column,r:Request)->MaterialVoxel {
+    if !generation_contains(y,r) {return MaterialVoxel(0u,false);}
     let lake=(c.packed&(1u<<29u))!=0u;let icy=(c.packed&(1u<<28u))!=0u;
     let waterline=select(bitcast<i32>(bytecode[8]),c.height+i32((c.packed>>24u)&7u),lake);
     if y>=c.height {
@@ -83,9 +84,9 @@ fn material_column(index:u32,emit:bool,r0:Request) {
             // Shore alignment and the representative surface program use this
             // exact column. Borrowing a 4x4x4 quart's biome here moves the coast
             // in square patches and can even put grass back beside water.
-            // Keep the existing quart field for underground material rules.
+            // Ceiling worlds use the full vertical biome field, including the roof.
             var biome=c.packed&65535u;
-            if y<c.height-12 {biome=biome_sample(x,y,z,r);}
+            if enclosed_world() || y<c.height-12 {biome=biome_sample(x,y,z,r);}
             let selected=run_program(3u+biome,vec3<f32>(point.x,f32(y),point.y),r,vec4<f32>(f32(above),depth,slope,band))[0];
             if selected>0.0 && (c.packed&(1u<<29u))==0u {material=u32(selected-1.0);}
         }

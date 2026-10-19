@@ -42,6 +42,7 @@ pub struct OreRecipe {
     pub height: HeightRange,
     pub replacement_bands: Vec<ReplacementBand>,
 }
+fn unit_radius() -> f32 { 1.0 }
 #[derive(Clone, Deserialize)]
 pub struct Carver {
     pub id: String,
@@ -54,6 +55,8 @@ pub struct Carver {
     pub vertical: f32,
     pub floor: f32,
     pub room: f32,
+    #[serde(default = "unit_radius")]
+    pub start_vertical: f32,
     #[serde(default)]
     pub thickness_range: [f32; 2],
     #[serde(default)]
@@ -115,13 +118,14 @@ impl GeologyProfile {
             return Err("unsupported ore layout version".into());
         }
         let palette = profile.materials.len();
-        if self.ores.is_empty() && self.cave_noises.is_empty() {
+        let enclosed = profile.registry_program.as_ref().is_some_and(|p| p.enclosed());
+        if self.ores.is_empty() && self.cave_noises.is_empty() && !enclosed {
             return Ok(());
         }
         if self.carveable.len() != palette
             || self.lava as usize >= palette
-            || self.cave_noises.len() != if profile.flat.is_some() { 0 } else { 6 }
-            || self.geology_height == 0
+            || self.cave_noises.len() != if profile.flat.is_some() || enclosed { 0 } else { 6 }
+            || (self.geology_height == 0 && !enclosed)
             || self.geology_height > 4096
         {
             return Err("invalid geology dimensions".into());
@@ -161,10 +165,12 @@ impl GeologyProfile {
                         c.vertical,
                         c.floor,
                         c.room,
+                        c.start_vertical,
                     ]
                     .iter()
                     .any(|v| !v.is_finite())
                     || c.thickness < 0.0
+                    || c.start_vertical < 0.0
                     || c.count < 0.0
                     || c.horizontal <= 0.0
                     || c.vertical <= 0.0
@@ -176,9 +182,8 @@ impl GeologyProfile {
         Ok(())
     }
     pub fn caves_enabled(&self, profile: &WorldProfile) -> bool {
-        !self.cave_noises.is_empty()
-            && (profile.registry_program.is_some()
-                || profile
+        (!self.cave_noises.is_empty() || profile.registry_program.as_ref().is_some_and(|p| p.enclosed()))
+            && (profile.registry_program.is_some() || profile
                     .biomes
                     .iter()
                     .any(|b| b.carvers.iter().any(|c| c.probability > 0.0)))
@@ -269,7 +274,7 @@ impl GeologyProfile {
                         } else {
                             0.0
                         },
-                        c.vertical_range[0],
+                        if c.kind == 0 { c.start_vertical } else { c.vertical_range[0] },
                         c.vertical_range[1],
                         c.rotation_range[0],
                         c.rotation_range[1],

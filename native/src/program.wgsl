@@ -3,6 +3,14 @@
 @group(0) @binding(6) var<storage,read_write> surface_nodes: array<f32>;
 // Per-invocation material details: ceiling depth, secondary noise, fluid height, preliminary floor.
 var<private> material_detail: vec4<f32>;
+// The four generation words follow the fixed-size program descriptors.
+fn generation_flags()->u32 {if bytecode[0]==0u {return 0u;}return bytecode[16u+bytecode[0]*8u];}
+fn enclosed_world()->bool {return (generation_flags()&2u)!=0u;}
+fn generation_min(r:Request)->i32 {if (generation_flags()&1u)==0u {return r.min_y;}return max(r.min_y,bitcast<i32>(bytecode[17u+bytecode[0]*8u]));}
+fn generation_max(r:Request)->i32 {if (generation_flags()&1u)==0u {return r.max_y;}return min(r.max_y,bitcast<i32>(bytecode[18u+bytecode[0]*8u]));}
+fn generation_top(r:Request)->i32 {if (generation_flags()&1u)==0u {return r.max_y;}return min(r.max_y,bitcast<i32>(bytecode[19u+bytecode[0]*8u]));}
+fn generation_contains(y:i32,r:Request)->bool {return y>=generation_min(r) && y<generation_max(r);}
+fn empty_surface(r:Request)->f32 {return f32(select(r.min_y+1,r.min_y,(generation_flags()&1u)!=0u));}
 fn layered_materials()->bool {return (bytecode[4]&0x80000000u)!=0u;}
 fn program_noise(point:vec3<f32>,index:u32,request:Request)->f32 {
     let at=bytecode[1]+index*37u;
@@ -231,9 +239,11 @@ fn surface_layer(cell:vec2<i32>,t:vec2<f32>,layer:u32,r:Request,probe:u32)->f32 
     return mix(mix(surface_nodes[at],surface_nodes[at+1u],t.x),mix(surface_nodes[at+2u],surface_nodes[at+3u],t.x),t.y);
 }
 fn density_surface_height(point:vec2<f32>,r:Request,probe:u32)->f32 {
+    let min_y=generation_min(r);let max_y=generation_max(r);
+    if max_y<=min_y {return empty_surface(r);}
     if density_composed(r) {
         if probe!=0xffffffffu {
-            var height=f32(r.min_y+1);
+            var height=empty_surface(r);
             for(var layer=0u;layer<density_layers(r);layer++) {
                 height=max(height,surface_nodes[lake_probe_offset(r)+(probe*density_layers(r)+layer)*4u]);
             }
@@ -241,10 +251,10 @@ fn density_surface_height(point:vec2<f32>,r:Request,probe:u32)->f32 {
         }
         let origin=density_origin(r);
         let cell=vec2<i32>(floor((point-vec2<f32>(origin.xz))/f32(r.density_step_xz)));
-        var layer=i32(density_layers(r))-2;
-        while layer>=0 {
-            let bottom=max(r.min_y,origin.y+layer*i32(r.density_step_y));
-            let top=min(r.max_y,origin.y+(layer+1)*i32(r.density_step_y));
+        var layer=min(i32(density_layers(r))-2,density_floor_div(max_y-1-origin.y,i32(r.density_step_y)));
+        while layer>=0 && origin.y+(layer+1)*i32(r.density_step_y)>min_y {
+            let bottom=max(min_y,origin.y+layer*i32(r.density_step_y));
+            let top=min(max_y,origin.y+(layer+1)*i32(r.density_step_y));
             let bounds=density_cell_bounds(vec3<i32>(cell.x,layer,cell.y),r);
             if bounds.x>0.0 {return f32(top);}
             if bounds.y>0.0 {
@@ -256,7 +266,13 @@ fn density_surface_height(point:vec2<f32>,r:Request,probe:u32)->f32 {
             }
             layer-=1;
         }
-        return f32(r.min_y+1);
+        return empty_surface(r);
+    }
+    if min_y!=r.min_y || max_y!=r.max_y {
+        for(var y=max_y-1;y>=min_y;y--) {
+            if registered_density(vec3<f32>(point.x,f32(y),point.y),r)>0.0 {return f32(y+1);}
+        }
+        return empty_surface(r);
     }
     // Interpolate densities before locating the highest solid interval. Blending
     // corner heights instead loses density gradients and creates planar shelves.
@@ -284,7 +300,7 @@ fn density_surface_height(point:vec2<f32>,r:Request,probe:u32)->f32 {
         upper=lower;
         upper_y=f32(origin.y)+f32(layer)*f32(r.density_step_y);
     }
-    return f32(r.min_y+1);
+    return empty_surface(r);
 }
 fn surface_width(r:Request)->u32 {return select(16u,r.tile_side*16u,r.tile_side>0u)+2u*u32(surface_guard(r));}
 fn surface_offset(r:Request)->u32 {return r.density_offset+r.density_side*r.density_side*density_layers(r)*select(1u,3u,density_composed(r));}

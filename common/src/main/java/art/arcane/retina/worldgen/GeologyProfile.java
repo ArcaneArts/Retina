@@ -111,6 +111,7 @@ final class GeologyProfile {
                     c.addProperty("vertical", mean(cave.verticalRadiusMultiplier()));
                     c.addProperty("floor", mean(cave.floorLevel()));
                     c.addProperty("room", mean(cave.roomVerticalRadiusMultiplier()));
+                    c.addProperty("start_vertical", mean(cave.startVerticalRadiusMultiplier()));
                 } else if (holder.value() instanceof CanyonWorldCarver canyon) {
                     c.addProperty("kind", 1); c.addProperty("probability", canyon.probability());
                     c.add("height", range(HeightProvider.CODEC.encodeStart(ops, canyon.y()).getOrThrow(), minY, height, sea));
@@ -136,7 +137,9 @@ final class GeologyProfile {
         world.addProperty("lava_level", Math.min(-54, sea));
         world.addProperty("geology_min_y", minY); world.addProperty("geology_height", height);
         var caveNoises = new JsonArray();
-        for (String id : world.has("flat") ? List.<String>of() : List.of("cave_cheese", "spaghetti_3d_1", "spaghetti_3d_2", "cave_layer", "spaghetti_roughness", "pillar")) {
+        boolean ceiling = world.has("registry_program") && world.getAsJsonObject("registry_program").has("generation")
+                && world.getAsJsonObject("registry_program").getAsJsonObject("generation").get("ceiling").getAsBoolean();
+        for (String id : world.has("flat") || ceiling ? List.<String>of() : List.of("cave_cheese", "spaghetti_3d_1", "spaghetti_3d_2", "cave_layer", "spaghetti_roughness", "pillar")) {
             var noise = registry.lookupOrThrow(Registries.NOISE).getOrThrow(ResourceKey.create(Registries.NOISE, Identifier.withDefaultNamespace(id))).value();
             var data = NormalNoise.DIRECT_CODEC.encodeStart(JsonOps.INSTANCE, noise).getOrThrow().getAsJsonObject();
             var n = new JsonObject(); n.addProperty("frequency", Math.scalb(1.0, data.get("base_octave").getAsInt()));

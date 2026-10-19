@@ -101,6 +101,13 @@ fn ravine_distance(point: vec3<f32>, seed: u32, settings:Carver) -> f32 {
 }
 fn biome_at(x: u32, y: i32, z: u32, column: Column, r: Request) -> u32 {
     let surface = column.packed & 65535u;
+    if enclosed_world() {
+        if climate_table.count.z>climate_table.count.y {
+            let actual=run_program(0u,vec3<f32>(f32(r.origin_x+i32(x)),f32(y),f32(r.origin_z+i32(z))),r,vec4<f32>(0.0));
+            return climate_search(actual,false,true,false,surface,1e20);
+        }
+        return surface;
+    }
     if y >= column.height-12 { return surface; }
     let seed = r.seed_low ^ hash(r.seed_high);
     let point = vec3<f32>(f32(r.origin_x+i32(x)),f32(y),f32(r.origin_z+i32(z)));
@@ -144,6 +151,38 @@ fn underground_queries(@builtin(global_invocation_id) id:vec3<u32>) {
     let y=bottom+i32((r.padding>>8u)&8191u);
     mask[id.y]=biome_at(8u,y,8u,columns[id.y],r);
 }
+// Enclosed-world tunnel fields use each registered carver's own dimensions.
+// Combine signed distances at lattice nodes, leaving the expensive noise work off the voxel path.
+fn enclosed_tunnel(point:vec3<f32>,seed:u32,settings:Carver)->f32 {
+    if settings.range.w>=0.5 || settings.range.z<=0.0 || settings.shape.w<=0.0 || settings.axis.x<=0.0 {return 1000.0;}
+    let margin=max(4.0,settings.shape.x*settings.shape.z*4.0);
+    let lower=settings.range.x-margin;let upper=settings.range.y+margin;
+    let fade=clamp(min(point.y-lower,upper-point.y)*0.125,0.0,1.0);
+    let strength=clamp(settings.range.z*settings.shape.w,0.0,2.0);
+    let width=(0.042+settings.shape.x*0.028)*settings.shape.y*sqrt(strength);
+    let floor=clamp((settings.detail.x+1.0)*0.03,0.0,0.06);
+    let tunnel=point*vec3<f32>(0.025,0.025/settings.axis.x,0.025);
+    let a=noise3(tunnel,seed+7919u);let b=noise3(tunnel,seed+15838u);
+    return max(abs(a),abs(b)*settings.shape.z)-width*fade+floor;
+}
+fn enclosed_room(point:vec3<f32>,seed:u32,settings:Carver)->f32 {
+    if settings.range.w>=0.5 || settings.range.z<=0.0 || settings.shape.w<=0.0 || settings.detail.y<=0.0 {return 1000.0;}
+    let size=max(32.0,17.0*settings.shape.y);let cell=vec2<i32>(floor(point.xz/size));
+    let probability=1.0-pow(1.0-clamp(settings.range.z*settings.shape.w*0.25,0.0,1.0),size*size/256.0);
+    var distance=1000.0;
+    for(var dz=-1;dz<=1;dz++){for(var dx=-1;dx<=1;dx++){
+        let at=cell+vec2<i32>(dx,dz);
+        let h=hash(bitcast<u32>(at.x)*0x9e3779b9u ^ bitcast<u32>(at.y)*0x85ebca6bu ^ seed ^ 61843u);
+        if f32(h&65535u)/65536.0>=probability {continue;}
+        let random=vec3<f32>(f32(hash(h+1u)&65535u),f32(hash(h+2u)&65535u),f32(hash(h+3u)&65535u))/65535.0;
+        let center=(vec2<f32>(at)+random.xz)*size;
+        let center_y=mix(settings.range.x,settings.range.y,random.y);
+        let radius=2.5+f32(hash(h+4u)&65535u)/65535.0*6.0;
+        let normalized=(point-vec3<f32>(center.x,center_y,center.y))/vec3<f32>(radius*settings.shape.y,radius*settings.detail.y,radius*settings.shape.y);
+        distance=min(distance,max(dot(normalized,normalized)-1.0,settings.detail.x-normalized.y));
+    }}
+    return distance;
+}
 @compute @workgroup_size(64)
 fn cave_nodes(@builtin(global_invocation_id) id: vec3<u32>) {
     let r = requests[0]; let n = r.tile_side*4u+1u;
@@ -162,10 +201,19 @@ fn cave_nodes(@builtin(global_invocation_id) id: vec3<u32>) {
         if bytecode[5]==0u {chambers=registered_density(point,r);}
         else {chambers=run_program(2u,point,r,vec4<f32>(0.0))[0];}
     }
-    let a = registry_noise(point*vec3<f32>(1.6,1.0,1.6),1u,seed)+rough*0.06;
-    let b = registry_noise(point*vec3<f32>(1.6,1.0,1.6),2u,seed)-rough*0.06;
+    var a = registry_noise(point*vec3<f32>(1.6,1.0,1.6),1u,seed)+rough*0.06;
+    var b = registry_noise(point*vec3<f32>(1.6,1.0,1.6),2u,seed)-rough*0.06;
     var ribbon=1000.0;let column=column_at(min((id.x%n)*4u,r.tile_side*16u-1u),min((id.x/n)*4u,r.tile_side*16u-1u),r.tile_side);
-    for(var c=0u;c<4u;c++){let settings=caves.biomes[column.packed&65535u].carvers[c];if settings.range.w>0.5 && settings.range.z>0.0 {ribbon=min(ribbon,ravine_distance(point,seed,settings));}}
+    var biome=column.packed&65535u;
+    if enclosed_world() {
+        biome=biome_at(min((id.x%n)*4u,r.tile_side*16u-1u),i32(point.y),min((id.x/n)*4u,r.tile_side*16u-1u),column,r);
+        a=1000.0;b=0.0;
+    }
+    for(var c=0u;c<4u;c++){
+        let settings=caves.biomes[biome].carvers[c];
+        if enclosed_world() {a=min(a,min(enclosed_tunnel(point,seed,settings),enclosed_room(point,seed,settings)));}
+        if settings.range.w>0.5 && settings.range.z>0.0 {ribbon=min(ribbon,ravine_distance(point,seed,settings));}
+    }
     nodes[id.y*n*n+id.x] = vec4<f32>(chambers,a,b,ribbon);
     let width = (r.padding&255u)*16u+2u;
     let surface_width = r.tile_side*16u;
@@ -222,6 +270,7 @@ fn cave_exterior(@builtin(global_invocation_id) id: vec3<u32>) {
         let index=word*4u+b; let x=index%width; let z=index/width;
         let column=column_at(x,z,r.tile_side);
         var roof=column.height;
+        if enclosed_world() {limits[b]=f32(generation_max(r));entrances[b]=1.0;continue;}
         if caves.globals.y>0u && bytecode[5]==0u {
             // Surface extraction defines the terrain envelope. Account for voxel
             // rounding at its zero crossing without stripping the selected topsoil.
@@ -253,7 +302,8 @@ fn biome_sample(x: u32, y: i32, z: u32, r: Request) -> u32 {
     return (mask[offset+q/2u] >> ((q%2u)*16u)) & 65535u;
 }
 fn is_cave(x: u32, y: i32, z: u32, column: Column, r: Request) -> bool {
-    if y < r.min_y+5 || y >= column.height { return false; }
+    if !generation_contains(y,r) {return true;}
+    if y >= column.height || (!enclosed_world() && y < r.min_y+5) { return false; }
     if (column.packed & (1u<<29u)) != 0u && y >= column.height-4 { return false; }
     let bottom = i32(floor(f32(r.min_y)/4.0))*4;
     let values = interpolate(vec3<f32>(f32(x),f32(y-bottom),f32(z))*0.25,r.tile_side*4u+1u);
@@ -274,8 +324,14 @@ fn is_cave(x: u32, y: i32, z: u32, column: Column, r: Request) -> bool {
             else if bounds.x<threshold {carved=registered_density(point,r)<threshold;}
         }else {carved=chamber_density(x,y,z,values.x,r)<threshold;}
     }
+    // Vanilla protects the bottom block and the top seven blocks from carvers, independently of density.
+    if enclosed_world() {
+        if y<=generation_min(r) || y>=generation_top(r)-7 {return carved;}
+        return carved || values.y<0.0 || values.w<1.0;
+    }
     for (var c=0u;c<4u;c++) {
         let settings = caves.biomes[biome].carvers[c];
+        if settings.shape.w<=0.0 {continue;}
         // Registry Y ranges locate tunnel centers, not their outer walls.
         let margin = max(4.0,settings.shape.x*settings.shape.z*4.0);
         let lower = settings.range.x-margin; let upper = settings.range.y+margin;

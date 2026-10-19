@@ -109,6 +109,7 @@ mod tests {
             terrain_cell: [4, 8],
             density_composition: false,
             surface_noises: [0; 3],
+            generation: None,
             material_layers: true,
             material_halo: false,
             aquifer: Some(crate::program::AquiferProgram {

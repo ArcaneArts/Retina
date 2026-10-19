@@ -199,7 +199,17 @@ pub struct Noise {
     pub coefficients: Vec<f32>,
 }
 #[derive(Clone, Deserialize)]
+pub struct Generation {
+    pub min_y: i32,
+    pub height: i32,
+    pub terrain_min_y: i32,
+    pub terrain_height: i32,
+    pub ceiling: bool,
+}
+#[derive(Clone, Deserialize)]
 pub struct RegistryProgram {
+    #[serde(default)]
+    pub generation: Option<Generation>,
     pub programs: Vec<Program>,
     #[serde(default)]
     pub interpolations: Vec<Interpolation>,
@@ -258,7 +268,15 @@ impl RegistryProgram {
             .max()
             .unwrap_or(0)
     }
+    pub fn enclosed(&self) -> bool {
+        self.generation.as_ref().is_some_and(|g| g.ceiling)
+    }
     pub fn validate(&self, biomes: usize) -> Result<(), String> {
+        if self.generation.as_ref().is_some_and(|g| g.height < 0 || g.terrain_height < 0
+            || g.min_y.checked_add(g.height).is_none()
+            || g.terrain_min_y.checked_add(g.terrain_height).is_none()) {
+            return Err("invalid generation bounds".into());
+        }
         if self.material_halo && !self.material_layers {
             return Err("decoration substrate requires GPU material layers".into());
         }
@@ -378,7 +396,15 @@ impl RegistryProgram {
         let Some(p) = profile.and_then(|p| p.registry_program.as_ref()) else {
             return vec![0; 32];
         };
-        let mut words = vec![0u32; 16 + p.all_programs().count() * 8];
+        // Generation settings follow the fixed program descriptors. Node offsets remain explicit.
+        let generation = 16 + p.all_programs().count() * 8;
+        let mut words = vec![0u32; generation + 4];
+        if let Some(g) = &p.generation {
+            words[generation..generation + 4].copy_from_slice(&[
+                1 | (u32::from(g.ceiling) << 1), g.terrain_min_y as u32,
+                (g.terrain_min_y + g.terrain_height) as u32, (g.min_y + g.height) as u32,
+            ]);
+        }
         words[0] = p.all_programs().count() as u32;
         words[8] = profile.unwrap().sea_level as u32;
         words[9..12].copy_from_slice(&p.surface_noises);
