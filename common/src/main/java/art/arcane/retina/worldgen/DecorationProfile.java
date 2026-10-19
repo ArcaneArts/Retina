@@ -37,6 +37,7 @@ final class DecorationProfile {
     private final Set<String> unsupported = new TreeSet<>();
     private final ProviderNoiseProfile providerNoise;
     private boolean flat;
+    private boolean sourceOrder;
     private int generatorDepth;
     private int generationStep = -1;
     private int rootOrder;
@@ -57,7 +58,8 @@ final class DecorationProfile {
         var exporter = new DecorationProfile(registry, materials);
         exporter.flat = world.has("flat");
         exporter.generatorDepth = world.get("generator_depth").getAsInt();
-        if (world.has("decoration_source_order") && world.get("decoration_source_order").getAsBoolean()) {
+        exporter.sourceOrder = world.has("decoration_source_order") && world.get("decoration_source_order").getAsBoolean();
+        if (exporter.sourceOrder) {
             exporter.exportOrdered(biomes, profiles, generation);
         } else for (int i = 0; i < biomes.size(); i++) {
             var selected = new JsonArray();
@@ -129,9 +131,13 @@ final class DecorationProfile {
         generationStep = -1;
     }
 
-    private static boolean hasOtherStageRecipe(Feature feature,int depth) {
+    private boolean nativeFeature(Feature feature) {
+        return NetherFeatureProfile.supports(feature) || sourceOrder && feature instanceof AbstractOreFeature;
+    }
+
+    private boolean hasOtherStageRecipe(Feature feature,int depth) {
         if(depth>16)throw new IllegalArgumentException("Recursive other-stage feature");
-        if(feature instanceof SimpleBlockFeature || feature instanceof MultifaceGrowthFeature || feature instanceof VinesFeature || feature instanceof DiskFeature || NetherFeatureProfile.supports(feature))return true;
+        if(feature instanceof SimpleBlockFeature || feature instanceof MultifaceGrowthFeature || feature instanceof VinesFeature || feature instanceof DiskFeature || nativeFeature(feature))return true;
         if(feature instanceof SequenceFeature f)return f.features().stream().anyMatch(v->hasOtherStageRecipe(v.value().feature().value(),depth+1));
         if(feature instanceof OverlayFeature f)return f.features().stream().anyMatch(v->hasOtherStageRecipe(v.value().feature().value(),depth+1));
         if(feature instanceof RandomSelectorFeature f)return f.features().stream().anyMatch(v->hasOtherStageRecipe(v.feature().value().feature().value(),depth+1)) || hasOtherStageRecipe(f.defaultFeature().value().feature().value(),depth+1);
@@ -242,7 +248,7 @@ final class DecorationProfile {
             platform.add(material(Blocks.COBBLESTONE.defaultBlockState()));
             data.add("platform", platform);
             emit(path, p, chance, "void_platform", data, selected);
-        } else if (NetherFeatureProfile.supports(feature)) {
+        } else if (nativeFeature(feature)) {
             var data=nether(feature,depth);
             if(data!=null)emit(path,p,chance,"nether_feature",data,selected);
         } else if (feature instanceof DiskFeature disk) {
@@ -821,7 +827,7 @@ final class DecorationProfile {
         if(feature instanceof BlockColumnFeature column) {
             data=column(column);if(data!=null){data.addProperty("kind","block_column");data.addProperty("reach",column.direction().getAxis().isHorizontal()?Math.max(0,column.layers().stream().mapToInt(l->l.height().maxInclusive()).sum()-1):0);}
         } else if(feature instanceof SequenceFeature || feature instanceof OverlayFeature)data=composite(feature,depth+1);
-        else if(NetherFeatureProfile.supports(feature))data=nether(feature,depth);
+        else if(nativeFeature(feature))data=nether(feature,depth);
         else if(feature instanceof DiskFeature disk)data=disk(disk);
         else if(feature instanceof MultifaceGrowthFeature || feature instanceof VinesFeature)data=attachment(feature);
         else if(feature instanceof SimpleBlockFeature block)data=simple(block);

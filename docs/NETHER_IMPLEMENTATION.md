@@ -317,6 +317,45 @@ before their commands are distributed. Shared ordering with ores, dependencies
 between neighboring anchors, and complete graph coverage diagnostics remain
 required feature work. Production Nether activation remains deferred.
 
+## Cycle 3f: ores in the live decoration stream
+
+All ten loaded Nether ore/replacement roots now use native vein or scattered-ore
+adapters in their source generation step. They no longer run in the separate,
+earlier geology pass. Their complete placement programs and biome restrictions
+use the same replay as the other Nether features. Previous accepted writes can
+create or remove ore hosts, and later features see accepted ore blocks.
+The Overworld and Superflat keep their existing geology path.
+
+The adapters preserve the configured size, ordered targets, scatter offsets,
+vein ellipsoids and containment pruning, heightmap entry condition, storage bounds,
+and air-exposure rejection. Air checks inspect the current six neighbors;
+lava does not count as air. A matching target rejected by its exposure check
+still permits later targets to run. Loaded block/tag/state rules, absolute height
+rules, random block/state rules and ordered all/any/not combinations are compiled
+once for native execution. Unsupported custom ore subclasses or rules are
+reported instead of having their behavior inferred from base fields.
+
+`netherFeatureTest` compares 4,992 cases and 219,373 changed blocks against the
+actual Minecraft vein and scattered feature implementations. Its reference world
+uses real chunk sections to capture vein writes that bypass WorldGenLevel.setBlock.
+Every source chunk is first checked against a controlled native/GPU substrate.
+The 52 configurations include all loaded roots, sizes 0–64, zero/partial/full
+exposure rejection, multiple/random/composite targets, a solid/air/lava layer,
+storage edges and the separate noise ceiling. There are 3,140 accepted cases.
+
+Ordering fixtures now include an ore between two dependent replacement features,
+plus a reversed-order control, bringing the native ordering checks to 30 chunks.
+The mixed saved region requires quartz, Nether gold and ancient debris; all
+three regions count these blocks, compare 983,040 blocks and ordered fluid ticks
+against independent chunk generation, and preserve their bytes on repeat writes.
+Host Fabric/NeoForge builds, 90 Rust unit tests, three native GPU tests, loaded
+registry/profile checks, Overworld feature references, Superflat and Nether
+terrain regressions pass.
+
+Complete nested-graph coverage diagnostics and dependencies between neighboring
+anchors remain feature-cycle work. Structures, automatic activation and the
+runtime validation matrix remain deferred.
+
 ## Remaining cycles
 
 3. Complete the remaining Nether feature and decoration coverage and ordering.

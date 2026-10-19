@@ -31,7 +31,8 @@ final class NetherRegionTest {
     }
 
     static void check(TerrainProfileData data, BiomeTerrainProfile profile, boolean features) throws Exception {
-        check(data,profile,features,features ? Set.of(Blocks.GLOWSTONE,Blocks.BROWN_MUSHROOM,Blocks.RED_MUSHROOM,Blocks.FIRE,Blocks.SOUL_FIRE) : Set.of());
+        check(data,profile,features,features ? Set.of(Blocks.GLOWSTONE,Blocks.BROWN_MUSHROOM,Blocks.RED_MUSHROOM,Blocks.FIRE,Blocks.SOUL_FIRE,
+                Blocks.NETHER_QUARTZ_ORE,Blocks.NETHER_GOLD_ORE,Blocks.ANCIENT_DEBRIS) : Set.of());
     }
 
     static void check(TerrainProfileData data, BiomeTerrainProfile profile, boolean features, Set<Block> requiredFeatures) throws Exception {
@@ -57,7 +58,7 @@ final class NetherRegionTest {
         Map<String,Long> featureCounts=new TreeMap<>();
         var counted=Set.of(Blocks.GLOWSTONE,Blocks.WEEPING_VINES,Blocks.WEEPING_VINES_PLANT,Blocks.CRIMSON_STEM,
                 Blocks.WARPED_STEM,Blocks.SHROOMLIGHT,Blocks.CRIMSON_ROOTS,Blocks.WARPED_ROOTS,Blocks.NETHER_SPROUTS,
-                Blocks.BROWN_MUSHROOM,Blocks.RED_MUSHROOM,Blocks.FIRE,Blocks.SOUL_FIRE);
+                Blocks.BROWN_MUSHROOM,Blocks.RED_MUSHROOM,Blocks.FIRE,Blocks.SOUL_FIRE,Blocks.NETHER_QUARTZ_ORE,Blocks.NETHER_GOLD_ORE,Blocks.ANCIENT_DEBRIS);
         try (var storage = new RegionFileStorage(new RegionStorageInfo("nether-terrain-test", Level.NETHER, "chunk"), directory, false)) {
             for (int z = 0; z < 32; z++) for (int x = -32; x < 0; x++) {
                 var position = new ChunkPos(x, z);

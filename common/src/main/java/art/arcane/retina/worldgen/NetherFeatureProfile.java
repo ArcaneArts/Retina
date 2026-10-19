@@ -27,6 +27,7 @@ final class NetherFeatureProfile {
     static JsonObject export(Feature feature, HolderLookup.Provider registry, ToIntFunction<BlockState> material,
                              Function<JsonElement, JsonObject> provider, Function<PlacedFeature, JsonObject> nested, int generatorDepth,
                              BiFunction<String,String,Integer> scheduledTick) {
+        if (feature instanceof AbstractOreFeature ore) return OreFeatureProfile.export(ore, registry, material);
         var data=Feature.DIRECT_CODEC.encodeStart(registry.createSerializationContext(JsonOps.INSTANCE),feature).getOrThrow().getAsJsonObject();
         data.remove("type");
         int reach;
@@ -84,6 +85,7 @@ final class NetherFeatureProfile {
     }
 
     static void finish(JsonObject data,LinkedHashMap<BlockState,Integer> palette) {
+        if (data.get("kind").getAsString().equals("ore")) { OreFeatureProfile.finish(data, palette); return; }
         for(String key:predicates(data))data.add(key,DecorationProfile.predicate(data.getAsJsonObject(key),palette));
         if(Set.of("delta","column_cluster","huge_fungus","spring").contains(data.get("kind").getAsString())) {
             // These implementations call BlockState.isAir(), independently of
@@ -97,6 +99,7 @@ final class NetherFeatureProfile {
     }
 
     static Set<Integer> materials(JsonObject data) {
+        if (data.get("kind").getAsString().equals("ore")) return OreFeatureProfile.materials(data);
         var out=new LinkedHashSet<Integer>();
         if(data.has("provider"))out.addAll(DecorationProfile.programStates(data.getAsJsonObject("provider")));
         for(String key:List.of("state","contents","rim","stem_state","hat_state","decor_state","air_state","vine_plant"))if(data.has(key))out.add(data.get(key).getAsInt());

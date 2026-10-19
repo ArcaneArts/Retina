@@ -89,15 +89,20 @@ public final class NetherProfileTest {
             }
             int placements = checkResolvedPlacements(json.getAsJsonArray("decorations"));
             require(placements > 0, "loaded Nether placement heights exercised");
-            for (var ore : json.getAsJsonArray("ores")) {
-                var recipe = ore.getAsJsonObject();
-                if (recipe.get("id").getAsString().equals("minecraft:ore_quartz_nether"))
-                    require(recipe.getAsJsonObject("height").get("max").getAsInt() == 117, "loaded ore below-top anchor");
-                var bands = ore.getAsJsonObject().getAsJsonArray("replacement_bands");
-                require(bands.get(0).getAsJsonObject().get("min").getAsInt() == 0
-                        && bands.get(bands.size() - 1).getAsJsonObject().get("max").getAsInt() == 255,
-                        "replacement predicates still cover storage bounds");
+            require(json.getAsJsonArray("ores").isEmpty(), "ordered Nether ores do not also run in the earlier geology pass");
+            int ores = 0;
+            for (var value : json.getAsJsonArray("decorations")) {
+                var recipe = value.getAsJsonObject();
+                if (!recipe.has("nether") || !recipe.getAsJsonObject("nether").get("kind").getAsString().equals("ore")) continue;
+                ores++;
+                if (recipe.get("source").getAsString().equals("minecraft:ore_quartz_nether")) {
+                    var range = recipe.getAsJsonArray("placement").asList().stream().map(JsonElement::getAsJsonObject)
+                            .filter(p -> p.get("type").getAsString().equals("height_range")).findFirst().orElseThrow();
+                    require(range.getAsJsonObject("height").getAsJsonObject("max_inclusive").get("absolute").getAsInt() == 117,
+                            "ordered ore below-top anchor retains generator context");
+                }
             }
+            require(ores == 10, "all ten loaded Nether ore/replacement roots join decoration order");
 
             checkContext(registry, source, 0, 256);
             checkContext(registry, source, 32, 160);
