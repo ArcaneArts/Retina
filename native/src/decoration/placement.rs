@@ -1913,6 +1913,7 @@ mod tests {
         profile.ordered_decorations = true;
         let mut overlay = Overlay::default();
         let removal = WorldBlock {
+            tick: 0,
             x: 0,
             y: 63,
             z: 0,
@@ -1934,18 +1935,21 @@ mod tests {
         let index = 64 * COLUMNS as u32;
         let commands = [
             Placement {
+                tick: 0,
                 index,
                 material: 5,
                 upper: 0,
                 role: LEAF,
             },
             Placement {
+                tick: 0,
                 index,
                 material: 0,
                 upper: 0,
                 role: FEATURE,
             },
             Placement {
+                tick: 0,
                 index,
                 material: 4,
                 upper: 0,

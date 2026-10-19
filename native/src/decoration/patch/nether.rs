@@ -6,6 +6,15 @@ mod fungus;
 #[derive(Clone, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum Feature {
+    Spring {
+        state: u16,
+        tick: u16,
+        valid_blocks: Predicate,
+        air: Predicate,
+        requires_block_below: bool,
+        rock_count: i32,
+        hole_count: i32,
+    },
     HugeFungus {
         #[serde(flatten)]
         fungus: fungus::Fungus,
@@ -62,6 +71,18 @@ fn bounded(p: &IntProvider, min: i32, max: i32) -> bool {
 impl Feature {
     pub(crate) fn validate(&self, palette: usize) -> bool {
         match self {
+            Self::Spring {
+                state,
+                tick,
+                valid_blocks,
+                air,
+                ..
+            } => {
+                (*state as usize) < palette
+                    && *tick > 0
+                    && valid_blocks.validate(palette)
+                    && air.validate(palette)
+            }
             Self::HugeFungus { fungus } => fungus.validate(palette),
             Self::NeighborSpread {
                 provider,
@@ -147,6 +168,36 @@ impl Feature {
 
     pub(super) fn place(&self, w: &mut World, at: [i32; 3], rng: &mut Rng) -> bool {
         match self {
+            Self::Spring {
+                state,
+                tick,
+                valid_blocks,
+                air,
+                requires_block_below,
+                rock_count,
+                hole_count,
+            } => {
+                if !w.test(valid_blocks, add(at, [0, 1, 0]))
+                    || *requires_block_below && !w.test(valid_blocks, add(at, [0, -1, 0]))
+                    || !w.test(air, at) && !w.test(valid_blocks, at)
+                {
+                    return false;
+                }
+                let neighbors = [[0, -1, 0], [-1, 0, 0], [1, 0, 0], [0, 0, -1], [0, 0, 1]];
+                let rocks = neighbors
+                    .iter()
+                    .filter(|&&d| w.test(valid_blocks, add(at, d)))
+                    .count() as i32;
+                let holes = neighbors
+                    .iter()
+                    .filter(|&&d| w.test(air, add(at, d)))
+                    .count() as i32;
+                if rocks != *rock_count || holes != *hole_count {
+                    return false;
+                }
+                w.write_tick(at, *state, *tick);
+                true
+            }
             Self::HugeFungus { fungus } => fungus.place(w, at, rng),
             Self::NeighborSpread {
                 provider,

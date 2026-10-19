@@ -37,7 +37,7 @@ public final class NetherFeatureTest {
             var data=JsonParser.parseString(exported.json()).getAsJsonObject();
             Files.createDirectories(Path.of("build/nether"));Files.writeString(Path.of("build/nether/feature-profile.json"),data.toString());
             var kinds=new TreeSet<String>();gather(data.getAsJsonArray("decorations"),kinds);
-            require(kinds.containsAll(Set.of("neighbor_spread","pillar","projected_square","column_cluster","replace_blobs","delta","huge_fungus")),"all loaded Nether primitive families exported: "+kinds);
+            require(kinds.containsAll(Set.of("neighbor_spread","pillar","projected_square","column_cluster","replace_blobs","delta","huge_fungus","spring")),"all loaded Nether primitive families exported: "+kinds);
             for (var biome:data.getAsJsonArray("biomes")) {
                 var b=biome.getAsJsonObject();b.add("decorations",new JsonArray());b.add("ores",new JsonArray());b.add("carvers",new JsonArray());
             }
@@ -77,6 +77,8 @@ public final class NetherFeatureTest {
             var stats=new JsonObject();stats.addProperty("cases",cases);stats.addProperty("writes",writes);stats.add("successes",new Gson().toJsonTree(successes));stats.add("empty",new Gson().toJsonTree(failures));
             Files.writeString(Path.of("build/nether/feature-reference-stats.json"),stats.toString());
             System.out.println("QA_EVT {\"event\":\"nether_block_features_reference\",\"status\":\"pass\",\"context\":"+stats+"}");
+            NetherSpringTest.check(registry,exported,generator);
+            NetherSurvivalTest.check(registry,exported,generator);
             NetherFungusTest.check(registry,exported,generator);
             if(Arrays.asList(args).contains("--region")) {
                 NetherRegionTest.check(exported,BiomeTerrainProfile.register(exported),true);
@@ -133,10 +135,14 @@ public final class NetherFeatureTest {
         }
     }
 
+    record Tick(BlockPos position,String id,int delay) {}
+
     static final class World implements InvocationHandler {
         final TerrainRequest request;final BlockState[] palette;final Map<ChunkPos,short[]> terrain;
         final java.util.function.Function<BlockPos,BlockState> expected;
         final Map<BlockPos,BlockState> changed=new HashMap<>();
+        final List<Tick> ticks=new ArrayList<>();
+        net.minecraft.world.level.lighting.LevelLightEngine lighting=net.minecraft.world.level.lighting.LevelLightEngine.EMPTY;
         final WorldGenLevel level=(WorldGenLevel)Proxy.newProxyInstance(WorldGenLevel.class.getClassLoader(),new Class<?>[]{WorldGenLevel.class},this);
         World(TerrainRequest request,BlockState[] palette,Map<ChunkPos,short[]> terrain) {
             this(request,palette,terrain,p->(p.getY()<32 || p.getY()>=96 && p.getY()<128)?Blocks.NETHERRACK.defaultBlockState():Blocks.AIR.defaultBlockState());
@@ -168,6 +174,7 @@ public final class NetherFeatureTest {
                 case "getBlockState" -> get((BlockPos)args[0]);
                 case "isStateAtPosition" -> ((java.util.function.Predicate<BlockState>)args[1]).test(get((BlockPos)args[0]));
                 case "getFluidState" -> get((BlockPos)args[0]).getFluidState();
+                case "getLightEngine" -> lighting;
                 case "setBlock", "setBlockAndUpdate" -> {var p=((BlockPos)args[0]).immutable();if(p.getY()<request.minY() || p.getY()>=request.minY()+request.height())yield false;changed.put(p,(BlockState)args[1]);yield true;}
                 case "destroyBlock" -> {var p=((BlockPos)args[0]).immutable();if(get(p).isAir() || p.getY()<request.minY() || p.getY()>=request.minY()+request.height())yield false;changed.put(p,Blocks.AIR.defaultBlockState());yield true;}
                 case "isEmptyBlock" -> get((BlockPos)args[0]).isAir();
@@ -175,7 +182,9 @@ public final class NetherFeatureTest {
                 case "getMinY" -> request.minY();
                 case "getSeed" -> request.seed();
                 case "getRandom" -> new NativeBlockFeatureIntegrationTest.Stream(123,false);
-                case "scheduleTick" -> null;
+                case "scheduleTick" -> {
+                    ticks.add(new Tick(((BlockPos)args[0]).immutable(),net.minecraft.core.registries.BuiltInRegistries.FLUID.getKey((net.minecraft.world.level.material.Fluid)args[1]).toString(),(int)args[2]));yield null;
+                }
                 case "toString" -> "NetherFeatureReferenceWorld";
                 case "hashCode" -> System.identityHashCode(proxy);
                 case "equals" -> proxy==args[0];

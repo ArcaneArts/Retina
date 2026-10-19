@@ -158,6 +158,7 @@ public record TerrainProfileData(int seaLevel, BlockState[] materials, List<Hold
         TerrainFeatureProfile.finishReplacementTables(biomes, materials);
         DecorationProfile.finishPlacements(profile.getAsJsonArray("decorations"), materials, bounds, sea);
         DecorationProfile.finishCurrentSurvival(profile,materials);
+        DecorationProfile.finishGenerationLighting(profile,skyLight);
         DecorationProfile.materialFlags(profile, materials);
         profile.add("lighting", LightingProfile.export(materials.keySet(), skyLight));
         var palette = new JsonArray();

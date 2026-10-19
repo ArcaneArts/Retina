@@ -19,6 +19,7 @@ mod fallen;
 mod mushroom;
 pub mod pairs;
 mod patch;
+pub mod ticks;
 pub(crate) mod vine_gpu;
 pub(crate) use patch::SimpleState;
 #[cfg(test)]
@@ -348,6 +349,8 @@ pub struct Placement {
     pub material: u16,
     pub upper: u16,
     pub role: u8,
+    /// One-based registered tick definition, or zero for an ordinary write.
+    pub tick: u16,
 }
 #[derive(Clone, Copy)]
 struct WorldBlock {
@@ -357,6 +360,7 @@ struct WorldBlock {
     material: u16,
     upper: u16,
     role: u8,
+    tick: u16,
 }
 const PLANT: u8 = 0;
 const LEAF: u8 = 1;
@@ -1091,6 +1095,7 @@ fn expand_anchor(
                             continue;
                         }
                         blocks.push(WorldBlock {
+                            tick: 0,
                             x: px,
                             y: py,
                             z: pz,
@@ -1389,6 +1394,7 @@ fn evaluate_anchor_impl<const MEASURE: bool>(
                         profile.material_flags[s as usize] & if state.dry { 2 } else { 1 } != 0
                     }) {
                         blocks.push(WorldBlock {
+                            tick: 0,
                             x,
                             y,
                             z,
@@ -1497,6 +1503,7 @@ pub(crate) fn feature_sample(
     at: [i32; 3],
     seed: u64,
     noise: &provider_noise::Context,
+    ticks: bool,
 ) -> Result<Vec<[i32; 4]>, String> {
     let recipe = profile
         .decorations
@@ -1582,7 +1589,8 @@ pub(crate) fn feature_sample(
     Ok(blocks
         .into_iter()
         .filter(|b| b.y >= request.min_y && b.y < request.min_y + request.height as i32)
-        .map(|b| [b.x, b.y, b.z, b.material as i32])
+        .filter(|b| !ticks || b.tick != 0)
+        .map(|b| [b.x, b.y, b.z, i32::from(if ticks { b.tick } else { b.material })])
         .collect())
 }
 
@@ -1672,6 +1680,7 @@ fn tree(
     let tree_start = blocks.len();
     for &(wx, wy, wz, axis) in &wood {
         blocks.push(WorldBlock {
+            tick: 0,
             x: wx,
             y: wy,
             z: wz,
@@ -1684,6 +1693,7 @@ fn tree(
         for wz in 0..width {
             for wx in 0..width {
                 blocks.push(WorldBlock {
+                    tick: 0,
                     x: x + wx,
                     y: ground_y - 1,
                     z: z + wz,
@@ -1702,6 +1712,7 @@ fn tree(
                 if let Some(c) = field.column(px, pz) {
                     for y in c.height..=base_y - distance / 2 {
                         blocks.push(WorldBlock {
+                            tick: 0,
                             x: px,
                             y,
                             z: pz,
@@ -1831,6 +1842,7 @@ fn tree(
             if occupancy.take_leaf(next) {
                 let d = distance + 1;
                 blocks.push(WorldBlock {
+                    tick: 0,
                     x: next.0,
                     y: next.1,
                     z: next.2,
@@ -1934,6 +1946,7 @@ fn decorate_tree(
                     }
                     occupied.insert(at);
                     blocks.push(WorldBlock {
+                        tick: 0,
                         x: at.0,
                         y: at.1,
                         z: at.2,
@@ -2366,6 +2379,7 @@ mod tests {
     fn giant_jungle_crowns_close_above_the_trunk_without_four_interior_holes() {
         let profile = WorldProfile {
             mca_compression: Default::default(),
+            decoration_ticks: Vec::new(),
             flat: None,
             lighting: None,
             simple_current_states: vec![],

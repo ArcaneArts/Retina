@@ -18,6 +18,7 @@ import java.lang.foreign.ValueLayout;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
@@ -30,7 +31,7 @@ final class NetherRegionTest {
     }
 
     static void check(TerrainProfileData data, BiomeTerrainProfile profile, boolean features) throws Exception {
-        check(data,profile,features,features ? Set.of(Blocks.GLOWSTONE) : Set.of());
+        check(data,profile,features,features ? Set.of(Blocks.GLOWSTONE,Blocks.BROWN_MUSHROOM,Blocks.RED_MUSHROOM,Blocks.FIRE,Blocks.SOUL_FIRE) : Set.of());
     }
 
     static void check(TerrainProfileData data, BiomeTerrainProfile profile, boolean features, Set<Block> requiredFeatures) throws Exception {
@@ -51,9 +52,12 @@ final class NetherRegionTest {
         var sourceBiomes = data.biomes().stream().map(b -> b.unwrapKey().orElseThrow().identifier().toString()).collect(Collectors.toSet());
         var probes = Set.of(new ChunkPos(-32, 0), new ChunkPos(-1, 31), new ChunkPos(-1, 0), new ChunkPos(-32, 31), new ChunkPos(-15, 16));
         long compared = 0;
+        long fluidTicks = 0;
+        long activeFluidTicks = 0, comparedFluidTicks = 0;
         Map<String,Long> featureCounts=new TreeMap<>();
         var counted=Set.of(Blocks.GLOWSTONE,Blocks.WEEPING_VINES,Blocks.WEEPING_VINES_PLANT,Blocks.CRIMSON_STEM,
-                Blocks.WARPED_STEM,Blocks.SHROOMLIGHT,Blocks.CRIMSON_ROOTS,Blocks.WARPED_ROOTS,Blocks.NETHER_SPROUTS);
+                Blocks.WARPED_STEM,Blocks.SHROOMLIGHT,Blocks.CRIMSON_ROOTS,Blocks.WARPED_ROOTS,Blocks.NETHER_SPROUTS,
+                Blocks.BROWN_MUSHROOM,Blocks.RED_MUSHROOM,Blocks.FIRE,Blocks.SOUL_FIRE);
         try (var storage = new RegionFileStorage(new RegionStorageInfo("nether-terrain-test", Level.NETHER, "chunk"), directory, false)) {
             for (int z = 0; z < 32; z++) for (int x = -32; x < 0; x++) {
                 var position = new ChunkPos(x, z);
@@ -61,10 +65,8 @@ final class NetherRegionTest {
                 require(tag != null, "all MCA slots readable");
                 require(tag.getIntOr("DataVersion", -1) == version, "current data version");
                 require(tag.getIntOr("xPos", 0) == x && tag.getIntOr("zPos", -1) == z, "saved chunk coordinates");
-                for (String name : new String[]{"WORLD_SURFACE", "OCEAN_FLOOR", "MOTION_BLOCKING", "MOTION_BLOCKING_NO_LEAVES"}) {
-                    var bits = new SimpleBitStorage(9, 256, tag.getCompoundOrEmpty("Heightmaps").getLongArray(name).orElseThrow());
-                    for (int c = 0; c < 256; c++) require(bits.get(c) == 128, "saved heightmap sees bedrock roof");
-                }
+                fluidTicks += NetherSpringTest.checkRegionTicks(tag,position);
+                var roofPlants=new BlockState[256];
                 var sections = McaTestSections.terrain(tag, 0, 256);
                 for (var section : tag.getListOrEmpty("sections")) {
                     var nbt = (net.minecraft.nbt.CompoundTag) section;
@@ -76,16 +78,32 @@ final class NetherRegionTest {
                     int sy=section.getByteOr("Y", (byte) -1);
                     if (sy >= 8 || features) {
                         var blocks = codec.parse(NbtOps.INSTANCE, section.getCompoundOrEmpty("block_states")).getOrThrow();
+                        if(features)for(var entry:tag.getListOrEmpty("fluid_ticks")) {
+                            var tick=(net.minecraft.nbt.CompoundTag)entry;int tickY=tick.getIntOr("y",-1);
+                            if(tickY/16==sy && blocks.get(tick.getIntOr("x",0)&15,tickY&15,tick.getIntOr("z",0)&15).getFluidState().getType()==net.minecraft.world.level.material.Fluids.LAVA)activeFluidTicks++;
+                        }
                         for (int yy = 0; yy < 16; yy++) for (int zz = 0; zz < 16; zz++) for (int xx = 0; xx < 16; xx++) {
                             var state=blocks.get(xx,yy,zz);
-                            if(sy>=8)require(state.isAir(), "saved build space above roof remains air");
+                            if(sy>=8 && !state.isAir()) {
+                                require(features && sy==8 && yy==0 && (state.is(Blocks.BROWN_MUSHROOM) || state.is(Blocks.RED_MUSHROOM)), "only loaded mushrooms may decorate the roof; terrain above remains air");
+                                roofPlants[zz*16+xx]=state;
+                            }
                             if(features && counted.contains(state.getBlock()))featureCounts.merge(net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(state.getBlock()).toString(),1L,Long::sum);
                         }
                     }
                 }
+                for (String name : new String[]{"WORLD_SURFACE", "OCEAN_FLOOR", "MOTION_BLOCKING", "MOTION_BLOCKING_NO_LEAVES"}) {
+                    var bits = new SimpleBitStorage(9, 256, tag.getCompoundOrEmpty("Heightmaps").getLongArray(name).orElseThrow());
+                    var opaque=net.minecraft.world.level.levelgen.Heightmap.Types.valueOf(name).isOpaque();
+                    for(int c=0;c<256;c++)require(bits.get(c)==128+(roofPlants[c]!=null && opaque.test(roofPlants[c])?1:0),"saved heightmap follows bedrock roof and accepted decorations");
+                }
                 if (!probes.contains(position)) continue;
                 var request = NetherTerrainTest.request(profile, x, z, 0, 256);
                 try (var generated = terrain.generate(request)) {
+                    var metadata = terrain.structureData(request);
+                    for(String key:List.of("block_ticks","fluid_ticks"))
+                        require(metadata.getListOrEmpty(key).equals(tag.getListOrEmpty(key)),"region/chunk scheduled update parity "+position+" "+key);
+                    comparedFluidTicks += metadata.getListOrEmpty("fluid_ticks").size();
                     short[] expected = generated.blocks().toArray(ValueLayout.JAVA_SHORT);
                     short[] expectedBiomes = terrain.sampleBiomes(request);
                     for (var section : sections) {
@@ -114,12 +132,15 @@ final class NetherRegionTest {
         require(repeat.generated() == 0 && repeat.preserved() == 1024 && Arrays.equals(saved, Files.readAllBytes(path)), "repeated publication preserves complete region");
         var stats = new JsonObject(); stats.addProperty("chunks", 1024); stats.addProperty("compared_voxels", compared);
         if(features) {
+            require(activeFluidTicks>0 && comparedFluidTicks>0,"published feature region and independent probes contain active scheduled lava updates");
             for(var block:requiredFeatures) {
                 String name=net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(block).toString();
                 require(featureCounts.getOrDefault(name,0L)>0,"published region contains "+name);
             }
             stats.add("feature_blocks",new com.google.gson.Gson().toJsonTree(featureCounts));
         }
+        stats.addProperty("fluid_ticks", fluidTicks);
+        stats.addProperty("active_fluid_ticks", activeFluidTicks);stats.addProperty("compared_fluid_ticks", comparedFluidTicks);
         stats.addProperty("generation_ms", ms); stats.addProperty("bytes", report.bytes()); stats.addProperty("region", path.toAbsolutePath().toString());
         Files.writeString(Path.of("build/nether",label+"-stats.json"), stats.toString());
         System.out.println("QA_EVT {\"event\":\""+(features ? "nether_features_saved_region" : "nether_saved_region")+"\",\"status\":\"pass\",\"context\":" + stats + "}");

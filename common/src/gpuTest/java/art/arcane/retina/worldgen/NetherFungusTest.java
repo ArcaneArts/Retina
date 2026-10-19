@@ -46,7 +46,7 @@ final class NetherFungusTest {
             for(boolean planted:List.of(false,true)) {
                 var feature=new HugeFungusFeature(loaded.validBaseState(),loaded.stemState(),loaded.hatState(),loaded.decorState(),loaded.replaceableBlocks(),planted);
                 var wrapper=NetherFeatureProfile.export(feature,registry,s->palette.computeIfAbsent(s,ignored->palette.size()),
-                        p->{throw new AssertionError("unexpected provider");},p->{throw new AssertionError("unexpected nested placement");},generator.getGenDepth());
+                        p->{throw new AssertionError("unexpected provider");},p->{throw new AssertionError("unexpected nested placement");},generator.getGenDepth(),(kind,id)->{throw new AssertionError("unexpected scheduled tick");});
                 require(wrapper!=null,"registered fungus exports");
                 var recipe=JsonParser.parseString("""
                         {"salt":0,"density":1,"low_density":1,"noise_count":false,"rarity":1,"tries":1,"spread":[0,0,0],"placement":[]}
@@ -60,7 +60,7 @@ final class NetherFungusTest {
                 Blocks.BASALT.defaultBlockState().setValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.AXIS,Direction.Axis.X),
                 Blocks.MAGMA_BLOCK.defaultBlockState(),Blocks.GLOWSTONE.defaultBlockState(),BlockPredicate.matchesBlocks(Blocks.NETHERRACK),false);
         var wrapper=NetherFeatureProfile.export(customized,registry,s->palette.computeIfAbsent(s,ignored->palette.size()),
-                p->{throw new AssertionError("unexpected provider");},p->{throw new AssertionError("unexpected nested placement");},generator.getGenDepth());
+                p->{throw new AssertionError("unexpected provider");},p->{throw new AssertionError("unexpected nested placement");},generator.getGenDepth(),(kind,id)->{throw new AssertionError("unexpected scheduled tick");});
         var customRecipe=recipes.get(0).deepCopy().getAsJsonObject();wrapper.entrySet().forEach(e->customRecipe.add(e.getKey(),e.getValue()));
         customRecipe.addProperty("source","test:custom_fungus");recipes.add(customRecipe);features.add(customized);names.add("test:custom_fungus");
         DecorationProfile.finishPlacements(recipes,palette,GenerationBounds.noise(generator.generatorSettings().value().noiseSettings(),0,256),generator.getSeaLevel());
