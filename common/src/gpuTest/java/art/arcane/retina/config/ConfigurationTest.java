@@ -36,10 +36,14 @@ public final class ConfigurationTest {
         for (ConfigFormat format : ConfigFormat.values()) {
             require(parse(format, "# Empty configuration\n").equals(defaults), "missing keys use defaults");
             var writer = new StringWriter();
-            var custom = new RetinaConfig(-3, true, false);
+            var custom = new RetinaConfig(-3, true, false, RetinaConfig.McaCompression.LZ4);
             format.write(writer, custom);
             require(parse(format, writer.toString()).equals(custom), format + " round trip");
             String separator = format == ConfigFormat.TOML ? " = " : ": ";
+            require(parse(format, "mca_compression" + separator + "\"zlib\"\n").equals(defaults), "explicit zlib default");
+            for (String bad : new String[]{"\"gzip\"", "\"LZ4\"", "4", "true", "\"\""}) {
+                rejected(format, "mca_compression" + separator + bad + "\n");
+            }
             require(parse(format, "mca_parallelism" + separator + "-2147483648\n").regionParallelism(16) == 1,
                     "minimum signed integer divisor");
             for (String bad : new String[]{"3.5", "\"3\"", "true", "2147483648", "-2147483649"}) {

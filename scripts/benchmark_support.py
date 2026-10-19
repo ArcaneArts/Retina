@@ -41,10 +41,41 @@ def mca_records(path: Path) -> dict[int, bytes]:
             raise ValueError(f"Invalid MCA record length: {path}:{slot}")
         compression = data[offset + 4]
         payload = data[offset + 5:offset + 4 + length]
-        if compression != 2:
+        if compression == 2:
+            records[slot] = zlib.decompress(payload)
+        elif compression == 4:
+            records[slot] = lz4_block_stream(payload)
+        else:
             raise ValueError(f"Unsupported MCA compression {compression}: {path}:{slot}")
-        records[slot] = zlib.decompress(payload)
     return records
+
+
+def lz4_block_stream(payload: bytes) -> bytes:
+    """Independent benchmark reader; optional dependencies only for type-4 files."""
+    import lz4.block
+    import xxhash
+    output = bytearray()
+    cursor = 0
+    while cursor + 21 <= len(payload):
+        magic, token, packed, raw, checksum = struct.unpack_from("<8sBIII", payload, cursor)
+        cursor += 21
+        method, limit = token & 0xf0, 1 << ((token & 15) + 10)
+        if magic != b"LZ4Block" or method not in (0x10, 0x20) or raw > limit:
+            raise ValueError("Invalid LZ4Block header")
+        if packed == 0 or raw == 0:
+            if packed != 0 or raw != 0 or checksum != 0 or cursor != len(payload):
+                raise ValueError("Invalid LZ4Block terminal header")
+            return bytes(output)
+        if cursor + packed > len(payload) or (method == 0x10 and packed != raw):
+            raise ValueError("Invalid LZ4Block payload size")
+        block = payload[cursor:cursor + packed]
+        if method == 0x20:
+            block = lz4.block.decompress(block, uncompressed_size=raw)
+        if len(block) != raw or xxhash.xxh32(block, seed=0x9747b28c).intdigest() & 0x0fffffff != checksum:
+            raise ValueError("Invalid LZ4Block checksum or decoded size")
+        output.extend(block)
+        cursor += packed
+    raise ValueError("Truncated LZ4Block stream")
 
 
 def corpus_manifest(directory: Path, names: Iterable[str]) -> dict[str, Any]:

@@ -49,6 +49,8 @@ public enum ConfigFormat implements ConfigCodec {
                 # Negative: ceil(processors / abs(value)), with a minimum of one.
                 """);
         writer.write("mca_parallelism" + separator + settings.mcaParallelism() + "\n\n");
+        writer.write("# MCA chunk compression: zlib (smaller saves) or lz4 (faster compression, larger saves).\n");
+        writer.write("mca_compression" + separator + "\"" + settings.mcaCompression().id() + "\"\n\n");
         writer.write("# Extra generation diagnostics in the log. Warnings and errors remain enabled.\n");
         writer.write("debug" + separator + settings.debug() + "\n\n");
         writer.write("# Show Retina's F3 information on this modded client. Ignored on servers.\n");

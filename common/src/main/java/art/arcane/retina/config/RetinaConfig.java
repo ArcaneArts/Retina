@@ -4,7 +4,22 @@ import java.math.BigInteger;
 import java.util.Map;
 
 /** Loader- and file-format-independent settings. Changes take effect at process startup. */
-public record RetinaConfig(int mcaParallelism, boolean debug, boolean f3Overlay) {
+public record RetinaConfig(int mcaParallelism, boolean debug, boolean f3Overlay, McaCompression mcaCompression) {
+    public enum McaCompression {
+        ZLIB("zlib"), LZ4("lz4");
+        private final String id;
+        McaCompression(String id) { this.id = id; }
+        public String id() { return id; }
+    }
+
+    public RetinaConfig {
+        java.util.Objects.requireNonNull(mcaCompression, "mcaCompression");
+    }
+
+    public RetinaConfig(int mcaParallelism, boolean debug, boolean f3Overlay) {
+        this(mcaParallelism, debug, f3Overlay, McaCompression.ZLIB);
+    }
+
     public static final RetinaConfig DEFAULT = new RetinaConfig(8, false, true);
 
     public int regionParallelism() {
@@ -20,7 +35,14 @@ public record RetinaConfig(int mcaParallelism, boolean debug, boolean f3Overlay)
 
     public static RetinaConfig from(Map<String, ?> values) {
         return new RetinaConfig(integer(values, "mca_parallelism", DEFAULT.mcaParallelism),
-                bool(values, "debug", DEFAULT.debug), bool(values, "f3_overlay", DEFAULT.f3Overlay));
+                bool(values, "debug", DEFAULT.debug), bool(values, "f3_overlay", DEFAULT.f3Overlay), compression(values));
+    }
+
+    private static McaCompression compression(Map<String, ?> values) {
+        if (!values.containsKey("mca_compression")) return DEFAULT.mcaCompression;
+        Object value = values.get("mca_compression");
+        for (var codec : McaCompression.values()) if (codec.id().equals(value)) return codec;
+        throw new IllegalArgumentException("mca_compression must be \"zlib\" or \"lz4\"");
     }
 
     private static int integer(Map<String, ?> values, String key, int fallback) {

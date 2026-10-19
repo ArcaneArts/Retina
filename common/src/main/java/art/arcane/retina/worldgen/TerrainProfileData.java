@@ -61,6 +61,7 @@ public record TerrainProfileData(int seaLevel, BlockState[] materials, List<Hold
         // Preserve it; generation and queries clip blocks to the effective dimension bounds.
         var materials = new LinkedHashMap<BlockState, Integer>();
         var profile = new JsonObject();
+        profile.addProperty("mca_compression", art.arcane.retina.config.RetinaConfiguration.get().mcaCompression().id());
         var bounds = GenerationBounds.noise(settings.noiseSettings(), minY, height);
         profile.add("generation_bounds", bounds.describe());
         profile.addProperty("generator_depth", settings.noiseSettings().height());

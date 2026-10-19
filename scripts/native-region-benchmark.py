@@ -51,6 +51,7 @@ def main():
     parser.add_argument("--scope", choices=("native-region", "lit-mca"), default="lit-mca",
                         help="Label the measured completion boundary; this harness does not measure live activation")
     parser.add_argument("--lighting", choices=("enabled", "disabled", "dense"), default="enabled")
+    parser.add_argument("--mca-compression", choices=("zlib", "lz4"), help="Override profile MCA codec; LZ4 validation needs Python lz4 and xxhash")
     parser.add_argument("--library-revision", help="Revision or immutable label that produced --library")
     parser.add_argument("--readiness", choices=("driver-warm", "shader-ready"), default="driver-warm",
                         help="Whether measurement may overlap specialization or waits for a ready/final status")
@@ -122,8 +123,11 @@ def main():
     if args.scope == "lit-mca" and not profile_source.get("lighting"):
         raise ValueError("lit-mca scope requires a profile containing lighting properties")
     if args.program_execution:
-        value = profile_source; value["program_execution"] = args.program_execution
-        source = json.dumps(value, separators=(",", ":")).encode()
+        profile_source["program_execution"] = args.program_execution
+    if args.mca_compression:
+        profile_source["mca_compression"] = args.mca_compression
+    if args.program_execution or args.mca_compression:
+        source = json.dumps(profile_source, separators=(",", ":")).encode()
     registration = time.perf_counter()
     check(lib.retina_register_profile(source, len(source), c.byref(profile)))
     registration_ms = (time.perf_counter()-registration)*1000
@@ -182,6 +186,7 @@ def main():
     except (OSError, subprocess.CalledProcessError):
         revision, dirty, dirty_fingerprint = None, None, None
     data = dict(schema=RESULT_SCHEMA, schema_version=RESULT_SCHEMA_VERSION,
+                mca_compression=profile_source.get("mca_compression", "zlib"),
                 benchmark_scope=args.scope, lighting=args.lighting,
                 readiness=args.readiness, readiness_wait_ms=readiness_wait_ms,
                 build={"harness_revision": revision, "harness_dirty": dirty,

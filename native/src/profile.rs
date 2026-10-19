@@ -57,6 +57,8 @@ pub struct ClimateTarget {
 #[derive(Clone, Deserialize)]
 pub struct WorldProfile {
     #[serde(default)]
+    pub mca_compression: crate::region::codec::Compression,
+    #[serde(default)]
     pub flat: Option<crate::flat::Profile>,
     #[serde(default)]
     pub structures: crate::structures::Profile,

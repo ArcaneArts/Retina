@@ -32,6 +32,7 @@ final class FlatTerrainProfile {
         var palette = new LinkedHashMap<BlockState, Integer>();
         material(palette, Blocks.AIR.defaultBlockState());
         var world = new JsonObject();
+        world.addProperty("mca_compression", art.arcane.retina.config.RetinaConfiguration.get().mcaCompression().id());
         world.add("generation", source.describe());
         world.addProperty("ore_layout", 2);
         world.addProperty("biome_scale", 128);
