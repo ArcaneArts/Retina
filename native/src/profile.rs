@@ -93,6 +93,9 @@ pub struct WorldProfile {
     pub simple_current_states: Vec<Option<crate::decoration::SimpleState>>,
     #[serde(default)]
     pub ordered_decorations: bool,
+    /// Merge neighboring anchors by loaded generation step/root order.
+    #[serde(default)]
+    pub decoration_source_order: bool,
     #[serde(default)]
     pub decoration_biome_3d: bool,
     /// Complete substrate for patches originating in the existing anchor halo.

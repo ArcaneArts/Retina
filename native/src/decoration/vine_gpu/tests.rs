@@ -76,6 +76,10 @@ fn replay(
     for _ in 0..20 {
         let q = state.poll_measured(&samples, Some(&counts), Some(&mut details));
         if q.is_empty() {
+            if profile.decoration_source_order {
+                assert!(state.blocks.iter().flatten().flatten().all(|block| block.root_order > 0),
+                    "CPU and GPU writes retain their nonzero fixture root order through every continuation");
+            }
             assert_eq!(
                 details.worker.evaluated_candidates,
                 details.worker.resolved_candidates + details.worker.speculative_candidates
@@ -131,7 +135,11 @@ fn gpu_vine_planner_handoff() {
         .unwrap();
     let mut rows = Vec::new();
     for origin in [0, -17, 1_000_000] {
-        let (p, r) = fixture();
+        let (mut p, r) = fixture();
+        p.decoration_source_order = origin == -17;
+        for (id, recipe) in p.decorations.iter_mut().enumerate() {
+            recipe.root_order = id.min(3) as u32 + 1;
+        }
         let r = ChunkRequest {
             chunk_x: origin,
             chunk_z: -origin,

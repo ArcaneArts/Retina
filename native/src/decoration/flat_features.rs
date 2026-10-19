@@ -128,6 +128,7 @@ pub(super) fn lake(
                     let material = if y >= 4 { recipe.air } else { fluid };
                     placed.insert(pos, material);
                     output.push(WorldBlock {
+                        root_order: 0,
                         tick: 0,
                         x: pos[0],
                         y: pos[1],
@@ -160,6 +161,7 @@ pub(super) fn lake(
                     && recipe.can_replace_with_barrier.test_with(pos, &read) == Some(true)
                 {
                     output.push(WorldBlock {
+                        root_order: 0,
                         tick: 0,
                         x: pos[0],
                         y: pos[1],
@@ -194,6 +196,7 @@ pub(super) fn platform(
             if (x - 8).abs().max((z - 8).abs()) <= 16 {
                 let material = materials[usize::from(x == 8 && z == 8)];
                 output.push(WorldBlock {
+                    root_order: 0,
                     tick: 0,
                     x,
                     y,

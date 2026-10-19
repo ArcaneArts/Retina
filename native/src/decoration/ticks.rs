@@ -141,6 +141,6 @@ mod tests {
         assert!(Chunk::collect(request, &definitions, &[placement(98304, 1)]).is_err());
         assert!(Chunk::collect(request, &definitions, &[placement(0, 4)]).is_err());
         assert_eq!(std::mem::size_of::<Placement>(), 12);
-        assert_eq!(std::mem::size_of::<super::super::WorldBlock>(), 20);
+        assert_eq!(std::mem::size_of::<super::super::WorldBlock>(), 24);
     }
 }

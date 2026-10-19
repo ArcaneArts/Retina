@@ -425,7 +425,12 @@ impl Replay<'_> {
                 self.retained_bytes.fetch_sub(old_bytes, Ordering::Relaxed);
                 state.gpu_after = Some(recipe);
                 state.gpu_pause = None;
-                if let Some(blocks) = output {
+                if let Some(mut blocks) = output {
+                    if self.profile.decoration_source_order {
+                        for block in &mut blocks {
+                            block.root_order = self.profile.decorations[recipe as usize].root_order;
+                        }
+                    }
                     state.candidates.remove_group(recipe);
                     state
                         .evaluation_cache

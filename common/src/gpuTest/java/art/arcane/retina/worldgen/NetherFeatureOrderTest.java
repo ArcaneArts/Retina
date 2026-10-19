@@ -90,8 +90,9 @@ final class NetherFeatureOrderTest {
         try { export(registry, exported, biomes, List.of(first, second)); }
         catch (IllegalStateException e) { failed = e.getMessage().contains("Feature order cycle found"); }
         require(failed, "an actual loaded feature cycle fails rather than silently reordering");
+        crossAnchor(registry, exported);
         System.out.println("QA_EVT {\"event\":\"nether_feature_order\",\"status\":\"pass\",\"context\":{\"loaded_recipes\":"
-                + recipes.size() + ",\"loaded_roots\":" + roots.size() + ",\"native_chunks\":30,\"fixture_cases\":7}}");
+                + recipes.size() + ",\"loaded_roots\":" + roots.size() + ",\"native_chunks\":54,\"fixture_cases\":11}}");
     }
 
     private record Export(JsonObject world, JsonArray profiles, JsonArray recipes, LinkedHashMap<BlockState, Integer> palette) {}
@@ -130,10 +131,35 @@ final class NetherFeatureOrderTest {
     }
 
     private static void nativeReplay(RegistryAccess registry, TerrainProfileData source, Export fixture, boolean wrongOrder, boolean oreChain) {
+        var profile = replayProfile(registry, source, fixture, wrongOrder, true);
+        var states = profile.states;
+        int transitioned = 0;
+        for (var position : new int[][]{{0, 0}, {-1, -1}, {-33, 31}, {32, -32}, {31, 32}, {-32, -33}}) {
+            var request = new TerrainRequest(42, position[0], position[1], 0, 256, 64, 48, .008f, profile.id);
+            try (var chunk = NativeTerrain.instance().generate(request)) {
+                for (int c = 0; c < 256; c++) {
+                    var expected = c == 8 * 16 + 8 ? wrongOrder ? Blocks.MAGMA_BLOCK : Blocks.GOLD_BLOCK : Blocks.NETHERRACK;
+                    int actual = Short.toUnsignedInt(chunk.blocks().get(ValueLayout.JAVA_SHORT, (64 * 256L + c) * 2));
+                    // Scattered ores may choose zero attempts. Every nonempty ore run includes its origin first.
+                    if (oreChain && c == 8 * 16 + 8 && states[actual].is(Blocks.BASALT)) continue;
+                    require(states[actual].is(expected), "native live placement order at " + Arrays.toString(position) + ":" + c + " wrongOrder=" + wrongOrder + ": " + states[actual]);
+                    if (c == 8 * 16 + 8) transitioned++;
+                }
+            }
+        }
+        require(transitioned > 0, "dependent replacements must produce an observable final state");
+    }
+
+    private record ReplayProfile(int id, BlockState[] states) {}
+    private static ReplayProfile replayProfile(RegistryAccess registry, TerrainProfileData source, Export fixture, boolean wrongOrder, boolean sourceOrder) {
         var data = fixture.world.deepCopy(); var recipes = fixture.recipes.deepCopy();
         var palette = new LinkedHashMap<>(fixture.palette);
         DecorationProfile.finishPlacements(recipes, palette, GenerationBounds.uniform(0, 256), 32);
-        if (wrongOrder) { var b = recipes.get(1); recipes.set(1, recipes.get(2)); recipes.set(2, b); }
+        if (wrongOrder) {
+            var b = recipes.get(1); recipes.set(1, recipes.get(2)); recipes.set(2, b);
+            for (int i = 0; i < recipes.size(); i++) recipes.get(i).getAsJsonObject().addProperty("root_order", i);
+        }
+        data.addProperty("decoration_source_order", sourceOrder);
         data.add("decorations", recipes); data.add("ores", new JsonArray());
         for (var biome : data.getAsJsonArray("biomes")) {
             var selected = new JsonArray(); for (int i = 0; i < recipes.size(); i++) selected.add(i);
@@ -152,23 +178,42 @@ final class NetherFeatureOrderTest {
             serialized.add(BlockState.CODEC.encodeStart(JsonOps.INSTANCE, state).getOrThrow()); carveable.add(false);
         }
         data.add("materials", serialized); data.add("carveable", carveable); data.add("lighting", LightingProfile.export(palette.keySet(), false));
-        var states = palette.keySet().toArray(BlockState[]::new);
-        int profile = NativeTerrain.instance().registerProfile(data.toString());
-        int transitioned = 0;
-        for (var position : new int[][]{{0, 0}, {-1, -1}, {-33, 31}, {32, -32}, {31, 32}, {-32, -33}}) {
-            var request = new TerrainRequest(42, position[0], position[1], 0, 256, 64, 48, .008f, profile);
-            try (var chunk = NativeTerrain.instance().generate(request)) {
-                for (int c = 0; c < 256; c++) {
-                    var expected = c == 8 * 16 + 8 ? wrongOrder ? Blocks.MAGMA_BLOCK : Blocks.GOLD_BLOCK : Blocks.NETHERRACK;
-                    int actual = Short.toUnsignedInt(chunk.blocks().get(ValueLayout.JAVA_SHORT, (64 * 256L + c) * 2));
-                    // Scattered ores may choose zero attempts. Every nonempty ore run includes its origin first.
-                    if (oreChain && c == 8 * 16 + 8 && states[actual].is(Blocks.BASALT)) continue;
-                    require(states[actual].is(expected), "native live placement order at " + Arrays.toString(position) + ":" + c + " wrongOrder=" + wrongOrder + ": " + states[actual]);
-                    if (c == 8 * 16 + 8) transitioned++;
+        return new ReplayProfile(NativeTerrain.instance().registerProfile(data.toString()), palette.keySet().toArray(BlockState[]::new));
+    }
+
+    private static void crossAnchor(RegistryAccess registry, TerrainProfileData source) {
+        for (boolean zAxis : new boolean[]{false, true}) {
+            var roots = new ArrayList<Holder<PlacedFeature>>();
+            for (int i = 0; i < 2; i++) {
+                var definition = JsonParser.parseString("""
+                        {"feature":{"type":"minecraft:simple_block","to_place":"minecraft:basalt"},
+                         "placement":[{"type":"minecraft:height_range","height":{"absolute":64}},
+                          {"type":"minecraft:offset","x":8,"y":0,"z":8}]}
+                        """).getAsJsonObject();
+                definition.getAsJsonObject("feature").add("to_place", net.minecraft.world.level.levelgen.feature.stateproviders.BlockStateProvider.DIRECT_CODEC
+                        .encodeStart(registry.createSerializationContext(JsonOps.INSTANCE),
+                                net.minecraft.world.level.levelgen.feature.stateproviders.BlockStateProvider.of(i == 0 ? Blocks.BASALT : Blocks.GOLD_BLOCK)).getOrThrow());
+                definition.getAsJsonArray("placement").get(1).getAsJsonObject().addProperty(zAxis ? "z" : "x", i == 0 ? -1 : 15);
+                roots.add(Holder.direct(PlacedFeature.DIRECT_CODEC.parse(registry.createSerializationContext(JsonOps.INSTANCE), definition).getOrThrow()));
+            }
+            var settings = new BiomeGenerationSettings.PlainBuilder().addFeature(3, roots.get(0)).addFeature(7, roots.get(1)).build();
+            var fixture = export(registry, source, source.biomes().subList(0, 1), List.of(settings));
+            for (boolean ordered : new boolean[]{true, false}) {
+                var profile = replayProfile(registry, source, fixture, false, ordered);
+                for (var position : new int[][]{{0, 0}, {-1, -1}, {-33, 31}, {32, -32}, {31, 32}, {-32, -33}}) {
+                    var request = new TerrainRequest(42, position[0], position[1], 0, 256, 64, 48, .008f, profile.id);
+                    try (var chunk = NativeTerrain.instance().generate(request)) {
+                        for (int c = 0; c < 256; c++) {
+                            var expected = c == (zAxis ? 15 * 16 + 8 : 8 * 16 + 15)
+                                    ? ordered ? Blocks.GOLD_BLOCK : Blocks.BASALT : Blocks.NETHERRACK;
+                            int actual = Short.toUnsignedInt(chunk.blocks().get(ValueLayout.JAVA_SHORT, (64 * 256L + c) * 2));
+                            require(profile.states[actual].is(expected), "cross-anchor source order " + Arrays.toString(position) + ":" + c
+                                    + " zAxis=" + zAxis + " ordered=" + ordered + ": " + profile.states[actual]);
+                        }
+                    }
                 }
             }
         }
-        require(transitioned > 0, "dependent replacements must produce an observable final state");
     }
 
     private static void require(boolean condition, String message) { if (!condition) throw new AssertionError(message); }

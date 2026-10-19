@@ -247,6 +247,7 @@ impl World<'_> {
             return;
         }
         self.blocks.push(WorldBlock {
+            root_order: 0,
             x: at[0],
             y: at[1],
             z: at[2],

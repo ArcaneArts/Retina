@@ -399,6 +399,41 @@ Dependencies between neighboring anchors remain unfinished: the report's complet
 loaded export coverage does not resolve that ordering requirement. Structures,
 automatic activation and the runtime matrix remain deferred.
 
+## Cycle 3h: generation order across distributed writes
+
+Ceiling-world replay now carries the loaded root order with each provisional
+write. Distribution merges roots in generation order across neighboring anchors,
+then retains canonical anchor order and the original write order within each
+root. An early-step write from a later anchor can no longer overwrite a later-step
+write merely because that anchor's command list was concatenated last. Selector
+branches share their source root's order, and scheduled ticks follow the same
+merged stream. The existing Overworld and Superflat distribution path is retained.
+
+The merge processes contiguous root spans through a heap, without allocating a
+second full command buffer. Provisional world commands grow from 20 to 24 bytes;
+retained-prefix accounting includes that cost. Published/cached chunk commands
+remain 12 bytes. CPU replay, sparse-provider continuation and GPU vine continuation
+all retain source order metadata.
+
+Native distribution fixtures compare the complete stream against a separate
+stable-sort reference across chunk/region sizes, duplicate writes, sparse root
+IDs, out-of-bounds writes and ticks. Resume fixtures cover both distribution modes
+with complete, partial and zero retention budgets. The Minecraft/native ordering
+harness adds 24 chunks containing overlapping placements across X and Z boundaries,
+including negative coordinates and region edges. The old distribution mode is an
+explicit failing-order control. Together with previous replacement fixtures this
+checks 54 chunks. The GPU vine handoff fixture also compares source-ordered CPU
+and GPU output through successful, discarded and failed GPU continuations.
+
+All three saved-region fixtures pass 983,040 independent block comparisons,
+ordered fluid-tick parity and repeat-publication preservation after this layout
+change. Host Fabric/NeoForge builds, 91 Rust unit tests, three native GPU tests,
+the GPU vine continuation fixture, and Nether/Overworld/Superflat regressions pass.
+
+This resolves the order of emitted writes. Feature evaluation still reads its own
+anchor's earlier writes; dependencies on accepted writes from other anchors remain
+unfinished. Production Nether activation remains deferred.
+
 ## Remaining cycles
 
 3. Complete the remaining Nether feature and decoration coverage and ordering.

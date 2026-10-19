@@ -487,6 +487,7 @@ pub(super) fn aquatic_valid(states: &[AquaticState], palette: usize) -> bool {
 }
 fn write(blocks: &mut Vec<WorldBlock>, at: [i32; 3], material: u16) {
     blocks.push(WorldBlock {
+        root_order: 0,
         tick: 0,
         x: at[0],
         y: at[1],

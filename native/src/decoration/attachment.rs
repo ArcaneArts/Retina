@@ -129,6 +129,7 @@ impl<R: Fn([i32; 3]) -> Option<u16>> World<'_, R> {
             return false;
         }
         self.blocks.push(WorldBlock {
+            root_order: 0,
             tick: 0,
             x: at[0],
             y: at[1],

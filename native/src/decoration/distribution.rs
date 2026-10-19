@@ -1,6 +1,58 @@
-//! Partition contiguous anchor ranges, then concatenate each target's buckets in
-//! that same order. No parallel reduction or hash iteration may reorder writes.
+//! Loaded source order merges root spans before bucketing. Legacy profiles keep
+//! contiguous anchor partitioning. Both retain anchor and within-root write order.
 use super::*;
+use std::{cmp::Reverse, collections::BinaryHeap, iter::Peekable, vec::IntoIter};
+
+/// Merge root spans, retaining anchor and within-root write order. Heap work is
+/// per nonempty root span, not per block, and no second full command buffer is
+/// allocated. Final chunk commands keep their existing compact representation.
+struct SourceOrder {
+    anchors: Vec<Peekable<IntoIter<WorldBlock>>>,
+    ready: BinaryHeap<Reverse<(u32, usize)>>,
+    current: Option<(u32, usize)>,
+}
+impl SourceOrder {
+    fn new(blocks: Vec<Vec<WorldBlock>>) -> Self {
+        let mut anchors: Vec<_> = blocks
+            .into_iter()
+            .map(|mut writes| {
+                if !writes.is_sorted_by_key(|b| b.root_order) {
+                    writes.sort_by_key(|b| b.root_order);
+                }
+                writes.into_iter().peekable()
+            })
+            .collect();
+        let ready = anchors
+            .iter_mut()
+            .enumerate()
+            .filter_map(|(i, a)| a.peek().map(|b| Reverse((b.root_order, i))))
+            .collect();
+        Self {
+            anchors,
+            ready,
+            current: None,
+        }
+    }
+}
+impl Iterator for SourceOrder {
+    type Item = WorldBlock;
+    fn next(&mut self) -> Option<Self::Item> {
+        let (root, index) = match self.current.take() {
+            Some(current) => current,
+            None => self.ready.pop()?.0,
+        };
+        let anchor = &mut self.anchors[index];
+        let block = anchor.next()?;
+        if let Some(next) = anchor.peek() {
+            if next.root_order == root {
+                self.current = Some((root, index));
+            } else {
+                self.ready.push(Reverse((next.root_order, index)));
+            }
+        }
+        Some(block)
+    }
+}
 
 fn bucket(
     blocks: impl IntoIterator<Item = WorldBlock>,
@@ -56,7 +108,11 @@ pub(super) fn distribute(
     origin_x: i32,
     origin_z: i32,
     side: usize,
+    source_order: bool,
 ) -> Vec<Vec<Placement>> {
+    if source_order {
+        return bucket(SourceOrder::new(blocks), request, origin_x, origin_z, side);
+    }
     // Small queries cannot amortize extra tasks/bucket metadata. A single worker
     // also gains nothing from this partition and should keep the direct path.
     if side <= 2
@@ -142,6 +198,7 @@ mod tests {
                 let z = (r.chunk_z - 1 + (a / halo) as i32) * 16;
                 (0..per_anchor)
                     .map(|i| WorldBlock {
+                        root_order: 0,
                         tick: (i % 7) as u16,
                         // Cross chunk borders, duplicate cells and out-of-world writes.
                         x: x + ((i * 13) % 42) as i32 - 13,
@@ -169,7 +226,7 @@ mod tests {
             let actual = pool.install(|| parallel(source.clone(), r, r.chunk_x, r.chunk_z, side));
             assert_eq!(actual, expected, "source order differs for side {side}");
             assert_eq!(
-                pool.install(|| distribute(source, r, r.chunk_x, r.chunk_z, side)),
+                pool.install(|| distribute(source, r, r.chunk_x, r.chunk_z, side, false)),
                 expected
             );
         }
@@ -178,6 +235,31 @@ mod tests {
                 .iter()
                 .all(Vec::is_empty)
         );
+    }
+    #[test]
+    fn source_order_preserves_roots_anchors_writes_and_ticks() {
+        let r = request();
+        for side in [1, 2, 3, 8, 32] {
+            let mut source = writes(side, 333);
+            source[0].clear();
+            for anchor in &mut source {
+                for (i, block) in anchor.iter_mut().enumerate() {
+                    // Include unsorted input, equal-root duplicates and sparse IDs.
+                    block.root_order = [9, 0, 3, 3, u32::MAX][i % 5];
+                }
+            }
+            let mut reference: Vec<_> = source.iter().flatten().copied().collect();
+            reference.sort_by_key(|b| b.root_order);
+            let expected = bucket(reference, r, r.chunk_x, r.chunk_z, side);
+            let legacy = serial(source.clone(), r, r.chunk_x, r.chunk_z, side);
+            assert_ne!(legacy, expected, "fixture must detect anchor-first order");
+            let actual = distribute(source, r, r.chunk_x, r.chunk_z, side, true);
+            assert_eq!(
+                actual, expected,
+                "root/anchor/tick order differs for side {side}"
+            );
+        }
+        assert!(distribute(Vec::new(), r, r.chunk_x, r.chunk_z, 1, true)[0].is_empty());
     }
     #[test]
     #[ignore = "bounded CPU distribution A/B; two workers, no GPU or region generation"]

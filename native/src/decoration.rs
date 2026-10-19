@@ -63,6 +63,8 @@ pub struct LeafState {
 #[derive(Clone, Deserialize)]
 pub struct Recipe {
     pub source: String,
+    #[serde(default)]
+    pub root_order: u32,
     pub salt: i64,
     pub density: f64,
     pub low_density: f64,
@@ -354,6 +356,8 @@ pub struct Placement {
 }
 #[derive(Clone, Copy)]
 struct WorldBlock {
+    /// Loaded root order, retained until cross-anchor distribution completes.
+    root_order: u32,
     x: i32,
     y: i32,
     z: i32,
@@ -819,6 +823,7 @@ impl<'a> Replay<'a> {
         queries
     }
     pub(crate) fn finish(self) -> Vec<Vec<Placement>> {
+        let source_order = self.profile.decoration_source_order;
         let Self {
             request,
             origin_x,
@@ -836,6 +841,7 @@ impl<'a> Replay<'a> {
             origin_x,
             origin_z,
             side,
+            source_order,
         )
     }
 }
@@ -1036,6 +1042,7 @@ fn expand_anchor(
         } else {
             recipe.density
         };
+        let start = blocks.len();
         for _ in 0..rng.count(density) {
             // Each anchor has its own stream: halo clipping must not advance later anchors differently.
             let mut rng = Rng::new(rng.next());
@@ -1095,6 +1102,7 @@ fn expand_anchor(
                             continue;
                         }
                         blocks.push(WorldBlock {
+                            root_order: 0,
                             tick: 0,
                             x: px,
                             y: py,
@@ -1120,6 +1128,11 @@ fn expand_anchor(
                     scratch,
                 ),
                 _ => unreachable!("registered block features require placement programs"),
+            }
+        }
+        if profile.decoration_source_order {
+            for block in &mut blocks[start..] {
+                block.root_order = recipe.root_order;
             }
         }
     }
@@ -1394,6 +1407,7 @@ fn evaluate_anchor_impl<const MEASURE: bool>(
                         profile.material_flags[s as usize] & if state.dry { 2 } else { 1 } != 0
                     }) {
                         blocks.push(WorldBlock {
+                            root_order: 0,
                             tick: 0,
                             x,
                             y,
@@ -1463,6 +1477,11 @@ fn evaluate_anchor_impl<const MEASURE: bool>(
         }
         if record {
             overlay.finish_feature();
+        }
+        if profile.decoration_source_order {
+            for block in &mut blocks[start..] {
+                block.root_order = recipe.root_order;
+            }
         }
         let commit_start = diagnostics::start(MEASURE);
         if profile.ordered_decorations {
@@ -1680,6 +1699,7 @@ fn tree(
     let tree_start = blocks.len();
     for &(wx, wy, wz, axis) in &wood {
         blocks.push(WorldBlock {
+            root_order: 0,
             tick: 0,
             x: wx,
             y: wy,
@@ -1693,6 +1713,7 @@ fn tree(
         for wz in 0..width {
             for wx in 0..width {
                 blocks.push(WorldBlock {
+                    root_order: 0,
                     tick: 0,
                     x: x + wx,
                     y: ground_y - 1,
@@ -1712,6 +1733,7 @@ fn tree(
                 if let Some(c) = field.column(px, pz) {
                     for y in c.height..=base_y - distance / 2 {
                         blocks.push(WorldBlock {
+                            root_order: 0,
                             tick: 0,
                             x: px,
                             y,
@@ -1842,6 +1864,7 @@ fn tree(
             if occupancy.take_leaf(next) {
                 let d = distance + 1;
                 blocks.push(WorldBlock {
+                    root_order: 0,
                     tick: 0,
                     x: next.0,
                     y: next.1,
@@ -1946,6 +1969,7 @@ fn decorate_tree(
                     }
                     occupied.insert(at);
                     blocks.push(WorldBlock {
+                        root_order: 0,
                         tick: 0,
                         x: at.0,
                         y: at.1,
@@ -2408,6 +2432,7 @@ mod tests {
             noises: Vec::new(),
             decorations: Vec::new(),
             ordered_decorations: false,
+            decoration_source_order: false,
             decoration_biome_3d: false,
             decoration_patch_halo: false,
             decoration_noise: None,
@@ -2440,6 +2465,7 @@ mod tests {
         };
         let recipe = Recipe {
             source: "test:mega_jungle".into(),
+            root_order: 0,
             placement_salt: None,
             placement: None,
             salt: 0,
