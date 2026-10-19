@@ -162,6 +162,7 @@ public record TerrainProfileData(int seaLevel, BlockState[] materials, List<Hold
         DecorationProfile.finishGenerationLighting(profile,skyLight);
         DecorationProfile.materialFlags(profile, materials);
         profile.add("lighting", LightingProfile.export(materials.keySet(), skyLight));
+        StructureProfile.finishMaterials(structureData, materials);
         var palette = new JsonArray();
         for (var state : materials.keySet()) palette.add(BlockState.CODEC.encodeStart(JsonOps.INSTANCE, state).getOrThrow());
         profile.add("materials", palette);

@@ -109,6 +109,8 @@ public final class NetherStructureTest {
             }
             require(unavailable == sourceVillage.structures().size() - 1, "all other village families remain ineligible slots");
             Files.writeString(Path.of("build/nether/structure-fixed-biome.json"), fixed.toString());
+            require(!disabled.has("fortress") && !fixed.has("fortress"), "disabled/ineligible sources do not export fortress geometry");
+            FortressProfileTest.run(registry, nativeStructures, Arrays.asList(exported.materials()));
             int checked = selectionChecks(profile, registry);
             System.out.println("QA_EVT {\"event\":\"nether_structure_sets\",\"status\":\"pass\",\"context\":{\"candidate_checks\":" + checked + "}}");
         }

@@ -546,9 +546,66 @@ Fortress geometry, fossils, Nether ruined portals, complete Nether bastion gamep
 validation and automatic activation remain unfinished. Reserved selection slots are
 an intermediate rollout behavior, not implementation of those missing structures.
 
+## Cycle 4b: fortress piece export
+
+Startup export now captures the loaded Minecraft fortress piece implementations
+into 60 templates: 13 fixed piece families in four horizontal orientations, with
+separate chest/no-chest variants for both corridor turns. This remains export data
+for the next native assembly cycle. Fortress definitions stay reserved; production
+Nether activation is still deferred.
+
+The export executes each piece factory and `postProcess` once per variant. It
+retains source block states, blaze-spawner NBT, Nether bridge loot tables, lava-well
+fluid ticks and shape postprocessing positions. Each orientation is captured
+directly because procedural structure orientation includes mirroring, and cannot
+be represented by rotating one template. Collision bounds remain separate from
+physical template extents: the throne's upper fence extends one block above its
+collision box.
+
+Support columns are captured against a floor two blocks below the piece origin.
+The resulting single support layer becomes a list of downward column starts,
+not a baked pillar or a projection onto the Nether roof. The source replaceability
+table is completed after all material exporters finish. Native placement will use
+these starts and the actual blocks below the piece to determine each pillar's
+length. Seeded bridge end fillers export their ordered random-length row recipe,
+so the native assembler can produce different rubble per piece.
+
+The `structures.fortress` contract contains:
+- `pieces`: named fixed piece families, each with `orientations` in Minecraft's
+  horizontal data order (south, west, north, east). Each orientation has one
+  variant, or two for corridor turns (without/with chest).
+- Each variant supplies a template index, collision `bounds` relative to the
+  attachment point, and `supports`, `ticks` and `post_processing` relative to the
+  collision box minimum. Templates already contain oriented block states and
+  coordinates; they must be placed without an additional rotation.
+- `end_filler`: oriented attachment bounds, material rotations and ordered rows
+  `[x, y, nextIntBound]`. A piece-local Java-compatible random stream chooses the
+  inclusive final Z coordinate for each row, starting at Z=0.
+- `support_replaceable`: final material IDs accepted by Minecraft's downward
+  support predicate. Pillars also stop above the dimension minimum plus one.
+
+`./gradlew -PretinaHostOnly :common:netherStructureTest` now replays the exported
+blocks and supports against actual source `postProcess` results at four floor
+depths. All 240 oriented/variant/depth fixtures pass, comparing 630,200 writes,
+including the source lower support bound. The suite separately checks exact
+block-entity NBT, four blaze spawners, eight chest variants, four deduplicated lava
+updates and 1,380 shape postprocessing positions. Another 32 fixtures compare
+seeded end-filler recipes against Minecraft, including negative and extreme
+integer seeds. Every exported material's support eligibility is checked against
+the source predicate. Disabled and biome-ineligible exports contain no fortress
+kit. The existing 288 weighted-selection checks still pass.
+
+Host Fabric/NeoForge builds, 98 Rust unit tests, the existing structure
+assembly/MCA metadata suite and Superflat regressions pass.
+
+The report is written to `build/nether/fortress-export.json`; the full piece kit
+is in `build/nether/structure-profile.json`. These checks validate startup data,
+not native connected fortresses or gameplay. Native graph assembly, terrain-aware
+support placement, scheduled update installation, saved fortress starts and
+spawning/progression validation remain in the next fortress cycle.
+
 ## Remaining cycles
 
-3. Complete the remaining Nether feature and decoration coverage and ordering.
 4. Bastions, fortresses, fossils, and Nether ruined portals with saved metadata.
 5. Automatic activation and dimension lifecycle, lighting, and portal integration.
 6. Both-loader runtime validation, regression coverage, visual QA, and benchmarks.

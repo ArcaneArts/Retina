@@ -54,6 +54,7 @@ final class StructureProfile {
     final Context context;
     final JsonArray templates=new JsonArray(), definitions=new JsonArray(), sets=new JsonArray();
     final JsonObject pools=new JsonObject();
+    JsonObject fortress;
     final Map<String,Integer> templateIds=new HashMap<>(), definitionIds=new HashMap<>();
     final Set<String> visited=new HashSet<>(), omitted=new TreeSet<>();
     StructureProfile(HolderLookup.Provider registry,List<Holder<Biome>> biomes,LinkedHashMap<BlockState,Integer> materials,Context context) {
@@ -64,10 +65,15 @@ final class StructureProfile {
         if(context.enabled){out.load();out.finishProcessors(out.pools);}
         var result=new JsonObject();result.add("templates",out.templates);result.add("definitions",out.definitions);
         result.add("pools",out.pools);result.add("sets",out.sets);
+        if(out.fortress!=null)result.add("fortress",out.fortress);
+        finishMaterials(result,materials);
         long reserved=out.definitions.asList().stream().map(JsonElement::getAsJsonObject).filter(d->d.has("unimplemented")).count();
         Retina.LOGGER.info("Exported registered structures: {} executable definitions, {} reserved definitions, {} pools, {} templates, {} placement sets; omissions {}",
                 out.definitions.size()-reserved,reserved,out.pools.size(),out.templates.size(),out.sets.size(),out.omitted);
         return result;
+    }
+    static void finishMaterials(JsonObject result,LinkedHashMap<BlockState,Integer> materials) {
+        if(result.has("fortress"))FortressProfile.finish(result.getAsJsonObject("fortress"),materials);
     }
     void load() {
         var ops=registry.createSerializationContext(JsonOps.INSTANCE);
@@ -94,6 +100,7 @@ final class StructureProfile {
             } else if(type.equals("desert_pyramid") || type.equals("jungle_temple") || type.equals("swamp_hut")) {
                 d.addProperty("template",capture(type));
             } else {
+                if(type.equals("fortress") && fortress==null)fortress=FortressProfile.export(this);
                 omitted.add("structure:"+name+":"+type);
                 d.addProperty("unimplemented",true);d.addProperty("unavailable_reason","structure-type");unavailable.put(name,d);continue;
             }
