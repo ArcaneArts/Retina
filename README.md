@@ -73,6 +73,7 @@ game or server after editing it. The defaults are:
 
 ```toml
 mca_parallelism = 8
+mca_compression = "zlib"
 debug = false
 f3_overlay = true
 ```
@@ -90,6 +91,16 @@ On a 16-processor system, `0` and `-1` resolve to 16, `-2` to 8, and `-3` to 6.
 On a four-processor system, `-32` resolves to 1. This controls region concurrency;
 the shared native assembly pool and GPU submission slots retain their own limits.
 
+`mca_compression` selects `"zlib"` (default, smaller saves) or `"lz4"` (faster
+compression, larger saves) for newly generated MCA chunks. LZ4 uses Minecraft's
+type-4 LZ4Block format. Existing chunks keep their codec, and temporary-region
+promotion copies compressed records without recompressing them. A region can
+contain both codecs. Changing this setting requires a restart and does not
+rewrite existing terrain. A chunk that exceeds the inline MCA size limit with
+LZ4 is retried with zlib. Column-cache sidecars keep their existing format.
+See [MCA compression measurements](docs/MCA_COMPRESSION.md) for the measured
+tradeoff and validation commands.
+
 `debug` enables extra startup and per-region generation diagnostics in the log.
 Normal lifecycle/registry summaries, compatibility reports, warnings, errors and
 explicitly enabled QA checkpoints remain available with debug off.
@@ -101,6 +112,7 @@ YAML uses the same keys and values. To use it, replace the TOML file with
 
 ```yaml
 mca_parallelism: -2
+mca_compression: "zlib"
 debug: false
 f3_overlay: true
 ```

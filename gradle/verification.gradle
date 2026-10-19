@@ -316,6 +316,22 @@ tasks.register('mcaCodecTest', JavaExec) {
     timeout = Duration.ofSeconds(30)
 }
 
+tasks.register('mcaCodecReadBenchmark', JavaExec) {
+    group = 'verification'
+    description = 'Bounded Minecraft read comparison of two native-region-benchmark output directories.'
+    dependsOn 'gpuTestClasses'
+    classpath = sourceSets.gpuTest.runtimeClasspath
+    mainClass = 'art.arcane.retina.worldgen.McaCodecReadBenchmark'
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
+    jvmArgs '-XX:ActiveProcessorCount=2'
+    maxHeapSize = '512m'
+    timeout = Duration.ofSeconds(30)
+    def baseline = providers.gradleProperty('codecBaseline')
+    def candidate = providers.gradleProperty('codecCandidate')
+    def report = providers.gradleProperty('codecReadReport')
+    argumentProviders.add({ [baseline.get(), candidate.get(), report.get()] } as CommandLineArgumentProvider)
+}
+
 tasks.register('nativeLightingGpuTest', Exec) {
     group = 'verification'
     description = 'Compare GPU section nibble packing with voxel output across cropped and reused buffers.'
