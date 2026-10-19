@@ -55,6 +55,8 @@ public record TerrainProfileData(int seaLevel, BlockState[] materials, List<Hold
         // Preserve it; generation and queries clip blocks to the effective dimension bounds.
         var materials = new LinkedHashMap<BlockState, Integer>();
         var profile = new JsonObject();
+        var bounds = GenerationBounds.noise(settings.noiseSettings(), minY, height);
+        profile.add("generation_bounds", bounds.describe());
         profile.addProperty("ore_layout", 2);
         profile.addProperty("biome_scale", source.scale());
         profile.addProperty("blend", source.blend());
@@ -90,9 +92,9 @@ public record TerrainProfileData(int seaLevel, BlockState[] materials, List<Hold
             } else for (int i = 0; i < 4; i++) climate[i] /= count;
             entry.add("climate", array(climate));
             entry.add("terrain", array(terrain(id)));
-            var land = new Probe(biome, sea + 5, 1, false, sea, minY, height);
-            var below = new Probe(biome, sea + 3, 3, false, sea, minY, height);
-            var seabed = new Probe(biome, sea - 8, 1, true, sea, minY, height);
+            var land = new Probe(biome, sea + 5, 1, false, sea, bounds.minY(), bounds.height());
+            var below = new Probe(biome, sea + 3, 3, false, sea, bounds.minY(), bounds.height());
+            var seabed = new Probe(biome, sea - 8, 1, true, sea, bounds.minY(), bounds.height());
             var root = settings.materialRule().value();
             entry.addProperty("top", material(materials, surface(root, land, Blocks.GRASS_BLOCK.defaultBlockState())));
             entry.addProperty("filler", material(materials, surface(root, below, Blocks.DIRT.defaultBlockState())));
@@ -138,10 +140,15 @@ public record TerrainProfileData(int seaLevel, BlockState[] materials, List<Hold
         profile.add("decorations", DecorationProfile.export(registry, nativeBiomes, biomes, materials, profile, nativeDisks));
         profile.add("registry_program", RegistryGpuProgram.export(registry, settings, nativeBiomes, materials, minY, height, source.scale(), nativeDisks, densityComposition));
         TerrainFeatureProfile.export(registry, nativeBiomes, biomes, materials, profile, settings.materialRule().value(), seed, parameters);
-        profile.add("structures",StructureProfile.export(registry,nativeBiomes,materials,structures));
-        GeologyProfile.export(registry, nativeBiomes, biomes, materials, profile, minY, height, sea);
+        var structureData = StructureProfile.export(registry,nativeBiomes,materials,structures);
+        for (var definition : structureData.getAsJsonArray("definitions")) {
+            var config = definition.getAsJsonObject().getAsJsonObject("config");
+            if (config.has("start_height")) bounds.resolveHeightProvider(config.get("start_height"), sea);
+        }
+        profile.add("structures", structureData);
+        GeologyProfile.export(registry, nativeBiomes, biomes, materials, profile, bounds, sea);
         TerrainFeatureProfile.finishReplacementTables(biomes, materials);
-        DecorationProfile.finishPlacements(profile.getAsJsonArray("decorations"), materials, minY, height);
+        DecorationProfile.finishPlacements(profile.getAsJsonArray("decorations"), materials, bounds, sea);
         DecorationProfile.finishCurrentSurvival(profile,materials);
         DecorationProfile.materialFlags(profile, materials);
         profile.add("lighting", LightingProfile.export(materials.keySet(), skyLight));

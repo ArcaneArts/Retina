@@ -489,10 +489,10 @@ public final class RetinaChunkGenerator extends ChunkGenerator {
     public void spawnOriginalMobs(WorldGenRegion region) { }
 
     @Override
-    public int getGenDepth() { return height; }
+    public int getGenDepth() { return selectedSource == null ? height : selectedSource.generator().getGenDepth(); }
 
     @Override
-    public int getMinY() { return minY; }
+    public int getMinY() { return selectedSource == null ? minY : selectedSource.generator().getMinY(); }
 
     @Override
     public int getSeaLevel() { return profile != null ? profile.seaLevel() : selectedSource != null ? selectedSource.generator().getSeaLevel() : minY; }

@@ -31,6 +31,16 @@ final class GeologyProfile {
     static void export(HolderLookup.Provider registry, List<Holder<Biome>> biomes, JsonArray profiles,
                        LinkedHashMap<BlockState, Integer> palette, JsonObject world, int minY, int height, int sea,
             java.util.function.Function<Holder<Biome>, net.minecraft.world.level.biome.BiomeGenerationSettings> generation) {
+        export(registry, biomes, profiles, palette, world, GenerationBounds.uniform(minY, height), sea, generation);
+    }
+    static void export(HolderLookup.Provider registry, List<Holder<Biome>> biomes, JsonArray profiles,
+                       LinkedHashMap<BlockState, Integer> palette, JsonObject world, GenerationBounds bounds, int sea) {
+        export(registry, biomes, profiles, palette, world, bounds, sea, b -> b.value().getGenerationSettings());
+    }
+    private static void export(HolderLookup.Provider registry, List<Holder<Biome>> biomes, JsonArray profiles,
+                       LinkedHashMap<BlockState, Integer> palette, JsonObject world, GenerationBounds bounds, int sea,
+            java.util.function.Function<Holder<Biome>, net.minecraft.world.level.biome.BiomeGenerationSettings> generation) {
+        int minY = bounds.minY(), height = bounds.height();
         var recipes = new JsonArray();
         var pending = new ArrayList<Pending>();
         var ids = new LinkedHashMap<String, Integer>();
@@ -150,7 +160,7 @@ final class GeologyProfile {
             var bands = new JsonArray();
             int[] previous = null;
             JsonObject current = null;
-            for (int y = minY; y < minY + height; y++) {
+            for (int y = bounds.storageMinY(); y < bounds.storageMinY() + bounds.storageHeight(); y++) {
                 var pos = new BlockPos(0, y, 0);
                 int[] replacements = new int[states.length];
                 for (int m = 0; m < states.length; m++) for (var target : item.feature.targetStates()) {

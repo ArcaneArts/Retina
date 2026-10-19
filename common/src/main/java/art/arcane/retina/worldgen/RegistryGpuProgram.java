@@ -33,7 +33,8 @@ final class RegistryGpuProgram {
     }
     static JsonObject export(HolderLookup.Provider registry, NoiseGeneratorSettings settings,
                              List<Holder<Biome>> biomes, LinkedHashMap<BlockState,Integer> palette, int minY, int height, float biomeScale, Set<net.minecraft.world.level.levelgen.placement.PlacedFeature> nativeDisks, boolean densityComposition) {
-        var compiler=new RegistryGpuProgram(registry,minY,height,settings.seaLevel());
+        var bounds = GenerationBounds.noise(settings.noiseSettings(), minY, height);
+        var compiler=new RegistryGpuProgram(registry,bounds.minY(),bounds.height(),settings.seaLevel());
         compiler.nativeDisks.addAll(nativeDisks);
         compiler.defaultFluid = settings.defaultFluid();
         var router=settings.noiseRouter();
@@ -51,9 +52,9 @@ final class RegistryGpuProgram {
             // chunk_surface_level is a conservative probe used by vanilla's aquifers,
             // not the actual terrain ceiling. Search the registered solid density.
             terrain.roots.add(terrain.density(compiler.encode(router.finalDensity())));
-            terrain.roots.add(terrain.constant(minY+height));
-            config.add(minY); config.add(8); config.add(0);
-        } else { terrain.roots.add(terrain.density(compiler.encode(router.chunkSurfaceLevel()))); terrain.roots.add(0); config.add(minY);config.add(1);config.add(1); }
+            terrain.roots.add(terrain.constant(bounds.terrainMinY()+bounds.terrainHeight()));
+            config.add(bounds.terrainMinY()); config.add(8); config.add(0);
+        } else { terrain.roots.add(terrain.density(compiler.encode(router.chunkSurfaceLevel()))); terrain.roots.add(0); config.add(bounds.terrainMinY());config.add(1);config.add(1); }
         compiler.programs.add(terrain.finish());
         var density=compiler.new Program();density.roots.add(density.density(compiler.encode(router.finalDensity())));compiler.programs.add(density.finish());
         for(var biome:biomes) {
