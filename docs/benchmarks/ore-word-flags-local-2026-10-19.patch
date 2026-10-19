@@ -1,0 +1,376 @@
+diff --git a/native/src/geology/raster.rs b/native/src/geology/raster.rs
+index 4b5303b..e9a0178 100644
+--- a/native/src/geology/raster.rs
++++ b/native/src/geology/raster.rs
+@@ -10,7 +10,7 @@ pub struct Descriptor {
+     pub minimum: [i32; 4],
+     /// X/Y/Z sizes and offset into output u32 words.
+     pub dimensions: [u32; 4],
+-    /// Sphere/seed offset, sphere count, recipe ID, seed-driven flag.
++    /// Sphere/seed offset, sphere count, recipe ID, format (0=CPU, 1=seeded dual masks, 2=seeded word flags).
+     pub source: [u32; 4],
+ }
+ enum Prepared {
+@@ -127,7 +127,7 @@ impl Batch {
+         mask: Option<&CaveMask>,
+         ordered: bool,
+     ) -> Self {
+-        Self::prepare_inner(field, profile, request, side, mask, ordered, false, false)
++        Self::prepare_inner(field, profile, request, side, mask, ordered, false, 0)
+     }
+     /// Direct-mask assembly. Only zero-discard recipes go to the GPU;
+     /// exposure-sensitive recipes retain their exact CPU traversal/random draws.
+@@ -138,7 +138,7 @@ impl Batch {
+         side: usize,
+         mask: Option<&CaveMask>,
+     ) -> Self {
+-        Self::prepare_inner(field, profile, request, side, mask, false, true, false)
++        Self::prepare_inner(field, profile, request, side, mask, false, true, 0)
+     }
+     pub fn prepare_seeded(
+         field: &Field,
+@@ -146,6 +146,23 @@ impl Batch {
+         request: ChunkRequest,
+         side: usize,
+         mask: Option<&CaveMask>,
++    ) -> Self {
++        Self::prepare_seeded_format(
++            field,
++            profile,
++            request,
++            side,
++            mask,
++            std::env::var("RETINA_ORE_MASKS").as_deref() != Ok("dense"),
++        )
++    }
++    pub(crate) fn prepare_seeded_format(
++        field: &Field,
++        profile: &WorldProfile,
++        request: ChunkRequest,
++        side: usize,
++        mask: Option<&CaveMask>,
++        word_flags: bool,
+     ) -> Self {
+         // Preserve the existing path outside the validated finite geometry domain.
+         let within = |v: i64| v.abs() <= 30_001_024;
+@@ -161,7 +178,16 @@ impl Batch {
+         {
+             return Self::prepare_compact(field, profile, request, side, mask);
+         }
+-        Self::prepare_inner(field, profile, request, side, mask, false, true, true)
++        Self::prepare_inner(
++            field,
++            profile,
++            request,
++            side,
++            mask,
++            false,
++            true,
++            if word_flags { 2 } else { 1 },
++        )
+     }
+     fn prepare_inner(
+         field: &Field,
+@@ -171,8 +197,9 @@ impl Batch {
+         mask: Option<&CaveMask>,
+         ordered: bool,
+         compact: bool,
+-        seeded: bool,
++        seed_format: u32,
+     ) -> Self {
++        let seeded = seed_format != 0;
+         let start = Instant::now();
+         assert_eq!(profile.geology.ore_layout, 2);
+         let tops: Vec<_> = field
+@@ -346,6 +373,15 @@ impl Batch {
+                             batch.seeds.push(seed);
+                             batch.repairs.push(OnceLock::new());
+                         }
++                        let words = (sizes[0] as usize * sizes[1] as usize * sizes[2] as usize)
++                            .div_ceil(if ordered { 4 } else { 32 });
++                        // The shader retains 32 uncertainty words per workgroup.
++                        // Oversized boxes use the existing exact dual-mask format.
++                        let format = if seed_format == 2 && words > 1024 {
++                            1
++                        } else {
++                            seed_format
++                        };
+                         batch.descriptors.push(Descriptor {
+                             minimum: [minimum[0], minimum[1], minimum[2], 0],
+                             dimensions: [sizes[0], sizes[1], sizes[2], batch.words as u32],
+@@ -357,15 +393,16 @@ impl Batch {
+                                 },
+                                 spheres[1] as u32,
+                                 recipe,
+-                                u32::from(seeded),
++                                format,
+                             ],
+                         });
+-                        batch.words += (sizes[0] as usize * sizes[1] as usize * sizes[2] as usize)
+-                            .div_ceil(if ordered { 4 } else { 32 })
+-                            * if compact { 2 } else { 1 };
+-                        if seeded {
+-                            batch.words += 8;
+-                        }
++                        batch.words += if format == 2 {
++                            // One uncertainty flag per candidate word; the
++                            // original header/attempt order are unchanged.
++                            8 + words + words.div_ceil(32)
++                        } else {
++                            words * if compact { 2 } else { 1 } + if seeded { 8 } else { 0 }
++                        };
+                         if !compact || seeded {
+                             batch.hosts.push(Host {
+                                 origin,
+@@ -451,6 +488,26 @@ impl Batch {
+                     if low_x >= high_x || low_y >= high_y || low_z >= high_z {
+                         continue;
+                     }
++                    let mask_words = d.dimensions[..3]
++                        .iter()
++                        .map(|n| *n as usize)
++                        .product::<usize>()
++                        .div_ceil(32);
++                    let word_at = |wi: usize| {
++                        let base = d.dimensions[3] as usize;
++                        if d.source[3] == 2 {
++                            let bits = words[base + wi];
++                            let flagged =
++                                words[base + mask_words + wi / 32] & (1 << (wi % 32)) != 0;
++                            // A flagged word contains occupancy OR uncertainty.
++                            // Resolve all its candidates with original CPU spheres.
++                            (bits, if flagged { bits } else { 0 })
++                        } else {
++                            let stride = if self.guarded { 2 } else { 1 };
++                            let at = base + wi * stride;
++                            (words[at], if self.guarded { words[at + 1] } else { 0 })
++                        }
++                    };
+                     for y in low_y..high_y {
+                         let Some(band) = recipe
+                             .replacement_bands
+@@ -464,21 +521,15 @@ impl Batch {
+                                 + (z - d.minimum[2]) as usize)
+                                 * d.dimensions[0] as usize)
+                                 + (low_x - d.minimum[0]) as usize;
+-                            let stride = if self.guarded { 2 } else { 1 };
+-                            let offset = d.dimensions[3] as usize + start / 32 * stride;
+                             let shift = start % 32;
+                             let length = (high_x - low_x) as usize;
+-                            let mut bits = words[offset] >> shift;
+-                            let mut uncertain = if self.guarded {
+-                                words[offset + 1] >> shift
+-                            } else {
+-                                0
+-                            };
++                            let (first, first_uncertain) = word_at(start / 32);
++                            let mut bits = first >> shift;
++                            let mut uncertain = first_uncertain >> shift;
+                             if shift + length > 32 {
+-                                bits |= words[offset + stride] << (32 - shift);
+-                                if self.guarded {
+-                                    uncertain |= words[offset + stride + 1] << (32 - shift);
+-                                }
++                                let (next, next_uncertain) = word_at(start / 32 + 1);
++                                bits |= next << (32 - shift);
++                                uncertain |= next_uncertain << (32 - shift);
+                             }
+                             bits |= uncertain;
+                             bits &= (1 << length) - 1;
+diff --git a/native/src/geology/raster_gpu.rs b/native/src/geology/raster_gpu.rs
+index 9a4b7c1..5f04917 100644
+--- a/native/src/geology/raster_gpu.rs
++++ b/native/src/geology/raster_gpu.rs
+@@ -434,14 +434,19 @@ mod tests {
+     #[test]
+     #[ignore = "requires a real compute device; run explicitly with --ignored"]
+     fn real_gpu_compact_ores_preserve_hosts_exposure_edges_and_reused_buffers() {
+-        check_ore_masks(false);
++        check_ore_masks(false, false);
+     }
+     #[test]
+     #[ignore = "actual GPU seed preparation; use a 30-second process-group deadline"]
+     fn real_gpu_seeded_ores_preserve_hosts_exposure_edges_and_reused_buffers() {
+-        check_ore_masks(true);
++        check_ore_masks(true, false);
+     }
+-    fn check_ore_masks(seeded: bool) {
++    #[test]
++    #[ignore = "actual GPU compact ore words; use a 30-second process-group deadline"]
++    fn real_gpu_word_flag_ores_preserve_hosts_exposure_edges_and_reused_buffers() {
++        check_ore_masks(true, true);
++    }
++    fn check_ore_masks(seeded: bool, word_flags: bool) {
+         let terrain = crate::gpu::Gpu::new(Default::default()).unwrap();
+         let mut gpu = terrain.ore_planner();
+         let mut profile:WorldProfile=serde_json::from_value(json!({
+@@ -478,15 +483,19 @@ mod tests {
+             })
+             .collect();
+         profile.ore_membership = vec![vec![true; 4]];
+-        let p = &profile;
+         let mut checked = 0;
+-        // Alternating large/small batches catches stale retained buffer entries.
+-        for &(cx, cz, side) in &[
+-            (-2, -2, 3),
+-            (1, 1, 2),
+-            (-1_874_995, 1_874_995, 3),
+-            (7, -9, 2),
++        // Alternate sizes and include float-coordinate boundaries and the
++        // out-of-domain CPU-geometry fallback on the same retained GPU buffers.
++        for &(cx, cz, side, size) in &[
++            (-2, -2, 3, 64),
++            (1, 1, 2, 1),
++            (-1_874_995, 1_874_995, 3, 64),
++            (262_144, -262_144, 2, 32),
++            (7, -9, 2, 2),
++            (2_000_000, -2_000_000, 2, 64),
+         ] {
++            profile.geology.ores[0].size = size;
++            let p = &profile;
+             let request = ChunkRequest {
+                 seed: 0x1234_5678_9abc_def0,
+                 chunk_x: cx,
+@@ -513,7 +522,7 @@ mod tests {
+             };
+             let expected = plan(&field, &profile, request, side, None);
+             let batch = if seeded {
+-                Batch::prepare_seeded(&field, &profile, request, side, None)
++                Batch::prepare_seeded_format(&field, &profile, request, side, None, word_flags)
+             } else {
+                 Batch::prepare_compact(&field, &profile, request, side, None)
+             };
+@@ -578,10 +587,16 @@ mod tests {
+                             .product::<usize>(),
+                     )
+                 };
+-                let length = size.div_ceil(32) * 2;
+-                for bits in uncertain[offset..offset + length].chunks_exact_mut(2) {
+-                    bits[0] = 0;
+-                    bits[1] = u32::MAX;
++                let count = size.div_ceil(32);
++                if d.source[3] == 2 {
++                    // Mark every voxel as a possible hit and flag every word;
++                    // CPU repair must reject false positives and retain real hits.
++                    uncertain[offset..offset + count + count.div_ceil(32)].fill(u32::MAX);
++                } else {
++                    for bits in uncertain[offset..offset + count * 2].chunks_exact_mut(2) {
++                        bits[0] = 0;
++                        bits[1] = u32::MAX;
++                    }
+                 }
+             }
+             for target in 0..side * side {
+@@ -615,6 +630,6 @@ mod tests {
+                 );
+             }
+         }
+-        assert_eq!(checked, 26);
++        assert_eq!(checked, 34);
+     }
+ }
+diff --git a/native/src/geology/seed_benchmark.rs b/native/src/geology/seed_benchmark.rs
+index 45423b5..59b3ab1 100644
+--- a/native/src/geology/seed_benchmark.rs
++++ b/native/src/geology/seed_benchmark.rs
+@@ -6,6 +6,7 @@ use rayon::prelude::*;
+ #[test]
+ #[ignore = "actual GPU ore A/B; RETINA_ORE_PROFILE required; use 30s process-group deadline"]
+ fn seeded_ore_planning_comparison() {
++    let word_flags = std::env::var("RETINA_ORE_COMPARE_WORD_FLAGS").as_deref() == Ok("1");
+     let path = std::env::var("RETINA_ORE_PROFILE").unwrap();
+     let engine = TerrainEngine::new().unwrap();
+     let reserved = engine
+@@ -16,7 +17,12 @@ fn seeded_ore_planning_comparison() {
+         .num_threads(2)
+         .build()
+         .unwrap();
+-    for (side, cx, cz) in [(4usize, 0, 0), (8, -33, -33)] {
++    let fixtures = if std::env::var("RETINA_ORE_REGION_FIXTURE").as_deref() == Ok("1") {
++        vec![(32usize, -33, -33)]
++    } else {
++        vec![(4usize, 0, 0), (8, -33, -33)]
++    };
++    for (side, cx, cz) in fixtures {
+         let request = ChunkRequest {
+             seed: 123456789,
+             chunk_x: cx,
+@@ -59,7 +65,16 @@ fn seeded_ore_planning_comparison() {
+                 let mut blocks = base.clone();
+                 let start = Instant::now();
+                 let batch = workers.install(|| {
+-                    if mode == 0 {
++                    if word_flags {
++                        Batch::prepare_seeded_format(
++                            &field,
++                            &profile,
++                            request,
++                            side,
++                            mask.as_deref(),
++                            mode == 1,
++                        )
++                    } else if mode == 0 {
+                         Batch::prepare_compact(&field, &profile, request, side, mask.as_deref())
+                     } else {
+                         Batch::prepare_seeded(&field, &profile, request, side, mask.as_deref())
+@@ -163,7 +178,7 @@ fn seeded_ore_planning_comparison() {
+         }
+         println!(
+             "{}",
+-            serde_json::json!({"profile":path,"backend":engine.backend(),"side":side,"chunk_x":cx,"chunk_z":cz,"height":384,"workers":2,"warmups":2,"pairs":7,"outputs_equal":true,"baseline":samples[0],"seeded":samples[1]})
++            serde_json::json!({"profile":path,"word_flag_comparison":word_flags,"backend":engine.backend(),"side":side,"chunk_x":cx,"chunk_z":cz,"height":384,"workers":2,"warmups":2,"pairs":7,"outputs_equal":true,"baseline":samples[0],"seeded":samples[1]})
+         );
+     }
+ }
+diff --git a/native/src/geology/seeded_masks.wgsl b/native/src/geology/seeded_masks.wgsl
+index 2c43855..52927f9 100644
+--- a/native/src/geology/seeded_masks.wgsl
++++ b/native/src/geology/seeded_masks.wgsl
+@@ -9,6 +9,8 @@ var<workgroup> local_radii: array<f32, 64>;
+ var<workgroup> actual_minimum: vec3<i32>;
+ var<workgroup> actual_sizes: vec3<u32>;
+ var<workgroup> actual_count: u32;
++// Host bounds compact masks to at most 1,024 voxel words.
++var<workgroup> uncertain_words: array<atomic<u32>, 32>;
+
+ @compute @workgroup_size(64)
+ fn seeded_masks(@builtin(workgroup_id) group: vec3<u32>, @builtin(local_invocation_index) lane: u32) {
+@@ -17,6 +19,7 @@ fn seeded_masks(@builtin(workgroup_id) group: vec3<u32>, @builtin(local_invocati
+     let vein = veins[index];
+     let input = seeds[vein.source.x];
+     let size = input.random_size.z;
++    if lane < 32u { atomicStore(&uncertain_words[lane], 0u); }
+     if lane < size {
+         let coefficient = coefficients[size * 64u + lane];
+         let random = bitcast<u32>(unit(random_at(input.random_size.xy, lane + 4u)));
+@@ -95,6 +98,8 @@ fn seeded_masks(@builtin(workgroup_id) group: vec3<u32>, @builtin(local_invocati
+     let dimensions = actual_sizes;
+     let voxels = dimensions.x * dimensions.y * dimensions.z;
+     let words = (voxels + 31u) / 32u;
++    let word_flags = vein.source.w == 2u;
++    let flags_offset = vein.dimensions.w + 8u + words;
+     for (var wi = lane; wi < words; wi += 64u) {
+         var bits = 0u;
+         var uncertain = 0u;
+@@ -122,7 +127,19 @@ fn seeded_masks(@builtin(workgroup_id) group: vec3<u32>, @builtin(local_invocati
+                 if distance < 1.0 { bits |= 1u << bit; }
+             }
+         }
+-        output[vein.dimensions.w + 8u + wi * 2u] = bits;
+-        output[vein.dimensions.w + 9u + wi * 2u] = uncertain;
++        if word_flags {
++            output[vein.dimensions.w + 8u + wi] = bits | uncertain;
++            if uncertain != 0u {
++                atomicOr(&uncertain_words[wi / 32u], 1u << (wi % 32u));
++            }
++        } else {
++            output[vein.dimensions.w + 8u + wi * 2u] = bits;
++            output[vein.dimensions.w + 9u + wi * 2u] = uncertain;
++        }
+     }
++    workgroupBarrier();
++    if word_flags && lane < (words + 31u) / 32u {
++        output[flags_offset + lane] = atomicLoad(&uncertain_words[lane]);
++    }
++
+ }
