@@ -4,6 +4,7 @@ plugins {
     id 'net.neoforged.moddev' version "${moddev_version}" apply false
 }
 
+apply from: 'gradle/release.gradle'
 apply from: 'gradle/native.gradle'
 // Shared tests own their Minecraft classpath in common; root tasks remain aliases.
 evaluationDependsOn(':common')
