@@ -300,8 +300,10 @@ report retains those limits. A [bounded material-output arena trial](docs/MATERI
 reduced isolated material work but did not establish faster complete generation;
 the proven continuation path remains. An [ore-mask compaction trial](docs/ORE_WORD_FLAGS_TRIAL.md)
 reduces readback in experiments but does not establish a reliable throughput gain,
-so production retains its existing masks. Section-processing and combined
-integration cycles are still pending.
+so production retains its existing masks. A [section/NBT reuse trial](docs/SECTION_ENCODING_TRIAL.md)
+reduces NBT worker time by 20–25% but has inconsistent whole-generation results;
+its reproducible prototype is retained without changing the production encoder.
+Combined integration and the final baseline comparison are still pending.
 
 ## Building and testing
 
