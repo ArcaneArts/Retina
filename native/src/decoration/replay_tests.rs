@@ -153,36 +153,45 @@ fn resumed_prefix_matches_full_replay_and_query_batches() {
         .num_threads(2)
         .build()
         .unwrap();
-    for (seed, origin) in [(42, 0), (123456789, -33), (987654321, 700_000)] {
-        let (profile, field, request) = fixture(seed, origin);
-        let (expected, old, queries) = pool.install(|| run(&profile, &field, request, false, 0));
-        let (actual, new, resumed_queries) =
-            pool.install(|| run(&profile, &field, request, true, 64 * 1024 * 1024));
-        assert!(!expected.iter().all(Vec::is_empty));
-        assert_eq!(actual, expected, "seed {seed}, origin {origin}");
-        assert_eq!(
-            resumed_queries, queries,
-            "query batching must not become serial"
-        );
-        assert!(
-            new.rounds >= 3 && new.worker.resumed_anchors > 0 && new.worker.resumed_candidates > 0
-        );
-        assert!(new.worker.evaluated_candidates < old.worker.evaluated_candidates);
-        assert!(new.worker.tree_attempts < old.worker.tree_attempts);
-        assert!(new.peak_retained_bytes > 0 && new.peak_retained_bytes <= 64 * 1024 * 1024);
-        let (fallback, limited, limited_queries) =
-            pool.install(|| run(&profile, &field, request, true, 0));
-        assert_eq!(fallback, expected);
-        assert_eq!(limited_queries, queries);
-        assert!(limited.worker.discarded_checkpoints > 0);
-        assert_eq!(limited.worker.resumed_anchors, 0);
-        assert_eq!(limited.peak_retained_bytes, 0);
-        let budget = (new.peak_retained_bytes / 2) as usize;
-        let (bounded, usage, bounded_queries) =
-            pool.install(|| run(&profile, &field, request, true, budget));
-        assert_eq!(bounded, expected);
-        assert_eq!(bounded_queries, queries);
-        assert!(usage.peak_retained_bytes <= budget as u64);
+    for source_order in [false, true] {
+        for (seed, origin) in [(42, 0), (123456789, -33), (987654321, 700_000)] {
+            let (mut profile, field, request) = fixture(seed, origin);
+            profile.decoration_source_order = source_order;
+            for (id, recipe) in profile.decorations.iter_mut().enumerate() {
+                recipe.root_order = id.min(3) as u32;
+            }
+            let (expected, old, queries) =
+                pool.install(|| run(&profile, &field, request, false, 0));
+            let (actual, new, resumed_queries) =
+                pool.install(|| run(&profile, &field, request, true, 64 * 1024 * 1024));
+            assert!(!expected.iter().all(Vec::is_empty));
+            assert_eq!(actual, expected, "seed {seed}, origin {origin}");
+            assert_eq!(
+                resumed_queries, queries,
+                "query batching must not become serial"
+            );
+            assert!(
+                new.rounds >= 3
+                    && new.worker.resumed_anchors > 0
+                    && new.worker.resumed_candidates > 0
+            );
+            assert!(new.worker.evaluated_candidates < old.worker.evaluated_candidates);
+            assert!(new.worker.tree_attempts < old.worker.tree_attempts);
+            assert!(new.peak_retained_bytes > 0 && new.peak_retained_bytes <= 64 * 1024 * 1024);
+            let (fallback, limited, limited_queries) =
+                pool.install(|| run(&profile, &field, request, true, 0));
+            assert_eq!(fallback, expected);
+            assert_eq!(limited_queries, queries);
+            assert!(limited.worker.discarded_checkpoints > 0);
+            assert_eq!(limited.worker.resumed_anchors, 0);
+            assert_eq!(limited.peak_retained_bytes, 0);
+            let budget = (new.peak_retained_bytes / 2) as usize;
+            let (bounded, usage, bounded_queries) =
+                pool.install(|| run(&profile, &field, request, true, budget));
+            assert_eq!(bounded, expected);
+            assert_eq!(bounded_queries, queries);
+            assert!(usage.peak_retained_bytes <= budget as u64);
+        }
     }
 }
 #[test]

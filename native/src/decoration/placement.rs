@@ -1913,6 +1913,7 @@ mod tests {
         profile.ordered_decorations = true;
         let mut overlay = Overlay::default();
         let removal = WorldBlock {
+            root_order: 0,
             tick: 0,
             x: 0,
             y: 63,
