@@ -19,7 +19,7 @@ from that report. Retained baseline library SHA-256:
 | GPU-driven material emission | [Two bounded-arena prototypes evaluated and rejected](MATERIAL_ARENA_TRIAL.md); existing continuation retained | Exact runs, overflow/failure/interleaved ownership, synchronization and throughput |
 | Tighter ore planning/masks | [Word-level uncertainty masks evaluated](ORE_WORD_FLAGS_TRIAL.md); smaller transfers but speed inconclusive, production retained | Seed/distribution/host/exposure/boundary parity, total planning/application cost |
 | Final sections/NBT/compression | [Section metadata reuse and bulk biome reads evaluated](SECTION_ENCODING_TRIAL.md); NBT work falls but whole-generation benefit is inconclusive, production retained | Complete NBT/save parity, memory/copies and whole-region results |
-| Combined pipeline integration | Pending | Concurrent jobs, DH promotion, ordinary loading, Chunky, lifecycle checks, final A/B |
+| Combined pipeline integration | [Validated against the starting baseline](OPTIMIZATION_INTEGRATION_2026_10.md): 7–9% vanilla and 25–32% Terralith gains in matched bounded comparisons | Concurrent jobs, DH promotion, ordinary loading, Chunky, lifecycle checks, final A/B |
 
 Completion requires evidence for every area. Rejected experiments must have
 concrete results and retain the proven production path. An isolated kernel win,
@@ -149,3 +149,16 @@ including slower final vanilla samples; no reliable overall benefit is establish
 [Measurements, tests and the final patch](SECTION_ENCODING_TRIAL.md) are retained.
 Production source and the shared ignored native library are restored. Combined
 pipeline/lifecycle validation and the final starting-baseline comparison remain.
+
+
+## Combined validation
+
+All seven areas now have an implementation/experiment and validation disposition.
+The [combined report](OPTIMIZATION_INTEGRATION_2026_10.md) compares the actual final
+native implementation with the starting baseline in reversed-order twelve-region
+pairs, with exact NBT. It also records current-source native/Java/Metal lifecycle,
+lighting-reference, datapack, Chunky and telemetry checks, the simulated/installed
+Chunky test-mode correction, specialization review and complete limitations.
+Logical transfer volume is about 191 MiB/region vanilla and 203 MiB Terralith for
+these twelve-region workloads; process peak memory is not consistently lower.
+These are measured combined results, not sums of the earlier stage gains.

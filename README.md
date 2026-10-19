@@ -268,42 +268,41 @@ to assemble whole terrain regions. See [locate queries](docs/GPU_LOCATE_QUERIES.
 
 Dedicated servers send these stats to modded clients once per second. Terrain
 production is distinct from Minecraft's fully loaded/rendered throughput.
-Performance evidence and workload-specific limits are collected in the
-[Rust/GPU performance report](docs/PERFORMANCE_PASS_2026_10.md); historical stage
-benchmarks are not a promise of current end-to-end chunks/sec.
-The [current benchmark triage](docs/PERFORMANCE_TRIAGE_2026_10_18.md) compares
-vanilla/Terralith, concurrent callers, specialization and transfer costs, and
-ranks the next optimization opportunities. The first follow-up
-[compacts decoration programs](docs/COMPACT_DECORATION_PROGRAMS.md): two matched
-Terralith trials improved native lit-MCA throughput by 11–14% with identical chunk
-NBT. Vanilla's smaller measured difference is inconclusive. The next follow-up
-[streams decoration candidates](docs/STREAMED_DECORATION_CANDIDATES.md), improving
-two matched Terralith trials by a further 6–8% against that implementation and
-reducing dense replay retention from about 46 to 6.7 MiB. These are separate
-comparisons, not an additive overall speedup. The
-[cycle tracker](docs/OPTIMIZATION_CYCLES_2026_10.md) records remaining work.
-The [complete GPU feature-program trial](docs/GPU_FEATURE_ANCHOR_TRIAL.md) led to
-[production vine-program offload](docs/GPU_VINE_PLANNING.md) for supported dense
-registered programs on Metal, with exact CPU continuation for other cases.
-Matched lit-MCA trials measured roughly 5–8% higher Terralith throughput serially
-and 4% with two callers, using a bounded comparison build at optimization level 2
-without LTO. Vanilla's small difference is inconclusive. Logical transfer volume
-increased modestly; the report includes memory costs and build limitations.
-The following [compact lighting-input cycle](docs/COMPACT_LIGHT_INPUT.md) reduces
-logical transfer volume by about 37–38% with exact light/NBT output. Matched
-serial vanilla samples improve about 4–5%; concurrent Terralith results are
-inconclusive. [Compact light output](docs/COMPACT_LIGHT_OUTPUT.md) further reduces
-traffic to about 190 MiB/region for vanilla and 200 MiB for Terralith. Two bounded
-concurrent Terralith comparisons improved 5–14%; serial and vanilla throughput
-did not improve measurably, and process memory was not consistently lower. The
-report retains those limits. A [bounded material-output arena trial](docs/MATERIAL_ARENA_TRIAL.md)
-reduced isolated material work but did not establish faster complete generation;
-the proven continuation path remains. An [ore-mask compaction trial](docs/ORE_WORD_FLAGS_TRIAL.md)
-reduces readback in experiments but does not establish a reliable throughput gain,
-so production retains its existing masks. A [section/NBT reuse trial](docs/SECTION_ENCODING_TRIAL.md)
-reduces NBT worker time by 20–25% but has inconsistent whole-generation results;
-its reproducible prototype is retained without changing the production encoder.
-Combined integration and the final baseline comparison are still pending.
+The [combined optimization report](docs/OPTIMIZATION_INTEGRATION_2026_10.md) compares
+the accepted changes against the starting lit-MCA baseline on Apple M4 Max / Metal:
+
+| Workload | Native throughput change | Logical transfer MiB/region, before → after |
+| --- | ---: | ---: |
+| Vanilla | +7–9% | 393 → 191 |
+| Terralith | +25–32% | 387 → 203 |
+
+These are two matched, reversed-order twelve-region comparisons with two CPU
+workers/two callers and optimization-level-2, non-LTO native comparison builds.
+All candidate chunk NBT matches the baseline. Rates include native MCA writing,
+exclude Minecraft loading/rendering, and are measured from batch wall time.
+Process peak memory is slightly higher in some runs; the report includes full
+latency, memory, build and hardware limits. Historical stage gains are not added
+together to produce these results.
+
+The accepted changes [compact placement programs](docs/COMPACT_DECORATION_PROGRAMS.md),
+[stream candidates](docs/STREAMED_DECORATION_CANDIDATES.md), run eligible complete
+[registered vine programs on the GPU](docs/GPU_VINE_PLANNING.md), and compact
+[lighting inputs](docs/COMPACT_LIGHT_INPUT.md) and
+[constant light outputs](docs/COMPACT_LIGHT_OUTPUT.md). Unsupported feature programs
+retain exact CPU continuation. The current mixed shader path remains faster than
+forced interpretation in the measured Terralith diagnostic.
+
+The [cycle tracker](docs/OPTIMIZATION_CYCLES_2026_10.md) also records experiments
+that were not enabled: [material arenas](docs/MATERIAL_ARENA_TRIAL.md),
+[ore-mask compaction](docs/ORE_WORD_FLAGS_TRIAL.md), and
+[section/NBT metadata reuse](docs/SECTION_ENCODING_TRIAL.md). Their smaller buffers
+or faster isolated stages did not establish a reliable complete-generator gain.
+Current validation covers Minecraft lighting/NBT reference behavior, DH-style
+preview/promotion, saved edits and partial saves, real Chunky selection/I/O,
+eight-region admission, and F3 accounting. No live-game throughput or other-GPU
+speed claim is made. Earlier evidence remains in the
+[performance report](docs/PERFORMANCE_PASS_2026_10.md) and
+[starting triage](docs/PERFORMANCE_TRIAGE_2026_10_18.md).
 
 ## Building and testing
 
