@@ -39,6 +39,20 @@ pub struct Recipe {
     sturdy: [Predicate; 6],
 }
 impl Recipe {
+    #[cfg(test)]
+    pub(super) fn vine_program(&self) -> Option<(&Predicate, Vec<(u16, &Predicate)>)> {
+        if !self.vines {
+            return None;
+        }
+        let initial = self.state(self.initial)?;
+        Some((
+            &self.air,
+            self.directions
+                .iter()
+                .map(|d| (initial.added[*d], &self.support[*d]))
+                .collect(),
+        ))
+    }
     fn state(&self, material: u16) -> Option<&State> {
         self.states
             .binary_search_by_key(&material, |s| s.source)

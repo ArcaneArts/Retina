@@ -27,6 +27,9 @@ pub struct Worker {
     pub queued_entries: u64,
     pub tree_attempts: u64,
     pub evaluated_candidates: u64,
+    /// Per registered recipe: evaluated candidates, then accepted positions.
+    /// Populated only by the opt-in detailed planner, never normal generation.
+    pub recipe_candidates: Vec<[u64; 2]>,
     pub resumed_anchors: u64,
     pub resumed_candidates: u64,
     pub discarded_checkpoints: u64,
@@ -40,6 +43,14 @@ impl Worker {
         self.queued_entries += b.queued_entries;
         self.tree_attempts += b.tree_attempts;
         self.evaluated_candidates += b.evaluated_candidates;
+        if self.recipe_candidates.len() < b.recipe_candidates.len() {
+            self.recipe_candidates
+                .resize(b.recipe_candidates.len(), [0; 2]);
+        }
+        for (a, b) in self.recipe_candidates.iter_mut().zip(&b.recipe_candidates) {
+            a[0] += b[0];
+            a[1] += b[1];
+        }
         self.resumed_anchors += b.resumed_anchors;
         self.resumed_candidates += b.resumed_candidates;
         self.discarded_checkpoints += b.discarded_checkpoints;
@@ -66,5 +77,30 @@ pub(super) fn span(into: Option<&mut u64>) -> Option<Clock<'_>> {
 impl Drop for Clock<'_> {
     fn drop(&mut self) {
         *self.into += self.start.elapsed().as_nanos() as u64;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Worker;
+    #[test]
+    fn recipe_counters_merge_unequal_worker_coverage() {
+        let mut a = Worker {
+            recipe_candidates: vec![[3, 2]],
+            evaluated_candidates: 3,
+            ..Default::default()
+        };
+        let b = Worker {
+            recipe_candidates: vec![[4, 1], [0, 0], [8, 3]],
+            evaluated_candidates: 12,
+            ..Default::default()
+        };
+        a.add(&b);
+        a.add(&Worker::default());
+        assert_eq!(a.recipe_candidates, [[7, 3], [0, 0], [8, 3]]);
+        assert_eq!(
+            a.evaluated_candidates,
+            a.recipe_candidates.iter().map(|v| v[0]).sum::<u64>()
+        );
     }
 }
