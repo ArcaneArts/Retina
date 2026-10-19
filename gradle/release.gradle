@@ -1,0 +1,37 @@
+// Each supported Minecraft version supplies the matching loader dependencies.
+// Actions discovers the same files to build its release matrix.
+def minecraftTarget = providers.gradleProperty('minecraft_version').get()
+def targetProperties = new Properties()
+file("gradle/minecraft/${minecraftTarget}.properties").withInputStream {
+    targetProperties.load(it)
+}
+
+// Providers.exec tracks the Git result as a configuration-cache input.
+// Release checkouts include full history, so every target gets the same count.
+def commitCount = providers.exec {
+    workingDir rootDir
+    commandLine 'git', 'rev-list', '--count', 'HEAD'
+}.standardOutput.asText.get().trim()
+allprojects { targetProject ->
+    targetProject.version = "0.${commitCount}"
+    targetProperties.each { key, value ->
+        targetProject.ext.set(key.toString(),
+                targetProject.providers.gradleProperty(key.toString()).getOrElse(value.toString()))
+    }
+}
+
+def fetchMain = tasks.register('fetchRetinaReleaseMain', Exec) {
+    description = 'Fetch the published main revision for releaseRetina.'
+    workingDir rootDir
+    commandLine 'git', 'fetch', 'origin', '+refs/heads/main:refs/remotes/origin/main'
+}
+
+tasks.register('releaseRetina', Exec) {
+    group = 'publishing'
+    description = 'Advance origin/release to origin/main, triggering the GitHub release build.'
+    dependsOn fetchMain
+    workingDir rootDir
+    // Git creates the branch on the first release and rejects non-fast-forward updates.
+    // No checkout, local commit, build, or force push is involved.
+    commandLine 'git', 'push', 'origin', 'refs/remotes/origin/main:refs/heads/release'
+}

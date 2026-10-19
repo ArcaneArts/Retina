@@ -306,6 +306,48 @@ speed claim is made. Earlier evidence remains in the
 
 ## Building and testing
 
+### Releases
+
+GitHub Actions runs only when the `release` branch advances. Pushes to `main`,
+feature branches and pull requests do not run CI. To release the latest pushed
+`main` revision, run:
+
+```sh
+./gradlew releaseRetina
+```
+
+The task is defined in [gradle/release.gradle](gradle/release.gradle). It fetches
+`origin/main` and pushes that revision to `origin/release`, creating the release
+branch on its first invocation. It does not check out a branch, commit local
+changes or build locally. Git rejects a divergent release branch normally; there
+is no force push. Running it again without new main commits does not start a new
+release. Merge your changes into main through the normal PR workflow first.
+
+The [release workflow](.github/workflows/release.yml) builds every supported
+Minecraft target on macOS, including Fabric and NeoForge and all six native
+libraries (macOS/Linux/Windows, each x64/ARM64) inside each installable JAR. It
+runs the normal `build` checks, inspects the built JAR contents, and publishes all
+variants together in one GitHub release. Sources and the common helper JAR are
+not release assets. This packages the supported native backends; the runtime
+validation limits described above still apply.
+
+The mod version is `0.<git rev-list --count HEAD>`: 207 reachable commits produce
+version `0.207`, tag `v0.207`, and files such as
+`retina-fabric-26.3-0.207.jar`. Actions checks out the exact release commit with
+full history, and all targets use that count. Local builds use the same rule;
+use a full Git clone for matching version numbers. No version-bump commit is
+needed. Avoid GitHub's `[skip ci]`/`[ci skip]` markers in commits being released;
+main no longer needs those markers.
+
+Supported versions live in [gradle/minecraft](gradle/minecraft). The current
+target is **26.3**. Each `<minecraft-version>.properties` file pins its matching
+loader dependencies and automatically becomes a release-matrix entry. After
+porting the shared source to another Minecraft version, add its property file;
+`-Pminecraft_version=<version>` selects it locally. The default development
+version and build-plugin versions remain in `gradle.properties`.
+
+### Local builds
+
 Gradle's native tasks use **two Cargo jobs**, two code-generation units and lower
 process priority (`nice +10` on macOS/Linux). Gradle defaults to two workers with
 parallel project execution disabled. These compile limits are separate from the

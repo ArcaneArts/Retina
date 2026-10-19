@@ -1,0 +1,117 @@
+name: Release
+
+# Main and pull requests intentionally do not run CI.
+on:
+  push:
+    branches: [release]
+
+permissions:
+  contents: read
+
+# Separate release commits must not replace one another's pending runs.
+concurrency:
+  group: retina-release-${{ github.sha }}
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  prepare:
+    runs-on: ubuntu-24.04
+    outputs:
+      version: ${{ steps.release.outputs.version }}
+      matrix: ${{ steps.release.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+      - name: Derive release version and supported Minecraft targets
+        id: release
+        run: |
+          echo "version=0.$(git rev-list --count HEAD)" >> "$GITHUB_OUTPUT"
+          python3 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          targets = sorted(p.stem for p in Path('gradle/minecraft').glob('*.properties'))
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              output.write('matrix=' + json.dumps({'minecraft': targets}) + '\n')
+          PY
+
+  build:
+    name: Minecraft ${{ matrix.minecraft }} / all loaders and native platforms
+    needs: prepare
+    runs-on: macos-15
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.prepare.outputs.matrix) }}
+    env:
+      MINECRAFT_VERSION: ${{ matrix.minecraft }}
+      RETINA_VERSION: ${{ needs.prepare.outputs.version }}
+      HOMEBREW_NO_AUTO_UPDATE: '1'
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+      - name: Set up Java 25
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '25'
+      - name: Set up Rust and all native targets
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin,x86_64-apple-darwin,aarch64-unknown-linux-gnu,x86_64-unknown-linux-gnu,aarch64-pc-windows-msvc,x86_64-pc-windows-msvc
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install native cross-compilers
+        run: |
+          brew install llvm@20 lld
+          python -m pip install cargo-xwin==0.23.1 cargo-zigbuild==0.23.4 ziglang==0.13.0
+          echo "$(brew --prefix llvm@20)/bin" >> "$GITHUB_PATH"
+          echo "$(brew --prefix lld)/bin" >> "$GITHUB_PATH"
+      - name: Build and check both loaders with all six native binaries
+        run: ./gradlew build --no-daemon "-Pminecraft_version=$MINECRAFT_VERSION"
+      - name: Collect universal mod JARs
+        run: python scripts/stage-release.py "$MINECRAFT_VERSION" "$RETINA_VERSION"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: retina-${{ matrix.minecraft }}-${{ needs.prepare.outputs.version }}
+          path: build/release/*.jar
+          if-no-files-found: error
+          overwrite: true
+
+  publish:
+    name: Publish GitHub release
+    needs: [prepare, build]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      RETINA_VERSION: ${{ needs.prepare.outputs.version }}
+      RELEASE_COMMIT: ${{ github.sha }}
+    steps:
+      - uses: actions/download-artifact@v7
+        with:
+          pattern: retina-*-${{ needs.prepare.outputs.version }}
+          path: dist
+          merge-multiple: true
+      - name: Publish all Minecraft and loader variants together
+        run: |
+          tag="v$RETINA_VERSION"
+          # A draft keeps partial uploads private and lets a failed publish be rerun.
+          if ! gh release view "$tag" > /dev/null 2>&1; then
+            gh release create "$tag" --target "$RELEASE_COMMIT" \
+              --title "Retina $RETINA_VERSION" --generate-notes --draft
+          fi
+          gh release upload "$tag" dist/*.jar --clobber
+          gh release edit "$tag" --draft=false
