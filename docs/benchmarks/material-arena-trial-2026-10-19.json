@@ -14,7 +14,7 @@
         "scripts/native-region-benchmark.py": "84611be5e760b6baf8381cd51411d06510c0008173cb4d5687ae92d73462c965"
       },
       "patch": "material-arena-v1-2026-10-19.patch",
-      "patch_sha256": "c48bb68daaac2dd4e1b047d8a49b6f61455c61fd335da3495b6ff1969165ce48",
+      "patch_sha256": "360985ff5bbd89d6a1e6fdb339bdb0d892b228c493c87dd0d51bb2bf2cba0ee2",
       "library_sha256": "453d59a16d52ec72b9e3afa827230c66f26e73c1f4ebf82262d773c6aefc7f24"
     },
     "v2": {
@@ -27,7 +27,7 @@
         "scripts/native-region-benchmark.py": "84611be5e760b6baf8381cd51411d06510c0008173cb4d5687ae92d73462c965"
       },
       "patch": "material-arena-v2-2026-10-19.patch",
-      "patch_sha256": "d1eb92725c499abffc971ef05fd858977232a827904acd7256181c5f05a0f1cf",
+      "patch_sha256": "e77dddbd1915345c5b8990ca15fabd878b9922f2f8902ade861762addad95883",
       "library_sha256": "3fc59ccc8bcf3734bb0102da8bf6350782196e522e8587904031ba4f3433423a"
     }
   },

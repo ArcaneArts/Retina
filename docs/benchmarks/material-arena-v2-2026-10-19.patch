@@ -15,7 +15,7 @@ index 66d109e..0b22f00 100644
 @@ -10,6 +10,8 @@ use std::{
  };
  use wgpu::util::DeviceExt;
- 
+
 +const MATERIAL_STAGING: u32 = 1 << 23;
 +
  const SURFACE_METADATA_FLOATS: usize = 8 * if 20000 > MAX_BATCH * 25 {
@@ -343,7 +343,7 @@ index 66d109e..0b22f00 100644
 +mod material_arena_tests;
 +#[cfg(test)]
  mod material_continuation_tests;
- 
+
  #[cfg(test)]
 diff --git a/native/src/gpu/material_continuation_tests.rs b/native/src/gpu/material_continuation_tests.rs
 index 858b25b..ef20bee 100644
@@ -352,7 +352,7 @@ index 858b25b..ef20bee 100644
 @@ -1,7 +1,7 @@
  //! Small real-GPU fixtures: stage scheduling, snapshot isolation and buffer reuse.
  use super::*;
- 
+
 -fn fixture() -> WorldProfile {
 +pub(super) fn fixture() -> WorldProfile {
      let bytes = std::fs::read(std::env::var("RETINA_MATERIAL_PROFILE").unwrap()).unwrap();
@@ -526,7 +526,7 @@ index 5bd0438..dd1e49b 100644
 +    _fields_ = [("version", c.c_uint32), ("reserved", c.c_uint32), ("values", c.c_uint64 * 9)]
  class ProgramSnapshot(c.Structure):
      _fields_ = [("version", c.c_uint32), ("status", c.c_uint32), ("compile_nanos", c.c_uint64), ("source_bytes", c.c_uint64)] + [(s,c.c_uint32) for s in ("nodes","emitted","graphs","horizontal_fields")] + [(s,c.c_uint64) for s in ("cache_hits","upload_bytes","readback_bytes")]
- 
+
 @@ -162,6 +166,11 @@ def main():
      if pipeline:
          pipeline.argtypes = [c.POINTER(PipelineSnapshot)]
