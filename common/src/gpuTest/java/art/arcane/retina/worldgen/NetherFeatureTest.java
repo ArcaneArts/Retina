@@ -37,7 +37,7 @@ public final class NetherFeatureTest {
             var data=JsonParser.parseString(exported.json()).getAsJsonObject();
             Files.createDirectories(Path.of("build/nether"));Files.writeString(Path.of("build/nether/feature-profile.json"),data.toString());
             var kinds=new TreeSet<String>();gather(data.getAsJsonArray("decorations"),kinds);
-            require(kinds.containsAll(Set.of("neighbor_spread","pillar","projected_square","column_cluster","replace_blobs","delta")),"all six loaded Nether block primitives exported: "+kinds);
+            require(kinds.containsAll(Set.of("neighbor_spread","pillar","projected_square","column_cluster","replace_blobs","delta","huge_fungus")),"all loaded Nether primitive families exported: "+kinds);
             for (var biome:data.getAsJsonArray("biomes")) {
                 var b=biome.getAsJsonObject();b.add("decorations",new JsonArray());b.add("ores",new JsonArray());b.add("carvers",new JsonArray());
             }
@@ -77,7 +77,11 @@ public final class NetherFeatureTest {
             var stats=new JsonObject();stats.addProperty("cases",cases);stats.addProperty("writes",writes);stats.add("successes",new Gson().toJsonTree(successes));stats.add("empty",new Gson().toJsonTree(failures));
             Files.writeString(Path.of("build/nether/feature-reference-stats.json"),stats.toString());
             System.out.println("QA_EVT {\"event\":\"nether_block_features_reference\",\"status\":\"pass\",\"context\":"+stats+"}");
-            if(Arrays.asList(args).contains("--region"))NetherRegionTest.check(exported,BiomeTerrainProfile.register(exported),true);
+            NetherFungusTest.check(registry,exported,generator);
+            if(Arrays.asList(args).contains("--region")) {
+                NetherRegionTest.check(exported,BiomeTerrainProfile.register(exported),true);
+                NetherFungusTest.checkRegions(registry,generator);
+            }
         }
     }
 
@@ -129,27 +133,34 @@ public final class NetherFeatureTest {
         }
     }
 
-    private static final class World implements InvocationHandler {
+    static final class World implements InvocationHandler {
         final TerrainRequest request;final BlockState[] palette;final Map<ChunkPos,short[]> terrain;
+        final java.util.function.Function<BlockPos,BlockState> expected;
         final Map<BlockPos,BlockState> changed=new HashMap<>();
         final WorldGenLevel level=(WorldGenLevel)Proxy.newProxyInstance(WorldGenLevel.class.getClassLoader(),new Class<?>[]{WorldGenLevel.class},this);
-        World(TerrainRequest request,BlockState[] palette,Map<ChunkPos,short[]> terrain) {this.request=request;this.palette=palette;this.terrain=terrain;}
+        World(TerrainRequest request,BlockState[] palette,Map<ChunkPos,short[]> terrain) {
+            this(request,palette,terrain,p->(p.getY()<32 || p.getY()>=96 && p.getY()<128)?Blocks.NETHERRACK.defaultBlockState():Blocks.AIR.defaultBlockState());
+        }
+        World(TerrainRequest request,BlockState[] palette,Map<ChunkPos,short[]> terrain,java.util.function.Function<BlockPos,BlockState> expected) {
+            this.request=request;this.palette=palette;this.terrain=terrain;this.expected=expected;
+        }
         BlockState get(BlockPos at) {
             var changed=this.changed.get(at);if(changed!=null)return changed;
-            if(at.getY()<0 || at.getY()>=256)return Blocks.AIR.defaultBlockState();
+            if(at.getY()<request.minY() || at.getY()>=request.minY()+request.height())return Blocks.AIR.defaultBlockState();
             var cp=ChunkPos.containing(at);
             var blocks=terrain.computeIfAbsent(cp,p->{
-                var r=new TerrainRequest(request.seed(),p.x(),p.z(),0,256,64,48,.008f,request.profile());
+                var r=new TerrainRequest(request.seed(),p.x(),p.z(),request.minY(),request.height(),64,48,.008f,request.profile());
                 try(var chunk=NativeTerrain.instance().generate(r)) {
                     short[] result=chunk.blocks().toArray(ValueLayout.JAVA_SHORT);
-                    for(int y=0;y<256;y++)for(int c=0;c<256;c++) {
-                        var expected=(y<32 || y>=96 && y<128)?Blocks.NETHERRACK:Blocks.AIR;
-                        require(palette[Short.toUnsignedInt(result[y*256+c])].is(expected),"controlled cavern substrate at "+p+":"+y);
+                    for(int y=0;y<request.height();y++)for(int c=0;c<256;c++) {
+                        var expected=this.expected.apply(new BlockPos(p.x()*16+c%16,y+request.minY(),p.z()*16+c/16));
+                        var actual=palette[Short.toUnsignedInt(result[y*256+c])];
+                        require(actual.equals(expected),"controlled cavern substrate at "+p+":"+(y+request.minY())+" expected="+expected+" actual="+actual);
                     }
                     return result;
                 }
             });
-            return palette[Short.toUnsignedInt(blocks[at.getY()*256+Math.floorMod(at.getZ(),16)*16+Math.floorMod(at.getX(),16)])];
+            return palette[Short.toUnsignedInt(blocks[(at.getY()-request.minY())*256+Math.floorMod(at.getZ(),16)*16+Math.floorMod(at.getX(),16)])];
         }
         @Override public Object invoke(Object proxy,Method method,Object[] arguments)throws Throwable {
             var args=arguments==null?new Object[0]:arguments;
@@ -157,10 +168,11 @@ public final class NetherFeatureTest {
                 case "getBlockState" -> get((BlockPos)args[0]);
                 case "isStateAtPosition" -> ((java.util.function.Predicate<BlockState>)args[1]).test(get((BlockPos)args[0]));
                 case "getFluidState" -> get((BlockPos)args[0]).getFluidState();
-                case "setBlock" -> {var p=((BlockPos)args[0]).immutable();if(p.getY()<0 || p.getY()>=256)yield false;changed.put(p,(BlockState)args[1]);yield true;}
+                case "setBlock", "setBlockAndUpdate" -> {var p=((BlockPos)args[0]).immutable();if(p.getY()<request.minY() || p.getY()>=request.minY()+request.height())yield false;changed.put(p,(BlockState)args[1]);yield true;}
+                case "destroyBlock" -> {var p=((BlockPos)args[0]).immutable();if(get(p).isAir() || p.getY()<request.minY() || p.getY()>=request.minY()+request.height())yield false;changed.put(p,Blocks.AIR.defaultBlockState());yield true;}
                 case "isEmptyBlock" -> get((BlockPos)args[0]).isAir();
-                case "getHeight" -> {if(args.length==0)yield 256;var type=(Heightmap.Types)args[0];int y=256;while(y>0&&!type.isOpaque().test(get(new BlockPos((int)args[1],y-1,(int)args[2]))))y--;yield y;}
-                case "getMinY" -> 0;
+                case "getHeight" -> {if(args.length==0)yield request.height();var type=(Heightmap.Types)args[0];int y=request.minY()+request.height();while(y>request.minY()&&!type.isOpaque().test(get(new BlockPos((int)args[1],y-1,(int)args[2]))))y--;yield y;}
+                case "getMinY" -> request.minY();
                 case "getSeed" -> request.seed();
                 case "getRandom" -> new NativeBlockFeatureIntegrationTest.Stream(123,false);
                 case "scheduleTick" -> null;

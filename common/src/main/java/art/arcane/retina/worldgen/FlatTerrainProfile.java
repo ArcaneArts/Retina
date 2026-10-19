@@ -37,6 +37,7 @@ final class FlatTerrainProfile {
         world.addProperty("biome_scale", 128);
         world.addProperty("blend", .55);
         world.addProperty("sea_level", source.generator().getSeaLevel());
+        world.addProperty("generator_depth", source.generator().getGenDepth());
         world.addProperty("stone", material(palette, Blocks.STONE.defaultBlockState()));
         world.addProperty("water", material(palette, Blocks.WATER.defaultBlockState()));
         world.addProperty("bedrock", material(palette, Blocks.BEDROCK.defaultBlockState()));

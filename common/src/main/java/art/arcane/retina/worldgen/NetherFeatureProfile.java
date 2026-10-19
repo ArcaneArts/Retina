@@ -5,6 +5,7 @@ import com.mojang.serialization.JsonOps;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.GrowingPlantHeadBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.feature.*;
 import net.minecraft.world.level.levelgen.placement.PlacedFeature;
@@ -18,11 +19,11 @@ final class NetherFeatureProfile {
     static boolean supports(Feature feature) {
         return feature instanceof RandomNeighborSpreadFeature || feature instanceof SingleBlockPillarFeature
                 || feature instanceof ProjectedRandomPatchySquare || feature instanceof SteppedColumnClusterFeature
-                || feature instanceof ReplaceBlobsFeature || feature instanceof DeltaFeature;
+                || feature instanceof ReplaceBlobsFeature || feature instanceof DeltaFeature || feature instanceof HugeFungusFeature;
     }
 
     static JsonObject export(Feature feature, HolderLookup.Provider registry, ToIntFunction<BlockState> material,
-                             Function<JsonElement, JsonObject> provider, Function<PlacedFeature, JsonObject> nested) {
+                             Function<JsonElement, JsonObject> provider, Function<PlacedFeature, JsonObject> nested, int generatorDepth) {
         var data=Feature.DIRECT_CODEC.encodeStart(registry.createSerializationContext(JsonOps.INSTANCE),feature).getOrThrow().getAsJsonObject();
         data.remove("type");
         int reach;
@@ -52,6 +53,16 @@ final class NetherFeatureProfile {
             for(var b:List.of(Blocks.BEDROCK,Blocks.NETHER_BRICKS,Blocks.NETHER_BRICK_FENCE,Blocks.NETHER_BRICK_STAIRS,Blocks.NETHER_WART,Blocks.CHEST,Blocks.SPAWNER,f.contents().getBlock()))
                 blocked.add(BuiltInRegistries.BLOCK.getKey(b).toString());
             data.add("blocked",matching(blocked));reach=f.size().maxInclusive()+f.rimSize().maxInclusive();
+        } else if (feature instanceof HugeFungusFeature f) {
+            data.addProperty("kind","huge_fungus");reach=4;
+            data.remove("valid_base_block");data.add("base",matching(new JsonPrimitive(BuiltInRegistries.BLOCK.getKey(f.validBaseState().getBlock()).toString())));
+            data.add("hat_block",matching(new JsonPrimitive(BuiltInRegistries.BLOCK.getKey(f.hatState().getBlock()).toString())));
+            data.addProperty("stem_state",material.applyAsInt(f.stemState()));data.addProperty("hat_state",material.applyAsInt(f.hatState()));data.addProperty("decor_state",material.applyAsInt(f.decorState()));
+            data.addProperty("air_state",material.applyAsInt(Blocks.AIR.defaultBlockState()));data.addProperty("planted",f.planted());
+            data.addProperty("generator_depth",generatorDepth);data.addProperty("vines",f.hatState().is(Blocks.NETHER_WART_BLOCK));
+            data.addProperty("vine_plant",material.applyAsInt(Blocks.WEEPING_VINES_PLANT.defaultBlockState()));
+            var tips=new JsonArray();for(int age=23;age<=25;age++)tips.add(material.applyAsInt(Blocks.WEEPING_VINES.defaultBlockState().setValue(GrowingPlantHeadBlock.AGE,age)));data.add("vine_tips",tips);
+            var replaceable=new JsonObject();replaceable.addProperty("type","replaceable");data.add("replaceable",replaceable);
         } else throw new IllegalArgumentException("Not a Nether block primitive: "+feature);
         if(reach>15)return null;
         if(feature instanceof SingleBlockPillarFeature && !data.has("can_replace")) {var yes=new JsonObject();yes.addProperty("type","true");data.add("can_replace",yes);}
@@ -65,7 +76,7 @@ final class NetherFeatureProfile {
 
     static void finish(JsonObject data,LinkedHashMap<BlockState,Integer> palette) {
         for(String key:predicates(data))data.add(key,DecorationProfile.predicate(data.getAsJsonObject(key),palette));
-        if(Set.of("delta","column_cluster").contains(data.get("kind").getAsString())) {
+        if(Set.of("delta","column_cluster","huge_fungus").contains(data.get("kind").getAsString())) {
             // These implementations call BlockState.isAir(), independently of
             // datapack changes to the minecraft:air tag.
             var allowed=new JsonArray();palette.forEach((state,id)->{if(state.isAir())allowed.add(id);});
@@ -79,13 +90,14 @@ final class NetherFeatureProfile {
     static Set<Integer> materials(JsonObject data) {
         var out=new LinkedHashSet<Integer>();
         if(data.has("provider"))out.addAll(DecorationProfile.programStates(data.getAsJsonObject("provider")));
-        for(String key:List.of("state","contents","rim"))if(data.has(key))out.add(data.get(key).getAsInt());
+        for(String key:List.of("state","contents","rim","stem_state","hat_state","decor_state","air_state","vine_plant"))if(data.has(key))out.add(data.get(key).getAsInt());
+        if(data.has("vine_tips"))data.getAsJsonArray("vine_tips").forEach(v->out.add(v.getAsInt()));
         if(data.has("cap"))out.addAll(DecorationProfile.featureMaterials(data.getAsJsonObject("cap").getAsJsonObject("feature")));
         return out;
     }
 
     private static List<String> predicates(JsonObject data) {
-        return List.of("neighbors","can_replace","project_through","continue_through","cannot_place_on","target","blocked")
+        return List.of("neighbors","can_replace","project_through","continue_through","cannot_place_on","target","blocked","base","hat_block","replaceable","replaceable_blocks")
                 .stream().filter(data::has).toList();
     }
     private static List<String> integers(JsonObject data) {

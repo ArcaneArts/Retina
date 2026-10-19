@@ -63,6 +63,7 @@ public record TerrainProfileData(int seaLevel, BlockState[] materials, List<Hold
         var profile = new JsonObject();
         var bounds = GenerationBounds.noise(settings.noiseSettings(), minY, height);
         profile.add("generation_bounds", bounds.describe());
+        profile.addProperty("generator_depth", settings.noiseSettings().height());
         profile.addProperty("ore_layout", 2);
         profile.addProperty("biome_scale", source.scale());
         profile.addProperty("blend", source.blend());
