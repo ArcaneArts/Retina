@@ -181,6 +181,7 @@ fn aquifer_mask(@builtin(global_invocation_id) id:vec3<u32>) {
     for(var bit=0u;bit<32u;bit++) {
         let index=word*32u+bit;if index>=count {break;}if (geometry&(1u<<bit))==0u {continue;}
         let x=index%width+15u;let z=(index/width)%width+15u;let y=r.min_y+i32(index/(width*width));
+        if !generation_contains(y,r) {air|=1u<<bit;continue;}
         let substance=aquifer_substance(x,y,z,r);
         if substance==0u {air|=1u<<bit;}
         if substance==1u {fluid1|=1u<<bit;}

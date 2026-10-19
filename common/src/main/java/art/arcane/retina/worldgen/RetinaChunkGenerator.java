@@ -174,7 +174,7 @@ public final class RetinaChunkGenerator extends ChunkGenerator {
             var noiseSettings = selectedSource != null && selectedSource.flat() ? null : settings.orElseGet(() -> registry.lookupOrThrow(net.minecraft.core.registries.Registries.NOISE_SETTINGS).getOrThrow(NoiseGeneratorSettings.OVERWORLD)).value();
             var data = selectedSource != null && selectedSource.flat()
                     ? FlatTerrainProfile.export(registry, selectedSource, seed, structures, skyLight)
-                    : TerrainProfileData.export(registry,biomes,minY,height,seed,noiseSettings,structures,densityComposition,skyLight);
+                    : TerrainProfileData.export(registry,biomes,minY,height,seed,noiseSettings,structures,densityComposition,skyLight,selectedSource != null && selectedSource.dimension().hasCeiling());
             if (selectedSource != null) {
                 var json = com.google.gson.JsonParser.parseString(data.json()).getAsJsonObject();
                 json.add("generation", selectedSource.describe());

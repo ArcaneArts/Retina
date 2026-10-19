@@ -267,7 +267,7 @@ impl WorldProfile {
                 || !noise.frequency.is_finite()
                 || noise.frequency <= 0.0
                 || !noise.amplitude.is_finite()
-                || noise.amplitude <= 0.0
+                || noise.amplitude < 0.0
                 || noise.modifiers.iter().any(|v| !v.is_finite() || *v < 0.0)
             {
                 return Err("invalid registry noise profile".into());
@@ -310,7 +310,7 @@ impl WorldProfile {
                 || !noise.frequency.is_finite()
                 || noise.frequency <= 0.0
                 || !noise.amplitude.is_finite()
-                || noise.amplitude <= 0.0
+                || noise.amplitude < 0.0
                 || noise.modifiers.iter().any(|x| !x.is_finite() || *x < 0.0)
             {
                 return Err("invalid weirdness noise".into());

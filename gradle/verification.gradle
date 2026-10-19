@@ -572,6 +572,19 @@ tasks.register('regionDecodeBenchmark', JavaExec) {
 }
 
 
+tasks.register('netherTerrainTest', JavaExec) {
+    group = 'verification'
+    description = 'Generate actual Nether GPU terrain and check bounds, fluids, biomes and columns.'
+    dependsOn 'gpuTestClasses', ':packageNative'
+    classpath = sourceSets.gpuTest.runtimeClasspath
+    mainClass = 'art.arcane.retina.worldgen.NetherTerrainTest'
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
+    jvmArgs '--enable-native-access=ALL-UNNAMED', '-XX:ActiveProcessorCount=2'
+    environment 'RAYON_NUM_THREADS', '2'
+    environment 'RETINA_REGION_THREADS', '2'
+    workingDir rootProject.projectDir
+}
+
 tasks.register('netherProfileTest', JavaExec) {
     group = 'verification'
     description = 'Check loaded Nether profiles and Minecraft height-context semantics without GPU generation.'

@@ -33,6 +33,10 @@ final class RegistryGpuProgram {
     }
     static JsonObject export(HolderLookup.Provider registry, NoiseGeneratorSettings settings,
                              List<Holder<Biome>> biomes, LinkedHashMap<BlockState,Integer> palette, int minY, int height, float biomeScale, Set<net.minecraft.world.level.levelgen.placement.PlacedFeature> nativeDisks, boolean densityComposition) {
+        return export(registry, settings, biomes, palette, minY, height, biomeScale, nativeDisks, densityComposition, false);
+    }
+    static JsonObject export(HolderLookup.Provider registry, NoiseGeneratorSettings settings,
+                             List<Holder<Biome>> biomes, LinkedHashMap<BlockState,Integer> palette, int minY, int height, float biomeScale, Set<net.minecraft.world.level.levelgen.placement.PlacedFeature> nativeDisks, boolean densityComposition, boolean ceiling) {
         var bounds = GenerationBounds.noise(settings.noiseSettings(), minY, height);
         var compiler=new RegistryGpuProgram(registry,bounds.minY(),bounds.height(),settings.seaLevel());
         compiler.nativeDisks.addAll(nativeDisks);
@@ -44,11 +48,11 @@ final class RegistryGpuProgram {
         compiler.programs.add(climate.finish());
         var climateNoises=new HashSet<Integer>();
         compiler.collectNoises(climate.finish(),climateNoises,new HashSet<>());
-        for(int id:climateNoises)compiler.noises.get(id).getAsJsonObject().addProperty("horizontal_scale",256.0/biomeScale);
+        for(int id:climateNoises)compiler.noises.get(id).getAsJsonObject().addProperty("horizontal_scale",ceiling ? 1.0 : 256.0/biomeScale);
         var terrain=compiler.new Program();
         JsonElement surface=compiler.unwrap(compiler.encode(router.chunkSurfaceLevel()));
         var config=new JsonArray();
-        if(surface.isJsonObject() && type(surface.getAsJsonObject()).equals("find_top_surface")) {
+        if(ceiling || surface.isJsonObject() && type(surface.getAsJsonObject()).equals("find_top_surface")) {
             // chunk_surface_level is a conservative probe used by vanilla's aquifers,
             // not the actual terrain ceiling. Search the registered solid density.
             terrain.roots.add(terrain.density(compiler.encode(router.finalDensity())));
@@ -60,7 +64,7 @@ final class RegistryGpuProgram {
         for(var biome:biomes) {
             var p=compiler.new Program();
             int base = p.rule(settings.materialRule().value(),biome,palette);
-            p.roots.add(ShoreMaterialProfile.compile(compiler, p, biome, palette, base));
+            p.roots.add(ceiling ? base : ShoreMaterialProfile.compile(compiler, p, biome, palette, base));
             // Preserve the uncoated root for diagnostics and shader A/B measurements.
             p.roots.add(base);
             compiler.programs.add(p.finish());
@@ -88,6 +92,9 @@ final class RegistryGpuProgram {
         }
         var result=new JsonObject(); result.add("programs",compiler.programs);result.add("noises",compiler.noises);
         result.add("aquifer",aquifer);
+        var generation = bounds.describe();
+        generation.addProperty("ceiling", ceiling);
+        result.add("generation", generation);
         result.add("points",compiler.points); result.add("surface",config);
         result.add("interpolations",compiler.interpolations);
         var terrainCell=compiler.terrainCell(compiler.encode(router.finalDensity()),new HashSet<>());

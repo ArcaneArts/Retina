@@ -44,9 +44,15 @@ public record TerrainProfileData(int seaLevel, BlockState[] materials, List<Hold
     static TerrainProfileData export(HolderLookup.Provider registry, RetinaBiomeSource source,
             int minY, int height, long seed, NoiseGeneratorSettings settings, StructureProfile.Context structures,
             boolean densityComposition, boolean skyLight) {
+        return export(registry, source, minY, height, seed, settings, structures, densityComposition, skyLight, false);
+    }
+
+    static TerrainProfileData export(HolderLookup.Provider registry, RetinaBiomeSource source,
+            int minY, int height, long seed, NoiseGeneratorSettings settings, StructureProfile.Context structures,
+            boolean densityComposition, boolean skyLight, boolean ceiling) {
         source.includeRegisteredBiomes(registry);
         source.underground(List.of());
-        if (!source.sourceBiomesOnly()) source.underground(List.of(Biomes.LUSH_CAVES, Biomes.DRIPSTONE_CAVES, Biomes.DEEP_DARK).stream()
+        if (!ceiling && !source.sourceBiomesOnly()) source.underground(List.of(Biomes.LUSH_CAVES, Biomes.DRIPSTONE_CAVES, Biomes.DEEP_DARK).stream()
                 .map(key -> (Holder<Biome>) registry.lookupOrThrow(Registries.BIOME).getOrThrow(key))
                 .filter(b -> !source.nativeBiomes().contains(b)).limit(Math.max(0, 65535 - source.nativeBiomes().size())).toList());
         var nativeBiomes = source.nativeBiomes();
@@ -96,9 +102,9 @@ public record TerrainProfileData(int seaLevel, BlockState[] materials, List<Hold
             var below = new Probe(biome, sea + 3, 3, false, sea, bounds.minY(), bounds.height());
             var seabed = new Probe(biome, sea - 8, 1, true, sea, bounds.minY(), bounds.height());
             var root = settings.materialRule().value();
-            entry.addProperty("top", material(materials, surface(root, land, Blocks.GRASS_BLOCK.defaultBlockState())));
-            entry.addProperty("filler", material(materials, surface(root, below, Blocks.DIRT.defaultBlockState())));
-            entry.addProperty("underwater", material(materials, surface(root, seabed, Blocks.GRAVEL.defaultBlockState())));
+            entry.addProperty("top", material(materials, surface(root, land, ceiling ? settings.defaultBlock() : Blocks.GRASS_BLOCK.defaultBlockState())));
+            entry.addProperty("filler", material(materials, surface(root, below, ceiling ? settings.defaultBlock() : Blocks.DIRT.defaultBlockState())));
+            entry.addProperty("underwater", material(materials, surface(root, seabed, ceiling ? settings.defaultBlock() : Blocks.GRAVEL.defaultBlockState())));
             int flags = biome.value().getBaseTemperature() < 0.15F ? 1 : 0;
             if (id.contains("windswept") || id.contains("peak") || id.contains("slopes") || id.contains("mountain") || id.contains("highland") || id.contains("volcanic")) flags |= 2;
             if (biome.is(net.minecraft.tags.BiomeTags.IS_OCEAN) || biome.is(net.minecraft.tags.TagKey.create(Registries.BIOME, Identifier.parse("c:is_ocean"))) || id.contains("ocean")) flags |= 4;
@@ -107,7 +113,7 @@ public record TerrainProfileData(int seaLevel, BlockState[] materials, List<Hold
                     || biome.is(net.minecraft.tags.TagKey.create(Registries.BIOME, Identifier.parse("c:is_stony_shores")))) flags |= 64;
             if (id.contains("badlands")) flags |= 8;
             if (id.contains("cave/") || id.contains("caves") || biome.is(Biomes.DEEP_DARK) || (!biome.unwrapKey().orElseThrow().identifier().getNamespace().equals("minecraft") && biome.is(net.minecraft.tags.TagKey.create(Registries.BIOME, Identifier.parse("c:is_cave"))))) flags |= 16;
-            entry.addProperty("flags", flags);
+            entry.addProperty("flags", ceiling ? 0 : flags);
             biomes.add(entry);
         }
         profile.add("biomes", biomes);
@@ -129,7 +135,7 @@ public record TerrainProfileData(int seaLevel, BlockState[] materials, List<Hold
             targets.add(target);
         }
         profile.add("climate_targets",targets);
-        var climateNoises = ClimateNoiseProfile.export(registry,settings,source.hasRegistrySource());
+        var climateNoises = ClimateNoiseProfile.export(registry,settings,source.hasRegistrySource(),ceiling);
         var noises = new JsonArray(); for(int i=0;i<4;i++)noises.add(climateNoises.get(i));
         float spacing = ClimateNoiseProfile.siteScale(climateNoises,source.scale());
         profile.addProperty("biome_scale",spacing);
@@ -138,7 +144,7 @@ public record TerrainProfileData(int seaLevel, BlockState[] materials, List<Hold
         Retina.LOGGER.info("GPU climate site scale {} blocks; registered climate channels {}",spacing,noises);
         var nativeDisks=java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<net.minecraft.world.level.levelgen.placement.PlacedFeature,Boolean>());
         profile.add("decorations", DecorationProfile.export(registry, nativeBiomes, biomes, materials, profile, nativeDisks));
-        profile.add("registry_program", RegistryGpuProgram.export(registry, settings, nativeBiomes, materials, minY, height, source.scale(), nativeDisks, densityComposition));
+        profile.add("registry_program", RegistryGpuProgram.export(registry, settings, nativeBiomes, materials, minY, height, source.scale(), nativeDisks, densityComposition, ceiling));
         TerrainFeatureProfile.export(registry, nativeBiomes, biomes, materials, profile, settings.materialRule().value(), seed, parameters);
         var structureData = StructureProfile.export(registry,nativeBiomes,materials,structures);
         for (var definition : structureData.getAsJsonArray("definitions")) {
