@@ -716,7 +716,7 @@ fn expand_from(
         group: u32,
         evaluation_start: usize,
         origin: [i32; 3],
-        field: &'a Field,
+        field: &'a Field<'a>,
         request: ChunkRequest,
         counts: Option<&'a counts::Counts>,
         output: Option<&'a mut Vec<Candidate>>,
@@ -1292,7 +1292,7 @@ mod tests {
     use super::*;
     use serde_json::json;
 
-    pub(super) fn fixture() -> (WorldProfile, Field, ChunkRequest, Recipe) {
+    pub(super) fn fixture() -> (WorldProfile, Field<'static>, ChunkRequest, Recipe) {
         let mut profile: WorldProfile = serde_json::from_value(json!({
             "biome_scale":256,"blend":0.55,"sea_level":63,
             "stone":1,"water":7,"bedrock":1,"deepslate":1,"snow":1,"ice":7,
@@ -1304,6 +1304,7 @@ mod tests {
         }))
         .unwrap();
         let field = Field {
+            prior: None,
             substrate: None,
             origin_x: -1,
             origin_z: -1,

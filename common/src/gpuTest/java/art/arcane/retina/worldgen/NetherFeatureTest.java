@@ -71,7 +71,12 @@ public final class NetherFeatureTest {
                     feature.place(world.level,generator,new NativeBlockFeatureIntegrationTest.Stream(seed,false),origin);
                     int[] result=NativeTerrain.instance().decorationFeature(request,id,new int[]{origin.getX(),y0,origin.getZ()},seed);
                     var actual=new HashMap<BlockPos,BlockState>();
-                    for(int i=0;i<result.length;i+=4)actual.put(new BlockPos(result[i],result[i+1],result[i+2]),palette[result[i+3]]);
+                    for(int i=0;i<result.length;i+=4) {
+                        actual.put(new BlockPos(result[i],result[i+1],result[i+2]),palette[result[i+3]]);
+                        require(Math.abs(result[i]-origin.getX())<=recipe.get("reach").getAsInt()
+                                && Math.abs(result[i+2]-origin.getZ())<=recipe.get("reach").getAsInt(),
+                                "exported dependency footprint contains actual feature writes: "+name);
+                    }
                     require(actual.equals(world.changed),"Nether feature parity "+name+" y="+y0+" seed="+seed+": "+NativeBlockFeatureIntegrationTest.differences(world.changed,actual));
                     (actual.isEmpty()?failures:successes).merge(name,1,Integer::sum);cases++;writes+=actual.size();
                 }

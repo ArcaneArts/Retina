@@ -305,6 +305,7 @@ fn generate_region_inner(
         } else {
             (
                 decoration::Field {
+                    prior: None,
                     substrate: None,
                     origin_x: origin.chunk_x,
                     origin_z: origin.chunk_z,

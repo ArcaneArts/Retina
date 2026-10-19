@@ -1,7 +1,7 @@
 use super::*;
 use std::time::Instant;
 
-fn fixture(origin: i32) -> (WorldProfile, Field, ChunkRequest, Vec<Recipe>) {
+fn fixture(origin: i32) -> (WorldProfile, Field<'static>, ChunkRequest, Vec<Recipe>) {
     let (mut profile, mut field, mut request) = replay_tests::fixture(123456789, origin);
     request.height = 384;
     field.origin_x = origin - 2;

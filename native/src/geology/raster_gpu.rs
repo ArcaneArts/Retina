@@ -499,6 +499,7 @@ mod tests {
                 reserved: 0,
             };
             let field = Field {
+                prior: None,
                 substrate: None,
                 origin_x: cx - 1,
                 origin_z: cz - 1,

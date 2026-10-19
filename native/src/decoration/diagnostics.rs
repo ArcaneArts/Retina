@@ -4,6 +4,12 @@ use std::time::Instant;
 
 #[derive(Default, Debug, serde::Serialize)]
 pub struct Planning {
+    /// Source-root dependencies include nested terrain and provider sampling.
+    /// Legacy replay phases below stay zero on this execution path.
+    pub dependency_wall_nanos: u64,
+    pub dependency_anchors: u64,
+    pub dependency_column_tiles: u64,
+    pub dependency_terrain_tiles: u64,
     pub anchors_wall_nanos: u64,
     pub count_expansion_wall_nanos: u64,
     pub sampling_wall_nanos: u64,

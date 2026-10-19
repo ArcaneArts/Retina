@@ -437,6 +437,9 @@ impl TerrainEngine {
         mut details: Option<&mut decoration::diagnostics::Planning>,
         retain_prefix: bool,
     ) -> Result<Vec<Vec<decoration::Placement>>, String> {
+        if profile.decoration_source_order {
+            return decoration::dependencies::plan(self, profile, request, side, job, details, retain_prefix);
+        }
         use decoration::diagnostics::{record, start};
         let measuring = details.is_some();
         let anchor_start = start(measuring);
@@ -929,7 +932,7 @@ impl TerrainEngine {
         &self,
         request: ChunkRequest,
         side: u32,
-    ) -> Result<decoration::Field, String> {
+    ) -> Result<decoration::Field<'static>, String> {
         let origin = ChunkRequest {
             chunk_x: request
                 .chunk_x
@@ -942,6 +945,7 @@ impl TerrainEngine {
             ..request
         };
         Ok(decoration::Field {
+            prior: None,
             origin_x: origin.chunk_x,
             origin_z: origin.chunk_z,
             side: (side + 2) as usize,
@@ -955,7 +959,7 @@ impl TerrainEngine {
         &self,
         request: ChunkRequest,
         side: u32,
-    ) -> Result<(decoration::Field, Option<Arc<geology::CaveMask>>), String> {
+    ) -> Result<(decoration::Field<'static>, Option<Arc<geology::CaveMask>>), String> {
         self.terrain_field_profiled(request, side, None)
     }
     pub(crate) fn terrain_field_profiled(
@@ -963,7 +967,7 @@ impl TerrainEngine {
         request: ChunkRequest,
         side: u32,
         trace: Option<&mut timings::Snapshot>,
-    ) -> Result<(decoration::Field, Option<Arc<geology::CaveMask>>), String> {
+    ) -> Result<(decoration::Field<'static>, Option<Arc<geology::CaveMask>>), String> {
         if !(1..=32).contains(&side) {
             return Err("terrain side must be 1..32".into());
         }
@@ -1087,6 +1091,7 @@ impl TerrainEngine {
         };
         Ok((
             decoration::Field {
+                prior: None,
                 origin_x: request.chunk_x - 1,
                 origin_z: request.chunk_z - 1,
                 side: (side + 2) as usize,

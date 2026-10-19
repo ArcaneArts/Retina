@@ -484,7 +484,7 @@ mod tests {
         assert_eq!(first.order.as_slice(), [0, 0]);
     }
 
-    fn fixture(program: serde_json::Value) -> (WorldProfile, Field, ChunkRequest) {
+    fn fixture(program: serde_json::Value) -> (WorldProfile, Field<'static>, ChunkRequest) {
         let recipe = json!({"source":"test:layers","salt":0,"density":1,"low_density":1,
             "noise_count":false,"rarity":1,"tries":1,"spread":[0,0,0],"kind":"plant",
             "states":[{"lower":4,"upper":0,"weight":1,"band":0,"dry":false}],"placement":program});
@@ -500,6 +500,7 @@ mod tests {
         }))
         .unwrap();
         let field = Field {
+            prior: None,
             substrate: None,
             origin_x: 0,
             origin_z: 0,
