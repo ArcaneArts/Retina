@@ -572,6 +572,19 @@ tasks.register('regionDecodeBenchmark', JavaExec) {
 }
 
 
+tasks.register('netherFeatureTest', JavaExec) {
+    group = 'verification'
+    description = 'Compare loaded Nether block primitives with Minecraft feature replay.'
+    dependsOn 'gpuTestClasses', ':packageNative'
+    classpath = sourceSets.gpuTest.runtimeClasspath
+    mainClass = 'art.arcane.retina.worldgen.NetherFeatureTest'
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
+    jvmArgs '--enable-native-access=ALL-UNNAMED', '-XX:ActiveProcessorCount=2'
+    environment 'RAYON_NUM_THREADS', '2'
+    environment 'RETINA_REGION_THREADS', '2'
+    workingDir rootProject.projectDir
+}
+
 tasks.register('netherTerrainTest', JavaExec) {
     group = 'verification'
     description = 'Generate actual Nether GPU terrain and check bounds, fluids, biomes and columns.'

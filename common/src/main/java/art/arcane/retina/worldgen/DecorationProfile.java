@@ -73,7 +73,7 @@ final class DecorationProfile {
 
     private static boolean hasOtherStageRecipe(Feature feature,int depth) {
         if(depth>16)throw new IllegalArgumentException("Recursive other-stage feature");
-        if(feature instanceof MultifaceGrowthFeature || feature instanceof VinesFeature || feature instanceof DiskFeature)return true;
+        if(feature instanceof MultifaceGrowthFeature || feature instanceof VinesFeature || feature instanceof DiskFeature || NetherFeatureProfile.supports(feature))return true;
         if(feature instanceof SequenceFeature f)return f.features().stream().anyMatch(v->hasOtherStageRecipe(v.value().feature().value(),depth+1));
         if(feature instanceof OverlayFeature f)return f.features().stream().anyMatch(v->hasOtherStageRecipe(v.value().feature().value(),depth+1));
         if(feature instanceof RandomSelectorFeature f)return f.features().stream().anyMatch(v->hasOtherStageRecipe(v.feature().value().feature().value(),depth+1)) || hasOtherStageRecipe(f.defaultFeature().value().feature().value(),depth+1);
@@ -184,6 +184,9 @@ final class DecorationProfile {
             platform.add(material(Blocks.COBBLESTONE.defaultBlockState()));
             data.add("platform", platform);
             emit(path, p, chance, "void_platform", data, selected);
+        } else if (NetherFeatureProfile.supports(feature)) {
+            var data=nether(feature,depth);
+            if(data!=null)emit(path,p,chance,"nether_feature",data,selected);
         } else if (feature instanceof DiskFeature disk) {
             var data=disk(disk);
             if(data!=null) {emit(path,p,chance,"disk",data,selected);nativeDisks.add(placed);}
@@ -295,7 +298,7 @@ final class DecorationProfile {
         return switch (type(p)) {
             case "all_of", "any_of" -> p.getAsJsonArray("predicates").asList().stream().allMatch(e -> supportedPredicate(e.getAsJsonObject()));
             case "not" -> supportedPredicate(p.getAsJsonObject("predicate"));
-            case "matching_blocks", "matching_block_tag", "matching_fluids", "replaceable", "true", "has_sturdy_face", "solid", "inside_world_bounds" -> true;
+            case "matching_blocks", "matching_block_tag", "matching_fluids", "replaceable", "true", "has_sturdy_face", "solid", "inside_world_bounds", "height_range" -> true;
             case "would_survive" -> BlockState.CODEC.parse(JsonOps.INSTANCE, p.get("state")).result().map(DecorationProfile::supportedSurvival).orElse(false);
             default -> false;
         };
@@ -311,6 +314,10 @@ final class DecorationProfile {
         if (value.isJsonArray()) value.getAsJsonArray().forEach(child -> bindHeightProviders(child, bounds, sea));
         else if (value.isJsonObject()) {
             var object = value.getAsJsonObject();
+            if (type(object).equals("height_range") && object.has("min_inclusive")) {
+                bounds.resolveHeightProvider(object.get("min_inclusive"), sea);
+                bounds.resolveHeightProvider(object.get("max_inclusive"), sea);
+            }
             if (object.has("placement") && object.get("placement").isJsonArray()) {
                 for (var entry : object.getAsJsonArray("placement")) {
                     var op = entry.getAsJsonObject();
@@ -383,6 +390,7 @@ final class DecorationProfile {
     }
     private static void finishFeature(JsonObject recipe,LinkedHashMap<BlockState,Integer> palette) {
             switch(recipe.get("kind").getAsString()) {
+                case "nether_feature" -> NetherFeatureProfile.finish(recipe.getAsJsonObject("nether"),palette);
                 case "flat_lake" -> {
                     for (String key : List.of("can_place_feature", "can_replace_with_air_or_fluid", "can_replace_with_barrier", "solid", "liquid"))
                         recipe.add(key, predicate(recipe.getAsJsonObject(key), palette));
@@ -443,7 +451,7 @@ final class DecorationProfile {
             }
     }
 
-    private static void finishProvider(JsonObject provider,LinkedHashMap<BlockState,Integer> palette) {
+    static void finishProvider(JsonObject provider,LinkedHashMap<BlockState,Integer> palette) {
         switch(provider.get("type").getAsString()) {
             case "rule_based" -> {
                 for(var e:provider.getAsJsonArray("rules")) {
@@ -457,10 +465,10 @@ final class DecorationProfile {
         }
         normalizeTypes(provider);
     }
-    private static void finishNested(JsonObject placed,LinkedHashMap<BlockState,Integer> palette) {
+    static void finishNested(JsonObject placed,LinkedHashMap<BlockState,Integer> palette) {
         finishProgram(placed.getAsJsonArray("placement"),palette);finishFeature(placed.getAsJsonObject("feature"),palette);
     }
-    private static void normalizeTypes(JsonElement value) {
+    static void normalizeTypes(JsonElement value) {
         if (value.isJsonObject()) {
             var object = value.getAsJsonObject();
             if (object.has("type")) object.addProperty("type", type(object));
@@ -719,6 +727,7 @@ final class DecorationProfile {
         if(feature instanceof BlockColumnFeature column) {
             data=column(column);if(data!=null){data.addProperty("kind","block_column");data.addProperty("reach",column.direction().getAxis().isHorizontal()?Math.max(0,column.layers().stream().mapToInt(l->l.height().maxInclusive()).sum()-1):0);}
         } else if(feature instanceof SequenceFeature || feature instanceof OverlayFeature)data=composite(feature,depth+1);
+        else if(NetherFeatureProfile.supports(feature))data=nether(feature,depth);
         else if(feature instanceof DiskFeature disk)data=disk(disk);
         else if(feature instanceof MultifaceGrowthFeature || feature instanceof VinesFeature)data=attachment(feature);
         else if(feature instanceof SimpleBlockFeature block)data=simple(block);
@@ -745,6 +754,11 @@ final class DecorationProfile {
         } else {unsupported.add("vegetation_patch:nested_feature:"+feature.getClass().getSimpleName());return null;}
         if(data==null)return null;
         var result=new JsonObject();result.add("placement",program);result.add("feature",data);result.addProperty("reach",reach+data.get("reach").getAsInt());return result;
+    }
+    private JsonObject nether(Feature feature,int depth) {
+        var data=NetherFeatureProfile.export(feature,registry,this::material,value->stateProgram(value,0),child->nested(child,depth+1));
+        if(data==null)unsupported.add("nether_feature:provider-predicate-or-reach:"+feature.getClass().getSimpleName());
+        return data;
     }
     private JsonObject disk(DiskFeature disk) {
         var ops=registry.createSerializationContext(JsonOps.INSTANCE);
@@ -1027,6 +1041,7 @@ final class DecorationProfile {
     static Set<Integer> featureMaterials(JsonObject recipe) {
         var out=new LinkedHashSet<Integer>();
         switch(recipe.get("kind").getAsString()) {
+            case "nether_feature" -> out.addAll(NetherFeatureProfile.materials(recipe.getAsJsonObject("nether")));
             case "attachment_growth" -> {for(var state:recipe.getAsJsonArray("states"))out.add(state.getAsJsonObject().get("source").getAsInt());}
             case "vegetation_patch" -> {out.addAll(programStates(recipe.getAsJsonObject("ground")));out.addAll(featureMaterials(recipe.getAsJsonObject("vegetation").getAsJsonObject("feature")));}
             case "block_column" -> {for(var layer:recipe.getAsJsonArray("layers"))out.addAll(programStates(layer.getAsJsonObject().getAsJsonObject("provider")));}
@@ -1054,7 +1069,7 @@ final class DecorationProfile {
         return out;
     }
 
-    private static JsonObject predicate(JsonObject input, LinkedHashMap<BlockState, Integer> palette) {
+    static JsonObject predicate(JsonObject input, LinkedHashMap<BlockState, Integer> palette) {
         String kind = type(input);
         if(kind.equals("would_survive")) {
             var state=BlockState.CODEC.parse(JsonOps.INSTANCE,input.get("state")).getOrThrow();
@@ -1075,6 +1090,13 @@ final class DecorationProfile {
         }
         if (kind.equals("true")) return output;
         int[] offset = input.has("offset") ? new Gson().fromJson(input.get("offset"), int[].class) : new int[3];
+        if (kind.equals("height_range")) {
+            int min=input.getAsJsonObject("min_inclusive").get("absolute").getAsInt();
+            int max=input.getAsJsonObject("max_inclusive").get("absolute").getAsInt();
+            if(min>max) {output.addProperty("type","not");var yes=new JsonObject();yes.addProperty("type","true");output.add("predicate",yes);return output;}
+            output.addProperty("type","inside_world_bounds");output.add("offset",new Gson().toJsonTree(offset));
+            output.addProperty("min_y",min);output.addProperty("max_y",Math.addExact(max,1));return output;
+        }
         if (kind.equals("inside_world_bounds")) {
             output.add("offset", new Gson().toJsonTree(offset));
             output.add("min_y", input.get("min_y")); output.add("max_y", input.get("max_y"));

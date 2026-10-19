@@ -35,8 +35,9 @@ fn below(r:ptr<function,vec2<u32>>,n:i32)->i32{
 fn integer(at:u32,r:ptr<function,vec2<u32>>)->i32{
  let i=data[12]+at;let kind=data[i];let a=bitcast<i32>(data[i+1u]);let b=bitcast<i32>(data[i+2u]);
  if(kind==0u){return a;}if(kind==1u){return a+below(r,b-a+1);}if(kind==2u){let n=below(r,b-a+1)+1;return a+below(r,n);}
- let plateau=bitcast<i32>(data[i+3u]);let range=b-a;if(plateau>=range){return a+below(r,range+1);}
- let low=(range-plateau)/2;let x=below(r,low+1);return a+x+below(r,range-low+1);
+ let plateau=bitcast<i32>(data[i+3u]);if(plateau==0 && b == -a){let x=below(r,b+1);return x-below(r,b+1);}
+ let range=b-a;if(plateau>=range){return a+below(r,range+1);}
+ let low=(range-plateau)/2;let x=below(r,range-low+1);return a+x+below(r,low+1);
 }
 fn column(p:vec3<i32>)->u32{
  let x=p.x-bitcast<i32>(data[0]);let z=p.z-bitcast<i32>(data[1]);let w=i32(data[2]);

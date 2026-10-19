@@ -628,6 +628,16 @@ public final class NativeBlockFeatureIntegrationTest {
             };
             if(supported)raw.putIfAbsent(json.toString(),List.of(modifier));
         }
+        // Int trapezoids have a symmetric difference fast path and sample the
+        // larger half first otherwise. Repeated offsets expose RNG ordering.
+        for(int[] range:List.of(new int[]{-6,6,0},new int[]{-5,6,2},new int[]{1,6,0},new int[]{-4,7,11},new int[]{0,0,0})) {
+            var distribution=new JsonObject();distribution.addProperty("type","minecraft:trapezoid");
+            distribution.addProperty("min",range[0]);distribution.addProperty("max",range[1]);distribution.addProperty("plateau",range[2]);
+            var json=new JsonObject();json.addProperty("type","minecraft:offset");json.add("x",distribution);json.add("z",distribution.deepCopy());
+            json.add("y",JsonParser.parseString("{\"type\":\"minecraft:uniform\",\"min_inclusive\":-3,\"max_inclusive\":3}"));
+            var offset=net.minecraft.world.level.levelgen.placement.PlacementModifier.CODEC.parse(ops,json).getOrThrow();
+            raw.put("int_trapezoid/"+Arrays.toString(range),List.of(offset,offset));
+        }
         for(String size:List.of("1","3","16","{\"type\":\"minecraft:uniform\",\"min_inclusive\":1,\"max_inclusive\":16}",
                 "{\"type\":\"minecraft:biased_to_bottom\",\"min_inclusive\":1,\"max_inclusive\":7}",
                 "{\"type\":\"minecraft:weighted_list\",\"distribution\":[{\"weight\":2,\"data\":1},{\"weight\":3,\"data\":4}]}"))for(boolean edges:List.of(false,true))for(boolean interior:List.of(false,true)) {
@@ -845,7 +855,7 @@ public final class NativeBlockFeatureIntegrationTest {
                 ||state.is(Blocks.MOSS_BLOCK)||state.is(Blocks.CLAY)||state.is(Blocks.CAVE_VINES)||state.is(Blocks.CAVE_VINES_PLANT)||state.is(Blocks.SMALL_DRIPLEAF)||state.is(Blocks.BIG_DRIPLEAF)
                 ||state.is(Blocks.MUSHROOM_STEM)||state.is(Blocks.RED_MUSHROOM_BLOCK)||state.is(Blocks.BROWN_MUSHROOM_BLOCK);
     }
-    private static Feature resolve(RegistryAccess registry,String source) {
+    static Feature resolve(RegistryAccess registry,String source) {
         var holder=registry.lookupOrThrow(Registries.PLACED_FEATURE).listElements()
                 .filter(h->{String name=h.key().identifier().toString();return source.equals(name) || source.startsWith(name+"/");})
                 .max(Comparator.comparingInt(h->h.key().identifier().toString().length()));
@@ -986,7 +996,7 @@ public final class NativeBlockFeatureIntegrationTest {
         @Override public double nextGaussian(){return Math.sqrt(-2*Math.log(Math.max(Double.MIN_VALUE,nextDouble())))*Math.cos(2*Math.PI*nextDouble());}
         @Override public boolean nextBoolean(){return nextDouble()<.5;}
     }
-    private static String differences(Map<BlockPos,BlockState> expected,Map<BlockPos,BlockState> actual) {
+    static String differences(Map<BlockPos,BlockState> expected,Map<BlockPos,BlockState> actual) {
         var positions=new TreeSet<BlockPos>();positions.addAll(expected.keySet());positions.addAll(actual.keySet());
         return "expected="+expected.size()+", actual="+actual.size()+", "+positions.stream().filter(p->!Objects.equals(expected.get(p),actual.get(p))).limit(10).map(p->p+":"+expected.get(p)+" -> "+actual.get(p)).toList();
     }

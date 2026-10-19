@@ -104,9 +104,57 @@ comparisons, biome integration, and Superflat (nine presets, 294,912 reference
 light comparisons, and 96 feature fixtures). Runtime Nether activation and
 gameplay validation belong to the remaining cycles.
 
+## Cycle 3a: Nether block primitives
+
+The shared native decoration replay now supports the loaded
+`random_neighbor_spread`, `single_block_pillar`,
+`projected_random_patchy_square`, `stepped_column_cluster`,
+`netherrack_replace_blobs`, and `delta_feature` implementations. These cover
+glowstone spread, basalt pillars and columns, replacement blobs, deltas, and
+the pillar/cap graph used by weeping vines. State providers, material/tag
+predicates, integer providers, and nested caps use the existing registry
+compiler. Each feature reads its earlier writes through the live overlay.
+
+Height-range block predicates resolve their inclusive anchors against the
+source generation context, including sea-relative anchors. Storage boundaries
+still constrain actual writes. Integer trapezoids now preserve Minecraft's
+symmetric-difference sampling and draw order for unequal halves; this also
+corrects the shared placement implementation used outside the Nether.
+
+Run:
+
+```sh
+./gradlew netherFeatureTest
+./gradlew :common:netherFeatureTest --args=--region
+```
+
+The reference test loads all five Nether biomes and executes Minecraft's actual
+feature implementations against an independently checked cavern substrate.
+It compares complete block-write maps for 1,584 feature/height/seed cases,
+including negative coordinates, floors, ceilings, and storage boundaries.
+Additional predicate fixtures check inclusive, empty, bottom-relative,
+top-relative, and sea-relative ranges. `blockFeatureTest` covers symmetric,
+asymmetric, full-plateau, and zero-width integer trapezoids with subsequent
+random draws. These tests use identical controlled random streams; they do not
+claim identical world layouts for Minecraft's seed RNG.
+
+The optional region test publishes the currently exported Nether features and
+ores, decodes every chunk, compares corner/interior chunks with independent
+generation, requires actual glowstone placement, and checks repeat publication.
+Its files are named `feature-region-*` and `feature-region-stats.json` under
+`build/nether`. This is partial feature coverage, not a complete Nether milestone.
+
+The loaded feature graph contains 37 reachable named placed features and 14
+feature kinds. Remaining cycle 3 work includes huge fungi, springs and required
+fluid updates, mushroom/fire/soul-fire survival and other vegetation eligibility,
+complete root coverage diagnostics, and shared generation-step ordering with
+ores. Existing ore and decoration passes do not yet establish that ordering.
+Custom primitive recipes outside the existing 15-block horizontal reach contract
+are reported as unsupported. Production Nether activation remains deferred.
+
 ## Remaining cycles
 
-3. Complete Nether feature and decoration coverage.
+3. Complete the remaining Nether feature and decoration coverage and ordering.
 4. Bastions, fortresses, fossils, and Nether ruined portals with saved metadata.
 5. Automatic activation and dimension lifecycle, lighting, and portal integration.
 6. Both-loader runtime validation, regression coverage, visual QA, and benchmarks.

@@ -79,12 +79,18 @@ impl IntProvider {
                 *a + rng.below(span)
             }
             Self::Config(IntConfig::Trapezoid { min, max, plateau }) => {
+                // Minecraft preserves the difference fast path and samples the
+                // larger half first; equal distributions can still consume a
+                // different shared random stream when those operations change.
+                if *plateau == 0 && *max == -*min {
+                    return rng.below(max + 1) - rng.below(max + 1);
+                }
                 let range = max - min;
                 if *plateau >= range {
                     *min + rng.below(range + 1)
                 } else {
                     let low = (range - plateau) / 2;
-                    *min + rng.below(low + 1) + rng.below(range - low + 1)
+                    *min + rng.below(range - low + 1) + rng.below(low + 1)
                 }
             }
             Self::Config(IntConfig::Clamped {
