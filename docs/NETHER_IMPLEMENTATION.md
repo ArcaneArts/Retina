@@ -283,6 +283,40 @@ The next feature cycle must finish whole-graph coverage diagnostics and shared
 generation-step ordering with ores. Structures and production activation are
 still deferred.
 
+## Cycle 3e: loaded decoration root order
+
+Ceiling-world decoration export now allocates recipes in Minecraft's
+`FeatureSorter` order across the complete loaded biome feature graph. This
+replaces first-biome encounter order, which could put a shared feature before
+a prerequisite introduced by another biome. Native anchor replay already sorts
+recipe IDs and evaluates placement predicates against its live write overlay.
+The exporter preserves each root's generation step, root order, source name,
+and exact biome membership. Selector branches remain grouped with their root.
+
+A registered root used in two different generation steps produces two recipes
+with separate deterministic random streams. Inline names include their source
+biome, step and list position. An actual cycle in the loaded feature graph raises
+Minecraft's diagnostic instead of inventing an order. The Overworld and Superflat
+export paths and their random salts are unchanged.
+
+`netherFeatureTest` compares all 29 emitted decoration recipes with the complete
+37-root loaded order and checks membership across all five Nether biomes. Custom
+fixtures cover prerequisites introduced by a later biome, generation-step order,
+the same registered root in multiple steps, and an invalid feature cycle. Eighteen
+native chunks exercise a three-feature replacement chain at positive, negative,
+and region-edge coordinates. Reversing the two dependent roots produces the
+expected different block, verifying that the fixture detects an ordering error.
+The three saved-region fixtures retain 983,040 independent block comparisons and
+ordered fluid-tick parity after the deterministic layout change.
+Host Fabric/NeoForge builds, registry checks, Nether profile/terrain checks,
+Overworld feature references and Superflat regressions pass.
+
+This cycle orders the supported decoration roots within each anchor. Ores still
+use the earlier geology pass, and different anchors still replay independently
+before their commands are distributed. Shared ordering with ores, dependencies
+between neighboring anchors, and complete graph coverage diagnostics remain
+required feature work. Production Nether activation remains deferred.
+
 ## Remaining cycles
 
 3. Complete the remaining Nether feature and decoration coverage and ordering.
