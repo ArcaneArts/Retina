@@ -14,7 +14,7 @@ pub(super) const BATCH: usize = 64;
 pub(super) const QUEUE: usize = 128;
 pub(crate) type Programs = Arc<Vec<Option<Program>>>;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub(crate) struct Program {
     words: Vec<u32>,
     outer: u32,
@@ -394,12 +394,23 @@ impl Replay<'_> {
                         )
                     })
                     .collect();
-                input.and_then(|input| {
-                    gpu.lock()
-                        .ok()
-                        .map(|mut gpu| gpu.run(&input, self.request, program, &jobs))
-                })
+                if let Some(input) = input {
+                    let wait = std::time::Instant::now();
+                    let locked = gpu.lock();
+                    total.lock_wait_nanos += wait.elapsed().as_nanos() as u64;
+                    match locked {
+                        Ok(mut gpu) => Some(gpu.run(&input, self.request, program, &jobs)),
+                        Err(_) => {
+                            total.device_failure_anchors += indices.len() as u64;
+                            None
+                        }
+                    }
+                } else {
+                    total.unresolved_substrate_anchors += indices.len() as u64;
+                    None
+                }
             } else {
+                total.sparse_anchors += indices.len() as u64;
                 None
             };
             let outputs = if let Some((output, stats)) = result {
@@ -440,6 +451,7 @@ impl Replay<'_> {
                     // A deterministic full CPU replay avoids retaining an oversized
                     // successful GPU prefix or repeatedly submitting the same group.
                     self.gpu_disabled[index] = true;
+                    total.post_gpu_retained_limit_anchors += 1;
                 }
             }
         }

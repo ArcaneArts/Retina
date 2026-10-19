@@ -17,11 +17,17 @@ pub struct Planning {
     pub combined_sample_batches: u64,
     pub peak_retained_bytes: u64,
     pub worker: Worker,
+    pub(crate) gpu: super::vine_gpu::Stats,
 }
 #[derive(Default, Debug, serde::Serialize)]
 pub struct Worker {
     pub expansion_nanos: u64,
     pub evaluation_nanos: u64,
+    /// Nested subsets of evaluation_nanos, enabled only for detailed planning.
+    pub candidate_queue_nanos: u64,
+    pub placement_checks_nanos: u64,
+    pub feature_nanos: u64,
+    pub overlay_commit_nanos: u64,
     pub tree_nanos: u64,
     pub leaf_nanos: u64,
     pub queued_entries: u64,
@@ -33,11 +39,27 @@ pub struct Worker {
     pub resumed_anchors: u64,
     pub resumed_candidates: u64,
     pub discarded_checkpoints: u64,
+    /// Inputs are resolved at the start of evaluation, not a promise that a
+    /// later missing provider will retain every preceding result.
+    pub resolved_candidates: u64,
+    pub speculative_candidates: u64,
+    pub unsupported_cpu_candidates: u64,
+    pub gpu_supported_cpu_candidates: u64,
+    pub unresolved_gpu_candidates: u64,
+    pub retained_limit_gpu_groups: u64,
+    pub compacted_gpu_groups: u64,
+    pub compacted_queue_bytes: u64,
+    #[serde(skip)]
+    pub(super) eligible: Option<super::vine_gpu::Programs>,
 }
 impl Worker {
     pub(super) fn add(&mut self, b: &Self) {
         self.expansion_nanos += b.expansion_nanos;
         self.evaluation_nanos += b.evaluation_nanos;
+        self.candidate_queue_nanos += b.candidate_queue_nanos;
+        self.placement_checks_nanos += b.placement_checks_nanos;
+        self.feature_nanos += b.feature_nanos;
+        self.overlay_commit_nanos += b.overlay_commit_nanos;
         self.tree_nanos += b.tree_nanos;
         self.leaf_nanos += b.leaf_nanos;
         self.queued_entries += b.queued_entries;
@@ -54,6 +76,14 @@ impl Worker {
         self.resumed_anchors += b.resumed_anchors;
         self.resumed_candidates += b.resumed_candidates;
         self.discarded_checkpoints += b.discarded_checkpoints;
+        self.resolved_candidates += b.resolved_candidates;
+        self.speculative_candidates += b.speculative_candidates;
+        self.unsupported_cpu_candidates += b.unsupported_cpu_candidates;
+        self.gpu_supported_cpu_candidates += b.gpu_supported_cpu_candidates;
+        self.unresolved_gpu_candidates += b.unresolved_gpu_candidates;
+        self.retained_limit_gpu_groups += b.retained_limit_gpu_groups;
+        self.compacted_gpu_groups += b.compacted_gpu_groups;
+        self.compacted_queue_bytes += b.compacted_queue_bytes;
     }
 }
 pub(crate) fn start(enabled: bool) -> Option<Instant> {

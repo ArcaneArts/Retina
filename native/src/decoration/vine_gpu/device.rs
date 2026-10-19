@@ -8,7 +8,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-#[derive(Default, serde::Serialize)]
+#[derive(Default, Debug, serde::Serialize)]
 pub(crate) struct Stats {
     pub anchors: u64,
     pub fallbacks: u64,
@@ -20,9 +20,20 @@ pub(crate) struct Stats {
     pub substrate_pack_nanos: u64,
     pub device_nanos: [u64; 3],
     pub invalid_timestamps: u64,
+    pub sparse_anchors: u64,
+    pub unresolved_substrate_anchors: u64,
+    pub overflow_anchors: u64,
+    pub device_failure_anchors: u64,
+    pub post_gpu_retained_limit_anchors: u64,
+    pub lock_wait_nanos: u64,
+    pub anchor_pack_nanos: u64,
+    pub encode_upload_nanos: u64,
+    /// Includes GPU execution, queue waiting, and transfer/map completion.
+    pub wait_readback_nanos: u64,
+    pub decode_nanos: u64,
 }
 impl Stats {
-    pub(super) fn add(&mut self, b: Self) {
+    pub(crate) fn add(&mut self, b: Self) {
         self.anchors += b.anchors;
         self.fallbacks += b.fallbacks;
         self.batches += b.batches;
@@ -32,6 +43,16 @@ impl Stats {
         self.host_nanos += b.host_nanos;
         self.substrate_pack_nanos += b.substrate_pack_nanos;
         self.invalid_timestamps += b.invalid_timestamps;
+        self.sparse_anchors += b.sparse_anchors;
+        self.unresolved_substrate_anchors += b.unresolved_substrate_anchors;
+        self.overflow_anchors += b.overflow_anchors;
+        self.device_failure_anchors += b.device_failure_anchors;
+        self.post_gpu_retained_limit_anchors += b.post_gpu_retained_limit_anchors;
+        self.lock_wait_nanos += b.lock_wait_nanos;
+        self.anchor_pack_nanos += b.anchor_pack_nanos;
+        self.encode_upload_nanos += b.encode_upload_nanos;
+        self.wait_readback_nanos += b.wait_readback_nanos;
+        self.decode_nanos += b.decode_nanos;
         for (a, b) in self.device_nanos.iter_mut().zip(b.device_nanos) {
             *a += b;
         }
@@ -250,15 +271,21 @@ impl Gpu {
         if !self.enabled || self.initialize().is_err() {
             self.enabled = false;
             stats.fallbacks = jobs.len() as u64;
+            stats.device_failure_anchors = jobs.len() as u64;
+            stats.host_nanos = start.elapsed().as_nanos() as u64;
             return ((0..jobs.len()).map(|_| None).collect(), stats);
         }
         let mut uploaded = false;
         for jobs in jobs.chunks(BATCH) {
             stats.anchors += jobs.len() as u64;
+            let pack_start = Instant::now();
             let anchors = input.anchors(request, program, jobs);
+            stats.anchor_pack_nanos += pack_start.elapsed().as_nanos() as u64;
             match self.batch(input, &anchors, jobs.len(), &mut uploaded, &mut stats) {
                 Ok(blocks) => {
-                    stats.fallbacks += blocks.iter().filter(|b| b.is_none()).count() as u64;
+                    let overflow = blocks.iter().filter(|b| b.is_none()).count() as u64;
+                    stats.fallbacks += overflow;
+                    stats.overflow_anchors += overflow;
                     output.extend(blocks);
                 }
                 Err(error) => {
@@ -266,6 +293,7 @@ impl Gpu {
                     self.buffers = None;
                     self.enabled = false;
                     stats.fallbacks += jobs.len() as u64;
+                    stats.device_failure_anchors += jobs.len() as u64;
                     output.extend((0..jobs.len()).map(|_| None));
                 }
             }
@@ -281,6 +309,7 @@ impl Gpu {
         uploaded: &mut bool,
         stats: &mut Stats,
     ) -> Result<Vec<Option<Vec<WorldBlock>>>, String> {
+        let encode_start = Instant::now();
         if !self.enabled {
             return Err("vine device disabled after an earlier batch failure".into());
         }
@@ -371,6 +400,7 @@ impl Gpu {
             enc.copy_buffer_to_buffer(resolve, 0, &b.read, out, 48);
         }
         let start = Instant::now();
+        stats.encode_upload_nanos += encode_start.elapsed().as_nanos() as u64;
         let index = self.queue.submit([enc.finish()]);
         stats.batches += 1;
         stats.readback_bytes += sizes[6];
@@ -381,15 +411,20 @@ impl Gpu {
                 let _ = tx.send(r);
             });
         let result = (|| {
-            self.device
-                .poll(wgpu::PollType::Wait {
-                    submission_index: Some(index),
-                    timeout: Some(Duration::from_secs(10)),
-                })
-                .map_err(|e| e.to_string())?;
-            rx.recv_timeout(Duration::from_secs(1))
-                .map_err(|e| e.to_string())?
-                .map_err(|e| e.to_string())?;
+            let waited = (|| {
+                self.device
+                    .poll(wgpu::PollType::Wait {
+                        submission_index: Some(index),
+                        timeout: Some(Duration::from_secs(10)),
+                    })
+                    .map_err(|e| e.to_string())?;
+                rx.recv_timeout(Duration::from_secs(1))
+                    .map_err(|e| e.to_string())?
+                    .map_err(|e| e.to_string())
+            })();
+            stats.wait_readback_nanos += start.elapsed().as_nanos() as u64;
+            waited?;
+            let decode_start = Instant::now();
             let view = b
                 .read
                 .slice(..sizes[6])
@@ -419,7 +454,7 @@ impl Gpu {
                 }
             }
             let words: &[u32] = bytemuck::cast_slice(&view[..out as usize]);
-            Ok(words
+            let decoded = words
                 .chunks_exact(4 + capacity * 5)
                 .map(|words| {
                     if words[1] != 0 || words[0] as usize > capacity {
@@ -439,7 +474,9 @@ impl Gpu {
                             .collect(),
                     )
                 })
-                .collect())
+                .collect();
+            stats.decode_nanos += decode_start.elapsed().as_nanos() as u64;
+            Ok(decoded)
         })();
         b.read.unmap();
         result

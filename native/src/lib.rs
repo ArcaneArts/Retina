@@ -530,6 +530,9 @@ impl TerrainEngine {
                         serde_json::to_string(&stats).unwrap()
                     );
                 }
+                if let Some(d) = details.as_mut() {
+                    d.gpu.add(stats);
+                }
             }
             if !queries.counts.is_empty() || !queries.noise.is_empty() {
                 // Both query sets were collected against the same provisional

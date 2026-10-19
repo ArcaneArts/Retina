@@ -72,9 +72,31 @@ fn replay(
     let mut counts = counts::Counts::default();
     let mut stats = Stats::default();
     let mut provider_rounds = 0;
+    let mut details = diagnostics::Planning::default();
     for _ in 0..20 {
-        let q = state.poll(&samples, Some(&counts));
+        let q = state.poll_measured(&samples, Some(&counts), Some(&mut details));
         if q.is_empty() {
+            assert_eq!(
+                details.worker.evaluated_candidates,
+                details.worker.resolved_candidates + details.worker.speculative_candidates
+            );
+            assert_eq!(
+                details.worker.evaluated_candidates,
+                details.worker.unsupported_cpu_candidates
+                    + details.worker.gpu_supported_cpu_candidates
+            );
+            if gpu.is_some() && budget > 0 {
+                assert!(
+                    details.worker.compacted_gpu_groups > 0,
+                    "{} / {}",
+                    serde_json::to_string(&details).unwrap(),
+                    serde_json::to_string(&stats).unwrap()
+                );
+                assert!(details.worker.compacted_queue_bytes > 0);
+            }
+            if gpu.is_some() && budget == 0 {
+                assert!(details.worker.retained_limit_gpu_groups > 0);
+            }
             return (state.finish(), stats, provider_rounds);
         }
         if !q.vines.is_empty() {
@@ -134,7 +156,9 @@ fn gpu_vine_planner_handoff() {
             "discarding an oversized successful prefix must replay on CPU"
         );
         gpu.lock().unwrap().enable_for_test(false);
-        let (failed, _, _) = pool.install(|| replay(&p, &field, r, Some(&gpu), 64 << 20, None));
+        let (failed, failed_stats, _) =
+            pool.install(|| replay(&p, &field, r, Some(&gpu), 64 << 20, None));
+        assert!(failed_stats.device_failure_anchors > 0);
         assert_eq!(
             failed, expected,
             "disabled device keeps the original CPU continuation"
@@ -152,6 +176,7 @@ fn gpu_vine_planner_handoff() {
         let (overflow, stats) = gpu.lock().unwrap().run(&input, r, prog, &jobs);
         assert!(overflow[0].is_none());
         assert_eq!(stats.fallbacks, 1);
+        assert_eq!(stats.overflow_anchors, 1);
         input.words[5] = CAP as u32;
         input.words[30] = 1;
         let (overflow, _) = gpu.lock().unwrap().run(&input, r, prog, &jobs);

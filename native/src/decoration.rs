@@ -562,6 +562,7 @@ pub(crate) struct Replay<'a> {
     retained_bytes: AtomicUsize,
     peak_retained_bytes: AtomicUsize,
     retained_limit: usize,
+    diagnostic_programs: Option<vine_gpu::Programs>,
 }
 impl<'a> Replay<'a> {
     pub(crate) fn new(
@@ -591,6 +592,7 @@ impl<'a> Replay<'a> {
             retained_bytes: AtomicUsize::new(0),
             peak_retained_bytes: AtomicUsize::new(0),
             retained_limit: 64 * 1024 * 1024,
+            diagnostic_programs: None,
         }
     }
     pub(crate) fn with_gpu_programs(mut self, programs: Option<vine_gpu::Programs>) -> Self {
@@ -620,6 +622,9 @@ impl<'a> Replay<'a> {
         mut details: Option<&mut diagnostics::Planning>,
     ) -> Queries {
         let measuring = details.is_some();
+        if measuring && self.diagnostic_programs.is_none() {
+            self.diagnostic_programs = Some(vine_gpu::compile(self.profile, self.request));
+        }
         let generate = |scratch: &mut TreeScratch,
                         (index, (completed, pending)): (
             usize,
@@ -632,7 +637,10 @@ impl<'a> Replay<'a> {
             let z = self.field.origin_z + (index / self.field.side) as i32;
             let noise = provider_noise::Context::new(samples);
             let mut count_queries = Vec::new();
-            let mut worker = measuring.then(diagnostics::Worker::default);
+            let mut worker = measuring.then(|| diagnostics::Worker {
+                eligible: self.diagnostic_programs.clone(),
+                ..Default::default()
+            });
             let mut state = if let Some((state, bytes)) = pending.take() {
                 self.retained_bytes.fetch_sub(bytes, Ordering::Relaxed);
                 if let Some(worker) = worker.as_mut() {
@@ -676,6 +684,25 @@ impl<'a> Replay<'a> {
             );
             if let Some(recipe) = saved.as_ref().and_then(|state| state.gpu_pause) {
                 let mut state = saved.take().unwrap();
+                {
+                    let before = state.candidates.retained_bytes();
+                    let source = &self.profile.decorations[recipe as usize];
+                    let salt = source.placement_salt.unwrap_or(source.salt) as u64;
+                    if state.candidates.defer_gpu_group(
+                        recipe,
+                        [x * 16, self.request.min_y, z * 16],
+                        self.request.seed
+                            ^ salt
+                            ^ mix(x as u32 as u64)
+                            ^ mix((z as u32 as u64) << 32),
+                    ) {
+                        if let Some(worker) = &mut worker {
+                            worker.compacted_gpu_groups += 1;
+                            worker.compacted_queue_bytes +=
+                                before.saturating_sub(state.candidates.retained_bytes()) as u64;
+                        }
+                    }
+                }
                 let bytes = state.retained_bytes();
                 if let Ok(previous) =
                     self.retained_bytes
@@ -698,6 +725,9 @@ impl<'a> Replay<'a> {
                 // An oversized prefix stays on this worker; do not discard it
                 // and repeatedly try the same GPU handoff on the next poll.
                 state.gpu = None;
+                if let Some(worker) = &mut worker {
+                    worker.retained_limit_gpu_groups += 1;
+                }
                 state.gpu_pause = None;
                 state.gpu_after = Some(recipe);
                 (blocks, saved) = evaluate_anchor(
@@ -1138,6 +1168,29 @@ fn evaluate_anchor(
     noise: &provider_noise::Context,
     missing: &mut Vec<counts::Query>,
     retain: bool,
+    timing: Option<&mut diagnostics::Worker>,
+    scratch: &mut TreeScratch,
+) -> (Vec<WorldBlock>, Option<Anchor>) {
+    if timing.is_some() {
+        evaluate_anchor_impl::<true>(
+            state, field, profile, request, mask, counts, noise, missing, retain, timing, scratch,
+        )
+    } else {
+        evaluate_anchor_impl::<false>(
+            state, field, profile, request, mask, counts, noise, missing, retain, timing, scratch,
+        )
+    }
+}
+fn evaluate_anchor_impl<const MEASURE: bool>(
+    state: Anchor,
+    field: &Field,
+    profile: &WorldProfile,
+    request: ChunkRequest,
+    mask: Option<&crate::geology::CaveMask>,
+    counts: Option<&counts::Counts>,
+    noise: &provider_noise::Context,
+    missing: &mut Vec<counts::Query>,
+    retain: bool,
     mut timing: Option<&mut diagnostics::Worker>,
     scratch: &mut TreeScratch,
 ) -> (Vec<WorldBlock>, Option<Anchor>) {
@@ -1151,7 +1204,7 @@ fn evaluate_anchor(
         gpu_after,
         gpu_pause: _,
     } = state;
-    let evaluation = diagnostics::start(timing.is_some());
+    let evaluation = diagnostics::start(MEASURE);
     let mut saved = None;
     let mut invalid = false;
     loop {
@@ -1187,6 +1240,8 @@ fn evaluate_anchor(
             }
         }
         let mut queue_checkpoint = None;
+        let queue_start = diagnostics::start(MEASURE);
+        let can_pause = gpu.is_some() && !invalid && missing.is_empty() && !noise.is_missing();
         let next = candidates.next_checkpoint(
             field,
             profile,
@@ -1196,7 +1251,21 @@ fn evaluate_anchor(
             counts,
             missing,
             (retain && !invalid).then_some(&mut queue_checkpoint),
+            |group, recipe| {
+                can_pause
+                    && group == recipe
+                    && gpu_after.is_none_or(|previous| recipe > previous)
+                    && gpu
+                        .as_ref()
+                        .is_some_and(|programs| programs[recipe as usize].is_some())
+            },
         );
+        if MEASURE {
+            diagnostics::record(
+                queue_start,
+                timing.as_mut().map(|t| &mut t.candidate_queue_nanos),
+            );
+        }
         if let Some(placement::QueueCheckpoint { queue, cache }) = queue_checkpoint {
             invalid = true;
             saved = Some(Anchor {
@@ -1211,6 +1280,11 @@ fn evaluate_anchor(
             });
         }
         let Some(candidate) = next else {
+            // Lazy expansion can exhaust an earlier group inside the queue.
+            // Return to the GPU boundary check before consuming the new group.
+            if candidates.peek_group().is_some() {
+                continue;
+            }
             break;
         };
         let before_candidate = completed;
@@ -1218,13 +1292,21 @@ fn evaluate_anchor(
         if let Some(timing) = timing.as_mut() {
             timing.evaluated_candidates += 1;
             let id = candidate.recipe as usize;
+            let speculative = invalid || !missing.is_empty() || noise.is_missing();
+            timing.speculative_candidates += u64::from(speculative);
+            timing.resolved_candidates += u64::from(!speculative);
+            let supported = timing.eligible.as_ref().is_some_and(|p| p[id].is_some());
+            timing.unsupported_cpu_candidates += u64::from(!supported);
+            timing.gpu_supported_cpu_candidates += u64::from(supported);
+            timing.unresolved_gpu_candidates += u64::from(supported && speculative);
             if timing.recipe_candidates.len() <= id {
                 timing.recipe_candidates.resize(id + 1, [0; 2]);
             }
             timing.recipe_candidates[id][0] += 1;
         }
         let recipe = &profile.decorations[candidate.recipe as usize];
-        let Some(position) = placement::position(
+        let checks_start = diagnostics::start(MEASURE);
+        let position = placement::position(
             &candidate,
             recipe,
             field,
@@ -1232,7 +1314,14 @@ fn evaluate_anchor(
             request,
             &overlay,
             &mut evaluation_cache,
-        ) else {
+        );
+        if MEASURE {
+            diagnostics::record(
+                checks_start,
+                timing.as_mut().map(|t| &mut t.placement_checks_nanos),
+            );
+        }
+        let Some(position) = position else {
             continue;
         };
         let [x, y, z] = position;
@@ -1254,6 +1343,7 @@ fn evaluate_anchor(
             overlay.record_feature();
         }
         let mut rng = Rng::new(candidate.seed);
+        let feature_start = diagnostics::start(MEASURE);
         match &recipe.feature {
             Kind::Disk { .. } | Kind::Sequence { .. } | Kind::Overlay { .. } => {
                 patch::place_registered(
@@ -1344,6 +1434,9 @@ fn evaluate_anchor(
                 noise,
             ),
         }
+        if MEASURE {
+            diagnostics::record(feature_start, timing.as_mut().map(|t| &mut t.feature_nanos));
+        }
         if retain && !invalid && noise.is_missing() {
             invalid = true;
             let mut queue = candidates.clone();
@@ -1362,6 +1455,7 @@ fn evaluate_anchor(
         if record {
             overlay.finish_feature();
         }
+        let commit_start = diagnostics::start(MEASURE);
         if profile.ordered_decorations {
             // Preserve the same within-feature replay as the live overlay,
             // while retaining complete feature command order across anchors.
@@ -1379,6 +1473,12 @@ fn evaluate_anchor(
             }
         }
         overlay.commit(&blocks, start, field, profile, request);
+        if MEASURE {
+            diagnostics::record(
+                commit_start,
+                timing.as_mut().map(|t| &mut t.overlay_commit_nanos),
+            );
+        }
     }
     diagnostics::record(evaluation, timing.as_mut().map(|t| &mut t.evaluation_nanos));
     (blocks, saved)
