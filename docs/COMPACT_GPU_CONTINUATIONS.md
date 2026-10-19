@@ -63,6 +63,11 @@ alone: the instrumented worker pass spends about 205 ms in queue processing,
 150 ms in placement checks, 106 ms in all feature construction, and 21 ms in
 overlay commit. Tree time is a nested 12 ms, not an additional cost.
 
+Follow-up [error classification](VINE_GPU_FALLBACK_TRIAL.md) established that the
+48 anchors labeled overflow above failed on unavailable material reads. They did
+not exhaust queue/output capacity. The corrected diagnostics separate these causes;
+the historical raw measurements retain the original counter interpretation.
+
 ## Measurements
 
 [Raw samples](benchmarks/compact-gpu-continuations-2026-10-19.json) retain final

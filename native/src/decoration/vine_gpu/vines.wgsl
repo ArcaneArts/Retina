@@ -11,6 +11,10 @@ var<private> local_column:u32;
 var<private> candidate_index:u32;
 var<private> failed:bool;
 const NONE:u32=0xffffffffu;
+const UNKNOWN_MATERIAL:u32=1u;
+const QUEUE_FULL:u32=2u;
+const OUTPUT_FULL:u32=4u;
+const INCOMPLETE:u32=8u;
 fn anchor(i:u32)->vec4<u32>{let at=4u+i*8u;return vec4<u32>(anchor_data[at],anchor_data[at+1u],anchor_data[at+2u],anchor_data[at+3u]);}
 fn list_base()->u32{return owner*(1u+256u*(1u+data[30]));}
 
@@ -98,9 +102,9 @@ fn prepare(@builtin(global_invocation_id) gid:vec3<u32>){
  let feature=data[12]+data[23];let yes=biome(p)&&possible(data[27],data[28],p)&&possible(data[feature],data[feature+1u],p);
  candidates[owner*n+gid.x]=vec4<u32>(bitcast<vec3<u32>>(p),select(u32(yes),2u,failed));
  {
-  if(failed){atomicStore(&column_lists[list_base()],1u);return;}
+  if(failed){atomicOr(&column_lists[list_base()],UNKNOWN_MATERIAL);return;}
   if(yes){let col=u32(z-bitcast<i32>(a.y)*16)*16u+u32(x-bitcast<i32>(a.x)*16);let start=list_base()+1u+col*(1u+data[30]);
-   let index=atomicAdd(&column_lists[start],1u);if(index<data[30]){atomicStore(&column_lists[start+1u+index],gid.x);}else{atomicStore(&column_lists[list_base()],1u);}
+   let index=atomicAdd(&column_lists[start],1u);if(index<data[30]){atomicStore(&column_lists[start+1u+index],gid.x);}else{atomicOr(&column_lists[list_base()],QUEUE_FULL);}
   }
  }
 }
@@ -118,13 +122,13 @@ fn columns(@builtin(global_invocation_id) gid:vec3<u32>){
  owner=gid.y;local_column=gid.x;failed=false;if(owner>=anchor_data[0]||local_column>=256u){return;}
  if(atomicLoad(&column_lists[list_base()])!=0u){return;}
  let start=list_base()+1u+local_column*(1u+data[30]);let n=atomicLoad(&column_lists[start]);
- if(n>data[30]||n>128u){atomicStore(&column_lists[list_base()],1u);return;}
+ if(n>data[30]||n>128u){atomicOr(&column_lists[list_base()],QUEUE_FULL);return;}
  var order:array<u32,128>;
  for(var i=0u;i<n;i++){let id=atomicLoad(&column_lists[start+1u+i]);var j=i;while(j>0u&&order[j-1u]>id){order[j]=order[j-1u];j--;}order[j]=id;}
  
  for(var i=0u;i<n;i++){
   candidate_index=owner*data[24]*data[25]+order[i];let p=bitcast<vec3<i32>>(candidates[candidate_index].xyz);candidates[candidate_index].w=0u;
-  if(predicate(data[27],data[28],p)){vine(p);}if(failed){atomicStore(&column_lists[list_base()],1u);return;}
+  if(predicate(data[27],data[28],p)){vine(p);}if(failed){atomicOr(&column_lists[list_base()],UNKNOWN_MATERIAL);return;}
  }
 }
 
@@ -143,8 +147,9 @@ fn gather(@builtin(workgroup_id) group:vec3<u32>,@builtin(local_invocation_index
  let base=owner*(4u+data[5]*5u);
  if(lane==0u){
   var total=0u;var err=atomicLoad(&column_lists[list_base()]);
-  for(var i=0u;i<64u;i++){total+=gather_counts[i];err|=gather_errors[i];}
-  gather_failed=u32(err!=0u||total>data[5]);output[base]=select(total,0u,gather_failed!=0u);output[base+1u]=gather_failed;output[base+2u]=n;output[base+3u]=0u;
+  var pending=0u;for(var i=0u;i<64u;i++){total+=gather_counts[i];pending|=gather_errors[i];}
+  if(err==0u&&pending!=0u){err|=INCOMPLETE;}if(total>data[5]){err|=OUTPUT_FULL;}
+  gather_failed=err;output[base]=total;output[base+1u]=gather_failed;output[base+2u]=n;output[base+3u]=0u;
  }
  workgroupBarrier();if(gather_failed!=0u){return;}
  for(var i=start;i<end;i++){

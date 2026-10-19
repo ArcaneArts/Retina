@@ -1,0 +1,274 @@
+diff --git a/native/src/decoration/vine_gpu.rs b/native/src/decoration/vine_gpu.rs
+index 34d494f..43009f6 100644
+--- a/native/src/decoration/vine_gpu.rs
++++ b/native/src/decoration/vine_gpu.rs
+@@ -24,0 +25 @@ pub(crate) struct Program {
++    horizontal_margin: u32,
+@@ -47,8 +48,2 @@ impl Program {
+-        let [
+-            Modifier::Count { count: outer },
+-            Modifier::Count { count: inner },
+-            Modifier::InSquare,
+-            Modifier::HeightRange { height },
+-            Modifier::BlockPredicateFilter { predicate },
+-            Modifier::Biome,
+-        ] = &ops[..]
++        let [Modifier::Count { count: outer }, Modifier::Count { count: inner }, Modifier::InSquare, Modifier::HeightRange { height }, Modifier::BlockPredicateFilter { predicate }, Modifier::Biome] =
++            &ops[..]
+@@ -128,0 +124 @@ impl Program {
++            horizontal_margin: 0,
+@@ -146,0 +143 @@ impl Program {
++            horizontal_margin: &mut u32,
+@@ -154,0 +152,3 @@ impl Program {
++                    *horizontal_margin = (*horizontal_margin)
++                        .max(offset[0].unsigned_abs())
++                        .max(offset[2].unsigned_abs());
+@@ -169 +169 @@ impl Program {
+-                    visit(predicate, words, ops, outputs)?;
++                    visit(predicate, words, ops, outputs, horizontal_margin)?;
+@@ -176 +176 @@ impl Program {
+-                        visit(p, words, ops, outputs)?;
++                        visit(p, words, ops, outputs, horizontal_margin)?;
+@@ -184 +184,7 @@ impl Program {
+-        visit(p, &mut self.words, &mut ops, outputs)?;
++        visit(
++            p,
++            &mut self.words,
++            &mut ops,
++            outputs,
++            &mut self.horizontal_margin,
++        )?;
+@@ -234 +240,25 @@ impl Input {
+-        let width = field.side.checked_mul(16)?;
++        let substrate = field.substrate.as_ref()?;
++        let anchor_width = field.side.checked_mul(16)?;
++        let anchor_x = i64::from(field.origin_x) * 16;
++        let anchor_z = i64::from(field.origin_z) * 16;
++        // Material generation already retains guard columns for registered
++        // patches. Include only the compiled program's available footprint;
++        // this does not create extra anchors or generate additional terrain.
++        // Quart alignment preserves the packed 3D biome grid's coordinates.
++        let margin = substrate.columns.as_ref().map_or(0, |columns| {
++            let left = (i64::from(substrate.origin_x) + 1).max(i64::from(columns.origin_x) * 16);
++            let top = (i64::from(substrate.origin_z) + 1).max(i64::from(columns.origin_z) * 16);
++            let right = (i64::from(substrate.origin_x) + 1 + substrate.width as i64 - 2)
++                .min((i64::from(columns.origin_x) + columns.side as i64) * 16);
++            let bottom = (i64::from(substrate.origin_z) + 1 + substrate.width as i64 - 2)
++                .min((i64::from(columns.origin_z) + columns.side as i64) * 16);
++            let available = (anchor_x - left)
++                .min(anchor_z - top)
++                .min(right - anchor_x - anchor_width as i64)
++                .min(bottom - anchor_z - anchor_width as i64)
++                .max(0);
++            (available.min(i64::from(program.horizontal_margin.div_ceil(4) * 4)) / 4 * 4) as usize
++        });
++        let width = anchor_width.checked_add(margin.checked_mul(2)?)?;
++        let origin_x = anchor_x - margin as i64;
++        let origin_z = anchor_z - margin as i64;
+@@ -243,2 +273 @@ impl Input {
+-        for chunk in [field.origin_x, field.origin_z] {
+-            let start = chunk as i64 * 16;
++        for start in [origin_x, origin_z] {
+@@ -251,2 +280,2 @@ impl Input {
+-        words[0] = (field.origin_x * 16) as u32;
+-        words[1] = (field.origin_z * 16) as u32;
++        words[0] = origin_x as i32 as u32;
++        words[1] = origin_z as i32 as u32;
+@@ -267 +295,0 @@ impl Input {
+-        let substrate = field.substrate.as_ref()?;
+@@ -270,2 +298,2 @@ impl Input {
+-                let wx = field.origin_x * 16 + x as i32;
+-                let wz = field.origin_z * 16 + z as i32;
++                let wx = origin_x as i32 + x as i32;
++                let wz = origin_z as i32 + z as i32;
+@@ -292,2 +320,2 @@ impl Input {
+-                    let wx = field.origin_x * 16 + x as i32;
+-                    let wz = field.origin_z * 16 + z as i32;
++                    let wx = origin_x as i32 + x as i32;
++                    let wz = origin_z as i32 + z as i32;
+diff --git a/native/src/decoration/vine_gpu/device.rs b/native/src/decoration/vine_gpu/device.rs
+index 580d374..654c5fc 100644
+--- a/native/src/decoration/vine_gpu/device.rs
++++ b/native/src/decoration/vine_gpu/device.rs
+@@ -24,0 +25 @@ pub(crate) struct Stats {
++    /// True queue/output capacity overflows, excluding unavailable material.
+@@ -25,0 +27,4 @@ pub(crate) struct Stats {
++    pub unresolved_material_anchors: u64,
++    pub column_queue_overflow_anchors: u64,
++    pub output_capacity_overflow_anchors: u64,
++    pub incomplete_candidate_anchors: u64,
+@@ -48,0 +54,4 @@ impl Stats {
++        self.unresolved_material_anchors += b.unresolved_material_anchors;
++        self.column_queue_overflow_anchors += b.column_queue_overflow_anchors;
++        self.output_capacity_overflow_anchors += b.output_capacity_overflow_anchors;
++        self.incomplete_candidate_anchors += b.incomplete_candidate_anchors;
+@@ -288 +296,0 @@ impl Gpu {
+-                    stats.overflow_anchors += overflow;
+@@ -460 +468,7 @@ impl Gpu {
+-                    if words[1] != 0 || words[0] as usize > capacity {
++                    let flags = words[1];
++                    stats.unresolved_material_anchors += u64::from(flags & 1 != 0);
++                    stats.column_queue_overflow_anchors += u64::from(flags & 2 != 0);
++                    stats.output_capacity_overflow_anchors += u64::from(flags & 4 != 0);
++                    stats.incomplete_candidate_anchors += u64::from(flags & 8 != 0);
++                    stats.overflow_anchors += u64::from(flags & 6 != 0);
++                    if flags != 0 || words[0] as usize > capacity {
+diff --git a/native/src/decoration/vine_gpu/tests.rs b/native/src/decoration/vine_gpu/tests.rs
+index 419d3dd..eb1170c 100644
+--- a/native/src/decoration/vine_gpu/tests.rs
++++ b/native/src/decoration/vine_gpu/tests.rs
+@@ -179,0 +180,3 @@ fn gpu_vine_planner_handoff() {
++        assert_eq!(stats.output_capacity_overflow_anchors, 1);
++        assert_eq!(stats.column_queue_overflow_anchors, 0);
++        assert_eq!(stats.unresolved_material_anchors, 0);
+@@ -182 +185 @@ fn gpu_vine_planner_handoff() {
+-        let (overflow, _) = gpu.lock().unwrap().run(&input, r, prog, &jobs);
++        let (overflow, stats) = gpu.lock().unwrap().run(&input, r, prog, &jobs);
+@@ -183,0 +187,3 @@ fn gpu_vine_planner_handoff() {
++        assert_eq!(stats.column_queue_overflow_anchors, 1);
++        assert_eq!(stats.output_capacity_overflow_anchors, 0);
++        assert_eq!(stats.unresolved_material_anchors, 0);
+@@ -232,0 +239,116 @@ fn gpu_vine_registered_planner() {
++
++fn guarded_field(profile: &WorldProfile, request: ChunkRequest) -> Field {
++    let wide = super::super::anchor_probe::vine_field(profile, 5, 6, request, 3);
++    let side = wide.side - 2;
++    let columns = (1..=side)
++        .flat_map(|z| {
++            let start = (z * wide.side + 1) * COLUMNS;
++            wide.columns[start..start + side * COLUMNS].iter().copied()
++        })
++        .collect();
++    let mut substrate = Arc::try_unwrap(wide.substrate.unwrap()).ok().unwrap();
++    substrate.columns = Some(crate::geology::ColumnHalo {
++        origin_x: wide.origin_x,
++        origin_z: wide.origin_z,
++        side: wide.side,
++        columns: Arc::new(wide.columns),
++    });
++    Field {
++        origin_x: wide.origin_x + 1,
++        origin_z: wide.origin_z + 1,
++        side,
++        columns,
++        substrate: Some(Arc::new(substrate)),
++    }
++}
++
++fn horizontal_predicate(profile: &mut WorldProfile, offset: i32) {
++    let mut ops = profile.decorations[5].placement.as_ref().unwrap().to_vec();
++    ops[4] = Modifier::BlockPredicateFilter {
++        predicate: serde_json::from_value(json!({
++            "type":"material", "offset":[-offset,0,0], "allowed":[1]
++        }))
++        .unwrap(),
++    };
++    profile.decorations[5].placement = Some(ops.into());
++}
++
++#[test]
++fn vine_input_uses_only_available_quart_aligned_program_guards() {
++    let (mut p, r) = fixture();
++    let field = guarded_field(&p, r);
++    for radius in [0, 1, 4, 5, 16, 17, 32] {
++        horizontal_predicate(&mut p, radius);
++        let programs = compile(&p, r);
++        let program = programs[5].as_ref().unwrap();
++        assert_eq!(program.horizontal_margin, radius as u32);
++        let input = Input::new(&field, &p, r, 5, program, None).unwrap();
++        let margin = (radius as u32).div_ceil(4).min(4) * 4;
++        assert_eq!(input.words[2], field.side as u32 * 16 + margin * 2);
++        assert_eq!(input.words[0] as i32, field.origin_x * 16 - margin as i32);
++        assert_eq!(input.words[1] as i32, field.origin_z * 16 - margin as i32);
++        assert_eq!(input.words[0] as i32 % 4, 0);
++        // Earlier feature writes in the newly included guard must remain in
++        // the anchor overlay and override the immutable base material.
++        let mut overlay = Overlay::default();
++        if margin > 0 {
++            overlay.write(&p, [field.origin_x * 16 - 1, 70, field.origin_z * 16], 6);
++            let anchors = input.anchors(r, program, &[(r.chunk_x, r.chunk_z, &overlay)]);
++            assert_eq!(anchors[9], 1);
++            assert_eq!(anchors[anchors[8] as usize + 1], 6);
++        }
++    }
++}
++
++#[test]
++#[ignore = "bounded Metal existing guard columns and unknown-input fallback correctness"]
++fn gpu_vine_guard_columns() {
++    let engine = crate::TerrainEngine::new().unwrap();
++    let (device, queue) = engine.ore_gpu.lock().unwrap().shared_device();
++    let mut gpu = Gpu::new(device, queue, engine.backend());
++    gpu.enable_for_test(true);
++    let gpu = Mutex::new(gpu);
++    let pool = rayon::ThreadPoolBuilder::new()
++        .num_threads(2)
++        .build()
++        .unwrap();
++    for origin in [0, -17, 1_000_000] {
++        for (radius, guard, needs_fallback) in
++            [(1, true, false), (1, false, true), (32, true, true)]
++        {
++            let (mut p, mut r) = fixture();
++            horizontal_predicate(&mut p, radius);
++            r.chunk_x = origin;
++            r.chunk_z = -origin;
++            let field = if guard {
++                let field = guarded_field(&p, r);
++                r.chunk_x += 1;
++                r.chunk_z += 1;
++                field
++            } else {
++                super::super::anchor_probe::vine_field(&p, 5, 6, r, 1)
++            };
++            let (expected, _, _) = pool.install(|| replay(&p, &field, r, None, 64 << 20, None));
++            let (actual, stats, _) =
++                pool.install(|| replay(&p, &field, r, Some(&gpu), 64 << 20, None));
++            assert_eq!(
++                actual, expected,
++                "origin {origin}, radius {radius}, guard {guard}"
++            );
++            assert!(stats.anchors > 0);
++            assert_eq!(
++                stats.unresolved_material_anchors > 0,
++                needs_fallback,
++                "{stats:?}"
++            );
++            assert_eq!(
++                stats.overflow_anchors, 0,
++                "missing material is not capacity overflow"
++            );
++            assert_eq!(stats.incomplete_candidate_anchors, 0);
++            if !needs_fallback {
++                assert_eq!(stats.fallbacks, 0);
++            }
++        }
++    }
++}
+diff --git a/native/src/decoration/vine_gpu/vines.wgsl b/native/src/decoration/vine_gpu/vines.wgsl
+index 78bdb8f..5ab678c 100644
+--- a/native/src/decoration/vine_gpu/vines.wgsl
++++ b/native/src/decoration/vine_gpu/vines.wgsl
+@@ -13,0 +14,4 @@ const NONE:u32=0xffffffffu;
++const UNKNOWN_MATERIAL:u32=1u;
++const QUEUE_FULL:u32=2u;
++const OUTPUT_FULL:u32=4u;
++const INCOMPLETE:u32=8u;
+@@ -101 +105 @@ fn prepare(@builtin(global_invocation_id) gid:vec3<u32>){
+-  if(failed){atomicStore(&column_lists[list_base()],1u);return;}
++  if(failed){atomicOr(&column_lists[list_base()],UNKNOWN_MATERIAL);return;}
+@@ -103 +107 @@ fn prepare(@builtin(global_invocation_id) gid:vec3<u32>){
+-   let index=atomicAdd(&column_lists[start],1u);if(index<data[30]){atomicStore(&column_lists[start+1u+index],gid.x);}else{atomicStore(&column_lists[list_base()],1u);}
++   let index=atomicAdd(&column_lists[start],1u);if(index<data[30]){atomicStore(&column_lists[start+1u+index],gid.x);}else{atomicOr(&column_lists[list_base()],QUEUE_FULL);}
+@@ -121 +125 @@ fn columns(@builtin(global_invocation_id) gid:vec3<u32>){
+- if(n>data[30]||n>128u){atomicStore(&column_lists[list_base()],1u);return;}
++ if(n>data[30]||n>128u){atomicOr(&column_lists[list_base()],QUEUE_FULL);return;}
+@@ -127 +131 @@ fn columns(@builtin(global_invocation_id) gid:vec3<u32>){
+-  if(predicate(data[27],data[28],p)){vine(p);}if(failed){atomicStore(&column_lists[list_base()],1u);return;}
++  if(predicate(data[27],data[28],p)){vine(p);}if(failed){atomicOr(&column_lists[list_base()],UNKNOWN_MATERIAL);return;}
+@@ -146,2 +150,3 @@ fn gather(@builtin(workgroup_id) group:vec3<u32>,@builtin(local_invocation_index
+-  for(var i=0u;i<64u;i++){total+=gather_counts[i];err|=gather_errors[i];}
+-  gather_failed=u32(err!=0u||total>data[5]);output[base]=select(total,0u,gather_failed!=0u);output[base+1u]=gather_failed;output[base+2u]=n;output[base+3u]=0u;
++  var pending=0u;for(var i=0u;i<64u;i++){total+=gather_counts[i];pending|=gather_errors[i];}
++  if(err==0u&&pending!=0u){err|=INCOMPLETE;}if(total>data[5]){err|=OUTPUT_FULL;}
++  gather_failed=err;output[base]=total;output[base+1u]=gather_failed;output[base+2u]=n;output[base+3u]=0u;
