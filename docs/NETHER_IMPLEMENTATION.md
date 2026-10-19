@@ -237,9 +237,51 @@ corner/interior chunks matched ordered tick lists and 983,040 blocks. Host
 Fabric/NeoForge builds, registry loading/export, 89 Rust unit tests, three native
 GPU tests, Overworld block/feature tests, Superflat and Nether terrain checks pass.
 
-Cycle 3 still needs mushroom/fire/soul-fire survival, complete feature-root
-coverage diagnostics and shared generation-step ordering with ores. Structures,
-production activation and the final runtime matrix remain later cycles.
+At the end of cycle 3c, remaining feature work included mushroom/fire/soul-fire
+survival, complete feature-root coverage diagnostics and shared ordering with
+ores. Structures, production activation and the final runtime matrix remained
+later cycles.
+
+## Cycle 3d: fire and small mushroom survival
+
+SimpleBlock recipes are now considered in every loaded generation step. This
+retains Nether fire and soul-fire roots outside vegetation. The shared survival
+exporter preserves normal fire's sturdy support or burnable-neighbor rule, the
+loaded soul-fire base tag, and mushroom light overrides plus solid-render support.
+Fire burnability is sampled from the loaded FireBlock implementation during
+profile export, including waterlogged-state behavior. Native replay uses the
+resulting material predicates and sees earlier writes.
+
+Mushrooms use the fresh FEATURES-stage light context: Minecraft's uninitialized
+block-light storage reads zero, while an uninitialized sky-light column reads 15
+in dimensions with skylight. These values are bound only into decoration and
+shared survival tables before native execution. An actual Minecraft light engine
+and proto-chunk fixture verifies both contexts with emissive blocks present;
+FEATURES precedes INITIALIZE_LIGHT. Final chunk lighting is computed later, and
+runtime mushroom behavior remains Minecraft's responsibility.
+
+`netherFeatureTest` compares 12,960 complete feature write maps across the six
+loaded mushroom/fire roots, 15 floor states, every fire-neighbor direction, wet
+and dry leaves, fluid/solid origins, storage boundaries, and dimensions with and
+without skylight. It includes the native source noise ceiling and bedrock roof.
+There are 2,098 accepted and 10,862 rejected cases.
+
+Loaded mushroom heightmap/offset placements can decorate the top of the Nether's
+bedrock roof at Y=128. Region QA permits only those mushrooms above the noise
+volume and checks heightmaps using their actual Minecraft opacity predicates;
+the terrain itself still ends at Y=127. The mixed region requires brown and red
+mushrooms, fire, and soul fire, in addition to glowstone. All three region fixtures
+continue to compare blocks and ordered fluid ticks against independent chunks and
+preserve existing bytes on repeat publication.
+
+Host Fabric/NeoForge builds, registry export, 89 Rust unit tests, three native
+GPU tests, 1,195,846 shared-survival comparisons, Overworld feature tests,
+Superflat and Nether terrain regressions pass. The three regions retain 983,040
+independent block comparisons.
+
+The next feature cycle must finish whole-graph coverage diagnostics and shared
+generation-step ordering with ores. Structures and production activation are
+still deferred.
 
 ## Remaining cycles
 

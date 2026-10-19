@@ -92,6 +92,7 @@ final class FlatTerrainProfile {
         TerrainFeatureProfile.finishReplacementTables(entries, palette);
         DecorationProfile.finishPlacements(world.getAsJsonArray("decorations"), palette, minY, height);
         DecorationProfile.finishCurrentSurvival(world, palette);
+        DecorationProfile.finishGenerationLighting(world,skyLight);
         DecorationProfile.materialFlags(world, palette);
         world.add("lighting", LightingProfile.export(palette.keySet(), skyLight));
         var air = new JsonArray();

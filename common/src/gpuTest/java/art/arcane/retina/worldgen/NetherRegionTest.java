@@ -31,7 +31,7 @@ final class NetherRegionTest {
     }
 
     static void check(TerrainProfileData data, BiomeTerrainProfile profile, boolean features) throws Exception {
-        check(data,profile,features,features ? Set.of(Blocks.GLOWSTONE) : Set.of());
+        check(data,profile,features,features ? Set.of(Blocks.GLOWSTONE,Blocks.BROWN_MUSHROOM,Blocks.RED_MUSHROOM,Blocks.FIRE,Blocks.SOUL_FIRE) : Set.of());
     }
 
     static void check(TerrainProfileData data, BiomeTerrainProfile profile, boolean features, Set<Block> requiredFeatures) throws Exception {
@@ -56,7 +56,8 @@ final class NetherRegionTest {
         long activeFluidTicks = 0, comparedFluidTicks = 0;
         Map<String,Long> featureCounts=new TreeMap<>();
         var counted=Set.of(Blocks.GLOWSTONE,Blocks.WEEPING_VINES,Blocks.WEEPING_VINES_PLANT,Blocks.CRIMSON_STEM,
-                Blocks.WARPED_STEM,Blocks.SHROOMLIGHT,Blocks.CRIMSON_ROOTS,Blocks.WARPED_ROOTS,Blocks.NETHER_SPROUTS);
+                Blocks.WARPED_STEM,Blocks.SHROOMLIGHT,Blocks.CRIMSON_ROOTS,Blocks.WARPED_ROOTS,Blocks.NETHER_SPROUTS,
+                Blocks.BROWN_MUSHROOM,Blocks.RED_MUSHROOM,Blocks.FIRE,Blocks.SOUL_FIRE);
         try (var storage = new RegionFileStorage(new RegionStorageInfo("nether-terrain-test", Level.NETHER, "chunk"), directory, false)) {
             for (int z = 0; z < 32; z++) for (int x = -32; x < 0; x++) {
                 var position = new ChunkPos(x, z);
@@ -65,10 +66,7 @@ final class NetherRegionTest {
                 require(tag.getIntOr("DataVersion", -1) == version, "current data version");
                 require(tag.getIntOr("xPos", 0) == x && tag.getIntOr("zPos", -1) == z, "saved chunk coordinates");
                 fluidTicks += NetherSpringTest.checkRegionTicks(tag,position);
-                for (String name : new String[]{"WORLD_SURFACE", "OCEAN_FLOOR", "MOTION_BLOCKING", "MOTION_BLOCKING_NO_LEAVES"}) {
-                    var bits = new SimpleBitStorage(9, 256, tag.getCompoundOrEmpty("Heightmaps").getLongArray(name).orElseThrow());
-                    for (int c = 0; c < 256; c++) require(bits.get(c) == 128, "saved heightmap sees bedrock roof");
-                }
+                var roofPlants=new BlockState[256];
                 var sections = McaTestSections.terrain(tag, 0, 256);
                 for (var section : tag.getListOrEmpty("sections")) {
                     var nbt = (net.minecraft.nbt.CompoundTag) section;
@@ -86,10 +84,18 @@ final class NetherRegionTest {
                         }
                         for (int yy = 0; yy < 16; yy++) for (int zz = 0; zz < 16; zz++) for (int xx = 0; xx < 16; xx++) {
                             var state=blocks.get(xx,yy,zz);
-                            if(sy>=8)require(state.isAir(), "saved build space above roof remains air");
+                            if(sy>=8 && !state.isAir()) {
+                                require(features && sy==8 && yy==0 && (state.is(Blocks.BROWN_MUSHROOM) || state.is(Blocks.RED_MUSHROOM)), "only loaded mushrooms may decorate the roof; terrain above remains air");
+                                roofPlants[zz*16+xx]=state;
+                            }
                             if(features && counted.contains(state.getBlock()))featureCounts.merge(net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(state.getBlock()).toString(),1L,Long::sum);
                         }
                     }
+                }
+                for (String name : new String[]{"WORLD_SURFACE", "OCEAN_FLOOR", "MOTION_BLOCKING", "MOTION_BLOCKING_NO_LEAVES"}) {
+                    var bits = new SimpleBitStorage(9, 256, tag.getCompoundOrEmpty("Heightmaps").getLongArray(name).orElseThrow());
+                    var opaque=net.minecraft.world.level.levelgen.Heightmap.Types.valueOf(name).isOpaque();
+                    for(int c=0;c<256;c++)require(bits.get(c)==128+(roofPlants[c]!=null && opaque.test(roofPlants[c])?1:0),"saved heightmap follows bedrock roof and accepted decorations");
                 }
                 if (!probes.contains(position)) continue;
                 var request = NetherTerrainTest.request(profile, x, z, 0, 256);
