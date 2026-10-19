@@ -282,10 +282,13 @@ two matched Terralith trials by a further 6–8% against that implementation and
 reducing dense replay retention from about 46 to 6.7 MiB. These are separate
 comparisons, not an additive overall speedup. The
 [cycle tracker](docs/OPTIMIZATION_CYCLES_2026_10.md) records remaining work.
-The [complete GPU feature-program trial](docs/GPU_FEATURE_ANCHOR_TRIAL.md) adds
-opt-in recipe diagnostics and a measured independent-column vine prototype.
-It is test-only; normal generation retains the existing planner while full
-pipeline integration and end-to-end validation remain pending.
+The [complete GPU feature-program trial](docs/GPU_FEATURE_ANCHOR_TRIAL.md) led to
+[production vine-program offload](docs/GPU_VINE_PLANNING.md) for supported dense
+registered programs on Metal, with exact CPU continuation for other cases.
+Matched lit-MCA trials measured roughly 5–8% higher Terralith throughput serially
+and 4% with two callers, using a bounded comparison build at optimization level 2
+without LTO. Vanilla's small difference is inconclusive. Logical transfer volume
+increased modestly; the report includes memory costs and build limitations.
 
 ## Building and testing
 

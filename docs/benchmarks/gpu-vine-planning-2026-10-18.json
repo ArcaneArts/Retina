@@ -1,0 +1,3053 @@
+{
+  "base_revision": "c2da049791cf8d67b104511bb5b1287b8247e159",
+  "build": {
+    "final_native_build_seconds": 24.93,
+    "native_library_command": "cargo rustc --release --locked --manifest-path native/Cargo.toml --lib --crate-type cdylib -- -C lto=off -C opt-level=2",
+    "native_library_note": "Final crate opt-level 2/no LTO; dependencies and repository release settings unchanged. Matched CPU/GPU modes use the same retained library. Not comparable to historical normal-release rates.",
+    "test_binary_command": "cargo test --release --locked --manifest-path native/Cargo.toml --lib --no-run",
+    "test_binary_note": "Normal release opt-level 3/thin LTO; final build 45.54 seconds",
+    "test_binary_sha256": "5737fb17def3caceb0f189daad8505ed64a01800950cbd8129d2fc6be38286e9"
+  },
+  "date": "2026-10-18",
+  "diagnostics": {
+    "terralith-default": [
+      {
+        "anchors": 0,
+        "arena_bytes": 0,
+        "batches": 0,
+        "device_nanos": [
+          0,
+          0,
+          0
+        ],
+        "fallbacks": 5,
+        "host_nanos": 0,
+        "invalid_timestamps": 0,
+        "readback_bytes": 0,
+        "substrate_pack_nanos": 0,
+        "upload_bytes": 0
+      },
+      {
+        "anchors": 0,
+        "arena_bytes": 0,
+        "batches": 0,
+        "device_nanos": [
+          0,
+          0,
+          0
+        ],
+        "fallbacks": 4,
+        "host_nanos": 0,
+        "invalid_timestamps": 0,
+        "readback_bytes": 0,
+        "substrate_pack_nanos": 0,
+        "upload_bytes": 0
+      },
+      {
+        "anchors": 170,
+        "arena_bytes": 70705168,
+        "batches": 3,
+        "device_nanos": [
+          1048124,
+          469916,
+          142124
+        ],
+        "fallbacks": 20,
+        "host_nanos": 10225833,
+        "invalid_timestamps": 1,
+        "readback_bytes": 873264,
+        "substrate_pack_nanos": 21711042,
+        "upload_bytes": 28256528
+      },
+      {
+        "anchors": 0,
+        "arena_bytes": 0,
+        "batches": 0,
+        "device_nanos": [
+          0,
+          0,
+          0
+        ],
+        "fallbacks": 2,
+        "host_nanos": 0,
+        "invalid_timestamps": 0,
+        "readback_bytes": 0,
+        "substrate_pack_nanos": 0,
+        "upload_bytes": 0
+      },
+      {
+        "anchors": 0,
+        "arena_bytes": 0,
+        "batches": 0,
+        "device_nanos": [
+          0,
+          0,
+          0
+        ],
+        "fallbacks": 35,
+        "host_nanos": 0,
+        "invalid_timestamps": 0,
+        "readback_bytes": 0,
+        "substrate_pack_nanos": 0,
+        "upload_bytes": 0
+      },
+      {
+        "anchors": 514,
+        "arena_bytes": 70957264,
+        "batches": 9,
+        "device_nanos": [
+          8364710,
+          1772583,
+          1680042
+        ],
+        "fallbacks": 15,
+        "host_nanos": 22549250,
+        "invalid_timestamps": 0,
+        "readback_bytes": 2640336,
+        "substrate_pack_nanos": 22534083,
+        "upload_bytes": 27756300
+      },
+      {
+        "anchors": 0,
+        "arena_bytes": 0,
+        "batches": 0,
+        "device_nanos": [
+          0,
+          0,
+          0
+        ],
+        "fallbacks": 31,
+        "host_nanos": 0,
+        "invalid_timestamps": 0,
+        "readback_bytes": 0,
+        "substrate_pack_nanos": 0,
+        "upload_bytes": 0
+      },
+      {
+        "anchors": 624,
+        "arena_bytes": 70957264,
+        "batches": 10,
+        "device_nanos": [
+          6972167,
+          2091417,
+          1290040
+        ],
+        "fallbacks": 44,
+        "host_nanos": 18536375,
+        "invalid_timestamps": 0,
+        "readback_bytes": 3205344,
+        "substrate_pack_nanos": 23137208,
+        "upload_bytes": 27181564
+      },
+      {
+        "anchors": 0,
+        "arena_bytes": 0,
+        "batches": 0,
+        "device_nanos": [
+          0,
+          0,
+          0
+        ],
+        "fallbacks": 57,
+        "host_nanos": 0,
+        "invalid_timestamps": 0,
+        "readback_bytes": 0,
+        "substrate_pack_nanos": 0,
+        "upload_bytes": 0
+      }
+    ],
+    "terralith-gpu-a": [
+      {
+        "anchors": 5,
+        "arena_bytes": 30512956,
+        "batches": 1,
+        "device_nanos": [
+          106666,
+          10666,
+          0
+        ],
+        "fallbacks": 2,
+        "host_nanos": 235003708,
+        "invalid_timestamps": 1,
+        "readback_bytes": 204928,
+        "substrate_pack_nanos": 23861708,
+        "upload_bytes": 26836568
+      },
+      {
+        "anchors": 4,
+        "arena_bytes": 30515116,
+        "batches": 1,
+        "device_nanos": [
+          169625,
+          92417,
+          201292
+        ],
+        "fallbacks": 1,
+        "host_nanos": 4011125,
+        "invalid_timestamps": 0,
+        "readback_bytes": 163952,
+        "substrate_pack_nanos": 22727666,
+        "upload_bytes": 26838728
+      },
+      {
+        "anchors": 170,
+        "arena_bytes": 75292688,
+        "batches": 3,
+        "device_nanos": [
+          4144832,
+          1267707,
+          482459
+        ],
+        "fallbacks": 20,
+        "host_nanos": 12092417,
+        "invalid_timestamps": 0,
+        "readback_bytes": 6966064,
+        "substrate_pack_nanos": 23862791,
+        "upload_bytes": 28256528
+      },
+      {
+        "anchors": 2,
+        "arena_bytes": 75292688,
+        "batches": 1,
+        "device_nanos": [
+          145167,
+          17458,
+          97625
+        ],
+        "fallbacks": 2,
+        "host_nanos": 4030292,
+        "invalid_timestamps": 0,
+        "readback_bytes": 82000,
+        "substrate_pack_nanos": 22850792,
+        "upload_bytes": 28220160
+      },
+      {
+        "anchors": 35,
+        "arena_bytes": 75307640,
+        "batches": 1,
+        "device_nanos": [
+          167917,
+          42791,
+          144459
+        ],
+        "fallbacks": 9,
+        "host_nanos": 3642833,
+        "invalid_timestamps": 0,
+        "readback_bytes": 1434208,
+        "substrate_pack_nanos": 22544125,
+        "upload_bytes": 26598472
+      },
+      {
+        "anchors": 514,
+        "arena_bytes": 75562784,
+        "batches": 9,
+        "device_nanos": [
+          7895208,
+          1600000,
+          1437876
+        ],
+        "fallbacks": 15,
+        "host_nanos": 21904500,
+        "invalid_timestamps": 0,
+        "readback_bytes": 21062096,
+        "substrate_pack_nanos": 23829459,
+        "upload_bytes": 27752580
+      },
+      {
+        "anchors": 27,
+        "arena_bytes": 75562784,
+        "batches": 1,
+        "device_nanos": [
+          735292,
+          347000,
+          364375
+        ],
+        "fallbacks": 4,
+        "host_nanos": 6580000,
+        "invalid_timestamps": 0,
+        "readback_bytes": 1106400,
+        "substrate_pack_nanos": 20192958,
+        "upload_bytes": 26747884
+      },
+      {
+        "anchors": 623,
+        "arena_bytes": 75562784,
+        "batches": 10,
+        "device_nanos": [
+          7641374,
+          2113706,
+          1307414
+        ],
+        "fallbacks": 45,
+        "host_nanos": 19239042,
+        "invalid_timestamps": 0,
+        "readback_bytes": 25528528,
+        "substrate_pack_nanos": 23890459,
+        "upload_bytes": 27177420
+      },
+      {
+        "anchors": 57,
+        "arena_bytes": 75562784,
+        "batches": 1,
+        "device_nanos": [
+          1337750,
+          349167,
+          261334
+        ],
+        "fallbacks": 3,
+        "host_nanos": 6675959,
+        "invalid_timestamps": 0,
+        "readback_bytes": 2335680,
+        "substrate_pack_nanos": 22911250,
+        "upload_bytes": 27009780
+      }
+    ],
+    "terralith-gpu-b": [
+      {
+        "anchors": 0,
+        "arena_bytes": 0,
+        "batches": 0,
+        "device_nanos": [
+          0,
+          0,
+          0
+        ],
+        "fallbacks": 5,
+        "host_nanos": 0,
+        "invalid_timestamps": 0,
+        "readback_bytes": 0,
+        "substrate_pack_nanos": 0,
+        "upload_bytes": 0
+      },
+      {
+        "anchors": 0,
+        "arena_bytes": 0,
+        "batches": 0,
+        "device_nanos": [
+          0,
+          0,
+          0
+        ],
+        "fallbacks": 4,
+        "host_nanos": 0,
+        "invalid_timestamps": 0,
+        "readback_bytes": 0,
+        "substrate_pack_nanos": 0,
+        "upload_bytes": 0
+      },
+      {
+        "anchors": 170,
+        "arena_bytes": 70705168,
+        "batches": 3,
+        "device_nanos": [
+          1055334,
+          472043,
+          139666
+        ],
+        "fallbacks": 20,
+        "host_nanos": 9289583,
+        "invalid_timestamps": 1,
+        "readback_bytes": 873264,
+        "substrate_pack_nanos": 21749208,
+        "upload_bytes": 28256528
+      },
+      {
+        "anchors": 0,
+        "arena_bytes": 0,
+        "batches": 0,
+        "device_nanos": [
+          0,
+          0,
+          0
+        ],
+        "fallbacks": 2,
+        "host_nanos": 0,
+        "invalid_timestamps": 0,
+        "readback_bytes": 0,
+        "substrate_pack_nanos": 0,
+        "upload_bytes": 0
+      },
+      {
+        "anchors": 0,
+        "arena_bytes": 0,
+        "batches": 0,
+        "device_nanos": [
+          0,
+          0,
+          0
+        ],
+        "fallbacks": 35,
+        "host_nanos": 0,
+        "invalid_timestamps": 0,
+        "readback_bytes": 0,
+        "substrate_pack_nanos": 0,
+        "upload_bytes": 0
+      },
+      {
+        "anchors": 513,
+        "arena_bytes": 70962096,
+        "batches": 9,
+        "device_nanos": [
+          7136460,
+          1560666,
+          1548750
+        ],
+        "fallbacks": 15,
+        "host_nanos": 21998250,
+        "invalid_timestamps": 0,
+        "readback_bytes": 2635200,
+        "substrate_pack_nanos": 22835708,
+        "upload_bytes": 27757836
+      },
+      {
+        "anchors": 0,
+        "arena_bytes": 0,
+        "batches": 0,
+        "device_nanos": [
+          0,
+          0,
+          0
+        ],
+        "fallbacks": 29,
+        "host_nanos": 0,
+        "invalid_timestamps": 0,
+        "readback_bytes": 0,
+        "substrate_pack_nanos": 0,
+        "upload_bytes": 0
+      },
+      {
+        "anchors": 624,
+        "arena_bytes": 70962096,
+        "batches": 10,
+        "device_nanos": [
+          8777500,
+          2458418,
+          1738249
+        ],
+        "fallbacks": 44,
+        "host_nanos": 22076042,
+        "invalid_timestamps": 0,
+        "readback_bytes": 3205344,
+        "substrate_pack_nanos": 23715125,
+        "upload_bytes": 27181564
+      },
+      {
+        "anchors": 0,
+        "arena_bytes": 0,
+        "batches": 0,
+        "device_nanos": [
+          0,
+          0,
+          0
+        ],
+        "fallbacks": 57,
+        "host_nanos": 0,
+        "invalid_timestamps": 0,
+        "readback_bytes": 0,
+        "substrate_pack_nanos": 0,
+        "upload_bytes": 0
+      }
+    ],
+    "terralith-gpu-c": []
+  },
+  "limitations": [
+    "Six regions per trial; p95 is descriptive, not a stable production tail.",
+    "Vanilla has no eligible vine program; difference is inconclusive.",
+    "Two concurrent callers checked, not maximum eight-caller lifecycle stress.",
+    "Vulkan/DX12 keep CPU default pending runtime validation.",
+    "Transfer volume increases with substrate uploads; no memory reduction claim.",
+    "Registered Terralith planner evidence preceded default-on selection and extra fallback assertions; core evaluation algorithm unchanged."
+  ],
+  "limits": {
+    "cargo_jobs": 2,
+    "compile_deadline_seconds": 60,
+    "execution_deadline_seconds": 30,
+    "nice": 10,
+    "production_max_in_flight_unchanged": 8,
+    "rayon_threads": 2,
+    "region_workers": 2,
+    "termination_grace_seconds": 1
+  },
+  "rejected_attempts": {
+    "default_native_compilation": "Three distinct shared-library build configurations exceeded 60 seconds; groups terminated. Reduced final-crate optimization allowed bounded matched native-library tests.",
+    "initial_integration": "0.7% throughput change inconclusive; replaced sparse packing, first-dense kernel initialization and 2048-write output slots.",
+    "removed_unit_binary_mca_harness": "Cold specialization exceeded bounded readiness windows, including a 60-second preparation timeout. No performance claim from these runs; existing native-library harness used instead."
+  },
+  "results": {
+    "terralith-cpu-a": {
+      "aquifer_columns": null,
+      "average_region_ms": 897.6712567964569,
+      "benchmark_scope": "lit-mca",
+      "build": {
+        "harness_dirty": true,
+        "harness_dirty_fingerprint": "6055b3a642a8ae8f6e5372a6956f7d46fde56c3644f3c19f200ff9c8619a7bdc",
+        "harness_revision": "c2da049791cf8d67b104511bb5b1287b8247e159",
+        "library": "/private/tmp/retina-vine-o2/libretina_worldgen.dylib",
+        "library_revision": "c2da049+vine-integration; final-crate opt-level=2 lto=off",
+        "library_sha256": "68c303772fa9931fefe2624ecf0cb72a850639f1bab75e5fe502690b8434560e"
+      },
+      "cached_density_masks": null,
+      "chunks_per_second": 1133.3317419137172,
+      "columns_include_lakes": false,
+      "coordinates": {
+        "grid_width": 3,
+        "origin_x": -1,
+        "origin_z": -1
+      },
+      "corpus": {
+        "algorithm": "sha256",
+        "files": [
+          {
+            "file": "0.mca",
+            "records": 1024,
+            "sha256": "14edae2f79b18cfa1d0dc2a3b413b30df507b39f8fda03dd722af9c49f0ffdb4"
+          },
+          {
+            "file": "1.mca",
+            "records": 1024,
+            "sha256": "7bae81c751556aa1b06075c43d762efd7a4ce7b76f7ca8b7df24fb09a3aa1209"
+          },
+          {
+            "file": "2.mca",
+            "records": 1024,
+            "sha256": "a4b25ba616000aef91c9d0ac9d12c8ceeb18590a6c53e76df6b1ac39057b7f67"
+          },
+          {
+            "file": "3.mca",
+            "records": 1024,
+            "sha256": "171dd8efa808bce9957389f2745639397763eefa350762c0f668a5a39c9bda63"
+          },
+          {
+            "file": "4.mca",
+            "records": 1024,
+            "sha256": "a573b0374773f8bd5a2c51dff95d69892aab1ba0a5cdc98f1dcccc2d7c880bf0"
+          },
+          {
+            "file": "5.mca",
+            "records": 1024,
+            "sha256": "254739492f479c0edb6e7fa3b90e3e6dc69bb07ff5ea4cf30e838b603b42d3bd"
+          }
+        ],
+        "records": 6144,
+        "sha256": "b30d4f4e9ae7f93172a5289e88a0a3c22440d89d57a1856a5df920a75aed8007"
+      },
+      "density_composition": null,
+      "gpu_pipeline": {
+        "completed": 142,
+        "device_gap_ms": 6451.099965,
+        "device_span_ms": 11324.035907,
+        "peak_in_flight": 2,
+        "unavailable_timestamp_pairs": 0
+      },
+      "gpu_program": {
+        "cache_hits": 0,
+        "compile_nanos": 4282146375,
+        "emitted": 17588,
+        "graphs": 91,
+        "horizontal_fields": 23,
+        "nodes": 23220,
+        "readback_bytes": 1003812916,
+        "source_bytes": 4873852,
+        "status": 4,
+        "upload_bytes": 1834239284
+      },
+      "gpu_timestamps": true,
+      "gpu_transfers": {
+        "readback_bytes": 859529836,
+        "readback_bytes_per_region": 143254972.66666666,
+        "upload_bytes": 1570972992,
+        "upload_bytes_per_region": 261828832.0
+      },
+      "host": {
+        "machine": "arm64",
+        "python": "3.12.9",
+        "release": "27.0.0",
+        "system": "Darwin"
+      },
+      "implementation": "initial 2048-write slots, all batches",
+      "interpolation_cache": null,
+      "interpreter_columns": null,
+      "interpreter_dispatch": null,
+      "interpreter_preload": null,
+      "lake_point_cache": null,
+      "lake_primed_corners": null,
+      "lake_sparse_fields": null,
+      "library": "/tmp/retina-vine-o2/libretina_worldgen.dylib",
+      "lighting": "enabled",
+      "material_dispatch": null,
+      "maximum_region_ms": 1236.7671250831336,
+      "median_ms": 913.6334584327415,
+      "p95_region_ms": 1222.365937603172,
+      "parallel": 1,
+      "peak_rss_bytes": 2701099008,
+      "profile_sha256": "8217ce97735f8646c9c9ce99b66be680c69cd639688975fa711fb7836d22bf4a",
+      "program_execution": null,
+      "readiness": "shader-ready",
+      "readiness_wait_ms": 2698.89450003393,
+      "region_file_bytes": 47702016,
+      "regions": [
+        {
+          "assembly_ms": 406.442708,
+          "generated": 1024,
+          "gpu_ms": 131.523542,
+          "ms": 562.5220828223974,
+          "name": "0",
+          "program_status": 4,
+          "write_ms": 24.455125,
+          "x": -1,
+          "z": -1
+        },
+        {
+          "assembly_ms": 864.80625,
+          "generated": 1024,
+          "gpu_ms": 91.808292,
+          "ms": 970.5636249855161,
+          "name": "1",
+          "program_status": 4,
+          "write_ms": 13.916583,
+          "x": 0,
+          "z": -1
+        },
+        {
+          "assembly_ms": 722.174083,
+          "generated": 1024,
+          "gpu_ms": 118.742542,
+          "ms": 856.7032918799669,
+          "name": "2",
+          "program_status": 4,
+          "write_ms": 15.659875,
+          "x": 1,
+          "z": -1
+        },
+        {
+          "assembly_ms": 479.040833,
+          "generated": 1024,
+          "gpu_ms": 87.935875,
+          "ms": 580.3090408444405,
+          "name": "3",
+          "program_status": 4,
+          "write_ms": 13.249125,
+          "x": -1,
+          "z": 0
+        },
+        {
+          "assembly_ms": 1129.295833,
+          "generated": 1024,
+          "gpu_ms": 92.887542,
+          "ms": 1236.7671250831336,
+          "name": "4",
+          "program_status": 4,
+          "write_ms": 14.551792,
+          "x": 0,
+          "z": 0
+        },
+        {
+          "assembly_ms": 1066.675791,
+          "generated": 1024,
+          "gpu_ms": 93.991959,
+          "ms": 1179.162375163287,
+          "name": "5",
+          "program_status": 4,
+          "write_ms": 18.463,
+          "x": 1,
+          "z": 0
+        }
+      ],
+      "schema": "retina.native-region-benchmark",
+      "schema_version": 1,
+      "seed": 123456789,
+      "specialized_interpolation": null,
+      "stage_ms_chunk": {
+        "aquifer_fields": 0.016249688151041667,
+        "aquifer_mask": 0.012097941080729166,
+        "assembly": 0.04017090380859375,
+        "cave_density": 0.011417480305989583,
+        "cave_features": 0.01978203922526042,
+        "cave_mask": 0.02209880908203125,
+        "columns": 0.009486957194010416,
+        "compress": 0.08457454573567708,
+        "encode": 0.00609527001953125,
+        "feature_counts": 5.157486979166667e-05,
+        "geology": 0.026996690592447917,
+        "height": 0.06345880110677084,
+        "io": 0.016326761555989583,
+        "lake_candidates": 0.014985019368489585,
+        "lake_density": 0.013980253743489584,
+        "lake_reduce": 0.0007871785481770834,
+        "light_host": 0.040279391764322915,
+        "light_pack": 0.0007515188802083334,
+        "light_sky": 0.00704258935546875,
+        "light_spread": 0.02144064680989583,
+        "materials": 0.02047754573567708,
+        "nbt": 0.093707705078125,
+        "ore_mask": 0.010738986490885416,
+        "ore_plan": 0.040449524251302084,
+        "provider_noise": 0.00012582047526041667,
+        "queue": 0.009592244140625,
+        "sites": 0.009089763509114585,
+        "snow": 0.0014355081380208333,
+        "structure_plan": 0.10526235595703125,
+        "structures": 0.015853952473958335,
+        "vegetation": 0.001399412109375,
+        "vegetation_plan": 0.41634256298828126,
+        "wait_copy": 0.2229197986653646
+      },
+      "startup": {
+        "initialize_ms": 73.03862483240664,
+        "registration_ms": 1313.5557500645518,
+        "warmups": [
+          {
+            "assembly_ms": 998.405459,
+            "generated": 1024,
+            "gpu_ms": 618.121291,
+            "ms": 1636.4569999277592,
+            "name": "warm0",
+            "program_status": 1,
+            "write_ms": 19.82475,
+            "x": 8,
+            "z": 8
+          }
+        ]
+      },
+      "terrain_execution": null,
+      "timing_version": 8,
+      "total_ms": 5421.184082981199,
+      "vine_mode": "CPU override"
+    },
+    "terralith-cpu-b": {
+      "aquifer_columns": null,
+      "average_region_ms": 881.9970761736234,
+      "benchmark_scope": "lit-mca",
+      "build": {
+        "harness_dirty": true,
+        "harness_dirty_fingerprint": "6055b3a642a8ae8f6e5372a6956f7d46fde56c3644f3c19f200ff9c8619a7bdc",
+        "harness_revision": "c2da049791cf8d67b104511bb5b1287b8247e159",
+        "library": "/private/tmp/retina-vine-batched/libretina_worldgen.dylib",
+        "library_revision": "c2da049+batched-vines; final-crate opt-level=2 lto=off",
+        "library_sha256": "5c796eb088633d8fda585f845d89e6c0691c03bd472658b624336d4d8157f60c"
+      },
+      "cached_density_masks": null,
+      "chunks_per_second": 1160.160852423218,
+      "columns_include_lakes": false,
+      "comparison": {
+        "identical_nbt_chunks": 6144,
+        "membership_identical": true
+      },
+      "coordinates": {
+        "grid_width": 3,
+        "origin_x": -1,
+        "origin_z": -1
+      },
+      "corpus": {
+        "algorithm": "sha256",
+        "files": [
+          {
+            "file": "0.mca",
+            "records": 1024,
+            "sha256": "14edae2f79b18cfa1d0dc2a3b413b30df507b39f8fda03dd722af9c49f0ffdb4"
+          },
+          {
+            "file": "1.mca",
+            "records": 1024,
+            "sha256": "7bae81c751556aa1b06075c43d762efd7a4ce7b76f7ca8b7df24fb09a3aa1209"
+          },
+          {
+            "file": "2.mca",
+            "records": 1024,
+            "sha256": "a4b25ba616000aef91c9d0ac9d12c8ceeb18590a6c53e76df6b1ac39057b7f67"
+          },
+          {
+            "file": "3.mca",
+            "records": 1024,
+            "sha256": "171dd8efa808bce9957389f2745639397763eefa350762c0f668a5a39c9bda63"
+          },
+          {
+            "file": "4.mca",
+            "records": 1024,
+            "sha256": "a573b0374773f8bd5a2c51dff95d69892aab1ba0a5cdc98f1dcccc2d7c880bf0"
+          },
+          {
+            "file": "5.mca",
+            "records": 1024,
+            "sha256": "254739492f479c0edb6e7fa3b90e3e6dc69bb07ff5ea4cf30e838b603b42d3bd"
+          }
+        ],
+        "records": 6144,
+        "sha256": "b30d4f4e9ae7f93172a5289e88a0a3c22440d89d57a1856a5df920a75aed8007"
+      },
+      "density_composition": null,
+      "gpu_pipeline": {
+        "completed": 137,
+        "device_gap_ms": 6295.031333,
+        "device_span_ms": 12480.817876,
+        "peak_in_flight": 2,
+        "unavailable_timestamp_pairs": 0
+      },
+      "gpu_program": {
+        "cache_hits": 0,
+        "compile_nanos": 4257954250,
+        "emitted": 17588,
+        "graphs": 91,
+        "horizontal_fields": 23,
+        "nodes": 23220,
+        "readback_bytes": 1003812356,
+        "source_bytes": 4873852,
+        "status": 4,
+        "upload_bytes": 1834239284
+      },
+      "gpu_timestamps": true,
+      "gpu_transfers": {
+        "readback_bytes": 859529276,
+        "readback_bytes_per_region": 143254879.33333334,
+        "upload_bytes": 1570972992,
+        "upload_bytes_per_region": 261828832.0
+      },
+      "host": {
+        "machine": "arm64",
+        "python": "3.12.9",
+        "release": "27.0.0",
+        "system": "Darwin"
+      },
+      "identical_nbt_chunks": 6144,
+      "implementation": "256-write slots, sparse CPU continuation, early initialization",
+      "interpolation_cache": null,
+      "interpreter_columns": null,
+      "interpreter_dispatch": null,
+      "interpreter_preload": null,
+      "lake_point_cache": null,
+      "lake_primed_corners": null,
+      "lake_sparse_fields": null,
+      "library": "/tmp/retina-vine-batched/libretina_worldgen.dylib",
+      "lighting": "enabled",
+      "material_dispatch": null,
+      "maximum_region_ms": 1252.5813749525696,
+      "median_ms": 884.1008745366707,
+      "p95_region_ms": 1225.550562434364,
+      "parallel": 1,
+      "peak_rss_bytes": 2519154688,
+      "profile_sha256": "8217ce97735f8646c9c9ce99b66be680c69cd639688975fa711fb7836d22bf4a",
+      "program_execution": null,
+      "readiness": "shader-ready",
+      "readiness_wait_ms": 2670.3996669966727,
+      "region_file_bytes": 47702016,
+      "regions": [
+        {
+          "assembly_ms": 414.28,
+          "generated": 1024,
+          "gpu_ms": 133.364208,
+          "ms": 560.5275831185281,
+          "name": "0",
+          "program_status": 4,
+          "write_ms": 12.718417,
+          "x": -1,
+          "z": -1
+        },
+        {
+          "assembly_ms": 831.658125,
+          "generated": 1024,
+          "gpu_ms": 98.6225,
+          "ms": 945.7010410260409,
+          "name": "1",
+          "program_status": 4,
+          "write_ms": 15.369042,
+          "x": 0,
+          "z": -1
+        },
+        {
+          "assembly_ms": 687.413167,
+          "generated": 1024,
+          "gpu_ms": 120.774833,
+          "ms": 822.5007080473006,
+          "name": "2",
+          "program_status": 4,
+          "write_ms": 14.228375,
+          "x": 1,
+          "z": -1
+        },
+        {
+          "assembly_ms": 464.2725,
+          "generated": 1024,
+          "gpu_ms": 89.265958,
+          "ms": 566.2136250175536,
+          "name": "3",
+          "program_status": 4,
+          "write_ms": 12.474416,
+          "x": -1,
+          "z": 0
+        },
+        {
+          "assembly_ms": 1133.51075,
+          "generated": 1024,
+          "gpu_ms": 98.725833,
+          "ms": 1252.5813749525696,
+          "name": "4",
+          "program_status": 4,
+          "write_ms": 20.180292,
+          "x": 0,
+          "z": 0
+        },
+        {
+          "assembly_ms": 1015.64275,
+          "generated": 1024,
+          "gpu_ms": 104.274167,
+          "ms": 1144.4581248797476,
+          "name": "5",
+          "program_status": 4,
+          "write_ms": 24.509166,
+          "x": 1,
+          "z": 0
+        }
+      ],
+      "schema": "retina.native-region-benchmark",
+      "schema_version": 1,
+      "seed": 123456789,
+      "specialized_interpolation": null,
+      "stage_ms_chunk": {
+        "aquifer_fields": 0.0125664873046875,
+        "aquifer_mask": 0.0132119208984375,
+        "assembly": 0.04067080615234375,
+        "cave_density": 0.011785664388020834,
+        "cave_features": 0.01857495491536458,
+        "cave_mask": 0.024034993489583333,
+        "columns": 0.0097120703125,
+        "compress": 0.081677638671875,
+        "encode": 0.007180317708333333,
+        "feature_counts": 5.1384765625e-05,
+        "geology": 0.02741615673828125,
+        "height": 0.06262687890625,
+        "io": 0.016194342936197915,
+        "lake_candidates": 0.01472372802734375,
+        "lake_density": 0.014336805826822917,
+        "lake_reduce": 0.00080925048828125,
+        "light_host": 0.03666655126953125,
+        "light_pack": 0.0007828570963541666,
+        "light_sky": 0.00555838330078125,
+        "light_spread": 0.019888129069010416,
+        "materials": 0.02144773372395833,
+        "nbt": 0.0910144912109375,
+        "ore_mask": 0.008138732584635417,
+        "ore_plan": 0.03922713232421875,
+        "provider_noise": 6.607405598958332e-05,
+        "queue": 0.009571194661458334,
+        "sites": 0.009227850911458333,
+        "snow": 0.0014460115559895832,
+        "structure_plan": 0.10779635953776043,
+        "structures": 0.01629836181640625,
+        "vegetation": 0.0014464202473958333,
+        "vegetation_plan": 0.40116187890625,
+        "wait_copy": 0.226036283203125
+      },
+      "startup": {
+        "initialize_ms": 50.02445797435939,
+        "registration_ms": 1287.0617911685258,
+        "warmups": [
+          {
+            "assembly_ms": 1001.104833,
+            "generated": 1024,
+            "gpu_ms": 661.978542,
+            "ms": 1691.721708048135,
+            "name": "warm0",
+            "program_status": 1,
+            "write_ms": 28.477541,
+            "x": 8,
+            "z": 8
+          }
+        ]
+      },
+      "terrain_execution": null,
+      "timing_version": 8,
+      "total_ms": 5295.817374950275,
+      "vine_mode": "CPU override"
+    },
+    "terralith-default": {
+      "aquifer_columns": null,
+      "average_region_ms": 813.7904233299196,
+      "benchmark_scope": "lit-mca",
+      "build": {
+        "harness_dirty": true,
+        "harness_dirty_fingerprint": "2bd95a55f680eb5764185bd0bdff01262247838b634d60f8ecb078ccfbc675af",
+        "harness_revision": "c2da049791cf8d67b104511bb5b1287b8247e159",
+        "library": "/private/tmp/retina-vine-final/libretina_worldgen.dylib",
+        "library_revision": "c2da049+final-vines; final-crate opt-level=2 lto=off",
+        "library_sha256": "13c71f6d135dab9b67bb5aa4b46843d2dbb030defd0ad06e94f76dd1f0f050a5"
+      },
+      "cached_density_masks": null,
+      "chunks_per_second": 1257.6089923730904,
+      "columns_include_lakes": false,
+      "comparison": {
+        "identical_nbt_chunks": 6144,
+        "membership_identical": true
+      },
+      "coordinates": {
+        "grid_width": 3,
+        "origin_x": -1,
+        "origin_z": -1
+      },
+      "corpus": {
+        "algorithm": "sha256",
+        "files": [
+          {
+            "file": "0.mca",
+            "records": 1024,
+            "sha256": "14edae2f79b18cfa1d0dc2a3b413b30df507b39f8fda03dd722af9c49f0ffdb4"
+          },
+          {
+            "file": "1.mca",
+            "records": 1024,
+            "sha256": "7bae81c751556aa1b06075c43d762efd7a4ce7b76f7ca8b7df24fb09a3aa1209"
+          },
+          {
+            "file": "2.mca",
+            "records": 1024,
+            "sha256": "a4b25ba616000aef91c9d0ac9d12c8ceeb18590a6c53e76df6b1ac39057b7f67"
+          },
+          {
+            "file": "3.mca",
+            "records": 1024,
+            "sha256": "171dd8efa808bce9957389f2745639397763eefa350762c0f668a5a39c9bda63"
+          },
+          {
+            "file": "4.mca",
+            "records": 1024,
+            "sha256": "a573b0374773f8bd5a2c51dff95d69892aab1ba0a5cdc98f1dcccc2d7c880bf0"
+          },
+          {
+            "file": "5.mca",
+            "records": 1024,
+            "sha256": "254739492f479c0edb6e7fa3b90e3e6dc69bb07ff5ea4cf30e838b603b42d3bd"
+          }
+        ],
+        "records": 6144,
+        "sha256": "b30d4f4e9ae7f93172a5289e88a0a3c22440d89d57a1856a5df920a75aed8007"
+      },
+      "density_composition": null,
+      "gpu_pipeline": {
+        "completed": 143,
+        "device_gap_ms": 6172.744876,
+        "device_span_ms": 10989.04466,
+        "peak_in_flight": 2,
+        "unavailable_timestamp_pairs": 0
+      },
+      "gpu_program": {
+        "cache_hits": 0,
+        "compile_nanos": 4252804834,
+        "emitted": 17588,
+        "graphs": 91,
+        "horizontal_fields": 23,
+        "nodes": 23220,
+        "readback_bytes": 1010532580,
+        "source_bytes": 4873852,
+        "status": 4,
+        "upload_bytes": 1917433676
+      },
+      "gpu_timestamps": true,
+      "gpu_transfers": {
+        "readback_bytes": 866249500,
+        "readback_bytes_per_region": 144374916.66666666,
+        "upload_bytes": 1654167384,
+        "upload_bytes_per_region": 275694564.0
+      },
+      "host": {
+        "machine": "arm64",
+        "python": "3.12.9",
+        "release": "27.0.0",
+        "system": "Darwin"
+      },
+      "identical_nbt_chunks": 6144,
+      "implementation": "256-write slots, sparse CPU continuation, early initialization",
+      "interpolation_cache": null,
+      "interpreter_columns": null,
+      "interpreter_dispatch": null,
+      "interpreter_preload": null,
+      "lake_point_cache": null,
+      "lake_primed_corners": null,
+      "lake_sparse_fields": null,
+      "library": "/tmp/retina-vine-final/libretina_worldgen.dylib",
+      "lighting": "enabled",
+      "material_dispatch": null,
+      "maximum_region_ms": 1070.3579159453511,
+      "median_ms": 872.1149789635092,
+      "p95_region_ms": 1038.7461971840821,
+      "parallel": 1,
+      "peak_rss_bytes": 2983608320,
+      "profile_sha256": "8217ce97735f8646c9c9ce99b66be680c69cd639688975fa711fb7836d22bf4a",
+      "program_execution": null,
+      "readiness": "shader-ready",
+      "readiness_wait_ms": 2703.1433330848813,
+      "region_file_bytes": 47702016,
+      "regions": [
+        {
+          "assembly_ms": 398.94225,
+          "generated": 1024,
+          "gpu_ms": 129.646209,
+          "ms": 555.0973750650883,
+          "name": "0",
+          "program_status": 4,
+          "write_ms": 26.149209,
+          "x": -1,
+          "z": -1
+        },
+        {
+          "assembly_ms": 786.153875,
+          "generated": 1024,
+          "gpu_ms": 96.893917,
+          "ms": 943.9110409002751,
+          "name": "1",
+          "program_status": 4,
+          "write_ms": 60.822875,
+          "x": 0,
+          "z": -1
+        },
+        {
+          "assembly_ms": 654.391959,
+          "generated": 1024,
+          "gpu_ms": 116.299916,
+          "ms": 806.778582977131,
+          "name": "2",
+          "program_status": 4,
+          "write_ms": 35.66975,
+          "x": 1,
+          "z": -1
+        },
+        {
+          "assembly_ms": 473.737042,
+          "generated": 1024,
+          "gpu_ms": 79.301042,
+          "ms": 569.1462501417845,
+          "name": "3",
+          "program_status": 4,
+          "write_ms": 15.957208,
+          "x": -1,
+          "z": 0
+        },
+        {
+          "assembly_ms": 958.947708,
+          "generated": 1024,
+          "gpu_ms": 96.853292,
+          "ms": 1070.3579159453511,
+          "name": "4",
+          "program_status": 4,
+          "write_ms": 14.506166,
+          "x": 0,
+          "z": 0
+        },
+        {
+          "assembly_ms": 824.185,
+          "generated": 1024,
+          "gpu_ms": 97.804667,
+          "ms": 937.4513749498874,
+          "name": "5",
+          "program_status": 4,
+          "write_ms": 15.424833,
+          "x": 1,
+          "z": 0
+        }
+      ],
+      "schema": "retina.native-region-benchmark",
+      "schema_version": 1,
+      "seed": 123456789,
+      "specialized_interpolation": null,
+      "stage_ms_chunk": {
+        "aquifer_fields": 0.02034449609375,
+        "aquifer_mask": 0.012175191243489585,
+        "assembly": 0.03773497249348959,
+        "cave_density": 0.011446329427083334,
+        "cave_features": 0.01748553531901042,
+        "cave_mask": 0.02197868538411458,
+        "columns": 0.009518900065104165,
+        "compress": 0.08003678678385417,
+        "encode": 0.00518600146484375,
+        "feature_counts": 5.347330729166666e-05,
+        "geology": 0.02548655322265625,
+        "height": 0.0633674638671875,
+        "io": 0.027432576497395833,
+        "lake_candidates": 0.015143044596354165,
+        "lake_density": 0.013774651692708334,
+        "lake_reduce": 0.0008083486328125,
+        "light_host": 0.0360274248046875,
+        "light_pack": 0.00075848388671875,
+        "light_sky": 0.006323893717447917,
+        "light_spread": 0.02001292529296875,
+        "materials": 0.02056667724609375,
+        "nbt": 0.0901197470703125,
+        "ore_mask": 0.00969491943359375,
+        "ore_plan": 0.039859001953125,
+        "provider_noise": 8.428971354166668e-05,
+        "queue": 0.009681750651041666,
+        "sites": 0.009174527018229166,
+        "snow": 0.0013142384440104167,
+        "structure_plan": 0.10384362776692709,
+        "structures": 0.015314062337239583,
+        "vegetation": 0.0012938870442708332,
+        "vegetation_plan": 0.33412271451822917,
+        "wait_copy": 0.2232601658528646
+      },
+      "startup": {
+        "initialize_ms": 50.96237501129508,
+        "registration_ms": 1303.6018330603838,
+        "warmups": [
+          {
+            "assembly_ms": 1004.724375,
+            "generated": 1024,
+            "gpu_ms": 610.610292,
+            "ms": 1631.6911249887198,
+            "name": "warm0",
+            "program_status": 1,
+            "write_ms": 15.781584,
+            "x": 8,
+            "z": 8
+          }
+        ]
+      },
+      "terrain_execution": null,
+      "timing_version": 8,
+      "total_ms": 4885.461250087246,
+      "vine_mode": "Metal default (no override)"
+    },
+    "terralith-gpu-a": {
+      "aquifer_columns": null,
+      "average_region_ms": 896.6408960598832,
+      "benchmark_scope": "lit-mca",
+      "build": {
+        "harness_dirty": true,
+        "harness_dirty_fingerprint": "6055b3a642a8ae8f6e5372a6956f7d46fde56c3644f3c19f200ff9c8619a7bdc",
+        "harness_revision": "c2da049791cf8d67b104511bb5b1287b8247e159",
+        "library": "/private/tmp/retina-vine-o2/libretina_worldgen.dylib",
+        "library_revision": "c2da049+vine-integration; final-crate opt-level=2 lto=off",
+        "library_sha256": "68c303772fa9931fefe2624ecf0cb72a850639f1bab75e5fe502690b8434560e"
+      },
+      "cached_density_masks": null,
+      "chunks_per_second": 1141.4298690618982,
+      "columns_include_lakes": false,
+      "comparison": {
+        "identical_nbt_chunks": 6144,
+        "membership_identical": true
+      },
+      "coordinates": {
+        "grid_width": 3,
+        "origin_x": -1,
+        "origin_z": -1
+      },
+      "corpus": {
+        "algorithm": "sha256",
+        "files": [
+          {
+            "file": "0.mca",
+            "records": 1024,
+            "sha256": "14edae2f79b18cfa1d0dc2a3b413b30df507b39f8fda03dd722af9c49f0ffdb4"
+          },
+          {
+            "file": "1.mca",
+            "records": 1024,
+            "sha256": "7bae81c751556aa1b06075c43d762efd7a4ce7b76f7ca8b7df24fb09a3aa1209"
+          },
+          {
+            "file": "2.mca",
+            "records": 1024,
+            "sha256": "a4b25ba616000aef91c9d0ac9d12c8ceeb18590a6c53e76df6b1ac39057b7f67"
+          },
+          {
+            "file": "3.mca",
+            "records": 1024,
+            "sha256": "171dd8efa808bce9957389f2745639397763eefa350762c0f668a5a39c9bda63"
+          },
+          {
+            "file": "4.mca",
+            "records": 1024,
+            "sha256": "a573b0374773f8bd5a2c51dff95d69892aab1ba0a5cdc98f1dcccc2d7c880bf0"
+          },
+          {
+            "file": "5.mca",
+            "records": 1024,
+            "sha256": "254739492f479c0edb6e7fa3b90e3e6dc69bb07ff5ea4cf30e838b603b42d3bd"
+          }
+        ],
+        "records": 6144,
+        "sha256": "b30d4f4e9ae7f93172a5289e88a0a3c22440d89d57a1856a5df920a75aed8007"
+      },
+      "density_composition": null,
+      "gpu_pipeline": {
+        "completed": 138,
+        "device_gap_ms": 6642.084714,
+        "device_span_ms": 12853.654581,
+        "peak_in_flight": 2,
+        "unavailable_timestamp_pairs": 0
+      },
+      "gpu_program": {
+        "cache_hits": 0,
+        "compile_nanos": 4203948792,
+        "emitted": 17588,
+        "graphs": 91,
+        "horizontal_fields": 23,
+        "nodes": 23220,
+        "readback_bytes": 1062696932,
+        "source_bytes": 4873852,
+        "status": 4,
+        "upload_bytes": 2079677404
+      },
+      "gpu_timestamps": true,
+      "gpu_transfers": {
+        "readback_bytes": 918413852,
+        "readback_bytes_per_region": 153068975.33333334,
+        "upload_bytes": 1816411112,
+        "upload_bytes_per_region": 302735185.3333333
+      },
+      "host": {
+        "machine": "arm64",
+        "python": "3.12.9",
+        "release": "27.0.0",
+        "system": "Darwin"
+      },
+      "identical_nbt_chunks": 6144,
+      "implementation": "initial 2048-write slots, all batches",
+      "interpolation_cache": null,
+      "interpreter_columns": null,
+      "interpreter_dispatch": null,
+      "interpreter_preload": null,
+      "lake_point_cache": null,
+      "lake_primed_corners": null,
+      "lake_sparse_fields": null,
+      "library": "/tmp/retina-vine-o2/libretina_worldgen.dylib",
+      "lighting": "enabled",
+      "material_dispatch": null,
+      "maximum_region_ms": 1243.3877082075924,
+      "median_ms": 905.8661040617153,
+      "p95_region_ms": 1217.0553541509435,
+      "parallel": 1,
+      "peak_rss_bytes": 2480832512,
+      "profile_sha256": "8217ce97735f8646c9c9ce99b66be680c69cd639688975fa711fb7836d22bf4a",
+      "program_execution": null,
+      "readiness": "shader-ready",
+      "readiness_wait_ms": 2700.8708328939974,
+      "region_file_bytes": 47702016,
+      "regions": [
+        {
+          "assembly_ms": 416.948417,
+          "generated": 1024,
+          "gpu_ms": 143.860583,
+          "ms": 574.3598339613527,
+          "name": "0",
+          "program_status": 4,
+          "write_ms": 13.5075,
+          "x": -1,
+          "z": -1
+        },
+        {
+          "assembly_ms": 1132.176792,
+          "generated": 1024,
+          "gpu_ms": 97.4725,
+          "ms": 1243.3877082075924,
+          "name": "1",
+          "program_status": 4,
+          "write_ms": 13.439375,
+          "x": 0,
+          "z": -1
+        },
+        {
+          "assembly_ms": 720.914083,
+          "generated": 1024,
+          "gpu_ms": 114.072333,
+          "ms": 858.1978329457343,
+          "name": "2",
+          "program_status": 4,
+          "write_ms": 22.823833,
+          "x": 1,
+          "z": -1
+        },
+        {
+          "assembly_ms": 516.383792,
+          "generated": 1024,
+          "gpu_ms": 80.373042,
+          "ms": 612.3073340859264,
+          "name": "3",
+          "program_status": 4,
+          "write_ms": 15.514042,
+          "x": -1,
+          "z": 0
+        },
+        {
+          "assembly_ms": 1035.694583,
+          "generated": 1024,
+          "gpu_ms": 88.083625,
+          "ms": 1138.0582919809967,
+          "name": "4",
+          "program_status": 4,
+          "write_ms": 14.243041,
+          "x": 0,
+          "z": 0
+        },
+        {
+          "assembly_ms": 847.2185,
+          "generated": 1024,
+          "gpu_ms": 92.851,
+          "ms": 953.5343751776963,
+          "name": "5",
+          "program_status": 4,
+          "write_ms": 12.980208,
+          "x": 1,
+          "z": 0
+        }
+      ],
+      "schema": "retina.native-region-benchmark",
+      "schema_version": 1,
+      "seed": 123456789,
+      "specialized_interpolation": null,
+      "stage_ms_chunk": {
+        "aquifer_fields": 0.014467875162760416,
+        "aquifer_mask": 0.012263061686197917,
+        "assembly": 0.03939466617838541,
+        "cave_density": 0.01138443212890625,
+        "cave_features": 0.01817421240234375,
+        "cave_mask": 0.023091451009114583,
+        "columns": 0.009434162923177085,
+        "compress": 0.08233280257161457,
+        "encode": 0.006884901692708333,
+        "feature_counts": 7.508675130208332e-05,
+        "geology": 0.02722505696614583,
+        "height": 0.060975192708333334,
+        "io": 0.015059624348958333,
+        "lake_candidates": 0.014627237630208335,
+        "lake_density": 0.014140463704427083,
+        "lake_reduce": 0.00080500634765625,
+        "light_host": 0.03599616748046875,
+        "light_pack": 0.00080590185546875,
+        "light_sky": 0.005931193033854167,
+        "light_spread": 0.02032752848307292,
+        "materials": 0.02079968977864583,
+        "nbt": 0.09051333430989583,
+        "ore_mask": 0.011169589518229167,
+        "ore_plan": 0.041751444498697915,
+        "provider_noise": 0.00012478287760416668,
+        "queue": 0.009510696451822917,
+        "sites": 0.009056280598958334,
+        "snow": 0.001374615234375,
+        "structure_plan": 0.10553118929036458,
+        "structures": 0.015975179036458335,
+        "vegetation": 0.0014551044921875,
+        "vegetation_plan": 0.42206291389973954,
+        "wait_copy": 0.21899985807291666
+      },
+      "startup": {
+        "initialize_ms": 51.57354101538658,
+        "registration_ms": 1289.7259171586484,
+        "warmups": [
+          {
+            "assembly_ms": 989.869041,
+            "generated": 1024,
+            "gpu_ms": 611.327042,
+            "ms": 1628.4666249994189,
+            "name": "warm0",
+            "program_status": 1,
+            "write_ms": 27.143542,
+            "x": 8,
+            "z": 8
+          }
+        ]
+      },
+      "terrain_execution": null,
+      "timing_version": 8,
+      "total_ms": 5382.7222911641,
+      "vine_mode": "GPU override"
+    },
+    "terralith-gpu-b": {
+      "aquifer_columns": null,
+      "average_region_ms": 835.940979149503,
+      "benchmark_scope": "lit-mca",
+      "build": {
+        "harness_dirty": true,
+        "harness_dirty_fingerprint": "6055b3a642a8ae8f6e5372a6956f7d46fde56c3644f3c19f200ff9c8619a7bdc",
+        "harness_revision": "c2da049791cf8d67b104511bb5b1287b8247e159",
+        "library": "/private/tmp/retina-vine-batched/libretina_worldgen.dylib",
+        "library_revision": "c2da049+batched-vines; final-crate opt-level=2 lto=off",
+        "library_sha256": "5c796eb088633d8fda585f845d89e6c0691c03bd472658b624336d4d8157f60c"
+      },
+      "cached_density_masks": null,
+      "chunks_per_second": 1222.897856681769,
+      "columns_include_lakes": false,
+      "comparison": {
+        "identical_nbt_chunks": 6144,
+        "membership_identical": true
+      },
+      "coordinates": {
+        "grid_width": 3,
+        "origin_x": -1,
+        "origin_z": -1
+      },
+      "corpus": {
+        "algorithm": "sha256",
+        "files": [
+          {
+            "file": "0.mca",
+            "records": 1024,
+            "sha256": "14edae2f79b18cfa1d0dc2a3b413b30df507b39f8fda03dd722af9c49f0ffdb4"
+          },
+          {
+            "file": "1.mca",
+            "records": 1024,
+            "sha256": "7bae81c751556aa1b06075c43d762efd7a4ce7b76f7ca8b7df24fb09a3aa1209"
+          },
+          {
+            "file": "2.mca",
+            "records": 1024,
+            "sha256": "a4b25ba616000aef91c9d0ac9d12c8ceeb18590a6c53e76df6b1ac39057b7f67"
+          },
+          {
+            "file": "3.mca",
+            "records": 1024,
+            "sha256": "171dd8efa808bce9957389f2745639397763eefa350762c0f668a5a39c9bda63"
+          },
+          {
+            "file": "4.mca",
+            "records": 1024,
+            "sha256": "a573b0374773f8bd5a2c51dff95d69892aab1ba0a5cdc98f1dcccc2d7c880bf0"
+          },
+          {
+            "file": "5.mca",
+            "records": 1024,
+            "sha256": "254739492f479c0edb6e7fa3b90e3e6dc69bb07ff5ea4cf30e838b603b42d3bd"
+          }
+        ],
+        "records": 6144,
+        "sha256": "b30d4f4e9ae7f93172a5289e88a0a3c22440d89d57a1856a5df920a75aed8007"
+      },
+      "density_composition": null,
+      "gpu_pipeline": {
+        "completed": 138,
+        "device_gap_ms": 6371.89021,
+        "device_span_ms": 12337.58762,
+        "peak_in_flight": 2,
+        "unavailable_timestamp_pairs": 0
+      },
+      "gpu_program": {
+        "cache_hits": 0,
+        "compile_nanos": 4319328667,
+        "emitted": 17588,
+        "graphs": 91,
+        "horizontal_fields": 23,
+        "nodes": 23220,
+        "readback_bytes": 1010526884,
+        "source_bytes": 4873852,
+        "status": 4,
+        "upload_bytes": 1917435212
+      },
+      "gpu_timestamps": true,
+      "gpu_transfers": {
+        "readback_bytes": 866243804,
+        "readback_bytes_per_region": 144373967.33333334,
+        "upload_bytes": 1654168920,
+        "upload_bytes_per_region": 275694820.0
+      },
+      "host": {
+        "machine": "arm64",
+        "python": "3.12.9",
+        "release": "27.0.0",
+        "system": "Darwin"
+      },
+      "identical_nbt_chunks": 6144,
+      "implementation": "256-write slots, sparse CPU continuation, early initialization",
+      "interpolation_cache": null,
+      "interpreter_columns": null,
+      "interpreter_dispatch": null,
+      "interpreter_preload": null,
+      "lake_point_cache": null,
+      "lake_primed_corners": null,
+      "lake_sparse_fields": null,
+      "library": "/tmp/retina-vine-batched/libretina_worldgen.dylib",
+      "lighting": "enabled",
+      "material_dispatch": null,
+      "maximum_region_ms": 1137.5346668064594,
+      "median_ms": 867.418437032029,
+      "p95_region_ms": 1090.1729273609817,
+      "parallel": 1,
+      "peak_rss_bytes": 2848014336,
+      "profile_sha256": "8217ce97735f8646c9c9ce99b66be680c69cd639688975fa711fb7836d22bf4a",
+      "program_execution": null,
+      "readiness": "shader-ready",
+      "readiness_wait_ms": 2790.7514171674848,
+      "region_file_bytes": 47702016,
+      "regions": [
+        {
+          "assembly_ms": 416.779542,
+          "generated": 1024,
+          "gpu_ms": 162.095958,
+          "ms": 595.5788330174983,
+          "name": "0",
+          "program_status": 4,
+          "write_ms": 16.587625,
+          "x": -1,
+          "z": -1
+        },
+        {
+          "assembly_ms": 841.648542,
+          "generated": 1024,
+          "gpu_ms": 93.04625,
+          "ms": 948.0877090245485,
+          "name": "1",
+          "program_status": 4,
+          "write_ms": 12.999125,
+          "x": 0,
+          "z": -1
+        },
+        {
+          "assembly_ms": 685.559083,
+          "generated": 1024,
+          "gpu_ms": 115.016917,
+          "ms": 814.6354160271585,
+          "name": "2",
+          "program_status": 4,
+          "write_ms": 13.665625,
+          "x": 1,
+          "z": -1
+        },
+        {
+          "assembly_ms": 502.22825,
+          "generated": 1024,
+          "gpu_ms": 83.12425,
+          "ms": 599.6077919844538,
+          "name": "3",
+          "program_status": 4,
+          "write_ms": 13.91625,
+          "x": -1,
+          "z": 0
+        },
+        {
+          "assembly_ms": 995.6845,
+          "generated": 1024,
+          "gpu_ms": 97.191542,
+          "ms": 1137.5346668064594,
+          "name": "4",
+          "program_status": 4,
+          "write_ms": 44.532917,
+          "x": 0,
+          "z": 0
+        },
+        {
+          "assembly_ms": 804.055083,
+          "generated": 1024,
+          "gpu_ms": 95.03475,
+          "ms": 920.2014580368996,
+          "name": "5",
+          "program_status": 4,
+          "write_ms": 20.599,
+          "x": 1,
+          "z": 0
+        }
+      ],
+      "schema": "retina.native-region-benchmark",
+      "schema_version": 1,
+      "seed": 123456789,
+      "specialized_interpolation": null,
+      "stage_ms_chunk": {
+        "aquifer_fields": 0.017581183756510417,
+        "aquifer_mask": 0.01243584521484375,
+        "assembly": 0.04098773697916666,
+        "cave_density": 0.011505866536458334,
+        "cave_features": 0.01812568994140625,
+        "cave_mask": 0.02223689794921875,
+        "columns": 0.009370455403645834,
+        "compress": 0.08327857063802083,
+        "encode": 0.00618533056640625,
+        "feature_counts": 3.011100260416667e-05,
+        "geology": 0.02698158935546875,
+        "height": 0.06155362955729166,
+        "io": 0.01990864404296875,
+        "lake_candidates": 0.014641079915364584,
+        "lake_density": 0.0137047392578125,
+        "lake_reduce": 0.0007909952799479166,
+        "light_host": 0.037600667317708336,
+        "light_pack": 0.00080826123046875,
+        "light_sky": 0.00554026904296875,
+        "light_spread": 0.01994616064453125,
+        "materials": 0.020594021158854166,
+        "nbt": 0.0921736318359375,
+        "ore_mask": 0.006925191569010417,
+        "ore_plan": 0.03823944075520833,
+        "provider_noise": 4.048665364583333e-05,
+        "queue": 0.00950954296875,
+        "sites": 0.008962138671875,
+        "snow": 0.0014316201171875,
+        "structure_plan": 0.104679083984375,
+        "structures": 0.016379267252604166,
+        "vegetation": 0.00142386669921875,
+        "vegetation_plan": 0.3534128961588542,
+        "wait_copy": 0.22313904443359375
+      },
+      "startup": {
+        "initialize_ms": 71.07708300463855,
+        "registration_ms": 1319.4374169688672,
+        "warmups": [
+          {
+            "assembly_ms": 978.679792,
+            "generated": 1024,
+            "gpu_ms": 632.215208,
+            "ms": 1636.0824170988053,
+            "name": "warm0",
+            "program_status": 1,
+            "write_ms": 25.014875,
+            "x": 8,
+            "z": 8
+          }
+        ]
+      },
+      "terrain_execution": null,
+      "timing_version": 8,
+      "total_ms": 5024.131791898981,
+      "vine_mode": "GPU override"
+    },
+    "terralith-gpu-c": {
+      "aquifer_columns": null,
+      "average_region_ms": 815.2326110284775,
+      "benchmark_scope": "lit-mca",
+      "build": {
+        "harness_dirty": true,
+        "harness_dirty_fingerprint": "6055b3a642a8ae8f6e5372a6956f7d46fde56c3644f3c19f200ff9c8619a7bdc",
+        "harness_revision": "c2da049791cf8d67b104511bb5b1287b8247e159",
+        "library": "/private/tmp/retina-vine-batched/libretina_worldgen.dylib",
+        "library_revision": "c2da049+batched-vines; final-crate opt-level=2 lto=off",
+        "library_sha256": "5c796eb088633d8fda585f845d89e6c0691c03bd472658b624336d4d8157f60c"
+      },
+      "cached_density_masks": null,
+      "chunks_per_second": 1255.40296169506,
+      "columns_include_lakes": false,
+      "comparison": {
+        "identical_nbt_chunks": 6144,
+        "membership_identical": true
+      },
+      "coordinates": {
+        "grid_width": 3,
+        "origin_x": -1,
+        "origin_z": -1
+      },
+      "corpus": {
+        "algorithm": "sha256",
+        "files": [
+          {
+            "file": "0.mca",
+            "records": 1024,
+            "sha256": "14edae2f79b18cfa1d0dc2a3b413b30df507b39f8fda03dd722af9c49f0ffdb4"
+          },
+          {
+            "file": "1.mca",
+            "records": 1024,
+            "sha256": "7bae81c751556aa1b06075c43d762efd7a4ce7b76f7ca8b7df24fb09a3aa1209"
+          },
+          {
+            "file": "2.mca",
+            "records": 1024,
+            "sha256": "a4b25ba616000aef91c9d0ac9d12c8ceeb18590a6c53e76df6b1ac39057b7f67"
+          },
+          {
+            "file": "3.mca",
+            "records": 1024,
+            "sha256": "171dd8efa808bce9957389f2745639397763eefa350762c0f668a5a39c9bda63"
+          },
+          {
+            "file": "4.mca",
+            "records": 1024,
+            "sha256": "a573b0374773f8bd5a2c51dff95d69892aab1ba0a5cdc98f1dcccc2d7c880bf0"
+          },
+          {
+            "file": "5.mca",
+            "records": 1024,
+            "sha256": "254739492f479c0edb6e7fa3b90e3e6dc69bb07ff5ea4cf30e838b603b42d3bd"
+          }
+        ],
+        "records": 6144,
+        "sha256": "b30d4f4e9ae7f93172a5289e88a0a3c22440d89d57a1856a5df920a75aed8007"
+      },
+      "density_composition": null,
+      "gpu_pipeline": {
+        "completed": 138,
+        "device_gap_ms": 6213.314415,
+        "device_span_ms": 11947.449127,
+        "peak_in_flight": 2,
+        "unavailable_timestamp_pairs": 0
+      },
+      "gpu_program": {
+        "cache_hits": 0,
+        "compile_nanos": 4236977333,
+        "emitted": 17588,
+        "graphs": 91,
+        "horizontal_fields": 23,
+        "nodes": 23220,
+        "readback_bytes": 1010532020,
+        "source_bytes": 4873852,
+        "status": 4,
+        "upload_bytes": 1917429956
+      },
+      "gpu_timestamps": true,
+      "gpu_transfers": {
+        "readback_bytes": 866248940,
+        "readback_bytes_per_region": 144374823.33333334,
+        "upload_bytes": 1654163664,
+        "upload_bytes_per_region": 275693944.0
+      },
+      "host": {
+        "machine": "arm64",
+        "python": "3.12.9",
+        "release": "27.0.0",
+        "system": "Darwin"
+      },
+      "identical_nbt_chunks": 6144,
+      "implementation": "256-write slots, sparse CPU continuation, early initialization",
+      "interpolation_cache": null,
+      "interpreter_columns": null,
+      "interpreter_dispatch": null,
+      "interpreter_preload": null,
+      "lake_point_cache": null,
+      "lake_primed_corners": null,
+      "lake_sparse_fields": null,
+      "library": "/tmp/retina-vine-batched/libretina_worldgen.dylib",
+      "lighting": "enabled",
+      "material_dispatch": null,
+      "maximum_region_ms": 1058.1657500006258,
+      "median_ms": 880.5010000942275,
+      "p95_region_ms": 1032.0513020269573,
+      "parallel": 1,
+      "peak_rss_bytes": 2987900928,
+      "profile_sha256": "8217ce97735f8646c9c9ce99b66be680c69cd639688975fa711fb7836d22bf4a",
+      "program_execution": null,
+      "readiness": "shader-ready",
+      "readiness_wait_ms": 2696.086624870077,
+      "region_file_bytes": 47702016,
+      "regions": [
+        {
+          "assembly_ms": 401.923625,
+          "generated": 1024,
+          "gpu_ms": 122.604083,
+          "ms": 540.679374942556,
+          "name": "0",
+          "program_status": 4,
+          "write_ms": 16.048458,
+          "x": -1,
+          "z": -1
+        },
+        {
+          "assembly_ms": 842.831041,
+          "generated": 1024,
+          "gpu_ms": 91.92925,
+          "ms": 953.7079581059515,
+          "name": "1",
+          "program_status": 4,
+          "write_ms": 18.906875,
+          "x": 0,
+          "z": -1
+        },
+        {
+          "assembly_ms": 722.975666,
+          "generated": 1024,
+          "gpu_ms": 113.886917,
+          "ms": 851.9750840496272,
+          "name": "2",
+          "program_status": 4,
+          "write_ms": 15.076333,
+          "x": 1,
+          "z": -1
+        },
+        {
+          "assembly_ms": 485.223083,
+          "generated": 1024,
+          "gpu_ms": 79.018167,
+          "ms": 577.8405829332769,
+          "name": "3",
+          "program_status": 4,
+          "write_ms": 13.522542,
+          "x": -1,
+          "z": 0
+        },
+        {
+          "assembly_ms": 953.509958,
+          "generated": 1024,
+          "gpu_ms": 88.033292,
+          "ms": 1058.1657500006258,
+          "name": "4",
+          "program_status": 4,
+          "write_ms": 16.59075,
+          "x": 0,
+          "z": 0
+        },
+        {
+          "assembly_ms": 806.42875,
+          "generated": 1024,
+          "gpu_ms": 91.062375,
+          "ms": 909.0269161388278,
+          "name": "5",
+          "program_status": 4,
+          "write_ms": 11.202875,
+          "x": 1,
+          "z": 0
+        }
+      ],
+      "schema": "retina.native-region-benchmark",
+      "schema_version": 1,
+      "seed": 123456789,
+      "specialized_interpolation": null,
+      "stage_ms_chunk": {
+        "aquifer_fields": 0.017309258463541668,
+        "aquifer_mask": 0.012069159505208335,
+        "assembly": 0.04179642138671875,
+        "cave_density": 0.011330228678385417,
+        "cave_features": 0.01895476025390625,
+        "cave_mask": 0.02197408024088542,
+        "columns": 0.009349974772135417,
+        "compress": 0.0833832314453125,
+        "encode": 0.005504266927083333,
+        "feature_counts": 5.6708658854166665e-05,
+        "geology": 0.027282851725260418,
+        "height": 0.05985564534505208,
+        "io": 0.014870428873697916,
+        "lake_candidates": 0.014588432779947915,
+        "lake_density": 0.01364780712890625,
+        "lake_reduce": 0.00078478369140625,
+        "light_host": 0.03433683349609375,
+        "light_pack": 0.0007545029296875,
+        "light_sky": 0.00592780810546875,
+        "light_spread": 0.02022622998046875,
+        "materials": 0.0204210205078125,
+        "nbt": 0.092146625,
+        "ore_mask": 0.010057407063802084,
+        "ore_plan": 0.04085662825520833,
+        "provider_noise": 0.00010412630208333332,
+        "queue": 0.009498528157552083,
+        "sites": 0.008852687662760416,
+        "snow": 0.0013665022786458333,
+        "structure_plan": 0.10362069368489583,
+        "structures": 0.01591940478515625,
+        "vegetation": 0.0014260979817708333,
+        "vegetation_plan": 0.3490403986002604,
+        "wait_copy": 0.21271316861979167
+      },
+      "startup": {
+        "initialize_ms": 52.93366708792746,
+        "registration_ms": 1298.796416958794,
+        "warmups": [
+          {
+            "assembly_ms": 989.729292,
+            "generated": 1024,
+            "gpu_ms": 615.033083,
+            "ms": 1619.6094169281423,
+            "name": "warm0",
+            "program_status": 1,
+            "write_ms": 14.714875,
+            "x": 8,
+            "z": 8
+          }
+        ]
+      },
+      "terrain_execution": null,
+      "timing_version": 8,
+      "total_ms": 4894.046125002205,
+      "vine_mode": "GPU override"
+    },
+    "terralith-p2-cpu": {
+      "aquifer_columns": null,
+      "average_region_ms": 1418.7722364828612,
+      "benchmark_scope": "lit-mca",
+      "build": {
+        "harness_dirty": true,
+        "harness_dirty_fingerprint": "6055b3a642a8ae8f6e5372a6956f7d46fde56c3644f3c19f200ff9c8619a7bdc",
+        "harness_revision": "c2da049791cf8d67b104511bb5b1287b8247e159",
+        "library": "/private/tmp/retina-vine-batched/libretina_worldgen.dylib",
+        "library_revision": "c2da049+batched-vines; final-crate opt-level=2 lto=off",
+        "library_sha256": "5c796eb088633d8fda585f845d89e6c0691c03bd472658b624336d4d8157f60c"
+      },
+      "cached_density_masks": null,
+      "chunks_per_second": 1393.4818734369792,
+      "columns_include_lakes": false,
+      "comparison": {
+        "identical_nbt_chunks": 6144,
+        "membership_identical": true
+      },
+      "coordinates": {
+        "grid_width": 3,
+        "origin_x": -1,
+        "origin_z": -1
+      },
+      "corpus": {
+        "algorithm": "sha256",
+        "files": [
+          {
+            "file": "0.mca",
+            "records": 1024,
+            "sha256": "14edae2f79b18cfa1d0dc2a3b413b30df507b39f8fda03dd722af9c49f0ffdb4"
+          },
+          {
+            "file": "1.mca",
+            "records": 1024,
+            "sha256": "7bae81c751556aa1b06075c43d762efd7a4ce7b76f7ca8b7df24fb09a3aa1209"
+          },
+          {
+            "file": "2.mca",
+            "records": 1024,
+            "sha256": "a4b25ba616000aef91c9d0ac9d12c8ceeb18590a6c53e76df6b1ac39057b7f67"
+          },
+          {
+            "file": "3.mca",
+            "records": 1024,
+            "sha256": "171dd8efa808bce9957389f2745639397763eefa350762c0f668a5a39c9bda63"
+          },
+          {
+            "file": "4.mca",
+            "records": 1024,
+            "sha256": "a573b0374773f8bd5a2c51dff95d69892aab1ba0a5cdc98f1dcccc2d7c880bf0"
+          },
+          {
+            "file": "5.mca",
+            "records": 1024,
+            "sha256": "254739492f479c0edb6e7fa3b90e3e6dc69bb07ff5ea4cf30e838b603b42d3bd"
+          }
+        ],
+        "records": 6144,
+        "sha256": "b30d4f4e9ae7f93172a5289e88a0a3c22440d89d57a1856a5df920a75aed8007"
+      },
+      "density_composition": null,
+      "gpu_pipeline": {
+        "completed": 140,
+        "device_gap_ms": 5120.675954,
+        "device_span_ms": 4242.791791,
+        "peak_in_flight": 2,
+        "unavailable_timestamp_pairs": 0
+      },
+      "gpu_program": {
+        "cache_hits": 0,
+        "compile_nanos": 4287531417,
+        "emitted": 17588,
+        "graphs": 91,
+        "horizontal_fields": 23,
+        "nodes": 23220,
+        "readback_bytes": 1003812512,
+        "source_bytes": 4873852,
+        "status": 4,
+        "upload_bytes": 1834236116
+      },
+      "gpu_timestamps": true,
+      "gpu_transfers": {
+        "readback_bytes": 859529432,
+        "readback_bytes_per_region": 143254905.33333334,
+        "upload_bytes": 1570969824,
+        "upload_bytes_per_region": 261828304.0
+      },
+      "host": {
+        "machine": "arm64",
+        "python": "3.12.9",
+        "release": "27.0.0",
+        "system": "Darwin"
+      },
+      "identical_nbt_chunks": 6144,
+      "implementation": "256-write slots, sparse CPU continuation, early initialization",
+      "interpolation_cache": null,
+      "interpreter_columns": null,
+      "interpreter_dispatch": null,
+      "interpreter_preload": null,
+      "lake_point_cache": null,
+      "lake_primed_corners": null,
+      "lake_sparse_fields": null,
+      "library": "/tmp/retina-vine-batched/libretina_worldgen.dylib",
+      "lighting": "enabled",
+      "material_dispatch": null,
+      "maximum_region_ms": 2311.277916887775,
+      "median_ms": 1225.973229506053,
+      "p95_region_ms": 2257.2498856461607,
+      "parallel": 2,
+      "peak_rss_bytes": 3058204672,
+      "profile_sha256": "8217ce97735f8646c9c9ce99b66be680c69cd639688975fa711fb7836d22bf4a",
+      "program_execution": null,
+      "readiness": "shader-ready",
+      "readiness_wait_ms": 2792.1653748489916,
+      "region_file_bytes": 47702016,
+      "regions": [
+        {
+          "assembly_ms": 1877.754166,
+          "generated": 1024,
+          "gpu_ms": 204.047959,
+          "ms": 2095.1657919213176,
+          "name": "0",
+          "program_status": 4,
+          "write_ms": 13.260125,
+          "x": -1,
+          "z": -1
+        },
+        {
+          "assembly_ms": 921.253583,
+          "generated": 1024,
+          "gpu_ms": 194.346333,
+          "ms": 1130.4770419374108,
+          "name": "1",
+          "program_status": 4,
+          "write_ms": 14.837708,
+          "x": 0,
+          "z": -1
+        },
+        {
+          "assembly_ms": 691.232833,
+          "generated": 1024,
+          "gpu_ms": 123.005584,
+          "ms": 828.3313340507448,
+          "name": "2",
+          "program_status": 4,
+          "write_ms": 14.056958,
+          "x": 1,
+          "z": -1
+        },
+        {
+          "assembly_ms": 723.92625,
+          "generated": 1024,
+          "gpu_ms": 84.054292,
+          "ms": 825.9119170252234,
+          "name": "3",
+          "program_status": 4,
+          "write_ms": 17.852958,
+          "x": -1,
+          "z": 0
+        },
+        {
+          "assembly_ms": 2205.799709,
+          "generated": 1024,
+          "gpu_ms": 91.79625,
+          "ms": 2311.277916887775,
+          "name": "4",
+          "program_status": 4,
+          "write_ms": 13.650125,
+          "x": 0,
+          "z": 0
+        },
+        {
+          "assembly_ms": 1201.469625,
+          "generated": 1024,
+          "gpu_ms": 100.012166,
+          "ms": 1321.4694170746952,
+          "name": "5",
+          "program_status": 4,
+          "write_ms": 19.889542,
+          "x": 1,
+          "z": 0
+        }
+      ],
+      "schema": "retina.native-region-benchmark",
+      "schema_version": 1,
+      "seed": 123456789,
+      "specialized_interpolation": null,
+      "stage_ms_chunk": {
+        "aquifer_fields": 0.015355360188802084,
+        "aquifer_mask": 0.012097344563802084,
+        "assembly": 0.03994893196614584,
+        "cave_density": 0.011492248372395835,
+        "cave_features": 0.017552639973958332,
+        "cave_mask": 0.02215164534505208,
+        "columns": 0.009345106608072916,
+        "compress": 0.08242378141276042,
+        "encode": 0.006117486653645833,
+        "feature_counts": 0.00024760628255208333,
+        "geology": 0.02640816487630208,
+        "height": 0.06311546598307291,
+        "io": 0.01522854931640625,
+        "lake_candidates": 0.015622592447916667,
+        "lake_density": 0.016383103678385417,
+        "lake_reduce": 0.0008325535481770834,
+        "light_host": 0.047746961588541664,
+        "light_pack": 0.0007564970703125,
+        "light_sky": 0.00668583154296875,
+        "light_spread": 0.030685052571614583,
+        "materials": 0.02071297916666667,
+        "nbt": 0.09118373746744793,
+        "ore_mask": 0.011265862467447915,
+        "ore_plan": 0.044718207682291664,
+        "provider_noise": 0.00020338232421875,
+        "queue": 0.009507975748697916,
+        "sites": 0.009137573404947917,
+        "snow": 0.00142833740234375,
+        "structure_plan": 0.14897930240885415,
+        "structures": 0.014731330403645835,
+        "vegetation": 0.0013631438802083333,
+        "vegetation_plan": 0.6973096180013021,
+        "wait_copy": 0.2692728688151042
+      },
+      "startup": {
+        "initialize_ms": 52.11199983023107,
+        "registration_ms": 1246.515791863203,
+        "warmups": [
+          {
+            "assembly_ms": 984.370667,
+            "generated": 1024,
+            "gpu_ms": 617.180791,
+            "ms": 1617.1212079934776,
+            "name": "warm0",
+            "program_status": 1,
+            "write_ms": 15.406541,
+            "x": 8,
+            "z": 8
+          }
+        ]
+      },
+      "terrain_execution": null,
+      "timing_version": 8,
+      "total_ms": 4409.099333919585,
+      "vine_mode": "CPU override"
+    },
+    "terralith-p2-gpu": {
+      "aquifer_columns": null,
+      "average_region_ms": 1292.1428541497637,
+      "benchmark_scope": "lit-mca",
+      "build": {
+        "harness_dirty": true,
+        "harness_dirty_fingerprint": "6055b3a642a8ae8f6e5372a6956f7d46fde56c3644f3c19f200ff9c8619a7bdc",
+        "harness_revision": "c2da049791cf8d67b104511bb5b1287b8247e159",
+        "library": "/private/tmp/retina-vine-batched/libretina_worldgen.dylib",
+        "library_revision": "c2da049+batched-vines; final-crate opt-level=2 lto=off",
+        "library_sha256": "5c796eb088633d8fda585f845d89e6c0691c03bd472658b624336d4d8157f60c"
+      },
+      "cached_density_masks": null,
+      "chunks_per_second": 1446.3795224804323,
+      "columns_include_lakes": false,
+      "comparison": {
+        "identical_nbt_chunks": 6144,
+        "membership_identical": true
+      },
+      "coordinates": {
+        "grid_width": 3,
+        "origin_x": -1,
+        "origin_z": -1
+      },
+      "corpus": {
+        "algorithm": "sha256",
+        "files": [
+          {
+            "file": "0.mca",
+            "records": 1024,
+            "sha256": "14edae2f79b18cfa1d0dc2a3b413b30df507b39f8fda03dd722af9c49f0ffdb4"
+          },
+          {
+            "file": "1.mca",
+            "records": 1024,
+            "sha256": "7bae81c751556aa1b06075c43d762efd7a4ce7b76f7ca8b7df24fb09a3aa1209"
+          },
+          {
+            "file": "2.mca",
+            "records": 1024,
+            "sha256": "a4b25ba616000aef91c9d0ac9d12c8ceeb18590a6c53e76df6b1ac39057b7f67"
+          },
+          {
+            "file": "3.mca",
+            "records": 1024,
+            "sha256": "171dd8efa808bce9957389f2745639397763eefa350762c0f668a5a39c9bda63"
+          },
+          {
+            "file": "4.mca",
+            "records": 1024,
+            "sha256": "a573b0374773f8bd5a2c51dff95d69892aab1ba0a5cdc98f1dcccc2d7c880bf0"
+          },
+          {
+            "file": "5.mca",
+            "records": 1024,
+            "sha256": "254739492f479c0edb6e7fa3b90e3e6dc69bb07ff5ea4cf30e838b603b42d3bd"
+          }
+        ],
+        "records": 6144,
+        "sha256": "b30d4f4e9ae7f93172a5289e88a0a3c22440d89d57a1856a5df920a75aed8007"
+      },
+      "density_composition": null,
+      "gpu_pipeline": {
+        "completed": 149,
+        "device_gap_ms": 4804.289333,
+        "device_span_ms": 5427.876248,
+        "peak_in_flight": 2,
+        "unavailable_timestamp_pairs": 0
+      },
+      "gpu_program": {
+        "cache_hits": 0,
+        "compile_nanos": 4276204833,
+        "emitted": 17588,
+        "graphs": 91,
+        "horizontal_fields": 23,
+        "nodes": 23220,
+        "readback_bytes": 1010533124,
+        "source_bytes": 4873852,
+        "status": 4,
+        "upload_bytes": 1917431660
+      },
+      "gpu_timestamps": true,
+      "gpu_transfers": {
+        "readback_bytes": 866250044,
+        "readback_bytes_per_region": 144375007.33333334,
+        "upload_bytes": 1654165368,
+        "upload_bytes_per_region": 275694228.0
+      },
+      "host": {
+        "machine": "arm64",
+        "python": "3.12.9",
+        "release": "27.0.0",
+        "system": "Darwin"
+      },
+      "identical_nbt_chunks": 6144,
+      "implementation": "256-write slots, sparse CPU continuation, early initialization",
+      "interpolation_cache": null,
+      "interpreter_columns": null,
+      "interpreter_dispatch": null,
+      "interpreter_preload": null,
+      "lake_point_cache": null,
+      "lake_primed_corners": null,
+      "lake_sparse_fields": null,
+      "library": "/tmp/retina-vine-batched/libretina_worldgen.dylib",
+      "lighting": "enabled",
+      "material_dispatch": null,
+      "maximum_region_ms": 1809.781749965623,
+      "median_ms": 1366.8113335734233,
+      "p95_region_ms": 1755.9311039512977,
+      "parallel": 2,
+      "peak_rss_bytes": 2574286848,
+      "profile_sha256": "8217ce97735f8646c9c9ce99b66be680c69cd639688975fa711fb7836d22bf4a",
+      "program_execution": null,
+      "readiness": "shader-ready",
+      "readiness_wait_ms": 2787.5808340031654,
+      "region_file_bytes": 47702016,
+      "regions": [
+        {
+          "assembly_ms": 768.532,
+          "generated": 1024,
+          "gpu_ms": 194.737583,
+          "ms": 976.9526249729097,
+          "name": "0",
+          "program_status": 4,
+          "write_ms": 13.64075,
+          "x": -1,
+          "z": -1
+        },
+        {
+          "assembly_ms": 1369.612292,
+          "generated": 1024,
+          "gpu_ms": 209.718791,
+          "ms": 1594.3791659083217,
+          "name": "1",
+          "program_status": 4,
+          "write_ms": 14.829708,
+          "x": 0,
+          "z": -1
+        },
+        {
+          "assembly_ms": 1323.685209,
+          "generated": 1024,
+          "gpu_ms": 120.446125,
+          "ms": 1458.4536249749362,
+          "name": "2",
+          "program_status": 4,
+          "write_ms": 14.288584,
+          "x": 1,
+          "z": -1
+        },
+        {
+          "assembly_ms": 538.25375,
+          "generated": 1024,
+          "gpu_ms": 80.967208,
+          "ms": 638.1209169048816,
+          "name": "3",
+          "program_status": 4,
+          "write_ms": 18.867583,
+          "x": -1,
+          "z": 0
+        },
+        {
+          "assembly_ms": 1157.797375,
+          "generated": 1024,
+          "gpu_ms": 102.714709,
+          "ms": 1275.1690421719104,
+          "name": "4",
+          "program_status": 4,
+          "write_ms": 14.600084,
+          "x": 0,
+          "z": 0
+        },
+        {
+          "assembly_ms": 1677.55775,
+          "generated": 1024,
+          "gpu_ms": 117.072,
+          "ms": 1809.781749965623,
+          "name": "5",
+          "program_status": 4,
+          "write_ms": 14.618875,
+          "x": 1,
+          "z": 0
+        }
+      ],
+      "schema": "retina.native-region-benchmark",
+      "schema_version": 1,
+      "seed": 123456789,
+      "specialized_interpolation": null,
+      "stage_ms_chunk": {
+        "aquifer_fields": 0.008068908528645833,
+        "aquifer_mask": 0.012546658040364584,
+        "assembly": 0.0401241640625,
+        "cave_density": 0.01098994091796875,
+        "cave_features": 0.01851398779296875,
+        "cave_mask": 0.02330805810546875,
+        "columns": 0.009969719889322916,
+        "compress": 0.08156772965494792,
+        "encode": 0.007227491861979167,
+        "feature_counts": 0.00017638509114583335,
+        "geology": 0.026915257649739583,
+        "height": 0.06562770540364583,
+        "io": 0.014790703287760417,
+        "lake_candidates": 0.01647609375,
+        "lake_density": 0.0160345390625,
+        "lake_reduce": 0.0008707203776041666,
+        "light_host": 0.04806728108723959,
+        "light_pack": 0.0008202102864583333,
+        "light_sky": 0.005600815104166667,
+        "light_spread": 0.03304292757161459,
+        "materials": 0.0214986640625,
+        "nbt": 0.09097926595052083,
+        "ore_mask": 0.00902532275390625,
+        "ore_plan": 0.042640964029947916,
+        "provider_noise": 0.0004903497721354166,
+        "queue": 0.01166948095703125,
+        "sites": 0.009935914876302084,
+        "snow": 0.0013999630533854167,
+        "structure_plan": 0.17690498177083333,
+        "structures": 0.013930742350260416,
+        "vegetation": 0.0014252976888020834,
+        "vegetation_plan": 0.5715326808268228,
+        "wait_copy": 0.29815989078776045
+      },
+      "startup": {
+        "initialize_ms": 55.942000122740865,
+        "registration_ms": 1304.973708000034,
+        "warmups": [
+          {
+            "assembly_ms": 987.825459,
+            "generated": 1024,
+            "gpu_ms": 618.390041,
+            "ms": 1621.5574578382075,
+            "name": "warm0",
+            "program_status": 1,
+            "write_ms": 15.221959,
+            "x": 8,
+            "z": 8
+          }
+        ]
+      },
+      "terrain_execution": null,
+      "timing_version": 8,
+      "total_ms": 4247.847749851644,
+      "vine_mode": "GPU override"
+    },
+    "vanilla-cpu": {
+      "aquifer_columns": null,
+      "average_region_ms": 521.073333453387,
+      "benchmark_scope": "lit-mca",
+      "build": {
+        "harness_dirty": true,
+        "harness_dirty_fingerprint": "6055b3a642a8ae8f6e5372a6956f7d46fde56c3644f3c19f200ff9c8619a7bdc",
+        "harness_revision": "c2da049791cf8d67b104511bb5b1287b8247e159",
+        "library": "/private/tmp/retina-vine-batched/libretina_worldgen.dylib",
+        "library_revision": "c2da049+batched-vines; final-crate opt-level=2 lto=off",
+        "library_sha256": "5c796eb088633d8fda585f845d89e6c0691c03bd472658b624336d4d8157f60c"
+      },
+      "cached_density_masks": null,
+      "chunks_per_second": 1963.3076788134629,
+      "columns_include_lakes": false,
+      "coordinates": {
+        "grid_width": 3,
+        "origin_x": -1,
+        "origin_z": -1
+      },
+      "corpus": {
+        "algorithm": "sha256",
+        "files": [
+          {
+            "file": "0.mca",
+            "records": 1024,
+            "sha256": "9303180edb3265c8f9cc0365aa182a5adc4ae5d1a01dee25e15cd48cc03267c3"
+          },
+          {
+            "file": "1.mca",
+            "records": 1024,
+            "sha256": "cdc895d9d03f0e76856aee7212a5ea8ed57ec019b105546e6c5c03b675a8b156"
+          },
+          {
+            "file": "2.mca",
+            "records": 1024,
+            "sha256": "8b7403e53a46fee2308de1056f87245336f3ee90d4ca8307fcab0f26a77352ec"
+          },
+          {
+            "file": "3.mca",
+            "records": 1024,
+            "sha256": "b89e52879d15261c687c4216689e135f7f688be4cf98750514bb1534df46920d"
+          },
+          {
+            "file": "4.mca",
+            "records": 1024,
+            "sha256": "3ebf373e2e8009ee34c45e990b416d2e286d2ad7be28c5831a9e0d138d350ecf"
+          },
+          {
+            "file": "5.mca",
+            "records": 1024,
+            "sha256": "248081e48524e401504f2c52a0085447a4010c045c5b952b44df1627fc2a8847"
+          }
+        ],
+        "records": 6144,
+        "sha256": "e41e7ff5431aef53655f333aa879ff0834e03d0c9e03083468e2e1713395464f"
+      },
+      "density_composition": null,
+      "gpu_pipeline": {
+        "completed": 30,
+        "device_gap_ms": 2833.139585,
+        "device_span_ms": 3954.209665,
+        "peak_in_flight": 2,
+        "unavailable_timestamp_pairs": 1
+      },
+      "gpu_program": {
+        "cache_hits": 0,
+        "compile_nanos": 944324000,
+        "emitted": 2780,
+        "graphs": 30,
+        "horizontal_fields": 9,
+        "nodes": 3680,
+        "readback_bytes": 1051734752,
+        "source_bytes": 982810,
+        "status": 4,
+        "upload_bytes": 1833348688
+      },
+      "gpu_timestamps": true,
+      "gpu_transfers": {
+        "readback_bytes": 901570112,
+        "readback_bytes_per_region": 150261685.33333334,
+        "upload_bytes": 1570482352,
+        "upload_bytes_per_region": 261747058.66666666
+      },
+      "host": {
+        "machine": "arm64",
+        "python": "3.12.9",
+        "release": "27.0.0",
+        "system": "Darwin"
+      },
+      "implementation": "256-write slots, sparse CPU continuation, early initialization",
+      "interpolation_cache": null,
+      "interpreter_columns": null,
+      "interpreter_dispatch": null,
+      "interpreter_preload": null,
+      "lake_point_cache": null,
+      "lake_primed_corners": null,
+      "lake_sparse_fields": null,
+      "library": "/tmp/retina-vine-batched/libretina_worldgen.dylib",
+      "lighting": "enabled",
+      "material_dispatch": null,
+      "maximum_region_ms": 687.727291835472,
+      "median_ms": 495.19062554463744,
+      "p95_region_ms": 658.7995728477836,
+      "parallel": 1,
+      "peak_rss_bytes": 1674379264,
+      "profile_sha256": "2949064f5f62fc889b706b2c7911727e94e76c0cb40cf92f3e7340dd7732fea3",
+      "program_execution": null,
+      "readiness": "shader-ready",
+      "readiness_wait_ms": 308.24204091914,
+      "region_file_bytes": 54157312,
+      "regions": [
+        {
+          "assembly_ms": 359.00625,
+          "generated": 1024,
+          "gpu_ms": 80.903083,
+          "ms": 457.2905420791358,
+          "name": "0",
+          "program_status": 4,
+          "write_ms": 17.276958,
+          "x": -1,
+          "z": -1
+        },
+        {
+          "assembly_ms": 408.592,
+          "generated": 1024,
+          "gpu_ms": 81.627208,
+          "ms": 504.32791700586677,
+          "name": "1",
+          "program_status": 4,
+          "write_ms": 13.908042,
+          "x": 0,
+          "z": -1
+        },
+        {
+          "assembly_ms": 580.446917,
+          "generated": 1024,
+          "gpu_ms": 88.470792,
+          "ms": 687.727291835472,
+          "name": "2",
+          "program_status": 4,
+          "write_ms": 18.778792,
+          "x": 1,
+          "z": -1
+        },
+        {
+          "assembly_ms": 331.732334,
+          "generated": 1024,
+          "gpu_ms": 70.978958,
+          "ms": 419.0244998317212,
+          "name": "3",
+          "program_status": 4,
+          "write_ms": 16.132875,
+          "x": -1,
+          "z": 0
+        },
+        {
+          "assembly_ms": 413.456625,
+          "generated": 1024,
+          "gpu_ms": 85.341167,
+          "ms": 572.0164158847183,
+          "name": "4",
+          "program_status": 4,
+          "write_ms": 73.167917,
+          "x": 0,
+          "z": 0
+        },
+        {
+          "assembly_ms": 385.70975,
+          "generated": 1024,
+          "gpu_ms": 80.786583,
+          "ms": 486.0533340834081,
+          "name": "5",
+          "program_status": 4,
+          "write_ms": 19.517959,
+          "x": 1,
+          "z": 0
+        }
+      ],
+      "schema": "retina.native-region-benchmark",
+      "schema_version": 1,
+      "seed": 123456789,
+      "specialized_interpolation": null,
+      "stage_ms_chunk": {
+        "aquifer_fields": 0.01434942626953125,
+        "aquifer_mask": 0.01037093798828125,
+        "assembly": 0.03960789778645834,
+        "cave_density": 0.02038300927734375,
+        "cave_features": 0.008682990397135416,
+        "cave_mask": 0.016026923177083333,
+        "columns": 0.0063633828125,
+        "compress": 0.09202423274739582,
+        "encode": 0.0014860843098958333,
+        "feature_counts": 1.890071614583333e-05,
+        "geology": 0.048192295247395836,
+        "height": 0.01780464078776042,
+        "io": 0.025846272786458332,
+        "lake_candidates": 0.00278853369140625,
+        "lake_density": 0.0019989083658854168,
+        "lake_reduce": 0.00019677099609375,
+        "light_host": 0.03939672119140625,
+        "light_pack": 0.00076095263671875,
+        "light_sky": 0.007042066731770833,
+        "light_spread": 0.019308227864583333,
+        "materials": 0.015652730305989584,
+        "nbt": 0.09179291455078124,
+        "ore_mask": 0.0133132666015625,
+        "ore_plan": 0.044068508626302086,
+        "provider_noise": 2.1287760416666668e-05,
+        "queue": 0.00130482275390625,
+        "sites": 0.0021688430989583334,
+        "snow": 0.00095223046875,
+        "structure_plan": 0.017685221516927082,
+        "structures": 0.012726464680989584,
+        "vegetation": 0.00190780224609375,
+        "vegetation_plan": 0.1368580595703125,
+        "wait_copy": 0.09416347281901043
+      },
+      "startup": {
+        "initialize_ms": 47.47958411462605,
+        "registration_ms": 690.9881250467151,
+        "warmups": [
+          {
+            "assembly_ms": 356.317542,
+            "generated": 1024,
+            "gpu_ms": 306.34875,
+            "ms": 679.4117090757936,
+            "name": "warm0",
+            "program_status": 1,
+            "write_ms": 16.59975,
+            "x": 8,
+            "z": 8
+          }
+        ]
+      },
+      "terrain_execution": null,
+      "timing_version": 8,
+      "total_ms": 3129.4127081055194,
+      "vine_mode": "CPU override"
+    },
+    "vanilla-gpu": {
+      "aquifer_columns": null,
+      "average_region_ms": 504.3635903469597,
+      "benchmark_scope": "lit-mca",
+      "build": {
+        "harness_dirty": true,
+        "harness_dirty_fingerprint": "6055b3a642a8ae8f6e5372a6956f7d46fde56c3644f3c19f200ff9c8619a7bdc",
+        "harness_revision": "c2da049791cf8d67b104511bb5b1287b8247e159",
+        "library": "/private/tmp/retina-vine-batched/libretina_worldgen.dylib",
+        "library_revision": "c2da049+batched-vines; final-crate opt-level=2 lto=off",
+        "library_sha256": "5c796eb088633d8fda585f845d89e6c0691c03bd472658b624336d4d8157f60c"
+      },
+      "cached_density_masks": null,
+      "chunks_per_second": 2028.5555908563563,
+      "columns_include_lakes": false,
+      "comparison": {
+        "identical_nbt_chunks": 6144,
+        "membership_identical": true
+      },
+      "coordinates": {
+        "grid_width": 3,
+        "origin_x": -1,
+        "origin_z": -1
+      },
+      "corpus": {
+        "algorithm": "sha256",
+        "files": [
+          {
+            "file": "0.mca",
+            "records": 1024,
+            "sha256": "9303180edb3265c8f9cc0365aa182a5adc4ae5d1a01dee25e15cd48cc03267c3"
+          },
+          {
+            "file": "1.mca",
+            "records": 1024,
+            "sha256": "cdc895d9d03f0e76856aee7212a5ea8ed57ec019b105546e6c5c03b675a8b156"
+          },
+          {
+            "file": "2.mca",
+            "records": 1024,
+            "sha256": "8b7403e53a46fee2308de1056f87245336f3ee90d4ca8307fcab0f26a77352ec"
+          },
+          {
+            "file": "3.mca",
+            "records": 1024,
+            "sha256": "b89e52879d15261c687c4216689e135f7f688be4cf98750514bb1534df46920d"
+          },
+          {
+            "file": "4.mca",
+            "records": 1024,
+            "sha256": "3ebf373e2e8009ee34c45e990b416d2e286d2ad7be28c5831a9e0d138d350ecf"
+          },
+          {
+            "file": "5.mca",
+            "records": 1024,
+            "sha256": "248081e48524e401504f2c52a0085447a4010c045c5b952b44df1627fc2a8847"
+          }
+        ],
+        "records": 6144,
+        "sha256": "e41e7ff5431aef53655f333aa879ff0834e03d0c9e03083468e2e1713395464f"
+      },
+      "density_composition": null,
+      "gpu_pipeline": {
+        "completed": 30,
+        "device_gap_ms": 2753.946873,
+        "device_span_ms": 3854.032421,
+        "peak_in_flight": 2,
+        "unavailable_timestamp_pairs": 1
+      },
+      "gpu_program": {
+        "cache_hits": 0,
+        "compile_nanos": 945219917,
+        "emitted": 2780,
+        "graphs": 30,
+        "horizontal_fields": 9,
+        "nodes": 3680,
+        "readback_bytes": 1051734752,
+        "source_bytes": 982810,
+        "status": 4,
+        "upload_bytes": 1833348688
+      },
+      "gpu_timestamps": true,
+      "gpu_transfers": {
+        "readback_bytes": 901570112,
+        "readback_bytes_per_region": 150261685.33333334,
+        "upload_bytes": 1570482352,
+        "upload_bytes_per_region": 261747058.66666666
+      },
+      "host": {
+        "machine": "arm64",
+        "python": "3.12.9",
+        "release": "27.0.0",
+        "system": "Darwin"
+      },
+      "identical_nbt_chunks": 6144,
+      "implementation": "256-write slots, sparse CPU continuation, early initialization",
+      "interpolation_cache": null,
+      "interpreter_columns": null,
+      "interpreter_dispatch": null,
+      "interpreter_preload": null,
+      "lake_point_cache": null,
+      "lake_primed_corners": null,
+      "lake_sparse_fields": null,
+      "library": "/tmp/retina-vine-batched/libretina_worldgen.dylib",
+      "lighting": "enabled",
+      "material_dispatch": null,
+      "maximum_region_ms": 682.8031248878688,
+      "median_ms": 483.00056252628565,
+      "p95_region_ms": 642.1588749508373,
+      "parallel": 1,
+      "peak_rss_bytes": 1786511360,
+      "profile_sha256": "2949064f5f62fc889b706b2c7911727e94e76c0cb40cf92f3e7340dd7732fea3",
+      "program_execution": null,
+      "readiness": "shader-ready",
+      "readiness_wait_ms": 307.44262505322695,
+      "region_file_bytes": 54157312,
+      "regions": [
+        {
+          "assembly_ms": 347.563375,
+          "generated": 1024,
+          "gpu_ms": 81.948333,
+          "ms": 445.4546249471605,
+          "name": "0",
+          "program_status": 4,
+          "write_ms": 15.840833,
+          "x": -1,
+          "z": -1
+        },
+        {
+          "assembly_ms": 423.1815,
+          "generated": 1024,
+          "gpu_ms": 82.777791,
+          "ms": 520.2261251397431,
+          "name": "1",
+          "program_status": 4,
+          "write_ms": 13.948959,
+          "x": 0,
+          "z": -1
+        },
+        {
+          "assembly_ms": 575.79875,
+          "generated": 1024,
+          "gpu_ms": 91.7575,
+          "ms": 682.8031248878688,
+          "name": "2",
+          "program_status": 4,
+          "write_ms": 15.214333,
+          "x": 1,
+          "z": -1
+        },
+        {
+          "assembly_ms": 332.121,
+          "generated": 1024,
+          "gpu_ms": 65.457875,
+          "ms": 411.69654205441475,
+          "name": "3",
+          "program_status": 4,
+          "write_ms": 14.02425,
+          "x": -1,
+          "z": 0
+        },
+        {
+          "assembly_ms": 390.4135,
+          "generated": 1024,
+          "gpu_ms": 78.809833,
+          "ms": 490.3052500449121,
+          "name": "4",
+          "program_status": 4,
+          "write_ms": 21.03775,
+          "x": 0,
+          "z": 0
+        },
+        {
+          "assembly_ms": 369.728458,
+          "generated": 1024,
+          "gpu_ms": 79.827,
+          "ms": 475.6958750076592,
+          "name": "5",
+          "program_status": 4,
+          "write_ms": 26.109292,
+          "x": 1,
+          "z": 0
+        }
+      ],
+      "schema": "retina.native-region-benchmark",
+      "schema_version": 1,
+      "seed": 123456789,
+      "specialized_interpolation": null,
+      "stage_ms_chunk": {
+        "aquifer_fields": 0.012716824055989584,
+        "aquifer_mask": 0.010335449055989585,
+        "assembly": 0.038730567545572914,
+        "cave_density": 0.020351142415364582,
+        "cave_features": 0.00869038671875,
+        "cave_mask": 0.016079779459635415,
+        "columns": 0.0063883544921875,
+        "compress": 0.09131581884765624,
+        "encode": 0.00153222705078125,
+        "feature_counts": 2.12607421875e-05,
+        "geology": 0.04713832991536458,
+        "height": 0.016173394368489583,
+        "io": 0.017283514811197918,
+        "lake_candidates": 0.0027888723958333335,
+        "lake_density": 0.0019892032877604168,
+        "lake_reduce": 0.00019885237630208334,
+        "light_host": 0.03883927360026041,
+        "light_pack": 0.0007503863932291666,
+        "light_sky": 0.00705008935546875,
+        "light_spread": 0.019156127766927083,
+        "materials": 0.015545525553385417,
+        "nbt": 0.09062845686848958,
+        "ore_mask": 0.013872639973958333,
+        "ore_plan": 0.044248568684895837,
+        "provider_noise": 1.7747721354166668e-05,
+        "queue": 0.0012925143229166667,
+        "sites": 0.0021703966471354167,
+        "snow": 0.000992447265625,
+        "structure_plan": 0.01741261100260417,
+        "structures": 0.012757686848958333,
+        "vegetation": 0.0018586292317708333,
+        "vegetation_plan": 0.13295806884765626,
+        "wait_copy": 0.09221162272135418
+      },
+      "startup": {
+        "initialize_ms": 47.9951249435544,
+        "registration_ms": 678.0047090724111,
+        "warmups": [
+          {
+            "assembly_ms": 357.989417,
+            "generated": 1024,
+            "gpu_ms": 306.215708,
+            "ms": 684.1904171742499,
+            "name": "warm0",
+            "program_status": 1,
+            "write_ms": 19.69,
+            "x": 8,
+            "z": 8
+          }
+        ]
+      },
+      "terrain_execution": null,
+      "timing_version": 8,
+      "total_ms": 3028.756040846929,
+      "vine_mode": "GPU override"
+    }
+  },
+  "schema": "retina.gpu-vine-planning",
+  "schema_version": 1,
+  "scope": "Complete native lit-MCA publication, no Java loading/rendering",
+  "source_sha256": {
+    "native/src/decoration.rs": "01cf878436e5183cbba696a82c9f81726d2c14a01ff05f95028a586ba5ee69ff",
+    "native/src/decoration/anchor_probe.rs": "256d6bf9d7035fe3578f53e536eb4160b1a0e88d1b344c97e2067cdc99459caf",
+    "native/src/decoration/attachment.rs": "f65585606ea55b574b80778832e89515432dbed5e23149fd6623ac0ee463b851",
+    "native/src/decoration/placement.rs": "dcb4bdc47bda0405ea7d5d16e1614bb2b271238e01d139c54eb4ac8b29122cf1",
+    "native/src/decoration/placement/layers.rs": "11991a2727e60dc36ae930a461a567af9f58c7b3215aed94cbc73a20b97271fc",
+    "native/src/decoration/vine_gpu.rs": "e170dc69b87f5ab4fa824cc7b5c4700b59aebd2ffba2feb8d6ddc2b0c732ce16",
+    "native/src/decoration/vine_gpu/device.rs": "770577436a3dd1e8628bbe2303dd5a23460405c2254a235371159babfce9716c",
+    "native/src/decoration/vine_gpu/tests.rs": "251528738f3abbc28b88c9647eff3eaff3fb89459f48bea55fd18121d04b12ea",
+    "native/src/decoration/vine_gpu/vines.wgsl": "fc0591fea3dd4d5649ddce044e44565fa25610dee196f2988ac3a43a7179c800",
+    "native/src/lib.rs": "d3bf8f25523d70a70eba1485ec87553c81382925537fd80ea5a7e0c0fc04fa40"
+  },
+  "tests": {
+    "eligibility-final": {
+      "result": "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 109 filtered out; finished in 0.00s",
+      "sha256": "469d3f19e4812de3acbe4cda07b17815c080f6274356dc825849852591cda41f"
+    },
+    "handoff-final": {
+      "measurements": [
+        {
+          "origin": 0,
+          "stats": {
+            "anchors": 9,
+            "arena_bytes": 6125272,
+            "batches": 1,
+            "device_nanos": [
+              133583,
+              1540167,
+              231917
+            ],
+            "fallbacks": 0,
+            "host_nanos": 13580375,
+            "invalid_timestamps": 0,
+            "readback_bytes": 46272,
+            "substrate_pack_nanos": 90000,
+            "upload_bytes": 152932
+          },
+          "writes": 16
+        },
+        {
+          "origin": -17,
+          "stats": {
+            "anchors": 9,
+            "arena_bytes": 6125272,
+            "batches": 1,
+            "device_nanos": [
+              152458,
+              1486958,
+              225291
+            ],
+            "fallbacks": 0,
+            "host_nanos": 2269000,
+            "invalid_timestamps": 0,
+            "readback_bytes": 46272,
+            "substrate_pack_nanos": 93208,
+            "upload_bytes": 152932
+          },
+          "writes": 19
+        },
+        {
+          "origin": 1000000,
+          "stats": {
+            "anchors": 9,
+            "arena_bytes": 6125272,
+            "batches": 1,
+            "device_nanos": [
+              150833,
+              1542375,
+              228875
+            ],
+            "fallbacks": 0,
+            "host_nanos": 2686709,
+            "invalid_timestamps": 0,
+            "readback_bytes": 46272,
+            "substrate_pack_nanos": 80250,
+            "upload_bytes": 152932
+          },
+          "writes": 20
+        }
+      ],
+      "result": "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 109 filtered out; finished in 0.60s",
+      "sha256": "ebc70dcffb5fdcda4086bc11ec2c81f594fdd069918b897c6bc54e497ae3ad3f"
+    },
+    "registered-final": {
+      "measurements": [
+        {
+          "gpu": false,
+          "wall_ms": 629.855417
+        },
+        {
+          "gpu": true,
+          "wall_ms": 473.858209
+        },
+        {
+          "gpu": true,
+          "wall_ms": 476.729459
+        },
+        {
+          "gpu": false,
+          "wall_ms": 626.652459
+        }
+      ],
+      "result": "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 109 filtered out; finished in 4.18s",
+      "sha256": "2149a2416f8452123bf6d404483073eb30ec279a223989c87b7cae6a5c8a0d69"
+    },
+    "unit-final": {
+      "result": "test result: ok. 77 passed; 0 failed; 12 ignored; 0 measured; 21 filtered out; finished in 0.15s",
+      "sha256": "2a27ac26ef4b06362439e9b705a20234cfad084a0d439651dde82ef90a4415b4"
+    },
+    "vanilla-final": {
+      "measurements": [
+        {
+          "gpu": false,
+          "wall_ms": 111.723833
+        },
+        {
+          "gpu": true,
+          "wall_ms": 109.200208
+        },
+        {
+          "gpu": true,
+          "wall_ms": 113.687916
+        },
+        {
+          "gpu": false,
+          "wall_ms": 112.046459
+        }
+      ],
+      "result": "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 109 filtered out; finished in 1.47s",
+      "sha256": "eb5a989ff28bb13aa438e8d1467f4621903caa5e460ba51435262da049a564d8"
+    }
+  }
+}

@@ -1,0 +1,207 @@
+use super::*;
+use serde_json::json;
+use std::sync::Mutex;
+fn fixture() -> (WorldProfile, ChunkRequest) {
+    let (mut p, _, mut r) = super::super::replay_tests::fixture(42, 0);
+    r.min_y = -64;
+    r.height = 384;
+    let mat = |offset, allowed| json!({"type":"material","offset":offset,"allowed":allowed});
+    let air = mat([0, 0, 0], vec![0]);
+    let support = mat([0, 1, 0], vec![1, 6]);
+    let recipe:Recipe=serde_json::from_value(json!({"source":"test:vines","salt":1000,
+        "density":1,"low_density":1,"noise_count":false,"rarity":1,"tries":1,"spread":[0,0,0],
+        "placement":[{"type":"count","count":200},{"type":"count","count":40},{"type":"in_square"},
+          {"type":"height_range","height":{"type":"uniform","min_inclusive":{"absolute":64},"max_inclusive":{"absolute":255}}},
+          {"type":"block_predicate_filter","predicate":{"type":"true"}},{"type":"biome"}],
+        "kind":"attachment_growth","vines":true,"initial":6,"wet_initial":6,"face_mask":63,
+        "states":[{"source":6,"faces":2,"added":[6,6,6,6,6,6]}],"directions":[1],
+        "search_range":0,"spread_chance":0,"spread_order":[],"sculk":false,
+        "air":air,"water":air,"source_water":air,"placed_on":support,"spread_replaceable":air,"spread_support":support,
+        "support":[support,support,support,support,support,support],"sturdy":[support,support,support,support,support,support]})).unwrap();
+    recipe.validate(p.materials.len()).unwrap();
+    p.decorations.push(recipe);
+    p.biomes[0].decorations.push(5);
+    (p, r)
+}
+#[test]
+fn eligibility_requires_independence_and_unshared_rng_groups() {
+    let (mut p, r) = fixture();
+    assert!(compile(&p, r)[5].is_some());
+    let mut shared = p.decorations[5].clone();
+    shared.source = "test:shared".into();
+    p.decorations.push(shared);
+    assert!(compile(&p, r)[5].is_none());
+    p.decorations.pop();
+    let mut json = serde_json::json!({"type":"material","offset":[1,0,0],"allowed":[0]});
+    let mut ops = p.decorations[5].placement.as_ref().unwrap().to_vec();
+    ops[4] = Modifier::BlockPredicateFilter {
+        predicate: serde_json::from_value(json.clone()).unwrap(),
+    };
+    p.decorations[5].placement = Some(ops.into());
+    assert!(compile(&p, r)[5].is_none());
+    json["allowed"] = json!([0, 6]);
+    let mut ops = p.decorations[5].placement.as_ref().unwrap().to_vec();
+    ops[4] = Modifier::BlockPredicateFilter {
+        predicate: serde_json::from_value(json).unwrap(),
+    };
+    p.decorations[5].placement = Some(ops.into());
+    assert!(compile(&p, r)[5].is_some());
+    assert!(compile(&p, ChunkRequest { height: 513, ..r })[5].is_none());
+}
+fn replay(
+    profile: &WorldProfile,
+    field: &Field,
+    request: ChunkRequest,
+    gpu: Option<&Mutex<Gpu>>,
+    budget: usize,
+    post_gpu_limit: Option<usize>,
+) -> (Vec<Vec<Placement>>, Stats, usize) {
+    let mut state = Replay::new(
+        field,
+        profile,
+        request,
+        request.chunk_x,
+        request.chunk_z,
+        1,
+        None,
+        None,
+    )
+    .with_gpu_programs(gpu.map(|_| compile(profile, request)));
+    state.retained_limit = budget;
+    let mut samples = provider_noise::Samples::default();
+    let mut counts = counts::Counts::default();
+    let mut stats = Stats::default();
+    let mut provider_rounds = 0;
+    for _ in 0..20 {
+        let q = state.poll(&samples, Some(&counts));
+        if q.is_empty() {
+            return (state.finish(), stats, provider_rounds);
+        }
+        if !q.vines.is_empty() {
+            if let Some(limit) = post_gpu_limit {
+                state.retained_limit = limit;
+            }
+            stats.add(state.run_vines(&q.vines, gpu.unwrap()));
+        }
+        if !q.noise.is_empty() {
+            provider_rounds += 1;
+        }
+        samples.extend(
+            q.noise
+                .into_iter()
+                .map(|q| (q, if q[3] == 2 { -0.75 } else { 0.75 })),
+        );
+        counts.extend(q.counts.into_iter().map(|q| (q, 1)));
+    }
+    panic!("handoff must converge");
+}
+#[test]
+#[ignore = "bounded Metal planner handoff, overflow and retained-prefix correctness"]
+fn gpu_vine_planner_handoff() {
+    let engine = crate::TerrainEngine::new().unwrap();
+    let (device, queue) = engine.ore_gpu.lock().unwrap().shared_device();
+    let mut gpu = Gpu::new(device, queue, engine.backend());
+    gpu.enable_for_test(true);
+    let gpu = Mutex::new(gpu);
+    let pool = rayon::ThreadPoolBuilder::new()
+        .num_threads(2)
+        .build()
+        .unwrap();
+    let mut rows = Vec::new();
+    for origin in [0, -17, 1_000_000] {
+        let (p, r) = fixture();
+        let r = ChunkRequest {
+            chunk_x: origin,
+            chunk_z: -origin,
+            ..r
+        };
+        let field = super::super::anchor_probe::vine_field(&p, 5, 6, r, 1);
+        let (expected, _, rounds) = pool.install(|| replay(&p, &field, r, None, 64 << 20, None));
+        assert!(rounds > 0, "earlier features must have missing providers");
+        let (actual, stats, _) = pool.install(|| replay(&p, &field, r, Some(&gpu), 64 << 20, None));
+        assert_eq!(actual, expected, "origin {origin}");
+        assert!(
+            stats.anchors > stats.fallbacks,
+            "must actually evaluate anchors on GPU"
+        );
+        let (bounded, _, _) = pool.install(|| replay(&p, &field, r, Some(&gpu), 0, None));
+        assert_eq!(bounded, expected, "zero retention must use CPU");
+        let (discarded, discarded_stats, _) =
+            pool.install(|| replay(&p, &field, r, Some(&gpu), 64 << 20, Some(0)));
+        assert!(discarded_stats.batches > 0);
+        assert_eq!(
+            discarded, expected,
+            "discarding an oversized successful prefix must replay on CPU"
+        );
+        gpu.lock().unwrap().enable_for_test(false);
+        let (failed, _, _) = pool.install(|| replay(&p, &field, r, Some(&gpu), 64 << 20, None));
+        assert_eq!(
+            failed, expected,
+            "disabled device keeps the original CPU continuation"
+        );
+        gpu.lock().unwrap().enable_for_test(true);
+        rows.push(serde_json::json!({"origin":origin,"writes":actual.iter().map(Vec::len).sum::<usize>(),"stats":stats}));
+        let programs = compile(&p, r);
+        let prog = programs[5].as_ref().unwrap();
+        let mut input = Input::new(&field, &p, r, 5, prog, None).unwrap();
+        let overlay = Overlay::default();
+        let jobs = [(r.chunk_x, r.chunk_z, &overlay)];
+        let (normal, _) = gpu.lock().unwrap().run(&input, r, prog, &jobs);
+        assert!(!normal[0].as_ref().unwrap().is_empty());
+        input.words[5] = 0;
+        let (overflow, stats) = gpu.lock().unwrap().run(&input, r, prog, &jobs);
+        assert!(overflow[0].is_none());
+        assert_eq!(stats.fallbacks, 1);
+        input.words[5] = CAP as u32;
+        input.words[30] = 1;
+        let (overflow, _) = gpu.lock().unwrap().run(&input, r, prog, &jobs);
+        assert!(overflow[0].is_none());
+    }
+    println!("VINE_HANDOFF {}", serde_json::to_string(&rows).unwrap());
+}
+#[test]
+#[ignore = "bounded complete registered terrain planning CPU/GPU comparison"]
+fn gpu_vine_registered_planner() {
+    let file = std::env::var("RETINA_ANCHOR_PROFILE").expect("exported profile");
+    let mut source: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(file).unwrap()).unwrap();
+    source["program_execution"] = "interpreter".into();
+    let engine = crate::TerrainEngine::new().unwrap();
+    let id = engine
+        .register_profile(&serde_json::to_vec(&source).unwrap())
+        .unwrap();
+    let profile = engine.profile(id).unwrap().unwrap();
+    let r = ChunkRequest {
+        seed: 123456789,
+        chunk_x: 0,
+        chunk_z: 0,
+        min_y: -64,
+        height: 384,
+        base_height: 64.,
+        amplitude: 48.,
+        frequency: 0.008,
+        reserved: id,
+    };
+    let (field, mask) = engine.terrain_field(r, 32).unwrap();
+    let pool = rayon::ThreadPoolBuilder::new()
+        .num_threads(2)
+        .build()
+        .unwrap();
+    let mut expected = None;
+    let mut rows = Vec::new();
+    for enabled in [false, true, true, false] {
+        engine.vine_gpu.lock().unwrap().enable_for_test(enabled);
+        let start = std::time::Instant::now();
+        let result = pool
+            .install(|| engine.plan_decorations(&field, &profile, r, 32, mask.as_deref()))
+            .unwrap();
+        let ms = start.elapsed().as_secs_f64() * 1000.;
+        if let Some(expected) = &expected {
+            assert_eq!(&result, expected, "complete ordered registered plan");
+        } else {
+            expected = Some(result);
+        }
+        rows.push(serde_json::json!({"gpu":enabled,"wall_ms":ms}));
+    }
+    println!("VINE_REGISTERED {}", serde_json::to_string(&rows).unwrap());
+}

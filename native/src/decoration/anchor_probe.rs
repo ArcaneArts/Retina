@@ -1026,7 +1026,7 @@ fn gpu_anchor_workload_census() {
     );
 }
 
-fn vine_field(
+pub(super) fn vine_field(
     profile: &WorldProfile,
     recipe: u32,
     initial: u16,

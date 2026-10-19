@@ -79,6 +79,22 @@ impl Queue {
             retry: None,
         }
     }
+    pub(in crate::decoration) fn peek_group(&self) -> Option<(u32, u32)> {
+        let next = self.retry.as_ref().or_else(|| {
+            match (self.ready.last(), self.resumed.peek().map(|v| &v.0)) {
+                (Some(a), Some(b)) => Some(if b < a { b } else { a }),
+                (a, b) => a.or(b),
+            }
+        });
+        next.map(|c| (c.group, c.recipe))
+    }
+    pub(in crate::decoration) fn remove_group(&mut self, group: u32) {
+        self.ready.retain(|c| c.group != group);
+        self.resumed.retain(|c| c.0.group != group);
+        if self.retry.as_ref().is_some_and(|c| c.group == group) {
+            self.retry = None;
+        }
+    }
     fn pop(&mut self) -> Option<Candidate> {
         if let Some(candidate) = self.retry.take() {
             return Some(candidate);
@@ -292,6 +308,33 @@ impl Overlay {
 mod tests {
     use super::*;
     use serde_json::json;
+
+    #[test]
+    fn group_handoff_preserves_retry_and_merged_queue_order() {
+        let candidate = |group, order| Candidate {
+            recipe: group,
+            group,
+            order: std::iter::once(order).collect(),
+            seed: 0,
+            origin: [0; 3],
+            draws: Default::default(),
+            evaluation: 0..0,
+            layer: None,
+            stream: None,
+        };
+        let mut queue = Queue::new(vec![candidate(3, 0), candidate(5, 2), candidate(7, 0)]);
+        queue
+            .resumed
+            .extend([Reverse(candidate(2, 0)), Reverse(candidate(5, 1))]);
+        queue.retry(candidate(5, 0));
+        assert_eq!(queue.peek_group(), Some((5, 5)), "retry takes precedence");
+        queue.remove_group(5);
+        for group in [2, 3, 7] {
+            assert_eq!(queue.peek_group(), Some((group, group)));
+            assert_eq!(queue.pop().unwrap().group, group);
+        }
+        assert!(queue.peek_group().is_none());
+    }
 
     fn fixture(program: serde_json::Value) -> (WorldProfile, Field, ChunkRequest) {
         let recipe = json!({"source":"test:layers","salt":0,"density":1,"low_density":1,

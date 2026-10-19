@@ -39,7 +39,6 @@ pub struct Recipe {
     sturdy: [Predicate; 6],
 }
 impl Recipe {
-    #[cfg(test)]
     pub(super) fn vine_program(&self) -> Option<(&Predicate, Vec<(u16, &Predicate)>)> {
         if !self.vines {
             return None;

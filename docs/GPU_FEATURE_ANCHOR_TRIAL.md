@@ -1,5 +1,9 @@
 # Complete feature-program GPU trial
 
+Subsequent [production integration](GPU_VINE_PLANNING.md) now offloads the
+validated dense vine subset on Metal. The report below describes the original
+test-only experiment and its measurements.
+
 This cycle adds an opt-in recipe census and a test-only GPU implementation of
 complete registered plant/vine programs. Normal generation still uses the
 existing Rust planner. A useful independent-column vine result is a reason to

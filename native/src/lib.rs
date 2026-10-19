@@ -158,6 +158,7 @@ pub struct TerrainEngine {
     ore_gpu: Mutex<geology::raster_gpu::Gpu>,
     feature_gpu: Mutex<decoration::counts::gpu::Gpu>,
     light_gpu: Mutex<lighting::Gpu>,
+    vine_gpu: Mutex<decoration::vine_gpu::Gpu>,
 }
 
 impl TerrainEngine {
@@ -179,12 +180,18 @@ impl TerrainEngine {
             .map_err(|e| e.to_string())?;
         let (backend, ores, counts) = ready_receiver.recv().map_err(|e| e.to_string())??;
         let (device, queue) = ores.shared_device();
+        let vine_gpu = Mutex::new(decoration::vine_gpu::Gpu::new(
+            device.clone(),
+            queue.clone(),
+            &backend,
+        ));
         Ok(Self {
             sender,
             backend,
             pipeline,
             ore_gpu: Mutex::new(ores),
             feature_gpu: Mutex::new(counts),
+            vine_gpu,
             light_gpu: Mutex::new(lighting::Gpu::new(device, queue)),
             profiles: RwLock::new(Vec::new()),
             cache: Mutex::new(ColumnCache::default()),
@@ -476,7 +483,13 @@ impl TerrainEngine {
             mask,
             Some(&anchors),
         )
-        .with_prefix_resume(retain_prefix);
+        .with_prefix_resume(retain_prefix)
+        .with_gpu_programs(
+            self.vine_gpu
+                .lock()
+                .ok()
+                .and_then(|mut gpu| gpu.programs(profile, request)),
+        );
         let mut samples = decoration::provider_noise::Samples::default();
         loop {
             let replay_start = start(measuring);
@@ -505,44 +518,57 @@ impl TerrainEngine {
                 d.combined_sample_batches +=
                     u64::from(!queries.counts.is_empty() && !queries.noise.is_empty());
             }
-            // Both query sets were collected against the same provisional
-            // anchor pass; neither depends on the other's newly sampled values.
-            let result = self
-                .feature_gpu
-                .lock()
-                .map_err(|_| "feature GPU lock poisoned")?
-                .run_batch(
-                    request.reserved,
-                    profile.decoration_noise.as_ref(),
-                    &queries.counts,
-                    &profile.decoration_provider_noises,
-                    &queries.noise,
-                )?;
-            self.pipeline
-                .transfer(request.reserved, result.upload, result.readback);
-            for (slot, nanos) in [timings::FEATURE_COUNTS, timings::PROVIDER_NOISE]
-                .into_iter()
-                .zip(result.device_nanos)
-            {
-                if let Some(nanos) = nanos {
-                    self.timings(request.reserved).device(slot, nanos);
-                    if let Some(job) = job {
-                        job.device(slot, nanos);
-                    }
+            if !queries.vines.is_empty() {
+                let stats = replay.run_vines(&queries.vines, &self.vine_gpu);
+                self.pipeline
+                    .transfer(request.reserved, stats.upload_bytes, stats.readback_bytes);
+                if std::env::var("RETINA_VINE_DIAGNOSTICS").as_deref() == Ok("1") {
+                    eprintln!(
+                        "Retina GPU vines: {}",
+                        serde_json::to_string(&stats).unwrap()
+                    );
                 }
             }
-            counts.extend(
-                queries
-                    .counts
+            if !queries.counts.is_empty() || !queries.noise.is_empty() {
+                // Both query sets were collected against the same provisional
+                // anchor pass; neither depends on the other's newly sampled values.
+                let result = self
+                    .feature_gpu
+                    .lock()
+                    .map_err(|_| "feature GPU lock poisoned")?
+                    .run_batch(
+                        request.reserved,
+                        profile.decoration_noise.as_ref(),
+                        &queries.counts,
+                        &profile.decoration_provider_noises,
+                        &queries.noise,
+                    )?;
+                self.pipeline
+                    .transfer(request.reserved, result.upload, result.readback);
+                for (slot, nanos) in [timings::FEATURE_COUNTS, timings::PROVIDER_NOISE]
                     .into_iter()
-                    .zip(result.counts.into_iter().map(|v| v as i32)),
-            );
-            samples.extend(
-                queries
-                    .noise
-                    .into_iter()
-                    .zip(result.providers.into_iter().map(f32::from_bits)),
-            );
+                    .zip(result.device_nanos)
+                {
+                    if let Some(nanos) = nanos {
+                        self.timings(request.reserved).device(slot, nanos);
+                        if let Some(job) = job {
+                            job.device(slot, nanos);
+                        }
+                    }
+                }
+                counts.extend(
+                    queries
+                        .counts
+                        .into_iter()
+                        .zip(result.counts.into_iter().map(|v| v as i32)),
+                );
+                samples.extend(
+                    queries
+                        .noise
+                        .into_iter()
+                        .zip(result.providers.into_iter().map(f32::from_bits)),
+                );
+            }
             record(
                 sampling,
                 details.as_mut().map(|d| &mut d.sampling_wall_nanos),
