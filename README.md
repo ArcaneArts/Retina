@@ -298,7 +298,9 @@ concurrent Terralith comparisons improved 5–14%; serial and vanilla throughput
 did not improve measurably, and process memory was not consistently lower. The
 report retains those limits. A [bounded material-output arena trial](docs/MATERIAL_ARENA_TRIAL.md)
 reduced isolated material work but did not establish faster complete generation;
-the proven continuation path remains. Ore, section-processing and combined
+the proven continuation path remains. An [ore-mask compaction trial](docs/ORE_WORD_FLAGS_TRIAL.md)
+reduces readback in experiments but does not establish a reliable throughput gain,
+so production retains its existing masks. Section-processing and combined
 integration cycles are still pending.
 
 ## Building and testing
