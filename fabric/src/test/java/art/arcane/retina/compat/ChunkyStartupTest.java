@@ -2,12 +2,16 @@ package art.arcane.retina.compat;
 
 import com.seibel.distanthorizons.core.wrapperInterfaces.modAccessor.AbstractChunkyAccessor;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.DisabledIfSystemProperty;
 import org.popcraft.chunky.ChunkyProvider;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 class ChunkyStartupTest {
     @Test
+    // The installed-Chunky lane loads the real provider, not our controllable startup fixture.
+    // Exercise this simulated transition in the ordinary lane without retinaChunkyJar.
+    @DisabledIfSystemProperty(named = "retina.chunky.tests", matches = "true")
     void retriesAfterSpawnChunksUntilChunkyStartsAndBindsOnlyOnce() {
         ChunkyProvider.loaded = false;
         var accessor = new AbstractChunkyAccessor() {

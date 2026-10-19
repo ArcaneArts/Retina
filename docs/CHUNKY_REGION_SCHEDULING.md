@@ -90,3 +90,12 @@ Optional integration fixtures accept `-PretinaChunkyJar=<installed jar>` and
 Chunky or the test library into the mod. No end-to-end Chunky speedup is claimed
 from these correctness checks; compare F3's completed terrain production separately
 from Chunky's load-completion rate during gameplay.
+
+
+The simulated provider-startup transition uses a controllable test provider and
+runs without `-PretinaChunkyJar`. When the installed JAR is supplied, its real
+provider replaces that fixture, so only the simulated transition is disabled in
+that lane. Run `:fabric:test --tests art.arcane.retina.compat.ChunkyStartupTest`
+without the property to exercise it separately. Both lanes passed in the
+[combined validation](OPTIMIZATION_INTEGRATION_2026_10.md); production startup and
+error handling are unchanged.
