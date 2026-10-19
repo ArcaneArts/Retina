@@ -1,0 +1,216 @@
+diff --git a/native/src/decoration/placement.rs b/native/src/decoration/placement.rs
+index 468ac79..b60501f 100644
+--- a/native/src/decoration/placement.rs
++++ b/native/src/decoration/placement.rs
+@@ -1517,7 +1517,7 @@ mod tests {
+         // retains the precise column biome used by the GPU shoreline coating.
+         let mut underground = profile.biomes[0].clone();
+         underground.id = "test:cave".into();
+-        underground.decorations = vec![1];
++        underground.decorations = vec![1].into();
+         profile.biomes.push(underground);
+         let biome_offset = (50 * 50 * 128 + 31) / 32 + (80 * 80 + 31) / 32;
+         mask.words[biome_offset..base].fill(1 | (1 << 16));
+diff --git a/native/src/decoration/vine_gpu/tests.rs b/native/src/decoration/vine_gpu/tests.rs
+index 419d3dd..f929093 100644
+--- a/native/src/decoration/vine_gpu/tests.rs
++++ b/native/src/decoration/vine_gpu/tests.rs
+@@ -20,7 +20,7 @@ fn fixture() -> (WorldProfile, ChunkRequest) {
+         "support":[support,support,support,support,support,support],"sturdy":[support,support,support,support,support,support]})).unwrap();
+     recipe.validate(p.materials.len()).unwrap();
+     p.decorations.push(recipe);
+-    p.biomes[0].decorations.push(5);
++    p.biomes[0].decorations = p.biomes[0].decorations.iter().copied().chain([5]).collect();
+     (p, r)
+ }
+ #[test]
+diff --git a/native/src/profile.rs b/native/src/profile.rs
+index 348dd7e..22a90d5 100644
+--- a/native/src/profile.rs
++++ b/native/src/profile.rs
+@@ -1,3 +1,6 @@
++mod recipes;
++pub use recipes::RecipeList;
++
+ use crate::decoration::Recipe;
+ use bytemuck::{Pod, Zeroable};
+ use serde::Deserialize;
+@@ -29,7 +32,7 @@ pub struct BiomeProfile {
+     pub underwater: u32,
+     pub flags: u32,
+     #[serde(default)]
+-    pub decorations: Vec<u32>,
++    pub decorations: RecipeList,
+     #[serde(default)]
+     pub ores: Vec<u32>,
+     #[serde(default)]
+diff --git a/native/src/profile/recipes.rs b/native/src/profile/recipes.rs
+new file mode 100644
+index 0000000..7ee7547
+--- /dev/null
++++ b/native/src/profile/recipes.rs
+@@ -0,0 +1,164 @@
++//! Preserve registered recipe order while compiling immutable membership once.
++use serde::{Deserialize, Deserializer};
++use std::{ops::Deref, sync::Arc};
++
++#[derive(Clone, Default)]
++pub struct RecipeList(Arc<Compiled>);
++#[derive(Default)]
++struct Compiled {
++    ordered: Box<[u32]>,
++    membership: Membership,
++}
++#[derive(Default)]
++enum Membership {
++    #[default]
++    Small,
++    Bits {
++        first: usize,
++        words: Box<[u64]>,
++    },
++    Sparse(Box<[u32]>),
++}
++impl From<Vec<u32>> for RecipeList {
++    fn from(ordered: Vec<u32>) -> Self {
++        let membership = if ordered.len() < 8 {
++            Membership::Small
++        } else {
++            let first = *ordered.iter().min().unwrap() as usize / 64;
++            let last = *ordered.iter().max().unwrap() as usize / 64;
++            let count = last - first + 1;
++            // Extra storage never exceeds the original list, even for sparse
++            // IDs. Do not reorder or remove duplicates from the source list.
++            if count * 8 <= ordered.len() * 4 {
++                let mut words = vec![0; count];
++                for &id in &ordered {
++                    words[id as usize / 64 - first] |= 1 << (id % 64);
++                }
++                Membership::Bits {
++                    first,
++                    words: words.into_boxed_slice(),
++                }
++            } else {
++                let mut sorted = ordered.clone();
++                sorted.sort_unstable();
++                sorted.dedup();
++                Membership::Sparse(sorted.into_boxed_slice())
++            }
++        };
++        Self(Arc::new(Compiled {
++            ordered: ordered.into_boxed_slice(),
++            membership,
++        }))
++    }
++}
++impl FromIterator<u32> for RecipeList {
++    fn from_iter<T: IntoIterator<Item = u32>>(values: T) -> Self {
++        values.into_iter().collect::<Vec<_>>().into()
++    }
++}
++impl<'de> Deserialize<'de> for RecipeList {
++    fn deserialize<D: Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
++        Vec::<u32>::deserialize(d).map(Self::from)
++    }
++}
++impl Deref for RecipeList {
++    type Target = [u32];
++    fn deref(&self) -> &[u32] {
++        &self.0.ordered
++    }
++}
++impl RecipeList {
++    #[inline]
++    pub fn contains(&self, id: &u32) -> bool {
++        match &self.0.membership {
++            Membership::Small => self.0.ordered.contains(id),
++            Membership::Bits { first, words } => words
++                .get((*id as usize / 64).wrapping_sub(*first))
++                .is_some_and(|word| word & (1 << (*id % 64)) != 0),
++            Membership::Sparse(sorted) => sorted.binary_search(id).is_ok(),
++        }
++    }
++}
++#[cfg(test)]
++mod tests {
++    use super::*;
++    #[test]
++    fn compiled_membership_keeps_registered_order_duplicates_and_extreme_ids() {
++        for ids in [
++            vec![],
++            vec![3, 0, 3, u32::MAX],
++            (90..260).rev().collect(),
++            vec![u32::MAX, 0, 17, 90000, 1, 2, 3, 4, 5, 1, 0],
++        ] {
++            let list: RecipeList = ids.clone().into();
++            let clone = list.clone();
++            assert_eq!(&*list, ids.as_slice());
++            assert!(Arc::ptr_eq(&list.0, &clone.0));
++            for id in (0..1024).chain([90000, u32::MAX - 1, u32::MAX]) {
++                assert_eq!(list.contains(&id), ids.contains(&id));
++            }
++        }
++        let list: RecipeList = serde_json::from_str("[5,1,5,0]").unwrap();
++        assert_eq!(&*list, &[5, 1, 5, 0]);
++    }
++    #[test]
++    #[ignore = "bounded registered biome recipe membership microbenchmark"]
++    fn registered_recipe_membership_benchmark() {
++        use std::{hint::black_box, time::Instant};
++        let path = std::env::var("RETINA_LOOKUP_PROFILE").unwrap();
++        let profile = crate::profile::WorldProfile::parse(&std::fs::read(path).unwrap()).unwrap();
++        let max = profile.decorations.len() as u32;
++        let queries: Vec<_> = (0..profile.biomes.len())
++            .flat_map(|b| (0..256).map(move |n| (b, (n * 193 + b as u32 * 71) % (max + 1))))
++            .collect();
++        let mut raw = Vec::new();
++        let mut prepared = Vec::new();
++        let mut expected = None;
++        for round in 0..25 {
++            for shift in 0..2 {
++                let mode = (round + shift) % 2;
++                let start = Instant::now();
++                let mut sum = 0u64;
++                for _ in 0..4 {
++                    for &(biome, id) in black_box(&queries) {
++                        let list = black_box(&profile.biomes[biome].decorations);
++                        let found = if mode == 0 {
++                            list.deref().contains(black_box(&id))
++                        } else {
++                            list.contains(black_box(&id))
++                        };
++                        sum += u64::from(black_box(found));
++                    }
++                }
++                let ms = start.elapsed().as_secs_f64() * 1000.;
++                if let Some(e) = expected {
++                    assert_eq!(sum, e);
++                } else {
++                    expected = Some(sum);
++                }
++                if round >= 5 {
++                    if mode == 0 {
++                        raw.push(ms);
++                    } else {
++                        prepared.push(ms);
++                    }
++                }
++            }
++        }
++        let extra: usize = profile
++            .biomes
++            .iter()
++            .map(|b| match &b.decorations.0.membership {
++                Membership::Small => 0,
++                Membership::Bits { words, .. } => words.len() * 8,
++                Membership::Sparse(v) => v.len() * 4,
++            })
++            .sum();
++        println!(
++            "PREPARED_RECIPE_LOOKUPS {}",
++            serde_json::json!({"warmups":5,"iterations":20,
++            "biomes":profile.biomes.len(),"queries":queries.len()*4,"extra_bytes":extra,
++            "checksum":expected,"linear_ms":raw,"prepared_ms":prepared})
++        );
++    }
++}
