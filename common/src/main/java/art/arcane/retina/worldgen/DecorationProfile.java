@@ -16,6 +16,7 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.level.biome.Biome;
+import net.minecraft.world.level.biome.FeatureSorter;
 import net.minecraft.world.level.block.*;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.*;
@@ -37,6 +38,9 @@ final class DecorationProfile {
     private final ProviderNoiseProfile providerNoise;
     private boolean flat;
     private int generatorDepth;
+    private int generationStep = -1;
+    private int rootOrder;
+    private String rootSource;
     private final JsonArray ticks = new JsonArray();
     private final Map<String,Integer> tickIds = new LinkedHashMap<>();
     private final Set<PlacedFeature> nativeDisks=Collections.newSetFromMap(new IdentityHashMap<>());
@@ -53,15 +57,15 @@ final class DecorationProfile {
         var exporter = new DecorationProfile(registry, materials);
         exporter.flat = world.has("flat");
         exporter.generatorDepth = world.get("generator_depth").getAsInt();
-        for (int i = 0; i < biomes.size(); i++) {
+        if (world.has("decoration_source_order") && world.get("decoration_source_order").getAsBoolean()) {
+            exporter.exportOrdered(biomes, profiles, generation);
+        } else for (int i = 0; i < biomes.size(); i++) {
             var selected = new JsonArray();
             var features = generation.apply(biomes.get(i)).features();
-            int vegetation = GenerationStep.Decoration.VEGETAL_DECORATION.ordinal();
             for(int step=0;step<features.size();step++) for (var holder : features.get(step)) {
                 // Loaded SimpleBlock features, disks and attachments also occur outside vegetation.
                 // Retain their biome feature order; other stages keep their exporters.
-                if(step!=vegetation && !hasOtherStageRecipe(holder.value().feature().value(),0)
-                        && !(exporter.flat && (holder.value().feature().value() instanceof LakeFeature || holder.value().feature().value() instanceof VoidStartPlatformFeature)))continue;
+                if (!exporter.includes(step, holder.value())) continue;
                 String name = holder.unwrapKey().map(k -> k.identifier().toString()).orElse("inline/" + biomes.get(i).unwrapKey().map(k -> k.identifier().toString()).orElse(Integer.toString(i)) + "/" + selected.size());
                 var before = new ArrayList<Integer>();
                 exporter.placed(holder.value(), new Placement(), 1, name, before, 0);
@@ -74,6 +78,55 @@ final class DecorationProfile {
         world.add("decoration_ticks", exporter.ticks);
         nativeDisks.addAll(exporter.nativeDisks);
         return exporter.recipes;
+    }
+
+    private boolean includes(int step, PlacedFeature placed) {
+        var feature = placed.feature().value();
+        return step == GenerationStep.Decoration.VEGETAL_DECORATION.ordinal()
+                || hasOtherStageRecipe(feature, 0)
+                || flat && (feature instanceof LakeFeature || feature instanceof VoidStartPlatformFeature);
+    }
+
+    /** Native replay sorts recipe IDs, so allocate them in the loaded feature DAG order.
+     * A shared root is exported once per step and retains every source biome's membership.
+     * FeatureSorter also reports an actual ordering cycle with the involved biome sources.
+     */
+    private void exportOrdered(List<Holder<Biome>> biomes, JsonArray profiles,
+            java.util.function.Function<Holder<Biome>, net.minecraft.world.level.biome.BiomeGenerationSettings> generation) {
+        var settings = new HashMap<Holder<Biome>, net.minecraft.world.level.biome.BiomeGenerationSettings>();
+        for (var biome : biomes) settings.put(biome, generation.apply(biome));
+        var steps = FeatureSorter.buildFeaturesPerStep(biomes, b -> settings.get(b).features(), true);
+        for (var profile : profiles) profile.getAsJsonObject().add("decorations", new JsonArray());
+        for (int step = 0; step < steps.size(); step++) {
+            var names = new IdentityHashMap<PlacedFeature, String>();
+            var membership = new IdentityHashMap<PlacedFeature, BitSet>();
+            for (int biome = 0; biome < biomes.size(); biome++) {
+                var features = settings.get(biomes.get(biome)).features();
+                if (step >= features.size()) continue;
+                int position = 0;
+                for (var holder : features.get(step)) {
+                    String inline = "inline/" + biomes.get(biome).unwrapKey().map(k -> k.identifier().toString()).orElse(Integer.toString(biome))
+                            + "/step" + step + "/feature" + position++;
+                    names.putIfAbsent(holder.value(), holder.unwrapKey().map(k -> k.identifier().toString()).orElse(inline));
+                    membership.computeIfAbsent(holder.value(), ignored -> new BitSet()).set(biome);
+                }
+            }
+            for (var placed : steps.get(step).features()) {
+                generationStep = step;
+                rootSource = names.get(placed);
+                if (includes(step, placed)) {
+                    var selected = new ArrayList<Integer>();
+                    placed(placed, new Placement(), 1, rootSource, selected, 0);
+                    var members = membership.get(placed);
+                    for (int biome = members.nextSetBit(0); biome >= 0; biome = members.nextSetBit(biome + 1)) {
+                        var ids = profiles.get(biome).getAsJsonObject().getAsJsonArray("decorations");
+                        selected.forEach(ids::add);
+                    }
+                }
+                rootOrder++;
+            }
+        }
+        generationStep = -1;
     }
 
     private static boolean hasOtherStageRecipe(Feature feature,int depth) {
@@ -104,7 +157,7 @@ final class DecorationProfile {
         if (chance <= 0) return;
         if (depth > 16) throw new IllegalArgumentException("Recursive decoration feature: " + path);
         var p = previous.copy();
-        if (depth == 0) p.placementSalt = salt(path);
+        if (depth == 0) p.placementSalt = salt(recipeKey(path));
         for (var modifier : placed.placement()) {
             var json = PlacementModifier.CODEC.encodeStart(registry.createSerializationContext(JsonOps.INSTANCE), modifier).getOrThrow().getAsJsonObject();
             switch (type(json)) {
@@ -1237,11 +1290,21 @@ final class DecorationProfile {
         }
     }
 
+    private String recipeKey(String path) {
+        return generationStep < 0 ? path : "step/" + generationStep + "/" + path;
+    }
+
     private void emit(String path, Placement p, double chance, String kind, JsonObject data, List<Integer> selected) {
-        Integer id = ids.get(path);
+        String key = recipeKey(path);
+        Integer id = ids.get(key);
         if (id == null) {
-            id = recipes.size(); ids.put(path, id);
-            data.addProperty("source", path); data.addProperty("salt", salt(path)); data.addProperty("kind", kind);
+            id = recipes.size(); ids.put(key, id);
+            data.addProperty("source", path); data.addProperty("salt", salt(key)); data.addProperty("kind", kind);
+            if (generationStep >= 0) {
+                data.addProperty("generation_step", generationStep);
+                data.addProperty("root_order", rootOrder);
+                data.addProperty("root_source", rootSource);
+            }
             data.addProperty("placement_salt", p.placementSalt); data.add("placement", p.program.deepCopy());
             data.addProperty("density", p.density * chance); data.addProperty("low_density", p.lowDensity * chance);
             data.add("water_offsets", p.waterOffsets.deepCopy());

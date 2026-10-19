@@ -36,6 +36,7 @@ public final class NetherFeatureTest {
             var exported=TerrainProfileData.export(registry,RetinaBiomeSource.fromSelected(source),0,256,42,settings.value(),StructureProfile.Context.NONE,true,false,true);
             var data=JsonParser.parseString(exported.json()).getAsJsonObject();
             Files.createDirectories(Path.of("build/nether"));Files.writeString(Path.of("build/nether/feature-profile.json"),data.toString());
+            NetherFeatureOrderTest.check(registry,exported);
             var kinds=new TreeSet<String>();gather(data.getAsJsonArray("decorations"),kinds);
             require(kinds.containsAll(Set.of("neighbor_spread","pillar","projected_square","column_cluster","replace_blobs","delta","huge_fungus","spring")),"all loaded Nether primitive families exported: "+kinds);
             for (var biome:data.getAsJsonArray("biomes")) {
