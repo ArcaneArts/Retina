@@ -37,6 +37,8 @@ final class DecorationProfile {
     private final ProviderNoiseProfile providerNoise;
     private boolean flat;
     private int generatorDepth;
+    private final JsonArray ticks = new JsonArray();
+    private final Map<String,Integer> tickIds = new LinkedHashMap<>();
     private final Set<PlacedFeature> nativeDisks=Collections.newSetFromMap(new IdentityHashMap<>());
     private DecorationProfile(HolderLookup.Provider registry, LinkedHashMap<BlockState, Integer> materials) {
         this.registry = registry;
@@ -69,6 +71,7 @@ final class DecorationProfile {
         }
         Retina.LOGGER.info("Exported {} registered decoration recipes; omitted feature kinds: {}", exporter.recipes.size(), exporter.unsupported);
         world.add("decoration_provider_noises", exporter.providerNoise.programs);
+        world.add("decoration_ticks", exporter.ticks);
         nativeDisks.addAll(exporter.nativeDisks);
         return exporter.recipes;
     }
@@ -768,9 +771,15 @@ final class DecorationProfile {
         var result=new JsonObject();result.add("placement",program);result.add("feature",data);result.addProperty("reach",reach+data.get("reach").getAsInt());return result;
     }
     private JsonObject nether(Feature feature,int depth) {
-        var data=NetherFeatureProfile.export(feature,registry,this::material,value->stateProgram(value,0),child->nested(child,depth+1),generatorDepth);
+        var data=NetherFeatureProfile.export(feature,registry,this::material,value->stateProgram(value,0),child->nested(child,depth+1),generatorDepth,this::scheduledTick);
         if(data==null)unsupported.add("nether_feature:provider-predicate-or-reach:"+feature.getClass().getSimpleName());
         return data;
+    }
+    private int scheduledTick(String kind,String id) {
+        return tickIds.computeIfAbsent(kind+":"+id,ignored->{
+            if(ticks.size()==65535)throw new IllegalArgumentException("Too many registered generation tick types");
+            var tick=new JsonObject();tick.addProperty("kind",kind);tick.addProperty("id",id);ticks.add(tick);return ticks.size();
+        });
     }
     private JsonObject disk(DiskFeature disk) {
         var ops=registry.createSerializationContext(JsonOps.INSTANCE);

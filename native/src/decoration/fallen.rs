@@ -122,6 +122,7 @@ impl Context<'_> {
     }
     fn put(&mut self, at: [i32; 3], material: u16) {
         self.blocks.push(WorldBlock {
+            tick: 0,
             x: at[0],
             y: at[1],
             z: at[2],

@@ -86,6 +86,8 @@ pub struct WorldProfile {
     pub noises: Vec<NoiseProfile>,
     #[serde(default)]
     pub decorations: Vec<Recipe>,
+    #[serde(default)]
+    pub decoration_ticks: Vec<crate::decoration::ticks::Definition>,
     /// Shared loaded survival rules for context-derived SimpleBlock outputs.
     #[serde(default)]
     pub simple_current_states: Vec<Option<crate::decoration::SimpleState>>,

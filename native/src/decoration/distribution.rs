@@ -24,6 +24,7 @@ fn bucket(
             continue;
         }
         targets[cz as usize * side + cx as usize].push(Placement {
+            tick: block.tick,
             index: y as u32 * 256
                 + block.z.rem_euclid(16) as u32 * 16
                 + block.x.rem_euclid(16) as u32,
@@ -141,6 +142,7 @@ mod tests {
                 let z = (r.chunk_z - 1 + (a / halo) as i32) * 16;
                 (0..per_anchor)
                     .map(|i| WorldBlock {
+                        tick: (i % 7) as u16,
                         // Cross chunk borders, duplicate cells and out-of-world writes.
                         x: x + ((i * 13) % 42) as i32 - 13,
                         z: z + ((i * 7) % 42) as i32 - 13,

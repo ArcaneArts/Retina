@@ -155,6 +155,7 @@ pub(super) fn place(
                 // need not rescan this feature's earlier writes at each block.
                 if test(&recipe.replaceable, pos) {
                     blocks.push(WorldBlock {
+                        tick: 0,
                         x: pos[0],
                         y: pos[1],
                         z: pos[2],
@@ -173,6 +174,7 @@ pub(super) fn place(
             .sample(rng, at, &|p| material_at(blocks, p), noise);
         if test(&recipe.replaceable, pos) {
             blocks.push(WorldBlock {
+                tick: 0,
                 x: pos[0],
                 y: pos[1],
                 z: pos[2],
