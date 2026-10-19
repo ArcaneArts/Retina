@@ -289,6 +289,10 @@ Matched lit-MCA trials measured roughly 5–8% higher Terralith throughput seria
 and 4% with two callers, using a bounded comparison build at optimization level 2
 without LTO. Vanilla's small difference is inconclusive. Logical transfer volume
 increased modestly; the report includes memory costs and build limitations.
+The following [compact lighting-input cycle](docs/COMPACT_LIGHT_INPUT.md) reduces
+logical transfer volume by about 37–38% with exact light/NBT output. Matched
+serial vanilla samples improve about 4–5%; concurrent Terralith results are
+inconclusive. Light-output compaction and the remaining cycles are still pending.
 
 ## Building and testing
 

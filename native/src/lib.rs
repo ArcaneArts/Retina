@@ -185,6 +185,7 @@ impl TerrainEngine {
             queue.clone(),
             &backend,
         ));
+        let light_gpu = Mutex::new(lighting::Gpu::new(device, queue, &backend));
         Ok(Self {
             sender,
             backend,
@@ -192,7 +193,7 @@ impl TerrainEngine {
             ore_gpu: Mutex::new(ores),
             feature_gpu: Mutex::new(counts),
             vine_gpu,
-            light_gpu: Mutex::new(lighting::Gpu::new(device, queue)),
+            light_gpu,
             profiles: RwLock::new(Vec::new()),
             cache: Mutex::new(ColumnCache::default()),
             height_cache: Mutex::new(ColumnCache::default()),

@@ -15,7 +15,7 @@ from that report. Retained baseline library SHA-256:
 | --- | --- | --- |
 | Compact/compile decoration programs | [PR #115](https://github.com/ArcaneArts/Retina/pull/115) and [PR #116](https://github.com/ArcaneArts/Retina/pull/116): validated eligible streaming | Dense/sparse planning, exact ordered output/RNG, memory, vanilla/Terralith lit-MCA |
 | Complete feature-anchor GPU evaluation | [Complete registered vine programs](GPU_VINE_PLANNING.md) integrated on Metal; other program classes remain CPU | Mixed-anchor handoff, exact fallback/overflow/order, end-to-end benefit |
-| Compact lighting transport | Pending | Complete light-array parity, uniform/dense payloads, memory and lit-MCA throughput |
+| Compact lighting transport | [Uniform material-section input](COMPACT_LIGHT_INPUT.md) validated on Metal; compact output pending | Complete light-array parity, uniform/dense payloads, memory and lit-MCA throughput |
 | GPU-driven material emission | Pending | Exact runs, overflow/failure/interleaved ownership, synchronization and throughput |
 | Tighter ore planning/masks | Pending | Seed/distribution/host/exposure/boundary parity, total planning/application cost |
 | Final sections/NBT/compression | Pending | Complete NBT/save parity, memory/copies and whole-region results |
@@ -81,3 +81,22 @@ initial inconclusive trial, transfer/memory costs and reduced build settings.
 This completes production integration of the measured supported subset, not the
 overall optimization goal. Compact lighting transport is next; material emission,
 ore/section processing and combined lifecycle validation remain outstanding.
+
+
+## Compact lighting material input
+
+Uniform final sections now upload exact material descriptors; mixed sections
+retain their full IDs. Region-wide classification is reused by overlapping halos,
+and a SIMD-friendly scan replaces the slower scalar prototype. Input-only GPU
+buffer growth preserves existing frontiers and worklists. All tested light arrays
+and decompressed NBT match the preceding production path.
+
+[Results](COMPACT_LIGHT_INPUT.md) show about 37–38% less total logical traffic and
+4–5% higher serial vanilla throughput in matched bounded builds. Serial Terralith
+changes are small, and reversed two-caller comparisons are inconclusive. The
+standalone diagnostic API remains slower because its inputs were already packed;
+that limitation and process RSS observations are retained in the report.
+
+This advances area 3's input transport. Constant-light output representation,
+GPU-driven material emission, ore/section processing and final combined lifecycle
+validation remain outstanding. No earlier stage gains are added to these rates.

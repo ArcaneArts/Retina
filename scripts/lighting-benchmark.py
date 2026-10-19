@@ -59,6 +59,9 @@ def main():
     lib, check = library(args.library)
     reference = library(args.reference_library) if args.reference_library else None
     report = {"library": str(args.library), "reference_library": str(args.reference_library) if reference else None,
+              "library_sha256": hashlib.sha256(args.library.read_bytes()).hexdigest(),
+              "reference_sha256": hashlib.sha256(args.reference_library.read_bytes()).hexdigest() if reference else None,
+              "input_transport": os.environ.get("RETINA_LIGHTING_INPUT", "default"),
               "iterations": args.iterations, "warmups": args.warmups, "fixtures": []}
     for path in paths:
         fixture = json.loads(path.read_text())
@@ -104,6 +107,8 @@ def main():
                     samples[mode]["propagation"].append((after.nanos[31]-before.nanos[31])/1e6)
                     samples[mode]["packing"].append((after.nanos[32]-before.nanos[32])/1e6)
         result = {"name": path.stem, "side_chunks": side, "height": height, "sha256": expected,
+                  "profile_sha256": hashlib.sha256(data).hexdigest(),
+                  "blocks_sha256": hashlib.sha256(raw).hexdigest(), "samples_ms": samples,
                   "modes": {mode: {stage: summary(values) for stage, values in stages.items()}
                             for mode, stages in samples.items()}}
         if "dense" in samples and "sparse" in samples:
