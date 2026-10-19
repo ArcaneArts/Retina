@@ -2378,6 +2378,7 @@ mod tests {
     #[test]
     fn giant_jungle_crowns_close_above_the_trunk_without_four_interior_holes() {
         let profile = WorldProfile {
+            mca_compression: Default::default(),
             decoration_ticks: Vec::new(),
             flat: None,
             lighting: None,

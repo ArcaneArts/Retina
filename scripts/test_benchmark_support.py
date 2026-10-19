@@ -5,7 +5,7 @@ from pathlib import Path
 import sys
 
 sys.path.insert(0, str(Path(__file__).parent))
-from benchmark_support import compare_corpora, first_difference, mca_records, percentile
+from benchmark_support import compare_corpora, first_difference, mca_records, percentile, lz4_block_stream
 
 
 def fixture(records):
@@ -24,6 +24,24 @@ def fixture(records):
 
 
 class BenchmarkSupportTest(unittest.TestCase):
+    def test_lz4_blocks_and_integrity(self):
+        try:
+            import lz4.block
+            import xxhash
+        except ImportError:
+            self.skipTest("LZ4 benchmark reader requires lz4 and xxhash")
+        import struct
+        raw = b"Minecraft chunk data" * 2000
+        compressed = lz4.block.compress(raw, store_size=False)
+        checksum = xxhash.xxh32(raw, seed=0x9747b28c).intdigest() & 0x0fffffff
+        terminal = struct.pack("<8sBIII", b"LZ4Block", 0x16, 0, 0, 0)
+        for token, block in [(0x16, raw), (0x26, compressed)]:
+            stream = struct.pack("<8sBIII", b"LZ4Block", token, len(block), len(raw), checksum) + block + terminal
+            self.assertEqual(raw, lz4_block_stream(stream))
+            for invalid in [stream[:-1], stream + b"x", stream[:17] + bytes(4) + stream[21:]]:
+                with self.assertRaises(ValueError):
+                    lz4_block_stream(invalid)
+
     def test_percentile_interpolates(self):
         self.assertEqual(25, percentile([10, 20, 30, 40], 50))
         self.assertEqual(38.5, percentile([10, 20, 30, 40], 95))

@@ -7,7 +7,6 @@ use std::sync::OnceLock;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
-use libdeflater::{CompressionLvl, Compressor};
 use rayon::prelude::*;
 
 use crate::{
@@ -22,6 +21,8 @@ static TEMP_ID: AtomicU64 = AtomicU64::new(0);
 static ASSEMBLERS: OnceLock<Result<rayon::ThreadPool, String>> = OnceLock::new();
 #[path = "material_cache.rs"]
 mod material_cache;
+pub mod codec;
+use codec::{Encoder, Record};
 
 #[repr(C)]
 #[derive(Default, Debug, Clone, Copy)]
@@ -253,7 +254,7 @@ fn generate_region_inner(
     }
 
     let start = Instant::now();
-    let records: Result<Vec<Vec<u8>>, String> = if let Some(cached) = cached {
+    let records: Result<Vec<Record>, String> = if let Some(cached) = cached {
         let source = timings
             .time(timings::IO, || fs::read(cached))
             .map_err(|e| format!("read preview {}: {e}", cached.display()))?;
@@ -272,14 +273,18 @@ fn generate_region_inner(
                 }
                 let payload =
                     u32::from_be_bytes(source[offset..offset + 4].try_into().unwrap()) as usize;
-                if payload < 1 || payload + 4 > length || source[offset + 4] != 2 {
+                if payload < 1 || payload + 4 > length {
                     return Err(format!("invalid cached MCA record at slot {slot}"));
                 }
-                Ok(source[offset + 5..offset + 4 + payload].to_vec())
+                Ok(Record {
+                    codec: codec::Compression::from_id(source[offset + 4])?,
+                    bytes: source[offset + 5..offset + 4 + payload].to_vec(),
+                })
             })
             .collect()
     } else {
         let profile = engine.profile(request.reserved)?;
+        let compression = profile.as_deref().map(|p| p.mca_compression).unwrap_or_default();
         let origin = ChunkRequest {
             chunk_x: region_x * 32,
             chunk_z: region_z * 32,
@@ -464,15 +469,7 @@ fn generate_region_inner(
                     });
                     scratch.blocks = blocks;
                     timings.time(timings::COMPRESS, || {
-                        let bound = scratch.compressor.zlib_compress_bound(scratch.nbt.0.len());
-                        scratch.compressed.resize(bound, 0);
-                        let size = scratch
-                            .compressor
-                            .zlib_compress(&scratch.nbt.0, &mut scratch.compressed)
-                            .map_err(|e| e.to_string())?;
-                        Ok(PreparedRecord::Compressed(
-                            scratch.compressed[..size].to_vec(),
-                        ))
+                        scratch.encoder.encode(compression, &scratch.nbt.0).map(PreparedRecord::Compressed)
                     })
                 })
                 .collect();
@@ -486,7 +483,7 @@ fn generate_region_inner(
                         PreparedRecord::Compressed(_) => unreachable!(),
                     })
                     .unzip();
-                let mut records: Vec<Option<Vec<u8>>> = (0..requests.len()).map(|_| None).collect();
+                let mut records: Vec<Option<Record>> = (0..requests.len()).map(|_| None).collect();
                 let encode = |indices: &[usize], light: Option<&crate::lighting::Tile>| {
                     indices
                         .par_iter()
@@ -510,14 +507,7 @@ fn generate_region_inner(
                                 )
                             });
                             timings.time(timings::COMPRESS, || {
-                                let bound =
-                                    scratch.compressor.zlib_compress_bound(scratch.nbt.0.len());
-                                scratch.compressed.resize(bound, 0);
-                                let size = scratch
-                                    .compressor
-                                    .zlib_compress(&scratch.nbt.0, &mut scratch.compressed)
-                                    .map_err(|e| e.to_string())?;
-                                Ok((i, scratch.compressed[..size].to_vec()))
+                                scratch.encoder.encode(compression, &scratch.nbt.0).map(|record| (i, record))
                             })
                         })
                         .collect::<Result<Vec<_>, String>>()
@@ -568,16 +558,16 @@ fn generate_region_inner(
         .as_secs() as u32;
     for (slot, compressed) in slots.into_iter().zip(records) {
         let offset = file.len() / SECTOR;
-        let sectors = (compressed.len() + 5).div_ceil(SECTOR);
+        let sectors = (compressed.bytes.len() + 5).div_ceil(SECTOR);
         if sectors > 255 || offset > 0x00ff_ffff {
             return Err("generated MCA record exceeds the inline Anvil sector limit".into());
         }
         file[slot * 4..slot * 4 + 4]
             .copy_from_slice(&(((offset as u32) << 8) | sectors as u32).to_be_bytes());
         file[SECTOR + slot * 4..SECTOR + slot * 4 + 4].copy_from_slice(&timestamp.to_be_bytes());
-        file.extend_from_slice(&((compressed.len() + 1) as u32).to_be_bytes());
-        file.push(2); // Standard zlib chunk compression.
-        file.extend_from_slice(&compressed);
+        file.extend_from_slice(&((compressed.bytes.len() + 1) as u32).to_be_bytes());
+        file.push(compressed.codec.id());
+        file.extend_from_slice(&compressed.bytes);
         file.resize((offset + sectors) * SECTOR, 0);
     }
     let parent = path.parent().ok_or("MCA path needs a parent directory")?;
@@ -797,7 +787,7 @@ impl PaletteScratch {
     }
 }
 enum PreparedRecord {
-    Compressed(Vec<u8>),
+    Compressed(Record),
     Blocks(Vec<u16>, Option<serde_json::Value>),
 }
 struct ChunkScratch {
@@ -806,8 +796,7 @@ struct ChunkScratch {
     palette: PaletteScratch,
     occupied: Vec<bool>,
     biomes: PaletteScratch,
-    compressor: Compressor,
-    compressed: Vec<u8>,
+    encoder: Encoder,
 }
 impl Default for ChunkScratch {
     fn default() -> Self {
@@ -817,8 +806,7 @@ impl Default for ChunkScratch {
             palette: PaletteScratch::default(),
             occupied: Vec::new(),
             biomes: PaletteScratch::default(),
-            compressor: Compressor::new(CompressionLvl::new(1).unwrap()),
-            compressed: Vec::new(),
+            encoder: Encoder::default(),
         }
     }
 }
