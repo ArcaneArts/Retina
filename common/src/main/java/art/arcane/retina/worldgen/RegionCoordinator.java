@@ -20,9 +20,10 @@ public final class RegionCoordinator {
     private final Path folder;
     private final TemporaryRegions previews;
     // One shared preparation pool and native budget across ordinary, DH and bulk work.
-    private static final ExecutorService PREPARERS = Executors.newFixedThreadPool(RegionGenerationBudget.LIMIT,
+    private static final ExecutorService PREPARERS = Executors.newFixedThreadPool(RegionGenerationBudget.SHARED.limit(),
             Thread.ofPlatform().daemon().name("retina-region-prepare-", 0).factory());
-    private final RegionLoadScheduler loads = new RegionLoadScheduler(PREPARERS, 16, RegionCoordinator::release);
+    private final RegionLoadScheduler loads = new RegionLoadScheduler(PREPARERS,
+            RegionGenerationBudget.SHARED.admissionCapacity(), RegionCoordinator::release);
     // Written on the I/O queue; request admission can read this from other threads.
     private final Set<Long> prepared = java.util.concurrent.ConcurrentHashMap.newKeySet();
 
@@ -63,6 +64,8 @@ public final class RegionCoordinator {
                 prepared.add(key);
                 if (cached.generated() > 0) {
                     generator.metrics().completedPromotion(elapsed);
+                    Retina.debug("Published Retina region {},{}: {} cached chunks, {} preserved, {} ms",
+                            position.getRegionX(), position.getRegionZ(), cached.generated(), cached.preserved(), elapsed / 1e6);
                     if (Boolean.getBoolean("retina.qa")) Retina.LOGGER.info(
                             "QA_EVT {\"event\":\"minecraft_mca_preview_promoted\",\"status\":\"pass\",\"context\":{\"x\":{},\"z\":{},\"copied\":{},\"preserved\":{},\"ms\":{}}}",
                             position.getRegionX(), position.getRegionZ(), cached.generated(), cached.preserved(), elapsed / 1e6);
@@ -80,7 +83,7 @@ public final class RegionCoordinator {
             prepared.add(key);
             generator.metrics().completedRegion(report.generated(), elapsed, report.stages());
             if (report.generated() > 0) {
-                Retina.LOGGER.info("Generated Retina region {},{}: {} chunks, {} preserved, {} ms",
+                Retina.debug("Generated Retina region {},{}: {} chunks, {} preserved, {} ms",
                         position.getRegionX(), position.getRegionZ(), report.generated(), report.preserved(), elapsed / 1_000_000.0);
                 if (Boolean.getBoolean("retina.qa")) {
                     Retina.LOGGER.info("QA_EVT {\"event\":\"minecraft_mca_region\",\"status\":\"pass\",\"context\":{\"x\":{},\"z\":{},\"generated\":{},\"preserved\":{},\"ms\":{},\"bytes\":{}}}",

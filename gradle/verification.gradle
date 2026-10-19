@@ -2,6 +2,26 @@ def nativeDirectory = rootProject.ext.nativeDirectory
 def nativeTarget = rootProject.ext.nativeTarget
 def nativeCargoCommand = rootProject.ext.nativeCargoCommand
 
+def configurationClasses = tasks.register('configurationClasses', JavaCompile) {
+    source fileTree('src/main/java/art/arcane/retina/config'),
+            file('src/gpuTest/java/art/arcane/retina/config/ConfigurationTest.java')
+    classpath = configurations.configurationLibraries
+    destinationDirectory = layout.buildDirectory.dir('configuration-test/classes')
+    javaCompiler = javaToolchains.compilerFor { languageVersion = JavaLanguageVersion.of(25) }
+    options.release = 25
+}
+tasks.register('configurationTest', JavaExec) {
+    group = 'verification'
+    description = 'Check real TOML/YAML files, defaults, validation and CPU-relative parallelism without Minecraft/GPU.'
+    dependsOn configurationClasses
+    classpath = files(configurationClasses.flatMap { it.destinationDirectory }) + configurations.configurationLibraries
+    mainClass = 'art.arcane.retina.config.ConfigurationTest'
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
+    maxHeapSize = '64m'
+    timeout = Duration.ofSeconds(10)
+}
+check.dependsOn 'configurationTest'
+
 def regionPreparationClasses = tasks.register('regionPreparationClasses', JavaCompile) {
     // Scheduling and lease ownership are independent of Minecraft and the native generator.
     source file('src/main/java/art/arcane/retina/worldgen/RegionPreparation.java'),
@@ -9,9 +29,11 @@ def regionPreparationClasses = tasks.register('regionPreparationClasses', JavaCo
             file('src/main/java/art/arcane/retina/worldgen/RegionGenerationBudget.java'),
             file('src/main/java/art/arcane/retina/worldgen/RegionAheadPump.java'),
             file('src/gpuTest/java/art/arcane/retina/worldgen/RegionAheadPumpTest.java'),
+            file('src/gpuTest/java/art/arcane/retina/worldgen/ConfiguredRegionBudgetTest.java'),
             file('src/gpuTest/java/art/arcane/retina/worldgen/RegionLoadSchedulerTest.java'),
             file('src/gpuTest/java/art/arcane/retina/worldgen/RegionPreparationTest.java')
-    classpath = files()
+    dependsOn configurationClasses
+    classpath = files(configurationClasses.flatMap { it.destinationDirectory })
     destinationDirectory = layout.buildDirectory.dir('region-preparation-test/classes')
     javaCompiler = javaToolchains.compilerFor { languageVersion = JavaLanguageVersion.of(25) }
     options.release = 25
@@ -21,13 +43,35 @@ tasks.register('regionPreparationTest', JavaExec) {
     group = 'verification'
     description = 'Check bounded asynchronous region reads, lease ownership, failures and concurrent shutdown.'
     dependsOn regionPreparationClasses
-    classpath = files(regionPreparationClasses.flatMap { it.destinationDirectory })
+    classpath = files(regionPreparationClasses.flatMap { it.destinationDirectory },
+            configurationClasses.flatMap { it.destinationDirectory }) + configurations.configurationLibraries
     mainClass = 'art.arcane.retina.worldgen.RegionPreparationTest'
     javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
     jvmArgs '-XX:ActiveProcessorCount=2'
     maxHeapSize = '64m'
     timeout = Duration.ofSeconds(10)
 }
+
+// Fresh processes exercise initialization order and the same shared limiter used by all region paths.
+[[name: 'Explicit', value: 3, processors: 16, expected: 3],
+ [name: 'Automatic', value: 0, processors: 32, expected: 32],
+ [name: 'Fraction', value: -3, processors: 16, expected: 6],
+ [name: 'Minimum', value: -32, processors: 4, expected: 1]].each { sample ->
+    def task = tasks.register("configuredRegion${sample.name}Test", JavaExec) {
+        group = 'verification'
+        dependsOn regionPreparationClasses
+        classpath = files(regionPreparationClasses.flatMap { it.destinationDirectory },
+                configurationClasses.flatMap { it.destinationDirectory }) + configurations.configurationLibraries
+        mainClass = 'art.arcane.retina.worldgen.ConfiguredRegionBudgetTest'
+        javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
+        jvmArgs "-XX:ActiveProcessorCount=${sample.processors}"
+        args sample.value.toString(), sample.expected.toString()
+        maxHeapSize = '64m'
+        timeout = Duration.ofSeconds(10)
+    }
+    tasks.named('regionPreparationTest') { dependsOn task }
+}
+check.dependsOn 'regionPreparationTest'
 
 tasks.register('generationMetricsTest', JavaExec) {
     group = 'verification'

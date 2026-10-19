@@ -20,6 +20,11 @@ import java.util.function.Consumer;
 
 public final class FabricPlatform implements RetinaPlatform {
     @Override
+    public java.nio.file.Path configDirectory() {
+        return net.fabricmc.loader.api.FabricLoader.getInstance().getConfigDir();
+    }
+
+    @Override
     public void registerWorldgen() {
         RetinaStructurePiece.register();
         Registry.register(BuiltInRegistries.CHUNK_GENERATOR, Retina.id("gpu"), RetinaChunkGenerator.CODEC);

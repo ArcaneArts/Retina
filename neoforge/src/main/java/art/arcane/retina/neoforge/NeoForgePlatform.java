@@ -29,6 +29,11 @@ public final class NeoForgePlatform implements RetinaPlatform {
     }
 
     @Override
+    public java.nio.file.Path configDirectory() {
+        return net.neoforged.fml.loading.FMLPaths.CONFIGDIR.get();
+    }
+
+    @Override
     public void registerWorldgen() {
         modBus.addListener((RegisterEvent event) -> {
             event.register(Registries.CHUNK_GENERATOR, Retina.id("gpu"), () -> RetinaChunkGenerator.CODEC);
