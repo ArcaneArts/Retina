@@ -11,6 +11,8 @@ import net.minecraft.world.level.biome.*;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.placement.PlacedFeature;
+import net.minecraft.world.level.levelgen.feature.ScatteredOreFeature;
+import net.minecraft.world.level.levelgen.structure.templatesystem.BlockMatchTest;
 
 import java.lang.foreign.ValueLayout;
 import java.util.*;
@@ -57,6 +59,15 @@ final class NetherFeatureOrderTest {
         nativeReplay(registry, exported, fixture, false);
         nativeReplay(registry, exported, fixture, true);
 
+        var ore = Holder.direct(new PlacedFeature(Holder.direct(new ScatteredOreFeature(new BlockMatchTest(Blocks.BASALT),
+                Blocks.MAGMA_BLOCK.defaultBlockState(), 64, 0)), a.value().placement().subList(0, 2)));
+        var withOre = export(registry, exported, biomes, List.of(first,
+                new BiomeGenerationSettings.PlainBuilder().addFeature(7, a).addFeature(7, ore).addFeature(7, c).build()));
+        require(withOre.recipes.size() == 3 && withOre.recipes.get(1).getAsJsonObject().getAsJsonObject("nether").get("kind").getAsString().equals("ore"),
+                "ore joins its source position between dependent decoration roots");
+        nativeReplay(registry, exported, withOre, false, true);
+        nativeReplay(registry, exported, withOre, true, true);
+
         first = new BiomeGenerationSettings.PlainBuilder().addFeature(8, c).build();
         second = new BiomeGenerationSettings.PlainBuilder().addFeature(4, a).addFeature(8, b).addFeature(8, c).build();
         var staged = export(registry, exported, biomes, List.of(first, second));
@@ -80,7 +91,7 @@ final class NetherFeatureOrderTest {
         catch (IllegalStateException e) { failed = e.getMessage().contains("Feature order cycle found"); }
         require(failed, "an actual loaded feature cycle fails rather than silently reordering");
         System.out.println("QA_EVT {\"event\":\"nether_feature_order\",\"status\":\"pass\",\"context\":{\"loaded_recipes\":"
-                + recipes.size() + ",\"loaded_roots\":" + roots.size() + ",\"native_chunks\":18,\"fixture_cases\":5}}");
+                + recipes.size() + ",\"loaded_roots\":" + roots.size() + ",\"native_chunks\":30,\"fixture_cases\":7}}");
     }
 
     private record Export(JsonObject world, JsonArray profiles, JsonArray recipes, LinkedHashMap<BlockState, Integer> palette) {}
@@ -115,6 +126,10 @@ final class NetherFeatureOrderTest {
     }
 
     private static void nativeReplay(RegistryAccess registry, TerrainProfileData source, Export fixture, boolean wrongOrder) {
+        nativeReplay(registry, source, fixture, wrongOrder, false);
+    }
+
+    private static void nativeReplay(RegistryAccess registry, TerrainProfileData source, Export fixture, boolean wrongOrder, boolean oreChain) {
         var data = fixture.world.deepCopy(); var recipes = fixture.recipes.deepCopy();
         var palette = new LinkedHashMap<>(fixture.palette);
         DecorationProfile.finishPlacements(recipes, palette, GenerationBounds.uniform(0, 256), 32);
@@ -139,16 +154,21 @@ final class NetherFeatureOrderTest {
         data.add("materials", serialized); data.add("carveable", carveable); data.add("lighting", LightingProfile.export(palette.keySet(), false));
         var states = palette.keySet().toArray(BlockState[]::new);
         int profile = NativeTerrain.instance().registerProfile(data.toString());
+        int transitioned = 0;
         for (var position : new int[][]{{0, 0}, {-1, -1}, {-33, 31}, {32, -32}, {31, 32}, {-32, -33}}) {
             var request = new TerrainRequest(42, position[0], position[1], 0, 256, 64, 48, .008f, profile);
             try (var chunk = NativeTerrain.instance().generate(request)) {
                 for (int c = 0; c < 256; c++) {
                     var expected = c == 8 * 16 + 8 ? wrongOrder ? Blocks.MAGMA_BLOCK : Blocks.GOLD_BLOCK : Blocks.NETHERRACK;
                     int actual = Short.toUnsignedInt(chunk.blocks().get(ValueLayout.JAVA_SHORT, (64 * 256L + c) * 2));
+                    // Scattered ores may choose zero attempts. Every nonempty ore run includes its origin first.
+                    if (oreChain && c == 8 * 16 + 8 && states[actual].is(Blocks.BASALT)) continue;
                     require(states[actual].is(expected), "native live placement order at " + Arrays.toString(position) + ":" + c + " wrongOrder=" + wrongOrder + ": " + states[actual]);
+                    if (c == 8 * 16 + 8) transitioned++;
                 }
             }
         }
+        require(transitioned > 0, "dependent replacements must produce an observable final state");
     }
 
     private static void require(boolean condition, String message) { if (!condition) throw new AssertionError(message); }

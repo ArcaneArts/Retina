@@ -37,6 +37,7 @@ public final class NetherFeatureTest {
             var data=JsonParser.parseString(exported.json()).getAsJsonObject();
             Files.createDirectories(Path.of("build/nether"));Files.writeString(Path.of("build/nether/feature-profile.json"),data.toString());
             NetherFeatureOrderTest.check(registry,exported);
+            NetherOreTest.check(registry,exported,generator);
             var kinds=new TreeSet<String>();gather(data.getAsJsonArray("decorations"),kinds);
             require(kinds.containsAll(Set.of("neighbor_spread","pillar","projected_square","column_cluster","replace_blobs","delta","huge_fungus","spring")),"all loaded Nether primitive families exported: "+kinds);
             for (var biome:data.getAsJsonArray("biomes")) {
@@ -61,7 +62,7 @@ public final class NetherFeatureTest {
             int cases=0;long writes=0;
             for(int id=0;id<recipes.size();id++) {
                 var recipe=recipes.get(id).getAsJsonObject();var nested=new TreeSet<String>();gather(recipe,nested);
-                if(nested.isEmpty())continue;
+                if(nested.isEmpty() || nested.contains("ore"))continue; // Bulk-section ore writes have a separate reference fixture.
                 String name=recipe.get("source").getAsString();
                 var feature=NativeBlockFeatureIntegrationTest.resolve(registry,name);require(feature!=null,"source feature resolves: "+name);
                 for(int y0:new int[]{0,31,32,64,95,96,127,128,255}) for(int seed=0;seed<16;seed++) {

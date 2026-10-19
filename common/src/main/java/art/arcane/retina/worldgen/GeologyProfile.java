@@ -54,6 +54,7 @@ final class GeologyProfile {
             for (var step : generation.apply(biomes.get(i)).features()) for (var holder : step) {
                 var placed = holder.value();
                 if (!(placed.feature().value() instanceof AbstractOreFeature ore)) continue;
+                if (world.has("decoration_source_order") && world.get("decoration_source_order").getAsBoolean()) continue;
                 String id = holder.unwrapKey().map(k -> k.identifier().toString()).orElse("inline/" + placed.hashCode());
                 if (gpuSediments.contains(id)) continue;
                 Integer index = ids.get(id);

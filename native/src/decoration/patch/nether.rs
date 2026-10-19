@@ -2,10 +2,15 @@
 use super::*;
 use placement::IntProvider;
 mod fungus;
+mod ore;
 
 #[derive(Clone, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum Feature {
+    Ore {
+        #[serde(flatten)]
+        ore: ore::Ore,
+    },
     Spring {
         state: u16,
         tick: u16,
@@ -71,6 +76,7 @@ fn bounded(p: &IntProvider, min: i32, max: i32) -> bool {
 impl Feature {
     pub(crate) fn validate(&self, palette: usize) -> bool {
         match self {
+            Self::Ore { ore } => ore.validate(palette),
             Self::Spring {
                 state,
                 tick,
@@ -168,6 +174,7 @@ impl Feature {
 
     pub(super) fn place(&self, w: &mut World, at: [i32; 3], rng: &mut Rng) -> bool {
         match self {
+            Self::Ore { ore } => ore.place(w, at, rng),
             Self::Spring {
                 state,
                 tick,
