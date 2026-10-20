@@ -15,6 +15,12 @@ final class GenerationTicks {
     static void install(ChunkAccess chunk, CompoundTag data) {
         install(chunk, data, "block_ticks", BuiltInRegistries.BLOCK.byNameCodec(), chunk.getBlockTicks());
         install(chunk, data, "fluid_ticks", BuiltInRegistries.FLUID.byNameCodec(), chunk.getFluidTicks());
+        var processing = data.getListOrEmpty("PostProcessing");
+        for (int section = 0; section < processing.size(); section++) {
+            var offsets = new it.unimi.dsi.fastutil.shorts.ShortArrayList();
+            for (var tag : processing.getList(section).orElseThrow()) offsets.add(((net.minecraft.nbt.NumericTag) tag).shortValue());
+            if (!offsets.isEmpty()) chunk.addPackedPostProcess(offsets, section);
+        }
     }
 
     private static <T> void install(ChunkAccess chunk, CompoundTag data, String key,

@@ -82,12 +82,23 @@ final class FortressProfile {
         for (int x = 0; x <= 4; x++) rows.add(StructureProfile.ints(x, 2, 5));
         for (int x = 0; x <= 4; x++) for (int y = 0; y <= 1; y++) rows.add(StructureProfile.ints(x, y, 3));
         end.add("rows", rows); end.add("material", profile.rotations(Blocks.NETHER_BRICKS.defaultBlockState()));
-        var bounds = new JsonArray();
+        var bounds = new JsonArray(); var templates = new JsonArray();
         for (Direction direction : DIRECTIONS) {
             var b = piece("end_filler", direction, false, 0).getBoundingBox();
             bounds.add(StructureProfile.ints(b.minX(), b.minY() - 64, b.minZ(), b.maxX(), b.maxY() - 64, b.maxZ()));
+            var geometry = new LinkedHashMap<BlockPos, BlockState>();
+            for (var value : rows) {
+                var row = value.getAsJsonArray(); int x = row.get(0).getAsInt(), y = row.get(1).getAsInt();
+                for (int z = 0; z < row.get(2).getAsInt(); z++) {
+                    int xx = switch (direction) { case WEST -> b.getXSpan() - 1 - z; case EAST -> z; default -> x; };
+                    int zz = switch (direction) { case WEST, EAST -> x; case NORTH -> b.getZSpan() - 1 - z; default -> z; };
+                    geometry.put(new BlockPos(xx, y, zz), Blocks.NETHER_BRICKS.defaultBlockState());
+                }
+            }
+            templates.add(profile.template("retina:captured/fortress/end_filler/" + direction.getName(),
+                    rawTemplate(geometry, Map.of(), b, profile.registry), 0));
         }
-        end.add("bounds", bounds); result.add("end_filler", end);
+        end.add("bounds", bounds); end.add("templates", templates); result.add("end_filler", end);
         return result;
     }
 
@@ -155,7 +166,7 @@ final class FortressProfile {
     record Tick(BlockPos pos, Fluid fluid, int delay, int priority) {}
 
     /** Real postProcess calls against a recording level. The floor stops supports after one layer. */
-    static final class Capture {
+    static class Capture {
         final LinkedHashMap<BlockPos, BlockState> blocks = new LinkedHashMap<>();
         final Map<BlockPos, BlockEntity> entities = new HashMap<>();
         final LinkedHashSet<Tick> ticks = new LinkedHashSet<>();

@@ -1,5 +1,6 @@
 //! CPU jigsaw planning over resident registry templates. Plans are shared by MCA,
 //! individual chunks and DH previews, including pieces crossing region boundaries.
+mod fortress;
 use crate::structure_processors::Program;
 use crate::{
     CacheKey, ChunkRequest, TerrainEngine, nbt,
@@ -18,6 +19,8 @@ pub struct Profile {
     pub definitions: Vec<Definition>,
     pub pools: HashMap<String, Pool>,
     pub sets: Vec<Set>,
+    #[serde(default)]
+    pub fortress: Option<fortress::Profile>,
     #[serde(skip)]
     pub(crate) names: Vec<String>,
     #[serde(skip)]
@@ -152,6 +155,7 @@ pub struct Piece {
     pub context: usize,
     pub depth: u32,
     pub priority: i32,
+    pub fortress: Option<fortress::Placement>,
 }
 pub struct Start {
     pub definition: usize,
@@ -335,10 +339,18 @@ impl Profile {
         }
         for d in &self.definitions {
             if d.biomes.iter().any(|b| *b as usize >= biomes)
-                || !d.unimplemented && d.kind != "jigsaw" && d.template >= self.templates.len()
+                || !d.unimplemented
+                    && if d.kind == "fortress" {
+                        self.fortress.is_none()
+                    } else {
+                        d.kind != "jigsaw" && d.template >= self.templates.len()
+                    }
             {
                 return Err("invalid structure definition".into());
             }
+        }
+        if let Some(kit) = &self.fortress {
+            kit.validate(self, materials)?;
         }
         for s in &self.sets {
             let space = value(&s.placement, "spacing", 0);
@@ -360,6 +372,9 @@ impl Profile {
 fn reach(p: &Profile, d: &Definition) -> i32 {
     if d.unimplemented {
         return 0;
+    }
+    if d.kind == "fortress" {
+        return 144;
     }
     if d.kind != "jigsaw" {
         return *p.templates[d.template]
@@ -770,7 +785,18 @@ fn build(
         }
         let choice = choices.remove(at).definition;
         let d = &p.definitions[choice];
-        let candidate_biome = if d.kind == "jigsaw"
+        let candidate_biome = if d.kind == "fortress" {
+            engine.query_points(
+                request,
+                &[crate::queries::Point {
+                    x: request.chunk_x * 16,
+                    y: 64,
+                    z: request.chunk_z * 16,
+                }],
+                crate::queries::Kind::Biome,
+            )?[0]
+                .biome() as u16
+        } else if d.kind == "jigsaw"
             && d.config.get("project_start_to_heightmap").is_none()
             && profile.geology.caves_enabled(profile)
         {
@@ -814,6 +840,9 @@ fn build_definition(
     let p = &profile.structures;
     let mut out = empty_start(request, seed, definition);
     let d = &p.definitions[definition];
+    if d.kind == "fortress" {
+        return fortress::build(request, p, definition, seed, random);
+    }
     let root = if d.kind == "jigsaw" {
         let pool = p.pools.get(&d.pool);
         let total = pool.map_or(0, |p| p.entries.iter().map(|e| e.weight).sum());
@@ -916,6 +945,7 @@ fn build_definition(
         context: 0,
         depth: 0,
         priority: 0,
+        fortress: None,
     });
     if d.kind != "jigsaw" {
         return Ok(out);
@@ -1017,6 +1047,7 @@ fn build_definition(
                             context,
                             depth: source.depth + 1,
                             priority: j.placement_priority,
+                            fortress: None,
                         };
                         out.pieces.push(piece);
                         if source.depth < max_depth {
@@ -1183,7 +1214,7 @@ pub fn start_data(request: ChunkRequest, profile: &WorldProfile, plans: &[Arc<St
     let mut references = nbt::compound();
     for start in plans {
         let definition = &p.definitions[start.definition];
-        let relevant = start
+        let piece_relevant = start
             .index(p)
             .pieces
             .get(&[request.chunk_x, request.chunk_z])
@@ -1191,6 +1222,18 @@ pub fn start_data(request: ChunkRequest, profile: &WorldProfile, plans: &[Arc<St
                 ids.iter()
                     .any(|&i| intersects(start.pieces[i].bounds, chunk_bounds))
             });
+        // Fortress spawning also uses the whole start box over nether-brick floors.
+        let relevant = piece_relevant
+            || definition.kind == "fortress" && !start.pieces.is_empty() && {
+                let bounds = std::array::from_fn(|i| {
+                    if i < 3 {
+                        start.pieces.iter().map(|p| p.bounds[i]).min().unwrap()
+                    } else {
+                        start.pieces.iter().map(|p| p.bounds[i]).max().unwrap()
+                    }
+                });
+                intersects(bounds, chunk_bounds)
+            };
         if start.chunk == [request.chunk_x, request.chunk_z] {
             let mut tag = nbt::compound();
             nbt::put(&mut tag, "id", nbt::string(&definition.id));
@@ -1263,6 +1306,8 @@ pub fn apply(
     let mut block_entities = HashMap::<[i32; 3], Value>::new();
     let mut count = 0;
     let mut placed = 0;
+    let mut fluid_ticks = Vec::new();
+    let mut processing = vec![Vec::new(); request.height as usize / 16];
     let mut plant_updates = crate::decoration::pairs::Updates::default();
     for start in plans {
         let chunk = [request.chunk_x, request.chunk_z];
@@ -1273,6 +1318,12 @@ pub fn apply(
                 continue;
             }
             count += 1;
+            if let (Some(_), Some(kit)) = (&piece.fortress, &p.fortress) {
+                if let Some(output) = blocks.as_deref_mut() {
+                    fortress::supports(piece, kit, request, output, &mut block_entities);
+                }
+                fortress::metadata(piece, kit, request, &mut fluid_ticks, &mut processing);
+            }
             for (part_id, part) in piece.element.parts.iter().enumerate() {
                 let template = &p.templates[part.template];
                 let rotated = p.rotated(part.template, piece.palette, piece.rotation);
@@ -1356,6 +1407,11 @@ pub fn apply(
                 };
                 for i in candidates {
                     let block = &rotated.blocks[i];
+                    if let (Some(at), Some(kit)) = (&piece.fortress, &p.fortress) {
+                        if !at.allows(block.pos, kit, piece) {
+                            continue;
+                        }
+                    }
                     let mut pos = add(piece.pos, block.pos);
                     if piece.element.terrain_matching {
                         if let Some(terrain) = &start.terrain {
@@ -1421,7 +1477,11 @@ pub fn apply(
                                 nbt::put(
                                     &mut tag,
                                     "LootTableSeed",
-                                    nbt::long(rand64(start.seed ^ index as u64) as i64),
+                                    nbt::long(if piece.fortress.is_some() {
+                                        r.long() as i64
+                                    } else {
+                                        rand64(start.seed ^ index as u64) as i64
+                                    }),
                                 );
                             }
                             block_entities.insert(pos, tag);
@@ -1550,6 +1610,16 @@ pub fn apply(
         nbt::list(10, block_entities.into_iter().map(|(_, tag)| tag).collect()),
     );
     nbt::put(&mut root, "entities", nbt::list(10, entities));
+    if !fluid_ticks.is_empty() {
+        nbt::put(&mut root, "fluid_ticks", nbt::list(10, fluid_ticks));
+    }
+    if processing.iter().any(|p| !p.is_empty()) {
+        nbt::put(
+            &mut root,
+            "PostProcessing",
+            nbt::list(9, processing.into_iter().map(|p| nbt::list(2, p)).collect()),
+        );
+    }
     ChunkData {
         tag: root,
         plant_updates,
@@ -1571,8 +1641,14 @@ mod tests {
         profile.validate(1, 1).unwrap();
         assert_eq!(reach(&profile, &profile.definitions[0]), 0);
         profile.definitions[0].unimplemented = false;
-        assert_eq!(profile.validate(1, 1).unwrap_err(), "invalid structure definition");
-        let old: Definition = serde_json::from_value(json!({"id":"test:old","kind":"jigsaw","config":{},"biomes":[]})).unwrap();
+        assert_eq!(
+            profile.validate(1, 1).unwrap_err(),
+            "invalid structure definition"
+        );
+        let old: Definition = serde_json::from_value(
+            json!({"id":"test:old","kind":"jigsaw","config":{},"biomes":[]}),
+        )
+        .unwrap();
         assert!(!old.unimplemented);
     }
     #[test]
@@ -1632,6 +1708,7 @@ mod tests {
                 context: 0,
                 depth: 0,
                 priority: 0,
+                fortress: None,
             }],
             terrain: Some(Heights {
                 origin: [-16, -16],
@@ -1733,6 +1810,7 @@ mod tests {
                         context: 0,
                         depth: 0,
                         priority: 0,
+                        fortress: None,
                     }],
                     terrain: None,
                     index: OnceLock::new(),
@@ -1837,6 +1915,7 @@ mod tests {
                     context: 0,
                     depth: 0,
                     priority: 0,
+                    fortress: None,
                 }],
                 terrain: None,
                 index: OnceLock::new(),

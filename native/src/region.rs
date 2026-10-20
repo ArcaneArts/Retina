@@ -1043,7 +1043,9 @@ fn encode_chunk(
             nbt.list(name, 10, 0);
         }
     }
-    nbt.list("PostProcessing", 9, 0);
+    if structure_data.and_then(|data| crate::nbt::field(data,"PostProcessing")).is_none() {
+        nbt.list("PostProcessing", 9, 0);
+    }
     nbt.end();
 }
 
