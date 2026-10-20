@@ -14,6 +14,19 @@ import java.util.WeakHashMap;
 /** Opt-in checks against a real loaded Minecraft chunk in a fresh QA world. */
 final class TerrainQa {
     private static final Set<RetinaChunkGenerator> CHECKED = Collections.newSetFromMap(new WeakHashMap<>());
+    private static final java.util.Map<RetinaChunkGenerator, Probe> PROBES = new WeakHashMap<>();
+    private record Probe(net.minecraft.world.level.ChunkPos position, java.util.concurrent.CompletableFuture<Void> ready) {}
+
+    static boolean completed(ServerLevel level) {
+        return !(level.getChunkSource().getGenerator() instanceof RetinaChunkGenerator generator) || CHECKED.contains(generator);
+    }
+
+    static void unload(ServerLevel level) {
+        if (level.getChunkSource().getGenerator() instanceof RetinaChunkGenerator generator) {
+            var probe = PROBES.remove(generator);
+            if (probe != null) probe.ready().cancel(false);
+        }
+    }
 
     private static boolean timingsChecked;
     static void checkTimings(net.minecraft.server.MinecraftServer server) {
@@ -134,7 +147,7 @@ final class TerrainQa {
     }
 
     static void check(ServerPlayer player, RetinaChunkGenerator generator) {
-        if (!Boolean.getBoolean("retina.qa") || !CHECKED.add(generator)) return;
+        if (!Boolean.getBoolean("retina.qa") || CHECKED.contains(generator)) return;
         ServerLevel level = player.level();
         // Compare deserialization before gameplay can mutate the fixture. The
         // player's chunk may already contain flowing fluids or random-tick edits.
@@ -143,6 +156,20 @@ final class TerrainQa {
         var position = new net.minecraft.world.level.ChunkPos(
                 (playerChunk.getRegionX() + 4) * 32 + 16,
                 (playerChunk.getRegionZ() + 4) * 32 + 16);
+        if (Boolean.getBoolean("retina.qa.nether.progression")) {
+            // This harness waits for both comparisons before returning the player.
+            // Its concurrent fortress preparation must not stall keepalives while
+            // the unrelated comparison region waits for the shared worker budget.
+            var initial = position;
+            var probe = PROBES.computeIfAbsent(generator, ignored -> new Probe(initial,
+                    PortalRegionPreparation.prepareArea(level,
+                            new BlockPos(initial.getMinBlockX(), level.getMinY(), initial.getMinBlockZ()), 0)));
+            if (!probe.ready().isDone()) return;
+            probe.ready().join();
+            PROBES.remove(generator);
+            position = probe.position();
+        }
+        CHECKED.add(generator);
         var chunk = level.getChunk(position.x(), position.z());
         var request = generator.request(level.getSeed(), position.x(), position.z());
         var profile = generator.profile();

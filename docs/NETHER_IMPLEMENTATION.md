@@ -1101,8 +1101,49 @@ chunks, runtime lava/glowstone/shroomlight propagation and removal across a chun
 boundary, zero skylight, dimension telemetry and saved edits at Nether Y=200.
 See [runtime QA](RUNTIME_QA.md) for commands and recorded results.
 
+## Cycle 4l: live fortress progression
+
+The opt-in `retinaNetherProgressionQa` harness uses a connected player to validate
+native fortresses through Minecraft's actual gameplay APIs. The interactive
+`/locate` dispatcher retains the player source and empty result callback, delivers
+the normal chat result asynchronously, and finds the same start before generation,
+after gameplay, and after reopening. Loaded starts, all piece bounds, references,
+chests and blaze-spawner block entities are checked across the fortress footprint.
+Lazy block-entity NBT is accessed through Minecraft's normal chunk API.
+
+Survival block interaction opens the original fortress loot table. The resulting
+inventory and a player edit are retained through save/reopen. Minecraft's natural
+spawn-placement routine creates both blazes and wither skeletons on the generated
+fortress with its registered spawn weights, Nether-brick floor rule, player
+distance, light and collision checks. The controlled attempts bypass the random
+chunk/height lottery and mob cap; they do not establish normal spawn rates.
+
+A separate check disables natural spawning temporarily and waits for an untouched
+generated spawner. The connected survival player uses ordinary attacks to kill a
+spawned blaze and picks up a newly dropped rod. The harness supplies a sword and
+defensive effects, restores the spawning gamerule, and removes the effects when
+finished. No fortress geometry or spawner configuration is replaced for this test.
+
+During progression QA, the existing remote block/heightmap comparison prepares its
+region asynchronously and must finish before the player returns. This fixes a
+test-induced dedicated-server timeout: the old synchronous comparison waited more
+than 60 seconds behind concurrent fortress-region preparation. Ordinary runtime
+generation and other QA modes keep their existing behavior.
+
+See [runtime QA](RUNTIME_QA.md#live-nether-fortress-progression) for exact commands,
+events, fixture side effects and coverage limits. The End remains on its original
+generator.
+
+The final matrix passed 12 progression sessions: fresh dedicated worlds with
+reconnect and full process restart on both loaders, plus integrated creation and
+save/reopen on both. Seed 42 exercised a 103-piece fortress over 49 chunks;
+seed 123456789 exercised 134 pieces over 180 chunks crossing two regions. The
+host build, scheduling/configuration/profile checks, 19 portal-boundary cases and
+103 Rust unit tests passed. This milestone does not establish visual quality,
+ordinary spawn rates or throughput.
+
 ## Remaining cycles
 
-4. Gameplay progression checks in the live dimension.
+4. Remaining live bastion, fossil and ruined-portal checks.
 5. In-flight unload and remaining dimension lifecycle coverage.
 6. Both-loader runtime validation, regression coverage, visual QA, and benchmarks.

@@ -14,12 +14,15 @@ public final class TerrainWorldgen {
     }
 
     private static void unload(ServerLevel level) {
+        TerrainQa.unload(level);
         NetherLifecycleQa.unload(level);
+        NetherProgressionQa.unload(level);
         if (level.getChunkSource().getGenerator() instanceof RetinaChunkGenerator retina) retina.closePreviews();
     }
 
     private static void endTick(MinecraftServer server, RetinaPlatform platform) {
         NetherLifecycleQa.tick(server);
+        NetherProgressionQa.tick(server);
         AutomaticGenerationQa.tick(server);
         TerrainQa.checkPromotion(server);
         TerrainQa.checkTimings(server);
