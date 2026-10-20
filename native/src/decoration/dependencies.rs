@@ -403,6 +403,24 @@ impl Planner<'_> {
         self.completed.push(completed);
         Ok(())
     }
+    /// All generation workers have joined before retirement. These containers
+    /// own immutable host data; parallel destruction stays inside this request.
+    fn retire(mut self, outputs: Map<(usize, i32, i32), Arc<Output>>) {
+        let columns = std::mem::take(self.columns.get_mut().unwrap_or_else(|e| e.into_inner()));
+        let ready_columns = std::mem::take(&mut self.ready_columns);
+        rayon::join(
+            || {
+                columns
+                    .into_par_iter()
+                    .chain(ready_columns.into_par_iter())
+                    .for_each(drop);
+            },
+            || {
+                outputs.into_par_iter().for_each(drop);
+                drop(self);
+            },
+        );
+    }
     fn fail(&self, error: String) {
         self.error.lock().unwrap().get_or_insert(error);
     }
@@ -960,8 +978,12 @@ pub(crate) fn generate(
     // cleanup is inside the measured region and contributes to teardown time.
     let release_started = metrics.performance.start();
     let release_detail = diagnostics::start(details.is_some());
-    drop(std::mem::take(&mut planner.completed));
-    drop(std::mem::take(&mut planner.versions.changed));
+    let completed = std::mem::take(&mut planner.completed);
+    let versions = std::mem::take(&mut planner.versions.changed);
+    rayon::join(
+        || completed.into_par_iter().for_each(drop),
+        || versions.into_par_iter().for_each(drop),
+    );
     metrics
         .performance
         .elapsed(Perf::teardown_nanos, release_started);
@@ -995,8 +1017,7 @@ pub(crate) fn generate(
     );
     let teardown_started = metrics.performance.start();
     let teardown_detail = diagnostics::start(details.is_some());
-    drop(cache);
-    drop(planner);
+    planner.retire(cache);
     metrics
         .performance
         .elapsed(Perf::teardown_nanos, teardown_started);
