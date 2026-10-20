@@ -121,18 +121,6 @@ pub(super) fn build(
     Ok(start)
 }
 
-// Mth.getSeed deliberately overflows the X multiplication at 32 bits first.
-fn position_seed(pos: [i32; 3]) -> u64 {
-    let seed = pos[0].wrapping_mul(3129871) as i64
-        ^ (pos[2] as i64).wrapping_mul(116129781)
-        ^ pos[1] as i64;
-    (seed
-        .wrapping_mul(seed)
-        .wrapping_mul(42317861)
-        .wrapping_add(seed.wrapping_mul(11))
-        >> 16) as u64
-}
-
 pub(super) fn dried_ghast(
     piece: &Piece,
     kit: &Profile,

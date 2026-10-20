@@ -714,6 +714,46 @@ Production Nether activation remains deferred. Ruined portals, Nether-specific
 bastion validation, structure/feature ordering, runtime gameplay, and the remaining
 integration matrix are still required.
 
+## Cycle 4e: ruined-portal processors
+
+The shared native template pipeline now implements `block_age`,
+`blackstone_replace`, and `lava_submerged_block`. These are prerequisites for
+Nether ruined portals; portal starts and placement are still deferred.
+
+Java exports the actual blackstone replacement results, loaded stair/slab/wall
+membership, property-preserving mossy variants, and full outline-shape predicates.
+Every possible processor output is registered before material flags and lighting
+are built. The final table pass includes palette inputs added later by decoration;
+it does not require additional output states. Superflat now performs that final
+structure-material pass as well. Native profile loading rejects incomplete or
+out-of-range processor tables before compiling them.
+
+Rust reproduces block aging's positional random stream and draw order, including
+both independently sampled stair alternatives, mossiness as a Minecraft float,
+and rotation of generated stair states. Blackstone replacement retains exactly
+the source's selected properties, including its deliberate reset of other stair,
+slab and wall properties. Lava submersion tests the original world block and the
+processed block's full outline shape. A conversion to lava cannot retain a chest
+block entity. Processor ordering and protected-block behavior remain observable.
+The runtime path uses native tables and random draws without Java callbacks.
+
+The Nether structure suite compares the native results with actual Minecraft
+processor calls for 24 profiles, four rotations, and 1,699 input placements per
+template: 163,104 source comparisons. Inputs include complete stair, slab, wall,
+and iron-bar property families; repeated full blocks and obsidian; and chest,
+lava and gold states. The fixtures exercise three mossiness values, independent
+processors, ordered chains, air/lava/bedrock worlds, and retained or discarded
+block entities. All containing chunk voxels are compared, including untouched
+background. A separate export check adds late palette inputs and verifies that
+the processor output palette stays closed. Reports and the reproducible chained
+fixture are written to `build/nether/portal-processors.json` and
+`portal-processor-fixture.json`.
+
+Portal template selection, mirrored geometry, source placement, surrounding
+netherrack and magma, loot, and integrated save validation remain required in the
+next subcycle. This processor milestone does not enable Nether activation or
+claim completed ruined-portal support.
+
 ## Remaining cycles
 
 4. Nether ruined portals, Nether bastion validation, applicable structure-set

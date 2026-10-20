@@ -96,6 +96,7 @@ final class FlatTerrainProfile {
         DecorationProfile.finishGenerationLighting(world,skyLight);
         DecorationProfile.materialFlags(world, palette);
         world.add("lighting", LightingProfile.export(palette.keySet(), skyLight));
+        StructureProfile.finishMaterials(world.getAsJsonObject("structures"),palette);
         var air = new JsonArray();
         palette.forEach((state, id) -> { if (state.isAir()) air.add(id); });
         flat.add("air_materials", air);

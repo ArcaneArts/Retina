@@ -114,6 +114,7 @@ public final class NetherStructureTest {
             int checked = selectionChecks(profile, registry);
             FortressAssemblyTest.run(registry, resources, profile, exported.materials());
             FossilIntegrationTest.run(registry, resources, profile, exported.materials());
+            StructureProcessorIntegrationTest.run(registry, profile);
             System.out.println("QA_EVT {\"event\":\"nether_structure_sets\",\"status\":\"pass\",\"context\":{\"candidate_checks\":" + checked + "}}");
         }
     }
