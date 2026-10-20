@@ -131,6 +131,50 @@ struct Output {
     writes: Vec<WorldBlock>,
     columns: Map<(i32, i32), Vec<usize>>,
 }
+/// Immutable commands from all possible writers of the requested volume.
+/// Outputs remain in source anchor order; command indices preserve within-root
+/// support reads such as vines and cocoa.
+struct CompletedRoot {
+    anchors: Vec<((i32, i32), Arc<Output>)>,
+    columns: Map<usize, Vec<(usize, usize)>>,
+}
+type ColumnCell = OnceLock<Result<Arc<ColumnState>, String>>;
+struct ColumnVersion {
+    root: usize,
+    state: ColumnCell,
+}
+struct Versions {
+    origin: [i32; 2],
+    width: usize,
+    changed: Vec<Vec<ColumnVersion>>,
+    base: Vec<ColumnCell>,
+}
+impl Versions {
+    fn new(request: ChunkRequest, side: usize) -> Self {
+        let width = side * 16;
+        Self {
+            origin: [request.chunk_x * 16, request.chunk_z * 16],
+            width,
+            changed: (0..width * width).map(|_| Vec::new()).collect(),
+            base: (0..width * width).map(|_| OnceLock::new()).collect(),
+        }
+    }
+    fn index(&self, x: i32, z: i32) -> Option<usize> {
+        let x = i64::from(x) - i64::from(self.origin[0]);
+        let z = i64::from(z) - i64::from(self.origin[1]);
+        (x >= 0 && z >= 0 && x < self.width as i64 && z < self.width as i64)
+            .then(|| z as usize * self.width + x as usize)
+    }
+    fn before(&self, column: usize, before: usize) -> (usize, &ColumnCell) {
+        let versions = &self.changed[column];
+        let count = versions.partition_point(|version| version.root < before);
+        match count.checked_sub(1) {
+            Some(last) => (versions[last].root + 1, &versions[last].state),
+            None => (0, &self.base[column]),
+        }
+    }
+}
+
 struct ColumnState {
     runs: Box<[u32]>,
     heights: [i32; 6],
@@ -190,6 +234,9 @@ struct Planner<'a> {
     roots: Vec<Root>,
     terrain: Memo<(i32, i32), Field<'static>>,
     anchors: Memo<(usize, i32, i32), Output>,
+    ready: Map<(usize, i32, i32), Arc<Output>>,
+    completed: Vec<CompletedRoot>,
+    versions: Versions,
     anchor_ids: Memo<(i32, i32), Vec<u32>>,
     starts: Memo<(i32, i32), Vec<Arc<crate::structures::Start>>>,
     discovery: crate::structures::Discovery,
@@ -197,6 +244,7 @@ struct Planner<'a> {
     metrics: Arc<crate::timings::Timings>,
     retain_prefix: bool,
     columns: Mutex<Map<(usize, i32, i32), Arc<ColumnTile>>>,
+    ready_columns: Map<(usize, i32, i32), Arc<ColumnTile>>,
     error: Mutex<Option<String>>,
 }
 struct View<'a, 'b> {
@@ -277,6 +325,63 @@ impl PriorWorld for View<'_, '_> {
     }
 }
 impl Planner<'_> {
+    /// Called only after the root's parallel target evaluation has joined.
+    /// Recursive boundary work is synchronous, so every remaining cell is done.
+    fn complete(&mut self, root: usize, targets: &[(i32, i32)]) -> Result<(), String> {
+        let pending = std::mem::take(
+            self.anchors
+                .get_mut()
+                .map_err(|_| "dependency cache poisoned")?,
+        );
+        for (key, cell) in pending {
+            let cell = Arc::try_unwrap(cell)
+                .map_err(|_| "dependency cell still in use at root completion")?;
+            let output = cell
+                .into_inner()
+                .ok_or("unfinished dependency at root completion")??;
+            self.ready.insert(key, output);
+        }
+        // Existing tile slots are OnceLocks; the map itself becomes immutable
+        // between root barriers, including slots first needed by later roots.
+        self.ready_columns.extend(std::mem::take(
+            self.columns
+                .get_mut()
+                .map_err(|_| "column dependency cache poisoned")?,
+        ));
+        let mut completed = CompletedRoot {
+            anchors: Vec::with_capacity(targets.len()),
+            columns: Map::default(),
+        };
+        for &(ax, az) in targets {
+            let output = self
+                .ready
+                .get(&(root, ax, az))
+                .ok_or("missing completed root target")?;
+            let anchor = completed.anchors.len();
+            for (&(x, z), indices) in &output.columns {
+                if let Some(column) = self.versions.index(x, z) {
+                    completed
+                        .columns
+                        .entry(column)
+                        .or_default()
+                        .extend(indices.iter().map(|&index| (anchor, index)));
+                }
+            }
+            completed.anchors.push(((ax, az), output.clone()));
+        }
+        for &column in completed.columns.keys() {
+            self.versions.changed[column].push(ColumnVersion {
+                root,
+                state: OnceLock::new(),
+            });
+        }
+        self.metrics.performance.add(
+            Perf::completed_column_commands,
+            completed.columns.values().map(|v| v.len() as u64).sum(),
+        );
+        self.completed.push(completed);
+        Ok(())
+    }
     fn fail(&self, error: String) {
         self.error.lock().unwrap().get_or_insert(error);
     }
@@ -299,6 +404,10 @@ impl Planner<'_> {
         })
     }
     fn anchor(&self, root: usize, x: i32, z: i32) -> Result<Arc<Output>, String> {
+        if let Some(output) = self.ready.get(&(root, x, z)) {
+            self.metrics.performance.add(Perf::anchor_ready_hits, 1);
+            return Ok(output.clone());
+        }
         memo(
             &self.anchors,
             (root, x, z),
@@ -492,22 +601,48 @@ impl Planner<'_> {
     fn column(&self, before: usize, x: i32, z: i32) -> Result<Arc<ColumnState>, String> {
         let metrics = &self.metrics.performance;
         metrics.add(Perf::column_requests, 1);
+        // The completed interior has all possible writers. An absent command is
+        // an identity transformation, so share the preceding changed version.
+        // Boundary columns keep their full demand-driven dependency closure.
+        if before <= self.completed.len() {
+            if let Some(column) = self.versions.index(x, z) {
+                let (version, slot) = self.versions.before(column, before);
+                metrics.add(Perf::column_versions_skipped, (before - version) as u64);
+                metrics.add(Perf::completed_column_reads, 1);
+                return self.column_cell(version, x, z, slot);
+            }
+        }
+        let key = (before, x.div_euclid(16), z.div_euclid(16));
+        let index = z.rem_euclid(16) as usize * 16 + x.rem_euclid(16) as usize;
+        if let Some(tile) = self.ready_columns.get(&key) {
+            metrics.add(Perf::completed_boundary_reads, 1);
+            return self.column_cell(before, x, z, &tile.0[index]);
+        }
         let lock_started = metrics.start();
         let tile = self
             .columns
             .lock()
             .map_err(|_| "column dependency cache poisoned")?
-            .entry((before, x.div_euclid(16), z.div_euclid(16)))
+            .entry(key)
             .or_insert_with(|| {
                 metrics.add(Perf::column_tiles, 1);
                 Arc::new(ColumnTile::default())
             })
             .clone();
         metrics.elapsed(Perf::column_lock_nanos, lock_started);
-        let index = z.rem_euclid(16) as usize * 16 + x.rem_euclid(16) as usize;
+        self.column_cell(before, x, z, &tile.0[index])
+    }
+    fn column_cell(
+        &self,
+        before: usize,
+        x: i32,
+        z: i32,
+        slot: &ColumnCell,
+    ) -> Result<Arc<ColumnState>, String> {
+        let metrics = &self.metrics.performance;
         let joined = metrics.start();
         let mut built = false;
-        let result = tile.0[index]
+        let result = slot
             .get_or_init(|| {
                 built = true;
                 metrics.add(Perf::column_builds, 1);
@@ -552,71 +687,47 @@ impl Planner<'_> {
         self.metrics.performance.add(Perf::prefix_evaluations, 1);
         let prior = self.column(before - 1, x, z)?;
         let mut blocks: Option<Vec<u16>> = None;
-        let height = self.request.height as usize;
-        for (ax, az) in self.roots[before - 1].bounds.writers(x, z)? {
-            if limit.is_some_and(|key| (az, ax) > (key.0, key.1)) {
-                continue;
-            }
-            let output = self.anchor(before - 1, ax, az)?;
-            for &index in output.columns.get(&(x, z)).into_iter().flatten() {
-                let key = (az, ax, index);
+        if let Some((root, column)) = self
+            .completed
+            .get(before - 1)
+            .zip(self.versions.index(x, z))
+        {
+            for &(anchor, index) in root.columns.get(&column).into_iter().flatten() {
+                let ((ax, az), output) = &root.anchors[anchor];
+                let key = (*az, *ax, index);
                 if limit.is_some_and(|limit| key >= limit) {
                     continue;
                 }
-                let b = output.writes[index];
-                let y = b.y - self.request.min_y;
-                if y < 0 || y >= height as i32 {
+                self.apply_column_write(
+                    before,
+                    x,
+                    z,
+                    key,
+                    output.writes[index],
+                    &prior,
+                    &mut blocks,
+                )?;
+            }
+        } else {
+            for (ax, az) in self.roots[before - 1].bounds.writers(x, z)? {
+                if limit.is_some_and(|key| (az, ax) > (key.0, key.1)) {
                     continue;
                 }
-                let y = y as usize;
-                let previous = blocks.as_ref().map_or_else(|| prior.material(y), |b| b[y]);
-                let flags = self.profile.material_flags[previous as usize];
-                let replace = match b.role {
-                    FEATURE => true,
-                    SOIL => flags & 1 != 0 || previous == self.profile.snow,
-                    LOG => previous == 0 || flags & (4 | 16) != 0,
-                    _ => previous == 0,
-                };
-                if !replace {
-                    continue;
-                }
-                if b.role == VINE || b.role == COCOA {
-                    let (dx, dz) = SIDES[b.upper as usize];
-                    let nx = x - dx;
-                    let nz = z - dz;
-                    let supported = if nx.div_euclid(16) != x.div_euclid(16)
-                        || nz.div_euclid(16) != z.div_euclid(16)
-                    {
-                        true
-                    } else {
-                        let neighbor = self.prefix(before, nx, nz, Some(key))?;
-                        self.profile.material_flags[neighbor.material(y) as usize]
-                            & if b.role == COCOA { 32 } else { 4 | 8 }
-                            != 0
-                    };
-                    let hanging = b.role == VINE
-                        && y + 1 < height
-                        && blocks
-                            .as_ref()
-                            .map_or_else(|| prior.material(y + 1), |b| b[y + 1])
-                            == b.material;
-                    if !supported && !hanging {
+                let output = self.anchor(before - 1, ax, az)?;
+                for &index in output.columns.get(&(x, z)).into_iter().flatten() {
+                    let key = (az, ax, index);
+                    if limit.is_some_and(|limit| key >= limit) {
                         continue;
                     }
-                }
-                if b.role == PLANT && b.upper != 0 {
-                    if y + 1 >= height
-                        || blocks
-                            .as_ref()
-                            .map_or_else(|| prior.material(y + 1), |b| b[y + 1])
-                            != 0
-                    {
-                        continue;
-                    }
-                    blocks.get_or_insert_with(|| prior.expand(height))[y + 1] = b.upper;
-                }
-                if previous != b.material {
-                    blocks.get_or_insert_with(|| prior.expand(height))[y] = b.material;
+                    self.apply_column_write(
+                        before,
+                        x,
+                        z,
+                        key,
+                        output.writes[index],
+                        &prior,
+                        &mut blocks,
+                    )?;
                 }
             }
         }
@@ -630,6 +741,72 @@ impl Planner<'_> {
         } else {
             Ok(prior)
         }
+    }
+    fn apply_column_write(
+        &self,
+        before: usize,
+        x: i32,
+        z: i32,
+        key: (i32, i32, usize),
+        b: WorldBlock,
+        prior: &ColumnState,
+        blocks: &mut Option<Vec<u16>>,
+    ) -> Result<(), String> {
+        let height = self.request.height as usize;
+        let y = b.y - self.request.min_y;
+        if y < 0 || y >= height as i32 {
+            return Ok(());
+        }
+        let y = y as usize;
+        let previous = blocks.as_ref().map_or_else(|| prior.material(y), |b| b[y]);
+        let flags = self.profile.material_flags[previous as usize];
+        let replace = match b.role {
+            FEATURE => true,
+            SOIL => flags & 1 != 0 || previous == self.profile.snow,
+            LOG => previous == 0 || flags & (4 | 16) != 0,
+            _ => previous == 0,
+        };
+        if !replace {
+            return Ok(());
+        }
+        if b.role == VINE || b.role == COCOA {
+            let (dx, dz) = SIDES[b.upper as usize];
+            let nx = x - dx;
+            let nz = z - dz;
+            let supported =
+                if nx.div_euclid(16) != x.div_euclid(16) || nz.div_euclid(16) != z.div_euclid(16) {
+                    true
+                } else {
+                    let neighbor = self.prefix(before, nx, nz, Some(key))?;
+                    self.profile.material_flags[neighbor.material(y) as usize]
+                        & if b.role == COCOA { 32 } else { 4 | 8 }
+                        != 0
+                };
+            let hanging = b.role == VINE
+                && y + 1 < height
+                && blocks
+                    .as_ref()
+                    .map_or_else(|| prior.material(y + 1), |b| b[y + 1])
+                    == b.material;
+            if !supported && !hanging {
+                return Ok(());
+            }
+        }
+        if b.role == PLANT && b.upper != 0 {
+            if y + 1 >= height
+                || blocks
+                    .as_ref()
+                    .map_or_else(|| prior.material(y + 1), |b| b[y + 1])
+                    != 0
+            {
+                return Ok(());
+            }
+            blocks.get_or_insert_with(|| prior.expand(height))[y + 1] = b.upper;
+        }
+        if previous != b.material {
+            blocks.get_or_insert_with(|| prior.expand(height))[y] = b.material;
+        }
+        Ok(())
     }
 }
 
@@ -688,13 +865,16 @@ pub(crate) fn generate(
             },
         );
     }
-    let planner = Planner {
+    let mut planner = Planner {
         engine,
         profile,
         request,
         roots: groups.into_values().collect(),
         terrain: Mutex::new(Map::default()),
         anchors: Mutex::new(Map::default()),
+        ready: Map::default(),
+        completed: Vec::new(),
+        versions: Versions::new(request, side),
         anchor_ids: Mutex::new(Map::default()),
         starts: Mutex::new(Map::default()),
         discovery: crate::structures::Discovery::new(&profile.structures),
@@ -702,6 +882,7 @@ pub(crate) fn generate(
         metrics: metrics.clone(),
         retain_prefix,
         columns: Mutex::new(Map::default()),
+        ready_columns: Map::default(),
         error: Mutex::new(None),
     };
     let mut targets = Vec::new();
@@ -718,6 +899,7 @@ pub(crate) fn generate(
         anchors
             .par_iter()
             .try_for_each(|&(ax, az)| planner.anchor(root, ax, az).map(|_| ()))?;
+        planner.complete(root, &anchors)?;
         for (ax, az) in anchors {
             targets.push((root, ax, az));
         }
@@ -725,8 +907,8 @@ pub(crate) fn generate(
             eprintln!(
                 "Retina dependency root {root}/{}: anchors={}, column_tiles={}, tiles={}, elapsed_ms={:.1}",
                 planner.roots.len(),
-                planner.anchors.lock().unwrap().len(),
-                planner.columns.lock().unwrap().len(),
+                planner.ready.len(),
+                planner.columns.lock().unwrap().len() + planner.ready_columns.len(),
                 planner.terrain.lock().unwrap().len(),
                 started.elapsed().as_secs_f64() * 1000.
             );
@@ -738,8 +920,9 @@ pub(crate) fn generate(
         .elapsed(Perf::dependency_evaluation_nanos, evaluation_started);
     if let Some(details) = details.as_mut() {
         details.dependency_wall_nanos = started.elapsed().as_nanos() as u64;
-        details.dependency_anchors = planner.anchors.lock().unwrap().len() as u64;
-        details.dependency_column_tiles = planner.columns.lock().unwrap().len() as u64;
+        details.dependency_anchors = planner.ready.len() as u64;
+        details.dependency_column_tiles =
+            (planner.columns.lock().unwrap().len() + planner.ready_columns.len()) as u64;
         details.dependency_terrain_tiles = planner.terrain.lock().unwrap().len() as u64;
     }
     let structure_started = metrics.performance.start();
@@ -752,24 +935,28 @@ pub(crate) fn generate(
         structure_detail,
         details.as_mut().map(|d| &mut d.final_structure_wall_nanos),
     );
+    // Release immutable command references before consuming the outputs. This
+    // cleanup is inside the measured region and contributes to teardown time.
+    let release_started = metrics.performance.start();
+    let release_detail = diagnostics::start(details.is_some());
+    drop(std::mem::take(&mut planner.completed));
+    drop(std::mem::take(&mut planner.versions.changed));
+    metrics
+        .performance
+        .elapsed(Perf::teardown_nanos, release_started);
+    diagnostics::record(
+        release_detail,
+        details.as_mut().map(|d| &mut d.teardown_wall_nanos),
+    );
     let merge_started = diagnostics::start(details.is_some());
     let distribution_started = metrics.performance.start();
-    let mut cache = std::mem::take(
-        &mut *planner
-            .anchors
-            .lock()
-            .map_err(|_| "dependency cache poisoned")?,
-    );
+    let mut cache = std::mem::take(&mut planner.ready);
     let mut result = super::generation::Generation::new(request, side, profile, &starts);
 
     for key in targets {
-        let slot = Arc::try_unwrap(
-            cache
-                .remove(&key)
-                .ok_or("missing completed dependency anchor")?,
-        )
-        .map_err(|_| "dependency anchor still in use")?;
-        let output = slot.into_inner().ok_or("unfinished dependency anchor")??;
+        let output = cache
+            .remove(&key)
+            .ok_or("missing completed dependency anchor")?;
         let output = Arc::try_unwrap(output).map_err(|_| "dependency output still in use")?;
         for block in output.writes {
             result.push(request, side, block);
@@ -811,6 +998,31 @@ pub(crate) fn plan(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn completed_versions_preserve_root_boundaries_and_negative_volume_edges() {
+        let (_, _, mut request) = super::super::replay_tests::fixture(42, 0);
+        request.chunk_x = -2;
+        request.chunk_z = -1;
+        let mut versions = Versions::new(request, 2);
+        let first = versions.index(-32, -16).unwrap();
+        let last = versions.index(-1, 15).unwrap();
+        assert_eq!(first, 0);
+        assert_eq!(last, 32 * 32 - 1);
+        for (x, z) in [(-33, -16), (0, -16), (-32, -17), (-32, 16)] {
+            assert_eq!(versions.index(x, z), None);
+        }
+        versions.changed[first] = [0, 3, 8]
+            .into_iter()
+            .map(|root| ColumnVersion {
+                root,
+                state: OnceLock::new(),
+            })
+            .collect();
+        for (before, expected) in [(0, 0), (1, 1), (3, 1), (4, 4), (8, 4), (9, 9)] {
+            assert_eq!(versions.before(first, before).0, expected);
+            assert_eq!(versions.before(last, before).0, 0);
+        }
+    }
     #[test]
     fn encoded_columns_preserve_every_voxel_and_heightmap() {
         let (profile, _, _) = super::super::replay_tests::fixture(42, 0);

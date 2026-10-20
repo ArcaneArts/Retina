@@ -303,6 +303,15 @@
     "usable_for_speedup_or_regression_claims": false,
     "observations": "Competing external workloads persisted; local compile/test work overlapped some correctness cases after user deferred timings. Custom-profile elapsed time is higher in this run and must be remeasured, not assumed harmless."
   },
-  "post_merge": null,
+  "post_merge": {
+    "revision": "b4fc6d3fdd223d31f6eacf9295c082cf1c8ed719",
+    "pr": "https://github.com/ArcaneArts/Retina/pull/172",
+    "library_sha256": "e797e7922ce313ccf35e7fd97bb5810da4577ab042e1b08d1b212ecaf6647ff1",
+    "binary_identical_to_validated_candidate": true,
+    "scope": "Actual merged build: one warmup and one measured region per case, complete-NBT smoke comparison only. Full quiet timing confirmation remains deferred.",
+    "evidence": "cycle2/merged-smoke/suite.json",
+    "identical_nbt_chunks": 5120,
+    "timing_confirmation_pending": true
+  },
   "identical_nbt_chunks_against_each_reference": 102400
 }
