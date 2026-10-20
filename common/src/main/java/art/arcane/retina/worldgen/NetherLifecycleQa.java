@@ -56,6 +56,8 @@ public final class NetherLifecycleQa {
         long generatedBefore;
         long portalBegan, lastPortalTick, maximumPortalTickGap;
         int portalTicks;
+        long dhCompletedBefore, dhStartedBefore;
+        int dhActiveAtStart;
         BlockPos createdPortal;
         Run(ServerPlayer player) { this.player = player; }
     }
@@ -188,6 +190,9 @@ public final class NetherLifecycleQa {
                 run.portalBegan = run.lastPortalTick = System.nanoTime();
                 run.maximumPortalTickGap = 0;
                 run.portalTicks = 0;
+                run.dhCompletedBefore = PortalBackgroundQa.completed();
+                run.dhStartedBefore = PortalBackgroundQa.started();
+                run.dhActiveAtStart = PortalBackgroundQa.active();
                 run.phase = 7;
             }
             case 7 -> {
@@ -207,6 +212,15 @@ public final class NetherLifecycleQa {
                         + ",\"portal_ms\":" + (System.nanoTime() - run.portalBegan) / 1e6
                         + ",\"server_ticks\":" + run.portalTicks
                         + ",\"maximum_tick_gap_ms\":" + run.maximumPortalTickGap / 1e6);
+                if (PortalBackgroundQa.ENABLED) {
+                    long completed = PortalBackgroundQa.completed() - run.dhCompletedBefore;
+                    require(run.reopened || completed > 0,
+                            "cold portal wait overlaps successful native generation on an actual DH thread");
+                    event("nether_portal_dh_overlap", "\"reopened\":" + run.reopened
+                            + ",\"active_at_start\":" + run.dhActiveAtStart
+                            + ",\"started_during_wait\":" + (PortalBackgroundQa.started() - run.dhStartedBefore)
+                            + ",\"completed_during_wait\":" + completed);
+                }
                 run.since = server.getTickCount();
                 run.phase = 8;
             }

@@ -201,12 +201,13 @@ final class TemporaryRegions implements AutoCloseable {
             long queueNanos = System.nanoTime() - queued;
             metrics.begin();
             long start = System.nanoTime();
-            try {
+            try (var background = PortalBackgroundQa.begin(dimension, entry.origin)) {
                 var r = new TerrainRequest(settings.seed(), entry.origin.x(), entry.origin.z(), settings.minY(), settings.height(),
                         settings.baseHeight(), settings.amplitude(), settings.frequency(), settings.profile());
                 var data = NativeTerrain.instance().generateRegionColumns(r, entry.path,
                         SharedConstants.getCurrentVersion().dataVersion().version(), biome, entry.columnPath);
                 var report = data.report();
+                if (background != null) background.complete(report.generated());
                 entry.retainColumns(data.columns());
                 NetherIntegrationQa.generated(dimension, entry.origin);
                 long columnCacheNanos=data.columnCacheNanos();

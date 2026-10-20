@@ -16,6 +16,7 @@ loom {
             }
             if (providers.gradleProperty('retinaBiomeModificationQa').isPresent()) vmArg '-Dretina.qa.biomeModification=true'
             if (providers.gradleProperty('retinaNetherLifecycleQa').isPresent()) vmArg '-Dretina.qa.nether.lifecycle=true'
+            if (providers.gradleProperty('retinaNetherPortalDhQa').isPresent()) vmArg '-Dretina.qa.nether.portalDh=true'
             if (providers.gradleProperty('retinaNetherProgressionQa').isPresent()) vmArg '-Dretina.qa.nether.progression=true'
             if (providers.gradleProperty('retinaNetherStructuresQa').isPresent()) vmArg '-Dretina.qa.nether.structures=true'
             if (providers.gradleProperty('retinaNetherUnloadQa').isPresent()) vmArg '-Dretina.qa.nether.unload=true'
