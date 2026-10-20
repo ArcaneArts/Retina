@@ -25,7 +25,6 @@ import java.util.concurrent.*;
 
 final class FortressAssemblyTest {
     static void run(RegistryAccess registry, ResourceManager resources, JsonObject source, BlockState[] materials) throws Exception {
-        registerPiece();
         var context = new StructurePieceSerializationContext(resources, registry, null);
         var fixture = source.deepCopy(); fixture.add("decorations",new JsonArray()); fixture.add("terrain_features",new JsonObject());
         for (var b : fixture.getAsJsonArray("biomes")) {
@@ -184,7 +183,7 @@ final class FortressAssemblyTest {
         for(String kind:FortressProfile.KINDS)if(FortressProfile.piece(kind,Direction.SOUTH,false,0).getClass()==piece.getClass())return kind;
         throw new AssertionError(piece.getClass());
     }
-    private static void registerPiece() throws Exception {
+    static void registerPiece() throws Exception {
         var frozen=MappedRegistry.class.getDeclaredField("frozen");frozen.setAccessible(true);frozen.setBoolean(BuiltInRegistries.STRUCTURE_PIECE,false);
         RetinaStructurePiece.register();var bind=Holder.Reference.class.getDeclaredMethod("bindValue",Object.class);bind.setAccessible(true);bind.invoke(BuiltInRegistries.STRUCTURE_PIECE.get(Identifier.parse("retina:template")).orElseThrow(),RetinaStructurePiece.TYPE);frozen.setBoolean(BuiltInRegistries.STRUCTURE_PIECE,true);
     }

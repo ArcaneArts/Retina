@@ -3,6 +3,8 @@ package art.arcane.retina.worldgen;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import net.minecraft.SharedConstants;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.world.ticks.SavedTick;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtOps;
 import net.minecraft.world.level.ChunkPos;
@@ -25,11 +27,15 @@ final class NetherGenerationIntegrationTest {
     private record Generated(short[] blocks, CompoundTag metadata) {}
 
     static void run(JsonObject source, BlockState[] materials) throws Exception {
+        run(source, materials, new ChunkPos(-32, 0), "combined");
+    }
+
+    static JsonObject run(JsonObject source, BlockState[] materials, ChunkPos regionOrigin, String label) throws Exception {
         var terrain = NativeTerrain.instance();
         int profile = terrain.registerProfile(source.toString());
-        var directory = Files.createTempDirectory(Path.of("build/nether"), "combined-region-");
-        var file = directory.resolve("r.-1.0.mca");
-        var origin = PortalIntegrationTest.request(profile, 42, -32, 0);
+        var directory = Files.createTempDirectory(Path.of("build/nether"), label + "-region-");
+        var file = directory.resolve("r." + regionOrigin.getRegionX() + "." + regionOrigin.getRegionZ() + ".mca");
+        var origin = PortalIntegrationTest.request(profile, 42, regionOrigin.x(), regionOrigin.z());
         int version = SharedConstants.getCurrentVersion().dataVersion().version();
         long began = System.nanoTime();
         var report = terrain.generateRegion(origin, file, version, "minecraft:nether_wastes");
@@ -37,14 +43,16 @@ final class NetherGenerationIntegrationTest {
         require(report.generated() == 1024 && report.preserved() == 0, "complete fresh combined region");
         var codec = PalettedContainer.codecRW(BlockState.CODEC,
                 Strategy.createForBlockStates(Block.BLOCK_STATE_REGISTRY), Blocks.AIR.defaultBlockState());
-        var probes = new LinkedHashSet<>(List.of(new ChunkPos(-32, 0), new ChunkPos(-1, 0),
-                new ChunkPos(-32, 31), new ChunkPos(-1, 31), new ChunkPos(-15, 16)));
+        int x0 = regionOrigin.x(), z0 = regionOrigin.z();
+        var probes = new LinkedHashSet<>(List.of(new ChunkPos(x0, z0), new ChunkPos(x0 + 31, z0),
+                new ChunkPos(x0, z0 + 31), new ChunkPos(x0 + 31, z0 + 31), new ChunkPos(x0 + 17, z0 + 16)));
         var families = new TreeMap<String, Integer>();
         var featureCounts = new TreeMap<String, Long>();
+        var fluidTypes = new TreeMap<String, Long>();
         var compared = new LinkedHashMap<ChunkPos, Generated>();
         long fluidTicks = 0, entities = 0;
         try (var storage = new RegionFileStorage(new RegionStorageInfo("combined-nether", Level.NETHER, "chunk"), directory, false)) {
-            for (int z = 0; z < 32; z++) for (int x = -32; x < 0; x++) {
+            for (int z = z0; z < z0 + 32; z++) for (int x = x0; x < x0 + 32; x++) {
                 var at = new ChunkPos(x, z);
                 var tag = Objects.requireNonNull(storage.read(at), "combined region chunk");
                 var starts = tag.getCompoundOrEmpty("structures").getCompoundOrEmpty("starts");
@@ -52,10 +60,20 @@ final class NetherGenerationIntegrationTest {
                     if (families.put(id, families.getOrDefault(id, 0) + 1) == null) {
                         probes.add(at);
                         // An adjacent independently requested chunk sees the same start and prior stages.
-                        probes.add(new ChunkPos(x == -1 ? x - 1 : x + 1, z));
+                        probes.add(new ChunkPos(x == x0 + 31 ? x - 1 : x + 1, z));
                     }
                 }
-                fluidTicks += NetherSpringTest.checkRegionTicks(tag, at);
+                var ticks = SavedTick.codec(BuiltInRegistries.FLUID.byNameCodec()).listOf()
+                        .parse(NbtOps.INSTANCE, tag.getListOrEmpty("fluid_ticks")).getOrThrow();
+                var identities = new HashSet<String>();
+                for (var tick : ticks) {
+                    String id = BuiltInRegistries.FLUID.getKey(tick.type()).toString();
+                    require(!id.equals("minecraft:empty") && tick.delay() == 0, "registered immediate worldgen fluid update");
+                    require(ChunkPos.containing(tick.pos()).equals(at) && tick.pos().getY() >= 0 && tick.pos().getY() < 256, "fluid update belongs to saved chunk");
+                    require(identities.add(id + "/" + tick.pos()), "type/position fluid updates deduplicated");
+                    fluidTypes.merge(id + "/" + tick.priority(), 1L, Long::sum);
+                }
+                fluidTicks += ticks.size();
                 entities += tag.getListOrEmpty("block_entities").size();
                 for (var section : McaTestSections.terrain(tag, 0, 256)) {
                     var blocks = codec.parse(NbtOps.INSTANCE, section.getCompoundOrEmpty("block_states")).getOrThrow();
@@ -115,10 +133,12 @@ final class NetherGenerationIntegrationTest {
         stats.addProperty("compared_voxels", compared.size() * 65536L); stats.addProperty("fluid_ticks", fluidTicks);
         stats.addProperty("block_entities", entities); stats.addProperty("generation_ms", generationMs);
         stats.addProperty("bytes", report.bytes()); stats.add("structures", new Gson().toJsonTree(families));
+        stats.add("fluid_types", new Gson().toJsonTree(fluidTypes));
         stats.add("feature_blocks", new Gson().toJsonTree(featureCounts)); stats.addProperty("region", file.toAbsolutePath().toString());
-        Files.writeString(Path.of("build/nether/combined-generation.json"), stats.toString());
-        Files.writeString(Path.of("build/nether/combined-regions-path.txt"), directory.toAbsolutePath().toString());
+        Files.writeString(Path.of("build/nether", label + "-generation.json"), stats.toString());
+        Files.writeString(Path.of("build/nether", label + "-regions-path.txt"), directory.toAbsolutePath().toString());
         System.out.println("QA_EVT {\"event\":\"combined_nether_generation\",\"status\":\"pass\",\"context\":" + stats + "}");
+        return stats;
     }
     private static void require(boolean value, String message) { if (!value) throw new AssertionError(message); }
 }

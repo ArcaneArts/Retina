@@ -1805,11 +1805,9 @@ fn apply_inner(
                                 nbt::put(
                                     &mut tag,
                                     "LootTableSeed",
-                                    nbt::long(if piece.fortress.is_some() {
-                                        r.long() as i64
-                                    } else {
-                                        rand64(start.seed ^ index as u64) as i64
-                                    }),
+                                    // World-position RNG keeps matching local chest coordinates
+                                    // in different chunks from sharing one loot seed.
+                                    nbt::long(r.long() as i64),
                                 );
                             }
                             block_entities.insert(pos, tag);
