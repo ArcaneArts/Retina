@@ -213,6 +213,7 @@ final class TemporaryRegions implements AutoCloseable {
                 long columnCacheNanos=data.columnCacheNanos();
                 long elapsed = System.nanoTime() - start;
                 metrics.completedPreviewRegion(report.generated(), elapsed, report.stages(), columnCacheNanos);
+                PortalBackgroundQa.generated(dimension, entry.origin, report.generated());
                 entry.generated.complete(report);
                 synchronized (this) { if (!entry.retired) warm.put(entry.key, entry); trimWarm(); }
                 if (Boolean.getBoolean("retina.qa")) Retina.LOGGER.info(

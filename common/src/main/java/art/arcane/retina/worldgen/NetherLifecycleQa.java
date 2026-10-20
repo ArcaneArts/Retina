@@ -58,6 +58,8 @@ public final class NetherLifecycleQa {
         int portalTicks;
         long dhCompletedBefore, dhStartedBefore;
         int dhActiveAtStart;
+        long destinationChunksBefore;
+        List<ChunkPos> destinationRegions;
         BlockPos createdPortal;
         Run(ServerPlayer player) { this.player = player; }
     }
@@ -186,6 +188,10 @@ public final class NetherLifecycleQa {
                             "saved remote source portal remains complete");
                 else portal(overworld, COLD_PORTAL);
                 run.generatedBefore = ((RetinaChunkGenerator) nether.getChunkSource().getGenerator()).metrics().snapshot().total();
+                run.destinationRegions = PortalRegionPreparation.regions(
+                        new BlockPos(COLD_PORTAL.getX() / 8, COLD_PORTAL.getY(), COLD_PORTAL.getZ() / 8),
+                        PortalRegionPreparation.destinationRadius(true));
+                run.destinationChunksBefore = PortalBackgroundQa.chunks(run.destinationRegions);
                 enter(player, overworld, COLD_PORTAL);
                 run.portalBegan = run.lastPortalTick = System.nanoTime();
                 run.maximumPortalTickGap = 0;
@@ -204,11 +210,16 @@ public final class NetherLifecycleQa {
                 require(PortalShape.findAnyShape(nether, run.createdPortal, Direction.Axis.X).isComplete()
                                 || PortalShape.findAnyShape(nether, run.createdPortal, Direction.Axis.Z).isComplete(),
                         "vanilla-created destination is a complete portal");
-                long generated = ((RetinaChunkGenerator) nether.getChunkSource().getGenerator()).metrics().snapshot().total()
+                long allGenerated = ((RetinaChunkGenerator) nether.getChunkSource().getGenerator()).metrics().snapshot().total()
                         - run.generatedBefore;
+                // DH may legitimately generate other Nether regions concurrently.
+                // Its fixture counts the actual native destinations independently.
+                long generated = PortalBackgroundQa.ENABLED
+                        ? PortalBackgroundQa.chunks(run.destinationRegions) - run.destinationChunksBefore : allGenerated;
                 require(generated == (run.reopened ? 0 : 4096),
                         "remote travel generates only its four destination regions, and reuses them on reopen: " + generated);
                 event("nether_cold_portal_arrival", "\"generated_chunks\":" + generated + ",\"reopened\":" + run.reopened
+                        + ",\"all_generated_chunks\":" + allGenerated
                         + ",\"portal_ms\":" + (System.nanoTime() - run.portalBegan) / 1e6
                         + ",\"server_ticks\":" + run.portalTicks
                         + ",\"maximum_tick_gap_ms\":" + run.maximumPortalTickGap / 1e6);
