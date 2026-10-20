@@ -138,7 +138,13 @@ struct CompletedRoot {
     anchors: Vec<((i32, i32), Arc<Output>)>,
     columns: Map<usize, Vec<(usize, usize)>>,
 }
-type ColumnCell = OnceLock<Result<Arc<ColumnState>, String>>;
+enum ColumnValue {
+    State(Arc<ColumnState>),
+    // Identity roots reuse the canonical earlier version without retaining an
+    // additional Arc for every otherwise empty intermediate state.
+    Alias(usize),
+}
+type ColumnCell = OnceLock<Result<ColumnValue, String>>;
 struct ColumnVersion {
     root: usize,
     state: ColumnCell,
@@ -191,6 +197,7 @@ impl ColumnRuns {
     }
 }
 struct ColumnState {
+    before: usize,
     runs: ColumnRuns,
     heights: [i32; 6],
 }
@@ -225,7 +232,11 @@ impl ColumnState {
             }
             top = min_y + (run >> 16) as i32;
         }
-        Self { runs, heights }
+        Self {
+            before: 0,
+            runs,
+            heights,
+        }
     }
     fn material(&self, y: usize) -> u16 {
         let runs = self.runs.slice();
@@ -242,7 +253,7 @@ impl ColumnState {
         blocks
     }
 }
-struct ColumnTile(Vec<OnceLock<Result<Arc<ColumnState>, String>>>);
+struct ColumnTile(Vec<ColumnCell>);
 impl Default for ColumnTile {
     fn default() -> Self {
         Self((0..COLUMNS).map(|_| OnceLock::new()).collect())
@@ -403,28 +414,6 @@ impl Planner<'_> {
         self.completed.push(completed);
         Ok(())
     }
-    /// All generation workers have joined before retirement. These containers
-    /// own immutable host data; parallel destruction stays inside this request.
-    fn retire(mut self, outputs: Map<(usize, i32, i32), Arc<Output>>) {
-        let columns = std::mem::take(self.columns.get_mut().unwrap_or_else(|e| e.into_inner()));
-        let ready_columns = std::mem::take(&mut self.ready_columns);
-        // Versions of a block column share Arc state, and neighboring columns
-        // share material buffers. Keep a terrain tile's releases on one worker
-        // instead of bouncing their reference counts between worker cores.
-        let mut groups: Map<(i32, i32), Vec<Arc<ColumnTile>>> = Map::default();
-        for ((_, x, z), tile) in columns.into_iter().chain(ready_columns) {
-            groups
-                .entry((x.div_euclid(16), z.div_euclid(16)))
-                .or_default()
-                .push(tile);
-        }
-        rayon::join(
-            || groups.into_par_iter().for_each(drop),
-            || outputs.into_par_iter().for_each(drop),
-        );
-        drop(self);
-    }
-
     fn fail(&self, error: String) {
         self.error.lock().unwrap().get_or_insert(error);
     }
@@ -673,50 +662,69 @@ impl Planner<'_> {
     ) -> Result<Arc<ColumnState>, String> {
         let metrics = &self.metrics.performance;
         let joined = metrics.start();
-        let mut built = false;
-        let result = slot
-            .get_or_init(|| {
-                built = true;
-                metrics.add(Perf::column_builds, 1);
-                if before != 0 {
-                    return self.prefix(before, x, z, None);
+        let mut built = None;
+        let value = slot.get_or_init(|| {
+            metrics.add(Perf::column_builds, 1);
+            built = Some(self.build_column(before, x, z));
+            match built.as_ref().unwrap() {
+                Ok(state) if state.before < before => {
+                    metrics.add(Perf::column_aliases, 1);
+                    Ok(ColumnValue::Alias(state.before))
                 }
-                let field = self.terrain(x.div_euclid(16), z.div_euclid(16))?;
-                if let Some((mask, range)) = field
-                    .substrate
-                    .as_ref()
-                    .and_then(|mask| mask.material_run_range(x, z).map(|range| (mask, range)))
-                {
-                    metrics.add(Perf::shared_material_columns, 1);
-                    return Ok(Arc::new(ColumnState::from_runs(
-                        ColumnRuns::Shared {
-                            mask: mask.clone(),
-                            range,
-                        },
-                        self.request.height as usize,
-                        self.profile,
-                        self.request.min_y,
-                    )));
-                }
-                let blocks = (self.request.min_y..self.request.min_y + self.request.height as i32)
-                    .map(|y| {
-                        field
-                            .material(self.profile, self.request, [x, y, z])
-                            .ok_or_else(|| format!("missing GPU substrate at {x},{y},{z}"))
-                    })
-                    .collect::<Result<Vec<_>, _>>()?;
-                Ok(Arc::new(ColumnState::new(
-                    blocks,
-                    self.profile,
-                    self.request.min_y,
-                )))
-            })
-            .clone();
-        if !built {
-            metrics.elapsed(Perf::column_join_nanos, joined);
+                Ok(state) => Ok(ColumnValue::State(state.clone())),
+                Err(error) => Err(error.clone()),
+            }
+        });
+        if let Some(built) = built {
+            return built;
         }
-        result
+        metrics.elapsed(Perf::column_join_nanos, joined);
+        match value {
+            Ok(ColumnValue::State(state)) => Ok(state.clone()),
+            Ok(ColumnValue::Alias(version)) => {
+                metrics.add(Perf::column_alias_reads, 1);
+                self.column(*version, x, z)
+            }
+            Err(error) => Err(error.clone()),
+        }
     }
+    fn build_column(&self, before: usize, x: i32, z: i32) -> Result<Arc<ColumnState>, String> {
+        if before != 0 {
+            return self.prefix(before, x, z, None);
+        }
+        let field = self.terrain(x.div_euclid(16), z.div_euclid(16))?;
+        if let Some((mask, range)) = field
+            .substrate
+            .as_ref()
+            .and_then(|mask| mask.material_run_range(x, z).map(|range| (mask, range)))
+        {
+            self.metrics
+                .performance
+                .add(Perf::shared_material_columns, 1);
+            return Ok(Arc::new(ColumnState::from_runs(
+                ColumnRuns::Shared {
+                    mask: mask.clone(),
+                    range,
+                },
+                self.request.height as usize,
+                self.profile,
+                self.request.min_y,
+            )));
+        }
+        let blocks = (self.request.min_y..self.request.min_y + self.request.height as i32)
+            .map(|y| {
+                field
+                    .material(self.profile, self.request, [x, y, z])
+                    .ok_or_else(|| format!("missing GPU substrate at {x},{y},{z}"))
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        Ok(Arc::new(ColumnState::new(
+            blocks,
+            self.profile,
+            self.request.min_y,
+        )))
+    }
+
     fn prefix(
         &self,
         before: usize,
@@ -772,7 +780,8 @@ impl Planner<'_> {
             }
         }
         if let Some(blocks) = blocks {
-            let result = ColumnState::new(blocks, self.profile, self.request.min_y);
+            let mut result = ColumnState::new(blocks, self.profile, self.request.min_y);
+            result.before = before;
             if result.runs.slice() == prior.runs.slice() {
                 Ok(prior)
             } else {
@@ -1017,7 +1026,8 @@ pub(crate) fn generate(
     );
     let teardown_started = metrics.performance.start();
     let teardown_detail = diagnostics::start(details.is_some());
-    planner.retire(cache);
+    drop(cache);
+    drop(planner);
     metrics
         .performance
         .elapsed(Perf::teardown_nanos, teardown_started);
