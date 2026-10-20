@@ -4,6 +4,7 @@ use super::spatial::Map;
 use super::*;
 use crate::TerrainEngine;
 use crate::performance::{Counter as Perf, Metrics};
+use std::borrow::Cow;
 use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex, OnceLock};
 
@@ -104,21 +105,38 @@ impl Bounds {
         self.x = [self.x[0].min(other.x[0]), self.x[1].max(other.x[1])];
         self.z = [self.z[0].min(other.z[0]), self.z[1].max(other.z[1])];
     }
-    fn writers(self, x: i32, z: i32) -> Result<Vec<(i32, i32)>, String> {
-        self.writers_area([x, z], [x, z])
+    fn writers(self, x: i32, z: i32) -> Result<impl Iterator<Item = (i32, i32)>, String> {
+        self.writer_range([x, z], [x, z])
     }
     fn writers_area(self, min: [i32; 2], max: [i32; 2]) -> Result<Vec<(i32, i32)>, String> {
+        Ok(self.writer_range(min, max)?.collect())
+    }
+    fn writer_range(
+        self,
+        min: [i32; 2],
+        max: [i32; 2],
+    ) -> Result<impl Iterator<Item = (i32, i32)>, String> {
         let ceil = |v: i64| -(-v).div_euclid(16);
-        let mut result = Vec::new();
-        for az in ceil(min[1] as i64 - self.z[1])..=(max[1] as i64 - self.z[0]).div_euclid(16) {
-            for ax in ceil(min[0] as i64 - self.x[1])..=(max[0] as i64 - self.x[0]).div_euclid(16) {
-                result.push((
-                    i32::try_from(ax).map_err(|_| "dependency anchor X overflows")?,
-                    i32::try_from(az).map_err(|_| "dependency anchor Z overflows")?,
-                ));
-            }
-        }
-        Ok(result)
+        let x = [
+            ceil(min[0] as i64 - self.x[1]),
+            (max[0] as i64 - self.x[0]).div_euclid(16),
+        ];
+        let z = [
+            ceil(min[1] as i64 - self.z[1]),
+            (max[1] as i64 - self.z[0]).div_euclid(16),
+        ];
+        let (xs, zs) = if x[0] > x[1] || z[0] > z[1] {
+            (1..=0, 1..=0)
+        } else {
+            // Validate in the same order as the first failing original pair.
+            let x0 = i32::try_from(x[0]).map_err(|_| "dependency anchor X overflows")?;
+            let z0 = i32::try_from(z[0]).map_err(|_| "dependency anchor Z overflows")?;
+            let x1 = i32::try_from(x[1]).map_err(|_| "dependency anchor X overflows")?;
+            let z1 = i32::try_from(z[1]).map_err(|_| "dependency anchor Z overflows")?;
+            (x0..=x1, z0..=z1)
+        };
+        // Prior-column reads need this order but not an owned coordinate list.
+        Ok(zs.flat_map(move |az| xs.clone().map(move |ax| (ax, az))))
     }
 }
 struct Root {
@@ -413,10 +431,12 @@ impl Planner<'_> {
         self.terrain.field(x, z)
     }
 
-    fn anchor(&self, root: usize, x: i32, z: i32) -> Result<Arc<Output>, String> {
+    fn anchor(&self, root: usize, x: i32, z: i32) -> Result<Cow<'_, Arc<Output>>, String> {
+        // The completed map is immutable until the next joined root barrier.
+        // Only pending results need an owning reference for their caller.
         if let Some(output) = self.ready.get(&(root, x, z)) {
             self.metrics.performance.add(Perf::anchor_ready_hits, 1);
-            return Ok(output.clone());
+            return Ok(Cow::Borrowed(output));
         }
         memo(
             &self.anchors,
@@ -535,6 +555,7 @@ impl Planner<'_> {
                 })
             },
         )
+        .map(Cow::Owned)
     }
     fn structure(&self, root: usize, definition: usize, x: i32, z: i32) -> Result<Output, String> {
         let request = ChunkRequest {
@@ -1089,6 +1110,42 @@ pub(crate) fn plan(
 mod tests {
     use super::*;
     #[test]
+    fn inverse_writer_ranges_preserve_empty_and_overflow_results() {
+        let outside = -((i32::MAX as i64 + 1) * 16);
+        let empty = Bounds {
+            x: [outside; 2],
+            z: [1; 2],
+        };
+        assert_eq!(empty.writers(0, 0).unwrap().count(), 0);
+        let invalid = Bounds {
+            x: [outside; 2],
+            z: [0; 2],
+        };
+        assert_eq!(
+            invalid.writers(0, 0).err().as_deref(),
+            Some("dependency anchor X overflows")
+        );
+        let invalid = Bounds {
+            x: [0; 2],
+            z: [outside; 2],
+        };
+        assert_eq!(
+            invalid.writers(0, 0).err().as_deref(),
+            Some("dependency anchor Z overflows")
+        );
+        let point = Bounds {
+            x: [0; 2],
+            z: [0; 2],
+        };
+        assert_eq!(
+            point
+                .writers(i32::MIN, i32::MIN)
+                .unwrap()
+                .collect::<Vec<_>>(),
+            vec![(i32::MIN / 16, i32::MIN / 16)]
+        );
+    }
+    #[test]
     fn completed_versions_preserve_root_boundaries_and_negative_volume_edges() {
         let (_, _, mut request) = super::super::replay_tests::fixture(42, 0);
         request.chunk_x = -2;
@@ -1239,7 +1296,7 @@ mod tests {
                             })
                         })
                         .collect();
-                    assert_eq!(bounds.writers(x, z).unwrap(), expected);
+                    assert_eq!(bounds.writers(x, z).unwrap().collect::<Vec<_>>(), expected);
                 }
             }
         }
