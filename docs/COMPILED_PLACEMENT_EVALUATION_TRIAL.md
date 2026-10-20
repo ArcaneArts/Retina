@@ -1,5 +1,8 @@
 # Compiled placement evaluation trial
 
+Final status: see the [combined integration audit](POST_INVESTIGATION_INTEGRATION.md).
+References below to remaining goal work describe this cycle’s historical state.
+
 The predecoded placement-instruction experiment is **rejected**. Complete
 two-caller vanilla throughput fell 5.5% and 8.4% in opposite comparison orders.
 Terralith improved in those samples, but large variation and inconsistent stage

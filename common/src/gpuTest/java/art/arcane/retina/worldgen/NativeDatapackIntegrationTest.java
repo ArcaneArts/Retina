@@ -19,6 +19,9 @@ import com.mojang.serialization.JsonOps;
 /** Loads the actual pack through Minecraft's registry loader and exercises the GPU/MCA path. */
 public final class NativeDatapackIntegrationTest {
     public static void main(String[] args) throws Exception {
+        String phase = System.getProperty("retina.datapack.test.phase", "all");
+        if (!Set.of("all", "automatic", "registry", "program", "decorations", "shores", "terrain").contains(phase))
+            throw new IllegalArgumentException("Unknown datapack test phase: " + phase);
         SharedConstants.tryDetectVersion(); Bootstrap.bootStrap();
         // Standalone JVM has no Fabric registry-unfreeze lifecycle.
         var frozen = MappedRegistry.class.getDeclaredField("frozen"); frozen.setAccessible(true);
@@ -53,15 +56,22 @@ public final class NativeDatapackIntegrationTest {
             // The default path adapts the effective pack definition directly, retaining its saved form.
             var originalOps = world.createSerializationContext(JsonOps.INSTANCE);
             var originalJson = ChunkGenerator.CODEC.encodeStart(originalOps, original.generator()).getOrThrow();
-            var automatic = (RetinaChunkGenerator) RetinaGenerators.adapt(net.minecraft.world.level.Level.OVERWORLD, original, original.generator());
-            try {
-                automatic.bindWorld(world, 123456789L, net.minecraft.world.level.chunk.PalettedContainerFactory.create(world));
-                require(new HashSet<>(automatic.profile().biomes()).equals(original.generator().getBiomeSource().possibleBiomes()), "automatic datapack source pool remains exact");
-                require(ChunkGenerator.CODEC.encodeStart(originalOps, original.generator()).getOrThrow().equals(originalJson), "automatic datapack profile preserves saved source");
-                automatic.biomeAt(0, 0);
-                checkMca(automatic, automatic.profile(), false);
-                System.out.println("QA_EVT {\"event\":\"automatic_datapack_generation\",\"status\":\"pass\"}");
-            } finally { automatic.closePreviews(); }
+            if (includes(phase, "automatic")) {
+                var automatic = (RetinaChunkGenerator) RetinaGenerators.adapt(net.minecraft.world.level.Level.OVERWORLD, original, original.generator());
+                try {
+                    automatic.bindWorld(world, 123456789L, net.minecraft.world.level.chunk.PalettedContainerFactory.create(world));
+                    require(new HashSet<>(automatic.profile().biomes()).equals(original.generator().getBiomeSource().possibleBiomes()), "automatic datapack source pool remains exact");
+                    require(ChunkGenerator.CODEC.encodeStart(originalOps, original.generator()).getOrThrow().equals(originalJson), "automatic datapack profile preserves saved source");
+                    automatic.biomeAt(0, 0);
+                    checkMca(automatic, automatic.profile(), false);
+                    System.out.println("QA_EVT {\"event\":\"automatic_datapack_generation\",\"status\":\"pass\"}");
+                } finally { automatic.closePreviews(); }
+            }
+            if (phase.equals("automatic")) {
+                require(RetinaDimensions.retainSelection(Map.of(LevelStem.OVERWORLD,original),packs) == packs,"vanilla selection remains unchanged");
+                completePhase(phase);
+                return;
+            }
             var biome = world.lookupOrThrow(Registries.BIOME).getOrThrow(Biomes.PLAINS);
             for (String mode : List.of("mca", "chunk")) {
                 var chosen = new RetinaChunkGenerator(new RetinaBiomeSource(List.of(biome), 256, .55F), -64, 384, 64, 48, .008F, mode, Optional.empty(), true);
@@ -91,32 +101,43 @@ public final class NativeDatapackIntegrationTest {
                 require(profile.biomes().stream().anyMatch(b -> b.unwrapKey().orElseThrow().identifier().getNamespace().equals("terralith")), "pack biomes are imported");
                 System.out.println("QA_EVT {\"event\":\"datapack_registry_import\",\"status\":\"pass\",\"context\":{\"mode\":\""+mode+"\",\"biomes\":"+profile.biomes().size()+",\"materials\":"+profile.materials().length+"}}");
                 if (mode.equals("mca")) {
-                    RegistryClimateIntegrationChecks.check(profile);
-                    // BulkBiomes deliberately replaces the climate source and has no dark forest.
-                    if (!bulk) RegistryDecorationIntegrationChecks.check(profile, true);
-                    if (!controls && !bulk) {
-                        RegistryShoreIntegrationChecks.checkSediments(profile, true);
+                    if (includes(phase, "registry")) RegistryClimateIntegrationChecks.checkIndex(profile);
+                    if (includes(phase, "program")) RegistryProgramIntegrationChecks.check(profile);
+                    if (includes(phase, "decorations")) {
+                        // BulkBiomes deliberately replaces the climate source and has no dark forest.
+                        if (!bulk) RegistryDecorationIntegrationChecks.check(profile, true);
+                        if (!controls && !bulk) RegistryShoreIntegrationChecks.checkSediments(profile, true);
+                    }
+                    if (includes(phase, "shores") && !controls && !bulk)
                         RegistryShoreIntegrationChecks.checkTerrainAlignment(profile, projection);
+                    if (includes(phase, "terrain")) {
+                        var seen = new HashSet<String>();boolean wideBiome=false;
+                        for (int z = -64; z <= 64; z += 8) for (int x = -64; x <= 64; x += 8) {
+                            var r = new TerrainRequest(123456789L,x*32,z*32,-64,384,64,48,.008F,profile.nativeId());
+                            var columns = NativeTerrain.instance().sampleColumns(r);
+                            for (int i=0;i<256;i++) {seen.add(profile.biomes().get(columns.biome(i)).unwrapKey().orElseThrow().identifier().toString());wideBiome|=columns.biome(i)>255;}
+                        }
+                        require(seen.stream().anyMatch(id -> id.startsWith(bulk?"retina_bulk:":"terralith:")), "custom biomes actually selected by GPU");
+                        if(args.length>1 && !controls && !bulk)require(seen.contains("retina_test:painted_grove"),"additional pack biome actually selected on GPU: "+seen);
+                        if(bulk){require(profile.biomes().size()>255 && wideBiome,"more than 255 merged biomes reach the actual GPU columns");System.out.println("QA_EVT {\"event\":\"wide_biome_gpu_indices\",\"status\":\"pass\",\"context\":{\"biomes\":"+profile.biomes().size()+"}}");}
+                        if(controls)checkControls(profile,projection);
+                        reopened.biomeAt(0,0);
+                        require(reopened.metrics().snapshot().previewRegions() == 1, "surface query uses one full temporary MCA");
+                        checkMca(reopened,profile,!controls);
+                        System.out.println("QA_EVT {\"event\":\"datapack_gpu_mca\",\"status\":\"pass\",\"context\":{\"selected_biomes\":"+seen.size()+",\"regions\":1}}");
                     }
-                    var seen = new HashSet<String>();boolean wideBiome=false;
-                    for (int z = -64; z <= 64; z += 8) for (int x = -64; x <= 64; x += 8) {
-                        var r = new TerrainRequest(123456789L,x*32,z*32,-64,384,64,48,.008F,profile.nativeId());
-                        var columns = NativeTerrain.instance().sampleColumns(r);
-                        for (int i=0;i<256;i++) {seen.add(profile.biomes().get(columns.biome(i)).unwrapKey().orElseThrow().identifier().toString());wideBiome|=columns.biome(i)>255;}
-                    }
-                    require(seen.stream().anyMatch(id -> id.startsWith(bulk?"retina_bulk:":"terralith:")), "custom biomes actually selected by GPU");
-                    if(args.length>1 && !controls && !bulk)require(seen.contains("retina_test:painted_grove"),"additional pack biome actually selected on GPU: "+seen);
-                    if(bulk){require(profile.biomes().size()>255 && wideBiome,"more than 255 merged biomes reach the actual GPU columns");System.out.println("QA_EVT {\"event\":\"wide_biome_gpu_indices\",\"status\":\"pass\",\"context\":{\"biomes\":"+profile.biomes().size()+"}}");}
-                    if(controls)checkControls(profile,projection);
-                    reopened.biomeAt(0,0);
-                    require(reopened.metrics().snapshot().previewRegions() == 1, "surface query uses one full temporary MCA");
-                    checkMca(reopened,profile,!controls);
-                    System.out.println("QA_EVT {\"event\":\"datapack_gpu_mca\",\"status\":\"pass\",\"context\":{\"selected_biomes\":"+seen.size()+",\"regions\":1}}");
                 }
                 reopened.closePreviews();
             }
             require(RetinaDimensions.retainSelection(Map.of(LevelStem.OVERWORLD,original),packs) == packs,"vanilla selection remains unchanged");
+            completePhase(phase);
         }
+    }
+    private static boolean includes(String phase, String selected) {
+        return phase.equals("all") || phase.equals(selected);
+    }
+    private static void completePhase(String phase) {
+        System.out.println("QA_EVT {\"event\":\"datapack_phase_complete\",\"status\":\"pass\",\"context\":{\"phase\":\""+phase+"\"}}");
     }
     private static void checkNoiseNormalization(HolderLookup.Provider registry) throws Exception {
         var compiler=new RegistryGpuProgram(registry,-64,384,63);

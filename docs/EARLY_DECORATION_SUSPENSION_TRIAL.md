@@ -1,5 +1,8 @@
 # Early decoration group suspension trial
 
+Final status: see the [combined integration audit](POST_INVESTIGATION_INTEGRATION.md).
+References below to remaining goal work describe this cycle’s historical state.
+
 The prototype reduces speculative CPU evaluation and improves the isolated dense
 Terralith planner by 7.5%, but complete-generation results are mixed or slower.
 It is rejected for production. The existing replay policy remains enabled.

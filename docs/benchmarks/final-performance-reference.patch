@@ -1,0 +1,56 @@
+diff --git a/native/src/decoration.rs b/native/src/decoration.rs
+index 3bf5139..b6073cc 100644
+--- a/native/src/decoration.rs
++++ b/native/src/decoration.rs
+@@ -816,25 +816,6 @@ impl<'a> Replay<'a> {
+             );
+             if let Some(recipe) = saved.as_ref().and_then(|state| state.gpu_pause) {
+                 let mut state = saved.take().unwrap();
+-                {
+-                    let before = state.candidates.retained_bytes();
+-                    let source = &self.profile.decorations[recipe as usize];
+-                    let salt = source.placement_salt.unwrap_or(source.salt) as u64;
+-                    if state.candidates.defer_gpu_group(
+-                        recipe,
+-                        [x * 16, self.request.min_y, z * 16],
+-                        self.request.seed
+-                            ^ salt
+-                            ^ mix(x as u32 as u64)
+-                            ^ mix((z as u32 as u64) << 32),
+-                    ) {
+-                        if let Some(worker) = &mut worker {
+-                            worker.compacted_gpu_groups += 1;
+-                            worker.compacted_queue_bytes +=
+-                                before.saturating_sub(state.candidates.retained_bytes()) as u64;
+-                        }
+-                    }
+-                }
+                 let bytes = state.retained_bytes();
+                 if let Ok(previous) =
+                     self.retained_bytes
+diff --git a/native/src/decoration/placement/materials.rs b/native/src/decoration/placement/materials.rs
+index 2efc264..de2a1a3 100644
+--- a/native/src/decoration/placement/materials.rs
++++ b/native/src/decoration/placement/materials.rs
+@@ -79,20 +79,6 @@ impl Deref for MaterialSet {
+ impl MaterialSet {
+     #[inline]
+     pub(super) fn accepts(&self, material: u16) -> bool {
+-        match self.0.ids.as_ref() {
+-            [] => false,
+-            [a] => material == *a,
+-            [a, b] => material == *a || material == *b,
+-            [a, b, c] => material == *a || material == *b || material == *c,
+-            [a, b, c, d] => material == *a || material == *b || material == *c || material == *d,
+-            ids if self.0.bits.is_empty() => ids.binary_search(&material).is_ok(),
+-            _ => {
+-                let word = (material as usize / 64).wrapping_sub(self.0.first_word);
+-                self.0
+-                    .bits
+-                    .get(word)
+-                    .is_some_and(|bits| bits & (1 << (material % 64)) != 0)
+-            }
+-        }
++        self.0.ids.binary_search(&material).is_ok()
+     }
+ }

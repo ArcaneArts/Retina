@@ -7,6 +7,10 @@ import java.util.concurrent.*;
 /** Compare the resident GPU index with the reference linear search on real profiles. */
 final class RegistryClimateIntegrationChecks {
     static void check(BiomeTerrainProfile profile) throws Exception {
+        checkIndex(profile);
+        RegistryProgramIntegrationChecks.check(profile);
+    }
+    static void checkIndex(BiomeTerrainProfile profile) throws Exception {
         var data = JsonParser.parseString(profile.json()).getAsJsonObject();
         data.addProperty("climate_lookup", "linear");
         var nativeTerrain = NativeTerrain.instance();
@@ -31,7 +35,6 @@ final class RegistryClimateIntegrationChecks {
             for (var future : futures) future.get();
         }
         System.out.println("QA_EVT {\"event\":\"climate_gpu_index_parity\",\"status\":\"pass\",\"context\":{\"chunks\":32,\"seeds\":3,\"biomes\":" + profile.biomes().size() + "}}");
-        RegistryProgramIntegrationChecks.check(profile);
     }
     private static void require(boolean condition, String message) { if (!condition) throw new AssertionError(message); }
 }
