@@ -960,8 +960,16 @@ pub(crate) fn generate(
     // cleanup is inside the measured region and contributes to teardown time.
     let release_started = metrics.performance.start();
     let release_detail = diagnostics::start(details.is_some());
-    drop(std::mem::take(&mut planner.completed));
-    drop(std::mem::take(&mut planner.versions.changed));
+    retire(
+        std::mem::take(&mut planner.completed),
+        &metrics.performance,
+        Perf::teardown_commands_nanos,
+    );
+    retire(
+        std::mem::take(&mut planner.versions.changed),
+        &metrics.performance,
+        Perf::teardown_versions_nanos,
+    );
     metrics
         .performance
         .elapsed(Perf::teardown_nanos, release_started);
@@ -995,13 +1003,63 @@ pub(crate) fn generate(
     );
     let teardown_started = metrics.performance.start();
     let teardown_detail = diagnostics::start(details.is_some());
-    drop(cache);
-    drop(planner);
+    retire(cache, &metrics.performance, Perf::teardown_outputs_nanos);
+    // Preserve normal field destruction order while measuring each group.
+    let Planner {
+        roots,
+        terrain,
+        anchors,
+        ready,
+        completed,
+        versions,
+        anchor_ids,
+        starts,
+        discovery,
+        columns,
+        ready_columns,
+        error,
+        metrics: planner_metrics,
+        ..
+    } = planner;
+    retire(roots, &metrics.performance, Perf::teardown_other_nanos);
+    retire(terrain, &metrics.performance, Perf::teardown_terrain_nanos);
+    retire(
+        (anchors, ready, completed),
+        &metrics.performance,
+        Perf::teardown_other_nanos,
+    );
+    retire(
+        versions,
+        &metrics.performance,
+        Perf::teardown_versions_nanos,
+    );
+    retire(
+        (anchor_ids, starts, discovery, planner_metrics),
+        &metrics.performance,
+        Perf::teardown_other_nanos,
+    );
+    let boundary_started = metrics.performance.start();
+    // A column's identity versions retain the same state. Release those
+    // references together instead of walking unrelated hash-map buckets.
+    let mut boundary = ready_columns.into_iter().collect::<Vec<_>>();
+    boundary.extend(columns.into_inner().unwrap_or_else(|e| e.into_inner()));
+    boundary.sort_unstable_by_key(|((root, x, z), _)| (*z, *x, *root));
+    drop(boundary);
+    metrics
+        .performance
+        .elapsed(Perf::teardown_boundary_columns_nanos, boundary_started);
+    retire(error, &metrics.performance, Perf::teardown_other_nanos);
     metrics
         .performance
         .elapsed(Perf::teardown_nanos, teardown_started);
     diagnostics::record(teardown_detail, details.map(|d| &mut d.teardown_wall_nanos));
     Ok(result)
+}
+
+fn retire<T>(value: T, metrics: &Metrics, counter: Perf) {
+    let started = metrics.start();
+    drop(value);
+    metrics.elapsed(counter, started);
 }
 
 pub(crate) fn plan(

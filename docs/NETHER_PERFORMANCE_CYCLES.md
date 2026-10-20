@@ -265,3 +265,40 @@ Cycle 3 merged as PR #173 (`7e0721a`). Its rebuilt library is byte-identical to
 the full-corpus candidate; all five post-merge smoke cases match 5,120 chunks.
 Cycle 4 matches all 102,400 full-corpus chunks and passes 115 native tests
 (37 ignored). Quiet timing confirmation remains outstanding.
+
+Cycle 4 merged as PR #174 (`1c12e2e`). Its rebuilt library is byte-identical to
+the validated candidate; actual post-merge smoke generation matches 5,120 chunks
+across all five cases. Quiet timing confirmation remains deferred.
+
+## Cycle 5 implementation
+
+Boundary-column versions are now released in coordinate order after all consumers
+finish. Versions of one column retain the same state across identity roots;
+spatial ordering keeps those reference releases together. Sorting and destruction
+remain inside the complete-region interval. Generation, final publication and
+error unwinding retain their existing behavior.
+
+Separate cleanup counters identify command views, interior versions, unused
+outputs, terrain, boundary columns and remaining planner state. The attributed
+control spent 238 ms on boundary columns, 101 ms on interior versions and 79 ms
+on unused outputs. Coordinate-ordered release measured 155 ms for the boundary
+columns and 373 ms overall cleanup versus 454 ms in that control. These are
+single-region diagnostic observations, not confirmed headline improvements.
+Both outputs match all 1,024 original chunks.
+
+Parallel cleanup and grouped parallel cleanup were rejected after measuring
+892 ms and 786 ms teardown versus a fresh 469 ms preceding-library control.
+An alias-cell experiment also preserved output but saved only about 35 ms of
+cleanup while adding 1.3 million lookups and increasing dependency time. None of
+those approaches is in the final implementation. Their evidence is retained.
+
+Final structure planning is already about 13 microseconds after Cycle 2; there is
+no remaining rediscovery change to make in this phase. Distribution is about
+104 ms. The full five-case candidate suite matches 102,400 chunks against both
+original and preceding references; 115 native tests pass (37 ignored).
+
+Quiet timing confirmation remains deferred. This run's Overworld median is
+281 ms versus the preceding 259 ms, and the second Nether seed is 3.71 s versus
+3.52 s. Overworld does not use the changed ordered planner, but these differences
+still require matched quiet repeats; no net speedup or no-regression claim is made.
+See `docs/benchmarks/nether-perf-cycle5-2026-10-20.json` for retained measurements.

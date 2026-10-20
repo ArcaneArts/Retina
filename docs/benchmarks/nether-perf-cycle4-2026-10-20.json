@@ -210,6 +210,15 @@
     "usable_for_speedup_or_regression_claims": false,
     "pending": "Repeated matched uncontended comparisons including Overworld, sustained memory and concurrency."
   },
-  "post_merge": null,
+  "post_merge": {
+    "revision": "1c12e2ec652cd5eaa7359471455b9d0109d3260a",
+    "pr": "https://github.com/ArcaneArts/Retina/pull/174",
+    "library_sha256": "ae0af7e4d43126bbbb9fe59ac9f71dcd285f6c7ef8e233fbd80fe1ca4306646f",
+    "binary_identical_to_validated_candidate": true,
+    "scope": "Actual merged build: one warmup and one measured region per case, complete-NBT smoke comparison only. Full quiet timing confirmation remains deferred.",
+    "evidence": "cycle4/merged-smoke/suite.json",
+    "identical_nbt_chunks": 5120,
+    "timing_confirmation_pending": true
+  },
   "identical_nbt_chunks_against_each_reference": 102400
 }

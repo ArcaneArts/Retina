@@ -19,6 +19,8 @@ macro_rules! counters {
 counters! {
     dependency_evaluation_nanos, final_structure_planning_nanos,
     distribution_nanos, teardown_nanos, region_pool_wait_nanos,
+    teardown_commands_nanos, teardown_versions_nanos, teardown_outputs_nanos,
+    teardown_terrain_nanos, teardown_boundary_columns_nanos, teardown_other_nanos,
     memo_requests, memo_builds, memo_ready_hits, memo_lock_nanos, memo_join_nanos,
     column_requests, column_builds, column_tiles, column_lock_nanos, column_join_nanos,
     anchor_builds, anchor_ready_hits, prefix_evaluations,
