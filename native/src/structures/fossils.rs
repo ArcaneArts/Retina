@@ -139,6 +139,7 @@ pub(super) fn prepare_batch(
     engine: &TerrainEngine,
     profile: &WorldProfile,
     inputs: &[(ChunkRequest, usize, Random)],
+    terrain: Option<&crate::terrain_job::TerrainJob<'_>>,
 ) -> Result<Vec<Prepared>, String> {
     let mut prepared = Vec::with_capacity(inputs.len());
     let mut columns = Vec::with_capacity(inputs.len());
@@ -166,7 +167,9 @@ pub(super) fn prepare_batch(
     for ((tx, tz), indices) in tiles {
         let request = inputs[indices[0]].0;
         let mask = if material_layers {
-            Some(
+            let mask = if let Some(terrain) = terrain {
+                terrain.mask(tx * 16, tz * 16)?
+            } else {
                 engine
                     .terrain_field(
                         ChunkRequest {
@@ -177,11 +180,12 @@ pub(super) fn prepare_batch(
                         16,
                     )?
                     .1
-                    .ok_or("GPU fossil material tile missing")?,
-            )
+            };
+            Some(mask.ok_or("GPU fossil material tile missing")?)
         } else {
             None
         };
+
         for index in indices {
             let request = inputs[index].0;
             let (x, y, z) = columns[index];

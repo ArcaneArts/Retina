@@ -645,7 +645,7 @@ pub fn plans(
     request: ChunkRequest,
     side: i32,
 ) -> Result<Vec<Arc<Start>>, String> {
-    Ok(plans_inner(engine, request, side, true, None, None)?
+    Ok(plans_inner(engine, request, side, true, None, None, None)?
         .into_iter()
         .map(|(_, start)| start)
         .collect())
@@ -669,6 +669,7 @@ fn plans_inner(
     parallel: bool,
     discovery: Option<&Discovery>,
     only_set: Option<usize>,
+    terrain: Option<&crate::terrain_job::TerrainJob<'_>>,
 ) -> Result<Vec<PlannedStart>, String> {
     let timings = engine.timings(request.reserved);
     let metrics = &timings.performance;
@@ -766,7 +767,7 @@ fn plans_inner(
             }
         }
     }
-    let fossil_inputs = fossils::prepare_batch(engine, &profile, &fossil_inputs)?;
+    let fossil_inputs = fossils::prepare_batch(engine, &profile, &fossil_inputs, terrain)?;
     let prepared: HashMap<_, _> = fossil_keys
         .into_iter()
         .zip(fossil_inputs)

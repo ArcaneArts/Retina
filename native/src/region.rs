@@ -361,6 +361,7 @@ fn generate_region_inner(
                         Some(&job),
                         None,
                         true,
+                        Some(&field),
                     )
                 })?)
             } else {

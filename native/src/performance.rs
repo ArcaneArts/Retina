@@ -23,6 +23,8 @@ counters! {
     column_requests, column_builds, column_tiles, column_lock_nanos, column_join_nanos,
     anchor_builds, anchor_ready_hits, prefix_evaluations,
     column_versions_skipped, completed_column_commands, completed_column_reads, completed_boundary_reads,
+    terrain_job_requests, terrain_initial_tiles_reused,
+    terrain_job_lock_nanos, terrain_job_join_nanos, shared_material_columns,
     terrain_requests, terrain_cache_hits, terrain_generated_tiles,
     terrain_unique_tiles, terrain_generated_chunks,
     structure_plan_calls, structure_candidates, structure_unique_candidates,
