@@ -2,7 +2,7 @@
   "schema": "retina.nether-performance-cycle",
   "cycle": 1,
   "date": "2026-10-20",
-  "status": "Reference complete; candidate validation pending.",
+  "status": "Instrumentation and complete-output validation ready. Quiet timing confirmation deferred by user; no speedup or regression conclusion.",
   "reference": {
     "revision": "58f6496be2b456a127b68682bab3b49901ec8076",
     "native_tree": "653f5b12041a208ce841d17e09479f3ca68970f2",
@@ -92,171 +92,14 @@
         "median_ms": 16525.432333466597,
         "p95_region_ms": 24083.549554354977,
         "maximum_region_ms": 28025.458415970206,
-        "average_region_ms": 17079.15711888345,
         "total_ms": 341589.69637495466,
         "chunks_per_second": 59.95497000448048,
         "peak_rss_bytes": 5455544320,
-        "profile_sha256": "385256a18191b411d0758e0e4bfbf9a3a330160c65150d5960c23c2a53037edd",
-        "benchmark_scope": "lit-mca",
-        "lighting": "enabled",
-        "mca_compression": "zlib",
-        "readiness": "shader-ready",
-        "gpu_transfers": {
-          "readback_bytes": 34503732580,
-          "readback_bytes_per_region": 1725186629.0,
-          "upload_bytes": 1523271276,
-          "upload_bytes_per_region": 76163563.8
-        },
-        "gpu_pipeline": {
-          "completed": 44492,
-          "device_gap_ms": 224505.480655,
-          "device_span_ms": 252055.98208,
-          "peak_in_flight": 2,
-          "unavailable_timestamp_pairs": 140
-        },
-        "stage_ms_chunk": {
-          "aquifer_fields": 0.0,
-          "aquifer_mask": 0.07346187739257813,
-          "assembly": 0.04828390922851562,
-          "cave_density": 0.13106729565429687,
-          "cave_features": 2.9221582031250002e-05,
-          "cave_mask": 0.43970613115234375,
-          "columns": 0.08080239077148438,
-          "compress": 0.06461378671875,
-          "encode": 0.9280591971679687,
-          "feature_counts": 0.0,
-          "geology": 2.564794921875e-05,
-          "height": 0.25605613803710936,
-          "io": 0.016552028173828125,
-          "lake_candidates": 0.07852453134765625,
-          "lake_density": 0.03402578125,
-          "lake_reduce": 0.01126203388671875,
-          "light_host": 0.0361742451171875,
-          "light_pack": 0.00148869453125,
-          "light_sky": 0.003752595849609375,
-          "light_spread": 0.029611255078125,
-          "materials": 4.694834214550781,
-          "nbt": 0.02088617138671875,
-          "ore_mask": 0.0,
-          "ore_plan": 0.000470131494140625,
-          "provider_noise": 0.0,
-          "queue": 19.93086063520508,
-          "sites": 0.06236762900390625,
-          "snow": 0.00025098740234375,
-          "structure_plan": 21.379169965820314,
-          "structures": 0.0,
-          "vegetation": 0.07897570434570313,
-          "vegetation_plan": 16.55139141225586,
-          "wait_copy": 8.53709622368164
-        },
-        "corpus": {
-          "algorithm": "sha256",
-          "files": [
-            {
-              "file": "0.mca",
-              "records": 1024,
-              "sha256": "217b3d65184563acefa02c6496e9815b0a1c7c6cb0fbb9652f0a505ccef37d2a"
-            },
-            {
-              "file": "1.mca",
-              "records": 1024,
-              "sha256": "daf9369028d42d03adf5618731ed8738438bab23f5dbc4071914fc97523564a0"
-            },
-            {
-              "file": "10.mca",
-              "records": 1024,
-              "sha256": "f4fd7e57533203e4b6092b5986e57fe3ea77bacef76d5850fd09738e96a27bfc"
-            },
-            {
-              "file": "11.mca",
-              "records": 1024,
-              "sha256": "ad4bd4fae5175a1e7acb30ae29626de872d5f863af7ba89739387ecc421e4c9c"
-            },
-            {
-              "file": "12.mca",
-              "records": 1024,
-              "sha256": "b9bec0e9b893b535c6ab4cdab82422980435e52be363bafd5434877d8d18842f"
-            },
-            {
-              "file": "13.mca",
-              "records": 1024,
-              "sha256": "3ed50970726f646983c6521917936823c58193cfe1a830c920f1184879ad932e"
-            },
-            {
-              "file": "14.mca",
-              "records": 1024,
-              "sha256": "94a194705ea46303dbbced24ff90564ac1a45f98cba479b15f2851f3c825008f"
-            },
-            {
-              "file": "15.mca",
-              "records": 1024,
-              "sha256": "0057c4f7f94e4a29cd88ff35132184cc668707c2ef1d48adc00c04fae7e14d9c"
-            },
-            {
-              "file": "16.mca",
-              "records": 1024,
-              "sha256": "9e663cbe435c2a828707f0fd4bf991dc47b66eaf192b38c9ddbac0fd5e4d401d"
-            },
-            {
-              "file": "17.mca",
-              "records": 1024,
-              "sha256": "bb08c2e946c10eced5d332520e1653f339b5405d689a806643b8bbfd24508bd5"
-            },
-            {
-              "file": "18.mca",
-              "records": 1024,
-              "sha256": "8534562f3052d6328c80975bb032233c247f24a4921dbf9f063bdc1593bf7882"
-            },
-            {
-              "file": "19.mca",
-              "records": 1024,
-              "sha256": "07cdfd1a6ff46fc408bf846032e314a4634ea4dae6c65a603a41c43bea698482"
-            },
-            {
-              "file": "2.mca",
-              "records": 1024,
-              "sha256": "c7a84cdd35107fb166ab69f7dca53002c7c123a72a321d980221e63193a8e2d3"
-            },
-            {
-              "file": "3.mca",
-              "records": 1024,
-              "sha256": "3fb3c51775a796c58f808ef48aeab9aff8408055067e3d2c760e5cc6d9d3c095"
-            },
-            {
-              "file": "4.mca",
-              "records": 1024,
-              "sha256": "2dd043c80a7ddfad25fe680c7154165ae902644c3b9949895e97fd0d78446340"
-            },
-            {
-              "file": "5.mca",
-              "records": 1024,
-              "sha256": "cf82059f7009ff1beec6a844cb358dd5f4e06d7b9a45cbbd433b25c0dd5a0dfb"
-            },
-            {
-              "file": "6.mca",
-              "records": 1024,
-              "sha256": "78407ba93e400ecbf4e6c8d4843de327bdc15284ea77ca04f0849fcf0771b4d5"
-            },
-            {
-              "file": "7.mca",
-              "records": 1024,
-              "sha256": "93a5df4bcad684d0ea7812469b53a63accaffe98c91f1cc7ff1a4a725e4b6d36"
-            },
-            {
-              "file": "8.mca",
-              "records": 1024,
-              "sha256": "39424ab8ff68403e01516393c7e6abbb011300ad8f45edd085cefc2c1595353c"
-            },
-            {
-              "file": "9.mca",
-              "records": 1024,
-              "sha256": "937288ab060f7f203e60030dda0239461d4df44b223cdbdf6e25dd5ed6ddb1c0"
-            }
-          ],
-          "records": 20480,
-          "sha256": "e4b7f9002991cc8908187055cec044a06e63c60b7b4b9db9a49c24f715eeb9df"
-        }
+        "profile_sha256": "385256a18191b411d0758e0e4bfbf9a3a330160c65150d5960c23c2a53037edd"
       },
+      "shader_status": 4,
+      "corpus_sha256": "e4b7f9002991cc8908187055cec044a06e63c60b7b4b9db9a49c24f715eeb9df",
+      "comparisons": [],
       "coverage": {
         "biome_chunk_membership": {
           "minecraft:basalt_deltas": 3694,
@@ -272,7 +115,8 @@
           "minecraft:nether_fossil": 156,
           "minecraft:ruined_portal_nether": 15
         }
-      }
+      },
+      "evidence": "reference-suite/nether-main-run0"
     },
     {
       "case": "nether-second-seed-run0",
@@ -280,171 +124,14 @@
         "median_ms": 14329.688457888551,
         "p95_region_ms": 17859.6998602734,
         "maximum_region_ms": 19455.720958998427,
-        "average_region_ms": 14820.149033353664,
         "total_ms": 296408.9649580419,
         "chunks_per_second": 69.09372664520805,
         "peak_rss_bytes": 5113167872,
-        "profile_sha256": "385256a18191b411d0758e0e4bfbf9a3a330160c65150d5960c23c2a53037edd",
-        "benchmark_scope": "lit-mca",
-        "lighting": "enabled",
-        "mca_compression": "zlib",
-        "readiness": "shader-ready",
-        "gpu_transfers": {
-          "readback_bytes": 34936377352,
-          "readback_bytes_per_region": 1746818867.6,
-          "upload_bytes": 1502391628,
-          "upload_bytes_per_region": 75119581.4
-        },
-        "gpu_pipeline": {
-          "completed": 45163,
-          "device_gap_ms": 194663.800347,
-          "device_span_ms": 215358.948899,
-          "peak_in_flight": 2,
-          "unavailable_timestamp_pairs": 124
-        },
-        "stage_ms_chunk": {
-          "aquifer_fields": 0.0,
-          "aquifer_mask": 0.07541850991210938,
-          "assembly": 0.04171443686523438,
-          "cave_density": 0.13435572211914062,
-          "cave_features": 7.326938476562501e-05,
-          "cave_mask": 0.44277323344726566,
-          "columns": 0.08197730834960938,
-          "compress": 0.05458481567382813,
-          "encode": 0.7711509972167968,
-          "feature_counts": 0.0,
-          "geology": 2.2859228515624997e-05,
-          "height": 0.25029796347656247,
-          "io": 0.015400417138671876,
-          "lake_candidates": 0.0812233533203125,
-          "lake_density": 0.032211883447265624,
-          "lake_reduce": 0.011633019091796875,
-          "light_host": 0.03366687841796875,
-          "light_pack": 0.001508096875,
-          "light_sky": 0.00379471875,
-          "light_spread": 0.029044482080078125,
-          "materials": 4.597030430078124,
-          "nbt": 0.017980697021484374,
-          "ore_mask": 0.0,
-          "ore_plan": 0.0003972900390625,
-          "provider_noise": 0.0,
-          "queue": 16.87673450908203,
-          "sites": 0.0627639427734375,
-          "snow": 0.00018379018554687498,
-          "structure_plan": 19.33789548930664,
-          "structures": 0.0,
-          "vegetation": 0.06049443354492188,
-          "vegetation_plan": 14.357452823779296,
-          "wait_copy": 8.071578731982422
-        },
-        "corpus": {
-          "algorithm": "sha256",
-          "files": [
-            {
-              "file": "0.mca",
-              "records": 1024,
-              "sha256": "f07caed1f20b605937e9f9c005f33bfd0dcde29099d580cc6dfa34b610ad7afa"
-            },
-            {
-              "file": "1.mca",
-              "records": 1024,
-              "sha256": "5c1ab3c63bb653d0d018b55b112d1815f60b7947d5de5b9a3482a30e90367cc9"
-            },
-            {
-              "file": "10.mca",
-              "records": 1024,
-              "sha256": "e4d0d3634b8aee522de3127c4e3a47ab41b390cd6a8b658d6cbaed5f073059fc"
-            },
-            {
-              "file": "11.mca",
-              "records": 1024,
-              "sha256": "3ac405fd3bd878c4de2cfc292dd8542894f34a9354e0b8fbdc5ddfcc474a8ec7"
-            },
-            {
-              "file": "12.mca",
-              "records": 1024,
-              "sha256": "ec37d9d1e9ecde6f4c7787e265cfe89e95fd5c12e5ad63c7f168a9688c5b2a20"
-            },
-            {
-              "file": "13.mca",
-              "records": 1024,
-              "sha256": "c601193a6e8d8bce3d2f7452bfb4dc3721a335bb8331a851f672e6948b54a650"
-            },
-            {
-              "file": "14.mca",
-              "records": 1024,
-              "sha256": "66169d4b62f6b689d8a0bc13ed2ba8a8b873e684c323fda73cf41013f18e2c9c"
-            },
-            {
-              "file": "15.mca",
-              "records": 1024,
-              "sha256": "7c97dae162f51751aa2c218432c7fcd1658e2bb0d7b9bda965af1e3e4ce02634"
-            },
-            {
-              "file": "16.mca",
-              "records": 1024,
-              "sha256": "9fd03ebc9f835665d29dea5df3477af83644b764c13a64c7dcfcfd4e719eaa88"
-            },
-            {
-              "file": "17.mca",
-              "records": 1024,
-              "sha256": "2a48878e505992869bf9b110b9385705264e03f02c9ec9dd29ecc312155b4d1e"
-            },
-            {
-              "file": "18.mca",
-              "records": 1024,
-              "sha256": "1507b16b44c952b6e3b41071629de6972ed02ddaec92f28fe6f03acb0d9b6887"
-            },
-            {
-              "file": "19.mca",
-              "records": 1024,
-              "sha256": "54c42a2b921b5119b4ec1ac62d5900f38cf662ee709edee2760784fbde4670bb"
-            },
-            {
-              "file": "2.mca",
-              "records": 1024,
-              "sha256": "81abafd5cc642937d12febe2a607b94e6386da613c2fdcf071505cb8d3b8496b"
-            },
-            {
-              "file": "3.mca",
-              "records": 1024,
-              "sha256": "a3adf48f2595c1e6a22a3332d57f46b45b3131a5f6b4adc16e50846e3dcfafca"
-            },
-            {
-              "file": "4.mca",
-              "records": 1024,
-              "sha256": "e8e7f2fe06e53c2e39eb831007a05c8dad29fd7640d503c009c6eea7e67ecd6e"
-            },
-            {
-              "file": "5.mca",
-              "records": 1024,
-              "sha256": "6c261d3dbea489a0a664def5ad43d9798d9b540b07c513edc8c08fc0f3fa2163"
-            },
-            {
-              "file": "6.mca",
-              "records": 1024,
-              "sha256": "26a2dabbb732a2723faeb5009b82f56a8eb2a973dc058b958047edd924cebfd7"
-            },
-            {
-              "file": "7.mca",
-              "records": 1024,
-              "sha256": "2da29d6d3bf5176a0f0217c97fbe335b96bb9106298c75ecd707df318a061bac"
-            },
-            {
-              "file": "8.mca",
-              "records": 1024,
-              "sha256": "a24541185f3ec686a210008acb12c9d93be3a38f43a9643af7c1c98485b14cec"
-            },
-            {
-              "file": "9.mca",
-              "records": 1024,
-              "sha256": "409747ee28ba23d1cd7e8db34eb5642d644d8ca56923eafe8444debe680b19f2"
-            }
-          ],
-          "records": 20480,
-          "sha256": "b533c4604263d915b987702a5472be93170ca46d28e06d9363bb100c7d156029"
-        }
+        "profile_sha256": "385256a18191b411d0758e0e4bfbf9a3a330160c65150d5960c23c2a53037edd"
       },
+      "shader_status": 4,
+      "corpus_sha256": "b533c4604263d915b987702a5472be93170ca46d28e06d9363bb100c7d156029",
+      "comparisons": [],
       "coverage": {
         "biome_chunk_membership": {
           "minecraft:basalt_deltas": 3451,
@@ -460,7 +147,8 @@
           "minecraft:nether_fossil": 230,
           "minecraft:ruined_portal_nether": 13
         }
-      }
+      },
+      "evidence": "reference-suite/nether-second-seed-run0"
     },
     {
       "case": "nether-custom-bounds-run0",
@@ -468,171 +156,14 @@
         "median_ms": 6168.154062470421,
         "p95_region_ms": 7926.708746131045,
         "maximum_region_ms": 9488.310750108212,
-        "average_region_ms": 6409.676552098244,
         "total_ms": 128199.4310838636,
         "chunks_per_second": 159.75109894678627,
         "peak_rss_bytes": 2243969024,
-        "profile_sha256": "74bc9093952b0459ceeafaae8a4049d6c6c46067516c9f03ec0d2493e37825c0",
-        "benchmark_scope": "lit-mca",
-        "lighting": "enabled",
-        "mca_compression": "zlib",
-        "readiness": "shader-ready",
-        "gpu_transfers": {
-          "readback_bytes": 6285582740,
-          "readback_bytes_per_region": 314279137.0,
-          "upload_bytes": 1154457856,
-          "upload_bytes_per_region": 57722892.8
-        },
-        "gpu_pipeline": {
-          "completed": 685,
-          "device_gap_ms": 113157.496,
-          "device_span_ms": 20231.053812,
-          "peak_in_flight": 2,
-          "unavailable_timestamp_pairs": 0
-        },
-        "stage_ms_chunk": {
-          "aquifer_fields": 0.0,
-          "aquifer_mask": 0.0164170291015625,
-          "assembly": 0.03526697041015625,
-          "cave_density": 0.013798122119140626,
-          "cave_features": 2.2071484375000002e-05,
-          "cave_mask": 0.07529819711914063,
-          "columns": 0.006391211279296875,
-          "compress": 0.04649725092773438,
-          "encode": 0.01521174072265625,
-          "feature_counts": 0.0,
-          "geology": 2.3577587890625e-05,
-          "height": 0.03510805209960938,
-          "io": 0.01446704716796875,
-          "lake_candidates": 0.00235743994140625,
-          "lake_density": 0.001654140087890625,
-          "lake_reduce": 0.00039409321289062503,
-          "light_host": 0.05608558974609375,
-          "light_pack": 0.002249216796875,
-          "light_sky": 0.004910345654296875,
-          "light_spread": 0.05085264877929688,
-          "materials": 0.15655115283203125,
-          "nbt": 0.015313056884765626,
-          "ore_mask": 0.0,
-          "ore_plan": 0.000546285009765625,
-          "provider_noise": 0.0,
-          "queue": 0.11127205629882814,
-          "sites": 0.0023378558593749998,
-          "snow": 0.000191367822265625,
-          "structure_plan": 0.013665108154296874,
-          "structures": 0.0,
-          "vegetation": 0.043989168261718746,
-          "vegetation_plan": 6.1191579751953125,
-          "wait_copy": 0.48455465390625
-        },
-        "corpus": {
-          "algorithm": "sha256",
-          "files": [
-            {
-              "file": "0.mca",
-              "records": 1024,
-              "sha256": "cb1ede0cdec335d9d7564da9bcfe7a4fb56094973e26bd6f42b75bd083e48c5b"
-            },
-            {
-              "file": "1.mca",
-              "records": 1024,
-              "sha256": "4181411ffee776b5509566b65853e7a03d2e67a377f6f82f2c72fbb74043ec9c"
-            },
-            {
-              "file": "10.mca",
-              "records": 1024,
-              "sha256": "f019620630402b9405344d61cab5d852d8f11f2c0f42f12940cc46ac1f107b8d"
-            },
-            {
-              "file": "11.mca",
-              "records": 1024,
-              "sha256": "455bbfb4fd3e6eb7ea2bc96e3baef137bc96430d9eef89a53949772d51855cea"
-            },
-            {
-              "file": "12.mca",
-              "records": 1024,
-              "sha256": "53578a25a6ba1b26b72839d25f9fcd74df87ce7d9516c6630c80974d33086c83"
-            },
-            {
-              "file": "13.mca",
-              "records": 1024,
-              "sha256": "4c7792719260892e0e60519668ab1e006c383f0e4f53848ddbf7d7d22064c4a6"
-            },
-            {
-              "file": "14.mca",
-              "records": 1024,
-              "sha256": "a6ffda38331480bac48172511f16ab63e5f1f429f86167170a18d4d764b76ff8"
-            },
-            {
-              "file": "15.mca",
-              "records": 1024,
-              "sha256": "b57c45daa3f7734490ca98646f615936714721379b6f9dc130e5fb5db6fbd4ee"
-            },
-            {
-              "file": "16.mca",
-              "records": 1024,
-              "sha256": "3efd81898a307369a73814e4296d6dd7d63578a1ff7e5594c2d778e496610814"
-            },
-            {
-              "file": "17.mca",
-              "records": 1024,
-              "sha256": "16eeb78c01b508a1c2d8a749f9d8106c3c2d480638cd5ce0e472dbb2f5cce632"
-            },
-            {
-              "file": "18.mca",
-              "records": 1024,
-              "sha256": "9ee513d79da6d34475e9073d4fbf881368cde3b1512495aea635484634333d3d"
-            },
-            {
-              "file": "19.mca",
-              "records": 1024,
-              "sha256": "fbcd4afcb3db3dae9ac7ba7f80161a5cd9e82264542c821165ed520dcf71b33c"
-            },
-            {
-              "file": "2.mca",
-              "records": 1024,
-              "sha256": "609dd098a8ffcf5bc6e9241cc033c661bd634a2f3942c1110a5cc38f1517c7cb"
-            },
-            {
-              "file": "3.mca",
-              "records": 1024,
-              "sha256": "e25395cc3835e0ca30919d2634bed42469b1e74b843e8c2867ce1c0120008b24"
-            },
-            {
-              "file": "4.mca",
-              "records": 1024,
-              "sha256": "de1b49169e4482fc51bc38fff4997f5b4d1f3559ca89604aff8fc73586f50e53"
-            },
-            {
-              "file": "5.mca",
-              "records": 1024,
-              "sha256": "28b9fb098b4e09349e2be32d33630786cd19cf103419203c41c48f1f47e6b97c"
-            },
-            {
-              "file": "6.mca",
-              "records": 1024,
-              "sha256": "3b61edd41c080e7be8608c776ca8c88ee9fd700ba564e409e31ea7c387d29e64"
-            },
-            {
-              "file": "7.mca",
-              "records": 1024,
-              "sha256": "2703f9f8608565dcb725367437c7dd35b6bcd715a896b7b13d9fcbcda3bf3f69"
-            },
-            {
-              "file": "8.mca",
-              "records": 1024,
-              "sha256": "a17ce9a6b69a8b0303ab782c2f3b9006949c973c8966abc5e62d85f65e0a5f86"
-            },
-            {
-              "file": "9.mca",
-              "records": 1024,
-              "sha256": "13203bb1a2e5e8345d387283065d101b82de2a5d646cf07e27e24dd0e23bac27"
-            }
-          ],
-          "records": 20480,
-          "sha256": "3940972b86f5be58b34817d1afd3edba5a4ce177a71bc30730478e0cf653b83b"
-        }
+        "profile_sha256": "74bc9093952b0459ceeafaae8a4049d6c6c46067516c9f03ec0d2493e37825c0"
       },
+      "shader_status": 4,
+      "corpus_sha256": "3940972b86f5be58b34817d1afd3edba5a4ce177a71bc30730478e0cf653b83b",
+      "comparisons": [],
       "coverage": {
         "biome_chunk_membership": {
           "minecraft:warped_forest": 20480
@@ -643,7 +174,8 @@
           "minecraft:fortress": 8,
           "minecraft:ruined_portal_nether": 15
         }
-      }
+      },
+      "evidence": "reference-suite/nether-custom-bounds-run0"
     },
     {
       "case": "nether-direct-stem-run0",
@@ -651,171 +183,14 @@
         "median_ms": 5990.086062462069,
         "p95_region_ms": 6297.872962546535,
         "maximum_region_ms": 6504.21699997969,
-        "average_region_ms": 5932.905074860901,
         "total_ms": 118662.99520782195,
         "chunks_per_second": 172.58960945770912,
         "peak_rss_bytes": 2282930176,
-        "profile_sha256": "74bc9093952b0459ceeafaae8a4049d6c6c46067516c9f03ec0d2493e37825c0",
-        "benchmark_scope": "lit-mca",
-        "lighting": "enabled",
-        "mca_compression": "zlib",
-        "readiness": "shader-ready",
-        "gpu_transfers": {
-          "readback_bytes": 6245987272,
-          "readback_bytes_per_region": 312299363.6,
-          "upload_bytes": 1139500068,
-          "upload_bytes_per_region": 56975003.4
-        },
-        "gpu_pipeline": {
-          "completed": 684,
-          "device_gap_ms": 111342.672918,
-          "device_span_ms": 8255.219,
-          "peak_in_flight": 2,
-          "unavailable_timestamp_pairs": 0
-        },
-        "stage_ms_chunk": {
-          "aquifer_fields": 0.0,
-          "aquifer_mask": 0.0102980185546875,
-          "assembly": 0.0354313744140625,
-          "cave_density": 0.00988359033203125,
-          "cave_features": 2.1813427734375e-05,
-          "cave_mask": 0.06021197548828125,
-          "columns": 0.00563322421875,
-          "compress": 0.04466672875976563,
-          "encode": 0.014428420654296874,
-          "feature_counts": 0.0,
-          "geology": 2.2720312499999997e-05,
-          "height": 0.024730066552734374,
-          "io": 0.014069813916015625,
-          "lake_candidates": 0.0018147591308593752,
-          "lake_density": 0.0008789898437499999,
-          "lake_reduce": 0.000637141357421875,
-          "light_host": 0.030795715478515624,
-          "light_pack": 0.001133807080078125,
-          "light_sky": 0.003700323681640625,
-          "light_spread": 0.02779263291015625,
-          "materials": 0.12965746630859376,
-          "nbt": 0.015263353271484375,
-          "ore_mask": 0.0,
-          "ore_plan": 0.00051139130859375,
-          "provider_noise": 0.0,
-          "queue": 0.05535810712890625,
-          "sites": 0.0012815496582031251,
-          "snow": 0.000209717236328125,
-          "structure_plan": 0.016238912939453124,
-          "structures": 0.0,
-          "vegetation": 0.04545402319335937,
-          "vegetation_plan": 5.699099096826171,
-          "wait_copy": 0.36858074995117185
-        },
-        "corpus": {
-          "algorithm": "sha256",
-          "files": [
-            {
-              "file": "0.mca",
-              "records": 1024,
-              "sha256": "d7350e25e7cb52494728a72822d2c35ea20761af669c97e913ce2b6c7d871b3b"
-            },
-            {
-              "file": "1.mca",
-              "records": 1024,
-              "sha256": "1f251b530af84ae5d09a39169f5b096e793cfd80b8639fd24908abe39d8027a9"
-            },
-            {
-              "file": "10.mca",
-              "records": 1024,
-              "sha256": "2622eecaab7c91454e370e53fc13ac4bcd838e7110fee2cd30cf9572fdb0893f"
-            },
-            {
-              "file": "11.mca",
-              "records": 1024,
-              "sha256": "c45c89ff1d72237a628b0b104dce70b3859a31ca1e3506a81e8bf3e27b5426c4"
-            },
-            {
-              "file": "12.mca",
-              "records": 1024,
-              "sha256": "c94d1bfad606e015e0eab2e0e163e0384dc816da4dfcd3736d97f65b253861f7"
-            },
-            {
-              "file": "13.mca",
-              "records": 1024,
-              "sha256": "dc7974fe9791f10e41cb45950f85bf8a4dc91b197a151fe9142c95f4e777c44c"
-            },
-            {
-              "file": "14.mca",
-              "records": 1024,
-              "sha256": "d87777e2986a5e9b5ab615c15d8707ccd55d2708fd32efff572a7acdf8e47da4"
-            },
-            {
-              "file": "15.mca",
-              "records": 1024,
-              "sha256": "a57d2710ae35a0529ec6cf864cd406fa98aef763560cfe32fbcbe543f9eabe58"
-            },
-            {
-              "file": "16.mca",
-              "records": 1024,
-              "sha256": "3991862af22dbee6efd5bfc0b309f054f5437cbe41dc6b63689114aac2a558a0"
-            },
-            {
-              "file": "17.mca",
-              "records": 1024,
-              "sha256": "e3e303f1cad96739ea270cbc715f291e2afd8616d7c2617c0d1a9d9658cffe12"
-            },
-            {
-              "file": "18.mca",
-              "records": 1024,
-              "sha256": "8cc88a81ae482b89ae82cb4ad1b07a693e0a3a9f31c02dcf3a9e3ac9e28536bf"
-            },
-            {
-              "file": "19.mca",
-              "records": 1024,
-              "sha256": "ea76b0a21a8fd2bc1c3c4fc960b5ff7ff595ac822f70e3d3a1b3c0fa42245327"
-            },
-            {
-              "file": "2.mca",
-              "records": 1024,
-              "sha256": "2285c81adfe4b80b1786530765c65aaf36b510e2ce7bb04fd62c896939ff54ad"
-            },
-            {
-              "file": "3.mca",
-              "records": 1024,
-              "sha256": "54e0de1d13094083745e294e9d94f063980d4881d00067cde5870ba493b0b75f"
-            },
-            {
-              "file": "4.mca",
-              "records": 1024,
-              "sha256": "abab4e0f98e1b90356b36865e43acd08a163e99f9b7e5cb92c916d6887ea3a21"
-            },
-            {
-              "file": "5.mca",
-              "records": 1024,
-              "sha256": "fdc0c70adbc9dbc85eccadd72b162f0a604d85076810cd2dd29c39565bb100f7"
-            },
-            {
-              "file": "6.mca",
-              "records": 1024,
-              "sha256": "f0703c6aae78709eb1f7fcdf434c674d5d54c5b54cc68e9560e93beca188e3f1"
-            },
-            {
-              "file": "7.mca",
-              "records": 1024,
-              "sha256": "21c1be628ad09134c35d44b9c14fc62b4f0451175955d8aa2655e19618973876"
-            },
-            {
-              "file": "8.mca",
-              "records": 1024,
-              "sha256": "c28c3666dddcf1e6ef9932c7bdf1db3f4ba3ad770130070fcbe4c7e764a70b77"
-            },
-            {
-              "file": "9.mca",
-              "records": 1024,
-              "sha256": "30e4f3ea974aff6f78960c74d114f9eba79c128b885c171fa369c98a03ba8033"
-            }
-          ],
-          "records": 20480,
-          "sha256": "21482d3d81db17dd68b9877ead04f3a911e4b9511e376587a85c01104a98eaa9"
-        }
+        "profile_sha256": "74bc9093952b0459ceeafaae8a4049d6c6c46067516c9f03ec0d2493e37825c0"
       },
+      "shader_status": 4,
+      "corpus_sha256": "21482d3d81db17dd68b9877ead04f3a911e4b9511e376587a85c01104a98eaa9",
+      "comparisons": [],
       "coverage": {
         "biome_chunk_membership": {
           "minecraft:warped_forest": 20480
@@ -826,7 +201,8 @@
           "minecraft:fortress": 8,
           "minecraft:ruined_portal_nether": 13
         }
-      }
+      },
+      "evidence": "reference-suite/nether-direct-stem-run0"
     },
     {
       "case": "overworld-run0",
@@ -834,171 +210,14 @@
         "median_ms": 222.59010397829115,
         "p95_region_ms": 256.9915726548061,
         "maximum_region_ms": 263.27325007878244,
-        "average_region_ms": 220.61050200136378,
         "total_ms": 4417.057791957632,
         "chunks_per_second": 4636.570532830476,
         "peak_rss_bytes": 1617985536,
-        "profile_sha256": "5a398bd02281677db81b6e70d426ab9a99a322050308e977b2a771134ded1cad",
-        "benchmark_scope": "lit-mca",
-        "lighting": "enabled",
-        "mca_compression": "zlib",
-        "readiness": "shader-ready",
-        "gpu_transfers": {
-          "readback_bytes": 2368471952,
-          "readback_bytes_per_region": 118423597.6,
-          "upload_bytes": 2091806492,
-          "upload_bytes_per_region": 104590324.6
-        },
-        "gpu_pipeline": {
-          "completed": 64,
-          "device_gap_ms": 2494.273042,
-          "device_span_ms": 9509.077708,
-          "peak_in_flight": 2,
-          "unavailable_timestamp_pairs": 0
-        },
-        "stage_ms_chunk": {
-          "aquifer_fields": 0.011884482958984376,
-          "aquifer_mask": 0.010268334912109375,
-          "assembly": 0.04462243989257813,
-          "cave_density": 0.0155321859375,
-          "cave_features": 0.00615639111328125,
-          "cave_mask": 0.017206140087890624,
-          "columns": 0.005969934130859375,
-          "compress": 0.08934351821289063,
-          "encode": 0.00098837060546875,
-          "feature_counts": 1.071787109375e-05,
-          "geology": 0.054217221875000006,
-          "height": 0.01293943896484375,
-          "io": 0.012795285937500001,
-          "lake_candidates": 0.0018383706542968751,
-          "lake_density": 0.0020367777832031248,
-          "lake_reduce": 0.00015121660156249998,
-          "light_host": 0.028131807275390625,
-          "light_pack": 0.00196165556640625,
-          "light_sky": 0.005295497656249999,
-          "light_spread": 0.0179147015625,
-          "materials": 0.02569464921875,
-          "nbt": 0.035994349804687506,
-          "ore_mask": 0.008907550146484375,
-          "ore_plan": 0.021269626708984374,
-          "provider_noise": 7.159423828125e-06,
-          "queue": 0.0016940814453124998,
-          "sites": 0.0014806663574218751,
-          "snow": 0.009303209326171874,
-          "structure_plan": 0.01635121875,
-          "structures": 0.03514913715820313,
-          "vegetation": 0.001840303466796875,
-          "vegetation_plan": 0.017387076904296875,
-          "wait_copy": 0.09560249018554688
-        },
-        "corpus": {
-          "algorithm": "sha256",
-          "files": [
-            {
-              "file": "0.mca",
-              "records": 1024,
-              "sha256": "cc7476e5ffa71e187c8d17fab6308b592cf18dd001db3735f73159f000bdda17"
-            },
-            {
-              "file": "1.mca",
-              "records": 1024,
-              "sha256": "9cc1f2e96e906d47fff564a01237f25e8d3b619e92459791daf27b1b2167689c"
-            },
-            {
-              "file": "10.mca",
-              "records": 1024,
-              "sha256": "58f8c7f31f9cf9404367984e233e3f124380fe29a6b0b36114114d152ba99852"
-            },
-            {
-              "file": "11.mca",
-              "records": 1024,
-              "sha256": "5e0627c7edd703959ffdcbdabf29398194f9159b22503fe31226199ebc1f756a"
-            },
-            {
-              "file": "12.mca",
-              "records": 1024,
-              "sha256": "d2a4974556434f10e394cabad1dc9bc785803a3b9d4a47ee9202e4275698406b"
-            },
-            {
-              "file": "13.mca",
-              "records": 1024,
-              "sha256": "6ed8b8a877fad2a6c655a2c514614cb69ff07f0efed65f0d3e355183feb7098a"
-            },
-            {
-              "file": "14.mca",
-              "records": 1024,
-              "sha256": "cf8a188aec438aa927a00c5d8c3edcaad950653bed57c6843c200f4de3d23888"
-            },
-            {
-              "file": "15.mca",
-              "records": 1024,
-              "sha256": "0279f44a334298dde6b71f5abae95264bd14edb06cfacd83084e655ea9e23b86"
-            },
-            {
-              "file": "16.mca",
-              "records": 1024,
-              "sha256": "97501a3967c287f00561610530a7d68afc5b61c9157a52531ff02bba86cbb31e"
-            },
-            {
-              "file": "17.mca",
-              "records": 1024,
-              "sha256": "e5e65e06e59e19f4bb83bac947e7d0141e4654374cb7feda4534bc74624b36c0"
-            },
-            {
-              "file": "18.mca",
-              "records": 1024,
-              "sha256": "e0a85a2ca1c2c31bb25418d955b54030c5618a1e57ea1649b4338219b5120955"
-            },
-            {
-              "file": "19.mca",
-              "records": 1024,
-              "sha256": "adbef57faa98545ce0c05bea22f446767d234d40dece7cdda049407eb988c654"
-            },
-            {
-              "file": "2.mca",
-              "records": 1024,
-              "sha256": "b799bc37f28b146864ca1de43a53b2b36cf4dc5fef5dddab1cd2ee4237435625"
-            },
-            {
-              "file": "3.mca",
-              "records": 1024,
-              "sha256": "fa3a72e2d4ad4fa98a533aa53c1a08ec60c7814ff6f26a9374a18439cfd63023"
-            },
-            {
-              "file": "4.mca",
-              "records": 1024,
-              "sha256": "6632d3f9271756d2ea5e9015a9c67f6772b1bcc1e9a48e1390b4b36463614573"
-            },
-            {
-              "file": "5.mca",
-              "records": 1024,
-              "sha256": "ad58f4d3d61910cb01a074d863cd913918e256bd1336b998032fa67b6864bd19"
-            },
-            {
-              "file": "6.mca",
-              "records": 1024,
-              "sha256": "09caee1ee439cdf6f5545758206000258e425bdf2445331bd01cfe2f312827eb"
-            },
-            {
-              "file": "7.mca",
-              "records": 1024,
-              "sha256": "cde9ce6287610b2b6554b29d0cc787b5d692bdc54e315bed0295b598dc6139e6"
-            },
-            {
-              "file": "8.mca",
-              "records": 1024,
-              "sha256": "2304fdfd8de1ac834dabd44d35b1443ab8a8240f51613ad10d44657e20302699"
-            },
-            {
-              "file": "9.mca",
-              "records": 1024,
-              "sha256": "99e37665ce2376e59955c918b3d254e1038521fdb795523a976492d00b39991c"
-            }
-          ],
-          "records": 20480,
-          "sha256": "152401e576006881a89b64b93d2b6c1d0d3ab8c2568fe0b367bfeb6835bce8ea"
-        }
+        "profile_sha256": "5a398bd02281677db81b6e70d426ab9a99a322050308e977b2a771134ded1cad"
       },
+      "shader_status": 4,
+      "corpus_sha256": "152401e576006881a89b64b93d2b6c1d0d3ab8c2568fe0b367bfeb6835bce8ea",
+      "comparisons": [],
       "coverage": {
         "biome_chunk_membership": {
           "minecraft:bamboo_jungle": 213,
@@ -1066,55 +285,262 @@
           "minecraft:village_plains": 5,
           "minecraft:village_snowy": 1
         }
-      }
+      },
+      "evidence": "reference-suite/overworld-run0"
     }
   ],
-  "candidate": null,
+  "candidate": {
+    "library_revision": "306692488be3277042bc10378f3e450e5958d49d",
+    "library_sha256": "dc6b82c7df03e9ce43bbf9598d812c9a4eb8ae3d5f2556c3429cc8925121ca41",
+    "evidence": [
+      "cycle1/candidate-suite/suite.json",
+      "cycle1/candidate-completion/suite.json"
+    ],
+    "timing_usable_for_regression_claims": false,
+    "runs": [
+      {
+        "case": "nether-main-run0",
+        "measurements": {
+          "median_ms": 11838.791124988347,
+          "p95_region_ms": 13637.194000487216,
+          "maximum_region_ms": 13715.19691706635,
+          "total_ms": 240750.5972920917,
+          "chunks_per_second": 85.0672863550679,
+          "peak_rss_bytes": 4982456320,
+          "profile_sha256": "385256a18191b411d0758e0e4bfbf9a3a330160c65150d5960c23c2a53037edd"
+        },
+        "shader_status": 4,
+        "corpus_sha256": "e4b7f9002991cc8908187055cec044a06e63c60b7b4b9db9a49c24f715eeb9df",
+        "comparisons": [
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/nether-main-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          }
+        ],
+        "coverage": {
+          "biome_chunk_membership": {
+            "minecraft:basalt_deltas": 3694,
+            "minecraft:crimson_forest": 4259,
+            "minecraft:nether_wastes": 11813,
+            "minecraft:soul_sand_valley": 2475,
+            "minecraft:warped_forest": 454
+          },
+          "chunks": 20480,
+          "unique_structure_starts": {
+            "minecraft:bastion_remnant": 17,
+            "minecraft:fortress": 11,
+            "minecraft:nether_fossil": 156,
+            "minecraft:ruined_portal_nether": 15
+          }
+        },
+        "evidence": "cycle1/candidate-suite/nether-main-run0"
+      },
+      {
+        "case": "nether-second-seed-run0",
+        "measurements": {
+          "median_ms": 12605.887645971961,
+          "p95_region_ms": 14461.947915249038,
+          "maximum_region_ms": 15168.780332896858,
+          "total_ms": 250595.97645909525,
+          "chunks_per_second": 81.72517487862758,
+          "peak_rss_bytes": 5416534016,
+          "profile_sha256": "385256a18191b411d0758e0e4bfbf9a3a330160c65150d5960c23c2a53037edd"
+        },
+        "shader_status": 4,
+        "corpus_sha256": "b533c4604263d915b987702a5472be93170ca46d28e06d9363bb100c7d156029",
+        "comparisons": [
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/nether-second-seed-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          }
+        ],
+        "coverage": {
+          "biome_chunk_membership": {
+            "minecraft:basalt_deltas": 3451,
+            "minecraft:crimson_forest": 3879,
+            "minecraft:nether_wastes": 9924,
+            "minecraft:soul_sand_valley": 3576,
+            "minecraft:warped_forest": 1747
+          },
+          "chunks": 20480,
+          "unique_structure_starts": {
+            "minecraft:bastion_remnant": 21,
+            "minecraft:fortress": 8,
+            "minecraft:nether_fossil": 230,
+            "minecraft:ruined_portal_nether": 13
+          }
+        },
+        "evidence": "cycle1/candidate-suite/nether-second-seed-run0"
+      },
+      {
+        "case": "nether-custom-bounds-run0",
+        "measurements": {
+          "median_ms": 6937.529916525818,
+          "p95_region_ms": 8616.282904474065,
+          "maximum_region_ms": 8796.996416058391,
+          "total_ms": 140669.21987500973,
+          "chunks_per_second": 145.58977449506938,
+          "peak_rss_bytes": 2313912320,
+          "profile_sha256": "74bc9093952b0459ceeafaae8a4049d6c6c46067516c9f03ec0d2493e37825c0"
+        },
+        "shader_status": 4,
+        "corpus_sha256": "3940972b86f5be58b34817d1afd3edba5a4ce177a71bc30730478e0cf653b83b",
+        "comparisons": [
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/nether-custom-bounds-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          }
+        ],
+        "coverage": {
+          "biome_chunk_membership": {
+            "minecraft:warped_forest": 20480
+          },
+          "chunks": 20480,
+          "unique_structure_starts": {
+            "minecraft:bastion_remnant": 20,
+            "minecraft:fortress": 8,
+            "minecraft:ruined_portal_nether": 15
+          }
+        },
+        "evidence": "cycle1/candidate-suite/nether-custom-bounds-run0"
+      },
+      {
+        "case": "nether-direct-stem-run0",
+        "measurements": {
+          "median_ms": 7504.979479475878,
+          "p95_region_ms": 7887.566145032179,
+          "maximum_region_ms": 7937.99175019376,
+          "total_ms": 149878.35212494247,
+          "chunks_per_second": 136.64414980308393,
+          "peak_rss_bytes": 2190409728,
+          "profile_sha256": "74bc9093952b0459ceeafaae8a4049d6c6c46067516c9f03ec0d2493e37825c0"
+        },
+        "shader_status": 4,
+        "corpus_sha256": "21482d3d81db17dd68b9877ead04f3a911e4b9511e376587a85c01104a98eaa9",
+        "comparisons": [
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/nether-direct-stem-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          }
+        ],
+        "coverage": {
+          "biome_chunk_membership": {
+            "minecraft:warped_forest": 20480
+          },
+          "chunks": 20480,
+          "unique_structure_starts": {
+            "minecraft:bastion_remnant": 21,
+            "minecraft:fortress": 8,
+            "minecraft:ruined_portal_nether": 13
+          }
+        },
+        "evidence": "cycle1/candidate-completion/nether-direct-stem-run0"
+      },
+      {
+        "case": "overworld-run0",
+        "measurements": {
+          "median_ms": 264.51135403476655,
+          "p95_region_ms": 341.9721545884386,
+          "maximum_region_ms": 407.27016679011285,
+          "total_ms": 5372.052917024121,
+          "chunks_per_second": 3812.322833808758,
+          "peak_rss_bytes": 2274754560,
+          "profile_sha256": "5a398bd02281677db81b6e70d426ab9a99a322050308e977b2a771134ded1cad"
+        },
+        "shader_status": 4,
+        "corpus_sha256": "152401e576006881a89b64b93d2b6c1d0d3ab8c2568fe0b367bfeb6835bce8ea",
+        "comparisons": [
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/overworld-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          }
+        ],
+        "coverage": {
+          "biome_chunk_membership": {
+            "minecraft:bamboo_jungle": 213,
+            "minecraft:beach": 4165,
+            "minecraft:birch_forest": 635,
+            "minecraft:cold_ocean": 1557,
+            "minecraft:dappled_forest": 10,
+            "minecraft:dark_forest": 265,
+            "minecraft:deep_cold_ocean": 1125,
+            "minecraft:deep_dark": 2094,
+            "minecraft:deep_frozen_ocean": 361,
+            "minecraft:deep_lukewarm_ocean": 244,
+            "minecraft:deep_ocean": 817,
+            "minecraft:desert": 185,
+            "minecraft:dripstone_caves": 3902,
+            "minecraft:flower_forest": 27,
+            "minecraft:forest": 4318,
+            "minecraft:frozen_ocean": 1146,
+            "minecraft:frozen_peaks": 23,
+            "minecraft:frozen_river": 981,
+            "minecraft:grove": 456,
+            "minecraft:ice_spikes": 16,
+            "minecraft:jagged_peaks": 73,
+            "minecraft:jungle": 504,
+            "minecraft:lukewarm_ocean": 1629,
+            "minecraft:lush_caves": 3075,
+            "minecraft:mangrove_swamp": 668,
+            "minecraft:meadow": 68,
+            "minecraft:mushroom_fields": 46,
+            "minecraft:ocean": 1387,
+            "minecraft:old_growth_birch_forest": 860,
+            "minecraft:old_growth_pine_taiga": 51,
+            "minecraft:old_growth_spruce_taiga": 53,
+            "minecraft:pale_garden": 7,
+            "minecraft:plains": 2328,
+            "minecraft:river": 3333,
+            "minecraft:savanna": 727,
+            "minecraft:savanna_plateau": 8,
+            "minecraft:snowy_beach": 1241,
+            "minecraft:snowy_plains": 1721,
+            "minecraft:snowy_slopes": 81,
+            "minecraft:snowy_taiga": 1791,
+            "minecraft:sparse_jungle": 548,
+            "minecraft:stony_shore": 1209,
+            "minecraft:sulfur_caves": 866,
+            "minecraft:sunflower_plains": 13,
+            "minecraft:swamp": 279,
+            "minecraft:taiga": 901,
+            "minecraft:warm_ocean": 197,
+            "minecraft:windswept_forest": 34,
+            "minecraft:windswept_gravelly_hills": 51,
+            "minecraft:windswept_hills": 174,
+            "minecraft:windswept_savanna": 110
+          },
+          "chunks": 20480,
+          "unique_structure_starts": {
+            "minecraft:abandoned_camp_forest": 1,
+            "minecraft:abandoned_camp_old_growth_birch_forest": 1,
+            "minecraft:abandoned_camp_savanna": 2,
+            "minecraft:abandoned_camp_snowy_taiga": 1,
+            "minecraft:ancient_city": 1,
+            "minecraft:desert_pyramid": 1,
+            "minecraft:trail_ruins": 1,
+            "minecraft:trial_chambers": 17,
+            "minecraft:village_plains": 5,
+            "minecraft:village_snowy": 1
+          }
+        },
+        "evidence": "cycle1/candidate-completion/overworld-run0"
+      }
+    ],
+    "identical_nbt_chunks": 102400,
+    "output_only_composite": "cycle1/validated-corpus/manifest.json; source directories are combined only for subsequent NBT comparison, never as a single timing run."
+  },
   "post_merge": null,
   "diagnostic": {
-    "build": {
-      "harness_dirty": true,
-      "harness_dirty_fingerprint": "459caa8d0eb4e5a4e382b0e7319cbf75d17469ffc5f8b0a9920edabf8085a66a",
-      "harness_revision": "58f6496be2b456a127b68682bab3b49901ec8076",
-      "library": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle1/candidate.dylib",
-      "library_revision": "cycle1-instrumentation",
-      "library_sha256": "dc6b82c7df03e9ce43bbf9598d812c9a4eb8ae3d5f2556c3429cc8925121ca41"
-    },
     "seed": 123456789,
     "coordinates": {
       "grid_width": 3,
       "origin_x": -2,
       "origin_z": -2
-    },
-    "regions": [
-      {
-        "assembly_ms": 15570.158084,
-        "generated": 1024,
-        "gpu_ms": 38.142041,
-        "ms": 15621.955499984324,
-        "name": "0",
-        "program_status": 4,
-        "write_ms": 13.551791,
-        "x": -2,
-        "z": -2
-      }
-    ],
-    "startup": {
-      "initialize_ms": 62.61504185386002,
-      "registration_ms": 72.25687499158084,
-      "warmups": [
-        {
-          "assembly_ms": 16645.301167,
-          "generated": 1024,
-          "gpu_ms": 195.880458,
-          "ms": 16859.175583114848,
-          "name": "warm0",
-          "program_status": 4,
-          "write_ms": 17.659584,
-          "x": 8,
-          "z": 8
-        }
-      ]
     },
     "performance_diagnostics": {
       "counters": {
@@ -1158,12 +584,7 @@
       "version": 1
     },
     "identical_nbt_chunks": 1024,
-    "gpu_transfers": {
-      "readback_bytes": 1692711744,
-      "readback_bytes_per_region": 1692711744.0,
-      "upload_bytes": 73481892,
-      "upload_bytes_per_region": 73481892.0
-    }
+    "timing_usable_for_regression_claims": false
   },
   "tests": {
     "native": {
@@ -1177,5 +598,252 @@
       "skip_reason": "optional LZ4 modules unavailable; corpus uses zlib"
     }
   },
-  "timing_caveat": "Initial reference and candidate timing observations include possible/observed competing CPU or GPU test work. They are provisional; use a later uncontended matched comparison for regression conclusions. The complete-output correctness corpus remains valid."
+  "timing_caveat": "Runtime process observations captured sustained VM activity and CareMap node/load-test workloads during the resumed reference suite. Initial reference/candidate runs also had possible competing workloads. These timings are provisional and do not establish an instrumentation speedup or regression. Complete-output comparisons remain valid; repeat matched headline timings in a coordinated quiet window.",
+  "reference_confirmation": {
+    "library_revision": "58f6496be2b456a127b68682bab3b49901ec8076",
+    "library_sha256": "bafc696984f3f0b66bf06163f516d5379c12283b8a65cfad57048cc70abee31c",
+    "evidence": "cycle1/reference-confirmation/suite.json",
+    "timing_usable_for_regression_claims": false,
+    "runs": [
+      {
+        "case": "nether-main-run0",
+        "measurements": {
+          "median_ms": 13154.768729466014,
+          "p95_region_ms": 16521.864460455254,
+          "maximum_region_ms": 17139.610707992688,
+          "total_ms": 266589.4739169162,
+          "chunks_per_second": 76.82223794920982,
+          "peak_rss_bytes": 5155930112,
+          "profile_sha256": "385256a18191b411d0758e0e4bfbf9a3a330160c65150d5960c23c2a53037edd"
+        },
+        "shader_status": 4,
+        "corpus_sha256": "e4b7f9002991cc8908187055cec044a06e63c60b7b4b9db9a49c24f715eeb9df",
+        "comparisons": [
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/nether-main-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          }
+        ],
+        "coverage": {
+          "biome_chunk_membership": {
+            "minecraft:basalt_deltas": 3694,
+            "minecraft:crimson_forest": 4259,
+            "minecraft:nether_wastes": 11813,
+            "minecraft:soul_sand_valley": 2475,
+            "minecraft:warped_forest": 454
+          },
+          "chunks": 20480,
+          "unique_structure_starts": {
+            "minecraft:bastion_remnant": 17,
+            "minecraft:fortress": 11,
+            "minecraft:nether_fossil": 156,
+            "minecraft:ruined_portal_nether": 15
+          }
+        },
+        "evidence": "cycle1/reference-confirmation/nether-main-run0"
+      },
+      {
+        "case": "nether-second-seed-run0",
+        "measurements": {
+          "median_ms": 13385.047479532659,
+          "p95_region_ms": 16023.19923770847,
+          "maximum_region_ms": 18931.675458094105,
+          "total_ms": 278633.3820410073,
+          "chunks_per_second": 73.50160217696349,
+          "peak_rss_bytes": 5210062848,
+          "profile_sha256": "385256a18191b411d0758e0e4bfbf9a3a330160c65150d5960c23c2a53037edd"
+        },
+        "shader_status": 4,
+        "corpus_sha256": "b533c4604263d915b987702a5472be93170ca46d28e06d9363bb100c7d156029",
+        "comparisons": [
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/nether-second-seed-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          }
+        ],
+        "coverage": {
+          "biome_chunk_membership": {
+            "minecraft:basalt_deltas": 3451,
+            "minecraft:crimson_forest": 3879,
+            "minecraft:nether_wastes": 9924,
+            "minecraft:soul_sand_valley": 3576,
+            "minecraft:warped_forest": 1747
+          },
+          "chunks": 20480,
+          "unique_structure_starts": {
+            "minecraft:bastion_remnant": 21,
+            "minecraft:fortress": 8,
+            "minecraft:nether_fossil": 230,
+            "minecraft:ruined_portal_nether": 13
+          }
+        },
+        "evidence": "cycle1/reference-confirmation/nether-second-seed-run0"
+      },
+      {
+        "case": "nether-custom-bounds-run0",
+        "measurements": {
+          "median_ms": 6197.728916537017,
+          "p95_region_ms": 6756.576104427223,
+          "maximum_region_ms": 7795.084041077644,
+          "total_ms": 124670.39629095234,
+          "chunks_per_second": 164.27316034356977,
+          "peak_rss_bytes": 2211938304,
+          "profile_sha256": "74bc9093952b0459ceeafaae8a4049d6c6c46067516c9f03ec0d2493e37825c0"
+        },
+        "shader_status": 4,
+        "corpus_sha256": "3940972b86f5be58b34817d1afd3edba5a4ce177a71bc30730478e0cf653b83b",
+        "comparisons": [
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/nether-custom-bounds-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          }
+        ],
+        "coverage": {
+          "biome_chunk_membership": {
+            "minecraft:warped_forest": 20480
+          },
+          "chunks": 20480,
+          "unique_structure_starts": {
+            "minecraft:bastion_remnant": 20,
+            "minecraft:fortress": 8,
+            "minecraft:ruined_portal_nether": 15
+          }
+        },
+        "evidence": "cycle1/reference-confirmation/nether-custom-bounds-run0"
+      },
+      {
+        "case": "nether-direct-stem-run0",
+        "measurements": {
+          "median_ms": 6401.698562549427,
+          "p95_region_ms": 7070.93664171407,
+          "maximum_region_ms": 7215.519834076986,
+          "total_ms": 127380.92550006695,
+          "chunks_per_second": 160.77760402195568,
+          "peak_rss_bytes": 2285355008,
+          "profile_sha256": "74bc9093952b0459ceeafaae8a4049d6c6c46067516c9f03ec0d2493e37825c0"
+        },
+        "shader_status": 4,
+        "corpus_sha256": "21482d3d81db17dd68b9877ead04f3a911e4b9511e376587a85c01104a98eaa9",
+        "comparisons": [
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/nether-direct-stem-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          }
+        ],
+        "coverage": {
+          "biome_chunk_membership": {
+            "minecraft:warped_forest": 20480
+          },
+          "chunks": 20480,
+          "unique_structure_starts": {
+            "minecraft:bastion_remnant": 21,
+            "minecraft:fortress": 8,
+            "minecraft:ruined_portal_nether": 13
+          }
+        },
+        "evidence": "cycle1/reference-confirmation/nether-direct-stem-run0"
+      },
+      {
+        "case": "overworld-run0",
+        "measurements": {
+          "median_ms": 226.19387484155595,
+          "p95_region_ms": 261.66160703869537,
+          "maximum_region_ms": 281.5954168327153,
+          "total_ms": 4511.80454203859,
+          "chunks_per_second": 4539.2037286141895,
+          "peak_rss_bytes": 1723416576,
+          "profile_sha256": "5a398bd02281677db81b6e70d426ab9a99a322050308e977b2a771134ded1cad"
+        },
+        "shader_status": 4,
+        "corpus_sha256": "152401e576006881a89b64b93d2b6c1d0d3ab8c2568fe0b367bfeb6835bce8ea",
+        "comparisons": [
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/overworld-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          }
+        ],
+        "coverage": {
+          "biome_chunk_membership": {
+            "minecraft:bamboo_jungle": 213,
+            "minecraft:beach": 4165,
+            "minecraft:birch_forest": 635,
+            "minecraft:cold_ocean": 1557,
+            "minecraft:dappled_forest": 10,
+            "minecraft:dark_forest": 265,
+            "minecraft:deep_cold_ocean": 1125,
+            "minecraft:deep_dark": 2094,
+            "minecraft:deep_frozen_ocean": 361,
+            "minecraft:deep_lukewarm_ocean": 244,
+            "minecraft:deep_ocean": 817,
+            "minecraft:desert": 185,
+            "minecraft:dripstone_caves": 3902,
+            "minecraft:flower_forest": 27,
+            "minecraft:forest": 4318,
+            "minecraft:frozen_ocean": 1146,
+            "minecraft:frozen_peaks": 23,
+            "minecraft:frozen_river": 981,
+            "minecraft:grove": 456,
+            "minecraft:ice_spikes": 16,
+            "minecraft:jagged_peaks": 73,
+            "minecraft:jungle": 504,
+            "minecraft:lukewarm_ocean": 1629,
+            "minecraft:lush_caves": 3075,
+            "minecraft:mangrove_swamp": 668,
+            "minecraft:meadow": 68,
+            "minecraft:mushroom_fields": 46,
+            "minecraft:ocean": 1387,
+            "minecraft:old_growth_birch_forest": 860,
+            "minecraft:old_growth_pine_taiga": 51,
+            "minecraft:old_growth_spruce_taiga": 53,
+            "minecraft:pale_garden": 7,
+            "minecraft:plains": 2328,
+            "minecraft:river": 3333,
+            "minecraft:savanna": 727,
+            "minecraft:savanna_plateau": 8,
+            "minecraft:snowy_beach": 1241,
+            "minecraft:snowy_plains": 1721,
+            "minecraft:snowy_slopes": 81,
+            "minecraft:snowy_taiga": 1791,
+            "minecraft:sparse_jungle": 548,
+            "minecraft:stony_shore": 1209,
+            "minecraft:sulfur_caves": 866,
+            "minecraft:sunflower_plains": 13,
+            "minecraft:swamp": 279,
+            "minecraft:taiga": 901,
+            "minecraft:warm_ocean": 197,
+            "minecraft:windswept_forest": 34,
+            "minecraft:windswept_gravelly_hills": 51,
+            "minecraft:windswept_hills": 174,
+            "minecraft:windswept_savanna": 110
+          },
+          "chunks": 20480,
+          "unique_structure_starts": {
+            "minecraft:abandoned_camp_forest": 1,
+            "minecraft:abandoned_camp_old_growth_birch_forest": 1,
+            "minecraft:abandoned_camp_savanna": 2,
+            "minecraft:abandoned_camp_snowy_taiga": 1,
+            "minecraft:ancient_city": 1,
+            "minecraft:desert_pyramid": 1,
+            "minecraft:trail_ruins": 1,
+            "minecraft:trial_chambers": 17,
+            "minecraft:village_plains": 5,
+            "minecraft:village_snowy": 1
+          }
+        },
+        "evidence": "cycle1/reference-confirmation/overworld-run0"
+      }
+    ],
+    "identical_nbt_chunks": 102400
+  },
+  "timing_confirmation": {
+    "status": "Deferred by user: Keep working; leave timing confirmation until later.",
+    "required_before_goal_completion": true,
+    "reason": "Observed competing workloads; preserve measurements without attributing differences to code.",
+    "pending": "Repeated matched baseline/candidate and Overworld runs in a quiet window."
+  }
 }

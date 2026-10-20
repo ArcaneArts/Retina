@@ -156,3 +156,27 @@ representative warmed Nether corpus, cross-boundary/concurrent correctness,
 successful portal preparation with and without background work, stable sustained
 memory use, and no material Overworld regression. Until those are directly
 verified, the overall goal remains incomplete.
+
+## Cycle 1 implementation result
+
+The disabled-diagnostics candidate matches all 102,400 original measured chunks
+across the five cases. A separate enabled-diagnostics region matches another
+1,024 chunks. Native unit tests pass (110 passed, 37 ignored); benchmark helper
+tests pass (10 passed, one optional LZ4 test skipped; this corpus uses zlib).
+
+The diagnostic region records 98,555 anchor builds, 16,830,129 column builds and
+10,206 structure builds from 1,365 unique candidates. Of those structure builds,
+8,841 repeat an earlier build, while only six overlap another active build.
+This distinguishes eviction-driven rebuilding from simultaneous duplication.
+The dependency phase took 13.98 s in that profiled run, final structure planning
+839 ms, distribution 78 ms and teardown 615 ms. These are diagnostic observations,
+not a performance comparison.
+
+Both the reference repeat and candidate corpus ran with observed competing
+workloads. At the user's direction, implementation continues while quiet timing
+confirmation is deferred. No instrumentation speedup or regression is established.
+The concise report is `docs/benchmarks/nether-perf-cycle1-2026-10-20.json`;
+raw measurements and process observations remain in the retained evidence root.
+`cycle1/validated-corpus` combines completed output directories for NBT comparisons
+only; it must not be represented as one timing run. The overall performance goal
+still requires repeated uncontended timings and post-merge validation.
