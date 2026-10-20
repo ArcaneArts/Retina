@@ -128,7 +128,7 @@ final class StructureProfile {
         for(var holder:registry.lookupOrThrow(Registries.STRUCTURE_SET).listElements().toList()) {
             if(context.allowedSets.isPresent() && !context.allowedSets.get().contains(holder.key().identifier()))continue;
             var set=holder.value();var placement=net.minecraft.world.level.levelgen.structure.placement.StructurePlacement.CODEC.encodeStart(ops,set.placement()).getOrThrow().getAsJsonObject();
-            if(!placement.get("type").getAsString().equals("minecraft:random_spread")) {omitted.add("placement:"+holder.key().identifier());continue;}
+            if(set.placement().getClass()!=net.minecraft.world.level.levelgen.structure.placement.RandomSpreadStructurePlacement.class) {omitted.add("placement:"+holder.key().identifier());continue;}
             // Keep only sets with an executable member, but retain every weighted
             // slot in those sets. Unsupported families must not become more bastions.
             boolean executable=set.structures().stream().anyMatch(entry->{
@@ -148,9 +148,33 @@ final class StructureProfile {
             }
             if(!entries.isEmpty()){var s=new JsonObject();s.addProperty("id",holder.key().identifier().toString());s.add("placement",placement);s.add("entries",entries);sets.add(s);}
         }
+        // Exclusions test placements, even when no structure in the referenced
+        // set can generate in this biome source or the source's selected sets.
+        var exportedSets=new LinkedHashMap<String,JsonObject>();
+        sets.forEach(value->{var set=value.getAsJsonObject();exportedSets.put(set.get("id").getAsString(),set);});
+        var complete=new HashSet<String>();
+        for(var name:List.copyOf(exportedSets.keySet()))placementDependencies(name,exportedSets,complete,new LinkedHashSet<>());
+    }
+    private void placementDependencies(String name,Map<String,JsonObject> exported,Set<String> complete,LinkedHashSet<String> path) {
+        if(complete.contains(name))return;
+        if(!path.add(name))throw new IllegalArgumentException("Cyclic structure-set exclusion: "+path+" -> "+name);
+        var set=exported.get(name);
+        if(set==null) {
+            var source=registry.lookupOrThrow(Registries.STRUCTURE_SET).getOrThrow(
+                    ResourceKey.create(Registries.STRUCTURE_SET,Identifier.parse(name))).value();
+            if(source.placement().getClass()!=net.minecraft.world.level.levelgen.structure.placement.RandomSpreadStructurePlacement.class)
+                throw new IllegalArgumentException("Unsupported exclusion placement "+source.placement().getClass().getName()+" in "+path);
+            set=new JsonObject();set.addProperty("id",name);set.addProperty("placement_only",true);set.add("entries",new JsonArray());
+            set.add("placement",net.minecraft.world.level.levelgen.structure.placement.StructurePlacement.CODEC
+                    .encodeStart(registry.createSerializationContext(JsonOps.INSTANCE),source.placement()).getOrThrow());
+            exported.put(name,set);sets.add(set);
+        }
+        var placement=set.getAsJsonObject("placement");
+        if(placement.has("exclusion_zone"))placementDependencies(placement.getAsJsonObject("exclusion_zone").get("other_set").getAsString(),exported,complete,path);
+        path.remove(name);complete.add(name);
     }
     static boolean supportedSet(StructureSet set) {
-        if (!(set.placement() instanceof net.minecraft.world.level.levelgen.structure.placement.RandomSpreadStructurePlacement)) return false;
+        if (set.placement().getClass()!=net.minecraft.world.level.levelgen.structure.placement.RandomSpreadStructurePlacement.class) return false;
         return set.structures().stream().anyMatch(entry -> {
             var structure=entry.structure().value();
             return structure instanceof JigsawStructure || structure instanceof DesertPyramidStructure

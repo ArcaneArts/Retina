@@ -968,9 +968,42 @@ Production Nether activation remains deferred. Structure-set exclusion closure,
 Java structure-state advertisement, actual spawning/loot gameplay, dimension
 integration and the final runtime matrix remain required.
 
+## Cycle 4j: structure-set exclusion dependencies
+
+Structure export retains the transitive placement dependencies of each generated
+set. A referenced set can suppress placement even if none of its structures can
+start in the current biomes or if the source's structure-set override excludes it.
+Such sets carry only placement rules: they cannot generate structures, enter
+native start queries, or appear as locate candidates. A dependency that is also
+selected for generation keeps its original weighted entries and registry order.
+
+Required unsupported placement implementations fail export with the dependency
+path instead of silently losing the exclusion. Custom random-spread subclasses
+are not treated as the base implementation. Native profile registration rejects
+missing references, cycles, duplicate set names, invalid ranges and malformed
+dependency sets.
+
+The fixture compares 1,536 native candidate decisions against Minecraft's actual
+`isStructureChunk` implementation across six loaded-registry variants, four
+seeds, positive/negative coordinates, linear/triangular spread, all four frequency
+reducers, and nested exclusions. It observes 795 accepted candidates and 369
+otherwise eligible candidates suppressed by exclusions. It also verifies cached
+queries, source-set overrides, dependencies shared with generation, locate
+filtering, and diagnostics for unsupported rings/custom placement classes.
+
+```sh
+./gradlew -PretinaHostOnly :common:netherStructureTest --args=--exclusions-only
+```
+
+Reproducible native profiles are in `build/nether/exclusion-fixture-*.json`.
+`exclusion-parity.json` records the Minecraft decision at each candidate.
+The host Fabric/NeoForge build and `netherStructureTest`, `structureTest`,
+`flatTest`, `nativeGpuTest`, `netherFeatureTest`, and `netherProfileTest` pass,
+including 103 Rust unit tests and three native GPU integration tests.
+Production Nether activation and live gameplay validation remain deferred.
+
 ## Remaining cycles
 
-4. Applicable structure-set exclusions, Java structure-state advertisement
-   and gameplay progression checks.
+4. Java structure-state advertisement and gameplay progression checks.
 5. Automatic activation and dimension lifecycle, lighting, and portal integration.
 6. Both-loader runtime validation, regression coverage, visual QA, and benchmarks.
