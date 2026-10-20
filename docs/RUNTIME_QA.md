@@ -68,8 +68,21 @@ remaining light after source removal, with zero skylight throughout.
 `minecraft_client_gameplay_reopen` events must pass. `nether_portal_fixtures`
 reports whether saved frames were preserved. The server also checks the saved
 Overworld and above-roof Nether edits on subsequent connections.
-`nether_cold_portal_arrival` reports newly generated chunk counts and
-`nether_cold_portal_return` confirms the remote return trip.
+`nether_cold_portal_arrival` reports newly generated chunk counts, complete portal
+latency (`portal_ms`), server tick count during the wait and maximum tick gap.
+`nether_cold_portal_return` confirms the remote return trip. A successful arrival
+alone does not establish responsive ticks; retain these separate measurements.
+`temporary_mca_region` also reports native-budget `queue_ms` separately from its
+existing generation `ms` field.
+
+Ordinary loads and portal preparation receive foreground admission. Bulk ahead
+work and direct DH previews remain background requests. A foreground reader can
+promote the same queued preview without duplicating generation. The shared native
+limit is unchanged. After four consecutive foreground admissions, the next
+admission goes to the oldest waiting background request. This does not preempt native work that
+is already running. Preparation uses virtual tasks so waiting for the budget does
+not occupy a fixed preparation worker; real lifecycle and unload QA must verify
+native calls and resource cleanup in addition to the scheduler unit tests.
 
 ### Live Nether fortress progression
 
