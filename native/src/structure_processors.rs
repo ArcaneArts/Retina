@@ -68,6 +68,7 @@ enum Modifier {
 pub struct Context {
     pub position: [i32; 3],
     pub origin: [i32; 3],
+    pub source_template: bool,
     counts: Vec<u32>,
 }
 /// Validate palette-dependent tables before compiling executable native programs.
@@ -127,6 +128,7 @@ impl Program {
             origin,
             position: origin,
             counts: vec![0; self.counters],
+            source_template: false,
         }
     }
     pub fn apply<'a>(
@@ -189,7 +191,7 @@ impl Predicate {
             matching,
             probability: kind
                 .starts_with("random_")
-                .then(|| v["probability"].as_f64().unwrap_or(1.0)),
+                .then(|| v["probability"].as_f64().unwrap_or(1.0) as f32 as f64),
         }
     }
     fn matches(&self, material: u16, rotation: usize, r: &mut Random) -> bool {
@@ -362,6 +364,12 @@ impl Processor {
                 rottable,
                 integrity,
             } => {
+                let mut positional = Random::new(crate::structures::position_seed(ctx.position));
+                let r = if ctx.source_template {
+                    &mut positional
+                } else {
+                    r
+                };
                 if rottable.as_ref().is_none_or(|ids| ids[*material as usize])
                     && r.float() > *integrity
                 {
@@ -388,6 +396,14 @@ impl Processor {
                 }
             }
             Self::Rules(rules) => {
+                // RuleProcessor creates a fresh positional stream for each invocation,
+                // independently of neighboring processors and the placement stream.
+                let mut positional = Random::new(crate::structures::position_seed(ctx.position));
+                let r = if ctx.source_template {
+                    &mut positional
+                } else {
+                    r
+                };
                 for rule in rules {
                     if rule.input.matches(*material, rotation, r)
                         && rule.location.matches(world, rotation, r)

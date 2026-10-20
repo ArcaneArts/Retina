@@ -157,8 +157,12 @@ public record TerrainProfileData(int seaLevel, BlockState[] materials, List<Hold
         }
         profile.add("structures", structureData);
         GeologyProfile.export(registry, nativeBiomes, biomes, materials, profile, bounds, sea);
-        TerrainFeatureProfile.finishReplacementTables(biomes, materials);
         DecorationProfile.finishPlacements(profile.getAsJsonArray("decorations"), materials, bounds, sea);
+        int beforeStructureTransforms = materials.size();
+        StructureProfile.finishMaterials(structureData, materials);
+        if (materials.size() != beforeStructureTransforms)
+            DecorationProfile.finishPlacements(profile.getAsJsonArray("decorations"), materials, bounds, sea);
+        TerrainFeatureProfile.finishReplacementTables(biomes, materials);
         DecorationProfile.finishCurrentSurvival(profile,materials);
         DecorationProfile.finishGenerationLighting(profile,skyLight);
         DecorationProfile.materialFlags(profile, materials);

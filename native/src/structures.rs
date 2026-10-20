@@ -2,6 +2,7 @@
 //! individual chunks and DH previews, including pieces crossing region boundaries.
 mod fortress;
 mod fossils;
+mod template_transform;
 use crate::structure_processors::Program;
 use crate::{
     CacheKey, ChunkRequest, TerrainEngine, nbt,
@@ -39,6 +40,8 @@ pub struct Template {
     pub tags: HashMap<usize, Value>,
     pub joints: Vec<Joint>,
     pub entities: Vec<Value>,
+    #[serde(default)]
+    transform: Option<template_transform::Transform>,
     #[serde(skip)]
     rotated: Vec<Arc<OnceLock<RotatedTemplate>>>,
 }
@@ -291,9 +294,6 @@ fn add(a: [i32; 3], b: [i32; 3]) -> [i32; 3] {
 pub(crate) fn sub(a: [i32; 3], b: [i32; 3]) -> [i32; 3] {
     [a[0] - b[0], a[1] - b[1], a[2] - b[2]]
 }
-fn direction(d: usize, r: usize) -> [i32; 3] {
-    rotate(DIRECTIONS[d], r)
-}
 fn contains(a: [i32; 6], b: [i32; 6]) -> bool {
     (0..3).all(|i| a[i] <= b[i] && a[i + 3] >= b[i + 3])
 }
@@ -306,9 +306,10 @@ fn intersects(a: [i32; 6], b: [i32; 6]) -> bool {
 fn bounds(e: &Element, pos: [i32; 3], rotation: usize, p: &Profile) -> [i32; 6] {
     let mut b = [i32::MAX, i32::MAX, i32::MAX, i32::MIN, i32::MIN, i32::MIN];
     for part in &e.parts {
-        let size = p.templates[part.template].size;
+        let template = &p.templates[part.template];
+        let size = template.size;
         for corner in [[0, 0, 0], [size[0] - 1, size[1] - 1, size[2] - 1]] {
-            let q = add(pos, rotate(corner, rotation));
+            let q = add(pos, template.position(corner, rotation));
             for i in 0..3 {
                 b[i] = b[i].min(q[i]);
                 b[i + 3] = b[i + 3].max(q[i]);
@@ -336,6 +337,7 @@ impl Profile {
                     .iter()
                     .any(|(i, v)| *i >= t.blocks.len() / 4 || !nbt::validate(v, 0))
                 || t.entities.iter().any(|v| !nbt::validate(v, 0))
+                || t.transform.as_ref().is_some_and(|t| !t.valid(materials))
                 || t.joints.iter().any(|j| {
                     j.front >= 6
                         || j.top >= 6
@@ -412,21 +414,13 @@ fn reach(p: &Profile, d: &Definition) -> i32 {
             + 27; // within-chunk offset plus adjusted start bounds
     }
     if d.kind != "jigsaw" {
-        return *p.templates[d.template]
-            .size
-            .iter()
-            .step_by(2)
-            .max()
-            .unwrap();
+        return p.templates[d.template].horizontal_reach();
     }
     let root = p.pools.get(&d.pool).map_or(0, |pool| {
         pool.entries
             .iter()
             .flat_map(|e| &e.parts)
-            .map(|part| {
-                let s = p.templates[part.template].size;
-                s[0].max(s[2])
-            })
+            .map(|part| p.templates[part.template].horizontal_reach())
             .max()
             .unwrap_or(0)
     });
@@ -780,7 +774,10 @@ fn expansion_height(
         .filter(|j| {
             inside(
                 local,
-                add(rotate(j.pos, rotation), direction(j.front, rotation)),
+                add(
+                    profile.templates[element.parts[0].template].position(j.pos, rotation),
+                    profile.templates[element.parts[0].template].direction(j.front, rotation),
+                ),
             )
         })
         .filter_map(|j| profile.pools.get(aliases.get(&j.pool).unwrap_or(&j.pool)))
@@ -970,7 +967,7 @@ fn build_definition(
     }
     if let Some(name) = d.config["start_jigsaw_name"].as_str() {
         if let Some(j) = template.joints.iter().find(|j| j.name == name) {
-            pos = sub(pos, rotate(j.pos, rotation));
+            pos = sub(pos, template.position(j.pos, rotation));
         } else {
             return Ok(out);
         }
@@ -1011,8 +1008,8 @@ fn build_definition(
         random.shuffle(&mut joints);
         joints.sort_by_key(|j| -j.selection_priority);
         'connector: for j in joints {
-            let jp = add(source.pos, rotate(j.pos, source.rotation));
-            let front = direction(j.front, source.rotation);
+            let jp = add(source.pos, st.position(j.pos, source.rotation));
+            let front = st.direction(j.front, source.rotation);
             let target = add(jp, front);
             let name = aliases.get(&j.pool).unwrap_or(&j.pool);
             let pool = p.pools.get(name);
@@ -1040,16 +1037,16 @@ fn build_definition(
                     random.shuffle(&mut targets);
                     targets.sort_by_key(|j| -j.selection_priority);
                     for other in targets {
-                        let facing = direction(other.front, rotation);
+                        let facing = t.direction(other.front, rotation);
                         if facing != [-front[0], -front[1], -front[2]]
                             || j.target != other.name
                             || j.joint == "aligned"
-                                && direction(j.top, source.rotation)
-                                    != direction(other.top, rotation)
+                                && st.direction(j.top, source.rotation)
+                                    != t.direction(other.top, rotation)
                         {
                             continue;
                         }
-                        let mut pos = sub(target, rotate(other.pos, rotation));
+                        let mut pos = sub(target, t.position(other.pos, rotation));
                         if source.element.terrain_matching || element.terrain_matching {
                             if let Some(h) = &out.terrain {
                                 pos[1] = h.get(jp[0], jp[2]) - other.pos[1];
@@ -1184,12 +1181,13 @@ impl Profile {
                 .enumerate()
                 .map(|(index, b)| {
                     let raw = [b[0], b[1], b[2]];
-                    let original = t.palettes[palette][b[3] as usize][rotation];
+                    let state_rotation = if t.transform.is_some() { 0 } else { rotation };
+                    let original = t.palettes[palette][b[3] as usize][state_rotation];
                     let material = if self.classes[original as usize] & 2 != 0 {
                         t.joints
                             .iter()
                             .find(|j| j.pos == raw)
-                            .map_or(0, |j| j.final_state[rotation])
+                            .map_or(0, |j| j.final_state[state_rotation])
                     } else {
                         original
                     };
@@ -1197,7 +1195,7 @@ impl Profile {
                         floors.push(index);
                     }
                     RotatedBlock {
-                        pos: rotate(raw, rotation),
+                        pos: t.position(raw, rotation),
                         material,
                         original,
                         index,
@@ -1381,6 +1379,7 @@ pub fn apply(
                 let template = &p.templates[part.template];
                 let rotated = p.rotated(part.template, piece.palette, piece.rotation);
                 let mut ctx = part.program.context(piece.pos);
+                ctx.source_template = template.transform.is_some();
                 // Approximate the registered terrain beard with short supports below rigid floors.
                 // Heights were sampled once for the shared start; no CPU noise or per-block GPU calls.
                 let definition = &p.definitions[start.definition];
@@ -1503,7 +1502,11 @@ pub fn apply(
                         &mut material,
                         world,
                         &mut tag,
-                        piece.rotation,
+                        if ctx.source_template {
+                            0
+                        } else {
+                            piece.rotation
+                        },
                         profile,
                         &mut r,
                         &mut ctx,
@@ -1512,6 +1515,9 @@ pub fn apply(
                     }
                     if !in_chunk {
                         continue;
+                    }
+                    if let Some(transform) = &template.transform {
+                        material = transform.materials[material as usize][piece.rotation];
                     }
                     if let Some(b) = blocks.as_deref_mut() {
                         b[index] = material;
@@ -1557,11 +1563,15 @@ pub fn apply(
                         nbt::number(&values[1]),
                         nbt::number(&values[2]),
                     ];
-                    let q = match piece.rotation {
-                        1 => [1.0 - raw[2], raw[1], raw[0]],
-                        2 => [1.0 - raw[0], raw[1], 1.0 - raw[2]],
-                        3 => [raw[2], raw[1], 1.0 - raw[0]],
-                        _ => raw,
+                    let q = if let Some(transform) = &template.transform {
+                        transform.point(raw, piece.rotation)
+                    } else {
+                        match piece.rotation {
+                            1 => [1.0 - raw[2], raw[1], raw[0]],
+                            2 => [1.0 - raw[0], raw[1], 1.0 - raw[2]],
+                            3 => [raw[2], raw[1], 1.0 - raw[0]],
+                            _ => raw,
+                        }
                     };
                     let pos = [
                         q[0] + piece.pos[0] as f64,
@@ -1576,7 +1586,7 @@ pub fn apply(
                         .map(|v| {
                             add(
                                 piece.pos,
-                                rotate(
+                                template.position(
                                     std::array::from_fn(|i| nbt::number(&v[i]) as i32),
                                     piece.rotation,
                                 ),
@@ -1601,13 +1611,17 @@ pub fn apply(
                         if let Some(mut facing) = nbt::field(&tag, key).cloned() {
                             let value = nbt::number(&facing) as usize;
                             if key == "facing" && value < 4 {
-                                facing[1] = json!((value + piece.rotation) % 4);
+                                let d = [3, 4, 2, 5][value];
+                                let v = template.direction(d, piece.rotation);
+                                facing[1] = json!(match v {
+                                    [0, 0, 1] => 0,
+                                    [-1, 0, 0] => 1,
+                                    [0, 0, -1] => 2,
+                                    _ => 3,
+                                });
                             } else if key == "Facing" && (2..6).contains(&value) {
-                                let mut value = value;
-                                for _ in 0..piece.rotation {
-                                    value = [0, 1, 5, 4, 2, 3][value];
-                                }
-                                facing[1] = json!(value);
+                                let v = template.direction(value, piece.rotation);
+                                facing[1] = json!(DIRECTIONS.iter().position(|&d| d == v).unwrap());
                             }
                             nbt::put(&mut tag, key, facing);
                         }
@@ -1642,7 +1656,11 @@ pub fn apply(
                                     vec![
                                         json!([
                                             5,
-                                            nbt::number(&values[0]) + piece.rotation as f64 * 90.0
+                                            template.transform.as_ref().map_or(
+                                                nbt::number(&values[0])
+                                                    + piece.rotation as f64 * 90.0,
+                                                |t| t.yaw(nbt::number(&values[0]), piece.rotation)
+                                            )
                                         ]),
                                         values[1].clone(),
                                     ],
@@ -1958,71 +1976,130 @@ mod tests {
             [0, 1, 3, 2, 5, 4],
             [0, 1, 4, 5, 3, 2],
         ];
-        for rotation in 0..4 {
-            let element = profile.structures.pools["test:attached"].entries[0].clone();
-            let start = Arc::new(Start {
-                definition: 0,
-                chunk: [-2, -1],
-                seed: 42,
-                pieces: vec![Piece {
-                    bounds: bounds(&element, origin, rotation, &profile.structures),
-                    element,
-                    pos: origin,
-                    rotation,
-                    palette: 0,
-                    context: 0,
-                    depth: 0,
-                    priority: 0,
-                    fortress: None,
-                }],
-                terrain: None,
-                index: OnceLock::new(),
-            });
-            let anchor = add(origin, rotate([15, 1, 0], rotation));
-            let owner = [anchor[0].div_euclid(16), anchor[2].div_euclid(16)];
-            let mut seen = 0;
-            for z in -4..2 {
-                for x in -5..2 {
-                    let request = ChunkRequest {
-                        seed: 42,
-                        chunk_x: x,
-                        chunk_z: z,
-                        min_y: 64,
-                        height: 16,
-                        base_height: 64.0,
-                        amplitude: 0.0,
-                        frequency: 0.008,
-                        reserved: 0,
-                    };
-                    let data = apply(request, &profile, &[start.clone()], &[], None);
-                    assert_eq!(
-                        data.tag,
-                        apply(request, &profile, &[start.clone()], &[], None).tag
-                    );
-                    let actual = nbt::list_values(nbt::field(&data.tag, "entities").unwrap());
-                    assert_eq!(actual.len(), if [x, z] == owner { 16 } else { 0 });
-                    for (i, tag) in actual.iter().enumerate() {
-                        assert_eq!(nbt::field(tag, "block_pos").unwrap(), &json!([11, anchor]));
-                        let (key, expected) = if i < 12 {
-                            ("Facing", expected_3d[rotation][i % 6])
-                        } else {
-                            ("facing", (i - 12 + rotation) % 4)
+        for style in 0..4 {
+            let mirror = if style == 0 { 0 } else { style - 1 };
+            profile.structures.templates[0].transform = if style == 0 {
+                None
+            } else {
+                Some(template_transform::Transform {
+                    mirror,
+                    pivot: [5, 0, -3],
+                    materials: vec![[0; 4], [1; 4]],
+                })
+            };
+            profile.structures.compile(&profile.materials);
+            for rotation in 0..4 {
+                let element = profile.structures.pools["test:attached"].entries[0].clone();
+                let start = Arc::new(Start {
+                    definition: 0,
+                    chunk: [-2, -1],
+                    seed: 42,
+                    pieces: vec![Piece {
+                        bounds: bounds(&element, origin, rotation, &profile.structures),
+                        element,
+                        pos: origin,
+                        rotation,
+                        palette: 0,
+                        context: 0,
+                        depth: 0,
+                        priority: 0,
+                        fortress: None,
+                    }],
+                    terrain: None,
+                    index: OnceLock::new(),
+                });
+                let offset = if style == 0 {
+                    [0, 0, 0]
+                } else {
+                    [[0, 0, 0], [2, 0, -8], [10, 0, -6], [8, 0, 2]][rotation]
+                };
+                let anchor = add(
+                    origin,
+                    add(
+                        rotate([if mirror == 2 { -15 } else { 15 }, 1, 0], rotation),
+                        offset,
+                    ),
+                );
+                let owner = [anchor[0].div_euclid(16), anchor[2].div_euclid(16)];
+                let mut seen = 0;
+                for z in -4..2 {
+                    for x in -5..2 {
+                        let request = ChunkRequest {
+                            seed: 42,
+                            chunk_x: x,
+                            chunk_z: z,
+                            min_y: 64,
+                            height: 16,
+                            base_height: 64.0,
+                            amplitude: 0.0,
+                            frequency: 0.008,
+                            reserved: 0,
                         };
-                        assert_eq!(nbt::field(tag, key).unwrap(), &json!([3, expected]));
+                        let data = apply(request, &profile, &[start.clone()], &[], None);
                         assert_eq!(
-                            nbt::field(tag, "Item").unwrap(),
-                            &json!([10,{"id":[8,"minecraft:diamond"],"count":[3,1]}])
+                            data.tag,
+                            apply(request, &profile, &[start.clone()], &[], None).tag
                         );
-                        assert_eq!(
-                            nbt::list_values(nbt::field(tag, "Rotation").unwrap())[1],
-                            json!([5, 12.0])
-                        );
-                        assert!(nbt::field(tag, "UUID").is_some());
-                        seen += 1;
+                        let actual = nbt::list_values(nbt::field(&data.tag, "entities").unwrap());
+                        assert_eq!(actual.len(), if [x, z] == owner { 16 } else { 0 });
+                        for (i, tag) in actual.iter().enumerate() {
+                            assert_eq!(nbt::field(tag, "block_pos").unwrap(), &json!([11, anchor]));
+                            let (key, expected) = if i < 12 {
+                                (
+                                    "Facing",
+                                    expected_3d[rotation][match mirror {
+                                        1 => [0, 1, 3, 2, 4, 5][i % 6],
+                                        2 => [0, 1, 2, 3, 5, 4][i % 6],
+                                        _ => i % 6,
+                                    }],
+                                )
+                            } else {
+                                (
+                                    "facing",
+                                    (match mirror {
+                                        1 => [2, 1, 0, 3][i - 12],
+                                        2 => [0, 3, 2, 1][i - 12],
+                                        _ => i - 12,
+                                    } + rotation)
+                                        % 4,
+                                )
+                            };
+                            assert_eq!(nbt::field(tag, key).unwrap(), &json!([3, expected]));
+                            assert_eq!(
+                                nbt::field(tag, "Item").unwrap(),
+                                &json!([10,{"id":[8,"minecraft:diamond"],"count":[3,1]}])
+                            );
+                            assert_eq!(
+                                nbt::list_values(nbt::field(tag, "Rotation").unwrap())[1],
+                                json!([5, 12.0])
+                            );
+                            let yaw = match mirror {
+                                1 => 135.0,
+                                2 => -45.0,
+                                _ => 45.0,
+                            } + rotation as f64 * 90.0;
+                            assert_eq!(
+                                nbt::list_values(nbt::field(tag, "Rotation").unwrap())[0],
+                                json!([5, yaw])
+                            );
+                            let raw = [if mirror == 2 { 1.0 - 16.1 } else { 16.1 }, 1.5, 0.5];
+                            let point = match rotation {
+                                1 => [1.0 - raw[2], raw[1], raw[0]],
+                                2 => [1.0 - raw[0], raw[1], 1.0 - raw[2]],
+                                3 => [raw[2], raw[1], 1.0 - raw[0]],
+                                _ => raw,
+                            };
+                            let expected: Vec<_> = (0..3)
+                                .map(|j| json!([6, point[j] + (origin[j] + offset[j]) as f64]))
+                                .collect();
+                            assert_eq!(nbt::list_values(nbt::field(tag, "Pos").unwrap()), expected);
+                            assert!(nbt::field(tag, "UUID").is_some());
+                            seen += 1;
+                        }
                     }
                 }
+                assert_eq!(seen, 16);
             }
-            assert_eq!(seen, 16);
         }
     }
     #[test]

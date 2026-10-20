@@ -90,8 +90,12 @@ final class FlatTerrainProfile {
         TerrainFeatureProfile.export(registry, biomes, entries, palette, world, null, seed, List.of(), b -> effective);
         world.add("structures", StructureProfile.export(registry, biomes, palette, structures.restrict(settings.structureOverrides())));
         GeologyProfile.export(registry, biomes, entries, palette, world, minY, height, source.generator().getSeaLevel(), b -> effective);
-        TerrainFeatureProfile.finishReplacementTables(entries, palette);
         DecorationProfile.finishPlacements(world.getAsJsonArray("decorations"), palette, minY, height);
+        int beforeStructureTransforms = palette.size();
+        StructureProfile.finishMaterials(world.getAsJsonObject("structures"),palette);
+        if (palette.size() != beforeStructureTransforms)
+            DecorationProfile.finishPlacements(world.getAsJsonArray("decorations"), palette, minY, height);
+        TerrainFeatureProfile.finishReplacementTables(entries, palette);
         DecorationProfile.finishCurrentSurvival(world, palette);
         DecorationProfile.finishGenerationLighting(world,skyLight);
         DecorationProfile.materialFlags(world, palette);
