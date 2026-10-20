@@ -11,13 +11,24 @@ import net.minecraft.world.level.block.*;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.levelgen.structure.templatesystem.*;
+import net.minecraft.world.level.levelgen.structure.structures.RuinedPortalPiece;
+import net.minecraft.world.level.levelgen.structure.structures.RuinedPortalStructure;
 import java.util.*;
 
 /** Effective ruined-portal templates and registry predicates for native placement. */
 final class PortalProfile {
-    static boolean supported(JsonObject config) {
-        return config.getAsJsonArray("setups").asList().stream().map(JsonElement::getAsJsonObject)
-                .allMatch(s->s.get("placement").getAsString().equals("in_nether")&&!s.get("can_be_cold").getAsBoolean());
+    @SuppressWarnings("unchecked")
+    static boolean supported(RuinedPortalStructure structure) {
+        // createState runs before registry export and receives no registry provider.
+        // Read the effective setups directly, including datapack overrides.
+        try {
+            var field=RuinedPortalStructure.class.getDeclaredField("setups");field.setAccessible(true);
+            var setups=(List<RuinedPortalStructure.Setup>)field.get(structure);
+            return !setups.isEmpty() && setups.stream().allMatch(s->
+                    s.placement()==RuinedPortalPiece.VerticalPlacement.IN_NETHER && !s.canBeCold());
+        } catch(ReflectiveOperationException error) {
+            throw new IllegalStateException("Cannot read registered ruined-portal setups",error);
+        }
     }
     static JsonObject export(StructureProfile out) {
         var kit=new JsonObject();var templates=new JsonArray();

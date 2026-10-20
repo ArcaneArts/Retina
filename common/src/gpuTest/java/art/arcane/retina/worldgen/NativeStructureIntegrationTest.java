@@ -59,7 +59,8 @@ public final class NativeStructureIntegrationTest {
             var stateGenerator=new RetinaChunkGenerator(new RetinaBiomeSource(biomes,256,.55f),-64,384,64,48,.008f,"mca");
             var structureState=stateGenerator.createState(registry.lookupOrThrow(Registries.STRUCTURE_SET),net.minecraft.world.level.levelgen.RandomState.create(registry.lookupOrThrow(Registries.NOISE),SEED,registry.lookupOrThrow(Registries.NOISE_SETTINGS).getOrThrow(NoiseGeneratorSettings.OVERWORLD).value()),SEED);
             require(structureState.possibleStructureSets().stream().noneMatch(s->s.value().placement() instanceof net.minecraft.world.level.levelgen.structure.placement.ConcentricRingsStructurePlacement),"unsupported stronghold searches are not scheduled");
-            require(structureState.possibleStructureSets().stream().anyMatch(s->s.unwrapKey().orElseThrow().identifier().toString().equals("minecraft:villages")),"village placement remains available for locate");
+            require(structureState.possibleStructureSets().stream().anyMatch(s->s.unwrapKey()
+                    .map(key->key.identifier().toString().equals("minecraft:villages")).orElse(false)),"village placement remains available for locate");
             event("native_structure_state","\"sets\":"+structureState.possibleStructureSets().size());
             villageTerrainChecks(data,profile,nativeTerrain);
             villageGrassChecks(data,profile,nativeTerrain);

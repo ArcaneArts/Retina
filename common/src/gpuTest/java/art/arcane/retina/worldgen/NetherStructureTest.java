@@ -33,6 +33,10 @@ public final class NetherStructureTest {
                     settings.value(), StructureProfile.Context.of(resources), true, false, true);
             var profile = JsonParser.parseString(exported.json()).getAsJsonObject();
             Files.createDirectories(Path.of("build/nether"));
+            if (Arrays.asList(args).contains("--state-only")) {
+                StructureStateIntegrationTest.run(registry, resources, exported);
+                return;
+            }
             if (Arrays.asList(args).contains("--exclusions-only")) {
                 StructureExclusionTest.run(registry, resources, exported);
                 return;
@@ -126,6 +130,7 @@ public final class NetherStructureTest {
             require(!disabled.has("fortress") && !fixed.has("fortress"), "disabled/ineligible sources do not export fortress geometry");
             FortressProfileTest.run(registry, nativeStructures, Arrays.asList(exported.materials()));
             int checked = selectionChecks(profile, registry);
+            StructureStateIntegrationTest.run(registry, resources, exported);
             StructureExclusionTest.run(registry, resources, exported);
             GenerationStepIntegrationTest.run(registry, profile, exported.materials());
             NetherGenerationIntegrationTest.run(profile, exported.materials());
