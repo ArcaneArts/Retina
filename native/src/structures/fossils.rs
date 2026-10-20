@@ -126,12 +126,12 @@ pub(super) fn dried_ghast(
     kit: &Profile,
     request: ChunkRequest,
     blocks: &mut [u16],
-) -> bool {
+) -> Option<usize> {
     let b = piece.bounds;
     let center = std::array::from_fn(|i| b[i] + (b[i + 3] - b[i] + 1) / 2);
     let mut random = Random::new(Random::new(request.seed).long() ^ position_seed(center));
     if random.float() >= 0.5 {
-        return false;
+        return None;
     }
     let x = b[0] + random.int((b[3] - b[0] + 1) as u32) as i32;
     let z = b[2] + random.int((b[5] - b[2] + 1) as u32) as i32;
@@ -141,14 +141,14 @@ pub(super) fn dried_ghast(
         || y < request.min_y
         || y >= request.min_y + request.height as i32
     {
-        return false;
+        return None;
     }
     let index = (y - request.min_y) as usize * 256
         + z.rem_euclid(16) as usize * 16
         + x.rem_euclid(16) as usize;
     if !kit.air.contains(&blocks[index]) {
-        return false;
+        return None;
     }
     blocks[index] = kit.dried_ghast[random.int(4) as usize];
-    true
+    Some(index)
 }

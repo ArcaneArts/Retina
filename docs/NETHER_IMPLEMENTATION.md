@@ -849,9 +849,73 @@ structures and features at the proper generation step is still required. The
 Java structure-state advertisement and live `/locate`/gameplay checks are also
 part of the remaining integration work.
 
+## Cycle 4h: shared structure and feature generation steps
+
+Source-ordered profiles now place structures and features in one native dependency
+stream. Structure definitions retain registry order within their configured step,
+followed by that step's sorted feature roots. Loaded bastions and ruined portals
+run in `surface_structures`; fortresses and fossils run in
+`underground_decoration`, before the Nether ores in that same step. This follows
+the loaded Minecraft definitions rather than assuming all structures run last.
+
+Structure processors, supports, and portal postprocessing read earlier accepted
+writes. Later features read the resulting blocks and heightmaps, including across
+chunk and region boundaries. Portal replay still computes the complete footprint
+once, now against its preceding generation stages. Start/locate planning does not
+render a portal or populate its placement cache with a base-only snapshot.
+
+Chunk and MCA replay share the ordered commands and metadata events. Accepted
+changes to a different block remove old block entities; state changes within the
+same block retain their data. Rejected placements do not remove data. Scheduled
+block/fluid ticks preserve the first type/position update in generation order,
+even when a later write replaces its block. Structure entities and shape updates
+are retained. Existing non-source-ordered profiles retain their legacy pipeline.
+Combined dependency planning and command replay use the existing vegetation-plan
+and vegetation timing counters; these are not feature-only costs in this mode.
+
+`netherStructureTest` includes a synthetic feature/structure chain with two
+structure steps, cross-chunk predicates, heightmap placement, chest replacement,
+negative coordinates, and a deliberately wrong-step control. Eighteen independent
+chunks and cold concurrent reverse replay agree; nine chunks also match saved
+blocks and metadata across four regions. Rust tests separately check rejected
+writes, same-block state changes, replacement without stale data revival, and
+interleaved tick order and deduplication.
+
+The full loaded five-biome profile is also generated with terrain, decorations,
+structures and lighting enabled together. The initial 1,024-chunk negative-X
+region contains a fortress, six fossils and a ruined portal, seven block entities,
+and 9,798 fluid updates, along with glowstone, quartz, gold, ancient debris and
+both forest stems. Eleven corner/interior/structure probes compare 720,896 voxels
+and metadata with independent chunks, then with a cold profile requested
+concurrently in reverse order. Start-only queries precede cold generation, and
+repeat publication preserves the region byte for byte. This region did not
+contain a bastion; dedicated bastion coverage remains required.
+
+Run the combined fixture independently with:
+
+```sh
+./gradlew -PretinaHostOnly :common:netherStructureTest --args=--combined-only
+```
+
+Reports are in `build/nether/combined-generation.json`, with the saved region
+location in `combined-regions-path.txt`. The synthetic profile and region paths
+are in `generation-step-fixture.json` and `generation-step-regions-path.txt`.
+The first combined region generation/publication took 11.06 seconds on Metal /
+Apple M4 Max; that harness observation includes structures and lighting and is not
+a comparison with earlier terrain-only or decoration-only measurements.
+
+The host Fabric/NeoForge build and `netherStructureTest`, `structureTest`,
+`flatTest`, `nativeGpuTest`, `netherFeatureTest`, and `netherProfileTest` pass,
+including 102 Rust unit tests and three native GPU integration tests.
+
+Production Nether activation remains deferred. Bastion-specific validation,
+applicable structure-set exclusions, Java structure-state advertisement, live
+locate/spawning/progression, dimension integration and the final runtime matrix
+remain required.
+
 ## Remaining cycles
 
 4. Nether bastion validation, applicable structure-set exclusions,
-   structure/feature ordering and gameplay progression checks.
+   Java structure-state advertisement and gameplay progression checks.
 5. Automatic activation and dimension lifecycle, lighting, and portal integration.
 6. Both-loader runtime validation, regression coverage, visual QA, and benchmarks.

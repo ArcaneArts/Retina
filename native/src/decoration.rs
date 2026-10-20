@@ -11,12 +11,13 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 
 mod attachment;
 mod blocks;
-mod flat_features;
 pub mod counts;
+pub(crate) mod dependencies;
 pub mod diagnostics;
 mod distribution;
-pub(crate) mod dependencies;
 mod fallen;
+mod flat_features;
+pub(crate) mod generation;
 mod mushroom;
 pub mod pairs;
 mod patch;
@@ -66,6 +67,8 @@ pub struct Recipe {
     pub source: String,
     #[serde(default)]
     pub root_order: u32,
+    #[serde(default)]
+    pub generation_step: u32,
     /// Horizontal writes from the feature origin; root placement offsets are separate.
     /// Required by source-root dependency replay; legacy profiles may omit it.
     #[serde(default)]
@@ -92,7 +95,10 @@ pub enum Kind {
     #[serde(rename = "nether_feature")]
     NetherFeature { nether: patch::nether::Feature },
     #[serde(rename = "flat_lake")]
-    FlatLake { #[serde(flatten)] lake: flat_features::Lake },
+    FlatLake {
+        #[serde(flatten)]
+        lake: flat_features::Lake,
+    },
     #[serde(rename = "void_platform")]
     VoidPlatform { platform: [u16; 2] },
     #[serde(rename = "disk")]
@@ -190,9 +196,13 @@ impl Recipe {
         }
         let valid = |id: u16| (id as usize) < material_count;
         let okay = match &self.feature {
-            Kind::NetherFeature { nether } => self.placement.is_some() && nether.validate(material_count),
+            Kind::NetherFeature { nether } => {
+                self.placement.is_some() && nether.validate(material_count)
+            }
             Kind::FlatLake { lake } => self.placement.is_some() && lake.validate(material_count),
-            Kind::VoidPlatform { platform } => self.placement.is_some() && platform.iter().all(|&id| valid(id)),
+            Kind::VoidPlatform { platform } => {
+                self.placement.is_some() && platform.iter().all(|&id| valid(id))
+            }
             Kind::Disk { disk } => self.placement.is_some() && disk.validate(material_count),
             Kind::Sequence { features } | Kind::Overlay { features } => {
                 self.placement.is_some()
@@ -1628,7 +1638,14 @@ pub(crate) fn feature_sample(
         .into_iter()
         .filter(|b| b.y >= request.min_y && b.y < request.min_y + request.height as i32)
         .filter(|b| !ticks || b.tick != 0)
-        .map(|b| [b.x, b.y, b.z, i32::from(if ticks { b.tick } else { b.material })])
+        .map(|b| {
+            [
+                b.x,
+                b.y,
+                b.z,
+                i32::from(if ticks { b.tick } else { b.material }),
+            ]
+        })
         .collect())
 }
 
@@ -2120,6 +2137,14 @@ pub fn assemble_carved(
 }
 
 pub fn decorate(profile: Option<&WorldProfile>, placements: &[Placement], blocks: &mut [u16]) {
+    decorate_observed(profile, placements, blocks, |_, _, _| {});
+}
+pub(crate) fn decorate_observed(
+    profile: Option<&WorldProfile>,
+    placements: &[Placement],
+    blocks: &mut [u16],
+    mut write: impl FnMut(usize, u16, u16),
+) {
     let Some(profile) = profile else {
         return;
     };
@@ -2175,8 +2200,10 @@ pub fn decorate(profile: Option<&WorldProfile>, placements: &[Placement], blocks
                 if index + COLUMNS >= blocks.len() || blocks[index + COLUMNS] != 0 {
                     continue;
                 }
+                write(index + COLUMNS, blocks[index + COLUMNS], placement.upper);
                 blocks[index + COLUMNS] = placement.upper;
             }
+            write(index, previous, placement.material);
             blocks[index] = placement.material;
         }
     }
@@ -2486,6 +2513,7 @@ mod tests {
             ],
         };
         let recipe = Recipe {
+            generation_step: 0,
             source: "test:mega_jungle".into(),
             reach: None,
             root_order: 0,

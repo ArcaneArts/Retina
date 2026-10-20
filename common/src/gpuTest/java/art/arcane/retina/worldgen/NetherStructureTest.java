@@ -31,6 +31,11 @@ public final class NetherStructureTest {
             var exported = TerrainProfileData.export(registry, RetinaBiomeSource.fromSelected(source), 0, 256, 42,
                     settings.value(), StructureProfile.Context.of(resources), true, false, true);
             var profile = JsonParser.parseString(exported.json()).getAsJsonObject();
+            Files.createDirectories(Path.of("build/nether"));
+            if (Arrays.asList(args).contains("--combined-only")) {
+                NetherGenerationIntegrationTest.run(profile, exported.materials());
+                return;
+            }
             var nativeStructures = profile.getAsJsonObject("structures");
             var definitions = new HashMap<String, JsonObject>();
             for (var value : nativeStructures.getAsJsonArray("definitions")) {
@@ -112,6 +117,8 @@ public final class NetherStructureTest {
             require(!disabled.has("fortress") && !fixed.has("fortress"), "disabled/ineligible sources do not export fortress geometry");
             FortressProfileTest.run(registry, nativeStructures, Arrays.asList(exported.materials()));
             int checked = selectionChecks(profile, registry);
+            GenerationStepIntegrationTest.run(registry, profile, exported.materials());
+            NetherGenerationIntegrationTest.run(profile, exported.materials());
             FortressAssemblyTest.run(registry, resources, profile, exported.materials());
             FossilIntegrationTest.run(registry, resources, profile, exported.materials());
             PortalIntegrationTest.run(registry, resources, profile, exported.materials());

@@ -190,6 +190,7 @@ impl Heights {
 #[derive(Default)]
 pub struct ChunkData {
     pub tag: Value,
+    pub writes: Vec<(usize, u16)>,
     pub plant_updates: crate::decoration::pairs::Updates,
     pub starts: usize,
     pub pieces: usize,
@@ -608,10 +609,54 @@ pub fn plans(
         .collect::<Result<Vec<_>, String>>()?;
     result.retain(|s| !s.pieces.is_empty());
     result.sort_by_key(|s| (s.chunk[1], s.chunk[0], s.definition));
-    for start in &result {
-        portals::prepare(engine, request, &profile, start)?;
-    }
     Ok(result)
+}
+impl Start {
+    pub(crate) fn affects(&self, request: ChunkRequest) -> bool {
+        let x = request.chunk_x * 16;
+        let z = request.chunk_z * 16;
+        let pad = if self.portal.is_some() { 16 } else { 0 };
+        self.pieces.iter().any(|p| {
+            p.bounds[0] - pad <= x + 15
+                && p.bounds[3] + pad >= x
+                && p.bounds[2] - pad <= z + 15
+                && p.bounds[5] + pad >= z
+        })
+    }
+}
+pub(crate) fn prepare(
+    engine: &TerrainEngine,
+    request: ChunkRequest,
+    profile: &WorldProfile,
+    plans: &[Arc<Start>],
+    prior: Option<&dyn crate::decoration::PriorWorld>,
+) -> Result<(), String> {
+    for start in plans {
+        portals::prepare(engine, request, profile, start, prior)?;
+    }
+    Ok(())
+}
+pub(crate) fn step(definition: &Definition) -> Result<u32, String> {
+    let name = definition.config["step"]
+        .as_str()
+        .unwrap_or("surface_structures");
+    [
+        "raw_generation",
+        "lakes",
+        "local_modifications",
+        "underground_structures",
+        "surface_structures",
+        "strongholds",
+        "underground_ores",
+        "underground_decoration",
+        "fluid_springs",
+        "vegetal_decoration",
+        "top_layer_modification",
+    ]
+    .iter()
+    .position(|&s| s == name)
+    .map(|i| i as u32)
+    .ok_or_else(|| format!("unknown structure generation step {name}"))
 }
 /// Query only requested candidates, sharing the exact production start cache.
 /// Piece planning may sample a height tile; it never rasterizes terrain or saves.
@@ -1153,7 +1198,7 @@ fn build_definition(
     Ok(out)
 }
 
-fn block_name(profile: &WorldProfile, material: u16) -> &str {
+pub(crate) fn block_name(profile: &WorldProfile, material: u16) -> &str {
     &profile.structures.names[material as usize]
 }
 
@@ -1502,8 +1547,28 @@ pub fn apply(
     profile: &WorldProfile,
     plans: &[Arc<Start>],
     columns: &[Column],
-    mut blocks: Option<&mut [u16]>,
+    blocks: Option<&mut [u16]>,
 ) -> ChunkData {
+    apply_inner(request, profile, plans, columns, blocks, false)
+}
+pub(crate) fn apply_tracked(
+    request: ChunkRequest,
+    profile: &WorldProfile,
+    plans: &[Arc<Start>],
+    columns: &[Column],
+    blocks: &mut [u16],
+) -> ChunkData {
+    apply_inner(request, profile, plans, columns, Some(blocks), true)
+}
+fn apply_inner(
+    request: ChunkRequest,
+    profile: &WorldProfile,
+    plans: &[Arc<Start>],
+    columns: &[Column],
+    mut blocks: Option<&mut [u16]>,
+    track: bool,
+) -> ChunkData {
+    let mut writes = Vec::new();
     let p = &profile.structures;
     let chunk_bounds = [
         request.chunk_x * 16,
@@ -1538,6 +1603,7 @@ pub fn apply(
                 &mut plant_updates,
                 &mut fluid_ticks,
                 &mut block_ticks,
+                if track { Some(&mut writes) } else { None },
             );
             let piece = &start.pieces[0];
             let template_id = piece.element.parts[0].template;
@@ -1561,7 +1627,14 @@ pub fn apply(
             count += 1;
             if let (Some(_), Some(kit)) = (&piece.fortress, &p.fortress) {
                 if let Some(output) = blocks.as_deref_mut() {
-                    fortress::supports(piece, kit, request, output, &mut block_entities);
+                    fortress::supports(
+                        piece,
+                        kit,
+                        request,
+                        output,
+                        &mut block_entities,
+                        if track { Some(&mut writes) } else { None },
+                    );
                 }
                 fortress::metadata(piece, kit, request, &mut fluid_ticks, &mut processing);
             }
@@ -1631,6 +1704,9 @@ pub fn apply(
                                     break;
                                 }
                                 output[index] = material;
+                                if track {
+                                    writes.push((index, material));
+                                }
                                 block_entities.remove(&[pos[0], y, pos[2]]);
                             }
                         }
@@ -1714,6 +1790,9 @@ pub fn apply(
                         plant_updates.record(profile, index, material);
                     }
                     placed += 1;
+                    if track {
+                        writes.push((index, material));
+                    }
                     block_entities.remove(&pos);
                     if material != 0 {
                         if let Some(tag) = tag {
@@ -1748,7 +1827,12 @@ pub fn apply(
             }
             if p.definitions[start.definition].kind == "nether_fossil" {
                 if let (Some(kit), Some(output)) = (&p.fossils, blocks.as_deref_mut()) {
-                    placed += usize::from(fossils::dried_ghast(piece, kit, request, output));
+                    if let Some(index) = fossils::dried_ghast(piece, kit, request, output) {
+                        placed += 1;
+                        if track {
+                            writes.push((index, output[index]));
+                        }
+                    }
                 }
             }
         }
@@ -1775,6 +1859,7 @@ pub fn apply(
         );
     }
     ChunkData {
+        writes,
         tag: root,
         plant_updates,
         starts: starts_count,

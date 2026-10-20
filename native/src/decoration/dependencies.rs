@@ -99,10 +99,12 @@ impl Bounds {
     }
 }
 struct Root {
+    definition: Option<usize>,
     ids: Vec<u32>,
     bounds: Bounds,
 }
 struct Output {
+    metadata: Option<crate::structures::ChunkData>,
     writes: Vec<WorldBlock>,
     columns: Map<(i32, i32), Vec<usize>>,
 }
@@ -166,6 +168,7 @@ struct Planner<'a> {
     terrain: Memo<(i32, i32), Field<'static>>,
     anchors: Memo<(usize, i32, i32), Output>,
     anchor_ids: Memo<(i32, i32), Vec<u32>>,
+    starts: Memo<(i32, i32), Vec<Arc<crate::structures::Start>>>,
     job: Option<&'a crate::timings::Timings>,
     retain_prefix: bool,
     columns: Mutex<Map<(usize, i32, i32), Arc<ColumnTile>>>,
@@ -272,6 +275,9 @@ impl Planner<'_> {
     }
     fn anchor(&self, root: usize, x: i32, z: i32) -> Result<Arc<Output>, String> {
         memo(&self.anchors, (root, x, z), || {
+            if let Some(definition) = self.roots[root].definition {
+                return self.structure(root, definition, x, z);
+            }
             let base = self.terrain(x, z)?;
             let available = memo(&self.anchor_ids, (x, z), || {
                 Ok(anchor_ids(&base, self.profile, x, z))
@@ -283,6 +289,7 @@ impl Planner<'_> {
                 .collect::<Vec<_>>()];
             if ids[0].is_empty() {
                 return Ok(Output {
+                    metadata: None,
                     writes: Vec::new(),
                     columns: Map::default(),
                 });
@@ -369,7 +376,83 @@ impl Planner<'_> {
             for (index, block) in writes.iter().enumerate() {
                 columns.entry((block.x, block.z)).or_default().push(index);
             }
-            Ok(Output { writes, columns })
+            Ok(Output {
+                writes,
+                columns,
+                metadata: None,
+            })
+        })
+    }
+    fn structure(&self, root: usize, definition: usize, x: i32, z: i32) -> Result<Output, String> {
+        let request = ChunkRequest {
+            chunk_x: x,
+            chunk_z: z,
+            ..self.request
+        };
+        let starts = memo(&self.starts, (x, z), || {
+            crate::structures::plans(self.engine, request, 1)
+        })?;
+        let starts: Vec<_> = starts
+            .iter()
+            .filter(|s| s.definition == definition && s.affects(request))
+            .cloned()
+            .collect();
+        if starts.is_empty() {
+            return Ok(Output {
+                writes: Vec::new(),
+                columns: Map::default(),
+                metadata: None,
+            });
+        }
+        let base = self.terrain(x, z)?;
+        let view = View {
+            planner: self,
+            before: root,
+            base: base.clone(),
+            columns: Mutex::new(Map::default()),
+        };
+        crate::structures::prepare(self.engine, request, self.profile, &starts, Some(&view))?;
+        let mut blocks = vec![0; request.block_count()];
+        for dz in 0..16 {
+            for dx in 0..16 {
+                let column = self.column(root, x * 16 + dx as i32, z * 16 + dz as i32)?;
+                for y in 0..request.height as usize {
+                    blocks[y * 256 + dz * 16 + dx] = column.material(y);
+                }
+            }
+        }
+        let mut metadata = crate::structures::apply_tracked(
+            request,
+            self.profile,
+            &starts,
+            base.chunk(x, z),
+            &mut blocks,
+        );
+        let mut columns: Map<_, Vec<_>> = Map::default();
+        let writes = std::mem::take(&mut metadata.writes)
+            .into_iter()
+            .enumerate()
+            .map(|(slot, (index, material))| {
+                let bx = x * 16 + (index % 16) as i32;
+                let bz = z * 16 + (index % 256 / 16) as i32;
+                columns.entry((bx, bz)).or_default().push(slot);
+                WorldBlock {
+                    root_order: root as u32,
+                    x: bx,
+                    y: request.min_y + (index / 256) as i32,
+                    z: bz,
+                    material,
+                    role: FEATURE,
+                    upper: 0,
+                    tick: 0,
+                }
+            })
+            .collect();
+        self.check()?;
+        Ok(Output {
+            writes,
+            columns,
+            metadata: Some(metadata),
         })
     }
     fn column(&self, before: usize, x: i32, z: i32) -> Result<Arc<ColumnState>, String> {
@@ -500,7 +583,7 @@ impl Planner<'_> {
     }
 }
 
-pub(crate) fn plan(
+pub(crate) fn generate(
     engine: &TerrainEngine,
     profile: &WorldProfile,
     request: ChunkRequest,
@@ -508,10 +591,10 @@ pub(crate) fn plan(
     job: Option<&crate::timings::Timings>,
     mut details: Option<&mut diagnostics::Planning>,
     retain_prefix: bool,
-) -> Result<Vec<Vec<Placement>>, String> {
+) -> Result<super::generation::Generation, String> {
     let started = std::time::Instant::now();
     let diagnostic = std::env::var("RETINA_DEPENDENCY_DIAGNOSTICS").as_deref() == Ok("1");
-    let mut groups = BTreeMap::<u32, Root>::new();
+    let mut groups = BTreeMap::<(u32, u8, u32), Root>::new();
     for (id, recipe) in profile.decorations.iter().enumerate() {
         if !profile
             .biomes
@@ -521,12 +604,37 @@ pub(crate) fn plan(
             continue;
         }
         let bounds = Bounds::recipe(recipe)?;
-        let root = groups.entry(recipe.root_order).or_insert(Root {
-            ids: Vec::new(),
-            bounds,
-        });
+        let root = groups
+            .entry((recipe.generation_step, 1, recipe.root_order))
+            .or_insert(Root {
+                definition: None,
+                ids: Vec::new(),
+                bounds,
+            });
         root.ids.push(id as u32);
         root.bounds.union(bounds);
+    }
+    for (id, definition) in profile.structures.definitions.iter().enumerate() {
+        if definition.unimplemented
+            || !profile
+                .structures
+                .sets
+                .iter()
+                .any(|s| s.entries.iter().any(|e| e.definition == id))
+        {
+            continue;
+        }
+        groups.insert(
+            (crate::structures::step(definition)?, 0, id as u32),
+            Root {
+                ids: Vec::new(),
+                definition: Some(id),
+                bounds: Bounds {
+                    x: [0, 15],
+                    z: [0, 15],
+                },
+            },
+        );
     }
     let planner = Planner {
         engine,
@@ -536,6 +644,7 @@ pub(crate) fn plan(
         terrain: Mutex::new(Map::default()),
         anchors: Mutex::new(Map::default()),
         anchor_ids: Mutex::new(Map::default()),
+        starts: Mutex::new(Map::default()),
         job,
         retain_prefix,
         columns: Mutex::new(Map::default()),
@@ -583,7 +692,9 @@ pub(crate) fn plan(
             .lock()
             .map_err(|_| "dependency cache poisoned")?,
     );
-    let mut outputs = Vec::with_capacity(targets.len());
+    let starts = crate::structures::plans(engine, request, side as i32)?;
+    let mut result = super::generation::Generation::new(request, side, profile, &starts);
+
     for key in targets {
         let slot = Arc::try_unwrap(
             cache
@@ -592,27 +703,33 @@ pub(crate) fn plan(
         )
         .map_err(|_| "dependency anchor still in use")?;
         let output = slot.into_inner().ok_or("unfinished dependency anchor")??;
-        outputs.push(
-            Arc::try_unwrap(output)
-                .map_err(|_| "dependency output still in use")?
-                .writes,
-        );
+        let output = Arc::try_unwrap(output).map_err(|_| "dependency output still in use")?;
+        for block in output.writes {
+            result.push(request, side, block);
+        }
+        if let Some(metadata) = output.metadata {
+            result.event(request, side, key.1, key.2, metadata);
+        }
     }
     drop(cache);
     drop(planner);
-    let result = distribution::distribute(
-        outputs,
-        request,
-        request.chunk_x,
-        request.chunk_z,
-        side,
-        true,
-    );
     diagnostics::record(
         merge_started,
         details.map(|d| &mut d.distribution_wall_nanos),
     );
     Ok(result)
+}
+
+pub(crate) fn plan(
+    engine: &TerrainEngine,
+    profile: &WorldProfile,
+    request: ChunkRequest,
+    side: usize,
+    job: Option<&crate::timings::Timings>,
+    details: Option<&mut diagnostics::Planning>,
+    retain_prefix: bool,
+) -> Result<Vec<Vec<Placement>>, String> {
+    Ok(generate(engine, profile, request, side, job, details, retain_prefix)?.placements)
 }
 
 #[cfg(test)]
