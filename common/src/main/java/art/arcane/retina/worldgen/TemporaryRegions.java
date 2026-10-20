@@ -354,6 +354,9 @@ final class TemporaryRegions implements AutoCloseable {
             if (closed) return null;
             var entry = entries.get(key(position));
             if (entry == null) return null;
+            // Existing/partial MCA reads can bypass asynchronous preparation.
+            // Promote any shared preview before publication waits for it too.
+            entry.admission.promote();
             entry.pins++; users++; lease = new Lease(entry);
         }
         try (lease) {
