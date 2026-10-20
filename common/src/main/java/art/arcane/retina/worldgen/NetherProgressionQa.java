@@ -1,8 +1,6 @@
 package art.arcane.retina.worldgen;
 
 import art.arcane.retina.Retina;
-import net.minecraft.commands.CommandResultCallback;
-import net.minecraft.commands.CommandSource;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.registries.Registries;
@@ -10,9 +8,6 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtAccounter;
 import net.minecraft.nbt.NbtIo;
 import net.minecraft.nbt.NbtOps;
-import net.minecraft.network.chat.ClickEvent;
-import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.contents.TranslatableContents;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -138,7 +133,7 @@ final class NetherProgressionQa {
                 require(player.level() == server.overworld(), "progression fixture begins in the Overworld");
                 if (!TerrainQa.completed(server.overworld())) return;
                 position(player, level, ORIGIN);
-                run.locate = locate(player);
+                run.locate = InteractiveLocateQa.locate(player, "minecraft:fortress");
                 run.since = server.getTickCount();
                 run.phase = 2;
             }
@@ -238,7 +233,7 @@ final class NetherProgressionQa {
                 player.setGameMode(GameType.CREATIVE);
                 // Recheck the actual command after loaded chunks and loot have changed.
                 position(player, level, ORIGIN);
-                run.locate = locate(player);
+                run.locate = InteractiveLocateQa.locate(player, "minecraft:fortress");
                 run.phase = 6;
             }
             case 6 -> {
@@ -258,35 +253,6 @@ final class NetherProgressionQa {
             }
             default -> throw new IllegalStateException("Unknown progression phase " + run.phase);
         }
-    }
-
-    private static CompletableFuture<BlockPos> locate(ServerPlayer player) {
-        var result = new CompletableFuture<BlockPos>();
-        var receiver = new CommandSource() {
-            public boolean acceptsSuccess() { return true; }
-            public boolean acceptsFailure() { return true; }
-            public boolean shouldInformAdmins() { return false; }
-            public void sendSystemMessage(Component message) {
-                player.sendSystemMessage(message);
-                try {
-                    require(message.getContents() instanceof TranslatableContents text
-                            && text.getKey().equals("commands.locate.structure.success"), "locate command succeeds: " + message.getString());
-                    var text = (TranslatableContents) message.getContents();
-                    require(text.getArgs()[0].equals("minecraft:fortress"), "command locates requested fortress");
-                    var coordinates = (Component) text.getArgs()[1];
-                    var click = (ClickEvent.SuggestCommand) coordinates.getStyle().getClickEvent();
-                    var fields = click.command().split(" ");
-                    result.complete(new BlockPos(Integer.parseInt(fields[2]), 0, Integer.parseInt(fields[4])));
-                } catch (Throwable error) { result.completeExceptionally(error); }
-            }
-        };
-        var server = player.level().getServer();
-        var source = player.createCommandSourceStack().withSource(receiver)
-                .withPermission(server.createCommandSourceStack().permissions());
-        require(source.callback() == CommandResultCallback.EMPTY, "interactive locate path has no result callback");
-        server.getCommands().performPrefixedCommand(source, "locate structure minecraft:fortress");
-        require(!result.isDone(), "interactive locate delivers asynchronously");
-        return result;
     }
 
     private static void inspectFortress(ServerLevel level, Run run) {

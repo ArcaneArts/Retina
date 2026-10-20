@@ -15,6 +15,9 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.EntitySpawnReason;
+import net.minecraft.world.entity.Mob;
+import net.minecraft.world.level.ServerLevelAccessor;
 
 import java.util.function.Consumer;
 
@@ -47,6 +50,12 @@ public final class FabricPlatform implements RetinaPlatform {
     public void registerServerHooks(Consumer<MinecraftServer> endTick, Consumer<ServerLevel> unload) {
         ServerTickEvents.END_SERVER_TICK.register(endTick::accept);
         ServerLevelEvents.UNLOAD.register((server, level) -> unload.accept(level));
+    }
+
+    @Override
+    public boolean finalizeStructureMob(Mob mob, ServerLevelAccessor level) {
+        mob.finalizeSpawn(level, level.getCurrentDifficultyAt(mob.blockPosition()), EntitySpawnReason.STRUCTURE, null);
+        return true;
     }
 
     @Override

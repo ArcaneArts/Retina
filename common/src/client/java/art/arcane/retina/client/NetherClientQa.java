@@ -15,8 +15,9 @@ final class NetherClientQa {
     static void reset() { entered = false; roundtrips = 0; }
 
     static boolean ready(Minecraft minecraft) {
+        boolean structures = Boolean.getBoolean("retina.qa.nether.structures");
         boolean progression = Boolean.getBoolean("retina.qa.nether.progression");
-        if (!Boolean.getBoolean("retina.qa.nether.lifecycle") && !progression) return true;
+        if (!Boolean.getBoolean("retina.qa.nether.lifecycle") && !progression && !structures) return true;
         if (minecraft.level == null || minecraft.player == null) return false;
         var dimension = minecraft.level.dimension();
         var payload = TerrainDebugEntry.remoteStats();
@@ -31,8 +32,8 @@ final class NetherClientQa {
             entered = false;
             roundtrips++;
             Retina.LOGGER.info("QA_EVT {\"event\":\"{}\",\"status\":\"pass\",\"context\":{\"dimension\":\"minecraft:overworld\",\"trip\":{}}}",
-                    progression ? "nether_client_progression_return" : "nether_client_roundtrip", roundtrips);
+                    structures ? "nether_client_structure_return" : progression ? "nether_client_progression_return" : "nether_client_roundtrip", roundtrips);
         }
-        return roundtrips >= (progression ? 1 : 2);
+        return roundtrips >= (progression || structures ? 1 : 2);
     }
 }

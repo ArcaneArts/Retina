@@ -78,6 +78,41 @@ final class PortalIntegrationTest {
         var report=new JsonObject();report.addProperty("source_piece_replays",cases);report.addProperty("compared_chunks",chunks);report.addProperty("compared_voxels",chunks*65536L);report.addProperty("waterlogged_placements",waterloggedPlacements);report.addProperty("scheduled_block_ticks",scheduledBlockTicks);
         Files.writeString(Path.of("build/nether/portal-placement.json"),report.toString());System.out.println("QA_EVT {\"event\":\"nether_portal_placement\",\"status\":\"pass\",\"context\":"+report+"}");
     }
+    /** Replay the ordinary integrated-world portal whose lava processor removes its chest. */
+    static void runtimeReference(RegistryAccess registry, ResourceManager resources, JsonObject source, BlockState[] materials) throws Exception {
+        var variant = fixture(source);
+        var structures = source.getAsJsonObject("structures");
+        var definitions = structures.getAsJsonArray("definitions");
+        var original = structures.getAsJsonArray("sets").asList().stream().map(JsonElement::getAsJsonObject)
+                .filter(set -> set.getAsJsonArray("entries").asList().stream().anyMatch(value ->
+                        definitions.get(value.getAsJsonObject().get("definition").getAsInt()).getAsJsonObject()
+                                .get("id").getAsString().equals("minecraft:ruined_portal_nether"))).findFirst().orElseThrow().deepCopy();
+        var remapped = variant.getAsJsonObject("structures").getAsJsonArray("definitions");
+        var indices = new HashMap<Integer, Integer>();
+        for (int i = 0; i < definitions.size(); i++) {
+            var definition = definitions.get(i).getAsJsonObject();
+            if (definition.get("id").getAsString().equals("minecraft:ruined_portal_nether")) indices.put(i, 0);
+            else { indices.put(i, remapped.size()); remapped.add(definition.deepCopy()); }
+        }
+        for (var value : original.getAsJsonArray("entries")) {
+            var entry = value.getAsJsonObject();
+            int index = indices.get(entry.get("definition").getAsInt());
+            require(index == 0 || remapped.get(index).getAsJsonObject().get("unimplemented").getAsBoolean(), "other portal slots remain reserved");
+            entry.addProperty("definition", index);
+        }
+        var sets = new JsonArray(); sets.add(original);
+        variant.getAsJsonObject("structures").add("sets", sets);
+        var base = variant.deepCopy();
+        base.add("structures", JsonParser.parseString("{\"templates\":[],\"definitions\":[],\"pools\":{},\"sets\":[]}"));
+        var terrain = NativeTerrain.instance();
+        int profile = terrain.registerProfile(variant.toString()), baseline = terrain.registerProfile(base.toString());
+        var work = Files.createTempDirectory(Path.of("build/nether"), "portal-live-reference-");
+        try (var storage = LevelStorageSource.createDefault(work).createAccess("templates")) {
+            var manager = new StructureTemplateManager(resources, storage, DataFixers.getDataFixer(), registry.lookupOrThrow(Registries.BLOCK));
+            var plan = plan(terrain, profile, 123456789L, variant, materials, -1, manager, new ChunkPos(24, 21));
+            placement(registry, resources, manager, terrain, profile, baseline, 123456789L, plan, materials, variant, false);
+        }
+    }
     static String templateName(int index){return "minecraft:ruined_portal/"+(index<10?"portal_"+(index+1):"giant_portal_"+(index-9));}
     static JsonObject custom(JsonObject source) {
         var fixture=source.deepCopy();var structures=fixture.getAsJsonObject("structures");var config=structures.getAsJsonArray("definitions").get(0).getAsJsonObject().getAsJsonObject("config");
@@ -108,7 +143,15 @@ final class PortalIntegrationTest {
         return plan(terrain,profile,seed,fixture,materials,forcedTemplate,manager,new ChunkPos(0,0));
     }
     static Plan plan(NativeTerrain terrain,int profile,long seed,JsonObject fixture,BlockState[] materials,int forcedTemplate,StructureTemplateManager manager,ChunkPos at) {
-        long randomSeed=mix(seed^(long)at.x()*341873128712L^(long)at.z()*132897987541L);var random=RandomSource.create(randomSeed);random.nextInt(1);
+        var set=fixture.getAsJsonObject("structures").getAsJsonArray("sets").get(0).getAsJsonObject();
+        long randomSeed=mix(seed^(long)at.x()*341873128712L^(long)at.z()*132897987541L^set.getAsJsonObject("placement").get("salt").getAsLong());
+        var random=RandomSource.create(randomSeed);
+        var choices=new ArrayList<JsonObject>();set.getAsJsonArray("entries").forEach(value->choices.add(value.getAsJsonObject()));
+        while(true) {
+            int pick=random.nextInt(choices.stream().mapToInt(e->e.get("weight").getAsInt()).sum()),selectedSlot=0;
+            for(;selectedSlot<choices.size();selectedSlot++){int weight=choices.get(selectedSlot).get("weight").getAsInt();if(pick<weight)break;pick-=weight;}
+            if(choices.remove(selectedSlot).get("definition").getAsInt()==0)break;
+        }
         var setups=fixture.getAsJsonObject("structures").getAsJsonArray("definitions").get(0).getAsJsonObject().getAsJsonObject("config").getAsJsonArray("setups");
         int selected=0;
         if(setups.size()>1) {
@@ -179,6 +222,10 @@ final class PortalIntegrationTest {
         var saved=StructureStart.loadStaticStart(new StructurePieceSerializationContext(resources,registry,manager),tag,seed);
         require(saved!=null&&saved.isValid()&&saved.getBoundingBox().equals(box),"actual portal floor/template/mirror/pivot bounds "+plan);
         require(terrain.queryStructureStarts(request(profile,seed,start.x(),start.z()),new int[]{start.x(),start.z(),0})[0]==0,"portal locate shares accepted start");
+        if (seed == 123456789L && start.equals(new ChunkPos(24, 21))) {
+            require(reference.entities.isEmpty(), "Minecraft source also removes the integrated fixture's submerged chest");
+            System.out.println("QA_EVT {\"event\":\"nether_submerged_portal_reference\",\"status\":\"pass\",\"context\":{\"seed\":123456789,\"x\":384,\"z\":336,\"source_block_entities\":0}}");
+        }
         int count=0;var generated=new LinkedHashMap<ChunkPos,short[]>();
         for(int z=Math.floorDiv(minZ,16);z<=Math.floorDiv(maxZ,16);z++)for(int x=Math.floorDiv(minX,16);x<=Math.floorDiv(maxX,16);x++) {
             var at=new ChunkPos(x,z);var expected=baseline.computeIfAbsent(at,k->blocks(terrain,request(base,seed,k.x(),k.z()))).clone();

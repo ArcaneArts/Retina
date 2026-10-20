@@ -41,6 +41,15 @@ public final class NetherStructureTest {
                 StructureExclusionTest.run(registry, resources, exported);
                 return;
             }
+            if (Arrays.asList(args).contains("--portals-only")) {
+                PortalIntegrationTest.run(registry, resources, profile, exported.materials());
+                PortalIntegrationTest.runtimeReference(registry, resources, profile, exported.materials());
+                return;
+            }
+            if (Arrays.asList(args).contains("--portal-runtime-only")) {
+                PortalIntegrationTest.runtimeReference(registry, resources, profile, exported.materials());
+                return;
+            }
             if (Arrays.asList(args).contains("--bastions-only")) {
                 BastionIntegrationTest.run(registry, resources, profile, exported.materials());
                 return;

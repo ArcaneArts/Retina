@@ -10,8 +10,15 @@ import net.minecraft.core.registries.Registries;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.level.WorldGenRegion;
+import net.minecraft.world.entity.EntitySpawnReason;
+import net.minecraft.world.entity.Mob;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.ServerLevelAccessor;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.neoforge.event.EventHooks;
+import net.neoforged.neoforge.event.entity.living.FinalizeSpawnEvent;
 import net.neoforged.neoforge.event.level.LevelEvent;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import net.neoforged.neoforge.network.PacketDistributor;
@@ -54,6 +61,24 @@ public final class NeoForgePlatform implements RetinaPlatform {
         NeoForge.EVENT_BUS.addListener((LevelEvent.Unload event) -> {
             if (event.getLevel() instanceof ServerLevel level) unload.accept(level);
         });
+        if (Boolean.getBoolean("retina.qa.nether.structures")) {
+            NeoForge.EVENT_BUS.addListener((FinalizeSpawnEvent event) -> {
+                var mob = event.getEntity();
+                if (event.getSpawnType() != EntitySpawnReason.STRUCTURE
+                        || !mob.level().dimension().equals(Level.NETHER)) return;
+                if (mob.isAddedToLevel() || !(event.getLevel() instanceof WorldGenRegion))
+                    throw new IllegalStateException("Structure initialization must use the generation region before registration");
+                Retina.LOGGER.info("QA_EVT {\"event\":\"nether_structure_spawn_hook\",\"status\":\"pass\",\"context\":{\"uuid\":\"{}\"}}",
+                        mob.getUUID());
+            });
+        }
+    }
+
+    @Override
+    public boolean finalizeStructureMob(Mob mob, ServerLevelAccessor level) {
+        EventHooks.finalizeMobSpawn(mob, level, level.getCurrentDifficultyAt(mob.blockPosition()),
+                EntitySpawnReason.STRUCTURE, null);
+        return !mob.isSpawnCancelled();
     }
 
     @Override

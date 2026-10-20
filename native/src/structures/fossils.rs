@@ -98,6 +98,7 @@ pub(super) fn build(
         parts: vec![Part {
             template,
             ignore_air: true,
+            finalize_entities: false,
             processors: json!([]),
             program: Arc::default(),
         }],
