@@ -27,13 +27,19 @@ public final class AutomaticGenerationQa {
             require(server.getWorldData().isFlatWorld() == runtime.selectedSource().flat(), "flat gameplay metadata");
             require(runtime.getSpawnHeight(level) == source.getSpawnHeight(level), "source spawn height");
         } else require(source == runtime, "legacy world is not wrapped twice");
-        for (var dimension : java.util.List.of(Level.NETHER, Level.END)) {
-            var other = server.getLevel(dimension);
-            if (other != null) {
-                var key = net.minecraft.resources.ResourceKey.create(Registries.LEVEL_STEM, dimension.identifier());
-                require(other.getChunkSource().getGenerator() == stems.getValueOrThrow(key).generator(), "deferred dimension unchanged");
-            }
+        var nether = server.getLevel(Level.NETHER);
+        if (nether != null) {
+            var original = stems.getValueOrThrow(LevelStem.NETHER).generator();
+            require(nether.getChunkSource().getGenerator() instanceof RetinaChunkGenerator, "Nether runtime activation");
+            var adapted = (RetinaChunkGenerator) nether.getChunkSource().getGenerator();
+            require(adapted.selectedSource().generator() == original, "Nether saved source remains original");
+            require(adapted.dimension().equals(Level.NETHER) && adapted.previewCache().dimension().equals(Level.NETHER),
+                    "Nether request/storage identity");
+            require(adapted.profile().nativeId() != runtime.profile().nativeId(), "independent native dimension profiles");
+            require(adapted.selectedSource().dimension() == nether.dimensionType(), "effective Nether dimension properties retained");
         }
+        var end = server.getLevel(Level.END);
+        if (end != null) require(end.getChunkSource().getGenerator() == stems.getValueOrThrow(LevelStem.END).generator(), "End unchanged");
         TerrainRegistryQa.check(runtime);
         Retina.LOGGER.info("QA_EVT {\"event\":\"minecraft_automatic_activation\",\"status\":\"pass\",\"context\":{\"source\":\"{}\",\"flat\":{},\"dedicated\":{}}}",
                 source.getClass().getSimpleName(), level.isFlat(), server.isDedicatedServer());
@@ -43,15 +49,26 @@ public final class AutomaticGenerationQa {
         if (!Boolean.getBoolean("retina.qa.automatic") || checked || server.getTickCount() < 40) return;
         checked = true;
         check(server);
-        var level = server.overworld();
         boolean reopened = Boolean.getBoolean("retina.qa.automatic.reopen");
-        if (reopened) require(level.getBlockState(EDIT).is(Blocks.DIAMOND_BLOCK), "dedicated saved edit survives reopen");
-        else {
-            level.setBlock(EDIT, Blocks.DIAMOND_BLOCK.defaultBlockState(), 3);
-            require(level.getBlockState(EDIT).is(Blocks.DIAMOND_BLOCK), "dedicated edit reaches loaded chunk");
-        }
+        checkSavedEdits(server, reopened);
         Retina.LOGGER.info("QA_EVT {\"event\":\"minecraft_automatic_dedicated_save\",\"status\":\"pass\",\"context\":{\"reopened\":{}}}", reopened);
         if (server.isDedicatedServer()) server.halt(false);
+    }
+
+    public static void checkSavedEdits(MinecraftServer server, boolean reopened) {
+        for (var key : java.util.List.of(Level.OVERWORLD, Level.NETHER)) {
+            var level = server.getLevel(key);
+            if (level == null) continue;
+            var position = key.equals(Level.NETHER) ? new BlockPos(-17, 200, -17) : EDIT;
+            if (reopened) {
+                require(level.getBlockState(position).is(Blocks.DIAMOND_BLOCK), "saved edit survives reopen in " + key.identifier());
+            } else {
+                level.setBlock(position, Blocks.DIAMOND_BLOCK.defaultBlockState(), 3);
+                require(level.getBlockState(position).is(Blocks.DIAMOND_BLOCK), "edit reaches loaded chunk in " + key.identifier());
+            }
+            Retina.LOGGER.info("QA_EVT {\"event\":\"minecraft_dimension_saved_edit\",\"status\":\"pass\",\"context\":{\"dimension\":\"{}\",\"y\":{},\"reopened\":{}}}",
+                    key.identifier(), position.getY(), reopened);
+        }
     }
 
     private static void require(boolean condition, String message) {

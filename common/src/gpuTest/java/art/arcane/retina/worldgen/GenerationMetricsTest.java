@@ -166,12 +166,18 @@ public final class GenerationMetricsTest {
     private static void packetRoundTrip(GenerationMetrics.Snapshot snapshot) {
         var diagnostics = new NativeGpuDiagnostics(2,123_000_000,43210,1500,900,12,7,3,1048576,2097152);
         for (var candidate : java.util.List.of(TerrainStatsPayload.INACTIVE,
-                new TerrainStatsPayload(true,"Metal","mca",snapshot,diagnostics))) {
+                new TerrainStatsPayload(true,"Metal","mca",snapshot,diagnostics),
+                new TerrainStatsPayload(true,"Metal","mca",snapshot,diagnostics,"minecraft:the_nether"))) {
             var buffer = new net.minecraft.network.RegistryFriendlyByteBuf(io.netty.buffer.Unpooled.buffer(),net.minecraft.core.RegistryAccess.EMPTY);
             try {
                 TerrainStatsPayload.CODEC.encode(buffer,candidate);
                 var decoded = TerrainStatsPayload.CODEC.decode(buffer);
                 require(decoded.mode().equals(candidate.mode()),"mode survives packet round trip");
+                require(decoded.dimension().equals(candidate.dimension()),"real dimension survives transport");
+                for(var name:java.util.List.of("minecraft:overworld","minecraft:the_nether","minecraft:the_end")) {
+                    net.minecraft.resources.ResourceKey<net.minecraft.world.level.Level> dimension=net.minecraft.resources.ResourceKey.create(net.minecraft.core.registries.Registries.DIMENSION,net.minecraft.resources.Identifier.parse(name));
+                    require(decoded.activeIn(dimension)==(candidate.active() && candidate.dimension().equals(name)),"stale dimension telemetry cannot be displayed");
+                }
                 require(decoded.stats().regionSamples()==candidate.stats().regionSamples(),"rolling region count survives transport");
                 close(decoded.stats().averageRegionMs(),candidate.stats().averageRegionMs(),"region latency survives transport");
                 close(decoded.stats().completedChunksPerSecond(),candidate.stats().completedChunksPerSecond(),"aggregate completions survive transport");

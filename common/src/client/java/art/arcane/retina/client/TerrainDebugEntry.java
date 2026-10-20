@@ -29,14 +29,17 @@ public final class TerrainDebugEntry implements DebugScreenEntry {
         platform.onDisconnect(() -> { remote = TerrainStatsPayload.INACTIVE; TerrainClientQa.disconnected(); });
     }
 
-    static TerrainStatsPayload remoteStats() { return remote; }
+    static TerrainStatsPayload remoteStats() {
+        var level=Minecraft.getInstance().level;
+        return level!=null && remote.activeIn(level.dimension())?remote:TerrainStatsPayload.INACTIVE;
+    }
 
     @Override
     public void display(DebugScreenDisplayer displayer, Level level, LevelChunk clientChunk, LevelChunk serverChunk) {
         if (!RetinaConfiguration.get().f3Overlay()) return;
-        var payload = remote;
+        var payload = remoteStats();
         if (level instanceof ServerLevel server && server.getChunkSource().getGenerator() instanceof RetinaChunkGenerator generator) {
-            payload = new TerrainStatsPayload(true, generator.backend(), generator.mode(), generator.metrics().snapshot());
+            payload = new TerrainStatsPayload(true, generator.backend(), generator.mode(), generator.metrics().snapshot(),art.arcane.retina.worldgen.NativeGpuDiagnostics.EMPTY,server.dimension().identifier().toString());
         }
         if (!payload.active()) return;
         displayer.addToGroup(Retina.id("generation"), art.arcane.retina.debug.TerrainDebugReport.lines(payload));

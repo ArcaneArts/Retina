@@ -17,8 +17,20 @@ Run each client separately:
 The default selects `minecraft:normal` and exercises automatic activation. Repeat
 with `-PretinaClientPresetQa=minecraft:flat` and fresh `fabric-flat` /
 `neoforge-flat` directories. `minecraft_automatic_activation` verifies the actual
-runtime generator, original saved registry definition, flat metadata, spawn-height
-semantics and unchanged Nether/End generators on creation and reopen.
+runtime generators, original saved registry definitions, flat metadata, spawn-height
+semantics, distinct Overworld/Nether native profiles and the unchanged End generator
+on creation and reopen. `minecraft_dimension_saved_edit` checks saved edits in both
+dimensions, including a Nether build at Y=200.
+
+The block/heightmap round-trip probe loads a chunk outside player and spawn
+simulation and compares it before gameplay ticks can change it. A player chunk
+can already contain flowing lava, so it is not an immutable generation reference.
+Round-trip mismatches fail the run.
+
+`./gradlew -PretinaHostOnly :common:netherConcurrencyTest` uses normal worker
+counts instead of the smaller fixture pool. It generates a full Nether region,
+compares independent/concurrent chunk requests and metadata, and checks that
+repeating generation preserves the existing MCA bytes.
 
 For legacy-save compatibility, repeat with `-PretinaClientQaMode=chunk` and fresh
 `fabric-chunk` / `neoforge-chunk` directories. The pass event `minecraft_client_gameplay_reopen`
@@ -173,7 +185,7 @@ MCA files and nonempty DH `FullData` rows in the saved SQLite database after
 normal shutdown. The integrated log should also show DH world-gen workers
 consuming Retina temporary MCA chunks before and after reopening.
 
-## Automatic activation validation — 2026-10-19
+## Overworld/Superflat activation validation — 2026-10-19, before Nether activation
 
 Validated on Java 25 / macOS / Metal (Apple M4 Max), using disposable worlds:
 
@@ -206,3 +218,22 @@ were built. This change was not separately retested in packaged launcher install
 or on Vulkan/Direct3D. DH coverage here is the real protochunk/temporary-region
 compatibility harness; a third-party DH client was not launched for this change.
 Existing feature/structure approximations remain as described in the README.
+
+## Nether activation validation — 2026-10-19
+
+Java 25 / macOS / Metal (Apple M4 Max), disposable development-loader worlds:
+
+| Check | Result |
+| --- | --- |
+| Fabric and NeoForge dedicated Normal worlds, seed 42 | Creation and second-process reopen passed; original Overworld/Nether sources and End generator retained |
+| Fabric and NeoForge integrated Normal worlds, seed 123456789 | Creation, strict loaded block/heightmap comparisons, telemetry, disconnect and reopen passed |
+| Saved edits | Overworld Y=120 and Nether Y=200 survived reopening on both loaders and server types |
+| Dimension identity | Live Nether storage key and distinct native profile passed; packet round-trip/filter tests covered all three dimension keys |
+| Compatible settings | Inline noise settings, fixed biome source, no-ceiling dimension, scale 4 and logical height 192 retained; native binding passed |
+| Normal-worker regression | 1,024 chunks at region -1,-1; seven independent probes / 458,752 voxels, metadata, separate-profile cold concurrent replay and byte-preserving repeat generation passed |
+
+The original native stall and live-fluid comparison failure were retained as
+diagnostic evidence; final runtime logs contain no failed QA events. The strict
+comparison now runs before gameplay mutation, rather than accepting mismatches.
+Actual portal travel, live progression and the complete Nether lighting,
+integration and performance matrix remain follow-up work.

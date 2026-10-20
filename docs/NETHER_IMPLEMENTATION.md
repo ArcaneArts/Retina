@@ -1,7 +1,9 @@
 # Nether implementation
 
-Nether activation remains deferred while terrain, features, structures, and
-dimension integration are implemented. The End is outside this effort.
+Supported Nether sources now activate Retina automatically on creation and reopen.
+The milestones below record the staged implementation; earlier milestones kept
+activation deferred. Live portal, progression, lighting and final matrix work
+remain listed at the end. The End is outside this effort.
 
 ## Cycle 1: generation contexts
 
@@ -1037,8 +1039,44 @@ test now accepts direct holders in filtered search views while still requiring
 the registered village placement.
 Production Nether activation remains deferred.
 
+## Cycle 5a: automatic activation and dimension identity
+
+The server adapter now accepts supported Nether noise and flat sources while
+retaining their original `LevelStem` definitions. Exact supported generator and
+biome-source classes remain required. The End and unsupported implementations keep
+their source generator and diagnostic; failures after acceptance are propagated.
+Inline compatible settings and dimension changes remain intact. Nether generation
+semantics do not depend on the dimension's gameplay `has_ceiling` flag.
+
+Native profile identity, temporary region storage, promotion logs and telemetry
+carry the actual dimension key. Identical coordinates in separate dimensions
+cannot share native cache entries because the profile identity includes that key.
+Client telemetry is displayed only for the current dimension. Region preparation
+continues to use the shared global budget.
+
+The first live dedicated test exposed a nested Rayon deadlock: a structure-plan
+join inside an unfinished dependency memo could steal a decoration job that waited
+on that same memo. Dependency builders now plan structures inline; independent
+decoration anchors and top-level structure planning remain parallel.
+`netherConcurrencyTest` exercises a complete negative-coordinate region at normal
+worker counts, independent chunk parity, concurrent reverse-order probes, metadata
+and repeat-save preservation.
+
+The automatic runtime harness now checks both original source definitions,
+dimension identity and independent profiles, then saves and reopens edits in the
+Overworld and at Nether Y=200. These checks do not establish portal travel,
+survival progression or the complete lighting matrix.
+
+Fabric and NeoForge dedicated creation/second-process reopening and integrated
+creation/disconnect/reopening passed on Java 25 / macOS / Metal. Both integrated
+runs also passed strict loaded-block and heightmap comparisons. The host build,
+103 Rust tests, three GPU tests, metrics, scheduling, preview-cache lifecycle,
+normal-worker Nether concurrency, Nether/Overworld structures, Superflat, locate,
+Nether features and profile checks passed. The cold replay fixture now uses an
+independent profile namespace instead of deduplicating onto its original profile.
+
 ## Remaining cycles
 
 4. Gameplay progression checks in the live dimension.
-5. Automatic activation and dimension lifecycle, lighting, and portal integration.
+5. Further dimension lifecycle, lighting, and actual portal travel validation.
 6. Both-loader runtime validation, regression coverage, visual QA, and benchmarks.

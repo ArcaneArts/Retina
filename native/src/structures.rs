@@ -582,6 +582,25 @@ pub fn plans(
     request: ChunkRequest,
     side: i32,
 ) -> Result<Vec<Arc<Start>>, String> {
+    plans_inner(engine, request, side, true)
+}
+
+/// Dependency memo builders must not yield into Rayon: a stolen decoration
+/// task can depend on a OnceLock that the suspended caller is still building.
+pub(crate) fn plans_inline(
+    engine: &TerrainEngine,
+    request: ChunkRequest,
+    side: i32,
+) -> Result<Vec<Arc<Start>>, String> {
+    plans_inner(engine, request, side, false)
+}
+
+fn plans_inner(
+    engine: &TerrainEngine,
+    request: ChunkRequest,
+    side: i32,
+    parallel: bool,
+) -> Result<Vec<Arc<Start>>, String> {
     let timings = engine.timings(request.reserved);
     let _planning = timings.span(crate::timings::STRUCTURE_PLAN);
     let Some(profile) = engine.profile(request.reserved)? else {
@@ -655,15 +674,22 @@ pub fn plans(
     for batch in probes.chunks(1024) {
         biomes.extend(engine.sample_biomes(batch, None)?);
     }
-    let mut result: Vec<_> = jobs
-        .par_iter()
-        .map(|(r, set, cell, probe)| {
-            cell.get_or_init(|| {
-                build(engine, *r, *set, &profile, biomes[probe.unwrap()]).map(Arc::new)
-            })
-            .clone()
+    let build_job = |(r, set, cell, probe): &(
+        ChunkRequest,
+        usize,
+        Arc<OnceLock<Result<Arc<Start>, String>>>,
+        Option<usize>,
+    )| {
+        cell.get_or_init(|| {
+            build(engine, *r, *set, &profile, biomes[probe.unwrap()]).map(Arc::new)
         })
-        .collect::<Result<Vec<_>, String>>()?;
+        .clone()
+    };
+    let mut result: Vec<_> = if parallel {
+        jobs.par_iter().map(build_job).collect::<Result<_, String>>()?
+    } else {
+        jobs.iter().map(build_job).collect::<Result<_, String>>()?
+    };
     result.retain(|s| !s.pieces.is_empty());
     result.sort_by_key(|s| (s.chunk[1], s.chunk[0], s.definition));
     Ok(result)

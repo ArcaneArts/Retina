@@ -18,6 +18,7 @@ public final class TerrainDebugReport {
     public static List<String> lines(TerrainStatsPayload payload) {
         var stats=payload.stats();var lines=new ArrayList<String>();boolean mca=payload.mode().equals("mca");
         lines.add("§b§lRetina"+RESET);
+        if(!payload.dimension().isEmpty())lines.add(LABEL+"Dimension: "+DATA+payload.dimension());
         if(mca)lines.add(LABEL+"Region latency: "+DATA+format("%.2f ms mean",stats.averageRegionMs())+LABEL+" / "+DATA+format("%.2f ms p95",stats.p95RegionMs())+LABEL+" (last "+DATA+stats.regionSamples()+LABEL+" / 20)");
         lines.add(LABEL+(mca?"Completed terrain: §a":"Chunk-mode completion: §a")+format("%.1f chunks/s",stats.completedChunksPerSecond())+LABEL+format(" (%.1fs wall window)",stats.completionWindowSeconds()));
         if(!mca)lines.add(LABEL+"Chunk time: "+DATA+format("%.3f ms",stats.msPerChunk()));

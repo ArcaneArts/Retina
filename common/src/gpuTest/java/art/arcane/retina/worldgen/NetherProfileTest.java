@@ -49,7 +49,7 @@ public final class NetherProfileTest {
             var ops = registry.createSerializationContext(JsonOps.INSTANCE);
             var saved = ChunkGenerator.CODEC.encodeStart(ops, source).getOrThrow();
             var savedType = DimensionType.DIRECT_CODEC.encodeStart(ops, dimension.value()).getOrThrow();
-            var definition = new GenerationSource(source, dimension.value());
+            var definition = new GenerationSource(Level.NETHER, source, dimension.value());
             var runtime = RetinaChunkGenerator.fromSource(definition);
             require(runtime.getMinY() == 0 && runtime.getGenDepth() == 128, "generator exposes source noise bounds");
             require(runtime.request(42, -33, 63).minY() == 0 && runtime.request(42, -33, 63).height() == 256,
@@ -58,8 +58,8 @@ public final class NetherProfileTest {
             require(description.get("ceiling").getAsBoolean() && !description.get("skylight").getAsBoolean()
                     && description.get("logical_height").getAsInt() == 128
                     && description.get("coordinate_scale").getAsDouble() == 8.0, "dimension metadata retained");
-            require(RetinaGenerators.adapt(Level.NETHER, new LevelStem(dimension, source), source) == source,
-                    "Nether activation remains deferred until implementation is complete");
+            require(RetinaGenerators.adapt(Level.NETHER, new LevelStem(dimension, source), source) instanceof RetinaChunkGenerator,
+                    "Nether activates automatically");
 
             var data = TerrainProfileData.export(registry, (RetinaBiomeSource) runtime.getBiomeSource(), 0, 256, 42,
                     settings.value(), StructureProfile.Context.NONE, true, false, true);
@@ -117,6 +117,21 @@ public final class NetherProfileTest {
             var custom = NoiseGeneratorSettings.DIRECT_CODEC.parse(ops, customJson).getOrThrow();
             var fixed = new FixedBiomeSource(registry.lookupOrThrow(Registries.BIOME).getOrThrow(Biomes.WARPED_FOREST));
             var customized = new NoiseBasedChunkGenerator(fixed, Holder.direct(custom));
+            var customTypeJson = savedType.getAsJsonObject().deepCopy();
+            customTypeJson.addProperty("has_ceiling", false);
+            customTypeJson.addProperty("coordinate_scale", 4.0);
+            customTypeJson.addProperty("logical_height", 192);
+            var customType = DimensionType.DIRECT_CODEC.parse(ops, customTypeJson).getOrThrow();
+            var customRuntime = (RetinaChunkGenerator) RetinaGenerators.adapt(Level.NETHER,
+                    new LevelStem(Holder.direct(customType), customized), customized);
+            require(customRuntime.selectedSource().enclosedTerrain(),
+                    "inline Nether settings retain Nether terrain semantics without a ceiling flag");
+            require(!customRuntime.selectedSource().describe().get("ceiling").getAsBoolean()
+                    && customRuntime.selectedSource().describe().get("coordinate_scale").getAsDouble() == 4.0
+                    && customRuntime.selectedSource().describe().get("logical_height").getAsInt() == 192,
+                    "custom dimension gameplay attributes remain independent of terrain semantics");
+            require(DimensionType.DIRECT_CODEC.encodeStart(ops, customType).getOrThrow().equals(customTypeJson),
+                    "compatible dimension override is not rewritten");
             checkContext(registry, customized, 96, 128);
             var customData = TerrainProfileData.export(registry, RetinaBiomeSource.fromSelected(fixed), 96, 128, 42,
                     custom, StructureProfile.Context.NONE, true, false, true);
@@ -127,11 +142,24 @@ public final class NetherProfileTest {
             require(ChunkGenerator.CODEC.encodeStart(ops, source).getOrThrow().equals(saved), "original generator serialization unchanged");
             require(DimensionType.DIRECT_CODEC.encodeStart(ops, dimension.value()).getOrThrow().equals(savedType), "dimension attributes unchanged");
             var reopened = (NoiseBasedChunkGenerator) ChunkGenerator.CODEC.parse(ops, saved).getOrThrow();
-            require(new GenerationSource(reopened, dimension.value()).describe().equals(description), "save/reopen preserves profile context");
+            require(new GenerationSource(Level.NETHER, reopened, dimension.value()).describe().equals(description), "save/reopen preserves profile context");
             if (List.of(args).contains("--rust")) {
                 for (var exported : List.of(data, customData)) {
                     var registered = BiomeTerrainProfile.register(exported);
                     require(registered.json().equals(exported.json()), "native registration preserves exported profile");
+                }
+                try {
+                    customRuntime.bindWorld(registry, 42,
+                            net.minecraft.world.level.chunk.PalettedContainerFactory.create(registry),
+                            StructureProfile.Context.NONE, customType.hasSkyLight());
+                    var bound = JsonParser.parseString(customRuntime.profile().json()).getAsJsonObject();
+                    require(bound.get("dimension").getAsString().equals("minecraft:the_nether")
+                            && bound.get("ordered_decorations").getAsBoolean(),
+                            "bound customized Nether profile retains identity and ordered generation");
+                    require(customRuntime.previewCache().dimension().equals(Level.NETHER),
+                            "customized preview storage retains actual dimension");
+                } finally {
+                    customRuntime.closePreviews();
                 }
                 System.out.println("QA_EVT {\"event\":\"nether_native_profile_registration\",\"status\":\"pass\"}");
             }
