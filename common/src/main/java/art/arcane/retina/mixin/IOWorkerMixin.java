@@ -32,10 +32,18 @@ public abstract class IOWorkerMixin implements RegionIoBridge {
     }
 
     @Override public CompletableFuture<Void> retina$generateAhead(ChunkPos position) {
+        return retina$prepare(position, false);
+    }
+
+    @Override public CompletableFuture<Void> retina$prepareForeground(ChunkPos position) {
+        return retina$prepare(position, true);
+    }
+
+    @Unique private CompletableFuture<Void> retina$prepare(ChunkPos position, boolean foreground) {
         var bridge = (RegionStorageBridge)(Object)storage;
         var coordinator = bridge.retina$coordinator();
         if (coordinator == null) return CompletableFuture.completedFuture(null);
-        return coordinator.loadAsync(position, () -> {
+        return coordinator.loadAsync(position, foreground, () -> {
             synchronized (this) {
                 if (retina$closing) return CompletableFuture.failedFuture(new IllegalStateException("Region I/O is closing"));
                 // IOWorker FOREGROUND is priority 0. Queue publication without decoding/loading a chunk.
