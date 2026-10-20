@@ -604,8 +604,69 @@ not native connected fortresses or gameplay. Native graph assembly, terrain-awar
 support placement, scheduled update installation, saved fortress starts and
 spawning/progression validation remain in the next fortress cycle.
 
+## Cycle 4c: connected native fortresses
+
+Fortress selections now create native starts. Rust assembles the bridge and castle
+families with the source weights, placement limits, repeat rules, collision checks,
+attachment offsets, randomized pending-piece order, depth/range limits and vertical
+shift. Corridor chests and end-filler rubble vary deterministically with the plan's
+random stream. No Java callbacks occur while native chunks are generated.
+
+The planner queries biome eligibility at the source generation point (chunk minimum
+X/Z, Y=64). It does not project the start onto the highest Nether roof. Complete
+pieces must fit the request's storage bounds. Downward supports inspect actual
+placed blocks until reaching a non-replaceable block or the source lower limit;
+they use neither the Overworld terrain beard nor a fixed pillar length. Fortress
+loot seeds include world position, so matching local chest coordinates in different
+chunks do not share a seed.
+
+The chunk and MCA paths retain blaze-spawner NBT, loot tables, lava-well fluid ticks
+and packed shape postprocessing positions. Feature and structure updates merge by
+fluid/block identity and position with the first scheduled update retained. Java
+prototype chunks install the same updates and postprocessing positions as the MCA
+serializer. Saved starts use the actual registered fortress identity and source
+piece bounds, allowing Minecraft's existing monster spawn overrides. References
+cover the entire fortress bounding box, including gaps between pieces, because
+Minecraft also checks the outer fortress box over Nether-brick floors.
+
+The Nether structure suite compares 12 native plans, containing 1,365 pieces and
+all 14 families, with Minecraft's actual assembler using the same internal random
+stream. It checks piece order, kinds, chest variants, orientation, collision bounds,
+vertical shifting, depth, decoded structure identity and native locate candidates.
+Retina's world-seed-to-plan mapping remains its existing approximation; this does
+not claim the same fortress locations as vanilla for a world seed.
+
+A placement fixture executes the source pieces against Retina's actual GPU Nether
+terrain and compares every block in the containing chunk rectangle. It also checks
+full block-entity data (excluding intentionally different loot seeds), unique loot
+seeds, lava updates, shape updates, prototype-chunk installation, concurrent replay,
+MCA block/metadata equality across region boundaries, and saved start reopening.
+The selected layout spans 140 chunks and four regions, with two blaze spawners,
+seven chests with distinct loot seeds, one lava-well update and 1,403 support blocks
+below the main structure box. All 9,175,040 chunk voxels match the source placement
+reference, and the same voxels survive MCA serialization. The fixture deliberately
+isolates structures from decoration to make terrain and piece differences observable. Reports and inspectable region files are written to
+`build/nether/fortress-assembly.json` and a fresh `build/nether/fortress-regions-*`
+directory (recorded in `fortress-regions-path.txt`). Each run uses new output because
+MCA publication intentionally preserves existing chunks, including earlier fixture
+terrain generated with a different seed.
+
+`./gradlew -PretinaHostOnly build :common:netherStructureTest :common:structureTest
+:common:flatTest :common:nativeGpuTest :common:netherFeatureTest` passes, including
+both loader builds, 99 Rust unit tests, three GPU tests, structure/MCA regressions,
+Superflat coverage and Nether feature/ore/survival/fungus reference fixtures.
+
+This completes native fortress assembly and placement, not the Nether rollout.
+The shared structure pipeline currently overlays structures after decoration;
+source generation-step interleaving and feature reads of earlier structures remain
+unfinished and must be resolved before production Nether activation. Actual server
+mob spawning, portal travel and gameplay progression remain part of the runtime
+matrix. Fossils, Nether ruined portals and Nether-specific bastion validation are
+also still required.
+
 ## Remaining cycles
 
-4. Bastions, fortresses, fossils, and Nether ruined portals with saved metadata.
+4. Fossils, Nether ruined portals, Nether bastion validation, applicable structure-set
+   exclusions, structure/feature ordering and gameplay progression checks.
 5. Automatic activation and dimension lifecycle, lighting, and portal integration.
 6. Both-loader runtime validation, regression coverage, visual QA, and benchmarks.

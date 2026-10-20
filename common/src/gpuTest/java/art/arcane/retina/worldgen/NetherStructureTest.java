@@ -112,6 +112,7 @@ public final class NetherStructureTest {
             require(!disabled.has("fortress") && !fixed.has("fortress"), "disabled/ineligible sources do not export fortress geometry");
             FortressProfileTest.run(registry, nativeStructures, Arrays.asList(exported.materials()));
             int checked = selectionChecks(profile, registry);
+            FortressAssemblyTest.run(registry, resources, profile, exported.materials());
             System.out.println("QA_EVT {\"event\":\"nether_structure_sets\",\"status\":\"pass\",\"context\":{\"candidate_checks\":" + checked + "}}");
         }
     }

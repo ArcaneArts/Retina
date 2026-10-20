@@ -99,8 +99,9 @@ final class StructureProfile {
                 if(config.has("pool_aliases"))aliasPools(config.get("pool_aliases"));
             } else if(type.equals("desert_pyramid") || type.equals("jungle_temple") || type.equals("swamp_hut")) {
                 d.addProperty("template",capture(type));
+            } else if(type.equals("fortress")) {
+                if(fortress==null)fortress=FortressProfile.export(this);
             } else {
-                if(type.equals("fortress") && fortress==null)fortress=FortressProfile.export(this);
                 omitted.add("structure:"+name+":"+type);
                 d.addProperty("unimplemented",true);d.addProperty("unavailable_reason","structure-type");unavailable.put(name,d);continue;
             }
@@ -135,7 +136,7 @@ final class StructureProfile {
         return set.structures().stream().anyMatch(entry -> {
             var structure=entry.structure().value();
             return structure instanceof JigsawStructure || structure instanceof DesertPyramidStructure
-                    || structure instanceof JungleTempleStructure || structure instanceof SwampHutStructure;
+                    || structure instanceof JungleTempleStructure || structure instanceof SwampHutStructure || structure instanceof NetherFortressStructure;
         });
     }
     void aliasPools(JsonElement value) {

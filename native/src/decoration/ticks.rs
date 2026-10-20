@@ -71,14 +71,68 @@ impl Chunk {
         Ok(result)
     }
     pub fn write(self, root: &mut Value) {
-        nbt::put(root, "block_ticks", nbt::list(10, self.blocks));
-        nbt::put(root, "fluid_ticks", nbt::list(10, self.fluids));
+        for (key, mut ticks) in [("block_ticks", self.blocks), ("fluid_ticks", self.fluids)] {
+            // Most chunks have only feature updates, already deduplicated by collect.
+            if let Some(existing) = nbt::field(root, key) {
+                ticks.extend_from_slice(nbt::list_values(existing));
+                let mut seen = HashSet::new();
+                ticks.retain(|tick| {
+                    let id = nbt::field(tick, "i").unwrap()[1]
+                        .as_str()
+                        .unwrap()
+                        .to_owned();
+                    let pos = ["x", "y", "z"]
+                        .map(|key| nbt::number(nbt::field(tick, key).unwrap()) as i32);
+                    seen.insert((id, pos))
+                });
+            }
+            nbt::put(root, key, nbt::list(10, ticks));
+        }
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn structure_ticks_merge_after_features_and_keep_first_identity_position() {
+        let tick = |id: &str, y, priority| {
+            let mut tag = nbt::compound();
+            nbt::put(&mut tag, "i", nbt::string(id));
+            for (key, n) in [("x", -1), ("y", y), ("z", -32), ("t", 0), ("p", priority)] {
+                nbt::put(&mut tag, key, nbt::int(n));
+            }
+            tag
+        };
+        let feature = tick("minecraft:lava", 48, 0);
+        let structure = tick("minecraft:lava", 49, -1);
+        let mut root = nbt::compound();
+        nbt::put(
+            &mut root,
+            "fluid_ticks",
+            nbt::list(
+                10,
+                vec![
+                    tick("minecraft:lava", 48, 1),
+                    structure.clone(),
+                    structure.clone(),
+                ],
+            ),
+        );
+        Chunk {
+            blocks: vec![feature.clone()],
+            fluids: vec![feature.clone()],
+        }
+        .write(&mut root);
+        assert_eq!(
+            nbt::list_values(nbt::field(&root, "fluid_ticks").unwrap()),
+            &[feature.clone(), structure]
+        );
+        assert_eq!(
+            nbt::list_values(nbt::field(&root, "block_ticks").unwrap()),
+            &[feature]
+        );
+    }
     #[test]
     fn scheduled_updates_keep_type_position_order_and_storage_coordinates() {
         let request = ChunkRequest {
