@@ -754,6 +754,50 @@ netherrack and magma, loot, and integrated save validation remain required in th
 next subcycle. This processor milestone does not enable Nether activation or
 claim completed ruined-portal support.
 
+## Cycle 4f: source template transforms
+
+Templates can now carry an explicit mirror and rotation pivot. The native path
+transforms geometry and bounds around that pivot, runs processors on the original
+block states, and applies the registered mirror-then-rotation state map afterward.
+This preserves handed stair shapes, oriented replacement states and the directions
+of stairs created by aging. Rule processors use independent positional random
+streams in this path, including repeated processors; location predicates inspect
+the actual world state without rotating it. Existing templates retain their
+previous placement path unless they opt into the transform contract.
+
+The exporter closes the material palette under mirror and rotation before dependent
+placement tables, flags and lighting are finalized. Processor output tables and
+tag predicates are refreshed for added materials. Native validation checks the
+transform map's size and IDs. Geometry bounds, candidate reach, chunk partitions,
+connector directions, fractional entity positions, attachment anchors, direction
+codecs and entity yaw use the same configured transform.
+
+`netherStructureTest` now compares 304,980 processor outputs against Minecraft,
+including 117,300 comparisons with explicit transforms. The 39 fixtures cover all
+three mirror modes, four rotations, a nonzero asymmetric pivot, complete stair,
+slab, wall and bar property families, repeated positional rules, air/lava/bedrock
+backgrounds and retained block entities. All 156 template bounding boxes match
+Minecraft. A late-palette fixture verifies transform closure and refreshed source
+tag membership. A mirrored fixture crosses two chunks and two MCA regions; all
+131,072 voxels, block entities, starts and references survive serialization, and
+concurrent replay produces the same blocks. Native entity tests additionally
+exercise mirror/pivot placement and all attachment direction encodings.
+
+The host build, `netherStructureTest`, `structureTest`, `flatTest`,
+`nativeGpuTest`, and `netherProfileTest` pass on Metal / Apple M4 Max, including
+Fabric and NeoForge builds, 99 Rust unit tests and three GPU tests. A focused
+final run also passes the late-palette and cross-region fixtures.
+
+The source transform contract is a prerequisite for ruined portals. No production
+structure definition uses it yet. Full ruined-portal template selection, Nether
+floor placement, netherrack/magma spread and drips, shape updates, loot-stream
+integration, and source-step interaction with decoration still need implementation
+and validation before Nether activation. The synthetic transform fixture does not
+claim full portal `postProcess` or gameplay parity. Reports are in
+`build/nether/portal-processors.json` and `portal-transform-mca.json`; the fixture
+profiles and `portal-transform-regions-path.txt` retain reproducible inputs and
+inspectable MCA output.
+
 ## Remaining cycles
 
 4. Nether ruined portals, Nether bastion validation, applicable structure-set

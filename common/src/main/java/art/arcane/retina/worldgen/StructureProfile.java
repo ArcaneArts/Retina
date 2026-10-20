@@ -75,6 +75,10 @@ final class StructureProfile {
     }
     static void finishMaterials(JsonObject result,LinkedHashMap<BlockState,Integer> materials) {
         StructureProcessorProfile.finish(result.get("pools"),materials);
+        int beforeTransforms=materials.size();
+        StructureTemplateProfile.finish(result,materials);
+        if(materials.size()!=beforeTransforms)StructureProcessorProfile.finish(result.get("pools"),materials);
+        finishProcessorPredicates(result.get("pools"),materials);
         if(result.has("fortress"))FortressProfile.finish(result.getAsJsonObject("fortress"),materials);
         if(result.has("fossils"))FossilProfile.finish(result.getAsJsonObject("fossils"),materials);
     }
@@ -218,15 +222,25 @@ final class StructureProfile {
                 var output=o.getAsJsonObject("output_state");var state=BlockState.CODEC.parse(JsonOps.INSTANCE,output).getOrThrow();
                 if(state.getBlock() instanceof EntityBlock block) {var be=block.newBlockEntity(BlockPos.ZERO,state);if(be!=null)output.add("retina_entity",tag(be.saveWithFullMetadata(registry)));}
             }
-            String field=o.has("predicate_type") && o.get("predicate_type").getAsString().endsWith("tag_match")?"tag":o.has("processor_type") && o.get("processor_type").getAsString().endsWith("protected_blocks")?"value":o.has("rottable_blocks")?"rottable_blocks":null;
-            if(field!=null && o.has(field)) {
-                var id=Identifier.parse(o.get(field).getAsString().replace("#",""));
-                var key=net.minecraft.tags.TagKey.create(Registries.BLOCK,id);var matching=new JsonArray();
-                materials.forEach((state,index)->{if(state.is(key))matching.add(index);});
-                o.add(field.equals("tag")?"retina_matching":field.equals("value")?"retina_protected":"retina_rottable",matching);
-            }
+            finishProcessorPredicate(o,materials);
             o.entrySet().forEach(e->finishProcessors(e.getValue()));
         } else if(value.isJsonArray())value.getAsJsonArray().forEach(this::finishProcessors);
+    }
+    private static void finishProcessorPredicates(JsonElement value,LinkedHashMap<BlockState,Integer> materials) {
+        if(value.isJsonArray())value.getAsJsonArray().forEach(v->finishProcessorPredicates(v,materials));
+        else if(value.isJsonObject()) {
+            var o=value.getAsJsonObject();finishProcessorPredicate(o,materials);
+            o.entrySet().stream().filter(e->!e.getKey().startsWith("retina_")).forEach(e->finishProcessorPredicates(e.getValue(),materials));
+        }
+    }
+    private static void finishProcessorPredicate(JsonObject o,LinkedHashMap<BlockState,Integer> materials) {
+        String field=o.has("predicate_type") && o.get("predicate_type").getAsString().endsWith("tag_match")?"tag":o.has("processor_type") && o.get("processor_type").getAsString().endsWith("protected_blocks")?"value":o.has("rottable_blocks")?"rottable_blocks":null;
+        if(field!=null && o.has(field)) {
+            var id=Identifier.parse(o.get(field).getAsString().replace("#",""));
+            var key=net.minecraft.tags.TagKey.create(Registries.BLOCK,id);var matching=new JsonArray();
+            materials.forEach((state,index)->{if(state.is(key))matching.add(index);});
+            o.add(field.equals("tag")?"retina_matching":field.equals("value")?"retina_protected":"retina_rottable",matching);
+        }
     }
     JsonArray rotations(BlockState state) {
         var out=new JsonArray();for(var r:Rotation.values())out.add(materials.computeIfAbsent(state.rotate(r),s->materials.size()));return out;
