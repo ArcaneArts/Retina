@@ -49,6 +49,11 @@ public final class NetherStructureTest {
                 NetherGenerationIntegrationTest.run(profile, exported.materials());
                 return;
             }
+            if (Arrays.asList(args).contains("--concurrency-only")) {
+                NetherGenerationIntegrationTest.run(profile, exported.materials(),
+                        new net.minecraft.world.level.ChunkPos(-32, -32), "concurrent");
+                return;
+            }
             var nativeStructures = profile.getAsJsonObject("structures");
             var definitions = new HashMap<String, JsonObject>();
             for (var value : nativeStructures.getAsJsonArray("definitions")) {

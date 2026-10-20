@@ -64,11 +64,11 @@ public final class RegionCoordinator {
                 prepared.add(key);
                 if (cached.generated() > 0) {
                     generator.metrics().completedPromotion(elapsed);
-                    Retina.debug("Published Retina region {},{}: {} cached chunks, {} preserved, {} ms",
-                            position.getRegionX(), position.getRegionZ(), cached.generated(), cached.preserved(), elapsed / 1e6);
+                    Retina.debug("Published Retina region {} {},{}: {} cached chunks, {} preserved, {} ms",
+                            generator.dimension().identifier(), position.getRegionX(), position.getRegionZ(), cached.generated(), cached.preserved(), elapsed / 1e6);
                     if (Boolean.getBoolean("retina.qa")) Retina.LOGGER.info(
-                            "QA_EVT {\"event\":\"minecraft_mca_preview_promoted\",\"status\":\"pass\",\"context\":{\"x\":{},\"z\":{},\"copied\":{},\"preserved\":{},\"ms\":{}}}",
-                            position.getRegionX(), position.getRegionZ(), cached.generated(), cached.preserved(), elapsed / 1e6);
+                            "QA_EVT {\"event\":\"minecraft_mca_preview_promoted\",\"status\":\"pass\",\"context\":{\"dimension\":\"{}\",\"x\":{},\"z\":{},\"copied\":{},\"preserved\":{},\"ms\":{}}}",
+                            generator.dimension().identifier(), position.getRegionX(), position.getRegionZ(), cached.generated(), cached.preserved(), elapsed / 1e6);
                 } else generator.metrics().completedRegion(0, elapsed);
                 return;
             }
@@ -83,11 +83,11 @@ public final class RegionCoordinator {
             prepared.add(key);
             generator.metrics().completedRegion(report.generated(), elapsed, report.stages());
             if (report.generated() > 0) {
-                Retina.debug("Generated Retina region {},{}: {} chunks, {} preserved, {} ms",
-                        position.getRegionX(), position.getRegionZ(), report.generated(), report.preserved(), elapsed / 1_000_000.0);
+                Retina.debug("Generated Retina region {} {},{}: {} chunks, {} preserved, {} ms",
+                        generator.dimension().identifier(), position.getRegionX(), position.getRegionZ(), report.generated(), report.preserved(), elapsed / 1_000_000.0);
                 if (Boolean.getBoolean("retina.qa")) {
-                    Retina.LOGGER.info("QA_EVT {\"event\":\"minecraft_mca_region\",\"status\":\"pass\",\"context\":{\"x\":{},\"z\":{},\"generated\":{},\"preserved\":{},\"ms\":{},\"bytes\":{}}}",
-                            position.getRegionX(), position.getRegionZ(), report.generated(), report.preserved(), elapsed / 1_000_000.0, report.bytes());
+                    Retina.LOGGER.info("QA_EVT {\"event\":\"minecraft_mca_region\",\"status\":\"pass\",\"context\":{\"dimension\":\"{}\",\"x\":{},\"z\":{},\"generated\":{},\"preserved\":{},\"ms\":{},\"bytes\":{}}}",
+                            generator.dimension().identifier(), position.getRegionX(), position.getRegionZ(), report.generated(), report.preserved(), elapsed / 1_000_000.0, report.bytes());
                 }
             }
         } catch (Throwable error) {
@@ -95,7 +95,7 @@ public final class RegionCoordinator {
             if (error instanceof IOException io) throw io;
             // IOWorker completes failed tasks for Exceptions. This also carries native-loader
             // initialization errors back to its future instead of abandoning the waiting read.
-            throw new IOException("Retina MCA generation failed for " + destination, error);
+            throw new IOException("Retina MCA generation failed in " + generator.dimension().identifier() + " for " + destination, error);
         }
     }
 }

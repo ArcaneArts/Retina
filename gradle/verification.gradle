@@ -629,6 +629,18 @@ tasks.register('netherFeatureTest', JavaExec) {
     workingDir rootProject.projectDir
 }
 
+tasks.register('netherConcurrencyTest', JavaExec) {
+    group = 'verification'
+    description = 'Generate a complete Nether region with normal worker counts and concurrent chunk probes.'
+    dependsOn 'gpuTestClasses', ':packageNative'
+    classpath = sourceSets.gpuTest.runtimeClasspath
+    mainClass = 'art.arcane.retina.worldgen.NetherStructureTest'
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
+    jvmArgs '--enable-native-access=ALL-UNNAMED'
+    args '--concurrency-only'
+    workingDir rootProject.projectDir
+}
+
 tasks.register('netherTerrainTest', JavaExec) {
     group = 'verification'
     description = 'Generate actual Nether GPU terrain and check bounds, fluids, biomes and columns.'

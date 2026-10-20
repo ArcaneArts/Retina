@@ -184,6 +184,7 @@ public final class TerrainClientQa {
                 require(generator.mode().equals(MODE), "integrated world retains generation mode");
                 art.arcane.retina.worldgen.AutomaticGenerationQa.check(minecraft.getSingleplayerServer());
                 TerrainRegistryQa.check(generator);
+                art.arcane.retina.worldgen.AutomaticGenerationQa.checkSavedEdits(minecraft.getSingleplayerServer(),reopened);
                 if (reopened) require(level.getBlockState(EDIT).is(Blocks.DIAMOND_BLOCK), "saved negative-coordinate chunk preserves edit");
                 else {
                     level.setBlock(EDIT, Blocks.DIAMOND_BLOCK.defaultBlockState(), 3);

@@ -5,11 +5,12 @@ Retina is a Rust and GPU terrain generator for **Minecraft 26.3**, available for
 supported datapack and mod additions, and produces complete Anvil (`.mca`) regions
 with terrain, biomes, decorations, structures and interior lighting.
 
-Install Retina and select your usual world type. Supported Overworld generators
-automatically use Retina when creating or reopening a world; there is no disable
+Install Retina and select your usual world type. Supported Overworld and Nether
+generators automatically use Retina when creating or reopening a world; there is no disable
 switch. Normal, Large Biomes, Amplified, Single Biome and Superflat are supported.
-The Nether, End, Debug and unsupported custom generators retain their original
-implementation, with a diagnostic identifying the missing adapter. Retina
+The Nether uses its effective noise settings and fixed or multi-noise biome source,
+including compatible datapack changes. The End, Debug and unsupported custom
+generators retain their original implementation, with a diagnostic identifying the missing adapter. Retina
 approximates noise worldgen rules rather than reproducing vanilla's terrain for
 the same seed. Undecorated Superflat uses the configured layers exactly.
 
@@ -209,13 +210,16 @@ Compatibility has limits:
   use only the selected source's biomes. Missing placement data cannot be
   recovered from a biome name or tag alone.
 - Structures support compatible random-spread/jigsaw sets and the procedural
-  families listed above. Non-jigsaw assemblers such as strongholds, mineshafts,
-  fortresses, mansions, monuments, end cities, shipwrecks and ruined portals remain
-  unsupported. Bastion pools are supported by the assembler, but the standard
-  activation policy leaves the Nether on its normal generator.
+  families listed above. Nether bastions, fortresses, fossils and Nether ruined
+  portals are supported. Other assemblers such as strongholds, mineshafts,
+  mansions, monuments, end cities, shipwrecks and Overworld ruined portals remain
+  unsupported.
 - Existing saved blocks and player edits are preserved. Generation changes affect
   new terrain; old saved settings retain their legacy behavior where encoded,
   including worlds without the newer density-composition flag.
+  Existing worlds can have seams where saved terrain meets newly generated Retina
+  terrain. Nether storage retains its full build height, including builds above
+  the roof; noise generation uses the source's separate terrain bounds.
 
 **The world-type selector contains Minecraft's ordinary choices.** Legacy Retina,
 Bend and per-chunk preset identifiers and codecs remain readable. Existing Retina

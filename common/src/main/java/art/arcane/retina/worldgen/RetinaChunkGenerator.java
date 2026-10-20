@@ -79,6 +79,7 @@ public final class RetinaChunkGenerator extends ChunkGenerator {
     private final Optional<Holder<NoiseGeneratorSettings>> settings;
     private final boolean densityComposition;
     private final GenerationSource selectedSource;
+    private net.minecraft.resources.ResourceKey<net.minecraft.world.level.Level> worldDimension;
     private volatile TemporaryRegions previews;
     private volatile TerrainQueries queries;
     private PalettedContainerFactory containerFactory;
@@ -113,6 +114,7 @@ public final class RetinaChunkGenerator extends ChunkGenerator {
                                  GenerationSource selectedSource) {
         super(biomes);
         this.selectedSource = selectedSource;
+        this.worldDimension = selectedSource == null ? net.minecraft.world.level.Level.OVERWORLD : selectedSource.key();
         this.settings = settings;
         this.densityComposition = densityComposition;
         if (minY % 16 != 0 || height % 16 != 0) {
@@ -138,6 +140,7 @@ public final class RetinaChunkGenerator extends ChunkGenerator {
     }
 
     GenerationSource selectedSource() { return selectedSource; }
+    public net.minecraft.resources.ResourceKey<net.minecraft.world.level.Level> dimension() { return worldDimension; }
 
     public RetinaChunkGenerator withDatapackGenerator(ChunkGenerator generator, DimensionType type) {
         float scale = getBiomeSource() instanceof RetinaBiomeSource source ? source.scale() : 256F;
@@ -158,6 +161,11 @@ public final class RetinaChunkGenerator extends ChunkGenerator {
         bindWorld(registry,seed,PalettedContainerFactory.create(registry),StructureProfile.Context.of(templates,structures),skyLight);
     }
 
+    public void bindWorld(RegistryAccess registry,long seed,net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplateManager templates,boolean structures,boolean skyLight,net.minecraft.resources.ResourceKey<net.minecraft.world.level.Level> dimension) {
+        worldDimension=dimension;
+        bindWorld(registry,seed,PalettedContainerFactory.create(registry),StructureProfile.Context.of(templates,structures),skyLight);
+    }
+
     void bindWorld(HolderLookup.Provider registry, long seed, PalettedContainerFactory factory) {
         bindWorld(registry,seed,factory,StructureProfile.Context.NONE);
     }
@@ -174,12 +182,11 @@ public final class RetinaChunkGenerator extends ChunkGenerator {
             var noiseSettings = selectedSource != null && selectedSource.flat() ? null : settings.orElseGet(() -> registry.lookupOrThrow(net.minecraft.core.registries.Registries.NOISE_SETTINGS).getOrThrow(NoiseGeneratorSettings.OVERWORLD)).value();
             var data = selectedSource != null && selectedSource.flat()
                     ? FlatTerrainProfile.export(registry, selectedSource, seed, structures, skyLight)
-                    : TerrainProfileData.export(registry,biomes,minY,height,seed,noiseSettings,structures,densityComposition,skyLight,selectedSource != null && selectedSource.dimension().hasCeiling());
-            if (selectedSource != null) {
-                var json = com.google.gson.JsonParser.parseString(data.json()).getAsJsonObject();
-                json.add("generation", selectedSource.describe());
-                data = new TerrainProfileData(data.seaLevel(), data.materials(), data.biomes(), json.toString());
-            }
+                    : TerrainProfileData.export(registry,biomes,minY,height,seed,noiseSettings,structures,densityComposition,skyLight,selectedSource != null && selectedSource.enclosedTerrain());
+            var json = com.google.gson.JsonParser.parseString(data.json()).getAsJsonObject();
+            json.addProperty("dimension",worldDimension.identifier().toString());
+            if (selectedSource != null) json.add("generation", selectedSource.describe());
+            data = new TerrainProfileData(data.seaLevel(), data.materials(), data.biomes(), json.toString());
             profile = BiomeTerrainProfile.register(data);
             queries = new TerrainQueries(request(seed,0,0),profile);
             var query = queries;
@@ -187,7 +194,7 @@ public final class RetinaChunkGenerator extends ChunkGenerator {
             biomes.bindQueries(query::biomes);
         }
         metrics.startNativeTimings(NativeTerrain.instance().timings(profile == null ? 0 : profile.nativeId()));
-        if (regionMode()) previews = new TemporaryRegions(request(seed, 0, 0), regionBiome(), profile, metrics, TemporaryRegions.MAX_REGIONS);
+        if (regionMode()) previews = new TemporaryRegions(request(seed, 0, 0), regionBiome(), profile, metrics, TemporaryRegions.MAX_REGIONS, Math.min(TemporaryRegions.MAX_REGIONS,16), worldDimension);
     }
 
     public TerrainQueries queries() { return queries; }

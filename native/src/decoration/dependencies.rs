@@ -390,7 +390,7 @@ impl Planner<'_> {
             ..self.request
         };
         let starts = memo(&self.starts, (x, z), || {
-            crate::structures::plans(self.engine, request, 1)
+            crate::structures::plans_inline(self.engine, request, 1)
         })?;
         let starts: Vec<_> = starts
             .iter()

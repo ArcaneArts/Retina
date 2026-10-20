@@ -137,7 +137,16 @@ public final class NativeRegistryLoadingTest {
             for (var dimension : List.of(LevelStem.NETHER, LevelStem.END)) {
                 var other = dimensions.get(dimension);
                 var level = ResourceKey.create(Registries.DIMENSION, dimension.identifier());
-                require(RetinaGenerators.adapt(level, other, other.generator()) == other.generator(), "deferred dimension unchanged");
+                var adapted=RetinaGenerators.adapt(level, other, other.generator());
+                if(dimension.equals(LevelStem.END))require(adapted==other.generator(),"End unchanged");
+                else {
+                    require(adapted instanceof RetinaChunkGenerator,"Nether automatically activates");
+                    var nether=(RetinaChunkGenerator)adapted;
+                    require(nether.dimension().equals(net.minecraft.world.level.Level.NETHER) && nether.selectedSource().generator()==other.generator(),"Nether retains source and dimension identity");
+                    var savedNether=net.minecraft.world.level.chunk.ChunkGenerator.CODEC.encodeStart(ops,other.generator()).getOrThrow();
+                    var restored=net.minecraft.world.level.chunk.ChunkGenerator.CODEC.parse(ops,savedNether).getOrThrow();
+                    require(RetinaGenerators.adapt(level,new LevelStem(other.type(),restored),restored) instanceof RetinaChunkGenerator,"Nether reactivates on reopen");
+                }
             }
         }
         require(!profiles.get("normal").equals(profiles.get("large_biomes")), "large-biome noise differs from normal");

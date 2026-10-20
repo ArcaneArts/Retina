@@ -1,16 +1,29 @@
 package art.arcane.retina.worldgen;
 
 import com.google.gson.JsonObject;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.biome.FixedBiomeSource;
 import net.minecraft.world.level.chunk.ChunkGenerator;
 import net.minecraft.world.level.dimension.DimensionType;
 import net.minecraft.world.level.levelgen.NoiseBasedChunkGenerator;
+import net.minecraft.world.level.levelgen.NoiseGeneratorSettings;
 
 /** Effective, unmodified source definition. Only the runtime generator is adapted. */
-record GenerationSource(ChunkGenerator generator, DimensionType dimension) {
+record GenerationSource(ResourceKey<Level> key, ChunkGenerator generator, DimensionType dimension) {
+    GenerationSource(ChunkGenerator generator, DimensionType dimension) {
+        this(Level.OVERWORLD, generator, dimension);
+    }
+
+    boolean enclosedTerrain() {
+        return dimension.hasCeiling() || key.equals(Level.NETHER)
+                || !flat() && noise().generatorSettings().is(NoiseGeneratorSettings.NETHER);
+    }
+
     JsonObject describe() {
         var data = new JsonObject();
-        data.addProperty("version", 2);
+        data.addProperty("version", 3);
+        data.addProperty("dimension", key.identifier().toString());
         data.addProperty("terrain", flat() ? "flat" : "noise");
         data.addProperty("biomes", generator.getBiomeSource() instanceof FixedBiomeSource ? "fixed" : "climate");
         data.addProperty("min_y", dimension.minY());

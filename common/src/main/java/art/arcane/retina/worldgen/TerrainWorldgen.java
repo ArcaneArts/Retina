@@ -37,7 +37,7 @@ public final class TerrainWorldgen {
                 TerrainQa.check(player, retina);
             }
             var payload = generator instanceof RetinaChunkGenerator retina
-                    ? new TerrainStatsPayload(true, retina.backend(), retina.mode(), retina.metrics().snapshot(),NativeTerrain.instance().gpuDiagnostics(retina.profile()==null?0:retina.profile().nativeId()))
+                    ? new TerrainStatsPayload(true, retina.backend(), retina.mode(), retina.metrics().snapshot(),NativeTerrain.instance().gpuDiagnostics(retina.profile()==null?0:retina.profile().nativeId()),player.level().dimension().identifier().toString())
                     : TerrainStatsPayload.INACTIVE;
             platform.sendTerrainStats(player, payload);
         }

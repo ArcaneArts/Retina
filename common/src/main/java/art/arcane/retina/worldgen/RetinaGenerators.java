@@ -22,20 +22,19 @@ public final class RetinaGenerators {
                     generator.getClass().getName(), unsupported);
             return generator;
         }
-        var result = RetinaChunkGenerator.fromSource(new GenerationSource(generator, stem.type().value()));
+        var result = RetinaChunkGenerator.fromSource(new GenerationSource(dimension, generator, stem.type().value()));
         Retina.LOGGER.info("Retina automatically activated for dimension {} using {}", dimension.identifier(),
                 generator.getClass().getName());
         return result;
     }
 
     static String unsupportedReason(ResourceKey<Level> dimension, ChunkGenerator generator) {
-        if (!dimension.equals(Level.OVERWORLD)) return "dimension adapter is not implemented; Nether and End support is deferred";
+        if (!dimension.equals(Level.OVERWORLD) && !dimension.equals(Level.NETHER)) return "dimension adapter is not implemented; End support is deferred";
         if (generator.getClass() == net.minecraft.world.level.levelgen.FlatLevelSource.class) return null;
         // Subclasses can implement arbitrary generation behavior. Adapting their fields alone would lose it.
         if (generator.getClass() != NoiseBasedChunkGenerator.class) return "no adapter for this generator implementation";
         var noise = (NoiseBasedChunkGenerator) generator;
-        if (noise.generatorSettings().is(NoiseGeneratorSettings.NETHER) || noise.generatorSettings().is(NoiseGeneratorSettings.END))
-            return "Nether/End noise settings are not supported yet";
+        if (noise.generatorSettings().is(NoiseGeneratorSettings.END)) return "End noise settings are not supported yet";
         var biomes = generator.getBiomeSource();
         if (biomes.getClass() != MultiNoiseBiomeSource.class && biomes.getClass() != FixedBiomeSource.class)
             return "no adapter for biome source " + biomes.getClass().getName();

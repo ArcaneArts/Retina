@@ -110,7 +110,12 @@ final class NetherGenerationIntegrationTest {
                 }
             }
         }
-        int cold = terrain.registerProfile(source.toString());
+        // Registration deduplicates identical JSON. Use inert fixture metadata
+        // to obtain a distinct cache namespace for cold replay.
+        var coldSource = source.deepCopy();
+        coldSource.addProperty("qa_cold_replay", label);
+        int cold = terrain.registerProfile(coldSource.toString());
+        require(cold != profile, "cold replay has an independent native cache namespace");
         // Exercise the pure planning API before any generation on the cold profile.
         for (var at : probes) terrain.structureStarts(PortalIntegrationTest.request(cold, 42, at.x(), at.z()));
         try (var workers = Executors.newFixedThreadPool(4)) {

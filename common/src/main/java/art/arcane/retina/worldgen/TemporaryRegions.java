@@ -25,6 +25,7 @@ import java.util.concurrent.CompletableFuture;
 final class TemporaryRegions implements AutoCloseable {
     static final int MAX_REGIONS = 1024;
     private final TerrainRequest settings;
+    private final net.minecraft.resources.ResourceKey<Level> dimension;
     private final String biome;
     private final GenerationMetrics metrics;
     private final BiomeTerrainProfile profile;
@@ -46,6 +47,11 @@ final class TemporaryRegions implements AutoCloseable {
     }
 
     TemporaryRegions(TerrainRequest settings, String biome, BiomeTerrainProfile profile, GenerationMetrics metrics, int capacity, int memoryCapacity) {
+        this(settings,biome,profile,metrics,capacity,memoryCapacity,Level.OVERWORLD);
+    }
+
+    TemporaryRegions(TerrainRequest settings, String biome, BiomeTerrainProfile profile, GenerationMetrics metrics, int capacity, int memoryCapacity, net.minecraft.resources.ResourceKey<Level> dimension) {
+        this.dimension=dimension;
         this.settings = settings;
         this.biome = biome;
         this.profile = profile;
@@ -102,7 +108,7 @@ final class TemporaryRegions implements AutoCloseable {
             materialPath = entryFolder.resolve("r." + position.getRegionX() + "." + position.getRegionZ() + ".materials");
         }
         synchronized CompoundTag read(ChunkPos position) throws IOException {
-            if (storage == null) storage = new RegionFileStorage(new RegionStorageInfo("retina-preview", Level.OVERWORLD, "chunk"), entryFolder, false);
+            if (storage == null) storage = new RegionFileStorage(new RegionStorageInfo("retina-preview", dimension, "chunk"), entryFolder, false);
             var tag = storage.read(position);
             if (tag == null) throw new IOException("Missing chunk in completed temporary MCA: " + position);
             return tag;
@@ -188,8 +194,8 @@ final class TemporaryRegions implements AutoCloseable {
                 entry.generated.complete(report);
                 synchronized (this) { if (!entry.retired) warm.put(entry.key, entry); trimWarm(); }
                 if (Boolean.getBoolean("retina.qa")) Retina.LOGGER.info(
-                        "QA_EVT {\"event\":\"temporary_mca_region\",\"status\":\"pass\",\"context\":{\"x\":{},\"z\":{},\"chunks\":{},\"ms\":{},\"bytes\":{}}}",
-                        position.getRegionX(), position.getRegionZ(), report.generated(), elapsed / 1e6, report.bytes());
+                        "QA_EVT {\"event\":\"temporary_mca_region\",\"status\":\"pass\",\"context\":{\"dimension\":\"{}\",\"x\":{},\"z\":{},\"chunks\":{},\"ms\":{},\"bytes\":{}}}",
+                        dimension.identifier(), position.getRegionX(), position.getRegionZ(), report.generated(), elapsed / 1e6, report.bytes());
             } catch (Throwable error) {
                 metrics.failed(); entry.generated.completeExceptionally(error);
                 lease.close();
@@ -210,6 +216,7 @@ final class TemporaryRegions implements AutoCloseable {
     }
 
     synchronized Path folder() { return folder; }
+    net.minecraft.resources.ResourceKey<Level> dimension() { return dimension; }
     synchronized int size() { return entries.size(); }
 
     private void trim() {

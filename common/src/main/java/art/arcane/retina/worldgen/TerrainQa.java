@@ -136,7 +136,13 @@ final class TerrainQa {
     static void check(ServerPlayer player, RetinaChunkGenerator generator) {
         if (!Boolean.getBoolean("retina.qa") || !CHECKED.add(generator)) return;
         ServerLevel level = player.level();
-        var position = player.chunkPosition();
+        // Compare deserialization before gameplay can mutate the fixture. The
+        // player's chunk may already contain flowing fluids or random-tick edits.
+        // This isolated QA world keeps the probe beyond player/spawn simulation.
+        var playerChunk = player.chunkPosition();
+        var position = new net.minecraft.world.level.ChunkPos(
+                (playerChunk.getRegionX() + 4) * 32 + 16,
+                (playerChunk.getRegionZ() + 4) * 32 + 16);
         var chunk = level.getChunk(position.x(), position.z());
         var request = generator.request(level.getSeed(), position.x(), position.z());
         var profile = generator.profile();
@@ -155,7 +161,7 @@ final class TerrainQa {
                     int actual = chunk.getHeight(type, x, z) + 1;
                     if (actual != expected) {
                         Retina.LOGGER.error("QA_EVT {\"event\":\"minecraft_height_roundtrip\",\"status\":\"fail\",\"context\":{\"x\":{},\"z\":{},\"expected\":{},\"minecraft\":{},\"type\":\"{}\"}}", globalX, globalZ, expected, actual, type);
-                        return;
+                        throw new IllegalStateException("Loaded heightmap differs from generated QA fixture");
                     }
                 }
             }
@@ -167,7 +173,7 @@ final class TerrainQa {
                     geologySamples++;
                     if (!state.is(expected.getBlock())) {
                         Retina.LOGGER.error("QA_EVT {\"event\":\"minecraft_geology_roundtrip\",\"status\":\"fail\",\"context\":{\"x\":{},\"y\":{},\"z\":{},\"expected\":\"{}\",\"actual\":\"{}\"}}", pos.getX(), y, pos.getZ(), expected, state);
-                        return;
+                        throw new IllegalStateException("Loaded block differs from generated QA fixture at " + pos);
                     }
                     if (state.isAir()) caveAir++;
                     if (net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(state.getBlock()).getPath().endsWith("_ore")) ores++;
@@ -179,7 +185,8 @@ final class TerrainQa {
                     var half = state.getValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.DOUBLE_BLOCK_HALF);
                     var other = chunk.getBlockState(half == net.minecraft.world.level.block.state.properties.DoubleBlockHalf.LOWER ? pos.above() : pos.below());
                     if (!other.is(state.getBlock()) || other.getValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.DOUBLE_BLOCK_HALF) == half) {
-                        Retina.LOGGER.error("QA_EVT {\"event\":\"minecraft_plant_pairs\",\"status\":\"fail\"}"); return;
+                        Retina.LOGGER.error("QA_EVT {\"event\":\"minecraft_plant_pairs\",\"status\":\"fail\"}");
+                        throw new IllegalStateException("Loaded QA fixture contains an incomplete plant pair");
                     }
                 }
             }
