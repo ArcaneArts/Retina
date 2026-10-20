@@ -233,6 +233,15 @@
     "maximum_ms": 32616.74908408895,
     "note": "Wide concurrent latency tails observed: this validates exact output, not fairness or performance acceptance. Compare the preceding version and investigate admission/scheduling in Cycle 6."
   },
-  "post_merge": null,
+  "post_merge": {
+    "revision": "7e0721aed9a4da6b53e9ad984d92579da5e33c0a",
+    "pr": "https://github.com/ArcaneArts/Retina/pull/173",
+    "library_sha256": "3f7c0942c9f5ed6bab11fc9edd66b66d5f25266a9931c473272fa2ddc3032a37",
+    "binary_identical_to_validated_candidate": true,
+    "scope": "Actual merged build: one warmup and one measured region per case, complete-NBT smoke comparison only. Full quiet timing confirmation remains deferred.",
+    "evidence": "cycle3/merged-smoke/suite.json",
+    "identical_nbt_chunks": 5120,
+    "timing_confirmation_pending": true
+  },
   "identical_nbt_chunks_against_each_reference": 102400
 }

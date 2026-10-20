@@ -239,3 +239,29 @@ Cycle 3 also matches 20,480 chunks in reverse request order with two concurrent
 callers and 16 native workers. That run has wide latency tails (provisional p95
 28.8 s despite a 4.0 s median). Exact output passes; scheduling fairness remains
 unresolved and must be compared with the preceding version in Cycle 6.
+
+## Cycle 4 implementation
+
+A job-owned terrain store now serves both ordered planning and fossil probes.
+It reuses the initial region when the complete requested tile and its halo are
+present, and generates missing coverage explicitly. The store's fixed request
+context isolates seeds, profiles and height bounds. Profiles whose material masks
+are separate from their fields retain the normal generation path for those tiles.
+No dependency area is clipped to the initial region.
+
+Base-column states retain immutable ranges of the shared material buffer instead
+of copying each run list. Changed columns still own their accepted state. The
+shared buffer remains owned until its last consumer finishes. Terrain cache wait
+counters remain explicit after moving those operations out of generic memoization.
+
+The diagnostic region matches all 1,024 chunks. Four initial tiles are reused;
+generated terrain tiles fall from 66 to 34, generated tile-chunks from 31,292 to
+15,804, and logical readback from 670,327,668 to 355,465,896 bytes. The same run
+shares material buffers for 859,315 base columns. These are work/allocation changes;
+quiet latency and memory confirmation remain deferred. Boundary prefix rebuilding
+still accounts for 10.7 million column-state builds and needs further attention.
+
+Cycle 3 merged as PR #173 (`7e0721a`). Its rebuilt library is byte-identical to
+the full-corpus candidate; all five post-merge smoke cases match 5,120 chunks.
+Cycle 4 matches all 102,400 full-corpus chunks and passes 115 native tests
+(37 ignored). Quiet timing confirmation remains outstanding.
