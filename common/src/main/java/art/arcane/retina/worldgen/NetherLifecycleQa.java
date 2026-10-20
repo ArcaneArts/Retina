@@ -54,6 +54,8 @@ public final class NetherLifecycleQa {
         List<Read> reads;
         CompletableFuture<Void> preparation;
         long generatedBefore;
+        long portalBegan, lastPortalTick, maximumPortalTickGap;
+        int portalTicks;
         BlockPos createdPortal;
         Run(ServerPlayer player) { this.player = player; }
     }
@@ -85,6 +87,12 @@ public final class NetherLifecycleQa {
         if (run.phase == 10) return;
         require(System.nanoTime() - run.began < 360_000_000_000L,
                 "lifecycle deadline in phase " + run.phase + ", dimension " + player.level().dimension().identifier());
+        if (run.phase == 7) {
+            long now = System.nanoTime();
+            run.maximumPortalTickGap = Math.max(run.maximumPortalTickGap, now - run.lastPortalTick);
+            run.lastPortalTick = now;
+            run.portalTicks++;
+        }
         var overworld = server.overworld();
         var nether = server.getLevel(Level.NETHER);
         require(nether != null, "Nether exists");
@@ -177,6 +185,9 @@ public final class NetherLifecycleQa {
                 else portal(overworld, COLD_PORTAL);
                 run.generatedBefore = ((RetinaChunkGenerator) nether.getChunkSource().getGenerator()).metrics().snapshot().total();
                 enter(player, overworld, COLD_PORTAL);
+                run.portalBegan = run.lastPortalTick = System.nanoTime();
+                run.maximumPortalTickGap = 0;
+                run.portalTicks = 0;
                 run.phase = 7;
             }
             case 7 -> {
@@ -192,7 +203,10 @@ public final class NetherLifecycleQa {
                         - run.generatedBefore;
                 require(generated == (run.reopened ? 0 : 4096),
                         "remote travel generates only its four destination regions, and reuses them on reopen: " + generated);
-                event("nether_cold_portal_arrival", "\"generated_chunks\":" + generated + ",\"reopened\":" + run.reopened);
+                event("nether_cold_portal_arrival", "\"generated_chunks\":" + generated + ",\"reopened\":" + run.reopened
+                        + ",\"portal_ms\":" + (System.nanoTime() - run.portalBegan) / 1e6
+                        + ",\"server_ticks\":" + run.portalTicks
+                        + ",\"maximum_tick_gap_ms\":" + run.maximumPortalTickGap / 1e6);
                 run.since = server.getTickCount();
                 run.phase = 8;
             }
