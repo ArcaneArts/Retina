@@ -376,6 +376,9 @@ impl CaveMask {
         self.words.get(at + 3).map(|v| *v as usize)
     }
     pub(crate) fn material_runs(&self, x: i32, z: i32) -> Option<&[u32]> {
+        self.words.get(self.material_run_range(x, z)?)
+    }
+    pub(crate) fn material_run_range(&self, x: i32, z: i32) -> Option<std::ops::Range<usize>> {
         let at = self.base_words();
         if self.words.get(at) != Some(&0x52554e53) {
             return None;
@@ -392,10 +395,9 @@ impl CaveMask {
         let length = self.words[at + 4 + index * 2] as usize;
         let start = self.words[at + 5 + index * 2] as usize
             + self.words[at + 4 + count * 2 + groups + index / 256] as usize;
-        self.words.get(
-            at + 4 + count * 2 + groups * 2 + start
-                ..at + 4 + count * 2 + groups * 2 + start + length,
-        )
+        let start = at + 4 + count * 2 + groups * 2 + start;
+        let range = start..start + length;
+        self.words.get(range.clone()).map(|_| range)
     }
     pub(crate) fn validate_material_runs(&self) -> Result<(), String> {
         let at = self.base_words();

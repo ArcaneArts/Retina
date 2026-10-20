@@ -175,8 +175,23 @@ impl Versions {
     }
 }
 
+enum ColumnRuns {
+    Owned(Box<[u32]>),
+    Shared {
+        mask: Arc<crate::geology::CaveMask>,
+        range: std::ops::Range<usize>,
+    },
+}
+impl ColumnRuns {
+    fn slice(&self) -> &[u32] {
+        match self {
+            Self::Owned(runs) => runs,
+            Self::Shared { mask, range } => &mask.words[range.clone()],
+        }
+    }
+}
 struct ColumnState {
-    runs: Box<[u32]>,
+    runs: ColumnRuns,
     heights: [i32; 6],
 }
 impl ColumnState {
@@ -190,12 +205,17 @@ impl ColumnState {
             }
         }
         runs.reverse();
-        Self::from_runs(runs.into_boxed_slice(), blocks.len(), profile, min_y)
+        Self::from_runs(
+            ColumnRuns::Owned(runs.into_boxed_slice()),
+            blocks.len(),
+            profile,
+            min_y,
+        )
     }
-    fn from_runs(runs: Box<[u32]>, height: usize, profile: &WorldProfile, min_y: i32) -> Self {
+    fn from_runs(runs: ColumnRuns, height: usize, profile: &WorldProfile, min_y: i32) -> Self {
         let mut heights = [min_y; 6];
         let mut top = min_y + height as i32;
-        for &run in &runs {
+        for &run in runs.slice() {
             for (map, height) in heights.iter_mut().enumerate() {
                 if *height == min_y
                     && profile.heightmap_masks[run as u16 as usize] & (1 << map) != 0
@@ -208,12 +228,13 @@ impl ColumnState {
         Self { runs, heights }
     }
     fn material(&self, y: usize) -> u16 {
-        self.runs[self.runs.partition_point(|run| run >> 16 > y as u32)] as u16
+        let runs = self.runs.slice();
+        runs[runs.partition_point(|run| run >> 16 > y as u32)] as u16
     }
     fn expand(&self, height: usize) -> Vec<u16> {
         let mut blocks = vec![0; height];
         let mut top = height;
-        for &run in &self.runs {
+        for &run in self.runs.slice() {
             let start = (run >> 16) as usize;
             blocks[start..top].fill(run as u16);
             top = start;
@@ -639,9 +660,17 @@ impl Planner<'_> {
                     return self.prefix(before, x, z, None);
                 }
                 let field = self.terrain(x.div_euclid(16), z.div_euclid(16))?;
-                if let Some(runs) = field.substrate.as_ref().and_then(|m| m.material_runs(x, z)) {
+                if let Some((mask, range)) = field
+                    .substrate
+                    .as_ref()
+                    .and_then(|mask| mask.material_run_range(x, z).map(|range| (mask, range)))
+                {
+                    metrics.add(Perf::shared_material_columns, 1);
                     return Ok(Arc::new(ColumnState::from_runs(
-                        runs.into(),
+                        ColumnRuns::Shared {
+                            mask: mask.clone(),
+                            range,
+                        },
                         self.request.height as usize,
                         self.profile,
                         self.request.min_y,
@@ -722,7 +751,7 @@ impl Planner<'_> {
         }
         if let Some(blocks) = blocks {
             let result = ColumnState::new(blocks, self.profile, self.request.min_y);
-            if result.runs == prior.runs {
+            if result.runs.slice() == prior.runs.slice() {
                 Ok(prior)
             } else {
                 Ok(Arc::new(result))
@@ -1054,6 +1083,43 @@ mod tests {
                     }
                 }
             }
+        }
+    }
+    #[test]
+    fn shared_material_runs_keep_the_owner_and_preserve_column_values() {
+        let (profile, _, _) = super::super::replay_tests::fixture(42, 0);
+        let blocks: Vec<u16> = (0..256)
+            .map(|y| ((y / 17) % profile.materials.len()) as u16)
+            .collect();
+        let owned = ColumnState::new(blocks.clone(), &profile, -64);
+        let mut words = vec![u32::MAX; 7];
+        words.extend_from_slice(owned.runs.slice());
+        let end = words.len();
+        words.push(u32::MAX);
+        let mask = Arc::new(crate::geology::CaveMask {
+            origin_x: -32,
+            origin_z: -32,
+            min_y: -64,
+            height: 256,
+            width: 0,
+            air_only: false,
+            words,
+            columns: None,
+        });
+        let shared = ColumnState::from_runs(
+            ColumnRuns::Shared {
+                mask: mask.clone(),
+                range: 7..end,
+            },
+            256,
+            &profile,
+            -64,
+        );
+        drop(mask);
+        assert_eq!(shared.expand(256), blocks);
+        assert_eq!(shared.heights, owned.heights);
+        for (y, block) in blocks.into_iter().enumerate() {
+            assert_eq!(shared.material(y), block);
         }
     }
     #[test]

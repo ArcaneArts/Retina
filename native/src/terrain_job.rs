@@ -52,6 +52,7 @@ impl<'a> TerrainJob<'a> {
         let x = x.div_euclid(16) * 16;
         let z = z.div_euclid(16) * 16;
         self.metrics.performance.add(Perf::terrain_job_requests, 1);
+        let lock_started = self.metrics.performance.start();
         let cell = self
             .tiles
             .lock()
@@ -59,46 +60,59 @@ impl<'a> TerrainJob<'a> {
             .entry((x, z))
             .or_insert_with(|| Arc::new(OnceLock::new()))
             .clone();
-        cell.get_or_init(|| {
-            let (field, mask) = if let Some(initial) =
-                self.initial.filter(|field| covers(field, x - 1, z - 1, 18))
-            {
-                let mut columns = Vec::with_capacity(18 * 18 * crate::COLUMNS);
-                for dz in -1..=16 {
-                    for dx in -1..=16 {
-                        columns.extend_from_slice(initial.chunk(x + dx, z + dz));
+        self.metrics
+            .performance
+            .elapsed(Perf::terrain_job_lock_nanos, lock_started);
+        let joined = self.metrics.performance.start();
+        let mut built = false;
+        let result = cell
+            .get_or_init(|| {
+                built = true;
+                let (field, mask) = if let Some(initial) =
+                    self.initial.filter(|field| covers(field, x - 1, z - 1, 18))
+                {
+                    let mut columns = Vec::with_capacity(18 * 18 * crate::COLUMNS);
+                    for dz in -1..=16 {
+                        for dx in -1..=16 {
+                            columns.extend_from_slice(initial.chunk(x + dx, z + dz));
+                        }
                     }
-                }
-                self.metrics
-                    .performance
-                    .add(Perf::terrain_initial_tiles_reused, 1);
-                (
-                    Field {
-                        origin_x: x - 1,
-                        origin_z: z - 1,
-                        side: 18,
-                        columns,
-                        substrate: initial.substrate.clone(),
-                        prior: None,
-                    },
-                    initial.substrate.clone(),
-                )
-            } else {
-                self.engine.terrain_field(
-                    ChunkRequest {
-                        chunk_x: x,
-                        chunk_z: z,
-                        ..self.request
-                    },
-                    16,
-                )?
-            };
-            Ok(Arc::new(Tile {
-                field: Arc::new(field),
-                mask,
-            }))
-        })
-        .clone()
+                    self.metrics
+                        .performance
+                        .add(Perf::terrain_initial_tiles_reused, 1);
+                    (
+                        Field {
+                            origin_x: x - 1,
+                            origin_z: z - 1,
+                            side: 18,
+                            columns,
+                            substrate: initial.substrate.clone(),
+                            prior: None,
+                        },
+                        initial.substrate.clone(),
+                    )
+                } else {
+                    self.engine.terrain_field(
+                        ChunkRequest {
+                            chunk_x: x,
+                            chunk_z: z,
+                            ..self.request
+                        },
+                        16,
+                    )?
+                };
+                Ok(Arc::new(Tile {
+                    field: Arc::new(field),
+                    mask,
+                }))
+            })
+            .clone();
+        if !built {
+            self.metrics
+                .performance
+                .elapsed(Perf::terrain_job_join_nanos, joined);
+        }
+        result
     }
 }
 fn covers(field: &Field<'_>, x: i32, z: i32, side: usize) -> bool {
