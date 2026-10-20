@@ -119,16 +119,34 @@ pub struct Cache {
     meta_order: VecDeque<CacheKey>,
 }
 impl Cache {
-    fn cell(&mut self, key: (CacheKey, usize)) -> Arc<OnceLock<Result<Arc<Start>, String>>> {
+    fn cell(
+        &mut self,
+        key: (CacheKey, usize),
+        metrics: Option<&crate::performance::Metrics>,
+    ) -> Arc<OnceLock<Result<Arc<Start>, String>>> {
+        use crate::performance::Counter::*;
         if let Some(cell) = self.entries.get(&key) {
+            if let Some(m) = metrics {
+                m.add(structure_cache_hits, 1);
+            }
             return cell.clone();
+        }
+        if let Some(m) = metrics {
+            m.add(structure_cache_misses, 1);
         }
         let cell = Arc::new(OnceLock::new());
         self.entries.insert(key, cell.clone());
         self.order.push_back(key);
         while self.entries.len() > 256 {
             if let Some(old) = self.order.pop_front() {
-                self.entries.remove(&old);
+                if let Some(evicted) = self.entries.remove(&old) {
+                    if let Some(m) = metrics {
+                        m.add(structure_cache_evictions, 1);
+                        if evicted.get().is_none() {
+                            m.add(structure_pending_evictions, 1);
+                        }
+                    }
+                }
             }
         }
         cell
@@ -624,6 +642,8 @@ fn plans_inner(
     parallel: bool,
 ) -> Result<Vec<Arc<Start>>, String> {
     let timings = engine.timings(request.reserved);
+    let metrics = &timings.performance;
+    metrics.add(crate::performance::Counter::structure_plan_calls, 1);
     let _planning = timings.span(crate::timings::STRUCTURE_PLAN);
     let Some(profile) = engine.profile(request.reserved)? else {
         return Ok(Vec::new());
@@ -678,7 +698,8 @@ fn plans_inner(
                 ..request
             };
             let key = (CacheKey::from(r), set);
-            let cell = cache.cell(key);
+            metrics.candidate(key);
+            let cell = cache.cell(key, Some(metrics));
             let probe = if cell.get().is_none() {
                 Some(*probe_ids.entry(CacheKey::from(r)).or_insert_with(|| {
                     let id = probes.len();
@@ -693,6 +714,10 @@ fn plans_inner(
     }
     // Cold starts share sparse biome probes; warm plans need no probe at all.
     let mut biomes = Vec::with_capacity(probes.len());
+    metrics.add(
+        crate::performance::Counter::structure_probe_points,
+        probes.len() as u64,
+    );
     for batch in probes.chunks(1024) {
         biomes.extend(engine.sample_biomes(batch, None)?);
     }
@@ -703,12 +728,15 @@ fn plans_inner(
         Option<usize>,
     )| {
         cell.get_or_init(|| {
+            let _build = metrics.build((CacheKey::from(*r), *set));
             build(engine, *r, *set, &profile, biomes[probe.unwrap()]).map(Arc::new)
         })
         .clone()
     };
     let mut result: Vec<_> = if parallel {
-        jobs.par_iter().map(build_job).collect::<Result<_, String>>()?
+        jobs.par_iter()
+            .map(build_job)
+            .collect::<Result<_, String>>()?
     } else {
         jobs.iter().map(build_job).collect::<Result<_, String>>()?
     };
@@ -802,7 +830,7 @@ pub fn query_starts(
                 jobs.push(None);
                 continue;
             }
-            let cell = cache.cell((CacheKey::from(r), set));
+            let cell = cache.cell((CacheKey::from(r), set), None);
             let probe = if cell.get().is_none() {
                 let i = probes.len();
                 probes.push(r);

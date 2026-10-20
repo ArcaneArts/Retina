@@ -16,7 +16,8 @@ import time
 import subprocess
 
 from benchmark_support import (RESULT_SCHEMA, RESULT_SCHEMA_VERSION, compare_corpora,
-                               corpus_manifest, mca_records, percentile, profile_request_context, write_json)
+                               corpus_manifest, mca_records, percentile, profile_request_context,
+                               region_coordinates, write_json)
 
 class Request(c.Structure):
     _fields_ = [("seed", c.c_uint64), ("x", c.c_int32), ("z", c.c_int32), ("min_y", c.c_int32),
@@ -40,12 +41,15 @@ def main():
     parser.add_argument("--profile", type=Path, required=True)
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--compare", type=Path, help="A matched baseline output directory; fail on any changed chunk NBT")
+    parser.add_argument("--diagnostics", action="store_true",
+                        help="Opt-in workload/wait attribution; keep these runs separate from headline timings")
     parser.add_argument("--parallel", type=int, choices=(1,2,4,8), default=1,
                         help="Concurrent callers; CPU worker limits remain separate")
     parser.add_argument("--seed", type=int, default=123456789)
     parser.add_argument("--origin-x", type=int, default=-1, help="First region X coordinate")
     parser.add_argument("--origin-z", type=int, default=-1, help="First region Z coordinate")
     parser.add_argument("--grid-width", type=int, default=3)
+    parser.add_argument("--request-order", choices=("forward", "reverse", "shuffled"), default="forward")
     parser.add_argument("--count", type=int, default=6)
     parser.add_argument("--warmups", type=int, default=1)
     parser.add_argument("--scope", choices=("native-region", "lit-mca"), default="lit-mca",
@@ -72,6 +76,8 @@ def main():
     parser.add_argument("--await-specialization", action="store_true", help="After measurement, await compilation and compare one regenerated region with its pre-warmup output")
     parser.add_argument("--specialization-timeout", type=float, default=180, help="Seconds to await a real compilation result after measurements")
     args = parser.parse_args()
+    if args.diagnostics:
+        os.environ["RETINA_PERFORMANCE_DIAGNOSTICS"] = "1"
     if args.count < 1 or args.warmups < 0 or args.grid_width < 1:
         parser.error("--count and --grid-width must be positive and --warmups cannot be negative")
     if (args.scope == "native-region") != (args.lighting == "disabled"):
@@ -115,6 +121,20 @@ def main():
         if status:
             buf = c.create_string_buffer(8192); lib.retina_last_error(buf, len(buf))
             raise RuntimeError(buf.value.decode())
+    performance = getattr(lib, "retina_performance_snapshot", None)
+    if performance:
+        performance.argtypes = [c.c_uint32, c.POINTER(c.c_void_p), c.POINTER(c.c_uint64)]
+        lib.retina_free_bytes.argtypes = [c.c_void_p, c.c_uint64]
+        lib.retina_free_bytes.restype = None
+    def performance_snapshot():
+        if not performance:
+            return None
+        pointer, length = c.c_void_p(), c.c_uint64()
+        check(performance(profile, c.byref(pointer), c.byref(length)))
+        try:
+            return json.loads(c.string_at(pointer, length.value))
+        finally:
+            lib.retina_free_bytes(pointer, length)
     startup = time.perf_counter()
     check(lib.retina_initialize())
     initialize_ms = (time.perf_counter()-startup)*1000
@@ -163,6 +183,7 @@ def main():
         if ready.status not in (2, 3, 4):
             raise RuntimeError(f"GPU program did not reach a final readiness state: status={ready.status}")
     before = Snapshot(); check(lib.retina_timing_snapshot(profile, c.byref(before)))
+    before_performance = performance_snapshot()
     before_program=ProgramSnapshot()
     if program:
         check(program(profile,c.byref(before_program)))
@@ -172,13 +193,14 @@ def main():
         pipeline.argtypes = [c.POINTER(PipelineSnapshot)]
         check(pipeline(c.byref(before_pipeline)))
     # Adjacent tiles exercise shared structure halos and cold full-region terrain.
-    coords = [(str(i), args.origin_x + i % args.grid_width, args.origin_z + i // args.grid_width)
-              for i in range(args.count)]
+    coords = region_coordinates(args.count, args.origin_x, args.origin_z, args.grid_width,
+                                args.request_order, args.seed)
     start = time.perf_counter()
     with concurrent.futures.ThreadPoolExecutor(args.parallel) as workers:
         regions = list(workers.map(generate, coords))
     wall = time.perf_counter()-start
     after = Snapshot(); check(lib.retina_timing_snapshot(profile, c.byref(after)))
+    after_performance = performance_snapshot()
     chunks = after.chunks-before.chunks
     durations = [r["ms"] for r in regions]
     try:
@@ -201,6 +223,7 @@ def main():
                       "python": platform.python_version()},
                 library=str(args.library), parallel=args.parallel, seed=args.seed, request=request_context,
                 coordinates={"origin_x": args.origin_x, "origin_z": args.origin_z, "grid_width": args.grid_width},
+                request_order=args.request_order,
                 regions=regions, program_execution=args.program_execution, interpolation_cache=args.interpolation_cache, density_composition=args.density_composition, cached_density_masks=args.cached_density_masks, terrain_execution=args.terrain_execution, interpreter_dispatch=args.interpreter_dispatch, interpreter_preload=args.interpreter_preload,
                 lake_point_cache=args.lake_point_cache,
                 lake_primed_corners=args.lake_primed_corners,
@@ -219,6 +242,13 @@ def main():
                 gpu_timestamps=bool(after.flags & 1),
                 timing_version=after.version, columns_include_lakes=after.version < 7,
                 stage_ms_chunk={name:(after.nanos[i]-before.nanos[i])/max(chunks,1)/1e6 for i,name in enumerate(STAGES)})
+    if after_performance:
+        data["performance_diagnostics"] = {
+            **after_performance,
+            "counters": {key: value - before_performance["counters"][key]
+                         for key, value in after_performance["counters"].items()},
+            "note": "Measured-interval deltas. Unique keys are first seen during this interval, excluding warmup keys. Recursive/concurrent durations overlap.",
+        }
     if pipeline:
         after_pipeline = PipelineSnapshot(); check(pipeline(c.byref(after_pipeline)))
         data["gpu_pipeline"] = {"peak_in_flight": after_pipeline.peak_in_flight,

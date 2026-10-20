@@ -7,6 +7,7 @@ mod specialize;
 mod structure_processors;
 pub mod structures;
 pub mod timings;
+mod performance;
 use std::cell::RefCell;
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::sync::{Arc, OnceLock, mpsc};
@@ -1024,6 +1025,10 @@ impl TerrainEngine {
         side: u32,
         trace: Option<&mut timings::Snapshot>,
     ) -> Result<(decoration::Field<'static>, Option<Arc<geology::CaveMask>>), String> {
+        let performance = performance::enabled().then(|| self.timings(request.reserved));
+        if let Some(p) = &performance {
+            p.performance.add(performance::Counter::terrain_requests, 1);
+        }
         if !(1..=32).contains(&side) {
             return Err("terrain side must be 1..32".into());
         }
@@ -1055,6 +1060,9 @@ impl TerrainEngine {
             .cloned();
         if side == 1 {
             if let Some(mask) = cached {
+                if let Some(p) = &performance {
+                    p.performance.add(performance::Counter::terrain_cache_hits, 1);
+                }
                 let mut field = self.decoration_field(request, side)?;
                 if material_halo {
                     field.substrate = Some(mask.clone());
@@ -1100,6 +1108,10 @@ impl TerrainEngine {
                 }
                 .validate()?;
             }
+        }
+        if let Some(p) = &performance {
+            // Track the actual GPU tile, including its halo.
+            p.performance.terrain(CacheKey::from(origin), tile_side);
         }
         let sample = self.dispatch_full(vec![origin], tile_side, tile_side - 2)?;
         if let Some(trace) = trace {
@@ -1409,6 +1421,30 @@ pub unsafe extern "C" fn retina_timing_snapshot(
     })
 }
 /// # Safety
+/// output and length must be writable. Free the returned JSON with retina_free_bytes.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn retina_performance_snapshot(
+    profile: u32,
+    output: *mut *mut u8,
+    length: *mut u64,
+) -> i32 {
+    boundary(|| {
+        if output.is_null() || length.is_null() {
+            return Err("null performance snapshot buffer".into());
+        }
+        let engine = shared_engine()?;
+        engine.profile(profile)?;
+        let bytes = serde_json::to_vec(&engine.timings(profile).performance.snapshot())
+            .map_err(|e| e.to_string())?
+            .into_boxed_slice();
+        unsafe {
+            *length = bytes.len() as u64;
+            *output = Box::into_raw(bytes) as *mut u8;
+        }
+        Ok(())
+    })
+}
+/// # Safety
 /// request is readable; output and length are writable. Free the returned allocation with retina_free_bytes.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn retina_chunk_structure_data(
@@ -1453,7 +1489,8 @@ pub unsafe extern "C" fn retina_chunk_structure_starts(
     })
 }
 /// # Safety
-/// data and length must describe an allocation returned by retina_chunk_structure_data, freed exactly once.
+/// data and length must describe an allocation returned by a Retina byte-buffer
+/// API (structure data or performance JSON), freed exactly once.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn retina_free_bytes(data: *mut u8, length: u64) {
     if !data.is_null() {
