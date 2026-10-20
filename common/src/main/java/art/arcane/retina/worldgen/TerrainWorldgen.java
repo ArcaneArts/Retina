@@ -6,8 +6,14 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.level.ServerLevelAccessor;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.WeakHashMap;
+
 public final class TerrainWorldgen {
     private static RetinaPlatform platform;
+    private static final Map<MinecraftServer, List<TemporaryRegions>> CLOSING = new WeakHashMap<>();
 
     private TerrainWorldgen() { }
 
@@ -19,18 +25,36 @@ public final class TerrainWorldgen {
         TerrainWorldgen.platform = platform;
         platform.registerWorldgen();
         platform.registerTerrainStats();
-        platform.registerServerHooks(server -> endTick(server, platform), TerrainWorldgen::unload);
+        platform.registerServerHooks(server -> endTick(server, platform), TerrainWorldgen::unload, TerrainWorldgen::stopped);
     }
 
     private static void unload(ServerLevel level) {
+        NetherUnloadQa.beforeUnload(level);
         TerrainQa.unload(level);
         NetherLifecycleQa.unload(level);
         NetherProgressionQa.unload(level);
         NetherStructuresQa.unload(level);
-        if (level.getChunkSource().getGenerator() instanceof RetinaChunkGenerator retina) retina.closePreviews();
+        if (level.getChunkSource().getGenerator() instanceof RetinaChunkGenerator retina) {
+            var cache = retina.previewCache();
+            if (cache != null) synchronized (CLOSING) {
+                CLOSING.computeIfAbsent(level.getServer(), ignored -> new ArrayList<>()).add(cache);
+            }
+            retina.closePreviews();
+        }
+    }
+
+    private static void stopped(MinecraftServer server) {
+        List<TemporaryRegions> caches;
+        synchronized (CLOSING) { caches = CLOSING.remove(server); }
+        // Every dimension's I/O queue is closed now. Its pending preparations can
+        // no longer publish or start another batch while another dimension drains.
+        // The loader still owns its classes until this lifecycle callback returns.
+        if (caches != null) for (var cache : caches) cache.closeAndAwaitGeneration();
+        NetherUnloadQa.serverDrained();
     }
 
     private static void endTick(MinecraftServer server, RetinaPlatform platform) {
+        NetherUnloadQa.tick(server);
         NetherLifecycleQa.tick(server);
         NetherProgressionQa.tick(server);
         NetherStructuresQa.tick(server);

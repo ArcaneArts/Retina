@@ -18,7 +18,9 @@ public interface RetinaPlatform {
 
     void registerTerrainStats();
 
-    void registerServerHooks(Consumer<MinecraftServer> endTick, Consumer<ServerLevel> unload);
+    /** stopped runs after level I/O closes and before loader teardown. */
+    void registerServerHooks(Consumer<MinecraftServer> endTick, Consumer<ServerLevel> unload,
+                             Consumer<MinecraftServer> stopped);
 
     /** Initialize a native template mob and honor loader-specific spawn cancellation. */
     boolean finalizeStructureMob(Mob mob, ServerLevelAccessor level);

@@ -55,6 +55,8 @@ public final class ColumnCacheLifecycleTest {
             }
             var lease=cache.prepare(a);
             cache.close();require(Files.exists(folder),"shutdown retains an active lease");
+            cache.closeAndAwaitGeneration();
+            require(Files.exists(folder),"generation drain does not wait for or invalidate an existing read lease");
             lease.close();require(!Files.exists(folder),"last lease deletes all cache companions");
         } finally {
             cache.close();

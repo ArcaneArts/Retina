@@ -43,7 +43,10 @@ public final class RegionCoordinator {
                 () -> previews.prepare(position), read);
     }
 
-    public void close() { loads.close(); }
+    public void close() {
+        NetherUnloadQa.storageClosing(generator);
+        loads.close();
+    }
     private static void release(AutoCloseable lease) {
         try { if (lease != null) lease.close(); }
         catch (Exception error) { Retina.LOGGER.warn("Could not release prepared Retina region", error); }
