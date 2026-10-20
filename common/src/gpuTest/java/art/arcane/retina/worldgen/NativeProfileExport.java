@@ -14,6 +14,8 @@ import net.minecraft.server.packs.resources.MultiPackResourceManager;
 import net.minecraft.world.level.levelgen.NoiseBasedChunkGenerator;
 import net.minecraft.world.level.dimension.LevelStem;
 import net.minecraft.world.level.levelgen.NoiseGeneratorSettings;
+import net.minecraft.world.level.levelgen.presets.WorldPresets;
+import net.minecraft.world.level.Level;
 import java.nio.file.*;
 import java.util.*;
 
@@ -36,14 +38,31 @@ public final class NativeProfileExport {
             var context = new ArrayList<HolderLookup.RegistryLookup<?>>(builtin.listRegistries().toList());
             context.addAll(loaded.listRegistries().toList());
             var dimensions = RegistryDataLoader.load(resources, context, RegistryDataLoader.DIMENSION_REGISTRIES, Runnable::run).join();
-            var original = packed ? dimensions.lookupOrThrow(Registries.LEVEL_STEM).getValueOrThrow(LevelStem.OVERWORLD) : null;
-            var preset = JsonParser.parseString(Files.readString(Path.of("common/src/main/resources/data/retina/worldgen/world_preset/gpu.json")))
-                    .getAsJsonObject().getAsJsonObject("dimensions").getAsJsonObject("minecraft:overworld").getAsJsonObject("generator").getAsJsonObject("biome_source");
-            var source = packed ? RetinaBiomeSource.fromRegistry(original.generator().getBiomeSource(), 128, .55f)
-                    : RetinaBiomeSource.CODEC.codec().parse(registry.createSerializationContext(JsonOps.INSTANCE), preset).getOrThrow();
-            var settings = packed && original.generator() instanceof NoiseBasedChunkGenerator noise ? noise.generatorSettings().value()
-                    : registry.lookupOrThrow(Registries.NOISE_SETTINGS).getOrThrow(NoiseGeneratorSettings.OVERWORLD).value();
-            var profile = TerrainProfileData.export(registry, source, -64, 384, 123456789L, settings, StructureProfile.Context.of(resources));
+            TerrainProfileData profile;
+            if (Boolean.getBoolean("retina.benchmark.nether")) {
+                var original = dimensions.lookupOrThrow(Registries.LEVEL_STEM).get(LevelStem.NETHER)
+                        .map(Holder::value).orElseGet(() -> registry.lookupOrThrow(Registries.WORLD_PRESET)
+                                .getValueOrThrow(WorldPresets.NORMAL).createWorldDimensions().dimensions().get(LevelStem.NETHER));
+                var definition = new GenerationSource(Level.NETHER, original.generator(), original.type().value());
+                var type = definition.dimension();
+                profile = TerrainProfileData.export(registry, RetinaBiomeSource.fromSelected(original.generator().getBiomeSource()),
+                        type.minY(), type.height(), 123456789L, definition.noise().generatorSettings().value(),
+                        StructureProfile.Context.of(resources), true, type.hasSkyLight(), definition.enclosedTerrain());
+                var json = JsonParser.parseString(profile.json()).getAsJsonObject();
+                json.addProperty("dimension", Level.NETHER.identifier().toString());
+                json.add("generation", definition.describe());
+                profile = new TerrainProfileData(profile.seaLevel(), profile.materials(), profile.biomes(), json.toString());
+            } else {
+                // Preserve the established Overworld benchmark corpus and datapack behavior.
+                var original = packed ? dimensions.lookupOrThrow(Registries.LEVEL_STEM).getValueOrThrow(LevelStem.OVERWORLD) : null;
+                var preset = JsonParser.parseString(Files.readString(Path.of("common/src/main/resources/data/retina/worldgen/world_preset/gpu.json")))
+                        .getAsJsonObject().getAsJsonObject("dimensions").getAsJsonObject("minecraft:overworld").getAsJsonObject("generator").getAsJsonObject("biome_source");
+                var source = packed ? RetinaBiomeSource.fromRegistry(original.generator().getBiomeSource(), 128, .55f)
+                        : RetinaBiomeSource.CODEC.codec().parse(registry.createSerializationContext(JsonOps.INSTANCE), preset).getOrThrow();
+                var settings = packed && original.generator() instanceof NoiseBasedChunkGenerator noise ? noise.generatorSettings().value()
+                        : registry.lookupOrThrow(Registries.NOISE_SETTINGS).getOrThrow(NoiseGeneratorSettings.OVERWORLD).value();
+                profile = TerrainProfileData.export(registry, source, -64, 384, 123456789L, settings, StructureProfile.Context.of(resources));
+            }
             var data = JsonParser.parseString(profile.json()).getAsJsonObject();
             if (data.getAsJsonObject("structures").getAsJsonArray("definitions").isEmpty()) throw new AssertionError("benchmark must include structures");
             if (data.getAsJsonArray("decorations").isEmpty()) throw new AssertionError("benchmark must include decorations");

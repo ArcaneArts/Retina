@@ -1326,7 +1326,24 @@ close/read tests, cache lifecycle checks and host builds passed. These results
 cover installed `CHUNKS_ONLY`/`FEATURES` integrated sessions, not an installed
 dedicated-server pair or `SURFACE_THEN_CHUNKS` gameplay.
 
+## Cycle 6c: repeatable throughput and memory
+
+The native benchmark now uses exported dimension storage bounds and a biome
+from the loaded source. `exportNetherBenchmarkProfile` exports the actual loaded
+Nether definition, including compatible preset or dimension overrides, ordered
+features, structures and lighting. The Overworld export remains available.
+
+Two sequential twenty-region runs, each after five warmups, produced identical
+NBT for 20,480 chunks. On the M4 Max host they measured 91.6 and 90.9 chunks/s,
+with 4.557 and 4.555 GiB peak process RSS. The corpus contains all five biomes,
+all four Nether structure families and the full storage height. An old/new
+harness comparison also preserves 1,024 Overworld chunk records. Loaded custom
+exports and focused request-context tests pass.
+
+See [the full workload, counters and limits](NETHER_PERFORMANCE.md). This is a
+complete native Nether baseline, not a speedup claim against earlier Overworld
+workloads or a Minecraft rendering benchmark.
+
 ## Remaining cycles
 
-6. Complete rendered visual QA, repeatable throughput/memory measurements, and
-   the final documentation/requirement audit.
+6. Complete rendered visual QA and the final documentation/requirement audit.

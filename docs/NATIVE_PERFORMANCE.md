@@ -8,6 +8,10 @@ The later [direct palette packing milestone](DIRECT_PALETTE_PACKING.md) removes
 the mixed-section index buffer and reports fresh actual-profile measurements,
 including the limits of its whole-region performance evidence.
 
+The delivered Nether has a separate [throughput and memory baseline](NETHER_PERFORMANCE.md).
+Its source-ordered decoration workload differs from the historical Overworld
+measurements below; those tables are not a Nether comparison.
+
 ## Implementation
 
 - **NBT:** uniform sections emit only their palette entry. Rayon work units recycle
