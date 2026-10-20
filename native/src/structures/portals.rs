@@ -202,8 +202,8 @@ pub(super) fn build(
 }
 
 // The replay reads one world snapshot and records all writes before partitioning.
-// The source-step integration will provide the earlier-feature/structure snapshot;
-// the current structure-isolated harness supplies the native base terrain here.
+// Source-ordered generation supplies earlier features and structures; legacy
+// profiles use the carved native base terrain. The cached replay is start-wide.
 struct World<'a> {
     request: ChunkRequest,
     profile: &'a WorldProfile,
@@ -273,11 +273,12 @@ pub(super) fn prepare(
     request: ChunkRequest,
     profile: &WorldProfile,
     start: &Start,
+    prior: Option<&dyn crate::decoration::PriorWorld>,
 ) -> Result<(), String> {
     if let Some(portal) = &start.portal {
         portal
             .writes
-            .get_or_init(|| render(engine, request, profile, start, portal))
+            .get_or_init(|| render(engine, request, profile, start, portal, prior))
             .as_ref()
             .map_err(Clone::clone)?;
     }
@@ -289,6 +290,7 @@ fn render(
     profile: &WorldProfile,
     start: &Start,
     portal: &Placement,
+    prior: Option<&dyn crate::decoration::PriorWorld>,
 ) -> Result<Writes, String> {
     let p = &profile.structures;
     let kit = p.portals.as_ref().unwrap();
@@ -328,6 +330,21 @@ fn render(
                 mask.as_deref(),
                 &mut blocks,
             );
+            if let Some(prior) = prior {
+                for dz in 0..16 {
+                    for dx in 0..16 {
+                        for y in 0..request.height as usize {
+                            blocks[y * 256 + dz * 16 + dx] = prior
+                                .material([
+                                    x * 16 + dx as i32,
+                                    request.min_y + y as i32,
+                                    z * 16 + dz as i32,
+                                ])
+                                .ok_or("missing portal prior world")?;
+                        }
+                    }
+                }
+            }
             world.base.insert([x, z], blocks);
         }
     }
@@ -478,6 +495,7 @@ pub(super) fn apply(
     updates: &mut crate::decoration::pairs::Updates,
     ticks: &mut Vec<Value>,
     block_ticks: &mut Vec<Value>,
+    mut tracked: Option<&mut Vec<(usize, u16)>>,
 ) -> usize {
     let writes = start
         .portal
@@ -520,6 +538,9 @@ pub(super) fn apply(
         if let Some(blocks) = blocks.as_deref_mut() {
             blocks[index] = *material;
             updates.record(profile, index, *material);
+        }
+        if let Some(tracked) = tracked.as_deref_mut() {
+            tracked.push((index, *material));
         }
         entities.remove(pos);
         if let Some(tag) = tag {

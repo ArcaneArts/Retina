@@ -485,7 +485,15 @@ impl TerrainEngine {
         retain_prefix: bool,
     ) -> Result<Vec<Vec<decoration::Placement>>, String> {
         if profile.decoration_source_order {
-            return decoration::dependencies::plan(self, profile, request, side, job, details, retain_prefix);
+            return decoration::dependencies::plan(
+                self,
+                profile,
+                request,
+                side,
+                job,
+                details,
+                retain_prefix,
+            );
         }
         use decoration::diagnostics::{record, start};
         let measuring = details.is_some();
@@ -1211,6 +1219,40 @@ impl TerrainEngine {
         }
         let profile = self.profile(request.reserved)?;
         let timings = self.timings(request.reserved);
+        if let Some(p) = profile.as_deref().filter(|p| p.decoration_source_order) {
+            let (field, mask) = self.terrain_field(request, 1)?;
+            let generation = timings.time(timings::VEGETATION_PLAN, || {
+                decoration::dependencies::generate(self, p, request, 1, None, None, true)
+            })?;
+            let columns = field.chunk(request.chunk_x, request.chunk_z);
+            let mut updates = decoration::pairs::Updates::default();
+            timings.time(timings::ASSEMBLY, || {
+                decoration::assemble_carved(request, columns, Some(p), mask.as_deref(), blocks);
+                updates.base(p, blocks);
+            });
+            let ores = timings.time(timings::ORE_PLAN, || geology::plan(&field, p, request, 1, mask.as_deref()));
+            timings.time(timings::GEOLOGY, || geology::apply_ores(request, &field, p, mask.as_deref(), &ores[0], blocks));
+            timings.time(timings::CAVE_FEATURES, || updates.extend(features::apply(request, p, mask.as_deref(), blocks)));
+            let data = timings.time(timings::VEGETATION, || {
+                let data = generation.apply(0, request, p, &generation.placements[0], blocks)?;
+                updates.placements(p, &generation.placements[0]);
+                Ok::<_, String>(data)
+            })?;
+            timings.time(timings::SNOW, || features::snow(request, p, columns, blocks));
+            timings.time(timings::VEGETATION, || updates.finish(p, blocks));
+            if let Some(flat) = &p.flat {
+                flat.finish(blocks);
+            }
+            self.structures
+                .lock()
+                .map_err(|_| "structure cache poisoned")?
+                .store_metadata(request, data.tag);
+            timings.chunks(1);
+            return columns
+                .to_vec()
+                .try_into()
+                .map_err(|_| "incorrect GPU column count".to_string());
+        }
         let mut plant_updates = decoration::pairs::Updates::default();
         let mut ticks = decoration::ticks::Chunk::default();
         let columns = if let Some(p) = profile.as_deref().filter(|p| {
@@ -1258,6 +1300,7 @@ impl TerrainEngine {
         };
         if let Some(p) = profile.as_deref() {
             let plans = structures::plans(self, request, 1)?;
+            structures::prepare(self, request, p, &plans, None)?;
             let mut data = timings.time(timings::STRUCTURES, || {
                 structures::apply(request, p, &plans, &columns, Some(blocks))
             });
@@ -1738,7 +1781,11 @@ pub unsafe extern "C" fn retina_sample_decoration_feature(
     capacity: u64,
     length: *mut u64,
 ) -> i32 {
-    unsafe { sample_decoration_feature(request, recipe, position, seed, output, capacity, length, false) }
+    unsafe {
+        sample_decoration_feature(
+            request, recipe, position, seed, output, capacity, length, false,
+        )
+    }
 }
 
 /// Sample scheduled [x,y,z,one-based tick definition] feature updates.
@@ -1754,7 +1801,11 @@ pub unsafe extern "C" fn retina_sample_decoration_feature_ticks(
     capacity: u64,
     length: *mut u64,
 ) -> i32 {
-    unsafe { sample_decoration_feature(request, recipe, position, seed, output, capacity, length, true) }
+    unsafe {
+        sample_decoration_feature(
+            request, recipe, position, seed, output, capacity, length, true,
+        )
+    }
 }
 
 unsafe fn sample_decoration_feature(

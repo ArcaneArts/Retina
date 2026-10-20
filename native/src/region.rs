@@ -332,25 +332,53 @@ fn generate_region_inner(
                 parallel_nanos += material_cache::write(path, origin, mask, &timings)?;
             }
         }
-        // Structure planning already updates the session counter internally.
-        let structure_plans = job.time(timings::STRUCTURE_PLAN, || {
-            crate::structures::plans(engine, origin, 32)
-        })?;
+        let source_order = profile
+            .as_deref()
+            .is_some_and(|p| p.decoration_source_order);
+        let structure_plans = if source_order {
+            Vec::new()
+        } else {
+            job.time(timings::STRUCTURE_PLAN, || {
+                crate::structures::plans(engine, origin, 32)
+            })?
+        };
+        if let Some(p) = profile.as_deref().filter(|_| !source_order) {
+            crate::structures::prepare(engine, origin, p, &structure_plans, None)?;
+        }
         assemblers()?.install(|| {
-            let overlays = timings.time(timings::VEGETATION_PLAN, || {
-                if decorated {
-                    engine.plan_decorations_profiled(
-                        &field,
-                        profile.as_deref().unwrap(),
+            let mut generation = if let Some(p) = profile.as_deref().filter(|_| source_order) {
+                Some(timings.time(timings::VEGETATION_PLAN, || {
+                    decoration::dependencies::generate(
+                        engine,
+                        p,
                         origin,
                         32,
-                        cave_mask.as_deref(),
                         Some(&job),
+                        None,
+                        true,
                     )
-                } else {
-                    Ok(vec![Vec::new(); 1024])
-                }
-            })?;
+                })?)
+            } else {
+                None
+            };
+            let overlays = if let Some(generation) = generation.as_mut() {
+                std::mem::take(&mut generation.placements)
+            } else {
+                timings.time(timings::VEGETATION_PLAN, || {
+                    if decorated {
+                        engine.plan_decorations_profiled(
+                            &field,
+                            profile.as_deref().unwrap(),
+                            origin,
+                            32,
+                            cave_mask.as_deref(),
+                            Some(&job),
+                        )
+                    } else {
+                        Ok(vec![Vec::new(); 1024])
+                    }
+                })?
+            };
             let ores = timings.time(timings::ORE_PLAN, || {
                 if let Some(p) = profile.as_deref() {
                     engine.plan_ores(&field, p, origin, 32, cave_mask.as_deref(), Some(&job))
@@ -415,31 +443,50 @@ fn generate_region_inner(
                         });
                     }
                     timings.time(timings::VEGETATION, || {
-                        decoration::decorate(
-                            profile.as_deref(),
-                            &overlays[slots[index]],
-                            &mut blocks,
-                        );
+                        if generation.is_none() {
+                            decoration::decorate(
+                                profile.as_deref(),
+                                &overlays[slots[index]],
+                                &mut blocks,
+                            );
+                        }
                         if let Some(p) = profile.as_deref() {
                             plant_updates.placements(p, &overlays[slots[index]]);
                         }
                     });
-                    let mut structure_data = profile.as_deref().map(|p| {
-                        timings.time(timings::STRUCTURES, || {
-                            let mut data = crate::structures::apply(
-                                request,
-                                p,
-                                &structure_plans,
-                                columns,
-                                Some(&mut blocks),
-                            );
-                            plant_updates.extend(std::mem::take(&mut data.plant_updates));
-                            data
+                    let mut structure_data = if let Some(generation) = generation.as_ref() {
+                        Some(timings.time(timings::VEGETATION, || generation.apply(
+                            slots[index],
+                            request,
+                            profile.as_deref().unwrap(),
+                            &overlays[slots[index]],
+                            &mut blocks,
+                        ))?)
+                    } else {
+                        profile.as_deref().map(|p| {
+                            timings.time(timings::STRUCTURES, || {
+                                let mut data = crate::structures::apply(
+                                    request,
+                                    p,
+                                    &structure_plans,
+                                    columns,
+                                    Some(&mut blocks),
+                                );
+                                plant_updates.extend(std::mem::take(&mut data.plant_updates));
+                                data
+                            })
                         })
-                    });
-                    if let (Some(p), Some(data)) = (profile.as_deref(), structure_data.as_mut()) {
-                        decoration::ticks::Chunk::collect(request, &p.decoration_ticks, &overlays[slots[index]])?
-                            .write(&mut data.tag);
+                    };
+                    if let (Some(p), Some(data)) = (
+                        profile.as_deref().filter(|_| generation.is_none()),
+                        structure_data.as_mut(),
+                    ) {
+                        decoration::ticks::Chunk::collect(
+                            request,
+                            &p.decoration_ticks,
+                            &overlays[slots[index]],
+                        )?
+                        .write(&mut data.tag);
                     }
                     if let Some(p) = profile.as_deref() {
                         timings.time(timings::SNOW, || {

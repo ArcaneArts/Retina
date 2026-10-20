@@ -417,6 +417,7 @@ pub(super) fn supports(
     request: ChunkRequest,
     output: &mut [u16],
     entities: &mut HashMap<[i32; 3], Value>,
+    mut writes: Option<&mut Vec<(usize, u16)>>,
 ) {
     let at = piece.fortress.as_ref().unwrap();
     if at.kind == END {
@@ -436,6 +437,9 @@ pub(super) fn supports(
                 break;
             }
             output[index] = s[3] as u16;
+            if let Some(writes) = writes.as_deref_mut() {
+                writes.push((index, output[index]));
+            }
             entities.remove(&[pos[0], y, pos[2]]);
         }
     }
