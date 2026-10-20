@@ -138,13 +138,7 @@ struct CompletedRoot {
     anchors: Vec<((i32, i32), Arc<Output>)>,
     columns: Map<usize, Vec<(usize, usize)>>,
 }
-enum ColumnValue {
-    State(Arc<ColumnState>),
-    // Identity roots reuse the canonical earlier version without retaining an
-    // additional Arc for every otherwise empty intermediate state.
-    Alias(usize),
-}
-type ColumnCell = OnceLock<Result<ColumnValue, String>>;
+type ColumnCell = OnceLock<Result<Arc<ColumnState>, String>>;
 struct ColumnVersion {
     root: usize,
     state: ColumnCell,
@@ -197,7 +191,6 @@ impl ColumnRuns {
     }
 }
 struct ColumnState {
-    before: usize,
     runs: ColumnRuns,
     heights: [i32; 6],
 }
@@ -232,11 +225,7 @@ impl ColumnState {
             }
             top = min_y + (run >> 16) as i32;
         }
-        Self {
-            before: 0,
-            runs,
-            heights,
-        }
+        Self { runs, heights }
     }
     fn material(&self, y: usize) -> u16 {
         let runs = self.runs.slice();
@@ -253,7 +242,7 @@ impl ColumnState {
         blocks
     }
 }
-struct ColumnTile(Vec<ColumnCell>);
+struct ColumnTile(Vec<OnceLock<Result<Arc<ColumnState>, String>>>);
 impl Default for ColumnTile {
     fn default() -> Self {
         Self((0..COLUMNS).map(|_| OnceLock::new()).collect())
@@ -662,69 +651,50 @@ impl Planner<'_> {
     ) -> Result<Arc<ColumnState>, String> {
         let metrics = &self.metrics.performance;
         let joined = metrics.start();
-        let mut built = None;
-        let value = slot.get_or_init(|| {
-            metrics.add(Perf::column_builds, 1);
-            built = Some(self.build_column(before, x, z));
-            match built.as_ref().unwrap() {
-                Ok(state) if state.before < before => {
-                    metrics.add(Perf::column_aliases, 1);
-                    Ok(ColumnValue::Alias(state.before))
+        let mut built = false;
+        let result = slot
+            .get_or_init(|| {
+                built = true;
+                metrics.add(Perf::column_builds, 1);
+                if before != 0 {
+                    return self.prefix(before, x, z, None);
                 }
-                Ok(state) => Ok(ColumnValue::State(state.clone())),
-                Err(error) => Err(error.clone()),
-            }
-        });
-        if let Some(built) = built {
-            return built;
-        }
-        metrics.elapsed(Perf::column_join_nanos, joined);
-        match value {
-            Ok(ColumnValue::State(state)) => Ok(state.clone()),
-            Ok(ColumnValue::Alias(version)) => {
-                metrics.add(Perf::column_alias_reads, 1);
-                self.column(*version, x, z)
-            }
-            Err(error) => Err(error.clone()),
-        }
-    }
-    fn build_column(&self, before: usize, x: i32, z: i32) -> Result<Arc<ColumnState>, String> {
-        if before != 0 {
-            return self.prefix(before, x, z, None);
-        }
-        let field = self.terrain(x.div_euclid(16), z.div_euclid(16))?;
-        if let Some((mask, range)) = field
-            .substrate
-            .as_ref()
-            .and_then(|mask| mask.material_run_range(x, z).map(|range| (mask, range)))
-        {
-            self.metrics
-                .performance
-                .add(Perf::shared_material_columns, 1);
-            return Ok(Arc::new(ColumnState::from_runs(
-                ColumnRuns::Shared {
-                    mask: mask.clone(),
-                    range,
-                },
-                self.request.height as usize,
-                self.profile,
-                self.request.min_y,
-            )));
-        }
-        let blocks = (self.request.min_y..self.request.min_y + self.request.height as i32)
-            .map(|y| {
-                field
-                    .material(self.profile, self.request, [x, y, z])
-                    .ok_or_else(|| format!("missing GPU substrate at {x},{y},{z}"))
+                let field = self.terrain(x.div_euclid(16), z.div_euclid(16))?;
+                if let Some((mask, range)) = field
+                    .substrate
+                    .as_ref()
+                    .and_then(|mask| mask.material_run_range(x, z).map(|range| (mask, range)))
+                {
+                    metrics.add(Perf::shared_material_columns, 1);
+                    return Ok(Arc::new(ColumnState::from_runs(
+                        ColumnRuns::Shared {
+                            mask: mask.clone(),
+                            range,
+                        },
+                        self.request.height as usize,
+                        self.profile,
+                        self.request.min_y,
+                    )));
+                }
+                let blocks = (self.request.min_y..self.request.min_y + self.request.height as i32)
+                    .map(|y| {
+                        field
+                            .material(self.profile, self.request, [x, y, z])
+                            .ok_or_else(|| format!("missing GPU substrate at {x},{y},{z}"))
+                    })
+                    .collect::<Result<Vec<_>, _>>()?;
+                Ok(Arc::new(ColumnState::new(
+                    blocks,
+                    self.profile,
+                    self.request.min_y,
+                )))
             })
-            .collect::<Result<Vec<_>, _>>()?;
-        Ok(Arc::new(ColumnState::new(
-            blocks,
-            self.profile,
-            self.request.min_y,
-        )))
+            .clone();
+        if !built {
+            metrics.elapsed(Perf::column_join_nanos, joined);
+        }
+        result
     }
-
     fn prefix(
         &self,
         before: usize,
@@ -780,8 +750,7 @@ impl Planner<'_> {
             }
         }
         if let Some(blocks) = blocks {
-            let mut result = ColumnState::new(blocks, self.profile, self.request.min_y);
-            result.before = before;
+            let result = ColumnState::new(blocks, self.profile, self.request.min_y);
             if result.runs.slice() == prior.runs.slice() {
                 Ok(prior)
             } else {
@@ -991,8 +960,16 @@ pub(crate) fn generate(
     // cleanup is inside the measured region and contributes to teardown time.
     let release_started = metrics.performance.start();
     let release_detail = diagnostics::start(details.is_some());
-    drop(std::mem::take(&mut planner.completed));
-    drop(std::mem::take(&mut planner.versions.changed));
+    retire(
+        std::mem::take(&mut planner.completed),
+        &metrics.performance,
+        Perf::teardown_commands_nanos,
+    );
+    retire(
+        std::mem::take(&mut planner.versions.changed),
+        &metrics.performance,
+        Perf::teardown_versions_nanos,
+    );
     metrics
         .performance
         .elapsed(Perf::teardown_nanos, release_started);
@@ -1026,13 +1003,58 @@ pub(crate) fn generate(
     );
     let teardown_started = metrics.performance.start();
     let teardown_detail = diagnostics::start(details.is_some());
-    drop(cache);
-    drop(planner);
+    retire(cache, &metrics.performance, Perf::teardown_outputs_nanos);
+    // Preserve normal field destruction order while measuring each group.
+    let Planner {
+        roots,
+        terrain,
+        anchors,
+        ready,
+        completed,
+        versions,
+        anchor_ids,
+        starts,
+        discovery,
+        columns,
+        ready_columns,
+        error,
+        metrics: planner_metrics,
+        ..
+    } = planner;
+    retire(roots, &metrics.performance, Perf::teardown_other_nanos);
+    retire(terrain, &metrics.performance, Perf::teardown_terrain_nanos);
+    retire(
+        (anchors, ready, completed),
+        &metrics.performance,
+        Perf::teardown_other_nanos,
+    );
+    retire(
+        versions,
+        &metrics.performance,
+        Perf::teardown_versions_nanos,
+    );
+    retire(
+        (anchor_ids, starts, discovery, planner_metrics),
+        &metrics.performance,
+        Perf::teardown_other_nanos,
+    );
+    retire(
+        (columns, ready_columns),
+        &metrics.performance,
+        Perf::teardown_boundary_columns_nanos,
+    );
+    retire(error, &metrics.performance, Perf::teardown_other_nanos);
     metrics
         .performance
         .elapsed(Perf::teardown_nanos, teardown_started);
     diagnostics::record(teardown_detail, details.map(|d| &mut d.teardown_wall_nanos));
     Ok(result)
+}
+
+fn retire<T>(value: T, metrics: &Metrics, counter: Perf) {
+    let started = metrics.start();
+    drop(value);
+    metrics.elapsed(counter, started);
 }
 
 pub(crate) fn plan(
