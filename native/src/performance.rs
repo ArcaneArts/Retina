@@ -27,7 +27,9 @@ counters! {
     structure_plan_calls, structure_candidates, structure_unique_candidates,
     structure_cache_hits, structure_cache_misses, structure_cache_evictions,
     structure_pending_evictions, structure_builds, structure_repeated_builds,
-    structure_overlapping_builds,
+    structure_overlapping_builds, structure_active_hits, structure_job_cache_hits,
+    structure_discovery_tiles, structure_fossil_batches, structure_fossil_columns,
+    structure_fossil_biome_points,
     structure_probe_points,
 }
 use Counter::*;

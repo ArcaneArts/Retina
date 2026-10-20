@@ -43,31 +43,40 @@ impl HeightRandom for Random {
     }
 }
 
-pub(super) fn build(
-    engine: &TerrainEngine,
+pub(super) struct Prepared {
+    random: Random,
+    position: Option<[i32; 3]>,
+    biome: Option<u16>,
+}
+
+fn begin(
     request: ChunkRequest,
     profile: &WorldProfile,
     definition: usize,
-    seed: u64,
     mut random: Random,
-) -> Result<Start, String> {
-    let p = &profile.structures;
-    let kit = p.fossils.as_ref().ok_or("missing Nether fossil profile")?;
-    let d = &p.definitions[definition];
-    let mut start = empty_start(request, seed, definition);
+) -> Result<(Random, i32, i32, i32), String> {
     let x = random.int(16) as i32;
     let z = random.int(16) as i32;
     let height: HeightProvider =
-        serde_json::from_value(d.config["height"].clone()).map_err(|e| e.to_string())?;
-    let mut y = height.sample(&mut random, request);
-    let mut column = vec![0; request.height as usize];
-    engine.base_column(request, (z * 16 + x) as u32, &mut column)?;
-    let material = |y: i32| {
-        column
-            .get(y.wrapping_sub(request.min_y) as usize)
-            .copied()
-            .unwrap_or(0)
-    };
+        serde_json::from_value(profile.structures.definitions[definition].config["height"].clone())
+            .map_err(|e| e.to_string())?;
+    let y = height.sample(&mut random, request);
+    Ok((random, x, y, z))
+}
+
+fn floor(
+    request: ChunkRequest,
+    profile: &WorldProfile,
+    x: i32,
+    mut y: i32,
+    z: i32,
+    mut material: impl FnMut(i32) -> u16,
+) -> Option<[i32; 3]> {
+    let kit = profile
+        .structures
+        .fossils
+        .as_ref()
+        .expect("validated fossil profile");
     while y > profile.sea_level {
         let current = material(y);
         y -= 1;
@@ -75,23 +84,178 @@ pub(super) fn build(
             break;
         }
     }
-    if y <= profile.sea_level {
-        return Ok(start);
-    }
-    let pos = [request.chunk_x * 16 + x, y, request.chunk_z * 16 + z];
-    let biome = engine.query_points(
+    (y > profile.sea_level).then(|| [request.chunk_x * 16 + x, y, request.chunk_z * 16 + z])
+}
+
+pub(super) fn build(
+    engine: &TerrainEngine,
+    request: ChunkRequest,
+    profile: &WorldProfile,
+    definition: usize,
+    seed: u64,
+    random: Random,
+) -> Result<Start, String> {
+    let (random, x, y, z) = begin(request, profile, definition, random)?;
+    let mut column = vec![0; request.height as usize];
+    engine.base_column(request, (z * 16 + x) as u32, &mut column)?;
+    let position = floor(request, profile, x, y, z, |y| {
+        column
+            .get(y.wrapping_sub(request.min_y) as usize)
+            .copied()
+            .unwrap_or(0)
+    });
+    let biome = match position {
+        Some(pos) => Some(
+            engine.query_points(
+                request,
+                &[crate::queries::Point {
+                    x: pos[0],
+                    y: pos[1],
+                    z: pos[2],
+                }],
+                crate::queries::Kind::Biome,
+            )?[0]
+                .biome() as u16,
+        ),
+        None => None,
+    };
+    Ok(finish(
         request,
-        &[crate::queries::Point {
-            x: pos[0],
-            y,
-            z: pos[2],
-        }],
-        crate::queries::Kind::Biome,
-    )?[0]
-        .biome() as u16;
-    if !d.biomes.contains(&biome) {
-        return Ok(start);
+        profile,
+        definition,
+        seed,
+        &Prepared {
+            random,
+            position,
+            biome,
+        },
+    ))
+}
+
+/// Prepare independent fossil probes in material tiles and sparse biome batches.
+/// Selection streams have already consumed their weighted-choice draw. Template
+/// and rotation draws remain in finish, exactly after the original biome check.
+pub(super) fn prepare_batch(
+    engine: &TerrainEngine,
+    profile: &WorldProfile,
+    inputs: &[(ChunkRequest, usize, Random)],
+) -> Result<Vec<Prepared>, String> {
+    let mut prepared = Vec::with_capacity(inputs.len());
+    let mut columns = Vec::with_capacity(inputs.len());
+    let mut tiles = std::collections::BTreeMap::<(i32, i32), Vec<usize>>::new();
+    for (index, (request, definition, random)) in inputs.iter().enumerate() {
+        let (random, x, y, z) = begin(*request, profile, *definition, random.clone())?;
+        prepared.push(Prepared {
+            random,
+            position: None,
+            biome: None,
+        });
+        columns.push((x, y, z));
+        tiles
+            .entry((
+                request.chunk_x.div_euclid(16),
+                request.chunk_z.div_euclid(16),
+            ))
+            .or_default()
+            .push(index);
     }
+    let material_layers = profile
+        .registry_program
+        .as_ref()
+        .is_some_and(|p| p.material_layers);
+    for ((tx, tz), indices) in tiles {
+        let request = inputs[indices[0]].0;
+        let mask = if material_layers {
+            Some(
+                engine
+                    .terrain_field(
+                        ChunkRequest {
+                            chunk_x: tx * 16,
+                            chunk_z: tz * 16,
+                            ..request
+                        },
+                        16,
+                    )?
+                    .1
+                    .ok_or("GPU fossil material tile missing")?,
+            )
+        } else {
+            None
+        };
+        for index in indices {
+            let request = inputs[index].0;
+            let (x, y, z) = columns[index];
+            prepared[index].position = if let Some(mask) = &mask {
+                let runs = mask
+                    .material_runs(request.chunk_x * 16 + x, request.chunk_z * 16 + z)
+                    .ok_or("GPU fossil material column missing")?;
+                floor(request, profile, x, y, z, |y| {
+                    let relative = y.wrapping_sub(request.min_y) as u32;
+                    if relative >= request.height {
+                        return 0;
+                    }
+                    runs[runs.partition_point(|run| run >> 16 > relative)] as u16
+                })
+            } else {
+                let mut column = vec![0; request.height as usize];
+                engine.base_column(request, (z * 16 + x) as u32, &mut column)?;
+                floor(request, profile, x, y, z, |y| {
+                    column
+                        .get(y.wrapping_sub(request.min_y) as usize)
+                        .copied()
+                        .unwrap_or(0)
+                })
+            };
+        }
+    }
+    let mut points = Vec::new();
+    let mut indices = Vec::new();
+    for (i, p) in prepared.iter().enumerate() {
+        if let Some(pos) = p.position {
+            points.push(crate::queries::Point {
+                x: pos[0],
+                y: pos[1],
+                z: pos[2],
+            });
+            indices.push(i);
+        }
+    }
+    if let Some((request, _, _)) = inputs.first() {
+        let metrics = engine.timings(request.reserved);
+        use crate::performance::Counter::*;
+        metrics.performance.add(structure_fossil_batches, 1);
+        metrics
+            .performance
+            .add(structure_fossil_columns, inputs.len() as u64);
+        metrics
+            .performance
+            .add(structure_fossil_biome_points, points.len() as u64);
+        let biomes = engine.query_points(*request, &points, crate::queries::Kind::Biome)?;
+        for (index, biome) in indices.into_iter().zip(biomes) {
+            prepared[index].biome = Some(biome.biome() as u16);
+        }
+    }
+    Ok(prepared)
+}
+
+pub(super) fn finish(
+    request: ChunkRequest,
+    profile: &WorldProfile,
+    definition: usize,
+    seed: u64,
+    prepared: &Prepared,
+) -> Start {
+    let p = &profile.structures;
+    let kit = p.fossils.as_ref().expect("validated fossil profile");
+    let d = &p.definitions[definition];
+    let mut start = empty_start(request, seed, definition);
+    let Some(pos) = prepared.position else {
+        return start;
+    };
+    if !prepared.biome.is_some_and(|b| d.biomes.contains(&b)) {
+        return start;
+    }
+    let mut random = prepared.random.clone();
     let rotation = random.int(4) as usize;
     let template = kit.templates[random.int(14) as usize];
     let element = Arc::new(Element {
@@ -119,7 +283,7 @@ pub(super) fn build(
         priority: 0,
         fortress: None,
     });
-    Ok(start)
+    start
 }
 
 pub(super) fn dried_ghast(

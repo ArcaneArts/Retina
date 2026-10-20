@@ -534,7 +534,16 @@
     "identical_nbt_chunks": 102400,
     "output_only_composite": "cycle1/validated-corpus/manifest.json; source directories are combined only for subsequent NBT comparison, never as a single timing run."
   },
-  "post_merge": null,
+  "post_merge": {
+    "revision": "34645a375a0fa9b0be112f65c8d4eb59f36a5f2d",
+    "pr": "https://github.com/ArcaneArts/Retina/pull/171",
+    "library_sha256": "dc6b82c7df03e9ce43bbf9598d812c9a4eb8ae3d5f2556c3429cc8925121ca41",
+    "binary_identical_to_validated_candidate": true,
+    "scope": "Actual merged build: one warmup and one measured region per case, complete-NBT smoke comparison only. Full quiet timing confirmation remains deferred.",
+    "evidence": "cycle1/merged-smoke/suite.json",
+    "identical_nbt_chunks": 5120,
+    "timing_confirmation_pending": true
+  },
   "diagnostic": {
     "seed": 123456789,
     "coordinates": {
