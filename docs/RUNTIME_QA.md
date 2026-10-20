@@ -71,7 +71,69 @@ Overworld and above-roof Nether edits on subsequent connections.
 `nether_cold_portal_arrival` reports newly generated chunk counts and
 `nether_cold_portal_return` confirms the remote return trip.
 
-For legacy-save compatibility, repeat with `-PretinaClientQaMode=chunk` and fresh
+### Live Nether fortress progression
+
+Use `-PretinaNetherProgressionQa` instead of `-PretinaNetherLifecycleQa` with the
+integrated or dedicated commands above. Keep `-PretinaQa` and
+`-PretinaClientGameplayQa` on the client and use a new disposable run directory.
+The dedicated server also needs `-PretinaNetherProgressionQa`; restart it and
+reconnect after its first two connections to test a full process reopen.
+
+For example, with the disposable localhost server settings described above and
+`server-port=25587`:
+
+```sh
+./gradlew -PretinaHostOnly -PretinaQa -PretinaNetherProgressionQa \
+  -PretinaDatapackQa="$RETINA_QA_ROOT/fortress-server" \
+  :fabric:runServer --args=--nogui
+./gradlew -PretinaHostOnly -PretinaQa -PretinaNetherProgressionQa \
+  -PretinaClientGameplayQa -PretinaClientServerQa=127.0.0.1:25587 \
+  -PretinaClientRunDir="$RETINA_QA_ROOT/fortress-client" :fabric:runClient
+```
+
+For NeoForge use `:neoforge:runNeoForgeServer` and `:neoforge:runNeoForgeClient`,
+separate directories and the configured server port; omit `--args=--nogui`.
+For integrated coverage omit the dedicated-server command and `ClientServerQa`.
+
+The automated player visits a fortress found by the real interactive `/locate
+structure minecraft:fortress` command. The harness captures its normal chat
+result while preserving the player source and empty result callback, and requires
+asynchronous delivery. Observe the player open generated chest loot, activate an
+untouched blaze spawner, kill a blaze and collect a rod in survival mode, then
+return to the Overworld. It disconnects and repeats after reopening.
+
+`nether_live_fortress_metadata` checks registered starts, every piece's bounds,
+references across all intersecting chunks, and loaded chest/spawner block entities.
+`nether_live_fortress_loot` requires ordinary survival block interaction to resolve
+the original `nether_bridge` loot table, then preserves the opened contents and a
+diamond edit across reopening. `nether_live_locate` checks stable command results
+before and after generation and reopening.
+
+`nether_live_fortress_spawn_rules` checks the registered weighted spawn override,
+Minecraft's Nether-brick fortress rule and its exclusion of passive mobs.
+`nether_live_fortress_natural_spawns` drives Minecraft's actual spawn-placement
+routine until it creates both a blaze and a wither skeleton on the existing
+fortress. These controlled attempts bypass random chunk/height selection and the
+mob cap, while retaining spawn-table, player-distance, light, collision and
+entity checks. They are not a measurement of normal spawning rates.
+
+The spawner check temporarily disables natural spawning, clears survivors and rod
+drops from previous fixture runs, and waits for the generated spawner's normal
+ticks. It supplies a sword and defensive effects to the connected survival player,
+uses ordinary player attacks and pickup, and requires newly collected blaze rods.
+It restores the spawning gamerule and removes the effects afterward. The fortress
+blocks and spawner parameters remain unmodified. This is controlled progression
+QA, not an unaided survival playthrough or a portal-travel test.
+
+Require two `nether_progression_complete` and `nether_live_blaze_progression`
+events per run, plus client `nether_client_progression_return` and
+`minecraft_client_gameplay_reopen`. Keep the complete server/client logs and any
+screenshots or observations. An exception or early disconnect fails the run even
+if Gradle reports success. QA expectations are stored in
+`retina-qa-nether-progression.nbt` in the disposable world root.
+
+For legacy-save compatibility, repeat the general client harness without either
+Nether scenario flag, using `-PretinaClientQaMode=chunk` and fresh
 `fabric-chunk` / `neoforge-chunk` directories. The pass event `minecraft_client_gameplay_reopen`
 follows received telemetry, F3 formatting, disconnect reset, saved generator
 settings and a retained diamond-block edit at (-17,120,-17).
@@ -303,7 +365,37 @@ movement stack reading a cached supporting-block position from the old dimension
 The final runs clear that cache on dimension transfer and generate no unrelated
 regions at those source coordinates.
 
-Live fortress progression, in-flight unload, the remaining customization and
-DH/Chunky matrix, visual inspection and repeatable performance measurements remain
-follow-up work. These runs used development loaders on Metal; packaged launcher
+At this portal milestone, live fortress progression, in-flight unload, the
+remaining customization and DH/Chunky matrix, visual inspection and repeatable
+performance measurements remained follow-up work. These runs used development loaders on Metal; packaged launcher
 installs and other GPU backends were not retested here.
+
+## Live fortress progression validation — 2026-10-20
+
+Java 25 / Minecraft 26.3 / macOS / Metal (Apple M4 Max), default region parallelism:
+
+| Check | Result |
+| --- | --- |
+| Fabric and NeoForge dedicated, seed 42 | Fresh world plus reconnect, full process restart plus reconnect passed |
+| Fabric and NeoForge integrated, seed 123456789 | Fresh creation and save/reopen passed |
+| Progression sessions | All 12 completed; every session killed a spawner-produced blaze with ordinary player attacks and collected a new rod |
+| Dedicated fortress | 103 pieces, 49 intersecting chunks, five chests and two blaze spawners |
+| Integrated fortress | 134 pieces, 180 intersecting chunks across two regions, ten chests and two blaze spawners |
+| Live metadata and locate | Registered starts, all piece bounds, chunk references and asynchronous interactive command results remained valid through reopening |
+| Loot | Survival interaction resolved the original fortress loot table; opened contents and a diamond edit survived reopening |
+| Natural spawn placement | Every session created both a blaze and a wither skeleton through Minecraft's placement routine, using 2–9 controlled attempts |
+| Regression checks | Both dimensions' native block/heightmap comparisons, original sources, unchanged End, client telemetry and integrated saved edits passed |
+| Build | Both host loader JARs, scheduling/configuration/profile checks, 19 portal-boundary cases and 103 Rust unit tests passed (37 opt-in native tests ignored by this build) |
+
+The initial diagnostic runs exposed two harness issues: lazy block-entity NBT was
+omitted from an instantiated-object scan, and a synchronous remote comparison
+blocked a dedicated server tick for over 60 seconds. Both were corrected before
+the complete fresh/reopened matrix above. The final runs contain no failed QA
+events or early disconnections.
+
+The controlled spawning and combat limits are described in the
+[scenario instructions](#live-nether-fortress-progression). These results do not
+claim an unaided survival playthrough, normal spawning rates, visual inspection,
+throughput measurements or installed DH/Chunky coverage. Live checks for the other
+Nether structure families, in-flight unload and the remaining final matrix remain
+follow-up work.
