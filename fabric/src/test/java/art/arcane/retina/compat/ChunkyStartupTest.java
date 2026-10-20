@@ -12,8 +12,8 @@ class ChunkyStartupTest {
     // The installed-Chunky lane loads the real provider, not our controllable startup fixture.
     // Exercise this simulated transition in the ordinary lane without retinaChunkyJar.
     @DisabledIfSystemProperty(named = "retina.chunky.tests", matches = "true")
-    void retriesAfterSpawnChunksUntilChunkyStartsAndBindsOnlyOnce() {
-        ChunkyProvider.loaded = false;
+    void retriesBeforeStartupAndRebindsOnceAfterTheProviderRestarts() {
+        ChunkyProvider.unregister();
         var accessor = new AbstractChunkyAccessor() {
             int attempts;
             int bindings;
@@ -29,11 +29,21 @@ class ChunkyStartupTest {
         assertEquals(2, accessor.attempts);
         assertEquals(0, accessor.bindings);
 
-        ChunkyProvider.loaded = true;
+        ChunkyProvider.register(new Object());
         accessor.tryRunFirstTimeSetup();
         accessor.tryRunFirstTimeSetup();
         assertEquals(3, accessor.attempts);
         assertEquals(1, accessor.bindings);
+
+        ChunkyProvider.unregister();
+        accessor.tryRunFirstTimeSetup();
+        assertEquals(4, accessor.attempts);
+        assertEquals(1, accessor.bindings);
+        ChunkyProvider.register(new Object());
+        java.util.stream.IntStream.range(0, 16).parallel().forEach(ignored -> accessor.tryRunFirstTimeSetup());
+        assertEquals(5, accessor.attempts);
+        assertEquals(2, accessor.bindings);
+        ChunkyProvider.unregister();
     }
 
     @Test

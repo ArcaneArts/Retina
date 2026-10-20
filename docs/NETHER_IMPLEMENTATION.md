@@ -1270,7 +1270,63 @@ profile/height contexts and cache lifecycle. Both host builds passed. Fabric's
 native publication and actual Chunky 1.5.3 selection/mixin fixtures passed;
 installed-mod gameplay remains separate.
 
+## Cycle 6b: installed Distant Horizons and Chunky
+
+Reopening an integrated world replaces Chunky's provider, but DH keeps its
+accessor and its old `listenerBound` flag. The installed test exposed the result:
+Chunky completed the second task while DH no longer received its progress events.
+Retina now observes the actual provider registration/unregistration and resets
+DH's binding for each lifetime. Setup is synchronized to bind once under
+concurrent chunk updates. The existing retry before Chunky's startup still
+applies, and unrelated setup failures still propagate. No server references or
+optional mod instances are retained by the lifecycle counter.
+
+The warning audit also found DH reaching its decoration callback after world
+unload had cleared Retina's previews. Decoration now captures the cache reference
+and acquires a read only while that cache is open. A read accepted before closing
+retains its normal lease and finishes; a callback arriving after closing does no
+new work. Native and file-read failures on an open cache still propagate, and
+ordinary closed-cache reads still report misuse. The GPU preview test covers
+both sides of that close/read race and a late generator callback.
+
+The opt-in `retinaNetherIntegrationsQa` scenario runs the installed mods against
+an ordinary Nether. It starts a real Chunky selection, pauses while native
+generation is active, waits for the stopped region pump, resumes the saved task,
+and requires Chunky's completed chunk count and a completed Retina ahead pump.
+It also observes DH's generator plan being disabled during Chunky progress and
+restored afterward. DH restores that plan after its progress inactivity delay;
+the test does not assume it remains disabled for the entire task.
+Chunky removes a task from its active map when dispatch ends, before every
+outstanding chunk load completes. The harness waits for the task's real
+completion flag and count rather than treating map removal as completion.
+
+After Chunky completes, the player travels beyond its generated halo. Completion
+requires a successful native Nether region generation on a thread identified by
+DH's own API, plus the normal block/heightmap comparison and client dimension
+telemetry. The player returns to the Overworld, saves and reopens, and repeats
+against a different cold area. Source retention, the unchanged End and saved
+edits in both dimensions are checked on each lifetime.
+
+The initial fixtures reused regions inside Chunky's or Minecraft's generated
+surroundings and did not satisfy the fresh-generation assertion. The final
+fixture uses a destination beyond Chunky, a 64-chunk DH radius, `CHUNKS_ONLY`
+with `FEATURES`, and an above-roof spectator view. It observes actual renderer
+requests without clearing production caches or synthesizing DH work. The earlier
+`SURFACE_THEN_CHUNKS` attempts are retained as diagnostics, not completed
+installed-mode validation. See
+[runtime QA](RUNTIME_QA.md#installed-nether-distant-horizons-and-chunky).
+
+Final installed runs on both loaders passed after both lifecycle fixes: 344
+runtime events across four integrated-server lifetimes, four completed
+625-chunk Chunky selections, and fresh native DH Nether generation on each
+lifetime. Saved source definitions, edits and DH databases passed the offline
+audit; sampled preview directories were absent after shutdown. Both loaders also
+started without optional mods. The transformed Chunky tests, real GPU preview
+close/read tests, cache lifecycle checks and host builds passed. These results
+cover installed `CHUNKS_ONLY`/`FEATURES` integrated sessions, not an installed
+dedicated-server pair or `SURFACE_THEN_CHUNKS` gameplay.
+
 ## Remaining cycles
 
-6. Installed integrations, visual QA, repeatable throughput/memory measurements,
-   and the final documentation/requirement audit.
+6. Complete rendered visual QA, repeatable throughput/memory measurements, and
+   the final documentation/requirement audit.

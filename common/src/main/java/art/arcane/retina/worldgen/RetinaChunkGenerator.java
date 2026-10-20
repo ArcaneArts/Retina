@@ -423,7 +423,12 @@ public final class RetinaChunkGenerator extends ChunkGenerator {
     @Override
     public void applyBiomeDecoration(WorldGenLevel level, ChunkAccess chunk, StructureManager structures) {
         if (profile == null) return;
-        var data = regionMode() ? previews.read(chunk.getPos()) : NativeTerrain.instance().structureData(request(worldSeed, chunk.getPos().x(), chunk.getPos().z()));
+        var cache = previews;
+        // DH may reach this stage after world unload while its earlier terrain
+        // request finishes. Closed previews have no remaining decoration work.
+        if (regionMode() && cache == null) return;
+        var data = regionMode() ? cache.readIfOpen(chunk.getPos()) : NativeTerrain.instance().structureData(request(worldSeed, chunk.getPos().x(), chunk.getPos().z()));
+        if (data == null) return;
         installDecorationData(chunk,data,net.minecraft.world.level.levelgen.structure.pieces.StructurePieceSerializationContext.fromLevel(level.getLevel()),level.registryAccess());
     }
 

@@ -34,6 +34,7 @@ public final class TerrainWorldgen {
         NetherLifecycleQa.unload(level);
         NetherProgressionQa.unload(level);
         NetherStructuresQa.unload(level);
+        NetherIntegrationQa.unload(level);
         if (level.getChunkSource().getGenerator() instanceof RetinaChunkGenerator retina) {
             var cache = retina.previewCache();
             if (cache != null) synchronized (CLOSING) {
@@ -58,6 +59,7 @@ public final class TerrainWorldgen {
         NetherLifecycleQa.tick(server);
         NetherProgressionQa.tick(server);
         NetherStructuresQa.tick(server);
+        NetherIntegrationQa.tick(server);
         AutomaticGenerationQa.tick(server);
         TerrainQa.checkPromotion(server);
         TerrainQa.checkTimings(server);

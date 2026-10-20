@@ -34,6 +34,7 @@ neoForge {
                 if (providers.gradleProperty('retinaNetherProgressionQa').isPresent()) systemProperty 'retina.qa.nether.progression', 'true'
                 if (providers.gradleProperty('retinaNetherStructuresQa').isPresent()) systemProperty 'retina.qa.nether.structures', 'true'
                 if (providers.gradleProperty('retinaNetherUnloadQa').isPresent()) systemProperty 'retina.qa.nether.unload', 'true'
+                if (providers.gradleProperty('retinaNetherIntegrationsQa').isPresent()) systemProperty 'retina.qa.nether.integrations', 'true'
                 [ClientStartup: 'client.startup', Promotion: 'promotion', Pipeline: 'pipeline',
                  Timings: 'timings', Lighting: 'lighting', Structures: 'structures',
                  StructuresReopen: 'structures.reopen', Entities: 'entities',
