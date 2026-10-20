@@ -98,6 +98,9 @@ pub struct Definition {
 #[derive(Clone, Deserialize)]
 pub struct Set {
     pub id: String,
+    /// Exclusion dependency only; never a generation or locate candidate.
+    #[serde(default)]
+    pub placement_only: bool,
     pub placement: Value,
     pub entries: Vec<Entry>,
 }
@@ -393,7 +396,11 @@ impl Profile {
             if space <= sep
                 || space > 4096
                 || sep < 0
-                || s.entries.is_empty()
+                || (s.entries.is_empty() != s.placement_only)
+                || s.placement["type"]
+                    .as_str()
+                    .unwrap_or("minecraft:random_spread")
+                    != "minecraft:random_spread"
                 || s.entries
                     .iter()
                     .any(|e| e.weight == 0 || e.definition >= self.definitions.len())
@@ -401,6 +408,48 @@ impl Profile {
                 return Err("invalid structure set".into());
             }
         }
+        let mut completed = vec![false; self.sets.len()];
+        for index in 0..self.sets.len() {
+            if self.sets[..index]
+                .iter()
+                .any(|s| s.id == self.sets[index].id)
+            {
+                return Err(format!("duplicate structure set {}", self.sets[index].id));
+            }
+            self.validate_exclusions(index, &mut completed, &mut Vec::new())?;
+        }
+        Ok(())
+    }
+    fn validate_exclusions(
+        &self,
+        index: usize,
+        completed: &mut [bool],
+        path: &mut Vec<usize>,
+    ) -> Result<(), String> {
+        if completed[index] {
+            return Ok(());
+        }
+        let set = &self.sets[index];
+        if path.contains(&index) {
+            return Err(format!("cyclic structure-set exclusion at {}", set.id));
+        }
+        path.push(index);
+        if let Some(exclusion) = set.placement.get("exclusion_zone") {
+            let other = exclusion["other_set"]
+                .as_str()
+                .ok_or("invalid exclusion set name")?;
+            let dependency = self
+                .sets
+                .iter()
+                .position(|s| s.id == other)
+                .ok_or_else(|| format!("missing exclusion set {other} required by {}", set.id))?;
+            if !(1..=16).contains(&value(exclusion, "chunk_count", 0)) {
+                return Err(format!("invalid exclusion range for {}", set.id));
+            }
+            self.validate_exclusions(dependency, completed, path)?;
+        }
+        path.pop();
+        completed[index] = true;
         Ok(())
     }
 }
@@ -501,7 +550,12 @@ fn permitted(p: &Profile, set: usize, seed: u64, x: i32, z: i32, visited: &mut V
     visited.push(set);
     if let Some(other) = s.placement["exclusion_zone"]["other_set"]
         .as_str()
-        .and_then(|name| p.sets.iter().position(|s| s.id == name))
+        .map(|name| {
+            p.sets
+                .iter()
+                .position(|s| s.id == name)
+                .expect("validated exclusion dependency")
+        })
     {
         let count = value(&s.placement["exclusion_zone"], "chunk_count", 0) as i32;
         let spacing = value(&p.sets[other].placement, "spacing", 32) as i32;
@@ -536,6 +590,9 @@ pub fn plans(
     let p = &profile.structures;
     let mut candidates = Vec::new();
     for (set, s) in p.sets.iter().enumerate() {
+        if s.placement_only {
+            continue;
+        }
         let spacing = value(&s.placement, "spacing", 32) as i32;
         let halo = (s
             .entries
@@ -678,19 +735,20 @@ pub fn query_starts(
             .map_err(|_| "structure cache poisoned")?;
         for &[x, z, set] in candidates {
             let set = usize::try_from(set).map_err(|_| "invalid structure set index")?;
-            let placement = &profile
+            let definition = profile
                 .structures
                 .sets
                 .get(set)
-                .ok_or("unknown structure set")?
-                .placement;
+                .ok_or("unknown structure set")?;
+            let placement = &definition.placement;
             let r = ChunkRequest {
                 chunk_x: x,
                 chunk_z: z,
                 ..request
             };
             r.validate()?;
-            if candidate(r.seed, x, z, placement) != [x, z]
+            if definition.placement_only
+                || candidate(r.seed, x, z, placement) != [x, z]
                 || !permitted(&profile.structures, set, r.seed, x, z, &mut Vec::new())
             {
                 jobs.push(None);
@@ -1868,6 +1926,52 @@ fn apply_inner(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn exclusions_require_complete_acyclic_placement_dependencies() {
+        let profile: Profile = serde_json::from_value(json!({
+            "templates": [], "pools": {}, "definitions": [],
+            "sets": [
+                {"id":"test:a", "placement_only":true, "entries":[],
+                 "placement":{"spacing":13,"separation":5,"exclusion_zone":{"other_set":"test:b","chunk_count":4}}},
+                {"id":"test:b", "placement_only":true, "entries":[],
+                 "placement":{"spacing":9,"separation":3}}
+            ]
+        })).unwrap();
+        profile.validate(1, 1).unwrap();
+        let mut missing = profile.clone();
+        missing.sets.pop();
+        assert!(
+            missing
+                .validate(1, 1)
+                .unwrap_err()
+                .contains("missing exclusion set test:b")
+        );
+        let mut cyclic = profile.clone();
+        cyclic.sets[1].placement["exclusion_zone"] = json!({"other_set":"test:a","chunk_count":2});
+        assert!(
+            cyclic
+                .validate(1, 1)
+                .unwrap_err()
+                .contains("cyclic structure-set exclusion")
+        );
+        let mut unsupported = profile.clone();
+        unsupported.sets[1].placement["type"] = json!("minecraft:concentric_rings");
+        assert!(unsupported.validate(1, 1).is_err());
+        let mut empty_generator = profile.clone();
+        empty_generator.sets[1].placement_only = false;
+        assert!(empty_generator.validate(1, 1).is_err());
+        let mut invalid_range = profile.clone();
+        invalid_range.sets[0].placement["exclusion_zone"]["chunk_count"] = json!(0);
+        assert!(invalid_range.validate(1, 1).is_err());
+        let mut duplicate = profile.clone();
+        duplicate.sets.push(profile.sets[1].clone());
+        assert!(
+            duplicate
+                .validate(1, 1)
+                .unwrap_err()
+                .contains("duplicate structure set")
+        );
+    }
     #[test]
     fn reserved_structure_slots_need_no_executable_template() {
         let mut profile: Profile = serde_json::from_value(json!({

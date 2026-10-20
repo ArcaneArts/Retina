@@ -23,7 +23,8 @@ public final class TerrainQueries implements AutoCloseable {
     private final TerrainRequest request;
     private final BiomeTerrainProfile profile;
     private final List<String> definitions;
-    private final List<String> sets;
+    private record PlacementSet(String id, boolean placementOnly) { }
+    private final List<PlacementSet> sets;
     private final AtomicBoolean closed = new AtomicBoolean();
     static final int BATCH = 64;
 
@@ -34,7 +35,8 @@ public final class TerrainQueries implements AutoCloseable {
         definitions = structures == null ? List.of() : structures.getAsJsonArray("definitions").asList().stream()
                 .map(e -> e.getAsJsonObject().get("id").getAsString()).toList();
         sets = structures == null ? List.of() : structures.getAsJsonArray("sets").asList().stream()
-                .map(e -> e.getAsJsonObject().get("id").getAsString()).toList();
+                .map(e -> { var set=e.getAsJsonObject(); return new PlacementSet(set.get("id").getAsString(),
+                        set.has("placement_only") && set.get("placement_only").getAsBoolean()); }).toList();
     }
 
     public boolean active() { return !closed.get(); }
@@ -93,7 +95,8 @@ public final class TerrainQueries implements AutoCloseable {
         var search=new LinkedHashMap<Integer,SearchSet>();
         // Vanilla groups placements in the requested holder order; preserve ties.
         for (var target : wanted) for (int i=0;i<sets.size();i++) {
-            var set=structureSets.getValue(Identifier.parse(sets.get(i)));
+            if (sets.get(i).placementOnly()) continue;
+            var set=structureSets.getValue(Identifier.parse(sets.get(i).id()));
             if (set==null || !(set.placement() instanceof RandomSpreadStructurePlacement placement)) continue;
             if (set.structures().stream().noneMatch(entry -> entry.structure().equals(target))) continue;
             var group=search.computeIfAbsent(i,index -> new SearchSet(index,placement,new LinkedHashMap<>()));
