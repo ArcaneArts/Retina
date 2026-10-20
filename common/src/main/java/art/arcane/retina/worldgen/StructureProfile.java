@@ -226,6 +226,8 @@ final class StructureProfile {
         String id=raw.get("location").getAsString();int template=template(id);
         if(template<0)return result;
         var part=new JsonObject();part.addProperty("template",template);part.addProperty("ignore_air",type.equals("legacy_single_pool_element"));
+        // SinglePoolElement (including legacy) finalizes template mobs after NBT load.
+        part.addProperty("finalize_entities",true);
         JsonElement processors=raw.get("processors");
         if(processors.isJsonPrimitive()) {
             var h=registry.lookupOrThrow(Registries.PROCESSOR_LIST).getOrThrow(ResourceKey.create(Registries.PROCESSOR_LIST,Identifier.parse(processors.getAsString())));

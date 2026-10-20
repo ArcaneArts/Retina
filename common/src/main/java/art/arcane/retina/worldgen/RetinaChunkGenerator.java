@@ -494,7 +494,7 @@ public final class RetinaChunkGenerator extends ChunkGenerator {
     public void createReferences(WorldGenLevel level, StructureManager structures, ChunkAccess chunk) { }
 
     @Override
-    public void spawnOriginalMobs(WorldGenRegion region) { }
+    public void spawnOriginalMobs(WorldGenRegion region) { StructureMobInitialization.finalizeEntities(region); }
 
     @Override
     public int getGenDepth() { return selectedSource == null ? height : selectedSource.generator().getGenDepth(); }

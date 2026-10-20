@@ -53,7 +53,8 @@ public final class TerrainClientQa {
     public static void tick(Minecraft minecraft) {
         if (!ENABLED || phase == 6) return;
         if (started == 0) started = System.nanoTime();
-        long deadline = Boolean.getBoolean("retina.qa.nether.progression") ? 1_200_000_000_000L
+        long deadline = Boolean.getBoolean("retina.qa.nether.structures") ? 2_400_000_000_000L
+                : Boolean.getBoolean("retina.qa.nether.progression") ? 1_200_000_000_000L
                 : Boolean.getBoolean("retina.qa.nether.lifecycle") ? 600_000_000_000L : 300_000_000_000L;
         if (System.nanoTime() - started > deadline) throw new IllegalStateException("Retina client gameplay QA timed out in phase " + phase);
         switch (phase) {

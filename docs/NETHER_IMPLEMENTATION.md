@@ -1142,8 +1142,50 @@ host build, scheduling/configuration/profile checks, 19 portal-boundary cases an
 103 Rust unit tests passed. This milestone does not establish visual quality,
 ordinary spawn rates or throughput.
 
+## Cycle 4m: live structure references and template mob initialization
+
+Native structure references now follow Minecraft's adjusted whole-start box in
+X/Z, including gaps between pieces and the 12-block terrain-adaptation margin.
+They retain Minecraft's eight-chunk source-search limit and do not depend on the
+structure's vertical intersection with chunk storage. Candidate planning includes
+the margin. A live bastion test exposed the previous piece-only references;
+focused fixtures cover margins, gaps, negative coordinates and vertical offsets.
+
+Jigsaw single and legacy-single elements now export their source
+`finalizeEntities` behavior. Native publication marks these template entities for
+one-time initialization. Retina completes that initialization in Minecraft's
+ordinary spawn-generation stage using the same `WorldGenRegion` context as
+`StructureTemplate`. Fabric uses vanilla's initializer; NeoForge uses its
+`FinalizeSpawnEvent` hook and honors spawn cancellation. This supplies brute
+equipment and home memory while retaining source template properties. It
+introduces no Java terrain-generation callbacks.
+
+The finalized entity NBT replaces the pending record before the chunk reaches
+SPAWN status. Existing saved mobs without the marker are preserved, and reopening
+retains player equipment edits. The same source setting applies to supported
+jigsaw templates outside the Nether. An earlier registration-time attempt
+exposed a recursive FULL-chunk wait in `ServerLevel.getCurrentDifficultyAt`;
+using the generation region avoids that dependency and follows Minecraft's
+original structure-placement context.
+
+The opt-in live scenario covers bastions, Nether fossils and Nether ruined
+portals on ordinary registered settings. It checks interactive locate, loaded
+starts/references, piece bounds, generated blocks, original chest loot, native
+mob UUIDs and save/reopen behavior. See
+[runtime QA](RUNTIME_QA.md#live-bastions-fossils-and-nether-ruined-portals) for
+commands, fixture edits and limits.
+
+The final matrix passed all 12 live structure sessions across both loaders,
+dedicated fresh/reconnect and full process restart/reconnect, and integrated
+creation/save-reopen. The seed-42 bastion had 174 pieces, 41 template mobs and
+15 brutes; seed 123456789 had 89 pieces, 32 mobs and eight brutes. NeoForge
+initialization hooks had unique UUIDs, with no new hooks on dedicated restart.
+Both host builds, 104 native unit tests, all eight bastion layouts, shared
+structure regressions, Nether profiles and 136 portal source replays passed.
+An additional exact replay confirms the integrated fixture's chestless portal
+matches Minecraft's lava processing.
+
 ## Remaining cycles
 
-4. Remaining live bastion, fossil and ruined-portal checks.
 5. In-flight unload and remaining dimension lifecycle coverage.
 6. Both-loader runtime validation, regression coverage, visual QA, and benchmarks.

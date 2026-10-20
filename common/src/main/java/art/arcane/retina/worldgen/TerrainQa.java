@@ -156,9 +156,9 @@ final class TerrainQa {
         var position = new net.minecraft.world.level.ChunkPos(
                 (playerChunk.getRegionX() + 4) * 32 + 16,
                 (playerChunk.getRegionZ() + 4) * 32 + 16);
-        if (Boolean.getBoolean("retina.qa.nether.progression")) {
+        if (Boolean.getBoolean("retina.qa.nether.progression") || Boolean.getBoolean("retina.qa.nether.structures")) {
             // This harness waits for both comparisons before returning the player.
-            // Its concurrent fortress preparation must not stall keepalives while
+            // Its concurrent structure preparation must not stall keepalives while
             // the unrelated comparison region waits for the shared worker budget.
             var initial = position;
             var probe = PROBES.computeIfAbsent(generator, ignored -> new Probe(initial,

@@ -397,5 +397,67 @@ The controlled spawning and combat limits are described in the
 [scenario instructions](#live-nether-fortress-progression). These results do not
 claim an unaided survival playthrough, normal spawning rates, visual inspection,
 throughput measurements or installed DH/Chunky coverage. Live checks for the other
-Nether structure families, in-flight unload and the remaining final matrix remain
-follow-up work.
+Nether structure families are recorded below. In-flight unload and the remaining
+final matrix remain follow-up work.
+
+
+### Live bastions, fossils and Nether ruined portals
+
+Use `-PretinaNetherStructuresQa` instead of `-PretinaNetherProgressionQa` with
+both the server and client commands above, in fresh disposable directories.
+Integrated runs use the same flag and omit the dedicated-server options. Run
+both loaders, then restart each dedicated server and repeat its client run.
+
+Each connection uses the real asynchronous interactive `/locate structure` path
+for `minecraft:bastion_remnant`, `minecraft:nether_fossil`, and
+`minecraft:ruined_portal_nether`. It validates loaded registered starts, saved
+piece geometry, adjusted bounding-box references and representative generated
+blocks. A ruined portal can legitimately lose its chest to Minecraft's lava
+processor. The harness checks that no native chest was lost while loading, then
+moves its locate origin to find another natural portal for the loot check.
+The selected origin is saved. Its locate result must remain stable after loading
+and editing, and after reconnecting or reopening.
+
+`nether_live_structure_loot` opens the original bastion and ruined-portal
+containers through ordinary block interaction and requires nonempty source loot.
+It uses creative mode for these interactions, adds a diamond, and compares the
+opened inventory after reloading. If the lid is covered, the player breaks its
+cover through the ordinary block-breaking path; `cover_removed` records that
+excavation. It does not build
+a survival standing platform. Fortress survival progression is covered separately.
+
+`nether_live_bastion_entities` matches live mobs to the native template UUIDs,
+types and persistence. It checks source piglin weapons and applicable hunting
+flags. Brutes must initially have their golden axe and home at the generated
+position. After inspection, the fixture freezes the mobs and makes them
+invulnerable, replaces brute axes with diamond axes, and verifies that equipment
+and home survive reopening without another initialization. The pending native
+initialization marker must already be absent from the live mob's saved NBT.
+
+The harness temporarily disables natural spawning, restores the original rule,
+returns the player to the Overworld, and waits for actual client dimension
+telemetry. `nether_structures_complete`, `nether_client_structure_return` and
+`minecraft_client_gameplay_reopen` must all pass. Dedicated clients connect
+twice; integrated clients close and reopen the world. These checks do not claim
+portal travel, visual quality, natural spawn rates or benchmark throughput.
+
+Validation on macOS/Metal, Minecraft 26.3, Java 25:
+
+| Check | Result |
+| --- | --- |
+| Fabric and NeoForge dedicated, seed 42 | Fresh/reconnect and full process restart/reconnect passed |
+| Fabric and NeoForge integrated, seed 123456789 | Creation and save/reopen passed |
+| Live sessions | All 12 completed; 455 passing events in ten final client/server logs |
+| Dedicated bastion | 174 pieces across 24 chunks/four regions, six chests, 41 mobs including 15 brutes |
+| Integrated bastion | 89 pieces across 25 chunks/two regions, eight chests, 32 mobs including eight brutes |
+| Fossils and portals | Native blocks, starts, every adjusted-box reference, piece lookup and stable interactive locate passed |
+| Loot and entities | Original loot resolved; opened inventories, diamond edits, brute axes and home memories survived reopening |
+| NeoForge initialization | 61 unique dedicated and 32 unique integrated spawn-hook UUIDs; zero hooks after dedicated process restart |
+| Source references | Eight bastion layouts and 136 portal piece replays passed, comparing 1,200 chunks/78,643,200 voxels for the portal suite |
+| Chestless portal | Separate exact seed-123456789 replay confirms Minecraft also removes the submerged chest at chunk (24, 21) |
+| Build and regressions | Both host JARs, Nether profiles, shared structure tests, scheduling/configuration, 19 portal-boundary cases and 104 Rust unit tests passed |
+
+The final logs contain no failed QA events or unexpected server exceptions.
+Diagnostic runs are retained separately, including the discarded
+registration-time initializer's recursive chunk wait. The final implementation
+uses the generation region; the matrix above ran with that implementation.

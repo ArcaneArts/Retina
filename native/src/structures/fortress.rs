@@ -228,6 +228,7 @@ fn make_piece(at: Placement, template: usize, bounds: [i32; 6], depth: u32) -> P
             parts: vec![Part {
                 template,
                 ignore_air: false,
+                finalize_entities: false,
                 processors: json!([]),
                 program: Arc::default(),
             }],

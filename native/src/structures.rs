@@ -72,6 +72,8 @@ pub struct Element {
 pub struct Part {
     pub template: usize,
     pub ignore_air: bool,
+    #[serde(default)]
+    pub finalize_entities: bool,
     pub processors: Value,
     #[serde(skip)]
     program: Arc<Program>,
@@ -453,7 +455,27 @@ impl Profile {
         Ok(())
     }
 }
+fn reference_margin(d: &Definition) -> i32 {
+    if d.config["terrain_adaptation"]
+        .as_str()
+        .is_some_and(|mode| mode != "none")
+    {
+        12
+    } else {
+        0
+    }
+}
+
 fn reach(p: &Profile, d: &Definition) -> i32 {
+    geometry_reach(p, d)
+        + if d.unimplemented {
+            0
+        } else {
+            reference_margin(d)
+        }
+}
+
+fn geometry_reach(p: &Profile, d: &Definition) -> i32 {
     if d.unimplemented {
         return 0;
     }
@@ -483,7 +505,7 @@ fn reach(p: &Profile, d: &Definition) -> i32 {
             .map(|&i| p.templates[i].size[0].max(p.templates[i].size[2]))
             .max()
             .unwrap_or(0)
-            + 27; // within-chunk offset plus adjusted start bounds
+            + 15; // within-chunk offset; adjusted start bounds are added by reach
     }
     if d.kind != "jigsaw" {
         return p.templates[d.template].horizontal_reach();
@@ -1070,6 +1092,7 @@ fn build_definition(
             parts: vec![Part {
                 template: d.template,
                 ignore_air: false,
+                finalize_entities: false,
                 processors: json!([]),
                 program: Arc::default(),
             }],
@@ -1417,36 +1440,22 @@ pub fn start_data(request: ChunkRequest, profile: &WorldProfile, plans: &[Arc<St
     let mut references = nbt::compound();
     for start in plans {
         let definition = &p.definitions[start.definition];
-        let piece_relevant = start
-            .index(p)
-            .pieces
-            .get(&[request.chunk_x, request.chunk_z])
-            .is_some_and(|ids| {
-                ids.iter()
-                    .any(|&i| intersects(start.pieces[i].bounds, chunk_bounds))
-            });
-        // Fortress spawning also uses the whole start box over nether-brick floors.
-        let relevant = piece_relevant
-            || matches!(definition.kind.as_str(), "fortress" | "nether_fossil")
-                && !start.pieces.is_empty()
-                && {
-                    let mut bounds: [i32; 6] = std::array::from_fn(|i| {
-                        if i < 3 {
-                            start.pieces.iter().map(|p| p.bounds[i]).min().unwrap()
-                        } else {
-                            start.pieces.iter().map(|p| p.bounds[i]).max().unwrap()
-                        }
-                    });
-                    if definition.kind == "nether_fossil"
-                        && definition.config["terrain_adaptation"] != "none"
-                    {
-                        for i in 0..3 {
-                            bounds[i] -= 12;
-                            bounds[i + 3] += 12;
-                        }
-                    }
-                    intersects(bounds, chunk_bounds)
-                };
+        // Minecraft references the whole adjusted start box in X/Z, including
+        // gaps between pieces and terrain-adaptation margins, regardless of Y.
+        let relevant = !start.pieces.is_empty()
+            && (start.chunk[0] as i64 - request.chunk_x as i64).abs() <= 8
+            && (start.chunk[1] as i64 - request.chunk_z as i64).abs() <= 8
+            && {
+                let margin = reference_margin(definition);
+                let min_x = start.pieces.iter().map(|p| p.bounds[0]).min().unwrap() - margin;
+                let min_z = start.pieces.iter().map(|p| p.bounds[2]).min().unwrap() - margin;
+                let max_x = start.pieces.iter().map(|p| p.bounds[3]).max().unwrap() + margin;
+                let max_z = start.pieces.iter().map(|p| p.bounds[5]).max().unwrap() + margin;
+                min_x <= chunk_bounds[3]
+                    && max_x >= chunk_bounds[0]
+                    && min_z <= chunk_bounds[5]
+                    && max_z >= chunk_bounds[2]
+            };
         if start.chunk == [request.chunk_x, request.chunk_z] {
             let mut tag = nbt::compound();
             nbt::put(&mut tag, "id", nbt::string(&definition.id));
@@ -1497,6 +1506,7 @@ pub fn start_data(request: ChunkRequest, profile: &WorldProfile, plans: &[Arc<St
 fn append_template_entities(
     template: &Template,
     template_id: usize,
+    finalize_entities: bool,
     start: &Start,
     piece: &Piece,
     chunk_bounds: [i32; 6],
@@ -1622,6 +1632,11 @@ fn append_template_entities(
                 );
             }
         }
+        if finalize_entities {
+            // Minecraft finalizes template mobs after NBT load. Its world-dependent
+            // equipment/brain initialization runs once during Minecraft's spawn stage.
+            nbt::put(&mut tag, "retina:finalize_structure_entity", json!([1, 1]));
+        }
         entities.push(tag);
     }
 }
@@ -1694,6 +1709,7 @@ fn apply_inner(
             append_template_entities(
                 &p.templates[template_id],
                 template_id,
+                piece.element.parts[0].finalize_entities,
                 start,
                 piece,
                 chunk_bounds,
@@ -1901,6 +1917,7 @@ fn apply_inner(
                 append_template_entities(
                     template,
                     part.template,
+                    part.finalize_entities,
                     start,
                     piece,
                     chunk_bounds,
@@ -2269,7 +2286,11 @@ mod tests {
             [0, 1, 3, 2, 5, 4],
             [0, 1, 4, 5, 3, 2],
         ];
-        for style in 0..4 {
+        for case in 0..8 {
+            let style = case % 4;
+            let finalize_entities = case >= 4;
+            let pool = profile.structures.pools.get_mut("test:attached").unwrap();
+            Arc::make_mut(&mut pool.entries[0]).parts[0].finalize_entities = finalize_entities;
             let mirror = if style == 0 { 0 } else { style - 1 };
             profile.structures.templates[0].transform = if style == 0 {
                 None
@@ -2388,11 +2409,93 @@ mod tests {
                                 .collect();
                             assert_eq!(nbt::list_values(nbt::field(tag, "Pos").unwrap()), expected);
                             assert!(nbt::field(tag, "UUID").is_some());
+                            assert_eq!(
+                                nbt::field(tag, "retina:finalize_structure_entity"),
+                                finalize_entities.then_some(&json!([1, 1]))
+                            );
                             seen += 1;
                         }
                     }
                 }
                 assert_eq!(seen, 16);
+            }
+        }
+    }
+    #[test]
+    fn references_cover_adjusted_start_boxes_including_gaps_and_ignore_y() {
+        let mut profile: WorldProfile = serde_json::from_value(json!({
+            "biome_scale":256,"blend":0.55,"sea_level":63,"stone":1,"water":0,
+            "bedrock":1,"deepslate":1,"snow":0,"ice":0,
+            "materials":["minecraft:air","minecraft:stone"],"biomes":[],"noises":[],
+            "material_flags":[0,1],"heightmap_masks":[0,63],
+            "structures":{
+                "templates":[{"id":"test:piece","size":[1,1,1],"ground":0,
+                    "palettes":[[[1,1,1,1]]],"blocks":[0,0,0,0],"tags":{},"joints":[],"entities":[]}],
+                "definitions":[{"id":"test:bounds","kind":"jigsaw","biomes":[],"config":{}}],
+                "pools":{},"sets":[]
+            }
+        })).unwrap();
+        let element = Arc::new(Element {
+            parts: vec![Part {
+                template: 0,
+                ignore_air: false,
+                finalize_entities: false,
+                processors: json!([]),
+                program: Arc::default(),
+            }],
+            terrain_matching: false,
+            weight: 1,
+        });
+        let start = Arc::new(Start {
+            definition: 0,
+            chunk: [-1, -1],
+            seed: 42,
+            pieces: [[-17, 400, -17], [145, 408, 33]]
+                .into_iter()
+                .map(|pos| Piece {
+                    bounds: [pos[0], pos[1], pos[2], pos[0], pos[1], pos[2]],
+                    element: element.clone(),
+                    pos,
+                    rotation: 0,
+                    palette: 0,
+                    context: 0,
+                    depth: 0,
+                    priority: 0,
+                    fortress: None,
+                })
+                .collect(),
+            terrain: None,
+            portal: None,
+            index: OnceLock::new(),
+        });
+        for adaptation in [Value::Null, json!("none"), json!("beard_thin")] {
+            profile.structures.definitions[0].config["terrain_adaptation"] = adaptation.clone();
+            let margin = if adaptation == "beard_thin" { 12 } else { 0 };
+            for z in -3..5 {
+                for x in -3..11 {
+                    let request = ChunkRequest {
+                        seed: 42,
+                        chunk_x: x,
+                        chunk_z: z,
+                        min_y: 0,
+                        height: 256,
+                        base_height: 64.0,
+                        amplitude: 0.0,
+                        frequency: 0.008,
+                        reserved: 0,
+                    };
+                    let data = start_data(request, &profile, &[start.clone()]);
+                    let references =
+                        nbt::field(nbt::field(&data, "structures").unwrap(), "References").unwrap();
+                    let present = nbt::field(references, "test:bounds").is_some();
+                    let expected = (x + 1).abs() <= 8
+                        && (z + 1).abs() <= 8
+                        && x * 16 <= 145 + margin
+                        && x * 16 + 15 >= -17 - margin
+                        && z * 16 <= 33 + margin
+                        && z * 16 + 15 >= -17 - margin;
+                    assert_eq!(present, expected, "chunk {x},{z}, adaptation {adaptation}");
+                }
             }
         }
     }

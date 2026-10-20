@@ -72,6 +72,16 @@ final class BastionIntegrationTest {
                 var loaded = StructureStart.loadStaticStart(context, start, seed);
                 require(loaded != null && loaded.isValid(), "saved bastion start decodes");
                 require(loaded.getStructure() == registry.lookupOrThrow(Registries.STRUCTURE).getValue(Identifier.parse(BASTION)), "saved bastion identity");
+                var referenceBounds = loaded.getBoundingBox();
+                for (int rz = Math.floorDiv(referenceBounds.minZ(), 16) - 1; rz <= Math.floorDiv(referenceBounds.maxZ(), 16) + 1; rz++)
+                    for (int rx = Math.floorDiv(referenceBounds.minX(), 16) - 1; rx <= Math.floorDiv(referenceBounds.maxX(), 16) + 1; rx++) {
+                        var refs = terrain.structureStarts(PortalIntegrationTest.request(profile, seed, rx, rz))
+                                .getCompoundOrEmpty("structures").getCompoundOrEmpty("References").getLongArray(BASTION).orElse(new long[0]);
+                        boolean expected = Math.abs(rx - at.x()) <= 8 && Math.abs(rz - at.z()) <= 8
+                                && referenceBounds.intersects(rx * 16, rz * 16, rx * 16 + 15, rz * 16 + 15);
+                        require(Arrays.stream(refs).anyMatch(key -> key == at.pack()) == expected,
+                                "every source-adjusted bounding-box reference including margin and inter-piece gaps");
+                    }
                 var boxes = new ArrayList<BoundingBox>();
                 for (var child : children) boxes.add(((CompoundTag) child).read("BB", BoundingBox.CODEC).orElseThrow());
                 require(boxes.getFirst().minY() == 33, "bastion root uses configured start height, not the Nether roof");
@@ -145,6 +155,7 @@ final class BastionIntegrationTest {
                     var tag = (CompoundTag) value;
                     String id = tag.getStringOr("id", "");
                     require(Set.of("minecraft:piglin", "minecraft:piglin_brute", "minecraft:hoglin").contains(id), "loaded bastion mob kind " + id);
+                    require(tag.getBooleanOr(StructureMobInitialization.PENDING_TAG, false), "source jigsaw mob finalization survives native publication");
                     require(identities.add(Arrays.toString(tag.getIntArray("UUID").orElseThrow())), "unique deterministic mob identity");
                     var pos = tag.getListOrEmpty("Pos");
                     require(ChunkPos.containing(BlockPos.containing(pos.getDouble(0).orElseThrow(), pos.getDouble(1).orElseThrow(), pos.getDouble(2).orElseThrow())).equals(at), "mob belongs to published chunk");
