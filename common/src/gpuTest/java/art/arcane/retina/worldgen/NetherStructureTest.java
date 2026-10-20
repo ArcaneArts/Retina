@@ -20,6 +20,7 @@ import java.util.*;
 public final class NetherStructureTest {
     public static void main(String[] args) throws Exception {
         SharedConstants.tryDetectVersion(); Bootstrap.bootStrap(); NativeRegistryLoadingTest.registerCodecs();
+        FortressAssemblyTest.registerPiece();
         try (var resources = new MultiPackResourceManager(PackType.SERVER_DATA,
                 List.of(ServerPacksSource.createVanillaPackSource().fullResources()))) {
             var builtin = RegistryAccess.fromRegistryOfRegistries(BuiltInRegistries.REGISTRY);
@@ -32,6 +33,10 @@ public final class NetherStructureTest {
                     settings.value(), StructureProfile.Context.of(resources), true, false, true);
             var profile = JsonParser.parseString(exported.json()).getAsJsonObject();
             Files.createDirectories(Path.of("build/nether"));
+            if (Arrays.asList(args).contains("--bastions-only")) {
+                BastionIntegrationTest.run(registry, resources, profile, exported.materials());
+                return;
+            }
             if (Arrays.asList(args).contains("--combined-only")) {
                 NetherGenerationIntegrationTest.run(profile, exported.materials());
                 return;
@@ -120,6 +125,7 @@ public final class NetherStructureTest {
             GenerationStepIntegrationTest.run(registry, profile, exported.materials());
             NetherGenerationIntegrationTest.run(profile, exported.materials());
             FortressAssemblyTest.run(registry, resources, profile, exported.materials());
+            BastionIntegrationTest.run(registry, resources, profile, exported.materials());
             FossilIntegrationTest.run(registry, resources, profile, exported.materials());
             PortalIntegrationTest.run(registry, resources, profile, exported.materials());
             StructureProcessorIntegrationTest.run(registry, profile);

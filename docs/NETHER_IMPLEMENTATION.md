@@ -913,9 +913,64 @@ applicable structure-set exclusions, Java structure-state advertisement, live
 locate/spawning/progression, dimension integration and the final runtime matrix
 remain required.
 
+## Cycle 4i: bastions on Nether terrain
+
+All four loaded bastion root families now have dedicated Nether fixtures: housing
+units, hoglin stables, treasure rooms and bridges. The fixtures isolate each root
+pool entry while retaining the actual Nether density/surface programs, loaded
+biome eligibility, configured start height, child pools, processors and templates.
+They cover positive and negative coordinates and do not project starts onto the
+bedrock roof. These are generation and persistence checks, not a claim of exact
+vanilla seed layouts or live gameplay validation.
+
+The checks found repeated loot seeds for template chests at matching local
+coordinates in different chunks. Template loot now consumes the existing
+world-position random stream, as fortress loot already does. This also fixes
+other template structures. Existing saved chunks are not rewritten.
+
+Eight layouts contain 820 pieces across 144 chunks and 24 saved region files.
+They preserve 60 loot containers, 273 template mobs and two magma-cube spawners.
+Every changed block stays within the loaded piece bounds; block entities load
+against their final states, loot seeds and mob UUIDs are distinct within each
+layout, editor blocks are absent, and starts retain the registered bastion
+identity. Cold concurrent reverse generation agrees with the initial blocks and
+metadata. MCA decoding compares all 9,437,184 voxels and structure/entity metadata,
+and saved starts reopen through Minecraft's structure loader.
+
+A second fixture uses the unmodified loaded profile and naturally selected
+weighted starts. Its 1,024-chunk region contains two bastions, 23 fossils and a
+ruined portal together with normal vegetation and ores. Ten independent chunks
+compare 655,360 voxels and metadata, followed by cold concurrent replay and
+byte-for-byte preservation on repeated publication. The region retains 12 block
+entities and 10,706 fluid updates, including one flowing-lava update from
+structure processing. Combined-region validation now decodes registered fluid
+identities and deduplicates by type/position; the spring-only assertion remains
+specific to the isolated feature suite.
+
+Run the focused fixture with:
+
+```sh
+./gradlew -PretinaHostOnly :common:netherStructureTest --args=--bastions-only
+```
+
+`build/nether/bastion-generation.json` records each layout and its region directory;
+`bastion-fixture-0.json` through `bastion-fixture-3.json` retain reproducible inputs.
+`bastion-combined-generation.json` and `bastion-combined-regions-path.txt` describe
+the unmodified profile's region. Its first measured generation/publication took
+7.78 seconds on Metal / Apple M4 Max; this is a different workload from the
+negative-X region and is not a performance comparison.
+
+The host Fabric/NeoForge build and `netherStructureTest`, `structureTest`,
+`flatTest`, `nativeGpuTest`, `netherFeatureTest`, and `netherProfileTest` pass,
+including 102 Rust unit tests and three native GPU integration tests.
+
+Production Nether activation remains deferred. Structure-set exclusion closure,
+Java structure-state advertisement, actual spawning/loot gameplay, dimension
+integration and the final runtime matrix remain required.
+
 ## Remaining cycles
 
-4. Nether bastion validation, applicable structure-set exclusions,
-   Java structure-state advertisement and gameplay progression checks.
+4. Applicable structure-set exclusions, Java structure-state advertisement
+   and gameplay progression checks.
 5. Automatic activation and dimension lifecycle, lighting, and portal integration.
 6. Both-loader runtime validation, regression coverage, visual QA, and benchmarks.
