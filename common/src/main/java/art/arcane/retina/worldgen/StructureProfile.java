@@ -54,7 +54,7 @@ final class StructureProfile {
     final Context context;
     final JsonArray templates=new JsonArray(), definitions=new JsonArray(), sets=new JsonArray();
     final JsonObject pools=new JsonObject();
-    JsonObject fortress, fossils;
+    JsonObject fortress, fossils, portals;
     final Map<String,Integer> templateIds=new HashMap<>(), definitionIds=new HashMap<>();
     final Set<String> visited=new HashSet<>(), omitted=new TreeSet<>();
     StructureProfile(HolderLookup.Provider registry,List<Holder<Biome>> biomes,LinkedHashMap<BlockState,Integer> materials,Context context) {
@@ -67,6 +67,7 @@ final class StructureProfile {
         result.add("pools",out.pools);result.add("sets",out.sets);
         if(out.fortress!=null)result.add("fortress",out.fortress);
         if(out.fossils!=null)result.add("fossils",out.fossils);
+        if(out.portals!=null)result.add("portals",out.portals);
         finishMaterials(result,materials);
         long reserved=out.definitions.asList().stream().map(JsonElement::getAsJsonObject).filter(d->d.has("unimplemented")).count();
         Retina.LOGGER.info("Exported registered structures: {} executable definitions, {} reserved definitions, {} pools, {} templates, {} placement sets; omissions {}",
@@ -76,11 +77,16 @@ final class StructureProfile {
     static void finishMaterials(JsonObject result,LinkedHashMap<BlockState,Integer> materials) {
         StructureProcessorProfile.finish(result.get("pools"),materials);
         int beforeTransforms=materials.size();
+        if(result.has("portals"))PortalShapeProfile.prepare(materials);
         StructureTemplateProfile.finish(result,materials);
         if(materials.size()!=beforeTransforms)StructureProcessorProfile.finish(result.get("pools"),materials);
         finishProcessorPredicates(result.get("pools"),materials);
         if(result.has("fortress"))FortressProfile.finish(result.getAsJsonObject("fortress"),materials);
         if(result.has("fossils"))FossilProfile.finish(result.getAsJsonObject("fossils"),materials);
+        if(result.has("portals")) {
+            PortalProfile.finish(result.getAsJsonObject("portals"),materials);
+            PortalShapeProfile.finish(result.getAsJsonObject("portals"),result.getAsJsonArray("templates"),materials);
+        }
     }
     void load() {
         var ops=registry.createSerializationContext(JsonOps.INSTANCE);
@@ -110,6 +116,9 @@ final class StructureProfile {
                 if(fortress==null)fortress=FortressProfile.export(this);
             } else if(type.equals("nether_fossil")) {
                 if(fossils==null)fossils=FossilProfile.export(this);
+            } else if(type.equals("ruined_portal") && PortalProfile.supported(config)) {
+                if(portals==null)portals=PortalProfile.export(this);
+                PortalProfile.processors(this,config,name);
             } else {
                 omitted.add("structure:"+name+":"+type);
                 d.addProperty("unimplemented",true);d.addProperty("unavailable_reason","structure-type");unavailable.put(name,d);continue;

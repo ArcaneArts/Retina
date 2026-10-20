@@ -161,7 +161,7 @@ public final class NativeStructureIntegrationTest {
             }
         }
         var structures=fixture.getAsJsonObject("structures");
-        structures.remove("fortress"); structures.remove("fossils"); // This fixture replaces the complete template library below.
+        structures.remove("fortress"); structures.remove("fossils");structures.remove("portals"); // This fixture replaces the complete template library below.
         var template=JsonParser.parseString("{\"id\":\"retina:attached\",\"size\":[32,3,2],\"ground\":0,\"palettes\":[[[1,1,1,1]]],\"blocks\":[0,0,0,0],\"tags\":{},\"joints\":[]}").getAsJsonObject();
         template.add("entities",entities);var templates=new JsonArray();templates.add(template);structures.add("templates",templates);
         var definition=JsonParser.parseString("{\"id\":\"retina:attached\",\"kind\":\"jigsaw\",\"pool\":\"retina:attached\",\"config\":{\"size\":0,\"start_height\":{\"absolute\":64},\"terrain_adaptation\":\"none\",\"max_distance_from_center\":80}}").getAsJsonObject();

@@ -119,7 +119,7 @@ final class FossilIntegrationTest {
         var s=out.getAsJsonObject("structures");var definition=s.getAsJsonArray("definitions").asList().stream().map(JsonElement::getAsJsonObject).filter(d->d.get("kind").getAsString().equals("nether_fossil")).findFirst().orElseThrow().deepCopy();
         var definitions=new JsonArray();definitions.add(definition);s.add("definitions",definitions);
         var templates=new JsonArray();var ids=new JsonArray();for(var id:s.getAsJsonObject("fossils").getAsJsonArray("templates")){ids.add(templates.size());templates.add(s.getAsJsonArray("templates").get(id.getAsInt()));}
-        s.add("templates",templates);s.getAsJsonObject("fossils").add("templates",ids);s.add("pools",new JsonObject());s.remove("fortress");
+        s.add("templates",templates);s.getAsJsonObject("fossils").add("templates",ids);s.add("pools",new JsonObject());s.remove("fortress");s.remove("portals");
         s.add("sets",JsonParser.parseString("[{\"id\":\"retina:fossil_fixture\",\"placement\":{\"type\":\"minecraft:random_spread\",\"spacing\":512,\"separation\":511,\"salt\":0},\"entries\":[{\"definition\":0,\"weight\":1}]}]"));
         return out;
     }
