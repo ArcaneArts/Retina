@@ -1,5 +1,7 @@
 //! CPU jigsaw planning over resident registry templates. Plans are shared by MCA,
 //! individual chunks and DH previews, including pieces crossing region boundaries.
+mod discovery;
+pub(crate) use discovery::Discovery;
 mod fortress;
 mod fossils;
 mod portals;
@@ -14,7 +16,7 @@ use serde::Deserialize;
 use serde_json::{Value, json};
 use std::borrow::Cow;
 use std::collections::{HashMap, VecDeque};
-use std::sync::{Arc, OnceLock};
+use std::sync::{Arc, OnceLock, Weak};
 
 #[derive(Clone, Default, Deserialize)]
 pub struct Profile {
@@ -111,9 +113,15 @@ pub struct Entry {
     pub definition: usize,
     pub weight: u32,
 }
+type StartKey = (CacheKey, usize);
+type StartCell = Arc<OnceLock<Result<Arc<Start>, String>>>;
+type PlannedStart = (usize, Arc<Start>);
+
 #[derive(Default)]
 pub struct Cache {
-    entries: HashMap<(CacheKey, usize), Arc<OnceLock<Result<Arc<Start>, String>>>>,
+    entries: HashMap<StartKey, StartCell>,
+    active: HashMap<StartKey, Weak<OnceLock<Result<Arc<Start>, String>>>>,
+    insertions_since_sweep: usize,
     order: VecDeque<(CacheKey, usize)>,
     metadata: HashMap<CacheKey, Value>,
     meta_order: VecDeque<CacheKey>,
@@ -131,10 +139,25 @@ impl Cache {
             }
             return cell.clone();
         }
-        if let Some(m) = metrics {
-            m.add(structure_cache_misses, 1);
+        // A job may still own this cell after it leaves the small recent cache.
+        // Weak references share active work without extending its lifetime.
+        let cell = if let Some(cell) = self.active.get(&key).and_then(Weak::upgrade) {
+            if let Some(m) = metrics {
+                m.add(structure_active_hits, 1);
+            }
+            cell
+        } else {
+            if let Some(m) = metrics {
+                m.add(structure_cache_misses, 1);
+            }
+            Arc::new(OnceLock::new())
+        };
+        self.active.insert(key, Arc::downgrade(&cell));
+        self.insertions_since_sweep += 1;
+        if self.insertions_since_sweep == 256 {
+            self.active.retain(|_, cell| cell.strong_count() != 0);
+            self.insertions_since_sweep = 0;
         }
-        let cell = Arc::new(OnceLock::new());
         self.entries.insert(key, cell.clone());
         self.order.push_back(key);
         while self.entries.len() > 256 {
@@ -622,17 +645,21 @@ pub fn plans(
     request: ChunkRequest,
     side: i32,
 ) -> Result<Vec<Arc<Start>>, String> {
-    plans_inner(engine, request, side, true)
+    Ok(plans_inner(engine, request, side, true, None, None)?
+        .into_iter()
+        .map(|(_, start)| start)
+        .collect())
 }
 
-/// Dependency memo builders must not yield into Rayon: a stolen decoration
-/// task can depend on a OnceLock that the suspended caller is still building.
-pub(crate) fn plans_inline(
-    engine: &TerrainEngine,
-    request: ChunkRequest,
-    side: i32,
-) -> Result<Vec<Arc<Start>>, String> {
-    plans_inner(engine, request, side, false)
+fn candidate_halo(p: &Profile, set: &Set) -> i32 {
+    (set.entries
+        .iter()
+        .map(|e| reach(p, &p.definitions[e.definition]))
+        .max()
+        .unwrap_or(0)
+        + 15)
+        / 16
+        + 1
 }
 
 fn plans_inner(
@@ -640,7 +667,9 @@ fn plans_inner(
     request: ChunkRequest,
     side: i32,
     parallel: bool,
-) -> Result<Vec<Arc<Start>>, String> {
+    discovery: Option<&Discovery>,
+    only_set: Option<usize>,
+) -> Result<Vec<PlannedStart>, String> {
     let timings = engine.timings(request.reserved);
     let metrics = &timings.performance;
     metrics.add(crate::performance::Counter::structure_plan_calls, 1);
@@ -651,30 +680,29 @@ fn plans_inner(
     let p = &profile.structures;
     let mut candidates = Vec::new();
     for (set, s) in p.sets.iter().enumerate() {
-        if s.placement_only {
+        if s.placement_only || only_set.is_some_and(|selected| selected != set) {
             continue;
         }
         let spacing = value(&s.placement, "spacing", 32) as i32;
-        let halo = (s
-            .entries
-            .iter()
-            .map(|e| reach(p, &p.definitions[e.definition]))
-            .max()
-            .unwrap_or(0)
-            + 15)
-            / 16
-            + 1;
+        // Job tiles own candidate coordinates, rather than overlapping consumer
+        // areas. Every candidate belongs to exactly one tile/set batch.
+        let halo = if discovery.is_some() {
+            0
+        } else {
+            candidate_halo(p, s)
+        };
+        let last = side - i32::from(discovery.is_some());
         for gz in (request.chunk_z - halo).div_euclid(spacing)
-            ..=(request.chunk_z + side + halo).div_euclid(spacing)
+            ..=(request.chunk_z + last + halo).div_euclid(spacing)
         {
             for gx in (request.chunk_x - halo).div_euclid(spacing)
-                ..=(request.chunk_x + side + halo).div_euclid(spacing)
+                ..=(request.chunk_x + last + halo).div_euclid(spacing)
             {
                 let at = candidate(request.seed, gx * spacing, gz * spacing, &s.placement);
                 if at[0] >= request.chunk_x - halo
-                    && at[0] <= request.chunk_x + side + halo
+                    && at[0] <= request.chunk_x + last + halo
                     && at[1] >= request.chunk_z - halo
-                    && at[1] <= request.chunk_z + side + halo
+                    && at[1] <= request.chunk_z + last + halo
                 {
                     if permitted(p, set, request.seed, at[0], at[1], &mut Vec::new()) {
                         candidates.push((set, at));
@@ -699,8 +727,13 @@ fn plans_inner(
             };
             let key = (CacheKey::from(r), set);
             metrics.candidate(key);
-            let cell = cache.cell(key, Some(metrics));
-            let probe = if cell.get().is_none() {
+            let cell = match discovery {
+                Some(discovery) => discovery.cell(&mut cache, key, metrics)?,
+                None => cache.cell(key, Some(metrics)),
+            };
+            let probe = if cell.get().is_none()
+                && !(discovery.is_some() && single_fossil(p, set, r).is_some())
+            {
                 Some(*probe_ids.entry(CacheKey::from(r)).or_insert_with(|| {
                     let id = probes.len();
                     probes.push(r);
@@ -721,6 +754,24 @@ fn plans_inner(
     for batch in probes.chunks(1024) {
         biomes.extend(engine.sample_biomes(batch, None)?);
     }
+    let mut fossil_keys = Vec::new();
+    let mut fossil_inputs = Vec::new();
+    if discovery.is_some() {
+        for (r, set, cell, _) in &jobs {
+            if cell.get().is_none() {
+                if let Some((definition, seed, random)) = single_fossil(p, *set, *r) {
+                    fossil_keys.push(((CacheKey::from(*r), *set), definition, seed));
+                    fossil_inputs.push((*r, definition, random));
+                }
+            }
+        }
+    }
+    let fossil_inputs = fossils::prepare_batch(engine, &profile, &fossil_inputs)?;
+    let prepared: HashMap<_, _> = fossil_keys
+        .into_iter()
+        .zip(fossil_inputs)
+        .map(|((key, definition, seed), input)| (key, (definition, seed, input)))
+        .collect();
     let build_job = |(r, set, cell, probe): &(
         ChunkRequest,
         usize,
@@ -729,9 +780,19 @@ fn plans_inner(
     )| {
         cell.get_or_init(|| {
             let _build = metrics.build((CacheKey::from(*r), *set));
-            build(engine, *r, *set, &profile, biomes[probe.unwrap()]).map(Arc::new)
+            if let Some((definition, seed, input)) = prepared.get(&(CacheKey::from(*r), *set)) {
+                let start = fossils::finish(*r, &profile, *definition, *seed, input);
+                Ok(Arc::new(if start.pieces.is_empty() {
+                    empty_start(*r, *seed, 0)
+                } else {
+                    start
+                }))
+            } else {
+                build(engine, *r, *set, &profile, biomes[probe.unwrap()]).map(Arc::new)
+            }
         })
         .clone()
+        .map(|start| (*set, start))
     };
     let mut result: Vec<_> = if parallel {
         jobs.par_iter()
@@ -740,8 +801,8 @@ fn plans_inner(
     } else {
         jobs.iter().map(build_job).collect::<Result<_, String>>()?
     };
-    result.retain(|s| !s.pieces.is_empty());
-    result.sort_by_key(|s| (s.chunk[1], s.chunk[0], s.definition));
+    result.retain(|(_, s)| !s.pieces.is_empty());
+    result.sort_by_key(|(_, s)| (s.chunk[1], s.chunk[0], s.definition));
     Ok(result)
 }
 impl Start {
@@ -989,6 +1050,35 @@ fn expansion_height(
         .max()
         .unwrap_or(0)
 }
+fn selection_seed(request: ChunkRequest, set: &Set) -> u64 {
+    rand64(
+        request.seed
+            ^ (request.chunk_x as i64 as u64).wrapping_mul(341873128712)
+            ^ (request.chunk_z as i64 as u64).wrapping_mul(132897987541)
+            ^ value(&set.placement, "salt", 0) as u64,
+    )
+}
+
+fn single_fossil(
+    profile: &Profile,
+    set: usize,
+    request: ChunkRequest,
+) -> Option<(usize, u64, Random)> {
+    let set = &profile.sets[set];
+    if set.entries.len() != 1 {
+        return None;
+    }
+    let entry = &set.entries[0];
+    let definition = &profile.definitions[entry.definition];
+    if definition.kind != "nether_fossil" || definition.unimplemented {
+        return None;
+    }
+    let seed = selection_seed(request, set);
+    let mut random = Random::new(seed);
+    random.int(entry.weight); // The ordinary weighted selector consumes this draw, too.
+    Some((entry.definition, seed, random))
+}
+
 fn build(
     engine: &TerrainEngine,
     request: ChunkRequest,
@@ -998,12 +1088,7 @@ fn build(
 ) -> Result<Start, String> {
     let p = &profile.structures;
     let s = &p.sets[set];
-    let seed = rand64(
-        request.seed
-            ^ (request.chunk_x as i64 as u64).wrapping_mul(341873128712)
-            ^ (request.chunk_z as i64 as u64).wrapping_mul(132897987541)
-            ^ value(&s.placement, "salt", 0) as u64,
-    );
+    let seed = selection_seed(request, s);
     let mut random = Random::new(seed);
     let mut choices = s.entries.clone();
     loop {

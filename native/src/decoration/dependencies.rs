@@ -192,6 +192,7 @@ struct Planner<'a> {
     anchors: Memo<(usize, i32, i32), Output>,
     anchor_ids: Memo<(i32, i32), Vec<u32>>,
     starts: Memo<(i32, i32), Vec<Arc<crate::structures::Start>>>,
+    discovery: crate::structures::Discovery,
     job: Option<&'a crate::timings::Timings>,
     metrics: Arc<crate::timings::Timings>,
     retain_prefix: bool,
@@ -423,7 +424,7 @@ impl Planner<'_> {
             ..self.request
         };
         let starts = memo(&self.starts, (x, z), &self.metrics.performance, || {
-            crate::structures::plans_inline(self.engine, request, 1)
+            self.discovery.plans(self.engine, request, 1)
         })?;
         let starts: Vec<_> = starts
             .iter()
@@ -696,6 +697,7 @@ pub(crate) fn generate(
         anchors: Mutex::new(Map::default()),
         anchor_ids: Mutex::new(Map::default()),
         starts: Mutex::new(Map::default()),
+        discovery: crate::structures::Discovery::new(&profile.structures),
         job,
         metrics: metrics.clone(),
         retain_prefix,
@@ -742,7 +744,7 @@ pub(crate) fn generate(
     }
     let structure_started = metrics.performance.start();
     let structure_detail = diagnostics::start(details.is_some());
-    let starts = crate::structures::plans(engine, request, side as i32)?;
+    let starts = planner.discovery.plans(engine, request, side as i32)?;
     metrics
         .performance
         .elapsed(Perf::final_structure_planning_nanos, structure_started);
