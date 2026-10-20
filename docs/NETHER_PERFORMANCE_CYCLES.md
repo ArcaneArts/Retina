@@ -209,3 +209,33 @@ the validated candidate. Actual post-merge generation across all five smoke case
 matches 5,120 chunks against both references (one warmup and one measured region
 per case); full quiet timing confirmation remains deferred. Cycle 2 passes all
 102,400 full-corpus chunk comparisons and 112 native tests (37 ignored).
+
+## Cycle 3 implementation
+
+Completed source roots publish immutable anchor outputs and ordered column-command
+indexes. Interior columns keep versions only for roots with actual commands and
+share the preceding changed version across identity roots. Direct version slots
+avoid planner-wide column-map locking. Completed boundary tiles also use immutable
+map lookups, while their unresolved slots retain the original demand-driven
+closure. No fixed halo replaces cross-region dependencies.
+
+Within-root support checks still apply the original `(anchor Z, anchor X, write
+index)` prefix limit, including vines and cocoa. Raw commands are indexed before
+acceptance, so rejected writes cannot incorrectly classify a changed column as an
+identity transformation. Command references are released inside the measured
+interval before final output consumption; teardown includes that release.
+
+The diagnostic region preserves all 1,024 chunks and reduces memo requests from
+42.6 million to 5.6 million, column builds from 16.8 million to 10.7 million, and
+uses completed boundary slots for 7.97 million reads. The remaining boundary
+column reconstruction is still substantial. These work counts support continued
+optimization; they do not replace the deferred quiet timing confirmation.
+
+Cycle 2 merged as PR #172 (`b4fc6d3`). Its rebuilt library is byte-identical to
+the full-corpus candidate. Actual post-merge smoke generation matches all 5,120
+chunks across the five cases. Quiet timing confirmation remains pending.
+
+Cycle 3 also matches 20,480 chunks in reverse request order with two concurrent
+callers and 16 native workers. That run has wide latency tails (provisional p95
+28.8 s despite a 4.0 s median). Exact output passes; scheduling fairness remains
+unresolved and must be compared with the preceding version in Cycle 6.

@@ -1,0 +1,238 @@
+{
+  "schema": "retina.nether-performance-cycle",
+  "cycle": 3,
+  "date": "2026-10-20",
+  "status": "Full output comparison; quiet timing confirmation deferred by user.",
+  "base_merge": "b4fc6d3fdd223d31f6eacf9295c082cf1c8ed719",
+  "base_pr": "https://github.com/ArcaneArts/Retina/pull/172",
+  "source_revision": "14f9196d26165eb89f86e5d94f30bcf9f20a299a",
+  "library_sha256": "3f7c0942c9f5ed6bab11fc9edd66b66d5f25266a9931c473272fa2ddc3032a37",
+  "evidence_root": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20",
+  "suite": "cycle3/correctness-suite/suite.json",
+  "tests": {
+    "passed": 113,
+    "failed": 0,
+    "ignored": 37
+  },
+  "diagnostic_comparison": {
+    "scope": "One complete region (-2,-2), seed 123456789, one warmup. Profiled and contended; no latency claim.",
+    "preceding": {
+      "anchor_builds": 98555,
+      "column_builds": 16830129,
+      "column_requests": 19781158,
+      "column_tiles": 88225,
+      "prefix_evaluations": 15970814,
+      "memo_requests": 42565636,
+      "memo_builds": 106605,
+      "terrain_generated_tiles": 68,
+      "terrain_generated_chunks": 31390
+    },
+    "candidate": {
+      "anchor_builds": 98555,
+      "anchor_ready_hits": 19758781,
+      "column_builds": 10685959,
+      "column_join_nanos": 135698258,
+      "column_lock_nanos": 1210553127,
+      "column_requests": 13636988,
+      "column_tiles": 55187,
+      "column_versions_skipped": 16569963,
+      "completed_boundary_reads": 7973236,
+      "completed_column_commands": 7199796,
+      "completed_column_reads": 2075909,
+      "dependency_evaluation_nanos": 4027623375,
+      "distribution_nanos": 96697583,
+      "final_structure_planning_nanos": 13833,
+      "memo_builds": 106605,
+      "memo_join_nanos": 16979231936,
+      "memo_lock_nanos": 2410328232,
+      "memo_ready_hits": 5507384,
+      "memo_requests": 5615174,
+      "prefix_evaluations": 9826644,
+      "region_pool_wait_nanos": 10333,
+      "structure_active_hits": 0,
+      "structure_builds": 2130,
+      "structure_cache_evictions": 2130,
+      "structure_cache_hits": 0,
+      "structure_cache_misses": 2130,
+      "structure_candidates": 2130,
+      "structure_discovery_tiles": 106,
+      "structure_fossil_batches": 33,
+      "structure_fossil_biome_points": 619,
+      "structure_fossil_columns": 2112,
+      "structure_job_cache_hits": 0,
+      "structure_overlapping_builds": 0,
+      "structure_pending_evictions": 1,
+      "structure_plan_calls": 106,
+      "structure_probe_points": 18,
+      "structure_repeated_builds": 0,
+      "structure_unique_candidates": 2130,
+      "teardown_nanos": 508604249,
+      "terrain_cache_hits": 16,
+      "terrain_generated_chunks": 31292,
+      "terrain_generated_tiles": 66,
+      "terrain_requests": 82,
+      "terrain_unique_tiles": 38
+    },
+    "identical_nbt_chunks": 1024,
+    "remaining_cost": "10.7M intermediate column builds remain, largely in boundary dependency closure. All cleanup is still within measured region time."
+  },
+  "runs": [
+    {
+      "case": "nether-main-run0",
+      "measurements": {
+        "median_ms": 3754.656875040382,
+        "p95_region_ms": 4400.695635471494,
+        "maximum_region_ms": 5118.9077089075,
+        "total_ms": 77496.78941606544,
+        "chunks_per_second": 264.26901235929654,
+        "peak_rss_bytes": 2946990080
+      },
+      "shader_status": 4,
+      "corpus_sha256": "e4b7f9002991cc8908187055cec044a06e63c60b7b4b9db9a49c24f715eeb9df",
+      "comparisons": [
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/nether-main-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        },
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle2/correctness-suite/nether-main-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        }
+      ]
+    },
+    {
+      "case": "nether-second-seed-run0",
+      "measurements": {
+        "median_ms": 4886.310999980196,
+        "p95_region_ms": 5708.471379545518,
+        "maximum_region_ms": 6368.388165952638,
+        "total_ms": 96247.85525002517,
+        "chunks_per_second": 212.78396226906725,
+        "peak_rss_bytes": 3196715008
+      },
+      "shader_status": 4,
+      "corpus_sha256": "b533c4604263d915b987702a5472be93170ca46d28e06d9363bb100c7d156029",
+      "comparisons": [
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/nether-second-seed-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        },
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle2/correctness-suite/nether-second-seed-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        }
+      ]
+    },
+    {
+      "case": "nether-custom-bounds-run0",
+      "measurements": {
+        "median_ms": 2248.925354448147,
+        "p95_region_ms": 2513.8192976941355,
+        "maximum_region_ms": 2581.0144999995828,
+        "total_ms": 44939.91137505509,
+        "chunks_per_second": 455.71963480479593,
+        "peak_rss_bytes": 2142666752
+      },
+      "shader_status": 4,
+      "corpus_sha256": "3940972b86f5be58b34817d1afd3edba5a4ce177a71bc30730478e0cf653b83b",
+      "comparisons": [
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/nether-custom-bounds-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        },
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle2/correctness-suite/nether-custom-bounds-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        }
+      ]
+    },
+    {
+      "case": "nether-direct-stem-run0",
+      "measurements": {
+        "median_ms": 2358.4315209882334,
+        "p95_region_ms": 2640.697028650902,
+        "maximum_region_ms": 2702.0873751025647,
+        "total_ms": 47150.92912502587,
+        "chunks_per_second": 434.3498713608597,
+        "peak_rss_bytes": 2085076992
+      },
+      "shader_status": 4,
+      "corpus_sha256": "21482d3d81db17dd68b9877ead04f3a911e4b9511e376587a85c01104a98eaa9",
+      "comparisons": [
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/nether-direct-stem-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        },
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle2/correctness-suite/nether-direct-stem-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        }
+      ]
+    },
+    {
+      "case": "overworld-run0",
+      "measurements": {
+        "median_ms": 409.3303334666416,
+        "p95_region_ms": 491.4897849666886,
+        "maximum_region_ms": 493.2463748846203,
+        "total_ms": 8227.754584047943,
+        "chunks_per_second": 2489.135983674919,
+        "peak_rss_bytes": 1522679808
+      },
+      "shader_status": 4,
+      "corpus_sha256": "152401e576006881a89b64b93d2b6c1d0d3ab8c2568fe0b367bfeb6835bce8ea",
+      "comparisons": [
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/overworld-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        },
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle2/correctness-suite/overworld-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        }
+      ]
+    }
+  ],
+  "timing_confirmation": {
+    "deferred_by_user": true,
+    "usable_for_speedup_or_regression_claims": false,
+    "pending": "Repeated uncontended matched runs, including Overworld."
+  },
+  "request_order_validation": {
+    "evidence": "cycle3/reverse-concurrent/suite.json",
+    "order": "reverse",
+    "parallel_callers": 2,
+    "workers": 16,
+    "warmups": 5,
+    "measured_regions": 20,
+    "comparisons": [
+      {
+        "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/nether-main-run0",
+        "identical_nbt_chunks": 20480,
+        "membership_identical": true
+      },
+      {
+        "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle2/correctness-suite/nether-main-run0",
+        "identical_nbt_chunks": 20480,
+        "membership_identical": true
+      }
+    ],
+    "timings_provisional": true,
+    "median_ms": 4006.201646057889,
+    "p95_ms": 28805.65842691576,
+    "maximum_ms": 32616.74908408895,
+    "note": "Wide concurrent latency tails observed: this validates exact output, not fairness or performance acceptance. Compare the preceding version and investigate admission/scheduling in Cycle 6."
+  },
+  "post_merge": null,
+  "identical_nbt_chunks_against_each_reference": 102400
+}
