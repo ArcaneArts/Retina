@@ -54,7 +54,7 @@ final class StructureProfile {
     final Context context;
     final JsonArray templates=new JsonArray(), definitions=new JsonArray(), sets=new JsonArray();
     final JsonObject pools=new JsonObject();
-    JsonObject fortress;
+    JsonObject fortress, fossils;
     final Map<String,Integer> templateIds=new HashMap<>(), definitionIds=new HashMap<>();
     final Set<String> visited=new HashSet<>(), omitted=new TreeSet<>();
     StructureProfile(HolderLookup.Provider registry,List<Holder<Biome>> biomes,LinkedHashMap<BlockState,Integer> materials,Context context) {
@@ -66,6 +66,7 @@ final class StructureProfile {
         var result=new JsonObject();result.add("templates",out.templates);result.add("definitions",out.definitions);
         result.add("pools",out.pools);result.add("sets",out.sets);
         if(out.fortress!=null)result.add("fortress",out.fortress);
+        if(out.fossils!=null)result.add("fossils",out.fossils);
         finishMaterials(result,materials);
         long reserved=out.definitions.asList().stream().map(JsonElement::getAsJsonObject).filter(d->d.has("unimplemented")).count();
         Retina.LOGGER.info("Exported registered structures: {} executable definitions, {} reserved definitions, {} pools, {} templates, {} placement sets; omissions {}",
@@ -74,6 +75,7 @@ final class StructureProfile {
     }
     static void finishMaterials(JsonObject result,LinkedHashMap<BlockState,Integer> materials) {
         if(result.has("fortress"))FortressProfile.finish(result.getAsJsonObject("fortress"),materials);
+        if(result.has("fossils"))FossilProfile.finish(result.getAsJsonObject("fossils"),materials);
     }
     void load() {
         var ops=registry.createSerializationContext(JsonOps.INSTANCE);
@@ -101,6 +103,8 @@ final class StructureProfile {
                 d.addProperty("template",capture(type));
             } else if(type.equals("fortress")) {
                 if(fortress==null)fortress=FortressProfile.export(this);
+            } else if(type.equals("nether_fossil")) {
+                if(fossils==null)fossils=FossilProfile.export(this);
             } else {
                 omitted.add("structure:"+name+":"+type);
                 d.addProperty("unimplemented",true);d.addProperty("unavailable_reason","structure-type");unavailable.put(name,d);continue;
@@ -136,7 +140,7 @@ final class StructureProfile {
         return set.structures().stream().anyMatch(entry -> {
             var structure=entry.structure().value();
             return structure instanceof JigsawStructure || structure instanceof DesertPyramidStructure
-                    || structure instanceof JungleTempleStructure || structure instanceof SwampHutStructure || structure instanceof NetherFortressStructure;
+                    || structure instanceof JungleTempleStructure || structure instanceof SwampHutStructure || structure instanceof NetherFortressStructure || structure instanceof NetherFossilStructure;
         });
     }
     void aliasPools(JsonElement value) {

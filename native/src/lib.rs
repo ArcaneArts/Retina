@@ -163,6 +163,53 @@ pub struct TerrainEngine {
 }
 
 impl TerrainEngine {
+    /// Base terrain only: shared by Minecraft column queries and structure floor searches.
+    pub(crate) fn base_column(
+        &self,
+        request: ChunkRequest,
+        column: u32,
+        output: &mut [u16],
+    ) -> Result<(), String> {
+        request.validate()?;
+        if column >= 256 || output.len() != request.height as usize {
+            return Err("invalid base column buffer".into());
+        }
+        let profile = self.profile(request.reserved)?;
+        if profile.as_deref().is_some_and(|p| {
+            p.registry_program
+                .as_ref()
+                .is_some_and(|r| r.material_layers)
+        }) {
+            let (_, mask) = self.terrain_field(request, 1)?;
+            let runs = mask
+                .as_ref()
+                .and_then(|m| {
+                    m.material_runs(
+                        request.chunk_x * 16 + (column % 16) as i32,
+                        request.chunk_z * 16 + (column / 16) as i32,
+                    )
+                })
+                .ok_or("GPU material column missing")?;
+            let mut cursor = runs.len() - 1;
+            for (y, block) in output.iter_mut().enumerate() {
+                while cursor > 0 && y as u32 >= runs[cursor - 1] >> 16 {
+                    cursor -= 1;
+                }
+                *block = runs[cursor] as u16;
+            }
+            return Ok(());
+        }
+        let column = self.sample_columns(&[request])?[column as usize];
+        for (layer, block) in output.iter_mut().enumerate() {
+            *block = column.material(
+                request.min_y + layer as i32,
+                request.min_y,
+                profile.as_deref(),
+            );
+        }
+        Ok(())
+    }
+
     pub fn new() -> Result<Self, String> {
         Self::with_pipeline_depth(2)
     }
@@ -1893,40 +1940,8 @@ pub unsafe extern "C" fn retina_generate_column_u16(
         }
         let request = unsafe { *request };
         let engine = shared_engine()?;
-        let profile = engine.profile(request.reserved)?;
         let output = unsafe { std::slice::from_raw_parts_mut(output, request.height as usize) };
-        if profile.as_deref().is_some_and(|p| {
-            p.registry_program
-                .as_ref()
-                .is_some_and(|r| r.material_layers)
-        }) {
-            let (_, mask) = engine.terrain_field(request, 1)?;
-            let runs = mask
-                .as_ref()
-                .and_then(|m| {
-                    m.material_runs(
-                        request.chunk_x * 16 + (column % 16) as i32,
-                        request.chunk_z * 16 + (column / 16) as i32,
-                    )
-                })
-                .ok_or("GPU material column missing")?;
-            let mut cursor = runs.len() - 1;
-            for (y, block) in output.iter_mut().enumerate() {
-                while cursor > 0 && y as u32 >= runs[cursor - 1] >> 16 {
-                    cursor -= 1;
-                }
-                *block = runs[cursor] as u16;
-            }
-            return Ok(());
-        }
-        let column = engine.sample_columns(&[request])?[column as usize];
-        for (layer, block) in output.iter_mut().enumerate() {
-            *block = column.material(
-                request.min_y + layer as i32,
-                request.min_y,
-                profile.as_deref(),
-            );
-        }
+        engine.base_column(request, column, output)?;
         Ok(())
     })
 }

@@ -1,6 +1,7 @@
 //! CPU jigsaw planning over resident registry templates. Plans are shared by MCA,
 //! individual chunks and DH previews, including pieces crossing region boundaries.
 mod fortress;
+mod fossils;
 use crate::structure_processors::Program;
 use crate::{
     CacheKey, ChunkRequest, TerrainEngine, nbt,
@@ -21,6 +22,8 @@ pub struct Profile {
     pub sets: Vec<Set>,
     #[serde(default)]
     pub fortress: Option<fortress::Profile>,
+    #[serde(default)]
+    pub fossils: Option<fossils::Profile>,
     #[serde(skip)]
     pub(crate) names: Vec<String>,
     #[serde(skip)]
@@ -342,6 +345,8 @@ impl Profile {
                 || !d.unimplemented
                     && if d.kind == "fortress" {
                         self.fortress.is_none()
+                    } else if d.kind == "nether_fossil" {
+                        self.fossils.is_none()
                     } else {
                         d.kind != "jigsaw" && d.template >= self.templates.len()
                     }
@@ -350,6 +355,9 @@ impl Profile {
             }
         }
         if let Some(kit) = &self.fortress {
+            kit.validate(self, materials)?;
+        }
+        if let Some(kit) = &self.fossils {
             kit.validate(self, materials)?;
         }
         for s in &self.sets {
@@ -375,6 +383,18 @@ fn reach(p: &Profile, d: &Definition) -> i32 {
     }
     if d.kind == "fortress" {
         return 144;
+    }
+    if d.kind == "nether_fossil" {
+        return p
+            .fossils
+            .as_ref()
+            .unwrap()
+            .templates
+            .iter()
+            .map(|&i| p.templates[i].size[0].max(p.templates[i].size[2]))
+            .max()
+            .unwrap_or(0)
+            + 27; // within-chunk offset plus adjusted start bounds
     }
     if d.kind != "jigsaw" {
         return *p.templates[d.template]
@@ -785,6 +805,14 @@ fn build(
         }
         let choice = choices.remove(at).definition;
         let d = &p.definitions[choice];
+        // Fossils validate biomes at the actual cavern floor found by their base-column search.
+        if d.kind == "nether_fossil" && !d.unimplemented {
+            let start = fossils::build(engine, request, profile, choice, seed, random.clone())?;
+            if !start.pieces.is_empty() {
+                return Ok(start);
+            }
+            continue;
+        }
         let candidate_biome = if d.kind == "fortress" {
             engine.query_points(
                 request,
@@ -1224,16 +1252,26 @@ pub fn start_data(request: ChunkRequest, profile: &WorldProfile, plans: &[Arc<St
             });
         // Fortress spawning also uses the whole start box over nether-brick floors.
         let relevant = piece_relevant
-            || definition.kind == "fortress" && !start.pieces.is_empty() && {
-                let bounds = std::array::from_fn(|i| {
-                    if i < 3 {
-                        start.pieces.iter().map(|p| p.bounds[i]).min().unwrap()
-                    } else {
-                        start.pieces.iter().map(|p| p.bounds[i]).max().unwrap()
+            || matches!(definition.kind.as_str(), "fortress" | "nether_fossil")
+                && !start.pieces.is_empty()
+                && {
+                    let mut bounds: [i32; 6] = std::array::from_fn(|i| {
+                        if i < 3 {
+                            start.pieces.iter().map(|p| p.bounds[i]).min().unwrap()
+                        } else {
+                            start.pieces.iter().map(|p| p.bounds[i]).max().unwrap()
+                        }
+                    });
+                    if definition.kind == "nether_fossil"
+                        && definition.config["terrain_adaptation"] != "none"
+                    {
+                        for i in 0..3 {
+                            bounds[i] -= 12;
+                            bounds[i + 3] += 12;
+                        }
                     }
-                });
-                intersects(bounds, chunk_bounds)
-            };
+                    intersects(bounds, chunk_bounds)
+                };
         if start.chunk == [request.chunk_x, request.chunk_z] {
             let mut tag = nbt::compound();
             nbt::put(&mut tag, "id", nbt::string(&definition.id));
@@ -1598,6 +1636,11 @@ pub fn apply(
                         }
                     }
                     entities.push(tag);
+                }
+            }
+            if p.definitions[start.definition].kind == "nether_fossil" {
+                if let (Some(kit), Some(output)) = (&p.fossils, blocks.as_deref_mut()) {
+                    placed += usize::from(fossils::dried_ghast(piece, kit, request, output));
                 }
             }
         }

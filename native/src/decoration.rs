@@ -28,7 +28,7 @@ mod anchor_probe;
 #[cfg(test)]
 mod gpu_leaf_probe;
 pub mod placement;
-mod placement_height;
+pub(crate) mod placement_height;
 pub mod provider_noise;
 #[cfg(test)]
 mod replay_tests;
