@@ -29,6 +29,7 @@ neoForge {
                     systemProperty 'retina.qa.client.gameplay', 'true'
                     systemProperty 'retina.qa.client.mode', providers.gradleProperty('retinaClientQaMode').getOrElse('mca')
                 }
+                if (providers.gradleProperty('retinaNetherLifecycleQa').isPresent()) systemProperty 'retina.qa.nether.lifecycle', 'true'
                 [ClientStartup: 'client.startup', Promotion: 'promotion', Pipeline: 'pipeline',
                  Timings: 'timings', Lighting: 'lighting', Structures: 'structures',
                  StructuresReopen: 'structures.reopen', Entities: 'entities',

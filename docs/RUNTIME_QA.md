@@ -32,6 +32,45 @@ counts instead of the smaller fixture pool. It generates a full Nether region,
 compares independent/concurrent chunk requests and metadata, and checks that
 repeating generation preserves the existing MCA bytes.
 
+### Nether portal and lighting lifecycle
+
+Add `-PretinaNetherLifecycleQa` to the integrated client commands above. Use Normal
+worlds for this fixture. It checks both directions of actual portal travel and
+dimension telemetry before allowing the ordinary save/reopen harness to proceed.
+Portals at the unscaled coordinates act as decoys. On reopening, the fixture
+requires the saved portals to remain complete and uses them without rebuilding.
+Each connection also makes a second round trip from a remote Overworld portal.
+Its first visit requires new native Nether terrain and a vanilla-created exit;
+no Nether portal fixture is built at that destination. Destination regions are
+prepared asynchronously while the player remains connected. Reopened runs reuse
+the saved portals. The client must observe both round trips and current-dimension
+telemetry before disconnecting.
+The remote return may use a different Overworld exit when vanilla places the
+Nether frame at the edge of its search area. The fixture checks the scaled return
+area and a complete exit frame; the separate decoy case requires exact linking.
+
+For dedicated coverage, start a disposable localhost server with
+`-PretinaQa -PretinaNetherLifecycleQa -PretinaDatapackQa=<server-directory>`, then
+connect the matching client with `-PretinaClientGameplayQa`,
+`-PretinaNetherLifecycleQa` and `-PretinaClientServerQa=127.0.0.1:<port>`.
+Set `server-ip=127.0.0.1`, `online-mode=false`, `white-list=false`,
+`enforce-secure-profile=false`, `gamemode=creative`, `level-seed=42`, and
+`max-tick-time=-1` in that private fixture's server properties. Accept the Minecraft
+EULA separately. The server stops after the client's two completed connections.
+Restart it on the same world and run the client again to test process reopening.
+
+The server issues simultaneous Overworld/Nether reads at matching coordinates,
+cancels duplicate observers, checks dimension storage bounds, and validates saved
+Nether GPU light arrays over 16 interior chunks. Runtime lava, glowstone and
+shroomlight fixtures check light levels 15/14/13 across a chunk boundary and zero
+remaining light after source removal, with zero skylight throughout.
+`nether_lifecycle_complete`, `nether_client_roundtrip`, and the ordinary
+`minecraft_client_gameplay_reopen` events must pass. `nether_portal_fixtures`
+reports whether saved frames were preserved. The server also checks the saved
+Overworld and above-roof Nether edits on subsequent connections.
+`nether_cold_portal_arrival` reports newly generated chunk counts and
+`nether_cold_portal_return` confirms the remote return trip.
+
 For legacy-save compatibility, repeat with `-PretinaClientQaMode=chunk` and fresh
 `fabric-chunk` / `neoforge-chunk` directories. The pass event `minecraft_client_gameplay_reopen`
 follows received telemetry, F3 formatting, disconnect reset, saved generator
@@ -235,5 +274,36 @@ Java 25 / macOS / Metal (Apple M4 Max), disposable development-loader worlds:
 The original native stall and live-fluid comparison failure were retained as
 diagnostic evidence; final runtime logs contain no failed QA events. The strict
 comparison now runs before gameplay mutation, rather than accepting mismatches.
-Actual portal travel, live progression and the complete Nether lighting,
-integration and performance matrix remain follow-up work.
+At this activation milestone, actual portal travel, live progression and the
+complete lighting, integration and performance matrix had not been exercised.
+
+## Nether portal lifecycle validation — 2026-10-20
+
+Java 25 / Minecraft 26.3 / macOS / Metal (Apple M4 Max), default region parallelism:
+
+| Check | Result |
+| --- | --- |
+| Fabric and NeoForge dedicated, seed 42 | Fresh creation, reconnect, full server restart and reconnect passed |
+| Fabric and NeoForge integrated, seed 123456789 | Fresh creation, disconnect and save reopening passed |
+| Actual portal travel | Two round trips per connection; scaled decoy selection and vanilla-created remote exits passed |
+| Remote terrain | First visits generated exactly 4,096 chunks in four Nether regions; reopened visits generated zero |
+| Native light | Sixteen interior chunks per run; emitter strength, adjacent-air propagation and zero skylight passed |
+| Runtime light | Lava, glowstone and shroomlight emitted 15/14/13 through glass into air across a chunk boundary; removal reached zero |
+| Storage/lifecycle | Seventeen concurrent dimension reads, cancelled duplicate observers, saved portal frames, original sources and Overworld/Y=200 Nether edits passed |
+| Bounds regression | Nineteen positive/negative region-boundary cases cover maximum-width existing portal frames |
+| Build | Both loader host JARs, scheduling/configuration checks, profile checks, portal bounds and 103 Rust unit tests passed |
+
+The four-region remote preparation took 41.6 s (Fabric dedicated), 56.9 s
+(NeoForge dedicated), 41.8 s (Fabric integrated), and 40.3 s (NeoForge integrated).
+Clients stayed connected while that work ran asynchronously. These are lifecycle
+run observations, not a controlled throughput comparison or a speedup claim.
+
+Failed diagnostic runs reproduced a client timeout and captured the server
+movement stack reading a cached supporting-block position from the old dimension.
+The final runs clear that cache on dimension transfer and generate no unrelated
+regions at those source coordinates.
+
+Live fortress progression, in-flight unload, the remaining customization and
+DH/Chunky matrix, visual inspection and repeatable performance measurements remain
+follow-up work. These runs used development loaders on Metal; packaged launcher
+installs and other GPU backends were not retested here.

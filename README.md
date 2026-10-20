@@ -9,7 +9,9 @@ Install Retina and select your usual world type. Supported Overworld and Nether
 generators automatically use Retina when creating or reopening a world; there is no disable
 switch. Normal, Large Biomes, Amplified, Single Biome and Superflat are supported.
 The Nether uses its effective noise settings and fixed or multi-noise biome source,
-including compatible datapack changes. The End, Debug and unsupported custom
+including compatible datapack changes. New portal destinations are prepared
+asynchronously before Minecraft selects or creates the exit, keeping server ticks
+and network connections active during generation. The End, Debug and unsupported custom
 generators retain their original implementation, with a diagnostic identifying the missing adapter. Retina
 approximates noise worldgen rules rather than reproducing vanilla's terrain for
 the same seed. Undecorated Superflat uses the configured layers exactly.

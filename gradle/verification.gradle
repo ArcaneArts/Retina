@@ -85,6 +85,17 @@ tasks.register('generationMetricsTest', JavaExec) {
     timeout = Duration.ofSeconds(30)
 }
 
+tasks.register('portalRegionPreparationTest', JavaExec) {
+    group = 'verification'
+    description = 'Check portal destination coverage at positive/negative region boundaries and maximum frame width.'
+    dependsOn 'gpuTestClasses'
+    classpath = sourceSets.gpuTest.runtimeClasspath
+    mainClass = 'art.arcane.retina.worldgen.PortalRegionPreparationTest'
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
+    maxHeapSize = '128m'
+}
+check.dependsOn 'portalRegionPreparationTest'
+
 def columnCacheClasses = tasks.register('columnCacheClasses', JavaCompile) {
     source file('src/main/java/art/arcane/retina/worldgen/ColumnCache.java'),
             file('src/gpuTest/java/art/arcane/retina/worldgen/ColumnCacheTest.java')
