@@ -232,7 +232,7 @@ struct Planner<'a> {
     profile: &'a WorldProfile,
     request: ChunkRequest,
     roots: Vec<Root>,
-    terrain: Memo<(i32, i32), Field<'static>>,
+    terrain: crate::terrain_job::TerrainJob<'a>,
     anchors: Memo<(usize, i32, i32), Output>,
     ready: Map<(usize, i32, i32), Arc<Output>>,
     completed: Vec<CompletedRoot>,
@@ -389,20 +389,9 @@ impl Planner<'_> {
         self.error.lock().unwrap().clone().map_or(Ok(()), Err)
     }
     fn terrain(&self, x: i32, z: i32) -> Result<Arc<Field<'static>>, String> {
-        let (x, z) = (x.div_euclid(16) * 16, z.div_euclid(16) * 16);
-        memo(&self.terrain, (x, z), &self.metrics.performance, || {
-            self.engine
-                .terrain_field(
-                    ChunkRequest {
-                        chunk_x: x,
-                        chunk_z: z,
-                        ..self.request
-                    },
-                    16,
-                )
-                .map(|v| v.0)
-        })
+        self.terrain.field(x, z)
     }
+
     fn anchor(&self, root: usize, x: i32, z: i32) -> Result<Arc<Output>, String> {
         if let Some(output) = self.ready.get(&(root, x, z)) {
             self.metrics.performance.add(Perf::anchor_ready_hits, 1);
@@ -533,7 +522,7 @@ impl Planner<'_> {
             ..self.request
         };
         let starts = memo(&self.starts, (x, z), &self.metrics.performance, || {
-            self.discovery.plans(self.engine, request, 1)
+            self.discovery.plans(self.engine, request, 1, &self.terrain)
         })?;
         let starts: Vec<_> = starts
             .iter()
@@ -818,6 +807,7 @@ pub(crate) fn generate(
     job: Option<&crate::timings::Timings>,
     mut details: Option<&mut diagnostics::Planning>,
     retain_prefix: bool,
+    initial: Option<&Field<'_>>,
 ) -> Result<super::generation::Generation, String> {
     let started = std::time::Instant::now();
     let metrics = engine.timings(request.reserved);
@@ -870,7 +860,7 @@ pub(crate) fn generate(
         profile,
         request,
         roots: groups.into_values().collect(),
-        terrain: Mutex::new(Map::default()),
+        terrain: crate::terrain_job::TerrainJob::new(engine, profile, request, initial),
         anchors: Mutex::new(Map::default()),
         ready: Map::default(),
         completed: Vec::new(),
@@ -909,7 +899,7 @@ pub(crate) fn generate(
                 planner.roots.len(),
                 planner.ready.len(),
                 planner.columns.lock().unwrap().len() + planner.ready_columns.len(),
-                planner.terrain.lock().unwrap().len(),
+                planner.terrain.len(),
                 started.elapsed().as_secs_f64() * 1000.
             );
         }
@@ -923,11 +913,13 @@ pub(crate) fn generate(
         details.dependency_anchors = planner.ready.len() as u64;
         details.dependency_column_tiles =
             (planner.columns.lock().unwrap().len() + planner.ready_columns.len()) as u64;
-        details.dependency_terrain_tiles = planner.terrain.lock().unwrap().len() as u64;
+        details.dependency_terrain_tiles = planner.terrain.len() as u64;
     }
     let structure_started = metrics.performance.start();
     let structure_detail = diagnostics::start(details.is_some());
-    let starts = planner.discovery.plans(engine, request, side as i32)?;
+    let starts = planner
+        .discovery
+        .plans(engine, request, side as i32, &planner.terrain)?;
     metrics
         .performance
         .elapsed(Perf::final_structure_planning_nanos, structure_started);
@@ -991,8 +983,19 @@ pub(crate) fn plan(
     job: Option<&crate::timings::Timings>,
     details: Option<&mut diagnostics::Planning>,
     retain_prefix: bool,
+    initial: Option<&Field<'_>>,
 ) -> Result<Vec<Vec<Placement>>, String> {
-    Ok(generate(engine, profile, request, side, job, details, retain_prefix)?.placements)
+    Ok(generate(
+        engine,
+        profile,
+        request,
+        side,
+        job,
+        details,
+        retain_prefix,
+        initial,
+    )?
+    .placements)
 }
 
 #[cfg(test)]

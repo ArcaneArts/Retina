@@ -53,6 +53,7 @@ impl Discovery {
         engine: &TerrainEngine,
         request: ChunkRequest,
         side: i32,
+        terrain: &crate::terrain_job::TerrainJob<'_>,
     ) -> Result<Vec<Arc<Start>>, String> {
         let metrics = engine.timings(request.reserved);
         let mut selected = Vec::new();
@@ -83,7 +84,15 @@ impl Discovery {
                             metrics
                                 .performance
                                 .add(crate::performance::Counter::structure_discovery_tiles, 1);
-                            plans_inner(engine, tile_request, SIDE, false, Some(self), Some(set))
+                            plans_inner(
+                                engine,
+                                tile_request,
+                                SIDE,
+                                false,
+                                Some(self),
+                                Some(set),
+                                Some(terrain),
+                            )
                         })
                         .as_ref()
                         .map_err(Clone::clone)?;
