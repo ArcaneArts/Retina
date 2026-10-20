@@ -408,19 +408,23 @@ impl Planner<'_> {
     fn retire(mut self, outputs: Map<(usize, i32, i32), Arc<Output>>) {
         let columns = std::mem::take(self.columns.get_mut().unwrap_or_else(|e| e.into_inner()));
         let ready_columns = std::mem::take(&mut self.ready_columns);
+        // Versions of a block column share Arc state, and neighboring columns
+        // share material buffers. Keep a terrain tile's releases on one worker
+        // instead of bouncing their reference counts between worker cores.
+        let mut groups: Map<(i32, i32), Vec<Arc<ColumnTile>>> = Map::default();
+        for ((_, x, z), tile) in columns.into_iter().chain(ready_columns) {
+            groups
+                .entry((x.div_euclid(16), z.div_euclid(16)))
+                .or_default()
+                .push(tile);
+        }
         rayon::join(
-            || {
-                columns
-                    .into_par_iter()
-                    .chain(ready_columns.into_par_iter())
-                    .for_each(drop);
-            },
-            || {
-                outputs.into_par_iter().for_each(drop);
-                drop(self);
-            },
+            || groups.into_par_iter().for_each(drop),
+            || outputs.into_par_iter().for_each(drop),
         );
+        drop(self);
     }
+
     fn fail(&self, error: String) {
         self.error.lock().unwrap().get_or_insert(error);
     }
@@ -978,12 +982,8 @@ pub(crate) fn generate(
     // cleanup is inside the measured region and contributes to teardown time.
     let release_started = metrics.performance.start();
     let release_detail = diagnostics::start(details.is_some());
-    let completed = std::mem::take(&mut planner.completed);
-    let versions = std::mem::take(&mut planner.versions.changed);
-    rayon::join(
-        || completed.into_par_iter().for_each(drop),
-        || versions.into_par_iter().for_each(drop),
-    );
+    drop(std::mem::take(&mut planner.completed));
+    drop(std::mem::take(&mut planner.versions.changed));
     metrics
         .performance
         .elapsed(Perf::teardown_nanos, release_started);
