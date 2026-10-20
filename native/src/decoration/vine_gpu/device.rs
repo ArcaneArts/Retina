@@ -18,6 +18,8 @@ pub(crate) struct Stats {
     pub arena_bytes: u64,
     pub host_nanos: u64,
     pub substrate_pack_nanos: u64,
+    pub substrate_cache_hits: u64,
+    pub retained_substrate_bytes: u64,
     pub device_nanos: [u64; 3],
     pub invalid_timestamps: u64,
     pub sparse_anchors: u64,
@@ -47,6 +49,10 @@ impl Stats {
         self.arena_bytes = self.arena_bytes.max(b.arena_bytes);
         self.host_nanos += b.host_nanos;
         self.substrate_pack_nanos += b.substrate_pack_nanos;
+        self.substrate_cache_hits += b.substrate_cache_hits;
+        self.retained_substrate_bytes = self
+            .retained_substrate_bytes
+            .max(b.retained_substrate_bytes);
         self.invalid_timestamps += b.invalid_timestamps;
         self.sparse_anchors += b.sparse_anchors;
         self.unresolved_substrate_anchors += b.unresolved_substrate_anchors;
@@ -85,6 +91,7 @@ pub(crate) struct Gpu {
     programs: HashMap<u32, (i32, u32, Programs)>,
     pipelines: Option<Pipelines>,
     buffers: Option<Buffers>,
+    resident_input: Option<std::sync::Weak<Input>>,
 }
 impl Gpu {
     pub(crate) fn new(device: wgpu::Device, queue: wgpu::Queue, backend: &str) -> Self {
@@ -99,6 +106,7 @@ impl Gpu {
             programs: HashMap::new(),
             pipelines: None,
             buffers: None,
+            resident_input: None,
         }
     }
     pub(crate) fn programs(
@@ -274,6 +282,39 @@ impl Gpu {
         program: &Program,
         jobs: &[(i32, i32, &Overlay)],
     ) -> (Vec<Option<Vec<WorldBlock>>>, Stats) {
+        self.resident_input = None;
+        self.run_impl(input, request, program, jobs, false)
+    }
+    pub(super) fn run_shared(
+        &mut self,
+        input: &Arc<Input>,
+        request: ChunkRequest,
+        program: &Program,
+        jobs: &[(i32, i32, &Overlay)],
+    ) -> (Vec<Option<Vec<WorldBlock>>>, Stats) {
+        // Weak identity cannot alias a newly allocated input after the original
+        // is dropped. The shared arena mutex serializes all region users.
+        let uploaded = self
+            .resident_input
+            .as_ref()
+            .is_some_and(|old| old.ptr_eq(&Arc::downgrade(input)));
+        let result = self.run_impl(input, request, program, jobs, uploaded);
+        self.resident_input = (self.enabled && self.buffers.is_some() && !jobs.is_empty())
+            .then(|| Arc::downgrade(input));
+        result
+    }
+    #[cfg(test)]
+    pub(super) fn discard_buffers_for_test(&mut self) {
+        self.buffers = None;
+    }
+    fn run_impl(
+        &mut self,
+        input: &Input,
+        request: ChunkRequest,
+        program: &Program,
+        jobs: &[(i32, i32, &Overlay)],
+        mut uploaded: bool,
+    ) -> (Vec<Option<Vec<WorldBlock>>>, Stats) {
         let start = Instant::now();
         let mut stats = Stats::default();
         let mut output = Vec::with_capacity(jobs.len());
@@ -284,7 +325,6 @@ impl Gpu {
             stats.host_nanos = start.elapsed().as_nanos() as u64;
             return ((0..jobs.len()).map(|_| None).collect(), stats);
         }
-        let mut uploaded = false;
         for jobs in jobs.chunks(BATCH) {
             stats.anchors += jobs.len() as u64;
             let pack_start = Instant::now();

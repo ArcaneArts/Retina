@@ -549,7 +549,8 @@ impl TerrainEngine {
                 .lock()
                 .ok()
                 .and_then(|mut gpu| gpu.programs(profile, request)),
-        );
+        )
+        .with_backend_policy(self.backend());
         let mut samples = decoration::provider_noise::Samples::default();
         loop {
             let replay_start = start(measuring);

@@ -1,0 +1,179 @@
+diff --git a/native/src/decoration.rs b/native/src/decoration.rs
+index 1c0502b..378b6c0 100644
+--- a/native/src/decoration.rs
++++ b/native/src/decoration.rs
+@@ -596,0 +597,3 @@ pub(crate) struct Replay<'a> {
++    ready_start: usize,
++    ready_limit: usize,
++    ready_round: usize,
+@@ -626,0 +630,7 @@ impl<'a> Replay<'a> {
++            ready_start: 0,
++            ready_limit: std::env::var("RETINA_DECORATION_READY_BATCH")
++                .ok()
++                .and_then(|v| v.parse::<usize>().ok())
++                .filter(|&v| v > 0)
++                .unwrap_or(usize::MAX),
++            ready_round: 0,
+@@ -659,0 +670,25 @@ impl<'a> Replay<'a> {
++    ) -> Queries {
++        // Drain each window's providers and GPU continuations before admitting
++        // more anchors. Final distribution still uses original anchor indices.
++        // Windows with no missing inputs complete in this same call: an empty
++        // query result must never advertise unfinished anchors as complete.
++        while self.ready_start < self.blocks.len() {
++            let end = self.ready_start.saturating_add(self.ready_limit).min(self.blocks.len());
++            let queries = self.poll_range(samples, counts, details.as_deref_mut(), self.ready_start, end);
++            self.ready_round += 1;
++            if !queries.is_empty() {
++                return queries;
++            }
++            debug_assert!(self.blocks[self.ready_start..end].iter().all(Option::is_some));
++            self.ready_start = end;
++            self.ready_round = 0;
++        }
++        Queries::default()
++    }
++    fn poll_range(
++        &mut self,
++        samples: &provider_noise::Samples,
++        counts: Option<&counts::Counts>,
++        mut details: Option<&mut diagnostics::Planning>,
++        start: usize,
++        end: usize,
+@@ -815 +850 @@ impl<'a> Replay<'a> {
+-            self.blocks
++            self.blocks[start..end]
+@@ -817 +852 @@ impl<'a> Replay<'a> {
+-                .zip(self.pending.par_iter_mut())
++                .zip(self.pending[start..end].par_iter_mut())
+@@ -818,0 +854 @@ impl<'a> Replay<'a> {
++                .map(|(offset, slots)| (start + offset, slots))
+@@ -823 +859 @@ impl<'a> Replay<'a> {
+-            self.blocks
++            self.blocks[start..end]
+@@ -825 +861 @@ impl<'a> Replay<'a> {
+-                .zip(self.pending.iter_mut())
++                .zip(self.pending[start..end].iter_mut())
+@@ -826,0 +863 @@ impl<'a> Replay<'a> {
++                .map(|(offset, slots)| (start + offset, slots))
+@@ -834 +871 @@ impl<'a> Replay<'a> {
+-                details.repeated_anchor_attempts += u64::from(details.rounds > 0);
++                details.repeated_anchor_attempts += u64::from(self.ready_round > 0);
+@@ -846,0 +884,2 @@ impl<'a> Replay<'a> {
++            details.ready_batches += u64::from(self.ready_round == 0);
++            details.peak_ready_anchors = details.peak_ready_anchors.max((end - start) as u64);
+diff --git a/native/src/decoration/diagnostics.rs b/native/src/decoration/diagnostics.rs
+index e2cccdb..3d7f1f1 100644
+--- a/native/src/decoration/diagnostics.rs
++++ b/native/src/decoration/diagnostics.rs
+@@ -18,0 +19,2 @@ pub struct Planning {
++    pub ready_batches: u64,
++    pub peak_ready_anchors: u64,
+diff --git a/native/src/decoration/replay_tests.rs b/native/src/decoration/replay_tests.rs
+index 55b1698..7d55e7e 100644
+--- a/native/src/decoration/replay_tests.rs
++++ b/native/src/decoration/replay_tests.rs
+@@ -116,0 +117,14 @@ fn run(
++) {
++    run_batched(profile, field, request, retain, budget, usize::MAX)
++}
++fn run_batched(
++    profile: &WorldProfile,
++    field: &Field,
++    request: ChunkRequest,
++    retain: bool,
++    budget: usize,
++    batch: usize,
++) -> (
++    Vec<Vec<Placement>>,
++    diagnostics::Planning,
++    Vec<(Vec<[i32; 4]>, Vec<counts::Query>)>,
+@@ -131,0 +146 @@ fn run(
++    replay.ready_limit = batch;
+@@ -136 +151 @@ fn run(
+-    for _ in 0..16 {
++    for _ in 0..256 {
+@@ -151,0 +167,43 @@ fn run(
++fn bounded_ready_batches_preserve_order_and_recovery() {
++    let pool = rayon::ThreadPoolBuilder::new().num_threads(2).build().unwrap();
++    for source_order in [false, true] {
++        for (seed, origin) in [(42, 0), (123456789, -33), (987654321, 700_000)] {
++            let (mut profile, field, request) = fixture(seed, origin);
++            profile.decoration_source_order = source_order;
++            for (id, recipe) in profile.decorations.iter_mut().enumerate() {
++                recipe.root_order = id.min(3) as u32;
++            }
++            let (expected, _, _) = pool.install(|| run(&profile, &field, request, false, 0));
++            for batch in [1, 3, 7, 16, 100] {
++                for budget in [0, 16 * 1024, 64 << 20] {
++                    let (actual, details, queries) = pool.install(|| {
++                        run_batched(&profile, &field, request, true, budget, batch)
++                    });
++                    assert_eq!(actual, expected, "origin {origin}, batch {batch}, budget {budget}");
++                    assert_eq!(details.ready_batches as usize, 16usize.div_ceil(batch));
++                    assert_eq!(details.peak_ready_anchors as usize, batch.min(16));
++                    assert!(details.peak_retained_bytes <= budget as u64);
++                    assert!(queries.iter().any(|(noise, _)| !noise.is_empty()));
++                    assert!(queries.iter().any(|(_, counts)| !counts.is_empty()));
++                    if budget == 0 {
++                        assert!(details.worker.discarded_checkpoints > 0);
++                        assert_eq!(details.worker.resumed_anchors, 0);
++                    }
++                }
++            }
++        }
++    }
++}
++#[test]
++fn ready_batches_without_queries_finish_in_one_poll() {
++    let (mut profile, field, request) = fixture(42, -33);
++    profile.decorations.truncate(2);
++    profile.biomes[0].decorations = vec![0, 1];
++    let (expected, _, _) = run(&profile, &field, request, false, 0);
++    let (actual, details, queries) = run_batched(&profile, &field, request, true, 0, 3);
++    assert_eq!(actual, expected);
++    assert!(queries.is_empty());
++    assert_eq!(details.ready_batches, 6);
++    assert_eq!(details.repeated_anchor_attempts, 0);
++}
++#[test]
+diff --git a/native/src/decoration/vine_gpu/tests.rs b/native/src/decoration/vine_gpu/tests.rs
+index 4459573..f7a2b84 100644
+--- a/native/src/decoration/vine_gpu/tests.rs
++++ b/native/src/decoration/vine_gpu/tests.rs
+@@ -57,0 +58,11 @@ fn replay(
++) -> (Vec<Vec<Placement>>, Stats, usize) {
++    replay_batched(profile, field, request, gpu, budget, post_gpu_limit, usize::MAX)
++}
++fn replay_batched(
++    profile: &WorldProfile,
++    field: &Field,
++    request: ChunkRequest,
++    gpu: Option<&Mutex<Gpu>>,
++    budget: usize,
++    post_gpu_limit: Option<usize>,
++    batch: usize,
+@@ -70,0 +82 @@ fn replay(
++    state.ready_limit = batch;
+@@ -76 +88 @@ fn replay(
+-    for _ in 0..20 {
++    for _ in 0..256 {
+@@ -152,0 +165,8 @@ fn gpu_vine_planner_handoff() {
++        for batch in [1, 4, 9] {
++            for budget in [0, 64 << 20] {
++                let (batched, _, _) = pool.install(|| {
++                    replay_batched(&p, &field, r, Some(&gpu), budget, None, batch)
++                });
++                assert_eq!(batched, expected, "batch {batch}, origin {origin}, budget {budget}");
++            }
++        }
+@@ -165,0 +186,4 @@ fn gpu_vine_planner_handoff() {
++        let (batched_discarded, _, _) = pool.install(|| {
++            replay_batched(&p, &field, r, Some(&gpu), 64 << 20, Some(0), 4)
++        });
++        assert_eq!(batched_discarded, expected);
+@@ -173,0 +198,4 @@ fn gpu_vine_planner_handoff() {
++        let (batched_failed, _, _) = pool.install(|| {
++            replay_batched(&p, &field, r, Some(&gpu), 64 << 20, None, 4)
++        });
++        assert_eq!(batched_failed, expected);

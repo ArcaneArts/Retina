@@ -381,6 +381,7 @@ pub struct Placement {
     pub tick: u16,
 }
 #[derive(Clone, Copy)]
+#[cfg_attr(test, derive(Debug, PartialEq, Eq))]
 struct WorldBlock {
     /// Loaded root order, retained until cross-anchor distribution completes.
     root_order: u32,
@@ -594,12 +595,38 @@ pub(crate) struct Replay<'a> {
     blocks: Vec<Option<Vec<WorldBlock>>>,
     pending: Vec<Option<(Anchor, usize)>>,
     retain_prefix: bool,
+    ready_start: usize,
+    ready_limit: usize,
+    ready_round: usize,
+    reuse_substrate: bool,
+    vine_input: Option<(u32, std::sync::Arc<vine_gpu::Input>)>,
     gpu: Option<vine_gpu::Programs>,
     gpu_disabled: Vec<bool>,
     retained_bytes: AtomicUsize,
     peak_retained_bytes: AtomicUsize,
     retained_limit: usize,
     diagnostic_programs: Option<vine_gpu::Programs>,
+}
+fn replay_policy(
+    backend: &str,
+    gpu_programs: bool,
+    batch: Option<&str>,
+    reuse: Option<&str>,
+) -> (usize, bool) {
+    // Only Metal has matched complete-region performance evidence. The
+    // source-root dependency planner does not use this replay policy.
+    let enabled = gpu_programs && backend.starts_with("Metal:");
+    let limit = batch
+        .and_then(|value| value.parse::<usize>().ok())
+        .unwrap_or(if enabled { 512 } else { usize::MAX });
+    (
+        if limit == 0 { usize::MAX } else { limit },
+        match reuse {
+            Some("0") => false,
+            Some("1") => true,
+            _ => enabled,
+        },
+    )
 }
 impl<'a> Replay<'a> {
     pub(crate) fn new(
@@ -624,6 +651,11 @@ impl<'a> Replay<'a> {
             blocks: (0..field.side * field.side).map(|_| None).collect(),
             pending: (0..field.side * field.side).map(|_| None).collect(),
             retain_prefix: true,
+            ready_start: 0,
+            ready_limit: usize::MAX,
+            ready_round: 0,
+            reuse_substrate: false,
+            vine_input: None,
             gpu: None,
             gpu_disabled: vec![false; field.side * field.side],
             retained_bytes: AtomicUsize::new(0),
@@ -639,6 +671,30 @@ impl<'a> Replay<'a> {
     pub(crate) fn with_prefix_resume(mut self, enabled: bool) -> Self {
         self.retain_prefix = enabled;
         self
+    }
+    pub(crate) fn with_backend_policy(mut self, backend: &str) -> Self {
+        (self.ready_limit, self.reuse_substrate) = replay_policy(
+            backend,
+            self.gpu
+                .as_ref()
+                .is_some_and(|programs| programs.iter().any(Option::is_some)),
+            std::env::var("RETINA_DECORATION_READY_BATCH")
+                .ok()
+                .as_deref(),
+            std::env::var("RETINA_DECORATION_SUBSTRATE_REUSE")
+                .ok()
+                .as_deref(),
+        );
+        self
+    }
+    fn retained_substrate_bytes(&self) -> usize {
+        self.vine_input
+            .as_ref()
+            .map_or(0, |(_, input)| input.retained_bytes())
+    }
+    fn prefix_limit(&self) -> usize {
+        self.retained_limit
+            .saturating_sub(self.retained_substrate_bytes())
     }
     #[cfg(test)]
     pub(crate) fn without_prefix_resume(mut self) -> Self {
@@ -658,10 +714,49 @@ impl<'a> Replay<'a> {
         counts: Option<&counts::Counts>,
         mut details: Option<&mut diagnostics::Planning>,
     ) -> Queries {
+        // Drain each window's providers and GPU continuations before admitting
+        // more anchors. Final distribution still uses original anchor indices.
+        // Windows with no missing inputs complete in this same call: an empty
+        // query result must never advertise unfinished anchors as complete.
+        while self.ready_start < self.blocks.len() {
+            let end = self
+                .ready_start
+                .saturating_add(self.ready_limit)
+                .min(self.blocks.len());
+            let queries = self.poll_range(
+                samples,
+                counts,
+                details.as_deref_mut(),
+                self.ready_start,
+                end,
+            );
+            self.ready_round += 1;
+            if !queries.is_empty() {
+                return queries;
+            }
+            debug_assert!(
+                self.blocks[self.ready_start..end]
+                    .iter()
+                    .all(Option::is_some)
+            );
+            self.ready_start = end;
+            self.ready_round = 0;
+        }
+        Queries::default()
+    }
+    fn poll_range(
+        &mut self,
+        samples: &provider_noise::Samples,
+        counts: Option<&counts::Counts>,
+        mut details: Option<&mut diagnostics::Planning>,
+        start: usize,
+        end: usize,
+    ) -> Queries {
         let measuring = details.is_some();
         if measuring && self.diagnostic_programs.is_none() {
             self.diagnostic_programs = Some(vine_gpu::compile(self.profile, self.request));
         }
+        let prefix_limit = self.prefix_limit();
         let generate = |scratch: &mut TreeScratch,
                         (index, (completed, pending)): (
             usize,
@@ -744,8 +839,7 @@ impl<'a> Replay<'a> {
                 if let Ok(previous) =
                     self.retained_bytes
                         .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |used| {
-                            used.checked_add(bytes)
-                                .filter(|n| *n <= self.retained_limit)
+                            used.checked_add(bytes).filter(|n| *n <= prefix_limit)
                         })
                 {
                     self.peak_retained_bytes
@@ -790,7 +884,7 @@ impl<'a> Replay<'a> {
                     self.retained_bytes
                         .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |used| {
                             used.checked_add(bytes)
-                                .filter(|total| *total <= self.retained_limit)
+                                .filter(|total| *total <= prefix_limit)
                         })
                 {
                     self.peak_retained_bytes
@@ -812,18 +906,20 @@ impl<'a> Replay<'a> {
             )
         };
         let batches: Vec<_> = if self.side > 1 {
-            self.blocks
+            self.blocks[start..end]
                 .par_iter_mut()
-                .zip(self.pending.par_iter_mut())
+                .zip(self.pending[start..end].par_iter_mut())
                 .enumerate()
+                .map(|(offset, slots)| (start + offset, slots))
                 .map_init(TreeScratch::default, generate)
                 .collect()
         } else {
             let mut scratch = TreeScratch::default();
-            self.blocks
+            self.blocks[start..end]
                 .iter_mut()
-                .zip(self.pending.iter_mut())
+                .zip(self.pending[start..end].iter_mut())
                 .enumerate()
+                .map(|(offset, slots)| (start + offset, slots))
                 .map(|item| generate(&mut scratch, item))
                 .collect()
         };
@@ -831,7 +927,7 @@ impl<'a> Replay<'a> {
         for (batch, worker) in batches {
             if let (Some(details), Some(worker)) = (details.as_mut(), worker) {
                 details.anchor_attempts += 1;
-                details.repeated_anchor_attempts += u64::from(details.rounds > 0);
+                details.repeated_anchor_attempts += u64::from(self.ready_round > 0);
                 details.worker.add(&worker);
             }
             queries.noise.extend(batch.noise);
@@ -844,6 +940,8 @@ impl<'a> Replay<'a> {
         queries.counts.dedup();
         if let Some(details) = details {
             details.rounds += 1;
+            details.ready_batches += u64::from(self.ready_round == 0);
+            details.peak_ready_anchors = details.peak_ready_anchors.max((end - start) as u64);
             details.peak_retained_bytes = self.peak_retained_bytes.load(Ordering::Relaxed) as u64;
         }
         queries
