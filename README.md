@@ -381,6 +381,11 @@ native throughput 9–10% on Metal, at approximately 23 MiB more logical readbac
 per region. Two-caller results were mixed; these gains are separate from the
 earlier table. `RETINA_GPU_PALETTES=0` restores CPU palette encoding.
 
+[Early decoration suspension](docs/EARLY_DECORATION_SUSPENSION_TRIAL.md) reduced
+speculative CPU work but did not reliably improve full generation, so the
+existing replay policy remains enabled. The [ongoing optimization tracker](docs/POST_INVESTIGATION_OPTIMIZATIONS.md)
+separates shipped improvements from tested, rejected experiments.
+
 The [cycle tracker](docs/OPTIMIZATION_CYCLES_2026_10.md) also records experiments
 that were not enabled: [material arenas](docs/MATERIAL_ARENA_TRIAL.md),
 [ore-mask compaction](docs/ORE_WORD_FLAGS_TRIAL.md), and
