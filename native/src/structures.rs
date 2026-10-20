@@ -2,6 +2,7 @@
 //! individual chunks and DH previews, including pieces crossing region boundaries.
 mod fortress;
 mod fossils;
+mod portals;
 mod template_transform;
 use crate::structure_processors::Program;
 use crate::{
@@ -25,6 +26,8 @@ pub struct Profile {
     pub fortress: Option<fortress::Profile>,
     #[serde(default)]
     pub fossils: Option<fossils::Profile>,
+    #[serde(default)]
+    pub portals: Option<portals::Profile>,
     #[serde(skip)]
     pub(crate) names: Vec<String>,
     #[serde(skip)]
@@ -169,6 +172,7 @@ pub struct Start {
     pub seed: u64,
     pub pieces: Vec<Piece>,
     pub terrain: Option<Heights>,
+    pub portal: Option<portals::Placement>,
     index: OnceLock<PlacementIndex>,
 }
 pub struct Heights {
@@ -362,6 +366,8 @@ impl Profile {
                 || !d.unimplemented
                     && if d.kind == "fortress" {
                         self.fortress.is_none()
+                    } else if d.kind == "ruined_portal" {
+                        self.portals.is_none()
                     } else if d.kind == "nether_fossil" {
                         self.fossils.is_none()
                     } else {
@@ -375,6 +381,9 @@ impl Profile {
             kit.validate(self, materials)?;
         }
         if let Some(kit) = &self.fossils {
+            kit.validate(self, materials)?;
+        }
+        if let Some(kit) = &self.portals {
             kit.validate(self, materials)?;
         }
         for s in &self.sets {
@@ -400,6 +409,19 @@ fn reach(p: &Profile, d: &Definition) -> i32 {
     }
     if d.kind == "fortress" {
         return 144;
+    }
+    if d.kind == "ruined_portal" {
+        return p
+            .portals
+            .as_ref()
+            .unwrap()
+            .templates
+            .iter()
+            .flatten()
+            .map(|&i| p.templates[i].horizontal_reach())
+            .max()
+            .unwrap_or(0)
+            + 16;
     }
     if d.kind == "nether_fossil" {
         return p
@@ -586,6 +608,9 @@ pub fn plans(
         .collect::<Result<Vec<_>, String>>()?;
     result.retain(|s| !s.pieces.is_empty());
     result.sort_by_key(|s| (s.chunk[1], s.chunk[0], s.definition));
+    for start in &result {
+        portals::prepare(engine, request, &profile, start)?;
+    }
     Ok(result)
 }
 /// Query only requested candidates, sharing the exact production start cache.
@@ -817,6 +842,13 @@ fn build(
         }
         let choice = choices.remove(at).definition;
         let d = &p.definitions[choice];
+        if d.kind == "ruined_portal" && !d.unimplemented {
+            let start = portals::build(engine, request, profile, choice, seed, random.clone())?;
+            if !start.pieces.is_empty() {
+                return Ok(start);
+            }
+            continue;
+        }
         // Fossils validate biomes at the actual cavern floor found by their base-column search.
         if d.kind == "nether_fossil" && !d.unimplemented {
             let start = fossils::build(engine, request, profile, choice, seed, random.clone())?;
@@ -866,6 +898,7 @@ fn empty_start(request: ChunkRequest, seed: u64, definition: usize) -> Start {
         seed,
         pieces: Vec::new(),
         terrain: None,
+        portal: None,
         index: OnceLock::new(),
     }
 }
@@ -1332,6 +1365,138 @@ pub fn start_data(request: ChunkRequest, profile: &WorldProfile, plans: &[Arc<St
     root
 }
 
+fn append_template_entities(
+    template: &Template,
+    template_id: usize,
+    start: &Start,
+    piece: &Piece,
+    chunk_bounds: [i32; 6],
+    entities: &mut Vec<Value>,
+) {
+    for (i, entity) in template.entities.iter().enumerate() {
+        let Some(tag) = nbt::field(entity, "nbt") else {
+            continue;
+        };
+        let mut tag = tag.clone();
+        let values = nbt::field(entity, "pos")
+            .map(nbt::list_values)
+            .unwrap_or(&[]);
+        if values.len() != 3 {
+            continue;
+        }
+        let raw = [
+            nbt::number(&values[0]),
+            nbt::number(&values[1]),
+            nbt::number(&values[2]),
+        ];
+        let q = if let Some(transform) = &template.transform {
+            transform.point(raw, piece.rotation)
+        } else {
+            match piece.rotation {
+                1 => [1.0 - raw[2], raw[1], raw[0]],
+                2 => [1.0 - raw[0], raw[1], 1.0 - raw[2]],
+                3 => [raw[2], raw[1], 1.0 - raw[0]],
+                _ => raw,
+            }
+        };
+        let pos = [
+            q[0] + piece.pos[0] as f64,
+            q[1] + piece.pos[1] as f64,
+            q[2] + piece.pos[2] as f64,
+        ];
+        // StructureTemplate uses the normalized wrapper blockPos, not the
+        // entity's original capture-world block_pos or floating-point Pos.
+        let anchor = nbt::field(entity, "blockPos")
+            .map(nbt::list_values)
+            .filter(|v| v.len() == 3)
+            .map(|v| {
+                add(
+                    piece.pos,
+                    template.position(
+                        std::array::from_fn(|i| nbt::number(&v[i]) as i32),
+                        piece.rotation,
+                    ),
+                )
+            })
+            .unwrap_or_else(|| pos.map(|v| v.floor() as i32));
+        if !inside(chunk_bounds, anchor) {
+            continue;
+        }
+        if nbt::field(&tag, "block_pos").is_some() {
+            nbt::put(&mut tag, "block_pos", json!([11, anchor]));
+            // Current 26.3 codecs use 3D IDs for frames and 2D IDs for
+            // paintings. Loading these fields resets the attachment direction.
+            let id = nbt::field(&tag, "id")
+                .and_then(|v| v[1].as_str())
+                .unwrap_or("");
+            let key = match id {
+                "minecraft:item_frame" | "minecraft:glow_item_frame" => "Facing",
+                "minecraft:painting" => "facing",
+                _ => "",
+            };
+            if let Some(mut facing) = nbt::field(&tag, key).cloned() {
+                let value = nbt::number(&facing) as usize;
+                if key == "facing" && value < 4 {
+                    let d = [3, 4, 2, 5][value];
+                    let v = template.direction(d, piece.rotation);
+                    facing[1] = json!(match v {
+                        [0, 0, 1] => 0,
+                        [-1, 0, 0] => 1,
+                        [0, 0, -1] => 2,
+                        _ => 3,
+                    });
+                } else if key == "Facing" && (2..6).contains(&value) {
+                    let v = template.direction(value, piece.rotation);
+                    facing[1] = json!(DIRECTIONS.iter().position(|&d| d == v).unwrap());
+                }
+                nbt::put(&mut tag, key, facing);
+            }
+        }
+        nbt::put(
+            &mut tag,
+            "Pos",
+            nbt::list(6, pos.into_iter().map(|v| json!([6, v])).collect()),
+        );
+        let a = rand64(
+            start.seed
+                ^ template_id as u64
+                ^ (i as u64).rotate_left(17)
+                ^ piece.pos[0] as u64
+                ^ (piece.pos[1] as u64).rotate_left(37)
+                ^ (piece.rotation as u64).rotate_left(11),
+        );
+        let b = rand64(a ^ piece.pos[2] as u64);
+        nbt::put(
+            &mut tag,
+            "UUID",
+            json!([11, [a as i32, (a >> 32) as i32, b as i32, (b >> 32) as i32]]),
+        );
+        if let Some(rotation) = nbt::field(&tag, "Rotation").cloned() {
+            let values = nbt::list_values(&rotation);
+            if values.len() == 2 {
+                nbt::put(
+                    &mut tag,
+                    "Rotation",
+                    nbt::list(
+                        5,
+                        vec![
+                            json!([
+                                5,
+                                template.transform.as_ref().map_or(
+                                    nbt::number(&values[0]) + piece.rotation as f64 * 90.0,
+                                    |t| t.yaw(nbt::number(&values[0]), piece.rotation)
+                                )
+                            ]),
+                            values[1].clone(),
+                        ],
+                    ),
+                );
+            }
+        }
+        entities.push(tag);
+    }
+}
+
 pub fn apply(
     request: ChunkRequest,
     profile: &WorldProfile,
@@ -1358,9 +1523,34 @@ pub fn apply(
     let mut count = 0;
     let mut placed = 0;
     let mut fluid_ticks = Vec::new();
+    let mut block_ticks = Vec::new();
     let mut processing = vec![Vec::new(); request.height as usize / 16];
     let mut plant_updates = crate::decoration::pairs::Updates::default();
     for start in plans {
+        if start.portal.is_some() {
+            count += 1;
+            placed += portals::apply(
+                start,
+                request,
+                profile,
+                blocks.as_deref_mut(),
+                &mut block_entities,
+                &mut plant_updates,
+                &mut fluid_ticks,
+                &mut block_ticks,
+            );
+            let piece = &start.pieces[0];
+            let template_id = piece.element.parts[0].template;
+            append_template_entities(
+                &p.templates[template_id],
+                template_id,
+                start,
+                piece,
+                chunk_bounds,
+                &mut entities,
+            );
+            continue;
+        }
         let chunk = [request.chunk_x, request.chunk_z];
         let indexed = start.index(p);
         for &piece_id in indexed.pieces.get(&chunk).map_or(&[][..], Vec::as_slice) {
@@ -1547,129 +1737,14 @@ pub fn apply(
                         }
                     }
                 }
-                for (i, entity) in template.entities.iter().enumerate() {
-                    let Some(tag) = nbt::field(entity, "nbt") else {
-                        continue;
-                    };
-                    let mut tag = tag.clone();
-                    let values = nbt::field(entity, "pos")
-                        .map(nbt::list_values)
-                        .unwrap_or(&[]);
-                    if values.len() != 3 {
-                        continue;
-                    }
-                    let raw = [
-                        nbt::number(&values[0]),
-                        nbt::number(&values[1]),
-                        nbt::number(&values[2]),
-                    ];
-                    let q = if let Some(transform) = &template.transform {
-                        transform.point(raw, piece.rotation)
-                    } else {
-                        match piece.rotation {
-                            1 => [1.0 - raw[2], raw[1], raw[0]],
-                            2 => [1.0 - raw[0], raw[1], 1.0 - raw[2]],
-                            3 => [raw[2], raw[1], 1.0 - raw[0]],
-                            _ => raw,
-                        }
-                    };
-                    let pos = [
-                        q[0] + piece.pos[0] as f64,
-                        q[1] + piece.pos[1] as f64,
-                        q[2] + piece.pos[2] as f64,
-                    ];
-                    // StructureTemplate uses the normalized wrapper blockPos, not the
-                    // entity's original capture-world block_pos or floating-point Pos.
-                    let anchor = nbt::field(entity, "blockPos")
-                        .map(nbt::list_values)
-                        .filter(|v| v.len() == 3)
-                        .map(|v| {
-                            add(
-                                piece.pos,
-                                template.position(
-                                    std::array::from_fn(|i| nbt::number(&v[i]) as i32),
-                                    piece.rotation,
-                                ),
-                            )
-                        })
-                        .unwrap_or_else(|| pos.map(|v| v.floor() as i32));
-                    if !inside(chunk_bounds, anchor) {
-                        continue;
-                    }
-                    if nbt::field(&tag, "block_pos").is_some() {
-                        nbt::put(&mut tag, "block_pos", json!([11, anchor]));
-                        // Current 26.3 codecs use 3D IDs for frames and 2D IDs for
-                        // paintings. Loading these fields resets the attachment direction.
-                        let id = nbt::field(&tag, "id")
-                            .and_then(|v| v[1].as_str())
-                            .unwrap_or("");
-                        let key = match id {
-                            "minecraft:item_frame" | "minecraft:glow_item_frame" => "Facing",
-                            "minecraft:painting" => "facing",
-                            _ => "",
-                        };
-                        if let Some(mut facing) = nbt::field(&tag, key).cloned() {
-                            let value = nbt::number(&facing) as usize;
-                            if key == "facing" && value < 4 {
-                                let d = [3, 4, 2, 5][value];
-                                let v = template.direction(d, piece.rotation);
-                                facing[1] = json!(match v {
-                                    [0, 0, 1] => 0,
-                                    [-1, 0, 0] => 1,
-                                    [0, 0, -1] => 2,
-                                    _ => 3,
-                                });
-                            } else if key == "Facing" && (2..6).contains(&value) {
-                                let v = template.direction(value, piece.rotation);
-                                facing[1] = json!(DIRECTIONS.iter().position(|&d| d == v).unwrap());
-                            }
-                            nbt::put(&mut tag, key, facing);
-                        }
-                    }
-                    nbt::put(
-                        &mut tag,
-                        "Pos",
-                        nbt::list(6, pos.into_iter().map(|v| json!([6, v])).collect()),
-                    );
-                    let a = rand64(
-                        start.seed
-                            ^ part.template as u64
-                            ^ (i as u64).rotate_left(17)
-                            ^ piece.pos[0] as u64
-                            ^ (piece.pos[1] as u64).rotate_left(37)
-                            ^ (piece.rotation as u64).rotate_left(11),
-                    );
-                    let b = rand64(a ^ piece.pos[2] as u64);
-                    nbt::put(
-                        &mut tag,
-                        "UUID",
-                        json!([11, [a as i32, (a >> 32) as i32, b as i32, (b >> 32) as i32]]),
-                    );
-                    if let Some(rotation) = nbt::field(&tag, "Rotation").cloned() {
-                        let values = nbt::list_values(&rotation);
-                        if values.len() == 2 {
-                            nbt::put(
-                                &mut tag,
-                                "Rotation",
-                                nbt::list(
-                                    5,
-                                    vec![
-                                        json!([
-                                            5,
-                                            template.transform.as_ref().map_or(
-                                                nbt::number(&values[0])
-                                                    + piece.rotation as f64 * 90.0,
-                                                |t| t.yaw(nbt::number(&values[0]), piece.rotation)
-                                            )
-                                        ]),
-                                        values[1].clone(),
-                                    ],
-                                ),
-                            );
-                        }
-                    }
-                    entities.push(tag);
-                }
+                append_template_entities(
+                    template,
+                    part.template,
+                    start,
+                    piece,
+                    chunk_bounds,
+                    &mut entities,
+                );
             }
             if p.definitions[start.definition].kind == "nether_fossil" {
                 if let (Some(kit), Some(output)) = (&p.fossils, blocks.as_deref_mut()) {
@@ -1688,6 +1763,9 @@ pub fn apply(
     nbt::put(&mut root, "entities", nbt::list(10, entities));
     if !fluid_ticks.is_empty() {
         nbt::put(&mut root, "fluid_ticks", nbt::list(10, fluid_ticks));
+    }
+    if !block_ticks.is_empty() {
+        nbt::put(&mut root, "block_ticks", nbt::list(10, block_ticks));
     }
     if processing.iter().any(|p| !p.is_empty()) {
         nbt::put(
@@ -1772,6 +1850,7 @@ mod tests {
         let element = profile.structures.pools["test:floor"].entries[0].clone();
         let pos = [-16, 70, -16];
         let start = Arc::new(Start {
+            portal: None,
             definition: 0,
             chunk: [-1, -1],
             seed: 42,
@@ -1889,6 +1968,7 @@ mod tests {
                         fortress: None,
                     }],
                     terrain: None,
+                    portal: None,
                     index: OnceLock::new(),
                 });
                 let targets: std::collections::HashSet<_> = (0..32)
@@ -2006,6 +2086,7 @@ mod tests {
                         fortress: None,
                     }],
                     terrain: None,
+                    portal: None,
                     index: OnceLock::new(),
                 });
                 let offset = if style == 0 {

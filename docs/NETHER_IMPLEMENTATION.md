@@ -798,9 +798,60 @@ claim full portal `postProcess` or gameplay parity. Reports are in
 profiles and `portal-transform-regions-path.txt` retain reproducible inputs and
 inspectable MCA output.
 
+## Cycle 4g: Nether ruined-portal placement
+
+The registry export now includes all 13 effective ruined-portal templates and
+executable Nether portal definitions. Native selection preserves weighted setups,
+air-pocket probabilities, giant-template selection, mirrors, rotations, four-corner
+floor search, and the biome restriction at the chosen origin. Set weights still
+retain the other, biome-ineligible portal families.
+
+Native placement applies the ordered processors to the original states, then
+transforms the outputs and consumes one shared loot/spread random stream. It
+replays the complete footprint once before distributing writes among chunks.
+Placement includes stairs, wall and bar neighbor shapes, jigsaw final states,
+netherrack/magma spread and drips, optional vines and overgrowth, waterlogging,
+fluid ticks, and water block ticks for bubble-column support. Registered fluid
+acceptance predicates prevent double slabs from becoming waterlogged. Template
+entities share the existing transform and serialization path.
+
+The source comparison runs Minecraft's actual `RuinedPortalPiece.postProcess`
+against the same initial native terrain. It covers every template with all four
+rotations and both mirrors, 24 weighted custom-setup cases at negative coordinates,
+and eight flooded placement cases. All 136 replays match across 1,200 chunks and
+78,643,200 voxels, including untouched terrain, normalized block-entity NBT with
+exact loot seeds, and ordered fluid/block ticks. The custom cases exercise three
+mossiness values, both air-pocket outcomes, blackstone replacement, vines, and
+overgrowth. A nine-chunk footprint crosses four MCA regions; saved blocks,
+metadata, starts and references are compared, and the start reloads through
+Minecraft's structure loader. A fresh native profile also replays that footprint
+concurrently in reverse request order.
+
+Validation passes with `./gradlew -PretinaHostOnly build
+:common:netherStructureTest :common:structureTest :common:flatTest
+:common:nativeGpuTest :common:netherProfileTest` on Metal / Apple M4 Max.
+This includes Fabric and NeoForge builds, 99 Rust unit tests and three GPU tests.
+The flooded cases exercise 122 waterlogged placements and 55 source block-tick
+scheduling calls, with repeated ticks deduplicated as in protochunks.
+
+Reports are written to `build/nether/portal-placement.json` and `portal-mca.json`.
+`portal-fixture-profile.json` and `portal-regions-path.txt` retain the customized
+input and inspectable output. Exact vanilla world-seed layouts remain outside
+Retina's approximation contract; the comparison supplies the same placement and
+postprocessing random stream to both implementations.
+
+This milestone accepts `in_nether` setups with `can_be_cold=false`. Other placement
+or cold-biome setups remain reported as unsupported. Neighbor-shape coverage is
+for the block families in the loaded vanilla portal templates, not arbitrary
+custom block behavior. Production Nether activation remains deferred. Portal
+replay currently reads a carved base-terrain snapshot; integration with earlier
+structures and features at the proper generation step is still required. The
+Java structure-state advertisement and live `/locate`/gameplay checks are also
+part of the remaining integration work.
+
 ## Remaining cycles
 
-4. Nether ruined portals, Nether bastion validation, applicable structure-set
-   exclusions, structure/feature ordering and gameplay progression checks.
+4. Nether bastion validation, applicable structure-set exclusions,
+   structure/feature ordering and gameplay progression checks.
 5. Automatic activation and dimension lifecycle, lighting, and portal integration.
 6. Both-loader runtime validation, regression coverage, visual QA, and benchmarks.
