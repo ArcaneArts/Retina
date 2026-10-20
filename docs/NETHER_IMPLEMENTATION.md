@@ -664,9 +664,59 @@ mob spawning, portal travel and gameplay progression remain part of the runtime
 matrix. Fossils, Nether ruined portals and Nether-specific bastion validation are
 also still required.
 
+## Cycle 4d: Nether fossils and dried ghasts
+
+Fossils now use all 14 effective loaded templates, native base-column floor
+searches, and the source biome check at the selected floor. Their height provider
+uses the generation context: the bundled `below_top: 2` anchor resolves to Y=125,
+not the top of the 256-block storage range. The native sampler shares the existing
+height-provider implementation while retaining each caller's random stream,
+including Minecraft's bounded draws for structure selection and degenerate
+uniform/trapezoid ranges. Constant, uniform, biased, very biased, trapezoid and
+nested weighted distributions are supported; unsupported provider encodings fail
+profile loading with the definition name.
+
+Floor searches use the same native/GPU base columns exposed to Minecraft, looking
+for air above soul sand or a block with a sturdy upper face, and reject starts at
+or below the configured sea level. Java exports actual registered block predicates
+and template geometry at startup. Structure planning has no Java per-block
+callbacks and does not project fossils onto the Nether roof or add Overworld
+foundation pillars.
+
+Template placement retains air in the surrounding terrain and rotates the loaded
+block states. Minecraft 26.3's dried ghast uses its world-seed/position random
+factory, 50% attempt probability, footprint position, air requirement and random
+facing. Native chunk and region paths partition the same complete placement across
+boundaries. Saved starts retain the registered fossil identity and piece bounds;
+references include the source's 12-block terrain-adjustment margin. Locate queries
+share the accepted floor/biome plan, including rejection.
+
+The Nether structure fixture checks 1,152 source height-provider/floor outcomes
+(301 accepted and 851 rejected), plus loaded biome eligibility, and executes
+Minecraft's actual fossil piece `postProcess` against Retina base terrain for all
+14 templates and four rotations. Every voxel in each containing chunk matches;
+the cases cover 69 chunks, including 13 cases crossing chunk boundaries, and two
+successful dried-ghast placements. A separate fossil spans four chunks and two MCA
+regions; all 262,144 compared voxels survive serialization. It checks source-adjusted
+bounding boxes, reference coverage, saved-start decoding, concurrent repeatability,
+and MCA block/structure parity. Negative structure coordinates are included in the
+provider/placement-plan checks. Fixtures isolate structures from decorations;
+structure/feature generation-step integration remains a separate unfinished task.
+Reports and a reproducible profile are written to `build/nether/fossil-*.json`;
+`fossil-regions-path.txt` identifies the fresh inspectable MCA directory.
+
+The host build and `netherStructureTest`, `structureTest`, `flatTest`,
+`nativeGpuTest`, `netherFeatureTest`, and `netherProfileTest` pass, including both
+loader builds, 99 Rust unit tests, and three native GPU tests. The final cross-region
+save fixture also passes in a focused rerun.
+
+Production Nether activation remains deferred. Ruined portals, Nether-specific
+bastion validation, structure/feature ordering, runtime gameplay, and the remaining
+integration matrix are still required.
+
 ## Remaining cycles
 
-4. Fossils, Nether ruined portals, Nether bastion validation, applicable structure-set
+4. Nether ruined portals, Nether bastion validation, applicable structure-set
    exclusions, structure/feature ordering and gameplay progression checks.
 5. Automatic activation and dimension lifecycle, lighting, and portal integration.
 6. Both-loader runtime validation, regression coverage, visual QA, and benchmarks.

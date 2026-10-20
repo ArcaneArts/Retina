@@ -153,6 +153,7 @@ public record TerrainProfileData(int seaLevel, BlockState[] materials, List<Hold
         for (var definition : structureData.getAsJsonArray("definitions")) {
             var config = definition.getAsJsonObject().getAsJsonObject("config");
             if (config.has("start_height")) bounds.resolveHeightProvider(config.get("start_height"), sea);
+            if (config.has("height")) bounds.resolveHeightProvider(config.get("height"), sea);
         }
         profile.add("structures", structureData);
         GeologyProfile.export(registry, nativeBiomes, biomes, materials, profile, bounds, sea);
