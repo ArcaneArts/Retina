@@ -16,7 +16,7 @@ import time
 import subprocess
 
 from benchmark_support import (RESULT_SCHEMA, RESULT_SCHEMA_VERSION, compare_corpora,
-                               corpus_manifest, mca_records, percentile, write_json)
+                               corpus_manifest, mca_records, percentile, profile_request_context, write_json)
 
 class Request(c.Structure):
     _fields_ = [("seed", c.c_uint64), ("x", c.c_int32), ("z", c.c_int32), ("min_y", c.c_int32),
@@ -120,6 +120,8 @@ def main():
     initialize_ms = (time.perf_counter()-startup)*1000
     source = args.profile.read_bytes(); profile = c.c_uint32()
     profile_source = json.loads(source)
+    request_context = profile_request_context(profile_source)
+    fallback_biome = request_context["fallback_biome"].encode()
     if args.scope == "lit-mca" and not profile_source.get("lighting"):
         raise ValueError("lit-mca scope requires a profile containing lighting properties")
     if args.program_execution:
@@ -137,9 +139,11 @@ def main():
     def generate(item):
         name, x, z = item
         path = str((args.out / f"{name}.mca").resolve()).encode()
-        req = Request(args.seed, x*32, z*32, -64, 384, 64, 48, .008, profile.value)
+        req = Request(args.seed, x*32, z*32, request_context["min_y"], request_context["height"],
+                      64, 48, .008, profile.value)
         report = Report(); start = time.perf_counter()
-        check(lib.retina_generate_region(c.byref(req), path, len(path), 0, b"minecraft:plains", 16, c.byref(report)))
+        check(lib.retina_generate_region(c.byref(req), path, len(path), 0,
+                                         fallback_biome, len(fallback_biome), c.byref(report)))
         elapsed_ms=(time.perf_counter()-start)*1000
         status=None
         if program:
@@ -195,7 +199,7 @@ def main():
                        "library_sha256": hashlib.sha256(args.library.read_bytes()).hexdigest()},
                 host={"system": platform.system(), "release": platform.release(), "machine": platform.machine(),
                       "python": platform.python_version()},
-                library=str(args.library), parallel=args.parallel, seed=args.seed,
+                library=str(args.library), parallel=args.parallel, seed=args.seed, request=request_context,
                 coordinates={"origin_x": args.origin_x, "origin_z": args.origin_z, "grid_width": args.grid_width},
                 regions=regions, program_execution=args.program_execution, interpolation_cache=args.interpolation_cache, density_composition=args.density_composition, cached_density_masks=args.cached_density_masks, terrain_execution=args.terrain_execution, interpreter_dispatch=args.interpreter_dispatch, interpreter_preload=args.interpreter_preload,
                 lake_point_cache=args.lake_point_cache,

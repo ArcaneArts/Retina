@@ -404,6 +404,12 @@ speed claim is made. Earlier evidence remains in the
 [performance report](docs/PERFORMANCE_PASS_2026_10.md) and
 [starting triage](docs/PERFORMANCE_TRIAGE_2026_10_18.md).
 
+The [Nether baseline](docs/NETHER_PERFORMANCE.md) measures full native generation,
+lighting and durable MCA publication at 91.6 and 90.9 chunks/s in two matched
+20,480-chunk runs on an M4 Max, with 4.56 GiB peak process RSS. Complete chunk
+NBT matches across both runs. This is separate from the historical Overworld
+optimization comparisons and excludes live Minecraft loading and rendering.
+
 ## Building and testing
 
 ### Releases

@@ -5,7 +5,7 @@ from pathlib import Path
 import sys
 
 sys.path.insert(0, str(Path(__file__).parent))
-from benchmark_support import compare_corpora, decode_nbt, first_difference, mca_records, percentile, lz4_block_stream
+from benchmark_support import compare_corpora, decode_nbt, first_difference, mca_records, percentile, lz4_block_stream, profile_request_context
 
 
 def fixture(records):
@@ -24,6 +24,21 @@ def fixture(records):
 
 
 class BenchmarkSupportTest(unittest.TestCase):
+    def test_requests_preserve_storage_above_the_noise_ceiling(self):
+        nether = {
+            "generation_bounds": {"storage_min_y": 0, "storage_height": 256, "min_y": 0, "height": 128},
+            "biomes": [{"id": "minecraft:warped_forest"}],
+        }
+        self.assertEqual({"min_y": 0, "height": 256, "fallback_biome": "minecraft:warped_forest"},
+                         profile_request_context(nether))
+        nether["generation_bounds"].update(storage_min_y=96, storage_height=160)
+        self.assertEqual({"min_y": 96, "height": 160, "fallback_biome": "minecraft:warped_forest"},
+                         profile_request_context(nether))
+
+    def test_legacy_profile_requests_keep_existing_defaults(self):
+        self.assertEqual({"min_y": -64, "height": 384, "fallback_biome": "minecraft:plains"},
+                         profile_request_context({}))
+
     @staticmethod
     def chunk_nbt(y):
         return (b"\x0a\x00\x00\x03\x00\x0bDataVersion\x00\x00\x00\x2a"

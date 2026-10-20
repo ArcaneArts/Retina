@@ -12,6 +12,17 @@ RESULT_SCHEMA = "retina.native-region-benchmark"
 RESULT_SCHEMA_VERSION = 1
 
 
+def profile_request_context(profile: dict[str, Any]) -> dict[str, Any]:
+    """Use dimension storage for MCA requests; noise bounds only constrain terrain."""
+    bounds = profile.get("generation_bounds", {})
+    biomes = profile.get("biomes", [])
+    return {
+        "min_y": bounds.get("storage_min_y", -64),
+        "height": bounds.get("storage_height", 384),
+        "fallback_biome": biomes[0].get("id", "minecraft:plains") if biomes else "minecraft:plains",
+    }
+
+
 def percentile(values: Iterable[float], percent: float) -> float:
     ordered = sorted(values)
     if not ordered:

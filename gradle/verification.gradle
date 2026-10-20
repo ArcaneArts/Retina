@@ -536,15 +536,19 @@ tasks.register('shoreTest', JavaExec) {
     jvmArgs '--enable-native-access=ALL-UNNAMED'
 }
 
-tasks.register('exportBenchmarkProfile', JavaExec) {
-    group = 'verification'
-    description = 'Export actual world registries including structure templates for native benchmarks.'
-    dependsOn 'gpuTestClasses', ':packageNative'
-    classpath = sourceSets.gpuTest.runtimeClasspath
-    mainClass = 'art.arcane.retina.worldgen.NativeProfileExport'
-    jvmArgs '--enable-native-access=ALL-UNNAMED'
-    args providers.gradleProperty('benchmarkProfile').getOrElse('build/benchmark-vanilla-profile.json')
-    if (providers.gradleProperty('benchmarkPack').isPresent()) args providers.gradleProperty('benchmarkPack').get()
+['exportBenchmarkProfile': false, 'exportNetherBenchmarkProfile': true].each { taskName, nether ->
+    tasks.register(taskName, JavaExec) {
+        group = 'verification'
+        description = 'Export actual world registries including structure templates for native benchmarks.'
+        dependsOn 'gpuTestClasses', ':packageNative'
+        classpath = sourceSets.gpuTest.runtimeClasspath
+        mainClass = 'art.arcane.retina.worldgen.NativeProfileExport'
+        jvmArgs '--enable-native-access=ALL-UNNAMED'
+        if (nether) systemProperty 'retina.benchmark.nether', 'true'
+        args providers.gradleProperty('benchmarkProfile').getOrElse(nether
+                ? 'build/benchmark-nether-profile.json' : 'build/benchmark-vanilla-profile.json')
+        if (providers.gradleProperty('benchmarkPack').isPresent()) args providers.gradleProperty('benchmarkPack').get()
+    }
 }
 
 tasks.register('nativeAquiferColumnsGpuTest', Exec) {
