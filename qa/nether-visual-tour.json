@@ -1,0 +1,85 @@
+{
+  "world": "retina-qa-mca",
+  "scenes": [
+    {
+      "name": "nether_wastes",
+      "x": -71.5,
+      "y": 40,
+      "z": -511.5,
+      "yaw": 45,
+      "pitch": 8
+    },
+    {
+      "name": "basalt_deltas",
+      "x": -271.5,
+      "y": 75,
+      "z": -471.5,
+      "yaw": 225,
+      "pitch": 8
+    },
+    {
+      "name": "crimson_forest",
+      "x": -416.0,
+      "y": 79.0,
+      "z": 269.5,
+      "yaw": 0,
+      "pitch": 15.362799009330434
+    },
+    {
+      "name": "soul_sand_valley",
+      "x": -498.24,
+      "y": 56.5,
+      "z": -293,
+      "yaw": 60,
+      "pitch": 15
+    },
+    {
+      "name": "warped_forest",
+      "x": -6143.5,
+      "y": 52,
+      "z": -8479.5,
+      "yaw": 315,
+      "pitch": 8
+    },
+    {
+      "name": "bastion_remnant",
+      "x": -171.0,
+      "y": 65.5,
+      "z": -308.0,
+      "yaw": 270,
+      "pitch": 12.25
+    },
+    {
+      "name": "fortress",
+      "x": -6113.968565782228,
+      "y": 74.5,
+      "z": -7996.0,
+      "yaw": 300,
+      "pitch": 7.668947281693228
+    },
+    {
+      "name": "nether_fossil",
+      "x": -498.2416697508023,
+      "y": 56.5,
+      "z": -293.0,
+      "yaw": 60,
+      "pitch": 46.29216688624994
+    },
+    {
+      "name": "ruined_portal_nether",
+      "x": -6395.5,
+      "y": 47.5,
+      "z": -8595.0,
+      "yaw": 180,
+      "pitch": 40.36453657309736
+    },
+    {
+      "name": "region_seam_x_minus_10240",
+      "x": -10255.5,
+      "y": 68,
+      "z": -12047.5,
+      "yaw": 270,
+      "pitch": 10
+    }
+  ]
+}
