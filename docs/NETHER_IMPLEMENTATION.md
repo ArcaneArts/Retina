@@ -1075,8 +1075,34 @@ normal-worker Nether concurrency, Nether/Overworld structures, Superflat, locate
 Nether features and profile checks passed. The cold replay fixture now uses an
 independent profile namespace instead of deduplicating onto its original profile.
 
+## Cycle 5b: portal destination preparation and lifecycle QA
+
+Ordinary Nether portals now prepare destination regions through the existing
+asynchronous region scheduler before allowing Minecraft's portal search and
+creation to proceed. The range uses the effective dimension coordinate scale,
+world border, vanilla search/frame reach and entity-ticking halo. Publication uses
+the existing I/O queue and global generation budget. Accepted generation failures
+propagate; other portal implementations and non-region generators keep their
+existing behavior.
+
+Dedicated testing exposed a second blocking load after the destination was ready:
+the player's cached supporting block still referred to the source dimension.
+The next movement tick read those unscaled coordinates in the destination and
+generated unrelated remote regions. Changing to a Retina dimension now clears
+that stale support position.
+
+The opt-in `retinaNetherLifecycleQa` harness exercises real portal collision and
+dimension transfer, decoy portals to detect incorrect scaling, and a remote
+destination with no prebuilt Nether exit. Each connection makes two round trips.
+The first remote visit generates exactly four destination regions; reopening
+requires zero new regions and intact saved portal frames. It checks simultaneous
+dimension reads, duplicate-observer cancellation, native light over 16 interior
+chunks, runtime lava/glowstone/shroomlight propagation and removal across a chunk
+boundary, zero skylight, dimension telemetry and saved edits at Nether Y=200.
+See [runtime QA](RUNTIME_QA.md) for commands and recorded results.
+
 ## Remaining cycles
 
 4. Gameplay progression checks in the live dimension.
-5. Further dimension lifecycle, lighting, and actual portal travel validation.
+5. In-flight unload and remaining dimension lifecycle coverage.
 6. Both-loader runtime validation, regression coverage, visual QA, and benchmarks.

@@ -48,12 +48,13 @@ public final class TerrainClientQa {
     private TerrainClientQa() { }
 
     static void received() { if (ENABLED) packets++; }
-    static void disconnected() { if (ENABLED) disconnects++; }
+    static void disconnected() { if (ENABLED) { disconnects++; NetherClientQa.reset(); } }
 
     public static void tick(Minecraft minecraft) {
         if (!ENABLED || phase == 6) return;
         if (started == 0) started = System.nanoTime();
-        if (System.nanoTime() - started > 300_000_000_000L) throw new IllegalStateException("Retina client gameplay QA timed out in phase " + phase);
+        long deadline = Boolean.getBoolean("retina.qa.nether.lifecycle") ? 600_000_000_000L : 300_000_000_000L;
+        if (System.nanoTime() - started > deadline) throw new IllegalStateException("Retina client gameplay QA timed out in phase " + phase);
         switch (phase) {
             case 0 -> {
                 if (!(minecraft.gui.screen() instanceof TitleScreen) || minecraft.gui.overlay() != null) return;
@@ -80,6 +81,7 @@ public final class TerrainClientQa {
             }
             case 1 -> {
                 if (acceptExperimentalBackup(minecraft)) return;
+                if (!NetherClientQa.ready(minecraft)) return;
                 if (!ready(minecraft) || packets == 0) return;
                 if (readySince == 0) {
                     readySince = System.nanoTime();
@@ -123,6 +125,7 @@ public final class TerrainClientQa {
             }
             case 4 -> {
                 if (acceptExperimentalBackup(minecraft)) return;
+                if (!NetherClientQa.ready(minecraft)) return;
                 if (!ready(minecraft) || packets <= packetsBeforeReopen) return;
                 if (readySince == 0) readySince = System.nanoTime();
                 if (System.nanoTime() - readySince < HOLD_NANOS) return;
