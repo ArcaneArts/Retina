@@ -3,9 +3,10 @@ import unittest
 import zlib
 from pathlib import Path
 import sys
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).parent))
-from benchmark_support import compare_corpora, decode_nbt, first_difference, mca_records, percentile, lz4_block_stream, profile_request_context
+from benchmark_support import compare_corpora, corpus_coverage, decode_nbt, first_difference, mca_records, percentile, lz4_block_stream, profile_request_context, region_coordinates
 
 
 def fixture(records):
@@ -24,6 +25,35 @@ def fixture(records):
 
 
 class BenchmarkSupportTest(unittest.TestCase):
+    def test_request_order_preserves_names_and_negative_coordinates(self):
+        forward = region_coordinates(20, -2, -2, 5)
+        reverse = region_coordinates(20, -2, -2, 5, "reverse")
+        shuffled = region_coordinates(20, -2, -2, 5, "shuffled", 42)
+        self.assertEqual(reverse, forward[::-1])
+        self.assertEqual(sorted(shuffled), sorted(forward))
+        self.assertNotEqual(shuffled, forward)
+        self.assertEqual(shuffled, region_coordinates(20, -2, -2, 5, "shuffled", 42))
+        self.assertEqual(forward[0], ("0", -2, -2))
+        self.assertEqual(forward[-1], ("19", 2, 1))
+
+    def test_coverage_counts_generated_chunks_and_deduplicates_starts(self):
+        section = {"biomes": {"palette": ["minecraft:soul_sand_valley"]}}
+        start = {"id": "minecraft:nether_fossil", "ChunkX": -12, "ChunkZ": 3}
+        chunks = [
+            {"": {"xPos": x, "zPos": 0, "sections": [section, section],
+                  "structures": {"starts": {"minecraft:nether_fossil": start,
+                                            "minecraft:fortress": {"id": "INVALID"}}}}}
+            for x in [0, 1]
+        ]
+        with patch("benchmark_support.mca_records", return_value={0: b"a", 1: b"b"}), \
+             patch("benchmark_support.decode_nbt", side_effect=chunks):
+            coverage = corpus_coverage(Path("."), ["0"])
+        self.assertEqual(coverage, {
+            "chunks": 2,
+            "biome_chunk_membership": {"minecraft:soul_sand_valley": 2},
+            "unique_structure_starts": {"minecraft:nether_fossil": 1},
+        })
+
     def test_requests_preserve_storage_above_the_noise_ceiling(self):
         nether = {
             "generation_bounds": {"storage_min_y": 0, "storage_height": 256, "min_y": 0, "height": 128},

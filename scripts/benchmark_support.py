@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import random
 import struct
 import zlib
 from pathlib import Path
@@ -10,6 +11,20 @@ from typing import Any, Iterable
 
 RESULT_SCHEMA = "retina.native-region-benchmark"
 RESULT_SCHEMA_VERSION = 1
+
+
+def region_coordinates(count: int, origin_x: int, origin_z: int, grid_width: int,
+                       order: str = "forward", seed: int = 0) -> list[tuple[str, int, int]]:
+    """Stable output names let different request orders compare the same chunks."""
+    coordinates = [(str(i), origin_x + i % grid_width, origin_z + i // grid_width)
+                   for i in range(count)]
+    if order == "reverse":
+        coordinates.reverse()
+    elif order == "shuffled":
+        random.Random(seed).shuffle(coordinates)
+    elif order != "forward":
+        raise ValueError(f"unknown request order: {order}")
+    return coordinates
 
 
 def profile_request_context(profile: dict[str, Any]) -> dict[str, Any]:
@@ -209,6 +224,31 @@ def compare_corpora(baseline: Path, candidate: Path, names: Iterable[str]) -> di
                 raise AssertionError(f"Changed NBT: {name}.mca slot {slot}: {detail}")
             identical += 1
     return {"identical_nbt_chunks": identical, "membership_identical": True}
+
+
+def corpus_coverage(directory: Path, names: Iterable[str]) -> dict[str, Any]:
+    """Inspect generated NBT, not profile declarations; outside timed intervals.
+
+    Biome counts count chunk membership (including section palettes), not voxels.
+    Structure counts deduplicate start coordinates across region references.
+    """
+    biomes: dict[str, int] = {}
+    starts: dict[str, set[tuple[int, int]]] = {}
+    chunks = 0
+    for name in names:
+        for payload in mca_records(directory / f"{name}.mca").values():
+            chunk = next(iter(decode_nbt(payload).values()))
+            chunks += 1
+            present = {biome for section in chunk.get("sections", [])
+                       for biome in section.get("biomes", {}).get("palette", [])}
+            for biome in present:
+                biomes[biome] = biomes.get(biome, 0) + 1
+            for structure, start in chunk.get("structures", {}).get("starts", {}).items():
+                if start.get("id") != "INVALID":
+                    starts.setdefault(structure, set()).add((
+                        start.get("ChunkX", chunk["xPos"]), start.get("ChunkZ", chunk["zPos"])))
+    return {"chunks": chunks, "biome_chunk_membership": dict(sorted(biomes.items())),
+            "unique_structure_starts": {k: len(v) for k, v in sorted(starts.items())}}
 
 
 def write_json(path: Path, value: Any) -> None:

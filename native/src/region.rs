@@ -345,7 +345,12 @@ fn generate_region_inner(
         if let Some(p) = profile.as_deref().filter(|_| !source_order) {
             crate::structures::prepare(engine, origin, p, &structure_plans, None)?;
         }
+        let pool_queued = session.performance.start();
         assemblers()?.install(|| {
+            session.performance.elapsed(
+                crate::performance::Counter::region_pool_wait_nanos,
+                pool_queued,
+            );
             let mut generation = if let Some(p) = profile.as_deref().filter(|_| source_order) {
                 Some(timings.time(timings::VEGETATION_PLAN, || {
                     decoration::dependencies::generate(

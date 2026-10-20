@@ -3,6 +3,7 @@
 use super::spatial::Map;
 use super::*;
 use crate::TerrainEngine;
+use crate::performance::{Counter as Perf, Metrics};
 use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex, OnceLock};
 
@@ -10,22 +11,44 @@ type Memo<K, V> = Mutex<Map<K, Arc<OnceLock<Result<Arc<V>, String>>>>>;
 fn memo<K: Eq + std::hash::Hash, V>(
     cache: &Memo<K, V>,
     key: K,
+    metrics: &Metrics,
     build: impl FnOnce() -> Result<V, String>,
 ) -> Result<Arc<V>, String> {
-    memo_arc(cache, key, || build().map(Arc::new))
+    memo_arc(cache, key, metrics, || build().map(Arc::new))
 }
 fn memo_arc<K: Eq + std::hash::Hash, V>(
     cache: &Memo<K, V>,
     key: K,
+    metrics: &Metrics,
     build: impl FnOnce() -> Result<Arc<V>, String>,
 ) -> Result<Arc<V>, String> {
+    metrics.add(Perf::memo_requests, 1);
+    let lock_started = metrics.start();
     let slot = cache
         .lock()
         .map_err(|_| "decoration dependency cache poisoned")?
         .entry(key)
         .or_insert_with(|| Arc::new(OnceLock::new()))
         .clone();
-    slot.get_or_init(build).clone()
+    metrics.elapsed(Perf::memo_lock_nanos, lock_started);
+    if slot.get().is_some() {
+        metrics.add(Perf::memo_ready_hits, 1);
+    }
+    let joined = metrics.start();
+    let mut built = false;
+    let result = slot
+        .get_or_init(|| {
+            built = true;
+            metrics.add(Perf::memo_builds, 1);
+            build()
+        })
+        .clone();
+    // Exclude initializer execution: an outer OnceLock can itself wait for
+    // nested dependencies or GPU results, which must not count as joining it.
+    if !built {
+        metrics.elapsed(Perf::memo_join_nanos, joined);
+    }
+    result
 }
 #[derive(Clone, Copy)]
 struct Bounds {
@@ -170,6 +193,7 @@ struct Planner<'a> {
     anchor_ids: Memo<(i32, i32), Vec<u32>>,
     starts: Memo<(i32, i32), Vec<Arc<crate::structures::Start>>>,
     job: Option<&'a crate::timings::Timings>,
+    metrics: Arc<crate::timings::Timings>,
     retain_prefix: bool,
     columns: Mutex<Map<(usize, i32, i32), Arc<ColumnTile>>>,
     error: Mutex<Option<String>>,
@@ -260,7 +284,7 @@ impl Planner<'_> {
     }
     fn terrain(&self, x: i32, z: i32) -> Result<Arc<Field<'static>>, String> {
         let (x, z) = (x.div_euclid(16) * 16, z.div_euclid(16) * 16);
-        memo(&self.terrain, (x, z), || {
+        memo(&self.terrain, (x, z), &self.metrics.performance, || {
             self.engine
                 .terrain_field(
                     ChunkRequest {
@@ -274,114 +298,123 @@ impl Planner<'_> {
         })
     }
     fn anchor(&self, root: usize, x: i32, z: i32) -> Result<Arc<Output>, String> {
-        memo(&self.anchors, (root, x, z), || {
-            if let Some(definition) = self.roots[root].definition {
-                return self.structure(root, definition, x, z);
-            }
-            let base = self.terrain(x, z)?;
-            let available = memo(&self.anchor_ids, (x, z), || {
-                Ok(anchor_ids(&base, self.profile, x, z))
-            })?;
-            let ids = [available
-                .iter()
-                .copied()
-                .filter(|id| self.roots[root].ids.contains(id))
-                .collect::<Vec<_>>()];
-            if ids[0].is_empty() {
-                return Ok(Output {
-                    metadata: None,
-                    writes: Vec::new(),
-                    columns: Map::default(),
-                });
-            }
-            let view = View {
-                planner: self,
-                before: root,
-                base: base.clone(),
-                columns: Mutex::new(Map::default()),
-            };
-            let field = Field {
-                origin_x: x,
-                origin_z: z,
-                side: 1,
-                columns: base.chunk(x, z).to_vec(),
-                substrate: base.substrate.clone(),
-                prior: Some(&view),
-            };
-            let request = ChunkRequest {
-                chunk_x: x,
-                chunk_z: z,
-                ..self.request
-            };
-            let mut replay = Replay::new(&field, self.profile, request, x, z, 1, None, Some(&ids))
-                .with_prefix_resume(self.retain_prefix);
-            let mut samples = provider_noise::Samples::default();
-            let mut counts = counts::Counts::default();
-            loop {
-                let queries = replay.poll(
-                    &samples,
-                    self.profile.decoration_noise.as_ref().map(|_| &counts),
-                );
-                self.check()?;
-                if queries.is_empty() {
-                    break;
+        memo(
+            &self.anchors,
+            (root, x, z),
+            &self.metrics.performance,
+            || {
+                self.metrics.performance.add(Perf::anchor_builds, 1);
+                if let Some(definition) = self.roots[root].definition {
+                    return self.structure(root, definition, x, z);
                 }
-                // Geometry is native; spatial count/provider evaluation still uses
-                // the resident GPU programs. No Java generation callbacks exist.
-                let sampled = self
-                    .engine
-                    .feature_gpu
-                    .lock()
-                    .map_err(|_| "feature GPU lock poisoned")?
-                    .run_batch(
+                let base = self.terrain(x, z)?;
+                let available = memo(&self.anchor_ids, (x, z), &self.metrics.performance, || {
+                    Ok(anchor_ids(&base, self.profile, x, z))
+                })?;
+                let ids = [available
+                    .iter()
+                    .copied()
+                    .filter(|id| self.roots[root].ids.contains(id))
+                    .collect::<Vec<_>>()];
+                if ids[0].is_empty() {
+                    return Ok(Output {
+                        metadata: None,
+                        writes: Vec::new(),
+                        columns: Map::default(),
+                    });
+                }
+                let view = View {
+                    planner: self,
+                    before: root,
+                    base: base.clone(),
+                    columns: Mutex::new(Map::default()),
+                };
+                let field = Field {
+                    origin_x: x,
+                    origin_z: z,
+                    side: 1,
+                    columns: base.chunk(x, z).to_vec(),
+                    substrate: base.substrate.clone(),
+                    prior: Some(&view),
+                };
+                let request = ChunkRequest {
+                    chunk_x: x,
+                    chunk_z: z,
+                    ..self.request
+                };
+                let mut replay =
+                    Replay::new(&field, self.profile, request, x, z, 1, None, Some(&ids))
+                        .with_prefix_resume(self.retain_prefix);
+                let mut samples = provider_noise::Samples::default();
+                let mut counts = counts::Counts::default();
+                loop {
+                    let queries = replay.poll(
+                        &samples,
+                        self.profile.decoration_noise.as_ref().map(|_| &counts),
+                    );
+                    self.check()?;
+                    if queries.is_empty() {
+                        break;
+                    }
+                    // Geometry is native; spatial count/provider evaluation still uses
+                    // the resident GPU programs. No Java generation callbacks exist.
+                    let sampled = self
+                        .engine
+                        .feature_gpu
+                        .lock()
+                        .map_err(|_| "feature GPU lock poisoned")?
+                        .run_batch(
+                            request.reserved,
+                            self.profile.decoration_noise.as_ref(),
+                            &queries.counts,
+                            &self.profile.decoration_provider_noises,
+                            &queries.noise,
+                        )?;
+                    self.engine.pipeline.transfer(
                         request.reserved,
-                        self.profile.decoration_noise.as_ref(),
-                        &queries.counts,
-                        &self.profile.decoration_provider_noises,
-                        &queries.noise,
-                    )?;
-                self.engine
-                    .pipeline
-                    .transfer(request.reserved, sampled.upload, sampled.readback);
-                for (slot, nanos) in [
-                    crate::timings::FEATURE_COUNTS,
-                    crate::timings::PROVIDER_NOISE,
-                ]
-                .into_iter()
-                .zip(sampled.device_nanos)
-                {
-                    if let Some(nanos) = nanos {
-                        self.engine.timings(request.reserved).device(slot, nanos);
-                        if let Some(job) = self.job {
-                            job.device(slot, nanos);
+                        sampled.upload,
+                        sampled.readback,
+                    );
+                    for (slot, nanos) in [
+                        crate::timings::FEATURE_COUNTS,
+                        crate::timings::PROVIDER_NOISE,
+                    ]
+                    .into_iter()
+                    .zip(sampled.device_nanos)
+                    {
+                        if let Some(nanos) = nanos {
+                            self.engine.timings(request.reserved).device(slot, nanos);
+                            if let Some(job) = self.job {
+                                job.device(slot, nanos);
+                            }
                         }
                     }
+                    counts.extend(
+                        queries
+                            .counts
+                            .into_iter()
+                            .zip(sampled.counts.into_iter().map(|v| v as i32)),
+                    );
+                    samples.extend(
+                        queries
+                            .noise
+                            .into_iter()
+                            .zip(sampled.providers.into_iter().map(f32::from_bits)),
+                    );
                 }
-                counts.extend(
-                    queries
-                        .counts
-                        .into_iter()
-                        .zip(sampled.counts.into_iter().map(|v| v as i32)),
-                );
-                samples.extend(
-                    queries
-                        .noise
-                        .into_iter()
-                        .zip(sampled.providers.into_iter().map(f32::from_bits)),
-                );
-            }
-            let mut all = replay.finish_world();
-            let writes = std::mem::take(&mut all[0]);
-            let mut columns: Map<_, Vec<_>> = Map::default();
-            for (index, block) in writes.iter().enumerate() {
-                columns.entry((block.x, block.z)).or_default().push(index);
-            }
-            Ok(Output {
-                writes,
-                columns,
-                metadata: None,
-            })
-        })
+                let mut all = replay.finish_world();
+                let writes = std::mem::take(&mut all[0]);
+                let mut columns: Map<_, Vec<_>> = Map::default();
+                for (index, block) in writes.iter().enumerate() {
+                    columns.entry((block.x, block.z)).or_default().push(index);
+                }
+                Ok(Output {
+                    writes,
+                    columns,
+                    metadata: None,
+                })
+            },
+        )
     }
     fn structure(&self, root: usize, definition: usize, x: i32, z: i32) -> Result<Output, String> {
         let request = ChunkRequest {
@@ -389,7 +422,7 @@ impl Planner<'_> {
             chunk_z: z,
             ..self.request
         };
-        let starts = memo(&self.starts, (x, z), || {
+        let starts = memo(&self.starts, (x, z), &self.metrics.performance, || {
             crate::structures::plans_inline(self.engine, request, 1)
         })?;
         let starts: Vec<_> = starts
@@ -456,16 +489,27 @@ impl Planner<'_> {
         })
     }
     fn column(&self, before: usize, x: i32, z: i32) -> Result<Arc<ColumnState>, String> {
+        let metrics = &self.metrics.performance;
+        metrics.add(Perf::column_requests, 1);
+        let lock_started = metrics.start();
         let tile = self
             .columns
             .lock()
             .map_err(|_| "column dependency cache poisoned")?
             .entry((before, x.div_euclid(16), z.div_euclid(16)))
-            .or_insert_with(|| Arc::new(ColumnTile::default()))
+            .or_insert_with(|| {
+                metrics.add(Perf::column_tiles, 1);
+                Arc::new(ColumnTile::default())
+            })
             .clone();
+        metrics.elapsed(Perf::column_lock_nanos, lock_started);
         let index = z.rem_euclid(16) as usize * 16 + x.rem_euclid(16) as usize;
-        tile.0[index]
+        let joined = metrics.start();
+        let mut built = false;
+        let result = tile.0[index]
             .get_or_init(|| {
+                built = true;
+                metrics.add(Perf::column_builds, 1);
                 if before != 0 {
                     return self.prefix(before, x, z, None);
                 }
@@ -491,7 +535,11 @@ impl Planner<'_> {
                     self.request.min_y,
                 )))
             })
-            .clone()
+            .clone();
+        if !built {
+            metrics.elapsed(Perf::column_join_nanos, joined);
+        }
+        result
     }
     fn prefix(
         &self,
@@ -500,6 +548,7 @@ impl Planner<'_> {
         z: i32,
         limit: Option<(i32, i32, usize)>,
     ) -> Result<Arc<ColumnState>, String> {
+        self.metrics.performance.add(Perf::prefix_evaluations, 1);
         let prior = self.column(before - 1, x, z)?;
         let mut blocks: Option<Vec<u16>> = None;
         let height = self.request.height as usize;
@@ -593,6 +642,8 @@ pub(crate) fn generate(
     retain_prefix: bool,
 ) -> Result<super::generation::Generation, String> {
     let started = std::time::Instant::now();
+    let metrics = engine.timings(request.reserved);
+    let evaluation_started = metrics.performance.start();
     let diagnostic = std::env::var("RETINA_DEPENDENCY_DIAGNOSTICS").as_deref() == Ok("1");
     let mut groups = BTreeMap::<(u32, u8, u32), Root>::new();
     for (id, recipe) in profile.decorations.iter().enumerate() {
@@ -646,6 +697,7 @@ pub(crate) fn generate(
         anchor_ids: Mutex::new(Map::default()),
         starts: Mutex::new(Map::default()),
         job,
+        metrics: metrics.clone(),
         retain_prefix,
         columns: Mutex::new(Map::default()),
         error: Mutex::new(None),
@@ -679,20 +731,33 @@ pub(crate) fn generate(
         }
     }
     planner.check()?;
+    metrics
+        .performance
+        .elapsed(Perf::dependency_evaluation_nanos, evaluation_started);
     if let Some(details) = details.as_mut() {
         details.dependency_wall_nanos = started.elapsed().as_nanos() as u64;
         details.dependency_anchors = planner.anchors.lock().unwrap().len() as u64;
         details.dependency_column_tiles = planner.columns.lock().unwrap().len() as u64;
         details.dependency_terrain_tiles = planner.terrain.lock().unwrap().len() as u64;
     }
+    let structure_started = metrics.performance.start();
+    let structure_detail = diagnostics::start(details.is_some());
+    let starts = crate::structures::plans(engine, request, side as i32)?;
+    metrics
+        .performance
+        .elapsed(Perf::final_structure_planning_nanos, structure_started);
+    diagnostics::record(
+        structure_detail,
+        details.as_mut().map(|d| &mut d.final_structure_wall_nanos),
+    );
     let merge_started = diagnostics::start(details.is_some());
+    let distribution_started = metrics.performance.start();
     let mut cache = std::mem::take(
         &mut *planner
             .anchors
             .lock()
             .map_err(|_| "dependency cache poisoned")?,
     );
-    let starts = crate::structures::plans(engine, request, side as i32)?;
     let mut result = super::generation::Generation::new(request, side, profile, &starts);
 
     for key in targets {
@@ -711,12 +776,21 @@ pub(crate) fn generate(
             result.event(request, side, key.1, key.2, metadata);
         }
     }
-    drop(cache);
-    drop(planner);
+    metrics
+        .performance
+        .elapsed(Perf::distribution_nanos, distribution_started);
     diagnostics::record(
         merge_started,
-        details.map(|d| &mut d.distribution_wall_nanos),
+        details.as_mut().map(|d| &mut d.distribution_wall_nanos),
     );
+    let teardown_started = metrics.performance.start();
+    let teardown_detail = diagnostics::start(details.is_some());
+    drop(cache);
+    drop(planner);
+    metrics
+        .performance
+        .elapsed(Perf::teardown_nanos, teardown_started);
+    diagnostics::record(teardown_detail, details.map(|d| &mut d.teardown_wall_nanos));
     Ok(result)
 }
 

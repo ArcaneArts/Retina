@@ -1,0 +1,42 @@
+{
+  "version": 1,
+  "warmup_regions": 5,
+  "measured_regions": 20,
+  "cases": [
+    {
+      "name": "nether-main",
+      "profile": "nether.json",
+      "seed": 123456789,
+      "origin": [-2, -2],
+      "grid_width": 5
+    },
+    {
+      "name": "nether-second-seed",
+      "profile": "nether.json",
+      "seed": 42,
+      "origin": [-2, -2],
+      "grid_width": 5
+    },
+    {
+      "name": "nether-custom-bounds",
+      "profile": "custom.json",
+      "seed": 123456789,
+      "origin": [-2, -2],
+      "grid_width": 5
+    },
+    {
+      "name": "nether-direct-stem",
+      "profile": "direct-stem.json",
+      "seed": 42,
+      "origin": [-2, -2],
+      "grid_width": 5
+    },
+    {
+      "name": "overworld",
+      "profile": "overworld.json",
+      "seed": 123456789,
+      "origin": [-2, -2],
+      "grid_width": 5
+    }
+  ]
+}

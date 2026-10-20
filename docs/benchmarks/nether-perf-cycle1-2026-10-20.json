@@ -1,0 +1,849 @@
+{
+  "schema": "retina.nether-performance-cycle",
+  "cycle": 1,
+  "date": "2026-10-20",
+  "status": "Instrumentation and complete-output validation ready. Quiet timing confirmation deferred by user; no speedup or regression conclusion.",
+  "reference": {
+    "revision": "58f6496be2b456a127b68682bab3b49901ec8076",
+    "native_tree": "653f5b12041a208ce841d17e09479f3ca68970f2",
+    "library_sha256": "bafc696984f3f0b66bf06163f516d5379c12283b8a65cfad57048cc70abee31c",
+    "build": "CARGO_TARGET_DIR=/tmp/retina-nether-perf-target cargo build --release --locked --manifest-path build/reference-source/native/Cargo.toml --lib",
+    "source": "git archive HEAD native .cargo; built before candidate edits"
+  },
+  "environment": {
+    "platform": "macOS-27.0.1-arm64-arm-64bit",
+    "python": "3.12.9",
+    "cpu": "Apple M4 Max",
+    "memory_bytes": 137438953472,
+    "rustc": "rustc 1.93.0 (254b59607 2026-01-19)",
+    "cargo": "cargo 1.93.0 (083ac5135 2025-12-15)",
+    "environment": {},
+    "suite_overrides": {
+      "RETINA_REGION_THREADS": "16",
+      "RETINA_PERFORMANCE_DIAGNOSTICS": "0",
+      "lighting": "enabled",
+      "compression": "zlib",
+      "readiness": "shader-ready",
+      "parallel_callers": 1
+    }
+  },
+  "manifest": {
+    "cases": [
+      {
+        "grid_width": 5,
+        "name": "nether-main",
+        "origin": [
+          -2,
+          -2
+        ],
+        "profile": "nether.json",
+        "seed": 123456789
+      },
+      {
+        "grid_width": 5,
+        "name": "nether-second-seed",
+        "origin": [
+          -2,
+          -2
+        ],
+        "profile": "nether.json",
+        "seed": 42
+      },
+      {
+        "grid_width": 5,
+        "name": "nether-custom-bounds",
+        "origin": [
+          -2,
+          -2
+        ],
+        "profile": "custom.json",
+        "seed": 123456789
+      },
+      {
+        "grid_width": 5,
+        "name": "nether-direct-stem",
+        "origin": [
+          -2,
+          -2
+        ],
+        "profile": "direct-stem.json",
+        "seed": 42
+      },
+      {
+        "grid_width": 5,
+        "name": "overworld",
+        "origin": [
+          -2,
+          -2
+        ],
+        "profile": "overworld.json",
+        "seed": 123456789
+      }
+    ],
+    "measured_regions": 20,
+    "version": 1,
+    "warmup_regions": 5
+  },
+  "evidence_root": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20",
+  "baseline": [
+    {
+      "case": "nether-main-run0",
+      "measurements": {
+        "median_ms": 16525.432333466597,
+        "p95_region_ms": 24083.549554354977,
+        "maximum_region_ms": 28025.458415970206,
+        "total_ms": 341589.69637495466,
+        "chunks_per_second": 59.95497000448048,
+        "peak_rss_bytes": 5455544320,
+        "profile_sha256": "385256a18191b411d0758e0e4bfbf9a3a330160c65150d5960c23c2a53037edd"
+      },
+      "shader_status": 4,
+      "corpus_sha256": "e4b7f9002991cc8908187055cec044a06e63c60b7b4b9db9a49c24f715eeb9df",
+      "comparisons": [],
+      "coverage": {
+        "biome_chunk_membership": {
+          "minecraft:basalt_deltas": 3694,
+          "minecraft:crimson_forest": 4259,
+          "minecraft:nether_wastes": 11813,
+          "minecraft:soul_sand_valley": 2475,
+          "minecraft:warped_forest": 454
+        },
+        "chunks": 20480,
+        "unique_structure_starts": {
+          "minecraft:bastion_remnant": 17,
+          "minecraft:fortress": 11,
+          "minecraft:nether_fossil": 156,
+          "minecraft:ruined_portal_nether": 15
+        }
+      },
+      "evidence": "reference-suite/nether-main-run0"
+    },
+    {
+      "case": "nether-second-seed-run0",
+      "measurements": {
+        "median_ms": 14329.688457888551,
+        "p95_region_ms": 17859.6998602734,
+        "maximum_region_ms": 19455.720958998427,
+        "total_ms": 296408.9649580419,
+        "chunks_per_second": 69.09372664520805,
+        "peak_rss_bytes": 5113167872,
+        "profile_sha256": "385256a18191b411d0758e0e4bfbf9a3a330160c65150d5960c23c2a53037edd"
+      },
+      "shader_status": 4,
+      "corpus_sha256": "b533c4604263d915b987702a5472be93170ca46d28e06d9363bb100c7d156029",
+      "comparisons": [],
+      "coverage": {
+        "biome_chunk_membership": {
+          "minecraft:basalt_deltas": 3451,
+          "minecraft:crimson_forest": 3879,
+          "minecraft:nether_wastes": 9924,
+          "minecraft:soul_sand_valley": 3576,
+          "minecraft:warped_forest": 1747
+        },
+        "chunks": 20480,
+        "unique_structure_starts": {
+          "minecraft:bastion_remnant": 21,
+          "minecraft:fortress": 8,
+          "minecraft:nether_fossil": 230,
+          "minecraft:ruined_portal_nether": 13
+        }
+      },
+      "evidence": "reference-suite/nether-second-seed-run0"
+    },
+    {
+      "case": "nether-custom-bounds-run0",
+      "measurements": {
+        "median_ms": 6168.154062470421,
+        "p95_region_ms": 7926.708746131045,
+        "maximum_region_ms": 9488.310750108212,
+        "total_ms": 128199.4310838636,
+        "chunks_per_second": 159.75109894678627,
+        "peak_rss_bytes": 2243969024,
+        "profile_sha256": "74bc9093952b0459ceeafaae8a4049d6c6c46067516c9f03ec0d2493e37825c0"
+      },
+      "shader_status": 4,
+      "corpus_sha256": "3940972b86f5be58b34817d1afd3edba5a4ce177a71bc30730478e0cf653b83b",
+      "comparisons": [],
+      "coverage": {
+        "biome_chunk_membership": {
+          "minecraft:warped_forest": 20480
+        },
+        "chunks": 20480,
+        "unique_structure_starts": {
+          "minecraft:bastion_remnant": 20,
+          "minecraft:fortress": 8,
+          "minecraft:ruined_portal_nether": 15
+        }
+      },
+      "evidence": "reference-suite/nether-custom-bounds-run0"
+    },
+    {
+      "case": "nether-direct-stem-run0",
+      "measurements": {
+        "median_ms": 5990.086062462069,
+        "p95_region_ms": 6297.872962546535,
+        "maximum_region_ms": 6504.21699997969,
+        "total_ms": 118662.99520782195,
+        "chunks_per_second": 172.58960945770912,
+        "peak_rss_bytes": 2282930176,
+        "profile_sha256": "74bc9093952b0459ceeafaae8a4049d6c6c46067516c9f03ec0d2493e37825c0"
+      },
+      "shader_status": 4,
+      "corpus_sha256": "21482d3d81db17dd68b9877ead04f3a911e4b9511e376587a85c01104a98eaa9",
+      "comparisons": [],
+      "coverage": {
+        "biome_chunk_membership": {
+          "minecraft:warped_forest": 20480
+        },
+        "chunks": 20480,
+        "unique_structure_starts": {
+          "minecraft:bastion_remnant": 21,
+          "minecraft:fortress": 8,
+          "minecraft:ruined_portal_nether": 13
+        }
+      },
+      "evidence": "reference-suite/nether-direct-stem-run0"
+    },
+    {
+      "case": "overworld-run0",
+      "measurements": {
+        "median_ms": 222.59010397829115,
+        "p95_region_ms": 256.9915726548061,
+        "maximum_region_ms": 263.27325007878244,
+        "total_ms": 4417.057791957632,
+        "chunks_per_second": 4636.570532830476,
+        "peak_rss_bytes": 1617985536,
+        "profile_sha256": "5a398bd02281677db81b6e70d426ab9a99a322050308e977b2a771134ded1cad"
+      },
+      "shader_status": 4,
+      "corpus_sha256": "152401e576006881a89b64b93d2b6c1d0d3ab8c2568fe0b367bfeb6835bce8ea",
+      "comparisons": [],
+      "coverage": {
+        "biome_chunk_membership": {
+          "minecraft:bamboo_jungle": 213,
+          "minecraft:beach": 4165,
+          "minecraft:birch_forest": 635,
+          "minecraft:cold_ocean": 1557,
+          "minecraft:dappled_forest": 10,
+          "minecraft:dark_forest": 265,
+          "minecraft:deep_cold_ocean": 1125,
+          "minecraft:deep_dark": 2094,
+          "minecraft:deep_frozen_ocean": 361,
+          "minecraft:deep_lukewarm_ocean": 244,
+          "minecraft:deep_ocean": 817,
+          "minecraft:desert": 185,
+          "minecraft:dripstone_caves": 3902,
+          "minecraft:flower_forest": 27,
+          "minecraft:forest": 4318,
+          "minecraft:frozen_ocean": 1146,
+          "minecraft:frozen_peaks": 23,
+          "minecraft:frozen_river": 981,
+          "minecraft:grove": 456,
+          "minecraft:ice_spikes": 16,
+          "minecraft:jagged_peaks": 73,
+          "minecraft:jungle": 504,
+          "minecraft:lukewarm_ocean": 1629,
+          "minecraft:lush_caves": 3075,
+          "minecraft:mangrove_swamp": 668,
+          "minecraft:meadow": 68,
+          "minecraft:mushroom_fields": 46,
+          "minecraft:ocean": 1387,
+          "minecraft:old_growth_birch_forest": 860,
+          "minecraft:old_growth_pine_taiga": 51,
+          "minecraft:old_growth_spruce_taiga": 53,
+          "minecraft:pale_garden": 7,
+          "minecraft:plains": 2328,
+          "minecraft:river": 3333,
+          "minecraft:savanna": 727,
+          "minecraft:savanna_plateau": 8,
+          "minecraft:snowy_beach": 1241,
+          "minecraft:snowy_plains": 1721,
+          "minecraft:snowy_slopes": 81,
+          "minecraft:snowy_taiga": 1791,
+          "minecraft:sparse_jungle": 548,
+          "minecraft:stony_shore": 1209,
+          "minecraft:sulfur_caves": 866,
+          "minecraft:sunflower_plains": 13,
+          "minecraft:swamp": 279,
+          "minecraft:taiga": 901,
+          "minecraft:warm_ocean": 197,
+          "minecraft:windswept_forest": 34,
+          "minecraft:windswept_gravelly_hills": 51,
+          "minecraft:windswept_hills": 174,
+          "minecraft:windswept_savanna": 110
+        },
+        "chunks": 20480,
+        "unique_structure_starts": {
+          "minecraft:abandoned_camp_forest": 1,
+          "minecraft:abandoned_camp_old_growth_birch_forest": 1,
+          "minecraft:abandoned_camp_savanna": 2,
+          "minecraft:abandoned_camp_snowy_taiga": 1,
+          "minecraft:ancient_city": 1,
+          "minecraft:desert_pyramid": 1,
+          "minecraft:trail_ruins": 1,
+          "minecraft:trial_chambers": 17,
+          "minecraft:village_plains": 5,
+          "minecraft:village_snowy": 1
+        }
+      },
+      "evidence": "reference-suite/overworld-run0"
+    }
+  ],
+  "candidate": {
+    "library_revision": "306692488be3277042bc10378f3e450e5958d49d",
+    "library_sha256": "dc6b82c7df03e9ce43bbf9598d812c9a4eb8ae3d5f2556c3429cc8925121ca41",
+    "evidence": [
+      "cycle1/candidate-suite/suite.json",
+      "cycle1/candidate-completion/suite.json"
+    ],
+    "timing_usable_for_regression_claims": false,
+    "runs": [
+      {
+        "case": "nether-main-run0",
+        "measurements": {
+          "median_ms": 11838.791124988347,
+          "p95_region_ms": 13637.194000487216,
+          "maximum_region_ms": 13715.19691706635,
+          "total_ms": 240750.5972920917,
+          "chunks_per_second": 85.0672863550679,
+          "peak_rss_bytes": 4982456320,
+          "profile_sha256": "385256a18191b411d0758e0e4bfbf9a3a330160c65150d5960c23c2a53037edd"
+        },
+        "shader_status": 4,
+        "corpus_sha256": "e4b7f9002991cc8908187055cec044a06e63c60b7b4b9db9a49c24f715eeb9df",
+        "comparisons": [
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/nether-main-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          }
+        ],
+        "coverage": {
+          "biome_chunk_membership": {
+            "minecraft:basalt_deltas": 3694,
+            "minecraft:crimson_forest": 4259,
+            "minecraft:nether_wastes": 11813,
+            "minecraft:soul_sand_valley": 2475,
+            "minecraft:warped_forest": 454
+          },
+          "chunks": 20480,
+          "unique_structure_starts": {
+            "minecraft:bastion_remnant": 17,
+            "minecraft:fortress": 11,
+            "minecraft:nether_fossil": 156,
+            "minecraft:ruined_portal_nether": 15
+          }
+        },
+        "evidence": "cycle1/candidate-suite/nether-main-run0"
+      },
+      {
+        "case": "nether-second-seed-run0",
+        "measurements": {
+          "median_ms": 12605.887645971961,
+          "p95_region_ms": 14461.947915249038,
+          "maximum_region_ms": 15168.780332896858,
+          "total_ms": 250595.97645909525,
+          "chunks_per_second": 81.72517487862758,
+          "peak_rss_bytes": 5416534016,
+          "profile_sha256": "385256a18191b411d0758e0e4bfbf9a3a330160c65150d5960c23c2a53037edd"
+        },
+        "shader_status": 4,
+        "corpus_sha256": "b533c4604263d915b987702a5472be93170ca46d28e06d9363bb100c7d156029",
+        "comparisons": [
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/nether-second-seed-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          }
+        ],
+        "coverage": {
+          "biome_chunk_membership": {
+            "minecraft:basalt_deltas": 3451,
+            "minecraft:crimson_forest": 3879,
+            "minecraft:nether_wastes": 9924,
+            "minecraft:soul_sand_valley": 3576,
+            "minecraft:warped_forest": 1747
+          },
+          "chunks": 20480,
+          "unique_structure_starts": {
+            "minecraft:bastion_remnant": 21,
+            "minecraft:fortress": 8,
+            "minecraft:nether_fossil": 230,
+            "minecraft:ruined_portal_nether": 13
+          }
+        },
+        "evidence": "cycle1/candidate-suite/nether-second-seed-run0"
+      },
+      {
+        "case": "nether-custom-bounds-run0",
+        "measurements": {
+          "median_ms": 6937.529916525818,
+          "p95_region_ms": 8616.282904474065,
+          "maximum_region_ms": 8796.996416058391,
+          "total_ms": 140669.21987500973,
+          "chunks_per_second": 145.58977449506938,
+          "peak_rss_bytes": 2313912320,
+          "profile_sha256": "74bc9093952b0459ceeafaae8a4049d6c6c46067516c9f03ec0d2493e37825c0"
+        },
+        "shader_status": 4,
+        "corpus_sha256": "3940972b86f5be58b34817d1afd3edba5a4ce177a71bc30730478e0cf653b83b",
+        "comparisons": [
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/nether-custom-bounds-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          }
+        ],
+        "coverage": {
+          "biome_chunk_membership": {
+            "minecraft:warped_forest": 20480
+          },
+          "chunks": 20480,
+          "unique_structure_starts": {
+            "minecraft:bastion_remnant": 20,
+            "minecraft:fortress": 8,
+            "minecraft:ruined_portal_nether": 15
+          }
+        },
+        "evidence": "cycle1/candidate-suite/nether-custom-bounds-run0"
+      },
+      {
+        "case": "nether-direct-stem-run0",
+        "measurements": {
+          "median_ms": 7504.979479475878,
+          "p95_region_ms": 7887.566145032179,
+          "maximum_region_ms": 7937.99175019376,
+          "total_ms": 149878.35212494247,
+          "chunks_per_second": 136.64414980308393,
+          "peak_rss_bytes": 2190409728,
+          "profile_sha256": "74bc9093952b0459ceeafaae8a4049d6c6c46067516c9f03ec0d2493e37825c0"
+        },
+        "shader_status": 4,
+        "corpus_sha256": "21482d3d81db17dd68b9877ead04f3a911e4b9511e376587a85c01104a98eaa9",
+        "comparisons": [
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/nether-direct-stem-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          }
+        ],
+        "coverage": {
+          "biome_chunk_membership": {
+            "minecraft:warped_forest": 20480
+          },
+          "chunks": 20480,
+          "unique_structure_starts": {
+            "minecraft:bastion_remnant": 21,
+            "minecraft:fortress": 8,
+            "minecraft:ruined_portal_nether": 13
+          }
+        },
+        "evidence": "cycle1/candidate-completion/nether-direct-stem-run0"
+      },
+      {
+        "case": "overworld-run0",
+        "measurements": {
+          "median_ms": 264.51135403476655,
+          "p95_region_ms": 341.9721545884386,
+          "maximum_region_ms": 407.27016679011285,
+          "total_ms": 5372.052917024121,
+          "chunks_per_second": 3812.322833808758,
+          "peak_rss_bytes": 2274754560,
+          "profile_sha256": "5a398bd02281677db81b6e70d426ab9a99a322050308e977b2a771134ded1cad"
+        },
+        "shader_status": 4,
+        "corpus_sha256": "152401e576006881a89b64b93d2b6c1d0d3ab8c2568fe0b367bfeb6835bce8ea",
+        "comparisons": [
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/overworld-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          }
+        ],
+        "coverage": {
+          "biome_chunk_membership": {
+            "minecraft:bamboo_jungle": 213,
+            "minecraft:beach": 4165,
+            "minecraft:birch_forest": 635,
+            "minecraft:cold_ocean": 1557,
+            "minecraft:dappled_forest": 10,
+            "minecraft:dark_forest": 265,
+            "minecraft:deep_cold_ocean": 1125,
+            "minecraft:deep_dark": 2094,
+            "minecraft:deep_frozen_ocean": 361,
+            "minecraft:deep_lukewarm_ocean": 244,
+            "minecraft:deep_ocean": 817,
+            "minecraft:desert": 185,
+            "minecraft:dripstone_caves": 3902,
+            "minecraft:flower_forest": 27,
+            "minecraft:forest": 4318,
+            "minecraft:frozen_ocean": 1146,
+            "minecraft:frozen_peaks": 23,
+            "minecraft:frozen_river": 981,
+            "minecraft:grove": 456,
+            "minecraft:ice_spikes": 16,
+            "minecraft:jagged_peaks": 73,
+            "minecraft:jungle": 504,
+            "minecraft:lukewarm_ocean": 1629,
+            "minecraft:lush_caves": 3075,
+            "minecraft:mangrove_swamp": 668,
+            "minecraft:meadow": 68,
+            "minecraft:mushroom_fields": 46,
+            "minecraft:ocean": 1387,
+            "minecraft:old_growth_birch_forest": 860,
+            "minecraft:old_growth_pine_taiga": 51,
+            "minecraft:old_growth_spruce_taiga": 53,
+            "minecraft:pale_garden": 7,
+            "minecraft:plains": 2328,
+            "minecraft:river": 3333,
+            "minecraft:savanna": 727,
+            "minecraft:savanna_plateau": 8,
+            "minecraft:snowy_beach": 1241,
+            "minecraft:snowy_plains": 1721,
+            "minecraft:snowy_slopes": 81,
+            "minecraft:snowy_taiga": 1791,
+            "minecraft:sparse_jungle": 548,
+            "minecraft:stony_shore": 1209,
+            "minecraft:sulfur_caves": 866,
+            "minecraft:sunflower_plains": 13,
+            "minecraft:swamp": 279,
+            "minecraft:taiga": 901,
+            "minecraft:warm_ocean": 197,
+            "minecraft:windswept_forest": 34,
+            "minecraft:windswept_gravelly_hills": 51,
+            "minecraft:windswept_hills": 174,
+            "minecraft:windswept_savanna": 110
+          },
+          "chunks": 20480,
+          "unique_structure_starts": {
+            "minecraft:abandoned_camp_forest": 1,
+            "minecraft:abandoned_camp_old_growth_birch_forest": 1,
+            "minecraft:abandoned_camp_savanna": 2,
+            "minecraft:abandoned_camp_snowy_taiga": 1,
+            "minecraft:ancient_city": 1,
+            "minecraft:desert_pyramid": 1,
+            "minecraft:trail_ruins": 1,
+            "minecraft:trial_chambers": 17,
+            "minecraft:village_plains": 5,
+            "minecraft:village_snowy": 1
+          }
+        },
+        "evidence": "cycle1/candidate-completion/overworld-run0"
+      }
+    ],
+    "identical_nbt_chunks": 102400,
+    "output_only_composite": "cycle1/validated-corpus/manifest.json; source directories are combined only for subsequent NBT comparison, never as a single timing run."
+  },
+  "post_merge": null,
+  "diagnostic": {
+    "seed": 123456789,
+    "coordinates": {
+      "grid_width": 3,
+      "origin_x": -2,
+      "origin_z": -2
+    },
+    "performance_diagnostics": {
+      "counters": {
+        "anchor_builds": 98555,
+        "column_builds": 16830129,
+        "column_join_nanos": 264082974,
+        "column_lock_nanos": 7070210091,
+        "column_requests": 19790374,
+        "column_tiles": 88225,
+        "dependency_evaluation_nanos": 13978291583,
+        "distribution_nanos": 78392125,
+        "final_structure_planning_nanos": 839340625,
+        "memo_builds": 106605,
+        "memo_join_nanos": 37822916912,
+        "memo_lock_nanos": 111390505946,
+        "memo_ready_hits": 42458044,
+        "memo_requests": 42565636,
+        "prefix_evaluations": 15970814,
+        "region_pool_wait_nanos": 17459,
+        "structure_builds": 10206,
+        "structure_cache_evictions": 10206,
+        "structure_cache_hits": 89935,
+        "structure_cache_misses": 10206,
+        "structure_candidates": 100141,
+        "structure_overlapping_builds": 6,
+        "structure_pending_evictions": 196,
+        "structure_plan_calls": 3888,
+        "structure_probe_points": 11074,
+        "structure_repeated_builds": 8841,
+        "structure_unique_candidates": 1365,
+        "teardown_nanos": 614654750,
+        "terrain_cache_hits": 8315,
+        "terrain_generated_chunks": 107470,
+        "terrain_generated_tiles": 1911,
+        "terrain_requests": 10226,
+        "terrain_unique_tiles": 1275
+      },
+      "enabled": true,
+      "note": "Measured-interval deltas. Unique keys are first seen during this interval, excluding warmup keys. Recursive/concurrent durations overlap.",
+      "scope": "profile lifetime; concurrent and recursive durations overlap",
+      "version": 1
+    },
+    "identical_nbt_chunks": 1024,
+    "timing_usable_for_regression_claims": false
+  },
+  "tests": {
+    "native": {
+      "passed": 110,
+      "failed": 0,
+      "ignored": 37
+    },
+    "benchmark_helpers": {
+      "passed": 10,
+      "skipped": 1,
+      "skip_reason": "optional LZ4 modules unavailable; corpus uses zlib"
+    }
+  },
+  "timing_caveat": "Runtime process observations captured sustained VM activity and CareMap node/load-test workloads during the resumed reference suite. Initial reference/candidate runs also had possible competing workloads. These timings are provisional and do not establish an instrumentation speedup or regression. Complete-output comparisons remain valid; repeat matched headline timings in a coordinated quiet window.",
+  "reference_confirmation": {
+    "library_revision": "58f6496be2b456a127b68682bab3b49901ec8076",
+    "library_sha256": "bafc696984f3f0b66bf06163f516d5379c12283b8a65cfad57048cc70abee31c",
+    "evidence": "cycle1/reference-confirmation/suite.json",
+    "timing_usable_for_regression_claims": false,
+    "runs": [
+      {
+        "case": "nether-main-run0",
+        "measurements": {
+          "median_ms": 13154.768729466014,
+          "p95_region_ms": 16521.864460455254,
+          "maximum_region_ms": 17139.610707992688,
+          "total_ms": 266589.4739169162,
+          "chunks_per_second": 76.82223794920982,
+          "peak_rss_bytes": 5155930112,
+          "profile_sha256": "385256a18191b411d0758e0e4bfbf9a3a330160c65150d5960c23c2a53037edd"
+        },
+        "shader_status": 4,
+        "corpus_sha256": "e4b7f9002991cc8908187055cec044a06e63c60b7b4b9db9a49c24f715eeb9df",
+        "comparisons": [
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/nether-main-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          }
+        ],
+        "coverage": {
+          "biome_chunk_membership": {
+            "minecraft:basalt_deltas": 3694,
+            "minecraft:crimson_forest": 4259,
+            "minecraft:nether_wastes": 11813,
+            "minecraft:soul_sand_valley": 2475,
+            "minecraft:warped_forest": 454
+          },
+          "chunks": 20480,
+          "unique_structure_starts": {
+            "minecraft:bastion_remnant": 17,
+            "minecraft:fortress": 11,
+            "minecraft:nether_fossil": 156,
+            "minecraft:ruined_portal_nether": 15
+          }
+        },
+        "evidence": "cycle1/reference-confirmation/nether-main-run0"
+      },
+      {
+        "case": "nether-second-seed-run0",
+        "measurements": {
+          "median_ms": 13385.047479532659,
+          "p95_region_ms": 16023.19923770847,
+          "maximum_region_ms": 18931.675458094105,
+          "total_ms": 278633.3820410073,
+          "chunks_per_second": 73.50160217696349,
+          "peak_rss_bytes": 5210062848,
+          "profile_sha256": "385256a18191b411d0758e0e4bfbf9a3a330160c65150d5960c23c2a53037edd"
+        },
+        "shader_status": 4,
+        "corpus_sha256": "b533c4604263d915b987702a5472be93170ca46d28e06d9363bb100c7d156029",
+        "comparisons": [
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/nether-second-seed-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          }
+        ],
+        "coverage": {
+          "biome_chunk_membership": {
+            "minecraft:basalt_deltas": 3451,
+            "minecraft:crimson_forest": 3879,
+            "minecraft:nether_wastes": 9924,
+            "minecraft:soul_sand_valley": 3576,
+            "minecraft:warped_forest": 1747
+          },
+          "chunks": 20480,
+          "unique_structure_starts": {
+            "minecraft:bastion_remnant": 21,
+            "minecraft:fortress": 8,
+            "minecraft:nether_fossil": 230,
+            "minecraft:ruined_portal_nether": 13
+          }
+        },
+        "evidence": "cycle1/reference-confirmation/nether-second-seed-run0"
+      },
+      {
+        "case": "nether-custom-bounds-run0",
+        "measurements": {
+          "median_ms": 6197.728916537017,
+          "p95_region_ms": 6756.576104427223,
+          "maximum_region_ms": 7795.084041077644,
+          "total_ms": 124670.39629095234,
+          "chunks_per_second": 164.27316034356977,
+          "peak_rss_bytes": 2211938304,
+          "profile_sha256": "74bc9093952b0459ceeafaae8a4049d6c6c46067516c9f03ec0d2493e37825c0"
+        },
+        "shader_status": 4,
+        "corpus_sha256": "3940972b86f5be58b34817d1afd3edba5a4ce177a71bc30730478e0cf653b83b",
+        "comparisons": [
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/nether-custom-bounds-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          }
+        ],
+        "coverage": {
+          "biome_chunk_membership": {
+            "minecraft:warped_forest": 20480
+          },
+          "chunks": 20480,
+          "unique_structure_starts": {
+            "minecraft:bastion_remnant": 20,
+            "minecraft:fortress": 8,
+            "minecraft:ruined_portal_nether": 15
+          }
+        },
+        "evidence": "cycle1/reference-confirmation/nether-custom-bounds-run0"
+      },
+      {
+        "case": "nether-direct-stem-run0",
+        "measurements": {
+          "median_ms": 6401.698562549427,
+          "p95_region_ms": 7070.93664171407,
+          "maximum_region_ms": 7215.519834076986,
+          "total_ms": 127380.92550006695,
+          "chunks_per_second": 160.77760402195568,
+          "peak_rss_bytes": 2285355008,
+          "profile_sha256": "74bc9093952b0459ceeafaae8a4049d6c6c46067516c9f03ec0d2493e37825c0"
+        },
+        "shader_status": 4,
+        "corpus_sha256": "21482d3d81db17dd68b9877ead04f3a911e4b9511e376587a85c01104a98eaa9",
+        "comparisons": [
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/nether-direct-stem-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          }
+        ],
+        "coverage": {
+          "biome_chunk_membership": {
+            "minecraft:warped_forest": 20480
+          },
+          "chunks": 20480,
+          "unique_structure_starts": {
+            "minecraft:bastion_remnant": 21,
+            "minecraft:fortress": 8,
+            "minecraft:ruined_portal_nether": 13
+          }
+        },
+        "evidence": "cycle1/reference-confirmation/nether-direct-stem-run0"
+      },
+      {
+        "case": "overworld-run0",
+        "measurements": {
+          "median_ms": 226.19387484155595,
+          "p95_region_ms": 261.66160703869537,
+          "maximum_region_ms": 281.5954168327153,
+          "total_ms": 4511.80454203859,
+          "chunks_per_second": 4539.2037286141895,
+          "peak_rss_bytes": 1723416576,
+          "profile_sha256": "5a398bd02281677db81b6e70d426ab9a99a322050308e977b2a771134ded1cad"
+        },
+        "shader_status": 4,
+        "corpus_sha256": "152401e576006881a89b64b93d2b6c1d0d3ab8c2568fe0b367bfeb6835bce8ea",
+        "comparisons": [
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/overworld-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          }
+        ],
+        "coverage": {
+          "biome_chunk_membership": {
+            "minecraft:bamboo_jungle": 213,
+            "minecraft:beach": 4165,
+            "minecraft:birch_forest": 635,
+            "minecraft:cold_ocean": 1557,
+            "minecraft:dappled_forest": 10,
+            "minecraft:dark_forest": 265,
+            "minecraft:deep_cold_ocean": 1125,
+            "minecraft:deep_dark": 2094,
+            "minecraft:deep_frozen_ocean": 361,
+            "minecraft:deep_lukewarm_ocean": 244,
+            "minecraft:deep_ocean": 817,
+            "minecraft:desert": 185,
+            "minecraft:dripstone_caves": 3902,
+            "minecraft:flower_forest": 27,
+            "minecraft:forest": 4318,
+            "minecraft:frozen_ocean": 1146,
+            "minecraft:frozen_peaks": 23,
+            "minecraft:frozen_river": 981,
+            "minecraft:grove": 456,
+            "minecraft:ice_spikes": 16,
+            "minecraft:jagged_peaks": 73,
+            "minecraft:jungle": 504,
+            "minecraft:lukewarm_ocean": 1629,
+            "minecraft:lush_caves": 3075,
+            "minecraft:mangrove_swamp": 668,
+            "minecraft:meadow": 68,
+            "minecraft:mushroom_fields": 46,
+            "minecraft:ocean": 1387,
+            "minecraft:old_growth_birch_forest": 860,
+            "minecraft:old_growth_pine_taiga": 51,
+            "minecraft:old_growth_spruce_taiga": 53,
+            "minecraft:pale_garden": 7,
+            "minecraft:plains": 2328,
+            "minecraft:river": 3333,
+            "minecraft:savanna": 727,
+            "minecraft:savanna_plateau": 8,
+            "minecraft:snowy_beach": 1241,
+            "minecraft:snowy_plains": 1721,
+            "minecraft:snowy_slopes": 81,
+            "minecraft:snowy_taiga": 1791,
+            "minecraft:sparse_jungle": 548,
+            "minecraft:stony_shore": 1209,
+            "minecraft:sulfur_caves": 866,
+            "minecraft:sunflower_plains": 13,
+            "minecraft:swamp": 279,
+            "minecraft:taiga": 901,
+            "minecraft:warm_ocean": 197,
+            "minecraft:windswept_forest": 34,
+            "minecraft:windswept_gravelly_hills": 51,
+            "minecraft:windswept_hills": 174,
+            "minecraft:windswept_savanna": 110
+          },
+          "chunks": 20480,
+          "unique_structure_starts": {
+            "minecraft:abandoned_camp_forest": 1,
+            "minecraft:abandoned_camp_old_growth_birch_forest": 1,
+            "minecraft:abandoned_camp_savanna": 2,
+            "minecraft:abandoned_camp_snowy_taiga": 1,
+            "minecraft:ancient_city": 1,
+            "minecraft:desert_pyramid": 1,
+            "minecraft:trail_ruins": 1,
+            "minecraft:trial_chambers": 17,
+            "minecraft:village_plains": 5,
+            "minecraft:village_snowy": 1
+          }
+        },
+        "evidence": "cycle1/reference-confirmation/overworld-run0"
+      }
+    ],
+    "identical_nbt_chunks": 102400
+  },
+  "timing_confirmation": {
+    "status": "Deferred by user: Keep working; leave timing confirmation until later.",
+    "required_before_goal_completion": true,
+    "reason": "Observed competing workloads; preserve measurements without attributing differences to code.",
+    "pending": "Repeated matched baseline/candidate and Overworld runs in a quiet window."
+  }
+}

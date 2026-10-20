@@ -62,6 +62,7 @@ impl Default for Snapshot {
     }
 }
 pub struct Timings {
+    pub(crate) performance: crate::performance::Metrics,
     chunks: AtomicU64,
     gpu_columns: AtomicU64,
     gpu_jobs: AtomicU64,
@@ -71,6 +72,7 @@ pub struct Timings {
 impl Default for Timings {
     fn default() -> Self {
         Self {
+            performance: crate::performance::Metrics::default(),
             chunks: AtomicU64::new(0),
             gpu_columns: AtomicU64::new(0),
             gpu_jobs: AtomicU64::new(0),

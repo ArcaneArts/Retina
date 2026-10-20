@@ -10,6 +10,8 @@ pub struct Planning {
     pub dependency_anchors: u64,
     pub dependency_column_tiles: u64,
     pub dependency_terrain_tiles: u64,
+    pub final_structure_wall_nanos: u64,
+    pub teardown_wall_nanos: u64,
     pub anchors_wall_nanos: u64,
     pub count_expansion_wall_nanos: u64,
     pub sampling_wall_nanos: u64,
