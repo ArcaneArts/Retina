@@ -111,10 +111,15 @@ pub(crate) enum Channel<'a> {
 pub(crate) struct ChunkLight<'a> {
     bytes: &'a [u8],
     descriptors: Option<&'a [u32]>,
+    pub(crate) palettes: Option<super::palettes::ChunkPalettes<'a>>,
 }
 impl<'a> ChunkLight<'a> {
     pub(super) fn new(bytes: &'a [u8], descriptors: Option<&'a [u32]>) -> Self {
-        Self { bytes, descriptors }
+        Self {
+            bytes,
+            descriptors,
+            palettes: None,
+        }
     }
     pub(crate) fn section(self, section: usize) -> [Channel<'a>; 2] {
         std::array::from_fn(|channel| {

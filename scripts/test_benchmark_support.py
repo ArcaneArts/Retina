@@ -5,7 +5,7 @@ from pathlib import Path
 import sys
 
 sys.path.insert(0, str(Path(__file__).parent))
-from benchmark_support import compare_corpora, first_difference, mca_records, percentile, lz4_block_stream
+from benchmark_support import compare_corpora, decode_nbt, first_difference, mca_records, percentile, lz4_block_stream
 
 
 def fixture(records):
@@ -24,6 +24,28 @@ def fixture(records):
 
 
 class BenchmarkSupportTest(unittest.TestCase):
+    @staticmethod
+    def chunk_nbt(y):
+        return (b"\x0a\x00\x00\x03\x00\x0bDataVersion\x00\x00\x00\x2a"
+                b"\x09\x00\x08sections\x0a\x00\x00\x00\x01\x01\x00\x01Y"
+                + bytes([y & 255]) + b"\x08\x00\x04name\x00\x05stone\x00\x00")
+
+    def test_decode_reads_named_compounds_in_stream_order(self):
+        data = self.chunk_nbt(-2)
+        self.assertEqual({"": {"DataVersion": 42, "sections": [{"Y": -2, "name": "stone"}]}}, decode_nbt(data))
+        for broken in [data[:-1], data + b"\x00"]:
+            with self.assertRaises(ValueError):
+                decode_nbt(broken)
+
+    def test_changed_nbt_reports_the_decoded_field(self):
+        with tempfile.TemporaryDirectory() as directory:
+            old, new = Path(directory) / "old", Path(directory) / "new"
+            old.mkdir(); new.mkdir()
+            (old / "0.mca").write_bytes(fixture({0: self.chunk_nbt(-2)}))
+            (new / "0.mca").write_bytes(fixture({0: self.chunk_nbt(-1)}))
+            with self.assertRaisesRegex(AssertionError, r"sections\[0\]\.Y: -2 != -1"):
+                compare_corpora(old, new, ["0"])
+
     def test_lz4_blocks_and_integrity(self):
         try:
             import lz4.block

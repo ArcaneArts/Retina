@@ -1,5 +1,7 @@
 //! Final-block GPU lighting. The outer MCA ring is input only, never marked lit.
 mod output;
+mod palettes;
+pub(crate) use palettes::Section as PaletteSection;
 mod transport;
 pub(crate) use output::{Channel, ChunkLight};
 use serde::Deserialize;
@@ -40,6 +42,14 @@ fn compact_transport(selected: Option<&str>, backend: &str) -> bool {
     }
 }
 
+fn section_palettes_enabled(selected: Option<&str>, backend: &str) -> bool {
+    match selected {
+        Some("0") => false,
+        Some("1") => true,
+        _ => backend.starts_with("Metal:"),
+    }
+}
+
 pub(crate) struct Gpu {
     device: wgpu::Device,
     queue: wgpu::Queue,
@@ -50,6 +60,7 @@ pub(crate) struct Gpu {
     buffers: Option<Buffers>,
     compact_input: bool,
     compact_output: bool,
+    section_palettes: bool,
 }
 struct Pipelines {
     layout: wgpu::BindGroupLayout,
@@ -59,6 +70,7 @@ struct Pipelines {
     args: wgpu::ComputePipeline,
     sparse: wgpu::ComputePipeline,
     pack: wgpu::ComputePipeline,
+    palettes: wgpu::ComputePipeline,
 }
 struct Timing {
     queries: wgpu::QuerySet,
@@ -88,6 +100,7 @@ struct Pending {
     size: u64,
     upload: u64,
     layout: Option<output::Layout>,
+    palettes: Option<(usize, palettes::Layout)>,
 }
 impl Pending {
     fn finish(
@@ -131,6 +144,7 @@ impl Pending {
             device_nanos,
             upload: self.upload,
             layout: self.layout.take(),
+            palettes: self.palettes.take(),
         })
     }
 }
@@ -143,6 +157,7 @@ pub(crate) struct ResultLight {
     pub device_nanos: Option<[u64; 3]>,
     pub upload: u64,
     layout: Option<output::Layout>,
+    palettes: Option<(usize, palettes::Layout)>,
 }
 impl Gpu {
     pub(crate) fn new(device: wgpu::Device, queue: wgpu::Queue, backend: &str) -> Self {
@@ -160,6 +175,10 @@ impl Gpu {
             ),
             compact_input: compact_transport(
                 std::env::var("RETINA_LIGHTING_INPUT").ok().as_deref(),
+                backend,
+            ),
+            section_palettes: section_palettes_enabled(
+                std::env::var("RETINA_GPU_PALETTES").ok().as_deref(),
                 backend,
             ),
         }
@@ -222,6 +241,7 @@ impl Gpu {
             args: pipeline("dispatch_args"),
             sparse: pipeline("spread_sparse"),
             pack: pipeline("pack"),
+            palettes: pipeline("section_palettes"),
             layout,
         });
     }
@@ -317,6 +337,7 @@ impl Gpu {
                 true,
                 format,
                 None,
+                None,
             )
         } else {
             self.submit_payload(
@@ -329,6 +350,7 @@ impl Gpu {
                 bytemuck::cast_slice(blocks),
                 false,
                 format,
+                None,
                 None,
             )
         }
@@ -345,6 +367,7 @@ impl Gpu {
         compact: bool,
         format: OutputFormat,
         layout: Option<output::Layout>,
+        palettes: Option<palettes::Layout>,
     ) -> Result<Pending, String> {
         self.prepare();
         let mut upload = 0;
@@ -377,20 +400,26 @@ impl Gpu {
         let layout_bytes: &[u8] = layout
             .as_ref()
             .map_or(&[], |v| bytemuck::cast_slice(&v.source_channels));
+        let palette_sources: &[u8] = palettes
+            .as_ref()
+            .map_or(&[], |v| bytemuck::cast_slice(&v.sources));
+        let light_bytes = layout.as_ref().map_or(dense_output, |v| v.bytes as u64);
+        let palette_bytes = palettes.as_ref().map_or(0, |v| v.bytes() as u64);
+        let output_maximum = dense_output + palette_bytes;
         let sizes = [
-            (blocks.len() + layout_bytes.len()) as u64,
+            (blocks.len() + layout_bytes.len() + palette_sources.len()) as u64,
             voxels,
-            layout.as_ref().map_or(dense_output, |v| v.bytes as u64),
+            light_bytes + palette_bytes,
             bricks as u64 * 4,
         ];
         // Compact input/output sizes vary between tiles. Grow them independently
         // while the lighting frontiers fit. Geometric capacity avoids repeated
-        // reallocations; output capacity never exceeds the dense representation.
+        // reallocations; output is bounded by dense light plus palette records.
         let input_capacity = sizes[0]
             .next_power_of_two()
             .min(self.device.limits().max_storage_buffer_binding_size as u64)
             .max(sizes[0]);
-        let output_capacity = sizes[2].next_power_of_two().min(dense_output).max(sizes[2]);
+        let output_capacity = sizes[2].next_power_of_two().min(output_maximum).max(sizes[2]);
         if let Some(buffers) = &mut self.buffers {
             if buffers.capacities[1] >= sizes[1] && buffers.capacities[3] >= sizes[3] {
                 for (index, capacity, buffer, label, usage) in [
@@ -492,7 +521,7 @@ impl Gpu {
             // invalidates every profile's cached pair.
             self.bind_groups.clear();
         }
-        let slot = self.readback(sizes[2], dense_output);
+        let slot = self.readback(sizes[2], output_maximum);
         let buffers = self.buffers.as_ref().unwrap();
         let pipelines = self.pipelines.as_ref().unwrap();
         let bind_groups = self.bind_groups.entry(handle).or_insert_with(|| {
@@ -544,8 +573,8 @@ impl Gpu {
             layout
                 .as_ref()
                 .map_or(0, |v| v.source_channels.len() as u32),
-            0,
-            0,
+            ((blocks.len() + layout_bytes.len()) / 4) as u32,
+            (light_bytes / 4) as u32,
         ];
         self.queue
             .write_buffer(&buffers.params, 0, bytemuck::cast_slice(&params));
@@ -553,6 +582,13 @@ impl Gpu {
         if !layout_bytes.is_empty() {
             self.queue
                 .write_buffer(&buffers.blocks, blocks.len() as u64, layout_bytes);
+        }
+        if !palette_sources.is_empty() {
+            self.queue.write_buffer(
+                &buffers.blocks,
+                (blocks.len() + layout_bytes.len()) as u64,
+                palette_sources,
+            );
         }
         upload += sizes[0] + 48;
         let queries = slot.timing.as_ref().map(|t| &t.queries);
@@ -639,11 +675,34 @@ impl Gpu {
         {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
                 label: Some("Retina pack interior light"),
-                timestamp_writes: writes(2),
+                timestamp_writes: if palette_bytes > 0 {
+                    queries.map(|q| wgpu::ComputePassTimestampWrites {
+                        query_set: q,
+                        beginning_of_pass_write_index: Some(4),
+                        end_of_pass_write_index: None,
+                    })
+                } else {
+                    writes(2)
+                },
             });
             pass.set_pipeline(&pipelines.pack);
             pass.set_bind_group(0, ba, &[]);
-            pass.dispatch_workgroups(256, (sizes[2] as u32 / 4).div_ceil(16384), 1);
+            pass.dispatch_workgroups(256, (light_bytes as u32 / 4).div_ceil(16384), 1);
+        }
+        if let Some(layout) = &palettes {
+            if !layout.sources.is_empty() {
+                let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                    label: Some("Retina final section palettes"),
+                    timestamp_writes: queries.map(|q| wgpu::ComputePassTimestampWrites {
+                        query_set: q,
+                        beginning_of_pass_write_index: None,
+                        end_of_pass_write_index: Some(5),
+                    }),
+                });
+                pass.set_pipeline(&pipelines.palettes);
+                pass.set_bind_group(0, ba, &[]);
+                pass.dispatch_workgroups(layout.sources.len() as u32, 1, 1);
+            }
         }
         encoder.copy_buffer_to_buffer(&buffers.output, 0, &slot.buffer, 0, sizes[2]);
         if let (Some(q), Some((resolve, readback))) = (queries, &times) {
@@ -664,6 +723,7 @@ impl Gpu {
             size: sizes[2],
             upload,
             layout,
+            palettes: palettes.map(|layout| (light_bytes as usize, layout)),
         })
     }
     fn complete(&mut self, mut pending: Pending) -> Result<ResultLight, String> {
@@ -686,10 +746,11 @@ pub(crate) struct Tile {
     pub bytes: Vec<u8>,
     pub chunk_bytes: usize,
     layout: Option<output::Layout>,
+    palettes: Option<(usize, palettes::Layout)>,
 }
 impl Tile {
     pub(crate) fn chunk(&self, index: usize) -> ChunkLight<'_> {
-        if let Some(layout) = &self.layout {
+        let mut result = if let Some(layout) = &self.layout {
             let count = self.chunk_bytes / 2048;
             ChunkLight::new(
                 &self.bytes,
@@ -700,7 +761,15 @@ impl Tile {
                 &self.bytes[index * self.chunk_bytes..(index + 1) * self.chunk_bytes],
                 None,
             )
+        };
+        if let Some((offset, layout)) = &self.palettes {
+            let sections = self.chunk_bytes / 4096 - 2;
+            result.palettes = Some(palettes::ChunkPalettes {
+                bytes: &self.bytes[*offset..],
+                descriptors: &layout.descriptors[index * sections..(index + 1) * sections],
+            });
         }
+        result
     }
 }
 
@@ -731,10 +800,11 @@ pub(crate) fn region(
     let queue = gpu.queue.clone();
     let compact = gpu.compact_input && request.height % 16 == 0;
     let compact_output = gpu.compact_output && request.height % 16 == 0;
+    let gpu_palettes = gpu.section_palettes;
     drop(gpu);
     // Classify final sections once per region, including the input-only ring.
     // Overlapping tiles reuse these facts instead of rescanning their halos.
-    let descriptors: Vec<_> = if compact || compact_output {
+    let descriptors: Vec<_> = if compact || compact_output || gpu_palettes {
         chunks.iter().map(|b| transport::classify(b)).collect()
     } else {
         Vec::new()
@@ -777,6 +847,13 @@ pub(crate) fn region(
             let layout = constants.as_ref().map(|c| {
                 c.tile((0..core).flat_map(|z| (0..core).map(move |x| (cz + z) * 32 + cx + x)))
             });
+            let palette_layout = gpu_palettes.then(|| {
+                let materials: Vec<_> = (cz - 1..cz + core + 1)
+                    .flat_map(|z| (cx - 1..cx + core + 1).map(move |x| z * 32 + x))
+                    .map(|i| descriptors[i].clone())
+                    .collect();
+                palettes::Layout::new(&materials, core + 2, 1, core)
+            });
             let pending = engine
                 .light_gpu
                 .lock()
@@ -792,6 +869,7 @@ pub(crate) fn region(
                     compact,
                     OutputFormat::Sections,
                     layout,
+                    palette_layout,
                 )?;
             flights.push_back((cx, cz, pending));
         }
@@ -830,6 +908,7 @@ pub(crate) fn region(
             bytes: result.bytes,
             chunk_bytes: count,
             layout: result.layout,
+            palettes: result.palettes,
         })?;
         consuming += consuming_start.elapsed();
     }
@@ -857,7 +936,18 @@ mod tests {
         assert!(compact_transport(Some("compact"), "Vulkan: GPU"));
     }
 
-    fn fixture_profile(sky: bool) -> Profile {
+    #[test]
+    fn palette_defaults_and_cpu_override_follow_measured_backend() {
+        for selected in [None, Some("unknown")] {
+            assert!(section_palettes_enabled(selected, "Metal: Apple M4 Max"));
+            assert!(!section_palettes_enabled(selected, "Vulkan: GPU"));
+            assert!(!section_palettes_enabled(selected, "Dx12: GPU"));
+        }
+        assert!(!section_palettes_enabled(Some("0"), "Metal: Apple M4 Max"));
+        assert!(section_palettes_enabled(Some("1"), "Vulkan: GPU"));
+    }
+
+    pub(super) fn fixture_profile(sky: bool) -> Profile {
         let mut states = vec![[0; 8]; 4];
         states[1][0] = 15; // opaque
         states[2][0] = 240; // emitter
@@ -1083,6 +1173,7 @@ mod tests {
                             false,
                             OutputFormat::Sections,
                             Some(layout),
+                            None,
                         )
                         .unwrap();
                     pending.push((flight, expected, core, (height as usize + 32) * 256));
@@ -1096,6 +1187,7 @@ mod tests {
                                 bytes: result.bytes,
                                 chunk_bytes,
                                 layout: result.layout,
+                                palettes: result.palettes,
                             };
                             let actual: Vec<_> = (0..core * core)
                                 .flat_map(|i| tile.chunk(i).expanded(chunk_bytes / 4096))
@@ -1327,3 +1419,6 @@ mod tests {
         }
     }
 }
+
+#[cfg(test)]
+mod palette_tests;

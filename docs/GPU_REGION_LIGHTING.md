@@ -32,6 +32,12 @@ one byte per voxel of light data. Region output
 contains section-ordered Minecraft nibble arrays; diagnostic volumes keep their
 interleaved block/sky bytes. Noise data is not read back for CPU lighting.
 
+On Metal, the final materials also feed [GPU section palettes](GPU_SECTION_PALETTES.md).
+Eligible mixed sections return exact palette IDs and packed block data alongside
+light; uniform sections reuse existing classification. Large palettes fall back
+to CPU encoding. This adds readback and device work while reducing NBT CPU scans.
+The F3 device row is labeled `Light / block packing` to cover both operations.
+
 ## GPU solve and Minecraft handoff
 
 The compute shader seeds emissions and direct sky columns, and classifies 8×8×8

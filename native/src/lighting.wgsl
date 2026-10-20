@@ -237,3 +237,99 @@ fn nibbles(word: u32) -> u32 {
     return (word & 15u) | ((word >> 4u) & 240u)
         | ((word >> 8u) & 3840u) | ((word >> 12u) & 61440u);
 }
+
+// Bounded palettization: one workgroup per mixed final section.
+// Entries pair the exact material ID with its lowest block index. Sorting by
+// that index reproduces Rust's first-occurrence palette, regardless of races.
+var<workgroup> palette_keys: array<atomic<u32>, 128>;
+var<workgroup> palette_ranks: array<u32, 128>;
+var<workgroup> palette_count: atomic<u32>;
+var<workgroup> palette_failed: atomic<u32>;
+
+fn palette_hash(material: u32) -> u32 { return (material * 2654435761u) & 127u; }
+fn palette_material(section: u32, index: u32) -> u32 {
+    return (material_word(section * 2048u + index / 2u) >> ((index % 2u) * 16u)) & 65535u;
+}
+fn palette_index(material: u32) -> u32 {
+    var slot = palette_hash(material);
+    for (var probe = 0u; probe < 128u; probe++) {
+        if (atomicLoad(&palette_keys[slot]) >> 16u) == material { return palette_ranks[slot]; }
+        slot = (slot + 1u) & 127u;
+    }
+    return 0u;
+}
+fn palette_big_endian(word: u32) -> u32 {
+    return (word << 24u) | ((word & 0xff00u) << 8u)
+        | ((word >> 8u) & 0xff00u) | (word >> 24u);
+}
+
+@compute @workgroup_size(64)
+fn section_palettes(@builtin(workgroup_id) group: vec3<u32>,
+                    @builtin(local_invocation_index) lane: u32) {
+    for (var i = lane; i < 128u; i += 64u) { atomicStore(&palette_keys[i], 0xffffffffu); }
+    if lane == 0u { atomicStore(&palette_count, 0u); atomicStore(&palette_failed, 0u); }
+    workgroupBarrier();
+    let section = blocks[p.padding1 + group.x];
+    let out = p.padding2 + group.x * 717u;
+    for (var index = lane; index < 4096u; index += 64u) {
+        if atomicLoad(&palette_failed) != 0u { break; }
+        let material = palette_material(section, index);
+        let entry = (material << 16u) | index;
+        var slot = palette_hash(material);
+        var inserted = false;
+        // Bound retries as well as occupancy. Any incomplete hash table routes
+        // the entire section to the exact CPU encoder; no partial palette wins.
+        for (var probe = 0u; probe < 512u; probe++) {
+            let old = atomicLoad(&palette_keys[slot]);
+            if old == 0xffffffffu {
+                let result = atomicCompareExchangeWeak(&palette_keys[slot], old, entry);
+                if result.exchanged {
+                    if atomicAdd(&palette_count, 1u) >= 32u { atomicStore(&palette_failed, 1u); }
+                    inserted = true;
+                    break;
+                }
+            } else if (old >> 16u) == material {
+                atomicMin(&palette_keys[slot], entry);
+                inserted = true;
+                break;
+            } else {
+                slot = (slot + 1u) & 127u;
+            }
+        }
+        if !inserted { atomicStore(&palette_failed, 1u); }
+    }
+    workgroupBarrier();
+    let count = atomicLoad(&palette_count);
+    let valid = atomicLoad(&palette_failed) == 0u && count > 0u && count <= 32u;
+    if lane == 0u { output[out] = select(0u, count, valid); }
+    if valid {
+        for (var slot = lane; slot < 128u; slot += 64u) {
+            let entry = atomicLoad(&palette_keys[slot]);
+            if entry == 0xffffffffu { continue; }
+            var rank = 0u;
+            for (var other = 0u; other < 128u; other++) {
+                rank += select(0u, 1u, (atomicLoad(&palette_keys[other]) & 65535u) < (entry & 65535u));
+            }
+            palette_ranks[slot] = rank;
+            output[out + 1u + rank] = entry >> 16u;
+        }
+    }
+    workgroupBarrier();
+    if !valid { return; }
+    let bits = max(4u, 32u - countLeadingZeros(count - 1u));
+    let per_long = 64u / bits;
+    let longs = (4096u + per_long - 1u) / per_long;
+    for (var word = lane; word < longs; word += 64u) {
+        var low = 0u; var high = 0u;
+        for (var i = 0u; i < per_long && word * per_long + i < 4096u; i++) {
+            let value = palette_index(palette_material(section, word * per_long + i));
+            let shift = i * bits;
+            if shift < 32u {
+                low |= value << shift;
+                if shift > 32u - bits { high |= value >> (32u - shift); }
+            } else { high |= value << (shift - 32u); }
+        }
+        output[out + 33u + word * 2u] = palette_big_endian(high);
+        output[out + 34u + word * 2u] = palette_big_endian(low);
+    }
+}

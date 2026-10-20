@@ -72,7 +72,7 @@ public final class TerrainDebugReport {
                 if(stats.regionStages().lightingMeasured()) {
                     lines.add(share(GPU,"Lighting: sky / sources",stats.regionStagePercent(LIGHT_SKY),false));
                     lines.add(share(GPU,"Lighting: propagation",stats.regionStagePercent(LIGHT_SPREAD),false));
-                    lines.add(share(GPU,"Lighting: packing",stats.regionStagePercent(LIGHT_PACK),false));
+                    lines.add(share(GPU,"Light / block packing",stats.regionStagePercent(LIGHT_PACK),false));
                 }}
             else lines.add(LABEL+"Device timestamps unavailable");
         } else if(!mca && stats.stages().chunks()>0) {

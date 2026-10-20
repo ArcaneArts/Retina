@@ -891,22 +891,52 @@ fn encode_chunk(
         nbt.compound("block_states");
         if let Some(profile) = profile {
             let values = &blocks[section as usize * 4096..(section as usize + 1) * 4096];
-            palette.build_with_indices::<false>(values, profile.materials.len());
-            occupied.push(
-                palette.palette.len() != 1
-                    || profile.heightmap_masks[palette.palette[0] as usize] != 0,
-            );
-            nbt.list("palette", 10, palette.palette.len());
-            for &id in &palette.palette {
-                nbt.0.extend_from_slice(&profile.material_nbt[id as usize]);
-            }
-            if palette.palette.len() > 1 {
-                nbt.packed_palette(
-                    "data",
-                    values,
-                    &palette.lookup,
-                    palette_bits(palette.palette.len()).max(4),
-                );
+            match lighting
+                .and_then(|l| l.palettes)
+                .and_then(|p| p.section(section as usize))
+            {
+                Some(crate::lighting::PaletteSection::Uniform(id)) => {
+                    occupied.push(profile.heightmap_masks[id as usize] != 0);
+                    nbt.list("palette", 10, 1);
+                    nbt.0.extend_from_slice(&profile.material_nbt[id as usize]);
+                }
+                Some(crate::lighting::PaletteSection::Packed {
+                    palette: ids,
+                    data,
+                }) => {
+                    let count = ids.len() / 4;
+                    let first = u32::from_le_bytes(ids[..4].try_into().unwrap()) as usize;
+                    occupied.push(count > 1 || profile.heightmap_masks[first] != 0);
+                    nbt.list("palette", 10, count);
+                    for id in ids.chunks_exact(4) {
+                        let id = u32::from_le_bytes(id.try_into().unwrap()) as usize;
+                        nbt.0.extend_from_slice(&profile.material_nbt[id]);
+                    }
+                    if count > 1 {
+                        nbt.named(12, "data");
+                        nbt.0.extend_from_slice(&((data.len() / 8) as i32).to_be_bytes());
+                        nbt.0.extend_from_slice(data);
+                    }
+                }
+                None => {
+                    palette.build_with_indices::<false>(values, profile.materials.len());
+                    occupied.push(
+                        palette.palette.len() != 1
+                            || profile.heightmap_masks[palette.palette[0] as usize] != 0,
+                    );
+                    nbt.list("palette", 10, palette.palette.len());
+                    for &id in &palette.palette {
+                        nbt.0.extend_from_slice(&profile.material_nbt[id as usize]);
+                    }
+                    if palette.palette.len() > 1 {
+                        nbt.packed_palette(
+                            "data",
+                            values,
+                            &palette.lookup,
+                            palette_bits(palette.palette.len()).max(4),
+                        );
+                    }
+                }
             }
             nbt.end();
             nbt.compound("biomes");
