@@ -495,8 +495,23 @@ tasks.register('datapackTest', JavaExec) {
     mainClass = 'art.arcane.retina.worldgen.NativeDatapackIntegrationTest'
     javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
     jvmArgs '--enable-native-access=ALL-UNNAMED'
+    // Optional process-sized phases retain every assertion in the default all run.
+    systemProperty 'retina.datapack.test.phase', providers.gradleProperty('testDatapackPhase').getOrElse('all')
     args providers.gradleProperty('testDatapack').getOrElse('run/datapacks/Terralith.zip')
     if (providers.gradleProperty('testSupplement').isPresent()) args providers.gradleProperty('testSupplement').get()
+}
+
+tasks.register('datapackProgramTest', JavaExec) {
+    group = 'verification'
+    description = 'Compare specialized/interpreted GPU programs using a previously Minecraft-exported profile.'
+    dependsOn 'gpuTestClasses'
+    classpath = sourceSets.gpuTest.runtimeClasspath
+    mainClass = 'art.arcane.retina.worldgen.RegistryProgramIntegrationChecks'
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
+    jvmArgs '--enable-native-access=ALL-UNNAMED', '-XX:ActiveProcessorCount=2'
+    if (providers.gradleProperty('retinaNativePath').isPresent())
+        systemProperty 'retina.native.path', providers.gradleProperty('retinaNativePath').get()
+    args providers.gradleProperty('testProgramProfile').getOrElse('build/terralith-profile.json')
 }
 
 tasks.register('structureTest', JavaExec) {

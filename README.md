@@ -404,8 +404,19 @@ is unchanged. Cache storage shares the existing retained-state budget.
 was implemented and rejected after repeated vanilla throughput regressions;
 the existing evaluator remains in production. Ordered-plan benchmark exports
 now include tick IDs as well as block writes.
-The [ongoing optimization tracker](docs/POST_INVESTIGATION_OPTIMIZATIONS.md)
-separates shipped improvements from tested, rejected experiments.
+The [post-investigation integration report](docs/POST_INVESTIGATION_INTEGRATION.md)
+checks the combined retained changes with two reversed-order eight-caller pairs.
+Vanilla throughput improves **3.1–6.1%**; Terralith is **−2.4% / +4.2%**, so its
+combined throughput result is inconclusive. NBT worker time is approximately
+halved. Logical transfers increase by about 23 MiB/region for GPU palettes,
+and peak process memory varies in both directions. These current-source
+counterfactual comparisons use normal optimization-level-3/thin-LTO builds and
+are separate from the earlier table and individual component measurements.
+The final audit includes 40,960 complete NBT comparisons, exact ordered plans,
+current lifecycle tests, and explicit deadline limits for the full Terralith
+specialization/analytic-shore checks.
+The [completed workstream tracker](docs/POST_INVESTIGATION_OPTIMIZATIONS.md)
+separates shipped improvements from implemented, tested rejections.
 
 The [cycle tracker](docs/OPTIMIZATION_CYCLES_2026_10.md) also records experiments
 that were not enabled: [material arenas](docs/MATERIAL_ARENA_TRIAL.md),

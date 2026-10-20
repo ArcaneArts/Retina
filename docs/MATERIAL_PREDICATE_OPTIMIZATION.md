@@ -1,5 +1,8 @@
 # Compiled material predicate lookups
 
+Final status: see the [combined integration audit](POST_INVESTIGATION_INTEGRATION.md).
+References below to remaining goal work describe this cycle’s historical state.
+
 The post-investigation optimization cycle replaces repeated binary searches in
 CPU placement predicates with immutable compiled membership checks. Empty and
 one-to-four-state sets use direct comparisons. Larger, sufficiently dense sets

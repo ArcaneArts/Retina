@@ -1,5 +1,8 @@
 # Bounded decoration batches and substrate reuse
 
+Final status: see the [combined integration audit](POST_INVESTIGATION_INTEGRATION.md).
+References below to remaining goal work describe this cycle’s historical state.
+
 The legacy decoration replay planner now admits at most 512 anchors at a time
 on Metal when the loaded profile has an eligible GPU vine program. It reuses
 one immutable vine substrate between those batches. Two reversed-order

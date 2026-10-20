@@ -1,5 +1,8 @@
 # Compact GPU placement continuations
 
+Final status: see the [combined integration audit](POST_INVESTIGATION_INTEGRATION.md).
+References below to remaining goal work describe this cycle’s historical state.
+
 Pending supported vine groups now retain a seed/origin descriptor instead of
 their expanded CPU queue. The dense Terralith planner fixture retains **29.6 MiB
 instead of 64.0 MiB**, evaluates **2.43 million instead of 4.80 million** CPU

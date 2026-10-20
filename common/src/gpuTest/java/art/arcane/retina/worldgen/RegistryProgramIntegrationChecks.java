@@ -5,9 +5,16 @@ import java.util.Arrays;
 import java.util.concurrent.*;
 
 /** Forces a real compile, then compares full column/quart outputs on the GPU. */
-final class RegistryProgramIntegrationChecks {
+public final class RegistryProgramIntegrationChecks {
+    /** Reuse a Minecraft-exported profile when registry loading consumes the test deadline. */
+    public static void main(String[] args) throws Exception {
+        checkJson(java.nio.file.Files.readString(java.nio.file.Path.of(args[0])));
+    }
     static void check(BiomeTerrainProfile profile) throws Exception {
-        var data=JsonParser.parseString(profile.json()).getAsJsonObject();
+        checkJson(profile.json());
+    }
+    private static void checkJson(String json) throws Exception {
+        var data=JsonParser.parseString(json).getAsJsonObject();
         var nativeTerrain=NativeTerrain.instance();
         data.addProperty("program_execution","interpreter");int reference=nativeTerrain.registerProfile(data.toString());
         data.addProperty("program_execution","specialized");int compiled=nativeTerrain.registerProfile(data.toString());
@@ -31,7 +38,7 @@ final class RegistryProgramIntegrationChecks {
         }
         var diagnostics=nativeTerrain.gpuDiagnostics(compiled);
         require((diagnostics.status()==2 || diagnostics.status()==4) && diagnostics.compileNanos()>0 && diagnostics.emittedNodes()>0,"actual compiled DAGs serve the selected stages");
-        System.out.println("QA_EVT {\"event\":\"gpu_program_specialization_parity\",\"status\":\"pass\",\"context\":{\"chunks\":24,\"seeds\":3,\"biomes\":"+profile.biomes().size()+",\"nodes\":"+diagnostics.nodes()+",\"emitted\":"+diagnostics.emittedNodes()+"}}");
+        System.out.println("QA_EVT {\"event\":\"gpu_program_specialization_parity\",\"status\":\"pass\",\"context\":{\"chunks\":24,\"seeds\":3,\"biomes\":"+data.getAsJsonArray("biomes").size()+",\"nodes\":"+diagnostics.nodes()+",\"emitted\":"+diagnostics.emittedNodes()+"}}");
     }
     private static void require(boolean condition,String message){if(!condition)throw new AssertionError(message);}
 }
