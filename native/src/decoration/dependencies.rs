@@ -244,6 +244,7 @@ struct Planner<'a> {
     metrics: Arc<crate::timings::Timings>,
     retain_prefix: bool,
     columns: Mutex<Map<(usize, i32, i32), Arc<ColumnTile>>>,
+    ready_columns: Map<(usize, i32, i32), Arc<ColumnTile>>,
     error: Mutex<Option<String>>,
 }
 struct View<'a, 'b> {
@@ -340,6 +341,13 @@ impl Planner<'_> {
                 .ok_or("unfinished dependency at root completion")??;
             self.ready.insert(key, output);
         }
+        // Existing tile slots are OnceLocks; the map itself becomes immutable
+        // between root barriers, including slots first needed by later roots.
+        self.ready_columns.extend(std::mem::take(
+            self.columns
+                .get_mut()
+                .map_err(|_| "column dependency cache poisoned")?,
+        ));
         let mut completed = CompletedRoot {
             anchors: Vec::with_capacity(targets.len()),
             columns: Map::default(),
@@ -604,19 +612,24 @@ impl Planner<'_> {
                 return self.column_cell(version, x, z, slot);
             }
         }
+        let key = (before, x.div_euclid(16), z.div_euclid(16));
+        let index = z.rem_euclid(16) as usize * 16 + x.rem_euclid(16) as usize;
+        if let Some(tile) = self.ready_columns.get(&key) {
+            metrics.add(Perf::completed_boundary_reads, 1);
+            return self.column_cell(before, x, z, &tile.0[index]);
+        }
         let lock_started = metrics.start();
         let tile = self
             .columns
             .lock()
             .map_err(|_| "column dependency cache poisoned")?
-            .entry((before, x.div_euclid(16), z.div_euclid(16)))
+            .entry(key)
             .or_insert_with(|| {
                 metrics.add(Perf::column_tiles, 1);
                 Arc::new(ColumnTile::default())
             })
             .clone();
         metrics.elapsed(Perf::column_lock_nanos, lock_started);
-        let index = z.rem_euclid(16) as usize * 16 + x.rem_euclid(16) as usize;
         self.column_cell(before, x, z, &tile.0[index])
     }
     fn column_cell(
@@ -869,6 +882,7 @@ pub(crate) fn generate(
         metrics: metrics.clone(),
         retain_prefix,
         columns: Mutex::new(Map::default()),
+        ready_columns: Map::default(),
         error: Mutex::new(None),
     };
     let mut targets = Vec::new();
@@ -894,7 +908,7 @@ pub(crate) fn generate(
                 "Retina dependency root {root}/{}: anchors={}, column_tiles={}, tiles={}, elapsed_ms={:.1}",
                 planner.roots.len(),
                 planner.ready.len(),
-                planner.columns.lock().unwrap().len(),
+                planner.columns.lock().unwrap().len() + planner.ready_columns.len(),
                 planner.terrain.lock().unwrap().len(),
                 started.elapsed().as_secs_f64() * 1000.
             );
@@ -907,7 +921,8 @@ pub(crate) fn generate(
     if let Some(details) = details.as_mut() {
         details.dependency_wall_nanos = started.elapsed().as_nanos() as u64;
         details.dependency_anchors = planner.ready.len() as u64;
-        details.dependency_column_tiles = planner.columns.lock().unwrap().len() as u64;
+        details.dependency_column_tiles =
+            (planner.columns.lock().unwrap().len() + planner.ready_columns.len()) as u64;
         details.dependency_terrain_tiles = planner.terrain.lock().unwrap().len() as u64;
     }
     let structure_started = metrics.performance.start();
