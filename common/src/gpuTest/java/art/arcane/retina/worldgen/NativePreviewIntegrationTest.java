@@ -167,6 +167,12 @@ public final class NativePreviewIntegrationTest {
             System.out.println("QA_EVT {\"event\":\"requested_region_pipeline_and_concurrent_edit\",\"status\":\"pass\"}");
         } finally { generator.closePreviews(); }
 
+        long closedJobs = NativeTerrain.instance().timings(generator.profile().nativeId()).gpuJobs();
+        generator.applyBiomeDecoration(null, new ProtoChunk(position, UpgradeData.EMPTY, bounds, factory, null), null);
+        require(NativeTerrain.instance().timings(generator.profile().nativeId()).gpuJobs() == closedJobs,
+                "late DH decoration after unload neither dereferences previews nor starts native work");
+        System.out.println("QA_EVT {\"event\":\"dh_decoration_after_world_unload\",\"status\":\"pass\"}");
+
         var request = generator.request(seed, -1, 0);
         var metrics = new GenerationMetrics();
         Path previewFolder;
@@ -247,17 +253,23 @@ public final class NativePreviewIntegrationTest {
         var raceMetrics = new GenerationMetrics();
         var race = new TemporaryRegions(generator.request(seed, 320, 320), "minecraft:plains", generator.profile(), raceMetrics, 1);
         try (var workers = Executors.newSingleThreadExecutor()) {
-            var future = workers.submit(() -> race.read(new ChunkPos(320, 320)));
+            var future = workers.submit(() -> race.readIfOpen(new ChunkPos(320, 320)));
             long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
             while (raceMetrics.snapshot().inFlight() == 0 && !future.isDone() && System.nanoTime() < deadline) Thread.onSpinWait();
             require(raceMetrics.snapshot().inFlight() == 1, "shutdown race runs during real region generation");
-            race.close(); require(future.get() != null, "world close permits a leased read to finish");
+            race.close();
+            require(race.readIfOpen(new ChunkPos(320, 320)) == null, "late decoration read observes actual cache closure");
+            require(future.get() != null, "world close permits an already leased decoration read to finish");
+            boolean closedReadRejected = false;
+            try { race.read(new ChunkPos(320, 320)); }
+            catch (IllegalStateException expected) { closedReadRejected = true; }
+            require(closedReadRejected, "ordinary reads still report closed-cache misuse");
             require(!Files.exists(race.folder()), "last active lease cleans up after world close");
         } finally { race.close(); }
         var failures = new GenerationMetrics();
         try (var bad = new TemporaryRegions(new TerrainRequest(seed, 0, 0, -63, 384, 64, 48, .008F, request.profile()), "minecraft:plains", generator.profile(), failures, 1)) {
             boolean failed = false;
-            try { bad.read(new ChunkPos(0, 0)); } catch (IllegalStateException error) { failed = true; }
+            try { bad.readIfOpen(new ChunkPos(0, 0)); } catch (IllegalStateException error) { failed = true; }
             require(failed && failures.snapshot().failures() == 1 && failures.snapshot().inFlight() == 0 && bad.size() == 0, "native failures release failed preview entries and report the actual error");
         }
         System.out.println("QA_EVT {\"event\":\"temporary_mca_shutdown_and_failure_cleanup\",\"status\":\"pass\"}");

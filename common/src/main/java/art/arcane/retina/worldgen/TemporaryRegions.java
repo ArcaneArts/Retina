@@ -165,10 +165,16 @@ final class TemporaryRegions implements AutoCloseable {
     }
 
     private Lease acquire(ChunkPos position) {
+        var lease = acquireIfOpen(position);
+        if (lease == null) throw new IllegalStateException("Temporary Retina regions are closed");
+        return lease;
+    }
+
+    private Lease acquireIfOpen(ChunkPos position) {
         Entry entry;
         boolean generate;
         synchronized (this) {
-            if (closed) throw new IllegalStateException("Temporary Retina regions are closed");
+            if (closed) return null;
             long key = key(position);
             entry = entries.get(key);
             generate = entry == null;
@@ -189,6 +195,7 @@ final class TemporaryRegions implements AutoCloseable {
                         SharedConstants.getCurrentVersion().dataVersion().version(), biome, entry.columnPath);
                 var report = data.report();
                 entry.retainColumns(data.columns());
+                NetherIntegrationQa.generated(dimension, entry.origin);
                 long columnCacheNanos=data.columnCacheNanos();
                 long elapsed = System.nanoTime() - start;
                 metrics.completedPreviewRegion(report.generated(), elapsed, report.stages(), columnCacheNanos);
@@ -251,6 +258,15 @@ final class TemporaryRegions implements AutoCloseable {
 
     CompoundTag read(ChunkPos position) {
         try (var lease = acquire(position)) {
+            lease.data();
+            return lease.entry.read(position);
+        } catch (IOException error) { throw new UncheckedIOException(error); }
+    }
+
+    /** Late decoration callbacks can arrive after world unload. Accepted reads retain their lease. */
+    CompoundTag readIfOpen(ChunkPos position) {
+        try (var lease = acquireIfOpen(position)) {
+            if (lease == null) return null;
             lease.data();
             return lease.entry.read(position);
         } catch (IOException error) { throw new UncheckedIOException(error); }

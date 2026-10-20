@@ -622,3 +622,103 @@ actual Chunky 1.5.3 selection/mixin tests passed; the mutually exclusive
 absent-Chunky startup case was skipped. This is not an installed DH/Chunky
 gameplay result. The unchanged native library was reused; this Java/QA cycle
 does not claim a new Rust rebuild or Rust-unit run.
+
+### Installed Nether Distant Horizons and Chunky
+
+Install matching real DH and Chunky jars in an isolated run directory's `mods`
+folder. Run:
+
+```sh
+./gradlew -PretinaHostOnly -PretinaQa -PretinaNetherIntegrationsQa \
+  -PretinaClientGameplayQa \
+  -PretinaClientRunDir=build/nether-integrations/fabric-integrated \
+  :fabric:runClient
+```
+
+Use a separate directory and `:neoforge:runNeoForgeClient` for NeoForge. The
+scenario creates and reopens an ordinary disposable world with structures
+enabled. It writes diamond edits, uses above-roof spectator travel, and issues
+the installed Chunky's ordinary start, pause and continue commands for a
+192-block-radius square. Never point it at a live world. It requires the actual
+optional APIs and deliberately fails if they are
+missing or an expected operation fails.
+
+Require two each of `nether_chunky_paused`, `nether_chunky_resumed`,
+`nether_chunky_complete`, `nether_installed_integrations`,
+`nether_client_telemetry` and `nether_client_integration_return`, followed by
+`minecraft_client_gameplay_reopen`. Each run must observe stopped and completed
+`nether_chunky_pump` events, a real Chunky completion count, DH disabled/restored
+state, and fresh `nether_dh_native_region` events. The native observer runs only
+after successful generation and uses `DhApi.isDhThread()`; mod presence and
+database creation alone do not establish generation coverage.
+Task-map removal alone is also insufficient: Chunky can still have outstanding
+chunk futures, so the scenario waits for its actual completion flag and count.
+
+Chunky finalization also loads surrounding regions. The subsequent DH
+destination is 2,048 blocks beyond the selection center so its surrounding
+terrain is cold. Each reopened run advances both coordinates by another 4,096
+blocks. The normal isolated block/heightmap comparison prepares asynchronously
+to avoid blocking the server tick behind concurrent native work.
+
+Inspect the final saved source definitions, edits, MCA files and nonempty Nether
+DH `FullData` records after clean shutdown. Retain mod hashes, exact configuration,
+launch arguments, logs and saves. On this macOS host use VSync disabled, render
+distance 4, simulation distance 5 and 30 FPS. The bounded DH fixture uses
+64-chunk LOD distance, two worker threads, `CHUNKS_ONLY` and `FEATURES`.
+These settings bound the test workload; they are not recommended performance
+tuning or a throughput benchmark.
+The unattended NeoForge fixture also uses `earlyWindowControl=false` in
+`fml.toml` after its early renderer stalled in macOS OpenGL presentation, and
+`showLoadWarnings=false` in `neoforge-client.toml` to avoid stopping on Chunky's
+deprecated-logo notice. Loading warnings remain in the logs; loading errors are
+not suppressed. Preserve both diagnostic runs and these exact fixture settings.
+
+The fresh/reopen pair also guards DH's listener lifetime. Chunky registers a new
+provider for the reopened server; DH must observe its progress and pause/resume
+generation again. Retina's optional provider mixin advances a lifetime counter
+on the actual registration/unregistration. The existing DH setup wrapper rebinds
+once when that counter changes, including under concurrent chunk updates.
+`ChunkyStartupTest` exercises this transition through the real transformed
+mixins, while preserving the original startup retry and unrelated exceptions.
+
+Audit warnings as well as pass events and process status. DH catches feature-stage
+exceptions and logs them as warnings, so a successful client exit alone is
+insufficient. The first NeoForge pair exposed a late decoration callback after
+world unload cleared the preview cache. It is retained as a shutdown diagnostic.
+`previewTest` now exercises a decoration read already leased when the cache
+closes, a later read rejected by the closed cache, and a generator decoration
+callback after previews are released. Only actual closure makes decoration a
+no-op; native failures on open caches still surface.
+
+Final validation on 2026-10-20 used Minecraft 26.3, Java 25, macOS/Metal, DH
+3.3.4 and Chunky 1.5.3 (Fabric) / 1.5.4 (NeoForge). Both final pairs ran after
+the listener and late-decoration fixes:
+
+| Evidence | Fabric | NeoForge |
+| --- | --- | --- |
+| Fresh and reopened integrated lifetimes | 2 | 2 |
+| Passing runtime events | 173 | 171 |
+| Chunky completion per lifetime | 625 chunks | 625 chunks |
+| Fresh native DH Nether regions per lifetime | At least 1 | At least 1 |
+| Saved nonempty Nether MCA files | 42 | 42 |
+| Nether DH `FullData` records after shutdown | 1,370 | 1,309 |
+
+The offline audit decoded the original noise generators and dimension definitions,
+seed and structure switch from `data/minecraft/world_gen_settings.dat`, verified
+the Overworld and above-roof Nether diamond edits in saved NBT, and ran SQLite
+`quick_check` on all three dimension databases. Empty MCA placeholders left by
+DH are counted separately from generated saved regions. Four sampled temporary
+preview directories were removed after shutdown. Neither final log contains a
+DH feature exception, module-closure failure or error-level entry.
+
+Both loaders also passed client startup with neither optional mod installed.
+The focused transformed Chunky startup/restart suite passed two tests; the
+installed-Chunky suite passed six with two fixture-dependent skips. After the
+shutdown fix, the GPU preview and column-cache lifecycle scenarios and both host
+builds passed; the ordinary Fabric build suite passed five tests with three
+optional/native-fixture skips. The unchanged native library was reused, so this
+cycle does not claim a new Rust build or Rust-unit run.
+
+This installed matrix covers integrated `CHUNKS_ONLY`/`FEATURES` gameplay.
+Installed dedicated-server and completed `SURFACE_THEN_CHUNKS` gameplay coverage
+are not claimed. The general dedicated Nether matrix is documented above.

@@ -19,6 +19,7 @@ public final class ChunkyRegionPregenerator {
                     || !io.retina$regionMode()) return () -> {};
             var pump = new RegionAheadPump(DISPATCHER, RegionGenerationBudget.SHARED.limit(), selection::regions,
                     key -> io.retina$generateAhead(new ChunkPos(((int) key) << 5, ((int) (key >> 32)) << 5)), result -> {
+                        NetherIntegrationQa.chunkyFinished(level, result);
                         if (result.failure() != null) Retina.LOGGER.warn(
                                 "Retina Chunky region pre-generation stopped after {} regions; ordinary chunk loading remains active",
                                 result.completed(), result.failure());
@@ -26,6 +27,7 @@ public final class ChunkyRegionPregenerator {
                                 result.stopped() ? "stopped" : "complete", result.completed());
                     });
             pump.start();
+            NetherIntegrationQa.chunkyStarted(level);
             Retina.LOGGER.info("Retina is generating Chunky's selection ahead to MCA: up to {} regions in flight",
                     RegionGenerationBudget.SHARED.limit());
             return pump;
