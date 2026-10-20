@@ -62,7 +62,7 @@ final class StructureProfile {
     }
     static JsonObject export(HolderLookup.Provider registry,List<Holder<Biome>> biomes,LinkedHashMap<BlockState,Integer> materials,Context context) {
         var out=new StructureProfile(registry,biomes,materials,context);
-        if(context.enabled){out.load();out.finishProcessors(out.pools);}
+        if(context.enabled){out.load();StructureProcessorProfile.finish(out.pools,materials);out.finishProcessors(out.pools);}
         var result=new JsonObject();result.add("templates",out.templates);result.add("definitions",out.definitions);
         result.add("pools",out.pools);result.add("sets",out.sets);
         if(out.fortress!=null)result.add("fortress",out.fortress);
@@ -74,6 +74,7 @@ final class StructureProfile {
         return result;
     }
     static void finishMaterials(JsonObject result,LinkedHashMap<BlockState,Integer> materials) {
+        StructureProcessorProfile.finish(result.get("pools"),materials);
         if(result.has("fortress"))FortressProfile.finish(result.getAsJsonObject("fortress"),materials);
         if(result.has("fossils"))FossilProfile.finish(result.getAsJsonObject("fossils"),materials);
     }
@@ -194,7 +195,7 @@ final class StructureProfile {
             }
             if(o.has("processor_type")) {
                 String type=o.get("processor_type").getAsString().replace("minecraft:","");
-                if(!Set.of("rule","block_rot","capped","protected_blocks","nop").contains(type))omitted.add("processor:"+type);
+                if(!Set.of("rule","block_rot","capped","protected_blocks","block_age","blackstone_replace","lava_submerged_block","nop").contains(type))omitted.add("processor:"+type);
             }
             if(o.has("predicate_type")) {
                 String type=o.get("predicate_type").getAsString().replace("minecraft:","");

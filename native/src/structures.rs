@@ -204,17 +204,29 @@ fn rand64(mut x: u64) -> u64 {
     x = (x ^ (x >> 27)).wrapping_mul(0x94d049bb133111eb);
     x ^ (x >> 31)
 }
+// Mth.getSeed deliberately overflows the X multiplication at 32 bits first.
+pub(crate) fn position_seed(pos: [i32; 3]) -> u64 {
+    let seed = pos[0].wrapping_mul(3129871) as i64
+        ^ (pos[2] as i64).wrapping_mul(116129781)
+        ^ pos[1] as i64;
+    (seed
+        .wrapping_mul(seed)
+        .wrapping_mul(42317861)
+        .wrapping_add(seed.wrapping_mul(11))
+        >> 16) as u64
+}
+
 #[derive(Clone)]
 pub(crate) struct Random(u64);
 impl Random {
-    fn new(seed: u64) -> Self {
+    pub(crate) fn new(seed: u64) -> Self {
         Self((seed ^ 0x5deece66d) & ((1 << 48) - 1))
     }
     fn bits(&mut self, bits: u32) -> u32 {
         self.0 = (self.0.wrapping_mul(0x5deece66d).wrapping_add(11)) & ((1 << 48) - 1);
         (self.0 >> (48 - bits)) as u32
     }
-    fn int(&mut self, bound: u32) -> u32 {
+    pub(crate) fn int(&mut self, bound: u32) -> u32 {
         if bound.is_power_of_two() {
             return ((bound as u64 * self.bits(31) as u64) >> 31) as u32;
         }
@@ -337,6 +349,9 @@ impl Profile {
             for e in &pool.entries {
                 if e.weight == 0 || e.parts.iter().any(|p| p.template >= self.templates.len()) {
                     return Err("invalid jigsaw pool element".into());
+                }
+                for part in &e.parts {
+                    crate::structure_processors::validate(&part.processors, materials)?;
                 }
             }
         }

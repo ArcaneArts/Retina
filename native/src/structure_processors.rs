@@ -1,4 +1,5 @@
 //! Registry processor JSON compiled once into typed rules and material lookup tables.
+mod aging;
 use crate::structures::{Random, sub};
 use crate::{nbt, profile::WorldProfile};
 use serde_json::Value;
@@ -23,6 +24,16 @@ enum Processor {
     },
     Protected(Vec<bool>),
     List(Vec<Processor>),
+    Age {
+        table: aging::Profile,
+        mossiness: f64,
+    },
+    Blackstone(Vec<u16>),
+    LavaSubmerged {
+        full_shape: Vec<bool>,
+        lava_states: Vec<bool>,
+        lava: u16,
+    },
     Noop,
 }
 struct Rule {
@@ -59,6 +70,50 @@ pub struct Context {
     pub origin: [i32; 3],
     counts: Vec<u32>,
 }
+/// Validate palette-dependent tables before compiling executable native programs.
+pub fn validate(v: &Value, materials: usize) -> Result<(), String> {
+    if let Some(list) = v.as_array() {
+        for child in list {
+            validate(child, materials)?;
+        }
+    } else if let Some(list) = v.get("processors") {
+        validate(list, materials)?;
+    } else {
+        let kind = v["processor_type"]
+            .as_str()
+            .unwrap_or("")
+            .trim_start_matches("minecraft:");
+        let valid = match kind {
+            "block_age" => {
+                serde_json::from_value::<aging::Profile>(v["retina_age"].clone())
+                    .is_ok_and(|p| p.valid(materials))
+                    && v["mossiness"].as_f64().is_some_and(f64::is_finite)
+            }
+            "blackstone_replace" => {
+                serde_json::from_value::<Vec<u16>>(v["retina_blackstone"].clone()).is_ok_and(
+                    |ids| ids.len() == materials && ids.iter().all(|&id| (id as usize) < materials),
+                )
+            }
+            "lava_submerged_block" => {
+                serde_json::from_value::<Vec<bool>>(v["retina_full_shape"].clone())
+                    .is_ok_and(|ids| ids.len() == materials)
+                    && v["retina_lava"]
+                        .as_u64()
+                        .is_some_and(|id| id < materials as u64)
+            }
+            "capped" => {
+                validate(&v["delegate"], materials)?;
+                true
+            }
+            _ => true,
+        };
+        if !valid {
+            return Err(format!("invalid {kind} structure processor tables"));
+        }
+    }
+    Ok(())
+}
+
 impl Program {
     pub fn compile(v: &Value, materials: &[Value]) -> Self {
         let mut out = Self::default();
@@ -202,6 +257,23 @@ fn compile(v: &Value, materials: &[Value], counters: &mut usize) -> Processor {
         .unwrap_or("")
         .trim_start_matches("minecraft:")
     {
+        "block_age" => Processor::Age {
+            table: serde_json::from_value(v["retina_age"].clone()).expect("validated age tables"),
+            mossiness: v["mossiness"].as_f64().unwrap() as f32 as f64,
+        },
+        "blackstone_replace" => Processor::Blackstone(
+            serde_json::from_value(v["retina_blackstone"].clone())
+                .expect("validated blackstone table"),
+        ),
+        "lava_submerged_block" => Processor::LavaSubmerged {
+            full_shape: serde_json::from_value(v["retina_full_shape"].clone())
+                .expect("validated lava shape table"),
+            lava_states: materials
+                .iter()
+                .map(|m| name(m) == "minecraft:lava")
+                .collect(),
+            lava: v["retina_lava"].as_u64().unwrap() as u16,
+        },
         "block_rot" => Processor::Rot {
             rottable: v.get("retina_rottable").map(|v| ids(v, materials)),
             integrity: v["integrity"].as_f64().unwrap_or(1.0),
@@ -266,6 +338,21 @@ impl Processor {
     ) -> bool {
         match self {
             Self::Noop => {}
+            Self::Age { table, mossiness } => {
+                *material = table.apply(*material, rotation, ctx.position, *mossiness);
+            }
+            Self::Blackstone(ids) => *material = ids[*material as usize],
+            Self::LavaSubmerged {
+                full_shape,
+                lava_states,
+                lava,
+            } => {
+                if lava_states[world as usize] && !full_shape[*material as usize] {
+                    *material = *lava;
+                    // Template placement cannot instantiate a block entity in the resulting lava.
+                    *tag = None;
+                }
+            }
             Self::List(list) => {
                 return list
                     .iter()
