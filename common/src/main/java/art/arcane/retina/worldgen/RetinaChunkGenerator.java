@@ -409,7 +409,7 @@ public final class RetinaChunkGenerator extends ChunkGenerator {
                 ? ((net.minecraft.world.level.levelgen.FlatLevelSource) selectedSource.generator()).settings().structureOverrides()
                     .map(net.minecraft.core.HolderSet::stream).orElseGet(() -> structures.listElements().map(h -> (Holder<StructureSet>) h))
                 : structures.listElements().map(h -> (Holder<StructureSet>) h);
-        var supported=candidates.filter(s -> StructureProfile.supportedSet(s.value()));
+        var supported=candidates.map(StructureProfile::supportedSet).flatMap(Optional::stream);
         return ChunkGeneratorStructureState.createForFlat(state, seed, getOrigin(state), getBiomeSource(), supported);
     }
 

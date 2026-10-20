@@ -105,6 +105,10 @@ final class StructureProfile {
             var config=Structure.DIRECT_CODEC.encodeStart(ops,structure).getOrThrow().getAsJsonObject();
             String type=config.get("type").getAsString().replace("minecraft:","");
             d.addProperty("kind",type);d.add("config",config);
+            if(!supportedStructure(structure)) {
+                omitted.add("structure:"+name+":"+type);
+                d.addProperty("unimplemented",true);d.addProperty("unavailable_reason","structure-type");unavailable.put(name,d);continue;
+            }
             if(structure instanceof JigsawStructure) {
                 d.addProperty("kind","jigsaw");
                 String root=config.get("start_pool").getAsString();pool(root);d.addProperty("pool",root);
@@ -116,12 +120,11 @@ final class StructureProfile {
                 if(fortress==null)fortress=FortressProfile.export(this);
             } else if(type.equals("nether_fossil")) {
                 if(fossils==null)fossils=FossilProfile.export(this);
-            } else if(type.equals("ruined_portal") && PortalProfile.supported(config)) {
+            } else if(type.equals("ruined_portal")) {
                 if(portals==null)portals=PortalProfile.export(this);
                 PortalProfile.processors(this,config,name);
             } else {
-                omitted.add("structure:"+name+":"+type);
-                d.addProperty("unimplemented",true);d.addProperty("unavailable_reason","structure-type");unavailable.put(name,d);continue;
+                throw new IllegalStateException("Missing native adapter for supported structure "+name+":"+type);
             }
             definitionIds.put(name,definitions.size());definitions.add(d);
         }
@@ -173,13 +176,20 @@ final class StructureProfile {
         if(placement.has("exclusion_zone"))placementDependencies(placement.getAsJsonObject("exclusion_zone").get("other_set").getAsString(),exported,complete,path);
         path.remove(name);complete.add(name);
     }
-    static boolean supportedSet(StructureSet set) {
-        if (set.placement().getClass()!=net.minecraft.world.level.levelgen.structure.placement.RandomSpreadStructurePlacement.class) return false;
-        return set.structures().stream().anyMatch(entry -> {
-            var structure=entry.structure().value();
-            return structure instanceof JigsawStructure || structure instanceof DesertPyramidStructure
-                    || structure instanceof JungleTempleStructure || structure instanceof SwampHutStructure || structure instanceof NetherFortressStructure || structure instanceof NetherFossilStructure;
-        });
+    static boolean supportedStructure(Structure structure) {
+        var type=structure.getClass();
+        return type==JigsawStructure.class || type==DesertPyramidStructure.class || type==JungleTempleStructure.class
+                || type==SwampHutStructure.class || type==NetherFortressStructure.class || type==NetherFossilStructure.class
+                || type==RuinedPortalStructure.class && PortalProfile.supported((RuinedPortalStructure)structure);
+    }
+    static Optional<Holder<StructureSet>> supportedSet(Holder<StructureSet> holder) {
+        var set=holder.value();
+        if(set.placement().getClass()!=net.minecraft.world.level.levelgen.structure.placement.RandomSpreadStructurePlacement.class)return Optional.empty();
+        var entries=set.structures().stream().filter(e->supportedStructure(e.structure().value())).toList();
+        if(entries.isEmpty())return Optional.empty();
+        // This is Java's search metadata only. Native generation retains all source
+        // weights, including unavailable slots, and the registered set stays intact.
+        return Optional.of(entries.size()==set.structures().size()?holder:Holder.direct(new StructureSet(entries,set.placement())));
     }
     void aliasPools(JsonElement value) {
         if(value.isJsonPrimitive() && value.getAsJsonPrimitive().isString()) {

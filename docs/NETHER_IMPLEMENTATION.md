@@ -1002,8 +1002,43 @@ The host Fabric/NeoForge build and `netherStructureTest`, `structureTest`,
 including 103 Rust unit tests and three native GPU integration tests.
 Production Nether activation and live gameplay validation remain deferred.
 
+## Cycle 4k: Java structure search state
+
+Java structure-state construction now includes supported Nether ruined portals.
+It shares the exporter's structure implementation/configuration decision rather
+than maintaining a separate family list. Effective portal setups are read before
+profile export, when Minecraft constructs its search state: all setups must use
+Nether placement without cold-biome processing. Other placements and custom
+structure subclasses remain unavailable.
+
+Mixed sets retain only supported definitions in Java's search metadata. Native
+generation still receives every source weighted slot, so this search view cannot
+redistribute failed/unsupported selections. The registered structure set and saved
+generator definition remain unchanged. Flat source structure overrides continue
+to limit the advertised sets.
+
+The focused fixture checks all four loaded Nether families across the full
+five-biome source and each fixed biome, explicit empty/portal-only flat overrides,
+and six customized definitions. It verifies accepted Nether portal settings,
+rejected cold/surface/mixed setups, custom portal/fortress subclasses, mixed-set
+search filtering, native slot/weight preservation and unchanged source encoding.
+
+```sh
+./gradlew -PretinaHostOnly :common:netherStructureTest --args=--state-only
+```
+
+`build/nether/structure-state.json` records the loaded source results. These checks
+exercise Minecraft's placement lookup used by structure search; actual server
+commands, spawning and survival progression remain runtime validation work.
+The host Fabric/NeoForge build, 103 Rust tests, three native GPU tests, and
+`netherStructureTest`, `structureTest`, `flatTest`, `locateTest`,
+`netherFeatureTest`, and `netherProfileTest` pass. The existing Overworld structure
+test now accepts direct holders in filtered search views while still requiring
+the registered village placement.
+Production Nether activation remains deferred.
+
 ## Remaining cycles
 
-4. Java structure-state advertisement and gameplay progression checks.
+4. Gameplay progression checks in the live dimension.
 5. Automatic activation and dimension lifecycle, lighting, and portal integration.
 6. Both-loader runtime validation, regression coverage, visual QA, and benchmarks.
