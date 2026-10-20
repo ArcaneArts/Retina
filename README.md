@@ -400,6 +400,10 @@ They are enabled for Metal profiles with eligible GPU vine programs; vanilla
 profiles without those programs retain whole-field scheduling because forced
 batching regressed a two-caller comparison. The source-root dependency planner
 is unchanged. Cache storage shares the existing retained-state budget.
+[Predecoded placement evaluation](docs/COMPILED_PLACEMENT_EVALUATION_TRIAL.md)
+was implemented and rejected after repeated vanilla throughput regressions;
+the existing evaluator remains in production. Ordered-plan benchmark exports
+now include tick IDs as well as block writes.
 The [ongoing optimization tracker](docs/POST_INVESTIGATION_OPTIMIZATIONS.md)
 separates shipped improvements from tested, rejected experiments.
 

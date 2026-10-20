@@ -1,0 +1,450 @@
+diff --git a/native/examples/decoration_plan_benchmark.rs b/native/examples/decoration_plan_benchmark.rs
+index 85db222..fd84cf5 100644
+--- a/native/examples/decoration_plan_benchmark.rs
++++ b/native/examples/decoration_plan_benchmark.rs
+@@ -66,6 +66,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
+                     p.material as u64,
+                     p.upper as u64,
+                     p.role as u64,
++                    p.tick as u64,
+                 ] {
+                     hash = (hash ^ v).wrapping_mul(0x100000001b3);
+                 }
+@@ -98,6 +99,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
+                 out.write_all(&p.material.to_le_bytes())?;
+                 out.write_all(&p.upper.to_le_bytes())?;
+                 out.write_all(&[p.role])?;
++                out.write_all(&p.tick.to_le_bytes())?;
+             }
+         }
+         out.flush()?;
+diff --git a/native/src/decoration/placement.rs b/native/src/decoration/placement.rs
+index 9620b12..f279ad6 100644
+--- a/native/src/decoration/placement.rs
++++ b/native/src/decoration/placement.rs
+@@ -5,6 +5,8 @@ use super::spatial::Map;
+ use super::*;
+ use std::ops::Range;
+ use std::sync::Arc;
++#[cfg(test)]
++mod evaluation_tests;
+ mod layers;
+ mod materials;
+ mod stream;
+@@ -538,6 +540,49 @@ pub struct Program {
+ struct Evaluation {
+     index: usize,
+     parents: usize,
++    op: EvaluationOp,
++}
++/// Small hot-path instructions avoid fetching the large registry modifier enum
++/// for every candidate. Complex predicates stay in the immutable source program.
++#[derive(Clone, Copy)]
++enum EvaluationOp {
++    Offset,
++    Height,
++    Heightmap(u8),
++    Accept,
++    Predicate,
++    Biome,
++    WaterDepth(i32),
++    SurfaceRelative { map: u8, min: i32, max: i32 },
++    Scan,
++}
++impl EvaluationOp {
++    fn compile(op: &Modifier) -> Self {
++        match op {
++            Modifier::InSquare | Modifier::Offset { .. } | Modifier::Cuboid { .. } => Self::Offset,
++            Modifier::HeightRange { .. } => Self::Height,
++            Modifier::Heightmap { map } => Self::Heightmap(*map),
++            Modifier::BlockPredicateFilter {
++                predicate: Predicate::True,
++            } => Self::Accept,
++            Modifier::BlockPredicateFilter { .. } => Self::Predicate,
++            Modifier::Biome => Self::Biome,
++            Modifier::SurfaceWaterDepthFilter { max_water_depth } => {
++                Self::WaterDepth(*max_water_depth)
++            }
++            Modifier::SurfaceRelativeThresholdFilter {
++                map,
++                min_inclusive,
++                max_inclusive,
++            } => Self::SurfaceRelative {
++                map: *map,
++                min: *min_inclusive,
++                max: *max_inclusive,
++            },
++            Modifier::EnvironmentScan { .. } => Self::Scan,
++            _ => unreachable!("branch/RNG modifiers are evaluated during expansion"),
++        }
++    }
+ }
+ impl From<Vec<Modifier>> for Program {
+     fn from(modifiers: Vec<Modifier>) -> Self {
+@@ -601,7 +646,11 @@ impl From<Vec<Modifier>> for Program {
+                 | Modifier::RandomChance { .. }
+                 | Modifier::Select { .. } => {}
+                 _ => {
+-                    evaluation.push(Evaluation { index, parents });
++                    evaluation.push(Evaluation {
++                        index,
++                        parents,
++                        op: EvaluationOp::compile(op),
++                    });
+                     if matches!(op, Modifier::Cuboid { .. }) {
+                         parents += 1;
+                     }
+@@ -976,13 +1025,13 @@ fn position_inner(
+     let mut at = candidate.origin;
+     let program = recipe.placement.as_ref()?;
+     let mut draws = candidate.draws.iter();
+-    for Evaluation { index, parents } in &program.evaluation[candidate.evaluation.clone()] {
+-        match &program[*index] {
+-            Modifier::InSquare | Modifier::Offset { .. } | Modifier::Cuboid { .. } => {
++    for Evaluation { index, parents, op } in &program.evaluation[candidate.evaluation.clone()] {
++        match *op {
++            EvaluationOp::Offset => {
+                 let offset = draws.next().unwrap();
+                 at = std::array::from_fn(|i| at[i] + offset[i]);
+             }
+-            Modifier::HeightRange { .. } => at[1] = draws.next().unwrap()[1],
++            EvaluationOp::Height => at[1] = draws.next().unwrap()[1],
+             _ => {
+                 // Modifiers before a nested count execute once for the parent,
+                 // before any of its children place blocks. Later children inherit
+@@ -999,16 +1048,21 @@ fn position_inner(
+                     continue;
+                 }
+                 let evaluated = (|| {
+-                    match &program[*index] {
+-                        Modifier::Heightmap { map } => {
+-                            at[1] = overlay.height(field, profile, request, at[0], at[2], *map)?;
++                    match *op {
++                        EvaluationOp::Heightmap(map) => {
++                            at[1] = overlay.height(field, profile, request, at[0], at[2], map)?;
+                         }
+-                        Modifier::BlockPredicateFilter { predicate } => {
++                        EvaluationOp::Accept => {}
++                        EvaluationOp::Predicate => {
++                            let Modifier::BlockPredicateFilter { predicate } = &program[*index]
++                            else {
++                                unreachable!()
++                            };
+                             if predicate.test(at, field, profile, request, overlay) != Some(true) {
+                                 return None;
+                             }
+                         }
+-                        Modifier::Biome => {
++                        EvaluationOp::Biome => {
+                             if !profile.biomes[field.biome(profile, at)?]
+                                 .decorations
+                                 .contains(&candidate.recipe)
+@@ -1016,39 +1070,32 @@ fn position_inner(
+                                 return None;
+                             }
+                         }
+-                        Modifier::SurfaceWaterDepthFilter { max_water_depth } => {
++                        EvaluationOp::WaterDepth(max_water_depth) => {
+                             // Ordinals exported by the game: OCEAN_FLOOR=3, WORLD_SURFACE=1.
+                             if overlay.height(field, profile, request, at[0], at[2], 1)?
+                                 - overlay.height(field, profile, request, at[0], at[2], 3)?
+-                                > *max_water_depth
++                                > max_water_depth
+                             {
+                                 return None;
+                             }
+                         }
+-                        Modifier::SurfaceRelativeThresholdFilter {
+-                            map,
+-                            min_inclusive,
+-                            max_inclusive,
+-                        } => {
++                        EvaluationOp::SurfaceRelative { map, min, max } => {
+                             if !surface_relative(
+-                                at,
+-                                *map,
+-                                *min_inclusive,
+-                                *max_inclusive,
+-                                field,
+-                                profile,
+-                                request,
+-                                overlay,
++                                at, map, min, max, field, profile, request, overlay,
+                             ) {
+                                 return None;
+                             }
+                         }
+-                        Modifier::EnvironmentScan {
+-                            direction,
+-                            target_condition,
+-                            allowed_search_condition,
+-                            max_steps,
+-                        } => {
++                        EvaluationOp::Scan => {
++                            let Modifier::EnvironmentScan {
++                                direction,
++                                target_condition,
++                                allowed_search_condition,
++                                max_steps,
++                            } = &program[*index]
++                            else {
++                                unreachable!()
++                            };
+                             at = environment_scan(
+                                 at,
+                                 *direction,
+diff --git a/native/src/decoration/placement/evaluation_tests.rs b/native/src/decoration/placement/evaluation_tests.rs
+new file mode 100644
+index 0000000..eb5ba6d
+--- /dev/null
++++ b/native/src/decoration/placement/evaluation_tests.rs
+@@ -0,0 +1,249 @@
++//! Differential reference retained from the pre-specialization evaluator.
++use super::*;
++use serde_json::json;
++
++#[test]
++fn compiled_evaluation_matches_registry_dispatch_and_parent_cache() {
++    let programs = [
++        json!([
++            {"type":"count","count":3},{"type":"in_square"},
++            {"type":"heightmap","map":1},{"type":"count","count":5},
++            {"type":"block_predicate_filter","predicate":{"type":"true"}},
++            {"type":"heightmap","map":5},{"type":"biome"}
++        ]),
++        json!([
++            {"type":"height_range","height":{"type":"constant","value":{"absolute":64}}},
++            {"type":"offset","x":1,"y":2,"z":-1},
++            {"type":"surface_relative_threshold_filter","map":1,"min_inclusive":-8,"max_inclusive":8},
++            {"type":"count","count":3},
++            {"type":"surface_water_depth_filter","max_water_depth":2}
++        ]),
++        json!([
++            {"type":"cuboid","xz_size":2,"y_size":2},
++            {"type":"environment_scan","direction":-1,"max_steps":16,
++             "target_condition":{"type":"material","offset":[0,0,0],"allowed":[2,3]},
++             "allowed_search_condition":{"type":"true"}},
++            {"type":"count","count":5},
++            {"type":"block_predicate_filter","predicate":{"type":"material","offset":[0,0,0],"allowed":[2,3]}}
++        ]),
++        json!([
++            {"type":"count_on_every_layer","count":2},
++            {"type":"block_predicate_filter","predicate":{"type":"not","predicate":{"type":"true"}}},
++            {"type":"heightmap","map":1}
++        ]),
++        json!([
++            {"type":"block_predicate_filter","predicate":{"type":"any_of","predicates":[
++                {"type":"material","offset":[17,0,0],"allowed":[0]},{"type":"true"}]}},
++            {"type":"count","count":3},{"type":"in_square"},
++            {"type":"environment_scan","direction":1,"max_steps":4,
++             "target_condition":{"type":"material","offset":[0,0,0],"allowed":[0]},
++             "allowed_search_condition":{"type":"material","offset":[0,0,0],"allowed":[2,3]}}
++        ]),
++    ];
++    let mut comparisons = 0;
++    for source in programs {
++        let program: Program = serde_json::from_value(source).unwrap();
++        for origin in [[0i32, 64, 0], [-33, 63, 17], [1_000_000, 128, -1_000_000]] {
++            let (profile, mut field, mut request, mut recipe) = tests::fixture();
++            field.origin_x = origin[0].div_euclid(16) - 1;
++            field.origin_z = origin[2].div_euclid(16) - 1;
++            request.chunk_x = origin[0].div_euclid(16);
++            request.chunk_z = origin[2].div_euclid(16);
++            recipe.placement = Some(program.clone());
++            // Partial ranges cover live-layer continuations; empty ranges also
++            // retain the distinction between clipped and unclipped evaluation.
++            for begin in 0..=program.evaluation.len() {
++                for end in begin..=program.evaluation.len() {
++                    for depth in [0, 1, 2, 5] {
++                        let mut overlay = Overlay::default();
++                        let mut actual_cache = EvaluationCache::default();
++                        let mut reference_cache = EvaluationCache::default();
++                        for child in 0..8 {
++                            let mut order = Order::from_slice(&vec![0; depth]);
++                            if let Some(last) = order.last_mut() {
++                                *last = child;
++                            }
++                            let draws = program.evaluation[begin..end]
++                                .iter()
++                                .filter_map(|step| match program[step.index] {
++                                    Modifier::InSquare
++                                    | Modifier::Offset { .. }
++                                    | Modifier::Cuboid { .. } => Some([child as i32 * 7, 0, 0]),
++                                    Modifier::HeightRange { .. } => {
++                                        Some([0, 60 + child as i32 * 10, 0])
++                                    }
++                                    _ => None,
++                                })
++                                .collect();
++                            let candidate = Candidate {
++                                recipe: 0,
++                                group: 7,
++                                order,
++                                seed: 42,
++                                origin,
++                                draws,
++                                evaluation: begin..end,
++                                layer: None,
++                                stream: None,
++                            };
++                            for clip in [false, true] {
++                                let actual = position_inner(
++                                    &candidate,
++                                    &recipe,
++                                    &field,
++                                    &profile,
++                                    request,
++                                    &overlay,
++                                    &mut actual_cache,
++                                    clip,
++                                );
++                                let expected = position_reference(
++                                    &candidate,
++                                    &recipe,
++                                    &field,
++                                    &profile,
++                                    request,
++                                    &overlay,
++                                    &mut reference_cache,
++                                    clip,
++                                );
++                                assert_eq!(
++                                    actual, expected,
++                                    "range {begin}..{end}, origin {origin:?}, depth {depth}, child {child}"
++                                );
++                                assert_eq!(
++                                    actual_cache, reference_cache,
++                                    "cached parent positions and cached failures must match"
++                                );
++                                comparisons += 1;
++                            }
++                            // Later siblings observe changed live columns except
++                            // where the original parent evaluation was cached.
++                            overlay.write(&profile, [origin[0], 70 + child as i32, origin[2]], 5);
++                            if child % 2 == 1 {
++                                overlay.write(
++                                    &profile,
++                                    [origin[0], 69 + child as i32, origin[2]],
++                                    0,
++                                );
++                            }
++                        }
++                    }
++                }
++            }
++        }
++    }
++    assert!(comparisons > 10_000);
++}
++
++fn position_reference(
++    candidate: &Candidate,
++    recipe: &Recipe,
++    field: &Field,
++    profile: &WorldProfile,
++    request: ChunkRequest,
++    overlay: &Overlay,
++    cache: &mut EvaluationCache,
++    clip: bool,
++) -> Option<[i32; 3]> {
++    let mut at = candidate.origin;
++    let program = recipe.placement.as_ref()?;
++    let mut draws = candidate.draws.iter();
++    for Evaluation { index, parents, .. } in &program.evaluation[candidate.evaluation.clone()] {
++        match &program[*index] {
++            Modifier::InSquare | Modifier::Offset { .. } | Modifier::Cuboid { .. } => {
++                let offset = draws.next().unwrap();
++                at = std::array::from_fn(|i| at[i] + offset[i]);
++            }
++            Modifier::HeightRange { .. } => at[1] = draws.next().unwrap()[1],
++            _ => {
++                // Modifiers before a nested count execute once for the parent,
++                // before any of its children place blocks. Later children inherit
++                // that position/filter outcome even as the live canopy changes.
++                let key = (*parents < candidate.order.len()).then(|| {
++                    (
++                        candidate.group,
++                        *index,
++                        Order::from_slice(&candidate.order[..*parents]),
++                    )
++                });
++                if let Some(value) = key.as_ref().and_then(|key| cache.get(key)) {
++                    at = (*value)?;
++                    continue;
++                }
++                let evaluated = (|| {
++                    match &program[*index] {
++                        Modifier::Heightmap { map } => {
++                            at[1] = overlay.height(field, profile, request, at[0], at[2], *map)?;
++                        }
++                        Modifier::BlockPredicateFilter { predicate } => {
++                            if predicate.test(at, field, profile, request, overlay) != Some(true) {
++                                return None;
++                            }
++                        }
++                        Modifier::Biome => {
++                            if !profile.biomes[field.biome(profile, at)?]
++                                .decorations
++                                .contains(&candidate.recipe)
++                            {
++                                return None;
++                            }
++                        }
++                        Modifier::SurfaceWaterDepthFilter { max_water_depth } => {
++                            // Ordinals exported by the game: OCEAN_FLOOR=3, WORLD_SURFACE=1.
++                            if overlay.height(field, profile, request, at[0], at[2], 1)?
++                                - overlay.height(field, profile, request, at[0], at[2], 3)?
++                                > *max_water_depth
++                            {
++                                return None;
++                            }
++                        }
++                        Modifier::SurfaceRelativeThresholdFilter {
++                            map,
++                            min_inclusive,
++                            max_inclusive,
++                        } => {
++                            if !surface_relative(
++                                at,
++                                *map,
++                                *min_inclusive,
++                                *max_inclusive,
++                                field,
++                                profile,
++                                request,
++                                overlay,
++                            ) {
++                                return None;
++                            }
++                        }
++                        Modifier::EnvironmentScan {
++                            direction,
++                            target_condition,
++                            allowed_search_condition,
++                            max_steps,
++                        } => {
++                            at = environment_scan(
++                                at,
++                                *direction,
++                                *max_steps,
++                                target_condition,
++                                allowed_search_condition,
++                                field,
++                                profile,
++                                request,
++                                overlay,
++                            )?;
++                        }
++                        _ => unreachable!(),
++                    }
++                    Some(at)
++                })();
++                if let Some(key) = key {
++                    cache.insert(key, evaluated);
++                }
++                at = evaluated?;
++            }
++        }
++    }
++    (!clip || at[1] >= request.min_y && at[1] < request.min_y + request.height as i32).then_some(at)
++}

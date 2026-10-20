@@ -66,6 +66,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     p.material as u64,
                     p.upper as u64,
                     p.role as u64,
+                    p.tick as u64,
                 ] {
                     hash = (hash ^ v).wrapping_mul(0x100000001b3);
                 }
@@ -98,6 +99,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 out.write_all(&p.material.to_le_bytes())?;
                 out.write_all(&p.upper.to_le_bytes())?;
                 out.write_all(&[p.role])?;
+                out.write_all(&p.tick.to_le_bytes())?;
             }
         }
         out.flush()?;
