@@ -246,12 +246,14 @@ Ready reads can proceed while other regions generate. The pipeline:
    provider noise and ore preparation. Rust consumes compact masks and material
    runs instead of receiving intermediate density grids.
 3. Rust performs ordered feature replay, jigsaw planning, block assembly,
-   heightmaps, palettes and metadata. Shared scratch storage and batched/resumable
+   heightmaps and metadata. Shared scratch storage and batched/resumable
    queries reduce allocation and repeated work. The region assembly pool defaults
    to available parallelism capped at 16 threads; `RETINA_REGION_THREADS` can
    select a smaller runtime pool.
-4. GPU lighting uses the final blocks. Ready lighting tiles feed parallel NBT
-   encoding and level-1 libdeflate zlib compression with reused buffers.
+4. GPU lighting uses the final blocks. On Metal, the same upload also supplies
+   [final section palettes and packed block data](docs/GPU_SECTION_PALETTES.md);
+   large palettes and other backends retain CPU encoding. Ready tiles feed
+   parallel NBT encoding and the configured zlib or LZ4 compression with reused buffers.
 5. Publication runs on the owning Minecraft I/O queue. It closes cached region
    handles, preserves existing chunk records and edits, and atomically publishes
    the completed file. Pending Minecraft writes retain their normal ordering.
@@ -372,6 +374,12 @@ The accepted changes [compact placement programs](docs/COMPACT_DECORATION_PROGRA
 [constant light outputs](docs/COMPACT_LIGHT_OUTPUT.md). Unsupported feature programs
 retain exact CPU continuation. The current mixed shader path remains faster than
 forced interpretation in the measured Terralith diagnostic.
+
+[GPU section palettes](docs/GPU_SECTION_PALETTES.md) subsequently reduced NBT
+worker time by about half. Two matched eight-caller vanilla comparisons improved
+native throughput 9–10% on Metal, at approximately 23 MiB more logical readback
+per region. Two-caller results were mixed; these gains are separate from the
+earlier table. `RETINA_GPU_PALETTES=0` restores CPU palette encoding.
 
 The [cycle tracker](docs/OPTIMIZATION_CYCLES_2026_10.md) also records experiments
 that were not enabled: [material arenas](docs/MATERIAL_ARENA_TRIAL.md),

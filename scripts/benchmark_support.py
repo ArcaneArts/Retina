@@ -134,7 +134,10 @@ class _NbtReader:
             while True:
                 child = self.unpack("B")
                 if child == 0: return result
-                result[self.string()] = self.payload(child)
+                # Assignment evaluates its RHS first; read the name before the
+                # payload so compound fields consume the NBT stream in order.
+                name = self.string()
+                result[name] = self.payload(child)
         if tag == 11: return [self.unpack("i") for _ in range(self.unpack("i"))]
         if tag == 12: return [self.unpack("q") for _ in range(self.unpack("i"))]
         raise ValueError(f"unsupported NBT tag {tag}")
