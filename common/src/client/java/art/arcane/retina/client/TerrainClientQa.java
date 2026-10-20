@@ -77,7 +77,8 @@ public final class TerrainClientQa {
                                 WorldDataConfiguration.DEFAULT.enabledFeatures());
                 var settings = new LevelSettings("Retina QA " + MODE, GameType.CREATIVE,
                         LevelSettings.DifficultySettings.DEFAULT, true, configuration);
-                minecraft.createWorldOpenFlows().createFreshLevel(WORLD, settings, new WorldOptions(123456789L, true, false),
+                minecraft.createWorldOpenFlows().createFreshLevel(WORLD, settings, new WorldOptions(123456789L,
+                                !Boolean.getBoolean("retina.qa.client.noStructures"), false),
                         registries -> registries.lookupOrThrow(Registries.WORLD_PRESET)
                                 .getOrThrow(ResourceKey.create(Registries.WORLD_PRESET, Identifier.parse(PRESET)))
                                 .value().createWorldDimensions(), new TitleScreen());

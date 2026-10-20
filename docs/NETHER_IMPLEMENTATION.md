@@ -2,8 +2,9 @@
 
 Supported Nether sources now activate Retina automatically on creation and reopen.
 The milestones below record the staged implementation; earlier milestones kept
-activation deferred. Live portal, progression, lighting and final matrix work
-remain listed at the end. The End is outside this effort.
+activation deferred. Live portal, progression, lighting and unload checks are
+recorded below. Remaining final validation is listed at the end. The End is
+outside this effort.
 
 ## Cycle 1: generation contexts
 
@@ -1228,6 +1229,48 @@ configuration checks, native Fabric region publication and both host builds
 passed. Installed DH/Chunky coverage and performance measurements remain part of
 the final cycle.
 
+## Cycle 6a: source customization, previews and partial saves
+
+`netherCompatibilityTest` exercises all five fixed Nether biomes and the normal
+climate source with full decoration and structures disabled. Each uses the
+production synchronous biome/terrain entry points used by DH-style preview
+requests, compares 65,536 blocks with an independently generated native chunk,
+checks source biome palettes and zero skylight, then promotes its temporary MCA.
+Removing one saved chunk and adding a player marker to another exercises partial
+repair: the missing record returns without native regeneration, all 1,023
+existing compressed records remain byte-identical, and the marker survives.
+Preview closure removes its temporary directory. This is a direct API test;
+installed DH coverage is separate.
+
+The same task exports an actual datapack fixture from loaded Minecraft codecs
+under `build/nether-compatibility/datapack`. It changes Nether noise bounds to
+`[16, 112)`, sea level to 40, ceiling to false, logical height to 192 and coordinate
+scale to 4. Storage remains `[0, 256)`. The ordinary Normal and Flat presets use a
+fixed Warped Forest Nether; their Overworld and End definitions remain intact.
+
+The opt-in `retinaNetherCompatibilityQa` runtime scenario reads these effective
+loaded settings, checks native output outside the configured bounds, lava and
+solid output, absent structure starts when structures are disabled, live biome
+palettes, and source serialization across save/reopen. Existing automatic
+activation checks also verify the unchanged End and saved edits in both
+dimensions. The client harness can disable structures for a disposable world
+using `retinaClientNoStructuresQa=true`.
+
+The final runtime matrix passed on Fabric and NeoForge, dedicated fresh/process
+restart and integrated create/reopen, for ordinary Normal worlds and customized
+Flat worlds. Twelve invocations covered sixteen server lifetimes and 370
+passing events. All eight saved worlds retained their source definitions,
+disabled structure setting, Overworld/Y=200 Nether edits and unchanged End.
+The six native preview cases passed 393,216 independent block comparisons and
+preserved 6,138 existing compressed records during partial repair.
+
+Regression checks passed for vanilla registry loading, all nine native Superflat
+presets, 294,912 reference light comparisons, 96 flat feature fixtures, Nether
+profile/height contexts and cache lifecycle. Both host builds passed. Fabric's
+native publication and actual Chunky 1.5.3 selection/mixin fixtures passed;
+installed-mod gameplay remains separate.
+
 ## Remaining cycles
 
-6. Both-loader runtime validation, regression coverage, visual QA, and benchmarks.
+6. Installed integrations, visual QA, repeatable throughput/memory measurements,
+   and the final documentation/requirement audit.

@@ -665,6 +665,22 @@ tasks.register('netherTerrainTest', JavaExec) {
     workingDir rootProject.projectDir
 }
 
+tasks.register('netherCompatibilityTest', JavaExec) {
+    group = 'verification'
+    description = 'Check full Nether previews, fixed biomes and partial saves; export a loader datapack fixture.'
+    dependsOn 'gpuTestClasses'
+    if (providers.gradleProperty('retinaNativePath').isPresent())
+        systemProperty 'retina.native.path', providers.gradleProperty('retinaNativePath').get()
+    else dependsOn ':packageNative'
+    classpath = sourceSets.gpuTest.runtimeClasspath
+    mainClass = 'art.arcane.retina.worldgen.NetherCompatibilityTest'
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
+    jvmArgs '--enable-native-access=ALL-UNNAMED', '-XX:ActiveProcessorCount=2'
+    environment 'RAYON_NUM_THREADS', '2'
+    environment 'RETINA_REGION_THREADS', '2'
+    workingDir rootProject.projectDir
+}
+
 tasks.register('netherProfileTest', JavaExec) {
     group = 'verification'
     description = 'Check loaded Nether profiles and Minecraft height-context semantics without GPU generation.'

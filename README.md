@@ -480,6 +480,7 @@ explicit GPU integration suites require a compute device.
 | `test` | Fabric loader/mixin tests; use `:fabric:test --tests ...` to select a fixture |
 | `gpuTest` | Native/GPU concurrency, coordinate and interpolation checks, materials, aquifers and related shader fixtures |
 | `regionTest`, `previewTest` | Real MCA decoding, partial saves, saved edits, temporary cache and promotion |
+| `netherCompatibilityTest` | Five fixed Nether biomes and climate-source previews, decorated block parity, partial-save repair and an exported runtime datapack fixture |
 | `flatTest` | Native built-in/custom layers against Minecraft, flat bounds/options, lakes and void platform, previews/promotion, heightmaps and reference lighting |
 | `biomeTest`, `geologyTest`, `featureTest`, `blockFeatureTest` | Registered biomes, ores, caves, vegetation and supported feature recipes |
 | `structureTest`, `shoreTest`, `snowTest`, `lightingTest` | Structures/metadata, coastal selection, snow support and GPU lighting against Minecraft |
