@@ -1,0 +1,155 @@
+diff --git a/native/src/decoration.rs b/native/src/decoration.rs
+index 6e04e69..720985e 100644
+--- a/native/src/decoration.rs
++++ b/native/src/decoration.rs
+@@ -586,0 +587 @@ pub(crate) struct Replay<'a> {
++    suspend_groups: bool,
+@@ -616,0 +618 @@ impl<'a> Replay<'a> {
++            suspend_groups: std::env::var("RETINA_DECORATION_SUSPEND_GROUPS").as_deref() == Ok("1"),
+@@ -708,0 +711 @@ impl<'a> Replay<'a> {
++                self.suspend_groups,
+@@ -769,0 +773 @@ impl<'a> Replay<'a> {
++                    self.suspend_groups,
+@@ -902,0 +907 @@ fn anchors(
++        false,
+@@ -1210,0 +1216 @@ fn evaluate_anchor(
++    suspend_groups: bool,
+@@ -1216 +1222 @@ fn evaluate_anchor(
+-            state, field, profile, request, mask, counts, noise, missing, retain, timing, scratch,
++            state, field, profile, request, mask, counts, noise, missing, retain, suspend_groups, timing, scratch,
+@@ -1220 +1226 @@ fn evaluate_anchor(
+-            state, field, profile, request, mask, counts, noise, missing, retain, timing, scratch,
++            state, field, profile, request, mask, counts, noise, missing, retain, suspend_groups, timing, scratch,
+@@ -1233,0 +1240 @@ fn evaluate_anchor_impl<const MEASURE: bool>(
++    suspend_groups: bool,
+@@ -1249,0 +1257 @@ fn evaluate_anchor_impl<const MEASURE: bool>(
++    let mut unresolved_group = None;
+@@ -1250,0 +1259,13 @@ fn evaluate_anchor_impl<const MEASURE: bool>(
++        // Finish collecting queries for the first unresolved RNG group, then
++        // restore its checkpoint after sampling instead of speculating through
++        // every later group. A whole group batches sibling provider queries.
++        if suspend_groups
++            && saved.is_some()
++            && candidates.peek_group().is_some_and(|(group, _)| Some(group) != unresolved_group)
++        {
++            if let Some(timing) = timing.as_mut() {
++                timing.suspended_groups += 1;
++            }
++            diagnostics::record(evaluation, timing.as_mut().map(|t| &mut t.evaluation_nanos));
++            return (Vec::new(), saved);
++        }
+@@ -1284,0 +1306 @@ fn evaluate_anchor_impl<const MEASURE: bool>(
++        let can_suspend = suspend_groups && saved.is_some();
+@@ -1295 +1317,2 @@ fn evaluate_anchor_impl<const MEASURE: bool>(
+-                can_pause
++                (can_suspend && Some(group) != unresolved_group)
++                    || (can_pause
+@@ -1300 +1323 @@ fn evaluate_anchor_impl<const MEASURE: bool>(
+-                        .is_some_and(|programs| programs[recipe as usize].is_some())
++                        .is_some_and(|programs| programs[recipe as usize].is_some()))
+@@ -1310,0 +1334 @@ fn evaluate_anchor_impl<const MEASURE: bool>(
++            unresolved_group = queue.peek_group().map(|(group, _)| group);
+@@ -1483,0 +1508 @@ fn evaluate_anchor_impl<const MEASURE: bool>(
++            unresolved_group = Some(candidate.group);
+diff --git a/native/src/decoration/anchor_probe.rs b/native/src/decoration/anchor_probe.rs
+index c90e8b1..3358bb1 100644
+--- a/native/src/decoration/anchor_probe.rs
++++ b/native/src/decoration/anchor_probe.rs
+@@ -877,0 +878 @@ fn reference_initial(
++                false,
+diff --git a/native/src/decoration/diagnostics.rs b/native/src/decoration/diagnostics.rs
+index e2cccdb..3eeba51 100644
+--- a/native/src/decoration/diagnostics.rs
++++ b/native/src/decoration/diagnostics.rs
+@@ -47,0 +48 @@ pub struct Worker {
++    pub suspended_groups: u64,
+@@ -84,0 +86 @@ impl Worker {
++        self.suspended_groups += b.suspended_groups;
+diff --git a/native/src/decoration/replay_tests.rs b/native/src/decoration/replay_tests.rs
+index 55b1698..29df926 100644
+--- a/native/src/decoration/replay_tests.rs
++++ b/native/src/decoration/replay_tests.rs
+@@ -116,0 +117,14 @@ fn run(
++) {
++    run_mode(profile, field, request, retain, budget, false)
++}
++fn run_mode(
++    profile: &WorldProfile,
++    field: &Field,
++    request: ChunkRequest,
++    retain: bool,
++    budget: usize,
++    suspend_groups: bool,
++) -> (
++    Vec<Vec<Placement>>,
++    diagnostics::Planning,
++    Vec<(Vec<[i32; 4]>, Vec<counts::Query>)>,
+@@ -131,0 +146 @@ fn run(
++    replay.suspend_groups = suspend_groups;
+@@ -136 +151 @@ fn run(
+-    for _ in 0..16 {
++    for _ in 0..64 {
+@@ -151,0 +167,35 @@ fn run(
++fn group_suspension_preserves_ordered_output_and_bounded_recovery() {
++    let pool = rayon::ThreadPoolBuilder::new().num_threads(2).build().unwrap();
++    for source_order in [false, true] {
++        for (seed, origin) in [(42, 0), (123456789, -33), (987654321, 700_000)] {
++            let (mut profile, field, request) = fixture(seed, origin);
++            // A later group after the live-layer count queries exercises both
++            // count-checkpoint and provider-checkpoint suspension boundaries.
++            let mut tail = profile.decorations[1].clone();
++            tail.source = "test:tail".into();
++            tail.salt = 99;
++            profile.decorations.push(tail);
++            profile.biomes[0].decorations.push(5);
++            profile.decoration_source_order = source_order;
++            for (id, recipe) in profile.decorations.iter_mut().enumerate() {
++                recipe.root_order = id.min(3) as u32;
++            }
++            let (expected, _, _) = pool.install(|| run(&profile, &field, request, false, 0));
++            for budget in [0, 16 * 1024, 64 * 1024 * 1024] {
++                let (actual, details, queries) = pool.install(|| {
++                    run_mode(&profile, &field, request, true, budget, true)
++                });
++                assert_eq!(actual, expected, "seed {seed}, origin {origin}, budget {budget}");
++                assert!(details.worker.suspended_groups > 0);
++                assert!(details.peak_retained_bytes <= budget as u64);
++                assert!(queries.iter().any(|(noise, _)| !noise.is_empty()));
++                assert!(queries.iter().any(|(_, counts)| !counts.is_empty()));
++                if budget == 0 {
++                    assert!(details.worker.discarded_checkpoints > 0);
++                    assert_eq!(details.worker.resumed_anchors, 0);
++                }
++            }
++        }
++    }
++}
++#[test]
+diff --git a/native/src/decoration/vine_gpu/tests.rs b/native/src/decoration/vine_gpu/tests.rs
+index 4459573..a0c04de 100644
+--- a/native/src/decoration/vine_gpu/tests.rs
++++ b/native/src/decoration/vine_gpu/tests.rs
+@@ -57,0 +58,11 @@ fn replay(
++) -> (Vec<Vec<Placement>>, Stats, usize) {
++    replay_mode(profile, field, request, gpu, budget, post_gpu_limit, false)
++}
++fn replay_mode(
++    profile: &WorldProfile,
++    field: &Field,
++    request: ChunkRequest,
++    gpu: Option<&Mutex<Gpu>>,
++    budget: usize,
++    post_gpu_limit: Option<usize>,
++    suspend_groups: bool,
+@@ -70,0 +82 @@ fn replay(
++    state.suspend_groups = suspend_groups;
+@@ -76 +88 @@ fn replay(
+-    for _ in 0..20 {
++    for _ in 0..64 {
+@@ -152,0 +165,6 @@ fn gpu_vine_planner_handoff() {
++        for budget in [0, 64 << 20] {
++            let (suspended, _, _) = pool.install(|| {
++                replay_mode(&p, &field, r, Some(&gpu), budget, None, true)
++            });
++            assert_eq!(suspended, expected, "early group suspension, origin {origin}, budget {budget}");
++        }
