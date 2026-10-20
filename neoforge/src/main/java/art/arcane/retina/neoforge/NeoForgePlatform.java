@@ -56,11 +56,13 @@ public final class NeoForgePlatform implements RetinaPlatform {
     }
 
     @Override
-    public void registerServerHooks(Consumer<MinecraftServer> endTick, Consumer<ServerLevel> unload) {
+    public void registerServerHooks(Consumer<MinecraftServer> endTick, Consumer<ServerLevel> unload,
+                                    Consumer<MinecraftServer> stopped) {
         NeoForge.EVENT_BUS.addListener((ServerTickEvent.Post event) -> endTick.accept(event.getServer()));
         NeoForge.EVENT_BUS.addListener((LevelEvent.Unload event) -> {
             if (event.getLevel() instanceof ServerLevel level) unload.accept(level);
         });
+        NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.server.ServerStoppedEvent event) -> stopped.accept(event.getServer()));
         if (Boolean.getBoolean("retina.qa.nether.structures")) {
             NeoForge.EVENT_BUS.addListener((FinalizeSpawnEvent event) -> {
                 var mob = event.getEntity();

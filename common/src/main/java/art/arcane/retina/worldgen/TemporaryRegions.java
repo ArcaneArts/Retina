@@ -38,6 +38,7 @@ final class TemporaryRegions implements AutoCloseable {
     private final LinkedHashMap<Long, Entry> entries = new LinkedHashMap<>(16, 0.75F, true);
     private int users;
     private boolean closed;
+    private CompletableFuture<Void> closingGeneration = CompletableFuture.completedFuture(null);
     private final int stone, water, bedrock, deepslate, ice, lava, snow;
     private final int[] bands, biomeFlags, biomeFillers, biomeTops, biomeUnderwater, biomeBarriers;
     private final Map<String,Integer> biomeIds = new HashMap<>();
@@ -197,6 +198,7 @@ final class TemporaryRegions implements AutoCloseable {
                         "QA_EVT {\"event\":\"temporary_mca_region\",\"status\":\"pass\",\"context\":{\"dimension\":\"{}\",\"x\":{},\"z\":{},\"chunks\":{},\"ms\":{},\"bytes\":{}}}",
                         dimension.identifier(), position.getRegionX(), position.getRegionZ(), report.generated(), elapsed / 1e6, report.bytes());
             } catch (Throwable error) {
+                NetherUnloadQa.generationFailed(error);
                 metrics.failed(); entry.generated.completeExceptionally(error);
                 lease.close();
                 if (error instanceof IOException io) throw new UncheckedIOException(io);
@@ -327,12 +329,29 @@ final class TemporaryRegions implements AutoCloseable {
     @Override public synchronized void close() {
         if (closed) return;
         closed = true;
+        // Keep this snapshot after entries are retired: loader unload can close
+        // previews before the I/O worker reaches its own shutdown barrier.
+        closingGeneration = CompletableFuture.allOf(entries.values().stream()
+                .map(entry -> entry.generated).toArray(CompletableFuture[]::new));
         for (var entry : entries.values()) {
             entry.retired = true;
             if (entry.pins == 0) entry.dispose();
         }
         entries.clear(); warm.clear();
         removeClosedFolder();
+    }
+    /** After I/O has stopped, finish native calls before the loader closes mod classes.
+     * Do not wait for leases here: their release may follow generation completion. */
+    void closeAndAwaitGeneration() {
+        CompletableFuture<Void> pending;
+        synchronized (this) {
+            close();
+            pending = closingGeneration;
+        }
+        try { pending.join(); }
+        catch (java.util.concurrent.CompletionException error) {
+            Retina.LOGGER.error("Native Retina generation failed while closing {}", dimension.identifier(), error.getCause());
+        }
     }
     private void removeClosedFolder() {
         if (closed && users == 0) try { Files.deleteIfExists(folder); }

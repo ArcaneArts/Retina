@@ -47,9 +47,11 @@ public final class FabricPlatform implements RetinaPlatform {
     }
 
     @Override
-    public void registerServerHooks(Consumer<MinecraftServer> endTick, Consumer<ServerLevel> unload) {
+    public void registerServerHooks(Consumer<MinecraftServer> endTick, Consumer<ServerLevel> unload,
+                                    Consumer<MinecraftServer> stopped) {
         ServerTickEvents.END_SERVER_TICK.register(endTick::accept);
         ServerLevelEvents.UNLOAD.register((server, level) -> unload.accept(level));
+        net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents.SERVER_STOPPED.register(stopped::accept);
     }
 
     @Override

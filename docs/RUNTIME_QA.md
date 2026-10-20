@@ -397,8 +397,8 @@ The controlled spawning and combat limits are described in the
 [scenario instructions](#live-nether-fortress-progression). These results do not
 claim an unaided survival playthrough, normal spawning rates, visual inspection,
 throughput measurements or installed DH/Chunky coverage. Live checks for the other
-Nether structure families are recorded below. In-flight unload and the remaining
-final matrix remain follow-up work.
+Nether structure families and in-flight unload are recorded below. The remaining
+final matrix is follow-up work.
 
 
 ### Live bastions, fossils and Nether ruined portals
@@ -461,3 +461,86 @@ The final logs contain no failed QA events or unexpected server exceptions.
 Diagnostic runs are retained separately, including the discarded
 registration-time initializer's recursive chunk wait. The final implementation
 uses the generation region; the matrix above ran with that implementation.
+
+### In-flight Nether world unload
+
+Use fresh disposable run directories with `-PretinaQa -PretinaNetherUnloadQa`.
+The dedicated scenario needs no connected player and stops its server after
+starting cold region requests. Run each dedicated command twice against the
+same directory to check a full process restart:
+
+```sh
+./gradlew -PretinaHostOnly -PretinaQa -PretinaNetherUnloadQa \
+  -PretinaDatapackQa=build/nether-unload/fabric-server \
+  :fabric:runServer --args=--nogui
+./gradlew -PretinaHostOnly -PretinaQa -PretinaNetherUnloadQa \
+  -PretinaDatapackQa=build/nether-unload/neoforge-server \
+  :neoforge:runNeoForgeServer
+```
+
+Use seed 42, structures enabled and ordinary world settings. Configure the
+disposable servers' EULA and localhost settings as for the dedicated examples
+above. For integrated runs, the client creates seed 123456789, disconnects,
+reopens the save and disconnects again:
+
+```sh
+./gradlew -PretinaHostOnly -PretinaQa -PretinaNetherUnloadQa \
+  -PretinaClientGameplayQa -PretinaClientRunDir=build/nether-unload/fabric-integrated \
+  :fabric:runClient
+./gradlew -PretinaHostOnly -PretinaQa -PretinaNetherUnloadQa \
+  -PretinaClientGameplayQa -PretinaClientRunDir=build/nether-unload/neoforge-integrated \
+  :neoforge:runNeoForgeClient
+```
+
+The scenario writes diamond blocks in both dimensions, including Nether Y=200,
+and checks them on reopening. It queues twice the resolved region parallelism
+plus two cold regions per dimension, an ordinary read of each first region, and duplicate read
+observers that it cancels. It uses the normal native preparation and I/O queues
+without replacing or holding generation. These opt-in fixture edits belong only
+in disposable saves.
+
+Require `nether_unload_in_flight`, `nether_unload_storage_close`, an actual
+`nether_unload_callback` and
+`nether_unload_cleaned` for each dimension, and `nether_unload_complete` for each
+server lifetime. Pending requests must finish successfully or report an explicit
+closed/closing result. The observer waits for actual preview-directory removal
+and zero remaining generation or additional generation failures; reopening
+checks that the old directories remain absent. Require
+`nether_unload_server_drained` after all dimension storage closes. Integrated runs
+also require `minecraft_client_gameplay_reopen`.
+
+The server-stopped hook waits for native calls already running to finish before
+loader teardown. All dimension I/O queues close first, preventing another
+dimension's queued preparations from starting during that wait. The test also
+waits for their temporary data to be released.
+The stronger failure-counter check exposed a NeoForge cold-restart race where
+the module closed before a native result first loaded `ColumnCache`; the final
+shutdown drain addresses that actual failure. Initial cleanup-only results are
+diagnostic evidence, not the final validation matrix.
+
+The final run on 2026-10-20 used Minecraft 26.3, Java 25 and Metal on an Apple
+M4 Max. Dedicated saves used seed 42; integrated saves used seed 123456789.
+
+| Loader and environment | Fresh events | Reopen events | Result |
+| --- | ---: | ---: | --- |
+| Fabric dedicated | 39 | 23 | Pass |
+| NeoForge dedicated | 39 | 23 | Pass |
+| Fabric integrated | 82 combined | Included | Pass |
+| NeoForge integrated | 84 combined | Included | Pass |
+
+These six invocations covered eight server lifetimes and 290 passing events.
+All 304 owned requests terminated: five completed before storage close and 299
+returned explicit close results. All sixteen dimension cleanups reported zero
+additional generation failures. The final four saves retained their edits and
+source definitions, and their recorded preview directories were absent. Event
+ordering and actual saved region files confirmed that no requested cold region
+was published after its dimension storage closed. Three Overworld regions
+legitimately completed before close during the integrated fresh runs.
+
+The same source passed common cache lifecycle, preparation/scheduling and
+configuration checks, both host builds, and Fabric's native
+`RegionAheadPublicationTest`. Installed `ChunkySelectionIntegrationTest` coverage
+was skipped without its jar; this cycle makes no installed Chunky claim.
+
+This checks ordinary shutdown during generation; it does not claim
+abrupt-process-crash recovery, visual quality or benchmark throughput.

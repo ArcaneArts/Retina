@@ -3,6 +3,7 @@ package art.arcane.retina.client;
 import art.arcane.retina.Retina;
 import art.arcane.retina.worldgen.RetinaChunkGenerator;
 import art.arcane.retina.worldgen.TerrainRegistryQa;
+import art.arcane.retina.worldgen.NetherUnloadQa;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.ConnectScreen;
 import net.minecraft.client.gui.screens.BackupConfirmScreen;
@@ -116,6 +117,8 @@ public final class TerrainClientQa {
             }
             case 3 -> {
                 if (!(minecraft.gui.screen() instanceof TitleScreen) || minecraft.gui.overlay() != null) return;
+                if (!NetherUnloadQa.completion().isDone()) return;
+                NetherUnloadQa.completion().join();
                 // TCP disconnect callbacks may be dispatched on the next client tick.
                 if (disconnects <= disconnectsBeforeLeave || TerrainDebugEntry.remoteStats().active()) return;
                 event("minecraft_client_disconnect_reset", "\"disconnects\":" + disconnects);
@@ -144,6 +147,8 @@ public final class TerrainClientQa {
             }
             case 5 -> {
                 if (disconnects <= disconnectsBeforeLeave || TerrainDebugEntry.remoteStats().active()) return;
+                if (!NetherUnloadQa.completion().isDone()) return;
+                NetherUnloadQa.completion().join();
                 event("minecraft_client_gameplay_reopen", "\"mode\":\"" + MODE + "\",\"dedicated\":" + !SERVER.isBlank() + ",\"packets\":" + packets + ",\"disconnects\":" + disconnects);
                 phase = 6;
                 minecraft.stop();
@@ -196,7 +201,10 @@ public final class TerrainClientQa {
                     require(level.getBlockState(EDIT).is(Blocks.DIAMOND_BLOCK), "QA edit reaches the loaded chunk");
                 }
                 event(reopened ? "minecraft_client_saved_edit" : "minecraft_client_negative_edit", "\"x\":-17,\"y\":120,\"z\":-17");
-                result.complete(null);
+                NetherUnloadQa.prepareShutdown(minecraft.getSingleplayerServer()).whenComplete((value, error) -> {
+                    if (error != null) result.completeExceptionally(error);
+                    else result.complete(null);
+                });
             } catch (Throwable error) { result.completeExceptionally(error); }
         });
         return result;

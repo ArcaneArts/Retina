@@ -1185,7 +1185,49 @@ structure regressions, Nether profiles and 136 portal source replays passed.
 An additional exact replay confirms the integrated fixture's chestless portal
 matches Minecraft's lava processing.
 
+## Cycle 5c: in-flight world unload
+
+The opt-in `retinaNetherUnloadQa` scenario queues cold regions in the Overworld
+and Nether through their actual I/O workers, using the shared native budget.
+It cancels duplicate read observers, then shuts down the real server while
+generation is running. Loader unload callbacks record active generation and
+pending requests before Retina closes its previews.
+
+This exposed a cold-restart shutdown race on NeoForge: the mod module could close
+before a native call returned and first loaded `ColumnCache`. Its canceled
+observer had already received a close result, so that late `NoClassDefFoundError`
+was hidden from the caller. The storage coordinators reject pending reads as
+their I/O queues close. The server-stopped hook then waits for actual native
+generation completion before loader teardown, after every dimension has closed.
+Preview closure retains the completion snapshot even when the loader's earlier
+unload callback has already retired the cache entries. This drain does not wait
+for read leases, whose existing ownership and cleanup rules remain intact.
+
+An independent observer waits for every request's terminal result and verifies
+that late native completion releases its leases, removes both temporary preview
+directories and leaves no generation in flight or hidden generation failures.
+The integrated client waits for
+that observation after closing the world, then reopens it. Dedicated runs repeat
+in a new process. Both paths verify original generator definitions, the unchanged
+End and saved edits in both dimensions, including Nether Y=200.
+
+This scenario tests normal shutdown during active generation. It does not kill
+the process or claim abrupt-crash durability. Native calls already running finish
+and release their temporary data; pending requests receive explicit close
+results. All I/O queues drain before the native completion wait; generation does
+not depend on a server callback. See
+[runtime QA](RUNTIME_QA.md#in-flight-nether-world-unload).
+
+Validation on the final implementation covered eight server lifetimes on Fabric
+and NeoForge, dedicated fresh/restart and integrated create/reopen, with 290
+passing QA events. All 304 owned requests terminated: five completed before
+storage close and 299 returned explicit close results. Sixteen preview cleanups
+finished with no generation failures, and saved region inspection found no
+publication after storage close. Cache lifecycle, request scheduling and
+configuration checks, native Fabric region publication and both host builds
+passed. Installed DH/Chunky coverage and performance measurements remain part of
+the final cycle.
+
 ## Remaining cycles
 
-5. In-flight unload and remaining dimension lifecycle coverage.
 6. Both-loader runtime validation, regression coverage, visual QA, and benchmarks.
