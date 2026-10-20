@@ -180,3 +180,32 @@ raw measurements and process observations remain in the retained evidence root.
 `cycle1/validated-corpus` combines completed output directories for NBT comparisons
 only; it must not be represented as one timing run. The overall performance goal
 still requires repeated uncontended timings and post-merge validation.
+
+## Cycle 2 implementation
+
+Structure discovery now uses job-owned candidate tiles for each structure set.
+Each candidate belongs to one tile; the job retains its start cell through
+ordered placement and final metadata planning. A weak index lets overlapping jobs
+share an active cell after it leaves the bounded recent cache, without retaining
+the job's starts indefinitely. Discovery remains inline inside dependency cells
+to avoid yielding a Rayon worker into a task that depends on its initializer.
+
+Single-entry fossil sets batch floor/material columns and actual-floor biome
+queries. They consume the same weighted-selection, position, height, rotation
+and template draws as before. Mixed weighted sets retain the original selector
+and retries. Portals still prepare their writes at their original source root,
+where their prior-state reads belong.
+
+For the same diagnostic region, repeated structure builds fall from 8,841 to zero,
+GPU completions from 2,343 to 118, and logical readback from 1,692,711,744 to
+670,327,556 bytes. Ownership tiles evaluate some additional unique candidates;
+the gain in work counts comes from avoiding repeated discovery and probes.
+The remaining 16.8 million intermediate column builds motivate Cycle 3.
+These counters establish reduced repeated work, not a latency speedup. Quiet
+latency and memory confirmation remain deferred at the user's direction.
+
+Cycle 1 merged as PR #171 (`34645a3`). Its rebuilt library is byte-identical to
+the validated candidate. Actual post-merge generation across all five smoke cases
+matches 5,120 chunks against both references (one warmup and one measured region
+per case); full quiet timing confirmation remains deferred. Cycle 2 passes all
+102,400 full-corpus chunk comparisons and 112 native tests (37 ignored).
