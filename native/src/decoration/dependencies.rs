@@ -1038,11 +1038,16 @@ pub(crate) fn generate(
         &metrics.performance,
         Perf::teardown_other_nanos,
     );
-    retire(
-        (columns, ready_columns),
-        &metrics.performance,
-        Perf::teardown_boundary_columns_nanos,
-    );
+    let boundary_started = metrics.performance.start();
+    // A column's identity versions retain the same state. Release those
+    // references together instead of walking unrelated hash-map buckets.
+    let mut boundary = ready_columns.into_iter().collect::<Vec<_>>();
+    boundary.extend(columns.into_inner().unwrap_or_else(|e| e.into_inner()));
+    boundary.sort_unstable_by_key(|((root, x, z), _)| (*z, *x, *root));
+    drop(boundary);
+    metrics
+        .performance
+        .elapsed(Perf::teardown_boundary_columns_nanos, boundary_started);
     retire(error, &metrics.performance, Perf::teardown_other_nanos);
     metrics
         .performance
