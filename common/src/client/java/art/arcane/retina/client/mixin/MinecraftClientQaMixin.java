@@ -1,6 +1,7 @@
 package art.arcane.retina.client.mixin;
 
 import art.arcane.retina.client.TerrainClientQa;
+import art.arcane.retina.client.NetherVisualQa;
 import net.minecraft.client.Minecraft;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -12,5 +13,6 @@ abstract class MinecraftClientQaMixin {
     @Inject(method = "tick", at = @At("TAIL"))
     private void retina$gameplayQa(CallbackInfo callback) {
         TerrainClientQa.tick((Minecraft) (Object) this);
+        NetherVisualQa.tick((Minecraft) (Object) this);
     }
 }

@@ -4,6 +4,13 @@ The six requested workstreams are implemented. The current requirement audit,
 final integrated validation, production-selection measurements and remaining
 approximations are recorded in [the goal audit](GENERATION_GOAL_AUDIT.md).
 
+The later automatic-activation and Nether work is documented separately in the
+[Nether delivery audit](NETHER_GOAL_AUDIT.md), including loaded source settings,
+generation bounds, complete vanilla Nether features/structures and both-loader
+runtime validation. The preset and biome-import descriptions below are historical
+Overworld milestones, not the current activation UI or a restriction on Nether
+generation.
+
 New MCA and chunk presets save `density_composition: true`; worlds whose saved
 generator lacks that option keep legacy final-field interpolation. Datapack
 imports preserve the choice. Individual registered interpolation fields are

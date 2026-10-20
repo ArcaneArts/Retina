@@ -722,3 +722,38 @@ cycle does not claim a new Rust build or Rust-unit run.
 This installed matrix covers integrated `CHUNKS_ONLY`/`FEATURES` gameplay.
 Installed dedicated-server and completed `SURFACE_THEN_CHUNKS` gameplay coverage
 are not claimed. The general dedicated Nether matrix is documented above.
+
+## Nether framebuffer tour
+
+`retinaClientVisualQa` opens an existing copied world and captures real game
+frames at the poses in a JSON file. Run it separately from `retinaClientGameplayQa`.
+Use a disposable run directory: the spectator moves, effects are removed, normal
+game ticks run and the world saves on exit.
+
+Copy the desired world into `$RETINA_QA_ROOT/fabric/saves/retina-qa-mca`, then run:
+
+```sh
+./gradlew -PretinaHostOnly -PretinaQa \
+  -PretinaClientVisualQa=/absolute/path/to/tour.json \
+  -PretinaClientRunDir="$RETINA_QA_ROOT/fabric" :fabric:runClient
+```
+
+For NeoForge use a separate world copy and `:neoforge:runNeoForgeClient`.
+[The retained tour](../qa/nether-visual-tour.json) uses seed 123456789 and the
+ordinary Normal Nether from the goal's saved QA fixture. A specification contains
+`world` (save-folder name) and a `scenes` list; each scene has `name`, `x`, `y`, `z`,
+`yaw` and `pitch`. Adjust positions when inspecting different terrain.
+
+The harness prepares destination regions, teleports on the server, waits for
+actual client chunk-cache entries and renderer settling, then calls Minecraft's
+framebuffer screenshot API. It saves uniquely named PNGs and JSON metadata under
+the run directory's `screenshots` folder, and follows the normal disconnect/save
+flow. Brightness is 0.5 and player effects are cleared. The fixture's options
+select 1280×720, render distance 8, simulation distance 5, VSync off and 30 FPS;
+the ordinary graphics settings and biome fog remain active.
+
+Require every `nether_visual_capture` and the final `nether_visual_tour_saved`
+event, inspect logs and decode every PNG. Then inspect the images themselves:
+capture events only prove that a file was written. See the
+[visual inspection report](NETHER_VISUAL_QA.md) for accepted views and rejected
+early camera/capture trials.

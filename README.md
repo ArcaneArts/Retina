@@ -16,6 +16,10 @@ generators retain their original implementation, with a diagnostic identifying t
 approximates noise worldgen rules rather than reproducing vanilla's terrain for
 the same seed. Undecorated Superflat uses the configured layers exactly.
 
+The [Nether delivery audit](docs/NETHER_GOAL_AUDIT.md) links the implementation
+cycles and validation matrix. [Inspected game captures](docs/NETHER_VISUAL_QA.md)
+show the five biomes, structures, lighting and sampled region boundaries.
+
 ## Try it
 
 For development, install **JDK 25**, **Rust/Cargo 1.87 or newer**, and a platform C

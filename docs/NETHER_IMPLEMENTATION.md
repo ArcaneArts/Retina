@@ -3,8 +3,8 @@
 Supported Nether sources now activate Retina automatically on creation and reopen.
 The milestones below record the staged implementation; earlier milestones kept
 activation deferred. Live portal, progression, lighting and unload checks are
-recorded below. Remaining final validation is listed at the end. The End is
-outside this effort.
+recorded below. The [delivery audit](NETHER_GOAL_AUDIT.md) summarizes the completed
+requirements, merged cycles and validation limits. The End is outside this effort.
 
 ## Cycle 1: generation contexts
 
@@ -1344,6 +1344,21 @@ See [the full workload, counters and limits](NETHER_PERFORMANCE.md). This is a
 complete native Nether baseline, not a speedup claim against earlier Overworld
 workloads or a Minecraft rendering benchmark.
 
-## Remaining cycles
+## Cycle 6d: rendered inspection and final audit
 
-6. Complete rendered visual QA and the final documentation/requirement audit.
+The opt-in client framebuffer tour captures an existing disposable world at
+specified spectator poses. It waits for actual client chunk delivery as well as
+renderer settling; the initial render-queue-only check proved insufficient after
+teleport. Twenty final images on Fabric and NeoForge were opened and inspected
+for the five biomes, four structure families, lighting and a saved-region
+boundary. Independent MCA cross-sections show floor/roof bounds, full storage,
+lava and decorated terrain. Obstructed early angles and incomplete early frames
+remain diagnostics rather than accepted results.
+
+The two final tours passed 62 runtime events and preserved the original saved
+source definitions and both diamond edits. Both host builds passed, including
+104 native unit tests and five Fabric tests; optional/diagnostic skips are
+identified in the [delivery audit](NETHER_GOAL_AUDIT.md).
+The [visual report](NETHER_VISUAL_QA.md) contains the inspected images, observations
+and sample limits. README and runtime/generation documentation now point to the
+delivered Nether behavior, complete requirement audit and measured baseline.
