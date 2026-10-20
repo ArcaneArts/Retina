@@ -223,6 +223,9 @@ pub(super) struct Input {
     attempts: u32,
 }
 impl Input {
+    pub(super) fn retained_bytes(&self) -> usize {
+        self.words.capacity() * 4
+    }
     fn new(
         field: &Field,
         profile: &WorldProfile,
@@ -375,14 +378,50 @@ impl Replay<'_> {
             let columns = self.field.side as u64 * self.field.side as u64 * 256;
             let result = if candidates >= columns * 2 {
                 let packing = std::time::Instant::now();
-                let input = Input::new(
-                    self.field,
-                    self.profile,
-                    self.request,
-                    recipe,
-                    program,
-                    self.mask,
-                );
+                // This replay owns an immutable field/profile/mask. Mutable
+                // prior writes are uploaded separately in each anchor overlay.
+                // Retain at most one 32 MiB substrate, never a cache per recipe.
+                let cached = self
+                    .reuse_substrate
+                    .then(|| self.vine_input.as_ref())
+                    .flatten()
+                    .filter(|(id, _)| *id == recipe);
+                let input = if let Some((_, input)) = cached {
+                    total.substrate_cache_hits += 1;
+                    Some(input.clone())
+                } else {
+                    self.vine_input = None;
+                    let input = Input::new(
+                        self.field,
+                        self.profile,
+                        self.request,
+                        recipe,
+                        program,
+                        self.mask,
+                    )
+                    .map(|mut input| {
+                        if self.reuse_substrate && input.words.len() * 4 <= 32 << 20 {
+                            input.words.shrink_to_fit();
+                        }
+                        Arc::new(input)
+                    });
+                    if self.reuse_substrate {
+                        if let Some(input) = input.as_ref().filter(|i| {
+                            i.retained_bytes() <= 32 << 20
+                                && self
+                                    .retained_bytes
+                                    .load(Ordering::Relaxed)
+                                    .checked_add(i.retained_bytes())
+                                    .is_some_and(|n| n <= self.retained_limit)
+                        }) {
+                            self.vine_input = Some((recipe, input.clone()));
+                        }
+                    }
+                    input
+                };
+                total.retained_substrate_bytes = total
+                    .retained_substrate_bytes
+                    .max(self.retained_substrate_bytes() as u64);
                 total.substrate_pack_nanos += packing.elapsed().as_nanos() as u64;
                 let jobs: Vec<_> = indices
                     .iter()
@@ -399,7 +438,11 @@ impl Replay<'_> {
                     let locked = gpu.lock();
                     total.lock_wait_nanos += wait.elapsed().as_nanos() as u64;
                     match locked {
-                        Ok(mut gpu) => Some(gpu.run(&input, self.request, program, &jobs)),
+                        Ok(mut gpu) => Some(if self.reuse_substrate {
+                            gpu.run_shared(&input, self.request, program, &jobs)
+                        } else {
+                            gpu.run(&input, self.request, program, &jobs)
+                        }),
                         Err(_) => {
                             total.device_failure_anchors += indices.len() as u64;
                             None
@@ -446,7 +489,7 @@ impl Replay<'_> {
                     self.retained_bytes
                         .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |used| {
                             used.checked_add(bytes)
-                                .filter(|n| *n <= self.retained_limit)
+                                .filter(|n| *n <= self.prefix_limit())
                         })
                 {
                     self.peak_retained_bytes

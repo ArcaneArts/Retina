@@ -1,6 +1,27 @@
 use super::*;
 use serde_json::{Value, json};
 
+#[test]
+fn replay_policy_defaults_to_measured_backend_and_honors_overrides() {
+    assert_eq!(replay_policy("Metal: test", true, None, None), (512, true));
+    assert_eq!(
+        replay_policy("Metal: test", false, None, None),
+        (usize::MAX, false)
+    );
+    for backend in ["Vulkan: test", "Dx12: test", "Gl: test", "unknown"] {
+        assert_eq!(replay_policy(backend, true, None, None), (usize::MAX, false));
+        assert_eq!(replay_policy(backend, false, Some("256"), Some("1")), (256, true));
+    }
+    assert_eq!(
+        replay_policy("Metal: test", true, Some("0"), Some("0")),
+        (usize::MAX, false)
+    );
+    assert_eq!(
+        replay_policy("Metal: test", true, Some("bad"), Some("bad")),
+        (512, true)
+    );
+}
+
 fn simple(provider: Value) -> Value {
     json!({"kind":"simple_block", "provider":provider,
         "states":([3,4,6].into_iter().map(|s| json!({"source":s,"lower":[s,s],
@@ -115,6 +136,20 @@ fn run(
     diagnostics::Planning,
     Vec<(Vec<[i32; 4]>, Vec<counts::Query>)>,
 ) {
+    run_batched(profile, field, request, retain, budget, usize::MAX)
+}
+fn run_batched(
+    profile: &WorldProfile,
+    field: &Field,
+    request: ChunkRequest,
+    retain: bool,
+    budget: usize,
+    batch: usize,
+) -> (
+    Vec<Vec<Placement>>,
+    diagnostics::Planning,
+    Vec<(Vec<[i32; 4]>, Vec<counts::Query>)>,
+) {
     let mut replay = Replay::new(
         field,
         profile,
@@ -129,11 +164,12 @@ fn run(
         replay = replay.without_prefix_resume();
     }
     replay.retained_limit = budget;
+    replay.ready_limit = batch;
     let mut samples = provider_noise::Samples::default();
     let mut counts = counts::Counts::default();
     let mut details = diagnostics::Planning::default();
     let mut rounds = Vec::new();
-    for _ in 0..16 {
+    for _ in 0..256 {
         let queries = replay.poll_measured(&samples, Some(&counts), Some(&mut details));
         if queries.is_empty() {
             assert_eq!(replay.retained_bytes.load(Ordering::Relaxed), 0);
@@ -147,6 +183,54 @@ fn run(
         counts.extend(queries.counts.into_iter().map(|q| (q, 1)));
     }
     panic!("replay failed to converge");
+}
+#[test]
+fn bounded_ready_batches_preserve_order_and_recovery() {
+    let pool = rayon::ThreadPoolBuilder::new()
+        .num_threads(2)
+        .build()
+        .unwrap();
+    for source_order in [false, true] {
+        for (seed, origin) in [(42, 0), (123456789, -33), (987654321, 700_000)] {
+            let (mut profile, field, request) = fixture(seed, origin);
+            profile.decoration_source_order = source_order;
+            for (id, recipe) in profile.decorations.iter_mut().enumerate() {
+                recipe.root_order = id.min(3) as u32;
+            }
+            let (expected, _, _) = pool.install(|| run(&profile, &field, request, false, 0));
+            for batch in [1, 3, 7, 16, 100] {
+                for budget in [0, 16 * 1024, 64 << 20] {
+                    let (actual, details, queries) = pool
+                        .install(|| run_batched(&profile, &field, request, true, budget, batch));
+                    assert_eq!(
+                        actual, expected,
+                        "origin {origin}, batch {batch}, budget {budget}"
+                    );
+                    assert_eq!(details.ready_batches as usize, 16usize.div_ceil(batch));
+                    assert_eq!(details.peak_ready_anchors as usize, batch.min(16));
+                    assert!(details.peak_retained_bytes <= budget as u64);
+                    assert!(queries.iter().any(|(noise, _)| !noise.is_empty()));
+                    assert!(queries.iter().any(|(_, counts)| !counts.is_empty()));
+                    if budget == 0 {
+                        assert!(details.worker.discarded_checkpoints > 0);
+                        assert_eq!(details.worker.resumed_anchors, 0);
+                    }
+                }
+            }
+        }
+    }
+}
+#[test]
+fn ready_batches_without_queries_finish_in_one_poll() {
+    let (mut profile, field, request) = fixture(42, -33);
+    profile.decorations.truncate(2);
+    profile.biomes[0].decorations = vec![0, 1];
+    let (expected, _, _) = run(&profile, &field, request, false, 0);
+    let (actual, details, queries) = run_batched(&profile, &field, request, true, 0, 3);
+    assert_eq!(actual, expected);
+    assert!(queries.is_empty());
+    assert_eq!(details.ready_batches, 6);
+    assert_eq!(details.repeated_anchor_attempts, 0);
 }
 #[test]
 fn resumed_prefix_matches_full_replay_and_query_batches() {

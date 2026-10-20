@@ -16,6 +16,8 @@ pub struct Planning {
     pub replay_wall_nanos: u64,
     pub distribution_wall_nanos: u64,
     pub rounds: u64,
+    pub ready_batches: u64,
+    pub peak_ready_anchors: u64,
     pub anchor_attempts: u64,
     pub repeated_anchor_attempts: u64,
     pub noise_queries: u64,

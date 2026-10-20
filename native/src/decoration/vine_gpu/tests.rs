@@ -56,6 +56,25 @@ fn replay(
     budget: usize,
     post_gpu_limit: Option<usize>,
 ) -> (Vec<Vec<Placement>>, Stats, usize) {
+    replay_batched(
+        profile,
+        field,
+        request,
+        gpu,
+        budget,
+        post_gpu_limit,
+        usize::MAX,
+    )
+}
+fn replay_batched(
+    profile: &WorldProfile,
+    field: &Field,
+    request: ChunkRequest,
+    gpu: Option<&Mutex<Gpu>>,
+    budget: usize,
+    post_gpu_limit: Option<usize>,
+    batch: usize,
+) -> (Vec<Vec<Placement>>, Stats, usize) {
     let mut state = Replay::new(
         field,
         profile,
@@ -68,13 +87,19 @@ fn replay(
     )
     .with_gpu_programs(gpu.map(|_| compile(profile, request)));
     state.retained_limit = budget;
+    state.ready_limit = batch;
+    state.reuse_substrate = batch != usize::MAX;
     let mut samples = provider_noise::Samples::default();
     let mut counts = counts::Counts::default();
     let mut stats = Stats::default();
     let mut provider_rounds = 0;
     let mut details = diagnostics::Planning::default();
-    for _ in 0..20 {
+    for _ in 0..256 {
         let q = state.poll_measured(&samples, Some(&counts), Some(&mut details));
+        assert!(
+            state.retained_bytes.load(Ordering::Relaxed) + state.retained_substrate_bytes()
+                <= state.retained_limit
+        );
         if q.is_empty() {
             if profile.decoration_source_order {
                 assert!(state.blocks.iter().flatten().flatten().all(|block| block.root_order > 0),
@@ -108,6 +133,10 @@ fn replay(
                 state.retained_limit = limit;
             }
             stats.add(state.run_vines(&q.vines, gpu.unwrap()));
+            assert!(
+                state.retained_bytes.load(Ordering::Relaxed) + state.retained_substrate_bytes()
+                    <= state.retained_limit
+            );
         }
         if !q.noise.is_empty() {
             provider_rounds += 1;
@@ -150,6 +179,16 @@ fn gpu_vine_planner_handoff() {
         assert!(rounds > 0, "earlier features must have missing providers");
         let (actual, stats, _) = pool.install(|| replay(&p, &field, r, Some(&gpu), 64 << 20, None));
         assert_eq!(actual, expected, "origin {origin}");
+        for batch in [1, 4, 9] {
+            for budget in [0, 64 << 20] {
+                let (batched, _, _) =
+                    pool.install(|| replay_batched(&p, &field, r, Some(&gpu), budget, None, batch));
+                assert_eq!(
+                    batched, expected,
+                    "batch {batch}, origin {origin}, budget {budget}"
+                );
+            }
+        }
         assert!(
             stats.anchors > stats.fallbacks,
             "must actually evaluate anchors on GPU"
@@ -163,6 +202,9 @@ fn gpu_vine_planner_handoff() {
             discarded, expected,
             "discarding an oversized successful prefix must replay on CPU"
         );
+        let (batched_discarded, _, _) =
+            pool.install(|| replay_batched(&p, &field, r, Some(&gpu), 64 << 20, Some(0), 4));
+        assert_eq!(batched_discarded, expected);
         gpu.lock().unwrap().enable_for_test(false);
         let (failed, failed_stats, _) =
             pool.install(|| replay(&p, &field, r, Some(&gpu), 64 << 20, None));
@@ -171,6 +213,9 @@ fn gpu_vine_planner_handoff() {
             failed, expected,
             "disabled device keeps the original CPU continuation"
         );
+        let (batched_failed, _, _) =
+            pool.install(|| replay_batched(&p, &field, r, Some(&gpu), 64 << 20, None, 4));
+        assert_eq!(batched_failed, expected);
         gpu.lock().unwrap().enable_for_test(true);
         rows.push(serde_json::json!({"origin":origin,"writes":actual.iter().map(Vec::len).sum::<usize>(),"stats":stats}));
         let programs = compile(&p, r);
@@ -180,6 +225,28 @@ fn gpu_vine_planner_handoff() {
         let jobs = [(r.chunk_x, r.chunk_z, &overlay)];
         let (normal, _) = gpu.lock().unwrap().run(&input, r, prog, &jobs);
         assert!(!normal[0].as_ref().unwrap().is_empty());
+        let shared = Arc::new(Input::new(&field, &p, r, 5, prog, None).unwrap());
+        let (first, first_stats) = gpu.lock().unwrap().run_shared(&shared, r, prog, &jobs);
+        let (reused, reuse_stats) = gpu.lock().unwrap().run_shared(&shared, r, prog, &jobs);
+        assert_eq!(first, normal);
+        assert_eq!(reused, normal);
+        assert_eq!(
+            first_stats.upload_bytes - reuse_stats.upload_bytes,
+            shared.words.len() as u64 * 4
+        );
+        let mut other = Input::new(&field, &p, r, 5, prog, None).unwrap();
+        other.words[5] = 0;
+        let other = Arc::new(other);
+        let (other_result, other_stats) = gpu.lock().unwrap().run_shared(&other, r, prog, &jobs);
+        assert!(other_result[0].is_none());
+        assert_eq!(other_stats.upload_bytes, first_stats.upload_bytes);
+        let (restored, restore_stats) = gpu.lock().unwrap().run_shared(&shared, r, prog, &jobs);
+        assert_eq!(restored, normal);
+        assert_eq!(restore_stats.upload_bytes, first_stats.upload_bytes);
+        gpu.lock().unwrap().discard_buffers_for_test();
+        let (rebuilt, rebuild_stats) = gpu.lock().unwrap().run_shared(&shared, r, prog, &jobs);
+        assert_eq!(rebuilt, normal);
+        assert_eq!(rebuild_stats.upload_bytes, first_stats.upload_bytes);
         input.words[5] = 0;
         let (overflow, stats) = gpu.lock().unwrap().run(&input, r, prog, &jobs);
         assert!(overflow[0].is_none());

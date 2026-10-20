@@ -393,7 +393,14 @@ earlier table. `RETINA_GPU_PALETTES=0` restores CPU palette encoding.
 
 [Early decoration suspension](docs/EARLY_DECORATION_SUSPENSION_TRIAL.md) reduced
 speculative CPU work but did not reliably improve full generation, so the
-existing replay policy remains enabled. The [ongoing optimization tracker](docs/POST_INVESTIGATION_OPTIMIZATIONS.md)
+existing suspension policy remains enabled.
+[Bounded replay batches with immutable substrate reuse](docs/READY_DECORATION_BATCHES.md)
+subsequently improved two matched eight-caller Terralith runs by 1.3–4.9%.
+They are enabled for Metal profiles with eligible GPU vine programs; vanilla
+profiles without those programs retain whole-field scheduling because forced
+batching regressed a two-caller comparison. The source-root dependency planner
+is unchanged. Cache storage shares the existing retained-state budget.
+The [ongoing optimization tracker](docs/POST_INVESTIGATION_OPTIMIZATIONS.md)
 separates shipped improvements from tested, rejected experiments.
 
 The [cycle tracker](docs/OPTIMIZATION_CYCLES_2026_10.md) also records experiments
