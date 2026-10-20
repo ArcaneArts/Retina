@@ -116,3 +116,8 @@ GPU final heightmaps, palettes and compact final-section output remain separate
 required experiments. Those can target the larger final-block scan/packing cost
 using data already uploaded for lighting, rather than repeating this metadata-only
 approach. The overall performance goal is not complete.
+
+The subsequent [GPU heightmap trial](GPU_HEIGHTMAP_TRIAL.md) implemented exact
+GPU scanning and compact NBT heightmap output from lighting's final blocks. It
+passed full NBT comparisons but was rejected after dense Terralith regressions;
+GPU palettes and block-section packing remain to be evaluated.

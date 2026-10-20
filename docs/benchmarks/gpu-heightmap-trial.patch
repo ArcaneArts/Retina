@@ -1,0 +1,412 @@
+diff --git a/native/src/lighting.rs b/native/src/lighting.rs
+index 8d9aa5f..9ffee10 100644
+--- a/native/src/lighting.rs
++++ b/native/src/lighting.rs
+@@ -61,0 +62,2 @@ struct Pipelines {
++    heights: wgpu::ComputePipeline,
++    pack_heights: wgpu::ComputePipeline,
+@@ -90,0 +93 @@ struct Pending {
++    heightmaps: Option<Heightmaps>,
+@@ -133,0 +137 @@ impl Pending {
++            heightmaps: self.heightmaps,
+@@ -145,0 +150 @@ pub(crate) struct ResultLight {
++    heightmaps: Option<Heightmaps>,
+@@ -224,0 +230,2 @@ impl Gpu {
++            heights: pipeline("final_heights"),
++            pack_heights: pipeline("pack_heights"),
+@@ -319,0 +327 @@ impl Gpu {
++                false,
+@@ -332,0 +341 @@ impl Gpu {
++                false,
+@@ -347,0 +357 @@ impl Gpu {
++        heights: bool,
+@@ -379,0 +390,9 @@ impl Gpu {
++        let light_bytes = layout.as_ref().map_or(dense_output, |v| v.bytes as u64);
++        let heightmaps = heights.then(|| Heightmaps {
++            offset: light_bytes as usize,
++            chunk_bytes: 6 * 256usize.div_ceil(64 / (32 - height.leading_zeros()) as usize) * 8,
++        });
++        let height_raw_bytes = if heights { core as u64 * core as u64 * 6 * 256 * 4 } else { 0 };
++        let height_bytes = heightmaps.map_or(0, |h| h.chunk_bytes as u64 * core as u64 * core as u64);
++        let readback_bytes = light_bytes + height_bytes;
++        let output_maximum = dense_output + height_raw_bytes + height_bytes;
+@@ -383 +402 @@ impl Gpu {
+-            layout.as_ref().map_or(dense_output, |v| v.bytes as u64),
++            light_bytes + height_raw_bytes + height_bytes,
+@@ -393 +412 @@ impl Gpu {
+-        let output_capacity = sizes[2].next_power_of_two().min(dense_output).max(sizes[2]);
++        let output_capacity = sizes[2].next_power_of_two().min(output_maximum).max(sizes[2]);
+@@ -495 +514 @@ impl Gpu {
+-        let slot = self.readback(sizes[2], dense_output);
++        let slot = self.readback(readback_bytes, dense_output + height_bytes);
+@@ -547,2 +566,2 @@ impl Gpu {
+-            0,
+-            0,
++            if heights { (light_bytes / 4) as u32 } else { 0 },
++            ((light_bytes + height_raw_bytes) / 4) as u32,
+@@ -642 +661,4 @@ impl Gpu {
+-                timestamp_writes: writes(2),
++                timestamp_writes: if heights {
++                    queries.map(|q| wgpu::ComputePassTimestampWrites { query_set: q,
++                        beginning_of_pass_write_index: Some(4), end_of_pass_write_index: None })
++                } else { writes(2) },
+@@ -646 +668 @@ impl Gpu {
+-            pass.dispatch_workgroups(256, (sizes[2] as u32 / 4).div_ceil(16384), 1);
++            pass.dispatch_workgroups(256, (light_bytes as u32 / 4).div_ceil(16384), 1);
+@@ -648 +670,25 @@ impl Gpu {
+-        encoder.copy_buffer_to_buffer(&buffers.output, 0, &slot.buffer, 0, sizes[2]);
++        if heights {
++            // Separate passes establish visibility between the raw six-predicate
++            // scan and compact NBT packing; neither adds a CPU/GPU round trip.
++            {
++                let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
++                    label: Some("Retina final heightmaps"), timestamp_writes: None,
++                });
++                pass.set_pipeline(&pipelines.heights);
++                pass.set_bind_group(0, ba, &[]);
++                pass.dispatch_workgroups(core * core * 4, 1, 1);
++            }
++            {
++                let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
++                    label: Some("Retina packed heightmaps"),
++                    timestamp_writes: queries.map(|q| wgpu::ComputePassTimestampWrites { query_set: q,
++                        beginning_of_pass_write_index: None, end_of_pass_write_index: Some(5) }),
++                });
++                pass.set_pipeline(&pipelines.pack_heights);
++                pass.set_bind_group(0, ba, &[]);
++                pass.dispatch_workgroups((height_bytes as u32 / 8).div_ceil(64), 1, 1);
++            }
++            encoder.copy_buffer_to_buffer(&buffers.output, light_bytes + height_raw_bytes,
++                &slot.buffer, light_bytes, height_bytes);
++        }
++        encoder.copy_buffer_to_buffer(&buffers.output, 0, &slot.buffer, 0, light_bytes);
+@@ -654 +700 @@ impl Gpu {
+-        let mapping = crate::gpu::Mapping::new(&slot.buffer, sizes[2]);
++        let mapping = crate::gpu::Mapping::new(&slot.buffer, readback_bytes);
+@@ -664 +710 @@ impl Gpu {
+-            size: sizes[2],
++            size: readback_bytes,
+@@ -666,0 +713 @@ impl Gpu {
++            heightmaps,
+@@ -681,0 +729,6 @@ impl Gpu {
++#[derive(Clone, Copy)]
++struct Heightmaps {
++    offset: usize,
++    chunk_bytes: usize,
++}
++
+@@ -688,0 +742 @@ pub(crate) struct Tile {
++    heightmaps: Option<Heightmaps>,
+@@ -692 +746 @@ impl Tile {
+-        if let Some(layout) = &self.layout {
++        let mut result = if let Some(layout) = &self.layout {
+@@ -702,0 +757,4 @@ impl Tile {
++        };
++        if let Some(h) = self.heightmaps {
++            let start = h.offset + index * h.chunk_bytes;
++            result.heightmaps = Some(&self.bytes[start..start + h.chunk_bytes]);
+@@ -703,0 +762 @@ impl Tile {
++        result
+@@ -794,0 +854 @@ pub(crate) fn region(
++                    std::env::var("RETINA_GPU_HEIGHTMAPS").as_deref() == Ok("1"),
+@@ -832,0 +893 @@ pub(crate) fn region(
++            heightmaps: result.heightmaps,
+@@ -860 +921 @@ mod tests {
+-    fn fixture_profile(sky: bool) -> Profile {
++    pub(super) fn fixture_profile(sky: bool) -> Profile {
+@@ -1085,0 +1147 @@ mod tests {
++                            false,
+@@ -1098,0 +1161 @@ mod tests {
++            heightmaps: result.heightmaps,
+@@ -1329,0 +1393,3 @@ mod tests {
++
++#[cfg(test)]
++mod heightmap_tests;
+diff --git a/native/src/lighting.wgsl b/native/src/lighting.wgsl
+index 68efb4f..53ba9cc 100644
+--- a/native/src/lighting.wgsl
++++ b/native/src/lighting.wgsl
+@@ -239,0 +240,71 @@ fn nibbles(word: u32) -> u32 {
++
++// Exact six-predicate final heightmaps, independent of light opacity or sky.
++// One invocation owns a column. The material upload and state palette are shared
++// with lighting, and uniform zero-mask sections can be skipped in one step.
++@compute @workgroup_size(64)
++fn final_heights(@builtin(global_invocation_id) id: vec3<u32>) {
++    let column = id.x;
++    if column >= p.core * p.core * 256u { return; }
++    let chunk = column / 256u;
++    let local = column % 256u;
++    let input_chunk = (p.crop + chunk / p.core) * p.chunks + p.crop + chunk % p.core;
++    let height = p.height - 32u;
++    var found = array<u32, 6>(0u, 0u, 0u, 0u, 0u, 0u);
++    var pending = 63u;
++    for (var sy = height / 16u; sy > 0u && pending != 0u; sy--) {
++        if (p.flags & 8u) != 0u {
++            let descriptor = blocks[input_chunk * (height / 16u) + sy - 1u];
++            if (descriptor & 0x80000000u) != 0u {
++                let hit = states[descriptor & 65535u].padding & pending;
++                for (var kind = 0u; kind < 6u; kind++) {
++                    if (hit & (1u << kind)) != 0u { found[kind] = sy * 16u; }
++                }
++                pending &= ~hit;
++                continue;
++            }
++        }
++        for (var dy = sy * 16u; dy > (sy - 1u) * 16u && pending != 0u; dy--) {
++            let block = input_chunk * height * 256u + (dy - 1u) * 256u + local;
++            let material = (material_word(block / 2u) >> ((block % 2u) * 16u)) & 65535u;
++            let hit = states[material].padding & pending;
++            for (var kind = 0u; kind < 6u; kind++) {
++                if (hit & (1u << kind)) != 0u { found[kind] = dy; }
++            }
++            pending &= ~hit;
++        }
++    }
++    for (var kind = 0u; kind < 6u; kind++) {
++        output[p.padding1 + (chunk * 6u + kind) * 256u + local] = found[kind];
++    }
++}
++
++fn big_endian(word: u32) -> u32 {
++    return (word << 24u) | ((word & 0xff00u) << 8u)
++        | ((word >> 8u) & 0xff00u) | (word >> 24u);
++}
++
++// WGSL does not need native u64: Minecraft's non-straddling long packing is
++// constructed as two u32 halves, then written in NBT's big-endian byte order.
++@compute @workgroup_size(64)
++fn pack_heights(@builtin(global_invocation_id) id: vec3<u32>) {
++    let bits = 32u - countLeadingZeros(p.height - 32u);
++    let per_long = 64u / bits;
++    let longs = (256u + per_long - 1u) / per_long;
++    let word = id.x;
++    if word >= p.core * p.core * 6u * longs { return; }
++    let map = word / longs;
++    let first = (word % longs) * per_long;
++    var low = 0u; var high = 0u;
++    for (var i = 0u; i < per_long && first + i < 256u; i++) {
++        let value = output[p.padding1 + map * 256u + first + i];
++        let shift = i * bits;
++        if shift < 32u {
++            low |= value << shift;
++            if shift > 32u - bits { high |= value >> (32u - shift); }
++        } else {
++            high |= value << (shift - 32u);
++        }
++    }
++    output[p.padding2 + word * 2u] = big_endian(high);
++    output[p.padding2 + word * 2u + 1u] = big_endian(low);
++}
+diff --git a/native/src/lighting/heightmap_tests.rs b/native/src/lighting/heightmap_tests.rs
+new file mode 100644
+index 0000000..92b0fdb
+--- /dev/null
++++ b/native/src/lighting/heightmap_tests.rs
+@@ -0,0 +1,161 @@
++use super::*;
++
++fn expected_maps(blocks: &[u16], states: &[[u32; 8]], height: usize) -> Vec<u8> {
++    let bits = usize::BITS - height.leading_zeros();
++    let per_long = 64 / bits as usize;
++    let mut result = Vec::new();
++    for kind in 0..6 {
++        let heights: Vec<u64> = (0..256)
++            .map(|c| {
++                (0..height)
++                    .rev()
++                    .find(|&y| states[blocks[y * 256 + c] as usize][7] & (1 << kind) != 0)
++                    .map_or(0, |y| (y + 1) as u64)
++            })
++            .collect();
++        for group in heights.chunks(per_long) {
++            let word = group.iter().enumerate().fold(0u64, |word, (i, &value)| {
++                word | value << (i * bits as usize)
++            });
++            result.extend_from_slice(&word.to_be_bytes());
++        }
++    }
++    result
++}
++
++#[test]
++#[ignore = "requires a supported GPU; bounded final-heightmap correctness fixture"]
++fn gpu_final_heightmaps_match_all_predicates_packing_and_lighting() {
++    let engine = crate::TerrainEngine::new().unwrap();
++    let mut gpu = engine.light_gpu.lock().unwrap();
++    let mut flights = Vec::new();
++    for (case, (side, height, crop, core, pattern)) in [
++        (3usize, 16usize, 1usize, 1usize, 0),
++        (3, 80, 0, 3, 1),
++        (4, 256, 1, 2, 2),
++        (3, 384, 1, 1, 3),
++        (2, 512, 0, 2, 4),
++        (3, 32, 1, 1, 5),
++    ]
++    .into_iter()
++    .enumerate()
++    {
++        let mut profile = tests::fixture_profile(case % 2 == 0);
++        profile.states.resize(65536, [0; 8]);
++        for (id, state) in profile.states.iter_mut().enumerate() {
++            // Include all predicate combinations and unrelated lighting traits.
++            state[7] = (id as u32) & 63;
++            state[0] = if id % 7 == 0 { 0 } else { 15 };
++        }
++        if pattern == 5 {
++            profile.states[0][7] = 63;
++        }
++        let mut blocks = vec![0u16; side * side * height * 256];
++        for (i, value) in blocks.iter_mut().enumerate() {
++            let y = (i / 256) % height;
++            let c = i % 256;
++            *value = match pattern {
++                0 => 0,
++                1 => 65535,
++                2 if y < 16 => 63,
++                2 if y < height - 16 => (1 << ((y / 16) % 6)) as u16,
++                2 => 0,
++                3 if y == (c * 71 + i / (height * 256)) % height => 65535,
++                3 => 0,
++                4 if y == 0 || y == height - 1 => 1 << (c % 6),
++                4 if y < height / 2 => ((i * 17 + i / 4096) % 63 + 1) as u16,
++                _ => 0,
++            };
++        }
++        let handle = 600 + case as u32;
++        gpu.compact_input = false;
++        let expected_light = gpu
++            .run(
++                handle,
++                &profile,
++                side as u32,
++                height as u32,
++                crop as u32,
++                core as u32,
++                &blocks,
++                OutputFormat::Sections,
++            )
++            .unwrap()
++            .bytes;
++        let indices: Vec<_> = (0..core)
++            .flat_map(|z| (0..core).map(move |x| (crop + z) * side + crop + x))
++            .collect();
++        let expected: Vec<_> = indices
++            .iter()
++            .map(|&i| {
++                expected_maps(
++                    &blocks[i * height * 256..(i + 1) * height * 256],
++                    &profile.states,
++                    height,
++                )
++            })
++            .collect();
++        let metadata: Vec<_> = blocks
++            .chunks_exact(height * 256)
++            .map(transport::classify)
++            .collect();
++        let constants = output::Constants::new(&profile, &metadata, side);
++        for compact in [false, true] {
++            let mut packed = Vec::new();
++            let payload = if compact {
++                transport::pack(
++                    &mut packed,
++                    blocks
++                        .chunks_exact(height * 256)
++                        .zip(metadata.iter().map(Vec::as_slice)),
++                    height as u32,
++                );
++                bytemuck::cast_slice(&packed)
++            } else {
++                bytemuck::cast_slice(&blocks)
++            };
++            let layout = compact.then(|| constants.tile(indices.iter().copied()));
++            let pending = gpu
++                .submit_payload(
++                    handle,
++                    &profile,
++                    side as u32,
++                    height as u32,
++                    crop as u32,
++                    core as u32,
++                    payload,
++                    compact,
++                    OutputFormat::Sections,
++                    layout,
++                    true,
++                )
++                .unwrap();
++            flights.push((pending, expected_light.clone(), expected.clone(), height));
++        }
++        // Complete in reverse order after buffers have been reused and resized.
++        if flights.len() >= 4 {
++            for (pending, light, maps, height) in flights.drain(..).rev() {
++                let result = gpu.complete(pending).unwrap();
++                let tile = Tile {
++                    slots: Vec::new(),
++                    bytes: result.bytes,
++                    chunk_bytes: (height + 32) * 256,
++                    layout: result.layout,
++                    heightmaps: result.heightmaps,
++                };
++                let actual_light: Vec<_> = (0..maps.len())
++                    .flat_map(|i| tile.chunk(i).expanded(height / 16 + 2))
++                    .collect();
++                assert_eq!(actual_light, light, "lighting changed in case {case}");
++                for (i, expected) in maps.iter().enumerate() {
++                    assert_eq!(
++                        tile.chunk(i).heightmaps.unwrap(),
++                        expected,
++                        "heightmaps case {case} chunk {i}"
++                    );
++                }
++            }
++        }
++    }
++    assert!(flights.is_empty());
++}
+diff --git a/native/src/lighting/output.rs b/native/src/lighting/output.rs
+index e67dabe..8cfabb4 100644
+--- a/native/src/lighting/output.rs
++++ b/native/src/lighting/output.rs
+@@ -113,0 +114 @@ pub(crate) struct ChunkLight<'a> {
++    pub(crate) heightmaps: Option<&'a [u8]>,
+@@ -117 +118,5 @@ impl<'a> ChunkLight<'a> {
+-        Self { bytes, descriptors }
++        Self {
++            bytes,
++            descriptors,
++            heightmaps: None,
++        }
+diff --git a/native/src/profile.rs b/native/src/profile.rs
+index 85a50f6..4ac5ae5 100644
+--- a/native/src/profile.rs
++++ b/native/src/profile.rs
+@@ -171 +171 @@ impl WorldProfile {
+-        if let Some(lighting) = &profile.lighting {
++        if let Some(lighting) = &mut profile.lighting {
+@@ -172,0 +173,5 @@ impl WorldProfile {
++            // The lighting state has one spare word; reuse its resident upload
++            // for exact final-block height predicates from the loaded registry.
++            for (state, &mask) in lighting.states.iter_mut().zip(&profile.heightmap_masks) {
++                state[7] = u32::from(mask & 63);
++            }
+diff --git a/native/src/region.rs b/native/src/region.rs
+index d1c0fe1..d737f01 100644
+--- a/native/src/region.rs
++++ b/native/src/region.rs
+@@ -981,0 +982 @@ fn encode_chunk(
++    let gpu_heights = lighting.and_then(|light| light.heightmaps);
+@@ -983 +984 @@ fn encode_chunk(
+-    if let Some(profile) = profile {
++    if let Some(profile) = profile.filter(|_| gpu_heights.is_none()) {
+@@ -1033 +1034,8 @@ fn encode_chunk(
+-        nbt.packed(name, values, bits);
++        if let Some(packed) = gpu_heights {
++            let bytes = COLUMNS.div_ceil(64 / bits as usize) * 8;
++            nbt.named(12, name);
++            nbt.0.extend_from_slice(&((bytes / 8) as i32).to_be_bytes());
++            nbt.0.extend_from_slice(&packed[kind * bytes..(kind + 1) * bytes]);
++        } else {
++            nbt.packed(name, values, bits);
++        }
