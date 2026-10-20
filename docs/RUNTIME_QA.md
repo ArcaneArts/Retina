@@ -544,3 +544,81 @@ was skipped without its jar; this cycle makes no installed Chunky claim.
 
 This checks ordinary shutdown during generation; it does not claim
 abrupt-process-crash recovery, visual quality or benchmark throughput.
+
+### Nether source and partial-save compatibility
+
+Run `./gradlew -PretinaHostOnly :common:netherCompatibilityTest` for the five fixed
+biomes and normal climate source. It checks decorated native/preview parity,
+source biome palettes, disabled structures, zero skylight, promotion, and partial
+repair with byte-preserved existing records. It also exports a datapack under
+`build/nether-compatibility/datapack`. `--args=--pack-only` exports only the fixture.
+
+Package that folder as `nether-compatibility.zip` and place it in each fresh
+custom world's datapacks folder before creation. For dedicated runs, enable
+`vanilla,file/nether-compatibility.zip` in `initial-enabled-packs`, set
+`generate-structures=false` and use the ordinary `minecraft:flat` level type.
+Launch with `-PretinaQa -PretinaAutomaticQa=true -PretinaNetherCompatibilityQa=custom`
+and the appropriate `retinaDatapackQa` directory and server task. Add
+`-PretinaAutomaticReopenQa=true` on the second process launch.
+
+For integrated runs, use:
+
+```sh
+./gradlew -PretinaHostOnly -PretinaQa -PretinaClientGameplayQa \
+  -PretinaClientNoStructuresQa=true -PretinaNetherCompatibilityQa=custom \
+  -PretinaClientPresetQa=minecraft:flat \
+  -PretinaClientDatapackQa=nether-compatibility.zip \
+  -PretinaClientRunDir=build/nether-compatibility/fabric-custom-integrated \
+  :fabric:runClient
+```
+
+Use a separate directory and `:neoforge:runNeoForgeClient` for NeoForge.
+The client automatically creates, closes and reopens its disposable world.
+For vanilla Normal-world coverage, use `retinaNetherCompatibilityQa=vanilla`,
+omit the datapack and Flat preset options, and retain structures disabled.
+
+Require `nether_loaded_compatibility` with the expected scenario, flat flag, and
+fresh/reopened state for each server lifetime. The actual loaded datapack must
+retain fixed Warped Forest, noise Y=16..111, sea level 40, ceiling=false, logical
+height 192 and scale 4, while keeping storage Y=0..255. Native previews must
+contain lava and solid terrain, empty output outside those noise bounds, no
+skylight, and no structure starts. Live chunks retain the fixed biome at the
+tested heights. Source snapshots and profiles are written in the world root;
+the standard activation and saved-edit checks also run.
+
+The source comparison serializes both sides before comparing JSON numbers:
+Gson's in-memory Float and parsed decimal values can compare differently even
+when the serialized definitions are byte-identical. This avoids a false failure
+without relaxing comparison of the serialized world settings.
+
+Final results on 2026-10-20, Minecraft 26.3 / Java 25 / Metal on Apple M4 Max:
+
+| Loader and environment | Normal/default Nether events | Flat/custom Nether events | Server lifetimes |
+| --- | ---: | ---: | ---: |
+| Fabric dedicated, fresh + process restart | 33 + 8 | 33 + 8 | 4 |
+| NeoForge dedicated, fresh + process restart | 33 + 8 | 33 + 8 | 4 |
+| Fabric integrated, create + reopen | 51 | 52 | 4 |
+| NeoForge integrated, create + reopen | 51 | 52 | 4 |
+
+All 370 runtime events passed. The eight saves retained identical serialized
+source definitions on reopen, original Overworld/Nether generators, the unchanged
+End, disabled structures and edits in both dimensions. Native previews retained
+the configured bounds and fluids. The separate six-source native suite passed
+393,216 independent block comparisons and 6,138 byte-preserved existing records
+across six partial repairs.
+
+Client runs used VSync disabled, render distance 4, simulation distance 5 and
+30 FPS. The first attempt with default VSync stalled in macOS OpenGL presentation
+before world creation; its thread/native samples are retained as diagnostics.
+The final integrated matrix ran with VSync disabled. A separate initial source
+comparison failure retained byte-identical JSON and led to the serialization
+comparison correction above.
+
+Final regression checks passed for vanilla registry/automatic sources, nine
+native Superflat presets, 294,912 Minecraft reference light comparisons, 96 flat
+feature fixtures, Nether profile/height contexts and cache lifecycle. Both host
+builds passed. Fabric's native region publication, I/O/locate mixins and both
+actual Chunky 1.5.3 selection/mixin tests passed; the mutually exclusive
+absent-Chunky startup case was skipped. This is not an installed DH/Chunky
+gameplay result. The unchanged native library was reused; this Java/QA cycle
+does not claim a new Rust rebuild or Rust-unit run.

@@ -41,6 +41,7 @@ public final class AutomaticGenerationQa {
         var end = server.getLevel(Level.END);
         if (end != null) require(end.getChunkSource().getGenerator() == stems.getValueOrThrow(LevelStem.END).generator(), "End unchanged");
         TerrainRegistryQa.check(runtime);
+        NetherCompatibilityQa.check(server);
         Retina.LOGGER.info("QA_EVT {\"event\":\"minecraft_automatic_activation\",\"status\":\"pass\",\"context\":{\"source\":\"{}\",\"flat\":{},\"dedicated\":{}}}",
                 source.getClass().getSimpleName(), level.isFlat(), server.isDedicatedServer());
     }
