@@ -572,5 +572,260 @@
     "spatial-view-overworld.py"
   ],
   "retention": "Libraries, profiles, worlds, commands and logs stay outside Git under evidence_root. Recreate the recorded source worktree/revision before using retained driver scripts.",
-  "decision": "Select the simpler spatial index for its verified fallback reduction and full output parity; quiet timing acceptance remains open."
+  "decision": "Select the simpler spatial index for its verified fallback reduction and full output parity; quiet timing acceptance remains open.",
+  "post_merge": {
+    "pr": "https://github.com/ArcaneArts/Retina/pull/192",
+    "merged_revision": "74f4e1b7c48e31fe4d98a9648e8b20e842d65db2",
+    "merged_library": {
+      "revision": "74f4e1b7c48e31fe4d98a9648e8b20e842d65db2",
+      "native_tree": "9a3cdb12a5e90bac5787429653359a3a1968970e",
+      "sha256": "ef87bf4750551a0308be32b81db0ae7fc4ea74bd31396ccb14fd465706ccdab2",
+      "source_status": "",
+      "forced_rebuild": true,
+      "timing_acceptance": false
+    },
+    "byte_identical_to_validated_candidate": true,
+    "native_tests": {
+      "passed": 146,
+      "failed": 0,
+      "ignored": 38
+    },
+    "suite": "cycle44/merged-full/suite.json",
+    "measured_identical_chunks": 102400,
+    "each_case_reference_count": 4,
+    "case_observations": [
+      {
+        "case": "nether-main-run0",
+        "median_ms": 1174.4193744380027,
+        "p95_region_ms": 1460.2447774610482,
+        "maximum_region_ms": 1566.0697498824447,
+        "total_ms": 24511.4875419531,
+        "chunks_per_second": 835.5266062472572,
+        "generation_peak_rss_bytes": 1979891712,
+        "peak_rss_bytes": 1979891712
+      },
+      {
+        "case": "nether-second-seed-run0",
+        "median_ms": 1449.8921670019627,
+        "p95_region_ms": 1734.2233480769212,
+        "maximum_region_ms": 1860.9433330129832,
+        "total_ms": 27659.83070805669,
+        "chunks_per_second": 740.423909898864,
+        "generation_peak_rss_bytes": 2153676800,
+        "peak_rss_bytes": 2153676800
+      },
+      {
+        "case": "nether-custom-bounds-run0",
+        "median_ms": 866.8204580899328,
+        "p95_region_ms": 973.8588330801578,
+        "maximum_region_ms": 1152.138208039105,
+        "total_ms": 17718.032041797414,
+        "chunks_per_second": 1155.8845785856472,
+        "generation_peak_rss_bytes": 1593819136,
+        "peak_rss_bytes": 1593819136
+      },
+      {
+        "case": "nether-direct-stem-run0",
+        "median_ms": 904.2484789388254,
+        "p95_region_ms": 977.2076332010329,
+        "maximum_region_ms": 998.9889168646187,
+        "total_ms": 18008.446667110547,
+        "chunks_per_second": 1137.244115418535,
+        "generation_peak_rss_bytes": 1561624576,
+        "peak_rss_bytes": 1561624576
+      },
+      {
+        "case": "overworld-run0",
+        "median_ms": 352.26931248325855,
+        "p95_region_ms": 384.60520659573376,
+        "maximum_region_ms": 386.8479589000344,
+        "total_ms": 6798.955040983856,
+        "chunks_per_second": 3012.2275962331414,
+        "generation_peak_rss_bytes": 1588215808,
+        "peak_rss_bytes": 1711439872
+      }
+    ],
+    "timing_acceptance": false
+  },
+  "post_merge_timing_review": {
+    "observations": [
+      {
+        "suite": "cycle44/spatial1024-main/suite.json",
+        "case": "nether-main-run0",
+        "median_ms": 1048.77412552014,
+        "p95_region_ms": 1303.25479201274,
+        "library_hash": "ef87bf4750551a0308be32b81db0ae7fc4ea74bd31396ccb14fd465706ccdab2",
+        "process_samples": 3,
+        "external_peak_cpu_percent": {
+          "node": 13.0
+        }
+      },
+      {
+        "suite": "cycle44/spatial-compatibility/suite.json",
+        "case": "nether-second-seed-run0",
+        "median_ms": 1258.8390624150634,
+        "p95_region_ms": 1465.2031266363338,
+        "library_hash": "ef87bf4750551a0308be32b81db0ae7fc4ea74bd31396ccb14fd465706ccdab2",
+        "process_samples": 4,
+        "external_peak_cpu_percent": {
+          "sysmond": 15.3,
+          "mediaanalysisd": 181.3,
+          "node": 95.8,
+          "Python": 10.2,
+          "com.apple.Virtualization.VirtualMachine": 123.6,
+          "com.docker.backend": 29.0
+        }
+      },
+      {
+        "suite": "cycle44/spatial-compatibility/suite.json",
+        "case": "nether-custom-bounds-run0",
+        "median_ms": 728.2197920139879,
+        "p95_region_ms": 811.8781514815055,
+        "library_hash": "ef87bf4750551a0308be32b81db0ae7fc4ea74bd31396ccb14fd465706ccdab2",
+        "process_samples": 2,
+        "external_peak_cpu_percent": {
+          "mediaanalysisd": 181.4,
+          "node": 10.2
+        }
+      },
+      {
+        "suite": "cycle44/spatial-compatibility/suite.json",
+        "case": "nether-direct-stem-run0",
+        "median_ms": 719.7371874935925,
+        "p95_region_ms": 846.9966513570398,
+        "library_hash": "ef87bf4750551a0308be32b81db0ae7fc4ea74bd31396ccb14fd465706ccdab2",
+        "process_samples": 2,
+        "external_peak_cpu_percent": {
+          "mediaanalysisd": 87.6,
+          "node": 11.2
+        }
+      },
+      {
+        "suite": "cycle44/spatial-compatibility/suite.json",
+        "case": "overworld-run0",
+        "median_ms": 231.11299984157085,
+        "p95_region_ms": 281.20839359471574,
+        "library_hash": "ef87bf4750551a0308be32b81db0ae7fc4ea74bd31396ccb14fd465706ccdab2",
+        "process_samples": 1,
+        "external_peak_cpu_percent": {
+          "node": 11.5
+        }
+      },
+      {
+        "suite": "cycle44/merged-full/suite.json",
+        "case": "nether-main-run0",
+        "median_ms": 1174.4193744380027,
+        "p95_region_ms": 1460.2447774610482,
+        "library_hash": "ef87bf4750551a0308be32b81db0ae7fc4ea74bd31396ccb14fd465706ccdab2",
+        "process_samples": 4,
+        "external_peak_cpu_percent": {
+          "codex": 10.0,
+          "corespotlightd": 121.6,
+          "com.apple.Virtualization.VirtualMachine": 228.3,
+          "node": 12.7,
+          "TGOnDeviceInferenceProviderService": 42.0,
+          "modelcatalogd": 38.4,
+          "iStatistica Sensors": 11.2
+        }
+      },
+      {
+        "suite": "cycle44/merged-full/suite.json",
+        "case": "nether-second-seed-run0",
+        "median_ms": 1449.8921670019627,
+        "p95_region_ms": 1734.2233480769212,
+        "library_hash": "ef87bf4750551a0308be32b81db0ae7fc4ea74bd31396ccb14fd465706ccdab2",
+        "process_samples": 4,
+        "external_peak_cpu_percent": {
+          "node": 39.7,
+          "com.apple.Virtualization.VirtualMachine": 228.3,
+          "mds_stores": 11.3,
+          "mdworker_shared": 12.3
+        }
+      },
+      {
+        "suite": "cycle44/merged-full/suite.json",
+        "case": "nether-custom-bounds-run0",
+        "median_ms": 866.8204580899328,
+        "p95_region_ms": 973.8588330801578,
+        "library_hash": "ef87bf4750551a0308be32b81db0ae7fc4ea74bd31396ccb14fd465706ccdab2",
+        "process_samples": 3,
+        "external_peak_cpu_percent": {
+          "spotlightknowledged.updater": 30.9,
+          "node": 21.8,
+          "com.apple.Virtualization.VirtualMachine": 222.3,
+          "Activity Monitor": 13.1,
+          "Brave Browser Helper (Renderer)": 14.7,
+          "(node)": 48.1,
+          "launchd": 10.3,
+          "sysmond": 38.9
+        }
+      },
+      {
+        "suite": "cycle44/merged-full/suite.json",
+        "case": "nether-direct-stem-run0",
+        "median_ms": 904.2484789388254,
+        "p95_region_ms": 977.2076332010329,
+        "library_hash": "ef87bf4750551a0308be32b81db0ae7fc4ea74bd31396ccb14fd465706ccdab2",
+        "process_samples": 3,
+        "external_peak_cpu_percent": {
+          "mds_stores": 40.3,
+          "Brave Browser Helper (Renderer)": 11.9,
+          "com.apple.Virtualization.VirtualMachine": 203.0,
+          "node": 19.7,
+          "launchd": 97.1,
+          "spotlightknowledged.updater": 85.2,
+          "com.docker.backend": 12.9
+        }
+      },
+      {
+        "suite": "cycle44/merged-full/suite.json",
+        "case": "overworld-run0",
+        "median_ms": 352.26931248325855,
+        "p95_region_ms": 384.60520659573376,
+        "library_hash": "ef87bf4750551a0308be32b81db0ae7fc4ea74bd31396ccb14fd465706ccdab2",
+        "process_samples": 2,
+        "external_peak_cpu_percent": {
+          "systemstats": 13.7,
+          "sysmond": 17.6,
+          "com.apple.Virtualization.VirtualMachine": 206.7,
+          "(git)": 24.9,
+          "node": 21.6
+        }
+      }
+    ],
+    "finding": "Candidate and actual merged source/library are identical. Merged observations increased; logs record external VM, Spotlight and other CPU activity. These samples do not quantify causation or establish quiet comparability. Preserve all values and defer timing acceptance as requested.",
+    "timing_acceptance": false
+  },
+  "execution_sample": {
+    "directory": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle44/steady-execution-sample",
+    "comparison": [
+      {
+        "baseline": "reference-suite",
+        "identical_nbt_chunks": 8192,
+        "membership_identical": true
+      },
+      {
+        "baseline": "cycle5/correctness-suite",
+        "identical_nbt_chunks": 8192,
+        "membership_identical": true
+      },
+      {
+        "baseline": "cycle43/merged-full",
+        "identical_nbt_chunks": 8192,
+        "membership_identical": true
+      },
+      {
+        "baseline": "cycle44/selected-full",
+        "identical_nbt_chunks": 8192,
+        "membership_identical": true
+      }
+    ],
+    "purpose": "Fresh worker and source-root attribution after spatial view slots. Profiling observations are not headline timing or wall-time shares.",
+    "roots": "cycle44/steady-execution-sample/root-attribution.json",
+    "workers": "cycle44/steady-execution-sample/worker-attribution.json",
+    "reproduction": [
+      "spatial-view-execution-sample.py",
+      "spatial-view-sample-analysis.py"
+    ]
+  }
 }

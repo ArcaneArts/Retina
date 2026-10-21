@@ -1,0 +1,227 @@
+{
+  "schema": "retina.nether-performance-cycle",
+  "cycle": 45,
+  "status": "held",
+  "base_revision": "74f4e1b7c48e31fe4d98a9648e8b20e842d65db2",
+  "evidence_root": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20",
+  "change": "Conservative modulo-coordinate filters ahead of exact Overlay block-map reads.",
+  "variants": [
+    {
+      "revision": "e815f9fc3a23c61c280e091a376afe7f64876828",
+      "native_tree": "e127c03f71cd5346e2abe4a452c4148c220edce6",
+      "sha256": "155a508743dbe4daf4ab8c1bcc65002084148e6881d9340cc99421f10d6d2d38",
+      "source_status": "M docs/NETHER_PERFORMANCE_CYCLES.md\n M docs/benchmarks/nether-perf-cycle44-2026-10-21.json",
+      "forced_rebuild": true,
+      "timing_acceptance": false,
+      "variant": "filter256",
+      "native_tests_passed": 148,
+      "native_tests_ignored": 38
+    },
+    {
+      "revision": "ee5450b160804b73d72e062ac23ea0a323eb694a",
+      "native_tree": "cbcc79088859decc8bfaa37205c31f131337dd05",
+      "sha256": "b5d59d111bccb7aa6ea7ac227624944870f9a632efb369eaff6d50f0863d1de7",
+      "source_status": "M docs/NETHER_PERFORMANCE_CYCLES.md\n M docs/benchmarks/nether-perf-cycle44-2026-10-21.json",
+      "forced_rebuild": true,
+      "timing_acceptance": false,
+      "variant": "filter-layers",
+      "native_tests_passed": 148,
+      "native_tests_ignored": 38
+    },
+    {
+      "revision": "e42e5ac2ea5e3795a570860de69d4bab35097775",
+      "native_tree": "697aed23d471e2b8707dada1e63c5747620560d7",
+      "sha256": "f2413d93cea68e55df58c1335d3862ec363053e071ca0faa97ba7df2dc09d811",
+      "source_status": "M docs/NETHER_PERFORMANCE_CYCLES.md\n M docs/benchmarks/nether-perf-cycle44-2026-10-21.json",
+      "forced_rebuild": true,
+      "timing_acceptance": false,
+      "variant": "filter-plain",
+      "native_tests_passed": 148,
+      "native_tests_ignored": 38
+    }
+  ],
+  "method": {
+    "warmups": 5,
+    "measured_regions": 20,
+    "case": "nether-main",
+    "diagnostics": false,
+    "callers": 1,
+    "scope": "complete lit-MCA with lighting and zlib",
+    "references": [
+      "reference-suite",
+      "cycle5/correctness-suite",
+      "cycle44/merged-full"
+    ],
+    "comparison": "Complete decompressed NBT and membership; only MCA timestamps/compression representation excluded.",
+    "own_workloads_serialized": true
+  },
+  "runs": [
+    {
+      "suite": "cycle45/filter256-main/suite.json",
+      "revision": "e815f9fc3a23c61c280e091a376afe7f64876828",
+      "sha256": "155a508743dbe4daf4ab8c1bcc65002084148e6881d9340cc99421f10d6d2d38",
+      "median_ms": 1164.8315620841458,
+      "p95_region_ms": 1464.844518667087,
+      "maximum_region_ms": 1549.0386250894517,
+      "total_ms": 23927.246666979045,
+      "chunks_per_second": 855.9279839022832,
+      "generation_peak_rss_bytes": 1972830208,
+      "peak_rss_bytes": 1972830208,
+      "identical_nbt_chunks_per_reference": 20480,
+      "references": 3
+    },
+    {
+      "suite": "cycle45/filter-layers-main/suite.json",
+      "revision": "ee5450b160804b73d72e062ac23ea0a323eb694a",
+      "sha256": "b5d59d111bccb7aa6ea7ac227624944870f9a632efb369eaff6d50f0863d1de7",
+      "median_ms": 1138.3563749259338,
+      "p95_region_ms": 1419.3429085891696,
+      "maximum_region_ms": 1451.92537503317,
+      "total_ms": 23387.27549999021,
+      "chunks_per_second": 875.6898596422047,
+      "generation_peak_rss_bytes": 2016165888,
+      "peak_rss_bytes": 2016165888,
+      "identical_nbt_chunks_per_reference": 20480,
+      "references": 3
+    },
+    {
+      "suite": "cycle45/filter-plain-main/suite.json",
+      "revision": "e42e5ac2ea5e3795a570860de69d4bab35097775",
+      "sha256": "f2413d93cea68e55df58c1335d3862ec363053e071ca0faa97ba7df2dc09d811",
+      "median_ms": 1141.833750065416,
+      "p95_region_ms": 1445.7892748876475,
+      "maximum_region_ms": 1450.4423751495779,
+      "total_ms": 23640.81733301282,
+      "chunks_per_second": 866.2983056597222,
+      "generation_peak_rss_bytes": 2092466176,
+      "peak_rss_bytes": 2092466176,
+      "identical_nbt_chunks_per_reference": 20480,
+      "references": 3
+    },
+    {
+      "suite": "cycle45/preceding-repeat/suite.json",
+      "revision": "74f4e1b7c48e31fe4d98a9648e8b20e842d65db2",
+      "sha256": "ef87bf4750551a0308be32b81db0ae7fc4ea74bd31396ccb14fd465706ccdab2",
+      "median_ms": 1135.3595000691712,
+      "p95_region_ms": 1383.738756051753,
+      "maximum_region_ms": 1557.777291862294,
+      "total_ms": 23686.360833002254,
+      "chunks_per_second": 864.6326104880229,
+      "generation_peak_rss_bytes": 1996603392,
+      "peak_rss_bytes": 1996603392,
+      "identical_nbt_chunks_per_reference": 20480,
+      "references": 3
+    },
+    {
+      "suite": "cycle45/columns-repeat/suite.json",
+      "revision": "e815f9fc3a23c61c280e091a376afe7f64876828",
+      "sha256": "155a508743dbe4daf4ab8c1bcc65002084148e6881d9340cc99421f10d6d2d38",
+      "median_ms": 1108.2135631004348,
+      "p95_region_ms": 1430.509568715934,
+      "maximum_region_ms": 1608.8092499412596,
+      "total_ms": 23393.03437480703,
+      "chunks_per_second": 875.4742831505347,
+      "generation_peak_rss_bytes": 2142404608,
+      "peak_rss_bytes": 2142404608,
+      "identical_nbt_chunks_per_reference": 20480,
+      "references": 3
+    },
+    {
+      "suite": "cycle45/layers-repeat/suite.json",
+      "revision": "ee5450b160804b73d72e062ac23ea0a323eb694a",
+      "sha256": "b5d59d111bccb7aa6ea7ac227624944870f9a632efb369eaff6d50f0863d1de7",
+      "median_ms": 1172.8380625136197,
+      "p95_region_ms": 1421.1587063269692,
+      "maximum_region_ms": 1589.7781250532717,
+      "total_ms": 23848.279624944553,
+      "chunks_per_second": 858.7621548423376,
+      "generation_peak_rss_bytes": 1934098432,
+      "peak_rss_bytes": 1934098432,
+      "identical_nbt_chunks_per_reference": 20480,
+      "references": 3
+    }
+  ],
+  "lookup_attribution": {
+    "rows": [
+      {
+        "variant": "filter256-pilot",
+        "map_lookups": 24646073,
+        "nonempty_skips": 14166815,
+        "empty_skips": 6726731,
+        "total_observed_queries": 45539619,
+        "nonempty_skip_fraction": 0.36500285678303557,
+        "anchors": 63012,
+        "columns": 3536253,
+        "view_loads": 1848793,
+        "view_cached_reads": 36665808,
+        "comparisons": [
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/nether-main-run0",
+            "identical_nbt_chunks": 1024,
+            "membership_identical": true
+          },
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle5/correctness-suite/nether-main-run0",
+            "identical_nbt_chunks": 1024,
+            "membership_identical": true
+          },
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle44/merged-full/nether-main-run0",
+            "identical_nbt_chunks": 1024,
+            "membership_identical": true
+          }
+        ]
+      },
+      {
+        "variant": "filter-layers-pilot",
+        "map_lookups": 22667888,
+        "nonempty_skips": 16145000,
+        "empty_skips": 6726731,
+        "total_observed_queries": 45539619,
+        "nonempty_skip_fraction": 0.41597007674358066,
+        "anchors": 63012,
+        "columns": 3536253,
+        "view_loads": 1848793,
+        "view_cached_reads": 36665808,
+        "comparisons": [
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/nether-main-run0",
+            "identical_nbt_chunks": 1024,
+            "membership_identical": true
+          },
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle5/correctness-suite/nether-main-run0",
+            "identical_nbt_chunks": 1024,
+            "membership_identical": true
+          },
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle44/merged-full/nether-main-run0",
+            "identical_nbt_chunks": 1024,
+            "membership_identical": true
+          }
+        ]
+      }
+    ],
+    "scope": "Ordered View overlay reads; map_lookups can include stale-filter empty maps, so nonempty_skip_fraction uses map_lookups plus nonempty_skips as a conservative denominator. Counts are not wall-time shares.",
+    "timing_acceptance": false
+  },
+  "decision": "Hold all three variants. Correct output and fewer hash lookups did not establish a clear overall latency or memory gain. No PR.",
+  "limitations": [
+    "Quiet timing acceptance remains deferred.",
+    "Instrumentation covers Overlay reads through ordered Views only; counts are not wall-time shares.",
+    "The plain variant removes the new per-read diagnostic check; counts from the instrumented variants are not measured dynamic counts for the plain binary.",
+    "Only main corpus and separate one-warmup one-region diagnostics tested; no full profile, Overworld, reverse or concurrency acceptance."
+  ],
+  "preserved_branches": [
+    "codex/nether-held-overlay-columns",
+    "codex/nether-held-overlay-layer-metrics",
+    "codex/nether-overlay-column-filter"
+  ],
+  "reproduction": [
+    "overlay-filter-candidate.py",
+    "overlay-layer-filter-candidate.py",
+    "overlay-plain-filter-candidate.py",
+    "overlay-filter-repeat.py"
+  ],
+  "timing_acceptance": false
+}

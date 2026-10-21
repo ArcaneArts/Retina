@@ -1,0 +1,433 @@
+{
+  "schema": "retina.nether-performance-cycle",
+  "cycle": 46,
+  "status": "held",
+  "change": "Stop scanning material runs after all six heightmaps are resolved; inspect only pending membership bits.",
+  "evidence_root": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20",
+  "base_revision": "74f4e1b7c48e31fe4d98a9648e8b20e842d65db2",
+  "library": {
+    "revision": "f93966b125d0e24d9966cd9caef9a430ad4b213d",
+    "native_tree": "b13cb328b5c377b75641f20da8015ac238fc8618",
+    "sha256": "bfaf7b6a090e3c1496761a8f9073ed2ff0c71596ec892e63e618584a782e644e",
+    "source_status": "M docs/NETHER_PERFORMANCE_CYCLES.md\n M docs/benchmarks/nether-perf-cycle44-2026-10-21.json\n?? docs/benchmarks/nether-perf-cycle45-2026-10-21.json",
+    "forced_rebuild": true,
+    "timing_acceptance": false
+  },
+  "method": {
+    "warmups": 5,
+    "measured_regions_per_case": 20,
+    "callers": 1,
+    "manifest": "qa/nether-performance-corpus.json",
+    "scope": "complete lit-MCA with lighting and zlib",
+    "readiness": "shader-ready",
+    "own_workloads_serialized": true,
+    "references": [
+      "reference-suite",
+      "cycle5/correctness-suite",
+      "cycle44/merged-full"
+    ],
+    "comparison": "Complete decompressed NBT and membership; exclude only MCA timestamps and compression representation.",
+    "timing_acceptance": false
+  },
+  "tests": {
+    "passed": 148,
+    "ignored": 39,
+    "failed": 0,
+    "log": "cycle46/pending-bits-tests.log"
+  },
+  "cases": [
+    {
+      "case": "nether-main-run0",
+      "suite": "cycle46/pending-bits-main/suite.json",
+      "median_ms": 1155.6697288760915,
+      "p95_region_ms": 1463.323721010238,
+      "maximum_region_ms": 1582.4816671665758,
+      "total_ms": 23979.710124898702,
+      "chunks_per_second": 854.0553615256229,
+      "generation_peak_rss_bytes": 2079637504,
+      "peak_rss_bytes": 2079637504,
+      "identical_nbt_chunks_per_reference": 20480,
+      "references": 3,
+      "program_statuses": [
+        4
+      ]
+    },
+    {
+      "case": "nether-second-seed-run0",
+      "suite": "cycle46/compatibility/suite.json",
+      "median_ms": 1332.1621454088017,
+      "p95_region_ms": 1490.4914284474216,
+      "maximum_region_ms": 1565.7174168154597,
+      "total_ms": 25376.003958052024,
+      "chunks_per_second": 807.0616647859373,
+      "generation_peak_rss_bytes": 2142978048,
+      "peak_rss_bytes": 2142978048,
+      "identical_nbt_chunks_per_reference": 20480,
+      "references": 3,
+      "program_statuses": [
+        4
+      ]
+    },
+    {
+      "case": "nether-custom-bounds-run0",
+      "suite": "cycle46/compatibility/suite.json",
+      "median_ms": 766.4587919134647,
+      "p95_region_ms": 818.5473744757473,
+      "maximum_region_ms": 853.3878340385854,
+      "total_ms": 15333.309582900256,
+      "chunks_per_second": 1335.654242763046,
+      "generation_peak_rss_bytes": 1616314368,
+      "peak_rss_bytes": 1616314368,
+      "identical_nbt_chunks_per_reference": 20480,
+      "references": 3,
+      "program_statuses": [
+        4
+      ]
+    },
+    {
+      "case": "nether-direct-stem-run0",
+      "suite": "cycle46/compatibility/suite.json",
+      "median_ms": 770.5848544137552,
+      "p95_region_ms": 815.2323459624313,
+      "maximum_region_ms": 832.2177920490503,
+      "total_ms": 15181.024125078693,
+      "chunks_per_second": 1349.0525956129352,
+      "generation_peak_rss_bytes": 1670955008,
+      "peak_rss_bytes": 1670955008,
+      "identical_nbt_chunks_per_reference": 20480,
+      "references": 3,
+      "program_statuses": [
+        4
+      ]
+    },
+    {
+      "case": "overworld-run0",
+      "suite": "cycle46/compatibility/suite.json",
+      "median_ms": 252.64456286095083,
+      "p95_region_ms": 292.375731584616,
+      "maximum_region_ms": 302.1857088897377,
+      "total_ms": 5070.930916117504,
+      "chunks_per_second": 4038.706174226538,
+      "generation_peak_rss_bytes": 1541652480,
+      "peak_rss_bytes": 1765949440,
+      "identical_nbt_chunks_per_reference": 20480,
+      "references": 3,
+      "program_statuses": [
+        4
+      ]
+    }
+  ],
+  "reverse_two_callers": [
+    {
+      "case": "nether-main-run0",
+      "suite": "cycle46/reverse-two/suite.json",
+      "median_ms": 1666.9751460431144,
+      "p95_region_ms": 2305.9276143671013,
+      "maximum_region_ms": 2633.1153330393136,
+      "total_ms": 17242.90050007403,
+      "chunks_per_second": 1187.7352073052948,
+      "generation_peak_rss_bytes": 3042607104,
+      "peak_rss_bytes": 3042607104,
+      "identical_nbt_chunks_per_reference": 20480,
+      "references": 3,
+      "program_statuses": [
+        4
+      ]
+    }
+  ],
+  "preceding_merged_cases": [
+    {
+      "case": "nether-main-run0",
+      "suite": "cycle44/merged-full/suite.json",
+      "median_ms": 1174.4193744380027,
+      "p95_region_ms": 1460.2447774610482,
+      "maximum_region_ms": 1566.0697498824447,
+      "total_ms": 24511.4875419531,
+      "chunks_per_second": 835.5266062472572,
+      "generation_peak_rss_bytes": 1979891712,
+      "peak_rss_bytes": 1979891712,
+      "identical_nbt_chunks_per_reference": 20480,
+      "references": 4,
+      "program_statuses": [
+        4
+      ]
+    },
+    {
+      "case": "nether-second-seed-run0",
+      "suite": "cycle44/merged-full/suite.json",
+      "median_ms": 1449.8921670019627,
+      "p95_region_ms": 1734.2233480769212,
+      "maximum_region_ms": 1860.9433330129832,
+      "total_ms": 27659.83070805669,
+      "chunks_per_second": 740.423909898864,
+      "generation_peak_rss_bytes": 2153676800,
+      "peak_rss_bytes": 2153676800,
+      "identical_nbt_chunks_per_reference": 20480,
+      "references": 4,
+      "program_statuses": [
+        4
+      ]
+    },
+    {
+      "case": "nether-custom-bounds-run0",
+      "suite": "cycle44/merged-full/suite.json",
+      "median_ms": 866.8204580899328,
+      "p95_region_ms": 973.8588330801578,
+      "maximum_region_ms": 1152.138208039105,
+      "total_ms": 17718.032041797414,
+      "chunks_per_second": 1155.8845785856472,
+      "generation_peak_rss_bytes": 1593819136,
+      "peak_rss_bytes": 1593819136,
+      "identical_nbt_chunks_per_reference": 20480,
+      "references": 4,
+      "program_statuses": [
+        4
+      ]
+    },
+    {
+      "case": "nether-direct-stem-run0",
+      "suite": "cycle44/merged-full/suite.json",
+      "median_ms": 904.2484789388254,
+      "p95_region_ms": 977.2076332010329,
+      "maximum_region_ms": 998.9889168646187,
+      "total_ms": 18008.446667110547,
+      "chunks_per_second": 1137.244115418535,
+      "generation_peak_rss_bytes": 1561624576,
+      "peak_rss_bytes": 1561624576,
+      "identical_nbt_chunks_per_reference": 20480,
+      "references": 4,
+      "program_statuses": [
+        4
+      ]
+    },
+    {
+      "case": "overworld-run0",
+      "suite": "cycle44/merged-full/suite.json",
+      "median_ms": 352.26931248325855,
+      "p95_region_ms": 384.60520659573376,
+      "maximum_region_ms": 386.8479589000344,
+      "total_ms": 6798.955040983856,
+      "chunks_per_second": 3012.2275962331414,
+      "generation_peak_rss_bytes": 1588215808,
+      "peak_rss_bytes": 1711439872,
+      "identical_nbt_chunks_per_reference": 20480,
+      "references": 4,
+      "program_statuses": [
+        4
+      ]
+    }
+  ],
+  "microbenchmark": {
+    "artifact": "cycle46/micro-analysis.json",
+    "note": "Synthetic kernel timings only; no complete-region or quiet timing acceptance.",
+    "rows": [
+      {
+        "case": "roof",
+        "columns": 1024,
+        "repetitions": 32,
+        "synthetic": true,
+        "warmups": 5,
+        "baseline_median_ns": 8079958,
+        "candidate_median_ns": 106208,
+        "median_ratio": 0.013144622781455052,
+        "candidate_faster_pairs": 25
+      },
+      {
+        "case": "air_cap",
+        "columns": 1024,
+        "repetitions": 32,
+        "synthetic": true,
+        "warmups": 5,
+        "baseline_median_ns": 4382542,
+        "candidate_median_ns": 537542,
+        "median_ratio": 0.12265529913917539,
+        "candidate_faster_pairs": 25
+      },
+      {
+        "case": "partial",
+        "columns": 1024,
+        "repetitions": 32,
+        "synthetic": true,
+        "warmups": 5,
+        "baseline_median_ns": 9294709,
+        "candidate_median_ns": 5652542,
+        "median_ratio": 0.6081462044696612,
+        "candidate_faster_pairs": 25
+      },
+      {
+        "case": "empty",
+        "columns": 1024,
+        "repetitions": 32,
+        "synthetic": true,
+        "warmups": 5,
+        "baseline_median_ns": 169541,
+        "candidate_median_ns": 51208,
+        "median_ratio": 0.3020390348057402,
+        "candidate_faster_pairs": 25
+      },
+      {
+        "case": "mixed",
+        "columns": 1024,
+        "repetitions": 32,
+        "synthetic": true,
+        "warmups": 5,
+        "baseline_median_ns": 1725417,
+        "candidate_median_ns": 490291,
+        "median_ratio": 0.2841579745649892,
+        "candidate_faster_pairs": 25
+      },
+      {
+        "case": "tall",
+        "columns": 1024,
+        "repetitions": 32,
+        "synthetic": true,
+        "warmups": 5,
+        "baseline_median_ns": 23952583,
+        "candidate_median_ns": 534000,
+        "median_ratio": 0.022294046533519997,
+        "candidate_faster_pairs": 25
+      }
+    ]
+  },
+  "diagnostic_review": {
+    "runs": [
+      {
+        "suite": "cycle44/spatial1024-pilot/suite.json",
+        "counts": {
+          "anchor_builds": 63012,
+          "column_builds": 3536253,
+          "shared_material_columns": 461038,
+          "prefix_evaluations": 3075215,
+          "terrain_generated_chunks": 8301,
+          "view_column_cached_reads": 36665808,
+          "view_column_loads": 1848793
+        },
+        "identical_nbt_chunks_per_reference": 1024,
+        "reference_count": 3
+      },
+      {
+        "suite": "cycle46/pending-bits-pilot/suite.json",
+        "counts": {
+          "anchor_builds": 63012,
+          "column_builds": 3536253,
+          "shared_material_columns": 461038,
+          "prefix_evaluations": 3075215,
+          "terrain_generated_chunks": 8399,
+          "view_column_cached_reads": 36665808,
+          "view_column_loads": 1848793
+        },
+        "identical_nbt_chunks_per_reference": 1024,
+        "reference_count": 3
+      }
+    ],
+    "observations": [
+      "Anchor, intermediate-column, prefix, shared-base-column and prior-read/load counts are identical.",
+      "Candidate generated 8399 terrain chunks versus 8301 in the older pilot. The exact difference is two additional side-7 tiles at chunk origins (-82,-66) and (-82,-65). No tile present in the old run is absent in the new run.",
+      "The height scan changes no terrain request API or cache. Existing terrain reuse is bounded and order-sensitive (CaveCache insert retains 2048 chunk keys). Scheduling/cache effects are a hypothesis, not a demonstrated cause of this difference.",
+      "All 1024 diagnostic chunks match original/C5/C44 completely. Counters and diagnostic durations are not complete-region wall-time attribution."
+    ],
+    "timing_acceptance": false,
+    "artifact": "cycle46/diagnostic-review.json"
+  },
+  "source_review": {
+    "revision": "f93966b125d0e24d9966cd9caef9a430ad4b213d",
+    "findings": [],
+    "invariants": [
+      "Pending starts at low six bits; intersecting with it discards irrelevant mask bits and bounds every stored height index to 0..6.",
+      "Runs remain in original top-down order. Each map receives the first matching non-sentinel top; an assignment equal to min_y remains unresolved as before.",
+      "Once every map is resolved, lower runs cannot alter any returned height. The existing run data and ownership are retained untouched.",
+      "No RNG, feature evaluation, material mutation, cache key, synchronization, cancellation or publication path changes.",
+      "Dense independent oracle covers all 256 material masks including unused high bits, air/full/partial masks, sparse bottoms, distinct map heights, tall columns, empty input and min/max safe vertical bounds. Existing shared-run/lifetime tests continue to apply."
+    ],
+    "benchmark_scope": "The ignored A/B test times only synthetic run-to-height conversion using alternating execution order, five warmups and 25 measured pairs. It does not measure complete regions or prove a whole-region speedup.",
+    "timing_acceptance": false
+  },
+  "decision": "Hold candidate: local A/B gains and full-output parity did not establish an overall benefit. Fresh two-caller candidate median/p95 and throughput are worse; retain without a PR.",
+  "limitations": [
+    "Synthetic heightmap microbenchmark results are not complete-region speedups.",
+    "Whole-region timings are provisional and mixed against historical observations; standard Nether remains above one second.",
+    "Final quiet Overworld non-regression, sustained memory, 1/2/4/8 concurrency and portal/DH acceptance remain open."
+  ],
+  "reproduction": [
+    "height-scan-candidate.py",
+    "height-scan-compatibility.py",
+    "height-scan-concurrency-review.py"
+  ],
+  "retention": "Libraries, profiles, generated worlds, logs and commands are external under evidence_root. Recreate source at the recorded revision before using retained drivers.",
+  "concurrency_review": {
+    "runs": [
+      {
+        "suite": "cycle44/spatial-reverse-two/suite.json",
+        "library_sha256": "ef87bf4750551a0308be32b81db0ae7fc4ea74bd31396ccb14fd465706ccdab2",
+        "observed_external_max_cpu_percent": {
+          "Activity Monitor": 21.7,
+          "node": 13.5
+        },
+        "median_ms": 1536.9306460488588,
+        "p95_region_ms": 1930.3629207774065,
+        "maximum_region_ms": 1959.4290419481695,
+        "total_ms": 15985.432458808646,
+        "chunks_per_second": 1281.1664653285409,
+        "generation_peak_rss_bytes": 3118432256,
+        "identical_nbt_chunks_per_reference": 20480,
+        "references": 3
+      },
+      {
+        "suite": "cycle46/reverse-two/suite.json",
+        "library_sha256": "bfaf7b6a090e3c1496761a8f9073ed2ff0c71596ec892e63e618584a782e644e",
+        "observed_external_max_cpu_percent": {
+          "com.apple.Virtualization.VirtualMachine": 218.3,
+          "node": 74.5,
+          "com.docker.backend": 11.0,
+          "git": 15.3
+        },
+        "median_ms": 1666.9751460431144,
+        "p95_region_ms": 2305.9276143671013,
+        "maximum_region_ms": 2633.1153330393136,
+        "total_ms": 17242.90050007403,
+        "chunks_per_second": 1187.7352073052948,
+        "generation_peak_rss_bytes": 3042607104,
+        "identical_nbt_chunks_per_reference": 20480,
+        "references": 3
+      },
+      {
+        "suite": "cycle46/preceding-reverse-repeat/suite.json",
+        "library_sha256": "ef87bf4750551a0308be32b81db0ae7fc4ea74bd31396ccb14fd465706ccdab2",
+        "observed_external_max_cpu_percent": {
+          "corespotlightd": 87.5,
+          "com.apple.Virtualization.VirtualMachine": 211.1,
+          "node": 14.5,
+          "runningboardd": 10.6,
+          "airportd": 11.2
+        },
+        "median_ms": 1680.1632704446092,
+        "p95_region_ms": 2083.308326744009,
+        "maximum_region_ms": 2236.7379581555724,
+        "total_ms": 16786.31495893933,
+        "chunks_per_second": 1220.0414474585828,
+        "generation_peak_rss_bytes": 2982789120,
+        "identical_nbt_chunks_per_reference": 20480,
+        "references": 3
+      },
+      {
+        "suite": "cycle46/candidate-reverse-repeat/suite.json",
+        "library_sha256": "bfaf7b6a090e3c1496761a8f9073ed2ff0c71596ec892e63e618584a782e644e",
+        "observed_external_max_cpu_percent": {
+          "com.apple.Virtualization.VirtualMachine": 222.1,
+          "git": 12.5,
+          "node": 34.1
+        },
+        "median_ms": 1811.1520415404812,
+        "p95_region_ms": 2254.545049299486,
+        "maximum_region_ms": 2291.0465837921947,
+        "total_ms": 18629.023916088045,
+        "chunks_per_second": 1099.359799646478,
+        "generation_peak_rss_bytes": 2993520640,
+        "identical_nbt_chunks_per_reference": 20480,
+        "references": 3
+      }
+    ],
+    "decision": "Hold candidate. Faster synthetic local scans did not produce a demonstrated complete-region benefit; the fresh two-caller candidate is slower at median/p95 and throughput.",
+    "note": "External VM/other CPU activity is observed, not causally isolated. Quiet timing acceptance remains deferred; do not label the regression noise or merge on microbenchmark results alone."
+  }
+}

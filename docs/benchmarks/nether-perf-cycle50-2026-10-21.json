@@ -1,0 +1,622 @@
+{
+  "schema": "retina.nether-performance-cycle",
+  "cycle": 50,
+  "status": "Selected for PR; code/correctness/runtime validation complete for this cycle, quiet timing acceptance deferred",
+  "change": "Reuse exact completed neighboring interior column versions through a bounded immutable archive. Flat column/root/state indexes and packed material runs replace retained planner allocations. Publish only after durable MCA completion.",
+  "base_revision": "74f4e1b7c48e31fe4d98a9648e8b20e842d65db2",
+  "worktree": "/tmp/retina-nether-boundary-version-probe",
+  "branch": "codex/nether-boundary-version-probe",
+  "evidence_root": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20",
+  "library": {
+    "revision": "3c6c930ee92a181ab3026d420ec3d4341f946bf1",
+    "native_tree": "61aea597c92ed300bb2db55510bcb7d3d9949fca",
+    "sha256": "53a7fb054fd7494876601cf670c79347c4817273bb742e4f946f361e45082d7a",
+    "forced_rebuild": true
+  },
+  "method": {
+    "manifest": "qa/nether-performance-corpus.json",
+    "warmups": 5,
+    "measured_regions_per_case": 20,
+    "readiness": "shader-ready, actual per-region statuses retained",
+    "scope": "Full 1024-chunk lit MCA, zlib, complete decompressed chunk NBT and membership. Exclude only MCA timestamps and compression representation.",
+    "own_workloads_serialized": true,
+    "timing_acceptance": false
+  },
+  "references": [
+    "reference-suite",
+    "cycle5/correctness-suite",
+    "cycle44/merged-full"
+  ],
+  "exclusions": "Only MCA timestamps and compression representation; full decompressed NBT and chunk membership compared.",
+  "tests": {
+    "native_passed": 151,
+    "native_failed": 0,
+    "native_ignored": 40,
+    "gpu_passed": 2
+  },
+  "proof": {
+    "pairs": 24,
+    "available_states_compared": 12531389,
+    "value_mismatches": 0,
+    "encoding_differences": 0
+  },
+  "source_review": "cycle50/source-review.json; full immutable registered profile identity, request key bits and strict before-root lookup; original owners retained through packing, no ownership cycles; only full fresh regions opt in; publish after durable MCA success; synchronous bounded-pool failure/eviction cleanup.",
+  "correctness": {
+    "full_corpus_chunks": 102400,
+    "reverse_two_caller_chunks": 20480,
+    "shuffled_four_caller_chunks": 20480,
+    "reverse_eight_caller_chunks": 20480,
+    "row_diagnostic_chunks": 8192,
+    "adjacent_diagnostic_chunks": 4096,
+    "repeat_control_and_candidate_chunks_each": 61440,
+    "sustained_chunks_per_binary_per_reference": 245760,
+    "result": "Every listed run exactly matches each of original, cycle5 and merged cycle44 references; controls also match. Repeated runs reuse coordinates and are not distinct unique-world coverage."
+  },
+  "full_provisional": [
+    {
+      "label": "nether-main-run0",
+      "median_ms": 1011.5163126029074,
+      "p95_region_ms": 1356.264625361655,
+      "maximum_region_ms": 1397.0022080466151,
+      "total_ms": 20736.823542043567,
+      "chunks_per_second": 987.6150972918846,
+      "generation_peak_rss_bytes": 2342961152
+    },
+    {
+      "label": "nether-second-seed-run0",
+      "median_ms": 1005.3697914117947,
+      "p95_region_ms": 1346.9041669275614,
+      "maximum_region_ms": 1563.6727910023183,
+      "total_ms": 20150.53225005977,
+      "chunks_per_second": 1016.3503249369135,
+      "generation_peak_rss_bytes": 2444034048
+    },
+    {
+      "label": "nether-custom-bounds-run0",
+      "median_ms": 683.0280415015295,
+      "p95_region_ms": 802.7463243925013,
+      "maximum_region_ms": 854.5599589124322,
+      "total_ms": 13882.269833004102,
+      "chunks_per_second": 1475.2630691063407,
+      "generation_peak_rss_bytes": 2070888448
+    },
+    {
+      "label": "nether-direct-stem-run0",
+      "median_ms": 688.1856459658593,
+      "p95_region_ms": 815.0042583351023,
+      "maximum_region_ms": 880.7087920140475,
+      "total_ms": 13879.483791068196,
+      "chunks_per_second": 1475.559200060409,
+      "generation_peak_rss_bytes": 2044674048
+    },
+    {
+      "label": "overworld-run0",
+      "median_ms": 281.1654374236241,
+      "p95_region_ms": 470.50372732337564,
+      "maximum_region_ms": 513.5375000536442,
+      "total_ms": 6189.248124836013,
+      "chunks_per_second": 3308.96412406194,
+      "generation_peak_rss_bytes": 1551908864
+    }
+  ],
+  "repeat_provisional": {
+    "preceding": [
+      {
+        "label": "nether-main-run0",
+        "median_ms": 1193.4822710463777,
+        "p95_region_ms": 1456.752398016397,
+        "maximum_region_ms": 1616.0583340097219,
+        "total_ms": 24586.65437507443,
+        "chunks_per_second": 832.9722168609612,
+        "generation_peak_rss_bytes": 1951825920
+      },
+      {
+        "label": "nether-second-seed-run0",
+        "median_ms": 1357.251791516319,
+        "p95_region_ms": 1567.8296099649742,
+        "maximum_region_ms": 1698.3110420405865,
+        "total_ms": 26041.853500064462,
+        "chunks_per_second": 786.4263578607914,
+        "generation_peak_rss_bytes": 2095251456
+      },
+      {
+        "label": "overworld-run0",
+        "median_ms": 260.16518741380423,
+        "p95_region_ms": 344.26640021847567,
+        "maximum_region_ms": 367.50783305615187,
+        "total_ms": 5390.751125058159,
+        "chunks_per_second": 3799.099517839278,
+        "generation_peak_rss_bytes": 1621606400
+      }
+    ],
+    "candidate": [
+      {
+        "label": "nether-main-run0",
+        "median_ms": 1153.6028124392033,
+        "p95_region_ms": 1562.401676864829,
+        "maximum_region_ms": 1623.6238339915872,
+        "total_ms": 23516.198083059862,
+        "chunks_per_second": 870.8890751670008,
+        "generation_peak_rss_bytes": 2317697024
+      },
+      {
+        "label": "nether-second-seed-run0",
+        "median_ms": 1094.227832974866,
+        "p95_region_ms": 1623.7467125989497,
+        "maximum_region_ms": 1625.2232498954982,
+        "total_ms": 21158.811332890764,
+        "chunks_per_second": 967.9182671365111,
+        "generation_peak_rss_bytes": 2481455104
+      },
+      {
+        "label": "overworld-run0",
+        "median_ms": 369.400417082943,
+        "p95_region_ms": 466.2443104432896,
+        "maximum_region_ms": 508.6368329357356,
+        "total_ms": 7298.301249975339,
+        "chunks_per_second": 2806.1324544624963,
+        "generation_peak_rss_bytes": 1617248256
+      }
+    ]
+  },
+  "concurrency": {
+    "2": {
+      "preceding": [
+        {
+          "label": "nether-main-run0",
+          "median_ms": 1724.5777294738218,
+          "p95_region_ms": 2022.4605830502699,
+          "maximum_region_ms": 2274.9468330293894,
+          "total_ms": 17324.589249910787,
+          "chunks_per_second": 1182.1348087721885,
+          "generation_peak_rss_bytes": 2874605568
+        }
+      ],
+      "candidate": [
+        {
+          "label": "nether-main-run0",
+          "median_ms": 1802.806832944043,
+          "p95_region_ms": 2044.3244911963125,
+          "maximum_region_ms": 2447.7117501664907,
+          "total_ms": 17597.44937508367,
+          "chunks_per_second": 1163.8050244371068,
+          "generation_peak_rss_bytes": 2947629056
+        }
+      ]
+    },
+    "4": {
+      "preceding": [
+        {
+          "label": "nether-main-run0",
+          "median_ms": 3350.5871249362826,
+          "p95_region_ms": 4463.81051397184,
+          "maximum_region_ms": 5267.075374955311,
+          "total_ms": 17484.771457966417,
+          "chunks_per_second": 1171.304986698519,
+          "generation_peak_rss_bytes": 4917641216
+        }
+      ],
+      "candidate": [
+        {
+          "label": "nether-main-run0",
+          "median_ms": 2713.079125038348,
+          "p95_region_ms": 3776.0119441663846,
+          "maximum_region_ms": 3950.3113329410553,
+          "total_ms": 14780.851833056659,
+          "chunks_per_second": 1385.5764357367734,
+          "generation_peak_rss_bytes": 5338284032
+        }
+      ]
+    },
+    "8": {
+      "preceding": [
+        {
+          "label": "nether-main-run0",
+          "median_ms": 5340.408729505725,
+          "p95_region_ms": 11752.458776859568,
+          "maximum_region_ms": 15840.274459216744,
+          "total_ms": 16502.171833999455,
+          "chunks_per_second": 1241.0487665511407,
+          "generation_peak_rss_bytes": 7061504000
+        }
+      ],
+      "candidate": [
+        {
+          "label": "nether-main-run0",
+          "median_ms": 5051.882625557482,
+          "p95_region_ms": 11912.649275083095,
+          "maximum_region_ms": 13743.503999896348,
+          "total_ms": 16005.029042018577,
+          "chunks_per_second": 1279.5978030550973,
+          "generation_peak_rss_bytes": 6750781440
+        }
+      ]
+    }
+  },
+  "work_reduction_percent": {
+    "anchor_builds": 8.04360983815311,
+    "column_builds": 27.81052639262892,
+    "prefix_evaluations": 29.396755248327267,
+    "terrain_generated_chunks": 15.659120046209551,
+    "terrain_generated_tiles": 14.76510067114094
+  },
+  "work_counts": {
+    "preceding-row-diagnostic": {
+      "anchor_builds": 508876,
+      "column_builds": 29316083,
+      "prefix_evaluations": 25528610,
+      "terrain_generated_chunks": 70981,
+      "terrain_generated_tiles": 149
+    },
+    "archive512-row-diagnostic": {
+      "anchor_builds": 467944,
+      "column_builds": 21163126,
+      "prefix_evaluations": 18024027,
+      "terrain_generated_chunks": 59866,
+      "terrain_generated_tiles": 127,
+      "version_cache_boundary_hits": 294798,
+      "version_cache_boundary_lookups": 19622737,
+      "version_cache_captured_regions": 14,
+      "version_cache_evicted_regions": 5,
+      "version_cache_export_skips": 0,
+      "version_cache_exported_bytes": 503968864,
+      "version_cache_exported_regions": 8,
+      "version_cache_published_regions": 8
+    }
+  },
+  "archive_cost": {
+    "budget_counted_backing_bytes": 536870912,
+    "max_entries": 8,
+    "eight_region_export_nanos": 1024117249,
+    "eight_region_publish_including_eviction_nanos": 3286167,
+    "evicted_snapshots": 5,
+    "note": "Export includes copying, packing and retirement of original planner allocations; these durations overlap teardown/write and are not additive wall time. Exported bytes are cumulative; active pins and temporary export buffers are additional to the shared resident index budget."
+  },
+  "retention": {
+    "scope": "240 fresh complete regions per binary, one engine, 15 warmups, four case/seed combinations, two distinct registered profiles. 80 regions each in forward, reverse, then shuffled order. RSS sampled after joined generation and before later validation.",
+    "timing_acceptance": false,
+    "runs": {
+      "preceding-sustained": {
+        "library_sha256": "ef87bf4750551a0308be32b81db0ae7fc4ea74bd31396ccb14fd465706ccdab2",
+        "profile_ids": {
+          "nether": 1,
+          "custom": 2,
+          "direct-stem": 2
+        },
+        "generation_peak_rss_bytes": 2731180032,
+        "generation_end_current_rss_bytes": 2564833280,
+        "identical_nbt_chunks_per_reference": 245760,
+        "shader_statuses": [
+          4
+        ],
+        "rounds": [
+          {
+            "repeat": 0,
+            "regions": 80,
+            "min_current_rss_bytes": 1716535296,
+            "median_current_rss_bytes": 2136752128.0,
+            "max_current_rss_bytes": 2224177152,
+            "last_current_rss_bytes": 2224177152
+          },
+          {
+            "repeat": 1,
+            "regions": 80,
+            "min_current_rss_bytes": 2133409792,
+            "median_current_rss_bytes": 2392686592.0,
+            "max_current_rss_bytes": 2461122560,
+            "last_current_rss_bytes": 2449506304
+          },
+          {
+            "repeat": 2,
+            "regions": 80,
+            "min_current_rss_bytes": 2399469568,
+            "median_current_rss_bytes": 2482413568.0,
+            "max_current_rss_bytes": 2576662528,
+            "last_current_rss_bytes": 2575646720
+          }
+        ]
+      },
+      "archive512-sustained": {
+        "library_sha256": "53a7fb054fd7494876601cf670c79347c4817273bb742e4f946f361e45082d7a",
+        "profile_ids": {
+          "nether": 1,
+          "custom": 2,
+          "direct-stem": 2
+        },
+        "generation_peak_rss_bytes": 3132096512,
+        "generation_end_current_rss_bytes": 2883207168,
+        "identical_nbt_chunks_per_reference": 245760,
+        "shader_statuses": [
+          4
+        ],
+        "rounds": [
+          {
+            "repeat": 0,
+            "regions": 80,
+            "min_current_rss_bytes": 2065629184,
+            "median_current_rss_bytes": 2475507712.0,
+            "max_current_rss_bytes": 2665250816,
+            "last_current_rss_bytes": 2641051648
+          },
+          {
+            "repeat": 1,
+            "regions": 80,
+            "min_current_rss_bytes": 2587541504,
+            "median_current_rss_bytes": 2794635264.0,
+            "max_current_rss_bytes": 2896527360,
+            "last_current_rss_bytes": 2896527360
+          },
+          {
+            "repeat": 2,
+            "regions": 80,
+            "min_current_rss_bytes": 2735734784,
+            "median_current_rss_bytes": 2846171136.0,
+            "max_current_rss_bytes": 2921955328,
+            "last_current_rss_bytes": 2883141632
+          }
+        ]
+      }
+    },
+    "finding": "All 245760 generated chunks per binary match each of original, cycle5 and preceding cycle44. Candidate ends approximately304MiB above the preceding run and has approximately382MiB greater generation peak. Both runs grow during these finite passes, with smaller increments in the final pass. This supports bounded optional archive ownership and no obvious runaway candidate-only growth in this probe; it does not prove an indefinite RSS plateau.",
+    "plot": "cycle50/retention-memory.png"
+  },
+  "overworld_followup": {
+    "status": "Earlier candidate slowdown did not reproduce in adjacent old/new/old controls; quiet acceptance remains deferred",
+    "runs": [
+      {
+        "median_ms": 256.3121874118224,
+        "p95_region_ms": 287.38825018517673,
+        "maximum_region_ms": 297.8588331025094,
+        "chunks_per_second": 4009.470056713507,
+        "generation_peak_rss_bytes": 1591263232,
+        "variant": "preceding-overworld-after"
+      },
+      {
+        "median_ms": 241.14099994767457,
+        "p95_region_ms": 283.6065936367959,
+        "maximum_region_ms": 308.1896249204874,
+        "chunks_per_second": 4137.52022234216,
+        "generation_peak_rss_bytes": 2280751104,
+        "variant": "archive512-overworld-after"
+      },
+      {
+        "median_ms": 257.53106304910034,
+        "p95_region_ms": 318.72166105313227,
+        "maximum_region_ms": 329.43437504582107,
+        "chunks_per_second": 3877.8140185933703,
+        "generation_peak_rss_bytes": 1557020672,
+        "variant": "preceding-overworld-last"
+      }
+    ],
+    "note": "Same candidate library recovered without a source change. Earlier slow observations are retained; their cause is not established. No final quiet no-regression claim."
+  },
+  "runtime": {
+    "native_sha256": "53a7fb054fd7494876601cf670c79347c4817273bb742e4f946f361e45082d7a",
+    "native_selection": "Exact retained candidate supplied as retina.native.path to JavaExec and staged for packageNative; actual mapped candidate pathname observed in live NeoForge client. Early observer searched the wrong basename; its empty per-run mapping arrays are not mapping evidence. See runtime-native-mapping-observation.json.",
+    "runs": {
+      "loader-build-tests": {
+        "returncode": 0,
+        "log_sha256": "c436301471be6bb42007f48b2aec76aea03019b73523dfec2f9affcd321af359",
+        "events": []
+      },
+      "nether-native-concurrency": {
+        "returncode": 0,
+        "log_sha256": "554fe2f6a6ba3dbad5db124e1f9c7138a0c76a3d5514c5333a14d3650c9da87a",
+        "events": [
+          {
+            "event": "combined_nether_generation",
+            "status": "pass",
+            "context": {
+              "chunks": 1024,
+              "independent_chunks": 7,
+              "compared_voxels": 458752,
+              "fluid_ticks": 7882,
+              "block_entities": 12,
+              "generation_ms": 1254.196166,
+              "bytes": 5443584,
+              "structures": {
+                "minecraft:bastion_remnant": 1
+              },
+              "fluid_types": {
+                "minecraft:lava/NORMAL": 7882
+              },
+              "feature_blocks": {
+                "minecraft:ancient_debris": 1698,
+                "minecraft:crimson_stem": 5203,
+                "minecraft:glowstone": 2685,
+                "minecraft:nether_gold_ore": 44634,
+                "minecraft:nether_quartz_ore": 130029,
+                "minecraft:warped_stem": 5495
+              },
+              "region": "/private/tmp/retina-nether-boundary-version-probe/build/nether/concurrent-region-17959880244726616783/r.-1.-1.mca"
+            }
+          }
+        ]
+      },
+      "fabric-portal": {
+        "returncode": 0,
+        "log_sha256": "83efaab4d9fb59da669c4487966d26a72bd8cf88f0ddf6aaffb1ca6e627abc5e",
+        "events": [
+          {
+            "event": "nether_cold_portal_arrival",
+            "status": "pass",
+            "context": {
+              "generated_chunks": 4096,
+              "reopened": false,
+              "all_generated_chunks": 4096,
+              "portal_ms": 2949.700542,
+              "server_ticks": 59,
+              "maximum_tick_gap_ms": 163.393542
+            }
+          },
+          {
+            "event": "nether_cold_portal_arrival",
+            "status": "pass",
+            "context": {
+              "generated_chunks": 0,
+              "reopened": true,
+              "all_generated_chunks": 0,
+              "portal_ms": 151.556958,
+              "server_ticks": 3,
+              "maximum_tick_gap_ms": 50.928041
+            }
+          },
+          {
+            "event": "minecraft_client_gameplay_reopen",
+            "status": "pass",
+            "context": {
+              "mode": "mca",
+              "dedicated": false,
+              "packets": 31,
+              "disconnects": 2
+            }
+          }
+        ]
+      },
+      "fabric-portal-dh": {
+        "returncode": 0,
+        "log_sha256": "10180d5a285b2b7c629dc70576ee1d37ac4d54c2840115177e82b33ea4755247",
+        "events": [
+          {
+            "event": "nether_cold_portal_arrival",
+            "status": "pass",
+            "context": {
+              "generated_chunks": 4096,
+              "reopened": false,
+              "all_generated_chunks": 4096,
+              "portal_ms": 3150.528583,
+              "server_ticks": 60,
+              "maximum_tick_gap_ms": 209.693458
+            }
+          },
+          {
+            "event": "nether_portal_dh_overlap",
+            "status": "pass",
+            "context": {
+              "reopened": false,
+              "active_at_start": 1,
+              "started_during_wait": 0,
+              "completed_during_wait": 1
+            }
+          },
+          {
+            "event": "nether_cold_portal_arrival",
+            "status": "pass",
+            "context": {
+              "generated_chunks": 0,
+              "reopened": true,
+              "all_generated_chunks": 0,
+              "portal_ms": 152.884542,
+              "server_ticks": 3,
+              "maximum_tick_gap_ms": 62.672042
+            }
+          },
+          {
+            "event": "nether_portal_dh_overlap",
+            "status": "pass",
+            "context": {
+              "reopened": true,
+              "active_at_start": 0,
+              "started_during_wait": 0,
+              "completed_during_wait": 0
+            }
+          },
+          {
+            "event": "minecraft_client_gameplay_reopen",
+            "status": "pass",
+            "context": {
+              "mode": "mca",
+              "dedicated": false,
+              "packets": 142,
+              "disconnects": 2
+            }
+          }
+        ]
+      },
+      "fabric-unload": {
+        "returncode": 0,
+        "log_sha256": "7a6485c9c6de0b931413c69b91be8545e33bfd3d1aae4d2aaa28e6f837742445",
+        "events": [
+          {
+            "event": "nether_unload_complete",
+            "status": "pass",
+            "context": {
+              "pass": 0,
+              "active_at_storage_close_sum": 8
+            }
+          },
+          {
+            "event": "nether_unload_complete",
+            "status": "pass",
+            "context": {
+              "pass": 1,
+              "active_at_storage_close_sum": 8
+            }
+          },
+          {
+            "event": "minecraft_client_gameplay_reopen",
+            "status": "pass",
+            "context": {
+              "mode": "mca",
+              "dedicated": false,
+              "packets": 3,
+              "disconnects": 2
+            }
+          }
+        ]
+      },
+      "neoforge-unload": {
+        "returncode": 0,
+        "log_sha256": "37ecee9ae03299fe17e7af16ea495df0f26151c0e4cdaa181f79ce3a43aedfde",
+        "events": [
+          {
+            "event": "nether_unload_complete",
+            "status": "pass",
+            "context": {
+              "pass": 0,
+              "active_at_storage_close_sum": 8
+            }
+          },
+          {
+            "event": "nether_unload_complete",
+            "status": "pass",
+            "context": {
+              "pass": 1,
+              "active_at_storage_close_sum": 8
+            }
+          },
+          {
+            "event": "minecraft_client_gameplay_reopen",
+            "status": "pass",
+            "context": {
+              "mode": "mca",
+              "dedicated": false,
+              "packets": 3,
+              "disconnects": 4
+            }
+          }
+        ]
+      }
+    },
+    "detail": "cycle50/runtime-review.json; commands and all selected lifecycle events retained externally."
+  },
+  "decision": "Select the compact archive for delivery: complete output is unchanged across the full corpus, reordered/concurrent requests and 240-region context churn; direct counters show fewer reconstructed columns, anchors and terrain cells; live portal/DH and unload checks pass. Resident memory is higher by a bounded archive allowance. Main/second-seed latency observations are generally lower but repeat p95 is not uniformly improved; no subsecond or final no-regression claim. Concurrency throughput shows no reproduced material regression in these runs.",
+  "limitations": [
+    "Quiet timing confirmation deferred by the user; all latency observations are provisional.",
+    "Standard Nether p95 remains above one second; eight-caller tails remain long. This cycle does not complete the goal.",
+    "Eight entries and 512 MiB bound counted resident archive backing, not total process RSS. Active jobs can pin evicted arrays; temporary export buffers and other engine caches are additional.",
+    "No PR, merge, or actual merged rebuild has occurred for cycle50.",
+    "Native retention and live fixtures passed this finite cycle scope; final uncontended timings, long-term memory and request-tail acceptance remain open."
+  ],
+  "reproduction": [
+    "completed-versions-candidate-v2.py",
+    "completed-versions-validation.py",
+    "completed-versions-archive.py",
+    "completed-versions-extended.py",
+    "completed-versions-sustained.py",
+    "completed-versions-report.py",
+    "completed-versions-runtime.py",
+    "completed-versions-runtime-report.py"
+  ],
+  "details": "cycle50/report.json contains the full measurements and reference comparison records; runtime/retention/Overworld investigations have separate external reports."
+}
