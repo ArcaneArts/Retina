@@ -371,3 +371,33 @@ run confirms zero calls into the changed ordered planner for this profile.
 Quiet timing confirmation remains deferred. See
 `docs/benchmarks/nether-perf-cycle8-2026-10-20.json` for commands, retained evidence
 and provisional results.
+
+PR #177 (`fbbf545`) merged this storage follow-up. Its actual merged build passes
+116 native tests and is byte-identical to the validated candidate. Post-merge
+smoke generation matches all 5,120 chunks against all four references. Quiet
+timing confirmation remains pending.
+
+
+## Partitioned dependency lookup follow-up (evidence cycle 13)
+
+The job-owned anchor, column-tile, biome-selection and structure lookup maps now
+partition their lookup locks by key. Each dependency retains exactly one shared
+`OnceLock` initializer. Recursive generation starts after the lookup lock is
+released, and completed roots still publish their immutable maps at the same
+joined barrier. Final command order, error propagation and measured cleanup stay
+unchanged.
+
+The diagnostic region retains the same 98,555 anchor builds, 10,685,959 column
+builds and 4,373,070 memo requests. Aggregate measured lookup-lock durations fall
+from 1,558 to 268 ms for columns and from 1,103 to 216 ms for memo lookups in the
+retained diagnostic runs. These overlapping worker durations are not wall-time
+shares, and these observations do not establish an uncontended timing claim.
+
+The cache concurrency checks verify one initializer per key, cached failure text,
+exclusive ownership at the completion barrier, and cleanup after lock poisoning.
+All 102,400 full-corpus chunks and 20,480 reverse-order two-caller chunks match
+the original and preceding references. Two-caller p95 remains about nine seconds;
+this follow-up does not resolve native request tails. Full-region output and
+provisional measurements are recorded in
+`docs/benchmarks/nether-perf-cycle13-2026-10-20.json`. Quiet timing confirmation
+remains deferred; this change does not establish sub-second Nether generation.

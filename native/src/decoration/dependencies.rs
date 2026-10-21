@@ -6,9 +6,47 @@ use crate::TerrainEngine;
 use crate::performance::{Counter as Perf, Metrics};
 use std::borrow::Cow;
 use std::collections::BTreeMap;
+use std::hash::{Hash, Hasher};
 use std::sync::{Arc, Mutex, OnceLock};
 
-type Memo<K, V> = Mutex<Map<K, Arc<OnceLock<Result<Arc<V>, String>>>>>;
+/// Job-owned cells keep one initializer per key. Partition only their lookup
+/// locks; generation and recursive dependency waits happen after releasing them.
+struct ShardedMap<K, V> {
+    shards: [Mutex<Map<K, V>>; 64],
+}
+impl<K, V> Default for ShardedMap<K, V> {
+    fn default() -> Self {
+        Self {
+            shards: std::array::from_fn(|_| Mutex::new(Map::default())),
+        }
+    }
+}
+impl<K: Hash + Eq, V> ShardedMap<K, V> {
+    fn shard(&self, key: &K) -> &Mutex<Map<K, V>> {
+        let mut hash = super::spatial::SpatialHasher::default();
+        key.hash(&mut hash);
+        &self.shards[(hash.finish() >> 32) as usize % self.shards.len()]
+    }
+    fn take(&mut self) -> Result<Map<K, V>, ()> {
+        let mut all = Map::default();
+        for shard in &mut self.shards {
+            all.extend(std::mem::take(shard.get_mut().map_err(|_| ())?));
+        }
+        Ok(all)
+    }
+    fn len(&self) -> usize {
+        self.shards
+            .iter()
+            .map(|shard| shard.lock().unwrap().len())
+            .sum()
+    }
+    fn into_entries(self) -> impl Iterator<Item = (K, V)> {
+        self.shards
+            .into_iter()
+            .flat_map(|shard| shard.into_inner().unwrap_or_else(|e| e.into_inner()))
+    }
+}
+type Memo<K, V> = ShardedMap<K, Arc<OnceLock<Result<Arc<V>, String>>>>;
 fn memo<K: Eq + std::hash::Hash, V>(
     cache: &Memo<K, V>,
     key: K,
@@ -26,6 +64,7 @@ fn memo_arc<K: Eq + std::hash::Hash, V>(
     metrics.add(Perf::memo_requests, 1);
     let lock_started = metrics.start();
     let slot = cache
+        .shard(&key)
         .lock()
         .map_err(|_| "decoration dependency cache poisoned")?
         .entry(key)
@@ -285,7 +324,7 @@ struct Planner<'a> {
     job: Option<&'a crate::timings::Timings>,
     metrics: Arc<crate::timings::Timings>,
     retain_prefix: bool,
-    columns: Mutex<Map<(usize, i32, i32), Arc<ColumnTile>>>,
+    columns: ShardedMap<(usize, i32, i32), Arc<ColumnTile>>,
     ready_columns: Map<(usize, i32, i32), Arc<ColumnTile>>,
     error: Mutex<Option<String>>,
 }
@@ -370,11 +409,10 @@ impl Planner<'_> {
     /// Called only after the root's parallel target evaluation has joined.
     /// Recursive boundary work is synchronous, so every remaining cell is done.
     fn complete(&mut self, root: usize, targets: &[(i32, i32)]) -> Result<(), String> {
-        let pending = std::mem::take(
-            self.anchors
-                .get_mut()
-                .map_err(|_| "dependency cache poisoned")?,
-        );
+        let pending = self
+            .anchors
+            .take()
+            .map_err(|_| "dependency cache poisoned")?;
         for (key, cell) in pending {
             let cell = Arc::try_unwrap(cell)
                 .map_err(|_| "dependency cell still in use at root completion")?;
@@ -385,11 +423,11 @@ impl Planner<'_> {
         }
         // Existing tile slots are OnceLocks; the map itself becomes immutable
         // between root barriers, including slots first needed by later roots.
-        self.ready_columns.extend(std::mem::take(
+        self.ready_columns.extend(
             self.columns
-                .get_mut()
+                .take()
                 .map_err(|_| "column dependency cache poisoned")?,
-        ));
+        );
         let mut completed = CompletedRoot {
             anchors: Vec::with_capacity(targets.len()),
             columns: Map::default(),
@@ -655,6 +693,7 @@ impl Planner<'_> {
         let lock_started = metrics.start();
         let tile = self
             .columns
+            .shard(&key)
             .lock()
             .map_err(|_| "column dependency cache poisoned")?
             .entry(key)
@@ -920,17 +959,17 @@ pub(crate) fn generate(
         request,
         roots: groups.into_values().collect(),
         terrain: crate::terrain_job::TerrainJob::new(engine, profile, request, initial),
-        anchors: Mutex::new(Map::default()),
+        anchors: ShardedMap::default(),
         ready: Map::default(),
         completed: Vec::new(),
         versions: Versions::new(request, side),
-        anchor_ids: Mutex::new(Map::default()),
-        starts: Mutex::new(Map::default()),
+        anchor_ids: ShardedMap::default(),
+        starts: ShardedMap::default(),
         discovery: crate::structures::Discovery::new(&profile.structures),
         job,
         metrics: metrics.clone(),
         retain_prefix,
-        columns: Mutex::new(Map::default()),
+        columns: ShardedMap::default(),
         ready_columns: Map::default(),
         error: Mutex::new(None),
     };
@@ -957,7 +996,7 @@ pub(crate) fn generate(
                 "Retina dependency root {root}/{}: anchors={}, column_tiles={}, tiles={}, elapsed_ms={:.1}",
                 planner.roots.len(),
                 planner.ready.len(),
-                planner.columns.lock().unwrap().len() + planner.ready_columns.len(),
+                planner.columns.len() + planner.ready_columns.len(),
                 planner.terrain.len(),
                 started.elapsed().as_secs_f64() * 1000.
             );
@@ -971,7 +1010,7 @@ pub(crate) fn generate(
         details.dependency_wall_nanos = started.elapsed().as_nanos() as u64;
         details.dependency_anchors = planner.ready.len() as u64;
         details.dependency_column_tiles =
-            (planner.columns.lock().unwrap().len() + planner.ready_columns.len()) as u64;
+            (planner.columns.len() + planner.ready_columns.len()) as u64;
         details.dependency_terrain_tiles = planner.terrain.len() as u64;
     }
     let structure_started = metrics.performance.start();
@@ -1072,7 +1111,7 @@ pub(crate) fn generate(
     // A column's identity versions retain the same state. Release those
     // references together instead of walking unrelated hash-map buckets.
     let mut boundary = ready_columns.into_iter().collect::<Vec<_>>();
-    boundary.extend(columns.into_inner().unwrap_or_else(|e| e.into_inner()));
+    boundary.extend(columns.into_entries());
     boundary.sort_unstable_by_key(|((root, x, z), _)| (*z, *x, *root));
     drop(boundary);
     metrics
@@ -1118,6 +1157,66 @@ pub(crate) fn plan(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn sharded_memo_retains_one_initializer_and_failure_per_key() {
+        use std::sync::atomic::{AtomicUsize, Ordering};
+        let mut cache = Memo::default();
+        let metrics = Metrics::default();
+        let calls = AtomicUsize::new(0);
+        (0..4096).into_par_iter().for_each(|i| {
+            let key = (i % 64) - 32;
+            let result = memo(&cache, key, &metrics, || {
+                calls.fetch_add(1, Ordering::Relaxed);
+                if key == 0 {
+                    Err("original failure".to_owned())
+                } else {
+                    Ok(key)
+                }
+            });
+            if key == 0 {
+                assert_eq!(result.unwrap_err(), "original failure");
+            } else {
+                assert_eq!(*result.unwrap(), key);
+            }
+        });
+        assert_eq!(calls.load(Ordering::Relaxed), 64);
+        assert_eq!(cache.len(), 64);
+        let completed = cache.take().unwrap();
+        assert_eq!(cache.len(), 0);
+        assert_eq!(completed.len(), 64);
+        assert_eq!(
+            completed[&0].get().unwrap().as_ref().unwrap_err(),
+            "original failure"
+        );
+        for (key, cell) in completed {
+            assert_eq!(Arc::strong_count(&cell), 1);
+            if key != 0 {
+                assert_eq!(**cell.get().unwrap().as_ref().unwrap(), key);
+            }
+        }
+    }
+    #[test]
+    fn sharded_lookup_poison_is_an_error_and_cleanup_retains_entries() {
+        let cache = Memo::default();
+        let metrics = Metrics::default();
+        memo(&cache, -19, &metrics, || Ok(7)).unwrap();
+        std::thread::scope(|scope| {
+            assert!(
+                scope
+                    .spawn(|| {
+                        let _guard = cache.shard(&-19).lock().unwrap();
+                        panic!("poison this shard");
+                    })
+                    .join()
+                    .is_err()
+            );
+        });
+        assert_eq!(
+            memo(&cache, -19, &metrics, || Ok(9)).unwrap_err(),
+            "decoration dependency cache poisoned"
+        );
+        assert_eq!(cache.into_entries().count(), 1);
+    }
     #[test]
     fn inverse_writer_ranges_preserve_empty_and_overflow_results() {
         let outside = -((i32::MAX as i64 + 1) * 16);
