@@ -287,6 +287,9 @@ pub trait PriorWorld: Sync {
     fn biome(&self, at: [i32; 3]) -> Option<usize>;
     fn material(&self, at: [i32; 3]) -> Option<u16>;
     fn height(&self, x: i32, z: i32, map: u8) -> Option<i32>;
+    /// Only the ordered planner can prove that all recipes in this root share
+    /// a deterministic replacement and never observe their own material writes.
+    fn deferred_ore(&self) -> Option<(u16, u16)> { None }
 }
 pub struct Field<'a> {
     pub origin_x: i32,
@@ -400,6 +403,8 @@ const SOIL: u8 = 3;
 const VINE: u8 = 4;
 const COCOA: u8 = 5;
 const FEATURE: u8 = 6;
+/// Compare the live material with `upper` when replaying this ordered command.
+const DEFERRED_ORE: u8 = 7;
 const SIDES: [(i32, i32); 4] = [(1, 0), (-1, 0), (0, 1), (0, -1)];
 
 /// A crown occupies a small local box. Direct byte lookup avoids hashing a world
@@ -1504,6 +1509,7 @@ fn evaluate_anchor_impl<const MEASURE: bool>(
                     &mut overlay,
                     &mut blocks,
                     noise,
+                    field.prior.and_then(PriorWorld::deferred_ore),
                 );
             }
             Kind::Tree { .. } => tree(
@@ -1692,6 +1698,7 @@ pub(crate) fn feature_sample(
                 &mut overlay,
                 &mut blocks,
                 noise,
+                None,
             );
         }
         Kind::VegetationPatch { patch } => {
@@ -2267,6 +2274,7 @@ pub(crate) fn decorate_observed(
             let flags = profile.material_flags[previous as usize];
             let replace = match role {
                 FEATURE => true,
+                DEFERRED_ORE => previous == placement.upper,
                 SOIL => flags & 1 != 0 || previous == profile.snow,
                 LOG => previous == 0 || flags & (4 | 16) != 0,
                 LEAF => previous == 0,

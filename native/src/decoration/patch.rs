@@ -227,6 +227,7 @@ struct World<'a> {
     overlay: &'a mut Overlay,
     blocks: &'a mut Vec<WorldBlock>,
     noise: &'a provider_noise::Context<'a>,
+    deferred_ore: Option<(u16, u16)>,
 }
 impl World<'_> {
     fn test(&self, p: &Predicate, at: [i32; 3]) -> bool {
@@ -257,6 +258,20 @@ impl World<'_> {
             tick,
         });
         self.overlay.write(self.profile, at, material);
+    }
+    fn write_deferred_ore(&mut self, at: [i32; 3], required: u16, material: u16) -> bool {
+        if at[1] < self.request.min_y
+            || at[1] >= self.request.min_y + self.request.height as i32
+            || self.field.column(at[0], at[2]).is_none() {
+            return false;
+        }
+        self.blocks.push(WorldBlock {
+            root_order: 0, x: at[0], y: at[1], z: at[2], material,
+            upper: required, role: DEFERRED_ORE, tick: 0,
+        });
+        // This root's placement/geometry does not read its material writes, and
+        // every accepted replacement preserves all six heightmap masks.
+        true
     }
     fn simple(&mut self, simple: &Simple, at: [i32; 3], rng: &mut Rng) -> bool {
         let Some(id) = simple
@@ -723,6 +738,7 @@ pub(super) fn place(
         overlay,
         blocks,
         noise,
+        deferred_ore: None,
     }
     .patch(patch, at, rng)
 }
@@ -744,6 +760,7 @@ pub(super) fn place_simple(
         overlay,
         blocks,
         noise,
+        deferred_ore: None,
     }
     .simple(simple, at, rng)
 }
@@ -758,6 +775,7 @@ pub(super) fn place_registered(
     overlay: &mut Overlay,
     blocks: &mut Vec<WorldBlock>,
     noise: &provider_noise::Context,
+    deferred_ore: Option<(u16, u16)>,
 ) -> bool {
     let mut world = World {
         field,
@@ -766,6 +784,7 @@ pub(super) fn place_registered(
         overlay,
         blocks,
         noise,
+        deferred_ore,
     };
     match feature {
         Kind::NetherFeature { nether } => nether.place(&mut world, at, rng),

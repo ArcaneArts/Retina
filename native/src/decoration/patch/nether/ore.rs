@@ -67,6 +67,27 @@ impl Rule {
     }
 }
 impl Ore {
+    pub(super) fn deferred_replacement(&self, profile: &WorldProfile) -> Option<(u16, u16)> {
+        let [target] = self.targets.as_slice() else {
+            return None;
+        };
+        let Rule::Material {
+            allowed,
+            chance: None,
+        } = &target.rule
+        else {
+            return None;
+        };
+        let [required] = allowed.as_slice() else {
+            return None;
+        };
+        // Nonzero discard and probabilistic rules consume material-dependent
+        // RNG draws or inspect neighboring air; those keep eager replacement.
+        (self.discard == 0.0
+            && profile.heightmap_masks[*required as usize]
+                == profile.heightmap_masks[target.state as usize])
+            .then_some((*required, target.state))
+    }
     pub(super) fn validate(&self, palette: usize) -> bool {
         (0..=64).contains(&self.size)
             && (0.0..=1.0).contains(&self.discard)
@@ -98,6 +119,9 @@ impl Ore {
     }
 
     fn replace(&self, w: &mut World, at: [i32; 3], rng: &mut Rng) -> bool {
+        if let Some((required, material)) = w.deferred_ore {
+            return w.write_deferred_ore(at, required, material);
+        }
         let Some(state) = w.material(at) else {
             return false;
         };
@@ -252,6 +276,96 @@ fn round_offset(offset: f32) -> i32 {
 mod tests {
     use super::round_offset;
 
+    #[test]
+    fn deferred_replacement_excludes_rng_air_and_height_changes() {
+        let (mut profile, _, _) = crate::decoration::replay_tests::fixture(42, 0);
+        let value = serde_json::json!({"targets":[{"rule":{"kind":"material","allowed":[1]},"state":4}],
+            "size":33,"discard":0.0,"scattered":false,"heightmap":2,"air":[0]});
+        let ore: super::Ore = serde_json::from_value(value.clone()).unwrap();
+        assert_eq!(ore.deferred_replacement(&profile), Some((1, 4)));
+        for chance in [0.0, 0.5, 1.0] {
+            let mut value = value.clone();
+            value["targets"][0]["rule"]["chance"] = chance.into();
+            let ore: super::Ore = serde_json::from_value(value).unwrap();
+            assert_eq!(ore.deferred_replacement(&profile), None);
+        }
+        let mut changed = value.clone();
+        changed["discard"] = 1.0.into();
+        assert_eq!(
+            serde_json::from_value::<super::Ore>(changed)
+                .unwrap()
+                .deferred_replacement(&profile),
+            None
+        );
+        let mut changed = value.clone();
+        changed["targets"][0]["rule"]["allowed"] = serde_json::json!([1, 2]);
+        assert_eq!(
+            serde_json::from_value::<super::Ore>(changed)
+                .unwrap()
+                .deferred_replacement(&profile),
+            None
+        );
+        profile.heightmap_masks[4] ^= 1;
+        assert_eq!(ore.deferred_replacement(&profile), None);
+    }
+    #[test]
+    fn deferred_ore_preserves_geometry_rng_and_overlapping_anchor_results() {
+        use crate::decoration::{
+            DEFERRED_ORE, FEATURE, Rng, placement::Overlay, provider_noise, replay_tests,
+        };
+        use std::collections::BTreeMap;
+        let (profile, field, request) = replay_tests::fixture(42, 0);
+        for scattered in [false, true] {
+            let ore: super::Ore = serde_json::from_value(serde_json::json!({
+                "targets":[{"rule":{"kind":"material","allowed":[1]},"state":4}],
+                "size":33,"discard":0.0,"scattered":scattered,"heightmap":2,"air":[0]}))
+            .unwrap();
+            let run = |deferred: bool| {
+                let mut all = Vec::new();
+                let mut random_states = Vec::new();
+                for anchor in [0, 1] {
+                    let mut overlay = Overlay::default();
+                    let mut blocks = Vec::new();
+                    let samples = provider_noise::Samples::default();
+                    let noise = provider_noise::Context::new(&samples);
+                    let mut world = super::World {
+                        field: &field,
+                        profile: &profile,
+                        request,
+                        overlay: &mut overlay,
+                        blocks: &mut blocks,
+                        noise: &noise,
+                        deferred_ore: deferred.then_some((1, 4)),
+                    };
+                    for (index, y) in [30, 30, 63, 70, 30].into_iter().enumerate() {
+                        let mut rng = Rng::new(42 + index as u64);
+                        // The return value is intentionally ignored by a proven
+                        // standalone root; selectors must retain eager behavior.
+                        ore.place(&mut world, [15 + anchor, y, 8], &mut rng);
+                        random_states.push(rng.next());
+                    }
+                    all.extend(blocks);
+                }
+                let mut accepted = BTreeMap::new();
+                for block in all {
+                    let at = [block.x, block.y, block.z];
+                    let previous = accepted
+                        .get(&at)
+                        .copied()
+                        .unwrap_or_else(|| field.material(&profile, request, at).unwrap());
+                    if block.role == FEATURE
+                        || block.role == DEFERRED_ORE && previous == block.upper
+                    {
+                        accepted.insert(at, block.material);
+                    }
+                }
+                (accepted, random_states)
+            };
+            let eager = run(false);
+            assert!(!eager.0.is_empty());
+            assert_eq!(run(true), eager);
+        }
+    }
     #[test]
     fn scattered_offsets_keep_java_float_half_boundaries() {
         for (value, expected) in [

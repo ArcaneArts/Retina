@@ -182,6 +182,38 @@ struct Root {
     definition: Option<usize>,
     ids: Vec<u32>,
     bounds: Bounds,
+    deferred_ore: Option<(u16, u16)>,
+}
+
+fn deferred_ore_pair(profile: &WorldProfile, ids: &[u32]) -> Option<(u16, u16)> {
+    if !profile.ordered_decorations {
+        return None;
+    }
+    let eligible = |&id: &u32| {
+        let recipe = &profile.decorations[id as usize];
+        let program = recipe.placement.as_ref()?;
+        if !program.iter().all(|op| {
+            matches!(
+                op,
+                placement::Modifier::Count { .. }
+                    | placement::Modifier::InSquare
+                    | placement::Modifier::HeightRange { .. }
+                    | placement::Modifier::Biome
+            )
+        }) {
+            return None;
+        }
+        let Kind::NetherFeature { nether } = &recipe.feature else {
+            return None;
+        };
+        nether.deferred_replacement(profile)
+    };
+    let pair = eligible(ids.first()?)?;
+    // Each anchor originally sees the prior root plus its own writes. Uniform
+    // replacement makes cross-anchor overlap idempotent when applied in order.
+    ids.iter()
+        .all(|id| eligible(id) == Some(pair))
+        .then_some(pair)
 }
 struct Output {
     metadata: Option<crate::structures::ChunkData>,
@@ -363,6 +395,9 @@ impl View<'_, '_> {
     }
 }
 impl PriorWorld for View<'_, '_> {
+    fn deferred_ore(&self) -> Option<(u16, u16)> {
+        self.planner.roots[self.before].deferred_ore
+    }
     fn column(&self, x: i32, z: i32) -> Option<Column> {
         match self.terrain(x, z) {
             Ok(field) => field.column(x, z),
@@ -586,9 +621,14 @@ impl Planner<'_> {
                 let mut all = replay.finish_world();
                 let writes = std::mem::take(&mut all[0]);
                 let mut columns: Map<_, Vec<_>> = Map::default();
+                let mut deferred = 0;
                 for (index, block) in writes.iter().enumerate() {
+                    deferred += u64::from(block.role == DEFERRED_ORE);
                     columns.entry((block.x, block.z)).or_default().push(index);
                 }
+                self.metrics
+                    .performance
+                    .add(Perf::deferred_ore_candidates, deferred);
                 Ok(Output {
                     writes,
                     columns,
@@ -849,6 +889,7 @@ impl Planner<'_> {
         let flags = self.profile.material_flags[previous as usize];
         let replace = match b.role {
             FEATURE => true,
+            DEFERRED_ORE => previous == b.upper,
             SOIL => flags & 1 != 0 || previous == self.profile.snow,
             LOG => previous == 0 || flags & (4 | 16) != 0,
             _ => previous == 0,
@@ -927,6 +968,7 @@ pub(crate) fn generate(
                 definition: None,
                 ids: Vec::new(),
                 bounds,
+                deferred_ore: None,
             });
         root.ids.push(id as u32);
         root.bounds.union(bounds);
@@ -946,6 +988,7 @@ pub(crate) fn generate(
             Root {
                 ids: Vec::new(),
                 definition: Some(id),
+                deferred_ore: None,
                 bounds: Bounds {
                     x: [0, 15],
                     z: [0, 15],
@@ -953,6 +996,16 @@ pub(crate) fn generate(
             },
         );
     }
+    for root in groups.values_mut() {
+        root.deferred_ore = deferred_ore_pair(profile, &root.ids);
+    }
+    metrics.performance.add(
+        Perf::deferred_ore_roots,
+        groups
+            .values()
+            .filter(|root| root.deferred_ore.is_some())
+            .count() as u64,
+    );
     let mut planner = Planner {
         engine,
         profile,
@@ -1277,6 +1330,42 @@ mod tests {
             assert_eq!(versions.before(first, before).0, expected);
             assert_eq!(versions.before(last, before).0, 0);
         }
+    }
+    #[test]
+    fn deferred_ore_requires_uniform_roots_and_state_independent_placement() {
+        let (mut profile, _, _) = super::super::replay_tests::fixture(42, 0);
+        let mut recipe = profile.decorations[0].clone();
+        recipe.feature = serde_json::from_value(serde_json::json!({
+            "kind":"nether_feature", "nether":{"kind":"ore", "targets":[{
+                "rule":{"kind":"material","allowed":[1]},"state":4}],
+                "size":33,"discard":0.0,"scattered":false,"heightmap":2,"air":[0]}
+        }))
+        .unwrap();
+        recipe.placement = Some(serde_json::from_value(serde_json::json!([
+            {"type":"count","count":2},{"type":"in_square"},
+            {"type":"height_range","height":{"type":"uniform", "min_inclusive":{"absolute":5},"max_inclusive":{"absolute":41}}},
+            {"type":"biome"}
+        ])).unwrap());
+        profile.decorations = vec![recipe.clone(), recipe];
+        assert_eq!(deferred_ore_pair(&profile, &[]), None);
+        assert_eq!(deferred_ore_pair(&profile, &[0, 1]), Some((1, 4)));
+        profile.decorations[1].placement = Some(
+            serde_json::from_value(serde_json::json!([
+            {"type":"heightmap","map":1}]))
+            .unwrap(),
+        );
+        assert_eq!(deferred_ore_pair(&profile, &[0, 1]), None);
+        profile.decorations[1] = profile.decorations[0].clone();
+        if let Kind::NetherFeature { nether } = &mut profile.decorations[1].feature {
+            *nether = serde_json::from_value(serde_json::json!({"kind":"ore", "targets":[{
+                "rule":{"kind":"material","allowed":[1]},"state":2}],
+                "size":33,"discard":0.0,"scattered":false,"heightmap":2,"air":[0]}))
+            .unwrap();
+        }
+        assert_eq!(deferred_ore_pair(&profile, &[0, 1]), None);
+        assert_eq!(deferred_ore_pair(&profile, &[0]), Some((1, 4)));
+        profile.ordered_decorations = false;
+        assert_eq!(deferred_ore_pair(&profile, &[0]), None);
     }
     #[test]
     fn encoded_columns_preserve_every_voxel_and_heightmap() {
