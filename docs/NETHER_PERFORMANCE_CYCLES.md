@@ -1358,3 +1358,11 @@ overall goal.
 
 Full report: `docs/benchmarks/nether-perf-cycle51-2026-10-21.json`. Raw measurements,
 commands, unchanged binaries and worlds are retained under external `cycle51/`.
+
+Cycle 51 merged as PR #194 (`e50eddd`). The forced merged rebuild passes all
+153 native tests and is byte-identical to the selected candidate. Its full
+102,400-chunk corpus matches the original, cycle 5, preceding merged cycle 50
+and selected cycle 51. Provisional merged median/p95 in ms: main 942/1303;
+second seed 930/1288; custom 644/783; direct 629/771; Overworld 246/305.
+Quiet acceptance remains deferred and standard-Nether p95 still exceeds one
+second. Full proof: external `cycle51/post-merge-proof.json`.
