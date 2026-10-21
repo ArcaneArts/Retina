@@ -484,6 +484,10 @@ impl View<'_, '_> {
     }
 }
 impl PriorWorld for View<'_, '_> {
+    fn overlay_recommit_skipped(&self, commands: usize) {
+        self.planner.metrics.performance.add(Perf::overlay_recommit_calls_skipped, 1);
+        self.planner.metrics.performance.add(Perf::overlay_recommit_commands_skipped, commands as u64);
+    }
     fn deferred_ore(&self) -> Option<(u16, u16)> {
         self.planner.roots[self.before].deferred_ore
     }

@@ -705,7 +705,8 @@ All 136 native tests pass, including collisions, extreme coordinates, concurrent
 misses, recursive loads, failures and lifetime isolation. The complete
 102,400-chunk corpus and 20,480 reverse-order two-caller chunks match the original,
 cycle 5 and preceding merged cycle 34. Diagnostic workload remains 63,012 anchors,
-3,536,253 intermediate columns and 8,301 terrain chunks. Of 36,665,808 cached
+3,536,253 intermediate columns. The selected pilot records 8,399 generated
+terrain chunks; the earlier cache variants record 8,301. Of 36,665,808 cached
 view reads, 31,563,068 (86.1%) bypass the mutex/map path. This count is not a
 wall-time percentage.
 
@@ -719,3 +720,73 @@ memory observation are retained in
 remains deferred; these observations do not establish settled speedup,
 no-regression or sub-second acceptance. Sustained concurrency and final portal
 integration remain open. The held cycle 35 implementation is not included.
+
+
+PR #187 (`26878d6`) merged immutable view-column slots. Its actual merged build
+passes 136 native tests and is byte-identical to the validated candidate. All
+102,400 chunks in a fresh five-case run match four references. Standard-seed
+provisional median/p95 observations are 1.41/1.82 and 1.66/1.90 seconds. A custom
+profile tail increase was investigated with another baseline/merged pair:
+825/916 versus 809/861 ms. Overworld's full-suite peak RSS rose to 1.679 GB;
+an actual diagnostic records no execution of the changed ordered-view paths.
+The difference remains retained without a causal claim. Quiet timing, sustained
+memory/concurrency, sub-second performance and final integration remain open.
+
+
+## Held first-query preparation experiment (evidence cycle 37)
+
+Two prototypes prepare each eligible anchor's exact first required prior-state
+read before normal replay: blob material reads, then vein-height reads using the
+original height prefix. Original placement queues, source ordering and RNG remain
+unchanged. The variants pass 138 and 140 native tests; all standard-seed measured
+chunks match the original, cycle 5 and preceding merged cycle 36.
+
+Fresh sequential repeat median/p95 observations are 1.249/1.594 seconds for the
+preceding build, 1.284/1.558 for blobs and 1.286/1.669 for blobs plus veins. These
+mixed results do not establish a complete-region gain. Both prototypes remain
+unmerged, with their branches, binaries and raw evidence preserved. They have
+not passed the full custom-profile/concurrency acceptance corpus. Quiet timing
+confirmation remains deferred. Evidence and commands are recorded in
+`docs/benchmarks/nether-perf-cycle37-2026-10-21.json`.
+
+
+## Avoid redundant live-overlay recommits (evidence cycle 38)
+
+Direct Nether primitives already apply each accepted ordinary command to the
+live feature overlay. Their common end-of-feature replay was reading and
+inserting the same blocks again. These primitives now retain their live state;
+pillars with nested caps and all other feature kinds keep the existing path.
+Ordinary commands retain their original order, root metadata and ticks. Deferred
+ore commands remain unapplied to the local overlay, as before. The exhaustive
+primitive match requires future variants to choose their behavior explicitly.
+
+All 139 native tests pass. Added coverage compares the retained overlay with the
+original recommit after repeated and air writes, ticks, rejected boundary writes,
+all six heightmaps, ground queries and rollback snapshots. Actual vein/scattered
+ore tests cover ordinary and deferred commands. The five-case 102,400-chunk
+corpus and reverse-order two-caller generation match the original, cycle 5 and
+preceding merged cycle 36 in complete decompressed NBT and membership.
+
+The diagnostic region skips 195,138 repeat commit calls and 10,365,063 ordinary
+block writes. It still builds 63,012 anchors and 3,536,253 intermediate columns;
+this change removes repeated local work without trimming dependency closure.
+Initial standard-seed median/p95 observations are 1.23/1.47 and 1.35/1.59 seconds.
+A fresh sequential standard-Nether pair measures 1.47/1.94 seconds for the prior
+build versus 1.36/1.69 for the candidate. Overworld in that pair measures 387/481
+versus 323/386 ms. All timings remain provisional: the user deferred quiet timing
+confirmation, and process observations record background CPU activity. Raw runs,
+hashes, commands, memory and concurrency observations are retained in
+`docs/benchmarks/nether-perf-cycle38-2026-10-21.json` and the external evidence.
+Sub-second standard-Nether performance, final sustained concurrency and real
+portal/DH acceptance remain open. The held cycle 37 prototype is not included.
+
+The initial two-caller run was slower than cycle 36's earlier observation
+(2.59/3.43 versus 2.41/3.15 seconds median/p95). A fresh sequential reverse-order
+pair measures 1.85/2.40 for the preceding build and 1.68/2.08 for the candidate,
+with all 20,480 chunks in each run matching all three references. The initial
+observation remains in the report; the repeat does not establish quiet acceptance.
+
+The initial Overworld peak RSS was 2.298 GB. In the fresh pair it was 1.642 GB
+for the preceding build and 1.656 GB for the candidate. The elevated initial peak
+did not recur in that pair; its cause is not established. All observations remain
+recorded, and sustained-memory acceptance is still pending.

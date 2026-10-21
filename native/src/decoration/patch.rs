@@ -794,3 +794,6 @@ pub(super) fn place_registered(
         _ => unreachable!("expected a registered disk or composite"),
     }
 }
+
+#[cfg(test)]
+mod live_overlay_tests;

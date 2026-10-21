@@ -74,6 +74,23 @@ fn bounded(p: &IntProvider, min: i32, max: i32) -> bool {
     p.bounds().is_ok_and(|(a, b)| a >= min && b <= max)
 }
 impl Feature {
+    /// These primitives emit only World::write_tick (already applied to the
+    /// live overlay) or deferred ore commands (deliberately not applied there).
+    /// A nested cap can emit role-ordered commands, so keep its normal replay.
+    pub(in crate::decoration) fn commits_overlay(&self) -> bool {
+        match self {
+            Self::Pillar { cap, .. } => cap.is_none(),
+            Self::Ore { .. }
+            | Self::Spring { .. }
+            | Self::HugeFungus { .. }
+            | Self::NeighborSpread { .. }
+            | Self::ProjectedSquare { .. }
+            | Self::ColumnCluster { .. }
+            | Self::ReplaceBlobs { .. }
+            | Self::Delta { .. } => true,
+        }
+    }
+
     pub(crate) fn deferred_replacement(&self, profile: &WorldProfile) -> Option<(u16, u16)> {
         match self {
             Self::Ore { ore } => ore.deferred_replacement(profile),
