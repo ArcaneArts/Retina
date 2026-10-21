@@ -401,3 +401,34 @@ this follow-up does not resolve native request tails. Full-region output and
 provisional measurements are recorded in
 `docs/benchmarks/nether-perf-cycle13-2026-10-20.json`. Quiet timing confirmation
 remains deferred; this change does not establish sub-second Nether generation.
+
+
+PR #178 (`d66caee`) merged the partitioned lookup follow-up. Its actual merged
+build passes 118 native tests and is byte-identical to the validated candidate.
+All 5,120 post-merge smoke chunks match every reference; quiet timing acceptance
+remains pending.
+
+## Direct terrain lookup follow-up (evidence cycle 14)
+
+Each terrain job now has 64 directly indexed tile cells around the request.
+Coordinates outside that index continue through the original growable map. Both
+paths use the same initializer and retain one result per normalized tile key;
+the index does not define or truncate generation coverage. Seed, dimension and
+profile data remain job-owned.
+
+In the initial diagnostic region, all 1,242,137 terrain lookups use direct slots
+and no lookup acquires the fallback map lock. Generated terrain remains 34 tiles,
+and anchor/column work is unchanged. This is an attribution result, not a quiet
+wall-time speedup claim. The coordinate test covers negative boundaries, key
+uniqueness, and fallback selection outside the direct index, including integer
+extremes.
+
+All 102,400 full-corpus chunks and 20,480 reverse-order two-caller chunks match
+the original and preceding merged references. The initial full run had known
+external VM CPU load. Adjacent control/candidate runs have similar medians and
+higher p95, especially for the first seed, so timing acceptance remains deferred.
+An enabled Overworld diagnostic confirms zero terrain-job and ordered-planner
+calls for this corpus profile; its output also matches all three references. Combined full-output
+validation and provisional observations are recorded in
+`docs/benchmarks/nether-perf-cycle14-2026-10-20.json`. Quiet timing confirmation
+remains deferred, and the sub-second goal remains open.

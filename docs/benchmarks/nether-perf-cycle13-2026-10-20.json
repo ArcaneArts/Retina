@@ -238,6 +238,25 @@
     "diagnostic_extra": "--manifest <evidence-root>/pilot-manifest.json --case nether-main --diagnostics",
     "conditions": "5 warmups and 20 measured regions per default case, shader-ready, 16 native workers, lighting enabled, zlib MCA. Full commands, hashes and profile identities are retained in each suite.json. Compare complete decompressed NBT; exclude only MCA timestamps and compression representation."
   },
-  "post_merge": null,
+  "post_merge": {
+    "revision": "d66caee66cbff3b7af10165df848ff4bfeb66472",
+    "pr": "https://github.com/ArcaneArts/Retina/pull/178",
+    "library_sha256": "e40bbba27e343962287539071dae3577c5ee37f6be43ed953eff6ebfa83097b3",
+    "binary_identical_to_validated_candidate": true,
+    "native_tests": {
+      "passed": 118,
+      "ignored": 37,
+      "failed": 0
+    },
+    "evidence": "cycle13/merged-smoke/suite.json",
+    "identical_nbt_chunks": 5120,
+    "scope": "Actual merged build; one warmup and one measured region per case. Complete-output smoke only, quiet timing confirmation deferred.",
+    "references": [
+      "original",
+      "Cycle5",
+      "preceding Cycle8",
+      "Cycle13 candidate"
+    ]
+  },
   "assessment": "Full five-case corpus matches 102,400 complete chunks against all three references; reverse two-caller run matches another 20,480. No observed Overworld regression in these provisional runs. Native two-caller p95 remains about 9 seconds, so request tails and the sub-second goal remain unresolved. Quiet repeated timing acceptance is deferred."
 }

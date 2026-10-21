@@ -1,0 +1,407 @@
+{
+  "scope": "Direct job-owned terrain tile lookup, preserving the growable map for all coordinates outside the direct index.",
+  "initial_source": {
+    "revision": "8269c41c98b80845c15df25571f033f106f473ef",
+    "native_tree": "74ff70a23bb13a3e004c6c0fa2fdd8a183751127",
+    "sha256": "d25d7e28ca01325ed34dd984055de0d6c2166f11f238027311ad6b8e7a1f343a",
+    "source_status": "",
+    "forced_rebuild": true,
+    "timing_acceptance": false
+  },
+  "combined_source": {
+    "revision": "623ee4bcf85b0ee57d45d580b85a2f62d444f24b",
+    "native_tree": "2f414b6cb16a82e19fe6d78c6d1a719ed46f022f",
+    "sha256": "cea800f10f55cc9518273600b45be607d3a7708863029581e4c04727c1528293",
+    "source_status": "M docs/NETHER_PERFORMANCE_CYCLES.md\n M docs/benchmarks/nether-perf-cycle13-2026-10-20.json\n?? docs/benchmarks/nether-perf-cycle14-2026-10-20.json",
+    "forced_rebuild": true,
+    "timing_acceptance": false
+  },
+  "evidence_root": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle14",
+  "timing_acceptance": false,
+  "timing_status": "Quiet timing confirmation deferred by user; provisional diagnostics and output validation only.",
+  "initial_pilot": {
+    "evidence": "cycle14/direct-slots-pilot/suite.json",
+    "diagnostics": true,
+    "warmups": 1,
+    "measured_regions": 1,
+    "native_tests": {
+      "passed": 117,
+      "failed": 0,
+      "ignored": 37
+    },
+    "median_ms": 4883.587749907747,
+    "peak_rss_bytes": 2366799872,
+    "identical_nbt_chunks_per_reference": [
+      1024,
+      1024,
+      1024
+    ],
+    "diagnostic_counters": {
+      "anchor_builds": 98555,
+      "anchor_ready_hits": 19758781,
+      "column_builds": 10685959,
+      "column_join_nanos": 130826332,
+      "column_lock_nanos": 1357612113,
+      "column_requests": 13636988,
+      "column_tiles": 55187,
+      "column_versions_skipped": 16569963,
+      "completed_boundary_reads": 7973236,
+      "completed_column_commands": 7199796,
+      "completed_column_reads": 2075909,
+      "dependency_evaluation_nanos": 4280853500,
+      "distribution_nanos": 123161625,
+      "final_structure_planning_nanos": 10333,
+      "memo_builds": 106577,
+      "memo_join_nanos": 17656287656,
+      "memo_lock_nanos": 902936328,
+      "memo_ready_hits": 4265377,
+      "memo_requests": 4373070,
+      "prefix_evaluations": 9826644,
+      "region_pool_wait_nanos": 14833,
+      "shared_material_columns": 859315,
+      "structure_active_hits": 0,
+      "structure_builds": 2130,
+      "structure_cache_evictions": 2130,
+      "structure_cache_hits": 0,
+      "structure_cache_misses": 2130,
+      "structure_candidates": 2130,
+      "structure_discovery_tiles": 106,
+      "structure_fossil_batches": 33,
+      "structure_fossil_biome_points": 619,
+      "structure_fossil_columns": 2112,
+      "structure_job_cache_hits": 0,
+      "structure_overlapping_builds": 0,
+      "structure_pending_evictions": 65,
+      "structure_plan_calls": 106,
+      "structure_probe_points": 18,
+      "structure_repeated_builds": 0,
+      "structure_unique_candidates": 2130,
+      "teardown_boundary_columns_nanos": 150703167,
+      "teardown_commands_nanos": 28854584,
+      "teardown_nanos": 349471750,
+      "teardown_other_nanos": 4479917,
+      "teardown_outputs_nanos": 74339500,
+      "teardown_terrain_nanos": 958959,
+      "teardown_versions_nanos": 90134000,
+      "terrain_cache_hits": 16,
+      "terrain_generated_chunks": 15804,
+      "terrain_generated_tiles": 34,
+      "terrain_initial_tiles_reused": 4,
+      "terrain_job_direct_requests": 1242137,
+      "terrain_job_fallback_requests": 0,
+      "terrain_job_join_nanos": 1130793713,
+      "terrain_job_lock_nanos": 0,
+      "terrain_job_requests": 1242137,
+      "terrain_requests": 50,
+      "terrain_unique_tiles": 34
+    }
+  },
+  "runs": {
+    "combined-pilot": {
+      "evidence": "cycle14/combined-pilot/suite.json",
+      "diagnostics": true,
+      "parallel": 1,
+      "request_order": "forward",
+      "warmups": 1,
+      "measured_regions": 1,
+      "cases": [
+        {
+          "case": "nether-main-run0",
+          "median_ms": 4459.206291940063,
+          "p95_region_ms": 4459.206291940063,
+          "maximum_region_ms": 4459.206291940063,
+          "total_ms": 4461.050458019599,
+          "chunks_per_second": 229.54234874415337,
+          "peak_rss_bytes": 2331656192,
+          "identical_nbt_chunks_per_reference": [
+            1024,
+            1024,
+            1024
+          ],
+          "diagnostic_counters": {
+            "anchor_builds": 98555,
+            "anchor_ready_hits": 19758781,
+            "column_builds": 10685959,
+            "column_join_nanos": 142111530,
+            "column_lock_nanos": 358538589,
+            "column_requests": 13636988,
+            "column_tiles": 55187,
+            "column_versions_skipped": 16569963,
+            "completed_boundary_reads": 7973236,
+            "completed_column_commands": 7199796,
+            "completed_column_reads": 2075909,
+            "dependency_evaluation_nanos": 3866288083,
+            "distribution_nanos": 102267291,
+            "final_structure_planning_nanos": 13500,
+            "memo_builds": 106577,
+            "memo_join_nanos": 14765943703,
+            "memo_lock_nanos": 309687721,
+            "memo_ready_hits": 4265458,
+            "memo_requests": 4373070,
+            "prefix_evaluations": 9826644,
+            "region_pool_wait_nanos": 14166,
+            "shared_material_columns": 859315,
+            "structure_active_hits": 0,
+            "structure_builds": 2130,
+            "structure_cache_evictions": 2130,
+            "structure_cache_hits": 0,
+            "structure_cache_misses": 2130,
+            "structure_candidates": 2130,
+            "structure_discovery_tiles": 106,
+            "structure_fossil_batches": 33,
+            "structure_fossil_biome_points": 619,
+            "structure_fossil_columns": 2112,
+            "structure_job_cache_hits": 0,
+            "structure_overlapping_builds": 0,
+            "structure_pending_evictions": 65,
+            "structure_plan_calls": 106,
+            "structure_probe_points": 18,
+            "structure_repeated_builds": 0,
+            "structure_unique_candidates": 2130,
+            "teardown_boundary_columns_nanos": 147447833,
+            "teardown_commands_nanos": 29398875,
+            "teardown_nanos": 374683208,
+            "teardown_other_nanos": 4094041,
+            "teardown_outputs_nanos": 78578083,
+            "teardown_terrain_nanos": 1178375,
+            "teardown_versions_nanos": 113982541,
+            "terrain_cache_hits": 14,
+            "terrain_generated_chunks": 15902,
+            "terrain_generated_tiles": 36,
+            "terrain_initial_tiles_reused": 4,
+            "terrain_job_direct_requests": 1242137,
+            "terrain_job_fallback_requests": 0,
+            "terrain_job_join_nanos": 1116784296,
+            "terrain_job_lock_nanos": 0,
+            "terrain_job_requests": 1242137,
+            "terrain_requests": 50,
+            "terrain_unique_tiles": 36
+          }
+        }
+      ]
+    },
+    "combined-full": {
+      "evidence": "cycle14/combined-full/suite.json",
+      "diagnostics": false,
+      "parallel": 1,
+      "request_order": "forward",
+      "warmups": 5,
+      "measured_regions": 20,
+      "cases": [
+        {
+          "case": "nether-main-run0",
+          "median_ms": 2776.129188016057,
+          "p95_region_ms": 3425.450427271426,
+          "maximum_region_ms": 3894.1378749441355,
+          "total_ms": 57501.94429187104,
+          "chunks_per_second": 356.1618698673329,
+          "peak_rss_bytes": 2692268032,
+          "identical_nbt_chunks_per_reference": [
+            20480,
+            20480,
+            20480
+          ]
+        },
+        {
+          "case": "nether-second-seed-run0",
+          "median_ms": 3336.966416449286,
+          "p95_region_ms": 4892.207087134011,
+          "maximum_region_ms": 4922.38629097119,
+          "total_ms": 69479.8982499633,
+          "chunks_per_second": 294.7615139895634,
+          "peak_rss_bytes": 2975006720,
+          "identical_nbt_chunks_per_reference": [
+            20480,
+            20480,
+            20480
+          ]
+        },
+        {
+          "case": "nether-custom-bounds-run0",
+          "median_ms": 1366.9772499706596,
+          "p95_region_ms": 1445.1969332294539,
+          "maximum_region_ms": 1512.6812909729779,
+          "total_ms": 27286.800916073844,
+          "chunks_per_second": 750.5460263733532,
+          "peak_rss_bytes": 1944485888,
+          "identical_nbt_chunks_per_reference": [
+            20480,
+            20480,
+            20480
+          ]
+        },
+        {
+          "case": "nether-direct-stem-run0",
+          "median_ms": 1350.87218740955,
+          "p95_region_ms": 1486.8265399243683,
+          "maximum_region_ms": 1683.5809999611229,
+          "total_ms": 27464.6771249827,
+          "chunks_per_second": 745.6850814885704,
+          "peak_rss_bytes": 1903181824,
+          "identical_nbt_chunks_per_reference": [
+            20480,
+            20480,
+            20480
+          ]
+        },
+        {
+          "case": "overworld-run0",
+          "median_ms": 345.59341659769416,
+          "p95_region_ms": 410.90768304420635,
+          "maximum_region_ms": 432.4009579140693,
+          "total_ms": 6940.8943329472095,
+          "chunks_per_second": 2950.6284086165997,
+          "peak_rss_bytes": 1634320384,
+          "identical_nbt_chunks_per_reference": [
+            20480,
+            20480,
+            20480
+          ]
+        }
+      ]
+    },
+    "combined-reverse": {
+      "evidence": "cycle14/combined-reverse/suite.json",
+      "diagnostics": false,
+      "parallel": 2,
+      "request_order": "reverse",
+      "warmups": 5,
+      "measured_regions": 20,
+      "cases": [
+        {
+          "case": "nether-main-run0",
+          "median_ms": 3617.1087078982964,
+          "p95_region_ms": 12268.660931882918,
+          "maximum_region_ms": 18802.214165916666,
+          "total_ms": 50915.803665993735,
+          "chunks_per_second": 402.23267680008024,
+          "peak_rss_bytes": 4723113984,
+          "identical_nbt_chunks_per_reference": [
+            20480,
+            20480,
+            20480
+          ]
+        }
+      ]
+    },
+    "adjacent-control": {
+      "evidence": "cycle14/adjacent-control/suite.json",
+      "diagnostics": false,
+      "parallel": 1,
+      "request_order": "forward",
+      "warmups": 5,
+      "measured_regions": 20,
+      "cases": [
+        {
+          "case": "nether-main-run0",
+          "median_ms": 2871.8697710428387,
+          "p95_region_ms": 3637.5677002826706,
+          "maximum_region_ms": 3957.1198339108378,
+          "total_ms": 59201.097208075225,
+          "chunks_per_second": 345.93953433022625,
+          "peak_rss_bytes": 2689957888,
+          "identical_nbt_chunks_per_reference": [
+            20480,
+            20480,
+            20480
+          ]
+        },
+        {
+          "case": "nether-second-seed-run0",
+          "median_ms": 3315.4108959715813,
+          "p95_region_ms": 4355.577159835957,
+          "maximum_region_ms": 4496.336166979745,
+          "total_ms": 66561.580959009,
+          "chunks_per_second": 307.68499943852464,
+          "peak_rss_bytes": 2947432448,
+          "identical_nbt_chunks_per_reference": [
+            20480,
+            20480,
+            20480
+          ]
+        }
+      ]
+    },
+    "adjacent-candidate": {
+      "evidence": "cycle14/adjacent-candidate/suite.json",
+      "diagnostics": false,
+      "parallel": 1,
+      "request_order": "forward",
+      "warmups": 5,
+      "measured_regions": 20,
+      "cases": [
+        {
+          "case": "nether-main-run0",
+          "median_ms": 2819.4284579949453,
+          "p95_region_ms": 3961.9486776180565,
+          "maximum_region_ms": 3990.516958059743,
+          "total_ms": 58031.969333067536,
+          "chunks_per_second": 352.90892649976246,
+          "peak_rss_bytes": 2648735744,
+          "identical_nbt_chunks_per_reference": [
+            20480,
+            20480,
+            20480
+          ]
+        },
+        {
+          "case": "nether-second-seed-run0",
+          "median_ms": 3227.2916248766705,
+          "p95_region_ms": 4390.225583408029,
+          "maximum_region_ms": 4637.982417130843,
+          "total_ms": 66495.01520791091,
+          "chunks_per_second": 307.99301174629244,
+          "peak_rss_bytes": 2928640000,
+          "identical_nbt_chunks_per_reference": [
+            20480,
+            20480,
+            20480
+          ]
+        }
+      ]
+    }
+  },
+  "post_merge": null,
+  "combined_native_tests": {
+    "passed": 119,
+    "failed": 0,
+    "ignored": 37
+  },
+  "environment_observation": {
+    "evidence": "cycle14/process-comparison.json",
+    "status": "Known external VM CPU activity during combined-full; timing acceptance deferred.",
+    "comparison": "Previous cycle main/second-seed samples showed no VM entry above the process-monitor threshold; current samples show VM median 229.7% and 209.8% CPU. This is evidence of changed load, not proof of the change's speed effect."
+  },
+  "correctness_references": [
+    "immutable original 58f6496",
+    "Cycle5 e20ea13",
+    "preceding Cycle13 d66caee"
+  ],
+  "reproduction": {
+    "suite": "python3 scripts/nether-performance-suite.py --library <retained library> --library-revision <recorded revision> --profiles <evidence-root>/profiles --out <fresh output> --compare <evidence-root>/reference-suite --compare <evidence-root>/cycle5/correctness-suite --compare <evidence-root>/cycle13/sharded-full",
+    "concurrency_extra": "--case nether-main --parallel 2 --request-order reverse",
+    "diagnostic_extra": "--manifest <evidence-root>/pilot-manifest.json --case nether-main --diagnostics",
+    "conditions": "Five warmups and twenty measured regions per default case, shader-ready, 16 native workers, lighting enabled, zlib MCA. Full commands, hashes and profile identities are retained in suite.json. Compare complete decompressed NBT; exclude only MCA timestamps and compression representation."
+  },
+  "assessment": "Full five-case corpus matches 102,400 chunks and reverse-order two-caller run matches 20,480 against original and merged references. Adjacent control/candidate medians were 2871.9/2819.4 ms (seed 123456789) and 3315.4/3227.3 ms (seed 42); p95 was 3637.6/3961.9 ms and 4355.6/4390.2 ms. These confounded observations do not establish a speedup or a no-regression acceptance result. Runtime removes 1.24 million map-lock lookups in the diagnostic region without reducing dependency coverage. Quiet timing acceptance and native concurrent tails remain unresolved.",
+  "overworld_investigation": {
+    "evidence": "cycle14/overworld-diagnostic/suite.json",
+    "diagnostics": true,
+    "warmups": 1,
+    "measured_regions": 1,
+    "identical_nbt_chunks_per_reference": [
+      1024,
+      1024,
+      1024
+    ],
+    "ordered_planner_calls": {
+      "anchor_builds": 0,
+      "column_requests": 0,
+      "terrain_job_requests": 0,
+      "terrain_job_direct_requests": 0,
+      "terrain_job_fallback_requests": 0
+    },
+    "median_ms": 246.6954169794917,
+    "peak_rss_bytes": 1212317696
+  }
+}

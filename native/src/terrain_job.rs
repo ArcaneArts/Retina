@@ -10,11 +10,40 @@ struct Tile {
     field: Arc<Field<'static>>,
     mask: Option<Arc<CaveMask>>,
 }
-type Cell = Arc<OnceLock<Result<Arc<Tile>, String>>>;
+type TileCell = OnceLock<Result<Arc<Tile>, String>>;
+type Cell = Arc<TileCell>;
+const SLOT_WIDTH: usize = 8;
+/// A small direct index covers the usual region neighborhood. Every coordinate
+/// outside it still uses the unbounded job map; this is not a generation halo.
+struct NearbyTiles {
+    origin: [i32; 2],
+    cells: [TileCell; SLOT_WIDTH * SLOT_WIDTH],
+}
+impl NearbyTiles {
+    fn new(chunk_x: i32, chunk_z: i32) -> Self {
+        Self {
+            origin: [chunk_x.div_euclid(16) - 3, chunk_z.div_euclid(16) - 3],
+            cells: std::array::from_fn(|_| OnceLock::new()),
+        }
+    }
+    fn index(&self, x: i32, z: i32) -> Option<usize> {
+        let x = i64::from(x.div_euclid(16)) - i64::from(self.origin[0]);
+        let z = i64::from(z.div_euclid(16)) - i64::from(self.origin[1]);
+        (x >= 0 && z >= 0 && x < SLOT_WIDTH as i64 && z < SLOT_WIDTH as i64)
+            .then(|| z as usize * SLOT_WIDTH + x as usize)
+    }
+    fn len(&self) -> usize {
+        self.cells
+            .iter()
+            .filter(|cell| cell.get().is_some())
+            .count()
+    }
+}
 pub(crate) struct TerrainJob<'a> {
     engine: &'a TerrainEngine,
     request: ChunkRequest,
     initial: Option<&'a Field<'a>>,
+    nearby: NearbyTiles,
     tiles: Mutex<Map<(i32, i32), Cell>>,
     metrics: Arc<crate::timings::Timings>,
 }
@@ -35,12 +64,13 @@ impl<'a> TerrainJob<'a> {
             engine,
             request,
             initial: initial.filter(|field| reusable && field.prior.is_none()),
+            nearby: NearbyTiles::new(request.chunk_x, request.chunk_z),
             tiles: Mutex::new(Map::default()),
             metrics: engine.timings(request.reserved),
         }
     }
     pub(crate) fn len(&self) -> usize {
-        self.tiles.lock().unwrap_or_else(|e| e.into_inner()).len()
+        self.nearby.len() + self.tiles.lock().unwrap_or_else(|e| e.into_inner()).len()
     }
     pub(crate) fn field(&self, x: i32, z: i32) -> Result<Arc<Field<'static>>, String> {
         Ok(self.tile(x, z)?.field.clone())
@@ -52,6 +82,15 @@ impl<'a> TerrainJob<'a> {
         let x = x.div_euclid(16) * 16;
         let z = z.div_euclid(16) * 16;
         self.metrics.performance.add(Perf::terrain_job_requests, 1);
+        if let Some(index) = self.nearby.index(x, z) {
+            self.metrics
+                .performance
+                .add(Perf::terrain_job_direct_requests, 1);
+            return self.initialize(&self.nearby.cells[index], x, z);
+        }
+        self.metrics
+            .performance
+            .add(Perf::terrain_job_fallback_requests, 1);
         let lock_started = self.metrics.performance.start();
         let cell = self
             .tiles
@@ -63,6 +102,9 @@ impl<'a> TerrainJob<'a> {
         self.metrics
             .performance
             .elapsed(Perf::terrain_job_lock_nanos, lock_started);
+        self.initialize(&cell, x, z)
+    }
+    fn initialize(&self, cell: &TileCell, x: i32, z: i32) -> Result<Arc<Tile>, String> {
         let joined = self.metrics.performance.start();
         let mut built = false;
         let result = cell
@@ -126,6 +168,33 @@ fn covers(field: &Field<'_>, x: i32, z: i32, side: usize) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn direct_slots_are_unique_across_negative_boundaries_and_fall_back_outside() {
+        for origin in [-65, -16, -1, 0, 17, i32::MIN, i32::MAX] {
+            let slots = NearbyTiles::new(origin, origin);
+            let mut seen = std::collections::HashSet::new();
+            for z in -1..=SLOT_WIDTH as i64 {
+                for x in -1..=SLOT_WIDTH as i64 {
+                    let cx = (i64::from(slots.origin[0]) + x) * 16;
+                    let cz = (i64::from(slots.origin[1]) + z) * 16;
+                    let (Ok(cx), Ok(cz)) = (i32::try_from(cx), i32::try_from(cz)) else {
+                        continue;
+                    };
+                    let actual = slots.index(cx, cz);
+                    if x >= 0 && z >= 0 && x < SLOT_WIDTH as i64 && z < SLOT_WIDTH as i64 {
+                        assert!(seen.insert(actual.unwrap()));
+                        assert_eq!(actual, Some(z as usize * SLOT_WIDTH + x as usize));
+                        if let (Some(cx), Some(cz)) = (cx.checked_add(15), cz.checked_add(15)) {
+                            assert_eq!(slots.index(cx, cz), actual);
+                        }
+                    } else {
+                        assert_eq!(actual, None);
+                    }
+                }
+            }
+            assert_eq!(slots.len(), 0);
+        }
+    }
     #[test]
     fn initial_reuse_requires_the_entire_dependency_tile_and_halo() {
         let field = Field {
