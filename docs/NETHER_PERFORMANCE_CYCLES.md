@@ -905,3 +905,37 @@ opened for these held experiments. No complete custom/Overworld/concurrency
 acceptance is claimed. The next measurement refinement will retain per-tile
 work attribution and distinguish generation peak memory from later validation.
 See `docs/benchmarks/nether-perf-cycle41-2026-10-21.json` and the external evidence.
+
+
+## Cycle 42 — Tile work and memory attribution
+
+Aggregate terrain counts hid which tile geometry was repeated, and the legacy
+peak RSS included later output validation. Preserve exact per-tile generation
+counts in the existing opt-in tracking and report a generation-completion memory
+high-water mark alongside the unchanged final whole-process peak. Snapshot
+subtraction retains repeated warmup keys and excludes warmup-only work. Full cache
+identity is preserved; older native snapshots remain supported. Generation and
+cache behavior are unchanged; neither held tile-sizing variant is included.
+
+Passed 142 native tests and 11 benchmark-helper tests (one optional LZ4 test
+skipped; retained runs use zlib). The full five-case corpus's 102,400 chunks match
+the original, cycle 5 and merged cycle 40 in complete NBT and membership.
+Diagnostic and older-library compatibility runs also match. The diagnostic sums
+reconcile exactly: Nether generated 8,399 chunks (14 side-22, two side-7, one
+side-38 and one side-9 tile), covering 5,508 distinct GPU chunk coordinates.
+That overlap is not proof that every guard can be removed or reused. Previous
+8,301-chunk diagnostics lacked the additional two side-7 query tiles; no causal
+attribution is claimed for that cache-dependent variation.
+
+Complete-region median/p95 observations remain provisional: standard Nether
+1,159.203/1,457.024 ms, second seed 1,319.428/1,623.512 ms, custom
+770.549/815.149 ms, direct stem 772.963/828.614 ms, Overworld
+258.951/323.522 ms. A fresh old/new Overworld pair measured
+276.085/343.413 versus 271.929/323.237 ms, with exact output. This is measurement
+work, not a speedup claim. Overworld's full-run peak grew from 1,581,891,584 bytes
+at generation completion to 1,653,784,576 after validation. Historical elevated
+peaks remain recorded and unattributed. Final timing, sustained-memory,
+concurrency and portal/DH acceptance remain open.
+
+Evidence: `docs/benchmarks/nether-perf-cycle42-2026-10-21.json`, external
+`cycle42/attribution-check.json` and `work-attribution-*.py`.
