@@ -6,6 +6,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 /** Defers enqueueing reads until their immutable region is ready. Live storage stays on its I/O queue. */
@@ -15,6 +16,7 @@ final class RegionLoadScheduler implements AutoCloseable {
         final CompletableFuture<Void> stopped = new CompletableFuture<>();
         final RegionPreparation owner;
         int readers;
+        volatile boolean foreground;
 
         Entry(Consumer<AutoCloseable> release) { owner = new RegionPreparation(prepared, release); }
     }
@@ -35,6 +37,12 @@ final class RegionLoadScheduler implements AutoCloseable {
 
     <T> CompletableFuture<T> load(long key, BooleanSupplier needsPreparation,
                                 Supplier<AutoCloseable> prepare, Supplier<CompletableFuture<T>> read) {
+        return load(key, false, needsPreparation, ignored -> prepare.get(), () -> {}, read);
+    }
+
+    <T> CompletableFuture<T> load(long key, boolean foreground, BooleanSupplier needsPreparation,
+                                Function<BooleanSupplier, AutoCloseable> prepare, Runnable promote,
+                                Supplier<CompletableFuture<T>> read) {
         Entry entry;
         boolean start = false;
         CompletableFuture<Void> wait = null;
@@ -51,12 +59,19 @@ final class RegionLoadScheduler implements AutoCloseable {
                     start = true;
                 }
             }
-            if (entry != null) entry.readers++;
+            if (entry != null) {
+                entry.readers++;
+                if (foreground) entry.foreground = true;
+            }
         }
         if (wait != null) {
             // Waiting requests consume no preparation worker and never fall back onto the I/O queue.
-            return wait.thenCompose(ignored -> load(key, needsPreparation, prepare, read));
+            return wait.thenCompose(ignored -> load(key, foreground, needsPreparation, prepare, promote, read));
         }
+        // Set the shared flag before promoting an already-created preview. The
+        // preparer checks this flag under the preview entry lock, so promotion
+        // cannot be lost in the gap before that entry is inserted.
+        if (foreground) promote.run();
         Entry shared = entry;
         var completion = new CompletableFuture<T>();
         // Do not return this owner future: cancelling an observer must not skip lease cleanup.
@@ -80,7 +95,7 @@ final class RegionLoadScheduler implements AutoCloseable {
                         synchronized (this) {
                             if (closed) throw closedError();
                         }
-                        shared.prepared.complete(prepare.get());
+                        shared.prepared.complete(prepare.apply(() -> shared.foreground));
                     } catch (Throwable error) { shared.prepared.completeExceptionally(error); }
                 });
             } catch (Throwable error) { shared.prepared.completeExceptionally(error); }

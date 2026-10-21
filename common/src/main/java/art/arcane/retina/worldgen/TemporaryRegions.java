@@ -20,6 +20,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.BooleanSupplier;
 
 /** Per-world, immutable MCA previews. Leases protect active reads from LRU eviction and shutdown. */
 final class TemporaryRegions implements AutoCloseable {
@@ -93,6 +94,7 @@ final class TemporaryRegions implements AutoCloseable {
         final Path path;
         final Path entryFolder;
         final CompletableFuture<NativeTerrain.RegionReport> generated = new CompletableFuture<>();
+        final RegionGenerationBudget.Request admission = RegionGenerationBudget.SHARED.request(false);
         final Path columnPath;
         final Path materialPath;
         NativeTerrain.Columns columns;
@@ -165,12 +167,20 @@ final class TemporaryRegions implements AutoCloseable {
     }
 
     private Lease acquire(ChunkPos position) {
-        var lease = acquireIfOpen(position);
+        return acquire(position, () -> false);
+    }
+
+    private Lease acquire(ChunkPos position, BooleanSupplier foreground) {
+        var lease = acquireIfOpen(position, foreground);
         if (lease == null) throw new IllegalStateException("Temporary Retina regions are closed");
         return lease;
     }
 
     private Lease acquireIfOpen(ChunkPos position) {
+        return acquireIfOpen(position, () -> false);
+    }
+
+    private Lease acquireIfOpen(ChunkPos position, BooleanSupplier foreground) {
         Entry entry;
         boolean generate;
         synchronized (this) {
@@ -180,30 +190,35 @@ final class TemporaryRegions implements AutoCloseable {
             generate = entry == null;
             if (generate) { entry = new Entry(position); entries.put(key, entry); }
             else { metrics.previewCacheHit(); if (entry.generated.isDone()) warm.put(key, entry); }
+            if (foreground.getAsBoolean()) entry.admission.promote();
             entry.pins++; users++;
             trim(); trimWarm();
         }
         var lease = new Lease(entry);
         if (generate) {
-            var releaseGeneration = RegionGenerationBudget.SHARED.acquire();
+            long queued = System.nanoTime();
+            var releaseGeneration = entry.admission.acquire();
+            long queueNanos = System.nanoTime() - queued;
             metrics.begin();
             long start = System.nanoTime();
-            try {
+            try (var background = PortalBackgroundQa.begin(dimension, entry.origin)) {
                 var r = new TerrainRequest(settings.seed(), entry.origin.x(), entry.origin.z(), settings.minY(), settings.height(),
                         settings.baseHeight(), settings.amplitude(), settings.frequency(), settings.profile());
                 var data = NativeTerrain.instance().generateRegionColumns(r, entry.path,
                         SharedConstants.getCurrentVersion().dataVersion().version(), biome, entry.columnPath);
                 var report = data.report();
+                if (background != null) background.complete(report.generated());
                 entry.retainColumns(data.columns());
                 NetherIntegrationQa.generated(dimension, entry.origin);
                 long columnCacheNanos=data.columnCacheNanos();
                 long elapsed = System.nanoTime() - start;
                 metrics.completedPreviewRegion(report.generated(), elapsed, report.stages(), columnCacheNanos);
+                PortalBackgroundQa.generated(dimension, entry.origin, report.generated());
                 entry.generated.complete(report);
                 synchronized (this) { if (!entry.retired) warm.put(entry.key, entry); trimWarm(); }
                 if (Boolean.getBoolean("retina.qa")) Retina.LOGGER.info(
-                        "QA_EVT {\"event\":\"temporary_mca_region\",\"status\":\"pass\",\"context\":{\"dimension\":\"{}\",\"x\":{},\"z\":{},\"chunks\":{},\"ms\":{},\"bytes\":{}}}",
-                        dimension.identifier(), position.getRegionX(), position.getRegionZ(), report.generated(), elapsed / 1e6, report.bytes());
+                        "QA_EVT {\"event\":\"temporary_mca_region\",\"status\":\"pass\",\"context\":{\"dimension\":\"{}\",\"x\":{},\"z\":{},\"chunks\":{},\"ms\":{},\"queue_ms\":{},\"bytes\":{}}}",
+                        dimension.identifier(), position.getRegionX(), position.getRegionZ(), report.generated(), elapsed / 1e6, queueNanos / 1e6, report.bytes());
             } catch (Throwable error) {
                 NetherUnloadQa.generationFailed(error);
                 metrics.failed(); entry.generated.completeExceptionally(error);
@@ -219,9 +234,18 @@ final class TemporaryRegions implements AutoCloseable {
 
     /** A prepared request keeps its immutable MCA pinned until the I/O queue publishes it. */
     AutoCloseable prepare(ChunkPos position) {
-        var lease = acquire(position);
+        return prepare(position, () -> false);
+    }
+
+    AutoCloseable prepare(ChunkPos position, BooleanSupplier foreground) {
+        var lease = acquire(position, foreground);
         try { lease.data(); return lease; }
         catch (Throwable error) { lease.close(); throw error; }
+    }
+
+    synchronized void promote(ChunkPos position) {
+        var entry = entries.get(key(position));
+        if (entry != null) entry.admission.promote();
     }
 
     synchronized Path folder() { return folder; }
@@ -332,6 +356,9 @@ final class TemporaryRegions implements AutoCloseable {
             if (closed) return null;
             var entry = entries.get(key(position));
             if (entry == null) return null;
+            // Existing/partial MCA reads can bypass asynchronous preparation.
+            // Promote any shared preview before publication waits for it too.
+            entry.admission.promote();
             entry.pins++; users++; lease = new Lease(entry);
         }
         try (lease) {

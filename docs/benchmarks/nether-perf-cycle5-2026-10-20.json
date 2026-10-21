@@ -192,7 +192,16 @@
     "usable_for_speedup_or_regression_claims": false,
     "pending": "Repeated matched uncontended comparisons including Overworld, sustained memory and concurrency."
   },
-  "post_merge": null,
+  "post_merge": {
+    "revision": "e20ea131ef9755710aca153bd38b3e7f198f1a26",
+    "pr": "https://github.com/ArcaneArts/Retina/pull/175",
+    "library_sha256": "49108c39d7ec899f4a096abe5c55a056b99600b870322c359a430e9543dc0c75",
+    "binary_identical_to_validated_candidate": true,
+    "scope": "Actual merged build: one warmup and one measured region per case; complete-NBT smoke only, full quiet timing confirmation deferred. Concurrent own compilation permitted for this output-only smoke; do not use its timings.",
+    "evidence": "cycle5/merged-smoke/suite.json",
+    "identical_nbt_chunks": 5120,
+    "timing_confirmation_pending": true
+  },
   "resolved_finding": "Cycle2 already removed redundant final structure discovery; current final planning13microseconds. Distribution about104ms. Cleanup is still inside the full-region interval.",
   "rejected_experiments": {
     "parallel_drop_ms": 891.85,

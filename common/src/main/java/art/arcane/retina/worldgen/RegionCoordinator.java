@@ -19,8 +19,12 @@ public final class RegionCoordinator {
     private final long seed;
     private final Path folder;
     private final TemporaryRegions previews;
-    // One shared preparation pool and native budget across ordinary, DH and bulk work.
-    private static final ExecutorService PREPARERS = Executors.newFixedThreadPool(RegionGenerationBudget.SHARED.limit(),
+    // Budget waiters must not occupy all preparation workers before portal work
+    // can join the queue. Native execution still uses the same global limit.
+    // Native foreign calls pin virtual-thread carriers. Platform tasks preserve
+    // configured concurrency above the carrier count; each loader still bounds
+    // admitted preparations and the shared budget bounds actual native work.
+    private static final ExecutorService PREPARERS = Executors.newCachedThreadPool(
             Thread.ofPlatform().daemon().name("retina-region-prepare-", 0).factory());
     private final RegionLoadScheduler loads = new RegionLoadScheduler(PREPARERS,
             RegionGenerationBudget.SHARED.admissionCapacity(), RegionCoordinator::release);
@@ -37,10 +41,16 @@ public final class RegionCoordinator {
     /** Await immutable preparation outside the I/O queue; only publication accesses live MCA files. */
     public <T> CompletableFuture<T> loadAsync(
             ChunkPos position, Supplier<CompletableFuture<T>> read) {
+        return loadAsync(position, true, read);
+    }
+
+    public <T> CompletableFuture<T> loadAsync(
+            ChunkPos position, boolean foreground, Supplier<CompletableFuture<T>> read) {
         long key = generator.cacheKey(position);
-        return loads.load(key, () -> previews != null && !prepared.contains(key) && Files.notExists(
+        return loads.load(key, foreground, () -> previews != null && !prepared.contains(key) && Files.notExists(
                         folder.resolve("r." + position.getRegionX() + "." + position.getRegionZ() + ".mca")),
-                () -> previews.prepare(position), read);
+                priority -> previews.prepare(position, priority),
+                () -> { if (previews != null) previews.promote(position); }, read);
     }
 
     public void close() {
@@ -76,7 +86,7 @@ public final class RegionCoordinator {
                 return;
             }
             NativeTerrain.RegionReport report;
-            var releaseGeneration = RegionGenerationBudget.SHARED.acquire();
+            var releaseGeneration = RegionGenerationBudget.SHARED.request(true).acquire();
             try {
                 report = NativeTerrain.instance().generateRegion(
                         generator.request(seed, position.x(), position.z()), destination,

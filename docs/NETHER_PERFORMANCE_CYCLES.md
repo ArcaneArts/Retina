@@ -302,3 +302,40 @@ Quiet timing confirmation remains deferred. This run's Overworld median is
 3.52 s. Overworld does not use the changed ordered planner, but these differences
 still require matched quiet repeats; no net speedup or no-regression claim is made.
 See `docs/benchmarks/nether-perf-cycle5-2026-10-20.json` for retained measurements.
+
+
+Cycle 5 merged as PR #175 (`e20ea13`). Its rebuilt library is byte-identical to
+the validated candidate. Actual post-merge smoke generation matches 5,120 chunks
+across all five cases; quiet timing confirmation remains outstanding.
+
+## Foreground admission follow-up (evidence cycle 10)
+
+Portal preparation and ordinary reads now receive foreground admission to the
+existing shared native-region budget. They can promote an already queued DH or
+bulk preview without generating it twice. Admission remains FIFO within each
+priority, with one waiting background request admitted after at most four
+foreground admissions. Running native jobs are not preempted.
+
+Preparation uses cached platform threads, while each loader retains its bounded
+admission queue and native work retains the configured global limit. The measured
+Java 25 FFM probe rejected virtual preparation threads: eight one-second native
+calls with two available carriers executed only two at a time. Cached platform
+preparers executed all eight concurrently. This is an executor test, not a Nether
+speedup measurement.
+
+The actual Fabric portal fixture passes both without DH and with installed DH.
+The latter overlaps three completed native DH region jobs with cold portal
+preparation. Both modes generate the four destination regions, keep server ticks
+running, preserve saved edits and portal frames, and reuse the destination after
+reopening. Fabric and NeoForge also pass in-flight unload and reopen, including actual
+preview-directory removal and no additional native failures. Queue delay is
+reported separately from native execution. Runtime
+observations and the complete validation record are retained in
+`docs/benchmarks/nether-perf-cycle10-2026-10-20.json`.
+
+The native generator is unchanged from PR #175. A fresh five-case run (five warmup
+and twenty measured regions per case) matches all 102,400 complete chunks against
+both the immutable original and preceding merged corpus. Quiet timing confirmation remains
+deferred, and this follow-up does not establish sub-second Nether generation or
+resolve native concurrent-request tails. The experimental native scheduling and
+boundary-version variants remain unmerged while their regressions are evaluated.

@@ -102,6 +102,35 @@ public final class RegionLoadSchedulerTest {
         require(scheduler.load(3, () -> false, Lease::new, () -> CompletableFuture.completedFuture(3)).isCompletedExceptionally(),
                 "closed scheduler cannot enqueue another read");
 
+        // A foreground join promotes the shared job both before preparation starts
+        // and after it has obtained the live priority supplier.
+        for (boolean startedAlready : new boolean[]{false, true}) {
+            var priorityTasks = new Tasks();
+            try (var priority = scheduler(priorityTasks, 2)) {
+                var sharedLease = new Lease();
+                var read = new CompletableFuture<Integer>();
+                var captured = new java.util.concurrent.atomic.AtomicReference<java.util.function.BooleanSupplier>();
+                var promotions = new AtomicInteger();
+                var background = priority.load(1, false, () -> true, foreground -> {
+                    captured.set(foreground); return sharedLease;
+                }, promotions::incrementAndGet, () -> read);
+                if (startedAlready) {
+                    priorityTasks.run(0);
+                    require(!captured.get().getAsBoolean(), "preparation initially sees background priority");
+                }
+                var foreground = priority.load(1, true, () -> true,
+                        ignored -> { throw new AssertionError("duplicate promoted preparation"); },
+                        promotions::incrementAndGet, () -> read);
+                if (!startedAlready) priorityTasks.run(0);
+                require(captured.get().getAsBoolean() && promotions.get() == 1,
+                        "foreground join updates shared priority and promotes existing preview");
+                foreground.cancel(false);
+                read.complete(1);
+                require(background.join() == 1 && sharedLease.releases.get() == 1,
+                        "cancelled foreground observer retains shared generation and releases once");
+            }
+        }
+
         // Two real workers reach preparation together; unrelated serialized I/O remains responsive.
         var workers = Executors.newFixedThreadPool(2);
         var io = Executors.newSingleThreadExecutor();

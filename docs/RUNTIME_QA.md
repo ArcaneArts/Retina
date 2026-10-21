@@ -68,8 +68,32 @@ remaining light after source removal, with zero skylight throughout.
 `minecraft_client_gameplay_reopen` events must pass. `nether_portal_fixtures`
 reports whether saved frames were preserved. The server also checks the saved
 Overworld and above-roof Nether edits on subsequent connections.
-`nether_cold_portal_arrival` reports newly generated chunk counts and
-`nether_cold_portal_return` confirms the remote return trip.
+`nether_cold_portal_arrival` reports newly generated chunk counts, complete portal
+latency (`portal_ms`), server tick count during the wait and maximum tick gap.
+`nether_cold_portal_return` confirms the remote return trip. A successful arrival
+alone does not establish responsive ticks; retain these separate measurements.
+`temporary_mca_region` also reports native-budget `queue_ms` separately from its
+existing generation `ms` field.
+
+Ordinary loads and portal preparation receive foreground admission. Bulk ahead
+work and direct DH previews remain background requests. A foreground reader can
+promote the same queued preview without duplicating generation. The shared native
+limit is unchanged. After four consecutive foreground admissions, the next
+admission goes to the oldest waiting background request. This does not preempt native work that
+is already running. Preparation uses a cached platform-thread pool so budget
+waiters do not occupy every fixed preparation worker and native foreign calls do
+not impose a virtual-carrier limit. Per-loader admission bounds queued preparation,
+and the shared budget bounds native execution. Real lifecycle and unload QA must
+verify native calls and cleanup in addition to the scheduler unit tests.
+
+To test real DH overlap, install DH in a fresh disposable run directory and add
+`-PretinaNetherPortalDhQa` alongside `-PretinaNetherLifecycleQa`. The fixture first
+moves the player above the remote source so DH can request cold visible terrain,
+then enters the portal while actual DH native work is active. Require successful
+`portal_dh_native_region` events and a positive `completed_during_wait` in the
+first `nether_portal_dh_overlap` event. The observer uses `DhApi.isDhThread()`;
+mod presence alone does not pass. Destination generation is counted by region
+so unrelated DH regions cannot distort the four-region/zero-on-reopen check.
 
 ### Live Nether fortress progression
 

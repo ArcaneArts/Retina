@@ -31,6 +31,7 @@ neoForge {
                     systemProperty 'retina.qa.client.mode', providers.gradleProperty('retinaClientQaMode').getOrElse('mca')
                 }
                 if (providers.gradleProperty('retinaNetherLifecycleQa').isPresent()) systemProperty 'retina.qa.nether.lifecycle', 'true'
+                if (providers.gradleProperty('retinaNetherPortalDhQa').isPresent()) systemProperty 'retina.qa.nether.portalDh', 'true'
                 if (providers.gradleProperty('retinaNetherProgressionQa').isPresent()) systemProperty 'retina.qa.nether.progression', 'true'
                 if (providers.gradleProperty('retinaNetherStructuresQa').isPresent()) systemProperty 'retina.qa.nether.structures', 'true'
                 if (providers.gradleProperty('retinaNetherUnloadQa').isPresent()) systemProperty 'retina.qa.nether.unload', 'true'

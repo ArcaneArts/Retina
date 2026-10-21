@@ -9,6 +9,7 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.level.block.Block;
@@ -50,10 +51,16 @@ public final class NetherLifecycleQa {
         final ServerPlayer player;
         final long began = System.nanoTime();
         int phase, since;
-        boolean reopened;
+        boolean reopened, watchingDh;
         List<Read> reads;
         CompletableFuture<Void> preparation;
         long generatedBefore;
+        long portalBegan, lastPortalTick, maximumPortalTickGap;
+        int portalTicks;
+        long dhCompletedBefore, dhStartedBefore;
+        int dhActiveAtStart;
+        long destinationChunksBefore;
+        List<ChunkPos> destinationRegions;
         BlockPos createdPortal;
         Run(ServerPlayer player) { this.player = player; }
     }
@@ -85,6 +92,12 @@ public final class NetherLifecycleQa {
         if (run.phase == 10) return;
         require(System.nanoTime() - run.began < 360_000_000_000L,
                 "lifecycle deadline in phase " + run.phase + ", dimension " + player.level().dimension().identifier());
+        if (run.phase == 7) {
+            long now = System.nanoTime();
+            run.maximumPortalTickGap = Math.max(run.maximumPortalTickGap, now - run.lastPortalTick);
+            run.lastPortalTick = now;
+            run.portalTicks++;
+        }
         var overworld = server.overworld();
         var nether = server.getLevel(Level.NETHER);
         require(nether != null, "Nether exists");
@@ -171,12 +184,33 @@ public final class NetherLifecycleQa {
                 // Telemetry is sent once per second; a warm destination can be ready immediately.
                 if (!run.preparation.isDone() || server.getTickCount() - run.since < 40) return;
                 run.preparation.join();
+                if (PortalBackgroundQa.ENABLED && !run.reopened) {
+                    if (!run.watchingDh) {
+                        run.watchingDh = true;
+                        player.setGameMode(GameType.SPECTATOR);
+                        position(player, overworld, COLD_PORTAL.offset(0, 100, 4));
+                        event("nether_portal_dh_watch", "\"x\":" + COLD_PORTAL.getX() + ",\"z\":" + COLD_PORTAL.getZ());
+                        return;
+                    }
+                    if (PortalBackgroundQa.active() == 0) return;
+                    player.setGameMode(GameType.CREATIVE);
+                }
                 if (run.reopened)
                     require(PortalShape.findAnyShape(overworld, COLD_PORTAL, Direction.Axis.X).isComplete(),
                             "saved remote source portal remains complete");
                 else portal(overworld, COLD_PORTAL);
                 run.generatedBefore = ((RetinaChunkGenerator) nether.getChunkSource().getGenerator()).metrics().snapshot().total();
+                run.destinationRegions = PortalRegionPreparation.regions(
+                        new BlockPos(COLD_PORTAL.getX() / 8, COLD_PORTAL.getY(), COLD_PORTAL.getZ() / 8),
+                        PortalRegionPreparation.destinationRadius(true));
+                run.destinationChunksBefore = PortalBackgroundQa.chunks(run.destinationRegions);
                 enter(player, overworld, COLD_PORTAL);
+                run.portalBegan = run.lastPortalTick = System.nanoTime();
+                run.maximumPortalTickGap = 0;
+                run.portalTicks = 0;
+                run.dhCompletedBefore = PortalBackgroundQa.completed();
+                run.dhStartedBefore = PortalBackgroundQa.started();
+                run.dhActiveAtStart = PortalBackgroundQa.active();
                 run.phase = 7;
             }
             case 7 -> {
@@ -188,11 +222,28 @@ public final class NetherLifecycleQa {
                 require(PortalShape.findAnyShape(nether, run.createdPortal, Direction.Axis.X).isComplete()
                                 || PortalShape.findAnyShape(nether, run.createdPortal, Direction.Axis.Z).isComplete(),
                         "vanilla-created destination is a complete portal");
-                long generated = ((RetinaChunkGenerator) nether.getChunkSource().getGenerator()).metrics().snapshot().total()
+                long allGenerated = ((RetinaChunkGenerator) nether.getChunkSource().getGenerator()).metrics().snapshot().total()
                         - run.generatedBefore;
+                // DH may legitimately generate other Nether regions concurrently.
+                // Its fixture counts the actual native destinations independently.
+                long generated = PortalBackgroundQa.ENABLED
+                        ? PortalBackgroundQa.chunks(run.destinationRegions) - run.destinationChunksBefore : allGenerated;
                 require(generated == (run.reopened ? 0 : 4096),
                         "remote travel generates only its four destination regions, and reuses them on reopen: " + generated);
-                event("nether_cold_portal_arrival", "\"generated_chunks\":" + generated + ",\"reopened\":" + run.reopened);
+                event("nether_cold_portal_arrival", "\"generated_chunks\":" + generated + ",\"reopened\":" + run.reopened
+                        + ",\"all_generated_chunks\":" + allGenerated
+                        + ",\"portal_ms\":" + (System.nanoTime() - run.portalBegan) / 1e6
+                        + ",\"server_ticks\":" + run.portalTicks
+                        + ",\"maximum_tick_gap_ms\":" + run.maximumPortalTickGap / 1e6);
+                if (PortalBackgroundQa.ENABLED) {
+                    long completed = PortalBackgroundQa.completed() - run.dhCompletedBefore;
+                    require(run.reopened || completed > 0,
+                            "cold portal wait overlaps successful native generation on an actual DH thread");
+                    event("nether_portal_dh_overlap", "\"reopened\":" + run.reopened
+                            + ",\"active_at_start\":" + run.dhActiveAtStart
+                            + ",\"started_during_wait\":" + (PortalBackgroundQa.started() - run.dhStartedBefore)
+                            + ",\"completed_during_wait\":" + completed);
+                }
                 run.since = server.getTickCount();
                 run.phase = 8;
             }

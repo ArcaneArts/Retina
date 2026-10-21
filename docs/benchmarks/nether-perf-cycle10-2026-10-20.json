@@ -1,0 +1,529 @@
+{
+  "scope": "Foreground native-budget admission and actual portal/unload validation. Native generator unchanged.",
+  "implementation_revision": "1d49252",
+  "native_revision": "e20ea131ef9755710aca153bd38b3e7f198f1a26",
+  "native_sha256": "49108c39d7ec899f4a096abe5c55a056b99600b870322c359a430e9543dc0c75",
+  "timing_acceptance": false,
+  "timing_status": "Quiet matched timing confirmation deferred by user; runtime observations are correctness/responsiveness evidence, not a speedup claim.",
+  "configuration": {
+    "native_workers": 16,
+    "global_region_budget": 8,
+    "compression": "zlib",
+    "lighting": true
+  },
+  "evidence_directory": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle10",
+  "implementation": [
+    "Shared foreground/background ticket queues preserve the configured native limit.",
+    "After four foreground admissions, admit the oldest waiting background job. Already running work is not preempted.",
+    "Ordinary reads and portals promote the shared queued preview; deduplication and publication remain unchanged.",
+    "Cached platform preparers avoid budget waiters blocking a fixed preparation pool and avoid virtual-thread FFM carrier limits. Per-loader admission remains bounded.",
+    "Queue delay is logged separately from native execution."
+  ],
+  "build_and_tests": "Common/Fabric/NeoForge compilation and regionPreparationTest pass, including configured budgets 1/3/6/32, FIFO within priority, bounded background progress, promotion races, cancellation observers and close/failure handling.",
+  "runtime": {
+    "fabric-portal-platform": {
+      "events": [
+        {
+          "event": "nether_cold_portal_arrival",
+          "status": "pass",
+          "context": {
+            "generated_chunks": 4096,
+            "reopened": false,
+            "all_generated_chunks": 4096,
+            "portal_ms": 6769.005,
+            "server_ticks": 136,
+            "maximum_tick_gap_ms": 151.829458
+          }
+        },
+        {
+          "event": "nether_cold_portal_arrival",
+          "status": "pass",
+          "context": {
+            "generated_chunks": 0,
+            "reopened": true,
+            "all_generated_chunks": 0,
+            "portal_ms": 156.653625,
+            "server_ticks": 3,
+            "maximum_tick_gap_ms": 60.418917
+          }
+        },
+        {
+          "event": "minecraft_client_gameplay_reopen",
+          "status": "pass",
+          "context": {
+            "mode": "mca",
+            "dedicated": false,
+            "packets": 39,
+            "disconnects": 2
+          }
+        }
+      ],
+      "log_sha256": "95ceb5ae8f7306873e8b6a84fa7fdecd35c12f9b3f7997b4a1b0530d6d4044a8",
+      "complete": true
+    },
+    "fabric-portal-dh-visible": {
+      "events": [
+        {
+          "event": "nether_cold_portal_arrival",
+          "status": "pass",
+          "context": {
+            "generated_chunks": 4096,
+            "reopened": false,
+            "all_generated_chunks": 4096,
+            "portal_ms": 9027.237208,
+            "server_ticks": 178,
+            "maximum_tick_gap_ms": 185.107083
+          }
+        },
+        {
+          "event": "nether_portal_dh_overlap",
+          "status": "pass",
+          "context": {
+            "reopened": false,
+            "active_at_start": 1,
+            "started_during_wait": 2,
+            "completed_during_wait": 3
+          }
+        },
+        {
+          "event": "nether_cold_portal_arrival",
+          "status": "pass",
+          "context": {
+            "generated_chunks": 0,
+            "reopened": true,
+            "all_generated_chunks": 0,
+            "portal_ms": 155.301042,
+            "server_ticks": 3,
+            "maximum_tick_gap_ms": 54.562417
+          }
+        },
+        {
+          "event": "nether_portal_dh_overlap",
+          "status": "pass",
+          "context": {
+            "reopened": true,
+            "active_at_start": 0,
+            "started_during_wait": 0,
+            "completed_during_wait": 0
+          }
+        },
+        {
+          "event": "minecraft_client_gameplay_reopen",
+          "status": "pass",
+          "context": {
+            "mode": "mca",
+            "dedicated": false,
+            "packets": 155,
+            "disconnects": 2
+          }
+        }
+      ],
+      "log_sha256": "23ab36cd2d96e987e30b849a997315f37299559273998a36c6bdbfc49108dcb5",
+      "complete": true
+    },
+    "fabric-unload-platform": {
+      "events": [
+        {
+          "event": "nether_unload_in_flight",
+          "status": "pass",
+          "context": {
+            "pass": 0,
+            "native_in_flight": 8
+          }
+        },
+        {
+          "event": "nether_unload_cleaned",
+          "status": "pass",
+          "context": {
+            "dimension": "minecraft:overworld",
+            "requests": 19,
+            "closed_results": 17,
+            "generation_failures": 0,
+            "qa_property": true
+          }
+        },
+        {
+          "event": "nether_unload_cleaned",
+          "status": "pass",
+          "context": {
+            "dimension": "minecraft:the_nether",
+            "requests": 19,
+            "closed_results": 19,
+            "generation_failures": 0,
+            "qa_property": true
+          }
+        },
+        {
+          "event": "nether_unload_complete",
+          "status": "pass",
+          "context": {
+            "pass": 0,
+            "active_at_storage_close_sum": 9
+          }
+        },
+        {
+          "event": "nether_unload_in_flight",
+          "status": "pass",
+          "context": {
+            "pass": 1,
+            "native_in_flight": 8
+          }
+        },
+        {
+          "event": "nether_unload_cleaned",
+          "status": "pass",
+          "context": {
+            "dimension": "minecraft:overworld",
+            "requests": 19,
+            "closed_results": 19,
+            "generation_failures": 0,
+            "qa_property": true
+          }
+        },
+        {
+          "event": "nether_unload_cleaned",
+          "status": "pass",
+          "context": {
+            "dimension": "minecraft:the_nether",
+            "requests": 19,
+            "closed_results": 19,
+            "generation_failures": 0,
+            "qa_property": true
+          }
+        },
+        {
+          "event": "nether_unload_complete",
+          "status": "pass",
+          "context": {
+            "pass": 1,
+            "active_at_storage_close_sum": 8
+          }
+        },
+        {
+          "event": "minecraft_client_gameplay_reopen",
+          "status": "pass",
+          "context": {
+            "mode": "mca",
+            "dedicated": false,
+            "packets": 3,
+            "disconnects": 2
+          }
+        }
+      ],
+      "log_sha256": "024ba4c96c58df099f8561c4460f46407716f8d6a03445bc3f222c436dcf3f43",
+      "complete": true
+    },
+    "neoforge-unload-platform": {
+      "events": [
+        {
+          "event": "nether_unload_in_flight",
+          "status": "pass",
+          "context": {
+            "pass": 0,
+            "native_in_flight": 8
+          }
+        },
+        {
+          "event": "nether_unload_cleaned",
+          "status": "pass",
+          "context": {
+            "dimension": "minecraft:overworld",
+            "requests": 19,
+            "closed_results": 14,
+            "generation_failures": 0,
+            "qa_property": true
+          }
+        },
+        {
+          "event": "nether_unload_cleaned",
+          "status": "pass",
+          "context": {
+            "dimension": "minecraft:the_nether",
+            "requests": 19,
+            "closed_results": 19,
+            "generation_failures": 0,
+            "qa_property": true
+          }
+        },
+        {
+          "event": "nether_unload_complete",
+          "status": "pass",
+          "context": {
+            "pass": 0,
+            "active_at_storage_close_sum": 8
+          }
+        },
+        {
+          "event": "nether_unload_in_flight",
+          "status": "pass",
+          "context": {
+            "pass": 1,
+            "native_in_flight": 8
+          }
+        },
+        {
+          "event": "nether_unload_cleaned",
+          "status": "pass",
+          "context": {
+            "dimension": "minecraft:overworld",
+            "requests": 19,
+            "closed_results": 19,
+            "generation_failures": 0,
+            "qa_property": true
+          }
+        },
+        {
+          "event": "nether_unload_cleaned",
+          "status": "pass",
+          "context": {
+            "dimension": "minecraft:the_nether",
+            "requests": 19,
+            "closed_results": 19,
+            "generation_failures": 0,
+            "qa_property": true
+          }
+        },
+        {
+          "event": "nether_unload_complete",
+          "status": "pass",
+          "context": {
+            "pass": 1,
+            "active_at_storage_close_sum": 8
+          }
+        },
+        {
+          "event": "minecraft_client_gameplay_reopen",
+          "status": "pass",
+          "context": {
+            "mode": "mca",
+            "dedicated": false,
+            "packets": 3,
+            "disconnects": 4
+          }
+        }
+      ],
+      "log_sha256": "4f5cc7b20bdc2a112f8ee20613c6a775ebc5e09554dddb0ecdcd6cf31d0cc535",
+      "complete": true
+    }
+  },
+  "limitations": [
+    "No sub-second Nether claim; native dependency costs and concurrent tails remain unresolved.",
+    "Portal test is one fresh world plus reopen per mode, not a 20-sample latency distribution.",
+    "DH overlap test verifies actual native generation on DH threads; it does not assert that the native budget was saturated.",
+    "Native per-root fairness and boundary-version prototypes remain unmerged pending regression investigation."
+  ],
+  "native_executor_probe": {
+    "file": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle10/native-executor-probe.jsonl",
+    "test": "Eight 1s FFM usleep calls with two active processors on Java25",
+    "virtual": {
+      "peak": 2,
+      "elapsed_ms": 4024.749
+    },
+    "cached_platform": {
+      "peak": 8,
+      "elapsed_ms": 1006.797
+    },
+    "interpretation": "FFM calls cap virtual execution at carrier count; this is an executor diagnostic, not a generation benchmark."
+  },
+  "native_corpus": {
+    "evidence": "cycle10/native-correctness-suite/suite.json",
+    "suite_sha256": "6d7c8ceeaf68229cc7ae6ae3c151e588e75f13c0b1e3b3a0e5750984edef6a25",
+    "warmups_per_case": 5,
+    "measured_regions_per_case": 20,
+    "comparisons": [
+      "immutable original reference",
+      "preceding merged Cycle5"
+    ],
+    "identical_nbt_chunks": 102400,
+    "cases": [
+      {
+        "name": "nether-main-run0",
+        "median_ms": 3304.7126455930993,
+        "p95_region_ms": 4186.313762480859,
+        "maximum_region_ms": 4467.312125023454,
+        "total_ms": 68332.25854090415,
+        "chunks_per_second": 299.71203114471234,
+        "peak_rss_bytes": 3092316160,
+        "identical_nbt_chunks_per_reference": [
+          20480,
+          20480
+        ],
+        "coverage": {
+          "biome_chunk_membership": {
+            "minecraft:basalt_deltas": 3694,
+            "minecraft:crimson_forest": 4259,
+            "minecraft:nether_wastes": 11813,
+            "minecraft:soul_sand_valley": 2475,
+            "minecraft:warped_forest": 454
+          },
+          "chunks": 20480,
+          "unique_structure_starts": {
+            "minecraft:bastion_remnant": 17,
+            "minecraft:fortress": 11,
+            "minecraft:nether_fossil": 156,
+            "minecraft:ruined_portal_nether": 15
+          }
+        }
+      },
+      {
+        "name": "nether-second-seed-run0",
+        "median_ms": 3516.4900625823066,
+        "p95_region_ms": 4402.904185617809,
+        "maximum_region_ms": 4527.969665825367,
+        "total_ms": 72588.72024994344,
+        "chunks_per_second": 282.1374991800597,
+        "peak_rss_bytes": 3262496768,
+        "identical_nbt_chunks_per_reference": [
+          20480,
+          20480
+        ],
+        "coverage": {
+          "biome_chunk_membership": {
+            "minecraft:basalt_deltas": 3451,
+            "minecraft:crimson_forest": 3879,
+            "minecraft:nether_wastes": 9924,
+            "minecraft:soul_sand_valley": 3576,
+            "minecraft:warped_forest": 1747
+          },
+          "chunks": 20480,
+          "unique_structure_starts": {
+            "minecraft:bastion_remnant": 21,
+            "minecraft:fortress": 8,
+            "minecraft:nether_fossil": 230,
+            "minecraft:ruined_portal_nether": 13
+          }
+        }
+      },
+      {
+        "name": "nether-custom-bounds-run0",
+        "median_ms": 1969.240874517709,
+        "p95_region_ms": 2214.2039766069506,
+        "maximum_region_ms": 2339.909124886617,
+        "total_ms": 39094.625250203535,
+        "chunks_per_second": 523.8571765026287,
+        "peak_rss_bytes": 2025324544,
+        "identical_nbt_chunks_per_reference": [
+          20480,
+          20480
+        ],
+        "coverage": {
+          "biome_chunk_membership": {
+            "minecraft:warped_forest": 20480
+          },
+          "chunks": 20480,
+          "unique_structure_starts": {
+            "minecraft:bastion_remnant": 20,
+            "minecraft:fortress": 8,
+            "minecraft:ruined_portal_nether": 15
+          }
+        }
+      },
+      {
+        "name": "nether-direct-stem-run0",
+        "median_ms": 1710.5403750902042,
+        "p95_region_ms": 1942.9652124759743,
+        "maximum_region_ms": 2272.6999998558313,
+        "total_ms": 35008.36837501265,
+        "chunks_per_second": 585.0029850182242,
+        "peak_rss_bytes": 2069037056,
+        "identical_nbt_chunks_per_reference": [
+          20480,
+          20480
+        ],
+        "coverage": {
+          "biome_chunk_membership": {
+            "minecraft:warped_forest": 20480
+          },
+          "chunks": 20480,
+          "unique_structure_starts": {
+            "minecraft:bastion_remnant": 21,
+            "minecraft:fortress": 8,
+            "minecraft:ruined_portal_nether": 13
+          }
+        }
+      },
+      {
+        "name": "overworld-run0",
+        "median_ms": 364.39495789818466,
+        "p95_region_ms": 448.56781900161883,
+        "maximum_region_ms": 523.625458125025,
+        "total_ms": 7334.633250022307,
+        "chunks_per_second": 2792.2323178105344,
+        "peak_rss_bytes": 1649295360,
+        "identical_nbt_chunks_per_reference": [
+          20480,
+          20480
+        ],
+        "coverage": {
+          "biome_chunk_membership": {
+            "minecraft:bamboo_jungle": 213,
+            "minecraft:beach": 4165,
+            "minecraft:birch_forest": 635,
+            "minecraft:cold_ocean": 1557,
+            "minecraft:dappled_forest": 10,
+            "minecraft:dark_forest": 265,
+            "minecraft:deep_cold_ocean": 1125,
+            "minecraft:deep_dark": 2094,
+            "minecraft:deep_frozen_ocean": 361,
+            "minecraft:deep_lukewarm_ocean": 244,
+            "minecraft:deep_ocean": 817,
+            "minecraft:desert": 185,
+            "minecraft:dripstone_caves": 3902,
+            "minecraft:flower_forest": 27,
+            "minecraft:forest": 4318,
+            "minecraft:frozen_ocean": 1146,
+            "minecraft:frozen_peaks": 23,
+            "minecraft:frozen_river": 981,
+            "minecraft:grove": 456,
+            "minecraft:ice_spikes": 16,
+            "minecraft:jagged_peaks": 73,
+            "minecraft:jungle": 504,
+            "minecraft:lukewarm_ocean": 1629,
+            "minecraft:lush_caves": 3075,
+            "minecraft:mangrove_swamp": 668,
+            "minecraft:meadow": 68,
+            "minecraft:mushroom_fields": 46,
+            "minecraft:ocean": 1387,
+            "minecraft:old_growth_birch_forest": 860,
+            "minecraft:old_growth_pine_taiga": 51,
+            "minecraft:old_growth_spruce_taiga": 53,
+            "minecraft:pale_garden": 7,
+            "minecraft:plains": 2328,
+            "minecraft:river": 3333,
+            "minecraft:savanna": 727,
+            "minecraft:savanna_plateau": 8,
+            "minecraft:snowy_beach": 1241,
+            "minecraft:snowy_plains": 1721,
+            "minecraft:snowy_slopes": 81,
+            "minecraft:snowy_taiga": 1791,
+            "minecraft:sparse_jungle": 548,
+            "minecraft:stony_shore": 1209,
+            "minecraft:sulfur_caves": 866,
+            "minecraft:sunflower_plains": 13,
+            "minecraft:swamp": 279,
+            "minecraft:taiga": 901,
+            "minecraft:warm_ocean": 197,
+            "minecraft:windswept_forest": 34,
+            "minecraft:windswept_gravelly_hills": 51,
+            "minecraft:windswept_hills": 174,
+            "minecraft:windswept_savanna": 110
+          },
+          "chunks": 20480,
+          "unique_structure_starts": {
+            "minecraft:abandoned_camp_forest": 1,
+            "minecraft:abandoned_camp_old_growth_birch_forest": 1,
+            "minecraft:abandoned_camp_savanna": 2,
+            "minecraft:abandoned_camp_snowy_taiga": 1,
+            "minecraft:ancient_city": 1,
+            "minecraft:desert_pyramid": 1,
+            "minecraft:trail_ruins": 1,
+            "minecraft:trial_chambers": 17,
+            "minecraft:village_plains": 5,
+            "minecraft:village_snowy": 1
+          }
+        }
+      }
+    ]
+  },
+  "post_merge": null
+}

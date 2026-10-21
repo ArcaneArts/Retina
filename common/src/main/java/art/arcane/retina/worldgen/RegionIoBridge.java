@@ -7,4 +7,5 @@ import java.util.concurrent.CompletableFuture;
 public interface RegionIoBridge {
     boolean retina$regionMode();
     CompletableFuture<Void> retina$generateAhead(ChunkPos position);
+    CompletableFuture<Void> retina$prepareForeground(ChunkPos position);
 }
