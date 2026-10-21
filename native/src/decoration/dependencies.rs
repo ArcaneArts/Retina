@@ -5,6 +5,8 @@ mod version_cache;
 pub(crate) use version_cache::{Cache as VersionCache, Pending as PendingVersions};
 #[cfg(test)]
 mod version_reuse_probe;
+#[cfg(test)]
+mod exterior_state_probe;
 use super::spatial::Map;
 use super::*;
 use crate::TerrainEngine;
@@ -1271,6 +1273,8 @@ pub(crate) fn generate(
         planner.check()?;
         #[cfg(test)]
         version_reuse_probe::observe(&planner)?;
+        #[cfg(test)]
+        exterior_state_probe::observe(&planner)?;
         let structure_started = metrics.performance.start();
         let structure_detail = diagnostics::start(details.is_some());
         let starts = planner
