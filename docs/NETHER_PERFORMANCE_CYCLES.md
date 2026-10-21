@@ -464,3 +464,34 @@ no-regression acceptance result. Quiet timing confirmation remains deferred by
 the user; the sub-second median/p95 goal remains open. The full measurements,
 coverage, library provenance, limitations and reproduction commands are in
 `docs/benchmarks/nether-perf-cycle19-2026-10-20.json`.
+
+PR #180 (`7a2670a`) merged the deterministic ore replay follow-up. Its actual
+merged build passes 122 native tests and is byte-identical to the validated
+candidate. All 5,120 post-merge smoke chunks match every reference. Quiet timing
+acceptance and the sub-second target remain pending.
+
+## Bounded root dispatch follow-up (evidence cycle 22)
+
+An assembly worker waiting for one region could steal another region's entire
+remaining generation loop. The request's caller now dispatches one joined source
+root at a time. Root evaluation and completion remain in the existing bounded
+pool, as do final planning, distribution, assembly and cleanup. Failed root
+results also release planner state in that pool. The worker count and global
+request budget are unchanged.
+
+A deterministic one-worker test demonstrates the mechanism: the old task makes
+a cooperative wait inherit all three simulated roots; separate phase dispatch
+lets it resume after one. All 123 native tests pass. The tested library is
+byte-identical to the matrix candidate. The five-case corpus matches 102,400
+complete chunks, and the additional 2/4/8-caller runs match another 61,440, against
+the immutable original and preceding merged references.
+
+The provisional two-caller maximum is 5.81 seconds, compared with the previous
+41.92-second outlier. Eight-caller p95 is still 21.47 seconds, with a 25.01-second
+maximum and 9.66 GB peak RSS. These are observations, not quiet timing acceptance.
+Second-seed and custom-profile serial runs were slower alongside higher external
+VM CPU activity; the direct-stem median remained similar. The full Overworld run
+also had a higher memory peak, while its targeted probe confirms zero calls into
+the changed planner path. These limits and the raw measurements are retained in
+`docs/benchmarks/nether-perf-cycle22-2026-10-20.json`. Quiet no-regression, sustained
+memory and sub-second acceptance remain outstanding.

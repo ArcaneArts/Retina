@@ -388,7 +388,26 @@
       ]
     }
   },
-  "post_merge": null,
+  "post_merge": {
+    "revision": "7a2670a70d80cab1267427dc8b2e2ab5fb174c6b",
+    "pr": "https://github.com/ArcaneArts/Retina/pull/180",
+    "library_sha256": "fa655cb390ef78b8c4358ced0fe9e32ebad3bffb803e49ac816b78e37f617cb1",
+    "binary_identical_to_validated_candidate": true,
+    "native_tests": {
+      "passed": 122,
+      "ignored": 37,
+      "failed": 0
+    },
+    "evidence": "cycle19/merged-smoke/suite.json",
+    "identical_nbt_chunks": 5120,
+    "scope": "Actual merged build; one warmup and one measured region per case. Complete-output smoke only, quiet timing confirmation deferred.",
+    "references": [
+      "original",
+      "Cycle5",
+      "preceding Cycle14",
+      "Cycle19 candidate"
+    ]
+  },
   "work_comparison": {
     "anchor_builds": {
       "preceding": 98555,
