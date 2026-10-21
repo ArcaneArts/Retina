@@ -1247,6 +1247,52 @@ pub(crate) fn plan(
 mod tests {
     use super::*;
     #[test]
+    fn root_dispatch_does_not_inherit_remaining_phases_of_stolen_request() {
+        use std::sync::atomic::{AtomicUsize, Ordering};
+        let observed_before_resuming = |phased: bool| {
+            let pool = Arc::new(rayon::ThreadPoolBuilder::new().num_threads(1).build().unwrap());
+            let roots = Arc::new(AtomicUsize::new(0));
+            let (started, ready) = std::sync::mpsc::channel();
+            let waiting = {
+                let pool = pool.clone();
+                let roots = roots.clone();
+                std::thread::spawn(move || pool.install(|| {
+                    started.send(()).unwrap();
+                    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
+                    while roots.load(Ordering::SeqCst) == 0 {
+                        assert!(std::time::Instant::now() < deadline, "queued phase never ran");
+                        if rayon::yield_now() == Some(rayon::Yield::Idle) {
+                            std::thread::yield_now();
+                        }
+                    }
+                    roots.load(Ordering::SeqCst)
+                }))
+            };
+            ready.recv_timeout(std::time::Duration::from_secs(10)).unwrap();
+            let metrics = Metrics::default();
+            if phased {
+                for _ in 0..3 {
+                    dispatch_phase(Some(&pool), &metrics, || {
+                        roots.fetch_add(1, Ordering::SeqCst);
+                    });
+                }
+            } else {
+                dispatch_phase(Some(&pool), &metrics, || {
+                    for _ in 0..3 {
+                        roots.fetch_add(1, Ordering::SeqCst);
+                    }
+                });
+            }
+            let observed = waiting.join().unwrap();
+            assert_eq!(roots.load(Ordering::SeqCst), 3);
+            observed
+        };
+        // A cooperative wait executes a stolen task before it can resume. The
+        // old whole-request task includes all later roots; phase dispatch does not.
+        assert_eq!(observed_before_resuming(false), 3);
+        assert_eq!(observed_before_resuming(true), 1);
+    }
+    #[test]
     fn sharded_memo_retains_one_initializer_and_failure_per_key() {
         use std::sync::atomic::{AtomicUsize, Ordering};
         let mut cache = Memo::default();
