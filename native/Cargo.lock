@@ -703,6 +703,7 @@ version = "0.1.0"
 dependencies = [
  "bytemuck",
  "flate2",
+ "libc",
  "libdeflater",
  "lz4-sys",
  "pollster",

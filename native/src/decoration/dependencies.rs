@@ -11,6 +11,8 @@ mod exterior_state_probe;
 mod version_layout_probe;
 #[cfg(test)]
 mod material_storage_probe;
+#[cfg(test)]
+mod worker_phase_probe;
 use super::spatial::Map;
 use super::*;
 use crate::TerrainEngine;
@@ -1246,9 +1248,13 @@ pub(crate) fn generate(
     // Find all writers of the requested volume, including anchors beyond the old
     // fixed halo when a supported placement chain reaches farther.
     for root in 0..planner.roots.len() {
+        #[cfg(test)]
+        let trace = worker_phase_probe::Trace::start(&planner, root);
         // Return to the request's caller after each root. A waiting worker may
         // steal another root, but cannot inherit that request's remaining loop.
         let evaluated = dispatch_phase(pool, &metrics.performance, || -> Result<(), String> {
+            #[cfg(test)]
+            trace.mark("dispatch_enter");
             let anchors = planner.roots[root].bounds.writers_area(
                 [request.chunk_x * 16, request.chunk_z * 16],
                 [
@@ -1256,15 +1262,30 @@ pub(crate) fn generate(
                     (request.chunk_z + side as i32) * 16 - 1,
                 ],
             )?;
+            #[cfg(test)]
+            trace.evaluation_begin(anchors.len());
             anchors
                 .par_iter()
-                .try_for_each(|&(ax, az)| planner.anchor(root, ax, az).map(|_| ()))?;
+                .try_for_each(|&(ax, az)| {
+                    #[cfg(test)]
+                    let task = trace.task([ax, az]);
+                    let result = planner.anchor(root, ax, az).map(|_| ());
+                    #[cfg(test)]
+                    task.finish(result.is_ok());
+                    result
+                })?;
+            #[cfg(test)]
+            trace.mark("evaluation_end");
             planner.complete(root, &anchors)?;
             for (ax, az) in anchors {
                 targets.push((root, ax, az));
             }
+            #[cfg(test)]
+            trace.mark("publication_end");
             Ok(())
         });
+        #[cfg(test)]
+        trace.finish(evaluated.is_ok());
         if let Err(error) = evaluated {
             return dispatch_phase(pool, &metrics.performance, || {
                 drop(planner);

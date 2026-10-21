@@ -1800,3 +1800,159 @@ retains immutable executables, libraries, source hashes, original and preceding
 full-NBT comparisons, per-thread/per-kind counts, backing inventories, ordinary
 timings and host observations. This branch also carries C56's actual merged
 proof and the held C57 assessment as documentation only.
+
+
+Cycle 58 post-merge confirmation: PR #198 merged as `542f41a19d0a69023e7cdf94dd88af9de4a9592e`.
+A forced actual merged ordinary rebuild has native tree `e4af459f7a1db66578c123b831ce6688754f7464`,
+identical to the already tested 163-pass source, and SHA-256
+`76cd0a87a3bc589bb8bc3b720a599924018e12f6b30b0047170ebf3a4c264723`, identical to the selected ordinary library.
+Native unit tests were not repeated for identical native source. The actual
+merged library did generate a fresh complete 102,400-chunk corpus, matching the
+original, preceding C56 and selected normal outputs. Every measured status is 4.
+Timings remain provisional under recorded host activity; the performance goal
+remains open. External `cycle58/post-merge-proof.json` preserves full metrics,
+references and rebuild provenance.
+
+
+## Cycle 59 — held compact material-run rank index
+
+A prototype embeds a 40-byte immutable run-start bitmap/rank index in each
+ColumnState. It returns materials from the original runs and retains the original
+partition search for unrepresentable layouts and out-of-range heights, including
+the existing u32 conversion. Owned, Shared and reconstructed Cached states all
+use the index. Archives retain their original packed data; no dense voxel array,
+additional per-column allocation or new owner lifetime is introduced.
+
+All 166 native tests pass (47 optional ignored), including exhaustive boundary
+pairs, word edges, sparse/dense source materials, tall layouts and wrapped query
+heights. The explicit GPU inventory passes. Its 102,400 measured chunks match
+the original and C58 merged references. Every observed Nether material lookup
+uses the index, and all material-call/run-length counters match C58 exactly.
+The joined metadata increase is 24.9–27.2 MB per region, before allocator effects;
+it is not process peak or sustained retention.
+
+A separate ordinary comparison alternates baseline/candidate complete regions,
+with five warmups and twenty measured regions per engine/case. Both engines
+remain resident, but generation is serialized. All measured before/after shader
+statuses are 4. All 204,800 measured chunks match three references (original,
+C58 merged, and inventory) in full decompressed NBT and membership.
+
+| Case | Median old/new ms | p95 old/new ms | Aggregate throughput change | New faster pairs |
+| --- | ---: | ---: | ---: | ---: |
+| nether-main | 1061 / 1027 | 1420 / 1479 | +0.06% | 12/20 |
+| nether-second-seed | 1316 / 1323 | 1959 / 1883 | -0.55% | 10/20 |
+| nether-custom-bounds | 1310 / 1255 | 2303 / 2376 | -2.01% | 8/20 |
+| nether-direct-stem | 1982 / 2007 | 2699 / 2692 | -3.04% | 7/20 |
+| overworld | 649 / 664 | 852 / 909 | -1.78% | 9/20 |
+
+Hold this version without a PR or merge. Standard-seed throughput is essentially
+unchanged; custom profiles show lower throughput and some tails worsen. The
+unaffected Overworld control also drifts, limiting attribution without dismissing
+those regressions. No useful whole-region improvement or quiet acceptance is
+established, and no additional concurrency/lifecycle acceptance run is selected.
+
+A separate synthetic benchmark imports the exact Index source and compares it
+with original partition_point reads over six alternating repetitions. For nine
+or thirteen run words, indexed lookup medians are roughly 1.4–3.4 ns versus
+3.5–7.4 ns across 1/256/32,768 resident columns. One-run lookups are slower, but
+none occur in this measured Nether material-read corpus. The benchmark excludes
+construction, actual access locality, production object layout and other region
+work. Scalar lookup gains therefore do not establish region gains or identify
+which other costs offset them.
+
+Next, measure process CPU work versus wall time using the unchanged C58 library.
+Prior C53 worker stacks contain substantial Rayon sleep/join observations and
+some dependency OnceLock waits; these are not elapsed-time shares or proof of a
+scheduler defect. Root-resolved occupancy and long dependency tails require
+measurement before choosing another architectural change. Avoid another lookup
+micro-optimization based only on leaf samples.
+
+Report: `docs/benchmarks/nether-perf-cycle59-2026-10-21.json`. Preserve
+`codex/nether-material-rank-index`, its worktree and external `cycle59/` evidence.
+Native implementation is `ca226565a9a025373ac7ac043c3fe7e9ac141417`; normal SHA-256
+is `a84b2fc525667f7bbd1b24d2d7cc1db9845c344d6fd44935c7edf96fc59ccf4e`.
+Quiet timing confirmation remains deferred and the performance goal stays open.
+
+
+Cycle 59 resource follow-up: an external copy of the native benchmark adds two
+process getrusage snapshots around each complete region. The unchanged C58
+ordinary library generates two standard Nether seeds and an Overworld control,
+with five warmups and twenty measured regions each. All 61,440 measured chunks
+match original and C58 output; measured shader statuses are 4.
+
+Mean process CPU work per region is 4,457 ms for the main seed, 4,269 ms for seed
+42 and 1,232 ms for Overworld. Median CPU-time/wall ratios are 2.70, 2.88 and 2.96.
+These include native service threads and are not percentages of available cores,
+per-root CPU accounting or proof of insufficient parallelism. External activity,
+GPU/I/O waits and serial work can all affect the ratio. Reclassified C53 samples
+also contain many worker sleep/join stacks, but those are not wall-time shares.
+
+The next diagnostic should combine per-root process CPU intervals with the
+in-flight intervals of dispatched anchor tasks, including their last completions.
+Count overlapping intervals on one worker only once. This can distinguish a
+small set of long remaining tasks from many occupied but blocked/preempted
+workers before an architectural scheduling change is selected. External
+`cycle59/baseline-cpu-summary.json` and `prior-worker-wait-evidence.json` retain
+the evidence and limitations. No production scheduling change is selected.
+
+
+## Cycle 60 — root CPU phases and dispatched worker occupancy
+
+A test-only observer measures pre-dispatch queueing, target enumeration, joined
+anchor evaluation, publication and return handoff. Each phase records wall time
+and an optional process CPU delta. Each worker records top-level task spans;
+joined summaries union overlapping/nested intervals by physical thread before
+integrating occupancy. No collector lock spans generation. Collector buffers
+are emptied at every root and retain no planner, world-state or GPU owners.
+Missing clocks/phases remain null; anomalous intervals are not silently clipped.
+
+All observer hooks, state and libc clock calls are excluded from ordinary builds.
+libc is a dev dependency already present transitively in the lockfile; no package
+version changed. Production generation order, errors, publication and layout
+remain unchanged. Four tests cover idle gaps, equal/nested spans, root rebinding,
+failed roots and missing clocks. All 167 native tests pass (48 optional ignored),
+and the explicit GPU inventory passes.
+
+Five warmups and twenty full lit regions per case produce these instrumented
+observations. The last column integrates disjoint root evaluation windows:
+
+| Case | Evaluation sum/region, median ms | Publication sum/region, median ms | Evaluation time with at most 2 workers carrying tasks |
+| --- | ---: | ---: | ---: |
+| nether-main | 902.2 | 56.3 | 35.6% |
+| nether-second-seed | 981.4 | 57.6 | 37.6% |
+| nether-custom-bounds | 420.8 | 48.7 | 21.1% |
+| nether-direct-stem | 580.3 | 58.6 | 28.2% |
+
+Standard-seed brown-mushroom longest tasks are outside the requested region in
+20/20 regions per seed. Their median duration is 90–94% of the root evaluation
+interval and their median start is within its first 5–7%. Large ancient-debris
+longest tasks are also exterior in every measured standard-seed region. Many
+other long roots have exterior tails. This points toward recursive exterior
+prior-state work; simply starting these already-early tasks sooner is unlikely
+to remove most of their cost. Previous broad frontier/graph/checkpoint attempts
+must be considered before choosing a new exact dependency design.
+
+Basalt pillars show a different pattern: about 13.6 workers carry tasks while
+process CPU/wall is about 0.8. This is consistent with waiting, but it does not
+separate GPU, dependency blocking, preemption or observer effects. Occupancy is
+not actual CPU execution. Process CPU also includes native service/shader threads.
+Task/CPU interval sums must not be presented as elapsed-time percentages.
+
+Observer summaries add median 15–16 ms per standard-seed region and 9–10 ms for
+custom profiles; they remain inside whole-region elapsed time. Setup and final
+structure/distribution/retirement are outside the root phase sums. The observer
+records no ordered roots in this Overworld control.
+
+The instrumented 102,400 measured chunks match the immutable original and C58
+merged corpus. A separate ordinary library generates another 102,400 matching
+the original, C58 and observer output. All measured shader statuses are 4. Normal
+symbol inspection finds no worker_phase_probe, material_storage_probe or
+version_layout_probe. Normal library bytes differ from C58; no binary identity,
+production speedup or quiet acceptance is claimed. External work remains visible.
+
+Report: `docs/benchmarks/nether-perf-cycle60-2026-10-21.json`. External `cycle60/`
+retains full per-root summaries, top-eight long tasks, occupancy histograms,
+clock/phase data, immutable binaries, provenance, full NBT and ordinary timings.
+The branch also carries C58's actual merged proof and held C59 measurements as
+documentation only. The held material-rank index is not included. No production
+scheduler change is selected in this cycle. The performance goal remains open.
