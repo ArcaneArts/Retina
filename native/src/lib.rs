@@ -156,6 +156,7 @@ pub struct TerrainEngine {
     height_cache: Mutex<ColumnCache>,
     query_cache: Mutex<queries::Cache>,
     caves: Mutex<CaveCache>,
+    dependency_versions: Mutex<decoration::dependencies::VersionCache>,
     structures: Mutex<structures::Cache>,
     timings: Mutex<HashMap<u32, Arc<timings::Timings>>>,
     pipeline: Arc<pipeline::Metrics>,
@@ -250,6 +251,7 @@ impl TerrainEngine {
             height_cache: Mutex::new(ColumnCache::default()),
             query_cache: Mutex::new(queries::Cache::default()),
             caves: Mutex::new(CaveCache::default()),
+            dependency_versions: Mutex::new(decoration::dependencies::VersionCache::default()),
             structures: Mutex::new(structures::Cache::default()),
             timings: Mutex::new(HashMap::new()),
         })

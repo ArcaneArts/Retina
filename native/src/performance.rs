@@ -44,6 +44,10 @@ counters! {
     structure_discovery_tiles, structure_fossil_batches, structure_fossil_columns,
     structure_fossil_biome_points,
     structure_probe_points,
+    version_cache_capture_nanos, version_cache_export_nanos, version_cache_publish_nanos,
+    version_cache_captured_regions, version_cache_boundary_lookups, version_cache_boundary_hits,
+    version_cache_exported_regions, version_cache_exported_bytes, version_cache_export_skips,
+    version_cache_published_regions, version_cache_evicted_regions,
 }
 use Counter::*;
 

@@ -335,6 +335,7 @@ fn independently_computed_neighbor_boundary_versions_match_completed_interiors()
                         true,
                         Some(&field),
                         Some(&pool),
+                        true,
                     )
                     .unwrap();
                     drop(result);
