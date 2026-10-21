@@ -156,7 +156,10 @@ struct CompletedRoot {
     anchors: Vec<((i32, i32), Arc<Output>)>,
     columns: Map<usize, Vec<(usize, usize)>>,
 }
-type ColumnCell = OnceLock<Result<Arc<ColumnState>, String>>;
+// A failure is rare, but its inline String enlarged every column slot. Keep
+// the error behind one pointer without adding allocations to successful builds.
+struct ColumnFailure(String);
+type ColumnCell = OnceLock<Result<Arc<ColumnState>, Box<ColumnFailure>>>;
 struct ColumnVersion {
     root: usize,
     state: ColumnCell,
@@ -260,7 +263,7 @@ impl ColumnState {
         blocks
     }
 }
-struct ColumnTile(Vec<OnceLock<Result<Arc<ColumnState>, String>>>);
+struct ColumnTile(Vec<ColumnCell>);
 impl Default for ColumnTile {
     fn default() -> Self {
         Self((0..COLUMNS).map(|_| OnceLock::new()).collect())
@@ -673,48 +676,54 @@ impl Planner<'_> {
         let metrics = &self.metrics.performance;
         let joined = metrics.start();
         let mut built = false;
-        let result = slot
-            .get_or_init(|| {
-                built = true;
-                metrics.add(Perf::column_builds, 1);
-                if before != 0 {
-                    return self.prefix(before, x, z, None);
-                }
-                let field = self.terrain(x.div_euclid(16), z.div_euclid(16))?;
-                if let Some((mask, range)) = field
-                    .substrate
-                    .as_ref()
-                    .and_then(|mask| mask.material_run_range(x, z).map(|range| (mask, range)))
-                {
-                    metrics.add(Perf::shared_material_columns, 1);
-                    return Ok(Arc::new(ColumnState::from_runs(
-                        ColumnRuns::Shared {
-                            mask: mask.clone(),
-                            range,
-                        },
-                        self.request.height as usize,
-                        self.profile,
-                        self.request.min_y,
-                    )));
-                }
-                let blocks = (self.request.min_y..self.request.min_y + self.request.height as i32)
-                    .map(|y| {
-                        field
-                            .material(self.profile, self.request, [x, y, z])
-                            .ok_or_else(|| format!("missing GPU substrate at {x},{y},{z}"))
-                    })
-                    .collect::<Result<Vec<_>, _>>()?;
-                Ok(Arc::new(ColumnState::new(
-                    blocks,
-                    self.profile,
-                    self.request.min_y,
-                )))
-            })
-            .clone();
+        let result = slot.get_or_init(|| {
+            built = true;
+            metrics.add(Perf::column_builds, 1);
+            self.build_column(before, x, z)
+                .map_err(|error| Box::new(ColumnFailure(error)))
+        });
         if !built {
             metrics.elapsed(Perf::column_join_nanos, joined);
         }
         result
+            .as_ref()
+            .map(Arc::clone)
+            .map_err(|error| error.0.clone())
+    }
+    fn build_column(&self, before: usize, x: i32, z: i32) -> Result<Arc<ColumnState>, String> {
+        let metrics = &self.metrics.performance;
+        if before != 0 {
+            return self.prefix(before, x, z, None);
+        }
+        let field = self.terrain(x.div_euclid(16), z.div_euclid(16))?;
+        if let Some((mask, range)) = field
+            .substrate
+            .as_ref()
+            .and_then(|mask| mask.material_run_range(x, z).map(|range| (mask, range)))
+        {
+            metrics.add(Perf::shared_material_columns, 1);
+            return Ok(Arc::new(ColumnState::from_runs(
+                ColumnRuns::Shared {
+                    mask: mask.clone(),
+                    range,
+                },
+                self.request.height as usize,
+                self.profile,
+                self.request.min_y,
+            )));
+        }
+        let blocks = (self.request.min_y..self.request.min_y + self.request.height as i32)
+            .map(|y| {
+                field
+                    .material(self.profile, self.request, [x, y, z])
+                    .ok_or_else(|| format!("missing GPU substrate at {x},{y},{z}"))
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        Ok(Arc::new(ColumnState::new(
+            blocks,
+            self.profile,
+            self.request.min_y,
+        )))
     }
     fn prefix(
         &self,
