@@ -1212,9 +1212,12 @@ impl Overlay {
     ) -> Option<i32> {
         let mask = 1u8 << map;
         let mut y = field.height(profile, request, x, z, map)?;
-        if let Some(tops) = self.tops.get(&(x, z)) {
-            y = y.max(tops[map as usize].saturating_add(1));
-        }
+        let Some(tops) = self.tops.get(&(x, z)) else {
+            // Every overlay write records this column, including air writes.
+            // Without one, the field's height already describes the live state.
+            return Some(y);
+        };
+        y = y.max(tops[map as usize].saturating_add(1));
         if profile.ordered_decorations {
             while y > request.min_y
                 && profile.heightmap_masks
@@ -1294,6 +1297,50 @@ impl Overlay {
 mod tests {
     use super::*;
     use serde_json::json;
+
+    #[test]
+    fn untouched_height_uses_prior_result_but_cleared_tops_still_scan() {
+        use std::sync::atomic::{AtomicUsize, Ordering};
+        struct Prior(AtomicUsize);
+        impl crate::decoration::PriorWorld for Prior {
+            fn column(&self, _: i32, _: i32) -> Option<Column> { None }
+            fn biome(&self, _: [i32; 3]) -> Option<usize> { None }
+            fn material(&self, at: [i32; 3]) -> Option<u16> {
+                self.0.fetch_add(1, Ordering::Relaxed);
+                Some(u16::from(at[1] < 32))
+            }
+            fn height(&self, _: i32, _: i32, _: u8) -> Option<i32> { Some(32) }
+        }
+        let (mut profile, base, request) = crate::decoration::replay_tests::fixture(42, 0);
+        profile.ordered_decorations = true;
+        profile.heightmap_masks[0] = 0;
+        profile.heightmap_masks[1] = 63;
+        let prior = Prior(AtomicUsize::new(0));
+        let field = Field {
+            origin_x: base.origin_x, origin_z: base.origin_z, side: base.side,
+            columns: base.columns, substrate: base.substrate, prior: Some(&prior),
+        };
+        let mut overlay = Overlay::default();
+        for map in 0..6 {
+            assert_eq!(overlay.height(&field, &profile, request, 8, 8, map), Some(32));
+        }
+        assert_eq!(prior.0.load(Ordering::Relaxed), 0);
+        overlay.record_feature();
+        overlay.write(&profile, [8, 31, 8], 0);
+        let before = overlay.before_feature();
+        assert_eq!(before.height(&field, &profile, request, 8, 8, 0), Some(32));
+        assert_eq!(prior.0.load(Ordering::Relaxed), 0);
+        assert_eq!(overlay.height(&field, &profile, request, 8, 8, 0), Some(31));
+        assert!(prior.0.load(Ordering::Relaxed) > 0);
+        overlay.finish_feature();
+        overlay.write(&profile, [8, 34, 8], 1);
+        assert_eq!(overlay.height(&field, &profile, request, 8, 8, 0), Some(35));
+        overlay.write(&profile, [8, 34, 8], 0);
+        assert_eq!(overlay.height(&field, &profile, request, 8, 8, 0), Some(31));
+        let reads = prior.0.load(Ordering::Relaxed);
+        assert_eq!(overlay.height(&field, &profile, request, 9, 8, 0), Some(32));
+        assert_eq!(prior.0.load(Ordering::Relaxed), reads);
+    }
 
     pub(super) fn fixture() -> (WorldProfile, Field<'static>, ChunkRequest, Recipe) {
         let mut profile: WorldProfile = serde_json::from_value(json!({

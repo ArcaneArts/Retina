@@ -23,7 +23,7 @@ counters! {
     teardown_terrain_nanos, teardown_boundary_columns_nanos, teardown_other_nanos,
     memo_requests, memo_builds, memo_ready_hits, memo_lock_nanos, memo_join_nanos,
     column_requests, column_builds, column_tiles, column_lock_nanos, column_join_nanos,
-    deferred_ore_roots, deferred_ore_candidates,
+    deferred_ore_roots, deferred_ore_candidates, height_roots_skipped,
     dependency_pool_wait_nanos,
     view_column_cached_reads, view_column_loads,
     anchor_builds, anchor_ready_hits, prefix_evaluations,
