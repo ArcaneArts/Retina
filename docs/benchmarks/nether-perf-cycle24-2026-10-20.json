@@ -410,5 +410,24 @@
     "reverse_extra": "--case nether-main --parallel 2 --request-order reverse",
     "evidence": "Raw suites preserve commands, hashes, configurations and process observations. Large binaries/worlds remain outside Git under evidence_root."
   },
-  "post_merge": null
+  "post_merge": {
+    "revision": "7dde4f1fedffdd374ab33e93a42acd02e49481b6",
+    "pr": "https://github.com/ArcaneArts/Retina/pull/182",
+    "library_sha256": "b864150638edd7989a5a45ee6b13cfb4932bb55b1a1017a438f36610b5ecaa3b",
+    "binary_identical_to_validated_candidate": true,
+    "native_tests": {
+      "passed": 123,
+      "ignored": 37,
+      "failed": 0
+    },
+    "evidence": "cycle24/merged-smoke/suite.json",
+    "identical_nbt_chunks": 5120,
+    "scope": "Actual merged build; one warmup and one measured complete region per case. Output smoke, not quiet timing acceptance.",
+    "references": [
+      "original",
+      "Cycle 5",
+      "preceding Cycle 22",
+      "Cycle 24 candidate"
+    ]
+  }
 }

@@ -464,7 +464,20 @@ impl PriorWorld for View<'_, '_> {
         }
     }
     fn height(&self, x: i32, z: i32, map: u8) -> Option<i32> {
-        match self.read_column(x, z, |column| column.heights[map as usize]) {
+        let mut before = self.before;
+        while before > 0 && self.planner.roots[before - 1].deferred_ore.is_some() {
+            before -= 1;
+        }
+        // These roots preserve every heightmap bit. Keep material queries on
+        // the original prefix; an earlier column must not enter that view cache.
+        let height = if before == self.before {
+            self.read_column(x, z, |column| column.heights[map as usize])
+        } else {
+            self.planner.metrics.performance.add(
+                Perf::height_roots_skipped, (self.before - before) as u64);
+            self.planner.column(before, x, z).map(|column| column.heights[map as usize])
+        };
+        match height {
             Ok(height) => Some(height),
             Err(error) => {
                 self.planner.fail(error);
