@@ -1956,3 +1956,16 @@ clock/phase data, immutable binaries, provenance, full NBT and ordinary timings.
 The branch also carries C58's actual merged proof and held C59 measurements as
 documentation only. The held material-rank index is not included. No production
 scheduler change is selected in this cycle. The performance goal remains open.
+
+
+Cycle 60 post-merge confirmation: PR #199 merged as `60e210d1b0e459955aec2007d8231ee4358bed88`.
+The forced actual merged rebuild has native tree `ad1cf17fb7670493243cba71adfc6d74d1653161`,
+identical to the tested 167-pass source, and ordinary SHA-256
+`15f8f4ef043ed5a963b52c74a2a60963dc570c8ae19f10b560cdf4757240eb27`, identical to the selected library.
+Native unit tests were not repeated for identical source. The actual merged
+library generated a fresh complete 102,400-chunk corpus matching original, C58
+and selected normal output in full NBT and membership; all measured statuses
+are 4. Same-binary timing drift is retained explicitly, including a custom-bound
+median of 2,156 ms versus 976 ms earlier. This cannot establish a code effect or
+identify the cause. Quiet timing and the subsecond goal remain open. External
+`cycle60/post-merge-proof.json` and `same-binary-timing-drift.json` retain evidence.
