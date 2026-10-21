@@ -1387,3 +1387,88 @@ No candidate runtime or actual merged validation is claimed.
 
 See `docs/benchmarks/nether-perf-cycle52-2026-10-21.json`; full raw output and
 provenance remain in its external evidence directory.
+
+## Cycle 53 — reuse completed exterior prefix states
+
+An observer found 12,048,015 exact state matches between naturally computed
+neighboring regions across four Nether cases, with no mismatch. A separate
+test cleared CPU and completed-region caches between each side of 24 region
+pairs: all 5,755,113 overlapping prefix states matched. These are observations
+of exact prefixes; missing prefixes cannot be inferred from equal later states.
+
+The candidate adds a 64-block exterior band to completed snapshots. It copies
+only successful, initialized full-prefix cells after all source roots join.
+Consecutive observed prefixes may share an interval only when they have the
+same live state owner. Every gap remains a miss. Material runs and six heights
+are copied; original planners and prior snapshots are not retained. Existing
+context isolation, full-region eligibility, durable publication and fallback
+to the complete planner remain unchanged. Interior and exterior backing share
+the existing eight-entry/512 MiB cache limit.
+
+The selected exporter groups tile references by coordinate and prefix, then
+builds each column's intervals directly. A paired experiment on four identical
+natural planner inputs reduced export-and-destruction medians from 119–185 ms
+to 30–44 ms, with 20/20 faster pairs per case. It checked every interval,
+material run, height and hole. This compares two C53 export algorithms; it is
+not a 73–76% improvement in complete generation over C51.
+
+In the eight-region diagnostic, prefix evaluations fell from 18,024,027 to
+16,595,926 (7.92%), anchors from 467,944 to 461,321, and column cells from
+21,163,126 to 19,849,768. The candidate served 473,399 exterior hits. Combined
+cumulative exported backing increased from 110,039,688 to 242,498,224 bytes.
+Instrumented whole-run duration increased from 13.99 to 20.08 seconds in the
+selected diagnostic, despite reduced work. This result is preserved alongside
+ordinary repetitions; overlapping counters are not summed as wall time.
+
+Ordinary main-seed ABBA repetitions favored the candidate: 1306/1794 and
+1415/1801 ms median/p95 versus surrounding controls at 1528/2033 and
+1514/1987 ms. Other results remain mixed. Four-caller throughput rose about
+18% with about 1.05 GB more peak RSS; eight-caller throughput fell about 5%
+while p95 improved. An initial two-caller tail regression and an Overworld
+tail were investigated with old/new/old repetitions. Candidate throughput,
+latency and peak RSS then lay between the controls. Actual enabled Overworld
+diagnostics recorded zero dependency-cache work. No final uncontended
+performance or no-regression acceptance is claimed.
+
+A separate current-binary run used existing root timestamps with per-read
+counters disabled. The dependency endpoint median was 902 ms within a 1409 ms
+whole-region median. Larger root intervals included initial basalt pillars and
+setup (96.7 ms), fire (62.6 ms), basalt blobs (54.3 ms) and brown mushrooms
+(53.2 ms). These intervals include nested terrain/GPU work, synchronization and
+publication; they are not isolated CPU feature times, and medians are not added.
+All 20,480 chunks again matched the four references. This identifies current
+work for further profiling without importing the older held C47 instrumentation.
+
+All 157 native tests pass, with 44 optional tests ignored. Actual publication
+failure/retry and existing-file skip tests pass. Complete NBT matches the
+original, cycle 5 and merged cycles 50/51 for the five-case 102,400-chunk
+corpus, reordered 2/4/8 callers, all repetitions, and 245,760 chunks from the
+same-process 240-region retention run. The final normal library is byte-identical
+to the library used for the full corpus.
+
+The retention run ended at 3007 MiB current RSS versus 2723 MiB in the retained
+C51 run; peak RSS was 3156 versus 3267 MiB. These were not adjacent controls.
+Candidate pass medians were 2421, 2841 and 2930 MiB. Memory fell between some
+batches, but this finite run does not establish an indefinite plateau. The
+archive cap does not bound active-job ownership, temporary export allocations,
+other caches or total process RSS.
+
+Loader/common tests, the JNI concurrency fixture and all three integrated
+client fixtures pass. Cold portal travel generated four regions in 4.91 s
+without DH and 6.06 s with DH; 101/116 server ticks continued, with observed
+maximum gaps of 182/306 ms. Two actual DH jobs completed during the latter
+trip. The DH fixture first waited about 2.5 minutes for background work to
+start; an idle-worker thread dump and this unresolved scheduling delay are
+retained in the evidence. Reopening generated zero chunks. NeoForge completed
+two unload/reopen passes with eight native jobs active, preview cleanup and
+zero late generation failures. JNI and all clients mapped the selected native
+library hash. These are integrated fixtures, not dedicated-server acceptance.
+
+Selection is based on exact reusable state, reduced prerequisite work and
+validated publication/lifecycle behavior. Quiet timing confirmation remains
+deferred by the user. Standard-Nether subsecond p95, final concurrency-tail and
+long-term memory acceptance remain open; this cycle does not complete the goal.
+
+Full report: `docs/benchmarks/nether-perf-cycle53-2026-10-21.json`. Raw commands,
+immutable libraries, generated worlds, the failed test-only build attempt and
+all measurements remain in the external `cycle53/` evidence directory.
