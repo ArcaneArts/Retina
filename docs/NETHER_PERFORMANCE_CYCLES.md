@@ -1294,3 +1294,67 @@ preceding cycle 44 and selected candidate. Provisional merged median/p95:
 main 960/1315 ms; second seed 1012/1356 ms; custom bounds 682/823 ms;
 direct stem 659/850 ms; Overworld 250/298 ms. Subsecond p95 and final quiet
 performance acceptance remain open. Full proof: `cycle50/post-merge-proof.json`.
+
+## Cycle 51 — retain useful edges of completed snapshots
+
+A test-only observer recorded 3,081,141 successful reads from completed region
+snapshots across four Nether cases, five warmups and twenty measured regions
+per case. Every observed read was within 25 blocks of the source region edge.
+All 81,920 chunks matched the original, cycle 5, cycle 44 and merged cycle 50.
+This observation selects a retention policy; it does not bound valid feature
+reach. Requests outside the retained band always use the original full planner.
+
+The candidate retains a 32-block edge band in compact row-major arrays. A full
+region archives 61,440 column positions instead of 262,144. Every retained
+column preserves all of its root markers, missing latest cells, exact material
+runs and six heightmaps. Context isolation, global entry/byte caps, publication
+after durable MCA completion and synchronous cleanup are unchanged. No observer
+or observation call site is compiled into normal native libraries.
+
+In the eight-region diagnostic, exported backing fell from 503,968,864 to
+110,039,688 bytes (78.17%). All 294,798 cache hits were preserved; both variants
+built 21,163,126 columns, 18,024,027 prefixes and 467,944 anchors. Export including
+mandatory original-planner retirement took 969.9 versus 817.8 ms total, about
+19.0 ms less per region in this diagnostic. These counters are separate from
+headline timing runs, and overlapping durations must not be added as wall time.
+The saved bytes are cumulative exported backing, not a process-RSS measurement.
+
+The candidate passes 153 native tests and two real-GPU context/publication
+tests. Full NBT matches the four references for the five-case 102,400-chunk
+corpus, 2/4/8-caller reordered runs, repeated main/seed2/Overworld runs, and all
+245,760 chunks from the same-process 240-region retention run. The Java native
+concurrency fixture compares 458,752 voxels from seven independent probes.
+
+The first four-caller sample was 7.8% slower; the repeated candidate reached
+1504 chunks/s between controls at 1225 and 1442. Slower Overworld samples were
+also investigated. Adjacent old/new/old median/p95 observations were 293/369,
+258/330 and 251/295 ms, with the candidate between controls. No consistent
+material regression reproduced; this is still provisional evidence. The full
+candidate median/p95 observations in ms were main 906/1272, second seed
+1068/1445, custom 626/781, direct 615/781 and Overworld 245/312.
+
+Smaller snapshot backing does not imply equally lower process RSS. The finite
+240-region candidate ended at 2723 MiB versus 2750 MiB in the retained preceding
+run, but generation peak RSS was higher: 3267 versus 2987 MiB. Current memory
+fell again between passes; the last pass median was 2680 MiB versus 2714 MiB.
+The eight-caller peak also rose from 6526 to 6882 MiB. These observations include
+allocator retention, other caches, GPU resources and active-job overlap. No
+cause for the peak differences or indefinite RSS plateau is established.
+
+The actual Fabric portal/DH fixture generated four Nether regions in 3.23 s
+while 62 server ticks continued, with a 179 ms maximum observed tick gap. Two
+real DH jobs completed during the wait. Reopening generated zero chunks and
+preserved fixtures and lighting. NeoForge passed both unload/reopen cycles
+with eight native jobs active, preview cleanup and zero late generation
+failures. Both clients' actual native mapping paths and hashes match the
+candidate. These are integrated-client fixture results, not a new dedicated
+server or unaided survival acceptance run.
+
+Selection is based on the reduced optional archive cost, exact generation and
+validated lifecycle behavior. Quiet timing confirmation remains deferred by
+the user. Subsecond standard-Nether p95, final no-regression, long-term memory
+and concurrency-tail acceptance remain open. This cycle does not complete the
+overall goal.
+
+Full report: `docs/benchmarks/nether-perf-cycle51-2026-10-21.json`. Raw measurements,
+commands, unchanged binaries and worlds are retained under external `cycle51/`.
