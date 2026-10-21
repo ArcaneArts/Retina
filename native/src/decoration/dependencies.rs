@@ -947,6 +947,7 @@ pub(crate) fn generate(
     mut details: Option<&mut diagnostics::Planning>,
     retain_prefix: bool,
     initial: Option<&Field<'_>>,
+    pool: Option<&rayon::ThreadPool>,
 ) -> Result<super::generation::Generation, String> {
     let started = std::time::Instant::now();
     let metrics = engine.timings(request.reserved);
@@ -1030,32 +1031,44 @@ pub(crate) fn generate(
     // Find all writers of the requested volume, including anchors beyond the old
     // fixed halo when a supported placement chain reaches farther.
     for root in 0..planner.roots.len() {
-        let anchors = planner.roots[root].bounds.writers_area(
-            [request.chunk_x * 16, request.chunk_z * 16],
-            [
-                (request.chunk_x + side as i32) * 16 - 1,
-                (request.chunk_z + side as i32) * 16 - 1,
-            ],
-        )?;
-        anchors
-            .par_iter()
-            .try_for_each(|&(ax, az)| planner.anchor(root, ax, az).map(|_| ()))?;
-        planner.complete(root, &anchors)?;
-        for (ax, az) in anchors {
-            targets.push((root, ax, az));
+        // Return to the request's caller after each root. A waiting worker may
+        // steal another root, but cannot inherit that request's remaining loop.
+        let evaluated = dispatch_phase(pool, &metrics.performance, || -> Result<(), String> {
+            let anchors = planner.roots[root].bounds.writers_area(
+                [request.chunk_x * 16, request.chunk_z * 16],
+                [
+                    (request.chunk_x + side as i32) * 16 - 1,
+                    (request.chunk_z + side as i32) * 16 - 1,
+                ],
+            )?;
+            anchors
+                .par_iter()
+                .try_for_each(|&(ax, az)| planner.anchor(root, ax, az).map(|_| ()))?;
+            planner.complete(root, &anchors)?;
+            for (ax, az) in anchors {
+                targets.push((root, ax, az));
+            }
+            Ok(())
+        });
+        if let Err(error) = evaluated {
+            return dispatch_phase(pool, &metrics.performance, || {
+                drop(planner);
+                Err(error)
+            });
         }
         if diagnostic {
             eprintln!(
-                "Retina dependency root {root}/{}: anchors={}, column_tiles={}, tiles={}, elapsed_ms={:.1}",
+                "Retina dependency root {root}/{}: anchors={}, column_tiles={}, tiles={}, elapsed_ms={:.1}, request={},{}",
                 planner.roots.len(),
                 planner.ready.len(),
                 planner.columns.len() + planner.ready_columns.len(),
                 planner.terrain.len(),
-                started.elapsed().as_secs_f64() * 1000.
+                started.elapsed().as_secs_f64() * 1000.,
+                request.chunk_x,
+                request.chunk_z
             );
         }
     }
-    planner.check()?;
     metrics
         .performance
         .elapsed(Perf::dependency_evaluation_nanos, evaluation_started);
@@ -1066,116 +1079,138 @@ pub(crate) fn generate(
             (planner.columns.len() + planner.ready_columns.len()) as u64;
         details.dependency_terrain_tiles = planner.terrain.len() as u64;
     }
-    let structure_started = metrics.performance.start();
-    let structure_detail = diagnostics::start(details.is_some());
-    let starts = planner
-        .discovery
-        .plans(engine, request, side as i32, &planner.terrain)?;
-    metrics
-        .performance
-        .elapsed(Perf::final_structure_planning_nanos, structure_started);
-    diagnostics::record(
-        structure_detail,
-        details.as_mut().map(|d| &mut d.final_structure_wall_nanos),
-    );
-    // Release immutable command references before consuming the outputs. This
-    // cleanup is inside the measured region and contributes to teardown time.
-    let release_started = metrics.performance.start();
-    let release_detail = diagnostics::start(details.is_some());
-    retire(
-        std::mem::take(&mut planner.completed),
-        &metrics.performance,
-        Perf::teardown_commands_nanos,
-    );
-    retire(
-        std::mem::take(&mut planner.versions.changed),
-        &metrics.performance,
-        Perf::teardown_versions_nanos,
-    );
-    metrics
-        .performance
-        .elapsed(Perf::teardown_nanos, release_started);
-    diagnostics::record(
-        release_detail,
-        details.as_mut().map(|d| &mut d.teardown_wall_nanos),
-    );
-    let merge_started = diagnostics::start(details.is_some());
-    let distribution_started = metrics.performance.start();
-    let mut cache = std::mem::take(&mut planner.ready);
-    let mut result = super::generation::Generation::new(request, side, profile, &starts);
+    // Final planning, distribution and all retirement stay inside the bounded
+    // pool and join before generation returns. No cleanup escapes the interval.
+    dispatch_phase(pool, &metrics.performance, || {
+        planner.check()?;
+        let structure_started = metrics.performance.start();
+        let structure_detail = diagnostics::start(details.is_some());
+        let starts = planner
+            .discovery
+            .plans(engine, request, side as i32, &planner.terrain)?;
+        metrics
+            .performance
+            .elapsed(Perf::final_structure_planning_nanos, structure_started);
+        diagnostics::record(
+            structure_detail,
+            details.as_mut().map(|d| &mut d.final_structure_wall_nanos),
+        );
+        // Release immutable command references before consuming the outputs. This
+        // cleanup is inside the measured region and contributes to teardown time.
+        let release_started = metrics.performance.start();
+        let release_detail = diagnostics::start(details.is_some());
+        retire(
+            std::mem::take(&mut planner.completed),
+            &metrics.performance,
+            Perf::teardown_commands_nanos,
+        );
+        retire(
+            std::mem::take(&mut planner.versions.changed),
+            &metrics.performance,
+            Perf::teardown_versions_nanos,
+        );
+        metrics
+            .performance
+            .elapsed(Perf::teardown_nanos, release_started);
+        diagnostics::record(
+            release_detail,
+            details.as_mut().map(|d| &mut d.teardown_wall_nanos),
+        );
+        let merge_started = diagnostics::start(details.is_some());
+        let distribution_started = metrics.performance.start();
+        let mut cache = std::mem::take(&mut planner.ready);
+        let mut result = super::generation::Generation::new(request, side, profile, &starts);
 
-    for key in targets {
-        let output = cache
-            .remove(&key)
-            .ok_or("missing completed dependency anchor")?;
-        let output = Arc::try_unwrap(output).map_err(|_| "dependency output still in use")?;
-        for block in output.writes {
-            result.push(request, side, block);
+        for key in targets {
+            let output = cache
+                .remove(&key)
+                .ok_or("missing completed dependency anchor")?;
+            let output = Arc::try_unwrap(output).map_err(|_| "dependency output still in use")?;
+            for block in output.writes {
+                result.push(request, side, block);
+            }
+            if let Some(metadata) = output.metadata {
+                result.event(request, side, key.1, key.2, metadata);
+            }
         }
-        if let Some(metadata) = output.metadata {
-            result.event(request, side, key.1, key.2, metadata);
+        metrics
+            .performance
+            .elapsed(Perf::distribution_nanos, distribution_started);
+        diagnostics::record(
+            merge_started,
+            details.as_mut().map(|d| &mut d.distribution_wall_nanos),
+        );
+        let teardown_started = metrics.performance.start();
+        let teardown_detail = diagnostics::start(details.is_some());
+        retire(cache, &metrics.performance, Perf::teardown_outputs_nanos);
+        // Preserve normal field destruction order while measuring each group.
+        let Planner {
+            roots,
+            terrain,
+            anchors,
+            ready,
+            completed,
+            versions,
+            anchor_ids,
+            starts,
+            discovery,
+            columns,
+            ready_columns,
+            error,
+            metrics: planner_metrics,
+            ..
+        } = planner;
+        retire(roots, &metrics.performance, Perf::teardown_other_nanos);
+        retire(terrain, &metrics.performance, Perf::teardown_terrain_nanos);
+        retire(
+            (anchors, ready, completed),
+            &metrics.performance,
+            Perf::teardown_other_nanos,
+        );
+        retire(
+            versions,
+            &metrics.performance,
+            Perf::teardown_versions_nanos,
+        );
+        retire(
+            (anchor_ids, starts, discovery, planner_metrics),
+            &metrics.performance,
+            Perf::teardown_other_nanos,
+        );
+        let boundary_started = metrics.performance.start();
+        // A column's identity versions retain the same state. Release those
+        // references together instead of walking unrelated hash-map buckets.
+        let mut boundary = ready_columns.into_iter().collect::<Vec<_>>();
+        boundary.extend(columns.into_entries());
+        boundary.sort_unstable_by_key(|((root, x, z), _)| (*z, *x, *root));
+        drop(boundary);
+        metrics
+            .performance
+            .elapsed(Perf::teardown_boundary_columns_nanos, boundary_started);
+        retire(error, &metrics.performance, Perf::teardown_other_nanos);
+        metrics
+            .performance
+            .elapsed(Perf::teardown_nanos, teardown_started);
+        diagnostics::record(teardown_detail, details.map(|d| &mut d.teardown_wall_nanos));
+        Ok(result)
+    })
+}
+
+fn dispatch_phase<T: Send>(
+    pool: Option<&rayon::ThreadPool>,
+    metrics: &Metrics,
+    run: impl FnOnce() -> T + Send,
+) -> T {
+    match pool {
+        Some(pool) => {
+            let queued = metrics.start();
+            pool.install(|| {
+                metrics.elapsed(Perf::dependency_pool_wait_nanos, queued);
+                run()
+            })
         }
+        None => run(),
     }
-    metrics
-        .performance
-        .elapsed(Perf::distribution_nanos, distribution_started);
-    diagnostics::record(
-        merge_started,
-        details.as_mut().map(|d| &mut d.distribution_wall_nanos),
-    );
-    let teardown_started = metrics.performance.start();
-    let teardown_detail = diagnostics::start(details.is_some());
-    retire(cache, &metrics.performance, Perf::teardown_outputs_nanos);
-    // Preserve normal field destruction order while measuring each group.
-    let Planner {
-        roots,
-        terrain,
-        anchors,
-        ready,
-        completed,
-        versions,
-        anchor_ids,
-        starts,
-        discovery,
-        columns,
-        ready_columns,
-        error,
-        metrics: planner_metrics,
-        ..
-    } = planner;
-    retire(roots, &metrics.performance, Perf::teardown_other_nanos);
-    retire(terrain, &metrics.performance, Perf::teardown_terrain_nanos);
-    retire(
-        (anchors, ready, completed),
-        &metrics.performance,
-        Perf::teardown_other_nanos,
-    );
-    retire(
-        versions,
-        &metrics.performance,
-        Perf::teardown_versions_nanos,
-    );
-    retire(
-        (anchor_ids, starts, discovery, planner_metrics),
-        &metrics.performance,
-        Perf::teardown_other_nanos,
-    );
-    let boundary_started = metrics.performance.start();
-    // A column's identity versions retain the same state. Release those
-    // references together instead of walking unrelated hash-map buckets.
-    let mut boundary = ready_columns.into_iter().collect::<Vec<_>>();
-    boundary.extend(columns.into_entries());
-    boundary.sort_unstable_by_key(|((root, x, z), _)| (*z, *x, *root));
-    drop(boundary);
-    metrics
-        .performance
-        .elapsed(Perf::teardown_boundary_columns_nanos, boundary_started);
-    retire(error, &metrics.performance, Perf::teardown_other_nanos);
-    metrics
-        .performance
-        .elapsed(Perf::teardown_nanos, teardown_started);
-    diagnostics::record(teardown_detail, details.map(|d| &mut d.teardown_wall_nanos));
-    Ok(result)
 }
 
 fn retire<T>(value: T, metrics: &Metrics, counter: Perf) {
@@ -1203,6 +1238,7 @@ pub(crate) fn plan(
         details,
         retain_prefix,
         initial,
+        None,
     )?
     .placements)
 }
@@ -1210,6 +1246,52 @@ pub(crate) fn plan(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn root_dispatch_does_not_inherit_remaining_phases_of_stolen_request() {
+        use std::sync::atomic::{AtomicUsize, Ordering};
+        let observed_before_resuming = |phased: bool| {
+            let pool = Arc::new(rayon::ThreadPoolBuilder::new().num_threads(1).build().unwrap());
+            let roots = Arc::new(AtomicUsize::new(0));
+            let (started, ready) = std::sync::mpsc::channel();
+            let waiting = {
+                let pool = pool.clone();
+                let roots = roots.clone();
+                std::thread::spawn(move || pool.install(|| {
+                    started.send(()).unwrap();
+                    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
+                    while roots.load(Ordering::SeqCst) == 0 {
+                        assert!(std::time::Instant::now() < deadline, "queued phase never ran");
+                        if rayon::yield_now() == Some(rayon::Yield::Idle) {
+                            std::thread::yield_now();
+                        }
+                    }
+                    roots.load(Ordering::SeqCst)
+                }))
+            };
+            ready.recv_timeout(std::time::Duration::from_secs(10)).unwrap();
+            let metrics = Metrics::default();
+            if phased {
+                for _ in 0..3 {
+                    dispatch_phase(Some(&pool), &metrics, || {
+                        roots.fetch_add(1, Ordering::SeqCst);
+                    });
+                }
+            } else {
+                dispatch_phase(Some(&pool), &metrics, || {
+                    for _ in 0..3 {
+                        roots.fetch_add(1, Ordering::SeqCst);
+                    }
+                });
+            }
+            let observed = waiting.join().unwrap();
+            assert_eq!(roots.load(Ordering::SeqCst), 3);
+            observed
+        };
+        // A cooperative wait executes a stolen task before it can resume. The
+        // old whole-request task includes all later roots; phase dispatch does not.
+        assert_eq!(observed_before_resuming(false), 3);
+        assert_eq!(observed_before_resuming(true), 1);
+    }
     #[test]
     fn sharded_memo_retains_one_initializer_and_failure_per_key() {
         use std::sync::atomic::{AtomicUsize, Ordering};

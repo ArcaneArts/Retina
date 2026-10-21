@@ -1,0 +1,608 @@
+{
+  "scope": "Bound stolen generation work to joined source-root phases while keeping root completion, final assembly and all disposal in the existing worker pool.",
+  "source": {
+    "revision": "b32c55fb5d312a7e9ee775746c46c738b9d2fcc4",
+    "native_tree": "019f838ded9050f7261aa563ce710d4958ace1a1",
+    "sha256": "0beb728f84c2f8ffab4eadaa52a3e121a63ca1b623fb9c777b0800df37831604",
+    "source_status": "",
+    "forced_rebuild": true,
+    "timing_acceptance": false
+  },
+  "initial_matrix_source": {
+    "revision": "41d530308e471427429c14c0fe6de2e13291cc2f",
+    "native_tree": "c3f0893920409a5853af25235fdc02693cc28468",
+    "sha256": "0beb728f84c2f8ffab4eadaa52a3e121a63ca1b623fb9c777b0800df37831604",
+    "source_status": "",
+    "forced_rebuild": true,
+    "timing_acceptance": false
+  },
+  "tested_binary_identical_to_matrix": true,
+  "native_tests": {
+    "passed": 123,
+    "failed": 0,
+    "ignored": 37
+  },
+  "mechanism_test": "A one-worker cooperative wait inherits all three roots from a whole-request task; separate joined root dispatch resumes the waiting request after one root. No latency thresholds establish the result.",
+  "evidence_root": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle22",
+  "timing_acceptance": false,
+  "timing_status": "User deferred quiet timing confirmation. All elapsed and memory observations remain provisional; no sub-second or no-regression acceptance.",
+  "correctness_references": [
+    "immutable original 58f6496",
+    "Cycle5 e20ea13",
+    "preceding merged Cycle19 7a2670a (byte-identical full candidate corpus)"
+  ],
+  "runs": {
+    "bounded-dispatch-pilot": {
+      "evidence": "cycle22/bounded-dispatch-pilot/suite.json",
+      "diagnostics": true,
+      "parallel": 1,
+      "request_order": "forward",
+      "warmups": 1,
+      "measured_regions": 1,
+      "cases": [
+        {
+          "case": "nether-main-run0",
+          "median_ms": 3068.4337918646634,
+          "p95_region_ms": 3068.4337918646634,
+          "maximum_region_ms": 3068.4337918646634,
+          "total_ms": 3070.4382080584764,
+          "chunks_per_second": 333.502884804024,
+          "peak_rss_bytes": 2200567808,
+          "identical_nbt_chunks_per_reference": [
+            1024,
+            1024,
+            1024
+          ],
+          "membership_identical": true,
+          "coverage": {
+            "biome_chunk_membership": {
+              "minecraft:basalt_deltas": 418,
+              "minecraft:crimson_forest": 73,
+              "minecraft:nether_wastes": 515,
+              "minecraft:soul_sand_valley": 145
+            },
+            "chunks": 1024,
+            "unique_structure_starts": {
+              "minecraft:bastion_remnant": 1,
+              "minecraft:fortress": 1,
+              "minecraft:nether_fossil": 11
+            }
+          },
+          "diagnostic_counters": {
+            "anchor_builds": 88417,
+            "anchor_ready_hits": 12477430,
+            "column_builds": 7253869,
+            "column_join_nanos": 139586197,
+            "column_lock_nanos": 259878231,
+            "column_requests": 9181012,
+            "column_tiles": 44861,
+            "column_versions_skipped": 9507266,
+            "completed_boundary_reads": 5004768,
+            "completed_column_commands": 7964621,
+            "completed_column_reads": 1651906,
+            "deferred_ore_candidates": 2089170,
+            "deferred_ore_roots": 8,
+            "dependency_evaluation_nanos": 2508462666,
+            "dependency_pool_wait_nanos": 293082,
+            "distribution_nanos": 125453167,
+            "final_structure_planning_nanos": 15750,
+            "memo_builds": 95456,
+            "memo_join_nanos": 7556086210,
+            "memo_lock_nanos": 200604823,
+            "memo_ready_hits": 2822962,
+            "memo_requests": 2919305,
+            "prefix_evaluations": 6541097,
+            "region_pool_wait_nanos": 7125,
+            "shared_material_columns": 712772,
+            "structure_active_hits": 0,
+            "structure_builds": 1999,
+            "structure_cache_evictions": 1999,
+            "structure_cache_hits": 0,
+            "structure_cache_misses": 1999,
+            "structure_candidates": 1999,
+            "structure_discovery_tiles": 98,
+            "structure_fossil_batches": 31,
+            "structure_fossil_biome_points": 586,
+            "structure_fossil_columns": 1984,
+            "structure_job_cache_hits": 0,
+            "structure_overlapping_builds": 0,
+            "structure_pending_evictions": 2,
+            "structure_plan_calls": 98,
+            "structure_probe_points": 15,
+            "structure_repeated_builds": 0,
+            "structure_unique_candidates": 1999,
+            "teardown_boundary_columns_nanos": 106839709,
+            "teardown_commands_nanos": 42438666,
+            "teardown_nanos": 316484292,
+            "teardown_other_nanos": 3376376,
+            "teardown_outputs_nanos": 58587250,
+            "teardown_terrain_nanos": 904375,
+            "teardown_versions_nanos": 104334458,
+            "terrain_cache_hits": 16,
+            "terrain_generated_chunks": 14755,
+            "terrain_generated_tiles": 31,
+            "terrain_initial_tiles_reused": 4,
+            "terrain_job_direct_requests": 1020278,
+            "terrain_job_fallback_requests": 0,
+            "terrain_job_join_nanos": 1443311687,
+            "terrain_job_lock_nanos": 0,
+            "terrain_job_requests": 1020278,
+            "terrain_requests": 47,
+            "terrain_unique_tiles": 31
+          }
+        }
+      ]
+    },
+    "bounded-dispatch-p1": {
+      "evidence": "cycle22/bounded-dispatch-p1/suite.json",
+      "diagnostics": false,
+      "parallel": 1,
+      "request_order": "reverse",
+      "warmups": 5,
+      "measured_regions": 20,
+      "cases": [
+        {
+          "case": "nether-main-run0",
+          "median_ms": 2209.0238339733332,
+          "p95_region_ms": 3027.8480689274147,
+          "maximum_region_ms": 3531.555207911879,
+          "total_ms": 46462.40095794201,
+          "chunks_per_second": 440.78651937377487,
+          "peak_rss_bytes": 2603761664,
+          "identical_nbt_chunks_per_reference": [
+            20480,
+            20480,
+            20480
+          ],
+          "membership_identical": true,
+          "coverage": {
+            "biome_chunk_membership": {
+              "minecraft:basalt_deltas": 3694,
+              "minecraft:crimson_forest": 4259,
+              "minecraft:nether_wastes": 11813,
+              "minecraft:soul_sand_valley": 2475,
+              "minecraft:warped_forest": 454
+            },
+            "chunks": 20480,
+            "unique_structure_starts": {
+              "minecraft:bastion_remnant": 17,
+              "minecraft:fortress": 11,
+              "minecraft:nether_fossil": 156,
+              "minecraft:ruined_portal_nether": 15
+            }
+          }
+        }
+      ]
+    },
+    "bounded-dispatch-p2": {
+      "evidence": "cycle22/bounded-dispatch-p2/suite.json",
+      "diagnostics": false,
+      "parallel": 2,
+      "request_order": "reverse",
+      "warmups": 5,
+      "measured_regions": 20,
+      "cases": [
+        {
+          "case": "nether-main-run0",
+          "median_ms": 3744.0016040345654,
+          "p95_region_ms": 4738.289714709391,
+          "maximum_region_ms": 5805.998791009188,
+          "total_ms": 39166.059790877625,
+          "chunks_per_second": 522.9017192270667,
+          "peak_rss_bytes": 4075044864,
+          "identical_nbt_chunks_per_reference": [
+            20480,
+            20480,
+            20480
+          ],
+          "membership_identical": true,
+          "coverage": {
+            "biome_chunk_membership": {
+              "minecraft:basalt_deltas": 3694,
+              "minecraft:crimson_forest": 4259,
+              "minecraft:nether_wastes": 11813,
+              "minecraft:soul_sand_valley": 2475,
+              "minecraft:warped_forest": 454
+            },
+            "chunks": 20480,
+            "unique_structure_starts": {
+              "minecraft:bastion_remnant": 17,
+              "minecraft:fortress": 11,
+              "minecraft:nether_fossil": 156,
+              "minecraft:ruined_portal_nether": 15
+            }
+          }
+        }
+      ]
+    },
+    "bounded-dispatch-p4": {
+      "evidence": "cycle22/bounded-dispatch-p4/suite.json",
+      "diagnostics": false,
+      "parallel": 4,
+      "request_order": "reverse",
+      "warmups": 5,
+      "measured_regions": 20,
+      "cases": [
+        {
+          "case": "nether-main-run0",
+          "median_ms": 6822.357812547125,
+          "p95_region_ms": 9766.86381851323,
+          "maximum_region_ms": 10728.750416077673,
+          "total_ms": 37710.11500013992,
+          "chunks_per_second": 543.0903618279607,
+          "peak_rss_bytes": 6894370816,
+          "identical_nbt_chunks_per_reference": [
+            20480,
+            20480,
+            20480
+          ],
+          "membership_identical": true,
+          "coverage": {
+            "biome_chunk_membership": {
+              "minecraft:basalt_deltas": 3694,
+              "minecraft:crimson_forest": 4259,
+              "minecraft:nether_wastes": 11813,
+              "minecraft:soul_sand_valley": 2475,
+              "minecraft:warped_forest": 454
+            },
+            "chunks": 20480,
+            "unique_structure_starts": {
+              "minecraft:bastion_remnant": 17,
+              "minecraft:fortress": 11,
+              "minecraft:nether_fossil": 156,
+              "minecraft:ruined_portal_nether": 15
+            }
+          }
+        }
+      ]
+    },
+    "bounded-dispatch-p8": {
+      "evidence": "cycle22/bounded-dispatch-p8/suite.json",
+      "diagnostics": false,
+      "parallel": 8,
+      "request_order": "reverse",
+      "warmups": 5,
+      "measured_regions": 20,
+      "cases": [
+        {
+          "case": "nether-main-run0",
+          "median_ms": 12425.405666581355,
+          "p95_region_ms": 21474.986770912077,
+          "maximum_region_ms": 25011.29566691816,
+          "total_ms": 37528.94387487322,
+          "chunks_per_second": 545.7121327017143,
+          "peak_rss_bytes": 9657384960,
+          "identical_nbt_chunks_per_reference": [
+            20480,
+            20480,
+            20480
+          ],
+          "membership_identical": true,
+          "coverage": {
+            "biome_chunk_membership": {
+              "minecraft:basalt_deltas": 3694,
+              "minecraft:crimson_forest": 4259,
+              "minecraft:nether_wastes": 11813,
+              "minecraft:soul_sand_valley": 2475,
+              "minecraft:warped_forest": 454
+            },
+            "chunks": 20480,
+            "unique_structure_starts": {
+              "minecraft:bastion_remnant": 17,
+              "minecraft:fortress": 11,
+              "minecraft:nether_fossil": 156,
+              "minecraft:ruined_portal_nether": 15
+            }
+          }
+        }
+      ]
+    },
+    "bounded-dispatch-remaining": {
+      "evidence": "cycle22/bounded-dispatch-remaining/suite.json",
+      "diagnostics": false,
+      "parallel": 1,
+      "request_order": "forward",
+      "warmups": 5,
+      "measured_regions": 20,
+      "cases": [
+        {
+          "case": "nether-second-seed-run0",
+          "median_ms": 2897.1356250112876,
+          "p95_region_ms": 3755.310914141592,
+          "maximum_region_ms": 4469.486832851544,
+          "total_ms": 60340.68749984726,
+          "chunks_per_second": 339.4061428294439,
+          "peak_rss_bytes": 2859843584,
+          "identical_nbt_chunks_per_reference": [
+            20480,
+            20480,
+            20480
+          ],
+          "membership_identical": true,
+          "coverage": {
+            "biome_chunk_membership": {
+              "minecraft:basalt_deltas": 3451,
+              "minecraft:crimson_forest": 3879,
+              "minecraft:nether_wastes": 9924,
+              "minecraft:soul_sand_valley": 3576,
+              "minecraft:warped_forest": 1747
+            },
+            "chunks": 20480,
+            "unique_structure_starts": {
+              "minecraft:bastion_remnant": 21,
+              "minecraft:fortress": 8,
+              "minecraft:nether_fossil": 230,
+              "minecraft:ruined_portal_nether": 13
+            }
+          }
+        },
+        {
+          "case": "nether-custom-bounds-run0",
+          "median_ms": 1326.113166520372,
+          "p95_region_ms": 1436.5828102454545,
+          "maximum_region_ms": 1522.6974999532104,
+          "total_ms": 26264.99812491238,
+          "chunks_per_second": 779.7449633386684,
+          "peak_rss_bytes": 1894400000,
+          "identical_nbt_chunks_per_reference": [
+            20480,
+            20480,
+            20480
+          ],
+          "membership_identical": true,
+          "coverage": {
+            "biome_chunk_membership": {
+              "minecraft:warped_forest": 20480
+            },
+            "chunks": 20480,
+            "unique_structure_starts": {
+              "minecraft:bastion_remnant": 20,
+              "minecraft:fortress": 8,
+              "minecraft:ruined_portal_nether": 15
+            }
+          }
+        },
+        {
+          "case": "nether-direct-stem-run0",
+          "median_ms": 1094.6601671166718,
+          "p95_region_ms": 1202.6177042163908,
+          "maximum_region_ms": 1224.0155839826912,
+          "total_ms": 22212.94879214838,
+          "chunks_per_second": 921.9847482491416,
+          "peak_rss_bytes": 1945616384,
+          "identical_nbt_chunks_per_reference": [
+            20480,
+            20480,
+            20480
+          ],
+          "membership_identical": true,
+          "coverage": {
+            "biome_chunk_membership": {
+              "minecraft:warped_forest": 20480
+            },
+            "chunks": 20480,
+            "unique_structure_starts": {
+              "minecraft:bastion_remnant": 21,
+              "minecraft:fortress": 8,
+              "minecraft:ruined_portal_nether": 13
+            }
+          }
+        },
+        {
+          "case": "overworld-run0",
+          "median_ms": 261.3856670213863,
+          "p95_region_ms": 400.8512516855263,
+          "maximum_region_ms": 462.58545806631446,
+          "total_ms": 5618.013875093311,
+          "chunks_per_second": 3645.416415006601,
+          "peak_rss_bytes": 2318958592,
+          "identical_nbt_chunks_per_reference": [
+            20480,
+            20480,
+            20480
+          ],
+          "membership_identical": true,
+          "coverage": {
+            "biome_chunk_membership": {
+              "minecraft:bamboo_jungle": 213,
+              "minecraft:beach": 4165,
+              "minecraft:birch_forest": 635,
+              "minecraft:cold_ocean": 1557,
+              "minecraft:dappled_forest": 10,
+              "minecraft:dark_forest": 265,
+              "minecraft:deep_cold_ocean": 1125,
+              "minecraft:deep_dark": 2094,
+              "minecraft:deep_frozen_ocean": 361,
+              "minecraft:deep_lukewarm_ocean": 244,
+              "minecraft:deep_ocean": 817,
+              "minecraft:desert": 185,
+              "minecraft:dripstone_caves": 3902,
+              "minecraft:flower_forest": 27,
+              "minecraft:forest": 4318,
+              "minecraft:frozen_ocean": 1146,
+              "minecraft:frozen_peaks": 23,
+              "minecraft:frozen_river": 981,
+              "minecraft:grove": 456,
+              "minecraft:ice_spikes": 16,
+              "minecraft:jagged_peaks": 73,
+              "minecraft:jungle": 504,
+              "minecraft:lukewarm_ocean": 1629,
+              "minecraft:lush_caves": 3075,
+              "minecraft:mangrove_swamp": 668,
+              "minecraft:meadow": 68,
+              "minecraft:mushroom_fields": 46,
+              "minecraft:ocean": 1387,
+              "minecraft:old_growth_birch_forest": 860,
+              "minecraft:old_growth_pine_taiga": 51,
+              "minecraft:old_growth_spruce_taiga": 53,
+              "minecraft:pale_garden": 7,
+              "minecraft:plains": 2328,
+              "minecraft:river": 3333,
+              "minecraft:savanna": 727,
+              "minecraft:savanna_plateau": 8,
+              "minecraft:snowy_beach": 1241,
+              "minecraft:snowy_plains": 1721,
+              "minecraft:snowy_slopes": 81,
+              "minecraft:snowy_taiga": 1791,
+              "minecraft:sparse_jungle": 548,
+              "minecraft:stony_shore": 1209,
+              "minecraft:sulfur_caves": 866,
+              "minecraft:sunflower_plains": 13,
+              "minecraft:swamp": 279,
+              "minecraft:taiga": 901,
+              "minecraft:warm_ocean": 197,
+              "minecraft:windswept_forest": 34,
+              "minecraft:windswept_gravelly_hills": 51,
+              "minecraft:windswept_hills": 174,
+              "minecraft:windswept_savanna": 110
+            },
+            "chunks": 20480,
+            "unique_structure_starts": {
+              "minecraft:abandoned_camp_forest": 1,
+              "minecraft:abandoned_camp_old_growth_birch_forest": 1,
+              "minecraft:abandoned_camp_savanna": 2,
+              "minecraft:abandoned_camp_snowy_taiga": 1,
+              "minecraft:ancient_city": 1,
+              "minecraft:desert_pyramid": 1,
+              "minecraft:trail_ruins": 1,
+              "minecraft:trial_chambers": 17,
+              "minecraft:village_plains": 5,
+              "minecraft:village_snowy": 1
+            }
+          }
+        }
+      ]
+    },
+    "overworld-path-probe": {
+      "evidence": "cycle22/overworld-path-probe/suite.json",
+      "diagnostics": true,
+      "parallel": 1,
+      "request_order": "forward",
+      "warmups": 1,
+      "measured_regions": 1,
+      "cases": [
+        {
+          "case": "overworld-run0",
+          "median_ms": 226.4519170857966,
+          "p95_region_ms": 226.4519170857966,
+          "maximum_region_ms": 226.4519170857966,
+          "total_ms": 228.956334060058,
+          "chunks_per_second": 4472.468535119856,
+          "peak_rss_bytes": 1167638528,
+          "identical_nbt_chunks_per_reference": [
+            1024,
+            1024,
+            1024
+          ],
+          "membership_identical": true,
+          "coverage": {
+            "biome_chunk_membership": {
+              "minecraft:beach": 260,
+              "minecraft:cold_ocean": 39,
+              "minecraft:deep_cold_ocean": 146,
+              "minecraft:deep_lukewarm_ocean": 2,
+              "minecraft:deep_ocean": 209,
+              "minecraft:forest": 18,
+              "minecraft:lukewarm_ocean": 183,
+              "minecraft:lush_caves": 5,
+              "minecraft:mushroom_fields": 18,
+              "minecraft:ocean": 355,
+              "minecraft:plains": 126,
+              "minecraft:river": 147,
+              "minecraft:savanna": 141,
+              "minecraft:sulfur_caves": 33,
+              "minecraft:sunflower_plains": 5
+            },
+            "chunks": 1024,
+            "unique_structure_starts": {
+              "minecraft:trial_chambers": 1
+            }
+          },
+          "diagnostic_counters": {
+            "anchor_builds": 0,
+            "anchor_ready_hits": 0,
+            "column_builds": 0,
+            "column_join_nanos": 0,
+            "column_lock_nanos": 0,
+            "column_requests": 0,
+            "column_tiles": 0,
+            "column_versions_skipped": 0,
+            "completed_boundary_reads": 0,
+            "completed_column_commands": 0,
+            "completed_column_reads": 0,
+            "deferred_ore_candidates": 0,
+            "deferred_ore_roots": 0,
+            "dependency_evaluation_nanos": 0,
+            "dependency_pool_wait_nanos": 0,
+            "distribution_nanos": 0,
+            "final_structure_planning_nanos": 0,
+            "memo_builds": 0,
+            "memo_join_nanos": 0,
+            "memo_lock_nanos": 0,
+            "memo_ready_hits": 0,
+            "memo_requests": 0,
+            "prefix_evaluations": 0,
+            "region_pool_wait_nanos": 13542,
+            "shared_material_columns": 0,
+            "structure_active_hits": 0,
+            "structure_builds": 17,
+            "structure_cache_evictions": 0,
+            "structure_cache_hits": 0,
+            "structure_cache_misses": 17,
+            "structure_candidates": 17,
+            "structure_discovery_tiles": 0,
+            "structure_fossil_batches": 0,
+            "structure_fossil_biome_points": 0,
+            "structure_fossil_columns": 0,
+            "structure_job_cache_hits": 0,
+            "structure_overlapping_builds": 0,
+            "structure_pending_evictions": 0,
+            "structure_plan_calls": 1,
+            "structure_probe_points": 17,
+            "structure_repeated_builds": 0,
+            "structure_unique_candidates": 17,
+            "teardown_boundary_columns_nanos": 0,
+            "teardown_commands_nanos": 0,
+            "teardown_nanos": 0,
+            "teardown_other_nanos": 0,
+            "teardown_outputs_nanos": 0,
+            "teardown_terrain_nanos": 0,
+            "teardown_versions_nanos": 0,
+            "terrain_cache_hits": 0,
+            "terrain_generated_chunks": 1444,
+            "terrain_generated_tiles": 1,
+            "terrain_initial_tiles_reused": 0,
+            "terrain_job_direct_requests": 0,
+            "terrain_job_fallback_requests": 0,
+            "terrain_job_join_nanos": 0,
+            "terrain_job_lock_nanos": 0,
+            "terrain_job_requests": 0,
+            "terrain_requests": 1,
+            "terrain_unique_tiles": 1
+          }
+        }
+      ]
+    }
+  },
+  "post_merge": null,
+  "work_comparison": {
+    "preceding_anchor_builds": 88417,
+    "candidate_anchor_builds": 88417,
+    "preceding_column_builds": 7253869,
+    "candidate_column_builds": 7253869
+  },
+  "observations_and_limits": [
+    "1/2/4/8 callers match 81,920 chunks; remaining four profiles match another 81,920. The five-case corpus comprises 102,400 of these chunks, with 61,440 additional concurrent chunks. Two one-region diagnostics match another 2,048.",
+    "Two-caller maximum is 5,806.0 ms versus 41,919.8 ms in the previous merged run. This supports further fairness evaluation but is not an uncontended speedup result.",
+    "At eight callers, observed p95 is 21,475.0 ms and maximum 25,011.3 ms; peak RSS is 9.657 GB. High-load tails and sustained memory acceptance remain outstanding.",
+    "Second-seed/custom serial medians increased to 2,897.1/1,326.1 ms. Process observations show VM median CPU of 189.75%/188.55% versus 94.4%/0% in the preceding runs. Direct-stem median is 1,094.7 ms versus 1,094.4 ms with no above-threshold VM observation. These are confounding-load observations, not causal proof or no-regression acceptance.",
+    "Overworld full-run peak RSS of 2.319 GB exceeds the preceding 1.706 GB. Its targeted probe records 1.168 GB and zero ordered-planner/phase-dispatch calls. Repeat uncontended memory comparison remains required; the higher peak is retained, not dismissed.",
+    "The previous full-region task can no longer carry its remaining root loop onto a waiting worker, but this does not guarantee a latency deadline or eliminate all nested waits."
+  ],
+  "process_observation_evidence": "cycle22/process-comparison.json",
+  "reproduction": {
+    "suite": "python3 scripts/nether-performance-suite.py --library <retained-library> --library-revision <recorded-revision> --profiles <evidence-root>/profiles --out <fresh-output> --compare <evidence-root>/reference-suite --compare <evidence-root>/cycle5/correctness-suite --compare <evidence-root>/cycle19/selected-full",
+    "matrix_extra": "--case nether-main --parallel <1|2|4|8> --request-order reverse",
+    "conditions": "Five warmups and twenty measured complete 1,024-chunk regions per case; shader-ready; 16 native workers; lighting enabled; zlib MCA. Raw suite.json includes exact commands, library/profile hashes and process observations. Compare complete decompressed NBT; only MCA timestamps and compression representation are excluded. Large retained libraries/worlds remain outside Git under evidence_root; rebuild recorded source with cargo build --release --locked --lib --manifest-path native/Cargo.toml."
+  }
+}
