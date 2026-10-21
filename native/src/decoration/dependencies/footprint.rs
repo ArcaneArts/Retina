@@ -90,10 +90,27 @@ impl Footprint {
             let rng = Rng::new(
                 request.seed ^ salt ^ mix(ax as u32 as u64) ^ mix((az as u32 as u64) << 32),
             );
-            let mut mark = |at: [i64; 2]| {
-                let reach = i64::from(recipe.reach.unwrap());
-                let lo = [at[0] - reach - origin[0], at[1] - reach - origin[1]];
-                let hi = [at[0] + reach - origin[0], at[1] + reach - origin[1]];
+            // Refinement needs the exact Y and post-placement RNG. Live height
+            // operations keep the existing exported-reach mask.
+            let refine = match &recipe.feature {
+                Kind::NetherFeature { nether }
+                    if recipe.placement.as_ref().unwrap().iter().all(|op| {
+                        matches!(
+                            op,
+                            placement::Modifier::Count { .. }
+                                | placement::Modifier::InSquare
+                                | placement::Modifier::HeightRange { .. }
+                                | placement::Modifier::Biome
+                        )
+                    }) =>
+                {
+                    Some(nether)
+                }
+                _ => None,
+            };
+            let mut mark_rect = |min: [i64; 2], max: [i64; 2]| {
+                let lo = [min[0] - origin[0], min[1] - origin[1]];
+                let hi = [max[0] - origin[0], max[1] - origin[1]];
                 if lo[0] < 0 || lo[1] < 0 || hi[0] >= width || hi[1] >= height {
                     return false;
                 }
@@ -108,12 +125,37 @@ impl Footprint {
                 }
                 true
             };
+            let mut mark = |at: [i64; 3], mut rng: Rng, work: &mut usize| {
+                if let Some(nether) = refine {
+                    if let [Ok(x), Ok(y), Ok(z)] = at.map(i32::try_from) {
+                        if let Some(result) =
+                            nether.vein_footprint([x, y, z], &mut rng, &mut |min, max| {
+                                // Bound geometry and row marking as well as placement
+                                // expansion. Exhaustion bypasses this optional mask.
+                                *work += 1 + (max[1] - min[1] + 1) as usize;
+                                *work <= 16_384 && mark_rect(min.map(i64::from), max.map(i64::from))
+                            })
+                        {
+                            return result;
+                        }
+                    }
+                }
+                let reach = i64::from(recipe.reach.unwrap());
+                mark_rect(
+                    [at[0] - reach, at[2] - reach],
+                    [at[0] + reach, at[2] + reach],
+                )
+            };
             if !walk(
                 recipe.placement.as_ref().unwrap(),
                 0,
                 request,
                 rng,
-                [i64::from(ax) * 16, i64::from(az) * 16],
+                [
+                    i64::from(ax) * 16,
+                    i64::from(request.min_y),
+                    i64::from(az) * 16,
+                ],
                 &mut work,
                 &mut mark,
             ) {
@@ -150,16 +192,16 @@ fn walk(
     index: usize,
     request: ChunkRequest,
     mut rng: Rng,
-    mut at: [i64; 2],
+    mut at: [i64; 3],
     work: &mut usize,
-    mark: &mut impl FnMut([i64; 2]) -> bool,
+    mark: &mut impl FnMut([i64; 3], Rng, &mut usize) -> bool,
 ) -> bool {
     *work += 1;
     if *work > 16_384 {
         return false;
     }
     if index == program.len() {
-        return mark(at);
+        return mark(at, rng, work);
     }
     match &program[index] {
         placement::Modifier::Count { count } => {
@@ -181,15 +223,15 @@ fn walk(
         }
         placement::Modifier::InSquare => {
             at[0] += i64::from(rng.below(16));
-            at[1] += i64::from(rng.below(16));
+            at[2] += i64::from(rng.below(16));
         }
         placement::Modifier::HeightRange { height } => {
-            height.sample(&mut rng, request);
+            at[1] = i64::from(height.sample(&mut rng, request));
         }
         placement::Modifier::Offset { x, y, z } => {
             at[0] += i64::from(x.sample(&mut rng));
-            y.sample(&mut rng); // The vertical draw affects the following Z draw.
-            at[1] += i64::from(z.sample(&mut rng));
+            at[1] += i64::from(y.sample(&mut rng));
+            at[2] += i64::from(z.sample(&mut rng));
         }
         placement::Modifier::RarityFilter { chance } => {
             if rng.unit() >= 1.0 / *chance as f64 {
@@ -384,5 +426,110 @@ mod tests {
         assert!(!eligible(&profile, &[0, 1]));
         profile.decorations[1].placement_salt = Some(42);
         assert!(eligible(&profile, &[0, 1]));
+    }
+    #[test]
+    fn ore_footprints_cover_actual_replay_with_clipping_and_nested_counts() {
+        let mut emitted = 0;
+        for (seed, coordinate) in [(42, -3), (71, 2)] {
+            for size in [0, 1, 14, 33, 64] {
+                for (min_y, height) in [(0, 128), (-64, 128), (16, 32)] {
+                    let (mut profile, field, mut request) =
+                        super::super::super::replay_tests::fixture(seed, coordinate);
+                    request.min_y = min_y;
+                    request.height = height;
+                    profile.decorations[0].feature = serde_json::from_value(json!({
+                        "kind":"nether_feature","nether":{"kind":"ore","targets":[
+                            {"rule":{"kind":"always_true"},"state":4}],
+                            "size":size,"discard":0.0,"scattered":false,"heightmap":2,"air":[0]}
+                    }))
+                    .unwrap();
+                    profile.decorations[0].reach = Some(14);
+                    profile.decorations[0].placement = Some(serde_json::from_value(json!([
+                        {"type":"count","count":3},{"type":"in_square"},
+                        {"type":"height_range","height":{"type":"uniform", "min_inclusive":{"absolute":min_y},
+                            "max_inclusive":{"absolute":min_y + height as i32 - 1}}},
+                        {"type":"count","count":2},{"type":"in_square"},{"type":"biome"}
+                    ])).unwrap());
+                    let root = Root {
+                        definition: None,
+                        ids: vec![0],
+                        bounds: Bounds::recipe(&profile.decorations[0]).unwrap(),
+                        deferred_ore: None,
+                        footprint: eligible(&profile, &[0]),
+                    };
+                    let mask = Footprint::build(&profile, &root, request, coordinate, coordinate);
+                    assert!(matches!(mask, Footprint::Known { .. }));
+                    let ids = [vec![0]];
+                    let mut replay = Replay::new(
+                        &field,
+                        &profile,
+                        request,
+                        coordinate,
+                        coordinate,
+                        1,
+                        None,
+                        Some(&ids),
+                    );
+                    let queries = replay.poll(&provider_noise::Samples::default(), None);
+                    assert!(queries.is_empty());
+                    let output = replay.finish_world();
+                    for block in &output[0] {
+                        assert!(
+                            mask.contains(block.x, block.z),
+                            "seed={seed} size={size} y={min_y} at={:?}",
+                            [block.x, block.y, block.z]
+                        );
+                    }
+                    emitted += output[0].len();
+                    if size == 0 {
+                        assert!(output[0].is_empty());
+                        assert!((coordinate * 16 - 14..=coordinate * 16 + 44).all(|x| {
+                            (coordinate * 16 - 14..=coordinate * 16 + 44)
+                                .all(|z| !mask.contains(x, z))
+                        }));
+                    }
+                }
+            }
+        }
+        assert!(emitted > 100);
+    }
+
+    #[test]
+    fn ore_refinement_limits_and_live_height_keep_conservative_fallbacks() {
+        let (mut profile, _, request) = super::super::super::replay_tests::fixture(42, 0);
+        profile.decorations[0].feature = serde_json::from_value(json!({"kind":"nether_feature",
+            "nether":{"kind":"ore","targets":[{"rule":{"kind":"always_true"},"state":4}],
+                "size":64,"discard":0.0,"scattered":false,"heightmap":2,"air":[0]}}))
+        .unwrap();
+        profile.decorations[0].reach = Some(14);
+        for (placement, bounded) in [
+            (
+                json!([{"type":"count","count":4096},{"type":"in_square"},
+                {"type":"height_range","height":{"type":"constant","value":{"absolute":30}}}]),
+                false,
+            ),
+            (
+                json!([{"type":"count","count":1},{"type":"in_square"},{"type":"heightmap","map":1}]),
+                true,
+            ),
+        ] {
+            profile.decorations[0].placement = Some(serde_json::from_value(placement).unwrap());
+            let root = Root {
+                definition: None,
+                ids: vec![0],
+                bounds: Bounds::recipe(&profile.decorations[0]).unwrap(),
+                deferred_ore: None,
+                footprint: eligible(&profile, &[0]),
+            };
+            let mask = Footprint::build(&profile, &root, request, 0, 0);
+            assert_eq!(matches!(mask, Footprint::Known { .. }), bounded);
+            if bounded {
+                let cells = (-14..=29)
+                    .flat_map(|z| (-14..=29).map(move |x| (x, z)))
+                    .filter(|&(x, z)| mask.contains(x, z))
+                    .count();
+                assert_eq!(cells, 29 * 29); // Full exported reach when live Y is unknown.
+            }
+        }
     }
 }

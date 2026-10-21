@@ -66,6 +66,72 @@ impl Rule {
         }
     }
 }
+
+/// The terrain check sits between these two draw stages in actual replay.
+struct Vein {
+    size: i32,
+    from: [f64; 3],
+    to: [f64; 3],
+    start: [i32; 3],
+    width: i32,
+    height: i32,
+}
+impl Vein {
+    fn new(size: i32, at: [i32; 3], rng: &mut Rng) -> Self {
+        let angle = (rng.unit() as f32) * std::f32::consts::PI;
+        let spread = size as f32 / 8.0;
+        let radius = ((size as f32 / 16.0 * 2.0 + 1.0) / 2.0).ceil() as i32;
+        let dx = (angle as f64).sin() * spread as f64;
+        let dz = (angle as f64).cos() * spread as f64;
+        let from = [
+            at[0] as f64 + dx,
+            (at[1] + rng.below(3) - 2) as f64,
+            at[2] as f64 + dz,
+        ];
+        let to = [
+            at[0] as f64 - dx,
+            (at[1] + rng.below(3) - 2) as f64,
+            at[2] as f64 - dz,
+        ];
+        let start = [
+            at[0] - spread.ceil() as i32 - radius,
+            at[1] - 2 - radius,
+            at[2] - spread.ceil() as i32 - radius,
+        ];
+        let width = 2 * (spread.ceil() as i32 + radius);
+        let height = 2 * (2 + radius);
+        Self {
+            size,
+            from,
+            to,
+            start,
+            width,
+            height,
+        }
+    }
+    fn spheres<'a>(&'a self, rng: &'a mut Rng) -> impl Iterator<Item = ([f64; 3], f64)> + 'a {
+        (0..self.size).map(move |i| {
+            let step = i as f32 / self.size as f32;
+            let center = std::array::from_fn::<_, 3, _>(|axis| {
+                self.from[axis] + step as f64 * (self.to[axis] - self.from[axis])
+            });
+            let size = rng.unit() * self.size as f64 / 16.0;
+            let radius =
+                (((minecraft_sin(std::f32::consts::PI * step) + 1.0) as f64) * size + 1.0) / 2.0;
+            (center, radius)
+        })
+    }
+    fn bounds(&self, center: [f64; 3], radius: f64) -> ([i32; 3], [i32; 3]) {
+        let min = std::array::from_fn::<_, 3, _>(|axis| {
+            ((center[axis] - radius).floor() as i32).max(self.start[axis])
+        });
+        let max = std::array::from_fn::<_, 3, _>(|axis| {
+            ((center[axis] + radius).floor() as i32).max(min[axis])
+        });
+        (min, max)
+    }
+}
+
 impl Ore {
     pub(super) fn deferred_replacement(&self, profile: &WorldProfile) -> Option<(u16, u16)> {
         let [target] = self.targets.as_slice() else {
@@ -87,6 +153,28 @@ impl Ore {
             && profile.heightmap_masks[*required as usize]
                 == profile.heightmap_masks[target.state as usize])
             .then_some((*required, target.state))
+    }
+    /// Conservative X/Z rectangles from the same vein geometry as replay.
+    /// Terrain rejection, vertical clipping, sphere culling and replacement
+    /// predicates can only remove writes. Scattered geometry is excluded because
+    /// its later draws can depend on earlier material-dependent replacements.
+    pub(super) fn vein_footprint(
+        &self,
+        at: [i32; 3],
+        rng: &mut Rng,
+        mark: &mut impl FnMut([i32; 2], [i32; 2]) -> bool,
+    ) -> Option<bool> {
+        if self.scattered || at.iter().any(|&v| v < i32::MIN + 64 || v > i32::MAX - 64) {
+            return None;
+        }
+        let vein = Vein::new(self.size, at, rng);
+        for (center, radius) in vein.spheres(rng) {
+            let (min, max) = vein.bounds(center, radius);
+            if !mark([min[0], min[2]], [max[0], max[2]]) {
+                return Some(false);
+            }
+        }
+        Some(true)
     }
     pub(super) fn validate(&self, palette: usize) -> bool {
         (0..=64).contains(&self.size)
@@ -146,28 +234,8 @@ impl Ore {
     }
 
     fn vein(&self, w: &mut World, at: [i32; 3], rng: &mut Rng) -> bool {
-        let angle = (rng.unit() as f32) * std::f32::consts::PI;
-        let spread = self.size as f32 / 8.0;
-        let radius = ((self.size as f32 / 16.0 * 2.0 + 1.0) / 2.0).ceil() as i32;
-        let dx = (angle as f64).sin() * spread as f64;
-        let dz = (angle as f64).cos() * spread as f64;
-        let from = [
-            at[0] as f64 + dx,
-            (at[1] + rng.below(3) - 2) as f64,
-            at[2] as f64 + dz,
-        ];
-        let to = [
-            at[0] as f64 - dx,
-            (at[1] + rng.below(3) - 2) as f64,
-            at[2] as f64 - dz,
-        ];
-        let start = [
-            at[0] - spread.ceil() as i32 - radius,
-            at[1] - 2 - radius,
-            at[2] - spread.ceil() as i32 - radius,
-        ];
-        let width = 2 * (spread.ceil() as i32 + radius);
-        let height = 2 * (2 + radius);
+        let vein = Vein::new(self.size, at, rng);
+        let (start, width, height) = (vein.start, vein.width, vein.height);
         let reaches_terrain = (start[0]..=start[0] + width).any(|x| {
             (start[2]..=start[2] + width).any(|z| {
                 w.overlay
@@ -179,17 +247,7 @@ impl Ore {
             return false;
         }
 
-        let mut spheres = Vec::with_capacity(self.size as usize);
-        for i in 0..self.size {
-            let step = i as f32 / self.size as f32;
-            let center = std::array::from_fn::<_, 3, _>(|axis| {
-                from[axis] + step as f64 * (to[axis] - from[axis])
-            });
-            let size = rng.unit() * self.size as f64 / 16.0;
-            let radius =
-                (((minecraft_sin(std::f32::consts::PI * step) + 1.0) as f64) * size + 1.0) / 2.0;
-            spheres.push((center, radius));
-        }
+        let mut spheres: Vec<_> = vein.spheres(rng).collect();
         for i in 0..spheres.len() {
             if spheres[i].1 <= 0.0 {
                 continue;
@@ -216,12 +274,7 @@ impl Ore {
             if radius < 0.0 {
                 continue;
             }
-            let min = std::array::from_fn::<_, 3, _>(|axis| {
-                ((center[axis] - radius).floor() as i32).max(start[axis])
-            });
-            let max = std::array::from_fn::<_, 3, _>(|axis| {
-                ((center[axis] + radius).floor() as i32).max(min[axis])
-            });
+            let (min, max) = vein.bounds(center, radius);
             for x in min[0]..=max[0] {
                 let xd = (x as f64 + 0.5 - center[0]) / radius;
                 if xd * xd >= 1.0 {
@@ -364,6 +417,58 @@ mod tests {
             let eager = run(false);
             assert!(!eager.0.is_empty());
             assert_eq!(run(true), eager);
+        }
+    }
+    #[test]
+    fn rejected_veins_keep_header_only_random_consumption() {
+        use crate::decoration::{Rng, placement::Overlay, provider_noise, replay_tests};
+        let (profile, field, request) = replay_tests::fixture(42, 0);
+        for size in [0, 1, 33, 64] {
+            let ore: super::Ore = serde_json::from_value(serde_json::json!({
+                "targets":[{"rule":{"kind":"material","allowed":[1],"chance":0.5},"state":4}],
+                "size":size,"discard":0.5,"scattered":false,"heightmap":2,"air":[0]}))
+            .unwrap();
+            let mut overlay = Overlay::default();
+            let mut blocks = Vec::new();
+            let samples = provider_noise::Samples::default();
+            let noise = provider_noise::Context::new(&samples);
+            let mut world = super::World {
+                field: &field,
+                profile: &profile,
+                request,
+                overlay: &mut overlay,
+                blocks: &mut blocks,
+                noise: &noise,
+                deferred_ore: None,
+            };
+            let mut rng = Rng::new(71);
+            let mut expected = Rng::new(71);
+            expected.unit();
+            expected.below(3);
+            expected.below(3);
+            assert!(!ore.place(&mut world, [8, 120, 8], &mut rng));
+            assert_eq!(rng.next(), expected.next());
+            assert!(blocks.is_empty());
+        }
+    }
+    #[test]
+    fn scattered_and_coordinate_edge_footprints_keep_exported_reach() {
+        for (scattered, at) in [
+            (true, [0, 30, 0]),
+            (false, [i32::MIN, 30, 0]),
+            (false, [0, i32::MAX, 0]),
+        ] {
+            let ore: super::Ore = serde_json::from_value(serde_json::json!({
+                "targets":[{"rule":{"kind":"always_true"},"state":4}],"size":33,
+                "discard":0.0,"scattered":scattered,"heightmap":2,"air":[0]}))
+            .unwrap();
+            let mut rng = super::Rng::new(42);
+            let before = rng.0;
+            assert_eq!(
+                ore.vein_footprint(at, &mut rng, &mut |_, _| panic!("fallback must not mark")),
+                None
+            );
+            assert_eq!(rng.0, before);
         }
     }
     #[test]
