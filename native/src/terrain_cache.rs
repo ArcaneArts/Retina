@@ -187,6 +187,11 @@ mod tests {
             let source: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
             let id = engine.register_profile(&bytes).unwrap();
             let profile = engine.profile(id).unwrap().unwrap();
+            let eligible = profile.decoration_patch_halo
+                && profile
+                    .registry_program
+                    .as_ref()
+                    .is_some_and(|p| p.material_halo);
             let bounds = &source["generation_bounds"];
             for (seed, x, z) in [(123456789, -33, 17), (42, 0, -16)] {
                 let r = ChunkRequest {
@@ -202,9 +207,10 @@ mod tests {
                     let first_mask = first_mask.unwrap();
                     let (reused, reused_mask) = engine.terrain_field(r, side).unwrap();
                     let reused_mask = reused_mask.unwrap();
-                    assert!(
+                    assert_eq!(
                         Arc::ptr_eq(&first_mask, &reused_mask),
-                        "{name} side={side} must reuse exact tile"
+                        eligible,
+                        "{name} side={side} must reuse only a retained patch-halo tile"
                     );
                     assert_eq!(fresh.columns, reused.columns);
                     assert_eq!(fresh.side, reused.side);
@@ -238,7 +244,7 @@ mod tests {
                             assert_eq!(fresh.biome(&profile, at), reused.biome(&profile, at));
                         }
                     }
-                    if side == 16 {
+                    if side == 16 && eligible {
                         std::thread::scope(|scope| {
                             let handles: Vec<_> = (0..8)
                                 .map(|_| scope.spawn(|| engine.terrain_field(r, side).unwrap()))
