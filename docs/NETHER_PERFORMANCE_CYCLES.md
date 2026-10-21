@@ -1366,3 +1366,24 @@ and selected cycle 51. Provisional merged median/p95 in ms: main 942/1303;
 second seed 930/1288; custom 644/783; direct 629/771; Overworld 246/305.
 Quiet acceptance remains deferred and standard-Nether p95 still exceeds one
 second. Full proof: external `cycle51/post-merge-proof.json`.
+
+
+## Held direct snapshot lookup experiment (evidence cycle 52)
+
+The completed-snapshot candidate selects one captured region through a local
+nine-position array. Exact context, prefix, negative-coordinate, missing-state
+and planner-fallback behavior remains unchanged. Across four observed Nether
+cases, snapshot visits fall from 406,804,116 to 3,081,141 with identical queries
+and hits. The observer adds overhead; this count is not an elapsed-time gain.
+
+The final source passes 155 native tests. Full five-case, reordered two/four/eight
+caller and repeated standard-seed/Overworld runs match four complete-NBT
+references. Timings are mixed: two-caller throughput falls about 22%, four-caller
+rises about 20%, and eight-caller falls about 1%. Repeated standard-seed medians
+change by about 1%; no consistent overall gain has been established. External
+CPU activity was recorded. The candidate remains unmerged, with source and
+evidence preserved. Final quiet timing confirmation is deferred by the user.
+No candidate runtime or actual merged validation is claimed.
+
+See `docs/benchmarks/nether-perf-cycle52-2026-10-21.json`; full raw output and
+provenance remain in its external evidence directory.
