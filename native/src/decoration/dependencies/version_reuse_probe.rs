@@ -21,7 +21,7 @@ pub(super) fn observe(planner: &Planner<'_>) -> Result<(), String> {
     Ok(())
 }
 
-type RootSignature = Vec<(Option<usize>, Vec<u32>, [i32; 2], [i32; 2])>;
+type RootSignature = Vec<(Option<usize>, Vec<u32>, [i64; 2], [i64; 2])>;
 struct SavedVersion {
     root: usize,
     state: Option<Arc<ColumnState>>,
@@ -106,7 +106,7 @@ impl Saved {
                 .map(|v| v.capacity() * std::mem::size_of::<SavedVersion>())
                 .sum::<usize>()
             + self.roots.capacity()
-                * std::mem::size_of::<(Option<usize>, Vec<u32>, [i32; 2], [i32; 2])>()
+                * std::mem::size_of::<(Option<usize>, Vec<u32>, [i64; 2], [i64; 2])>()
             + self.roots.iter().map(|r| r.1.capacity() * 4).sum::<usize>();
         let values = self
             .base
@@ -225,7 +225,17 @@ fn missing_latest_version_never_selects_an_earlier_ready_value() {
     let (profile, _, _) = crate::decoration::replay_tests::fixture(42, 0);
     let state = Arc::new(ColumnState::new(vec![0; 16], &profile, 0));
     let saved = Saved {
-        request: ChunkRequest::default(),
+        request: ChunkRequest {
+            seed: 42,
+            chunk_x: 0,
+            chunk_z: 0,
+            min_y: 0,
+            height: 16,
+            base_height: 64.,
+            amplitude: 48.,
+            frequency: 0.008,
+            reserved: 0,
+        },
         profile: 0,
         roots: Vec::new(),
         origin: [-1, -1],
