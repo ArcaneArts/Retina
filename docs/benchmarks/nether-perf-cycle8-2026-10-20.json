@@ -342,7 +342,26 @@
     "result": "Not consistently reproduced: control repeats 1.729 to 2.433 GB; candidate repeats 1.764 to 1.843 GB. Actual enabled diagnostics show zero ordered anchors and zero ordered column requests. Quiet timing acceptance remains deferred."
   },
   "concurrency": "Reverse-order two-caller complete-NBT comparison passes. Provisional aggregate throughput is 363.54 chunks/s for the candidate and 362.05 for the adjacent merged control. Both retain large native request tails; foreground admission from PR #176 does not preempt running native jobs. No concurrency speedup claim.",
-  "post_merge": null,
+  "post_merge": {
+    "revision": "fbbf5455e74880f672ec314cfd12e45e5a2b8410",
+    "pr": "https://github.com/ArcaneArts/Retina/pull/177",
+    "library_sha256": "bb9672d7faf50158bacdcaea56365152c1b35a745c16d670e93a2da7afc4bac4",
+    "binary_identical_to_validated_candidate": true,
+    "native_tests": {
+      "passed": 116,
+      "ignored": 37,
+      "failed": 0
+    },
+    "evidence": "cycle8/merged-smoke/suite.json",
+    "identical_nbt_chunks": 5120,
+    "scope": "Actual merged build; one warmup and one measured region per case. Output smoke only, quiet timing confirmation deferred.",
+    "references": [
+      "original",
+      "Cycle5",
+      "preceding Cycle10",
+      "Cycle8 candidate"
+    ]
+  },
   "reproduction": {
     "suite": "python3 scripts/nether-performance-suite.py --library <retained dylib> --library-revision <retained revision> --profiles <evidence-root>/profiles --out <new output> --compare <evidence-root>/reference-suite --compare <evidence-root>/cycle5/correctness-suite --compare <evidence-root>/cycle10/native-correctness-suite",
     "concurrent_extra": "--case nether-main --parallel 2 --request-order reverse",
