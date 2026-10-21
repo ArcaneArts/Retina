@@ -376,22 +376,31 @@ impl View<'_, '_> {
             self.planner.terrain(x.div_euclid(16), z.div_euclid(16))
         }
     }
-    fn column(&self, x: i32, z: i32) -> Result<Arc<ColumnState>, String> {
+    fn read_column<T>(
+        &self,
+        x: i32,
+        z: i32,
+        read: impl FnOnce(&ColumnState) -> T,
+    ) -> Result<T, String> {
         if let Some(column) = self
             .columns
             .lock()
             .map_err(|_| "anchor view poisoned")?
             .get(&(x, z))
-            .cloned()
         {
-            return Ok(column);
+            self.planner.metrics.performance.add(Perf::view_column_cached_reads, 1);
+            // Only immutable material/height scalar access runs under this lock.
+            // No recursive planner or terrain work may enter this callback.
+            return Ok(read(column));
         }
+        self.planner.metrics.performance.add(Perf::view_column_loads, 1);
         let column = self.planner.column(self.before, x, z)?;
+        let value = read(&column);
         self.columns
             .lock()
             .map_err(|_| "anchor view poisoned")?
-            .insert((x, z), column.clone());
-        Ok(column)
+            .insert((x, z), column);
+        Ok(value)
     }
 }
 impl PriorWorld for View<'_, '_> {
@@ -422,8 +431,10 @@ impl PriorWorld for View<'_, '_> {
         {
             return Some(0);
         }
-        match self.column(at[0], at[2]) {
-            Ok(column) => Some(column.material((at[1] - self.planner.request.min_y) as usize)),
+        match self.read_column(at[0], at[2], |column| {
+            column.material((at[1] - self.planner.request.min_y) as usize)
+        }) {
+            Ok(material) => Some(material),
             Err(error) => {
                 self.planner.fail(error);
                 None
@@ -431,8 +442,8 @@ impl PriorWorld for View<'_, '_> {
         }
     }
     fn height(&self, x: i32, z: i32, map: u8) -> Option<i32> {
-        match self.column(x, z) {
-            Ok(column) => Some(column.heights[map as usize]),
+        match self.read_column(x, z, |column| column.heights[map as usize]) {
+            Ok(height) => Some(height),
             Err(error) => {
                 self.planner.fail(error);
                 None
