@@ -3,6 +3,8 @@ use super::{ColumnCell, ColumnRuns, ColumnState, Map, Metrics, Perf, Versions};
 use crate::{CacheKey, ChunkRequest, TerrainEngine, WorldProfile};
 use std::collections::VecDeque;
 use std::sync::Arc;
+mod exterior;
+use exterior::Exterior;
 
 #[cfg(test)]
 mod footprint_probe;
@@ -17,6 +19,7 @@ struct Snapshot {
     region: [i32; 2],
     roots: usize,
     versions: Archived,
+    exterior: Option<Box<Exterior>>,
     bytes: usize,
 }
 const MISSING: u32 = u32::MAX;
@@ -291,9 +294,25 @@ impl Reuse {
             .find_map(|saved| saved.versions.column(before, x, z))
     }
 
-    pub(super) fn export(&self, versions: Versions, metrics: &Metrics) -> Option<Pending> {
+    pub(super) fn exterior_column(&self, before: usize, x: i32, z: i32) -> Option<Arc<ColumnState>> {
+        if before > self.roots { return None }
+        self.captured.iter().rev().find_map(|saved| {
+            saved.exterior.as_ref()?.column(before, x, z)
+        })
+    }
+
+    pub(super) fn export(&self, versions: Versions,
+        columns: &Map<(usize, i32, i32), Arc<super::ColumnTile>>, metrics: &Metrics) -> Option<Pending> {
         let started = metrics.start();
         let archived = Archived::capture(&versions);
+        let exterior = Exterior::capture(versions.origin, versions.width, columns).map(|(saved, slots)| {
+            let (spans, states) = saved.counts();
+            metrics.add(Perf::version_cache_exterior_exported_slots, slots as u64);
+            metrics.add(Perf::version_cache_exterior_exported_spans, spans as u64);
+            metrics.add(Perf::version_cache_exterior_exported_states, states as u64);
+            metrics.add(Perf::version_cache_exterior_exported_bytes, saved.retained_bytes() as u64);
+            saved
+        });
         // Original planner allocations retire synchronously while exporting,
         // not during later eviction or after the measured generation interval.
         drop(versions);
@@ -307,6 +326,7 @@ impl Reuse {
             region: self.region,
             roots: self.roots,
             versions,
+            exterior,
             bytes: 0,
         };
         let bytes = Some(retained_bytes(&snapshot));
@@ -338,6 +358,7 @@ fn retained_bytes(snapshot: &Snapshot) -> usize {
         + std::mem::size_of::<Vec<u32>>()
         + 2 * std::mem::size_of::<usize>()
         + v.runs.capacity() * std::mem::size_of::<u32>()
+        + snapshot.exterior.as_ref().map_or(0, |v| v.retained_bytes())
 }
 
 #[cfg(test)]
@@ -433,6 +454,7 @@ mod tests {
             region: [x.div_euclid(32), 0],
             roots: 8,
             versions: Archived::capture(&versions).unwrap(),
+            exterior: None,
             bytes: 0,
         };
         snapshot.bytes = retained_bytes(&snapshot);
@@ -517,6 +539,7 @@ mod tests {
             region: [0, 0],
             roots: 8,
             versions: Archived::capture(&versions).unwrap(),
+            exterior: None,
             bytes: 0,
         };
         let reuse = Reuse {
