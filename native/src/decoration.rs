@@ -283,6 +283,8 @@ impl Recipe {
 }
 
 pub trait PriorWorld: Sync {
+    #[cfg(test)]
+    fn material_probe_root(&self) -> Option<(usize, &str)> { None }
     fn column(&self, x: i32, z: i32) -> Option<Column>;
     fn biome(&self, at: [i32; 3]) -> Option<usize>;
     fn material(&self, at: [i32; 3]) -> Option<u16>;

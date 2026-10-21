@@ -1609,5 +1609,223 @@
     "The 240-region retention run is finite and does not establish an indefinite memory plateau.",
     "Runtime checks use integrated-client fixtures, not a new dedicated-server or unaided survival acceptance run.",
     "Standard Nether subsecond median and p95, and the overall goal, remain unfulfilled."
-  ]
+  ],
+  "actual_merged_proof": {
+    "merge": {
+      "headRefOid": "ee1472f61c61480670e9b956009f985eca47d68c",
+      "mergeCommit": {
+        "oid": "0132a7435842d5ab4f060bee6ac107841a120cd3"
+      },
+      "mergedAt": "2026-10-21T18:55:01Z",
+      "number": 195,
+      "state": "MERGED",
+      "statusCheckRollup": [],
+      "url": "https://github.com/ArcaneArts/Retina/pull/195",
+      "method": "gh pr merge 195 --auto --squash",
+      "administrative_bypass": false,
+      "attachment_result": "App attachment rejected: thread attachment identity count exceeds 100. Existing attachments and protected worktrees preserved.",
+      "primary_synchronized": true
+    },
+    "library": {
+      "revision": "0132a7435842d5ab4f060bee6ac107841a120cd3",
+      "native_tree": "a24c6a1c2bef99e093a735d72aeb31416f974e6b",
+      "sha256": "dd00145de6ea2916a17efbb703c05e0a210becec24a8403e44139a2dabed161b",
+      "source_status": "",
+      "forced_rebuild": true,
+      "timing_acceptance": false
+    },
+    "selected_candidate": {
+      "revision": "6fb2ce353c82a8f50981e08840048d5be9586c2d",
+      "native_tree": "a24c6a1c2bef99e093a735d72aeb31416f974e6b",
+      "sha256": "dd00145de6ea2916a17efbb703c05e0a210becec24a8403e44139a2dabed161b",
+      "source_status": "",
+      "forced_rebuild": true,
+      "timing_acceptance": false
+    },
+    "byte_identical_to_selected": true,
+    "native_tree_identical_to_selected": true,
+    "tests": {
+      "native_passed": 157,
+      "native_failed": 0,
+      "native_ignored": 44
+    },
+    "original_nbt_chunks": 102400,
+    "reference_sets": 4,
+    "rows": [
+      {
+        "case": "nether-main-run0",
+        "median_ms": 1481.2253955751657,
+        "p95_region_ms": 2186.291316733696,
+        "maximum_region_ms": 2340.774458833039,
+        "total_ms": 29620.482042199,
+        "chunks_per_second": 691.4134608215708,
+        "generation_peak_rss_bytes": 2189279232,
+        "program_statuses": [
+          4
+        ],
+        "comparisons": [
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/nether-main-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          },
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle5/correctness-suite/nether-main-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          },
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle51/merged-full/nether-main-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          },
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle53/exterior64v3-full/nether-main-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          }
+        ]
+      },
+      {
+        "case": "nether-second-seed-run0",
+        "median_ms": 1121.5898749651387,
+        "p95_region_ms": 1526.6553506255152,
+        "maximum_region_ms": 1819.2081658635288,
+        "total_ms": 22250.519749941304,
+        "chunks_per_second": 920.4279374217326,
+        "generation_peak_rss_bytes": 2249506816,
+        "program_statuses": [
+          4
+        ],
+        "comparisons": [
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/nether-second-seed-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          },
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle5/correctness-suite/nether-second-seed-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          },
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle51/merged-full/nether-second-seed-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          },
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle53/exterior64v3-full/nether-second-seed-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          }
+        ]
+      },
+      {
+        "case": "nether-custom-bounds-run0",
+        "median_ms": 914.3517084885389,
+        "p95_region_ms": 1031.5718333353288,
+        "maximum_region_ms": 1032.1315419860184,
+        "total_ms": 18520.65912517719,
+        "chunks_per_second": 1105.7921784305863,
+        "generation_peak_rss_bytes": 1886552064,
+        "program_statuses": [
+          4
+        ],
+        "comparisons": [
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/nether-custom-bounds-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          },
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle5/correctness-suite/nether-custom-bounds-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          },
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle51/merged-full/nether-custom-bounds-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          },
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle53/exterior64v3-full/nether-custom-bounds-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          }
+        ]
+      },
+      {
+        "case": "nether-direct-stem-run0",
+        "median_ms": 798.7948339432478,
+        "p95_region_ms": 999.412895180285,
+        "maximum_region_ms": 1019.8470000177622,
+        "total_ms": 16288.30779204145,
+        "chunks_per_second": 1257.3436271880023,
+        "generation_peak_rss_bytes": 1852456960,
+        "program_statuses": [
+          4
+        ],
+        "comparisons": [
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/nether-direct-stem-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          },
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle5/correctness-suite/nether-direct-stem-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          },
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle51/merged-full/nether-direct-stem-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          },
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle53/exterior64v3-full/nether-direct-stem-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          }
+        ]
+      },
+      {
+        "case": "overworld-run0",
+        "median_ms": 346.9744165195152,
+        "p95_region_ms": 421.8824097537436,
+        "maximum_region_ms": 487.04041610471904,
+        "total_ms": 7022.8464170359075,
+        "chunks_per_second": 2916.196479866048,
+        "generation_peak_rss_bytes": 1631240192,
+        "program_statuses": [
+          4
+        ],
+        "comparisons": [
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/overworld-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          },
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle5/correctness-suite/overworld-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          },
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle51/merged-full/overworld-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          },
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle53/exterior64v3-full/overworld-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          }
+        ]
+      }
+    ],
+    "timing_acceptance": false,
+    "method": "Forced native crate rebuild on clean merged main, 5 warmups and 20 measured full lit MCA regions per case. Full NBT and membership against original, cycle5, preceding merged cycle51 and selected cycle53. Actual shader readiness retained; only timestamps and compression representation excluded.",
+    "commands": "exterior-state-merged.py",
+    "suite_sha256": "8acd9deb2478c7a0fe89b8ea216d63c6888dbf301f70b21231e718d88f2c124a"
+  }
 }
