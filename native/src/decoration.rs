@@ -290,6 +290,8 @@ pub trait PriorWorld: Sync {
     /// Only the ordered planner can prove that all recipes in this root share
     /// a deterministic replacement and never observe their own material writes.
     fn deferred_ore(&self) -> Option<(u16, u16)> { None }
+    /// Optional attribution for commands already applied by a live primitive.
+    fn overlay_recommit_skipped(&self, _commands: usize) {}
 }
 pub struct Field<'a> {
     pub origin_x: i32,
@@ -1617,7 +1619,9 @@ fn evaluate_anchor_impl<const MEASURE: bool>(
             }
         }
         let commit_start = diagnostics::start(MEASURE);
-        if profile.ordered_decorations {
+        let live_overlay = matches!(&recipe.feature,
+            Kind::NetherFeature { nether } if nether.commits_overlay());
+        if profile.ordered_decorations && !live_overlay {
             // Preserve the same within-feature replay as the live overlay,
             // while retaining complete feature command order across anchors.
             let order = |role| match role {
@@ -1633,7 +1637,21 @@ fn evaluate_anchor_impl<const MEASURE: bool>(
                 blocks[start..].sort_by_key(|b| order(b.role));
             }
         }
-        overlay.commit(&blocks, start, field, profile, request);
+        if live_overlay {
+            // All ordinary writes were accepted and applied in emission order.
+            // Replaying them would only repeat material reads, map insertions
+            // and ground invalidation. Their roles share the final sort rank;
+            // deferred ore remains unapplied exactly as in Overlay::commit.
+            if crate::performance::enabled() {
+                if let Some(prior) = field.prior {
+                    prior.overlay_recommit_skipped(
+                        blocks[start..].iter().filter(|b| b.role == FEATURE).count(),
+                    );
+                }
+            }
+        } else {
+            overlay.commit(&blocks, start, field, profile, request);
+        }
         if MEASURE {
             diagnostics::record(
                 commit_start,
