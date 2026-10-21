@@ -1286,3 +1286,11 @@ acceptance remain open; the overall goal is not complete.
 Details and recovery paths: `docs/benchmarks/nether-perf-cycle50-2026-10-21.json`.
 The external `cycle50/report.json`, `retention-review.json`, `runtime-review.json`
 and `overworld-investigation.json` retain complete comparisons and commands.
+
+Cycle 50 merged as PR #193 (`b34d880`). The forced merged rebuild passes
+151 native tests and is byte-identical to the selected candidate. Its actual
+five-case corpus matches all 102,400 chunks against the original, cycle 5,
+preceding cycle 44 and selected candidate. Provisional merged median/p95:
+main 960/1315 ms; second seed 1012/1356 ms; custom bounds 682/823 ms;
+direct stem 659/850 ms; Overworld 250/298 ms. Subsecond p95 and final quiet
+performance acceptance remain open. Full proof: `cycle50/post-merge-proof.json`.
