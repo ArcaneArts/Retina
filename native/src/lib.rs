@@ -9,6 +9,7 @@ pub mod structures;
 pub mod timings;
 mod performance;
 mod terrain_job;
+mod terrain_cache;
 use std::cell::RefCell;
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::sync::{Arc, OnceLock, mpsc};
@@ -1109,6 +1110,16 @@ impl TerrainEngine {
                     ..origin
                 }
                 .validate()?;
+            }
+        }
+        if patch_halo && side > 1 {
+            if let Some(mask) = cached {
+                if let Some(field) = terrain_cache::exact_patch_field(request, side, &mask) {
+                    if let Some(p) = &performance {
+                        p.performance.add(performance::Counter::terrain_exact_tile_cache_hits, 1);
+                    }
+                    return Ok((field, Some(mask)));
+                }
             }
         }
         if let Some(p) = &performance {
