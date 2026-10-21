@@ -15,6 +15,7 @@ struct Saved {
     profile: usize,
     roots: usize,
     origin: [i32; 2],
+    width: usize,
     slots: Map<Key, u32>,
     states: Vec<State>,
 }
@@ -55,14 +56,21 @@ impl Probe {
         }
         let mut checked = [0u64; 2];
         let mut available = [0u64; 2];
+        let mut by_band = [[0u64; 2]; 3];
+        let mut by_before = BTreeMap::<usize, [u64; 2]>::new();
         let mut mismatches = Vec::new();
         let mut compare = |key: Key, actual: &ColumnState, exterior: bool| {
             let i = usize::from(exterior);
             checked[i] += 1;
-            if let Some(saved) = self.previous.as_ref().and_then(|p| {
-                p.slots.get(&key).map(|&id| &p.states[id as usize])
+            if let Some((previous, saved)) = self.previous.as_ref().and_then(|p| {
+                p.slots.get(&key).map(|&id| (p, &p.states[id as usize]))
             }) {
                 available[i] += 1;
+                by_before.entry(key.0).or_default()[i] += 1;
+                let depth = distance(previous.origin, previous.width, key.1, key.2);
+                for (j, band) in [16, 32, 64].into_iter().enumerate() {
+                    if depth <= band { by_band[j][i] += 1; }
+                }
                 if (saved.runs != actual.runs.slice() || saved.heights != actual.heights)
                     && mismatches.len() < 10
                 {
@@ -92,6 +100,7 @@ impl Probe {
         let mut saved = Saved {
             request: context(planner.request), profile: planner.profile as *const _ as usize,
             roots: planner.roots.len(), origin: planner.versions.origin,
+            width: planner.versions.width,
             slots: Map::default(), states: Vec::new(),
         };
         for (&(before, cx, cz), tile) in &planner.ready_columns {
@@ -137,6 +146,10 @@ impl Probe {
             "naturally_initialized_exterior_cells": checked[1],
             "previous_exact_slots_matching_interior_cells": available[0],
             "previous_exact_slots_matching_exterior_cells": available[1],
+            "matches_by_source_exterior_band": [16,32,64].into_iter().zip(by_band).map(|(band, count)| {
+                serde_json::json!({"band_blocks":band,"interior_cells":count[0],"exterior_cells":count[1]})
+            }).collect::<Vec<_>>(),
+            "matches_by_before": by_before,
             "mismatch_samples": mismatches,
         }));
         if !mismatches.is_empty() { return Err(format!("exterior state mismatches: {mismatches:?}")) }
