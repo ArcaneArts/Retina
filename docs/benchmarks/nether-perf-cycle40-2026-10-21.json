@@ -824,5 +824,64 @@
       "launcher-memory-probe.py"
     ],
     "retention": "Large libraries, worlds, profile exports and raw logs remain under evidence_root outside Git."
+  },
+  "post_merge": {
+    "pr": "https://github.com/ArcaneArts/Retina/pull/189",
+    "merged_revision": "5d533eff7742518ffcbbf364faf806b1766207d6",
+    "merged_library": {
+      "revision": "5d533eff7742518ffcbbf364faf806b1766207d6",
+      "native_tree": "82485bb737e1e2d53921ed59d017bb42cbf1cf55",
+      "sha256": "1ba82afce28df57acdd98b5e3b64a5b06493745a65ce0034846f0e6d51677da4",
+      "source_status": "",
+      "forced_rebuild": true,
+      "timing_acceptance": false
+    },
+    "byte_identical_to_validated_candidate": true,
+    "native_tests": {
+      "passed": 141,
+      "failed": 0,
+      "ignored": 37
+    },
+    "suite": "cycle40/merged-full/suite.json",
+    "measured_identical_chunks": 102400,
+    "each_case_reference_count": 4,
+    "case_observations": [
+      {
+        "case": "nether-main-run0",
+        "median_ms": 1195.5539165064692,
+        "p95_region_ms": 1456.9843541597947,
+        "maximum_region_ms": 1634.9427080713212,
+        "peak_rss_bytes": 1919336448
+      },
+      {
+        "case": "nether-second-seed-run0",
+        "median_ms": 1356.8880000384524,
+        "p95_region_ms": 1609.5480499556288,
+        "maximum_region_ms": 1632.8026251867414,
+        "peak_rss_bytes": 2121121792
+      },
+      {
+        "case": "nether-custom-bounds-run0",
+        "median_ms": 767.369145876728,
+        "p95_region_ms": 813.6506916489452,
+        "maximum_region_ms": 820.4135841224343,
+        "peak_rss_bytes": 1600897024
+      },
+      {
+        "case": "nether-direct-stem-run0",
+        "median_ms": 765.754728927277,
+        "p95_region_ms": 823.3005479094572,
+        "maximum_region_ms": 846.5740841347724,
+        "peak_rss_bytes": 1619623936
+      },
+      {
+        "case": "overworld-run0",
+        "median_ms": 261.3971459213644,
+        "p95_region_ms": 294.2011139821261,
+        "maximum_region_ms": 323.9208748564124,
+        "peak_rss_bytes": 1647263744
+      }
+    ],
+    "timing_acceptance": false
   }
 }

@@ -13,6 +13,27 @@ RESULT_SCHEMA = "retina.native-region-benchmark"
 RESULT_SCHEMA_VERSION = 1
 
 
+def performance_interval(before: dict[str, Any], after: dict[str, Any]) -> dict[str, Any]:
+    """Subtract warmup work without conflating repeated tiles or world identities."""
+    result = {**after, "counters": {
+        key: value - before["counters"][key] for key, value in after["counters"].items()
+    }, "note": "Measured-interval deltas. Unique keys are first seen during this interval, excluding warmup keys. Recursive/concurrent durations overlap."}
+    if "terrain_tiles" in after:
+        def identity(row):
+            return json.dumps({k: v for k, v in row.items() if k != "generated_count"}, sort_keys=True)
+        previous = {identity(row): row["generated_count"] for row in before.get("terrain_tiles", [])}
+        tiles = []
+        for row in after["terrain_tiles"]:
+            count = row["generated_count"] - previous.get(identity(row), 0)
+            if count < 0:
+                raise ValueError("Terrain generation counter decreased between snapshots")
+            if count:
+                tiles.append({**row, "generated_count": count})
+        result["terrain_tiles"] = tiles
+        result["terrain_tile_scope"] = "Measured-interval generation counts, including repeated tiles and all GPU guards; coordinates and side are chunks"
+    return result
+
+
 def region_coordinates(count: int, origin_x: int, origin_z: int, grid_width: int,
                        order: str = "forward", seed: int = 0) -> list[tuple[str, int, int]]:
     """Stable output names let different request orders compare the same chunks."""
