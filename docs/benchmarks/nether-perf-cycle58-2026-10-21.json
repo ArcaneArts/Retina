@@ -1,0 +1,905 @@
+{
+  "cycle": 58,
+  "status": "Diagnostic-only cycle. No production storage change or speedup claimed. Quiet timing confirmation remains deferred.",
+  "source": {
+    "revision": "0e3005b5140eb89cc791eab1642b36accf5bcfcf",
+    "native_tree": "e4af459f7a1db66578c123b831ce6688754f7464",
+    "source_status": "",
+    "test_executable_sha256": "1e2d4416f0c8e458b596d21b2356b98fe36d4b6709c3878f02d6430d1f1ef08a",
+    "forced_rebuild": true,
+    "timing_acceptance": false,
+    "environment": {
+      "RETINA_TERRAIN_REUSE_PROFILES": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/profiles",
+      "RETINA_MATERIAL_STORAGE_OUTPUT": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle58/inventory",
+      "RETINA_REGION_THREADS": "16",
+      "RETINA_GPU_LIGHTING": "1",
+      "RETINA_LIGHTING_DENSE": "0",
+      "RETINA_PERFORMANCE_DIAGNOSTICS": "0",
+      "RETINA_DEPENDENCY_DIAGNOSTICS": "0"
+    },
+    "sha256": "76cd0a87a3bc589bb8bc3b720a599924018e12f6b30b0047170ebf3a4c264723",
+    "preceding_sha256": "a8b40e9d7b8066bb4567b653a7d6b7d9c5e48bf015d19a207f3c72215a9ca007",
+    "byte_identical_to_preceding": false,
+    "material_storage_probe_symbols": 0,
+    "version_layout_probe_symbols": 0
+  },
+  "preceding_merge": "d44156efdc5e5adf58e2d1c7f0736516ba1034bc",
+  "methodology": "Five warmups and twenty complete 1024-chunk lit regions per case. Every original ColumnState::material lookup computes the original RLE value before the test hook. Per-thread counters report storage-kind weights and run lengths; a joined scan counts live owners and backing slices without initializing or retaining them. Entire observer and hooks are excluded from ordinary builds. Separate ordinary-library corpus uses shader-ready policy. Complete decompressed NBT and region membership are compared; only MCA timestamps/compression representation are excluded.",
+  "tests": {
+    "passed": 163,
+    "failed": 0,
+    "ignored": 47,
+    "explicit_gpu_inventory_passed": 1,
+    "observer_measured_chunks": 102400,
+    "observer_references_per_case": 4,
+    "ordinary_measured_chunks": 102400,
+    "ordinary_references_per_case": 3
+  },
+  "inventory": {
+    "status": "Instrumented read/storage evidence, not ordinary timing acceptance.",
+    "cases": [
+      {
+        "case": "nether-main",
+        "observed_threads": 16,
+        "joined_regions": 20,
+        "total_material_calls": 623633234,
+        "calls_per_measured_region": 31181661.7,
+        "measured_before_statuses": [
+          4
+        ],
+        "measured_after_statuses": [
+          4
+        ],
+        "kinds": [
+          {
+            "kind": "owned",
+            "reads": 170724245,
+            "read_fraction": 0.2737574518037953,
+            "calls_per_region": 8536212.25,
+            "mean_run_words_weighted_by_reads": 12.520921026770392,
+            "maximum_run_words": 53,
+            "joined_per_region_mean": {
+              "ready_cell_references": 406213.8,
+              "unique_states": 233708.35,
+              "distinct_backing_slices": 233708.35,
+              "state_objects_bytes": 16827001.2,
+              "run_words_per_unique_state_sum": 3125346.05,
+              "distinct_slice_run_words": 3125346.05,
+              "hypothetical_dense_payload_per_state_bytes": 119658675.2,
+              "hypothetical_dense_payload_per_distinct_slice_bytes": 119658675.2
+            },
+            "joined_per_region_max": {
+              "unique_states": 382466,
+              "state_objects_bytes": 27537552,
+              "hypothetical_dense_payload_per_state_bytes": 195822592,
+              "hypothetical_dense_payload_per_distinct_slice_bytes": 195822592
+            }
+          },
+          {
+            "kind": "shared_terrain",
+            "reads": 383881281,
+            "read_fraction": 0.6155561635767475,
+            "calls_per_region": 19194064.05,
+            "mean_run_words_weighted_by_reads": 8.760307054409354,
+            "maximum_run_words": 26,
+            "joined_per_region_mean": {
+              "ready_cell_references": 1614937.85,
+              "unique_states": 317699.55,
+              "distinct_backing_slices": 317699.55,
+              "state_objects_bytes": 22874367.6,
+              "run_words_per_unique_state_sum": 2443297.35,
+              "distinct_slice_run_words": 2443297.35,
+              "hypothetical_dense_payload_per_state_bytes": 162662169.6,
+              "hypothetical_dense_payload_per_distinct_slice_bytes": 162662169.6
+            },
+            "joined_per_region_max": {
+              "unique_states": 461038,
+              "state_objects_bytes": 33194736,
+              "hypothetical_dense_payload_per_state_bytes": 236051456,
+              "hypothetical_dense_payload_per_distinct_slice_bytes": 236051456
+            }
+          },
+          {
+            "kind": "cached_archive",
+            "reads": 69027708,
+            "read_fraction": 0.11068638461945728,
+            "calls_per_region": 3451385.4,
+            "mean_run_words_weighted_by_reads": 9.747224462385452,
+            "maximum_run_words": 48,
+            "joined_per_region_mean": {
+              "ready_cell_references": 79878.25,
+              "unique_states": 71272.85,
+              "distinct_backing_slices": 67710.85,
+              "state_objects_bytes": 5131645.2,
+              "run_words_per_unique_state_sum": 681866.7,
+              "distinct_slice_run_words": 650486.75,
+              "hypothetical_dense_payload_per_state_bytes": 36491699.2,
+              "hypothetical_dense_payload_per_distinct_slice_bytes": 34667955.2
+            },
+            "joined_per_region_max": {
+              "unique_states": 119566,
+              "state_objects_bytes": 8608752,
+              "hypothetical_dense_payload_per_state_bytes": 61217792,
+              "hypothetical_dense_payload_per_distinct_slice_bytes": 59676160
+            }
+          }
+        ],
+        "joined_backing_mean": {
+          "owned_run_payload_bytes": 12501384.2,
+          "shared_mask_count": 8.35,
+          "shared_mask_word_capacity_bytes": 108378852.8,
+          "shared_mask_object_bytes": 801.6,
+          "shared_halo_count": 8.35,
+          "shared_halo_payload_bytes": 15364300.8,
+          "shared_halo_owner_bytes": 334,
+          "cached_run_owner_count": 3.1,
+          "cached_run_capacity_bytes": 17327718.4,
+          "cached_run_owner_bytes": 124
+        },
+        "pending_boundary_tiles": [
+          0
+        ]
+      },
+      {
+        "case": "nether-second-seed",
+        "observed_threads": 16,
+        "joined_regions": 20,
+        "total_material_calls": 588585402,
+        "calls_per_measured_region": 29429270.1,
+        "measured_before_statuses": [
+          4
+        ],
+        "measured_after_statuses": [
+          4
+        ],
+        "kinds": [
+          {
+            "kind": "owned",
+            "reads": 168288793,
+            "read_fraction": 0.2859207728023129,
+            "calls_per_region": 8414439.65,
+            "mean_run_words_weighted_by_reads": 12.616460847752352,
+            "maximum_run_words": 49,
+            "joined_per_region_mean": {
+              "ready_cell_references": 411569.05,
+              "unique_states": 237251.9,
+              "distinct_backing_slices": 237251.9,
+              "state_objects_bytes": 17082136.8,
+              "run_words_per_unique_state_sum": 3186316.5,
+              "distinct_slice_run_words": 3186316.5,
+              "hypothetical_dense_payload_per_state_bytes": 121472972.8,
+              "hypothetical_dense_payload_per_distinct_slice_bytes": 121472972.8
+            },
+            "joined_per_region_max": {
+              "unique_states": 480566,
+              "state_objects_bytes": 34600752,
+              "hypothetical_dense_payload_per_state_bytes": 246049792,
+              "hypothetical_dense_payload_per_distinct_slice_bytes": 246049792
+            }
+          },
+          {
+            "kind": "shared_terrain",
+            "reads": 364900463,
+            "read_fraction": 0.6199617961303091,
+            "calls_per_region": 18245023.15,
+            "mean_run_words_weighted_by_reads": 9.039929171040816,
+            "maximum_run_words": 26,
+            "joined_per_region_mean": {
+              "ready_cell_references": 1704815.35,
+              "unique_states": 323194.5,
+              "distinct_backing_slices": 323194.5,
+              "state_objects_bytes": 23270004,
+              "run_words_per_unique_state_sum": 2554608.7,
+              "distinct_slice_run_words": 2554608.7,
+              "hypothetical_dense_payload_per_state_bytes": 165475584,
+              "hypothetical_dense_payload_per_distinct_slice_bytes": 165475584
+            },
+            "joined_per_region_max": {
+              "unique_states": 432089,
+              "state_objects_bytes": 31110408,
+              "hypothetical_dense_payload_per_state_bytes": 221229568,
+              "hypothetical_dense_payload_per_distinct_slice_bytes": 221229568
+            }
+          },
+          {
+            "kind": "cached_archive",
+            "reads": 55396146,
+            "read_fraction": 0.09411743106737805,
+            "calls_per_region": 2769807.3,
+            "mean_run_words_weighted_by_reads": 9.68893745785131,
+            "maximum_run_words": 47,
+            "joined_per_region_mean": {
+              "ready_cell_references": 75423.2,
+              "unique_states": 66614.1,
+              "distinct_backing_slices": 63072.6,
+              "state_objects_bytes": 4796215.2,
+              "run_words_per_unique_state_sum": 607627.25,
+              "distinct_slice_run_words": 577840.3,
+              "hypothetical_dense_payload_per_state_bytes": 34106419.2,
+              "hypothetical_dense_payload_per_distinct_slice_bytes": 32293171.2
+            },
+            "joined_per_region_max": {
+              "unique_states": 124186,
+              "state_objects_bytes": 8941392,
+              "hypothetical_dense_payload_per_state_bytes": 63583232,
+              "hypothetical_dense_payload_per_distinct_slice_bytes": 61881344
+            }
+          }
+        ],
+        "joined_backing_mean": {
+          "owned_run_payload_bytes": 12745266,
+          "shared_mask_count": 8.8,
+          "shared_mask_word_capacity_bytes": 113011174.4,
+          "shared_mask_object_bytes": 844.8,
+          "shared_halo_count": 8.8,
+          "shared_halo_payload_bytes": 16033382.4,
+          "shared_halo_owner_bytes": 352,
+          "cached_run_owner_count": 2.8,
+          "cached_run_capacity_bytes": 15282995.2,
+          "cached_run_owner_bytes": 112
+        },
+        "pending_boundary_tiles": [
+          0
+        ]
+      },
+      {
+        "case": "nether-custom-bounds",
+        "observed_threads": 16,
+        "joined_regions": 20,
+        "total_material_calls": 408069993,
+        "calls_per_measured_region": 20403499.65,
+        "measured_before_statuses": [
+          4
+        ],
+        "measured_after_statuses": [
+          4
+        ],
+        "kinds": [
+          {
+            "kind": "owned",
+            "reads": 102924808,
+            "read_fraction": 0.2522234169764107,
+            "calls_per_region": 5146240.4,
+            "mean_run_words_weighted_by_reads": 11.917062774603378,
+            "maximum_run_words": 53,
+            "joined_per_region_mean": {
+              "ready_cell_references": 486978.3,
+              "unique_states": 231084.65,
+              "distinct_backing_slices": 231084.65,
+              "state_objects_bytes": 16638094.8,
+              "run_words_per_unique_state_sum": 2712562.95,
+              "distinct_slice_run_words": 2712562.95,
+              "hypothetical_dense_payload_per_state_bytes": 118315340.8,
+              "hypothetical_dense_payload_per_distinct_slice_bytes": 118315340.8
+            },
+            "joined_per_region_max": {
+              "unique_states": 280459,
+              "state_objects_bytes": 20193048,
+              "hypothetical_dense_payload_per_state_bytes": 143595008,
+              "hypothetical_dense_payload_per_distinct_slice_bytes": 143595008
+            }
+          },
+          {
+            "kind": "shared_terrain",
+            "reads": 250763883,
+            "read_fraction": 0.6145119398671394,
+            "calls_per_region": 12538194.15,
+            "mean_run_words_weighted_by_reads": 8.314101991314276,
+            "maximum_run_words": 21,
+            "joined_per_region_mean": {
+              "ready_cell_references": 1568313.9,
+              "unique_states": 358047.25,
+              "distinct_backing_slices": 358047.25,
+              "state_objects_bytes": 25779402,
+              "run_words_per_unique_state_sum": 2870393.6,
+              "distinct_slice_run_words": 2870393.6,
+              "hypothetical_dense_payload_per_state_bytes": 183320192,
+              "hypothetical_dense_payload_per_distinct_slice_bytes": 183320192
+            },
+            "joined_per_region_max": {
+              "unique_states": 539016,
+              "state_objects_bytes": 38809152,
+              "hypothetical_dense_payload_per_state_bytes": 275976192,
+              "hypothetical_dense_payload_per_distinct_slice_bytes": 275976192
+            }
+          },
+          {
+            "kind": "cached_archive",
+            "reads": 54381302,
+            "read_fraction": 0.13326464315644987,
+            "calls_per_region": 2719065.1,
+            "mean_run_words_weighted_by_reads": 9.74054306386412,
+            "maximum_run_words": 49,
+            "joined_per_region_mean": {
+              "ready_cell_references": 95983.55,
+              "unique_states": 89751.65,
+              "distinct_backing_slices": 78294.8,
+              "state_objects_bytes": 6462118.8,
+              "run_words_per_unique_state_sum": 844542.5,
+              "distinct_slice_run_words": 741782.95,
+              "hypothetical_dense_payload_per_state_bytes": 45952844.8,
+              "hypothetical_dense_payload_per_distinct_slice_bytes": 40086937.6
+            },
+            "joined_per_region_max": {
+              "unique_states": 129015,
+              "state_objects_bytes": 9289080,
+              "hypothetical_dense_payload_per_state_bytes": 66055680,
+              "hypothetical_dense_payload_per_distinct_slice_bytes": 56760320
+            }
+          }
+        ],
+        "joined_backing_mean": {
+          "owned_run_payload_bytes": 10850251.8,
+          "shared_mask_count": 8.55,
+          "shared_mask_word_capacity_bytes": 92483624,
+          "shared_mask_object_bytes": 820.8,
+          "shared_halo_count": 0,
+          "shared_halo_payload_bytes": 0,
+          "shared_halo_owner_bytes": 0,
+          "cached_run_owner_count": 2.75,
+          "cached_run_capacity_bytes": 19975372.8,
+          "cached_run_owner_bytes": 110
+        },
+        "pending_boundary_tiles": [
+          0
+        ]
+      },
+      {
+        "case": "nether-direct-stem",
+        "observed_threads": 16,
+        "joined_regions": 20,
+        "total_material_calls": 360515305,
+        "calls_per_measured_region": 18025765.25,
+        "measured_before_statuses": [
+          4
+        ],
+        "measured_after_statuses": [
+          4
+        ],
+        "kinds": [
+          {
+            "kind": "owned",
+            "reads": 96823319,
+            "read_fraction": 0.268569233142543,
+            "calls_per_region": 4841165.95,
+            "mean_run_words_weighted_by_reads": 11.885594047855351,
+            "maximum_run_words": 51,
+            "joined_per_region_mean": {
+              "ready_cell_references": 453337.65,
+              "unique_states": 214302.2,
+              "distinct_backing_slices": 214302.2,
+              "state_objects_bytes": 15429758.4,
+              "run_words_per_unique_state_sum": 2509608.15,
+              "distinct_slice_run_words": 2509608.15,
+              "hypothetical_dense_payload_per_state_bytes": 109722726.4,
+              "hypothetical_dense_payload_per_distinct_slice_bytes": 109722726.4
+            },
+            "joined_per_region_max": {
+              "unique_states": 327361,
+              "state_objects_bytes": 23569992,
+              "hypothetical_dense_payload_per_state_bytes": 167608832,
+              "hypothetical_dense_payload_per_distinct_slice_bytes": 167608832
+            }
+          },
+          {
+            "kind": "shared_terrain",
+            "reads": 215133645,
+            "read_fraction": 0.5967392840645143,
+            "calls_per_region": 10756682.25,
+            "mean_run_words_weighted_by_reads": 8.35898825123332,
+            "maximum_run_words": 23,
+            "joined_per_region_mean": {
+              "ready_cell_references": 1568425.7,
+              "unique_states": 354025,
+              "distinct_backing_slices": 354025,
+              "state_objects_bytes": 25489800,
+              "run_words_per_unique_state_sum": 2825389.45,
+              "distinct_slice_run_words": 2825389.45,
+              "hypothetical_dense_payload_per_state_bytes": 181260800,
+              "hypothetical_dense_payload_per_distinct_slice_bytes": 181260800
+            },
+            "joined_per_region_max": {
+              "unique_states": 545082,
+              "state_objects_bytes": 39245904,
+              "hypothetical_dense_payload_per_state_bytes": 279081984,
+              "hypothetical_dense_payload_per_distinct_slice_bytes": 279081984
+            }
+          },
+          {
+            "kind": "cached_archive",
+            "reads": 48558341,
+            "read_fraction": 0.13469148279294274,
+            "calls_per_region": 2427917.05,
+            "mean_run_words_weighted_by_reads": 9.80715990688397,
+            "maximum_run_words": 50,
+            "joined_per_region_mean": {
+              "ready_cell_references": 93912.2,
+              "unique_states": 87964.45,
+              "distinct_backing_slices": 76749.3,
+              "state_objects_bytes": 6333440.4,
+              "run_words_per_unique_state_sum": 810625.75,
+              "distinct_slice_run_words": 710732.05,
+              "hypothetical_dense_payload_per_state_bytes": 45037798.4,
+              "hypothetical_dense_payload_per_distinct_slice_bytes": 39295641.6
+            },
+            "joined_per_region_max": {
+              "unique_states": 117874,
+              "state_objects_bytes": 8486928,
+              "hypothetical_dense_payload_per_state_bytes": 60351488,
+              "hypothetical_dense_payload_per_distinct_slice_bytes": 54172160
+            }
+          }
+        ],
+        "joined_backing_mean": {
+          "owned_run_payload_bytes": 10038432.6,
+          "shared_mask_count": 8.65,
+          "shared_mask_word_capacity_bytes": 93321496,
+          "shared_mask_object_bytes": 830.4,
+          "shared_halo_count": 0,
+          "shared_halo_payload_bytes": 0,
+          "shared_halo_owner_bytes": 0,
+          "cached_run_owner_count": 2.75,
+          "cached_run_capacity_bytes": 20119552,
+          "cached_run_owner_bytes": 110
+        },
+        "pending_boundary_tiles": [
+          0
+        ]
+      },
+      {
+        "case": "overworld",
+        "observed_threads": 0,
+        "joined_regions": 0,
+        "total_material_calls": 0,
+        "calls_per_measured_region": 0.0,
+        "measured_before_statuses": [
+          4
+        ],
+        "measured_after_statuses": [
+          4
+        ],
+        "kinds": [
+          {
+            "kind": "owned",
+            "reads": 0,
+            "read_fraction": 0,
+            "calls_per_region": 0.0,
+            "mean_run_words_weighted_by_reads": null,
+            "maximum_run_words": 0
+          },
+          {
+            "kind": "shared_terrain",
+            "reads": 0,
+            "read_fraction": 0,
+            "calls_per_region": 0.0,
+            "mean_run_words_weighted_by_reads": null,
+            "maximum_run_words": 0
+          },
+          {
+            "kind": "cached_archive",
+            "reads": 0,
+            "read_fraction": 0,
+            "calls_per_region": 0.0,
+            "mean_run_words_weighted_by_reads": null,
+            "maximum_run_words": 0
+          }
+        ]
+      }
+    ],
+    "limitations": [
+      "All ColumnState::material calls are counted; other Field and substrate readers are outside this counter.",
+      "Owned means Box-backed RLE, including base fallback paths; it does not necessarily mean edited terrain.",
+      "Joined persistent state is not process peak memory. Transient states and engine/global resources outside the scanned cells are excluded.",
+      "Hypothetical dense payload is added to retained RLE at full request storage height, before allocator and extra object metadata. Exact-slice sharing is only an alternate lower-payload scenario, not an implementation.",
+      "Shared mask capacity includes metadata and cached backing can include unused spans. Slice payload and complete owner capacity answer different questions."
+    ]
+  },
+  "observer_output_proof": [
+    {
+      "case": "nether-main",
+      "before_statuses": [
+        4
+      ],
+      "after_statuses": [
+        4
+      ],
+      "comparisons": [
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/nether-main-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        },
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle5/correctness-suite/nether-main-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        },
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle54/merged-full/nether-main-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        },
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle56/merged-full/nether-main-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        }
+      ]
+    },
+    {
+      "case": "nether-second-seed",
+      "before_statuses": [
+        4
+      ],
+      "after_statuses": [
+        4
+      ],
+      "comparisons": [
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/nether-second-seed-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        },
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle5/correctness-suite/nether-second-seed-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        },
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle54/merged-full/nether-second-seed-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        },
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle56/merged-full/nether-second-seed-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        }
+      ]
+    },
+    {
+      "case": "nether-custom-bounds",
+      "before_statuses": [
+        4
+      ],
+      "after_statuses": [
+        4
+      ],
+      "comparisons": [
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/nether-custom-bounds-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        },
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle5/correctness-suite/nether-custom-bounds-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        },
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle54/merged-full/nether-custom-bounds-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        },
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle56/merged-full/nether-custom-bounds-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        }
+      ]
+    },
+    {
+      "case": "nether-direct-stem",
+      "before_statuses": [
+        4
+      ],
+      "after_statuses": [
+        4
+      ],
+      "comparisons": [
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/nether-direct-stem-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        },
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle5/correctness-suite/nether-direct-stem-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        },
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle54/merged-full/nether-direct-stem-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        },
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle56/merged-full/nether-direct-stem-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        }
+      ]
+    },
+    {
+      "case": "overworld",
+      "before_statuses": [
+        4
+      ],
+      "after_statuses": [
+        4
+      ],
+      "comparisons": [
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/overworld-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        },
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle5/correctness-suite/overworld-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        },
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle54/merged-full/overworld-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        },
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle56/merged-full/overworld-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        }
+      ]
+    }
+  ],
+  "ordinary_library_proof": [
+    {
+      "case": "nether-main-run0",
+      "median_ms": 2192.8044795058668,
+      "p95_region_ms": 3092.332487122622,
+      "maximum_region_ms": 3566.767791984603,
+      "total_ms": 44227.36554197036,
+      "chunks_per_second": 463.06172092853086,
+      "generation_peak_rss_bytes": 2293153792,
+      "memory_peak_scope": {
+        "generation_peak_rss_bytes": "Process lifetime through measured generation, including startup and warmups; excludes later snapshot processing and output validation",
+        "note": "High-water marks, not current RSS or isolated phase allocations; neither field proves sustained memory stability",
+        "peak_rss_bytes": "Process lifetime through output hashing, optional NBT comparison and optional specialization regeneration; retained legacy field"
+      },
+      "readiness": "shader-ready",
+      "readiness_wait_ms": 0.0007499475032091141,
+      "profile_sha256": "385256a18191b411d0758e0e4bfbf9a3a330160c65150d5960c23c2a53037edd",
+      "seed": 123456789,
+      "request": {
+        "fallback_biome": "minecraft:basalt_deltas",
+        "height": 256,
+        "min_y": 0
+      },
+      "lighting": "enabled",
+      "mca_compression": "zlib",
+      "measured_statuses": [
+        4
+      ],
+      "comparisons": [
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/nether-main-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        },
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle56/merged-full/nether-main-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        },
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle58/inventory/nether-main-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        }
+      ]
+    },
+    {
+      "case": "nether-second-seed-run0",
+      "median_ms": 2552.5375625584275,
+      "p95_region_ms": 3420.698056183756,
+      "maximum_region_ms": 3666.497375117615,
+      "total_ms": 51393.07045796886,
+      "chunks_per_second": 398.4973035761562,
+      "generation_peak_rss_bytes": 2454634496,
+      "memory_peak_scope": {
+        "generation_peak_rss_bytes": "Process lifetime through measured generation, including startup and warmups; excludes later snapshot processing and output validation",
+        "note": "High-water marks, not current RSS or isolated phase allocations; neither field proves sustained memory stability",
+        "peak_rss_bytes": "Process lifetime through output hashing, optional NBT comparison and optional specialization regeneration; retained legacy field"
+      },
+      "readiness": "shader-ready",
+      "readiness_wait_ms": 0.0007499475032091141,
+      "profile_sha256": "385256a18191b411d0758e0e4bfbf9a3a330160c65150d5960c23c2a53037edd",
+      "seed": 42,
+      "request": {
+        "fallback_biome": "minecraft:basalt_deltas",
+        "height": 256,
+        "min_y": 0
+      },
+      "lighting": "enabled",
+      "mca_compression": "zlib",
+      "measured_statuses": [
+        4
+      ],
+      "comparisons": [
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/nether-second-seed-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        },
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle56/merged-full/nether-second-seed-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        },
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle58/inventory/nether-second-seed-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        }
+      ]
+    },
+    {
+      "case": "nether-custom-bounds-run0",
+      "median_ms": 865.6612919876352,
+      "p95_region_ms": 1161.6588812554255,
+      "maximum_region_ms": 1362.5816248822957,
+      "total_ms": 18681.85095814988,
+      "chunks_per_second": 1096.2511180438298,
+      "generation_peak_rss_bytes": 1844690944,
+      "memory_peak_scope": {
+        "generation_peak_rss_bytes": "Process lifetime through measured generation, including startup and warmups; excludes later snapshot processing and output validation",
+        "note": "High-water marks, not current RSS or isolated phase allocations; neither field proves sustained memory stability",
+        "peak_rss_bytes": "Process lifetime through output hashing, optional NBT comparison and optional specialization regeneration; retained legacy field"
+      },
+      "readiness": "shader-ready",
+      "readiness_wait_ms": 0.0007499475032091141,
+      "profile_sha256": "74bc9093952b0459ceeafaae8a4049d6c6c46067516c9f03ec0d2493e37825c0",
+      "seed": 123456789,
+      "request": {
+        "fallback_biome": "minecraft:warped_forest",
+        "height": 256,
+        "min_y": 0
+      },
+      "lighting": "enabled",
+      "mca_compression": "zlib",
+      "measured_statuses": [
+        4
+      ],
+      "comparisons": [
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/nether-custom-bounds-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        },
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle56/merged-full/nether-custom-bounds-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        },
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle58/inventory/nether-custom-bounds-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        }
+      ]
+    },
+    {
+      "case": "nether-direct-stem-run0",
+      "median_ms": 1902.488146093674,
+      "p95_region_ms": 2343.758347572293,
+      "maximum_region_ms": 2877.017374848947,
+      "total_ms": 38623.445625184104,
+      "chunks_per_second": 530.247875830275,
+      "generation_peak_rss_bytes": 2298691584,
+      "memory_peak_scope": {
+        "generation_peak_rss_bytes": "Process lifetime through measured generation, including startup and warmups; excludes later snapshot processing and output validation",
+        "note": "High-water marks, not current RSS or isolated phase allocations; neither field proves sustained memory stability",
+        "peak_rss_bytes": "Process lifetime through output hashing, optional NBT comparison and optional specialization regeneration; retained legacy field"
+      },
+      "readiness": "shader-ready",
+      "readiness_wait_ms": 0.0006249174475669861,
+      "profile_sha256": "74bc9093952b0459ceeafaae8a4049d6c6c46067516c9f03ec0d2493e37825c0",
+      "seed": 42,
+      "request": {
+        "fallback_biome": "minecraft:warped_forest",
+        "height": 256,
+        "min_y": 0
+      },
+      "lighting": "enabled",
+      "mca_compression": "zlib",
+      "measured_statuses": [
+        4
+      ],
+      "comparisons": [
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/nether-direct-stem-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        },
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle56/merged-full/nether-direct-stem-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        },
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle58/inventory/nether-direct-stem-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        }
+      ]
+    },
+    {
+      "case": "overworld-run0",
+      "median_ms": 743.8419170212001,
+      "p95_region_ms": 985.1812080247328,
+      "maximum_region_ms": 989.8338329512626,
+      "total_ms": 15301.11529189162,
+      "chunks_per_second": 1338.4645242724744,
+      "generation_peak_rss_bytes": 1573060608,
+      "memory_peak_scope": {
+        "generation_peak_rss_bytes": "Process lifetime through measured generation, including startup and warmups; excludes later snapshot processing and output validation",
+        "note": "High-water marks, not current RSS or isolated phase allocations; neither field proves sustained memory stability",
+        "peak_rss_bytes": "Process lifetime through output hashing, optional NBT comparison and optional specialization regeneration; retained legacy field"
+      },
+      "readiness": "shader-ready",
+      "readiness_wait_ms": 420.1020000036806,
+      "profile_sha256": "5a398bd02281677db81b6e70d426ab9a99a322050308e977b2a771134ded1cad",
+      "seed": 123456789,
+      "request": {
+        "fallback_biome": "minecraft:badlands",
+        "height": 384,
+        "min_y": -64
+      },
+      "lighting": "enabled",
+      "mca_compression": "zlib",
+      "measured_statuses": [
+        4
+      ],
+      "comparisons": [
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/overworld-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        },
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle56/merged-full/overworld-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        },
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle58/inventory/overworld-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        }
+      ]
+    }
+  ],
+  "finding": "18.03\u201331.18 million ColumnState material reads per region. Shared terrain carries 59.7\u201362.0%, Owned runs 25.2\u201328.6%, Cached archives 9.4\u201313.5%. A Shared-only full-height dense copy would add mean 162.7\u2013183.3 MB of voxel payload per live region before new object/allocator overhead, while retaining original RLE. Cached distinct-slice sharing alone has modest payload potential; unique-state counts are only 5\u201315% above distinct slices. Joined state is not transient or engine-wide peak memory.",
+  "next_opportunity": {
+    "selected_production_change": false,
+    "candidate": "Evaluate a compact immutable run-boundary rank index, with exact RLE fallback for layouts outside its representable range, before paying the much larger dense-column payload. Derive it only from the original runs; preserve RLE, heights, archive format, owners, source ordering and synchronous retirement. Verify every boundary and wrapped/out-of-range material query, full output and whole-region/concurrent behavior.",
+    "uncertainty": "Additional metadata and construction can erase lookup savings. Read-call shares are not wall-time shares. A compact index is a hypothesis, not a measured improvement."
+  },
+  "limitations": [
+    "All ColumnState::material calls are counted; other Field and substrate readers are outside this counter.",
+    "Owned means Box-backed RLE, including base fallback paths; it does not necessarily mean edited terrain.",
+    "Joined persistent state is not process peak memory. Transient states and engine/global resources outside the scanned cells are excluded.",
+    "Hypothetical dense payload is added to retained RLE at full request storage height, before allocator and extra object metadata. Exact-slice sharing is only an alternate lower-payload scenario, not an implementation.",
+    "Shared mask capacity includes metadata and cached backing can include unused spans. Slice payload and complete owner capacity answer different questions.",
+    "External CPU workloads were recorded. No uncontended latency, no-regression or subsecond acceptance is claimed.",
+    "Instrumented elapsed times are not ordinary timing. Sample counts and material-call fractions are not elapsed-time percentages.",
+    "No dense representation or compact rank index is implemented in this cycle. Held C55 and C57 production prototypes remain isolated.",
+    "This observer-only cycle does not repeat concurrency/portal lifecycle integration; production algorithms/layout remain unchanged and full output is checked separately."
+  ],
+  "evidence_root": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle58",
+  "commands": [
+    "python3 material-storage-inventory.py",
+    "python3 material-storage-summary.py",
+    "python3 material-storage-normal.py"
+  ],
+  "recovery": "Preserve immutable normal.dylib, inventory-test-executable, provenance, harness.py, full worlds, proof.json, normal-full/suite.json and observer-host.json outside Git. Reproduce ignored GPU test exact_material_storage_inventory with recorded environment. Source branch codex/nether-material-storage-inventory."
+}

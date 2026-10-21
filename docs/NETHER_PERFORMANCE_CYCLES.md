@@ -1747,3 +1747,56 @@ libraries, executable, full worlds, paired harness/logs and assessment. Native
 implementation is `d47f6f350f3b541435b9d9bfcd482e33cd32d23b`; normal SHA-256 is
 `67f27da6fc599827ad1f63e37b0961057901c17a2bff4cb69d5687bbbb47fdb3`.
 Quiet timing confirmation remains deferred and the subsecond goal remains open.
+
+
+## Cycle 58 — material read backing and live storage inventory
+
+A test-only observer counts every `ColumnState::material` lookup by Owned,
+Shared terrain and Cached archive backing. Original RLE results still drive
+all generation. Thread-local registered counters record call weights and run
+lengths; a joined scan counts existing ready states, distinct backing slices,
+mask/packed-run owners and hypothetical full-height dense payloads. It never
+initializes missing cells or retains state owners. All hooks, state and symbols
+are excluded from ordinary builds; normal ColumnState layout is unchanged.
+
+Five warmups precede twenty measured complete regions per case:
+
+| Case | Material reads/region, million | Owned | Shared terrain | Cached archive | Added Shared dense payload, mean MB |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| nether-main | 31.18 | 27.4% | 61.6% | 11.1% | 162.7 |
+| nether-second-seed | 29.43 | 28.6% | 62.0% | 9.4% | 165.5 |
+| nether-custom-bounds | 20.40 | 25.2% | 61.5% | 13.3% | 183.3 |
+| nether-direct-stem | 18.03 | 26.9% | 59.7% | 13.5% | 181.3 |
+
+Shared columns contain 8.3–9.0 run words on average (weighted by calls), versus
+11.9–12.6 for Owned and 9.7–9.8 for Cached. Shared terrain is the largest read
+category, making an Owned-only dense optimization insufficient to address most
+calls. Call fractions are not CPU or elapsed-time fractions.
+
+Dense estimates use decimal MB and add one full request-height u16 array per
+unique live state while retaining RLE. They exclude extra metadata/allocator
+costs. Joined state excludes transient and engine-wide memory. Shared mask
+capacity includes metadata, and Cached backing arrays can contain unused spans.
+The Overworld inventory records no ColumnState calls or joined planners.
+
+A compact immutable run-boundary index is a next hypothesis: it could replace
+repeated binary searches without a full dense array. It must preserve exact RLE
+semantics, including uncommon tall layouts, all run boundaries and wrapped or
+out-of-range query heights. Index construction, metadata, retirement and cache
+behavior must be included in whole-region tests. No index, dense representation
+or new cache is implemented or selected here. Held C55 and C57 remain separate.
+
+All 163 native tests pass; 47 optional tests are ignored and the GPU inventory
+is explicitly run and passes. The observer's 102,400 measured chunks match four
+references. The ordinary library's 102,400 match the immutable original, preceding
+C56 merged corpus and observer output. Every measured region reports shader
+status 4 in both runs. The ordinary library contains no material_storage_probe
+or version_layout_probe symbols. It differs in bytes from C56; no binary identity
+or production speedup is claimed. External host work remains visible, so quiet
+performance and no-regression confirmation remain deferred.
+
+Report: `docs/benchmarks/nether-perf-cycle58-2026-10-21.json`. External `cycle58/`
+retains immutable executables, libraries, source hashes, original and preceding
+full-NBT comparisons, per-thread/per-kind counts, backing inventories, ordinary
+timings and host observations. This branch also carries C56's actual merged
+proof and the held C57 assessment as documentation only.
