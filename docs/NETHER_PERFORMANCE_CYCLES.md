@@ -522,3 +522,30 @@ preceding run, so quiet timing and no-regression acceptance remain pending.
 These measurements do not establish a speedup or the sub-second objective.
 Details and reproduction commands are retained in
 `docs/benchmarks/nether-perf-cycle24-2026-10-20.json`.
+
+PR #182 (`7dde4f1`) merged borrowed scalar column reads. Its actual merged
+build passes 123 native tests and is byte-identical to the validated candidate.
+All 5,120 post-merge smoke chunks match every reference. Quiet timing and the
+sub-second target remain pending.
+
+## Height-only dependency views (evidence cycle 25)
+
+An untouched feature overlay now returns the field's already-computed height
+without reading its top material again. Every overlay write, including air,
+records column membership; touched columns retain the existing downward scan.
+Height queries also bypass consecutive ore roots whose eligibility proof
+preserves all six heightmap bits. Material queries keep their original prefix,
+and earlier material states never enter the current view's cache.
+
+This combination removes dependency work that the redundant material check
+previously restored. The diagnostic region reconstructs 6,015,978 columns instead
+of 7,253,869 (17.1% fewer) and evaluates 79,959 anchors instead of 88,417 (9.6%
+fewer). All 124 native tests pass, including untouched, cleared, replaced and
+rolled-back height cases. The full 102,400-chunk corpus and 20,480 reverse-order
+two-caller chunks match every original and preceding merged reference.
+
+Provisional standard-Nether medians are 1.73 and 1.85 seconds, with p95 values of
+2.17 and 2.54 seconds. These are not quiet speedup or no-regression acceptance
+results. The sub-second objective remains open. Complete measurements, coverage,
+proof constraints and reproduction commands are in
+`docs/benchmarks/nether-perf-cycle25-2026-10-20.json`.
