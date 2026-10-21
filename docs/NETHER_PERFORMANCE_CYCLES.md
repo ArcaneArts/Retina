@@ -339,3 +339,35 @@ both the immutable original and preceding merged corpus. Quiet timing confirmati
 deferred, and this follow-up does not establish sub-second Nether generation or
 resolve native concurrent-request tails. The experimental native scheduling and
 boundary-version variants remain unmerged while their regressions are evaluated.
+
+PR #176 (`60a7e39`) merged this foreground-admission follow-up. Its actual merged
+build passes the scheduler checks and native tests. The rebuilt native library is
+byte-identical to the full-corpus candidate; all 5,120 post-merge smoke chunks
+match the original, preceding cycle and candidate. Quiet timing confirmation
+remains pending.
+
+
+## Dependency storage follow-up (evidence cycle 8)
+
+Point-column reads now stream potential writer coordinates in the same Z/X order
+without allocating a temporary vector. Completed anchor outputs are borrowed from
+the immutable view; pending outputs retain an owning reference. Original bounds
+and empty-range failure behavior remain covered by the writer tests.
+
+Rare column errors are stored behind one pointer. The actual arm64 layout probe
+reduces a column cache slot from 32 to 24 bytes, without adding allocations to
+successful builds. This is a 25% slot-size reduction, not a 25% process-memory
+claim. Failed results still retain and return their original error text.
+
+The implementation passes 116 native tests and matches all 102,400 full-corpus
+chunks against the original, Cycle 5 and Cycle 10 references. A reverse-order run
+with two simultaneous callers also matches all 20,480 chunks. Its latency tails
+remain substantial and are not resolved by this storage change.
+
+An initial Overworld peak-memory increase was investigated with four adjacent
+control/candidate runs. Control peaks span 1.73–2.43 GB and candidate peaks span
+1.76–1.84 GB; the increase did not consistently reproduce. An enabled diagnostic
+run confirms zero calls into the changed ordered planner for this profile.
+Quiet timing confirmation remains deferred. See
+`docs/benchmarks/nether-perf-cycle8-2026-10-20.json` for commands, retained evidence
+and provisional results.
