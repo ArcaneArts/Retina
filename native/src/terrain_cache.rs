@@ -1,6 +1,6 @@
 //! Reconstruct a field only from an already-cached tile with identical geometry.
 use crate::decoration::Field;
-use crate::geology::CaveMask;
+use crate::geology::{CaveMask, ColumnHalo};
 use crate::{ChunkRequest, COLUMNS};
 use std::sync::Arc;
 
@@ -12,6 +12,27 @@ pub(crate) fn exact_patch_field(
     side: u32,
     mask: &Arc<CaveMask>,
 ) -> Option<Field<'static>> {
+    let halo = exact_patch_halo(request, side, mask)?;
+    let tile_side = side as usize + 6;
+    // Same ring-1 crop as the fresh patch-halo producer. Keep the existing
+    // immutable mask; do not reinsert it or alter cache retention/eviction.
+    let field_side = side as usize + 2;
+    let mut columns = Vec::with_capacity(field_side * field_side * COLUMNS);
+    for z in 2..2 + field_side {
+        let start = (z * tile_side + 2) * COLUMNS;
+        columns.extend_from_slice(&halo.columns[start..start + field_side * COLUMNS]);
+    }
+    Some(Field {
+        origin_x: request.chunk_x - 1,
+        origin_z: request.chunk_z - 1,
+        side: field_side,
+        columns,
+        substrate: Some(mask.clone()),
+        prior: None,
+    })
+}
+
+fn exact_patch_halo(request: ChunkRequest, side: u32, mask: &CaveMask) -> Option<&ColumnHalo> {
     if !(2..=32).contains(&side) {
         return None;
     }
@@ -31,29 +52,63 @@ pub(crate) fn exact_patch_field(
     {
         return None;
     }
-    // Same ring-1 crop as the fresh patch-halo producer. Keep the existing
-    // immutable mask; do not reinsert it or alter cache retention/eviction.
-    let field_side = side as usize + 2;
-    let mut columns = Vec::with_capacity(field_side * field_side * COLUMNS);
-    for z in 2..2 + field_side {
-        let start = (z * tile_side + 2) * COLUMNS;
-        columns.extend_from_slice(&halo.columns[start..start + field_side * COLUMNS]);
+    Some(halo)
+}
+
+/// Pin only exact, nearby dependency tiles for this job. No cache entry is
+/// inserted or refreshed, and the caller's filter bounds this optional reuse.
+pub(crate) fn capture_patch_tiles(
+    engine: &TerrainEngine,
+    request: ChunkRequest,
+    keep: impl FnMut(i32, i32) -> bool,
+) -> HashMap<(i32, i32), Arc<CaveMask>> {
+    // A failed optional snapshot does not suppress normal generation or its
+    // original cache-poison error when that generation is required.
+    match engine.caves.lock() {
+        Ok(cache) => snapshot_patch_tiles(&cache, request, keep),
+        Err(_) => HashMap::new(),
     }
-    Some(Field {
-        origin_x: request.chunk_x - 1,
-        origin_z: request.chunk_z - 1,
-        side: field_side,
-        columns,
-        substrate: Some(mask.clone()),
-        prior: None,
-    })
+}
+fn snapshot_patch_tiles(
+    cache: &CaveCache,
+    request: ChunkRequest,
+    mut keep: impl FnMut(i32, i32) -> bool,
+) -> HashMap<(i32, i32), Arc<CaveMask>> {
+    let key = CacheKey::from(request);
+    let mut tiles = HashMap::new();
+    for (cached_key, mask) in &cache.entries {
+        if (CacheKey {
+            x: key.x,
+            z: key.z,
+            ..*cached_key
+        }) != key
+        {
+            continue;
+        }
+        let Some(halo) = &mask.columns else { continue };
+        let (Some(x), Some(z)) = (halo.origin_x.checked_add(3), halo.origin_z.checked_add(3))
+        else {
+            continue;
+        };
+        if x.rem_euclid(16) != 0 || z.rem_euclid(16) != 0 || !keep(x, z) {
+            continue;
+        }
+        let tile_request = ChunkRequest {
+            chunk_x: x,
+            chunk_z: z,
+            ..request
+        };
+        if exact_patch_halo(tile_request, 16, mask).is_some() {
+            tiles.entry((x, z)).or_insert_with(|| mask.clone());
+        }
+    }
+    tiles
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::geology::ColumnHalo;
-    use crate::{CacheKey, CaveCache, Column, TerrainEngine};
+    use crate::Column;
 
     fn request(x: i32, z: i32) -> ChunkRequest {
         ChunkRequest {
@@ -177,6 +232,38 @@ mod tests {
         assert_eq!(cache.entries.len(), 256);
     }
     #[test]
+    fn job_snapshot_retains_only_matching_tiles_without_changing_cache_order() {
+        let r = request(0, 0);
+        let mut cache = CaveCache::default();
+        let near = mask(request(-16, 16), 16);
+        let weak = Arc::downgrade(&near);
+        cache.insert(request(-16, 16), 16, near.clone());
+        cache.insert(request(32, 16), 16, mask(request(32, 16), 16));
+        let other = ChunkRequest {
+            seed: 43,
+            ..request(16, 16)
+        };
+        cache.insert(other, 16, mask(other, 16));
+        let unaligned = request(-33, -17);
+        cache.insert(unaligned, 16, mask(unaligned, 16));
+        let larger = request(0, 0);
+        cache.insert(larger, 32, mask(larger, 32));
+        let order = cache.order.clone();
+        let count = cache.entries.len();
+        let snapshot = snapshot_patch_tiles(&cache, r, |x, z| x < 32 && z == 16);
+        assert_eq!(snapshot.len(), 1);
+        assert!(Arc::ptr_eq(&snapshot[&(-16, 16)], &near));
+        assert_eq!(cache.order, order);
+        assert_eq!(cache.entries.len(), count);
+        assert!(snapshot_patch_tiles(&cache, r, |_, _| false).is_empty());
+        drop(cache);
+        drop(near);
+        assert!(weak.upgrade().is_some());
+        drop(snapshot);
+        assert!(weak.upgrade().is_none());
+    }
+
+    #[test]
     #[ignore = "requires a GPU and RETINA_TERRAIN_REUSE_PROFILES with exported profiles"]
     fn actual_exact_cached_tiles_match_fresh_gpu_fields() {
         let directory =
@@ -255,6 +342,16 @@ mod tests {
                                 assert!(Arc::ptr_eq(&mask.unwrap(), &first_mask));
                             }
                         });
+                    }
+                    if side == 16 && eligible && x.rem_euclid(16) == 0 && z.rem_euclid(16) == 0 {
+                        let job = crate::terrain_job::TerrainJob::new(&engine, &profile, r, None);
+                        *engine.caves.lock().unwrap() = CaveCache::default();
+                        let retained = job.field(x, z).unwrap();
+                        assert_eq!(retained.columns, fresh.columns);
+                        assert!(
+                            Arc::ptr_eq(retained.substrate.as_ref().unwrap(), &first_mask),
+                            "job must retain the cached tile through global eviction"
+                        );
                     }
                     let different_side = if side == 32 { 16 } else { side + 1 };
                     let (_, different) = engine.terrain_field(r, different_side).unwrap();
