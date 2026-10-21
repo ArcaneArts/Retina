@@ -1872,3 +1872,25 @@ Report: `docs/benchmarks/nether-perf-cycle59-2026-10-21.json`. Preserve
 Native implementation is `ca226565a9a025373ac7ac043c3fe7e9ac141417`; normal SHA-256
 is `a84b2fc525667f7bbd1b24d2d7cc1db9845c344d6fd44935c7edf96fc59ccf4e`.
 Quiet timing confirmation remains deferred and the performance goal stays open.
+
+
+Cycle 59 resource follow-up: an external copy of the native benchmark adds two
+process getrusage snapshots around each complete region. The unchanged C58
+ordinary library generates two standard Nether seeds and an Overworld control,
+with five warmups and twenty measured regions each. All 61,440 measured chunks
+match original and C58 output; measured shader statuses are 4.
+
+Mean process CPU work per region is 4,457 ms for the main seed, 4,269 ms for seed
+42 and 1,232 ms for Overworld. Median CPU-time/wall ratios are 2.70, 2.88 and 2.96.
+These include native service threads and are not percentages of available cores,
+per-root CPU accounting or proof of insufficient parallelism. External activity,
+GPU/I/O waits and serial work can all affect the ratio. Reclassified C53 samples
+also contain many worker sleep/join stacks, but those are not wall-time shares.
+
+The next diagnostic should combine per-root process CPU intervals with the
+in-flight intervals of dispatched anchor tasks, including their last completions.
+Count overlapping intervals on one worker only once. This can distinguish a
+small set of long remaining tasks from many occupied but blocked/preempted
+workers before an architectural scheduling change is selected. External
+`cycle59/baseline-cpu-summary.json` and `prior-worker-wait-evidence.json` retain
+the evidence and limitations. No production scheduling change is selected.
