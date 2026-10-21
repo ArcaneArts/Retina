@@ -4,6 +4,9 @@ use crate::{CacheKey, ChunkRequest, TerrainEngine, WorldProfile};
 use std::collections::VecDeque;
 use std::sync::Arc;
 
+#[cfg(test)]
+mod footprint_probe;
+
 const MAX_ENTRIES: usize = 8;
 const MAX_BYTES: usize = 512 * 1024 * 1024;
 struct Snapshot {
@@ -103,6 +106,8 @@ impl Archived {
             .map_or(self.base[column], |last| changed[last].state);
         // Preserve missing latest markers; never search backward for a value.
         let value = self.states.get(state as usize)?;
+        #[cfg(test)]
+        footprint_probe::hit(x as usize, z as usize, self.width);
         Some(Arc::new(ColumnState {
             runs: ColumnRuns::Cached {
                 runs: self.runs.clone(),
