@@ -348,7 +348,7 @@ fn generate_region_inner(
         // The caller dispatches bounded root phases; it never submits the
         // complete remaining ordered region as one stealable Rayon task.
         let pool = assemblers()?;
-        let mut generation = if let Some(p) = profile.as_deref().filter(|_| source_order) {
+        let generation = if let Some(p) = profile.as_deref().filter(|_| source_order) {
             Some(timings.time(timings::VEGETATION_PLAN, || {
                 decoration::dependencies::generate(
                     engine,
@@ -367,6 +367,9 @@ fn generate_region_inner(
         };
         let pool_queued = session.performance.start();
         pool.install(|| {
+            // Own the final command/metadata buffers on the worker, including
+            // their destruction if assembly returns an error.
+            let mut generation = generation;
             session.performance.elapsed(
                 crate::performance::Counter::region_pool_wait_nanos,
                 pool_queued,
