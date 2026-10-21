@@ -80,9 +80,20 @@ work and direct DH previews remain background requests. A foreground reader can
 promote the same queued preview without duplicating generation. The shared native
 limit is unchanged. After four consecutive foreground admissions, the next
 admission goes to the oldest waiting background request. This does not preempt native work that
-is already running. Preparation uses virtual tasks so waiting for the budget does
-not occupy a fixed preparation worker; real lifecycle and unload QA must verify
-native calls and resource cleanup in addition to the scheduler unit tests.
+is already running. Preparation uses a cached platform-thread pool so budget
+waiters do not occupy every fixed preparation worker and native foreign calls do
+not impose a virtual-carrier limit. Per-loader admission bounds queued preparation,
+and the shared budget bounds native execution. Real lifecycle and unload QA must
+verify native calls and cleanup in addition to the scheduler unit tests.
+
+To test real DH overlap, install DH in a fresh disposable run directory and add
+`-PretinaNetherPortalDhQa` alongside `-PretinaNetherLifecycleQa`. The fixture first
+moves the player above the remote source so DH can request cold visible terrain,
+then enters the portal while actual DH native work is active. Require successful
+`portal_dh_native_region` events and a positive `completed_during_wait` in the
+first `nether_portal_dh_overlap` event. The observer uses `DhApi.isDhThread()`;
+mod presence alone does not pass. Destination generation is counted by region
+so unrelated DH regions cannot distort the four-region/zero-on-reopen check.
 
 ### Live Nether fortress progression
 

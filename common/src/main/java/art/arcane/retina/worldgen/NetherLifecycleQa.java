@@ -9,6 +9,7 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.level.block.Block;
@@ -50,7 +51,7 @@ public final class NetherLifecycleQa {
         final ServerPlayer player;
         final long began = System.nanoTime();
         int phase, since;
-        boolean reopened;
+        boolean reopened, watchingDh;
         List<Read> reads;
         CompletableFuture<Void> preparation;
         long generatedBefore;
@@ -183,6 +184,17 @@ public final class NetherLifecycleQa {
                 // Telemetry is sent once per second; a warm destination can be ready immediately.
                 if (!run.preparation.isDone() || server.getTickCount() - run.since < 40) return;
                 run.preparation.join();
+                if (PortalBackgroundQa.ENABLED && !run.reopened) {
+                    if (!run.watchingDh) {
+                        run.watchingDh = true;
+                        player.setGameMode(GameType.SPECTATOR);
+                        position(player, overworld, COLD_PORTAL.offset(0, 100, 4));
+                        event("nether_portal_dh_watch", "\"x\":" + COLD_PORTAL.getX() + ",\"z\":" + COLD_PORTAL.getZ());
+                        return;
+                    }
+                    if (PortalBackgroundQa.active() == 0) return;
+                    player.setGameMode(GameType.CREATIVE);
+                }
                 if (run.reopened)
                     require(PortalShape.findAnyShape(overworld, COLD_PORTAL, Direction.Axis.X).isComplete(),
                             "saved remote source portal remains complete");

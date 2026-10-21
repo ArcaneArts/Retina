@@ -21,8 +21,11 @@ public final class RegionCoordinator {
     private final TemporaryRegions previews;
     // Budget waiters must not occupy all preparation workers before portal work
     // can join the queue. Native execution still uses the same global limit.
-    private static final ExecutorService PREPARERS = Executors.newThreadPerTaskExecutor(
-            Thread.ofVirtual().name("retina-region-prepare-", 0).factory());
+    // Native foreign calls pin virtual-thread carriers. Platform tasks preserve
+    // configured concurrency above the carrier count; each loader still bounds
+    // admitted preparations and the shared budget bounds actual native work.
+    private static final ExecutorService PREPARERS = Executors.newCachedThreadPool(
+            Thread.ofPlatform().daemon().name("retina-region-prepare-", 0).factory());
     private final RegionLoadScheduler loads = new RegionLoadScheduler(PREPARERS,
             RegionGenerationBudget.SHARED.admissionCapacity(), RegionCoordinator::release);
     // Written on the I/O queue; request admission can read this from other threads.
