@@ -1679,3 +1679,71 @@ Provisional median/p95 was 1747/2005 ms (main), 1744/2459 (second seed), 980/127
 the earlier 4265 ms custom median illustrates why quiet timing remains deferred.
 The performance goal remains open. External `cycle56/post-merge-proof.json`
 preserves the source/build/merge proof and full results.
+
+
+## Cycle 57 — held paged version-marker index
+
+The isolated prototype replaces one marker Vec per column with 1024-entry pages
+and per-column usize head indices. Each node retains the original root, inline
+ColumnCell and previous-marker index. Append still occurs only at joined root
+barriers. Historical lookup has no depth limit and returns the exact qualifying
+cell, including missing or failed cells. One reused scratch vector preserves
+ascending archive order. Arc<ColumnState> ownership and synchronous retirement
+remain unchanged.
+
+All 164 native tests pass; 46 optional tests remain ignored and the GPU inventory
+is explicitly run and passes. New tests cover exhaustive small histories, strict
+prefix bounds, failed/missing cells, more than 64 historical markers, page edges,
+cell-address stability and synchronous release. The inventory's 102,400 chunks
+match four complete-NBT references. Marker counts, readiness counts, per-root
+counts and query-shape histograms match cycle 56 exactly in all four Nether cases.
+These are workload counts; exact output is independently checked.
+
+The marker index saves 14.2–15.0 MB per region. Main-seed marker-vector allocation
+and growth requests fall from about 250,897 to 538 physical page allocations.
+The page-index Vec's own growth calls are excluded from that count, but its spare
+capacity is included in the backing-byte comparison. State backing and allocator
+metadata are excluded. This local reduction is well below 1% of roughly 2 GB
+process peaks and does not establish lower whole-process retention.
+
+A separate ordinary-library comparison keeps two isolated engines resident and
+alternates the first engine for each pair. Each gets five warmups and twenty
+identical measured regions per case. Only one generates at a time. All generation
+finishes before NBT comparison. All 204,800 measured chunks match the original,
+cycle 56 merged, and prototype observer outputs. These repeat the agreed corpus
+coordinates. Both workers exit successfully in every case; all measured statuses
+are 4. The observer Overworld before-statuses include 1 and 4; its timings are
+not used as ordinary performance.
+
+| Case | Baseline median/p95 ms | Prototype median/p95 ms | Baseline/prototype chunks/s | Prototype faster pairs |
+| --- | ---: | ---: | ---: | ---: |
+| nether-main | 2462 / 3475 | 2389 / 3846 | 393 / 399 | 10 / 20 |
+| nether-second-seed | 1816 / 2514 | 1704 / 2256 | 573 / 586 | 11 / 20 |
+| nether-custom-bounds | 1447 / 2205 | 1341 / 2212 | 690 / 714 | 13 / 20 |
+| nether-direct-stem | 1084 / 1699 | 1070 / 1565 | 868 / 888 | 12 / 20 |
+| overworld | 886 / 1114 | 819 / 1138 | 1184 / 1243 | 10 / 20 |
+
+**Held, not selected.** Nether throughput shifts are only 1.5–3.5%, all paired
+median ratios remain within 5%, and the main-seed p95 worsens. The Overworld path,
+which performs no version-index work in this corpus, shifts 5% in throughput.
+Known host activity and two resident engines limit attribution. Preserve every
+regression and favorable result; neither proves the prototype cannot help in a
+later quiet retest. Process peaks also rise in some cases despite lower live index
+backing. No sustained retention or final no-regression claim is made.
+
+The linked historical traversal is linear in skipped markers, unlike the original
+binary search. Correctness is tested for long histories, but the observed six-marker
+maximum is not a universal performance bound. Further concurrency, retention and
+portal acceptance work is deferred until a useful ordinary gain is established.
+
+Return next to the material-read hotspot from the CPU samples. Measure actual
+Owned/Shared/Cached read proportions and live dense-versus-RLE storage before
+choosing a representation. A dense representation has not been implemented or
+selected. Do not keep tuning metadata layouts without whole-region evidence.
+
+Report: `docs/benchmarks/nether-perf-cycle57-2026-10-21.json`. Preserve the owned
+`codex/nether-paged-version-markers` branch/worktree and external `cycle57/`
+libraries, executable, full worlds, paired harness/logs and assessment. Native
+implementation is `d47f6f350f3b541435b9d9bfcd482e33cd32d23b`; normal SHA-256 is
+`67f27da6fc599827ad1f63e37b0961057901c17a2bff4cb69d5687bbbb47fdb3`.
+Quiet timing confirmation remains deferred and the subsecond goal remains open.
