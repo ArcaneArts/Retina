@@ -1969,3 +1969,67 @@ are 4. Same-binary timing drift is retained explicitly, including a custom-bound
 median of 2,156 ms versus 976 ms earlier. This cannot establish a code effect or
 identify the cause. Quiet timing and the subsecond goal remain open. External
 `cycle60/post-merge-proof.json` and `same-binary-timing-drift.json` retain evidence.
+
+
+## Cycle 61 — held exterior simple-block column preparation
+
+This prototype discovers exact exterior columns read by a simple-block root's
+terminal material filters, then prepares their original before-root state in
+parallel before ordinary anchor replay. Eligibility requires SimpleBlock-only
+writes, unique placement salts, a pure placement prefix and one final material
+predicate with zero offset. Original expansion, lazy Queue and position logic
+are reused; the helper stops before the filter and supplies no dummy materials.
+A column's first in-height candidate must query prior state before any local
+simple-block write can satisfy a later filter. Optional work is bounded at 256
+anchors and 32,768 candidates; all other generation retains its full fallback.
+
+All 170 native tests pass (48 optional ignored). Three new tests cover actual
+prior-read equality with live/paired writes, duplicate and streamed candidates,
+biome rejection, missing materials, clipping, negative coordinates, budgeted
+subsets, complete bounds and ineligible shapes. An initial test fixture used a
+four-chunk field with one-anchor IDs; it was corrected to the production
+single-anchor geometry, with the failed log and source retained.
+
+The explicit GPU observer passes and its 102,400 measured chunks match original
+and C60 merged output. Separate counter controls compare 10,240 measured chunks
+with both references. Ordinary alternating runs use five warmups and twenty
+measured regions per variant/case. All 204,800 measured chunks match original,
+C60 and observer full NBT and membership. Every measured shader status is 4.
+
+| Case | Median old/new ms | p95 old/new ms | Aggregate throughput change | New faster pairs |
+| --- | ---: | ---: | ---: | ---: |
+| nether-main | 1079 / 1028 | 1358 / 1356 | +3.79% | 14/20 |
+| nether-second-seed | 1331 / 1369 | 1814 / 1951 | -4.78% | 7/20 |
+| nether-custom-bounds | 903 / 864 | 1669 / 1472 | +6.92% | 15/20 |
+| nether-direct-stem | 1075 / 1096 | 1400 / 1242 | +2.84% | 10/20 |
+| overworld | 551 / 537 | 619 / 645 | +0.20% | 9/20 |
+
+Hold this prototype without a PR or merge. The main seed's apparent throughput
+gain is smaller than the gain in an inactive custom-profile control, while the
+second seed loses throughput and worsens p95. These results do not justify
+production selection, and external activity must not be used to dismiss them.
+
+Mushroom anchor replay itself falls to about 3 ms, but preparation absorbs the
+work. Counting both phases, brown mushrooms measure 63.21 ms versus 58.74 ms in
+the earlier main-seed observer and 45.85 versus 45.33 ms for seed 42. These are
+separate instrumented runs, not matched ordinary timing. The new preparation
+phase remains inside complete-region elapsed time.
+
+The counter controls preserve every anchor, column and prefix build count.
+Main prepares 7,814 columns; seed 42 prepares 7,906. Seed 42 generates 8,627
+terrain chunks versus 8,529 in its control, so scheduling can alter cache work.
+Custom profiles and Overworld prepare zero columns. Overlapping wait counters
+cannot be summed or converted into elapsed-time shares.
+
+The remaining hypothesis is that many column requests converge on an earlier
+anchor whose prerequisites still run serially. A bounded queue of exact missing
+prerequisites, with helpers restricted to strictly earlier dependency levels,
+could expose that work without replay or arbitrary task stealing. This requires
+explicit single-owner, failure/panic, lost-wakeup, cycle, completion-ownership
+and memory validation. It is not implemented or selected here.
+
+Report: `docs/benchmarks/nether-perf-cycle61-2026-10-21.json`. Preserve
+`codex/nether-simple-block-column-preparation` and external `cycle61/` evidence.
+The branch also carries C60's actual merged proof as documentation only. Quiet
+acceptance and the performance goal remain open; extra concurrency/lifecycle
+acceptance is not run for this unselected prototype.
