@@ -2033,3 +2033,28 @@ Report: `docs/benchmarks/nether-perf-cycle61-2026-10-21.json`. Preserve
 The branch also carries C60's actual merged proof as documentation only. Quiet
 acceptance and the performance goal remain open; extra concurrency/lifecycle
 acceptance is not run for this unselected prototype.
+
+
+## Cycle 62 — held cooperative dependency queue
+
+C62 exposes exact unfinished writer siblings through a job-owned queue of at most 4,096 keys. A worker waiting on a column or anchor can help with strictly earlier anchors; results are still consumed in source order. Cells retain one initializer and cache the original result/error. Completion, new work and abandoned initializers wake waiters through the same queue mutex. Helpers run synchronously; queued keys retain no cell owners and root completion still joins before publication. No halo, feature replay, worker-count or generation-semantic change was introduced.
+
+The prototype passed **174 native tests**, including seven queue/ownership/wakeup/panic tests, and the explicit GPU terrain-parity test. Full decompressed NBT and membership matched across **317,440 measured chunk instances**: 102,400 observer, 10,240 counter-control and 204,800 paired ordinary instances. The original corpus and actual C60 merge were used throughout; ordinary pairs also matched C62 observer output. All measured program snapshots were ready (status 4). Repeated coordinates are not unique-world coverage. The initial test compile required an explicit panic-fixture result type; the failed log and source remain preserved.
+
+Anchor, column, prefix and column-tile build counts stayed exactly unchanged in all five counter controls. The queue picked up roughly 9,000–11,000 descriptors per Nether case; those include already-ready/in-flight keys. Column cells grew **24 → 32 bytes**, adding about 38–41 MiB for the boundary slots alone in these cases, plus interior/version/anchor storage. Joined helper execution is included in join counters, so those counters cannot be read as idle time.
+
+Paired ordinary libraries used five warmups and twenty measured regions per case, alternating which process generated first. Only one generated at a time. Known external load makes these provisional comparisons; quiet confirmation remains deferred.
+
+| Case | Old/new median ms | Old/new p95 ms | Throughput change | New faster pairs |
+|---|---:|---:|---:|---:|
+| nether-main | 1122.02 / 1100.61 | 1804.64 / 1542.67 | +3.39% | 10/20 |
+| nether-second-seed | 1497.19 / 1466.41 | 1922.85 / 2344.73 | -8.22% | 8/20 |
+| nether-custom-bounds | 1019.44 / 980.44 | 1344.09 / 1229.98 | +5.01% | 13/20 |
+| nether-direct-stem | 927.41 / 973.61 | 1114.12 / 1222.88 | -3.62% | 9/20 |
+| overworld | 482.02 / 475.21 | 651.53 / 615.96 | +1.37% | 9/20 |
+
+**Held, unmerged.** The second seed and direct-stem case regress, so these results do not select the scheduler or its larger cells. Main remains C60. No reverse/concurrent/portal/retention acceptance was added for this unselected prototype.
+
+A source-level gap remains: only contending workers help. Finished outer tasks return their workers to Rayon, so they cannot drain this queue during a final long anchor. The next distinct experiment can expose bounded scoped drain tasks to idle workers, preserving lifetime/ownership and joined failure behavior. Permanently waiting helper loops are unsuitable because nested pool joins can starve unstarted child tasks. The test observer must count helper spans separately and union them by physical thread. This is a hypothesis to test, not a claimed speedup.
+
+Report: `docs/benchmarks/nether-perf-cycle62-2026-10-21.json`. Preserve `codex/nether-dependency-work-queue` and external `cycle62/` evidence, including the held binary and exact reproduction drivers.
