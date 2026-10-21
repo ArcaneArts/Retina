@@ -617,3 +617,45 @@ Cycles 30–32 remain unmerged experiments: pending-column caching, shared featu
 output caches and saved anchor replay checkpoints did not demonstrate an overall
 benefit in their preliminary runs. Their owned worktrees and external evidence
 remain preserved; none is included in cycle 33.
+
+
+PR #185 (`38c4ff2`) merged boundary footprints. Its actual merged build passes
+128 native tests and is byte-identical to the validated candidate. All 102,400
+chunks in a fresh five-case run (five warmups and twenty measured regions per
+case) match four references. Standard-seed provisional median/p95 observations
+are 1.48/1.73 and 1.56/2.02 seconds. Quiet timing and final acceptance remain
+pending; every post-merge case observation is retained in the cycle 33 evidence.
+
+## Ore footprint refinement (evidence cycle 34)
+
+Boundary ore masks now use the existing vein sphere calculations instead of a
+maximum-reach square around every placement. The shared calculation keeps the
+terrain rejection between the original RNG draw stages. Scattered ore uses its
+sampled attempt count to bound all possible offsets, including when replacement
+rules consume extra random draws. Live rejection only removes possible writes.
+Shared placement groups and live-height programs retain the earlier conservative
+mask; geometry work counts against the optional index budget.
+
+All 132 native tests pass, including actual emitted-write coverage under
+probabilistic replacement, air discard, nested counts, negative coordinates and
+custom height bounds. The complete 102,400-chunk corpus, 20,480 reverse-order
+two-caller chunks and 4,096 sampled chunks match the original and preceding
+merged output. In the diagnostic region, anchors fall from 65,357 to 63,012 and
+intermediate columns from 3,854,516 to 3,536,253; generated terrain chunks remain
+8,301. These work counts are not elapsed-time shares.
+
+Provisional standard-seed median/p95 observations are 1.28/1.67 and 1.45/1.75
+seconds, versus merged cycle 33's 1.48/1.73 and 1.56/2.02. Both custom profiles
+measure about 0.79/0.85 seconds; reverse two-caller latency is 1.91/2.69 seconds.
+Overworld latency falls to 311/352 ms, but peak RSS rises from 1.659 to 1.798 GB.
+An actual diagnostic run records zero ordered-anchor/column/footprint builds,
+and the retained Overworld profile contains no ore primitives using the changed
+geometry. The RSS difference remains recorded without a causal claim.
+
+A fresh stack/root sample still identifies dependency evaluation and waiting as
+the next area to investigate, with basalt pillars/blobs and several ore roots
+among the longest intervals. Sampling includes observer overhead; it is not a
+quiet benchmark. Full measurements, provenance, commands and limitations are in
+`docs/benchmarks/nether-perf-cycle34-2026-10-21.json`. Quiet no-regression,
+sub-second performance, sustained concurrency and final integration acceptance
+remain pending.

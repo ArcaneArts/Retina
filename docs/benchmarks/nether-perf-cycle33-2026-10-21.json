@@ -702,5 +702,65 @@
       "evidence": "cycle32/prototype-assessment.json",
       "status": "Saved replay checkpoints on graph baseline held; no complete-matrix promotion."
     }
-  ]
+  ],
+  "post_merge": {
+    "pr": "https://github.com/ArcaneArts/Retina/pull/185",
+    "merged_revision": "38c4ff2fc516c435cf1117c5f665f52823f9c692",
+    "merged_library": {
+      "revision": "38c4ff2fc516c435cf1117c5f665f52823f9c692",
+      "native_tree": "253121eaf8303418e6749b9ff3c76c3452fa8e68",
+      "sha256": "463007db8e89bff8cfb2be28009c386b2bf9bca77152e2a96298b00a9178ff27",
+      "source_status": "",
+      "forced_rebuild": true,
+      "timing_acceptance": false
+    },
+    "byte_identical_to_validated_candidate": true,
+    "native_tests": {
+      "passed": 128,
+      "failed": 0,
+      "ignored": 37
+    },
+    "suite": "cycle33/merged-full/suite.json",
+    "measured_identical_chunks": 102400,
+    "each_case_reference_count": 4,
+    "case_observations": [
+      {
+        "case": "nether-main-run0",
+        "median_ms": 1478.519062511623,
+        "p95_region_ms": 1726.154841342941,
+        "maximum_region_ms": 1757.0537498686463,
+        "peak_rss_bytes": 1991852032
+      },
+      {
+        "case": "nether-second-seed-run0",
+        "median_ms": 1562.8994994331151,
+        "p95_region_ms": 2017.130516318139,
+        "maximum_region_ms": 2282.347874948755,
+        "peak_rss_bytes": 2239938560
+      },
+      {
+        "case": "nether-custom-bounds-run0",
+        "median_ms": 1024.8412499204278,
+        "p95_region_ms": 1146.0498418542556,
+        "maximum_region_ms": 1196.3556660339236,
+        "peak_rss_bytes": 1614266368
+      },
+      {
+        "case": "nether-direct-stem-run0",
+        "median_ms": 985.2663750061765,
+        "p95_region_ms": 1083.3214726066217,
+        "maximum_region_ms": 1272.9678750038147,
+        "peak_rss_bytes": 1586085888
+      },
+      {
+        "case": "overworld-run0",
+        "median_ms": 366.8396460125223,
+        "p95_region_ms": 427.4306130944752,
+        "maximum_region_ms": 447.898916201666,
+        "peak_rss_bytes": 1659305984
+      }
+    ],
+    "timing_acceptance": false,
+    "attachment": "PR attachment refused: thread attachment identity count exceeds 100. Worktree registration previously failed for the same reason; owned checkout preserved."
+  }
 }
