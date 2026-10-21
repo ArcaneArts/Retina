@@ -137,6 +137,9 @@ impl Probe {
             "initialized_exact_prefix_slots": slot_counts[i], "unique_state_owners": owners[i].len(),
             "packed_run_bytes": run_bytes[i],
         })).collect();
+        let matches_by_band: Vec<_> = [16, 32, 64].into_iter().zip(by_band).map(|(band, count)| {
+            serde_json::json!({"band_blocks":band,"interior_cells":count[0],"exterior_cells":count[1]})
+        }).collect();
         self.rows.push(serde_json::json!({
             "origin": planner.versions.origin, "previous_origin": self.previous.as_ref().map(|p| p.origin),
             "roots": planner.roots.len(), "inventory": inventory,
@@ -146,9 +149,7 @@ impl Probe {
             "naturally_initialized_exterior_cells": checked[1],
             "previous_exact_slots_matching_interior_cells": available[0],
             "previous_exact_slots_matching_exterior_cells": available[1],
-            "matches_by_source_exterior_band": [16,32,64].into_iter().zip(by_band).map(|(band, count)| {
-                serde_json::json!({"band_blocks":band,"interior_cells":count[0],"exterior_cells":count[1]})
-            }).collect::<Vec<_>>(),
+            "matches_by_source_exterior_band": matches_by_band,
             "matches_by_before": by_before,
             "mismatch_samples": mismatches,
         }));
