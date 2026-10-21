@@ -1617,3 +1617,50 @@ assessment, paired harness snapshot, process logs, worlds and immutable binaries
 remain under external `cycle55/`. Native source is
 `7157282f0a9a50cbdbb94b700c25cb6a86067f38`; normal library SHA-256 is
 `eb7139784bfe97d83f046febc924a9cc33a0af644240599d1c9cfccbc3f51b67`.
+
+
+## Cycle 56 — version-marker allocation and retirement inventory
+
+A test-only observer measures actual per-column marker vectors, growth requests,
+unused capacity and the number of newer markers skipped by each original prefix
+lookup. It neither initializes missing cells nor changes the selected cell. A
+joined scan records missing/successful/error markers, and four clock reads split
+the existing interior export, exterior export and synchronous Versions drop.
+Every hook and observer field is excluded from ordinary builds.
+
+Across five warmups and twenty measured regions per case:
+
+| Case | Allocated vectors/region | Unused marker capacity MB | Queries skipping no newer marker | Interior / exterior / retirement median ms |
+| --- | ---: | ---: | ---: | ---: |
+| nether-main | 234,228 | 14.51 | 79.8% | 14.6 / 17.4 / 33.7 |
+| nether-second-seed | 234,686 | 14.49 | 79.0% | 12.9 / 16.8 / 31.1 |
+| nether-custom-bounds | 234,426 | 14.71 | 72.2% | 17.7 / 21.2 / 38.5 |
+| nether-direct-stem | 233,418 | 14.76 | 72.4% | 17.9 / 20.8 / 39.1 |
+
+Capacity uses decimal MB and excludes pointees and allocator metadata. The outer
+vector headers and base-cell arrays each add 6,291,456 bytes per full region.
+Latest-query shares include empty lists. Observed historical queries skipped at
+most six newer markers; this is evidence, never permission to truncate history.
+More than half of markers remain uninitialized at the joined boundary. These
+missing latest markers are semantically necessary and cannot select older values.
+
+The 31–39 ms median retirement includes ColumnState/Arc destruction, not only
+vector metadata. It does not establish allocation as the dominant remaining
+bottleneck. A separate page-backed marker-index prototype is justified as a
+memory/allocation opportunity, with whole-region benefit unproved. It must retain
+original state ownership, strict root ordering, missing cells, all historical
+reach, error propagation and ascending snapshot export. C26's held state arena
+and C55's held material reader are not selected by this diagnostic cycle.
+
+All 161 native tests pass; 46 optional tests are ignored and the GPU inventory is
+explicitly run and passes. The observer's 102,400 chunks match four references;
+the ordinary library's 102,400 chunks match five, including the observer. Every
+measured region in both runs reports shader status 4. The ordinary binary has no
+version_layout_probe symbol. Its hash differs from the preceding build, so byte
+identity is not claimed. Timings include external host activity; no speedup,
+quiet no-regression verdict or subsecond acceptance is claimed.
+
+Report: `docs/benchmarks/nether-perf-cycle56-2026-10-21.json`. External `cycle56/`
+retains source/library hashes, the immutable test executable, normal library,
+observer output, original and preceding full-NBT comparisons, ordinary timings,
+host samples, reproducible driver and a scoped next-opportunity assessment.
