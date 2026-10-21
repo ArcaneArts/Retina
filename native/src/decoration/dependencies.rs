@@ -8,7 +8,7 @@ use crate::performance::{Counter as Perf, Metrics};
 use std::borrow::Cow;
 use std::collections::BTreeMap;
 use std::hash::{Hash, Hasher};
-use std::sync::{Arc, Mutex, OnceLock};
+use std::sync::{Arc, Mutex, OnceLock, atomic::{AtomicU64, Ordering}};
 
 /// Job-owned cells keep one initializer per key. Partition only their lookup
 /// locks; generation and recursive dependency waits happen after releasing them.
@@ -377,31 +377,87 @@ struct Planner<'a> {
     ready_columns: Map<(usize, i32, i32), Arc<ColumnTile>>,
     error: Mutex<Option<String>>,
 }
+const VIEW_COLUMN_SLOTS: usize = 32;
+struct ViewColumn {
+    key: (i32, i32),
+    column: Arc<ColumnState>,
+}
 struct ViewColumns {
-    values: Map<(i32, i32), Arc<ColumnState>>,
-    counts: Option<[u64; 2]>,
+    // The first column in a slot stays immutable for the view's lifetime.
+    // Exact keys distinguish collisions, which retain the unbounded map path.
+    slots: [OnceLock<ViewColumn>; VIEW_COLUMN_SLOTS],
+    values: Mutex<Map<(i32, i32), Arc<ColumnState>>>,
+    counts: Option<[AtomicU64; 3]>,
 }
 impl Default for ViewColumns {
     fn default() -> Self {
         Self {
-            values: Map::default(),
-            counts: crate::performance::enabled().then_some([0; 2]),
+            slots: std::array::from_fn(|_| OnceLock::new()),
+            values: Mutex::new(Map::default()),
+            counts: crate::performance::enabled().then(|| std::array::from_fn(|_| AtomicU64::new(0))),
         }
+    }
+}
+impl ViewColumns {
+    fn index(key: (i32, i32)) -> usize {
+        let mut hash = super::spatial::SpatialHasher::default();
+        key.hash(&mut hash);
+        (hash.finish() >> 32) as usize % VIEW_COLUMN_SLOTS
+    }
+    fn count(&self, index: usize) {
+        if let Some(counts) = &self.counts { counts[index].fetch_add(1, Ordering::Relaxed); }
+    }
+    fn read<T>(
+        &self,
+        x: i32,
+        z: i32,
+        load: impl FnOnce() -> Result<Arc<ColumnState>, String>,
+        read: impl FnOnce(&ColumnState) -> T,
+    ) -> Result<T, String> {
+        let key = (x, z);
+        let cell = &self.slots[Self::index(key)];
+        if let Some(slot) = cell.get() {
+            if slot.key == key {
+                self.count(0);
+                self.count(2);
+                return Ok(read(&slot.column));
+            }
+            let values = self.values.lock().map_err(|_| "anchor view poisoned")?;
+            if let Some(column) = values.get(&key) {
+                self.count(0);
+                return Ok(read(column));
+            }
+        }
+        self.count(1);
+        // Do not hold a slot initializer or map lock across recursive prior
+        // evaluation. Concurrent misses may load the same immutable column,
+        // just as on the original map path.
+        let column = load()?;
+        let value = read(&column);
+        if let Err(slot) = cell.set(ViewColumn { key, column }) {
+            if cell.get().unwrap().key != key {
+                self.values.lock().map_err(|_| "anchor view poisoned")?
+                    .insert(key, slot.column);
+            }
+        }
+        Ok(value)
     }
 }
 struct View<'a, 'b> {
     planner: &'a Planner<'b>,
     before: usize,
     base: Arc<Field<'static>>,
-    columns: Mutex<ViewColumns>,
+    columns: ViewColumns,
 }
 impl Drop for View<'_, '_> {
     fn drop(&mut self) {
-        let columns = self.columns.get_mut().unwrap_or_else(|e| e.into_inner());
-        if let Some([reads, loads]) = columns.counts {
-            // Publish once per view, avoiding a contended atomic per scalar read.
-            self.planner.metrics.performance.add(Perf::view_column_cached_reads, reads);
-            self.planner.metrics.performance.add(Perf::view_column_loads, loads);
+        if let Some(counts) = &self.columns.counts {
+            // Publish per-view totals once. Disabled diagnostics add no atomics
+            // to scalar reads; enabled counters are local to this view.
+            for (counter, count) in [Perf::view_column_cached_reads,
+                Perf::view_column_loads, Perf::view_column_slot_hits].into_iter().zip(counts) {
+                self.planner.metrics.performance.add(counter, count.load(Ordering::Relaxed));
+            }
         }
     }
 }
@@ -421,25 +477,7 @@ impl View<'_, '_> {
         z: i32,
         read: impl FnOnce(&ColumnState) -> T,
     ) -> Result<T, String> {
-        {
-            let mut columns = self.columns.lock().map_err(|_| "anchor view poisoned")?;
-            let ViewColumns { values, counts } = &mut *columns;
-            if let Some(column) = values.get(&(x, z)) {
-                if let Some(counts) = counts { counts[0] += 1; }
-                // Only immutable material/height scalar access runs under this
-                // lock. No recursive planner or terrain work may enter it.
-                return Ok(read(column));
-            }
-            if let Some(counts) = counts { counts[1] += 1; }
-        }
-        let column = self.planner.column(self.before, x, z)?;
-        let value = read(&column);
-        self.columns
-            .lock()
-            .map_err(|_| "anchor view poisoned")?
-            .values
-            .insert((x, z), column);
-        Ok(value)
+        self.columns.read(x, z, || self.planner.column(self.before, x, z), read)
     }
 }
 impl PriorWorld for View<'_, '_> {
@@ -617,7 +655,7 @@ impl Planner<'_> {
                     planner: self,
                     before: root,
                     base: base.clone(),
-                    columns: Mutex::new(ViewColumns::default()),
+                    columns: ViewColumns::default(),
                 };
                 let field = Field {
                     origin_x: x,
@@ -762,7 +800,7 @@ impl Planner<'_> {
             planner: self,
             before: root,
             base: base.clone(),
-            columns: Mutex::new(ViewColumns::default()),
+            columns: ViewColumns::default(),
         };
         crate::structures::prepare(self.engine, request, self.profile, &starts, Some(&view))?;
         let mut blocks = vec![0; request.block_count()];
@@ -1351,6 +1389,74 @@ pub(crate) fn plan(
 #[cfg(test)]
 mod tests {
     use super::*;
+    fn cached_column(material: u16) -> Arc<ColumnState> {
+        Arc::new(ColumnState { runs: ColumnRuns::Owned(vec![u32::from(material)].into_boxed_slice()),
+            heights: [i32::from(material); 6] })
+    }
+    #[test]
+    fn view_slots_preserve_colliding_and_extreme_coordinate_keys() {
+        let cache = ViewColumns::default();
+        let keys: Vec<_> = (0..257).map(|i| (i - 128, 16 - i))
+            .chain([(i32::MIN, i32::MAX), (i32::MAX, i32::MIN)]).collect();
+        for (index, &(x, z)) in keys.iter().enumerate() {
+            let material = index as u16 + 1;
+            assert_eq!(cache.read(x, z, || Ok(cached_column(material)), |c| c.material(0)).unwrap(), material);
+        }
+        assert!(cache.values.lock().unwrap().len() > 0);
+        for (index, &(x, z)) in keys.iter().enumerate().rev() {
+            assert_eq!(cache.read(x, z, || panic!("cached column was lost"), |c| c.material(0)).unwrap(), index as u16 + 1);
+        }
+    }
+    #[test]
+    fn view_slots_allow_recursive_collision_loads_and_propagate_errors() {
+        let cache = ViewColumns::default();
+        let key = (0, 0);
+        let collision = (1..1000).map(|x| (x, 0))
+            .find(|&other| ViewColumns::index(other) == ViewColumns::index(key)).unwrap();
+        let value = cache.read(key.0, key.1, || {
+            assert_eq!(cache.read(collision.0, collision.1, || Ok(cached_column(2)), |c| c.material(0)).unwrap(), 2);
+            Ok(cached_column(1))
+        }, |c| c.material(0)).unwrap();
+        assert_eq!(value, 1);
+        for (key, material) in [(key, 1), (collision, 2)] {
+            assert_eq!(cache.read(key.0, key.1, || panic!("recursive result lost"), |c| c.material(0)).unwrap(), material);
+        }
+        assert_eq!(cache.read(-1, -1, || Err("original load failure".into()), |c| c.material(0)), Err("original load failure".into()));
+        assert_eq!(cache.read(-1, -1, || Ok(cached_column(3)), |c| c.material(0)).unwrap(), 3);
+        let _ = std::panic::catch_unwind(|| {
+            let _guard = cache.values.lock().unwrap();
+            panic!("poison fallback map");
+        });
+        assert_eq!(cache.read(key.0, key.1, || panic!("must preserve fallback error"), |c| c.material(0)), Err("anchor view poisoned".into()));
+    }
+    #[test]
+    fn view_slots_handle_concurrent_misses_and_account_for_all_reads() {
+        let cache = ViewColumns { counts: Some(std::array::from_fn(|_| AtomicU64::new(0))), ..ViewColumns::default() };
+        (0..4096).into_par_iter().for_each(|i| {
+            let x = i % 257 - 128;
+            let material = x.rem_euclid(127) as u16 + 1;
+            assert_eq!(cache.read(x, -1, || Ok(cached_column(material)), |c| (c.material(0), c.heights[0])).unwrap(), (material, i32::from(material)));
+        });
+        for x in -128..=128 {
+            assert_eq!(cache.read(x, -1, || panic!("concurrent value lost"), |c| c.material(0)).unwrap(), x.rem_euclid(127) as u16 + 1);
+        }
+        let counts = cache.counts.as_ref().unwrap();
+        assert_eq!(counts[0].load(Ordering::Relaxed) + counts[1].load(Ordering::Relaxed), 4096 + 257);
+        assert!(counts[2].load(Ordering::Relaxed) > 0);
+    }
+    #[test]
+    fn view_slots_own_columns_only_until_their_independent_view_drops() {
+        let first = ViewColumns::default();
+        let second = ViewColumns::default();
+        let column = cached_column(7);
+        let weak = Arc::downgrade(&column);
+        assert_eq!(first.read(-16, 32, || Ok(column), |c| c.material(0)).unwrap(), 7);
+        assert_eq!(second.read(-16, 32, || Ok(cached_column(8)), |c| c.material(0)).unwrap(), 8);
+        assert!(weak.upgrade().is_some());
+        drop(first);
+        assert!(weak.upgrade().is_none());
+        assert_eq!(second.read(-16, 32, || panic!("independent view lost its state"), |c| c.material(0)).unwrap(), 8);
+    }
     #[test]
     fn root_dispatch_does_not_inherit_remaining_phases_of_stolen_request() {
         use std::sync::atomic::{AtomicUsize, Ordering};

@@ -25,7 +25,7 @@ counters! {
     column_requests, column_builds, column_tiles, column_lock_nanos, column_join_nanos,
     deferred_ore_roots, deferred_ore_candidates, height_roots_skipped,
     dependency_pool_wait_nanos,
-    view_column_cached_reads, view_column_loads,
+    view_column_cached_reads, view_column_loads, view_column_slot_hits,
     anchor_builds, anchor_ready_hits, prefix_evaluations,
     footprint_builds, footprint_pruned_writers,
     column_versions_skipped, completed_column_commands, completed_column_groups, completed_column_reads, completed_boundary_reads,
