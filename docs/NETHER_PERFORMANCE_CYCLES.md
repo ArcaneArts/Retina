@@ -1664,3 +1664,18 @@ Report: `docs/benchmarks/nether-perf-cycle56-2026-10-21.json`. External `cycle56
 retains source/library hashes, the immutable test executable, normal library,
 observer output, original and preceding full-NBT comparisons, ordinary timings,
 host samples, reproducible driver and a scoped next-opportunity assessment.
+
+
+Cycle 56 post-merge confirmation: PR #197 merged as
+`d44156efdc5e5adf58e2d1c7f0736516ba1034bc`. A clean ordinary native rebuild
+produced the exact selected SHA-256
+`a8b40e9d7b8066bb4567b653a7d6b7d9c5e48bf015d19a207f3c72215a9ca007`.
+The native tree is identical to the source already covered by 161 passing tests;
+those unit tests were not duplicated. Actual merged generation compared all
+102,400 measured chunks against the original, preceding merged and selected
+ordinary corpora, with exact membership/NBT and shader status 4 throughout.
+Provisional median/p95 was 1747/2005 ms (main), 1744/2459 (second seed), 980/1275
+(custom), 1014/1307 (direct stem), and 572/770 (Overworld). Same-binary drift from
+the earlier 4265 ms custom median illustrates why quiet timing remains deferred.
+The performance goal remains open. External `cycle56/post-merge-proof.json`
+preserves the source/build/merge proof and full results.
