@@ -387,7 +387,7 @@ fn material_storage_deduplicates_owners_without_retaining_them() {
 #[test]
 #[ignore = "GPU inventory requires RETINA_TERRAIN_REUSE_PROFILES and RETINA_MATERIAL_STORAGE_OUTPUT"]
 fn exact_material_storage_inventory() {
-    use std::{fs, path::PathBuf};
+    use std::{fs, path::PathBuf, time::Instant};
     let profiles = PathBuf::from(std::env::var("RETINA_TERRAIN_REUSE_PROFILES").unwrap());
     let output = PathBuf::from(std::env::var("RETINA_MATERIAL_STORAGE_OUTPUT").unwrap());
     fs::create_dir(&output).unwrap();
