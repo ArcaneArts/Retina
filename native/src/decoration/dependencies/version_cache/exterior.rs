@@ -4,8 +4,6 @@
 use super::super::ColumnTile;
 use super::{ColumnRuns, ColumnState, Map, SavedState};
 use std::sync::Arc;
-#[cfg(test)]
-pub(in crate::decoration::dependencies) mod export_benchmark;
 
 const BAND: usize = 64;
 struct Span {
@@ -241,3 +239,6 @@ mod tests {
         assert!(Exterior::capture([0; 2], 16, &columns).is_none());
     }
 }
+
+#[cfg(test)]
+pub(in crate::decoration::dependencies) mod export_benchmark;
