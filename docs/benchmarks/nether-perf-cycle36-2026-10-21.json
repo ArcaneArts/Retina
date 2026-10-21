@@ -828,5 +828,111 @@
       }
     ],
     "note": "Five warmup/four sampled measured regions; counters disabled. Stacks are not wall-time shares, and root intervals include waits, completion and observer overhead."
+  },
+  "post_merge": {
+    "pr": "https://github.com/ArcaneArts/Retina/pull/187",
+    "merged_revision": "26878d668d1227b87b68fcae731ced1d1a54b4a3",
+    "merged_library": {
+      "revision": "26878d668d1227b87b68fcae731ced1d1a54b4a3",
+      "native_tree": "6d8f97a5044baf4ed39ced8bae41c16e9eb78469",
+      "sha256": "59b35650aa09c4109a8906e40fb119d6865190f16faf884ef2c28fb625956974",
+      "source_status": "",
+      "forced_rebuild": true,
+      "timing_acceptance": false
+    },
+    "byte_identical_to_validated_candidate": true,
+    "native_tests": {
+      "passed": 136,
+      "failed": 0,
+      "ignored": 37
+    },
+    "suite": "cycle36/merged-full/suite.json",
+    "measured_identical_chunks": 102400,
+    "each_case_reference_count": 4,
+    "case_observations": [
+      {
+        "case": "nether-main-run0",
+        "median_ms": 1413.2387293502688,
+        "p95_region_ms": 1823.8544854568318,
+        "maximum_region_ms": 1925.9982090443373,
+        "peak_rss_bytes": 1913061376
+      },
+      {
+        "case": "nether-second-seed-run0",
+        "median_ms": 1655.480895540677,
+        "p95_region_ms": 1904.4523108168505,
+        "maximum_region_ms": 1990.622416138649,
+        "peak_rss_bytes": 2104459264
+      },
+      {
+        "case": "nether-custom-bounds-run0",
+        "median_ms": 1022.3134584957734,
+        "p95_region_ms": 1118.2085815700705,
+        "maximum_region_ms": 1184.9207081831992,
+        "peak_rss_bytes": 1603878912
+      },
+      {
+        "case": "nether-direct-stem-run0",
+        "median_ms": 916.2921250099316,
+        "p95_region_ms": 991.2245271261781,
+        "maximum_region_ms": 1016.7871669400483,
+        "peak_rss_bytes": 1563770880
+      },
+      {
+        "case": "overworld-run0",
+        "median_ms": 351.2670414056629,
+        "p95_region_ms": 403.9423540933058,
+        "maximum_region_ms": 444.9368331115693,
+        "peak_rss_bytes": 1678852096
+      }
+    ],
+    "timing_acceptance": false
+  },
+  "post_merge_review": {
+    "overworld-diagnostic": {
+      "suite": "cycle36/overworld-diagnostic/suite.json",
+      "median_ms": 271.7161250766367,
+      "p95_region_ms": 271.7161250766367,
+      "maximum_region_ms": 271.7161250766367,
+      "peak_rss_bytes": 1122926592,
+      "identical_nbt_chunks_by_reference": [
+        1024,
+        1024,
+        1024
+      ],
+      "diagnostics_enabled": true,
+      "counters": {
+        "anchor_builds": 0,
+        "column_builds": 0,
+        "view_column_cached_reads": 0,
+        "view_column_loads": 0,
+        "view_column_slot_hits": 0
+      }
+    },
+    "preceding-custom-repeat": {
+      "suite": "cycle36/preceding-custom-repeat/suite.json",
+      "median_ms": 824.8757295077667,
+      "p95_region_ms": 915.5173062928952,
+      "maximum_region_ms": 917.4896250478923,
+      "peak_rss_bytes": 1664679936,
+      "identical_nbt_chunks_by_reference": [
+        20480,
+        20480,
+        20480
+      ]
+    },
+    "merged-custom-repeat": {
+      "suite": "cycle36/merged-custom-repeat/suite.json",
+      "median_ms": 808.6200836114585,
+      "p95_region_ms": 861.173201922793,
+      "maximum_region_ms": 887.789708096534,
+      "peak_rss_bytes": 1655259136,
+      "identical_nbt_chunks_by_reference": [
+        20480,
+        20480,
+        20480
+      ]
+    },
+    "assessment": "Custom-profile current-session repeat825/916ms baseline versus809/861ms merged median/p95 does not reproduce the earlier tail increase. The actual Overworld diagnostic records no execution of changed ordered-view paths. Preserve the full-suite RSS difference without assigning a cause. No settled no-regression or timing acceptance; user deferred quiet confirmation."
   }
 }
