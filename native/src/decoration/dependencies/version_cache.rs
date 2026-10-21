@@ -4,8 +4,14 @@ use crate::{CacheKey, ChunkRequest, TerrainEngine, WorldProfile};
 use std::collections::VecDeque;
 use std::sync::Arc;
 
+#[cfg(test)]
+mod footprint_probe;
+
 const MAX_ENTRIES: usize = 8;
 const MAX_BYTES: usize = 512 * 1024 * 1024;
+// Observed neighboring reads concentrate near region edges. This is only a
+// retention policy: omitted columns miss and use the full dependency planner.
+const EDGE_WIDTH: usize = 32;
 struct Snapshot {
     context: CacheKey,
     region: [i32; 2],
@@ -33,6 +39,28 @@ struct Archived {
     changed: Box<[SavedVersion]>,
     states: Box<[SavedState]>,
     runs: Arc<Vec<u32>>,
+}
+// Pack the edge band in row-major order, without allocating entries for the
+// unused center. Small test/planner grids retain every column.
+fn edge_index(width: usize, x: usize, z: usize) -> Option<usize> {
+    if x >= width || z >= width {
+        return None;
+    }
+    if width <= 2 * EDGE_WIDTH || z < EDGE_WIDTH {
+        return Some(z * width + x);
+    }
+    let inner = width - 2 * EDGE_WIDTH;
+    if z >= width - EDGE_WIDTH {
+        return Some(z * width + x - inner * inner);
+    }
+    let start = EDGE_WIDTH * width + (z - EDGE_WIDTH) * 2 * EDGE_WIDTH;
+    if x < EDGE_WIDTH {
+        Some(start + x)
+    } else if x >= width - EDGE_WIDTH {
+        Some(start + x - inner)
+    } else {
+        None
+    }
 }
 impl Archived {
     fn capture(versions: &Versions) -> Option<Self> {
@@ -62,20 +90,26 @@ impl Archived {
         };
         // Borrow all original owners throughout interning: allocator address
         // reuse must never turn a different state into a false pointer hit.
-        let base = versions
-            .base
-            .iter()
-            .map(&mut intern)
-            .collect::<Option<Vec<_>>>()?;
-        let mut offsets = Vec::with_capacity(versions.changed.len() + 1);
+        let width = versions.width;
+        let inner = width.saturating_sub(2 * EDGE_WIDTH);
+        let count = width * width - inner * inner;
+        let mut base = Vec::with_capacity(count);
+        let mut offsets = Vec::with_capacity(count + 1);
         let mut changed = Vec::new();
-        for column in &versions.changed {
-            offsets.push(changed.len());
-            for value in column {
-                changed.push(SavedVersion {
-                    root: value.root,
-                    state: intern(&value.state)?,
-                });
+        for z in 0..width {
+            let full = width <= 2 * EDGE_WIDTH || z < EDGE_WIDTH || z >= width - EDGE_WIDTH;
+            let left_end = if full { width } else { EDGE_WIDTH };
+            let right_start = if full { width } else { width - EDGE_WIDTH };
+            for x in (0..left_end).chain(right_start..width) {
+                let index = z * width + x;
+                base.push(intern(&versions.base[index])?);
+                offsets.push(changed.len());
+                for value in &versions.changed[index] {
+                    changed.push(SavedVersion {
+                        root: value.root,
+                        state: intern(&value.state)?,
+                    });
+                }
             }
         }
         offsets.push(changed.len());
@@ -95,7 +129,7 @@ impl Archived {
         if x < 0 || z < 0 || x >= self.width as i64 || z >= self.width as i64 {
             return None;
         }
-        let column = z as usize * self.width + x as usize;
+        let column = edge_index(self.width, x as usize, z as usize)?;
         let changed = &self.changed[self.offsets[column]..self.offsets[column + 1]];
         let state = changed
             .partition_point(|v| v.root < before)
@@ -103,6 +137,8 @@ impl Archived {
             .map_or(self.base[column], |last| changed[last].state);
         // Preserve missing latest markers; never search backward for a value.
         let value = self.states.get(state as usize)?;
+        #[cfg(test)]
+        footprint_probe::hit(x as usize, z as usize, self.width);
         Some(Arc::new(ColumnState {
             runs: ColumnRuns::Cached {
                 runs: self.runs.clone(),
@@ -308,6 +344,66 @@ fn retained_bytes(snapshot: &Snapshot) -> usize {
 mod tests {
     use super::super::{ColumnCell, ColumnVersion};
     use super::*;
+    #[test]
+    fn packed_edge_indices_cover_each_retained_column_exactly_once() {
+        for width in [0, 1, 16, 63, 64, 65, 80, 512] {
+            let mut next = 0;
+            for z in 0..width {
+                for x in 0..width {
+                    let retained = x.min(z).min(width - 1 - x).min(width - 1 - z) < EDGE_WIDTH;
+                    let index = edge_index(width, x, z);
+                    if retained {
+                        assert_eq!(index, Some(next), "width={width} x={x} z={z}");
+                        next += 1;
+                    } else {
+                        assert!(index.is_none());
+                    }
+                }
+            }
+            let inner = width.saturating_sub(2 * EDGE_WIDTH);
+            assert_eq!(next, width * width - inner * inner);
+            assert!(edge_index(width, width, 0).is_none());
+            assert!(edge_index(width, 0, width).is_none());
+        }
+    }
+    #[test]
+    fn omitted_center_states_are_not_packed_and_remain_available_to_the_planner() {
+        let r = request(-32, -32);
+        let (profile, _, _) = crate::decoration::replay_tests::fixture(42, 0);
+        let versions = Versions::new(r, 5);
+        let state = Arc::new(ColumnState::new(vec![0; 16], &profile, 0));
+        let core = Arc::new(ColumnState::new(vec![1; 16], &profile, 0));
+        for (x, z) in [(31, 32), (48, 32), (32, 31), (32, 48)] {
+            versions.base[z * 80 + x]
+                .set(Ok(state.clone()))
+                .ok()
+                .unwrap();
+        }
+        versions.base[32 * 80 + 32]
+            .set(Ok(core.clone()))
+            .ok()
+            .unwrap();
+        let archive = Archived::capture(&versions).unwrap();
+        assert_eq!(archive.base.len(), 80 * 80 - 16 * 16);
+        assert_eq!(archive.states.len(), 1);
+        for (x, z) in [(31, 32), (48, 32), (32, 31), (32, 48)] {
+            let saved = archive.column(0, -512 + x, -512 + z).unwrap();
+            assert_eq!(saved.runs.slice(), state.runs.slice());
+            assert_eq!(saved.heights, state.heights);
+        }
+        assert!(archive.column(0, -480, -480).is_none());
+        assert!(Arc::ptr_eq(
+            versions
+                .before(32 * 80 + 32, 0)
+                .1
+                .get()
+                .unwrap()
+                .as_ref()
+                .ok()
+                .unwrap(),
+            &core
+        ));
+    }
     fn request(x: i32, z: i32) -> ChunkRequest {
         ChunkRequest {
             seed: 42,
