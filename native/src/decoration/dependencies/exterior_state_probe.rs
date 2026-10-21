@@ -38,6 +38,7 @@ fn distance(origin: [i32; 2], width: usize, x: i32, z: i32) -> usize {
     0.max(-x).max(-z).max(x - width as i64 + 1).max(z - width as i64 + 1) as usize
 }
 pub(super) fn observe(planner: &Planner<'_>) -> Result<(), String> {
+    version_cache::export_benchmark::observe(planner)?;
     let mut active = ACTIVE.lock().map_err(|_| "exterior probe poisoned")?;
     if let Some(active) = active.as_mut() {
         active.observe(planner)?;

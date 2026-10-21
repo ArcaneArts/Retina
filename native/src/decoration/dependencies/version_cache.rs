@@ -5,6 +5,8 @@ use std::collections::VecDeque;
 use std::sync::Arc;
 mod exterior;
 use exterior::Exterior;
+#[cfg(test)]
+pub(super) use exterior::export_benchmark;
 
 #[cfg(test)]
 mod footprint_probe;

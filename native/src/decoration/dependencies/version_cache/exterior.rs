@@ -4,6 +4,8 @@
 use super::super::ColumnTile;
 use super::{ColumnRuns, ColumnState, Map, SavedState};
 use std::sync::Arc;
+#[cfg(test)]
+pub(in crate::decoration::dependencies) mod export_benchmark;
 
 const BAND: usize = 64;
 struct Span {
