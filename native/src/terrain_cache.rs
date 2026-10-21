@@ -1,7 +1,8 @@
 //! Reconstruct a field only from an already-cached tile with identical geometry.
 use crate::decoration::Field;
 use crate::geology::{CaveMask, ColumnHalo};
-use crate::{ChunkRequest, COLUMNS};
+use crate::{CacheKey, CaveCache, ChunkRequest, TerrainEngine, COLUMNS};
+use std::collections::HashMap;
 use std::sync::Arc;
 
 /// The caller must obtain `mask` through the complete request CacheKey. Exact
