@@ -659,3 +659,63 @@ quiet benchmark. Full measurements, provenance, commands and limitations are in
 `docs/benchmarks/nether-perf-cycle34-2026-10-21.json`. Quiet no-regression,
 sub-second performance, sustained concurrency and final integration acceptance
 remain pending.
+
+
+PR #186 (`192eeec`) merged ore footprints. Its actual merged build passes 132
+native tests and is byte-identical to the validated candidate. All 102,400 chunks
+in a fresh five-case run match four references. Standard-seed provisional
+median/p95 observations are 1.44/1.91 and 1.74/2.10 seconds, slower than the same
+binary's pre-merge observations. Every case is retained in the cycle 34 evidence;
+quiet performance and final acceptance remain pending. The owned temporary
+worktree was removed after preserving its branch and external evidence.
+
+
+## Held initial-terrain coverage experiment (evidence cycle 35)
+
+This unmerged prototype shares one immutable initial field and resolves dependency
+chunks by its actual valid coverage. It preserves the separate full-tile contract
+for fossil masks and the guard required by older profiles. All 134 native unit
+tests pass. A real-GPU test compares four loaded profiles, two seeds, positive
+and negative origins, request sides 1/7/16/32, materials, biomes, heightmaps and
+fossil mask corners against independently generated tiles. Complete output from
+the five-case corpus and reverse-order two-caller runs matches all references.
+
+The diagnostic region reduces terrain-cache requests from 722,607 to 559,481,
+but still generates 8,301 terrain chunks, 63,012 anchors and 3,536,253 intermediate
+columns. Initial copies and lookups are reduced; later demand still needs the
+same terrain tiles. Same-session standard-Nether median/p95 observations are
+1.49/2.05 seconds for the preceding merge and 1.38/1.82 then 1.56/1.95 for the
+candidate. Two-caller repeats are 2.44/3.04 versus 2.45/2.94 seconds. These mixed
+results do not establish an overall gain, so the prototype remains unmerged.
+Quiet timing confirmation remains deferred. Full evidence and commands are in
+`docs/benchmarks/nether-perf-cycle35-2026-10-21.json` and the external cycle folder.
+
+
+## Immutable per-view column slots (evidence cycle 36)
+
+Ordered material and height reads now check immutable column slots before the
+view's map. Full coordinate keys distinguish collisions, and the original map
+handles overflow without limiting dependency reach. The 1,024-slot array is
+allocated on the heap only when queried. No slot initializer or map lock spans
+recursive prior-column construction. Height queries that skip proven
+height-preserving roots retain their existing separate prefix. All state retires
+with its view inside generation.
+
+All 136 native tests pass, including collisions, extreme coordinates, concurrent
+misses, recursive loads, failures and lifetime isolation. The complete
+102,400-chunk corpus and 20,480 reverse-order two-caller chunks match the original,
+cycle 5 and preceding merged cycle 34. Diagnostic workload remains 63,012 anchors,
+3,536,253 intermediate columns and 8,301 terrain chunks. Of 36,665,808 cached
+view reads, 31,563,068 (86.1%) bypass the mutex/map path. This count is not a
+wall-time percentage.
+
+Initial standard-seed median/p95 observations are 1.31/1.63 and 1.48/1.76 seconds.
+A sequential repeat pair measures 1.55/1.99 seconds for the preceding merge and
+1.49/1.86 for this candidate. Overworld repeats are 353/413 versus 357/424 ms.
+Reverse two-caller generation measures 2.41/3.15 seconds against a preceding
+repeat of 2.44/3.04. The 32-, 256- and 1,024-slot experiments and every timing and
+memory observation are retained in
+`docs/benchmarks/nether-perf-cycle36-2026-10-21.json`. Quiet timing confirmation
+remains deferred; these observations do not establish settled speedup,
+no-regression or sub-second acceptance. Sustained concurrency and final portal
+integration remain open. The held cycle 35 implementation is not included.

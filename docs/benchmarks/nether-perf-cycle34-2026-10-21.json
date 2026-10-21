@@ -524,5 +524,71 @@
       "identical_nbt_chunks": 4096,
       "membership_identical": true
     }
-  ]
+  ],
+  "post_merge": {
+    "pr": "https://github.com/ArcaneArts/Retina/pull/186",
+    "merged_revision": "192eeec7c943a8615549bbd2aee55d66aebfafe1",
+    "merged_library": {
+      "revision": "192eeec7c943a8615549bbd2aee55d66aebfafe1",
+      "native_tree": "0963e5855de2a63ef4ff79bbf1bebce5f33bfca3",
+      "sha256": "0f804e83040b8cb2084ec210b5cca6968ce65351b948b71f4ead5d1c50e9273b",
+      "source_status": "",
+      "forced_rebuild": true,
+      "timing_acceptance": false
+    },
+    "byte_identical_to_validated_candidate": true,
+    "native_tests": {
+      "passed": 132,
+      "failed": 0,
+      "ignored": 37
+    },
+    "suite": "cycle34/merged-full/suite.json",
+    "measured_identical_chunks": 102400,
+    "each_case_reference_count": 4,
+    "case_observations": [
+      {
+        "case": "nether-main-run0",
+        "median_ms": 1442.9116665851325,
+        "p95_region_ms": 1907.3916355497204,
+        "maximum_region_ms": 2047.982333926484,
+        "peak_rss_bytes": 1940717568
+      },
+      {
+        "case": "nether-second-seed-run0",
+        "median_ms": 1738.3026250172406,
+        "p95_region_ms": 2104.2951253126375,
+        "maximum_region_ms": 2387.679334031418,
+        "peak_rss_bytes": 2036367360
+      },
+      {
+        "case": "nether-custom-bounds-run0",
+        "median_ms": 999.4578961050138,
+        "p95_region_ms": 1055.3195749758743,
+        "maximum_region_ms": 1195.3462499659508,
+        "peak_rss_bytes": 1588740096
+      },
+      {
+        "case": "nether-direct-stem-run0",
+        "median_ms": 1011.8869999423623,
+        "p95_region_ms": 1118.447185738478,
+        "maximum_region_ms": 1226.4910419471562,
+        "peak_rss_bytes": 1672314880
+      },
+      {
+        "case": "overworld-run0",
+        "median_ms": 364.8361039813608,
+        "p95_region_ms": 419.79961841134354,
+        "maximum_region_ms": 436.1212910152972,
+        "peak_rss_bytes": 1547141120
+      }
+    ],
+    "timing_acceptance": false,
+    "attachment": "PR attachment refused: thread attachment identity count exceeds 100.",
+    "limitations": "Same-library runs varied. Standard-seed merged median/p95 are 1.44/1.91 and 1.74/2.10 seconds; pre-merge observations are 1.28/1.67 and 1.45/1.75 seconds. No quiet speedup, no-regression or sub-second acceptance.",
+    "owned_worktree_cleanup": {
+      "path": "/tmp/retina-nether-ore-footprints",
+      "removed": true,
+      "branch_and_external_evidence_retained": true
+    }
+  }
 }
