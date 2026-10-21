@@ -719,7 +719,7 @@
       ]
     }
   ],
-  "finding": "About 233k\u2013235k version vectors are allocated per region, with 14.5\u201314.8 MB of unused marker capacity. The original full Versions destruction median is 31\u201339 ms in instrumented runs and includes state owners; metadata cleanup alone is not the dominant remaining gap. Latest-query shares of 72\u201380% include empty lists. Missing markers account for more than half of all marker cells and must be retained.",
+  "finding": "About 233k\u2013235k version vectors are allocated per region, with 14.5\u201314.8 MB of unused marker capacity. The original full Versions destruction median is 31\u201339 ms in instrumented runs and includes state owners; metadata cleanup alone is not the dominant remaining gap. Latest-query shares of 72\u201380% include empty lists. Missing markers account for about 57% of marker cells in the main and second-seed cases and 36\u201338% in the custom profiles; all must be retained.",
   "next_opportunity": {
     "status": "Opportunity for a separate prototype, not selected or implemented.",
     "opportunity": "Page-backed root markers with a per-column latest index",

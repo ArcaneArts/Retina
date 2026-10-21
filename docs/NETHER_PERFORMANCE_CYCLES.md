@@ -1641,8 +1641,8 @@ Capacity uses decimal MB and excludes pointees and allocator metadata. The outer
 vector headers and base-cell arrays each add 6,291,456 bytes per full region.
 Latest-query shares include empty lists. Observed historical queries skipped at
 most six newer markers; this is evidence, never permission to truncate history.
-More than half of markers remain uninitialized at the joined boundary. These
-missing latest markers are semantically necessary and cannot select older values.
+About 57% of markers remain uninitialized in the two main-seed cases, compared
+with 36–38% in the custom profiles. These missing latest markers are semantically necessary and cannot select older values.
 
 The 31–39 ms median retirement includes ColumnState/Arc destruction, not only
 vector metadata. It does not establish allocation as the dominant remaining
