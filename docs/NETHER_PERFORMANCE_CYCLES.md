@@ -1664,3 +1664,139 @@ Report: `docs/benchmarks/nether-perf-cycle56-2026-10-21.json`. External `cycle56
 retains source/library hashes, the immutable test executable, normal library,
 observer output, original and preceding full-NBT comparisons, ordinary timings,
 host samples, reproducible driver and a scoped next-opportunity assessment.
+
+
+Cycle 56 post-merge confirmation: PR #197 merged as
+`d44156efdc5e5adf58e2d1c7f0736516ba1034bc`. A clean ordinary native rebuild
+produced the exact selected SHA-256
+`a8b40e9d7b8066bb4567b653a7d6b7d9c5e48bf015d19a207f3c72215a9ca007`.
+The native tree is identical to the source already covered by 161 passing tests;
+those unit tests were not duplicated. Actual merged generation compared all
+102,400 measured chunks against the original, preceding merged and selected
+ordinary corpora, with exact membership/NBT and shader status 4 throughout.
+Provisional median/p95 was 1747/2005 ms (main), 1744/2459 (second seed), 980/1275
+(custom), 1014/1307 (direct stem), and 572/770 (Overworld). Same-binary drift from
+the earlier 4265 ms custom median illustrates why quiet timing remains deferred.
+The performance goal remains open. External `cycle56/post-merge-proof.json`
+preserves the source/build/merge proof and full results.
+
+
+## Cycle 57 — held paged version-marker index
+
+The isolated prototype replaces one marker Vec per column with 1024-entry pages
+and per-column usize head indices. Each node retains the original root, inline
+ColumnCell and previous-marker index. Append still occurs only at joined root
+barriers. Historical lookup has no depth limit and returns the exact qualifying
+cell, including missing or failed cells. One reused scratch vector preserves
+ascending archive order. Arc<ColumnState> ownership and synchronous retirement
+remain unchanged.
+
+All 164 native tests pass; 46 optional tests remain ignored and the GPU inventory
+is explicitly run and passes. New tests cover exhaustive small histories, strict
+prefix bounds, failed/missing cells, more than 64 historical markers, page edges,
+cell-address stability and synchronous release. The inventory's 102,400 chunks
+match four complete-NBT references. Marker counts, readiness counts, per-root
+counts and query-shape histograms match cycle 56 exactly in all four Nether cases.
+These are workload counts; exact output is independently checked.
+
+The marker index saves 14.2–15.0 MB per region. Main-seed marker-vector allocation
+and growth requests fall from about 250,897 to 538 physical page allocations.
+The page-index Vec's own growth calls are excluded from that count, but its spare
+capacity is included in the backing-byte comparison. State backing and allocator
+metadata are excluded. This local reduction is well below 1% of roughly 2 GB
+process peaks and does not establish lower whole-process retention.
+
+A separate ordinary-library comparison keeps two isolated engines resident and
+alternates the first engine for each pair. Each gets five warmups and twenty
+identical measured regions per case. Only one generates at a time. All generation
+finishes before NBT comparison. All 204,800 measured chunks match the original,
+cycle 56 merged, and prototype observer outputs. These repeat the agreed corpus
+coordinates. Both workers exit successfully in every case; all measured statuses
+are 4. The observer Overworld before-statuses include 1 and 4; its timings are
+not used as ordinary performance.
+
+| Case | Baseline median/p95 ms | Prototype median/p95 ms | Baseline/prototype chunks/s | Prototype faster pairs |
+| --- | ---: | ---: | ---: | ---: |
+| nether-main | 2462 / 3475 | 2389 / 3846 | 393 / 399 | 10 / 20 |
+| nether-second-seed | 1816 / 2514 | 1704 / 2256 | 573 / 586 | 11 / 20 |
+| nether-custom-bounds | 1447 / 2205 | 1341 / 2212 | 690 / 714 | 13 / 20 |
+| nether-direct-stem | 1084 / 1699 | 1070 / 1565 | 868 / 888 | 12 / 20 |
+| overworld | 886 / 1114 | 819 / 1138 | 1184 / 1243 | 10 / 20 |
+
+**Held, not selected.** Nether throughput shifts are only 1.5–3.5%, all paired
+median ratios remain within 5%, and the main-seed p95 worsens. The Overworld path,
+which performs no version-index work in this corpus, shifts 5% in throughput.
+Known host activity and two resident engines limit attribution. Preserve every
+regression and favorable result; neither proves the prototype cannot help in a
+later quiet retest. Process peaks also rise in some cases despite lower live index
+backing. No sustained retention or final no-regression claim is made.
+
+The linked historical traversal is linear in skipped markers, unlike the original
+binary search. Correctness is tested for long histories, but the observed six-marker
+maximum is not a universal performance bound. Further concurrency, retention and
+portal acceptance work is deferred until a useful ordinary gain is established.
+
+Return next to the material-read hotspot from the CPU samples. Measure actual
+Owned/Shared/Cached read proportions and live dense-versus-RLE storage before
+choosing a representation. A dense representation has not been implemented or
+selected. Do not keep tuning metadata layouts without whole-region evidence.
+
+Report: `docs/benchmarks/nether-perf-cycle57-2026-10-21.json`. Preserve the owned
+`codex/nether-paged-version-markers` branch/worktree and external `cycle57/`
+libraries, executable, full worlds, paired harness/logs and assessment. Native
+implementation is `d47f6f350f3b541435b9d9bfcd482e33cd32d23b`; normal SHA-256 is
+`67f27da6fc599827ad1f63e37b0961057901c17a2bff4cb69d5687bbbb47fdb3`.
+Quiet timing confirmation remains deferred and the subsecond goal remains open.
+
+
+## Cycle 58 — material read backing and live storage inventory
+
+A test-only observer counts every `ColumnState::material` lookup by Owned,
+Shared terrain and Cached archive backing. Original RLE results still drive
+all generation. Thread-local registered counters record call weights and run
+lengths; a joined scan counts existing ready states, distinct backing slices,
+mask/packed-run owners and hypothetical full-height dense payloads. It never
+initializes missing cells or retains state owners. All hooks, state and symbols
+are excluded from ordinary builds; normal ColumnState layout is unchanged.
+
+Five warmups precede twenty measured complete regions per case:
+
+| Case | Material reads/region, million | Owned | Shared terrain | Cached archive | Added Shared dense payload, mean MB |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| nether-main | 31.18 | 27.4% | 61.6% | 11.1% | 162.7 |
+| nether-second-seed | 29.43 | 28.6% | 62.0% | 9.4% | 165.5 |
+| nether-custom-bounds | 20.40 | 25.2% | 61.5% | 13.3% | 183.3 |
+| nether-direct-stem | 18.03 | 26.9% | 59.7% | 13.5% | 181.3 |
+
+Shared columns contain 8.3–9.0 run words on average (weighted by calls), versus
+11.9–12.6 for Owned and 9.7–9.8 for Cached. Shared terrain is the largest read
+category, making an Owned-only dense optimization insufficient to address most
+calls. Call fractions are not CPU or elapsed-time fractions.
+
+Dense estimates use decimal MB and add one full request-height u16 array per
+unique live state while retaining RLE. They exclude extra metadata/allocator
+costs. Joined state excludes transient and engine-wide memory. Shared mask
+capacity includes metadata, and Cached backing arrays can contain unused spans.
+The Overworld inventory records no ColumnState calls or joined planners.
+
+A compact immutable run-boundary index is a next hypothesis: it could replace
+repeated binary searches without a full dense array. It must preserve exact RLE
+semantics, including uncommon tall layouts, all run boundaries and wrapped or
+out-of-range query heights. Index construction, metadata, retirement and cache
+behavior must be included in whole-region tests. No index, dense representation
+or new cache is implemented or selected here. Held C55 and C57 remain separate.
+
+All 163 native tests pass; 47 optional tests are ignored and the GPU inventory
+is explicitly run and passes. The observer's 102,400 measured chunks match four
+references. The ordinary library's 102,400 match the immutable original, preceding
+C56 merged corpus and observer output. Every measured region reports shader
+status 4 in both runs. The ordinary library contains no material_storage_probe
+or version_layout_probe symbols. It differs in bytes from C56; no binary identity
+or production speedup is claimed. External host work remains visible, so quiet
+performance and no-regression confirmation remain deferred.
+
+Report: `docs/benchmarks/nether-perf-cycle58-2026-10-21.json`. External `cycle58/`
+retains immutable executables, libraries, source hashes, original and preceding
+full-NBT comparisons, per-thread/per-kind counts, backing inventories, ordinary
+timings and host observations. This branch also carries C56's actual merged
+proof and the held C57 assessment as documentation only.

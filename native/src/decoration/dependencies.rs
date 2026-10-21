@@ -9,6 +9,8 @@ mod version_reuse_probe;
 mod exterior_state_probe;
 #[cfg(test)]
 mod version_layout_probe;
+#[cfg(test)]
+mod material_storage_probe;
 use super::spatial::Map;
 use super::*;
 use crate::TerrainEngine;
@@ -356,7 +358,10 @@ impl ColumnState {
     }
     fn material(&self, y: usize) -> u16 {
         let runs = self.runs.slice();
-        runs[runs.partition_point(|run| run >> 16 > y as u32)] as u16
+        let material = runs[runs.partition_point(|run| run >> 16 > y as u32)] as u16;
+        #[cfg(test)]
+        material_storage_probe::read(&self.runs, runs.len());
+        material
     }
     fn expand(&self, height: usize) -> Vec<u16> {
         let mut blocks = vec![0; height];
@@ -1299,6 +1304,8 @@ pub(crate) fn generate(
         exterior_state_probe::observe(&planner)?;
         #[cfg(test)]
         planner.versions.layout_trace.observe(&planner.versions);
+        #[cfg(test)]
+        material_storage_probe::observe(&planner);
         let structure_started = metrics.performance.start();
         let structure_detail = diagnostics::start(details.is_some());
         let starts = planner
