@@ -512,6 +512,11 @@ impl View<'_, '_> {
     }
 }
 impl PriorWorld for View<'_, '_> {
+    #[cfg(test)]
+    fn material_probe_root(&self) -> Option<(usize, &str)> {
+        self.planner.roots[self.before].ids.first()
+            .map(|&id| (self.before, self.planner.profile.decorations[id as usize].source.as_str()))
+    }
     fn overlay_recommit_skipped(&self, commands: usize) {
         self.planner.metrics.performance.add(Perf::overlay_recommit_calls_skipped, 1);
         self.planner.metrics.performance.add(Perf::overlay_recommit_commands_skipped, commands as u64);

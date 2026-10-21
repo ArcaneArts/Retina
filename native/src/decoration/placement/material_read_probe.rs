@@ -5,7 +5,7 @@ use crate::TerrainEngine;
 use std::cell::RefCell;
 use std::sync::{Mutex, atomic::{AtomicU64, Ordering}};
 
-const CAPACITIES: [usize; 3] = [16, 64, 256];
+const CAPACITIES: [usize; 5] = [1, 4, 16, 64, 256];
 static NEXT: AtomicU64 = AtomicU64::new(1);
 static ACTIVE: AtomicU64 = AtomicU64::new(0);
 static STARTED: AtomicU64 = AtomicU64::new(0);
@@ -116,16 +116,20 @@ struct Data {
     session: u64,
     context: Context,
     resets: u64,
-    simulations: [Simulation; 3],
+    root: Option<String>,
+    simulations: [Simulation; CAPACITIES.len()],
     mismatches: Vec<serde_json::Value>,
 }
 impl Data {
     fn new(session: u64, context: Context) -> Self {
-        Self { session, context, resets: 0, simulations: CAPACITIES.map(Simulation::new), mismatches: Vec::new() }
+        Self { session, context, resets: 0, root: None,
+            simulations: CAPACITIES.map(Simulation::new), mismatches: Vec::new() }
     }
     fn read(&mut self, context: Context, at: [i32; 3], actual: Option<u16>, overlay: bool) {
         if self.context != context {
             self.resets += 1;
+            // Do not attribute mixed-context traces to their initial root.
+            self.root = None;
             for s in &mut self.simulations { s.slots.fill(None); }
             self.context = context;
         }
@@ -154,7 +158,10 @@ impl Trace {
         let mut data = self.0.borrow_mut();
         if data.as_ref().is_none_or(|d| d.session != session) {
             STARTED.fetch_add(1, Ordering::Relaxed);
-            *data = Some(Box::new(Data::new(session, context)));
+            let mut fresh = Data::new(session, context);
+            fresh.root = field.prior.and_then(|p| p.material_probe_root())
+                .map(|(id, name)| format!("{id}:{name}"));
+            *data = Some(Box::new(fresh));
         }
         data.as_mut().unwrap().read(context, at, actual, overlay);
     }
@@ -168,12 +175,15 @@ impl Trace {
 }
 impl Drop for Trace {
     fn drop(&mut self) {
-        let Some(data) = self.0.get_mut().take() else { return };
+        let Some(mut data) = self.0.get_mut().take() else { return };
         let mut summary = SUMMARY.lock().unwrap_or_else(|e| e.into_inner());
         let Some(s) = summary.as_mut().filter(|s| s.session == data.session) else { return };
         s.traces += 1;
         s.context_resets += data.resets;
         for (total, local) in s.counts.iter_mut().zip(&data.simulations) { total.add(&local.counts); }
+        let root = s.by_root.entry(data.root.take().unwrap_or_else(|| "unattributed".into())).or_default();
+        root.traces += 1;
+        for (total, local) in root.counts.iter_mut().zip(&data.simulations) { total.add(&local.counts); }
         for mismatch in data.mismatches {
             if s.mismatch_samples.len() < 16 { s.mismatch_samples.push(mismatch); }
         }
@@ -184,9 +194,15 @@ struct Summary {
     session: u64,
     traces: u64,
     context_resets: u64,
-    capacities: [usize; 3],
-    counts: [Counts; 3],
+    capacities: [usize; CAPACITIES.len()],
+    counts: [Counts; CAPACITIES.len()],
+    by_root: std::collections::BTreeMap<String, RootCounts>,
     mismatch_samples: Vec<serde_json::Value>,
+}
+#[derive(Default, serde::Serialize)]
+struct RootCounts {
+    traces: u64,
+    counts: [Counts; CAPACITIES.len()],
 }
 struct Installed;
 impl Installed {
@@ -197,6 +213,7 @@ impl Installed {
         *SUMMARY.lock().unwrap() = Some(Summary {
             session, traces: 0, context_resets: 0, capacities: CAPACITIES,
             counts: std::array::from_fn(|_| Counts::default()), mismatch_samples: Vec::new(),
+            by_root: Default::default(),
         });
         ACTIVE.store(session, Ordering::Relaxed);
         Self
@@ -243,10 +260,12 @@ fn context_changes_reset_values_and_snapshots_start_empty() {
     let context = Context::new(&field, &profile, request);
     let at = [8, 31, 8];
     let mut data = Data::new(0, context);
+    data.root = Some("original root".into());
     data.read(context, at, Some(1), false);
     let changed = Context::new(&field, &profile, ChunkRequest { seed: 99, ..request });
     data.read(changed, at, Some(2), false);
     assert_eq!(data.resets, 1);
+    assert!(data.root.is_none());
     assert!(data.simulations.iter().all(|s| s.counts.hits == 0 && s.counts.mismatches == 0));
     let mut overlay = Overlay::default();
     *overlay.material_trace.0.get_mut() = Some(Box::new(data));
@@ -313,7 +332,7 @@ fn exact_material_read_inventory() {
         cases.push(serde_json::json!({"case":name,"seed":seed,"profile":file,
             "warmups":warmups,"regions":regions,"summary":summary}));
         fs::write(output.join("report.json"), serde_json::to_vec_pretty(&serde_json::json!({
-            "scope":"Original Overlay::material results always drive generation. Three simulated direct-indexed xyz caches compare hits to original results. Excludes the ordered-generation vertical-bounds early return; writes seed simulations after the first read establishes context. Snapshot and undo start cold. Pointer identity is an observation key, not a production immutability contract. Five uninstrumented warmups and twenty instrumented complete lit regions per case. Observer time/memory are not production performance.",
+            "scope":"Original Overlay::material results always drive generation. Five simulated direct-indexed xyz caches compare hits to original results. Excludes the ordered-generation vertical-bounds early return; writes seed simulations after the first read establishes context. Snapshot and undo start cold. Per-root attribution identifies the stable View's root, labeled by its first recipe; providers without that metadata and mixed-context traces remain unattributed. Pointer identity is an observation key, not a production immutability contract. Five uninstrumented warmups and twenty instrumented complete lit regions per case. Observer time/memory are not production performance.",
             "cases":cases,"timing_acceptance":false,
         })).unwrap()).unwrap();
         assert_eq!(mismatches, 0, "simulated material reuse disagreed with actual reads");
