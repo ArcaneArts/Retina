@@ -360,11 +360,33 @@ struct Planner<'a> {
     ready_columns: Map<(usize, i32, i32), Arc<ColumnTile>>,
     error: Mutex<Option<String>>,
 }
+struct ViewColumns {
+    values: Map<(i32, i32), Arc<ColumnState>>,
+    counts: Option<[u64; 2]>,
+}
+impl Default for ViewColumns {
+    fn default() -> Self {
+        Self {
+            values: Map::default(),
+            counts: crate::performance::enabled().then_some([0; 2]),
+        }
+    }
+}
 struct View<'a, 'b> {
     planner: &'a Planner<'b>,
     before: usize,
     base: Arc<Field<'static>>,
-    columns: Mutex<Map<(i32, i32), Arc<ColumnState>>>,
+    columns: Mutex<ViewColumns>,
+}
+impl Drop for View<'_, '_> {
+    fn drop(&mut self) {
+        let columns = self.columns.get_mut().unwrap_or_else(|e| e.into_inner());
+        if let Some([reads, loads]) = columns.counts {
+            // Publish once per view, avoiding a contended atomic per scalar read.
+            self.planner.metrics.performance.add(Perf::view_column_cached_reads, reads);
+            self.planner.metrics.performance.add(Perf::view_column_loads, loads);
+        }
+    }
 }
 impl View<'_, '_> {
     fn terrain(&self, x: i32, z: i32) -> Result<Arc<Field<'static>>, String> {
@@ -382,23 +404,23 @@ impl View<'_, '_> {
         z: i32,
         read: impl FnOnce(&ColumnState) -> T,
     ) -> Result<T, String> {
-        if let Some(column) = self
-            .columns
-            .lock()
-            .map_err(|_| "anchor view poisoned")?
-            .get(&(x, z))
         {
-            self.planner.metrics.performance.add(Perf::view_column_cached_reads, 1);
-            // Only immutable material/height scalar access runs under this lock.
-            // No recursive planner or terrain work may enter this callback.
-            return Ok(read(column));
+            let mut columns = self.columns.lock().map_err(|_| "anchor view poisoned")?;
+            let ViewColumns { values, counts } = &mut *columns;
+            if let Some(column) = values.get(&(x, z)) {
+                if let Some(counts) = counts { counts[0] += 1; }
+                // Only immutable material/height scalar access runs under this
+                // lock. No recursive planner or terrain work may enter it.
+                return Ok(read(column));
+            }
+            if let Some(counts) = counts { counts[1] += 1; }
         }
-        self.planner.metrics.performance.add(Perf::view_column_loads, 1);
         let column = self.planner.column(self.before, x, z)?;
         let value = read(&column);
         self.columns
             .lock()
             .map_err(|_| "anchor view poisoned")?
+            .values
             .insert((x, z), column);
         Ok(value)
     }
@@ -554,7 +576,7 @@ impl Planner<'_> {
                     planner: self,
                     before: root,
                     base: base.clone(),
-                    columns: Mutex::new(Map::default()),
+                    columns: Mutex::new(ViewColumns::default()),
                 };
                 let field = Field {
                     origin_x: x,
@@ -675,7 +697,7 @@ impl Planner<'_> {
             planner: self,
             before: root,
             base: base.clone(),
-            columns: Mutex::new(Map::default()),
+            columns: Mutex::new(ViewColumns::default()),
         };
         crate::structures::prepare(self.engine, request, self.profile, &starts, Some(&view))?;
         let mut blocks = vec![0; request.block_count()];
