@@ -221,11 +221,24 @@ struct Output {
     columns: Map<(i32, i32), Vec<usize>>,
 }
 /// Immutable commands from all possible writers of the requested volume.
-/// Outputs remain in source anchor order; command indices preserve within-root
-/// support reads such as vines and cocoa.
+/// Outputs remain in source anchor order. Each column stores one anchor ID per
+/// group and borrows its existing command index list, preserving within-root
+/// support reads without duplicating one pair of indices per command.
 struct CompletedRoot {
     anchors: Vec<((i32, i32), Arc<Output>)>,
-    columns: Map<usize, Vec<(usize, usize)>>,
+    columns: Map<usize, Vec<usize>>,
+}
+impl CompletedRoot {
+    fn writes(&self, column: usize, x: i32, z: i32)
+        -> impl Iterator<Item = ((i32, i32, usize), WorldBlock)> + '_
+    {
+        self.columns.get(&column).into_iter().flatten().flat_map(move |&anchor| {
+            let ((ax, az), output) = &self.anchors[anchor];
+            output.columns.get(&(x, z)).into_iter().flatten().map(move |&index| {
+                ((*az, *ax, index), output.writes[index])
+            })
+        })
+    }
 }
 // A failure is rare, but its inline String enlarged every column slot. Keep
 // the error behind one pointer without adding allocations to successful builds.
@@ -513,6 +526,7 @@ impl Planner<'_> {
             anchors: Vec::with_capacity(targets.len()),
             columns: Map::default(),
         };
+        let mut command_count = 0;
         for &(ax, az) in targets {
             let output = self
                 .ready
@@ -525,7 +539,8 @@ impl Planner<'_> {
                         .columns
                         .entry(column)
                         .or_default()
-                        .extend(indices.iter().map(|&index| (anchor, index)));
+                        .push(anchor);
+                    command_count += indices.len() as u64;
                 }
             }
             completed.anchors.push(((ax, az), output.clone()));
@@ -538,6 +553,10 @@ impl Planner<'_> {
         }
         self.metrics.performance.add(
             Perf::completed_column_commands,
+            command_count,
+        );
+        self.metrics.performance.add(
+            Perf::completed_column_groups,
             completed.columns.values().map(|v| v.len() as u64).sum(),
         );
         self.completed.push(completed);
@@ -865,9 +884,7 @@ impl Planner<'_> {
             .get(before - 1)
             .zip(self.versions.index(x, z))
         {
-            for &(anchor, index) in root.columns.get(&column).into_iter().flatten() {
-                let ((ax, az), output) = &root.anchors[anchor];
-                let key = (*az, *ax, index);
+            for (key, block) in root.writes(column, x, z) {
                 if limit.is_some_and(|limit| key >= limit) {
                     continue;
                 }
@@ -876,7 +893,7 @@ impl Planner<'_> {
                     x,
                     z,
                     key,
-                    output.writes[index],
+                    block,
                     &prior,
                     &mut blocks,
                 )?;
@@ -1433,6 +1450,34 @@ mod tests {
                 .collect::<Vec<_>>(),
             vec![(i32::MIN / 16, i32::MIN / 16)]
         );
+    }
+    #[test]
+    fn grouped_columns_keep_anchor_and_global_command_order_for_prefix_limits() {
+        let block = |x, material| WorldBlock {
+            root_order: 0, x, y: 8, z: -16, material, upper: 0, role: FEATURE, tick: 0,
+        };
+        let root = CompletedRoot {
+            anchors: vec![
+                ((-2, -1), Arc::new(Output {
+                    metadata: None,
+                    writes: vec![block(-32, 1), block(-31, 2), block(-32, 3)],
+                    columns: [((-32, -16), vec![0, 2]), ((-31, -16), vec![1])].into_iter().collect(),
+                })),
+                ((-1, -1), Arc::new(Output {
+                    metadata: None, writes: vec![block(-32, 4)],
+                    columns: [((-32, -16), vec![0])].into_iter().collect(),
+                })),
+            ],
+            columns: [(0, vec![0, 1]), (1, vec![0])].into_iter().collect(),
+        };
+        assert_eq!(root.writes(0, -32, -16).map(|(key, b)| (key, b.material)).collect::<Vec<_>>(),
+            vec![((-1, -2, 0), 1), ((-1, -2, 2), 3), ((-1, -1, 0), 4)]);
+        let limit = (-1, -2, 2);
+        assert_eq!(root.writes(0, -32, -16).filter(|(key, _)| *key < limit)
+            .map(|(_, b)| b.material).collect::<Vec<_>>(), vec![1]);
+        assert_eq!(root.writes(1, -31, -16).filter(|(key, _)| *key < limit)
+            .map(|(_, b)| b.material).collect::<Vec<_>>(), vec![2]);
+        assert_eq!(root.writes(2, -30, -16).count(), 0);
     }
     #[test]
     fn completed_versions_preserve_root_boundaries_and_negative_volume_edges() {
