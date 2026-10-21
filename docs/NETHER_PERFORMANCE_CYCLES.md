@@ -432,3 +432,35 @@ calls for this corpus profile; its output also matches all three references. Com
 validation and provisional observations are recorded in
 `docs/benchmarks/nether-perf-cycle14-2026-10-20.json`. Quiet timing confirmation
 remains deferred, and the sub-second goal remains open.
+
+PR #179 (`ca2fde8`) merged the direct terrain lookup follow-up. The actual merged
+build passes 119 native tests and is byte-identical to the validated candidate.
+All 5,120 post-merge smoke chunks match every reference. Quiet timing acceptance
+and the sub-second target remain pending.
+
+## Deterministic ore replay follow-up (evidence cycle 19)
+
+Eligible ore roots now emit conditional replacement commands instead of reading
+prior materials for every candidate voxel. Ordered dependency and final replay
+perform those material checks in source order. Eligibility requires a uniform,
+deterministic replacement across the entire root, material-independent placement,
+zero air-discard probability, and preservation of all six heightmap masks. Nested
+selectors, probabilistic rules and other ineligible features retain eager reads.
+Geometry and RNG consumption remain unchanged; overlapping uniform replacements
+are idempotent. Reference feature sampling retains the eager path.
+
+The initial diagnostic region reduces reconstructed columns from 10,685,959 to
+7,253,869 and evaluated anchors from 98,555 to 88,417. Eight eligible roots emit
+2,089,170 conditional candidates. These are work counts, not elapsed-time speedup
+claims. The implementation passes 122 native tests, including eager/deferred RNG
+continuation and overlapping-anchor parity. All 102,400 full-corpus chunks and
+20,480 reverse-order two-caller chunks match the immutable original, Cycle 5 and
+preceding merged Cycle 14 outputs.
+
+Provisional main-seed medians are 2.02 and 2.33 seconds. Concurrent latency remains
+unresolved: the reverse-order run includes a 41.9-second region while other
+requests continue completing. This change does not establish a concurrency or
+no-regression acceptance result. Quiet timing confirmation remains deferred by
+the user; the sub-second median/p95 goal remains open. The full measurements,
+coverage, library provenance, limitations and reproduction commands are in
+`docs/benchmarks/nether-perf-cycle19-2026-10-20.json`.
