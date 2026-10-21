@@ -345,28 +345,32 @@ fn generate_region_inner(
         if let Some(p) = profile.as_deref().filter(|_| !source_order) {
             crate::structures::prepare(engine, origin, p, &structure_plans, None)?;
         }
+        // The caller dispatches bounded root phases; it never submits the
+        // complete remaining ordered region as one stealable Rayon task.
+        let pool = assemblers()?;
+        let mut generation = if let Some(p) = profile.as_deref().filter(|_| source_order) {
+            Some(timings.time(timings::VEGETATION_PLAN, || {
+                decoration::dependencies::generate(
+                    engine,
+                    p,
+                    origin,
+                    32,
+                    Some(&job),
+                    None,
+                    true,
+                    Some(&field),
+                    Some(pool),
+                )
+            })?)
+        } else {
+            None
+        };
         let pool_queued = session.performance.start();
-        assemblers()?.install(|| {
+        pool.install(|| {
             session.performance.elapsed(
                 crate::performance::Counter::region_pool_wait_nanos,
                 pool_queued,
             );
-            let mut generation = if let Some(p) = profile.as_deref().filter(|_| source_order) {
-                Some(timings.time(timings::VEGETATION_PLAN, || {
-                    decoration::dependencies::generate(
-                        engine,
-                        p,
-                        origin,
-                        32,
-                        Some(&job),
-                        None,
-                        true,
-                        Some(&field),
-                    )
-                })?)
-            } else {
-                None
-            };
             let overlays = if let Some(generation) = generation.as_mut() {
                 std::mem::take(&mut generation.placements)
             } else {
