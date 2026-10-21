@@ -1549,3 +1549,71 @@ Report: `docs/benchmarks/nether-perf-cycle54-2026-10-21.json`. External `cycle54
 evidence retains immutable executables/libraries, full MCA output, both observer
 reports, complete comparisons, host samples and the initial import-only compile
 failure. Commands and the next-cycle hypothesis are recorded there.
+
+
+Cycle 54 post-merge confirmation: PR #196 merged as
+`333afdc1846f5c4740f83ecddb12025413ba3230`. The forced rebuild passed 159 native
+tests and produced the exact selected normal-library SHA-256
+`b756e6d33ded4bc7ef8558be954dd1e0498268124eaea8ed94dd0a517fd6dc71`.
+All 102,400 measured chunks matched five references. Actual merged median/p95
+observations were 1445/2209 ms (main), 1426/2212 (second seed), 1396/1975 (custom),
+1050/1381 (direct stem) and 550/784 (Overworld). All measured regions reported
+shader status 4. These remain provisional, and the performance goal remains open.
+The owned cycle 54 worktree was removed after preserving its branch and evidence.
+
+## Cycle 55 — held single-entry basalt-column reader
+
+The prototype scopes one exact xyz/material value to a single ColumnCluster
+invocation. Only the immutable ordered View opts into stable successful reads;
+other PriorWorld implementations retain original calls. Missing values are not
+cached, and every possible write clears the entry before provider sampling.
+The entry stays on the stack and ends before another feature, snapshot or undo.
+
+All 161 native tests pass. New tests compare every command, overlay material,
+return value, RNG state and undo across three origins, three height ranges,
+three seeds and temporarily missing values. A stateful-provider test verifies
+that two reads of the same coordinate can return different values and reject
+placement before consuming RNG.
+
+The live inventory removes 4,312,862 original material lookups per main-seed
+region (16.078%) and 4,194,184 in the second seed (15.900%). Only the two basalt
+column roots change; other root counts, custom profiles and Overworld counts
+remain identical. Each full measured corpus matches the original and preceding
+references: 102,400 observer chunks, 327,680 chunks across ordinary ABBA runs,
+and 122,880 in the paired follow-up. These repeat the agreed coordinates.
+
+Ordinary ABBA did not establish a useful gain. The same baseline binary drifted
+from 1025/1235 to 1458/1732 ms main median/p95 and from 339/406 to 740/951 ms for
+Overworld. External build/browser workloads were recorded. Candidate first-leg
+slowdowns remain in the report; they are not dismissed as noise.
+
+A closer experiment kept separate baseline/candidate processes resident and
+alternated the first engine for each full-region pair. Each engine had five
+warmups and its own identical twenty-region history. Only one generated at a
+time. All measured regions reported shader status 4; generation finished before
+full-NBT comparison. Both workers exited successfully in every case.
+
+| Case | Baseline median/p95 ms | Candidate median/p95 ms | Baseline/candidate chunks/s | Candidate faster pairs |
+| --- | ---: | ---: | ---: | ---: |
+| Main | 1117 / 1653 | 1132 / 1647 | 905 / 897 | 10 / 20 |
+| Second seed | 1712 / 3040 | 1591 / 3548 | 588 / 564 | 8 / 20 |
+| Overworld | 277 / 340 | 281 / 347 | 3652 / 3599 | 8 / 20 |
+
+The main paired median ratio is 0.9947; the second seed is 1.0534. The favorable
+second-seed median does not outweigh its worse aggregate throughput and tail.
+Host activity still limits attribution, and two resident engines differ from a
+single-engine acceptance run. No quiet regression or speedup is claimed.
+
+**Held, not selected.** Fewer lookups do not establish a useful whole-region
+improvement. Preserve the isolated worktree and immutable libraries for recovery
+or a later quiet retest. The prepared concurrency driver was not run; additional
+acceptance work is unwarranted until a benefit is demonstrated. Next inspect
+version-marker allocation/retirement and prefix-history lookup shape before
+choosing another layout change. This remains a hypothesis, not an established
+bottleneck, and the held cycle 26 column-state arena must not be reapplied blindly.
+
+Report: `docs/benchmarks/nether-perf-cycle55-2026-10-21.json`. The complete
+assessment, paired harness snapshot, process logs, worlds and immutable binaries
+remain under external `cycle55/`. Native source is
+`7157282f0a9a50cbdbb94b700c25cb6a86067f38`; normal library SHA-256 is
+`eb7139784bfe97d83f046febc924a9cc33a0af644240599d1c9cfccbc3f51b67`.

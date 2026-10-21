@@ -1,0 +1,490 @@
+{
+  "status": "HELD; no production selection or PR",
+  "native_revision": "7157282f0a9a50cbdbb94b700c25cb6a86067f38",
+  "native_tree": "2376a66750b21ea10856fd0b7ae9f236b317710b",
+  "native_sha256": "eb7139784bfe97d83f046febc924a9cc33a0af644240599d1c9cfccbc3f51b67",
+  "implementation": "One exact xyz/material entry local to ColumnCluster invocation, with explicit stable prior-view opt-in, missing-read fallback and clearing before every possible write. No heap allocation or global retained state.",
+  "tests": {
+    "passed": 161,
+    "failed": 0,
+    "ignored": 45
+  },
+  "workload_rows": [
+    {
+      "case": "nether-main",
+      "before_reads": 536480488,
+      "after_reads": 450223245,
+      "avoided_reads": 86257243,
+      "avoided_reads_per_region": 4312862.15,
+      "reduction_percent": 16.078356050108574,
+      "changed_roots": [
+        {
+          "root": "4:minecraft:small_basalt_columns/choice0",
+          "before_reads": 33096867,
+          "after_reads": 17414982,
+          "avoided_reads": 15681885
+        },
+        {
+          "root": "5:minecraft:large_basalt_columns/choice0",
+          "before_reads": 121394124,
+          "after_reads": 50818766,
+          "avoided_reads": 70575358
+        }
+      ],
+      "mismatches": 0,
+      "context_resets": 0,
+      "program_statuses_before": [
+        4
+      ],
+      "program_statuses_after": [
+        4
+      ]
+    },
+    {
+      "case": "nether-second-seed",
+      "before_reads": 527573458,
+      "after_reads": 443689774,
+      "avoided_reads": 83883684,
+      "avoided_reads_per_region": 4194184.2,
+      "reduction_percent": 15.89990601839564,
+      "changed_roots": [
+        {
+          "root": "4:minecraft:small_basalt_columns/choice0",
+          "before_reads": 32933876,
+          "after_reads": 17076898,
+          "avoided_reads": 15856978
+        },
+        {
+          "root": "5:minecraft:large_basalt_columns/choice0",
+          "before_reads": 116533698,
+          "after_reads": 48506992,
+          "avoided_reads": 68026706
+        }
+      ],
+      "mismatches": 0,
+      "context_resets": 0,
+      "program_statuses_before": [
+        4
+      ],
+      "program_statuses_after": [
+        4
+      ]
+    },
+    {
+      "case": "nether-custom-bounds",
+      "before_reads": 249945244,
+      "after_reads": 249945244,
+      "avoided_reads": 0,
+      "avoided_reads_per_region": 0.0,
+      "reduction_percent": 0.0,
+      "changed_roots": [],
+      "mismatches": 0,
+      "context_resets": 0,
+      "program_statuses_before": [
+        4
+      ],
+      "program_statuses_after": [
+        4
+      ]
+    },
+    {
+      "case": "nether-direct-stem",
+      "before_reads": 243752923,
+      "after_reads": 243752923,
+      "avoided_reads": 0,
+      "avoided_reads_per_region": 0.0,
+      "reduction_percent": 0.0,
+      "changed_roots": [],
+      "mismatches": 0,
+      "context_resets": 0,
+      "program_statuses_before": [
+        4
+      ],
+      "program_statuses_after": [
+        4
+      ]
+    },
+    {
+      "case": "overworld",
+      "before_reads": 77430084,
+      "after_reads": 77430084,
+      "avoided_reads": 0,
+      "avoided_reads_per_region": 0.0,
+      "reduction_percent": 0.0,
+      "changed_roots": [],
+      "mismatches": 0,
+      "context_resets": 0,
+      "program_statuses_before": [
+        4
+      ],
+      "program_statuses_after": [
+        4
+      ]
+    }
+  ],
+  "correctness": {
+    "observer": {
+      "measured_chunks": 102400,
+      "reference_sets": 5
+    },
+    "ordinary_ABBA": {
+      "measured_chunks": 327680,
+      "reference_sets": 4
+    },
+    "paired_ordinary": {
+      "measured_chunks": 122880,
+      "reference_sets": 4
+    },
+    "result": "All complete NBT and membership match. These are repeated coordinates, not distinct-world coverage."
+  },
+  "ordinary_ABBA_rows": [
+    {
+      "leg": "old-a",
+      "case": "nether-main-run0",
+      "median_ms": 1025.1034999964759,
+      "p95_region_ms": 1235.1310868514702,
+      "maximum_region_ms": 1291.0750831943005,
+      "total_ms": 19765.199166024104,
+      "chunks_per_second": 1036.164615796264,
+      "generation_peak_rss_bytes": 2232614912,
+      "program_statuses": [
+        4
+      ]
+    },
+    {
+      "leg": "old-a",
+      "case": "nether-second-seed-run0",
+      "median_ms": 1188.2585416315123,
+      "p95_region_ms": 1610.6733308173716,
+      "maximum_region_ms": 1763.4641660843045,
+      "total_ms": 24208.99554202333,
+      "chunks_per_second": 845.9665319219737,
+      "generation_peak_rss_bytes": 2255323136,
+      "program_statuses": [
+        4
+      ]
+    },
+    {
+      "leg": "old-a",
+      "case": "nether-custom-bounds-run0",
+      "median_ms": 809.1655625030398,
+      "p95_region_ms": 1031.7297473433428,
+      "maximum_region_ms": 1074.9681671150029,
+      "total_ms": 16410.746916895732,
+      "chunks_per_second": 1247.962698085043,
+      "generation_peak_rss_bytes": 1948958720,
+      "program_statuses": [
+        4
+      ]
+    },
+    {
+      "leg": "old-a",
+      "case": "nether-direct-stem-run0",
+      "median_ms": 793.8860000576824,
+      "p95_region_ms": 1088.4808610426264,
+      "maximum_region_ms": 1392.9302499163896,
+      "total_ms": 16787.770542083308,
+      "chunks_per_second": 1219.9356638012814,
+      "generation_peak_rss_bytes": 1982267392,
+      "program_statuses": [
+        4
+      ]
+    },
+    {
+      "leg": "old-a",
+      "case": "overworld-run0",
+      "median_ms": 338.795687421225,
+      "p95_region_ms": 405.89166053105146,
+      "maximum_region_ms": 415.50158290192485,
+      "total_ms": 6776.762624969706,
+      "chunks_per_second": 3022.091983056814,
+      "generation_peak_rss_bytes": 1533280256,
+      "program_statuses": [
+        4
+      ]
+    },
+    {
+      "leg": "new-a",
+      "case": "nether-main-run0",
+      "median_ms": 1349.1895834449679,
+      "p95_region_ms": 1666.283313918393,
+      "maximum_region_ms": 1751.7884999979287,
+      "total_ms": 27171.090791001916,
+      "chunks_per_second": 753.742282837693,
+      "generation_peak_rss_bytes": 2180153344,
+      "program_statuses": [
+        4
+      ]
+    },
+    {
+      "leg": "new-a",
+      "case": "nether-second-seed-run0",
+      "median_ms": 2128.208520472981,
+      "p95_region_ms": 3207.872633007355,
+      "maximum_region_ms": 3209.1845830436796,
+      "total_ms": 45028.21195893921,
+      "chunks_per_second": 454.82596596719213,
+      "generation_peak_rss_bytes": 2367979520,
+      "program_statuses": [
+        4
+      ]
+    },
+    {
+      "leg": "new-a",
+      "case": "nether-custom-bounds-run0",
+      "median_ms": 1498.3181459829211,
+      "p95_region_ms": 2199.037995387335,
+      "maximum_region_ms": 2405.3478341083974,
+      "total_ms": 32173.972917022184,
+      "chunks_per_second": 636.5393559825094,
+      "generation_peak_rss_bytes": 1940226048,
+      "program_statuses": [
+        4
+      ]
+    },
+    {
+      "leg": "new-a",
+      "case": "nether-direct-stem-run0",
+      "median_ms": 1364.6316659869626,
+      "p95_region_ms": 1970.9386102040307,
+      "maximum_region_ms": 3070.7921250723302,
+      "total_ms": 29618.162208003923,
+      "chunks_per_second": 691.467615585735,
+      "generation_peak_rss_bytes": 1954086912,
+      "program_statuses": [
+        4
+      ]
+    },
+    {
+      "leg": "new-a",
+      "case": "overworld-run0",
+      "median_ms": 500.26270805392414,
+      "p95_region_ms": 631.8566021160223,
+      "maximum_region_ms": 659.7766659688205,
+      "total_ms": 10132.815415970981,
+      "chunks_per_second": 2021.1559333963744,
+      "generation_peak_rss_bytes": 2239643648,
+      "program_statuses": [
+        4
+      ]
+    },
+    {
+      "leg": "new-b",
+      "case": "nether-main-run0",
+      "median_ms": 1278.856041491963,
+      "p95_region_ms": 1849.8208378558047,
+      "maximum_region_ms": 1909.0019578579813,
+      "total_ms": 26454.100916162133,
+      "chunks_per_second": 774.1710846611212,
+      "generation_peak_rss_bytes": 2302820352,
+      "program_statuses": [
+        4
+      ]
+    },
+    {
+      "leg": "new-b",
+      "case": "nether-second-seed-run0",
+      "median_ms": 1587.2123126173392,
+      "p95_region_ms": 2168.2929007452917,
+      "maximum_region_ms": 2303.141916869208,
+      "total_ms": 31591.525916941464,
+      "chunks_per_second": 648.2751119349151,
+      "generation_peak_rss_bytes": 2349219840,
+      "program_statuses": [
+        4
+      ]
+    },
+    {
+      "leg": "new-b",
+      "case": "overworld-run0",
+      "median_ms": 374.8279585270211,
+      "p95_region_ms": 518.7053522211503,
+      "maximum_region_ms": 993.4104171115905,
+      "total_ms": 8167.316625127569,
+      "chunks_per_second": 2507.5555338446443,
+      "generation_peak_rss_bytes": 1613660160,
+      "program_statuses": [
+        4
+      ]
+    },
+    {
+      "leg": "old-b",
+      "case": "nether-main-run0",
+      "median_ms": 1458.0318130319938,
+      "p95_region_ms": 1732.0116832619535,
+      "maximum_region_ms": 1994.8825419414788,
+      "total_ms": 27898.972041904926,
+      "chunks_per_second": 734.0772258289139,
+      "generation_peak_rss_bytes": 2202992640,
+      "program_statuses": [
+        4
+      ]
+    },
+    {
+      "leg": "old-b",
+      "case": "nether-second-seed-run0",
+      "median_ms": 1743.8067710027099,
+      "p95_region_ms": 2642.345120094251,
+      "maximum_region_ms": 2801.5951248817146,
+      "total_ms": 36017.89391716011,
+      "chunks_per_second": 568.6062612962124,
+      "generation_peak_rss_bytes": 2352676864,
+      "program_statuses": [
+        4
+      ]
+    },
+    {
+      "leg": "old-b",
+      "case": "overworld-run0",
+      "median_ms": 740.1845830027014,
+      "p95_region_ms": 951.0546857956797,
+      "maximum_region_ms": 966.3310418836772,
+      "total_ms": 15094.006833154708,
+      "chunks_per_second": 1356.8299144409223,
+      "generation_peak_rss_bytes": 1646673920,
+      "program_statuses": [
+        4
+      ]
+    }
+  ],
+  "paired_ordinary_rows": [
+    {
+      "case": "nether-main",
+      "summary": {
+        "old": {
+          "median_ms": 1116.6558540426195,
+          "p95_ms": 1653.4870853298344,
+          "maximum_ms": 1712.7117079216987,
+          "total_ms": 22626.69124919921,
+          "chunks_per_second": 905.1257108007259,
+          "generation_process_peak_rss_bytes": 2212855808,
+          "program_statuses": [
+            4
+          ]
+        },
+        "new": {
+          "median_ms": 1131.9221045123413,
+          "p95_ms": 1647.344693460036,
+          "maximum_ms": 1721.8505409546196,
+          "total_ms": 22831.99541689828,
+          "chunks_per_second": 896.9868654074127,
+          "generation_process_peak_rss_bytes": 2184036352,
+          "program_statuses": [
+            4
+          ]
+        },
+        "paired": {
+          "median_new_over_old": 0.9946556828005138,
+          "new_faster_pairs": 10,
+          "pairs": 20
+        }
+      }
+    },
+    {
+      "case": "nether-second-seed",
+      "summary": {
+        "old": {
+          "median_ms": 1711.9641249300912,
+          "p95_ms": 3039.8302898742263,
+          "maximum_ms": 3785.1195000112057,
+          "total_ms": 34853.26237627305,
+          "chunks_per_second": 587.6063990480876,
+          "generation_process_peak_rss_bytes": 2347909120,
+          "program_statuses": [
+            4
+          ]
+        },
+        "new": {
+          "median_ms": 1590.7868959475309,
+          "p95_ms": 3547.8400041582067,
+          "maximum_ms": 4282.20433415845,
+          "total_ms": 36308.453377569094,
+          "chunks_per_second": 564.0559730548117,
+          "generation_process_peak_rss_bytes": 2282340352,
+          "program_statuses": [
+            4
+          ]
+        },
+        "paired": {
+          "median_new_over_old": 1.0534419663506536,
+          "new_faster_pairs": 8,
+          "pairs": 20
+        }
+      }
+    },
+    {
+      "case": "overworld",
+      "summary": {
+        "old": {
+          "median_ms": 276.84989606495947,
+          "p95_ms": 339.8200644296594,
+          "maximum_ms": 354.7489591874182,
+          "total_ms": 5608.488544356078,
+          "chunks_per_second": 3651.607708213898,
+          "generation_process_peak_rss_bytes": 1527332864,
+          "program_statuses": [
+            4
+          ]
+        },
+        "new": {
+          "median_ms": 280.5328540271148,
+          "p95_ms": 347.4061709479429,
+          "maximum_ms": 348.9579171873629,
+          "total_ms": 5691.000040154904,
+          "chunks_per_second": 3598.664532682476,
+          "generation_process_peak_rss_bytes": 1550532608,
+          "program_statuses": [
+            4
+          ]
+        },
+        "paired": {
+          "median_new_over_old": 1.001549055517593,
+          "new_faster_pairs": 8,
+          "pairs": 20
+        }
+      }
+    }
+  ],
+  "decision_reasons": [
+    "Main paired aggregate throughput changes from 905.1 to 897.0 chunks/s; candidate wins 10/20 pairs with median paired ratio 0.9947. No useful whole-region gain is established.",
+    "Second seed candidate median improves, but aggregate throughput falls from 587.6 to 564.1 chunks/s and p95 rises from 3039.8 to 3547.8 ms. Candidate wins 8/20 pairs; median paired ratio is 1.0534. Do not select on the favorable median alone.",
+    "Overworld paired results are close: 3651.6 versus 3598.7 chunks/s; median paired ratio is 1.00155.",
+    "External work and host drift remain recorded limitations. These results neither prove a quiet regression nor justify merging solely on 16% fewer reads.",
+    "Keep the candidate isolated. Do not spend the full concurrency/lifecycle acceptance suite on it unless stronger evidence establishes a viable benefit."
+  ],
+  "timing_acceptance": false,
+  "method": "Five warmups and twenty measured regions per case/run. The paired harness uses two isolated resident ordinary-library processes, one generating at a time, alternating first position per region pair. Both keep the same coordinate history. All measured paired regions reported shader status 4. Instrumented read counts are separate from ordinary timing.",
+  "limits": [
+    "External build/browser work and CPU-load drift are retained in host observations.",
+    "The two resident workers make the paired run a comparison experiment, not final single-engine memory or quiet timing acceptance.",
+    "Concurrency/lifecycle acceptance was intentionally not run for an unselected prototype."
+  ],
+  "next": "Return to current merged baseline. Inspect evidence for version-marker allocation/retirement and prefix-history lookup shape before selecting another data-layout change. Do not reapply held C26 column-state arenas or claim this cost is established without measurement.",
+  "evidence_root": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle55",
+  "commands": [
+    "python3 column-cluster-read-inventory.py",
+    "python3 column-cluster-read-comparison.py",
+    [
+      "paired-native-regions.py",
+      "--workspace",
+      "/tmp/retina-nether-column-cluster-reads",
+      "--out",
+      "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle55/paired-normal",
+      "--old",
+      "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle54/merged.dylib",
+      "--new",
+      "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle55/normal.dylib",
+      "--old-revision",
+      "333afdc1846f5c4740f83ecddb12025413ba3230",
+      "--new-revision",
+      "7157282f0a9a50cbdbb94b700c25cb6a86067f38"
+    ]
+  ],
+  "recovery": {
+    "worktree": "/tmp/retina-nether-column-cluster-reads",
+    "branch": "codex/nether-column-cluster-reads",
+    "native_commit": "7157282f0a9a50cbdbb94b700c25cb6a86067f38",
+    "normal_library": "cycle55/normal.dylib",
+    "normal_sha256": "eb7139784bfe97d83f046febc924a9cc33a0af644240599d1c9cfccbc3f51b67"
+  }
+}
