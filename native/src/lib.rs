@@ -1114,7 +1114,7 @@ impl TerrainEngine {
         }
         if patch_halo && side > 1 {
             if let Some(mask) = cached {
-                if let Some(field) = terrain_cache::exact_patch_field(request, side, &mask) {
+                if let Some(field) = self.cached_patch_field(request, side, &mask)? {
                     if let Some(p) = &performance {
                         p.performance.add(performance::Counter::terrain_exact_tile_cache_hits, 1);
                     }
@@ -1141,21 +1141,7 @@ impl TerrainEngine {
             });
         }
         let mask = Arc::new(mask);
-        let requests: Vec<_> = (0..tile_side * tile_side)
-            .map(|i| ChunkRequest {
-                chunk_x: origin.chunk_x + (i % tile_side) as i32,
-                chunk_z: origin.chunk_z + (i / tile_side) as i32,
-                ..origin
-            })
-            .collect();
-        self.cache
-            .lock()
-            .map_err(|_| "column cache poisoned")?
-            .insert(&requests, &columns);
-        self.caves
-            .lock()
-            .map_err(|_| "cave cache poisoned")?
-            .insert(request, side, mask.clone());
+        self.cache_terrain(request, side, origin, tile_side, &columns, &mask)?;
         let columns = if material_halo {
             // Keep anchor counts/order and CPU planning bounds exactly as before.
             // The extra GPU guard's columns can still satisfy future cache queries.
@@ -1181,6 +1167,52 @@ impl TerrainEngine {
             },
             Some(mask),
         ))
+    }
+
+    /// Reuse only data obtained for the same full CacheKey and exact patch tile.
+    /// Populate the existing caches just as a freshly generated tile would.
+    pub(crate) fn cached_patch_field(
+        &self,
+        request: ChunkRequest,
+        side: u32,
+        mask: &Arc<geology::CaveMask>,
+    ) -> Result<Option<decoration::Field<'static>>, String> {
+        let Some(field) = terrain_cache::exact_patch_field(request, side, mask) else {
+            return Ok(None);
+        };
+        let halo = mask.columns.as_ref().expect("exact patch field retains its columns");
+        let origin = ChunkRequest {
+            chunk_x: halo.origin_x, chunk_z: halo.origin_z, ..request
+        };
+        self.cache_terrain(request, side, origin, halo.side as u32, &halo.columns, mask)?;
+        Ok(Some(field))
+    }
+
+    fn cache_terrain(
+        &self,
+        request: ChunkRequest,
+        side: u32,
+        origin: ChunkRequest,
+        tile_side: u32,
+        columns: &[Column],
+        mask: &Arc<geology::CaveMask>,
+    ) -> Result<(), String> {
+        let requests: Vec<_> = (0..tile_side * tile_side)
+            .map(|i| ChunkRequest {
+                chunk_x: origin.chunk_x + (i % tile_side) as i32,
+                chunk_z: origin.chunk_z + (i / tile_side) as i32,
+                ..origin
+            })
+            .collect();
+        self.cache
+            .lock()
+            .map_err(|_| "column cache poisoned")?
+            .insert(&requests, columns);
+        self.caves
+            .lock()
+            .map_err(|_| "cave cache poisoned")?
+            .insert(request, side, mask.clone());
+        Ok(())
     }
 
     fn dispatch(&self, requests: Vec<ChunkRequest>, tile_side: u32) -> Result<Vec<Column>, String> {

@@ -16,7 +16,7 @@ pub(crate) fn exact_patch_field(
     let halo = exact_patch_halo(request, side, mask)?;
     let tile_side = side as usize + 6;
     // Same ring-1 crop as the fresh patch-halo producer. Keep the existing
-    // immutable mask; do not reinsert it or alter cache retention/eviction.
+    // immutable mask; the engine performs the normal cache population.
     let field_side = side as usize + 2;
     let mut columns = Vec::with_capacity(field_side * field_side * COLUMNS);
     for z in 2..2 + field_side {
@@ -353,6 +353,20 @@ mod tests {
                             Arc::ptr_eq(retained.substrate.as_ref().unwrap(), &first_mask),
                             "job must retain the cached tile through global eviction"
                         );
+                        let cached = engine.caves.lock().unwrap();
+                        for dz in 0..16 {
+                            for dx in 0..16 {
+                                let key = CacheKey::from(ChunkRequest {
+                                    chunk_x: x + dx,
+                                    chunk_z: z + dz,
+                                    ..r
+                                });
+                                assert!(
+                                    Arc::ptr_eq(&cached.entries[&key], &first_mask),
+                                    "reused tile must repopulate the normal cache"
+                                );
+                            }
+                        }
                     }
                     let different_side = if side == 32 { 16 } else { side + 1 };
                     let (_, different) = engine.terrain_field(r, different_side).unwrap();

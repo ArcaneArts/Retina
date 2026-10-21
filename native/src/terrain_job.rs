@@ -114,6 +114,13 @@ impl<'a> TerrainJob<'a> {
             .elapsed(Perf::terrain_job_lock_nanos, lock_started);
         self.initialize(&cell, x, z)
     }
+    fn cached_tile(&self, x: i32, z: i32) -> Result<Option<(Field<'static>, Option<Arc<CaveMask>>)>, String> {
+        let Some(mask) = self.cached.get(&(x, z)) else { return Ok(None) };
+        let request = ChunkRequest { chunk_x: x, chunk_z: z, ..self.request };
+        let Some(field) = self.engine.cached_patch_field(request, 16, mask)? else { return Ok(None) };
+        self.metrics.performance.add(Perf::terrain_job_cached_tile_hits, 1);
+        Ok(Some((field, Some(mask.clone()))))
+    }
     fn initialize(&self, cell: &TileCell, x: i32, z: i32) -> Result<Arc<Tile>, String> {
         let joined = self.metrics.performance.start();
         let mut built = false;
@@ -143,13 +150,8 @@ impl<'a> TerrainJob<'a> {
                         },
                         initial.substrate.clone(),
                     )
-                } else if let Some(field) = self.cached.get(&(x, z)).and_then(|mask|
-                    crate::terrain_cache::exact_patch_field(ChunkRequest {
-                        chunk_x: x, chunk_z: z, ..self.request
-                    }, 16, mask)) {
-                    self.metrics.performance.add(Perf::terrain_job_cached_tile_hits, 1);
-                    let mask = field.substrate.clone();
-                    (field, mask)
+                } else if let Some(cached) = self.cached_tile(x, z)? {
+                    cached
                 } else {
                     self.engine.terrain_field(
                         ChunkRequest {
