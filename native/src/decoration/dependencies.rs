@@ -377,17 +377,16 @@ struct Planner<'a> {
     ready_columns: Map<(usize, i32, i32), Arc<ColumnTile>>,
     error: Mutex<Option<String>>,
 }
-const VIEW_COLUMN_BUCKETS: usize = 64;
-const VIEW_COLUMN_WAYS: usize = 4;
-type ViewColumnBucket = [OnceLock<ViewColumn>; VIEW_COLUMN_WAYS];
+const VIEW_COLUMN_WIDTH: usize = 32;
+const VIEW_COLUMN_SLOTS: usize = VIEW_COLUMN_WIDTH * VIEW_COLUMN_WIDTH;
 struct ViewColumn {
     key: (i32, i32),
     column: Arc<ColumnState>,
 }
 struct ViewColumns {
-    // Each slot stays immutable for the view's lifetime. A hash bucket can
-    // retain several exact keys before using the unbounded map path.
-    slots: OnceLock<Box<[ViewColumnBucket; VIEW_COLUMN_BUCKETS]>>,
+    // The first column in a slot stays immutable for the view's lifetime.
+    // Exact keys distinguish collisions, which retain the unbounded map path.
+    slots: OnceLock<Box<[OnceLock<ViewColumn>; VIEW_COLUMN_SLOTS]>>,
     values: Mutex<Map<(i32, i32), Arc<ColumnState>>>,
     counts: Option<[AtomicU64; 5]>,
 }
@@ -402,9 +401,10 @@ impl Default for ViewColumns {
 }
 impl ViewColumns {
     fn index(key: (i32, i32)) -> usize {
-        let mut hash = super::spatial::SpatialHasher::default();
-        key.hash(&mut hash);
-        (hash.finish() >> 32) as usize % VIEW_COLUMN_BUCKETS
+        // Every 32-by-32 block window has distinct slots, including windows
+        // crossing zero. Wider/disjoint reads retain exact-key map fallback.
+        key.1.rem_euclid(VIEW_COLUMN_WIDTH as i32) as usize * VIEW_COLUMN_WIDTH
+            + key.0.rem_euclid(VIEW_COLUMN_WIDTH as i32) as usize
     }
     fn count(&self, index: usize) {
         if let Some(counts) = &self.counts { counts[index].fetch_add(1, Ordering::Relaxed); }
@@ -419,25 +419,14 @@ impl ViewColumns {
         let key = (x, z);
         // Most anchors need few or no prior material reads. Allocate the
         // fixed cache only on demand, without enlarging recursive stack frames.
-        let slots = self.slots.get_or_init(|| Box::new(std::array::from_fn(|_| {
-            std::array::from_fn(|_| OnceLock::new())
-        })));
-        let bucket = &slots[Self::index(key)];
-        let mut vacant = false;
-        for cell in bucket {
-            match cell.get() {
-                Some(slot) if slot.key == key => {
-                    self.count(0);
-                    self.count(2);
-                    return Ok(read(&slot.column));
-                }
-                None => vacant = true,
-                _ => {}
+        let slots = self.slots.get_or_init(|| Box::new(std::array::from_fn(|_| OnceLock::new())));
+        let cell = &slots[Self::index(key)];
+        if let Some(slot) = cell.get() {
+            if slot.key == key {
+                self.count(0);
+                self.count(2);
+                return Ok(read(&slot.column));
             }
-        }
-        // Slots never empty after publication, so a key can be in the map
-        // only after all the bucket's slots have been filled.
-        if !vacant {
             let values = self.values.lock().map_err(|_| "anchor view poisoned")?;
             if let Some(column) = values.get(&key) {
                 self.count(0);
@@ -450,24 +439,12 @@ impl ViewColumns {
         // just as on the original map path.
         let column = load()?;
         let value = read(&column);
-        let mut slot = ViewColumn { key, column };
-        for cell in bucket {
-            if let Some(existing) = cell.get() {
-                if existing.key == key { return Ok(value); }
-                continue;
-            }
-            match cell.set(slot) {
-                Ok(()) => return Ok(value),
-                Err(returned) => {
-                    // Another reader may have filled this cell during load
-                    // or publication. Keep its immutable value if keys match.
-                    if cell.get().unwrap().key == key { return Ok(value); }
-                    slot = returned;
-                }
+        if let Err(slot) = cell.set(ViewColumn { key, column }) {
+            if cell.get().unwrap().key != key {
+                self.values.lock().map_err(|_| "anchor view poisoned")?
+                    .insert(key, slot.column);
             }
         }
-        self.values.lock().map_err(|_| "anchor view poisoned")?
-            .insert(key, slot.column);
         Ok(value)
     }
 }
@@ -1492,48 +1469,26 @@ mod tests {
         Arc::new(ColumnState { runs: ColumnRuns::Owned(vec![u32::from(material)].into_boxed_slice()),
             heights: [i32::from(material); 6] })
     }
-    fn colliding_view_keys(count: usize) -> Vec<(i32, i32)> {
-        let bucket = ViewColumns::index((0, 0));
-        let keys: Vec<_> = (0..65536).map(|x| (x, 0))
-            .filter(|&key| ViewColumns::index(key) == bucket).take(count).collect();
-        assert_eq!(keys.len(), count);
-        keys
-    }
     #[test]
-    fn view_buckets_use_every_way_before_the_unbounded_map() {
-        let cache = ViewColumns::default();
-        let keys = colliding_view_keys(VIEW_COLUMN_WAYS + 3);
-        for (i, &(x, z)) in keys.iter().enumerate() {
-            let material = i as u16 + 1;
-            assert_eq!(cache.read(x, z, || Ok(cached_column(material)), |c| c.material(0)).unwrap(), material);
-            assert_eq!(cache.values.lock().unwrap().len(), (i + 1).saturating_sub(VIEW_COLUMN_WAYS));
-        }
-        for (i, &(x, z)) in keys.iter().enumerate().rev() {
-            assert_eq!(cache.read(x, z, || panic!("bucket or map lost its key"), |c| c.material(0)).unwrap(), i as u16 + 1);
-        }
-    }
-    #[test]
-    fn view_buckets_preserve_simultaneous_colliding_publications() {
-        let cache = ViewColumns::default();
-        let keys = colliding_view_keys(VIEW_COLUMN_WAYS * 2 + 1);
-        let ready = std::sync::Barrier::new(keys.len());
-        std::thread::scope(|scope| {
-            for (i, &(x, z)) in keys.iter().enumerate() {
-                let cache = &cache;
-                let ready = &ready;
-                scope.spawn(move || {
-                    let material = i as u16 + 1;
-                    let value = cache.read(x, z, || {
-                        ready.wait();
-                        Ok(cached_column(material))
-                    }, |c| c.material(0)).unwrap();
-                    assert_eq!(value, material);
-                });
+    fn spatial_view_slots_cover_each_complete_window_without_collisions() {
+        for (x, z) in [(-33, 17), (0, -16), (i32::MIN, i32::MAX - 31)] {
+            let cache = ViewColumns::default();
+            let mut slots = std::collections::HashSet::new();
+            for dz in 0..32 {
+                for dx in 0..32 {
+                    let key = (x + dx, z + dz);
+                    assert!(slots.insert(ViewColumns::index(key)));
+                    let material = (dz * 32 + dx + 1) as u16;
+                    assert_eq!(cache.read(key.0, key.1, || Ok(cached_column(material)), |c| c.material(0)).unwrap(), material);
+                }
             }
-        });
-        assert_eq!(cache.values.lock().unwrap().len(), keys.len() - VIEW_COLUMN_WAYS);
-        for (i, &(x, z)) in keys.iter().enumerate() {
-            assert_eq!(cache.read(x, z, || panic!("concurrent publication lost"), |c| c.material(0)).unwrap(), i as u16 + 1);
+            assert_eq!(slots.len(), VIEW_COLUMN_SLOTS);
+            assert!(cache.values.lock().unwrap().is_empty());
+            for dz in (0..32).rev() {
+                for dx in (0..32).rev() {
+                    assert_eq!(cache.read(x + dx, z + dz, || panic!("spatial slot was lost"), |c| c.material(0)).unwrap(), (dz * 32 + dx + 1) as u16);
+                }
+            }
         }
     }
     #[test]
@@ -1553,18 +1508,15 @@ mod tests {
     #[test]
     fn view_slots_allow_recursive_collision_loads_and_propagate_errors() {
         let cache = ViewColumns::default();
-        let keys = colliding_view_keys(VIEW_COLUMN_WAYS + 1);
-        let key = keys[0];
+        let key = (0, 0);
+        let collision = (1..65536).map(|x| (x, 0))
+            .find(|&other| ViewColumns::index(other) == ViewColumns::index(key)).unwrap();
         let value = cache.read(key.0, key.1, || {
-            for (i, &collision) in keys.iter().enumerate().skip(1) {
-                let material = i as u16 + 1;
-                assert_eq!(cache.read(collision.0, collision.1, || Ok(cached_column(material)), |c| c.material(0)).unwrap(), material);
-            }
+            assert_eq!(cache.read(collision.0, collision.1, || Ok(cached_column(2)), |c| c.material(0)).unwrap(), 2);
             Ok(cached_column(1))
         }, |c| c.material(0)).unwrap();
         assert_eq!(value, 1);
-        for (i, &key) in keys.iter().enumerate() {
-            let material = i as u16 + 1;
+        for (key, material) in [(key, 1), (collision, 2)] {
             assert_eq!(cache.read(key.0, key.1, || panic!("recursive result lost"), |c| c.material(0)).unwrap(), material);
         }
         assert_eq!(cache.read(-1, -1, || Err("original load failure".into()), |c| c.material(0)), Err("original load failure".into()));
