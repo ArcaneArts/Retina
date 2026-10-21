@@ -1253,6 +1253,9 @@ impl Overlay {
         profile: &WorldProfile,
         request: ChunkRequest,
     ) {
+        // Deferred ore commands intentionally leave this anchor's overlay alone.
+        // Their root proof excludes material-dependent placement and preserves
+        // heights; ordered dependency/final replay performs their replacement.
         for role in [SOIL, LOG, LEAF, COCOA, VINE, PLANT, FEATURE] {
             for b in blocks[start..].iter().filter(|b| b.role == role) {
                 if b.y < request.min_y || b.y >= request.min_y + request.height as i32 {
