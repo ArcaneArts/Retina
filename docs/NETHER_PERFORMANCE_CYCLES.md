@@ -549,3 +549,29 @@ Provisional standard-Nether medians are 1.73 and 1.85 seconds, with p95 values o
 results. The sub-second objective remains open. Complete measurements, coverage,
 proof constraints and reproduction commands are in
 `docs/benchmarks/nether-perf-cycle25-2026-10-20.json`.
+
+PR #183 (`96e1603`) merged height-only dependency views. Its actual merged
+build passes 124 native tests and is byte-identical to the validated candidate.
+All 5,120 post-merge smoke chunks match every reference. Quiet timing and the
+sub-second target remain pending.
+
+## Grouped command indices (evidence cycle 29)
+
+Completed roots now store one anchor reference per written column and reuse the
+anchor's existing command-index list. This preserves anchor order, global command
+order and support-read prefix limits. The diagnostic region replaces 7,964,621
+duplicated command pairs with 861,753 group references: about 115 MiB less index
+element payload on this machine, before vector capacity and map overhead.
+
+All 125 native tests pass. The full 102,400-chunk corpus, 20,480 reverse-order
+two-caller chunks and 4,096 sampled-generation chunks match the original and
+preceding merged output. Standard-Nether peak RSS is about 251–270 MB lower in
+the provisional full runs. This change reduces retained index storage; it does
+not establish a latency improvement.
+
+The two standard seeds have provisional median/p95 values of 1.67/2.16 and
+1.85/2.52 seconds. Concurrent, custom-tail and Overworld observations are mixed or
+slower. External CPU activity is recorded, but it does not prove the cause of
+those differences. Quiet timing, no-regression and sub-second acceptance remain
+pending. Exact measurements, provenance, commands and limitations are retained in
+`docs/benchmarks/nether-perf-cycle29-2026-10-21.json`.
