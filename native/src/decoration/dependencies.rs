@@ -377,7 +377,8 @@ struct Planner<'a> {
     ready_columns: Map<(usize, i32, i32), Arc<ColumnTile>>,
     error: Mutex<Option<String>>,
 }
-const VIEW_COLUMN_SLOTS: usize = 1024;
+const VIEW_COLUMN_WIDTH: usize = 32;
+const VIEW_COLUMN_SLOTS: usize = VIEW_COLUMN_WIDTH * VIEW_COLUMN_WIDTH;
 struct ViewColumn {
     key: (i32, i32),
     column: Arc<ColumnState>,
@@ -400,9 +401,10 @@ impl Default for ViewColumns {
 }
 impl ViewColumns {
     fn index(key: (i32, i32)) -> usize {
-        let mut hash = super::spatial::SpatialHasher::default();
-        key.hash(&mut hash);
-        (hash.finish() >> 32) as usize % VIEW_COLUMN_SLOTS
+        // Every 32-by-32 block window has distinct slots, including windows
+        // crossing zero. Wider/disjoint reads retain exact-key map fallback.
+        key.1.rem_euclid(VIEW_COLUMN_WIDTH as i32) as usize * VIEW_COLUMN_WIDTH
+            + key.0.rem_euclid(VIEW_COLUMN_WIDTH as i32) as usize
     }
     fn count(&self, index: usize) {
         if let Some(counts) = &self.counts { counts[index].fetch_add(1, Ordering::Relaxed); }
@@ -1466,6 +1468,28 @@ mod tests {
     fn cached_column(material: u16) -> Arc<ColumnState> {
         Arc::new(ColumnState { runs: ColumnRuns::Owned(vec![u32::from(material)].into_boxed_slice()),
             heights: [i32::from(material); 6] })
+    }
+    #[test]
+    fn spatial_view_slots_cover_each_complete_window_without_collisions() {
+        for (x, z) in [(-33, 17), (0, -16), (i32::MIN, i32::MAX - 31)] {
+            let cache = ViewColumns::default();
+            let mut slots = std::collections::HashSet::new();
+            for dz in 0..32 {
+                for dx in 0..32 {
+                    let key = (x + dx, z + dz);
+                    assert!(slots.insert(ViewColumns::index(key)));
+                    let material = (dz * 32 + dx + 1) as u16;
+                    assert_eq!(cache.read(key.0, key.1, || Ok(cached_column(material)), |c| c.material(0)).unwrap(), material);
+                }
+            }
+            assert_eq!(slots.len(), VIEW_COLUMN_SLOTS);
+            assert!(cache.values.lock().unwrap().is_empty());
+            for dz in (0..32).rev() {
+                for dx in (0..32).rev() {
+                    assert_eq!(cache.read(x + dx, z + dz, || panic!("spatial slot was lost"), |c| c.material(0)).unwrap(), (dz * 32 + dx + 1) as u16);
+                }
+            }
+        }
     }
     #[test]
     fn view_slots_preserve_colliding_and_extreme_coordinate_keys() {

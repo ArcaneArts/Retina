@@ -416,5 +416,79 @@
     "exact-cache-published-compatibility.py"
   ],
   "retention": "Libraries, profiles, generated worlds, process observations and exact commands remain under evidence_root outside Git.",
-  "decision": "Select bounded exact tile reuse for its verified GPU-work/readback reduction and full output parity. Timing acceptance remains deferred."
+  "decision": "Select bounded exact tile reuse for its verified GPU-work/readback reduction and full output parity. Timing acceptance remains deferred.",
+  "post_merge": {
+    "pr": "https://github.com/ArcaneArts/Retina/pull/191",
+    "merged_revision": "e5adbd17ecdd47eda7e005bbd2f3ef6b5e59ddd5",
+    "merged_library": {
+      "revision": "e5adbd17ecdd47eda7e005bbd2f3ef6b5e59ddd5",
+      "native_tree": "1ad6a70ab08699b15712e518888aabdd643437fa",
+      "sha256": "546998499dc9589a26322c658deea077629ae5910b2b23e7b03760866ceea432",
+      "source_status": "",
+      "forced_rebuild": true,
+      "timing_acceptance": false
+    },
+    "byte_identical_to_validated_candidate": true,
+    "native_tests": {
+      "passed": 145,
+      "failed": 0,
+      "ignored": 38
+    },
+    "suite": "cycle43/merged-full/suite.json",
+    "measured_identical_chunks": 102400,
+    "each_case_reference_count": 4,
+    "case_observations": [
+      {
+        "case": "nether-main-run0",
+        "median_ms": 1092.4896460492164,
+        "p95_region_ms": 1363.3918816922235,
+        "maximum_region_ms": 1463.6708342004567,
+        "total_ms": 22614.56804187037,
+        "chunks_per_second": 905.6109301792426,
+        "generation_peak_rss_bytes": 2289074176,
+        "peak_rss_bytes": 2289074176
+      },
+      {
+        "case": "nether-second-seed-run0",
+        "median_ms": 1244.848103960976,
+        "p95_region_ms": 1469.3772911909036,
+        "maximum_region_ms": 1493.9387501217425,
+        "total_ms": 24019.94620799087,
+        "chunks_per_second": 852.6247237467495,
+        "generation_peak_rss_bytes": 2365276160,
+        "peak_rss_bytes": 2365276160
+      },
+      {
+        "case": "nether-custom-bounds-run0",
+        "median_ms": 783.4758755052462,
+        "p95_region_ms": 844.2485067993402,
+        "maximum_region_ms": 866.5910419076681,
+        "total_ms": 15661.869624862447,
+        "chunks_per_second": 1307.634432576875,
+        "generation_peak_rss_bytes": 1735704576,
+        "peak_rss_bytes": 1735704576
+      },
+      {
+        "case": "nether-direct-stem-run0",
+        "median_ms": 776.0685003595427,
+        "p95_region_ms": 846.8644369510004,
+        "maximum_region_ms": 907.4439578689635,
+        "total_ms": 15521.359666949138,
+        "chunks_per_second": 1319.472033343167,
+        "generation_peak_rss_bytes": 1680064512,
+        "peak_rss_bytes": 1680064512
+      },
+      {
+        "case": "overworld-run0",
+        "median_ms": 242.12214560247958,
+        "p95_region_ms": 312.99305025022477,
+        "maximum_region_ms": 330.98620804958045,
+        "total_ms": 4988.206584006548,
+        "chunks_per_second": 4105.684007888539,
+        "generation_peak_rss_bytes": 1640300544,
+        "peak_rss_bytes": 1785249792
+      }
+    ],
+    "timing_acceptance": false
+  }
 }

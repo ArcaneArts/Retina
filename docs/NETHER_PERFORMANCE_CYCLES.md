@@ -986,3 +986,51 @@ is unproven. Quiet timing confirmation remains deferred by user instruction.
 Standard Nether remains above one second, and final Overworld, concurrency,
 sustained-memory and portal/DH acceptance remain open. Evidence and reproduction
 commands: `docs/benchmarks/nether-perf-cycle43-2026-10-21.json`.
+
+
+Cycle 43 post-merge proof: PR #191 squash-merged as
+`e5adbd17ecdd47eda7e005bbd2f3ef6b5e59ddd5`. A forced rebuild passed 145 native tests
+(38 ignored) and produced the same validated native library. Actual merged
+generation produced 102,400 chunks matching the original, cycle 5, preceding
+merged cycle 42 and candidate outputs in full NBT and membership.
+Provisional merged median/p95: nether-main 1092.490/1363.392 ms; nether-second-seed 1244.848/1469.377 ms; nether-custom-bounds 783.476/844.249 ms; nether-direct-stem 776.069/846.864 ms; overworld 242.122/312.993 ms.
+Quiet timing confirmation, sustained memory, final 1/2/4/8 concurrency and
+portal/DH acceptance remain open. Evidence: `cycle43/post-merge-proof.json`
+and `exact-cache-merged.py` under the external evidence root. Preserve variant
+branches and evidence; remove only the owned cycle 43 worktree after saving
+this proof.
+
+
+## Cycle 44 — Spatial column-view slots
+
+Hash collisions sent many repeated prior-column reads through a mutex-backed
+map. Keep the existing 1,024 immutable per-view slots and index them by block
+coordinates modulo 32 on each axis. Every 32-by-32 window has distinct slots;
+exact coordinate checks and the original unbounded map retain wider/disjoint
+reads. Publication, recursive loads, errors, allocation size and view lifetime
+are unchanged. The smaller four-way hashed prototype is preserved but excluded.
+
+Passed 146 native tests, including full windows across negative/positive/extreme
+coordinates, fallback collisions, recursive reads, errors, concurrent access and
+retirement. The five-case corpus's 102,400 chunks and 20,480 reverse-order
+two-caller chunks match the original, cycle 5 and preceding merged cycle 43 in
+complete NBT and membership.
+
+The single-region diagnostic increases fixed-slot hits from 86.08% to 99.11%,
+avoiding 4,776,137 map lookups with identical column loads and anchor/intermediate
+column counts. This is lookup attribution, not a wall-time share. The smaller
+256-slot four-way prototype had exact output and lower diagnostic peak memory,
+but no clear complete-run improvement; its branch and evidence remain preserved.
+
+Provisional candidate median/p95 observations: nether-main 1048.774/1303.255 ms; nether-second-seed 1258.839/1465.203 ms; nether-custom-bounds 728.220/811.878 ms; nether-direct-stem 719.737/846.997 ms; overworld 231.113/281.208 ms.
+Overworld recorded an elevated 2.331 GB generation peak in the full corpus.
+A fresh old/new pair measured 1.570/1.567 GB and 245.311/285.204 versus
+242.024/284.505 ms median/p95. Both actual diagnostics recorded zero reads
+through the changed View cache. Retain the earlier peak as unattributed; this
+is not sustained-memory acceptance. See `cycle44/overworld-memory-review.json`.
+
+Main generation peak is 2.303 GB versus 2.289 GB in the preceding merged run.
+Quiet timing confirmation remains deferred. Standard Nether remains above one
+second, and final Overworld, concurrency, sustained-memory and portal/DH
+acceptance remain open. Evidence, the held variant and commands are retained in
+`docs/benchmarks/nether-perf-cycle44-2026-10-21.json`.
