@@ -13,13 +13,15 @@ impl Drop for Installed {
     }
 }
 struct Reference {
-    offsets: Vec<u32>,
+    origin: [i32; 2],
+    width: usize,
+    offsets: Box<[u32]>,
     spans: Box<[Span]>,
     states: Box<[SavedState]>,
     runs: Arc<Vec<u32>>,
 }
 impl Reference {
-    fn capture(planner: &Planner<'_>) -> Option<Self> {
+    fn capture(planner: &Planner<'_>) -> Option<Box<Self>> {
         let origin = planner.versions.origin;
         let width = planner.versions.width;
         let outer = width + 2 * BAND;
@@ -79,15 +81,20 @@ impl Reference {
             }
         }
         offsets.push(u32::try_from(spans.len()).ok()?);
-        Some(Self {
-            offsets,
+        Some(Box::new(Self {
+            origin,
+            width,
+            offsets: offsets.into_boxed_slice(),
             spans: spans.into_boxed_slice(),
             states: states.into_boxed_slice(),
             runs: Arc::new(runs),
-        })
+        }))
     }
     fn compare(&self, actual: &Exterior) -> Result<usize, String> {
-        if self.offsets.len() != actual.ranges.len() + 1 {
+        if self.origin != actual.origin
+            || self.width != actual.width
+            || self.offsets.len() != actual.ranges.len() + 1
+        {
             return Err("exterior index size differs".into());
         }
         let mut checked = 0;
@@ -168,7 +175,8 @@ pub(in crate::decoration::dependencies) fn observe(planner: &Planner<'_>) -> Res
     }
     let report = serde_json::json!({
         "scope":"Paired component experiment on identical immutable natural planner cells. Five warmups and twenty measured exports per variant; alternating order. Includes archive destruction, excludes original planner retirement and generation. Normal libraries contain no benchmark. This is not a complete-region speedup or uncontended acceptance.",
-        "origin":planner.versions.origin,"seed":planner.request.seed,"exact_slots":slots,
+        "origin":planner.versions.origin,"seed":planner.request.seed,"min_y":planner.request.min_y,
+        "height":planner.request.height,"root_count":planner.roots.len(),"exact_slots":slots,
         "intervals_compared":checked,"states":states,"full_interval_value_parity":true,
         "reference_staged":stats(&timings[0]),"direct_ordered_tiles":stats(&timings[1]),"timing_acceptance":false,
     });
