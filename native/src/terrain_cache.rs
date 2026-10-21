@@ -254,7 +254,7 @@ mod tests {
         let snapshot = snapshot_patch_tiles(&cache, r, |x, z| x < 32 && z == 16);
         assert_eq!(snapshot.len(), 1);
         assert!(Arc::ptr_eq(&snapshot[&(-16, 16)], &near));
-        assert_eq!(cache.order, order);
+        assert!(cache.order == order);
         assert_eq!(cache.entries.len(), count);
         assert!(snapshot_patch_tiles(&cache, r, |_, _| false).is_empty());
         drop(cache);
