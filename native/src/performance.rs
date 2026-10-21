@@ -25,6 +25,7 @@ counters! {
     column_requests, column_builds, column_tiles, column_lock_nanos, column_join_nanos,
     deferred_ore_roots, deferred_ore_candidates,
     dependency_pool_wait_nanos,
+    view_column_cached_reads, view_column_loads,
     anchor_builds, anchor_ready_hits, prefix_evaluations,
     column_versions_skipped, completed_column_commands, completed_column_reads, completed_boundary_reads,
     terrain_job_requests, terrain_initial_tiles_reused,

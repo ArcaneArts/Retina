@@ -360,11 +360,33 @@ struct Planner<'a> {
     ready_columns: Map<(usize, i32, i32), Arc<ColumnTile>>,
     error: Mutex<Option<String>>,
 }
+struct ViewColumns {
+    values: Map<(i32, i32), Arc<ColumnState>>,
+    counts: Option<[u64; 2]>,
+}
+impl Default for ViewColumns {
+    fn default() -> Self {
+        Self {
+            values: Map::default(),
+            counts: crate::performance::enabled().then_some([0; 2]),
+        }
+    }
+}
 struct View<'a, 'b> {
     planner: &'a Planner<'b>,
     before: usize,
     base: Arc<Field<'static>>,
-    columns: Mutex<Map<(i32, i32), Arc<ColumnState>>>,
+    columns: Mutex<ViewColumns>,
+}
+impl Drop for View<'_, '_> {
+    fn drop(&mut self) {
+        let columns = self.columns.get_mut().unwrap_or_else(|e| e.into_inner());
+        if let Some([reads, loads]) = columns.counts {
+            // Publish once per view, avoiding a contended atomic per scalar read.
+            self.planner.metrics.performance.add(Perf::view_column_cached_reads, reads);
+            self.planner.metrics.performance.add(Perf::view_column_loads, loads);
+        }
+    }
 }
 impl View<'_, '_> {
     fn terrain(&self, x: i32, z: i32) -> Result<Arc<Field<'static>>, String> {
@@ -376,22 +398,31 @@ impl View<'_, '_> {
             self.planner.terrain(x.div_euclid(16), z.div_euclid(16))
         }
     }
-    fn column(&self, x: i32, z: i32) -> Result<Arc<ColumnState>, String> {
-        if let Some(column) = self
-            .columns
-            .lock()
-            .map_err(|_| "anchor view poisoned")?
-            .get(&(x, z))
-            .cloned()
+    fn read_column<T>(
+        &self,
+        x: i32,
+        z: i32,
+        read: impl FnOnce(&ColumnState) -> T,
+    ) -> Result<T, String> {
         {
-            return Ok(column);
+            let mut columns = self.columns.lock().map_err(|_| "anchor view poisoned")?;
+            let ViewColumns { values, counts } = &mut *columns;
+            if let Some(column) = values.get(&(x, z)) {
+                if let Some(counts) = counts { counts[0] += 1; }
+                // Only immutable material/height scalar access runs under this
+                // lock. No recursive planner or terrain work may enter it.
+                return Ok(read(column));
+            }
+            if let Some(counts) = counts { counts[1] += 1; }
         }
         let column = self.planner.column(self.before, x, z)?;
+        let value = read(&column);
         self.columns
             .lock()
             .map_err(|_| "anchor view poisoned")?
-            .insert((x, z), column.clone());
-        Ok(column)
+            .values
+            .insert((x, z), column);
+        Ok(value)
     }
 }
 impl PriorWorld for View<'_, '_> {
@@ -422,8 +453,10 @@ impl PriorWorld for View<'_, '_> {
         {
             return Some(0);
         }
-        match self.column(at[0], at[2]) {
-            Ok(column) => Some(column.material((at[1] - self.planner.request.min_y) as usize)),
+        match self.read_column(at[0], at[2], |column| {
+            column.material((at[1] - self.planner.request.min_y) as usize)
+        }) {
+            Ok(material) => Some(material),
             Err(error) => {
                 self.planner.fail(error);
                 None
@@ -431,8 +464,8 @@ impl PriorWorld for View<'_, '_> {
         }
     }
     fn height(&self, x: i32, z: i32, map: u8) -> Option<i32> {
-        match self.column(x, z) {
-            Ok(column) => Some(column.heights[map as usize]),
+        match self.read_column(x, z, |column| column.heights[map as usize]) {
+            Ok(height) => Some(height),
             Err(error) => {
                 self.planner.fail(error);
                 None
@@ -543,7 +576,7 @@ impl Planner<'_> {
                     planner: self,
                     before: root,
                     base: base.clone(),
-                    columns: Mutex::new(Map::default()),
+                    columns: Mutex::new(ViewColumns::default()),
                 };
                 let field = Field {
                     origin_x: x,
@@ -664,7 +697,7 @@ impl Planner<'_> {
             planner: self,
             before: root,
             base: base.clone(),
-            columns: Mutex::new(Map::default()),
+            columns: Mutex::new(ViewColumns::default()),
         };
         crate::structures::prepare(self.engine, request, self.profile, &starts, Some(&view))?;
         let mut blocks = vec![0; request.block_count()];

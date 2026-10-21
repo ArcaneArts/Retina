@@ -495,3 +495,30 @@ also had a higher memory peak, while its targeted probe confirms zero calls into
 the changed planner path. These limits and the raw measurements are retained in
 `docs/benchmarks/nether-perf-cycle22-2026-10-20.json`. Quiet no-regression, sustained
 memory and sub-second acceptance remain outstanding.
+
+PR #181 (`6e125da`) merged bounded root dispatch. Its actual merged build passes
+123 native tests and is byte-identical to the validated candidate. All 5,120
+post-merge smoke chunks match every reference. Quiet timing, memory and the
+sub-second target remain pending.
+
+## Borrowed scalar column reads (evidence cycle 24)
+
+Cached material and height queries now borrow the immutable column while holding
+its existing per-view mutex, avoiding a temporary owning reference for each
+scalar read. Only the scalar access runs under the mutex; recursive planning and
+terrain work remain outside it. Newly loaded columns move into the cache without
+an extra clone. Optional diagnostics accumulate locally and publish once when
+the view is released, avoiding a shared atomic update on every read.
+
+The diagnostic region records 48,628,027 cache hits and 2,588,203 loads. Both counts
+match the earlier per-read instrumentation exactly. Anchor, column and terrain
+work counts are unchanged. All 123 native tests pass, and all 102,400 full-corpus
+plus 20,480 reverse-order two-caller chunks match the original and preceding
+merged references.
+
+Provisional standard-Nether medians are 1.97 and 2.22 seconds; the two-caller p95
+is 5.49 seconds. Overworld and direct-stem observations are mixed relative to the
+preceding run, so quiet timing and no-regression acceptance remain pending.
+These measurements do not establish a speedup or the sub-second objective.
+Details and reproduction commands are retained in
+`docs/benchmarks/nether-perf-cycle24-2026-10-20.json`.
