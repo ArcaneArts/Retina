@@ -7,6 +7,8 @@ use std::ops::Range;
 use std::sync::Arc;
 mod layers;
 mod materials;
+#[cfg(test)]
+mod material_read_probe;
 mod stream;
 pub(super) use layers::{Queue, QueueCheckpoint};
 pub use materials::MaterialSet;
@@ -1127,6 +1129,8 @@ pub(super) struct Overlay {
     grounds: std::cell::RefCell<Map<(i32, i32), Vec<i32>>>,
     recording: bool,
     undo: Vec<OverlayUndo>,
+    #[cfg(test)]
+    material_trace: material_read_probe::Trace,
 }
 struct OverlayUndo {
     at: [i32; 3],
@@ -1196,6 +1200,13 @@ impl Overlay {
         {
             return Some(0);
         }
+        #[cfg(test)]
+        if material_read_probe::enabled() {
+            let own = self.blocks.get(&at).copied();
+            let actual = own.or_else(|| field.material(profile, request, at));
+            self.material_trace.read(field, profile, request, at, actual, own.is_some());
+            return actual;
+        }
         self.blocks
             .get(&at)
             .copied()
@@ -1240,6 +1251,8 @@ impl Overlay {
         }
         self.grounds.get_mut().remove(&(at[0], at[2]));
         self.blocks.insert(at, material);
+        #[cfg(test)]
+        self.material_trace.write(at, material);
         let masks = profile.heightmap_masks[material as usize];
         let tops = self.tops.entry((at[0], at[2])).or_insert([i32::MIN; 6]);
         for (map, top) in tops.iter_mut().enumerate() {
