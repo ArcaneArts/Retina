@@ -80,12 +80,12 @@ impl Feature {
             _ => None,
         }
     }
-    pub(crate) fn vein_footprint(
+    pub(crate) fn ore_footprint(
         &self, at: [i32; 3], rng: &mut Rng,
         mark: &mut impl FnMut([i32; 2], [i32; 2]) -> bool,
     ) -> Option<bool> {
         match self {
-            Self::Ore { ore } => ore.vein_footprint(at, rng, mark),
+            Self::Ore { ore } => ore.ore_footprint(at, rng, mark),
             _ => None,
         }
     }

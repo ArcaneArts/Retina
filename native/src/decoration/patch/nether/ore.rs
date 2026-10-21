@@ -154,18 +154,29 @@ impl Ore {
                 == profile.heightmap_masks[target.state as usize])
             .then_some((*required, target.state))
     }
-    /// Conservative X/Z rectangles from the same vein geometry as replay.
-    /// Terrain rejection, vertical clipping, sphere culling and replacement
-    /// predicates can only remove writes. Scattered geometry is excluded because
-    /// its later draws can depend on earlier material-dependent replacements.
-    pub(super) fn vein_footprint(
+    /// Conservative X/Z rectangles. Veins share replay geometry; scattered
+    /// attempts stay within the radius implied by their sampled count even when
+    /// replacements consume extra RNG. Live rejection can only remove writes.
+    pub(super) fn ore_footprint(
         &self,
         at: [i32; 3],
         rng: &mut Rng,
         mark: &mut impl FnMut([i32; 2], [i32; 2]) -> bool,
     ) -> Option<bool> {
-        if self.scattered || at.iter().any(|&v| v < i32::MIN + 64 || v > i32::MAX - 64) {
+        if at.iter().any(|&v| v < i32::MIN + 64 || v > i32::MAX - 64) {
             return None;
+        }
+        if self.scattered {
+            let count = self.scatter_count(rng);
+            return Some(
+                count == 0 || {
+                    let reach = scatter_distance(count - 1) as i32;
+                    mark(
+                        [at[0] - reach, at[2] - reach],
+                        [at[0] + reach, at[2] + reach],
+                    )
+                },
+            );
         }
         let vein = Vein::new(self.size, at, rng);
         for (center, radius) in vein.spheres(rng) {
@@ -187,11 +198,15 @@ impl Ore {
                 .all(|t| (t.state as usize) < palette && t.rule.validate(palette))
     }
 
+    fn scatter_count(&self, rng: &mut Rng) -> i32 {
+        rng.below(self.size + 1)
+    }
+
     pub(super) fn place(&self, w: &mut World, at: [i32; 3], rng: &mut Rng) -> bool {
         if self.scattered {
-            let count = rng.below(self.size + 1);
+            let count = self.scatter_count(rng);
             for i in 0..count {
-                let distance = i.min(7) as f32;
+                let distance = scatter_distance(i);
                 let mut target = at;
                 for coordinate in &mut target {
                     let offset = ((rng.unit() as f32) - (rng.unit() as f32)) * distance;
@@ -313,6 +328,12 @@ impl Ore {
         }
         placed
     }
+}
+
+// The difference of two sampled floats lies in [-1, 1], so Java rounding
+// cannot move any coordinate farther than this integer distance.
+fn scatter_distance(index: i32) -> f32 {
+    index.min(7) as f32
 }
 
 /// Mth.sin's float-indexed table; the angle itself must round before lookup.
@@ -452,12 +473,8 @@ mod tests {
         }
     }
     #[test]
-    fn scattered_and_coordinate_edge_footprints_keep_exported_reach() {
-        for (scattered, at) in [
-            (true, [0, 30, 0]),
-            (false, [i32::MIN, 30, 0]),
-            (false, [0, i32::MAX, 0]),
-        ] {
+    fn coordinate_edge_footprints_keep_exported_reach() {
+        for (scattered, at) in [(false, [i32::MIN, 30, 0]), (false, [0, i32::MAX, 0])] {
             let ore: super::Ore = serde_json::from_value(serde_json::json!({
                 "targets":[{"rule":{"kind":"always_true"},"state":4}],"size":33,
                 "discard":0.0,"scattered":scattered,"heightmap":2,"air":[0]}))
@@ -465,7 +482,7 @@ mod tests {
             let mut rng = super::Rng::new(42);
             let before = rng.0;
             assert_eq!(
-                ore.vein_footprint(at, &mut rng, &mut |_, _| panic!("fallback must not mark")),
+                ore.ore_footprint(at, &mut rng, &mut |_, _| panic!("fallback must not mark")),
                 None
             );
             assert_eq!(rng.0, before);

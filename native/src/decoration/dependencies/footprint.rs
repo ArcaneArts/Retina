@@ -129,7 +129,7 @@ impl Footprint {
                 if let Some(nether) = refine {
                     if let [Ok(x), Ok(y), Ok(z)] = at.map(i32::try_from) {
                         if let Some(result) =
-                            nether.vein_footprint([x, y, z], &mut rng, &mut |min, max| {
+                            nether.ore_footprint([x, y, z], &mut rng, &mut |min, max| {
                                 // Bound geometry and row marking as well as placement
                                 // expansion. Exhaustion bypasses this optional mask.
                                 *work += 1 + (max[1] - min[1] + 1) as usize;
@@ -431,7 +431,19 @@ mod tests {
     fn ore_footprints_cover_actual_replay_with_clipping_and_nested_counts() {
         let mut emitted = 0;
         for (seed, coordinate) in [(42, -3), (71, 2)] {
-            for size in [0, 1, 14, 33, 64] {
+            for (size, scattered) in [
+                (0, false),
+                (1, false),
+                (14, false),
+                (33, false),
+                (64, false),
+                (0, true),
+                (1, true),
+                (2, true),
+                (3, true),
+                (14, true),
+                (64, true),
+            ] {
                 for (min_y, height) in [(0, 128), (-64, 128), (16, 32)] {
                     let (mut profile, field, mut request) =
                         super::super::super::replay_tests::fixture(seed, coordinate);
@@ -439,8 +451,8 @@ mod tests {
                     request.height = height;
                     profile.decorations[0].feature = serde_json::from_value(json!({
                         "kind":"nether_feature","nether":{"kind":"ore","targets":[
-                            {"rule":{"kind":"always_true"},"state":4}],
-                            "size":size,"discard":0.0,"scattered":false,"heightmap":2,"air":[0]}
+                            {"rule":{"kind":"material","allowed":[0,1,2,3,4,5,6,7,8],"chance":0.5},"state":4}],
+                            "size":size,"discard":0.5,"scattered":scattered,"heightmap":2,"air":[0]}
                     }))
                     .unwrap();
                     profile.decorations[0].reach = Some(14);
