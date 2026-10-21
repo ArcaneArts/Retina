@@ -35,6 +35,9 @@ lz4-sys = "1.11.1"
 xxhash-rust = { version = "0.8", features = ["xxh32"] }
 smallvec = { version = "1", features = ["union"] }
 
+[dev-dependencies]
+libc = "0.2"
+
 [profile.release]
 lto = "thin"
 codegen-units = 2
