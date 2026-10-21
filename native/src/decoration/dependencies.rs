@@ -377,7 +377,7 @@ struct Planner<'a> {
     ready_columns: Map<(usize, i32, i32), Arc<ColumnTile>>,
     error: Mutex<Option<String>>,
 }
-const VIEW_COLUMN_SLOTS: usize = 256;
+const VIEW_COLUMN_SLOTS: usize = 1024;
 struct ViewColumn {
     key: (i32, i32),
     column: Arc<ColumnState>,
@@ -1414,7 +1414,7 @@ mod tests {
     fn view_slots_allow_recursive_collision_loads_and_propagate_errors() {
         let cache = ViewColumns::default();
         let key = (0, 0);
-        let collision = (1..1000).map(|x| (x, 0))
+        let collision = (1..65536).map(|x| (x, 0))
             .find(|&other| ViewColumns::index(other) == ViewColumns::index(key)).unwrap();
         let value = cache.read(key.0, key.1, || {
             assert_eq!(cache.read(collision.0, collision.1, || Ok(cached_column(2)), |c| c.material(0)).unwrap(), 2);
