@@ -1,0 +1,926 @@
+{
+  "cycle": 59,
+  "status": "HELD: exact complete output and indexed lookup use are established, but useful whole-region improvement is not. No PR, production selection or merge. Preserve source and evidence.",
+  "source": {
+    "revision": "dada6c5c165d1c650a38b0387706339b6ad9f618",
+    "native_tree": "bf5f43ddb1f69da1a924679220ba02ffe66c2cf2",
+    "source_status": "",
+    "test_executable_sha256": "ef39df1413cd729e9776be0ba4655ad2b15f9aaa170b3179382e4e79fb987d38",
+    "forced_rebuild": true,
+    "timing_acceptance": false,
+    "environment": {
+      "RETINA_TERRAIN_REUSE_PROFILES": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/profiles",
+      "RETINA_MATERIAL_STORAGE_OUTPUT": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle59/inventory",
+      "RETINA_REGION_THREADS": "16",
+      "RETINA_GPU_LIGHTING": "1",
+      "RETINA_LIGHTING_DENSE": "0",
+      "RETINA_PERFORMANCE_DIAGNOSTICS": "0",
+      "RETINA_DEPENDENCY_DIAGNOSTICS": "0"
+    },
+    "sha256": "a84b2fc525667f7bbd1b24d2d7cc1db9845c344d6fd44935c7edf96fc59ccf4e",
+    "preceding_sha256": "76cd0a87a3bc589bb8bc3b720a599924018e12f6b30b0047170ebf3a4c264723",
+    "byte_identical_to_preceding": false,
+    "material_storage_probe_and_version_layout_probe_symbol_count": 0
+  },
+  "preceding": {
+    "revision": "542f41a19d0a69023e7cdf94dd88af9de4a9592e",
+    "native_tree": "e4af459f7a1db66578c123b831ce6688754f7464",
+    "sha256": "76cd0a87a3bc589bb8bc3b720a599924018e12f6b30b0047170ebf3a4c264723",
+    "source_status": "",
+    "forced_rebuild": true,
+    "timing_acceptance": false,
+    "selected_test_source": "0e3005b5140eb89cc791eab1642b36accf5bcfcf",
+    "selected_native_tests_passed": 163,
+    "unit_tests_repeated_after_merge": false,
+    "same_native_tree_as_tested": true,
+    "byte_identical_to_selected": true
+  },
+  "implementation": "Immutable four-word run-start bitmap plus per-word rank prefixes,40bytes inline per ColumnState. Index counts starts strictly above y and returns the original run material. Original partition search remains for tall/non-descending layouts and out-of-range query heights, preserving y-as-u32 conversion. No dense material arrays, extra per-column allocations, archive format changes or new retained owners. Both interior and exterior archived reconstructions derive the index from their original runs.",
+  "tests": {
+    "native_passed": 166,
+    "native_failed": 0,
+    "optional_ignored": 47,
+    "explicit_gpu_inventory_passed": 1,
+    "inventory_measured_chunks": 102400,
+    "inventory_references_per_case": 2,
+    "paired_ordinary_measured_chunks": 204800,
+    "paired_references_per_case": 3,
+    "unit_scope": "Exhaustive run-boundary pairs with every query height, word edges, all256 starts, sparse/dense source materials, tall/duplicate/non-descending fallback and wrapped/out-of-range usize queries. Existing source-order, archive and replay tests also pass."
+  },
+  "inventory": {
+    "status": "Test-only execution/storage evidence; no whole-region speedup or quiet acceptance claimed.",
+    "cases": [
+      {
+        "case": "nether-main",
+        "kinds": [
+          {
+            "kind": "owned",
+            "reads": 170724245,
+            "indexed_reads": 170724245,
+            "indexed_read_fraction": 1.0,
+            "semantic_counter_differences": [],
+            "joined_per_region_mean": {
+              "unique_states": 233708.35,
+              "indexed_states": 233708.35,
+              "state_objects_bytes": 26175335.2,
+              "inline_run_index_bytes": 9348334
+            }
+          },
+          {
+            "kind": "shared_terrain",
+            "reads": 383881281,
+            "indexed_reads": 383881281,
+            "indexed_read_fraction": 1.0,
+            "semantic_counter_differences": [],
+            "joined_per_region_mean": {
+              "unique_states": 317699.55,
+              "indexed_states": 317699.55,
+              "state_objects_bytes": 35582349.6,
+              "inline_run_index_bytes": 12707982
+            }
+          },
+          {
+            "kind": "cached_archive",
+            "reads": 69027708,
+            "indexed_reads": 69027708,
+            "indexed_read_fraction": 1.0,
+            "semantic_counter_differences": [],
+            "joined_per_region_mean": {
+              "unique_states": 71272.85,
+              "indexed_states": 71272.85,
+              "state_objects_bytes": 7982559.2,
+              "inline_run_index_bytes": 2850914
+            }
+          }
+        ],
+        "comparisons": [
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/nether-main-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          },
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle58/merged-full/nether-main-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          }
+        ],
+        "before_statuses": [
+          4
+        ],
+        "after_statuses": [
+          4
+        ]
+      },
+      {
+        "case": "nether-second-seed",
+        "kinds": [
+          {
+            "kind": "owned",
+            "reads": 168288793,
+            "indexed_reads": 168288793,
+            "indexed_read_fraction": 1.0,
+            "semantic_counter_differences": [],
+            "joined_per_region_mean": {
+              "unique_states": 237251.9,
+              "indexed_states": 237251.9,
+              "state_objects_bytes": 26572212.8,
+              "inline_run_index_bytes": 9490076
+            }
+          },
+          {
+            "kind": "shared_terrain",
+            "reads": 364900463,
+            "indexed_reads": 364900463,
+            "indexed_read_fraction": 1.0,
+            "semantic_counter_differences": [],
+            "joined_per_region_mean": {
+              "unique_states": 323194.5,
+              "indexed_states": 323194.5,
+              "state_objects_bytes": 36197784,
+              "inline_run_index_bytes": 12927780
+            }
+          },
+          {
+            "kind": "cached_archive",
+            "reads": 55396146,
+            "indexed_reads": 55396146,
+            "indexed_read_fraction": 1.0,
+            "semantic_counter_differences": [],
+            "joined_per_region_mean": {
+              "unique_states": 66614.1,
+              "indexed_states": 66614.1,
+              "state_objects_bytes": 7460779.2,
+              "inline_run_index_bytes": 2664564
+            }
+          }
+        ],
+        "comparisons": [
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/nether-second-seed-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          },
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle58/merged-full/nether-second-seed-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          }
+        ],
+        "before_statuses": [
+          4
+        ],
+        "after_statuses": [
+          4
+        ]
+      },
+      {
+        "case": "nether-custom-bounds",
+        "kinds": [
+          {
+            "kind": "owned",
+            "reads": 102924808,
+            "indexed_reads": 102924808,
+            "indexed_read_fraction": 1.0,
+            "semantic_counter_differences": [],
+            "joined_per_region_mean": {
+              "unique_states": 231084.65,
+              "indexed_states": 231084.65,
+              "state_objects_bytes": 25881480.8,
+              "inline_run_index_bytes": 9243386
+            }
+          },
+          {
+            "kind": "shared_terrain",
+            "reads": 250763883,
+            "indexed_reads": 250763883,
+            "indexed_read_fraction": 1.0,
+            "semantic_counter_differences": [],
+            "joined_per_region_mean": {
+              "unique_states": 358047.25,
+              "indexed_states": 358047.25,
+              "state_objects_bytes": 40101292,
+              "inline_run_index_bytes": 14321890
+            }
+          },
+          {
+            "kind": "cached_archive",
+            "reads": 54381302,
+            "indexed_reads": 54381302,
+            "indexed_read_fraction": 1.0,
+            "semantic_counter_differences": [],
+            "joined_per_region_mean": {
+              "unique_states": 89751.65,
+              "indexed_states": 89751.65,
+              "state_objects_bytes": 10052184.8,
+              "inline_run_index_bytes": 3590066
+            }
+          }
+        ],
+        "comparisons": [
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/nether-custom-bounds-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          },
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle58/merged-full/nether-custom-bounds-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          }
+        ],
+        "before_statuses": [
+          4
+        ],
+        "after_statuses": [
+          4
+        ]
+      },
+      {
+        "case": "nether-direct-stem",
+        "kinds": [
+          {
+            "kind": "owned",
+            "reads": 96823319,
+            "indexed_reads": 96823319,
+            "indexed_read_fraction": 1.0,
+            "semantic_counter_differences": [],
+            "joined_per_region_mean": {
+              "unique_states": 214302.2,
+              "indexed_states": 214302.2,
+              "state_objects_bytes": 24001846.4,
+              "inline_run_index_bytes": 8572088
+            }
+          },
+          {
+            "kind": "shared_terrain",
+            "reads": 215133645,
+            "indexed_reads": 215133645,
+            "indexed_read_fraction": 1.0,
+            "semantic_counter_differences": [],
+            "joined_per_region_mean": {
+              "unique_states": 354025,
+              "indexed_states": 354025,
+              "state_objects_bytes": 39650800,
+              "inline_run_index_bytes": 14161000
+            }
+          },
+          {
+            "kind": "cached_archive",
+            "reads": 48558341,
+            "indexed_reads": 48558341,
+            "indexed_read_fraction": 1.0,
+            "semantic_counter_differences": [],
+            "joined_per_region_mean": {
+              "unique_states": 87964.45,
+              "indexed_states": 87964.45,
+              "state_objects_bytes": 9852018.4,
+              "inline_run_index_bytes": 3518578
+            }
+          }
+        ],
+        "comparisons": [
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/nether-direct-stem-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          },
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle58/merged-full/nether-direct-stem-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          }
+        ],
+        "before_statuses": [
+          4
+        ],
+        "after_statuses": [
+          4
+        ]
+      },
+      {
+        "case": "overworld",
+        "kinds": [
+          {
+            "kind": "owned",
+            "reads": 0,
+            "indexed_reads": 0,
+            "indexed_read_fraction": 0,
+            "semantic_counter_differences": [],
+            "joined_per_region_mean": {}
+          },
+          {
+            "kind": "shared_terrain",
+            "reads": 0,
+            "indexed_reads": 0,
+            "indexed_read_fraction": 0,
+            "semantic_counter_differences": [],
+            "joined_per_region_mean": {}
+          },
+          {
+            "kind": "cached_archive",
+            "reads": 0,
+            "indexed_reads": 0,
+            "indexed_read_fraction": 0,
+            "semantic_counter_differences": [],
+            "joined_per_region_mean": {}
+          }
+        ],
+        "comparisons": [
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/overworld-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          },
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle58/merged-full/overworld-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          }
+        ],
+        "before_statuses": [
+          4
+        ],
+        "after_statuses": [
+          4
+        ]
+      }
+    ],
+    "scope": "Indexed reads count actual y-in-range uses of valid immutable index. Joined bytes are logical state metadata, not allocator or process peak memory. Global archive retains only original packed runs/heights; it does not retain the inline index.",
+    "preceding_inventory": "cycle58/proof.json"
+  },
+  "paired_method": "Alternate full regions between two resident, isolated ordinary native engines.\n\nOnly one engine generates at a time. Each retains its own identical coordinate\nhistory. Alternate which engine goes first per pair. Two resident processes and\nexternal host activity mean these are paired observations, not quiet acceptance.\n Five warmups and twenty complete lit regions per case and isolated native engine. Alternate the first engine per coordinate. All measured before/after shader statuses are 4. Both engines remain resident; only one generates at a time. Full-NBT validation occurs after all generation. External host work is recorded; this is not quiet acceptance.",
+  "paired_results": [
+    {
+      "case": "nether-main",
+      "summary": {
+        "old": {
+          "median_ms": 1061.1502290703356,
+          "p95_ms": 1420.4278721823357,
+          "maximum_ms": 1552.8356661088765,
+          "total_ms": 21498.087124200538,
+          "chunks_per_second": 952.642897095041,
+          "generation_process_peak_rss_bytes": 2256240640,
+          "program_statuses": [
+            4
+          ]
+        },
+        "new": {
+          "median_ms": 1027.3592290468514,
+          "p95_ms": 1479.0681617800146,
+          "maximum_ms": 1536.0253329854459,
+          "total_ms": 21484.960458008572,
+          "chunks_per_second": 953.2249333214867,
+          "generation_process_peak_rss_bytes": 2149646336,
+          "program_statuses": [
+            4
+          ]
+        },
+        "paired": {
+          "median_new_over_old": 0.9936450586964368,
+          "new_faster_pairs": 12,
+          "pairs": 20
+        }
+      },
+      "measured_before_statuses": {
+        "old": [
+          4
+        ],
+        "new": [
+          4
+        ]
+      },
+      "comparisons": {
+        "old": [
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/nether-main-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          },
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle58/merged-full/nether-main-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          },
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle59/inventory/nether-main-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          }
+        ],
+        "new": [
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/nether-main-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          },
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle58/merged-full/nether-main-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          },
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle59/inventory/nether-main-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          }
+        ]
+      }
+    },
+    {
+      "case": "nether-second-seed",
+      "summary": {
+        "old": {
+          "median_ms": 1315.5740215443075,
+          "p95_ms": 1959.2007313040085,
+          "maximum_ms": 2005.7883749250323,
+          "total_ms": 26981.489752652124,
+          "chunks_per_second": 759.0388887991974,
+          "generation_process_peak_rss_bytes": 2291220480,
+          "program_statuses": [
+            4
+          ]
+        },
+        "new": {
+          "median_ms": 1322.5444374838844,
+          "p95_ms": 1882.7569559682165,
+          "maximum_ms": 2547.5431671366096,
+          "total_ms": 27131.719664437696,
+          "chunks_per_second": 754.8360462696255,
+          "generation_process_peak_rss_bytes": 2301689856,
+          "program_statuses": [
+            4
+          ]
+        },
+        "paired": {
+          "median_new_over_old": 0.9995093751123267,
+          "new_faster_pairs": 10,
+          "pairs": 20
+        }
+      },
+      "measured_before_statuses": {
+        "old": [
+          4
+        ],
+        "new": [
+          4
+        ]
+      },
+      "comparisons": {
+        "old": [
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/nether-second-seed-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          },
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle58/merged-full/nether-second-seed-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          },
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle59/inventory/nether-second-seed-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          }
+        ],
+        "new": [
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/nether-second-seed-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          },
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle58/merged-full/nether-second-seed-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          },
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle59/inventory/nether-second-seed-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          }
+        ]
+      }
+    },
+    {
+      "case": "nether-custom-bounds",
+      "summary": {
+        "old": {
+          "median_ms": 1309.6067499136552,
+          "p95_ms": 2302.5019328691997,
+          "maximum_ms": 2385.2203330025077,
+          "total_ms": 29706.53229043819,
+          "chunks_per_second": 689.410658900501,
+          "generation_process_peak_rss_bytes": 2005303296,
+          "program_statuses": [
+            4
+          ]
+        },
+        "new": {
+          "median_ms": 1255.202000029385,
+          "p95_ms": 2375.962705886923,
+          "maximum_ms": 2471.1360421497375,
+          "total_ms": 30315.68199908361,
+          "chunks_per_second": 675.5579505227386,
+          "generation_process_peak_rss_bytes": 1952350208,
+          "program_statuses": [
+            4
+          ]
+        },
+        "paired": {
+          "median_new_over_old": 1.0338499958608263,
+          "new_faster_pairs": 8,
+          "pairs": 20
+        }
+      },
+      "measured_before_statuses": {
+        "old": [
+          4
+        ],
+        "new": [
+          4
+        ]
+      },
+      "comparisons": {
+        "old": [
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/nether-custom-bounds-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          },
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle58/merged-full/nether-custom-bounds-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          },
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle59/inventory/nether-custom-bounds-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          }
+        ],
+        "new": [
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/nether-custom-bounds-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          },
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle58/merged-full/nether-custom-bounds-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          },
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle59/inventory/nether-custom-bounds-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          }
+        ]
+      }
+    },
+    {
+      "case": "nether-direct-stem",
+      "summary": {
+        "old": {
+          "median_ms": 1981.6676455084234,
+          "p95_ms": 2699.3894921732135,
+          "maximum_ms": 2817.470374982804,
+          "total_ms": 39947.082083905116,
+          "chunks_per_second": 512.6782466109457,
+          "generation_process_peak_rss_bytes": 1964982272,
+          "program_statuses": [
+            4
+          ]
+        },
+        "new": {
+          "median_ms": 2006.7664170637727,
+          "p95_ms": 2691.522806521971,
+          "maximum_ms": 2729.9624590668827,
+          "total_ms": 41200.99358446896,
+          "chunks_per_second": 497.07539110707506,
+          "generation_process_peak_rss_bytes": 1953792000,
+          "program_statuses": [
+            4
+          ]
+        },
+        "paired": {
+          "median_new_over_old": 1.0440592678852203,
+          "new_faster_pairs": 7,
+          "pairs": 20
+        }
+      },
+      "measured_before_statuses": {
+        "old": [
+          4
+        ],
+        "new": [
+          4
+        ]
+      },
+      "comparisons": {
+        "old": [
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/nether-direct-stem-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          },
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle58/merged-full/nether-direct-stem-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          },
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle59/inventory/nether-direct-stem-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          }
+        ],
+        "new": [
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/nether-direct-stem-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          },
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle58/merged-full/nether-direct-stem-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          },
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle59/inventory/nether-direct-stem-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          }
+        ]
+      }
+    },
+    {
+      "case": "overworld",
+      "summary": {
+        "old": {
+          "median_ms": 648.7122080288827,
+          "p95_ms": 852.3073498043232,
+          "maximum_ms": 922.4081670399755,
+          "total_ms": 12856.091499794275,
+          "chunks_per_second": 1593.0191536306136,
+          "generation_process_peak_rss_bytes": 1648492544,
+          "program_statuses": [
+            4
+          ]
+        },
+        "new": {
+          "median_ms": 664.3355414271355,
+          "p95_ms": 909.405125246849,
+          "maximum_ms": 1018.3432078920305,
+          "total_ms": 13089.556914754212,
+          "chunks_per_second": 1564.6060545346245,
+          "generation_process_peak_rss_bytes": 1653276672,
+          "program_statuses": [
+            4
+          ]
+        },
+        "paired": {
+          "median_new_over_old": 1.0105039237626263,
+          "new_faster_pairs": 9,
+          "pairs": 20
+        }
+      },
+      "measured_before_statuses": {
+        "old": [
+          4
+        ],
+        "new": [
+          4
+        ]
+      },
+      "comparisons": {
+        "old": [
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/overworld-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          },
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle58/merged-full/overworld-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          },
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle59/inventory/overworld-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          }
+        ],
+        "new": [
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/overworld-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          },
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle58/merged-full/overworld-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          },
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle59/inventory/overworld-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          }
+        ]
+      }
+    }
+  ],
+  "lookup_explanation": {
+    "scope": "Synthetic explanatory lookup-only benchmark. Exact prototype Index source, original partition_point oracle. Uniform y queries across deterministic varied descending runs of selected lengths; 1/256/32768 resident columns. Both paths use the same synthetic column container; this does not measure the changed production object layout. Does not model real query locality, index construction/retirement, feature work or whole-region memory. Not performance acceptance. Both warm, alternate first implementation over6 repeats; full checksum equality required.",
+    "index_source_sha256": "b43b2ba81ec2dd37c0f3e05ccde5e285eafdd999945a5e29467279d4b7effd79",
+    "harness_sha256": "8b1ed2380d59d4a5f6e5c21ed3dee68558231c2332840d495a85e90211de9ffa",
+    "binary_sha256": "20da645f9458634921cf577904cabaf4e0234bbd932c607d114e61b8afe7b166",
+    "results": [
+      {
+        "run_words": 1,
+        "resident_columns": 1,
+        "original_median_ns_per_lookup": 0.9608268737792969,
+        "indexed_median_ns_per_lookup": 1.3397150039672852,
+        "repeats": 6
+      },
+      {
+        "run_words": 1,
+        "resident_columns": 256,
+        "original_median_ns_per_lookup": 1.0758237838745117,
+        "indexed_median_ns_per_lookup": 1.4702081680297852,
+        "repeats": 6
+      },
+      {
+        "run_words": 1,
+        "resident_columns": 32768,
+        "original_median_ns_per_lookup": 2.4417638778686523,
+        "indexed_median_ns_per_lookup": 3.1742258071899414,
+        "repeats": 6
+      },
+      {
+        "run_words": 4,
+        "resident_columns": 1,
+        "original_median_ns_per_lookup": 2.269308090209961,
+        "indexed_median_ns_per_lookup": 1.6586780548095703,
+        "repeats": 6
+      },
+      {
+        "run_words": 4,
+        "resident_columns": 256,
+        "original_median_ns_per_lookup": 2.4323463439941406,
+        "indexed_median_ns_per_lookup": 1.6538305282592773,
+        "repeats": 6
+      },
+      {
+        "run_words": 4,
+        "resident_columns": 32768,
+        "original_median_ns_per_lookup": 4.473011016845703,
+        "indexed_median_ns_per_lookup": 3.1002349853515625,
+        "repeats": 6
+      },
+      {
+        "run_words": 9,
+        "resident_columns": 1,
+        "original_median_ns_per_lookup": 3.4924745559692383,
+        "indexed_median_ns_per_lookup": 1.4983415603637695,
+        "repeats": 6
+      },
+      {
+        "run_words": 9,
+        "resident_columns": 256,
+        "original_median_ns_per_lookup": 3.971139907836914,
+        "indexed_median_ns_per_lookup": 1.5889005661010742,
+        "repeats": 6
+      },
+      {
+        "run_words": 9,
+        "resident_columns": 32768,
+        "original_median_ns_per_lookup": 7.36812686920166,
+        "indexed_median_ns_per_lookup": 3.392061233520508,
+        "repeats": 6
+      },
+      {
+        "run_words": 13,
+        "resident_columns": 1,
+        "original_median_ns_per_lookup": 3.548940658569336,
+        "indexed_median_ns_per_lookup": 1.3928804397583008,
+        "repeats": 6
+      },
+      {
+        "run_words": 13,
+        "resident_columns": 256,
+        "original_median_ns_per_lookup": 4.1491193771362305,
+        "indexed_median_ns_per_lookup": 1.536686897277832,
+        "repeats": 6
+      },
+      {
+        "run_words": 13,
+        "resident_columns": 32768,
+        "original_median_ns_per_lookup": 7.235129356384277,
+        "indexed_median_ns_per_lookup": 3.3392906188964844,
+        "repeats": 6
+      },
+      {
+        "run_words": 26,
+        "resident_columns": 1,
+        "original_median_ns_per_lookup": 4.671891212463379,
+        "indexed_median_ns_per_lookup": 1.488844871520996,
+        "repeats": 6
+      },
+      {
+        "run_words": 26,
+        "resident_columns": 256,
+        "original_median_ns_per_lookup": 9.312867164611816,
+        "indexed_median_ns_per_lookup": 1.4740619659423828,
+        "repeats": 6
+      },
+      {
+        "run_words": 26,
+        "resident_columns": 32768,
+        "original_median_ns_per_lookup": 10.155280113220215,
+        "indexed_median_ns_per_lookup": 3.6034183502197266,
+        "repeats": 6
+      },
+      {
+        "run_words": 53,
+        "resident_columns": 1,
+        "original_median_ns_per_lookup": 5.266149520874023,
+        "indexed_median_ns_per_lookup": 1.3894634246826172,
+        "repeats": 6
+      },
+      {
+        "run_words": 53,
+        "resident_columns": 256,
+        "original_median_ns_per_lookup": 10.859966278076172,
+        "indexed_median_ns_per_lookup": 1.71661376953125,
+        "repeats": 6
+      },
+      {
+        "run_words": 53,
+        "resident_columns": 32768,
+        "original_median_ns_per_lookup": 14.853437423706055,
+        "indexed_median_ns_per_lookup": 3.7790937423706055,
+        "repeats": 6
+      },
+      {
+        "run_words": 256,
+        "resident_columns": 1,
+        "original_median_ns_per_lookup": 7.777849197387695,
+        "indexed_median_ns_per_lookup": 1.423598289489746,
+        "repeats": 6
+      },
+      {
+        "run_words": 256,
+        "resident_columns": 256,
+        "original_median_ns_per_lookup": 17.8796443939209,
+        "indexed_median_ns_per_lookup": 2.66953182220459,
+        "repeats": 6
+      },
+      {
+        "run_words": 256,
+        "resident_columns": 32768,
+        "original_median_ns_per_lookup": 81.07733821868896,
+        "indexed_median_ns_per_lookup": 5.725106239318848,
+        "repeats": 6
+      }
+    ]
+  },
+  "decision_reasons": [
+    "Main-seed total throughput changes by +0.06%, second seed -0.55%, custom bounds -2.01%, direct stem -3.04%. Paired median ratios are 0.994, 1.000, 1.034, 1.044, respectively; custom wins only 8/20 and direct 7/20.",
+    "Main p95 increases from 1420 to 1479 ms, custom p95 from 2303 to 2376 ms, and second-seed maximum from 2006 to 2548 ms. These results are retained and do not justify production selection.",
+    "The unaffected Overworld control shows -1.78% aggregate throughput and p95 increase from 852 to 909 ms. External activity limits attribution; it does not establish that Nether regressions are harmless.",
+    "Synthetic nine/thirteen-run lookups are substantially faster in isolation, but the complete workload does not improve. Construction, larger objects and other work remain possible offsets; their separate costs are not established.",
+    "Every measured Nether lookup uses the index and all read/run-shape counters exactly match C58. The added joined metadata is 24.9\u201327.2 MB/region; process peaks vary and cannot prove lower memory or a sustained bound."
+  ],
+  "next_investigation": "Read-only process CPU resource attribution with the unchanged C58 library is running separately. Reclassified prior C53 worker stacks show many Rayon waits and some dependency OnceLock waits, but stack counts are not wall-time shares or actual CPU utilization. Measure CPU versus wall and then root-resolved occupancy/critical tails before selecting a scheduling redesign. Do not tune worker count as a substitute for architecture.",
+  "limitations": [
+    "Final uncontended timing, no-regression and subsecond confirmation remain deferred by user.",
+    "No extra concurrent/lifecycle acceptance suite is run for this unselected prototype; output parity alone is not acceptance.",
+    "Joined metadata excludes transient allocations and other engine/global state. Whole-process peak includes startup/warmups and excludes later NBT comparisons.",
+    "Synthetic microbenchmarks exclude construction, real access locality, production object layout/ownership, scheduling and most generation work. They cannot be converted into whole-region savings.",
+    "Prior C53 worker-stack reclassification is evidence for further measurement only, not a scheduler diagnosis or summed wall time."
+  ],
+  "recovery": {
+    "worktree": "/tmp/retina-nether-material-rank-index",
+    "branch": "codex/nether-material-rank-index",
+    "native_commit": "ca226565a9a025373ac7ac043c3fe7e9ac141417",
+    "documentation_only_cycle58_proof_commit": "dada6c5c165d1c650a38b0387706339b6ad9f618",
+    "evidence_root": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle59",
+    "preserve": [
+      "normal.dylib",
+      "inventory-test-executable",
+      "normal-provenance.json",
+      "proof.json",
+      "inventory/",
+      "paired-harness.py",
+      "paired-normal/",
+      "lookup-benchmark.rs",
+      "lookup-benchmark",
+      "lookup-report.json",
+      "prior-worker-wait-evidence.json",
+      "baseline-cpu-resource/"
+    ]
+  }
+}

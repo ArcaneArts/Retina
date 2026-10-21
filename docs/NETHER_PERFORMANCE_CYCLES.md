@@ -1812,3 +1812,63 @@ original, preceding C56 and selected normal outputs. Every measured status is 4.
 Timings remain provisional under recorded host activity; the performance goal
 remains open. External `cycle58/post-merge-proof.json` preserves full metrics,
 references and rebuild provenance.
+
+
+## Cycle 59 — held compact material-run rank index
+
+A prototype embeds a 40-byte immutable run-start bitmap/rank index in each
+ColumnState. It returns materials from the original runs and retains the original
+partition search for unrepresentable layouts and out-of-range heights, including
+the existing u32 conversion. Owned, Shared and reconstructed Cached states all
+use the index. Archives retain their original packed data; no dense voxel array,
+additional per-column allocation or new owner lifetime is introduced.
+
+All 166 native tests pass (47 optional ignored), including exhaustive boundary
+pairs, word edges, sparse/dense source materials, tall layouts and wrapped query
+heights. The explicit GPU inventory passes. Its 102,400 measured chunks match
+the original and C58 merged references. Every observed Nether material lookup
+uses the index, and all material-call/run-length counters match C58 exactly.
+The joined metadata increase is 24.9–27.2 MB per region, before allocator effects;
+it is not process peak or sustained retention.
+
+A separate ordinary comparison alternates baseline/candidate complete regions,
+with five warmups and twenty measured regions per engine/case. Both engines
+remain resident, but generation is serialized. All measured before/after shader
+statuses are 4. All 204,800 measured chunks match three references (original,
+C58 merged, and inventory) in full decompressed NBT and membership.
+
+| Case | Median old/new ms | p95 old/new ms | Aggregate throughput change | New faster pairs |
+| --- | ---: | ---: | ---: | ---: |
+| nether-main | 1061 / 1027 | 1420 / 1479 | +0.06% | 12/20 |
+| nether-second-seed | 1316 / 1323 | 1959 / 1883 | -0.55% | 10/20 |
+| nether-custom-bounds | 1310 / 1255 | 2303 / 2376 | -2.01% | 8/20 |
+| nether-direct-stem | 1982 / 2007 | 2699 / 2692 | -3.04% | 7/20 |
+| overworld | 649 / 664 | 852 / 909 | -1.78% | 9/20 |
+
+Hold this version without a PR or merge. Standard-seed throughput is essentially
+unchanged; custom profiles show lower throughput and some tails worsen. The
+unaffected Overworld control also drifts, limiting attribution without dismissing
+those regressions. No useful whole-region improvement or quiet acceptance is
+established, and no additional concurrency/lifecycle acceptance run is selected.
+
+A separate synthetic benchmark imports the exact Index source and compares it
+with original partition_point reads over six alternating repetitions. For nine
+or thirteen run words, indexed lookup medians are roughly 1.4–3.4 ns versus
+3.5–7.4 ns across 1/256/32,768 resident columns. One-run lookups are slower, but
+none occur in this measured Nether material-read corpus. The benchmark excludes
+construction, actual access locality, production object layout and other region
+work. Scalar lookup gains therefore do not establish region gains or identify
+which other costs offset them.
+
+Next, measure process CPU work versus wall time using the unchanged C58 library.
+Prior C53 worker stacks contain substantial Rayon sleep/join observations and
+some dependency OnceLock waits; these are not elapsed-time shares or proof of a
+scheduler defect. Root-resolved occupancy and long dependency tails require
+measurement before choosing another architectural change. Avoid another lookup
+micro-optimization based only on leaf samples.
+
+Report: `docs/benchmarks/nether-perf-cycle59-2026-10-21.json`. Preserve
+`codex/nether-material-rank-index`, its worktree and external `cycle59/` evidence.
+Native implementation is `ca226565a9a025373ac7ac043c3fe7e9ac141417`; normal SHA-256
+is `a84b2fc525667f7bbd1b24d2d7cc1db9845c344d6fd44935c7edf96fc59ccf4e`.
+Quiet timing confirmation remains deferred and the performance goal stays open.
