@@ -3,8 +3,8 @@
 use crate::CacheKey;
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::sync::{
-    Mutex, OnceLock,
     atomic::{AtomicU64, Ordering},
+    Mutex, OnceLock,
 };
 use std::time::Instant;
 
@@ -51,7 +51,7 @@ struct Seen {
     candidates: HashSet<(CacheKey, usize)>,
     builds: HashSet<(CacheKey, usize)>,
     active_builds: HashMap<(CacheKey, usize), u64>,
-    terrain: HashSet<(CacheKey, u32)>,
+    terrain: HashMap<(CacheKey, u32), u64>,
 }
 struct Enabled {
     counts: [AtomicU64; Counter::Count as usize],
@@ -124,15 +124,12 @@ impl Metrics {
         if let Some(inner) = &self.0 {
             self.add(terrain_generated_tiles, 1);
             self.add(terrain_generated_chunks, u64::from(side) * u64::from(side));
-            if inner
-                .seen
-                .lock()
-                .unwrap_or_else(|e| e.into_inner())
-                .terrain
-                .insert((key, side))
-            {
+            let mut seen = inner.seen.lock().unwrap_or_else(|e| e.into_inner());
+            let count = seen.terrain.entry((key, side)).or_default();
+            if *count == 0 {
                 self.add(terrain_unique_tiles, 1);
             }
+            *count += 1;
         }
     }
     pub(crate) fn snapshot(&self) -> serde_json::Value {
@@ -148,9 +145,43 @@ impl Metrics {
                 )
             })
             .collect();
+        let mut tiles = Vec::new();
+        if let Some(inner) = &self.0 {
+            let seen = inner.seen.lock().unwrap_or_else(|e| e.into_inner());
+            for (&(key, side), &count) in &seen.terrain {
+                tiles.push((
+                    key.seed,
+                    key.profile,
+                    key.min_y,
+                    key.height,
+                    key.base,
+                    key.amplitude,
+                    key.frequency,
+                    key.x,
+                    key.z,
+                    side,
+                    count,
+                ));
+            }
+        }
+        tiles.sort_unstable();
+        let tiles: Vec<_> = tiles
+            .into_iter()
+            .map(
+                |(seed, profile, min_y, height, base, amplitude, frequency, x, z, side, count)| {
+                    serde_json::json!({
+                        "seed": seed, "profile": profile, "min_y": min_y, "height": height,
+                        "base_bits": base, "amplitude_bits": amplitude, "frequency_bits": frequency,
+                        "origin_x": x, "origin_z": z, "side": side, "generated_count": count,
+                    })
+                },
+            )
+            .collect();
         serde_json::json!({
             "version": 1, "enabled": self.0.is_some(), "counters": counters,
             "scope": "profile lifetime; concurrent and recursive durations overlap",
+            "terrain_tiles": tiles,
+            "terrain_tile_scope": "Actual GPU tile origin and side, including guards; counts are profile-lifetime totals, not elapsed time",
         })
     }
 }
@@ -209,6 +240,62 @@ mod tests {
         assert_eq!(c["structure_overlapping_builds"], 0);
         assert_eq!(c["terrain_unique_tiles"], 2);
         assert_eq!(c["terrain_generated_chunks"], 3 * 256);
+        let tiles = s["terrain_tiles"].as_array().unwrap();
+        assert_eq!(tiles.len(), 2);
+        assert_eq!(tiles[0]["seed"], 1);
+        assert_eq!(tiles[0]["generated_count"], 2);
+        assert_eq!(tiles[1]["seed"], 2);
+        assert_eq!(tiles[1]["generated_count"], 1);
+        assert_eq!(tiles[0]["side"], 16);
+    }
+
+    #[test]
+    fn terrain_attribution_keeps_full_cache_identity_and_tile_geometry() {
+        let m = Metrics::new(true);
+        let original = key(1).0;
+        for changed in [
+            CacheKey { x: -17, ..original },
+            CacheKey { z: 16, ..original },
+            CacheKey {
+                profile: 2,
+                ..original
+            },
+            CacheKey {
+                min_y: -64,
+                ..original
+            },
+            CacheKey {
+                height: 128,
+                ..original
+            },
+            CacheKey {
+                base: 0,
+                ..original
+            },
+            CacheKey {
+                amplitude: 0,
+                ..original
+            },
+            CacheKey {
+                frequency: 0,
+                ..original
+            },
+        ] {
+            m.terrain(changed, 22);
+        }
+        m.terrain(original, 22);
+        m.terrain(original, 38);
+        let snapshot = m.snapshot();
+        assert_eq!(snapshot["terrain_tiles"].as_array().unwrap().len(), 10);
+        assert_eq!(
+            snapshot["counters"]["terrain_generated_chunks"],
+            9 * 22 * 22 + 38 * 38
+        );
+        assert!(snapshot["terrain_tiles"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|tile| tile["origin_x"] == -17 && tile["side"] == 22));
     }
 
     #[test]
@@ -218,14 +305,13 @@ mod tests {
         let _build = m.build(key(1));
         m.terrain(key(1).0, 16);
         assert!(m.0.is_none());
+        assert_eq!(m.snapshot()["terrain_tiles"], serde_json::json!([]));
         assert!(m.start().is_none());
-        assert!(
-            m.snapshot()["counters"]
-                .as_object()
-                .unwrap()
-                .values()
-                .all(|v| v == 0)
-        );
+        assert!(m.snapshot()["counters"]
+            .as_object()
+            .unwrap()
+            .values()
+            .all(|v| v == 0));
     }
 
     #[test]
@@ -242,14 +328,14 @@ mod tests {
         assert_eq!(c["counters"]["structure_repeated_builds"], 3);
         assert_eq!(c["counters"]["structure_overlapping_builds"], 2);
         drop(fourth);
-        assert!(
-            m.0.as_ref()
-                .unwrap()
-                .seen
-                .lock()
-                .unwrap()
-                .active_builds
-                .is_empty()
-        );
+        assert!(m
+            .0
+            .as_ref()
+            .unwrap()
+            .seen
+            .lock()
+            .unwrap()
+            .active_builds
+            .is_empty());
     }
 }

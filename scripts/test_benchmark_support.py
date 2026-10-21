@@ -6,7 +6,7 @@ import sys
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).parent))
-from benchmark_support import compare_corpora, corpus_coverage, decode_nbt, first_difference, mca_records, percentile, lz4_block_stream, profile_request_context, region_coordinates
+from benchmark_support import performance_interval, compare_corpora, corpus_coverage, decode_nbt, first_difference, mca_records, percentile, lz4_block_stream, profile_request_context, region_coordinates
 
 
 def fixture(records):
@@ -25,6 +25,27 @@ def fixture(records):
 
 
 class BenchmarkSupportTest(unittest.TestCase):
+    def test_performance_interval_counts_repeated_tiles_and_keeps_world_identity(self):
+        tile = {"seed": 42, "profile": 1, "origin_x": -19, "origin_z": 13,
+                "side": 22, "min_y": 0, "height": 256, "generated_count": 3}
+        untouched = {**tile, "origin_x": 100, "generated_count": 1}
+        before = {"counters": {"terrain_generated_tiles": 4}, "terrain_tiles": [tile, untouched]}
+        after = {"counters": {"terrain_generated_tiles": 9}, "terrain_tiles": [
+            {**tile, "generated_count": 5}, untouched,
+            {**tile, "profile": 2, "generated_count": 1},
+            {**tile, "height": 128, "generated_count": 1},
+            {**tile, "side": 38, "generated_count": 1}]}
+        result = performance_interval(before, after)
+        self.assertEqual(result["counters"]["terrain_generated_tiles"], 5)
+        self.assertEqual([r["generated_count"] for r in result["terrain_tiles"]], [2, 1, 1, 1])
+        self.assertEqual(sum(r["generated_count"] for r in result["terrain_tiles"]), 5)
+        self.assertEqual(tile["generated_count"], 3)
+        legacy = performance_interval({"counters": {"n": 1}}, {"counters": {"n": 3}})
+        self.assertEqual(legacy["counters"], {"n": 2})
+        self.assertNotIn("terrain_tiles", legacy)
+        with self.assertRaisesRegex(ValueError, "decreased"):
+            performance_interval(after, before)
+
     def test_request_order_preserves_names_and_negative_coordinates(self):
         forward = region_coordinates(20, -2, -2, 5)
         reverse = region_coordinates(20, -2, -2, 5, "reverse")

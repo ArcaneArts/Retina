@@ -16,7 +16,7 @@ import time
 import subprocess
 
 from benchmark_support import (RESULT_SCHEMA, RESULT_SCHEMA_VERSION, compare_corpora,
-                               corpus_manifest, mca_records, percentile, profile_request_context,
+                               corpus_manifest, mca_records, percentile, performance_interval, profile_request_context,
                                region_coordinates, write_json)
 
 class Request(c.Structure):
@@ -199,6 +199,7 @@ def main():
     with concurrent.futures.ThreadPoolExecutor(args.parallel) as workers:
         regions = list(workers.map(generate, coords))
     wall = time.perf_counter()-start
+    generation_peak_rss_bytes = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss * (1 if platform.system()=="Darwin" else 1024)
     after = Snapshot(); check(lib.retina_timing_snapshot(profile, c.byref(after)))
     after_performance = performance_snapshot()
     chunks = after.chunks-before.chunks
@@ -238,17 +239,17 @@ def main():
                 startup=dict(initialize_ms=initialize_ms, registration_ms=registration_ms, warmups=warmups),
                 profile_sha256=hashlib.sha256(source).hexdigest(),
                 region_file_bytes=sum((args.out/f"{name}.mca").stat().st_size for name,_,_ in coords),
-                peak_rss_bytes=resource.getrusage(resource.RUSAGE_SELF).ru_maxrss*(1 if platform.system()=="Darwin" else 1024),
+                generation_peak_rss_bytes=generation_peak_rss_bytes,
+                memory_peak_scope={
+                    "generation_peak_rss_bytes": "Process lifetime through measured generation, including startup and warmups; excludes later snapshot processing and output validation",
+                    "peak_rss_bytes": "Process lifetime through output hashing, optional NBT comparison and optional specialization regeneration; retained legacy field",
+                    "note": "High-water marks, not current RSS or isolated phase allocations; neither field proves sustained memory stability",
+                },
                 gpu_timestamps=bool(after.flags & 1),
                 timing_version=after.version, columns_include_lakes=after.version < 7,
                 stage_ms_chunk={name:(after.nanos[i]-before.nanos[i])/max(chunks,1)/1e6 for i,name in enumerate(STAGES)})
     if after_performance:
-        data["performance_diagnostics"] = {
-            **after_performance,
-            "counters": {key: value - before_performance["counters"][key]
-                         for key, value in after_performance["counters"].items()},
-            "note": "Measured-interval deltas. Unique keys are first seen during this interval, excluding warmup keys. Recursive/concurrent durations overlap.",
-        }
+        data["performance_diagnostics"] = performance_interval(before_performance, after_performance)
     if pipeline:
         after_pipeline = PipelineSnapshot(); check(pipeline(c.byref(after_pipeline)))
         data["gpu_pipeline"] = {"peak_in_flight": after_pipeline.peak_in_flight,
