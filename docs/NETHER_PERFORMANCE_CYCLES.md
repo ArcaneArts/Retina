@@ -1800,3 +1800,15 @@ retains immutable executables, libraries, source hashes, original and preceding
 full-NBT comparisons, per-thread/per-kind counts, backing inventories, ordinary
 timings and host observations. This branch also carries C56's actual merged
 proof and the held C57 assessment as documentation only.
+
+
+Cycle 58 post-merge confirmation: PR #198 merged as `542f41a19d0a69023e7cdf94dd88af9de4a9592e`.
+A forced actual merged ordinary rebuild has native tree `e4af459f7a1db66578c123b831ce6688754f7464`,
+identical to the already tested 163-pass source, and SHA-256
+`76cd0a87a3bc589bb8bc3b720a599924018e12f6b30b0047170ebf3a4c264723`, identical to the selected ordinary library.
+Native unit tests were not repeated for identical native source. The actual
+merged library did generate a fresh complete 102,400-chunk corpus, matching the
+original, preceding C56 and selected normal outputs. Every measured status is 4.
+Timings remain provisional under recorded host activity; the performance goal
+remains open. External `cycle58/post-merge-proof.json` preserves full metrics,
+references and rebuild provenance.
