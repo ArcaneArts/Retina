@@ -1433,7 +1433,7 @@ mod tests {
     fn view_slots_handle_concurrent_misses_and_account_for_all_reads() {
         let cache = ViewColumns { counts: Some(std::array::from_fn(|_| AtomicU64::new(0))), ..ViewColumns::default() };
         (0..4096).into_par_iter().for_each(|i| {
-            let x = i % 257 - 128;
+            let x: i32 = i % 257 - 128;
             let material = x.rem_euclid(127) as u16 + 1;
             assert_eq!(cache.read(x, -1, || Ok(cached_column(material)), |c| (c.material(0), c.heights[0])).unwrap(), (material, i32::from(material)));
         });
