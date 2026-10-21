@@ -387,7 +387,7 @@ struct ViewColumns {
     // Exact keys distinguish collisions, which retain the unbounded map path.
     slots: OnceLock<Box<[OnceLock<ViewColumn>; VIEW_COLUMN_SLOTS]>>,
     values: Mutex<Map<(i32, i32), Arc<ColumnState>>>,
-    counts: Option<[AtomicU64; 3]>,
+    counts: Option<[AtomicU64; 5]>,
 }
 impl Default for ViewColumns {
     fn default() -> Self {
@@ -458,21 +458,34 @@ impl Drop for View<'_, '_> {
             // Publish per-view totals once. Disabled diagnostics add no atomics
             // to scalar reads; enabled counters are local to this view.
             for (counter, count) in [Perf::view_column_cached_reads,
-                Perf::view_column_loads, Perf::view_column_slot_hits].into_iter().zip(counts) {
+                Perf::view_column_loads, Perf::view_column_slot_hits,
+                Perf::view_terrain_borrowed_reads, Perf::view_terrain_loaded_reads].into_iter().zip(counts) {
                 self.planner.metrics.performance.add(counter, count.load(Ordering::Relaxed));
             }
         }
     }
 }
+fn terrain_reference<'a>(
+    base: &'a Arc<Field<'static>>,
+    x: i32,
+    z: i32,
+    fetch: impl FnOnce(i32, i32) -> Result<Arc<Field<'static>>, String>,
+) -> Result<Cow<'a, Arc<Field<'static>>>, String> {
+    // Preserve the existing tile/guard predicate. This only borrows the
+    // already-owned base reference; it does not expand accepted coverage.
+    if x.div_euclid(256) == (base.origin_x + 1).div_euclid(16)
+        && z.div_euclid(256) == (base.origin_z + 1).div_euclid(16)
+    {
+        Ok(Cow::Borrowed(base))
+    } else {
+        fetch(x.div_euclid(16), z.div_euclid(16)).map(Cow::Owned)
+    }
+}
 impl View<'_, '_> {
-    fn terrain(&self, x: i32, z: i32) -> Result<Arc<Field<'static>>, String> {
-        if x.div_euclid(256) == (self.base.origin_x + 1).div_euclid(16)
-            && z.div_euclid(256) == (self.base.origin_z + 1).div_euclid(16)
-        {
-            Ok(self.base.clone())
-        } else {
-            self.planner.terrain(x.div_euclid(16), z.div_euclid(16))
-        }
+    fn terrain(&self, x: i32, z: i32) -> Result<Cow<'_, Arc<Field<'static>>>, String> {
+        let reference = terrain_reference(&self.base, x, z, |cx, cz| self.planner.terrain(cx, cz))?;
+        self.columns.count(if matches!(reference, Cow::Borrowed(_)) { 3 } else { 4 });
+        Ok(reference)
     }
     fn read_column<T>(
         &self,
@@ -1396,6 +1409,60 @@ pub(crate) fn plan(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn terrain_reference_borrows_exact_existing_tiles_including_negative_boundaries() {
+        for tile in [-32, -16, 0, 16] {
+            let (_, mut field, _) = super::super::replay_tests::fixture(42, tile);
+            field.side = 18;
+            field.columns.resize(18 * 18 * COLUMNS, field.columns[0]);
+            let base = Arc::new(field);
+            let (_, fallback, _) = super::super::replay_tests::fixture(42, tile + 16);
+            let fallback = Arc::new(fallback);
+            for dx in [-16, -1, 0, 15, 16, 255, 256, 271] {
+                for dz in [-16, -1, 0, 15, 16, 255, 256, 271] {
+                    let x = tile * 16 + dx;
+                    let z = tile * 16 + dz;
+                    let borrowed = (0..256).contains(&dx) && (0..256).contains(&dz);
+                    let mut fetched = false;
+                    let reference = terrain_reference(&base, x, z, |cx, cz| {
+                        fetched = true;
+                        assert!(!borrowed);
+                        assert_eq!((cx, cz), (x.div_euclid(16), z.div_euclid(16)));
+                        Ok(fallback.clone())
+                    }).unwrap();
+                    assert_eq!(fetched, !borrowed);
+                    assert_eq!(matches!(reference, Cow::Borrowed(_)), borrowed);
+                    assert_eq!(Arc::strong_count(&base), 1, "base ownership must stay unchanged");
+                    assert!(Arc::ptr_eq(reference.as_ref(), if borrowed { &base } else { &fallback }));
+                    assert_eq!(Arc::strong_count(&fallback), if borrowed { 1 } else { 2 });
+                    if borrowed {
+                        assert!(reference.column(x, z).is_some());
+                    }
+                    drop(reference);
+                    assert_eq!(Arc::strong_count(&fallback), 1);
+                }
+            }
+        }
+    }
+    #[test]
+    fn terrain_reference_keeps_fallback_failure_and_concurrent_borrow_lifetimes() {
+        let (_, field, _) = super::super::replay_tests::fixture(42, 0);
+        let base = Arc::new(field);
+        let weak = Arc::downgrade(&base);
+        let failed = terrain_reference(&base, -1, 0, |x, z| {
+            assert_eq!((x, z), (-1, 0));
+            Err("original terrain failure".to_owned())
+        });
+        assert_eq!(failed.err().as_deref(), Some("original terrain failure"));
+        (0..4096).into_par_iter().for_each(|i| {
+            let reference = terrain_reference(&base, i % 256, i / 256,
+                |_, _| panic!("existing base must not be fetched")).unwrap();
+            assert!(matches!(reference, Cow::Borrowed(_)));
+            assert_eq!(Arc::strong_count(&base), 1);
+        });
+        drop(base);
+        assert!(weak.upgrade().is_none());
+    }
     fn cached_column(material: u16) -> Arc<ColumnState> {
         Arc::new(ColumnState { runs: ColumnRuns::Owned(vec![u32::from(material)].into_boxed_slice()),
             heights: [i32::from(material); 6] })

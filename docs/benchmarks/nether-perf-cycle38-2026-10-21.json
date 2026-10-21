@@ -768,5 +768,141 @@
     "fresh_preceding_overworld_peak_bytes": 1642119168,
     "fresh_candidate_overworld_peak_bytes": 1655848960,
     "finding": "The elevated initial peak did not recur in the fresh pair. No causal explanation is claimed; all observations remain recorded and sustained-memory acceptance remains pending."
+  },
+  "post_merge_review": {
+    "merged_proof": {
+      "pr": "https://github.com/ArcaneArts/Retina/pull/188",
+      "merged_revision": "28a87cdd330bbdcbc3c040f8bda1f1c04f3a54aa",
+      "merged_library": {
+        "revision": "28a87cdd330bbdcbc3c040f8bda1f1c04f3a54aa",
+        "native_tree": "ac3e341f83130bd95d0eef842a689401748c5c79",
+        "sha256": "c5ddafa2ad8c63bd2fe283736a1a2a41cde540b6fea1e9990b11dac9e34167ed",
+        "source_status": "",
+        "forced_rebuild": true,
+        "timing_acceptance": false
+      },
+      "byte_identical_to_validated_candidate": true,
+      "native_tests": {
+        "passed": 139,
+        "failed": 0,
+        "ignored": 37
+      },
+      "suite": "cycle38/merged-full/suite.json",
+      "measured_identical_chunks": 102400,
+      "each_case_reference_count": 4,
+      "case_observations": [
+        {
+          "case": "nether-main-run0",
+          "median_ms": 1213.8830414041877,
+          "p95_region_ms": 1545.8843403612264,
+          "maximum_region_ms": 1600.9060840588063,
+          "peak_rss_bytes": 1968455680
+        },
+        {
+          "case": "nether-second-seed-run0",
+          "median_ms": 1386.7494164733216,
+          "p95_region_ms": 1636.807580664754,
+          "maximum_region_ms": 1663.0117078311741,
+          "peak_rss_bytes": 2110996480
+        },
+        {
+          "case": "nether-custom-bounds-run0",
+          "median_ms": 756.0064169811085,
+          "p95_region_ms": 808.1218873499893,
+          "maximum_region_ms": 836.6110420320183,
+          "peak_rss_bytes": 1680982016
+        },
+        {
+          "case": "nether-direct-stem-run0",
+          "median_ms": 757.3740624357015,
+          "p95_region_ms": 856.3707626541145,
+          "maximum_region_ms": 883.0636250786483,
+          "peak_rss_bytes": 1608531968
+        },
+        {
+          "case": "overworld-run0",
+          "median_ms": 257.7083125943318,
+          "p95_region_ms": 302.70301261916757,
+          "maximum_region_ms": 311.2223749049008,
+          "peak_rss_bytes": 2365947904
+        }
+      ],
+      "timing_acceptance": false
+    },
+    "overworld_memory": {
+      "merged_full_process_peak_rss_bytes": 2365947904,
+      "preceding_probe": {
+        "before_corpus_manifest": {
+          "peak_rss_bytes": 1559560192,
+          "current_rss_bytes": 1528578048
+        },
+        "after_corpus_manifest": {
+          "peak_rss_bytes": 1681063936,
+          "current_rss_bytes": 1681080320
+        },
+        "note": "Fresh process. Same generation command; observer captures RSS immediately before and after corpus hashing. This is a diagnostic run, not headline timing."
+      },
+      "merged_probe": {
+        "before_corpus_manifest": {
+          "peak_rss_bytes": 1550499840,
+          "current_rss_bytes": 1508917248
+        },
+        "after_corpus_manifest": {
+          "peak_rss_bytes": 1577222144,
+          "current_rss_bytes": 1577238528
+        },
+        "note": "Fresh process. Same generation command; observer captures RSS immediately before and after corpus hashing. This is a diagnostic run, not headline timing."
+      },
+      "comparisons": {
+        "preceding": [
+          {
+            "reference": "reference-suite",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          },
+          {
+            "reference": "cycle5/correctness-suite",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          },
+          {
+            "reference": "cycle36/merged-full",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          }
+        ],
+        "merged": [
+          {
+            "reference": "reference-suite",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          },
+          {
+            "reference": "cycle5/correctness-suite",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          },
+          {
+            "reference": "cycle36/merged-full",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          }
+        ]
+      },
+      "finding": "The merged full run repeated the elevated whole-process peak. Fresh generation-before-hashing probes are similar (1.560 versus 1.550 GB); validation can increase the reported peak. These probes do not determine the cause of the earlier elevated peaks. No sustained-memory acceptance is claimed.",
+      "scripts": [
+        "memory-reader-probe.py",
+        "live-overlay-memory-review.py"
+      ]
+    },
+    "profile": {
+      "root_intervals": "cycle38/steady-execution-sample/root-attribution.json",
+      "worker_samples": "cycle38/steady-execution-sample/worker-attribution.json",
+      "comparisons": "cycle38/steady-execution-sample/comparisons.json",
+      "measured_chunks": 8192,
+      "references": 4,
+      "note": "Eight measured regions after five warmups; five-second worker sample starts at the first measured root. Observer overhead present. Self-samples are not wall-time percentages."
+    },
+    "timing_acceptance": false
   }
 }

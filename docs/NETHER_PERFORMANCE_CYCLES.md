@@ -790,3 +790,78 @@ The initial Overworld peak RSS was 2.298 GB. In the fresh pair it was 1.642 GB
 for the preceding build and 1.656 GB for the candidate. The elevated initial peak
 did not recur in that pair; its cause is not established. All observations remain
 recorded, and sustained-memory acceptance is still pending.
+
+
+PR #188 (`28a87cd`) merged this change. The actual merged rebuild passes 139
+native tests and is byte-identical to the validated candidate. A fresh full
+102,400-chunk corpus matches four references. Standard-seed median/p95 observations
+are 1.21/1.55 and 1.39/1.64 seconds; custom profiles are 756/808 and 757/856 ms,
+and Overworld is 258/303 ms. These remain provisional observations.
+
+The merged full run repeated the elevated Overworld whole-process peak (2.366
+GB). Direct probes around output hashing measure generation-before-hashing
+peaks of 1.560 GB for the preceding binary and 1.550 GB for the merged binary,
+then whole-process peaks of 1.681 and 1.577 GB after hashing. Both probes generate
+20,480 chunks exactly matching all three original references. Validation can
+increase the reported peak, but these probes do not explain the earlier elevated
+observations. Sustained-memory acceptance remains pending.
+
+A fresh eight-region stack/root sample matches all 8,192 chunks to four
+references. Basalt pillars, basalt blobs and gravel ore have the longest root
+intervals (112, 89 and 60 ms median in this diagnostic run). Prior-state material
+reads and dependency scheduling remain prominent. Overlay::commit is absent
+from the retained top 40 self-sample list. Sample counts are not elapsed-time
+percentages; this profile includes observer overhead. Evidence is retained in
+the external cycle 38 folder.
+
+
+## Held material-run cache experiments (evidence cycle 39)
+
+Two prototypes cache the last exact material interval: one in the shared column,
+then one per anchor view. A single atomic word keeps bounds and material coherent
+for concurrent readers. The variants pass 141 and 142 native tests, including air,
+run boundaries, full encoded starts, large queries and concurrent interval
+changes. Standard-seed generated chunks match the original, cycle 5 and merged
+cycle 38 in every measured run.
+
+Diagnostic hits are 30.75 million of 38.43 million reads for shared caches and
+30.33 million for view-local caches. Those hit rates do not establish a complete
+region benefit. Fresh sequential median/p95 observations are 1.220/1.568 seconds
+for the prior build, 1.335/1.636 for shared caches and 1.383/1.616 for view-local
+caches. Both remain unmerged and preserved. The full custom-profile, Overworld
+and concurrent corpus was not run for these held prototypes. Quiet timing
+confirmation remains deferred. Evidence and commands are in
+`docs/benchmarks/nether-perf-cycle39-2026-10-21.json`.
+
+
+## Borrow existing terrain references (evidence cycle 40)
+
+Anchor metadata and biome reads now borrow the View-owned base terrain reference
+when the original tile predicate succeeds. Fallback reads still fetch the same
+chunk and retain the returned owning reference until the read completes. This
+preserves the existing tile/guard coverage and failure behavior while removing
+2,909,747 base-reference clone/drop pairs in the diagnostic region. It records
+207,002 successful fallback reads and unchanged anchor/column/terrain work.
+
+All 141 native tests pass, including positive/negative tile boundaries, guards,
+exact pointer identity, unchanged base ownership, fetched-reference retirement,
+original failures and concurrent borrow lifetimes. The selected five-case
+102,400-chunk corpus and reverse-order two-caller generation match the original,
+cycle 5 and preceding merged cycle 38 in full decompressed NBT and membership.
+
+Fresh sequential standard-Nether median/p95 observations are 1.206/1.524 seconds
+for the preceding build and 1.182/1.473 for this candidate. Overworld observes
+250/300 versus 248/310 ms. Reverse two-caller latency is 1.704/2.041 versus
+1.731/1.950 seconds, with similar total throughput. Timings remain provisional;
+quiet confirmation is deferred. The held cycle 39 run-cache code is excluded.
+
+The Overworld pair's whole-process peak RSS is 1.733 versus 2.365 GB; the preceding
+binary already recorded a 2.366 GB peak in cycle 38. An actual Overworld diagnostic
+records zero calls through the changed read paths. The legacy peak also includes
+post-generation output validation. Its elevated observations remain unattributed,
+and sustained-memory acceptance remains pending. A direct 512 MiB parent-process
+launch experiment did not reproduce inherited child peak RSS, so that hypothesis
+does not justify changing the launcher. All observations, commands and hashes
+are retained in `docs/benchmarks/nether-perf-cycle40-2026-10-21.json` and the
+external evidence. Standard-Nether sub-second latency and final acceptance remain
+open.

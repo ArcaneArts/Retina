@@ -26,6 +26,7 @@ counters! {
     deferred_ore_roots, deferred_ore_candidates, height_roots_skipped,
     dependency_pool_wait_nanos,
     view_column_cached_reads, view_column_loads, view_column_slot_hits,
+    view_terrain_borrowed_reads, view_terrain_loaded_reads,
     overlay_recommit_calls_skipped, overlay_recommit_commands_skipped,
     anchor_builds, anchor_ready_hits, prefix_evaluations,
     footprint_builds, footprint_pruned_writers,
