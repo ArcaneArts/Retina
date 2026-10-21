@@ -785,3 +785,8 @@ The initial two-caller run was slower than cycle 36's earlier observation
 pair measures 1.85/2.40 for the preceding build and 1.68/2.08 for the candidate,
 with all 20,480 chunks in each run matching all three references. The initial
 observation remains in the report; the repeat does not establish quiet acceptance.
+
+The initial Overworld peak RSS was 2.298 GB. In the fresh pair it was 1.642 GB
+for the preceding build and 1.656 GB for the candidate. The elevated initial peak
+did not recur in that pair; its cause is not established. All observations remain
+recorded, and sustained-memory acceptance is still pending.

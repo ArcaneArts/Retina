@@ -762,5 +762,11 @@
       "live-overlay-coverage.py"
     ],
     "retention": "Large libraries, worlds, profile exports and raw logs remain under evidence_root outside Git."
+  },
+  "memory_review": {
+    "initial_candidate_overworld_peak_bytes": 2298019840,
+    "fresh_preceding_overworld_peak_bytes": 1642119168,
+    "fresh_candidate_overworld_peak_bytes": 1655848960,
+    "finding": "The elevated initial peak did not recur in the fresh pair. No causal explanation is claimed; all observations remain recorded and sustained-memory acceptance remains pending."
   }
 }
