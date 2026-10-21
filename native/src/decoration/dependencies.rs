@@ -7,6 +7,8 @@ pub(crate) use version_cache::{Cache as VersionCache, Pending as PendingVersions
 mod version_reuse_probe;
 #[cfg(test)]
 mod exterior_state_probe;
+#[cfg(test)]
+mod version_layout_probe;
 use super::spatial::Map;
 use super::*;
 use crate::TerrainEngine;
@@ -262,6 +264,8 @@ struct Versions {
     width: usize,
     changed: Vec<Vec<ColumnVersion>>,
     base: Vec<ColumnCell>,
+    #[cfg(test)]
+    layout_trace: version_layout_probe::Trace,
 }
 impl Versions {
     fn new(request: ChunkRequest, side: usize) -> Self {
@@ -271,6 +275,8 @@ impl Versions {
             width,
             changed: (0..width * width).map(|_| Vec::new()).collect(),
             base: (0..width * width).map(|_| OnceLock::new()).collect(),
+            #[cfg(test)]
+            layout_trace: version_layout_probe::Trace::new(),
         }
     }
     fn index(&self, x: i32, z: i32) -> Option<usize> {
@@ -282,6 +288,8 @@ impl Versions {
     fn before(&self, column: usize, before: usize) -> (usize, &ColumnCell) {
         let versions = &self.changed[column];
         let count = versions.partition_point(|version| version.root < before);
+        #[cfg(test)]
+        self.layout_trace.query(versions.len(), count);
         match count.checked_sub(1) {
             Some(last) => (versions[last].root + 1, &versions[last].state),
             None => (0, &self.base[column]),
@@ -633,6 +641,8 @@ impl Planner<'_> {
             completed.anchors.push(((ax, az), output.clone()));
         }
         for &column in completed.columns.keys() {
+            #[cfg(test)]
+            self.versions.layout_trace.append(&self.versions.changed[column]);
             self.versions.changed[column].push(ColumnVersion {
                 root,
                 state: OnceLock::new(),
@@ -1287,6 +1297,8 @@ pub(crate) fn generate(
         version_reuse_probe::observe(&planner)?;
         #[cfg(test)]
         exterior_state_probe::observe(&planner)?;
+        #[cfg(test)]
+        planner.versions.layout_trace.observe(&planner.versions);
         let structure_started = metrics.performance.start();
         let structure_detail = diagnostics::start(details.is_some());
         let starts = planner

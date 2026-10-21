@@ -304,7 +304,11 @@ impl Reuse {
     pub(super) fn export(&self, versions: Versions,
         columns: &Map<(usize, i32, i32), Arc<super::ColumnTile>>, metrics: &Metrics) -> Option<Pending> {
         let started = metrics.start();
+        #[cfg(test)]
+        let mut export_probe = super::version_layout_probe::Export::start(&versions);
         let archived = Archived::capture(&versions);
+        #[cfg(test)]
+        export_probe.interior();
         let exterior = Exterior::capture(versions.origin, versions.width, columns).map(|(saved, slots)| {
             let (spans, states) = saved.counts();
             metrics.add(Perf::version_cache_exterior_exported_slots, slots as u64);
@@ -313,9 +317,13 @@ impl Reuse {
             metrics.add(Perf::version_cache_exterior_exported_bytes, saved.retained_bytes() as u64);
             saved
         });
+        #[cfg(test)]
+        export_probe.exterior();
         // Original planner allocations retire synchronously while exporting,
         // not during later eviction or after the measured generation interval.
         drop(versions);
+        #[cfg(test)]
+        export_probe.finish();
         let Some(versions) = archived else {
             metrics.add(Perf::version_cache_export_skips, 1);
             metrics.elapsed(Perf::version_cache_export_nanos, started);
