@@ -1,0 +1,1566 @@
+{
+  "cycle": 60,
+  "status": "Diagnostic only; no production scheduling change or speedup claimed. Quiet timing confirmation deferred.",
+  "source": {
+    "revision": "ce0a575c8340d3704aea4dbad909b1c26d5741c6",
+    "native_tree": "ad1cf17fb7670493243cba71adfc6d74d1653161",
+    "source_status": "",
+    "test_executable_sha256": "f5da5274c8276f5ab18ef0458dee99aed3aab5ce27c31c959b3d1b3bfa0661b7",
+    "forced_rebuild": true,
+    "timing_acceptance": false,
+    "environment": {
+      "RETINA_TERRAIN_REUSE_PROFILES": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/profiles",
+      "RETINA_WORKER_PHASE_OUTPUT": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle60/inventory",
+      "RETINA_REGION_THREADS": "16",
+      "RETINA_GPU_LIGHTING": "1",
+      "RETINA_LIGHTING_DENSE": "0",
+      "RETINA_PERFORMANCE_DIAGNOSTICS": "0",
+      "RETINA_DEPENDENCY_DIAGNOSTICS": "0"
+    },
+    "sha256": "15f8f4ef043ed5a963b52c74a2a60963dc570c8ae19f10b560cdf4757240eb27",
+    "preceding_sha256": "76cd0a87a3bc589bb8bc3b720a599924018e12f6b30b0047170ebf3a4c264723",
+    "byte_identical_to_preceding": false
+  },
+  "preceding_merge": "542f41a19d0a69023e7cdf94dd88af9de4a9592e",
+  "methodology": "Instrumented root-stage and task-span evidence. Phase wall intervals are disjoint within a root; root summaries, planner setup and final structure/distribution are outside these phase totals but remain inside complete-region measurement. Process CPU includes service/shader threads and observer work; phase CPU/wall is not an available-core utilization percentage. Worker occupancy means a task is in flight, including nested work, blocking and preemption; one physical thread is counted once. Only complete ready-state cases should inform CPU interpretation. Do not turn call/stack/task counts into elapsed-time shares or claim ordinary speedups.",
+  "tests": {
+    "passed": 167,
+    "failed": 0,
+    "ignored": 48,
+    "explicit_gpu_inventory_passed": 1,
+    "observer_measured_chunks": 102400,
+    "observer_references_per_case": 2,
+    "ordinary_measured_chunks": 102400,
+    "ordinary_references_per_case": 3
+  },
+  "inventory": [
+    {
+      "case": "nether-main",
+      "roots": 820,
+      "regions": 20,
+      "actual_program_before_statuses": [
+        4
+      ],
+      "actual_program_after_statuses": [
+        4
+      ],
+      "phase_totals_per_region": {
+        "queue": {
+          "wall_ms": {
+            "count": 20,
+            "median": 2.471414,
+            "mean": 6.5182333,
+            "min": 0.514377,
+            "max": 26.596291
+          },
+          "process_cpu_ms": {
+            "count": 20,
+            "median": 0.76,
+            "mean": 0.7965,
+            "min": 0.549,
+            "max": 1.059
+          }
+        },
+        "enumeration": {
+          "wall_ms": {
+            "count": 20,
+            "median": 0.3651255,
+            "mean": 0.4096142,
+            "min": 0.279707,
+            "max": 0.729329
+          },
+          "process_cpu_ms": {
+            "count": 20,
+            "median": 0.8285,
+            "mean": 0.8748,
+            "min": 0.629,
+            "max": 1.114
+          }
+        },
+        "evaluation": {
+          "wall_ms": {
+            "count": 20,
+            "median": 902.183084,
+            "mean": 963.6515406,
+            "min": 456.120418,
+            "max": 1698.652918
+          },
+          "process_cpu_ms": {
+            "count": 20,
+            "median": 3296.626,
+            "mean": 3601.8922000000002,
+            "min": 1738.022,
+            "max": 6197.636
+          }
+        },
+        "publication": {
+          "wall_ms": {
+            "count": 20,
+            "median": 56.3180425,
+            "mean": 64.14115595,
+            "min": 45.905457,
+            "max": 104.349875
+          },
+          "process_cpu_ms": {
+            "count": 20,
+            "median": 80.271,
+            "mean": 81.6773,
+            "min": 65.844,
+            "max": 107.504
+          }
+        },
+        "return_handoff": {
+          "wall_ms": {
+            "count": 20,
+            "median": 0.6902475,
+            "mean": 2.3391479,
+            "min": 0.477205,
+            "max": 11.949125
+          },
+          "process_cpu_ms": {
+            "count": 20,
+            "median": 1.46,
+            "mean": 1.6038,
+            "min": 0.872,
+            "max": 4.632
+          }
+        }
+      },
+      "observer_summary_ms_per_region": {
+        "count": 20,
+        "median": 15.014837499999999,
+        "mean": 15.43241305,
+        "min": 12.955663,
+        "max": 18.171544
+      },
+      "weighted_evaluation_fraction_at_most_two_workers_in_flight": 0.35622103902440433,
+      "ten_roots_with_highest_mean_evaluation": [
+        {
+          "root": 0,
+          "name": "minecraft:basalt_pillar",
+          "regions": 20,
+          "weighted_fraction_at_most_2_workers_in_flight": 0.17118046375026466,
+          "weighted_fraction_at_most_4_workers_in_flight": 0.18091815793547525,
+          "longest_task_outside_requested_region_count": 20,
+          "longest_task_start_fraction_median": 0.013606267253413138,
+          "longest_task_duration_fraction_median": 0.4591050844566943,
+          "task_count_median": 1156.0,
+          "evaluation_ms_median": 91.041417,
+          "evaluation_cpu_ms_median": 74.37950000000001,
+          "evaluation_process_cpu_time_over_wall_median": 0.7803739466351853,
+          "mean_workers_with_task_in_flight_median": 13.545268386033918,
+          "tail_after_p95_task_completion_ms_median": 36.77366625,
+          "longest_task_ms_median": 39.1647085,
+          "evaluation_ms_mean": 92.5914167
+        },
+        {
+          "root": 8,
+          "name": "minecraft:basalt_blobs",
+          "regions": 20,
+          "weighted_fraction_at_most_2_workers_in_flight": 0.059586656277100095,
+          "weighted_fraction_at_most_4_workers_in_flight": 0.08698257254980805,
+          "longest_task_outside_requested_region_count": 8,
+          "longest_task_start_fraction_median": 0.28064355417571163,
+          "longest_task_duration_fraction_median": 0.4486576833219806,
+          "task_count_median": 1156.0,
+          "evaluation_ms_median": 50.4964585,
+          "evaluation_cpu_ms_median": 507.19949999999994,
+          "evaluation_process_cpu_time_over_wall_median": 7.994682480459096,
+          "mean_workers_with_task_in_flight_median": 13.40875739772239,
+          "tail_after_p95_task_completion_ms_median": 11.485145375,
+          "longest_task_ms_median": 23.990417,
+          "evaluation_ms_mean": 91.3149418
+        },
+        {
+          "root": 12,
+          "name": "minecraft:patch_fire",
+          "regions": 20,
+          "weighted_fraction_at_most_2_workers_in_flight": 0.17530011592695052,
+          "weighted_fraction_at_most_4_workers_in_flight": 0.33467205763549285,
+          "longest_task_outside_requested_region_count": 19,
+          "longest_task_start_fraction_median": 0.2200225098478233,
+          "longest_task_duration_fraction_median": 0.7137143150891043,
+          "task_count_median": 1156.0,
+          "evaluation_ms_median": 69.888813,
+          "evaluation_cpu_ms_median": 360.0085,
+          "evaluation_process_cpu_time_over_wall_median": 5.4346519733174246,
+          "mean_workers_with_task_in_flight_median": 10.900160288378565,
+          "tail_after_p95_task_completion_ms_median": 32.463453,
+          "longest_task_ms_median": 45.1457915,
+          "evaluation_ms_mean": 69.9848479
+        },
+        {
+          "root": 17,
+          "name": "minecraft:brown_mushroom_nether",
+          "regions": 20,
+          "weighted_fraction_at_most_2_workers_in_flight": 0.3482697822497803,
+          "weighted_fraction_at_most_4_workers_in_flight": 0.6739231064369319,
+          "longest_task_outside_requested_region_count": 20,
+          "longest_task_start_fraction_median": 0.06957623582676721,
+          "longest_task_duration_fraction_median": 0.9035144405017304,
+          "task_count_median": 1156.0,
+          "evaluation_ms_median": 58.7446665,
+          "evaluation_cpu_ms_median": 121.2505,
+          "evaluation_process_cpu_time_over_wall_median": 2.8030592628775635,
+          "mean_workers_with_task_in_flight_median": 5.054867165174772,
+          "tail_after_p95_task_completion_ms_median": 53.637708625,
+          "longest_task_ms_median": 56.01525,
+          "evaluation_ms_mean": 64.70663735
+        },
+        {
+          "root": 9,
+          "name": "minecraft:blackstone_blobs",
+          "regions": 20,
+          "weighted_fraction_at_most_2_workers_in_flight": 0.07717996757022855,
+          "weighted_fraction_at_most_4_workers_in_flight": 0.11332637926670248,
+          "longest_task_outside_requested_region_count": 9,
+          "longest_task_start_fraction_median": 0.13467777617005944,
+          "longest_task_duration_fraction_median": 0.6211052225316918,
+          "task_count_median": 1156.0,
+          "evaluation_ms_median": 29.500917,
+          "evaluation_cpu_ms_median": 206.79250000000002,
+          "evaluation_process_cpu_time_over_wall_median": 6.194993677142931,
+          "mean_workers_with_task_in_flight_median": 12.145370606759107,
+          "tail_after_p95_task_completion_ms_median": 5.10082275,
+          "longest_task_ms_median": 18.579,
+          "evaluation_ms_mean": 52.96876675
+        },
+        {
+          "root": 13,
+          "name": "minecraft:patch_soul_fire",
+          "regions": 20,
+          "weighted_fraction_at_most_2_workers_in_flight": 0.335346722067194,
+          "weighted_fraction_at_most_4_workers_in_flight": 0.48405212812256604,
+          "longest_task_outside_requested_region_count": 17,
+          "longest_task_start_fraction_median": 0.1801332436423388,
+          "longest_task_duration_fraction_median": 0.7871738784811548,
+          "task_count_median": 1156.0,
+          "evaluation_ms_median": 42.8716875,
+          "evaluation_cpu_ms_median": 227.0045,
+          "evaluation_process_cpu_time_over_wall_median": 4.915006027038093,
+          "mean_workers_with_task_in_flight_median": 9.05451724102643,
+          "tail_after_p95_task_completion_ms_median": 25.2023595,
+          "longest_task_ms_median": 34.774020500000006,
+          "evaluation_ms_mean": 51.61242085
+        },
+        {
+          "root": 15,
+          "name": "minecraft:glowstone",
+          "regions": 20,
+          "weighted_fraction_at_most_2_workers_in_flight": 0.3487986234788875,
+          "weighted_fraction_at_most_4_workers_in_flight": 0.590846724775766,
+          "longest_task_outside_requested_region_count": 19,
+          "longest_task_start_fraction_median": 0.12756560953538396,
+          "longest_task_duration_fraction_median": 0.7056146921402218,
+          "task_count_median": 1156.0,
+          "evaluation_ms_median": 37.1001045,
+          "evaluation_cpu_ms_median": 132.478,
+          "evaluation_process_cpu_time_over_wall_median": 3.6103148752399794,
+          "mean_workers_with_task_in_flight_median": 7.513891345968,
+          "tail_after_p95_task_completion_ms_median": 18.26732325,
+          "longest_task_ms_median": 21.874458,
+          "evaluation_ms_mean": 48.0231501
+        },
+        {
+          "root": 29,
+          "name": "minecraft:ore_ancient_debris_large",
+          "regions": 20,
+          "weighted_fraction_at_most_2_workers_in_flight": 0.7456111974634946,
+          "weighted_fraction_at_most_4_workers_in_flight": 0.8426120412277689,
+          "longest_task_outside_requested_region_count": 20,
+          "longest_task_start_fraction_median": 0.05476053314099187,
+          "longest_task_duration_fraction_median": 0.9268817811947172,
+          "task_count_median": 1156.0,
+          "evaluation_ms_median": 33.261333,
+          "evaluation_cpu_ms_median": 64.465,
+          "evaluation_process_cpu_time_over_wall_median": 2.351679590064637,
+          "mean_workers_with_task_in_flight_median": 2.794180450238885,
+          "tail_after_p95_task_completion_ms_median": 28.127000125000002,
+          "longest_task_ms_median": 30.0310625,
+          "evaluation_ms_mean": 46.24034365
+        },
+        {
+          "root": 22,
+          "name": "minecraft:ore_gravel_nether",
+          "regions": 20,
+          "weighted_fraction_at_most_2_workers_in_flight": 0.8098797676410137,
+          "weighted_fraction_at_most_4_workers_in_flight": 0.8417978322597159,
+          "longest_task_outside_requested_region_count": 13,
+          "longest_task_start_fraction_median": 0.1341000702782206,
+          "longest_task_duration_fraction_median": 0.5307122637593554,
+          "task_count_median": 1156.0,
+          "evaluation_ms_median": 12.8117085,
+          "evaluation_cpu_ms_median": 50.347,
+          "evaluation_process_cpu_time_over_wall_median": 3.6548096611453964,
+          "mean_workers_with_task_in_flight_median": 4.744783956406896,
+          "tail_after_p95_task_completion_ms_median": 2.768077875,
+          "longest_task_ms_median": 6.0046455,
+          "evaluation_ms_mean": 37.5926584
+        },
+        {
+          "root": 40,
+          "name": "minecraft:crimson_forest_vegetation",
+          "regions": 20,
+          "weighted_fraction_at_most_2_workers_in_flight": 0.5220723576505042,
+          "weighted_fraction_at_most_4_workers_in_flight": 0.5809283951765404,
+          "longest_task_outside_requested_region_count": 15,
+          "longest_task_start_fraction_median": 0.08980018760080578,
+          "longest_task_duration_fraction_median": 0.6624534042529413,
+          "task_count_median": 1156.0,
+          "evaluation_ms_median": 22.223582999999998,
+          "evaluation_cpu_ms_median": 123.711,
+          "evaluation_process_cpu_time_over_wall_median": 5.6738578632677035,
+          "mean_workers_with_task_in_flight_median": 7.854607397181084,
+          "tail_after_p95_task_completion_ms_median": 8.691161875,
+          "longest_task_ms_median": 16.3024375,
+          "evaluation_ms_mean": 35.4417395
+        }
+      ]
+    },
+    {
+      "case": "nether-second-seed",
+      "roots": 820,
+      "regions": 20,
+      "actual_program_before_statuses": [
+        4
+      ],
+      "actual_program_after_statuses": [
+        4
+      ],
+      "phase_totals_per_region": {
+        "queue": {
+          "wall_ms": {
+            "count": 20,
+            "median": 0.7196495,
+            "mean": 4.028802,
+            "min": 0.47354,
+            "max": 27.809545
+          },
+          "process_cpu_ms": {
+            "count": 20,
+            "median": 0.709,
+            "mean": 0.7346,
+            "min": 0.502,
+            "max": 1.181
+          }
+        },
+        "enumeration": {
+          "wall_ms": {
+            "count": 20,
+            "median": 0.3492085,
+            "mean": 0.36622325,
+            "min": 0.25446,
+            "max": 0.512289
+          },
+          "process_cpu_ms": {
+            "count": 20,
+            "median": 0.7975000000000001,
+            "mean": 0.8101,
+            "min": 0.556,
+            "max": 1.103
+          }
+        },
+        "evaluation": {
+          "wall_ms": {
+            "count": 20,
+            "median": 981.352873,
+            "mean": 922.6310266,
+            "min": 368.461202,
+            "max": 1450.913416
+          },
+          "process_cpu_ms": {
+            "count": 20,
+            "median": 3648.5375000000004,
+            "mean": 3630.88565,
+            "min": 1764.291,
+            "max": 7893.39
+          }
+        },
+        "publication": {
+          "wall_ms": {
+            "count": 20,
+            "median": 57.619458,
+            "mean": 62.86704985,
+            "min": 40.584332,
+            "max": 89.645081
+          },
+          "process_cpu_ms": {
+            "count": 20,
+            "median": 89.622,
+            "mean": 88.7854,
+            "min": 57.376,
+            "max": 123.356
+          }
+        },
+        "return_handoff": {
+          "wall_ms": {
+            "count": 20,
+            "median": 0.6497094999999999,
+            "mean": 2.0590459500000002,
+            "min": 0.549957,
+            "max": 17.032754
+          },
+          "process_cpu_ms": {
+            "count": 20,
+            "median": 1.6315,
+            "mean": 2.05275,
+            "min": 1.303,
+            "max": 7.052
+          }
+        }
+      },
+      "observer_summary_ms_per_region": {
+        "count": 20,
+        "median": 15.554021500000001,
+        "mean": 15.9014641,
+        "min": 12.877247,
+        "max": 22.797877
+      },
+      "weighted_evaluation_fraction_at_most_two_workers_in_flight": 0.37585218608775534,
+      "ten_roots_with_highest_mean_evaluation": [
+        {
+          "root": 0,
+          "name": "minecraft:basalt_pillar",
+          "regions": 20,
+          "weighted_fraction_at_most_2_workers_in_flight": 0.17256440289530656,
+          "weighted_fraction_at_most_4_workers_in_flight": 0.18976678720276152,
+          "longest_task_outside_requested_region_count": 20,
+          "longest_task_start_fraction_median": 0.01106458175846061,
+          "longest_task_duration_fraction_median": 0.4551707662151846,
+          "task_count_median": 1156.0,
+          "evaluation_ms_median": 93.2759375,
+          "evaluation_cpu_ms_median": 74.97200000000001,
+          "evaluation_process_cpu_time_over_wall_median": 0.8056334269914482,
+          "mean_workers_with_task_in_flight_median": 13.58922678760547,
+          "tail_after_p95_task_completion_ms_median": 37.656995124999995,
+          "longest_task_ms_median": 39.465354000000005,
+          "evaluation_ms_mean": 93.22677725
+        },
+        {
+          "root": 8,
+          "name": "minecraft:basalt_blobs",
+          "regions": 20,
+          "weighted_fraction_at_most_2_workers_in_flight": 0.06627750419283232,
+          "weighted_fraction_at_most_4_workers_in_flight": 0.09136110520732367,
+          "longest_task_outside_requested_region_count": 9,
+          "longest_task_start_fraction_median": 0.340678135227559,
+          "longest_task_duration_fraction_median": 0.3951407452106082,
+          "task_count_median": 1156.0,
+          "evaluation_ms_median": 54.850291999999996,
+          "evaluation_cpu_ms_median": 524.835,
+          "evaluation_process_cpu_time_over_wall_median": 8.388166876645947,
+          "mean_workers_with_task_in_flight_median": 14.371974813700376,
+          "tail_after_p95_task_completion_ms_median": 12.152469,
+          "longest_task_ms_median": 22.6526255,
+          "evaluation_ms_mean": 73.59705845
+        },
+        {
+          "root": 15,
+          "name": "minecraft:glowstone",
+          "regions": 20,
+          "weighted_fraction_at_most_2_workers_in_flight": 0.519142906092695,
+          "weighted_fraction_at_most_4_workers_in_flight": 0.6473886057811983,
+          "longest_task_outside_requested_region_count": 20,
+          "longest_task_start_fraction_median": 0.06511207107700824,
+          "longest_task_duration_fraction_median": 0.828472875373899,
+          "task_count_median": 1156.0,
+          "evaluation_ms_median": 48.219187,
+          "evaluation_cpu_ms_median": 166.2735,
+          "evaluation_process_cpu_time_over_wall_median": 3.9414315886229865,
+          "mean_workers_with_task_in_flight_median": 6.785880966893987,
+          "tail_after_p95_task_completion_ms_median": 37.703343875,
+          "longest_task_ms_median": 40.18075,
+          "evaluation_ms_mean": 58.06089575
+        },
+        {
+          "root": 12,
+          "name": "minecraft:patch_fire",
+          "regions": 20,
+          "weighted_fraction_at_most_2_workers_in_flight": 0.2513001597832624,
+          "weighted_fraction_at_most_4_workers_in_flight": 0.3080487037245259,
+          "longest_task_outside_requested_region_count": 15,
+          "longest_task_start_fraction_median": 0.20248164112320663,
+          "longest_task_duration_fraction_median": 0.6292567537785616,
+          "task_count_median": 1156.0,
+          "evaluation_ms_median": 47.7055415,
+          "evaluation_cpu_ms_median": 334.30150000000003,
+          "evaluation_process_cpu_time_over_wall_median": 6.803356874954684,
+          "mean_workers_with_task_in_flight_median": 11.509148822614165,
+          "tail_after_p95_task_completion_ms_median": 20.547307375,
+          "longest_task_ms_median": 32.7624375,
+          "evaluation_ms_mean": 55.92628955
+        },
+        {
+          "root": 17,
+          "name": "minecraft:brown_mushroom_nether",
+          "regions": 20,
+          "weighted_fraction_at_most_2_workers_in_flight": 0.5752930358589752,
+          "weighted_fraction_at_most_4_workers_in_flight": 0.6944315453318096,
+          "longest_task_outside_requested_region_count": 20,
+          "longest_task_start_fraction_median": 0.05033406122738058,
+          "longest_task_duration_fraction_median": 0.9370502623591879,
+          "task_count_median": 1156.0,
+          "evaluation_ms_median": 45.3310625,
+          "evaluation_cpu_ms_median": 98.52250000000001,
+          "evaluation_process_cpu_time_over_wall_median": 2.864989891796742,
+          "mean_workers_with_task_in_flight_median": 4.035261066435173,
+          "tail_after_p95_task_completion_ms_median": 42.070421874999994,
+          "longest_task_ms_median": 42.829667,
+          "evaluation_ms_mean": 55.91760615
+        },
+        {
+          "root": 40,
+          "name": "minecraft:crimson_forest_vegetation",
+          "regions": 20,
+          "weighted_fraction_at_most_2_workers_in_flight": 0.2394459331568724,
+          "weighted_fraction_at_most_4_workers_in_flight": 0.3665678862950642,
+          "longest_task_outside_requested_region_count": 15,
+          "longest_task_start_fraction_median": 0.11965415466123752,
+          "longest_task_duration_fraction_median": 0.7259109390360853,
+          "task_count_median": 1156.0,
+          "evaluation_ms_median": 19.039958,
+          "evaluation_cpu_ms_median": 89.2265,
+          "evaluation_process_cpu_time_over_wall_median": 3.704499645878766,
+          "mean_workers_with_task_in_flight_median": 5.655801911356749,
+          "tail_after_p95_task_completion_ms_median": 12.776770875,
+          "longest_task_ms_median": 12.774375,
+          "evaluation_ms_mean": 54.8090332
+        },
+        {
+          "root": 13,
+          "name": "minecraft:patch_soul_fire",
+          "regions": 20,
+          "weighted_fraction_at_most_2_workers_in_flight": 0.3686667781464306,
+          "weighted_fraction_at_most_4_workers_in_flight": 0.48455496909460666,
+          "longest_task_outside_requested_region_count": 18,
+          "longest_task_start_fraction_median": 0.24671937840933722,
+          "longest_task_duration_fraction_median": 0.6931551175536808,
+          "task_count_median": 1156.0,
+          "evaluation_ms_median": 41.6428125,
+          "evaluation_cpu_ms_median": 207.7645,
+          "evaluation_process_cpu_time_over_wall_median": 5.394253000010574,
+          "mean_workers_with_task_in_flight_median": 7.997668734663369,
+          "tail_after_p95_task_completion_ms_median": 26.612786749999998,
+          "longest_task_ms_median": 31.5448745,
+          "evaluation_ms_mean": 46.459852
+        },
+        {
+          "root": 18,
+          "name": "minecraft:red_mushroom_nether",
+          "regions": 20,
+          "weighted_fraction_at_most_2_workers_in_flight": 0.8008646052879401,
+          "weighted_fraction_at_most_4_workers_in_flight": 0.8780505552493322,
+          "longest_task_outside_requested_region_count": 19,
+          "longest_task_start_fraction_median": 0.15934970268022183,
+          "longest_task_duration_fraction_median": 0.7208661406468463,
+          "task_count_median": 1156.0,
+          "evaluation_ms_median": 12.1138745,
+          "evaluation_cpu_ms_median": 52.274,
+          "evaluation_process_cpu_time_over_wall_median": 3.458730182925297,
+          "mean_workers_with_task_in_flight_median": 4.861947957806457,
+          "tail_after_p95_task_completion_ms_median": 6.345942624999999,
+          "longest_task_ms_median": 8.5449375,
+          "evaluation_ms_mean": 44.9356146
+        },
+        {
+          "root": 9,
+          "name": "minecraft:blackstone_blobs",
+          "regions": 20,
+          "weighted_fraction_at_most_2_workers_in_flight": 0.135790207997247,
+          "weighted_fraction_at_most_4_workers_in_flight": 0.15765508938964184,
+          "longest_task_outside_requested_region_count": 10,
+          "longest_task_start_fraction_median": 0.10116707264622575,
+          "longest_task_duration_fraction_median": 0.5806395059785658,
+          "task_count_median": 1156.0,
+          "evaluation_ms_median": 35.645854,
+          "evaluation_cpu_ms_median": 239.2385,
+          "evaluation_process_cpu_time_over_wall_median": 7.0960410379209655,
+          "mean_workers_with_task_in_flight_median": 11.805107590284504,
+          "tail_after_p95_task_completion_ms_median": 8.527094,
+          "longest_task_ms_median": 19.886604,
+          "evaluation_ms_mean": 35.7637522
+        },
+        {
+          "root": 24,
+          "name": "minecraft:ore_gold_nether",
+          "regions": 20,
+          "weighted_fraction_at_most_2_workers_in_flight": 0.6923569471212212,
+          "weighted_fraction_at_most_4_workers_in_flight": 0.7556844638566416,
+          "longest_task_outside_requested_region_count": 20,
+          "longest_task_start_fraction_median": 0.15035792184662283,
+          "longest_task_duration_fraction_median": 0.6607303806902081,
+          "task_count_median": 1156.0,
+          "evaluation_ms_median": 16.853,
+          "evaluation_cpu_ms_median": 69.22149999999999,
+          "evaluation_process_cpu_time_over_wall_median": 3.274159665655443,
+          "mean_workers_with_task_in_flight_median": 3.968671237876486,
+          "tail_after_p95_task_completion_ms_median": 7.063921875,
+          "longest_task_ms_median": 9.8865415,
+          "evaluation_ms_mean": 26.46847905
+        }
+      ]
+    },
+    {
+      "case": "nether-custom-bounds",
+      "roots": 460,
+      "regions": 20,
+      "actual_program_before_statuses": [
+        4
+      ],
+      "actual_program_after_statuses": [
+        4
+      ],
+      "phase_totals_per_region": {
+        "queue": {
+          "wall_ms": {
+            "count": 20,
+            "median": 0.351565,
+            "mean": 0.7904337,
+            "min": 0.281582,
+            "max": 4.017624
+          },
+          "process_cpu_ms": {
+            "count": 20,
+            "median": 0.393,
+            "mean": 0.4006,
+            "min": 0.286,
+            "max": 0.533
+          }
+        },
+        "enumeration": {
+          "wall_ms": {
+            "count": 20,
+            "median": 0.201541,
+            "mean": 0.20462085,
+            "min": 0.146336,
+            "max": 0.285584
+          },
+          "process_cpu_ms": {
+            "count": 20,
+            "median": 0.46499999999999997,
+            "mean": 0.4545,
+            "min": 0.313,
+            "max": 0.595
+          }
+        },
+        "evaluation": {
+          "wall_ms": {
+            "count": 20,
+            "median": 420.80952049999996,
+            "mean": 439.06896845,
+            "min": 330.297624,
+            "max": 628.756751
+          },
+          "process_cpu_ms": {
+            "count": 20,
+            "median": 2715.1580000000004,
+            "mean": 2743.4692999999997,
+            "min": 2377.008,
+            "max": 3379.468
+          }
+        },
+        "publication": {
+          "wall_ms": {
+            "count": 20,
+            "median": 48.67252,
+            "mean": 49.8418814,
+            "min": 42.975876,
+            "max": 62.177792
+          },
+          "process_cpu_ms": {
+            "count": 20,
+            "median": 69.0445,
+            "mean": 67.84585,
+            "min": 54.553,
+            "max": 78.838
+          }
+        },
+        "return_handoff": {
+          "wall_ms": {
+            "count": 20,
+            "median": 0.369334,
+            "mean": 0.51943725,
+            "min": 0.313167,
+            "max": 2.91354
+          },
+          "process_cpu_ms": {
+            "count": 20,
+            "median": 0.937,
+            "mean": 0.9066,
+            "min": 0.55,
+            "max": 1.233
+          }
+        }
+      },
+      "observer_summary_ms_per_region": {
+        "count": 20,
+        "median": 8.9396875,
+        "mean": 8.99287125,
+        "min": 7.714333,
+        "max": 10.511456
+      },
+      "weighted_evaluation_fraction_at_most_two_workers_in_flight": 0.2108579079884187,
+      "ten_roots_with_highest_mean_evaluation": [
+        {
+          "root": 22,
+          "name": "minecraft:twisting_vines",
+          "regions": 20,
+          "weighted_fraction_at_most_2_workers_in_flight": 0.23331945560707587,
+          "weighted_fraction_at_most_4_workers_in_flight": 0.24740200759804645,
+          "longest_task_outside_requested_region_count": 20,
+          "longest_task_start_fraction_median": 0.07373986892777781,
+          "longest_task_duration_fraction_median": 0.452422365618894,
+          "task_count_median": 1156.0,
+          "evaluation_ms_median": 51.640229500000004,
+          "evaluation_cpu_ms_median": 362.65700000000004,
+          "evaluation_process_cpu_time_over_wall_median": 6.891628345091725,
+          "mean_workers_with_task_in_flight_median": 12.583532569424143,
+          "tail_after_p95_task_completion_ms_median": 19.298489625000002,
+          "longest_task_ms_median": 21.07775,
+          "evaluation_ms_mean": 60.5509854
+        },
+        {
+          "root": 4,
+          "name": "minecraft:patch_fire",
+          "regions": 20,
+          "weighted_fraction_at_most_2_workers_in_flight": 0.2414900579078746,
+          "weighted_fraction_at_most_4_workers_in_flight": 0.31973848685682177,
+          "longest_task_outside_requested_region_count": 18,
+          "longest_task_start_fraction_median": 0.041385643392201764,
+          "longest_task_duration_fraction_median": 0.4329592311480475,
+          "task_count_median": 1156.0,
+          "evaluation_ms_median": 61.861896,
+          "evaluation_cpu_ms_median": 211.9805,
+          "evaluation_process_cpu_time_over_wall_median": 3.523106934476377,
+          "mean_workers_with_task_in_flight_median": 10.285954526863684,
+          "tail_after_p95_task_completion_ms_median": 29.94569825,
+          "longest_task_ms_median": 27.068188,
+          "evaluation_ms_mean": 59.1889104
+        },
+        {
+          "root": 21,
+          "name": "minecraft:nether_sprouts",
+          "regions": 20,
+          "weighted_fraction_at_most_2_workers_in_flight": 0.21937489501532323,
+          "weighted_fraction_at_most_4_workers_in_flight": 0.24831756465486104,
+          "longest_task_outside_requested_region_count": 19,
+          "longest_task_start_fraction_median": 0.1813864842809133,
+          "longest_task_duration_fraction_median": 0.4283870968803841,
+          "task_count_median": 1156.0,
+          "evaluation_ms_median": 49.061978999999994,
+          "evaluation_cpu_ms_median": 372.0855,
+          "evaluation_process_cpu_time_over_wall_median": 7.873061989648752,
+          "mean_workers_with_task_in_flight_median": 12.885096115969787,
+          "tail_after_p95_task_completion_ms_median": 16.145088625,
+          "longest_task_ms_median": 21.8832295,
+          "evaluation_ms_mean": 56.099258299999995
+        },
+        {
+          "root": 20,
+          "name": "minecraft:warped_forest_vegetation",
+          "regions": 20,
+          "weighted_fraction_at_most_2_workers_in_flight": 0.19785362344787227,
+          "weighted_fraction_at_most_4_workers_in_flight": 0.22190490982482386,
+          "longest_task_outside_requested_region_count": 17,
+          "longest_task_start_fraction_median": 0.2812441435986582,
+          "longest_task_duration_fraction_median": 0.3207611253687529,
+          "task_count_median": 1156.0,
+          "evaluation_ms_median": 50.598271,
+          "evaluation_cpu_ms_median": 446.6485,
+          "evaluation_process_cpu_time_over_wall_median": 8.95638881894548,
+          "mean_workers_with_task_in_flight_median": 13.467578709520474,
+          "tail_after_p95_task_completion_ms_median": 11.13985925,
+          "longest_task_ms_median": 16.5152915,
+          "evaluation_ms_mean": 55.52838335
+        },
+        {
+          "root": 19,
+          "name": "minecraft:warped_fungi",
+          "regions": 20,
+          "weighted_fraction_at_most_2_workers_in_flight": 0.11805565925990824,
+          "weighted_fraction_at_most_4_workers_in_flight": 0.13497580871164175,
+          "longest_task_outside_requested_region_count": 17,
+          "longest_task_start_fraction_median": 0.35689400542067407,
+          "longest_task_duration_fraction_median": 0.3503706969309316,
+          "task_count_median": 1156.0,
+          "evaluation_ms_median": 38.6427085,
+          "evaluation_cpu_ms_median": 393.29549999999995,
+          "evaluation_process_cpu_time_over_wall_median": 9.487902998409009,
+          "mean_workers_with_task_in_flight_median": 13.816910331600338,
+          "tail_after_p95_task_completion_ms_median": 7.037609375000001,
+          "longest_task_ms_median": 15.1461875,
+          "evaluation_ms_mean": 43.16156025
+        },
+        {
+          "root": 3,
+          "name": "minecraft:spring_open",
+          "regions": 20,
+          "weighted_fraction_at_most_2_workers_in_flight": 0.06979395018063901,
+          "weighted_fraction_at_most_4_workers_in_flight": 0.1670615465966255,
+          "longest_task_outside_requested_region_count": 0,
+          "longest_task_start_fraction_median": 0.14268990939858567,
+          "longest_task_duration_fraction_median": 0.8256324987389086,
+          "task_count_median": 1024.0,
+          "evaluation_ms_median": 30.858375000000002,
+          "evaluation_cpu_ms_median": 75.172,
+          "evaluation_process_cpu_time_over_wall_median": 2.4516444101810926,
+          "mean_workers_with_task_in_flight_median": 10.391397563434026,
+          "tail_after_p95_task_completion_ms_median": 24.6732473,
+          "longest_task_ms_median": 25.3323745,
+          "evaluation_ms_mean": 33.5324293
+        },
+        {
+          "root": 5,
+          "name": "minecraft:patch_soul_fire",
+          "regions": 20,
+          "weighted_fraction_at_most_2_workers_in_flight": 0.07043892504691855,
+          "weighted_fraction_at_most_4_workers_in_flight": 0.09918113413519028,
+          "longest_task_outside_requested_region_count": 15,
+          "longest_task_start_fraction_median": 0.19886874003078414,
+          "longest_task_duration_fraction_median": 0.5364506004594766,
+          "task_count_median": 1156.0,
+          "evaluation_ms_median": 14.6677495,
+          "evaluation_cpu_ms_median": 150.701,
+          "evaluation_process_cpu_time_over_wall_median": 10.284790492420813,
+          "mean_workers_with_task_in_flight_median": 13.35185535486352,
+          "tail_after_p95_task_completion_ms_median": 1.39709875,
+          "longest_task_ms_median": 8.1835835,
+          "evaluation_ms_mean": 15.58016465
+        },
+        {
+          "root": 8,
+          "name": "minecraft:ore_magma",
+          "regions": 20,
+          "weighted_fraction_at_most_2_workers_in_flight": 0.39480737213394285,
+          "weighted_fraction_at_most_4_workers_in_flight": 0.40483417775106584,
+          "longest_task_outside_requested_region_count": 7,
+          "longest_task_start_fraction_median": 0.21998571088400343,
+          "longest_task_duration_fraction_median": 0.3686038258331322,
+          "task_count_median": 1156.0,
+          "evaluation_ms_median": 9.501104,
+          "evaluation_cpu_ms_median": 83.464,
+          "evaluation_process_cpu_time_over_wall_median": 8.71613306482572,
+          "mean_workers_with_task_in_flight_median": 10.956995801594768,
+          "tail_after_p95_task_completion_ms_median": 0.6143903749999999,
+          "longest_task_ms_median": 4.1655204999999995,
+          "evaluation_ms_mean": 13.7890875
+        },
+        {
+          "root": 12,
+          "name": "minecraft:ore_gold_nether",
+          "regions": 20,
+          "weighted_fraction_at_most_2_workers_in_flight": 0.2164484089005913,
+          "weighted_fraction_at_most_4_workers_in_flight": 0.2685204737126222,
+          "longest_task_outside_requested_region_count": 18,
+          "longest_task_start_fraction_median": 0.13645686158112735,
+          "longest_task_duration_fraction_median": 0.5613187579357213,
+          "task_count_median": 1156.0,
+          "evaluation_ms_median": 9.2399165,
+          "evaluation_cpu_ms_median": 71.0875,
+          "evaluation_process_cpu_time_over_wall_median": 7.48879480044772,
+          "mean_workers_with_task_in_flight_median": 10.603995405905014,
+          "tail_after_p95_task_completion_ms_median": 3.52138025,
+          "longest_task_ms_median": 5.3884585000000005,
+          "evaluation_ms_mean": 10.79958135
+        },
+        {
+          "root": 10,
+          "name": "minecraft:ore_gravel_nether",
+          "regions": 20,
+          "weighted_fraction_at_most_2_workers_in_flight": 0.4161698014030156,
+          "weighted_fraction_at_most_4_workers_in_flight": 0.45255793356265966,
+          "longest_task_outside_requested_region_count": 15,
+          "longest_task_start_fraction_median": 0.18577931737184597,
+          "longest_task_duration_fraction_median": 0.38748777400988066,
+          "task_count_median": 1156.0,
+          "evaluation_ms_median": 8.001521,
+          "evaluation_cpu_ms_median": 58.5845,
+          "evaluation_process_cpu_time_over_wall_median": 7.729706116353796,
+          "mean_workers_with_task_in_flight_median": 8.156957673272732,
+          "tail_after_p95_task_completion_ms_median": 2.02402625,
+          "longest_task_ms_median": 4.4673955,
+          "evaluation_ms_mean": 10.7451833
+        }
+      ]
+    },
+    {
+      "case": "nether-direct-stem",
+      "roots": 460,
+      "regions": 20,
+      "actual_program_before_statuses": [
+        4
+      ],
+      "actual_program_after_statuses": [
+        4
+      ],
+      "phase_totals_per_region": {
+        "queue": {
+          "wall_ms": {
+            "count": 20,
+            "median": 3.2008134999999998,
+            "mean": 6.8992459,
+            "min": 0.313957,
+            "max": 30.864373
+          },
+          "process_cpu_ms": {
+            "count": 20,
+            "median": 0.49,
+            "mean": 0.49165000000000003,
+            "min": 0.333,
+            "max": 0.683
+          }
+        },
+        "enumeration": {
+          "wall_ms": {
+            "count": 20,
+            "median": 0.285001,
+            "mean": 0.2788562,
+            "min": 0.159416,
+            "max": 0.35771
+          },
+          "process_cpu_ms": {
+            "count": 20,
+            "median": 0.4575,
+            "mean": 0.4833,
+            "min": 0.36,
+            "max": 0.792
+          }
+        },
+        "evaluation": {
+          "wall_ms": {
+            "count": 20,
+            "median": 580.3456874999999,
+            "mean": 598.00958745,
+            "min": 352.520958,
+            "max": 944.823666
+          },
+          "process_cpu_ms": {
+            "count": 20,
+            "median": 2691.1025,
+            "mean": 2723.12005,
+            "min": 2388.566,
+            "max": 3526.718
+          }
+        },
+        "publication": {
+          "wall_ms": {
+            "count": 20,
+            "median": 58.5732695,
+            "mean": 59.8960939,
+            "min": 46.538706,
+            "max": 118.779125
+          },
+          "process_cpu_ms": {
+            "count": 20,
+            "median": 66.4135,
+            "mean": 66.6237,
+            "min": 56.259,
+            "max": 74.964
+          }
+        },
+        "return_handoff": {
+          "wall_ms": {
+            "count": 20,
+            "median": 2.425209,
+            "mean": 4.29250385,
+            "min": 0.345793,
+            "max": 16.612165
+          },
+          "process_cpu_ms": {
+            "count": 20,
+            "median": 1.0285,
+            "mean": 1.3517,
+            "min": 0.688,
+            "max": 4.57
+          }
+        }
+      },
+      "observer_summary_ms_per_region": {
+        "count": 20,
+        "median": 10.335938500000001,
+        "mean": 10.59574985,
+        "min": 8.525042,
+        "max": 22.493421
+      },
+      "weighted_evaluation_fraction_at_most_two_workers_in_flight": 0.28234537621709493,
+      "ten_roots_with_highest_mean_evaluation": [
+        {
+          "root": 21,
+          "name": "minecraft:nether_sprouts",
+          "regions": 20,
+          "weighted_fraction_at_most_2_workers_in_flight": 0.3033568535341804,
+          "weighted_fraction_at_most_4_workers_in_flight": 0.32463390896736805,
+          "longest_task_outside_requested_region_count": 19,
+          "longest_task_start_fraction_median": 0.119666144561353,
+          "longest_task_duration_fraction_median": 0.42442573630318836,
+          "task_count_median": 1156.0,
+          "evaluation_ms_median": 66.7250215,
+          "evaluation_cpu_ms_median": 379.1975,
+          "evaluation_process_cpu_time_over_wall_median": 5.86040622403499,
+          "mean_workers_with_task_in_flight_median": 11.707812623128422,
+          "tail_after_p95_task_completion_ms_median": 22.082302,
+          "longest_task_ms_median": 25.9792705,
+          "evaluation_ms_mean": 78.077848
+        },
+        {
+          "root": 20,
+          "name": "minecraft:warped_forest_vegetation",
+          "regions": 20,
+          "weighted_fraction_at_most_2_workers_in_flight": 0.16664052811615276,
+          "weighted_fraction_at_most_4_workers_in_flight": 0.19213749250910292,
+          "longest_task_outside_requested_region_count": 16,
+          "longest_task_start_fraction_median": 0.15601022328423025,
+          "longest_task_duration_fraction_median": 0.4515037784418724,
+          "task_count_median": 1156.0,
+          "evaluation_ms_median": 73.8503335,
+          "evaluation_cpu_ms_median": 428.645,
+          "evaluation_process_cpu_time_over_wall_median": 5.973527400208772,
+          "mean_workers_with_task_in_flight_median": 12.688034594940511,
+          "tail_after_p95_task_completion_ms_median": 10.70960425,
+          "longest_task_ms_median": 32.7962715,
+          "evaluation_ms_mean": 73.659402
+        },
+        {
+          "root": 22,
+          "name": "minecraft:twisting_vines",
+          "regions": 20,
+          "weighted_fraction_at_most_2_workers_in_flight": 0.22865831973201528,
+          "weighted_fraction_at_most_4_workers_in_flight": 0.2465776900296035,
+          "longest_task_outside_requested_region_count": 20,
+          "longest_task_start_fraction_median": 0.23843398861008636,
+          "longest_task_duration_fraction_median": 0.42102445776168834,
+          "task_count_median": 1156.0,
+          "evaluation_ms_median": 69.91749999999999,
+          "evaluation_cpu_ms_median": 362.3325,
+          "evaluation_process_cpu_time_over_wall_median": 5.304704240516704,
+          "mean_workers_with_task_in_flight_median": 11.890128001450226,
+          "tail_after_p95_task_completion_ms_median": 20.289166125,
+          "longest_task_ms_median": 26.3862915,
+          "evaluation_ms_mean": 72.02307495
+        },
+        {
+          "root": 4,
+          "name": "minecraft:patch_fire",
+          "regions": 20,
+          "weighted_fraction_at_most_2_workers_in_flight": 0.26213577547711836,
+          "weighted_fraction_at_most_4_workers_in_flight": 0.3631805919402732,
+          "longest_task_outside_requested_region_count": 19,
+          "longest_task_start_fraction_median": 0.04284440384796896,
+          "longest_task_duration_fraction_median": 0.46049482766389205,
+          "task_count_median": 1156.0,
+          "evaluation_ms_median": 65.47185400000001,
+          "evaluation_cpu_ms_median": 213.5005,
+          "evaluation_process_cpu_time_over_wall_median": 3.3080249191928113,
+          "mean_workers_with_task_in_flight_median": 9.851354048435082,
+          "tail_after_p95_task_completion_ms_median": 28.00875,
+          "longest_task_ms_median": 29.796646,
+          "evaluation_ms_mean": 69.17955215
+        },
+        {
+          "root": 19,
+          "name": "minecraft:warped_fungi",
+          "regions": 20,
+          "weighted_fraction_at_most_2_workers_in_flight": 0.16326783697919878,
+          "weighted_fraction_at_most_4_workers_in_flight": 0.188526982998317,
+          "longest_task_outside_requested_region_count": 16,
+          "longest_task_start_fraction_median": 0.2385952107207373,
+          "longest_task_duration_fraction_median": 0.4610257506824357,
+          "task_count_median": 1156.0,
+          "evaluation_ms_median": 52.1837915,
+          "evaluation_cpu_ms_median": 371.3465,
+          "evaluation_process_cpu_time_over_wall_median": 6.288254961864192,
+          "mean_workers_with_task_in_flight_median": 13.432936768582456,
+          "tail_after_p95_task_completion_ms_median": 10.87636475,
+          "longest_task_ms_median": 23.2125005,
+          "evaluation_ms_mean": 55.150316600000004
+        },
+        {
+          "root": 3,
+          "name": "minecraft:spring_open",
+          "regions": 20,
+          "weighted_fraction_at_most_2_workers_in_flight": 0.13770155088741817,
+          "weighted_fraction_at_most_4_workers_in_flight": 0.19629672574338314,
+          "longest_task_outside_requested_region_count": 0,
+          "longest_task_start_fraction_median": 0.16303529120186844,
+          "longest_task_duration_fraction_median": 0.7719814200830311,
+          "task_count_median": 1024.0,
+          "evaluation_ms_median": 36.133708,
+          "evaluation_cpu_ms_median": 77.5795,
+          "evaluation_process_cpu_time_over_wall_median": 2.123092885606474,
+          "mean_workers_with_task_in_flight_median": 10.034101093383944,
+          "tail_after_p95_task_completion_ms_median": 25.754870474999997,
+          "longest_task_ms_median": 29.324125000000002,
+          "evaluation_ms_mean": 39.38268135
+        },
+        {
+          "root": 5,
+          "name": "minecraft:patch_soul_fire",
+          "regions": 20,
+          "weighted_fraction_at_most_2_workers_in_flight": 0.28437862275776726,
+          "weighted_fraction_at_most_4_workers_in_flight": 0.3126742877552207,
+          "longest_task_outside_requested_region_count": 12,
+          "longest_task_start_fraction_median": 0.17411009814130618,
+          "longest_task_duration_fraction_median": 0.46637686369520753,
+          "task_count_median": 1156.0,
+          "evaluation_ms_median": 20.736812,
+          "evaluation_cpu_ms_median": 152.296,
+          "evaluation_process_cpu_time_over_wall_median": 7.143629285059262,
+          "mean_workers_with_task_in_flight_median": 11.011860606457246,
+          "tail_after_p95_task_completion_ms_median": 1.8235055,
+          "longest_task_ms_median": 11.7439795,
+          "evaluation_ms_mean": 25.92901245
+        },
+        {
+          "root": 13,
+          "name": "minecraft:ore_quartz_nether",
+          "regions": 20,
+          "weighted_fraction_at_most_2_workers_in_flight": 0.3931039144010805,
+          "weighted_fraction_at_most_4_workers_in_flight": 0.43090359078201473,
+          "longest_task_outside_requested_region_count": 7,
+          "longest_task_start_fraction_median": 0.2253122670659145,
+          "longest_task_duration_fraction_median": 0.30300118697050127,
+          "task_count_median": 1156.0,
+          "evaluation_ms_median": 11.7700625,
+          "evaluation_cpu_ms_median": 87.661,
+          "evaluation_process_cpu_time_over_wall_median": 7.564480199852408,
+          "mean_workers_with_task_in_flight_median": 8.886114801940483,
+          "tail_after_p95_task_completion_ms_median": 1.0196613749999999,
+          "longest_task_ms_median": 5.5668955,
+          "evaluation_ms_mean": 18.7044604
+        },
+        {
+          "root": 7,
+          "name": "minecraft:glowstone",
+          "regions": 20,
+          "weighted_fraction_at_most_2_workers_in_flight": 0.3283304473839845,
+          "weighted_fraction_at_most_4_workers_in_flight": 0.4290757705174555,
+          "longest_task_outside_requested_region_count": 17,
+          "longest_task_start_fraction_median": 0.12146880483090605,
+          "longest_task_duration_fraction_median": 0.5587000783385654,
+          "task_count_median": 1156.0,
+          "evaluation_ms_median": 15.0270625,
+          "evaluation_cpu_ms_median": 77.161,
+          "evaluation_process_cpu_time_over_wall_median": 5.16955384090646,
+          "mean_workers_with_task_in_flight_median": 9.986776217460935,
+          "tail_after_p95_task_completion_ms_median": 3.209088125,
+          "longest_task_ms_median": 8.617750000000001,
+          "evaluation_ms_mean": 18.21367725
+        },
+        {
+          "root": 10,
+          "name": "minecraft:ore_gravel_nether",
+          "regions": 20,
+          "weighted_fraction_at_most_2_workers_in_flight": 0.5151982518309357,
+          "weighted_fraction_at_most_4_workers_in_flight": 0.5561665227000491,
+          "longest_task_outside_requested_region_count": 12,
+          "longest_task_start_fraction_median": 0.13004688637810607,
+          "longest_task_duration_fraction_median": 0.4080711379592106,
+          "task_count_median": 1156.0,
+          "evaluation_ms_median": 12.837458000000002,
+          "evaluation_cpu_ms_median": 63.153000000000006,
+          "evaluation_process_cpu_time_over_wall_median": 4.362888010042219,
+          "mean_workers_with_task_in_flight_median": 7.337973740494915,
+          "tail_after_p95_task_completion_ms_median": 2.8597972499999997,
+          "longest_task_ms_median": 6.004792,
+          "evaluation_ms_mean": 18.1354542
+        }
+      ]
+    },
+    {
+      "case": "overworld",
+      "roots": 0,
+      "regions": 0,
+      "actual_program_before_statuses": [
+        4
+      ],
+      "actual_program_after_statuses": [
+        4
+      ],
+      "phase_totals_per_region": {
+        "queue": {
+          "wall_ms": null,
+          "process_cpu_ms": null
+        },
+        "enumeration": {
+          "wall_ms": null,
+          "process_cpu_ms": null
+        },
+        "evaluation": {
+          "wall_ms": null,
+          "process_cpu_ms": null
+        },
+        "publication": {
+          "wall_ms": null,
+          "process_cpu_ms": null
+        },
+        "return_handoff": {
+          "wall_ms": null,
+          "process_cpu_ms": null
+        }
+      },
+      "observer_summary_ms_per_region": null,
+      "weighted_evaluation_fraction_at_most_two_workers_in_flight": null,
+      "ten_roots_with_highest_mean_evaluation": []
+    }
+  ],
+  "observer_output_proof": [
+    {
+      "case": "nether-main",
+      "before_statuses": [
+        4
+      ],
+      "after_statuses": [
+        4
+      ],
+      "instrumented_median_ms": 1267.310875,
+      "comparisons": [
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/nether-main-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        },
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle58/merged-full/nether-main-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        }
+      ]
+    },
+    {
+      "case": "nether-second-seed",
+      "before_statuses": [
+        4
+      ],
+      "after_statuses": [
+        4
+      ],
+      "instrumented_median_ms": 1377.352604,
+      "comparisons": [
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/nether-second-seed-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        },
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle58/merged-full/nether-second-seed-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        }
+      ]
+    },
+    {
+      "case": "nether-custom-bounds",
+      "before_statuses": [
+        4
+      ],
+      "after_statuses": [
+        4
+      ],
+      "instrumented_median_ms": 744.7923330000001,
+      "comparisons": [
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/nether-custom-bounds-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        },
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle58/merged-full/nether-custom-bounds-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        }
+      ]
+    },
+    {
+      "case": "nether-direct-stem",
+      "before_statuses": [
+        4
+      ],
+      "after_statuses": [
+        4
+      ],
+      "instrumented_median_ms": 985.0809165000001,
+      "comparisons": [
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/nether-direct-stem-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        },
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle58/merged-full/nether-direct-stem-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        }
+      ]
+    },
+    {
+      "case": "overworld",
+      "before_statuses": [
+        4
+      ],
+      "after_statuses": [
+        4
+      ],
+      "instrumented_median_ms": 396.0425835,
+      "comparisons": [
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/overworld-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        },
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle58/merged-full/overworld-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        }
+      ]
+    }
+  ],
+  "ordinary_library_proof": [
+    {
+      "case": "nether-main-run0",
+      "median_ms": 1412.289624917321,
+      "p95_region_ms": 2058.3118915325035,
+      "maximum_region_ms": 2347.6901249960065,
+      "total_ms": 29244.540583109483,
+      "chunks_per_second": 700.3016491846843,
+      "generation_peak_rss_bytes": 2279194624,
+      "memory_peak_scope": {
+        "generation_peak_rss_bytes": "Process lifetime through measured generation, including startup and warmups; excludes later snapshot processing and output validation",
+        "note": "High-water marks, not current RSS or isolated phase allocations; neither field proves sustained memory stability",
+        "peak_rss_bytes": "Process lifetime through output hashing, optional NBT comparison and optional specialization regeneration; retained legacy field"
+      },
+      "readiness": "shader-ready",
+      "readiness_wait_ms": 0.0005830079317092896,
+      "profile_sha256": "385256a18191b411d0758e0e4bfbf9a3a330160c65150d5960c23c2a53037edd",
+      "seed": 123456789,
+      "request": {
+        "fallback_biome": "minecraft:basalt_deltas",
+        "height": 256,
+        "min_y": 0
+      },
+      "lighting": "enabled",
+      "mca_compression": "zlib",
+      "measured_statuses": [
+        4
+      ],
+      "comparisons": [
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/nether-main-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        },
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle58/merged-full/nether-main-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        },
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle60/inventory/nether-main-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        }
+      ]
+    },
+    {
+      "case": "nether-second-seed-run0",
+      "median_ms": 1612.6160414423794,
+      "p95_region_ms": 2164.3978015403263,
+      "maximum_region_ms": 2381.8791250232607,
+      "total_ms": 32066.907624946907,
+      "chunks_per_second": 638.6646395571768,
+      "generation_peak_rss_bytes": 2365751296,
+      "memory_peak_scope": {
+        "generation_peak_rss_bytes": "Process lifetime through measured generation, including startup and warmups; excludes later snapshot processing and output validation",
+        "note": "High-water marks, not current RSS or isolated phase allocations; neither field proves sustained memory stability",
+        "peak_rss_bytes": "Process lifetime through output hashing, optional NBT comparison and optional specialization regeneration; retained legacy field"
+      },
+      "readiness": "shader-ready",
+      "readiness_wait_ms": 0.001250067725777626,
+      "profile_sha256": "385256a18191b411d0758e0e4bfbf9a3a330160c65150d5960c23c2a53037edd",
+      "seed": 42,
+      "request": {
+        "fallback_biome": "minecraft:basalt_deltas",
+        "height": 256,
+        "min_y": 0
+      },
+      "lighting": "enabled",
+      "mca_compression": "zlib",
+      "measured_statuses": [
+        4
+      ],
+      "comparisons": [
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/nether-second-seed-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        },
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle58/merged-full/nether-second-seed-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        },
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle60/inventory/nether-second-seed-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        }
+      ]
+    },
+    {
+      "case": "nether-custom-bounds-run0",
+      "median_ms": 976.1135209118947,
+      "p95_region_ms": 1455.700747994706,
+      "maximum_region_ms": 1484.9132089875638,
+      "total_ms": 20063.42437490821,
+      "chunks_per_second": 1020.7629374381759,
+      "generation_peak_rss_bytes": 2186756096,
+      "memory_peak_scope": {
+        "generation_peak_rss_bytes": "Process lifetime through measured generation, including startup and warmups; excludes later snapshot processing and output validation",
+        "note": "High-water marks, not current RSS or isolated phase allocations; neither field proves sustained memory stability",
+        "peak_rss_bytes": "Process lifetime through output hashing, optional NBT comparison and optional specialization regeneration; retained legacy field"
+      },
+      "readiness": "shader-ready",
+      "readiness_wait_ms": 0.0006249174475669861,
+      "profile_sha256": "74bc9093952b0459ceeafaae8a4049d6c6c46067516c9f03ec0d2493e37825c0",
+      "seed": 123456789,
+      "request": {
+        "fallback_biome": "minecraft:warped_forest",
+        "height": 256,
+        "min_y": 0
+      },
+      "lighting": "enabled",
+      "mca_compression": "zlib",
+      "measured_statuses": [
+        4
+      ],
+      "comparisons": [
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/nether-custom-bounds-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        },
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle58/merged-full/nether-custom-bounds-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        },
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle60/inventory/nether-custom-bounds-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        }
+      ]
+    },
+    {
+      "case": "nether-direct-stem-run0",
+      "median_ms": 918.6848750105128,
+      "p95_region_ms": 1110.6690522632564,
+      "maximum_region_ms": 1335.524749942124,
+      "total_ms": 19141.004375182092,
+      "chunks_per_second": 1069.954303262896,
+      "generation_peak_rss_bytes": 1929641984,
+      "memory_peak_scope": {
+        "generation_peak_rss_bytes": "Process lifetime through measured generation, including startup and warmups; excludes later snapshot processing and output validation",
+        "note": "High-water marks, not current RSS or isolated phase allocations; neither field proves sustained memory stability",
+        "peak_rss_bytes": "Process lifetime through output hashing, optional NBT comparison and optional specialization regeneration; retained legacy field"
+      },
+      "readiness": "shader-ready",
+      "readiness_wait_ms": 0.00029103830456733704,
+      "profile_sha256": "74bc9093952b0459ceeafaae8a4049d6c6c46067516c9f03ec0d2493e37825c0",
+      "seed": 42,
+      "request": {
+        "fallback_biome": "minecraft:warped_forest",
+        "height": 256,
+        "min_y": 0
+      },
+      "lighting": "enabled",
+      "mca_compression": "zlib",
+      "measured_statuses": [
+        4
+      ],
+      "comparisons": [
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/nether-direct-stem-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        },
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle58/merged-full/nether-direct-stem-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        },
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle60/inventory/nether-direct-stem-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        }
+      ]
+    },
+    {
+      "case": "overworld-run0",
+      "median_ms": 469.42602051422,
+      "p95_region_ms": 631.7367100389674,
+      "maximum_region_ms": 685.8226249460131,
+      "total_ms": 9646.959709003568,
+      "chunks_per_second": 2122.948640584234,
+      "generation_peak_rss_bytes": 1708670976,
+      "memory_peak_scope": {
+        "generation_peak_rss_bytes": "Process lifetime through measured generation, including startup and warmups; excludes later snapshot processing and output validation",
+        "note": "High-water marks, not current RSS or isolated phase allocations; neither field proves sustained memory stability",
+        "peak_rss_bytes": "Process lifetime through output hashing, optional NBT comparison and optional specialization regeneration; retained legacy field"
+      },
+      "readiness": "shader-ready",
+      "readiness_wait_ms": 0.0005420297384262085,
+      "profile_sha256": "5a398bd02281677db81b6e70d426ab9a99a322050308e977b2a771134ded1cad",
+      "seed": 123456789,
+      "request": {
+        "fallback_biome": "minecraft:badlands",
+        "height": 384,
+        "min_y": -64
+      },
+      "lighting": "enabled",
+      "mca_compression": "zlib",
+      "measured_statuses": [
+        4
+      ],
+      "comparisons": [
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/overworld-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        },
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle58/merged-full/overworld-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        },
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle60/inventory/overworld-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        }
+      ]
+    }
+  ],
+  "finding": "Joined anchor evaluation dominates observed root phases. Standard seeds spend a weighted 35.62% and 37.59% of evaluation with at most two physical workers carrying a top-level task. Brown mushroom and large ancient debris longest tasks lie outside the requested region in all 20 regions per standard seed. Those long tasks usually begin early; simple queue reordering alone is not supported as a sufficient fix. Basalt pillars instead carry about 13.6 tasks in flight while process CPU/wall is about 0.8; that pattern is consistent with waits but does not distinguish GPU, dependency, OS or observer effects.",
+  "next_opportunity": {
+    "selected_production_change": false,
+    "candidate": "Reduce exact exterior dependency critical paths and demand-driven GPU waits. Reuse source ordering and complete closure; do not truncate the boundary or simply enlarge thread counts. Inspect held frontier/graph/checkpoint experiments before selecting a distinct design.",
+    "uncertainty": "This evidence identifies phase and task-span patterns, not the causal share of GPU, dependency wait or preemption. Long tasks commonly start early, so priority-only scheduling may offer limited benefit. Earlier broad frontiers and graph replay had tradeoffs; no revival is justified solely by occupancy."
+  },
+  "limitations": [
+    "Known external host activity is recorded; no uncontended performance, no-regression or subsecond acceptance.",
+    "Observer timings include event collection and summary overhead and are not ordinary measurements. Summary time remains inside the complete region interval.",
+    "CPU/wall is process CPU time, not fraction of available cores. Workers with a task in flight may be blocked, preempted or executing nested work.",
+    "Root phase totals exclude setup, observer summaries and final structure/distribution/retirement; whole region includes them.",
+    "Ordinary library bytes differ from C58 despite no production algorithm/layout change; separate full-NBT validation is retained.",
+    "No concurrency/portal lifecycle rerun selected for this diagnostic-only cycle. These requirements remain open for final acceptance."
+  ],
+  "evidence_root": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle60",
+  "commands": [
+    "python3 worker-phase-inventory.py",
+    "python3 worker-phase-summary.py",
+    "python3 worker-phase-normal.py"
+  ],
+  "recovery": "Preserve immutable normal.dylib, inventory-test-executable, provenance, complete worlds, proof.json, normal-full/suite.json, phase-summary.json and observer-host.json. Reproduce exact_worker_phase_inventory using recorded environment. Source branch codex/nether-root-worker-occupancy."
+}

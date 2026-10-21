@@ -1894,3 +1894,65 @@ small set of long remaining tasks from many occupied but blocked/preempted
 workers before an architectural scheduling change is selected. External
 `cycle59/baseline-cpu-summary.json` and `prior-worker-wait-evidence.json` retain
 the evidence and limitations. No production scheduling change is selected.
+
+
+## Cycle 60 — root CPU phases and dispatched worker occupancy
+
+A test-only observer measures pre-dispatch queueing, target enumeration, joined
+anchor evaluation, publication and return handoff. Each phase records wall time
+and an optional process CPU delta. Each worker records top-level task spans;
+joined summaries union overlapping/nested intervals by physical thread before
+integrating occupancy. No collector lock spans generation. Collector buffers
+are emptied at every root and retain no planner, world-state or GPU owners.
+Missing clocks/phases remain null; anomalous intervals are not silently clipped.
+
+All observer hooks, state and libc clock calls are excluded from ordinary builds.
+libc is a dev dependency already present transitively in the lockfile; no package
+version changed. Production generation order, errors, publication and layout
+remain unchanged. Four tests cover idle gaps, equal/nested spans, root rebinding,
+failed roots and missing clocks. All 167 native tests pass (48 optional ignored),
+and the explicit GPU inventory passes.
+
+Five warmups and twenty full lit regions per case produce these instrumented
+observations. The last column integrates disjoint root evaluation windows:
+
+| Case | Evaluation sum/region, median ms | Publication sum/region, median ms | Evaluation time with at most 2 workers carrying tasks |
+| --- | ---: | ---: | ---: |
+| nether-main | 902.2 | 56.3 | 35.6% |
+| nether-second-seed | 981.4 | 57.6 | 37.6% |
+| nether-custom-bounds | 420.8 | 48.7 | 21.1% |
+| nether-direct-stem | 580.3 | 58.6 | 28.2% |
+
+Standard-seed brown-mushroom longest tasks are outside the requested region in
+20/20 regions per seed. Their median duration is 90–94% of the root evaluation
+interval and their median start is within its first 5–7%. Large ancient-debris
+longest tasks are also exterior in every measured standard-seed region. Many
+other long roots have exterior tails. This points toward recursive exterior
+prior-state work; simply starting these already-early tasks sooner is unlikely
+to remove most of their cost. Previous broad frontier/graph/checkpoint attempts
+must be considered before choosing a new exact dependency design.
+
+Basalt pillars show a different pattern: about 13.6 workers carry tasks while
+process CPU/wall is about 0.8. This is consistent with waiting, but it does not
+separate GPU, dependency blocking, preemption or observer effects. Occupancy is
+not actual CPU execution. Process CPU also includes native service/shader threads.
+Task/CPU interval sums must not be presented as elapsed-time percentages.
+
+Observer summaries add median 15–16 ms per standard-seed region and 9–10 ms for
+custom profiles; they remain inside whole-region elapsed time. Setup and final
+structure/distribution/retirement are outside the root phase sums. The observer
+records no ordered roots in this Overworld control.
+
+The instrumented 102,400 measured chunks match the immutable original and C58
+merged corpus. A separate ordinary library generates another 102,400 matching
+the original, C58 and observer output. All measured shader statuses are 4. Normal
+symbol inspection finds no worker_phase_probe, material_storage_probe or
+version_layout_probe. Normal library bytes differ from C58; no binary identity,
+production speedup or quiet acceptance is claimed. External work remains visible.
+
+Report: `docs/benchmarks/nether-perf-cycle60-2026-10-21.json`. External `cycle60/`
+retains full per-root summaries, top-eight long tasks, occupancy histograms,
+clock/phase data, immutable binaries, provenance, full NBT and ordinary timings.
+The branch also carries C58's actual merged proof and held C59 measurements as
+documentation only. The held material-rank index is not included. No production
+scheduler change is selected in this cycle. The performance goal remains open.
