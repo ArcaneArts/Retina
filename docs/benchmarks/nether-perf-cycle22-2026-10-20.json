@@ -584,7 +584,26 @@
       ]
     }
   },
-  "post_merge": null,
+  "post_merge": {
+    "revision": "6e125da6f3728af7fba615ac4896088372d99b6b",
+    "pr": "https://github.com/ArcaneArts/Retina/pull/181",
+    "library_sha256": "0beb728f84c2f8ffab4eadaa52a3e121a63ca1b623fb9c777b0800df37831604",
+    "binary_identical_to_validated_candidate": true,
+    "native_tests": {
+      "passed": 123,
+      "ignored": 37,
+      "failed": 0
+    },
+    "evidence": "cycle22/merged-smoke/suite.json",
+    "identical_nbt_chunks": 5120,
+    "scope": "Actual merged build; one warmup and one measured region per case. Complete-output smoke only, quiet timing confirmation deferred.",
+    "references": [
+      "original",
+      "Cycle5",
+      "preceding Cycle19",
+      "Cycle22 candidate"
+    ]
+  },
   "work_comparison": {
     "preceding_anchor_builds": 88417,
     "candidate_anchor_builds": 88417,
