@@ -20,12 +20,9 @@ struct NearbyTiles {
     cells: [TileCell; SLOT_WIDTH * SLOT_WIDTH],
 }
 impl NearbyTiles {
-    fn new(request: ChunkRequest) -> Self {
+    fn new(chunk_x: i32, chunk_z: i32) -> Self {
         Self {
-            origin: [
-                request.chunk_x.div_euclid(16) - 3,
-                request.chunk_z.div_euclid(16) - 3,
-            ],
+            origin: [chunk_x.div_euclid(16) - 3, chunk_z.div_euclid(16) - 3],
             cells: std::array::from_fn(|_| OnceLock::new()),
         }
     }
@@ -67,7 +64,7 @@ impl<'a> TerrainJob<'a> {
             engine,
             request,
             initial: initial.filter(|field| reusable && field.prior.is_none()),
-            nearby: NearbyTiles::new(request),
+            nearby: NearbyTiles::new(request.chunk_x, request.chunk_z),
             tiles: Mutex::new(Map::default()),
             metrics: engine.timings(request.reserved),
         }
@@ -173,11 +170,8 @@ mod tests {
     use super::*;
     #[test]
     fn direct_slots_are_unique_across_negative_boundaries_and_fall_back_outside() {
-        let (_, _, mut request) = crate::decoration::replay_tests::fixture(42, 0);
         for origin in [-65, -16, -1, 0, 17, i32::MIN, i32::MAX] {
-            request.chunk_x = origin;
-            request.chunk_z = origin;
-            let slots = NearbyTiles::new(request);
+            let slots = NearbyTiles::new(origin, origin);
             let mut seen = std::collections::HashSet::new();
             for z in -1..=SLOT_WIDTH as i64 {
                 for x in -1..=SLOT_WIDTH as i64 {
