@@ -103,6 +103,7 @@ impl Saved {
         let mut states = HashSet::new();
         let mut masks = HashSet::new();
         let mut halos = HashSet::new();
+        let mut packed = HashSet::new();
         let mut state_bytes = 0;
         let mut mask_bytes = 0;
         let mut halo_bytes = 0;
@@ -130,6 +131,13 @@ impl Saved {
             state_bytes += std::mem::size_of::<ColumnState>() + 2 * std::mem::size_of::<usize>();
             match &value.runs {
                 ColumnRuns::Owned(runs) => state_bytes += runs.len() * 4,
+                ColumnRuns::Cached { runs, .. } => {
+                    if packed.insert(Arc::as_ptr(runs) as usize) {
+                        state_bytes += std::mem::size_of::<Vec<u32>>()
+                            + 2 * std::mem::size_of::<usize>()
+                            + runs.capacity() * 4;
+                    }
+                }
                 ColumnRuns::Shared { mask, .. } => {
                     if !masks.insert(Arc::as_ptr(mask) as usize) {
                         continue;

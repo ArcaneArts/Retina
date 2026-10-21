@@ -293,12 +293,17 @@ enum ColumnRuns {
         mask: Arc<crate::geology::CaveMask>,
         range: std::ops::Range<usize>,
     },
+    Cached {
+        runs: Arc<Vec<u32>>,
+        range: std::ops::Range<usize>,
+    },
 }
 impl ColumnRuns {
     fn slice(&self) -> &[u32] {
         match self {
             Self::Owned(runs) => runs,
             Self::Shared { mask, range } => &mask.words[range.clone()],
+            Self::Cached { runs, range } => &runs[range.clone()],
         }
     }
 }

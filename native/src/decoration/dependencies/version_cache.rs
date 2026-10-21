@@ -1,7 +1,7 @@
 //! Bounded completed interior states, captured once for a neighboring job.
-use super::{ColumnRuns, ColumnState, Metrics, Perf, Versions};
+use super::{ColumnCell, ColumnRuns, ColumnState, Map, Metrics, Perf, Versions};
 use crate::{CacheKey, ChunkRequest, TerrainEngine, WorldProfile};
-use std::collections::{HashSet, VecDeque};
+use std::collections::VecDeque;
 use std::sync::Arc;
 
 const MAX_ENTRIES: usize = 8;
@@ -10,8 +10,107 @@ struct Snapshot {
     context: CacheKey,
     region: [i32; 2],
     roots: usize,
-    versions: Versions,
+    versions: Archived,
     bytes: usize,
+}
+const MISSING: u32 = u32::MAX;
+struct SavedVersion {
+    root: usize,
+    state: u32,
+}
+struct SavedState {
+    range: std::ops::Range<usize>,
+    heights: [i32; 6],
+}
+// Immutable flat arrays replace the planner's OnceLocks, per-column vectors,
+// ColumnState allocations and retained GPU mask owners. A returned state pins
+// only the packed material buffer; it cannot keep a planner or index alive.
+struct Archived {
+    origin: [i32; 2],
+    width: usize,
+    base: Box<[u32]>,
+    offsets: Box<[usize]>,
+    changed: Box<[SavedVersion]>,
+    states: Box<[SavedState]>,
+    runs: Arc<Vec<u32>>,
+}
+impl Archived {
+    fn capture(versions: &Versions) -> Option<Self> {
+        let mut owners = Map::<usize, u32>::default();
+        let mut states = Vec::new();
+        let mut runs = Vec::new();
+        let mut intern = |cell: &ColumnCell| -> Option<u32> {
+            let Some(value) = cell.get() else {
+                return Some(MISSING);
+            };
+            let value = value.as_ref().ok()?;
+            let pointer = Arc::as_ptr(value) as usize;
+            if let Some(&id) = owners.get(&pointer) {
+                return Some(id);
+            }
+            let id = u32::try_from(states.len())
+                .ok()
+                .filter(|&id| id != MISSING)?;
+            let start = runs.len();
+            runs.extend_from_slice(value.runs.slice());
+            states.push(SavedState {
+                range: start..runs.len(),
+                heights: value.heights,
+            });
+            owners.insert(pointer, id);
+            Some(id)
+        };
+        // Borrow all original owners throughout interning: allocator address
+        // reuse must never turn a different state into a false pointer hit.
+        let base = versions
+            .base
+            .iter()
+            .map(&mut intern)
+            .collect::<Option<Vec<_>>>()?;
+        let mut offsets = Vec::with_capacity(versions.changed.len() + 1);
+        let mut changed = Vec::new();
+        for column in &versions.changed {
+            offsets.push(changed.len());
+            for value in column {
+                changed.push(SavedVersion {
+                    root: value.root,
+                    state: intern(&value.state)?,
+                });
+            }
+        }
+        offsets.push(changed.len());
+        Some(Self {
+            origin: versions.origin,
+            width: versions.width,
+            base: base.into_boxed_slice(),
+            offsets: offsets.into_boxed_slice(),
+            changed: changed.into_boxed_slice(),
+            states: states.into_boxed_slice(),
+            runs: Arc::new(runs),
+        })
+    }
+    fn column(&self, before: usize, x: i32, z: i32) -> Option<Arc<ColumnState>> {
+        let x = i64::from(x) - i64::from(self.origin[0]);
+        let z = i64::from(z) - i64::from(self.origin[1]);
+        if x < 0 || z < 0 || x >= self.width as i64 || z >= self.width as i64 {
+            return None;
+        }
+        let column = z as usize * self.width + x as usize;
+        let changed = &self.changed[self.offsets[column]..self.offsets[column + 1]];
+        let state = changed
+            .partition_point(|v| v.root < before)
+            .checked_sub(1)
+            .map_or(self.base[column], |last| changed[last].state);
+        // Preserve missing latest markers; never search backward for a value.
+        let value = self.states.get(state as usize)?;
+        Some(Arc::new(ColumnState {
+            runs: ColumnRuns::Cached {
+                runs: self.runs.clone(),
+                range: value.range.clone(),
+            },
+            heights: value.heights,
+        }))
+    }
 }
 pub(crate) struct Cache {
     entries: VecDeque<Arc<Snapshot>>,
@@ -150,16 +249,23 @@ impl Reuse {
         if before > self.roots {
             return None;
         }
-        self.captured.iter().rev().find_map(|saved| {
-            let column = saved.versions.index(x, z)?;
-            let (_, cell) = saved.versions.before(column, before);
-            // An uninitialized or failed latest version is a miss, never an
-            // invitation to substitute an earlier or later completed state.
-            cell.get()?.as_ref().ok().cloned()
-        })
+        self.captured
+            .iter()
+            .rev()
+            .find_map(|saved| saved.versions.column(before, x, z))
     }
+
     pub(super) fn export(&self, versions: Versions, metrics: &Metrics) -> Option<Pending> {
         let started = metrics.start();
+        let archived = Archived::capture(&versions);
+        // Original planner allocations retire synchronously while exporting,
+        // not during later eviction or after the measured generation interval.
+        drop(versions);
+        let Some(versions) = archived else {
+            metrics.add(Perf::version_cache_export_skips, 1);
+            metrics.elapsed(Perf::version_cache_export_nanos, started);
+            return None;
+        };
         let mut snapshot = Snapshot {
             context: self.context,
             region: self.region,
@@ -167,7 +273,7 @@ impl Reuse {
             versions,
             bytes: 0,
         };
-        let bytes = retained_bytes(&snapshot);
+        let bytes = Some(retained_bytes(&snapshot));
         let pending = match bytes.filter(|&bytes| bytes <= MAX_BYTES) {
             Some(bytes) => {
                 snapshot.bytes = bytes;
@@ -185,66 +291,17 @@ impl Reuse {
         pending
     }
 }
-fn retained_bytes(snapshot: &Snapshot) -> Option<usize> {
-    let versions = &snapshot.versions;
-    let mut bytes = std::mem::size_of::<Snapshot>()
+fn retained_bytes(snapshot: &Snapshot) -> usize {
+    let v = &snapshot.versions;
+    std::mem::size_of::<Snapshot>()
         + 2 * std::mem::size_of::<usize>()
-        + versions.base.capacity() * std::mem::size_of::<super::ColumnCell>()
-        + versions.changed.capacity() * std::mem::size_of::<Vec<super::ColumnVersion>>()
-        + versions
-            .changed
-            .iter()
-            .map(|v| v.capacity() * std::mem::size_of::<super::ColumnVersion>())
-            .sum::<usize>();
-    let mut states = HashSet::new();
-    let mut masks = HashSet::new();
-    let mut halos = HashSet::new();
-    for cell in versions.base.iter().chain(
-        versions
-            .changed
-            .iter()
-            .flat_map(|v| v.iter().map(|v| &v.state)),
-    ) {
-        let Some(value) = cell.get() else {
-            continue;
-        };
-        let value = value.as_ref().ok()?;
-        if !states.insert(Arc::as_ptr(value) as usize) {
-            continue;
-        }
-        bytes = bytes
-            .saturating_add(std::mem::size_of::<ColumnState>() + 2 * std::mem::size_of::<usize>());
-        match &value.runs {
-            ColumnRuns::Owned(runs) => bytes = bytes.saturating_add(runs.len() * 4),
-            ColumnRuns::Shared { mask, .. } => {
-                if !masks.insert(Arc::as_ptr(mask) as usize) {
-                    continue;
-                }
-                bytes = bytes
-                    .saturating_add(
-                        std::mem::size_of::<crate::geology::CaveMask>()
-                            + 2 * std::mem::size_of::<usize>(),
-                    )
-                    .saturating_add(mask.words.capacity() * 4);
-                if let Some(halo) = &mask.columns {
-                    if halos.insert(Arc::as_ptr(&halo.columns) as usize) {
-                        bytes = bytes
-                            .saturating_add(
-                                std::mem::size_of::<Vec<crate::Column>>()
-                                    + 2 * std::mem::size_of::<usize>(),
-                            )
-                            .saturating_add(
-                                halo.columns.capacity() * std::mem::size_of::<crate::Column>(),
-                            );
-                    }
-                }
-            }
-        }
-    }
-    // Unique retained backing capacities are charged within each snapshot.
-    // Shared owners across snapshots may be overcounted. Entry count bounds
-    // deque/Arc handles; temporary accounting sets are dropped before return.
-    Some(bytes)
+        + v.base.len() * std::mem::size_of::<u32>()
+        + v.offsets.len() * std::mem::size_of::<usize>()
+        + v.changed.len() * std::mem::size_of::<SavedVersion>()
+        + v.states.len() * std::mem::size_of::<SavedState>()
+        + std::mem::size_of::<Vec<u32>>()
+        + 2 * std::mem::size_of::<usize>()
+        + v.runs.capacity() * std::mem::size_of::<u32>()
 }
 
 #[cfg(test)]
@@ -279,10 +336,10 @@ mod tests {
             context: context(r),
             region: [x.div_euclid(32), 0],
             roots: 8,
-            versions,
+            versions: Archived::capture(&versions).unwrap(),
             bytes: 0,
         };
-        snapshot.bytes = retained_bytes(&snapshot).unwrap();
+        snapshot.bytes = retained_bytes(&snapshot);
         Arc::new(snapshot)
     }
     #[test]
@@ -331,14 +388,11 @@ mod tests {
     }
     #[test]
     fn exact_before_root_selection_never_skips_missing_or_failed_latest_cells() {
-        let mut a = Arc::try_unwrap(snapshot(0, 42)).ok().unwrap();
-        let state = a.versions.base[0]
-            .get()
-            .unwrap()
-            .as_ref()
-            .ok()
-            .unwrap()
-            .clone();
+        let r = request(0, 0);
+        let (profile, _, _) = crate::decoration::replay_tests::fixture(42, 0);
+        let mut versions = Versions::new(r, 1);
+        let state = Arc::new(ColumnState::new(vec![0; 16], &profile, 0));
+        versions.base[0].set(Ok(state.clone())).ok().unwrap();
         let ready = ColumnCell::new();
         ready.set(Ok(state)).ok().unwrap();
         let failed = ColumnCell::new();
@@ -346,7 +400,7 @@ mod tests {
             .set(Err(Box::new(super::super::ColumnFailure("failed".into()))))
             .ok()
             .unwrap();
-        a.versions.changed[0] = vec![
+        versions.changed[0] = vec![
             ColumnVersion {
                 root: 1,
                 state: ready,
@@ -360,7 +414,15 @@ mod tests {
                 state: failed,
             },
         ];
-        assert!(retained_bytes(&a).is_none());
+        assert!(Archived::capture(&versions).is_none());
+        versions.changed[0][2].state = ColumnCell::new();
+        let a = Snapshot {
+            context: context(r),
+            region: [0, 0],
+            roots: 8,
+            versions: Archived::capture(&versions).unwrap(),
+            bytes: 0,
+        };
         let reuse = Reuse {
             context: a.context,
             region: a.region,
@@ -427,27 +489,42 @@ mod tests {
         assert!(!near([i32::MIN, 0], [i32::MAX, 0]));
     }
     #[test]
-    fn repeated_state_owners_charge_only_the_new_index_capacity() {
-        let mut saved = Arc::try_unwrap(snapshot(0, 42)).ok().unwrap();
-        let state = saved.versions.base[0]
-            .get()
-            .unwrap()
-            .as_ref()
-            .ok()
-            .unwrap()
-            .clone();
-        let original = retained_bytes(&saved).unwrap();
-        saved.versions.base[1].set(Ok(state.clone())).ok().unwrap();
-        assert_eq!(retained_bytes(&saved).unwrap(), original);
+    fn archive_deduplicates_owners_and_outlives_original_and_index() {
+        let r = request(0, 0);
+        let (profile, _, _) = crate::decoration::replay_tests::fixture(42, 0);
+        let mut versions = Versions::new(r, 1);
+        let state = Arc::new(ColumnState::new(vec![0; 16], &profile, 0));
+        let weak = Arc::downgrade(&state);
+        versions.base[0].set(Ok(state.clone())).ok().unwrap();
+        versions.base[1].set(Ok(state.clone())).ok().unwrap();
         let ready = ColumnCell::new();
-        ready.set(Ok(state)).ok().unwrap();
-        saved.versions.changed[0].push(ColumnVersion {
+        ready.set(Ok(state.clone())).ok().unwrap();
+        versions.changed[0].push(ColumnVersion {
             root: 1,
             state: ready,
         });
+        let archive = Archived::capture(&versions).unwrap();
+        assert_eq!(archive.states.len(), 1);
+        assert_eq!(archive.runs.as_slice(), state.runs.slice());
+        assert_eq!(archive.column(2, 0, 0).unwrap().heights, state.heights);
+        assert!(archive.column(2, 2, 0).is_none());
+        drop(state);
+        drop(versions);
+        assert!(weak.upgrade().is_none());
+        let held = archive.column(2, 0, 0).unwrap();
+        let packed = Arc::downgrade(&archive.runs);
+        // Copying a previously archived state cannot create an ownership cycle.
+        let next = Versions::new(r, 1);
+        next.base[0].set(Ok(held.clone())).ok().unwrap();
+        let second = Archived::capture(&next).unwrap();
+        drop(next);
+        drop(archive);
+        assert!(packed.upgrade().is_some());
         assert_eq!(
-            retained_bytes(&saved).unwrap(),
-            original + saved.versions.changed[0].capacity() * std::mem::size_of::<ColumnVersion>()
+            held.runs.slice(),
+            second.column(2, 0, 0).unwrap().runs.slice()
         );
+        drop(held);
+        assert!(packed.upgrade().is_none());
     }
 }
