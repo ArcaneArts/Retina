@@ -1,0 +1,829 @@
+{
+  "schema": "retina.nether-performance-cycle",
+  "cycle": 47,
+  "status": "held",
+  "type": "measurement only",
+  "change": "Opt-in disjoint root phases and successful initialized base-material demand, observed after workers join.",
+  "evidence_root": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20",
+  "base_revision": "74f4e1b7c48e31fe4d98a9648e8b20e842d65db2",
+  "library": {
+    "revision": "3d4355a23e28df0f5f55dd4b73a32d2748ff5214",
+    "native_tree": "59907d322aa3b5c31f44fd9cc52b55bb80521681",
+    "sha256": "7a9785c1018cbce29e7e2c27a7c00f991e64d5c1f0bd82b40a8bfa3191742659",
+    "source_status": "M docs/NETHER_PERFORMANCE_CYCLES.md\n M docs/benchmarks/nether-perf-cycle44-2026-10-21.json\n?? docs/benchmarks/nether-perf-cycle45-2026-10-21.json\n?? docs/benchmarks/nether-perf-cycle46-2026-10-21.json",
+    "forced_rebuild": true,
+    "timing_acceptance": false
+  },
+  "method": {
+    "manifest": "qa/nether-performance-corpus.json",
+    "warmups": 5,
+    "measured_regions_per_case": 20,
+    "callers": 1,
+    "readiness": "shader-ready",
+    "scope": "complete lit-MCA with lighting and zlib",
+    "own_workloads_serialized": true,
+    "references": [
+      "reference-suite",
+      "cycle5/correctness-suite",
+      "cycle44/merged-full"
+    ],
+    "comparison": "Complete decompressed NBT and membership, excluding only MCA timestamps and compression representation.",
+    "diagnostics": "Separate 1+1 counter pilot; 5+8 phase/demand run with performance counters off; 1+2 parallel diagnostic. Headline corpus disables both diagnostic flags.",
+    "timing_acceptance": false
+  },
+  "tests": {
+    "passed": 148,
+    "ignored": 38,
+    "failed": 0
+  },
+  "cases": [
+    {
+      "case": "nether-main-run0",
+      "suite": "cycle47/candidate-full/suite.json",
+      "median_ms": 1246.4014164870605,
+      "p95_region_ms": 1485.8418047893792,
+      "maximum_region_ms": 1621.840874897316,
+      "total_ms": 25432.72408284247,
+      "chunks_per_second": 805.2617538447761,
+      "generation_peak_rss_bytes": 2021933056,
+      "peak_rss_bytes": 2021933056,
+      "identical_nbt_chunks_per_reference": 20480,
+      "references": 3,
+      "program_statuses": [
+        4
+      ]
+    },
+    {
+      "case": "nether-second-seed-run0",
+      "suite": "cycle47/candidate-full/suite.json",
+      "median_ms": 1441.030666930601,
+      "p95_region_ms": 1673.140719207004,
+      "maximum_region_ms": 1856.293790973723,
+      "total_ms": 27569.16933390312,
+      "chunks_per_second": 742.8587982451386,
+      "generation_peak_rss_bytes": 2131738624,
+      "peak_rss_bytes": 2131738624,
+      "identical_nbt_chunks_per_reference": 20480,
+      "references": 3,
+      "program_statuses": [
+        4
+      ]
+    },
+    {
+      "case": "nether-custom-bounds-run0",
+      "suite": "cycle47/candidate-full/suite.json",
+      "median_ms": 852.8606250183657,
+      "p95_region_ms": 928.9008977008052,
+      "maximum_region_ms": 983.9973750058562,
+      "total_ms": 17081.76099997945,
+      "chunks_per_second": 1198.939617526825,
+      "generation_peak_rss_bytes": 1607237632,
+      "peak_rss_bytes": 1607237632,
+      "identical_nbt_chunks_per_reference": 20480,
+      "references": 3,
+      "program_statuses": [
+        4
+      ]
+    },
+    {
+      "case": "nether-direct-stem-run0",
+      "suite": "cycle47/candidate-full/suite.json",
+      "median_ms": 849.2557085119188,
+      "p95_region_ms": 901.2076066923328,
+      "maximum_region_ms": 920.24683393538,
+      "total_ms": 16963.867374928668,
+      "chunks_per_second": 1207.2718765927111,
+      "generation_peak_rss_bytes": 1677361152,
+      "peak_rss_bytes": 1677361152,
+      "identical_nbt_chunks_per_reference": 20480,
+      "references": 3,
+      "program_statuses": [
+        4
+      ]
+    },
+    {
+      "case": "overworld-run0",
+      "suite": "cycle47/candidate-full/suite.json",
+      "median_ms": 332.5438959291205,
+      "p95_region_ms": 407.3592126253061,
+      "maximum_region_ms": 427.2277499549091,
+      "total_ms": 6397.132166195661,
+      "chunks_per_second": 3201.4345597269944,
+      "generation_peak_rss_bytes": 1578663936,
+      "peak_rss_bytes": 1647869952,
+      "identical_nbt_chunks_per_reference": 20480,
+      "references": 3,
+      "program_statuses": [
+        4
+      ]
+    }
+  ],
+  "reverse_two_callers": [
+    {
+      "case": "nether-main-run0",
+      "suite": "cycle47/reverse-two/suite.json",
+      "median_ms": 1605.331625440158,
+      "p95_region_ms": 1951.6124141635376,
+      "maximum_region_ms": 2225.6367090158165,
+      "total_ms": 17025.459124939516,
+      "chunks_per_second": 1202.9044180077437,
+      "generation_peak_rss_bytes": 2886828032,
+      "peak_rss_bytes": 2886828032,
+      "identical_nbt_chunks_per_reference": 20480,
+      "references": 3,
+      "program_statuses": [
+        4
+      ]
+    }
+  ],
+  "preceding_merged_cases": [
+    {
+      "case": "nether-main-run0",
+      "suite": "cycle44/merged-full/suite.json",
+      "median_ms": 1174.4193744380027,
+      "p95_region_ms": 1460.2447774610482,
+      "maximum_region_ms": 1566.0697498824447,
+      "total_ms": 24511.4875419531,
+      "chunks_per_second": 835.5266062472572,
+      "generation_peak_rss_bytes": 1979891712,
+      "peak_rss_bytes": 1979891712,
+      "identical_nbt_chunks_per_reference": 20480,
+      "references": 4,
+      "program_statuses": [
+        4
+      ]
+    },
+    {
+      "case": "nether-second-seed-run0",
+      "suite": "cycle44/merged-full/suite.json",
+      "median_ms": 1449.8921670019627,
+      "p95_region_ms": 1734.2233480769212,
+      "maximum_region_ms": 1860.9433330129832,
+      "total_ms": 27659.83070805669,
+      "chunks_per_second": 740.423909898864,
+      "generation_peak_rss_bytes": 2153676800,
+      "peak_rss_bytes": 2153676800,
+      "identical_nbt_chunks_per_reference": 20480,
+      "references": 4,
+      "program_statuses": [
+        4
+      ]
+    },
+    {
+      "case": "nether-custom-bounds-run0",
+      "suite": "cycle44/merged-full/suite.json",
+      "median_ms": 866.8204580899328,
+      "p95_region_ms": 973.8588330801578,
+      "maximum_region_ms": 1152.138208039105,
+      "total_ms": 17718.032041797414,
+      "chunks_per_second": 1155.8845785856472,
+      "generation_peak_rss_bytes": 1593819136,
+      "peak_rss_bytes": 1593819136,
+      "identical_nbt_chunks_per_reference": 20480,
+      "references": 4,
+      "program_statuses": [
+        4
+      ]
+    },
+    {
+      "case": "nether-direct-stem-run0",
+      "suite": "cycle44/merged-full/suite.json",
+      "median_ms": 904.2484789388254,
+      "p95_region_ms": 977.2076332010329,
+      "maximum_region_ms": 998.9889168646187,
+      "total_ms": 18008.446667110547,
+      "chunks_per_second": 1137.244115418535,
+      "generation_peak_rss_bytes": 1561624576,
+      "peak_rss_bytes": 1561624576,
+      "identical_nbt_chunks_per_reference": 20480,
+      "references": 4,
+      "program_statuses": [
+        4
+      ]
+    },
+    {
+      "case": "overworld-run0",
+      "suite": "cycle44/merged-full/suite.json",
+      "median_ms": 352.26931248325855,
+      "p95_region_ms": 384.60520659573376,
+      "maximum_region_ms": 386.8479589000344,
+      "total_ms": 6798.955040983856,
+      "chunks_per_second": 3012.2275962331414,
+      "generation_peak_rss_bytes": 1588215808,
+      "peak_rss_bytes": 1711439872,
+      "identical_nbt_chunks_per_reference": 20480,
+      "references": 4,
+      "program_statuses": [
+        4
+      ]
+    }
+  ],
+  "fresh_repeat_review": {
+    "preceding": [
+      {
+        "case": "nether-main-run0",
+        "suite": "cycle47/preceding-repeat/suite.json",
+        "median_ms": 1262.5889169285074,
+        "p95_region_ms": 1576.596735592466,
+        "maximum_region_ms": 1941.2294160574675,
+        "total_ms": 26412.355416920036,
+        "chunks_per_second": 775.3946846739876,
+        "generation_peak_rss_bytes": 2013102080,
+        "peak_rss_bytes": 2013102080,
+        "identical_nbt_chunks_per_reference": 20480,
+        "references": 3,
+        "program_statuses": [
+          4
+        ]
+      },
+      {
+        "case": "overworld-run0",
+        "suite": "cycle47/preceding-repeat/suite.json",
+        "median_ms": 279.3297921307385,
+        "p95_region_ms": 354.4271601364017,
+        "maximum_region_ms": 398.4658750705421,
+        "total_ms": 5680.593458004296,
+        "chunks_per_second": 3605.2571181876174,
+        "generation_peak_rss_bytes": 1632141312,
+        "peak_rss_bytes": 1697726464,
+        "identical_nbt_chunks_per_reference": 20480,
+        "references": 3,
+        "program_statuses": [
+          4
+        ]
+      }
+    ],
+    "candidate": [
+      {
+        "case": "nether-main-run0",
+        "suite": "cycle47/candidate-repeat/suite.json",
+        "median_ms": 1227.0473960088566,
+        "p95_region_ms": 1423.6078376532535,
+        "maximum_region_ms": 1572.538624983281,
+        "total_ms": 24437.459958018735,
+        "chunks_per_second": 838.0576391811064,
+        "generation_peak_rss_bytes": 1964933120,
+        "peak_rss_bytes": 1964933120,
+        "identical_nbt_chunks_per_reference": 20480,
+        "references": 3,
+        "program_statuses": [
+          4
+        ]
+      },
+      {
+        "case": "overworld-run0",
+        "suite": "cycle47/candidate-repeat/suite.json",
+        "median_ms": 345.13014648109674,
+        "p95_region_ms": 451.375646085944,
+        "maximum_region_ms": 466.3567498791963,
+        "total_ms": 7024.174874881282,
+        "chunks_per_second": 2915.6449497345607,
+        "generation_peak_rss_bytes": 2304606208,
+        "peak_rss_bytes": 2409005056,
+        "identical_nbt_chunks_per_reference": 20480,
+        "references": 3,
+        "program_statuses": [
+          4
+        ]
+      }
+    ],
+    "timing_acceptance": false,
+    "external_activity": {
+      "preceding-repeat/nether-main": {
+        "mediaanalysisd": 110.2,
+        "node": 35.7,
+        "com.apple.Virtualization.VirtualMachine": 213.1,
+        "com.docker.backend": 10.9,
+        "Activity Monitor": 23.4,
+        "biomesyncd": 73.8,
+        "Codex (Renderer)": 11.4
+      },
+      "preceding-repeat/overworld": {
+        "com.apple.Virtualization.VirtualMachine": 200.5,
+        "node": 13.5,
+        "Activity Monitor": 11.6
+      },
+      "candidate-repeat/nether-main": {
+        "com.apple.Virtualization.VirtualMachine": 221.2,
+        "node": 93.1,
+        "Activity Monitor": 16.9
+      },
+      "candidate-repeat/overworld": {
+        "node": 77.2,
+        "esbuild": 30.3,
+        "com.apple.Virtualization.VirtualMachine": 212.4
+      }
+    },
+    "note": "Fresh sequential old/new runs investigate the earlier mixed observations. External activity is recorded, not causally isolated; no quiet timing or Overworld acceptance is claimed."
+  },
+  "phase_demand_summary": {
+    "measurement": "Eight measured complete regions after five warmups; dependency diagnostics on, performance counters off. Separate one-warmup one-region pilot enables both for count reconciliation.",
+    "scope": "Root phases are disjoint within each job; evaluation includes nested terrain and synchronization. They exclude diagnostic output and do not decompose complete-region time. Results are diagnostic observations, not quiet performance acceptance.",
+    "median_per_region_ms": {
+      "queue": 0.7702735,
+      "enumeration": 0.17833300000000002,
+      "evaluation": 778.1121045,
+      "publication": 61.724104999999994
+    },
+    "demand_ranges": {
+      "base_columns": [
+        430020,
+        515937
+      ],
+      "base_chunks": [
+        2108,
+        2398
+      ]
+    },
+    "pilot_base_columns": 461038,
+    "pilot_shared_material_columns_counter": 461038,
+    "pilot_tiles": [
+      {
+        "origin_x": -80,
+        "origin_z": -80,
+        "chunks": 84,
+        "base_columns": 14934
+      },
+      {
+        "origin_x": -80,
+        "origin_z": -64,
+        "chunks": 146,
+        "base_columns": 23335
+      },
+      {
+        "origin_x": -80,
+        "origin_z": -48,
+        "chunks": 122,
+        "base_columns": 19595
+      },
+      {
+        "origin_x": -80,
+        "origin_z": -32,
+        "chunks": 25,
+        "base_columns": 3092
+      },
+      {
+        "origin_x": -64,
+        "origin_z": -80,
+        "chunks": 124,
+        "base_columns": 21158
+      },
+      {
+        "origin_x": -64,
+        "origin_z": -64,
+        "chunks": 256,
+        "base_columns": 59219
+      },
+      {
+        "origin_x": -64,
+        "origin_z": -48,
+        "chunks": 256,
+        "base_columns": 62228
+      },
+      {
+        "origin_x": -64,
+        "origin_z": -32,
+        "chunks": 192,
+        "base_columns": 43387
+      },
+      {
+        "origin_x": -48,
+        "origin_z": -80,
+        "chunks": 123,
+        "base_columns": 24549
+      },
+      {
+        "origin_x": -48,
+        "origin_z": -64,
+        "chunks": 256,
+        "base_columns": 64654
+      },
+      {
+        "origin_x": -48,
+        "origin_z": -48,
+        "chunks": 256,
+        "base_columns": 63625
+      },
+      {
+        "origin_x": -48,
+        "origin_z": -32,
+        "chunks": 97,
+        "base_columns": 16514
+      },
+      {
+        "origin_x": -32,
+        "origin_z": -80,
+        "chunks": 26,
+        "base_columns": 3767
+      },
+      {
+        "origin_x": -32,
+        "origin_z": -64,
+        "chunks": 102,
+        "base_columns": 18614
+      },
+      {
+        "origin_x": -32,
+        "origin_z": -48,
+        "chunks": 103,
+        "base_columns": 18014
+      },
+      {
+        "origin_x": -32,
+        "origin_z": -32,
+        "chunks": 30,
+        "base_columns": 4353
+      }
+    ],
+    "top_publication_roots": [
+      {
+        "root": 19,
+        "source": [
+          "minecraft:ore_magma"
+        ],
+        "queue_median_ms": 0.007,
+        "enumeration_median_ms": 0.00375,
+        "evaluation_median_ms": 25.8940835,
+        "publication_median_ms": 12.4417085
+      },
+      {
+        "root": 25,
+        "source": [
+          "minecraft:ore_quartz_nether"
+        ],
+        "queue_median_ms": 0.007625,
+        "enumeration_median_ms": 0.005,
+        "evaluation_median_ms": 9.207063,
+        "publication_median_ms": 6.719833
+      },
+      {
+        "root": 22,
+        "source": [
+          "minecraft:ore_gravel_nether"
+        ],
+        "queue_median_ms": 0.0074165,
+        "enumeration_median_ms": 0.0037705,
+        "evaluation_median_ms": 48.539792,
+        "publication_median_ms": 5.675875
+      },
+      {
+        "root": 8,
+        "source": [
+          "minecraft:basalt_blobs"
+        ],
+        "queue_median_ms": 0.0090625,
+        "enumeration_median_ms": 0.0036255,
+        "evaluation_median_ms": 46.9822295,
+        "publication_median_ms": 4.856437
+      },
+      {
+        "root": 23,
+        "source": [
+          "minecraft:ore_blackstone"
+        ],
+        "queue_median_ms": 0.0099585,
+        "enumeration_median_ms": 0.005917,
+        "evaluation_median_ms": 14.0060205,
+        "publication_median_ms": 4.620625
+      },
+      {
+        "root": 28,
+        "source": [
+          "minecraft:ore_quartz_deltas"
+        ],
+        "queue_median_ms": 0.007625,
+        "enumeration_median_ms": 0.0041255,
+        "evaluation_median_ms": 6.8227295,
+        "publication_median_ms": 3.520687
+      },
+      {
+        "root": 24,
+        "source": [
+          "minecraft:ore_gold_nether"
+        ],
+        "queue_median_ms": 0.0067705,
+        "enumeration_median_ms": 0.004333,
+        "evaluation_median_ms": 15.642083,
+        "publication_median_ms": 3.3253335
+      },
+      {
+        "root": 9,
+        "source": [
+          "minecraft:blackstone_blobs"
+        ],
+        "queue_median_ms": 0.008937,
+        "enumeration_median_ms": 0.004187,
+        "evaluation_median_ms": 28.1616455,
+        "publication_median_ms": 3.2751045
+      },
+      {
+        "root": 5,
+        "source": [
+          "minecraft:large_basalt_columns/choice0",
+          "minecraft:large_basalt_columns/choice1"
+        ],
+        "queue_median_ms": 0.0088125,
+        "enumeration_median_ms": 0.003875,
+        "evaluation_median_ms": 12.3180415,
+        "publication_median_ms": 2.197313
+      },
+      {
+        "root": 27,
+        "source": [
+          "minecraft:ore_gold_deltas"
+        ],
+        "queue_median_ms": 0.0088125,
+        "enumeration_median_ms": 0.0044995,
+        "evaluation_median_ms": 24.007021,
+        "publication_median_ms": 1.7236045
+      }
+    ],
+    "top_evaluation_roots": [
+      {
+        "root": 0,
+        "source": [
+          "minecraft:basalt_pillar"
+        ],
+        "queue_median_ms": 0.0131875,
+        "enumeration_median_ms": 0.005729,
+        "evaluation_median_ms": 97.952188,
+        "publication_median_ms": 0.194104
+      },
+      {
+        "root": 22,
+        "source": [
+          "minecraft:ore_gravel_nether"
+        ],
+        "queue_median_ms": 0.0074165,
+        "enumeration_median_ms": 0.0037705,
+        "evaluation_median_ms": 48.539792,
+        "publication_median_ms": 5.675875
+      },
+      {
+        "root": 17,
+        "source": [
+          "minecraft:brown_mushroom_nether"
+        ],
+        "queue_median_ms": 0.0074165,
+        "enumeration_median_ms": 0.0035415,
+        "evaluation_median_ms": 48.4461045,
+        "publication_median_ms": 0.732375
+      },
+      {
+        "root": 8,
+        "source": [
+          "minecraft:basalt_blobs"
+        ],
+        "queue_median_ms": 0.0090625,
+        "enumeration_median_ms": 0.0036255,
+        "evaluation_median_ms": 46.9822295,
+        "publication_median_ms": 4.856437
+      },
+      {
+        "root": 12,
+        "source": [
+          "minecraft:patch_fire"
+        ],
+        "queue_median_ms": 0.007521,
+        "enumeration_median_ms": 0.003604,
+        "evaluation_median_ms": 42.358,
+        "publication_median_ms": 0.7983125
+      },
+      {
+        "root": 15,
+        "source": [
+          "minecraft:glowstone"
+        ],
+        "queue_median_ms": 0.009771,
+        "enumeration_median_ms": 0.004271,
+        "evaluation_median_ms": 36.0397295,
+        "publication_median_ms": 0.6319375
+      },
+      {
+        "root": 29,
+        "source": [
+          "minecraft:ore_ancient_debris_large"
+        ],
+        "queue_median_ms": 0.0063955,
+        "enumeration_median_ms": 0.00425,
+        "evaluation_median_ms": 30.2530215,
+        "publication_median_ms": 0.6931875
+      },
+      {
+        "root": 14,
+        "source": [
+          "minecraft:glowstone_extra"
+        ],
+        "queue_median_ms": 0.0075,
+        "enumeration_median_ms": 0.0039585,
+        "evaluation_median_ms": 29.8878545,
+        "publication_median_ms": 0.358604
+      },
+      {
+        "root": 40,
+        "source": [
+          "minecraft:crimson_forest_vegetation"
+        ],
+        "queue_median_ms": 0.0084375,
+        "enumeration_median_ms": 0.004979,
+        "evaluation_median_ms": 29.5071875,
+        "publication_median_ms": 0.6649375
+      },
+      {
+        "root": 9,
+        "source": [
+          "minecraft:blackstone_blobs"
+        ],
+        "queue_median_ms": 0.008937,
+        "enumeration_median_ms": 0.004187,
+        "evaluation_median_ms": 28.1616455,
+        "publication_median_ms": 3.2751045
+      }
+    ],
+    "comparisons": [
+      {
+        "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/nether-main-run0",
+        "identical_nbt_chunks": 8192,
+        "membership_identical": true
+      },
+      {
+        "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle5/correctness-suite/nether-main-run0",
+        "identical_nbt_chunks": 8192,
+        "membership_identical": true
+      },
+      {
+        "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle44/merged-full/nether-main-run0",
+        "identical_nbt_chunks": 8192,
+        "membership_identical": true
+      }
+    ],
+    "timing_acceptance": false
+  },
+  "parallel_diagnostic_review": {
+    "suite": "cycle47/parallel-diagnostic/suite.json",
+    "observed_jobs_including_warmup": 3,
+    "job_rows": [
+      {
+        "job": 0,
+        "request": [
+          256,
+          256
+        ],
+        "roots": 41,
+        "base_columns": 451188
+      },
+      {
+        "job": 2,
+        "request": [
+          -32,
+          -64
+        ],
+        "roots": 41,
+        "base_columns": 481892
+      },
+      {
+        "job": 1,
+        "request": [
+          -64,
+          -64
+        ],
+        "roots": 41,
+        "base_columns": 461038
+      }
+    ],
+    "comparisons": [
+      {
+        "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/nether-main-run0",
+        "identical_nbt_chunks": 2048,
+        "membership_identical": true
+      },
+      {
+        "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle5/correctness-suite/nether-main-run0",
+        "identical_nbt_chunks": 2048,
+        "membership_identical": true
+      },
+      {
+        "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle44/merged-full/nether-main-run0",
+        "identical_nbt_chunks": 2048,
+        "membership_identical": true
+      }
+    ],
+    "decision": "Parallel JSON records parse and reconcile by job/request identity; no missing/duplicate root or demand records in this test.",
+    "timing_acceptance": false
+  },
+  "pilot_geometric_overlap": {
+    "generated_chunk_cell_occurrences": 8399,
+    "distinct_geometric_chunk_cells": 5508,
+    "overlapping_chunk_cell_occurrences": 2891,
+    "scope": "Geometry only: not proof of material equivalence, removable guards, or reusable work."
+  },
+  "source_review": {
+    "revision": "3d4355a23e28df0f5f55dd4b73a32d2748ff5214",
+    "findings": [],
+    "invariants": [
+      "Root observers exist only when the existing dependency diagnostics flag is enabled. Disabled generation performs no new clock reads, IDs, snapshots or output.",
+      "Root phase marks bracket the existing dispatch, target enumeration, joined anchor evaluation and publication/target collection. No ordering, error propagation or worker routing changed.",
+      "Base demand observes successful initialized before=0 slots after every root has joined and drained pending maps into ready state. It never loads cells, generates terrain or queries prior state.",
+      "Interior/boundary duplicates are deduplicated by per-chunk 256-bit local sets. Signed division preserves negative coordinates; diagnostic arithmetic uses i64.",
+      "Demand excludes metadata-only/biome queries and final structure work after the last root. It must not be interpreted as proof that all other terrain coverage is unnecessary.",
+      "New diagnostic allocations are local to the post-root observation and are released inside generation. No profile-lifetime cache or production data representation is added.",
+      "Existing root progress lines remain unchanged; new JSON records carry request identity and a diagnostic-only job ID."
+    ],
+    "tests": {
+      "passed": 148,
+      "ignored": 38,
+      "log": "cycle47/candidate-tests.log"
+    },
+    "timing_acceptance": false
+  },
+  "decision": "Hold instrumentation from production delivery because the Overworld timing elevation remains unexplained. Retain the useful 62 ms publication / 778 ms evaluation attribution and base-demand evidence; no PR or accepted performance change.",
+  "limitations": [
+    "Root phase observations are from eight measured main-seed regions; do not generalize their distribution to all profiles or seeds.",
+    "Evaluation includes nested GPU work and synchronization. Phase values are not CPU-time shares.",
+    "Base demand excludes pure metadata/biome queries and later final structure work; missing demand is not permission to skip terrain.",
+    "Quiet timing, sustained memory, final 1/2/4/8 callers and portal/DH acceptance remain open."
+  ],
+  "reproduction": [
+    "root-phase-candidate.py",
+    "root-phase-analysis.py",
+    "root-phase-concurrency.py",
+    "root-phase-overworld-review.py"
+  ],
+  "retention": "Libraries, generated regions, complete logs and manifests stay external under evidence_root; reproduce from recorded source revision and scripts.",
+  "overworld_review": {
+    "runs": [
+      {
+        "suite": "cycle47/overworld-preceding-after/suite.json",
+        "sha256": "ef87bf4750551a0308be32b81db0ae7fc4ea74bd31396ccb14fd465706ccdab2",
+        "median_ms": 243.3510203845799,
+        "p95_region_ms": 305.8020292199217,
+        "maximum_region_ms": 309.21783298254013,
+        "total_ms": 4964.874624973163,
+        "chunks_per_second": 4124.978281825334,
+        "generation_peak_rss_bytes": 1539981312,
+        "dependency_root_lines": 0,
+        "base_demand_lines": 0,
+        "identical_nbt_chunks_per_reference": 20480,
+        "references": 3,
+        "observed_external_max_cpu_percent": {
+          "node": 12.9,
+          "com.apple.Virtualization.VirtualMachine": 197.4
+        }
+      },
+      {
+        "suite": "cycle47/overworld-path-preceding/suite.json",
+        "sha256": "ef87bf4750551a0308be32b81db0ae7fc4ea74bd31396ccb14fd465706ccdab2",
+        "median_ms": 239.92795799858868,
+        "p95_region_ms": 239.92795799858868,
+        "maximum_region_ms": 239.92795799858868,
+        "total_ms": 242.10800020955503,
+        "chunks_per_second": 4229.517401794585,
+        "generation_peak_rss_bytes": 1143226368,
+        "dependency_root_lines": 0,
+        "base_demand_lines": 0,
+        "identical_nbt_chunks_per_reference": 1024,
+        "references": 3,
+        "observed_external_max_cpu_percent": {
+          "com.apple.Virtualization.VirtualMachine": 137.0,
+          "node": 16.0
+        },
+        "dependency_counters": {
+          "dependency_evaluation_nanos": 0,
+          "anchor_builds": 0,
+          "column_builds": 0,
+          "view_column_cached_reads": 0
+        }
+      },
+      {
+        "suite": "cycle47/overworld-path-candidate/suite.json",
+        "sha256": "7a9785c1018cbce29e7e2c27a7c00f991e64d5c1f0bd82b40a8bfa3191742659",
+        "median_ms": 259.45979193784297,
+        "p95_region_ms": 259.45979193784297,
+        "maximum_region_ms": 259.45979193784297,
+        "total_ms": 261.2643330357969,
+        "chunks_per_second": 3919.4021935619417,
+        "generation_peak_rss_bytes": 1130758144,
+        "dependency_root_lines": 0,
+        "base_demand_lines": 0,
+        "identical_nbt_chunks_per_reference": 1024,
+        "references": 3,
+        "observed_external_max_cpu_percent": {
+          "Activity Monitor": 10.1,
+          "(git)": 22.7,
+          "com.apple.Virtualization.VirtualMachine": 148.7,
+          "node": 11.8
+        },
+        "dependency_counters": {
+          "dependency_evaluation_nanos": 0,
+          "anchor_builds": 0,
+          "column_builds": 0,
+          "view_column_cached_reads": 0
+        }
+      }
+    ],
+    "actual_profile_decoration_source_order": false,
+    "source_route": "native/src/region.rs:335-364 calls dependencies::generate only when decoration_source_order is true. Actual diagnostic runs also show no root lines or dependency work.",
+    "decision": "Hold instrumentation source from production delivery. Candidate Overworld timing is elevated relative to both adjacent old-binary runs despite no execution of the changed path. External workload and binary-layout effects are possible explanations, not established causes.",
+    "timing_acceptance": false
+  }
+}

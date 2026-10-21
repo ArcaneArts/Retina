@@ -1,6 +1,10 @@
 //! Demand-driven source-root dependencies. Each root reads the accepted result
 //! of preceding roots; its anchor-local attempts keep their existing live overlay.
 mod footprint;
+mod version_cache;
+pub(crate) use version_cache::{Cache as VersionCache, Pending as PendingVersions};
+#[cfg(test)]
+mod version_reuse_probe;
 use super::spatial::Map;
 use super::*;
 use crate::TerrainEngine;
@@ -250,6 +254,7 @@ struct ColumnVersion {
     root: usize,
     state: ColumnCell,
 }
+#[derive(Default)]
 struct Versions {
     origin: [i32; 2],
     width: usize,
@@ -288,12 +293,17 @@ enum ColumnRuns {
         mask: Arc<crate::geology::CaveMask>,
         range: std::ops::Range<usize>,
     },
+    Cached {
+        runs: Arc<Vec<u32>>,
+        range: std::ops::Range<usize>,
+    },
 }
 impl ColumnRuns {
     fn slice(&self) -> &[u32] {
         match self {
             Self::Owned(runs) => runs,
             Self::Shared { mask, range } => &mask.words[range.clone()],
+            Self::Cached { runs, range } => &runs[range.clone()],
         }
     }
 }
@@ -367,6 +377,7 @@ struct Planner<'a> {
     ready_footprints: Map<(usize, i32, i32), Arc<footprint::Footprint>>,
     completed: Vec<CompletedRoot>,
     versions: Versions,
+    reuse: Option<version_cache::Reuse>,
     anchor_ids: Memo<(i32, i32), Vec<u32>>,
     starts: Memo<(i32, i32), Vec<Arc<crate::structures::Start>>>,
     discovery: crate::structures::Discovery,
@@ -881,6 +892,13 @@ impl Planner<'_> {
                 metrics.add(Perf::completed_column_reads, 1);
                 return self.column_cell(version, x, z, slot);
             }
+            if let Some(reuse) = &self.reuse {
+                metrics.add(Perf::version_cache_boundary_lookups, 1);
+                if let Some(column) = reuse.column(before, x, z) {
+                    metrics.add(Perf::version_cache_boundary_hits, 1);
+                    return Ok(column);
+                }
+            }
         }
         let key = (before, x.div_euclid(16), z.div_euclid(16));
         let index = z.rem_euclid(16) as usize * 16 + x.rem_euclid(16) as usize;
@@ -1106,6 +1124,7 @@ pub(crate) fn generate(
     retain_prefix: bool,
     initial: Option<&Field<'_>>,
     pool: Option<&rayon::ThreadPool>,
+    reuse_regions: bool,
 ) -> Result<super::generation::Generation, String> {
     let started = std::time::Instant::now();
     let metrics = engine.timings(request.reserved);
@@ -1168,6 +1187,9 @@ pub(crate) fn generate(
             .filter(|root| root.deferred_ore.is_some())
             .count() as u64,
     );
+    let reuse = version_cache::capture(
+        engine, profile, request, side, groups.len(), reuse_regions, &metrics.performance,
+    );
     let mut planner = Planner {
         engine,
         profile,
@@ -1180,6 +1202,7 @@ pub(crate) fn generate(
         ready_footprints: Map::default(),
         completed: Vec::new(),
         versions: Versions::new(request, side),
+        reuse,
         anchor_ids: ShardedMap::default(),
         starts: ShardedMap::default(),
         discovery: crate::structures::Discovery::new(&profile.structures),
@@ -1246,6 +1269,8 @@ pub(crate) fn generate(
     // pool and join before generation returns. No cleanup escapes the interval.
     dispatch_phase(pool, &metrics.performance, || {
         planner.check()?;
+        #[cfg(test)]
+        version_reuse_probe::observe(&planner)?;
         let structure_started = metrics.performance.start();
         let structure_detail = diagnostics::start(details.is_some());
         let starts = planner
@@ -1267,6 +1292,9 @@ pub(crate) fn generate(
             &metrics.performance,
             Perf::teardown_commands_nanos,
         );
+        let pending_versions = planner.reuse.as_ref().and_then(|reuse| {
+            reuse.export(std::mem::take(&mut planner.versions), &metrics.performance)
+        });
         retire(
             std::mem::take(&mut planner.versions.changed),
             &metrics.performance,
@@ -1283,6 +1311,7 @@ pub(crate) fn generate(
         let distribution_started = metrics.performance.start();
         let mut cache = std::mem::take(&mut planner.ready);
         let mut result = super::generation::Generation::new(request, side, profile, &starts);
+        result.boundary_versions = pending_versions;
 
         for key in targets {
             let output = cache
@@ -1316,6 +1345,7 @@ pub(crate) fn generate(
             ready_footprints,
             completed,
             versions,
+            reuse,
             anchor_ids,
             starts,
             discovery,
@@ -1338,7 +1368,7 @@ pub(crate) fn generate(
             Perf::teardown_versions_nanos,
         );
         retire(
-            (anchor_ids, starts, discovery, planner_metrics),
+            (anchor_ids, starts, discovery, planner_metrics, reuse),
             &metrics.performance,
             Perf::teardown_other_nanos,
         );
@@ -1404,6 +1434,7 @@ pub(crate) fn plan(
         retain_prefix,
         initial,
         None,
+        false,
     )?
     .placements)
 }

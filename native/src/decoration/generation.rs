@@ -15,6 +15,7 @@ struct Event {
 }
 pub(crate) struct Generation {
     pub placements: Vec<Vec<Placement>>,
+    pub(crate) boundary_versions: Option<super::dependencies::PendingVersions>,
     events: Vec<Vec<Event>>,
     starts: Vec<Value>,
 }
@@ -27,6 +28,7 @@ impl Generation {
     ) -> Self {
         Self {
             placements: vec![Vec::new(); side * side],
+            boundary_versions: None,
             events: (0..side * side).map(|_| Vec::new()).collect(),
             starts: (0..side * side)
                 .map(|i| {

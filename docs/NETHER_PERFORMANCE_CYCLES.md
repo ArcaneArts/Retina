@@ -1034,3 +1034,255 @@ Quiet timing confirmation remains deferred. Standard Nether remains above one
 second, and final Overworld, concurrency, sustained-memory and portal/DH
 acceptance remain open. Evidence, the held variant and commands are retained in
 `docs/benchmarks/nether-perf-cycle44-2026-10-21.json`.
+
+
+Cycle 44 post-merge proof: PR #192 squash-merged as
+`74f4e1b7c48e31fe4d98a9648e8b20e842d65db2`. A forced rebuild passed 146 native tests
+(38 ignored) and produced the identical validated native library. Actual merged
+generation produced 102,400 chunks matching the original, cycle 5, preceding
+merged cycle 43 and candidate outputs in full NBT and membership.
+Provisional merged median/p95: nether-main 1174.419/1460.245 ms; nether-second-seed 1449.892/1734.223 ms; nether-custom-bounds 866.820/973.859 ms; nether-direct-stem 904.248/977.208 ms; overworld 352.269/384.605 ms.
+The merged run is slower despite the identical library. Process records show
+external VM/Spotlight CPU activity, without proving its causal contribution.
+Retain these observations and defer timing acceptance; see
+`cycle44/post-merge-timing-review.json`. Quiet timings, sustained memory,
+final 1/2/4/8 concurrency and portal/DH acceptance remain open.
+The fresh execution sample and complete-output comparisons are retained under
+`cycle44/steady-execution-sample`; sample counts are not wall-time shares.
+Preserve the hashed prototype branch and evidence. The owned cycle 44 worktree
+is removed only after saving this proof and its documentation patch.
+
+
+## Cycle 45 — Overlay coordinate filters (held)
+
+Tested a 256-bit XZ filter, an added 64-bit Y filter, and the combined filter
+without new per-read diagnostics. Filters only bypass impossible exact block-map
+lookups; collisions retain the original map, and writes/snapshots/undo preserve
+conservative membership. All three passed 148 native tests (38 ignored), and
+each matched 20,480 main-corpus chunks plus 1,024 diagnostic chunks against the
+original, cycle 5 and preceding merged cycle 44 in complete NBT and membership.
+
+The instrumented combined filter bypassed 16,145,000 nonempty-map reads, plus
+6,726,731 empty-map reads. These counts cover Overlay reads through ordered
+Views only, are not wall-time shares, and were not measured in the plain binary.
+
+Fresh sequential baseline/XZ/combined median/p95 observations were
+1135/1384, 1108/1431 and 1173/1421 ms. The plain combined filter recorded
+1142/1446 ms. Neither latency nor generation peak established a clear overall
+benefit. Preserve all variants and evidence without merging. Quiet timing
+confirmation remains deferred; other profiles, Overworld and concurrency were
+not tested for this held candidate. Details and commands are in
+`docs/benchmarks/nether-perf-cycle45-2026-10-21.json`.
+
+
+## Cycle 46 — Stop resolved heightmap scans (held)
+
+Column reconstruction checked all six heightmaps through every material run,
+even after finding their heights. Track unresolved bits, assign matching maps
+in the original top-down order, and stop once every map is resolved. Preserve
+the min_y sentinel, stored runs, ownership and all feature/material behavior.
+
+Passed 148 native tests (39 ignored), including an independent dense-block
+heightmap oracle with all 256 masks, distinct map heights, empty/air/partial
+columns, tall input and safe extreme vertical bounds. An ignored same-process
+A/B microbenchmark alternates baseline/candidate order for five warmups and 25
+measured pairs across six synthetic patterns. Every measured pair improved;
+this measures height reconstruction only, not complete-region speedup.
+
+The five-case corpus's 102,400 chunks and 20,480 reverse-order two-caller chunks
+match original, cycle 5 and preceding merged cycle 44 in complete NBT and
+membership. Diagnostic anchor, intermediate-column, prefix and prior-read
+counts are identical. The candidate diagnostic generated two extra side-7
+terrain tiles (98 chunks); retain this observed difference without claiming
+unchanged GPU work or attributing it conclusively to scheduling/cache order.
+
+Provisional median/p95 observations: nether-main 1155.670/1463.324 ms; nether-second-seed 1332.162/1490.491 ms; nether-custom-bounds 766.459/818.547 ms; nether-direct-stem 770.585/815.232 ms; overworld 252.645/292.376 ms.
+The initial reverse two-caller run recorded 1667/2306 ms median/p95. A fresh
+old/candidate pair recorded 1680/2083 versus 1811/2255 ms, with throughput
+1220 versus 1099 chunks/s. VM CPU activity was observed but its contribution
+was not isolated. Hold the candidate without a PR: faster local scans did not
+establish a whole-region benefit. Quiet timing acceptance remains deferred. Standard Nether remains
+above one second. Final sustained memory, Overworld, 1/2/4/8 concurrency and
+portal/DH acceptance remain open. Evidence and commands are retained in
+`docs/benchmarks/nether-perf-cycle46-2026-10-21.json`.
+
+
+## Cycle 47 — Attribute root phases and base-material demand (held)
+
+Extend the existing opt-in `RETINA_DEPENDENCY_DIAGNOSTICS=1` output with JSON
+records for queue, target enumeration, joined anchor evaluation and publication.
+Keep original progress lines. Diagnostic-only job IDs separate concurrent runs.
+After the final root barrier, inspect successful base slots without loading or
+changing cells. Deduplicate interior/boundary coordinates and report per-chunk
+base-column counts. There is no new per-read tracking, production cache or
+changed generation behavior; disabled runs emit neither new record type.
+
+Passed 148 native tests (38 ignored). The five-case corpus's 102,400 chunks,
+20,480 reverse-order two-caller chunks, 8,192 phase-run chunks and 2,048 parallel
+diagnostic chunks match original, cycle 5 and preceding merged cycle 44 in full
+NBT and membership. Parallel records reconcile independently by job/request.
+
+Across eight main-seed regions after five warmups, median per-region totals are
+0.770 ms queue, 0.178 ms enumeration, 778.112 ms evaluation and 61.724 ms
+publication. Evaluation includes nested terrain/synchronization; these are not
+CPU-time shares. Publication alone cannot close the standard Nether gap.
+Base demand spans 430,020–515,937 columns in 2,108–2,398 chunks. The separate
+pilot reports 461,038 columns, exactly matching its shared-material counter.
+This excludes pure biome/metadata reads and later final structure work; it
+does not prove that any other terrain or guard is unnecessary.
+
+Provisional complete-run median/p95: nether-main 1246.401/1485.842 ms; nether-second-seed 1441.031/1673.141 ms; nether-custom-bounds 852.861/928.901 ms; nether-direct-stem 849.256/901.208 ms; overworld 332.544/407.359 ms.
+Fresh old/new observations and actual external CPU activity are retained in
+`cycle47/repeat-review.json`. No speedup, quiet timing, Overworld non-regression
+or sustained-memory acceptance is claimed. Old/candidate/old Overworld medians
+were 279/345/243 ms. Both actual path diagnostics recorded zero dependency
+work and no root output; the elevated candidate timing remains unexplained.
+Hold the source without a PR while retaining its attribution evidence.
+The broader goal remains open. Details and reproduction are in
+`docs/benchmarks/nether-perf-cycle47-2026-10-21.json`.
+
+
+## Cycle 48 — Bound exact tile residency independently of chunk aliases (held)
+
+The 2,048 chunk-key cache can evict a complete 16-by-16 dependency tile after
+only eight disjoint full tiles. Retain exact canonical tiles separately, capped
+at 24 entries and 256 MiB of conservatively counted backing allocation capacity
+per engine across profiles. Feed the existing exact job snapshot, preserving
+all full keys, geometry, guards, fallback coverage and normal chunk/column cache
+semantics. Jobs own their snapshot references independently of later eviction.
+The cap bounds this optional index, not total process memory.
+
+Passed 149 native tests (39 ignored) and two real-GPU tests covering four profiles,
+two seeds, materials, biomes, heightmaps, guards, ownership and forced alias
+churn. The full five-case corpus's 102,400 chunks and each 20,480-chunk run with
+2, 4 and 8 callers match the original, cycle 5 and preceding merged cycle 44 in
+complete NBT and membership. Separate adjacent and row-transition diagnostics
+also match all three references.
+
+Across eight measured regions after five warmups, generated chunk-cell work
+falls from 71,177 to 59,996 (15.7%) and readback from 217.2 to 189.3 MB per region
+(12.8%). Exact cached-tile uses rise from 7 to 30; anchor and intermediate-column
+counts are identical. A 48-entry experiment under the same byte cap produced
+no additional exact tile reuse. Preserve it separately and keep the lower limit.
+
+Provisional full-corpus median/p95: main 1184.824/1471.000 ms; second seed
+1311.085/1594.692 ms; custom bounds 878.928/922.973 ms; direct stem
+844.946/912.907 ms; Overworld 324.081/380.651 ms. An Overworld follow-up records
+319.273/395.994 ms for the preceding version and 315.236/389.156 ms for the
+candidate. The candidate's earlier 2.32 GB generation peak did not repeat
+(1.69 GB in the follow-up); its cause remains unproven.
+
+Hold without a PR: two/four-caller aggregate throughput falls from 1076/1073 to
+987/973 chunks/s despite better p95. Eight-caller throughput is 1130 versus
+1118 chunks/s, but the candidate maximum remains 17.8 s. These are provisional
+observations under external activity, not quiet acceptance or proof of its
+causal contribution. Preserve the coherent source and evidence for later quiet
+validation; investigate dense intermediate-column expansion/recompression next.
+Standard Nether, sustained memory and portal/DH acceptance remain open. Detailed
+provenance and commands are in `docs/benchmarks/nether-perf-cycle48-2026-10-21.json`.
+
+
+## Cycle 49 — Sparse intermediate-column edits (held)
+
+A single accepted material write expands a full column and scans it again to
+encode material runs. Keep up to eight distinct latest point writes in a local
+buffer, reading those before immutable prior runs. On finish, stream sorted
+edits with existing runs, coalesce adjacent equal materials and preserve the
+canonical descending encoding. The ninth distinct position expands the prior
+column once and replays all buffered values before continuing the original
+dense path. Role predicates, support queries, command order, heightmap
+calculation, identity-state Arc reuse and cleanup scope remain unchanged.
+
+Passed 150 native tests (38 ignored), including dense voxel/heightmap oracles,
+run boundaries, repeated/reverted writes, dense transition, tall columns and
+shared base immutability. The five-case corpus's 102,400 chunks, initial 20,480
+main chunks, 20,480 reverse-two chunks and 1,024 diagnostic chunks match original,
+cycle 5 and preceding merged cycle 44 in complete NBT and membership.
+
+The one-region diagnostic records 189,599 sparse finishes and 192,867 dense
+finishes. Thus about half of edited-column reconstructions avoid full-column
+expansion. Anchor, column-build, prefix, terrain and prior-read counts are
+identical to the control. These are counts of reconstruction work, not a
+proportional elapsed-time or peak-memory saving.
+
+Provisional complete-corpus median/p95: main 1140.414/1449.578 ms; second seed
+1270.727/1443.796 ms; custom bounds 761.997/816.008 ms; direct stem
+732.720/788.519 ms; Overworld 261.401/289.845 ms. The fresh main control records
+1130.840/1410.202 ms, so no whole-region gain is established. Reverse-two
+throughput falls from 1162 to 1023 chunks/s (about 12%), with median/p95
+1642/2421 versus 1938/2464 ms. Hold without a PR; preserve the prototype and
+full evidence. Quiet timing confirmation remains deferred. The unchanged
+preceding binary also reached a 2.35 GB Overworld generation peak here, so
+that peak is not exclusive to candidate binaries; its cause remains unproven.
+
+The next unimplemented hypothesis concerns successful immutable boundary-column
+versions from neighboring completed jobs. It needs explicit context-independence,
+writer-closure, lifecycle and retained-memory proofs before implementation.
+Details, source review and reproduction are in
+`docs/benchmarks/nether-perf-cycle49-2026-10-21.json`. Standard Nether, final
+concurrency, sustained-memory and portal/DH acceptance remain open.
+
+## Completed-region column snapshots (evidence cycle 50)
+
+Neighboring jobs often reconstruct the same before-root boundary columns. This
+cycle retains successful completed interior states in a shared bounded index and
+captures nearby snapshots once when a fresh region job starts. A hit supplies the
+exact immutable material runs and six heightmap values for the requested root.
+Missing or uninitialized latest versions follow the existing dependency path.
+All target anchors, metadata planning, source ordering and dependency reach remain
+unchanged. Single-chunk, ad-hoc and partial-file paths do not opt in.
+
+The selected representation packs column indexes, root markers and unique states
+into flat arrays. Returned columns retain only the shared material-run buffer.
+Original planner allocations retire during export; successful snapshots publish
+after durable MCA publication. Failure cleanup and evictions finish within the
+native generation call. The resident index has eight entries and a 512 MiB
+counted-backing limit across all contexts; active job pins and temporary export
+buffers are additional. This is not a total-process RSS limit.
+
+A prior mutable-version representation is preserved unmerged as
+`codex/nether-held-version-objects`. Packing roughly halves its retained snapshot
+backing and removes expensive later destruction of nested planner objects.
+
+Validation passed 151 native tests and two real GPU tests. Twenty-four independent
+neighboring job pairs compared 12,531,389 naturally available before-root states
+with zero material, height or run-encoding differences. The five-case 102,400-chunk
+corpus, reordered 2/4/8-caller runs, diagnostics and repeat controls match complete
+NBT against the original, cycle 5 and preceding merged cycle 44 references.
+
+Eight-region diagnostics show 29,316,083 -> 21,163,126 reconstructed columns
+(27.8% fewer), 70,981 -> 59,866 terrain cells (15.7% fewer), and
+508,876 -> 467,944 anchors (8.0% fewer). Five snapshot evictions occurred;
+publication including eviction took 3.29 ms across the eight outputs. Export
+(including packing and original allocation retirement) took 1,024 ms across the
+eight outputs. These durations overlap other phase counters and are not additive
+wall time. Diagnostics are separate from headline timing runs.
+
+Each binary also generated 240 fresh regions in one process across four seed/profile
+combinations, revisited in forward, reverse and shuffled order. The three supplied
+profile files normalize to two distinct native registrations. All 245,760 chunks
+per binary match each reference. Generation-end current RSS was 2,446 MiB for the
+preceding binary and 2,750 MiB for the candidate; generation peaks were 2,605 and
+2,987 MiB. Both finite runs grew, with smaller final-pass increments. This does not
+establish an indefinite RSS plateau.
+
+Actual Fabric portal/reopen fixtures pass with and without DH. Cold arrivals
+produced four regions in 2.95/3.15 seconds while 59/60 server ticks continued;
+maximum observed tick gaps were 163/210 ms. One actual DH native region completed
+during the cold wait. Reopened arrivals generated zero chunks and preserved the
+saved fixtures. Fabric and NeoForge both pass two in-flight unload/reopen cycles,
+including preview cleanup and zero late generation failures. The Java native
+concurrency fixture also matches independent chunk probes to a full region.
+
+Candidate standard-Nether observations span roughly 1.01–1.15 s median and
+1.35–1.62 s p95 across the full and repeated runs. Repeat p95 is not uniformly
+better. An earlier slow Overworld observation did not repeat in adjacent
+old/new/old controls (256/241/258 ms medians) with the same candidate binary.
+Four-caller throughput improved in the observed run; 2/8-caller differences are
+small and eight-caller tails remain long. Quiet timing confirmation is deferred
+by the user. Subsecond p95, final no-regression, sustained-memory and concurrency
+acceptance remain open; the overall goal is not complete.
+
+Details and recovery paths: `docs/benchmarks/nether-perf-cycle50-2026-10-21.json`.
+The external `cycle50/report.json`, `retention-review.json`, `runtime-review.json`
+and `overworld-investigation.json` retain complete comparisons and commands.

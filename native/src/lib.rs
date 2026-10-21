@@ -156,6 +156,7 @@ pub struct TerrainEngine {
     height_cache: Mutex<ColumnCache>,
     query_cache: Mutex<queries::Cache>,
     caves: Mutex<CaveCache>,
+    dependency_versions: Mutex<decoration::dependencies::VersionCache>,
     structures: Mutex<structures::Cache>,
     timings: Mutex<HashMap<u32, Arc<timings::Timings>>>,
     pipeline: Arc<pipeline::Metrics>,
@@ -250,6 +251,7 @@ impl TerrainEngine {
             height_cache: Mutex::new(ColumnCache::default()),
             query_cache: Mutex::new(queries::Cache::default()),
             caves: Mutex::new(CaveCache::default()),
+            dependency_versions: Mutex::new(decoration::dependencies::VersionCache::default()),
             structures: Mutex::new(structures::Cache::default()),
             timings: Mutex::new(HashMap::new()),
         })
@@ -1280,7 +1282,7 @@ impl TerrainEngine {
         if let Some(p) = profile.as_deref().filter(|p| p.decoration_source_order) {
             let (field, mask) = self.terrain_field(request, 1)?;
             let generation = timings.time(timings::VEGETATION_PLAN, || {
-                decoration::dependencies::generate(self, p, request, 1, None, None, true, Some(&field), None)
+                decoration::dependencies::generate(self, p, request, 1, None, None, true, Some(&field), None, false)
             })?;
             let columns = field.chunk(request.chunk_x, request.chunk_z);
             let mut updates = decoration::pairs::Updates::default();

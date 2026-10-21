@@ -170,6 +170,32 @@ pub fn generate_region_profiled(
     Ok(DetailedRegionReport { region, stages })
 }
 
+// Failed assembly/publication drops unpublished state synchronously in the same
+// bounded pool. Successful publication moves it into the optional reuse index.
+struct RegionVersions {
+    pending: Option<decoration::dependencies::PendingVersions>,
+    pool: &'static rayon::ThreadPool,
+}
+impl Drop for RegionVersions {
+    fn drop(&mut self) {
+        if let Some(pending) = self.pending.take() {
+            self.pool.install(|| drop(pending));
+        }
+    }
+}
+impl RegionVersions {
+    fn publish(mut self, engine: &TerrainEngine, metrics: &crate::performance::Metrics) {
+        if let Some(pending) = self.pending.take() {
+            let started = metrics.start();
+            self.pool.install(|| pending.publish(engine, metrics));
+            metrics.elapsed(
+                crate::performance::Counter::version_cache_publish_nanos,
+                started,
+            );
+        }
+    }
+}
+
 fn generate_region_inner(
     engine: &TerrainEngine,
     request: ChunkRequest,
@@ -254,6 +280,7 @@ fn generate_region_inner(
     }
 
     let start = Instant::now();
+    let mut pending_versions = None;
     let records: Result<Vec<Record>, String> = if let Some(cached) = cached {
         let source = timings
             .time(timings::IO, || fs::read(cached))
@@ -360,6 +387,7 @@ fn generate_region_inner(
                     true,
                     Some(&field),
                     Some(pool),
+                    requests.len() == 1024,
                 )
             })?)
         } else {
@@ -370,6 +398,13 @@ fn generate_region_inner(
             // Own the final command/metadata buffers on the worker, including
             // their destruction if assembly returns an error.
             let mut generation = generation;
+            pending_versions = generation
+                .as_mut()
+                .and_then(|g| g.boundary_versions.take())
+                .map(|pending| RegionVersions {
+                    pending: Some(pending),
+                    pool,
+                });
             session.performance.elapsed(
                 crate::performance::Counter::region_pool_wait_nanos,
                 pool_queued,
@@ -659,6 +694,9 @@ fn generate_region_inner(
         let _ = fs::remove_file(&temp);
     }
     result?;
+    if let Some(pending) = pending_versions {
+        pending.publish(engine, &session.performance);
+    }
     report.write_nanos = start.elapsed().as_nanos() as u64;
     report.bytes = file.len() as u64;
     drop(_io);
