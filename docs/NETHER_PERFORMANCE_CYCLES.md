@@ -865,3 +865,43 @@ does not justify changing the launcher. All observations, commands and hashes
 are retained in `docs/benchmarks/nether-perf-cycle40-2026-10-21.json` and the
 external evidence. Standard-Nether sub-second latency and final acceptance remain
 open.
+
+
+Cycle 40 post-merge proof: PR #189 squash-merged as
+`5d533eff7742518ffcbbf364faf806b1766207d6`. A forced native rebuild passed all
+141 tests (37 ignored), produced the identical validated library hash, and
+actually generated the five-case corpus with 102,400 chunks matching the original,
+cycle 5, preceding merged cycle 38 and candidate outputs in full NBT and membership.
+Merged median/p95 observations: main Nether 1,195.554/1,456.984 ms, second seed
+1,356.888/1,609.548 ms, custom 767.369/813.651 ms, direct stem 765.755/823.301 ms,
+Overworld 261.397/294.201 ms. Timings remain provisional; final performance,
+concurrency, memory and integration acceptance is still open. Evidence:
+`cycle40/post-merge-proof.json` and `borrowed-terrain-merged.py` under the retained
+evidence root. Only the owned cycle 40 worktree is cleaned up after preserving
+this proof; held prototypes remain intact.
+
+
+## Cycle 41 — Dependency tile-size experiments (held)
+
+The job terrain cache used aligned 16-chunk squares. Compared aligned 8- and
+32-chunk squares, with matching fossil batches and View bounds that follow each
+field's actual interior. Kept all GPU/material guards, the unbounded fallback
+cache, per-fossil RNG and prepared order unchanged. Both variants passed 141
+native tests and an actual GPU parity test spanning four profiles, two seeds,
+initial sides 1/7/8/16/32, negative/positive boundaries, materials, metadata,
+biomes, heights and fossil-mask corners.
+
+Each variant also generated 20 measured complete regions after five warmups;
+all 20,480 chunks matched the original, cycle 5 and merged cycle 40. Separate
+1,024-chunk diagnostics matched those references. Neither variant is accepted:
+merged 16-chunk median/p95 was 1,195.554/1,456.984 ms; 8 chunks measured
+1,496.041/1,872.310 ms; 32 chunks measured 1,433.970/1,736.663 ms. The diagnostic
+terrain count grew from 8,301 to 12,501 and 13,420 respectively, with the same
+63,012 anchors and 3,536,253 intermediate columns. Smaller tiles increased
+readback from about 229 to 306 MB per measured region. Timings remain provisional.
+
+Preserve both native variants, binaries and evidence. No implementation PR is
+opened for these held experiments. No complete custom/Overworld/concurrency
+acceptance is claimed. The next measurement refinement will retain per-tile
+work attribution and distinguish generation peak memory from later validation.
+See `docs/benchmarks/nether-perf-cycle41-2026-10-21.json` and the external evidence.
