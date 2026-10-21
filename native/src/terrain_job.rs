@@ -44,6 +44,7 @@ pub(crate) struct TerrainJob<'a> {
     request: ChunkRequest,
     initial: Option<&'a Field<'a>>,
     nearby: NearbyTiles,
+    cached: Map<(i32, i32), Arc<CaveMask>>,
     tiles: Mutex<Map<(i32, i32), Cell>>,
     metrics: Arc<crate::timings::Timings>,
 }
@@ -60,13 +61,22 @@ impl<'a> TerrainJob<'a> {
             .registry_program
             .as_ref()
             .is_some_and(|p| p.material_layers && !p.material_halo);
+        let initial = initial.filter(|field| reusable && field.prior.is_none());
+        let nearby = NearbyTiles::new(request.chunk_x, request.chunk_z);
+        let metrics = engine.timings(request.reserved);
+        let started = metrics.performance.start();
+        let cached = if profile.decoration_patch_halo
+            && profile.registry_program.as_ref().is_some_and(|p| p.material_halo) {
+            crate::terrain_cache::capture_patch_tiles(engine, request, |x, z| {
+                nearby.index(x, z).is_some()
+                    && !initial.is_some_and(|field| covers(field, x - 1, z - 1, 18))
+            })
+        } else { Map::new() };
+        metrics.performance.elapsed(Perf::terrain_job_snapshot_nanos, started);
+        metrics.performance.add(Perf::terrain_job_cached_tiles_retained, cached.len() as u64);
         Self {
-            engine,
-            request,
-            initial: initial.filter(|field| reusable && field.prior.is_none()),
-            nearby: NearbyTiles::new(request.chunk_x, request.chunk_z),
-            tiles: Mutex::new(Map::default()),
-            metrics: engine.timings(request.reserved),
+            engine, request, initial, nearby, cached,
+            tiles: Mutex::new(Map::default()), metrics,
         }
     }
     pub(crate) fn len(&self) -> usize {
@@ -104,6 +114,13 @@ impl<'a> TerrainJob<'a> {
             .elapsed(Perf::terrain_job_lock_nanos, lock_started);
         self.initialize(&cell, x, z)
     }
+    fn cached_tile(&self, x: i32, z: i32) -> Result<Option<(Field<'static>, Option<Arc<CaveMask>>)>, String> {
+        let Some(mask) = self.cached.get(&(x, z)) else { return Ok(None) };
+        let request = ChunkRequest { chunk_x: x, chunk_z: z, ..self.request };
+        let Some(field) = self.engine.cached_patch_field(request, 16, mask)? else { return Ok(None) };
+        self.metrics.performance.add(Perf::terrain_job_cached_tile_hits, 1);
+        Ok(Some((field, Some(mask.clone()))))
+    }
     fn initialize(&self, cell: &TileCell, x: i32, z: i32) -> Result<Arc<Tile>, String> {
         let joined = self.metrics.performance.start();
         let mut built = false;
@@ -133,6 +150,8 @@ impl<'a> TerrainJob<'a> {
                         },
                         initial.substrate.clone(),
                     )
+                } else if let Some(cached) = self.cached_tile(x, z)? {
+                    cached
                 } else {
                     self.engine.terrain_field(
                         ChunkRequest {

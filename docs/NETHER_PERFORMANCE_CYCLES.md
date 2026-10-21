@@ -939,3 +939,50 @@ concurrency and portal/DH acceptance remain open.
 
 Evidence: `docs/benchmarks/nether-perf-cycle42-2026-10-21.json`, external
 `cycle42/attribution-check.json` and `work-attribution-*.py`.
+
+
+Cycle 42 post-merge proof: PR #190 squash-merged as
+`ea148fd298f48c5675cad58261ca88e4b49f640d`. A forced merged rebuild passed 142 native tests
+and 11 benchmark-helper tests (one optional LZ4 skip), and produced the same
+validated native-library hash. The merged code actually generated all five cases;
+102,400 chunks match the original, cycle 5, preceding merged cycle 40 and
+validated candidate in complete NBT and membership. Merged provisional median/p95:
+nether-main-run0 1204.847/1412.456 ms; nether-second-seed-run0 1404.029/1613.859 ms; nether-custom-bounds-run0 769.724/815.255 ms; nether-direct-stem-run0 790.850/842.229 ms; overworld-run0 304.457/393.943 ms.
+The merged Overworld observation increased despite an identical candidate library and no native/harness source difference. Process logs show VM and photo-analysis activity; causation is unproven. Retain the increase and defer timing acceptance; see `cycle42/post-merge-timing-review.json`.
+Both generation-completion and whole-process peaks are retained in
+`cycle42/post-merge-proof.json`. Final timing, sustained memory, concurrency and
+portal/DH acceptance remain open. Preserve the cycle 41 prototypes; clean up only
+the owned cycle 42 worktree after retaining this proof.
+
+
+## Cycle 43 — Retain exact cached terrain tiles
+
+A job can now retain matching cached dependency tiles before global eviction.
+Reuse requires the full world/seed/profile/bounds/parameter key and identical
+patch-halo geometry, metadata crop and material coverage. Retention is limited to
+the existing 64 nearby slots; initial-field coverage keeps precedence and misses
+generate normally. Fresh and reused fields publish the same normal query-cache
+coverage using the existing bounded insertion code. No feature ordering, RNG,
+structures, lighting or cleanup changes.
+
+Passed 145 native tests and an actual GPU parity test across four profiles,
+two seeds and tile/guard boundaries, including concurrent reads and cache eviction.
+All 102,400 chunks in the five-case complete corpus, plus 20,480 reverse-order
+two-caller chunks, match the original, cycle 5 and merged cycle 42 in full NBT
+and membership. The earlier direct-only and unpublished-retention variants remain
+preserved separately.
+
+Across four adjacent diagnostic regions, generated terrain falls from 33,270 to
+31,432 chunks, with four retained tile uses and identical anchor/column work.
+Normal cache publication removes one extra small query, though two remain versus
+the baseline. The selected 20-region main run reads back 216.7 MB per region
+versus 229.4 MB in the preceding merged run. This is a 5.5% work/readback reduction,
+not a wall-time percentage.
+
+Candidate complete-region median/p95 observations: nether-main 1075.126/1353.917 ms; nether-second-seed 1216.942/1443.962 ms; nether-custom-bounds 719.564/789.367 ms; nether-direct-stem 708.344/755.481 ms; overworld 250.731/305.848 ms.
+Fresh baseline/direct/job repeats are close on latency. Main generation peak is
+2.318 GB versus 2.266 GB in the fresh preceding repeat; sustained-memory acceptance
+is unproven. Quiet timing confirmation remains deferred by user instruction.
+Standard Nether remains above one second, and final Overworld, concurrency,
+sustained-memory and portal/DH acceptance remain open. Evidence and reproduction
+commands: `docs/benchmarks/nether-perf-cycle43-2026-10-21.json`.

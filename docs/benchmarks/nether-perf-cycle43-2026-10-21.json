@@ -1,0 +1,420 @@
+{
+  "schema": "retina.nether-performance-cycle",
+  "cycle": 43,
+  "change": "Retain exact cached patch-halo terrain tiles for a generation job and publish their normal query-cache coverage.",
+  "evidence_root": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20",
+  "base_revision": "ea148fd298f48c5675cad58261ca88e4b49f640d",
+  "library": {
+    "revision": "483e566f3befe89885baa67822c7cb9822d7fb42",
+    "native_tree": "1ad6a70ab08699b15712e518888aabdd643437fa",
+    "sha256": "546998499dc9589a26322c658deea077629ae5910b2b23e7b03760866ceea432",
+    "source_status": "M docs/NETHER_PERFORMANCE_CYCLES.md\n M docs/benchmarks/nether-perf-cycle42-2026-10-21.json",
+    "forced_rebuild": true,
+    "timing_acceptance": false
+  },
+  "method": {
+    "manifest": "qa/nether-performance-corpus.json",
+    "warmups": 5,
+    "measured_regions_per_case": 20,
+    "workers": 16,
+    "callers": 1,
+    "scope": "complete lit-MCA, lighting enabled, zlib",
+    "readiness": "shader-ready",
+    "own_workloads_serialized": true,
+    "timing_acceptance": false,
+    "reference_suites": [
+      "reference-suite",
+      "cycle5/correctness-suite",
+      "cycle42/merged-full"
+    ],
+    "comparison": "Complete decompressed NBT and membership; exclude only MCA timestamps and compression representation.",
+    "diagnostic": "Separate four-region adjacent run, one warmup; not headline timing."
+  },
+  "source_review": {
+    "revision": "483e566f3befe89885baa67822c7cb9822d7fb42",
+    "findings": [],
+    "review": [
+      "Both callers obtain masks through the complete CacheKey; the job snapshot normalizes only position before comparing seed, profile, storage bounds and exact parameter bits.",
+      "Reuse requires the same tile origin, side, full retained column length, mask origin/width and vertical bounds. Larger overlapping tiles are rejected; outer fallback availability remains identical.",
+      "Fresh terrain validation stays ahead of direct cache reuse. Job reuse can only capture already-generated, validated aligned dependency tiles.",
+      "Fresh and reused paths share the original bounded ColumnCache/CaveCache insertion code. Existing keys, FIFO limits and contains-key behavior are preserved.",
+      "Snapshots hold the cave-cache lock only while collecting Arcs. Crop and cache publication occur after the lock is released. No map lock or initializer waits on a recursive terrain producer.",
+      "Snapshot selection is limited to the existing 64 nearby slots and excludes tiles completely covered by the initial field. The unbounded job fallback and initial-field precedence remain unchanged.",
+      "Shared immutable mask ownership lasts until job retirement; no new global cache or background cleanup is introduced.",
+      "Profiles without both patch and material halos retain normal generation. Direct custom/stem full-region validation is run separately from eligible Nether/Overworld GPU parity.",
+      "GPU parity checks full metadata and sampled guard/interior/outside material, biome and height queries over every Y. Full corpus NBT comparisons remain the acceptance proof for integrated output.",
+      "No source-order, RNG, structure, lighting, compression or publication code changed. Held cycle41 tile sizing and cycle39 material-run prototypes are excluded."
+    ],
+    "tests": {
+      "native_passed": 145,
+      "native_ignored": 38,
+      "actual_gpu_test_passed": 1,
+      "actual_gpu_profiles": [
+        "nether",
+        "custom",
+        "direct-stem",
+        "overworld"
+      ]
+    },
+    "limitations": [
+      "Timing confirmation is deferred by user instruction.",
+      "Bounded snapshot ownership is not sustained-memory or final concurrency acceptance.",
+      "Initial direct-v2 and job-v3 variants remain preserved; candidate is the cache-publication refinement."
+    ]
+  },
+  "cases": [
+    {
+      "case": "nether-main-run0",
+      "suite": "cycle43/published-cache-main/suite.json",
+      "median_ms": 1075.1259579556063,
+      "p95_region_ms": 1353.9171786280351,
+      "maximum_region_ms": 1492.7907919045538,
+      "total_ms": 22794.57279201597,
+      "chunks_per_second": 898.4594792306583,
+      "generation_peak_rss_bytes": 2318073856,
+      "peak_rss_bytes": 2318073856,
+      "gpu_readback_bytes_per_region": 216730529.6,
+      "gpu_completed": 712,
+      "identical_nbt_chunks_per_reference": 20480,
+      "references": 3,
+      "program_statuses": [
+        4
+      ]
+    },
+    {
+      "case": "nether-second-seed-run0",
+      "suite": "cycle43/published-compatibility/suite.json",
+      "median_ms": 1216.9419169658795,
+      "p95_region_ms": 1443.9622349338606,
+      "maximum_region_ms": 1455.3461249452084,
+      "total_ms": 23494.676542002708,
+      "chunks_per_second": 871.6868250297804,
+      "generation_peak_rss_bytes": 2350858240,
+      "peak_rss_bytes": 2350858240,
+      "gpu_readback_bytes_per_region": 225571257.4,
+      "gpu_completed": 720,
+      "identical_nbt_chunks_per_reference": 20480,
+      "references": 3,
+      "program_statuses": [
+        4
+      ]
+    },
+    {
+      "case": "nether-custom-bounds-run0",
+      "suite": "cycle43/published-compatibility/suite.json",
+      "median_ms": 719.5640836143866,
+      "p95_region_ms": 789.3667607451789,
+      "maximum_region_ms": 794.2016669549048,
+      "total_ms": 14530.574375065044,
+      "chunks_per_second": 1409.4418755492811,
+      "generation_peak_rss_bytes": 1706868736,
+      "peak_rss_bytes": 1706868736,
+      "gpu_readback_bytes_per_region": 154728655.0,
+      "gpu_completed": 306,
+      "identical_nbt_chunks_per_reference": 20480,
+      "references": 3,
+      "program_statuses": [
+        4
+      ]
+    },
+    {
+      "case": "nether-direct-stem-run0",
+      "suite": "cycle43/published-compatibility/suite.json",
+      "median_ms": 708.3435625536367,
+      "p95_region_ms": 755.4807602893561,
+      "maximum_region_ms": 818.9314589835703,
+      "total_ms": 14284.482750110328,
+      "chunks_per_second": 1433.7235977159776,
+      "generation_peak_rss_bytes": 1676099584,
+      "peak_rss_bytes": 1676099584,
+      "gpu_readback_bytes_per_region": 154141179.4,
+      "gpu_completed": 299,
+      "identical_nbt_chunks_per_reference": 20480,
+      "references": 3,
+      "program_statuses": [
+        4
+      ]
+    },
+    {
+      "case": "overworld-run0",
+      "suite": "cycle43/published-compatibility/suite.json",
+      "median_ms": 250.7309999782592,
+      "p95_region_ms": 305.84753124276176,
+      "maximum_region_ms": 325.0001249834895,
+      "total_ms": 5022.641166113317,
+      "chunks_per_second": 4077.535966171378,
+      "generation_peak_rss_bytes": 1579565056,
+      "peak_rss_bytes": 1720549376,
+      "gpu_readback_bytes_per_region": 118423598.4,
+      "gpu_completed": 64,
+      "identical_nbt_chunks_per_reference": 20480,
+      "references": 3,
+      "program_statuses": [
+        4
+      ]
+    }
+  ],
+  "reverse_two_callers": [
+    {
+      "case": "nether-main-run0",
+      "suite": "cycle43/published-reverse-two/suite.json",
+      "median_ms": 1578.8099796045572,
+      "p95_region_ms": 1945.760948653333,
+      "maximum_region_ms": 2003.9506249595433,
+      "total_ms": 15987.029541982338,
+      "chunks_per_second": 1281.0384784877647,
+      "generation_peak_rss_bytes": 3154067456,
+      "peak_rss_bytes": 3154067456,
+      "gpu_readback_bytes_per_region": 214740098.0,
+      "gpu_completed": 646,
+      "identical_nbt_chunks_per_reference": 20480,
+      "references": 3,
+      "program_statuses": [
+        4
+      ]
+    }
+  ],
+  "variant_observations": {
+    "direct_initial": [
+      {
+        "case": "nether-main-run0",
+        "suite": "cycle43/exact-cache-v2-main/suite.json",
+        "median_ms": 1093.1581454351544,
+        "p95_region_ms": 1394.4957368890757,
+        "maximum_region_ms": 1467.518833000213,
+        "total_ms": 22887.32708315365,
+        "chunks_per_second": 894.8183387947657,
+        "generation_peak_rss_bytes": 2226880512,
+        "peak_rss_bytes": 2226880512,
+        "gpu_readback_bytes_per_region": 226570841.2,
+        "gpu_completed": 736,
+        "identical_nbt_chunks_per_reference": 20480,
+        "references": 3,
+        "program_statuses": [
+          4
+        ]
+      }
+    ],
+    "job_initial": [
+      {
+        "case": "nether-main-run0",
+        "suite": "cycle43/job-cache-v3-main/suite.json",
+        "median_ms": 1170.0406044255942,
+        "p95_region_ms": 1496.8146581784822,
+        "maximum_region_ms": 1579.0924159809947,
+        "total_ms": 24058.55220812373,
+        "chunks_per_second": 851.2565437368514,
+        "generation_peak_rss_bytes": 2166915072,
+        "peak_rss_bytes": 2166915072,
+        "gpu_readback_bytes_per_region": 214683046.2,
+        "gpu_completed": 714,
+        "identical_nbt_chunks_per_reference": 20480,
+        "references": 3,
+        "program_statuses": [
+          4
+        ]
+      }
+    ],
+    "preceding_repeat": [
+      {
+        "case": "nether-main-run0",
+        "suite": "cycle43/preceding-repeat/suite.json",
+        "median_ms": 1097.5906250532717,
+        "p95_region_ms": 1380.2179674035872,
+        "maximum_region_ms": 1527.005000039935,
+        "total_ms": 23030.42612504214,
+        "chunks_per_second": 889.2584048946912,
+        "generation_peak_rss_bytes": 2265989120,
+        "peak_rss_bytes": 2265989120,
+        "gpu_readback_bytes_per_region": 229572607.4,
+        "gpu_completed": 738,
+        "identical_nbt_chunks_per_reference": 20480,
+        "references": 3,
+        "program_statuses": [
+          4
+        ]
+      }
+    ],
+    "direct_repeat": [
+      {
+        "case": "nether-main-run0",
+        "suite": "cycle43/direct-repeat/suite.json",
+        "median_ms": 1092.1279579633847,
+        "p95_region_ms": 1377.015787106939,
+        "maximum_region_ms": 1481.8046670407057,
+        "total_ms": 22824.0743749775,
+        "chunks_per_second": 897.2981626125721,
+        "generation_peak_rss_bytes": 2239791104,
+        "peak_rss_bytes": 2239791104,
+        "gpu_readback_bytes_per_region": 227011228.6,
+        "gpu_completed": 732,
+        "identical_nbt_chunks_per_reference": 20480,
+        "references": 3,
+        "program_statuses": [
+          4
+        ]
+      }
+    ],
+    "job_repeat": [
+      {
+        "case": "nether-main-run0",
+        "suite": "cycle43/job-repeat/suite.json",
+        "median_ms": 1072.4315830739215,
+        "p95_region_ms": 1378.4428043058144,
+        "maximum_region_ms": 1513.4974159300327,
+        "total_ms": 22784.595750039443,
+        "chunks_per_second": 898.8529015251256,
+        "generation_peak_rss_bytes": 2133803008,
+        "peak_rss_bytes": 2133803008,
+        "gpu_readback_bytes_per_region": 215976140.8,
+        "gpu_completed": 714,
+        "identical_nbt_chunks_per_reference": 20480,
+        "references": 3,
+        "program_statuses": [
+          4
+        ]
+      }
+    ]
+  },
+  "diagnostic_work": {
+    "preceding-adjacent": {
+      "case": "nether-main-run0",
+      "suite": "cycle43/preceding-adjacent/suite.json",
+      "median_ms": 1763.0746454233304,
+      "p95_region_ms": 2033.4402473643422,
+      "maximum_region_ms": 2069.753041025251,
+      "total_ms": 7082.593750208616,
+      "chunks_per_second": 578.3192068413289,
+      "generation_peak_rss_bytes": 1858863104,
+      "peak_rss_bytes": 1858863104,
+      "gpu_readback_bytes_per_region": 205448869.0,
+      "gpu_completed": 133,
+      "identical_nbt_chunks_per_reference": 4096,
+      "references": 3,
+      "program_statuses": [
+        4
+      ],
+      "counters": {
+        "anchor_builds": 252043,
+        "column_builds": 13975953,
+        "terrain_generated_chunks": 33270,
+        "terrain_generated_tiles": 66,
+        "terrain_requests": 119
+      }
+    },
+    "candidate-adjacent": {
+      "case": "nether-main-run0",
+      "suite": "cycle43/candidate-adjacent/suite.json",
+      "median_ms": 1820.1582290930673,
+      "p95_region_ms": 2053.014491102658,
+      "maximum_region_ms": 2087.2641659807414,
+      "total_ms": 7318.9195829909295,
+      "chunks_per_second": 559.6454440514757,
+      "generation_peak_rss_bytes": 1788755968,
+      "peak_rss_bytes": 1788755968,
+      "gpu_readback_bytes_per_region": 205618359.0,
+      "gpu_completed": 140,
+      "identical_nbt_chunks_per_reference": 4096,
+      "references": 3,
+      "program_statuses": [
+        4
+      ],
+      "counters": {
+        "anchor_builds": 252043,
+        "column_builds": 13975953,
+        "terrain_exact_tile_cache_hits": 0,
+        "terrain_generated_chunks": 33319,
+        "terrain_generated_tiles": 67,
+        "terrain_requests": 119
+      }
+    },
+    "job-adjacent": {
+      "case": "nether-main-run0",
+      "suite": "cycle43/job-adjacent/suite.json",
+      "median_ms": 1775.1659165369347,
+      "p95_region_ms": 1996.0780168301426,
+      "maximum_region_ms": 2026.1582918465137,
+      "total_ms": 7070.247292052954,
+      "chunks_per_second": 579.3290999317597,
+      "generation_peak_rss_bytes": 1825800192,
+      "peak_rss_bytes": 1825800192,
+      "gpu_readback_bytes_per_region": 196187019.0,
+      "gpu_completed": 137,
+      "identical_nbt_chunks_per_reference": 4096,
+      "references": 3,
+      "program_statuses": [
+        4
+      ],
+      "counters": {
+        "anchor_builds": 252043,
+        "column_builds": 13975953,
+        "terrain_exact_tile_cache_hits": 0,
+        "terrain_generated_chunks": 31481,
+        "terrain_generated_tiles": 65,
+        "terrain_job_cached_tile_hits": 4,
+        "terrain_job_cached_tiles_retained": 6,
+        "terrain_job_snapshot_nanos": 92583,
+        "terrain_requests": 115
+      }
+    },
+    "published-adjacent": {
+      "case": "nether-main-run0",
+      "suite": "cycle43/published-adjacent/suite.json",
+      "median_ms": 1827.3827919038013,
+      "p95_region_ms": 2073.8860661629587,
+      "maximum_region_ms": 2107.245665974915,
+      "total_ms": 7298.235540976748,
+      "chunks_per_second": 561.2315438440643,
+      "generation_peak_rss_bytes": 1839054848,
+      "peak_rss_bytes": 1839054848,
+      "gpu_readback_bytes_per_region": 196007284.0,
+      "gpu_completed": 134,
+      "identical_nbt_chunks_per_reference": 4096,
+      "references": 3,
+      "program_statuses": [
+        4
+      ],
+      "counters": {
+        "anchor_builds": 252043,
+        "column_builds": 13975953,
+        "terrain_exact_tile_cache_hits": 0,
+        "terrain_generated_chunks": 31432,
+        "terrain_generated_tiles": 64,
+        "terrain_job_cached_tile_hits": 4,
+        "terrain_job_cached_tiles_retained": 6,
+        "terrain_job_snapshot_nanos": 100792,
+        "terrain_requests": 115
+      }
+    }
+  },
+  "implementation": [
+    "Reuse only patch/material-halo fields with identical tile geometry, crop and material-mask coverage, obtained through the complete world/seed/profile/bounds/parameter key.",
+    "At job creation retain matching aligned 16-chunk tiles only within the existing 64 nearby slots. Exclude initial-field-covered tiles. Generate every cache miss normally.",
+    "Retain immutable masks through global eviction; crop metadata only when the job actually needs a tile. Ownership ends with the job.",
+    "Fresh and reused fields invoke the original bounded ColumnCache/CaveCache publication code. Existing capacities, key handling and insertion order are unchanged.",
+    "Add opt-in exact-reuse, snapshot and job-retention counters; no feature, ordering, RNG, structure, lighting, serialization or cleanup changes."
+  ],
+  "observations": [
+    "Four adjacent measured regions: baseline generates 33270 terrain chunks across 66 tiles; selected candidate generates 31432 across 64. Four retained dependency tiles are used, with identical 252043 anchors and 13975953 intermediate columns.",
+    "Restoring normal query-cache publication removes one side7 query relative to job-v3, but two extra side7 queries remain versus baseline. Retained terrain reduces measured work by 5.52%; this is not a wall-time share.",
+    "Selected 20-region main readback is 216730529.6 bytes per region versus 229368332.2 in preceding merged full run; GPU completions are 712 versus 739.",
+    "Fresh baseline/direct/job repeats remain close on latency. The selected publication variant also remains above one second; no settled speedup is claimed.",
+    "Main generation peak RSS is 2318073856 bytes versus 2265989120 in the fresh preceding repeat. Retention is bounded by existing nearby slots, but this does not establish sustained-memory acceptance."
+  ],
+  "limitations": [
+    "User deferred quiet timing confirmation. All timing and peak-memory observations remain provisional; no settled speedup, Overworld non-regression or sub-second acceptance is claimed.",
+    "Final sustained-memory, 1/2/4/8-caller and portal/DH acceptance remain open.",
+    "Only selected publication variant has the complete five-case and reverse-two-caller corpus. Earlier variants have narrower coverage and are preserved as experiments."
+  ],
+  "reproduction": [
+    "exact-cache-candidate-v2.py",
+    "exact-cache-adjacent.py",
+    "exact-cache-job-candidate-v3.py",
+    "exact-cache-repeat.py",
+    "exact-cache-published-candidate.py",
+    "exact-cache-published-adjacent.py",
+    "exact-cache-published-compatibility.py"
+  ],
+  "retention": "Libraries, profiles, generated worlds, process observations and exact commands remain under evidence_root outside Git.",
+  "decision": "Select bounded exact tile reuse for its verified GPU-work/readback reduction and full output parity. Timing acceptance remains deferred."
+}

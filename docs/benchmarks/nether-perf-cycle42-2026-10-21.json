@@ -477,5 +477,151 @@
     "work-attribution-compatibility.py",
     "work-attribution-overworld.py"
   ],
-  "retention": "Libraries, profiles, worlds and raw logs remain under evidence_root outside Git."
+  "retention": "Libraries, profiles, worlds and raw logs remain under evidence_root outside Git.",
+  "post_merge": {
+    "pr": "https://github.com/ArcaneArts/Retina/pull/190",
+    "merged_revision": "ea148fd298f48c5675cad58261ca88e4b49f640d",
+    "merged_library": {
+      "revision": "ea148fd298f48c5675cad58261ca88e4b49f640d",
+      "native_tree": "048744255e8cd182cfa55633c00d5ee54a3a9129",
+      "sha256": "7ed626cff12fa6e342f35a07b61c30bd6fc8b5b6cea3295f96a79fccfd47a8c6",
+      "source_status": "",
+      "forced_rebuild": true,
+      "timing_acceptance": false
+    },
+    "byte_identical_to_validated_candidate": true,
+    "native_tests": {
+      "passed": 142,
+      "failed": 0,
+      "ignored": 37
+    },
+    "suite": "cycle42/merged-full/suite.json",
+    "measured_identical_chunks": 102400,
+    "each_case_reference_count": 4,
+    "case_observations": [
+      {
+        "case": "nether-main-run0",
+        "median_ms": 1204.8465624684468,
+        "p95_region_ms": 1412.4562084907668,
+        "maximum_region_ms": 1582.9447919968516,
+        "total_ms": 24500.548915937543,
+        "chunks_per_second": 835.8996392394218,
+        "generation_peak_rss_bytes": 2065776640,
+        "peak_rss_bytes": 2065776640
+      },
+      {
+        "case": "nether-second-seed-run0",
+        "median_ms": 1404.0286665549502,
+        "p95_region_ms": 1613.8593110139482,
+        "maximum_region_ms": 1625.2161250449717,
+        "total_ms": 26746.685625053942,
+        "chunks_per_second": 765.7023485861791,
+        "generation_peak_rss_bytes": 2130821120,
+        "peak_rss_bytes": 2130821120
+      },
+      {
+        "case": "nether-custom-bounds-run0",
+        "median_ms": 769.7242920985445,
+        "p95_region_ms": 815.2547283796594,
+        "maximum_region_ms": 836.7520419415087,
+        "total_ms": 15378.477665828541,
+        "chunks_per_second": 1331.7312964928383,
+        "generation_peak_rss_bytes": 1664565248,
+        "peak_rss_bytes": 1664565248
+      },
+      {
+        "case": "nether-direct-stem-run0",
+        "median_ms": 790.8495623851195,
+        "p95_region_ms": 842.2294605406934,
+        "maximum_region_ms": 891.8187089730054,
+        "total_ms": 15787.646458018571,
+        "chunks_per_second": 1297.2167862042652,
+        "generation_peak_rss_bytes": 1641332736,
+        "peak_rss_bytes": 1641332736
+      },
+      {
+        "case": "overworld-run0",
+        "median_ms": 304.45654154755175,
+        "p95_region_ms": 393.94322970183566,
+        "maximum_region_ms": 420.16599979251623,
+        "total_ms": 6223.012832924724,
+        "chunks_per_second": 3291.01040763477,
+        "generation_peak_rss_bytes": 1579859968,
+        "peak_rss_bytes": 1645248512
+      }
+    ],
+    "timing_acceptance": false,
+    "benchmark_helper_tests": {
+      "run": 12,
+      "passed": 11,
+      "skipped": 1,
+      "log": "cycle42/merged-python-tests.log"
+    }
+  },
+  "post_merge_timing_review": {
+    "observations": [
+      {
+        "suite": "cycle42/attribution-full/suite.json",
+        "median_ms": 258.9514375431463,
+        "p95_region_ms": 323.52195588173345,
+        "library_hash": "7ed626cff12fa6e342f35a07b61c30bd6fc8b5b6cea3295f96a79fccfd47a8c6",
+        "profile_hash": "5a398bd02281677db81b6e70d426ab9a99a322050308e977b2a771134ded1cad",
+        "samples": 1,
+        "peak_external_cpu_percent": {
+          "Brave Browser Helper (Renderer)": 22.0,
+          "com.docker.backend": 10.2,
+          "com.apple.Virtualization.VirtualMachine": 202.9,
+          "node": 17.2
+        },
+        "process_observations": "cycle42/attribution-full/overworld-run0-process-observations.jsonl"
+      },
+      {
+        "suite": "cycle42/preceding-overworld/suite.json",
+        "median_ms": 276.08474949374795,
+        "p95_region_ms": 343.4129541506991,
+        "library_hash": "1ba82afce28df57acdd98b5e3b64a5b06493745a65ce0034846f0e6d51677da4",
+        "profile_hash": "5a398bd02281677db81b6e70d426ab9a99a322050308e977b2a771134ded1cad",
+        "samples": 2,
+        "peak_external_cpu_percent": {
+          "mediaanalysisd": 87.0,
+          "com.apple.Virtualization.VirtualMachine": 115.6,
+          "node": 19.6
+        },
+        "process_observations": "cycle42/preceding-overworld/overworld-run0-process-observations.jsonl"
+      },
+      {
+        "suite": "cycle42/candidate-overworld/suite.json",
+        "median_ms": 271.929208538495,
+        "p95_region_ms": 323.23719759006053,
+        "library_hash": "7ed626cff12fa6e342f35a07b61c30bd6fc8b5b6cea3295f96a79fccfd47a8c6",
+        "profile_hash": "5a398bd02281677db81b6e70d426ab9a99a322050308e977b2a771134ded1cad",
+        "samples": 2,
+        "peak_external_cpu_percent": {
+          "mediaanalysisd": 84.4,
+          "com.apple.Virtualization.VirtualMachine": 193.6,
+          "node": 16.4
+        },
+        "process_observations": "cycle42/candidate-overworld/overworld-run0-process-observations.jsonl"
+      },
+      {
+        "suite": "cycle42/merged-full/suite.json",
+        "median_ms": 304.45654154755175,
+        "p95_region_ms": 393.94322970183566,
+        "library_hash": "7ed626cff12fa6e342f35a07b61c30bd6fc8b5b6cea3295f96a79fccfd47a8c6",
+        "profile_hash": "5a398bd02281677db81b6e70d426ab9a99a322050308e977b2a771134ded1cad",
+        "samples": 2,
+        "peak_external_cpu_percent": {
+          "com.apple.Virtualization.VirtualMachine": 203.4,
+          "node": 54.5,
+          "spotlightknowledged.updater": 17.9,
+          "photoanalysisd": 87.5
+        },
+        "process_observations": "cycle42/merged-full/overworld-run0-process-observations.jsonl"
+      }
+    ],
+    "candidate_to_merge_native_and_harness_diff_empty": true,
+    "candidate_to_merge_library_identical": true,
+    "finding": "Merged Overworld observations increased. Known external processes were active; sparse process samples do not prove causation. Preserve the increase, do not claim no regression, and defer uncontended acceptance as instructed. No source or library change occurred between candidate and merged executions.",
+    "timing_acceptance": false
+  }
 }
