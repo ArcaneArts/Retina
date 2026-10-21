@@ -1249,7 +1249,30 @@
   "reproduction": {
     "build": "CARGO_TARGET_DIR=/tmp/retina-nether-perf-target cargo clean --release -p retina-worldgen --manifest-path native/Cargo.toml; then cargo test and cargo build --release --locked --lib with the same manifest/target directory. Candidate source revision and library hash are above. Commands under each case reproduce generation; use nether-performance-suite.py with --compare for full NBT comparisons.",
     "profiles": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/profiles",
-    "manifest": "Default five-case manifest in scripts/nether-performance-suite.py; exact case commands retained above.",
+    "manifest": "qa/nether-performance-corpus.json",
     "retention": "Libraries and complete MCA outputs are outside Git under evidence_root. selected-full aliases the main and remaining suites; it does not represent an additional run."
+  },
+  "post_merge": {
+    "pr": "https://github.com/ArcaneArts/Retina/pull/184",
+    "merged_revision": "1abc51771eca21a5deca060a5c945b5f2e164a69",
+    "merged_library": {
+      "revision": "1abc51771eca21a5deca060a5c945b5f2e164a69",
+      "native_tree": "2d569a4caaf18cb42394ea91fe89eb55687697cc",
+      "sha256": "5243eca98b7510949453eaecc1246488d9ffd3a3329e512672ed1f1c6a46e6a5",
+      "source_status": "",
+      "forced_rebuild": true,
+      "timing_acceptance": false
+    },
+    "byte_identical_to_validated_candidate": true,
+    "native_tests": {
+      "passed": 125,
+      "failed": 0,
+      "ignored": 37
+    },
+    "smoke_identical_chunks": 5120,
+    "each_case_reference_count": 4,
+    "suite": "cycle29/merged-smoke/suite.json",
+    "timing_acceptance": false,
+    "attachment": "App refused PR attachment: thread attachment identity count exceeds 100."
   }
 }
