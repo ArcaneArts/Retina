@@ -1549,3 +1549,118 @@ Report: `docs/benchmarks/nether-perf-cycle54-2026-10-21.json`. External `cycle54
 evidence retains immutable executables/libraries, full MCA output, both observer
 reports, complete comparisons, host samples and the initial import-only compile
 failure. Commands and the next-cycle hypothesis are recorded there.
+
+
+Cycle 54 post-merge confirmation: PR #196 merged as
+`333afdc1846f5c4740f83ecddb12025413ba3230`. The forced rebuild passed 159 native
+tests and produced the exact selected normal-library SHA-256
+`b756e6d33ded4bc7ef8558be954dd1e0498268124eaea8ed94dd0a517fd6dc71`.
+All 102,400 measured chunks matched five references. Actual merged median/p95
+observations were 1445/2209 ms (main), 1426/2212 (second seed), 1396/1975 (custom),
+1050/1381 (direct stem) and 550/784 (Overworld). All measured regions reported
+shader status 4. These remain provisional, and the performance goal remains open.
+The owned cycle 54 worktree was removed after preserving its branch and evidence.
+
+## Cycle 55 — held single-entry basalt-column reader
+
+The prototype scopes one exact xyz/material value to a single ColumnCluster
+invocation. Only the immutable ordered View opts into stable successful reads;
+other PriorWorld implementations retain original calls. Missing values are not
+cached, and every possible write clears the entry before provider sampling.
+The entry stays on the stack and ends before another feature, snapshot or undo.
+
+All 161 native tests pass. New tests compare every command, overlay material,
+return value, RNG state and undo across three origins, three height ranges,
+three seeds and temporarily missing values. A stateful-provider test verifies
+that two reads of the same coordinate can return different values and reject
+placement before consuming RNG.
+
+The live inventory removes 4,312,862 original material lookups per main-seed
+region (16.078%) and 4,194,184 in the second seed (15.900%). Only the two basalt
+column roots change; other root counts, custom profiles and Overworld counts
+remain identical. Each full measured corpus matches the original and preceding
+references: 102,400 observer chunks, 327,680 chunks across ordinary ABBA runs,
+and 122,880 in the paired follow-up. These repeat the agreed coordinates.
+
+Ordinary ABBA did not establish a useful gain. The same baseline binary drifted
+from 1025/1235 to 1458/1732 ms main median/p95 and from 339/406 to 740/951 ms for
+Overworld. External build/browser workloads were recorded. Candidate first-leg
+slowdowns remain in the report; they are not dismissed as noise.
+
+A closer experiment kept separate baseline/candidate processes resident and
+alternated the first engine for each full-region pair. Each engine had five
+warmups and its own identical twenty-region history. Only one generated at a
+time. All measured regions reported shader status 4; generation finished before
+full-NBT comparison. Both workers exited successfully in every case.
+
+| Case | Baseline median/p95 ms | Candidate median/p95 ms | Baseline/candidate chunks/s | Candidate faster pairs |
+| --- | ---: | ---: | ---: | ---: |
+| Main | 1117 / 1653 | 1132 / 1647 | 905 / 897 | 10 / 20 |
+| Second seed | 1712 / 3040 | 1591 / 3548 | 588 / 564 | 8 / 20 |
+| Overworld | 277 / 340 | 281 / 347 | 3652 / 3599 | 8 / 20 |
+
+The main paired median ratio is 0.9947; the second seed is 1.0534. The favorable
+second-seed median does not outweigh its worse aggregate throughput and tail.
+Host activity still limits attribution, and two resident engines differ from a
+single-engine acceptance run. No quiet regression or speedup is claimed.
+
+**Held, not selected.** Fewer lookups do not establish a useful whole-region
+improvement. Preserve the isolated worktree and immutable libraries for recovery
+or a later quiet retest. The prepared concurrency driver was not run; additional
+acceptance work is unwarranted until a benefit is demonstrated. Next inspect
+version-marker allocation/retirement and prefix-history lookup shape before
+choosing another layout change. This remains a hypothesis, not an established
+bottleneck, and the held cycle 26 column-state arena must not be reapplied blindly.
+
+Report: `docs/benchmarks/nether-perf-cycle55-2026-10-21.json`. The complete
+assessment, paired harness snapshot, process logs, worlds and immutable binaries
+remain under external `cycle55/`. Native source is
+`7157282f0a9a50cbdbb94b700c25cb6a86067f38`; normal library SHA-256 is
+`eb7139784bfe97d83f046febc924a9cc33a0af644240599d1c9cfccbc3f51b67`.
+
+
+## Cycle 56 — version-marker allocation and retirement inventory
+
+A test-only observer measures actual per-column marker vectors, growth requests,
+unused capacity and the number of newer markers skipped by each original prefix
+lookup. It neither initializes missing cells nor changes the selected cell. A
+joined scan records missing/successful/error markers, and four clock reads split
+the existing interior export, exterior export and synchronous Versions drop.
+Every hook and observer field is excluded from ordinary builds.
+
+Across five warmups and twenty measured regions per case:
+
+| Case | Allocated vectors/region | Unused marker capacity MB | Queries skipping no newer marker | Interior / exterior / retirement median ms |
+| --- | ---: | ---: | ---: | ---: |
+| nether-main | 234,228 | 14.51 | 79.8% | 14.6 / 17.4 / 33.7 |
+| nether-second-seed | 234,686 | 14.49 | 79.0% | 12.9 / 16.8 / 31.1 |
+| nether-custom-bounds | 234,426 | 14.71 | 72.2% | 17.7 / 21.2 / 38.5 |
+| nether-direct-stem | 233,418 | 14.76 | 72.4% | 17.9 / 20.8 / 39.1 |
+
+Capacity uses decimal MB and excludes pointees and allocator metadata. The outer
+vector headers and base-cell arrays each add 6,291,456 bytes per full region.
+Latest-query shares include empty lists. Observed historical queries skipped at
+most six newer markers; this is evidence, never permission to truncate history.
+About 57% of markers remain uninitialized in the two main-seed cases, compared
+with 36–38% in the custom profiles. These missing latest markers are semantically necessary and cannot select older values.
+
+The 31–39 ms median retirement includes ColumnState/Arc destruction, not only
+vector metadata. It does not establish allocation as the dominant remaining
+bottleneck. A separate page-backed marker-index prototype is justified as a
+memory/allocation opportunity, with whole-region benefit unproved. It must retain
+original state ownership, strict root ordering, missing cells, all historical
+reach, error propagation and ascending snapshot export. C26's held state arena
+and C55's held material reader are not selected by this diagnostic cycle.
+
+All 161 native tests pass; 46 optional tests are ignored and the GPU inventory is
+explicitly run and passes. The observer's 102,400 chunks match four references;
+the ordinary library's 102,400 chunks match five, including the observer. Every
+measured region in both runs reports shader status 4. The ordinary binary has no
+version_layout_probe symbol. Its hash differs from the preceding build, so byte
+identity is not claimed. Timings include external host activity; no speedup,
+quiet no-regression verdict or subsecond acceptance is claimed.
+
+Report: `docs/benchmarks/nether-perf-cycle56-2026-10-21.json`. External `cycle56/`
+retains source/library hashes, the immutable test executable, normal library,
+observer output, original and preceding full-NBT comparisons, ordinary timings,
+host samples, reproducible driver and a scoped next-opportunity assessment.
