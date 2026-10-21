@@ -199,3 +199,61 @@ fn completed_exterior_state_inventory() {
         })).unwrap()).unwrap();
     }
 }
+
+#[test]
+#[ignore = "GPU context proof requires RETINA_TERRAIN_REUSE_PROFILES and RETINA_EXTERIOR_PAIR_REPORT"]
+fn independently_computed_exterior_prefixes_match_neighbor_states() {
+    use std::{fs, path::PathBuf};
+    let directory = PathBuf::from(std::env::var("RETINA_TERRAIN_REUSE_PROFILES").unwrap());
+    let report = PathBuf::from(std::env::var("RETINA_EXTERIOR_PAIR_REPORT").unwrap());
+    let engine = TerrainEngine::new().unwrap();
+    let pool = rayon::ThreadPoolBuilder::new().num_threads(16).build().unwrap();
+    let mut rows = Vec::new();
+    for name in ["nether", "custom", "direct-stem"] {
+        let bytes = fs::read(directory.join(format!("{name}.json"))).unwrap();
+        let data: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+        let id = engine.register_profile(&bytes).unwrap();
+        let profile = engine.profile(id).unwrap().unwrap();
+        for seed in [123456789, 42] {
+            for (source, target) in [
+                ([-64, -64], [-32, -64]), ([32, 32], [0, 32]),
+                ([-32, 0], [-32, -32]), ([0, 0], [32, 32]),
+            ] {
+                *ACTIVE.lock().unwrap() = Some(Probe { previous: None, rows: Vec::new() });
+                let installed = Installed;
+                for [x, z] in [source, target] {
+                    // Independently rebuild both sides. Registered programs remain;
+                    // no completed-region or CPU terrain-value cache is reused.
+                    *engine.cache.lock().unwrap() = crate::ColumnCache::default();
+                    *engine.height_cache.lock().unwrap() = crate::ColumnCache::default();
+                    *engine.query_cache.lock().unwrap() = crate::queries::Cache::default();
+                    *engine.caves.lock().unwrap() = crate::CaveCache::default();
+                    *engine.structures.lock().unwrap() = crate::structures::Cache::default();
+                    *engine.dependency_versions.lock().unwrap() = version_cache::Cache::default();
+                    let bounds = &data["generation_bounds"];
+                    let request = ChunkRequest {
+                        seed, chunk_x: x, chunk_z: z, reserved: id,
+                        min_y: bounds["storage_min_y"].as_i64().unwrap_or(-64) as i32,
+                        height: bounds["storage_height"].as_u64().unwrap_or(384) as u32,
+                        base_height: 64., amplitude: 48., frequency: 0.008,
+                    };
+                    let (field, _) = engine.terrain_field(request, 32).unwrap();
+                    drop(generate(&engine, &profile, request, 32, None, None, true,
+                        Some(&field), Some(&pool), true).unwrap());
+                }
+                let probe = ACTIVE.lock().unwrap().take().unwrap();
+                drop(installed);
+                let row = &probe.rows[1];
+                let matches = row["previous_exact_slots_matching_interior_cells"].as_u64().unwrap()
+                    + row["previous_exact_slots_matching_exterior_cells"].as_u64().unwrap();
+                assert!(matches > 0, "pair must exercise actual available states");
+                assert!(row["mismatch_samples"].as_array().unwrap().is_empty());
+                println!("exterior pair {name} seed={seed} source={source:?} target={target:?} matches={matches}");
+                rows.push(serde_json::json!({"profile":name,"seed":seed,"source":source,"target":target,"observations":probe.rows}));
+                fs::write(&report, serde_json::to_vec_pretty(&serde_json::json!({
+                    "rows":rows,"scope":"Independent source/target prefix construction with CPU value and completed-region caches cleared. Compare naturally completed exact states only; no observed states affect generation.","timing_acceptance":false,
+                })).unwrap()).unwrap();
+            }
+        }
+    }
+}

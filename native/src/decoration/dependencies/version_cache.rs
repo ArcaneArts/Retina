@@ -366,6 +366,36 @@ mod tests {
     use super::super::{ColumnCell, ColumnVersion};
     use super::*;
     #[test]
+    fn exterior_backing_counts_toward_the_existing_global_budget() {
+        let mut value = match Arc::try_unwrap(snapshot(0, 42)) {
+            Ok(value) => value,
+            Err(_) => unreachable!(),
+        };
+        let interior_bytes = retained_bytes(&value);
+        let (profile, _, _) = crate::decoration::replay_tests::fixture(42, 0);
+        let tile = Arc::new(super::super::ColumnTile::default());
+        tile.0[15].set(Ok(Arc::new(ColumnState::new(vec![0; 16], &profile, 0)))).ok().unwrap();
+        let mut columns = Map::default();
+        columns.insert((0, -1, 0), tile);
+        let (exterior, _) = Exterior::capture([0; 2], 512, &columns).unwrap();
+        let exterior_bytes = exterior.retained_bytes();
+        value.exterior = Some(exterior);
+        value.bytes = retained_bytes(&value);
+        assert_eq!(value.bytes, interior_bytes + exterior_bytes);
+        let mut cache = Cache { max_bytes: value.bytes - 1, ..Cache::default() };
+        let value = Arc::new(value);
+        let (retired, _, inserted) = cache.insert(value.clone());
+        assert!(!inserted);
+        assert_eq!(retired.len(), 1);
+        assert_eq!(cache.len(), 0);
+        cache.max_bytes = value.bytes;
+        let (retired, _, inserted) = cache.insert(value);
+        assert!(inserted);
+        assert!(retired.is_empty());
+        assert_eq!(cache.len(), 1);
+        assert_eq!(cache.bytes, cache.max_bytes);
+    }
+    #[test]
     fn packed_edge_indices_cover_each_retained_column_exactly_once() {
         for width in [0, 1, 16, 63, 64, 65, 80, 512] {
             let mut next = 0;
