@@ -5,10 +5,15 @@ use super::super::*;
 use super::{Bounds, Root};
 
 pub(super) fn eligible(profile: &WorldProfile, ids: &[u32]) -> bool {
+    // A shared placement salt shares live EvaluationCache entries between
+    // recipes, including their full positions. Custom programs can reuse a
+    // prefix with different draws; independent masks cannot prove that union.
+    let mut salts = spatial::Set::default();
     !ids.is_empty()
         && ids.iter().all(|&id| {
             let recipe = &profile.decorations[id as usize];
-            recipe.reach.is_some_and(|reach| reach >= 0)
+            salts.insert(recipe.placement_salt.unwrap_or(recipe.salt))
+                && recipe.reach.is_some_and(|reach| reach >= 0)
                 && recipe.placement.as_ref().is_some_and(|program| {
                     program.len() <= 64
                         && program.iter().all(|op| {
@@ -359,5 +364,25 @@ mod tests {
                 Footprint::Unbounded
             ));
         }
+    }
+
+    #[test]
+    fn shared_live_placement_groups_keep_original_evaluation() {
+        let (mut profile, _, _) = super::super::super::replay_tests::fixture(42, 0);
+        for (id, x) in [(0, -2), (1, 2)] {
+            profile.decorations[id].placement = Some(
+                serde_json::from_value(json!([
+                    {"type":"offset","x":x},{"type":"heightmap","map":1},
+                    {"type":"count","count":2},{"type":"in_square"}
+                ]))
+                .unwrap(),
+            );
+            profile.decorations[id].reach = Some(3);
+            profile.decorations[id].placement_salt = Some(71);
+            assert!(eligible(&profile, &[id as u32]));
+        }
+        assert!(!eligible(&profile, &[0, 1]));
+        profile.decorations[1].placement_salt = Some(42);
+        assert!(eligible(&profile, &[0, 1]));
     }
 }
