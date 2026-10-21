@@ -377,7 +377,7 @@ struct Planner<'a> {
     ready_columns: Map<(usize, i32, i32), Arc<ColumnTile>>,
     error: Mutex<Option<String>>,
 }
-const VIEW_COLUMN_SLOTS: usize = 32;
+const VIEW_COLUMN_SLOTS: usize = 256;
 struct ViewColumn {
     key: (i32, i32),
     column: Arc<ColumnState>,
@@ -385,14 +385,14 @@ struct ViewColumn {
 struct ViewColumns {
     // The first column in a slot stays immutable for the view's lifetime.
     // Exact keys distinguish collisions, which retain the unbounded map path.
-    slots: [OnceLock<ViewColumn>; VIEW_COLUMN_SLOTS],
+    slots: OnceLock<Box<[OnceLock<ViewColumn>; VIEW_COLUMN_SLOTS]>>,
     values: Mutex<Map<(i32, i32), Arc<ColumnState>>>,
     counts: Option<[AtomicU64; 3]>,
 }
 impl Default for ViewColumns {
     fn default() -> Self {
         Self {
-            slots: std::array::from_fn(|_| OnceLock::new()),
+            slots: OnceLock::new(),
             values: Mutex::new(Map::default()),
             counts: crate::performance::enabled().then(|| std::array::from_fn(|_| AtomicU64::new(0))),
         }
@@ -415,7 +415,10 @@ impl ViewColumns {
         read: impl FnOnce(&ColumnState) -> T,
     ) -> Result<T, String> {
         let key = (x, z);
-        let cell = &self.slots[Self::index(key)];
+        // Most anchors need few or no prior material reads. Allocate the
+        // fixed cache only on demand, without enlarging recursive stack frames.
+        let slots = self.slots.get_or_init(|| Box::new(std::array::from_fn(|_| OnceLock::new())));
+        let cell = &slots[Self::index(key)];
         if let Some(slot) = cell.get() {
             if slot.key == key {
                 self.count(0);
