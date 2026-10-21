@@ -6,6 +6,12 @@ use std::collections::HashSet;
 static FAIL_PARENT: Mutex<Option<std::path::PathBuf>> = Mutex::new(None);
 
 static ACTIVE: Mutex<Option<Arc<Mutex<Probe>>>> = Mutex::new(None);
+struct FailureInstalled;
+impl Drop for FailureInstalled {
+    fn drop(&mut self) {
+        *FAIL_PARENT.lock().unwrap_or_else(|e| e.into_inner()) = None;
+    }
+}
 struct Installed;
 impl Drop for Installed {
     fn drop(&mut self) {
@@ -413,8 +419,10 @@ fn failed_region_publication_does_not_publish_completed_versions() {
     let parent = base.join("blocked-parent");
     let path = parent.join("region.mca");
     *FAIL_PARENT.lock().unwrap() = Some(parent.clone());
+    let failure_installed = FailureInstalled;
     let failed =
         crate::region::generate_region(&engine, request, &path, 0, "minecraft:basalt_deltas");
+    drop(failure_installed);
     // The parent was validly absent at entry; the test creates a real file at
     // that location after dependency work. Final filesystem publication fails.
     assert!(failed.is_err());

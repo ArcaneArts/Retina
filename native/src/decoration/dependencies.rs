@@ -1187,7 +1187,9 @@ pub(crate) fn generate(
             .filter(|root| root.deferred_ore.is_some())
             .count() as u64,
     );
-    let reuse = version_cache::capture(engine, profile, request, side, groups.len(), reuse_regions, &metrics.performance);
+    let reuse = version_cache::capture(
+        engine, profile, request, side, groups.len(), reuse_regions, &metrics.performance,
+    );
     let mut planner = Planner {
         engine,
         profile,

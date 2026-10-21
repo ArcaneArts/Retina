@@ -178,7 +178,9 @@ struct RegionVersions {
 }
 impl Drop for RegionVersions {
     fn drop(&mut self) {
-        if let Some(pending) = self.pending.take() { self.pool.install(|| drop(pending)); }
+        if let Some(pending) = self.pending.take() {
+            self.pool.install(|| drop(pending));
+        }
     }
 }
 impl RegionVersions {
@@ -186,7 +188,10 @@ impl RegionVersions {
         if let Some(pending) = self.pending.take() {
             let started = metrics.start();
             self.pool.install(|| pending.publish(engine, metrics));
-            metrics.elapsed(crate::performance::Counter::version_cache_publish_nanos, started);
+            metrics.elapsed(
+                crate::performance::Counter::version_cache_publish_nanos,
+                started,
+            );
         }
     }
 }
@@ -393,8 +398,13 @@ fn generate_region_inner(
             // Own the final command/metadata buffers on the worker, including
             // their destruction if assembly returns an error.
             let mut generation = generation;
-            pending_versions = generation.as_mut().and_then(|g| g.boundary_versions.take())
-                .map(|pending| RegionVersions { pending: Some(pending), pool });
+            pending_versions = generation
+                .as_mut()
+                .and_then(|g| g.boundary_versions.take())
+                .map(|pending| RegionVersions {
+                    pending: Some(pending),
+                    pool,
+                });
             session.performance.elapsed(
                 crate::performance::Counter::region_pool_wait_nanos,
                 pool_queued,
@@ -684,7 +694,9 @@ fn generate_region_inner(
         let _ = fs::remove_file(&temp);
     }
     result?;
-    if let Some(pending) = pending_versions { pending.publish(engine, &session.performance); }
+    if let Some(pending) = pending_versions {
+        pending.publish(engine, &session.performance);
+    }
     report.write_nanos = start.elapsed().as_nanos() as u64;
     report.bytes = file.len() as u64;
     drop(_io);
