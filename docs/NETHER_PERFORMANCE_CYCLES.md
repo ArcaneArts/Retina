@@ -575,3 +575,45 @@ slower. External CPU activity is recorded, but it does not prove the cause of
 those differences. Quiet timing, no-regression and sub-second acceptance remain
 pending. Exact measurements, provenance, commands and limitations are retained in
 `docs/benchmarks/nether-perf-cycle29-2026-10-21.json`.
+
+PR #184 (`1abc517`) merged grouped command indices. Its actual merged build
+passes 125 native tests and is byte-identical to the validated candidate. All
+5,120 post-merge smoke chunks match four references. Quiet timing and the
+sub-second target remain pending.
+
+## Deterministic boundary footprints (evidence cycle 33)
+
+Before replaying an uncomputed boundary anchor, the ordered planner now checks
+whether its deterministic placement positions and exported feature reach can
+write the requested column. Per-job bitmaps reproduce positional random draws
+and conservatively ignore live rejection and vertical-only movement. Requested
+target anchors still run. Shared placement groups, live layer/noise counts,
+wide masks and expensive programs keep the original evaluation path; the
+optimization's limits never truncate generation.
+
+All 128 native tests pass. The complete 102,400-chunk corpus and 20,480
+reverse-order, two-caller chunks match the original, cycle 5 and merged cycle 29
+references. In the diagnostic region, evaluated anchors fall from 79,959 to
+65,357 and intermediate columns from 6,015,978 to 3,854,516. Generated terrain
+chunks fall from 13,303 to 8,301. These are workload observations for that region,
+not elapsed-time percentages. Footprint state is retired inside generation.
+
+The standard seeds have provisional median/p95 values of 1.38/1.59 and 1.49/2.07
+seconds, compared with cycle 29's 1.67/2.16 and 1.85/2.52 seconds. Their peak RSS
+falls to 2.19/2.23 GB from 2.42/2.51 GB. The first direct-stem and Overworld
+observations were slower than their earlier references, so both binaries were
+run sequentially again. That pair measured 1.07/1.16 versus 0.93/1.01 seconds
+for direct-stem and 373/429 versus 342/397 ms for Overworld. A diagnostic
+Overworld run confirms zero ordered-anchor, column and footprint builds.
+
+External VM and other CPU activity is recorded. These observations investigate
+the apparent regression but do not establish causation or replace quiet timing
+acceptance. Full provenance, commands, comparisons and all timing observations
+are in `docs/benchmarks/nether-perf-cycle33-2026-10-21.json`. The sub-second target,
+quiet no-regression checks, sustained concurrency and final portal integration
+remain open.
+
+Cycles 30–32 remain unmerged experiments: pending-column caching, shared feature
+output caches and saved anchor replay checkpoints did not demonstrate an overall
+benefit in their preliminary runs. Their owned worktrees and external evidence
+remain preserved; none is included in cycle 33.
