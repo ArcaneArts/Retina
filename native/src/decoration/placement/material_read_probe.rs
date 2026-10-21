@@ -1,6 +1,7 @@
 //! Test-only exact-coordinate reuse inventory. Simulated values never feed
 //! generation: every read performs the original lookup and checks any cache hit.
 use super::*;
+use crate::TerrainEngine;
 use std::cell::RefCell;
 use std::sync::{Mutex, atomic::{AtomicU64, Ordering}};
 
