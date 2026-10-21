@@ -1472,3 +1472,80 @@ long-term memory acceptance remain open; this cycle does not complete the goal.
 Full report: `docs/benchmarks/nether-perf-cycle53-2026-10-21.json`. Raw commands,
 immutable libraries, generated worlds, the failed test-only build attempt and
 all measurements remain in the external `cycle53/` evidence directory.
+
+Cycle 53 post-merge confirmation: PR #195 merged as
+`0132a7435842d5ab4f060bee6ac107841a120cd3`. The forced rebuild passed 157 tests
+and produced the exact selected library SHA-256
+`dd00145de6ea2916a17efbb703c05e0a210becec24a8403e44139a2dabed161b`.
+All 102,400 measured chunks matched the original, cycle 5, merged cycle 51 and
+selected cycle 53. Actual merged median/p95 observations were 1481/2186 ms
+(main), 1122/1527 (second seed), 914/1032 (custom), 799/999 (direct stem), and
+347/422 (Overworld). These remain provisional. The external post-merge proof
+is now included in the committed cycle 53 report; the goal remains open.
+
+## Cycle 54 — measure material reads by feature root
+
+Two fresh CPU samples of merged cycle 53 placed `Overlay::material`, Nether
+`Feature::place`, `ColumnState::material` and `Planner::prefix` among the leading
+native leaf symbols. Leaf sample counts are not wall-time shares. Before adding
+another cache, this cycle observes exact-coordinate reuse during real generation.
+
+The observer always performs the original lookup and returns its actual result.
+Separate simulations retain full xyz keys, compare every hit, account for writes,
+clear on context changes and never remember missing values. Snapshot/undo state
+starts cold. Local counters flush when each trace is dropped; the fixture verifies
+that every started trace was flushed. Root metadata labels each ordered View by
+its root index and first recipe. Unknown providers and mixed contexts remain
+unattributed. Object addresses are observation keys, not a production stability
+contract.
+
+Both the initial three-capacity inventory and expanded five-capacity/root
+inventory generated five warmups plus twenty complete lit regions in each of
+five cases. Each repeated 102,400-chunk measured corpus matches the original,
+cycle 5 and merged cycles 51/53; the expanded inventory additionally matches the
+initial observer. All simulated hits match actual reads, with zero context resets
+or missing material reads in these observed cases. No cache is used for generation.
+
+| Nether case | Material reads per region | 1-entry hits | 16-entry hits | 256-entry hits |
+| --- | ---: | ---: | ---: | ---: |
+| nether-main | 26.82M | 16.37% | 17.68% | 23.13% |
+| nether-second-seed | 26.38M | 16.19% | 17.50% | 22.92% |
+| nether-custom-bounds | 12.50M | 0.54% | 1.93% | 6.04% |
+| nether-direct-stem | 12.19M | 0.54% | 1.93% | 5.95% |
+
+The main seed concentrates 24.8% of reads in delta features, 24.8% in basalt
+blobs, 22.6% in large basalt columns and 6.2% in small basalt columns. Delta and
+blob exact-coordinate reuse is low. In contrast, a single entry matches 58.1%
+of large-column and 47.4% of small-column reads; the second seed repeats this
+pattern at 58.4% and 48.1%. Together those groups offer about 4.3 million
+potentially avoided reads per standard-Nether region in the main seed. These
+are call counts, not a predicted elapsed-time reduction.
+
+This evidence does not justify a general Overlay cache: it would burden every
+miss, especially in custom profiles with little reuse. The next hypothesis is a
+single entry scoped to one ColumnCluster evaluation, with an explicit stable
+prior-world contract, invalidation before any write, and original fallback for
+other providers. The broader observer spans features and seeds entries on writes;
+its hit count is an opportunity estimate for that narrower design. No production
+memo is implemented or accepted here.
+
+All 159 ordinary native tests pass, with 45 optional tests ignored. The GPU
+inventory was run explicitly twice and passed both times. Observer fields, hooks,
+root metadata and fixtures use `cfg(test)`; the normal library has no observer
+symbols. Its hash differs from cycle 53, so byte identity is not claimed. The
+ordinary rebuilt library also passes the five-case 102,400-chunk corpus against
+five references, including the expanded observer. Normal timing uses the suite's
+shader-ready policy; the report retains median, p95, maximum, total, throughput,
+peak RSS and host observations. No speedup or final no-regression acceptance is
+claimed for this diagnostic-only cycle.
+
+All measured Nether observer regions reported shader status 4. Overworld observer
+regions span statuses 1 and 4 after five warmups; its counts are not a shader-ready
+comparison. Instrumented elapsed time and memory include observation overhead and
+are never used as production performance results. Quiet timing confirmation
+remains deferred by the user, and the subsecond goal remains open.
+
+Report: `docs/benchmarks/nether-perf-cycle54-2026-10-21.json`. External `cycle54/`
+evidence retains immutable executables/libraries, full MCA output, both observer
+reports, complete comparisons, host samples and the initial import-only compile
+failure. Commands and the next-cycle hypothesis are recorded there.
