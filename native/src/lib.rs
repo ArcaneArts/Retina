@@ -1282,7 +1282,7 @@ impl TerrainEngine {
         if let Some(p) = profile.as_deref().filter(|p| p.decoration_source_order) {
             let (field, mask) = self.terrain_field(request, 1)?;
             let generation = timings.time(timings::VEGETATION_PLAN, || {
-                decoration::dependencies::generate(self, p, request, 1, None, None, true, Some(&field), None)
+                decoration::dependencies::generate(self, p, request, 1, None, None, true, Some(&field), None, false)
             })?;
             let columns = field.chunk(request.chunk_x, request.chunk_z);
             let mut updates = decoration::pairs::Updates::default();

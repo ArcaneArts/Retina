@@ -332,7 +332,13 @@ mod tests {
     #[test]
     fn exact_before_root_selection_never_skips_missing_or_failed_latest_cells() {
         let mut a = Arc::try_unwrap(snapshot(0, 42)).ok().unwrap();
-        let state = a.versions.base[0].get().unwrap().as_ref().unwrap().clone();
+        let state = a.versions.base[0]
+            .get()
+            .unwrap()
+            .as_ref()
+            .ok()
+            .unwrap()
+            .clone();
         let ready = ColumnCell::new();
         ready.set(Ok(state)).ok().unwrap();
         let failed = ColumnCell::new();
@@ -419,5 +425,29 @@ mod tests {
         assert!(near([-1, 0], [0, 1]));
         assert!(!near([-1, 0], [1, 0]));
         assert!(!near([i32::MIN, 0], [i32::MAX, 0]));
+    }
+    #[test]
+    fn repeated_state_owners_charge_only_the_new_index_capacity() {
+        let mut saved = Arc::try_unwrap(snapshot(0, 42)).ok().unwrap();
+        let state = saved.versions.base[0]
+            .get()
+            .unwrap()
+            .as_ref()
+            .ok()
+            .unwrap()
+            .clone();
+        let original = retained_bytes(&saved).unwrap();
+        saved.versions.base[1].set(Ok(state.clone())).ok().unwrap();
+        assert_eq!(retained_bytes(&saved).unwrap(), original);
+        let ready = ColumnCell::new();
+        ready.set(Ok(state)).ok().unwrap();
+        saved.versions.changed[0].push(ColumnVersion {
+            root: 1,
+            state: ready,
+        });
+        assert_eq!(
+            retained_bytes(&saved).unwrap(),
+            original + saved.versions.changed[0].capacity() * std::mem::size_of::<ColumnVersion>()
+        );
     }
 }

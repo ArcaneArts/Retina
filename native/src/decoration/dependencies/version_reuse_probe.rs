@@ -3,6 +3,8 @@
 use super::*;
 use std::collections::HashSet;
 
+static FAIL_PARENT: Mutex<Option<std::path::PathBuf>> = Mutex::new(None);
+
 static ACTIVE: Mutex<Option<Arc<Mutex<Probe>>>> = Mutex::new(None);
 struct Installed;
 impl Drop for Installed {
@@ -11,6 +13,13 @@ impl Drop for Installed {
     }
 }
 pub(super) fn observe(planner: &Planner<'_>) -> Result<(), String> {
+    if let Some(parent) = FAIL_PARENT
+        .lock()
+        .map_err(|_| "failure hook poisoned")?
+        .take()
+    {
+        std::fs::write(parent, b"test publication failure").map_err(|e| e.to_string())?;
+    }
     let active = ACTIVE.lock().map_err(|_| "version probe poisoned")?.clone();
     if let Some(active) = active {
         active
@@ -363,4 +372,58 @@ fn independently_computed_neighbor_boundary_versions_match_completed_interiors()
             }
         }
     }
+}
+
+#[test]
+#[ignore = "requires GPU and RETINA_TERRAIN_REUSE_PROFILES"]
+fn failed_region_publication_does_not_publish_completed_versions() {
+    let directory =
+        std::path::PathBuf::from(std::env::var("RETINA_TERRAIN_REUSE_PROFILES").unwrap());
+    let bytes = std::fs::read(directory.join("nether.json")).unwrap();
+    let engine = TerrainEngine::new().unwrap();
+    let id = engine.register_profile(&bytes).unwrap();
+    let request = ChunkRequest {
+        seed: 123456789,
+        chunk_x: 0,
+        chunk_z: 0,
+        min_y: 0,
+        height: 256,
+        base_height: 64.,
+        amplitude: 48.,
+        frequency: 0.008,
+        reserved: id,
+    };
+    let base = std::env::temp_dir().join(format!(
+        "retina-version-publication-{}-{}",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos()
+    ));
+    std::fs::create_dir(&base).unwrap();
+    let parent = base.join("blocked-parent");
+    let path = parent.join("region.mca");
+    *FAIL_PARENT.lock().unwrap() = Some(parent.clone());
+    let failed =
+        crate::region::generate_region(&engine, request, &path, 0, "minecraft:basalt_deltas");
+    // The parent was validly absent at entry; the test creates a real file at
+    // that location after dependency work. Final filesystem publication fails.
+    assert!(failed.is_err());
+    assert!(parent.is_file());
+    assert!(!path.exists());
+    assert_eq!(engine.dependency_versions.lock().unwrap().len(), 0);
+    std::fs::remove_file(&parent).unwrap();
+    let report =
+        crate::region::generate_region(&engine, request, &path, 0, "minecraft:basalt_deltas")
+            .unwrap();
+    assert_eq!(report.generated, 1024);
+    assert!(path.is_file());
+    assert_eq!(engine.dependency_versions.lock().unwrap().len(), 1);
+    let preserved =
+        crate::region::generate_region(&engine, request, &path, 0, "minecraft:basalt_deltas")
+            .unwrap();
+    assert_eq!(preserved.generated, 0);
+    assert_eq!(engine.dependency_versions.lock().unwrap().len(), 1);
+    std::fs::remove_dir_all(base).unwrap();
 }
