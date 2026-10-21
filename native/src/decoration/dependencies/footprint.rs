@@ -459,7 +459,10 @@ mod tests {
                     };
                     let mask = Footprint::build(&profile, &root, request, coordinate, coordinate);
                     assert!(matches!(mask, Footprint::Known { .. }));
-                    let ids = [vec![0]];
+                    let anchor = (coordinate - field.origin_z) as usize * field.side
+                        + (coordinate - field.origin_x) as usize;
+                    let mut ids = vec![Vec::new(); field.side * field.side];
+                    ids[anchor] = vec![0];
                     let mut replay = Replay::new(
                         &field,
                         &profile,
@@ -473,16 +476,16 @@ mod tests {
                     let queries = replay.poll(&provider_noise::Samples::default(), None);
                     assert!(queries.is_empty());
                     let output = replay.finish_world();
-                    for block in &output[0] {
+                    for block in &output[anchor] {
                         assert!(
                             mask.contains(block.x, block.z),
                             "seed={seed} size={size} y={min_y} at={:?}",
                             [block.x, block.y, block.z]
                         );
                     }
-                    emitted += output[0].len();
+                    emitted += output[anchor].len();
                     if size == 0 {
-                        assert!(output[0].is_empty());
+                        assert!(output[anchor].is_empty());
                         assert!((coordinate * 16 - 14..=coordinate * 16 + 44).all(|x| {
                             (coordinate * 16 - 14..=coordinate * 16 + 44)
                                 .all(|z| !mask.contains(x, z))
