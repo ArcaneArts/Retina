@@ -1,5 +1,6 @@
 //! Demand-driven source-root dependencies. Each root reads the accepted result
 //! of preceding roots; its anchor-local attempts keep their existing live overlay.
+mod footprint;
 use super::spatial::Map;
 use super::*;
 use crate::TerrainEngine;
@@ -183,6 +184,7 @@ struct Root {
     ids: Vec<u32>,
     bounds: Bounds,
     deferred_ore: Option<(u16, u16)>,
+    footprint: bool,
 }
 
 fn deferred_ore_pair(profile: &WorldProfile, ids: &[u32]) -> Option<(u16, u16)> {
@@ -361,6 +363,8 @@ struct Planner<'a> {
     terrain: crate::terrain_job::TerrainJob<'a>,
     anchors: Memo<(usize, i32, i32), Output>,
     ready: Map<(usize, i32, i32), Arc<Output>>,
+    footprints: Memo<(usize, i32, i32), footprint::Footprint>,
+    ready_footprints: Map<(usize, i32, i32), Arc<footprint::Footprint>>,
     completed: Vec<CompletedRoot>,
     versions: Versions,
     anchor_ids: Memo<(i32, i32), Vec<u32>>,
@@ -514,6 +518,11 @@ impl Planner<'_> {
                 .into_inner()
                 .ok_or("unfinished dependency at root completion")??;
             self.ready.insert(key, output);
+        }
+        for (key, cell) in self.footprints.take().map_err(|_| "footprint cache poisoned")? {
+            let cell = Arc::try_unwrap(cell).map_err(|_| "footprint still in use at root completion")?;
+            let footprint = cell.into_inner().ok_or("unfinished footprint at root completion")??;
+            self.ready_footprints.insert(key, footprint);
         }
         // Existing tile slots are OnceLocks; the map itself becomes immutable
         // between root barriers, including slots first needed by later roots.
@@ -702,6 +711,30 @@ impl Planner<'_> {
             },
         )
         .map(Cow::Owned)
+    }
+    fn column_writer(&self, root: usize, ax: i32, az: i32, x: i32, z: i32)
+        -> Result<Option<Cow<'_, Arc<Output>>>, String>
+    {
+        let key = (root, ax, az);
+        if let Some(output) = self.ready.get(&key) {
+            self.metrics.performance.add(Perf::anchor_ready_hits, 1);
+            return Ok(Some(Cow::Borrowed(output)));
+        }
+        if self.roots[root].footprint {
+            let footprint = if let Some(footprint) = self.ready_footprints.get(&key) {
+                Cow::Borrowed(footprint)
+            } else {
+                Cow::Owned(memo(&self.footprints, key, &self.metrics.performance, || {
+                    self.metrics.performance.add(Perf::footprint_builds, 1);
+                    Ok(footprint::Footprint::build(self.profile, &self.roots[root], self.request, ax, az))
+                })?)
+            };
+            if !footprint.contains(x, z) {
+                self.metrics.performance.add(Perf::footprint_pruned_writers, 1);
+                return Ok(None);
+            }
+        }
+        self.anchor(root, ax, az).map(Some)
     }
     fn structure(&self, root: usize, definition: usize, x: i32, z: i32) -> Result<Output, String> {
         let request = ChunkRequest {
@@ -903,7 +936,9 @@ impl Planner<'_> {
                 if limit.is_some_and(|key| (az, ax) > (key.0, key.1)) {
                     continue;
                 }
-                let output = self.anchor(before - 1, ax, az)?;
+                let Some(output) = self.column_writer(before - 1, ax, az, x, z)? else {
+                    continue;
+                };
                 for &index in output.columns.get(&(x, z)).into_iter().flatten() {
                     let key = (az, ax, index);
                     if limit.is_some_and(|limit| key >= limit) {
@@ -1033,6 +1068,7 @@ pub(crate) fn generate(
                 ids: Vec::new(),
                 bounds,
                 deferred_ore: None,
+                footprint: false,
             });
         root.ids.push(id as u32);
         root.bounds.union(bounds);
@@ -1053,6 +1089,7 @@ pub(crate) fn generate(
                 ids: Vec::new(),
                 definition: Some(id),
                 deferred_ore: None,
+                footprint: false,
                 bounds: Bounds {
                     x: [0, 15],
                     z: [0, 15],
@@ -1062,6 +1099,7 @@ pub(crate) fn generate(
     }
     for root in groups.values_mut() {
         root.deferred_ore = deferred_ore_pair(profile, &root.ids);
+        root.footprint = footprint::eligible(profile, &root.ids);
     }
     metrics.performance.add(
         Perf::deferred_ore_roots,
@@ -1078,6 +1116,8 @@ pub(crate) fn generate(
         terrain: crate::terrain_job::TerrainJob::new(engine, profile, request, initial),
         anchors: ShardedMap::default(),
         ready: Map::default(),
+        footprints: Memo::default(),
+        ready_footprints: Map::default(),
         completed: Vec::new(),
         versions: Versions::new(request, side),
         anchor_ids: ShardedMap::default(),
@@ -1212,6 +1252,8 @@ pub(crate) fn generate(
             terrain,
             anchors,
             ready,
+            footprints,
+            ready_footprints,
             completed,
             versions,
             anchor_ids,
@@ -1226,7 +1268,7 @@ pub(crate) fn generate(
         retire(roots, &metrics.performance, Perf::teardown_other_nanos);
         retire(terrain, &metrics.performance, Perf::teardown_terrain_nanos);
         retire(
-            (anchors, ready, completed),
+            (anchors, ready, completed, footprints, ready_footprints),
             &metrics.performance,
             Perf::teardown_other_nanos,
         );

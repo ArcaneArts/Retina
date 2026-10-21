@@ -27,6 +27,7 @@ counters! {
     dependency_pool_wait_nanos,
     view_column_cached_reads, view_column_loads,
     anchor_builds, anchor_ready_hits, prefix_evaluations,
+    footprint_builds, footprint_pruned_writers,
     column_versions_skipped, completed_column_commands, completed_column_groups, completed_column_reads, completed_boundary_reads,
     terrain_job_requests, terrain_initial_tiles_reused,
     terrain_job_direct_requests, terrain_job_fallback_requests,
