@@ -399,6 +399,7 @@ mod tests {
                 .get()
                 .unwrap()
                 .as_ref()
+                .ok()
                 .unwrap(),
             &core
         ));

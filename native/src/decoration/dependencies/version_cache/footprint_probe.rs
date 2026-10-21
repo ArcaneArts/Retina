@@ -97,7 +97,7 @@ fn completed_snapshot_read_depths() {
         rows.push(serde_json::json!({"case":name,"seed":seed,"profile":file,
             "hits":hits,"maximum_depth":maximum,"counts_by_depth":counts,"bands":bands}));
         fs::write(output.join("report.json"), serde_json::to_vec_pretty(&serde_json::json!({
-            "scope":"Actual successful immutable snapshot reads during twenty fresh lit-MCA regions after five completed warmups. Depth is distance in blocks from the source region's nearest edge. No production retention change and no timing acceptance.",
+            "scope":"Actual successful immutable snapshot reads during twenty fresh lit-MCA regions after five completed warmups. Depth is distance in blocks from the source region's nearest edge. Archive retention follows the current implementation; observed coverage is not a correctness boundary. No timing acceptance.",
             "rows":rows,"timing_acceptance":false,
         })).unwrap()).unwrap();
     }
