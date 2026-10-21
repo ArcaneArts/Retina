@@ -1,6 +1,8 @@
 //! Demand-driven source-root dependencies. Each root reads the accepted result
 //! of preceding roots; its anchor-local attempts keep their existing live overlay.
 mod footprint;
+#[cfg(test)]
+mod version_reuse_probe;
 use super::spatial::Map;
 use super::*;
 use crate::TerrainEngine;
@@ -1246,6 +1248,8 @@ pub(crate) fn generate(
     // pool and join before generation returns. No cleanup escapes the interval.
     dispatch_phase(pool, &metrics.performance, || {
         planner.check()?;
+        #[cfg(test)]
+        version_reuse_probe::observe(&planner)?;
         let structure_started = metrics.performance.start();
         let structure_detail = diagnostics::start(details.is_some());
         let starts = planner
