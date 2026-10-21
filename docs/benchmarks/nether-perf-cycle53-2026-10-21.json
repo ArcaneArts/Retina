@@ -1,0 +1,1613 @@
+{
+  "schema": "retina.nether-performance-cycle",
+  "cycle": 53,
+  "status": "Validated candidate; PR and actual merged verification pending",
+  "change": "Reuse exact naturally completed exterior prefix states from published regions. Keep unobserved prefixes as holes and use the original full planner for every miss.",
+  "base_revision": "e50eddd2e97f46854591bde14d19a162f42c77bc",
+  "branch": "codex/nether-exterior-state-inventory",
+  "library": {
+    "revision": "6fb2ce353c82a8f50981e08840048d5be9586c2d",
+    "native_tree": "a24c6a1c2bef99e093a735d72aeb31416f974e6b",
+    "sha256": "dd00145de6ea2916a17efbb703c05e0a210becec24a8403e44139a2dabed161b",
+    "source_status": "",
+    "forced_rebuild": true,
+    "timing_acceptance": false
+  },
+  "evidence_root": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle53",
+  "method": {
+    "manifest": "qa/nether-performance-corpus.json",
+    "warmup_regions": 5,
+    "measured_regions_per_run": 20,
+    "scope": "Complete fresh 1024-chunk regions, lighting, zlib compression, durable publication and synchronous cleanup.",
+    "references": [
+      "reference-suite",
+      "cycle5/correctness-suite",
+      "cycle50/merged-full",
+      "cycle51/merged-full"
+    ],
+    "comparison": "Complete decompressed chunk NBT and region membership. Only MCA timestamps and compression representation are excluded.",
+    "own_workloads_serialized": true,
+    "timing_acceptance": false,
+    "commands": [
+      "exterior-state-inventory.py",
+      "exterior-state-final-retry.py",
+      "exterior-export-component.py",
+      "exterior-state-extended.py",
+      "exterior-state-regression-followup.py",
+      "exterior-state-retention-runtime.py"
+    ],
+    "commands_location": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20"
+  },
+  "tests": {
+    "native_passed": 157,
+    "native_failed": 0,
+    "native_ignored": 44,
+    "independent_pairs": 24,
+    "independently_matching_states": 5755113,
+    "publication_failure_retry_existing_skip": "passed"
+  },
+  "source_review": {
+    "native_revision": "6fb2ce3",
+    "normal_library_sha256": "dd00145de6ea2916a17efbb703c05e0a210becec24a8403e44139a2dabed161b",
+    "same_normal_library_as_full_v3": true,
+    "reviewed_invariants": [
+      "Only successful initialized full-prefix ColumnCells from joined ready_columns are archived; prefix(limit) results are not stored in these cells.",
+      "Each interval merges only consecutive explicit before keys with identical live source owners. Missing prefixes remain holes, even when later states equal earlier ones.",
+      "Borrowed source owners remain alive through interning. Material runs and six heightmaps are copied; no original planner, GPU mask, prior snapshot or engine is retained.",
+      "Reads occur inside the requested ColumnCell initializer. Other completed-interior reuse and all misses retain the original dependency path. Source roots and target anchors still execute in their original order.",
+      "Existing registered-profile, full normalized context, root count, fresh complete-region eligibility, neighboring capture and durable publication rules remain unchanged.",
+      "Exterior backing is included in the same512MiB/eight-entry budget. Synchronous capture, original state retirement and archive eviction remain inside generation; global bound is counted archive backing, not total process RSS.",
+      "Returned columns retain only their state and packed run buffer. Snapshot fields cannot form a cycle.",
+      "Direct tile grouping preserves exact coordinate/key mapping and interval ordering. All interval boundaries, materials and heights match the initial staging reference on four natural inputs."
+    ],
+    "validation": {
+      "unit_passed": 157,
+      "unit_failed": 0,
+      "unit_ignored": 44,
+      "independent_pairs": 24,
+      "independent_matching_states": 5755113,
+      "actual_failed_publication_retry_existing_skip": true,
+      "full_v3_exact_chunks": 102400,
+      "references": 4,
+      "sustained_full_exact_chunks": 245760,
+      "sustained_reference_sets": 4,
+      "runtime_fixture_runs": 5,
+      "runtime_client_mapped_native_hashes": "All three integrated-client runs match selected dd00145de6ea2916a17efbb703c05e0a210becec24a8403e44139a2dabed161b; JNI mapping also confirmed."
+    },
+    "still_required": [
+      "PR, confirmed merge and actual merged full corpus.",
+      "Final quiet timing, long-term memory and concurrency acceptance remain open."
+    ],
+    "timing_acceptance": false
+  },
+  "inventory": {
+    "rows": [
+      {
+        "case": "nether-main",
+        "regions": 20,
+        "matches_interior": 675870,
+        "matches_exterior": 1797213,
+        "mismatches": 0,
+        "median_band64_exact_prefix_slots": 1069408.0,
+        "median_band64_unique_states": 107889.0,
+        "median_band64_packed_run_bytes": 3954054.0,
+        "median_band64_positions": 64263.5,
+        "median_band64_position_state_groups": 107889.0
+      },
+      {
+        "case": "nether-second-seed",
+        "regions": 20,
+        "matches_interior": 694080,
+        "matches_exterior": 1775913,
+        "mismatches": 0,
+        "median_band64_exact_prefix_slots": 1212084.5,
+        "median_band64_unique_states": 109145.5,
+        "median_band64_packed_run_bytes": 4104520.0,
+        "median_band64_positions": 63880.0,
+        "median_band64_position_state_groups": 109145.5
+      },
+      {
+        "case": "nether-custom-bounds",
+        "regions": 20,
+        "matches_interior": 1050181,
+        "matches_exterior": 2542089,
+        "mismatches": 0,
+        "median_band64_exact_prefix_slots": 1091858.5,
+        "median_band64_unique_states": 122332.0,
+        "median_band64_packed_run_bytes": 4723524.0,
+        "median_band64_positions": 72577.5,
+        "median_band64_position_state_groups": 122332.0
+      },
+      {
+        "case": "nether-direct-stem",
+        "regions": 20,
+        "matches_interior": 1035046,
+        "matches_exterior": 2477623,
+        "mismatches": 0,
+        "median_band64_exact_prefix_slots": 1102554.5,
+        "median_band64_unique_states": 125860.5,
+        "median_band64_packed_run_bytes": 4631730.0,
+        "median_band64_positions": 72495.5,
+        "median_band64_position_state_groups": 125860.5
+      }
+    ],
+    "scope": "Natural completed exact-prefix cells only, after each joined dependency planner. Prior region exterior snapshots are observed and compared, never used by generation. Snapshot memory and instrumentation are not production costs. Counts are potentially avoided cell builds, not saved queries or elapsed time. Only the immediately preceding measured region is compared. Full lit MCA; five warmups and twenty measured coordinates per case.",
+    "timing_acceptance": false,
+    "full_nbt_validation": {
+      "driver_returncode": 0,
+      "cases": 4,
+      "measured_chunks": 81920,
+      "references_per_case": 4,
+      "all_membership_identical": true
+    }
+  },
+  "diagnostics": {
+    "preceding": {
+      "evidence": "preceding-row-diagnostic/suite.json",
+      "complete_region_total_ms": 13989.07725000754,
+      "counters": {
+        "anchor_builds": 467944,
+        "column_builds": 21163126,
+        "column_tiles": 122399,
+        "prefix_evaluations": 18024027,
+        "shared_material_columns": 3139099,
+        "memo_requests": 10758341,
+        "terrain_generated_chunks": 59768,
+        "version_cache_boundary_hits": 294798,
+        "version_cache_exported_bytes": 110039688,
+        "version_cache_export_nanos": 938349335,
+        "teardown_nanos": 1612162457
+      },
+      "scope": "Eight measured full regions after five warmups; instrumentation enabled. Nested and concurrent counters overlap and must not be summed as wall time.",
+      "validation": [
+        {
+          "case": "nether-main-run0",
+          "median_ms": 1637.2296251356602,
+          "p95_region_ms": 2240.745896100998,
+          "maximum_region_ms": 2271.219667047262,
+          "total_ms": 13989.07725000754,
+          "chunks_per_second": 585.5997399682374,
+          "generation_peak_rss_bytes": 1905459200,
+          "exact_chunks_per_reference": 8192,
+          "reference_count": 4,
+          "shader_statuses": [
+            4
+          ]
+        }
+      ]
+    },
+    "exterior64": {
+      "evidence": "exterior64-row-diagnostic/suite.json",
+      "complete_region_total_ms": 13743.995583150536,
+      "counters": {
+        "anchor_builds": 461321,
+        "column_builds": 19849768,
+        "column_tiles": 115840,
+        "prefix_evaluations": 16595926,
+        "shared_material_columns": 2780443,
+        "memo_requests": 9995514,
+        "terrain_generated_chunks": 58414,
+        "version_cache_boundary_hits": 256138,
+        "version_cache_exterior_hits": 473399,
+        "version_cache_exterior_exported_slots": 11261265,
+        "version_cache_exported_bytes": 245119696,
+        "version_cache_export_nanos": 1550583125,
+        "teardown_nanos": 2219993584
+      },
+      "scope": "Eight measured full regions after five warmups; instrumentation enabled. Nested and concurrent counters overlap and must not be summed as wall time.",
+      "validation": [
+        {
+          "case": "nether-main-run0",
+          "median_ms": 1631.9363960064948,
+          "p95_region_ms": 2336.4658373990096,
+          "maximum_region_ms": 2382.4417497962713,
+          "total_ms": 13743.995583150536,
+          "chunks_per_second": 596.0421007441962,
+          "generation_peak_rss_bytes": 2015985664,
+          "exact_chunks_per_reference": 8192,
+          "reference_count": 4,
+          "shader_statuses": [
+            4
+          ]
+        }
+      ]
+    },
+    "exterior64v3": {
+      "evidence": "exterior64v3-row-diagnostic/suite.json",
+      "complete_region_total_ms": 20084.342874819413,
+      "counters": {
+        "anchor_builds": 461321,
+        "column_builds": 19849768,
+        "column_tiles": 115840,
+        "prefix_evaluations": 16595926,
+        "shared_material_columns": 2780443,
+        "memo_requests": 9995514,
+        "terrain_generated_chunks": 58365,
+        "version_cache_boundary_hits": 256138,
+        "version_cache_exterior_hits": 473399,
+        "version_cache_exterior_exported_slots": 11261265,
+        "version_cache_exported_bytes": 242498224,
+        "version_cache_export_nanos": 1640848791,
+        "teardown_nanos": 2638141664
+      },
+      "scope": "Eight measured full regions after five warmups; instrumentation enabled. Nested and concurrent counters overlap and must not be summed as wall time.",
+      "validation": [
+        {
+          "case": "nether-main-run0",
+          "median_ms": 2555.9727295767516,
+          "p95_region_ms": 3202.5616456521675,
+          "maximum_region_ms": 3232.529375003651,
+          "total_ms": 20084.342874819413,
+          "chunks_per_second": 407.87991178295687,
+          "generation_peak_rss_bytes": 1995784192,
+          "exact_chunks_per_reference": 8192,
+          "reference_count": 4,
+          "shader_statuses": [
+            4
+          ]
+        }
+      ]
+    }
+  },
+  "full": [
+    {
+      "case": "nether-main-run0",
+      "median_ms": 1218.907541478984,
+      "p95_region_ms": 1946.408770233393,
+      "maximum_region_ms": 2113.5727500077337,
+      "total_ms": 25505.13791712001,
+      "chunks_per_second": 802.9754658277324,
+      "generation_peak_rss_bytes": 2325446656,
+      "exact_chunks_per_reference": 20480,
+      "reference_count": 4,
+      "shader_statuses": [
+        4
+      ]
+    },
+    {
+      "case": "nether-second-seed-run0",
+      "median_ms": 1308.2308750599623,
+      "p95_region_ms": 1836.1860044649802,
+      "maximum_region_ms": 1869.7511670179665,
+      "total_ms": 27267.139374976978,
+      "chunks_per_second": 751.0872232821927,
+      "generation_peak_rss_bytes": 2278916096,
+      "exact_chunks_per_reference": 20480,
+      "reference_count": 4,
+      "shader_statuses": [
+        4
+      ]
+    },
+    {
+      "case": "nether-custom-bounds-run0",
+      "median_ms": 845.8330000285059,
+      "p95_region_ms": 1039.0659287339079,
+      "maximum_region_ms": 1279.5610420871526,
+      "total_ms": 17298.81479195319,
+      "chunks_per_second": 1183.8961366027565,
+      "generation_peak_rss_bytes": 1905000448,
+      "exact_chunks_per_reference": 20480,
+      "reference_count": 4,
+      "shader_statuses": [
+        4
+      ]
+    },
+    {
+      "case": "nether-direct-stem-run0",
+      "median_ms": 957.6119580306113,
+      "p95_region_ms": 1087.621772941202,
+      "maximum_region_ms": 1111.5052078384906,
+      "total_ms": 18557.261209003627,
+      "chunks_per_second": 1103.6111293224399,
+      "generation_peak_rss_bytes": 1978433536,
+      "exact_chunks_per_reference": 20480,
+      "reference_count": 4,
+      "shader_statuses": [
+        4
+      ]
+    },
+    {
+      "case": "overworld-run0",
+      "median_ms": 389.5294578978792,
+      "p95_region_ms": 492.9918057401665,
+      "maximum_region_ms": 594.0317078493536,
+      "total_ms": 7898.213166976348,
+      "chunks_per_second": 2592.991549738117,
+      "generation_peak_rss_bytes": 2341355520,
+      "exact_chunks_per_reference": 20480,
+      "reference_count": 4,
+      "shader_statuses": [
+        4
+      ]
+    }
+  ],
+  "repeats": {
+    "nether-main": {
+      "preceding-a": [
+        {
+          "case": "nether-main-run0",
+          "median_ms": 1527.6420210720971,
+          "p95_region_ms": 2033.0571077181958,
+          "maximum_region_ms": 2063.8930001296103,
+          "total_ms": 31335.731250001118,
+          "chunks_per_second": 653.5670042804337,
+          "generation_peak_rss_bytes": 2153267200,
+          "exact_chunks_per_reference": 20480,
+          "reference_count": 4,
+          "shader_statuses": [
+            4
+          ]
+        }
+      ],
+      "direct-a": [
+        {
+          "case": "nether-main-run0",
+          "median_ms": 1306.1975210439414,
+          "p95_region_ms": 1794.5460377261043,
+          "maximum_region_ms": 1807.439833180979,
+          "total_ms": 25768.631249899045,
+          "chunks_per_second": 794.7647588026327,
+          "generation_peak_rss_bytes": 2246524928,
+          "exact_chunks_per_reference": 20480,
+          "reference_count": 4,
+          "shader_statuses": [
+            4
+          ]
+        }
+      ],
+      "direct-b": [
+        {
+          "case": "nether-main-run0",
+          "median_ms": 1414.8807296296582,
+          "p95_region_ms": 1800.9447454591282,
+          "maximum_region_ms": 1865.020584082231,
+          "total_ms": 28345.882707973942,
+          "chunks_per_second": 722.5035187998855,
+          "generation_peak_rss_bytes": 2194800640,
+          "exact_chunks_per_reference": 20480,
+          "reference_count": 4,
+          "shader_statuses": [
+            4
+          ]
+        }
+      ],
+      "preceding-b": [
+        {
+          "case": "nether-main-run0",
+          "median_ms": 1513.5906875366345,
+          "p95_region_ms": 1986.5339627605865,
+          "maximum_region_ms": 2259.533958043903,
+          "total_ms": 31088.092874968424,
+          "chunks_per_second": 658.7731219913502,
+          "generation_peak_rss_bytes": 2007449600,
+          "exact_chunks_per_reference": 20480,
+          "reference_count": 4,
+          "shader_statuses": [
+            4
+          ]
+        }
+      ]
+    },
+    "nether-second-seed": {
+      "preceding-a": [
+        {
+          "case": "nether-second-seed-run0",
+          "median_ms": 1255.6183750275522,
+          "p95_region_ms": 1728.2255856785926,
+          "maximum_region_ms": 1892.2344169113785,
+          "total_ms": 24856.592958793044,
+          "chunks_per_second": 823.9262731602635,
+          "generation_peak_rss_bytes": 2109915136,
+          "exact_chunks_per_reference": 20480,
+          "reference_count": 4,
+          "shader_statuses": [
+            4
+          ]
+        }
+      ],
+      "direct-a": [
+        {
+          "case": "nether-second-seed-run0",
+          "median_ms": 1179.7428540885448,
+          "p95_region_ms": 1597.3749048658647,
+          "maximum_region_ms": 1611.583499936387,
+          "total_ms": 23375.087708001956,
+          "chunks_per_second": 876.1464451313744,
+          "generation_peak_rss_bytes": 2256093184,
+          "exact_chunks_per_reference": 20480,
+          "reference_count": 4,
+          "shader_statuses": [
+            4
+          ]
+        }
+      ],
+      "direct-b": [
+        {
+          "case": "nether-second-seed-run0",
+          "median_ms": 1502.277395920828,
+          "p95_region_ms": 2123.1669253786094,
+          "maximum_region_ms": 2519.3598330952227,
+          "total_ms": 30530.53466696292,
+          "chunks_per_second": 670.8038435422947,
+          "generation_peak_rss_bytes": 2399338496,
+          "exact_chunks_per_reference": 20480,
+          "reference_count": 4,
+          "shader_statuses": [
+            4
+          ]
+        }
+      ],
+      "preceding-b": [
+        {
+          "case": "nether-second-seed-run0",
+          "median_ms": 1826.6701045213267,
+          "p95_region_ms": 2348.3789540594444,
+          "maximum_region_ms": 2476.2789579108357,
+          "total_ms": 35887.85570813343,
+          "chunks_per_second": 570.6665833299849,
+          "generation_peak_rss_bytes": 2113830912,
+          "exact_chunks_per_reference": 20480,
+          "reference_count": 4,
+          "shader_statuses": [
+            4
+          ]
+        }
+      ]
+    },
+    "overworld": {
+      "preceding-a": [
+        {
+          "case": "overworld-run0",
+          "median_ms": 419.0516665112227,
+          "p95_region_ms": 531.3044485868886,
+          "maximum_region_ms": 600.7611248642206,
+          "total_ms": 8388.930291868746,
+          "chunks_per_second": 2441.3124543245913,
+          "generation_peak_rss_bytes": 1678000128,
+          "exact_chunks_per_reference": 20480,
+          "reference_count": 4,
+          "shader_statuses": [
+            4
+          ]
+        }
+      ],
+      "direct-a": [
+        {
+          "case": "overworld-run0",
+          "median_ms": 382.5117079541087,
+          "p95_region_ms": 443.01769589073956,
+          "maximum_region_ms": 466.27266705036163,
+          "total_ms": 7649.408875033259,
+          "chunks_per_second": 2677.3310636909773,
+          "generation_peak_rss_bytes": 1623064576,
+          "exact_chunks_per_reference": 20480,
+          "reference_count": 4,
+          "shader_statuses": [
+            4
+          ]
+        }
+      ],
+      "direct-b": [
+        {
+          "case": "overworld-run0",
+          "median_ms": 449.39218694344163,
+          "p95_region_ms": 626.2806751183234,
+          "maximum_region_ms": 675.5890001077205,
+          "total_ms": 9150.264957919717,
+          "chunks_per_second": 2238.1865546171093,
+          "generation_peak_rss_bytes": 1673609216,
+          "exact_chunks_per_reference": 20480,
+          "reference_count": 4,
+          "shader_statuses": [
+            4
+          ]
+        }
+      ],
+      "preceding-b": [
+        {
+          "case": "overworld-run0",
+          "median_ms": 445.90112450532615,
+          "p95_region_ms": 532.0601454819553,
+          "maximum_region_ms": 538.0059580784291,
+          "total_ms": 8899.27912503481,
+          "chunks_per_second": 2301.30999514187,
+          "generation_peak_rss_bytes": 1648443392,
+          "exact_chunks_per_reference": 20480,
+          "reference_count": 4,
+          "shader_statuses": [
+            4
+          ]
+        }
+      ]
+    }
+  },
+  "callers": {
+    "2": {
+      "preceding": [
+        {
+          "case": "nether-main-run0",
+          "median_ms": 2515.501895453781,
+          "p95_region_ms": 3261.762745527085,
+          "maximum_region_ms": 3488.7422090396285,
+          "total_ms": 25939.06333297491,
+          "chunks_per_second": 789.5427732721905,
+          "generation_peak_rss_bytes": 3015704576,
+          "exact_chunks_per_reference": 20480,
+          "reference_count": 4,
+          "shader_statuses": [
+            4
+          ]
+        }
+      ],
+      "direct": [
+        {
+          "case": "nether-main-run0",
+          "median_ms": 2426.5171880833805,
+          "p95_region_ms": 3683.6470936774276,
+          "maximum_region_ms": 3945.867875125259,
+          "total_ms": 26328.344292007387,
+          "chunks_per_second": 777.8688919005516,
+          "generation_peak_rss_bytes": 3410345984,
+          "exact_chunks_per_reference": 20480,
+          "reference_count": 4,
+          "shader_statuses": [
+            4
+          ]
+        }
+      ]
+    },
+    "4": {
+      "preceding": [
+        {
+          "case": "nether-main-run0",
+          "median_ms": 4703.209333471023,
+          "p95_region_ms": 8281.834481167607,
+          "maximum_region_ms": 8411.3761249464,
+          "total_ms": 26302.77929082513,
+          "chunks_per_second": 778.6249420092189,
+          "generation_peak_rss_bytes": 4669489152,
+          "exact_chunks_per_reference": 20480,
+          "reference_count": 4,
+          "shader_statuses": [
+            4
+          ]
+        }
+      ],
+      "direct": [
+        {
+          "case": "nether-main-run0",
+          "median_ms": 4182.387187378481,
+          "p95_region_ms": 6610.885248077102,
+          "maximum_region_ms": 6775.1085420604795,
+          "total_ms": 22284.57683394663,
+          "chunks_per_second": 919.0212653624333,
+          "generation_peak_rss_bytes": 5717278720,
+          "exact_chunks_per_reference": 20480,
+          "reference_count": 4,
+          "shader_statuses": [
+            4
+          ]
+        }
+      ]
+    },
+    "8": {
+      "preceding": [
+        {
+          "case": "nether-main-run0",
+          "median_ms": 7390.8909995807335,
+          "p95_region_ms": 16957.200879312586,
+          "maximum_region_ms": 18253.5899579525,
+          "total_ms": 23326.67791703716,
+          "chunks_per_second": 877.9647094557762,
+          "generation_peak_rss_bytes": 7374602240,
+          "exact_chunks_per_reference": 20480,
+          "reference_count": 4,
+          "shader_statuses": [
+            4
+          ]
+        }
+      ],
+      "direct": [
+        {
+          "case": "nether-main-run0",
+          "median_ms": 8647.431375458837,
+          "p95_region_ms": 14969.260266318452,
+          "maximum_region_ms": 16124.15025010705,
+          "total_ms": 24564.34866716154,
+          "chunks_per_second": 833.7285990154652,
+          "generation_peak_rss_bytes": 7266140160,
+          "exact_chunks_per_reference": 20480,
+          "reference_count": 4,
+          "shader_statuses": [
+            4
+          ]
+        }
+      ]
+    }
+  },
+  "regression_followup": {
+    "overworld": {
+      "preceding-a": [
+        {
+          "case": "overworld-run0",
+          "median_ms": 457.2542504174635,
+          "p95_region_ms": 610.37326954538,
+          "maximum_region_ms": 662.28241706267,
+          "total_ms": 9471.881083911285,
+          "chunks_per_second": 2162.1893073369392,
+          "generation_peak_rss_bytes": 1620180992,
+          "exact_chunks_per_reference": 20480,
+          "reference_count": 4,
+          "shader_statuses": [
+            4
+          ]
+        }
+      ],
+      "direct": [
+        {
+          "case": "overworld-run0",
+          "median_ms": 431.45302042830735,
+          "p95_region_ms": 545.2060517389328,
+          "maximum_region_ms": 632.2468328289688,
+          "total_ms": 8821.3679168839,
+          "chunks_per_second": 2321.6353963427528,
+          "generation_peak_rss_bytes": 1625489408,
+          "exact_chunks_per_reference": 20480,
+          "reference_count": 4,
+          "shader_statuses": [
+            4
+          ]
+        }
+      ],
+      "preceding-b": [
+        {
+          "case": "overworld-run0",
+          "median_ms": 362.2753960080445,
+          "p95_region_ms": 506.9894563523122,
+          "maximum_region_ms": 528.2298328820616,
+          "total_ms": 7704.656209098175,
+          "chunks_per_second": 2658.1328801946856,
+          "generation_peak_rss_bytes": 1660321792,
+          "exact_chunks_per_reference": 20480,
+          "reference_count": 4,
+          "shader_statuses": [
+            4
+          ]
+        }
+      ]
+    },
+    "nether-main": {
+      "preceding-a": [
+        {
+          "case": "nether-main-run0",
+          "median_ms": 3228.7131041521206,
+          "p95_region_ms": 4732.686047512107,
+          "maximum_region_ms": 5206.7116249818355,
+          "total_ms": 35009.03558311984,
+          "chunks_per_second": 584.9918359326286,
+          "generation_peak_rss_bytes": 3461316608,
+          "exact_chunks_per_reference": 20480,
+          "reference_count": 4,
+          "shader_statuses": [
+            4
+          ]
+        }
+      ],
+      "direct": [
+        {
+          "case": "nether-main-run0",
+          "median_ms": 3034.7497913753614,
+          "p95_region_ms": 3732.049954717513,
+          "maximum_region_ms": 3968.3101249393076,
+          "total_ms": 30860.962833976373,
+          "chunks_per_second": 663.6215503118569,
+          "generation_peak_rss_bytes": 3234398208,
+          "exact_chunks_per_reference": 20480,
+          "reference_count": 4,
+          "shader_statuses": [
+            4
+          ]
+        }
+      ],
+      "preceding-b": [
+        {
+          "case": "nether-main-run0",
+          "median_ms": 2234.3219165923074,
+          "p95_region_ms": 2970.7610027864575,
+          "maximum_region_ms": 3006.830957951024,
+          "total_ms": 22655.992790823802,
+          "chunks_per_second": 903.9550898998727,
+          "generation_peak_rss_bytes": 3012771840,
+          "exact_chunks_per_reference": 20480,
+          "reference_count": 4,
+          "shader_statuses": [
+            4
+          ]
+        }
+      ]
+    }
+  },
+  "component": {
+    "cases": [
+      {
+        "case": "nether-main",
+        "old_median_ms": 118.90802049999999,
+        "new_median_ms": 30.175832999999997,
+        "median_reduction_percent": 74.62254196721743,
+        "old_p95_ms": 145.327709,
+        "new_p95_ms": 38.46575,
+        "exact_slots": 2056059,
+        "intervals_compared": 188638,
+        "states": 188638,
+        "full_interval_value_parity": true
+      },
+      {
+        "case": "nether-second-seed",
+        "old_median_ms": 132.3819995,
+        "new_median_ms": 32.0500625,
+        "median_reduction_percent": 75.78971263385397,
+        "old_p95_ms": 184.815709,
+        "new_p95_ms": 48.201875,
+        "exact_slots": 2016210,
+        "intervals_compared": 166154,
+        "states": 166154,
+        "full_interval_value_parity": true
+      },
+      {
+        "case": "nether-custom-bounds",
+        "old_median_ms": 184.89135449999998,
+        "new_median_ms": 44.386936999999996,
+        "median_reduction_percent": 75.99296239673554,
+        "old_p95_ms": 223.537542,
+        "new_p95_ms": 56.378875,
+        "exact_slots": 1940582,
+        "intervals_compared": 218156,
+        "states": 218156,
+        "full_interval_value_parity": true
+      },
+      {
+        "case": "nether-direct-stem",
+        "old_median_ms": 138.24156250000001,
+        "new_median_ms": 37.0381875,
+        "median_reduction_percent": 73.20763247304876,
+        "old_p95_ms": 171.17908300000002,
+        "new_p95_ms": 43.08775,
+        "exact_slots": 2048850,
+        "intervals_compared": 239502,
+        "states": 239502,
+        "full_interval_value_parity": true
+      }
+    ],
+    "same_normal_library_as_full_v3": true,
+    "scope": "Same frozen natural planner inputs;5warm20measured exports each, alternatingorder, includesarchive destruction. Component evidence only; not whole-region speedup or quiet acceptance.",
+    "timing_acceptance": false
+  },
+  "current_root_profile": {
+    "scope": "Current selected C53 normal library; existing cumulative root timestamps only, detailed per-read instrumentation disabled. Twenty complete regions after five warmups. Interval deltas include queueing, native feature evaluation, nested terrain/GPU work, synchronization, publication and previous log-call overhead. Root zero also includes planner setup. These are not pure CPU feature costs or disjoint GPU timings. Not final quiet timing acceptance.",
+    "library_sha256": "dd00145de6ea2916a17efbb703c05e0a210becec24a8403e44139a2dabed161b",
+    "root_count": 41,
+    "top_roots": [
+      {
+        "root": 0,
+        "name": "minecraft:basalt_pillar",
+        "median_interval_ms": 96.7,
+        "total_interval_ms": 1915.5,
+        "maximum_interval_ms": 113.5
+      },
+      {
+        "root": 12,
+        "name": "minecraft:patch_fire",
+        "median_interval_ms": 62.599999999999994,
+        "total_interval_ms": 1164.7,
+        "maximum_interval_ms": 126.89999999999998
+      },
+      {
+        "root": 8,
+        "name": "minecraft:basalt_blobs",
+        "median_interval_ms": 54.30000000000001,
+        "total_interval_ms": 1366.5,
+        "maximum_interval_ms": 183.2
+      },
+      {
+        "root": 17,
+        "name": "minecraft:brown_mushroom_nether",
+        "median_interval_ms": 53.24999999999997,
+        "total_interval_ms": 1259.2999999999997,
+        "maximum_interval_ms": 179.10000000000002
+      },
+      {
+        "root": 13,
+        "name": "minecraft:patch_soul_fire",
+        "median_interval_ms": 42.39999999999998,
+        "total_interval_ms": 907.3,
+        "maximum_interval_ms": 111.0
+      },
+      {
+        "root": 19,
+        "name": "minecraft:ore_magma",
+        "median_interval_ms": 29.799999999999983,
+        "total_interval_ms": 676.1999999999998,
+        "maximum_interval_ms": 54.60000000000002
+      },
+      {
+        "root": 29,
+        "name": "minecraft:ore_ancient_debris_large",
+        "median_interval_ms": 28.80000000000001,
+        "total_interval_ms": 874.0000000000002,
+        "maximum_interval_ms": 133.0
+      },
+      {
+        "root": 15,
+        "name": "minecraft:glowstone",
+        "median_interval_ms": 27.69999999999996,
+        "total_interval_ms": 902.1999999999999,
+        "maximum_interval_ms": 149.60000000000002
+      },
+      {
+        "root": 9,
+        "name": "minecraft:blackstone_blobs",
+        "median_interval_ms": 23.750000000000014,
+        "total_interval_ms": 712.0999999999999,
+        "maximum_interval_ms": 92.69999999999999
+      },
+      {
+        "root": 25,
+        "name": "minecraft:ore_quartz_nether",
+        "median_interval_ms": 21.550000000000068,
+        "total_interval_ms": 496.3000000000003,
+        "maximum_interval_ms": 46.5
+      },
+      {
+        "root": 5,
+        "name": "minecraft:large_basalt_columns",
+        "median_interval_ms": 19.049999999999997,
+        "total_interval_ms": 411.70000000000005,
+        "maximum_interval_ms": 66.39999999999998
+      },
+      {
+        "root": 40,
+        "name": "minecraft:crimson_forest_vegetation",
+        "median_interval_ms": 17.80000000000001,
+        "total_interval_ms": 598.4000000000002,
+        "maximum_interval_ms": 130.29999999999995
+      },
+      {
+        "root": 3,
+        "name": "minecraft:delta",
+        "median_interval_ms": 17.799999999999997,
+        "total_interval_ms": 326.0,
+        "maximum_interval_ms": 50.30000000000001
+      },
+      {
+        "root": 22,
+        "name": "minecraft:ore_gravel_nether",
+        "median_interval_ms": 17.799999999999983,
+        "total_interval_ms": 789.6999999999997,
+        "maximum_interval_ms": 190.29999999999995
+      },
+      {
+        "root": 1,
+        "name": "minecraft:bastion_remnant",
+        "median_interval_ms": 17.15,
+        "total_interval_ms": 364.4,
+        "maximum_interval_ms": 31.19999999999999
+      },
+      {
+        "root": 23,
+        "name": "minecraft:ore_blackstone",
+        "median_interval_ms": 15.75,
+        "total_interval_ms": 369.70000000000033,
+        "maximum_interval_ms": 44.10000000000002
+      },
+      {
+        "root": 39,
+        "name": "minecraft:crimson_fungi",
+        "median_interval_ms": 15.25,
+        "total_interval_ms": 436.49999999999983,
+        "maximum_interval_ms": 99.70000000000005
+      },
+      {
+        "root": 24,
+        "name": "minecraft:ore_gold_nether",
+        "median_interval_ms": 14.199999999999989,
+        "total_interval_ms": 524.7999999999995,
+        "maximum_interval_ms": 152.19999999999993
+      },
+      {
+        "root": 2,
+        "name": "minecraft:ruined_portal_nether",
+        "median_interval_ms": 14.150000000000006,
+        "total_interval_ms": 224.00000000000003,
+        "maximum_interval_ms": 31.799999999999997
+      },
+      {
+        "root": 14,
+        "name": "minecraft:glowstone_extra",
+        "median_interval_ms": 13.299999999999983,
+        "total_interval_ms": 560.6999999999998,
+        "maximum_interval_ms": 102.10000000000002
+      },
+      {
+        "root": 18,
+        "name": "minecraft:red_mushroom_nether",
+        "median_interval_ms": 12.050000000000011,
+        "total_interval_ms": 389.7000000000002,
+        "maximum_interval_ms": 67.70000000000005
+      },
+      {
+        "root": 28,
+        "name": "minecraft:ore_quartz_deltas",
+        "median_interval_ms": 9.449999999999989,
+        "total_interval_ms": 208.59999999999985,
+        "maximum_interval_ms": 31.59999999999991
+      },
+      {
+        "root": 4,
+        "name": "minecraft:small_basalt_columns",
+        "median_interval_ms": 7.900000000000006,
+        "total_interval_ms": 172.19999999999993,
+        "maximum_interval_ms": 22.900000000000006
+      },
+      {
+        "root": 20,
+        "name": "minecraft:spring_closed",
+        "median_interval_ms": 7.2000000000000455,
+        "total_interval_ms": 148.09999999999997,
+        "maximum_interval_ms": 12.199999999999989
+      },
+      {
+        "root": 30,
+        "name": "minecraft:ore_debris_small",
+        "median_interval_ms": 5.900000000000034,
+        "total_interval_ms": 241.30000000000024,
+        "maximum_interval_ms": 99.30000000000007
+      },
+      {
+        "root": 6,
+        "name": "minecraft:fortress",
+        "median_interval_ms": 5.150000000000006,
+        "total_interval_ms": 100.39999999999996,
+        "maximum_interval_ms": 11.0
+      },
+      {
+        "root": 31,
+        "name": "minecraft:spring_lava",
+        "median_interval_ms": 5.149999999999977,
+        "total_interval_ms": 105.59999999999974,
+        "maximum_interval_ms": 7.0
+      },
+      {
+        "root": 27,
+        "name": "minecraft:ore_gold_deltas",
+        "median_interval_ms": 4.699999999999989,
+        "total_interval_ms": 318.7,
+        "maximum_interval_ms": 79.10000000000002
+      },
+      {
+        "root": 38,
+        "name": "minecraft:weeping_vines",
+        "median_interval_ms": 4.499999999999943,
+        "total_interval_ms": 234.3999999999998,
+        "maximum_interval_ms": 128.9000000000001
+      },
+      {
+        "root": 11,
+        "name": "minecraft:spring_open",
+        "median_interval_ms": 4.40000000000002,
+        "total_interval_ms": 93.6000000000001,
+        "maximum_interval_ms": 10.800000000000011
+      },
+      {
+        "root": 21,
+        "name": "minecraft:ore_soul_sand",
+        "median_interval_ms": 2.7000000000000455,
+        "total_interval_ms": 93.90000000000043,
+        "maximum_interval_ms": 19.90000000000009
+      },
+      {
+        "root": 10,
+        "name": "minecraft:spring_delta",
+        "median_interval_ms": 1.7000000000000028,
+        "total_interval_ms": 103.20000000000006,
+        "maximum_interval_ms": 26.900000000000034
+      },
+      {
+        "root": 26,
+        "name": "minecraft:spring_closed_double",
+        "median_interval_ms": 1.6999999999999886,
+        "total_interval_ms": 47.0,
+        "maximum_interval_ms": 7.199999999999932
+      },
+      {
+        "root": 7,
+        "name": "minecraft:nether_fossil",
+        "median_interval_ms": 1.6499999999999915,
+        "total_interval_ms": 34.89999999999999,
+        "maximum_interval_ms": 4.299999999999983
+      },
+      {
+        "root": 16,
+        "name": "minecraft:patch_crimson_roots",
+        "median_interval_ms": 1.4500000000000028,
+        "total_interval_ms": 36.80000000000021,
+        "maximum_interval_ms": 3.900000000000091
+      },
+      {
+        "root": 32,
+        "name": "minecraft:brown_mushroom_normal",
+        "median_interval_ms": 1.25,
+        "total_interval_ms": 34.89999999999981,
+        "maximum_interval_ms": 6.399999999999977
+      },
+      {
+        "root": 33,
+        "name": "minecraft:red_mushroom_normal",
+        "median_interval_ms": 1.1000000000000227,
+        "total_interval_ms": 43.80000000000007,
+        "maximum_interval_ms": 12.399999999999977
+      },
+      {
+        "root": 35,
+        "name": "minecraft:warped_forest_vegetation",
+        "median_interval_ms": 1.0499999999999545,
+        "total_interval_ms": 66.59999999999974,
+        "maximum_interval_ms": 15.5
+      },
+      {
+        "root": 37,
+        "name": "minecraft:twisting_vines",
+        "median_interval_ms": 0.900000000000091,
+        "total_interval_ms": 53.80000000000024,
+        "maximum_interval_ms": 12.400000000000091
+      },
+      {
+        "root": 34,
+        "name": "minecraft:warped_fungi",
+        "median_interval_ms": 0.9000000000000341,
+        "total_interval_ms": 50.400000000000034,
+        "maximum_interval_ms": 9.599999999999966
+      },
+      {
+        "root": 36,
+        "name": "minecraft:nether_sprouts",
+        "median_interval_ms": 0.8499999999999943,
+        "total_interval_ms": 60.50000000000034,
+        "maximum_interval_ms": 14.600000000000023
+      }
+    ],
+    "median_dependency_endpoint_ms": 902.0,
+    "whole_region": {
+      "median_ms": 1409.0102080954239,
+      "p95_region_ms": 1848.9911856129766,
+      "maximum_region_ms": 1871.8208339996636,
+      "total_ms": 27783.51500001736,
+      "chunks_per_second": 737.1277536333039
+    },
+    "timing_acceptance": false
+  },
+  "retention": {
+    "scope": "240 fresh complete regions per binary, one engine, 15 warmups, four case/seed combinations and two normalized profile IDs. Forward, reverse and shuffled passes of 80 regions. Current RSS after joined generation, before NBT validation. Preceding run retained from cycle51; not adjacent timing controls.",
+    "timing_acceptance": false,
+    "runs": {
+      "preceding": {
+        "library_revision": "fe0b1e211da22cce3311160b0a113f0ae8775935",
+        "library_sha256": "fd21aea2ad114bf2e3c57eda5098e8de51b7d525bb3cba6d8b93535eded491e8",
+        "path": "cycle51/edge32v2-sustained",
+        "profile_ids": {
+          "nether": 1,
+          "custom": 2,
+          "direct-stem": 2
+        },
+        "generation_peak_rss_bytes": 3425435648,
+        "generation_end_current_rss_bytes": 2855436288,
+        "identical_chunks_per_reference": 245760,
+        "reference_sets": 4,
+        "shader_statuses": [
+          4
+        ],
+        "rounds": [
+          {
+            "repeat": 0,
+            "regions": 80,
+            "min_current_rss_bytes": 2049998848,
+            "median_current_rss_bytes": 2225709056.0,
+            "max_current_rss_bytes": 3352903680,
+            "last_current_rss_bytes": 3352903680
+          },
+          {
+            "repeat": 1,
+            "regions": 80,
+            "min_current_rss_bytes": 2635104256,
+            "median_current_rss_bytes": 2961203200.0,
+            "max_current_rss_bytes": 3313090560,
+            "last_current_rss_bytes": 2710732800
+          },
+          {
+            "repeat": 2,
+            "regions": 80,
+            "min_current_rss_bytes": 2674278400,
+            "median_current_rss_bytes": 2810142720.0,
+            "max_current_rss_bytes": 2869067776,
+            "last_current_rss_bytes": 2855436288
+          }
+        ]
+      },
+      "direct": {
+        "library_revision": "6fb2ce353c82a8f50981e08840048d5be9586c2d",
+        "library_sha256": "dd00145de6ea2916a17efbb703c05e0a210becec24a8403e44139a2dabed161b",
+        "path": "cycle53/direct-sustained",
+        "profile_ids": {
+          "nether": 1,
+          "custom": 2,
+          "direct-stem": 2
+        },
+        "generation_peak_rss_bytes": 3309092864,
+        "generation_end_current_rss_bytes": 3153100800,
+        "identical_chunks_per_reference": 245760,
+        "reference_sets": 4,
+        "shader_statuses": [
+          4
+        ],
+        "rounds": [
+          {
+            "repeat": 0,
+            "regions": 80,
+            "min_current_rss_bytes": 1927151616,
+            "median_current_rss_bytes": 2539094016.0,
+            "max_current_rss_bytes": 2813444096,
+            "last_current_rss_bytes": 2813444096
+          },
+          {
+            "repeat": 1,
+            "regions": 80,
+            "min_current_rss_bytes": 2781544448,
+            "median_current_rss_bytes": 2979143680.0,
+            "max_current_rss_bytes": 3119923200,
+            "last_current_rss_bytes": 3114467328
+          },
+          {
+            "repeat": 2,
+            "regions": 80,
+            "min_current_rss_bytes": 3034267648,
+            "median_current_rss_bytes": 3072278528.0,
+            "max_current_rss_bytes": 3168780288,
+            "last_current_rss_bytes": 3153100800
+          }
+        ]
+      }
+    },
+    "limitation": "Finite retention observation, not proof of an indefinite RSS plateau. Snapshot backing is bounded separately; active jobs, temporary exports, other caches and allocator retention add process memory."
+  },
+  "runtime": {
+    "loader-build-tests": {
+      "returncode": 0,
+      "log_sha256": "9d134c8f4949098873667d8901e7d2f7e7ffe25c458172700a8ded2ce230db13",
+      "events": [],
+      "native_mapping_confirmed": false
+    },
+    "nether-native-concurrency": {
+      "returncode": 0,
+      "log_sha256": "d88bfffe3214eb3a23b12e2511c903852fafaf3e0bbe79bcbb4348425ebf6160",
+      "events": [
+        {
+          "event": "combined_nether_generation",
+          "status": "pass",
+          "context": {
+            "chunks": 1024,
+            "independent_chunks": 7,
+            "compared_voxels": 458752,
+            "fluid_ticks": 7882,
+            "block_entities": 12,
+            "generation_ms": 2078.419458,
+            "bytes": 5443584,
+            "structures": {
+              "minecraft:bastion_remnant": 1
+            },
+            "fluid_types": {
+              "minecraft:lava/NORMAL": 7882
+            },
+            "feature_blocks": {
+              "minecraft:ancient_debris": 1698,
+              "minecraft:crimson_stem": 5203,
+              "minecraft:glowstone": 2685,
+              "minecraft:nether_gold_ore": 44634,
+              "minecraft:nether_quartz_ore": 130029,
+              "minecraft:warped_stem": 5495
+            },
+            "region": "/private/tmp/retina-nether-exterior-state-inventory/build/nether/concurrent-region-3865401684417904632/r.-1.-1.mca"
+          }
+        }
+      ],
+      "native_mapping_confirmed": true
+    },
+    "fabric-portal": {
+      "returncode": 0,
+      "log_sha256": "a758d29a0a43d2a8cffdc997d176ea14d2c6b3e1cbe9671c99dbeb5eec096305",
+      "events": [
+        {
+          "event": "nether_saved_gpu_light",
+          "status": "pass",
+          "context": {
+            "chunks": 16,
+            "emitters": 8790,
+            "air_neighbors": 67
+          }
+        },
+        {
+          "event": "nether_concurrent_storage",
+          "status": "pass",
+          "context": {
+            "requests": 17,
+            "cancelled_observers": 2
+          }
+        },
+        {
+          "event": "nether_live_block_light",
+          "status": "pass",
+          "context": {
+            "emitters": 3,
+            "source": 15,
+            "glass": 14,
+            "air": 13,
+            "skylight": 0
+          }
+        },
+        {
+          "event": "nether_live_light_removal",
+          "status": "pass",
+          "context": {
+            "emitters": 3,
+            "remaining_light": 0
+          }
+        },
+        {
+          "event": "nether_cold_portal_arrival",
+          "status": "pass",
+          "context": {
+            "generated_chunks": 4096,
+            "reopened": false,
+            "all_generated_chunks": 4096,
+            "portal_ms": 4909.319042,
+            "server_ticks": 101,
+            "maximum_tick_gap_ms": 181.549209
+          }
+        },
+        {
+          "event": "nether_lifecycle_complete",
+          "status": "pass",
+          "context": {
+            "dedicated": false,
+            "connection": 1,
+            "saved_fixtures": false
+          }
+        },
+        {
+          "event": "nether_saved_gpu_light",
+          "status": "pass",
+          "context": {
+            "chunks": 16,
+            "emitters": 8790,
+            "air_neighbors": 67
+          }
+        },
+        {
+          "event": "nether_concurrent_storage",
+          "status": "pass",
+          "context": {
+            "requests": 17,
+            "cancelled_observers": 2
+          }
+        },
+        {
+          "event": "nether_live_block_light",
+          "status": "pass",
+          "context": {
+            "emitters": 3,
+            "source": 15,
+            "glass": 14,
+            "air": 13,
+            "skylight": 0
+          }
+        },
+        {
+          "event": "nether_live_light_removal",
+          "status": "pass",
+          "context": {
+            "emitters": 3,
+            "remaining_light": 0
+          }
+        },
+        {
+          "event": "nether_cold_portal_arrival",
+          "status": "pass",
+          "context": {
+            "generated_chunks": 0,
+            "reopened": true,
+            "all_generated_chunks": 0,
+            "portal_ms": 157.190041,
+            "server_ticks": 3,
+            "maximum_tick_gap_ms": 62.375416
+          }
+        },
+        {
+          "event": "nether_lifecycle_complete",
+          "status": "pass",
+          "context": {
+            "dedicated": false,
+            "connection": 1,
+            "saved_fixtures": true
+          }
+        },
+        {
+          "event": "minecraft_client_gameplay_reopen",
+          "status": "pass",
+          "context": {
+            "mode": "mca",
+            "dedicated": false,
+            "packets": 34,
+            "disconnects": 2
+          }
+        }
+      ],
+      "native_mapping_confirmed": true
+    },
+    "fabric-portal-dh": {
+      "returncode": 0,
+      "log_sha256": "5651cdc4df146d7037cd1377f43d5f4c44460c5ce6df909b950f39f640d14e16",
+      "events": [
+        {
+          "event": "nether_saved_gpu_light",
+          "status": "pass",
+          "context": {
+            "chunks": 16,
+            "emitters": 8790,
+            "air_neighbors": 67
+          }
+        },
+        {
+          "event": "nether_concurrent_storage",
+          "status": "pass",
+          "context": {
+            "requests": 17,
+            "cancelled_observers": 2
+          }
+        },
+        {
+          "event": "nether_live_block_light",
+          "status": "pass",
+          "context": {
+            "emitters": 3,
+            "source": 15,
+            "glass": 14,
+            "air": 13,
+            "skylight": 0
+          }
+        },
+        {
+          "event": "nether_live_light_removal",
+          "status": "pass",
+          "context": {
+            "emitters": 3,
+            "remaining_light": 0
+          }
+        },
+        {
+          "event": "nether_cold_portal_arrival",
+          "status": "pass",
+          "context": {
+            "generated_chunks": 4096,
+            "reopened": false,
+            "all_generated_chunks": 4096,
+            "portal_ms": 6059.6735,
+            "server_ticks": 116,
+            "maximum_tick_gap_ms": 306.149375
+          }
+        },
+        {
+          "event": "nether_portal_dh_overlap",
+          "status": "pass",
+          "context": {
+            "reopened": false,
+            "active_at_start": 1,
+            "started_during_wait": 1,
+            "completed_during_wait": 2
+          }
+        },
+        {
+          "event": "nether_lifecycle_complete",
+          "status": "pass",
+          "context": {
+            "dedicated": false,
+            "connection": 1,
+            "saved_fixtures": false
+          }
+        },
+        {
+          "event": "nether_saved_gpu_light",
+          "status": "pass",
+          "context": {
+            "chunks": 16,
+            "emitters": 8790,
+            "air_neighbors": 67
+          }
+        },
+        {
+          "event": "nether_concurrent_storage",
+          "status": "pass",
+          "context": {
+            "requests": 17,
+            "cancelled_observers": 2
+          }
+        },
+        {
+          "event": "nether_live_block_light",
+          "status": "pass",
+          "context": {
+            "emitters": 3,
+            "source": 15,
+            "glass": 14,
+            "air": 13,
+            "skylight": 0
+          }
+        },
+        {
+          "event": "nether_live_light_removal",
+          "status": "pass",
+          "context": {
+            "emitters": 3,
+            "remaining_light": 0
+          }
+        },
+        {
+          "event": "nether_cold_portal_arrival",
+          "status": "pass",
+          "context": {
+            "generated_chunks": 0,
+            "reopened": true,
+            "all_generated_chunks": 0,
+            "portal_ms": 154.208042,
+            "server_ticks": 3,
+            "maximum_tick_gap_ms": 53.991709
+          }
+        },
+        {
+          "event": "nether_portal_dh_overlap",
+          "status": "pass",
+          "context": {
+            "reopened": true,
+            "active_at_start": 0,
+            "started_during_wait": 0,
+            "completed_during_wait": 0
+          }
+        },
+        {
+          "event": "nether_lifecycle_complete",
+          "status": "pass",
+          "context": {
+            "dedicated": false,
+            "connection": 1,
+            "saved_fixtures": true
+          }
+        },
+        {
+          "event": "minecraft_client_gameplay_reopen",
+          "status": "pass",
+          "context": {
+            "mode": "mca",
+            "dedicated": false,
+            "packets": 182,
+            "disconnects": 2
+          }
+        }
+      ],
+      "native_mapping_confirmed": true
+    },
+    "neoforge-unload": {
+      "returncode": 0,
+      "log_sha256": "50296c5f21ee08b87fa1824c1a7ae9df1ae2e5d928f46cb14ebb348c78af9584",
+      "events": [
+        {
+          "event": "nether_unload_in_flight",
+          "status": "pass",
+          "context": {
+            "pass": 0,
+            "native_in_flight": 8
+          }
+        },
+        {
+          "event": "nether_unload_cleaned",
+          "status": "pass",
+          "context": {
+            "dimension": "minecraft:overworld",
+            "requests": 19,
+            "closed_results": 13,
+            "generation_failures": 0,
+            "qa_property": true
+          }
+        },
+        {
+          "event": "nether_unload_cleaned",
+          "status": "pass",
+          "context": {
+            "dimension": "minecraft:the_nether",
+            "requests": 19,
+            "closed_results": 19,
+            "generation_failures": 0,
+            "qa_property": true
+          }
+        },
+        {
+          "event": "nether_unload_complete",
+          "status": "pass",
+          "context": {
+            "pass": 0,
+            "active_at_storage_close_sum": 8
+          }
+        },
+        {
+          "event": "nether_unload_in_flight",
+          "status": "pass",
+          "context": {
+            "pass": 1,
+            "native_in_flight": 8
+          }
+        },
+        {
+          "event": "nether_unload_cleaned",
+          "status": "pass",
+          "context": {
+            "dimension": "minecraft:overworld",
+            "requests": 19,
+            "closed_results": 19,
+            "generation_failures": 0,
+            "qa_property": true
+          }
+        },
+        {
+          "event": "nether_unload_cleaned",
+          "status": "pass",
+          "context": {
+            "dimension": "minecraft:the_nether",
+            "requests": 19,
+            "closed_results": 19,
+            "generation_failures": 0,
+            "qa_property": true
+          }
+        },
+        {
+          "event": "nether_unload_complete",
+          "status": "pass",
+          "context": {
+            "pass": 1,
+            "active_at_storage_close_sum": 8
+          }
+        },
+        {
+          "event": "minecraft_client_gameplay_reopen",
+          "status": "pass",
+          "context": {
+            "mode": "mca",
+            "dedicated": false,
+            "packets": 3,
+            "disconnects": 4
+          }
+        }
+      ],
+      "native_mapping_confirmed": true
+    }
+  },
+  "runtime_setup_observation": {
+    "evidence": "runtime-dh-investigation.json",
+    "finding": "The DH fixture waited about 2.5 minutes for actual background activity before its measured 6.06-second portal trip. A thread dump during that setup wait showed idle DH generation workers and a server between ticks. DH later started; two real jobs completed during the portal wait. The scheduling delay has no confirmed cause.",
+    "timing_acceptance": false
+  },
+  "limitations": [
+    "Final uncontended timing confirmation is deferred by the user; these timings are provisional.",
+    "The direct exporter component comparison is against the initial C53 staging implementation, not complete generation against C51.",
+    "Four-caller generation peak RSS increased by about 1.05 GB. Eight-caller throughput fell about 5% in its pair. Bracketing two-caller and Overworld repetitions place the candidate between controls; no final no-regression or concurrency-tail acceptance is claimed.",
+    "The existing 512 MiB/eight-entry limit covers combined archive backing, not whole-process RSS. Active jobs may retain old entries; temporary exports and allocator retention also consume memory.",
+    "The 240-region retention run is finite and does not establish an indefinite memory plateau.",
+    "Runtime checks use integrated-client fixtures, not a new dedicated-server or unaided survival acceptance run.",
+    "Standard Nether subsecond median and p95, and the overall goal, remain unfulfilled."
+  ]
+}

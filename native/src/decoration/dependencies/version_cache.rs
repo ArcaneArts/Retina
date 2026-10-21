@@ -3,6 +3,8 @@ use super::{ColumnCell, ColumnRuns, ColumnState, Map, Metrics, Perf, Versions};
 use crate::{CacheKey, ChunkRequest, TerrainEngine, WorldProfile};
 use std::collections::VecDeque;
 use std::sync::Arc;
+mod exterior;
+use exterior::Exterior;
 
 #[cfg(test)]
 mod footprint_probe;
@@ -17,6 +19,7 @@ struct Snapshot {
     region: [i32; 2],
     roots: usize,
     versions: Archived,
+    exterior: Option<Box<Exterior>>,
     bytes: usize,
 }
 const MISSING: u32 = u32::MAX;
@@ -291,9 +294,25 @@ impl Reuse {
             .find_map(|saved| saved.versions.column(before, x, z))
     }
 
-    pub(super) fn export(&self, versions: Versions, metrics: &Metrics) -> Option<Pending> {
+    pub(super) fn exterior_column(&self, before: usize, x: i32, z: i32) -> Option<Arc<ColumnState>> {
+        if before > self.roots { return None }
+        self.captured.iter().rev().find_map(|saved| {
+            saved.exterior.as_ref()?.column(before, x, z)
+        })
+    }
+
+    pub(super) fn export(&self, versions: Versions,
+        columns: &Map<(usize, i32, i32), Arc<super::ColumnTile>>, metrics: &Metrics) -> Option<Pending> {
         let started = metrics.start();
         let archived = Archived::capture(&versions);
+        let exterior = Exterior::capture(versions.origin, versions.width, columns).map(|(saved, slots)| {
+            let (spans, states) = saved.counts();
+            metrics.add(Perf::version_cache_exterior_exported_slots, slots as u64);
+            metrics.add(Perf::version_cache_exterior_exported_spans, spans as u64);
+            metrics.add(Perf::version_cache_exterior_exported_states, states as u64);
+            metrics.add(Perf::version_cache_exterior_exported_bytes, saved.retained_bytes() as u64);
+            saved
+        });
         // Original planner allocations retire synchronously while exporting,
         // not during later eviction or after the measured generation interval.
         drop(versions);
@@ -307,6 +326,7 @@ impl Reuse {
             region: self.region,
             roots: self.roots,
             versions,
+            exterior,
             bytes: 0,
         };
         let bytes = Some(retained_bytes(&snapshot));
@@ -338,12 +358,43 @@ fn retained_bytes(snapshot: &Snapshot) -> usize {
         + std::mem::size_of::<Vec<u32>>()
         + 2 * std::mem::size_of::<usize>()
         + v.runs.capacity() * std::mem::size_of::<u32>()
+        + snapshot.exterior.as_ref().map_or(0, |v| v.retained_bytes())
 }
 
 #[cfg(test)]
 mod tests {
     use super::super::{ColumnCell, ColumnVersion};
     use super::*;
+    #[test]
+    fn exterior_backing_counts_toward_the_existing_global_budget() {
+        let mut value = match Arc::try_unwrap(snapshot(0, 42)) {
+            Ok(value) => value,
+            Err(_) => unreachable!(),
+        };
+        let interior_bytes = retained_bytes(&value);
+        let (profile, _, _) = crate::decoration::replay_tests::fixture(42, 0);
+        let tile = Arc::new(super::super::ColumnTile::default());
+        tile.0[15].set(Ok(Arc::new(ColumnState::new(vec![0; 16], &profile, 0)))).ok().unwrap();
+        let mut columns = Map::default();
+        columns.insert((0, -1, 0), tile);
+        let (exterior, _) = Exterior::capture([0; 2], 512, &columns).unwrap();
+        let exterior_bytes = exterior.retained_bytes();
+        value.exterior = Some(exterior);
+        value.bytes = retained_bytes(&value);
+        assert_eq!(value.bytes, interior_bytes + exterior_bytes);
+        let mut cache = Cache { max_bytes: value.bytes - 1, ..Cache::default() };
+        let value = Arc::new(value);
+        let (retired, _, inserted) = cache.insert(value.clone());
+        assert!(!inserted);
+        assert_eq!(retired.len(), 1);
+        assert_eq!(cache.len(), 0);
+        cache.max_bytes = value.bytes;
+        let (retired, _, inserted) = cache.insert(value);
+        assert!(inserted);
+        assert!(retired.is_empty());
+        assert_eq!(cache.len(), 1);
+        assert_eq!(cache.bytes, cache.max_bytes);
+    }
     #[test]
     fn packed_edge_indices_cover_each_retained_column_exactly_once() {
         for width in [0, 1, 16, 63, 64, 65, 80, 512] {
@@ -433,6 +484,7 @@ mod tests {
             region: [x.div_euclid(32), 0],
             roots: 8,
             versions: Archived::capture(&versions).unwrap(),
+            exterior: None,
             bytes: 0,
         };
         snapshot.bytes = retained_bytes(&snapshot);
@@ -517,6 +569,7 @@ mod tests {
             region: [0, 0],
             roots: 8,
             versions: Archived::capture(&versions).unwrap(),
+            exterior: None,
             bytes: 0,
         };
         let reuse = Reuse {
@@ -624,3 +677,6 @@ mod tests {
         assert!(packed.upgrade().is_none());
     }
 }
+
+#[cfg(test)]
+pub(super) use exterior::export_benchmark;

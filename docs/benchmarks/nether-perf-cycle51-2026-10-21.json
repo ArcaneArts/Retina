@@ -1,7 +1,7 @@
 {
   "schema": "retina.nether-performance-cycle",
   "cycle": 51,
-  "status": "Selected for PR; correctness and runtime complete for this cycle, final quiet performance acceptance deferred",
+  "status": "Merged as PR194; actual merged full corpus passed; final quiet acceptance deferred",
   "change": "Archive only a 32-block edge band of completed Nether column versions. Omitted center states use the original full dependency planner. Compact row-major arrays avoid both unused state data and center index entries.",
   "base_revision": "b34d8804aca9f97cfd1d488ef750bfa392e73520",
   "branch": "codex/nether-boundary-snapshot-footprint",
@@ -951,6 +951,119 @@
       "Existing opt-in integrated client fixtures, not an unaided survival playthrough or a dedicated-server acceptance run.",
       "Portal timing and tick observations are provisional under the current host conditions.",
       "The NeoForge unload fixture checks actual in-flight work, completion errors and preview-directory cleanup, with save/reopen. They do not establish an indefinite process-RSS plateau."
+    ]
+  },
+  "merge": {
+    "pr": "https://github.com/ArcaneArts/Retina/pull/194",
+    "state": "MERGED",
+    "head": "77d8e230912d8f722164164ebc57d560bc8cc003",
+    "merge_commit": "e50eddd2e97f46854591bde14d19a162f42c77bc",
+    "merged_at": "2026-10-21T16:40:00Z",
+    "method": "gh pr merge 194 --auto --squash; confirmed GitHub MERGED, no checks ran and no administrative bypass",
+    "main": "Clean, fast-forwarded to origin/main",
+    "attachment": "Tool attempted; thread attachment identity count exceeds 100"
+  },
+  "post_merge_proof": {
+    "merge": {
+      "pr": "https://github.com/ArcaneArts/Retina/pull/194",
+      "state": "MERGED",
+      "head": "77d8e230912d8f722164164ebc57d560bc8cc003",
+      "merge_commit": "e50eddd2e97f46854591bde14d19a162f42c77bc",
+      "merged_at": "2026-10-21T16:40:00Z",
+      "method": "gh pr merge 194 --auto --squash; confirmed GitHub MERGED, no checks ran and no administrative bypass",
+      "main": "Clean, fast-forwarded to origin/main",
+      "attachment": "Tool attempted; thread attachment identity count exceeds 100"
+    },
+    "library": {
+      "revision": "e50eddd2e97f46854591bde14d19a162f42c77bc",
+      "native_tree": "f1761eeaedc7c3e5d384a946f4dd2c1772f9efe6",
+      "sha256": "fd21aea2ad114bf2e3c57eda5098e8de51b7d525bb3cba6d8b93535eded491e8",
+      "source_status": "",
+      "forced_rebuild": true,
+      "timing_acceptance": false
+    },
+    "selected_candidate": {
+      "revision": "fe0b1e211da22cce3311160b0a113f0ae8775935",
+      "native_tree": "f1761eeaedc7c3e5d384a946f4dd2c1772f9efe6",
+      "sha256": "fd21aea2ad114bf2e3c57eda5098e8de51b7d525bb3cba6d8b93535eded491e8",
+      "source_status": "",
+      "forced_rebuild": true,
+      "timing_acceptance": false
+    },
+    "byte_identical_to_selected": true,
+    "native_tree_identical_to_selected": true,
+    "tests": {
+      "native_passed": 153,
+      "native_failed": 0,
+      "native_ignored": 41
+    },
+    "original_nbt_chunks": 102400,
+    "reference_sets": 4,
+    "timing_acceptance": false,
+    "method": "Forced native crate rebuild on clean merged main, 5 warmups and 20 measured full lit MCA regions per case. Full NBT and membership against original, cycle5, preceding merged cycle50 and selected cycle51. Actual shader readiness retained; only timestamps and compression representation excluded.",
+    "commands": "snapshot-edge-merged.py",
+    "suite_sha256": "4be1cd4bafb1ed5ad3feb67ed5d095409be01d1e4d69bdb03bbbeb5a7af27d58",
+    "rows": [
+      {
+        "case": "nether-main-run0",
+        "median_ms": 942.2961665550247,
+        "p95_region_ms": 1302.982579160016,
+        "maximum_region_ms": 1304.463709006086,
+        "total_ms": 19090.668457793072,
+        "chunks_per_second": 1072.7754266582417,
+        "generation_peak_rss_bytes": 2136358912,
+        "program_statuses": [
+          4
+        ]
+      },
+      {
+        "case": "nether-second-seed-run0",
+        "median_ms": 929.6485006343573,
+        "p95_region_ms": 1288.02658286877,
+        "maximum_region_ms": 1545.7544580567628,
+        "total_ms": 19101.690916111693,
+        "chunks_per_second": 1072.1563912818706,
+        "generation_peak_rss_bytes": 2224521216,
+        "program_statuses": [
+          4
+        ]
+      },
+      {
+        "case": "nether-custom-bounds-run0",
+        "median_ms": 644.3873755633831,
+        "p95_region_ms": 782.6239058398642,
+        "maximum_region_ms": 788.5770411230624,
+        "total_ms": 13384.293125011027,
+        "chunks_per_second": 1530.151783789712,
+        "generation_peak_rss_bytes": 1704099840,
+        "program_statuses": [
+          4
+        ]
+      },
+      {
+        "case": "nether-direct-stem-run0",
+        "median_ms": 628.9510830538347,
+        "p95_region_ms": 770.5532874795608,
+        "maximum_region_ms": 838.3056249003857,
+        "total_ms": 12923.091209027916,
+        "chunks_per_second": 1584.760152872164,
+        "generation_peak_rss_bytes": 1746649088,
+        "program_statuses": [
+          4
+        ]
+      },
+      {
+        "case": "overworld-run0",
+        "median_ms": 246.4021664345637,
+        "p95_region_ms": 304.9961222684942,
+        "maximum_region_ms": 334.44291609339416,
+        "total_ms": 5092.093457933515,
+        "chunks_per_second": 4021.921468878782,
+        "generation_peak_rss_bytes": 1613987840,
+        "program_statuses": [
+          4
+        ]
+      }
     ]
   }
 }

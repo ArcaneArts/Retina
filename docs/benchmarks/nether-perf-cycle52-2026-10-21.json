@@ -1,0 +1,420 @@
+{
+  "schema": "retina.nether-performance-cycle",
+  "cycle": 52,
+  "status": "held unmerged pending useful elapsed-time evidence",
+  "change": "Select a captured completed snapshot directly by its region in the existing 3x3 optional neighborhood instead of linearly probing every captured archive.",
+  "base_revision": "e50eddd2e97f46854591bde14d19a162f42c77bc",
+  "branch": "codex/nether-snapshot-direct-lookup",
+  "worktree": "/tmp/retina-nether-snapshot-direct-lookup",
+  "library": {
+    "revision": "8ceec04d525e4807c979236a1b0631852b069329",
+    "native_tree": "1a8463fa144a485c5532808419627ce3108131bb",
+    "sha256": "51dcf56e384d9ee545ddbc69f71b6e9ca407cab85e087fb23963c59b0fcadc6d",
+    "source_status": "",
+    "forced_rebuild": true,
+    "timing_acceptance": false
+  },
+  "source_review": {
+    "base": "e50eddd2e97f46854591bde14d19a162f42c77bc",
+    "candidate": "8ceec04d525e4807c979236a1b0631852b069329",
+    "invariants": [
+      "Native region generation floors chunk coordinates to a region, passes origin=region*32 and side=32, and opts in only when all1024 slots are fresh.",
+      "Other paths retain the existing reuse_regions=false contract. Cache also requires registered profile pointer identity, source order, material layers and material halo.",
+      "Cache capture filters full normalized context, roots and the existing neighboring region range. Cache insertion replaces same-context/same-region entries, so captured production snapshots are unique and disjoint.",
+      "The new neighborhood owns the same Arc snapshots in nine optional positions; no global cap, eviction, publication or cleanup changes. Empty captures return before coordinate conversion.",
+      "Region selection uses floor division by512 for negative coordinates and i64 differences to avoid overflow. No entries outside the existing capture neighborhood are required; all misses retain full planner fallback.",
+      "The selected archive still applies exact bounds, omitted center, strict before-root and missing-latest behavior.",
+      "ChunkRequest validates chunk-to-block checked multiplication before native aligned region generation. The final fixture initializes negative-coordinate interior positions and capture timing includes local index construction."
+    ],
+    "tests_added": [
+      "Direct lookup versus the prior scan over positive/negative source-region edges and holes, comparing exact backing owners.",
+      "Empty and extreme-coordinate cases.",
+      "Real cache replacement and captured-owner lifetime, including a returned column outliving its snapshot."
+    ],
+    "timing_acceptance": false
+  },
+  "tests": {
+    "native_passed": 155,
+    "native_failed": 0,
+    "native_ignored": 41,
+    "gpu_context_publication_tests_passed_on_initial_lookup_revision": 2
+  },
+  "method": "5 warmups,20 measured complete1024-chunk lit MCA regions per case, shader-ready,16 native workers, GPU lighting and zlib. Exact complete NBT and membership; only MCA timestamps and compression representation excluded. Own heavy workloads serialized. Final quiet timing confirmation deferred by user.",
+  "limitations": [
+    "Subsecond p95 is not established.",
+    "Lookup visits fall 99.24%; this is not an elapsed-time speedup. The observer has different atomic instrumentation costs.",
+    "Final-source 1/2/4/8-caller and repeated runs completed with exact output, but two-caller throughput fell about22%, four-caller rose about20%, eight-caller fell about1%. The regression is not resolved.",
+    "Repeated main/second-seed medians changed by about+1%; throughput changed+8.7%/+0.6%. These comparisons do not isolate a reliable overall gain.",
+    "Other active CPU workloads were recorded. Final uncontended timing confirmation is deferred by user. No external task contacted.",
+    "No runtime or actual merged validation for this held candidate. Existing initial-source2GPU context/publication tests passed; final-source155native tests passed."
+  ],
+  "timing_acceptance": false,
+  "full": [
+    {
+      "label": "nether-main-run0",
+      "median_ms": 1094.0227709943429,
+      "p95_region_ms": 1529.0164587902837,
+      "maximum_region_ms": 1539.878125069663,
+      "total_ms": 22821.57212495804,
+      "chunks_per_second": 897.3965460338617,
+      "generation_peak_rss_bytes": 2025865216,
+      "returncode": 0,
+      "program_statuses": [
+        4
+      ],
+      "identical_nbt_chunks_per_reference": [
+        20480,
+        20480,
+        20480,
+        20480
+      ]
+    },
+    {
+      "label": "nether-second-seed-run0",
+      "median_ms": 1150.596645544283,
+      "p95_region_ms": 1672.7144578238951,
+      "maximum_region_ms": 1844.7602498345077,
+      "total_ms": 23480.364084010944,
+      "chunks_per_second": 872.2181618106146,
+      "generation_peak_rss_bytes": 2102378496,
+      "returncode": 0,
+      "program_statuses": [
+        4
+      ],
+      "identical_nbt_chunks_per_reference": [
+        20480,
+        20480,
+        20480,
+        20480
+      ]
+    },
+    {
+      "label": "nether-custom-bounds-run0",
+      "median_ms": 863.5974380886182,
+      "p95_region_ms": 1279.189756908454,
+      "maximum_region_ms": 1423.8970410078764,
+      "total_ms": 18767.85820792429,
+      "chunks_per_second": 1091.2273405471913,
+      "generation_peak_rss_bytes": 1724268544,
+      "returncode": 0,
+      "program_statuses": [
+        4
+      ],
+      "identical_nbt_chunks_per_reference": [
+        20480,
+        20480,
+        20480,
+        20480
+      ]
+    },
+    {
+      "label": "nether-direct-stem-run0",
+      "median_ms": 846.7653749976307,
+      "p95_region_ms": 1012.8779231803493,
+      "maximum_region_ms": 1130.001167068258,
+      "total_ms": 17272.768083959818,
+      "chunks_per_second": 1185.6814090509642,
+      "generation_peak_rss_bytes": 1671774208,
+      "returncode": 0,
+      "program_statuses": [
+        4
+      ],
+      "identical_nbt_chunks_per_reference": [
+        20480,
+        20480,
+        20480,
+        20480
+      ]
+    },
+    {
+      "label": "overworld-run0",
+      "median_ms": 377.0452504977584,
+      "p95_region_ms": 522.5165440118872,
+      "maximum_region_ms": 570.0522081460804,
+      "total_ms": 7876.50804198347,
+      "chunks_per_second": 2600.1370011732643,
+      "generation_peak_rss_bytes": 1313898496,
+      "returncode": 0,
+      "program_statuses": [
+        4
+      ],
+      "identical_nbt_chunks_per_reference": [
+        20480,
+        20480,
+        20480,
+        20480
+      ]
+    }
+  ],
+  "repeat": {
+    "preceding": [
+      {
+        "label": "nether-main-run0",
+        "median_ms": 1789.776583435014,
+        "p95_region_ms": 2850.8911729557444,
+        "maximum_region_ms": 3007.7822080347687,
+        "total_ms": 37084.319832967594,
+        "chunks_per_second": 552.2549717035253,
+        "generation_peak_rss_bytes": 1972617216,
+        "returncode": 0,
+        "program_statuses": [
+          4
+        ],
+        "identical_nbt_chunks_per_reference": [
+          20480,
+          20480,
+          20480,
+          20480
+        ]
+      },
+      {
+        "label": "nether-second-seed-run0",
+        "median_ms": 1490.0686248438433,
+        "p95_region_ms": 2156.5710418624803,
+        "maximum_region_ms": 2233.9279579464346,
+        "total_ms": 30743.14404092729,
+        "chunks_per_second": 666.1647869435761,
+        "generation_peak_rss_bytes": 2119467008,
+        "returncode": 0,
+        "program_statuses": [
+          4
+        ],
+        "identical_nbt_chunks_per_reference": [
+          20480,
+          20480,
+          20480,
+          20480
+        ]
+      },
+      {
+        "label": "overworld-run0",
+        "median_ms": 505.2215839968994,
+        "p95_region_ms": 585.1803622790612,
+        "maximum_region_ms": 585.9931670129299,
+        "total_ms": 9715.22175008431,
+        "chunks_per_second": 2108.0321712494388,
+        "generation_peak_rss_bytes": 1598914560,
+        "returncode": 0,
+        "program_statuses": [
+          4
+        ],
+        "identical_nbt_chunks_per_reference": [
+          20480,
+          20480,
+          20480,
+          20480
+        ]
+      }
+    ],
+    "directv2": [
+      {
+        "label": "nether-main-run0",
+        "median_ms": 1800.211458117701,
+        "p95_region_ms": 2086.5455515566287,
+        "maximum_region_ms": 2691.5603748057038,
+        "total_ms": 34117.53358296119,
+        "chunks_per_second": 600.2778586031208,
+        "generation_peak_rss_bytes": 2076246016,
+        "returncode": 0,
+        "program_statuses": [
+          4
+        ],
+        "identical_nbt_chunks_per_reference": [
+          20480,
+          20480,
+          20480,
+          20480
+        ]
+      },
+      {
+        "label": "nether-second-seed-run0",
+        "median_ms": 1504.9233743920922,
+        "p95_region_ms": 2152.2727817762643,
+        "maximum_region_ms": 2381.3904160633683,
+        "total_ms": 30569.149957969785,
+        "chunks_per_second": 669.9564766491189,
+        "generation_peak_rss_bytes": 2137178112,
+        "returncode": 0,
+        "program_statuses": [
+          4
+        ],
+        "identical_nbt_chunks_per_reference": [
+          20480,
+          20480,
+          20480,
+          20480
+        ]
+      },
+      {
+        "label": "overworld-run0",
+        "median_ms": 455.77781251631677,
+        "p95_region_ms": 583.3151764585637,
+        "maximum_region_ms": 612.5825000926852,
+        "total_ms": 9215.941083850339,
+        "chunks_per_second": 2222.2364285605477,
+        "generation_peak_rss_bytes": 2386280448,
+        "returncode": 0,
+        "program_statuses": [
+          4
+        ],
+        "identical_nbt_chunks_per_reference": [
+          20480,
+          20480,
+          20480,
+          20480
+        ]
+      }
+    ]
+  },
+  "concurrency": {
+    "2": {
+      "preceding": [
+        {
+          "label": "nether-main-run0",
+          "median_ms": 2011.4571045851335,
+          "p95_region_ms": 2708.892832964193,
+          "maximum_region_ms": 2861.5673340391368,
+          "total_ms": 20059.91187505424,
+          "chunks_per_second": 1020.9416735009771,
+          "generation_peak_rss_bytes": 2964996096,
+          "returncode": 0,
+          "program_statuses": [
+            4
+          ],
+          "identical_nbt_chunks_per_reference": [
+            20480,
+            20480,
+            20480,
+            20480
+          ]
+        }
+      ],
+      "directv2": [
+        {
+          "label": "nether-main-run0",
+          "median_ms": 2513.0155625520274,
+          "p95_region_ms": 3131.609943753574,
+          "maximum_region_ms": 3166.2933751940727,
+          "total_ms": 25595.03991692327,
+          "chunks_per_second": 800.1550326342239,
+          "generation_peak_rss_bytes": 2927296512,
+          "returncode": 0,
+          "program_statuses": [
+            4
+          ],
+          "identical_nbt_chunks_per_reference": [
+            20480,
+            20480,
+            20480,
+            20480
+          ]
+        }
+      ]
+    },
+    "4": {
+      "preceding": [
+        {
+          "label": "nether-main-run0",
+          "median_ms": 5327.199875027873,
+          "p95_region_ms": 8338.417233957443,
+          "maximum_region_ms": 8518.60895799473,
+          "total_ms": 29110.31754198484,
+          "chunks_per_second": 703.5306286323527,
+          "generation_peak_rss_bytes": 4418437120,
+          "returncode": 0,
+          "program_statuses": [
+            4
+          ],
+          "identical_nbt_chunks_per_reference": [
+            20480,
+            20480,
+            20480,
+            20480
+          ]
+        }
+      ],
+      "directv2": [
+        {
+          "label": "nether-main-run0",
+          "median_ms": 4616.55008350499,
+          "p95_region_ms": 7453.984225064051,
+          "maximum_region_ms": 8394.873249810189,
+          "total_ms": 24159.83062516898,
+          "chunks_per_second": 847.6880619628416,
+          "generation_peak_rss_bytes": 4516577280,
+          "returncode": 0,
+          "program_statuses": [
+            4
+          ],
+          "identical_nbt_chunks_per_reference": [
+            20480,
+            20480,
+            20480,
+            20480
+          ]
+        }
+      ]
+    },
+    "8": {
+      "preceding": [
+        {
+          "label": "nether-main-run0",
+          "median_ms": 7319.6748334448785,
+          "p95_region_ms": 15470.311581785792,
+          "maximum_region_ms": 17796.248791972175,
+          "total_ms": 23285.822416190058,
+          "chunks_per_second": 879.5051183487839,
+          "generation_peak_rss_bytes": 6489899008,
+          "returncode": 0,
+          "program_statuses": [
+            4
+          ],
+          "identical_nbt_chunks_per_reference": [
+            20480,
+            20480,
+            20480,
+            20480
+          ]
+        }
+      ],
+      "directv2": [
+        {
+          "label": "nether-main-run0",
+          "median_ms": 7548.804500023834,
+          "p95_region_ms": 16490.559797454625,
+          "maximum_region_ms": 17166.002792073414,
+          "total_ms": 23581.317709060386,
+          "chunks_per_second": 868.4841217389306,
+          "generation_peak_rss_bytes": 6458441728,
+          "returncode": 0,
+          "program_statuses": [
+            4
+          ],
+          "identical_nbt_chunks_per_reference": [
+            20480,
+            20480,
+            20480,
+            20480
+          ]
+        }
+      ]
+    }
+  },
+  "lookup_work": {
+    "actual_queries": 168770033,
+    "preceding_snapshot_visits": 406804116,
+    "candidate_snapshot_visits": 3081141,
+    "actual_hits_in_both": 3081141,
+    "note": "Four actual20-regionNethercases after5warmups. Test-only observer; no elapsed-time inference. All81920generatedchunks exact to5references."
+  },
+  "evidence": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle52",
+  "reproduce": [
+    "python3 snapshot-lookup-final.py",
+    "python3 snapshot-lookup-final-extended.py"
+  ],
+  "delivery": {
+    "pr": null,
+    "merged": false,
+    "reason": "Elapsed benefit unproved and mixed concurrency observations require further investigation."
+  }
+}

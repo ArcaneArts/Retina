@@ -5,6 +5,8 @@ mod version_cache;
 pub(crate) use version_cache::{Cache as VersionCache, Pending as PendingVersions};
 #[cfg(test)]
 mod version_reuse_probe;
+#[cfg(test)]
+mod exterior_state_probe;
 use super::spatial::Map;
 use super::*;
 use crate::TerrainEngine;
@@ -947,6 +949,13 @@ impl Planner<'_> {
     }
     fn build_column(&self, before: usize, x: i32, z: i32) -> Result<Arc<ColumnState>, String> {
         let metrics = &self.metrics.performance;
+        if let Some(reuse) = &self.reuse {
+            metrics.add(Perf::version_cache_exterior_lookups, 1);
+            if let Some(state) = reuse.exterior_column(before, x, z) {
+                metrics.add(Perf::version_cache_exterior_hits, 1);
+                return Ok(state);
+            }
+        }
         if before != 0 {
             return self.prefix(before, x, z, None);
         }
@@ -1271,6 +1280,8 @@ pub(crate) fn generate(
         planner.check()?;
         #[cfg(test)]
         version_reuse_probe::observe(&planner)?;
+        #[cfg(test)]
+        exterior_state_probe::observe(&planner)?;
         let structure_started = metrics.performance.start();
         let structure_detail = diagnostics::start(details.is_some());
         let starts = planner
@@ -1293,7 +1304,7 @@ pub(crate) fn generate(
             Perf::teardown_commands_nanos,
         );
         let pending_versions = planner.reuse.as_ref().and_then(|reuse| {
-            reuse.export(std::mem::take(&mut planner.versions), &metrics.performance)
+            reuse.export(std::mem::take(&mut planner.versions), &planner.ready_columns, &metrics.performance)
         });
         retire(
             std::mem::take(&mut planner.versions.changed),

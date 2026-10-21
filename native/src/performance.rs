@@ -48,6 +48,9 @@ counters! {
     version_cache_captured_regions, version_cache_boundary_lookups, version_cache_boundary_hits,
     version_cache_exported_regions, version_cache_exported_bytes, version_cache_export_skips,
     version_cache_published_regions, version_cache_evicted_regions,
+    version_cache_exterior_lookups, version_cache_exterior_hits,
+    version_cache_exterior_exported_slots, version_cache_exterior_exported_spans,
+    version_cache_exterior_exported_states, version_cache_exterior_exported_bytes,
 }
 use Counter::*;
 
