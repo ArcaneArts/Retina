@@ -2436,3 +2436,66 @@ RETINA_TERRAIN_REUSE_PROFILES=/path/to/profiles RETINA_COLUMN_EDIT_OUTPUT=/path/
 ```
 
 See `docs/benchmarks/nether-perf-cycle86-2026-10-22.json` for source/library provenance, root counts, validation and limitations. Large binaries and generated worlds remain at `/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle86`.
+
+
+## Cycle 89 — Cross-request blob output availability
+
+**Diagnostic only; production generation is unchanged.** A test-only observer
+tracks original blob-anchor memo initializers, successful output publication and
+weak owner liveness when another job demands the same complete context. It never
+upgrades a weak handle or keeps an `Output` strong owner alive. Copied reference
+values compare every ordered write field and complete per-column index vector.
+Selection uses parsed `ReplaceBlobs` definitions, with engine, profile, seed,
+height, exact setting bits, root and anchor isolation.
+
+Five profile/seed cases each run five warmups and twenty measured complete lit
+regions at 1/2/4/8 callers. Histories reset after each joined wave of at most eight
+jobs; serial uses pairs, and four callers reverses request order. These are
+instrumented observations, not ordinary hit rates or predicted speedups.
+
+| Case | Callers | Live completed / builds | Writes from live-at-demand builds | Repeated outputs compared |
+| --- | ---: | ---: | ---: | ---: |
+| nether-main | 1 | 0.00% | 0.00% | 99.59% |
+| nether-main | 2 | 11.99% | 12.89% | 96.26% |
+| nether-main | 4 | 12.31% | 12.62% | 92.62% |
+| nether-main | 8 | 17.66% | 14.37% | 91.60% |
+| nether-second-seed | 1 | 0.00% | 0.00% | 100.00% |
+| nether-second-seed | 2 | 12.02% | 15.33% | 97.45% |
+| nether-second-seed | 4 | 12.86% | 16.80% | 91.56% |
+| nether-second-seed | 8 | 17.31% | 19.38% | 86.58% |
+
+Serial demand finds no live completed copy: a weak cache without strong retention
+cannot improve this isolated-region path. Concurrent overlap exists, but final
+distribution currently consumes each output with `Arc::try_unwrap`; safe sharing
+would require changing that ownership path. Earlier Cycle 31 broad strong caches
+did not establish a full-region win and increased memory. This cycle adds no
+cache and prioritizes work within each request for the isolated latency target.
+
+Across the standard Nether cases, 68,113 repeated outputs and 67,788,148 ordered
+writes compare exactly. The 256 MiB logical snapshot-copy cap excludes some
+references, so this is explicitly partial duplicate-value coverage. It is not
+a universal proof of request-origin independence. No keys are skipped. Every
+joined wave has zero pending builds and zero live observed output owners.
+Custom/direct profiles contain no selected blob roots; Overworld uses another
+path. Zero observer counts do not mean those profiles have no decorations.
+
+Validation passes 185 ordinary native tests, two explicit GPU terrain fixtures,
+and 512,000 measured candidate chunk instances against both the immutable
+original and actual PR #207 main in complete decompressed NBT and membership.
+Only MCA timestamps and compression representation are excluded; coordinates
+repeat across runs. All measured generations are shader-ready. The normal
+release contains no observer symbols, and its machine code is byte-identical
+to main; the 121 differing file bytes are 42 verified panic-line bytes, 15 UUID
+bytes and 64 signature bytes.
+
+Snapshot copying, index validation and the diagnostic mutex affect scheduling;
+liveness is sampled under that lock, after successful publication is observed.
+An observed live weak handle is not an atomic future-upgrade guarantee. Pending
+and live categories can overlap. Counts and emitted-write fractions are not
+CPU-time fractions or amounts of work safely removable.
+
+Quiet timing confirmation remains deferred. Separate ordinary observations,
+copy-cap coverage, full output proofs and recovery commands are retained in
+`docs/benchmarks/nether-perf-cycle89-2026-10-22.json`. This cycle establishes no
+new runtime, sustained-memory, speedup or subsecond acceptance. All previously
+held production candidates and other worktrees remain preserved.
