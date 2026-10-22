@@ -2058,3 +2058,29 @@ Paired ordinary libraries used five warmups and twenty measured regions per case
 A source-level gap remains: only contending workers help. Finished outer tasks return their workers to Rayon, so they cannot drain this queue during a final long anchor. The next distinct experiment can expose bounded scoped drain tasks to idle workers, preserving lifetime/ownership and joined failure behavior. Permanently waiting helper loops are unsuitable because nested pool joins can starve unstarted child tasks. The test observer must count helper spans separately and union them by physical thread. This is a hypothesis to test, not a claimed speedup.
 
 Report: `docs/benchmarks/nether-perf-cycle62-2026-10-21.json`. Preserve `codex/nether-dependency-work-queue` and external `cycle62/` evidence, including the held binary and exact reproduction drivers.
+
+## Cycle 63 — held scoped dependency helpers
+
+C63 lets idle pool workers drain exact queued prerequisites. A per-root Rayon scope joins all helpers before publication or failure cleanup. Typed Evaluation references preserve planner/scope lifetimes without unsafe casts. Permits bound queued/running drain tasks to the existing pool size; enqueue and last-helper retirement use the same mutex. Drains return on no eligible work. A per-thread stack of job identities and owned dependency levels prevents a helper inherited at a nested join from executing its own suspended ancestor. Temporary writer batches are bounded to 32 positions, with every original writer still consumed in source order.
+
+The prototype passed **181 native tests**, including 13 queue/scoping/ownership/wakeup/panic tests, and explicit GPU terrain parity. Full decompressed NBT and membership matched across **317,440 measured chunk instances**: 102,400 observer, 10,240 counter-control and 204,800 paired ordinary instances. All compare to the immutable original and actual C60 merge; pairs also compare to C63 observer output. Observer/pairs persisted ready snapshots before and after every measurement; counter measurements persisted ready post-snapshots. Repeated coordinates are not unique-world coverage. An initial test-only mpsc Receiver ownership compile error was corrected; its source/log remain preserved.
+
+Anchor, column, prefix and column-tile build counts remain exactly unchanged. Scoped tasks processed 5,401–6,965 descriptors per Nether counter case in 3,265–4,628 tasks. Those counts include ready/in-flight keys and do not establish how many new initializers helpers owned. The second seed generated 8,529 → 8,627 terrain chunks (20 → 22 tiles); other case terrain counts were unchanged. Column cells remain **32 bytes versus 24** in accepted C60.
+
+The test observer now counts target/helper spans separately, unions both by physical thread, and keeps target completion percentiles/longest targets separate from helper spans. Brown mushroom roots still had median tails of about 80 ms and 57 ms after 95% of targets finished. More tasks in flight can be more blocked waiters, not more CPU execution. Independent observer runs and process-CPU sums are not causal performance comparisons.
+
+Paired ordinary libraries used five warmups and twenty measured regions per case, alternating first generator with only one generating at a time. Known host load makes these provisional; quiet confirmation remains deferred.
+
+| Case | Old/new median ms | Old/new p95 ms | Throughput change | New faster pairs |
+|---|---:|---:|---:|---:|
+| nether-main | 2313.34 / 2078.87 | 4030.89 / 4641.19 | +5.04% | 11/20 |
+| nether-second-seed | 2669.22 / 2714.01 | 4120.17 / 4302.09 | -3.48% | 6/20 |
+| nether-custom-bounds | 1574.66 / 1649.05 | 2352.31 / 2584.17 | -5.25% | 6/20 |
+| nether-direct-stem | 1841.12 / 1915.62 | 3360.17 / 2775.44 | +10.78% | 12/20 |
+| overworld | 575.76 / 547.25 | 673.75 / 693.01 | +4.76% | 12/20 |
+
+**Held, unmerged.** Main has a worse p95 despite a lower median; the second seed and custom-bounds case lose throughput. These observations do not select the change. Main remains C60; no reverse/concurrent/portal/retention acceptance was added for this unselected prototype.
+
+Optional drains currently wait on already-owned keys through the ordinary anchor path. The next distinct candidate should try nonblocking optional claims and directly count ready/busy/owned outcomes. Original consumers must still resolve every writer, and newly claimed helpers retain necessary lower-level dependency waits. This also tests whether unnecessary optional waiters amplify the shared wake/recheck cost; that cause is currently a source-grounded hypothesis, not a measured wall-time share.
+
+Report: `docs/benchmarks/nether-perf-cycle63-2026-10-21.json`. Preserve `codex/nether-scoped-dependency-help`, external `cycle63/`, and the held native binary/source. The full performance goal remains open.

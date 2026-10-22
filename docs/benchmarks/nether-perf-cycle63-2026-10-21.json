@@ -1,0 +1,653 @@
+{
+  "cycle": 63,
+  "status": "held-unmerged",
+  "created_utc": "2026-10-22T00:10:33.411599+00:00",
+  "timing_acceptance": false,
+  "problem": "C62 only let contending workers help; idle workers could not drain remaining exact prerequisites during a long outer anchor.",
+  "implementation": "A per-root Rayon scope exposes bounded drain tasks on the existing pool. A typed Evaluation borrows the planner and scope; spawned closures construct their own Evaluation. Permits cap queued/running drains at the current pool size, retire under the enqueue mutex, and release on panic/error. Drains return when no eligible work exists. A thread-local stack of live queue identities and owned dependency levels prevents a drain inherited at a nested join from executing its suspended same-job ancestor. Required cell waits keep strictly earlier helping. Temporary writer look-ahead is bounded to 32 positions, with full source-ordered consumption across batches.",
+  "source": {
+    "revision": "d5b6d077b9e8e6f870cf1f6ad0bf2c1a8c93689a",
+    "native_tree": "742516ef79355114f7aa19010a610c96605c8204",
+    "source_status": "",
+    "test_executable_sha256": "bf156c3bcbaba84b616c67c534742ce1073c28125985330604d10fe0f3147cb8",
+    "forced_rebuild": true,
+    "timing_acceptance": false,
+    "environment": {
+      "RETINA_TERRAIN_REUSE_PROFILES": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/profiles",
+      "RETINA_WORKER_PHASE_OUTPUT": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle63/inventory",
+      "RETINA_REGION_THREADS": "16",
+      "RETINA_GPU_LIGHTING": "1",
+      "RETINA_LIGHTING_DENSE": "0",
+      "RETINA_PERFORMANCE_DIAGNOSTICS": "0",
+      "RETINA_DEPENDENCY_DIAGNOSTICS": "0"
+    },
+    "sha256": "37a6c58eb74f52803757a82608f9c24cc42e85deb25484ff7496c7196f84a6e7",
+    "preceding_sha256": "15f8f4ef043ed5a963b52c74a2a60963dc570c8ae19f10b560cdf4757240eb27",
+    "byte_identical_to_preceding": false
+  },
+  "design_review": {
+    "status": "implemented; tests/build running, no generation results yet",
+    "source": "126b379a871d32b6e71383f977de35d2a9be1779",
+    "accepted_baseline": "60e210d1b0e459955aec2007d8231ee4358bed88",
+    "timing_acceptance": false,
+    "scope_lifetimes": "Planner lives outside a per-root rayon::scope. Short-lived Evaluation borrows the planner and Scope. Spawn closures capture the planner and create their own Evaluation from the Scope argument. No unsafe scope or context lifetime casts.",
+    "permits": "At most current pool thread count of queued/running drains. Offer/reserve and last-helper empty exit synchronize with the same mutex. RAII releases permit on errors/panic. No sleeping drain loop.",
+    "ancestor_protection": "Per-thread stack records queue identity and owned cell level. A scoped drain inherited at a nested join may pop only anchors strictly earlier than its suspended same-job initializer. Other jobs have separate identities. Cooperative cell waits retain stricter waiting-cell levels. Guard pop executes in release builds too.",
+    "ownership": "Every spawned helper joins in the root scope before publication and before error cleanup. Queue stores only keys. Results/errors remain single-initializer cached values.",
+    "temporary_memory": "Expose batches of at most 32 writer positions; fully consume every original writer in order across batches. Queue still capped at 4096 keys, original direct resolution on saturation. ColumnCell remains 32 bytes, versus 24 in accepted C60. TLS retains only small scalar key/level stacks.",
+    "instrumentation": "cfg(test) target/helper task counts are separate. Helper events include prerequisite root. Physical-thread interval unions include both kinds. Completion percentiles and longest targets exclude helpers; final tail runs to last target or helper finish.",
+    "call_path_audit": "Discovery::plans uses plans_inner(... parallel=false ...) and portals::prepare loops serially. Anchor replay and terrain-job bodies contain no explicit Rayon yielding, but dynamic guard also protects a scoped drain inherited at a future/nested join.",
+    "required_followup": [
+      "Complete test and GPU parity results",
+      "Full original and C60 decompressed NBT",
+      "Paired ordinary and task-phase attribution",
+      "Real reverse and 2/4/8 simultaneous region requests if selected",
+      "Sustained memory and real lifecycle if selected",
+      "Quiet final confirmation remains deferred"
+    ],
+    "fixture_compile_fix": "126b379 tests-first.log: idle-worker test borrowed an mpsc Receiver across a Send Rayon closure. d5b6d07 moves receiver ownership into the scope and borrows the externally owned cells. No production code change.",
+    "rayon_source_audit": "Installed rayon-core 1.13.0 scope/mod.rs lines 523-538: spawn creates a HeapJob and injects/pushes it; it does not synchronously invoke the task body. Scope provides the join/lifetime guarantee.",
+    "reviewed_risks": [
+      "Global queue and extra scoped-task scheduling may cost more than exposed parallelism.",
+      "TLS push/pop is on new cell initialization, not on ready scalar reads; its cost must be included in ordinary timings.",
+      "The inherited-initializer guard constrains a drain on the current physical thread for this job; other job identities do not suppress their work.",
+      "Failure may leave queued descriptors/uninitialized slots, but scope joins running work and the existing failed Planner drop owns all cleanup.",
+      "Helper counters count descriptor processing, including already-complete/in-flight keys; they do not measure fresh construction or CPU utilization."
+    ]
+  },
+  "validation": {
+    "native_tests": 181,
+    "native_failed": 0,
+    "native_ignored": 48,
+    "queue_tests_included": 13,
+    "gpu_parity_tests": 1,
+    "observer_measured_chunk_instances": 102400,
+    "counter_measured_chunk_instances": 10240,
+    "paired_measured_chunk_instances": 204800,
+    "total_exact_measured_chunk_instances": 317440,
+    "observer_and_paired_program_statuses_before_and_after": 4,
+    "counter_actual_measured_statuses": 4,
+    "counter_individual_before_snapshot_persisted": false,
+    "references": [
+      "immutable original reference-suite",
+      "C60 actual merged-full",
+      "C63 observer output additionally for paired ordinary runs"
+    ],
+    "exclusions": "Only MCA timestamps/compression representation; complete decompressed NBT and membership compared. Repeated coordinates are not unique-world coverage.",
+    "initial_compile_failure": "126b379: the idle-worker test borrowed a non-Sync mpsc Receiver into a Send closure. d5b6d07 moved receiver ownership into the scope; no production code changed. Failed compile log retained."
+  },
+  "memory": "ColumnCell remains 32 bytes, versus 24 in accepted C60. Scoped permits retain no cells/world owners; all tasks join before publication or failure cleanup. TLS retains only a small scalar identity/level stack. Reported process peaks include startup and warmups, and do not establish a sustained bound.",
+  "counter_controls": [
+    {
+      "case": "nether-main-run0",
+      "counts": {
+        "anchor_builds": {
+          "old": 63012,
+          "new": 63012
+        },
+        "column_builds": {
+          "old": 3536253,
+          "new": 3536253
+        },
+        "prefix_evaluations": {
+          "old": 3075215,
+          "new": 3075215
+        },
+        "column_tiles": {
+          "old": 21140,
+          "new": 21140
+        },
+        "terrain_generated_tiles": {
+          "old": 16,
+          "new": 16
+        },
+        "terrain_generated_chunks": {
+          "old": 8301,
+          "new": 8301
+        },
+        "dependency_offered_anchors": {
+          "old": null,
+          "new": 17044
+        },
+        "dependency_helped_anchors": {
+          "old": null,
+          "new": 10079
+        },
+        "dependency_drain_tasks": {
+          "old": null,
+          "new": 4242
+        },
+        "dependency_drained_anchors": {
+          "old": null,
+          "new": 6965
+        },
+        "dependency_evaluation_nanos": {
+          "old": 3140911291,
+          "new": 4176635667
+        },
+        "memo_join_nanos": {
+          "old": 3578200340,
+          "new": 29167873403
+        },
+        "column_join_nanos": {
+          "old": 244082383,
+          "new": 625434961
+        }
+      },
+      "old_peak_rss_mib": 1533.65625,
+      "new_peak_rss_mib": 1616.453125,
+      "old_actual_measured_statuses": [
+        4
+      ],
+      "old_actual_warmup_statuses": [
+        4
+      ],
+      "new_actual_measured_statuses": [
+        4
+      ],
+      "new_actual_warmup_statuses": [
+        4
+      ]
+    },
+    {
+      "case": "nether-second-seed-run0",
+      "counts": {
+        "anchor_builds": {
+          "old": 61531,
+          "new": 61531
+        },
+        "column_builds": {
+          "old": 3260594,
+          "new": 3260594
+        },
+        "prefix_evaluations": {
+          "old": 2828505,
+          "new": 2828505
+        },
+        "column_tiles": {
+          "old": 19569,
+          "new": 19569
+        },
+        "terrain_generated_tiles": {
+          "old": 20,
+          "new": 22
+        },
+        "terrain_generated_chunks": {
+          "old": 8529,
+          "new": 8627
+        },
+        "dependency_offered_anchors": {
+          "old": null,
+          "new": 15585
+        },
+        "dependency_helped_anchors": {
+          "old": null,
+          "new": 8914
+        },
+        "dependency_drain_tasks": {
+          "old": null,
+          "new": 4628
+        },
+        "dependency_drained_anchors": {
+          "old": null,
+          "new": 6671
+        },
+        "dependency_evaluation_nanos": {
+          "old": 3430016000,
+          "new": 3431391750
+        },
+        "memo_join_nanos": {
+          "old": 3811664770,
+          "new": 21328221166
+        },
+        "column_join_nanos": {
+          "old": 487280689,
+          "new": 713335812
+        }
+      },
+      "old_peak_rss_mib": 1373.53125,
+      "new_peak_rss_mib": 1415.671875,
+      "old_actual_measured_statuses": [
+        4
+      ],
+      "old_actual_warmup_statuses": [
+        4
+      ],
+      "new_actual_measured_statuses": [
+        4
+      ],
+      "new_actual_warmup_statuses": [
+        4
+      ]
+    },
+    {
+      "case": "nether-custom-bounds-run0",
+      "counts": {
+        "anchor_builds": {
+          "old": 40794,
+          "new": 40794
+        },
+        "column_builds": {
+          "old": 3430594,
+          "new": 3430594
+        },
+        "prefix_evaluations": {
+          "old": 2891578,
+          "new": 2891578
+        },
+        "column_tiles": {
+          "old": 20362,
+          "new": 20362
+        },
+        "terrain_generated_tiles": {
+          "old": 21,
+          "new": 21
+        },
+        "terrain_generated_chunks": {
+          "old": 6320,
+          "new": 6320
+        },
+        "dependency_offered_anchors": {
+          "old": null,
+          "new": 15119
+        },
+        "dependency_helped_anchors": {
+          "old": null,
+          "new": 8643
+        },
+        "dependency_drain_tasks": {
+          "old": null,
+          "new": 3295
+        },
+        "dependency_drained_anchors": {
+          "old": null,
+          "new": 6476
+        },
+        "dependency_evaluation_nanos": {
+          "old": 2364025792,
+          "new": 2952629500
+        },
+        "memo_join_nanos": {
+          "old": 3753474096,
+          "new": 24075057839
+        },
+        "column_join_nanos": {
+          "old": 266755769,
+          "new": 403099533
+        }
+      },
+      "old_peak_rss_mib": 1130.578125,
+      "new_peak_rss_mib": 1113.421875,
+      "old_actual_measured_statuses": [
+        4
+      ],
+      "old_actual_warmup_statuses": [
+        4
+      ],
+      "new_actual_measured_statuses": [
+        4
+      ],
+      "new_actual_warmup_statuses": [
+        4
+      ]
+    },
+    {
+      "case": "nether-direct-stem-run0",
+      "counts": {
+        "anchor_builds": {
+          "old": 40720,
+          "new": 40720
+        },
+        "column_builds": {
+          "old": 3586035,
+          "new": 3586035
+        },
+        "prefix_evaluations": {
+          "old": 3040953,
+          "new": 3040953
+        },
+        "column_tiles": {
+          "old": 20370,
+          "new": 20370
+        },
+        "terrain_generated_tiles": {
+          "old": 22,
+          "new": 22
+        },
+        "terrain_generated_chunks": {
+          "old": 6369,
+          "new": 6369
+        },
+        "dependency_offered_anchors": {
+          "old": null,
+          "new": 15065
+        },
+        "dependency_helped_anchors": {
+          "old": null,
+          "new": 9664
+        },
+        "dependency_drain_tasks": {
+          "old": null,
+          "new": 3265
+        },
+        "dependency_drained_anchors": {
+          "old": null,
+          "new": 5401
+        },
+        "dependency_evaluation_nanos": {
+          "old": 3021388292,
+          "new": 2865350542
+        },
+        "memo_join_nanos": {
+          "old": 5655461299,
+          "new": 25638161061
+        },
+        "column_join_nanos": {
+          "old": 415925716,
+          "new": 498041819
+        }
+      },
+      "old_peak_rss_mib": 1123.0,
+      "new_peak_rss_mib": 1157.5,
+      "old_actual_measured_statuses": [
+        4
+      ],
+      "old_actual_warmup_statuses": [
+        4
+      ],
+      "new_actual_measured_statuses": [
+        4
+      ],
+      "new_actual_warmup_statuses": [
+        4
+      ]
+    },
+    {
+      "case": "overworld-run0",
+      "counts": {
+        "anchor_builds": {
+          "old": 0,
+          "new": 0
+        },
+        "column_builds": {
+          "old": 0,
+          "new": 0
+        },
+        "prefix_evaluations": {
+          "old": 0,
+          "new": 0
+        },
+        "column_tiles": {
+          "old": 0,
+          "new": 0
+        },
+        "terrain_generated_tiles": {
+          "old": 1,
+          "new": 1
+        },
+        "terrain_generated_chunks": {
+          "old": 1444,
+          "new": 1444
+        },
+        "dependency_offered_anchors": {
+          "old": null,
+          "new": 0
+        },
+        "dependency_helped_anchors": {
+          "old": null,
+          "new": 0
+        },
+        "dependency_drain_tasks": {
+          "old": null,
+          "new": 0
+        },
+        "dependency_drained_anchors": {
+          "old": null,
+          "new": 0
+        },
+        "dependency_evaluation_nanos": {
+          "old": 0,
+          "new": 0
+        },
+        "memo_join_nanos": {
+          "old": 0,
+          "new": 0
+        },
+        "column_join_nanos": {
+          "old": 0,
+          "new": 0
+        }
+      },
+      "old_peak_rss_mib": 1082.5625,
+      "new_peak_rss_mib": 1042.140625,
+      "old_actual_measured_statuses": [
+        4
+      ],
+      "old_actual_warmup_statuses": [
+        1
+      ],
+      "new_actual_measured_statuses": [
+        4
+      ],
+      "new_actual_warmup_statuses": [
+        1
+      ]
+    }
+  ],
+  "paired_normal": [
+    {
+      "case": "nether-main",
+      "old": {
+        "median_ms": 2313.3441666141152,
+        "p95_ms": 4030.889316787945,
+        "maximum_ms": 6344.202334061265,
+        "total_ms": 49689.2030001618,
+        "chunks_per_second": 412.1619740999531,
+        "generation_process_peak_rss_bytes": 2505424896,
+        "program_statuses": [
+          4
+        ]
+      },
+      "new": {
+        "median_ms": 2078.8663539569825,
+        "p95_ms": 4641.18554443121,
+        "maximum_ms": 4728.924416936934,
+        "total_ms": 47302.946373820305,
+        "chunks_per_second": 432.95400329089443,
+        "generation_process_peak_rss_bytes": 2415984640,
+        "program_statuses": [
+          4
+        ]
+      },
+      "paired": {
+        "median_new_over_old": 0.9821913858216913,
+        "new_faster_pairs": 11,
+        "pairs": 20
+      },
+      "throughput_change_percent": 5.044625777607292
+    },
+    {
+      "case": "nether-second-seed",
+      "old": {
+        "median_ms": 2669.22143753618,
+        "p95_ms": 4120.166510250419,
+        "maximum_ms": 4711.213957984,
+        "total_ms": 54688.70441894978,
+        "chunks_per_second": 374.4831810808746,
+        "generation_process_peak_rss_bytes": 2461351936,
+        "program_statuses": [
+          4
+        ]
+      },
+      "new": {
+        "median_ms": 2714.005896006711,
+        "p95_ms": 4302.0906517864205,
+        "maximum_ms": 4788.812584010884,
+        "total_ms": 56658.739916747436,
+        "chunks_per_second": 361.462327437791,
+        "generation_process_peak_rss_bytes": 2587361280,
+        "program_statuses": [
+          4
+        ]
+      },
+      "paired": {
+        "median_new_over_old": 1.0189603722735672,
+        "new_faster_pairs": 6,
+        "pairs": 20
+      },
+      "throughput_change_percent": -3.477019610200227
+    },
+    {
+      "case": "nether-custom-bounds",
+      "old": {
+        "median_ms": 1574.6591668576002,
+        "p95_ms": 2352.305560652167,
+        "maximum_ms": 2881.4844170119613,
+        "total_ms": 33471.287169959396,
+        "chunks_per_second": 611.8677150360944,
+        "generation_process_peak_rss_bytes": 2072592384,
+        "program_statuses": [
+          4
+        ]
+      },
+      "new": {
+        "median_ms": 1649.0532296011224,
+        "p95_ms": 2584.168251499068,
+        "maximum_ms": 2727.4084999226034,
+        "total_ms": 35324.97204397805,
+        "chunks_per_second": 579.7598360305365,
+        "generation_process_peak_rss_bytes": 2062581760,
+        "program_statuses": [
+          4
+        ]
+      },
+      "paired": {
+        "median_new_over_old": 1.047693853314962,
+        "new_faster_pairs": 6,
+        "pairs": 20
+      },
+      "throughput_change_percent": -5.247519719791704
+    },
+    {
+      "case": "nether-direct-stem",
+      "old": {
+        "median_ms": 1841.116833500564,
+        "p95_ms": 3360.1732566021387,
+        "maximum_ms": 4001.1280830949545,
+        "total_ms": 42417.17087547295,
+        "chunks_per_second": 482.8233372783057,
+        "generation_process_peak_rss_bytes": 1916092416,
+        "program_statuses": [
+          4
+        ]
+      },
+      "new": {
+        "median_ms": 1915.621062507853,
+        "p95_ms": 2775.4430379136465,
+        "maximum_ms": 2786.246833158657,
+        "total_ms": 38289.744375506416,
+        "chunks_per_second": 534.8690709228359,
+        "generation_process_peak_rss_bytes": 2101231616,
+        "program_statuses": [
+          4
+        ]
+      },
+      "paired": {
+        "median_new_over_old": 0.9689796445909113,
+        "new_faster_pairs": 12,
+        "pairs": 20
+      },
+      "throughput_change_percent": 10.779456920602492
+    },
+    {
+      "case": "overworld",
+      "old": {
+        "median_ms": 575.7640829542652,
+        "p95_ms": 673.7457268172876,
+        "maximum_ms": 782.7419589739293,
+        "total_ms": 11512.376831378788,
+        "chunks_per_second": 1778.954971676965,
+        "generation_process_peak_rss_bytes": 1628274688,
+        "program_statuses": [
+          4
+        ]
+      },
+      "new": {
+        "median_ms": 547.2487494116649,
+        "p95_ms": 693.0147916777061,
+        "maximum_ms": 781.6767080221325,
+        "total_ms": 10989.81020739302,
+        "chunks_per_second": 1863.5444665116033,
+        "generation_process_peak_rss_bytes": 2474213376,
+        "program_statuses": [
+          4
+        ]
+      },
+      "paired": {
+        "median_new_over_old": 0.9190094449410047,
+        "new_faster_pairs": 12,
+        "pairs": 20
+      },
+      "throughput_change_percent": 4.755010451720332
+    }
+  ],
+  "brown_root_observer": [
+    {
+      "case": "nether-main",
+      "target_tasks_median": 1156.0,
+      "helper_tasks_median": 351.0,
+      "evaluation_median_ms": 106.539125,
+      "tail_after_p95_target_completion_median_ms": 79.540573,
+      "mean_workers_in_flight_median": 12.225558066507002
+    },
+    {
+      "case": "nether-second-seed",
+      "target_tasks_median": 1156.0,
+      "helper_tasks_median": 288.0,
+      "evaluation_median_ms": 70.245979,
+      "tail_after_p95_target_completion_median_ms": 57.1394375,
+      "mean_workers_in_flight_median": 11.76703533963315
+    }
+  ],
+  "observer_definition": "Target/helper counts and longest tasks are separate. Physical-thread unions include both; target completion percentiles exclude helpers, while the tail ends at the last target/helper completion. In-flight spans include blocking/preemption and are not CPU utilization. Process CPU includes service/GPU/observer threads. Separate C60/C62/C63 observer runs are not causal speedup comparisons.",
+  "decision": "Hold unmerged. The second standard seed and custom-bounds case lose throughput in the paired observations, and main has a worse p95 despite a lower median. Known host load precludes quiet acceptance; these results do not establish a consistent benefit that selects this scheduler or its extra cell memory.",
+  "next_experiment": "Try nonblocking claims for optional scoped helpers: ready values return immediately, an empty cell may be claimed, and an already-owned key is skipped without waiting. Required consumers continue to wait/help and still resolve every exact writer. Count actual scoped ready/busy/owned outcomes at the claim site before attributing helper counts to useful work. Preserve cached errors, panic recovery, source ordering and scoped joins. See external helper-ownership-hypothesis.md.",
+  "limitations": [
+    "Known unrelated host load; quiet final confirmation remains deferred by user.",
+    "Descriptor counters include ready/in-flight work and do not establish fresh initialization or useful parallel CPU time.",
+    "Optional drains currently use the blocking anchor path. Shared contended-cell notifications wake all job waiters; possible extra wake/recheck cost remains an unquantified hypothesis.",
+    "No reverse/concurrent/portal/retention acceptance was run for this unselected prototype.",
+    "The full subsecond median/p95, no-regression, concurrency and sustained-memory goal remains open."
+  ],
+  "recovery": {
+    "worktree": "/tmp/retina-nether-scoped-dependency-help",
+    "branch": "codex/nether-scoped-dependency-help",
+    "tested_source": "d5b6d077b9e8e6f870cf1f6ad0bf2c1a8c93689a",
+    "evidence_root": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle63",
+    "drivers": [
+      "scoped-help-inventory.py",
+      "scoped-help-counters.py",
+      "scoped-help-counter-summary.py",
+      "scoped-help-paired.py",
+      "scoped-help-summary.py",
+      "scoped-help-assessment.py"
+    ],
+    "preserve": [
+      "normal.dylib",
+      "inventory-test-executable",
+      "normal-provenance.json",
+      "normal-symbol-review.json",
+      "proof.json",
+      "inventory/",
+      "paired-normal/",
+      "counter-comparison.json",
+      "phase-summary.json",
+      "phase-comparison.json",
+      "tests-first.log",
+      "tests.log",
+      "queue-tests.log",
+      "gpu-parity.log",
+      "helper-ownership-hypothesis.md"
+    ]
+  }
+}
