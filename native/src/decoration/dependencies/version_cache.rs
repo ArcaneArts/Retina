@@ -168,6 +168,30 @@ impl Default for Cache {
     }
 }
 impl Cache {
+    #[cfg(test)]
+    pub(crate) fn retention_probe(&self) -> serde_json::Value {
+        let entries: Vec<_> = self.entries.iter().map(|saved| serde_json::json!({
+            "region":saved.region,"profile":saved.context.profile,"seed":saved.context.seed,
+            "tracked_bytes":saved.bytes,"recounted_bytes":retained_bytes(saved),
+            "external_snapshot_references":Arc::strong_count(saved).saturating_sub(1),
+            "external_interior_run_references":Arc::strong_count(&saved.versions.runs).saturating_sub(1),
+            "exterior":saved.exterior.as_ref().map(|v| v.retention_probe()),
+        })).collect();
+        serde_json::json!({"entries":entries,"tracked_bytes":self.bytes,
+            "recounted_bytes":self.entries.iter().map(|v| retained_bytes(v)).sum::<usize>(),
+            "entry_limit":self.max_entries,"byte_limit":self.max_bytes})
+    }
+    #[cfg(test)]
+    pub(crate) fn release_probe(&self) -> impl FnOnce() -> serde_json::Value + use<> {
+        let snapshots: Vec<_> = self.entries.iter().map(Arc::downgrade).collect();
+        let runs: Vec<_> = self.entries.iter().map(|v| Arc::downgrade(&v.versions.runs)).collect();
+        move || serde_json::json!({
+            "observed_snapshots":snapshots.len(),
+            "live_snapshots":snapshots.iter().filter(|v| v.strong_count()!=0).count(),
+            "observed_interior_run_buffers":runs.len(),
+            "live_interior_run_buffers":runs.iter().filter(|v| v.strong_count()!=0).count(),
+        })
+    }
     fn capture(&self, key: CacheKey, region: [i32; 2], roots: usize) -> Vec<Arc<Snapshot>> {
         self.entries
             .iter()

@@ -10,6 +10,8 @@ pub mod timings;
 mod performance;
 mod terrain_job;
 mod terrain_cache;
+#[cfg(test)]
+mod retention_probe;
 use std::cell::RefCell;
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::sync::{Arc, OnceLock, mpsc};

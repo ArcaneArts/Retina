@@ -127,6 +127,20 @@ pub struct Cache {
     meta_order: VecDeque<CacheKey>,
 }
 impl Cache {
+    #[cfg(test)]
+    pub(crate) fn retention_probe(&self) -> serde_json::Value {
+        let outside_cells: usize = self.entries.values()
+            .map(|cell| Arc::strong_count(cell).saturating_sub(1)).sum();
+        let outside_starts: usize = self.entries.values()
+            .filter_map(|cell| cell.get().and_then(|v| v.as_ref().ok()))
+            .map(|start| Arc::strong_count(start).saturating_sub(1)).sum();
+        serde_json::json!({"entries":self.entries.len(),"order":self.order.len(),
+            "entry_limit":256,"metadata_entries":self.metadata.len(),
+            "metadata_order":self.meta_order.len(),"metadata_limit":512,
+            "weak_entries":self.active.len(),"insertions_since_sweep":self.insertions_since_sweep,
+            "live_weak_entries":self.active.values().filter(|v| v.strong_count()!=0).count(),
+            "external_cell_references":outside_cells,"external_start_references":outside_starts})
+    }
     fn cell(
         &mut self,
         key: (CacheKey, usize),

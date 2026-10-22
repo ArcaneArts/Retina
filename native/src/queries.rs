@@ -32,6 +32,12 @@ pub(crate) struct Cache {
     order: VecDeque<Key>,
 }
 impl Cache {
+    #[cfg(test)]
+    pub(crate) fn retention_probe(&self) -> serde_json::Value {
+        serde_json::json!({"entries":self.entries.len(),"order":self.order.len(),
+            "capacity":self.entries.capacity(),"limit":8192,
+            "column_payload_bytes":self.entries.len()*std::mem::size_of::<Column>()})
+    }
     fn insert(&mut self, key: Key, column: Column) {
         if self.entries.insert(key, column).is_none() {
             self.order.push_back(key);
