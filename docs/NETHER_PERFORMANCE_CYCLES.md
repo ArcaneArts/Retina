@@ -2405,3 +2405,34 @@ RETINA_TERRAIN_REUSE_PROFILES=/path/to/profiles RETINA_RETENTION_OUTPUT=/path/to
 ```
 
 See `docs/benchmarks/nether-perf-cycle81-2026-10-22.json` for owner totals, provenance, commands and limitations. Large binaries, generated worlds and raw snapshots are retained at `/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle81`. All preexisting worktrees and held performance candidates remain intact.
+
+
+## Cycle 86 — measure ordered column edit sequences before choosing a new representation
+
+**Diagnostic only; production generation is unchanged.** A test-only observer inventories the exact commands applied by each ordered column prefix. It records actual changed/noop FEATURE writes, dense expansion payload and strictly monotonic, consecutive same-material vertical spans. Conditional writes, bounds, prefix limits, duplicate Y, reversals, gaps and material changes terminate each candidate span. Generation still applies every original command. Per-prefix scalar counters publish once into per-thread root maps; no column or world owners are retained.
+
+Across twenty complete regions per case after five warmups:
+
+| Case | Mean commands/region | Mean dense expansions/region | Blob share of commands | FEATURE commands in spans longer than 8 |
+| --- | ---: | ---: | ---: | ---: |
+| nether-main | 4,264,678 | 233,708 | 82.3% | 3.83% |
+| nether-second-seed | 4,184,836 | 237,252 | 81.1% | 3.83% |
+| nether-custom-bounds | 1,349,711 | 231,085 | 0.0% | 23.42% |
+| nether-direct-stem | 1,288,759 | 214,302 | 0.0% | 23.81% |
+| overworld | 0 | 0 | n/a | n/a |
+
+The standard Nether's largest replay volume comes from basalt and blackstone blobs: 81–82% of commands. Only 3.83% of unconditional commands occur in spans longer than 8. This weakens the initial long-range-only hypothesis. The next source-backed opportunity is a bounded set of accepted Y positions for a proven constant-material blob root, merged directly into canonical runs. Original target predicates, RNG, anchor evaluation, command metadata and exact prefix limits must remain intact. The set's benefit is unmeasured. C49's sparse-eight editor already reduced allocations without establishing a whole-region gain and remains held.
+
+Standard Nether creates about 114–116 MiB of cumulative dense prefix payload per region; this is allocation volume, not peak RSS or removable wall time. Custom profiles contain no blob commands here and have different write distributions. Overworld uses a different generation path in this corpus, so zero prefix counts do not mean zero decoration work.
+
+**182 ordinary tests, two explicit GPU terrain tests and the five-case complete-region inventory pass.** All 102,400 measured inventory chunk instances and 102,400 separate ordinary release instances match both the immutable original and actual PR206 main in complete decompressed NBT and membership. Only MCA timestamps and compression representation are excluded. All normal measured regions report shader status 4. These are repeated generated instances, not unique spatial coverage.
+
+Normal production machine code is identical to preceding main. All 122 differing file bytes are accounted for: 42 source-line bytes, 16 UUID bytes and 64 signature bytes. Every changed source location points to the same statement. Observer symbols are absent. The normal elapsed-time observations remain provisional; quiet timing confirmation is deferred. No production candidate, new runtime behavior or subsecond result is accepted here.
+
+Reproduce the observer with exported profiles and a fresh output directory:
+
+```sh
+RETINA_TERRAIN_REUSE_PROFILES=/path/to/profiles RETINA_COLUMN_EDIT_OUTPUT=/path/to/fresh-output RETINA_REGION_THREADS=16 cargo test --release --locked --manifest-path native/Cargo.toml exact_column_edit_inventory -- --ignored --nocapture --test-threads=1
+```
+
+See `docs/benchmarks/nether-perf-cycle86-2026-10-22.json` for source/library provenance, root counts, validation and limitations. Large binaries and generated worlds remain at `/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle86`.
