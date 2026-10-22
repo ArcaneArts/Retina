@@ -2487,3 +2487,6 @@ mod tests {
         );
     }
 }
+
+#[cfg(test)]
+mod gpu_buffer_probe;

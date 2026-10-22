@@ -472,3 +472,22 @@ impl Gpu {
         result
     }
 }
+
+#[cfg(test)]
+impl Gpu {
+    pub(crate) fn buffer_inventory(&self) -> crate::gpu_buffer_probe::Inventory {
+        let mut out = crate::gpu_buffer_probe::Inventory::default();
+        if let Some(v) = &self.buffers {
+            for (name, buffer) in [("input", &v.input), ("output", &v.output),
+                ("readback", &v.readback)] { out.add(name, buffer); }
+        }
+        for (id, v) in &self.profiles {
+            if let Some(b) = &v.buffer { out.add(format!("profile/{id}"), b); }
+        }
+        for (id, v) in &self.provider_profiles { out.add(format!("provider/{id}"), v); }
+        if let Some(v) = &self.timestamps {
+            out.add("timestamp_resolve", &v.resolve); out.add("timestamp_readback", &v.readback);
+        }
+        out
+    }
+}

@@ -41,6 +41,8 @@ pub struct Snapshot {
 }
 #[derive(Default)]
 pub(crate) struct Metrics {
+    #[cfg(test)]
+    pub(crate) gpu_buffer_probe: crate::gpu_buffer_probe::Probe,
     peak: AtomicU64,
     completed: AtomicU64,
     spans: AtomicU64,

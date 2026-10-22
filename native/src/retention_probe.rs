@@ -45,10 +45,14 @@ fn census(engine: &TerrainEngine) -> Value {
         "versions":engine.dependency_versions.lock().unwrap().retention_probe(),
         "structures":engine.structures.lock().unwrap().retention_probe(),
         "registered_profiles":engine.profiles.read().unwrap().len(),
-        "timing_profiles":engine.timings.lock().unwrap().len()})
+        "timing_profiles":engine.timings.lock().unwrap().len(),
+        "graphics":crate::gpu_buffer_probe::census(engine)})
 }
 
 fn validate(value: &Value) {
+    if !value["graphics"].is_null() {
+        crate::gpu_buffer_probe::validate(&value["graphics"]);
+    }
     for name in ["columns", "heights", "queries"] {
         let v = &value[name];
         assert!(v["entries"].as_u64().unwrap() <= v["limit"].as_u64().unwrap());
@@ -90,10 +94,26 @@ fn validate(value: &Value) {
 #[test]
 #[ignore = "requires GPU, RETINA_TERRAIN_REUSE_PROFILES and RETINA_RETENTION_OUTPUT"]
 fn completed_region_retention_census() {
+    run_census(false);
+}
+
+#[test]
+#[ignore = "requires GPU, RETINA_TERRAIN_REUSE_PROFILES and RETINA_RETENTION_OUTPUT"]
+fn completed_region_gpu_buffer_census() {
+    run_census(true);
+}
+
+fn run_census(graphics: bool) {
     let profiles = PathBuf::from(std::env::var("RETINA_TERRAIN_REUSE_PROFILES").unwrap());
     let output = PathBuf::from(std::env::var("RETINA_RETENTION_OUTPUT").unwrap());
     fs::create_dir(&output).unwrap();
     let engine = TerrainEngine::new().unwrap();
+    engine
+        .pipeline
+        .gpu_buffer_probe
+        .enabled
+        .store(graphics, std::sync::atomic::Ordering::Release);
+    let mut warm_records = Vec::new();
     let mut cases = Vec::new();
     for (name, file, seed) in [
         ("nether-main", "nether.json", 123456789),
@@ -139,6 +159,10 @@ fn completed_region_retention_census() {
             )
             .unwrap();
         }
+        if graphics {
+            warm_records.push(json!({"case":case,"retention":census(&engine)}));
+            crate::gpu_buffer_probe::vm_snapshot(&output, &format!("warm-{case}"));
+        }
     }
     let mut records = Vec::new();
     for round in 0..3 {
@@ -173,10 +197,14 @@ fn completed_region_retention_census() {
                     "retention":census(&engine)}));
             }
             fs::write(output.join("report.json"),serde_json::to_vec_pretty(&json!({
-                "records":records,"complete":false,"timing_acceptance":false,
+                "records":records,"warmups":warm_records,"complete":false,"timing_acceptance":false,
+                "graphics_scope":"When enabled, sizes are logical capacities of named owned buffer fields at joined checkpoints; excludes bind-group aliases, query sets, shaders, driver allocations, active peaks and ephemeral submissions. VM snapshots are separate process observations, not a sum with logical capacities.",
                 "scope":"One native engine, all five corpus cases and three request orders. Cache ownership is inspected only after generation returns. CPU payload capacities exclude hash buckets, allocator overhead and GPU/driver memory. Counts do not equate to RSS; no runtime scheduling, eviction or cleanup policy is changed."
             })).unwrap()).unwrap();
             println!("RETENTION {case} round {round} complete");
+        }
+        if graphics {
+            crate::gpu_buffer_probe::vm_snapshot(&output, &format!("round-{round}"));
         }
     }
     let mut concurrent = Vec::new();
@@ -213,6 +241,9 @@ fn completed_region_retention_census() {
         });
         concurrent.push(json!({"callers":callers,"regions":generated,"retention":census(&engine)}));
         println!("RETENTION joined {callers} mixed-context callers complete");
+        if graphics {
+            crate::gpu_buffer_probe::vm_snapshot(&output, &format!("concurrent-{callers}"));
+        }
     }
     let release_versions = engine.dependency_versions.lock().unwrap().release_probe();
     let weak_masks: Vec<_> = engine
@@ -223,17 +254,44 @@ fn completed_region_retention_census() {
         .values()
         .map(Arc::downgrade)
         .collect();
+    let pipeline = engine.pipeline.clone();
     drop(engine);
+    let worker_stopped = if graphics {
+        let deadline = Instant::now() + std::time::Duration::from_secs(10);
+        while !pipeline
+            .gpu_buffer_probe
+            .stopped
+            .load(std::sync::atomic::Ordering::Acquire)
+            && Instant::now() < deadline
+        {
+            std::thread::sleep(std::time::Duration::from_millis(10));
+        }
+        let stopped = pipeline
+            .gpu_buffer_probe
+            .stopped
+            .load(std::sync::atomic::Ordering::Acquire);
+        crate::gpu_buffer_probe::vm_snapshot(&output, "after-engine-drop");
+        Some(stopped)
+    } else {
+        None
+    };
     let released_versions = release_versions();
     let released_masks = json!({"observed_mask_references":weak_masks.len(),
         "live_mask_references":weak_masks.iter().filter(|v| v.strong_count()!=0).count()});
     let report_path = output.join("report.json");
     let mut report: Value = serde_json::from_slice(&fs::read(&report_path).unwrap()).unwrap();
     report["concurrent"] = json!(concurrent);
+    report["terrain_worker_stopped_after_gpu_drop"] = json!(worker_stopped);
     report["after_engine_drop"] = json!({"versions":released_versions,"caves":released_masks});
     fs::write(&report_path, serde_json::to_vec_pretty(&report).unwrap()).unwrap();
     // Validate only after the real corpus finishes; retain all observations if
     // an ownership expectation fails so a reader can investigate the actual owner.
+    if graphics {
+        assert_eq!(worker_stopped, Some(true));
+        for row in &warm_records {
+            validate(&row["retention"]);
+        }
+    }
     for record in &records {
         validate(&record["retention"]);
     }

@@ -1422,3 +1422,26 @@ mod tests {
 
 #[cfg(test)]
 mod palette_tests;
+
+#[cfg(test)]
+impl Gpu {
+    pub(crate) fn buffer_inventory(&self) -> crate::gpu_buffer_probe::Inventory {
+        let mut out = crate::gpu_buffer_probe::Inventory::default();
+        if let Some(v) = &self.buffers {
+            for (name, buffer) in [("params", &v.params), ("blocks", &v.blocks), ("a", &v.a),
+                ("b", &v.b), ("output", &v.output), ("work", &v.work),
+                ("active", &v.active), ("indirect", &v.indirect)] { out.add(name, buffer); }
+        }
+        for (id, (a, b)) in &self.profiles {
+            out.add(format!("profile/{id}/states"), a); out.add(format!("profile/{id}/blocked"), b);
+        }
+        for (i, v) in self.readbacks.iter().enumerate() {
+            out.add(format!("readback/{i}"), &v.buffer);
+            if let Some(t) = &v.timing {
+                out.add(format!("timestamp/{i}/resolve"), &t.resolve);
+                out.add(format!("timestamp/{i}/readback"), &t.readback);
+            }
+        }
+        out
+    }
+}
