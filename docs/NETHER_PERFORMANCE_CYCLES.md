@@ -2112,3 +2112,33 @@ Ordinary paired runs used five warmups and twenty measured regions per case/vari
 The next distinct experiment can classify and skip busy waiter-picked queued keys while retaining required waits for the originally requested cell and for newly owned initializers. Actual notification/sleep/wake/recheck counts are a separate follow-up if needed; global broadcast overhead remains a hypothesis rather than a measured wall-time share.
 
 Report: `docs/benchmarks/nether-perf-cycle64-2026-10-21.json`. Preserve `codex/nether-nonblocking-helper-claims` and external `cycle64/`. The full performance goal remains active.
+
+## Cycle 65 — nonblocking waiter-picked helper claims
+
+C65 extends the held C62-C64 scheduling foundation so a required consumer skips an already-owned optional queued key and returns to its original required-cell loop. Both optional origins share one try path and separate ready/busy/owned counters. Newly owned anchors retain every required prerequisite wait. Cell state/publication, lost-wakeup synchronization, source ordering, scoped joining and queue bounds remain unchanged by this refinement.
+
+**186 native tests passed**, including 18 queue/scoping/claim tests, plus explicit GPU parity. The new controlled test proves a waiter on A can skip busy B, finish C which releases A, and return before B is released. Cleanup releases controlled owners even when the observation fails; exact queue order, one C build and original results are checked.
+
+Complete decompressed NBT and membership matched across **317,440 measured chunk instances**: 102,400 observer, 10,240 counter-control and 204,800 ordinary paired instances. All compare to immutable original and actual C60 output; pairs also compare to C65 observer output. Actual observer/pair shader snapshots are ready before and after every measurement. Counter post-snapshots are ready; individual before snapshots are not persisted. Repeated coordinates are not unique-world coverage.
+
+Combined scoped/waiter attempts owned only **2.14–2.80%** of queued keys in these counter samples. All offered descriptors were consumed, without a large increase in offers versus C64. Most attempts find already-ready data, and many skip Busy. Counts cover profile lifetime including warmup and do not measure time shares. Each newly owned anchor can still be expensive, so a low count alone cannot establish its time benefit.
+
+Anchor, column, prefix and column-tile build counts remain identical. The second seed used 20 terrain tiles/8,529 chunks in the accepted-library control and 22/8,627 in the candidate, reversing C64’s direction; this is not a stable terrain-work reduction. Other terrain counts match. ColumnCell remains 32 bytes versus accepted C60’s 24; this refinement adds no per-cell storage.
+
+Brown mushroom roots still had median tails of about 46 ms and 30 ms after 95% of targets completed. These are separate observer runs under changed load. In-flight spans include waits/preemption; process CPU is not task-only CPU or utilization. The present observer does not distinguish time joining another cell from other time inside the longest target.
+
+Ordinary paired runs use 5 warmups and 20 measured regions per case/variant, alternating first generator with only one generating at a time. Host load keeps timing provisional.
+
+| Case | Old/new median ms | Old/new p95 ms | Throughput change | New faster pairs |
+|---|---:|---:|---:|---:|
+| nether-main | 1689.15 / 1695.55 | 2831.65 / 2956.90 | -2.98% | 9/20 |
+| nether-second-seed | 1465.04 / 1389.29 | 1938.43 / 1997.34 | +1.24% | 9/20 |
+| nether-custom-bounds | 868.47 / 904.74 | 1017.08 / 1014.29 | -2.86% | 7/20 |
+| nether-direct-stem | 1008.55 / 997.62 | 1261.04 / 1329.00 | -1.42% | 5/20 |
+| overworld | 365.62 / 361.01 | 484.79 / 527.96 | -1.20% | 11/20 |
+
+Held, unmerged. Main Nether, custom bounds and direct stem lose aggregate throughput. The second seed has only a small aggregate improvement, and both standard-seed p95s worsen. Overworld is also slightly lower in throughput, with a worse p95. Known host load precludes quiet acceptance, and these observations do not select this scheduler. Main remains C60; the subsecond/concurrency/lifecycle/memory goal is still open.
+
+Return to accepted origin/main without C62-C65 production scheduling changes. Extend the test-only worker-phase observer to record noninitializer dependency-cell join intervals, then intersect them with per-worker task and tail spans. Preserve reentrant task contexts, missing/failure data and joined buffer cleanup; do not call API join intervals kernel-sleep or CPU time. Measure the remaining tail before adding further scheduler complexity. See external cycle65/conditional-next-measurement.md.
+
+Report: `docs/benchmarks/nether-perf-cycle65-2026-10-21.json`. Preserve `codex/nether-nonblocking-waiter-claims` and external `cycle65/`. Main remains C60; the full performance goal remains active.
