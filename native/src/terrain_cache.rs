@@ -5,6 +5,9 @@ use crate::{CacheKey, CaveCache, ChunkRequest, TerrainEngine, COLUMNS};
 use std::collections::HashMap;
 use std::sync::Arc;
 
+#[cfg(test)]
+mod overlap_probe;
+
 /// The caller must obtain `mask` through the complete request CacheKey. Exact
 /// geometry also preserves the substrate's fallback column/material coverage.
 /// This applies only to patch-halo tiles, whose producer retains all GPU columns.
