@@ -1,0 +1,1015 @@
+{
+  "cycle": 71,
+  "status": "hold",
+  "created_utc": "2026-10-22T03:51:41.521141+00:00",
+  "timing_acceptance": false,
+  "problem": "C67/C68 identify pillar critical tasks dominated by pending terrain/GPU replies. Several workers can wait on the same missing tile while traversal has not exposed other required tiles.",
+  "implementation": "Deduplicate the actual current feature-root target anchors into terrain tile origins. Prepare those tiles with a joined parallel iterator on the existing bounded assembly pool before normal feature replay. Preserve the source target vector, root publication, all lazy dependency closure, RNG and commands. Structures retain original lazy terrain access. Preparation and destruction remain inside full-region generation. C69/C70 held source changes excluded.",
+  "source": {
+    "revision": "c71c650d59badddcb81bdf1cadf415b12880d276",
+    "native_tree": "921954baddf70e2394586dc1d52b292af6362695",
+    "sha256": "b08a28e812f923ce7431068d7745efc548da3375dafcb4baaf1ab6986d4ee859",
+    "source_status": "",
+    "forced_rebuild": true,
+    "timing_acceptance": false,
+    "test_executable_sha256": "c4511c9a0ebfd58927716b0341c28aea2d564ea4e561db4bde5537b7c7161cdd",
+    "native_test_result": [
+      "179",
+      "0",
+      "48"
+    ]
+  },
+  "design_review": {
+    "scope": "Actual target base terrain preparation only; previous held algorithms excluded.",
+    "invariants": [
+      "Every non-structure anchor requests its base field before replay; ready anchors already initialized that field in this job.",
+      "Distinct keys derive from actual target coordinates using the existing Euclidean16-chunk tile partition; no bounding rectangle, halo expansion or reach limit.",
+      "The target vector is borrowed and unchanged. Original per-root order, completed views, distribution and lazy exterior dependencies remain.",
+      "Preparation executes inside the existing dispatched root evaluation on its pool and joins all started work before success/failure return.",
+      "Original TerrainJob OnceLocks/maps own the same tiles and errors. Temporary key storage and extra returned Arc references drop before preparation returns.",
+      "Structures retain original lazy terrain access.",
+      "Opt-in preparation wall includes deduplication and joining; it overlaps enclosing dependency evaluation. Attempt count includes ready tiles and repeats across roots.",
+      "Existing ignored anchor observer has no task context for preparation; anchor task fractions must not be represented as full evaluation coverage after this change.",
+      "Earlier request order may alter shared exact-cache reuse and memory, so compare actual generated-tile counts and concurrent behavior before promotion."
+    ],
+    "validation_pending": [],
+    "timing_acceptance": false,
+    "validation_completed": {
+      "native_tests": 179,
+      "failed": 0,
+      "ignored": 48,
+      "explicit_gpu_parity": 1,
+      "normal_observer_symbols": 0,
+      "counter_chunks": 10240,
+      "paired_chunks": 204800,
+      "all_original_and_C68_nbt_exact": true,
+      "all_pair_worker_exit_codes_zero": true,
+      "full_drivers_terminal": true
+    }
+  },
+  "validation": {
+    "native_test_result": [
+      "179",
+      "0",
+      "48"
+    ],
+    "new_tests": 1,
+    "explicit_gpu_parity_passed": 1,
+    "normal_symbol_check": {
+      "command": [
+        "nm",
+        "-a",
+        "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle71/normal.dylib"
+      ],
+      "matching_symbols": [],
+      "sha256": "b08a28e812f923ce7431068d7745efc548da3375dafcb4baaf1ab6986d4ee859"
+    },
+    "paired_measured_chunk_instances": 204800,
+    "counter_measured_chunk_instances": 10240,
+    "comparison": "Both variants compare complete decompressed NBT and membership with immutable original and actual C68. Only MCA timestamps/compression representation excluded. Repeated coordinates are not unique coverage.",
+    "shader_readiness": "All paired measured before/after status4. Counter post-region snapshots4; before states not persisted.",
+    "termination": "All ten paired workers exit0; counter and comparison drivers terminal.",
+    "commands_and_full_results": [
+      "cycle71/counters-old/suite.json",
+      "cycle71/counters-new/suite.json",
+      "cycle71/paired-normal/report.json"
+    ]
+  },
+  "counter_comparison": {
+    "timing_acceptance": false,
+    "value_order": [
+      "old",
+      "new"
+    ],
+    "scope": "One warmup and one measured complete region per case and variant. Counter interval excludes warmup. All 10,240 measured chunk instances compare original and actual C68 complete NBT/membership. Preparation tile counter is attempted distinct targets per root, including already-ready tiles and repeats across roots; it is not unique GPU work. Preparation wall includes discovery and the joined requests, nested in dependency evaluation. GPU intervals also overlap and are not utilization or complete-region shares. Other worker durations overlap and diagnostics perturb the workload; no timing acceptance. Actual post-region statuses are ready; individual before states are not persisted. Peak RSS includes startup/warmups and is not a sustained plateau. Full commands/provenance/comparisons reside in counters-old/suite.json and counters-new/suite.json.",
+    "cases": [
+      {
+        "case": "nether-main-run0",
+        "counts": {
+          "anchor_builds": [
+            63012,
+            63012
+          ],
+          "column_builds": [
+            3536253,
+            3536253
+          ],
+          "prefix_evaluations": [
+            3075215,
+            3075215
+          ],
+          "column_tiles": [
+            21140,
+            21140
+          ],
+          "terrain_target_preparation_tiles": [
+            null,
+            525
+          ],
+          "terrain_target_preparation_nanos": [
+            null,
+            139057583
+          ],
+          "terrain_job_requests": [
+            722607,
+            723132
+          ],
+          "terrain_job_direct_requests": [
+            722607,
+            723132
+          ],
+          "terrain_job_fallback_requests": [
+            0,
+            0
+          ],
+          "terrain_job_cached_tile_hits": [
+            0,
+            0
+          ],
+          "terrain_initial_tiles_reused": [
+            4,
+            4
+          ],
+          "terrain_requests": [
+            32,
+            32
+          ],
+          "terrain_generated_tiles": [
+            16,
+            18
+          ],
+          "terrain_unique_tiles": [
+            16,
+            18
+          ],
+          "terrain_generated_chunks": [
+            8301,
+            8399
+          ],
+          "terrain_job_join_nanos": [
+            1464799842,
+            106676170
+          ],
+          "dependency_evaluation_nanos": [
+            4225890709,
+            2942020541
+          ],
+          "memo_join_nanos": [
+            4213557809,
+            2897236562
+          ],
+          "column_join_nanos": [
+            501755216,
+            285511224
+          ]
+        },
+        "peak_rss_mib": [
+          1511.0625,
+          1535.609375
+        ],
+        "generated_tile_changes": [
+          {
+            "origin": [
+              -39,
+              -78
+            ],
+            "side": 7,
+            "old": 0,
+            "new": 1
+          },
+          {
+            "origin": [
+              -39,
+              -77
+            ],
+            "side": 7,
+            "old": 0,
+            "new": 1
+          }
+        ],
+        "gpu_pipeline": [
+          {
+            "completed": 43,
+            "device_gap_ms": 5989.375336,
+            "device_span_ms": 1438.33112,
+            "peak_in_flight": 2,
+            "unavailable_timestamp_pairs": 1
+          },
+          {
+            "completed": 45,
+            "device_gap_ms": 2899.169166,
+            "device_span_ms": 4773.544753,
+            "peak_in_flight": 2,
+            "unavailable_timestamp_pairs": 1
+          }
+        ],
+        "gpu_transfers": [
+          {
+            "readback_bytes": 204987484,
+            "readback_bytes_per_region": 204987484.0,
+            "upload_bytes": 73287364,
+            "upload_bytes_per_region": 73287364.0
+          },
+          {
+            "readback_bytes": 206384328,
+            "readback_bytes_per_region": 206384328.0,
+            "upload_bytes": 73287556,
+            "upload_bytes_per_region": 73287556.0
+          }
+        ],
+        "unchanged_build_work": {
+          "anchor_builds": true,
+          "column_builds": true,
+          "prefix_evaluations": true,
+          "column_tiles": true
+        },
+        "old_actual_measured_statuses": [
+          4
+        ],
+        "old_actual_warmup_statuses": [
+          4
+        ],
+        "new_actual_measured_statuses": [
+          4
+        ],
+        "new_actual_warmup_statuses": [
+          4
+        ],
+        "parity": "Both variants:1024 chunks exact to original and actual C68, membership exact"
+      },
+      {
+        "case": "nether-second-seed-run0",
+        "counts": {
+          "anchor_builds": [
+            61531,
+            61531
+          ],
+          "column_builds": [
+            3260594,
+            3260594
+          ],
+          "prefix_evaluations": [
+            2828505,
+            2828505
+          ],
+          "column_tiles": [
+            19569,
+            19569
+          ],
+          "terrain_target_preparation_tiles": [
+            null,
+            525
+          ],
+          "terrain_target_preparation_nanos": [
+            null,
+            170254874
+          ],
+          "terrain_job_requests": [
+            578802,
+            579327
+          ],
+          "terrain_job_direct_requests": [
+            578802,
+            579327
+          ],
+          "terrain_job_fallback_requests": [
+            0,
+            0
+          ],
+          "terrain_job_cached_tile_hits": [
+            0,
+            0
+          ],
+          "terrain_initial_tiles_reused": [
+            4,
+            4
+          ],
+          "terrain_requests": [
+            33,
+            33
+          ],
+          "terrain_generated_tiles": [
+            22,
+            18
+          ],
+          "terrain_unique_tiles": [
+            22,
+            18
+          ],
+          "terrain_generated_chunks": [
+            8627,
+            8431
+          ],
+          "terrain_job_join_nanos": [
+            1585918941,
+            62307243
+          ],
+          "dependency_evaluation_nanos": [
+            3506233417,
+            2350234042
+          ],
+          "memo_join_nanos": [
+            3511674755,
+            2411522980
+          ],
+          "column_join_nanos": [
+            532304540,
+            186742929
+          ]
+        },
+        "peak_rss_mib": [
+          1360.09375,
+          1395.234375
+        ],
+        "generated_tile_changes": [
+          {
+            "origin": [
+              -74,
+              -40
+            ],
+            "side": 7,
+            "old": 1,
+            "new": 0
+          },
+          {
+            "origin": [
+              -74,
+              -39
+            ],
+            "side": 7,
+            "old": 1,
+            "new": 0
+          },
+          {
+            "origin": [
+              -22,
+              -41
+            ],
+            "side": 7,
+            "old": 1,
+            "new": 0
+          },
+          {
+            "origin": [
+              -21,
+              -41
+            ],
+            "side": 7,
+            "old": 1,
+            "new": 0
+          }
+        ],
+        "gpu_pipeline": [
+          {
+            "completed": 48,
+            "device_gap_ms": 3741.979709,
+            "device_span_ms": 1349.624045,
+            "peak_in_flight": 2,
+            "unavailable_timestamp_pairs": 0
+          },
+          {
+            "completed": 48,
+            "device_gap_ms": 2069.065874,
+            "device_span_ms": 1785.8905,
+            "peak_in_flight": 2,
+            "unavailable_timestamp_pairs": 1
+          }
+        ],
+        "gpu_transfers": [
+          {
+            "readback_bytes": 208770880,
+            "readback_bytes_per_region": 208770880.0,
+            "upload_bytes": 73707988,
+            "upload_bytes_per_region": 73707988.0
+          },
+          {
+            "readback_bytes": 205857648,
+            "readback_bytes_per_region": 205857648.0,
+            "upload_bytes": 73707604,
+            "upload_bytes_per_region": 73707604.0
+          }
+        ],
+        "unchanged_build_work": {
+          "anchor_builds": true,
+          "column_builds": true,
+          "prefix_evaluations": true,
+          "column_tiles": true
+        },
+        "old_actual_measured_statuses": [
+          4
+        ],
+        "old_actual_warmup_statuses": [
+          4
+        ],
+        "new_actual_measured_statuses": [
+          4
+        ],
+        "new_actual_warmup_statuses": [
+          4
+        ],
+        "parity": "Both variants:1024 chunks exact to original and actual C68, membership exact"
+      },
+      {
+        "case": "nether-custom-bounds-run0",
+        "counts": {
+          "anchor_builds": [
+            40794,
+            40794
+          ],
+          "column_builds": [
+            3430594,
+            3430594
+          ],
+          "prefix_evaluations": [
+            2891578,
+            2891578
+          ],
+          "column_tiles": [
+            20362,
+            20362
+          ],
+          "terrain_target_preparation_tiles": [
+            null,
+            284
+          ],
+          "terrain_target_preparation_nanos": [
+            null,
+            41902500
+          ],
+          "terrain_job_requests": [
+            604084,
+            604368
+          ],
+          "terrain_job_direct_requests": [
+            604084,
+            604368
+          ],
+          "terrain_job_fallback_requests": [
+            0,
+            0
+          ],
+          "terrain_job_cached_tile_hits": [
+            0,
+            0
+          ],
+          "terrain_initial_tiles_reused": [
+            4,
+            4
+          ],
+          "terrain_requests": [
+            30,
+            30
+          ],
+          "terrain_generated_tiles": [
+            21,
+            21
+          ],
+          "terrain_unique_tiles": [
+            21,
+            21
+          ],
+          "terrain_generated_chunks": [
+            6320,
+            6320
+          ],
+          "terrain_job_join_nanos": [
+            946397944,
+            470655216
+          ],
+          "dependency_evaluation_nanos": [
+            2959255833,
+            1915045541
+          ],
+          "memo_join_nanos": [
+            4138768531,
+            3123037737
+          ],
+          "column_join_nanos": [
+            260056335,
+            114257001
+          ]
+        },
+        "peak_rss_mib": [
+          1095.28125,
+          1158.8125
+        ],
+        "generated_tile_changes": [],
+        "gpu_pipeline": [
+          {
+            "completed": 21,
+            "device_gap_ms": 3763.485836,
+            "device_span_ms": 4474.311622,
+            "peak_in_flight": 2,
+            "unavailable_timestamp_pairs": 0
+          },
+          {
+            "completed": 21,
+            "device_gap_ms": 2423.704876,
+            "device_span_ms": 140.459417,
+            "peak_in_flight": 2,
+            "unavailable_timestamp_pairs": 0
+          }
+        ],
+        "gpu_transfers": [
+          {
+            "readback_bytes": 155314788,
+            "readback_bytes_per_region": 155314788.0,
+            "upload_bytes": 55092900,
+            "upload_bytes_per_region": 55092900.0
+          },
+          {
+            "readback_bytes": 155314788,
+            "readback_bytes_per_region": 155314788.0,
+            "upload_bytes": 55092900,
+            "upload_bytes_per_region": 55092900.0
+          }
+        ],
+        "unchanged_build_work": {
+          "anchor_builds": true,
+          "column_builds": true,
+          "prefix_evaluations": true,
+          "column_tiles": true
+        },
+        "old_actual_measured_statuses": [
+          4
+        ],
+        "old_actual_warmup_statuses": [
+          4
+        ],
+        "new_actual_measured_statuses": [
+          4
+        ],
+        "new_actual_warmup_statuses": [
+          4
+        ],
+        "parity": "Both variants:1024 chunks exact to original and actual C68, membership exact"
+      },
+      {
+        "case": "nether-direct-stem-run0",
+        "counts": {
+          "anchor_builds": [
+            40720,
+            40720
+          ],
+          "column_builds": [
+            3586035,
+            3586035
+          ],
+          "prefix_evaluations": [
+            3040953,
+            3040953
+          ],
+          "column_tiles": [
+            20370,
+            20370
+          ],
+          "terrain_target_preparation_tiles": [
+            null,
+            284
+          ],
+          "terrain_target_preparation_nanos": [
+            null,
+            51819166
+          ],
+          "terrain_job_requests": [
+            615479,
+            615763
+          ],
+          "terrain_job_direct_requests": [
+            615479,
+            615763
+          ],
+          "terrain_job_fallback_requests": [
+            0,
+            0
+          ],
+          "terrain_job_cached_tile_hits": [
+            0,
+            0
+          ],
+          "terrain_initial_tiles_reused": [
+            4,
+            4
+          ],
+          "terrain_requests": [
+            31,
+            31
+          ],
+          "terrain_generated_tiles": [
+            22,
+            22
+          ],
+          "terrain_unique_tiles": [
+            22,
+            22
+          ],
+          "terrain_generated_chunks": [
+            6369,
+            6369
+          ],
+          "terrain_job_join_nanos": [
+            478132697,
+            461952612
+          ],
+          "dependency_evaluation_nanos": [
+            2045713417,
+            1999896792
+          ],
+          "memo_join_nanos": [
+            3899751146,
+            3733558545
+          ],
+          "column_join_nanos": [
+            138456308,
+            136347701
+          ]
+        },
+        "peak_rss_mib": [
+          1171.640625,
+          1185.625
+        ],
+        "generated_tile_changes": [],
+        "gpu_pipeline": [
+          {
+            "completed": 22,
+            "device_gap_ms": 2576.302501,
+            "device_span_ms": 122.469791,
+            "peak_in_flight": 2,
+            "unavailable_timestamp_pairs": 0
+          },
+          {
+            "completed": 22,
+            "device_gap_ms": 2673.906209,
+            "device_span_ms": 140.435165,
+            "peak_in_flight": 2,
+            "unavailable_timestamp_pairs": 0
+          }
+        ],
+        "gpu_transfers": [
+          {
+            "readback_bytes": 156868632,
+            "readback_bytes_per_region": 156868632.0,
+            "upload_bytes": 55265016,
+            "upload_bytes_per_region": 55265016.0
+          },
+          {
+            "readback_bytes": 156868632,
+            "readback_bytes_per_region": 156868632.0,
+            "upload_bytes": 55265016,
+            "upload_bytes_per_region": 55265016.0
+          }
+        ],
+        "unchanged_build_work": {
+          "anchor_builds": true,
+          "column_builds": true,
+          "prefix_evaluations": true,
+          "column_tiles": true
+        },
+        "old_actual_measured_statuses": [
+          4
+        ],
+        "old_actual_warmup_statuses": [
+          4
+        ],
+        "new_actual_measured_statuses": [
+          4
+        ],
+        "new_actual_warmup_statuses": [
+          4
+        ],
+        "parity": "Both variants:1024 chunks exact to original and actual C68, membership exact"
+      },
+      {
+        "case": "overworld-run0",
+        "counts": {
+          "anchor_builds": [
+            0,
+            0
+          ],
+          "column_builds": [
+            0,
+            0
+          ],
+          "prefix_evaluations": [
+            0,
+            0
+          ],
+          "column_tiles": [
+            0,
+            0
+          ],
+          "terrain_target_preparation_tiles": [
+            null,
+            0
+          ],
+          "terrain_target_preparation_nanos": [
+            null,
+            0
+          ],
+          "terrain_job_requests": [
+            0,
+            0
+          ],
+          "terrain_job_direct_requests": [
+            0,
+            0
+          ],
+          "terrain_job_fallback_requests": [
+            0,
+            0
+          ],
+          "terrain_job_cached_tile_hits": [
+            0,
+            0
+          ],
+          "terrain_initial_tiles_reused": [
+            0,
+            0
+          ],
+          "terrain_requests": [
+            1,
+            1
+          ],
+          "terrain_generated_tiles": [
+            1,
+            1
+          ],
+          "terrain_unique_tiles": [
+            1,
+            1
+          ],
+          "terrain_generated_chunks": [
+            1444,
+            1444
+          ],
+          "terrain_job_join_nanos": [
+            0,
+            0
+          ],
+          "dependency_evaluation_nanos": [
+            0,
+            0
+          ],
+          "memo_join_nanos": [
+            0,
+            0
+          ],
+          "column_join_nanos": [
+            0,
+            0
+          ]
+        },
+        "peak_rss_mib": [
+          1095.8125,
+          1085.71875
+        ],
+        "generated_tile_changes": [],
+        "gpu_pipeline": [
+          {
+            "completed": 3,
+            "device_gap_ms": 1993.336166,
+            "device_span_ms": 356.255709,
+            "peak_in_flight": 1,
+            "unavailable_timestamp_pairs": 0
+          },
+          {
+            "completed": 3,
+            "device_gap_ms": 1553.622791,
+            "device_span_ms": 441.341499,
+            "peak_in_flight": 1,
+            "unavailable_timestamp_pairs": 0
+          }
+        ],
+        "gpu_transfers": [
+          {
+            "readback_bytes": 110503788,
+            "readback_bytes_per_region": 110503788.0,
+            "upload_bytes": 93909892,
+            "upload_bytes_per_region": 93909892.0
+          },
+          {
+            "readback_bytes": 110503788,
+            "readback_bytes_per_region": 110503788.0,
+            "upload_bytes": 93909892,
+            "upload_bytes_per_region": 93909892.0
+          }
+        ],
+        "unchanged_build_work": {
+          "anchor_builds": true,
+          "column_builds": true,
+          "prefix_evaluations": true,
+          "column_tiles": true
+        },
+        "old_actual_measured_statuses": [
+          4
+        ],
+        "old_actual_warmup_statuses": [
+          1
+        ],
+        "new_actual_measured_statuses": [
+          4
+        ],
+        "new_actual_warmup_statuses": [
+          1
+        ],
+        "parity": "Both variants:1024 chunks exact to original and actual C68, membership exact"
+      }
+    ]
+  },
+  "paired_normal": [
+    {
+      "case": "nether-main",
+      "seed": 123456789,
+      "summary": {
+        "old": {
+          "median_ms": 2687.3423125362024,
+          "p95_ms": 3848.1971182976854,
+          "maximum_ms": 4407.938583055511,
+          "total_ms": 54660.48675007187,
+          "chunks_per_second": 374.6765024915017,
+          "generation_process_peak_rss_bytes": 2358738944,
+          "program_statuses": [
+            4
+          ]
+        },
+        "new": {
+          "median_ms": 2494.3109169835225,
+          "p95_ms": 4027.8761669062083,
+          "maximum_ms": 4529.207791900262,
+          "total_ms": 54443.89554252848,
+          "chunks_per_second": 376.1670577742217,
+          "generation_process_peak_rss_bytes": 2278047744,
+          "program_statuses": [
+            4
+          ]
+        },
+        "paired": {
+          "median_new_over_old": 0.9843885335899192,
+          "new_faster_pairs": 12,
+          "pairs": 20
+        }
+      },
+      "parity": "Each variant20480 chunks exact to both references, membership identical"
+    },
+    {
+      "case": "nether-second-seed",
+      "seed": 42,
+      "summary": {
+        "old": {
+          "median_ms": 4013.8762296410277,
+          "p95_ms": 5827.174956176897,
+          "maximum_ms": 6690.353624988347,
+          "total_ms": 83875.80875423737,
+          "chunks_per_second": 244.17052192018787,
+          "generation_process_peak_rss_bytes": 2349006848,
+          "program_statuses": [
+            4
+          ]
+        },
+        "new": {
+          "median_ms": 4198.085687472485,
+          "p95_ms": 5895.046829560307,
+          "maximum_ms": 7234.089167090133,
+          "total_ms": 85903.8088771049,
+          "chunks_per_second": 238.40619255077448,
+          "generation_process_peak_rss_bytes": 2377891840,
+          "program_statuses": [
+            4
+          ]
+        },
+        "paired": {
+          "median_new_over_old": 1.0320961015628565,
+          "new_faster_pairs": 9,
+          "pairs": 20
+        }
+      },
+      "parity": "Each variant20480 chunks exact to both references, membership identical"
+    },
+    {
+      "case": "nether-custom-bounds",
+      "seed": 123456789,
+      "summary": {
+        "old": {
+          "median_ms": 1825.7823125459254,
+          "p95_ms": 2151.8446564208716,
+          "maximum_ms": 2237.9809580743313,
+          "total_ms": 36020.957998232916,
+          "chunks_per_second": 568.5578934631525,
+          "generation_process_peak_rss_bytes": 2225373184,
+          "program_statuses": [
+            4
+          ]
+        },
+        "new": {
+          "median_ms": 1852.2899999516085,
+          "p95_ms": 2124.6331667061895,
+          "maximum_ms": 2152.2290830034763,
+          "total_ms": 35407.272916752845,
+          "chunks_per_second": 578.4122388683018,
+          "generation_process_peak_rss_bytes": 1889550336,
+          "program_statuses": [
+            4
+          ]
+        },
+        "paired": {
+          "median_new_over_old": 0.9928027823203746,
+          "new_faster_pairs": 11,
+          "pairs": 20
+        }
+      },
+      "parity": "Each variant20480 chunks exact to both references, membership identical"
+    },
+    {
+      "case": "nether-direct-stem",
+      "seed": 42,
+      "summary": {
+        "old": {
+          "median_ms": 1751.0590209858492,
+          "p95_ms": 2970.1904542627744,
+          "maximum_ms": 3005.4417077917606,
+          "total_ms": 38352.621583035216,
+          "chunks_per_second": 533.9921797955805,
+          "generation_process_peak_rss_bytes": 2074787840,
+          "program_statuses": [
+            4
+          ]
+        },
+        "new": {
+          "median_ms": 1965.9814374754205,
+          "p95_ms": 2225.6812348030508,
+          "maximum_ms": 2398.03154184483,
+          "total_ms": 35966.159330215305,
+          "chunks_per_second": 569.4241581918,
+          "generation_process_peak_rss_bytes": 2045460480,
+          "program_statuses": [
+            4
+          ]
+        },
+        "paired": {
+          "median_new_over_old": 0.977440430563703,
+          "new_faster_pairs": 11,
+          "pairs": 20
+        }
+      },
+      "parity": "Each variant20480 chunks exact to both references, membership identical"
+    },
+    {
+      "case": "overworld",
+      "seed": 123456789,
+      "summary": {
+        "old": {
+          "median_ms": 924.3259374052286,
+          "p95_ms": 1320.2722023241222,
+          "maximum_ms": 1351.6656251158565,
+          "total_ms": 18841.364663792774,
+          "chunks_per_second": 1086.9700982623713,
+          "generation_process_peak_rss_bytes": 1589395456,
+          "program_statuses": [
+            4
+          ]
+        },
+        "new": {
+          "median_ms": 892.0530625618994,
+          "p95_ms": 1282.4280894827098,
+          "maximum_ms": 1380.6954168248922,
+          "total_ms": 18592.69395773299,
+          "chunks_per_second": 1101.5079389010245,
+          "generation_process_peak_rss_bytes": 1661009920,
+          "program_statuses": [
+            4
+          ]
+        },
+        "paired": {
+          "median_new_over_old": 0.9635562455560751,
+          "new_faster_pairs": 12,
+          "pairs": 20
+        }
+      },
+      "parity": "Each variant20480 chunks exact to both references, membership identical"
+    }
+  ],
+  "decision": "Hold unmerged. Main standard-seed aggregate throughput is nearly flat (+0.40%); the second seed loses 2.36%. Both standard-seed p95s worsen. Custom bounds improve 1.73% and direct stem 6.64% in aggregate, while the unchanged Overworld control improves 1.34% and direct-stem median worsens. These mixed, host-contended observations do not select the added preparation phase. Preserve exact output/work evidence and the prototype; quiet timing confirmation remains deferred.",
+  "limitations": [
+    "Known host activity; quiet timing and no-regression acceptance remain deferred.",
+    "Preparation count includes already-ready tiles and repeats between roots. It is not unique GPU work.",
+    "Joined preparation wall is nested inside dependency evaluation; worker/GPU waits overlap and must not be summed.",
+    "Existing test-only anchor task attribution excludes the new preparation phase, which remains inside root evaluation and is reported by its own opt-in wall counter.",
+    "RSS peaks include startup/warmup and exclude later NBT comparison; no sustained-memory plateau is established.",
+    "No new concurrent-request, portal or sustained-memory acceptance.",
+    "The overall subsecond median/p95 goal remains active."
+  ],
+  "recovery": {
+    "worktree": "/tmp/retina-nether-target-terrain-preparation",
+    "branch": "codex/nether-target-terrain-preparation",
+    "evidence_root": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20",
+    "drivers": [
+      "target-terrain-normal.py",
+      "target-terrain-measure.py",
+      "target-terrain-counters.py",
+      "target-terrain-counter-summary.py",
+      "target-terrain-paired.py",
+      "target-terrain-report.py"
+    ],
+    "large_artifacts": "Binaries, immutable test executable, generated worlds and logs retained under cycle71 outside Git."
+  }
+}
