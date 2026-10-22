@@ -1,0 +1,1665 @@
+{
+  "cycle": 80,
+  "status": "diagnostic-only-ready-for-pr",
+  "created_utc": "2026-10-22T09:51:22.316563+00:00",
+  "timing_acceptance": false,
+  "source": {
+    "revision": "5e5683f0e067766064acb6c890e57e12e68401ec",
+    "native_tree": "2acba8ceaba9cdbe7870bbca7465adf59badf055",
+    "sha256": "f5b21013adfd50c449ac1391cbff5c73e9db7976161d0e52f850b987edf26d88",
+    "source_status": "",
+    "forced_rebuild": true,
+    "timing_acceptance": false,
+    "test_executable_sha256": "e1bdf5d3b9fcaf1461dc4530b254c894e954dd7291dd2821236f0ad7e1be6974",
+    "native_test_result": [
+      "179",
+      "0",
+      "51"
+    ]
+  },
+  "decision": "Deliver test-only ownership diagnostics and evidence. The production machine-code section and every other section except panic-source metadata match actual preceding main. No cache/eviction/generation algorithm change or speedup is selected, and held C77/C78/C79 remain unmerged.",
+  "ownership_census": {
+    "serial_regions": 300,
+    "joined_concurrent_regions": 14,
+    "joined_caller_counts": [
+      2,
+      4,
+      8
+    ],
+    "serial_rounds": [
+      {
+        "round": 0,
+        "regions": 100,
+        "known_capacity_min_bytes": 296645288,
+        "known_capacity_median_bytes": 330385662.0,
+        "known_capacity_max_bytes": 400358852,
+        "version_min_bytes": 169916720,
+        "version_max_bytes": 278818648,
+        "weak_entry_maximum": 1552
+      },
+      {
+        "round": 1,
+        "regions": 100,
+        "known_capacity_min_bytes": 293849304,
+        "known_capacity_median_bytes": 335280212.0,
+        "known_capacity_max_bytes": 370748760,
+        "version_min_bytes": 175013240,
+        "version_max_bytes": 266580872,
+        "weak_entry_maximum": 1426
+      },
+      {
+        "round": 2,
+        "regions": 100,
+        "known_capacity_min_bytes": 310644976,
+        "known_capacity_median_bytes": 350262804.0,
+        "known_capacity_max_bytes": 389934936,
+        "version_min_bytes": 179897704,
+        "version_max_bytes": 284397312,
+        "weak_entry_maximum": 1555
+      }
+    ],
+    "after_engine_drop": {
+      "caves": {
+        "live_mask_references": 0,
+        "observed_mask_references": 2048
+      },
+      "versions": {
+        "live_interior_run_buffers": 0,
+        "live_snapshots": 0,
+        "observed_interior_run_buffers": 8,
+        "observed_snapshots": 8
+      }
+    },
+    "registered_profile_counts": [
+      3
+    ],
+    "maximum_unique_cached_masks": 16,
+    "maximum_archive_entries": 8,
+    "maximum_archive_bytes": 284397312,
+    "external_strong_references_on_inspected_owners": 0,
+    "scope": "Counts/capacities of actual completed CPU engine caches, including unique shared masks and their column arrays. Does not inventory uncached objects, allocations never sampled, temporary active-job peaks, structure payload bytes, hash bucket/allocator overhead or GPU/driver memory. Serial and joined mixed-context checkpoints are observations, not a proof for all profiles or arbitrary concurrency."
+  },
+  "ordinary_memory_experiment": {
+    "candidate": {
+      "source": {
+        "source": {
+          "revision": "07f1a145ba39058930282367f81f0c9baa427dd8",
+          "native_tree": "4701d209b5c30cdf301359362b59886f90f72bb4",
+          "sha256": "89f893cd1074ca9d4f8c740f9bca655b89d61c44e734377b8366a6e219668561",
+          "source_status": "",
+          "forced_rebuild": true,
+          "timing_acceptance": false,
+          "test_executable_sha256": "24ba4df06f2a14232f1d714bafca06508adfcc536d6e71f155f09b5759e05aa5",
+          "native_test_result": [
+            "180",
+            "0",
+            "57"
+          ]
+        },
+        "driver_command": [
+          "python3",
+          "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/native-memory-retention.py",
+          "--library",
+          "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle79/normal.dylib",
+          "--revision",
+          "07f1a145ba39058930282367f81f0c9baa427dd8",
+          "--workspace",
+          "/tmp/retina-nether-retained-run-pool",
+          "--out",
+          "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle80/candidate"
+        ],
+        "source_library_sha256_now": "89f893cd1074ca9d4f8c740f9bca655b89d61c44e734377b8366a6e219668561",
+        "timing_acceptance": false
+      },
+      "measured_regions": 260,
+      "complete_nbt_instances": 266240,
+      "before_relief": {
+        "rss": {
+          "bytes": 3026780160,
+          "ps_returncode": 0
+        },
+        "allocator": {
+          "blocks_in_use": 31328898,
+          "size_in_use": 920640640,
+          "max_size_in_use": 2684554016,
+          "size_allocated": 760905728
+        }
+      },
+      "relief": {
+        "reported_released_bytes": 0,
+        "diagnostic_ms": 22.67541689798236,
+        "after": {
+          "rss": {
+            "bytes": 2805563392,
+            "ps_returncode": 0
+          },
+          "allocator": {
+            "blocks_in_use": 30726602,
+            "size_in_use": 913314976,
+            "max_size_in_use": 3176824832,
+            "size_allocated": 760905728
+          }
+        }
+      },
+      "after_recovery_memory": {
+        "rss": {
+          "bytes": 2948677632,
+          "ps_returncode": 0
+        },
+        "allocator": {
+          "blocks_in_use": 32999924,
+          "size_in_use": 828206624,
+          "max_size_in_use": 3155820544,
+          "size_allocated": 739901440
+        }
+      },
+      "vm_snapshots": {
+        "after-recovery-vmmap": [
+          "Physical footprint:         1.3G",
+          "Physical footprint (peak):  1.8G",
+          "IOAccelerator (graphics)          97.4M    96.5M    96.5M       0K       0K    96.5M       0K      530",
+          "owned unmapped (graphics)        853.8M   853.8M   853.8M       0K       0K       0K       0K       91"
+        ],
+        "after-relief-vmmap": [
+          "Physical footprint:         693.3M",
+          "Physical footprint (peak):  1.8G",
+          "IOAccelerator (graphics)          97.4M    86.0M    86.0M       0K       0K    86.0M       0K      530",
+          "owned unmapped (graphics)        741.8M   741.8M   277.8M       0K       0K       0K       0K       77"
+        ],
+        "after-warmups-vmmap": [
+          "Physical footprint:         1.4G",
+          "Physical footprint (peak):  1.8G",
+          "IOAccelerator (graphics)          95.4M    94.4M    94.4M       0K       0K    94.4M       0K      530",
+          "owned unmapped (graphics)        851.8M   851.8M   851.8M       0K       0K       0K       0K       91"
+        ],
+        "round-0-vmmap": [
+          "Physical footprint:         1.4G",
+          "Physical footprint (peak):  1.8G",
+          "IOAccelerator (graphics)          97.4M    95.6M    95.6M       0K       0K    95.6M       0K      530",
+          "owned unmapped (graphics)        853.8M   853.8M   853.8M       0K       0K       0K       0K       91"
+        ],
+        "round-1-vmmap": [
+          "Physical footprint:         1.4G",
+          "Physical footprint (peak):  1.8G",
+          "IOAccelerator (graphics)          97.4M    96.6M    96.6M       0K       0K    96.6M       0K      530",
+          "owned unmapped (graphics)        853.8M   853.8M   853.8M       0K       0K       0K       0K       91"
+        ],
+        "round-2-vmmap": [
+          "Physical footprint:         1.4G",
+          "Physical footprint (peak):  1.8G",
+          "IOAccelerator (graphics)          97.4M    96.6M    96.6M       0K       0K    96.6M       0K      530",
+          "owned unmapped (graphics)        853.8M   853.8M   853.8M       0K       0K       0K       0K       91"
+        ]
+      },
+      "scope": "One native engine, three supplied profile files (two normalized profile IDs) and two seeds; full fresh lit MCA in retained output paths. Current RSS sampled after joined region returns; validation begins only after generation. No timing acceptance. Live malloc statistics and post-generation pressure relief distinguish heap retention from RSS; finite observations do not cover every native allocation owner.",
+      "interpretation": "The allocator API reports zero released bytes while adjacent RSS observations fall. malloc statistics and vmmap allocation counts disagree, including size_in_use exceeding size_allocated. Those fields are retained raw but are not accepted as live-allocation or leak evidence. Pressure relief is an external post-generation diagnostic, not production cleanup or a performance improvement."
+    },
+    "main": {
+      "source": {
+        "source": {
+          "revision": "1630ed05d498ac822a98bdd582db6ef7a944f25e",
+          "native_tree": "8c61123185c7aa8d97162a9e3c66bbe1f3461201",
+          "sha256": "33ea38d78ba4aa3517dec07c24ec9c34fe723d309c18db6294a5256e2e03a325",
+          "source_status": "",
+          "forced_rebuild": true,
+          "timing_acceptance": false
+        },
+        "driver_command": [
+          "python3",
+          "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/native-memory-retention.py",
+          "--library",
+          "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle76/merged.dylib",
+          "--revision",
+          "1630ed05d498ac822a98bdd582db6ef7a944f25e",
+          "--workspace",
+          "/tmp/retina-nether-retained-run-pool",
+          "--out",
+          "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle80/main"
+        ],
+        "source_library_sha256_now": "33ea38d78ba4aa3517dec07c24ec9c34fe723d309c18db6294a5256e2e03a325",
+        "timing_acceptance": false
+      },
+      "measured_regions": 260,
+      "complete_nbt_instances": 266240,
+      "before_relief": {
+        "rss": {
+          "bytes": 3024896000,
+          "ps_returncode": 0
+        },
+        "allocator": {
+          "blocks_in_use": 31303005,
+          "size_in_use": 915144416,
+          "max_size_in_use": 2707756832,
+          "size_allocated": 752517120
+        }
+      },
+      "relief": {
+        "reported_released_bytes": 0,
+        "diagnostic_ms": 20.68783389404416,
+        "after": {
+          "rss": {
+            "bytes": 2832564224,
+            "ps_returncode": 0
+          },
+          "allocator": {
+            "blocks_in_use": 30697032,
+            "size_in_use": 915153456,
+            "max_size_in_use": 3168436224,
+            "size_allocated": 752517120
+          }
+        }
+      },
+      "after_recovery_memory": {
+        "rss": {
+          "bytes": 2955722752,
+          "ps_returncode": 0
+        },
+        "allocator": {
+          "blocks_in_use": 32968300,
+          "size_in_use": 818052416,
+          "max_size_in_use": 3134849024,
+          "size_allocated": 718929920
+        }
+      },
+      "vm_snapshots": {
+        "after-recovery-vmmap": [
+          "Physical footprint:         1.3G",
+          "Physical footprint (peak):  1.8G",
+          "IOAccelerator (graphics)          97.4M    96.6M    96.6M       0K       0K    96.6M       0K      530",
+          "owned unmapped (graphics)        800.8M   800.8M   800.8M       0K       0K       0K       0K       89"
+        ],
+        "after-relief-vmmap": [
+          "Physical footprint:         645.7M",
+          "Physical footprint (peak):  1.8G",
+          "IOAccelerator (graphics)          97.4M    86.0M    86.0M       0K       0K    86.0M       0K      530",
+          "owned unmapped (graphics)        688.8M   688.8M   224.8M       0K       0K       0K       0K       75"
+        ],
+        "after-warmups-vmmap": [
+          "Physical footprint:         1.3G",
+          "Physical footprint (peak):  1.8G",
+          "IOAccelerator (graphics)          95.4M    94.6M    94.6M       0K       0K    94.6M       0K      530",
+          "owned unmapped (graphics)        798.8M   798.8M   798.8M       0K       0K       0K       0K       89"
+        ],
+        "round-0-vmmap": [
+          "Physical footprint:         1.4G",
+          "Physical footprint (peak):  1.8G",
+          "IOAccelerator (graphics)          96.6M    95.8M    95.8M       0K    1008K    94.8M       0K      530",
+          "owned unmapped (graphics)        800.0M   800.0M   800.0M       0K       0K       0K       0K       89"
+        ],
+        "round-1-vmmap": [
+          "Physical footprint:         1.3G",
+          "Physical footprint (peak):  1.8G",
+          "IOAccelerator (graphics)          97.4M    96.6M    96.6M       0K       0K    96.6M       0K      530",
+          "owned unmapped (graphics)        800.8M   800.8M   800.8M       0K       0K       0K       0K       89"
+        ],
+        "round-2-vmmap": [
+          "Physical footprint:         1.3G",
+          "Physical footprint (peak):  1.8G",
+          "IOAccelerator (graphics)          97.4M    96.6M    96.6M       0K       0K    96.6M       0K      530",
+          "owned unmapped (graphics)        800.8M   800.8M   800.8M       0K       0K       0K       0K       89"
+        ]
+      },
+      "scope": "One native engine, three supplied profile files (two normalized profile IDs) and two seeds; full fresh lit MCA in retained output paths. Current RSS sampled after joined region returns; validation begins only after generation. No timing acceptance. Live malloc statistics and post-generation pressure relief distinguish heap retention from RSS; finite observations do not cover every native allocation owner.",
+      "interpretation": "The allocator API reports zero released bytes while adjacent RSS observations fall. malloc statistics and vmmap allocation counts disagree, including size_in_use exceeding size_allocated. Those fields are retained raw but are not accepted as live-allocation or leak evidence. Pressure relief is an external post-generation diagnostic, not production cleanup or a performance improvement."
+    }
+  },
+  "sampled_physical_footprint": {
+    "rows": [
+      {
+        "library": "candidate",
+        "phase": "validation",
+        "samples": 9,
+        "physical_footprint_min_bytes": 761744744,
+        "physical_footprint_median_bytes": 761777560,
+        "physical_footprint_max_bytes": 768675224,
+        "resident_median_bytes": 3044900864
+      },
+      {
+        "library": "main",
+        "phase": "generation",
+        "samples": 129,
+        "physical_footprint_min_bytes": 677072136,
+        "physical_footprint_median_bytes": 1449168184,
+        "physical_footprint_max_bytes": 1606749016,
+        "resident_median_bytes": 2872180736
+      },
+      {
+        "library": "main",
+        "phase": "recovery-generation",
+        "samples": 11,
+        "physical_footprint_min_bytes": 1365298440,
+        "physical_footprint_median_bytes": 1419873616,
+        "physical_footprint_max_bytes": 1576783136,
+        "resident_median_bytes": 2995994624
+      },
+      {
+        "library": "main",
+        "phase": "validation",
+        "samples": 21,
+        "physical_footprint_min_bytes": 752913720,
+        "physical_footprint_median_bytes": 752930128,
+        "physical_footprint_max_bytes": 761777488,
+        "resident_median_bytes": 2996748288
+      }
+    ],
+    "scope": "proc_pid_rusage with the local SDK rusage_info_v0 ABI, sampled every two seconds only for children of the owned benchmark driver. Monitoring starts late in candidate validation, so candidate generation has no direct periodic footprint sample. Sample maxima are not exact peaks; VM snapshots have separate rounded quiescent and lifetime-peak observations."
+  },
+  "validation": {
+    "native_tests": [
+      "179",
+      "0",
+      "51"
+    ],
+    "explicit_gpu_tests": 3,
+    "census_full_nbt_instances": 321536,
+    "ordinary_memory_full_nbt_instances": 532480,
+    "normal_full_nbt_instances": 102400,
+    "pre_pr_total_measured_instances": 956416,
+    "comparison_scope": "Complete decompressed NBT and region membership. Only MCA timestamps/compression representation excluded. Counts include repeated coordinates and several binaries; they are not unique-world coverage.",
+    "native_symbols": {
+      "command": [
+        "nm",
+        "-a",
+        "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle80/normal.dylib"
+      ],
+      "matching_symbols": [],
+      "sha256": "f5b21013adfd50c449ac1391cbff5c73e9db7976161d0e52f850b987edf26d88"
+    },
+    "binary_comparison": {
+      "old_library": "cycle76/merged.dylib",
+      "new_library": "cycle80/normal.dylib",
+      "old_sha256": "33ea38d78ba4aa3517dec07c24ec9c34fe723d309c18db6294a5256e2e03a325",
+      "new_sha256": "f5b21013adfd50c449ac1391cbff5c73e9db7976161d0e52f850b987edf26d88",
+      "old": {
+        "__TEXT,__text": {
+          "size": 5409176,
+          "offset": 2776,
+          "sha256": "91bef42b702bd68f5e21b71cfa0e77f0d22b77b393b128c6ec3f900ffa81d427"
+        },
+        "__TEXT,__stubs": {
+          "size": 1992,
+          "offset": 5411952,
+          "sha256": "809c1392511751091c4c209c33f7706719491760b885270cc985cb6bf59e7b0c"
+        },
+        "__TEXT,__stub_helper": {
+          "size": 2016,
+          "offset": 5413944,
+          "sha256": "c44bfcf2ff9d091192ba5b233aec4abf4f50df1354e1ae80006a2eb1e8b1bb16"
+        },
+        "__TEXT,__const": {
+          "size": 485216,
+          "offset": 5416064,
+          "sha256": "49714f0ac573f68f378bcdc1bff5415c682f21f8e9dbd551f2b5391756b6ce30"
+        },
+        "__TEXT,__gcc_except_tab": {
+          "size": 234596,
+          "offset": 5901280,
+          "sha256": "5516a024a87df4e81f60984c8ebaa84710526d994c7ece462e003deaf51c6061"
+        },
+        "__TEXT,__cstring": {
+          "size": 185138,
+          "offset": 6135876,
+          "sha256": "87fdc0b24cafbd64c4cc34404eea1cccdaf4c9ba8262056f9c142658a8cc55e5"
+        },
+        "__TEXT,__unwind_info": {
+          "size": 101728,
+          "offset": 6321016,
+          "sha256": "c0871ab5e1cb5075c1074e05cfddb2c12ccea85a5df5d502af45746352ad011b"
+        },
+        "__TEXT,__eh_frame": {
+          "size": 602100,
+          "offset": 6422744,
+          "sha256": "6c8d731f19b827c37f43fee35c7ff4b7af79e971b95360b9f74b40d88704f663"
+        },
+        "__DATA_CONST,__const": {
+          "size": 200784,
+          "offset": 7028736,
+          "sha256": "c59bbc5e1b53f6d4e4e42006aa686bf854d09946db3005be535da93832d64c4a"
+        },
+        "__DATA_CONST,__got": {
+          "size": 64,
+          "offset": 7229520,
+          "sha256": "a0471e2e0ecc1dc04d5736ce75a12fab8733457c2af88779bc82b7f90ea7be1d"
+        },
+        "__DATA,__la_symbol_ptr": {
+          "size": 1328,
+          "offset": 7241728,
+          "sha256": "0896765adc17f1b3ba06d0d60b036dff02d08e9432345b505aa4c6a65bce628a"
+        },
+        "__DATA,__data": {
+          "size": 2744,
+          "offset": 7243056,
+          "sha256": "0f790fc110c30d380ca3a1e996ac57df34ff3e0f7b602aa4ef7dd3f13ce41a72"
+        },
+        "__DATA,__thread_vars": {
+          "size": 408,
+          "offset": 7245800,
+          "sha256": "bcf10ee3b605d8c6eeab686f8f1336101cfbaa7c8c8d1be4b2260234db0d5107"
+        },
+        "__DATA,__thread_data": {
+          "size": 73,
+          "offset": 7246208,
+          "sha256": "e737dc44c77884fbc8997e7a78bf8c7f5e7b091292d86b5640ec05dd1ac29ba3"
+        },
+        "__DATA,__thread_bss": {
+          "size": 560,
+          "offset": 0,
+          "sha256": null
+        },
+        "__DATA,__bss": {
+          "size": 1712,
+          "offset": 0,
+          "sha256": null
+        },
+        "__DATA,__common": {
+          "size": 1832,
+          "offset": 0,
+          "sha256": null
+        }
+      },
+      "new": {
+        "__TEXT,__text": {
+          "size": 5409176,
+          "offset": 2776,
+          "sha256": "91bef42b702bd68f5e21b71cfa0e77f0d22b77b393b128c6ec3f900ffa81d427"
+        },
+        "__TEXT,__stubs": {
+          "size": 1992,
+          "offset": 5411952,
+          "sha256": "809c1392511751091c4c209c33f7706719491760b885270cc985cb6bf59e7b0c"
+        },
+        "__TEXT,__stub_helper": {
+          "size": 2016,
+          "offset": 5413944,
+          "sha256": "c44bfcf2ff9d091192ba5b233aec4abf4f50df1354e1ae80006a2eb1e8b1bb16"
+        },
+        "__TEXT,__const": {
+          "size": 485216,
+          "offset": 5416064,
+          "sha256": "49714f0ac573f68f378bcdc1bff5415c682f21f8e9dbd551f2b5391756b6ce30"
+        },
+        "__TEXT,__gcc_except_tab": {
+          "size": 234596,
+          "offset": 5901280,
+          "sha256": "5516a024a87df4e81f60984c8ebaa84710526d994c7ece462e003deaf51c6061"
+        },
+        "__TEXT,__cstring": {
+          "size": 185138,
+          "offset": 6135876,
+          "sha256": "87fdc0b24cafbd64c4cc34404eea1cccdaf4c9ba8262056f9c142658a8cc55e5"
+        },
+        "__TEXT,__unwind_info": {
+          "size": 101728,
+          "offset": 6321016,
+          "sha256": "c0871ab5e1cb5075c1074e05cfddb2c12ccea85a5df5d502af45746352ad011b"
+        },
+        "__TEXT,__eh_frame": {
+          "size": 602100,
+          "offset": 6422744,
+          "sha256": "6c8d731f19b827c37f43fee35c7ff4b7af79e971b95360b9f74b40d88704f663"
+        },
+        "__DATA_CONST,__const": {
+          "size": 200784,
+          "offset": 7028736,
+          "sha256": "87fe45c0c4c37807377ca0cd74f71311ea50490b8b7d19686dd3a192c3a709d7"
+        },
+        "__DATA_CONST,__got": {
+          "size": 64,
+          "offset": 7229520,
+          "sha256": "a0471e2e0ecc1dc04d5736ce75a12fab8733457c2af88779bc82b7f90ea7be1d"
+        },
+        "__DATA,__la_symbol_ptr": {
+          "size": 1328,
+          "offset": 7241728,
+          "sha256": "0896765adc17f1b3ba06d0d60b036dff02d08e9432345b505aa4c6a65bce628a"
+        },
+        "__DATA,__data": {
+          "size": 2744,
+          "offset": 7243056,
+          "sha256": "0f790fc110c30d380ca3a1e996ac57df34ff3e0f7b602aa4ef7dd3f13ce41a72"
+        },
+        "__DATA,__thread_vars": {
+          "size": 408,
+          "offset": 7245800,
+          "sha256": "bcf10ee3b605d8c6eeab686f8f1336101cfbaa7c8c8d1be4b2260234db0d5107"
+        },
+        "__DATA,__thread_data": {
+          "size": 73,
+          "offset": 7246208,
+          "sha256": "e737dc44c77884fbc8997e7a78bf8c7f5e7b091292d86b5640ec05dd1ac29ba3"
+        },
+        "__DATA,__thread_bss": {
+          "size": 560,
+          "offset": 0,
+          "sha256": null
+        },
+        "__DATA,__bss": {
+          "size": 1712,
+          "offset": 0,
+          "sha256": null
+        },
+        "__DATA,__common": {
+          "size": 1832,
+          "offset": 0,
+          "sha256": null
+        }
+      },
+      "different_sections": [
+        "__DATA_CONST,__const"
+      ],
+      "same_file_length": true,
+      "different_file_bytes": 390,
+      "machine_code_identical": true
+    },
+    "file_difference_classification": {
+      "difference_byte_counts": {
+        "load-command UUID": 16,
+        "panic source locations": 152,
+        "code signature": 222
+      },
+      "unclassified_offsets": [],
+      "range_source": "Actual Mach-O load commands and section metadata",
+      "same_size": true
+    },
+    "panic_location_review": {
+      "modified_u32_fields": 149,
+      "delta_counts": {
+        "24": 2,
+        "5": 6,
+        "2": 36,
+        "14": 99,
+        "6": 6
+      },
+      "all_deltas_match_inserted_test_only_source_lines": true,
+      "fields": [
+        {
+          "file_offset": 7038984,
+          "old_u32": 190,
+          "new_u32": 214,
+          "delta": 24
+        },
+        {
+          "file_offset": 7039008,
+          "old_u32": 197,
+          "new_u32": 221,
+          "delta": 24
+        },
+        {
+          "file_offset": 7039200,
+          "old_u32": 128,
+          "new_u32": 133,
+          "delta": 5
+        },
+        {
+          "file_offset": 7039224,
+          "old_u32": 134,
+          "new_u32": 139,
+          "delta": 5
+        },
+        {
+          "file_offset": 7039248,
+          "old_u32": 129,
+          "new_u32": 134,
+          "delta": 5
+        },
+        {
+          "file_offset": 7039272,
+          "old_u32": 111,
+          "new_u32": 116,
+          "delta": 5
+        },
+        {
+          "file_offset": 7039296,
+          "old_u32": 80,
+          "new_u32": 85,
+          "delta": 5
+        },
+        {
+          "file_offset": 7039320,
+          "old_u32": 87,
+          "new_u32": 92,
+          "delta": 5
+        },
+        {
+          "file_offset": 7046760,
+          "old_u32": 1353,
+          "new_u32": 1355,
+          "delta": 2
+        },
+        {
+          "file_offset": 7046784,
+          "old_u32": 1354,
+          "new_u32": 1356,
+          "delta": 2
+        },
+        {
+          "file_offset": 7046808,
+          "old_u32": 1347,
+          "new_u32": 1349,
+          "delta": 2
+        },
+        {
+          "file_offset": 7046832,
+          "old_u32": 1302,
+          "new_u32": 1304,
+          "delta": 2
+        },
+        {
+          "file_offset": 7046856,
+          "old_u32": 1305,
+          "new_u32": 1307,
+          "delta": 2
+        },
+        {
+          "file_offset": 7046880,
+          "old_u32": 1306,
+          "new_u32": 1308,
+          "delta": 2
+        },
+        {
+          "file_offset": 7069040,
+          "old_u32": 1423,
+          "new_u32": 1437,
+          "delta": 14
+        },
+        {
+          "file_offset": 7069064,
+          "old_u32": 1556,
+          "new_u32": 1570,
+          "delta": 14
+        },
+        {
+          "file_offset": 7069088,
+          "old_u32": 1564,
+          "new_u32": 1578,
+          "delta": 14
+        },
+        {
+          "file_offset": 7069112,
+          "old_u32": 1605,
+          "new_u32": 1619,
+          "delta": 14
+        },
+        {
+          "file_offset": 7069136,
+          "old_u32": 1609,
+          "new_u32": 1623,
+          "delta": 14
+        },
+        {
+          "file_offset": 7069160,
+          "old_u32": 1585,
+          "new_u32": 1599,
+          "delta": 14
+        },
+        {
+          "file_offset": 7069184,
+          "old_u32": 1591,
+          "new_u32": 1605,
+          "delta": 14
+        },
+        {
+          "file_offset": 7069208,
+          "old_u32": 1591,
+          "new_u32": 1605,
+          "delta": 14
+        },
+        {
+          "file_offset": 7069232,
+          "old_u32": 1795,
+          "new_u32": 1809,
+          "delta": 14
+        },
+        {
+          "file_offset": 7069256,
+          "old_u32": 1795,
+          "new_u32": 1809,
+          "delta": 14
+        },
+        {
+          "file_offset": 7069280,
+          "old_u32": 1797,
+          "new_u32": 1811,
+          "delta": 14
+        },
+        {
+          "file_offset": 7069304,
+          "old_u32": 1837,
+          "new_u32": 1851,
+          "delta": 14
+        },
+        {
+          "file_offset": 7069328,
+          "old_u32": 2041,
+          "new_u32": 2055,
+          "delta": 14
+        },
+        {
+          "file_offset": 7069352,
+          "old_u32": 2046,
+          "new_u32": 2060,
+          "delta": 14
+        },
+        {
+          "file_offset": 7069376,
+          "old_u32": 1856,
+          "new_u32": 1870,
+          "delta": 14
+        },
+        {
+          "file_offset": 7069400,
+          "old_u32": 1862,
+          "new_u32": 1876,
+          "delta": 14
+        },
+        {
+          "file_offset": 7069440,
+          "old_u32": 1873,
+          "new_u32": 1887,
+          "delta": 14
+        },
+        {
+          "file_offset": 7069464,
+          "old_u32": 1893,
+          "new_u32": 1907,
+          "delta": 14
+        },
+        {
+          "file_offset": 7069488,
+          "old_u32": 1900,
+          "new_u32": 1914,
+          "delta": 14
+        },
+        {
+          "file_offset": 7069512,
+          "old_u32": 1910,
+          "new_u32": 1924,
+          "delta": 14
+        },
+        {
+          "file_offset": 7069536,
+          "old_u32": 1915,
+          "new_u32": 1929,
+          "delta": 14
+        },
+        {
+          "file_offset": 7069672,
+          "old_u32": 1941,
+          "new_u32": 1955,
+          "delta": 14
+        },
+        {
+          "file_offset": 7069696,
+          "old_u32": 2000,
+          "new_u32": 2014,
+          "delta": 14
+        },
+        {
+          "file_offset": 7069720,
+          "old_u32": 2000,
+          "new_u32": 2014,
+          "delta": 14
+        },
+        {
+          "file_offset": 7069744,
+          "old_u32": 2003,
+          "new_u32": 2017,
+          "delta": 14
+        },
+        {
+          "file_offset": 7069768,
+          "old_u32": 1821,
+          "new_u32": 1835,
+          "delta": 14
+        },
+        {
+          "file_offset": 7069792,
+          "old_u32": 1822,
+          "new_u32": 1836,
+          "delta": 14
+        },
+        {
+          "file_offset": 7069816,
+          "old_u32": 1824,
+          "new_u32": 1838,
+          "delta": 14
+        },
+        {
+          "file_offset": 7069840,
+          "old_u32": 1976,
+          "new_u32": 1990,
+          "delta": 14
+        },
+        {
+          "file_offset": 7069864,
+          "old_u32": 696,
+          "new_u32": 710,
+          "delta": 14
+        },
+        {
+          "file_offset": 7069888,
+          "old_u32": 697,
+          "new_u32": 711,
+          "delta": 14
+        },
+        {
+          "file_offset": 7069912,
+          "old_u32": 699,
+          "new_u32": 713,
+          "delta": 14
+        },
+        {
+          "file_offset": 7069936,
+          "old_u32": 700,
+          "new_u32": 714,
+          "delta": 14
+        },
+        {
+          "file_offset": 7069960,
+          "old_u32": 792,
+          "new_u32": 806,
+          "delta": 14
+        },
+        {
+          "file_offset": 7069984,
+          "old_u32": 792,
+          "new_u32": 806,
+          "delta": 14
+        },
+        {
+          "file_offset": 7070008,
+          "old_u32": 917,
+          "new_u32": 931,
+          "delta": 14
+        },
+        {
+          "file_offset": 7070032,
+          "old_u32": 917,
+          "new_u32": 931,
+          "delta": 14
+        },
+        {
+          "file_offset": 7070056,
+          "old_u32": 935,
+          "new_u32": 949,
+          "delta": 14
+        },
+        {
+          "file_offset": 7070080,
+          "old_u32": 937,
+          "new_u32": 951,
+          "delta": 14
+        },
+        {
+          "file_offset": 7070104,
+          "old_u32": 933,
+          "new_u32": 947,
+          "delta": 14
+        },
+        {
+          "file_offset": 7070128,
+          "old_u32": 1068,
+          "new_u32": 1082,
+          "delta": 14
+        },
+        {
+          "file_offset": 7070152,
+          "old_u32": 1073,
+          "new_u32": 1087,
+          "delta": 14
+        },
+        {
+          "file_offset": 7070176,
+          "old_u32": 657,
+          "new_u32": 671,
+          "delta": 14
+        },
+        {
+          "file_offset": 7070200,
+          "old_u32": 552,
+          "new_u32": 566,
+          "delta": 14
+        },
+        {
+          "file_offset": 7070224,
+          "old_u32": 543,
+          "new_u32": 557,
+          "delta": 14
+        },
+        {
+          "file_offset": 7070248,
+          "old_u32": 530,
+          "new_u32": 544,
+          "delta": 14
+        },
+        {
+          "file_offset": 7070272,
+          "old_u32": 546,
+          "new_u32": 560,
+          "delta": 14
+        },
+        {
+          "file_offset": 7070296,
+          "old_u32": 534,
+          "new_u32": 548,
+          "delta": 14
+        },
+        {
+          "file_offset": 7070320,
+          "old_u32": 558,
+          "new_u32": 572,
+          "delta": 14
+        },
+        {
+          "file_offset": 7070344,
+          "old_u32": 1180,
+          "new_u32": 1194,
+          "delta": 14
+        },
+        {
+          "file_offset": 7070368,
+          "old_u32": 1202,
+          "new_u32": 1216,
+          "delta": 14
+        },
+        {
+          "file_offset": 7070392,
+          "old_u32": 1221,
+          "new_u32": 1235,
+          "delta": 14
+        },
+        {
+          "file_offset": 7070416,
+          "old_u32": 1303,
+          "new_u32": 1317,
+          "delta": 14
+        },
+        {
+          "file_offset": 7070440,
+          "old_u32": 1304,
+          "new_u32": 1318,
+          "delta": 14
+        },
+        {
+          "file_offset": 7070464,
+          "old_u32": 1305,
+          "new_u32": 1319,
+          "delta": 14
+        },
+        {
+          "file_offset": 7070488,
+          "old_u32": 1305,
+          "new_u32": 1319,
+          "delta": 14
+        },
+        {
+          "file_offset": 7070512,
+          "old_u32": 1329,
+          "new_u32": 1343,
+          "delta": 14
+        },
+        {
+          "file_offset": 7070536,
+          "old_u32": 1329,
+          "new_u32": 1343,
+          "delta": 14
+        },
+        {
+          "file_offset": 7070560,
+          "old_u32": 1372,
+          "new_u32": 1386,
+          "delta": 14
+        },
+        {
+          "file_offset": 7070584,
+          "old_u32": 1255,
+          "new_u32": 1269,
+          "delta": 14
+        },
+        {
+          "file_offset": 7070608,
+          "old_u32": 1253,
+          "new_u32": 1267,
+          "delta": 14
+        },
+        {
+          "file_offset": 7070632,
+          "old_u32": 1302,
+          "new_u32": 1316,
+          "delta": 14
+        },
+        {
+          "file_offset": 7070656,
+          "old_u32": 1037,
+          "new_u32": 1051,
+          "delta": 14
+        },
+        {
+          "file_offset": 7070680,
+          "old_u32": 1037,
+          "new_u32": 1051,
+          "delta": 14
+        },
+        {
+          "file_offset": 7070704,
+          "old_u32": 1044,
+          "new_u32": 1058,
+          "delta": 14
+        },
+        {
+          "file_offset": 7070728,
+          "old_u32": 1044,
+          "new_u32": 1058,
+          "delta": 14
+        },
+        {
+          "file_offset": 7070776,
+          "old_u32": 1679,
+          "new_u32": 1693,
+          "delta": 14
+        },
+        {
+          "file_offset": 7070800,
+          "old_u32": 1703,
+          "new_u32": 1717,
+          "delta": 14
+        },
+        {
+          "file_offset": 7070824,
+          "old_u32": 1736,
+          "new_u32": 1750,
+          "delta": 14
+        },
+        {
+          "file_offset": 7070848,
+          "old_u32": 1711,
+          "new_u32": 1725,
+          "delta": 14
+        },
+        {
+          "file_offset": 7070872,
+          "old_u32": 1533,
+          "new_u32": 1547,
+          "delta": 14
+        },
+        {
+          "file_offset": 7070896,
+          "old_u32": 1091,
+          "new_u32": 1105,
+          "delta": 14
+        },
+        {
+          "file_offset": 7070920,
+          "old_u32": 1108,
+          "new_u32": 1122,
+          "delta": 14
+        },
+        {
+          "file_offset": 7070944,
+          "old_u32": 1109,
+          "new_u32": 1123,
+          "delta": 14
+        },
+        {
+          "file_offset": 7070968,
+          "old_u32": 1141,
+          "new_u32": 1155,
+          "delta": 14
+        },
+        {
+          "file_offset": 7070992,
+          "old_u32": 1134,
+          "new_u32": 1148,
+          "delta": 14
+        },
+        {
+          "file_offset": 7071016,
+          "old_u32": 289,
+          "new_u32": 303,
+          "delta": 14
+        },
+        {
+          "file_offset": 7071040,
+          "old_u32": 309,
+          "new_u32": 323,
+          "delta": 14
+        },
+        {
+          "file_offset": 7071064,
+          "old_u32": 360,
+          "new_u32": 374,
+          "delta": 14
+        },
+        {
+          "file_offset": 7071088,
+          "old_u32": 233,
+          "new_u32": 247,
+          "delta": 14
+        },
+        {
+          "file_offset": 7071112,
+          "old_u32": 472,
+          "new_u32": 486,
+          "delta": 14
+        },
+        {
+          "file_offset": 7071136,
+          "old_u32": 475,
+          "new_u32": 489,
+          "delta": 14
+        },
+        {
+          "file_offset": 7071160,
+          "old_u32": 1473,
+          "new_u32": 1487,
+          "delta": 14
+        },
+        {
+          "file_offset": 7071184,
+          "old_u32": 1474,
+          "new_u32": 1488,
+          "delta": 14
+        },
+        {
+          "file_offset": 7071208,
+          "old_u32": 1475,
+          "new_u32": 1489,
+          "delta": 14
+        },
+        {
+          "file_offset": 7071232,
+          "old_u32": 1484,
+          "new_u32": 1498,
+          "delta": 14
+        },
+        {
+          "file_offset": 7071256,
+          "old_u32": 1484,
+          "new_u32": 1498,
+          "delta": 14
+        },
+        {
+          "file_offset": 7071280,
+          "old_u32": 1484,
+          "new_u32": 1498,
+          "delta": 14
+        },
+        {
+          "file_offset": 7071304,
+          "old_u32": 1485,
+          "new_u32": 1499,
+          "delta": 14
+        },
+        {
+          "file_offset": 7071328,
+          "old_u32": 1501,
+          "new_u32": 1515,
+          "delta": 14
+        },
+        {
+          "file_offset": 7071352,
+          "old_u32": 458,
+          "new_u32": 472,
+          "delta": 14
+        },
+        {
+          "file_offset": 7072624,
+          "old_u32": 316,
+          "new_u32": 330,
+          "delta": 14
+        },
+        {
+          "file_offset": 7072648,
+          "old_u32": 317,
+          "new_u32": 331,
+          "delta": 14
+        },
+        {
+          "file_offset": 7072688,
+          "old_u32": 606,
+          "new_u32": 620,
+          "delta": 14
+        },
+        {
+          "file_offset": 7072712,
+          "old_u32": 625,
+          "new_u32": 639,
+          "delta": 14
+        },
+        {
+          "file_offset": 7072736,
+          "old_u32": 625,
+          "new_u32": 639,
+          "delta": 14
+        },
+        {
+          "file_offset": 7072760,
+          "old_u32": 626,
+          "new_u32": 640,
+          "delta": 14
+        },
+        {
+          "file_offset": 7072784,
+          "old_u32": 626,
+          "new_u32": 640,
+          "delta": 14
+        },
+        {
+          "file_offset": 7072808,
+          "old_u32": 620,
+          "new_u32": 634,
+          "delta": 14
+        },
+        {
+          "file_offset": 7072832,
+          "old_u32": 1656,
+          "new_u32": 1658,
+          "delta": 2
+        },
+        {
+          "file_offset": 7072904,
+          "old_u32": 206,
+          "new_u32": 208,
+          "delta": 2
+        },
+        {
+          "file_offset": 7072928,
+          "old_u32": 199,
+          "new_u32": 201,
+          "delta": 2
+        },
+        {
+          "file_offset": 7072952,
+          "old_u32": 202,
+          "new_u32": 204,
+          "delta": 2
+        },
+        {
+          "file_offset": 7072976,
+          "old_u32": 848,
+          "new_u32": 850,
+          "delta": 2
+        },
+        {
+          "file_offset": 7073000,
+          "old_u32": 835,
+          "new_u32": 837,
+          "delta": 2
+        },
+        {
+          "file_offset": 7073024,
+          "old_u32": 885,
+          "new_u32": 887,
+          "delta": 2
+        },
+        {
+          "file_offset": 7073048,
+          "old_u32": 1239,
+          "new_u32": 1241,
+          "delta": 2
+        },
+        {
+          "file_offset": 7073072,
+          "old_u32": 1204,
+          "new_u32": 1206,
+          "delta": 2
+        },
+        {
+          "file_offset": 7073096,
+          "old_u32": 762,
+          "new_u32": 764,
+          "delta": 2
+        },
+        {
+          "file_offset": 7073120,
+          "old_u32": 747,
+          "new_u32": 749,
+          "delta": 2
+        },
+        {
+          "file_offset": 7073144,
+          "old_u32": 748,
+          "new_u32": 750,
+          "delta": 2
+        },
+        {
+          "file_offset": 7073168,
+          "old_u32": 748,
+          "new_u32": 750,
+          "delta": 2
+        },
+        {
+          "file_offset": 7073192,
+          "old_u32": 750,
+          "new_u32": 752,
+          "delta": 2
+        },
+        {
+          "file_offset": 7073216,
+          "old_u32": 750,
+          "new_u32": 752,
+          "delta": 2
+        },
+        {
+          "file_offset": 7073240,
+          "old_u32": 755,
+          "new_u32": 757,
+          "delta": 2
+        },
+        {
+          "file_offset": 7073264,
+          "old_u32": 755,
+          "new_u32": 757,
+          "delta": 2
+        },
+        {
+          "file_offset": 7073288,
+          "old_u32": 731,
+          "new_u32": 733,
+          "delta": 2
+        },
+        {
+          "file_offset": 7073312,
+          "old_u32": 731,
+          "new_u32": 733,
+          "delta": 2
+        },
+        {
+          "file_offset": 7073336,
+          "old_u32": 819,
+          "new_u32": 821,
+          "delta": 2
+        },
+        {
+          "file_offset": 7073360,
+          "old_u32": 1185,
+          "new_u32": 1187,
+          "delta": 2
+        },
+        {
+          "file_offset": 7073384,
+          "old_u32": 975,
+          "new_u32": 977,
+          "delta": 2
+        },
+        {
+          "file_offset": 7073408,
+          "old_u32": 914,
+          "new_u32": 916,
+          "delta": 2
+        },
+        {
+          "file_offset": 7073432,
+          "old_u32": 1356,
+          "new_u32": 1358,
+          "delta": 2
+        },
+        {
+          "file_offset": 7073456,
+          "old_u32": 1153,
+          "new_u32": 1155,
+          "delta": 2
+        },
+        {
+          "file_offset": 7073480,
+          "old_u32": 595,
+          "new_u32": 597,
+          "delta": 2
+        },
+        {
+          "file_offset": 7073504,
+          "old_u32": 306,
+          "new_u32": 308,
+          "delta": 2
+        },
+        {
+          "file_offset": 7074080,
+          "old_u32": 2346,
+          "new_u32": 2348,
+          "delta": 2
+        },
+        {
+          "file_offset": 7077688,
+          "old_u32": 237,
+          "new_u32": 243,
+          "delta": 6
+        },
+        {
+          "file_offset": 7077712,
+          "old_u32": 164,
+          "new_u32": 170,
+          "delta": 6
+        },
+        {
+          "file_offset": 7077736,
+          "old_u32": 165,
+          "new_u32": 171,
+          "delta": 6
+        },
+        {
+          "file_offset": 7077760,
+          "old_u32": 165,
+          "new_u32": 171,
+          "delta": 6
+        },
+        {
+          "file_offset": 7077784,
+          "old_u32": 113,
+          "new_u32": 119,
+          "delta": 6
+        },
+        {
+          "file_offset": 7077808,
+          "old_u32": 116,
+          "new_u32": 122,
+          "delta": 6
+        },
+        {
+          "file_offset": 7077832,
+          "old_u32": 1687,
+          "new_u32": 1689,
+          "delta": 2
+        },
+        {
+          "file_offset": 7077976,
+          "old_u32": 1626,
+          "new_u32": 1628,
+          "delta": 2
+        }
+      ],
+      "scope": "All modified section data is in __DATA_CONST,__const. Its changed aligned u32 values move by inserted test-only line counts; source locations move while normal machine code and every other section remain identical. Whole-file differences also include load-command UUID/signature data outside sections."
+    },
+    "terminal": {
+      "native": {
+        "session": 77137,
+        "exit_code": 0
+      },
+      "proof": {
+        "session": 30537,
+        "exit_code": null,
+        "process_absent": true,
+        "census_comparison_complete": true,
+        "ordinary_case_return_codes": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "all_case_artifacts_complete": true,
+        "outer_exit_observation": "Terminal tool response was lost during context compaction; subsequent write_stdin reports unknown process. Direct process inventory shows no driver or suite process. All five suite workers record return code 0 and complete comparisons. No outer exit code inferred."
+      },
+      "source_and_head_frozen_through_all_drivers": true
+    },
+    "initial_driver_findings": {
+      "initial_build_session": {
+        "id": 45922,
+        "exit_code": 1,
+        "reason": "missing external report-path variable; fixed without native source change"
+      },
+      "initial_census_session": {
+        "id": 16942,
+        "exit_code": 1,
+        "reason": "New test over-constrained dead weak entries. Actual cache sweep can run while starts are pinned by the current job, so weak-only entries can remain after that job completes. Corrected criterion checks live weak entries equal retained cache entries and no external strong references."
+      },
+      "all_terminal": true,
+      "source_frozen_through_terminal": true,
+      "initial_source": {
+        "revision": "ec9f326dfd648d03e36e04a5191f66eb5a412583",
+        "native_tree": "4be82d688504184e465cffa1a32607582bb15232",
+        "sha256": "f5b21013adfd50c449ac1391cbff5c73e9db7976161d0e52f850b987edf26d88",
+        "source_status": "",
+        "forced_rebuild": true,
+        "timing_acceptance": false,
+        "test_executable_sha256": "d2e0bfefa718b145e830f4f8b636bd56ab745c198fd8be65c087092506e967c1",
+        "native_test_result": [
+          "179",
+          "0",
+          "51"
+        ]
+      },
+      "raw_census": "census/report.json",
+      "preserved_artifacts": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle80/pre-refinement",
+      "library_path_history": {
+        "original": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle80/normal.dylib",
+        "retained": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle80/pre-refinement/normal.dylib",
+        "sha256": "f5b21013adfd50c449ac1391cbff5c73e9db7976161d0e52f850b987edf26d88"
+      }
+    }
+  },
+  "ordinary_full_observations": [
+    {
+      "case": "nether-main-run0",
+      "median_ms": 882.9193750862032,
+      "p95_ms": 1177.7951792813838,
+      "maximum_ms": 1298.2015840243548,
+      "total_ms": 18185.014582937583,
+      "chunks_per_second": 1126.202011364661,
+      "generation_peak_rss_bytes": 2333638656,
+      "comparisons": [
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/nether-main-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        },
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle76/merged-full/nether-main-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        }
+      ]
+    },
+    {
+      "case": "nether-second-seed-run0",
+      "median_ms": 1038.5299165500328,
+      "p95_ms": 1396.0300670703875,
+      "maximum_ms": 1640.2684168424457,
+      "total_ms": 20813.863249961287,
+      "chunks_per_second": 983.9595731963932,
+      "generation_peak_rss_bytes": 2327199744,
+      "comparisons": [
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/nether-second-seed-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        },
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle76/merged-full/nether-second-seed-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        }
+      ]
+    },
+    {
+      "case": "nether-custom-bounds-run0",
+      "median_ms": 601.0851664468646,
+      "p95_ms": 728.692637081258,
+      "maximum_ms": 783.5894171148539,
+      "total_ms": 12416.271290974692,
+      "chunks_per_second": 1649.4484954502227,
+      "generation_peak_rss_bytes": 1964130304,
+      "comparisons": [
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/nether-custom-bounds-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        },
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle76/merged-full/nether-custom-bounds-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        }
+      ]
+    },
+    {
+      "case": "nether-direct-stem-run0",
+      "median_ms": 632.781020947732,
+      "p95_ms": 773.0370313045569,
+      "maximum_ms": 799.625749932602,
+      "total_ms": 12917.494874913245,
+      "chunks_per_second": 1585.44672928601,
+      "generation_peak_rss_bytes": 1914912768,
+      "comparisons": [
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/nether-direct-stem-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        },
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle76/merged-full/nether-direct-stem-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        }
+      ]
+    },
+    {
+      "case": "overworld-run0",
+      "median_ms": 285.7887289719656,
+      "p95_ms": 393.0266522918828,
+      "maximum_ms": 435.18341705203056,
+      "total_ms": 5959.645833820105,
+      "chunks_per_second": 3436.445817598597,
+      "generation_peak_rss_bytes": 1574993920,
+      "comparisons": [
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/overworld-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        },
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle76/merged-full/overworld-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        }
+      ]
+    }
+  ],
+  "limitations": [
+    "Timing confirmation remains deferred by the user. This cycle makes no quiet speedup, subsecond or overall no-regression claim.",
+    "Census covers actual sampled CPU owners, not all process memory. VM regions, RSS, physical footprint and allocator statistics measure different things and must not be summed or substituted.",
+    "Dead weak-reference control blocks may remain until the next insertion sweep without retaining structure payloads; their count has no fixed 256-entry bound while a job owns starts.",
+    "The ordinary memory experiment covers four Nether case/seed combinations and two normalized profiles. The ownership census also covers Overworld and has three normalized profiles. Do not add their byte counts as one process breakdown.",
+    "No new portal/runtime acceptance is claimed. Diagnostic-only normal code remains identical to preceding main; the tested held C79 runtime evidence stays separate."
+  ],
+  "followup_opportunity": {
+    "hypothesis": "Per-job allocation churn and large graphics scratch may explain much of the retained/reusable process footprint. No leaked inspected cache payload was observed.",
+    "expected_gain": "Unquantified; reusable VM categories are not a promise of memory or latency savings.",
+    "risk": "Medium for changing intermediate state or scratch lifetimes; whole-region and concurrent performance may regress.",
+    "complexity": "Requires direct allocation-owner/phase attribution. Existing held allocation and export candidates should be measured before duplicating them.",
+    "validation": "Keep current cache bounds and generation semantics; compare complete NBT, joined owner counts, active peaks, and ordinary whole-region/concurrent timing when timing confirmation resumes."
+  },
+  "recovery": {
+    "worktree": "/tmp/retina-nether-retention-census",
+    "branch": "codex/nether-retention-census",
+    "evidence_root": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle80",
+    "commands": [
+      "python3 native-memory-retention-driver.py",
+      "python3 retention-census-normal.py",
+      "python3 retention-census-proof.py",
+      "python3 retention-census-report.py"
+    ],
+    "driver_cwd": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20",
+    "output_directories": "Drivers use fresh output directories and preserve existing evidence; choose new output paths for a rerun.",
+    "held_candidates_preserved": true
+  }
+}
