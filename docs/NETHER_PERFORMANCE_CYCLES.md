@@ -2169,3 +2169,10 @@ Select this diagnostic scope without claiming a production speedup or no-regress
 Next, distinguish physical-thread CPU work from uncovered terrain/service waits within the critical targets. Do not infer a scheduling fix from in-flight task counts or equate outside-join time with execution. No new concurrency, portal or sustained-memory acceptance is established by this diagnostic cycle. The full subsecond goal remains active.
 
 Report: `docs/benchmarks/nether-perf-cycle66-2026-10-21.json`; external evidence: `cycle66/` plus the `join-attribution-*.py` drivers. Actual merged rebuild/full-corpus proof follows merge.
+
+
+Cycle 66 actual merge proof: PR [#200](https://github.com/ArcaneArts/Retina/pull/200) squash-merged as `c05a1b2124a9e92b1179abcf853143331777fc93`. The forced merged rebuild has native tree `c686c0b8e485f45629d9806db99c48d59cf3aedc` and SHA-256 `cd99f91ae275ec98d3d868cf744407b34d4804117439e2776c3bec5ea0e4768b`, byte-identical to the selected normal library. Another 102,400 measured chunk instances match complete original/C60/selected normal NBT and membership: **409,600** for the cycle. All five generation workers and comparisons terminated successfully. Actual measured post-shader statuses are 4, with explicit shader-ready run configuration.
+
+Loaded merged median/p95 milliseconds: main 1080/1682, second seed 1317/1828, custom 1012/1181, direct 1067/1356, Overworld 357/439. These differ from earlier runs of the identical candidate binary; they are not a code speedup. Quiet timing confirmation stays deferred. Full timings, peak RSS, comparisons and provenance are in the JSON report and external `cycle66/merged-proof.json`.
+
+Clean primary main was fast-forwarded. Only the owned Cycle 66 worktree was removed after its driver completed and evidence was preserved; `codex/nether-dependency-join-attribution` retains ready head `06e6978e3f3dea74a8bab619ba1f062a20867448`. All held/protected worktrees remain. The app attachment attempt reached its 100-identity cap and preserved existing attachments. The full performance goal remains active.
