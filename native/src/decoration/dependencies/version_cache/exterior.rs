@@ -43,6 +43,11 @@ fn index(origin: [i32; 2], width: usize, x: i32, z: i32) -> Option<usize> {
     }
 }
 impl Exterior {
+    #[cfg(test)]
+    pub(super) fn retention_probe(&self) -> serde_json::Value {
+        serde_json::json!({"bytes":self.retained_bytes(),"runs_capacity":self.runs.capacity(),
+            "external_run_references":Arc::strong_count(&self.runs).saturating_sub(1)})
+    }
     pub(super) fn capture(
         origin: [i32; 2],
         width: usize,
