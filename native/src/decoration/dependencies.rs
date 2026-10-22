@@ -14,6 +14,8 @@ mod material_storage_probe;
 #[cfg(test)]
 mod column_edit_probe;
 #[cfg(test)]
+mod blob_output_probe;
+#[cfg(test)]
 pub(crate) mod worker_phase_probe;
 use super::spatial::Map;
 use super::*;
@@ -403,6 +405,8 @@ struct Planner<'a> {
     terrain: crate::terrain_job::TerrainJob<'a>,
     anchors: Memo<(usize, i32, i32), Output>,
     ready: Map<(usize, i32, i32), Arc<Output>>,
+    #[cfg(test)]
+    output_trace: blob_output_probe::Job,
     footprints: Memo<(usize, i32, i32), footprint::Footprint>,
     ready_footprints: Map<(usize, i32, i32), Arc<footprint::Footprint>>,
     completed: Vec<CompletedRoot>,
@@ -696,12 +700,16 @@ impl Planner<'_> {
             self.metrics.performance.add(Perf::anchor_ready_hits, 1);
             return Ok(Cow::Borrowed(output));
         }
+        #[cfg(test)]
+        let mut observation = None;
         memo(
             &self.anchors,
             (root, x, z),
             &self.metrics.performance,
             #[cfg(test)] worker_phase_probe::JoinKey::new("anchor", Some(root), x, z),
             || {
+                #[cfg(test)]
+                { observation = self.output_trace.begin(root, x, z); }
                 self.metrics.performance.add(Perf::anchor_builds, 1);
                 if let Some(definition) = self.roots[root].definition {
                     return self.structure(root, definition, x, z);
@@ -825,7 +833,13 @@ impl Planner<'_> {
                 })
             },
         )
-        .map(Cow::Owned)
+        .map(|output| {
+            #[cfg(test)]
+            if let Some(observation) = observation {
+                observation.complete(&output);
+            }
+            Cow::Owned(output)
+        })
     }
     fn column_writer(&self, root: usize, ax: i32, az: i32, x: i32, z: i32)
         -> Result<Option<Cow<'_, Arc<Output>>>, String>
@@ -1278,6 +1292,8 @@ pub(crate) fn generate(
     let reuse = version_cache::capture(
         engine, profile, request, side, groups.len(), reuse_regions, &metrics.performance,
     );
+    #[cfg(test)]
+    let output_trace = blob_output_probe::Job::new(engine, profile, request, side, groups.values());
     let mut planner = Planner {
         engine,
         profile,
@@ -1286,6 +1302,8 @@ pub(crate) fn generate(
         terrain: crate::terrain_job::TerrainJob::new(engine, profile, request, initial),
         anchors: ShardedMap::default(),
         ready: Map::default(),
+        #[cfg(test)]
+        output_trace,
         footprints: Memo::default(),
         ready_footprints: Map::default(),
         completed: Vec::new(),
