@@ -1,6 +1,6 @@
 {
   "cycle": 67,
-  "status": "selected-diagnostic-awaiting-merge",
+  "status": "merged-and-verified",
   "created_utc": "2026-10-22T01:54:17.486091+00:00",
   "timing_acceptance": false,
   "problem": "C66 found that critical targets mostly lay outside covered dependency-cell joins, leaving CPU work and terrain/service latency unresolved.",
@@ -1311,5 +1311,180 @@
     ],
     "large_artifacts": "Binaries, generated worlds and raw observations remain outside Git.",
     "full_attribution": "cycle67/task-cpu-terrain-summary.json contains full count/mean/min/max distributions and bounded samples."
+  },
+  "actual_merged_proof": {
+    "cycle": 67,
+    "status": "merged-and-verified",
+    "created_utc": "2026-10-22T02:00:13.347689+00:00",
+    "pr": {
+      "number": 201,
+      "url": "https://github.com/ArcaneArts/Retina/pull/201",
+      "state": "MERGED",
+      "merge_commit": "b3ab2a082163949996cc0a954871b8fa429fe269",
+      "merged_at": "2026-10-22T01:55:21Z",
+      "ready_head": "2089ef7d4c1035a4a0edbfd678fd7e1e865d76bf",
+      "attachment_error": "thread attachment identity count exceeds100; existing attachments preserved"
+    },
+    "provenance": {
+      "revision": "b3ab2a082163949996cc0a954871b8fa429fe269",
+      "native_tree": "f7ddb59bb8ce25c398d5ccea1a6442dfd83e36fe",
+      "sha256": "1bffc0f4313786a74a2e397ca1b87cfda00d4e03db2c42946f317636cfc5b04e",
+      "source_status": "",
+      "forced_rebuild": true,
+      "timing_acceptance": false,
+      "selected_test_source": "7349d9c9e1a71616d13b6787bed88ecf386a9554",
+      "selected_native_tests_passed": 176,
+      "unit_tests_repeated_after_merge": false,
+      "same_native_tree_as_tested": true,
+      "byte_identical_to_selected": true
+    },
+    "native_tests_passed": 176,
+    "gpu_parity_passed": 1,
+    "measured_chunk_instances_after_merge": 102400,
+    "measured_chunk_instances_total": 409600,
+    "timing_acceptance": false,
+    "scope": "Five warmup regions and twenty complete lit/compressed/published regions per case. Full original/C66/selected-normal NBT and membership parity. Per-region post-shader status4; readiness explicitly shader-ready. Same native tree and byte-identical selected library confirmed by actual forced merged rebuild. Repeated coordinates are not unique coverage.",
+    "runs": [
+      {
+        "case": "nether-main-run0",
+        "median_ms": 967.9057295434177,
+        "p95_region_ms": 1331.4719598623926,
+        "maximum_region_ms": 1489.1086670104414,
+        "total_ms": 19870.28641696088,
+        "chunks_per_second": 1030.6846902075192,
+        "generation_peak_rss_bytes": 2189115392,
+        "readiness": "shader-ready",
+        "comparisons": [
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/nether-main-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          },
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle66/merged-full/nether-main-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          },
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle67/paired-normal/new/nether-main-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          }
+        ]
+      },
+      {
+        "case": "nether-second-seed-run0",
+        "median_ms": 926.1368750594556,
+        "p95_region_ms": 1298.672389530111,
+        "maximum_region_ms": 1423.932540928945,
+        "total_ms": 18492.890208028257,
+        "chunks_per_second": 1107.452635559859,
+        "generation_peak_rss_bytes": 2274328576,
+        "readiness": "shader-ready",
+        "comparisons": [
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/nether-second-seed-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          },
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle66/merged-full/nether-second-seed-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          },
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle67/paired-normal/new/nether-second-seed-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          }
+        ]
+      },
+      {
+        "case": "nether-custom-bounds-run0",
+        "median_ms": 564.4996869377792,
+        "p95_region_ms": 713.2194413454273,
+        "maximum_region_ms": 764.6616250276566,
+        "total_ms": 12095.886584138498,
+        "chunks_per_second": 1693.1375685066116,
+        "generation_peak_rss_bytes": 2061926400,
+        "readiness": "shader-ready",
+        "comparisons": [
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/nether-custom-bounds-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          },
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle66/merged-full/nether-custom-bounds-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          },
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle67/paired-normal/new/nether-custom-bounds-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          }
+        ]
+      },
+      {
+        "case": "nether-direct-stem-run0",
+        "median_ms": 567.1992289135233,
+        "p95_region_ms": 711.9373956811615,
+        "maximum_region_ms": 812.5839589629322,
+        "total_ms": 11706.054917071015,
+        "chunks_per_second": 1749.521947836917,
+        "generation_peak_rss_bytes": 2081783808,
+        "readiness": "shader-ready",
+        "comparisons": [
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/nether-direct-stem-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          },
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle66/merged-full/nether-direct-stem-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          },
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle67/paired-normal/new/nether-direct-stem-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          }
+        ]
+      },
+      {
+        "case": "overworld-run0",
+        "median_ms": 308.15137492027134,
+        "p95_region_ms": 369.25639380933717,
+        "maximum_region_ms": 387.42074999026954,
+        "total_ms": 6182.314999867231,
+        "chunks_per_second": 3312.6749446509634,
+        "generation_peak_rss_bytes": 1531887616,
+        "readiness": "shader-ready",
+        "comparisons": [
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/overworld-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          },
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle66/merged-full/overworld-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          },
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle67/paired-normal/new/overworld-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          }
+        ]
+      }
+    ],
+    "limitations": [
+      "Known host activity; user deferred quiet timing confirmation.",
+      "Diagnostic-only change. No production speedup or no-regression acceptance.",
+      "No new concurrent/portal/sustained-memory acceptance; overall performance goal remains active."
+    ]
   }
 }

@@ -2214,3 +2214,10 @@ Ordinary release compilation and symbol review confirm observer exclusion. The h
 Select as diagnostic-only evidence; no production scheduling/cache algorithm changes, speedup or no-regression acceptance. No new concurrency, portal or sustained-memory acceptance is established. All held prototypes remain held. The full performance goal remains active.
 
 Report: `docs/benchmarks/nether-perf-cycle67-2026-10-21.json`; external `cycle67/` and `task-cpu-terrain-*.py`. Actual merged rebuild/full-corpus proof follows merge.
+
+
+Cycle 67 actual merge proof: PR [#201](https://github.com/ArcaneArts/Retina/pull/201) squash-merged as `b3ab2a082163949996cc0a954871b8fa429fe269`. The forced merged rebuild has native tree `f7ddb59bb8ce25c398d5ccea1a6442dfd83e36fe` and SHA-256 `1bffc0f4313786a74a2e397ca1b87cfda00d4e03db2c42946f317636cfc5b04e`, byte-identical to the selected normal library. Another 102,400 measured chunk instances match complete original/C66/selected normal NBT and membership, bringing the cycle to **409,600**. All five workers and comparisons terminated successfully; measured post-shader statuses are 4 with explicit shader-ready configuration.
+
+Provisional merged median/p95 milliseconds: main 968/1331, second seed 926/1299, custom 565/713, direct 567/712, Overworld 308/369. The identical candidate binary ran substantially differently in the earlier loaded pairs; this is not a code speedup. Quiet timing confirmation stays deferred. Full measurements/provenance are in the JSON report and external `cycle67/merged-proof.json`.
+
+Clean primary main was fast-forwarded. Only the owned Cycle 67 worktree was removed after its driver completed; `codex/nether-task-cpu-terrain-spans` retains ready head `2089ef7d4c1035a4a0edbfd678fd7e1e865d76bf`. All held/protected worktrees remain. The app attachment hit its 100-identity cap and preserved existing attachments. The overall performance goal remains active.
