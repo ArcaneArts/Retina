@@ -1956,3 +1956,216 @@ clock/phase data, immutable binaries, provenance, full NBT and ordinary timings.
 The branch also carries C58's actual merged proof and held C59 measurements as
 documentation only. The held material-rank index is not included. No production
 scheduler change is selected in this cycle. The performance goal remains open.
+
+
+Cycle 60 post-merge confirmation: PR #199 merged as `60e210d1b0e459955aec2007d8231ee4358bed88`.
+The forced actual merged rebuild has native tree `ad1cf17fb7670493243cba71adfc6d74d1653161`,
+identical to the tested 167-pass source, and ordinary SHA-256
+`15f8f4ef043ed5a963b52c74a2a60963dc570c8ae19f10b560cdf4757240eb27`, identical to the selected library.
+Native unit tests were not repeated for identical source. The actual merged
+library generated a fresh complete 102,400-chunk corpus matching original, C58
+and selected normal output in full NBT and membership; all measured statuses
+are 4. Same-binary timing drift is retained explicitly, including a custom-bound
+median of 2,156 ms versus 976 ms earlier. This cannot establish a code effect or
+identify the cause. Quiet timing and the subsecond goal remain open. External
+`cycle60/post-merge-proof.json` and `same-binary-timing-drift.json` retain evidence.
+
+
+## Cycle 61 — held exterior simple-block column preparation
+
+This prototype discovers exact exterior columns read by a simple-block root's
+terminal material filters, then prepares their original before-root state in
+parallel before ordinary anchor replay. Eligibility requires SimpleBlock-only
+writes, unique placement salts, a pure placement prefix and one final material
+predicate with zero offset. Original expansion, lazy Queue and position logic
+are reused; the helper stops before the filter and supplies no dummy materials.
+A column's first in-height candidate must query prior state before any local
+simple-block write can satisfy a later filter. Optional work is bounded at 256
+anchors and 32,768 candidates; all other generation retains its full fallback.
+
+All 170 native tests pass (48 optional ignored). Three new tests cover actual
+prior-read equality with live/paired writes, duplicate and streamed candidates,
+biome rejection, missing materials, clipping, negative coordinates, budgeted
+subsets, complete bounds and ineligible shapes. An initial test fixture used a
+four-chunk field with one-anchor IDs; it was corrected to the production
+single-anchor geometry, with the failed log and source retained.
+
+The explicit GPU observer passes and its 102,400 measured chunks match original
+and C60 merged output. Separate counter controls compare 10,240 measured chunks
+with both references. Ordinary alternating runs use five warmups and twenty
+measured regions per variant/case. All 204,800 measured chunks match original,
+C60 and observer full NBT and membership. Every measured shader status is 4.
+
+| Case | Median old/new ms | p95 old/new ms | Aggregate throughput change | New faster pairs |
+| --- | ---: | ---: | ---: | ---: |
+| nether-main | 1079 / 1028 | 1358 / 1356 | +3.79% | 14/20 |
+| nether-second-seed | 1331 / 1369 | 1814 / 1951 | -4.78% | 7/20 |
+| nether-custom-bounds | 903 / 864 | 1669 / 1472 | +6.92% | 15/20 |
+| nether-direct-stem | 1075 / 1096 | 1400 / 1242 | +2.84% | 10/20 |
+| overworld | 551 / 537 | 619 / 645 | +0.20% | 9/20 |
+
+Hold this prototype without a PR or merge. The main seed's apparent throughput
+gain is smaller than the gain in an inactive custom-profile control, while the
+second seed loses throughput and worsens p95. These results do not justify
+production selection, and external activity must not be used to dismiss them.
+
+Mushroom anchor replay itself falls to about 3 ms, but preparation absorbs the
+work. Counting both phases, brown mushrooms measure 63.21 ms versus 58.74 ms in
+the earlier main-seed observer and 45.85 versus 45.33 ms for seed 42. These are
+separate instrumented runs, not matched ordinary timing. The new preparation
+phase remains inside complete-region elapsed time.
+
+The counter controls preserve every anchor, column and prefix build count.
+Main prepares 7,814 columns; seed 42 prepares 7,906. Seed 42 generates 8,627
+terrain chunks versus 8,529 in its control, so scheduling can alter cache work.
+Custom profiles and Overworld prepare zero columns. Overlapping wait counters
+cannot be summed or converted into elapsed-time shares.
+
+The remaining hypothesis is that many column requests converge on an earlier
+anchor whose prerequisites still run serially. A bounded queue of exact missing
+prerequisites, with helpers restricted to strictly earlier dependency levels,
+could expose that work without replay or arbitrary task stealing. This requires
+explicit single-owner, failure/panic, lost-wakeup, cycle, completion-ownership
+and memory validation. It is not implemented or selected here.
+
+Report: `docs/benchmarks/nether-perf-cycle61-2026-10-21.json`. Preserve
+`codex/nether-simple-block-column-preparation` and external `cycle61/` evidence.
+The branch also carries C60's actual merged proof as documentation only. Quiet
+acceptance and the performance goal remain open; extra concurrency/lifecycle
+acceptance is not run for this unselected prototype.
+
+
+## Cycle 62 — held cooperative dependency queue
+
+C62 exposes exact unfinished writer siblings through a job-owned queue of at most 4,096 keys. A worker waiting on a column or anchor can help with strictly earlier anchors; results are still consumed in source order. Cells retain one initializer and cache the original result/error. Completion, new work and abandoned initializers wake waiters through the same queue mutex. Helpers run synchronously; queued keys retain no cell owners and root completion still joins before publication. No halo, feature replay, worker-count or generation-semantic change was introduced.
+
+The prototype passed **174 native tests**, including seven queue/ownership/wakeup/panic tests, and the explicit GPU terrain-parity test. Full decompressed NBT and membership matched across **317,440 measured chunk instances**: 102,400 observer, 10,240 counter-control and 204,800 paired ordinary instances. The original corpus and actual C60 merge were used throughout; ordinary pairs also matched C62 observer output. All measured program snapshots were ready (status 4). Repeated coordinates are not unique-world coverage. The initial test compile required an explicit panic-fixture result type; the failed log and source remain preserved.
+
+Anchor, column, prefix and column-tile build counts stayed exactly unchanged in all five counter controls. The queue picked up roughly 9,000–11,000 descriptors per Nether case; those include already-ready/in-flight keys. Column cells grew **24 → 32 bytes**, adding about 38–41 MiB for the boundary slots alone in these cases, plus interior/version/anchor storage. Joined helper execution is included in join counters, so those counters cannot be read as idle time.
+
+Paired ordinary libraries used five warmups and twenty measured regions per case, alternating which process generated first. Only one generated at a time. Known external load makes these provisional comparisons; quiet confirmation remains deferred.
+
+| Case | Old/new median ms | Old/new p95 ms | Throughput change | New faster pairs |
+|---|---:|---:|---:|---:|
+| nether-main | 1122.02 / 1100.61 | 1804.64 / 1542.67 | +3.39% | 10/20 |
+| nether-second-seed | 1497.19 / 1466.41 | 1922.85 / 2344.73 | -8.22% | 8/20 |
+| nether-custom-bounds | 1019.44 / 980.44 | 1344.09 / 1229.98 | +5.01% | 13/20 |
+| nether-direct-stem | 927.41 / 973.61 | 1114.12 / 1222.88 | -3.62% | 9/20 |
+| overworld | 482.02 / 475.21 | 651.53 / 615.96 | +1.37% | 9/20 |
+
+**Held, unmerged.** The second seed and direct-stem case regress, so these results do not select the scheduler or its larger cells. Main remains C60. No reverse/concurrent/portal/retention acceptance was added for this unselected prototype.
+
+A source-level gap remains: only contending workers help. Finished outer tasks return their workers to Rayon, so they cannot drain this queue during a final long anchor. The next distinct experiment can expose bounded scoped drain tasks to idle workers, preserving lifetime/ownership and joined failure behavior. Permanently waiting helper loops are unsuitable because nested pool joins can starve unstarted child tasks. The test observer must count helper spans separately and union them by physical thread. This is a hypothesis to test, not a claimed speedup.
+
+Report: `docs/benchmarks/nether-perf-cycle62-2026-10-21.json`. Preserve `codex/nether-dependency-work-queue` and external `cycle62/` evidence, including the held binary and exact reproduction drivers.
+
+## Cycle 63 — held scoped dependency helpers
+
+C63 lets idle pool workers drain exact queued prerequisites. A per-root Rayon scope joins all helpers before publication or failure cleanup. Typed Evaluation references preserve planner/scope lifetimes without unsafe casts. Permits bound queued/running drain tasks to the existing pool size; enqueue and last-helper retirement use the same mutex. Drains return on no eligible work. A per-thread stack of job identities and owned dependency levels prevents a helper inherited at a nested join from executing its own suspended ancestor. Temporary writer batches are bounded to 32 positions, with every original writer still consumed in source order.
+
+The prototype passed **181 native tests**, including 13 queue/scoping/ownership/wakeup/panic tests, and explicit GPU terrain parity. Full decompressed NBT and membership matched across **317,440 measured chunk instances**: 102,400 observer, 10,240 counter-control and 204,800 paired ordinary instances. All compare to the immutable original and actual C60 merge; pairs also compare to C63 observer output. Observer/pairs persisted ready snapshots before and after every measurement; counter measurements persisted ready post-snapshots. Repeated coordinates are not unique-world coverage. An initial test-only mpsc Receiver ownership compile error was corrected; its source/log remain preserved.
+
+Anchor, column, prefix and column-tile build counts remain exactly unchanged. Scoped tasks processed 5,401–6,965 descriptors per Nether counter case in 3,265–4,628 tasks. Those counts include ready/in-flight keys and do not establish how many new initializers helpers owned. The second seed generated 8,529 → 8,627 terrain chunks (20 → 22 tiles); other case terrain counts were unchanged. Column cells remain **32 bytes versus 24** in accepted C60.
+
+The test observer now counts target/helper spans separately, unions both by physical thread, and keeps target completion percentiles/longest targets separate from helper spans. Brown mushroom roots still had median tails of about 80 ms and 57 ms after 95% of targets finished. More tasks in flight can be more blocked waiters, not more CPU execution. Independent observer runs and process-CPU sums are not causal performance comparisons.
+
+Paired ordinary libraries used five warmups and twenty measured regions per case, alternating first generator with only one generating at a time. Known host load makes these provisional; quiet confirmation remains deferred.
+
+| Case | Old/new median ms | Old/new p95 ms | Throughput change | New faster pairs |
+|---|---:|---:|---:|---:|
+| nether-main | 2313.34 / 2078.87 | 4030.89 / 4641.19 | +5.04% | 11/20 |
+| nether-second-seed | 2669.22 / 2714.01 | 4120.17 / 4302.09 | -3.48% | 6/20 |
+| nether-custom-bounds | 1574.66 / 1649.05 | 2352.31 / 2584.17 | -5.25% | 6/20 |
+| nether-direct-stem | 1841.12 / 1915.62 | 3360.17 / 2775.44 | +10.78% | 12/20 |
+| overworld | 575.76 / 547.25 | 673.75 / 693.01 | +4.76% | 12/20 |
+
+**Held, unmerged.** Main has a worse p95 despite a lower median; the second seed and custom-bounds case lose throughput. These observations do not select the change. Main remains C60; no reverse/concurrent/portal/retention acceptance was added for this unselected prototype.
+
+Optional drains currently wait on already-owned keys through the ordinary anchor path. The next distinct candidate should try nonblocking optional claims and directly count ready/busy/owned outcomes. Original consumers must still resolve every writer, and newly claimed helpers retain necessary lower-level dependency waits. This also tests whether unnecessary optional waiters amplify the shared wake/recheck cost; that cause is currently a source-grounded hypothesis, not a measured wall-time share.
+
+Report: `docs/benchmarks/nether-perf-cycle63-2026-10-21.json`. Preserve `codex/nether-scoped-dependency-help`, external `cycle63/`, and the held native binary/source. The full performance goal remains open.
+
+## Cycle 64 — held nonblocking optional helper claims
+
+C64 carries the held C62/C63 scheduling foundation and adds a nonblocking claim for optional scoped keys. Ready values return immediately, empty cells may be initialized, and busy cells are skipped without registering a waiter. Both cell APIs share ownership, publication, panic recovery and ancestor tracking. The original required consumer still resolves every offered writer; a helper that owns an anchor performs its full original dependency evaluation. Cached errors retain their text and propagate through the joined root failure path.
+
+The candidate passed **185 native tests**, including 17 queue/scoping/claim tests, and explicit GPU terrain parity. New fixtures exercise Busy in both BUILDING and WAITING states before owner release, mixed required/optional single-owner races, cached errors, panic recovery/TLS reset, and progressing to another queued dependency. Existing scoped fixtures use optional claims, and panic TLS cleanup is checked on every pool worker.
+
+Full decompressed NBT and membership matched across **317,440 measured chunk instances**: 102,400 observer, 10,240 counter-control and 204,800 paired ordinary instances. All compare to the immutable original and actual C60 merge; pairs also compare to C64 observer output. Observer/pairs persist actual shader-ready snapshots before and after each measurement; counter runs persist ready post-snapshots. Repeated coordinates are not unique-world coverage.
+
+Actual scoped claims expose limited fresh ownership: **3.24–4.76% owned new work, 63.13–70.78% found ready results, and 24.94–33.60% skipped busy cells** across the four Nether counter cases. These are profile-lifetime event counts including warmup, not time shares. Only the queued key carries the claim classification; recursive dependencies do not inherit it. Ready/owned failures are included in those classes, while drained counts successful resolutions. Waiter-picked queued helpers remain blocking and unclassified. A rare newly owned key can still be expensive, so its count does not determine its time benefit.
+
+Anchor, column, prefix and column-tile build counts remain identical. The second seed used 22 tiles/8,627 chunks in the accepted-library control and 20/8,529 in the candidate; earlier runs observed the reverse direction, so this is not an established terrain reduction. ColumnCell remains 32 bytes versus accepted C60’s 24; this refinement adds no per-cell memory. Brown mushroom roots retained median tails of about 58 ms and 52 ms after 95% of targets completed.
+
+Ordinary paired runs used five warmups and twenty measured regions per case/variant, alternating first generator with only one generating at a time. Known host load makes all timing provisional; quiet confirmation remains deferred.
+
+| Case | Old/new median ms | Old/new p95 ms | Throughput change | New faster pairs |
+|---|---:|---:|---:|---:|
+| nether-main | 2335.03 / 2337.76 | 3405.03 / 3614.44 | +3.21% | 11/20 |
+| nether-second-seed | 2039.34 / 2245.35 | 3335.56 / 3366.06 | -5.89% | 7/20 |
+| nether-custom-bounds | 1418.47 / 1604.79 | 1663.20 / 1847.86 | -9.43% | 5/20 |
+| nether-direct-stem | 1666.21 / 1785.13 | 2246.22 / 2504.88 | -4.80% | 7/20 |
+| overworld | 804.84 / 657.59 | 1102.82 / 1156.01 | +11.06% | 15/20 |
+
+**Held, unmerged.** The second seed, custom-bounds and direct-stem cases lose throughput; main has an essentially unchanged median and worse p95. Quiet timing acceptance and the full subsecond goal remain unmet. Main remains C60. No reverse/concurrent/portal/retention acceptance was added for this unselected prototype. Preserve the source and evidence; these data do not justify an accepted speedup.
+
+The next distinct experiment can classify and skip busy waiter-picked queued keys while retaining required waits for the originally requested cell and for newly owned initializers. Actual notification/sleep/wake/recheck counts are a separate follow-up if needed; global broadcast overhead remains a hypothesis rather than a measured wall-time share.
+
+Report: `docs/benchmarks/nether-perf-cycle64-2026-10-21.json`. Preserve `codex/nether-nonblocking-helper-claims` and external `cycle64/`. The full performance goal remains active.
+
+## Cycle 65 — nonblocking waiter-picked helper claims
+
+C65 extends the held C62-C64 scheduling foundation so a required consumer skips an already-owned optional queued key and returns to its original required-cell loop. Both optional origins share one try path and separate ready/busy/owned counters. Newly owned anchors retain every required prerequisite wait. Cell state/publication, lost-wakeup synchronization, source ordering, scoped joining and queue bounds remain unchanged by this refinement.
+
+**186 native tests passed**, including 18 queue/scoping/claim tests, plus explicit GPU parity. The new controlled test proves a waiter on A can skip busy B, finish C which releases A, and return before B is released. Cleanup releases controlled owners even when the observation fails; exact queue order, one C build and original results are checked.
+
+Complete decompressed NBT and membership matched across **317,440 measured chunk instances**: 102,400 observer, 10,240 counter-control and 204,800 ordinary paired instances. All compare to immutable original and actual C60 output; pairs also compare to C65 observer output. Actual observer/pair shader snapshots are ready before and after every measurement. Counter post-snapshots are ready; individual before snapshots are not persisted. Repeated coordinates are not unique-world coverage.
+
+Combined scoped/waiter attempts owned only **2.14–2.80%** of queued keys in these counter samples. All offered descriptors were consumed, without a large increase in offers versus C64. Most attempts find already-ready data, and many skip Busy. Counts cover profile lifetime including warmup and do not measure time shares. Each newly owned anchor can still be expensive, so a low count alone cannot establish its time benefit.
+
+Anchor, column, prefix and column-tile build counts remain identical. The second seed used 20 terrain tiles/8,529 chunks in the accepted-library control and 22/8,627 in the candidate, reversing C64’s direction; this is not a stable terrain-work reduction. Other terrain counts match. ColumnCell remains 32 bytes versus accepted C60’s 24; this refinement adds no per-cell storage.
+
+Brown mushroom roots still had median tails of about 46 ms and 30 ms after 95% of targets completed. These are separate observer runs under changed load. In-flight spans include waits/preemption; process CPU is not task-only CPU or utilization. The present observer does not distinguish time joining another cell from other time inside the longest target.
+
+Ordinary paired runs use 5 warmups and 20 measured regions per case/variant, alternating first generator with only one generating at a time. Host load keeps timing provisional.
+
+| Case | Old/new median ms | Old/new p95 ms | Throughput change | New faster pairs |
+|---|---:|---:|---:|---:|
+| nether-main | 1689.15 / 1695.55 | 2831.65 / 2956.90 | -2.98% | 9/20 |
+| nether-second-seed | 1465.04 / 1389.29 | 1938.43 / 1997.34 | +1.24% | 9/20 |
+| nether-custom-bounds | 868.47 / 904.74 | 1017.08 / 1014.29 | -2.86% | 7/20 |
+| nether-direct-stem | 1008.55 / 997.62 | 1261.04 / 1329.00 | -1.42% | 5/20 |
+| overworld | 365.62 / 361.01 | 484.79 / 527.96 | -1.20% | 11/20 |
+
+Held, unmerged. Main Nether, custom bounds and direct stem lose aggregate throughput. The second seed has only a small aggregate improvement, and both standard-seed p95s worsen. Overworld is also slightly lower in throughput, with a worse p95. Known host load precludes quiet acceptance, and these observations do not select this scheduler. Main remains C60; the subsecond/concurrency/lifecycle/memory goal is still open.
+
+Return to accepted origin/main without C62-C65 production scheduling changes. Extend the test-only worker-phase observer to record noninitializer dependency-cell join intervals, then intersect them with per-worker task and tail spans. Preserve reentrant task contexts, missing/failure data and joined buffer cleanup; do not call API join intervals kernel-sleep or CPU time. Measure the remaining tail before adding further scheduler complexity. See external cycle65/conditional-next-measurement.md.
+
+Report: `docs/benchmarks/nether-perf-cycle65-2026-10-21.json`. Preserve `codex/nether-nonblocking-waiter-claims` and external `cycle65/`. Main remains C60; the full performance goal remains active.
+
+
+## Cycle 66 — dependency join attribution inside root tasks
+
+C66 returns to accepted C60 production and extends only the test observer. It measures calls that initially see an unfinished dependency cell and do not run its initializer, identifying anchor, anchor-ID, footprint, structure-start and column joins. Initially ready calls and owned initializer execution are excluded. Publication races, scheduling delays and memo result cloning can remain in these API spans; they are not kernel-sleep measurements.
+
+A thread-local RAII context stack preserves physical-worker attribution through nested roots and panics. Context/candidate guards cannot migrate between threads. Initializer candidates store scalar stamps without an Arc clone, event allocation or collector lock. Task and root failure paths retain failure/missing-phase evidence; root cleanup empties raw buffers, including on unwind. Invalid bounds, context order or live contexts cannot produce valid interval sums. Per-worker unions are intersected with task and tail intervals; category/worker sums are not wall-time fractions.
+
+**172 native tests passed**, including five new join/lifecycle/interval fixtures, plus explicit GPU parity. Complete decompressed NBT and membership matched for **307,200 measured chunk instances**: 102,400 observer and 204,800 ordinary paired. All compare to the immutable original and actual C60 merge; pairs also compare to C66 observer. Actual measured shader snapshots are ready before and after generation. Repeated coordinates are not unique-world coverage.
+
+The longest brown-mushroom target spent a median **1.65%** of its task interval inside these covered join calls on the first seed and **0%** on the second. Basalt pillars recorded **zero** such joins. Their root evaluation medians remain about 91/93 ms, with 34/35 ms tails after 95% of targets finish. Brown-mushroom tails remain about 54/37 ms. Custom/direct twisting-vine targets do show join activity. The critical standard-seed targets are mostly outside the measured dependency-cell joins. **Outside-join time is not CPU time**: terrain/GPU waits, other locks, preemption and probe overhead are still possible.
+
+The normal build prunes the observer and all new call-site hooks. Its hash differs from C60, so prior byte identity is not claimed. Five warmups and twenty ordinary regions per case/variant were paired with alternating first generator; only one engine generates at a time. Known host activity makes these timing observations provisional.
+
+| Case | Old/new median ms | Old/new p95 ms | Throughput change | New faster pairs |
+|---|---:|---:|---:|---:|
+| nether-main | 1569.17 / 1495.05 | 2173.25 / 2385.73 | +0.47% | 11/20 |
+| nether-second-seed | 1403.20 / 1391.77 | 1861.84 / 2065.98 | -1.43% | 12/20 |
+| nether-custom-bounds | 1021.41 / 1033.06 | 1305.40 / 1220.65 | +1.61% | 10/20 |
+| nether-direct-stem | 1005.20 / 944.70 | 1343.19 / 1244.08 | +6.25% | 13/20 |
+| overworld | 369.47 / 388.30 | 485.04 / 492.20 | -5.33% | 9/20 |
+
+Select this diagnostic scope without claiming a production speedup or no-regression acceptance. Both standard-seed p95s increased; Overworld throughput fell about 5.3%. Ordinary code inspection finds only test-conditional hooks/labels and formatting. Quiet timing confirmation remains deferred by the user. All C61-C65 production prototypes remain held; their assessments are preserved here so the same experiments are not repeated.
+
+Next, distinguish physical-thread CPU work from uncovered terrain/service waits within the critical targets. Do not infer a scheduling fix from in-flight task counts or equate outside-join time with execution. No new concurrency, portal or sustained-memory acceptance is established by this diagnostic cycle. The full subsecond goal remains active.
+
+Report: `docs/benchmarks/nether-perf-cycle66-2026-10-21.json`; external evidence: `cycle66/` plus the `join-attribution-*.py` drivers. Actual merged rebuild/full-corpus proof follows merge.

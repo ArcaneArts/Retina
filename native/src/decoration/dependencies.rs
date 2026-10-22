@@ -64,14 +64,16 @@ fn memo<K: Eq + std::hash::Hash, V>(
     cache: &Memo<K, V>,
     key: K,
     metrics: &Metrics,
+    #[cfg(test)] point: worker_phase_probe::JoinKey,
     build: impl FnOnce() -> Result<V, String>,
 ) -> Result<Arc<V>, String> {
-    memo_arc(cache, key, metrics, || build().map(Arc::new))
+    memo_arc(cache, key, metrics, #[cfg(test)] point, || build().map(Arc::new))
 }
 fn memo_arc<K: Eq + std::hash::Hash, V>(
     cache: &Memo<K, V>,
     key: K,
     metrics: &Metrics,
+    #[cfg(test)] point: worker_phase_probe::JoinKey,
     build: impl FnOnce() -> Result<Arc<V>, String>,
 ) -> Result<Arc<V>, String> {
     metrics.add(Perf::memo_requests, 1);
@@ -88,6 +90,8 @@ fn memo_arc<K: Eq + std::hash::Hash, V>(
         metrics.add(Perf::memo_ready_hits, 1);
     }
     let joined = metrics.start();
+    #[cfg(test)]
+    let join = worker_phase_probe::Join::start(slot.get().is_none(), point);
     let mut built = false;
     let result = slot
         .get_or_init(|| {
@@ -96,6 +100,8 @@ fn memo_arc<K: Eq + std::hash::Hash, V>(
             build()
         })
         .clone();
+    #[cfg(test)]
+    join.finish(built, result.is_ok());
     // Exclude initializer execution: an outer OnceLock can itself wait for
     // nested dependencies or GPU results, which must not count as joining it.
     if !built {
@@ -687,13 +693,15 @@ impl Planner<'_> {
             &self.anchors,
             (root, x, z),
             &self.metrics.performance,
+            #[cfg(test)] worker_phase_probe::JoinKey::new("anchor", Some(root), x, z),
             || {
                 self.metrics.performance.add(Perf::anchor_builds, 1);
                 if let Some(definition) = self.roots[root].definition {
                     return self.structure(root, definition, x, z);
                 }
                 let base = self.terrain(x, z)?;
-                let available = memo(&self.anchor_ids, (x, z), &self.metrics.performance, || {
+                let available = memo(&self.anchor_ids, (x, z), &self.metrics.performance,
+                    #[cfg(test)] worker_phase_probe::JoinKey::new("anchor_ids", None, x, z), || {
                     Ok(anchor_ids(&base, self.profile, x, z))
                 })?;
                 let ids = [available
@@ -819,7 +827,8 @@ impl Planner<'_> {
             let footprint = if let Some(footprint) = self.ready_footprints.get(&key) {
                 Cow::Borrowed(footprint)
             } else {
-                Cow::Owned(memo(&self.footprints, key, &self.metrics.performance, || {
+                Cow::Owned(memo(&self.footprints, key, &self.metrics.performance,
+                    #[cfg(test)] worker_phase_probe::JoinKey::new("footprint", Some(root), ax, az), || {
                     self.metrics.performance.add(Perf::footprint_builds, 1);
                     Ok(footprint::Footprint::build(self.profile, &self.roots[root], self.request, ax, az))
                 })?)
@@ -837,7 +846,8 @@ impl Planner<'_> {
             chunk_z: z,
             ..self.request
         };
-        let starts = memo(&self.starts, (x, z), &self.metrics.performance, || {
+        let starts = memo(&self.starts, (x, z), &self.metrics.performance,
+            #[cfg(test)] worker_phase_probe::JoinKey::new("structure_starts", None, x, z), || {
             self.discovery.plans(self.engine, request, 1, &self.terrain)
         })?;
         let starts: Vec<_> = starts
@@ -954,6 +964,9 @@ impl Planner<'_> {
     ) -> Result<Arc<ColumnState>, String> {
         let metrics = &self.metrics.performance;
         let joined = metrics.start();
+        #[cfg(test)]
+        let join = worker_phase_probe::Join::start(slot.get().is_none(),
+            worker_phase_probe::JoinKey::new("column", Some(before), x, z));
         let mut built = false;
         let result = slot.get_or_init(|| {
             built = true;
@@ -961,6 +974,8 @@ impl Planner<'_> {
             self.build_column(before, x, z)
                 .map_err(|error| Box::new(ColumnFailure(error)))
         });
+        #[cfg(test)]
+        join.finish(built, result.is_ok());
         if !built {
             metrics.elapsed(Perf::column_join_nanos, joined);
         }
@@ -1696,7 +1711,8 @@ mod tests {
         let calls = AtomicUsize::new(0);
         (0..4096).into_par_iter().for_each(|i| {
             let key = (i % 64) - 32;
-            let result = memo(&cache, key, &metrics, || {
+            let result = memo(&cache, key, &metrics,
+                worker_phase_probe::JoinKey::new("fixture", None, key, 0), || {
                 calls.fetch_add(1, Ordering::Relaxed);
                 if key == 0 {
                     Err("original failure".to_owned())
@@ -1730,7 +1746,7 @@ mod tests {
     fn sharded_lookup_poison_is_an_error_and_cleanup_retains_entries() {
         let cache = Memo::default();
         let metrics = Metrics::default();
-        memo(&cache, -19, &metrics, || Ok(7)).unwrap();
+        memo(&cache, -19, &metrics, worker_phase_probe::JoinKey::new("fixture", None, -19, 0), || Ok(7)).unwrap();
         std::thread::scope(|scope| {
             assert!(
                 scope
@@ -1743,7 +1759,7 @@ mod tests {
             );
         });
         assert_eq!(
-            memo(&cache, -19, &metrics, || Ok(9)).unwrap_err(),
+            memo(&cache, -19, &metrics, worker_phase_probe::JoinKey::new("fixture", None, -19, 0), || Ok(9)).unwrap_err(),
             "decoration dependency cache poisoned"
         );
         assert_eq!(cache.into_entries().count(), 1);
