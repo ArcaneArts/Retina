@@ -2176,3 +2176,41 @@ Cycle 66 actual merge proof: PR [#200](https://github.com/ArcaneArts/Retina/pull
 Loaded merged median/p95 milliseconds: main 1080/1682, second seed 1317/1828, custom 1012/1181, direct 1067/1356, Overworld 357/439. These differ from earlier runs of the identical candidate binary; they are not a code speedup. Quiet timing confirmation stays deferred. Full timings, peak RSS, comparisons and provenance are in the JSON report and external `cycle66/merged-proof.json`.
 
 Clean primary main was fast-forwarded. Only the owned Cycle 66 worktree was removed after its driver completed and evidence was preserved; `codex/nether-dependency-join-attribution` retains ready head `06e6978e3f3dea74a8bab619ba1f062a20867448`. All held/protected worktrees remain. The app attachment attempt reached its 100-identity cap and preserved existing attachments. The full performance goal remains active.
+
+
+## Cycle 67 — task CPU and terrain/service attribution
+
+C67 extends accepted C66's test observer with optional calling-thread CPU endpoints and a separate terrain/service API buffer. CPU intervals are unioned per physical worker, preserving nested-task behavior; missing/reversed values remain null. The task context cannot migrate threads. CPU includes nested work and probe work executed on that thread, excluding service-thread work, and is not interpolated into partial tails.
+
+Initially-unfinished terrain job cells distinguish actual initializer work from noninitializer joins. Ready calls are excluded. Initializer intervals can contain extraction/copying, cached-field lookup or generation waits; both cell classes include result cloning. The GPU reply span covers receiver.recv after a successful send, including any remaining queue/service latency and preemption. Nested initializer/reply categories overlap. Their sums are not elapsed-time shares or pure GPU time. Raw buffers release at joined completion or failure, and abandoned calls retain failure evidence.
+
+**176 native tests passed**, including four new CPU/terrain/context fixtures, plus explicit GPU parity. Full decompressed NBT and membership match across **307,200 measured chunk instances**, comparing immutable original, actual C66 and (for ordinary pairs) C67 observer output. All measured observer/pair before/after shader snapshots are ready. Every observed task CPU sample is available and non-reversed on this machine. Repeated coordinates are not unique coverage.
+
+The new attribution separates two opportunities:
+
+| Longest target, median across 20 regions | Calling-thread CPU / task wall | GPU reply API / task wall | Terrain API / task wall |
+|---|---:|---:|---:|
+| Basalt pillar, first seed | 0.95% | 96.75% | 99.89% |
+| Basalt pillar, second seed | 0.74% | 98.34% | 99.89% |
+| Brown mushroom Nether, first seed | 52.03% | 0% | 0% |
+| Brown mushroom Nether, second seed | 63.39% | 0% | 0% |
+| Large ancient debris, first seed | 86.22% | 0% | 0% |
+| Large ancient debris, second seed | 97.29% | 0% | 0% |
+
+Zero medians do not mean every task avoids terrain: brown-mushroom maximum terrain fractions are **62.08%/51.28%**, and large ancient-debris maxima are **26.23%/28.19%**. Brown longest-task wall medians are 55.35/43.87 ms; ancient-debris medians are 38.88/9.96 ms. Basalt-pillar root evaluation medians are 106.81/99.59 ms. Custom/direct spring-open longest tasks have reply fractions97.77/98.09% and wall medians25.96/26.29ms. Different medians need not describe the same task, and these columns must not be summed.
+
+Some long tasks have low CPU without entering either measured wait category. Other locks, preemption and uncovered paths remain possible; this residual is unclassified. The evidence supports examining critical terrain submissions and CPU work inside expensive exterior owners separately. It does not justify another general helper queue or establish a numerical speedup.
+
+Ordinary release compilation and symbol review confirm observer exclusion. The hash differs from C66, so preceding byte identity is not claimed. Five warmups and twenty paired ordinary regions per case/variant alternate first generator with only one generating at a time. Known host activity keeps timings provisional; quiet confirmation remains deferred.
+
+| Case | Old/new median ms | Old/new p95 ms | Throughput change | New faster pairs |
+|---|---:|---:|---:|---:|
+| nether-main | 1522.64 / 1415.38 | 2378.26 / 2401.87 | +3.30% | 9/20 |
+| nether-second-seed | 1197.25 / 1229.39 | 1527.51 / 1606.15 | -3.47% | 7/20 |
+| nether-custom-bounds | 818.77 / 787.35 | 1062.96 / 1066.20 | +2.05% | 11/20 |
+| nether-direct-stem | 728.68 / 730.80 | 910.10 / 906.62 | -1.79% | 11/20 |
+| overworld | 355.28 / 353.01 | 459.30 / 467.74 | +0.45% | 11/20 |
+
+Select as diagnostic-only evidence; no production scheduling/cache algorithm changes, speedup or no-regression acceptance. No new concurrency, portal or sustained-memory acceptance is established. All held prototypes remain held. The full performance goal remains active.
+
+Report: `docs/benchmarks/nether-perf-cycle67-2026-10-21.json`; external `cycle67/` and `task-cpu-terrain-*.py`. Actual merged rebuild/full-corpus proof follows merge.

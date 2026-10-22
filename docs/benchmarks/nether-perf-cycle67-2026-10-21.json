@@ -1,0 +1,1315 @@
+{
+  "cycle": 67,
+  "status": "selected-diagnostic-awaiting-merge",
+  "created_utc": "2026-10-22T01:54:17.486091+00:00",
+  "timing_acceptance": false,
+  "problem": "C66 found that critical targets mostly lay outside covered dependency-cell joins, leaving CPU work and terrain/service latency unresolved.",
+  "implementation": "Optional per-task calling-thread CPU endpoints, per-physical-thread CPU unions, separate initially-pending terrain initializer/noninitializer API spans and GPU-service receiver spans. Existing RAII context/bounds/failure/cleanup machinery is reused. Normal hooks compile out; dispatch_job binds the same receiver Result before preserving its original ? propagation. No production scheduling or cache algorithm changes.",
+  "source": {
+    "revision": "7349d9c9e1a71616d13b6787bed88ecf386a9554",
+    "native_tree": "f7ddb59bb8ce25c398d5ccea1a6442dfd83e36fe",
+    "source_status": "",
+    "test_executable_sha256": "8194c762e2637447475dd9effb2b03be8280b847ae90bc7c2756ad87f1bb7316",
+    "forced_rebuild": true,
+    "timing_acceptance": false,
+    "environment": {
+      "RETINA_TERRAIN_REUSE_PROFILES": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/profiles",
+      "RETINA_WORKER_PHASE_OUTPUT": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle67/inventory",
+      "RETINA_REGION_THREADS": "16",
+      "RETINA_GPU_LIGHTING": "1",
+      "RETINA_LIGHTING_DENSE": "0",
+      "RETINA_PERFORMANCE_DIAGNOSTICS": "0",
+      "RETINA_DEPENDENCY_DIAGNOSTICS": "0"
+    },
+    "sha256": "1bffc0f4313786a74a2e397ca1b87cfda00d4e03db2c42946f317636cfc5b04e",
+    "preceding_sha256": "cd99f91ae275ec98d3d868cf744407b34d4804117439e2776c3bec5ea0e4768b",
+    "byte_identical_to_preceding": false
+  },
+  "design_review": {
+    "scope": "Test-only physical-thread CPU and terrain/service API attribution on accepted C66 production; no held scheduler changes.",
+    "source_revision": "7349d9c9e1a71616d13b6787bed88ecf386a9554",
+    "native_tree": "f7ddb59bb8ce25c398d5ccea1a6442dfd83e36fe",
+    "production_diff": "TerrainJob and dispatch_job gain cfg(test) scalar-label/span hooks. dispatch_job binds the same receiver result before the original ? propagation, preserving both transport and original worker errors. Ordinary module visibility is unchanged: observer visibility widening is under cfg(test). No production algorithm, ownership, ordering, cache or scheduling change.",
+    "normal_library": "Ordinary release builds and nm scan pass; no observer symbols. Normal SHA differs from C66, so no prior byte identity or speedup claimed.",
+    "measurement_contract": [
+      "Task CPU snapshots are taken inside task wall endpoints on the same physical thread, enforced by the existing non-Send task context. Inclusive CPU includes nested tasks and probe work on this thread, excluding service-thread work.",
+      "CPU endpoint intervals are unioned per physical thread; missing/reversed readings leave aggregate CPU null while per-worker coverage is retained. Whole-task CPU is not interpolated into partial p95 tails. CPU/wall is not machine utilization.",
+      "Terrain cells only start a span on an initially unfinished snapshot. finish classifies actual initializer versus noninitializer and preserves original Result. Ready calls are excluded; initializer spans can include copying/cache/generation/waits and both include result cloning.",
+      "GPU reply span begins after successful job send and covers receiver.recv plus error conversion before event recording. It includes possible remaining queue/service/reply latency and preemption, not pure GPU execution. First-request chunk coordinates are captured before the request vector moves.",
+      "Terrain/service events use a separate physical-worker buffer from dependency joins. The tested context/bounds/union/tail logic is shared. Nested categories overlap and cannot be summed as wall fractions.",
+      "TerrainSpan Drop records unfinished calls as failed abandoned spans. Existing Task/Trace/Root Drop logic retains failure/missing phases and releases every raw event buffer. No planner/world/GPU owner is held by events.",
+      "No collector lock spans generation. Initializer/join candidates keep scalar stamps; ready or inactive callers allocate no event. Only bounded samples and aggregate counts persist after root cleanup."
+    ],
+    "validation_completed": {
+      "native_tests_passed": 176,
+      "failed": 0,
+      "ignored": 48,
+      "new_tests": 4,
+      "gpu_parity_passed": 1,
+      "ordinary_release_build": true,
+      "normal_symbol_review": "cycle67/normal-symbol-review.json"
+    },
+    "new_tests": [
+      "CPU missing/reversed endpoints, nested per-thread unions and valid per-task ratios",
+      "Actual optional calling-thread clock and real task recording without a speed threshold",
+      "Terrain initialized/ready/racing noninitializer and nested reply categories with original errors, separate dependency buffer and root cleanup",
+      "Nested root terrain panic retains abandoned failed span and restores outer reply context"
+    ],
+    "limitations": [
+      "Whole-region timings remain provisional under known host load; quiet acceptance deferred.",
+      "Other locks and service internals are not separately measured.",
+      "Probe overhead remains inside observer intervals.",
+      "No new portal/concurrent/memory acceptance."
+    ]
+  },
+  "validation": {
+    "native_tests_passed": 176,
+    "failed": 0,
+    "ignored": 48,
+    "new_tests": 4,
+    "explicit_gpu_parity_passed": 1,
+    "observer_measured_chunk_instances": 102400,
+    "paired_measured_chunk_instances": 204800,
+    "total_measured_chunk_instances": 307200,
+    "comparison": "Complete decompressed NBT and membership. Only MCA timestamps/compression representation excluded. Observer compares immutable original and actual C66; both ordinary variants additionally compare C67 observer. Repeated coordinates are not unique coverage.",
+    "shader_readiness": "Actual before/after status4 on every measured observer/paired region.",
+    "observer_exit": {
+      "command": [
+        "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle67/inventory-test-executable",
+        "exact_worker_phase_inventory",
+        "--ignored",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "pid": 14342,
+      "exit_code": 0,
+      "elapsed_seconds": 143.2301149368286,
+      "timing_acceptance": false
+    },
+    "normal_symbol_review": {
+      "command": [
+        "nm",
+        "-a",
+        "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle67/normal.dylib"
+      ],
+      "exit_code": 0,
+      "observer_symbol_matches": {
+        "worker_phase_probe": [],
+        "exact_worker_phase_inventory": [],
+        "TerrainSpan": [],
+        "task_cpu_": []
+      },
+      "sha256": "1bffc0f4313786a74a2e397ca1b87cfda00d4e03db2c42946f317636cfc5b04e"
+    }
+  },
+  "selected_task_attribution": [
+    {
+      "case": "nether-main",
+      "regions": 20,
+      "cpu_tasks_measured": 922820,
+      "cpu_tasks_missing": 0,
+      "roots": [
+        {
+          "root": 0,
+          "name": "minecraft:basalt_pillar",
+          "regions": 20,
+          "evaluation_ms": {
+            "median": 106.813917,
+            "max": 124.933625
+          },
+          "thread_cpu_measured_tasks": 23120,
+          "thread_cpu_missing_tasks": 0,
+          "task_thread_cpu_union_ms": {
+            "median": 39.064585,
+            "max": 44.903244
+          },
+          "longest_task_wall_ms": {
+            "median": 44.251729,
+            "max": 54.256917
+          },
+          "longest_task_thread_cpu_ms": {
+            "median": 0.39439599999999997,
+            "max": 0.738791
+          },
+          "longest_task_thread_cpu_over_wall": {
+            "median": 0.009497892874677265,
+            "max": 0.015537058164783572
+          },
+          "longest_task_terrain_api_fraction": {
+            "median": 0.998931934468053,
+            "max": 0.999472551669081
+          },
+          "last_task_thread_cpu_over_wall": {
+            "median": 0.025441718932163494,
+            "max": 0.993859778597786
+          },
+          "last_task_terrain_api_fraction": {
+            "median": 0.9973673227270997,
+            "max": 0.9989644554807401
+          },
+          "categories": {
+            "gpu_reply": {
+              "events": {
+                "median": 10.0,
+                "max": 12
+              },
+              "worker_union_ms": {
+                "median": 305.5971045,
+                "max": 390.933127
+              },
+              "longest_task_fraction": {
+                "median": 0.967467388638362,
+                "max": 0.9907441384988569
+              }
+            },
+            "terrain_job_initialize": {
+              "events": {
+                "median": 16.0,
+                "max": 16
+              },
+              "worker_union_ms": {
+                "median": 313.539271,
+                "max": 397.662955
+              },
+              "longest_task_fraction": {
+                "median": 0.995595890416151,
+                "max": 0.999472551669081
+              }
+            },
+            "terrain_job_join": {
+              "events": {
+                "median": 48.0,
+                "max": 70
+              },
+              "worker_union_ms": {
+                "median": 949.4613139999999,
+                "max": 1300.944666
+              },
+              "longest_task_fraction": {
+                "median": 0.0,
+                "max": 0.9994654875064133
+              }
+            }
+          }
+        },
+        {
+          "root": 17,
+          "name": "minecraft:brown_mushroom_nether",
+          "regions": 20,
+          "evaluation_ms": {
+            "median": 58.2389375,
+            "max": 246.714333
+          },
+          "thread_cpu_measured_tasks": 23120,
+          "thread_cpu_missing_tasks": 0,
+          "task_thread_cpu_union_ms": {
+            "median": 138.39370250000002,
+            "max": 307.450467
+          },
+          "longest_task_wall_ms": {
+            "median": 55.3546875,
+            "max": 243.659875
+          },
+          "longest_task_thread_cpu_ms": {
+            "median": 21.2084585,
+            "max": 105.372375
+          },
+          "longest_task_thread_cpu_over_wall": {
+            "median": 0.5203429955628254,
+            "max": 0.9787206799771957
+          },
+          "longest_task_terrain_api_fraction": {
+            "median": 0.0,
+            "max": 0.6208489727851225
+          },
+          "last_task_thread_cpu_over_wall": {
+            "median": 0.543963371954382,
+            "max": 0.9953345445573425
+          },
+          "last_task_terrain_api_fraction": {
+            "median": 0.0,
+            "max": 0.6208489727851225
+          },
+          "categories": {
+            "gpu_reply": {
+              "events": {
+                "median": 2.0,
+                "max": 6
+              },
+              "worker_union_ms": {
+                "median": 17.8053325,
+                "max": 72.169083
+              },
+              "longest_task_fraction": {
+                "median": 0.0,
+                "max": 0.6208489727851225
+              }
+            },
+            "terrain_job_initialize": {
+              "events": {
+                "median": 1.0,
+                "max": 4
+              },
+              "worker_union_ms": {
+                "median": 6.874563,
+                "max": 73.903666
+              },
+              "longest_task_fraction": {
+                "median": 0.0,
+                "max": 0.20266302680152942
+              }
+            }
+          }
+        },
+        {
+          "root": 29,
+          "name": "minecraft:ore_ancient_debris_large",
+          "regions": 20,
+          "evaluation_ms": {
+            "median": 45.0233335,
+            "max": 171.635167
+          },
+          "thread_cpu_measured_tasks": 23120,
+          "thread_cpu_missing_tasks": 0,
+          "task_thread_cpu_union_ms": {
+            "median": 76.7966395,
+            "max": 277.043382
+          },
+          "longest_task_wall_ms": {
+            "median": 38.881812499999995,
+            "max": 168.930958
+          },
+          "longest_task_thread_cpu_ms": {
+            "median": 30.615707999999998,
+            "max": 164.850666
+          },
+          "longest_task_thread_cpu_over_wall": {
+            "median": 0.8621687868866015,
+            "max": 0.9952093197109394
+          },
+          "longest_task_terrain_api_fraction": {
+            "median": 0.0,
+            "max": 0.2623135273895205
+          },
+          "last_task_thread_cpu_over_wall": {
+            "median": 0.8621687868866015,
+            "max": 0.9952093197109394
+          },
+          "last_task_terrain_api_fraction": {
+            "median": 0.0,
+            "max": 0.2623135273895205
+          },
+          "categories": {
+            "gpu_reply": {
+              "events": {
+                "median": 0.0,
+                "max": 3
+              },
+              "worker_union_ms": {
+                "median": 0.0,
+                "max": 34.632624
+              },
+              "longest_task_fraction": {
+                "median": 0.0,
+                "max": 0.2560778064997472
+              }
+            },
+            "terrain_job_initialize": {
+              "events": {
+                "median": 0.0,
+                "max": 2
+              },
+              "worker_union_ms": {
+                "median": 0.0,
+                "max": 30.845709
+              },
+              "longest_task_fraction": {
+                "median": 0.0,
+                "max": 0.2280768994185803
+              }
+            }
+          }
+        },
+        {
+          "root": 11,
+          "name": "minecraft:spring_open",
+          "regions": 20,
+          "evaluation_ms": {
+            "median": 5.9553335,
+            "max": 15.400833
+          },
+          "thread_cpu_measured_tasks": 20480,
+          "thread_cpu_missing_tasks": 0,
+          "task_thread_cpu_union_ms": {
+            "median": 32.4641175,
+            "max": 44.832329
+          },
+          "longest_task_wall_ms": {
+            "median": 3.241708,
+            "max": 6.244458
+          },
+          "longest_task_thread_cpu_ms": {
+            "median": 0.0488755,
+            "max": 2.423125
+          },
+          "longest_task_thread_cpu_over_wall": {
+            "median": 0.01716580358921293,
+            "max": 0.4895572896936637
+          },
+          "longest_task_terrain_api_fraction": {
+            "median": 0.0,
+            "max": 0.0
+          },
+          "last_task_thread_cpu_over_wall": {
+            "median": 0.5277128069344433,
+            "max": 0.9973875
+          },
+          "last_task_terrain_api_fraction": {
+            "median": 0.0,
+            "max": 0.0
+          },
+          "categories": {}
+        }
+      ]
+    },
+    {
+      "case": "nether-second-seed",
+      "regions": 20,
+      "cpu_tasks_measured": 922820,
+      "cpu_tasks_missing": 0,
+      "roots": [
+        {
+          "root": 0,
+          "name": "minecraft:basalt_pillar",
+          "regions": 20,
+          "evaluation_ms": {
+            "median": 99.593896,
+            "max": 116.8225
+          },
+          "thread_cpu_measured_tasks": 23120,
+          "thread_cpu_missing_tasks": 0,
+          "task_thread_cpu_union_ms": {
+            "median": 37.2496525,
+            "max": 65.738662
+          },
+          "longest_task_wall_ms": {
+            "median": 40.346500000000006,
+            "max": 60.977041
+          },
+          "longest_task_thread_cpu_ms": {
+            "median": 0.4017915,
+            "max": 0.643875
+          },
+          "longest_task_thread_cpu_over_wall": {
+            "median": 0.007422245900343663,
+            "max": 0.01608442833602486
+          },
+          "longest_task_terrain_api_fraction": {
+            "median": 0.9989410440917339,
+            "max": 0.999247495311168
+          },
+          "last_task_thread_cpu_over_wall": {
+            "median": 0.03510528661081974,
+            "max": 0.9951377003267465
+          },
+          "last_task_terrain_api_fraction": {
+            "median": 0.9973592123237441,
+            "max": 0.9989748664300792
+          },
+          "categories": {
+            "gpu_reply": {
+              "events": {
+                "median": 10.0,
+                "max": 12
+              },
+              "worker_union_ms": {
+                "median": 289.7860215,
+                "max": 382.887667
+              },
+              "longest_task_fraction": {
+                "median": 0.9833586940869863,
+                "max": 0.9925273219282217
+              }
+            },
+            "terrain_job_initialize": {
+              "events": {
+                "median": 16.0,
+                "max": 16
+              },
+              "worker_union_ms": {
+                "median": 295.2401455,
+                "max": 389.887416
+              },
+              "longest_task_fraction": {
+                "median": 0.9980679301193084,
+                "max": 0.9992348992722482
+              }
+            },
+            "terrain_job_join": {
+              "events": {
+                "median": 50.0,
+                "max": 72
+              },
+              "worker_union_ms": {
+                "median": 945.342312,
+                "max": 1184.177414
+              },
+              "longest_task_fraction": {
+                "median": 0.0,
+                "max": 0.999247495311168
+              }
+            }
+          }
+        },
+        {
+          "root": 17,
+          "name": "minecraft:brown_mushroom_nether",
+          "regions": 20,
+          "evaluation_ms": {
+            "median": 49.6978955,
+            "max": 276.761125
+          },
+          "thread_cpu_measured_tasks": 23120,
+          "thread_cpu_missing_tasks": 0,
+          "task_thread_cpu_union_ms": {
+            "median": 104.735711,
+            "max": 333.855333
+          },
+          "longest_task_wall_ms": {
+            "median": 43.873020999999994,
+            "max": 274.933417
+          },
+          "longest_task_thread_cpu_ms": {
+            "median": 20.816708,
+            "max": 240.622583
+          },
+          "longest_task_thread_cpu_over_wall": {
+            "median": 0.6339254838630453,
+            "max": 0.9999870111963487
+          },
+          "longest_task_terrain_api_fraction": {
+            "median": 0.0,
+            "max": 0.5128068999847656
+          },
+          "last_task_thread_cpu_over_wall": {
+            "median": 0.8499363114200447,
+            "max": 0.9954441913439636
+          },
+          "last_task_terrain_api_fraction": {
+            "median": 0.0,
+            "max": 0.5128068999847656
+          },
+          "categories": {
+            "gpu_reply": {
+              "events": {
+                "median": 2.0,
+                "max": 6
+              },
+              "worker_union_ms": {
+                "median": 8.818271,
+                "max": 64.876291
+              },
+              "longest_task_fraction": {
+                "median": 0.0,
+                "max": 0.4939381669842181
+              }
+            },
+            "terrain_job_initialize": {
+              "events": {
+                "median": 0.0,
+                "max": 5
+              },
+              "worker_union_ms": {
+                "median": 0.0,
+                "max": 65.357667
+              },
+              "longest_task_fraction": {
+                "median": 0.0,
+                "max": 0.5128068999847656
+              }
+            }
+          }
+        },
+        {
+          "root": 29,
+          "name": "minecraft:ore_ancient_debris_large",
+          "regions": 20,
+          "evaluation_ms": {
+            "median": 14.699521,
+            "max": 85.654333
+          },
+          "thread_cpu_measured_tasks": 23120,
+          "thread_cpu_missing_tasks": 0,
+          "task_thread_cpu_union_ms": {
+            "median": 50.279771,
+            "max": 150.643307
+          },
+          "longest_task_wall_ms": {
+            "median": 9.9641875,
+            "max": 81.097291
+          },
+          "longest_task_thread_cpu_ms": {
+            "median": 7.404771,
+            "max": 80.730958
+          },
+          "longest_task_thread_cpu_over_wall": {
+            "median": 0.9728767818893274,
+            "max": 0.9999769641869893
+          },
+          "longest_task_terrain_api_fraction": {
+            "median": 0.0,
+            "max": 0.2818510442965343
+          },
+          "last_task_thread_cpu_over_wall": {
+            "median": 0.9817,
+            "max": 0.9999769641869893
+          },
+          "last_task_terrain_api_fraction": {
+            "median": 0.0,
+            "max": 0.2818510442965343
+          },
+          "categories": {
+            "gpu_reply": {
+              "events": {
+                "median": 0.0,
+                "max": 4
+              },
+              "worker_union_ms": {
+                "median": 0.0,
+                "max": 6.140125
+              },
+              "longest_task_fraction": {
+                "median": 0.0,
+                "max": 0.2818510442965343
+              }
+            },
+            "terrain_job_initialize": {
+              "events": {
+                "median": 0.0,
+                "max": 2
+              },
+              "worker_union_ms": {
+                "median": 0.0,
+                "max": 0.352583
+              },
+              "longest_task_fraction": {
+                "median": 0.0,
+                "max": 0.01722753313381787
+              }
+            }
+          }
+        },
+        {
+          "root": 11,
+          "name": "minecraft:spring_open",
+          "regions": 20,
+          "evaluation_ms": {
+            "median": 5.7379375,
+            "max": 11.568459
+          },
+          "thread_cpu_measured_tasks": 20480,
+          "thread_cpu_missing_tasks": 0,
+          "task_thread_cpu_union_ms": {
+            "median": 34.6475005,
+            "max": 49.211705
+          },
+          "longest_task_wall_ms": {
+            "median": 2.806063,
+            "max": 7.204292
+          },
+          "longest_task_thread_cpu_ms": {
+            "median": 0.055458,
+            "max": 4.938291
+          },
+          "longest_task_thread_cpu_over_wall": {
+            "median": 0.01843593162147161,
+            "max": 0.9800708832502301
+          },
+          "longest_task_terrain_api_fraction": {
+            "median": 0.0,
+            "max": 0.0
+          },
+          "last_task_thread_cpu_over_wall": {
+            "median": 0.7472344199107341,
+            "max": 0.9997918326693227
+          },
+          "last_task_terrain_api_fraction": {
+            "median": 0.0,
+            "max": 0.0
+          },
+          "categories": {}
+        }
+      ]
+    },
+    {
+      "case": "nether-custom-bounds",
+      "regions": 20,
+      "cpu_tasks_measured": 515920,
+      "cpu_tasks_missing": 0,
+      "roots": [
+        {
+          "root": 3,
+          "name": "minecraft:spring_open",
+          "regions": 20,
+          "evaluation_ms": {
+            "median": 32.3152915,
+            "max": 65.132042
+          },
+          "thread_cpu_measured_tasks": 20480,
+          "thread_cpu_missing_tasks": 0,
+          "task_thread_cpu_union_ms": {
+            "median": 60.285273000000004,
+            "max": 74.221588
+          },
+          "longest_task_wall_ms": {
+            "median": 25.962874999999997,
+            "max": 45.055209
+          },
+          "longest_task_thread_cpu_ms": {
+            "median": 0.47868750000000004,
+            "max": 0.770375
+          },
+          "longest_task_thread_cpu_over_wall": {
+            "median": 0.019299086724187606,
+            "max": 0.03928396094332418
+          },
+          "longest_task_terrain_api_fraction": {
+            "median": 0.9952403843013649,
+            "max": 0.9983769912153776
+          },
+          "last_task_thread_cpu_over_wall": {
+            "median": 0.005202693213963553,
+            "max": 0.9951942446043165
+          },
+          "last_task_terrain_api_fraction": {
+            "median": 0.9934712692302352,
+            "max": 0.9989618007778653
+          },
+          "categories": {
+            "gpu_reply": {
+              "events": {
+                "median": 4.0,
+                "max": 7
+              },
+              "worker_union_ms": {
+                "median": 79.7396455,
+                "max": 209.079169
+              },
+              "longest_task_fraction": {
+                "median": 0.977685969151636,
+                "max": 0.990369215688246
+              }
+            },
+            "terrain_job_initialize": {
+              "events": {
+                "median": 6.5,
+                "max": 9
+              },
+              "worker_union_ms": {
+                "median": 81.9882295,
+                "max": 214.368627
+              },
+              "longest_task_fraction": {
+                "median": 0.9952403843013649,
+                "max": 0.9983769912153776
+              }
+            },
+            "terrain_job_join": {
+              "events": {
+                "median": 12.0,
+                "max": 21
+              },
+              "worker_union_ms": {
+                "median": 170.9550625,
+                "max": 380.491586
+              },
+              "longest_task_fraction": {
+                "median": 0.0,
+                "max": 0.9931038199696617
+              }
+            }
+          }
+        },
+        {
+          "root": 14,
+          "name": "minecraft:ore_ancient_debris_large",
+          "regions": 20,
+          "evaluation_ms": {
+            "median": 4.7685414999999995,
+            "max": 19.721125
+          },
+          "thread_cpu_measured_tasks": 23120,
+          "thread_cpu_missing_tasks": 0,
+          "task_thread_cpu_union_ms": {
+            "median": 21.627894,
+            "max": 42.090457
+          },
+          "longest_task_wall_ms": {
+            "median": 3.2317915,
+            "max": 10.598333
+          },
+          "longest_task_thread_cpu_ms": {
+            "median": 2.9701665,
+            "max": 6.108708
+          },
+          "longest_task_thread_cpu_over_wall": {
+            "median": 0.8818812416536266,
+            "max": 0.9999522016696677
+          },
+          "longest_task_terrain_api_fraction": {
+            "median": 0.0,
+            "max": 0.0
+          },
+          "last_task_thread_cpu_over_wall": {
+            "median": 0.9661771079046424,
+            "max": 0.9999522016696677
+          },
+          "last_task_terrain_api_fraction": {
+            "median": 0.0,
+            "max": 0.0
+          },
+          "categories": {}
+        }
+      ]
+    },
+    {
+      "case": "nether-direct-stem",
+      "regions": 20,
+      "cpu_tasks_measured": 515920,
+      "cpu_tasks_missing": 0,
+      "roots": [
+        {
+          "root": 3,
+          "name": "minecraft:spring_open",
+          "regions": 20,
+          "evaluation_ms": {
+            "median": 32.1773745,
+            "max": 48.370042
+          },
+          "thread_cpu_measured_tasks": 20480,
+          "thread_cpu_missing_tasks": 0,
+          "task_thread_cpu_union_ms": {
+            "median": 64.862058,
+            "max": 80.020168
+          },
+          "longest_task_wall_ms": {
+            "median": 26.2903335,
+            "max": 37.167208
+          },
+          "longest_task_thread_cpu_ms": {
+            "median": 0.4809585,
+            "max": 4.919125
+          },
+          "longest_task_thread_cpu_over_wall": {
+            "median": 0.018863707218239427,
+            "max": 0.16985220367879683
+          },
+          "longest_task_terrain_api_fraction": {
+            "median": 0.9968628508189626,
+            "max": 0.9982302853238461
+          },
+          "last_task_thread_cpu_over_wall": {
+            "median": 0.00832977435990152,
+            "max": 0.9939019910366615
+          },
+          "last_task_terrain_api_fraction": {
+            "median": 0.9941278982776587,
+            "max": 0.9974801615048855
+          },
+          "categories": {
+            "gpu_reply": {
+              "events": {
+                "median": 4.0,
+                "max": 7
+              },
+              "worker_union_ms": {
+                "median": 78.720688,
+                "max": 154.149251
+              },
+              "longest_task_fraction": {
+                "median": 0.9809153543274427,
+                "max": 0.98643523027518
+              }
+            },
+            "terrain_job_initialize": {
+              "events": {
+                "median": 5.5,
+                "max": 9
+              },
+              "worker_union_ms": {
+                "median": 80.4313735,
+                "max": 157.347166
+              },
+              "longest_task_fraction": {
+                "median": 0.9968628508189626,
+                "max": 0.9982302853238461
+              }
+            },
+            "terrain_job_join": {
+              "events": {
+                "median": 13.0,
+                "max": 23
+              },
+              "worker_union_ms": {
+                "median": 199.066293,
+                "max": 311.454708
+              },
+              "longest_task_fraction": {
+                "median": 0.0,
+                "max": 0.9959499836598764
+              }
+            }
+          }
+        },
+        {
+          "root": 14,
+          "name": "minecraft:ore_ancient_debris_large",
+          "regions": 20,
+          "evaluation_ms": {
+            "median": 5.8571665,
+            "max": 24.688125
+          },
+          "thread_cpu_measured_tasks": 23120,
+          "thread_cpu_missing_tasks": 0,
+          "task_thread_cpu_union_ms": {
+            "median": 22.123677,
+            "max": 45.141125
+          },
+          "longest_task_wall_ms": {
+            "median": 3.619917,
+            "max": 21.88375
+          },
+          "longest_task_thread_cpu_ms": {
+            "median": 2.8032915000000003,
+            "max": 20.674458
+          },
+          "longest_task_thread_cpu_over_wall": {
+            "median": 0.8942499142392498,
+            "max": 0.9998240084611317
+          },
+          "longest_task_terrain_api_fraction": {
+            "median": 0.0,
+            "max": 0.0
+          },
+          "last_task_thread_cpu_over_wall": {
+            "median": 0.952868873137038,
+            "max": 0.9998240084611317
+          },
+          "last_task_terrain_api_fraction": {
+            "median": 0.0,
+            "max": 0.0
+          },
+          "categories": {}
+        }
+      ]
+    },
+    {
+      "case": "overworld",
+      "regions": 20,
+      "cpu_tasks_measured": 0,
+      "cpu_tasks_missing": 0,
+      "roots": []
+    }
+  ],
+  "interpretation": [
+    "Standard-seed longest basalt-pillar tasks have median GPU reply API fractions96.75/98.34% and calling-thread CPU fractions0.95/0.74%; their root evaluations have medians106.81/99.59ms. Reply spans are not pure GPU execution; remaining queue/service latency and preemption are included.",
+    "Longest brown-mushroom task CPU/wall medians52.03/63.39%; median terrain fractions0%, but maximum fractions62.08/51.28%. This is mixed region-dependent work, not proof of purely CPU-bound behavior.",
+    "Longest large ancient-debris CPU/wall medians86.22/97.29%; median terrain0%, maximum26.23/28.19%. Longest-task wall medians38.88/9.96ms; the second seed has less absolute time to recover.",
+    "Custom/direct spring-open longest tasks have median reply fractions97.77/98.09%, with task wall medians25.96/26.29ms. Early patch-fire also has large terrain intervals.",
+    "Some other long tasks have low CPU without entering measured terrain or dependency joins. Other locks, preemption and unmeasured paths remain possible. Residual time is unclassified.",
+    "Different medians need not sum or describe one representative task. CPU, overlapping API spans and per-worker sums cannot be added as elapsed-time shares."
+  ],
+  "paired_normal": [
+    {
+      "case": "nether-main",
+      "seed": 123456789,
+      "summary": {
+        "old": {
+          "median_ms": 1522.636958048679,
+          "p95_ms": 2378.2611355069093,
+          "maximum_ms": 2609.809583052993,
+          "total_ms": 31193.827000213787,
+          "chunks_per_second": 656.5401545587735,
+          "generation_process_peak_rss_bytes": 2233843712,
+          "program_statuses": [
+            4
+          ]
+        },
+        "new": {
+          "median_ms": 1415.3819375205785,
+          "p95_ms": 2401.8696207320318,
+          "maximum_ms": 2515.6937909778208,
+          "total_ms": 30196.582542732358,
+          "chunks_per_second": 678.2224435834073,
+          "generation_process_peak_rss_bytes": 2178990080,
+          "program_statuses": [
+            4
+          ]
+        },
+        "paired": {
+          "median_new_over_old": 1.006409249852737,
+          "new_faster_pairs": 9,
+          "pairs": 20
+        }
+      },
+      "comparisons": {
+        "old": [
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/nether-main-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          },
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle66/merged-full/nether-main-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          },
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle67/inventory/nether-main-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          }
+        ],
+        "new": [
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/nether-main-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          },
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle66/merged-full/nether-main-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          },
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle67/inventory/nether-main-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          }
+        ]
+      }
+    },
+    {
+      "case": "nether-second-seed",
+      "seed": 42,
+      "summary": {
+        "old": {
+          "median_ms": 1197.2491670167074,
+          "p95_ms": 1527.50535995001,
+          "maximum_ms": 1833.7652920745313,
+          "total_ms": 23283.631750149652,
+          "chunks_per_second": 879.5878675528514,
+          "generation_process_peak_rss_bytes": 2242527232,
+          "program_statuses": [
+            4
+          ]
+        },
+        "new": {
+          "median_ms": 1229.3944379780442,
+          "p95_ms": 1606.1471809400248,
+          "maximum_ms": 1944.1210408695042,
+          "total_ms": 24121.79470784031,
+          "chunks_per_second": 849.024720094454,
+          "generation_process_peak_rss_bytes": 2251456512,
+          "program_statuses": [
+            4
+          ]
+        },
+        "paired": {
+          "median_new_over_old": 1.0207071466155524,
+          "new_faster_pairs": 7,
+          "pairs": 20
+        }
+      },
+      "comparisons": {
+        "old": [
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/nether-second-seed-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          },
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle66/merged-full/nether-second-seed-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          },
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle67/inventory/nether-second-seed-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          }
+        ],
+        "new": [
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/nether-second-seed-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          },
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle66/merged-full/nether-second-seed-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          },
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle67/inventory/nether-second-seed-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          }
+        ]
+      }
+    },
+    {
+      "case": "nether-custom-bounds",
+      "seed": 123456789,
+      "summary": {
+        "old": {
+          "median_ms": 818.7738953856751,
+          "p95_ms": 1062.960112967994,
+          "maximum_ms": 1175.7992920465767,
+          "total_ms": 16877.015832345933,
+          "chunks_per_second": 1213.4846707170059,
+          "generation_process_peak_rss_bytes": 1900462080,
+          "program_statuses": [
+            4
+          ]
+        },
+        "new": {
+          "median_ms": 787.3493749648333,
+          "p95_ms": 1066.1971575696953,
+          "maximum_ms": 1076.6018750146031,
+          "total_ms": 16537.653747946024,
+          "chunks_per_second": 1238.3860680686712,
+          "generation_process_peak_rss_bytes": 1981579264,
+          "program_statuses": [
+            4
+          ]
+        },
+        "paired": {
+          "median_new_over_old": 0.9939180388676215,
+          "new_faster_pairs": 11,
+          "pairs": 20
+        }
+      },
+      "comparisons": {
+        "old": [
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/nether-custom-bounds-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          },
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle66/merged-full/nether-custom-bounds-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          },
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle67/inventory/nether-custom-bounds-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          }
+        ],
+        "new": [
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/nether-custom-bounds-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          },
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle66/merged-full/nether-custom-bounds-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          },
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle67/inventory/nether-custom-bounds-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          }
+        ]
+      }
+    },
+    {
+      "case": "nether-direct-stem",
+      "seed": 42,
+      "summary": {
+        "old": {
+          "median_ms": 728.6837289575487,
+          "p95_ms": 910.0973025313579,
+          "maximum_ms": 914.127083029598,
+          "total_ms": 14988.67700016126,
+          "chunks_per_second": 1366.364756527855,
+          "generation_process_peak_rss_bytes": 1876983808,
+          "program_statuses": [
+            4
+          ]
+        },
+        "new": {
+          "median_ms": 730.80360412132,
+          "p95_ms": 906.6157227498479,
+          "maximum_ms": 940.475583076477,
+          "total_ms": 15261.686122277752,
+          "chunks_per_second": 1341.9225002999494,
+          "generation_process_peak_rss_bytes": 1847590912,
+          "program_statuses": [
+            4
+          ]
+        },
+        "paired": {
+          "median_new_over_old": 0.9931722599872541,
+          "new_faster_pairs": 11,
+          "pairs": 20
+        }
+      },
+      "comparisons": {
+        "old": [
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/nether-direct-stem-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          },
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle66/merged-full/nether-direct-stem-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          },
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle67/inventory/nether-direct-stem-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          }
+        ],
+        "new": [
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/nether-direct-stem-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          },
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle66/merged-full/nether-direct-stem-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          },
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle67/inventory/nether-direct-stem-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          }
+        ]
+      }
+    },
+    {
+      "case": "overworld",
+      "seed": 123456789,
+      "summary": {
+        "old": {
+          "median_ms": 355.2766669308767,
+          "p95_ms": 459.29928075056523,
+          "maximum_ms": 486.5355829242617,
+          "total_ms": 7391.443665837869,
+          "chunks_per_second": 2770.771303399829,
+          "generation_process_peak_rss_bytes": 1567047680,
+          "program_statuses": [
+            4
+          ]
+        },
+        "new": {
+          "median_ms": 353.01272897049785,
+          "p95_ms": 467.74017098359764,
+          "maximum_ms": 482.81674995087087,
+          "total_ms": 7358.451707055792,
+          "chunks_per_second": 2783.194184771555,
+          "generation_process_peak_rss_bytes": 1584562176,
+          "program_statuses": [
+            4
+          ]
+        },
+        "paired": {
+          "median_new_over_old": 0.9947103531679488,
+          "new_faster_pairs": 11,
+          "pairs": 20
+        }
+      },
+      "comparisons": {
+        "old": [
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/overworld-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          },
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle66/merged-full/overworld-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          },
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle67/inventory/overworld-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          }
+        ],
+        "new": [
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/overworld-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          },
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle66/merged-full/overworld-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          },
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle67/inventory/overworld-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          }
+        ]
+      }
+    }
+  ],
+  "decision": "Select as diagnostic-only evidence, without speedup or no-regression acceptance. User deferred quiet timing confirmation. Normal observer-symbol scan is empty; normal hash differs from C66, so prior byte identity is not claimed. Actual merged rebuild and full corpus must follow merge.",
+  "opportunities": [
+    {
+      "opportunity": "Reduce critical initial terrain reply latency",
+      "expected_gain": "Unknown. Relevant root evaluation is about100ms on standard seeds; this is not a guaranteed100ms saving or enough by itself to meet the full goal.",
+      "risk": "Batching/reuse must preserve exact tile guards, material cache isolation, GPU service fairness and concurrent throughput.",
+      "complexity": "Architectural; distinguish queue/service work and inspect exact tile submissions before selecting a change.",
+      "validation": "Demonstrate fewer relevant submissions/transfers or lower service work with complete original/C66 NBT, ordinary region timings and later quiet/concurrent acceptance."
+    },
+    {
+      "opportunity": "Reduce CPU work inside expensive exterior target owners",
+      "expected_gain": "Unknown; current longest main brown/ancient tasks use median21.21/30.62ms calling-thread CPU.",
+      "risk": "Prerequisite state, source order and material-dependent RNG cannot be skipped. C61 moved work earlier without a clear gain; C62-C65 queue changes are still held.",
+      "complexity": "High; inspect/profile owner work before another scheduler.",
+      "validation": "Measure reduced actual CPU/work and full-region results; retain exact output, request order and concurrent coverage."
+    }
+  ],
+  "limitations": [
+    "Known host load and observer overhead; no final timing acceptance.",
+    "GPU reply spans do not separate service queueing from device execution.",
+    "CPU endpoint samples cannot attribute partial tails or identify individual CPU call stacks.",
+    "No new portal/concurrency/sustained-memory acceptance.",
+    "Full subsecond goal remains active."
+  ],
+  "recovery": {
+    "evidence_root": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20",
+    "branch": "codex/nether-task-cpu-terrain-spans",
+    "drivers": [
+      "task-cpu-terrain-inventory.py",
+      "task-cpu-terrain-paired.py",
+      "task-cpu-terrain-summary.py",
+      "task-cpu-terrain-join-summary.py",
+      "task-cpu-terrain-phase-summary.py"
+    ],
+    "artifacts": [
+      "cycle67/tests.log",
+      "cycle67/gpu-parity.log",
+      "cycle67/inventory-test-executable",
+      "cycle67/normal.dylib",
+      "cycle67/proof.json",
+      "cycle67/task-cpu-terrain-summary.json",
+      "cycle67/paired-normal/report.json"
+    ],
+    "large_artifacts": "Binaries, generated worlds and raw observations remain outside Git.",
+    "full_attribution": "cycle67/task-cpu-terrain-summary.json contains full count/mean/min/max distributions and bounded samples."
+  }
+}
