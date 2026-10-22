@@ -78,12 +78,11 @@ fn validate(value: &Value) {
     assert_eq!(v["entries"], v["order"]);
     assert!(v["metadata_entries"].as_u64().unwrap() <= v["metadata_limit"].as_u64().unwrap());
     assert_eq!(v["metadata_entries"], v["metadata_order"]);
-    // The sweep precedes eviction of the just-inserted cell's predecessor,
-    // leaving at most one additional dead weak entry at a sweep boundary.
-    assert!(
-        v["weak_entries"].as_u64().unwrap()
-            <= entries + v["insertions_since_sweep"].as_u64().unwrap() + 1
-    );
+    // A sweep can run while the current job owns many starts. Dead weak
+    // control blocks may remain until the next sweep, but no start payload
+    // should stay live beyond the retained cache after all callers join.
+    assert_eq!(v["live_weak_entries"], v["entries"]);
+    assert!(v["weak_entries"].as_u64().unwrap() >= entries);
     assert_eq!(v["external_cell_references"], 0);
     assert_eq!(v["external_start_references"], 0);
 }
@@ -180,6 +179,41 @@ fn completed_region_retention_census() {
             println!("RETENTION {case} round {round} complete");
         }
     }
+    let mut concurrent = Vec::new();
+    for callers in [2usize, 4, 8] {
+        let directory = output.join(format!("concurrent-{callers}"));
+        fs::create_dir(&directory).unwrap();
+        let generated = std::thread::scope(|scope| {
+            let mut handles = Vec::new();
+            for index in 0..callers {
+                let engine = &engine;
+                let (case, template, biome) = &cases[index % cases.len()];
+                let case = *case;
+                let request = ChunkRequest {
+                    chunk_x: (-2 + index as i32 % 5) * 32,
+                    chunk_z: (-2 + index as i32 / 5) * 32,
+                    ..*template
+                };
+                let destination = directory.join(case);
+                fs::create_dir_all(&destination).unwrap();
+                let path = destination.join(format!("{index}.mca"));
+                handles.push(scope.spawn(move || {
+                    let report =
+                        crate::region::generate_region(engine, request, &path, 0, biome).unwrap();
+                    assert_eq!(report.generated, 1024);
+                    assert_eq!(report.preserved, 0);
+                    json!({"case":case,"index":index,"path":path,
+                        "program":engine.pipeline.program_snapshot(request.reserved)})
+                }));
+            }
+            handles
+                .into_iter()
+                .map(|h| h.join().unwrap())
+                .collect::<Vec<_>>()
+        });
+        concurrent.push(json!({"callers":callers,"regions":generated,"retention":census(&engine)}));
+        println!("RETENTION joined {callers} mixed-context callers complete");
+    }
     let release_versions = engine.dependency_versions.lock().unwrap().release_probe();
     let weak_masks: Vec<_> = engine
         .caves
@@ -195,12 +229,16 @@ fn completed_region_retention_census() {
         "live_mask_references":weak_masks.iter().filter(|v| v.strong_count()!=0).count()});
     let report_path = output.join("report.json");
     let mut report: Value = serde_json::from_slice(&fs::read(&report_path).unwrap()).unwrap();
+    report["concurrent"] = json!(concurrent);
     report["after_engine_drop"] = json!({"versions":released_versions,"caves":released_masks});
     fs::write(&report_path, serde_json::to_vec_pretty(&report).unwrap()).unwrap();
     // Validate only after the real corpus finishes; retain all observations if
     // an ownership expectation fails so a reader can investigate the actual owner.
     for record in &records {
         validate(&record["retention"]);
+    }
+    for group in &concurrent {
+        validate(&group["retention"]);
     }
     assert_eq!(released_versions["live_snapshots"], 0);
     assert_eq!(released_versions["live_interior_run_buffers"], 0);
