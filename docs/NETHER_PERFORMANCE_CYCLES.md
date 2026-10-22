@@ -2332,3 +2332,28 @@ Hold unmerged. Main standard-seed aggregate throughput is nearly flat (+0.40%); 
 Preparation attempts include ready tiles and repeated tile origins across roots. The separate joined preparation wall counter is nested inside dependency evaluation; other worker/GPU intervals overlap. Earlier requesting can change shared exact-cache eviction and GPU ordering even when required coverage is unchanged. Full work counters and RSS observations are retained in the report. Known host activity keeps timing provisional, with quiet acceptance deferred by the user. No new concurrency, portal or sustained-memory acceptance is established; the goal remains active.
 
 Report: `docs/benchmarks/nether-perf-cycle71-2026-10-21.json`; external `cycle71/` and `target-terrain-*.py`. Preserve source and immutable evidence.
+
+
+## Cycle 76 — actual terrain overlap and request footprint evidence (2026-10-22)
+
+Status: ready diagnostic-only delivery; actual merged rebuild/full corpus proof follows merge. Cycles 72–75 remain held in their own worktrees. This cycle does not promote their implementations or change production generation.
+
+The actual GPU comparison independently produces 48 pairs across four profiles, two seeds, signed origins, nested 32/16 tiles, horizontal/vertical/diagonal 16/16 neighbors, 16/1 probes and unaligned 7/2 tiles. All compared data agrees: 1,548,288 columns, 1,073,152 complete material-run streams, 6,438,912 heightmap observations, 7,098,368 quart biome values, 1,548,288 surface flags and 19,985,408 sixteen-bit cave rows. Material comparisons require common run coverage; cave rows omit the unaligned one-block fringes. This finite fixture evidence does not prove arbitrary profiles or guards interchangeable.
+
+A separate `cfg(test)` observer records `TerrainJob.field` and `.mask` coordinates **before** 16-chunk normalization. Its per-job locks perturb diagnostic timing. It retains scalar metadata only, reconciles every call with existing request counters, and verifies all observed jobs have dropped at joined region completion. Five warmups precede twenty complete measured regions in each of five cases.
+
+| Case | Median generated chunk instances | Median unique generated coordinates | Median duplicate-coordinate fraction | Median requested chunks per freshly generated dependency tile |
+| --- | ---: | ---: | ---: | ---: |
+| Nether main | 7,455.5 | 5,170 | 30.83% | 18.5 |
+| Nether second seed | 7,890.5 | 5,474 | 31.52% | 19 |
+| Custom bounds | 6,170 | 4,624 | 24.97% | 67.5 |
+| Direct stem | 6,157.5 | 4,624 | 24.75% | 68.5 |
+| Overworld | 1,444 | 1,444 | 0% | — |
+
+These are coordinate/request counts, **not removable-work or speedup percentages**. Generated rectangles include required guards. Returned fields can serve other halo coordinates, and borrowed initial fields bypass request entry points. In particular, `structures/fossils.rs` requests a mask at the 16-chunk batch origin, then reads actual fossil columns elsewhere in that tile. The observed request footprint cannot justify shrinking fossil coverage. A following reuse or selective outer-tile design must account for these real accesses and generate every missing coordinate explicitly.
+
+Validation: 179 ordinary native tests passed; 50 ignored. Both explicit GPU terrain tests and the complete request-inventory test passed. The instrumented corpus (102,400 measured chunks) and alternating ordinary old/new corpora (204,800 measured chunks) match both the immutable original and actual PR203 main in complete decompressed NBT and membership. Only MCA container timestamps/compression representation are excluded. All measured shader snapshots report ready status 4; all drivers and workers terminated successfully before source/HEAD changed.
+
+Ordinary machine-code section SHA-256 is identical to main (`91bef42b702bd68f5e21b71cfa0e77f0d22b77b393b128c6ec3f900ffa81d427`). The normal libraries differ in exactly 81 file bytes: a panic source line moves from 24 to 27, with the build UUID and code signatures changing accordingly. Every other Mach-O section is identical, and observer symbols are absent. Thus this cycle has no executable generation change. Host-contended paired throughput deltas were −1.17%, +3.24%, +2.16%, −5.74%, and +3.55% respectively; these are recorded observations, not optimization effects or quiet acceptance. Direct-stem p95 was 1,103→1,214 ms. No speedup, subsecond target, concurrency, portal or sustained-memory claim is made.
+
+Evidence and source/hash/reproduction details: `docs/benchmarks/nether-perf-cycle76-2026-10-22.json`; large immutable binaries/worlds and detailed geometry, request, host and NBT evidence are under `/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle76`. External drivers are `terrain-overlap-normal.py`, `terrain-overlap-measure.py`, `terrain-overlap-summary.py`, `terrain-overlap-classify.py`, and `terrain-overlap-report.py` in that evidence root. The ordinary baseline is the actual PR203 merged binary. Recover tested source from `2c1ad3034c95f0e75d0820a58f11e676456598fe`; all held/protected worktrees remain untouched. Quiet timing confirmation remains deferred by user instruction.

@@ -6,6 +6,9 @@ use crate::{ChunkRequest, TerrainEngine, WorldProfile};
 use std::collections::HashMap as Map;
 use std::sync::{Arc, Mutex, OnceLock};
 
+#[cfg(test)]
+mod demand_probe;
+
 struct Tile {
     field: Arc<Field<'static>>,
     mask: Option<Arc<CaveMask>>,
@@ -47,6 +50,8 @@ pub(crate) struct TerrainJob<'a> {
     cached: Map<(i32, i32), Arc<CaveMask>>,
     tiles: Mutex<Map<(i32, i32), Cell>>,
     metrics: Arc<crate::timings::Timings>,
+    #[cfg(test)]
+    demand: demand_probe::Trace,
 }
 impl<'a> TerrainJob<'a> {
     pub(crate) fn new(
@@ -77,15 +82,21 @@ impl<'a> TerrainJob<'a> {
         Self {
             engine, request, initial, nearby, cached,
             tiles: Mutex::new(Map::default()), metrics,
+            #[cfg(test)]
+            demand: demand_probe::Trace::new(request),
         }
     }
     pub(crate) fn len(&self) -> usize {
         self.nearby.len() + self.tiles.lock().unwrap_or_else(|e| e.into_inner()).len()
     }
     pub(crate) fn field(&self, x: i32, z: i32) -> Result<Arc<Field<'static>>, String> {
+        #[cfg(test)]
+        self.demand.query(x, z, 0);
         Ok(self.tile(x, z)?.field.clone())
     }
     pub(crate) fn mask(&self, x: i32, z: i32) -> Result<Option<Arc<CaveMask>>, String> {
+        #[cfg(test)]
+        self.demand.query(x, z, 1);
         Ok(self.tile(x, z)?.mask.clone())
     }
     fn tile(&self, x: i32, z: i32) -> Result<Arc<Tile>, String> {
