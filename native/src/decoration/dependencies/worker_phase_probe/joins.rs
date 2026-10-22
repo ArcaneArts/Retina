@@ -77,6 +77,7 @@ impl Drop for Context {
         });
         if !valid && !self.worker.closed.load(Ordering::Relaxed) {
             self.worker.joins.lock().unwrap().context_errors += 1;
+            self.worker.terrain.lock().unwrap().context_errors += 1;
         }
         self.worker.active.fetch_sub(1, Ordering::Relaxed);
     }
@@ -99,15 +100,37 @@ impl Candidate {
         // No event allocation, Arc clone or collector lock for initializers.
         // An initializer may itself join nested cells, which record separately.
         if built { return; }
-        let Some((tag, token, start, key)) = self.stamp else { return; };
+        self.record(success, false, None);
+    }
+    fn record(self, success: bool, terrain: bool, kind: Option<&'static str>) {
+        let Some((tag, token, start, mut key)) = self.stamp else { return; };
+        if let Some(kind) = kind { key.kind = kind; }
         CURRENT.with(|current| {
             let current = current.borrow();
             let frame = current.frames.last().expect("dependency join lost its task context");
             assert_eq!((frame.tag, frame.token), (tag, token), "dependency join changed task context");
             assert!(!frame.worker.closed.load(Ordering::Relaxed), "dependency join outlived its root");
             let end = frame.origin.elapsed().as_nanos() as u64;
-            frame.worker.joins.lock().unwrap().events.push(JoinEvent { key, start, end, success });
+            let buffer = if terrain { &frame.worker.terrain } else { &frame.worker.joins };
+            buffer.lock().unwrap().events.push(JoinEvent { key, start, end, success });
         });
+    }
+}
+
+// Separate terrain/service API intervals: an initializer can contain a reply
+// span, so categories overlap. Neither category means pure GPU execution.
+pub(crate) struct TerrainSpan(Option<Candidate>);
+impl TerrainSpan {
+    pub(crate) fn start(pending: bool, kind: &'static str, x: i32, z: i32) -> Self {
+        Self(Some(Candidate::start(pending, Key::new(kind, None, x, z))))
+    }
+    pub(crate) fn finish(mut self, kind: &'static str, success: bool) {
+        if let Some(candidate) = self.0.take() { candidate.record(success, true, Some(kind)); }
+    }
+}
+impl Drop for TerrainSpan {
+    fn drop(&mut self) {
+        if let Some(candidate) = self.0.take() { candidate.record(false, true, None); }
     }
 }
 
@@ -154,7 +177,7 @@ pub(super) fn summarize(
     if result["valid"] != true { return result; }
 
     let joined: Vec<_> = workers.iter().map(|(id,buffer)| (id.clone(),buffer.events.iter().map(|e|
-        Event { at:e.key.at,start:e.start,end:e.end,success:e.success }).collect())).collect();
+        Event { at:e.key.at,start:e.start,end:e.end,success:e.success,cpu:[None,None] }).collect())).collect();
     let occupied = occupancy(&joined,window);
     result["worker_join_histogram_ns"] = occupied["worker_in_flight_histogram_ns"].clone();
     result["worker_join_union_sum_ns"] = occupied["worker_union_sum_ns"].clone();
@@ -192,7 +215,7 @@ pub(super) fn summarize(
         let kinds: BTreeMap<_,_> = per_kind.get(id).into_iter().flat_map(|v| v.iter())
             .map(|(&kind,v)| (kind,intersection(v,[event.start,event.end]))).collect();
         json!({"worker":id,"at":event.at,"start_ns":event.start,"end_ns":event.end,
-            "duration_ns":duration,"success":event.success,"api_join_union_ns":joined,
+            "duration_ns":duration,"success":event.success,"thread_cpu":cpu::event(event),"api_join_union_ns":joined,
             "api_join_fraction_of_task":(duration>0).then(|| joined as f64/duration as f64),
             "api_join_by_kind_ns":kinds,"tail_api_join_union_ns":tail.map(|tail|
                 all_ranges.get(id).map_or(0.,|v| fractional_intersection(v,

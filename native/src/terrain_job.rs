@@ -123,6 +123,9 @@ impl<'a> TerrainJob<'a> {
     }
     fn initialize(&self, cell: &TileCell, x: i32, z: i32) -> Result<Arc<Tile>, String> {
         let joined = self.metrics.performance.start();
+        #[cfg(test)]
+        let span = crate::decoration::dependencies::worker_phase_probe::TerrainSpan::start(
+            cell.get().is_none(), "terrain_job_abandoned", x, z);
         let mut built = false;
         let result = cell
             .get_or_init(|| {
@@ -168,6 +171,8 @@ impl<'a> TerrainJob<'a> {
                 }))
             })
             .clone();
+        #[cfg(test)]
+        span.finish(if built { "terrain_job_initialize" } else { "terrain_job_join" }, result.is_ok());
         if !built {
             self.metrics
                 .performance

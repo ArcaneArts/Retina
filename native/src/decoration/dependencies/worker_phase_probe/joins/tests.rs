@@ -118,7 +118,7 @@ fn join_probe_rejects_mismatched_context_and_flags_non_lifo_tasks() {
 }
 
 fn synthetic() -> (Vec<(String,Vec<Event>)>,BTreeMap<String,Buffer>) {
-    let event = |start,end| Event { at:[0,0],start,end,success:true };
+    let event = |start,end| Event { at:[0,0],start,end,success:true,cpu:[None,None] };
     let mut short = vec![event(0,10);19];short.push(event(10,16));
     let tasks = vec![("a".into(),vec![event(0,20)]),("b".into(),short)];
     let join = |kind,start,end,success| JoinEvent { key:key(kind,0),start,end,success };
@@ -166,4 +166,66 @@ fn join_probe_keeps_missing_phases_and_rejects_invalid_or_unjoined_evidence() {
     let (tasks,mut workers) = synthetic();
     workers.insert("no-task".into(),Buffer { events:vec![JoinEvent { key:key("column",0),start:1,end:2,success:true }],context_errors:0 });
     assert_eq!(summarize(&tasks,&workers,Some([0,20]),0)["valid"],false);
+}
+
+#[test]
+fn terrain_spans_separate_ready_owned_join_reply_and_failure_with_nested_unions() {
+    fn access(cell: &OnceLock<Result<u8,String>>) -> Result<u8,String> {
+        let span=TerrainSpan::start(cell.get().is_none(),"terrain_job_abandoned",1,2);
+        let mut built=false;
+        let result=cell.get_or_init(|| {
+            built=true;
+            let reply=TerrainSpan::start(true,"gpu_reply_abandoned",1,2);
+            reply.finish("gpu_reply",false);
+            Err("original terrain failure".into())
+        }).clone();
+        span.finish(if built {"terrain_job_initialize"} else {"terrain_job_join"},result.is_ok());
+        result
+    }
+    let session=Arc::new(Session::default());
+    let trace=trace(&session,"terrain",1);let task=trace.task([1,2]);
+    let cell=OnceLock::new();
+    assert_eq!(access(&cell),Err("original terrain failure".into()));
+    assert_eq!(access(&cell),Err("original terrain failure".into()));
+    // A noninitializer's pending snapshot can race with publication; preserve it.
+    let pending=OnceLock::new();
+    let join=TerrainSpan::start(pending.get().is_none(),"terrain_job_abandoned",3,4);
+    pending.set(Err::<u8,_>("cached owner error")).unwrap();
+    let result=pending.get_or_init(|| panic!("owner result overwritten"));
+    join.finish("terrain_job_join",result.is_ok());
+    task.finish(false);finish(trace);
+    let roots=session.roots.lock().unwrap();let root=&roots[0];let result=&root["terrain_attribution"];
+    assert_eq!(root["join_attribution"]["events"],0);
+    assert_eq!(result["valid"],true);assert_eq!(result["events"],3);
+    assert_eq!(result["failed_events"],3);
+    for kind in ["terrain_job_initialize","terrain_job_join","gpu_reply"] {
+        assert_eq!(result["categories"][kind]["events"],1);
+    }
+    let raw=result["event_interval_sum_ns"].as_u64().unwrap();
+    let union=result["worker_join_union_sum_ns"].as_u64().unwrap();
+    assert!(union<=raw);
+    LOCAL.with(|l| assert!(l.borrow().worker.as_ref().unwrap().terrain.lock().unwrap().events.is_empty()));
+}
+
+#[test]
+fn terrain_spans_keep_abandoned_calls_and_restore_outer_context_after_panic() {
+    let session=Arc::new(Session::default());
+    let outer=trace(&session,"outer",1);let task=outer.task([0,0]);
+    let panic=std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        let inner=trace(&session,"inner",1);let _task=inner.task([1,1]);
+        let _span=TerrainSpan::start(true,"terrain_job_abandoned",1,1);
+        panic!("terrain initializer panic");
+    }));
+    assert!(panic.is_err());
+    TerrainSpan::start(true,"gpu_reply_abandoned",2,2).finish("gpu_reply",true);
+    task.finish(true);finish(outer);
+    let roots=session.roots.lock().unwrap();
+    assert_eq!(roots[0]["abandoned"],true);
+    assert_eq!(roots[0]["terrain_attribution"]["failed_events"],1);
+    assert_eq!(roots[0]["terrain_attribution"]["valid"],Value::Null);
+    assert_eq!(roots[0]["terrain_attribution"]["longest_joins"][0]["kind"],"terrain_job_abandoned");
+    assert_eq!(roots[1]["terrain_attribution"]["valid"],true);
+    assert_eq!(roots[1]["terrain_attribution"]["events"],1);
+    assert_eq!(roots[1]["terrain_attribution"]["failed_events"],0);
+    assert_eq!(roots[1]["terrain_attribution"]["longest_joins"][0]["at"],json!([2,2]));
 }

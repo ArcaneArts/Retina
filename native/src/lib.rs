@@ -1239,6 +1239,8 @@ impl TerrainEngine {
         let profile = self.profile(requests[0].reserved)?;
         let (reply, receiver) = mpsc::channel();
         let timing_profile = requests[0].reserved;
+        #[cfg(test)]
+        let observer_at = [requests[0].chunk_x, requests[0].chunk_z];
         self.sender
             .send(Job {
                 requests,
@@ -1254,9 +1256,15 @@ impl TerrainEngine {
                 timings: self.timings(timing_profile),
             })
             .map_err(|_| "GPU worker stopped".to_string())?;
-        receiver
+        #[cfg(test)]
+        let span = decoration::dependencies::worker_phase_probe::TerrainSpan::start(
+            true, "gpu_reply_abandoned", observer_at[0], observer_at[1]);
+        let result = receiver
             .recv()
-            .map_err(|_| "GPU worker stopped before completing this request".to_string())?
+            .map_err(|_| "GPU worker stopped before completing this request".to_string());
+        #[cfg(test)]
+        span.finish("gpu_reply", matches!(&result, Ok(Ok(_))));
+        result?
     }
 
     pub fn generate_into(
