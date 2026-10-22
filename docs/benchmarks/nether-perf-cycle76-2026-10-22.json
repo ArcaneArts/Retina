@@ -1,0 +1,470 @@
+{
+  "schema": 1,
+  "cycle": 76,
+  "status": "ready for diagnostic-only PR; post-merge proof still required",
+  "change": "Test-only cross-geometry GPU parity and TerrainJob request footprint inventory. No production generation algorithm change.",
+  "base_revision": "fa838f8097efd540e92c85775019f2fe0e02f7e9",
+  "tested": {
+    "revision": "2c1ad3034c95f0e75d0820a58f11e676456598fe",
+    "native_tree": "8c61123185c7aa8d97162a9e3c66bbe1f3461201",
+    "sha256": "33ea38d78ba4aa3517dec07c24ec9c34fe723d309c18db6294a5256e2e03a325",
+    "source_status": "",
+    "forced_rebuild": true,
+    "timing_acceptance": false,
+    "test_executable_sha256": "80be16b0be1cf1312a0e949c485dc2e567e82344c2dee75715bcd8f961662854",
+    "native_test_result": [
+      "179",
+      "0",
+      "50"
+    ]
+  },
+  "worktree": "/tmp/retina-nether-terrain-overlap-proof",
+  "branch": "codex/nether-terrain-overlap-proof",
+  "evidence_root": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle76",
+  "timing_acceptance": false,
+  "tests": {
+    "native_passed": 179,
+    "native_failed": 0,
+    "native_ignored": 50,
+    "explicit_gpu_tests": 3,
+    "ordinary_observer_symbols": 0,
+    "complete_measured_chunk_instances": 307200,
+    "nbt_reference_count": 2,
+    "comparison": "Original immutable complete decompressed NBT/membership and actual PR203 main; only MCA timestamps/compression representation excluded."
+  },
+  "cross_geometry": {
+    "independent_gpu_pairs": 48,
+    "profiles": [
+      "nether",
+      "custom",
+      "direct-stem",
+      "overworld"
+    ],
+    "seeds": [
+      123456789,
+      42
+    ],
+    "geometries": [
+      "nested32/16",
+      "adjacent16 horizontal",
+      "adjacent16 vertical",
+      "adjacent16 diagonal",
+      "16/1 probe",
+      "unaligned7/2"
+    ],
+    "totals": {
+      "cave_rows_16": {
+        "compared": 19985408,
+        "unequal": 0
+      },
+      "columns": {
+        "compared": 1548288,
+        "unequal": 0
+      },
+      "heightmaps": {
+        "compared": 6438912,
+        "unequal": 0
+      },
+      "material_runs": {
+        "compared": 1073152,
+        "unequal": 0
+      },
+      "quart_biomes": {
+        "compared": 7098368,
+        "unequal": 0
+      },
+      "surface_carved": {
+        "compared": 1548288,
+        "unequal": 0
+      }
+    },
+    "limits": "Actual raw GPU overlap inventory, not a proof for all seeds/profiles. Counts overlap across data types and are not elapsed time. Material runs require common coverage; cave rows exclude unaligned one-block mask fringes. No production reuse is enabled."
+  },
+  "request_footprints": [
+    {
+      "case": "nether-main",
+      "job_count": 1.0,
+      "field_calls": 455768.0,
+      "mask_calls": 18.0,
+      "normalized_tiles": 18.0,
+      "requested_chunks": 1784.5,
+      "request_bounding_area": 3127.0,
+      "generated_chunk_instances": 7455.5,
+      "unique_generated_coordinates": 5170.0,
+      "repeated_coordinate_fraction": 0.3083030227259338,
+      "tiles_requesting_at_most_16_chunks": 91,
+      "observed_tiles": 366,
+      "requested_chunks_per_tile_median": 83.5,
+      "request_tiles_by_source": {
+        "freshly_generated": {
+          "tiles": 244,
+          "at_most_16_requested_chunks": 77,
+          "median_requested_chunks": 18.5,
+          "minimum_requested_chunks": 1,
+          "maximum_requested_chunks": 230
+        },
+        "within_initial_region": {
+          "tiles": 80,
+          "at_most_16_requested_chunks": 0,
+          "median_requested_chunks": 256.0,
+          "minimum_requested_chunks": 256,
+          "maximum_requested_chunks": 256
+        },
+        "not_freshly_generated": {
+          "tiles": 42,
+          "at_most_16_requested_chunks": 14,
+          "median_requested_chunks": 18.0,
+          "minimum_requested_chunks": 1,
+          "maximum_requested_chunks": 223
+        }
+      }
+    },
+    {
+      "case": "nether-second-seed",
+      "job_count": 1.0,
+      "field_calls": 473510.5,
+      "mask_calls": 18.5,
+      "normalized_tiles": 18.5,
+      "requested_chunks": 1833.0,
+      "request_bounding_area": 3198.5,
+      "generated_chunk_instances": 7890.5,
+      "unique_generated_coordinates": 5474.0,
+      "repeated_coordinate_fraction": 0.31523100288835076,
+      "tiles_requesting_at_most_16_chunks": 96,
+      "observed_tiles": 375,
+      "requested_chunks_per_tile_median": 50,
+      "request_tiles_by_source": {
+        "freshly_generated": {
+          "tiles": 254,
+          "at_most_16_requested_chunks": 80,
+          "median_requested_chunks": 19.0,
+          "minimum_requested_chunks": 1,
+          "maximum_requested_chunks": 252
+        },
+        "within_initial_region": {
+          "tiles": 80,
+          "at_most_16_requested_chunks": 0,
+          "median_requested_chunks": 256.0,
+          "minimum_requested_chunks": 256,
+          "maximum_requested_chunks": 256
+        },
+        "not_freshly_generated": {
+          "tiles": 41,
+          "at_most_16_requested_chunks": 16,
+          "median_requested_chunks": 18,
+          "minimum_requested_chunks": 1,
+          "maximum_requested_chunks": 207
+        }
+      }
+    },
+    {
+      "case": "nether-custom-bounds",
+      "job_count": 1.0,
+      "field_calls": 371386.5,
+      "mask_calls": 0.0,
+      "normalized_tiles": 16.0,
+      "requested_chunks": 1765.0,
+      "request_bounding_area": 1936.0,
+      "generated_chunk_instances": 6170.0,
+      "unique_generated_coordinates": 4624.0,
+      "repeated_coordinate_fraction": 0.24965812603095244,
+      "tiles_requesting_at_most_16_chunks": 63,
+      "observed_tiles": 320,
+      "requested_chunks_per_tile_median": 137.0,
+      "request_tiles_by_source": {
+        "freshly_generated": {
+          "tiles": 240,
+          "at_most_16_requested_chunks": 63,
+          "median_requested_chunks": 67.5,
+          "minimum_requested_chunks": 1,
+          "maximum_requested_chunks": 180
+        },
+        "within_initial_region": {
+          "tiles": 80,
+          "at_most_16_requested_chunks": 0,
+          "median_requested_chunks": 256.0,
+          "minimum_requested_chunks": 256,
+          "maximum_requested_chunks": 256
+        }
+      }
+    },
+    {
+      "case": "nether-direct-stem",
+      "job_count": 1.0,
+      "field_calls": 369001.5,
+      "mask_calls": 0.0,
+      "normalized_tiles": 16.0,
+      "requested_chunks": 1759.0,
+      "request_bounding_area": 1940.5,
+      "generated_chunk_instances": 6157.5,
+      "unique_generated_coordinates": 4624.0,
+      "repeated_coordinate_fraction": 0.24751830756712775,
+      "tiles_requesting_at_most_16_chunks": 65,
+      "observed_tiles": 320,
+      "requested_chunks_per_tile_median": 135.0,
+      "request_tiles_by_source": {
+        "freshly_generated": {
+          "tiles": 240,
+          "at_most_16_requested_chunks": 65,
+          "median_requested_chunks": 68.5,
+          "minimum_requested_chunks": 1,
+          "maximum_requested_chunks": 178
+        },
+        "within_initial_region": {
+          "tiles": 80,
+          "at_most_16_requested_chunks": 0,
+          "median_requested_chunks": 256.0,
+          "minimum_requested_chunks": 256,
+          "maximum_requested_chunks": 256
+        }
+      }
+    },
+    {
+      "case": "overworld",
+      "job_count": 0.0,
+      "field_calls": 0.0,
+      "mask_calls": 0.0,
+      "normalized_tiles": 0.0,
+      "requested_chunks": 0.0,
+      "request_bounding_area": 0.0,
+      "generated_chunk_instances": 1444.0,
+      "unique_generated_coordinates": 1444.0,
+      "repeated_coordinate_fraction": 0.0,
+      "tiles_requesting_at_most_16_chunks": 0,
+      "observed_tiles": 0,
+      "requested_chunks_per_tile_median": null,
+      "request_tiles_by_source": {}
+    }
+  ],
+  "binary": {
+    "normal_machine_code_identical_to_main": true,
+    "text_sha256": "91bef42b702bd68f5e21b71cfa0e77f0d22b77b393b128c6ec3f900ffa81d427",
+    "different_sections": [
+      "__DATA_CONST,__const"
+    ],
+    "file_changed_bytes": 81,
+    "changed_metadata": {
+      "load_commands": [
+        {
+          "command": "0x1b",
+          "offset": 1928,
+          "size": 24
+        },
+        {
+          "command": "0x1d",
+          "offset": 2688,
+          "size": 16,
+          "payload_offset": 8756864,
+          "payload_size": 68560
+        }
+      ],
+      "panic_source": "native/src/terrain_cache.rs",
+      "old_line": 24,
+      "new_line": 27,
+      "description": "All executable and other section bytes are identical. A source location moved by three lines after adding the cfg(test) module declaration. Other file differences fall in LC_UUID or the code signature payload."
+    },
+    "note": "The two normal libraries differ only in a three-line panic source-location change, build UUID and code signatures. Diagnostic modules and hooks are cfg(test)."
+  },
+  "ordinary_paired": [
+    {
+      "case": "nether-main",
+      "summary": {
+        "old": {
+          "median_ms": 1572.778895497322,
+          "p95_ms": 2576.265612093266,
+          "maximum_ms": 2728.814790956676,
+          "total_ms": 34158.66158157587,
+          "chunks_per_second": 599.5551070140957,
+          "generation_process_peak_rss_bytes": 2295087104,
+          "program_statuses": [
+            4
+          ]
+        },
+        "new": {
+          "median_ms": 1644.3526248913258,
+          "p95_ms": 2544.5571537828073,
+          "maximum_ms": 2798.657374922186,
+          "total_ms": 34564.374667126685,
+          "chunks_per_second": 592.517590647402,
+          "generation_process_peak_rss_bytes": 2217132032,
+          "program_statuses": [
+            4
+          ]
+        },
+        "paired": {
+          "median_new_over_old": 1.0382820950282856,
+          "new_faster_pairs": 7,
+          "pairs": 20
+        }
+      }
+    },
+    {
+      "case": "nether-second-seed",
+      "summary": {
+        "old": {
+          "median_ms": 1506.4425835153088,
+          "p95_ms": 1930.8327152510174,
+          "maximum_ms": 2071.6085829772055,
+          "total_ms": 27958.12891703099,
+          "chunks_per_second": 732.5239847336276,
+          "generation_process_peak_rss_bytes": 2277146624,
+          "program_statuses": [
+            4
+          ]
+        },
+        "new": {
+          "median_ms": 1349.5642284397036,
+          "p95_ms": 1922.7184728253633,
+          "maximum_ms": 1996.8203341122717,
+          "total_ms": 27081.7685816437,
+          "chunks_per_second": 756.228306813077,
+          "generation_process_peak_rss_bytes": 2332819456,
+          "program_statuses": [
+            4
+          ]
+        },
+        "paired": {
+          "median_new_over_old": 0.9943913754398268,
+          "new_faster_pairs": 10,
+          "pairs": 20
+        }
+      }
+    },
+    {
+      "case": "nether-custom-bounds",
+      "summary": {
+        "old": {
+          "median_ms": 964.2576255137101,
+          "p95_ms": 1178.634521132335,
+          "maximum_ms": 1187.4881249386817,
+          "total_ms": 19379.041833570227,
+          "chunks_per_second": 1056.8117957474342,
+          "generation_process_peak_rss_bytes": 1916911616,
+          "program_statuses": [
+            4
+          ]
+        },
+        "new": {
+          "median_ms": 947.6972705451772,
+          "p95_ms": 1089.603075606283,
+          "maximum_ms": 1311.5561669692397,
+          "total_ms": 18969.234292162582,
+          "chunks_per_second": 1079.642946287063,
+          "generation_process_peak_rss_bytes": 1946517504,
+          "program_statuses": [
+            4
+          ]
+        },
+        "paired": {
+          "median_new_over_old": 0.9726983214022416,
+          "new_faster_pairs": 13,
+          "pairs": 20
+        }
+      }
+    },
+    {
+      "case": "nether-direct-stem",
+      "summary": {
+        "old": {
+          "median_ms": 831.5704374108464,
+          "p95_ms": 1103.1813558423894,
+          "maximum_ms": 1353.9224159903824,
+          "total_ms": 17535.011789761484,
+          "chunks_per_second": 1167.949029378929,
+          "generation_process_peak_rss_bytes": 1958281216,
+          "program_statuses": [
+            4
+          ]
+        },
+        "new": {
+          "median_ms": 907.4043955188245,
+          "p95_ms": 1214.1001230338588,
+          "maximum_ms": 1358.9774582069367,
+          "total_ms": 18603.63016440533,
+          "chunks_per_second": 1100.860413747891,
+          "generation_process_peak_rss_bytes": 1926889472,
+          "program_statuses": [
+            4
+          ]
+        },
+        "paired": {
+          "median_new_over_old": 1.063707800698523,
+          "new_faster_pairs": 3,
+          "pairs": 20
+        }
+      }
+    },
+    {
+      "case": "overworld",
+      "summary": {
+        "old": {
+          "median_ms": 392.83508306834847,
+          "p95_ms": 471.5802787803114,
+          "maximum_ms": 580.2331250160933,
+          "total_ms": 8041.085290489718,
+          "chunks_per_second": 2546.9198820987417,
+          "generation_process_peak_rss_bytes": 1646346240,
+          "program_statuses": [
+            4
+          ]
+        },
+        "new": {
+          "median_ms": 386.1191039904952,
+          "p95_ms": 470.2580461394973,
+          "maximum_ms": 493.5497499536723,
+          "total_ms": 7765.5905010178685,
+          "chunks_per_second": 2637.2752976500115,
+          "generation_process_peak_rss_bytes": 1598095360,
+          "program_statuses": [
+            4
+          ]
+        },
+        "paired": {
+          "median_new_over_old": 0.9639589131611286,
+          "new_faster_pairs": 13,
+          "pairs": 20
+        }
+      }
+    }
+  ],
+  "interpretation": [
+    "Actual finite GPU fixtures agree across all compared overlap data; this is not universal proof that arbitrary profiles/guards can be spliced.",
+    "Across twenty regions, median duplicate-coordinate fractions are about 25-32% for Nether versus zero for Overworld. Required context is included, so these are not removable-work or speedup percentages.",
+    "Freshly generated standard-Nether dependency tiles have median 18.5/19 requested chunks out of 256. This is an entry-point footprint, not complete access coverage.",
+    "Fossil mask calls use a whole 16-chunk batch origin and then read other columns inside that batch. Their true column demand is not represented by mask entry coordinates.",
+    "The normal machine code is identical; paired timing variation is host observation, not an optimization effect. Quiet acceptance remains deferred."
+  ],
+  "next": [
+    "Use existing field/mask accesses and actual fossil column positions to define coverage requirements before changing tiling.",
+    "Prototype bounded job-owned reuse or selectively sized outer coverage while preserving guard context and explicit missing-coverage generation. Do not repeat blanket fixed-size or cache-cap experiments.",
+    "Validate cross-geometry mixed coverage, full original/main NBT, reordered 1/2/4/8 callers and sustained memory before promotion; quiet complete-region acceptance remains open."
+  ],
+  "reproduction": {
+    "cwd": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20",
+    "commands": [
+      "python3 terrain-overlap-normal.py",
+      "python3 terrain-overlap-measure.py",
+      "python3 terrain-overlap-summary.py",
+      "python3 terrain-overlap-classify.py",
+      "python3 terrain-overlap-report.py"
+    ],
+    "files": [
+      "normal-provenance.json",
+      "normal-symbol-check.json",
+      "section-comparison.json",
+      "geometry-inventory.json",
+      "request-summary-classified.json",
+      "inventory-proof.json",
+      "paired-normal/report.json"
+    ],
+    "source_stability": "Source and HEAD unchanged for entire native driver lifetime. Worktree may be removed only after accepted delivery; recover from PR ready or squash revision."
+  },
+  "remaining_goal": "Subsecond p95/median uncontended full corpus, concurrency/memory and portal acceptance remain unmet. No held optimization is promoted.",
+  "profiles_sha256": {
+    "custom.json": "dd1437839e09a35c512cad186d60497f9ab7f12d8881edf98b5d1db56278adb8",
+    "direct-stem.json": "dd1437839e09a35c512cad186d60497f9ab7f12d8881edf98b5d1db56278adb8",
+    "manifest.json": "4d19b5ecfbed28c8af45550fa1ea851983724c0d813d6c53b8a5fb7cccf90e8e",
+    "nether.json": "0cf913a69f3faceb1c8719fb238dbd90961586262af4cd2cfe0c0fd62953a2ff",
+    "overworld.json": "72b80f1d8d799547726a1cefe1357c5c8311ed8b3736403a83c89879e4ee935b"
+  }
+}
