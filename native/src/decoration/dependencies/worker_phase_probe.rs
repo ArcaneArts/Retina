@@ -4,6 +4,8 @@ use super::*;
 use serde_json::{Value, json};
 use std::{cell::RefCell, time::Instant};
 mod joins;
+mod cpu;
+pub(crate) use joins::TerrainSpan;
 pub(super) use joins::{Candidate as Join, Key as JoinKey};
 
 static ACTIVE: Mutex<Option<Arc<Session>>> = Mutex::new(None);
@@ -53,11 +55,13 @@ struct Event {
     start: u64,
     end: u64,
     success: bool,
+    cpu: [Option<u64>; 2],
 }
 struct Worker {
     id: String,
     events: Mutex<Vec<Event>>,
     joins: Mutex<joins::Buffer>,
+    terrain: Mutex<joins::Buffer>,
     active: AtomicU64,
     closed: std::sync::atomic::AtomicBool,
 }
@@ -73,6 +77,7 @@ impl Local {
                 id: format!("{:?}", std::thread::current().id()),
                 events: Mutex::new(Vec::new()),
                 joins: Mutex::new(joins::Buffer::default()),
+                terrain: Mutex::new(joins::Buffer::default()),
                 active: AtomicU64::new(0),
                 closed: std::sync::atomic::AtomicBool::new(false),
             });
@@ -116,6 +121,7 @@ impl Drop for Root {
             worker.closed.store(true, Ordering::Relaxed);
             std::mem::take(&mut *worker.events.lock().unwrap_or_else(|e| e.into_inner()));
             std::mem::take(&mut *worker.joins.lock().unwrap_or_else(|e| e.into_inner()));
+            std::mem::take(&mut *worker.terrain.lock().unwrap_or_else(|e| e.into_inner()));
         }
     }
 }
@@ -202,6 +208,7 @@ impl Trace {
                 joins::Context::enter(root.token, root.origin, worker),
                 at,
                 root.origin.elapsed().as_nanos() as u64,
+                cpu::now(),
             )
         }))
     }
@@ -225,6 +232,7 @@ impl Trace {
             .collect();
         let mut by_worker = BTreeMap::<String, Vec<Event>>::new();
         let mut by_join_worker = BTreeMap::<String, joins::Buffer>::new();
+        let mut by_terrain_worker = BTreeMap::<String, joins::Buffer>::new();
         let mut active_contexts = 0;
         for worker in root.workers.lock().unwrap().iter() {
             // Empty TLS-held collectors now: no task buffers survive a root.
@@ -237,6 +245,8 @@ impl Trace {
                 .extend(events);
             by_join_worker.entry(worker.id.clone()).or_default()
                 .extend(std::mem::take(&mut *worker.joins.lock().unwrap()));
+            by_terrain_worker.entry(worker.id.clone()).or_default()
+                .extend(std::mem::take(&mut *worker.terrain.lock().unwrap()));
         }
         let workers: Vec<_> = by_worker.into_iter().collect();
         let task_count: usize = workers.iter().map(|(_, v)| v.len()).sum();
@@ -250,6 +260,10 @@ impl Trace {
         let joined = joins::summarize(&workers, &by_join_worker,
             get("evaluation_begin").zip(get("evaluation_end")).map(|(a,b)| [a.wall,b.wall]),
             active_contexts);
+        let terrain = joins::summarize(&workers, &by_terrain_worker,
+            get("evaluation_begin").zip(get("evaluation_end")).map(|(a,b)| [a.wall,b.wall]),
+            active_contexts);
+        let thread_cpu = cpu::summarize(&workers);
         let marks: BTreeMap<_, _> = state
             .marks
             .iter()
@@ -258,7 +272,7 @@ impl Trace {
         root.session.roots.lock().unwrap().push(json!({"metadata":root.metadata,
             "success":success,"abandoned":abandoned,"target_count":state.target_count,"task_count":task_count,"failed_tasks":failed,
             "phase_stamps":marks,"phases":phases,"occupancy":occupied,
-            "join_attribution":joined,
+            "join_attribution":joined,"terrain_attribution":terrain,"task_thread_cpu":thread_cpu,
             "observer_summary_wall_ns":analysis_start.elapsed().as_nanos() as u64}));
     }
 }
@@ -267,11 +281,12 @@ impl Drop for Trace {
         if let Some(root) = self.0.take() { Self::record(&root, false, true); }
     }
 }
-pub(super) struct Task(Option<(joins::Context, [i32; 2], u64)>);
+pub(super) struct Task(Option<(joins::Context, [i32; 2], u64, Option<u64>)>);
 impl Task {
     pub(super) fn finish(mut self, success: bool) { self.record(success); }
     fn record(&mut self, success: bool) {
-        if let Some((context, at, start)) = self.0.take() {
+        if let Some((context, at, start, cpu_start)) = self.0.take() {
+            let cpu_end = cpu::now();
             let end = context.origin.elapsed().as_nanos() as u64;
             if context.worker.closed.load(Ordering::Relaxed) { return; }
             context.worker.events.lock().unwrap().push(Event {
@@ -279,6 +294,7 @@ impl Task {
                 start,
                 end,
                 success,
+                cpu: [cpu_start, cpu_end],
             });
         }
     }
@@ -353,7 +369,7 @@ fn occupancy(workers: &[(String, Vec<Event>)], window: [u64; 2]) -> Value {
     finishes.sort_unstable();
     longest.sort_unstable_by_key(|(duration, _, _)| std::cmp::Reverse(*duration));
     let longest: Vec<_> = longest.into_iter().take(8).map(|(duration,id,e)|
-        json!({"worker":id,"at":e.at,"start_ns":e.start,"end_ns":e.end,"duration_ns":duration,"success":e.success})).collect();
+        json!({"worker":id,"at":e.at,"start_ns":e.start,"end_ns":e.end,"duration_ns":duration,"success":e.success,"thread_cpu":cpu::event(e)})).collect();
     let p95 = percentile(&finishes, 0.95);
     json!({"valid":true,"window":window,"outside_or_reversed_events":0,
         "registered_workers":workers.len(),"worker_in_flight_histogram_ns":histogram,
@@ -371,6 +387,7 @@ fn worker_occupancy_unions_nested_intervals_and_counts_idle_gaps() {
         start: a,
         end: b,
         success: true,
+        cpu: [None, None],
     };
     let workers = vec![
         (
@@ -442,6 +459,7 @@ fn worker_phase_missing_cpu_is_not_zero_and_collectors_rebind() {
         start: 0,
         end: 1,
         success: true,
+        cpu: [None, None],
     });
     assert!(c.events.lock().unwrap().is_empty());
     let weak = Arc::downgrade(&a);
@@ -584,6 +602,12 @@ fn exact_worker_phase_inventory() {
             assert_eq!(root["target_count"], root["task_count"]);
             assert_eq!(root["occupancy"]["valid"], true);
             assert_eq!(root["join_attribution"]["valid"], true);
+            assert_eq!(root["terrain_attribution"]["valid"], true);
+            assert_eq!(root["terrain_attribution"]["failed_events"], 0);
+            assert_eq!(root["terrain_attribution"]["active_contexts_at_root_end"], 0);
+            assert_eq!(root["task_thread_cpu"]["reversed_tasks"], 0);
+            assert!(root["terrain_attribution"]["worker_join_union_sum_ns"].as_u64().unwrap()
+                <= root["occupancy"]["worker_union_sum_ns"].as_u64().unwrap());
             assert_eq!(root["join_attribution"]["failed_events"], 0);
             assert_eq!(root["join_attribution"]["active_contexts_at_root_end"], 0);
             assert!(root["join_attribution"]["worker_join_union_sum_ns"].as_u64().unwrap()
@@ -624,7 +648,7 @@ fn exact_worker_phase_inventory() {
         cases.push(json!({"case":name,"seed":seed,"profile":file,
             "warmups":warmups,"regions":regions,"summary":summary}));
         fs::write(output.join("report.json"), serde_json::to_vec_pretty(&json!({
-            "scope":"Test-only per-root queue, enumeration, joined anchor evaluation, publication and return-handoff intervals, with optional process CPU deltas. CPU includes native service/shader threads and observer overhead; it is not CPU utilization or task-only work. Top-level dispatched task spans include all nested work, waits and preemption. Per-worker collectors register once per root token; no shared hot collector lock or lock is held across generation. After the root joins, task intervals are unioned by physical thread before integrating workers with a task in flight; this is not workers actually running on CPU. Interval sums are not elapsed phase time. Missing phase/CPU data remains null; anomalous out-of-window events invalidate occupancy rather than being silently clipped. Only scalar metadata, phase/task summaries and top-eight long tasks persist. Collector buffers are emptied at joined root completion and retain no planner/state/GPU owners. Observer summary time is reported separately and remains inside whole-region elapsed time. Five warmups precede twenty complete lit regions per case; actual program snapshots are recorded. Noninitializer OnceLock API join intervals require an initially unfinished cell and an initializer closure that did not execute. Ready calls and initializer intervals are excluded; racing publication, result cloning in memo calls and preemption can still be included. These are not kernel sleep intervals or CPU utilization. Test-only scalar keys identify anchor, anchor-ID, footprint, structure-start and column calls. A thread-local RAII task-context stack restores reentrant roots and panic paths. No Arc clone, event allocation or collector lock is added for initializer candidates. Join intervals are unioned by physical worker and intersected with target tasks and the p95-to-last-completion tail; sums across workers or overlapping categories are not elapsed-time shares. Missing evaluation phases stay null; invalid task/join bounds, non-LIFO contexts or live contexts at root completion invalidate attribution. Context mismatch fails the diagnostic rather than misattributing an event. Panicked tasks/abandoned roots retain failure status and missing phases; raw buffers are released on every root exit. Probe checks, candidate stamps and event recording remain inside evaluation and whole-region timing; only post-join summary overhead is separated. Normal builds exclude all observer code and use the original generation algorithm.",
+            "scope":"Test-only per-root queue, enumeration, joined anchor evaluation, publication and return-handoff intervals, with optional process CPU deltas. CPU includes native service/shader threads and observer overhead; it is not CPU utilization or task-only work. Top-level dispatched task spans include all nested work, waits and preemption. Per-worker collectors register once per root token; no shared hot collector lock or lock is held across generation. After the root joins, task intervals are unioned by physical thread before integrating workers with a task in flight; this is not workers actually running on CPU. Interval sums are not elapsed phase time. Missing phase/CPU data remains null; anomalous out-of-window events invalidate occupancy rather than being silently clipped. Only scalar metadata, phase/task summaries and top-eight long tasks persist. Collector buffers are emptied at joined root completion and retain no planner/state/GPU owners. Observer summary time is reported separately and remains inside whole-region elapsed time. Five warmups precede twenty complete lit regions per case; actual program snapshots are recorded. Noninitializer OnceLock API join intervals require an initially unfinished cell and an initializer closure that did not execute. Ready calls and initializer intervals are excluded; racing publication, result cloning in memo calls and preemption can still be included. These are not kernel sleep intervals or CPU utilization. Test-only scalar keys identify anchor, anchor-ID, footprint, structure-start and column calls. A thread-local RAII task-context stack restores reentrant roots and panic paths. No Arc clone, event allocation or collector lock is added for initializer candidates. Join intervals are unioned by physical worker and intersected with target tasks and the p95-to-last-completion tail; sums across workers or overlapping categories are not elapsed-time shares. Missing evaluation phases stay null; invalid task/join bounds, non-LIFO contexts or live contexts at root completion invalidate attribution. Context mismatch fails the diagnostic rather than misattributing an event. Panicked tasks/abandoned roots retain failure status and missing phases; raw buffers are released on every root exit. Probe checks, candidate stamps and event recording remain inside evaluation and whole-region timing; only post-join summary overhead is separated. Task entry/exit also samples optional CLOCK_THREAD_CPUTIME_ID on the same physical thread. CPU values include nested work and instrumentation on that thread but exclude service-thread work. Endpoint intervals are unioned per physical worker; missing/reversed samples leave aggregate CPU null. CPU is not interpolated into partial task tails. Separately, initially-unfinished terrain job cells record initializer or noninitializer API spans, and GPU dispatch records the receiver reply API span. These retain the same physical-thread contexts and bounds validation. Terrain initializer and reply categories overlap; they are not pure GPU time, and outside-span time is not classified as CPU. Normal builds exclude all observer code and use the original generation algorithm.",
             "cases":cases,"timing_acceptance":false,
         })).unwrap()).unwrap();
     }

@@ -12,7 +12,7 @@ mod version_layout_probe;
 #[cfg(test)]
 mod material_storage_probe;
 #[cfg(test)]
-mod worker_phase_probe;
+pub(crate) mod worker_phase_probe;
 use super::spatial::Map;
 use super::*;
 use crate::TerrainEngine;
