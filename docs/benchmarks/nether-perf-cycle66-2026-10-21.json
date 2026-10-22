@@ -1,0 +1,702 @@
+{
+  "cycle": 66,
+  "status": "selected-diagnostic-awaiting-merge",
+  "created_utc": "2026-10-22T01:33:42.041966+00:00",
+  "timing_acceptance": false,
+  "problem": "C61-C65 preparations and cooperative queue variants did not establish a whole-region improvement. C60 task occupancy could not tell whether a long target was joining another dependency cell.",
+  "implementation": "Extend the accepted C60 test-only observer with scalar call-site keys and noninitializer OnceLock API intervals; union them per physical worker and intersect with longest/last targets and the p95-to-last tail. No held C62-C65 production scheduler is included. Ordinary ownership, wait behavior, source order and generation data operations are unchanged.",
+  "source": {
+    "revision": "0243b5f1ef6beb37da2e157758647b85d78444f9",
+    "native_tree": "c686c0b8e485f45629d9806db99c48d59cf3aedc",
+    "source_status": "",
+    "test_executable_sha256": "3a41dd37696ebf1ebba1815a711f2ed317400e8aa9581f80338052203e48a3be",
+    "forced_rebuild": true,
+    "timing_acceptance": false,
+    "environment": {
+      "RETINA_TERRAIN_REUSE_PROFILES": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/profiles",
+      "RETINA_WORKER_PHASE_OUTPUT": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle66/inventory",
+      "RETINA_REGION_THREADS": "16",
+      "RETINA_GPU_LIGHTING": "1",
+      "RETINA_LIGHTING_DENSE": "0",
+      "RETINA_PERFORMANCE_DIAGNOSTICS": "0",
+      "RETINA_DEPENDENCY_DIAGNOSTICS": "0"
+    },
+    "sha256": "cd99f91ae275ec98d3d868cf744407b34d4804117439e2776c3bec5ea0e4768b",
+    "preceding_sha256": "15f8f4ef043ed5a963b52c74a2a60963dc570c8ae19f10b560cdf4757240eb27",
+    "byte_identical_to_preceding": false
+  },
+  "design_review": {
+    "scope": "C60 accepted production algorithm with test-only attribution. No C62-C65 queue/scoped/claim code included.",
+    "source_revision": "0243b5f1ef6beb37da2e157758647b85d78444f9",
+    "native_tree": "c686c0b8e485f45629d9806db99c48d59cf3aedc",
+    "production_file_diff": "dependencies.rs changes only cfg(test) memo point parameters/arguments, candidate start/finish hooks, fixture arguments and formatting. Existing ordinary memo/column ownership, ordering and data operations are unchanged. worker_phase_probe and nested joins module are beneath the existing cfg(test) module declaration. Normal release compilation and observer-symbol scan both succeeded.",
+    "normal_binary": "Hash differs from C60; no byte identity to preceding baseline is assumed or claimed. Actual merged hash must later be compared to this selected normal library.",
+    "measurement_contract": [
+      "A candidate begins only after observing an unfinished OnceLock and is recorded only if this call did not run its initializer. Initially ready calls and owned initializer execution are excluded. A racing publication or preemption may be included; memo intervals also include result cloning.",
+      "Candidate stores only scalar tag/token/time/key, with no Arc clone, collector lock or event allocation for initializer candidates. Materialized noninitializer events use the physical worker collector. No dependency-cell, planner, world or GPU owner is retained.",
+      "Thread-local context frames form a RAII stack; tags distinguish tasks even in the same root. Context and candidate are non-Send/non-Sync via PhantomData<Rc<()>>. Nested A->B->A restores the outer collector even if LOCAL.bind last saw B.",
+      "Context mismatches fail the diagnostic. Non-LIFO task termination is counted and invalidates completed-window attribution. Active contexts at root completion also invalidate it.",
+      "Task Drop emits a failed span; Trace Drop records an abandoned failed root with available/missing phases. Root Drop empties task/join buffers on every path, including summary failure, while TLS retains at most collector shells.",
+      "Before intersection, all events are validated against evaluation and corresponding physical-thread task unions. Reversed/outside/unjoined evidence is not silently clipped into valid data. Missing evaluation remains null.",
+      "Intervals are unioned by physical worker; category unions and different workers can overlap in wall time. Task and tail intersections have explicit units. Task time outside these joins is not classified as CPU; terrain/GPU waits and probe overhead can be outside coverage.",
+      "Only scalar phase/event counts, summaries and bounded longest samples persist; raw buffers are released after each joined root. Observer overhead remains inside complete generation."
+    ],
+    "tests": {
+      "existing": 167,
+      "new": 5,
+      "total_passed": 172,
+      "failed": 0,
+      "ignored": 48,
+      "new_cases": [
+        "Ready and owned exclusion with an actual other-thread OnceLock error owner; exact original error preserved.",
+        "Nested root and initializer panic restore outer attribution; abandoned root/missing phases and failed tasks retained.",
+        "Mismatched context rejected and non-LIFO tasks flagged invalid.",
+        "Overlapping physical-worker API joins unioned; category overlaps and exact p95-tail intersections verified.",
+        "Missing phases, reversed/outside/no-task evidence and unjoined contexts cannot produce valid attribution."
+      ],
+      "gpu_parity": 1
+    },
+    "limitations": [
+      "Normal timing acceptance remains deferred under known host activity.",
+      "No kernel sleep, per-task CPU, terrain/GPU wait or owner identity attribution is added.",
+      "Observed API spans include scheduling and instrumentation effects; no production speedup claim."
+    ]
+  },
+  "validation": {
+    "native_tests_passed": 172,
+    "failed": 0,
+    "ignored": 48,
+    "new_tests": 5,
+    "explicit_gpu_parity_passed": 1,
+    "observer_measured_chunk_instances": 102400,
+    "paired_measured_chunk_instances": 204800,
+    "total_measured_chunk_instances": 307200,
+    "comparison": "Complete decompressed chunk NBT and exact membership. Exclude MCA timestamps/compression representation only. Observer compares immutable original and actual C60 merge; both paired variants also compare C66 observer. Repeated coordinates are not unique coverage.",
+    "shader_readiness": "Actual before/after status 4 for all measured observer and ordinary paired regions.",
+    "observer_exit": {
+      "command": [
+        "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle66/inventory-test-executable",
+        "exact_worker_phase_inventory",
+        "--ignored",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "pid": 13824,
+      "exit_code": 0,
+      "elapsed_seconds": 127.7613832950592,
+      "timing_acceptance": false
+    },
+    "normal_symbol_review": {
+      "command": [
+        "nm",
+        "-a",
+        "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle66/normal.dylib"
+      ],
+      "exit_code": 0,
+      "observer_symbol_matches": {
+        "worker_phase_probe": [],
+        "exact_worker_phase_inventory": [],
+        "joins8Candidate": [],
+        "material_storage_probe": [],
+        "version_layout_probe": []
+      },
+      "sha256": "cd99f91ae275ec98d3d868cf744407b34d4804117439e2776c3bec5ea0e4768b"
+    }
+  },
+  "join_findings": [
+    {
+      "case": "nether-main",
+      "regions": 20,
+      "roots": 820,
+      "selected_root_medians": [
+        {
+          "root": 0,
+          "name": "minecraft:basalt_pillar",
+          "evaluation_ms": 90.79552100000001,
+          "join_events": 0.0,
+          "longest_task_ms": 38.525208,
+          "longest_task_join_fraction": 0.0,
+          "last_task_join_fraction": 0.0,
+          "tail_ms": 34.221119125,
+          "tail_mean_workers_inside_join_api": -0.0
+        },
+        {
+          "root": 17,
+          "name": "minecraft:brown_mushroom_nether",
+          "evaluation_ms": 58.904021,
+          "join_events": 12.5,
+          "longest_task_ms": 56.079708,
+          "longest_task_join_fraction": 0.01646509071379093,
+          "last_task_join_fraction": 0.01646509071379093,
+          "tail_ms": 53.751801875,
+          "tail_mean_workers_inside_join_api": 0.9915062290679525
+        },
+        {
+          "root": 29,
+          "name": "minecraft:ore_ancient_debris_large",
+          "evaluation_ms": 30.6810415,
+          "join_events": 1.5,
+          "longest_task_ms": 29.012041500000002,
+          "longest_task_join_fraction": 0.0,
+          "last_task_join_fraction": 0.0,
+          "tail_ms": 27.912359,
+          "tail_mean_workers_inside_join_api": 0.004712369436414806
+        },
+        {
+          "root": 37,
+          "name": "minecraft:twisting_vines",
+          "evaluation_ms": 0.776292,
+          "join_events": 0.0,
+          "longest_task_ms": 0.236625,
+          "longest_task_join_fraction": 0.0,
+          "last_task_join_fraction": 0.0,
+          "tail_ms": 0.070547125,
+          "tail_mean_workers_inside_join_api": -0.0
+        },
+        {
+          "root": 32,
+          "name": "minecraft:brown_mushroom_normal",
+          "evaluation_ms": 1.035563,
+          "join_events": 0.0,
+          "longest_task_ms": 0.3426455,
+          "longest_task_join_fraction": 0.0,
+          "last_task_join_fraction": 0.0,
+          "tail_ms": 0.14078174999999998,
+          "tail_mean_workers_inside_join_api": -0.0
+        }
+      ]
+    },
+    {
+      "case": "nether-second-seed",
+      "regions": 20,
+      "roots": 820,
+      "selected_root_medians": [
+        {
+          "root": 0,
+          "name": "minecraft:basalt_pillar",
+          "evaluation_ms": 92.833,
+          "join_events": 0.0,
+          "longest_task_ms": 46.7424375,
+          "longest_task_join_fraction": 0.0,
+          "last_task_join_fraction": 0.0,
+          "tail_ms": 35.189807,
+          "tail_mean_workers_inside_join_api": -0.0
+        },
+        {
+          "root": 17,
+          "name": "minecraft:brown_mushroom_nether",
+          "evaluation_ms": 45.285208499999996,
+          "join_events": 8.0,
+          "longest_task_ms": 38.4854585,
+          "longest_task_join_fraction": 0.0,
+          "last_task_join_fraction": 0.0,
+          "tail_ms": 37.3813905,
+          "tail_mean_workers_inside_join_api": 0.6766953545204921
+        },
+        {
+          "root": 29,
+          "name": "minecraft:ore_ancient_debris_large",
+          "evaluation_ms": 13.3579375,
+          "join_events": 1.0,
+          "longest_task_ms": 8.7662915,
+          "longest_task_join_fraction": 0.0,
+          "last_task_join_fraction": 0.0,
+          "tail_ms": 8.250406250000001,
+          "tail_mean_workers_inside_join_api": 0.04859057939200406
+        },
+        {
+          "root": 37,
+          "name": "minecraft:twisting_vines",
+          "evaluation_ms": 2.040625,
+          "join_events": 0.0,
+          "longest_task_ms": 0.5143545,
+          "longest_task_join_fraction": 0.0,
+          "last_task_join_fraction": 0.0,
+          "tail_ms": 0.48926575,
+          "tail_mean_workers_inside_join_api": -0.0
+        },
+        {
+          "root": 32,
+          "name": "minecraft:brown_mushroom_normal",
+          "evaluation_ms": 0.9514375,
+          "join_events": 0.0,
+          "longest_task_ms": 0.3571035,
+          "longest_task_join_fraction": 0.0,
+          "last_task_join_fraction": 0.0,
+          "tail_ms": 0.15426575,
+          "tail_mean_workers_inside_join_api": -0.0
+        }
+      ]
+    },
+    {
+      "case": "nether-custom-bounds",
+      "regions": 20,
+      "roots": 460,
+      "selected_root_medians": [
+        {
+          "root": 22,
+          "name": "minecraft:twisting_vines",
+          "evaluation_ms": 58.3489165,
+          "join_events": 85.5,
+          "longest_task_ms": 27.5524995,
+          "longest_task_join_fraction": 0.1879785204711181,
+          "last_task_join_fraction": 0.008835705460972083,
+          "tail_ms": 19.504630249999998,
+          "tail_mean_workers_inside_join_api": 4.60007713481669
+        },
+        {
+          "root": 14,
+          "name": "minecraft:ore_ancient_debris_large",
+          "evaluation_ms": 4.252146,
+          "join_events": 1.0,
+          "longest_task_ms": 2.956021,
+          "longest_task_join_fraction": 0.0,
+          "last_task_join_fraction": 0.0,
+          "tail_ms": 2.4675678750000003,
+          "tail_mean_workers_inside_join_api": -0.0
+        },
+        {
+          "root": 17,
+          "name": "minecraft:brown_mushroom_normal",
+          "evaluation_ms": 1.0004585000000001,
+          "join_events": 0.0,
+          "longest_task_ms": 0.37897899999999995,
+          "longest_task_join_fraction": 0.0,
+          "last_task_join_fraction": 0.0,
+          "tail_ms": 0.149609125,
+          "tail_mean_workers_inside_join_api": -0.0
+        }
+      ]
+    },
+    {
+      "case": "nether-direct-stem",
+      "regions": 20,
+      "roots": 460,
+      "selected_root_medians": [
+        {
+          "root": 22,
+          "name": "minecraft:twisting_vines",
+          "evaluation_ms": 40.8376045,
+          "join_events": 89.5,
+          "longest_task_ms": 17.218854,
+          "longest_task_join_fraction": 0.16965658242017628,
+          "last_task_join_fraction": 0.17611554997953052,
+          "tail_ms": 16.316219,
+          "tail_mean_workers_inside_join_api": 5.316829665103906
+        },
+        {
+          "root": 14,
+          "name": "minecraft:ore_ancient_debris_large",
+          "evaluation_ms": 4.180833,
+          "join_events": 1.0,
+          "longest_task_ms": 2.948125,
+          "longest_task_join_fraction": 0.0,
+          "last_task_join_fraction": 0.0,
+          "tail_ms": 2.323036,
+          "tail_mean_workers_inside_join_api": 0.0047271850293201575
+        },
+        {
+          "root": 17,
+          "name": "minecraft:brown_mushroom_normal",
+          "evaluation_ms": 1.0179165000000001,
+          "join_events": 0.0,
+          "longest_task_ms": 0.426979,
+          "longest_task_join_fraction": 0.0,
+          "last_task_join_fraction": 0.0,
+          "tail_ms": 0.17977062500000002,
+          "tail_mean_workers_inside_join_api": -0.0
+        }
+      ]
+    },
+    {
+      "case": "overworld",
+      "regions": 20,
+      "roots": 0,
+      "selected_root_medians": []
+    }
+  ],
+  "interpretation": "Median longest brown-mushroom task covered API-join fraction is 1.65% on the first seed and 0% on the second. Basalt pillar has no joins at these sites. The critical tail is largely outside these measured calls; this does not identify that time as CPU work. Custom/direct twisting-vine tasks show more join activity. Task time outside coverage can include terrain/GPU waits, other locks, preemption and probe overhead.",
+  "paired_normal": [
+    {
+      "case": "nether-main",
+      "seed": 123456789,
+      "summary": {
+        "old": {
+          "median_ms": 1569.1693959524855,
+          "p95_ms": 2173.247693781741,
+          "maximum_ms": 2178.5357499029487,
+          "total_ms": 31490.634207846597,
+          "chunks_per_second": 650.352097224417,
+          "generation_process_peak_rss_bytes": 2275164160,
+          "program_statuses": [
+            4
+          ]
+        },
+        "new": {
+          "median_ms": 1495.051563018933,
+          "p95_ms": 2385.733608179726,
+          "maximum_ms": 2979.0130420587957,
+          "total_ms": 31343.170210253447,
+          "chunks_per_second": 653.4118872666006,
+          "generation_process_peak_rss_bytes": 2178777088,
+          "program_statuses": [
+            4
+          ]
+        },
+        "paired": {
+          "median_new_over_old": 0.961583109525633,
+          "new_faster_pairs": 11,
+          "pairs": 20
+        }
+      },
+      "comparisons": {
+        "old": [
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/nether-main-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          },
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle60/merged-full/nether-main-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          },
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle66/inventory/nether-main-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          }
+        ],
+        "new": [
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/nether-main-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          },
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle60/merged-full/nether-main-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          },
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle66/inventory/nether-main-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          }
+        ]
+      }
+    },
+    {
+      "case": "nether-second-seed",
+      "seed": 42,
+      "summary": {
+        "old": {
+          "median_ms": 1403.195249964483,
+          "p95_ms": 1861.840829299763,
+          "maximum_ms": 2080.6890840176493,
+          "total_ms": 28121.765749063343,
+          "chunks_per_second": 728.2615246406472,
+          "generation_process_peak_rss_bytes": 2244952064,
+          "program_statuses": [
+            4
+          ]
+        },
+        "new": {
+          "median_ms": 1391.7652709642425,
+          "p95_ms": 2065.981767035555,
+          "maximum_ms": 2105.8290409855545,
+          "total_ms": 28528.4399993252,
+          "chunks_per_second": 717.880122449192,
+          "generation_process_peak_rss_bytes": 2282995712,
+          "program_statuses": [
+            4
+          ]
+        },
+        "paired": {
+          "median_new_over_old": 0.9877531844755003,
+          "new_faster_pairs": 12,
+          "pairs": 20
+        }
+      },
+      "comparisons": {
+        "old": [
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/nether-second-seed-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          },
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle60/merged-full/nether-second-seed-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          },
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle66/inventory/nether-second-seed-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          }
+        ],
+        "new": [
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/nether-second-seed-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          },
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle60/merged-full/nether-second-seed-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          },
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle66/inventory/nether-second-seed-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          }
+        ]
+      }
+    },
+    {
+      "case": "nether-custom-bounds",
+      "seed": 123456789,
+      "summary": {
+        "old": {
+          "median_ms": 1021.4103545295075,
+          "p95_ms": 1305.4018117371015,
+          "maximum_ms": 1437.5947080552578,
+          "total_ms": 21224.64312799275,
+          "chunks_per_second": 964.9161060799814,
+          "generation_process_peak_rss_bytes": 1915207680,
+          "program_statuses": [
+            4
+          ]
+        },
+        "new": {
+          "median_ms": 1033.056354499422,
+          "p95_ms": 1220.6521118874664,
+          "maximum_ms": 1395.123332971707,
+          "total_ms": 20887.409208575264,
+          "chunks_per_second": 980.4949860221054,
+          "generation_process_peak_rss_bytes": 1906638848,
+          "program_statuses": [
+            4
+          ]
+        },
+        "paired": {
+          "median_new_over_old": 0.9987742813074713,
+          "new_faster_pairs": 10,
+          "pairs": 20
+        }
+      },
+      "comparisons": {
+        "old": [
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/nether-custom-bounds-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          },
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle60/merged-full/nether-custom-bounds-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          },
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle66/inventory/nether-custom-bounds-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          }
+        ],
+        "new": [
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/nether-custom-bounds-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          },
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle60/merged-full/nether-custom-bounds-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          },
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle66/inventory/nether-custom-bounds-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          }
+        ]
+      }
+    },
+    {
+      "case": "nether-direct-stem",
+      "seed": 42,
+      "summary": {
+        "old": {
+          "median_ms": 1005.2020834991708,
+          "p95_ms": 1343.1918622809462,
+          "maximum_ms": 1380.3279160056263,
+          "total_ms": 20579.40537389368,
+          "chunks_per_second": 995.1696673403509,
+          "generation_process_peak_rss_bytes": 1919500288,
+          "program_statuses": [
+            4
+          ]
+        },
+        "new": {
+          "median_ms": 944.6969375712797,
+          "p95_ms": 1244.0823565237224,
+          "maximum_ms": 1258.1150839105248,
+          "total_ms": 19368.71012696065,
+          "chunks_per_second": 1057.3755229829408,
+          "generation_process_peak_rss_bytes": 1946517504,
+          "program_statuses": [
+            4
+          ]
+        },
+        "paired": {
+          "median_new_over_old": 0.9684686558957377,
+          "new_faster_pairs": 13,
+          "pairs": 20
+        }
+      },
+      "comparisons": {
+        "old": [
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/nether-direct-stem-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          },
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle60/merged-full/nether-direct-stem-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          },
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle66/inventory/nether-direct-stem-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          }
+        ],
+        "new": [
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/nether-direct-stem-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          },
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle60/merged-full/nether-direct-stem-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          },
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle66/inventory/nether-direct-stem-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          }
+        ]
+      }
+    },
+    {
+      "case": "overworld",
+      "seed": 123456789,
+      "summary": {
+        "old": {
+          "median_ms": 369.4709794363007,
+          "p95_ms": 485.04281853092834,
+          "maximum_ms": 509.0799159370363,
+          "total_ms": 7595.967997564003,
+          "chunks_per_second": 2696.167230637077,
+          "generation_process_peak_rss_bytes": 2369470464,
+          "program_statuses": [
+            4
+          ]
+        },
+        "new": {
+          "median_ms": 388.2980209309608,
+          "p95_ms": 492.2023745486517,
+          "maximum_ms": 989.3880418967456,
+          "total_ms": 8023.492831736803,
+          "chunks_per_second": 2552.504305729753,
+          "generation_process_peak_rss_bytes": 1664892928,
+          "program_statuses": [
+            4
+          ]
+        },
+        "paired": {
+          "median_new_over_old": 1.02328726834663,
+          "new_faster_pairs": 9,
+          "pairs": 20
+        }
+      },
+      "comparisons": {
+        "old": [
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/overworld-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          },
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle60/merged-full/overworld-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          },
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle66/inventory/overworld-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          }
+        ],
+        "new": [
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/overworld-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          },
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle60/merged-full/overworld-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          },
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle66/inventory/overworld-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          }
+        ]
+      }
+    }
+  ],
+  "decision": "Select as diagnostic-only evidence. No speedup or no-regression acceptance claim. Ordinary source changes are exclusively cfg(test) labels/hooks and formatting; normal code prunes the observer. Normal SHA differs from preceding C60, so byte identity is not claimed. Both standard-seed p95s increased and Overworld throughput decreased about 5.3% under external host activity; quiet confirmation remains deferred by the user. This cycle changes no production scheduling algorithm.",
+  "next_opportunity": {
+    "hypothesis": "Long target tails may contain substantial terrain/service waits or CPU work outside dependency-cell joins.",
+    "expected_gain": "Unknown until attributed; no numerical gain promised.",
+    "risk": "Per-thread CPU intervals must preserve physical-thread identity and nesting. Service waits must not be counted as executing CPU.",
+    "complexity": "Moderate diagnostic extension before choosing another production optimization.",
+    "validation": "Measure actual thread CPU and terrain/job-cache API waits for the same targets, retain null for unavailable data, then compare exact output and ordinary timings."
+  },
+  "limitations": [
+    "Known external load; timing acceptance deferred.",
+    "API intervals are not kernel sleep; memo spans include cloning and can include publication races/preemption.",
+    "Category and worker sums can overlap in wall time.",
+    "No new concurrency/portal/sustained-memory acceptance for this diagnostic-only change.",
+    "Full subsecond goal remains active."
+  ],
+  "recovery": {
+    "evidence_root": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20",
+    "branch": "codex/nether-dependency-join-attribution",
+    "drivers": [
+      "join-attribution-inventory.py",
+      "join-attribution-phase-summary.py",
+      "join-attribution-summary.py",
+      "join-attribution-paired.py"
+    ],
+    "artifacts": [
+      "cycle66/tests.log",
+      "cycle66/gpu-parity.log",
+      "cycle66/inventory-test-executable",
+      "cycle66/normal.dylib",
+      "cycle66/proof.json",
+      "cycle66/phase-summary.json",
+      "cycle66/join-summary.json",
+      "cycle66/paired-normal/report.json"
+    ],
+    "large_artifacts": "Immutable binaries, generated worlds and raw observations remain outside Git."
+  }
+}

@@ -2142,3 +2142,30 @@ Held, unmerged. Main Nether, custom bounds and direct stem lose aggregate throug
 Return to accepted origin/main without C62-C65 production scheduling changes. Extend the test-only worker-phase observer to record noninitializer dependency-cell join intervals, then intersect them with per-worker task and tail spans. Preserve reentrant task contexts, missing/failure data and joined buffer cleanup; do not call API join intervals kernel-sleep or CPU time. Measure the remaining tail before adding further scheduler complexity. See external cycle65/conditional-next-measurement.md.
 
 Report: `docs/benchmarks/nether-perf-cycle65-2026-10-21.json`. Preserve `codex/nether-nonblocking-waiter-claims` and external `cycle65/`. Main remains C60; the full performance goal remains active.
+
+
+## Cycle 66 — dependency join attribution inside root tasks
+
+C66 returns to accepted C60 production and extends only the test observer. It measures calls that initially see an unfinished dependency cell and do not run its initializer, identifying anchor, anchor-ID, footprint, structure-start and column joins. Initially ready calls and owned initializer execution are excluded. Publication races, scheduling delays and memo result cloning can remain in these API spans; they are not kernel-sleep measurements.
+
+A thread-local RAII context stack preserves physical-worker attribution through nested roots and panics. Context/candidate guards cannot migrate between threads. Initializer candidates store scalar stamps without an Arc clone, event allocation or collector lock. Task and root failure paths retain failure/missing-phase evidence; root cleanup empties raw buffers, including on unwind. Invalid bounds, context order or live contexts cannot produce valid interval sums. Per-worker unions are intersected with task and tail intervals; category/worker sums are not wall-time fractions.
+
+**172 native tests passed**, including five new join/lifecycle/interval fixtures, plus explicit GPU parity. Complete decompressed NBT and membership matched for **307,200 measured chunk instances**: 102,400 observer and 204,800 ordinary paired. All compare to the immutable original and actual C60 merge; pairs also compare to C66 observer. Actual measured shader snapshots are ready before and after generation. Repeated coordinates are not unique-world coverage.
+
+The longest brown-mushroom target spent a median **1.65%** of its task interval inside these covered join calls on the first seed and **0%** on the second. Basalt pillars recorded **zero** such joins. Their root evaluation medians remain about 91/93 ms, with 34/35 ms tails after 95% of targets finish. Brown-mushroom tails remain about 54/37 ms. Custom/direct twisting-vine targets do show join activity. The critical standard-seed targets are mostly outside the measured dependency-cell joins. **Outside-join time is not CPU time**: terrain/GPU waits, other locks, preemption and probe overhead are still possible.
+
+The normal build prunes the observer and all new call-site hooks. Its hash differs from C60, so prior byte identity is not claimed. Five warmups and twenty ordinary regions per case/variant were paired with alternating first generator; only one engine generates at a time. Known host activity makes these timing observations provisional.
+
+| Case | Old/new median ms | Old/new p95 ms | Throughput change | New faster pairs |
+|---|---:|---:|---:|---:|
+| nether-main | 1569.17 / 1495.05 | 2173.25 / 2385.73 | +0.47% | 11/20 |
+| nether-second-seed | 1403.20 / 1391.77 | 1861.84 / 2065.98 | -1.43% | 12/20 |
+| nether-custom-bounds | 1021.41 / 1033.06 | 1305.40 / 1220.65 | +1.61% | 10/20 |
+| nether-direct-stem | 1005.20 / 944.70 | 1343.19 / 1244.08 | +6.25% | 13/20 |
+| overworld | 369.47 / 388.30 | 485.04 / 492.20 | -5.33% | 9/20 |
+
+Select this diagnostic scope without claiming a production speedup or no-regression acceptance. Both standard-seed p95s increased; Overworld throughput fell about 5.3%. Ordinary code inspection finds only test-conditional hooks/labels and formatting. Quiet timing confirmation remains deferred by the user. All C61-C65 production prototypes remain held; their assessments are preserved here so the same experiments are not repeated.
+
+Next, distinguish physical-thread CPU work from uncovered terrain/service waits within the critical targets. Do not infer a scheduling fix from in-flight task counts or equate outside-join time with execution. No new concurrency, portal or sustained-memory acceptance is established by this diagnostic cycle. The full subsecond goal remains active.
+
+Report: `docs/benchmarks/nether-perf-cycle66-2026-10-21.json`; external evidence: `cycle66/` plus the `join-attribution-*.py` drivers. Actual merged rebuild/full-corpus proof follows merge.
