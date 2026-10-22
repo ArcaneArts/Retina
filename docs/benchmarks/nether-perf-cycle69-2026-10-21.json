@@ -1,0 +1,402 @@
+{
+  "cycle": 69,
+  "status": "hold",
+  "created_utc": "2026-10-22T03:06:34.627348+00:00",
+  "timing_acceptance": false,
+  "problem": "Every ordered replay checks a shared Mutex<Option<String>>, even when the job has no error. Historical C53 stacks contain real Planner::check mutex-wait paths on both standard seeds; the latch remains unchanged through C68.",
+  "implementation": "A private FirstError publishes a preconstructed String once. fail returns only after set completes; check reads the published value without acquiring the former mutex. Concurrent failures retain the first publication, later failures cannot replace it, and the final check remains after joined evaluation. No generation/RNG/cache/scheduling algorithm changes.",
+  "source": {
+    "revision": "50ecbd66a0ca1f8258acadbf22933d1a644cb124",
+    "native_tree": "7dbef5d82fec609264308129d5c192154af858ee",
+    "sha256": "e392572bb70513815e3b7c5f4aa3662178ad124952850ccf7407989a3377ddc5",
+    "source_status": "",
+    "forced_rebuild": true,
+    "timing_acceptance": false,
+    "test_executable_sha256": "5f3dae9786eddb63bfb9a0927e2efd35c0fdb4cd54bb34018a041ec4d2cced43",
+    "native_test_result": [
+      "180",
+      "0",
+      "48"
+    ]
+  },
+  "design_review": {
+    "candidate": "FirstError one-time publication",
+    "source_revision": "ccd0d3b00a3350eb4c769e9331f97d6233f25e0e",
+    "scope": "Only the planner error latch changes. C68 observer, caches, output ordering, terrain, feature execution and worker budget stay the same.",
+    "prior_behavior": "A Mutex<Option<String>> is locked by every check and failure publisher. Successful replay takes that mutex even while the value remains None. The first insertion wins; error checks clone the retained String.",
+    "candidate_behavior": "A private FirstError owns OnceLock<String>. fail uses set, retaining the first successful publication and completing before return. check gets and clones the published value without acquiring a mutex on the normal successful path.",
+    "concurrency_review": [
+      "Publication races retain one of the original concurrent failures, as did mutex insertion races; caller-start order was not a promised ordering.",
+      "A check overlapping an unfinished publication can return success, linearizing before publication. This cannot erase an error or overwrite the retained first value.",
+      "Each View error calls fail synchronously before returning its fallback. The subsequent same-thread replay check must observe publication.",
+      "try_for_each joins started evaluations before the final Planner::check. The final check therefore observes every completed failure publication even if another worker checked while publication was in progress.",
+      "No lazy initializer closure or failing computation is stored in OnceLock: only an already-created String moves into the cell. No new reset/retry semantics or owner cycles.",
+      "String cloning and original message propagation are unchanged after publication. Retirement remains inside the same planner destruction path."
+    ],
+    "new_tests": [
+      "Sixteen racing publishers all observe the same retained original failure; later failure cannot replace it and a new job starts empty.",
+      "Publication is observed by another thread while the publishing worker is deliberately still live, before the scoped join."
+    ],
+    "evidence": "Existing C53 stack samples contain actual Planner::check pthread mutex wait paths on both standard seeds (42/73 leaf observations); production latch unchanged through C68. This is evidence of possible contention, not time attribution. C68 explicitly leaves this latch outside its lookup buffer.",
+    "validation_pending": [
+      "Five warmup/twenty measured ordinary regions per engine across five cases, original/C68 full NBT and membership",
+      "Selection decision from actual observations; quiet timing acceptance remains deferred",
+      "If selected, repeated/concurrent/request-order and actual merged verification"
+    ],
+    "expected_gain": "Unknown until measured. No speedup claim from source inspection or historical sample counts.",
+    "timing_acceptance": false,
+    "validation_completed": {
+      "native_tests": 180,
+      "native_failed": 0,
+      "native_ignored": 48,
+      "new_tests": 2,
+      "explicit_gpu_parity": 1,
+      "normal_release_build": true,
+      "observer_symbols": 0
+    }
+  },
+  "validation": {
+    "native_tests_passed": 180,
+    "failed": 0,
+    "ignored": 48,
+    "new_tests": 2,
+    "explicit_gpu_parity_passed": 1,
+    "normal_symbol_check": {
+      "command": [
+        "nm",
+        "-a",
+        "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle69/normal.dylib"
+      ],
+      "matching_symbols": [],
+      "sha256": "e392572bb70513815e3b7c5f4aa3662178ad124952850ccf7407989a3377ddc5"
+    },
+    "paired_measured_chunk_instances": 204800,
+    "comparison": "Complete decompressed NBT and membership against immutable original and actual C68. Only MCA timestamps/compression representation excluded. Repeated coordinates are not unique coverage.",
+    "shader_readiness": "Actual before/after status4 on all measured old/new regions.",
+    "pair_worker_exit_codes": "All ten workers terminated successfully; full comparison driver terminal."
+  },
+  "paired_normal": [
+    {
+      "case": "nether-main",
+      "seed": 123456789,
+      "summary": {
+        "old": {
+          "median_ms": 3445.595124969259,
+          "p95_ms": 4234.698802465574,
+          "maximum_ms": 4899.551749927923,
+          "total_ms": 67910.89975112118,
+          "chunks_per_second": 301.57161921068325,
+          "generation_process_peak_rss_bytes": 2272886784,
+          "program_statuses": [
+            4
+          ]
+        },
+        "new": {
+          "median_ms": 3326.3748328899965,
+          "p95_ms": 4413.2517979014665,
+          "maximum_ms": 4663.850832963362,
+          "total_ms": 66445.68262598477,
+          "chunks_per_second": 308.22168108768784,
+          "generation_process_peak_rss_bytes": 2349170688,
+          "program_statuses": [
+            4
+          ]
+        },
+        "paired": {
+          "median_new_over_old": 0.9765918578413082,
+          "new_faster_pairs": 13,
+          "pairs": 20
+        }
+      },
+      "comparisons": {
+        "old": [
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/nether-main-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          },
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle68/merged-full/nether-main-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          }
+        ],
+        "new": [
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/nether-main-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          },
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle68/merged-full/nether-main-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          }
+        ]
+      }
+    },
+    {
+      "case": "nether-second-seed",
+      "seed": 42,
+      "summary": {
+        "old": {
+          "median_ms": 2519.935187534429,
+          "p95_ms": 3629.4278563116677,
+          "maximum_ms": 3639.977250015363,
+          "total_ms": 47848.74133602716,
+          "chunks_per_second": 428.01543840359744,
+          "generation_process_peak_rss_bytes": 2384838656,
+          "program_statuses": [
+            4
+          ]
+        },
+        "new": {
+          "median_ms": 2417.2701459610835,
+          "p95_ms": 3735.4749394813557,
+          "maximum_ms": 4364.0056669246405,
+          "total_ms": 47726.975169731304,
+          "chunks_per_second": 429.10743719179845,
+          "generation_process_peak_rss_bytes": 2527117312,
+          "program_statuses": [
+            4
+          ]
+        },
+        "paired": {
+          "median_new_over_old": 1.0114894998486401,
+          "new_faster_pairs": 9,
+          "pairs": 20
+        }
+      },
+      "comparisons": {
+        "old": [
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/nether-second-seed-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          },
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle68/merged-full/nether-second-seed-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          }
+        ],
+        "new": [
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/nether-second-seed-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          },
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle68/merged-full/nether-second-seed-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          }
+        ]
+      }
+    },
+    {
+      "case": "nether-custom-bounds",
+      "seed": 123456789,
+      "summary": {
+        "old": {
+          "median_ms": 1569.0208123996854,
+          "p95_ms": 2471.165697858669,
+          "maximum_ms": 2685.558332828805,
+          "total_ms": 32756.851123878732,
+          "chunks_per_second": 625.2127203115293,
+          "generation_process_peak_rss_bytes": 1872478208,
+          "program_statuses": [
+            4
+          ]
+        },
+        "new": {
+          "median_ms": 1567.1769795008004,
+          "p95_ms": 2055.5097956908867,
+          "maximum_ms": 2172.925916966051,
+          "total_ms": 31996.700333431363,
+          "chunks_per_second": 640.0660001369491,
+          "generation_process_peak_rss_bytes": 1971322880,
+          "program_statuses": [
+            4
+          ]
+        },
+        "paired": {
+          "median_new_over_old": 1.0215822713175875,
+          "new_faster_pairs": 9,
+          "pairs": 20
+        }
+      },
+      "comparisons": {
+        "old": [
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/nether-custom-bounds-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          },
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle68/merged-full/nether-custom-bounds-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          }
+        ],
+        "new": [
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/nether-custom-bounds-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          },
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle68/merged-full/nether-custom-bounds-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          }
+        ]
+      }
+    },
+    {
+      "case": "nether-direct-stem",
+      "seed": 42,
+      "summary": {
+        "old": {
+          "median_ms": 1599.9705418944359,
+          "p95_ms": 2158.990510099102,
+          "maximum_ms": 2366.385999834165,
+          "total_ms": 33979.85187359154,
+          "chunks_per_second": 602.7101023332195,
+          "generation_process_peak_rss_bytes": 1943977984,
+          "program_statuses": [
+            4
+          ]
+        },
+        "new": {
+          "median_ms": 1682.3241665260866,
+          "p95_ms": 2172.9565305053256,
+          "maximum_ms": 2257.6298331841826,
+          "total_ms": 33846.083330689,
+          "chunks_per_second": 605.0921697468708,
+          "generation_process_peak_rss_bytes": 1911078912,
+          "program_statuses": [
+            4
+          ]
+        },
+        "paired": {
+          "median_new_over_old": 1.0161756220137141,
+          "new_faster_pairs": 7,
+          "pairs": 20
+        }
+      },
+      "comparisons": {
+        "old": [
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/nether-direct-stem-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          },
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle68/merged-full/nether-direct-stem-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          }
+        ],
+        "new": [
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/nether-direct-stem-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          },
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle68/merged-full/nether-direct-stem-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          }
+        ]
+      }
+    },
+    {
+      "case": "overworld",
+      "seed": 123456789,
+      "summary": {
+        "old": {
+          "median_ms": 768.128770403564,
+          "p95_ms": 1209.1306277434342,
+          "maximum_ms": 1312.0687080081552,
+          "total_ms": 16546.555873705074,
+          "chunks_per_second": 1237.7198104740185,
+          "generation_process_peak_rss_bytes": 2066300928,
+          "program_statuses": [
+            4
+          ]
+        },
+        "new": {
+          "median_ms": 810.3936875704676,
+          "p95_ms": 1038.2985809701495,
+          "maximum_ms": 1039.4290420226753,
+          "total_ms": 16171.30353837274,
+          "chunks_per_second": 1266.4408871803805,
+          "generation_process_peak_rss_bytes": 1653096448,
+          "program_statuses": [
+            4
+          ]
+        },
+        "paired": {
+          "median_new_over_old": 0.9887330350346315,
+          "new_faster_pairs": 11,
+          "pairs": 20
+        }
+      },
+      "comparisons": {
+        "old": [
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/overworld-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          },
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle68/merged-full/overworld-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          }
+        ],
+        "new": [
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/overworld-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          },
+          {
+            "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle68/merged-full/overworld-run0",
+            "identical_nbt_chunks": 20480,
+            "membership_identical": true
+          }
+        ]
+      }
+    }
+  ],
+  "decision": "Hold this prototype without a PR. Nether aggregate throughput changes are only +2.21%, +0.26%, +2.38% and +0.40%; the unchanged Overworld control changes +2.32%. Both standard-seed p95 values worsen. These loaded observations do not establish a useful whole-region gain. Preserve the implementation and evidence for possible quiet confirmation; accepted main remains C68.",
+  "limitations": [
+    "Known host activity; quiet timing and no-regression acceptance remain deferred.",
+    "A removed mutex and old sampled stack counts do not quantify full-region gain.",
+    "Normal paired process RSS includes startup/warmup and excludes later NBT comparisons; it is not a sustained-memory plateau.",
+    "No new concurrent-request, portal or sustained-memory acceptance.",
+    "Full subsecond median/p95 goal remains active."
+  ],
+  "recovery": {
+    "worktree": "/tmp/retina-nether-first-error-publication",
+    "branch": "codex/nether-first-error-publication",
+    "evidence_root": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20",
+    "drivers": [
+      "first-error-normal.py",
+      "first-error-paired.py",
+      "first-error-report.py"
+    ],
+    "artifacts": [
+      "cycle69/normal-tests.log",
+      "cycle69/gpu-parity.log",
+      "cycle69/native-test-executable",
+      "cycle69/normal.dylib",
+      "cycle69/normal-provenance.json",
+      "cycle69/paired-normal/report.json"
+    ],
+    "large_artifacts": "Binaries/worlds/logs retained outside Git."
+  }
+}

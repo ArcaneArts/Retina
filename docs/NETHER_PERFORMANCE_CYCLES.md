@@ -2257,4 +2257,78 @@ Timings remain provisional under recorded host activity. Quiet timing and no-reg
 
 A separate source/old-stack review identifies the first-error latch as a small follow-up opportunity: Planner::check still locks Mutex<Option<String>> after each replay. Historical C53 stacks contain this exact mutex-wait path on both seeds. Those counts are not time shares and establish no gain. A one-time error publication mechanism needs concurrent failure/visibility validation and complete output/ordinary comparisons before selection. Other unmeasured time remains unclassified; held prototypes remain held.
 
-Report: `docs/benchmarks/nether-perf-cycle68-2026-10-21.json`; external `cycle68/` and `lookup-lock-*.py`. Actual merged rebuild/full-corpus proof follows merge. The full goal remains active.
+Report: `docs/benchmarks/nether-perf-cycle68-2026-10-21.json`; external `cycle68/` and `lookup-lock-*.py`. Actual merged rebuild/full-corpus proof is recorded below. The full goal remains active.
+
+
+Cycle 68 actual merge proof: PR [#202](https://github.com/ArcaneArts/Retina/pull/202) squash-merged as `0370ac83fb46e64b4c002e6285c6391ad9e3c560`. A forced rebuild has native tree `3d9fa6e41032f1c32e6029dc21e4d8581e864899` and SHA-256 `cece8db159345a115c9c7d165d67765edd5197d41c37776e041cacf356cffcfa`, identical to the tested source and selected library. The unchanged native tests were not repeated. Another 102,400 measured chunk instances match full original/C67/selected normal NBT and membership: **409,600** for this cycle. All five generation workers and comparisons terminated successfully; actual measured post-shader states are ready.
+
+Provisional actual merged median/p95: nether-main-run0: 1917/2582 ms; nether-second-seed-run0: 2775/5126 ms; nether-custom-bounds-run0: 1756/2096 ms; nether-direct-stem-run0: 2147/2564 ms; overworld-run0: 780/1018 ms. Identical-library timing drift remains substantial, with recorded host activity; it establishes no code effect or quiet no-regression acceptance. Full metrics and provenance remain in the JSON report and external `cycle68/merged-proof.json`. Clean primary main was fast-forwarded. The app attachment hit its 100-identity cap; existing attachments were preserved. The performance goal remains active.
+
+
+## Cycle 69 — first-error publication candidate
+
+The implementation branches for cycles 69–71 remain unmerged. These sections publish their evidence only; accepted generation behavior remains unchanged.
+
+Every ordered replay checks a shared error mutex even when the job succeeds. This candidate replaces that latch with private one-time publication. A failure stores its original String before returning; checks clone the retained error or return success without taking the former mutex. Concurrent failures may race to publish, as they previously raced to acquire the mutex. Later failures cannot overwrite the stored value. The final planner check still runs after all started evaluations join. A check overlapping an unfinished publication can return success before that publication; it cannot erase the error or let it escape the final joined check.
+
+**180 native tests pass**, including sixteen racing failure publishers and visibility to another thread before the publishing worker finishes. Explicit GPU terrain parity also passes. The ordinary release excludes observer symbols. Five warmups and twenty paired ordinary regions per case/engine alternate the first generator, with only one generating at a time. All **204,800 measured chunk instances** match original and actual C68 complete NBT/membership; all measured shader states are ready. Repeated coordinates are not unique coverage.
+
+| Case | Old/new median ms | Old/new p95 ms | Throughput change | New faster pairs |
+|---|---:|---:|---:|---:|
+| nether-main | 3445.60 / 3326.37 | 4234.70 / 4413.25 | +2.21% | 13/20 |
+| nether-second-seed | 2519.94 / 2417.27 | 3629.43 / 3735.47 | +0.26% | 9/20 |
+| nether-custom-bounds | 1569.02 / 1567.18 | 2471.17 / 2055.51 | +2.38% | 9/20 |
+| nether-direct-stem | 1599.97 / 1682.32 | 2158.99 / 2172.96 | +0.40% | 7/20 |
+| overworld | 768.13 / 810.39 | 1209.13 / 1038.30 | +2.32% | 11/20 |
+
+Hold this prototype without a PR. Nether aggregate throughput changes are only +2.21%, +0.26%, +2.38% and +0.40%; the unchanged Overworld control changes +2.32%. Both standard-seed p95 values worsen. These loaded observations do not establish a useful whole-region gain. Preserve the implementation and evidence for possible quiet confirmation; accepted main remains C68.
+
+Historical C53 stack samples contain Planner::check mutex-wait paths, but sample counts are not time shares or a promised gain. Known host activity keeps these observations provisional; user-deferred quiet timing confirmation remains open. No new concurrency, portal or sustained-memory acceptance is established. The overall performance goal remains active.
+
+Report: `docs/benchmarks/nether-perf-cycle69-2026-10-21.json`; external `cycle69/` and `first-error-*.py`. Preserve the candidate branch/worktree and immutable evidence.
+
+
+## Cycle 70 — pending column tile lookup cache candidate
+
+A private bounded cache borrows pending ColumnTile references to avoid repeatedly locking and hashing the original map for columns in the same tile. Full root/X/Z key tags preserve correctness on collisions and arbitrary coordinates. The original map and cells still own discovery, single initialization and generation. No callback executes while a map/cache initializer lock is held. Existing joined root publication clears cached references before moving pending tiles to the ready map; original final sorted retirement and poison errors remain. C69's held error-latch change is excluded.
+
+**182 native tests pass**, including four new tests for collisions, concurrent fills, nested same-shard reads, root reset, poison and reference release. Explicit GPU terrain parity also passes, and observer symbols are absent from the ordinary release. Counters show **91.23–94.14% of pending lookups hit the optional cache**, avoiding about 0.85–1.09 million map acquisitions/Arc clones in each diagnostic Nether region. Anchor, column, prefix and tile build counts are unchanged. Diagnostic durations overlap and are not wall-time savings.
+
+The diagnostic and ordinary paired runs verify **215,040 measured chunk instances** against original and actual C68 complete NBT/membership. Paired runs use five warmups and twenty measured regions per case/engine, alternate the first generator, and serialize generation. All measured paired shader states are ready. Repeated coordinates are not unique coverage.
+
+| Case | Old/new median ms | Old/new p95 ms | Throughput change | New faster pairs |
+|---|---:|---:|---:|---:|
+| nether-main | 2826.55 / 2960.90 | 3724.76 / 4066.60 | -2.58% | 6/20 |
+| nether-second-seed | 2873.47 / 2914.89 | 3911.85 / 4500.42 | -4.98% | 7/20 |
+| nether-custom-bounds | 1959.38 / 2209.41 | 3241.33 / 3542.06 | -9.96% | 8/20 |
+| nether-direct-stem | 1325.88 / 1238.39 | 2185.79 / 2093.30 | +4.74% | 15/20 |
+| overworld | 456.29 / 464.95 | 619.86 / 594.12 | -0.22% | 12/20 |
+
+Hold unmerged. Both standard seeds and the custom-bounds case lose aggregate throughput; all three also have worse median and p95 observations. Direct-stem improves, but this does not establish a consistent whole-region benefit. Avoiding 91–94% of pending map lookups is real work reduction, not sufficient evidence to promote the cache. Known host activity keeps all timing conclusions provisional; preserve the candidate for possible quiet confirmation.
+
+Known host activity keeps these observations provisional; user-deferred quiet timing confirmation remains open. No new concurrency, portal or sustained-memory acceptance is established. The overall performance goal remains active.
+
+Report: `docs/benchmarks/nether-perf-cycle70-2026-10-21.json`; external `cycle70/` and `pending-column-*.py`. Preserve the candidate branch/worktree and immutable evidence.
+
+
+## Cycle 71 — distinct target terrain preparation candidate
+
+Feature target anchors always read their base field before replay. This candidate exposes their distinct terrain tiles together in a joined parallel preparation phase on the existing bounded pool. Tile coordinates come only from actual targets; there is no extra rectangular coverage or dependency cutoff. Structures retain lazy terrain access because a no-start structure may not need a field. Source target order, RNG, commands, publication and original lazy dependency closure stay unchanged. Preparation and cleanup remain inside complete-region generation. C69/C70 held source changes are excluded.
+
+All **179 native release tests** and explicit GPU terrain parity pass. A new test covers duplicate/negative/boundary/extreme target coordinates without enlarging coverage or changing the source array. Ordinary release observer symbols are absent. Diagnostics record 525 preparation attempts in each standard case and 284 in each custom case, including already-ready tiles. Joined preparation takes 139/170 ms in the standard cases and 42/52 ms in the custom cases. Anchor, column, prefix and column-tile build counts remain equal. Large terrain-tile multisets match; the standard cases differ only by two extra and four fewer 7x7 jobs respectively, while custom terrain work matches. Peak simultaneous GPU submissions remain two in all Nether cases. Reduced accumulated terrain joins do not establish equivalent whole-region savings.
+
+Diagnostic and paired ordinary runs compare **215,040 measured chunk instances** with original and actual C68 complete NBT/membership. Ordinary runs use five warmups and twenty paired regions per case/engine; only one engine generates at a time. All measured paired shader states are ready. Repeated coordinates are not unique coverage.
+
+| Case | Old/new median ms | Old/new p95 ms | Throughput change | New faster pairs |
+|---|---:|---:|---:|---:|
+| nether-main | 2687.34 / 2494.31 | 3848.20 / 4027.88 | +0.40% | 12/20 |
+| nether-second-seed | 4013.88 / 4198.09 | 5827.17 / 5895.05 | -2.36% | 9/20 |
+| nether-custom-bounds | 1825.78 / 1852.29 | 2151.84 / 2124.63 | +1.73% | 11/20 |
+| nether-direct-stem | 1751.06 / 1965.98 | 2970.19 / 2225.68 | +6.64% | 11/20 |
+| overworld | 924.33 / 892.05 | 1320.27 / 1282.43 | +1.34% | 12/20 |
+
+Hold unmerged. Main standard-seed aggregate throughput is nearly flat (+0.40%); the second seed loses 2.36%. Both standard-seed p95s worsen. Custom bounds improve 1.73% and direct stem 6.64% in aggregate, while the unchanged Overworld control improves 1.34% and direct-stem median worsens. These mixed, host-contended observations do not select the added preparation phase. Preserve exact output/work evidence and the prototype; quiet timing confirmation remains deferred.
+
+Preparation attempts include ready tiles and repeated tile origins across roots. The separate joined preparation wall counter is nested inside dependency evaluation; other worker/GPU intervals overlap. Earlier requesting can change shared exact-cache eviction and GPU ordering even when required coverage is unchanged. Full work counters and RSS observations are retained in the report. Known host activity keeps timing provisional, with quiet acceptance deferred by the user. No new concurrency, portal or sustained-memory acceptance is established; the goal remains active.
+
+Report: `docs/benchmarks/nether-perf-cycle71-2026-10-21.json`; external `cycle71/` and `target-terrain-*.py`. Preserve source and immutable evidence.
