@@ -538,3 +538,18 @@ impl Gpu {
         result
     }
 }
+
+#[cfg(test)]
+impl Gpu {
+    pub(crate) fn buffer_inventory(&self) -> crate::gpu_buffer_probe::Inventory {
+        let mut out = crate::gpu_buffer_probe::Inventory::default();
+        if let Some(v) = &self.buffers {
+            for (i, b) in v.storage.iter().enumerate() { out.add(format!("storage/{i}"), b); }
+            out.add("readback", &v.read);
+        }
+        if let Some(b) = self.pipelines.as_ref().and_then(|p| p.resolve.as_ref()) {
+            out.add("timestamp_resolve", b);
+        }
+        out
+    }
+}

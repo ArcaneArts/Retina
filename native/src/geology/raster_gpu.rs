@@ -619,3 +619,19 @@ mod tests {
         assert_eq!(checked, 26);
     }
 }
+
+#[cfg(test)]
+impl Gpu {
+    pub(crate) fn buffer_inventory(&self) -> crate::gpu_buffer_probe::Inventory {
+        let mut out = crate::gpu_buffer_probe::Inventory::default();
+        if let Some(v) = &self.buffers {
+            for (name, buffer) in [("descriptors", &v.descriptors), ("spheres", &v.spheres),
+                ("output", &v.output), ("readback", &v.readback)] { out.add(name, buffer); }
+        }
+        if let Some(v) = &self.seeded { out.add("seeded/coefficients", &v.coefficients); }
+        if let Some(v) = &self.timestamps {
+            out.add("timestamp_resolve", &v.resolve); out.add("timestamp_readback", &v.readback);
+        }
+        out
+    }
+}

@@ -2782,3 +2782,48 @@ columns[at+2u]=Column(i32(mismatches),0u,0u);
         reused.check().unwrap();
     }
 }
+
+#[cfg(test)]
+impl Gpu {
+    pub(crate) fn publish_buffer_census(&self) {
+        use std::sync::atomic::Ordering;
+        if !self.pipeline.gpu_buffer_probe.enabled.load(Ordering::Acquire) {
+            return;
+        }
+        let mut out = crate::gpu_buffer_probe::Inventory::default();
+        for (name, buffer) in [("requests", &self.requests), ("columns", &self.output),
+            ("sites", &self.sites), ("surface_lattice", &self.height_nodes)] {
+            out.add(name, buffer);
+        }
+        for (id, (world, climate, program, _)) in &self.profiles {
+            for (name, buffer) in [("world", world), ("climate", climate), ("program", program)] {
+                out.add(format!("profile/{id}/{name}"), buffer);
+            }
+        }
+        for (id, buffer) in &self.cave_profiles { out.add(format!("cave_profile/{id}"), buffer); }
+        if let Some(v) = &self.cave_buffers {
+            out.add("cave/nodes", &v.nodes); out.add("cave/mask", &v.mask);
+        }
+        for (i, v) in self.readback_pool.iter().enumerate() {
+            out.add(format!("readback/{i}/columns"), &v.columns);
+            if let Some(b) = &v.mask { out.add(format!("readback/{i}/mask"), b); }
+            if let Some(t) = &v.timestamps {
+                out.add(format!("readback/{i}/timestamp_resolve"), &t.resolve);
+                out.add(format!("readback/{i}/timestamp_readback"), &t.readback);
+            }
+        }
+        for (i, v) in self.material_pool.iter().enumerate() {
+            out.add(format!("materials/{i}/storage"), &v.storage);
+            out.add(format!("materials/{i}/readback"), &v.readback);
+            if let Some(t) = &v.timestamps {
+                out.add(format!("materials/{i}/timestamp_resolve"), &t.resolve);
+                out.add(format!("materials/{i}/timestamp_readback"), &t.readback);
+            }
+        }
+        *self.pipeline.gpu_buffer_probe.latest.lock().unwrap() = Some(serde_json::json!({
+            "flights":0,"completed":self.pipeline.snapshot().completed,
+            "inventory":out.value(),"readback_slots":self.readback_pool.len(),
+            "material_slots":self.material_pool.len(),
+        }));
+    }
+}

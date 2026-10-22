@@ -59,7 +59,13 @@ fn advance(gpu: &mut gpu::Gpu, flights: &mut VecDeque<(Vec<Job>, gpu::PendingSam
         .unwrap_or_else(|_| Err("GPU completion panicked; see native stderr".into()));
     match result {
         Ok(gpu::Progress::Pending(next)) => flights.push_back((batch, next)),
-        Ok(gpu::Progress::Complete(sample)) => reply(batch, Ok(sample)),
+        Ok(gpu::Progress::Complete(sample)) => {
+            #[cfg(test)]
+            if flights.is_empty() {
+                gpu.publish_buffer_census();
+            }
+            reply(batch, Ok(sample));
+        }
         Err(error) => reply(batch, Err(error)),
     }
 }
@@ -222,6 +228,14 @@ pub(crate) fn run(
             }
             Err(error) => reply(batch, Err(error)),
         }
+    }
+    #[cfg(test)]
+    {
+        drop(gpu);
+        metrics
+            .gpu_buffer_probe
+            .stopped
+            .store(true, std::sync::atomic::Ordering::Release);
     }
 }
 
