@@ -78,13 +78,18 @@ fn memo_arc<K: Eq + std::hash::Hash, V>(
 ) -> Result<Arc<V>, String> {
     metrics.add(Perf::memo_requests, 1);
     let lock_started = metrics.start();
-    let slot = cache
-        .shard(&key)
-        .lock()
+    #[cfg(test)]
+    let mut lookup = worker_phase_probe::LookupCall::start(point);
+    let acquired = cache.shard(&key).lock();
+    #[cfg(test)]
+    lookup.acquired(acquired.is_ok());
+    let slot = acquired
         .map_err(|_| "decoration dependency cache poisoned")?
         .entry(key)
         .or_insert_with(|| Arc::new(OnceLock::new()))
         .clone();
+    #[cfg(test)]
+    lookup.finish(true);
     metrics.elapsed(Perf::memo_lock_nanos, lock_started);
     if slot.get().is_some() {
         metrics.add(Perf::memo_ready_hits, 1);
@@ -751,10 +756,13 @@ impl Planner<'_> {
                     }
                     // Geometry is native; spatial count/provider evaluation still uses
                     // the resident GPU programs. No Java generation callbacks exist.
-                    let sampled = self
-                        .engine
-                        .feature_gpu
-                        .lock()
+                    #[cfg(test)]
+                    let mut lookup = worker_phase_probe::LookupCall::start(
+                        worker_phase_probe::JoinKey::new("feature_gpu", Some(root), x, z));
+                    let acquired = self.engine.feature_gpu.lock();
+                    #[cfg(test)]
+                    lookup.acquired(acquired.is_ok());
+                    let sampled = acquired
                         .map_err(|_| "feature GPU lock poisoned")?
                         .run_batch(
                             request.reserved,
@@ -763,6 +771,8 @@ impl Planner<'_> {
                             &self.profile.decoration_provider_noises,
                             &queries.noise,
                         )?;
+                    #[cfg(test)]
+                    lookup.finish(true);
                     self.engine.pipeline.transfer(
                         request.reserved,
                         sampled.upload,
@@ -941,10 +951,13 @@ impl Planner<'_> {
             return self.column_cell(before, x, z, &tile.0[index]);
         }
         let lock_started = metrics.start();
-        let tile = self
-            .columns
-            .shard(&key)
-            .lock()
+        #[cfg(test)]
+        let mut lookup = worker_phase_probe::LookupCall::start(
+            worker_phase_probe::JoinKey::new("column_map", Some(before), x, z));
+        let acquired = self.columns.shard(&key).lock();
+        #[cfg(test)]
+        lookup.acquired(acquired.is_ok());
+        let tile = acquired
             .map_err(|_| "column dependency cache poisoned")?
             .entry(key)
             .or_insert_with(|| {
@@ -952,6 +965,8 @@ impl Planner<'_> {
                 Arc::new(ColumnTile::default())
             })
             .clone();
+        #[cfg(test)]
+        lookup.finish(true);
         metrics.elapsed(Perf::column_lock_nanos, lock_started);
         self.column_cell(before, x, z, &tile.0[index])
     }

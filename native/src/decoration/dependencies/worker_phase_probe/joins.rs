@@ -1,6 +1,8 @@
 //! Noninitializer OnceLock API intervals, not kernel sleep or CPU utilization.
 use super::*;
 use std::{marker::PhantomData, rc::Rc};
+mod lookup;
+pub(super) use lookup::LookupCall;
 
 #[derive(Clone, Copy)]
 pub(crate) struct Key {
@@ -78,11 +80,15 @@ impl Drop for Context {
         if !valid && !self.worker.closed.load(Ordering::Relaxed) {
             self.worker.joins.lock().unwrap().context_errors += 1;
             self.worker.terrain.lock().unwrap().context_errors += 1;
+            self.worker.lookup.lock().unwrap().context_errors += 1;
         }
         self.worker.active.fetch_sub(1, Ordering::Relaxed);
     }
 }
 
+enum Bucket { Dependency, Terrain, Lookup }
+
+#[derive(Clone)]
 pub(crate) struct Candidate {
     stamp: Option<(u64, u64, u64, Key)>,
     _thread: PhantomData<Rc<()>>,
@@ -100,9 +106,19 @@ impl Candidate {
         // No event allocation, Arc clone or collector lock for initializers.
         // An initializer may itself join nested cells, which record separately.
         if built { return; }
-        self.record(success, false, None);
+        self.record(success, Bucket::Dependency, None, None);
     }
-    fn record(self, success: bool, terrain: bool, kind: Option<&'static str>) {
+    fn current_time(&self) -> Option<u64> {
+        let (tag,token,_,_) = self.stamp?;
+        CURRENT.with(|current| {
+            let current=current.borrow();
+            let frame=current.frames.last().expect("API span lost its task context");
+            assert_eq!((frame.tag,frame.token),(tag,token),"API span changed task context");
+            assert!(!frame.worker.closed.load(Ordering::Relaxed),"API span outlived its root");
+            Some(frame.origin.elapsed().as_nanos() as u64)
+        })
+    }
+    fn record(self, success: bool, bucket: Bucket, kind: Option<&'static str>, captured_end: Option<u64>) {
         let Some((tag, token, start, mut key)) = self.stamp else { return; };
         if let Some(kind) = kind { key.kind = kind; }
         CURRENT.with(|current| {
@@ -110,8 +126,8 @@ impl Candidate {
             let frame = current.frames.last().expect("dependency join lost its task context");
             assert_eq!((frame.tag, frame.token), (tag, token), "dependency join changed task context");
             assert!(!frame.worker.closed.load(Ordering::Relaxed), "dependency join outlived its root");
-            let end = frame.origin.elapsed().as_nanos() as u64;
-            let buffer = if terrain { &frame.worker.terrain } else { &frame.worker.joins };
+            let end = captured_end.unwrap_or_else(|| frame.origin.elapsed().as_nanos() as u64);
+            let buffer = match bucket { Bucket::Dependency=>&frame.worker.joins, Bucket::Terrain=>&frame.worker.terrain, Bucket::Lookup=>&frame.worker.lookup };
             buffer.lock().unwrap().events.push(JoinEvent { key, start, end, success });
         });
     }
@@ -125,12 +141,12 @@ impl TerrainSpan {
         Self(Some(Candidate::start(pending, Key::new(kind, None, x, z))))
     }
     pub(crate) fn finish(mut self, kind: &'static str, success: bool) {
-        if let Some(candidate) = self.0.take() { candidate.record(success, true, Some(kind)); }
+        if let Some(candidate) = self.0.take() { candidate.record(success, Bucket::Terrain, Some(kind), None); }
     }
 }
 impl Drop for TerrainSpan {
     fn drop(&mut self) {
-        if let Some(candidate) = self.0.take() { candidate.record(false, true, None); }
+        if let Some(candidate) = self.0.take() { candidate.record(false, Bucket::Terrain, None, None); }
     }
 }
 
