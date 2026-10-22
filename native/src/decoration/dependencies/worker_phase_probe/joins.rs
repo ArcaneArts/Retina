@@ -2,7 +2,7 @@
 use super::*;
 use std::{marker::PhantomData, rc::Rc};
 mod lookup;
-pub(super) use lookup::LookupCall;
+pub(crate) use lookup::LookupCall;
 
 #[derive(Clone, Copy)]
 pub(crate) struct Key {
