@@ -1,0 +1,936 @@
+{
+  "cycle": 86,
+  "status": "diagnostic-only ready for PR",
+  "created_utc": "2026-10-22T20:02:00.028906+00:00",
+  "base_revision": "c3a9c24d6d612fd0d10a4665947352ac9a9be691",
+  "tested": {
+    "revision": "593d39a0b1068d0f5918242d477f61aa04f34b2f",
+    "native_tree": "38e3e98b61de07b48e9ffe2f39dc734a94a5479f",
+    "sha256": "74d9b545760fc34a218d29155745c0af02b09c472a8f49203d085d660dbc29fc",
+    "source_status": "",
+    "forced_rebuild": true,
+    "timing_acceptance": false,
+    "test_executable_sha256": "ad17fdd7d8956e2eb4f9256be7b3fecfe84073b57e12a0ff8398766ff6d4dc27",
+    "native_test_result": [
+      "182",
+      "0",
+      "53"
+    ]
+  },
+  "timing_acceptance": false,
+  "change": "Test-only inventory of exact ordered column commands, unconditional vertical spans, actual changed/noop FEATURE writes and dense expansion payload. No production generation change.",
+  "method": {
+    "warmups_per_case": 5,
+    "measured_regions_per_case": 20,
+    "cases": 5,
+    "scope": "Complete lit MCA regions,1,024 chunks; original and actual preceding PR206 main complete decompressed NBT and membership; only MCA timestamps/compression representation excluded. Repeated coordinates/instances count.",
+    "observer": "Per-prefix scalars joined into per-thread root maps; no retained column/command/world owners. Original commands always drive generation. Observed timings are not headline performance.",
+    "ordinary": "Separate normal release build, 16 workers, 1 caller, shader status 4 for all measured regions. Quiet timing confirmation remains deferred.",
+    "quantities": "per_region fields are arithmetic means over 20 measured regions. Dense bytes are cumulative temporary u16 payload, not peak memory. Command fractions are not CPU-time fractions."
+  },
+  "cases": [
+    {
+      "case": "nether-main",
+      "regions": 20,
+      "total": {
+        "changed_points": 69892227,
+        "changed_upper_points": 0,
+        "commands": 85293565,
+        "commands_by_ceil_log2_length": [
+          33763066,
+          24994412,
+          9713020,
+          6363899,
+          1775653,
+          696086,
+          503304,
+          4012,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "conditional_commands": 7480113,
+        "dense_expansions": 4674169,
+        "dense_payload_bytes": 2393174528,
+        "dense_unchanged_results": 2,
+        "feature_changes": 65659722,
+        "feature_commands": 77813452,
+        "feature_noops": 12153730,
+        "feature_only_dense_expansions": 3251571,
+        "feature_only_multi_span_dense_expansions": 2657132,
+        "incomplete_prefixes": 0,
+        "limited_prefixes": 0,
+        "multi_span_commands": 44050386,
+        "out_of_bounds_commands": 0,
+        "prefixes": 34241160,
+        "prior_run_words": 288325000,
+        "result_run_words": 301504074,
+        "spans": 50437805,
+        "spans_by_ceil_log2_length": [
+          33763066,
+          12497206,
+          2876099,
+          1092876,
+          164991,
+          31198,
+          12315,
+          54,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "per_region": {
+        "prefixes": 1712058.0,
+        "commands": 4264678.25,
+        "feature_commands": 3890672.6,
+        "feature_changes": 3282986.1,
+        "feature_noops": 607686.5,
+        "dense_expansions": 233708.45,
+        "dense_payload_bytes": 119658726.4,
+        "feature_only_dense_expansions": 162578.55,
+        "feature_only_multi_span_dense_expansions": 132856.6
+      },
+      "feature_commands_in_multi_spans_fraction": 0.5661024523112019,
+      "feature_commands_in_spans_longer_than_eight_fraction": 0.03828457578260376,
+      "feature_noop_fraction": 0.15619060313633176,
+      "feature_only_fraction_of_dense_expansions": 0.6956468625760002,
+      "feature_only_multi_span_fraction_of_dense_expansions": 0.5684715293777354,
+      "blob_commands_fraction": 0.823353942351923,
+      "largest_dense_expansion_roots": [
+        {
+          "index": 8,
+          "sources": [
+            "minecraft:basalt_blobs"
+          ],
+          "structure_definition": null,
+          "prefixes": 2618560,
+          "commands": 63422825,
+          "feature_changes": 52724236,
+          "feature_noops": 10698589,
+          "dense_expansions": 1132752,
+          "dense_payload_bytes": 579969024,
+          "multi_span_commands": 33367188
+        },
+        {
+          "index": 9,
+          "sources": [
+            "minecraft:blackstone_blobs"
+          ],
+          "structure_definition": null,
+          "prefixes": 2229128,
+          "commands": 6803968,
+          "feature_changes": 6358745,
+          "feature_noops": 445223,
+          "dense_expansions": 697825,
+          "dense_payload_bytes": 357286400,
+          "multi_span_commands": 4257286
+        },
+        {
+          "index": 19,
+          "sources": [
+            "minecraft:ore_magma"
+          ],
+          "structure_definition": null,
+          "prefixes": 1203359,
+          "commands": 4134274,
+          "feature_changes": 0,
+          "feature_noops": 0,
+          "dense_expansions": 561119,
+          "dense_payload_bytes": 287292928,
+          "multi_span_commands": 0
+        },
+        {
+          "index": 5,
+          "sources": [
+            "minecraft:large_basalt_columns/choice0",
+            "minecraft:large_basalt_columns/choice1"
+          ],
+          "structure_definition": null,
+          "prefixes": 2351770,
+          "commands": 2887126,
+          "feature_changes": 2579761,
+          "feature_noops": 307365,
+          "dense_expansions": 532578,
+          "dense_payload_bytes": 272679936,
+          "multi_span_commands": 2777899
+        },
+        {
+          "index": 4,
+          "sources": [
+            "minecraft:small_basalt_columns/choice0",
+            "minecraft:small_basalt_columns/choice1"
+          ],
+          "structure_definition": null,
+          "prefixes": 2272542,
+          "commands": 577282,
+          "feature_changes": 563160,
+          "feature_noops": 14122,
+          "dense_expansions": 284621,
+          "dense_payload_bytes": 145725952,
+          "multi_span_commands": 451580
+        },
+        {
+          "index": 25,
+          "sources": [
+            "minecraft:ore_quartz_nether"
+          ],
+          "structure_definition": null,
+          "prefixes": 507763,
+          "commands": 1021495,
+          "feature_changes": 0,
+          "feature_noops": 0,
+          "dense_expansions": 276901,
+          "dense_payload_bytes": 141773312,
+          "multi_span_commands": 0
+        }
+      ]
+    },
+    {
+      "case": "nether-second-seed",
+      "regions": 20,
+      "total": {
+        "changed_points": 68416513,
+        "changed_upper_points": 0,
+        "commands": 83696714,
+        "commands_by_ceil_log2_length": [
+          32751385,
+          24202302,
+          9543752,
+          6244725,
+          1762277,
+          844044,
+          282301,
+          6048,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "conditional_commands": 8059880,
+        "dense_expansions": 4745038,
+        "dense_payload_bytes": 2429459456,
+        "dense_unchanged_results": 0,
+        "feature_changes": 64002077,
+        "feature_commands": 75636834,
+        "feature_noops": 11634757,
+        "feature_only_dense_expansions": 3252480,
+        "feature_only_multi_span_dense_expansions": 2635203,
+        "incomplete_prefixes": 0,
+        "limited_prefixes": 0,
+        "multi_span_commands": 42885449,
+        "out_of_bounds_commands": 0,
+        "prefixes": 36039981,
+        "prior_run_words": 306055945,
+        "result_run_words": 319336482,
+        "spans": 48958690,
+        "spans_by_ceil_log2_length": [
+          32751385,
+          12101151,
+          2824378,
+          1074332,
+          163324,
+          37442,
+          6594,
+          84,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "per_region": {
+        "prefixes": 1801999.05,
+        "commands": 4184835.7,
+        "feature_commands": 3781841.7,
+        "feature_changes": 3200103.85,
+        "feature_noops": 581737.85,
+        "dense_expansions": 237251.9,
+        "dense_payload_bytes": 121472972.8,
+        "feature_only_dense_expansions": 162624.0,
+        "feature_only_multi_span_dense_expansions": 131760.15
+      },
+      "feature_commands_in_multi_spans_fraction": 0.5669915930114156,
+      "feature_commands_in_spans_longer_than_eight_fraction": 0.038270639408307335,
+      "feature_noop_fraction": 0.15382395566689108,
+      "feature_only_fraction_of_dense_expansions": 0.685448672908415,
+      "feature_only_multi_span_fraction_of_dense_expansions": 0.5553597252540443,
+      "blob_commands_fraction": 0.810983523200206,
+      "largest_dense_expansion_roots": [
+        {
+          "index": 8,
+          "sources": [
+            "minecraft:basalt_blobs"
+          ],
+          "structure_definition": null,
+          "prefixes": 2665413,
+          "commands": 61320848,
+          "feature_changes": 51014167,
+          "feature_noops": 10306681,
+          "dense_expansions": 1091549,
+          "dense_payload_bytes": 558873088,
+          "multi_span_commands": 32243788
+        },
+        {
+          "index": 9,
+          "sources": [
+            "minecraft:blackstone_blobs"
+          ],
+          "structure_definition": null,
+          "prefixes": 2287733,
+          "commands": 6555808,
+          "feature_changes": 6129588,
+          "feature_noops": 426220,
+          "dense_expansions": 677113,
+          "dense_payload_bytes": 346681856,
+          "multi_span_commands": 4097933
+        },
+        {
+          "index": 19,
+          "sources": [
+            "minecraft:ore_magma"
+          ],
+          "structure_definition": null,
+          "prefixes": 1269437,
+          "commands": 4304592,
+          "feature_changes": 0,
+          "feature_noops": 0,
+          "dense_expansions": 555645,
+          "dense_payload_bytes": 284490240,
+          "multi_span_commands": 0
+        },
+        {
+          "index": 5,
+          "sources": [
+            "minecraft:large_basalt_columns/choice0",
+            "minecraft:large_basalt_columns/choice1"
+          ],
+          "structure_definition": null,
+          "prefixes": 2393357,
+          "commands": 2829435,
+          "feature_changes": 2538170,
+          "feature_noops": 291265,
+          "dense_expansions": 541160,
+          "dense_payload_bytes": 277073920,
+          "multi_span_commands": 2717219
+        },
+        {
+          "index": 4,
+          "sources": [
+            "minecraft:small_basalt_columns/choice0",
+            "minecraft:small_basalt_columns/choice1"
+          ],
+          "structure_definition": null,
+          "prefixes": 2334955,
+          "commands": 606951,
+          "feature_changes": 591704,
+          "feature_noops": 15247,
+          "dense_expansions": 302410,
+          "dense_payload_bytes": 154833920,
+          "multi_span_commands": 470427
+        },
+        {
+          "index": 25,
+          "sources": [
+            "minecraft:ore_quartz_nether"
+          ],
+          "structure_definition": null,
+          "prefixes": 574055,
+          "commands": 1144964,
+          "feature_changes": 0,
+          "feature_noops": 0,
+          "dense_expansions": 293318,
+          "dense_payload_bytes": 150178816,
+          "multi_span_commands": 0
+        }
+      ]
+    },
+    {
+      "case": "nether-custom-bounds",
+      "regions": 20,
+      "total": {
+        "changed_points": 16262055,
+        "changed_upper_points": 0,
+        "commands": 26994225,
+        "commands_by_ceil_log2_length": [
+          1677958,
+          1297390,
+          1984153,
+          1459056,
+          614570,
+          755707,
+          592206,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "conditional_commands": 18613185,
+        "dense_expansions": 4621693,
+        "dense_payload_bytes": 2366306816,
+        "dense_unchanged_results": 0,
+        "feature_changes": 7593714,
+        "feature_commands": 8381040,
+        "feature_noops": 787326,
+        "feature_only_dense_expansions": 1523391,
+        "feature_only_multi_span_dense_expansions": 956797,
+        "incomplete_prefixes": 0,
+        "limited_prefixes": 0,
+        "multi_span_commands": 6703082,
+        "out_of_bounds_commands": 0,
+        "prefixes": 34069537,
+        "prior_run_words": 302419450,
+        "result_run_words": 312701506,
+        "spans": 3269630,
+        "spans_by_ceil_log2_length": [
+          1677958,
+          648695,
+          591217,
+          247179,
+          55908,
+          34046,
+          14627,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "per_region": {
+        "prefixes": 1703476.85,
+        "commands": 1349711.25,
+        "feature_commands": 419052.0,
+        "feature_changes": 379685.7,
+        "feature_noops": 39366.3,
+        "dense_expansions": 231084.65,
+        "dense_payload_bytes": 118315340.8,
+        "feature_only_dense_expansions": 76169.55,
+        "feature_only_multi_span_dense_expansions": 47839.85
+      },
+      "feature_commands_in_multi_spans_fraction": 0.7997911953647757,
+      "feature_commands_in_spans_longer_than_eight_fraction": 0.23415745539932992,
+      "feature_noop_fraction": 0.09394132470433264,
+      "feature_only_fraction_of_dense_expansions": 0.3296175232755616,
+      "feature_only_multi_span_fraction_of_dense_expansions": 0.20702305410593044,
+      "blob_commands_fraction": 0.0,
+      "largest_dense_expansion_roots": [
+        {
+          "index": 8,
+          "sources": [
+            "minecraft:ore_magma"
+          ],
+          "structure_definition": null,
+          "prefixes": 2549262,
+          "commands": 7568292,
+          "feature_changes": 0,
+          "feature_noops": 0,
+          "dense_expansions": 1203592,
+          "dense_payload_bytes": 616239104,
+          "multi_span_commands": 0
+        },
+        {
+          "index": 19,
+          "sources": [
+            "minecraft:warped_fungi"
+          ],
+          "structure_definition": null,
+          "prefixes": 1370977,
+          "commands": 4552852,
+          "feature_changes": 4432354,
+          "feature_noops": 120498,
+          "dense_expansions": 1036965,
+          "dense_payload_bytes": 530926080,
+          "multi_span_commands": 3625991
+        },
+        {
+          "index": 13,
+          "sources": [
+            "minecraft:ore_quartz_nether"
+          ],
+          "structure_definition": null,
+          "prefixes": 1933232,
+          "commands": 3457236,
+          "feature_changes": 0,
+          "feature_noops": 0,
+          "dense_expansions": 783796,
+          "dense_payload_bytes": 401303552,
+          "multi_span_commands": 0
+        },
+        {
+          "index": 10,
+          "sources": [
+            "minecraft:ore_gravel_nether"
+          ],
+          "structure_definition": null,
+          "prefixes": 1562431,
+          "commands": 3195446,
+          "feature_changes": 0,
+          "feature_noops": 0,
+          "dense_expansions": 417317,
+          "dense_payload_bytes": 213666304,
+          "multi_span_commands": 0
+        },
+        {
+          "index": 11,
+          "sources": [
+            "minecraft:ore_blackstone"
+          ],
+          "structure_definition": null,
+          "prefixes": 1561551,
+          "commands": 3200984,
+          "feature_changes": 0,
+          "feature_noops": 0,
+          "dense_expansions": 351790,
+          "dense_payload_bytes": 180116480,
+          "multi_span_commands": 0
+        },
+        {
+          "index": 12,
+          "sources": [
+            "minecraft:ore_gold_nether"
+          ],
+          "structure_definition": null,
+          "prefixes": 1343641,
+          "commands": 1191227,
+          "feature_changes": 0,
+          "feature_noops": 0,
+          "dense_expansions": 341807,
+          "dense_payload_bytes": 175005184,
+          "multi_span_commands": 0
+        }
+      ]
+    },
+    {
+      "case": "nether-direct-stem",
+      "regions": 20,
+      "total": {
+        "changed_points": 15004427,
+        "changed_upper_points": 0,
+        "commands": 25775187,
+        "commands_by_ceil_log2_length": [
+          1536269,
+          1126968,
+          1798481,
+          1337143,
+          624383,
+          855255,
+          332682,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "conditional_commands": 18164006,
+        "dense_expansions": 4286044,
+        "dense_payload_bytes": 2194454528,
+        "dense_unchanged_results": 0,
+        "feature_changes": 6957199,
+        "feature_commands": 7611181,
+        "feature_noops": 653982,
+        "feature_only_dense_expansions": 1396676,
+        "feature_only_multi_span_dense_expansions": 859482,
+        "incomplete_prefixes": 0,
+        "limited_prefixes": 0,
+        "multi_span_commands": 6074912,
+        "out_of_bounds_commands": 0,
+        "prefixes": 33473722,
+        "prior_run_words": 295126191,
+        "result_run_words": 304650295,
+        "spans": 2963999,
+        "spans_by_ceil_log2_length": [
+          1536269,
+          563484,
+          534937,
+          227228,
+          56644,
+          37600,
+          7837,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "per_region": {
+        "prefixes": 1673686.1,
+        "commands": 1288759.35,
+        "feature_commands": 380559.05,
+        "feature_changes": 347859.95,
+        "feature_noops": 32699.1,
+        "dense_expansions": 214302.2,
+        "dense_payload_bytes": 109722726.4,
+        "feature_only_dense_expansions": 69833.8,
+        "feature_only_multi_span_dense_expansions": 42974.1
+      },
+      "feature_commands_in_multi_spans_fraction": 0.7981562913823754,
+      "feature_commands_in_spans_longer_than_eight_fraction": 0.2381128500294501,
+      "feature_noop_fraction": 0.08592385334155107,
+      "feature_only_fraction_of_dense_expansions": 0.3258659967093198,
+      "feature_only_multi_span_fraction_of_dense_expansions": 0.2005303725300067,
+      "blob_commands_fraction": 0.0,
+      "largest_dense_expansion_roots": [
+        {
+          "index": 8,
+          "sources": [
+            "minecraft:ore_magma"
+          ],
+          "structure_definition": null,
+          "prefixes": 2514121,
+          "commands": 7430715,
+          "feature_changes": 0,
+          "feature_noops": 0,
+          "dense_expansions": 1102733,
+          "dense_payload_bytes": 564599296,
+          "multi_span_commands": 0
+        },
+        {
+          "index": 19,
+          "sources": [
+            "minecraft:warped_fungi"
+          ],
+          "structure_definition": null,
+          "prefixes": 1304866,
+          "commands": 4165024,
+          "feature_changes": 4054595,
+          "feature_noops": 110429,
+          "dense_expansions": 956431,
+          "dense_payload_bytes": 489692672,
+          "multi_span_commands": 3314072
+        },
+        {
+          "index": 13,
+          "sources": [
+            "minecraft:ore_quartz_nether"
+          ],
+          "structure_definition": null,
+          "prefixes": 1883523,
+          "commands": 3361112,
+          "feature_changes": 0,
+          "feature_noops": 0,
+          "dense_expansions": 745836,
+          "dense_payload_bytes": 381868032,
+          "multi_span_commands": 0
+        },
+        {
+          "index": 10,
+          "sources": [
+            "minecraft:ore_gravel_nether"
+          ],
+          "structure_definition": null,
+          "prefixes": 1525619,
+          "commands": 3109981,
+          "feature_changes": 0,
+          "feature_noops": 0,
+          "dense_expansions": 386944,
+          "dense_payload_bytes": 198115328,
+          "multi_span_commands": 0
+        },
+        {
+          "index": 11,
+          "sources": [
+            "minecraft:ore_blackstone"
+          ],
+          "structure_definition": null,
+          "prefixes": 1524981,
+          "commands": 3104404,
+          "feature_changes": 0,
+          "feature_noops": 0,
+          "dense_expansions": 330693,
+          "dense_payload_bytes": 169314816,
+          "multi_span_commands": 0
+        },
+        {
+          "index": 12,
+          "sources": [
+            "minecraft:ore_gold_nether"
+          ],
+          "structure_definition": null,
+          "prefixes": 1314097,
+          "commands": 1157794,
+          "feature_changes": 0,
+          "feature_noops": 0,
+          "dense_expansions": 323162,
+          "dense_payload_bytes": 165458944,
+          "multi_span_commands": 0
+        }
+      ]
+    },
+    {
+      "case": "overworld",
+      "regions": 20,
+      "total": {
+        "changed_points": 0,
+        "changed_upper_points": 0,
+        "commands": 0,
+        "commands_by_ceil_log2_length": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "conditional_commands": 0,
+        "dense_expansions": 0,
+        "dense_payload_bytes": 0,
+        "dense_unchanged_results": 0,
+        "feature_changes": 0,
+        "feature_commands": 0,
+        "feature_noops": 0,
+        "feature_only_dense_expansions": 0,
+        "feature_only_multi_span_dense_expansions": 0,
+        "incomplete_prefixes": 0,
+        "limited_prefixes": 0,
+        "multi_span_commands": 0,
+        "out_of_bounds_commands": 0,
+        "prefixes": 0,
+        "prior_run_words": 0,
+        "result_run_words": 0,
+        "spans": 0,
+        "spans_by_ceil_log2_length": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "per_region": {
+        "prefixes": 0.0,
+        "commands": 0.0,
+        "feature_commands": 0.0,
+        "feature_changes": 0.0,
+        "feature_noops": 0.0,
+        "dense_expansions": 0.0,
+        "dense_payload_bytes": 0.0,
+        "feature_only_dense_expansions": 0.0,
+        "feature_only_multi_span_dense_expansions": 0.0
+      },
+      "feature_commands_in_multi_spans_fraction": null,
+      "feature_commands_in_spans_longer_than_eight_fraction": null,
+      "feature_noop_fraction": null,
+      "feature_only_fraction_of_dense_expansions": null,
+      "feature_only_multi_span_fraction_of_dense_expansions": null,
+      "blob_commands_fraction": null,
+      "largest_dense_expansion_roots": []
+    }
+  ],
+  "validation": {
+    "ordinary_tests": [
+      "182",
+      "0",
+      "53"
+    ],
+    "explicit_gpu_terrain_tests": 2,
+    "complete_region_inventory_passed": true,
+    "inventory_measured_chunk_instances": 102400,
+    "ordinary_full_measured_chunk_instances": 102400,
+    "pre_pr_measured_chunk_instances": 204800,
+    "binary": {
+      "machine_code_identical": true,
+      "text_sha256": "91bef42b702bd68f5e21b71cfa0e77f0d22b77b393b128c6ec3f900ffa81d427",
+      "different_file_bytes": 122,
+      "categories": {
+        "uuid": 16,
+        "constant_metadata": 42,
+        "signature": 64
+      },
+      "verified_panic_locations": 42,
+      "observer_symbols": 0
+    },
+    "terminal": {
+      "native": {
+        "session": 48856,
+        "exit_code": 0,
+        "source_and_head_frozen": true
+      },
+      "proof": {
+        "session": 61696,
+        "exit_code": 0,
+        "source_and_head_frozen": true
+      },
+      "all_drivers_terminal": true
+    }
+  },
+  "ordinary_observations": [
+    {
+      "case": "nether-main-run0",
+      "median_ms": 2136.7757288971916,
+      "p95_region_ms": 3662.75448120432,
+      "maximum_region_ms": 4295.68212502636,
+      "total_ms": 47100.48108315095,
+      "chunks_per_second": 434.8150916727307,
+      "generation_peak_rss_bytes": 2293415936
+    },
+    {
+      "case": "nether-second-seed-run0",
+      "median_ms": 2533.6298749316484,
+      "p95_region_ms": 3676.268964470364,
+      "maximum_region_ms": 3990.958167007193,
+      "total_ms": 52687.98316689208,
+      "chunks_per_second": 388.70343423714803,
+      "generation_peak_rss_bytes": 2415034368
+    },
+    {
+      "case": "nether-custom-bounds-run0",
+      "median_ms": 1121.9898125855252,
+      "p95_region_ms": 1674.430400086567,
+      "maximum_region_ms": 1815.9974999725819,
+      "total_ms": 24002.020874992013,
+      "chunks_per_second": 853.2614860500497,
+      "generation_peak_rss_bytes": 1948647424
+    },
+    {
+      "case": "nether-direct-stem-run0",
+      "median_ms": 1148.576292092912,
+      "p95_region_ms": 1574.2400086252019,
+      "maximum_region_ms": 1585.1620000321418,
+      "total_ms": 24023.86674983427,
+      "chunks_per_second": 852.485580829376,
+      "generation_peak_rss_bytes": 1919746048
+    },
+    {
+      "case": "overworld-run0",
+      "median_ms": 672.6949790026993,
+      "p95_region_ms": 915.75176428305,
+      "maximum_region_ms": 1083.724708063528,
+      "total_ms": 13276.798042003065,
+      "chunks_per_second": 1542.5405986600508,
+      "generation_peak_rss_bytes": 1668759552
+    }
+  ],
+  "interpretation": [
+    "Standard Nether replays about 4.2 million commands per region; basalt and blackstone blobs account for 81\u201382% of those commands. This identifies replay volume, not elapsed-time share.",
+    "Only 3.83% of standard-Nether unconditional commands belong to strictly monotonic same-material vertical spans longer than 8; a long-range-only editor is not justified as the main optimization.",
+    "Custom profiles have no blob commands here, about 1.3 million total commands per region, and 23\u201324% of unconditional commands in spans longer than 8. Workload selection matters.",
+    "About 15% of standard-Nether FEATURE commands write their existing material. The remainder changes the current prefix state; no skipping is authorized without an exact equivalent representation.",
+    "Existing C49 sparse-eight edits already reduced dense work without establishing a full-region win. This cycle does not repeat or accept that candidate.",
+    "Overworld does not use this ordered prefix path in the measured profile, so observer counts are zero; this does not mean Overworld performs no decoration."
+  ],
+  "next_candidate": {
+    "status": "source-backed hypothesis; not implemented or accepted",
+    "evidence": [
+      "inventory/report.json",
+      "span-analysis.json",
+      "inventory-source-review.json"
+    ],
+    "source": "native/src/decoration/patch/nether.rs:409 ReplaceBlobs emits one configured state through World::write after all original target predicates and RNG operations.",
+    "candidate": "Avoid replaying millions of constant-material blob commands through generic point-write predicates. For a proven ReplaceBlobs root with one material, form a bounded per-column set of accepted Y positions, then merge that set with immutable canonical runs. Root/anchor generation, target tests, random sampling, command metadata and final placement remain unchanged.",
+    "required_proofs": [
+      "All five inventory cases are complete. Standard-Nether blob commands contribute 81\u201382%; both custom profiles contribute 0%. Preserve ordinary full-output proof before delivering this diagnostic cycle.",
+      "Prove eligibility from actual parsed feature definitions or exact observed command roles/materials, never source-name strings. Different states, conditional roles, structures and unsupported shapes retain exact existing replay.",
+      "Respect exact root and same-root prefix key limits; only already-accepted commands before the limit can enter the set. No filtering or deduplication may change command metadata/final placement.",
+      "Canonical run merger must match dense original point replay for arbitrary ordered Ys, duplicates, air writes, boundary values, reverted states, varied prior runs and heightmaps. Preserve prior Arc when unchanged.",
+      "Use bounded edit-set storage; handle all supported profile heights exactly, including a well-tested fallback if choosing a height-limited fast path.",
+      "Compare full lit-MCA against original+actual preceding main, including profile/seed isolation, boundaries, concurrency, sustained lifetime and real runtime if production behavior changes.",
+      "Microbenchmarks and allocation reductions are diagnostic. Whole-region repeated quiet timing and Overworld/concurrent regression checks remain required before selecting a performance candidate."
+    ],
+    "distinction_from_cycle49": "C49 stored up to eight latest point edits and searched that buffer for every read, then expanded on the ninth distinct Y. The new opportunity targets uniform unconditional blob writes and removes generic point replay; it should not recreate sparse-eight storage.",
+    "limits": [
+      "The current inventory measures vertical spans, not unique-Y set cardinality. No bitset gain is established.",
+      "Long vertical runs are rare in the first two standard Nether cases, so the original long-range-only hypothesis is not sufficient.",
+      "Earlier held candidates, including C85, remain untouched and unmerged."
+    ],
+    "completed_inventory_evidence": [
+      {
+        "case": "nether-main",
+        "mean_commands_per_region": 4264678.25,
+        "mean_dense_expansions_per_region": 233708.45,
+        "fraction_feature_commands_in_spans_longer_than_eight": 0.03828457578260376,
+        "blob_commands_fraction": 0.823353942351923
+      },
+      {
+        "case": "nether-second-seed",
+        "mean_commands_per_region": 4184835.7,
+        "mean_dense_expansions_per_region": 237251.9,
+        "fraction_feature_commands_in_spans_longer_than_eight": 0.038270639408307335,
+        "blob_commands_fraction": 0.810983523200206
+      },
+      {
+        "case": "nether-custom-bounds",
+        "mean_commands_per_region": 1349711.25,
+        "mean_dense_expansions_per_region": 231084.65,
+        "fraction_feature_commands_in_spans_longer_than_eight": 0.23415745539932992,
+        "blob_commands_fraction": 0.0
+      },
+      {
+        "case": "nether-direct-stem",
+        "mean_commands_per_region": 1288759.35,
+        "mean_dense_expansions_per_region": 214302.2,
+        "fraction_feature_commands_in_spans_longer_than_eight": 0.2381128500294501,
+        "blob_commands_fraction": 0.0
+      },
+      {
+        "case": "overworld",
+        "mean_commands_per_region": 0.0,
+        "mean_dense_expansions_per_region": 0.0,
+        "fraction_feature_commands_in_spans_longer_than_eight": null,
+        "blob_commands_fraction": null
+      }
+    ],
+    "proposed_scope": "A dedicated uniform-blob prefix path, selected once per root from parsed ReplaceBlobs definitions with a common state. Keep every original output command/metadata owner and unchanged final distribution. Gather only before-limit accepted Ys; merge a bounded edit set with prior canonical runs. Other root types and unsupported fast-path heights retain the existing exact prefix path. Selection must never rely on minecraft source-name strings."
+  },
+  "limits": [
+    "Counts cover applied prefix streams, not feature-local overlays or all column build paths.",
+    "Repeated prefix evaluations and repeated coordinates are counted; these are not unique edits.",
+    "Spans include noops. Reduced command count or dense allocations is not an elapsed-time speedup estimate.",
+    "An eligible prefix can contain other isolated FEATURE writes; feature_only_multi_span does not mean the entire prefix is one span.",
+    "C49 sparse-eight edits already avoided many expansions without an established full-region gain. Range editing must be tested independently.",
+    "No production speedup, subsecond acceptance, new runtime/portal acceptance, or sustained-memory claim is made by this diagnostic cycle.",
+    "Finite original/current-main output comparisons validate this observer corpus; they do not prove a future edit-set implementation.",
+    "Other held performance candidates remain unmerged; timing confirmation stays deferred."
+  ],
+  "recovery": {
+    "worktree": "/tmp/retina-nether-column-edit-ranges",
+    "branch": "codex/nether-column-edit-ranges",
+    "evidence_root": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle86",
+    "driver_cwd": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20",
+    "commands": [
+      "python3 column-edit-inventory-normal.py",
+      "python3 column-edit-inventory-proof.py",
+      "python3 column-edit-inventory-analysis.py",
+      "python3 column-edit-inventory-report.py"
+    ],
+    "raw": "inventory/report.json,inventory-output-proof.json,normal-full/suite.json,span-analysis.json,*-terminal.json,section-comparison.json,file-difference-classification.json,panic-location-review.json",
+    "rerun": "Use fresh output directories; retain original evidence."
+  }
+}

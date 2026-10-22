@@ -12,6 +12,8 @@ mod version_layout_probe;
 #[cfg(test)]
 mod material_storage_probe;
 #[cfg(test)]
+mod column_edit_probe;
+#[cfg(test)]
 pub(crate) mod worker_phase_probe;
 use super::spatial::Map;
 use super::*;
@@ -1051,6 +1053,8 @@ impl Planner<'_> {
         self.metrics.performance.add(Perf::prefix_evaluations, 1);
         let prior = self.column(before - 1, x, z)?;
         let mut blocks: Option<Vec<u16>> = None;
+        #[cfg(test)]
+        let mut probe = column_edit_probe::Prefix::start(before - 1, limit.is_some(), prior.runs.slice().len());
         if let Some((root, column)) = self
             .completed
             .get(before - 1)
@@ -1058,6 +1062,8 @@ impl Planner<'_> {
         {
             for (key, block) in root.writes(column, x, z) {
                 if limit.is_some_and(|limit| key >= limit) {
+                    #[cfg(test)]
+                    probe.barrier();
                     continue;
                 }
                 self.apply_column_write(
@@ -1068,11 +1074,15 @@ impl Planner<'_> {
                     block,
                     &prior,
                     &mut blocks,
+                    #[cfg(test)]
+                    &mut probe,
                 )?;
             }
         } else {
             for (ax, az) in self.roots[before - 1].bounds.writers(x, z)? {
                 if limit.is_some_and(|key| (az, ax) > (key.0, key.1)) {
+                    #[cfg(test)]
+                    probe.barrier();
                     continue;
                 }
                 let Some(output) = self.column_writer(before - 1, ax, az, x, z)? else {
@@ -1081,6 +1091,8 @@ impl Planner<'_> {
                 for &index in output.columns.get(&(x, z)).into_iter().flatten() {
                     let key = (az, ax, index);
                     if limit.is_some_and(|limit| key >= limit) {
+                        #[cfg(test)]
+                        probe.barrier();
                         continue;
                     }
                     self.apply_column_write(
@@ -1091,18 +1103,24 @@ impl Planner<'_> {
                         output.writes[index],
                         &prior,
                         &mut blocks,
+                        #[cfg(test)]
+                        &mut probe,
                     )?;
                 }
             }
         }
         if let Some(blocks) = blocks {
             let result = ColumnState::new(blocks, self.profile, self.request.min_y);
+            #[cfg(test)]
+            probe.finish(Some(self.request.height), result.runs.slice().len(), result.runs.slice() == prior.runs.slice());
             if result.runs.slice() == prior.runs.slice() {
                 Ok(prior)
             } else {
                 Ok(Arc::new(result))
             }
         } else {
+            #[cfg(test)]
+            probe.finish(None, prior.runs.slice().len(), true);
             Ok(prior)
         }
     }
@@ -1115,14 +1133,19 @@ impl Planner<'_> {
         b: WorldBlock,
         prior: &ColumnState,
         blocks: &mut Option<Vec<u16>>,
+        #[cfg(test)] probe: &mut column_edit_probe::Prefix,
     ) -> Result<(), String> {
         let height = self.request.height as usize;
         let y = b.y - self.request.min_y;
+        #[cfg(test)]
+        probe.command(b.role, b.material, y, height);
         if y < 0 || y >= height as i32 {
             return Ok(());
         }
         let y = y as usize;
         let previous = blocks.as_ref().map_or_else(|| prior.material(y), |b| b[y]);
+        #[cfg(test)]
+        probe.feature_result(b.role, previous != b.material);
         let flags = self.profile.material_flags[previous as usize];
         let replace = match b.role {
             FEATURE => true,
@@ -1166,9 +1189,13 @@ impl Planner<'_> {
             {
                 return Ok(());
             }
+            #[cfg(test)]
+            probe.point_change(true);
             blocks.get_or_insert_with(|| prior.expand(height))[y + 1] = b.upper;
         }
         if previous != b.material {
+            #[cfg(test)]
+            probe.point_change(false);
             blocks.get_or_insert_with(|| prior.expand(height))[y] = b.material;
         }
         Ok(())
@@ -1357,6 +1384,8 @@ pub(crate) fn generate(
         planner.versions.layout_trace.observe(&planner.versions);
         #[cfg(test)]
         material_storage_probe::observe(&planner);
+        #[cfg(test)]
+        column_edit_probe::observe(&planner);
         let structure_started = metrics.performance.start();
         let structure_detail = diagnostics::start(details.is_some());
         let starts = planner
