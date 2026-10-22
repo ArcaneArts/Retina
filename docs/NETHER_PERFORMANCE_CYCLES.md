@@ -2084,3 +2084,31 @@ Paired ordinary libraries used five warmups and twenty measured regions per case
 Optional drains currently wait on already-owned keys through the ordinary anchor path. The next distinct candidate should try nonblocking optional claims and directly count ready/busy/owned outcomes. Original consumers must still resolve every writer, and newly claimed helpers retain necessary lower-level dependency waits. This also tests whether unnecessary optional waiters amplify the shared wake/recheck cost; that cause is currently a source-grounded hypothesis, not a measured wall-time share.
 
 Report: `docs/benchmarks/nether-perf-cycle63-2026-10-21.json`. Preserve `codex/nether-scoped-dependency-help`, external `cycle63/`, and the held native binary/source. The full performance goal remains open.
+
+## Cycle 64 — held nonblocking optional helper claims
+
+C64 carries the held C62/C63 scheduling foundation and adds a nonblocking claim for optional scoped keys. Ready values return immediately, empty cells may be initialized, and busy cells are skipped without registering a waiter. Both cell APIs share ownership, publication, panic recovery and ancestor tracking. The original required consumer still resolves every offered writer; a helper that owns an anchor performs its full original dependency evaluation. Cached errors retain their text and propagate through the joined root failure path.
+
+The candidate passed **185 native tests**, including 17 queue/scoping/claim tests, and explicit GPU terrain parity. New fixtures exercise Busy in both BUILDING and WAITING states before owner release, mixed required/optional single-owner races, cached errors, panic recovery/TLS reset, and progressing to another queued dependency. Existing scoped fixtures use optional claims, and panic TLS cleanup is checked on every pool worker.
+
+Full decompressed NBT and membership matched across **317,440 measured chunk instances**: 102,400 observer, 10,240 counter-control and 204,800 paired ordinary instances. All compare to the immutable original and actual C60 merge; pairs also compare to C64 observer output. Observer/pairs persist actual shader-ready snapshots before and after each measurement; counter runs persist ready post-snapshots. Repeated coordinates are not unique-world coverage.
+
+Actual scoped claims expose limited fresh ownership: **3.24–4.76% owned new work, 63.13–70.78% found ready results, and 24.94–33.60% skipped busy cells** across the four Nether counter cases. These are profile-lifetime event counts including warmup, not time shares. Only the queued key carries the claim classification; recursive dependencies do not inherit it. Ready/owned failures are included in those classes, while drained counts successful resolutions. Waiter-picked queued helpers remain blocking and unclassified. A rare newly owned key can still be expensive, so its count does not determine its time benefit.
+
+Anchor, column, prefix and column-tile build counts remain identical. The second seed used 22 tiles/8,627 chunks in the accepted-library control and 20/8,529 in the candidate; earlier runs observed the reverse direction, so this is not an established terrain reduction. ColumnCell remains 32 bytes versus accepted C60’s 24; this refinement adds no per-cell memory. Brown mushroom roots retained median tails of about 58 ms and 52 ms after 95% of targets completed.
+
+Ordinary paired runs used five warmups and twenty measured regions per case/variant, alternating first generator with only one generating at a time. Known host load makes all timing provisional; quiet confirmation remains deferred.
+
+| Case | Old/new median ms | Old/new p95 ms | Throughput change | New faster pairs |
+|---|---:|---:|---:|---:|
+| nether-main | 2335.03 / 2337.76 | 3405.03 / 3614.44 | +3.21% | 11/20 |
+| nether-second-seed | 2039.34 / 2245.35 | 3335.56 / 3366.06 | -5.89% | 7/20 |
+| nether-custom-bounds | 1418.47 / 1604.79 | 1663.20 / 1847.86 | -9.43% | 5/20 |
+| nether-direct-stem | 1666.21 / 1785.13 | 2246.22 / 2504.88 | -4.80% | 7/20 |
+| overworld | 804.84 / 657.59 | 1102.82 / 1156.01 | +11.06% | 15/20 |
+
+**Held, unmerged.** The second seed, custom-bounds and direct-stem cases lose throughput; main has an essentially unchanged median and worse p95. Quiet timing acceptance and the full subsecond goal remain unmet. Main remains C60. No reverse/concurrent/portal/retention acceptance was added for this unselected prototype. Preserve the source and evidence; these data do not justify an accepted speedup.
+
+The next distinct experiment can classify and skip busy waiter-picked queued keys while retaining required waits for the originally requested cell and for newly owned initializers. Actual notification/sleep/wake/recheck counts are a separate follow-up if needed; global broadcast overhead remains a hypothesis rather than a measured wall-time share.
+
+Report: `docs/benchmarks/nether-perf-cycle64-2026-10-21.json`. Preserve `codex/nether-nonblocking-helper-claims` and external `cycle64/`. The full performance goal remains active.
