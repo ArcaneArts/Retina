@@ -2382,3 +2382,26 @@ RETINA_TERRAIN_REUSE_PROFILES=/path/to/profiles RETINA_RETENTION_OUTPUT=/path/to
 ```
 
 Evidence, native hashes, exact reproduction commands, initial harness/assertion findings and scope limits are in `docs/benchmarks/nether-perf-cycle80-2026-10-22.json`. Large binaries, worlds, VM snapshots and raw ownership records remain outside Git at `/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle80`.
+
+
+## Cycle 81 — inventory owned GPU buffers at completed-generation checkpoints
+
+**Diagnostic only; production generation is unchanged.** An explicit native fixture inventories named buffer fields after completed regions and joined 2/4/8-caller batches. The terrain owner publishes only with an empty flight deque, before replying; every sampled snapshot matches the current completed-job counter. Existing mutexes cover lighting, ore, feature and vine helpers. The observer stores names and sizes, never extra buffer handles.
+
+After five main-Nether warmups, owned logical capacity is **296.4 MiB**: terrain 235.9 MiB and lighting 60.5 MiB, plus tiny helper timestamp buffers. Across the next three Nether warmup cases it reaches 298.1 MiB. The largest terrain allocations are two material storage buffers (about 91 MiB combined) and cave mask/lattice scratch (about 62 MiB combined). Same-process VM snapshots report roughly 798–799 MiB of owned-unmapped graphics regions. These are different measures; the unaccounted difference is not assigned to a leak or presented as removable memory.
+
+Adding Overworld to the same engine raises owned capacity to 460.2 MiB. Across the subsequent 300 mixed-corpus regions, logical GPU capacity spans **460.2–481.2 MiB**. The final 200 serial checkpoints remain at 481.25 MiB. Twelve VM snapshots include warmups, all three rounds, joined caller batches and engine teardown. The terrain worker is observed stopped after dropping its GPU owner. The post-drop VM summary no longer lists owned-unmapped graphics regions and reports 499.3 MiB physical footprint. CPU ownership/release checks also pass. This does not establish an indefinite residency plateau or retirement of all backend allocations.
+
+**179 ordinary tests, two explicit GPU terrain tests and the 314-region GPU ownership census pass.** Its 321,536 measured chunk instances and the ordinary five-case suite's 102,400 instances match original and actual PR205 main in complete decompressed NBT/membership. Only MCA timestamps/compression representation are excluded; repeated coordinates are counted. Ordinary shader status is ready (4) for every measured region.
+
+Normal machine code matches preceding main. All 119 changed file bytes are accounted for: seven panic-line bytes (unchanged worker statements displaced by six source lines), 16 UUID bytes and 96 signature bytes. Observer symbols are absent. Timing confirmation remains deferred; no production optimization is accepted by this diagnostic cycle.
+
+The next source-backed candidate is to let layered material jobs own their mask/output storage across counting and emission. Current code copies shared mask data into a private snapshot and later into pooled material storage. Reusing exclusive storage across both phases could remove an intermediate allocation/copy, with exact-count growth fallback. Its whole-region benefit is unmeasured; cancellation, stale ranges, profile/height changes, malformed outputs and concurrent GPU flights need explicit validation.
+
+Run the fixture using exported profiles and a fresh output directory:
+
+```sh
+RETINA_TERRAIN_REUSE_PROFILES=/path/to/profiles RETINA_RETENTION_OUTPUT=/path/to/fresh-output RETINA_REGION_THREADS=16 cargo test --release --locked --manifest-path native/Cargo.toml completed_region_gpu_buffer_census -- --ignored --nocapture --test-threads=1
+```
+
+See `docs/benchmarks/nether-perf-cycle81-2026-10-22.json` for owner totals, provenance, commands and limitations. Large binaries, generated worlds and raw snapshots are retained at `/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle81`. All preexisting worktrees and held performance candidates remain intact.

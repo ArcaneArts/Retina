@@ -1,0 +1,511 @@
+{
+  "cycle": 81,
+  "status": "diagnostic-only ready for PR",
+  "created_utc": "2026-10-22T10:26:57.128986+00:00",
+  "change": "Test-only logical GPU buffer inventory across terrain, lighting, ore, feature and vine owners. No production memory policy or generation change.",
+  "base_revision": "34a2f40ba574085fd8e72b32778ce4f64ecf1b6f",
+  "tested": {
+    "revision": "bb1c6cb15c52141472a03af07577dc76e824db8c",
+    "native_tree": "89dfb03976b2272f31c41102ae7d82fb227ee776",
+    "sha256": "47fbd7de6614e243fe420dbb4c629dca477ca5e3dfad512d4da237bf3dd985c2",
+    "source_status": "",
+    "forced_rebuild": true,
+    "timing_acceptance": false,
+    "test_executable_sha256": "54bb0253a4253c6d790013dfbd763ba41ce21fc1f8b6eac5b969c33777458279",
+    "native_test_result": [
+      "179",
+      "0",
+      "52"
+    ]
+  },
+  "timing_acceptance": false,
+  "warmups": [
+    {
+      "case": "nether-main",
+      "bytes_by_owner": {
+        "terrain": 247336496,
+        "lighting": 63411568,
+        "ores": 32,
+        "features": 64,
+        "vines": 0,
+        "total": 310748160,
+        "buffer_count": 49
+      }
+    },
+    {
+      "case": "nether-second-seed",
+      "bytes_by_owner": {
+        "terrain": 249063584,
+        "lighting": 63411568,
+        "ores": 32,
+        "features": 64,
+        "vines": 0,
+        "total": 312475248,
+        "buffer_count": 49
+      }
+    },
+    {
+      "case": "nether-custom-bounds",
+      "bytes_by_owner": {
+        "terrain": 249069628,
+        "lighting": 63478292,
+        "ores": 32,
+        "features": 64,
+        "vines": 0,
+        "total": 312548016,
+        "buffer_count": 55
+      }
+    },
+    {
+      "case": "nether-direct-stem",
+      "bytes_by_owner": {
+        "terrain": 249069628,
+        "lighting": 63478292,
+        "ores": 32,
+        "features": 64,
+        "vines": 0,
+        "total": 312548016,
+        "buffer_count": 55
+      }
+    },
+    {
+      "case": "overworld",
+      "bytes_by_owner": {
+        "terrain": 353423252,
+        "lighting": 89550108,
+        "ores": 39372544,
+        "features": 239100,
+        "vines": 0,
+        "total": 482585004,
+        "buffer_count": 71
+      }
+    }
+  ],
+  "serial_rounds": [
+    {
+      "round": 0,
+      "regions": 100,
+      "minimum_bytes": 482585004,
+      "median_bytes": 484449708.0,
+      "maximum_bytes": 504626780,
+      "maximum_by_owner": {
+        "terrain": 373097380,
+        "lighting": 89550108,
+        "ores": 41740192,
+        "features": 239100,
+        "vines": 0
+      }
+    },
+    {
+      "round": 1,
+      "regions": 100,
+      "minimum_bytes": 504626780,
+      "median_bytes": 504626780.0,
+      "maximum_bytes": 504626780,
+      "maximum_by_owner": {
+        "terrain": 373097380,
+        "lighting": 89550108,
+        "ores": 41740192,
+        "features": 239100,
+        "vines": 0
+      }
+    },
+    {
+      "round": 2,
+      "regions": 100,
+      "minimum_bytes": 504626780,
+      "median_bytes": 504626780.0,
+      "maximum_bytes": 504626780,
+      "maximum_by_owner": {
+        "terrain": 373097380,
+        "lighting": 89550108,
+        "ores": 41740192,
+        "features": 239100,
+        "vines": 0
+      }
+    }
+  ],
+  "joined_concurrent": [
+    {
+      "callers": 2,
+      "regions": 2,
+      "bytes_by_owner": {
+        "terrain": 373097380,
+        "lighting": 89550108,
+        "ores": 41740192,
+        "features": 239100,
+        "vines": 0,
+        "total": 504626780,
+        "buffer_count": 71
+      }
+    },
+    {
+      "callers": 4,
+      "regions": 4,
+      "bytes_by_owner": {
+        "terrain": 373097380,
+        "lighting": 84025332,
+        "ores": 41740192,
+        "features": 239100,
+        "vines": 0,
+        "total": 499102004,
+        "buffer_count": 71
+      }
+    },
+    {
+      "callers": 8,
+      "regions": 8,
+      "bytes_by_owner": {
+        "terrain": 373097380,
+        "lighting": 84025332,
+        "ores": 41740192,
+        "features": 239100,
+        "vines": 0,
+        "total": 499102004,
+        "buffer_count": 71
+      }
+    }
+  ],
+  "largest_buffers_after_first_nether_warmup": [
+    {
+      "owner": "terrain",
+      "bytes": 48249576,
+      "name": "materials/0/storage",
+      "usage_bits": 140
+    },
+    {
+      "owner": "terrain",
+      "bytes": 47377976,
+      "name": "materials/1/storage",
+      "usage_bits": 140
+    },
+    {
+      "owner": "terrain",
+      "bytes": 37740176,
+      "name": "cave/mask",
+      "usage_bits": 132
+    },
+    {
+      "owner": "terrain",
+      "bytes": 27302672,
+      "name": "cave/nodes",
+      "usage_bits": 128
+    },
+    {
+      "owner": "lighting",
+      "bytes": 16777216,
+      "name": "blocks",
+      "usage_bits": 136
+    },
+    {
+      "owner": "terrain",
+      "bytes": 16358800,
+      "name": "readback/0/mask",
+      "usage_bits": 9
+    },
+    {
+      "owner": "terrain",
+      "bytes": 16358800,
+      "name": "readback/1/mask",
+      "usage_bits": 9
+    },
+    {
+      "owner": "terrain",
+      "bytes": 15690232,
+      "name": "surface_lattice",
+      "usage_bits": 136
+    },
+    {
+      "owner": "lighting",
+      "bytes": 10616832,
+      "name": "a",
+      "usage_bits": 128
+    },
+    {
+      "owner": "lighting",
+      "bytes": 10616832,
+      "name": "b",
+      "usage_bits": 128
+    }
+  ],
+  "vm_snapshots": [
+    {
+      "checkpoint": "after-engine-drop",
+      "exit_code": 0,
+      "summary_lines": [
+        "Physical footprint:         499.3M",
+        "Physical footprint (peak):  5.1G",
+        "IOAccelerator (graphics)          4640K    4624K    4624K       0K       0K    4624K       0K        8"
+      ]
+    },
+    {
+      "checkpoint": "concurrent-2",
+      "exit_code": 0,
+      "summary_lines": [
+        "Physical footprint:         2.5G",
+        "Physical footprint (peak):  4.5G",
+        "IOAccelerator (graphics)         155.0M   153.9M   153.9M       0K       0K   153.9M       0K      567",
+        "owned unmapped (graphics)          1.3G     1.3G     1.3G     512K       0K       0K       0K      145"
+      ]
+    },
+    {
+      "checkpoint": "concurrent-4",
+      "exit_code": 0,
+      "summary_lines": [
+        "Physical footprint:         2.4G",
+        "Physical footprint (peak):  4.5G",
+        "IOAccelerator (graphics)         152.8M   151.6M   151.6M       0K    5008K   146.7M       0K      679",
+        "owned unmapped (graphics)        788.5M   788.0M   788.0M     512K       0K       0K       0K       80"
+      ]
+    },
+    {
+      "checkpoint": "concurrent-8",
+      "exit_code": 0,
+      "summary_lines": [
+        "Physical footprint:         4.6G",
+        "Physical footprint (peak):  5.1G",
+        "IOAccelerator (graphics)         144.0M   140.5M   140.5M       0K       0K   140.5M       0K      677",
+        "owned unmapped (graphics)          2.4G     2.4G     2.4G     512K       0K       0K       0K      292"
+      ]
+    },
+    {
+      "checkpoint": "round-0",
+      "exit_code": 0,
+      "summary_lines": [
+        "Physical footprint:         4.3G",
+        "Physical footprint (peak):  4.4G",
+        "IOAccelerator (graphics)         146.2M   143.7M   143.7M       0K       0K   143.7M       0K      565",
+        "owned unmapped (graphics)          2.4G     2.4G     2.4G     512K       0K       0K       0K      292"
+      ]
+    },
+    {
+      "checkpoint": "round-1",
+      "exit_code": 0,
+      "summary_lines": [
+        "Physical footprint:         4.2G",
+        "Physical footprint (peak):  4.5G",
+        "IOAccelerator (graphics)         146.2M   145.2M   145.2M       0K       0K   145.2M       0K      565",
+        "owned unmapped (graphics)          2.4G     2.4G     2.4G     512K       0K       0K       0K      292"
+      ]
+    },
+    {
+      "checkpoint": "round-2",
+      "exit_code": 0,
+      "summary_lines": [
+        "Physical footprint:         4.4G",
+        "Physical footprint (peak):  4.5G",
+        "IOAccelerator (graphics)         146.2M   145.2M   145.2M       0K       0K   145.2M       0K      565",
+        "owned unmapped (graphics)          2.4G     2.4G     2.4G     512K       0K       0K       0K      292"
+      ]
+    },
+    {
+      "checkpoint": "warm-nether-custom-bounds",
+      "exit_code": 0,
+      "summary_lines": [
+        "Physical footprint:         2.0G",
+        "Physical footprint (peak):  2.1G",
+        "IOAccelerator (graphics)         101.6M    99.1M    99.1M       0K       0K    99.1M       0K      564",
+        "owned unmapped (graphics)        798.9M   798.9M   798.9M       0K       0K       0K       0K       89"
+      ]
+    },
+    {
+      "checkpoint": "warm-nether-direct-stem",
+      "exit_code": 0,
+      "summary_lines": [
+        "Physical footprint:         2.0G",
+        "Physical footprint (peak):  2.1G",
+        "IOAccelerator (graphics)          96.5M    94.9M    94.9M       0K       0K    94.9M       0K      562",
+        "owned unmapped (graphics)        798.9M   798.9M   798.9M       0K       0K       0K       0K       89"
+      ]
+    },
+    {
+      "checkpoint": "warm-nether-main",
+      "exit_code": 0,
+      "summary_lines": [
+        "Physical footprint:         1.6G",
+        "Physical footprint (peak):  2.0G",
+        "IOAccelerator (graphics)          95.0M    93.0M    93.0M       0K       0K    93.0M       0K      537",
+        "owned unmapped (graphics)        798.0M   798.0M   798.0M       0K       0K       0K       0K       88"
+      ]
+    },
+    {
+      "checkpoint": "warm-nether-second-seed",
+      "exit_code": 0,
+      "summary_lines": [
+        "Physical footprint:         2.0G",
+        "Physical footprint (peak):  2.0G",
+        "IOAccelerator (graphics)         104.3M   103.3M   103.3M       0K       0K   103.3M       0K      539",
+        "owned unmapped (graphics)        798.9M   798.9M   798.9M       0K       0K       0K       0K       88"
+      ]
+    },
+    {
+      "checkpoint": "warm-overworld",
+      "exit_code": 0,
+      "summary_lines": [
+        "Physical footprint:         4.0G",
+        "Physical footprint (peak):  4.1G",
+        "IOAccelerator (graphics)         144.5M   141.0M   141.0M       0K       0K   141.0M       0K      565",
+        "owned unmapped (graphics)          2.4G     2.4G     2.4G       0K       0K       0K       0K      292"
+      ]
+    }
+  ],
+  "terrain_worker_stopped_after_gpu_drop": true,
+  "cpu_owner_release": {
+    "caves": {
+      "live_mask_references": 0,
+      "observed_mask_references": 2048
+    },
+    "versions": {
+      "live_interior_run_buffers": 0,
+      "live_snapshots": 0,
+      "observed_interior_run_buffers": 8,
+      "observed_snapshots": 8
+    }
+  },
+  "validation": {
+    "ordinary_tests": [
+      "179",
+      "0",
+      "52"
+    ],
+    "explicit_gpu_terrain_tests": 2,
+    "gpu_ownership_census_passed": true,
+    "serial_regions": 300,
+    "joined_concurrent_regions": 14,
+    "census_measured_chunk_instances": 321536,
+    "ordinary_full_measured_chunk_instances": 102400,
+    "total_pre_pr_measured_chunk_instances": 423936,
+    "comparison": "Full decompressed NBT and chunk membership against immutable original and actual PR205 main. Only MCA timestamps/compression representation excluded; counts include repeated coordinates.",
+    "binary": {
+      "machine_code_identical": true,
+      "text_sha256": "91bef42b702bd68f5e21b71cfa0e77f0d22b77b393b128c6ec3f900ffa81d427",
+      "different_file_bytes": 119,
+      "differing_byte_categories": {
+        "uuid": 16,
+        "constant_metadata": 7,
+        "signature": 96
+      },
+      "changed_constant_words": 7,
+      "observer_symbol_count": 0
+    },
+    "terminal": {
+      "native": {
+        "session": 55538,
+        "exit_code": 0
+      },
+      "proof": {
+        "session": 30812,
+        "exit_code": 0
+      },
+      "source_and_head_frozen_through_actual_drivers": true
+    }
+  },
+  "ordinary_full_observations": [
+    {
+      "case": "nether-main-run0",
+      "median_ms": 2150.182812474668,
+      "p95_region_ms": 2873.4835226903674,
+      "maximum_region_ms": 3134.97699983418,
+      "total_ms": 44255.03220804967,
+      "chunks_per_second": 462.77223127350555,
+      "generation_peak_rss_bytes": 2295939072
+    },
+    {
+      "case": "nether-second-seed-run0",
+      "median_ms": 2297.1110829384997,
+      "p95_region_ms": 4168.647460639478,
+      "maximum_region_ms": 4920.751417055726,
+      "total_ms": 51076.66879193857,
+      "chunks_per_second": 400.96585161858394,
+      "generation_peak_rss_bytes": 2363949056
+    },
+    {
+      "case": "nether-custom-bounds-run0",
+      "median_ms": 1140.4267293401062,
+      "p95_region_ms": 1437.5843353453095,
+      "maximum_region_ms": 1576.0555828455836,
+      "total_ms": 22925.03916681744,
+      "chunks_per_second": 893.3463472395509,
+      "generation_peak_rss_bytes": 2012184576
+    },
+    {
+      "case": "nether-direct-stem-run0",
+      "median_ms": 1145.089187542908,
+      "p95_region_ms": 1406.5623815171423,
+      "maximum_region_ms": 1586.5819591563195,
+      "total_ms": 23748.8815409597,
+      "chunks_per_second": 862.3564004341905,
+      "generation_peak_rss_bytes": 1989492736
+    },
+    {
+      "case": "overworld-run0",
+      "median_ms": 509.8906880011782,
+      "p95_region_ms": 690.9658041549848,
+      "maximum_region_ms": 739.6543340291828,
+      "total_ms": 10574.394750175998,
+      "chunks_per_second": 1936.7538742261477,
+      "generation_peak_rss_bytes": 1923891200
+    }
+  ],
+  "limits": [
+    "These are requested buffer capacities, not GPU physical residency. Bind-group aliases are not counted twice; query sets, shaders, driver allocations, temporary active submissions and backend caches are outside the inventory.",
+    "The published terrain snapshot has no active flights and matches the current completion counter at every sampled checkpoint. This is tested corpus coverage, not a proof for all workloads.",
+    "VM samples come from the same diagnostic process, after each checkpoint and outside generation timing. Do not add VM categories to logical capacities or compare them directly to ordinary timing-run RSS.",
+    "Warmup order is four Nether cases followed by Overworld in one engine. Later measurements retain previous high-water capacities. No vine arena was allocated by this corpus.",
+    "Worker stop is observed after dropping its Gpu; this is not proof that every Metal/driver allocation or background compiler has retired.",
+    "Quiet timing confirmation remains deferred. No speedup, subsecond, indefinite plateau or new portal acceptance is claimed. Existing held candidates remain unmerged."
+  ],
+  "followup": {
+    "cycle": 81,
+    "opportunity": "Let a material job own its mask/output storage across count and emission",
+    "hypothesis": "Current layered terrain writes a shared cave mask, copies it into a fresh per-job mask snapshot, and later copies that snapshot into pooled exact-run storage. The first four Nether warmups retain roughly 90\u201393 MiB in two material storage buffers and another ~36 MiB shared mask. Carrying one exclusively owned storage allocation across both GPU phases could remove intermediate allocation/copy work.",
+    "evidence": {
+      "source_revision": "bb1c6cb",
+      "source": [
+        "native/src/gpu.rs:1555 (private job snapshots)",
+        "native/src/gpu.rs:1581 (shared mask to snapshot copy)",
+        "native/src/gpu.rs:1675 (exact material storage sizing)",
+        "native/src/gpu.rs:1750 (snapshot to emission storage copy)",
+        "native/src/materials.wgsl:13 (run offset from descriptor/profile layout)"
+      ],
+      "measurements": "cycle81/census/report.json warmups; logical capacities only. No per-region copied-byte total or device-copy timing is inferred from idle retained capacities."
+    },
+    "candidate_design": [
+      "Acquire exclusive per-job material storage before terrain/count, use it for binding 4 and preserve it through the continuation. Keep non-layered requests on their existing mask path.",
+      "Reuse a prior sufficient capacity; run prefix counts unchanged. If the exact run payload exceeds capacity, grow and copy only the already generated active mask/header/fluid prefix before emission. Do not truncate or cap output runs.",
+      "Keep column and descriptor snapshots where needed for overlapping GPU flights. Return material storage/readback only after mapping/validation completes, and drop on cancellation/error.",
+      "Bind and copy exact active ranges, independent of larger high-water capacity. Preserve offset layout, seed/profile/height isolation and stale-word safety."
+    ],
+    "expected_gain": "Unquantified reduction in allocation/copy traffic; must measure complete regions. Not the separate C79 retained-column-run compute reuse candidate.",
+    "risk": "High enough for dedicated actual-GPU correctness tests: two-phase ownership, active descriptor vs capacity, growth fallback, stale buffers, and failure cleanup.",
+    "complexity": "Changes Rust GPU buffer lifetime and phase plumbing; WGSL material evaluator need not change.",
+    "validation": [
+      "Exact cold/warm/alternating-profile GPU parity, tall/short/wide/small geometry, capacity growth and shrink, 2/4/8 callers, malformed material failures then recovery, cancellation/unload.",
+      "Full lit region NBT and membership against immutable original and latest merged main, every existing corpus case and request order.",
+      "Count actual allocations/copies, sustained buffer ownership and ordinary process footprint; run separate whole-region timing and real portal/DH checks. Timing acceptance remains deferred."
+    ],
+    "state": "Source-backed followup proposal only; not implemented or accepted.",
+    "implementation_notes": [
+      "Prefer a new coherent optimization worktree from the eventual C81 origin/main; do not mutate held C77/C78/C79.",
+      "Acquire/remove a MaterialSlot before layered terrain submission. Its storage must fit the active mask/header/fluid prefix; keep ownership through count and emission. This is separate from retained per-column material-run compute reuse.",
+      "Use the private slot storage for layered binding 4 in all cave/aquifer/count/prefix passes and for the CPU mask/header copy. Keep the existing shared cave mask for non-layered requests. Shared cave nodes remain available as today.",
+      "After the exact count returns, ensure storage_size = prefix_size + run_count*4. If capacity is insufficient, allocate and copy only the prefix to the new buffer; otherwise emit directly in the existing buffer with no prefix copy. Do not infer total size from retained capacity.",
+      "Move descriptor/column snapshots and slot ownership deliberately through MaterialPending/MaterialReadback. Keep readback and timestamp sizing independent, and recycle only on validated success after mapping guards drop.",
+      "Ensure dropped/error/cancelled jobs cannot return a still-active slot. wgpu submission ownership must retain any old storage needed by a growth copy until that command completes.",
+      "Count allocated bytes, prefix bytes copied and reuse/growth paths in test builds. Compare exact GPU samples and complete NBT; do not claim speed from copy counts alone."
+    ]
+  },
+  "recovery": {
+    "worktree": "/tmp/retina-nether-gpu-buffer-census",
+    "branch": "codex/nether-gpu-buffer-census",
+    "evidence_root": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle81",
+    "driver_cwd": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20",
+    "commands": [
+      "python3 gpu-buffer-census-normal.py",
+      "python3 gpu-buffer-census-proof.py",
+      "python3 gpu-buffer-census-report.py"
+    ],
+    "raw": "census/report.json; *-vmmap.txt and statuses; census-output-proof.json; normal-full/suite.json; inventory-source-review.json; section-comparison.json; file-difference-classification.json; panic-location-review.json",
+    "rerun": "Use a fresh output directory; existing immutable evidence is not overwritten."
+  }
+}
