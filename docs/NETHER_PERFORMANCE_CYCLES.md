@@ -2214,3 +2214,47 @@ Ordinary release compilation and symbol review confirm observer exclusion. The h
 Select as diagnostic-only evidence; no production scheduling/cache algorithm changes, speedup or no-regression acceptance. No new concurrency, portal or sustained-memory acceptance is established. All held prototypes remain held. The full performance goal remains active.
 
 Report: `docs/benchmarks/nether-perf-cycle67-2026-10-21.json`; external `cycle67/` and `task-cpu-terrain-*.py`. Actual merged rebuild/full-corpus proof follows merge.
+
+
+Cycle 67 actual merge proof: PR [#201](https://github.com/ArcaneArts/Retina/pull/201) squash-merged as `b3ab2a082163949996cc0a954871b8fa429fe269`. The forced merged rebuild has native tree `f7ddb59bb8ce25c398d5ccea1a6442dfd83e36fe` and SHA-256 `1bffc0f4313786a74a2e397ca1b87cfda00d4e03db2c42946f317636cfc5b04e`, byte-identical to the selected normal library. Another 102,400 measured chunk instances match complete original/C66/selected normal NBT and membership, bringing the cycle to **409,600**. All five workers and comparisons terminated successfully; measured post-shader statuses are 4 with explicit shader-ready configuration.
+
+Provisional merged median/p95 milliseconds: main 968/1331, second seed 926/1299, custom 565/713, direct 567/712, Overworld 308/369. The identical candidate binary ran substantially differently in the earlier loaded pairs; this is not a code speedup. Quiet timing confirmation stays deferred. Full measurements/provenance are in the JSON report and external `cycle67/merged-proof.json`.
+
+Clean primary main was fast-forwarded. Only the owned Cycle 67 worktree was removed after its driver completed; `codex/nether-task-cpu-terrain-spans` retains ready head `2089ef7d4c1035a4a0edbfd678fd7e1e865d76bf`. All held/protected worktrees remain. The app attachment hit its 100-identity cap and preserved existing attachments. The overall performance goal remains active.
+
+
+## Cycle 68 — cache lookup and feature-GPU attribution
+
+C68 records test-only lock acquisition endpoints and inclusive lookup/call intervals for anchor, anchor-ID, footprint, structure-start and boundary column maps, plus the feature-GPU batch path. Endpoints are captured without appending events while the observed mutex is held. The original guard releases at the same statement boundary; only then are both events appended. Original errors and propagation remain unchanged. Acquisition includes hashing, timestamp overhead and possible preemption; it is not kernel-blocked time. Inclusive lookup contains acquisition, so their sums cannot be added as wall shares.
+
+A separate physical-worker buffer reuses context validation, bounds, interval unions and bounded long-task summaries. Failed/abandoned calls retain evidence, including successful acquisition before a later failure. Root completion or failure releases raw buffers. **178 native tests pass**, including two new contention/poison/unwind/context fixtures, plus explicit GPU parity. A test-only visibility compile error was corrected before this final test run; both logs remain preserved. The held-shard test checks release/result synchronization without claiming a measured blocking duration.
+
+The observer and ordinary pairs match **307,200 measured chunk instances** against complete original and actual C67 NBT/membership; pairs also match the observer. All measured before/after shader states are ready. Repeated coordinates are not unique coverage. Ordinary release inspection finds no observer symbols. The normal library differs in bytes from C67; no prior byte identity or speedup is claimed.
+
+Across all four measured Nether cases there are **zero feature-GPU batch calls**. This covered feature-noise path cannot explain these runs, while terrain GPU calls remain relevant. Longest-task lookup fractions below are medians across twenty instrumented regions:
+
+| Root | First standard seed | Second standard seed |
+|---|---:|---:|
+| Basalt pillar | <0.003% | <0.004% |
+| Basalt blobs | 5.32% | 6.25% |
+| Blackstone blobs | 2.85% | 2.25% |
+| Brown mushroom Nether | 6.00% | 10.67% |
+| Large ancient debris | 10.44% | 15.73% |
+
+These medians do not eliminate contention: individual basalt/blackstone longest tasks exceed 99% covered lookup on both seeds. The intervals can contain preemption; owner/kernel blocking is not identified. Custom/direct warped-fungi lookup medians are 30.96/29.72%, with boundary column-map acquisition 15.48/8.03%. Twisting-vine lookup medians are 15.43/17.80%. Different category medians do not sum to a representative task.
+
+This is an expensive diagnostic: typical Nether regions record 1.9–3.5 million lookup events, and post-join summaries alone add median 718–1439 ms. Hot probe work also remains inside evaluation. Observer sampled peak RSS is 4284 MiB at five-second sampling, not exact peak or sustained-memory acceptance. Ordinary timings are collected separately with five warmups and twenty measured regions per case/variant, alternating the first generator with only one generating at a time:
+
+| Case | Old/new median ms | Old/new p95 ms | Throughput change | New faster pairs |
+|---|---:|---:|---:|---:|
+| nether-main | 2138.46 / 2367.64 | 3534.26 / 3185.41 | +3.87% | 13/20 |
+| nether-second-seed | 2374.36 / 2135.50 | 3058.66 / 2999.27 | +5.05% | 16/20 |
+| nether-custom-bounds | 726.37 / 708.89 | 1060.97 / 1075.22 | +1.67% | 12/20 |
+| nether-direct-stem | 768.47 / 795.40 | 1148.36 / 943.69 | +2.47% | 12/20 |
+| overworld | 705.42 / 750.97 | 1081.40 / 988.33 | -1.32% | 11/20 |
+
+Timings remain provisional under recorded host activity. Quiet timing and no-regression confirmation are deferred. This cycle selects diagnostic coverage only; no production scheduler/cache algorithm changes and no new concurrency, portal or sustained-memory acceptance.
+
+A separate source/old-stack review identifies the first-error latch as a small follow-up opportunity: Planner::check still locks Mutex<Option<String>> after each replay. Historical C53 stacks contain this exact mutex-wait path on both seeds. Those counts are not time shares and establish no gain. A one-time error publication mechanism needs concurrent failure/visibility validation and complete output/ordinary comparisons before selection. Other unmeasured time remains unclassified; held prototypes remain held.
+
+Report: `docs/benchmarks/nether-perf-cycle68-2026-10-21.json`; external `cycle68/` and `lookup-lock-*.py`. Actual merged rebuild/full-corpus proof follows merge. The full goal remains active.
