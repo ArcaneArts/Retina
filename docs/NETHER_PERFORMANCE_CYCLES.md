@@ -2554,3 +2554,78 @@ this observer. Previously held production candidates and worktrees are retained.
 
 Full counts, correctness evidence, ordinary observations and recovery commands
 are in `docs/benchmarks/nether-perf-cycle93-2026-10-22.json`.
+
+
+## Cycle 96 — Root CPU and memory attribution of held blob candidates
+
+**Diagnostic report only; production generation is unchanged.** C95 removed
+roughly 1.04–1.15 million additional blob-prefix command replays per standard
+region, but its ordinary CPU comparison against C94 remained adverse: median
+CPU increased 1.63% and 5.74% across the two seeds, with second-seed total CPU up
+6.42%. This cycle investigates that gap using retained executables; neither
+candidate is promoted.
+
+Both existing root observers have identical source. Each runs five warmups and
+twenty complete lit regions for all five profile/seed cases. Evaluation CPU
+includes recursively generated earlier state and test instrumentation. These
+are inclusive root stages, not exclusive feature-placement costs or wall-time
+shares. Mean process CPU milliseconds per region are:
+
+| Stage | Main C94 → C95 | Second seed C94 → C95 |
+| --- | ---: | ---: |
+| Fire patch | 404.82 → 388.96 | 363.94 → 364.05 |
+| Basalt blobs | 333.32 → 322.24 | 299.01 → 306.13 |
+| Soul-fire patch | 245.27 → 242.02 | 214.55 → 226.07 |
+| All root evaluation | 3,551.62 → 3,453.28 | 3,461.70 → 3,518.43 |
+
+Fire is the largest individual CPU stage, about 10–11% of observed evaluation
+CPU. The leading four stages cover only 31–33% in the standard Nether cases.
+Custom/direct profiles have a different concentration: warped vegetation,
+fungi, sprouts and twisting vines account for about 59–61%. A standard-profile
+blob optimization cannot address that workload by itself.
+
+**Removing command replay leaves dependency lookup counts unchanged.** Across
+twenty main-seed regions, each build performs 14,180,604 column-map lookups,
+13,744,361 anchor lookups and 6,883,968 footprint lookups. Second-seed totals are
+14,318,643 / 14,121,119 / 7,607,971. Counts match in every case. These are events,
+not CPU fractions; the result locates work C95 does not remove.
+
+The long C95 instrumented main run must not be treated as an ordinary
+regression: mean observer-summary time alone rises from 1,091.6 to 3,844.0 ms
+per region, and an additional one-second stack sample checks its live progress.
+Other host workloads were observed. Hot event recording and inactive test hooks
+also affect evaluation. Normal-build adverse CPU remains unresolved; this
+instrumented pair cannot clear it.
+
+A separate normal-library Overworld run records current RSS after each joined
+region. Both builds start the measured twenty regions near 1.40 GiB. C94 ends
+at 2,271.7 MiB current RSS, versus C95 at 1,556.4 MiB; growth is 841.9 versus
+124.3 MiB. Generation high-water RSS is 2,307.3 versus 1,583.2 MiB. This reverses
+the earlier 1,777.8 → 2,323.3 MiB high-water observation. Neither pair establishes
+a memory regression's cause or a sustained plateau. Native differences remain
+limited to two dependency files, and Overworld has no ordered dependency roots.
+GPU completion counts differ 66 versus 68 in measured generation, with identical
+upload and only 224 additional readback bytes; their request origin is unresolved.
+Current RSS, process high-water RSS and logical transfers remain distinct.
+
+The next useful experiment is low-overhead attribution of fire/soul-fire and
+vegetation-triggered prior-state reconstruction: split completed interior from
+recursive boundary work and identify the actual earlier root being demanded.
+Measure exact-key reuse before adding retention. Interior version skipping,
+per-view column caching and compiled material membership already exist. Preserve
+same-root order and the full cross-region dependency closure. Extending summaries
+to conditional magma ore is premature without whole-region evidence.
+
+Validation compares **348,160 measured chunk instances** against both immutable
+original and actual PR209 complete NBT and membership: 204,800 root-observer,
+40,960 memory-observer and 102,400 fresh ordinary PR209-library instances. Only
+MCA timestamps/compression representation are excluded; coordinates repeat.
+All measured generations are shader-ready. All controllers and their generation
+children terminate before documentation changes. Native source is unchanged;
+no new unit tests are needed for this report. A forced actual-merge rebuild and
+full five-case output proof follow merge.
+
+Quiet timing confirmation remains deferred. No speedup, subsecond, runtime,
+concurrency or bounded-memory acceptance is claimed. The held C94/C95 worktrees
+remain preserved. Source/library hashes, commands, ordinary observations and
+raw evidence hashes are in `docs/benchmarks/nether-perf-cycle96-2026-10-23.json`.
