@@ -1,0 +1,1909 @@
+{
+  "cycle": 96,
+  "status": "diagnostic report; held production candidates not promoted",
+  "created_utc": "2026-10-23T05:31:06.262956+00:00",
+  "base_revision": "f0183a1461fb8f5e88c499494c549722d95fdc54",
+  "change": "Documentation only. Compare retained C94/C95 whole-root CPU attribution and Overworld current/high-water RSS; production native source and ordinary PR209 library are unchanged.",
+  "timing_acceptance": false,
+  "tested_executables": [
+    {
+      "cycle": 94,
+      "path": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle94/native-test-executable",
+      "sha256": "8961482795bb2e24274dd8d874b72de43dc4955f9783eaf3c29262be7e888d0c",
+      "matches_saved_provenance": true,
+      "tested_revision": "625db82c4f80e40fc3477eee86cc96274bd404f2",
+      "native_tree": "f02a2646165c69c32aa4438664f2ad6310e85b35"
+    },
+    {
+      "cycle": 95,
+      "path": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle95/native-test-executable",
+      "sha256": "f4e03a9bbdaad17524ee8b0e7ed13fd3922032a0bfcc839fe874047d4bbfc87a",
+      "matches_saved_provenance": true,
+      "tested_revision": "e6be76bc8dd5eb2ad1e180f257e02b316d13f1db",
+      "native_tree": "7b81c24603d7591ad73edb3989f7367334c4eeed"
+    }
+  ],
+  "identical_observer_source": [
+    {
+      "file": "native/src/decoration/dependencies/worker_phase_probe.rs",
+      "identical_c94_c95": true,
+      "sha256": "4a3cbc5e4a141039e2a317ff32ae801861fbbc3953993ee42a8f34ad6f5ff5ac"
+    },
+    {
+      "file": "native/src/decoration/dependencies/worker_phase_probe/cpu.rs",
+      "identical_c94_c95": true,
+      "sha256": "76e66e1c0d58ad7b7b43674f3e017f914cd7ec09e00fa198d34542501871a868"
+    },
+    {
+      "file": "native/src/decoration/dependencies/worker_phase_probe/joins.rs",
+      "identical_c94_c95": true,
+      "sha256": "a129d36441946eef345c7e01cd38c88125c0d4504a656b9313f56fc28260cc6f"
+    },
+    {
+      "file": "native/src/decoration/dependencies/worker_phase_probe/joins/lookup.rs",
+      "identical_c94_c95": true,
+      "sha256": "2e8fa75cb2f21a347ec8187eb3a355b0962b1964e124b8ae7be3ed518974524b"
+    }
+  ],
+  "normal_library": {
+    "revision": "f0183a1461fb8f5e88c499494c549722d95fdc54",
+    "native_tree": "baa4eff284c780081622eafb32c6a457e7c0af70",
+    "sha256": "b056fecf84ec48520d6ec221b65ca829523a18050adb5785a59b645b2f5651df",
+    "source_status": "",
+    "forced_rebuild": false,
+    "timing_acceptance": false,
+    "library_origin": "retained actual PR209 merged rebuild; native source unchanged"
+  },
+  "source_difference_between_held_candidates": [
+    {
+      "path": "native/src/decoration/dependencies.rs",
+      "c94_sha256": "59733430a155dca324a1a7ca6098c6217be72750949d321d4dfd7f3ba0e3faf6",
+      "c95_sha256": "3ec357ede21b536e67f1d9cc998849a59ff2e05538982f5aa556599a85367518"
+    },
+    {
+      "path": "native/src/decoration/dependencies/output_columns.rs",
+      "c94_sha256": "ff34f964e73acedccb541924f9b0cb07eea7b33361400c8ceea5e3e57b8b3116",
+      "c95_sha256": "d76c75bddfe4a130c7390d793e70b40c628d94e0c61ee16e84602e9ae6e0b0b6"
+    }
+  ],
+  "method": {
+    "workers": 16,
+    "warmups_per_case": 5,
+    "measured_regions_per_case": 20,
+    "profiles": {
+      "direct-stem.json": "dd1437839e09a35c512cad186d60497f9ab7f12d8881edf98b5d1db56278adb8",
+      "nether.json": "0cf913a69f3faceb1c8719fb238dbd90961586262af4cd2cfe0c0fd62953a2ff",
+      "overworld.json": "72b80f1d8d799547726a1cefe1357c5c8311ed8b3736403a83c89879e4ee935b",
+      "manifest.json": "4d19b5ecfbed28c8af45550fa1ea851983724c0d813d6c53b8a5fb7cccf90e8e",
+      "custom.json": "dd1437839e09a35c512cad186d60497f9ab7f12d8881edf98b5d1db56278adb8"
+    },
+    "scope": "Fresh complete 1024-chunk lit MCA regions; zlib; same seeds, coordinates and profile hashes as retained original and actual PR209 corpora. Serial controllers and generation children. No external chat coordination or workload termination.",
+    "root_cpu_scope": "Diagnostic comparison of unchanged retained C94/C95 release test executables, with identical root observer source. Root evaluation CPU includes nested earlier-state reconstruction and observer work, not only the named feature. Per-worker whole-task CPU intervals are unioned on each physical thread. Process CPU includes native service/shader threads. Wait/lookup/terrain categories overlap and must not be added to wall time or treated as pure GPU/kernel wait. Normal-build CPU from C95 remains the separate acceptance-relevant observation.",
+    "additional_observer": {
+      "metadata": {
+        "command": [
+          "sample",
+          "82263",
+          "1",
+          "1",
+          "-mayDie",
+          "-file",
+          "cycle96/c95-observer-progress-sample.txt"
+        ],
+        "returncode": 0,
+        "started_epoch": 1792732693.549952,
+        "finished_epoch": 1792732696.045355,
+        "stdout": "",
+        "stderr": "Sampling process 82263 for 1 second with 1 millisecond of run time between samples\nSampling completed, processing symbols...\nSample analysis of process 82263 written to file cycle96/c95-observer-progress-sample.txt\n",
+        "scope": "One progress diagnostic of an unexpectedly long instrumented run. Not a normal performance sample; adds observer work."
+      },
+      "metadata_sha256": "8f1640e3de8067a2642c1ed4083adf81d244fc33a9cbe34be20f09405b793dc2",
+      "sample_sha256": "22686290efa0113060d36999044157c9e0f384fe561013022381511bee42a272"
+    }
+  },
+  "root_cases": [
+    {
+      "case": "nether-main",
+      "configuration_and_root_task_counts_match": true,
+      "root_instances": 820,
+      "root_count": 41,
+      "top_candidate_cpu_roots": [
+        {
+          "root": 12,
+          "sources": [
+            "minecraft:patch_fire"
+          ],
+          "structure_definition": null,
+          "c94_mean_process_cpu_ms": 404.81915,
+          "c95_mean_process_cpu_ms": 388.96445,
+          "c94_mean_task_cpu_ms": 398.3550417,
+          "c95_mean_task_cpu_ms": 382.7576095
+        },
+        {
+          "root": 8,
+          "sources": [
+            "minecraft:basalt_blobs"
+          ],
+          "structure_definition": null,
+          "c94_mean_process_cpu_ms": 333.3158,
+          "c95_mean_process_cpu_ms": 322.2359,
+          "c94_mean_task_cpu_ms": 328.9230914,
+          "c95_mean_task_cpu_ms": 317.0422077
+        },
+        {
+          "root": 13,
+          "sources": [
+            "minecraft:patch_soul_fire"
+          ],
+          "structure_definition": null,
+          "c94_mean_process_cpu_ms": 245.266,
+          "c95_mean_process_cpu_ms": 242.02235,
+          "c94_mean_task_cpu_ms": 239.9402278,
+          "c95_mean_task_cpu_ms": 236.45854035
+        },
+        {
+          "root": 15,
+          "sources": [
+            "minecraft:glowstone"
+          ],
+          "structure_definition": null,
+          "c94_mean_process_cpu_ms": 190.07874999999999,
+          "c95_mean_process_cpu_ms": 185.3895,
+          "c94_mean_task_cpu_ms": 181.93865035,
+          "c95_mean_task_cpu_ms": 174.7282632
+        },
+        {
+          "root": 17,
+          "sources": [
+            "minecraft:brown_mushroom_nether"
+          ],
+          "structure_definition": null,
+          "c94_mean_process_cpu_ms": 178.4344,
+          "c95_mean_process_cpu_ms": 181.4371,
+          "c94_mean_task_cpu_ms": 166.76862954999999,
+          "c95_mean_task_cpu_ms": 159.47538255
+        },
+        {
+          "root": 3,
+          "sources": [
+            "minecraft:delta"
+          ],
+          "structure_definition": null,
+          "c94_mean_process_cpu_ms": 181.45365,
+          "c95_mean_process_cpu_ms": 176.4782,
+          "c94_mean_task_cpu_ms": 178.7204415,
+          "c95_mean_task_cpu_ms": 173.22910845
+        },
+        {
+          "root": 5,
+          "sources": [
+            "minecraft:large_basalt_columns/choice0",
+            "minecraft:large_basalt_columns/choice1"
+          ],
+          "structure_definition": null,
+          "c94_mean_process_cpu_ms": 181.8837,
+          "c95_mean_process_cpu_ms": 173.3579,
+          "c94_mean_task_cpu_ms": 178.28154495,
+          "c95_mean_task_cpu_ms": 170.06406755
+        },
+        {
+          "root": 40,
+          "sources": [
+            "minecraft:crimson_forest_vegetation"
+          ],
+          "structure_definition": null,
+          "c94_mean_process_cpu_ms": 164.3093,
+          "c95_mean_process_cpu_ms": 160.45955,
+          "c94_mean_task_cpu_ms": 159.5782297,
+          "c95_mean_task_cpu_ms": 155.72219725
+        }
+      ],
+      "lookup_events_each_build_over_twenty_regions": {
+        "column_map_lookup": 14180604,
+        "anchor_lookup": 13744361,
+        "footprint_lookup": 6883968
+      },
+      "root_evaluation_process_cpu_ms_mean": [
+        3551.6184,
+        3453.27815
+      ],
+      "root_evaluation_wall_ms_mean": [
+        1081.12786055,
+        2279.46312635
+      ],
+      "observer_summary_ms_mean": [
+        1091.5756608,
+        3844.04950195
+      ],
+      "instrumented_complete_region_wall_ms_median": [
+        2472.032271,
+        7294.2784790000005
+      ]
+    },
+    {
+      "case": "nether-second-seed",
+      "configuration_and_root_task_counts_match": true,
+      "root_instances": 820,
+      "root_count": 41,
+      "top_candidate_cpu_roots": [
+        {
+          "root": 12,
+          "sources": [
+            "minecraft:patch_fire"
+          ],
+          "structure_definition": null,
+          "c94_mean_process_cpu_ms": 363.93845,
+          "c95_mean_process_cpu_ms": 364.0542,
+          "c94_mean_task_cpu_ms": 357.102446,
+          "c95_mean_task_cpu_ms": 358.79881125
+        },
+        {
+          "root": 8,
+          "sources": [
+            "minecraft:basalt_blobs"
+          ],
+          "structure_definition": null,
+          "c94_mean_process_cpu_ms": 299.0063,
+          "c95_mean_process_cpu_ms": 306.13105,
+          "c94_mean_task_cpu_ms": 293.64143285,
+          "c95_mean_task_cpu_ms": 301.56305960000003
+        },
+        {
+          "root": 13,
+          "sources": [
+            "minecraft:patch_soul_fire"
+          ],
+          "structure_definition": null,
+          "c94_mean_process_cpu_ms": 214.54855,
+          "c95_mean_process_cpu_ms": 226.07115,
+          "c94_mean_task_cpu_ms": 209.11913475,
+          "c95_mean_task_cpu_ms": 221.47403485
+        },
+        {
+          "root": 15,
+          "sources": [
+            "minecraft:glowstone"
+          ],
+          "structure_definition": null,
+          "c94_mean_process_cpu_ms": 206.17585,
+          "c95_mean_process_cpu_ms": 213.1738,
+          "c94_mean_task_cpu_ms": 198.9607195,
+          "c95_mean_task_cpu_ms": 206.190144
+        },
+        {
+          "root": 40,
+          "sources": [
+            "minecraft:crimson_forest_vegetation"
+          ],
+          "structure_definition": null,
+          "c94_mean_process_cpu_ms": 192.2745,
+          "c95_mean_process_cpu_ms": 195.8054,
+          "c94_mean_task_cpu_ms": 185.5403782,
+          "c95_mean_task_cpu_ms": 189.5218524
+        },
+        {
+          "root": 3,
+          "sources": [
+            "minecraft:delta"
+          ],
+          "structure_definition": null,
+          "c94_mean_process_cpu_ms": 177.5892,
+          "c95_mean_process_cpu_ms": 165.64745,
+          "c94_mean_task_cpu_ms": 173.5065613,
+          "c95_mean_task_cpu_ms": 162.7059446
+        },
+        {
+          "root": 5,
+          "sources": [
+            "minecraft:large_basalt_columns/choice0",
+            "minecraft:large_basalt_columns/choice1"
+          ],
+          "structure_definition": null,
+          "c94_mean_process_cpu_ms": 158.37665,
+          "c95_mean_process_cpu_ms": 155.33375,
+          "c94_mean_task_cpu_ms": 154.3700379,
+          "c95_mean_task_cpu_ms": 151.880896
+        },
+        {
+          "root": 17,
+          "sources": [
+            "minecraft:brown_mushroom_nether"
+          ],
+          "structure_definition": null,
+          "c94_mean_process_cpu_ms": 144.56295,
+          "c95_mean_process_cpu_ms": 154.8198,
+          "c94_mean_task_cpu_ms": 133.9161342,
+          "c95_mean_task_cpu_ms": 141.51515965
+        }
+      ],
+      "lookup_events_each_build_over_twenty_regions": {
+        "column_map_lookup": 14318643,
+        "anchor_lookup": 14121119,
+        "footprint_lookup": 7607971
+      },
+      "root_evaluation_process_cpu_ms_mean": [
+        3461.701,
+        3518.4324
+      ],
+      "root_evaluation_wall_ms_mean": [
+        1014.3508438499999,
+        1157.2630479
+      ],
+      "observer_summary_ms_mean": [
+        1035.79923325,
+        1124.8668954
+      ],
+      "instrumented_complete_region_wall_ms_median": [
+        2564.9809164999997,
+        2717.6801250000003
+      ]
+    },
+    {
+      "case": "nether-custom-bounds",
+      "configuration_and_root_task_counts_match": true,
+      "root_instances": 460,
+      "root_count": 23,
+      "top_candidate_cpu_roots": [
+        {
+          "root": 20,
+          "sources": [
+            "minecraft:warped_forest_vegetation"
+          ],
+          "structure_definition": null,
+          "c94_mean_process_cpu_ms": 539.2531,
+          "c95_mean_process_cpu_ms": 548.85395,
+          "c94_mean_task_cpu_ms": 533.7599879,
+          "c95_mean_task_cpu_ms": 543.3581578
+        },
+        {
+          "root": 21,
+          "sources": [
+            "minecraft:nether_sprouts"
+          ],
+          "structure_definition": null,
+          "c94_mean_process_cpu_ms": 460.65015,
+          "c95_mean_process_cpu_ms": 469.0917,
+          "c94_mean_task_cpu_ms": 453.89737735,
+          "c95_mean_task_cpu_ms": 461.36561875
+        },
+        {
+          "root": 22,
+          "sources": [
+            "minecraft:twisting_vines"
+          ],
+          "structure_definition": null,
+          "c94_mean_process_cpu_ms": 455.91949999999997,
+          "c95_mean_process_cpu_ms": 468.57695,
+          "c94_mean_task_cpu_ms": 449.8728442,
+          "c95_mean_task_cpu_ms": 462.38210745
+        },
+        {
+          "root": 19,
+          "sources": [
+            "minecraft:warped_fungi"
+          ],
+          "structure_definition": null,
+          "c94_mean_process_cpu_ms": 451.5005,
+          "c95_mean_process_cpu_ms": 453.511,
+          "c94_mean_task_cpu_ms": 446.1750916,
+          "c95_mean_task_cpu_ms": 447.74190384999997
+        },
+        {
+          "root": 4,
+          "sources": [
+            "minecraft:patch_fire"
+          ],
+          "structure_definition": null,
+          "c94_mean_process_cpu_ms": 232.24995,
+          "c95_mean_process_cpu_ms": 243.93045,
+          "c94_mean_task_cpu_ms": 200.53223335,
+          "c95_mean_task_cpu_ms": 211.81292895
+        },
+        {
+          "root": 5,
+          "sources": [
+            "minecraft:patch_soul_fire"
+          ],
+          "structure_definition": null,
+          "c94_mean_process_cpu_ms": 160.81765,
+          "c95_mean_process_cpu_ms": 175.4685,
+          "c94_mean_task_cpu_ms": 156.14468955,
+          "c95_mean_task_cpu_ms": 171.14484695
+        },
+        {
+          "root": 7,
+          "sources": [
+            "minecraft:glowstone"
+          ],
+          "structure_definition": null,
+          "c94_mean_process_cpu_ms": 94.53695,
+          "c95_mean_process_cpu_ms": 95.3322,
+          "c94_mean_task_cpu_ms": 88.95067535,
+          "c95_mean_task_cpu_ms": 91.0518222
+        },
+        {
+          "root": 8,
+          "sources": [
+            "minecraft:ore_magma"
+          ],
+          "structure_definition": null,
+          "c94_mean_process_cpu_ms": 90.8725,
+          "c95_mean_process_cpu_ms": 93.8708,
+          "c94_mean_task_cpu_ms": 86.5429591,
+          "c95_mean_task_cpu_ms": 90.19191925
+        }
+      ],
+      "lookup_events_each_build_over_twenty_regions": {
+        "column_map_lookup": 11125573,
+        "anchor_lookup": 5684881,
+        "footprint_lookup": 6714092
+      },
+      "root_evaluation_process_cpu_ms_mean": [
+        3147.22635,
+        3231.97245
+      ],
+      "root_evaluation_wall_ms_mean": [
+        584.8950483,
+        658.94686875
+      ],
+      "observer_summary_ms_mean": [
+        701.1255567000001,
+        743.22828735
+      ],
+      "instrumented_complete_region_wall_ms_median": [
+        1486.9598955000001,
+        1663.245125
+      ]
+    },
+    {
+      "case": "nether-direct-stem",
+      "configuration_and_root_task_counts_match": true,
+      "root_instances": 460,
+      "root_count": 23,
+      "top_candidate_cpu_roots": [
+        {
+          "root": 20,
+          "sources": [
+            "minecraft:warped_forest_vegetation"
+          ],
+          "structure_definition": null,
+          "c94_mean_process_cpu_ms": 531.48605,
+          "c95_mean_process_cpu_ms": 557.2836,
+          "c94_mean_task_cpu_ms": 526.5738309,
+          "c95_mean_task_cpu_ms": 550.8399126
+        },
+        {
+          "root": 21,
+          "sources": [
+            "minecraft:nether_sprouts"
+          ],
+          "structure_definition": null,
+          "c94_mean_process_cpu_ms": 462.3329,
+          "c95_mean_process_cpu_ms": 489.64035,
+          "c94_mean_task_cpu_ms": 457.5479616,
+          "c95_mean_task_cpu_ms": 483.45097305
+        },
+        {
+          "root": 22,
+          "sources": [
+            "minecraft:twisting_vines"
+          ],
+          "structure_definition": null,
+          "c94_mean_process_cpu_ms": 450.2763,
+          "c95_mean_process_cpu_ms": 471.6405,
+          "c94_mean_task_cpu_ms": 445.43161675,
+          "c95_mean_task_cpu_ms": 465.7955845
+        },
+        {
+          "root": 19,
+          "sources": [
+            "minecraft:warped_fungi"
+          ],
+          "structure_definition": null,
+          "c94_mean_process_cpu_ms": 437.08799999999997,
+          "c95_mean_process_cpu_ms": 470.09195,
+          "c94_mean_task_cpu_ms": 431.80185785,
+          "c95_mean_task_cpu_ms": 463.2741855
+        },
+        {
+          "root": 4,
+          "sources": [
+            "minecraft:patch_fire"
+          ],
+          "structure_definition": null,
+          "c94_mean_process_cpu_ms": 235.0771,
+          "c95_mean_process_cpu_ms": 258.52275,
+          "c94_mean_task_cpu_ms": 201.33061195,
+          "c95_mean_task_cpu_ms": 224.80700935
+        },
+        {
+          "root": 5,
+          "sources": [
+            "minecraft:patch_soul_fire"
+          ],
+          "structure_definition": null,
+          "c94_mean_process_cpu_ms": 160.1883,
+          "c95_mean_process_cpu_ms": 184.9575,
+          "c94_mean_task_cpu_ms": 156.95009195,
+          "c95_mean_task_cpu_ms": 180.2206545
+        },
+        {
+          "root": 7,
+          "sources": [
+            "minecraft:glowstone"
+          ],
+          "structure_definition": null,
+          "c94_mean_process_cpu_ms": 96.84475,
+          "c95_mean_process_cpu_ms": 105.09585,
+          "c94_mean_task_cpu_ms": 93.1673269,
+          "c95_mean_task_cpu_ms": 99.87972135
+        },
+        {
+          "root": 8,
+          "sources": [
+            "minecraft:ore_magma"
+          ],
+          "structure_definition": null,
+          "c94_mean_process_cpu_ms": 92.19385,
+          "c95_mean_process_cpu_ms": 99.2096,
+          "c94_mean_task_cpu_ms": 88.7433307,
+          "c95_mean_task_cpu_ms": 94.96604515
+        }
+      ],
+      "lookup_events_each_build_over_twenty_regions": {
+        "column_map_lookup": 10639428,
+        "anchor_lookup": 5418565,
+        "footprint_lookup": 6537933
+      },
+      "root_evaluation_process_cpu_ms_mean": [
+        3126.0301,
+        3350.9624
+      ],
+      "root_evaluation_wall_ms_mean": [
+        656.93497045,
+        632.98709335
+      ],
+      "observer_summary_ms_mean": [
+        760.0822694,
+        746.4165998
+      ],
+      "instrumented_complete_region_wall_ms_median": [
+        1797.512083,
+        1592.0842085
+      ]
+    },
+    {
+      "case": "overworld",
+      "configuration_and_root_task_counts_match": true,
+      "root_instances": 0,
+      "root_count": 0,
+      "top_candidate_cpu_roots": [],
+      "lookup_events_each_build_over_twenty_regions": {
+        "column_map_lookup": 0,
+        "anchor_lookup": 0,
+        "footprint_lookup": 0
+      },
+      "root_evaluation_process_cpu_ms_mean": [
+        0,
+        0
+      ],
+      "root_evaluation_wall_ms_mean": [
+        0,
+        0
+      ],
+      "observer_summary_ms_mean": [
+        0,
+        0
+      ],
+      "instrumented_complete_region_wall_ms_median": [
+        458.2735,
+        347.2776665
+      ]
+    }
+  ],
+  "memory_cases": [
+    {
+      "label": "c94",
+      "source": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle96/overworld-memory/c94-run0/measurements.json",
+      "sha256": "66b6a1f0926d357d2a26fbcd1df02e09591068d4d880a15173e4ab54443eada2",
+      "native": {
+        "revision": "625db82c4f80e40fc3477eee86cc96274bd404f2",
+        "native_tree": "f02a2646165c69c32aa4438664f2ad6310e85b35",
+        "sha256": "79a0e2b35259a2b07c7eedbd1b64239de36d57844b7be5a8c345731299306213",
+        "source_status": "",
+        "forced_rebuild": true,
+        "timing_acceptance": false,
+        "test_executable_sha256": "8961482795bb2e24274dd8d874b72de43dc4955f9783eaf3c29262be7e888d0c",
+        "native_test_result": [
+          "204",
+          "0",
+          "67"
+        ]
+      },
+      "scope": "Current RSS sampled using ps after each joined warmup/measured FFI generation. The subprocess observations occur outside individual native call timers but inside aggregate measurement wall time. No stack sampling or VM-map observation overlaps these runs. This is a memory diagnostic, not normal timing acceptance. High-water RSS includes startup and warmups; it is not attributable to the last region alone.",
+      "before_warmups": {
+        "current_rss_bytes": 300171264,
+        "current_rss_returncode": 0,
+        "epoch": 1792733021.088156,
+        "process_peak_rss_bytes": 300204032
+      },
+      "before_measurement": {
+        "current_rss_bytes": 1499250688,
+        "current_rss_returncode": 0,
+        "epoch": 1792733025.167607,
+        "process_peak_rss_bytes": 1504690176
+      },
+      "after_measurement": {
+        "current_rss_bytes": 2382036992,
+        "current_rss_returncode": 0,
+        "epoch": 1792733036.04001,
+        "process_peak_rss_bytes": 2419425280
+      },
+      "measurement_current_rss_growth_bytes": 882786304,
+      "warmup_memory": [
+        {
+          "name": "warm0",
+          "program_status": 1,
+          "memory": {
+            "current_rss_bytes": 886341632,
+            "current_rss_returncode": 0,
+            "epoch": 1792733021.604995,
+            "process_peak_rss_bytes": 924008448
+          }
+        },
+        {
+          "name": "warm1",
+          "program_status": 1,
+          "memory": {
+            "current_rss_bytes": 1157709824,
+            "current_rss_returncode": 0,
+            "epoch": 1792733022.885807,
+            "process_peak_rss_bytes": 1161297920
+          }
+        },
+        {
+          "name": "warm2",
+          "program_status": 4,
+          "memory": {
+            "current_rss_bytes": 1330200576,
+            "current_rss_returncode": 0,
+            "epoch": 1792733023.8522902,
+            "process_peak_rss_bytes": 1365770240
+          }
+        },
+        {
+          "name": "warm3",
+          "program_status": 4,
+          "memory": {
+            "current_rss_bytes": 1389215744,
+            "current_rss_returncode": 0,
+            "epoch": 1792733024.558615,
+            "process_peak_rss_bytes": 1423638528
+          }
+        },
+        {
+          "name": "warm4",
+          "program_status": 4,
+          "memory": {
+            "current_rss_bytes": 1499250688,
+            "current_rss_returncode": 0,
+            "epoch": 1792733025.131356,
+            "process_peak_rss_bytes": 1504690176
+          }
+        }
+      ],
+      "regions": [
+        {
+          "name": "0",
+          "x": -2,
+          "z": -2,
+          "memory": {
+            "current_rss_bytes": 1551187968,
+            "current_rss_returncode": 0,
+            "epoch": 1792733025.823872,
+            "process_peak_rss_bytes": 1560461312
+          },
+          "gpu_pipeline": {
+            "completed": 3,
+            "device_gap_nanos": 505937458,
+            "device_span_nanos": 231402376,
+            "unavailable_timestamp_pairs": 0
+          }
+        },
+        {
+          "name": "1",
+          "x": -1,
+          "z": -2,
+          "memory": {
+            "current_rss_bytes": 1602338816,
+            "current_rss_returncode": 0,
+            "epoch": 1792733026.444067,
+            "process_peak_rss_bytes": 1611776000
+          },
+          "gpu_pipeline": {
+            "completed": 3,
+            "device_gap_nanos": 515261833,
+            "device_span_nanos": 248291875,
+            "unavailable_timestamp_pairs": 0
+          }
+        },
+        {
+          "name": "2",
+          "x": 0,
+          "z": -2,
+          "memory": {
+            "current_rss_bytes": 1644216320,
+            "current_rss_returncode": 0,
+            "epoch": 1792733027.067738,
+            "process_peak_rss_bytes": 1662058496
+          },
+          "gpu_pipeline": {
+            "completed": 4,
+            "device_gap_nanos": 507395542,
+            "device_span_nanos": 5049655207,
+            "unavailable_timestamp_pairs": 0
+          }
+        },
+        {
+          "name": "3",
+          "x": 1,
+          "z": -2,
+          "memory": {
+            "current_rss_bytes": 1687289856,
+            "current_rss_returncode": 0,
+            "epoch": 1792733027.647454,
+            "process_peak_rss_bytes": 1710456832
+          },
+          "gpu_pipeline": {
+            "completed": 3,
+            "device_gap_nanos": 513768875,
+            "device_span_nanos": 229868375,
+            "unavailable_timestamp_pairs": 0
+          }
+        },
+        {
+          "name": "4",
+          "x": 2,
+          "z": -2,
+          "memory": {
+            "current_rss_bytes": 1737572352,
+            "current_rss_returncode": 0,
+            "epoch": 1792733028.2882738,
+            "process_peak_rss_bytes": 1764507648
+          },
+          "gpu_pipeline": {
+            "completed": 6,
+            "device_gap_nanos": 481597500,
+            "device_span_nanos": 1502560834,
+            "unavailable_timestamp_pairs": 0
+          }
+        },
+        {
+          "name": "5",
+          "x": -2,
+          "z": -1,
+          "memory": {
+            "current_rss_bytes": 1796800512,
+            "current_rss_returncode": 0,
+            "epoch": 1792733028.891598,
+            "process_peak_rss_bytes": 1808334848
+          },
+          "gpu_pipeline": {
+            "completed": 3,
+            "device_gap_nanos": 509077250,
+            "device_span_nanos": 195395875,
+            "unavailable_timestamp_pairs": 0
+          }
+        },
+        {
+          "name": "6",
+          "x": -1,
+          "z": -1,
+          "memory": {
+            "current_rss_bytes": 1850310656,
+            "current_rss_returncode": 0,
+            "epoch": 1792733029.443827,
+            "process_peak_rss_bytes": 1855242240
+          },
+          "gpu_pipeline": {
+            "completed": 3,
+            "device_gap_nanos": 519285334,
+            "device_span_nanos": 198684874,
+            "unavailable_timestamp_pairs": 0
+          }
+        },
+        {
+          "name": "7",
+          "x": 0,
+          "z": -1,
+          "memory": {
+            "current_rss_bytes": 1894580224,
+            "current_rss_returncode": 0,
+            "epoch": 1792733030.121652,
+            "process_peak_rss_bytes": 1918287872
+          },
+          "gpu_pipeline": {
+            "completed": 3,
+            "device_gap_nanos": 459892500,
+            "device_span_nanos": 261274833,
+            "unavailable_timestamp_pairs": 0
+          }
+        },
+        {
+          "name": "8",
+          "x": 1,
+          "z": -1,
+          "memory": {
+            "current_rss_bytes": 1934950400,
+            "current_rss_returncode": 0,
+            "epoch": 1792733030.815986,
+            "process_peak_rss_bytes": 1970634752
+          },
+          "gpu_pipeline": {
+            "completed": 3,
+            "device_gap_nanos": 564988500,
+            "device_span_nanos": 255259542,
+            "unavailable_timestamp_pairs": 0
+          }
+        },
+        {
+          "name": "9",
+          "x": 2,
+          "z": -1,
+          "memory": {
+            "current_rss_bytes": 1984774144,
+            "current_rss_returncode": 0,
+            "epoch": 1792733031.450986,
+            "process_peak_rss_bytes": 1998045184
+          },
+          "gpu_pipeline": {
+            "completed": 4,
+            "device_gap_nanos": 593332416,
+            "device_span_nanos": 3373721084,
+            "unavailable_timestamp_pairs": 0
+          }
+        },
+        {
+          "name": "10",
+          "x": -2,
+          "z": 0,
+          "memory": {
+            "current_rss_bytes": 2023555072,
+            "current_rss_returncode": 0,
+            "epoch": 1792733031.900156,
+            "process_peak_rss_bytes": 2037874688
+          },
+          "gpu_pipeline": {
+            "completed": 3,
+            "device_gap_nanos": 522112917,
+            "device_span_nanos": 230467500,
+            "unavailable_timestamp_pairs": 0
+          }
+        },
+        {
+          "name": "11",
+          "x": -1,
+          "z": 0,
+          "memory": {
+            "current_rss_bytes": 2048262144,
+            "current_rss_returncode": 0,
+            "epoch": 1792733032.2663412,
+            "process_peak_rss_bytes": 2068250624
+          },
+          "gpu_pipeline": {
+            "completed": 3,
+            "device_gap_nanos": 350094792,
+            "device_span_nanos": 199067791,
+            "unavailable_timestamp_pairs": 0
+          }
+        },
+        {
+          "name": "12",
+          "x": 0,
+          "z": 0,
+          "memory": {
+            "current_rss_bytes": 2087141376,
+            "current_rss_returncode": 0,
+            "epoch": 1792733032.7403378,
+            "process_peak_rss_bytes": 2109734912
+          },
+          "gpu_pipeline": {
+            "completed": 3,
+            "device_gap_nanos": 277182250,
+            "device_span_nanos": 252207500,
+            "unavailable_timestamp_pairs": 0
+          }
+        },
+        {
+          "name": "13",
+          "x": 1,
+          "z": 0,
+          "memory": {
+            "current_rss_bytes": 2123431936,
+            "current_rss_returncode": 0,
+            "epoch": 1792733033.231622,
+            "process_peak_rss_bytes": 2157510656
+          },
+          "gpu_pipeline": {
+            "completed": 4,
+            "device_gap_nanos": 368094541,
+            "device_span_nanos": 2170966501,
+            "unavailable_timestamp_pairs": 0
+          }
+        },
+        {
+          "name": "14",
+          "x": 2,
+          "z": 0,
+          "memory": {
+            "current_rss_bytes": 2160197632,
+            "current_rss_returncode": 0,
+            "epoch": 1792733033.741955,
+            "process_peak_rss_bytes": 2189590528
+          },
+          "gpu_pipeline": {
+            "completed": 4,
+            "device_gap_nanos": 378308208,
+            "device_span_nanos": 758153750,
+            "unavailable_timestamp_pairs": 0
+          }
+        },
+        {
+          "name": "15",
+          "x": -2,
+          "z": 1,
+          "memory": {
+            "current_rss_bytes": 2214084608,
+            "current_rss_returncode": 0,
+            "epoch": 1792733034.290726,
+            "process_peak_rss_bytes": 2241019904
+          },
+          "gpu_pipeline": {
+            "completed": 1,
+            "device_gap_nanos": 392826042,
+            "device_span_nanos": 81383958,
+            "unavailable_timestamp_pairs": 0
+          }
+        },
+        {
+          "name": "16",
+          "x": -1,
+          "z": 1,
+          "memory": {
+            "current_rss_bytes": 2260484096,
+            "current_rss_returncode": 0,
+            "epoch": 1792733034.6714392,
+            "process_peak_rss_bytes": 2283864064
+          },
+          "gpu_pipeline": {
+            "completed": 2,
+            "device_gap_nanos": 462465750,
+            "device_span_nanos": 139748959,
+            "unavailable_timestamp_pairs": 0
+          }
+        },
+        {
+          "name": "17",
+          "x": 0,
+          "z": 1,
+          "memory": {
+            "current_rss_bytes": 2322481152,
+            "current_rss_returncode": 0,
+            "epoch": 1792733035.239518,
+            "process_peak_rss_bytes": 2335096832
+          },
+          "gpu_pipeline": {
+            "completed": 6,
+            "device_gap_nanos": 293495292,
+            "device_span_nanos": 1765956791,
+            "unavailable_timestamp_pairs": 0
+          }
+        },
+        {
+          "name": "18",
+          "x": 1,
+          "z": 1,
+          "memory": {
+            "current_rss_bytes": 2346319872,
+            "current_rss_returncode": 0,
+            "epoch": 1792733035.656941,
+            "process_peak_rss_bytes": 2377596928
+          },
+          "gpu_pipeline": {
+            "completed": 3,
+            "device_gap_nanos": 431716667,
+            "device_span_nanos": 166703208,
+            "unavailable_timestamp_pairs": 0
+          }
+        },
+        {
+          "name": "19",
+          "x": 2,
+          "z": 1,
+          "memory": {
+            "current_rss_bytes": 2382053376,
+            "current_rss_returncode": 0,
+            "epoch": 1792733036.003962,
+            "process_peak_rss_bytes": 2419425280
+          },
+          "gpu_pipeline": {
+            "completed": 2,
+            "device_gap_nanos": 313952541,
+            "device_span_nanos": 162226084,
+            "unavailable_timestamp_pairs": 0
+          }
+        }
+      ],
+      "gpu_pipeline": {
+        "completed": 66,
+        "device_gap_ms": 8960.786208,
+        "device_span_ms": 17472.996917,
+        "peak_in_flight": 2,
+        "unavailable_timestamp_pairs": 0
+      },
+      "gpu_transfers": {
+        "readback_bytes": 2368472160,
+        "readback_bytes_per_region": 118423608.0,
+        "upload_bytes": 2091806492,
+        "upload_bytes_per_region": 104590324.6
+      },
+      "ordinary_observation": {
+        "median_ms": 512.2592084808275,
+        "p95_region_ms": 630.8697499567643,
+        "maximum_region_ms": 635.4677500203252,
+        "total_ms": 10836.040667025372,
+        "chunks_per_second": 1889.9892155556126,
+        "peak_rss_bytes": 2419425280,
+        "generation_peak_rss_bytes": 2419425280
+      },
+      "comparisons": [
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/overworld-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        },
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle93/merged-full/overworld-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        }
+      ]
+    },
+    {
+      "label": "c95",
+      "source": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle96/overworld-memory/c95-run0/measurements.json",
+      "sha256": "22c1a12c1c7841d246cef2d41e995bf127df5991945ec7d2e2b758a7589e1a07",
+      "native": {
+        "revision": "e6be76bc8dd5eb2ad1e180f257e02b316d13f1db",
+        "native_tree": "7b81c24603d7591ad73edb3989f7367334c4eeed",
+        "sha256": "8632bc9c0dc3ac5b2771befd7160004695dcdc098c10b1d2f94f8b06b9716b92",
+        "source_status": "",
+        "forced_rebuild": true,
+        "timing_acceptance": false,
+        "test_executable_sha256": "f4e03a9bbdaad17524ee8b0e7ed13fd3922032a0bfcc839fe874047d4bbfc87a",
+        "native_test_result": [
+          "206",
+          "0",
+          "67"
+        ]
+      },
+      "scope": "Current RSS sampled using ps after each joined warmup/measured FFI generation. The subprocess observations occur outside individual native call timers but inside aggregate measurement wall time. No stack sampling or VM-map observation overlaps these runs. This is a memory diagnostic, not normal timing acceptance. High-water RSS includes startup and warmups; it is not attributable to the last region alone.",
+      "before_warmups": {
+        "current_rss_bytes": 301481984,
+        "current_rss_returncode": 0,
+        "epoch": 1792733044.646013,
+        "process_peak_rss_bytes": 301514752
+      },
+      "before_measurement": {
+        "current_rss_bytes": 1501741056,
+        "current_rss_returncode": 0,
+        "epoch": 1792733048.185371,
+        "process_peak_rss_bytes": 1521713152
+      },
+      "after_measurement": {
+        "current_rss_bytes": 1632043008,
+        "current_rss_returncode": 0,
+        "epoch": 1792733056.245132,
+        "process_peak_rss_bytes": 1660092416
+      },
+      "measurement_current_rss_growth_bytes": 130301952,
+      "warmup_memory": [
+        {
+          "name": "warm0",
+          "program_status": 1,
+          "memory": {
+            "current_rss_bytes": 925958144,
+            "current_rss_returncode": 0,
+            "epoch": 1792733045.11953,
+            "process_peak_rss_bytes": 925958144
+          }
+        },
+        {
+          "name": "warm1",
+          "program_status": 1,
+          "memory": {
+            "current_rss_bytes": 1188069376,
+            "current_rss_returncode": 0,
+            "epoch": 1792733045.6754088,
+            "process_peak_rss_bytes": 1198161920
+          }
+        },
+        {
+          "name": "warm2",
+          "program_status": 4,
+          "memory": {
+            "current_rss_bytes": 1390952448,
+            "current_rss_returncode": 0,
+            "epoch": 1792733046.506233,
+            "process_peak_rss_bytes": 1394327552
+          }
+        },
+        {
+          "name": "warm3",
+          "program_status": 4,
+          "memory": {
+            "current_rss_bytes": 1472118784,
+            "current_rss_returncode": 0,
+            "epoch": 1792733047.6014762,
+            "process_peak_rss_bytes": 1491451904
+          }
+        },
+        {
+          "name": "warm4",
+          "program_status": 4,
+          "memory": {
+            "current_rss_bytes": 1501724672,
+            "current_rss_returncode": 0,
+            "epoch": 1792733048.150551,
+            "process_peak_rss_bytes": 1521713152
+          }
+        }
+      ],
+      "regions": [
+        {
+          "name": "0",
+          "x": -2,
+          "z": -2,
+          "memory": {
+            "current_rss_bytes": 1524875264,
+            "current_rss_returncode": 0,
+            "epoch": 1792733048.6247392,
+            "process_peak_rss_bytes": 1546911744
+          },
+          "gpu_pipeline": {
+            "completed": 3,
+            "device_gap_nanos": 448779167,
+            "device_span_nanos": 241994957,
+            "unavailable_timestamp_pairs": 0
+          }
+        },
+        {
+          "name": "1",
+          "x": -1,
+          "z": -2,
+          "memory": {
+            "current_rss_bytes": 1552547840,
+            "current_rss_returncode": 0,
+            "epoch": 1792733049.018687,
+            "process_peak_rss_bytes": 1570816000
+          },
+          "gpu_pipeline": {
+            "completed": 3,
+            "device_gap_nanos": 330050083,
+            "device_span_nanos": 240048000,
+            "unavailable_timestamp_pairs": 0
+          }
+        },
+        {
+          "name": "2",
+          "x": 0,
+          "z": -2,
+          "memory": {
+            "current_rss_bytes": 1542488064,
+            "current_rss_returncode": 0,
+            "epoch": 1792733049.3829582,
+            "process_peak_rss_bytes": 1573486592
+          },
+          "gpu_pipeline": {
+            "completed": 5,
+            "device_gap_nanos": 290322125,
+            "device_span_nanos": 3964114748,
+            "unavailable_timestamp_pairs": 0
+          }
+        },
+        {
+          "name": "3",
+          "x": 1,
+          "z": -2,
+          "memory": {
+            "current_rss_bytes": 1551532032,
+            "current_rss_returncode": 0,
+            "epoch": 1792733049.711201,
+            "process_peak_rss_bytes": 1574715392
+          },
+          "gpu_pipeline": {
+            "completed": 3,
+            "device_gap_nanos": 246664583,
+            "device_span_nanos": 252483208,
+            "unavailable_timestamp_pairs": 0
+          }
+        },
+        {
+          "name": "4",
+          "x": 2,
+          "z": -2,
+          "memory": {
+            "current_rss_bytes": 1553268736,
+            "current_rss_returncode": 0,
+            "epoch": 1792733050.115284,
+            "process_peak_rss_bytes": 1587822592
+          },
+          "gpu_pipeline": {
+            "completed": 6,
+            "device_gap_nanos": 220293417,
+            "device_span_nanos": 4658235918,
+            "unavailable_timestamp_pairs": 0
+          }
+        },
+        {
+          "name": "5",
+          "x": -2,
+          "z": -1,
+          "memory": {
+            "current_rss_bytes": 1568718848,
+            "current_rss_returncode": 0,
+            "epoch": 1792733050.4045188,
+            "process_peak_rss_bytes": 1587822592
+          },
+          "gpu_pipeline": {
+            "completed": 3,
+            "device_gap_nanos": 252334875,
+            "device_span_nanos": 210425959,
+            "unavailable_timestamp_pairs": 0
+          }
+        },
+        {
+          "name": "6",
+          "x": -1,
+          "z": -1,
+          "memory": {
+            "current_rss_bytes": 1574551552,
+            "current_rss_returncode": 0,
+            "epoch": 1792733050.750714,
+            "process_peak_rss_bytes": 1591001088
+          },
+          "gpu_pipeline": {
+            "completed": 3,
+            "device_gap_nanos": 200521000,
+            "device_span_nanos": 225505708,
+            "unavailable_timestamp_pairs": 0
+          }
+        },
+        {
+          "name": "7",
+          "x": 0,
+          "z": -1,
+          "memory": {
+            "current_rss_bytes": 1568178176,
+            "current_rss_returncode": 0,
+            "epoch": 1792733051.1588311,
+            "process_peak_rss_bytes": 1592229888
+          },
+          "gpu_pipeline": {
+            "completed": 3,
+            "device_gap_nanos": 250493084,
+            "device_span_nanos": 295514333,
+            "unavailable_timestamp_pairs": 0
+          }
+        },
+        {
+          "name": "8",
+          "x": 1,
+          "z": -1,
+          "memory": {
+            "current_rss_bytes": 1573142528,
+            "current_rss_returncode": 0,
+            "epoch": 1792733051.604775,
+            "process_peak_rss_bytes": 1608384512
+          },
+          "gpu_pipeline": {
+            "completed": 3,
+            "device_gap_nanos": 285132417,
+            "device_span_nanos": 301137667,
+            "unavailable_timestamp_pairs": 0
+          }
+        },
+        {
+          "name": "9",
+          "x": 2,
+          "z": -1,
+          "memory": {
+            "current_rss_bytes": 1585315840,
+            "current_rss_returncode": 0,
+            "epoch": 1792733052.068349,
+            "process_peak_rss_bytes": 1608384512
+          },
+          "gpu_pipeline": {
+            "completed": 4,
+            "device_gap_nanos": 318658541,
+            "device_span_nanos": 2124259625,
+            "unavailable_timestamp_pairs": 0
+          }
+        },
+        {
+          "name": "10",
+          "x": -2,
+          "z": 0,
+          "memory": {
+            "current_rss_bytes": 1592786944,
+            "current_rss_returncode": 0,
+            "epoch": 1792733052.533946,
+            "process_peak_rss_bytes": 1613676544
+          },
+          "gpu_pipeline": {
+            "completed": 3,
+            "device_gap_nanos": 342409583,
+            "device_span_nanos": 271357917,
+            "unavailable_timestamp_pairs": 0
+          }
+        },
+        {
+          "name": "11",
+          "x": -1,
+          "z": 0,
+          "memory": {
+            "current_rss_bytes": 1597440000,
+            "current_rss_returncode": 0,
+            "epoch": 1792733052.931103,
+            "process_peak_rss_bytes": 1616461824
+          },
+          "gpu_pipeline": {
+            "completed": 3,
+            "device_gap_nanos": 350357083,
+            "device_span_nanos": 223934418,
+            "unavailable_timestamp_pairs": 0
+          }
+        },
+        {
+          "name": "12",
+          "x": 0,
+          "z": 0,
+          "memory": {
+            "current_rss_bytes": 1593409536,
+            "current_rss_returncode": 0,
+            "epoch": 1792733053.346764,
+            "process_peak_rss_bytes": 1625571328
+          },
+          "gpu_pipeline": {
+            "completed": 3,
+            "device_gap_nanos": 298796917,
+            "device_span_nanos": 274479957,
+            "unavailable_timestamp_pairs": 0
+          }
+        },
+        {
+          "name": "13",
+          "x": 1,
+          "z": 0,
+          "memory": {
+            "current_rss_bytes": 1595670528,
+            "current_rss_returncode": 0,
+            "epoch": 1792733053.7508428,
+            "process_peak_rss_bytes": 1630732288
+          },
+          "gpu_pipeline": {
+            "completed": 4,
+            "device_gap_nanos": 301942750,
+            "device_span_nanos": 2022300374,
+            "unavailable_timestamp_pairs": 0
+          }
+        },
+        {
+          "name": "14",
+          "x": 2,
+          "z": 0,
+          "memory": {
+            "current_rss_bytes": 1617117184,
+            "current_rss_returncode": 0,
+            "epoch": 1792733054.18825,
+            "process_peak_rss_bytes": 1636040704
+          },
+          "gpu_pipeline": {
+            "completed": 5,
+            "device_gap_nanos": 278149292,
+            "device_span_nanos": 697899667,
+            "unavailable_timestamp_pairs": 0
+          }
+        },
+        {
+          "name": "15",
+          "x": -2,
+          "z": 1,
+          "memory": {
+            "current_rss_bytes": 1630683136,
+            "current_rss_returncode": 0,
+            "epoch": 1792733054.583006,
+            "process_peak_rss_bytes": 1658503168
+          },
+          "gpu_pipeline": {
+            "completed": 1,
+            "device_gap_nanos": 309946250,
+            "device_span_nanos": 86079833,
+            "unavailable_timestamp_pairs": 0
+          }
+        },
+        {
+          "name": "16",
+          "x": -1,
+          "z": 1,
+          "memory": {
+            "current_rss_bytes": 1628372992,
+            "current_rss_returncode": 0,
+            "epoch": 1792733054.924248,
+            "process_peak_rss_bytes": 1658503168
+          },
+          "gpu_pipeline": {
+            "completed": 2,
+            "device_gap_nanos": 301717500,
+            "device_span_nanos": 149611958,
+            "unavailable_timestamp_pairs": 0
+          }
+        },
+        {
+          "name": "17",
+          "x": 0,
+          "z": 1,
+          "memory": {
+            "current_rss_bytes": 1620328448,
+            "current_rss_returncode": 0,
+            "epoch": 1792733055.417304,
+            "process_peak_rss_bytes": 1658503168
+          },
+          "gpu_pipeline": {
+            "completed": 6,
+            "device_gap_nanos": 246650917,
+            "device_span_nanos": 1518508125,
+            "unavailable_timestamp_pairs": 0
+          }
+        },
+        {
+          "name": "18",
+          "x": 1,
+          "z": 1,
+          "memory": {
+            "current_rss_bytes": 1630978048,
+            "current_rss_returncode": 0,
+            "epoch": 1792733055.835098,
+            "process_peak_rss_bytes": 1658503168
+          },
+          "gpu_pipeline": {
+            "completed": 3,
+            "device_gap_nanos": 336708416,
+            "device_span_nanos": 257704959,
+            "unavailable_timestamp_pairs": 0
+          }
+        },
+        {
+          "name": "19",
+          "x": 2,
+          "z": 1,
+          "memory": {
+            "current_rss_bytes": 1632059392,
+            "current_rss_returncode": 0,
+            "epoch": 1792733056.205827,
+            "process_peak_rss_bytes": 1660092416
+          },
+          "gpu_pipeline": {
+            "completed": 2,
+            "device_gap_nanos": 306470125,
+            "device_span_nanos": 171809291,
+            "unavailable_timestamp_pairs": 0
+          }
+        }
+      ],
+      "gpu_pipeline": {
+        "completed": 68,
+        "device_gap_ms": 5916.398125,
+        "device_span_ms": 18187.406622,
+        "peak_in_flight": 2,
+        "unavailable_timestamp_pairs": 0
+      },
+      "gpu_transfers": {
+        "readback_bytes": 2368472384,
+        "readback_bytes_per_region": 118423619.2,
+        "upload_bytes": 2091806492,
+        "upload_bytes_per_region": 104590324.6
+      },
+      "ordinary_observation": {
+        "median_ms": 363.4039788739756,
+        "p95_region_ms": 422.75888532167306,
+        "maximum_region_ms": 447.8200830053538,
+        "total_ms": 8020.186957903206,
+        "chunks_per_second": 2553.556432973014,
+        "peak_rss_bytes": 1671430144,
+        "generation_peak_rss_bytes": 1660092416
+      },
+      "comparisons": [
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/overworld-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        },
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle93/merged-full/overworld-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        }
+      ]
+    }
+  ],
+  "cpu_conclusion": "C95 eliminates boundary blob command replay but leaves all observed column-map, anchor-map and footprint lookup event counts unchanged in every case. Standard-Nether process CPU in root evaluation is mixed (-2.77% main, +1.64% second seed); normal-build adverse CPU remains unresolved. Fire and soul-fire stages include recursive earlier-state generation. Top root does not mean exclusive feature placement or an isolated removable cost.",
+  "memory_conclusion": "The earlier C95 +30.69% Overworld high-water observation is not repeated: this run reverses its direction. Current RSS rises 842 MiB for C94 versus 124 MiB for C95 during twenty measured regions, after almost equal post-warmup RSS. Completed GPU jobs during measured generation differ 66 versus 68, with one extra job each in regions 2 and 14. Aggregate logical upload is identical and readback differs by 224 bytes. Every measured region is shader-ready, and warmup job counts match. The counter increments at completed GPU sample publication and excludes warmup jobs in this harness; the cause of these extra small requests is unconfirmed. Neither a leak nor the cause of allocator/driver residency is identified. Prior adverse results remain retained. Twenty regions do not establish a sustained plateau.",
+  "previous_adverse_findings": {
+    "c95_report": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle95/assessment.json",
+    "normal_cpu_median_percent_change_c94_to_c95": {
+      "nether-main": 1.63,
+      "nether-second-seed": 5.74
+    },
+    "second_seed_total_cpu_percent_change": 6.42,
+    "overworld_high_water_mib": [
+      1777.75,
+      2323.296875
+    ],
+    "overworld_high_water_percent_change": 30.69,
+    "scope": "Previously observed ordinary-build pair, retained unchanged. New instrumented or reversing observations do not clear it."
+  },
+  "ordinary_observations": [
+    {
+      "case": "nether-main-run0",
+      "retained_pr209_observation": {
+        "median_ms": 1511.5113959182054,
+        "p95_region_ms": 2049.189687124454,
+        "maximum_region_ms": 2533.9149171486497,
+        "total_ms": 29930.485958931968,
+        "chunks_per_second": 684.252171117465,
+        "generation_peak_rss_bytes": 2240626688,
+        "peak_rss_bytes": 2240626688
+      },
+      "fresh_same_binary_observation": {
+        "median_ms": 1434.6762290224433,
+        "p95_region_ms": 2456.351860414725,
+        "maximum_region_ms": 2595.5598331056535,
+        "total_ms": 29752.267207950354,
+        "chunks_per_second": 688.3509030373109,
+        "generation_peak_rss_bytes": 2179350528,
+        "peak_rss_bytes": 2179350528
+      },
+      "comparisons": [
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/nether-main-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        },
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle93/merged-full/nether-main-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        }
+      ]
+    },
+    {
+      "case": "nether-second-seed-run0",
+      "retained_pr209_observation": {
+        "median_ms": 1529.5078755589202,
+        "p95_region_ms": 1921.0512959049086,
+        "maximum_region_ms": 2187.626917148009,
+        "total_ms": 29651.218582876027,
+        "chunks_per_second": 690.6967395878789,
+        "generation_peak_rss_bytes": 2243903488,
+        "peak_rss_bytes": 2243903488
+      },
+      "fresh_same_binary_observation": {
+        "median_ms": 1387.7736666472629,
+        "p95_region_ms": 2218.345935514663,
+        "maximum_region_ms": 2427.0050830673426,
+        "total_ms": 29725.985958008096,
+        "chunks_per_second": 688.959485782262,
+        "generation_peak_rss_bytes": 2348204032,
+        "peak_rss_bytes": 2348204032
+      },
+      "comparisons": [
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/nether-second-seed-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        },
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle93/merged-full/nether-second-seed-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        }
+      ]
+    },
+    {
+      "case": "nether-custom-bounds-run0",
+      "retained_pr209_observation": {
+        "median_ms": 981.7778129363433,
+        "p95_region_ms": 1136.8270854582079,
+        "maximum_region_ms": 1190.8742079976946,
+        "total_ms": 19770.494707860053,
+        "chunks_per_second": 1035.8870783267691,
+        "generation_peak_rss_bytes": 1945780224,
+        "peak_rss_bytes": 1945780224
+      },
+      "fresh_same_binary_observation": {
+        "median_ms": 960.0425829412416,
+        "p95_region_ms": 1281.6360951517709,
+        "maximum_region_ms": 1305.532000027597,
+        "total_ms": 20258.2862500567,
+        "chunks_per_second": 1010.9443487571749,
+        "generation_peak_rss_bytes": 1935736832,
+        "peak_rss_bytes": 1935736832
+      },
+      "comparisons": [
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/nether-custom-bounds-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        },
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle93/merged-full/nether-custom-bounds-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        }
+      ]
+    },
+    {
+      "case": "nether-direct-stem-run0",
+      "retained_pr209_observation": {
+        "median_ms": 955.6127289542928,
+        "p95_region_ms": 1090.1782850618476,
+        "maximum_region_ms": 1335.3557500522584,
+        "total_ms": 19474.0940828342,
+        "chunks_per_second": 1051.6535410010408,
+        "generation_peak_rss_bytes": 1953644544,
+        "peak_rss_bytes": 1953644544
+      },
+      "fresh_same_binary_observation": {
+        "median_ms": 855.5699794087559,
+        "p95_region_ms": 1089.2154641216623,
+        "maximum_region_ms": 1183.2901248708367,
+        "total_ms": 18373.7685829401,
+        "chunks_per_second": 1114.632521224607,
+        "generation_peak_rss_bytes": 1926365184,
+        "peak_rss_bytes": 1926365184
+      },
+      "comparisons": [
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/nether-direct-stem-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        },
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle93/merged-full/nether-direct-stem-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        }
+      ]
+    },
+    {
+      "case": "overworld-run0",
+      "retained_pr209_observation": {
+        "median_ms": 1000.7547704735771,
+        "p95_region_ms": 1170.166247873567,
+        "maximum_region_ms": 1293.8847078476101,
+        "total_ms": 19754.044459201396,
+        "chunks_per_second": 1036.749716864207,
+        "generation_peak_rss_bytes": 1572749312,
+        "peak_rss_bytes": 1585364992
+      },
+      "fresh_same_binary_observation": {
+        "median_ms": 455.09987545665354,
+        "p95_region_ms": 558.5153562831694,
+        "maximum_region_ms": 566.0200000274926,
+        "total_ms": 9119.82150003314,
+        "chunks_per_second": 2245.657987925046,
+        "generation_peak_rss_bytes": 1466105856,
+        "peak_rss_bytes": 1466105856
+      },
+      "comparisons": [
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/overworld-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        },
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle93/merged-full/overworld-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        }
+      ]
+    }
+  ],
+  "host_observations": {
+    "max_cpu_percent_by_command": {
+      "c94": {
+        "node": 540.9,
+        "/private/tmp/cantrip-markdown-code-copy/node_modules/.pnpm/@typescript+typescript-darwin-arm64@7.0.2/node_modules/@typescript/typescript-darwin-arm64/lib/tsc": 530.0,
+        "/System/Library/Frameworks/Virtualization.framework/Versions/A/XPCServices/com.apple.Virtualization.VirtualMachine.xpc/Contents/MacOS/com.apple.Virtualization.VirtualMachine": 225.2,
+        "/Users/cyberpwn/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node": 206.9,
+        "/Applications/ChatGPT.app/Contents/Frameworks/Codex Framework.framework/Versions/155.0.8059.80/Helpers/Codex (Renderer).app/Contents/MacOS/Codex (Renderer)": 197.9,
+        "(node)": 171.9,
+        "/Users/cyberpwn/.nvm/versions/node/v24.14.0/bin/node": 160.5,
+        "/Applications/GitKraken.app/Contents/Frameworks/GitKraken Helper (Renderer).app/Contents/MacOS/GitKraken Helper (Renderer)": 142.1
+      },
+      "c95": {
+        "/Applications/ChatGPT.app/Contents/Frameworks/Codex Framework.framework/Versions/155.0.8059.80/Helpers/Codex (Renderer).app/Contents/MacOS/Codex (Renderer)": 478.7,
+        "/private/tmp/cantrip-markdown-code-copy/node_modules/.pnpm/@typescript+typescript-darwin-arm64@7.0.2/node_modules/@typescript/typescript-darwin-arm64/lib/tsc": 459.2,
+        "/Users/cyberpwn/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node": 241.0,
+        "/System/Library/Frameworks/Virtualization.framework/Versions/A/XPCServices/com.apple.Virtualization.VirtualMachine.xpc/Contents/MacOS/com.apple.Virtualization.VirtualMachine": 214.3,
+        "/Applications/GitKraken.app/Contents/Frameworks/GitKraken Helper (Renderer).app/Contents/MacOS/GitKraken Helper (Renderer)": 197.7,
+        "(node)": 167.2,
+        "/Users/cyberpwn/.nvm/versions/node/v24.14.0/bin/node": 165.4,
+        "/Users/cyberpwn/Library/Caches/ms-playwright/chromium_headless_shell-1234/chrome-headless-shell-mac-arm64/chrome-headless-shell": 146.6
+      }
+    },
+    "scope": "Each entry is a per-process maximum across snapshots, not a simultaneous total or proof of causality. Competing CPU workloads were observed. Acceptance remains deferred."
+  },
+  "validation": {
+    "root_observer_compared_instances": 204800,
+    "memory_compared_instances": 40960,
+    "ordinary_compared_instances": 102400,
+    "pre_pr_total_compared_instances": 348160,
+    "nbt": "All measured instances match original and actual PR209 complete decompressed chunk NBT and membership. Only MCA timestamps and compression representation are excluded. Coordinates repeat across runs; counts are instances, not unique spatial coverage.",
+    "root_observer_invariants": "Successful roots, tasks and publications; valid occupancy and attribution intervals; context/error checks; exact matching source/profile/seed/coordinate/root/task metadata. Full details retained in root-cpu-analysis.json.",
+    "ordinary_native_tests": "No new source or tests; unchanged native tests are not repeated for this documentation-only change. Actual full-region generation and comparisons run. A forced build and full suite follow the confirmed merge.",
+    "actual_controllers_terminal": true
+  },
+  "source_review": {
+    "column_traversal": "Planner::column first checks completed interior version skips and exterior reuse, then ready_columns/sharded boundary tile lookup. build_column recursively calls prefix for prior roots. C95 only changes how eligible output-column commands are consumed.",
+    "existing_material_membership": "placement/materials.rs already compiles suitable material sets to bitsets and specializes short lists. Adding another generic membership cache is not a new opportunity.",
+    "existing_view_cache": "ViewColumns already caches exact-key immutable prior columns within a view, including collision fallback. Any new reuse experiment must measure what remains outside those paths.",
+    "overworld": "Zero ordered dependency roots in both observer cases. Only dependencies.rs and output_columns.rs differ in the held native trees; GPU and Overworld implementation files are identical. This does not establish that process memory/scheduling must be identical."
+  },
+  "next_actions": [
+    "Before extending write summaries to magma ore, measure where fire/soul-fire-triggered prior-state reconstruction spends CPU, splitting completed interior versus recursive boundary calls and actual target root. Use thread-local aggregate counts and root-boundary CPU clocks; avoid retaining a record for every hot lookup.",
+    "Measure exact-key reuse opportunities in boundary column version traversal without truncating dependency reach, widening retained lifetimes or changing same-root order. Existing interior version skipping and per-view caches already cover other paths.",
+    "For custom/direct profiles, inspect the four leading warped vegetation/fungi/sprout/vine stages; together they account for roughly 59-61% of instrumented evaluation CPU, so standard-profile blob summaries cannot address their main costs.",
+    "Revisit memory with matched warmup/readiness histories and sustained same-binary controls, recording current RSS separately from high-water RSS and existing logical ownership/GPU counters. An opposite single pair is not regression clearance.",
+    "Defer production timing confirmation as requested. Keep C94/C95 held until full-region CPU/latency, Overworld, sustained memory and concurrency evidence support acceptance."
+  ],
+  "limits": [
+    "Instrumentation is part of measured evaluation. Other inactive test hooks still differ from a normal release; C95 removes some inactive per-command probe calls along with command replay. An instrumented improvement cannot explain or reverse a normal-build adverse result by itself.",
+    "Per-root stages identify where work is triggered, including earlier roots reconstructed on demand. They are not exclusive feature-placement attribution.",
+    "Five warmups and twenty measured regions per profile; source inputs and root task counts match. These are sequential diagnostic observations under host activity, not repeated quiet acceptance.",
+    "Overworld uses no ordered dependency roots here. This observer cannot attribute its high-water memory increase.",
+    "An additional one-second macOS sample observed C95 progress during its slow instrumented main case. This was absent from C94 and is extra diagnostic overhead, not evidence of ordinary-build performance.",
+    "No portal/DH/concurrency/sustained-memory acceptance is added by this report.",
+    "Normal binary is reused before PR because the native source is unchanged; actual merged source must still be rebuilt and its complete output checked.",
+    "No production speedup or subsecond result is accepted. The goal remains incomplete."
+  ],
+  "recovery": {
+    "evidence_root": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle96",
+    "driver_cwd": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20",
+    "worktree": "/tmp/retina-nether-root-cpu-attribution",
+    "branch": "codex/nether-root-cpu-attribution",
+    "commands": [
+      "python3 root-cpu-attribution-paired.py",
+      "python3 root-cpu-attribution-memory.py",
+      "python3 root-cpu-attribution-analysis.py",
+      "python3 root-cpu-attribution-findings.py",
+      "python3 root-cpu-attribution-full.py normal",
+      "python3 root-cpu-attribution-report.py",
+      "python3 root-cpu-attribution-full.py merged"
+    ],
+    "notes": "Run generation controllers serially with fresh output directories; never overwrite retained worlds or binary provenance. Analysis scripts consume existing reports. Report writer appends documentation once. Retained C94/C95 worktrees and binaries are intentionally preserved."
+  },
+  "evidence_manifest": [
+    {
+      "path": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle96/paired-observer-receipt.json",
+      "bytes": 11017,
+      "sha256": "7678f95b58d7647dfcad2ee6d22f92bc4e2a8c6d7fc3de31c529997223255c9f"
+    },
+    {
+      "path": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle96/memory-driver-receipt.json",
+      "bytes": 5375,
+      "sha256": "e5f805dfc72f20a3aa76544a65d2b0de078446fc174471ec5eb351d352c3e405"
+    },
+    {
+      "path": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle96/normal-driver-receipt.json",
+      "bytes": 1658,
+      "sha256": "da52c7cdbb09e4bd61c078b89e9a1cc0200929a14e6769db84a7f95d0fc261c9"
+    },
+    {
+      "path": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle96/root-cpu-analysis.json",
+      "bytes": 3381019,
+      "sha256": "17e7c375cf481db3f1eccdfcf0252d9dbc9d76ab1e140c70b45b887d7e64659e"
+    },
+    {
+      "path": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle96/findings.json",
+      "bytes": 47080,
+      "sha256": "880478ffa8eb79cc7ba68d4a43d82243129ea5ca85be627f13dbe6d019806f3d"
+    },
+    {
+      "path": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle96/investigation-plan.json",
+      "bytes": 2035,
+      "sha256": "f6132aed4e5ab2650036564d96581ad5f7511d5092beb0179fd7347b8ef62071"
+    },
+    {
+      "path": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle96/c94-inventory/report.json",
+      "bytes": 177663575,
+      "sha256": "20a9b59196583647a3203211cbc5f1f5874c640884d2322f3a63ad6c2c1a21d0"
+    },
+    {
+      "path": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle96/c95-inventory/report.json",
+      "bytes": 176834979,
+      "sha256": "c270aeff0cab98ac5b2d9081bae8450095132f26bf0c771d44d95a33e37a3800"
+    },
+    {
+      "path": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle96/c94-host.jsonl",
+      "bytes": 77395,
+      "sha256": "d8c716ae056fd5ff2059bc3536dcce4bc22007e8d6ce3d6e237a78ea070dc13d"
+    },
+    {
+      "path": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle96/c95-host.jsonl",
+      "bytes": 227871,
+      "sha256": "d93fce716a6db31246f66480a39ccbd789f3ff79762faa8ced14a4b650ed2695"
+    },
+    {
+      "path": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle96/c95-observer-progress-sample.json",
+      "bytes": 622,
+      "sha256": "8f1640e3de8067a2642c1ed4083adf81d244fc33a9cbe34be20f09405b793dc2"
+    },
+    {
+      "path": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle96/c95-observer-progress-sample.txt",
+      "bytes": 4242299,
+      "sha256": "22686290efa0113060d36999044157c9e0f384fe561013022381511bee42a272"
+    },
+    {
+      "path": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle96/memory-observer-benchmark.py",
+      "bytes": 25469,
+      "sha256": "3ccddd892e21e4b8f4cf2e1367e2dce8210d6c79680b4a75c1e9822465f8b0a0"
+    },
+    {
+      "path": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle96/overworld-memory/c94-host.jsonl",
+      "bytes": 1709913,
+      "sha256": "1faa0e05d10b9bba16f3b28edb2afd267c5da7a8754f28eae92436a7239d8100"
+    },
+    {
+      "path": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle96/overworld-memory/c95-host.jsonl",
+      "bytes": 1320547,
+      "sha256": "9806900bc67fda14c0610a0599583d55b571a7955ad20f218ea5bde87c405a89"
+    },
+    {
+      "path": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle96/normal-full/suite.json",
+      "bytes": 122200,
+      "sha256": "5fb08f3aadedfc286d380a2484560d9d11970d63ad87a554735d302f12c20fd3"
+    },
+    {
+      "path": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/root-cpu-attribution-analysis.py",
+      "bytes": 8775,
+      "sha256": "151aad7adba31edadeb19644debacdd888e5274e31c496e385324201043a0c3c"
+    },
+    {
+      "path": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/root-cpu-attribution-findings.py",
+      "bytes": 7816,
+      "sha256": "04638f0a860b81351f9d936728e5b64f5821231728122be776f74f1224b466f8"
+    },
+    {
+      "path": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/root-cpu-attribution-full.py",
+      "bytes": 3184,
+      "sha256": "6bf27f27e7d4fc5626dca15ccd39017584e53a9f76e862581ec1d77d4696c077"
+    },
+    {
+      "path": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/root-cpu-attribution-memory.py",
+      "bytes": 3639,
+      "sha256": "401ba4ad8ed809bfe5db3328bfab39f1ddee5ac4527e5196b5a21e6b924bf813"
+    },
+    {
+      "path": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/root-cpu-attribution-paired.py",
+      "bytes": 4421,
+      "sha256": "e651a37226b61802628a7d1ab80f4fc0f781fbc2787e403902fc71c412822bf2"
+    },
+    {
+      "path": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/root-cpu-attribution-report.py",
+      "bytes": 13894,
+      "sha256": "e0a96ab937053ce1c35608eb7a1e219015ce003cb066aac451516c0af605f370"
+    }
+  ]
+}
