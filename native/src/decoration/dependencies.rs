@@ -1353,13 +1353,13 @@ impl Planner<'_> {
                 if y >= 0 && (y as usize) < height {
                     let _first = edits.insert(y as usize);
                     #[cfg(test)]
-                    {
-                        let changed = _first && prior.material(y as usize) != material;
-                        probe.feature_result(FEATURE, changed);
-                        if changed {
-                            probe.point_change(false);
-                        }
-                    }
+                    // Diagnostic reads must not become generation reads.
+                    probe.uniform_feature_result(
+                        _first,
+                        &prior,
+                        y as usize,
+                        material,
+                    );
                 }
             };
             if let Some((root, column)) = completed {
