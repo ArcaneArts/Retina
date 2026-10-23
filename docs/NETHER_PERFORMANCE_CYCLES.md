@@ -2717,3 +2717,71 @@ cleared by this instrumentation. No new runtime, sustained-memory, concurrency
 or subsecond acceptance is claimed. See
 `docs/benchmarks/nether-perf-cycle97-2026-10-23.json` for full provenance,
 ordinary observations, counters, raw evidence hashes and recovery commands.
+
+## Cycle 108 — concrete column-height lifetime census
+
+**Test-only diagnostic; normal generation code and layout are unchanged.**
+Earlier prefix counts describe logical cache builds, not distinct material
+states. This census embeds a lifetime token in each concrete `ColumnState`
+and records whether its six eagerly computed heights are ever queried or
+archived. Aliases do not create states; retired tokens retain only counters.
+Restored archive heights are counted separately because they are copied,
+not recomputed. Material access includes scalar reads, dense expansion and
+the existing run-array equality comparison.
+
+Five unobserved warmups precede twenty complete, shader-ready, lit and
+compressed regions per case. Counts below are arithmetic means per region:
+
+| Case | Computed states | Heights neither queried nor archived | Fraction | Backing run-word fraction |
+| --- | ---: | ---: | ---: | ---: |
+| Standard Nether, seed 123456789 | 551,408 | 333,025 | 60.40% | 61.89% |
+| Standard Nether, seed 42 | 560,446 | 342,978 | 61.20% | 63.44% |
+| Custom bounds, seed 123456789 | 589,132 | 345,680 | 58.68% | 58.37% |
+| Direct-stem fixture, seed 42 | 568,327 | 327,164 | 57.57% | 57.29% |
+
+The custom and direct-stem exported profiles are byte-identical; these two
+native cases differ by seed. The Overworld fixture creates no states in this
+Nether dependency path. Only maps 2 and 4 receive queries in the measured
+corpus; that does not justify dropping support for the other four maps.
+
+The conservative unused count excludes archive copies. An array unused in
+its original state can still be needed after restoration in another region.
+Every measured region balances created and retired states, access classes,
+height masks and run-word totals, with zero untracked calls. Restored states
+average roughly 99,000–127,000 per Nether region and are excluded from the
+computed-height opportunity. State counts are not allocation counts or peak
+residency; run-word fractions are not CPU-time fractions.
+
+The next candidate is lazy calculation of the six heights on first query or
+archive capture, with restored states initialized from their saved values.
+This could avoid approximately 327,000–346,000 complete derivations per
+region. It must preserve concurrent queries, profile/geometry isolation,
+archive semantics and all six maps. Extra synchronization, object size and
+query branches may erase the benefit. C46 already tried a faster eager scan
+without establishing a complete-region improvement; avoiding unused scans
+is a different hypothesis. C107's held uniform-overlay height bookkeeping
+also did not establish sufficient incremental benefit.
+
+Validation: **193 native tests**, **five explicit GPU fixtures** and
+**204,800 measured chunk instances** across instrumented and ordinary runs
+match both immutable original and actual PR211 main complete NBT and chunk
+membership. Only MCA timestamps and compression representation are excluded;
+coordinates repeat. Three new tests cover all 256 access masks, Arc aliases,
+concurrent reads, retirement and session rebinding. Initial compile errors
+and two missing fixture environment variables are retained in failed logs;
+the corrected invocations pass using the frozen source and binaries.
+
+The normal library has identical machine code to PR211 main and no census
+symbols. All 170 differing file bytes are classified: 57 source-line bytes,
+two source-column bytes, 16 UUID bytes and 95 signing bytes. The two expanded
+height-query closures preserve their original indexing expressions.
+
+Ordinary observed median/p95 milliseconds are 1000/1367 and 977/1342 for the
+two standard seeds, 880/941 and 852/1158 for custom cases, and 368/484 for
+Overworld. These are recorded observations, not a new A/B performance result.
+Quiet timing confirmation remains deferred; no production speedup,
+subsecond acceptance, sustained-memory or portal/concurrency acceptance is
+claimed. Actual merged rebuild and full corpus verification follow the PR.
+
+See `docs/benchmarks/nether-perf-cycle108-2026-10-23.json` for exact counts,
+provenance, ordinary timing/RSS, coverage, evidence hashes and recovery paths.

@@ -1,0 +1,1620 @@
+{
+  "cycle": 108,
+  "status": "diagnostic-only ready for PR",
+  "created_utc": "2026-10-23T12:36:19.978287+00:00",
+  "base_revision": "cbc6867512f869dc76695c6e4b285ec432f540f5",
+  "tested": {
+    "revision": "44753e4cad16ff27286fae9522c8038d483a6e0b",
+    "native_tree": "1d9e6bed51bb50db683d6e5f2a8ff3689c8858c2",
+    "status": "",
+    "sha256": "daa63b89e1c64bf302bebcea7935621b7cec1a04153e7ad230842dad435d7b26",
+    "test_executable_sha256": "c1db3c93b424f01894ffe0ab7bcffb4deb4b09cb9c9a726c5737ec5e3d162114",
+    "native_test_result": [
+      "193",
+      "0",
+      "56"
+    ],
+    "actual_build_log": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle108/native-build.log",
+    "forced_clean": false,
+    "timing_acceptance": false
+  },
+  "timing_acceptance": false,
+  "change": "Test-only lifetime census distinguishes eagerly computed column heights from restored archive heights, actual material/height queries, archive copies and identity temporary discards. Normal code and layout unchanged.",
+  "method": {
+    "cases": 5,
+    "warmups_per_case": 5,
+    "measured_regions_per_case": 20,
+    "workers": 16,
+    "callers": 1,
+    "scope": "Complete 1024-chunk lit MCA, zlib, shader status 4, original and preceding actual merged PR211 NBT and membership. Only MCA timestamps/compression representation excluded. Coordinates repeat.",
+    "observer": "Token embedded in each concrete state; Arc aliases do not create new states. Counter shards retain no column/terrain/archive/planner/GPU owners. All states retire and all accounting identities balance after every region; zero untracked calls. The observer changes test layout and costs.",
+    "custom_cases": "custom.json and direct-stem.json have identical exported profile bytes; the cases differ by seed, not normalized generator configuration.",
+    "quantities": "Per-region numbers are arithmetic means over 20 regions. Concrete states are distinct Rust values, not logical column builds, allocations, peak residency or CPU time. Run words weight whole backing slices; no time attribution is inferred. Restored arrays are not eagerly recomputed. Unused-and-not-archived excludes arrays potentially needed through an archive in a subsequent job."
+  },
+  "cases": [
+    {
+      "case": "nether-main",
+      "profile": "nether.json",
+      "seed": 123456789,
+      "profile_sha256": "0cf913a69f3faceb1c8719fb238dbd90961586262af4cd2cfe0c0fd62953a2ff",
+      "measured_regions": 20,
+      "computed_states_per_region": 551408.0,
+      "restored_states_per_region": 106624.4,
+      "computed_height_unused_not_archived_states_per_region": 333024.7,
+      "computed_height_unused_not_archived_states_pct": 60.3953334010388,
+      "computed_run_words_per_region": 5568644.6,
+      "computed_height_unused_not_archived_run_words_per_region": 3446343.65,
+      "computed_height_unused_not_archived_run_words_pct": 61.8883749557298,
+      "computed_height_unused_in_lifetime_states_pct": 86.05927008675971,
+      "queried_height_mask_lifetime_counts": {
+        "0": 9490754,
+        "4": 711165,
+        "16": 815694,
+        "20": 10547
+      },
+      "buckets": [
+        {
+          "access_classes": [
+            0,
+            3099042,
+            0,
+            369018,
+            0,
+            1089767,
+            0,
+            116342
+          ],
+          "archive_copies_interior_exterior": [
+            530723,
+            675386
+          ],
+          "balanced": true,
+          "class_run_words": [
+            0,
+            41861031,
+            0,
+            4756298,
+            0,
+            14506704,
+            0,
+            1382912
+          ],
+          "created_run_words": 62506945,
+          "created_states": 4674169,
+          "height_queries_by_map": [
+            0,
+            0,
+            346092,
+            0,
+            174773,
+            0
+          ],
+          "height_unused_not_archived_run_words": 41861031,
+          "height_unused_not_archived_states": 3099042,
+          "height_unused_run_words": 56367735,
+          "height_unused_states": 4188809,
+          "heights": "computed",
+          "identity_temporary_discards": 2,
+          "kind": "owned",
+          "retired_states": 4674169
+        },
+        {
+          "access_classes": [
+            0,
+            3561452,
+            26360,
+            780065,
+            0,
+            1740493,
+            12889,
+            232732
+          ],
+          "archive_copies_interior_exterior": [
+            660741,
+            1325373
+          ],
+          "balanced": true,
+          "class_run_words": [
+            0,
+            27065842,
+            185164,
+            6862966,
+            0,
+            12711055,
+            90614,
+            1950306
+          ],
+          "created_run_words": 48865947,
+          "created_states": 6353991,
+          "height_queries_by_map": [
+            0,
+            0,
+            429858,
+            0,
+            689596,
+            0
+          ],
+          "height_unused_not_archived_run_words": 27065842,
+          "height_unused_not_archived_states": 3561452,
+          "height_unused_run_words": 39776897,
+          "height_unused_states": 5301945,
+          "heights": "computed",
+          "identity_temporary_discards": 0,
+          "kind": "shared_terrain",
+          "retired_states": 6353991
+        },
+        {
+          "access_classes": [
+            0,
+            1095512,
+            51400,
+            91171,
+            0,
+            783331,
+            17092,
+            93982
+          ],
+          "archive_copies_interior_exterior": [
+            715559,
+            178846
+          ],
+          "balanced": true,
+          "class_run_words": [
+            0,
+            10714853,
+            476767,
+            887231,
+            0,
+            7266505,
+            162563,
+            890223
+          ],
+          "created_run_words": 20398142,
+          "created_states": 2132488,
+          "height_queries_by_map": [
+            0,
+            0,
+            161799,
+            0,
+            104674,
+            0
+          ],
+          "height_unused_not_archived_run_words": 10714853,
+          "height_unused_not_archived_states": 1095512,
+          "height_unused_run_words": 17981358,
+          "height_unused_states": 1878843,
+          "heights": "restored",
+          "identity_temporary_discards": 0,
+          "kind": "cached_archive",
+          "retired_states": 2132488
+        }
+      ],
+      "unused_not_archived_state_pct_region_range": [
+        54.72125799047782,
+        65.95732631688999
+      ]
+    },
+    {
+      "case": "nether-second-seed",
+      "profile": "nether.json",
+      "seed": 42,
+      "profile_sha256": "0cf913a69f3faceb1c8719fb238dbd90961586262af4cd2cfe0c0fd62953a2ff",
+      "measured_regions": 20,
+      "computed_states_per_region": 560446.4,
+      "restored_states_per_region": 99424.5,
+      "computed_height_unused_not_archived_states_per_region": 342978.15,
+      "computed_height_unused_not_archived_states_pct": 61.197315211588474,
+      "computed_run_words_per_region": 5740925.2,
+      "computed_height_unused_not_archived_run_words_per_region": 3641810.4,
+      "computed_height_unused_not_archived_run_words_pct": 63.43594931353574,
+      "computed_height_unused_in_lifetime_states_pct": 85.64700388832902,
+      "queried_height_mask_lifetime_counts": {
+        "0": 9600111,
+        "4": 721114,
+        "16": 873979,
+        "20": 13724
+      },
+      "buckets": [
+        {
+          "access_classes": [
+            0,
+            3258264,
+            0,
+            389009,
+            0,
+            978394,
+            0,
+            119371
+          ],
+          "archive_copies_interior_exterior": [
+            486665,
+            611100
+          ],
+          "balanced": true,
+          "class_run_words": [
+            0,
+            44442076,
+            0,
+            5099473,
+            0,
+            12798339,
+            0,
+            1386442
+          ],
+          "created_run_words": 63726330,
+          "created_states": 4745038,
+          "height_queries_by_map": [
+            0,
+            0,
+            331556,
+            0,
+            214721,
+            0
+          ],
+          "height_unused_not_archived_run_words": 44442076,
+          "height_unused_not_archived_states": 3258264,
+          "height_unused_run_words": 57240415,
+          "height_unused_states": 4236658,
+          "heights": "computed",
+          "identity_temporary_discards": 0,
+          "kind": "owned",
+          "retired_states": 4745038
+        },
+        {
+          "access_classes": [
+            0,
+            3601299,
+            27280,
+            852280,
+            0,
+            1762154,
+            12808,
+            208069
+          ],
+          "archive_copies_interior_exterior": [
+            662812,
+            1320219
+          ],
+          "balanced": true,
+          "class_run_words": [
+            0,
+            28394132,
+            201798,
+            7685715,
+            0,
+            12979769,
+            90939,
+            1739821
+          ],
+          "created_run_words": 51092174,
+          "created_states": 6463890,
+          "height_queries_by_map": [
+            0,
+            0,
+            459128,
+            0,
+            714574,
+            0
+          ],
+          "height_unused_not_archived_run_words": 28394132,
+          "height_unused_not_archived_states": 3601299,
+          "height_unused_run_words": 41373901,
+          "height_unused_states": 5363453,
+          "heights": "computed",
+          "identity_temporary_discards": 0,
+          "kind": "shared_terrain",
+          "retired_states": 6463890
+        },
+        {
+          "access_classes": [
+            0,
+            1005631,
+            52515,
+            82877,
+            0,
+            745033,
+            17023,
+            85411
+          ],
+          "archive_copies_interior_exterior": [
+            687589,
+            159878
+          ],
+          "balanced": true,
+          "class_run_words": [
+            0,
+            9558877,
+            479472,
+            792108,
+            0,
+            6641648,
+            157183,
+            789823
+          ],
+          "created_run_words": 18419111,
+          "created_states": 1988490,
+          "height_queries_by_map": [
+            0,
+            0,
+            162779,
+            0,
+            87567,
+            0
+          ],
+          "height_unused_not_archived_run_words": 9558877,
+          "height_unused_not_archived_states": 1005631,
+          "height_unused_run_words": 16200525,
+          "height_unused_states": 1750664,
+          "heights": "restored",
+          "identity_temporary_discards": 0,
+          "kind": "cached_archive",
+          "retired_states": 1988490
+        }
+      ],
+      "unused_not_archived_state_pct_region_range": [
+        55.06941128081687,
+        66.10679009400201
+      ]
+    },
+    {
+      "case": "nether-custom-bounds",
+      "profile": "custom.json",
+      "seed": 123456789,
+      "profile_sha256": "dd1437839e09a35c512cad186d60497f9ab7f12d8881edf98b5d1db56278adb8",
+      "measured_regions": 20,
+      "computed_states_per_region": 589131.9,
+      "restored_states_per_region": 126522.5,
+      "computed_height_unused_not_archived_states_per_region": 345680.4,
+      "computed_height_unused_not_archived_states_pct": 58.676231927009894,
+      "computed_run_words_per_region": 5582956.55,
+      "computed_height_unused_not_archived_run_words_per_region": 3258843.7,
+      "computed_height_unused_not_archived_run_words_pct": 58.371288954416094,
+      "computed_height_unused_in_lifetime_states_pct": 84.40558896912559,
+      "queried_height_mask_lifetime_counts": {
+        "0": 9945205,
+        "4": 768222,
+        "16": 995789,
+        "20": 73422
+      },
+      "buckets": [
+        {
+          "access_classes": [
+            0,
+            2504215,
+            0,
+            563148,
+            0,
+            1259152,
+            0,
+            295178
+          ],
+          "archive_copies_interior_exterior": [
+            540239,
+            1014091
+          ],
+          "balanced": true,
+          "class_run_words": [
+            0,
+            29790375,
+            0,
+            6436815,
+            0,
+            14708848,
+            0,
+            3315221
+          ],
+          "created_run_words": 54251259,
+          "created_states": 4621693,
+          "height_queries_by_map": [
+            0,
+            0,
+            281445,
+            0,
+            694123,
+            0
+          ],
+          "height_unused_not_archived_run_words": 29790375,
+          "height_unused_not_archived_states": 2504215,
+          "height_unused_run_words": 44499223,
+          "height_unused_states": 3763367,
+          "heights": "computed",
+          "identity_temporary_discards": 0,
+          "kind": "owned",
+          "retired_states": 4621693
+        },
+        {
+          "access_classes": [
+            0,
+            4409393,
+            23363,
+            598996,
+            0,
+            1772445,
+            13766,
+            342982
+          ],
+          "archive_copies_interior_exterior": [
+            659513,
+            1469680
+          ],
+          "balanced": true,
+          "class_run_words": [
+            0,
+            35386499,
+            161983,
+            4872820,
+            0,
+            14126147,
+            96438,
+            2763985
+          ],
+          "created_run_words": 57407872,
+          "created_states": 7160945,
+          "height_queries_by_map": [
+            0,
+            0,
+            1016785,
+            0,
+            431142,
+            0
+          ],
+          "height_unused_not_archived_run_words": 35386499,
+          "height_unused_not_archived_states": 4409393,
+          "height_unused_run_words": 49512646,
+          "height_unused_states": 6181838,
+          "heights": "computed",
+          "identity_temporary_discards": 0,
+          "kind": "shared_terrain",
+          "retired_states": 7160945
+        },
+        {
+          "access_classes": [
+            0,
+            1109629,
+            116171,
+            154468,
+            0,
+            941913,
+            42618,
+            165651
+          ],
+          "archive_copies_interior_exterior": [
+            906054,
+            244128
+          ],
+          "balanced": true,
+          "class_run_words": [
+            0,
+            10446198,
+            832028,
+            1523448,
+            0,
+            8904561,
+            354766,
+            1611511
+          ],
+          "created_run_words": 23672512,
+          "created_states": 2530450,
+          "height_queries_by_map": [
+            0,
+            0,
+            322902,
+            0,
+            249527,
+            0
+          ],
+          "height_unused_not_archived_run_words": 10446198,
+          "height_unused_not_archived_states": 1109629,
+          "height_unused_run_words": 19350759,
+          "height_unused_states": 2051542,
+          "heights": "restored",
+          "identity_temporary_discards": 0,
+          "kind": "cached_archive",
+          "retired_states": 2530450
+        }
+      ],
+      "unused_not_archived_state_pct_region_range": [
+        51.75597695756116,
+        63.28809875748218
+      ]
+    },
+    {
+      "case": "nether-direct-stem",
+      "profile": "direct-stem.json",
+      "seed": 42,
+      "profile_sha256": "dd1437839e09a35c512cad186d60497f9ab7f12d8881edf98b5d1db56278adb8",
+      "measured_regions": 20,
+      "computed_states_per_region": 568327.2,
+      "restored_states_per_region": 123292.05,
+      "computed_height_unused_not_archived_states_per_region": 327164.35,
+      "computed_height_unused_not_archived_states_pct": 57.566196022291386,
+      "computed_run_words_per_region": 5334997.6,
+      "computed_height_unused_not_archived_run_words_per_region": 3056278.5,
+      "computed_height_unused_not_archived_run_words_pct": 57.28734535888076,
+      "computed_height_unused_in_lifetime_states_pct": 83.8302917755828,
+      "queried_height_mask_lifetime_counts": {
+        "0": 9528607,
+        "4": 782266,
+        "16": 979330,
+        "20": 76341
+      },
+      "buckets": [
+        {
+          "access_classes": [
+            0,
+            2259892,
+            0,
+            515671,
+            0,
+            1217862,
+            0,
+            292619
+          ],
+          "archive_copies_interior_exterior": [
+            542649,
+            967832
+          ],
+          "balanced": true,
+          "class_run_words": [
+            0,
+            26842196,
+            0,
+            5883989,
+            0,
+            14195788,
+            0,
+            3270190
+          ],
+          "created_run_words": 50192163,
+          "created_states": 4286044,
+          "height_queries_by_map": [
+            0,
+            0,
+            249890,
+            0,
+            658904,
+            0
+          ],
+          "height_unused_not_archived_run_words": 26842196,
+          "height_unused_not_archived_states": 2259892,
+          "height_unused_run_words": 41037984,
+          "height_unused_states": 3477754,
+          "heights": "computed",
+          "identity_temporary_discards": 0,
+          "kind": "owned",
+          "retired_states": 4286044
+        },
+        {
+          "access_classes": [
+            0,
+            4283395,
+            27611,
+            643267,
+            0,
+            1767458,
+            14019,
+            344750
+          ],
+          "archive_copies_interior_exterior": [
+            660071,
+            1466156
+          ],
+          "balanced": true,
+          "class_run_words": [
+            0,
+            34283374,
+            189468,
+            5174823,
+            0,
+            13975190,
+            97257,
+            2787677
+          ],
+          "created_run_words": 56507789,
+          "created_states": 7080500,
+          "height_queries_by_map": [
+            0,
+            0,
+            1176198,
+            0,
+            451896,
+            0
+          ],
+          "height_unused_not_archived_run_words": 34283374,
+          "height_unused_not_archived_states": 4283395,
+          "height_unused_run_words": 48258564,
+          "height_unused_states": 6050853,
+          "heights": "computed",
+          "identity_temporary_discards": 0,
+          "kind": "shared_terrain",
+          "retired_states": 7080500
+        },
+        {
+          "access_classes": [
+            0,
+            1086573,
+            89409,
+            152979,
+            0,
+            929521,
+            43446,
+            163913
+          ],
+          "archive_copies_interior_exterior": [
+            902756,
+            234124
+          ],
+          "balanced": true,
+          "class_run_words": [
+            0,
+            10085721,
+            687778,
+            1480125,
+            0,
+            8730846,
+            352421,
+            1588596
+          ],
+          "created_run_words": 22925487,
+          "created_states": 2465841,
+          "height_queries_by_map": [
+            0,
+            0,
+            320098,
+            0,
+            243244,
+            0
+          ],
+          "height_unused_not_archived_run_words": 10085721,
+          "height_unused_not_archived_states": 1086573,
+          "height_unused_run_words": 18816567,
+          "height_unused_states": 2016094,
+          "heights": "restored",
+          "identity_temporary_discards": 0,
+          "kind": "cached_archive",
+          "retired_states": 2465841
+        }
+      ],
+      "unused_not_archived_state_pct_region_range": [
+        50.81065467887301,
+        62.37817151858953
+      ]
+    },
+    {
+      "case": "overworld",
+      "profile": "overworld.json",
+      "seed": 123456789,
+      "profile_sha256": "72b80f1d8d799547726a1cefe1357c5c8311ed8b3736403a83c89879e4ee935b",
+      "measured_regions": 20,
+      "computed_states_per_region": 0.0,
+      "restored_states_per_region": 0.0,
+      "computed_height_unused_not_archived_states_per_region": 0.0,
+      "computed_height_unused_not_archived_states_pct": null,
+      "computed_run_words_per_region": 0.0,
+      "computed_height_unused_not_archived_run_words_per_region": 0.0,
+      "computed_height_unused_not_archived_run_words_pct": null,
+      "computed_height_unused_in_lifetime_states_pct": null,
+      "queried_height_mask_lifetime_counts": {},
+      "buckets": [],
+      "unused_not_archived_state_pct_region_range": null
+    }
+  ],
+  "ordinary_observations": [
+    {
+      "case": "nether-main-run0",
+      "median_ms": 999.5078749489039,
+      "p95_region_ms": 1367.2516535851173,
+      "maximum_region_ms": 1404.120916966349,
+      "total_ms": 20760.83783293143,
+      "chunks_per_second": 986.4727119786102,
+      "peak_rss_bytes": 2392604672,
+      "generation_peak_rss_bytes": 2392604672,
+      "memory_peak_scope": {
+        "generation_peak_rss_bytes": "Process lifetime through measured generation, including startup and warmups; excludes later snapshot processing and output validation",
+        "note": "High-water marks, not current RSS or isolated phase allocations; neither field proves sustained memory stability",
+        "peak_rss_bytes": "Process lifetime through output hashing, optional NBT comparison and optional specialization regeneration; retained legacy field"
+      },
+      "performance_diagnostics": {
+        "counters": {
+          "anchor_builds": 0,
+          "anchor_ready_hits": 0,
+          "column_builds": 0,
+          "column_join_nanos": 0,
+          "column_lock_nanos": 0,
+          "column_requests": 0,
+          "column_tiles": 0,
+          "column_versions_skipped": 0,
+          "completed_boundary_reads": 0,
+          "completed_column_commands": 0,
+          "completed_column_groups": 0,
+          "completed_column_reads": 0,
+          "deferred_ore_candidates": 0,
+          "deferred_ore_roots": 0,
+          "dependency_evaluation_nanos": 0,
+          "dependency_pool_wait_nanos": 0,
+          "distribution_nanos": 0,
+          "final_structure_planning_nanos": 0,
+          "footprint_builds": 0,
+          "footprint_pruned_writers": 0,
+          "height_roots_skipped": 0,
+          "memo_builds": 0,
+          "memo_join_nanos": 0,
+          "memo_lock_nanos": 0,
+          "memo_ready_hits": 0,
+          "memo_requests": 0,
+          "overlay_recommit_calls_skipped": 0,
+          "overlay_recommit_commands_skipped": 0,
+          "prefix_evaluations": 0,
+          "region_pool_wait_nanos": 0,
+          "shared_material_columns": 0,
+          "structure_active_hits": 0,
+          "structure_builds": 0,
+          "structure_cache_evictions": 0,
+          "structure_cache_hits": 0,
+          "structure_cache_misses": 0,
+          "structure_candidates": 0,
+          "structure_discovery_tiles": 0,
+          "structure_fossil_batches": 0,
+          "structure_fossil_biome_points": 0,
+          "structure_fossil_columns": 0,
+          "structure_job_cache_hits": 0,
+          "structure_overlapping_builds": 0,
+          "structure_pending_evictions": 0,
+          "structure_plan_calls": 0,
+          "structure_probe_points": 0,
+          "structure_repeated_builds": 0,
+          "structure_unique_candidates": 0,
+          "teardown_boundary_columns_nanos": 0,
+          "teardown_commands_nanos": 0,
+          "teardown_nanos": 0,
+          "teardown_other_nanos": 0,
+          "teardown_outputs_nanos": 0,
+          "teardown_terrain_nanos": 0,
+          "teardown_versions_nanos": 0,
+          "terrain_cache_hits": 0,
+          "terrain_exact_tile_cache_hits": 0,
+          "terrain_generated_chunks": 0,
+          "terrain_generated_tiles": 0,
+          "terrain_initial_tiles_reused": 0,
+          "terrain_job_cached_tile_hits": 0,
+          "terrain_job_cached_tiles_retained": 0,
+          "terrain_job_direct_requests": 0,
+          "terrain_job_fallback_requests": 0,
+          "terrain_job_join_nanos": 0,
+          "terrain_job_lock_nanos": 0,
+          "terrain_job_requests": 0,
+          "terrain_job_snapshot_nanos": 0,
+          "terrain_requests": 0,
+          "terrain_unique_tiles": 0,
+          "version_cache_boundary_hits": 0,
+          "version_cache_boundary_lookups": 0,
+          "version_cache_capture_nanos": 0,
+          "version_cache_captured_regions": 0,
+          "version_cache_evicted_regions": 0,
+          "version_cache_export_nanos": 0,
+          "version_cache_export_skips": 0,
+          "version_cache_exported_bytes": 0,
+          "version_cache_exported_regions": 0,
+          "version_cache_exterior_exported_bytes": 0,
+          "version_cache_exterior_exported_slots": 0,
+          "version_cache_exterior_exported_spans": 0,
+          "version_cache_exterior_exported_states": 0,
+          "version_cache_exterior_hits": 0,
+          "version_cache_exterior_lookups": 0,
+          "version_cache_publish_nanos": 0,
+          "version_cache_published_regions": 0,
+          "view_column_cached_reads": 0,
+          "view_column_loads": 0,
+          "view_column_slot_hits": 0,
+          "view_terrain_borrowed_reads": 0,
+          "view_terrain_loaded_reads": 0
+        },
+        "enabled": false,
+        "note": "Measured-interval deltas. Unique keys are first seen during this interval, excluding warmup keys. Recursive/concurrent durations overlap.",
+        "scope": "profile lifetime; concurrent and recursive durations overlap",
+        "terrain_tile_scope": "Measured-interval generation counts, including repeated tiles and all GPU guards; coordinates and side are chunks",
+        "terrain_tiles": [],
+        "version": 1
+      },
+      "profile_sha256": "385256a18191b411d0758e0e4bfbf9a3a330160c65150d5960c23c2a53037edd",
+      "coverage": {
+        "biome_chunk_membership": {
+          "minecraft:basalt_deltas": 3694,
+          "minecraft:crimson_forest": 4259,
+          "minecraft:nether_wastes": 11813,
+          "minecraft:soul_sand_valley": 2475,
+          "minecraft:warped_forest": 454
+        },
+        "chunks": 20480,
+        "unique_structure_starts": {
+          "minecraft:bastion_remnant": 17,
+          "minecraft:fortress": 11,
+          "minecraft:nether_fossil": 156,
+          "minecraft:ruined_portal_nether": 15
+        }
+      },
+      "comparisons": [
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/nether-main-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        },
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle97/merged-full/nether-main-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        }
+      ]
+    },
+    {
+      "case": "nether-second-seed-run0",
+      "median_ms": 976.9915624056011,
+      "p95_region_ms": 1341.6289474698715,
+      "maximum_region_ms": 1435.3604998905212,
+      "total_ms": 19050.244416110218,
+      "chunks_per_second": 1075.051823622834,
+      "peak_rss_bytes": 2536685568,
+      "generation_peak_rss_bytes": 2536685568,
+      "memory_peak_scope": {
+        "generation_peak_rss_bytes": "Process lifetime through measured generation, including startup and warmups; excludes later snapshot processing and output validation",
+        "note": "High-water marks, not current RSS or isolated phase allocations; neither field proves sustained memory stability",
+        "peak_rss_bytes": "Process lifetime through output hashing, optional NBT comparison and optional specialization regeneration; retained legacy field"
+      },
+      "performance_diagnostics": {
+        "counters": {
+          "anchor_builds": 0,
+          "anchor_ready_hits": 0,
+          "column_builds": 0,
+          "column_join_nanos": 0,
+          "column_lock_nanos": 0,
+          "column_requests": 0,
+          "column_tiles": 0,
+          "column_versions_skipped": 0,
+          "completed_boundary_reads": 0,
+          "completed_column_commands": 0,
+          "completed_column_groups": 0,
+          "completed_column_reads": 0,
+          "deferred_ore_candidates": 0,
+          "deferred_ore_roots": 0,
+          "dependency_evaluation_nanos": 0,
+          "dependency_pool_wait_nanos": 0,
+          "distribution_nanos": 0,
+          "final_structure_planning_nanos": 0,
+          "footprint_builds": 0,
+          "footprint_pruned_writers": 0,
+          "height_roots_skipped": 0,
+          "memo_builds": 0,
+          "memo_join_nanos": 0,
+          "memo_lock_nanos": 0,
+          "memo_ready_hits": 0,
+          "memo_requests": 0,
+          "overlay_recommit_calls_skipped": 0,
+          "overlay_recommit_commands_skipped": 0,
+          "prefix_evaluations": 0,
+          "region_pool_wait_nanos": 0,
+          "shared_material_columns": 0,
+          "structure_active_hits": 0,
+          "structure_builds": 0,
+          "structure_cache_evictions": 0,
+          "structure_cache_hits": 0,
+          "structure_cache_misses": 0,
+          "structure_candidates": 0,
+          "structure_discovery_tiles": 0,
+          "structure_fossil_batches": 0,
+          "structure_fossil_biome_points": 0,
+          "structure_fossil_columns": 0,
+          "structure_job_cache_hits": 0,
+          "structure_overlapping_builds": 0,
+          "structure_pending_evictions": 0,
+          "structure_plan_calls": 0,
+          "structure_probe_points": 0,
+          "structure_repeated_builds": 0,
+          "structure_unique_candidates": 0,
+          "teardown_boundary_columns_nanos": 0,
+          "teardown_commands_nanos": 0,
+          "teardown_nanos": 0,
+          "teardown_other_nanos": 0,
+          "teardown_outputs_nanos": 0,
+          "teardown_terrain_nanos": 0,
+          "teardown_versions_nanos": 0,
+          "terrain_cache_hits": 0,
+          "terrain_exact_tile_cache_hits": 0,
+          "terrain_generated_chunks": 0,
+          "terrain_generated_tiles": 0,
+          "terrain_initial_tiles_reused": 0,
+          "terrain_job_cached_tile_hits": 0,
+          "terrain_job_cached_tiles_retained": 0,
+          "terrain_job_direct_requests": 0,
+          "terrain_job_fallback_requests": 0,
+          "terrain_job_join_nanos": 0,
+          "terrain_job_lock_nanos": 0,
+          "terrain_job_requests": 0,
+          "terrain_job_snapshot_nanos": 0,
+          "terrain_requests": 0,
+          "terrain_unique_tiles": 0,
+          "version_cache_boundary_hits": 0,
+          "version_cache_boundary_lookups": 0,
+          "version_cache_capture_nanos": 0,
+          "version_cache_captured_regions": 0,
+          "version_cache_evicted_regions": 0,
+          "version_cache_export_nanos": 0,
+          "version_cache_export_skips": 0,
+          "version_cache_exported_bytes": 0,
+          "version_cache_exported_regions": 0,
+          "version_cache_exterior_exported_bytes": 0,
+          "version_cache_exterior_exported_slots": 0,
+          "version_cache_exterior_exported_spans": 0,
+          "version_cache_exterior_exported_states": 0,
+          "version_cache_exterior_hits": 0,
+          "version_cache_exterior_lookups": 0,
+          "version_cache_publish_nanos": 0,
+          "version_cache_published_regions": 0,
+          "view_column_cached_reads": 0,
+          "view_column_loads": 0,
+          "view_column_slot_hits": 0,
+          "view_terrain_borrowed_reads": 0,
+          "view_terrain_loaded_reads": 0
+        },
+        "enabled": false,
+        "note": "Measured-interval deltas. Unique keys are first seen during this interval, excluding warmup keys. Recursive/concurrent durations overlap.",
+        "scope": "profile lifetime; concurrent and recursive durations overlap",
+        "terrain_tile_scope": "Measured-interval generation counts, including repeated tiles and all GPU guards; coordinates and side are chunks",
+        "terrain_tiles": [],
+        "version": 1
+      },
+      "profile_sha256": "385256a18191b411d0758e0e4bfbf9a3a330160c65150d5960c23c2a53037edd",
+      "coverage": {
+        "biome_chunk_membership": {
+          "minecraft:basalt_deltas": 3451,
+          "minecraft:crimson_forest": 3879,
+          "minecraft:nether_wastes": 9924,
+          "minecraft:soul_sand_valley": 3576,
+          "minecraft:warped_forest": 1747
+        },
+        "chunks": 20480,
+        "unique_structure_starts": {
+          "minecraft:bastion_remnant": 21,
+          "minecraft:fortress": 8,
+          "minecraft:nether_fossil": 230,
+          "minecraft:ruined_portal_nether": 13
+        }
+      },
+      "comparisons": [
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/nether-second-seed-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        },
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle97/merged-full/nether-second-seed-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        }
+      ]
+    },
+    {
+      "case": "nether-custom-bounds-run0",
+      "median_ms": 879.9786875024438,
+      "p95_region_ms": 941.179279203061,
+      "maximum_region_ms": 1005.8748330920935,
+      "total_ms": 17192.31745810248,
+      "chunks_per_second": 1191.2297483983514,
+      "peak_rss_bytes": 1952776192,
+      "generation_peak_rss_bytes": 1952776192,
+      "memory_peak_scope": {
+        "generation_peak_rss_bytes": "Process lifetime through measured generation, including startup and warmups; excludes later snapshot processing and output validation",
+        "note": "High-water marks, not current RSS or isolated phase allocations; neither field proves sustained memory stability",
+        "peak_rss_bytes": "Process lifetime through output hashing, optional NBT comparison and optional specialization regeneration; retained legacy field"
+      },
+      "performance_diagnostics": {
+        "counters": {
+          "anchor_builds": 0,
+          "anchor_ready_hits": 0,
+          "column_builds": 0,
+          "column_join_nanos": 0,
+          "column_lock_nanos": 0,
+          "column_requests": 0,
+          "column_tiles": 0,
+          "column_versions_skipped": 0,
+          "completed_boundary_reads": 0,
+          "completed_column_commands": 0,
+          "completed_column_groups": 0,
+          "completed_column_reads": 0,
+          "deferred_ore_candidates": 0,
+          "deferred_ore_roots": 0,
+          "dependency_evaluation_nanos": 0,
+          "dependency_pool_wait_nanos": 0,
+          "distribution_nanos": 0,
+          "final_structure_planning_nanos": 0,
+          "footprint_builds": 0,
+          "footprint_pruned_writers": 0,
+          "height_roots_skipped": 0,
+          "memo_builds": 0,
+          "memo_join_nanos": 0,
+          "memo_lock_nanos": 0,
+          "memo_ready_hits": 0,
+          "memo_requests": 0,
+          "overlay_recommit_calls_skipped": 0,
+          "overlay_recommit_commands_skipped": 0,
+          "prefix_evaluations": 0,
+          "region_pool_wait_nanos": 0,
+          "shared_material_columns": 0,
+          "structure_active_hits": 0,
+          "structure_builds": 0,
+          "structure_cache_evictions": 0,
+          "structure_cache_hits": 0,
+          "structure_cache_misses": 0,
+          "structure_candidates": 0,
+          "structure_discovery_tiles": 0,
+          "structure_fossil_batches": 0,
+          "structure_fossil_biome_points": 0,
+          "structure_fossil_columns": 0,
+          "structure_job_cache_hits": 0,
+          "structure_overlapping_builds": 0,
+          "structure_pending_evictions": 0,
+          "structure_plan_calls": 0,
+          "structure_probe_points": 0,
+          "structure_repeated_builds": 0,
+          "structure_unique_candidates": 0,
+          "teardown_boundary_columns_nanos": 0,
+          "teardown_commands_nanos": 0,
+          "teardown_nanos": 0,
+          "teardown_other_nanos": 0,
+          "teardown_outputs_nanos": 0,
+          "teardown_terrain_nanos": 0,
+          "teardown_versions_nanos": 0,
+          "terrain_cache_hits": 0,
+          "terrain_exact_tile_cache_hits": 0,
+          "terrain_generated_chunks": 0,
+          "terrain_generated_tiles": 0,
+          "terrain_initial_tiles_reused": 0,
+          "terrain_job_cached_tile_hits": 0,
+          "terrain_job_cached_tiles_retained": 0,
+          "terrain_job_direct_requests": 0,
+          "terrain_job_fallback_requests": 0,
+          "terrain_job_join_nanos": 0,
+          "terrain_job_lock_nanos": 0,
+          "terrain_job_requests": 0,
+          "terrain_job_snapshot_nanos": 0,
+          "terrain_requests": 0,
+          "terrain_unique_tiles": 0,
+          "version_cache_boundary_hits": 0,
+          "version_cache_boundary_lookups": 0,
+          "version_cache_capture_nanos": 0,
+          "version_cache_captured_regions": 0,
+          "version_cache_evicted_regions": 0,
+          "version_cache_export_nanos": 0,
+          "version_cache_export_skips": 0,
+          "version_cache_exported_bytes": 0,
+          "version_cache_exported_regions": 0,
+          "version_cache_exterior_exported_bytes": 0,
+          "version_cache_exterior_exported_slots": 0,
+          "version_cache_exterior_exported_spans": 0,
+          "version_cache_exterior_exported_states": 0,
+          "version_cache_exterior_hits": 0,
+          "version_cache_exterior_lookups": 0,
+          "version_cache_publish_nanos": 0,
+          "version_cache_published_regions": 0,
+          "view_column_cached_reads": 0,
+          "view_column_loads": 0,
+          "view_column_slot_hits": 0,
+          "view_terrain_borrowed_reads": 0,
+          "view_terrain_loaded_reads": 0
+        },
+        "enabled": false,
+        "note": "Measured-interval deltas. Unique keys are first seen during this interval, excluding warmup keys. Recursive/concurrent durations overlap.",
+        "scope": "profile lifetime; concurrent and recursive durations overlap",
+        "terrain_tile_scope": "Measured-interval generation counts, including repeated tiles and all GPU guards; coordinates and side are chunks",
+        "terrain_tiles": [],
+        "version": 1
+      },
+      "profile_sha256": "74bc9093952b0459ceeafaae8a4049d6c6c46067516c9f03ec0d2493e37825c0",
+      "coverage": {
+        "biome_chunk_membership": {
+          "minecraft:warped_forest": 20480
+        },
+        "chunks": 20480,
+        "unique_structure_starts": {
+          "minecraft:bastion_remnant": 20,
+          "minecraft:fortress": 8,
+          "minecraft:ruined_portal_nether": 15
+        }
+      },
+      "comparisons": [
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/nether-custom-bounds-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        },
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle97/merged-full/nether-custom-bounds-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        }
+      ]
+    },
+    {
+      "case": "nether-direct-stem-run0",
+      "median_ms": 852.4094789754599,
+      "p95_region_ms": 1157.9185831011273,
+      "maximum_region_ms": 1319.7344581130892,
+      "total_ms": 17919.96500012465,
+      "chunks_per_second": 1142.8593749964102,
+      "peak_rss_bytes": 2391392256,
+      "generation_peak_rss_bytes": 2391392256,
+      "memory_peak_scope": {
+        "generation_peak_rss_bytes": "Process lifetime through measured generation, including startup and warmups; excludes later snapshot processing and output validation",
+        "note": "High-water marks, not current RSS or isolated phase allocations; neither field proves sustained memory stability",
+        "peak_rss_bytes": "Process lifetime through output hashing, optional NBT comparison and optional specialization regeneration; retained legacy field"
+      },
+      "performance_diagnostics": {
+        "counters": {
+          "anchor_builds": 0,
+          "anchor_ready_hits": 0,
+          "column_builds": 0,
+          "column_join_nanos": 0,
+          "column_lock_nanos": 0,
+          "column_requests": 0,
+          "column_tiles": 0,
+          "column_versions_skipped": 0,
+          "completed_boundary_reads": 0,
+          "completed_column_commands": 0,
+          "completed_column_groups": 0,
+          "completed_column_reads": 0,
+          "deferred_ore_candidates": 0,
+          "deferred_ore_roots": 0,
+          "dependency_evaluation_nanos": 0,
+          "dependency_pool_wait_nanos": 0,
+          "distribution_nanos": 0,
+          "final_structure_planning_nanos": 0,
+          "footprint_builds": 0,
+          "footprint_pruned_writers": 0,
+          "height_roots_skipped": 0,
+          "memo_builds": 0,
+          "memo_join_nanos": 0,
+          "memo_lock_nanos": 0,
+          "memo_ready_hits": 0,
+          "memo_requests": 0,
+          "overlay_recommit_calls_skipped": 0,
+          "overlay_recommit_commands_skipped": 0,
+          "prefix_evaluations": 0,
+          "region_pool_wait_nanos": 0,
+          "shared_material_columns": 0,
+          "structure_active_hits": 0,
+          "structure_builds": 0,
+          "structure_cache_evictions": 0,
+          "structure_cache_hits": 0,
+          "structure_cache_misses": 0,
+          "structure_candidates": 0,
+          "structure_discovery_tiles": 0,
+          "structure_fossil_batches": 0,
+          "structure_fossil_biome_points": 0,
+          "structure_fossil_columns": 0,
+          "structure_job_cache_hits": 0,
+          "structure_overlapping_builds": 0,
+          "structure_pending_evictions": 0,
+          "structure_plan_calls": 0,
+          "structure_probe_points": 0,
+          "structure_repeated_builds": 0,
+          "structure_unique_candidates": 0,
+          "teardown_boundary_columns_nanos": 0,
+          "teardown_commands_nanos": 0,
+          "teardown_nanos": 0,
+          "teardown_other_nanos": 0,
+          "teardown_outputs_nanos": 0,
+          "teardown_terrain_nanos": 0,
+          "teardown_versions_nanos": 0,
+          "terrain_cache_hits": 0,
+          "terrain_exact_tile_cache_hits": 0,
+          "terrain_generated_chunks": 0,
+          "terrain_generated_tiles": 0,
+          "terrain_initial_tiles_reused": 0,
+          "terrain_job_cached_tile_hits": 0,
+          "terrain_job_cached_tiles_retained": 0,
+          "terrain_job_direct_requests": 0,
+          "terrain_job_fallback_requests": 0,
+          "terrain_job_join_nanos": 0,
+          "terrain_job_lock_nanos": 0,
+          "terrain_job_requests": 0,
+          "terrain_job_snapshot_nanos": 0,
+          "terrain_requests": 0,
+          "terrain_unique_tiles": 0,
+          "version_cache_boundary_hits": 0,
+          "version_cache_boundary_lookups": 0,
+          "version_cache_capture_nanos": 0,
+          "version_cache_captured_regions": 0,
+          "version_cache_evicted_regions": 0,
+          "version_cache_export_nanos": 0,
+          "version_cache_export_skips": 0,
+          "version_cache_exported_bytes": 0,
+          "version_cache_exported_regions": 0,
+          "version_cache_exterior_exported_bytes": 0,
+          "version_cache_exterior_exported_slots": 0,
+          "version_cache_exterior_exported_spans": 0,
+          "version_cache_exterior_exported_states": 0,
+          "version_cache_exterior_hits": 0,
+          "version_cache_exterior_lookups": 0,
+          "version_cache_publish_nanos": 0,
+          "version_cache_published_regions": 0,
+          "view_column_cached_reads": 0,
+          "view_column_loads": 0,
+          "view_column_slot_hits": 0,
+          "view_terrain_borrowed_reads": 0,
+          "view_terrain_loaded_reads": 0
+        },
+        "enabled": false,
+        "note": "Measured-interval deltas. Unique keys are first seen during this interval, excluding warmup keys. Recursive/concurrent durations overlap.",
+        "scope": "profile lifetime; concurrent and recursive durations overlap",
+        "terrain_tile_scope": "Measured-interval generation counts, including repeated tiles and all GPU guards; coordinates and side are chunks",
+        "terrain_tiles": [],
+        "version": 1
+      },
+      "profile_sha256": "74bc9093952b0459ceeafaae8a4049d6c6c46067516c9f03ec0d2493e37825c0",
+      "coverage": {
+        "biome_chunk_membership": {
+          "minecraft:warped_forest": 20480
+        },
+        "chunks": 20480,
+        "unique_structure_starts": {
+          "minecraft:bastion_remnant": 21,
+          "minecraft:fortress": 8,
+          "minecraft:ruined_portal_nether": 13
+        }
+      },
+      "comparisons": [
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/nether-direct-stem-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        },
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle97/merged-full/nether-direct-stem-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        }
+      ]
+    },
+    {
+      "case": "overworld-run0",
+      "median_ms": 368.17583336960524,
+      "p95_region_ms": 483.68100188672554,
+      "maximum_region_ms": 665.1999161113054,
+      "total_ms": 7638.906166888773,
+      "chunks_per_second": 2681.0121177782758,
+      "peak_rss_bytes": 1607876608,
+      "generation_peak_rss_bytes": 1607876608,
+      "memory_peak_scope": {
+        "generation_peak_rss_bytes": "Process lifetime through measured generation, including startup and warmups; excludes later snapshot processing and output validation",
+        "note": "High-water marks, not current RSS or isolated phase allocations; neither field proves sustained memory stability",
+        "peak_rss_bytes": "Process lifetime through output hashing, optional NBT comparison and optional specialization regeneration; retained legacy field"
+      },
+      "performance_diagnostics": {
+        "counters": {
+          "anchor_builds": 0,
+          "anchor_ready_hits": 0,
+          "column_builds": 0,
+          "column_join_nanos": 0,
+          "column_lock_nanos": 0,
+          "column_requests": 0,
+          "column_tiles": 0,
+          "column_versions_skipped": 0,
+          "completed_boundary_reads": 0,
+          "completed_column_commands": 0,
+          "completed_column_groups": 0,
+          "completed_column_reads": 0,
+          "deferred_ore_candidates": 0,
+          "deferred_ore_roots": 0,
+          "dependency_evaluation_nanos": 0,
+          "dependency_pool_wait_nanos": 0,
+          "distribution_nanos": 0,
+          "final_structure_planning_nanos": 0,
+          "footprint_builds": 0,
+          "footprint_pruned_writers": 0,
+          "height_roots_skipped": 0,
+          "memo_builds": 0,
+          "memo_join_nanos": 0,
+          "memo_lock_nanos": 0,
+          "memo_ready_hits": 0,
+          "memo_requests": 0,
+          "overlay_recommit_calls_skipped": 0,
+          "overlay_recommit_commands_skipped": 0,
+          "prefix_evaluations": 0,
+          "region_pool_wait_nanos": 0,
+          "shared_material_columns": 0,
+          "structure_active_hits": 0,
+          "structure_builds": 0,
+          "structure_cache_evictions": 0,
+          "structure_cache_hits": 0,
+          "structure_cache_misses": 0,
+          "structure_candidates": 0,
+          "structure_discovery_tiles": 0,
+          "structure_fossil_batches": 0,
+          "structure_fossil_biome_points": 0,
+          "structure_fossil_columns": 0,
+          "structure_job_cache_hits": 0,
+          "structure_overlapping_builds": 0,
+          "structure_pending_evictions": 0,
+          "structure_plan_calls": 0,
+          "structure_probe_points": 0,
+          "structure_repeated_builds": 0,
+          "structure_unique_candidates": 0,
+          "teardown_boundary_columns_nanos": 0,
+          "teardown_commands_nanos": 0,
+          "teardown_nanos": 0,
+          "teardown_other_nanos": 0,
+          "teardown_outputs_nanos": 0,
+          "teardown_terrain_nanos": 0,
+          "teardown_versions_nanos": 0,
+          "terrain_cache_hits": 0,
+          "terrain_exact_tile_cache_hits": 0,
+          "terrain_generated_chunks": 0,
+          "terrain_generated_tiles": 0,
+          "terrain_initial_tiles_reused": 0,
+          "terrain_job_cached_tile_hits": 0,
+          "terrain_job_cached_tiles_retained": 0,
+          "terrain_job_direct_requests": 0,
+          "terrain_job_fallback_requests": 0,
+          "terrain_job_join_nanos": 0,
+          "terrain_job_lock_nanos": 0,
+          "terrain_job_requests": 0,
+          "terrain_job_snapshot_nanos": 0,
+          "terrain_requests": 0,
+          "terrain_unique_tiles": 0,
+          "version_cache_boundary_hits": 0,
+          "version_cache_boundary_lookups": 0,
+          "version_cache_capture_nanos": 0,
+          "version_cache_captured_regions": 0,
+          "version_cache_evicted_regions": 0,
+          "version_cache_export_nanos": 0,
+          "version_cache_export_skips": 0,
+          "version_cache_exported_bytes": 0,
+          "version_cache_exported_regions": 0,
+          "version_cache_exterior_exported_bytes": 0,
+          "version_cache_exterior_exported_slots": 0,
+          "version_cache_exterior_exported_spans": 0,
+          "version_cache_exterior_exported_states": 0,
+          "version_cache_exterior_hits": 0,
+          "version_cache_exterior_lookups": 0,
+          "version_cache_publish_nanos": 0,
+          "version_cache_published_regions": 0,
+          "view_column_cached_reads": 0,
+          "view_column_loads": 0,
+          "view_column_slot_hits": 0,
+          "view_terrain_borrowed_reads": 0,
+          "view_terrain_loaded_reads": 0
+        },
+        "enabled": false,
+        "note": "Measured-interval deltas. Unique keys are first seen during this interval, excluding warmup keys. Recursive/concurrent durations overlap.",
+        "scope": "profile lifetime; concurrent and recursive durations overlap",
+        "terrain_tile_scope": "Measured-interval generation counts, including repeated tiles and all GPU guards; coordinates and side are chunks",
+        "terrain_tiles": [],
+        "version": 1
+      },
+      "profile_sha256": "5a398bd02281677db81b6e70d426ab9a99a322050308e977b2a771134ded1cad",
+      "coverage": {
+        "biome_chunk_membership": {
+          "minecraft:bamboo_jungle": 213,
+          "minecraft:beach": 4165,
+          "minecraft:birch_forest": 635,
+          "minecraft:cold_ocean": 1557,
+          "minecraft:dappled_forest": 10,
+          "minecraft:dark_forest": 265,
+          "minecraft:deep_cold_ocean": 1125,
+          "minecraft:deep_dark": 2094,
+          "minecraft:deep_frozen_ocean": 361,
+          "minecraft:deep_lukewarm_ocean": 244,
+          "minecraft:deep_ocean": 817,
+          "minecraft:desert": 185,
+          "minecraft:dripstone_caves": 3902,
+          "minecraft:flower_forest": 27,
+          "minecraft:forest": 4318,
+          "minecraft:frozen_ocean": 1146,
+          "minecraft:frozen_peaks": 23,
+          "minecraft:frozen_river": 981,
+          "minecraft:grove": 456,
+          "minecraft:ice_spikes": 16,
+          "minecraft:jagged_peaks": 73,
+          "minecraft:jungle": 504,
+          "minecraft:lukewarm_ocean": 1629,
+          "minecraft:lush_caves": 3075,
+          "minecraft:mangrove_swamp": 668,
+          "minecraft:meadow": 68,
+          "minecraft:mushroom_fields": 46,
+          "minecraft:ocean": 1387,
+          "minecraft:old_growth_birch_forest": 860,
+          "minecraft:old_growth_pine_taiga": 51,
+          "minecraft:old_growth_spruce_taiga": 53,
+          "minecraft:pale_garden": 7,
+          "minecraft:plains": 2328,
+          "minecraft:river": 3333,
+          "minecraft:savanna": 727,
+          "minecraft:savanna_plateau": 8,
+          "minecraft:snowy_beach": 1241,
+          "minecraft:snowy_plains": 1721,
+          "minecraft:snowy_slopes": 81,
+          "minecraft:snowy_taiga": 1791,
+          "minecraft:sparse_jungle": 548,
+          "minecraft:stony_shore": 1209,
+          "minecraft:sulfur_caves": 866,
+          "minecraft:sunflower_plains": 13,
+          "minecraft:swamp": 279,
+          "minecraft:taiga": 901,
+          "minecraft:warm_ocean": 197,
+          "minecraft:windswept_forest": 34,
+          "minecraft:windswept_gravelly_hills": 51,
+          "minecraft:windswept_hills": 174,
+          "minecraft:windswept_savanna": 110
+        },
+        "chunks": 20480,
+        "unique_structure_starts": {
+          "minecraft:abandoned_camp_forest": 1,
+          "minecraft:abandoned_camp_old_growth_birch_forest": 1,
+          "minecraft:abandoned_camp_savanna": 2,
+          "minecraft:abandoned_camp_snowy_taiga": 1,
+          "minecraft:ancient_city": 1,
+          "minecraft:desert_pyramid": 1,
+          "minecraft:trail_ruins": 1,
+          "minecraft:trial_chambers": 17,
+          "minecraft:village_plains": 5,
+          "minecraft:village_snowy": 1
+        }
+      },
+      "comparisons": [
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/overworld-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        },
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle97/merged-full/overworld-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        }
+      ]
+    }
+  ],
+  "validation": {
+    "native_tests_passed": 193,
+    "ignored_native_tests": 56,
+    "explicit_gpu_terrain_fixtures": 2,
+    "explicit_gpu_vine_fixtures": 3,
+    "inventory_measured_chunk_instances": 102400,
+    "normal_measured_chunk_instances": 102400,
+    "total_pre_pr_measured_chunk_instances": 204800,
+    "binary": {
+      "machine_code_identical": true,
+      "different_file_bytes": 170,
+      "categories": {
+        "uuid": 16,
+        "verified_panic_line": 57,
+        "verified_panic_column": 2,
+        "signature": 95
+      },
+      "verified_source_locations": 57,
+      "normal_observer_symbols": 0
+    },
+    "terminal": {
+      "observed_utc": "2026-10-23T12:33:26.594178+00:00",
+      "controller_pid": 4893,
+      "direct_exec_receipt_available": false,
+      "reason": "Initial exec session handle lost during context compaction. Controller and all recorded children subsequently observed absent; self-written joined completion receipt exit 0.",
+      "recorded_pids": [
+        4893,
+        5702,
+        11522,
+        38709
+      ],
+      "ps_exit_code": 1,
+      "ps_output": "",
+      "controller_self_reported_exit_code": 0,
+      "all_steps_complete": true
+    },
+    "earlier_attempts": "Initial compile errors were corrected before the recorded 193-test pass. First GPU driver omitted overlap report path; second omitted registered-vine anchor profile. Failed receipts/logs retained. The same frozen binaries subsequently pass all five GPU fixtures and both full suites."
+  },
+  "next_candidate": {
+    "opportunity": "Defer calculation of all six dependency-column heights until their first query or archive capture; initialize restored states from saved heights.",
+    "expected_gain": "Measured avoidable derivations: roughly 58\u201361% of computed states and 57\u201363% of backing run words across this corpus. This is a work opportunity, not a projected elapsed-time percentage.",
+    "risk": "Initialization synchronization, object size and extra query branches may outweigh scans saved. Archive capture must materialize exact heights, or future jobs could change behavior. Profiles and geometry must stay isolated; queries on the same state can be concurrent.",
+    "complexity": "medium",
+    "validation": "New isolated worktree; exact eager-vs-lazy height tests for all six masks, empty/all-air/tall/custom geometry, concurrent first queries, archive round trips and lifetimes; repeat the census to count scans actually avoided; ordinary full original/main NBT plus paired complete-region CPU/wall/RSS and Overworld controls. Quiet timing acceptance remains deferred.",
+    "prior_work": "C46 accelerated the eager scan but did not establish a whole-region win. C107 uniform-overlay height bounds also had mixed whole-region results. This opportunity avoids scans entirely for unqueried, unarchived states, rather than repeating those changes."
+  },
+  "limits": [
+    "No production optimization or speedup accepted in this cycle.",
+    "Archived arrays unused in the original lifetime may be needed after restoration; they are excluded from the conservative avoidable-state count.",
+    "Only height maps 2 and 4 were queried in this corpus; all six must still remain supported.",
+    "Observer timing, run-word fractions and lifetime counts do not establish exclusive CPU time, allocation counts, memory savings or whole-region speedup.",
+    "Quiet timing confirmation remains deferred; no new subsecond, sustained-memory, concurrency, or portal acceptance. All held worktrees and production candidates remain preserved."
+  ],
+  "recovery": {
+    "worktree": "/tmp/retina-nether-column-height-census",
+    "branch": "codex/nether-column-height-census",
+    "evidence_root": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle108",
+    "commands": [
+      "python3 cycle108/proof.py (initial build and ordinary tests; retained harness omission)",
+      "python3 cycle108/validate.py (terrain and two vine fixtures; retained anchor-profile omission)",
+      "python3 cycle108/inventory-validate.py (remaining vine, inventory, ordinary full parity)",
+      "python3 cycle108/binary-location-proof.py",
+      "python3 cycle108/analyze.py"
+    ],
+    "rerun": "Use fresh output directories. Commands and environment are in immutable drivers/receipts; do not overwrite retained worlds or rerun initial failed drivers as a complete proof."
+  },
+  "artifacts": [
+    {
+      "path": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle108/inventory/report.json",
+      "sha256": "7e833afba6972d013a98d840ffabf714f6df1e170045a7607d66c646ec8114bc"
+    },
+    {
+      "path": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle108/inventory-validation-receipt.json",
+      "sha256": "7306ef26c4cf64189598bf66969bd4a3cc6ea963e335d9bc30fb4e094c70d2e9"
+    },
+    {
+      "path": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle108/inventory-validation-terminal.json",
+      "sha256": "20c60333650c8988f732bf47323a55525aa81727ab64e350c9da0023a1a77833"
+    },
+    {
+      "path": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle108/normal-full/suite.json",
+      "sha256": "680af01f43cd5f094857d21cffd8da4efadd98278406276808cb61178bd60253"
+    },
+    {
+      "path": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle108/analysis.json",
+      "sha256": "5e40c9ae2af81fa6c1a509c8e3ef08a7f545050f0634aafa53b657dc7aaaed5d"
+    },
+    {
+      "path": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle108/normal-provenance.json",
+      "sha256": "12997bc23e7e92544b0386489ac56f9ebde9ca7466e6a4d9af95f0c36e3d3827"
+    },
+    {
+      "path": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle108/section-comparison.json",
+      "sha256": "645c050885e6039fe7a61777105de8c346a671368a56b168e2f7af00e07c56ec"
+    },
+    {
+      "path": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle108/file-difference-classification.json",
+      "sha256": "990825faa12001e506c96b4458a291007c6709e26cf920dd561e9fc74ea46183"
+    },
+    {
+      "path": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle108/panic-location-review.json",
+      "sha256": "d4af88e79cbdf5676e7268182c4683f972986114793ce304c6dd6b75c3810245"
+    },
+    {
+      "path": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle108/normal-symbol-check.json",
+      "sha256": "b81076b92a37bda8da4db40fb6da1b4a6027b9b92d4f636424422cf158e6f784"
+    },
+    {
+      "path": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle108/native-tests.log",
+      "sha256": "504cd85693cf88d718e27c479a5f189716e0d363e1f2d22b54999892824c9bd7"
+    },
+    {
+      "path": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle108/gpu-terrain-configured.log",
+      "sha256": "15ae5afa4afad7233800b49d1cbd47b23f2e6932dcfae16e00c1bde94f26a71e"
+    },
+    {
+      "path": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle108/gpu-vine-registered-configured.log",
+      "sha256": "8b6ab573b0c8377150ed046d132b43a026729620e2e8137fa3cdde12016ab7ac"
+    },
+    {
+      "path": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle108/inventory.log",
+      "sha256": "2bd72c3f8281c8c77f6472c6c3873ce58641bca61c9f8c1d3408823ed6d21b2a"
+    },
+    {
+      "path": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle108/proof.py",
+      "sha256": "13a2bdeb6a27dbe8460fdbeee6d78c4368169a3645bc48fcb7fd8ca1d4e9796c"
+    },
+    {
+      "path": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle108/validate.py",
+      "sha256": "3f0ee2e21a7bc3a72d83761615605e0ff582737365908f104a83f1382989fd39"
+    },
+    {
+      "path": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle108/inventory-validate.py",
+      "sha256": "5e73a5e3edfed017a0e54f2fb035fb26623c6b987c7d0d55bada3a3e11624d57"
+    },
+    {
+      "path": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle108/binary-location-proof.py",
+      "sha256": "226a8ab8dc44919228f18ba658aa8b57f691cfce268e4affa95c0e6609bbdfd0"
+    },
+    {
+      "path": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle108/analyze.py",
+      "sha256": "5ab52142d2a9c2dd969ddf8b277dd973f18a049f8a65f89b35f2568232175b4c"
+    }
+  ]
+}
