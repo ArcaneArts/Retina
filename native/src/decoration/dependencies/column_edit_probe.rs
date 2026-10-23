@@ -10,6 +10,60 @@ static ACTIVE_ID: AtomicU64 = AtomicU64::new(0);
 static ACTIVE: Mutex<Option<Arc<Session>>> = Mutex::new(None);
 const BINS: usize = 14;
 
+#[derive(Clone, Copy, Default)]
+pub(super) enum Path {
+    CompletedInterior,
+    UnfinishedInterior,
+    Boundary,
+    #[default]
+    Unclassified,
+}
+
+#[derive(Default, Serialize)]
+struct PathCounts {
+    prefixes: u64,
+    limited_prefixes: u64,
+    incomplete_prefixes: u64,
+    commands: u64,
+    limited_commands: u64,
+    dense_expansions: u64,
+    dense_payload_bytes: u64,
+    prior_run_words: u64,
+    result_run_words: u64,
+}
+impl PathCounts {
+    fn add(&mut self, other: &Self) {
+        macro_rules! sum { ($($field:ident),*) => { $(self.$field += other.$field;)* }; }
+        sum!(
+            prefixes,
+            limited_prefixes,
+            incomplete_prefixes,
+            commands,
+            limited_commands,
+            dense_expansions,
+            dense_payload_bytes,
+            prior_run_words,
+            result_run_words
+        );
+    }
+}
+
+#[derive(Default, Serialize)]
+struct Paths {
+    completed_interior: PathCounts,
+    unfinished_interior: PathCounts,
+    boundary: PathCounts,
+    unclassified: PathCounts,
+}
+impl Paths {
+    fn add(&mut self, other: &Self) {
+        self.completed_interior.add(&other.completed_interior);
+        self.unfinished_interior.add(&other.unfinished_interior);
+        self.boundary.add(&other.boundary);
+        self.unclassified.add(&other.unclassified);
+    }
+}
+
 #[derive(Default, Serialize)]
 struct Counts {
     prefixes: u64,
@@ -34,6 +88,7 @@ struct Counts {
     feature_only_multi_span_dense_expansions: u64,
     prior_run_words: u64,
     result_run_words: u64,
+    paths: Paths,
 }
 impl Counts {
     fn add(&mut self, other: &Self) {
@@ -64,6 +119,7 @@ impl Counts {
             self.spans_by_ceil_log2_length[i] += other.spans_by_ceil_log2_length[i];
             self.commands_by_ceil_log2_length[i] += other.commands_by_ceil_log2_length[i];
         }
+        self.paths.add(&other.paths);
     }
 }
 type Roots = BTreeMap<usize, Counts>;
@@ -140,6 +196,7 @@ pub(super) struct Prefix {
     root: usize,
     counts: Counts,
     span: Option<Span>,
+    path: Path,
 }
 impl Prefix {
     pub(super) fn start(root: usize, limited: bool, prior_words: usize) -> Self {
@@ -162,7 +219,40 @@ impl Prefix {
                 ..Counts::default()
             },
             span: None,
+            path: Path::Unclassified,
         }
+    }
+    pub(super) fn select_path(&mut self, path: Path) {
+        if self.token != 0 {
+            self.path = path;
+        }
+    }
+    fn classify(&mut self) {
+        // Classify at publication, including zero-work and failed prefixes.
+        // Replacing the buckets also keeps repeated finalization idempotent.
+        let mut paths = Paths::default();
+        let bucket = match self.path {
+            Path::CompletedInterior => &mut paths.completed_interior,
+            Path::UnfinishedInterior => &mut paths.unfinished_interior,
+            Path::Boundary => &mut paths.boundary,
+            Path::Unclassified => &mut paths.unclassified,
+        };
+        *bucket = PathCounts {
+            prefixes: self.counts.prefixes,
+            limited_prefixes: self.counts.limited_prefixes,
+            incomplete_prefixes: self.counts.incomplete_prefixes,
+            commands: self.counts.commands,
+            limited_commands: if self.counts.limited_prefixes != 0 {
+                self.counts.commands
+            } else {
+                0
+            },
+            dense_expansions: self.counts.dense_expansions,
+            dense_payload_bytes: self.counts.dense_payload_bytes,
+            prior_run_words: self.counts.prior_run_words,
+            result_run_words: self.counts.result_run_words,
+        };
+        self.counts.paths = paths;
     }
     pub(super) fn barrier(&mut self) {
         if let Some(span) = self.span.take() {
@@ -252,6 +342,7 @@ impl Drop for Prefix {
             return;
         }
         self.barrier();
+        self.classify();
         LOCAL.with(|local| {
             let mut local = local.borrow_mut();
             if local.token != self.token {
@@ -348,6 +439,67 @@ fn column_edit_span_inventory_counts_long_spans_and_noops() {
 }
 
 #[test]
+fn column_edit_paths_include_empty_incomplete_and_limited_prefixes() {
+    let mut total = Counts::default();
+    for path in [
+        Path::CompletedInterior,
+        Path::UnfinishedInterior,
+        Path::Boundary,
+    ] {
+        for limited in [false, true] {
+            for complete in [false, true] {
+                for empty in [false, true] {
+                    let mut p = Prefix::new(u64::MAX, 0, limited, 4);
+                    p.select_path(path);
+                    if !empty {
+                        for (role, y) in
+                            [(FEATURE, 1), (FEATURE, 2), (DEFERRED_ORE, 3), (FEATURE, -1)]
+                        {
+                            p.command(role, 7, y, 256);
+                        }
+                    }
+                    if complete {
+                        p.finish((!empty).then_some(256), 6, empty);
+                    }
+                    p.barrier();
+                    p.classify();
+                    let first = serde_json::to_value(&p.counts.paths).unwrap();
+                    p.classify();
+                    assert_eq!(first, serde_json::to_value(&p.counts.paths).unwrap());
+                    total.add(&p.counts);
+                }
+            }
+        }
+    }
+    let summary = serde_json::to_value(&total).unwrap();
+    assert_path_partition(&summary, true);
+    for key in ["completed_interior", "unfinished_interior", "boundary"] {
+        let bucket = &summary["paths"][key];
+        assert_eq!(bucket["prefixes"], 8);
+        assert_eq!(bucket["limited_prefixes"], 4);
+        assert_eq!(bucket["incomplete_prefixes"], 4);
+        assert_eq!(bucket["commands"], 16);
+        assert_eq!(bucket["limited_commands"], 8);
+        assert_eq!(bucket["dense_expansions"], 2);
+        assert_eq!(bucket["dense_payload_bytes"], 1024);
+        assert_eq!(bucket["prior_run_words"], 32);
+        assert_eq!(bucket["result_run_words"], 24);
+    }
+    let mut unclassified = Prefix::new(u64::MAX, 0, false, 3);
+    unclassified.classify();
+    assert_eq!(unclassified.counts.paths.unclassified.prefixes, 1);
+    assert_eq!(
+        unclassified.counts.paths.unclassified.incomplete_prefixes,
+        1
+    );
+    let mut disabled = Prefix::new(0, 0, false, 0);
+    disabled.select_path(Path::Boundary);
+    assert!(matches!(disabled.path, Path::Unclassified));
+    disabled.command(FEATURE, 1, 0, 256);
+    assert_eq!(disabled.counts.commands, 0);
+}
+
+#[test]
 fn column_edit_thread_counters_isolate_sessions_and_roots() {
     let first = Arc::new(Session::new(91));
     let mut workers = Vec::new();
@@ -357,18 +509,27 @@ fn column_edit_thread_counters_isolate_sessions_and_roots() {
             let mut local = Local::default();
             local.bind(&session);
             local.bind(&session);
-            local
-                .counts
-                .as_ref()
-                .unwrap()
-                .lock()
-                .unwrap()
-                .entry(root)
-                .or_default()
-                .add(&Counts {
-                    prefixes: 10,
-                    ..Counts::default()
-                });
+            for _ in 0..10 {
+                let mut p = Prefix::new(u64::MAX, root, false, 3);
+                p.select_path(
+                    [
+                        Path::CompletedInterior,
+                        Path::UnfinishedInterior,
+                        Path::Boundary,
+                    ][root],
+                );
+                p.finish(None, 3, true);
+                p.classify();
+                local
+                    .counts
+                    .as_ref()
+                    .unwrap()
+                    .lock()
+                    .unwrap()
+                    .entry(root)
+                    .or_default()
+                    .add(&p.counts);
+            }
         }));
     }
     for worker in workers {
@@ -378,21 +539,72 @@ fn column_edit_thread_counters_isolate_sessions_and_roots() {
     let mut local = Local::default();
     local.bind(&first);
     local.bind(&second);
-    local
-        .counts
-        .as_ref()
-        .unwrap()
-        .lock()
-        .unwrap()
-        .entry(9)
-        .or_default()
-        .add(&Counts {
-            prefixes: 2,
-            ..Counts::default()
-        });
-    assert_eq!(first.report()["total"]["prefixes"], 30);
-    assert_eq!(second.report()["total"]["prefixes"], 2);
-    assert_eq!(first.report()["roots"].as_object().unwrap().len(), 3);
+    for _ in 0..2 {
+        let mut p = Prefix::new(u64::MAX, 9, true, 2);
+        p.classify();
+        local
+            .counts
+            .as_ref()
+            .unwrap()
+            .lock()
+            .unwrap()
+            .entry(9)
+            .or_default()
+            .add(&p.counts);
+    }
+    let first = first.report();
+    let second = second.report();
+    assert_eq!(first["total"]["prefixes"], 30);
+    assert_eq!(second["total"]["prefixes"], 2);
+    assert_eq!(first["roots"].as_object().unwrap().len(), 3);
+    assert_path_partition(&first["total"], true);
+    for counts in first["roots"].as_object().unwrap().values() {
+        assert_path_partition(counts, true);
+    }
+    for key in ["completed_interior", "unfinished_interior", "boundary"] {
+        assert_eq!(first["total"]["paths"][key]["prefixes"], 10);
+    }
+    assert_path_partition(&second["total"], false);
+    assert_eq!(
+        second["total"]["paths"]["unclassified"]["incomplete_prefixes"],
+        2
+    );
+}
+
+fn assert_path_partition(counts: &Value, fully_classified: bool) {
+    let paths = counts["paths"].as_object().unwrap();
+    for key in [
+        "prefixes",
+        "limited_prefixes",
+        "incomplete_prefixes",
+        "commands",
+        "dense_expansions",
+        "dense_payload_bytes",
+        "prior_run_words",
+        "result_run_words",
+    ] {
+        assert_eq!(
+            counts[key].as_u64().unwrap(),
+            paths
+                .values()
+                .map(|p| p[key].as_u64().unwrap())
+                .sum::<u64>(),
+            "path partition: {key}"
+        );
+    }
+    for path in paths.values() {
+        assert!(path["limited_prefixes"].as_u64().unwrap() <= path["prefixes"].as_u64().unwrap());
+        assert!(path["limited_commands"].as_u64().unwrap() <= path["commands"].as_u64().unwrap());
+    }
+    if fully_classified {
+        assert!(
+            counts["paths"]["unclassified"]
+                .as_object()
+                .unwrap()
+                .values()
+                .all(|v| v.as_u64() == Some(0))
+        );
+    }
 }
 
 #[test]
@@ -461,6 +673,10 @@ fn exact_column_edit_inventory() {
         let observed = summary["regions"].as_array().unwrap().len();
         assert_eq!(observed, if name == "overworld" { 0 } else { 20 });
         let total = &summary["total"];
+        assert_path_partition(total, true);
+        for counts in summary["roots"].as_object().unwrap().values() {
+            assert_path_partition(counts, true);
+        }
         assert_eq!(total["incomplete_prefixes"], 0);
         let number = |key: &str| total[key].as_u64().unwrap();
         assert_eq!(
@@ -489,7 +705,7 @@ fn exact_column_edit_inventory() {
         cases.push(json!({"case":name,"seed":seed,"profile":file,
             "warmups":warmups,"regions":regions,"summary":summary}));
         fs::write(output.join("report.json"), serde_json::to_vec_pretty(&json!({
-            "scope":"Test-only observer of commands actually applied by Planner::prefix, grouped by profile-local root index. Same-material in-bounds unconditional FEATURE commands form a span only while consecutive and strictly monotonic in Y with step +1 or -1. Reversals, duplicates, gaps, different materials, conditional commands, out-of-bounds commands and exact prefix limits break spans. No commands are removed or rewritten. Feature changes/noops reflect the original previous-material read; changed_points includes successful conditional and plant-upper writes. Dense expansions count actual completed prefix buffers; payload is height*2 without allocator overhead. Histogram bin i covers lengths greater than 2^(i-1) through 2^i, with bin0=1 and final overflow bucket. Span command counts include noops and are opportunities, not speedup estimates. Original generation drives all outputs. Per-prefix stack scalars publish once to a per-thread root map; no hot-command lock or retained world owners. Other column construction paths and feature-local overlays are outside this scope. Five warmups and twenty measured complete lit regions per case; observer times are not ordinary performance. Root IDs are only comparable within each registered profile.",
+            "scope":"Test-only observer of commands actually applied by Planner::prefix, grouped by profile-local root index. Same-material in-bounds unconditional FEATURE commands form a span only while consecutive and strictly monotonic in Y with step +1 or -1. Reversals, duplicates, gaps, different materials, conditional commands, out-of-bounds commands and exact prefix limits break spans. No commands are removed or rewritten. Feature changes/noops reflect the original previous-material read; changed_points includes successful conditional and plant-upper writes. Dense expansions count actual completed prefix buffers; payload is height*2 without allocator overhead. Histogram bin i covers lengths greater than 2^(i-1) through 2^i, with bin0=1 and final overflow bucket. Span command counts include noops and are opportunities, not speedup estimates. Original generation drives all outputs. Per-prefix stack scalars publish once to a per-thread root map; no hot-command lock or retained world owners. Other column construction paths and feature-local overlays are outside this scope. Five warmups and twenty measured complete lit regions per case; observer times are not ordinary performance. Paths partition prefixes, applied commands, run words and dense allocations at publication, including zero-command and incomplete prefixes. Completed interior means both a completed root and an indexed interior column were available at the actual branch; unfinished interior uses the fallback with an indexed column; boundary uses the fallback outside the interior index. Limited commands are applied commands in prefixes with an exact source-order limit. An unclassified bucket detects missing hooks and must remain zero in the full inventory. Paths are workload counts, not CPU shares or promised savings. Root IDs are only comparable within each registered profile.",
             "cases":cases,"timing_acceptance":false,
         })).unwrap()).unwrap();
     }

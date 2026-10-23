@@ -1,0 +1,1508 @@
+{
+  "cycle": 93,
+  "status": "diagnostic-only ready for PR",
+  "created_utc": "2026-10-23T02:22:32.657069+00:00",
+  "base_revision": "f15d3d2875ecef5db8a557ce1fd172b012f5de99",
+  "tested": {
+    "revision": "ee115cd94be68ae06562b625549731547056edcb",
+    "native_tree": "baa4eff284c780081622eafb32c6a457e7c0af70",
+    "sha256": "b056fecf84ec48520d6ec221b65ca829523a18050adb5785a59b645b2f5651df",
+    "source_status": "",
+    "forced_rebuild": true,
+    "timing_acceptance": false,
+    "test_executable_sha256": "5de81952c31b28bcd0b33410eb906bd7c373f86c404f0c7ba911bab9599f47c9",
+    "native_test_result": [
+      "186",
+      "0",
+      "54"
+    ]
+  },
+  "change": "Test-only partition of original prefix work by the actual completed-interior, unfinished-interior and boundary branches. No production generator changes.",
+  "timing_acceptance": false,
+  "scope": "Test-only observer of commands actually applied by Planner::prefix, grouped by profile-local root index. Same-material in-bounds unconditional FEATURE commands form a span only while consecutive and strictly monotonic in Y with step +1 or -1. Reversals, duplicates, gaps, different materials, conditional commands, out-of-bounds commands and exact prefix limits break spans. No commands are removed or rewritten. Feature changes/noops reflect the original previous-material read; changed_points includes successful conditional and plant-upper writes. Dense expansions count actual completed prefix buffers; payload is height*2 without allocator overhead. Histogram bin i covers lengths greater than 2^(i-1) through 2^i, with bin0=1 and final overflow bucket. Span command counts include noops and are opportunities, not speedup estimates. Original generation drives all outputs. Per-prefix stack scalars publish once to a per-thread root map; no hot-command lock or retained world owners. Other column construction paths and feature-local overlays are outside this scope. Five warmups and twenty measured complete lit regions per case; observer times are not ordinary performance. Paths partition prefixes, applied commands, run words and dense allocations at publication, including zero-command and incomplete prefixes. Completed interior means both a completed root and an indexed interior column were available at the actual branch; unfinished interior uses the fallback with an indexed column; boundary uses the fallback outside the interior index. Limited commands are applied commands in prefixes with an exact source-order limit. An unclassified bucket detects missing hooks and must remain zero in the full inventory. Paths are workload counts, not CPU shares or promised savings. Root IDs are only comparable within each registered profile.",
+  "cases": [
+    {
+      "case": "nether-main",
+      "profile": "nether.json",
+      "seed": 123456789,
+      "measured_regions": 20,
+      "legacy_counter_differences": [],
+      "total": {
+        "changed_points": 69892227,
+        "changed_upper_points": 0,
+        "commands": 85293565,
+        "commands_by_ceil_log2_length": [
+          33763066,
+          24994412,
+          9713020,
+          6363899,
+          1775653,
+          696086,
+          503304,
+          4012,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "conditional_commands": 7480113,
+        "dense_expansions": 4674169,
+        "dense_payload_bytes": 2393174528,
+        "dense_unchanged_results": 2,
+        "feature_changes": 65659722,
+        "feature_commands": 77813452,
+        "feature_noops": 12153730,
+        "feature_only_dense_expansions": 3251571,
+        "feature_only_multi_span_dense_expansions": 2657132,
+        "incomplete_prefixes": 0,
+        "limited_prefixes": 0,
+        "multi_span_commands": 44050386,
+        "out_of_bounds_commands": 0,
+        "paths": {
+          "boundary": {
+            "commands": 26524878,
+            "dense_expansions": 1173902,
+            "dense_payload_bytes": 601037824,
+            "incomplete_prefixes": 0,
+            "limited_commands": 0,
+            "limited_prefixes": 0,
+            "prefixes": 30002191,
+            "prior_run_words": 243910255,
+            "result_run_words": 247596024
+          },
+          "completed_interior": {
+            "commands": 58768687,
+            "dense_expansions": 3500267,
+            "dense_payload_bytes": 1792136704,
+            "incomplete_prefixes": 0,
+            "limited_commands": 0,
+            "limited_prefixes": 0,
+            "prefixes": 4238969,
+            "prior_run_words": 44414745,
+            "result_run_words": 53908050
+          },
+          "unclassified": {
+            "commands": 0,
+            "dense_expansions": 0,
+            "dense_payload_bytes": 0,
+            "incomplete_prefixes": 0,
+            "limited_commands": 0,
+            "limited_prefixes": 0,
+            "prefixes": 0,
+            "prior_run_words": 0,
+            "result_run_words": 0
+          },
+          "unfinished_interior": {
+            "commands": 0,
+            "dense_expansions": 0,
+            "dense_payload_bytes": 0,
+            "incomplete_prefixes": 0,
+            "limited_commands": 0,
+            "limited_prefixes": 0,
+            "prefixes": 0,
+            "prior_run_words": 0,
+            "result_run_words": 0
+          }
+        },
+        "prefixes": 34241160,
+        "prior_run_words": 288325000,
+        "result_run_words": 301504074,
+        "spans": 50437805,
+        "spans_by_ceil_log2_length": [
+          33763066,
+          12497206,
+          2876099,
+          1092876,
+          164991,
+          31198,
+          12315,
+          54,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "blob_commands": 70226793,
+      "blob_paths": {
+        "boundary": {
+          "commands": 23096203,
+          "dense_expansions": 531825,
+          "dense_payload_bytes": 272294400,
+          "incomplete_prefixes": 0,
+          "limited_commands": 0,
+          "limited_prefixes": 0,
+          "prefixes": 3548936,
+          "prior_run_words": 28332943,
+          "result_run_words": 31177950
+        },
+        "completed_interior": {
+          "commands": 47130590,
+          "dense_expansions": 1298752,
+          "dense_payload_bytes": 664961024,
+          "incomplete_prefixes": 0,
+          "limited_commands": 0,
+          "limited_prefixes": 0,
+          "prefixes": 1298752,
+          "prior_run_words": 16598985,
+          "result_run_words": 22212536
+        },
+        "unclassified": {
+          "commands": 0,
+          "dense_expansions": 0,
+          "dense_payload_bytes": 0,
+          "incomplete_prefixes": 0,
+          "limited_commands": 0,
+          "limited_prefixes": 0,
+          "prefixes": 0,
+          "prior_run_words": 0,
+          "result_run_words": 0
+        },
+        "unfinished_interior": {
+          "commands": 0,
+          "dense_expansions": 0,
+          "dense_payload_bytes": 0,
+          "incomplete_prefixes": 0,
+          "limited_commands": 0,
+          "limited_prefixes": 0,
+          "prefixes": 0,
+          "prior_run_words": 0,
+          "result_run_words": 0
+        }
+      },
+      "completed_unlimited_blob_commands": 47130590,
+      "completed_unlimited_fraction_of_blob_commands": 0.6711197818758433,
+      "completed_unlimited_blob_fraction_of_all_commands": 0.5525691181978383,
+      "all_measured_shader_ready": true,
+      "blob_roots": [
+        {
+          "root": 8,
+          "sources": [
+            "minecraft:basalt_blobs"
+          ],
+          "changed_points": 52724236,
+          "changed_upper_points": 0,
+          "commands": 63422825,
+          "commands_by_ceil_log2_length": [
+            30055637,
+            21457390,
+            6785686,
+            4065362,
+            999064,
+            59116,
+            570,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "conditional_commands": 0,
+          "dense_expansions": 1132752,
+          "dense_payload_bytes": 579969024,
+          "dense_unchanged_results": 0,
+          "feature_changes": 52724236,
+          "feature_commands": 63422825,
+          "feature_noops": 10698589,
+          "feature_only_dense_expansions": 1132752,
+          "feature_only_multi_span_dense_expansions": 1121462,
+          "incomplete_prefixes": 0,
+          "limited_prefixes": 0,
+          "multi_span_commands": 33367188,
+          "out_of_bounds_commands": 0,
+          "paths": {
+            "boundary": {
+              "commands": 21468303,
+              "dense_expansions": 370203,
+              "dense_payload_bytes": 189543936,
+              "incomplete_prefixes": 0,
+              "limited_commands": 0,
+              "limited_prefixes": 0,
+              "prefixes": 1856011,
+              "prior_run_words": 14247880,
+              "result_run_words": 16770285
+            },
+            "completed_interior": {
+              "commands": 41954522,
+              "dense_expansions": 762549,
+              "dense_payload_bytes": 390425088,
+              "incomplete_prefixes": 0,
+              "limited_commands": 0,
+              "limited_prefixes": 0,
+              "prefixes": 762549,
+              "prior_run_words": 7440107,
+              "result_run_words": 12032357
+            },
+            "unclassified": {
+              "commands": 0,
+              "dense_expansions": 0,
+              "dense_payload_bytes": 0,
+              "incomplete_prefixes": 0,
+              "limited_commands": 0,
+              "limited_prefixes": 0,
+              "prefixes": 0,
+              "prior_run_words": 0,
+              "result_run_words": 0
+            },
+            "unfinished_interior": {
+              "commands": 0,
+              "dense_expansions": 0,
+              "dense_payload_bytes": 0,
+              "incomplete_prefixes": 0,
+              "limited_commands": 0,
+              "limited_prefixes": 0,
+              "prefixes": 0,
+              "prior_run_words": 0,
+              "result_run_words": 0
+            }
+          },
+          "prefixes": 2618560,
+          "prior_run_words": 21687987,
+          "result_run_words": 28802642,
+          "spans": 43593064,
+          "spans_by_ceil_log2_length": [
+            30055637,
+            10728695,
+            2006559,
+            706429,
+            92580,
+            3148,
+            16,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "root": 9,
+          "sources": [
+            "minecraft:blackstone_blobs"
+          ],
+          "changed_points": 6358745,
+          "changed_upper_points": 0,
+          "commands": 6803968,
+          "commands_by_ceil_log2_length": [
+            2546682,
+            2517742,
+            1267982,
+            443840,
+            27633,
+            89,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "conditional_commands": 0,
+          "dense_expansions": 697825,
+          "dense_payload_bytes": 357286400,
+          "dense_unchanged_results": 0,
+          "feature_changes": 6358745,
+          "feature_commands": 6803968,
+          "feature_noops": 445223,
+          "feature_only_dense_expansions": 697825,
+          "feature_only_multi_span_dense_expansions": 616982,
+          "incomplete_prefixes": 0,
+          "limited_prefixes": 0,
+          "multi_span_commands": 4257286,
+          "out_of_bounds_commands": 0,
+          "paths": {
+            "boundary": {
+              "commands": 1627900,
+              "dense_expansions": 161622,
+              "dense_payload_bytes": 82750464,
+              "incomplete_prefixes": 0,
+              "limited_commands": 0,
+              "limited_prefixes": 0,
+              "prefixes": 1692925,
+              "prior_run_words": 14085063,
+              "result_run_words": 14407665
+            },
+            "completed_interior": {
+              "commands": 5176068,
+              "dense_expansions": 536203,
+              "dense_payload_bytes": 274535936,
+              "incomplete_prefixes": 0,
+              "limited_commands": 0,
+              "limited_prefixes": 0,
+              "prefixes": 536203,
+              "prior_run_words": 9158878,
+              "result_run_words": 10180179
+            },
+            "unclassified": {
+              "commands": 0,
+              "dense_expansions": 0,
+              "dense_payload_bytes": 0,
+              "incomplete_prefixes": 0,
+              "limited_commands": 0,
+              "limited_prefixes": 0,
+              "prefixes": 0,
+              "prior_run_words": 0,
+              "result_run_words": 0
+            },
+            "unfinished_interior": {
+              "commands": 0,
+              "dense_expansions": 0,
+              "dense_payload_bytes": 0,
+              "incomplete_prefixes": 0,
+              "limited_commands": 0,
+              "limited_prefixes": 0,
+              "prefixes": 0,
+              "prior_run_words": 0,
+              "result_run_words": 0
+            }
+          },
+          "prefixes": 2229128,
+          "prior_run_words": 23243941,
+          "result_run_words": 24587844,
+          "spans": 4268575,
+          "spans_by_ceil_log2_length": [
+            2546682,
+            1258871,
+            380558,
+            79690,
+            2769,
+            5,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "case": "nether-second-seed",
+      "profile": "nether.json",
+      "seed": 42,
+      "measured_regions": 20,
+      "legacy_counter_differences": [],
+      "total": {
+        "changed_points": 68416513,
+        "changed_upper_points": 0,
+        "commands": 83696714,
+        "commands_by_ceil_log2_length": [
+          32751385,
+          24202302,
+          9543752,
+          6244725,
+          1762277,
+          844044,
+          282301,
+          6048,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "conditional_commands": 8059880,
+        "dense_expansions": 4745038,
+        "dense_payload_bytes": 2429459456,
+        "dense_unchanged_results": 0,
+        "feature_changes": 64002077,
+        "feature_commands": 75636834,
+        "feature_noops": 11634757,
+        "feature_only_dense_expansions": 3252480,
+        "feature_only_multi_span_dense_expansions": 2635203,
+        "incomplete_prefixes": 0,
+        "limited_prefixes": 0,
+        "multi_span_commands": 42885449,
+        "out_of_bounds_commands": 0,
+        "paths": {
+          "boundary": {
+            "commands": 24433350,
+            "dense_expansions": 1176383,
+            "dense_payload_bytes": 602308096,
+            "incomplete_prefixes": 0,
+            "limited_commands": 0,
+            "limited_prefixes": 0,
+            "prefixes": 31628430,
+            "prior_run_words": 259597000,
+            "result_run_words": 263098772
+          },
+          "completed_interior": {
+            "commands": 59263364,
+            "dense_expansions": 3568655,
+            "dense_payload_bytes": 1827151360,
+            "incomplete_prefixes": 0,
+            "limited_commands": 0,
+            "limited_prefixes": 0,
+            "prefixes": 4411551,
+            "prior_run_words": 46458945,
+            "result_run_words": 56237710
+          },
+          "unclassified": {
+            "commands": 0,
+            "dense_expansions": 0,
+            "dense_payload_bytes": 0,
+            "incomplete_prefixes": 0,
+            "limited_commands": 0,
+            "limited_prefixes": 0,
+            "prefixes": 0,
+            "prior_run_words": 0,
+            "result_run_words": 0
+          },
+          "unfinished_interior": {
+            "commands": 0,
+            "dense_expansions": 0,
+            "dense_payload_bytes": 0,
+            "incomplete_prefixes": 0,
+            "limited_commands": 0,
+            "limited_prefixes": 0,
+            "prefixes": 0,
+            "prior_run_words": 0,
+            "result_run_words": 0
+          }
+        },
+        "prefixes": 36039981,
+        "prior_run_words": 306055945,
+        "result_run_words": 319336482,
+        "spans": 48958690,
+        "spans_by_ceil_log2_length": [
+          32751385,
+          12101151,
+          2824378,
+          1074332,
+          163324,
+          37442,
+          6594,
+          84,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "blob_commands": 67876656,
+      "blob_paths": {
+        "boundary": {
+          "commands": 20773871,
+          "dense_expansions": 477637,
+          "dense_payload_bytes": 244550144,
+          "incomplete_prefixes": 0,
+          "limited_commands": 0,
+          "limited_prefixes": 0,
+          "prefixes": 3662121,
+          "prior_run_words": 29157807,
+          "result_run_words": 31718142
+        },
+        "completed_interior": {
+          "commands": 47102785,
+          "dense_expansions": 1291025,
+          "dense_payload_bytes": 661004800,
+          "incomplete_prefixes": 0,
+          "limited_commands": 0,
+          "limited_prefixes": 0,
+          "prefixes": 1291025,
+          "prior_run_words": 16645377,
+          "result_run_words": 22338614
+        },
+        "unclassified": {
+          "commands": 0,
+          "dense_expansions": 0,
+          "dense_payload_bytes": 0,
+          "incomplete_prefixes": 0,
+          "limited_commands": 0,
+          "limited_prefixes": 0,
+          "prefixes": 0,
+          "prior_run_words": 0,
+          "result_run_words": 0
+        },
+        "unfinished_interior": {
+          "commands": 0,
+          "dense_expansions": 0,
+          "dense_payload_bytes": 0,
+          "incomplete_prefixes": 0,
+          "limited_commands": 0,
+          "limited_prefixes": 0,
+          "prefixes": 0,
+          "prior_run_words": 0,
+          "result_run_words": 0
+        }
+      },
+      "completed_unlimited_blob_commands": 47102785,
+      "completed_unlimited_fraction_of_blob_commands": 0.6939467524740759,
+      "completed_unlimited_blob_fraction_of_all_commands": 0.5627793822347673,
+      "all_measured_shader_ready": true,
+      "blob_roots": [
+        {
+          "root": 8,
+          "sources": [
+            "minecraft:basalt_blobs"
+          ],
+          "changed_points": 51014167,
+          "changed_upper_points": 0,
+          "commands": 61320848,
+          "commands_by_ceil_log2_length": [
+            29077060,
+            20749148,
+            6588899,
+            3932893,
+            926924,
+            45468,
+            456,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "conditional_commands": 0,
+          "dense_expansions": 1091549,
+          "dense_payload_bytes": 558873088,
+          "dense_unchanged_results": 0,
+          "feature_changes": 51014167,
+          "feature_commands": 61320848,
+          "feature_noops": 10306681,
+          "feature_only_dense_expansions": 1091549,
+          "feature_only_multi_span_dense_expansions": 1081362,
+          "incomplete_prefixes": 0,
+          "limited_prefixes": 0,
+          "multi_span_commands": 32243788,
+          "out_of_bounds_commands": 0,
+          "paths": {
+            "boundary": {
+              "commands": 19446476,
+              "dense_expansions": 339575,
+              "dense_payload_bytes": 173862400,
+              "incomplete_prefixes": 0,
+              "limited_commands": 0,
+              "limited_prefixes": 0,
+              "prefixes": 1913439,
+              "prior_run_words": 14830851,
+              "result_run_words": 17122835
+            },
+            "completed_interior": {
+              "commands": 41874372,
+              "dense_expansions": 751974,
+              "dense_payload_bytes": 385010688,
+              "incomplete_prefixes": 0,
+              "limited_commands": 0,
+              "limited_prefixes": 0,
+              "prefixes": 751974,
+              "prior_run_words": 7379421,
+              "result_run_words": 12039061
+            },
+            "unclassified": {
+              "commands": 0,
+              "dense_expansions": 0,
+              "dense_payload_bytes": 0,
+              "incomplete_prefixes": 0,
+              "limited_commands": 0,
+              "limited_prefixes": 0,
+              "prefixes": 0,
+              "prior_run_words": 0,
+              "result_run_words": 0
+            },
+            "unfinished_interior": {
+              "commands": 0,
+              "dense_expansions": 0,
+              "dense_payload_bytes": 0,
+              "incomplete_prefixes": 0,
+              "limited_commands": 0,
+              "limited_prefixes": 0,
+              "prefixes": 0,
+              "prior_run_words": 0,
+              "result_run_words": 0
+            }
+          },
+          "prefixes": 2665413,
+          "prior_run_words": 22210272,
+          "result_run_words": 29161896,
+          "spans": 42172100,
+          "spans_by_ceil_log2_length": [
+            29077060,
+            10374574,
+            1947981,
+            683922,
+            86125,
+            2425,
+            13,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "root": 9,
+          "sources": [
+            "minecraft:blackstone_blobs"
+          ],
+          "changed_points": 6129588,
+          "changed_upper_points": 0,
+          "commands": 6555808,
+          "commands_by_ceil_log2_length": [
+            2457875,
+            2430394,
+            1215598,
+            426915,
+            24883,
+            143,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "conditional_commands": 0,
+          "dense_expansions": 677113,
+          "dense_payload_bytes": 346681856,
+          "dense_unchanged_results": 0,
+          "feature_changes": 6129588,
+          "feature_commands": 6555808,
+          "feature_noops": 426220,
+          "feature_only_dense_expansions": 677113,
+          "feature_only_multi_span_dense_expansions": 600760,
+          "incomplete_prefixes": 0,
+          "limited_prefixes": 0,
+          "multi_span_commands": 4097933,
+          "out_of_bounds_commands": 0,
+          "paths": {
+            "boundary": {
+              "commands": 1327395,
+              "dense_expansions": 138062,
+              "dense_payload_bytes": 70687744,
+              "incomplete_prefixes": 0,
+              "limited_commands": 0,
+              "limited_prefixes": 0,
+              "prefixes": 1748682,
+              "prior_run_words": 14326956,
+              "result_run_words": 14595307
+            },
+            "completed_interior": {
+              "commands": 5228413,
+              "dense_expansions": 539051,
+              "dense_payload_bytes": 275994112,
+              "incomplete_prefixes": 0,
+              "limited_commands": 0,
+              "limited_prefixes": 0,
+              "prefixes": 539051,
+              "prior_run_words": 9265956,
+              "result_run_words": 10299553
+            },
+            "unclassified": {
+              "commands": 0,
+              "dense_expansions": 0,
+              "dense_payload_bytes": 0,
+              "incomplete_prefixes": 0,
+              "limited_commands": 0,
+              "limited_prefixes": 0,
+              "prefixes": 0,
+              "prior_run_words": 0,
+              "result_run_words": 0
+            },
+            "unfinished_interior": {
+              "commands": 0,
+              "dense_expansions": 0,
+              "dense_payload_bytes": 0,
+              "incomplete_prefixes": 0,
+              "limited_commands": 0,
+              "limited_prefixes": 0,
+              "prefixes": 0,
+              "prior_run_words": 0,
+              "result_run_words": 0
+            }
+          },
+          "prefixes": 2287733,
+          "prior_run_words": 23592912,
+          "result_run_words": 24894860,
+          "spans": 4117356,
+          "spans_by_ceil_log2_length": [
+            2457875,
+            1215197,
+            364985,
+            76783,
+            2508,
+            8,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "case": "nether-custom-bounds",
+      "profile": "custom.json",
+      "seed": 123456789,
+      "measured_regions": 20,
+      "legacy_counter_differences": [],
+      "total": {
+        "changed_points": 16262055,
+        "changed_upper_points": 0,
+        "commands": 26994225,
+        "commands_by_ceil_log2_length": [
+          1677958,
+          1297390,
+          1984153,
+          1459056,
+          614570,
+          755707,
+          592206,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "conditional_commands": 18613185,
+        "dense_expansions": 4621693,
+        "dense_payload_bytes": 2366306816,
+        "dense_unchanged_results": 0,
+        "feature_changes": 7593714,
+        "feature_commands": 8381040,
+        "feature_noops": 787326,
+        "feature_only_dense_expansions": 1523391,
+        "feature_only_multi_span_dense_expansions": 956797,
+        "incomplete_prefixes": 0,
+        "limited_prefixes": 0,
+        "multi_span_commands": 6703082,
+        "out_of_bounds_commands": 0,
+        "paths": {
+          "boundary": {
+            "commands": 7175893,
+            "dense_expansions": 1091785,
+            "dense_payload_bytes": 558993920,
+            "incomplete_prefixes": 0,
+            "limited_commands": 0,
+            "limited_prefixes": 0,
+            "prefixes": 28443350,
+            "prior_run_words": 248578958,
+            "result_run_words": 251097127
+          },
+          "completed_interior": {
+            "commands": 19818332,
+            "dense_expansions": 3529908,
+            "dense_payload_bytes": 1807312896,
+            "incomplete_prefixes": 0,
+            "limited_commands": 0,
+            "limited_prefixes": 0,
+            "prefixes": 5626187,
+            "prior_run_words": 53840492,
+            "result_run_words": 61604379
+          },
+          "unclassified": {
+            "commands": 0,
+            "dense_expansions": 0,
+            "dense_payload_bytes": 0,
+            "incomplete_prefixes": 0,
+            "limited_commands": 0,
+            "limited_prefixes": 0,
+            "prefixes": 0,
+            "prior_run_words": 0,
+            "result_run_words": 0
+          },
+          "unfinished_interior": {
+            "commands": 0,
+            "dense_expansions": 0,
+            "dense_payload_bytes": 0,
+            "incomplete_prefixes": 0,
+            "limited_commands": 0,
+            "limited_prefixes": 0,
+            "prefixes": 0,
+            "prior_run_words": 0,
+            "result_run_words": 0
+          }
+        },
+        "prefixes": 34069537,
+        "prior_run_words": 302419450,
+        "result_run_words": 312701506,
+        "spans": 3269630,
+        "spans_by_ceil_log2_length": [
+          1677958,
+          648695,
+          591217,
+          247179,
+          55908,
+          34046,
+          14627,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "blob_commands": 0,
+      "blob_paths": {
+        "boundary": {
+          "commands": 0,
+          "dense_expansions": 0,
+          "dense_payload_bytes": 0,
+          "incomplete_prefixes": 0,
+          "limited_commands": 0,
+          "limited_prefixes": 0,
+          "prefixes": 0,
+          "prior_run_words": 0,
+          "result_run_words": 0
+        },
+        "completed_interior": {
+          "commands": 0,
+          "dense_expansions": 0,
+          "dense_payload_bytes": 0,
+          "incomplete_prefixes": 0,
+          "limited_commands": 0,
+          "limited_prefixes": 0,
+          "prefixes": 0,
+          "prior_run_words": 0,
+          "result_run_words": 0
+        },
+        "unclassified": {
+          "commands": 0,
+          "dense_expansions": 0,
+          "dense_payload_bytes": 0,
+          "incomplete_prefixes": 0,
+          "limited_commands": 0,
+          "limited_prefixes": 0,
+          "prefixes": 0,
+          "prior_run_words": 0,
+          "result_run_words": 0
+        },
+        "unfinished_interior": {
+          "commands": 0,
+          "dense_expansions": 0,
+          "dense_payload_bytes": 0,
+          "incomplete_prefixes": 0,
+          "limited_commands": 0,
+          "limited_prefixes": 0,
+          "prefixes": 0,
+          "prior_run_words": 0,
+          "result_run_words": 0
+        }
+      },
+      "completed_unlimited_blob_commands": 0,
+      "completed_unlimited_fraction_of_blob_commands": null,
+      "completed_unlimited_blob_fraction_of_all_commands": 0.0,
+      "all_measured_shader_ready": true,
+      "blob_roots": []
+    },
+    {
+      "case": "nether-direct-stem",
+      "profile": "direct-stem.json",
+      "seed": 42,
+      "measured_regions": 20,
+      "legacy_counter_differences": [],
+      "total": {
+        "changed_points": 15004427,
+        "changed_upper_points": 0,
+        "commands": 25775187,
+        "commands_by_ceil_log2_length": [
+          1536269,
+          1126968,
+          1798481,
+          1337143,
+          624383,
+          855255,
+          332682,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "conditional_commands": 18164006,
+        "dense_expansions": 4286044,
+        "dense_payload_bytes": 2194454528,
+        "dense_unchanged_results": 0,
+        "feature_changes": 6957199,
+        "feature_commands": 7611181,
+        "feature_noops": 653982,
+        "feature_only_dense_expansions": 1396676,
+        "feature_only_multi_span_dense_expansions": 859482,
+        "incomplete_prefixes": 0,
+        "limited_prefixes": 0,
+        "multi_span_commands": 6074912,
+        "out_of_bounds_commands": 0,
+        "paths": {
+          "boundary": {
+            "commands": 6736816,
+            "dense_expansions": 1024670,
+            "dense_payload_bytes": 524631040,
+            "incomplete_prefixes": 0,
+            "limited_commands": 0,
+            "limited_prefixes": 0,
+            "prefixes": 28063045,
+            "prior_run_words": 243661347,
+            "result_run_words": 246041204
+          },
+          "completed_interior": {
+            "commands": 19038371,
+            "dense_expansions": 3261374,
+            "dense_payload_bytes": 1669823488,
+            "incomplete_prefixes": 0,
+            "limited_commands": 0,
+            "limited_prefixes": 0,
+            "prefixes": 5410677,
+            "prior_run_words": 51464844,
+            "result_run_words": 58609091
+          },
+          "unclassified": {
+            "commands": 0,
+            "dense_expansions": 0,
+            "dense_payload_bytes": 0,
+            "incomplete_prefixes": 0,
+            "limited_commands": 0,
+            "limited_prefixes": 0,
+            "prefixes": 0,
+            "prior_run_words": 0,
+            "result_run_words": 0
+          },
+          "unfinished_interior": {
+            "commands": 0,
+            "dense_expansions": 0,
+            "dense_payload_bytes": 0,
+            "incomplete_prefixes": 0,
+            "limited_commands": 0,
+            "limited_prefixes": 0,
+            "prefixes": 0,
+            "prior_run_words": 0,
+            "result_run_words": 0
+          }
+        },
+        "prefixes": 33473722,
+        "prior_run_words": 295126191,
+        "result_run_words": 304650295,
+        "spans": 2963999,
+        "spans_by_ceil_log2_length": [
+          1536269,
+          563484,
+          534937,
+          227228,
+          56644,
+          37600,
+          7837,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "blob_commands": 0,
+      "blob_paths": {
+        "boundary": {
+          "commands": 0,
+          "dense_expansions": 0,
+          "dense_payload_bytes": 0,
+          "incomplete_prefixes": 0,
+          "limited_commands": 0,
+          "limited_prefixes": 0,
+          "prefixes": 0,
+          "prior_run_words": 0,
+          "result_run_words": 0
+        },
+        "completed_interior": {
+          "commands": 0,
+          "dense_expansions": 0,
+          "dense_payload_bytes": 0,
+          "incomplete_prefixes": 0,
+          "limited_commands": 0,
+          "limited_prefixes": 0,
+          "prefixes": 0,
+          "prior_run_words": 0,
+          "result_run_words": 0
+        },
+        "unclassified": {
+          "commands": 0,
+          "dense_expansions": 0,
+          "dense_payload_bytes": 0,
+          "incomplete_prefixes": 0,
+          "limited_commands": 0,
+          "limited_prefixes": 0,
+          "prefixes": 0,
+          "prior_run_words": 0,
+          "result_run_words": 0
+        },
+        "unfinished_interior": {
+          "commands": 0,
+          "dense_expansions": 0,
+          "dense_payload_bytes": 0,
+          "incomplete_prefixes": 0,
+          "limited_commands": 0,
+          "limited_prefixes": 0,
+          "prefixes": 0,
+          "prior_run_words": 0,
+          "result_run_words": 0
+        }
+      },
+      "completed_unlimited_blob_commands": 0,
+      "completed_unlimited_fraction_of_blob_commands": null,
+      "completed_unlimited_blob_fraction_of_all_commands": 0.0,
+      "all_measured_shader_ready": true,
+      "blob_roots": []
+    },
+    {
+      "case": "overworld",
+      "profile": "overworld.json",
+      "seed": 123456789,
+      "measured_regions": 20,
+      "legacy_counter_differences": [],
+      "total": {
+        "changed_points": 0,
+        "changed_upper_points": 0,
+        "commands": 0,
+        "commands_by_ceil_log2_length": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "conditional_commands": 0,
+        "dense_expansions": 0,
+        "dense_payload_bytes": 0,
+        "dense_unchanged_results": 0,
+        "feature_changes": 0,
+        "feature_commands": 0,
+        "feature_noops": 0,
+        "feature_only_dense_expansions": 0,
+        "feature_only_multi_span_dense_expansions": 0,
+        "incomplete_prefixes": 0,
+        "limited_prefixes": 0,
+        "multi_span_commands": 0,
+        "out_of_bounds_commands": 0,
+        "paths": {
+          "boundary": {
+            "commands": 0,
+            "dense_expansions": 0,
+            "dense_payload_bytes": 0,
+            "incomplete_prefixes": 0,
+            "limited_commands": 0,
+            "limited_prefixes": 0,
+            "prefixes": 0,
+            "prior_run_words": 0,
+            "result_run_words": 0
+          },
+          "completed_interior": {
+            "commands": 0,
+            "dense_expansions": 0,
+            "dense_payload_bytes": 0,
+            "incomplete_prefixes": 0,
+            "limited_commands": 0,
+            "limited_prefixes": 0,
+            "prefixes": 0,
+            "prior_run_words": 0,
+            "result_run_words": 0
+          },
+          "unclassified": {
+            "commands": 0,
+            "dense_expansions": 0,
+            "dense_payload_bytes": 0,
+            "incomplete_prefixes": 0,
+            "limited_commands": 0,
+            "limited_prefixes": 0,
+            "prefixes": 0,
+            "prior_run_words": 0,
+            "result_run_words": 0
+          },
+          "unfinished_interior": {
+            "commands": 0,
+            "dense_expansions": 0,
+            "dense_payload_bytes": 0,
+            "incomplete_prefixes": 0,
+            "limited_commands": 0,
+            "limited_prefixes": 0,
+            "prefixes": 0,
+            "prior_run_words": 0,
+            "result_run_words": 0
+          }
+        },
+        "prefixes": 0,
+        "prior_run_words": 0,
+        "result_run_words": 0,
+        "spans": 0,
+        "spans_by_ceil_log2_length": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "blob_commands": 0,
+      "blob_paths": {
+        "boundary": {
+          "commands": 0,
+          "dense_expansions": 0,
+          "dense_payload_bytes": 0,
+          "incomplete_prefixes": 0,
+          "limited_commands": 0,
+          "limited_prefixes": 0,
+          "prefixes": 0,
+          "prior_run_words": 0,
+          "result_run_words": 0
+        },
+        "completed_interior": {
+          "commands": 0,
+          "dense_expansions": 0,
+          "dense_payload_bytes": 0,
+          "incomplete_prefixes": 0,
+          "limited_commands": 0,
+          "limited_prefixes": 0,
+          "prefixes": 0,
+          "prior_run_words": 0,
+          "result_run_words": 0
+        },
+        "unclassified": {
+          "commands": 0,
+          "dense_expansions": 0,
+          "dense_payload_bytes": 0,
+          "incomplete_prefixes": 0,
+          "limited_commands": 0,
+          "limited_prefixes": 0,
+          "prefixes": 0,
+          "prior_run_words": 0,
+          "result_run_words": 0
+        },
+        "unfinished_interior": {
+          "commands": 0,
+          "dense_expansions": 0,
+          "dense_payload_bytes": 0,
+          "incomplete_prefixes": 0,
+          "limited_commands": 0,
+          "limited_prefixes": 0,
+          "prefixes": 0,
+          "prior_run_words": 0,
+          "result_run_words": 0
+        }
+      },
+      "completed_unlimited_blob_commands": 0,
+      "completed_unlimited_fraction_of_blob_commands": null,
+      "completed_unlimited_blob_fraction_of_all_commands": null,
+      "all_measured_shader_ready": true,
+      "blob_roots": []
+    }
+  ],
+  "method": {
+    "workers": 16,
+    "warmups_per_case": 5,
+    "measured_regions_per_case": 20,
+    "cases": 5,
+    "region": "Complete fresh 1024-chunk lit MCA, same profiles, seeds and coordinates as retained corpora.",
+    "legacy_reference": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle86/inventory/report.json",
+    "legacy_reference_scope": "Same production machine code in the actual PR208 main, verified separately. C86 provides the original exact command inventory; actual full-output parity is separately checked against the immutable original and PR208 merged corpus."
+  },
+  "validation": {
+    "ordinary_tests": [
+      "186",
+      "0",
+      "54"
+    ],
+    "explicit_gpu_terrain_tests": 2,
+    "inventory_measured_chunk_instances": 102400,
+    "ordinary_measured_chunk_instances": 102400,
+    "pre_pr_total_measured_instances": 204800,
+    "nbt": "All measured candidate instances match immutable original and actual PR208 main in complete decompressed NBT and membership; only MCA timestamps/compression representation excluded. Coordinates repeat across runs.",
+    "legacy_counter_differences": 0,
+    "unclassified_prefixes": 0,
+    "binary": {
+      "machine_code_identical_to_actual_main": true,
+      "text_sha256": "91bef42b702bd68f5e21b71cfa0e77f0d22b77b393b128c6ec3f900ffa81d427",
+      "different_file_bytes": 91,
+      "categories": {
+        "uuid": 16,
+        "verified_panic_line": 11,
+        "signature": 64
+      },
+      "verified_panic_locations": 11,
+      "observer_symbols": 0
+    },
+    "terminal": {
+      "all_drivers_terminal": true,
+      "native": {
+        "session_id": 43131,
+        "actual_exec_exit_code": 0,
+        "observed_utc": "2026-10-23T02:17:46.729693+00:00",
+        "matching_processes_after_terminal": [],
+        "revision": "ee115cd94be68ae06562b625549731547056edcb",
+        "status": ""
+      },
+      "proof": {
+        "session_id": 38563,
+        "actual_exec_exit_code": 0,
+        "observed_utc": "2026-10-23T02:22:32.599793+00:00",
+        "matching_processes_after_terminal": [],
+        "revision": "ee115cd94be68ae06562b625549731547056edcb",
+        "status": ""
+      },
+      "source_and_head_frozen_through_drivers": true
+    }
+  },
+  "ordinary_observations": [
+    {
+      "case": "nether-main",
+      "preceding": {
+        "median_ms": 1056.8814584985375,
+        "p95_region_ms": 1396.4977079071107,
+        "maximum_region_ms": 1508.3340830169618,
+        "total_ms": 21542.19345888123,
+        "chunks_per_second": 950.6924185362694,
+        "peak_rss_bytes": 2353938432,
+        "generation_peak_rss_bytes": 2353938432
+      },
+      "candidate": {
+        "median_ms": 1392.0335625298321,
+        "p95_region_ms": 1929.040014569182,
+        "maximum_region_ms": 1934.1227910481393,
+        "total_ms": 27978.09241595678,
+        "chunks_per_second": 732.001299285137,
+        "peak_rss_bytes": 2196963328,
+        "generation_peak_rss_bytes": 2196963328
+      }
+    },
+    {
+      "case": "nether-second-seed",
+      "preceding": {
+        "median_ms": 1123.2117504114285,
+        "p95_region_ms": 1557.8264683485033,
+        "maximum_region_ms": 1875.055416021496,
+        "total_ms": 22637.669041985646,
+        "chunks_per_second": 904.686783874088,
+        "peak_rss_bytes": 2285813760,
+        "generation_peak_rss_bytes": 2285813760
+      },
+      "candidate": {
+        "median_ms": 1522.1804369939491,
+        "p95_region_ms": 2071.8921686522663,
+        "maximum_region_ms": 2179.848624859005,
+        "total_ms": 30166.342666838318,
+        "chunks_per_second": 678.9023192564057,
+        "peak_rss_bytes": 2335342592,
+        "generation_peak_rss_bytes": 2335342592
+      }
+    },
+    {
+      "case": "nether-custom-bounds",
+      "preceding": {
+        "median_ms": 775.8641460677609,
+        "p95_region_ms": 926.455901726149,
+        "maximum_region_ms": 1028.5893329419196,
+        "total_ms": 15821.868834085763,
+        "chunks_per_second": 1294.4109330421838,
+        "peak_rss_bytes": 1948712960,
+        "generation_peak_rss_bytes": 1948712960
+      },
+      "candidate": {
+        "median_ms": 969.5809581317008,
+        "p95_region_ms": 1147.7183368406259,
+        "maximum_region_ms": 1162.7173330634832,
+        "total_ms": 19597.625167109072,
+        "chunks_per_second": 1045.024579527719,
+        "peak_rss_bytes": 1873985536,
+        "generation_peak_rss_bytes": 1873985536
+      }
+    },
+    {
+      "case": "nether-direct-stem",
+      "preceding": {
+        "median_ms": 765.3273958712816,
+        "p95_region_ms": 940.6163062434645,
+        "maximum_region_ms": 1154.685625107959,
+        "total_ms": 15897.217374993488,
+        "chunks_per_second": 1288.27577285414,
+        "peak_rss_bytes": 2022408192,
+        "generation_peak_rss_bytes": 2022408192
+      },
+      "candidate": {
+        "median_ms": 1014.6502084098756,
+        "p95_region_ms": 1203.091119241435,
+        "maximum_region_ms": 1341.388041852042,
+        "total_ms": 20674.795667175204,
+        "chunks_per_second": 990.5781091958033,
+        "peak_rss_bytes": 1877524480,
+        "generation_peak_rss_bytes": 1877524480
+      }
+    },
+    {
+      "case": "overworld",
+      "preceding": {
+        "median_ms": 386.1458540195599,
+        "p95_region_ms": 438.97092577535665,
+        "maximum_region_ms": 481.61104205064476,
+        "total_ms": 7664.3994161859155,
+        "chunks_per_second": 2672.0945618713063,
+        "peak_rss_bytes": 1592344576,
+        "generation_peak_rss_bytes": 1582071808
+      },
+      "candidate": {
+        "median_ms": 633.6470624664798,
+        "p95_region_ms": 727.0249790279195,
+        "maximum_region_ms": 794.6788331028074,
+        "total_ms": 12171.20833415538,
+        "chunks_per_second": 1682.6595550524037,
+        "peak_rss_bytes": 1659731968,
+        "generation_peak_rss_bytes": 1653915648
+      }
+    }
+  ],
+  "host_observations": {
+    "scope": "Per-process maxima across snapshots, not simultaneous totals or causal attribution. Timing confirmation remains deferred.",
+    "max_cpu_percent_by_executable": {
+      "node": 201.2,
+      "com.apple.Virtualization.VirtualMachine": 195.7,
+      "GitKraken Helper (Renderer)": 149.0,
+      "Brave Browser Helper (Renderer)": 125.4,
+      "com.apple.WebKit.WebContent": 118.2,
+      "WindowServer": 85.7,
+      "biomesyncd": 84.1,
+      "(node)": 66.9,
+      "WidgetRenderer_Activities": 57.9,
+      "Python": 46.2,
+      "Brave Browser Helper": 38.4,
+      "(git)": 34.0
+    }
+  },
+  "source_review": {
+    "production_hooks": "Two cfg(test)-only path-selection hooks. The original root/column branch, ordered writes, source-limit filters, material reads, error handling and result construction are unchanged.",
+    "fallback_classification": "versions.index is a pure bounds/index calculation, repeated only in test builds after the original zip expression; it performs no generation or world-state read.",
+    "publication": "Path counts copy the final per-prefix legacy counts immediately before the existing thread/root aggregation, including incomplete and zero-command prefixes. No additional command callback, allocation, lock or retained world owner is added by path selection. Fixed-size stack counters enlarge the test-only prefix observer.",
+    "coverage": "All eight shared path fields partition legacy totals and per-root counters; four unclassified buckets must be zero in full generation. Unit fixtures cover all three paths, limited/unlimited, empty/nonempty, successful/incomplete, disabled observation, repeated finalization and thread/root/session aggregation.",
+    "normal_binary": {
+      "categories": {
+        "uuid": 16,
+        "verified_panic_line": 11,
+        "signature": 64
+      },
+      "unclassified_offsets": [],
+      "scope": "Actual Mach-O UUID/signature ranges and decoded Rust Location source pointers/line words. Each original/new source statement checked directly."
+    },
+    "source_revision": "ee115cd94be68ae06562b625549731547056edcb",
+    "base_revision": "f15d3d2875ecef5db8a557ce1fd172b012f5de99",
+    "timing_acceptance": false,
+    "future_held_composition": "C92 has an early uniform_blob_prefix return and needs a matching hook if this observer is composed into it. Do not treat missing hooks as boundary work."
+  },
+  "next_investigation": {
+    "evidence": "C92 samples identify iterator/prefix/material work; C93 locates actual completed unlimited blob command consumption. Neither is an elapsed-time share.",
+    "decision": "Investigate compact uniform column edits built during existing output indexing, rather than a separate pass that merely moves replay work.",
+    "source_touchpoints": {
+      "anchor_output_index": "native/src/decoration/dependencies.rs:818-829 (tested C93 source): finish_world writes are already traversed once to build exact per-column command-index vectors.",
+      "completed_root": "native/src/decoration/dependencies.rs:644-683: only already-completed targets are indexed in source anchor order.",
+      "prefix": "native/src/decoration/dependencies.rs:1060 onward: original commands remain mandatory for limits and fallback unless exact equivalent coverage is established."
+    },
+    "candidate_requirements": [
+      "Select actual parsed unconditional uniform ReplaceBlobs definitions and valid height <=256; never names, and preserve tall/custom fallbacks.",
+      "Retain exact ordered command vectors and column-index lists for publication, partial prefixes, observers, metadata and fallback.",
+      "Build mask bits only while visiting already-generated writes in the existing index construction. No additional prior reads, random consumption or anchor/column generation.",
+      "Measure extra preparation work and retained memory, including unused column masks and all owners. Account for lookup, merge and disposal in the complete interval.",
+      "Limit consumption initially to completed unlimited eligible columns. Preserve existing source-order paths elsewhere.",
+      "Test duplicate/descending writes, air, negative minY, exact limits, height bounds, output correctness, request reordering, concurrency, cancellation and runtime integration.",
+      "If composing with C92, update both prefix path hooks and preserve all prior differential tests and scalar fallbacks."
+    ],
+    "measured_targets": [
+      {
+        "case": "nether-main",
+        "completed_unlimited_commands_per_region": 2356529.5,
+        "fraction_of_blob_commands": 0.6711197818758433,
+        "fraction_of_all_prefix_commands": 0.5525691181978383
+      },
+      {
+        "case": "nether-second-seed",
+        "completed_unlimited_commands_per_region": 2355139.25,
+        "fraction_of_blob_commands": 0.6939467524740759,
+        "fraction_of_all_prefix_commands": 0.5627793822347673
+      }
+    ],
+    "limits": [
+      "Interior column states are already memoized, so eager per-root masks may shift rather than remove work.",
+      "No predicted speedup or memory plateau is claimed.",
+      "Performance acceptance and promotion of held production candidates remain deferred until comparable quiet measurements."
+    ],
+    "timing_acceptance": false
+  },
+  "limits": [
+    "Command counts are consumed prefix commands, not unique output writes or CPU-time fractions.",
+    "Completed/unlimited coverage is necessary for the proposed joined-root mask path, not proof of net savings.",
+    "Mask preparation would still traverse commands. Interior column results are memoized, so precomputation may move work rather than remove it.",
+    "This observer changes test-build scheduling. Normal production code contains no observer.",
+    "The held uniform-prefix candidate returns early and would need its own matching path hook before this observer can measure that implementation.",
+    "Zero Overworld counts mean it uses a different generation path.",
+    "No new portal, DH, unloading, sustained-memory or subsecond acceptance is claimed.",
+    "Held production candidates remain unmerged pending reliable full performance acceptance."
+  ],
+  "recovery": {
+    "worktree": "/tmp/retina-nether-prefix-path-inventory",
+    "branch": "codex/nether-prefix-path-inventory",
+    "evidence_root": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle93",
+    "driver_cwd": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20",
+    "commands": [
+      "python3 prefix-path-inventory-normal.py",
+      "python3 prefix-path-inventory-proof.py",
+      "python3 prefix-path-inventory-analysis.py",
+      "python3 native-section-comparison.py cycle89/merged.dylib cycle93/normal.dylib cycle93/section-comparison.json",
+      "python3 prefix-path-binary-proof.py",
+      "python3 prefix-path-inventory-report.py"
+    ],
+    "rerun": "Use fresh output directories. Never overwrite retained corpora. Report writer appends the documentation section; run only once.",
+    "full_root_inventory": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle93/path-analysis.json"
+  },
+  "driver_sha256": {
+    "prefix-path-inventory-normal.py": "10b6b1108b953de9e7b8cf3d9f1f5ae7e7ae247f008f167cc823fb3a4b8b7b48",
+    "prefix-path-inventory-proof.py": "ecfc5d3b63d54c51f064ce70e095a03e42113e2af45efdc8d904c9e838961aa3",
+    "prefix-path-inventory-analysis.py": "936feca7c6521d4000f9c37115284e62afdba5cc0a116348224febbb6bdb6211",
+    "prefix-path-binary-proof.py": "c0b24bb359f55c921174aae0ace08ab7f80fe065a2d40ec3e06196adffa28a99",
+    "prefix-path-inventory-report.py": "ffa20dec093f5e9eb22195330ce72dd7e434a0add8cbbd677875237f72592efc",
+    "prefix-path-inventory-merged-proof.py": "5aa32345bd3fd81089da6372092eb593f33ee76611b5dc63de18e48caab22424"
+  }
+}

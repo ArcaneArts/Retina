@@ -2499,3 +2499,58 @@ copy-cap coverage, full output proofs and recovery commands are retained in
 `docs/benchmarks/nether-perf-cycle89-2026-10-22.json`. This cycle establishes no
 new runtime, sustained-memory, speedup or subsecond acceptance. All previously
 held production candidates and other worktrees remain preserved.
+
+
+## Cycle 93 — Completed and fallback prefix work
+
+**Diagnostic only; production generation is unchanged.** The exact ordered-prefix
+inventory now attributes work at the actual branch: completed interior columns,
+unfinished interior columns, and boundary columns outside the version index.
+Each category partitions prefixes, applied commands, run words and dense
+allocations, including zero-command and incomplete prefixes. It also records
+commands accepted under an exact source-order limit. An unclassified bucket
+detects missing hooks; it remains zero in the full corpus.
+
+The table contains totals over twenty measured complete regions per seed.
+The blob labels identify the inspected standard profile roots, not eligibility
+rules for any future production optimization.
+
+| Case | Blob commands | Completed, unlimited blob commands | Share of blob commands | Share of all prefix commands |
+| --- | ---: | ---: | ---: | ---: |
+| nether-main | 70,226,793 | 47,130,590 | 67.11% | 55.26% |
+| nether-second-seed | 67,876,656 | 47,102,785 | 69.39% | 56.28% |
+
+This locates about 2.36 million applied blob-prefix commands per region in the
+completed interior path. Both standard seeds have zero unfinished-interior and
+limited blob commands in this corpus; the remaining blob work is boundary work.
+These are command counts, not CPU shares or predicted speedups. Custom bounds
+and direct-stem profiles exercise their own roots. Overworld uses another path,
+so its observer counts are zero.
+
+A mask built in a separate completed-root pass would still traverse the same
+commands. Interior column states are already memoized: moving that loop earlier
+does not establish less work. The next candidate should measure a representation
+built during existing output indexing, or another demonstrably cheaper command
+traversal, while preserving original ordered writes for publication, partial
+prefixes and fallback reads. Preparation, unused state, lookup, disposal and
+retained memory must all remain in the accounting. Parsed feature semantics and
+height bounds must determine eligibility; source names cannot do so.
+
+Validation passes 186 ordinary native tests, two explicit GPU terrain fixtures,
+and 204,800 measured candidate chunk instances against both the immutable
+original and actual PR #208 main in full decompressed NBT and membership.
+Coordinates repeat across runs. All legacy prefix counters match the retained
+Cycle 86 inventory exactly for every root and total. Every measured generation
+is shader-ready. The normal release contains no observer symbols and has
+byte-identical machine code to actual main; its 91 differing file bytes are
+11 verified panic-line bytes, 16 UUID bytes and 64 signature bytes.
+
+The observer adds fixed stack counters to test builds and can affect their
+scheduling. Normal performance observations remain separate and provisional;
+quiet timing confirmation is deferred. This cycle establishes no new speedup,
+runtime, sustained-memory or subsecond acceptance. The held uniform-prefix
+candidate has an early return and would need a matching path hook before using
+this observer. Previously held production candidates and worktrees are retained.
+
+Full counts, correctness evidence, ordinary observations and recovery commands
+are in `docs/benchmarks/nether-perf-cycle93-2026-10-22.json`.
