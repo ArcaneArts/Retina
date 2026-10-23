@@ -43,7 +43,7 @@ impl Snapshot {
             columns: output
                 .columns
                 .iter()
-                .map(|(&key, ids)| (key, ids.clone()))
+                .map(|(key, ids)| (key, ids.to_vec()))
                 .collect(),
         }
     }
@@ -62,7 +62,7 @@ impl Snapshot {
             expected.entry((b.x, b.z)).or_default().push(i);
         }
         expected.len() == output.columns.len()
-            && expected.iter().all(|(key, indices)| output.columns.get(key) == Some(indices))
+            && expected.iter().all(|(key, indices)| output.columns.get(key) == Some(indices.as_slice()))
     }
 }
 #[derive(Default, Serialize)]
@@ -229,7 +229,7 @@ impl Build {
                 && previous
                     .columns
                     .iter()
-                    .all(|(key, ids)| output.columns.get(key) == Some(ids));
+                    .all(|(key, ids)| output.columns.get(key) == Some(ids.as_slice()));
             (true, !equal, false, false)
         } else if room {
             history.snapshot = Some(Snapshot::from(output));

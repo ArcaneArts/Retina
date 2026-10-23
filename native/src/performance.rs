@@ -62,6 +62,9 @@ counters! {
     version_cache_exterior_lookups, version_cache_exterior_hits,
     version_cache_exterior_exported_slots, version_cache_exterior_exported_spans,
     version_cache_exterior_exported_states, version_cache_exterior_exported_bytes,
+    output_index_packed_outputs, output_index_packed_writes, output_index_packed_cells,
+    output_index_packed_buffer_bytes, output_index_ordered_outputs, output_index_ordered_writes,
+    output_index_uniform_bitmap_bytes,
 }
 use Counter::*;
 

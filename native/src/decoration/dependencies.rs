@@ -779,7 +779,7 @@ impl Planner<'_> {
                 .get(&(root, ax, az))
                 .ok_or("missing completed root target")?;
             let anchor = completed.anchors.len();
-            for (&(x, z), indices) in output.columns.iter() {
+            for ((x, z), indices) in output.columns.iter() {
                 if let Some(column) = self.versions.index(x, z) {
                     completed
                         .columns
