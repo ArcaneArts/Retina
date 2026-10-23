@@ -10,9 +10,25 @@ fn material_base_offset(r:Request)->u32 {
 }
 fn material_width(r:Request)->u32 {return (r.padding&255u)*16u;}
 fn material_groups(r:Request)->u32 {return (material_width(r)*material_width(r)+255u)/256u;}
+// Bits 8..13 are unused by dense material jobs (sparse biome jobs use them for
+// their Y coordinate, but never dispatch these passes). Counted runs stay GPU-only.
+fn material_retained_runs(r:Request)->u32 {return (r.padding>>8u)&63u;}
 fn material_runs_offset(r:Request)->u32 {
     return material_base_offset(r)+4u+2u*material_width(r)*material_width(r)+2u*material_groups(r)
         +select(0u,aquifer_volume_words(r)*2u,caves.aquifer[0].x!=0u);
+}
+fn material_retain(index:u32,run:u32,count:u32,value:u32)->bool {
+    // A stored run uses at most 28 bits (height <=4096, material <=65535).
+    // Bias it into a normal finite float for the cave binding's vec4 layout,
+    // so neither subnormal flushing nor NaN canonicalization applies.
+    // One invocation owns all four lanes of each column's vec4: no shared RMW.
+    nodes[(run/4u)*count+index][run%4u]=bitcast<f32>((value&0x0fffffffu)|0x40000000u);
+    // A malformed surface program can return an out-of-range material ID.
+    // Replay those columns so the original run validation still sees every bit.
+    return value<0x10000000u;
+}
+fn material_retained(index:u32,run:u32,count:u32)->u32 {
+    return bitcast<u32>(nodes[(run/4u)*count+index][run%4u])&0x3fffffffu;
 }
 fn material_carved(x:u32,y:i32,z:u32,r:Request)->bool {
     let width=(r.padding&255u)*16u+2u;
@@ -52,6 +68,19 @@ fn material_column(index:u32,emit:bool,r0:Request) {
     var r=r0;r.density_side=0u; // This pass owns no density/cache scratch.
     let width=material_width(r);let count=width*width;
     if index>=count {return;}
+    let base=material_base_offset(r);let groups=material_groups(r);
+    let retained=material_retained_runs(r);
+    var output=0u;
+    if emit {
+        output=material_runs_offset(r)+mask[base+5u+index*2u]+mask[base+4u+count*2u+groups+index/256u];
+        let length=mask[base+4u+index*2u];
+        if length<=retained && material_retained(index,0u,count)<0x10000000u {
+            // Each column owns its lane in every retained-run plane. Copy only
+            // fully retained columns; overflow replays the original evaluator.
+            for(var run=0u;run<length;run++) {mask[output+run]=material_retained(index,run,count);}
+            return;
+        }
+    }
     let x=index%width+16u;let z=index/width+16u;
     let c=column_at(x,z,r.tile_side);
     let point=vec2<f32>(f32(r.origin_x+i32(x)),f32(r.origin_z+i32(z)));
@@ -62,11 +91,8 @@ fn material_column(index:u32,emit:bool,r0:Request) {
     let slope=max(abs(f32(column_at(x+1u,z,r.tile_side).height-column_at(x-1u,z,r.tile_side).height)),
                   abs(f32(column_at(x,z+1u,r.tile_side).height-column_at(x,z-1u,r.tile_side).height)));
     let preliminary=f32(c.height-1)+depth-8.0;
-    let base=material_base_offset(r);let groups=material_groups(r);
-    var output=0u;
-    if emit {output=material_runs_offset(r)+mask[base+5u+index*2u]+mask[base+4u+count*2u+groups+index/256u];}
     var above=0;var below=r.max_y;var water=-2147483648.0;
-    var previous=0xffffffffu;var runs=0u;
+    var previous=0xffffffffu;var runs=0u;var retention_valid=true;
     for(var y=r.max_y-1;y>=r.min_y;y--) {
         let voxel=material_voxel(x,y,z,c,r);var material=voxel.id;
         if !voxel.solid {
@@ -93,14 +119,22 @@ fn material_column(index:u32,emit:bool,r0:Request) {
         if previous!=material {
             if previous!=0xffffffffu {
                 if emit {mask[output+runs]=(u32(y+1-r.min_y)<<16u)|previous;}
+                else if runs<retained {retention_valid=material_retain(index,runs,count,(u32(y+1-r.min_y)<<16u)|previous)&&retention_valid;}
                 runs+=1u;
             }
             previous=material;
         }
     }
     if emit {mask[output+runs]=previous;}
+    else if runs<retained {retention_valid=material_retain(index,runs,count,previous)&&retention_valid;}
     runs+=1u;
-    if !emit {mask[base+4u+index*2u]=runs;}
+    if !emit {
+        mask[base+4u+index*2u]=runs;
+        if retained>0u && !retention_valid {
+            // Normal finite sentinel outside the valid 28-bit run-word range.
+            nodes[index].x=bitcast<f32>(0x50000000u);
+        }
+    }
 }
 @compute @workgroup_size(64)
 fn material_counts(@builtin(global_invocation_id) id:vec3<u32>) {

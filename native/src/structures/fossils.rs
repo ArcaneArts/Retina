@@ -2,6 +2,10 @@
 use super::*;
 use crate::decoration::placement_height::{HeightProvider, HeightRandom};
 
+#[cfg(test)]
+#[path = "fossil_biome_tests.rs"]
+mod biome_tests;
+
 #[derive(Clone, Deserialize)]
 pub struct Profile {
     pub templates: Vec<usize>,
@@ -47,6 +51,23 @@ pub(super) struct Prepared {
     random: Random,
     position: Option<[i32; 3]>,
     biome: Option<u16>,
+}
+
+// Match the point-query API's vertical clamping and quart cells. An uncovered
+// point still uses the original sparse query, as do unsupported query bounds.
+fn retained_biome(
+    request: ChunkRequest,
+    mask: &crate::geology::CaveMask,
+    position: [i32; 3],
+) -> Option<u16> {
+    if request.min_y.rem_euclid(4) != 0 || request.height % 4 != 0 {
+        return None;
+    }
+    mask.biome(
+        position[0],
+        position[1].clamp(request.min_y, request.min_y + request.height as i32 - 1),
+        position[2],
+    )
 }
 
 fn begin(
@@ -210,12 +231,22 @@ pub(super) fn prepare_batch(
                         .unwrap_or(0)
                 })
             };
+            if let (Some(mask), Some(position)) = (&mask, prepared[index].position) {
+                prepared[index].biome = retained_biome(request, mask, position);
+            }
         }
     }
     let mut points = Vec::new();
     let mut indices = Vec::new();
+    let mut biome_points = 0;
+    let mut retained_points = 0;
     for (i, p) in prepared.iter().enumerate() {
         if let Some(pos) = p.position {
+            biome_points += 1;
+            if p.biome.is_some() {
+                retained_points += 1;
+                continue;
+            }
             points.push(crate::queries::Point {
                 x: pos[0],
                 y: pos[1],
@@ -233,7 +264,15 @@ pub(super) fn prepare_batch(
             .add(structure_fossil_columns, inputs.len() as u64);
         metrics
             .performance
-            .add(structure_fossil_biome_points, points.len() as u64);
+            .add(structure_fossil_biome_points, biome_points);
+        metrics
+            .performance
+            .add(structure_fossil_biome_retained, retained_points);
+        metrics
+            .performance
+            .add(structure_fossil_biome_queried, points.len() as u64);
+        // Keep the API call even for an empty miss batch: its request/profile
+        // validation and errors remain observable without submitting GPU work.
         let biomes = engine.query_points(*request, &points, crate::queries::Kind::Biome)?;
         for (index, biome) in indices.into_iter().zip(biomes) {
             prepared[index].biome = Some(biome.biome() as u16);

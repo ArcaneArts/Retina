@@ -7,6 +7,7 @@ use std::ops::Range;
 use std::sync::Arc;
 mod layers;
 mod materials;
+mod blob_overlay;
 #[cfg(test)]
 mod material_read_probe;
 mod stream;
@@ -1124,7 +1125,7 @@ pub(super) fn environment_scan(
 }
 #[derive(Default)]
 pub(super) struct Overlay {
-    blocks: Map<[i32; 3], u16>,
+    blocks: blob_overlay::Blocks,
     tops: Map<(i32, i32), [i32; 6]>,
     grounds: std::cell::RefCell<Map<(i32, i32), Vec<i32>>>,
     recording: bool,
@@ -1138,8 +1139,18 @@ struct OverlayUndo {
     tops: Option<[i32; 6]>,
 }
 impl Overlay {
+    pub(super) fn for_recipes(profile: &WorldProfile, request: ChunkRequest,
+        x: i32, z: i32, ids: &[u32]) -> Self {
+        Self { blocks: blob_overlay::Blocks::for_recipes(profile, request, x, z, ids),
+            ..Self::default() }
+    }
+    pub(super) fn observe_storage(&self, prior: &dyn PriorWorld) {
+        if let Some((bytes, points, promoted)) = self.blocks.observation() {
+            prior.blob_overlay_observed(bytes, points, promoted);
+        }
+    }
     pub(super) fn gpu_entries(&self) -> impl Iterator<Item = ([i32; 3], u16)> + '_ {
-        self.blocks.iter().map(|(at, material)| (*at, *material))
+        self.blocks.iter()
     }
     #[cfg(test)]
     pub(super) fn probe_entries(&self) -> impl Iterator<Item = ([i32; 3], u16)> + '_ {
@@ -1148,7 +1159,7 @@ impl Overlay {
     pub(super) fn retained_bytes(&self) -> usize {
         // Capacity rather than length, with allowance for hash control bytes,
         // load factor and allocator overhead. Snapshots omit derived ground caches.
-        self.blocks.capacity() * (std::mem::size_of::<([i32; 3], u16)>() + 16)
+        self.blocks.retained_bytes()
             + self.tops.capacity() * (std::mem::size_of::<((i32, i32), [i32; 6])>() + 16)
     }
     pub(super) fn snapshot(&self) -> Self {
@@ -1211,6 +1222,24 @@ impl Overlay {
             .get(&at)
             .copied()
             .or_else(|| field.material(profile, request, at))
+    }
+    /// Singleton blob predicates still observe live writes before prior state.
+    pub(super) fn material_matches(
+        &self, field: &Field, profile: &WorldProfile, request: ChunkRequest,
+        at: [i32; 3], material: u16,
+    ) -> Option<bool> {
+        if profile.ordered_decorations
+            && (at[1] < request.min_y || at[1] >= request.min_y + request.height as i32)
+        {
+            return Some(material == 0);
+        }
+        if let Some(&actual) = self.blocks.get(&at) {
+            return Some(actual == material);
+        }
+        match field.prior {
+            Some(prior) => prior.material_matches(at, material),
+            None => field.material(profile, request, at).map(|actual| actual == material),
+        }
     }
     pub(super) fn height(
         &self,

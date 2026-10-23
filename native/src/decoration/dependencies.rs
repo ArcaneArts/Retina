@@ -2,6 +2,9 @@
 //! of preceding roots; its anchor-local attempts keep their existing live overlay.
 mod footprint;
 mod version_cache;
+mod uniform_blob;
+mod output_columns;
+mod material_masks;
 pub(crate) use version_cache::{Cache as VersionCache, Pending as PendingVersions};
 #[cfg(test)]
 mod version_reuse_probe;
@@ -215,6 +218,7 @@ struct Root {
     ids: Vec<u32>,
     bounds: Bounds,
     deferred_ore: Option<(u16, u16)>,
+    uniform_blob: Option<u16>,
     footprint: bool,
 }
 
@@ -251,7 +255,7 @@ fn deferred_ore_pair(profile: &WorldProfile, ids: &[u32]) -> Option<(u16, u16)> 
 struct Output {
     metadata: Option<crate::structures::ChunkData>,
     writes: Vec<WorldBlock>,
-    columns: Map<(i32, i32), Vec<usize>>,
+    columns: output_columns::Columns,
 }
 /// Immutable commands from all possible writers of the requested volume.
 /// Outputs remain in source anchor order. Each column stores one anchor ID per
@@ -262,6 +266,25 @@ struct CompletedRoot {
     columns: Map<usize, Vec<usize>>,
 }
 impl CompletedRoot {
+    fn blob_edits(&self, column: usize, x: i32, z: i32, limit: Option<(i32, i32, usize)>)
+        -> Option<(uniform_blob::Edits, u64, u64)>
+    {
+        // A source-order limit can split an anchor's command vector. Its exact
+        // ordered stream must remain the source of truth for that prefix.
+        if limit.is_some() {
+            return None;
+        }
+        let mut edits = uniform_blob::Edits::default();
+        let mut commands = 0;
+        let mut groups = 0;
+        for &anchor in self.columns.get(&column).into_iter().flatten() {
+            let (source, count) = self.anchors[anchor].1.columns.edits(&(x, z))?;
+            edits.merge(source);
+            commands += count as u64;
+            groups += 1;
+        }
+        Some((edits, commands, groups))
+    }
     fn writes(&self, column: usize, x: i32, z: i32)
         -> impl Iterator<Item = ((i32, i32, usize), WorldBlock)> + '_
     {
@@ -445,13 +468,15 @@ struct ViewColumns {
     // Exact keys distinguish collisions, which retain the unbounded map path.
     slots: OnceLock<Box<[OnceLock<ViewColumn>; VIEW_COLUMN_SLOTS]>>,
     values: Mutex<Map<(i32, i32), Arc<ColumnState>>>,
-    counts: Option<[AtomicU64; 5]>,
+    material_masks: material_masks::Cache,
+    counts: Option<[AtomicU64; 9]>,
 }
 impl Default for ViewColumns {
     fn default() -> Self {
         Self {
             slots: OnceLock::new(),
             values: Mutex::new(Map::default()),
+            material_masks: Default::default(),
             counts: crate::performance::enabled().then(|| std::array::from_fn(|_| AtomicU64::new(0))),
         }
     }
@@ -518,9 +543,14 @@ impl Drop for View<'_, '_> {
             // to scalar reads; enabled counters are local to this view.
             for (counter, count) in [Perf::view_column_cached_reads,
                 Perf::view_column_loads, Perf::view_column_slot_hits,
-                Perf::view_terrain_borrowed_reads, Perf::view_terrain_loaded_reads].into_iter().zip(counts) {
+                Perf::view_terrain_borrowed_reads, Perf::view_terrain_loaded_reads,
+                Perf::blob_mask_reads, Perf::blob_mask_builds, Perf::blob_mask_hits,
+                Perf::blob_mask_scalar_fallbacks].into_iter().zip(counts) {
                 self.planner.metrics.performance.add(counter, count.load(Ordering::Relaxed));
             }
+            let bytes = self.columns.material_masks.allocated_bytes();
+            self.planner.metrics.performance.add(Perf::blob_mask_cache_allocations, (bytes != 0) as u64);
+            self.planner.metrics.performance.add(Perf::blob_mask_cache_bytes, bytes as u64);
         }
     }
 }
@@ -565,6 +595,13 @@ impl PriorWorld for View<'_, '_> {
         self.planner.metrics.performance.add(Perf::overlay_recommit_calls_skipped, 1);
         self.planner.metrics.performance.add(Perf::overlay_recommit_commands_skipped, commands as u64);
     }
+    fn blob_overlay_observed(&self, bytes: usize, points: usize, promoted: bool) {
+        let metrics = &self.planner.metrics.performance;
+        metrics.add(Perf::blob_overlay_observations, 1);
+        metrics.add(Perf::blob_overlay_observed_payload_bytes, bytes as u64);
+        metrics.add(Perf::blob_overlay_observed_points, points as u64);
+        metrics.add(Perf::blob_overlay_promotions, promoted as u64);
+    }
     fn deferred_ore(&self) -> Option<(u16, u16)> {
         self.planner.roots[self.before].deferred_ore
     }
@@ -596,6 +633,36 @@ impl PriorWorld for View<'_, '_> {
             column.material((at[1] - self.planner.request.min_y) as usize)
         }) {
             Ok(material) => Some(material),
+            Err(error) => {
+                self.planner.fail(error);
+                None
+            }
+        }
+    }
+    fn material_matches(&self, at: [i32; 3], material: u16) -> Option<bool> {
+        let request = self.planner.request;
+        if at[1] < request.min_y || at[1] >= request.min_y + request.height as i32 {
+            return Some(material == 0);
+        }
+        self.columns.count(5);
+        let result = self.columns.material_masks.read(
+            (at[0], at[2]), (at[1] - request.min_y) as usize,
+            request.height as usize, material,
+            // Build from the exact prior column at the first original query.
+            // The mask replaces this consumer's column retention; other scalar
+            // queries retain their existing ViewColumns cache and behavior.
+            || self.planner.column(self.before, at[0], at[2])
+                .map(|column| material_masks::from_column(&column, request.height as usize, material)),
+        );
+        match result {
+            Ok((Some(value), built)) => {
+                self.columns.count(if built { 6 } else { 7 });
+                Some(value)
+            }
+            Ok((None, _)) => {
+                self.columns.count(8);
+                self.material(at).map(|actual| actual == material)
+            }
             Err(error) => {
                 self.planner.fail(error);
                 None
@@ -670,7 +737,7 @@ impl Planner<'_> {
                 .get(&(root, ax, az))
                 .ok_or("missing completed root target")?;
             let anchor = completed.anchors.len();
-            for (&(x, z), indices) in &output.columns {
+            for (&(x, z), indices) in output.columns.iter() {
                 if let Some(column) = self.versions.index(x, z) {
                     completed
                         .columns
@@ -749,7 +816,7 @@ impl Planner<'_> {
                     return Ok(Output {
                         metadata: None,
                         writes: Vec::new(),
-                        columns: Map::default(),
+                        columns: output_columns::Columns::default(),
                     });
                 }
                 let view = View {
@@ -838,12 +905,10 @@ impl Planner<'_> {
                 }
                 let mut all = replay.finish_world();
                 let writes = std::mem::take(&mut all[0]);
-                let mut columns: Map<_, Vec<_>> = Map::default();
-                let mut deferred = 0;
-                for (index, block) in writes.iter().enumerate() {
-                    deferred += u64::from(block.role == DEFERRED_ORE);
-                    columns.entry((block.x, block.z)).or_default().push(index);
-                }
+                let (columns, deferred) = output_columns::Columns::from_writes(
+                    &writes, self.roots[root].uniform_blob, self.request.min_y,
+                    self.request.height as usize, &self.metrics.performance,
+                );
                 self.metrics
                     .performance
                     .add(Perf::deferred_ore_candidates, deferred);
@@ -908,7 +973,7 @@ impl Planner<'_> {
         if starts.is_empty() {
             return Ok(Output {
                 writes: Vec::new(),
-                columns: Map::default(),
+                columns: output_columns::Columns::default(),
                 metadata: None,
             });
         }
@@ -959,7 +1024,7 @@ impl Planner<'_> {
         self.check()?;
         Ok(Output {
             writes,
-            columns,
+            columns: columns.into(),
             metadata: Some(metadata),
         })
     }
@@ -1113,6 +1178,14 @@ impl Planner<'_> {
         let mut blocks: Option<Vec<u16>> = None;
         #[cfg(test)]
         let mut probe = column_edit_probe::Prefix::start(before - 1, limit.is_some(), prior.runs.slice().len());
+        if self.request.height as usize <= uniform_blob::MAX_HEIGHT {
+            if let Some(material) = self.roots[before - 1].uniform_blob {
+                return self.uniform_blob_prefix(
+                    before, x, z, limit, prior, material,
+                    #[cfg(test)] &mut probe,
+                );
+            }
+        }
         if let Some((root, column)) = self
             .completed
             .get(before - 1)
@@ -1198,6 +1271,91 @@ impl Planner<'_> {
             probe.finish(None, prior.runs.slice().len(), true);
             Ok(prior)
         }
+    }
+    fn uniform_blob_prefix(
+        &self,
+        before: usize,
+        x: i32,
+        z: i32,
+        limit: Option<(i32, i32, usize)>,
+        prior: Arc<ColumnState>,
+        material: u16,
+        #[cfg(test)] probe: &mut column_edit_probe::Prefix,
+    ) -> Result<Arc<ColumnState>, String> {
+        let height = self.request.height as usize;
+        let completed = self.completed.get(before - 1).zip(self.versions.index(x, z));
+        #[cfg(test)]
+        probe.select_path(if completed.is_some() {
+            column_edit_probe::Path::CompletedInterior
+        } else if self.versions.index(x, z).is_some() {
+            column_edit_probe::Path::UnfinishedInterior
+        } else {
+            column_edit_probe::Path::Boundary
+        });
+        #[cfg(test)] dependency_work::count(if completed.is_some() {
+            Work::PrefixInterior
+        } else if self.versions.index(x, z).is_some() {
+            Work::PrefixUnfinishedInterior
+        } else { Work::PrefixBoundary }, before.checked_sub(1));
+        let compact = completed.and_then(|(root, column)| root.blob_edits(column, x, z, limit));
+        let mut edits = uniform_blob::Edits::default();
+        let mut commands = 0;
+        if let Some((combined, covered, groups)) = compact {
+            edits = combined;
+            self.metrics.performance.add(Perf::blob_index_fast_prefixes, 1);
+            self.metrics.performance.add(Perf::blob_index_covered_commands, covered);
+            self.metrics.performance.add(Perf::blob_index_mask_merges, groups);
+            #[cfg(test)]
+            probe.compact(covered, groups);
+        } else {
+            let mut apply = |b: WorldBlock| {
+                debug_assert_eq!(b.role, FEATURE);
+                debug_assert_eq!(b.material, material);
+                commands += 1;
+                let y = b.y - self.request.min_y;
+                #[cfg(test)]
+                probe.command(b.role, b.material, y, height);
+                if y >= 0 && (y as usize) < height {
+                    let _first = edits.insert(y as usize);
+                    #[cfg(test)]
+                    {
+                        let changed = _first && prior.material(y as usize) != material;
+                        probe.feature_result(FEATURE, changed);
+                        if changed {
+                            probe.point_change(false);
+                        }
+                    }
+                }
+            };
+            if let Some((root, column)) = completed {
+                for (key, block) in root.writes(column, x, z) {
+                    if !limit.is_some_and(|limit| key >= limit) {
+                        apply(block);
+                    }
+                }
+            } else {
+                for (ax, az) in self.roots[before - 1].bounds.writers(x, z)? {
+                    if limit.is_some_and(|key| (az, ax) > (key.0, key.1)) {
+                        continue;
+                    }
+                    let Some(output) = self.column_writer(before - 1, ax, az, x, z)? else {
+                        continue;
+                    };
+                    for &index in output.columns.get(&(x, z)).into_iter().flatten() {
+                        if !limit.is_some_and(|limit| (az, ax, index) >= limit) {
+                            apply(output.writes[index]);
+                        }
+                    }
+                }
+            }
+        }
+        let result = edits.finish(&prior, height, material, self.profile, self.request.min_y);
+        self.metrics.performance.add(Perf::uniform_blob_prefixes, 1);
+        self.metrics.performance.add(Perf::uniform_blob_commands, commands);
+        self.metrics.performance.add(Perf::uniform_blob_changed_columns, result.is_some() as u64);
+        #[cfg(test)]
+        probe.finish(None, result.as_ref().map_or(prior.runs.slice().len(), |r| r.runs.slice().len()), result.is_none());
+        Ok(result.map_or(prior, |result| Arc::new(result)))
     }
     fn apply_column_write(
         &self,
@@ -1310,6 +1468,7 @@ pub(crate) fn generate(
                 ids: Vec::new(),
                 bounds,
                 deferred_ore: None,
+                uniform_blob: None,
                 footprint: false,
             });
         root.ids.push(id as u32);
@@ -1331,6 +1490,7 @@ pub(crate) fn generate(
                 ids: Vec::new(),
                 definition: Some(id),
                 deferred_ore: None,
+                uniform_blob: None,
                 footprint: false,
                 bounds: Bounds {
                     x: [0, 15],
@@ -1341,6 +1501,7 @@ pub(crate) fn generate(
     }
     for root in groups.values_mut() {
         root.deferred_ore = deferred_ore_pair(profile, &root.ids);
+        root.uniform_blob = uniform_blob::material(profile, &root.ids);
         root.footprint = footprint::eligible(profile, &root.ids);
     }
     metrics.performance.add(

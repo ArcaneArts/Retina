@@ -288,12 +288,20 @@ pub trait PriorWorld: Sync {
     fn column(&self, x: i32, z: i32) -> Option<Column>;
     fn biome(&self, at: [i32; 3]) -> Option<usize>;
     fn material(&self, at: [i32; 3]) -> Option<u16>;
+    /// Exact scalar fallback; ordered views may derive a reusable mask from
+    /// the same immutable column. None retains unknown/error semantics.
+    fn material_matches(&self, at: [i32; 3], material: u16) -> Option<bool> {
+        self.material(at).map(|actual| actual == material)
+    }
     fn height(&self, x: i32, z: i32, map: u8) -> Option<i32>;
     /// Only the ordered planner can prove that all recipes in this root share
     /// a deterministic replacement and never observe their own material writes.
     fn deferred_ore(&self) -> Option<(u16, u16)> { None }
     /// Optional attribution for commands already applied by a live primitive.
     fn overlay_recommit_skipped(&self, _commands: usize) {}
+    /// Diagnostic observation at evaluator exit; not cumulative allocation or
+    /// retained-memory accounting across snapshots and retries.
+    fn blob_overlay_observed(&self, _bytes: usize, _points: usize, _promoted: bool) {}
 }
 pub struct Field<'a> {
     pub origin_x: i32,
@@ -1280,7 +1288,7 @@ fn expand_anchor(
     Anchor {
         blocks,
         candidates,
-        overlay: Default::default(),
+        overlay: placement::Overlay::for_recipes(profile, request, chunk_x, chunk_z, &ids),
         evaluation_cache: Default::default(),
         completed: 0,
         gpu: None,
@@ -1662,6 +1670,11 @@ fn evaluate_anchor_impl<const MEASURE: bool>(
         }
     }
     diagnostics::record(evaluation, timing.as_mut().map(|t| &mut t.evaluation_nanos));
+    if crate::performance::enabled() {
+        if let Some(prior) = field.prior {
+            overlay.observe_storage(prior);
+        }
+    }
     (blocks, saved)
 }
 
