@@ -2,6 +2,8 @@
 //! Unobserved prefixes remain holes; adjacent identical observed states may
 //! share an interval, but no state is extrapolated across a missing prefix.
 use super::super::ColumnTile;
+#[cfg(test)]
+use super::super::height_use_probe;
 use super::{ColumnRuns, ColumnState, Map, SavedState};
 use std::sync::Arc;
 
@@ -99,6 +101,7 @@ impl Exterior {
                         let state = u32::try_from(states.len()).ok()?;
                         let start = runs.len();
                         runs.extend_from_slice(value.runs.slice());
+                        #[cfg(test)] value.height_trace.archive(true);
                         states.push(SavedState {
                             range: start..runs.len(),
                             heights: value.heights,
@@ -143,6 +146,8 @@ impl Exterior {
                 range: state.range.clone(),
             },
             heights: state.heights,
+            #[cfg(test)]
+            height_trace: height_use_probe::State::restored(state.range.len()),
         }))
     }
     pub(super) fn retained_bytes(&self) -> usize {

@@ -12,6 +12,8 @@ mod version_layout_probe;
 #[cfg(test)]
 mod material_storage_probe;
 #[cfg(test)]
+mod height_use_probe;
+#[cfg(test)]
 mod column_edit_probe;
 #[cfg(test)]
 mod blob_output_probe;
@@ -341,6 +343,8 @@ impl ColumnRuns {
 struct ColumnState {
     runs: ColumnRuns,
     heights: [i32; 6],
+    #[cfg(test)]
+    height_trace: height_use_probe::State,
 }
 impl ColumnState {
     fn new(blocks: Vec<u16>, profile: &WorldProfile, min_y: i32) -> Self {
@@ -373,16 +377,22 @@ impl ColumnState {
             }
             top = min_y + (run >> 16) as i32;
         }
-        Self { runs, heights }
+        #[cfg(test)]
+        let height_trace = height_use_probe::State::computed(&runs);
+        Self { runs, heights, #[cfg(test)] height_trace }
     }
     fn material(&self, y: usize) -> u16 {
         let runs = self.runs.slice();
         let material = runs[runs.partition_point(|run| run >> 16 > y as u32)] as u16;
         #[cfg(test)]
         material_storage_probe::read(&self.runs, runs.len());
+        #[cfg(test)]
+        self.height_trace.material();
         material
     }
     fn expand(&self, height: usize) -> Vec<u16> {
+        #[cfg(test)]
+        self.height_trace.material();
         let mut blocks = vec![0; height];
         let mut top = height;
         for &run in self.runs.slice() {
@@ -600,11 +610,17 @@ impl PriorWorld for View<'_, '_> {
         // These roots preserve every heightmap bit. Keep material queries on
         // the original prefix; an earlier column must not enter that view cache.
         let height = if before == self.before {
-            self.read_column(x, z, |column| column.heights[map as usize])
+            self.read_column(x, z, |column| {
+                #[cfg(test)] column.height_trace.height(map);
+                column.heights[map as usize]
+            })
         } else {
             self.planner.metrics.performance.add(
                 Perf::height_roots_skipped, (self.before - before) as u64);
-            self.planner.column(before, x, z).map(|column| column.heights[map as usize])
+            self.planner.column(before, x, z).map(|column| {
+                #[cfg(test)] column.height_trace.height(map);
+                column.heights[map as usize]
+            })
         };
         match height {
             Ok(height) => Some(height),
@@ -1159,7 +1175,12 @@ impl Planner<'_> {
             let result = ColumnState::new(blocks, self.profile, self.request.min_y);
             #[cfg(test)]
             probe.finish(Some(self.request.height), result.runs.slice().len(), result.runs.slice() == prior.runs.slice());
+            #[cfg(test)] {
+                result.height_trace.material();
+                prior.height_trace.material();
+            }
             if result.runs.slice() == prior.runs.slice() {
+                #[cfg(test)] result.height_trace.discarded_identity();
                 Ok(prior)
             } else {
                 Ok(Arc::new(result))
@@ -1663,7 +1684,7 @@ mod tests {
     }
     fn cached_column(material: u16) -> Arc<ColumnState> {
         Arc::new(ColumnState { runs: ColumnRuns::Owned(vec![u32::from(material)].into_boxed_slice()),
-            heights: [i32::from(material); 6] })
+            heights: [i32::from(material); 6], height_trace: Default::default() })
     }
     #[test]
     fn spatial_view_slots_cover_each_complete_window_without_collisions() {

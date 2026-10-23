@@ -1,5 +1,7 @@
 //! Bounded completed interior states, captured once for a neighboring job.
 use super::{ColumnCell, ColumnRuns, ColumnState, Map, Metrics, Perf, Versions};
+#[cfg(test)]
+use super::height_use_probe;
 use crate::{CacheKey, ChunkRequest, TerrainEngine, WorldProfile};
 use std::collections::VecDeque;
 use std::sync::Arc;
@@ -84,6 +86,7 @@ impl Archived {
                 .filter(|&id| id != MISSING)?;
             let start = runs.len();
             runs.extend_from_slice(value.runs.slice());
+            #[cfg(test)] value.height_trace.archive(false);
             states.push(SavedState {
                 range: start..runs.len(),
                 heights: value.heights,
@@ -148,6 +151,8 @@ impl Archived {
                 range: value.range.clone(),
             },
             heights: value.heights,
+            #[cfg(test)]
+            height_trace: height_use_probe::State::restored(value.range.len()),
         }))
     }
 }
