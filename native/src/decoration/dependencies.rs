@@ -418,7 +418,7 @@ struct Planner<'a> {
     anchors: Memo<(usize, i32, i32), Output>,
     ready: Map<(usize, i32, i32), Arc<Output>>,
     #[cfg(test)]
-    output_trace: blob_output_probe::Job,
+    output_trace: blob_output_probe::Job, #[cfg(test)] column_trace: column_reuse_probe::Job,
     footprints: Memo<(usize, i32, i32), footprint::Footprint>,
     ready_footprints: Map<(usize, i32, i32), Arc<footprint::Footprint>>,
     completed: Vec<CompletedRoot>,
@@ -1034,8 +1034,8 @@ impl Planner<'_> {
         let result = slot.get_or_init(|| {
             built = true;
             metrics.add(Perf::column_builds, 1);
-            #[cfg(test)] dependency_work::count(Work::ColumnBuild, before.checked_sub(1));
-            self.build_column(before, x, z)
+            #[cfg(test)] dependency_work::count(Work::ColumnBuild, before.checked_sub(1)); #[cfg(test)] return self.column_trace.evaluate(before, x, z, |observation| self.build_column(before, x, z, observation)).map_err(|error| Box::new(ColumnFailure(error)));
+            #[cfg(not(test))] self.build_column(before, x, z)
                 .map_err(|error| Box::new(ColumnFailure(error)))
         });
         #[cfg(test)]
@@ -1049,20 +1049,20 @@ impl Planner<'_> {
             .map(Arc::clone)
             .map_err(|error| error.0.clone())
     }
-    fn build_column(&self, before: usize, x: i32, z: i32) -> Result<Arc<ColumnState>, String> {
+    fn build_column(&self, before: usize, x: i32, z: i32, #[cfg(test)] observation: Option<&mut column_reuse_probe::Build>) -> Result<Arc<ColumnState>, String> {
         let metrics = &self.metrics.performance;
         if let Some(reuse) = &self.reuse {
             metrics.add(Perf::version_cache_exterior_lookups, 1);
             if let Some(state) = reuse.exterior_column(before, x, z) {
                 metrics.add(Perf::version_cache_exterior_hits, 1);
                 #[cfg(test)] dependency_work::count(Work::ColumnReuseExterior, before.checked_sub(1));
-                return Ok(state);
+                #[cfg(test)] if let Some(observation) = observation { observation.source(column_reuse_probe::Source::Archive); } return Ok(state);
             }
         }
         if before != 0 {
-            return self.prefix(before, x, z, None);
+            #[cfg(test)] if let Some(observation) = observation { observation.source(column_reuse_probe::Source::Prefix); } return self.prefix(before, x, z, None);
         }
-        let field = self.terrain(x.div_euclid(16), z.div_euclid(16))?;
+        #[cfg(test)] if let Some(observation) = observation { observation.source(column_reuse_probe::Source::Substrate); } let field = self.terrain(x.div_euclid(16), z.div_euclid(16))?;
         if let Some((mask, range)) = field
             .substrate
             .as_ref()
@@ -1346,7 +1346,7 @@ pub(crate) fn generate(
         engine, profile, request, side, groups.len(), reuse_regions, &metrics.performance,
     );
     #[cfg(test)]
-    let output_trace = blob_output_probe::Job::new(engine, profile, request, side, groups.values());
+    let output_trace = blob_output_probe::Job::new(engine, profile, request, side, groups.values()); #[cfg(test)] let column_trace = column_reuse_probe::Job::new(engine, profile, request, side, groups.len());
     let mut planner = Planner {
         engine,
         profile,
@@ -1356,7 +1356,7 @@ pub(crate) fn generate(
         anchors: ShardedMap::default(),
         ready: Map::default(),
         #[cfg(test)]
-        output_trace,
+        output_trace, #[cfg(test)] column_trace,
         footprints: Memo::default(),
         ready_footprints: Map::default(),
         completed: Vec::new(),
@@ -2136,3 +2136,6 @@ mod tests {
         }
     }
 }
+
+#[cfg(test)]
+mod column_reuse_probe;

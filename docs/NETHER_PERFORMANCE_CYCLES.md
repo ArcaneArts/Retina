@@ -2785,3 +2785,67 @@ claimed. Actual merged rebuild and full corpus verification follow the PR.
 
 See `docs/benchmarks/nether-perf-cycle108-2026-10-23.json` for exact counts,
 provenance, ordinary timing/RSS, coverage, evidence hashes and recovery paths.
+
+## Cycle 118 — live complete-column reuse census
+
+**Test-only diagnostic; the entire normal release library is byte-identical to
+preceding main.** Fixed-order concurrency measurements in the held C116 lane
+showed substantially more ordered-prefix work with more simultaneous requests.
+This census measures whether an exact matching complete column is still alive
+in another job when a local initializer starts. It observes original generation;
+no recorded value, failure, wait or RNG state feeds generation.
+
+Deterministic 1/64 sampling selects full world/profile/root/coordinate keys.
+Never-upgraded weak handles observe lifetime, and bounded copied material runs
+and six heights compare successful repeats. Actual archive returns are separated
+from recursive full-prefix and substrate construction. Limited within-root
+prefixes are excluded. Every process has a fresh engine, five warmups and twenty
+complete lit, compressed, published regions in the same reverse order. Sessions
+reset after joined waves; serial sessions cover two sequential jobs.
+
+The fraction of **sampled recursive full-prefix builds** with another job's
+matching column alive at demand was:
+
+| Case | 1 request | 2 requests | 4 requests | 8 requests | 8-request repeat |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Nether seed 123456789 | 0% | 4.18% | 5.48% | 9.12% | 9.78% |
+| Nether seed 42 | 0% | 3.42% | 5.44% | 7.20% | 8.35% |
+| Custom bounds, seed 123456789 | 0% | — | — | 4.41% | — |
+| Direct-stem fixture, seed 42 | 0% | — | — | 7.35% | — |
+
+The two custom profile files are byte-identical and differ here by seed.
+Overworld produces no columns in this Nether dependency path. Existing archive
+hits with a live matching object are separately counted and are not credited as
+new avoided reconstruction. Substrate-state reuse is also separate: the first
+eight-request standard-seed runs observe 20.64–21.99% availability in that class,
+which does not represent avoided GPU terrain generation.
+
+All sixteen instrumented processes have zero unequal voxels/heights, invalid
+run arrays, abandoned observations, unclassified successful paths, cap skips or
+unbalanced pending/live value handles at wave end. Availability is measured
+under instrumentation and can change with scheduling. It is not a normal-cache
+hit rate, CPU fraction, unique avoided subtree count or predicted speedup. Weak
+handles do not retain generation resources, but their control blocks and the
+observer maps have overhead beyond the reported copied payload.
+
+Validation on the final source: **198 native tests, five explicit GPU fixtures
+and 430,080 complete chunk instances** against both immutable original and
+preceding merged main. This includes sixteen instrumented processes and one
+five-case normal suite; coordinates repeat. Only nondeterministic MCA container
+metadata and compression representation are excluded. The normal library SHA256
+is `daa63b89e1c64bf302bebcea7935621b7cec1a04153e7ad230842dad435d7b26`, identical to
+preceding main. Initial wrapper/build/configuration failures and a corrected
+external report-schema check are preserved in the evidence; generation outputs
+and expected corpora were not replaced.
+
+This supports a bounded, nonwaiting completed-column reuse experiment. Lookup,
+publication and lifetime overhead could erase any benefit; full normal timing,
+concurrent output, memory and integration validation remain necessary. A weaker
+boundary-tile-only design has unmeasured source coverage. No production cache,
+thread/default change, new subsecond result or portal improvement is claimed.
+Final timing confirmation remains deferred. C116/C117/C113 and other held
+worktrees remain separate. Actual merged rebuild and corpus verification follow
+the diagnostic PR.
+
+See `docs/benchmarks/nether-perf-cycle118-2026-10-23.json` for counts, normal timing
+observations, process RSS, provenance, failure records and recovery commands.
