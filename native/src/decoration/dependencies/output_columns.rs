@@ -197,7 +197,7 @@ mod tests {
                     for (&key, ids) in columns.iter() {
                         assert_eq!(Some(ids), plain.get(&key));
                         let original: Vec<_> = (0..height).map(|y| ((y / 7) % 9) as u16).collect();
-                        let prior = ColumnState::new(original.clone(), &profile, min_y);
+                        let prior = ColumnState::new(original.clone());
                         let mut expected = original;
                         for &index in ids {
                             let y = writes[index].y - min_y;
@@ -207,11 +207,11 @@ mod tests {
                         }
                         let (edits, count) = columns.edits(&key).unwrap();
                         assert_eq!(count, ids.len());
-                        let result = edits.finish(&prior, height, material, &profile, min_y);
-                        let dense = ColumnState::new(expected, &profile, min_y);
+                        let result = edits.finish(&prior, height, material);
+                        let dense = ColumnState::new(expected);
                         let actual = result.as_ref().unwrap_or(&prior);
                         assert_eq!(actual.runs.slice(), dense.runs.slice());
-                        assert_eq!(actual.heights, dense.heights);
+                        assert_eq!(actual.heights(&profile, min_y, height), dense.heights(&profile, min_y, height));
                     }
                     assert!(columns.edits(&(999, -999)).is_none());
                     assert_eq!(writes, before);
@@ -291,18 +291,18 @@ mod tests {
                     let (edits, covered, merges) = root.blob_edits(0, -32, -16, None).unwrap();
                     assert_eq!((covered, merges), (4, 2));
                     let original: Vec<_> = (0..height).map(|y| ((y / 7) % 9) as u16).collect();
-                    let prior = ColumnState::new(original.clone(), &profile, min_y);
+                    let prior = ColumnState::new(original.clone());
                     let mut expected = original;
                     for (_, block) in &commands {
                         expected[(block.y - min_y) as usize] = block.material;
                     }
-                    let result = edits.finish(&prior, height, material, &profile, min_y);
-                    let dense = ColumnState::new(expected, &profile, min_y);
+                    let result = edits.finish(&prior, height, material);
+                    let dense = ColumnState::new(expected);
                     assert_eq!(
                         result.as_ref().unwrap_or(&prior).runs.slice(),
                         dense.runs.slice()
                     );
-                    assert_eq!(result.as_ref().unwrap_or(&prior).heights, dense.heights);
+                    assert_eq!(result.as_ref().unwrap_or(&prior).heights(&profile, min_y, height), dense.heights(&profile, min_y, height));
                     for limit in [(-1, -2, 0), (-1, -2, 2), (-1, -1, 1), (0, 0, 0)] {
                         assert!(root.blob_edits(0, -32, -16, Some(limit)).is_none());
                         assert_eq!(

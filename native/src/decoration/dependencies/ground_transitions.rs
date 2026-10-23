@@ -20,6 +20,7 @@ pub(super) fn from_column(
     let mut current = if start == height { 0 } else { column.material(start) };
     let mut cursor = start;
     let mut grounds = Vec::new();
+    #[cfg(test)] column.height_trace.material();
     let runs = column.runs.slice();
     // Skip runs above the scan's starting point, including a run beginning
     // exactly there: the first comparison is with the voxel immediately below.
@@ -61,20 +62,20 @@ mod tests {
                     2 => (y % 9) as u16,
                     _ => ((y / 17) % 9) as u16,
                 }).collect();
-                let owned = ColumnState::new(blocks.clone(), &profile, min_y);
+                let owned = ColumnState::new(blocks.clone());
                 let mut words = vec![u32::MAX; 5];
                 words.extend_from_slice(owned.runs.slice());
                 let end = words.len();
                 words.push(u32::MAX);
                 let cached = ColumnState::from_runs(ColumnRuns::Cached {
                     runs: Arc::new(words.clone()), range: 5..end,
-                }, height, &profile, min_y);
+                });
                 let shared = ColumnState::from_runs(ColumnRuns::Shared {
                     mask: Arc::new(crate::geology::CaveMask {
                         origin_x: -32, origin_z: 16, min_y, height: height as u32,
                         width: 0, air_only: false, words, columns: None,
                     }), range: 5..end,
-                }, height, &profile, min_y);
+                });
                 for start in 0..=height {
                     let empty = |m: u16| {
                         profile.material_flags[m as usize] & 64 != 0 || m == 0

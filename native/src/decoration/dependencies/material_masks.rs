@@ -61,6 +61,7 @@ impl Cache {
 }
 
 pub(super) fn from_column(column: &ColumnState, height: usize, material: u16) -> Bits {
+    #[cfg(test)] column.height_trace.material();
     let mut bits = [0; 4];
     let mut top = height;
     for &run in column.runs.slice() {
@@ -95,7 +96,7 @@ mod tests {
                         _ => ((y / 17) % profile.materials.len()) as u16,
                     })
                     .collect();
-                let owned = ColumnState::new(blocks.clone(), &profile, -64);
+                let owned = ColumnState::new(blocks.clone());
                 let mut words = vec![u32::MAX; 5];
                 words.extend_from_slice(owned.runs.slice());
                 let end = words.len();
@@ -105,9 +106,6 @@ mod tests {
                         runs: Arc::new(words.clone()),
                         range: 5..end,
                     },
-                    height,
-                    &profile,
-                    -64,
                 );
                 let shared = ColumnState::from_runs(
                     ColumnRuns::Shared {
@@ -123,9 +121,6 @@ mod tests {
                         }),
                         range: 5..end,
                     },
-                    height,
-                    &profile,
-                    -64,
                 );
                 for column in [&owned, &cached, &shared] {
                     for material in (0..profile.materials.len() as u16).chain([u16::MAX]) {
@@ -246,10 +241,9 @@ mod tests {
 
     #[test]
     fn derived_masks_do_not_retain_their_column_owner() {
-        let column = Arc::new(ColumnState {
-            runs: ColumnRuns::Owned(vec![7].into_boxed_slice()),
-            heights: [64; 6],
-        });
+        let column = Arc::new(ColumnState::from_runs(
+            ColumnRuns::Owned(vec![7].into_boxed_slice()),
+        ));
         let weak = Arc::downgrade(&column);
         let cache = Cache::default();
         assert_eq!(

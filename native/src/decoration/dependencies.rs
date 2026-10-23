@@ -1384,7 +1384,7 @@ impl Planner<'_> {
                 }
             }
         }
-        let result = edits.finish(&prior, height, material, self.profile, self.request.min_y);
+        let result = edits.finish(&prior, height, material);
         self.metrics.performance.add(Perf::uniform_blob_prefixes, 1);
         self.metrics.performance.add(Perf::uniform_blob_commands, commands);
         self.metrics.performance.add(Perf::uniform_blob_changed_columns, result.is_some() as u64);

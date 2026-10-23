@@ -314,6 +314,28 @@ fn direct_heights_census_counts_actual_visits_including_repeat_queries() {
 }
 
 #[test]
+fn direct_heights_composed_run_consumers_record_material_access() {
+    let (profile, _, _) = crate::decoration::replay_tests::fixture(42, 0);
+    let session = Session::new(405); let mut local = Local::default(); local.bind(&session);
+    let make = || ColumnState {
+        runs: ColumnRuns::Owned(vec![(8 << 16), (4 << 16) | 1, 2].into_boxed_slice()),
+        height_trace: State::bound(local.counts.as_ref().unwrap().clone(), 1, 3),
+    };
+    let mask_column = make();
+    super::material_masks::from_column(&mask_column, 12, 1);
+    let ground_column = make();
+    super::ground_transitions::from_column(&ground_column, &profile, 0, 12, 12);
+    let merge_column = make();
+    assert!(super::uniform_blob::Edits::default().finish(&merge_column, 12, 1).is_none());
+    drop((mask_column, ground_column, merge_column));
+    let report = session.report(); assert_balanced(&report);
+    assert_eq!(report["buckets"][1]["created_states"], 3);
+    assert_eq!(report["buckets"][1]["access_classes"][1], 3);
+    assert_eq!(report["buckets"][1]["height_queries_by_map"], json!([0,0,0,0,0,0]));
+    assert_eq!(report["untracked_material_height_archive_calls"], json!([0,0,0]));
+}
+
+#[test]
 fn height_use_rebinding_preserves_old_lifetimes_and_restored_classification() {
     let first = Session::new(301); let second = Session::new(302);
     let mut local = Local::default(); local.bind(&first);
@@ -384,6 +406,6 @@ fn exact_column_height_use_inventory() {
         cases.push(json!({"case":name,"seed":seed,"profile":file,"readiness":readiness,
             "warmups":warmups,"regions":regions,"summary":summary}));
         fs::write(output.join("report.json"), serde_json::to_vec_pretty(&json!({"cases":cases,"timing_acceptance":false,
-            "scope":"Test-only concrete ColumnState lifetime census. Arc aliases do not create states; tokens retain counters only. Each construction records backing kind, run count and constructed-versus-restored state origin. Material marks cover scalar reads, dense expansion and production RLE equality checks; height queries count calls by map and lifetime map masks. Archives copy material runs, not height arrays. Height queries scan only the requested map and count actual run words visited, including repeated reads. No height-array scan occurs at creation or capture. Temporary states discarded by the original equality check are counted separately. Final access classes and run-word weights are recorded on destruction. Every measured complete region must balance created/retired/class/mask/run counts and have zero untracked calls. Five unobserved warmups precede twenty observed complete lit regions per case. Counter snapshots and serialization occur after the synchronous native region call. Observer atomics, extra fields, counter ownership and memory affect instrumented costs; these are not production timings or allocation counts. State-use and actual query-scan counts describe work, not a production elapsed-time speedup or a claim that an entire column is unnecessary. Normal builds contain no census fields or code."})).unwrap()).unwrap();
+            "scope":"Test-only concrete ColumnState lifetime census. Arc aliases do not create states; tokens retain counters only. Each construction records backing kind, run count and constructed-versus-restored state origin. Material marks cover scalar reads, dense expansion, production RLE equality checks, uniform-run merges, target-mask construction and ground-transition scans; height queries count calls by map and lifetime map masks. Archives copy material runs, not height arrays. Height queries scan only the requested map and count actual run words visited, including repeated reads. No height-array scan occurs at creation or capture. Temporary states discarded by the original equality check are counted separately. Final access classes and run-word weights are recorded on destruction. Every measured complete region must balance created/retired/class/mask/run counts and have zero untracked calls. Five unobserved warmups precede twenty observed complete lit regions per case. Counter snapshots and serialization occur after the synchronous native region call. Observer atomics, extra fields, counter ownership and memory affect instrumented costs; these are not production timings or allocation counts. State-use and actual query-scan counts describe work, not a production elapsed-time speedup or a claim that an entire column is unnecessary. Normal builds contain no census fields or code."})).unwrap()).unwrap();
     }
 }

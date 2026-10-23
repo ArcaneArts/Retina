@@ -38,12 +38,12 @@ mod tests {
             edits.insert(y);
             expected[y] = material;
         }
-        let result = edits.finish(prior, height, material, profile, min_y);
+        let result = edits.finish(prior, height, material);
         assert_eq!(result.is_none(), expected == original);
         let actual = result.as_ref().unwrap_or(prior);
-        let dense = ColumnState::new(expected, profile, min_y);
+        let dense = ColumnState::new(expected);
         assert_eq!(actual.runs.slice(), dense.runs.slice());
-        assert_eq!(actual.heights, dense.heights);
+        assert_eq!(actual.heights(profile, min_y, height), dense.heights(profile, min_y, height));
         assert_eq!(prior.expand(height), original);
     }
 
@@ -54,7 +54,7 @@ mod tests {
             for min_y in [-64, 0, 16] {
                 for material in [0, 4, 7] {
                     let base: Vec<_> = (0..height).map(|y| ((y / 7) % 9) as u16).collect();
-                    let prior = ColumnState::new(base, &profile, min_y);
+                    let prior = ColumnState::new(base);
                     let ascending: Vec<_> = (0..height).collect();
                     let descending: Vec<_> = (0..height).rev().collect();
                     let alternating: Vec<_> = (0..height).step_by(2).collect();
@@ -97,8 +97,6 @@ mod tests {
         let height = MAX_HEIGHT;
         let original = ColumnState::new(
             (0..height).map(|y| ((y / 31) % 9) as u16).collect(),
-            &profile,
-            -64,
         );
         let words = Arc::new(original.runs.slice().to_vec());
         let mask = Arc::new(crate::geology::CaveMask {
@@ -116,18 +114,12 @@ mod tests {
                 mask: mask.clone(),
                 range: 0..words.len(),
             },
-            height,
-            &profile,
-            -64,
         );
         let cached = ColumnState::from_runs(
             ColumnRuns::Cached {
                 runs: words.clone(),
                 range: 0..words.len(),
             },
-            height,
-            &profile,
-            -64,
         );
         let counts = (Arc::strong_count(&mask), Arc::strong_count(&words));
         for prior in [&original, &shared, &cached] {
@@ -144,7 +136,7 @@ mod tests {
             assert!(!edits.insert(62));
             assert!(
                 edits
-                    .finish(prior, height, prior.material(62), &profile, -64)
+                    .finish(prior, height, prior.material(62))
                     .is_none()
             );
         }
@@ -214,9 +206,8 @@ impl Edits {
         prior: &ColumnState,
         height: usize,
         material: u16,
-        profile: &WorldProfile,
-        min_y: i32,
     ) -> Option<ColumnState> {
+        #[cfg(test)] prior.height_trace.material();
         let original = prior.runs.slice();
         let end = |i: usize| {
             if i == 0 {
@@ -260,9 +251,6 @@ impl Edits {
         runs.reverse();
         Some(ColumnState::from_runs(
             ColumnRuns::Owned(runs.into_boxed_slice()),
-            height,
-            profile,
-            min_y,
         ))
     }
 }
