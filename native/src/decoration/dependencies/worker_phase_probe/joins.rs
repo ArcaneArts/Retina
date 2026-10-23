@@ -25,9 +25,10 @@ struct JoinEvent {
 #[derive(Default)]
 pub(super) struct Buffer {
     events: Vec<JoinEvent>,
-    context_errors: u64,
+    pub(super) context_errors: u64,
 }
 impl Buffer {
+    pub(super) fn is_empty(&self) -> bool { self.events.is_empty() }
     pub(super) fn extend(&mut self, other: Self) {
         self.events.extend(other.events);
         self.context_errors += other.context_errors;
@@ -38,6 +39,7 @@ struct Frame {
     token: u64,
     origin: Instant,
     worker: Arc<Worker>,
+    work: Option<work::Buffer>,
 }
 #[derive(Default)]
 struct Stack {
@@ -61,7 +63,8 @@ impl Context {
             let mut current = current.borrow_mut();
             current.next = current.next.checked_add(1).expect("diagnostic task tag overflow");
             let tag = current.next;
-            current.frames.push(Frame { tag, token, origin, worker: worker.clone() });
+            let work = worker.aggregate.then(|| work::Buffer::take(worker.root_count));
+            current.frames.push(Frame { tag, token, origin, worker: worker.clone(), work });
             tag
         });
         worker.active.fetch_add(1, Ordering::Relaxed);
@@ -74,7 +77,14 @@ impl Drop for Context {
             let mut current = current.borrow_mut();
             let position = current.frames.iter().rposition(|frame| frame.tag == self.tag);
             let valid = position == current.frames.len().checked_sub(1);
-            if let Some(position) = position { current.frames.remove(position); }
+            if let Some(position) = position {
+                let frame = current.frames.remove(position);
+                if let Some(work) = frame.work {
+                    if !frame.worker.closed.load(Ordering::Relaxed) {
+                        work.drain_into(&mut frame.worker.work.lock().unwrap());
+                    }
+                }
+            }
             valid && position.is_some()
         });
         if !valid && !self.worker.closed.load(Ordering::Relaxed) {
@@ -84,6 +94,14 @@ impl Drop for Context {
         }
         self.worker.active.fetch_sub(1, Ordering::Relaxed);
     }
+}
+
+pub(super) fn count_work(op: work::Op, root: Option<usize>, amount: u64) {
+    CURRENT.with(|current| {
+        if let Some(work) = current.borrow_mut().frames.last_mut().and_then(|frame| frame.work.as_mut()) {
+            work.add(op, root, amount);
+        }
+    });
 }
 
 enum Bucket { Dependency, Terrain, Lookup }
@@ -98,6 +116,7 @@ impl Candidate {
         let stamp = pending.then(|| CURRENT.with(|current| {
             let current = current.borrow();
             let frame = current.frames.last()?;
+            if frame.worker.aggregate { return None; }
             Some((frame.tag, frame.token, frame.origin.elapsed().as_nanos() as u64, key))
         })).flatten();
         Self { stamp, _thread: PhantomData }

@@ -8,6 +8,7 @@ pub(crate) struct LookupCall {
 }
 impl LookupCall {
     pub(crate) fn start(key: Key) -> Self {
+        work::lookup(key);
         Self { candidate: Some(Candidate::start(true,key)), acquired: None }
     }
     pub(crate) fn acquired(&mut self, success: bool) {
