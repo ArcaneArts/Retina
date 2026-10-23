@@ -31,7 +31,6 @@ struct SavedVersion {
 }
 struct SavedState {
     range: std::ops::Range<usize>,
-    heights: [i32; 6],
 }
 // Immutable flat arrays replace the planner's OnceLocks, per-column vectors,
 // ColumnState allocations and retained GPU mask owners. A returned state pins
@@ -89,7 +88,6 @@ impl Archived {
             #[cfg(test)] value.height_trace.archive(false);
             states.push(SavedState {
                 range: start..runs.len(),
-                heights: value.heights,
             });
             owners.insert(pointer, id);
             Some(id)
@@ -150,7 +148,6 @@ impl Archived {
                 runs: self.runs.clone(),
                 range: value.range.clone(),
             },
-            heights: value.heights,
             #[cfg(test)]
             height_trace: height_use_probe::State::restored(value.range.len()),
         }))
@@ -409,9 +406,8 @@ mod tests {
             Err(_) => unreachable!(),
         };
         let interior_bytes = retained_bytes(&value);
-        let (profile, _, _) = crate::decoration::replay_tests::fixture(42, 0);
         let tile = Arc::new(super::super::ColumnTile::default());
-        tile.0[15].set(Ok(Arc::new(ColumnState::new(vec![0; 16], &profile, 0)))).ok().unwrap();
+        tile.0[15].set(Ok(Arc::new(ColumnState::new(vec![0; 16])))).ok().unwrap();
         let mut columns = Map::default();
         columns.insert((0, -1, 0), tile);
         let (exterior, _) = Exterior::capture([0; 2], 512, &columns).unwrap();
@@ -431,6 +427,25 @@ mod tests {
         assert!(retired.is_empty());
         assert_eq!(cache.len(), 1);
         assert_eq!(cache.bytes, cache.max_bytes);
+    }
+    #[test]
+    fn direct_heights_archive_roundtrip_preserves_values_and_releases_originals() {
+        let (profile, _, _) = crate::decoration::replay_tests::fixture(42, 0);
+        for min_y in [i32::MIN, -64, i32::MAX - 16] {
+            let blocks: Vec<u16> = (0..16).map(|y| (y % profile.materials.len()) as u16).collect();
+            let expected: [i32; 6] = std::array::from_fn(|map| blocks.iter()
+                .rposition(|&m| profile.heightmap_masks[m as usize] & (1 << map) != 0)
+                .map_or(min_y, |y| min_y + y as i32 + 1));
+            let state = Arc::new(ColumnState::new(blocks.clone())); let weak = Arc::downgrade(&state);
+            let versions = Versions::new(ChunkRequest { min_y, ..request(0, 0) }, 1);
+            versions.base[0].set(Ok(state.clone())).ok().unwrap();
+            let archive = Archived::capture(&versions).unwrap();
+            drop(versions); drop(state); assert!(weak.upgrade().is_none());
+            let restored = archive.column(0, 0, 0).unwrap(); drop(archive);
+            assert_eq!(restored.expand(16), blocks);
+            for _ in 0..3 { assert_eq!(restored.heights(&profile, min_y, 16), expected); }
+        }
+        println!("direct height actual archived state bytes={}", std::mem::size_of::<SavedState>());
     }
     #[test]
     fn packed_edge_indices_cover_each_retained_column_exactly_once() {
@@ -459,8 +474,8 @@ mod tests {
         let r = request(-32, -32);
         let (profile, _, _) = crate::decoration::replay_tests::fixture(42, 0);
         let versions = Versions::new(r, 5);
-        let state = Arc::new(ColumnState::new(vec![0; 16], &profile, 0));
-        let core = Arc::new(ColumnState::new(vec![1; 16], &profile, 0));
+        let state = Arc::new(ColumnState::new(vec![0; 16]));
+        let core = Arc::new(ColumnState::new(vec![1; 16]));
         for (x, z) in [(31, 32), (48, 32), (32, 31), (32, 48)] {
             versions.base[z * 80 + x]
                 .set(Ok(state.clone()))
@@ -477,7 +492,7 @@ mod tests {
         for (x, z) in [(31, 32), (48, 32), (32, 31), (32, 48)] {
             let saved = archive.column(0, -512 + x, -512 + z).unwrap();
             assert_eq!(saved.runs.slice(), state.runs.slice());
-            assert_eq!(saved.heights, state.heights);
+            assert_eq!(saved.heights(&profile, 0, 16), state.heights(&profile, 0, 16));
         }
         assert!(archive.column(0, -480, -480).is_none());
         assert!(Arc::ptr_eq(
@@ -510,10 +525,9 @@ mod tests {
             seed,
             ..request(x, 0)
         };
-        let (profile, _, _) = crate::decoration::replay_tests::fixture(42, 0);
         let versions = Versions::new(r, 1);
         versions.base[0]
-            .set(Ok(Arc::new(ColumnState::new(vec![0; 16], &profile, 0))))
+            .set(Ok(Arc::new(ColumnState::new(vec![0; 16]))))
             .ok()
             .unwrap();
         let mut snapshot = Snapshot {
@@ -574,9 +588,8 @@ mod tests {
     #[test]
     fn exact_before_root_selection_never_skips_missing_or_failed_latest_cells() {
         let r = request(0, 0);
-        let (profile, _, _) = crate::decoration::replay_tests::fixture(42, 0);
         let mut versions = Versions::new(r, 1);
-        let state = Arc::new(ColumnState::new(vec![0; 16], &profile, 0));
+        let state = Arc::new(ColumnState::new(vec![0; 16]));
         versions.base[0].set(Ok(state.clone())).ok().unwrap();
         let ready = ColumnCell::new();
         ready.set(Ok(state)).ok().unwrap();
@@ -679,7 +692,7 @@ mod tests {
         let r = request(0, 0);
         let (profile, _, _) = crate::decoration::replay_tests::fixture(42, 0);
         let mut versions = Versions::new(r, 1);
-        let state = Arc::new(ColumnState::new(vec![0; 16], &profile, 0));
+        let state = Arc::new(ColumnState::new(vec![0; 16]));
         let weak = Arc::downgrade(&state);
         versions.base[0].set(Ok(state.clone())).ok().unwrap();
         versions.base[1].set(Ok(state.clone())).ok().unwrap();
@@ -692,7 +705,7 @@ mod tests {
         let archive = Archived::capture(&versions).unwrap();
         assert_eq!(archive.states.len(), 1);
         assert_eq!(archive.runs.as_slice(), state.runs.slice());
-        assert_eq!(archive.column(2, 0, 0).unwrap().heights, state.heights);
+        assert_eq!(archive.column(2, 0, 0).unwrap().heights(&profile, 0, 16), state.heights(&profile, 0, 16));
         assert!(archive.column(2, 2, 0).is_none());
         drop(state);
         drop(versions);

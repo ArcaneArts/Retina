@@ -18,6 +18,8 @@ mod material_storage_probe;
 #[cfg(test)]
 mod height_use_probe;
 #[cfg(test)]
+mod direct_height_tests;
+#[cfg(test)]
 mod column_edit_probe;
 #[cfg(test)]
 mod blob_output_probe;
@@ -366,12 +368,11 @@ impl ColumnRuns {
 }
 struct ColumnState {
     runs: ColumnRuns,
-    heights: [i32; 6],
     #[cfg(test)]
     height_trace: height_use_probe::State,
 }
 impl ColumnState {
-    fn new(blocks: Vec<u16>, profile: &WorldProfile, min_y: i32) -> Self {
+    fn new(blocks: Vec<u16>) -> Self {
         let mut runs = Vec::new();
         let mut start = 0;
         for y in 1..=blocks.len() {
@@ -381,29 +382,37 @@ impl ColumnState {
             }
         }
         runs.reverse();
-        Self::from_runs(
-            ColumnRuns::Owned(runs.into_boxed_slice()),
-            blocks.len(),
-            profile,
-            min_y,
-        )
+        Self::from_runs(ColumnRuns::Owned(runs.into_boxed_slice()))
     }
-    fn from_runs(runs: ColumnRuns, height: usize, profile: &WorldProfile, min_y: i32) -> Self {
-        let mut heights = [min_y; 6];
+    fn from_runs(runs: ColumnRuns) -> Self {
+        #[cfg(test)]
+        let height_trace = height_use_probe::State::constructed(&runs);
+        Self { runs, #[cfg(test)] height_trace }
+    }
+    // Material runs already describe the exact immutable prefix. Query just
+    // the selected map; no height array, sentinel or mutable cache is needed.
+    // The owning planner supplies the same profile and geometry as the runs.
+    fn height(&self, profile: &WorldProfile, min_y: i32, height: usize, map: u8) -> i32 {
+        let bit = [1u8, 2, 4, 8, 16, 32][map as usize];
         let mut top = min_y + height as i32;
-        for &run in runs.slice() {
-            for (map, height) in heights.iter_mut().enumerate() {
-                if *height == min_y
-                    && profile.heightmap_masks[run as u16 as usize] & (1 << map) != 0
-                {
-                    *height = top;
-                }
+        let mut answer = min_y;
+        #[cfg(test)]
+        let mut visited = 0;
+        for &run in self.runs.slice() {
+            #[cfg(test)] { visited += 1; }
+            if profile.heightmap_masks[run as u16 as usize] & bit != 0 {
+                answer = top;
+                break;
             }
             top = min_y + (run >> 16) as i32;
         }
         #[cfg(test)]
-        let height_trace = height_use_probe::State::computed(&runs);
-        Self { runs, heights, #[cfg(test)] height_trace }
+        self.height_trace.height_scan(map, visited);
+        answer
+    }
+    #[cfg(test)]
+    fn heights(&self, profile: &WorldProfile, min_y: i32, height: usize) -> [i32; 6] {
+        std::array::from_fn(|map| self.height(profile, min_y, height, map as u8))
     }
     fn material(&self, y: usize) -> u16 {
         let runs = self.runs.slice();
@@ -684,15 +693,15 @@ impl PriorWorld for View<'_, '_> {
         // the original prefix; an earlier column must not enter that view cache.
         let height = if before == self.before {
             self.read_column(x, z, |column| {
-                #[cfg(test)] column.height_trace.height(map);
-                column.heights[map as usize]
+                column.height(self.planner.profile, self.planner.request.min_y,
+                    self.planner.request.height as usize, map)
             })
         } else {
             self.planner.metrics.performance.add(
                 Perf::height_roots_skipped, (self.before - before) as u64);
             self.planner.column(before, x, z).map(|column| {
-                #[cfg(test)] column.height_trace.height(map);
-                column.heights[map as usize]
+                column.height(self.planner.profile, self.planner.request.min_y,
+                    self.planner.request.height as usize, map)
             })
         };
         match height {
@@ -1180,9 +1189,6 @@ impl Planner<'_> {
                     mask: mask.clone(),
                     range,
                 },
-                self.request.height as usize,
-                self.profile,
-                self.request.min_y,
             )));
         }
         let blocks = (self.request.min_y..self.request.min_y + self.request.height as i32)
@@ -1192,11 +1198,7 @@ impl Planner<'_> {
                     .ok_or_else(|| format!("missing GPU substrate at {x},{y},{z}"))
             })
             .collect::<Result<Vec<_>, _>>()?;
-        Ok(Arc::new(ColumnState::new(
-            blocks,
-            self.profile,
-            self.request.min_y,
-        )))
+        Ok(Arc::new(ColumnState::new(blocks)))
     }
     fn prefix(
         &self,
@@ -1286,7 +1288,7 @@ impl Planner<'_> {
             }
         }
         if let Some(blocks) = blocks {
-            let result = ColumnState::new(blocks, self.profile, self.request.min_y);
+            let result = ColumnState::new(blocks);
             #[cfg(test)]
             probe.finish(Some(self.request.height), result.runs.slice().len(), result.runs.slice() == prior.runs.slice());
             #[cfg(test)] {
@@ -1886,7 +1888,7 @@ mod tests {
     }
     fn cached_column(material: u16) -> Arc<ColumnState> {
         Arc::new(ColumnState { runs: ColumnRuns::Owned(vec![u32::from(material)].into_boxed_slice()),
-            heights: [i32::from(material); 6], height_trace: Default::default() })
+            height_trace: Default::default() })
     }
     #[test]
     fn spatial_view_slots_cover_each_complete_window_without_collisions() {
@@ -1952,7 +1954,7 @@ mod tests {
         (0..4096).into_par_iter().for_each(|i| {
             let x: i32 = i % 257 - 128;
             let material = x.rem_euclid(127) as u16 + 1;
-            assert_eq!(cache.read(x, -1, || Ok(cached_column(material)), |c| (c.material(0), c.heights[0])).unwrap(), (material, i32::from(material)));
+            assert_eq!(cache.read(x, -1, || Ok(cached_column(material)), |c| (c.material(0), c.runs.slice().len())).unwrap(), (material, 1));
         });
         for x in -128..=128 {
             assert_eq!(cache.read(x, -1, || panic!("concurrent value lost"), |c| c.material(0)).unwrap(), x.rem_euclid(127) as u16 + 1);
@@ -2220,7 +2222,7 @@ mod tests {
                             _ => ((y / 17) % profile.materials.len()) as u16,
                         })
                         .collect();
-                    let encoded = ColumnState::new(blocks.clone(), &profile, min_y);
+                    let encoded = ColumnState::new(blocks.clone());
                     assert_eq!(encoded.expand(height), blocks);
                     for (y, &block) in blocks.iter().enumerate() {
                         assert_eq!(encoded.material(y), block);
@@ -2230,7 +2232,7 @@ mod tests {
                             .iter()
                             .rposition(|&m| profile.heightmap_masks[m as usize] & (1 << map) != 0)
                             .map_or(min_y, |y| min_y + y as i32 + 1);
-                        assert_eq!(encoded.heights[map], expected);
+                        assert_eq!(encoded.height(&profile, min_y, height, map as u8), expected);
                     }
                 }
             }
@@ -2242,7 +2244,7 @@ mod tests {
         let blocks: Vec<u16> = (0..256)
             .map(|y| ((y / 17) % profile.materials.len()) as u16)
             .collect();
-        let owned = ColumnState::new(blocks.clone(), &profile, -64);
+        let owned = ColumnState::new(blocks.clone());
         let mut words = vec![u32::MAX; 7];
         words.extend_from_slice(owned.runs.slice());
         let end = words.len();
@@ -2262,13 +2264,10 @@ mod tests {
                 mask: mask.clone(),
                 range: 7..end,
             },
-            256,
-            &profile,
-            -64,
         );
         drop(mask);
         assert_eq!(shared.expand(256), blocks);
-        assert_eq!(shared.heights, owned.heights);
+        assert_eq!(shared.heights(&profile, -64, 256), owned.heights(&profile, -64, 256));
         for (y, block) in blocks.into_iter().enumerate() {
             assert_eq!(shared.material(y), block);
         }

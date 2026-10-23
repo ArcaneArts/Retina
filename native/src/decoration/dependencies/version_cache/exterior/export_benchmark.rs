@@ -50,7 +50,6 @@ impl Reference {
                     runs.extend_from_slice(value.runs.slice());
                     states.push(SavedState {
                         range: start..runs.len(),
-                        heights: value.heights,
                     });
                     owners.insert(pointer, id);
                     id
@@ -98,7 +97,7 @@ impl Reference {
             return Err("exterior index size differs".into());
         }
         let mut checked = 0;
-        // Compare every interval boundary, run sequence and six heights. This
+        // Compare every interval boundary and immutable material-run sequence. This
         // includes all holes, without allocating a result for every prefix.
         for (column, &[start, end]) in actual.ranges.iter().enumerate() {
             let expected =
@@ -112,7 +111,6 @@ impl Reference {
                 let b_state = &actual.states[b.state as usize];
                 if a.start != b.start
                     || a.end != b.end
-                    || a_state.heights != b_state.heights
                     || self.runs[a_state.range.clone()] != actual.runs[b_state.range.clone()]
                 {
                     return Err(format!("exterior value or interval differs at {column}"));

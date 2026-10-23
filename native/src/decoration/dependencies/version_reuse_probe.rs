@@ -220,12 +220,12 @@ impl Probe {
                             .find(|&y| expected.material(y) != actual.material(y))
                     })
                     .flatten();
-                if expected.heights != actual.heights || different_y.is_some() {
+                if expected.heights(planner.profile, planner.request.min_y, planner.request.height as usize) != actual.heights(planner.profile, planner.request.min_y, planner.request.height as usize) || different_y.is_some() {
                     mismatches += 1;
                     by_before.entry(before).or_default()[2] += 1;
                     if samples.len() < 20 {
                         samples.push(serde_json::json!({"x":x,"z":z,"before":before,"source_effective_before":effective,
-                        "different_y":different_y,"expected_heights":expected.heights,"actual_heights":actual.heights,
+                        "different_y":different_y,"expected_heights":expected.heights(planner.profile, planner.request.min_y, planner.request.height as usize),"actual_heights":actual.heights(planner.profile, planner.request.min_y, planner.request.height as usize),
                         "expected_runs":expected.runs.slice(),"actual_runs":actual.runs.slice()}));
                     }
                 }
@@ -245,8 +245,7 @@ impl Probe {
 
 #[test]
 fn missing_latest_version_never_selects_an_earlier_ready_value() {
-    let (profile, _, _) = crate::decoration::replay_tests::fixture(42, 0);
-    let state = Arc::new(ColumnState::new(vec![0; 16], &profile, 0));
+    let state = Arc::new(ColumnState::new(vec![0; 16]));
     let saved = Saved {
         request: ChunkRequest {
             seed: 42,

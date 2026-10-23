@@ -317,7 +317,7 @@ fn material_storage_deduplicates_owners_without_retaining_them() {
     let blocks: Vec<u16> = (0..256)
         .map(|y| ((y / 17) % profile.materials.len()) as u16)
         .collect();
-    let owned = Arc::new(ColumnState::new(blocks.clone(), &profile, -64));
+    let owned = Arc::new(ColumnState::new(blocks.clone()));
     let words = Arc::new(owned.runs.slice().to_vec());
     let mask = Arc::new(crate::geology::CaveMask {
         origin_x: -32,
@@ -335,9 +335,6 @@ fn material_storage_deduplicates_owners_without_retaining_them() {
                 mask: mask.clone(),
                 range: 0..words.len(),
             },
-            256,
-            &profile,
-            -64,
         ))
     };
     let states = [
@@ -349,9 +346,6 @@ fn material_storage_deduplicates_owners_without_retaining_them() {
                 runs: words.clone(),
                 range: 0..words.len(),
             },
-            256,
-            &profile,
-            -64,
         )),
     ];
     let references: Vec<_> = states.iter().map(Arc::strong_count).collect();

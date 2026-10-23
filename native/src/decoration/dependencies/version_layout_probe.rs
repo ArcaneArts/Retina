@@ -223,8 +223,7 @@ fn version_layout_probe_preserves_strict_prefix_and_missing_latest_cell() {
     let mut versions = Versions::new(request, 1);
     let session = Arc::new(Session::default());
     versions.layout_trace = Trace(Some((session, Box::default())));
-    let (profile, _, _) = crate::decoration::replay_tests::fixture(42, 0);
-    let state = Arc::new(ColumnState::new(vec![0; 16], &profile, 0));
+    let state = Arc::new(ColumnState::new(vec![0; 16]));
     versions.base[0].set(Ok(state.clone())).ok().unwrap();
     for root in [0, 3, 8] {
         versions.layout_trace.append(&versions.changed[0]);

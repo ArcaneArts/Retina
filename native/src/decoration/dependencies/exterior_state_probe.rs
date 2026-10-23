@@ -72,7 +72,7 @@ impl Probe {
                 for (j, band) in [16, 32, 64].into_iter().enumerate() {
                     if depth <= band { by_band[j][i] += 1; }
                 }
-                if (saved.runs != actual.runs.slice() || saved.heights != actual.heights)
+                if (saved.runs != actual.runs.slice() || saved.heights != actual.heights(planner.profile, planner.request.min_y, planner.request.height as usize))
                     && mismatches.len() < 10
                 {
                     mismatches.push(key);
@@ -124,7 +124,7 @@ impl Probe {
                 if depth <= BAND {
                     let id = *selected_owners.entry(pointer).or_insert_with(|| {
                         let id = saved.states.len() as u32;
-                        saved.states.push(State { runs: state.runs.slice().to_vec(), heights: state.heights });
+                        saved.states.push(State { runs: state.runs.slice().to_vec(), heights: state.heights(planner.profile, planner.request.min_y, planner.request.height as usize) });
                         id
                     });
                     saved.slots.insert((before, x, z), id);
