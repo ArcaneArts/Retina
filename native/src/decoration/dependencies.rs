@@ -17,6 +17,8 @@ mod column_edit_probe;
 mod blob_output_probe;
 #[cfg(test)]
 pub(crate) mod worker_phase_probe;
+#[cfg(test)]
+use worker_phase_probe::work::{self as dependency_work, Op as Work};
 use super::spatial::Map;
 use super::*;
 use crate::TerrainEngine;
@@ -694,9 +696,11 @@ impl Planner<'_> {
     }
 
     fn anchor(&self, root: usize, x: i32, z: i32) -> Result<Cow<'_, Arc<Output>>, String> {
+        #[cfg(test)] dependency_work::count(Work::AnchorRequest, Some(root));
         // The completed map is immutable until the next joined root barrier.
         // Only pending results need an owning reference for their caller.
         if let Some(output) = self.ready.get(&(root, x, z)) {
+            #[cfg(test)] dependency_work::count(Work::AnchorReady, Some(root));
             self.metrics.performance.add(Perf::anchor_ready_hits, 1);
             return Ok(Cow::Borrowed(output));
         }
@@ -711,6 +715,7 @@ impl Planner<'_> {
                 #[cfg(test)]
                 { observation = self.output_trace.begin(root, x, z); }
                 self.metrics.performance.add(Perf::anchor_builds, 1);
+                #[cfg(test)] dependency_work::count(Work::AnchorBuild, Some(root));
                 if let Some(definition) = self.roots[root].definition {
                     return self.structure(root, definition, x, z);
                 }
@@ -844,8 +849,10 @@ impl Planner<'_> {
     fn column_writer(&self, root: usize, ax: i32, az: i32, x: i32, z: i32)
         -> Result<Option<Cow<'_, Arc<Output>>>, String>
     {
+        #[cfg(test)] dependency_work::count(Work::WriterRequest, Some(root));
         let key = (root, ax, az);
         if let Some(output) = self.ready.get(&key) {
+            #[cfg(test)] dependency_work::count(Work::WriterReady, Some(root));
             self.metrics.performance.add(Perf::anchor_ready_hits, 1);
             return Ok(Some(Cow::Borrowed(output)));
         }
@@ -861,6 +868,7 @@ impl Planner<'_> {
             };
             if !footprint.contains(x, z) {
                 self.metrics.performance.add(Perf::footprint_pruned_writers, 1);
+                #[cfg(test)] dependency_work::count(Work::WriterPruned, Some(root));
                 return Ok(None);
             }
         }
@@ -942,12 +950,18 @@ impl Planner<'_> {
     fn column(&self, before: usize, x: i32, z: i32) -> Result<Arc<ColumnState>, String> {
         let metrics = &self.metrics.performance;
         metrics.add(Perf::column_requests, 1);
+        #[cfg(test)] dependency_work::count(Work::ColumnRequest, before.checked_sub(1));
         // The completed interior has all possible writers. An absent command is
         // an identity transformation, so share the preceding changed version.
         // Boundary columns keep their full demand-driven dependency closure.
         if before <= self.completed.len() {
             if let Some(column) = self.versions.index(x, z) {
                 let (version, slot) = self.versions.before(column, before);
+                #[cfg(test)] {
+                    dependency_work::count(Work::ColumnInterior, before.checked_sub(1));
+                    dependency_work::count(Work::ColumnResolvedInterior, version.checked_sub(1));
+                    dependency_work::add(Work::ColumnVersionsSkipped, before.checked_sub(1), (before - version) as u64);
+                }
                 metrics.add(Perf::column_versions_skipped, (before - version) as u64);
                 metrics.add(Perf::completed_column_reads, 1);
                 return self.column_cell(version, x, z, slot);
@@ -956,6 +970,7 @@ impl Planner<'_> {
                 metrics.add(Perf::version_cache_boundary_lookups, 1);
                 if let Some(column) = reuse.column(before, x, z) {
                     metrics.add(Perf::version_cache_boundary_hits, 1);
+                    #[cfg(test)] dependency_work::count(Work::ColumnReuseBoundary, before.checked_sub(1));
                     return Ok(column);
                 }
             }
@@ -964,6 +979,7 @@ impl Planner<'_> {
         let index = z.rem_euclid(16) as usize * 16 + x.rem_euclid(16) as usize;
         if let Some(tile) = self.ready_columns.get(&key) {
             metrics.add(Perf::completed_boundary_reads, 1);
+            #[cfg(test)] dependency_work::count(Work::ColumnReadyBoundary, before.checked_sub(1));
             return self.column_cell(before, x, z, &tile.0[index]);
         }
         let lock_started = metrics.start();
@@ -1002,6 +1018,7 @@ impl Planner<'_> {
         let result = slot.get_or_init(|| {
             built = true;
             metrics.add(Perf::column_builds, 1);
+            #[cfg(test)] dependency_work::count(Work::ColumnBuild, before.checked_sub(1));
             self.build_column(before, x, z)
                 .map_err(|error| Box::new(ColumnFailure(error)))
         });
@@ -1009,6 +1026,7 @@ impl Planner<'_> {
         join.finish(built, result.is_ok());
         if !built {
             metrics.elapsed(Perf::column_join_nanos, joined);
+            #[cfg(test)] dependency_work::count(Work::ColumnCellReuse, before.checked_sub(1));
         }
         result
             .as_ref()
@@ -1021,6 +1039,7 @@ impl Planner<'_> {
             metrics.add(Perf::version_cache_exterior_lookups, 1);
             if let Some(state) = reuse.exterior_column(before, x, z) {
                 metrics.add(Perf::version_cache_exterior_hits, 1);
+                #[cfg(test)] dependency_work::count(Work::ColumnReuseExterior, before.checked_sub(1));
                 return Ok(state);
             }
         }
@@ -1065,6 +1084,7 @@ impl Planner<'_> {
         limit: Option<(i32, i32, usize)>,
     ) -> Result<Arc<ColumnState>, String> {
         self.metrics.performance.add(Perf::prefix_evaluations, 1);
+        #[cfg(test)] if limit.is_some() { dependency_work::count(Work::PrefixLimited, before.checked_sub(1)); }
         let prior = self.column(before - 1, x, z)?;
         let mut blocks: Option<Vec<u16>> = None;
         #[cfg(test)]
@@ -1076,6 +1096,7 @@ impl Planner<'_> {
         {
             #[cfg(test)]
             probe.select_path(column_edit_probe::Path::CompletedInterior);
+            #[cfg(test)] dependency_work::count(Work::PrefixInterior, before.checked_sub(1));
             for (key, block) in root.writes(column, x, z) {
                 if limit.is_some_and(|limit| key >= limit) {
                     #[cfg(test)]
@@ -1101,6 +1122,9 @@ impl Planner<'_> {
             } else {
                 column_edit_probe::Path::Boundary
             });
+            #[cfg(test)] dependency_work::count(if self.versions.index(x, z).is_some() {
+                Work::PrefixUnfinishedInterior
+            } else { Work::PrefixBoundary }, before.checked_sub(1));
             for (ax, az) in self.roots[before - 1].bounds.writers(x, z)? {
                 if limit.is_some_and(|key| (az, ax) > (key.0, key.1)) {
                     #[cfg(test)]
