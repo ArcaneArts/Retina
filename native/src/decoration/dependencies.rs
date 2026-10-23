@@ -1034,8 +1034,8 @@ impl Planner<'_> {
         let result = slot.get_or_init(|| {
             built = true;
             metrics.add(Perf::column_builds, 1);
-            #[cfg(test)] dependency_work::count(Work::ColumnBuild, before.checked_sub(1)); #[cfg(test)] let observation = self.column_trace.begin(before, x, z);
-            { let column = self.build_column(before, x, z); #[cfg(test)] if let Some(observation) = observation { if let Ok(value) = &column { observation.complete(value); } } column }
+            #[cfg(test)] dependency_work::count(Work::ColumnBuild, before.checked_sub(1)); #[cfg(test)] return self.column_trace.evaluate(before, x, z, |observation| self.build_column(before, x, z, observation)).map_err(|error| Box::new(ColumnFailure(error)));
+            #[cfg(not(test))] self.build_column(before, x, z)
                 .map_err(|error| Box::new(ColumnFailure(error)))
         });
         #[cfg(test)]
@@ -1049,20 +1049,20 @@ impl Planner<'_> {
             .map(Arc::clone)
             .map_err(|error| error.0.clone())
     }
-    fn build_column(&self, before: usize, x: i32, z: i32) -> Result<Arc<ColumnState>, String> {
+    fn build_column(&self, before: usize, x: i32, z: i32, #[cfg(test)] observation: Option<&mut column_reuse_probe::Build>) -> Result<Arc<ColumnState>, String> {
         let metrics = &self.metrics.performance;
         if let Some(reuse) = &self.reuse {
             metrics.add(Perf::version_cache_exterior_lookups, 1);
             if let Some(state) = reuse.exterior_column(before, x, z) {
                 metrics.add(Perf::version_cache_exterior_hits, 1);
                 #[cfg(test)] dependency_work::count(Work::ColumnReuseExterior, before.checked_sub(1));
-                return Ok(state);
+                #[cfg(test)] if let Some(observation) = observation { observation.source(column_reuse_probe::Source::Archive); } return Ok(state);
             }
         }
         if before != 0 {
-            return self.prefix(before, x, z, None);
+            #[cfg(test)] if let Some(observation) = observation { observation.source(column_reuse_probe::Source::Prefix); } return self.prefix(before, x, z, None);
         }
-        let field = self.terrain(x.div_euclid(16), z.div_euclid(16))?;
+        #[cfg(test)] if let Some(observation) = observation { observation.source(column_reuse_probe::Source::Substrate); } let field = self.terrain(x.div_euclid(16), z.div_euclid(16))?;
         if let Some((mask, range)) = field
             .substrate
             .as_ref()

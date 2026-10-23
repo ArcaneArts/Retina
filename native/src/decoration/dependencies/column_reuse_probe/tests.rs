@@ -180,6 +180,37 @@ fn column_census_parallel_same_key_publication_balances_without_owning_values() 
 }
 
 #[test]
+fn column_census_separates_existing_archive_hits_from_actual_prefix_and_substrate_paths() {
+    let session = Arc::new(Session::default());
+    let value = column(&[1]);
+    session.begin(key(), 0, true).unwrap().complete(&value);
+    for (job, source) in [
+        (1, Source::Archive),
+        (2, Source::Prefix),
+        (3, Source::Substrate),
+    ] {
+        let mut b = session.begin(key(), job, false).unwrap();
+        b.source(source);
+        b.complete(&column(&[1]));
+    }
+    let r = session.report();
+    let c = &r["counts"];
+    for name in [
+        "prefix_successes",
+        "substrate_successes",
+        "archive_successes",
+        "unclassified_successes",
+        "live_other_prefix",
+        "live_other_substrate",
+        "live_other_archive",
+    ] {
+        assert_eq!(c[name], 1, "{name}");
+    }
+    assert_eq!(c["other_live_at_demand"], 3);
+    assert_eq!(Arc::strong_count(&value), 1);
+}
+
+#[test]
 #[ignore = "GPU inventory requires RETINA_TERRAIN_REUSE_PROFILES and RETINA_COLUMN_REUSE_OUTPUT"]
 fn exact_live_column_reuse_inventory() {
     use std::{
@@ -314,12 +345,20 @@ fn exact_live_column_reuse_inventory() {
                     "voxel_mismatches",
                     "height_mismatches",
                     "invalid_runs",
+                    "unclassified_successes",
                 ] {
                     assert_eq!(
                         inventory["counts"][field], 0,
                         "{name} callers={callers} {field}"
                     );
                 }
+                let c = &inventory["counts"];
+                assert_eq!(
+                    c["successes"].as_u64().unwrap(),
+                    c["prefix_successes"].as_u64().unwrap()
+                        + c["substrate_successes"].as_u64().unwrap()
+                        + c["archive_successes"].as_u64().unwrap()
+                );
                 for row in &rows {
                     assert_eq!(row["program_before"]["status"], 4);
                     assert_eq!(row["program_after"]["status"], 4);

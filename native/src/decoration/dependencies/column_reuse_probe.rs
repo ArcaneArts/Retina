@@ -57,6 +57,14 @@ counts! {
     compared_columns, compared_live_other, compared_run_words,
     run_encoding_differences, voxel_mismatches, height_mismatches, invalid_runs,
     skipped_keys, skipped_snapshots,
+    prefix_successes, substrate_successes, archive_successes, unclassified_successes,
+    live_other_prefix, live_other_substrate, live_other_archive,
+}
+#[derive(Clone, Copy)]
+pub(super) enum Source {
+    Prefix,
+    Substrate,
+    Archive,
 }
 struct Snapshot {
     runs: Vec<u32>,
@@ -148,6 +156,7 @@ impl Session {
             token,
             group,
             live_other,
+            source: None,
             finished: false,
         })
     }
@@ -191,6 +200,20 @@ pub(super) struct Job {
     width: i64,
 }
 impl Job {
+    pub(super) fn evaluate(
+        &self,
+        before: usize,
+        x: i32,
+        z: i32,
+        build: impl FnOnce(Option<&mut Build>) -> Result<Arc<ColumnState>, String>,
+    ) -> Result<Arc<ColumnState>, String> {
+        let mut observation = self.begin(before, x, z);
+        let result = build(observation.as_mut());
+        if let (Some(observation), Ok(value)) = (observation, &result) {
+            observation.complete(value);
+        }
+        result
+    }
     pub(super) fn new(
         engine: &TerrainEngine,
         profile: &WorldProfile,
@@ -260,9 +283,13 @@ pub(super) struct Build {
     token: u64,
     group: (usize, bool),
     live_other: bool,
+    source: Option<Source>,
     finished: bool,
 }
 impl Build {
+    pub(super) fn source(&mut self, source: Source) {
+        self.source = Some(source);
+    }
     pub(super) fn complete(mut self, column: &Arc<ColumnState>) {
         let runs = column.runs.slice();
         let height = self.key.request.height as usize;
@@ -301,6 +328,21 @@ impl Build {
         }
         let c = state.counts.entry(self.group).or_default();
         c.successes += 1;
+        match self.source {
+            Some(Source::Prefix) => {
+                c.prefix_successes += 1;
+                c.live_other_prefix += self.live_other as u64;
+            }
+            Some(Source::Substrate) => {
+                c.substrate_successes += 1;
+                c.live_other_substrate += self.live_other as u64;
+            }
+            Some(Source::Archive) => {
+                c.archive_successes += 1;
+                c.live_other_archive += self.live_other as u64;
+            }
+            None => c.unclassified_successes += 1,
+        }
         c.compared_columns += compared as u64;
         c.compared_live_other += (compared && self.live_other) as u64;
         c.compared_run_words += if compared { runs.len() as u64 } else { 0 };
