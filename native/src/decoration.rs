@@ -282,6 +282,14 @@ impl Recipe {
     }
 }
 
+/// Optional exact ground query. An unavailable column is distinct from a
+/// provider that only implements scalar material reads.
+pub enum GroundLayers {
+    Unsupported,
+    Unavailable,
+    Known(Vec<i32>),
+}
+
 pub trait PriorWorld: Sync {
     #[cfg(test)]
     fn material_probe_root(&self) -> Option<(usize, &str)> { None }
@@ -294,6 +302,12 @@ pub trait PriorWorld: Sync {
         self.material(at).map(|actual| actual == material)
     }
     fn height(&self, x: i32, z: i32, map: u8) -> Option<i32>;
+    /// Descending empty-to-solid transitions from the already queried height.
+    /// Called only for ordered columns with no live overlay writes.
+    fn ground_layers(&self, _x: i32, _z: i32, _start: i32) -> GroundLayers {
+        GroundLayers::Unsupported
+    }
+    fn ground_scan_fallback(&self) {}
     /// Only the ordered planner can prove that all recipes in this root share
     /// a deterministic replacement and never observe their own material writes.
     fn deferred_ore(&self) -> Option<(u16, u16)> { None }

@@ -29,6 +29,8 @@ counters! {
     view_terrain_borrowed_reads, view_terrain_loaded_reads,
     blob_mask_reads, blob_mask_builds, blob_mask_hits, blob_mask_scalar_fallbacks,
     blob_mask_cache_allocations, blob_mask_cache_bytes,
+    ground_run_queries, ground_run_visits, ground_voxel_queries_replaced,
+    ground_scalar_scans,
     overlay_recommit_calls_skipped, overlay_recommit_commands_skipped,
     blob_overlay_observations, blob_overlay_observed_payload_bytes,
     blob_overlay_observed_points, blob_overlay_promotions,

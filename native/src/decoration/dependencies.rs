@@ -5,6 +5,7 @@ mod version_cache;
 mod uniform_blob;
 mod output_columns;
 mod material_masks;
+mod ground_transitions;
 pub(crate) use version_cache::{Cache as VersionCache, Pending as PendingVersions};
 #[cfg(test)]
 mod version_reuse_probe;
@@ -469,7 +470,7 @@ struct ViewColumns {
     slots: OnceLock<Box<[OnceLock<ViewColumn>; VIEW_COLUMN_SLOTS]>>,
     values: Mutex<Map<(i32, i32), Arc<ColumnState>>>,
     material_masks: material_masks::Cache,
-    counts: Option<[AtomicU64; 9]>,
+    counts: Option<[AtomicU64; 13]>,
 }
 impl Default for ViewColumns {
     fn default() -> Self {
@@ -489,7 +490,10 @@ impl ViewColumns {
             + key.0.rem_euclid(VIEW_COLUMN_WIDTH as i32) as usize
     }
     fn count(&self, index: usize) {
-        if let Some(counts) = &self.counts { counts[index].fetch_add(1, Ordering::Relaxed); }
+        self.add(index, 1);
+    }
+    fn add(&self, index: usize, amount: u64) {
+        if let Some(counts) = &self.counts { counts[index].fetch_add(amount, Ordering::Relaxed); }
     }
     fn read<T>(
         &self,
@@ -545,7 +549,9 @@ impl Drop for View<'_, '_> {
                 Perf::view_column_loads, Perf::view_column_slot_hits,
                 Perf::view_terrain_borrowed_reads, Perf::view_terrain_loaded_reads,
                 Perf::blob_mask_reads, Perf::blob_mask_builds, Perf::blob_mask_hits,
-                Perf::blob_mask_scalar_fallbacks].into_iter().zip(counts) {
+                Perf::blob_mask_scalar_fallbacks, Perf::ground_run_queries,
+                Perf::ground_run_visits, Perf::ground_voxel_queries_replaced,
+                Perf::ground_scalar_scans].into_iter().zip(counts) {
                 self.planner.metrics.performance.add(counter, count.load(Ordering::Relaxed));
             }
             let bytes = self.columns.material_masks.allocated_bytes();
@@ -696,6 +702,33 @@ impl PriorWorld for View<'_, '_> {
                 None
             }
         }
+    }
+    fn ground_layers(&self, x: i32, z: i32, start: i32) -> GroundLayers {
+        let request = self.planner.request;
+        let relative = i64::from(start) - i64::from(request.min_y);
+        if request.height == 0 || !(0..=i64::from(request.height)).contains(&relative) {
+            return GroundLayers::Unsupported;
+        }
+        // Overlay queried height first, preserving deferred-ore height skipping.
+        // Material transitions still use this view's exact current prefix.
+        match self.read_column(x, z, |column| ground_transitions::from_column(
+            column, self.planner.profile, request.min_y,
+            request.height as usize, relative as usize,
+        )) {
+            Ok((grounds, visits)) => {
+                self.columns.count(9);
+                self.columns.add(10, visits as u64);
+                self.columns.add(11, relative as u64 + 1);
+                GroundLayers::Known(grounds)
+            }
+            Err(error) => {
+                self.planner.fail(error);
+                GroundLayers::Unavailable
+            }
+        }
+    }
+    fn ground_scan_fallback(&self) {
+        self.columns.count(12);
     }
 }
 impl Planner<'_> {
