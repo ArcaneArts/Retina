@@ -1,0 +1,3098 @@
+{
+  "cycle": 97,
+  "created_utc": "2026-10-23T06:10:05.594907+00:00",
+  "base_revision": "a3eea3e490cc009c4ddea51012988f3ec9c9044d",
+  "tested": {
+    "revision": "bb480cd11cfa8323011cc24ba90ba18af3da1ac8",
+    "native_tree": "2c4ef3e6ef92cccf788f30886fe6c6ee038a1ee1",
+    "sha256": "042118b2ea34ee8639ab1f71e8451ae435abd98cb571926b26adf7fc76c53b41",
+    "test_executable_sha256": "650f181b4eb7a465c6797fed0cf588f3ab235159b2fbfe4e9f994e21baf104ff",
+    "native_test_result": [
+      "190",
+      "0",
+      "55"
+    ],
+    "source_status": "",
+    "forced_rebuild": true,
+    "timing_acceptance": false
+  },
+  "change": "Test-only aggregate dependency work mode. Preserve detailed API interval mode; aggregate counts by dispatched root and demanded earlier root without per-lookup timestamps or event allocation. No production generation change.",
+  "timing_acceptance": false,
+  "cases": [
+    {
+      "case": "nether-main",
+      "seed": 123456789,
+      "profile": "nether.json",
+      "root_instances": 820,
+      "totals": {
+        "anchor_build": 1109396,
+        "anchor_ids_map_lookup": 978413,
+        "anchor_map_lookup": 13744361,
+        "anchor_ready": 0,
+        "anchor_request": 13744361,
+        "column_build": 42020598,
+        "column_cell_reuse": 17823683,
+        "column_interior": 22329618,
+        "column_map_lookup": 14180604,
+        "column_ready_boundary": 23334059,
+        "column_request": 60551322,
+        "column_resolved_interior": 22329618,
+        "column_reuse_boundary": 707041,
+        "column_reuse_exterior": 1425447,
+        "column_versions_skipped": 183440900,
+        "feature_gpu_call": 0,
+        "footprint_map_lookup": 6883968,
+        "prefix_boundary": 30002191,
+        "prefix_interior": 4238969,
+        "prefix_limited": 0,
+        "prefix_unfinished_interior": 0,
+        "structure_map_lookup": 130983,
+        "writer_pruned": 7508649,
+        "writer_ready": 53744157,
+        "writer_request": 74074347
+      },
+      "all_counter_partitions_exact": true,
+      "partitions_checked": 820,
+      "lookup_differences_vs_detailed": [],
+      "detailed": {
+        "root_evaluation_cpu_ms": {
+          "mean": 3818.59595,
+          "median": 3563.6445000000003,
+          "minimum": 2025.336,
+          "maximum": 6974.135,
+          "total": 76371.919,
+          "count": 20
+        },
+        "root_evaluation_wall_ms": {
+          "mean": 934.92611765,
+          "median": 952.2201634999999,
+          "minimum": 393.792208,
+          "maximum": 1683.405872,
+          "total": 18698.522353,
+          "count": 20
+        },
+        "observer_summary_ms": {
+          "mean": 877.792238,
+          "median": 784.4484575,
+          "minimum": 450.248753,
+          "maximum": 1641.540874,
+          "total": 17555.84476,
+          "count": 20
+        },
+        "instrumented_region_wall_ms": {
+          "mean": 2149.8087937,
+          "median": 2085.4550835,
+          "minimum": 1137.132875,
+          "maximum": 3687.403292,
+          "total": 42996.175874,
+          "count": 20
+        }
+      },
+      "aggregate": {
+        "root_evaluation_cpu_ms": {
+          "mean": 3911.062,
+          "median": 3834.116,
+          "minimum": 2388.129,
+          "maximum": 6411.276,
+          "total": 78221.24,
+          "count": 20
+        },
+        "root_evaluation_wall_ms": {
+          "mean": 886.2515892499999,
+          "median": 912.118436,
+          "minimum": 467.812417,
+          "maximum": 1313.509087,
+          "total": 17725.031785,
+          "count": 20
+        },
+        "observer_summary_ms": {
+          "mean": 23.29942245,
+          "median": 23.0478285,
+          "minimum": 19.205707,
+          "maximum": 31.770544,
+          "total": 465.988449,
+          "count": 20
+        },
+        "instrumented_region_wall_ms": {
+          "mean": 1266.58297285,
+          "median": 1282.1303750000002,
+          "minimum": 819.30525,
+          "maximum": 1667.4669159999999,
+          "total": 25331.659457,
+          "count": 20
+        }
+      },
+      "largest_aggregate_cpu_stages": [
+        {
+          "root": 8,
+          "sources": [
+            "minecraft:basalt_blobs"
+          ],
+          "structure_definition": null,
+          "regions": 20,
+          "counts": {
+            "anchor_build": 26257,
+            "anchor_ids_map_lookup": 24777,
+            "anchor_map_lookup": 595370,
+            "anchor_ready": 0,
+            "anchor_request": 595370,
+            "column_build": 1120079,
+            "column_cell_reuse": 2228086,
+            "column_interior": 2380087,
+            "column_map_lookup": 541500,
+            "column_ready_boundary": 426578,
+            "column_request": 3419674,
+            "column_resolved_interior": 2380087,
+            "column_reuse_boundary": 71509,
+            "column_reuse_exterior": 76635,
+            "column_versions_skipped": 10111708,
+            "feature_gpu_call": 0,
+            "footprint_map_lookup": 78075,
+            "prefix_boundary": 571750,
+            "prefix_interior": 356130,
+            "prefix_limited": 0,
+            "prefix_unfinished_interior": 0,
+            "structure_map_lookup": 1480,
+            "writer_pruned": 34633,
+            "writer_ready": 735869,
+            "writer_request": 1342752
+          },
+          "detailed_evaluation_cpu_ms": {
+            "mean": 523.40575,
+            "median": 439.1925,
+            "minimum": 4.115,
+            "maximum": 1488.537,
+            "total": 10468.115,
+            "count": 20
+          },
+          "aggregate_evaluation_cpu_ms": {
+            "mean": 576.939,
+            "median": 514.5844999999999,
+            "minimum": 5.05,
+            "maximum": 1647.569,
+            "total": 11538.78,
+            "count": 20
+          },
+          "aggregate_task_cpu_ms": {
+            "mean": 570.89263505,
+            "median": 505.477627,
+            "minimum": 1.963315,
+            "maximum": 1643.425573,
+            "total": 11417.852701,
+            "count": 20
+          },
+          "aggregate_evaluation_wall_ms": {
+            "mean": 59.90266875,
+            "median": 46.9351875,
+            "minimum": 0.430667,
+            "maximum": 249.350666,
+            "total": 1198.053375,
+            "count": 20
+          },
+          "leading_demanded_roots": [
+            {
+              "root": 7,
+              "sources": [],
+              "structure_definition": 2,
+              "counts": {
+                "column_request": 2203511,
+                "column_build": 62264,
+                "column_map_lookup": 108045,
+                "prefix_boundary": 61238,
+                "prefix_interior": 22,
+                "anchor_request": 61238,
+                "anchor_build": 411
+              }
+            },
+            {
+              "root": 2,
+              "sources": [],
+              "structure_definition": 3,
+              "counts": {
+                "column_request": 237475,
+                "column_build": 77618,
+                "column_map_lookup": 72453,
+                "prefix_boundary": 75575,
+                "anchor_request": 43404,
+                "anchor_build": 332
+              }
+            },
+            {
+              "root": 5,
+              "sources": [
+                "minecraft:large_basalt_columns/choice0",
+                "minecraft:large_basalt_columns/choice1"
+              ],
+              "structure_definition": null,
+              "counts": {
+                "column_request": 84864,
+                "column_build": 430130,
+                "column_map_lookup": 67564,
+                "prefix_boundary": 63575,
+                "prefix_interior": 310964,
+                "anchor_request": 120720,
+                "anchor_build": 440
+              }
+            }
+          ]
+        },
+        {
+          "root": 12,
+          "sources": [
+            "minecraft:patch_fire"
+          ],
+          "structure_definition": null,
+          "regions": 20,
+          "counts": {
+            "anchor_build": 53110,
+            "anchor_ids_map_lookup": 42435,
+            "anchor_map_lookup": 3112567,
+            "anchor_ready": 0,
+            "anchor_request": 3112567,
+            "column_build": 6034332,
+            "column_cell_reuse": 1840525,
+            "column_interior": 3293974,
+            "column_map_lookup": 3305041,
+            "column_ready_boundary": 1275842,
+            "column_request": 8023089,
+            "column_resolved_interior": 3293974,
+            "column_reuse_boundary": 148232,
+            "column_reuse_exterior": 429771,
+            "column_versions_skipped": 30603103,
+            "feature_gpu_call": 0,
+            "footprint_map_lookup": 1223681,
+            "prefix_boundary": 3491911,
+            "prefix_interior": 329747,
+            "prefix_limited": 0,
+            "prefix_unfinished_interior": 0,
+            "structure_map_lookup": 10675,
+            "writer_pruned": 572312,
+            "writer_ready": 4485863,
+            "writer_request": 8147622
+          },
+          "detailed_evaluation_cpu_ms": {
+            "mean": 455.41610000000003,
+            "median": 440.3345,
+            "minimum": 230.859,
+            "maximum": 816.356,
+            "total": 9108.322,
+            "count": 20
+          },
+          "aggregate_evaluation_cpu_ms": {
+            "mean": 397.01275,
+            "median": 385.26,
+            "minimum": 228.573,
+            "maximum": 703.173,
+            "total": 7940.255,
+            "count": 20
+          },
+          "aggregate_task_cpu_ms": {
+            "mean": 390.61681735,
+            "median": 379.06126400000005,
+            "minimum": 222.19462,
+            "maximum": 695.250927,
+            "total": 7812.336347,
+            "count": 20
+          },
+          "aggregate_evaluation_wall_ms": {
+            "mean": 68.1329894,
+            "median": 65.19958349999999,
+            "minimum": 21.679959,
+            "maximum": 160.866959,
+            "total": 1362.659788,
+            "count": 20
+          },
+          "leading_demanded_roots": [
+            {
+              "root": 2,
+              "sources": [],
+              "structure_definition": 3,
+              "counts": {
+                "column_request": 573638,
+                "column_build": 356174,
+                "column_map_lookup": 397773,
+                "prefix_boundary": 350794,
+                "prefix_interior": 500,
+                "anchor_request": 277038,
+                "anchor_build": 2771
+              }
+            },
+            {
+              "root": 0,
+              "sources": [
+                "minecraft:basalt_pillar"
+              ],
+              "structure_definition": null,
+              "counts": {
+                "column_request": 374909,
+                "column_build": 360708,
+                "column_map_lookup": 288277,
+                "prefix_boundary": 358832,
+                "prefix_interior": 1625,
+                "anchor_request": 172635,
+                "anchor_build": 2182,
+                "writer_pruned": 140381
+              }
+            },
+            {
+              "root": 1,
+              "sources": [],
+              "structure_definition": 0,
+              "counts": {
+                "column_request": 359742,
+                "column_build": 370652,
+                "column_map_lookup": 284292,
+                "prefix_boundary": 353482,
+                "prefix_interior": 13491,
+                "anchor_request": 280341,
+                "anchor_build": 2776
+              }
+            }
+          ]
+        },
+        {
+          "root": 9,
+          "sources": [
+            "minecraft:blackstone_blobs"
+          ],
+          "structure_definition": null,
+          "regions": 20,
+          "counts": {
+            "anchor_build": 24875,
+            "anchor_ids_map_lookup": 24149,
+            "anchor_map_lookup": 179591,
+            "anchor_ready": 0,
+            "anchor_request": 179591,
+            "column_build": 1247848,
+            "column_cell_reuse": 1495606,
+            "column_interior": 2049397,
+            "column_map_lookup": 188181,
+            "column_ready_boundary": 505876,
+            "column_request": 2791669,
+            "column_resolved_interior": 2049397,
+            "column_reuse_boundary": 48215,
+            "column_reuse_exterior": 127364,
+            "column_versions_skipped": 3083784,
+            "feature_gpu_call": 0,
+            "footprint_map_lookup": 65376,
+            "prefix_boundary": 388175,
+            "prefix_interior": 694124,
+            "prefix_limited": 0,
+            "prefix_unfinished_interior": 0,
+            "structure_map_lookup": 726,
+            "writer_pruned": 11881,
+            "writer_ready": 817340,
+            "writer_request": 985692
+          },
+          "detailed_evaluation_cpu_ms": {
+            "mean": 263.9455,
+            "median": 182.1945,
+            "minimum": 4.673,
+            "maximum": 759.877,
+            "total": 5278.91,
+            "count": 20
+          },
+          "aggregate_evaluation_cpu_ms": {
+            "mean": 279.0306,
+            "median": 191.123,
+            "minimum": 4.621,
+            "maximum": 719.404,
+            "total": 5580.612,
+            "count": 20
+          },
+          "aggregate_task_cpu_ms": {
+            "mean": 274.18254155,
+            "median": 187.0179925,
+            "minimum": 1.951783,
+            "maximum": 710.655,
+            "total": 5483.650831,
+            "count": 20
+          },
+          "aggregate_evaluation_wall_ms": {
+            "mean": 28.7090229,
+            "median": 21.651688,
+            "minimum": 0.459125,
+            "maximum": 75.554167,
+            "total": 574.180458,
+            "count": 20
+          },
+          "leading_demanded_roots": [
+            {
+              "root": 8,
+              "sources": [
+                "minecraft:basalt_blobs"
+              ],
+              "structure_definition": null,
+              "counts": {
+                "column_request": 1475282,
+                "column_build": 868622,
+                "column_map_lookup": 71794,
+                "prefix_boundary": 50052,
+                "prefix_interior": 693848,
+                "anchor_request": 45444,
+                "anchor_build": 214,
+                "writer_pruned": 2145
+              }
+            },
+            {
+              "root": 7,
+              "sources": [],
+              "structure_definition": 2,
+              "counts": {
+                "column_request": 849893,
+                "column_build": 47610,
+                "column_map_lookup": 17168,
+                "prefix_boundary": 46962,
+                "prefix_interior": 1,
+                "anchor_request": 13838,
+                "anchor_build": 207
+              }
+            },
+            {
+              "root": 5,
+              "sources": [
+                "minecraft:large_basalt_columns/choice0",
+                "minecraft:large_basalt_columns/choice1"
+              ],
+              "structure_definition": null,
+              "counts": {
+                "column_request": 49808,
+                "column_build": 47969,
+                "column_map_lookup": 16654,
+                "prefix_boundary": 47704,
+                "prefix_interior": 216,
+                "anchor_request": 9946,
+                "anchor_build": 242
+              }
+            }
+          ]
+        },
+        {
+          "root": 13,
+          "sources": [
+            "minecraft:patch_soul_fire"
+          ],
+          "structure_definition": null,
+          "regions": 20,
+          "counts": {
+            "anchor_build": 38991,
+            "anchor_ids_map_lookup": 33888,
+            "anchor_map_lookup": 1073240,
+            "anchor_ready": 0,
+            "anchor_request": 1073240,
+            "column_build": 4240888,
+            "column_cell_reuse": 2259987,
+            "column_interior": 2595847,
+            "column_map_lookup": 1220806,
+            "column_ready_boundary": 2684222,
+            "column_request": 6629461,
+            "column_resolved_interior": 2595847,
+            "column_reuse_boundary": 128586,
+            "column_reuse_exterior": 190142,
+            "column_versions_skipped": 26418097,
+            "feature_gpu_call": 0,
+            "footprint_map_lookup": 531266,
+            "prefix_boundary": 3047791,
+            "prefix_interior": 170833,
+            "prefix_limited": 0,
+            "prefix_unfinished_interior": 0,
+            "structure_map_lookup": 5103,
+            "writer_pruned": 403109,
+            "writer_ready": 5768156,
+            "writer_request": 7221385
+          },
+          "detailed_evaluation_cpu_ms": {
+            "mean": 258.4703,
+            "median": 245.26749999999998,
+            "minimum": 117.094,
+            "maximum": 493.337,
+            "total": 5169.406,
+            "count": 20
+          },
+          "aggregate_evaluation_cpu_ms": {
+            "mean": 260.0529,
+            "median": 238.367,
+            "minimum": 115.519,
+            "maximum": 454.185,
+            "total": 5201.058,
+            "count": 20
+          },
+          "aggregate_task_cpu_ms": {
+            "mean": 253.8540774,
+            "median": 232.3014355,
+            "minimum": 110.258502,
+            "maximum": 448.034716,
+            "total": 5077.081548,
+            "count": 20
+          },
+          "aggregate_evaluation_wall_ms": {
+            "mean": 52.01424785,
+            "median": 43.164874999999995,
+            "minimum": 12.594125,
+            "maximum": 165.306041,
+            "total": 1040.284957,
+            "count": 20
+          },
+          "leading_demanded_roots": [
+            {
+              "root": 12,
+              "sources": [
+                "minecraft:patch_fire"
+              ],
+              "structure_definition": null,
+              "counts": {
+                "column_request": 2751739,
+                "column_build": 185758,
+                "column_map_lookup": 198161,
+                "prefix_boundary": 159860,
+                "prefix_interior": 4849,
+                "anchor_request": 14191,
+                "anchor_build": 813,
+                "writer_pruned": 125774
+              }
+            },
+            {
+              "root": 2,
+              "sources": [],
+              "structure_definition": 3,
+              "counts": {
+                "column_request": 406623,
+                "column_build": 268873,
+                "column_map_lookup": 150874,
+                "prefix_boundary": 267132,
+                "prefix_interior": 461,
+                "anchor_request": 95025,
+                "anchor_build": 1332
+              }
+            },
+            {
+              "root": 1,
+              "sources": [],
+              "structure_definition": 0,
+              "counts": {
+                "column_request": 273737,
+                "column_build": 274154,
+                "column_map_lookup": 100226,
+                "prefix_boundary": 267053,
+                "prefix_interior": 5867,
+                "anchor_request": 96018,
+                "anchor_build": 1329
+              }
+            }
+          ]
+        }
+      ],
+      "leading_demanded_roots": [
+        {
+          "root": 2,
+          "sources": [],
+          "structure_definition": 3,
+          "counts": {
+            "column_request": 5525867,
+            "column_build": 2304282,
+            "column_map_lookup": 1485249,
+            "prefix_boundary": 2284121,
+            "prefix_interior": 2407,
+            "anchor_request": 1074007,
+            "anchor_build": 33330
+          }
+        },
+        {
+          "root": 0,
+          "sources": [
+            "minecraft:basalt_pillar"
+          ],
+          "structure_definition": null,
+          "counts": {
+            "column_request": 2437279,
+            "column_build": 2313954,
+            "column_map_lookup": 1109090,
+            "prefix_boundary": 2308595,
+            "prefix_interior": 4559,
+            "anchor_request": 880753,
+            "anchor_build": 35112,
+            "writer_pruned": 702730
+          }
+        },
+        {
+          "root": 1,
+          "sources": [],
+          "structure_definition": 0,
+          "counts": {
+            "column_request": 2400448,
+            "column_build": 2328287,
+            "column_map_lookup": 1087588,
+            "prefix_boundary": 2294102,
+            "prefix_interior": 27721,
+            "anchor_request": 1090146,
+            "anchor_build": 33356
+          }
+        },
+        {
+          "root": null,
+          "sources": [],
+          "structure_definition": null,
+          "counts": {
+            "column_request": 2357467,
+            "column_build": 7145062,
+            "column_map_lookup": 1070509
+          }
+        },
+        {
+          "root": 4,
+          "sources": [
+            "minecraft:small_basalt_columns/choice0",
+            "minecraft:small_basalt_columns/choice1"
+          ],
+          "structure_definition": null,
+          "counts": {
+            "column_request": 4109008,
+            "column_build": 2313794,
+            "column_map_lookup": 1069045,
+            "prefix_boundary": 2106265,
+            "prefix_interior": 166277,
+            "anchor_request": 1326085,
+            "anchor_build": 35158
+          }
+        }
+      ]
+    },
+    {
+      "case": "nether-second-seed",
+      "seed": 42,
+      "profile": "nether.json",
+      "root_instances": 820,
+      "totals": {
+        "anchor_build": 1116386,
+        "anchor_ids_map_lookup": 983785,
+        "anchor_map_lookup": 14121119,
+        "anchor_ready": 0,
+        "anchor_request": 14121119,
+        "column_build": 43836152,
+        "column_cell_reuse": 17802017,
+        "column_interior": 22360957,
+        "column_map_lookup": 14318643,
+        "column_ready_boundary": 24958569,
+        "column_request": 62294378,
+        "column_resolved_interior": 22360957,
+        "column_reuse_boundary": 656209,
+        "column_reuse_exterior": 1332281,
+        "column_versions_skipped": 186536231,
+        "feature_gpu_call": 0,
+        "footprint_map_lookup": 7607971,
+        "prefix_boundary": 31628430,
+        "prefix_interior": 4411551,
+        "prefix_limited": 0,
+        "prefix_unfinished_interior": 0,
+        "structure_map_lookup": 132601,
+        "writer_pruned": 8517079,
+        "writer_ready": 56385615,
+        "writer_request": 78100993
+      },
+      "all_counter_partitions_exact": true,
+      "partitions_checked": 820,
+      "lookup_differences_vs_detailed": [],
+      "detailed": {
+        "root_evaluation_cpu_ms": {
+          "mean": 3883.2385,
+          "median": 3841.3085,
+          "minimum": 2013.64,
+          "maximum": 7364.761,
+          "total": 77664.77,
+          "count": 20
+        },
+        "root_evaluation_wall_ms": {
+          "mean": 993.81736845,
+          "median": 991.2000845,
+          "minimum": 432.181336,
+          "maximum": 1803.879752,
+          "total": 19876.347369,
+          "count": 20
+        },
+        "observer_summary_ms": {
+          "mean": 923.30269545,
+          "median": 863.902146,
+          "minimum": 495.248628,
+          "maximum": 1544.487332,
+          "total": 18466.053909,
+          "count": 20
+        },
+        "instrumented_region_wall_ms": {
+          "mean": 2262.8714167000003,
+          "median": 2290.0595415,
+          "minimum": 1188.3727920000001,
+          "maximum": 3386.955125,
+          "total": 45257.428334000004,
+          "count": 20
+        }
+      },
+      "aggregate": {
+        "root_evaluation_cpu_ms": {
+          "mean": 4190.0384,
+          "median": 3913.1865,
+          "minimum": 2006.611,
+          "maximum": 7980.492,
+          "total": 83800.768,
+          "count": 20
+        },
+        "root_evaluation_wall_ms": {
+          "mean": 1038.64883465,
+          "median": 1038.240605,
+          "minimum": 439.663543,
+          "maximum": 1790.522919,
+          "total": 20772.976693,
+          "count": 20
+        },
+        "observer_summary_ms": {
+          "mean": 25.27274835,
+          "median": 25.131856,
+          "minimum": 20.432627,
+          "maximum": 30.327789,
+          "total": 505.454967,
+          "count": 20
+        },
+        "instrumented_region_wall_ms": {
+          "mean": 1440.45873955,
+          "median": 1407.404104,
+          "minimum": 762.847584,
+          "maximum": 2112.343334,
+          "total": 28809.174791,
+          "count": 20
+        }
+      },
+      "largest_aggregate_cpu_stages": [
+        {
+          "root": 8,
+          "sources": [
+            "minecraft:basalt_blobs"
+          ],
+          "structure_definition": null,
+          "regions": 20,
+          "counts": {
+            "anchor_build": 25746,
+            "anchor_ids_map_lookup": 24478,
+            "anchor_map_lookup": 520641,
+            "anchor_ready": 0,
+            "anchor_request": 520641,
+            "column_build": 1026609,
+            "column_cell_reuse": 2078299,
+            "column_interior": 2268990,
+            "column_map_lookup": 475191,
+            "column_ready_boundary": 360727,
+            "column_request": 3157949,
+            "column_resolved_interior": 2268990,
+            "column_reuse_boundary": 53041,
+            "column_reuse_exterior": 50247,
+            "column_versions_skipped": 9451063,
+            "feature_gpu_call": 0,
+            "footprint_map_lookup": 88338,
+            "prefix_boundary": 499746,
+            "prefix_interior": 362321,
+            "prefix_limited": 0,
+            "prefix_unfinished_interior": 0,
+            "structure_map_lookup": 1268,
+            "writer_pruned": 38635,
+            "writer_ready": 588640,
+            "writer_request": 1124796
+          },
+          "detailed_evaluation_cpu_ms": {
+            "mean": 520.98195,
+            "median": 411.53049999999996,
+            "minimum": 4.391,
+            "maximum": 2162.904,
+            "total": 10419.639000000001,
+            "count": 20
+          },
+          "aggregate_evaluation_cpu_ms": {
+            "mean": 608.97795,
+            "median": 536.0915,
+            "minimum": 3.995,
+            "maximum": 2553.04,
+            "total": 12179.559000000001,
+            "count": 20
+          },
+          "aggregate_task_cpu_ms": {
+            "mean": 603.3140677,
+            "median": 531.3115319999999,
+            "minimum": 1.725729,
+            "maximum": 2543.381001,
+            "total": 12066.281354,
+            "count": 20
+          },
+          "aggregate_evaluation_wall_ms": {
+            "mean": 68.8306147,
+            "median": 56.264438,
+            "minimum": 0.641292,
+            "maximum": 225.618125,
+            "total": 1376.612294,
+            "count": 20
+          },
+          "leading_demanded_roots": [
+            {
+              "root": 7,
+              "sources": [],
+              "structure_definition": 2,
+              "counts": {
+                "column_request": 2038157,
+                "column_build": 45457,
+                "column_map_lookup": 78447,
+                "prefix_boundary": 45356,
+                "prefix_interior": 12,
+                "anchor_request": 45356,
+                "anchor_build": 307
+              }
+            },
+            {
+              "root": 2,
+              "sources": [],
+              "structure_definition": 3,
+              "counts": {
+                "column_request": 227979,
+                "column_build": 76349,
+                "column_map_lookup": 76055,
+                "prefix_boundary": 75935,
+                "prefix_interior": 5,
+                "anchor_request": 45629,
+                "anchor_build": 327
+              }
+            },
+            {
+              "root": 4,
+              "sources": [
+                "minecraft:small_basalt_columns/choice0",
+                "minecraft:small_basalt_columns/choice1"
+              ],
+              "structure_definition": null,
+              "counts": {
+                "column_request": 442707,
+                "column_build": 86112,
+                "column_map_lookup": 50835,
+                "prefix_boundary": 66253,
+                "prefix_interior": 17157,
+                "anchor_request": 86330,
+                "anchor_build": 331
+              }
+            }
+          ]
+        },
+        {
+          "root": 12,
+          "sources": [
+            "minecraft:patch_fire"
+          ],
+          "structure_definition": null,
+          "regions": 20,
+          "counts": {
+            "anchor_build": 52228,
+            "anchor_ids_map_lookup": 41868,
+            "anchor_map_lookup": 2691786,
+            "anchor_ready": 0,
+            "anchor_request": 2691786,
+            "column_build": 5785319,
+            "column_cell_reuse": 1720122,
+            "column_interior": 3300457,
+            "column_map_lookup": 2885265,
+            "column_ready_boundary": 1319719,
+            "column_request": 7654980,
+            "column_resolved_interior": 3300457,
+            "column_reuse_boundary": 149539,
+            "column_reuse_exterior": 427730,
+            "column_versions_skipped": 31034867,
+            "feature_gpu_call": 0,
+            "footprint_map_lookup": 1140190,
+            "prefix_boundary": 3262404,
+            "prefix_interior": 325804,
+            "prefix_limited": 0,
+            "prefix_unfinished_interior": 0,
+            "structure_map_lookup": 10360,
+            "writer_pruned": 543798,
+            "writer_ready": 4402814,
+            "writer_request": 7615278
+          },
+          "detailed_evaluation_cpu_ms": {
+            "mean": 417.6694,
+            "median": 362.728,
+            "minimum": 232.871,
+            "maximum": 752.857,
+            "total": 8353.387999999999,
+            "count": 20
+          },
+          "aggregate_evaluation_cpu_ms": {
+            "mean": 397.324,
+            "median": 375.5165,
+            "minimum": 218.634,
+            "maximum": 675.935,
+            "total": 7946.48,
+            "count": 20
+          },
+          "aggregate_task_cpu_ms": {
+            "mean": 390.71565125,
+            "median": 368.20633399999997,
+            "minimum": 211.448905,
+            "maximum": 668.897703,
+            "total": 7814.313025,
+            "count": 20
+          },
+          "aggregate_evaluation_wall_ms": {
+            "mean": 66.9603603,
+            "median": 66.5006665,
+            "minimum": 22.074042,
+            "maximum": 151.484458,
+            "total": 1339.207206,
+            "count": 20
+          },
+          "leading_demanded_roots": [
+            {
+              "root": 2,
+              "sources": [],
+              "structure_definition": 3,
+              "counts": {
+                "column_request": 486308,
+                "column_build": 311559,
+                "column_map_lookup": 279635,
+                "prefix_boundary": 309308,
+                "prefix_interior": 1016,
+                "anchor_request": 229241,
+                "anchor_build": 2649
+              }
+            },
+            {
+              "root": 0,
+              "sources": [
+                "minecraft:basalt_pillar"
+              ],
+              "structure_definition": null,
+              "counts": {
+                "column_request": 343125,
+                "column_build": 326476,
+                "column_map_lookup": 248073,
+                "prefix_boundary": 323708,
+                "prefix_interior": 2397,
+                "anchor_request": 131118,
+                "anchor_build": 2045,
+                "writer_pruned": 112079
+              }
+            },
+            {
+              "root": 1,
+              "sources": [],
+              "structure_definition": 0,
+              "counts": {
+                "column_request": 321844,
+                "column_build": 333107,
+                "column_map_lookup": 239867,
+                "prefix_boundary": 313878,
+                "prefix_interior": 15167,
+                "anchor_request": 233993,
+                "anchor_build": 2657
+              }
+            }
+          ]
+        },
+        {
+          "root": 9,
+          "sources": [
+            "minecraft:blackstone_blobs"
+          ],
+          "structure_definition": null,
+          "regions": 20,
+          "counts": {
+            "anchor_build": 24747,
+            "anchor_ids_map_lookup": 24059,
+            "anchor_map_lookup": 177090,
+            "anchor_ready": 0,
+            "anchor_request": 177090,
+            "column_build": 1180873,
+            "column_cell_reuse": 1446466,
+            "column_interior": 1987925,
+            "column_map_lookup": 166774,
+            "column_ready_boundary": 472640,
+            "column_request": 2664248,
+            "column_resolved_interior": 1987925,
+            "column_reuse_boundary": 36909,
+            "column_reuse_exterior": 89387,
+            "column_versions_skipped": 3018214,
+            "feature_gpu_call": 0,
+            "footprint_map_lookup": 63970,
+            "prefix_boundary": 356991,
+            "prefix_interior": 689920,
+            "prefix_limited": 0,
+            "prefix_unfinished_interior": 0,
+            "structure_map_lookup": 688,
+            "writer_pruned": 14972,
+            "writer_ready": 698130,
+            "writer_request": 867072
+          },
+          "detailed_evaluation_cpu_ms": {
+            "mean": 267.9763,
+            "median": 204.35649999999998,
+            "minimum": 4.42,
+            "maximum": 1231.848,
+            "total": 5359.526,
+            "count": 20
+          },
+          "aggregate_evaluation_cpu_ms": {
+            "mean": 294.48904999999996,
+            "median": 254.90099999999998,
+            "minimum": 4.313,
+            "maximum": 1254.562,
+            "total": 5889.781,
+            "count": 20
+          },
+          "aggregate_task_cpu_ms": {
+            "mean": 289.7167799,
+            "median": 249.82991800000002,
+            "minimum": 1.602928,
+            "maximum": 1248.347134,
+            "total": 5794.335598,
+            "count": 20
+          },
+          "aggregate_evaluation_wall_ms": {
+            "mean": 38.30335215,
+            "median": 37.587250499999996,
+            "minimum": 0.563208,
+            "maximum": 136.20325,
+            "total": 766.067043,
+            "count": 20
+          },
+          "leading_demanded_roots": [
+            {
+              "root": 8,
+              "sources": [
+                "minecraft:basalt_blobs"
+              ],
+              "structure_definition": null,
+              "counts": {
+                "column_request": 1389056,
+                "column_build": 815009,
+                "column_map_lookup": 54142,
+                "prefix_boundary": 37771,
+                "prefix_interior": 689614,
+                "anchor_request": 35635,
+                "anchor_build": 161,
+                "writer_pruned": 1335
+              }
+            },
+            {
+              "root": 2,
+              "sources": [],
+              "structure_definition": 3,
+              "counts": {
+                "column_request": 124163,
+                "column_build": 44273,
+                "column_map_lookup": 16834,
+                "prefix_boundary": 43669,
+                "anchor_request": 12989,
+                "anchor_build": 184
+              }
+            },
+            {
+              "root": 7,
+              "sources": [],
+              "structure_definition": 2,
+              "counts": {
+                "column_request": 808223,
+                "column_build": 36810,
+                "column_map_lookup": 13756,
+                "prefix_boundary": 36303,
+                "prefix_interior": 2,
+                "anchor_request": 10841,
+                "anchor_build": 160
+              }
+            }
+          ]
+        },
+        {
+          "root": 13,
+          "sources": [
+            "minecraft:patch_soul_fire"
+          ],
+          "structure_definition": null,
+          "regions": 20,
+          "counts": {
+            "anchor_build": 38645,
+            "anchor_ids_map_lookup": 33673,
+            "anchor_map_lookup": 877417,
+            "anchor_ready": 0,
+            "anchor_request": 877417,
+            "column_build": 4218978,
+            "column_cell_reuse": 2188495,
+            "column_interior": 2645340,
+            "column_map_lookup": 993649,
+            "column_ready_boundary": 2768484,
+            "column_request": 6538420,
+            "column_resolved_interior": 2645340,
+            "column_reuse_boundary": 130947,
+            "column_reuse_exterior": 194521,
+            "column_versions_skipped": 27335454,
+            "feature_gpu_call": 0,
+            "footprint_map_lookup": 474243,
+            "prefix_boundary": 3021927,
+            "prefix_interior": 168523,
+            "prefix_limited": 0,
+            "prefix_unfinished_interior": 0,
+            "structure_map_lookup": 4972,
+            "writer_pruned": 391263,
+            "writer_ready": 5935971,
+            "writer_request": 7181531
+          },
+          "detailed_evaluation_cpu_ms": {
+            "mean": 245.38525,
+            "median": 244.26600000000002,
+            "minimum": 87.416,
+            "maximum": 386.683,
+            "total": 4907.705,
+            "count": 20
+          },
+          "aggregate_evaluation_cpu_ms": {
+            "mean": 259.3052,
+            "median": 236.1225,
+            "minimum": 86.44,
+            "maximum": 417.906,
+            "total": 5186.104,
+            "count": 20
+          },
+          "aggregate_task_cpu_ms": {
+            "mean": 253.5042836,
+            "median": 230.715888,
+            "minimum": 82.400256,
+            "maximum": 411.111324,
+            "total": 5070.085672,
+            "count": 20
+          },
+          "aggregate_evaluation_wall_ms": {
+            "mean": 53.28605205,
+            "median": 51.201979,
+            "minimum": 18.646459,
+            "maximum": 146.312125,
+            "total": 1065.721041,
+            "count": 20
+          },
+          "leading_demanded_roots": [
+            {
+              "root": 12,
+              "sources": [
+                "minecraft:patch_fire"
+              ],
+              "structure_definition": null,
+              "counts": {
+                "column_request": 2815787,
+                "column_build": 192976,
+                "column_map_lookup": 208053,
+                "prefix_boundary": 166168,
+                "prefix_interior": 3504,
+                "anchor_request": 13724,
+                "anchor_build": 804,
+                "writer_pruned": 132043
+              }
+            },
+            {
+              "root": 2,
+              "sources": [],
+              "structure_definition": 3,
+              "counts": {
+                "column_request": 364972,
+                "column_build": 257129,
+                "column_map_lookup": 93455,
+                "prefix_boundary": 256775,
+                "prefix_interior": 253,
+                "anchor_request": 69671,
+                "anchor_build": 1282
+              }
+            },
+            {
+              "root": 0,
+              "sources": [
+                "minecraft:basalt_pillar"
+              ],
+              "structure_definition": null,
+              "counts": {
+                "column_request": 267749,
+                "column_build": 256993,
+                "column_map_lookup": 75961,
+                "prefix_boundary": 255372,
+                "prefix_interior": 1243,
+                "anchor_request": 65827,
+                "anchor_build": 1306,
+                "writer_pruned": 59720
+              }
+            }
+          ]
+        }
+      ],
+      "leading_demanded_roots": [
+        {
+          "root": 2,
+          "sources": [],
+          "structure_definition": 3,
+          "counts": {
+            "column_request": 5563500,
+            "column_build": 2389827,
+            "column_map_lookup": 1429078,
+            "prefix_boundary": 2380631,
+            "prefix_interior": 2579,
+            "anchor_request": 1058874,
+            "anchor_build": 33845
+          }
+        },
+        {
+          "root": 0,
+          "sources": [
+            "minecraft:basalt_pillar"
+          ],
+          "structure_definition": null,
+          "counts": {
+            "column_request": 2572677,
+            "column_build": 2423113,
+            "column_map_lookup": 1119537,
+            "prefix_boundary": 2412238,
+            "prefix_interior": 6325,
+            "anchor_request": 921392,
+            "anchor_build": 35651,
+            "writer_pruned": 737329
+          }
+        },
+        {
+          "root": 1,
+          "sources": [],
+          "structure_definition": 0,
+          "counts": {
+            "column_request": 2484074,
+            "column_build": 2432582,
+            "column_map_lookup": 1063080,
+            "prefix_boundary": 2392189,
+            "prefix_interior": 33288,
+            "anchor_request": 1075761,
+            "anchor_build": 33866
+          }
+        },
+        {
+          "root": null,
+          "sources": [],
+          "structure_definition": null,
+          "counts": {
+            "column_request": 2484321,
+            "column_build": 7251363,
+            "column_map_lookup": 1060890
+          }
+        },
+        {
+          "root": 4,
+          "sources": [
+            "minecraft:small_basalt_columns/choice0",
+            "minecraft:small_basalt_columns/choice1"
+          ],
+          "structure_definition": null,
+          "counts": {
+            "column_request": 4089866,
+            "column_build": 2359753,
+            "column_map_lookup": 1024058,
+            "prefix_boundary": 2168623,
+            "prefix_interior": 166332,
+            "anchor_request": 1376998,
+            "anchor_build": 35547
+          }
+        }
+      ]
+    },
+    {
+      "case": "nether-custom-bounds",
+      "seed": 123456789,
+      "profile": "custom.json",
+      "root_instances": 460,
+      "totals": {
+        "anchor_build": 677803,
+        "anchor_ids_map_lookup": 567040,
+        "anchor_map_lookup": 5684881,
+        "anchor_ready": 0,
+        "anchor_request": 5684881,
+        "column_build": 43025515,
+        "column_cell_reuse": 14551406,
+        "column_interior": 21863927,
+        "column_map_lookup": 11125573,
+        "column_ready_boundary": 24587421,
+        "column_request": 58312338,
+        "column_resolved_interior": 21863927,
+        "column_reuse_boundary": 735417,
+        "column_reuse_exterior": 1795033,
+        "column_versions_skipped": 123969889,
+        "feature_gpu_call": 0,
+        "footprint_map_lookup": 6714092,
+        "prefix_boundary": 28443350,
+        "prefix_interior": 5626187,
+        "prefix_limited": 0,
+        "prefix_unfinished_interior": 0,
+        "structure_map_lookup": 110763,
+        "writer_pruned": 18550569,
+        "writer_ready": 40104705,
+        "writer_request": 63824235
+      },
+      "all_counter_partitions_exact": true,
+      "partitions_checked": 460,
+      "lookup_differences_vs_detailed": [],
+      "detailed": {
+        "root_evaluation_cpu_ms": {
+          "mean": 2867.85795,
+          "median": 2777.0950000000003,
+          "minimum": 2554.741,
+          "maximum": 3851.745,
+          "total": 57357.159,
+          "count": 20
+        },
+        "root_evaluation_wall_ms": {
+          "mean": 444.77186635,
+          "median": 439.237581,
+          "minimum": 328.628541,
+          "maximum": 733.814082,
+          "total": 8895.437327,
+          "count": 20
+        },
+        "observer_summary_ms": {
+          "mean": 564.29887145,
+          "median": 529.017023,
+          "minimum": 420.827294,
+          "maximum": 961.988207,
+          "total": 11285.977429,
+          "count": 20
+        },
+        "instrumented_region_wall_ms": {
+          "mean": 1291.4220626000001,
+          "median": 1292.5500835,
+          "minimum": 1039.219542,
+          "maximum": 1981.919375,
+          "total": 25828.441252,
+          "count": 20
+        }
+      },
+      "aggregate": {
+        "root_evaluation_cpu_ms": {
+          "mean": 3298.6368,
+          "median": 3276.1085000000003,
+          "minimum": 2864.145,
+          "maximum": 4020.198,
+          "total": 65972.736,
+          "count": 20
+        },
+        "root_evaluation_wall_ms": {
+          "mean": 509.816152,
+          "median": 485.47627,
+          "minimum": 357.037378,
+          "maximum": 728.504417,
+          "total": 10196.32304,
+          "count": 20
+        },
+        "observer_summary_ms": {
+          "mean": 14.02057265,
+          "median": 13.409687,
+          "minimum": 12.133623,
+          "maximum": 17.204209,
+          "total": 280.411453,
+          "count": 20
+        },
+        "instrumented_region_wall_ms": {
+          "mean": 870.0249812,
+          "median": 856.4685005,
+          "minimum": 684.747792,
+          "maximum": 1076.723166,
+          "total": 17400.499624,
+          "count": 20
+        }
+      },
+      "largest_aggregate_cpu_stages": [
+        {
+          "root": 20,
+          "sources": [
+            "minecraft:warped_forest_vegetation"
+          ],
+          "structure_definition": null,
+          "regions": 20,
+          "counts": {
+            "anchor_build": 50356,
+            "anchor_ids_map_lookup": 44641,
+            "anchor_map_lookup": 828260,
+            "anchor_ready": 0,
+            "anchor_request": 828260,
+            "column_build": 7805330,
+            "column_cell_reuse": 2695282,
+            "column_interior": 4060947,
+            "column_map_lookup": 1905391,
+            "column_ready_boundary": 4534274,
+            "column_request": 10610746,
+            "column_resolved_interior": 4060947,
+            "column_reuse_boundary": 110134,
+            "column_reuse_exterior": 250361,
+            "column_versions_skipped": 24627571,
+            "feature_gpu_call": 0,
+            "footprint_map_lookup": 1303282,
+            "prefix_boundary": 5281058,
+            "prefix_interior": 1747872,
+            "prefix_limited": 0,
+            "prefix_unfinished_interior": 0,
+            "structure_map_lookup": 5715,
+            "writer_pruned": 3835071,
+            "writer_ready": 8292913,
+            "writer_request": 12933124
+          },
+          "detailed_evaluation_cpu_ms": {
+            "mean": 479.9169,
+            "median": 470.918,
+            "minimum": 397.247,
+            "maximum": 661.346,
+            "total": 9598.338,
+            "count": 20
+          },
+          "aggregate_evaluation_cpu_ms": {
+            "mean": 550.4408,
+            "median": 543.8285000000001,
+            "minimum": 449.715,
+            "maximum": 682.501,
+            "total": 11008.816,
+            "count": 20
+          },
+          "aggregate_task_cpu_ms": {
+            "mean": 543.40694005,
+            "median": 536.897209,
+            "minimum": 443.234885,
+            "maximum": 672.303581,
+            "total": 10868.138801,
+            "count": 20
+          },
+          "aggregate_evaluation_wall_ms": {
+            "mean": 70.09444585,
+            "median": 59.7919585,
+            "minimum": 44.735333,
+            "maximum": 126.812417,
+            "total": 1401.888917,
+            "count": 20
+          },
+          "leading_demanded_roots": [
+            {
+              "root": 19,
+              "sources": [
+                "minecraft:warped_fungi"
+              ],
+              "structure_definition": null,
+              "counts": {
+                "column_request": 2596346,
+                "column_build": 900010,
+                "column_map_lookup": 173156,
+                "prefix_boundary": 141617,
+                "prefix_interior": 633010,
+                "anchor_request": 64645,
+                "anchor_build": 1546
+              }
+            },
+            {
+              "root": 3,
+              "sources": [
+                "minecraft:spring_open"
+              ],
+              "structure_definition": null,
+              "counts": {
+                "column_request": 636293,
+                "column_build": 417848,
+                "column_map_lookup": 160869,
+                "prefix_boundary": 413800,
+                "prefix_interior": 41,
+                "anchor_request": 6974,
+                "anchor_build": 1843,
+                "writer_pruned": 212020
+              }
+            },
+            {
+              "root": 1,
+              "sources": [],
+              "structure_definition": 2,
+              "counts": {
+                "column_request": 448552,
+                "column_build": 425724,
+                "column_map_lookup": 159422,
+                "prefix_boundary": 424847,
+                "prefix_interior": 109,
+                "anchor_request": 149346,
+                "anchor_build": 1904
+              }
+            }
+          ]
+        },
+        {
+          "root": 21,
+          "sources": [
+            "minecraft:nether_sprouts"
+          ],
+          "structure_definition": null,
+          "regions": 20,
+          "counts": {
+            "anchor_build": 54049,
+            "anchor_ids_map_lookup": 47908,
+            "anchor_map_lookup": 958453,
+            "anchor_ready": 0,
+            "anchor_request": 958453,
+            "column_build": 7354800,
+            "column_cell_reuse": 2541270,
+            "column_interior": 2582032,
+            "column_map_lookup": 2017512,
+            "column_ready_boundary": 5296526,
+            "column_request": 9981947,
+            "column_resolved_interior": 2582032,
+            "column_reuse_boundary": 85877,
+            "column_reuse_exterior": 111975,
+            "column_versions_skipped": 15737179,
+            "feature_gpu_call": 0,
+            "footprint_map_lookup": 1320484,
+            "prefix_boundary": 5972968,
+            "prefix_interior": 783410,
+            "prefix_limited": 0,
+            "prefix_unfinished_interior": 0,
+            "structure_map_lookup": 6141,
+            "writer_pruned": 4863660,
+            "writer_ready": 9156513,
+            "writer_request": 14955506
+          },
+          "detailed_evaluation_cpu_ms": {
+            "mean": 420.021,
+            "median": 403.946,
+            "minimum": 363.005,
+            "maximum": 591.657,
+            "total": 8400.42,
+            "count": 20
+          },
+          "aggregate_evaluation_cpu_ms": {
+            "mean": 478.3623,
+            "median": 477.304,
+            "minimum": 395.614,
+            "maximum": 611.614,
+            "total": 9567.246,
+            "count": 20
+          },
+          "aggregate_task_cpu_ms": {
+            "mean": 470.90689965,
+            "median": 467.932209,
+            "minimum": 390.118142,
+            "maximum": 603.859724,
+            "total": 9418.137993,
+            "count": 20
+          },
+          "aggregate_evaluation_wall_ms": {
+            "mean": 72.62008325,
+            "median": 64.247458,
+            "minimum": 35.868458,
+            "maximum": 167.522042,
+            "total": 1452.401665,
+            "count": 20
+          },
+          "leading_demanded_roots": [
+            {
+              "root": null,
+              "sources": [],
+              "structure_definition": null,
+              "counts": {
+                "column_request": 452620,
+                "column_build": 487118,
+                "column_map_lookup": 170069
+              }
+            },
+            {
+              "root": 0,
+              "sources": [],
+              "structure_definition": 0,
+              "counts": {
+                "column_request": 446364,
+                "column_build": 445201,
+                "column_map_lookup": 163787,
+                "prefix_boundary": 444787,
+                "prefix_interior": 409,
+                "anchor_request": 162645,
+                "anchor_build": 2068
+              }
+            },
+            {
+              "root": 3,
+              "sources": [
+                "minecraft:spring_open"
+              ],
+              "structure_definition": null,
+              "counts": {
+                "column_request": 657378,
+                "column_build": 432399,
+                "column_map_lookup": 159819,
+                "prefix_boundary": 425551,
+                "prefix_interior": 16,
+                "anchor_request": 6951,
+                "anchor_build": 1885,
+                "writer_pruned": 212984
+              }
+            }
+          ]
+        },
+        {
+          "root": 19,
+          "sources": [
+            "minecraft:warped_fungi"
+          ],
+          "structure_definition": null,
+          "regions": 20,
+          "counts": {
+            "anchor_build": 43041,
+            "anchor_ids_map_lookup": 37999,
+            "anchor_map_lookup": 584970,
+            "anchor_ready": 0,
+            "anchor_request": 584970,
+            "column_build": 6463684,
+            "column_cell_reuse": 1890119,
+            "column_interior": 3601609,
+            "column_map_lookup": 1606585,
+            "column_ready_boundary": 3145609,
+            "column_request": 8443973,
+            "column_resolved_interior": 3601609,
+            "column_reuse_boundary": 90170,
+            "column_reuse_exterior": 271261,
+            "column_versions_skipped": 25279862,
+            "feature_gpu_call": 0,
+            "footprint_map_lookup": 1215775,
+            "prefix_boundary": 3891194,
+            "prefix_interior": 1772334,
+            "prefix_limited": 0,
+            "prefix_unfinished_interior": 0,
+            "structure_map_lookup": 5042,
+            "writer_pruned": 2080898,
+            "writer_ready": 6568325,
+            "writer_request": 9211073
+          },
+          "detailed_evaluation_cpu_ms": {
+            "mean": 409.6468,
+            "median": 400.5325,
+            "minimum": 337.5,
+            "maximum": 538.002,
+            "total": 8192.936,
+            "count": 20
+          },
+          "aggregate_evaluation_cpu_ms": {
+            "mean": 475.9138,
+            "median": 478.7885,
+            "minimum": 397.369,
+            "maximum": 553.574,
+            "total": 9518.276,
+            "count": 20
+          },
+          "aggregate_task_cpu_ms": {
+            "mean": 469.1934486,
+            "median": 473.1822785,
+            "minimum": 392.563516,
+            "maximum": 545.11572,
+            "total": 9383.868972,
+            "count": 20
+          },
+          "aggregate_evaluation_wall_ms": {
+            "mean": 50.5783418,
+            "median": 49.0595625,
+            "minimum": 33.653959,
+            "maximum": 67.715,
+            "total": 1011.566836,
+            "count": 20
+          },
+          "leading_demanded_roots": [
+            {
+              "root": 15,
+              "sources": [
+                "minecraft:ore_debris_small"
+              ],
+              "structure_definition": null,
+              "counts": {
+                "column_request": 152414,
+                "column_build": 145256,
+                "column_map_lookup": 150986,
+                "prefix_boundary": 143023,
+                "prefix_interior": 1707,
+                "anchor_request": 142,
+                "anchor_build": 78,
+                "writer_pruned": 131636
+              }
+            },
+            {
+              "root": 3,
+              "sources": [
+                "minecraft:spring_open"
+              ],
+              "structure_definition": null,
+              "counts": {
+                "column_request": 537629,
+                "column_build": 361455,
+                "column_map_lookup": 145548,
+                "prefix_boundary": 357850,
+                "prefix_interior": 64,
+                "anchor_request": 6187,
+                "anchor_build": 1630,
+                "writer_pruned": 191714
+              }
+            },
+            {
+              "root": 18,
+              "sources": [
+                "minecraft:red_mushroom_normal"
+              ],
+              "structure_definition": null,
+              "counts": {
+                "column_request": 2064103,
+                "column_build": 136651,
+                "column_map_lookup": 144792,
+                "prefix_boundary": 122296,
+                "prefix_interior": 268,
+                "anchor_request": 5,
+                "anchor_build": 2,
+                "writer_pruned": 104887
+              }
+            }
+          ]
+        },
+        {
+          "root": 22,
+          "sources": [
+            "minecraft:twisting_vines"
+          ],
+          "structure_definition": null,
+          "regions": 20,
+          "counts": {
+            "anchor_build": 60083,
+            "anchor_ids_map_lookup": 52555,
+            "anchor_map_lookup": 1180631,
+            "anchor_ready": 0,
+            "anchor_request": 1180631,
+            "column_build": 7408615,
+            "column_cell_reuse": 1216305,
+            "column_interior": 429432,
+            "column_map_lookup": 2290761,
+            "column_ready_boundary": 5904727,
+            "column_request": 8639026,
+            "column_resolved_interior": 429432,
+            "column_reuse_boundary": 14106,
+            "column_reuse_exterior": 74010,
+            "column_versions_skipped": 3082399,
+            "feature_gpu_call": 0,
+            "footprint_map_lookup": 1596035,
+            "prefix_boundary": 6650701,
+            "prefix_interior": 149358,
+            "prefix_limited": 0,
+            "prefix_unfinished_interior": 0,
+            "structure_map_lookup": 7528,
+            "writer_pruned": 5640623,
+            "writer_ready": 9576606,
+            "writer_request": 16374740
+          },
+          "detailed_evaluation_cpu_ms": {
+            "mean": 402.88025,
+            "median": 393.08050000000003,
+            "minimum": 310.184,
+            "maximum": 595.121,
+            "total": 8057.605,
+            "count": 20
+          },
+          "aggregate_evaluation_cpu_ms": {
+            "mean": 466.68255,
+            "median": 457.58299999999997,
+            "minimum": 374.834,
+            "maximum": 587.308,
+            "total": 9333.651,
+            "count": 20
+          },
+          "aggregate_task_cpu_ms": {
+            "mean": 460.0736639,
+            "median": 452.0388725,
+            "minimum": 368.564861,
+            "maximum": 582.2345,
+            "total": 9201.473278,
+            "count": 20
+          },
+          "aggregate_evaluation_wall_ms": {
+            "mean": 74.7601645,
+            "median": 67.509167,
+            "minimum": 42.948,
+            "maximum": 137.106667,
+            "total": 1495.20329,
+            "count": 20
+          },
+          "leading_demanded_roots": [
+            {
+              "root": 3,
+              "sources": [
+                "minecraft:spring_open"
+              ],
+              "structure_definition": null,
+              "counts": {
+                "column_request": 781496,
+                "column_build": 526916,
+                "column_map_lookup": 230821,
+                "prefix_boundary": 511071,
+                "prefix_interior": 6,
+                "anchor_request": 9110,
+                "anchor_build": 2369,
+                "writer_pruned": 277587
+              }
+            },
+            {
+              "root": null,
+              "sources": [],
+              "structure_definition": null,
+              "counts": {
+                "column_request": 533329,
+                "column_build": 534633,
+                "column_map_lookup": 216955
+              }
+            },
+            {
+              "root": 1,
+              "sources": [],
+              "structure_definition": 2,
+              "counts": {
+                "column_request": 549469,
+                "column_build": 520734,
+                "column_map_lookup": 213900,
+                "prefix_boundary": 518682,
+                "prefix_interior": 4,
+                "anchor_request": 201288,
+                "anchor_build": 2510
+              }
+            }
+          ]
+        }
+      ],
+      "leading_demanded_roots": [
+        {
+          "root": 3,
+          "sources": [
+            "minecraft:spring_open"
+          ],
+          "structure_definition": null,
+          "counts": {
+            "column_request": 7477078,
+            "column_build": 2997817,
+            "column_map_lookup": 1242494,
+            "prefix_boundary": 2932855,
+            "prefix_interior": 1171,
+            "anchor_request": 73303,
+            "anchor_build": 35272,
+            "writer_pruned": 1613481
+          }
+        },
+        {
+          "root": null,
+          "sources": [],
+          "structure_definition": null,
+          "counts": {
+            "column_request": 3260046,
+            "column_build": 7981268,
+            "column_map_lookup": 1230594
+          }
+        },
+        {
+          "root": 1,
+          "sources": [],
+          "structure_definition": 2,
+          "counts": {
+            "column_request": 3379377,
+            "column_build": 3065036,
+            "column_map_lookup": 1199224,
+            "prefix_boundary": 3058191,
+            "prefix_interior": 2566,
+            "anchor_request": 1166844,
+            "anchor_build": 36908
+          }
+        },
+        {
+          "root": 0,
+          "sources": [],
+          "structure_definition": 0,
+          "counts": {
+            "column_request": 3155221,
+            "column_build": 3111391,
+            "column_map_lookup": 1167466,
+            "prefix_boundary": 3070412,
+            "prefix_interior": 33986,
+            "anchor_request": 1183746,
+            "anchor_build": 36931
+          }
+        },
+        {
+          "root": 2,
+          "sources": [],
+          "structure_definition": 1,
+          "counts": {
+            "column_request": 3761558,
+            "column_build": 3053468,
+            "column_map_lookup": 1082978,
+            "prefix_boundary": 3009875,
+            "prefix_interior": 37726,
+            "anchor_request": 1028984,
+            "anchor_build": 36924
+          }
+        }
+      ]
+    },
+    {
+      "case": "nether-direct-stem",
+      "seed": 42,
+      "profile": "direct-stem.json",
+      "root_instances": 460,
+      "totals": {
+        "anchor_build": 676060,
+        "anchor_ids_map_lookup": 565881,
+        "anchor_map_lookup": 5418565,
+        "anchor_ready": 0,
+        "anchor_request": 5418565,
+        "column_build": 42313511,
+        "column_cell_reuse": 14193572,
+        "column_interior": 21332081,
+        "column_map_lookup": 10639428,
+        "column_ready_boundary": 24535574,
+        "column_request": 57213635,
+        "column_resolved_interior": 21332081,
+        "column_reuse_boundary": 706552,
+        "column_reuse_exterior": 1759289,
+        "column_versions_skipped": 121275486,
+        "feature_gpu_call": 0,
+        "footprint_map_lookup": 6537933,
+        "prefix_boundary": 28063045,
+        "prefix_interior": 5410677,
+        "prefix_limited": 0,
+        "prefix_unfinished_interior": 0,
+        "structure_map_lookup": 110179,
+        "writer_pruned": 18090387,
+        "writer_ready": 40048144,
+        "writer_request": 63041176
+      },
+      "all_counter_partitions_exact": true,
+      "partitions_checked": 460,
+      "lookup_differences_vs_detailed": [],
+      "detailed": {
+        "root_evaluation_cpu_ms": {
+          "mean": 2754.57885,
+          "median": 2694.9105,
+          "minimum": 2376.072,
+          "maximum": 3630.365,
+          "total": 55091.577,
+          "count": 20
+        },
+        "root_evaluation_wall_ms": {
+          "mean": 422.4465505,
+          "median": 403.652022,
+          "minimum": 326.283422,
+          "maximum": 643.233917,
+          "total": 8448.93101,
+          "count": 20
+        },
+        "observer_summary_ms": {
+          "mean": 534.86835975,
+          "median": 489.5127715,
+          "minimum": 370.386458,
+          "maximum": 892.390247,
+          "total": 10697.367195,
+          "count": 20
+        },
+        "instrumented_region_wall_ms": {
+          "mean": 1233.6903978999999,
+          "median": 1173.123896,
+          "minimum": 962.837209,
+          "maximum": 1835.9162919999999,
+          "total": 24673.807958,
+          "count": 20
+        }
+      },
+      "aggregate": {
+        "root_evaluation_cpu_ms": {
+          "mean": 3359.2413,
+          "median": 3311.4485000000004,
+          "minimum": 2976.454,
+          "maximum": 4539.585,
+          "total": 67184.826,
+          "count": 20
+        },
+        "root_evaluation_wall_ms": {
+          "mean": 552.1923607,
+          "median": 503.1830415,
+          "minimum": 378.675418,
+          "maximum": 923.626625,
+          "total": 11043.847214,
+          "count": 20
+        },
+        "observer_summary_ms": {
+          "mean": 14.92611065,
+          "median": 15.1395605,
+          "minimum": 12.490082,
+          "maximum": 18.432877,
+          "total": 298.522213,
+          "count": 20
+        },
+        "instrumented_region_wall_ms": {
+          "mean": 938.38974995,
+          "median": 884.8306875000001,
+          "minimum": 707.368792,
+          "maximum": 1360.678209,
+          "total": 18767.794999,
+          "count": 20
+        }
+      },
+      "largest_aggregate_cpu_stages": [
+        {
+          "root": 20,
+          "sources": [
+            "minecraft:warped_forest_vegetation"
+          ],
+          "structure_definition": null,
+          "regions": 20,
+          "counts": {
+            "anchor_build": 49510,
+            "anchor_ids_map_lookup": 44043,
+            "anchor_map_lookup": 747289,
+            "anchor_ready": 0,
+            "anchor_request": 747289,
+            "column_build": 7556751,
+            "column_cell_reuse": 2561744,
+            "column_interior": 3858384,
+            "column_map_lookup": 1781948,
+            "column_ready_boundary": 4478163,
+            "column_request": 10228020,
+            "column_resolved_interior": 3858384,
+            "column_reuse_boundary": 109525,
+            "column_reuse_exterior": 236334,
+            "column_versions_skipped": 23609117,
+            "feature_gpu_call": 0,
+            "footprint_map_lookup": 1225995,
+            "prefix_boundary": 5163175,
+            "prefix_interior": 1659707,
+            "prefix_limited": 0,
+            "prefix_unfinished_interior": 0,
+            "structure_map_lookup": 5467,
+            "writer_pruned": 3713034,
+            "writer_ready": 8335379,
+            "writer_request": 12772582
+          },
+          "detailed_evaluation_cpu_ms": {
+            "mean": 461.1829,
+            "median": 445.44,
+            "minimum": 359.842,
+            "maximum": 601.997,
+            "total": 9223.658,
+            "count": 20
+          },
+          "aggregate_evaluation_cpu_ms": {
+            "mean": 553.88825,
+            "median": 542.549,
+            "minimum": 454.78,
+            "maximum": 789.927,
+            "total": 11077.765,
+            "count": 20
+          },
+          "aggregate_task_cpu_ms": {
+            "mean": 547.12586485,
+            "median": 535.2251389999999,
+            "minimum": 447.646908,
+            "maximum": 784.434983,
+            "total": 10942.517297,
+            "count": 20
+          },
+          "aggregate_evaluation_wall_ms": {
+            "mean": 76.34397915,
+            "median": 67.04050000000001,
+            "minimum": 42.491958,
+            "maximum": 155.713375,
+            "total": 1526.879583,
+            "count": 20
+          },
+          "leading_demanded_roots": [
+            {
+              "root": 19,
+              "sources": [
+                "minecraft:warped_fungi"
+              ],
+              "structure_definition": null,
+              "counts": {
+                "column_request": 2482656,
+                "column_build": 842002,
+                "column_map_lookup": 174470,
+                "prefix_boundary": 142104,
+                "prefix_interior": 584042,
+                "anchor_request": 62811,
+                "anchor_build": 1548
+              }
+            },
+            {
+              "root": 3,
+              "sources": [
+                "minecraft:spring_open"
+              ],
+              "structure_definition": null,
+              "counts": {
+                "column_request": 594319,
+                "column_build": 392819,
+                "column_map_lookup": 144658,
+                "prefix_boundary": 389781,
+                "prefix_interior": 40,
+                "anchor_request": 6410,
+                "anchor_build": 1711,
+                "writer_pruned": 196061
+              }
+            },
+            {
+              "root": null,
+              "sources": [],
+              "structure_definition": null,
+              "counts": {
+                "column_request": 407820,
+                "column_build": 500327,
+                "column_map_lookup": 137256
+              }
+            }
+          ]
+        },
+        {
+          "root": 21,
+          "sources": [
+            "minecraft:nether_sprouts"
+          ],
+          "structure_definition": null,
+          "regions": 20,
+          "counts": {
+            "anchor_build": 55139,
+            "anchor_ids_map_lookup": 48507,
+            "anchor_map_lookup": 998051,
+            "anchor_ready": 0,
+            "anchor_request": 998051,
+            "column_build": 7487503,
+            "column_cell_reuse": 2449850,
+            "column_interior": 2432698,
+            "column_map_lookup": 2066516,
+            "column_ready_boundary": 5438139,
+            "column_request": 10018131,
+            "column_resolved_interior": 2432698,
+            "column_reuse_boundary": 80778,
+            "column_reuse_exterior": 111058,
+            "column_versions_skipped": 14971167,
+            "feature_gpu_call": 0,
+            "footprint_map_lookup": 1378932,
+            "prefix_boundary": 6116106,
+            "prefix_interior": 747327,
+            "prefix_limited": 0,
+            "prefix_unfinished_interior": 0,
+            "structure_map_lookup": 6632,
+            "writer_pruned": 4900092,
+            "writer_ready": 9293074,
+            "writer_request": 15168097
+          },
+          "detailed_evaluation_cpu_ms": {
+            "mean": 403.1706,
+            "median": 399.2825,
+            "minimum": 324.971,
+            "maximum": 542.445,
+            "total": 8063.412,
+            "count": 20
+          },
+          "aggregate_evaluation_cpu_ms": {
+            "mean": 487.9183,
+            "median": 486.505,
+            "minimum": 391.997,
+            "maximum": 726.235,
+            "total": 9758.366,
+            "count": 20
+          },
+          "aggregate_task_cpu_ms": {
+            "mean": 480.78172675,
+            "median": 480.58672950000005,
+            "minimum": 386.213439,
+            "maximum": 717.185238,
+            "total": 9615.634535,
+            "count": 20
+          },
+          "aggregate_evaluation_wall_ms": {
+            "mean": 79.5156334,
+            "median": 65.0609795,
+            "minimum": 42.413875,
+            "maximum": 155.171583,
+            "total": 1590.312668,
+            "count": 20
+          },
+          "leading_demanded_roots": [
+            {
+              "root": 3,
+              "sources": [
+                "minecraft:spring_open"
+              ],
+              "structure_definition": null,
+              "counts": {
+                "column_request": 698065,
+                "column_build": 463689,
+                "column_map_lookup": 180932,
+                "prefix_boundary": 455112,
+                "prefix_interior": 17,
+                "anchor_request": 7629,
+                "anchor_build": 2083,
+                "writer_pruned": 236562
+              }
+            },
+            {
+              "root": null,
+              "sources": [],
+              "structure_definition": null,
+              "counts": {
+                "column_request": 479900,
+                "column_build": 514151,
+                "column_map_lookup": 172689
+              }
+            },
+            {
+              "root": 0,
+              "sources": [],
+              "structure_definition": 0,
+              "counts": {
+                "column_request": 473126,
+                "column_build": 469406,
+                "column_map_lookup": 164455,
+                "prefix_boundary": 468784,
+                "prefix_interior": 364,
+                "anchor_request": 161937,
+                "anchor_build": 2222
+              }
+            }
+          ]
+        },
+        {
+          "root": 19,
+          "sources": [
+            "minecraft:warped_fungi"
+          ],
+          "structure_definition": null,
+          "regions": 20,
+          "counts": {
+            "anchor_build": 42501,
+            "anchor_ids_map_lookup": 37571,
+            "anchor_map_lookup": 566701,
+            "anchor_ready": 0,
+            "anchor_request": 566701,
+            "column_build": 6173940,
+            "column_cell_reuse": 1779934,
+            "column_interior": 3408653,
+            "column_map_lookup": 1524905,
+            "column_ready_boundary": 3020316,
+            "column_request": 8039595,
+            "column_resolved_interior": 3408653,
+            "column_reuse_boundary": 85721,
+            "column_reuse_exterior": 247776,
+            "column_versions_skipped": 23885409,
+            "feature_gpu_call": 0,
+            "footprint_map_lookup": 1146228,
+            "prefix_boundary": 3728824,
+            "prefix_interior": 1687605,
+            "prefix_limited": 0,
+            "prefix_unfinished_interior": 0,
+            "structure_map_lookup": 4930,
+            "writer_pruned": 1963415,
+            "writer_ready": 6320078,
+            "writer_request": 8827074
+          },
+          "detailed_evaluation_cpu_ms": {
+            "mean": 384.93635,
+            "median": 379.1035,
+            "minimum": 287.942,
+            "maximum": 587.313,
+            "total": 7698.727,
+            "count": 20
+          },
+          "aggregate_evaluation_cpu_ms": {
+            "mean": 469.0701,
+            "median": 462.148,
+            "minimum": 353.169,
+            "maximum": 743.748,
+            "total": 9381.402,
+            "count": 20
+          },
+          "aggregate_task_cpu_ms": {
+            "mean": 461.60129085,
+            "median": 456.1227645,
+            "minimum": 344.912512,
+            "maximum": 733.235276,
+            "total": 9232.025817,
+            "count": 20
+          },
+          "aggregate_evaluation_wall_ms": {
+            "mean": 62.4622541,
+            "median": 50.555020999999996,
+            "minimum": 26.377583,
+            "maximum": 152.447417,
+            "total": 1249.245082,
+            "count": 20
+          },
+          "leading_demanded_roots": [
+            {
+              "root": 15,
+              "sources": [
+                "minecraft:ore_debris_small"
+              ],
+              "structure_definition": null,
+              "counts": {
+                "column_request": 144952,
+                "column_build": 138153,
+                "column_map_lookup": 143846,
+                "prefix_boundary": 136141,
+                "prefix_interior": 1601,
+                "anchor_request": 151,
+                "anchor_build": 90,
+                "writer_pruned": 124131
+              }
+            },
+            {
+              "root": 3,
+              "sources": [
+                "minecraft:spring_open"
+              ],
+              "structure_definition": null,
+              "counts": {
+                "column_request": 507295,
+                "column_build": 343878,
+                "column_map_lookup": 139759,
+                "prefix_boundary": 341866,
+                "prefix_interior": 70,
+                "anchor_request": 5998,
+                "anchor_build": 1573,
+                "writer_pruned": 183040
+              }
+            },
+            {
+              "root": 18,
+              "sources": [
+                "minecraft:red_mushroom_normal"
+              ],
+              "structure_definition": null,
+              "counts": {
+                "column_request": 1943604,
+                "column_build": 129223,
+                "column_map_lookup": 136954,
+                "prefix_boundary": 115744,
+                "prefix_interior": 209,
+                "writer_pruned": 98522
+              }
+            }
+          ]
+        },
+        {
+          "root": 22,
+          "sources": [
+            "minecraft:twisting_vines"
+          ],
+          "structure_definition": null,
+          "regions": 20,
+          "counts": {
+            "anchor_build": 58148,
+            "anchor_ids_map_lookup": 51350,
+            "anchor_map_lookup": 1052450,
+            "anchor_ready": 0,
+            "anchor_request": 1052450,
+            "column_build": 7067644,
+            "column_cell_reuse": 1165171,
+            "column_interior": 430786,
+            "column_map_lookup": 2076758,
+            "column_ready_boundary": 5725271,
+            "column_request": 8247428,
+            "column_resolved_interior": 430786,
+            "column_reuse_boundary": 14613,
+            "column_reuse_exterior": 68747,
+            "column_versions_skipped": 3132237,
+            "feature_gpu_call": 0,
+            "footprint_map_lookup": 1456701,
+            "prefix_boundary": 6350484,
+            "prefix_interior": 153875,
+            "prefix_limited": 0,
+            "prefix_unfinished_interior": 0,
+            "structure_map_lookup": 6798,
+            "writer_pruned": 5325325,
+            "writer_ready": 9392975,
+            "writer_request": 15747630
+          },
+          "detailed_evaluation_cpu_ms": {
+            "mean": 377.87705,
+            "median": 372.63300000000004,
+            "minimum": 307.305,
+            "maximum": 498.172,
+            "total": 7557.541,
+            "count": 20
+          },
+          "aggregate_evaluation_cpu_ms": {
+            "mean": 467.0372,
+            "median": 449.1335,
+            "minimum": 388.114,
+            "maximum": 710.057,
+            "total": 9340.744,
+            "count": 20
+          },
+          "aggregate_task_cpu_ms": {
+            "mean": 460.32061885,
+            "median": 440.547856,
+            "minimum": 383.736137,
+            "maximum": 702.529279,
+            "total": 9206.412377,
+            "count": 20
+          },
+          "aggregate_evaluation_wall_ms": {
+            "mean": 76.3378917,
+            "median": 63.030292,
+            "minimum": 46.449,
+            "maximum": 173.3385,
+            "total": 1526.757834,
+            "count": 20
+          },
+          "leading_demanded_roots": [
+            {
+              "root": 3,
+              "sources": [
+                "minecraft:spring_open"
+              ],
+              "structure_definition": null,
+              "counts": {
+                "column_request": 729944,
+                "column_build": 487738,
+                "column_map_lookup": 198992,
+                "prefix_boundary": 474370,
+                "prefix_interior": 1,
+                "anchor_request": 7935,
+                "anchor_build": 2110,
+                "writer_pruned": 247335
+              }
+            },
+            {
+              "root": null,
+              "sources": [],
+              "structure_definition": null,
+              "counts": {
+                "column_request": 493409,
+                "column_build": 495158,
+                "column_map_lookup": 177579
+              }
+            },
+            {
+              "root": 2,
+              "sources": [],
+              "structure_definition": 1,
+              "counts": {
+                "column_request": 525147,
+                "column_build": 481412,
+                "column_map_lookup": 169866,
+                "prefix_boundary": 480707,
+                "prefix_interior": 87,
+                "anchor_request": 157584,
+                "anchor_build": 2271
+              }
+            }
+          ]
+        }
+      ],
+      "leading_demanded_roots": [
+        {
+          "root": 3,
+          "sources": [
+            "minecraft:spring_open"
+          ],
+          "structure_definition": null,
+          "counts": {
+            "column_request": 7431696,
+            "column_build": 2962548,
+            "column_map_lookup": 1216669,
+            "prefix_boundary": 2900590,
+            "prefix_interior": 1099,
+            "anchor_request": 72229,
+            "anchor_build": 35069,
+            "writer_pruned": 1587940
+          }
+        },
+        {
+          "root": null,
+          "sources": [],
+          "structure_definition": null,
+          "counts": {
+            "column_request": 3201750,
+            "column_build": 7904163,
+            "column_map_lookup": 1131359
+          }
+        },
+        {
+          "root": 2,
+          "sources": [],
+          "structure_definition": 1,
+          "counts": {
+            "column_request": 3722011,
+            "column_build": 3015173,
+            "column_map_lookup": 1068043,
+            "prefix_boundary": 2978881,
+            "prefix_interior": 33025,
+            "anchor_request": 1013270,
+            "anchor_build": 36727
+          }
+        },
+        {
+          "root": 0,
+          "sources": [],
+          "structure_definition": 0,
+          "counts": {
+            "column_request": 3089662,
+            "column_build": 3043668,
+            "column_map_lookup": 1053784,
+            "prefix_boundary": 3003107,
+            "prefix_interior": 33267,
+            "anchor_request": 1069407,
+            "anchor_build": 36731
+          }
+        },
+        {
+          "root": 1,
+          "sources": [],
+          "structure_definition": 2,
+          "counts": {
+            "column_request": 3172162,
+            "column_build": 2997273,
+            "column_map_lookup": 1048086,
+            "prefix_boundary": 2993013,
+            "prefix_interior": 2697,
+            "anchor_request": 1051864,
+            "anchor_build": 36721
+          }
+        }
+      ]
+    },
+    {
+      "case": "overworld",
+      "seed": 123456789,
+      "profile": "overworld.json",
+      "root_instances": 0,
+      "totals": {},
+      "all_counter_partitions_exact": true,
+      "partitions_checked": 0,
+      "lookup_differences_vs_detailed": [],
+      "detailed": {
+        "root_evaluation_cpu_ms": null,
+        "root_evaluation_wall_ms": null,
+        "observer_summary_ms": null,
+        "instrumented_region_wall_ms": {
+          "mean": 378.20479385,
+          "median": 368.193563,
+          "minimum": 248.091375,
+          "maximum": 552.4081659999999,
+          "total": 7564.095877,
+          "count": 20
+        }
+      },
+      "aggregate": {
+        "root_evaluation_cpu_ms": null,
+        "root_evaluation_wall_ms": null,
+        "observer_summary_ms": null,
+        "instrumented_region_wall_ms": {
+          "mean": 518.24781255,
+          "median": 481.6295625,
+          "minimum": 433.150667,
+          "maximum": 843.447,
+          "total": 10364.956251,
+          "count": 20
+        }
+      },
+      "largest_aggregate_cpu_stages": [],
+      "leading_demanded_roots": []
+    }
+  ],
+  "ordinary_observations": [
+    {
+      "case": "nether-main-run0",
+      "previous": {
+        "median_ms": 1660.559270530939,
+        "p95_region_ms": 2354.1751360637136,
+        "maximum_region_ms": 2778.277500066906,
+        "total_ms": 34889.012459199876,
+        "chunks_per_second": 587.0042903607504,
+        "peak_rss_bytes": 2151956480,
+        "generation_peak_rss_bytes": 2151956480
+      },
+      "candidate": {
+        "median_ms": 1400.2263335278258,
+        "p95_region_ms": 1946.8655916745774,
+        "maximum_region_ms": 2011.3842079881579,
+        "total_ms": 28143.356999848038,
+        "chunks_per_second": 727.7028110083165,
+        "peak_rss_bytes": 2153775104,
+        "generation_peak_rss_bytes": 2153775104
+      },
+      "comparisons": [
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/nether-main-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        },
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle96/merged-full/nether-main-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        }
+      ]
+    },
+    {
+      "case": "nether-second-seed-run0",
+      "previous": {
+        "median_ms": 1539.7210834780708,
+        "p95_region_ms": 2037.1978899114765,
+        "maximum_region_ms": 2044.5004999637604,
+        "total_ms": 29750.24745822884,
+        "chunks_per_second": 688.3976353055606,
+        "peak_rss_bytes": 2257338368,
+        "generation_peak_rss_bytes": 2257338368
+      },
+      "candidate": {
+        "median_ms": 1554.6278125839308,
+        "p95_region_ms": 2535.082572652027,
+        "maximum_region_ms": 2889.3445001449436,
+        "total_ms": 34303.11300000176,
+        "chunks_per_second": 597.0303628128138,
+        "peak_rss_bytes": 2334326784,
+        "generation_peak_rss_bytes": 2334326784
+      },
+      "comparisons": [
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/nether-second-seed-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        },
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle96/merged-full/nether-second-seed-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        }
+      ]
+    },
+    {
+      "case": "nether-custom-bounds-run0",
+      "previous": {
+        "median_ms": 901.4848956139758,
+        "p95_region_ms": 1110.393412562553,
+        "maximum_region_ms": 1232.3266249150038,
+        "total_ms": 19059.033958008513,
+        "chunks_per_second": 1074.5560370542498,
+        "peak_rss_bytes": 1879031808,
+        "generation_peak_rss_bytes": 1879031808
+      },
+      "candidate": {
+        "median_ms": 992.1017080778256,
+        "p95_region_ms": 1127.0497943041848,
+        "maximum_region_ms": 1362.3117909301072,
+        "total_ms": 20070.188582874835,
+        "chunks_per_second": 1020.4189121309424,
+        "peak_rss_bytes": 1880588288,
+        "generation_peak_rss_bytes": 1880588288
+      },
+      "comparisons": [
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/nether-custom-bounds-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        },
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle96/merged-full/nether-custom-bounds-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        }
+      ]
+    },
+    {
+      "case": "nether-direct-stem-run0",
+      "previous": {
+        "median_ms": 995.7421250874177,
+        "p95_region_ms": 1386.2566339201294,
+        "maximum_region_ms": 1411.095333052799,
+        "total_ms": 20291.705375071615,
+        "chunks_per_second": 1009.2793888659405,
+        "peak_rss_bytes": 1921187840,
+        "generation_peak_rss_bytes": 1921187840
+      },
+      "candidate": {
+        "median_ms": 926.4032291248441,
+        "p95_region_ms": 1103.9085422409698,
+        "maximum_region_ms": 1107.021375093609,
+        "total_ms": 18452.530917013064,
+        "chunks_per_second": 1109.8748508865865,
+        "peak_rss_bytes": 1905197056,
+        "generation_peak_rss_bytes": 1905197056
+      },
+      "comparisons": [
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/nether-direct-stem-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        },
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle96/merged-full/nether-direct-stem-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        }
+      ]
+    },
+    {
+      "case": "overworld-run0",
+      "previous": {
+        "median_ms": 381.6661461023614,
+        "p95_region_ms": 482.5426091090776,
+        "maximum_region_ms": 486.4119589328766,
+        "total_ms": 7707.991041941568,
+        "chunks_per_second": 2656.9828491706817,
+        "peak_rss_bytes": 1742651392,
+        "generation_peak_rss_bytes": 1675018240
+      },
+      "candidate": {
+        "median_ms": 390.30070847366005,
+        "p95_region_ms": 519.913435576018,
+        "maximum_region_ms": 561.7517919745296,
+        "total_ms": 8177.846957929432,
+        "chunks_per_second": 2504.326640662077,
+        "peak_rss_bytes": 2169782272,
+        "generation_peak_rss_bytes": 2169782272
+      },
+      "comparisons": [
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/overworld-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        },
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle96/merged-full/overworld-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        }
+      ]
+    }
+  ],
+  "legacy_prefix_reconciliation": {
+    "cycle": 97,
+    "scope": "Current aggregate prefix counts match the retained C93 path inventory for every demanded root and branch. C93 dense expansion counts are historical evidence, not a new dense counter measurement. At the inspected unchanged production prefix return, absence of a dense allocation returns the exact prior Arc; some dense paths may also return it. The fractions are lower bounds on identity results in that retained run, not safe-to-remove work or time fractions. Discovery, earlier state, support reads, failures, same-root limits and RNG still have to be preserved.",
+    "legacy_source": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle93/path-analysis.json",
+    "legacy_sha256": "1db87b7ff269282e5edcc6e47722a7aaf930df2340d5e18d0591a5a5360a46c7",
+    "source_statement": "Planner::prefix returns Ok(prior) when blocks is None; Prefix::finish(None,...) records zero dense_expansions. An allocated dense result sets dense_expansions=1 once in finish.",
+    "next_candidate": "Investigate change-only boundary version representation or direct reuse of an already-proven predecessor, scoped to complete exact writer coverage. Do not broaden geometry blindly or skip discovery because a previous output happened to be empty. Existing C74 stage-frontier and C31 strong-cache candidates did not establish full-region wins; compare design differences before repeating them.",
+    "cases": [
+      {
+        "case": "nether-main",
+        "per_target_root_prefix_counts_exact": true,
+        "measured_regions": 20,
+        "current_column_cache_initializations_per_region": 2101029.9,
+        "current_boundary_prefixes_per_region": 1500109.55,
+        "current_boundary_fraction_of_prefixes": 0.8762025293535616,
+        "retained_cycle93_boundary_prefixes": 30002191,
+        "retained_cycle93_boundary_dense_expansions": 1173902,
+        "retained_cycle93_boundary_without_dense_expansion": 28828289,
+        "retained_cycle93_boundary_identity_fraction_lower_bound": 0.9608727909238362,
+        "checked_rows": 123
+      },
+      {
+        "case": "nether-second-seed",
+        "per_target_root_prefix_counts_exact": true,
+        "measured_regions": 20,
+        "current_column_cache_initializations_per_region": 2191807.6,
+        "current_boundary_prefixes_per_region": 1581421.5,
+        "current_boundary_fraction_of_prefixes": 0.8775928599962358,
+        "retained_cycle93_boundary_prefixes": 31628430,
+        "retained_cycle93_boundary_dense_expansions": 1176383,
+        "retained_cycle93_boundary_without_dense_expansion": 30452047,
+        "retained_cycle93_boundary_identity_fraction_lower_bound": 0.9628061525659035,
+        "checked_rows": 123
+      },
+      {
+        "case": "nether-custom-bounds",
+        "per_target_root_prefix_counts_exact": true,
+        "measured_regions": 20,
+        "current_column_cache_initializations_per_region": 2151275.75,
+        "current_boundary_prefixes_per_region": 1422167.5,
+        "current_boundary_fraction_of_prefixes": 0.8348616536819975,
+        "retained_cycle93_boundary_prefixes": 28443350,
+        "retained_cycle93_boundary_dense_expansions": 1091785,
+        "retained_cycle93_boundary_without_dense_expansion": 27351565,
+        "retained_cycle93_boundary_identity_fraction_lower_bound": 0.9616154566884703,
+        "checked_rows": 69
+      },
+      {
+        "case": "nether-direct-stem",
+        "per_target_root_prefix_counts_exact": true,
+        "measured_regions": 20,
+        "current_column_cache_initializations_per_region": 2115675.55,
+        "current_boundary_prefixes_per_region": 1403152.25,
+        "current_boundary_fraction_of_prefixes": 0.838360460781744,
+        "retained_cycle93_boundary_prefixes": 28063045,
+        "retained_cycle93_boundary_dense_expansions": 1024670,
+        "retained_cycle93_boundary_without_dense_expansion": 27038375,
+        "retained_cycle93_boundary_identity_fraction_lower_bound": 0.9634868561127277,
+        "checked_rows": 69
+      },
+      {
+        "case": "overworld",
+        "per_target_root_prefix_counts_exact": true,
+        "measured_regions": 20,
+        "current_column_cache_initializations_per_region": 0.0,
+        "current_boundary_prefixes_per_region": 0.0,
+        "current_boundary_fraction_of_prefixes": null,
+        "retained_cycle93_boundary_prefixes": 0,
+        "retained_cycle93_boundary_dense_expansions": 0,
+        "retained_cycle93_boundary_without_dense_expansion": 0,
+        "retained_cycle93_boundary_identity_fraction_lower_bound": null,
+        "checked_rows": 0
+      }
+    ]
+  },
+  "next_candidate": "Investigate change-only boundary version representation or direct reuse of an already-proven predecessor, scoped to complete exact writer coverage. Do not broaden geometry blindly or skip discovery because a previous output happened to be empty. Existing C74 stage-frontier and C31 strong-cache candidates did not establish full-region wins; compare design differences before repeating them.",
+  "method": {
+    "workers": 16,
+    "warmup_regions_per_case": 5,
+    "measured_regions_per_case": 20,
+    "cases": 5,
+    "host": "macOS-27.0.1-arm64-arm-64bit",
+    "profile_sha256": {
+      "nether.json": "0cf913a69f3faceb1c8719fb238dbd90961586262af4cd2cfe0c0fd62953a2ff",
+      "custom.json": "dd1437839e09a35c512cad186d60497f9ab7f12d8881edf98b5d1db56278adb8",
+      "direct-stem.json": "dd1437839e09a35c512cad186d60497f9ab7f12d8881edf98b5d1db56278adb8",
+      "overworld.json": "72b80f1d8d799547726a1cefe1357c5c8311ed8b3736403a83c89879e4ee935b"
+    },
+    "scope": "Complete lit 1024-chunk zlib MCA regions, exact retained profile hashes/seeds/coordinates, measured shader-ready. All heavy controllers and generation children serialized.",
+    "captures": [
+      "Existing root-phase/process CPU and physical-thread dispatched-task CPU clocks remain enabled.",
+      "Aggregate mode disables every detailed API interval buffer and reports intervals unavailable, not zero.",
+      "Task-local counts flush once after the task CPU endpoint, inside joined root evaluation. A single empty scratch buffer per physical thread retains counters only.",
+      "Column rows name the last included earlier root (before-1); null means base terrain or a root-independent lookup. Calls, cache reuses, initializer builds, branch selections and skipped version steps are distinct."
+    ]
+  },
+  "host_observations": {
+    "max_cpu_percent_by_command": {
+      "detailed": {
+        "/System/Library/Frameworks/Virtualization.framework/Versions/A/XPCServices/com.apple.Virtualization.VirtualMachine.xpc/Contents/MacOS/com.apple.Virtualization.VirtualMachine": 217.4,
+        "/Users/cyberpwn/.nvm/versions/node/v24.14.0/bin/node": 133.1,
+        "/System/Library/PrivateFrameworks/SkyLight.framework/Resources/WindowServer": 115.8,
+        "node": 113.5,
+        "/Applications/Brave Browser.app/Contents/Frameworks/Brave Browser Framework.framework/Versions/155.1.97.56/Helpers/Brave Browser Helper (Renderer).app/Contents/MacOS/Brave Browser Helper (Renderer)": 109.4,
+        "/Applications/ChatGPT.app/Contents/Frameworks/Codex Framework.framework/Versions/155.0.8059.80/Helpers/Codex (Renderer).app/Contents/MacOS/Codex (Renderer)": 102.0,
+        "/Applications/GitKraken.app/Contents/Frameworks/GitKraken Helper (Renderer).app/Contents/MacOS/GitKraken Helper (Renderer)": 100.2,
+        "/System/Applications/Siri AI.app/Contents/MacOS/Siri AI": 89.8
+      },
+      "aggregate": {
+        "/Applications/ChatGPT.app/Contents/Frameworks/Codex Framework.framework/Versions/155.0.8059.80/Helpers/Codex (Renderer).app/Contents/MacOS/Codex (Renderer)": 506.4,
+        "/Users/cyberpwn/.nvm/versions/node/v24.14.0/bin/node": 175.1,
+        "node": 154.7,
+        "/Applications/Discord.app/Contents/Frameworks/Discord Helper (Renderer).app/Contents/MacOS/Discord Helper (Renderer)": 141.6,
+        "/System/Library/Frameworks/Virtualization.framework/Versions/A/XPCServices/com.apple.Virtualization.VirtualMachine.xpc/Contents/MacOS/com.apple.Virtualization.VirtualMachine": 132.7,
+        "/System/Library/PrivateFrameworks/SkyLight.framework/Resources/WindowServer": 99.6,
+        "/Library/Frameworks/Python.framework/Versions/3.12/Resources/Python.app/Contents/MacOS/Python": 98.9,
+        "/Applications/GitKraken.app/Contents/Frameworks/GitKraken Helper (Renderer).app/Contents/MacOS/GitKraken Helper (Renderer)": 68.4
+      }
+    },
+    "scope": "Per-process maxima from actual snapshots, not simultaneous totals or causal attribution. Timing acceptance remains deferred."
+  },
+  "validation": {
+    "ordinary_native_tests": [
+      "190",
+      "0",
+      "55"
+    ],
+    "focused_probe_tests": {
+      "passed": 19,
+      "failed": 0,
+      "ignored": 2
+    },
+    "explicit_gpu_terrain_tests": 2,
+    "detailed_compared_chunk_instances": 102400,
+    "aggregate_compared_chunk_instances": 102400,
+    "ordinary_compared_chunk_instances": 102400,
+    "pre_pr_total_compared_instances": 307200,
+    "nbt": "Every measured instance matches immutable original and actual PR210 complete decompressed NBT and membership. Only MCA timestamps/compression representation excluded; repeated coordinates are instances rather than unique coverage.",
+    "counter_partitions": "Every recorded root matches column request routes, cell reuse/build calls, interior resolutions, anchor routes, writer routes and build/prefix accounting. Every aggregate lookup count matches the detailed observer for the same root and region.",
+    "binary": {
+      "machine_code_identical_to_actual_pr210": true,
+      "different_file_bytes": 122,
+      "categories": {
+        "uuid": 16,
+        "verified_panic_line": 42,
+        "signature": 64
+      },
+      "observer_symbols": 0
+    },
+    "corrected_setup_failures": [
+      "Initial compile exposed test-module visibility errors; corrected before successful focused/full builds. Failed source and log retained.",
+      "Initial broad GPU test filter included an overlap inventory without its required output destination. Actual fixture failure retained; same source/executable rerun with RETINA_TERRAIN_OVERLAP_REPORT succeeds. Native tests/build were not repeated for this driver-only correction."
+    ],
+    "controllers_actual_terminal": true
+  },
+  "limits": [
+    "Aggregate counts cover dispatched-task work, including recursively demanded earlier roots; service-thread and work outside dispatched tasks are not counted. Root process CPU includes other native threads.",
+    "Counts classify calls and attempted builds, not exclusive CPU costs or safe removal percentages. Column target root means before-1; null means base terrain or root-independent lookup.",
+    "Aggregate capture disables all per-API interval buffers and reports them unavailable. Task and root CPU/wall clocks remain instrumented, and task-local counter flushing is inside root evaluation but after each task CPU endpoint.",
+    "Detailed and aggregate runs are diagnostic observations under host activity, not ordinary speedup acceptance. Both use the same executable and actual five warmup/twenty measured cases.",
+    "No production algorithm, feature, RNG, ordering, dependency coverage, cache lifetime or cleanup placement changes.",
+    "Previous held production candidates are not incorporated or promoted. Their adverse CPU/memory observations remain unresolved.",
+    "No new portal, concurrency, sustained-memory or subsecond acceptance is claimed.",
+    "This cycle measures current merged production behavior; C96 measured held C94/C95 builds. Their absolute CPU numbers are not an A/B comparison with these results."
+  ],
+  "recovery": {
+    "evidence_root": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle97",
+    "worktree": "/tmp/retina-nether-dependency-work-attribution",
+    "branch": "codex/nether-dependency-work-attribution",
+    "driver_cwd": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20",
+    "commands": [
+      "python3 dependency-work-attribution-proof.py",
+      "python3 dependency-work-attribution-resume.py",
+      "python3 dependency-work-attribution-analysis.py",
+      "python3 dependency-work-attribution-legacy.py",
+      "python3 native-section-comparison.py cycle96/merged.dylib cycle97/normal.dylib cycle97/section-comparison.json",
+      "python3 dependency-work-attribution-binary.py",
+      "python3 dependency-work-attribution-report.py",
+      "python3 dependency-work-attribution-merged.py merged"
+    ],
+    "notes": "Use proof.py for a fresh full run; resume.py is only for the retained completed native build after the recorded controller failure. Use fresh output directories for generation; retain both the failed initial controller and successful resume. Do not overwrite immutable references. Report writer appends once. Hold source and HEAD until actual controllers and children terminate."
+  },
+  "evidence_manifest": [
+    {
+      "path": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle97/proof-receipt.json",
+      "bytes": 10150,
+      "sha256": "513f8ab163024df7c8729b81a467e0c22624b36abc7aad634fb4cb58acc46775"
+    },
+    {
+      "path": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle97/initial-proof-receipt.json",
+      "bytes": 1809,
+      "sha256": "1b88b787c2b4b9d6bb1e4523e6a31c1f2f119463a68e698d894bbb1faf0812d9"
+    },
+    {
+      "path": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle97/work-analysis.json",
+      "bytes": 2814345,
+      "sha256": "0b7f50db0ed7db2ae67d4558d435f1e8fd7be5c21e95d38578f96546bad29940"
+    },
+    {
+      "path": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle97/legacy-prefix-reconciliation.json",
+      "bytes": 45369,
+      "sha256": "6471962ad32722979343a2cde70dbbb010cc2d2ae9fc07d2dbf585cc0f2dcbf3"
+    },
+    {
+      "path": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle97/normal-provenance.json",
+      "bytes": 437,
+      "sha256": "a32ff4f3497e2704024384f690618b8951badfcaddeafeab254720ee36dfb6ca"
+    },
+    {
+      "path": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle97/normal-tests.log",
+      "bytes": 29537,
+      "sha256": "c23df396376ccbf383c77f5cee64db830b94a08765a98ea56485774292d77b81"
+    },
+    {
+      "path": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle97/gpu-terrain-tests.log",
+      "bytes": 817,
+      "sha256": "5f2fba3f40736c16b5bbe70e3ccbb05ea4a1f8c752302b7db1c66a1a92cdf42d"
+    },
+    {
+      "path": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle97/gpu-terrain-tests-retry.log",
+      "bytes": 3177,
+      "sha256": "537dcc7ab9dfba6fc005e2e7ecf663b5477b9b1221bc40ca52f27f2836a368ec"
+    },
+    {
+      "path": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle97/geometry-inventory.json",
+      "bytes": 131358,
+      "sha256": "2f73ac0bdcf923d289240959a6a031e5be2881158ce3dab66aecd26e07f2ab3a"
+    },
+    {
+      "path": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle97/detailed-inventory/report.json",
+      "bytes": 180112211,
+      "sha256": "37d3dcc3bbb238519c7c83aa04776cecbafb0af0fc979fa5316a2cf24ee89ebb"
+    },
+    {
+      "path": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle97/aggregate-inventory/report.json",
+      "bytes": 73140254,
+      "sha256": "1d4e556c2d8ccaa83f0b179893be81c11ca4a24ecfb4fdfc8c1ad6a9fd4e5974"
+    },
+    {
+      "path": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle97/detailed-host.jsonl",
+      "bytes": 6647038,
+      "sha256": "b1102c1a390e58e4ada6084c38e5cce3f73ea2c69cee65ed4d470e3f4a8d8586"
+    },
+    {
+      "path": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle97/aggregate-host.jsonl",
+      "bytes": 4786894,
+      "sha256": "3a8a002bbb29f22096fa2fd62b41025d7ca10c6b95ff620daeaf393a48fe5c0c"
+    },
+    {
+      "path": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle97/normal-full/suite.json",
+      "bytes": 122259,
+      "sha256": "eb72e61dc2a782174274da062f78a9f078eaf0282c4c8df7063857302fd28a20"
+    },
+    {
+      "path": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle97/section-comparison.json",
+      "bytes": 5560,
+      "sha256": "a9b46d246270080530f970e361506378b59bf6fa684644ff73fbf2497f11dd82"
+    },
+    {
+      "path": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle97/file-difference-classification.json",
+      "bytes": 280,
+      "sha256": "f2ae480b8972fa426d8cabc679dab4ef93a5e79a5d29b3ef6a4831e21f0a0ce5"
+    },
+    {
+      "path": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle97/panic-location-review.json",
+      "bytes": 14281,
+      "sha256": "45da108baab2e0ca325de7334e80a59bdc50cc3ba5368d21c1017dc60609d66b"
+    },
+    {
+      "path": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle97/normal-symbol-check.json",
+      "bytes": 176,
+      "sha256": "4c7e7cb249b64d9f72a7db64ed4bb84648dfca952baf0a7109842aae4993626d"
+    },
+    {
+      "path": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle97/focused-tests.log",
+      "bytes": 10833,
+      "sha256": "8f37c12b7db7029c90ad294d50319c0e2625faabe6c838856afb6ed831c6202a"
+    },
+    {
+      "path": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle97/focused-tests-2.log",
+      "bytes": 3381,
+      "sha256": "1f2f8043dc4f85180fc0761f8f514704878c8de4f99af4dd1fe2a43efc02f328"
+    },
+    {
+      "path": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle97/initial-proof-driver.py",
+      "bytes": 6007,
+      "sha256": "bae029ba716cb19f02bf9c03d19eb4434b8eeac9ceea8093e3116520a10d20e4"
+    },
+    {
+      "path": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle97/initial-work.rs",
+      "bytes": 13452,
+      "sha256": "0dc0c308e823c79f37118c520ac94ff6872b1b005483dfcd8cbfd36a34ff375f"
+    },
+    {
+      "path": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle97/initial-compile-source.patch",
+      "bytes": 24124,
+      "sha256": "2f458ef8fbd1cf0e38314f9d06f5602d50cd02b456201851623417075fa86c13"
+    },
+    {
+      "path": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/dependency-work-attribution-analysis.py",
+      "bytes": 8030,
+      "sha256": "dd23914ea1b73c4eb3df1c9851b5966e9db9c8d61c03d2781ad572b47e46eef9"
+    },
+    {
+      "path": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/dependency-work-attribution-binary.py",
+      "bytes": 2646,
+      "sha256": "98031f71f4d3cfbf0869e758c0869087e4772281b345348a148048287fc2d135"
+    },
+    {
+      "path": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/dependency-work-attribution-legacy.py",
+      "bytes": 3248,
+      "sha256": "45887fffe49b6023e07aba04d215c7772ebb31579412ec35fd5bfbb06de6856f"
+    },
+    {
+      "path": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/dependency-work-attribution-merged.py",
+      "bytes": 3191,
+      "sha256": "f185cfb198923c858f8cf8a2ac8138b8e71a8e08840277765b58a4b6912f01af"
+    },
+    {
+      "path": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/dependency-work-attribution-proof.py",
+      "bytes": 6072,
+      "sha256": "e43dc0681a1816d08953a8f068b156b0a1afeb5b918554ae709a21cab953dcfa"
+    },
+    {
+      "path": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/dependency-work-attribution-report.py",
+      "bytes": 16728,
+      "sha256": "b0a9a78e094c3aed54349d48321b6731629738918131da26c4255a08773b7488"
+    },
+    {
+      "path": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/dependency-work-attribution-resume.py",
+      "bytes": 5403,
+      "sha256": "dd6e7d10e3b47db29a647392fb3ff56db161e58a25b72bce6ee2e0f808cc1268"
+    }
+  ]
+}

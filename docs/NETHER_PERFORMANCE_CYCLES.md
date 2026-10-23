@@ -2629,3 +2629,91 @@ Quiet timing confirmation remains deferred. No speedup, subsecond, runtime,
 concurrency or bounded-memory acceptance is claimed. The held C94/C95 worktrees
 remain preserved. Source/library hashes, commands, ordinary observations and
 raw evidence hashes are in `docs/benchmarks/nether-perf-cycle96-2026-10-23.json`.
+
+
+## Cycle 97 — Aggregate attribution of demanded dependency work
+
+**Test-only diagnostics; production generation is unchanged.** The detailed
+observer creates and sorts a timed event for each hot lookup. This cycle adds
+an aggregate mode that keeps root/task CPU clocks but replaces API intervals
+with task-local counters, indexed by the earlier root actually demanded.
+Columns identify their last included root (`before - 1`); base terrain and
+root-independent lookups use an explicit null bucket. Requests, builds, cache
+reuses and skipped version steps remain distinct.
+
+Detailed capture remains available. Aggregate mode marks API intervals
+**unavailable**, and never presents disabled capture as zero wait or lock time.
+Counters merge once when a task exits. Empty scratch buffers retain no column,
+output, planner or GPU owners. All new code and hooks are excluded from normal
+builds. Counter work remains in root evaluation and whole-region timings;
+task-exit merging happens after the dispatched-task CPU endpoint.
+
+The two modes use the same executable, with five warmups and twenty measured
+complete regions per case. The table reports mean diagnostic milliseconds per
+region. These are observer comparisons, not production speedups.
+
+| Case | Summary wall ms: detailed → aggregate | Evaluation process CPU ms: detailed → aggregate | Leading aggregate CPU stage |
+| --- | ---: | ---: | --- |
+| nether-main | 877.8 → 23.3 | 3818.6 → 3911.1 | minecraft:basalt_blobs |
+| nether-second-seed | 923.3 → 25.3 | 3883.2 → 4190.0 | minecraft:basalt_blobs |
+| nether-custom-bounds | 564.3 → 14.0 | 2867.9 → 3298.6 | minecraft:warped_forest_vegetation |
+| nether-direct-stem | 534.9 → 14.9 | 2754.6 → 3359.2 | minecraft:warped_forest_vegetation |
+
+Summary processing drops by roughly 97% in these diagnostic observations.
+Evaluation CPU is higher in aggregate mode (about 2–22% across Nether cases);
+the new counters add coverage and work inside evaluation. Host activity also
+varies. This does not establish a production CPU improvement or assign the
+increase wholly to the counter implementation.
+
+The main architectural gap is now more specific:
+
+| Case | Column-cache initializations / region | Boundary prefixes / region | Boundary share of prefixes | Historical boundary identity lower bound |
+| --- | ---: | ---: | ---: | ---: |
+| nether-main | 2,101,030 | 1,500,110 | 87.6% | 96.1% |
+| nether-second-seed | 2,191,808 | 1,581,422 | 87.8% | 96.3% |
+| nether-custom-bounds | 2,151,276 | 1,422,168 | 83.5% | 96.2% |
+| nether-direct-stem | 2,115,676 | 1,403,152 | 83.8% | 96.3% |
+
+Current prefix counts match the retained C93 inventory for every demanded root
+and branch. In that retained run, over 96% of boundary prefixes allocated no
+dense block array and returned the exact prior column owner. This is historical
+identity-result evidence, not a fresh dense-allocation measurement or a safe
+removal percentage. Column-cache initializations also include base terrain and
+archive restores; they are not all newly allocated material arrays.
+
+The next candidate should investigate storing only changed boundary versions,
+or directly reusing an already-proven predecessor with exact writer coverage.
+An identity result discovered after evaluation does not authorize skipping its
+original discovery, RNG, failure or support-read behavior. Existing stage-frontier
+and broad strong-cache experiments did not establish whole-region wins; their
+costs and differences must be checked before repeating either design.
+
+Every aggregate map lookup count matches the detailed observer for the same
+root and region. Six accounting identities reconcile column request branches,
+column builds/reuses, interior resolution, anchor routes, writer routes and
+limited/unlimited prefix builds. Detailed per-stage and per-demanded-root
+counts are preserved in the linked JSON and external `work-analysis.json`.
+The named CPU stage includes all earlier-state reconstruction it triggers;
+counts do not divide that inclusive CPU into exclusive costs.
+
+Validation passes **190 ordinary native tests**, including the nineteen
+focused observer fixtures, plus two explicit GPU terrain fixtures. The full detailed, aggregate and
+ordinary suites compare **307,200 measured chunk instances** against immutable
+original and actual PR210 complete NBT and membership. Only MCA timestamps and
+compression representation are excluded; coordinates repeat. All measured
+regions are shader-ready. The initial test-module visibility compile failure
+and a missing output path in the first overlap-fixture invocation are retained;
+both are corrected, and the resumed validation controller completes successfully.
+
+The normal library has byte-identical machine code to preceding main. Every
+changed file byte is classified as a verified unchanged-statement panic line,
+Mach-O UUID or signing data; no observer symbols remain. Actual merged rebuild
+and another full corpus comparison follow the confirmed merge.
+
+Quiet timing confirmation remains deferred. Current-main measurements must not
+be compared as an A/B pair with C96's held C94/C95 production compositions.
+Those candidates remain held; their adverse CPU/memory observations are not
+cleared by this instrumentation. No new runtime, sustained-memory, concurrency
+or subsecond acceptance is claimed. See
+`docs/benchmarks/nether-perf-cycle97-2026-10-23.json` for full provenance,
+ordinary observations, counters, raw evidence hashes and recovery commands.
