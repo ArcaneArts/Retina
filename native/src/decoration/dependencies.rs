@@ -1074,6 +1074,8 @@ impl Planner<'_> {
             .get(before - 1)
             .zip(self.versions.index(x, z))
         {
+            #[cfg(test)]
+            probe.select_path(column_edit_probe::Path::CompletedInterior);
             for (key, block) in root.writes(column, x, z) {
                 if limit.is_some_and(|limit| key >= limit) {
                     #[cfg(test)]
@@ -1093,6 +1095,12 @@ impl Planner<'_> {
                 )?;
             }
         } else {
+            #[cfg(test)]
+            probe.select_path(if self.versions.index(x, z).is_some() {
+                column_edit_probe::Path::UnfinishedInterior
+            } else {
+                column_edit_probe::Path::Boundary
+            });
             for (ax, az) in self.roots[before - 1].bounds.writers(x, z)? {
                 if limit.is_some_and(|key| (az, ax) > (key.0, key.1)) {
                     #[cfg(test)]
