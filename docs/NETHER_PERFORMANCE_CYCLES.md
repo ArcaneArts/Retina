@@ -3323,3 +3323,38 @@ this test-only change. Timing confirmation remains deferred.
 See `docs/benchmarks/nether-perf-cycle151-2026-10-24.json` for ordinary observations,
 source and binary hashes, exact scope and recovery commands. Actual merged
 release proof follows; the overall subsecond goal remains unfulfilled.
+
+
+## Cycle 158 — live-column provider layout census
+
+The test-only sampled census now tags successful publications by the actual
+producer cell path: compact interior version storage or boundary tile storage.
+At subsequent demand it partitions live peer values into compact-only,
+tile-only and both. Prefix-path subsets separate reconstruction opportunities
+from cheap substrate reads and existing archive hits. It observes weak counts
+without upgrading references or retaining columns. The new test covers changing
+owner lifetimes, both provider layouts and exclusion of the requesting job.
+
+Across the four Nether profiles at eight requests, compact-only prefix values
+account for 0.66–1.11% of all sampled initializations (6,608–10,471 samples per
+case). This does not justify redesigning interior storage solely to extend the
+held C119 boundary-family sharing experiment. These are sampled opportunities,
+not CPU shares or speedup estimates. The tag records publication provenance:
+a live value does not prove its original cell or planner remains addressable.
+The census uses joined waves, so it does not establish continuous-refill behavior.
+
+All 276 native tests pass. Five instrumented profiles and the separate ordinary
+five-profile suite match 204,800 measured chunk instances against both immutable
+original and preceding-main NBT. Every observed provider partition reconciles;
+there are no missing samples, voxel/height mismatches, pending builds or retained
+live handles at wave end. Overworld has no ordered-column observations.
+
+The ordinary library contains no census symbols, and executable machine code is
+byte-identical to preceding main. The file hash differs: thirteen source-location
+data words each increase by one after the test-only parameter line. Runtime and
+retention fixtures were not repeated for this instrumentation-only change.
+Ordinary timings are retained as observations; quiet timing acceptance remains
+deferred and the overall subsecond goal remains incomplete.
+
+See `docs/benchmarks/nether-perf-cycle158-2026-10-24.json` for case counts, timing
+observations, hashes, limitations and recovery paths. Actual merged proof follows.

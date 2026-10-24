@@ -384,3 +384,34 @@ fn exact_live_column_reuse_inventory() {
         "case/caller selection matched no workload"
     );
 }
+
+#[test]
+fn column_census_distinguishes_live_provider_layout_without_pinning_or_counting_self() {
+    let session = Arc::new(Session::default());
+    let compact = column(&[1]);
+    let tile = column(&[1]);
+    session.begin_with_layout(key(), 0, true, true).unwrap().complete(&compact);
+    let mut a = session.begin_with_layout(key(), 1, false, false).unwrap();
+    a.source(Source::Prefix); a.complete(&tile);
+    let mut b = session.begin_with_layout(key(), 2, false, false).unwrap();
+    b.source(Source::Prefix); b.complete(&column(&[1]));
+    assert_eq!(Arc::strong_count(&compact), 1);
+    assert_eq!(Arc::strong_count(&tile), 1);
+    drop(compact);
+    let mut c = session.begin_with_layout(key(), 3, true, true).unwrap();
+    c.source(Source::Prefix); c.complete(&column(&[1]));
+    // Its own live tile is excluded from other-provider classification.
+    session.begin_with_layout(key(), 1, false, false).unwrap().complete(&column(&[1]));
+    drop(tile);
+    session.begin_with_layout(key(), 4, false, false).unwrap().complete(&column(&[1]));
+    let r = session.report(); let c = &r["counts"];
+    for prefix in ["other_live", "prefix_live"] {
+        for suffix in ["compact_only", "tile_only", "compact_and_tile"] {
+            assert_eq!(c[format!("{prefix}_{suffix}")], 1);
+        }
+    }
+    assert_eq!(c["other_live_at_demand"], 3);
+    assert_eq!(c["same_live_at_demand"], 1);
+    assert_eq!(r["live_handles_at_wave_end"], 0);
+    assert_eq!(r["pending_builds"], 0);
+}

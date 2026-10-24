@@ -59,6 +59,8 @@ counts! {
     skipped_keys, skipped_snapshots,
     prefix_successes, substrate_successes, archive_successes, unclassified_successes,
     live_other_prefix, live_other_substrate, live_other_archive,
+    other_live_compact_only, other_live_tile_only, other_live_compact_and_tile,
+    prefix_live_compact_only, prefix_live_tile_only, prefix_live_compact_and_tile,
 }
 #[derive(Clone, Copy)]
 pub(super) enum Source {
@@ -88,7 +90,7 @@ impl Snapshot {
 #[derive(Default)]
 struct History {
     pending: Vec<(u64, u64)>,
-    published: Vec<(u64, Weak<ColumnState>)>,
+    published: Vec<(u64, Weak<ColumnState>, bool)>,
     snapshot: Option<Snapshot>,
 }
 #[derive(Default)]
@@ -119,6 +121,9 @@ impl Session {
         }
     }
     fn begin(self: &Arc<Self>, key: Key, job: u64, interior: bool) -> Option<Build> {
+        self.begin_with_layout(key, job, interior, false)
+    }
+    fn begin_with_layout(self: &Arc<Self>, key: Key, job: u64, interior: bool, compact: bool) -> Option<Build> {
         let shard = key.shard();
         let mut state = self.shards[shard].lock().unwrap();
         let group = (key.before, interior);
@@ -129,14 +134,17 @@ impl Session {
         state.next += 1;
         let token = state.next;
         let history = state.entries.entry(key).or_default();
-        let live_other = history
-            .published
-            .iter()
-            .any(|(owner, weak)| *owner != job && weak.strong_count() != 0);
-        let live_same = history
-            .published
-            .iter()
-            .any(|(owner, weak)| *owner == job && weak.strong_count() != 0);
+        let mut live_compact = false;
+        let mut live_tile = false;
+        let mut live_same = false;
+        // Observe weak owner counts only; never upgrade or extend lifetimes.
+        for (owner, weak, is_compact) in &history.published {
+            if weak.strong_count() == 0 { continue; }
+            if *owner == job { live_same = true; }
+            else if *is_compact { live_compact = true; }
+            else { live_tile = true; }
+        }
+        let live_other = live_compact || live_tile;
         let dead = !live_other && !live_same && !history.published.is_empty();
         let pending_other = history.pending.iter().any(|(owner, _)| *owner != job);
         let pending_same = history.pending.iter().any(|(owner, _)| *owner == job);
@@ -144,6 +152,9 @@ impl Session {
         let c = state.counts.entry(group).or_default();
         c.sampled_initializers += 1;
         c.other_live_at_demand += live_other as u64;
+        c.other_live_compact_only += (live_compact && !live_tile) as u64;
+        c.other_live_tile_only += (live_tile && !live_compact) as u64;
+        c.other_live_compact_and_tile += (live_compact && live_tile) as u64;
         c.same_live_at_demand += live_same as u64;
         c.historical_dead_at_demand += dead as u64;
         c.other_pending_at_demand += pending_other as u64;
@@ -156,6 +167,9 @@ impl Session {
             token,
             group,
             live_other,
+            live_compact,
+            live_tile,
+            compact,
             source: None,
             finished: false,
         })
@@ -174,7 +188,7 @@ impl Session {
                 live += history
                     .published
                     .iter()
-                    .filter(|(_, w)| w.strong_count() != 0)
+                    .filter(|(_, w, _)| w.strong_count() != 0)
                     .count();
             }
             for (&group, counts) in &state.counts {
@@ -206,9 +220,10 @@ impl Job {
         x: i32,
         z: i32,
         profile: &WorldProfile,
+        compact: bool,
         build: impl FnOnce(Option<&mut Build>) -> Result<Arc<ColumnState>, String>,
     ) -> Result<Arc<ColumnState>, String> {
-        let mut observation = self.begin(before, x, z);
+        let mut observation = self.begin(before, x, z, compact);
         let result = build(observation.as_mut());
         if let (Some(observation), Ok(value)) = (observation, &result) {
             observation.complete_with_heights(value, observed_heights(
@@ -255,7 +270,7 @@ impl Job {
         }
         job
     }
-    pub(super) fn begin(&self, before: usize, x: i32, z: i32) -> Option<Build> {
+    pub(super) fn begin(&self, before: usize, x: i32, z: i32, compact: bool) -> Option<Build> {
         let session = self.session.as_ref()?;
         if !selected(before, x, z) {
             return None;
@@ -271,10 +286,11 @@ impl Job {
             },
             ..self.key
         };
-        session.begin(
+        session.begin_with_layout(
             key,
             self.id,
             dx >= 0 && dz >= 0 && dx < self.width && dz < self.width,
+            compact,
         )
     }
 }
@@ -301,6 +317,9 @@ pub(super) struct Build {
     token: u64,
     group: (usize, bool),
     live_other: bool,
+    live_compact: bool,
+    live_tile: bool,
+    compact: bool,
     source: Option<Source>,
     finished: bool,
 }
@@ -340,7 +359,7 @@ impl Build {
             } else {
                 (false, false, false, false, false, true)
             };
-        history.published.push((self.job, Arc::downgrade(column)));
+        history.published.push((self.job, Arc::downgrade(column), self.compact));
         if stored {
             state.copy_bytes += bytes;
         }
@@ -350,6 +369,9 @@ impl Build {
             Some(Source::Prefix) => {
                 c.prefix_successes += 1;
                 c.live_other_prefix += self.live_other as u64;
+                c.prefix_live_compact_only += (self.live_compact && !self.live_tile) as u64;
+                c.prefix_live_tile_only += (self.live_tile && !self.live_compact) as u64;
+                c.prefix_live_compact_and_tile += (self.live_compact && self.live_tile) as u64;
             }
             Some(Source::Substrate) => {
                 c.substrate_successes += 1;
