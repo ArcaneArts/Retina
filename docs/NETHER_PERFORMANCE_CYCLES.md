@@ -3358,3 +3358,37 @@ deferred and the overall subsecond goal remains incomplete.
 
 See `docs/benchmarks/nether-perf-cycle158-2026-10-24.json` for case counts, timing
 observations, hashes, limitations and recovery paths. Actual merged proof follows.
+
+
+## Cycle 166 — Demand-time identity proof availability
+
+This test-only observer records an equality certificate after an unlimited
+prefix successfully returns its unchanged predecessor. It captures interval
+coverage before another column build begins, then checks the certified candidate
+against the original complete material and height results. Limited same-root
+prefixes cannot publish certificates. No generation result is substituted.
+
+Across five Nether profiles, certificates add only **0–0.166%** availability
+beyond an already-live exact-stage result in the deterministic 1/64 coordinate
+sample. The larger posthoc cross-stage equality measured in C163 does not imply
+cheap proofs are available at demand. Naturally completing the requested stage
+usually also supplies its exact result; this certificate cache is not selected
+for production. This does not reject independently cheap proofs which precede
+target evaluation.
+
+**286 native tests pass**, including four new interval tests. Six-profile
+eight-request diagnostics and separate single-request ordinary runs compare
+**245,760 complete chunk instances** against both original and preceding-main
+NBT. Each case uses five warmups, twenty measurements and sixteen workers.
+The normal machine-code section is identical to preceding main; the twelve
+changed constants are source-location lines for unchanged expressions.
+
+Certificate origins are not split by owning job. Only explicitly evaluated
+unlimited prefixes publish; skipped interior markers are not expanded into
+proofs. Metadata is capped and cap hits are checked. Diagnostic synchronization
+perturbs availability, and observations are not a production speedup. Ordinary
+timings are retained without an uncontended performance acceptance claim.
+
+See `docs/benchmarks/nether-perf-cycle166-2026-10-24.json` for commands/provenance
+locations, counters, timing observations and limitations. External raw evidence
+and every worktree remain preserved.
