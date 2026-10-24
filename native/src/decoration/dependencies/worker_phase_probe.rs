@@ -5,6 +5,8 @@ use serde_json::{Value, json};
 use std::{cell::RefCell, time::Instant};
 mod joins;
 mod cpu;
+mod anchor_cpu;
+pub(super) use anchor_cpu::Span as AnchorCpu;
 pub(super) mod work;
 pub(crate) use joins::TerrainSpan;
 pub(super) use joins::{Candidate as Join, Key as JoinKey, LookupCall};
@@ -69,6 +71,8 @@ struct Worker {
     aggregate: bool,
     root_count: usize,
     work: Mutex<work::Buffer>,
+    anchor_cpu_enabled: bool,
+    anchor_cpu: Mutex<anchor_cpu::Buffer>,
 }
 #[derive(Default)]
 struct Local {
@@ -88,6 +92,8 @@ impl Local {
                 aggregate: root.session.aggregate,
                 root_count: root.metadata["root_count"].as_u64().unwrap_or(0) as usize,
                 work: Mutex::new(work::Buffer::default()),
+                anchor_cpu_enabled: root.session.anchor_cpu,
+                anchor_cpu: Mutex::new(anchor_cpu::Buffer::default()),
                 closed: std::sync::atomic::AtomicBool::new(false),
             });
             root.workers.lock().unwrap().push(worker.clone());
@@ -101,15 +107,19 @@ thread_local! { static LOCAL: RefCell<Local> = RefCell::new(Local::default()); }
 #[derive(Default)]
 struct Session {
     aggregate: bool,
+    anchor_cpu: bool,
     roots: Mutex<Vec<Value>>,
 }
 struct Installed(Arc<Session>);
 impl Installed {
     fn start() -> Self { Self::with_aggregate(false) }
     fn with_aggregate(aggregate: bool) -> Self {
+        Self::with_anchor_cpu(aggregate, false)
+    }
+    fn with_anchor_cpu(aggregate: bool, anchor_cpu: bool) -> Self {
         let mut active = ACTIVE.lock().unwrap();
         assert!(active.is_none());
-        let session = Arc::new(Session { aggregate, ..Session::default() });
+        let session = Arc::new(Session { aggregate, anchor_cpu, ..Session::default() });
         *active = Some(session.clone());
         Self(session)
     }
@@ -135,6 +145,7 @@ impl Drop for Root {
             std::mem::take(&mut *worker.terrain.lock().unwrap_or_else(|e| e.into_inner()));
             std::mem::take(&mut *worker.lookup.lock().unwrap_or_else(|e| e.into_inner()));
             std::mem::take(&mut *worker.work.lock().unwrap_or_else(|e| e.into_inner()));
+            std::mem::take(&mut *worker.anchor_cpu.lock().unwrap_or_else(|e| e.into_inner()));
         }
     }
 }
@@ -248,12 +259,14 @@ impl Trace {
         let mut by_terrain_worker = BTreeMap::<String, joins::Buffer>::new();
         let mut by_lookup_worker = BTreeMap::<String, joins::Buffer>::new();
         let mut work = work::Buffer::default();
+        let mut anchor_cpu = anchor_cpu::Buffer::default();
         let mut active_contexts = 0;
         for worker in root.workers.lock().unwrap().iter() {
             // Empty TLS-held collectors now: no task buffers survive a root.
             worker.closed.store(true, Ordering::Relaxed);
             active_contexts += worker.active.load(Ordering::Relaxed);
             work.extend(std::mem::take(&mut *worker.work.lock().unwrap()));
+            anchor_cpu.extend(std::mem::take(&mut *worker.anchor_cpu.lock().unwrap()));
             let events = std::mem::take(&mut *worker.events.lock().unwrap());
             by_worker
                 .entry(worker.id.clone())
@@ -285,6 +298,14 @@ impl Trace {
         let terrain = api_summary(&by_terrain_worker);
         let lookup = api_summary(&by_lookup_worker);
         let thread_cpu = cpu::summarize(&workers);
+        let mut anchor_cpu = if root.session.anchor_cpu { anchor_cpu.summary() }
+            else { json!({"enabled":false,"reason":"anchor CPU observer not selected"}) };
+        if root.session.anchor_cpu && (active_contexts > 0 || context_errors > 0) {
+            anchor_cpu["totals"]["valid"] = json!(false);
+            for key in ["inclusive_cpu_ns", "own_cpu_ns", "outermost_cpu_ns"] {
+                anchor_cpu["totals"][key] = Value::Null;
+            }
+        }
         let marks: BTreeMap<_, _> = state
             .marks
             .iter()
@@ -295,6 +316,7 @@ impl Trace {
             "capture_mode":if root.session.aggregate { "aggregate" } else { "detailed" },
             "context_validation":{"valid":active_contexts==0 && context_errors==0,"active":active_contexts,"errors":context_errors},
             "dependency_work":if root.session.aggregate {work.summary()} else {json!({"enabled":false,"reason":"detailed interval mode"})},
+            "anchor_cpu":anchor_cpu,
             "phase_stamps":marks,"phases":phases,"occupancy":occupied,
             "join_attribution":joined,"terrain_attribution":terrain,"lookup_attribution":lookup,"task_thread_cpu":thread_cpu,
             "observer_summary_wall_ns":analysis_start.elapsed().as_nanos() as u64}));
@@ -557,13 +579,17 @@ fn worker_phase_nested_roots_rebind_without_double_counting_one_worker() {
 
 #[test]
 #[ignore = "GPU inventory requires RETINA_TERRAIN_REUSE_PROFILES and RETINA_WORKER_PHASE_OUTPUT"]
-fn exact_worker_phase_inventory() { worker_phase_inventory(false); }
+fn exact_worker_phase_inventory() { worker_phase_inventory(false, false); }
 
 #[test]
 #[ignore = "GPU aggregate inventory requires RETINA_TERRAIN_REUSE_PROFILES and RETINA_WORKER_PHASE_OUTPUT"]
-fn exact_dependency_work_inventory() { worker_phase_inventory(true); }
+fn exact_dependency_work_inventory() { worker_phase_inventory(true, false); }
 
-fn worker_phase_inventory(aggregate: bool) {
+#[test]
+#[ignore = "GPU anchor CPU inventory requires RETINA_TERRAIN_REUSE_PROFILES and RETINA_WORKER_PHASE_OUTPUT"]
+fn exact_anchor_cpu_inventory() { worker_phase_inventory(true, true); }
+
+fn worker_phase_inventory(aggregate: bool, anchor_cpu: bool) {
     use std::{fs, path::PathBuf, time::Instant};
     let profiles = PathBuf::from(std::env::var("RETINA_TERRAIN_REUSE_PROFILES").unwrap());
     let output = PathBuf::from(std::env::var("RETINA_WORKER_PHASE_OUTPUT").unwrap());
@@ -576,6 +602,7 @@ fn worker_phase_inventory(aggregate: bool) {
         ("nether-direct-stem", "direct-stem.json", 42),
         ("overworld", "overworld.json", 123456789),
     ] {
+        if std::env::var("RETINA_WORKER_PHASE_CASE").ok().is_some_and(|case| case != name) { continue }
         let bytes = fs::read(profiles.join(file)).unwrap();
         let profile: Value = serde_json::from_slice(&bytes).unwrap();
         let engine = TerrainEngine::new().unwrap();
@@ -618,7 +645,8 @@ fn worker_phase_inventory(aggregate: bool) {
         let warmups: Vec<_> = (0..5)
             .map(|i| generate(&format!("warm{i}"), 8 + i, 8))
             .collect();
-        let installed = if aggregate { Installed::with_aggregate(true) } else { Installed::start() };
+        let installed = if anchor_cpu { Installed::with_anchor_cpu(aggregate, true) }
+            else if aggregate { Installed::with_aggregate(true) } else { Installed::start() };
         let regions: Vec<_> = (0..20)
             .map(|i| generate(&i.to_string(), -2 + i % 5, -2 + i / 5))
             .collect();
@@ -633,6 +661,17 @@ fn worker_phase_inventory(aggregate: bool) {
             assert_eq!(root["occupancy"]["valid"], true);
             assert_eq!(root["context_validation"]["valid"], true);
             assert_eq!(root["task_thread_cpu"]["reversed_tasks"], 0);
+            if anchor_cpu {
+                let cpu = &root["anchor_cpu"];
+                assert_eq!(cpu["enabled"], true);
+                assert_eq!(cpu["invalid_targets"], 0);
+                assert_eq!(cpu["totals"]["started"], cpu["totals"]["finished"]);
+                assert_eq!(cpu["totals"]["started"], root["dependency_work"]["totals"]["anchor_build"]);
+                for field in ["reversed_clock_calls", "invalid_child_calls", "context_errors", "clock_bounds_errors", "abandoned", "panicked"] {
+                    assert_eq!(cpu["totals"][field], 0);
+                }
+                assert_ne!(cpu["totals"]["valid"], false);
+            } else { assert_eq!(root["anchor_cpu"]["enabled"], false); }
             if aggregate {
                 assert_eq!(root["dependency_work"]["valid"], true);
                 assert_eq!(root["dependency_work"]["invalid_targets"], 0);
@@ -685,6 +724,10 @@ fn worker_phase_inventory(aggregate: bool) {
             assert_eq!(ids, (0..count).collect::<Vec<_>>());
         }
         drop(regions_seen);
+        if anchor_cpu && roots.iter().all(|v| v["anchor_cpu"]["totals"]["valid"] == true) {
+            let sum = |key| roots.iter().map(|v| v["anchor_cpu"]["totals"][key].as_u64().unwrap()).sum::<u64>();
+            assert_eq!(sum("own_cpu_ns"), sum("outermost_cpu_ns"));
+        }
         let summary = json!({"roots":roots});
         drop(installed);
         println!(
@@ -697,7 +740,8 @@ fn worker_phase_inventory(aggregate: bool) {
             "scope":"Test-only per-root queue, enumeration, joined anchor evaluation, publication and return-handoff intervals, with optional process CPU deltas. CPU includes native service/shader threads and observer overhead; it is not CPU utilization or task-only work. Top-level dispatched task spans include all nested work, waits and preemption. Per-worker collectors register once per root token; no shared hot collector lock or lock is held across generation. After the root joins, task intervals are unioned by physical thread before integrating workers with a task in flight; this is not workers actually running on CPU. Interval sums are not elapsed phase time. Missing phase/CPU data remains null; anomalous out-of-window events invalidate occupancy rather than being silently clipped. Only scalar metadata, phase/task summaries and top-eight long tasks persist. Collector buffers are emptied at joined root completion and retain no planner/state/GPU owners. Observer summary time is reported separately and remains inside whole-region elapsed time. Five warmups precede twenty complete lit regions per case; actual program snapshots are recorded. Noninitializer OnceLock API join intervals require an initially unfinished cell and an initializer closure that did not execute. Ready calls and initializer intervals are excluded; racing publication, result cloning in memo calls and preemption can still be included. These are not kernel sleep intervals or CPU utilization. Test-only scalar keys identify anchor, anchor-ID, footprint, structure-start and column calls. A thread-local RAII task-context stack restores reentrant roots and panic paths. No Arc clone, event allocation or collector lock is added for initializer candidates. Join intervals are unioned by physical worker and intersected with target tasks and the p95-to-last-completion tail; sums across workers or overlapping categories are not elapsed-time shares. Missing evaluation phases stay null; invalid task/join bounds, non-LIFO contexts or live contexts at root completion invalidate attribution. Context mismatch fails the diagnostic rather than misattributing an event. Panicked tasks/abandoned roots retain failure status and missing phases; raw buffers are released on every root exit. Probe checks, candidate stamps and event recording remain inside evaluation and whole-region timing; only post-join summary overhead is separated. Task entry/exit also samples optional CLOCK_THREAD_CPUTIME_ID on the same physical thread. CPU values include nested work and instrumentation on that thread but exclude service-thread work. Endpoint intervals are unioned per physical worker; missing/reversed samples leave aggregate CPU null. CPU is not interpolated into partial task tails. Separately, initially-unfinished terrain job cells record initializer or noninitializer API spans, and GPU dispatch records the receiver reply API span. These retain the same physical-thread contexts and bounds validation. Terrain initializer and reply categories overlap; they are not pure GPU time, and outside-span time is not classified as CPU. A third buffer records cache-lock acquisition and inclusive lookup intervals for anchor, anchor-ID, footprint, structure-start and boundary column maps, plus feature-GPU lock acquisition and inclusive batch calls. Acquisition timestamps are captured while holding the lock, but events are appended only after the original lock has been released. No try-lock or scheduling change is used. Lookup/call includes acquisition, and categories overlap. Acquisition includes hashing before the lock call and possible preemption; it is not kernel-blocked time. Errors and abandoned calls retain failure evidence. Every recorded lookup adds observer work, which remains inside measured task/root/region intervals; these timings are diagnostic only. Other locks and unmeasured paths remain outside coverage. Normal builds exclude all observer code and use the original generation algorithm.",
             "capture_mode":if aggregate { "aggregate" } else { "detailed" },
             "aggregate_scope":"When capture_mode is aggregate, all per-API timed event collection is disabled and explicitly marked unavailable. Task-local work counters merge once on task exit; detailed event buffers stay empty. Root phase and dispatched-task CPU clocks remain enabled, and include counter overhead. Work rows identify demanded earlier roots; they are not exclusive CPU attribution. Empty scratch counters may retain at most one allocation per physical thread and no generation owners.",
-            "cases":cases,"timing_acceptance":false,
+            "cases":cases,"timing_acceptance":false,"anchor_cpu_enabled":anchor_cpu,
         })).unwrap()).unwrap();
     }
+    assert!(!cases.is_empty(), "no requested worker-phase case was generated");
 }

@@ -2849,3 +2849,74 @@ the diagnostic PR.
 
 See `docs/benchmarks/nether-perf-cycle118-2026-10-23.json` for counts, normal timing
 observations, process RSS, provenance, failure records and recovery commands.
+
+
+## Cycle 123 — CPU attribution for executed anchor initializers
+
+Dispatched-task CPU includes the earlier features reconstructed inside that task.
+The new optional `exact_anchor_cpu_inventory` fixture measures calling-thread CPU
+at actual anchor initializers and subtracts direct child intervals exactly once.
+A physical-thread nesting stack also handles children in another task/root
+context. Rows identify the **executed root**, separately from the dispatched
+stage. Cached hits do not create initializer spans.
+
+These are initializer costs **within recorded dispatched tasks**. They include
+lookup, prefix replay, other non-anchor services and observer work inside those
+bodies. They are not pure feature-function cost, all process CPU, GPU/service
+CPU, or elapsed-time shares. Initializers outside those task contexts are not
+covered. Across all enclosing and nested contexts, summed own CPU reconciles
+exactly with outermost initializer CPU in every measured case.
+
+The two standard seeds, each repeated with reversed observer-mode order, have
+the same leading groups. Ranges below span those four observations:
+
+| Executed feature group | Share of observed initializer own CPU |
+| --- | ---: |
+| Basalt blobs | 20.1–21.0% |
+| Fire patches | 11.2–11.7% |
+| Blackstone blobs | 8.4–8.9% |
+| Delta features | 8.1–8.8% |
+| Large basalt columns | 6.3–6.6% |
+
+Custom-height/direct-stem fixtures instead lead with warped fungi and warped
+forest vegetation. Overworld has no roots in this Nether dependency path; its
+empty attribution does **not** mean zero Overworld CPU. The next useful
+comparison is the held C116 material/ore composition: its material/prefix
+changes can reduce work charged to several feature bodies. C122 basalt rule
+fusion remains separate and unmerged; its instruction reduction did not
+establish better CPU time or latency.
+
+The observer is disabled separately from the existing aggregate work counters.
+Enabled and disabled runs use the **same test executable**, with five warmups
+and twenty complete regions per each of five cases. An initial disabled/enabled
+pair is followed by enabled/disabled. Every existing work counter is unchanged
+per region and dispatched stage in both pairs; complete NBT matches in all four instrumented runs and the
+ordinary run. Whole-fixture retired instructions increase **0.50–0.85%** and
+cycles increase **1.57–2.02%**. These counters include startup, warmups and observer
+summaries. CPU-time deltas are +43.2% then −19.6%, and wall deltas +37.6% then
+−20.5%, under recorded host activity. This does not establish causal timing
+overhead or a production speedup. A separate one-/sixteen-thread clock probe
+observes about 78–167 ns of incremental CPU per clock read; no microbenchmark
+estimate is subtracted from the attribution.
+
+Validation passes **209 native tests**, including eleven accounting fixtures,
+plus **five GPU fixtures**. The normal and four observer runs compare
+**512,000 measured chunk instances** against immutable original and preceding
+merged-main NBT bytes and membership. Coordinates repeat; only MCA container
+metadata and compression representation are excluded. All measured regions are
+shader-ready, lit, serialized, compressed and published.
+
+Fixtures cover nested/sibling calls, reentrant task contexts, independent
+physical threads, missing/reversed/out-of-bounds clocks, counter overflow,
+invalid root IDs, panic/Result-error cleanup, non-LIFO/stale guards and root exit
+with live contexts. Invalid or missing CPU stays unavailable. Scalar buffers
+merge at task/root boundaries and retain no generation owners. Normal builds
+exclude the observer: the complete release library is byte-identical to main
+`86be582`, SHA256
+`daa63b89e1c64bf302bebcea7935621b7cec1a04153e7ad230842dad435d7b26`.
+
+See `docs/benchmarks/nether-perf-cycle123-2026-10-23.json` for exact provenance,
+commands, normal observations, CPU matrices/rankings, observer costs, and
+external evidence paths. Actual merged rebuild and corpus verification follow
+the diagnostic PR. Timing confirmation for the broader performance goal remains
+deferred; this cycle makes no new subsecond, concurrency or portal claim.

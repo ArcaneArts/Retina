@@ -40,6 +40,7 @@ struct Frame {
     origin: Instant,
     worker: Arc<Worker>,
     work: Option<work::Buffer>,
+    anchor_cpu: Option<anchor_cpu::Buffer>,
 }
 #[derive(Default)]
 struct Stack {
@@ -64,7 +65,8 @@ impl Context {
             current.next = current.next.checked_add(1).expect("diagnostic task tag overflow");
             let tag = current.next;
             let work = worker.aggregate.then(|| work::Buffer::take(worker.root_count));
-            current.frames.push(Frame { tag, token, origin, worker: worker.clone(), work });
+            let anchor_cpu = worker.anchor_cpu_enabled.then(|| anchor_cpu::Buffer::take(worker.root_count));
+            current.frames.push(Frame { tag, token, origin, worker: worker.clone(), work, anchor_cpu });
             tag
         });
         worker.active.fetch_add(1, Ordering::Relaxed);
@@ -78,7 +80,13 @@ impl Drop for Context {
             let position = current.frames.iter().rposition(|frame| frame.tag == self.tag);
             let valid = position == current.frames.len().checked_sub(1);
             if let Some(position) = position {
-                let frame = current.frames.remove(position);
+                let mut frame = current.frames.remove(position);
+                if let Some(mut cpu) = frame.anchor_cpu.take() {
+                    anchor_cpu::close_context(anchor_cpu::ContextId { tag: frame.tag, token: frame.token }, &mut cpu);
+                    if !frame.worker.closed.load(Ordering::Relaxed) {
+                        frame.worker.anchor_cpu.lock().unwrap().extend(cpu);
+                    }
+                }
                 if let Some(work) = frame.work {
                     if !frame.worker.closed.load(Ordering::Relaxed) {
                         work.drain_into(&mut frame.worker.work.lock().unwrap());
@@ -102,6 +110,30 @@ pub(super) fn count_work(op: work::Op, root: Option<usize>, amount: u64) {
             work.add(op, root, amount);
         }
     });
+}
+
+pub(super) fn anchor_begin(root: usize) -> Option<anchor_cpu::ContextId> {
+    CURRENT.with(|current| {
+        let mut current = current.borrow_mut();
+        let frame = current.frames.last_mut()?;
+        if frame.worker.closed.load(Ordering::Relaxed) { return None }
+        frame.anchor_cpu.as_mut()?.begin(root);
+        Some(anchor_cpu::ContextId { tag: frame.tag, token: frame.token })
+    })
+}
+pub(super) fn anchor_end(id: anchor_cpu::ContextId, root: usize, observation: anchor_cpu::Observation) {
+    CURRENT.with(|current| {
+        let mut current = current.borrow_mut();
+        // Normally this is the last frame. A stale guard after task exit was
+        // already invalidated/drained by close_context; it cannot hit a new task.
+        if let Some(frame) = current.frames.iter_mut().rfind(|f| f.tag==id.tag && f.token==id.token) {
+            if let Some(buffer) = &mut frame.anchor_cpu { buffer.record(root, observation); }
+        }
+    });
+}
+pub(super) fn anchor_current(id: anchor_cpu::ContextId) -> bool {
+    CURRENT.with(|current| current.borrow().frames.last().is_some_and(|frame|
+        frame.tag==id.tag && frame.token==id.token && !frame.worker.closed.load(Ordering::Relaxed)))
 }
 
 enum Bucket { Dependency, Terrain, Lookup }
