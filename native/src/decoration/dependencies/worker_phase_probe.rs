@@ -6,6 +6,7 @@ use std::{cell::RefCell, time::Instant};
 mod joins;
 mod cpu;
 mod anchor_cpu;
+mod request_batch;
 pub(super) use anchor_cpu::Span as AnchorCpu;
 pub(super) use anchor_cpu::column_load::Span as ColumnLoadCpu;
 pub(super) mod work;
@@ -614,6 +615,12 @@ fn worker_phase_inventory_with_column_load(aggregate: bool, anchor_cpu: bool, co
     let profiles = PathBuf::from(std::env::var("RETINA_TERRAIN_REUSE_PROFILES").unwrap());
     let output = PathBuf::from(std::env::var("RETINA_WORKER_PHASE_OUTPUT").unwrap());
     fs::create_dir(&output).unwrap();
+    let callers = std::env::var("RETINA_WORKER_PHASE_REQUESTS")
+        .map(|v| v.parse::<usize>().expect("RETINA_WORKER_PHASE_REQUESTS must be an integer"))
+        .unwrap_or(1);
+    assert!([1, 2, 4, 8].contains(&callers), "supported request counts are 1, 2, 4, 8");
+    let order = std::env::var("RETINA_WORKER_PHASE_REQUEST_ORDER").unwrap_or_else(|_| "forward".into());
+    assert!(matches!(order.as_str(), "forward" | "reverse"), "unknown request order");
     let mut cases = Vec::new();
     for (name, file, seed) in [
         ("nether-main", "nether.json", 123456789),
@@ -667,9 +674,17 @@ fn worker_phase_inventory_with_column_load(aggregate: bool, anchor_cpu: bool, co
             .collect();
         let installed = if anchor_cpu { Installed::with_column_load(aggregate, true, column_load_salt) }
             else if aggregate { Installed::with_aggregate(true) } else { Installed::start() };
-        let regions: Vec<_> = (0..20)
-            .map(|i| generate(&i.to_string(), -2 + i % 5, -2 + i / 5))
-            .collect();
+        // Scoped callers share the engine, while Rayon keeps its existing
+        // assembly-worker count. All callbacks join before inspecting roots.
+        let regions: Vec<_> = request_batch::run(20, callers, order == "reverse", |i| {
+            generate(&i.to_string(), -2 + (i % 5) as i32, -2 + (i / 5) as i32)
+        }).into_iter().map(|sample| {
+            let mut region = sample.value;
+            region["request"] = json!({"index":sample.index,
+                "queue_ns":sample.queue_ns,"callback_ns":sample.callback_ns,
+                "completion_ns":sample.completion_ns});
+            region
+        }).collect();
         drop(engine);
         let roots = std::mem::take(&mut *installed.0.roots.lock().unwrap());
         let mut regions_seen = BTreeMap::<(i64, i64), Vec<&Value>>::new();
@@ -765,6 +780,8 @@ fn worker_phase_inventory_with_column_load(aggregate: bool, anchor_cpu: bool, co
             "capture_mode":if aggregate { "aggregate" } else { "detailed" },
             "aggregate_scope":"When capture_mode is aggregate, all per-API timed event collection is disabled and explicitly marked unavailable. Task-local work counters merge once on task exit; detailed event buffers stay empty. Root phase and dispatched-task CPU clocks remain enabled, and include counter overhead. Work rows identify demanded earlier roots; they are not exclusive CPU attribution. Empty scratch counters may retain at most one allocation per physical thread and no generation owners.",
             "cases":cases,"timing_acceptance":false,"anchor_cpu_enabled":anchor_cpu,"column_load_salt":column_load_salt,
+            "concurrent_requests":callers,"request_order":order,
+            "request_scope":"Twenty requests are available at one batch start after five serial warmups. At most concurrent_requests scoped callers enter complete generation on the same engine; native assembly workers remain independently configured. Queue is batch start to callback entry; callback includes original generation, request setup and report snapshots; completion equals queue plus callback. Existing instrumented_ms retains its narrower native-generation interval. This is not Java/portal admission. Root phases and work group by actual region coordinates. Concurrent root process-CPU intervals overlap and include other requests: never sum or assign them as exclusive region CPU or wall shares. All caller threads join, including on panic, before observer/engine disposal; results retain submission order despite arbitrary completion order.",
         })).unwrap()).unwrap();
     }
     assert!(!cases.is_empty(), "no requested worker-phase case was generated");

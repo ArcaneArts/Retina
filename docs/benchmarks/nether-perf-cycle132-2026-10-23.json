@@ -1,0 +1,1205 @@
+{
+  "cycle": 132,
+  "purpose": "Add test-only1/2/4/8request support to existing root phase/work/anchor CPU fixture. Production library unchanged.",
+  "source": {
+    "revision": "b5904bb786dda9a8d84895ee5878efc7dda8ec31",
+    "native_tree": "bfa4957348af4f565ce94bd951e4ad7b871f29ed",
+    "status": ""
+  },
+  "preceding_main": {
+    "revision": "fa63bc912e5ca96b07f33e7edf27133e749ac403",
+    "native_tree": "574d4f3b3a5a9d123c5afda527a8e767d0313936",
+    "status": ""
+  },
+  "provenance": {
+    "revision": "b5904bb786dda9a8d84895ee5878efc7dda8ec31",
+    "native_tree": "bfa4957348af4f565ce94bd951e4ad7b871f29ed",
+    "status": "",
+    "library_sha256": "daa63b89e1c64bf302bebcea7935621b7cec1a04153e7ad230842dad435d7b26",
+    "test_executable_sha256": "4c21da4a2446a77e70332522db437c89b25c2ed7c2fc690c479d2206f04ee1d1",
+    "native_test_result": [
+      "224",
+      "0",
+      "59"
+    ]
+  },
+  "ordinary_library_identical_to_main": true,
+  "validation": {
+    "native_tests_passed": 224,
+    "native_tests_ignored": 59,
+    "explicit_gpu_fixtures_passed": 5,
+    "complete_nbt_chunk_instances": 409600,
+    "candidate_instances": 307200,
+    "old_main_instances": 102400,
+    "reference_comparisons_per_instance": 2,
+    "serial_work_equivalence": {
+      "region_stage_records": 2560,
+      "changed_records": 0,
+      "differences": []
+    },
+    "focused_request_counts": [
+      1,
+      2,
+      4,
+      8
+    ],
+    "full_generation_request_counts": [
+      1,
+      8
+    ],
+    "all_measured_shader_status": 4,
+    "warmups_per_case": 5,
+    "measured_regions_per_case": 20,
+    "chunks_per_region": 1024
+  },
+  "timing_acceptance": false,
+  "ordinary_observations": [
+    {
+      "case": "nether-main-run0",
+      "median_ms": 956.3957289792597,
+      "p95_region_ms": 1324.482200318016,
+      "maximum_region_ms": 1350.2135830931365,
+      "total_ms": 19820.756416069344,
+      "chunks_per_second": 1033.260263639393,
+      "peak_rss_bytes": 2604056576,
+      "generation_peak_rss_bytes": 2604056576,
+      "measured_process_cpu": {
+        "scope": "Process CPU for the full measured batch; includes every native/Python thread, excludes warmups and later corpus comparisons. Not exclusive region/root CPU.",
+        "system_ms": 6083.512000000001,
+        "total_ms": 55246.744,
+        "user_ms": 49163.232
+      },
+      "measured_process_counters": {
+        "after": {
+          "available": true,
+          "flavor": 4,
+          "return_code": 0,
+          "size": 296,
+          "values": {
+            "ri_billed_energy": 392107,
+            "ri_billed_system_time": 107341,
+            "ri_child_elapsed_abstime": 0,
+            "ri_child_interrupt_wkups": 0,
+            "ri_child_pageins": 0,
+            "ri_child_pkg_idle_wkups": 0,
+            "ri_child_system_time": 0,
+            "ri_child_user_time": 0,
+            "ri_cpu_time_qos_background": 12892,
+            "ri_cpu_time_qos_default": 116621,
+            "ri_cpu_time_qos_legacy": 1665858534,
+            "ri_cpu_time_qos_maintenance": 0,
+            "ri_cpu_time_qos_user_initiated": 0,
+            "ri_cpu_time_qos_user_interactive": 0,
+            "ri_cpu_time_qos_utility": 6993,
+            "ri_cycles": 261310862790,
+            "ri_diskio_bytesread": 2281472,
+            "ri_diskio_byteswritten": 134705152,
+            "ri_instructions": 745292474655,
+            "ri_interrupt_wkups": 5407,
+            "ri_interval_max_phys_footprint": 1879410848,
+            "ri_lifetime_max_phys_footprint": 1879410848,
+            "ri_logical_writes": 143863816,
+            "ri_pageins": 4,
+            "ri_phys_footprint": 1277660280,
+            "ri_pkg_idle_wkups": 0,
+            "ri_proc_exit_abstime": 0,
+            "ri_proc_start_abstime": 41848288309140,
+            "ri_resident_size": 2449719296,
+            "ri_runnable_time": 2011031648,
+            "ri_serviced_energy": 0,
+            "ri_serviced_system_time": 0,
+            "ri_system_time": 182782600,
+            "ri_user_time": 1483196531,
+            "ri_wired_size": 0
+          }
+        },
+        "before": {
+          "available": true,
+          "flavor": 4,
+          "return_code": 0,
+          "size": 296,
+          "values": {
+            "ri_billed_energy": 392107,
+            "ri_billed_system_time": 107341,
+            "ri_child_elapsed_abstime": 0,
+            "ri_child_interrupt_wkups": 0,
+            "ri_child_pageins": 0,
+            "ri_child_pkg_idle_wkups": 0,
+            "ri_child_system_time": 0,
+            "ri_child_user_time": 0,
+            "ri_cpu_time_qos_background": 7632,
+            "ri_cpu_time_qos_default": 116621,
+            "ri_cpu_time_qos_legacy": 339943095,
+            "ri_cpu_time_qos_maintenance": 0,
+            "ri_cpu_time_qos_user_initiated": 0,
+            "ri_cpu_time_qos_user_interactive": 0,
+            "ri_cpu_time_qos_utility": 5226,
+            "ri_cycles": 53528981828,
+            "ri_diskio_bytesread": 53248,
+            "ri_diskio_byteswritten": 26492928,
+            "ri_instructions": 155797638643,
+            "ri_interrupt_wkups": 1334,
+            "ri_interval_max_phys_footprint": 1879410848,
+            "ri_lifetime_max_phys_footprint": 1879410848,
+            "ri_logical_writes": 27353096,
+            "ri_pageins": 3,
+            "ri_phys_footprint": 1330563568,
+            "ri_pkg_idle_wkups": 0,
+            "ri_proc_exit_abstime": 0,
+            "ri_proc_start_abstime": 41848288309140,
+            "ri_resident_size": 1559953408,
+            "ri_runnable_time": 415211321,
+            "ri_serviced_energy": 0,
+            "ri_serviced_system_time": 0,
+            "ri_system_time": 36777813,
+            "ri_user_time": 303278612,
+            "ri_wired_size": 0
+          }
+        },
+        "deltas": {
+          "ri_cycles": 207781880962,
+          "ri_diskio_bytesread": 2228224,
+          "ri_diskio_byteswritten": 108212224,
+          "ri_instructions": 589494836012,
+          "ri_pageins": 1
+        },
+        "instruction_delta_available": true,
+        "monotonic": true,
+        "scope": "Current process counters around the complete measured generation batch, all native/Python threads. Includes executor creation and join plus snapshot-boundary overhead. Excludes startup, warmups and later NBT comparison. Does not count GPU instructions or work in driver/helper processes. Instruction counts are CPU work observations, not wall-time attribution or performance acceptance."
+      },
+      "comparisons": [
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/nether-main-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        },
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle129/merged/normal-full/nether-main-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        }
+      ]
+    },
+    {
+      "case": "nether-second-seed-run0",
+      "median_ms": 1094.174771104008,
+      "p95_region_ms": 1357.2478956426494,
+      "maximum_region_ms": 1398.811582941562,
+      "total_ms": 20760.01837500371,
+      "chunks_per_second": 986.5116509077435,
+      "peak_rss_bytes": 2823290880,
+      "generation_peak_rss_bytes": 2823290880,
+      "measured_process_cpu": {
+        "scope": "Process CPU for the full measured batch; includes every native/Python thread, excludes warmups and later corpus comparisons. Not exclusive region/root CPU.",
+        "system_ms": 6237.437999999999,
+        "total_ms": 56284.777,
+        "user_ms": 50047.339
+      },
+      "measured_process_counters": {
+        "after": {
+          "available": true,
+          "flavor": 4,
+          "return_code": 0,
+          "size": 296,
+          "values": {
+            "ri_billed_energy": 277569,
+            "ri_billed_system_time": 92380,
+            "ri_child_elapsed_abstime": 0,
+            "ri_child_interrupt_wkups": 0,
+            "ri_child_pageins": 0,
+            "ri_child_pkg_idle_wkups": 0,
+            "ri_child_system_time": 0,
+            "ri_child_user_time": 0,
+            "ri_cpu_time_qos_background": 7653,
+            "ri_cpu_time_qos_default": 123386,
+            "ri_cpu_time_qos_legacy": 1685617788,
+            "ri_cpu_time_qos_maintenance": 0,
+            "ri_cpu_time_qos_user_initiated": 0,
+            "ri_cpu_time_qos_user_interactive": 0,
+            "ri_cpu_time_qos_utility": 7231,
+            "ri_cycles": 265109718818,
+            "ri_diskio_bytesread": 9408512,
+            "ri_diskio_byteswritten": 134963200,
+            "ri_instructions": 754723163911,
+            "ri_interrupt_wkups": 5909,
+            "ri_interval_max_phys_footprint": 1926826312,
+            "ri_lifetime_max_phys_footprint": 1926826312,
+            "ri_logical_writes": 145035272,
+            "ri_pageins": 0,
+            "ri_phys_footprint": 1271598416,
+            "ri_pkg_idle_wkups": 0,
+            "ri_proc_exit_abstime": 0,
+            "ri_proc_start_abstime": 41849277390384,
+            "ri_resident_size": 2691203072,
+            "ri_runnable_time": 1920006320,
+            "ri_serviced_energy": 0,
+            "ri_serviced_system_time": 0,
+            "ri_system_time": 186728415,
+            "ri_user_time": 1499010269,
+            "ri_wired_size": 0
+          }
+        },
+        "before": {
+          "available": true,
+          "flavor": 4,
+          "return_code": 0,
+          "size": 296,
+          "values": {
+            "ri_billed_energy": 277569,
+            "ri_billed_system_time": 92380,
+            "ri_child_elapsed_abstime": 0,
+            "ri_child_interrupt_wkups": 0,
+            "ri_child_pageins": 0,
+            "ri_child_pkg_idle_wkups": 0,
+            "ri_child_system_time": 0,
+            "ri_child_user_time": 0,
+            "ri_cpu_time_qos_background": 4664,
+            "ri_cpu_time_qos_default": 123386,
+            "ri_cpu_time_qos_legacy": 334787518,
+            "ri_cpu_time_qos_maintenance": 0,
+            "ri_cpu_time_qos_user_initiated": 0,
+            "ri_cpu_time_qos_user_interactive": 0,
+            "ri_cpu_time_qos_utility": 5555,
+            "ri_cycles": 52900200448,
+            "ri_diskio_bytesread": 385024,
+            "ri_diskio_byteswritten": 26443776,
+            "ri_instructions": 153255610406,
+            "ri_interrupt_wkups": 1549,
+            "ri_interval_max_phys_footprint": 1926826312,
+            "ri_lifetime_max_phys_footprint": 1926826312,
+            "ri_logical_writes": 29122568,
+            "ri_pageins": 0,
+            "ri_phys_footprint": 1313507944,
+            "ri_pkg_idle_wkups": 0,
+            "ri_proc_exit_abstime": 0,
+            "ri_proc_start_abstime": 41849277390384,
+            "ri_resident_size": 1597865984,
+            "ri_runnable_time": 374508827,
+            "ri_serviced_energy": 0,
+            "ri_serviced_system_time": 0,
+            "ri_system_time": 37029812,
+            "ri_user_time": 297873937,
+            "ri_wired_size": 0
+          }
+        },
+        "deltas": {
+          "ri_cycles": 212209518370,
+          "ri_diskio_bytesread": 9023488,
+          "ri_diskio_byteswritten": 108519424,
+          "ri_instructions": 601467553505,
+          "ri_pageins": 0
+        },
+        "instruction_delta_available": true,
+        "monotonic": true,
+        "scope": "Current process counters around the complete measured generation batch, all native/Python threads. Includes executor creation and join plus snapshot-boundary overhead. Excludes startup, warmups and later NBT comparison. Does not count GPU instructions or work in driver/helper processes. Instruction counts are CPU work observations, not wall-time attribution or performance acceptance."
+      },
+      "comparisons": [
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/nether-second-seed-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        },
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle129/merged/normal-full/nether-second-seed-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        }
+      ]
+    },
+    {
+      "case": "nether-custom-bounds-run0",
+      "median_ms": 694.8062709998339,
+      "p95_region_ms": 749.0307146916166,
+      "maximum_region_ms": 767.2011670656502,
+      "total_ms": 13839.80695786886,
+      "chunks_per_second": 1479.7894264237368,
+      "peak_rss_bytes": 2077179904,
+      "generation_peak_rss_bytes": 2077179904,
+      "measured_process_cpu": {
+        "scope": "Process CPU for the full measured batch; includes every native/Python thread, excludes warmups and later corpus comparisons. Not exclusive region/root CPU.",
+        "system_ms": 4643.369,
+        "total_ms": 43467.073,
+        "user_ms": 38823.704
+      },
+      "measured_process_counters": {
+        "after": {
+          "available": true,
+          "flavor": 4,
+          "return_code": 0,
+          "size": 296,
+          "values": {
+            "ri_billed_energy": 239110,
+            "ri_billed_system_time": 89403,
+            "ri_child_elapsed_abstime": 0,
+            "ri_child_interrupt_wkups": 0,
+            "ri_child_pageins": 0,
+            "ri_child_pkg_idle_wkups": 0,
+            "ri_child_system_time": 0,
+            "ri_child_user_time": 0,
+            "ri_cpu_time_qos_background": 10538,
+            "ri_cpu_time_qos_default": 119966,
+            "ri_cpu_time_qos_legacy": 1332344358,
+            "ri_cpu_time_qos_maintenance": 0,
+            "ri_cpu_time_qos_user_initiated": 0,
+            "ri_cpu_time_qos_user_interactive": 0,
+            "ri_cpu_time_qos_utility": 6537,
+            "ri_cycles": 208353066846,
+            "ri_diskio_bytesread": 11583488,
+            "ri_diskio_byteswritten": 140816384,
+            "ri_instructions": 599780964687,
+            "ri_interrupt_wkups": 2620,
+            "ri_interval_max_phys_footprint": 1572259784,
+            "ri_lifetime_max_phys_footprint": 1572259784,
+            "ri_logical_writes": 151339016,
+            "ri_pageins": 8,
+            "ri_phys_footprint": 1296763616,
+            "ri_pkg_idle_wkups": 0,
+            "ri_proc_exit_abstime": 0,
+            "ri_proc_start_abstime": 41850294429068,
+            "ri_resident_size": 2014527488,
+            "ri_runnable_time": 1542664660,
+            "ri_serviced_energy": 0,
+            "ri_serviced_system_time": 0,
+            "ri_system_time": 142141264,
+            "ri_user_time": 1190323857,
+            "ri_wired_size": 0
+          }
+        },
+        "before": {
+          "available": true,
+          "flavor": 4,
+          "return_code": 0,
+          "size": 296,
+          "values": {
+            "ri_billed_energy": 239110,
+            "ri_billed_system_time": 89403,
+            "ri_child_elapsed_abstime": 0,
+            "ri_child_interrupt_wkups": 0,
+            "ri_child_pageins": 0,
+            "ri_child_pkg_idle_wkups": 0,
+            "ri_child_system_time": 0,
+            "ri_child_user_time": 0,
+            "ri_cpu_time_qos_background": 4887,
+            "ri_cpu_time_qos_default": 119966,
+            "ri_cpu_time_qos_legacy": 289140603,
+            "ri_cpu_time_qos_maintenance": 0,
+            "ri_cpu_time_qos_user_initiated": 0,
+            "ri_cpu_time_qos_user_interactive": 0,
+            "ri_cpu_time_qos_utility": 5711,
+            "ri_cycles": 45468417246,
+            "ri_diskio_bytesread": 81920,
+            "ri_diskio_byteswritten": 27996160,
+            "ri_instructions": 134368121902,
+            "ri_interrupt_wkups": 696,
+            "ri_interval_max_phys_footprint": 1572259784,
+            "ri_lifetime_max_phys_footprint": 1572259784,
+            "ri_logical_writes": 29224968,
+            "ri_pageins": 7,
+            "ri_phys_footprint": 1339050312,
+            "ri_pkg_idle_wkups": 0,
+            "ri_proc_exit_abstime": 0,
+            "ri_proc_start_abstime": 41850294429068,
+            "ri_resident_size": 1391165440,
+            "ri_runnable_time": 323365437,
+            "ri_serviced_energy": 0,
+            "ri_serviced_system_time": 0,
+            "ri_system_time": 30700428,
+            "ri_user_time": 258554461,
+            "ri_wired_size": 0
+          }
+        },
+        "deltas": {
+          "ri_cycles": 162884649600,
+          "ri_diskio_bytesread": 11501568,
+          "ri_diskio_byteswritten": 112820224,
+          "ri_instructions": 465412842785,
+          "ri_pageins": 1
+        },
+        "instruction_delta_available": true,
+        "monotonic": true,
+        "scope": "Current process counters around the complete measured generation batch, all native/Python threads. Includes executor creation and join plus snapshot-boundary overhead. Excludes startup, warmups and later NBT comparison. Does not count GPU instructions or work in driver/helper processes. Instruction counts are CPU work observations, not wall-time attribution or performance acceptance."
+      },
+      "comparisons": [
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/nether-custom-bounds-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        },
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle129/merged/normal-full/nether-custom-bounds-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        }
+      ]
+    },
+    {
+      "case": "nether-direct-stem-run0",
+      "median_ms": 672.2205620026216,
+      "p95_region_ms": 778.5270312218927,
+      "maximum_region_ms": 788.7947498820722,
+      "total_ms": 13621.361083118245,
+      "chunks_per_second": 1503.5208210860858,
+      "peak_rss_bytes": 2119712768,
+      "generation_peak_rss_bytes": 2119712768,
+      "measured_process_cpu": {
+        "scope": "Process CPU for the full measured batch; includes every native/Python thread, excludes warmups and later corpus comparisons. Not exclusive region/root CPU.",
+        "system_ms": 4314.162,
+        "total_ms": 42038.753,
+        "user_ms": 37724.59099999999
+      },
+      "measured_process_counters": {
+        "after": {
+          "available": true,
+          "flavor": 4,
+          "return_code": 0,
+          "size": 296,
+          "values": {
+            "ri_billed_energy": 427732,
+            "ri_billed_system_time": 98237,
+            "ri_child_elapsed_abstime": 0,
+            "ri_child_interrupt_wkups": 0,
+            "ri_child_pageins": 0,
+            "ri_child_pkg_idle_wkups": 0,
+            "ri_child_system_time": 0,
+            "ri_child_user_time": 0,
+            "ri_cpu_time_qos_background": 10845,
+            "ri_cpu_time_qos_default": 134897,
+            "ri_cpu_time_qos_legacy": 1293181532,
+            "ri_cpu_time_qos_maintenance": 0,
+            "ri_cpu_time_qos_user_initiated": 0,
+            "ri_cpu_time_qos_user_interactive": 0,
+            "ri_cpu_time_qos_utility": 8617,
+            "ri_cycles": 201879872661,
+            "ri_diskio_bytesread": 25067520,
+            "ri_diskio_byteswritten": 137625600,
+            "ri_instructions": 588295569013,
+            "ri_interrupt_wkups": 2620,
+            "ri_interval_max_phys_footprint": 1587283792,
+            "ri_lifetime_max_phys_footprint": 1587283792,
+            "ri_logical_writes": 147234824,
+            "ri_pageins": 9,
+            "ri_phys_footprint": 1310231312,
+            "ri_pkg_idle_wkups": 0,
+            "ri_proc_exit_abstime": 0,
+            "ri_proc_start_abstime": 41851068363069,
+            "ri_resident_size": 2050179072,
+            "ri_runnable_time": 1517027905,
+            "ri_serviced_energy": 0,
+            "ri_serviced_system_time": 0,
+            "ri_system_time": 132049730,
+            "ri_user_time": 1161265245,
+            "ri_wired_size": 0
+          }
+        },
+        "before": {
+          "available": true,
+          "flavor": 4,
+          "return_code": 0,
+          "size": 296,
+          "values": {
+            "ri_billed_energy": 427732,
+            "ri_billed_system_time": 98237,
+            "ri_child_elapsed_abstime": 0,
+            "ri_child_interrupt_wkups": 0,
+            "ri_child_pageins": 0,
+            "ri_child_pkg_idle_wkups": 0,
+            "ri_child_system_time": 0,
+            "ri_child_user_time": 0,
+            "ri_cpu_time_qos_background": 4434,
+            "ri_cpu_time_qos_default": 134897,
+            "ri_cpu_time_qos_legacy": 284258551,
+            "ri_cpu_time_qos_maintenance": 0,
+            "ri_cpu_time_qos_user_initiated": 0,
+            "ri_cpu_time_qos_user_interactive": 0,
+            "ri_cpu_time_qos_utility": 7420,
+            "ri_cycles": 44550778879,
+            "ri_diskio_bytesread": 1085440,
+            "ri_diskio_byteswritten": 27353088,
+            "ri_instructions": 133264894543,
+            "ri_interrupt_wkups": 704,
+            "ri_interval_max_phys_footprint": 1587283792,
+            "ri_lifetime_max_phys_footprint": 1587283792,
+            "ri_logical_writes": 29442056,
+            "ri_pageins": 8,
+            "ri_phys_footprint": 1327974680,
+            "ri_pkg_idle_wkups": 0,
+            "ri_proc_exit_abstime": 0,
+            "ri_proc_start_abstime": 41851068363069,
+            "ri_resident_size": 1430519808,
+            "ri_runnable_time": 313809122,
+            "ri_serviced_energy": 0,
+            "ri_serviced_system_time": 0,
+            "ri_system_time": 28509773,
+            "ri_user_time": 255874613,
+            "ri_wired_size": 0
+          }
+        },
+        "deltas": {
+          "ri_cycles": 157329093782,
+          "ri_diskio_bytesread": 23982080,
+          "ri_diskio_byteswritten": 110272512,
+          "ri_instructions": 455030674470,
+          "ri_pageins": 1
+        },
+        "instruction_delta_available": true,
+        "monotonic": true,
+        "scope": "Current process counters around the complete measured generation batch, all native/Python threads. Includes executor creation and join plus snapshot-boundary overhead. Excludes startup, warmups and later NBT comparison. Does not count GPU instructions or work in driver/helper processes. Instruction counts are CPU work observations, not wall-time attribution or performance acceptance."
+      },
+      "comparisons": [
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/nether-direct-stem-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        },
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle129/merged/normal-full/nether-direct-stem-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        }
+      ]
+    },
+    {
+      "case": "overworld-run0",
+      "median_ms": 247.15956265572459,
+      "p95_region_ms": 338.8287954847332,
+      "maximum_region_ms": 780.4308328777552,
+      "total_ms": 5599.668208044022,
+      "chunks_per_second": 3657.3595504426708,
+      "peak_rss_bytes": 1568227328,
+      "generation_peak_rss_bytes": 1537327104,
+      "measured_process_cpu": {
+        "scope": "Process CPU for the full measured batch; includes every native/Python thread, excludes warmups and later corpus comparisons. Not exclusive region/root CPU.",
+        "system_ms": 2251.821,
+        "total_ms": 13211.629,
+        "user_ms": 10959.808
+      },
+      "measured_process_counters": {
+        "after": {
+          "available": true,
+          "flavor": 4,
+          "return_code": 0,
+          "size": 296,
+          "values": {
+            "ri_billed_energy": 300723,
+            "ri_billed_system_time": 91586,
+            "ri_child_elapsed_abstime": 0,
+            "ri_child_interrupt_wkups": 0,
+            "ri_child_pageins": 0,
+            "ri_child_pkg_idle_wkups": 0,
+            "ri_child_system_time": 0,
+            "ri_child_user_time": 0,
+            "ri_cpu_time_qos_background": 5130,
+            "ri_cpu_time_qos_default": 126431,
+            "ri_cpu_time_qos_legacy": 443656821,
+            "ri_cpu_time_qos_maintenance": 0,
+            "ri_cpu_time_qos_user_initiated": 0,
+            "ri_cpu_time_qos_user_interactive": 0,
+            "ri_cpu_time_qos_utility": 5543,
+            "ri_cycles": 69128724599,
+            "ri_diskio_bytesread": 100585472,
+            "ri_diskio_byteswritten": 218005504,
+            "ri_instructions": 250334839394,
+            "ri_interrupt_wkups": 7169,
+            "ri_interval_max_phys_footprint": 3407415768,
+            "ri_lifetime_max_phys_footprint": 3407415768,
+            "ri_logical_writes": 242618376,
+            "ri_pageins": 8,
+            "ri_phys_footprint": 3335588264,
+            "ri_pkg_idle_wkups": 0,
+            "ri_proc_exit_abstime": 0,
+            "ri_proc_start_abstime": 41851824994689,
+            "ri_resident_size": 1517338624,
+            "ri_runnable_time": 530625024,
+            "ri_serviced_energy": 0,
+            "ri_serviced_system_time": 0,
+            "ri_system_time": 71439503,
+            "ri_user_time": 372335488,
+            "ri_wired_size": 0
+          }
+        },
+        "before": {
+          "available": true,
+          "flavor": 4,
+          "return_code": 0,
+          "size": 296,
+          "values": {
+            "ri_billed_energy": 300723,
+            "ri_billed_system_time": 91586,
+            "ri_child_elapsed_abstime": 0,
+            "ri_child_interrupt_wkups": 0,
+            "ri_child_pageins": 0,
+            "ri_child_pkg_idle_wkups": 0,
+            "ri_child_system_time": 0,
+            "ri_child_user_time": 0,
+            "ri_cpu_time_qos_background": 5130,
+            "ri_cpu_time_qos_default": 126431,
+            "ri_cpu_time_qos_legacy": 126577915,
+            "ri_cpu_time_qos_maintenance": 0,
+            "ri_cpu_time_qos_user_initiated": 0,
+            "ri_cpu_time_qos_user_interactive": 0,
+            "ri_cpu_time_qos_utility": 4739,
+            "ri_cycles": 20120113260,
+            "ri_diskio_bytesread": 11526144,
+            "ri_diskio_byteswritten": 44171264,
+            "ri_instructions": 79872993894,
+            "ri_interrupt_wkups": 2438,
+            "ri_interval_max_phys_footprint": 3354331416,
+            "ri_lifetime_max_phys_footprint": 3354331416,
+            "ri_logical_writes": 47276040,
+            "ri_pageins": 7,
+            "ri_phys_footprint": 3308128536,
+            "ri_pkg_idle_wkups": 0,
+            "ri_proc_exit_abstime": 0,
+            "ri_proc_start_abstime": 41851824994689,
+            "ri_resident_size": 1270808576,
+            "ri_runnable_time": 138601535,
+            "ri_serviced_energy": 0,
+            "ri_serviced_system_time": 0,
+            "ri_system_time": 17395592,
+            "ri_user_time": 109299689,
+            "ri_wired_size": 0
+          }
+        },
+        "deltas": {
+          "ri_cycles": 49008611339,
+          "ri_diskio_bytesread": 89059328,
+          "ri_diskio_byteswritten": 173834240,
+          "ri_instructions": 170461845500,
+          "ri_pageins": 1
+        },
+        "instruction_delta_available": true,
+        "monotonic": true,
+        "scope": "Current process counters around the complete measured generation batch, all native/Python threads. Includes executor creation and join plus snapshot-boundary overhead. Excludes startup, warmups and later NBT comparison. Does not count GPU instructions or work in driver/helper processes. Instruction counts are CPU work observations, not wall-time attribution or performance acceptance."
+      },
+      "comparisons": [
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/overworld-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        },
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle129/merged/normal-full/overworld-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        }
+      ]
+    }
+  ],
+  "diagnostic_phase_observations": [
+    {
+      "variant": "old-serial",
+      "case": "nether-main",
+      "concurrent_requests": 1,
+      "request_order": "forward",
+      "provisional_instrumented_latency_ms": {
+        "median": 825.1626455,
+        "p95": 1181.8518857,
+        "max": 1359.456166
+      },
+      "last_callback_completion_ns": null
+    },
+    {
+      "variant": "old-serial",
+      "case": "nether-second-seed",
+      "concurrent_requests": 1,
+      "request_order": "forward",
+      "provisional_instrumented_latency_ms": {
+        "median": 995.2658125,
+        "p95": 1412.0064708000002,
+        "max": 1628.290041
+      },
+      "last_callback_completion_ns": null
+    },
+    {
+      "variant": "old-serial",
+      "case": "nether-custom-bounds",
+      "concurrent_requests": 1,
+      "request_order": "forward",
+      "provisional_instrumented_latency_ms": {
+        "median": 927.1624999999999,
+        "p95": 1166.8508952000007,
+        "max": 2065.106375
+      },
+      "last_callback_completion_ns": null
+    },
+    {
+      "variant": "old-serial",
+      "case": "nether-direct-stem",
+      "concurrent_requests": 1,
+      "request_order": "forward",
+      "provisional_instrumented_latency_ms": {
+        "median": 816.4029380000001,
+        "p95": 1069.0304250000004,
+        "max": 1228.3321250000001
+      },
+      "last_callback_completion_ns": null
+    },
+    {
+      "variant": "old-serial",
+      "case": "overworld",
+      "concurrent_requests": 1,
+      "request_order": "forward",
+      "provisional_instrumented_latency_ms": {
+        "median": 412.717813,
+        "p95": 519.74307115,
+        "max": 588.79675
+      },
+      "last_callback_completion_ns": null
+    },
+    {
+      "variant": "new-serial",
+      "case": "nether-main",
+      "concurrent_requests": 1,
+      "request_order": "forward",
+      "provisional_instrumented_latency_ms": {
+        "median": 1090.509875,
+        "p95": 1539.0254464500001,
+        "max": 1549.026333
+      },
+      "last_callback_completion_ns": 21117916166
+    },
+    {
+      "variant": "new-serial",
+      "case": "nether-second-seed",
+      "concurrent_requests": 1,
+      "request_order": "forward",
+      "provisional_instrumented_latency_ms": {
+        "median": 954.6361665,
+        "p95": 1362.8144997,
+        "max": 1400.779667
+      },
+      "last_callback_completion_ns": 18561179125
+    },
+    {
+      "variant": "new-serial",
+      "case": "nether-custom-bounds",
+      "concurrent_requests": 1,
+      "request_order": "forward",
+      "provisional_instrumented_latency_ms": {
+        "median": 713.6930625,
+        "p95": 1380.05254345,
+        "max": 1585.7410419999999
+      },
+      "last_callback_completion_ns": 16488879709
+    },
+    {
+      "variant": "new-serial",
+      "case": "nether-direct-stem",
+      "concurrent_requests": 1,
+      "request_order": "forward",
+      "provisional_instrumented_latency_ms": {
+        "median": 759.581229,
+        "p95": 1352.41382945,
+        "max": 1536.7762910000001
+      },
+      "last_callback_completion_ns": 17155223542
+    },
+    {
+      "variant": "new-serial",
+      "case": "overworld",
+      "concurrent_requests": 1,
+      "request_order": "forward",
+      "provisional_instrumented_latency_ms": {
+        "median": 489.30887499999994,
+        "p95": 969.7739972500001,
+        "max": 1098.450666
+      },
+      "last_callback_completion_ns": 11433651708
+    },
+    {
+      "variant": "new-eight",
+      "case": "nether-main",
+      "concurrent_requests": 8,
+      "request_order": "reverse",
+      "provisional_instrumented_latency_ms": {
+        "median": 4327.6598335,
+        "p95": 7370.148645200004,
+        "max": 11243.443125
+      },
+      "last_callback_completion_ns": 13325429459,
+      "slowest_region": {
+        "name": "17",
+        "x": 0,
+        "z": 1,
+        "instrumented_ms": 11243.443125,
+        "request": {
+          "callback_ns": 11243447583,
+          "completion_ns": 11243512750,
+          "index": 17,
+          "queue_ns": 65167
+        },
+        "phase_wall_ns": {
+          "queue": 288807797,
+          "enumeration": 270122,
+          "evaluation": 10391048337,
+          "publication": 48889246,
+          "return_handoff": 19018917
+        },
+        "observer_summary_wall_ns": 21600957,
+        "outside_recorded_root_intervals_ns": 473807749.0
+      }
+    },
+    {
+      "variant": "new-eight",
+      "case": "nether-second-seed",
+      "concurrent_requests": 8,
+      "request_order": "reverse",
+      "provisional_instrumented_latency_ms": {
+        "median": 6090.6391465,
+        "p95": 11652.6735521,
+        "max": 11818.587292
+      },
+      "last_callback_completion_ns": 17281601000,
+      "slowest_region": {
+        "name": "12",
+        "x": 0,
+        "z": 0,
+        "instrumented_ms": 11818.587292,
+        "request": {
+          "callback_ns": 11818592917,
+          "completion_ns": 11818710958,
+          "index": 12,
+          "queue_ns": 118041
+        },
+        "phase_wall_ns": {
+          "queue": 875821087,
+          "enumeration": 306667,
+          "evaluation": 10079141918,
+          "publication": 53710835,
+          "return_handoff": 11949498
+        },
+        "observer_summary_wall_ns": 26550090,
+        "outside_recorded_root_intervals_ns": 771107197.0
+      }
+    },
+    {
+      "variant": "new-eight",
+      "case": "nether-custom-bounds",
+      "concurrent_requests": 8,
+      "request_order": "reverse",
+      "provisional_instrumented_latency_ms": {
+        "median": 3808.2078545,
+        "p95": 9582.72092465,
+        "max": 10285.423416
+      },
+      "last_callback_completion_ns": 12045315333,
+      "slowest_region": {
+        "name": "13",
+        "x": 1,
+        "z": 0,
+        "instrumented_ms": 10285.423416,
+        "request": {
+          "callback_ns": 10285431000,
+          "completion_ns": 10285542958,
+          "index": 13,
+          "queue_ns": 111958
+        },
+        "phase_wall_ns": {
+          "queue": 367077251,
+          "enumeration": 287833,
+          "evaluation": 9299921794,
+          "publication": 84858457,
+          "return_handoff": 28852960
+        },
+        "observer_summary_wall_ns": 18168917,
+        "outside_recorded_root_intervals_ns": 486256204.0
+      }
+    },
+    {
+      "variant": "new-eight",
+      "case": "nether-direct-stem",
+      "concurrent_requests": 8,
+      "request_order": "reverse",
+      "provisional_instrumented_latency_ms": {
+        "median": 3514.435875,
+        "p95": 6027.901483650002,
+        "max": 8944.53575
+      },
+      "last_callback_completion_ns": 10757527208,
+      "slowest_region": {
+        "name": "19",
+        "x": 2,
+        "z": 1,
+        "instrumented_ms": 8944.53575,
+        "request": {
+          "callback_ns": 8944543375,
+          "completion_ns": 8944590792,
+          "index": 19,
+          "queue_ns": 47417
+        },
+        "phase_wall_ns": {
+          "queue": 334219666,
+          "enumeration": 200418,
+          "evaluation": 7969822957,
+          "publication": 55938292,
+          "return_handoff": 11727291
+        },
+        "observer_summary_wall_ns": 15365876,
+        "outside_recorded_root_intervals_ns": 557261250.0
+      }
+    },
+    {
+      "variant": "new-eight",
+      "case": "overworld",
+      "concurrent_requests": 8,
+      "request_order": "reverse",
+      "provisional_instrumented_latency_ms": {
+        "median": 1921.9771460000002,
+        "p95": 5489.95469025,
+        "max": 5589.1509590000005
+      },
+      "last_callback_completion_ns": 5589275708,
+      "slowest_region": {
+        "name": "14",
+        "x": 2,
+        "z": 0,
+        "instrumented_ms": 5589.1509590000005,
+        "request": {
+          "callback_ns": 5589160083,
+          "completion_ns": 5589275708,
+          "index": 14,
+          "queue_ns": 115625
+        },
+        "phase_wall_ns": {
+          "queue": 0,
+          "enumeration": 0,
+          "evaluation": 0,
+          "publication": 0,
+          "return_handoff": 0
+        },
+        "observer_summary_wall_ns": 0,
+        "outside_recorded_root_intervals_ns": 5589150959.000001
+      }
+    }
+  ],
+  "post_task_span_observations": {
+    "scope": "Diagnostic evaluation_end minus last recorded task span end. Task end is stamped before event push/context cleanup and Rayon join completion. Includes that cleanup, join scheduling and preemption; not a pure scheduler-delay or CPU measurement. These sequential root gaps may be summed within one region, never across concurrent regions as batch wall time.",
+    "rows": [
+      {
+        "variant": "old-serial",
+        "case": "nether-main",
+        "post_last_task_span_ms_per_region": {
+          "median": 3.8377299999999996,
+          "maximum": 20.946876
+        },
+        "largest_gaps": []
+      },
+      {
+        "variant": "old-serial",
+        "case": "nether-second-seed",
+        "post_last_task_span_ms_per_region": {
+          "median": 70.3933955,
+          "maximum": 160.746786
+        },
+        "largest_gaps": []
+      },
+      {
+        "variant": "old-serial",
+        "case": "nether-custom-bounds",
+        "post_last_task_span_ms_per_region": {
+          "median": 49.113689,
+          "maximum": 187.329459
+        },
+        "largest_gaps": []
+      },
+      {
+        "variant": "old-serial",
+        "case": "nether-direct-stem",
+        "post_last_task_span_ms_per_region": {
+          "median": 52.879497,
+          "maximum": 133.703623
+        },
+        "largest_gaps": []
+      },
+      {
+        "variant": "old-serial",
+        "case": "overworld",
+        "post_last_task_span_ms_per_region": null,
+        "largest_gaps": []
+      },
+      {
+        "variant": "new-serial",
+        "case": "nether-main",
+        "post_last_task_span_ms_per_region": {
+          "median": 86.301668,
+          "maximum": 293.731538
+        },
+        "largest_gaps": []
+      },
+      {
+        "variant": "new-serial",
+        "case": "nether-second-seed",
+        "post_last_task_span_ms_per_region": {
+          "median": 24.492936,
+          "maximum": 110.772375
+        },
+        "largest_gaps": []
+      },
+      {
+        "variant": "new-serial",
+        "case": "nether-custom-bounds",
+        "post_last_task_span_ms_per_region": {
+          "median": 43.9205615,
+          "maximum": 107.680377
+        },
+        "largest_gaps": []
+      },
+      {
+        "variant": "new-serial",
+        "case": "nether-direct-stem",
+        "post_last_task_span_ms_per_region": {
+          "median": 46.8023965,
+          "maximum": 177.744082
+        },
+        "largest_gaps": []
+      },
+      {
+        "variant": "new-serial",
+        "case": "overworld",
+        "post_last_task_span_ms_per_region": null,
+        "largest_gaps": []
+      },
+      {
+        "variant": "new-eight",
+        "case": "nether-main",
+        "post_last_task_span_ms_per_region": {
+          "median": 2434.3629765,
+          "maximum": 9504.400837
+        },
+        "largest_gaps": [
+          {
+            "root": 19,
+            "source": [
+              "minecraft:ore_magma"
+            ],
+            "chunk_x": 0,
+            "chunk_z": 32,
+            "evaluation_ms": 2615.752792,
+            "last_task_span_end_after_evaluation_begin_ms": 15.272167,
+            "post_last_task_span_ms": 2600.480625,
+            "anchor_own_cpu_ms": 77.783399
+          }
+        ]
+      },
+      {
+        "variant": "new-eight",
+        "case": "nether-second-seed",
+        "post_last_task_span_ms_per_region": {
+          "median": 3327.9534985,
+          "maximum": 8888.918252
+        },
+        "largest_gaps": [
+          {
+            "root": 0,
+            "source": [
+              "minecraft:basalt_pillar"
+            ],
+            "chunk_x": -32,
+            "chunk_z": 32,
+            "evaluation_ms": 4919.716291,
+            "last_task_span_end_after_evaluation_begin_ms": 260.221916,
+            "post_last_task_span_ms": 4659.494375,
+            "anchor_own_cpu_ms": 20.728677
+          }
+        ]
+      },
+      {
+        "variant": "new-eight",
+        "case": "nether-custom-bounds",
+        "post_last_task_span_ms_per_region": {
+          "median": 2071.551334,
+          "maximum": 8306.61271
+        },
+        "largest_gaps": [
+          {
+            "root": 17,
+            "source": [
+              "minecraft:brown_mushroom_normal"
+            ],
+            "chunk_x": 32,
+            "chunk_z": 0,
+            "evaluation_ms": 5870.297042,
+            "last_task_span_end_after_evaluation_begin_ms": 9.0865,
+            "post_last_task_span_ms": 5861.210542,
+            "anchor_own_cpu_ms": 11.859467
+          }
+        ]
+      },
+      {
+        "variant": "new-eight",
+        "case": "nether-direct-stem",
+        "post_last_task_span_ms_per_region": {
+          "median": 1958.0138954999998,
+          "maximum": 7254.363332
+        },
+        "largest_gaps": [
+          {
+            "root": 9,
+            "source": [
+              "minecraft:spring_closed"
+            ],
+            "chunk_x": 64,
+            "chunk_z": 32,
+            "evaluation_ms": 4733.767791,
+            "last_task_span_end_after_evaluation_begin_ms": 4.468583,
+            "post_last_task_span_ms": 4729.299208,
+            "anchor_own_cpu_ms": 44.764143
+          }
+        ]
+      },
+      {
+        "variant": "new-eight",
+        "case": "overworld",
+        "post_last_task_span_ms_per_region": null,
+        "largest_gaps": []
+      }
+    ]
+  },
+  "recovery": {
+    "evidence_directory": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle132",
+    "original_library": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference/libretina_worldgen.dylib",
+    "preceding_main_library": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle129/merged/normal.dylib",
+    "source_worktree": "/tmp/retina-nether-concurrent-phase-fixture",
+    "source_branch": "codex/nether-concurrent-phase-fixture",
+    "commands": [
+      "python3 /Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle132/proof.py",
+      "RETINA_REGION_THREADS=16 RETINA_GPU_LIGHTING=1 RETINA_LIGHTING_DENSE=0 RETINA_WORKER_PHASE_REQUESTS=8 RETINA_WORKER_PHASE_REQUEST_ORDER=reverse RETINA_TERRAIN_REUSE_PROFILES=/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/profiles RETINA_WORKER_PHASE_OUTPUT=<fresh-output> /Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle132/native-test-executable exact_anchor_cpu_inventory --ignored --nocapture --test-threads=1"
+    ],
+    "support_sha256": {
+      "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle132/proof.py": "da84a5eaa89f959b61633022e5ff3a741e70818eec3dcb24c1d7a39a3192e89b",
+      "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle132/inventory-validate.py": "a05b6cece851d8d37eb1ee25619c3e5115bf2b361fc9765cd6c48af7e1a0553f",
+      "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle132/analyze.py": "152edd7da8f959a5a12c11ea7f94309ccf85101cbbef01bdf856e3142105b6a6",
+      "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle132/manifest.json": "8088d16cb9a33202dd7ee361d27aaf5bccaabb586ad03a4c3dcd085e387932d8",
+      "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle132/harness/benchmark_support.py": "1b314925506bcac223399ed90d7bebdf5becf8b2ff1432853ca01a7f4ced729d",
+      "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle132/harness/native-region-benchmark.py": "fa99c32bd101b468874ebf21784b710a0313fc1c2d7c510f224490b75e40857a",
+      "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle132/harness/nether-performance-suite.py": "ee3d108a122ab4271ef57c85309bdf4b8c2d0afc6ca3e776e76917208fd7089e",
+      "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle132/harness/process_counters.py": "078117c2423c1843dc82d3eb2ea9c43e32e05d8087912ef628b61ae083e5bbd9",
+      "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/profiles/custom.json": "dd1437839e09a35c512cad186d60497f9ab7f12d8881edf98b5d1db56278adb8",
+      "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/profiles/direct-stem.json": "dd1437839e09a35c512cad186d60497f9ab7f12d8881edf98b5d1db56278adb8",
+      "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/profiles/manifest.json": "4d19b5ecfbed28c8af45550fa1ea851983724c0d813d6c53b8a5fb7cccf90e8e",
+      "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/profiles/nether.json": "0cf913a69f3faceb1c8719fb238dbd90961586262af4cd2cfe0c0fd62953a2ff",
+      "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/profiles/overworld.json": "72b80f1d8d799547726a1cefe1357c5c8311ed8b3736403a83c89879e4ee935b"
+    },
+    "reference_sha256": {
+      "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle129/merged/normal.dylib": "daa63b89e1c64bf302bebcea7935621b7cec1a04153e7ad230842dad435d7b26",
+      "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle129/native-test-executable": "2a38b42ad0e63bf00c2f7daa0ebd135ad12064d528b21b3748194cca9c88765a",
+      "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference/libretina_worldgen.dylib": "bafc696984f3f0b66bf06163f516d5379c12283b8a65cfad57048cc70abee31c"
+    },
+    "raw_reports": {
+      "receipt.json": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle132/receipt.json",
+      "analysis.json": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle132/analysis.json",
+      "post-task-span-analysis.json": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle132/post-task-span-analysis.json",
+      "terminal.json": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle132/terminal.json"
+    }
+  },
+  "limitations": [
+    "Timing confirmation deferred under observed host activity. No production speedup or no-regression timing acceptance.",
+    "Concurrent process CPU intervals overlap. Never sum them as exclusive region costs or sum concurrent region durations as batch wall time.",
+    "Queue/completion describe a native fixture, not Java admission or portal latency. Callback includes setup and report snapshots. Last callback completion excludes final joins/report sorting/engine disposal and is not full batch throughput.",
+    "Task span ends before observer event insertion/context cleanup and Rayon join completion. Post-last-task span gaps include cleanup, scheduling and preemption; they are not pure CPU, kernel wait, or proven root-stealing cost.",
+    "Same-thread serial control has identical work counts; wall/CPU variation does not estimate observer overhead without repeated uncontended pairs.",
+    "MCA metadata/compression bytes are excluded; decompressed complete NBT and membership are exact. Repeated coordinates are not unique-world coverage.",
+    "C116 held composition uses different production bytes and requires separate attribution with this fixture.",
+    "Actual merged rebuild/full-corpus validation follows PR merge; broader subsecond goal remains open."
+  ]
+}

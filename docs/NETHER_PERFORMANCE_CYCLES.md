@@ -3045,3 +3045,52 @@ No production optimization is included. See
 sizes, CPU observations, exact provenance and recovery commands. Actual merged
 rebuild/full-corpus proof follows. The broader performance goal remains active;
 timing confirmation remains deferred.
+
+
+## Cycle 132 — concurrent root-phase fixture
+
+C130's eight-request runs left long request tails inside native assembly.
+Extend the existing test-only phase/work/anchor-CPU fixture with
+`RETINA_WORKER_PHASE_REQUESTS=1|2|4|8` and
+`RETINA_WORKER_PHASE_REQUEST_ORDER=forward|reverse`. Defaults preserve the
+original serial caller thread and forward order. Five serial warmups precede
+twenty measured requests sharing one engine. Scoped callers join on success
+and panic; output records retain submission order. Assembly workers remain
+independently configured at 16. Unit fixtures cover every count/order, exactly-once
+execution, active-call bounds, serial thread identity, and joined failure cleanup.
+
+Each request records batch-start-to-callback queue time, callback duration and
+completion. These are native fixture clocks, not Java or portal admission.
+Callback duration includes setup/snapshots; existing `instrumented_ms` keeps its
+native-generation scope. Root phases group by actual region coordinates.
+Concurrent process-CPU intervals overlap and cannot be summed as exclusive
+costs. Last callback completion excludes join/report sorting/engine disposal;
+it is not complete-batch throughput.
+
+Validation passes **224 native tests** and **five explicit GPU fixtures**.
+Normal generation, old-main serial, new serial and new eight-request reverse
+inventories compare **409,600 measured chunk instances** against both original
+and preceding actual merged-main complete decompressed NBT/membership. All
+measured regions are shader-ready, lit, serialized, compressed and published.
+All **2,560 serial region/stage work records** retain identical work totals,
+demanded-root rows and actual anchor counts. The full ordinary release library
+is byte-identical to main `fa63bc9`, SHA256
+`daa63b89e1c64bf302bebcea7935621b7cec1a04153e7ad230842dad435d7b26`.
+
+Concurrent phase detail exposes a useful next target. Across the four Nether
+cases, the median per-region sum from each last recorded task-span end to its
+root evaluation return is **1.96–3.33 seconds**. One custom-profile mushroom
+stage records its last task span at **9.09 ms**, but evaluation returns at
+**5,870.30 ms**. The task span ends before observer event/context cleanup and
+the parallel join, so this gap includes cleanup, scheduling and preemption;
+it is not a pure scheduler-delay measurement. The request's stage coordinator
+can execute another root while joining its own parallel work. Externally
+coordinated scoped anchor batches are a distinct hypothesis to test, preserving
+bounded workers and all root/order/failure barriers. No scheduler change is
+included or selected here, and held C116 bytes need their own attribution.
+
+Timings remain provisional under host activity; serial controls also vary.
+No speedup or timing no-regression claim follows from these diagnostic runs.
+See `docs/benchmarks/nether-perf-cycle132-2026-10-23.json` for full scope, raw compact observations,
+provenance and recovery commands. Actual merged rebuild/full-corpus proof follows.
+The broader subsecond and concurrency acceptance goal remains open.
