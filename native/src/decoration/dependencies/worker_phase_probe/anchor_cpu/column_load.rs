@@ -2,6 +2,8 @@
 //! calls. Fold recursive calls in the same anchor; subtract child anchor CPU.
 //! The ratio uses the SAME selected anchors as its denominator, not all anchors.
 use super::*;
+mod paths;
+pub(in crate::decoration::dependencies) use paths::Path;
 #[cfg(test)]
 mod tests;
 pub(super) const SCOPE: &str = "Deterministic 1/64 sample of executed (root,x,z) anchor keys. Every outermost Planner.column call within each selected anchor is measured, including direct material-mask and earlier-height queries. Recursive column calls in the same anchor fold into that outer span without extra clocks or duplicate CPU. A nested selected anchor opens its own span; its inclusive anchor CPU is subtracted from the parent. View cache hits, cache publication and scalar/derived-mask reads after the planner call are outside these spans. The planner call can reuse a ready state; it is not necessarily a column initializer. Load own CPU subtracts direct child anchor intervals, including children in reentrant task contexts. Denominator is own CPU of these same selected anchors, including empty/ineligible initializers. Ratios describe the sampled anchors only, not all process CPU, all anchors or elapsed time. Observer work remains included. Different salts assess spatial sample sensitivity; no per-load event history or generation owners are retained.";
@@ -20,6 +22,7 @@ pub(super) struct Totals {
     sampled_anchors: u64, calls: u64, finished: u64, panicked_calls: u64,
     invalid_samples: u64, unavailable_samples: u64, overflow: bool,
     anchor_own: u64, own: u64, inclusive: u64,
+    paths: paths::Totals,
 }
 impl Totals {
     pub(super) fn add(&mut self, other: &Self) {
@@ -32,12 +35,15 @@ impl Totals {
         sum!(sampled_anchors, calls, finished, panicked_calls, invalid_samples,
             unavailable_samples, anchor_own, own, inclusive);
         self.overflow |= other.overflow;
+        self.overflow |= self.paths.add(&other.paths);
     }
     pub(super) fn json(&self) -> Value {
-        let valid = if self.overflow || self.invalid_samples > 0 || self.calls != self.finished {
+        let valid = if self.overflow || self.invalid_samples > 0 || self.calls != self.finished
+            || !self.paths.reconciles(self.finished, self.own, self.inclusive) {
             Some(false)
         } else if self.unavailable_samples > 0 { None } else { Some(true) };
-        json!({"sampled_anchors":self.sampled_anchors,"calls":self.calls,"finished":self.finished,
+        json!({"paths":self.paths.json(valid),"path_scope":paths::SCOPE,
+            "sampled_anchors":self.sampled_anchors,"calls":self.calls,"finished":self.finished,
             "panicked_calls":self.panicked_calls,"invalid_samples":self.invalid_samples,
             "unavailable_samples":self.unavailable_samples,"overflow":self.overflow,"valid":valid,
             "sampled_anchor_own_cpu_ns":(valid==Some(true)).then_some(self.anchor_own),
@@ -49,6 +55,12 @@ impl Totals {
 }
 pub(in crate::decoration::dependencies::worker_phase_probe) fn invalidate_json(value: &mut Value) {
     value["valid"] = json!(false);
+    if let Some(rows) = value["paths"].as_array_mut() {
+        for row in rows {
+            row["load_own_cpu_ns"] = Value::Null;
+            row["load_inclusive_cpu_ns"] = Value::Null;
+        }
+    }
     for key in ["sampled_anchor_own_cpu_ns", "load_own_cpu_ns", "load_inclusive_cpu_ns",
         "load_fraction_of_sampled_anchor_own_cpu"] { value[key] = Value::Null; }
 }
@@ -80,7 +92,7 @@ impl State {
         }
     }
     fn end(&mut self, id: u64, end: Option<u64>, children: Option<u64>,
-        last_child_end: Option<u64>, context_valid: bool, panicked: bool) {
+        last_child_end: Option<u64>, context_valid: bool, panicked: bool, path: usize) {
         if !self.active.as_ref().is_some_and(|active| active.id == id) {
             self.invalid = true; return
         }
@@ -94,8 +106,10 @@ impl State {
             || last_child_end.zip(end).is_some_and(|(a,b)| b<a);
         self.unavailable |= inclusive.is_none() || nested.is_none();
         self.last_end = self.last_end.into_iter().chain(end).max();
-        self.totals.add(&Totals { finished:1, panicked_calls:u64::from(panicked),
-            own:own.unwrap_or(0), inclusive:inclusive.unwrap_or(0), ..Totals::default() });
+        let mut observation = Totals { finished:1, panicked_calls:u64::from(panicked),
+            own:own.unwrap_or(0), inclusive:inclusive.unwrap_or(0), ..Totals::default() };
+        observation.paths.record(path, own, inclusive);
+        self.totals.add(&observation);
     }
     pub(super) fn finish(mut self, anchor: &Observation, end: Option<u64>) -> Totals {
         self.invalid |= self.last_end.zip(end).is_some_and(|(a,b)| b<a);
@@ -111,9 +125,17 @@ impl State {
 }
 
 pub(in crate::decoration::dependencies) struct Span {
-    key: Option<(Key, u64)>, _thread: PhantomData<Rc<()>>,
+    key: Option<(Key, u64)>, path: usize, _thread: PhantomData<Rc<()>>,
 }
 impl Span {
+    pub(in crate::decoration::dependencies) fn path(&mut self, path: Path) {
+        if self.key.is_some() { self.path = path as usize; }
+    }
+    pub(in crate::decoration::dependencies) fn resolved(&mut self, built: bool, ready_before: bool) {
+        if self.key.is_some() && matches!(self.path, 1 | 5 | 9) {
+            self.path += if built { 2 } else if ready_before { 1 } else { 3 };
+        }
+    }
     pub(in crate::decoration::dependencies) fn start() -> Self { Self::begin_outermost(cpu::now) }
     fn begin_outermost(clock: impl FnOnce() -> Option<u64>) -> Self {
         Self::begin_mode(true, clock)
@@ -142,7 +164,7 @@ impl Span {
                     frame.last_child_end).map(|id| (key,id))
             })
         });
-        Self { key, _thread:PhantomData }
+        Self { key, path:Path::default() as usize, _thread:PhantomData }
     }
     fn finish(&mut self, clock: impl FnOnce() -> Option<u64>) {
         let Some((key,id)) = self.key.take() else { return };
@@ -154,7 +176,7 @@ impl Span {
             if let Some(frame) = stack.frames.iter_mut().find(|frame| frame.key == key) {
                 if let Some(state) = &mut frame.column_load {
                     state.end(id,end,frame.children,frame.last_child_end,
-                        context_valid && last_key==Some(key),std::thread::panicking());
+                        context_valid && last_key==Some(key),std::thread::panicking(),self.path);
                 }
             }
             // A removed anchor was already marked invalid and collected. Its

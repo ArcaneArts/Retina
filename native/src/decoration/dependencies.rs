@@ -964,7 +964,7 @@ impl Planner<'_> {
         })
     }
     fn column(&self, before: usize, x: i32, z: i32) -> Result<Arc<ColumnState>, String> {
-        #[cfg(test)] let _column_cpu = worker_phase_probe::ColumnLoadCpu::start(); let metrics = &self.metrics.performance;
+        #[cfg(test)] let mut column_cpu = worker_phase_probe::ColumnLoadCpu::start(); let metrics = &self.metrics.performance;
         metrics.add(Perf::column_requests, 1);
         #[cfg(test)] dependency_work::count(Work::ColumnRequest, before.checked_sub(1));
         // The completed interior has all possible writers. An absent command is
@@ -980,11 +980,13 @@ impl Planner<'_> {
                 }
                 metrics.add(Perf::column_versions_skipped, (before - version) as u64);
                 metrics.add(Perf::completed_column_reads, 1);
-                return self.column_cell(version, x, z, slot);
+                #[cfg(test)] column_cpu.path(worker_phase_probe::ColumnLoadPath::Interior);
+                return self.column_cell(version, x, z, slot, #[cfg(test)] &mut column_cpu);
             }
             if let Some(reuse) = &self.reuse {
                 metrics.add(Perf::version_cache_boundary_lookups, 1);
                 if let Some(column) = reuse.column(before, x, z) {
+                    #[cfg(test)] column_cpu.path(worker_phase_probe::ColumnLoadPath::NeighborArchive);
                     metrics.add(Perf::version_cache_boundary_hits, 1);
                     #[cfg(test)] dependency_work::count(Work::ColumnReuseBoundary, before.checked_sub(1));
                     return Ok(column);
@@ -996,8 +998,10 @@ impl Planner<'_> {
         if let Some(tile) = self.ready_columns.get(&key) {
             metrics.add(Perf::completed_boundary_reads, 1);
             #[cfg(test)] dependency_work::count(Work::ColumnReadyBoundary, before.checked_sub(1));
-            return self.column_cell(before, x, z, &tile.0[index]);
+            #[cfg(test)] column_cpu.path(worker_phase_probe::ColumnLoadPath::PublishedTile);
+            return self.column_cell(before, x, z, &tile.0[index], #[cfg(test)] &mut column_cpu);
         }
+        #[cfg(test)] column_cpu.path(worker_phase_probe::ColumnLoadPath::PendingTile);
         let lock_started = metrics.start();
         #[cfg(test)]
         let mut lookup = worker_phase_probe::LookupCall::start(
@@ -1016,7 +1020,7 @@ impl Planner<'_> {
         #[cfg(test)]
         lookup.finish(true);
         metrics.elapsed(Perf::column_lock_nanos, lock_started);
-        self.column_cell(before, x, z, &tile.0[index])
+        self.column_cell(before, x, z, &tile.0[index], #[cfg(test)] &mut column_cpu)
     }
     fn column_cell(
         &self,
@@ -1024,11 +1028,14 @@ impl Planner<'_> {
         x: i32,
         z: i32,
         slot: &ColumnCell,
+        #[cfg(test)] column_cpu: &mut worker_phase_probe::ColumnLoadCpu,
     ) -> Result<Arc<ColumnState>, String> {
         let metrics = &self.metrics.performance;
         let joined = metrics.start();
         #[cfg(test)]
-        let join = worker_phase_probe::Join::start(slot.get().is_none(),
+        let ready_before = slot.get().is_some();
+        #[cfg(test)]
+        let join = worker_phase_probe::Join::start(!ready_before,
             worker_phase_probe::JoinKey::new("column", Some(before), x, z));
         let mut built = false;
         let result = slot.get_or_init(|| {
@@ -1040,6 +1047,7 @@ impl Planner<'_> {
         });
         #[cfg(test)]
         join.finish(built, result.is_ok());
+        #[cfg(test)] column_cpu.resolved(built, ready_before);
         if !built {
             metrics.elapsed(Perf::column_join_nanos, joined);
             #[cfg(test)] dependency_work::count(Work::ColumnCellReuse, before.checked_sub(1));

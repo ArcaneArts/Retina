@@ -204,3 +204,78 @@ fn outermost_column_coalescing_resets_for_nested_selected_anchors_and_task_conte
     assert_eq!(cols(&child)["calls"],1);assert_eq!(cols(&parent)["calls"],1);
     assert_eq!(cols(&child)["load_own_cpu_ns"],20);assert_eq!(cols(&parent)["load_own_cpu_ns"],30);
 }
+
+#[test]
+fn column_path_partition_records_actual_ready_initialized_and_raced_states() {
+    let s=session(Some(0));let trace=make_trace(&s,"paths");let task=trace.task([0,0]);
+    let a=anchor(3,0,100);let mut at=110;
+    for path in [Path::Interior,Path::PublishedTile,Path::PendingTile] {
+        for resolved in [None,Some((false,true)),Some((true,false)),Some((false,false))] {
+            let mut l=Span::begin_outermost(||Some(at));l.path(path);
+            if let Some((built,ready))=resolved { l.resolved(built,ready); }
+            end(l,at+6);at+=10;
+        }
+    }
+    let mut l=load(at);l.path(Path::NeighborArchive);end(l,at+6);at+=10;
+    end(load(at),at+6);end_anchor(a,300);finish(trace,task);
+    let cpu=read_cpu(&s,0);let c=cols(&cpu);let rows=c["paths"].as_array().unwrap();
+    assert_eq!(c["valid"],true);assert_eq!(rows.len(),14);
+    assert_eq!(c["calls"],14);assert_eq!(c["load_own_cpu_ns"],84);
+    for row in rows {
+        assert_eq!(row["calls"],1);assert_eq!(row["load_own_cpu_ns"],6);
+        assert_eq!(row["load_inclusive_cpu_ns"],6);
+    }
+    for name in ["interior_initialized","published_tile_ready","pending_tile_became_ready","neighbor_archive"] {
+        assert!(rows.iter().any(|r|r["path"]==name));
+    }
+}
+
+#[test]
+fn column_path_keeps_outer_route_across_recursion_and_subtracts_nested_anchor_cpu() {
+    let s=session(Some(9));let trace=make_trace(&s,"outer-path");let task=trace.task([0,0]);
+    let a=anchor(3,9,100);let mut outer=Span::begin_outermost(||Some(110));
+    outer.path(Path::PendingTile);
+    let mut recursive=Span::begin_outermost(||panic!("recursive clock"));
+    recursive.path(Path::NeighborArchive);recursive.resolved(true,false);drop(recursive);
+    let inner_trace=make_trace(&s,"inner-path");let inner_task=inner_trace.task([1,1]);
+    let child=anchor(1,9,120);let mut inner=Span::begin_outermost(||Some(125));
+    inner.path(Path::Interior);inner.resolved(false,true);end(inner,145);
+    end_anchor(child,150);finish(inner_trace,inner_task);
+    outer.resolved(true,false);end(outer,170);end_anchor(a,200);finish(trace,task);
+    for (index,path,own,inclusive) in [(0,"interior_ready",20,20),(1,"pending_tile_initialized",30,60)] {
+        let cpu=read_cpu(&s,index);let c=cols(&cpu);let rows=c["paths"].as_array().unwrap();
+        assert_eq!(c["valid"],true);assert_eq!(rows.len(),1);
+        assert_eq!(rows[0]["path"],path);assert_eq!(rows[0]["calls"],1);
+        assert_eq!(rows[0]["load_own_cpu_ns"],own);assert_eq!(rows[0]["load_inclusive_cpu_ns"],inclusive);
+    }
+}
+
+#[test]
+fn column_path_missing_invalid_and_abandoned_clocks_never_publish_zero_cpu() {
+    for root_id in [0,90] {
+        let s=session(Some(0));let trace=make_trace(&s,"path-invalid");let task=trace.task([0,0]);
+        let a=anchor(root_id,0,100);let mut l=Span::begin(||if root_id==0 { None } else { Some(110) });
+        l.path(Path::Interior);l.resolved(true,false);end(l,140);end_anchor(a,150);finish(trace,task);
+        let cpu=read_cpu(&s,0);let c=cols(&cpu);assert_ne!(c["valid"],true);
+        let rows=c["paths"].as_array().unwrap();assert_eq!(rows.len(),1);
+        assert_eq!(rows[0]["calls"],1);assert!(rows[0]["load_own_cpu_ns"].is_null());
+        assert!(rows[0]["load_inclusive_cpu_ns"].is_null());
+    }
+    let s=session(Some(0));let trace=make_trace(&s,"path-abandoned");let task=trace.task([0,0]);
+    let a=anchor(0,0,100);let mut stale=load(110);stale.path(Path::PendingTile);
+    end_anchor(a,150);stale.resolved(true,false);end(stale,160);finish(trace,task);
+    let cpu=read_cpu(&s,0);assert_eq!(cols(&cpu)["valid"],false);
+    assert_eq!(cols(&cpu)["paths"],json!([]));
+}
+
+#[test]
+fn column_path_counter_overflow_and_unreconciled_partition_invalidate_costs() {
+    let mut huge=paths::Totals::default();huge.record(2,Some(u64::MAX),Some(u64::MAX));
+    let mut one=paths::Totals::default();one.record(2,Some(1),Some(1));
+    assert!(huge.add(&one));assert!(!huge.reconciles(2,0,0));
+    let total=Totals { calls:2,finished:2,paths:huge, ..Totals::default() };
+    assert_eq!(total.json()["valid"],false);
+    assert!(total.json()["paths"][0]["load_own_cpu_ns"].is_null());
+    let total=Totals { calls:1,finished:1,own:10,inclusive:10, ..Totals::default() };
+    assert_eq!(total.json()["valid"],false);
+}

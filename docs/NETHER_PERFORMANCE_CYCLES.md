@@ -3136,3 +3136,50 @@ observations with unchanged production bytes, not a speedup or timing acceptance
 See `docs/benchmarks/nether-perf-cycle138-2026-10-24.json` for exact provenance,
 all cases, scope and recovery commands. Actual merged rebuild/full-corpus proof
 follows. The overall subsecond objective remains unmet.
+
+
+## Cycle 141 — sampled column CPU by actual path
+
+The preceding observer grouped ready-state reads, new column initializers and
+cell races in one CPU total. Add a test-only partition using the same sampled
+outermost calls and existing calling-thread CPU endpoints. Each row identifies
+the actual completed-interior, published-tile, pending-tile or direct neighbor
+archive route. Tile routes can also represent unfinished interior versions.
+Cell resolution records ready, initialized, or became-ready; the last category
+means another callback supplied the cell, not that this call necessarily blocked.
+
+Recursive calls in the same anchor retain the outer route. Nested anchors have
+separate paths and their CPU is subtracted exactly once. Fourteen fixed scalar
+buckets retain no generation owners or per-call event history. Counts and CPU
+reconcile with existing totals; invalid/unavailable CPU remains null. Four new
+semantic tests cover the partition, nested/reentrant calls, invalid/stale clocks
+and overflow.
+
+Validation passes **230 native tests**, **five explicit GPU fixtures**, and
+**512,000 complete-NBT chunk comparisons** against both the immutable original
+and actual merged C138 main. Normal generation and four diagnostic runs cover
+five cases, five warmups and twenty measured complete regions each. Diagnostics
+use one/eight requests, reverse submission,16 assembly workers and two independent
+coordinate salts. Lighting, serialization, compression and publication remain
+included; every measured region reports shader status4.
+
+On main's implementation, initializers account for **87.7–90.3%** of sampled
+column-query CPU with one request and **90.1–92.9%** with eight. Tile-backed
+initializers account for **56.1–59.7%** with eight. These are ratios within
+the same sampled calls, include observer overhead, and are neither process-CPU
+nor wall-time shares. Initializers include earlier-column recursion and replay;
+the result does not isolate material application alone. Apply this partition to
+the held material/continuation candidate before choosing the next production change.
+
+The full release SHA is `2f65ae99672dc41d4750b572bea6b5d286db23b3bb085f9c575be385606ad8ca`.
+Executable instructions and every other mapped section match preceding main;
+13 source-line records changed in constant data, plus the build UUID and two
+independently verified code-signing page hashes. The controller's final whole-file
+equality assumption therefore failed after all actual commands passed. The
+original failure is preserved; a direct byte audit and post-exit provenance
+review account for every difference. No NBT expectation was updated.
+
+See `docs/benchmarks/nether-perf-cycle141-2026-10-24.json` for raw compact results,
+limitations, exact source/library identities and evidence recovery. Timings
+remain provisional. Actual merged rebuild/full-corpus proof follows, and the
+broader subsecond/concurrency objective remains open.

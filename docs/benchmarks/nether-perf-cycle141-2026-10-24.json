@@ -1,0 +1,1520 @@
+{
+  "cycle": 141,
+  "created_utc": "2026-10-24T10:14:23.812344+00:00",
+  "status": "Validated test-only attribution; PR/actual merged proof follow",
+  "source": {
+    "revision": "4c8a4487d9800d4c36cbacf9b44278d66e0d0837",
+    "native_tree": "f5bff9a6c747c69deb7ae4642bf7362cd45568da",
+    "status": ""
+  },
+  "provenance": {
+    "revision": "4c8a4487d9800d4c36cbacf9b44278d66e0d0837",
+    "native_tree": "f5bff9a6c747c69deb7ae4642bf7362cd45568da",
+    "status": "",
+    "library_sha256": "2f65ae99672dc41d4750b572bea6b5d286db23b3bb085f9c575be385606ad8ca",
+    "test_executable_sha256": "b5ca0fd589251697693e5bea44870a52a7ff5a2f9b069773c48f5fd3af9a0a9a",
+    "native_test_result": [
+      "230",
+      "0",
+      "59"
+    ]
+  },
+  "preceding_main": {
+    "revision": "acccb0e0e0ce399972b3fec43e3ebe0081adf469",
+    "native_tree": "f94fb710d743006e00e0747c97807c6bd161a82f",
+    "status": ""
+  },
+  "timing_acceptance": false,
+  "changes": [
+    "Classify each existing outermost sampled Planner.column CPU span by selected completed-interior/published-tile/pending-tile/neighbor-archive route.",
+    "Classify actual cell resolution as ready, initialized, or became_ready; unresolved/unknown retained for errors. Became_ready does not assert blocking.",
+    "Reuse same thread CPU endpoints and nested-anchor subtraction; fixed14 scalar buckets, no extra clocks, per-call event history or retained generation owners.",
+    "Reconcile path count/CPU sums with old totals and propagate unavailable/invalid values. Four semantic tests cover path partition, recursion/reentrant nested CPU, invalid/missing/stale clocks, and overflow."
+  ],
+  "validation": {
+    "native_passed": 230,
+    "native_failed": 0,
+    "native_ignored": 59,
+    "explicit_gpu_passed": 5,
+    "full_nbt_chunk_instances": 512000,
+    "profiles": "standard Nether/two seeds, custom bounds, direct stem, Overworld; five warmups/twenty measured complete1024-chunk regions; GPU lighting, zlib, actual programstatus4,16workers,reverse order; diagnostic one/eight requests and salts0/1",
+    "parity": "Complete decompressed chunk NBT and exact MCA membership against immutable original58f6496 and actual merged C138 mainacccb0e. Only timestamps/compression representation excluded."
+  },
+  "release_identity": {
+    "full_sha_differs": true,
+    "ordinary_machine_code_identical": true,
+    "different_file_bytes": 93,
+    "source_line_records": 13,
+    "uuid_bytes": 16,
+    "valid_code_signing_hash_bytes": 64,
+    "unexplained_differences": 0
+  },
+  "controller_resolution": "The final assertion required whole-library byte equality. This test-only source edit moves13 Rust panic-source line records, plus build UUID and their valid code-signing page hashes. The assertion was an incorrect identity assumption; all build/test/generation/comparison commands returned0 before it. Original failed script, receipt and logs are unchanged. Direct comparison accounts for all93 changed bytes. Executable instructions and every other mapped section are identical. Source/support/reference/library hashes were verified after actual controller+observed descendants exited. No output expectation or failed generation result was changed.",
+  "normal_provisional": [
+    {
+      "case": "nether-main-run0",
+      "median_ms": 941.4686671225354,
+      "p95_region_ms": 1264.6548708085902,
+      "maximum_region_ms": 1295.7506661769003,
+      "total_ms": 18991.809875005856,
+      "chunks_per_second": 1078.3595736682619,
+      "generation_peak_rss_bytes": 2506276864,
+      "process_cpu_ms": 54915.608,
+      "cpu_instructions": 588708696180
+    },
+    {
+      "case": "nether-second-seed-run0",
+      "median_ms": 1049.4713126681745,
+      "p95_region_ms": 1330.9199665789492,
+      "maximum_region_ms": 1338.1084580905735,
+      "total_ms": 19733.735375106335,
+      "chunks_per_second": 1037.8166936319142,
+      "generation_peak_rss_bytes": 2672394240,
+      "process_cpu_ms": 55731.600999999995,
+      "cpu_instructions": 600100360406
+    },
+    {
+      "case": "nether-custom-bounds-run0",
+      "median_ms": 711.113728932105,
+      "p95_region_ms": 2142.9794145165943,
+      "maximum_region_ms": 2286.703292047605,
+      "total_ms": 18764.98887501657,
+      "chunks_per_second": 1091.3941988671663,
+      "generation_peak_rss_bytes": 2110177280,
+      "process_cpu_ms": 46850.683000000005,
+      "cpu_instructions": 465398662337
+    },
+    {
+      "case": "nether-direct-stem-run0",
+      "median_ms": 646.5386250056326,
+      "p95_region_ms": 707.4606256326662,
+      "maximum_region_ms": 749.7150420676917,
+      "total_ms": 12958.576707867905,
+      "chunks_per_second": 1580.4204783975542,
+      "generation_peak_rss_bytes": 2245410816,
+      "process_cpu_ms": 40646.748999999996,
+      "cpu_instructions": 453922419931
+    },
+    {
+      "case": "overworld-run0",
+      "median_ms": 228.0266664456576,
+      "p95_region_ms": 262.8441749024205,
+      "maximum_region_ms": 275.8458750322461,
+      "total_ms": 4588.292541913688,
+      "chunks_per_second": 4463.534051701548,
+      "generation_peak_rss_bytes": 1566195712,
+      "process_cpu_ms": 12718.574,
+      "cpu_instructions": 168206801495
+    }
+  ],
+  "path_observations": [
+    {
+      "salt": 0,
+      "requests": 1,
+      "case": "nether-main",
+      "sampled_anchors": 18140,
+      "sampled_column_calls": 451512,
+      "sampled_column_own_cpu_ns": 414254603,
+      "sampled_anchor_own_cpu_ns": 1050109088,
+      "initializer_percent_of_sampled_column_cpu": 87.67625739574461,
+      "tile_initializer_percent_of_sampled_column_cpu": 50.32533024141195,
+      "paths": [
+        {
+          "path": "interior_initialized",
+          "calls": 135438,
+          "load_own_cpu_ns": 154727935,
+          "load_inclusive_cpu_ns": 154727935,
+          "fraction_of_sampled_column_own_cpu": 0.3735092715433267,
+          "fraction_of_sampled_anchor_own_cpu": 0.1473446299704817
+        },
+        {
+          "path": "pending_tile_initialized",
+          "calls": 63033,
+          "load_own_cpu_ns": 133716014,
+          "load_inclusive_cpu_ns": 1291064182,
+          "fraction_of_sampled_column_own_cpu": 0.3227870324955689,
+          "fraction_of_sampled_anchor_own_cpu": 0.12733535546737407
+        },
+        {
+          "path": "published_tile_initialized",
+          "calls": 46843,
+          "load_own_cpu_ns": 74758983,
+          "load_inclusive_cpu_ns": 330154973,
+          "fraction_of_sampled_column_own_cpu": 0.18046626991855055,
+          "fraction_of_sampled_anchor_own_cpu": 0.07119163509229624
+        },
+        {
+          "path": "interior_ready",
+          "calls": 150149,
+          "load_own_cpu_ns": 38910439,
+          "load_inclusive_cpu_ns": 38910439,
+          "fraction_of_sampled_column_own_cpu": 0.09392880300716899,
+          "fraction_of_sampled_anchor_own_cpu": 0.03705371131879967
+        },
+        {
+          "path": "published_tile_ready",
+          "calls": 31107,
+          "load_own_cpu_ns": 6096030,
+          "load_inclusive_cpu_ns": 6096030,
+          "fraction_of_sampled_column_own_cpu": 0.014715660262681498,
+          "fraction_of_sampled_anchor_own_cpu": 0.005805139741824613
+        },
+        {
+          "path": "pending_tile_ready",
+          "calls": 13949,
+          "load_own_cpu_ns": 3077467,
+          "load_inclusive_cpu_ns": 3077467,
+          "fraction_of_sampled_column_own_cpu": 0.007428926504891486,
+          "fraction_of_sampled_anchor_own_cpu": 0.0029306164808660337
+        },
+        {
+          "path": "neighbor_archive",
+          "calls": 10982,
+          "load_own_cpu_ns": 2920194,
+          "load_inclusive_cpu_ns": 2920194,
+          "fraction_of_sampled_column_own_cpu": 0.007049273511633134,
+          "fraction_of_sampled_anchor_own_cpu": 0.0027808482312649025
+        },
+        {
+          "path": "interior_became_ready",
+          "calls": 9,
+          "load_own_cpu_ns": 37499,
+          "load_inclusive_cpu_ns": 37499,
+          "fraction_of_sampled_column_own_cpu": 9.052162541691782e-05,
+          "fraction_of_sampled_anchor_own_cpu": 3.57096233415323e-05
+        },
+        {
+          "path": "pending_tile_became_ready",
+          "calls": 2,
+          "load_own_cpu_ns": 10042,
+          "load_inclusive_cpu_ns": 10042,
+          "fraction_of_sampled_column_own_cpu": 2.424113076179868e-05,
+          "fraction_of_sampled_anchor_own_cpu": 9.56281601097809e-06
+        }
+      ]
+    },
+    {
+      "salt": 0,
+      "requests": 1,
+      "case": "nether-second-seed",
+      "sampled_anchors": 18157,
+      "sampled_column_calls": 427997,
+      "sampled_column_own_cpu_ns": 387194110,
+      "sampled_anchor_own_cpu_ns": 954116742,
+      "initializer_percent_of_sampled_column_cpu": 87.80025037054412,
+      "tile_initializer_percent_of_sampled_column_cpu": 46.960214864838726,
+      "paths": [
+        {
+          "path": "interior_initialized",
+          "calls": 135664,
+          "load_own_cpu_ns": 158130212,
+          "load_inclusive_cpu_ns": 158130212,
+          "fraction_of_sampled_column_own_cpu": 0.40840035505705397,
+          "fraction_of_sampled_anchor_own_cpu": 0.16573465807604496
+        },
+        {
+          "path": "pending_tile_initialized",
+          "calls": 57974,
+          "load_own_cpu_ns": 115950343,
+          "load_inclusive_cpu_ns": 1660464566,
+          "fraction_of_sampled_column_own_cpu": 0.2994630858408461,
+          "fraction_of_sampled_anchor_own_cpu": 0.12152636873025335
+        },
+        {
+          "path": "published_tile_initialized",
+          "calls": 39657,
+          "load_own_cpu_ns": 65876843,
+          "load_inclusive_cpu_ns": 244939546,
+          "fraction_of_sampled_column_own_cpu": 0.17013906280754115,
+          "fraction_of_sampled_anchor_own_cpu": 0.06904484545770606
+        },
+        {
+          "path": "interior_ready",
+          "calls": 148073,
+          "load_own_cpu_ns": 36957863,
+          "load_inclusive_cpu_ns": 36957863,
+          "fraction_of_sampled_column_own_cpu": 0.09545047831435245,
+          "fraction_of_sampled_anchor_own_cpu": 0.03873515826011991
+        },
+        {
+          "path": "published_tile_ready",
+          "calls": 25661,
+          "load_own_cpu_ns": 5250672,
+          "load_inclusive_cpu_ns": 5250672,
+          "fraction_of_sampled_column_own_cpu": 0.013560826118971697,
+          "fraction_of_sampled_anchor_own_cpu": 0.005503175627118385
+        },
+        {
+          "path": "pending_tile_ready",
+          "calls": 12401,
+          "load_own_cpu_ns": 2686812,
+          "load_inclusive_cpu_ns": 2686812,
+          "fraction_of_sampled_column_own_cpu": 0.006939186135863482,
+          "fraction_of_sampled_anchor_own_cpu": 0.00281602018047389
+        },
+        {
+          "path": "neighbor_archive",
+          "calls": 8554,
+          "load_own_cpu_ns": 2279612,
+          "load_inclusive_cpu_ns": 2279612,
+          "fraction_of_sampled_column_own_cpu": 0.005887517245549009,
+          "fraction_of_sampled_anchor_own_cpu": 0.0023892380247112362
+        },
+        {
+          "path": "interior_became_ready",
+          "calls": 10,
+          "load_own_cpu_ns": 44627,
+          "load_inclusive_cpu_ns": 44627,
+          "fraction_of_sampled_column_own_cpu": 0.00011525743508856579,
+          "fraction_of_sampled_anchor_own_cpu": 4.6773102321267095e-05
+        },
+        {
+          "path": "pending_tile_became_ready",
+          "calls": 2,
+          "load_own_cpu_ns": 14501,
+          "load_inclusive_cpu_ns": 14501,
+          "fraction_of_sampled_column_own_cpu": 3.7451499455918895e-05,
+          "fraction_of_sampled_anchor_own_cpu": 1.5198349805290388e-05
+        },
+        {
+          "path": "published_tile_became_ready",
+          "calls": 1,
+          "load_own_cpu_ns": 2625,
+          "load_inclusive_cpu_ns": 2625,
+          "fraction_of_sampled_column_own_cpu": 6.779545277690304e-06,
+          "fraction_of_sampled_anchor_own_cpu": 2.7512356553953017e-06
+        }
+      ]
+    },
+    {
+      "salt": 0,
+      "requests": 1,
+      "case": "nether-custom-bounds",
+      "sampled_anchors": 11059,
+      "sampled_column_calls": 388612,
+      "sampled_column_own_cpu_ns": 380947505,
+      "sampled_anchor_own_cpu_ns": 839662584,
+      "initializer_percent_of_sampled_column_cpu": 89.65302030262674,
+      "tile_initializer_percent_of_sampled_column_cpu": 44.72726813107754,
+      "paths": [
+        {
+          "path": "interior_initialized",
+          "calls": 144532,
+          "load_own_cpu_ns": 171143532,
+          "load_inclusive_cpu_ns": 171143532,
+          "fraction_of_sampled_column_own_cpu": 0.449257521715492,
+          "fraction_of_sampled_anchor_own_cpu": 0.2038241732586241
+        },
+        {
+          "path": "pending_tile_initialized",
+          "calls": 61454,
+          "load_own_cpu_ns": 107543387,
+          "load_inclusive_cpu_ns": 761266699,
+          "fraction_of_sampled_column_own_cpu": 0.2823050042026132,
+          "fraction_of_sampled_anchor_own_cpu": 0.1280792892874693
+        },
+        {
+          "path": "published_tile_initialized",
+          "calls": 46562,
+          "load_own_cpu_ns": 62844025,
+          "load_inclusive_cpu_ns": 208391058,
+          "fraction_of_sampled_column_own_cpu": 0.16496767710816218,
+          "fraction_of_sampled_anchor_own_cpu": 0.0748443793941877
+        },
+        {
+          "path": "interior_ready",
+          "calls": 109992,
+          "load_own_cpu_ns": 32055073,
+          "load_inclusive_cpu_ns": 32055073,
+          "fraction_of_sampled_column_own_cpu": 0.08414564363664752,
+          "fraction_of_sampled_anchor_own_cpu": 0.03817613599893359
+        },
+        {
+          "path": "neighbor_archive",
+          "calls": 12039,
+          "load_own_cpu_ns": 3857763,
+          "load_inclusive_cpu_ns": 3857763,
+          "fraction_of_sampled_column_own_cpu": 0.010126757491166663,
+          "fraction_of_sampled_anchor_own_cpu": 0.004594420513085527
+        },
+        {
+          "path": "published_tile_ready",
+          "calls": 9337,
+          "load_own_cpu_ns": 2216474,
+          "load_inclusive_cpu_ns": 2216474,
+          "fraction_of_sampled_column_own_cpu": 0.005818318720843178,
+          "fraction_of_sampled_anchor_own_cpu": 0.002639719861567632
+        },
+        {
+          "path": "pending_tile_ready",
+          "calls": 4685,
+          "load_own_cpu_ns": 1236748,
+          "load_inclusive_cpu_ns": 1236748,
+          "fraction_of_sampled_column_own_cpu": 0.003246505053235616,
+          "fraction_of_sampled_anchor_own_cpu": 0.0014729106948035689
+        },
+        {
+          "path": "interior_became_ready",
+          "calls": 8,
+          "load_own_cpu_ns": 42211,
+          "load_inclusive_cpu_ns": 42211,
+          "fraction_of_sampled_column_own_cpu": 0.00011080529323850014,
+          "fraction_of_sampled_anchor_own_cpu": 5.0271383772889424e-05
+        },
+        {
+          "path": "pending_tile_became_ready",
+          "calls": 2,
+          "load_own_cpu_ns": 4875,
+          "load_inclusive_cpu_ns": 4875,
+          "fraction_of_sampled_column_own_cpu": 1.2797038794098415e-05,
+          "fraction_of_sampled_anchor_own_cpu": 5.805903577096869e-06
+        },
+        {
+          "path": "published_tile_became_ready",
+          "calls": 1,
+          "load_own_cpu_ns": 3417,
+          "load_inclusive_cpu_ns": 3417,
+          "fraction_of_sampled_column_own_cpu": 8.969739807063443e-06,
+          "fraction_of_sampled_anchor_own_cpu": 4.069491799577436e-06
+        }
+      ]
+    },
+    {
+      "salt": 0,
+      "requests": 1,
+      "case": "nether-direct-stem",
+      "sampled_anchors": 11003,
+      "sampled_column_calls": 378504,
+      "sampled_column_own_cpu_ns": 371609604,
+      "sampled_anchor_own_cpu_ns": 819367777,
+      "initializer_percent_of_sampled_column_cpu": 89.3899679729483,
+      "tile_initializer_percent_of_sampled_column_cpu": 44.28969171636371,
+      "paths": [
+        {
+          "path": "interior_initialized",
+          "calls": 141156,
+          "load_own_cpu_ns": 167596958,
+          "load_inclusive_cpu_ns": 167596958,
+          "fraction_of_sampled_column_own_cpu": 0.45100276256584587,
+          "fraction_of_sampled_anchor_own_cpu": 0.2045442385025595
+        },
+        {
+          "path": "pending_tile_initialized",
+          "calls": 57536,
+          "load_own_cpu_ns": 105041452,
+          "load_inclusive_cpu_ns": 789861527,
+          "fraction_of_sampled_column_own_cpu": 0.28266613905920474,
+          "fraction_of_sampled_anchor_own_cpu": 0.12819817296769287
+        },
+        {
+          "path": "published_tile_initialized",
+          "calls": 45062,
+          "load_own_cpu_ns": 59543296,
+          "load_inclusive_cpu_ns": 186564416,
+          "fraction_of_sampled_column_own_cpu": 0.16023077810443243,
+          "fraction_of_sampled_anchor_own_cpu": 0.07266980429473248
+        },
+        {
+          "path": "interior_ready",
+          "calls": 108842,
+          "load_own_cpu_ns": 32231835,
+          "load_inclusive_cpu_ns": 32231835,
+          "fraction_of_sampled_column_own_cpu": 0.08673574270701571,
+          "fraction_of_sampled_anchor_own_cpu": 0.03933744516780039
+        },
+        {
+          "path": "neighbor_archive",
+          "calls": 12827,
+          "load_own_cpu_ns": 4028398,
+          "load_inclusive_cpu_ns": 4028398,
+          "fraction_of_sampled_column_own_cpu": 0.01084040336051164,
+          "fraction_of_sampled_anchor_own_cpu": 0.004916471105013933
+        },
+        {
+          "path": "published_tile_ready",
+          "calls": 9099,
+          "load_own_cpu_ns": 2083986,
+          "load_inclusive_cpu_ns": 2083986,
+          "fraction_of_sampled_column_own_cpu": 0.005607998226009251,
+          "fraction_of_sampled_anchor_own_cpu": 0.0025434073178105952
+        },
+        {
+          "path": "pending_tile_ready",
+          "calls": 3977,
+          "load_own_cpu_ns": 1062261,
+          "load_inclusive_cpu_ns": 1062261,
+          "fraction_of_sampled_column_own_cpu": 0.0028585402222274106,
+          "fraction_of_sampled_anchor_own_cpu": 0.0012964398037341905
+        },
+        {
+          "path": "pending_tile_became_ready",
+          "calls": 3,
+          "load_own_cpu_ns": 15834,
+          "load_inclusive_cpu_ns": 15834,
+          "fraction_of_sampled_column_own_cpu": 4.260923245675857e-05,
+          "fraction_of_sampled_anchor_own_cpu": 1.932465547763419e-05
+        },
+        {
+          "path": "interior_became_ready",
+          "calls": 2,
+          "load_own_cpu_ns": 5584,
+          "load_inclusive_cpu_ns": 5584,
+          "fraction_of_sampled_column_own_cpu": 1.502652229623215e-05,
+          "fraction_of_sampled_anchor_own_cpu": 6.815010495586038e-06
+        }
+      ]
+    },
+    {
+      "salt": 0,
+      "requests": 8,
+      "case": "nether-main",
+      "sampled_anchors": 20015,
+      "sampled_column_calls": 516932,
+      "sampled_column_own_cpu_ns": 646000583,
+      "sampled_anchor_own_cpu_ns": 1542483256,
+      "initializer_percent_of_sampled_column_cpu": 90.10328369935851,
+      "tile_initializer_percent_of_sampled_column_cpu": 59.18843327111982,
+      "paths": [
+        {
+          "path": "pending_tile_initialized",
+          "calls": 95392,
+          "load_own_cpu_ns": 245686390,
+          "load_inclusive_cpu_ns": 2219331097,
+          "fraction_of_sampled_column_own_cpu": 0.3803191459348884,
+          "fraction_of_sampled_anchor_own_cpu": 0.15927977762113224
+        },
+        {
+          "path": "interior_initialized",
+          "calls": 136307,
+          "load_own_cpu_ns": 199710114,
+          "load_inclusive_cpu_ns": 199710114,
+          "fraction_of_sampled_column_own_cpu": 0.309148504282387,
+          "fraction_of_sampled_anchor_own_cpu": 0.1294731163033124
+        },
+        {
+          "path": "published_tile_initialized",
+          "calls": 68639,
+          "load_own_cpu_ns": 136671234,
+          "load_inclusive_cpu_ns": 573992501,
+          "fraction_of_sampled_column_own_cpu": 0.21156518677630975,
+          "fraction_of_sampled_anchor_own_cpu": 0.08860467915510391
+        },
+        {
+          "path": "interior_ready",
+          "calls": 149293,
+          "load_own_cpu_ns": 45867034,
+          "load_inclusive_cpu_ns": 45867034,
+          "fraction_of_sampled_column_own_cpu": 0.07100153654195696,
+          "fraction_of_sampled_anchor_own_cpu": 0.029735839155196637
+        },
+        {
+          "path": "published_tile_ready",
+          "calls": 42776,
+          "load_own_cpu_ns": 11148725,
+          "load_inclusive_cpu_ns": 11148725,
+          "fraction_of_sampled_column_own_cpu": 0.01725807266028427,
+          "fraction_of_sampled_anchor_own_cpu": 0.007227776999609777
+        },
+        {
+          "path": "pending_tile_ready",
+          "calls": 22989,
+          "load_own_cpu_ns": 6365108,
+          "load_inclusive_cpu_ns": 6365108,
+          "fraction_of_sampled_column_own_cpu": 0.009853099466939646,
+          "fraction_of_sampled_anchor_own_cpu": 0.004126532962507568
+        },
+        {
+          "path": "neighbor_archive",
+          "calls": 1528,
+          "load_own_cpu_ns": 502810,
+          "load_inclusive_cpu_ns": 502810,
+          "fraction_of_sampled_column_own_cpu": 0.0007783429508143339,
+          "fraction_of_sampled_anchor_own_cpu": 0.0003259743650663006
+        },
+        {
+          "path": "interior_became_ready",
+          "calls": 6,
+          "load_own_cpu_ns": 44043,
+          "load_inclusive_cpu_ns": 44043,
+          "fraction_of_sampled_column_own_cpu": 6.817795704682824e-05,
+          "fraction_of_sampled_anchor_own_cpu": 2.855330832842441e-05
+        },
+        {
+          "path": "pending_tile_became_ready",
+          "calls": 2,
+          "load_own_cpu_ns": 5125,
+          "load_inclusive_cpu_ns": 5125,
+          "fraction_of_sampled_column_own_cpu": 7.933429372771943e-06,
+          "fraction_of_sampled_anchor_own_cpu": 3.3225644298339143e-06
+        }
+      ]
+    },
+    {
+      "salt": 0,
+      "requests": 8,
+      "case": "nether-second-seed",
+      "sampled_anchors": 20142,
+      "sampled_column_calls": 475036,
+      "sampled_column_own_cpu_ns": 690471239,
+      "sampled_anchor_own_cpu_ns": 1556628793,
+      "initializer_percent_of_sampled_column_cpu": 90.49519686076309,
+      "tile_initializer_percent_of_sampled_column_cpu": 56.09119469782868,
+      "paths": [
+        {
+          "path": "pending_tile_initialized",
+          "calls": 83453,
+          "load_own_cpu_ns": 253664912,
+          "load_inclusive_cpu_ns": 2991446164,
+          "fraction_of_sampled_column_own_cpu": 0.3673794036191564,
+          "fraction_of_sampled_anchor_own_cpu": 0.16295786968653356
+        },
+        {
+          "path": "interior_initialized",
+          "calls": 138596,
+          "load_own_cpu_ns": 237549740,
+          "load_inclusive_cpu_ns": 237549740,
+          "fraction_of_sampled_column_own_cpu": 0.34404002162934405,
+          "fraction_of_sampled_anchor_own_cpu": 0.15260525892122567
+        },
+        {
+          "path": "published_tile_initialized",
+          "calls": 57168,
+          "load_own_cpu_ns": 133628655,
+          "load_inclusive_cpu_ns": 612282581,
+          "fraction_of_sampled_column_own_cpu": 0.19353254335913042,
+          "fraction_of_sampled_anchor_own_cpu": 0.08584490766258106
+        },
+        {
+          "path": "interior_ready",
+          "calls": 145160,
+          "load_own_cpu_ns": 50905636,
+          "load_inclusive_cpu_ns": 50905636,
+          "fraction_of_sampled_column_own_cpu": 0.07372593255835816,
+          "fraction_of_sampled_anchor_own_cpu": 0.03270248901274178
+        },
+        {
+          "path": "published_tile_ready",
+          "calls": 33538,
+          "load_own_cpu_ns": 9332871,
+          "load_inclusive_cpu_ns": 9332871,
+          "fraction_of_sampled_column_own_cpu": 0.013516668722533133,
+          "fraction_of_sampled_anchor_own_cpu": 0.005995566214610036
+        },
+        {
+          "path": "pending_tile_ready",
+          "calls": 16827,
+          "load_own_cpu_ns": 5205377,
+          "load_inclusive_cpu_ns": 5205377,
+          "fraction_of_sampled_column_own_cpu": 0.007538875924128101,
+          "fraction_of_sampled_anchor_own_cpu": 0.0033440066272755883
+        },
+        {
+          "path": "neighbor_archive",
+          "calls": 285,
+          "load_own_cpu_ns": 127215,
+          "load_inclusive_cpu_ns": 127215,
+          "fraction_of_sampled_column_own_cpu": 0.000184243735023987,
+          "fraction_of_sampled_anchor_own_cpu": 8.172468643267606e-05
+        },
+        {
+          "path": "interior_became_ready",
+          "calls": 5,
+          "load_own_cpu_ns": 34125,
+          "load_inclusive_cpu_ns": 34125,
+          "fraction_of_sampled_column_own_cpu": 4.9422768208886974e-05,
+          "fraction_of_sampled_anchor_own_cpu": 2.1922374912668085e-05
+        },
+        {
+          "path": "pending_tile_became_ready",
+          "calls": 4,
+          "load_own_cpu_ns": 22708,
+          "load_inclusive_cpu_ns": 22708,
+          "fraction_of_sampled_column_own_cpu": 3.2887684116847046e-05,
+          "fraction_of_sampled_anchor_own_cpu": 1.458793522393749e-05
+        }
+      ]
+    },
+    {
+      "salt": 0,
+      "requests": 8,
+      "case": "nether-custom-bounds",
+      "sampled_anchors": 12895,
+      "sampled_column_calls": 463925,
+      "sampled_column_own_cpu_ns": 709373868,
+      "sampled_anchor_own_cpu_ns": 1434038029,
+      "initializer_percent_of_sampled_column_cpu": 92.94583036430657,
+      "tile_initializer_percent_of_sampled_column_cpu": 57.915819645050696,
+      "paths": [
+        {
+          "path": "pending_tile_initialized",
+          "calls": 104198,
+          "load_own_cpu_ns": 251318826,
+          "load_inclusive_cpu_ns": 1828189367,
+          "fraction_of_sampled_column_own_cpu": 0.3542826108164447,
+          "fraction_of_sampled_anchor_own_cpu": 0.17525255322221306
+        },
+        {
+          "path": "interior_initialized",
+          "calls": 146306,
+          "load_own_cpu_ns": 248493742,
+          "load_inclusive_cpu_ns": 248493742,
+          "fraction_of_sampled_column_own_cpu": 0.3503001071925587,
+          "fraction_of_sampled_anchor_own_cpu": 0.17328253294180945
+        },
+        {
+          "path": "published_tile_initialized",
+          "calls": 78415,
+          "load_own_cpu_ns": 159520864,
+          "load_inclusive_cpu_ns": 461886028,
+          "fraction_of_sampled_column_own_cpu": 0.2248755856340623,
+          "fraction_of_sampled_anchor_own_cpu": 0.11123893563076492
+        },
+        {
+          "path": "interior_ready",
+          "calls": 110544,
+          "load_own_cpu_ns": 41748562,
+          "load_inclusive_cpu_ns": 41748562,
+          "fraction_of_sampled_column_own_cpu": 0.0588526923295122,
+          "fraction_of_sampled_anchor_own_cpu": 0.02911259056993948
+        },
+        {
+          "path": "published_tile_ready",
+          "calls": 15804,
+          "load_own_cpu_ns": 5115951,
+          "load_inclusive_cpu_ns": 5115951,
+          "fraction_of_sampled_column_own_cpu": 0.0072119248125446875,
+          "fraction_of_sampled_anchor_own_cpu": 0.003567514177826591
+        },
+        {
+          "path": "pending_tile_ready",
+          "calls": 7415,
+          "load_own_cpu_ns": 2715306,
+          "load_inclusive_cpu_ns": 2715306,
+          "fraction_of_sampled_column_own_cpu": 0.003827750249181719,
+          "fraction_of_sampled_anchor_own_cpu": 0.0018934686145621038
+        },
+        {
+          "path": "neighbor_archive",
+          "calls": 1235,
+          "load_own_cpu_ns": 419703,
+          "load_inclusive_cpu_ns": 419703,
+          "fraction_of_sampled_column_own_cpu": 0.0005916527503096576,
+          "fraction_of_sampled_anchor_own_cpu": 0.0002926721547912311
+        },
+        {
+          "path": "pending_tile_became_ready",
+          "calls": 4,
+          "load_own_cpu_ns": 23582,
+          "load_inclusive_cpu_ns": 23582,
+          "fraction_of_sampled_column_own_cpu": 3.324340106647402e-05,
+          "fraction_of_sampled_anchor_own_cpu": 1.644447324485842e-05
+        },
+        {
+          "path": "published_tile_became_ready",
+          "calls": 2,
+          "load_own_cpu_ns": 11999,
+          "load_inclusive_cpu_ns": 11999,
+          "fraction_of_sampled_column_own_cpu": 1.6914916860173935e-05,
+          "fraction_of_sampled_anchor_own_cpu": 8.36728159041032e-06
+        },
+        {
+          "path": "interior_became_ready",
+          "calls": 2,
+          "load_own_cpu_ns": 5333,
+          "load_inclusive_cpu_ns": 5333,
+          "fraction_of_sampled_column_own_cpu": 7.51789745939725e-06,
+          "fraction_of_sampled_anchor_own_cpu": 3.7188692992464567e-06
+        }
+      ]
+    },
+    {
+      "salt": 0,
+      "requests": 8,
+      "case": "nether-direct-stem",
+      "sampled_anchors": 12626,
+      "sampled_column_calls": 439084,
+      "sampled_column_own_cpu_ns": 642964177,
+      "sampled_anchor_own_cpu_ns": 1295250263,
+      "initializer_percent_of_sampled_column_cpu": 92.40754792471121,
+      "tile_initializer_percent_of_sampled_column_cpu": 56.303297905195734,
+      "paths": [
+        {
+          "path": "interior_initialized",
+          "calls": 140969,
+          "load_own_cpu_ns": 232137394,
+          "load_inclusive_cpu_ns": 232137394,
+          "fraction_of_sampled_column_own_cpu": 0.3610425001951547,
+          "fraction_of_sampled_anchor_own_cpu": 0.17922203965613093
+        },
+        {
+          "path": "pending_tile_initialized",
+          "calls": 91762,
+          "load_own_cpu_ns": 227578612,
+          "load_inclusive_cpu_ns": 1585969722,
+          "fraction_of_sampled_column_own_cpu": 0.3539522420391393,
+          "fraction_of_sampled_anchor_own_cpu": 0.17570242485254758
+        },
+        {
+          "path": "published_tile_initialized",
+          "calls": 73361,
+          "load_own_cpu_ns": 134431424,
+          "load_inclusive_cpu_ns": 395150013,
+          "fraction_of_sampled_column_own_cpu": 0.20908073701281807,
+          "fraction_of_sampled_anchor_own_cpu": 0.10378799205076865
+        },
+        {
+          "path": "interior_ready",
+          "calls": 109048,
+          "load_own_cpu_ns": 40575079,
+          "load_inclusive_cpu_ns": 40575079,
+          "fraction_of_sampled_column_own_cpu": 0.06310628251377681,
+          "fraction_of_sampled_anchor_own_cpu": 0.03132605347326611
+        },
+        {
+          "path": "published_tile_ready",
+          "calls": 15027,
+          "load_own_cpu_ns": 4865180,
+          "load_inclusive_cpu_ns": 4865180,
+          "fraction_of_sampled_column_own_cpu": 0.007566797924419979,
+          "fraction_of_sampled_anchor_own_cpu": 0.003756169860742966
+        },
+        {
+          "path": "pending_tile_ready",
+          "calls": 6723,
+          "load_own_cpu_ns": 2378824,
+          "load_inclusive_cpu_ns": 2378824,
+          "fraction_of_sampled_column_own_cpu": 0.003699776885081422,
+          "fraction_of_sampled_anchor_own_cpu": 0.0018365748056211745
+        },
+        {
+          "path": "neighbor_archive",
+          "calls": 2187,
+          "load_own_cpu_ns": 958331,
+          "load_inclusive_cpu_ns": 958331,
+          "fraction_of_sampled_column_own_cpu": 0.001490488948344629,
+          "fraction_of_sampled_anchor_own_cpu": 0.0007398809538014353
+        },
+        {
+          "path": "pending_tile_became_ready",
+          "calls": 4,
+          "load_own_cpu_ns": 22542,
+          "load_inclusive_cpu_ns": 22542,
+          "fraction_of_sampled_column_own_cpu": 3.505949601294817e-05,
+          "fraction_of_sampled_anchor_own_cpu": 1.7403586506741363e-05
+        },
+        {
+          "path": "published_tile_became_ready",
+          "calls": 3,
+          "load_own_cpu_ns": 16791,
+          "load_inclusive_cpu_ns": 16791,
+          "fraction_of_sampled_column_own_cpu": 2.6114985252125485e-05,
+          "fraction_of_sampled_anchor_own_cpu": 1.2963517923640059e-05
+        }
+      ]
+    },
+    {
+      "salt": 1,
+      "requests": 1,
+      "case": "nether-main",
+      "sampled_anchors": 17489,
+      "sampled_column_calls": 429654,
+      "sampled_column_own_cpu_ns": 466882598,
+      "sampled_anchor_own_cpu_ns": 1148048671,
+      "initializer_percent_of_sampled_column_cpu": 87.9314467402788,
+      "tile_initializer_percent_of_sampled_column_cpu": 49.48921977169087,
+      "paths": [
+        {
+          "path": "interior_initialized",
+          "calls": 131418,
+          "load_own_cpu_ns": 179480068,
+          "load_inclusive_cpu_ns": 179480068,
+          "fraction_of_sampled_column_own_cpu": 0.38442226968587934,
+          "fraction_of_sampled_anchor_own_cpu": 0.15633489462050865
+        },
+        {
+          "path": "pending_tile_initialized",
+          "calls": 61945,
+          "load_own_cpu_ns": 149584684,
+          "load_inclusive_cpu_ns": 1739663164,
+          "fraction_of_sampled_column_own_cpu": 0.3203903607476071,
+          "fraction_of_sampled_anchor_own_cpu": 0.13029472336717682
+        },
+        {
+          "path": "published_tile_initialized",
+          "calls": 40433,
+          "load_own_cpu_ns": 81471871,
+          "load_inclusive_cpu_ns": 302549376,
+          "fraction_of_sampled_column_own_cpu": 0.17450183696930166,
+          "fraction_of_sampled_anchor_own_cpu": 0.0709655200672237
+        },
+        {
+          "path": "interior_ready",
+          "calls": 146511,
+          "load_own_cpu_ns": 43112549,
+          "load_inclusive_cpu_ns": 43112549,
+          "fraction_of_sampled_column_own_cpu": 0.09234130632557866,
+          "fraction_of_sampled_anchor_own_cpu": 0.0375528930863594
+        },
+        {
+          "path": "published_tile_ready",
+          "calls": 24867,
+          "load_own_cpu_ns": 6220956,
+          "load_inclusive_cpu_ns": 6220956,
+          "fraction_of_sampled_column_own_cpu": 0.013324454641592789,
+          "fraction_of_sampled_anchor_own_cpu": 0.0054187214855457985
+        },
+        {
+          "path": "pending_tile_ready",
+          "calls": 14890,
+          "load_own_cpu_ns": 3723981,
+          "load_inclusive_cpu_ns": 3723981,
+          "fraction_of_sampled_column_own_cpu": 0.007976268586476636,
+          "fraction_of_sampled_anchor_own_cpu": 0.00324374836543842
+        },
+        {
+          "path": "neighbor_archive",
+          "calls": 9576,
+          "load_own_cpu_ns": 3225864,
+          "load_inclusive_cpu_ns": 3225864,
+          "fraction_of_sampled_column_own_cpu": 0.006909368680303651,
+          "fraction_of_sampled_anchor_own_cpu": 0.002809866934639742
+        },
+        {
+          "path": "interior_became_ready",
+          "calls": 11,
+          "load_own_cpu_ns": 44126,
+          "load_inclusive_cpu_ns": 44126,
+          "fraction_of_sampled_column_own_cpu": 9.451198264622405e-05,
+          "fraction_of_sampled_anchor_own_cpu": 3.8435652698908966e-05
+        },
+        {
+          "path": "pending_tile_became_ready",
+          "calls": 3,
+          "load_own_cpu_ns": 18499,
+          "load_inclusive_cpu_ns": 18499,
+          "fraction_of_sampled_column_own_cpu": 3.962238061398039e-05,
+          "fraction_of_sampled_anchor_own_cpu": 1.6113428347847457e-05
+        }
+      ]
+    },
+    {
+      "salt": 1,
+      "requests": 1,
+      "case": "nether-second-seed",
+      "sampled_anchors": 17608,
+      "sampled_column_calls": 435351,
+      "sampled_column_own_cpu_ns": 474554112,
+      "sampled_anchor_own_cpu_ns": 1200316755,
+      "initializer_percent_of_sampled_column_cpu": 87.95550168997377,
+      "tile_initializer_percent_of_sampled_column_cpu": 47.500028616336174,
+      "paths": [
+        {
+          "path": "interior_initialized",
+          "calls": 132583,
+          "load_own_cpu_ns": 191983111,
+          "load_inclusive_cpu_ns": 191983111,
+          "fraction_of_sampled_column_own_cpu": 0.40455473073637593,
+          "fraction_of_sampled_anchor_own_cpu": 0.15994370669265548
+        },
+        {
+          "path": "pending_tile_initialized",
+          "calls": 64030,
+          "load_own_cpu_ns": 146093197,
+          "load_inclusive_cpu_ns": 1992062354,
+          "fraction_of_sampled_column_own_cpu": 0.307853611012436,
+          "fraction_of_sampled_anchor_own_cpu": 0.12171220337584973
+        },
+        {
+          "path": "published_tile_initialized",
+          "calls": 43067,
+          "load_own_cpu_ns": 79320142,
+          "load_inclusive_cpu_ns": 432639301,
+          "fraction_of_sampled_column_own_cpu": 0.16714667515092568,
+          "fraction_of_sampled_anchor_own_cpu": 0.06608267498523754
+        },
+        {
+          "path": "interior_ready",
+          "calls": 145279,
+          "load_own_cpu_ns": 44547076,
+          "load_inclusive_cpu_ns": 44547076,
+          "fraction_of_sampled_column_own_cpu": 0.09387143609873515,
+          "fraction_of_sampled_anchor_own_cpu": 0.03711276695458608
+        },
+        {
+          "path": "published_tile_ready",
+          "calls": 25633,
+          "load_own_cpu_ns": 5820246,
+          "load_inclusive_cpu_ns": 5820246,
+          "fraction_of_sampled_column_own_cpu": 0.012264662454341982,
+          "fraction_of_sampled_anchor_own_cpu": 0.004848925065617367
+        },
+        {
+          "path": "pending_tile_ready",
+          "calls": 15527,
+          "load_own_cpu_ns": 3852454,
+          "load_inclusive_cpu_ns": 3852454,
+          "fraction_of_sampled_column_own_cpu": 0.008118049981200037,
+          "fraction_of_sampled_anchor_own_cpu": 0.003209531137470459
+        },
+        {
+          "path": "neighbor_archive",
+          "calls": 9225,
+          "load_own_cpu_ns": 2880012,
+          "load_inclusive_cpu_ns": 2880012,
+          "fraction_of_sampled_column_own_cpu": 0.006068880085902617,
+          "fraction_of_sampled_anchor_own_cpu": 0.002399376654539826
+        },
+        {
+          "path": "interior_became_ready",
+          "calls": 5,
+          "load_own_cpu_ns": 46291,
+          "load_inclusive_cpu_ns": 46291,
+          "fraction_of_sampled_column_own_cpu": 9.754630468779923e-05,
+          "fraction_of_sampled_anchor_own_cpu": 3.856565344703532e-05
+        },
+        {
+          "path": "pending_tile_became_ready",
+          "calls": 2,
+          "load_own_cpu_ns": 11583,
+          "load_inclusive_cpu_ns": 11583,
+          "fraction_of_sampled_column_own_cpu": 2.4408175394758776e-05,
+          "fraction_of_sampled_anchor_own_cpu": 9.649952774340803e-06
+        }
+      ]
+    },
+    {
+      "salt": 1,
+      "requests": 1,
+      "case": "nether-custom-bounds",
+      "sampled_anchors": 10520,
+      "sampled_column_calls": 386431,
+      "sampled_column_own_cpu_ns": 399649204,
+      "sampled_anchor_own_cpu_ns": 852731179,
+      "initializer_percent_of_sampled_column_cpu": 90.12944186922489,
+      "tile_initializer_percent_of_sampled_column_cpu": 46.05458741261499,
+      "paths": [
+        {
+          "path": "interior_initialized",
+          "calls": 138826,
+          "load_own_cpu_ns": 176144805,
+          "load_inclusive_cpu_ns": 176144805,
+          "fraction_of_sampled_column_own_cpu": 0.440748544566099,
+          "fraction_of_sampled_anchor_own_cpu": 0.20656545619284786
+        },
+        {
+          "path": "pending_tile_initialized",
+          "calls": 64617,
+          "load_own_cpu_ns": 118880008,
+          "load_inclusive_cpu_ns": 922767549,
+          "fraction_of_sampled_column_own_cpu": 0.2974608902261194,
+          "fraction_of_sampled_anchor_own_cpu": 0.13941088461126858
+        },
+        {
+          "path": "published_tile_initialized",
+          "calls": 46029,
+          "load_own_cpu_ns": 65176784,
+          "load_inclusive_cpu_ns": 281749905,
+          "fraction_of_sampled_column_own_cpu": 0.16308498390003048,
+          "fraction_of_sampled_anchor_own_cpu": 0.07643297865152882
+        },
+        {
+          "path": "interior_ready",
+          "calls": 109414,
+          "load_own_cpu_ns": 32236166,
+          "load_inclusive_cpu_ns": 32236166,
+          "fraction_of_sampled_column_own_cpu": 0.08066115402546879,
+          "fraction_of_sampled_anchor_own_cpu": 0.03780343300898582
+        },
+        {
+          "path": "neighbor_archive",
+          "calls": 10578,
+          "load_own_cpu_ns": 3192865,
+          "load_inclusive_cpu_ns": 3192865,
+          "fraction_of_sampled_column_own_cpu": 0.00798916892125225,
+          "fraction_of_sampled_anchor_own_cpu": 0.0037442808221745576
+        },
+        {
+          "path": "published_tile_ready",
+          "calls": 12966,
+          "load_own_cpu_ns": 2894803,
+          "load_inclusive_cpu_ns": 2894803,
+          "fraction_of_sampled_column_own_cpu": 0.007243359854158499,
+          "fraction_of_sampled_anchor_own_cpu": 0.0033947427645307196
+        },
+        {
+          "path": "pending_tile_ready",
+          "calls": 3993,
+          "load_own_cpu_ns": 1079064,
+          "load_inclusive_cpu_ns": 1079064,
+          "fraction_of_sampled_column_own_cpu": 0.0027000278974657985,
+          "fraction_of_sampled_anchor_own_cpu": 0.0012654210688829522
+        },
+        {
+          "path": "interior_became_ready",
+          "calls": 5,
+          "load_own_cpu_ns": 25375,
+          "load_inclusive_cpu_ns": 25375,
+          "fraction_of_sampled_column_own_cpu": 6.34931828864596e-05,
+          "fraction_of_sampled_anchor_own_cpu": 2.9757326370729548e-05
+        },
+        {
+          "path": "pending_tile_became_ready",
+          "calls": 2,
+          "load_own_cpu_ns": 16542,
+          "load_inclusive_cpu_ns": 16542,
+          "fraction_of_sampled_column_own_cpu": 4.139129975597299e-05,
+          "fraction_of_sampled_anchor_own_cpu": 1.9398845037422984e-05
+        },
+        {
+          "path": "published_tile_became_ready",
+          "calls": 1,
+          "load_own_cpu_ns": 2792,
+          "load_inclusive_cpu_ns": 2792,
+          "fraction_of_sampled_column_own_cpu": 6.986126763310155e-06,
+          "fraction_of_sampled_anchor_own_cpu": 3.2741854276680554e-06
+        }
+      ]
+    },
+    {
+      "salt": 1,
+      "requests": 1,
+      "case": "nether-direct-stem",
+      "sampled_anchors": 10547,
+      "sampled_column_calls": 369635,
+      "sampled_column_own_cpu_ns": 396954715,
+      "sampled_anchor_own_cpu_ns": 845588493,
+      "initializer_percent_of_sampled_column_cpu": 90.31138350378329,
+      "tile_initializer_percent_of_sampled_column_cpu": 46.691256457301435,
+      "paths": [
+        {
+          "path": "interior_initialized",
+          "calls": 136305,
+          "load_own_cpu_ns": 173152151,
+          "load_inclusive_cpu_ns": 173152151,
+          "fraction_of_sampled_column_own_cpu": 0.43620127046481866,
+          "fraction_of_sampled_anchor_own_cpu": 0.20477117703634598
+        },
+        {
+          "path": "pending_tile_initialized",
+          "calls": 59811,
+          "load_own_cpu_ns": 114214119,
+          "load_inclusive_cpu_ns": 946887737,
+          "fraction_of_sampled_column_own_cpu": 0.28772581527341223,
+          "fraction_of_sampled_anchor_own_cpu": 0.1350705691308408
+        },
+        {
+          "path": "published_tile_initialized",
+          "calls": 47356,
+          "load_own_cpu_ns": 71129025,
+          "load_inclusive_cpu_ns": 235513901,
+          "fraction_of_sampled_column_own_cpu": 0.1791867492996021,
+          "fraction_of_sampled_anchor_own_cpu": 0.08411777784208802
+        },
+        {
+          "path": "interior_ready",
+          "calls": 100863,
+          "load_own_cpu_ns": 31074432,
+          "load_inclusive_cpu_ns": 31074432,
+          "fraction_of_sampled_column_own_cpu": 0.07828205794205013,
+          "fraction_of_sampled_anchor_own_cpu": 0.036748882295871074
+        },
+        {
+          "path": "neighbor_archive",
+          "calls": 11632,
+          "load_own_cpu_ns": 3853929,
+          "load_inclusive_cpu_ns": 3853929,
+          "fraction_of_sampled_column_own_cpu": 0.009708737179252299,
+          "fraction_of_sampled_anchor_own_cpu": 0.004557688558801142
+        },
+        {
+          "path": "published_tile_ready",
+          "calls": 9840,
+          "load_own_cpu_ns": 2428286,
+          "load_inclusive_cpu_ns": 2428286,
+          "fraction_of_sampled_column_own_cpu": 0.006117287207433725,
+          "fraction_of_sampled_anchor_own_cpu": 0.002871711263932727
+        },
+        {
+          "path": "pending_tile_ready",
+          "calls": 3820,
+          "load_own_cpu_ns": 1052190,
+          "load_inclusive_cpu_ns": 1052190,
+          "fraction_of_sampled_column_own_cpu": 0.0026506549997774935,
+          "fraction_of_sampled_anchor_own_cpu": 0.001244328664250165
+        },
+        {
+          "path": "interior_became_ready",
+          "calls": 4,
+          "load_own_cpu_ns": 28376,
+          "load_inclusive_cpu_ns": 28376,
+          "fraction_of_sampled_column_own_cpu": 7.148422459221829e-05,
+          "fraction_of_sampled_anchor_own_cpu": 3.355769412060814e-05
+        },
+        {
+          "path": "pending_tile_became_ready",
+          "calls": 4,
+          "load_own_cpu_ns": 22207,
+          "load_inclusive_cpu_ns": 22207,
+          "fraction_of_sampled_column_own_cpu": 5.5943409061157014e-05,
+          "fraction_of_sampled_anchor_own_cpu": 2.6262183300547823e-05
+        }
+      ]
+    },
+    {
+      "salt": 1,
+      "requests": 8,
+      "case": "nether-main",
+      "sampled_anchors": 19359,
+      "sampled_column_calls": 503825,
+      "sampled_column_own_cpu_ns": 627926345,
+      "sampled_anchor_own_cpu_ns": 1444521397,
+      "initializer_percent_of_sampled_column_cpu": 90.14578357912345,
+      "tile_initializer_percent_of_sampled_column_cpu": 59.67903831141214,
+      "paths": [
+        {
+          "path": "pending_tile_initialized",
+          "calls": 95469,
+          "load_own_cpu_ns": 244958795,
+          "load_inclusive_cpu_ns": 2538195747,
+          "fraction_of_sampled_column_own_cpu": 0.3901075292516991,
+          "fraction_of_sampled_anchor_own_cpu": 0.16957782384444667
+        },
+        {
+          "path": "interior_initialized",
+          "calls": 129039,
+          "load_own_cpu_ns": 191308720,
+          "load_inclusive_cpu_ns": 191308720,
+          "fraction_of_sampled_column_own_cpu": 0.3046674526771129,
+          "fraction_of_sampled_anchor_own_cpu": 0.13243744287714418
+        },
+        {
+          "path": "published_tile_initialized",
+          "calls": 65768,
+          "load_own_cpu_ns": 129781609,
+          "load_inclusive_cpu_ns": 441898321,
+          "fraction_of_sampled_column_own_cpu": 0.20668285386242236,
+          "fraction_of_sampled_anchor_own_cpu": 0.0898440198044363
+        },
+        {
+          "path": "interior_ready",
+          "calls": 148902,
+          "load_own_cpu_ns": 45078000,
+          "load_inclusive_cpu_ns": 45078000,
+          "fraction_of_sampled_column_own_cpu": 0.0717886745140467,
+          "fraction_of_sampled_anchor_own_cpu": 0.031206183649213192
+        },
+        {
+          "path": "published_tile_ready",
+          "calls": 40583,
+          "load_own_cpu_ns": 10121547,
+          "load_inclusive_cpu_ns": 10121547,
+          "fraction_of_sampled_column_own_cpu": 0.0161190035751725,
+          "fraction_of_sampled_anchor_own_cpu": 0.007006851557215112
+        },
+        {
+          "path": "pending_tile_ready",
+          "calls": 23705,
+          "load_own_cpu_ns": 6506003,
+          "load_inclusive_cpu_ns": 6506003,
+          "fraction_of_sampled_column_own_cpu": 0.010361092589609376,
+          "fraction_of_sampled_anchor_own_cpu": 0.0045039159776461245
+        },
+        {
+          "path": "neighbor_archive",
+          "calls": 349,
+          "load_own_cpu_ns": 108295,
+          "load_inclusive_cpu_ns": 108295,
+          "fraction_of_sampled_column_own_cpu": 0.00017246449501971445,
+          "fraction_of_sampled_anchor_own_cpu": 7.496946755161149e-05
+        },
+        {
+          "path": "interior_became_ready",
+          "calls": 8,
+          "load_own_cpu_ns": 48001,
+          "load_inclusive_cpu_ns": 48001,
+          "fraction_of_sampled_column_own_cpu": 7.644367907513102e-05,
+          "fraction_of_sampled_anchor_own_cpu": 3.322969123177343e-05
+        },
+        {
+          "path": "pending_tile_became_ready",
+          "calls": 2,
+          "load_own_cpu_ns": 15375,
+          "load_inclusive_cpu_ns": 15375,
+          "fraction_of_sampled_column_own_cpu": 2.448535584217286e-05,
+          "fraction_of_sampled_anchor_own_cpu": 1.0643663729683058e-05
+        }
+      ]
+    },
+    {
+      "salt": 1,
+      "requests": 8,
+      "case": "nether-second-seed",
+      "sampled_anchors": 19347,
+      "sampled_column_calls": 485917,
+      "sampled_column_own_cpu_ns": 682525072,
+      "sampled_anchor_own_cpu_ns": 1596488996,
+      "initializer_percent_of_sampled_column_cpu": 90.22541724298738,
+      "tile_initializer_percent_of_sampled_column_cpu": 57.44738839425374,
+      "paths": [
+        {
+          "path": "pending_tile_initialized",
+          "calls": 91965,
+          "load_own_cpu_ns": 258840429,
+          "load_inclusive_cpu_ns": 3296457158,
+          "fraction_of_sampled_column_own_cpu": 0.3792394442617633,
+          "fraction_of_sampled_anchor_own_cpu": 0.16213104484185245
+        },
+        {
+          "path": "interior_initialized",
+          "calls": 132610,
+          "load_own_cpu_ns": 223718265,
+          "load_inclusive_cpu_ns": 223718265,
+          "fraction_of_sampled_column_own_cpu": 0.3277802884873363,
+          "fraction_of_sampled_anchor_own_cpu": 0.14013141685318575
+        },
+        {
+          "path": "published_tile_initialized",
+          "calls": 59845,
+          "load_own_cpu_ns": 133252400,
+          "load_inclusive_cpu_ns": 672553346,
+          "fraction_of_sampled_column_own_cpu": 0.1952344396807741,
+          "fraction_of_sampled_anchor_own_cpu": 0.08346590570549726
+        },
+        {
+          "path": "interior_ready",
+          "calls": 145267,
+          "load_own_cpu_ns": 50323923,
+          "load_inclusive_cpu_ns": 50323923,
+          "fraction_of_sampled_column_own_cpu": 0.07373197713094413,
+          "fraction_of_sampled_anchor_own_cpu": 0.031521622213548914
+        },
+        {
+          "path": "published_tile_ready",
+          "calls": 34299,
+          "load_own_cpu_ns": 9521820,
+          "load_inclusive_cpu_ns": 9521820,
+          "fraction_of_sampled_column_own_cpu": 0.013950872122687384,
+          "fraction_of_sampled_anchor_own_cpu": 0.005964225261719248
+        },
+        {
+          "path": "pending_tile_ready",
+          "calls": 21566,
+          "load_own_cpu_ns": 6674366,
+          "load_inclusive_cpu_ns": 6674366,
+          "fraction_of_sampled_column_own_cpu": 0.009778931608244276,
+          "fraction_of_sampled_anchor_own_cpu": 0.0041806526801766945
+        },
+        {
+          "path": "neighbor_archive",
+          "calls": 354,
+          "load_own_cpu_ns": 125701,
+          "load_inclusive_cpu_ns": 125701,
+          "fraction_of_sampled_column_own_cpu": 0.00018417052377527897,
+          "fraction_of_sampled_anchor_own_cpu": 7.873590129023351e-05
+        },
+        {
+          "path": "pending_tile_became_ready",
+          "calls": 7,
+          "load_own_cpu_ns": 37542,
+          "load_inclusive_cpu_ns": 37542,
+          "fraction_of_sampled_column_own_cpu": 5.500457278439729e-05,
+          "fraction_of_sampled_anchor_own_cpu": 2.3515351558364266e-05
+        },
+        {
+          "path": "interior_became_ready",
+          "calls": 4,
+          "load_own_cpu_ns": 30626,
+          "load_inclusive_cpu_ns": 30626,
+          "fraction_of_sampled_column_own_cpu": 4.487161169077171e-05,
+          "fraction_of_sampled_anchor_own_cpu": 1.9183345501743754e-05
+        }
+      ]
+    },
+    {
+      "salt": 1,
+      "requests": 8,
+      "case": "nether-custom-bounds",
+      "sampled_anchors": 12235,
+      "sampled_column_calls": 451339,
+      "sampled_column_own_cpu_ns": 676260909,
+      "sampled_anchor_own_cpu_ns": 1328495553,
+      "initializer_percent_of_sampled_column_cpu": 92.83276537872456,
+      "tile_initializer_percent_of_sampled_column_cpu": 57.02072038589473,
+      "paths": [
+        {
+          "path": "pending_tile_initialized",
+          "calls": 101142,
+          "load_own_cpu_ns": 250609340,
+          "load_inclusive_cpu_ns": 1781916066,
+          "fraction_of_sampled_column_own_cpu": 0.3705808463342659,
+          "fraction_of_sampled_anchor_own_cpu": 0.18864145945695912
+        },
+        {
+          "path": "interior_initialized",
+          "calls": 140955,
+          "load_own_cpu_ns": 242182861,
+          "load_inclusive_cpu_ns": 242182861,
+          "fraction_of_sampled_column_own_cpu": 0.35812044992829833,
+          "fraction_of_sampled_anchor_own_cpu": 0.18229858613610278
+        },
+        {
+          "path": "published_tile_initialized",
+          "calls": 73268,
+          "load_own_cpu_ns": 134999502,
+          "load_inclusive_cpu_ns": 456714798,
+          "fraction_of_sampled_column_own_cpu": 0.19962635752468136,
+          "fraction_of_sampled_anchor_own_cpu": 0.1016183318755904
+        },
+        {
+          "path": "interior_ready",
+          "calls": 108833,
+          "load_own_cpu_ns": 39847950,
+          "load_inclusive_cpu_ns": 39847950,
+          "fraction_of_sampled_column_own_cpu": 0.058923929314388335,
+          "fraction_of_sampled_anchor_own_cpu": 0.029994793667179102
+        },
+        {
+          "path": "published_tile_ready",
+          "calls": 18747,
+          "load_own_cpu_ns": 5635859,
+          "load_inclusive_cpu_ns": 5635859,
+          "fraction_of_sampled_column_own_cpu": 0.00833385299223321,
+          "fraction_of_sampled_anchor_own_cpu": 0.004242286688331881
+        },
+        {
+          "path": "pending_tile_ready",
+          "calls": 7001,
+          "load_own_cpu_ns": 2468293,
+          "load_inclusive_cpu_ns": 2468293,
+          "fraction_of_sampled_column_own_cpu": 0.0036499122855554555,
+          "fraction_of_sampled_anchor_own_cpu": 0.0018579610555911285
+        },
+        {
+          "path": "neighbor_archive",
+          "calls": 1387,
+          "load_own_cpu_ns": 479271,
+          "load_inclusive_cpu_ns": 479271,
+          "fraction_of_sampled_column_own_cpu": 0.0007087072365438175,
+          "fraction_of_sampled_anchor_own_cpu": 0.0003607622162661466
+        },
+        {
+          "path": "pending_tile_became_ready",
+          "calls": 5,
+          "load_own_cpu_ns": 29917,
+          "load_inclusive_cpu_ns": 29917,
+          "fraction_of_sampled_column_own_cpu": 4.4238842733404245e-05,
+          "fraction_of_sampled_anchor_own_cpu": 2.2519458143794026e-05
+        },
+        {
+          "path": "interior_became_ready",
+          "calls": 1,
+          "load_own_cpu_ns": 7916,
+          "load_inclusive_cpu_ns": 7916,
+          "fraction_of_sampled_column_own_cpu": 1.1705541300184779e-05,
+          "fraction_of_sampled_anchor_own_cpu": 5.958619870517549e-06
+        }
+      ]
+    },
+    {
+      "salt": 1,
+      "requests": 8,
+      "case": "nether-direct-stem",
+      "sampled_anchors": 12090,
+      "sampled_column_calls": 427400,
+      "sampled_column_own_cpu_ns": 636662581,
+      "sampled_anchor_own_cpu_ns": 1244338818,
+      "initializer_percent_of_sampled_column_cpu": 92.77391237164605,
+      "tile_initializer_percent_of_sampled_column_cpu": 58.236734035418365,
+      "paths": [
+        {
+          "path": "pending_tile_initialized",
+          "calls": 90777,
+          "load_own_cpu_ns": 229941332,
+          "load_inclusive_cpu_ns": 1781534147,
+          "fraction_of_sampled_column_own_cpu": 0.361166713518538,
+          "fraction_of_sampled_anchor_own_cpu": 0.18478996931846903
+        },
+        {
+          "path": "interior_initialized",
+          "calls": 135958,
+          "load_own_cpu_ns": 219885291,
+          "load_inclusive_cpu_ns": 219885291,
+          "fraction_of_sampled_column_own_cpu": 0.3453717833622768,
+          "fraction_of_sampled_anchor_own_cpu": 0.17670853614726661
+        },
+        {
+          "path": "published_tile_initialized",
+          "calls": 75094,
+          "load_own_cpu_ns": 140830162,
+          "load_inclusive_cpu_ns": 477944068,
+          "fraction_of_sampled_column_own_cpu": 0.22120062683564562,
+          "fraction_of_sampled_anchor_own_cpu": 0.11317670072075177
+        },
+        {
+          "path": "interior_ready",
+          "calls": 101221,
+          "load_own_cpu_ns": 37961993,
+          "load_inclusive_cpu_ns": 37961993,
+          "fraction_of_sampled_column_own_cpu": 0.05962654965582154,
+          "fraction_of_sampled_anchor_own_cpu": 0.030507762396270434
+        },
+        {
+          "path": "published_tile_ready",
+          "calls": 15237,
+          "load_own_cpu_ns": 4788155,
+          "load_inclusive_cpu_ns": 4788155,
+          "fraction_of_sampled_column_own_cpu": 0.007520710566151523,
+          "fraction_of_sampled_anchor_own_cpu": 0.003847951161481808
+        },
+        {
+          "path": "pending_tile_ready",
+          "calls": 6533,
+          "load_own_cpu_ns": 2234041,
+          "load_inclusive_cpu_ns": 2234041,
+          "fraction_of_sampled_column_own_cpu": 0.0035089874396120667,
+          "fraction_of_sampled_anchor_own_cpu": 0.001795363905460032
+        },
+        {
+          "path": "neighbor_archive",
+          "calls": 2574,
+          "load_own_cpu_ns": 978564,
+          "load_inclusive_cpu_ns": 978564,
+          "fraction_of_sampled_column_own_cpu": 0.0015370213818173177,
+          "fraction_of_sampled_anchor_own_cpu": 0.0007864128208849303
+        },
+        {
+          "path": "interior_became_ready",
+          "calls": 4,
+          "load_own_cpu_ns": 29002,
+          "load_inclusive_cpu_ns": 29002,
+          "fraction_of_sampled_column_own_cpu": 4.555317190849638e-05,
+          "fraction_of_sampled_anchor_own_cpu": 2.3307156845443682e-05
+        },
+        {
+          "path": "published_tile_became_ready",
+          "calls": 2,
+          "load_own_cpu_ns": 14041,
+          "load_inclusive_cpu_ns": 14041,
+          "fraction_of_sampled_column_own_cpu": 2.205406822864622e-05,
+          "fraction_of_sampled_anchor_own_cpu": 1.1283904188224078e-05
+        }
+      ]
+    }
+  ],
+  "interpretation": [
+    "Actual main column initializers dominate sampled column-query CPU; direct ready-state lookup is a smaller share. Initialization includes recursive earlier columns/replay/lookup and can use exterior archives; it is not pure material application CPU.",
+    "Tile-backed initialization gains share with eight requests; this agrees with increased boundary reconstruction work in earlier diagnostic counts.",
+    "These ratios use identical sampled populations; do not apply them to all CPU or wall time. Clock/counter observer overhead remains included.",
+    "C140 held material/continuation candidate has its own two-salt load ratios; apply this partition there before selecting the next reconstruction change.",
+    "No production speedup or subsecond acceptance is claimed. Preserve all existing worktrees and large evidence."
+  ],
+  "evidence_root": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle141",
+  "recovery": [
+    "Read receipt.json for exact commands/environment and original failed postcondition. All actual operations passed.",
+    "Verify source freeze/terminal in terminal.json and completion-review.json. Run verify-release-equivalence.py to audit every changed binary byte.",
+    "Read paths-salt{0,1}-requests{1,8}/report.json and validation.json for raw CPU/path rows and exact NBT comparisons.",
+    "Read normal-1/suite.json for normal complete-region timing, counters, hashes and commands; timings remain provisional.",
+    "Original binary/corpus remain ../reference and ../reference-suite; preceding merged main is ../cycle138/merged."
+  ],
+  "next": "Apply accepted observer to the held C140 implementation and identify expensive column initialization work before another generation change."
+}
