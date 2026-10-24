@@ -1090,7 +1090,7 @@ impl Planner<'_> {
                 metrics.add(Perf::column_versions_skipped, (before - version) as u64);
                 metrics.add(Perf::completed_column_reads, 1);
                 #[cfg(test)] column_cpu.path(worker_phase_probe::ColumnLoadPath::Interior);
-                return self.column_cell(version, x, z, slot, #[cfg(test)] &mut column_cpu);
+                return self.column_cell(version, x, z, slot, #[cfg(test)] true, #[cfg(test)] &mut column_cpu);
             }
             if let Some(reuse) = &self.reuse {
                 metrics.add(Perf::version_cache_boundary_lookups, 1);
@@ -1108,7 +1108,7 @@ impl Planner<'_> {
             metrics.add(Perf::completed_boundary_reads, 1);
             #[cfg(test)] dependency_work::count(Work::ColumnReadyBoundary, before.checked_sub(1));
             #[cfg(test)] column_cpu.path(worker_phase_probe::ColumnLoadPath::PublishedTile);
-            return self.column_cell(before, x, z, &tile.0[index], #[cfg(test)] &mut column_cpu);
+            return self.column_cell(before, x, z, &tile.0[index], #[cfg(test)] false, #[cfg(test)] &mut column_cpu);
         }
         #[cfg(test)] column_cpu.path(worker_phase_probe::ColumnLoadPath::PendingTile);
         let lock_started = metrics.start();
@@ -1129,7 +1129,7 @@ impl Planner<'_> {
         #[cfg(test)]
         lookup.finish(true);
         metrics.elapsed(Perf::column_lock_nanos, lock_started);
-        self.column_cell(before, x, z, &tile.0[index], #[cfg(test)] &mut column_cpu)
+        self.column_cell(before, x, z, &tile.0[index], #[cfg(test)] false, #[cfg(test)] &mut column_cpu)
     }
     fn column_cell(
         &self,
@@ -1137,6 +1137,7 @@ impl Planner<'_> {
         x: i32,
         z: i32,
         slot: &ColumnCell,
+        #[cfg(test)] compact: bool,
         #[cfg(test)] column_cpu: &mut worker_phase_probe::ColumnLoadCpu,
     ) -> Result<Arc<ColumnState>, String> {
         let metrics = &self.metrics.performance;
@@ -1150,7 +1151,7 @@ impl Planner<'_> {
         let result = slot.get_or_init(|| {
             built = true;
             metrics.add(Perf::column_builds, 1);
-            #[cfg(test)] dependency_work::count(Work::ColumnBuild, before.checked_sub(1)); #[cfg(test)] return self.column_trace.evaluate(before, x, z, self.profile, |observation| self.build_column(before, x, z, observation)).map_err(|error| Box::new(ColumnFailure(error)));
+            #[cfg(test)] dependency_work::count(Work::ColumnBuild, before.checked_sub(1)); #[cfg(test)] return self.column_trace.evaluate(before, x, z, self.profile, compact, |observation| self.build_column(before, x, z, observation)).map_err(|error| Box::new(ColumnFailure(error)));
             #[cfg(not(test))] self.build_column(before, x, z)
                 .map_err(|error| Box::new(ColumnFailure(error)))
         });
