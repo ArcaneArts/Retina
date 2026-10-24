@@ -205,12 +205,15 @@ impl Job {
         before: usize,
         x: i32,
         z: i32,
+        profile: &WorldProfile,
         build: impl FnOnce(Option<&mut Build>) -> Result<Arc<ColumnState>, String>,
     ) -> Result<Arc<ColumnState>, String> {
         let mut observation = self.begin(before, x, z);
         let result = build(observation.as_mut());
         if let (Some(observation), Ok(value)) = (observation, &result) {
-            observation.complete(value);
+            observation.complete_with_heights(value, observed_heights(
+                value, profile, self.key.request.min_y, self.key.request.height as usize,
+            ));
         }
         result
     }
@@ -275,6 +278,21 @@ impl Job {
         )
     }
 }
+// Reconstruct diagnostic height snapshots directly from immutable runs. Calling
+// ColumnState::height would charge these observer reads to the height-use probe.
+// This helper runs only for selected successful observations, never generation.
+fn observed_heights(column: &ColumnState, profile: &WorldProfile, min_y: i32, height: usize) -> [i32; 6] {
+    std::array::from_fn(|map| {
+        let mut top = min_y + height as i32;
+        for &run in column.runs.slice() {
+            if profile.heightmap_masks[run as u16 as usize] & (1 << map) != 0 {
+                return top;
+            }
+            top = min_y + (run >> 16) as i32;
+        }
+        min_y
+    })
+}
 pub(super) struct Build {
     session: Arc<Session>,
     key: Key,
@@ -290,11 +308,11 @@ impl Build {
     pub(super) fn source(&mut self, source: Source) {
         self.source = Some(source);
     }
-    pub(super) fn complete(mut self, column: &Arc<ColumnState>) {
+    fn complete_with_heights(mut self, column: &Arc<ColumnState>, heights: [i32; 6]) {
         let runs = column.runs.slice();
         let height = self.key.request.height as usize;
         let valid = Snapshot::valid(runs, height);
-        let bytes = std::mem::size_of_val(runs) + std::mem::size_of_val(&column.heights);
+        let bytes = std::mem::size_of_val(runs) + std::mem::size_of_val(&heights);
         let mut state = self.session.shards[self.shard].lock().unwrap();
         let room = bytes
             <= self
@@ -309,14 +327,14 @@ impl Build {
                     true,
                     previous.runs != runs,
                     !valid || !previous.same_voxels(runs, height),
-                    previous.heights != column.heights,
+                    previous.heights != heights,
                     false,
                     false,
                 )
             } else if room && valid {
                 history.snapshot = Some(Snapshot {
                     runs: runs.to_vec(),
-                    heights: column.heights,
+                    heights,
                 });
                 (false, false, false, false, true, false)
             } else {

@@ -1148,7 +1148,7 @@ impl Planner<'_> {
         let result = slot.get_or_init(|| {
             built = true;
             metrics.add(Perf::column_builds, 1);
-            #[cfg(test)] dependency_work::count(Work::ColumnBuild, before.checked_sub(1)); #[cfg(test)] return self.column_trace.evaluate(before, x, z, |observation| self.build_column(before, x, z, observation)).map_err(|error| Box::new(ColumnFailure(error)));
+            #[cfg(test)] dependency_work::count(Work::ColumnBuild, before.checked_sub(1)); #[cfg(test)] return self.column_trace.evaluate(before, x, z, self.profile, |observation| self.build_column(before, x, z, observation)).map_err(|error| Box::new(ColumnFailure(error)));
             #[cfg(not(test))] self.build_column(before, x, z)
                 .map_err(|error| Box::new(ColumnFailure(error)))
         });
