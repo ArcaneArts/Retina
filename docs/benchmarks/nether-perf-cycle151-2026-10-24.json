@@ -1,0 +1,385 @@
+{
+  "cycle": 151,
+  "source": {
+    "revision": "78c2355717b16f0edafef2bd62236bb6efa0158b",
+    "native_tree": "263d38625546540724d7f0da798120a4e6aab97d",
+    "status": ""
+  },
+  "preceding_main": {
+    "revision": "5df88525fc7d59a7fd293d5786a4d4586e9b5675",
+    "native_tree": "6f916a3d18bebd4e26565eb037878c49e4c8ac75",
+    "status": ""
+  },
+  "provenance": {
+    "revision": "78c2355717b16f0edafef2bd62236bb6efa0158b",
+    "native_tree": "263d38625546540724d7f0da798120a4e6aab97d",
+    "status": "",
+    "library_sha256": "48e3f90f50e1cc657e943e426cb93a69988c71cac26b403343df0877b7d9f575",
+    "test_executable_sha256": "4d94eb48f479523d59f6bc25d8d4b77e2c02dd78e17957754dda99dac28455b5",
+    "native_test_result": [
+      "275",
+      "0",
+      "74"
+    ]
+  },
+  "ordinary_library_identical_to_main": true,
+  "complete_nbt_chunk_instances": 307200,
+  "timing_acceptance": false,
+  "cases": [
+    {
+      "case": "nether-main",
+      "joined_regions": 20,
+      "per_region_mean": {
+        "columns": 550220.35,
+        "contributor_groups": 645080.2,
+        "live_allocated_vectors": 550220.35,
+        "reserved_indices": 2200881.4,
+        "used_payload_bytes": 5160641.6,
+        "reserved_payload_bytes": 17607051.2
+      },
+      "length_histogram": {
+        "1": 9548467,
+        "2": 1121372,
+        "3": 227879,
+        "4": 106689
+      },
+      "capacity_histogram": {
+        "4": 11004407
+      },
+      "one_contributor_fraction": 0.8676948244462424,
+      "sizes": {
+        "vector_value_size_bytes": 24,
+        "inline_one_value_size_bytes": 24
+      }
+    },
+    {
+      "case": "nether-second-seed",
+      "joined_regions": 20,
+      "per_region_mean": {
+        "columns": 551927.9,
+        "contributor_groups": 643227.95,
+        "live_allocated_vectors": 551927.9,
+        "reserved_indices": 2207711.6,
+        "used_payload_bytes": 5145823.6,
+        "reserved_payload_bytes": 17661692.8
+      },
+      "length_histogram": {
+        "1": 9633274,
+        "2": 1086102,
+        "3": 217647,
+        "4": 101535
+      },
+      "capacity_histogram": {
+        "4": 11038558
+      },
+      "one_contributor_fraction": 0.8726931543051185,
+      "sizes": {
+        "vector_value_size_bytes": 24,
+        "inline_one_value_size_bytes": 24
+      }
+    },
+    {
+      "case": "nether-custom-bounds",
+      "joined_regions": 20,
+      "per_region_mean": {
+        "columns": 497602.95,
+        "contributor_groups": 520462.5,
+        "live_allocated_vectors": 497602.95,
+        "reserved_indices": 1990411.8,
+        "used_payload_bytes": 4163700,
+        "reserved_payload_bytes": 15923294.4
+      },
+      "length_histogram": {
+        "1": 9502898,
+        "2": 441352,
+        "3": 7588,
+        "4": 221
+      },
+      "capacity_histogram": {
+        "4": 9952059
+      },
+      "one_contributor_fraction": 0.9548675304276231,
+      "sizes": {
+        "vector_value_size_bytes": 24,
+        "inline_one_value_size_bytes": 24
+      }
+    },
+    {
+      "case": "nether-direct-stem",
+      "joined_regions": 20,
+      "per_region_mean": {
+        "columns": 491041.75,
+        "contributor_groups": 513278.75,
+        "live_allocated_vectors": 491041.75,
+        "reserved_indices": 1964167,
+        "used_payload_bytes": 4106230,
+        "reserved_payload_bytes": 15713336
+      },
+      "length_histogram": {
+        "1": 9383398,
+        "2": 430296,
+        "3": 6979,
+        "4": 162
+      },
+      "capacity_histogram": {
+        "4": 9820835
+      },
+      "one_contributor_fraction": 0.9554582680596915,
+      "sizes": {
+        "vector_value_size_bytes": 24,
+        "inline_one_value_size_bytes": 24
+      }
+    },
+    {
+      "case": "overworld",
+      "joined_regions": 0,
+      "per_region_mean": {
+        "columns": 0,
+        "contributor_groups": 0,
+        "live_allocated_vectors": 0,
+        "reserved_indices": 0,
+        "used_payload_bytes": 0,
+        "reserved_payload_bytes": 0
+      },
+      "length_histogram": {},
+      "capacity_histogram": {},
+      "one_contributor_fraction": 0,
+      "sizes": {
+        "vector_value_size_bytes": null,
+        "inline_one_value_size_bytes": null
+      }
+    }
+  ],
+  "normal_observations": [
+    {
+      "round": "normal-full",
+      "case": "nether-main-run0",
+      "median_ms": 790.9592919750139,
+      "p95_region_ms": 1008.8550095912069,
+      "maximum_region_ms": 1024.6077910996974,
+      "total_ms": 15976.41691705212,
+      "chunks_per_second": 1281.8894315496404,
+      "generation_peak_rss_bytes": 1967505408,
+      "cpu_ms_per_region": 2530.3430500000004,
+      "instructions_per_region": 24070481606.35
+    },
+    {
+      "round": "normal-full",
+      "case": "nether-second-seed-run0",
+      "median_ms": 838.038562098518,
+      "p95_region_ms": 1082.2679749922827,
+      "maximum_region_ms": 1108.0528749153018,
+      "total_ms": 16346.367165911943,
+      "chunks_per_second": 1252.877767404379,
+      "generation_peak_rss_bytes": 2232500224,
+      "cpu_ms_per_region": 2513.5312999999996,
+      "instructions_per_region": 24549589609.45
+    },
+    {
+      "round": "normal-full",
+      "case": "nether-custom-bounds-run0",
+      "median_ms": 609.1170415747911,
+      "p95_region_ms": 697.4603251321242,
+      "maximum_region_ms": 809.8079580813646,
+      "total_ms": 12281.885624863207,
+      "chunks_per_second": 1667.4963947344283,
+      "generation_peak_rss_bytes": 1755185152,
+      "cpu_ms_per_region": 2408.3031499999997,
+      "instructions_per_region": 20917332416.25
+    },
+    {
+      "round": "normal-full",
+      "case": "nether-direct-stem-run0",
+      "median_ms": 499.8754165135324,
+      "p95_region_ms": 598.4039478236809,
+      "maximum_region_ms": 619.8278327938169,
+      "total_ms": 10348.365915939212,
+      "chunks_per_second": 1979.0564197633755,
+      "generation_peak_rss_bytes": 1736212480,
+      "cpu_ms_per_region": 2017.5647999999997,
+      "instructions_per_region": 20386499406.7
+    },
+    {
+      "round": "normal-full",
+      "case": "overworld-run0",
+      "median_ms": 205.37722948938608,
+      "p95_region_ms": 245.05924169206992,
+      "maximum_region_ms": 248.32470808178186,
+      "total_ms": 4197.85066600889,
+      "chunks_per_second": 4878.687125731269,
+      "generation_peak_rss_bytes": 1525202944,
+      "cpu_ms_per_region": 632.46795,
+      "instructions_per_region": 8378681452.0
+    },
+    {
+      "round": "normal-full-repeat",
+      "case": "nether-main-run0",
+      "median_ms": 770.0707500334829,
+      "p95_region_ms": 1000.7887125015259,
+      "maximum_region_ms": 1020.4648748040199,
+      "total_ms": 15146.001124987379,
+      "chunks_per_second": 1352.172090243197,
+      "generation_peak_rss_bytes": 2322792448,
+      "cpu_ms_per_region": 2397.69975,
+      "instructions_per_region": 24067146262.0
+    },
+    {
+      "round": "normal-full-repeat",
+      "case": "nether-second-seed-run0",
+      "median_ms": 744.0015624742955,
+      "p95_region_ms": 961.110481072683,
+      "maximum_region_ms": 1050.2035000827163,
+      "total_ms": 15043.421916896477,
+      "chunks_per_second": 1361.3923822077518,
+      "generation_peak_rss_bytes": 2672689152,
+      "cpu_ms_per_region": 2332.7401,
+      "instructions_per_region": 24531722743.25
+    },
+    {
+      "round": "normal-full-repeat",
+      "case": "nether-custom-bounds-run0",
+      "median_ms": 495.66981254611164,
+      "p95_region_ms": 566.7335187434219,
+      "maximum_region_ms": 604.1187499649823,
+      "total_ms": 10072.490042075515,
+      "chunks_per_second": 2033.2608833018946,
+      "generation_peak_rss_bytes": 2046607360,
+      "cpu_ms_per_region": 2022.8015,
+      "instructions_per_region": 20902298494.45
+    },
+    {
+      "round": "normal-full-repeat",
+      "case": "nether-direct-stem-run0",
+      "median_ms": 485.7497710036114,
+      "p95_region_ms": 574.4860018836334,
+      "maximum_region_ms": 616.688207956031,
+      "total_ms": 9878.007667139173,
+      "chunks_per_second": 2073.2925798519177,
+      "generation_peak_rss_bytes": 2091827200,
+      "cpu_ms_per_region": 1975.0515500000001,
+      "instructions_per_region": 20372837149.75
+    },
+    {
+      "round": "normal-full-repeat",
+      "case": "overworld-run0",
+      "median_ms": 213.7651874218136,
+      "p95_region_ms": 260.60453329700977,
+      "maximum_region_ms": 273.42066704295576,
+      "total_ms": 4416.081999894232,
+      "chunks_per_second": 4637.595044768306,
+      "generation_peak_rss_bytes": 1535672320,
+      "cpu_ms_per_region": 683.04275,
+      "instructions_per_region": 8387171159.2
+    }
+  ],
+  "limits": [
+    "Joined vector capacities are live logical backing, not allocation/reallocation event counts, allocator metadata, hash bucket bytes, transient peak memory, or an elapsed-time saving.",
+    "The observer is test-only and borrows existing lists without modifying ordering or retaining owners.",
+    "Normal observations include full generation/lighting/zlib/publication/cleanup; instrumented time is excluded. Timing confirmation remains deferred."
+  ],
+  "updated_utc": "2026-10-24T17:52:11.193499+00:00",
+  "status": "Validated test-only diagnostic; actual merged proof follows.",
+  "scope": "Extend the existing joined material-storage inventory with completed-root contributor list lengths, capacities, per-root totals and backing estimates. No ordinary generator changes.",
+  "validation": {
+    "native_tests_passed": 275,
+    "native_tests_failed": 0,
+    "native_tests_ignored": 74,
+    "explicit_gpu_inventory_cases": 5,
+    "observer_measured_chunk_instances": 102400,
+    "ordinary_measured_chunk_instances": 204800,
+    "complete_nbt_references": [
+      "58f6496be2b456a127b68682bab3b49901ec8076",
+      "5df88525fc7d59a7fd293d5786a4d4586e9b5675"
+    ],
+    "observer_isolation": {
+      "compared_to": "cycle150 current-main observer",
+      "results": [
+        {
+          "case": "nether-main",
+          "material_read_counters_equal": true,
+          "existing_joined_storage_equal": true
+        },
+        {
+          "case": "nether-second-seed",
+          "material_read_counters_equal": true,
+          "existing_joined_storage_equal": true
+        },
+        {
+          "case": "nether-custom-bounds",
+          "material_read_counters_equal": true,
+          "existing_joined_storage_equal": true
+        },
+        {
+          "case": "nether-direct-stem",
+          "material_read_counters_equal": true,
+          "existing_joined_storage_equal": true
+        },
+        {
+          "case": "overworld",
+          "material_read_counters_equal": true,
+          "existing_joined_storage_equal": true
+        }
+      ],
+      "scope": "Exact existing read counters and joined state inventory; excludes timing/thread-count fields. New contributor field removed for comparison."
+    },
+    "concurrency_and_runtime_scope": "No new concurrency or runtime claim. The ordinary library exactly matches preceding merged main; its existing runtime and1/2/4/8 evidence remains applicable to those same bytes."
+  },
+  "method": "Same machine;5warmup20measured complete1024chunk regions per case. Observer forward order; separate ordinary runs reverse order,16nativeworkers,1request,actual shaderstatus4,GPUlighting enabled,zlib. Full decompressed NBT plus membership compared; only MCA timestamps and compression representation excluded. Instrumented times excluded from ordinary observations.",
+  "evidence_root": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle151",
+  "recovery": {
+    "implementation_revision": "78c2355717b16f0edafef2bd62236bb6efa0158b",
+    "worktree": "/tmp/retina-nether-contributor-storage-inventory",
+    "branch": "codex/nether-contributor-storage-inventory",
+    "driver": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle151/proof.py",
+    "receipt": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle151/receipt.json",
+    "source_test": "native/src/decoration/dependencies/material_storage_probe.rs",
+    "observer_command": "RETINA_TERRAIN_REUSE_PROFILES=<profiles> RETINA_MATERIAL_STORAGE_OUTPUT=<new-directory> RETINA_REGION_THREADS=16 RETINA_GPU_LIGHTING=1 RETINA_LIGHTING_DENSE=0 <saved-test-executable> exact_material_storage_inventory --ignored --nocapture --test-threads=1",
+    "note": "Use new output directories; preserve original and current references. Saved source/library/test hashes are in provenance. All worktrees retained by user instruction."
+  },
+  "next_prototype": {
+    "candidate": "Use existing smallvec union-backed SmallVec<[usize;1]> for CompletedRoot contributor lists.",
+    "evidence": [
+      {
+        "case": "nether-main",
+        "singleton_lists_per_region": 477423.35,
+        "reserved_payload_for_singletons_estimate_bytes": 15277547.2,
+        "note": "Estimate uses observed Vec minimum capacity4; actual length/capacity joint histogram is not captured, so this is not an exact per-singleton byte sum."
+      },
+      {
+        "case": "nether-second-seed",
+        "singleton_lists_per_region": 481663.7,
+        "reserved_payload_for_singletons_estimate_bytes": 15413238.4,
+        "note": "Estimate uses observed Vec minimum capacity4; actual length/capacity joint histogram is not captured, so this is not an exact per-singleton byte sum."
+      },
+      {
+        "case": "nether-custom-bounds",
+        "singleton_lists_per_region": 475144.9,
+        "reserved_payload_for_singletons_estimate_bytes": 15204636.8,
+        "note": "Estimate uses observed Vec minimum capacity4; actual length/capacity joint histogram is not captured, so this is not an exact per-singleton byte sum."
+      },
+      {
+        "case": "nether-direct-stem",
+        "singleton_lists_per_region": 469169.9,
+        "reserved_payload_for_singletons_estimate_bytes": 15013436.8,
+        "note": "Estimate uses observed Vec minimum capacity4; actual length/capacity joint histogram is not captured, so this is not an exact per-singleton byte sum."
+      }
+    ],
+    "representation_observation": "Both Vec<usize> and SmallVec<[usize;1]> are24bytes on the observed platform.87\u201395.5% of live contributor lists contain one index.",
+    "preserve": [
+      "Original per-column anchor insertion order and duplicate policy",
+      "Original output.writes and within-root command-index ordering",
+      "Exact limited prefix behavior",
+      "Ownership/destruction before complete-region return",
+      "Map key geometry and version publication rules"
+    ],
+    "risks": [
+      "Multi-entry lists may spill/grow differently and add branches to hot iteration.",
+      "Live allocation count reduction does not establish elapsed-time benefit.",
+      "Update test-only inventory to distinguish inline storage from actual allocated backing; do not compare SmallVec capacity as heap bytes."
+    ],
+    "workflow": "After the diagnostic cycle is delivered, create a new current-origin/main worktree and branch. Run source-order/limited-prefix tests, full original+preceding-main NBT, repeated full timings,1/2/4/8 requests,Overworld,runtime/lifecycle and sustained memory checks before selecting and merging.",
+    "production_selected": false,
+    "timing_acceptance": false,
+    "created_utc": "2026-10-24T17:47:44.986191+00:00"
+  }
+}

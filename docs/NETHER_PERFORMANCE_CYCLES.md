@@ -3288,3 +3288,38 @@ worker stops. Named capacity and separate VM observations are in
 `docs/benchmarks/nether-perf-cycle147-2026-10-24.json`, with full timing summaries,
 provenance, scope limits and recovery commands. Actual merged proof follows.
 Final timing confirmation and the broader subsecond objective remain open.
+
+
+## Cycle 151 — completed-root contributor storage inventory
+
+The existing test-only joined inventory now measures completed-root contributor
+list lengths, capacities and per-root totals. It borrows the original lists and
+retains no output owners. The new test covers spare capacity, empty roots and
+columns, index order and owner release. The ordinary release library remains
+byte-identical to current main (`48e3f90f…9f575`); this is measurement support,
+not a production optimization or speedup claim.
+
+The two standard Nether cases retain about 550,220 and 551,928 allocated lists
+per region; 86.77% and 87.27% contain one contributor. Custom bounds and direct
+stem retain about 497,603 and 491,042 lists, with 95.49% and 95.55% singletons.
+Reserved index payload is 17.61/17.66 MB for the standard cases and 15.92/15.71 MB
+for the custom cases. These are joined logical capacities, excluding allocator
+metadata, hash buckets, transient peak memory and allocation/growth event counts.
+
+On this machine both `Vec<usize>` and the existing union-backed
+`SmallVec<[usize; 1]>` occupy 24 bytes. An inline-one list is therefore a concrete
+next prototype, with roughly 469,170–481,664 singleton allocations per region
+to avoid. Spilling, growth and iteration costs still require full validation;
+no production representation is selected by this diagnostic.
+
+All 275 native tests pass. The five-profile GPU inventory and two separate
+ordinary corpus passes match 307,200 measured chunk instances against the
+immutable original and preceding merged main. Existing material-read counters
+and joined state inventories match C150 exactly. Repeated instances are not
+unique coverage. The ordinary binary's identity preserves applicability of the
+preceding main concurrency/runtime evidence; those fixtures were not rerun for
+this test-only change. Timing confirmation remains deferred.
+
+See `docs/benchmarks/nether-perf-cycle151-2026-10-24.json` for ordinary observations,
+source and binary hashes, exact scope and recovery commands. Actual merged
+release proof follows; the overall subsecond goal remains unfulfilled.
