@@ -7,6 +7,7 @@ mod joins;
 mod cpu;
 mod anchor_cpu;
 pub(super) use anchor_cpu::Span as AnchorCpu;
+pub(super) use anchor_cpu::column_load::Span as ColumnLoadCpu;
 pub(super) mod work;
 pub(crate) use joins::TerrainSpan;
 pub(super) use joins::{Candidate as Join, Key as JoinKey, LookupCall};
@@ -72,6 +73,7 @@ struct Worker {
     root_count: usize,
     work: Mutex<work::Buffer>,
     anchor_cpu_enabled: bool,
+    column_load_salt: Option<u64>,
     anchor_cpu: Mutex<anchor_cpu::Buffer>,
 }
 #[derive(Default)]
@@ -93,6 +95,7 @@ impl Local {
                 root_count: root.metadata["root_count"].as_u64().unwrap_or(0) as usize,
                 work: Mutex::new(work::Buffer::default()),
                 anchor_cpu_enabled: root.session.anchor_cpu,
+                column_load_salt: root.session.column_load_salt,
                 anchor_cpu: Mutex::new(anchor_cpu::Buffer::default()),
                 closed: std::sync::atomic::AtomicBool::new(false),
             });
@@ -108,6 +111,7 @@ thread_local! { static LOCAL: RefCell<Local> = RefCell::new(Local::default()); }
 struct Session {
     aggregate: bool,
     anchor_cpu: bool,
+    column_load_salt: Option<u64>,
     roots: Mutex<Vec<Value>>,
 }
 struct Installed(Arc<Session>);
@@ -117,9 +121,13 @@ impl Installed {
         Self::with_anchor_cpu(aggregate, false)
     }
     fn with_anchor_cpu(aggregate: bool, anchor_cpu: bool) -> Self {
+        Self::with_column_load(aggregate, anchor_cpu, None)
+    }
+    fn with_column_load(aggregate: bool, anchor_cpu: bool, column_load_salt: Option<u64>) -> Self {
+        assert!(anchor_cpu || column_load_salt.is_none());
         let mut active = ACTIVE.lock().unwrap();
         assert!(active.is_none());
-        let session = Arc::new(Session { aggregate, anchor_cpu, ..Session::default() });
+        let session = Arc::new(Session { aggregate, anchor_cpu, column_load_salt, ..Session::default() });
         *active = Some(session.clone());
         Self(session)
     }
@@ -300,7 +308,9 @@ impl Trace {
         let thread_cpu = cpu::summarize(&workers);
         let mut anchor_cpu = if root.session.anchor_cpu { anchor_cpu.summary() }
             else { json!({"enabled":false,"reason":"anchor CPU observer not selected"}) };
+        if root.session.anchor_cpu { anchor_cpu["column_load_salt"] = json!(root.session.column_load_salt); }
         if root.session.anchor_cpu && (active_contexts > 0 || context_errors > 0) {
+            anchor_cpu::column_load::invalidate_json(&mut anchor_cpu["totals"]["column_load"]);
             anchor_cpu["totals"]["valid"] = json!(false);
             for key in ["inclusive_cpu_ns", "own_cpu_ns", "outermost_cpu_ns"] {
                 anchor_cpu["totals"][key] = Value::Null;
@@ -589,7 +599,17 @@ fn exact_dependency_work_inventory() { worker_phase_inventory(true, false); }
 #[ignore = "GPU anchor CPU inventory requires RETINA_TERRAIN_REUSE_PROFILES and RETINA_WORKER_PHASE_OUTPUT"]
 fn exact_anchor_cpu_inventory() { worker_phase_inventory(true, true); }
 
+#[test]
+#[ignore = "GPU sampled column CPU inventory requires profile/output paths and RETINA_COLUMN_LOAD_SALT"]
+fn exact_column_load_cpu_inventory() {
+    let salt = std::env::var("RETINA_COLUMN_LOAD_SALT").unwrap().parse().unwrap();
+    worker_phase_inventory_with_column_load(true, true, Some(salt));
+}
+
 fn worker_phase_inventory(aggregate: bool, anchor_cpu: bool) {
+    worker_phase_inventory_with_column_load(aggregate, anchor_cpu, None);
+}
+fn worker_phase_inventory_with_column_load(aggregate: bool, anchor_cpu: bool, column_load_salt: Option<u64>) {
     use std::{fs, path::PathBuf, time::Instant};
     let profiles = PathBuf::from(std::env::var("RETINA_TERRAIN_REUSE_PROFILES").unwrap());
     let output = PathBuf::from(std::env::var("RETINA_WORKER_PHASE_OUTPUT").unwrap());
@@ -645,7 +665,7 @@ fn worker_phase_inventory(aggregate: bool, anchor_cpu: bool) {
         let warmups: Vec<_> = (0..5)
             .map(|i| generate(&format!("warm{i}"), 8 + i, 8))
             .collect();
-        let installed = if anchor_cpu { Installed::with_anchor_cpu(aggregate, true) }
+        let installed = if anchor_cpu { Installed::with_column_load(aggregate, true, column_load_salt) }
             else if aggregate { Installed::with_aggregate(true) } else { Installed::start() };
         let regions: Vec<_> = (0..20)
             .map(|i| generate(&i.to_string(), -2 + i % 5, -2 + i / 5))
@@ -671,6 +691,10 @@ fn worker_phase_inventory(aggregate: bool, anchor_cpu: bool) {
                     assert_eq!(cpu["totals"][field], 0);
                 }
                 assert_ne!(cpu["totals"]["valid"], false);
+                let columns = &cpu["totals"]["column_load"];
+                assert_ne!(columns["valid"], false);
+                assert_eq!(columns["calls"], columns["finished"]);
+                if column_load_salt.is_none() { assert_eq!(columns["sampled_anchors"], 0); }
             } else { assert_eq!(root["anchor_cpu"]["enabled"], false); }
             if aggregate {
                 assert_eq!(root["dependency_work"]["valid"], true);
@@ -740,7 +764,7 @@ fn worker_phase_inventory(aggregate: bool, anchor_cpu: bool) {
             "scope":"Test-only per-root queue, enumeration, joined anchor evaluation, publication and return-handoff intervals, with optional process CPU deltas. CPU includes native service/shader threads and observer overhead; it is not CPU utilization or task-only work. Top-level dispatched task spans include all nested work, waits and preemption. Per-worker collectors register once per root token; no shared hot collector lock or lock is held across generation. After the root joins, task intervals are unioned by physical thread before integrating workers with a task in flight; this is not workers actually running on CPU. Interval sums are not elapsed phase time. Missing phase/CPU data remains null; anomalous out-of-window events invalidate occupancy rather than being silently clipped. Only scalar metadata, phase/task summaries and top-eight long tasks persist. Collector buffers are emptied at joined root completion and retain no planner/state/GPU owners. Observer summary time is reported separately and remains inside whole-region elapsed time. Five warmups precede twenty complete lit regions per case; actual program snapshots are recorded. Noninitializer OnceLock API join intervals require an initially unfinished cell and an initializer closure that did not execute. Ready calls and initializer intervals are excluded; racing publication, result cloning in memo calls and preemption can still be included. These are not kernel sleep intervals or CPU utilization. Test-only scalar keys identify anchor, anchor-ID, footprint, structure-start and column calls. A thread-local RAII task-context stack restores reentrant roots and panic paths. No Arc clone, event allocation or collector lock is added for initializer candidates. Join intervals are unioned by physical worker and intersected with target tasks and the p95-to-last-completion tail; sums across workers or overlapping categories are not elapsed-time shares. Missing evaluation phases stay null; invalid task/join bounds, non-LIFO contexts or live contexts at root completion invalidate attribution. Context mismatch fails the diagnostic rather than misattributing an event. Panicked tasks/abandoned roots retain failure status and missing phases; raw buffers are released on every root exit. Probe checks, candidate stamps and event recording remain inside evaluation and whole-region timing; only post-join summary overhead is separated. Task entry/exit also samples optional CLOCK_THREAD_CPUTIME_ID on the same physical thread. CPU values include nested work and instrumentation on that thread but exclude service-thread work. Endpoint intervals are unioned per physical worker; missing/reversed samples leave aggregate CPU null. CPU is not interpolated into partial task tails. Separately, initially-unfinished terrain job cells record initializer or noninitializer API spans, and GPU dispatch records the receiver reply API span. These retain the same physical-thread contexts and bounds validation. Terrain initializer and reply categories overlap; they are not pure GPU time, and outside-span time is not classified as CPU. A third buffer records cache-lock acquisition and inclusive lookup intervals for anchor, anchor-ID, footprint, structure-start and boundary column maps, plus feature-GPU lock acquisition and inclusive batch calls. Acquisition timestamps are captured while holding the lock, but events are appended only after the original lock has been released. No try-lock or scheduling change is used. Lookup/call includes acquisition, and categories overlap. Acquisition includes hashing before the lock call and possible preemption; it is not kernel-blocked time. Errors and abandoned calls retain failure evidence. Every recorded lookup adds observer work, which remains inside measured task/root/region intervals; these timings are diagnostic only. Other locks and unmeasured paths remain outside coverage. Normal builds exclude all observer code and use the original generation algorithm.",
             "capture_mode":if aggregate { "aggregate" } else { "detailed" },
             "aggregate_scope":"When capture_mode is aggregate, all per-API timed event collection is disabled and explicitly marked unavailable. Task-local work counters merge once on task exit; detailed event buffers stay empty. Root phase and dispatched-task CPU clocks remain enabled, and include counter overhead. Work rows identify demanded earlier roots; they are not exclusive CPU attribution. Empty scratch counters may retain at most one allocation per physical thread and no generation owners.",
-            "cases":cases,"timing_acceptance":false,"anchor_cpu_enabled":anchor_cpu,
+            "cases":cases,"timing_acceptance":false,"anchor_cpu_enabled":anchor_cpu,"column_load_salt":column_load_salt,
         })).unwrap()).unwrap();
     }
     assert!(!cases.is_empty(), "no requested worker-phase case was generated");

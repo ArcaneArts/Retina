@@ -552,7 +552,7 @@ impl View<'_, '_> {
         z: i32,
         read: impl FnOnce(&ColumnState) -> T,
     ) -> Result<T, String> {
-        self.columns.read(x, z, || self.planner.column(self.before, x, z), read)
+        self.columns.read(x, z, || { #[cfg(test)] let _column_cpu = worker_phase_probe::ColumnLoadCpu::start(); self.planner.column(self.before, x, z) }, read)
     }
 }
 impl PriorWorld for View<'_, '_> {
@@ -731,7 +731,7 @@ impl Planner<'_> {
                 #[cfg(test)]
                 { observation = self.output_trace.begin(root, x, z); }
                 self.metrics.performance.add(Perf::anchor_builds, 1);
-                #[cfg(test)] let _anchor_cpu = { dependency_work::count(Work::AnchorBuild, Some(root)); worker_phase_probe::AnchorCpu::start(root) };
+                #[cfg(test)] let _anchor_cpu = { dependency_work::count(Work::AnchorBuild, Some(root)); worker_phase_probe::AnchorCpu::start_at(root, x, z) };
                 if let Some(definition) = self.roots[root].definition {
                     return self.structure(root, definition, x, z);
                 }
