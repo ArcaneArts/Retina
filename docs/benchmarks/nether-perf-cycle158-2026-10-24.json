@@ -1,0 +1,361 @@
+{
+  "cycle": 158,
+  "status": "validated diagnostic; ready for PR",
+  "source": {
+    "revision": "7dcb3832555c96a428c4f962357315ea43127553",
+    "native_tree": "02f4fae1ac8782a3d26939fafddf9a64aeb2ea93",
+    "status": ""
+  },
+  "preceding_main": {
+    "revision": "31c1d2957b171b6bd388576ff5d3c10b000a21e6",
+    "native_tree": "263d38625546540724d7f0da798120a4e6aab97d",
+    "status": ""
+  },
+  "provenance": {
+    "revision": "7dcb3832555c96a428c4f962357315ea43127553",
+    "native_tree": "02f4fae1ac8782a3d26939fafddf9a64aeb2ea93",
+    "status": "",
+    "library_sha256": "8cb4d9cba3e6e5ea0861be8dee75263b807b19b0b2bf62c8f327ef8759bc1246",
+    "test_executable_sha256": "53c5d21e28dfea01282f21435939bea0e5c53a2d3cd0b3c098c7d17188006a45",
+    "native_test_result": [
+      "276",
+      "0",
+      "74"
+    ]
+  },
+  "normal_machine_code_identical_to_main": true,
+  "normal_probe_symbols": [],
+  "normal_file_byte_identical": false,
+  "normal_binary_difference": "Only parsed __DATA_CONST,__const differs:13source-location32bitwords each+1 after a test-only parameter line. Whole-file124bytes differ including container metadata. All executable sections byte-identical.",
+  "complete_nbt_chunk_instances": 204800,
+  "native_tests": {
+    "passed": 276,
+    "failed": 0,
+    "ignored": 74
+  },
+  "scope": "Deterministic1/64coordinate/root sample; count live successful exact-key providers via Weak::strong_count at demand, without upgrading or retaining values. Provider compact flag is the actual local cell path, distinct from requester location. Compact-only excludes opportunities also available in a boundary tile. Counts are not exclusive CPU costs, wall-time shares or scaled speedup predictions. Concurrent schedules and observer overhead affect availability.",
+  "limitations": [
+    "Weak owner counts prove the published ColumnState remains alive, not that its original cell or planner is still addressable. The tag describes the producer cell path at publication.",
+    "The census uses joined waves of eight requests, unlike continuous-refill ordinary concurrency runs. Availability depends on that schedule.",
+    "Compact-only prefix fractions measure sampled opportunities, not CPU share, achievable speedup, or a bound on benefits from a fundamentally different evaluator.",
+    "Ordinary timings retained as observations; no final uncontended acceptance or speedup claim.",
+    "No new runtime/portal/retention runs for this test-only change; production machine code unchanged."
+  ],
+  "cases": [
+    {
+      "case": "nether-custom-bounds",
+      "callers": 8,
+      "counts": {
+        "abandoned_or_failed": 0,
+        "archive_successes": 10871,
+        "compared_columns": 169450,
+        "compared_live_other": 113596,
+        "compared_run_words": 1489092,
+        "height_mismatches": 0,
+        "historical_dead_at_demand": 55854,
+        "invalid_runs": 0,
+        "live_other_archive": 164,
+        "live_other_prefix": 75615,
+        "live_other_substrate": 37817,
+        "other_live_at_demand": 113596,
+        "other_live_compact_and_tile": 3986,
+        "other_live_compact_only": 28897,
+        "other_live_tile_only": 80713,
+        "other_pending_at_demand": 1,
+        "prefix_live_compact_and_tile": 587,
+        "prefix_live_compact_only": 9632,
+        "prefix_live_tile_only": 65396,
+        "prefix_successes": 795540,
+        "run_encoding_differences": 0,
+        "same_live_at_demand": 0,
+        "same_pending_at_demand": 0,
+        "sampled_initializers": 956501,
+        "skipped_keys": 0,
+        "skipped_snapshots": 0,
+        "substrate_successes": 150090,
+        "successes": 956501,
+        "unclassified_successes": 0,
+        "voxel_mismatches": 0
+      },
+      "compact_only_prefix_fraction_of_all_sampled_initializers": 0.01007003651851906,
+      "compact_only_prefix_fraction_of_prefix_initializers": 0.0121074993086457
+    },
+    {
+      "case": "nether-direct-stem",
+      "callers": 8,
+      "counts": {
+        "abandoned_or_failed": 0,
+        "archive_successes": 10503,
+        "compared_columns": 170297,
+        "compared_live_other": 137648,
+        "compared_run_words": 1452103,
+        "height_mismatches": 0,
+        "historical_dead_at_demand": 32648,
+        "invalid_runs": 0,
+        "live_other_archive": 205,
+        "live_other_prefix": 96725,
+        "live_other_substrate": 40718,
+        "other_live_at_demand": 137648,
+        "other_live_compact_and_tile": 4398,
+        "other_live_compact_only": 31689,
+        "other_live_tile_only": 101561,
+        "other_pending_at_demand": 1,
+        "prefix_live_compact_and_tile": 731,
+        "prefix_live_compact_only": 10471,
+        "prefix_live_tile_only": 85523,
+        "prefix_successes": 787238,
+        "run_encoding_differences": 0,
+        "same_live_at_demand": 0,
+        "same_pending_at_demand": 0,
+        "sampled_initializers": 946619,
+        "skipped_keys": 0,
+        "skipped_snapshots": 0,
+        "substrate_successes": 148878,
+        "successes": 946619,
+        "unclassified_successes": 0,
+        "voxel_mismatches": 0
+      },
+      "compact_only_prefix_fraction_of_all_sampled_initializers": 0.01106147246146549,
+      "compact_only_prefix_fraction_of_prefix_initializers": 0.013300933135849641
+    },
+    {
+      "case": "nether-main",
+      "callers": 8,
+      "counts": {
+        "abandoned_or_failed": 0,
+        "archive_successes": 7995,
+        "compared_columns": 144317,
+        "compared_live_other": 115876,
+        "compared_run_words": 1301685,
+        "height_mismatches": 0,
+        "historical_dead_at_demand": 28441,
+        "invalid_runs": 0,
+        "live_other_archive": 27,
+        "live_other_prefix": 84344,
+        "live_other_substrate": 31505,
+        "other_live_at_demand": 115876,
+        "other_live_compact_and_tile": 4049,
+        "other_live_compact_only": 24616,
+        "other_live_tile_only": 87211,
+        "other_pending_at_demand": 0,
+        "prefix_live_compact_and_tile": 1334,
+        "prefix_live_compact_only": 9385,
+        "prefix_live_tile_only": 73625,
+        "prefix_successes": 837081,
+        "run_encoding_differences": 0,
+        "same_live_at_demand": 0,
+        "same_pending_at_demand": 0,
+        "sampled_initializers": 977323,
+        "skipped_keys": 0,
+        "skipped_snapshots": 0,
+        "substrate_successes": 132247,
+        "successes": 977323,
+        "unclassified_successes": 0,
+        "voxel_mismatches": 0
+      },
+      "compact_only_prefix_fraction_of_all_sampled_initializers": 0.009602761830019348,
+      "compact_only_prefix_fraction_of_prefix_initializers": 0.011211579285636635
+    },
+    {
+      "case": "nether-second-seed",
+      "callers": 8,
+      "counts": {
+        "abandoned_or_failed": 0,
+        "archive_successes": 8463,
+        "compared_columns": 124403,
+        "compared_live_other": 104274,
+        "compared_run_words": 1064296,
+        "height_mismatches": 0,
+        "historical_dead_at_demand": 20128,
+        "invalid_runs": 0,
+        "live_other_archive": 73,
+        "live_other_prefix": 73580,
+        "live_other_substrate": 30621,
+        "other_live_at_demand": 104274,
+        "other_live_compact_and_tile": 1876,
+        "other_live_compact_only": 21907,
+        "other_live_tile_only": 80491,
+        "other_pending_at_demand": 1,
+        "prefix_live_compact_and_tile": 242,
+        "prefix_live_compact_only": 6608,
+        "prefix_live_tile_only": 66730,
+        "prefix_successes": 866037,
+        "run_encoding_differences": 0,
+        "same_live_at_demand": 0,
+        "same_pending_at_demand": 0,
+        "sampled_initializers": 1007090,
+        "skipped_keys": 0,
+        "skipped_snapshots": 0,
+        "substrate_successes": 132590,
+        "successes": 1007090,
+        "unclassified_successes": 0,
+        "voxel_mismatches": 0
+      },
+      "compact_only_prefix_fraction_of_all_sampled_initializers": 0.006561479113088205,
+      "compact_only_prefix_fraction_of_prefix_initializers": 0.0076301589885882475
+    },
+    {
+      "case": "overworld",
+      "callers": 8,
+      "counts": {
+        "abandoned_or_failed": 0,
+        "archive_successes": 0,
+        "compared_columns": 0,
+        "compared_live_other": 0,
+        "compared_run_words": 0,
+        "height_mismatches": 0,
+        "historical_dead_at_demand": 0,
+        "invalid_runs": 0,
+        "live_other_archive": 0,
+        "live_other_prefix": 0,
+        "live_other_substrate": 0,
+        "other_live_at_demand": 0,
+        "other_live_compact_and_tile": 0,
+        "other_live_compact_only": 0,
+        "other_live_tile_only": 0,
+        "other_pending_at_demand": 0,
+        "prefix_live_compact_and_tile": 0,
+        "prefix_live_compact_only": 0,
+        "prefix_live_tile_only": 0,
+        "prefix_successes": 0,
+        "run_encoding_differences": 0,
+        "same_live_at_demand": 0,
+        "same_pending_at_demand": 0,
+        "sampled_initializers": 0,
+        "skipped_keys": 0,
+        "skipped_snapshots": 0,
+        "substrate_successes": 0,
+        "successes": 0,
+        "unclassified_successes": 0,
+        "voxel_mismatches": 0
+      },
+      "compact_only_prefix_fraction_of_all_sampled_initializers": null,
+      "compact_only_prefix_fraction_of_prefix_initializers": null
+    }
+  ],
+  "ordinary_observations": [
+    {
+      "case": "nether-main-run0",
+      "median_ms": 801.4774164184928,
+      "p95_ms": 1008.8822694146075,
+      "maximum_ms": 1069.7404169477522,
+      "total_ms": 16190.8442908898,
+      "chunks_per_second": 1264.912417910387,
+      "generation_peak_rss_bytes": 2031845376,
+      "cpu_ms": 47163.73500000001,
+      "comparisons": [
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/nether-main-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        },
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle151/merged/normal-full/nether-main-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        }
+      ]
+    },
+    {
+      "case": "nether-second-seed-run0",
+      "median_ms": 845.3716670628637,
+      "p95_ms": 1118.1542034959423,
+      "maximum_ms": 1213.2950408849865,
+      "total_ms": 16939.512541983277,
+      "chunks_per_second": 1209.0076352103933,
+      "generation_peak_rss_bytes": 2176155648,
+      "cpu_ms": 46805.574,
+      "comparisons": [
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/nether-second-seed-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        },
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle151/merged/normal-full/nether-second-seed-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        }
+      ]
+    },
+    {
+      "case": "nether-custom-bounds-run0",
+      "median_ms": 559.139187564142,
+      "p95_ms": 633.759287931025,
+      "maximum_ms": 688.5124591644853,
+      "total_ms": 11401.145166018978,
+      "chunks_per_second": 1796.3107829764747,
+      "generation_peak_rss_bytes": 1772699648,
+      "cpu_ms": 41399.887,
+      "comparisons": [
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/nether-custom-bounds-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        },
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle151/merged/normal-full/nether-custom-bounds-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        }
+      ]
+    },
+    {
+      "case": "nether-direct-stem-run0",
+      "median_ms": 786.0513749765232,
+      "p95_ms": 1102.4615913629534,
+      "maximum_ms": 1184.0738749597222,
+      "total_ms": 16687.233582837507,
+      "chunks_per_second": 1227.2855113062767,
+      "generation_peak_rss_bytes": 1985265664,
+      "cpu_ms": 63407.10700000002,
+      "comparisons": [
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/nether-direct-stem-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        },
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle151/merged/normal-full/nether-direct-stem-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        }
+      ]
+    },
+    {
+      "case": "overworld-run0",
+      "median_ms": 361.72650021035224,
+      "p95_ms": 469.68928187852725,
+      "maximum_ms": 504.8525419551879,
+      "total_ms": 7363.384749973193,
+      "chunks_per_second": 2781.3296052572236,
+      "generation_peak_rss_bytes": 1640529920,
+      "cpu_ms": 20922.981,
+      "comparisons": [
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/overworld-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        },
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle151/merged/normal-full/overworld-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        }
+      ]
+    }
+  ],
+  "decision": "Do not select compact-interior sharing redesign on current evidence: compact-only prefix opportunities comprise0.66\u20131.11% of all sampled initializers; this is not a CPU share or general upper bound. Do not repeat heldC119ready-peer family cache or introduce pending-peer waits.",
+  "timing_acceptance": false,
+  "recovery": {
+    "evidence_root": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle158",
+    "worktree": "/tmp/retina-nether-peer-source-inventory",
+    "branch": "codex/nether-peer-source-inventory",
+    "commands": "proof-receipt.json",
+    "analysis": "inventory-analysis.json",
+    "retained_library": "normal.dylib",
+    "retained_test_executable": "native-test-executable",
+    "immutable_original": "../reference-suite",
+    "preceding_main": "../cycle151/merged/normal-full"
+  }
+}
