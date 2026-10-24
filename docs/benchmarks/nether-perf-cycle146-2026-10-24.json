@@ -1,0 +1,1544 @@
+{
+  "cycle": 146,
+  "created_utc": "2026-10-24T13:14:51.638331+00:00",
+  "status": "Validated material/fossil reuse; PR and actual merged proof follow. Final uncontended timing acceptance remains deferred.",
+  "source": {
+    "revision": "d7f40214b25d07969dfa3333cb5fa91cd54761a2",
+    "native_tree": "7aaf11151fc1dba60b4a07ba19bdafd43ebaf140",
+    "status": ""
+  },
+  "provenance": {
+    "revision": "d7f40214b25d07969dfa3333cb5fa91cd54761a2",
+    "native_tree": "7aaf11151fc1dba60b4a07ba19bdafd43ebaf140",
+    "status": "",
+    "library_sha256": "5b4594f78c84c3de5c5f7caf58507b39a1a8ae6d6fd3bd1e389c8e71f2fcb338",
+    "test_executable_sha256": "70d48eabe092e57ba6d9a2ff5795576fb453b5db2ade1a65b39dffa478623f4f",
+    "native_test_result": [
+      "268",
+      "0",
+      "74"
+    ]
+  },
+  "preceding_main": {
+    "revision": "ce3cf5aaa0cdd4666b73e275dcbbb5b028f74dd9",
+    "native_tree": "f5bff9a6c747c69deb7ae4642bf7362cd45568da",
+    "status": ""
+  },
+  "reference_hashes": {
+    "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle141/merged/normal.dylib": "2f65ae99672dc41d4750b572bea6b5d286db23b3bb085f9c575be385606ad8ca",
+    "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference/libretina_worldgen.dylib": "bafc696984f3f0b66bf06163f516d5379c12283b8a65cfad57048cc70abee31c",
+    "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle144/v2-retry/normal.dylib": "0391bf1ba9c807fa3ba958e2c7999f0c4752134110deadc10b1748aa45a04e3e"
+  },
+  "timing_acceptance": false,
+  "changes": [
+    "Keep layered GPU material mask and output storage exclusive through count/emit; retain up to 32 exact runs per column and replay overflow/invalid encodings using the original evaluator. Reuse completed buffers in pools capped at two.",
+    "Reuse covered fossil quart biomes, preserving sparse fallback and empty-batch validation.",
+    "Use immutable target masks, uniform blob edit/overlay bitsets, ground transitions and selected height queries directly from material runs. Preserve exact ordered fallback for unsupported geometry, collisions and limited within-root prefixes.",
+    "Pack command indices without changing original command order; visit ore coordinates with exact ascending first-visit bitsets. No root scheduling or scalar point shortcut included."
+  ],
+  "validation": {
+    "native_tests": 268,
+    "explicit_gpu_fixtures": 20,
+    "complete_nbt_chunk_instances": 1529856,
+    "candidate_chunk_instances": 935936,
+    "control_chunk_instances": 593920,
+    "comparison": "Every counted instance matches both immutable original and actual preceding merged main; full decompressed NBT and membership. Only MCA timestamps and compression representation excluded. Repeated coordinates are not unique coverage.",
+    "matrix": "Five representative profiles, five warmups and twenty measured complete regions each; 1/2/4/8 requests distinct from 16 assembly workers; reverse order; GPU lighting, zlib, observed shader status 4. Additional tall 384-block case, Overworld ABBA repeats, 314-region retention and five actual loader/native/client fixture groups.",
+    "runtime_native_mapping": "All three client fixture processes mapped the retained candidate library by observed path and SHA-256.",
+    "source_and_process_freeze": "Initial, repeat and extended controllers actually exited 0; all observed PIDs were absent in terminal receipts before source edits."
+  },
+  "normal_provisional": [
+    {
+      "requests": 1,
+      "case": "nether-custom-bounds-run0",
+      "control": {
+        "median_ms": 640.8097710227594,
+        "p95_region_ms": 713.6364473146388,
+        "maximum_region_ms": 742.0254170428962,
+        "total_ms": 12844.234375050291,
+        "chunks_per_second": 1594.489745514303,
+        "generation_peak_rss_bytes": 2232680448,
+        "cpu_ms_per_region": 2176.8066500000004,
+        "instructions_per_region": 23236062482.4,
+        "peak_physical_footprint": 1607698280
+      },
+      "candidate": {
+        "median_ms": 604.1476880200207,
+        "p95_region_ms": 663.5229500476271,
+        "maximum_region_ms": 686.4027499686927,
+        "total_ms": 12094.05279206112,
+        "chunks_per_second": 1693.3942948755487,
+        "generation_peak_rss_bytes": 1987870720,
+        "cpu_ms_per_region": 2021.5036499999999,
+        "instructions_per_region": 20952660158.8,
+        "peak_physical_footprint": 1549862760
+      },
+      "change_percent": {
+        "median_ms": -5.721211607654553,
+        "p95_region_ms": -7.022272678978925,
+        "maximum_region_ms": -7.496059541446676,
+        "total_ms": -5.84060957690391,
+        "chunks_per_second": 6.2028965466531805,
+        "generation_peak_rss_bytes": -10.964835035810728,
+        "cpu_ms_per_region": -7.1344416372487895,
+        "instructions_per_region": -9.826976172617673,
+        "peak_physical_footprint": -3.5974113252145834
+      }
+    },
+    {
+      "requests": 1,
+      "case": "nether-direct-stem-run0",
+      "control": {
+        "median_ms": 633.9511668775231,
+        "p95_region_ms": 720.984577399213,
+        "maximum_region_ms": 750.4447500687093,
+        "total_ms": 12754.1222081054,
+        "chunks_per_second": 1605.755352335005,
+        "generation_peak_rss_bytes": 2195521536,
+        "cpu_ms_per_region": 2142.77385,
+        "instructions_per_region": 22686583142.45,
+        "peak_physical_footprint": 1558693760
+      },
+      "candidate": {
+        "median_ms": 570.3171460190788,
+        "p95_region_ms": 664.4941267091781,
+        "maximum_region_ms": 684.4117089640349,
+        "total_ms": 11500.478958012536,
+        "chunks_per_second": 1780.7953977196153,
+        "generation_peak_rss_bytes": 2102050816,
+        "cpu_ms_per_region": 1963.8214500000001,
+        "instructions_per_region": 20426543237.6,
+        "peak_physical_footprint": 1550256048
+      },
+      "change_percent": {
+        "median_ms": -10.037684948490377,
+        "p95_region_ms": -7.835181564328497,
+        "maximum_region_ms": -8.799187561593103,
+        "total_ms": -9.829318157984702,
+        "chunks_per_second": 10.900791651111508,
+        "generation_peak_rss_bytes": -4.25733560192233,
+        "cpu_ms_per_region": -8.351436620341424,
+        "instructions_per_region": -9.962010985343706,
+        "peak_physical_footprint": -0.5413322498962203
+      }
+    },
+    {
+      "requests": 1,
+      "case": "nether-main-run0",
+      "control": {
+        "median_ms": 926.8764579901472,
+        "p95_region_ms": 1324.600627226755,
+        "maximum_region_ms": 1327.5361659470946,
+        "total_ms": 19207.536916946992,
+        "chunks_per_second": 1066.2481133606623,
+        "generation_peak_rss_bytes": 2488696832,
+        "cpu_ms_per_region": 2811.71385,
+        "instructions_per_region": 29480585562.9,
+        "peak_physical_footprint": 1894533256
+      },
+      "candidate": {
+        "median_ms": 962.7172501059249,
+        "p95_region_ms": 1481.8699475959875,
+        "maximum_region_ms": 1602.9947500210255,
+        "total_ms": 20303.888875059783,
+        "chunks_per_second": 1008.6737632393439,
+        "generation_peak_rss_bytes": 2153496576,
+        "cpu_ms_per_region": 2413.8331000000003,
+        "instructions_per_region": 24216789587.6,
+        "peak_physical_footprint": 1792362584
+      },
+      "change_percent": {
+        "median_ms": 3.8668359528189367,
+        "p95_region_ms": 11.87296133918483,
+        "maximum_region_ms": 20.74961052962445,
+        "total_ms": 5.707925815024573,
+        "chunks_per_second": -5.3997141378147155,
+        "generation_peak_rss_bytes": -13.468906766382705,
+        "cpu_ms_per_region": -14.150826550148398,
+        "instructions_per_region": -17.855126941319156,
+        "peak_physical_footprint": -5.392920481940589
+      }
+    },
+    {
+      "requests": 1,
+      "case": "nether-second-seed-run0",
+      "control": {
+        "median_ms": 1258.423979044892,
+        "p95_region_ms": 1475.9385523502715,
+        "maximum_region_ms": 1626.0221251286566,
+        "total_ms": 23129.216957837343,
+        "chunks_per_second": 885.46015359419,
+        "generation_peak_rss_bytes": 2540945408,
+        "cpu_ms_per_region": 2990.44995,
+        "instructions_per_region": 30071861715.8,
+        "peak_physical_footprint": 1937148136
+      },
+      "candidate": {
+        "median_ms": 843.5613125329837,
+        "p95_region_ms": 1049.0835271659307,
+        "maximum_region_ms": 1100.2937918528914,
+        "total_ms": 16108.436249895021,
+        "chunks_per_second": 1271.383496342388,
+        "generation_peak_rss_bytes": 2497724416,
+        "cpu_ms_per_region": 2251.05195,
+        "instructions_per_region": 24570811480.1,
+        "peak_physical_footprint": 1855686816
+      },
+      "change_percent": {
+        "median_ms": -32.96684372041108,
+        "p95_region_ms": -28.92092116603504,
+        "maximum_region_ms": -32.33217587578445,
+        "total_ms": -30.354597480496746,
+        "chunks_per_second": 43.58449572029735,
+        "generation_peak_rss_bytes": -1.7009807398427945,
+        "cpu_ms_per_region": -24.72530931340282,
+        "instructions_per_region": -18.293015203676944,
+        "peak_physical_footprint": -4.205218923949139
+      }
+    },
+    {
+      "requests": 1,
+      "case": "overworld-run0",
+      "control": {
+        "median_ms": 245.1281250687316,
+        "p95_region_ms": 284.2317541362718,
+        "maximum_region_ms": 305.2672080229968,
+        "total_ms": 4980.528749991208,
+        "chunks_per_second": 4112.0132074403045,
+        "generation_peak_rss_bytes": 1465958400,
+        "cpu_ms_per_region": 707.0921000000001,
+        "instructions_per_region": 8417231112.35,
+        "peak_physical_footprint": 3413232064
+      },
+      "candidate": {
+        "median_ms": 475.4736665636301,
+        "p95_region_ms": 565.7227310584858,
+        "maximum_region_ms": 573.0642918497324,
+        "total_ms": 9621.490999823436,
+        "chunks_per_second": 2128.5682229891218,
+        "generation_peak_rss_bytes": 1664385024,
+        "cpu_ms_per_region": 883.8065000000003,
+        "instructions_per_region": 8446290271.7,
+        "peak_physical_footprint": 3408300552
+      },
+      "change_percent": {
+        "median_ms": 93.96944615405181,
+        "p95_region_ms": 99.03572448392106,
+        "maximum_region_ms": 87.72546699695356,
+        "total_ms": 93.18211946553707,
+        "chunks_per_second": -48.235374849047766,
+        "generation_peak_rss_bytes": 13.535624476110652,
+        "cpu_ms_per_region": 24.991709000850125,
+        "instructions_per_region": 0.3452341864222275,
+        "peak_physical_footprint": -0.1444821772305982
+      }
+    },
+    {
+      "requests": 2,
+      "case": "nether-custom-bounds-run0",
+      "control": {
+        "median_ms": 888.3061874657869,
+        "p95_region_ms": 1122.0288953278216,
+        "maximum_region_ms": 1176.9282079767436,
+        "total_ms": 9244.264834094793,
+        "chunks_per_second": 2215.4276589378374,
+        "generation_peak_rss_bytes": 2865758208,
+        "cpu_ms_per_region": 2556.1432,
+        "instructions_per_region": 25527563287.65,
+        "peak_physical_footprint": 2031127384
+      },
+      "candidate": {
+        "median_ms": 808.0325624905527,
+        "p95_region_ms": 1218.7076057889499,
+        "maximum_region_ms": 1220.237541012466,
+        "total_ms": 8568.561332998797,
+        "chunks_per_second": 2390.1328594251277,
+        "generation_peak_rss_bytes": 2782920704,
+        "cpu_ms_per_region": 2365.5112500000005,
+        "instructions_per_region": 23020423705.8,
+        "peak_physical_footprint": 1843792560
+      },
+      "change_percent": {
+        "median_ms": -9.036706724315824,
+        "p95_region_ms": 8.616418958879102,
+        "maximum_region_ms": 3.679861927192274,
+        "total_ms": -7.30943469516212,
+        "chunks_per_second": 7.885845416006543,
+        "generation_peak_rss_bytes": -2.8905964141968554,
+        "cpu_ms_per_region": -7.457796182936837,
+        "instructions_per_region": -9.821303951336924,
+        "peak_physical_footprint": -9.223194245506761
+      }
+    },
+    {
+      "requests": 2,
+      "case": "nether-direct-stem-run0",
+      "control": {
+        "median_ms": 936.0230419551954,
+        "p95_region_ms": 1327.9811516986229,
+        "maximum_region_ms": 1337.2924579307437,
+        "total_ms": 9755.847250111401,
+        "chunks_per_second": 2099.2538602699155,
+        "generation_peak_rss_bytes": 2780397568,
+        "cpu_ms_per_region": 2377.6552500000003,
+        "instructions_per_region": 24706451660.5,
+        "peak_physical_footprint": 1904954008
+      },
+      "candidate": {
+        "median_ms": 773.8213540287688,
+        "p95_region_ms": 967.0556561555713,
+        "maximum_region_ms": 974.9056249856949,
+        "total_ms": 8079.425290925428,
+        "chunks_per_second": 2534.833761381831,
+        "generation_peak_rss_bytes": 2661400576,
+        "cpu_ms_per_region": 2260.0907500000003,
+        "instructions_per_region": 22303772661.1,
+        "peak_physical_footprint": 1859603192
+      },
+      "change_percent": {
+        "median_ms": -17.328813571470892,
+        "p95_region_ms": -27.17851040893097,
+        "maximum_region_ms": -27.098547576181442,
+        "total_ms": -17.183765963195352,
+        "chunks_per_second": 20.74927236555897,
+        "generation_peak_rss_bytes": -4.279855275718614,
+        "cpu_ms_per_region": -4.944556196698402,
+        "instructions_per_region": -9.72490518839393,
+        "peak_physical_footprint": -2.3806777386512157
+      }
+    },
+    {
+      "requests": 2,
+      "case": "nether-main-run0",
+      "control": {
+        "median_ms": 1278.8040415616706,
+        "p95_region_ms": 1590.4904500464909,
+        "maximum_region_ms": 1610.9430000651628,
+        "total_ms": 13130.246290937066,
+        "chunks_per_second": 1559.7574901649773,
+        "generation_peak_rss_bytes": 3691773952,
+        "cpu_ms_per_region": 3040.5465000000004,
+        "instructions_per_region": 31809932409.7,
+        "peak_physical_footprint": 2231733440
+      },
+      "candidate": {
+        "median_ms": 1029.191208537668,
+        "p95_region_ms": 1386.9541286141614,
+        "maximum_region_ms": 1559.1147909872234,
+        "total_ms": 10875.141541939229,
+        "chunks_per_second": 1883.193880375745,
+        "generation_peak_rss_bytes": 3323166720,
+        "cpu_ms_per_region": 2375.8030000000003,
+        "instructions_per_region": 25841673251.75,
+        "peak_physical_footprint": 2045398088
+      },
+      "change_percent": {
+        "median_ms": -19.51924023630519,
+        "p95_region_ms": -12.797079129043498,
+        "maximum_region_ms": -3.217259026287267,
+        "total_ms": -17.174885367949155,
+        "chunks_per_second": 20.736325502534214,
+        "generation_peak_rss_bytes": -9.984555847475685,
+        "cpu_ms_per_region": -21.862632260351877,
+        "instructions_per_region": -18.762250359670873,
+        "peak_physical_footprint": -8.349355198979314
+      }
+    },
+    {
+      "requests": 2,
+      "case": "nether-second-seed-run0",
+      "control": {
+        "median_ms": 1463.3066875394434,
+        "p95_region_ms": 1816.4336495799944,
+        "maximum_region_ms": 1919.2629160825163,
+        "total_ms": 14251.533375121653,
+        "chunks_per_second": 1437.0383495541005,
+        "generation_peak_rss_bytes": 3507060736,
+        "cpu_ms_per_region": 3038.86505,
+        "instructions_per_region": 32038343067.8,
+        "peak_physical_footprint": 2264042976
+      },
+      "candidate": {
+        "median_ms": 1154.8632500926033,
+        "p95_region_ms": 1340.7782246591523,
+        "maximum_region_ms": 1373.2780411373824,
+        "total_ms": 11117.17591714114,
+        "chunks_per_second": 1842.1944703081192,
+        "generation_peak_rss_bytes": 3518005248,
+        "cpu_ms_per_region": 2422.2778,
+        "instructions_per_region": 26115621308.2,
+        "peak_physical_footprint": 2200833696
+      },
+      "change_percent": {
+        "median_ms": -21.078523051479326,
+        "p95_region_ms": -26.186226236825426,
+        "maximum_region_ms": -28.447633222631385,
+        "total_ms": -21.993124357074723,
+        "chunks_per_second": 28.193828012991773,
+        "generation_peak_rss_bytes": 0.31207078587645043,
+        "cpu_ms_per_region": -20.290050392333146,
+        "instructions_per_region": -18.48635476268623,
+        "peak_physical_footprint": -2.7918763322980267
+      }
+    },
+    {
+      "requests": 2,
+      "case": "overworld-run0",
+      "control": {
+        "median_ms": 351.6646040370688,
+        "p95_region_ms": 411.91513905068865,
+        "maximum_region_ms": 469.07612518407404,
+        "total_ms": 3464.185417164117,
+        "chunks_per_second": 5911.923737836621,
+        "generation_peak_rss_bytes": 1831763968,
+        "cpu_ms_per_region": 638.38785,
+        "instructions_per_region": 8387331812.05,
+        "peak_physical_footprint": 3573451200
+      },
+      "candidate": {
+        "median_ms": 290.1701664086431,
+        "p95_region_ms": 503.1778330914676,
+        "maximum_region_ms": 521.9213329255581,
+        "total_ms": 3128.8435000460595,
+        "chunks_per_second": 6545.549497665356,
+        "generation_peak_rss_bytes": 1837154304,
+        "cpu_ms_per_region": 630.7702,
+        "instructions_per_region": 8398243946.5,
+        "peak_physical_footprint": 3592014320
+      },
+      "change_percent": {
+        "median_ms": -17.48667250626781,
+        "p95_region_ms": 22.15570281080359,
+        "maximum_region_ms": 11.265806316777827,
+        "total_ms": -9.680253125497485,
+        "chunks_per_second": 10.71775936102657,
+        "generation_peak_rss_bytes": 0.2942702277240139,
+        "cpu_ms_per_region": -1.1932636249264328,
+        "instructions_per_region": 0.13010257248107227,
+        "peak_physical_footprint": 0.5194731636464001
+      }
+    },
+    {
+      "requests": 4,
+      "case": "nether-custom-bounds-run0",
+      "control": {
+        "median_ms": 1626.5297710197046,
+        "p95_region_ms": 3387.0486412663013,
+        "maximum_region_ms": 3429.5028750784695,
+        "total_ms": 9745.255749905482,
+        "chunks_per_second": 2101.535406107596,
+        "generation_peak_rss_bytes": 3831119872,
+        "cpu_ms_per_region": 3209.8449499999997,
+        "instructions_per_region": 26276898658.6,
+        "peak_physical_footprint": 2977599064
+      },
+      "candidate": {
+        "median_ms": 1393.3113750535995,
+        "p95_region_ms": 2037.176632625051,
+        "maximum_region_ms": 2172.7101248688996,
+        "total_ms": 7382.363250013441,
+        "chunks_per_second": 2774.1793930233266,
+        "generation_peak_rss_bytes": 3610591232,
+        "cpu_ms_per_region": 2490.44165,
+        "instructions_per_region": 23633457319.4,
+        "peak_physical_footprint": 2497023264
+      },
+      "change_percent": {
+        "median_ms": -14.338403152614653,
+        "p95_region_ms": -39.85393041584957,
+        "maximum_region_ms": -36.64649939040549,
+        "total_ms": -24.246593014400453,
+        "chunks_per_second": 32.00726406801695,
+        "generation_peak_rss_bytes": -5.7562448414039125,
+        "cpu_ms_per_region": -22.412400324819416,
+        "instructions_per_region": -10.059944187267478,
+        "peak_physical_footprint": -16.139708190074852
+      }
+    },
+    {
+      "requests": 4,
+      "case": "nether-direct-stem-run0",
+      "control": {
+        "median_ms": 2424.827271490358,
+        "p95_region_ms": 6834.564241650515,
+        "maximum_region_ms": 7416.208708891645,
+        "total_ms": 16636.688083177432,
+        "chunks_per_second": 1231.0142437970464,
+        "generation_peak_rss_bytes": 3383607296,
+        "cpu_ms_per_region": 3704.94,
+        "instructions_per_region": 25244944570.35,
+        "peak_physical_footprint": 2542242984
+      },
+      "candidate": {
+        "median_ms": 1209.1628125635907,
+        "p95_region_ms": 2701.829670928419,
+        "maximum_region_ms": 3317.969667026773,
+        "total_ms": 7486.8325418792665,
+        "chunks_per_second": 2735.46922352551,
+        "generation_peak_rss_bytes": 3321987072,
+        "cpu_ms_per_region": 2359.15065,
+        "instructions_per_region": 22917993460.6,
+        "peak_physical_footprint": 2319387792
+      },
+      "change_percent": {
+        "median_ms": -50.13406411334158,
+        "p95_region_ms": -60.46815019364074,
+        "maximum_region_ms": -55.260567801325465,
+        "total_ms": -54.99805908214539,
+        "chunks_per_second": 122.21263785608146,
+        "generation_peak_rss_bytes": -1.8211399435403064,
+        "cpu_ms_per_region": -36.32418743623379,
+        "instructions_per_region": -9.21749344018361,
+        "peak_physical_footprint": -8.766085437252602
+      }
+    },
+    {
+      "requests": 4,
+      "case": "nether-main-run0",
+      "control": {
+        "median_ms": 2025.9163124719635,
+        "p95_region_ms": 3376.2910832534544,
+        "maximum_region_ms": 3395.1074169017375,
+        "total_ms": 11816.730166785419,
+        "chunks_per_second": 1733.1359615509698,
+        "generation_peak_rss_bytes": 4836343808,
+        "cpu_ms_per_region": 3227.2529,
+        "instructions_per_region": 32439864216.95,
+        "peak_physical_footprint": 3557921160
+      },
+      "candidate": {
+        "median_ms": 1767.2366249607876,
+        "p95_region_ms": 2377.846511080861,
+        "maximum_region_ms": 2678.2279999461025,
+        "total_ms": 9401.95733285509,
+        "chunks_per_second": 2178.269829882417,
+        "generation_peak_rss_bytes": 4921819136,
+        "cpu_ms_per_region": 2555.2196000000004,
+        "instructions_per_region": 26576797900.35,
+        "peak_physical_footprint": 3451916608
+      },
+      "change_percent": {
+        "median_ms": -12.768527797455887,
+        "p95_region_ms": -29.57223022401476,
+        "maximum_region_ms": -21.115073219386836,
+        "total_ms": -20.43520330791504,
+        "chunks_per_second": 25.6837246590337,
+        "generation_peak_rss_bytes": 1.767354253405462,
+        "cpu_ms_per_region": -20.823694975996442,
+        "instructions_per_region": -18.073646293305135,
+        "peak_physical_footprint": -2.9793957547952
+      }
+    },
+    {
+      "requests": 4,
+      "case": "nether-second-seed-run0",
+      "control": {
+        "median_ms": 3032.5360626447946,
+        "p95_region_ms": 7073.797093809117,
+        "maximum_region_ms": 7159.961499972269,
+        "total_ms": 18725.1728749834,
+        "chunks_per_second": 1093.7148691086868,
+        "generation_peak_rss_bytes": 5179064320,
+        "cpu_ms_per_region": 3694.04035,
+        "instructions_per_region": 33327463727.45,
+        "peak_physical_footprint": 4420998232
+      },
+      "candidate": {
+        "median_ms": 1903.380437521264,
+        "p95_region_ms": 2728.419691429008,
+        "maximum_region_ms": 2735.3187499102205,
+        "total_ms": 10051.122292177752,
+        "chunks_per_second": 2037.5834065752522,
+        "generation_peak_rss_bytes": 4802838528,
+        "cpu_ms_per_region": 2496.62835,
+        "instructions_per_region": 26656417765.35,
+        "peak_physical_footprint": 3630829936
+      },
+      "change_percent": {
+        "median_ms": -37.23469735554437,
+        "p95_region_ms": -61.42920619228842,
+        "maximum_region_ms": -61.797018742058675,
+        "total_ms": -46.322939930739295,
+        "chunks_per_second": 86.29932390292569,
+        "generation_peak_rss_bytes": -7.264358361936695,
+        "cpu_ms_per_region": -32.41469736517632,
+        "instructions_per_region": -20.016662583914023,
+        "peak_physical_footprint": -17.873074236506504
+      }
+    },
+    {
+      "requests": 4,
+      "case": "overworld-run0",
+      "control": {
+        "median_ms": 547.5826874608174,
+        "p95_region_ms": 1016.8001568759794,
+        "maximum_region_ms": 1251.2092918623239,
+        "total_ms": 3018.44483288005,
+        "chunks_per_second": 6784.9509048204145,
+        "generation_peak_rss_bytes": 2315485184,
+        "cpu_ms_per_region": 647.35645,
+        "instructions_per_region": 8406472392.75,
+        "peak_physical_footprint": 4189227936
+      },
+      "candidate": {
+        "median_ms": 508.8857706869021,
+        "p95_region_ms": 1096.2485512951391,
+        "maximum_region_ms": 1465.057749999687,
+        "total_ms": 2879.604957997799,
+        "chunks_per_second": 7112.086657275318,
+        "generation_peak_rss_bytes": 2411708416,
+        "cpu_ms_per_region": 635.6996499999999,
+        "instructions_per_region": 8410869836.4,
+        "peak_physical_footprint": 4104932136
+      },
+      "change_percent": {
+        "median_ms": -7.066862714991196,
+        "p95_region_ms": 7.813570236186562,
+        "maximum_region_ms": 17.0913419144344,
+        "total_ms": -4.599715501501378,
+        "chunks_per_second": 4.821490340077306,
+        "generation_peak_rss_bytes": 4.155640151139917,
+        "cpu_ms_per_region": -1.800677200327594,
+        "instructions_per_region": 0.052310213423067964,
+        "peak_physical_footprint": -2.0122037112281888
+      }
+    },
+    {
+      "requests": 8,
+      "case": "nether-custom-bounds-run0",
+      "control": {
+        "median_ms": 3590.5593540519476,
+        "p95_region_ms": 5982.67175554065,
+        "maximum_region_ms": 6629.55933297053,
+        "total_ms": 9744.672042084858,
+        "chunks_per_second": 2101.6612885022587,
+        "generation_peak_rss_bytes": 4796661760,
+        "cpu_ms_per_region": 3009.7931999999996,
+        "instructions_per_region": 27394051673.25,
+        "peak_physical_footprint": 3710882376
+      },
+      "candidate": {
+        "median_ms": 2694.4350625853986,
+        "p95_region_ms": 5498.929512768518,
+        "maximum_region_ms": 5654.310958925635,
+        "total_ms": 8175.000665942207,
+        "chunks_per_second": 2505.198572682879,
+        "generation_peak_rss_bytes": 5083611136,
+        "cpu_ms_per_region": 2628.8590000000004,
+        "instructions_per_region": 24697502526.35,
+        "peak_physical_footprint": 3540865728
+      },
+      "change_percent": {
+        "median_ms": -24.957790781407706,
+        "p95_region_ms": -8.085722609202662,
+        "maximum_region_ms": -14.710606317296692,
+        "total_ms": -16.107995932173225,
+        "chunks_per_second": 19.200871538543662,
+        "generation_peak_rss_bytes": 5.982272471094574,
+        "cpu_ms_per_region": -12.656490818040233,
+        "instructions_per_region": -9.843557203818643,
+        "peak_physical_footprint": -4.58156930814021
+      }
+    },
+    {
+      "requests": 8,
+      "case": "nether-direct-stem-run0",
+      "control": {
+        "median_ms": 2756.988042034209,
+        "p95_region_ms": 8619.48982088361,
+        "maximum_region_ms": 9232.93466703035,
+        "total_ms": 9412.358250003308,
+        "chunks_per_second": 2175.862781252807,
+        "generation_peak_rss_bytes": 4574707712,
+        "cpu_ms_per_region": 2669.9168999999997,
+        "instructions_per_region": 26264096787.5,
+        "peak_physical_footprint": 2836452080
+      },
+      "candidate": {
+        "median_ms": 1944.3885630462319,
+        "p95_region_ms": 7615.121746563818,
+        "maximum_region_ms": 8033.559457864612,
+        "total_ms": 8035.933832870796,
+        "chunks_per_second": 2548.5525921364665,
+        "generation_peak_rss_bytes": 4245520384,
+        "cpu_ms_per_region": 2426.10055,
+        "instructions_per_region": 23253652897.6,
+        "peak_physical_footprint": 3090714416
+      },
+      "change_percent": {
+        "median_ms": -29.474174954651254,
+        "p95_region_ms": -11.652291437091467,
+        "maximum_region_ms": -12.990184079267397,
+        "total_ms": -14.623587209210065,
+        "chunks_per_second": 17.128369219545814,
+        "generation_peak_rss_bytes": -7.195811158306409,
+        "cpu_ms_per_region": -9.131982722009047,
+        "instructions_per_region": -11.462202238505215,
+        "peak_physical_footprint": 8.964097711814677
+      }
+    },
+    {
+      "requests": 8,
+      "case": "nether-main-run0",
+      "control": {
+        "median_ms": 4510.584083502181,
+        "p95_region_ms": 11951.361747970805,
+        "maximum_region_ms": 13471.608707914129,
+        "total_ms": 14035.644499817863,
+        "chunks_per_second": 1459.1421149392722,
+        "generation_peak_rss_bytes": 7851917312,
+        "cpu_ms_per_region": 3668.4692999999997,
+        "instructions_per_region": 34308876839.35,
+        "peak_physical_footprint": 5894118792
+      },
+      "candidate": {
+        "median_ms": 3293.409625533968,
+        "p95_region_ms": 7047.850965359249,
+        "maximum_region_ms": 7680.059458129108,
+        "total_ms": 10387.116916943341,
+        "chunks_per_second": 1971.6731951474685,
+        "generation_peak_rss_bytes": 6379536384,
+        "cpu_ms_per_region": 2960.6067000000003,
+        "instructions_per_region": 27880818699.4,
+        "peak_physical_footprint": 4404156464
+      },
+      "change_percent": {
+        "median_ms": -26.984852414571424,
+        "p95_region_ms": -41.0288876365416,
+        "maximum_region_ms": -42.99077693952523,
+        "total_ms": -25.99472780121973,
+        "chunks_per_second": 35.125507992724,
+        "generation_peak_rss_bytes": -18.751864920301387,
+        "cpu_ms_per_region": -19.29585726668067,
+        "instructions_per_region": -18.735845449121324,
+        "peak_physical_footprint": -25.278797061611712
+      }
+    },
+    {
+      "requests": 8,
+      "case": "nether-second-seed-run0",
+      "control": {
+        "median_ms": 4561.731187044643,
+        "p95_region_ms": 10045.681039895864,
+        "maximum_region_ms": 13797.45424981229,
+        "total_ms": 13921.558832982555,
+        "chunks_per_second": 1471.0996265360295,
+        "generation_peak_rss_bytes": 6974783488,
+        "cpu_ms_per_region": 3879.3912500000006,
+        "instructions_per_region": 34745673396.55,
+        "peak_physical_footprint": 5490137160
+      },
+      "candidate": {
+        "median_ms": 3192.7147291135043,
+        "p95_region_ms": 6395.5748189939195,
+        "maximum_region_ms": 7197.52970803529,
+        "total_ms": 10489.049332914874,
+        "chunks_per_second": 1952.512506136595,
+        "generation_peak_rss_bytes": 6752026624,
+        "cpu_ms_per_region": 2745.8053000000004,
+        "instructions_per_region": 28353541701.3,
+        "peak_physical_footprint": 5519628624
+      },
+      "change_percent": {
+        "median_ms": -30.010897218563816,
+        "p95_region_ms": -36.33507978608669,
+        "maximum_region_ms": -47.83436438549372,
+        "total_ms": -24.656071502104194,
+        "chunks_per_second": 32.72469592927158,
+        "generation_peak_rss_bytes": -3.19374593323577,
+        "cpu_ms_per_region": -29.220717296818155,
+        "instructions_per_region": -18.39691412020438,
+        "peak_physical_footprint": 0.5371717161252176
+      }
+    },
+    {
+      "requests": 8,
+      "case": "overworld-run0",
+      "control": {
+        "median_ms": 749.1976869059727,
+        "p95_region_ms": 3519.1108517348766,
+        "maximum_region_ms": 3536.3062091637403,
+        "total_ms": 3539.194082841277,
+        "chunks_per_second": 5786.628119461193,
+        "generation_peak_rss_bytes": 2423963648,
+        "cpu_ms_per_region": 843.9349500000001,
+        "instructions_per_region": 8368321278.05,
+        "peak_physical_footprint": 3955575784
+      },
+      "candidate": {
+        "median_ms": 1062.5805835006759,
+        "p95_region_ms": 3227.5086833746172,
+        "maximum_region_ms": 3384.3690410722047,
+        "total_ms": 3387.27775006555,
+        "chunks_per_second": 6046.153138638741,
+        "generation_peak_rss_bytes": 3185442816,
+        "cpu_ms_per_region": 965.3856499999999,
+        "instructions_per_region": 8409894612.4,
+        "peak_physical_footprint": 4390964440
+      },
+      "change_percent": {
+        "median_ms": 41.829132960742044,
+        "p95_region_ms": -8.28624560708292,
+        "maximum_region_ms": -4.29649354735786,
+        "total_ms": -4.2923990383078365,
+        "chunks_per_second": 4.484909239367418,
+        "generation_peak_rss_bytes": 31.414628211454108,
+        "cpu_ms_per_region": 14.391002529282604,
+        "instructions_per_region": 0.4967941952592758,
+        "peak_physical_footprint": 11.006960295416746
+      }
+    }
+  ],
+  "overworld_repeat": {
+    "scope": "Two normal fresh-process repetitions per library and request count in ABBA order. Pooled40region distributions and combined throughput are descriptive; per-run results are retained. Same coordinates are repeated evidence, not new corpus coverage. No uncontended timing acceptance.",
+    "comparisons": [
+      {
+        "requests": 1,
+        "control": {
+          "median_ms": 232.51872952096164,
+          "p95_region_ms": 273.64476256771013,
+          "maximum_region_ms": 325.58112498372793,
+          "total_ms": 9376.926667056978,
+          "chunks_per_second": 4368.168959228474,
+          "cpu_ms_per_region": 631.019425,
+          "instructions_per_region": 8411643840.825,
+          "generation_peak_rss_bytes": 1581219840,
+          "peak_physical_footprint": 3421473240
+        },
+        "candidate": {
+          "median_ms": 210.64989548176527,
+          "p95_region_ms": 251.1803850647993,
+          "maximum_region_ms": 264.66341596096754,
+          "total_ms": 8590.954500017688,
+          "chunks_per_second": 4767.805486563299,
+          "cpu_ms_per_region": 625.8043499999999,
+          "instructions_per_region": 8422507640.5,
+          "generation_peak_rss_bytes": 1578827776,
+          "peak_physical_footprint": 3372255680
+        },
+        "change_percent": {
+          "median_ms": -9.40519246954895,
+          "p95_region_ms": -8.20932119881238,
+          "maximum_region_ms": -18.71045473714269,
+          "total_ms": -8.38198052460587,
+          "chunks_per_second": 9.148834009511653,
+          "cpu_ms_per_region": -0.8264523710977745,
+          "instructions_per_region": 0.12915192179527857,
+          "generation_peak_rss_bytes": -0.15127966013884775,
+          "peak_physical_footprint": -1.4384902802863975
+        }
+      },
+      {
+        "requests": 8,
+        "control": {
+          "median_ms": 703.1094585545361,
+          "p95_region_ms": 3009.921385406051,
+          "maximum_region_ms": 3110.0122500211,
+          "total_ms": 6120.838250033557,
+          "chunks_per_second": 6691.8938757735405,
+          "cpu_ms_per_region": 625.0569,
+          "instructions_per_region": 8375825125.775,
+          "generation_peak_rss_bytes": 2654158848,
+          "peak_physical_footprint": 4035792088
+        },
+        "candidate": {
+          "median_ms": 609.9446249427274,
+          "p95_region_ms": 3099.5770474080928,
+          "maximum_region_ms": 3214.9482499808073,
+          "total_ms": 6319.825165905058,
+          "chunks_per_second": 6481.191951476104,
+          "cpu_ms_per_region": 631.635175,
+          "instructions_per_region": 8404533837.675,
+          "generation_peak_rss_bytes": 2380693504,
+          "peak_physical_footprint": 4009757840
+        },
+        "change_percent": {
+          "median_ms": -13.25040254803832,
+          "p95_region_ms": 2.978671218349671,
+          "maximum_region_ms": 3.374134618247737,
+          "total_ms": 3.2509749113270647,
+          "chunks_per_second": -3.14861425194195,
+          "cpu_ms_per_region": 1.0524281869378482,
+          "instructions_per_region": 0.3427568205985443,
+          "generation_peak_rss_bytes": -10.303277221183105,
+          "peak_physical_footprint": -0.6450839744051695
+        }
+      }
+    ],
+    "runs": [
+      {
+        "requests": 1,
+        "tag": "a",
+        "variant": "control",
+        "chunk_instances": 20480,
+        "median_ms": 235.00693694222718,
+        "p95_region_ms": 272.7688835584559,
+        "maximum_region_ms": 325.58112498372793,
+        "total_ms": 4805.083125131205,
+        "chunks_per_second": 4262.153112999639,
+        "generation_peak_rss_bytes": 1529708544,
+        "peak_physical_footprint": 3399469528,
+        "cpu_ms_per_region": 635.7157500000001,
+        "instructions_per_region": 8417136279.5,
+        "reported_mean_stages_ms": {
+          "assembly_ms": 130.94976655,
+          "gpu_ms": 90.57521455,
+          "write_ms": 18.30367085
+        }
+      },
+      {
+        "requests": 1,
+        "tag": "b",
+        "variant": "candidate",
+        "chunk_instances": 20480,
+        "median_ms": 209.76210397202522,
+        "p95_region_ms": 243.62502499716356,
+        "maximum_region_ms": 249.94537490420043,
+        "total_ms": 4242.106790887192,
+        "chunks_per_second": 4827.789824620804,
+        "generation_peak_rss_bytes": 1544830976,
+        "peak_physical_footprint": 3372255680,
+        "cpu_ms_per_region": 621.8067,
+        "instructions_per_region": 8421736517.05,
+        "reported_mean_stages_ms": {
+          "assembly_ms": 123.5948104,
+          "gpu_ms": 75.49094595,
+          "write_ms": 12.6745625
+        }
+      },
+      {
+        "requests": 1,
+        "tag": "c",
+        "variant": "candidate",
+        "chunk_instances": 20480,
+        "median_ms": 216.56725055072457,
+        "p95_region_ms": 260.97072700504214,
+        "maximum_region_ms": 264.66341596096754,
+        "total_ms": 4348.847709130496,
+        "chunks_per_second": 4709.293442720888,
+        "generation_peak_rss_bytes": 1578827776,
+        "peak_physical_footprint": 3356838336,
+        "cpu_ms_per_region": 629.8019999999999,
+        "instructions_per_region": 8423278763.95,
+        "reported_mean_stages_ms": {
+          "assembly_ms": 126.6687459,
+          "gpu_ms": 76.26588335,
+          "write_ms": 14.10604355
+        }
+      },
+      {
+        "requests": 1,
+        "tag": "d",
+        "variant": "control",
+        "chunk_instances": 20480,
+        "median_ms": 229.24795793369412,
+        "p95_region_ms": 273.64476256771013,
+        "maximum_region_ms": 278.8462499156594,
+        "total_ms": 4571.843541925773,
+        "chunks_per_second": 4479.593365824877,
+        "generation_peak_rss_bytes": 1581219840,
+        "peak_physical_footprint": 3421473240,
+        "cpu_ms_per_region": 626.3231,
+        "instructions_per_region": 8406151402.15,
+        "reported_mean_stages_ms": {
+          "assembly_ms": 127.0351958,
+          "gpu_ms": 88.4950126,
+          "write_ms": 12.71026865
+        }
+      },
+      {
+        "requests": 8,
+        "tag": "a",
+        "variant": "control",
+        "chunk_instances": 20480,
+        "median_ms": 663.199583417736,
+        "p95_region_ms": 2981.4894797629677,
+        "maximum_region_ms": 3005.1757500041276,
+        "total_ms": 3007.9449999611825,
+        "chunks_per_second": 6808.635131381822,
+        "generation_peak_rss_bytes": 2651176960,
+        "peak_physical_footprint": 4035792088,
+        "cpu_ms_per_region": 617.23725,
+        "instructions_per_region": 8374491330.6,
+        "reported_mean_stages_ms": {
+          "assembly_ms": 876.0035562999999,
+          "gpu_ms": 243.6361959,
+          "write_ms": 14.6815125
+        }
+      },
+      {
+        "requests": 8,
+        "tag": "b",
+        "variant": "candidate",
+        "chunk_instances": 20480,
+        "median_ms": 609.9446249427274,
+        "p95_region_ms": 2994.6183516294695,
+        "maximum_region_ms": 3099.346707807854,
+        "total_ms": 3102.1900409832597,
+        "chunks_per_second": 6601.787682068868,
+        "generation_peak_rss_bytes": 2380693504,
+        "peak_physical_footprint": 4009757840,
+        "cpu_ms_per_region": 629.32585,
+        "instructions_per_region": 8404588770.55,
+        "reported_mean_stages_ms": {
+          "assembly_ms": 882.9312602,
+          "gpu_ms": 208.12384605000003,
+          "write_ms": 14.2264667
+        }
+      },
+      {
+        "requests": 8,
+        "tag": "c",
+        "variant": "candidate",
+        "chunk_instances": 20480,
+        "median_ms": 642.3715620767325,
+        "p95_region_ms": 3109.5032373210415,
+        "maximum_region_ms": 3214.9482499808073,
+        "total_ms": 3217.6351249217987,
+        "chunks_per_second": 6364.923058358814,
+        "generation_peak_rss_bytes": 2216116224,
+        "peak_physical_footprint": 3900312576,
+        "cpu_ms_per_region": 633.9445000000001,
+        "instructions_per_region": 8404478904.8,
+        "reported_mean_stages_ms": {
+          "assembly_ms": 960.4075875000001,
+          "gpu_ms": 197.2041208,
+          "write_ms": 14.524362450000002
+        }
+      },
+      {
+        "requests": 8,
+        "tag": "d",
+        "variant": "control",
+        "chunk_instances": 20480,
+        "median_ms": 767.8133755689487,
+        "p95_region_ms": 3100.584647641517,
+        "maximum_region_ms": 3110.0122500211,
+        "total_ms": 3112.893250072375,
+        "chunks_per_second": 6579.088441122688,
+        "generation_peak_rss_bytes": 2654158848,
+        "peak_physical_footprint": 3993488744,
+        "cpu_ms_per_region": 632.8765500000001,
+        "instructions_per_region": 8377158920.95,
+        "reported_mean_stages_ms": {
+          "assembly_ms": 908.3671604499999,
+          "gpu_ms": 229.04269595,
+          "write_ms": 16.4160417
+        }
+      }
+    ]
+  },
+  "work_observations": [
+    {
+      "case": "nether-custom-bounds-run0",
+      "control": {
+        "anchor_builds": 688180,
+        "column_builds": 44766352,
+        "prefix_evaluations": 35536813,
+        "column_requests": 60382161,
+        "view_column_loads": 22808788,
+        "version_cache_exported_bytes": 604210976,
+        "blob_mask_reads": 0,
+        "blob_mask_builds": 0,
+        "blob_mask_hits": 0,
+        "ground_run_visits": 0,
+        "ground_voxel_queries_replaced": 0,
+        "blob_index_covered_commands": 0,
+        "structure_fossil_biome_points": 0,
+        "structure_fossil_biome_retained": 0,
+        "structure_fossil_biome_queried": 0
+      },
+      "candidate": {
+        "anchor_builds": 688180,
+        "column_builds": 44766352,
+        "prefix_evaluations": 35536813,
+        "column_requests": 60382161,
+        "view_column_loads": 22808788,
+        "version_cache_exported_bytes": 488989040,
+        "blob_mask_reads": 0,
+        "blob_mask_builds": 0,
+        "blob_mask_hits": 0,
+        "ground_run_visits": 11273300,
+        "ground_voxel_queries_replaced": 134508009,
+        "blob_index_covered_commands": 0,
+        "structure_fossil_biome_points": 0,
+        "structure_fossil_biome_retained": 0,
+        "structure_fossil_biome_queried": 0
+      },
+      "change_percent": {
+        "anchor_builds": 0.0,
+        "column_builds": 0.0,
+        "prefix_evaluations": 0.0,
+        "column_requests": 0.0,
+        "view_column_loads": 0.0,
+        "version_cache_exported_bytes": -19.069818420511442
+      }
+    },
+    {
+      "case": "nether-direct-stem-run0",
+      "control": {
+        "anchor_builds": 687308,
+        "column_builds": 44126146,
+        "prefix_evaluations": 34988411,
+        "column_requests": 59271057,
+        "view_column_loads": 22437747,
+        "version_cache_exported_bytes": 587345896,
+        "blob_mask_reads": 0,
+        "blob_mask_builds": 0,
+        "blob_mask_hits": 0,
+        "ground_run_visits": 0,
+        "ground_voxel_queries_replaced": 0,
+        "blob_index_covered_commands": 0,
+        "structure_fossil_biome_points": 0,
+        "structure_fossil_biome_retained": 0,
+        "structure_fossil_biome_queried": 0
+      },
+      "candidate": {
+        "anchor_builds": 687308,
+        "column_builds": 44126146,
+        "prefix_evaluations": 34988411,
+        "column_requests": 59271057,
+        "view_column_loads": 22437747,
+        "version_cache_exported_bytes": 472995376,
+        "blob_mask_reads": 0,
+        "blob_mask_builds": 0,
+        "blob_mask_hits": 0,
+        "ground_run_visits": 11114090,
+        "ground_voxel_queries_replaced": 133622872,
+        "blob_index_covered_commands": 0,
+        "structure_fossil_biome_points": 0,
+        "structure_fossil_biome_retained": 0,
+        "structure_fossil_biome_queried": 0
+      },
+      "change_percent": {
+        "anchor_builds": 0.0,
+        "column_builds": 0.0,
+        "prefix_evaluations": 0.0,
+        "column_requests": 0.0,
+        "view_column_loads": 0.0,
+        "version_cache_exported_bytes": -19.469025114291426
+      }
+    },
+    {
+      "case": "nether-main-run0",
+      "control": {
+        "anchor_builds": 1134746,
+        "column_builds": 47088665,
+        "prefix_evaluations": 38918672,
+        "column_requests": 66637493,
+        "view_column_loads": 26310603,
+        "version_cache_exported_bytes": 521057472,
+        "blob_mask_reads": 0,
+        "blob_mask_builds": 0,
+        "blob_mask_hits": 0,
+        "ground_run_visits": 0,
+        "ground_voxel_queries_replaced": 0,
+        "blob_index_covered_commands": 0,
+        "structure_fossil_biome_points": 6963,
+        "structure_fossil_biome_retained": 0,
+        "structure_fossil_biome_queried": 0
+      },
+      "candidate": {
+        "anchor_builds": 1134746,
+        "column_builds": 47088665,
+        "prefix_evaluations": 38918672,
+        "column_requests": 66637493,
+        "view_column_loads": 20847540,
+        "version_cache_exported_bytes": 421794552,
+        "blob_mask_reads": 138980991,
+        "blob_mask_builds": 5463063,
+        "blob_mask_hits": 133517928,
+        "ground_run_visits": 7850060,
+        "ground_voxel_queries_replaced": 117497199,
+        "blob_index_covered_commands": 47427241,
+        "structure_fossil_biome_points": 6963,
+        "structure_fossil_biome_retained": 6963,
+        "structure_fossil_biome_queried": 0
+      },
+      "change_percent": {
+        "anchor_builds": 0.0,
+        "column_builds": 0.0,
+        "prefix_evaluations": 0.0,
+        "column_requests": 0.0,
+        "view_column_loads": -20.763731640814164,
+        "version_cache_exported_bytes": -19.050282422588506,
+        "structure_fossil_biome_points": 0.0
+      }
+    },
+    {
+      "case": "nether-second-seed-run0",
+      "control": {
+        "anchor_builds": 1143760,
+        "column_builds": 49417785,
+        "prefix_evaluations": 41146215,
+        "column_requests": 69312877,
+        "view_column_loads": 26904892,
+        "version_cache_exported_bytes": 502531232,
+        "blob_mask_reads": 0,
+        "blob_mask_builds": 0,
+        "blob_mask_hits": 0,
+        "ground_run_visits": 0,
+        "ground_voxel_queries_replaced": 0,
+        "blob_index_covered_commands": 0,
+        "structure_fossil_biome_points": 6948,
+        "structure_fossil_biome_retained": 0,
+        "structure_fossil_biome_queried": 0
+      },
+      "candidate": {
+        "anchor_builds": 1143760,
+        "column_builds": 49417785,
+        "prefix_evaluations": 41146215,
+        "column_requests": 69312877,
+        "view_column_loads": 21551152,
+        "version_cache_exported_bytes": 406769144,
+        "blob_mask_reads": 136150399,
+        "blob_mask_builds": 5353740,
+        "blob_mask_hits": 130796659,
+        "ground_run_visits": 8668209,
+        "ground_voxel_queries_replaced": 127631439,
+        "blob_index_covered_commands": 47097786,
+        "structure_fossil_biome_points": 6974,
+        "structure_fossil_biome_retained": 6974,
+        "structure_fossil_biome_queried": 0
+      },
+      "change_percent": {
+        "anchor_builds": 0.0,
+        "column_builds": 0.0,
+        "prefix_evaluations": 0.0,
+        "column_requests": 0.0,
+        "view_column_loads": -19.898760418737226,
+        "version_cache_exported_bytes": -19.05594755153447,
+        "structure_fossil_biome_points": 0.37420840529649446
+      }
+    },
+    {
+      "case": "overworld-run0",
+      "control": {
+        "anchor_builds": 0,
+        "column_builds": 0,
+        "prefix_evaluations": 0,
+        "column_requests": 0,
+        "view_column_loads": 0,
+        "version_cache_exported_bytes": 0,
+        "blob_mask_reads": 0,
+        "blob_mask_builds": 0,
+        "blob_mask_hits": 0,
+        "ground_run_visits": 0,
+        "ground_voxel_queries_replaced": 0,
+        "blob_index_covered_commands": 0,
+        "structure_fossil_biome_points": 0,
+        "structure_fossil_biome_retained": 0,
+        "structure_fossil_biome_queried": 0
+      },
+      "candidate": {
+        "anchor_builds": 0,
+        "column_builds": 0,
+        "prefix_evaluations": 0,
+        "column_requests": 0,
+        "view_column_loads": 0,
+        "version_cache_exported_bytes": 0,
+        "blob_mask_reads": 0,
+        "blob_mask_builds": 0,
+        "blob_mask_hits": 0,
+        "ground_run_visits": 0,
+        "ground_voxel_queries_replaced": 0,
+        "blob_index_covered_commands": 0,
+        "structure_fossil_biome_points": 0,
+        "structure_fossil_biome_retained": 0,
+        "structure_fossil_biome_queried": 0
+      },
+      "change_percent": {}
+    }
+  ],
+  "runtime_events": [
+    {
+      "fixture": "fabric-portal",
+      "event": "nether_cold_portal_arrival",
+      "status": "pass",
+      "context": {
+        "generated_chunks": 4096,
+        "reopened": false,
+        "all_generated_chunks": 4096,
+        "portal_ms": 2260.371333,
+        "server_ticks": 46,
+        "maximum_tick_gap_ms": 131.440375
+      }
+    },
+    {
+      "fixture": "fabric-portal",
+      "event": "nether_cold_portal_arrival",
+      "status": "pass",
+      "context": {
+        "generated_chunks": 0,
+        "reopened": true,
+        "all_generated_chunks": 0,
+        "portal_ms": 160.194959,
+        "server_ticks": 3,
+        "maximum_tick_gap_ms": 70.793334
+      }
+    },
+    {
+      "fixture": "fabric-portal-dh",
+      "event": "nether_cold_portal_arrival",
+      "status": "pass",
+      "context": {
+        "generated_chunks": 4096,
+        "reopened": false,
+        "all_generated_chunks": 4096,
+        "portal_ms": 2953.467167,
+        "server_ticks": 54,
+        "maximum_tick_gap_ms": 304.328625
+      }
+    },
+    {
+      "fixture": "fabric-portal-dh",
+      "event": "nether_portal_dh_overlap",
+      "status": "pass",
+      "context": {
+        "reopened": false,
+        "active_at_start": 1,
+        "started_during_wait": 0,
+        "completed_during_wait": 1
+      }
+    },
+    {
+      "fixture": "fabric-portal-dh",
+      "event": "nether_cold_portal_arrival",
+      "status": "pass",
+      "context": {
+        "generated_chunks": 0,
+        "reopened": true,
+        "all_generated_chunks": 0,
+        "portal_ms": 155.523958,
+        "server_ticks": 3,
+        "maximum_tick_gap_ms": 68.605083
+      }
+    },
+    {
+      "fixture": "fabric-portal-dh",
+      "event": "nether_portal_dh_overlap",
+      "status": "pass",
+      "context": {
+        "reopened": true,
+        "active_at_start": 0,
+        "started_during_wait": 0,
+        "completed_during_wait": 0
+      }
+    },
+    {
+      "fixture": "neoforge-unload",
+      "event": "nether_unload_in_flight",
+      "status": "pass",
+      "context": {
+        "pass": 0,
+        "native_in_flight": 8
+      }
+    },
+    {
+      "fixture": "neoforge-unload",
+      "event": "nether_unload_cleaned",
+      "status": "pass",
+      "context": {
+        "dimension": "minecraft:overworld",
+        "requests": 19,
+        "closed_results": 14,
+        "generation_failures": 0,
+        "qa_property": true
+      }
+    },
+    {
+      "fixture": "neoforge-unload",
+      "event": "nether_unload_cleaned",
+      "status": "pass",
+      "context": {
+        "dimension": "minecraft:the_nether",
+        "requests": 19,
+        "closed_results": 19,
+        "generation_failures": 0,
+        "qa_property": true
+      }
+    },
+    {
+      "fixture": "neoforge-unload",
+      "event": "nether_unload_in_flight",
+      "status": "pass",
+      "context": {
+        "pass": 1,
+        "native_in_flight": 8
+      }
+    },
+    {
+      "fixture": "neoforge-unload",
+      "event": "nether_unload_cleaned",
+      "status": "pass",
+      "context": {
+        "dimension": "minecraft:overworld",
+        "requests": 19,
+        "closed_results": 19,
+        "generation_failures": 0,
+        "qa_property": true
+      }
+    },
+    {
+      "fixture": "neoforge-unload",
+      "event": "nether_unload_cleaned",
+      "status": "pass",
+      "context": {
+        "dimension": "minecraft:the_nether",
+        "requests": 19,
+        "closed_results": 19,
+        "generation_failures": 0,
+        "qa_property": true
+      }
+    }
+  ],
+  "retention": {
+    "regions": 314,
+    "serial_round_end_named_gpu_bytes": [
+      499240236,
+      516952172,
+      516952172
+    ],
+    "serial_round_end_retained_material_bytes": [
+      55574528,
+      55574528,
+      55574528
+    ],
+    "maxima": {
+      "version_entries": 8,
+      "version_bytes": 230516736,
+      "all_named_gpu_bytes": 546312300,
+      "material_slots": 2,
+      "retained_slots": 2,
+      "retained_material_bytes": 84934656
+    },
+    "after_engine_drop": {
+      "caves": {
+        "live_mask_references": 0,
+        "observed_mask_references": 2048
+      },
+      "versions": {
+        "live_interior_run_buffers": 0,
+        "live_snapshots": 0,
+        "observed_interior_run_buffers": 8,
+        "observed_snapshots": 8
+      }
+    },
+    "terrain_worker_stopped": true,
+    "physical_footprint_observations": [
+      {
+        "file": "after-engine-drop-vmmap.txt",
+        "lines": [
+          "Physical footprint:         1.2G",
+          "Physical footprint (peak):  4.6G"
+        ]
+      },
+      {
+        "file": "concurrent-2-vmmap.txt",
+        "lines": [
+          "Physical footprint:         4.0G",
+          "Physical footprint (peak):  4.6G"
+        ]
+      },
+      {
+        "file": "concurrent-4-vmmap.txt",
+        "lines": [
+          "Physical footprint:         3.3G",
+          "Physical footprint (peak):  4.6G"
+        ]
+      },
+      {
+        "file": "concurrent-8-vmmap.txt",
+        "lines": [
+          "Physical footprint:         4.0G",
+          "Physical footprint (peak):  4.6G"
+        ]
+      },
+      {
+        "file": "round-0-vmmap.txt",
+        "lines": [
+          "Physical footprint:         4.3G",
+          "Physical footprint (peak):  4.3G"
+        ]
+      },
+      {
+        "file": "round-1-vmmap.txt",
+        "lines": [
+          "Physical footprint:         4.2G",
+          "Physical footprint (peak):  4.3G"
+        ]
+      },
+      {
+        "file": "round-2-vmmap.txt",
+        "lines": [
+          "Physical footprint:         4.1G",
+          "Physical footprint (peak):  4.3G"
+        ]
+      },
+      {
+        "file": "warm-nether-custom-bounds-vmmap.txt",
+        "lines": [
+          "Physical footprint:         1.8G",
+          "Physical footprint (peak):  2.1G"
+        ]
+      },
+      {
+        "file": "warm-nether-direct-stem-vmmap.txt",
+        "lines": [
+          "Physical footprint:         1.8G",
+          "Physical footprint (peak):  2.1G"
+        ]
+      },
+      {
+        "file": "warm-nether-main-vmmap.txt",
+        "lines": [
+          "Physical footprint:         2.0G",
+          "Physical footprint (peak):  2.0G"
+        ]
+      },
+      {
+        "file": "warm-nether-second-seed-vmmap.txt",
+        "lines": [
+          "Physical footprint:         1.7G",
+          "Physical footprint (peak):  2.1G"
+        ]
+      },
+      {
+        "file": "warm-overworld-vmmap.txt",
+        "lines": [
+          "Physical footprint:         3.7G",
+          "Physical footprint (peak):  3.8G"
+        ]
+      }
+    ],
+    "limitations": [
+      "Joined ownership and named buffer capacities are bounded for these fixed profiles and request orders; they are not whole-process current RSS or indefinite memory proof.",
+      "VM footprint is a separate actual process observation; do not sum it with logical buffer/cache bytes.",
+      "Test-only collectors and VM checkpoints make this unsuitable as headline timing.",
+      "No causal process-memory comparison with main was performed in this census."
+    ]
+  },
+  "interpretation": [
+    "Standard Nether instructions fall 17.9\u201320.0% across observed request counts; custom profiles fall 9.2\u201311.5%. Serial anchor/column/prefix/request counts remain unchanged. Standard view-column loads fall 19.9\u201320.8%, version archive payload about 19%; these are work/byte counts, not wall shares.",
+    "Main-seed isolated p95 remains 1.482 s in the initial host-contended window; this is not subsecond acceptance. Concurrent throughput improved in these runs, but several tail observations regress and all values remain retained.",
+    "Initial serial Overworld total elapsed rises 93.2%, CPU 25.0%, instructions 0.35%. Assembly grows 137.5\u2192373.4 ms while GPU falls 94.2\u219288.7 ms. That large slowdown does not recur in two fresh-process repeats. Pooled repeated serial throughput +9.15%, CPU \u22120.83%; eight-request throughput \u22123.15%, p95 +2.98%, CPU +1.05%, instructions +0.34%. This is not an uncontended no-regression claim.",
+    "Named GPU capacity grows between first/second serial rounds then matches exactly in second/third. Fixed profiles, request order and test instrumentation limit this census; VM footprint is separate from logical capacities.",
+    "Client fixtures use integrated creative QA with placement helpers, not unaided survival or dedicated-server acceptance. Portal and tick timings remain provisional."
+  ],
+  "evidence_root": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle146",
+  "recovery": {
+    "commands": [
+      "python3 proof.py",
+      "python3 repeat-proof.py",
+      "python3 extended-proof.py"
+    ],
+    "instructions": "Use new evidence output directories and the recorded source revision. Retained scripts record full commands and library/profile/support hashes. Do not overwrite existing proofs. Reference corpora and all worktrees remain preserved.",
+    "library": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle146/normal.dylib",
+    "original_corpus": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite",
+    "preceding_main_corpus": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle141/merged/normal-full",
+    "tall_original": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle119/tall/original",
+    "tall_preceding_main": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle143/tall-actual-main",
+    "compression": "Only completed owned experiment worlds were transparently APFS-compressed. Full-file SHA-256 before/after equality and restoration commands are retained in compression receipts; file bytes and paths are unchanged."
+  },
+  "next": "PR squash auto-merge,actual merged rebuild/full-corpus proof,then continue remaining subsecond/concurrency work. Timing confirmation remains deferred by user request."
+}

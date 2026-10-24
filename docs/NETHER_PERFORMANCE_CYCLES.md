@@ -3183,3 +3183,54 @@ See `docs/benchmarks/nether-perf-cycle141-2026-10-24.json` for raw compact resul
 limitations, exact source/library identities and evidence recovery. Timings
 remain provisional. Actual merged rebuild/full-corpus proof follows, and the
 broader subsecond/concurrency objective remains open.
+
+
+## Cycle 146 — reuse material data and compact ordered state
+
+Layered GPU generation now keeps its material storage exclusive through both
+passes, retains up to 32 exact runs per column, and reuses completed buffers in
+pools capped at two. Overflow and invalid run encodings keep the original
+evaluator. Fossil queries borrow covered quart biomes and retain sparse fallback.
+
+Ordered dependencies use target masks, uniform blob bitsets, ground transitions
+and selected height queries directly from immutable material runs. Packed column
+indices and ore visited bits preserve original command and first-visit order.
+Unsupported heights, collisions, live overlays and limited within-root prefixes
+keep exact fallback behavior. Root scheduling and the rejected scalar point
+shortcut are not included.
+
+Validation passes **268 native tests**, **20 explicit GPU fixtures** and
+**1,529,856 complete-NBT chunk comparisons** against the immutable original and
+actual preceding main: 935,936 candidate and 593,920 control instances. Repeated
+coordinates are not unique coverage. Five representative cases cover one, two,
+four and eight requests with 16 assembly workers, five warmups and twenty measured
+complete regions, observed shader readiness, lighting and zlib publication.
+Additional checks cover tall height, Overworld repeats, 314 sustained regions,
+actual portal/DH activity and unloading with eight requests in flight.
+
+Observed standard Nether instruction counts decrease **17.9–20.0%**, and custom
+profiles **9.2–11.5%**. Serial anchor builds, column builds, prefix evaluations and
+column requests remain unchanged. Standard view-column loads fall about 20% and
+exported archive payload about 19%. These are separate work and byte counts, not
+wall-time shares. Normal timings remain provisional under recorded host activity.
+
+The initial serial Overworld sample regresses sharply; its assembly stage grows
+while reported GPU time falls. This does not recur in two fresh-process repeats:
+pooled serial throughput improves 9.15%, while eight-request throughput falls
+3.15%, p95 rises 2.98% and CPU rises 1.05%. All initial and repeat results remain
+retained. These observations do not establish uncontended no-regression acceptance.
+The initial isolated standard-Nether p95s are still 1,482 and 1,049 ms.
+
+Named GPU capacity grows between the first two serial retention rounds, then
+remains at 516,952,172 bytes in both the second and third. Retained version state
+stays within eight entries and 230,516,736 bytes. Mixed-profile requests reach
+546,312,300 named GPU bytes. All observed retained owners are released on engine
+drop and the worker stops. This fixed-corpus census is not a claim about all
+allocator or driver memory; separate VM observations are preserved.
+
+The integrated portal fixtures complete with and without actual DH overlap;
+unload/reopen passes have zero generation failures. They are not unaided survival
+or dedicated-server acceptance. See
+`docs/benchmarks/nether-perf-cycle146-2026-10-24.json` for full timing summaries,
+provenance, limitations and recovery instructions. Actual merged proof follows.
+The overall subsecond goal and final timing confirmation remain open.
