@@ -8,7 +8,7 @@ mod cpu;
 mod anchor_cpu;
 mod request_batch;
 pub(super) use anchor_cpu::Span as AnchorCpu;
-pub(super) use anchor_cpu::column_load::Span as ColumnLoadCpu;
+pub(super) use anchor_cpu::column_load::{Span as ColumnLoadCpu, Path as ColumnLoadPath};
 pub(super) mod work;
 pub(crate) use joins::TerrainSpan;
 pub(super) use joins::{Candidate as Join, Key as JoinKey, LookupCall};
