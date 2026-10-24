@@ -1,0 +1,743 @@
+{
+  "cycle": 129,
+  "date": "2026-10-23",
+  "status": "Validated observer coverage correction; ready for PR. Actual merged rebuild/full-corpus proof follows.",
+  "timing_acceptance": false,
+  "goal_complete": false,
+  "source": {
+    "revision": "c1e06c8646f2357f4b17061bb90ced2fbb84c049",
+    "native_tree": "574d4f3b3a5a9d123c5afda527a8e767d0313936",
+    "status": ""
+  },
+  "provenance": {
+    "revision": "c1e06c8646f2357f4b17061bb90ced2fbb84c049",
+    "native_tree": "574d4f3b3a5a9d123c5afda527a8e767d0313936",
+    "status": "",
+    "library_sha256": "daa63b89e1c64bf302bebcea7935621b7cec1a04153e7ad230842dad435d7b26",
+    "test_executable_sha256": "2a38b42ad0e63bf00c2f7daa0ebd135ad12064d528b21b3748194cca9c88765a",
+    "native_test_result": [
+      "222",
+      "0",
+      "59"
+    ]
+  },
+  "preceding_main": {
+    "revision": "117c1e14ee6f0c2edc5443076457da431b967ebf",
+    "native_tree": "b3b97efb74daaa291835fb1b2e4b32a1ba9df658",
+    "status": ""
+  },
+  "normal_release_byte_identical_to_preceding_main": true,
+  "problem": "C127 clocked only the ViewColumns.read cold loader. C128 confirmed that held C116 material-mask queries bypass it, yielding zero View-loader cost for basalt/blackstone despite real Planner.column work. Earlier-height-prefix queries also bypass that View helper in main and candidate. Old results retain their narrow scope and are not evidence that all column cost vanished.",
+  "implementation": "Clock the common Planner.column entry instead. For each selected anchor, only an outermost column call creates a span; recursive calls within that anchor fold into it without clocks or duplicate CPU. Nested selected anchors may create their own spans, and direct-child anchor inclusive CPU is subtracted from the parent exactly once. All original commands, ordering, storage and owner lifetimes are unchanged.",
+  "scope": "Deterministic 1/64 selected (executed root,x,z) anchors, two salts. Numerator is outermost Planner.column own calling-thread CPU; denominator is own CPU of the same selected anchors including zero-load/empty initializers. Includes direct material-mask and earlier-height entry paths in consumers that use them, ready planner-state lookups and reconstruction. View cache hits and material/derived-mask callbacks after the planner return remain outside. No extrapolation to all anchors/process CPU/wall; observer work is included.",
+  "validation": {
+    "native_passed": 222,
+    "native_ignored": 59,
+    "gpu_passed": 5,
+    "accounting_fixtures": 24,
+    "new_accounting_fixtures": 2,
+    "complete_nbt_instances": 512000,
+    "normal_instances": 102400,
+    "control_and_sample_instances": 409600,
+    "references": [
+      "immutable original 58f6496",
+      "preceding actual merged main 117c1e1"
+    ],
+    "comparison": "Complete raw decompressed NBT bytes plus membership. Only MCA container timestamps/sectors/padding and compression representation excluded. All measured regions are complete 1,024-chunk, lit, serialized, compressed, published and shader-ready before/after. Repeated coordinates are not unique coverage.",
+    "work_counter_equivalence": {
+      "records_per_inventory": 2560,
+      "comparisons": 3,
+      "changed_records": 0,
+      "scope": "All dependency-work totals and demanded-root rows, plus actual initializer counts by executed root, per region/dispatched stage. No CPU or timing fields are compared."
+    }
+  },
+  "scope_count_comparison_with_C127": [
+    {
+      "mode": "salt0",
+      "case": "nether-main",
+      "selected_anchors": 17723,
+      "old_cold_view_calls": 393008,
+      "new_outermost_planner_calls": 412720
+    },
+    {
+      "mode": "salt0",
+      "case": "nether-second-seed",
+      "selected_anchors": 17788,
+      "old_cold_view_calls": 379296,
+      "new_outermost_planner_calls": 398853
+    },
+    {
+      "mode": "salt0",
+      "case": "nether-custom-bounds",
+      "selected_anchors": 10905,
+      "old_cold_view_calls": 363581,
+      "new_outermost_planner_calls": 391526
+    },
+    {
+      "mode": "salt0",
+      "case": "nether-direct-stem",
+      "selected_anchors": 10851,
+      "old_cold_view_calls": 353302,
+      "new_outermost_planner_calls": 382274
+    },
+    {
+      "mode": "salt0",
+      "case": "overworld",
+      "selected_anchors": 0,
+      "old_cold_view_calls": 0,
+      "new_outermost_planner_calls": 0
+    },
+    {
+      "mode": "salt1",
+      "case": "nether-main",
+      "selected_anchors": 17173,
+      "old_cold_view_calls": 375279,
+      "new_outermost_planner_calls": 394782
+    },
+    {
+      "mode": "salt1",
+      "case": "nether-second-seed",
+      "selected_anchors": 17222,
+      "old_cold_view_calls": 384432,
+      "new_outermost_planner_calls": 402435
+    },
+    {
+      "mode": "salt1",
+      "case": "nether-custom-bounds",
+      "selected_anchors": 10403,
+      "old_cold_view_calls": 347461,
+      "new_outermost_planner_calls": 374762
+    },
+    {
+      "mode": "salt1",
+      "case": "nether-direct-stem",
+      "selected_anchors": 10345,
+      "old_cold_view_calls": 346072,
+      "new_outermost_planner_calls": 368769
+    },
+    {
+      "mode": "salt1",
+      "case": "overworld",
+      "selected_anchors": 0,
+      "old_cold_view_calls": 0,
+      "new_outermost_planner_calls": 0
+    }
+  ],
+  "sample_observations": [
+    {
+      "mode": "salt0",
+      "case": "nether-main",
+      "salt": 0,
+      "top_six_by_all_initializer_own_cpu": [
+        {
+          "sources": "minecraft:basalt_blobs",
+          "sampled_anchors": 580,
+          "load_calls": 55725,
+          "sampled_anchor_own_cpu_ns": 218065536,
+          "load_own_cpu_ns": 30821527,
+          "load_fraction_of_sampled_anchor_own_cpu": 0.14134066100202097
+        },
+        {
+          "sources": "minecraft:patch_fire",
+          "sampled_anchors": 480,
+          "load_calls": 73572,
+          "sampled_anchor_own_cpu_ns": 122329237,
+          "load_own_cpu_ns": 87379573,
+          "load_fraction_of_sampled_anchor_own_cpu": 0.7142983569823133
+        },
+        {
+          "sources": "minecraft:blackstone_blobs",
+          "sampled_anchors": 562,
+          "load_calls": 24140,
+          "sampled_anchor_own_cpu_ns": 65945493,
+          "load_own_cpu_ns": 38271301,
+          "load_fraction_of_sampled_anchor_own_cpu": 0.5803474848538929
+        },
+        {
+          "sources": "minecraft:delta",
+          "sampled_anchors": 580,
+          "load_calls": 47432,
+          "sampled_anchor_own_cpu_ns": 76389666,
+          "load_own_cpu_ns": 21261270,
+          "load_fraction_of_sampled_anchor_own_cpu": 0.2783265212862693
+        },
+        {
+          "sources": "minecraft:large_basalt_columns/choice0 | minecraft:large_basalt_columns/choice1",
+          "sampled_anchors": 552,
+          "load_calls": 24641,
+          "sampled_anchor_own_cpu_ns": 54459952,
+          "load_own_cpu_ns": 12775537,
+          "load_fraction_of_sampled_anchor_own_cpu": 0.23458590268313126
+        },
+        {
+          "sources": "minecraft:patch_soul_fire",
+          "sampled_anchors": 425,
+          "load_calls": 49426,
+          "sampled_anchor_own_cpu_ns": 57717668,
+          "load_own_cpu_ns": 34153023,
+          "load_fraction_of_sampled_anchor_own_cpu": 0.5917256220400311
+        }
+      ]
+    },
+    {
+      "mode": "salt0",
+      "case": "nether-second-seed",
+      "salt": 0,
+      "top_six_by_all_initializer_own_cpu": [
+        {
+          "sources": "minecraft:basalt_blobs",
+          "sampled_anchors": 588,
+          "load_calls": 45524,
+          "sampled_anchor_own_cpu_ns": 163909665,
+          "load_own_cpu_ns": 25557546,
+          "load_fraction_of_sampled_anchor_own_cpu": 0.1559245819946005
+        },
+        {
+          "sources": "minecraft:patch_fire",
+          "sampled_anchors": 478,
+          "load_calls": 72010,
+          "sampled_anchor_own_cpu_ns": 110893657,
+          "load_own_cpu_ns": 79632755,
+          "load_fraction_of_sampled_anchor_own_cpu": 0.7181001795260481
+        },
+        {
+          "sources": "minecraft:delta",
+          "sampled_anchors": 579,
+          "load_calls": 43129,
+          "sampled_anchor_own_cpu_ns": 65212188,
+          "load_own_cpu_ns": 16589464,
+          "load_fraction_of_sampled_anchor_own_cpu": 0.2543920777508646
+        },
+        {
+          "sources": "minecraft:blackstone_blobs",
+          "sampled_anchors": 560,
+          "load_calls": 27573,
+          "sampled_anchor_own_cpu_ns": 64444198,
+          "load_own_cpu_ns": 34350726,
+          "load_fraction_of_sampled_anchor_own_cpu": 0.5330305452788783
+        },
+        {
+          "sources": "minecraft:large_basalt_columns/choice0 | minecraft:large_basalt_columns/choice1",
+          "sampled_anchors": 554,
+          "load_calls": 20438,
+          "sampled_anchor_own_cpu_ns": 38897333,
+          "load_own_cpu_ns": 8956465,
+          "load_fraction_of_sampled_anchor_own_cpu": 0.23025910285417256
+        },
+        {
+          "sources": "minecraft:patch_soul_fire",
+          "sampled_anchors": 424,
+          "load_calls": 52468,
+          "sampled_anchor_own_cpu_ns": 56232378,
+          "load_own_cpu_ns": 33121423,
+          "load_fraction_of_sampled_anchor_own_cpu": 0.5890098227750568
+        }
+      ]
+    },
+    {
+      "mode": "salt0",
+      "case": "nether-custom-bounds",
+      "salt": 0,
+      "top_six_by_all_initializer_own_cpu": [
+        {
+          "sources": "minecraft:warped_fungi",
+          "sampled_anchors": 413,
+          "load_calls": 39462,
+          "sampled_anchor_own_cpu_ns": 148630616,
+          "load_own_cpu_ns": 88388676,
+          "load_fraction_of_sampled_anchor_own_cpu": 0.5946868712432707
+        },
+        {
+          "sources": "minecraft:warped_forest_vegetation",
+          "sampled_anchors": 458,
+          "load_calls": 50847,
+          "sampled_anchor_own_cpu_ns": 147379704,
+          "load_own_cpu_ns": 82823163,
+          "load_fraction_of_sampled_anchor_own_cpu": 0.5619712942292244
+        },
+        {
+          "sources": "minecraft:patch_fire",
+          "sampled_anchors": 539,
+          "load_calls": 83934,
+          "sampled_anchor_own_cpu_ns": 107312611,
+          "load_own_cpu_ns": 60567321,
+          "load_fraction_of_sampled_anchor_own_cpu": 0.564400776717659
+        },
+        {
+          "sources": "minecraft:nether_sprouts",
+          "sampled_anchors": 413,
+          "load_calls": 33794,
+          "sampled_anchor_own_cpu_ns": 78331204,
+          "load_own_cpu_ns": 38587317,
+          "load_fraction_of_sampled_anchor_own_cpu": 0.49261743761783616
+        },
+        {
+          "sources": "minecraft:patch_soul_fire",
+          "sampled_anchors": 511,
+          "load_calls": 81498,
+          "sampled_anchor_own_cpu_ns": 97002544,
+          "load_own_cpu_ns": 50798723,
+          "load_fraction_of_sampled_anchor_own_cpu": 0.5236844406884834
+        },
+        {
+          "sources": "minecraft:twisting_vines",
+          "sampled_anchors": 375,
+          "load_calls": 4809,
+          "sampled_anchor_own_cpu_ns": 46586426,
+          "load_own_cpu_ns": 7812223,
+          "load_fraction_of_sampled_anchor_own_cpu": 0.16769311730416925
+        }
+      ]
+    },
+    {
+      "mode": "salt0",
+      "case": "nether-direct-stem",
+      "salt": 0,
+      "top_six_by_all_initializer_own_cpu": [
+        {
+          "sources": "minecraft:warped_fungi",
+          "sampled_anchors": 411,
+          "load_calls": 34124,
+          "sampled_anchor_own_cpu_ns": 135874170,
+          "load_own_cpu_ns": 80843154,
+          "load_fraction_of_sampled_anchor_own_cpu": 0.594985448669162
+        },
+        {
+          "sources": "minecraft:warped_forest_vegetation",
+          "sampled_anchors": 457,
+          "load_calls": 50559,
+          "sampled_anchor_own_cpu_ns": 153252390,
+          "load_own_cpu_ns": 87642227,
+          "load_fraction_of_sampled_anchor_own_cpu": 0.5718816326453375
+        },
+        {
+          "sources": "minecraft:patch_fire",
+          "sampled_anchors": 533,
+          "load_calls": 83991,
+          "sampled_anchor_own_cpu_ns": 111143547,
+          "load_own_cpu_ns": 63801058,
+          "load_fraction_of_sampled_anchor_own_cpu": 0.5740419459530116
+        },
+        {
+          "sources": "minecraft:patch_soul_fire",
+          "sampled_anchors": 497,
+          "load_calls": 77364,
+          "sampled_anchor_own_cpu_ns": 92026780,
+          "load_own_cpu_ns": 48436554,
+          "load_fraction_of_sampled_anchor_own_cpu": 0.5263310744980971
+        },
+        {
+          "sources": "minecraft:nether_sprouts",
+          "sampled_anchors": 413,
+          "load_calls": 34100,
+          "sampled_anchor_own_cpu_ns": 83062362,
+          "load_own_cpu_ns": 41523673,
+          "load_fraction_of_sampled_anchor_own_cpu": 0.4999096100830843
+        },
+        {
+          "sources": "minecraft:twisting_vines",
+          "sampled_anchors": 375,
+          "load_calls": 5139,
+          "sampled_anchor_own_cpu_ns": 45916827,
+          "load_own_cpu_ns": 7924921,
+          "load_fraction_of_sampled_anchor_own_cpu": 0.172592958132756
+        }
+      ]
+    },
+    {
+      "mode": "salt0",
+      "case": "overworld",
+      "salt": 0,
+      "top_six_by_all_initializer_own_cpu": []
+    },
+    {
+      "mode": "salt1",
+      "case": "nether-main",
+      "salt": 11400714819323198485,
+      "top_six_by_all_initializer_own_cpu": [
+        {
+          "sources": "minecraft:basalt_blobs",
+          "sampled_anchors": 560,
+          "load_calls": 49319,
+          "sampled_anchor_own_cpu_ns": 194115766,
+          "load_own_cpu_ns": 30008946,
+          "load_fraction_of_sampled_anchor_own_cpu": 0.15459303805338512
+        },
+        {
+          "sources": "minecraft:patch_fire",
+          "sampled_anchors": 424,
+          "load_calls": 63375,
+          "sampled_anchor_own_cpu_ns": 114661588,
+          "load_own_cpu_ns": 80840614,
+          "load_fraction_of_sampled_anchor_own_cpu": 0.7050365812132308
+        },
+        {
+          "sources": "minecraft:blackstone_blobs",
+          "sampled_anchors": 467,
+          "load_calls": 22442,
+          "sampled_anchor_own_cpu_ns": 59757166,
+          "load_own_cpu_ns": 34304858,
+          "load_fraction_of_sampled_anchor_own_cpu": 0.5740710327527915
+        },
+        {
+          "sources": "minecraft:delta",
+          "sampled_anchors": 531,
+          "load_calls": 44879,
+          "sampled_anchor_own_cpu_ns": 79130117,
+          "load_own_cpu_ns": 21552041,
+          "load_fraction_of_sampled_anchor_own_cpu": 0.2723620514803485
+        },
+        {
+          "sources": "minecraft:large_basalt_columns/choice0 | minecraft:large_basalt_columns/choice1",
+          "sampled_anchors": 539,
+          "load_calls": 33229,
+          "sampled_anchor_own_cpu_ns": 72631408,
+          "load_own_cpu_ns": 15231676,
+          "load_fraction_of_sampled_anchor_own_cpu": 0.20971197474238693
+        },
+        {
+          "sources": "minecraft:patch_soul_fire",
+          "sampled_anchors": 428,
+          "load_calls": 53111,
+          "sampled_anchor_own_cpu_ns": 67012075,
+          "load_own_cpu_ns": 39317923,
+          "load_fraction_of_sampled_anchor_own_cpu": 0.5867289290773342
+        }
+      ]
+    },
+    {
+      "mode": "salt1",
+      "case": "nether-second-seed",
+      "salt": 11400714819323198485,
+      "top_six_by_all_initializer_own_cpu": [
+        {
+          "sources": "minecraft:basalt_blobs",
+          "sampled_anchors": 564,
+          "load_calls": 51472,
+          "sampled_anchor_own_cpu_ns": 210417128,
+          "load_own_cpu_ns": 29243759,
+          "load_fraction_of_sampled_anchor_own_cpu": 0.13897993608200945
+        },
+        {
+          "sources": "minecraft:patch_fire",
+          "sampled_anchors": 429,
+          "load_calls": 65779,
+          "sampled_anchor_own_cpu_ns": 114163436,
+          "load_own_cpu_ns": 80275111,
+          "load_fraction_of_sampled_anchor_own_cpu": 0.7031595562698376
+        },
+        {
+          "sources": "minecraft:delta",
+          "sampled_anchors": 533,
+          "load_calls": 46829,
+          "sampled_anchor_own_cpu_ns": 74944321,
+          "load_own_cpu_ns": 21801410,
+          "load_fraction_of_sampled_anchor_own_cpu": 0.2909014280081342
+        },
+        {
+          "sources": "minecraft:blackstone_blobs",
+          "sampled_anchors": 469,
+          "load_calls": 28303,
+          "sampled_anchor_own_cpu_ns": 76709424,
+          "load_own_cpu_ns": 45355164,
+          "load_fraction_of_sampled_anchor_own_cpu": 0.5912593477432447
+        },
+        {
+          "sources": "minecraft:large_basalt_columns/choice0 | minecraft:large_basalt_columns/choice1",
+          "sampled_anchors": 535,
+          "load_calls": 24357,
+          "sampled_anchor_own_cpu_ns": 58771842,
+          "load_own_cpu_ns": 12525695,
+          "load_fraction_of_sampled_anchor_own_cpu": 0.21312408414900455
+        },
+        {
+          "sources": "minecraft:patch_soul_fire",
+          "sampled_anchors": 435,
+          "load_calls": 53635,
+          "sampled_anchor_own_cpu_ns": 67834640,
+          "load_own_cpu_ns": 40811455,
+          "load_fraction_of_sampled_anchor_own_cpu": 0.6016314820864385
+        }
+      ]
+    },
+    {
+      "mode": "salt1",
+      "case": "nether-custom-bounds",
+      "salt": 11400714819323198485,
+      "top_six_by_all_initializer_own_cpu": [
+        {
+          "sources": "minecraft:warped_fungi",
+          "sampled_anchors": 412,
+          "load_calls": 34817,
+          "sampled_anchor_own_cpu_ns": 133959800,
+          "load_own_cpu_ns": 78366533,
+          "load_fraction_of_sampled_anchor_own_cpu": 0.5850003732463023
+        },
+        {
+          "sources": "minecraft:warped_forest_vegetation",
+          "sampled_anchors": 415,
+          "load_calls": 44434,
+          "sampled_anchor_own_cpu_ns": 129118206,
+          "load_own_cpu_ns": 70498793,
+          "load_fraction_of_sampled_anchor_own_cpu": 0.5460019557582763
+        },
+        {
+          "sources": "minecraft:patch_fire",
+          "sampled_anchors": 576,
+          "load_calls": 94280,
+          "sampled_anchor_own_cpu_ns": 137718916,
+          "load_own_cpu_ns": 81194934,
+          "load_fraction_of_sampled_anchor_own_cpu": 0.5895699469490451
+        },
+        {
+          "sources": "minecraft:patch_soul_fire",
+          "sampled_anchors": 503,
+          "load_calls": 76341,
+          "sampled_anchor_own_cpu_ns": 93792162,
+          "load_own_cpu_ns": 50327004,
+          "load_fraction_of_sampled_anchor_own_cpu": 0.5365800609223615
+        },
+        {
+          "sources": "minecraft:nether_sprouts",
+          "sampled_anchors": 345,
+          "load_calls": 32387,
+          "sampled_anchor_own_cpu_ns": 72811915,
+          "load_own_cpu_ns": 34997784,
+          "load_fraction_of_sampled_anchor_own_cpu": 0.4806601227285397
+        },
+        {
+          "sources": "minecraft:twisting_vines",
+          "sampled_anchors": 389,
+          "load_calls": 5428,
+          "sampled_anchor_own_cpu_ns": 49444875,
+          "load_own_cpu_ns": 8115782,
+          "load_fraction_of_sampled_anchor_own_cpu": 0.16413798194453924
+        }
+      ]
+    },
+    {
+      "mode": "salt1",
+      "case": "nether-direct-stem",
+      "salt": 11400714819323198485,
+      "top_six_by_all_initializer_own_cpu": [
+        {
+          "sources": "minecraft:warped_fungi",
+          "sampled_anchors": 411,
+          "load_calls": 33296,
+          "sampled_anchor_own_cpu_ns": 134281504,
+          "load_own_cpu_ns": 77492327,
+          "load_fraction_of_sampled_anchor_own_cpu": 0.5770886137825803
+        },
+        {
+          "sources": "minecraft:warped_forest_vegetation",
+          "sampled_anchors": 416,
+          "load_calls": 50206,
+          "sampled_anchor_own_cpu_ns": 147231342,
+          "load_own_cpu_ns": 81136513,
+          "load_fraction_of_sampled_anchor_own_cpu": 0.5510818002324532
+        },
+        {
+          "sources": "minecraft:patch_fire",
+          "sampled_anchors": 566,
+          "load_calls": 88306,
+          "sampled_anchor_own_cpu_ns": 138224951,
+          "load_own_cpu_ns": 81091642,
+          "load_fraction_of_sampled_anchor_own_cpu": 0.5866642846558144
+        },
+        {
+          "sources": "minecraft:patch_soul_fire",
+          "sampled_anchors": 501,
+          "load_calls": 79247,
+          "sampled_anchor_own_cpu_ns": 104709117,
+          "load_own_cpu_ns": 56265145,
+          "load_fraction_of_sampled_anchor_own_cpu": 0.5373471442797096
+        },
+        {
+          "sources": "minecraft:nether_sprouts",
+          "sampled_anchors": 345,
+          "load_calls": 29376,
+          "sampled_anchor_own_cpu_ns": 68433420,
+          "load_own_cpu_ns": 32917648,
+          "load_fraction_of_sampled_anchor_own_cpu": 0.48101714045564287
+        },
+        {
+          "sources": "minecraft:twisting_vines",
+          "sampled_anchors": 389,
+          "load_calls": 5960,
+          "sampled_anchor_own_cpu_ns": 51658211,
+          "load_own_cpu_ns": 8365557,
+          "load_fraction_of_sampled_anchor_own_cpu": 0.1619405093219353
+        }
+      ]
+    },
+    {
+      "mode": "salt1",
+      "case": "overworld",
+      "salt": 11400714819323198485,
+      "top_six_by_all_initializer_own_cpu": []
+    }
+  ],
+  "whole_fixture_process_counters": [
+    {
+      "mode": "control-before",
+      "real_seconds": 78.28,
+      "process_cpu_seconds": 288.91,
+      "instructions": 3095925844020,
+      "cycles": 1073084280173,
+      "peak_rss_bytes": 4492820480,
+      "peak_physical_footprint_bytes": 4783592032
+    },
+    {
+      "mode": "salt0",
+      "real_seconds": 89.88,
+      "process_cpu_seconds": 333.13,
+      "instructions": 3104070579465,
+      "cycles": 1078464726446,
+      "peak_rss_bytes": 4449828864,
+      "peak_physical_footprint_bytes": 4614541920
+    },
+    {
+      "mode": "salt1",
+      "real_seconds": 92.4,
+      "process_cpu_seconds": 354.3,
+      "instructions": 3101637395067,
+      "cycles": 1063272288828,
+      "peak_rss_bytes": 4391452672,
+      "peak_physical_footprint_bytes": 4525265528
+    },
+    {
+      "mode": "control-after",
+      "real_seconds": 98.1,
+      "process_cpu_seconds": 367.16999999999996,
+      "instructions": 3100184531900,
+      "cycles": 1067660478851,
+      "peak_rss_bytes": 4455792640,
+      "peak_physical_footprint_bytes": 4599272008
+    }
+  ],
+  "observer_comparisons": [
+    {
+      "mode": "salt0",
+      "relative_to_controls": [
+        {
+          "control": "control-before",
+          "instructions_change_percent": 0.26307915161249973,
+          "cycles_change_percent": 0.5014001576961524,
+          "process_cpu_seconds_change_percent": 15.305804575819447,
+          "real_seconds_change_percent": 14.818599897802741
+        },
+        {
+          "control": "control-after",
+          "instructions_change_percent": 0.12534891149265093,
+          "cycles_change_percent": 1.0119553742990783,
+          "process_cpu_seconds_change_percent": -9.2709099327287,
+          "real_seconds_change_percent": -8.379204892966364
+        }
+      ]
+    },
+    {
+      "mode": "salt1",
+      "relative_to_controls": [
+        {
+          "control": "control-before",
+          "instructions_change_percent": 0.1844860418098282,
+          "cycles_change_percent": -0.9143728527472361,
+          "process_cpu_seconds_change_percent": 22.633346024713564,
+          "real_seconds_change_percent": 18.037812979049562
+        },
+        {
+          "control": "control-after",
+          "instructions_change_percent": 0.04686376414211324,
+          "cycles_change_percent": -0.4110098771963999,
+          "process_cpu_seconds_change_percent": -3.5051883323800825,
+          "real_seconds_change_percent": -5.810397553516811
+        }
+      ]
+    }
+  ],
+  "provisional_normal_observations": [
+    {
+      "case": "nether-main-run0",
+      "median_ms": 918.5818328987807,
+      "p95_region_ms": 1246.7448501265608,
+      "maximum_region_ms": 1331.7408747971058,
+      "total_ms": 19319.339666049927,
+      "chunks_per_second": 1060.0776400235725,
+      "generation_peak_rss_bytes": 2413936640
+    },
+    {
+      "case": "nether-second-seed-run0",
+      "median_ms": 1084.4031875021756,
+      "p95_region_ms": 1342.2248690505512,
+      "maximum_region_ms": 1364.3542090430856,
+      "total_ms": 20253.753625089303,
+      "chunks_per_second": 1011.1705898619422,
+      "generation_peak_rss_bytes": 2643034112
+    },
+    {
+      "case": "nether-custom-bounds-run0",
+      "median_ms": 639.8444999940693,
+      "p95_region_ms": 686.8717211880721,
+      "maximum_region_ms": 709.9719999823719,
+      "total_ms": 12766.340665984899,
+      "chunks_per_second": 1604.2185098951381,
+      "generation_peak_rss_bytes": 2247704576
+    },
+    {
+      "case": "nether-direct-stem-run0",
+      "median_ms": 643.2328540831804,
+      "p95_region_ms": 713.7853936757894,
+      "maximum_region_ms": 745.3637500293553,
+      "total_ms": 12883.883540984243,
+      "chunks_per_second": 1589.5828253066827,
+      "generation_peak_rss_bytes": 2163294208
+    },
+    {
+      "case": "overworld-run0",
+      "median_ms": 226.52131237555295,
+      "p95_region_ms": 263.8384186546318,
+      "maximum_region_ms": 283.0173750407994,
+      "total_ms": 4610.46858294867,
+      "chunks_per_second": 4442.064755791443,
+      "generation_peak_rss_bytes": 1515749376
+    }
+  ],
+  "limitations": [
+    "The held C116 composition still needs measurement with this broader observer; C128 narrow-profile zeros must not be interpreted as eliminated column work.",
+    "Two salts check spatial sensitivity rather than statistical confidence or full-anchor coverage.",
+    "Whole-fixture counters include startup, five warmups and twenty measured regions for each of five cases, report generation and teardown. Host activity is recorded; CPU/wall comparisons are provisional.",
+    "No production optimization, subsecond acceptance, concurrency, portal or sustained-memory claim in this diagnostic change."
+  ],
+  "external_evidence": {
+    "directory": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle129",
+    "files": {
+      "proof.py": "456b4b8f8a03f2f7971a8429c03a8de83cb332b5f46f5d96d8ffed5fed7ff04f",
+      "inventory-validate.py": "92441f6552c6204bee1781365c7772ea55d5d3bb796ed556322835e11b222979",
+      "analyze.py": "14cdbbdcc4ccdbcd40d553fd8b50bb8965e365baaecaf83c450ef3c3851b0de2",
+      "receipt.json": "f9f1c5c2a9a93fb1aa0d34bc70191f5ccda0e976378abcba23cdc72de1bf2603",
+      "terminal.json": "34cea88cab381ed41562461e026969215a41cd70fb250e9c1687e47acaaf6644",
+      "analysis.json": "dfe672ad6d652ae2c49ebf8425e20fa83ff970b3a1574faf4d2ff998dcea7c6d",
+      "coverage-comparison.json": "510fffc76db7e70b68fc05d5a6a78b197f62581613ce8ecbc6a87971ab747d64",
+      "source-review.json": "50ac8b824d8e3f5c514b316161d15cf4bcae92fd503130241b99d751928fa45b",
+      "work-counter-equivalence.json": "abf74696d31b811250b416cf5753ade1fc7a4588fcaf27184f5706c27668d344"
+    },
+    "old_scope_analysis": {
+      "path": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle127/analysis.json",
+      "sha256": "bb77a682e7ccbec98605484a23362a6050f7683e06eca93173afd632bace0611"
+    },
+    "C128_coverage_review": {
+      "path": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle128/coverage-review.json",
+      "sha256": "9ca24004795216169ff7b8575c382e0b855eaac8466330f089734562f0ec9b9a"
+    },
+    "normal_library": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle129/normal.dylib",
+    "test_executable": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle129/native-test-executable",
+    "original_corpus": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite",
+    "preceding_main_corpus": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle127/merged/normal-full"
+  },
+  "recovery": [
+    "Preserve cycle129 externally, including binaries, frozen harness/manifest, profiles, receipt, raw reports, MCA outputs, hashes and host samples. Full commands are in proof.py/receipt.json.",
+    "Rebuild tested native tree 574d4f3b3a5a9d123c5afda527a8e767d0313936 with cargo test/build --release --locked --lib --manifest-path native/Cargo.toml.",
+    "Set RETINA_REGION_THREADS=16 RETINA_GPU_LIGHTING=1 RETINA_LIGHTING_DENSE=0 RETINA_PERFORMANCE_DIAGNOSTICS=0 RETINA_DEPENDENCY_DIAGNOSTICS=0 RETINA_TERRAIN_REUSE_PROFILES=<profiles> RETINA_WORKER_PHASE_OUTPUT=<new-directory> RETINA_COLUMN_LOAD_SALT=0 (then 11400714819323198485). Run exact_column_load_cpu_inventory --ignored --nocapture --test-threads=1 from the retained test executable.",
+    "Use exact_anchor_cpu_inventory from that same executable for controls. Each fixture has five warmups/twenty measured regions per five cases. Compare every measured output to both preserved corpora using inventory-validate.py."
+  ]
+}
