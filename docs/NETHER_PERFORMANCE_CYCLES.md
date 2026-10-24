@@ -3094,3 +3094,45 @@ No speedup or timing no-regression claim follows from these diagnostic runs.
 See `docs/benchmarks/nether-perf-cycle132-2026-10-23.json` for full scope, raw compact observations,
 provenance and recovery commands. Actual merged rebuild/full-corpus proof follows.
 The broader subsecond and concurrency acceptance goal remains open.
+
+
+## Cycle 138 — separate callback-gap boundaries
+
+The occupancy histogram combined time before any callback, gaps between callbacks,
+and time after the final callback. That obscured whether the held root-scheduling
+candidate moved delays from completion to admission. Extend only the test observer
+with the first callback start and those three disjoint partitions of histogram
+bucket zero. Existing event timestamps and generation hooks remain unchanged.
+
+First-start and completion offsets use evaluation-window start; longest-task
+start/end timestamps retain their existing root origin. Instantaneous callbacks
+establish boundaries without occupying time. When no callbacks exist, boundaries
+and their three partitions remain null and `no_task_events` contains the full
+window. Out-of-window/reversed intervals still invalidate the observation.
+The new discrete-time oracle checks all 3,375 interval triples across two workers,
+including nested, overlapping, unsorted, touching and instantaneous callbacks.
+
+Validation passes **226 native tests** and **five explicit GPU fixtures**.
+Normal generation plus one- and eight-request diagnostics compare **307,200
+measured chunk instances** against both the original and actual C132 merged-main
+complete NBT/membership. Each five-case run uses five warmups and twenty complete
+1,024-chunk lit, serialized, compressed, published regions with actual shader
+status 4. Both diagnostics use reverse request order and 16 assembly workers.
+The release library is byte-identical to preceding main `e6f2e5e`, SHA256
+`daa63b89e1c64bf302bebcea7935621b7cec1a04153e7ad230842dad435d7b26`.
+
+On current main, the median per-region sum of gaps after each root's last callback
+is **1.75–2.67 seconds at eight requests**, versus **1.06–6.58 milliseconds at one
+request**. Before-first and interior gaps are small in these runs. These values
+include callback cleanup, join scheduling and preemption; they are not CPU idle
+or pure scheduler-delay measurements. Sequential roots may be summed within a
+region, but concurrent regions overlap and their sums are not batch wall shares.
+The held material/scheduling candidate requires its own split before selecting
+another production change.
+
+Ordinary standard-Nether medians/p95s were 943.65/1306.20 ms and
+1078.44/1368.24 ms; Overworld was 230.72/278.45 ms. These are provisional host-window
+observations with unchanged production bytes, not a speedup or timing acceptance.
+See `docs/benchmarks/nether-perf-cycle138-2026-10-24.json` for exact provenance,
+all cases, scope and recovery commands. Actual merged rebuild/full-corpus proof
+follows. The overall subsecond objective remains unmet.
