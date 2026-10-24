@@ -2920,3 +2920,74 @@ commands, normal observations, CPU matrices/rankings, observer costs, and
 external evidence paths. Actual merged rebuild and corpus verification follow
 the diagnostic PR. Timing confirmation for the broader performance goal remains
 deferred; this cycle makes no new subsecond, concurrency or portal claim.
+
+
+## Cycle 127 — sampled CPU inside cold prior-column loaders
+
+C123 attributed initializer CPU to executed feature roots, but those bodies also
+load and reconstruct prior columns. C126's direct adjacent-material lookup
+passed full output checks while removing less than half a percent of standard
+Nether instructions and increasing Overworld instructions. It remains unmerged.
+The next measurement separates cold column loading from the surrounding body.
+
+The optional `exact_column_load_cpu_inventory` fixture selects approximately
+1/64 of executed `(root, x, z)` anchor keys using a fixed salt. It clocks every
+`ViewColumns` cold loader in those selected initializers and subtracts direct
+child anchor CPU exactly once, including reentrant task contexts. Every anchor
+still has ordinary parent/child accounting, so unselected children are also
+subtracted. Selected anchors with no loads remain in the denominator.
+
+The loader includes `Planner.column` lookup and reconstruction; it does not
+necessarily initialize a new column. View cache hits, cache publication and
+scalar read callbacks are outside the measured span. Ratios below divide load
+own CPU by own CPU of the **same selected anchors**, including empty/ineligible
+ones. They do not estimate all-anchor, process-CPU or elapsed-time shares.
+Observer work remains included.
+
+Two fixed salts and two standard seeds give these observed ranges:
+
+| Executed feature group | Cold-loader share of sampled initializer own CPU |
+| --- | ---: |
+| Basalt blobs | 14.0–15.5% |
+| Fire patches | 69.2–71.6% |
+| Blackstone blobs | 53.5–59.9% |
+| Delta features | 26.0–28.9% |
+| Large basalt columns | 20.9–22.7% |
+| Soul-fire patches | 57.9–59.1% |
+
+Custom-bound/direct-stem samples place warped fungi near 57–59% and warped
+forest vegetation near 55–56%. Overworld has no roots in this Nether path;
+its empty attribution does not imply zero CPU work. These observations support
+measuring the held C116 material/ore composition with the same observer before
+choosing further column-reconstruction changes. They do not select a new
+production optimization or retry the held sparse-column/boundary-proof designs.
+
+Controls and both salts use the same test executable in the order control,
+salt 0, salt 11400714819323198485, control. Existing work totals, demanded-root
+rows and actual initializer counts are unchanged per region/dispatched stage
+across all four inventories. Whole-fixture instruction differences for either
+sampled run against either control range from +0.019% to +0.087%. These
+include startup, warmups, summaries and teardown. Host activity is recorded;
+CPU/wall observations do not establish causal overhead or a production speedup.
+
+Validation passes **220 native tests**, including eleven new and eleven existing
+CPU-accounting fixtures, plus **five explicit GPU fixtures**. The normal run and
+four inventories compare **512,000 measured chunk instances** with both original
+and preceding-main decompressed NBT bytes/membership. All measured regions are
+shader-ready, lit, serialized, compressed and published. Coordinates repeat;
+only MCA container metadata and compression representation are excluded.
+
+Fixtures cover unselected children, nested selected loaders, reentrant tasks,
+independent physical threads, missing/reversed/out-of-bounds clocks, overlapping
+loaders, stale/non-LIFO scopes, context/root exit, invalid targets, count/CPU
+overflow, and panic/Result-error cleanup. Invalid or unavailable CPU remains
+null rather than becoming zero. Scalar state retains no generation owners or
+per-load event history. Normal builds exclude the observer: the full release
+library is byte-identical to main `9e5a320`, SHA256
+`daa63b89e1c64bf302bebcea7935621b7cec1a04153e7ad230842dad435d7b26`.
+
+See `docs/benchmarks/nether-perf-cycle127-2026-10-23.json` for provenance,
+counts, sample sizes, raw CPU sums, normal observations, observer comparisons
+and recovery commands. Actual merged rebuild/full-corpus proof follows this
+diagnostic PR. Timing confirmation remains deferred; the broader subsecond,
+concurrency, lifecycle and sustained-memory goal remains open.
