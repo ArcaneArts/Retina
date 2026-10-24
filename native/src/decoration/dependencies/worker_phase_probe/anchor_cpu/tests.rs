@@ -3,20 +3,20 @@ use super::*;
 fn make_session(enabled: bool) -> Arc<Session> {
     Arc::new(Session { aggregate: true, anchor_cpu: enabled, ..Session::default() })
 }
-fn make_trace(session: &Arc<Session>, label: &str) -> Trace {
+pub(super) fn make_trace(session: &Arc<Session>, label: &str) -> Trace {
     let trace = Trace(Some(Root::new(json!({"root_count":4,"label":label}), session.clone())));
     trace.evaluation_begin(1);
     trace
 }
-fn finish(trace: Trace, task: Task) {
+pub(super) fn finish(trace: Trace, task: Task) {
     task.finish(true); trace.mark("evaluation_end"); trace.finish(true);
 }
-fn read_cpu(session: &Arc<Session>, index: usize) -> Value {
+pub(super) fn read_cpu(session: &Arc<Session>, index: usize) -> Value {
     session.roots.lock().unwrap()[index]["anchor_cpu"].clone()
 }
 fn begin(root: usize, at: u64) -> Span { Span::begin(root, || Some(at)) }
 fn end(mut span: Span, at: u64) { span.finish(|| Some(at)); }
-fn root(cpu: &Value, index: usize) -> &Value {
+pub(super) fn root(cpu: &Value, index: usize) -> &Value {
     &cpu["rows"].as_array().unwrap().iter().find(|row| row["executed_root"]==index).unwrap()["cpu"]
 }
 

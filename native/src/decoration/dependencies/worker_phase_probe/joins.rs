@@ -112,13 +112,13 @@ pub(super) fn count_work(op: work::Op, root: Option<usize>, amount: u64) {
     });
 }
 
-pub(super) fn anchor_begin(root: usize) -> Option<anchor_cpu::ContextId> {
+pub(super) fn anchor_begin(root: usize) -> Option<(anchor_cpu::ContextId, Option<u64>)> {
     CURRENT.with(|current| {
         let mut current = current.borrow_mut();
         let frame = current.frames.last_mut()?;
         if frame.worker.closed.load(Ordering::Relaxed) { return None }
         frame.anchor_cpu.as_mut()?.begin(root);
-        Some(anchor_cpu::ContextId { tag: frame.tag, token: frame.token })
+        Some((anchor_cpu::ContextId { tag: frame.tag, token: frame.token }, frame.worker.column_load_salt))
     })
 }
 pub(super) fn anchor_end(id: anchor_cpu::ContextId, root: usize, observation: anchor_cpu::Observation) {

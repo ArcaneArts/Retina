@@ -6,10 +6,11 @@ use std::{marker::PhantomData, rc::Rc};
 
 #[cfg(test)]
 mod tests;
+pub(super) mod column_load;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) struct ContextId { pub(super) tag: u64, pub(super) token: u64 }
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 struct Key { context: ContextId, tag: u64 }
 struct Open {
     key: Key,
@@ -20,6 +21,7 @@ struct Open {
     clock_bounds_error: bool,
     outermost: bool,
     invalid: bool,
+    column_load: Option<column_load::State>,
 }
 #[derive(Default)]
 struct Stack { next: u64, frames: Vec<Open> }
@@ -36,20 +38,23 @@ pub(super) struct Observation {
     clock_bounds_error: bool,
     abandoned: bool,
     panicked: bool,
+    column_load: Option<column_load::Totals>,
 }
 impl Stack {
-    fn begin(&mut self, context: ContextId, root: usize, start: Option<u64>) -> Key {
+    fn begin(&mut self, context: ContextId, root: usize, start: Option<u64>, selected: bool) -> Key {
         self.next = self.next.checked_add(1).expect("anchor CPU diagnostic tag overflow");
         let key = Key { context, tag: self.next };
         let mut clock_bounds_error = false;
         if let Some(parent) = self.frames.last_mut() {
+            if let Some(state) = &mut parent.column_load { state.child_start(start); }
             clock_bounds_error = parent.start.zip(start).is_some_and(|(a,b)| b<a)
                 || parent.last_child_end.zip(start).is_some_and(|(a,b)| b<a);
             parent.clock_bounds_error |= clock_bounds_error;
         }
         self.frames.push(Open { key, root, start, children: Some(0),
             last_child_end: None, clock_bounds_error,
-            outermost: self.frames.is_empty(), invalid: false });
+            outermost: self.frames.is_empty(), invalid: false,
+            column_load: selected.then(column_load::State::default) });
         key
     }
     fn end(&mut self, key: Key, end: Option<u64>, abandoned: bool,
@@ -63,7 +68,7 @@ impl Stack {
         let frame = self.frames.remove(position);
         let inclusive = frame.start.zip(end).and_then(|(a, b)| b.checked_sub(a));
         let own = inclusive.zip(frame.children).and_then(|(a, b)| a.checked_sub(b));
-        let observation = Observation {
+        let mut observation = Observation {
             inclusive, own, outermost: frame.outermost,
             missing: frame.start.is_none() || end.is_none(),
             reversed: frame.start.zip(end).is_some_and(|(a, b)| b < a),
@@ -72,8 +77,9 @@ impl Stack {
             context_error: frame.invalid || !lifo,
             clock_bounds_error: frame.clock_bounds_error
                 || frame.last_child_end.zip(end).is_some_and(|(a,b)| b<a),
-            abandoned, panicked,
+            abandoned, panicked, column_load: None,
         };
+        observation.column_load = frame.column_load.map(|state| state.finish(&observation, end));
         if let Some(parent) = position.checked_sub(1).and_then(|p| self.frames.get_mut(p)) {
             let inputs = parent.children.zip(inclusive);
             parent.children = inputs.and_then(|(a,b)| a.checked_add(b));
@@ -90,15 +96,22 @@ thread_local! { static STACK: RefCell<Stack> = RefCell::new(Stack::default()); }
 
 pub(in crate::decoration::dependencies) struct Span { key: Option<Key>, _thread: PhantomData<Rc<()>> }
 impl Span {
-    pub(in crate::decoration::dependencies) fn start(root: usize) -> Self {
-        Self::begin(root, cpu::now)
-    }
+    #[cfg(test)]
+    fn start(root: usize) -> Self { Self::begin(root, cpu::now) }
+    #[cfg(test)]
     fn begin(root: usize, clock: impl FnOnce() -> Option<u64>) -> Self {
+        Self::begin_at(root, 0, 0, clock)
+    }
+    pub(in crate::decoration::dependencies) fn start_at(root: usize, x: i32, z: i32) -> Self {
+        Self::begin_at(root, x, z, cpu::now)
+    }
+    fn begin_at(root: usize, x: i32, z: i32, clock: impl FnOnce() -> Option<u64>) -> Self {
         // No clock read, frame allocation or owner clone when this separate
         // observer is disabled. Context registration counts actual starts.
-        let key = joins::anchor_begin(root).map(|context| {
+        let key = joins::anchor_begin(root).map(|(context, salt)| {
             let start = clock();
-            STACK.with(|stack| stack.borrow_mut().begin(context, root, start))
+            STACK.with(|stack| stack.borrow_mut().begin(context, root, start,
+                salt.is_some_and(|salt| column_load::selected(root, x, z, salt))))
         });
         Self { key, _thread: PhantomData }
     }
@@ -141,6 +154,7 @@ struct Row {
     abandoned: u64, missing: u64, reversed: u64, invalid_children: u64, unavailable_children: u64,
     context_errors: u64, clock_bounds_errors: u64, overflow: bool,
     inclusive: u64, own: u64, outer_cpu: u64,
+    column_load: column_load::Totals,
 }
 impl Row {
     fn add(&mut self, other: &Self) {
@@ -153,6 +167,7 @@ impl Row {
         sum!(started, finished, outermost, panicked, abandoned, missing, reversed,
             invalid_children, unavailable_children, context_errors, clock_bounds_errors, inclusive, own, outer_cpu);
         self.overflow |= other.overflow;
+        self.column_load.add(&other.column_load);
     }
     fn json(&self) -> Value {
         let invalid = self.started != self.finished || self.reversed > 0
@@ -172,7 +187,8 @@ impl Row {
             "clock_bounds_errors":self.clock_bounds_errors,
             "inclusive_cpu_ns":inclusive_valid.then_some(self.inclusive),
             "own_cpu_ns":(valid==Some(true)).then_some(self.own),
-            "outermost_cpu_ns":inclusive_valid.then_some(self.outer_cpu)})
+            "outermost_cpu_ns":inclusive_valid.then_some(self.outer_cpu),
+            "column_load":self.column_load.json()})
     }
 }
 #[derive(Default)]
@@ -205,6 +221,7 @@ impl Buffer {
             clock_bounds_errors: u64::from(observation.clock_bounds_error),
             inclusive: observation.inclusive.unwrap_or(0), own: observation.own.unwrap_or(0),
             outer_cpu: if observation.outermost { observation.inclusive.unwrap_or(0) } else { 0 },
+            column_load: observation.column_load.unwrap_or_default(),
             ..Row::default() };
         self.row(root).add(&row);
     }
@@ -234,9 +251,11 @@ impl Buffer {
         let mut totals = total.json();
         if self.invalid_targets > 0 {
             totals["valid"] = json!(false);
+            column_load::invalidate_json(&mut totals["column_load"]);
             for key in ["inclusive_cpu_ns", "own_cpu_ns", "outermost_cpu_ns"] { totals[key]=Value::Null; }
         }
         json!({"enabled":true,"invalid_targets":self.invalid_targets,"totals":totals,"rows":rows,
+            "column_load_scope":column_load::SCOPE,
             "scope":"Calling-thread CPU of actual anchor initializers. Own CPU subtracts direct child anchor intervals exactly once, across reentrant task contexts. It includes non-anchor services/lookup/replay and observer work on that thread, not pure feature code. GPU/service-thread CPU and cached-hit bodies are excluded. Counts group by executed root, distinct from dispatched stage. Sum own CPU reconciles with outermost CPU only across all enclosing and nested contexts together; per-stage totals need not match. Null means unavailable/invalid, never zero work. Normal builds exclude this observer."})
     }
 }
