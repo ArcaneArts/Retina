@@ -25,6 +25,9 @@ struct PathCounts {
     limited_prefixes: u64,
     incomplete_prefixes: u64,
     commands: u64,
+    compact_prefixes: u64,
+    compact_covered_commands: u64,
+    compact_mask_merges: u64,
     limited_commands: u64,
     dense_expansions: u64,
     dense_payload_bytes: u64,
@@ -39,6 +42,9 @@ impl PathCounts {
             limited_prefixes,
             incomplete_prefixes,
             commands,
+            compact_prefixes,
+            compact_covered_commands,
+            compact_mask_merges,
             limited_commands,
             dense_expansions,
             dense_payload_bytes,
@@ -70,6 +76,9 @@ struct Counts {
     limited_prefixes: u64,
     incomplete_prefixes: u64,
     commands: u64,
+    compact_prefixes: u64,
+    compact_covered_commands: u64,
+    compact_mask_merges: u64,
     out_of_bounds_commands: u64,
     conditional_commands: u64,
     feature_commands: u64,
@@ -98,6 +107,9 @@ impl Counts {
             limited_prefixes,
             incomplete_prefixes,
             commands,
+            compact_prefixes,
+            compact_covered_commands,
+            compact_mask_merges,
             out_of_bounds_commands,
             conditional_commands,
             feature_commands,
@@ -242,6 +254,9 @@ impl Prefix {
             limited_prefixes: self.counts.limited_prefixes,
             incomplete_prefixes: self.counts.incomplete_prefixes,
             commands: self.counts.commands,
+            compact_prefixes: self.counts.compact_prefixes,
+            compact_covered_commands: self.counts.compact_covered_commands,
+            compact_mask_merges: self.counts.compact_mask_merges,
             limited_commands: if self.counts.limited_prefixes != 0 {
                 self.counts.commands
             } else {
@@ -263,6 +278,14 @@ impl Prefix {
             if span.length > 1 {
                 self.counts.multi_span_commands += span.length as u64;
             }
+        }
+    }
+    pub(super) fn compact(&mut self, covered_commands: u64, mask_merges: u64) {
+        if self.token != 0 {
+            self.barrier();
+            self.counts.compact_prefixes += 1;
+            self.counts.compact_covered_commands += covered_commands;
+            self.counts.compact_mask_merges += mask_merges;
         }
     }
     pub(super) fn command(&mut self, role: u8, material: u16, y: i32, height: usize) {
@@ -305,6 +328,27 @@ impl Prefix {
         if self.token != 0 && role == FEATURE {
             self.counts.feature_changes += changed as u64;
             self.counts.feature_noops += u64::from(!changed);
+        }
+    }
+    pub(super) fn uniform_feature_result(
+        &mut self,
+        first: bool,
+        prior: &ColumnState,
+        y: usize,
+        material: u16,
+    ) {
+        if self.token == 0 {
+            return;
+        }
+        // This lookup exists only to classify diagnostic changes/no-ops. It
+        // must not register a generation read with the material/height probes.
+        let changed = first && {
+            let runs = prior.runs.slice();
+            runs[runs.partition_point(|run| run >> 16 > y as u32)] as u16 != material
+        };
+        self.feature_result(FEATURE, changed);
+        if changed {
+            self.point_change(false);
         }
     }
     pub(super) fn point_change(&mut self, upper: bool) {
@@ -436,6 +480,70 @@ fn column_edit_span_inventory_counts_long_spans_and_noops() {
             height as u64
         );
     }
+}
+
+#[test]
+fn column_edit_uniform_diagnostics_do_not_register_material_reads() {
+    let prior = ColumnState::new(vec![2, 2, 7, 7, 9, 9]);
+    let reads = material_storage_probe::observed_current_thread_reads(|| {
+        let mut p = Prefix::new(u64::MAX, 0, false, 3);
+        for (first, y, material) in [
+            (true, 0, 2),
+            (true, 1, 7),
+            (true, 2, 7),
+            (true, 4, 2),
+            (false, 5, 2),
+        ] {
+            p.uniform_feature_result(first, &prior, y, material);
+        }
+        assert_eq!(p.counts.feature_changes, 2);
+        assert_eq!(p.counts.feature_noops, 3);
+        assert_eq!(p.counts.changed_points, 2);
+        assert_eq!(p.counts.changed_upper_points, 0);
+    });
+    assert_eq!(reads, [0; 3]);
+    // Verify that ordinary generation queries still reach the same collector.
+    assert_eq!(
+        material_storage_probe::observed_current_thread_reads(|| {
+            assert_eq!(prior.material(2), 7);
+        }),
+        [1, 0, 0]
+    );
+    // An invalid empty backing deliberately traps an unwanted observer read.
+    let unreadable = ColumnState::from_runs(ColumnRuns::Owned(Box::default()));
+    let mut disabled = Prefix::new(0, 0, false, 0);
+    disabled.uniform_feature_result(true, &unreadable, 0, 2);
+    assert_eq!(disabled.counts.feature_changes, 0);
+    assert_eq!(disabled.counts.feature_noops, 0);
+    let mut repeated = Prefix::new(u64::MAX, 0, false, 0);
+    repeated.uniform_feature_result(false, &unreadable, 0, 2);
+    assert_eq!(repeated.counts.feature_noops, 1);
+}
+
+#[test]
+fn column_edit_compact_coverage_is_separate_from_replayed_commands() {
+    let mut p = Prefix::new(u64::MAX, 0, false, 3);
+    p.select_path(Path::CompletedInterior);
+    p.compact(71, 2);
+    p.finish(None, 4, false);
+    p.classify();
+    let mut counts = Counts::default();
+    counts.add(&p.counts);
+    let summary = serde_json::to_value(&counts).unwrap();
+    assert_path_partition(&summary, true);
+    assert_eq!(summary["commands"], 0);
+    assert_eq!(summary["feature_commands"], 0);
+    assert_eq!(summary["compact_prefixes"], 1);
+    assert_eq!(summary["compact_covered_commands"], 71);
+    assert_eq!(summary["compact_mask_merges"], 2);
+    assert_eq!(
+        summary["paths"]["completed_interior"]["compact_covered_commands"],
+        71
+    );
+    assert_eq!(summary["dense_expansions"], 0);
+    let mut disabled = Prefix::new(0, 0, false, 0);
+    disabled.compact(10, 1);
+    assert_eq!(disabled.counts.compact_prefixes, 0);
 }
 
 #[test]
@@ -578,6 +686,9 @@ fn assert_path_partition(counts: &Value, fully_classified: bool) {
         "limited_prefixes",
         "incomplete_prefixes",
         "commands",
+        "compact_prefixes",
+        "compact_covered_commands",
+        "compact_mask_merges",
         "dense_expansions",
         "dense_payload_bytes",
         "prior_run_words",
@@ -705,8 +816,15 @@ fn exact_column_edit_inventory() {
         cases.push(json!({"case":name,"seed":seed,"profile":file,
             "warmups":warmups,"regions":regions,"summary":summary}));
         fs::write(output.join("report.json"), serde_json::to_vec_pretty(&json!({
-            "scope":"Test-only observer of commands actually applied by Planner::prefix, grouped by profile-local root index. Same-material in-bounds unconditional FEATURE commands form a span only while consecutive and strictly monotonic in Y with step +1 or -1. Reversals, duplicates, gaps, different materials, conditional commands, out-of-bounds commands and exact prefix limits break spans. No commands are removed or rewritten. Feature changes/noops reflect the original previous-material read; changed_points includes successful conditional and plant-upper writes. Dense expansions count actual completed prefix buffers; payload is height*2 without allocator overhead. Histogram bin i covers lengths greater than 2^(i-1) through 2^i, with bin0=1 and final overflow bucket. Span command counts include noops and are opportunities, not speedup estimates. Original generation drives all outputs. Per-prefix stack scalars publish once to a per-thread root map; no hot-command lock or retained world owners. Other column construction paths and feature-local overlays are outside this scope. Five warmups and twenty measured complete lit regions per case; observer times are not ordinary performance. Paths partition prefixes, applied commands, run words and dense allocations at publication, including zero-command and incomplete prefixes. Completed interior means both a completed root and an indexed interior column were available at the actual branch; unfinished interior uses the fallback with an indexed column; boundary uses the fallback outside the interior index. Limited commands are applied commands in prefixes with an exact source-order limit. An unclassified bucket detects missing hooks and must remain zero in the full inventory. Paths are workload counts, not CPU shares or promised savings. Root IDs are only comparable within each registered profile.",
+            "scope":"Test-only observer of commands replayed by Planner::prefix, grouped by profile-local root index. Compact prefixes report original commands covered and mask merges separately; these commands are not replayed or counted as command/span/material-read events. Same-material in-bounds unconditional FEATURE commands form a span only while consecutive and strictly monotonic in Y with step +1 or -1. Reversals, duplicates, gaps, different materials, conditional commands, out-of-bounds commands and exact prefix limits break spans. Original ordered output commands and per-column index vectors are preserved for publication and fallback reads. Feature changes/noops classify the prior material. Uniform-blob diagnostic lookups do not enter generation material/height counters and are skipped when this observer is inactive; changed_points includes successful conditional and plant-upper writes. Dense expansions count actual completed prefix buffers; payload is height*2 without allocator overhead. Histogram bin i covers lengths greater than 2^(i-1) through 2^i, with bin0=1 and final overflow bucket. Span command counts include noops and are opportunities, not speedup estimates. Output parity is checked independently against immutable complete-NBT corpora. Per-prefix stack scalars publish once to a per-thread root map; no hot-command lock or retained world owners. Other column construction paths and feature-local overlays are outside this scope. Five warmups and twenty measured complete lit regions per case; observer times are not ordinary performance. Paths partition prefixes, replayed commands, compact coverage, run words and dense allocations at publication, including zero-command and incomplete prefixes. Completed interior means both a completed root and an indexed interior column were available at the actual branch; unfinished interior uses the fallback with an indexed column; boundary uses the fallback outside the interior index. Limited commands are applied commands in prefixes with an exact source-order limit. An unclassified bucket detects missing hooks and must remain zero in the full inventory. Paths are workload counts, not CPU shares or promised savings. Root IDs are only comparable within each registered profile.",
             "cases":cases,"timing_acceptance":false,
+            "index_storage_layout": {
+                "original_inline_column_map_bytes":std::mem::size_of::<Map<(i32,i32), Vec<usize>>>(),
+                "candidate_inline_columns_bytes":std::mem::size_of::<output_columns::Columns>(),
+                "candidate_output_bytes":std::mem::size_of::<Output>(),
+                "uniform_column_value_bytes":std::mem::size_of::<output_columns::BlobColumn>(),
+                "ordinary_column_value_bytes":std::mem::size_of::<Vec<usize>>(),
+            },
         })).unwrap()).unwrap();
     }
 }

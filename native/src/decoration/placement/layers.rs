@@ -370,6 +370,22 @@ impl Overlay {
             return grounds.get(layer).copied();
         }
         let start = self.height(field, profile, request, x, z, 4)?;
+        if let Some(prior) = field.prior {
+            // tops records every write, including air, and snapshots/undo keep
+            // it paired with blocks. Touched columns need the live scalar scan.
+            if profile.ordered_decorations && !self.tops.contains_key(&(x, z)) {
+                match prior.ground_layers(x, z, start) {
+                    GroundLayers::Known(grounds) => {
+                        let result = grounds.get(layer).copied();
+                        self.grounds.borrow_mut().insert((x, z), grounds);
+                        return result;
+                    }
+                    GroundLayers::Unavailable => return None,
+                    GroundLayers::Unsupported => {}
+                }
+            }
+            prior.ground_scan_fallback();
+        }
         let empty = |m: u16| {
             profile.material_flags[m as usize] & 64 != 0
                 || m == 0
@@ -397,6 +413,109 @@ impl Overlay {
 mod tests {
     use super::*;
     use serde_json::json;
+
+    #[test]
+    fn ground_transitions_preserve_live_writes_snapshots_undo_and_unknowns() {
+        use std::sync::{Mutex, atomic::{AtomicUsize, Ordering}};
+        struct Prior<'a> {
+            profile: &'a WorldProfile,
+            blocks: Vec<u16>,
+            min_y: i32,
+            mode: usize,
+            calls: AtomicUsize,
+            events: Mutex<Vec<&'static str>>,
+        }
+        impl PriorWorld for Prior<'_> {
+            fn column(&self, _: i32, _: i32) -> Option<Column> { None }
+            fn biome(&self, _: [i32; 3]) -> Option<usize> { Some(0) }
+            fn material(&self, at: [i32; 3]) -> Option<u16> {
+                self.events.lock().unwrap().push("material");
+                if self.mode == 2 || at[0] == 16 { return None; }
+                Some(self.blocks.get((at[1] - self.min_y) as usize).copied().unwrap_or(0))
+            }
+            fn height(&self, x: i32, _: i32, map: u8) -> Option<i32> {
+                self.events.lock().unwrap().push("height");
+                if x == 17 { return None; }
+                Some(self.blocks.iter().rposition(|m| self.profile.heightmap_masks[*m as usize]
+                    & (1 << map) != 0).map_or(self.min_y, |y| self.min_y + y as i32 + 1))
+            }
+            fn ground_layers(&self, x: i32, _: i32, start: i32) -> GroundLayers {
+                self.calls.fetch_add(1, Ordering::Relaxed);
+                self.events.lock().unwrap().push("grounds");
+                if self.mode == 0 { return GroundLayers::Unsupported; }
+                if self.mode == 2 || x == 16 { return GroundLayers::Unavailable; }
+                let empty = |m: u16| self.profile.material_flags[m as usize] & 64 != 0
+                    || m == 0 || m == self.profile.water || m == self.profile.geology.lava;
+                let mut current = self.blocks.get((start - self.min_y) as usize).copied().unwrap_or(0);
+                let mut grounds = Vec::new();
+                for y in (self.min_y + 1..=start).rev() {
+                    let below = self.blocks[(y - 1 - self.min_y) as usize];
+                    if empty(current) && !empty(below) && below != self.profile.bedrock
+                        && self.profile.material_flags[below as usize] & 128 == 0 {
+                        grounds.push(y);
+                    }
+                    current = below;
+                }
+                GroundLayers::Known(grounds)
+            }
+        }
+        let (profile, _, mut request) = fixture(json!([]));
+        for height in [1, 2, 63, 128, 256, 384] {
+            request.height = height;
+            for min_y in [-512, -64, 0, 37] {
+                request.min_y = min_y;
+                let make_prior = |mode| Prior {
+                    profile: &profile, min_y, mode,
+                    blocks: (0..height).map(|y| ((y / 3) % 9) as u16).collect(),
+                    calls: AtomicUsize::new(0), events: Mutex::new(Vec::new()),
+                };
+                let fast = make_prior(1);
+                let scalar = make_prior(0);
+                let field = |prior| Field { prior: Some(prior), substrate: None,
+                    origin_x: 0, origin_z: 0, side: 0, columns: vec![] };
+                let a = field(&fast as &dyn PriorWorld);
+                let b = field(&scalar as &dyn PriorWorld);
+                let compare = |overlay: &Overlay, x, z| {
+                    let left = overlay.snapshot();
+                    let right = overlay.snapshot();
+                    for layer in 0..height as usize + 2 {
+                        assert_eq!(left.ground_layer(&a, &profile, request, x, z, layer),
+                            right.ground_layer(&b, &profile, request, x, z, layer));
+                    }
+                    assert_eq!(*left.grounds.borrow(), *right.grounds.borrow());
+                };
+                let mut overlay = Overlay::default();
+                compare(&overlay, -33, 32);
+                assert_eq!(*fast.events.lock().unwrap(), ["height", "grounds"]);
+                let before_calls = fast.calls.load(Ordering::Relaxed);
+                overlay.record_feature();
+                for (y, material) in [(min_y, 0), (min_y, 1),
+                    (min_y + height as i32 - 1, 8), (min_y - 1, 6)] {
+                    overlay.write(&profile, [-33, y, 32], material);
+                    compare(&overlay, -33, 32);
+                    assert_eq!(fast.calls.load(Ordering::Relaxed), before_calls,
+                        "any own write must keep the scalar path");
+                }
+                compare(&overlay.before_feature(), -33, 32);
+                assert_eq!(fast.calls.load(Ordering::Relaxed), before_calls + 1,
+                    "undo restores the untouched-column proof");
+                overlay.finish_feature();
+                compare(&overlay, -33, 32);
+                compare(&overlay, 16, 0); // unknown material/ground, never cached
+                let before_calls = fast.calls.load(Ordering::Relaxed);
+                compare(&overlay, 17, 0); // unknown height, no ground query
+                assert_eq!(fast.calls.load(Ordering::Relaxed), before_calls);
+                let unknown = make_prior(2);
+                let unknown_field = field(&unknown as &dyn PriorWorld);
+                let unknown_overlay = Overlay::default();
+                for _ in 0..2 {
+                    assert_eq!(unknown_overlay.ground_layer(&unknown_field, &profile, request, 0, 0, 0), None);
+                    assert!(unknown_overlay.grounds.borrow().is_empty());
+                }
+                assert_eq!(unknown.calls.load(Ordering::Relaxed), 2);
+            }
+        }
+    }
 
     #[test]
     fn group_handoff_preserves_retry_and_merged_queue_order() {

@@ -411,12 +411,22 @@ impl Feature {
                 state,
                 radius,
             } => {
+                let material = match target {
+                    Predicate::Material { offset: [0, 0, 0], allowed }
+                        if w.profile.ordered_decorations && allowed.len() == 1 => Some(allowed[0]),
+                    _ => None,
+                };
+                let test = |w: &World, at| match material {
+                    Some(material) => w.overlay.material_matches(
+                        w.field, w.profile, w.request, at, material) == Some(true),
+                    None => w.test(target, at),
+                };
                 let mut center = at;
                 center[1] = center[1].clamp(
                     w.request.min_y + 1,
                     w.request.min_y + w.request.height as i32 - 1,
                 );
-                while center[1] > w.request.min_y + 1 && !w.test(target, center) {
+                while center[1] > w.request.min_y + 1 && !test(w, center) {
                     center[1] -= 1;
                 }
                 if center[1] <= w.request.min_y + 1 {
@@ -426,7 +436,7 @@ impl Feature {
                 let mut any = false;
                 manhattan(radii, *radii.iter().max().unwrap(), |offset| {
                     let p = add(center, offset);
-                    if w.test(target, p) {
+                    if test(w, p) {
                         w.write(p, *state);
                         any = true;
                     }

@@ -43,7 +43,7 @@ impl Snapshot {
             columns: output
                 .columns
                 .iter()
-                .map(|(&key, ids)| (key, ids.clone()))
+                .map(|(key, ids)| (key, ids.to_vec()))
                 .collect(),
         }
     }
@@ -61,7 +61,8 @@ impl Snapshot {
         for (i, b) in output.writes.iter().enumerate() {
             expected.entry((b.x, b.z)).or_default().push(i);
         }
-        expected == output.columns
+        expected.len() == output.columns.len()
+            && expected.iter().all(|(key, indices)| output.columns.get(key) == Some(indices.as_slice()))
     }
 }
 #[derive(Default, Serialize)]
@@ -228,7 +229,7 @@ impl Build {
                 && previous
                     .columns
                     .iter()
-                    .all(|(key, ids)| output.columns.get(key) == Some(ids));
+                    .all(|(key, ids)| output.columns.get(key) == Some(ids.as_slice()));
             (true, !equal, false, false)
         } else if room {
             history.snapshot = Some(Snapshot::from(output));
@@ -324,7 +325,7 @@ fn fixture_output() -> Arc<Output> {
     }];
     Arc::new(Output {
         writes,
-        columns: Map::from_iter([((-16, 0), vec![0])]),
+        columns: Map::from_iter([((-16, 0), vec![0])]).into(),
         metadata: None,
     })
 }
@@ -377,7 +378,8 @@ fn blob_inventory_compares_all_write_fields_order_and_complete_column_indexes() 
         assert!(snapshot != altered);
     }
     let mut invalid = Arc::try_unwrap(fixture_output()).unwrap_or_else(|_| unreachable!());
-    invalid.columns.get_mut(&(-16, 0)).unwrap().push(0);
+    let output_columns::Columns::Ordered(columns) = &mut invalid.columns else { unreachable!() };
+    columns.get_mut(&(-16, 0)).unwrap().push(0);
     assert!(!Snapshot::index_valid(&invalid));
     let session = Arc::new(Session::default());
     session.begin(fixture_key(), 0).unwrap().complete(&original);

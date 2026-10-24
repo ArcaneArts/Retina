@@ -19,6 +19,7 @@ struct Bucket {
     run_words: AtomicU64,
     identity_discards: AtomicU64,
     height_queries: [AtomicU64; 6],
+    query_run_words: [AtomicU64; 6],
     archive_copies: [AtomicU64; 2],
     classes: [AtomicU64; 8],
     class_words: [AtomicU64; 8],
@@ -30,6 +31,7 @@ impl Default for Bucket {
             created: AtomicU64::new(0), retired: AtomicU64::new(0), run_words: AtomicU64::new(0),
             identity_discards: AtomicU64::new(0),
             height_queries: std::array::from_fn(|_| AtomicU64::new(0)),
+            query_run_words: std::array::from_fn(|_| AtomicU64::new(0)),
             archive_copies: std::array::from_fn(|_| AtomicU64::new(0)),
             classes: std::array::from_fn(|_| AtomicU64::new(0)),
             class_words: std::array::from_fn(|_| AtomicU64::new(0)),
@@ -38,7 +40,7 @@ impl Default for Bucket {
     }
 }
 struct Counts {
-    // Each backing kind is split into restored (even) and computed (odd).
+    // Each backing kind is split into restored (even) and constructed (odd).
     buckets: [Bucket; 6],
     untracked_queries: [AtomicU64; 3],
 }
@@ -63,7 +65,7 @@ impl State {
         counts.buckets[bucket].run_words.fetch_add(words as u64, Ordering::Relaxed);
         Self { counts: Some(counts), bucket, words, flags: AtomicU8::new(0) }
     }
-    pub(super) fn computed(runs: &ColumnRuns) -> Self {
+    pub(super) fn constructed(runs: &ColumnRuns) -> Self {
         let kind = match runs {
             ColumnRuns::Owned(_) => 0,
             ColumnRuns::Shared { .. } => 1,
@@ -97,6 +99,14 @@ impl State {
             }
         } else {
             untracked(1);
+        }
+    }
+    pub(super) fn height_scan(&self, map: u8, visited: usize) {
+        self.height(map);
+        if let Some(counts) = &self.counts {
+            assert!(visited <= self.words);
+            counts.buckets[self.bucket].query_run_words[map as usize]
+                .fetch_add(visited as u64, Ordering::Relaxed);
         }
     }
     pub(super) fn archive(&self, exterior: bool) {
@@ -154,11 +164,13 @@ impl Session {
             let archive: Vec<_> = (0..2).map(|i| sum(&|c| read(&c.buckets[b].archive_copies[i]))).collect();
             let unused: u64 = [0, 1, 4, 5].into_iter().map(|i| classes[i]).sum();
             let unused_words: u64 = [0, 1, 4, 5].into_iter().map(|i| class_words[i]).sum();
-            buckets.push(json!({"kind":KINDS[b / 2],"heights":if b % 2 == 0 {"restored"} else {"computed"},
+            buckets.push(json!({"kind":KINDS[b / 2],"origin":if b % 2 == 0 {"restored"} else {"constructed"},
                 "created_states":created,"retired_states":retired,"created_run_words":words,
                 "identity_temporary_discards":sum(&|c| read(&c.buckets[b].identity_discards)),
                 "access_classes":classes,"class_run_words":class_words,"height_masks":masks,
-                "height_queries_by_map":queries,"archive_copies_interior_exterior":archive,
+                "height_queries_by_map":queries,
+                "height_query_run_words_by_map":(0..6).map(|i| sum(&|c| read(&c.buckets[b].query_run_words[i]))).collect::<Vec<_>>(),
+                "material_archive_copies_interior_exterior":archive,
                 "height_unused_states":unused,"height_unused_run_words":unused_words,
                 "height_unused_not_archived_states":classes[0]+classes[1],
                 "height_unused_not_archived_run_words":class_words[0]+class_words[1],
@@ -258,7 +270,7 @@ fn height_use_partitions_every_access_mask_and_counts_aliases_once() {
 fn height_use_concurrent_readers_and_retirement_preserve_exact_counts() {
     let session = Session::new(202); let mut local = Local::default(); local.bind(&session);
     let state = Arc::new(ColumnState {
-        runs: ColumnRuns::Owned(vec![7].into_boxed_slice()), heights: [32; 6],
+        runs: ColumnRuns::Owned(vec![7].into_boxed_slice()),
         height_trace: State::bound(local.counts.as_ref().unwrap().clone(), 1, 1),
     });
     let weak = Arc::downgrade(&state);
@@ -277,6 +289,50 @@ fn height_use_concurrent_readers_and_retirement_preserve_exact_counts() {
     assert_eq!(report["buckets"][1]["access_classes"][7], 1);
     assert_eq!(report["buckets"][1]["height_masks"][63], 1);
     assert!(report["buckets"][1]["height_queries_by_map"].as_array().unwrap().iter().all(|v| v == 1000));
+}
+
+
+#[test]
+fn direct_heights_census_counts_actual_visits_including_repeat_queries() {
+    let (mut profile, _, _) = crate::decoration::replay_tests::fixture(42, 0);
+    profile.heightmap_masks[0] = 0; profile.heightmap_masks[1] = 4; profile.heightmap_masks[2] = 16;
+    let session = Session::new(404); let mut local = Local::default(); local.bind(&session);
+    let column = ColumnState {
+        runs: ColumnRuns::Owned(vec![(8 << 16), (4 << 16) | 1, 2].into_boxed_slice()),
+        height_trace: State::bound(local.counts.as_ref().unwrap().clone(), 1, 3),
+    };
+    for _ in 0..2 { assert_eq!(column.height(&profile, -64, 12, 2), -56); }
+    assert_eq!(column.height(&profile, -64, 12, 4), -60);
+    assert_eq!(column.height(&profile, -64, 12, 1), -64);
+    assert_eq!(column.material(0), 2); column.height_trace.archive(false);
+    drop(column); let report = session.report(); assert_balanced(&report);
+    assert_eq!(report["buckets"][1]["height_queries_by_map"], json!([0,1,2,0,1,0]));
+    assert_eq!(report["buckets"][1]["height_query_run_words_by_map"], json!([0,3,4,0,3,0]));
+    assert_eq!(report["buckets"][1]["access_classes"][7], 1);
+    assert_eq!(report["buckets"][1]["height_masks"][22], 1);
+    assert_eq!(report["buckets"][1]["material_archive_copies_interior_exterior"], json!([1,0]));
+}
+
+#[test]
+fn direct_heights_composed_run_consumers_record_material_access() {
+    let (profile, _, _) = crate::decoration::replay_tests::fixture(42, 0);
+    let session = Session::new(405); let mut local = Local::default(); local.bind(&session);
+    let make = || ColumnState {
+        runs: ColumnRuns::Owned(vec![(8 << 16), (4 << 16) | 1, 2].into_boxed_slice()),
+        height_trace: State::bound(local.counts.as_ref().unwrap().clone(), 1, 3),
+    };
+    let mask_column = make();
+    super::material_masks::from_column(&mask_column, 12, 1);
+    let ground_column = make();
+    super::ground_transitions::from_column(&ground_column, &profile, 0, 12, 12);
+    let merge_column = make();
+    assert!(super::uniform_blob::Edits::default().finish(&merge_column, 12, 1).is_none());
+    drop((mask_column, ground_column, merge_column));
+    let report = session.report(); assert_balanced(&report);
+    assert_eq!(report["buckets"][1]["created_states"], 3);
+    assert_eq!(report["buckets"][1]["access_classes"][1], 3);
+    assert_eq!(report["buckets"][1]["height_queries_by_map"], json!([0,0,0,0,0,0]));
+    assert_eq!(report["untracked_material_height_archive_calls"], json!([0,0,0]));
 }
 
 #[test]
@@ -350,6 +406,6 @@ fn exact_column_height_use_inventory() {
         cases.push(json!({"case":name,"seed":seed,"profile":file,"readiness":readiness,
             "warmups":warmups,"regions":regions,"summary":summary}));
         fs::write(output.join("report.json"), serde_json::to_vec_pretty(&json!({"cases":cases,"timing_acceptance":false,
-            "scope":"Test-only concrete ColumnState lifetime census. Arc aliases do not create states; tokens retain counters only. Each construction records backing kind, run count and computed-versus-restored heights. Material marks cover scalar reads, dense expansion and production RLE equality checks; height queries count calls by map and lifetime map masks. Archive copies are distinguished from actual queries: unused archived arrays may still be consumed through a restored state in a later job. Separate unused-and-not-archived counts exclude that ambiguity. Temporary states discarded by the original equality check are counted separately. Final access classes and run-word weights are recorded on destruction. Every measured complete region must balance created/retired/class/mask/run counts and have zero untracked calls. Five unobserved warmups precede twenty observed complete lit regions per case. Counter snapshots and serialization occur after the synchronous native region call. Observer atomics, extra fields, counter ownership and memory affect instrumented costs; these are not production timings or allocation counts. Unused computed arrays identify potential avoidable work, not an implemented speedup or a claim that the entire column is unnecessary. Normal builds contain no census fields or code."})).unwrap()).unwrap();
+            "scope":"Test-only concrete ColumnState lifetime census. Arc aliases do not create states; tokens retain counters only. Each construction records backing kind, run count and constructed-versus-restored state origin. Material marks cover scalar reads, dense expansion, production RLE equality checks, uniform-run merges, target-mask construction and ground-transition scans; height queries count calls by map and lifetime map masks. Archives copy material runs, not height arrays. Height queries scan only the requested map and count actual run words visited, including repeated reads. No height-array scan occurs at creation or capture. Temporary states discarded by the original equality check are counted separately. Final access classes and run-word weights are recorded on destruction. Every measured complete region must balance created/retired/class/mask/run counts and have zero untracked calls. Five unobserved warmups precede twenty observed complete lit regions per case. Counter snapshots and serialization occur after the synchronous native region call. Observer atomics, extra fields, counter ownership and memory affect instrumented costs; these are not production timings or allocation counts. State-use and actual query-scan counts describe work, not a production elapsed-time speedup or a claim that an entire column is unnecessary. Normal builds contain no census fields or code."})).unwrap()).unwrap();
     }
 }

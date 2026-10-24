@@ -20,13 +20,14 @@ fn key() -> Key {
     }
 }
 fn column(runs: &[u32]) -> Arc<ColumnState> {
-    let (profile, _, _) = crate::decoration::replay_tests::fixture(42, 0);
-    Arc::new(ColumnState::from_runs(
-        ColumnRuns::Owned(runs.into()),
-        8,
-        &profile,
-        0,
-    ))
+    Arc::new(ColumnState::from_runs(ColumnRuns::Owned(runs.into())))
+}
+impl Build {
+    fn complete(self, column: &Arc<ColumnState>) {
+        let (profile, _, _) = crate::decoration::replay_tests::fixture(42, 0);
+        let heights = observed_heights(column, &profile, self.key.request.min_y, self.key.request.height as usize);
+        self.complete_with_heights(column, heights);
+    }
 }
 
 #[test]
@@ -78,12 +79,14 @@ fn column_census_compares_every_voxel_and_height_without_requiring_identical_enc
         .complete(&column(&[(4 << 16) | 1, 1]));
     let different = column(&[(4 << 16) | 2, 1]);
     session.begin(key(), 2, true).unwrap().complete(&different);
-    let mut wrong_height = column(&[1]);
-    Arc::get_mut(&mut wrong_height).unwrap().heights[5] += 1;
+    let wrong_height = column(&[1]);
+    let (profile, _, _) = crate::decoration::replay_tests::fixture(42, 0);
+    let mut heights = observed_heights(&wrong_height, &profile, 0, 8);
+    heights[5] += 1;
     session
         .begin(key(), 3, true)
         .unwrap()
-        .complete(&wrong_height);
+        .complete_with_heights(&wrong_height, heights);
     let r = session.report();
     let c = &r["counts"];
     assert_eq!(c["compared_columns"], 3);

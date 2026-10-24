@@ -123,6 +123,22 @@ pub(super) fn read(runs: &ColumnRuns, words: usize) {
     });
 }
 
+// Collector-isolation tests inspect only their own thread, so unrelated unit
+// tests running concurrently cannot contaminate their expected read counts.
+pub(super) fn observed_current_thread_reads(observe: impl FnOnce()) -> [u64; 3] {
+    let installed = Installed::start();
+    observe();
+    LOCAL.with(|local| {
+        let local = local.borrow();
+        if local.token != installed.0.token {
+            return [0; 3];
+        }
+        std::array::from_fn(|kind| {
+            local.counts.as_ref().unwrap().reads[kind].load(Ordering::Relaxed)
+        })
+    })
+}
+
 #[derive(Default)]
 struct Storage {
     slots: u64,
@@ -317,7 +333,7 @@ fn material_storage_deduplicates_owners_without_retaining_them() {
     let blocks: Vec<u16> = (0..256)
         .map(|y| ((y / 17) % profile.materials.len()) as u16)
         .collect();
-    let owned = Arc::new(ColumnState::new(blocks.clone(), &profile, -64));
+    let owned = Arc::new(ColumnState::new(blocks.clone()));
     let words = Arc::new(owned.runs.slice().to_vec());
     let mask = Arc::new(crate::geology::CaveMask {
         origin_x: -32,
@@ -335,9 +351,6 @@ fn material_storage_deduplicates_owners_without_retaining_them() {
                 mask: mask.clone(),
                 range: 0..words.len(),
             },
-            256,
-            &profile,
-            -64,
         ))
     };
     let states = [
@@ -349,9 +362,6 @@ fn material_storage_deduplicates_owners_without_retaining_them() {
                 runs: words.clone(),
                 range: 0..words.len(),
             },
-            256,
-            &profile,
-            -64,
         )),
     ];
     let references: Vec<_> = states.iter().map(Arc::strong_count).collect();
@@ -473,7 +483,7 @@ fn exact_material_storage_inventory() {
         cases.push(json!({"case":name,"seed":seed,"profile":file,
             "warmups":warmups,"regions":regions,"summary":summary}));
         fs::write(output.join("report.json"), serde_json::to_vec_pretty(&json!({
-            "scope":"Test-only weights for every ColumnState::material call by Owned, Shared terrain and Cached archive backing. Original RLE result is always computed first and drives generation. Per-thread counters register once per session; no shared hot counter or per-read mutex. Joined scans inspect only existing ready cells and retain no state owners. Counts cover all ColumnState::material call sites, not other Field/substrate readers. Joined storage covers interior base/versions and ready/pending boundary tiles, not transient or engine-wide peak memory. Dense estimates are hypothetical added full-storage-height u16 payload, excluding allocator/object overhead; distinct-slice reuse is a possible lower payload estimate, not an implemented representation. Shared mask word capacity includes metadata; cached backing may contain unused spans. Existing RLE backing is not subtracted from hypothetical added dense payload. Five warmups precede twenty observed complete lit regions per case; observer time/memory are not ordinary performance.",
+            "scope":"Test-only weights for every ColumnState::material call by Owned, Shared terrain and Cached archive backing. Original RLE result is always computed first and drives generation. Diagnostic-only uniform-blob classification reads do not enter these counters. Per-thread counters register once per session; no shared hot counter or per-read mutex. Joined scans inspect only existing ready cells and retain no state owners. Counts cover all ColumnState::material call sites, not other Field/substrate readers. Joined storage covers interior base/versions and ready/pending boundary tiles, not transient or engine-wide peak memory. Dense estimates are hypothetical added full-storage-height u16 payload, excluding allocator/object overhead; distinct-slice reuse is a possible lower payload estimate, not an implemented representation. Shared mask word capacity includes metadata; cached backing may contain unused spans. Existing RLE backing is not subtracted from hypothetical added dense payload. Five warmups precede twenty observed complete lit regions per case; observer time/memory are not ordinary performance.",
             "cases":cases,"timing_acceptance":false,
         })).unwrap()).unwrap();
     }

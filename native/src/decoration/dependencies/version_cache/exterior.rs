@@ -104,7 +104,6 @@ impl Exterior {
                         #[cfg(test)] value.height_trace.archive(true);
                         states.push(SavedState {
                             range: start..runs.len(),
-                            heights: value.heights,
                         });
                         owners.insert(pointer, state);
                         state
@@ -145,7 +144,6 @@ impl Exterior {
                 runs: self.runs.clone(),
                 range: state.range.clone(),
             },
-            heights: state.heights,
             #[cfg(test)]
             height_trace: height_use_probe::State::restored(state.range.len()),
         }))
@@ -191,9 +189,8 @@ mod tests {
     }
     #[test]
     fn exact_prefix_ranges_preserve_holes_and_release_original_owners() {
-        let (profile, _, _) = crate::decoration::replay_tests::fixture(42, 0);
-        let a = Arc::new(ColumnState::new(vec![0; 16], &profile, 0));
-        let b = Arc::new(ColumnState::new(vec![1; 16], &profile, 0));
+        let a = Arc::new(ColumnState::new(vec![0; 16]));
+        let b = Arc::new(ColumnState::new(vec![1; 16]));
         let weak = Arc::downgrade(&a);
         let mut columns = Map::default();
         // x=-1,z=0, to the left of the target. The gap at prefix3 is real.
@@ -231,6 +228,22 @@ mod tests {
         let column = saved.column(4, -1, 0).unwrap();
         drop(saved);
         assert_eq!(column.material(0), 1);
+    }
+    #[test]
+    fn direct_heights_exterior_archive_uses_exact_runs_after_owner_retirement() {
+        let (profile, _, _) = crate::decoration::replay_tests::fixture(42, 0);
+        let blocks: Vec<u16> = (0..96).map(|y| ((y / 7) % profile.materials.len()) as u16).collect();
+        let expected: [i32; 6] = std::array::from_fn(|map| blocks.iter()
+            .rposition(|&m| profile.heightmap_masks[m as usize] & (1 << map) != 0)
+            .map_or(16, |y| 16 + y as i32 + 1));
+        let state = Arc::new(ColumnState::new(blocks.clone())); let weak = Arc::downgrade(&state);
+        let tile = Arc::new(ColumnTile::default()); tile.0[15].set(Ok(state.clone())).ok().unwrap();
+        let mut columns = Map::default(); columns.insert((0, -1, 0), tile);
+        let (archive, _) = Exterior::capture([0; 2], 16, &columns).unwrap();
+        drop(columns); drop(state); assert!(weak.upgrade().is_none());
+        let restored = archive.column(0, -1, 0).unwrap(); drop(archive);
+        assert_eq!(restored.expand(96), blocks);
+        assert_eq!(restored.heights(&profile, 16, 96), expected);
     }
     #[test]
     fn incomplete_cells_are_misses_and_failed_cells_reject_export() {

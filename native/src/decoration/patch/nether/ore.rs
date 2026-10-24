@@ -283,13 +283,20 @@ impl Ore {
                 }
             }
         }
-        let mut tested = vec![0u64; ((width * height * width) as usize).div_ceil(64)];
+        // Validated sizes are at most 64: the horizontal extent is at most
+        // 26. A row fits in u32 and maps each Z coordinate to one visited bit.
+        // Horizontal bounds are at most start + width, including a rounded
+        // endpoint. The two spare Y levels keep x + y * width below the row
+        // count even at that endpoint. This preserves the original flattened
+        // bitmap's row identity while putting successive Z bits together.
+        let mut tested = vec![0u32; (width * height) as usize];
         let mut placed = false;
         for (center, radius) in spheres {
             if radius < 0.0 {
                 continue;
             }
             let (min, max) = vein.bounds(center, radius);
+            let z_mask = ((1u32 << (max[2] - min[2] + 1)) - 1) << (min[2] - start[2]);
             for x in min[0]..=max[0] {
                 let xd = (x as f64 + 0.5 - center[0]) / radius;
                 if xd * xd >= 1.0 {
@@ -297,30 +304,27 @@ impl Ore {
                 }
                 for y in min[1]..=max[1] {
                     let yd = (y as f64 + 0.5 - center[1]) / radius;
-                    if xd * xd + yd * yd >= 1.0 {
+                    if xd * xd + yd * yd >= 1.0
+                        || y < w.request.min_y
+                        || y >= w.request.min_y + w.request.height as i32
+                    {
                         continue;
                     }
-                    for z in min[2]..=max[2] {
+                    let row = (x - start[0] + (y - start[1]) * width) as usize;
+                    // Replacements, including failed ones, have already run at
+                    // these coordinates. Ascending set bits retain the original
+                    // Z order for every remaining first visit.
+                    let mut remaining = z_mask & !tested[row];
+                    while remaining != 0 {
+                        let bit_index = remaining.trailing_zeros();
+                        let bit = 1u32 << bit_index;
+                        remaining &= remaining - 1;
+                        let z = start[2] + bit_index as i32;
                         let zd = (z as f64 + 0.5 - center[2]) / radius;
-                        if xd * xd + yd * yd + zd * zd >= 1.0
-                            || y < w.request.min_y
-                            || y >= w.request.min_y + w.request.height as i32
-                        {
+                        if xd * xd + yd * yd + zd * zd >= 1.0 {
                             continue;
                         }
-                        let index = (x - start[0]
-                            + (y - start[1]) * width
-                            + (z - start[2]) * width * height)
-                            as usize;
-                        let word = index / 64;
-                        if word >= tested.len() {
-                            tested.resize(word + 1, 0);
-                        }
-                        let bit = 1u64 << (index % 64);
-                        if tested[word] & bit != 0 {
-                            continue;
-                        }
-                        tested[word] |= bit;
+                        tested[row] |= bit;
                         placed |= self.replace(w, [x, y, z], rng);
                     }
                 }
@@ -505,3 +509,6 @@ mod tests {
         }
     }
 }
+
+#[cfg(test)]
+mod geometry_tests;

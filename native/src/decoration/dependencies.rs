@@ -2,6 +2,10 @@
 //! of preceding roots; its anchor-local attempts keep their existing live overlay.
 mod footprint;
 mod version_cache;
+mod uniform_blob;
+mod output_columns;
+mod material_masks;
+mod ground_transitions;
 pub(crate) use version_cache::{Cache as VersionCache, Pending as PendingVersions};
 #[cfg(test)]
 mod version_reuse_probe;
@@ -13,6 +17,8 @@ mod version_layout_probe;
 mod material_storage_probe;
 #[cfg(test)]
 mod height_use_probe;
+#[cfg(test)]
+mod direct_height_tests;
 #[cfg(test)]
 mod column_edit_probe;
 #[cfg(test)]
@@ -215,6 +221,7 @@ struct Root {
     ids: Vec<u32>,
     bounds: Bounds,
     deferred_ore: Option<(u16, u16)>,
+    uniform_blob: Option<u16>,
     footprint: bool,
 }
 
@@ -251,7 +258,7 @@ fn deferred_ore_pair(profile: &WorldProfile, ids: &[u32]) -> Option<(u16, u16)> 
 struct Output {
     metadata: Option<crate::structures::ChunkData>,
     writes: Vec<WorldBlock>,
-    columns: Map<(i32, i32), Vec<usize>>,
+    columns: output_columns::Columns,
 }
 /// Immutable commands from all possible writers of the requested volume.
 /// Outputs remain in source anchor order. Each column stores one anchor ID per
@@ -262,6 +269,25 @@ struct CompletedRoot {
     columns: Map<usize, Vec<usize>>,
 }
 impl CompletedRoot {
+    fn blob_edits(&self, column: usize, x: i32, z: i32, limit: Option<(i32, i32, usize)>)
+        -> Option<(uniform_blob::Edits, u64, u64)>
+    {
+        // A source-order limit can split an anchor's command vector. Its exact
+        // ordered stream must remain the source of truth for that prefix.
+        if limit.is_some() {
+            return None;
+        }
+        let mut edits = uniform_blob::Edits::default();
+        let mut commands = 0;
+        let mut groups = 0;
+        for &anchor in self.columns.get(&column).into_iter().flatten() {
+            let (source, count) = self.anchors[anchor].1.columns.edits(&(x, z))?;
+            edits.merge(source);
+            commands += count as u64;
+            groups += 1;
+        }
+        Some((edits, commands, groups))
+    }
     fn writes(&self, column: usize, x: i32, z: i32)
         -> impl Iterator<Item = ((i32, i32, usize), WorldBlock)> + '_
     {
@@ -342,12 +368,11 @@ impl ColumnRuns {
 }
 struct ColumnState {
     runs: ColumnRuns,
-    heights: [i32; 6],
     #[cfg(test)]
     height_trace: height_use_probe::State,
 }
 impl ColumnState {
-    fn new(blocks: Vec<u16>, profile: &WorldProfile, min_y: i32) -> Self {
+    fn new(blocks: Vec<u16>) -> Self {
         let mut runs = Vec::new();
         let mut start = 0;
         for y in 1..=blocks.len() {
@@ -357,29 +382,37 @@ impl ColumnState {
             }
         }
         runs.reverse();
-        Self::from_runs(
-            ColumnRuns::Owned(runs.into_boxed_slice()),
-            blocks.len(),
-            profile,
-            min_y,
-        )
+        Self::from_runs(ColumnRuns::Owned(runs.into_boxed_slice()))
     }
-    fn from_runs(runs: ColumnRuns, height: usize, profile: &WorldProfile, min_y: i32) -> Self {
-        let mut heights = [min_y; 6];
+    fn from_runs(runs: ColumnRuns) -> Self {
+        #[cfg(test)]
+        let height_trace = height_use_probe::State::constructed(&runs);
+        Self { runs, #[cfg(test)] height_trace }
+    }
+    // Material runs already describe the exact immutable prefix. Query just
+    // the selected map; no height array, sentinel or mutable cache is needed.
+    // The owning planner supplies the same profile and geometry as the runs.
+    fn height(&self, profile: &WorldProfile, min_y: i32, height: usize, map: u8) -> i32 {
+        let bit = [1u8, 2, 4, 8, 16, 32][map as usize];
         let mut top = min_y + height as i32;
-        for &run in runs.slice() {
-            for (map, height) in heights.iter_mut().enumerate() {
-                if *height == min_y
-                    && profile.heightmap_masks[run as u16 as usize] & (1 << map) != 0
-                {
-                    *height = top;
-                }
+        let mut answer = min_y;
+        #[cfg(test)]
+        let mut visited = 0;
+        for &run in self.runs.slice() {
+            #[cfg(test)] { visited += 1; }
+            if profile.heightmap_masks[run as u16 as usize] & bit != 0 {
+                answer = top;
+                break;
             }
             top = min_y + (run >> 16) as i32;
         }
         #[cfg(test)]
-        let height_trace = height_use_probe::State::computed(&runs);
-        Self { runs, heights, #[cfg(test)] height_trace }
+        self.height_trace.height_scan(map, visited);
+        answer
+    }
+    #[cfg(test)]
+    fn heights(&self, profile: &WorldProfile, min_y: i32, height: usize) -> [i32; 6] {
+        std::array::from_fn(|map| self.height(profile, min_y, height, map as u8))
     }
     fn material(&self, y: usize) -> u16 {
         let runs = self.runs.slice();
@@ -445,13 +478,15 @@ struct ViewColumns {
     // Exact keys distinguish collisions, which retain the unbounded map path.
     slots: OnceLock<Box<[OnceLock<ViewColumn>; VIEW_COLUMN_SLOTS]>>,
     values: Mutex<Map<(i32, i32), Arc<ColumnState>>>,
-    counts: Option<[AtomicU64; 5]>,
+    material_masks: material_masks::Cache,
+    counts: Option<[AtomicU64; 13]>,
 }
 impl Default for ViewColumns {
     fn default() -> Self {
         Self {
             slots: OnceLock::new(),
             values: Mutex::new(Map::default()),
+            material_masks: Default::default(),
             counts: crate::performance::enabled().then(|| std::array::from_fn(|_| AtomicU64::new(0))),
         }
     }
@@ -464,7 +499,10 @@ impl ViewColumns {
             + key.0.rem_euclid(VIEW_COLUMN_WIDTH as i32) as usize
     }
     fn count(&self, index: usize) {
-        if let Some(counts) = &self.counts { counts[index].fetch_add(1, Ordering::Relaxed); }
+        self.add(index, 1);
+    }
+    fn add(&self, index: usize, amount: u64) {
+        if let Some(counts) = &self.counts { counts[index].fetch_add(amount, Ordering::Relaxed); }
     }
     fn read<T>(
         &self,
@@ -518,9 +556,16 @@ impl Drop for View<'_, '_> {
             // to scalar reads; enabled counters are local to this view.
             for (counter, count) in [Perf::view_column_cached_reads,
                 Perf::view_column_loads, Perf::view_column_slot_hits,
-                Perf::view_terrain_borrowed_reads, Perf::view_terrain_loaded_reads].into_iter().zip(counts) {
+                Perf::view_terrain_borrowed_reads, Perf::view_terrain_loaded_reads,
+                Perf::blob_mask_reads, Perf::blob_mask_builds, Perf::blob_mask_hits,
+                Perf::blob_mask_scalar_fallbacks, Perf::ground_run_queries,
+                Perf::ground_run_visits, Perf::ground_voxel_queries_replaced,
+                Perf::ground_scalar_scans].into_iter().zip(counts) {
                 self.planner.metrics.performance.add(counter, count.load(Ordering::Relaxed));
             }
+            let bytes = self.columns.material_masks.allocated_bytes();
+            self.planner.metrics.performance.add(Perf::blob_mask_cache_allocations, (bytes != 0) as u64);
+            self.planner.metrics.performance.add(Perf::blob_mask_cache_bytes, bytes as u64);
         }
     }
 }
@@ -565,6 +610,13 @@ impl PriorWorld for View<'_, '_> {
         self.planner.metrics.performance.add(Perf::overlay_recommit_calls_skipped, 1);
         self.planner.metrics.performance.add(Perf::overlay_recommit_commands_skipped, commands as u64);
     }
+    fn blob_overlay_observed(&self, bytes: usize, points: usize, promoted: bool) {
+        let metrics = &self.planner.metrics.performance;
+        metrics.add(Perf::blob_overlay_observations, 1);
+        metrics.add(Perf::blob_overlay_observed_payload_bytes, bytes as u64);
+        metrics.add(Perf::blob_overlay_observed_points, points as u64);
+        metrics.add(Perf::blob_overlay_promotions, promoted as u64);
+    }
     fn deferred_ore(&self) -> Option<(u16, u16)> {
         self.planner.roots[self.before].deferred_ore
     }
@@ -602,6 +654,36 @@ impl PriorWorld for View<'_, '_> {
             }
         }
     }
+    fn material_matches(&self, at: [i32; 3], material: u16) -> Option<bool> {
+        let request = self.planner.request;
+        if at[1] < request.min_y || at[1] >= request.min_y + request.height as i32 {
+            return Some(material == 0);
+        }
+        self.columns.count(5);
+        let result = self.columns.material_masks.read(
+            (at[0], at[2]), (at[1] - request.min_y) as usize,
+            request.height as usize, material,
+            // Build from the exact prior column at the first original query.
+            // The mask replaces this consumer's column retention; other scalar
+            // queries retain their existing ViewColumns cache and behavior.
+            || self.planner.column(self.before, at[0], at[2])
+                .map(|column| material_masks::from_column(&column, request.height as usize, material)),
+        );
+        match result {
+            Ok((Some(value), built)) => {
+                self.columns.count(if built { 6 } else { 7 });
+                Some(value)
+            }
+            Ok((None, _)) => {
+                self.columns.count(8);
+                self.material(at).map(|actual| actual == material)
+            }
+            Err(error) => {
+                self.planner.fail(error);
+                None
+            }
+        }
+    }
     fn height(&self, x: i32, z: i32, map: u8) -> Option<i32> {
         let mut before = self.before;
         while before > 0 && self.planner.roots[before - 1].deferred_ore.is_some() {
@@ -611,15 +693,15 @@ impl PriorWorld for View<'_, '_> {
         // the original prefix; an earlier column must not enter that view cache.
         let height = if before == self.before {
             self.read_column(x, z, |column| {
-                #[cfg(test)] column.height_trace.height(map);
-                column.heights[map as usize]
+                column.height(self.planner.profile, self.planner.request.min_y,
+                    self.planner.request.height as usize, map)
             })
         } else {
             self.planner.metrics.performance.add(
                 Perf::height_roots_skipped, (self.before - before) as u64);
             self.planner.column(before, x, z).map(|column| {
-                #[cfg(test)] column.height_trace.height(map);
-                column.heights[map as usize]
+                column.height(self.planner.profile, self.planner.request.min_y,
+                    self.planner.request.height as usize, map)
             })
         };
         match height {
@@ -629,6 +711,33 @@ impl PriorWorld for View<'_, '_> {
                 None
             }
         }
+    }
+    fn ground_layers(&self, x: i32, z: i32, start: i32) -> GroundLayers {
+        let request = self.planner.request;
+        let relative = i64::from(start) - i64::from(request.min_y);
+        if request.height == 0 || !(0..=i64::from(request.height)).contains(&relative) {
+            return GroundLayers::Unsupported;
+        }
+        // Overlay queried height first, preserving deferred-ore height skipping.
+        // Material transitions still use this view's exact current prefix.
+        match self.read_column(x, z, |column| ground_transitions::from_column(
+            column, self.planner.profile, request.min_y,
+            request.height as usize, relative as usize,
+        )) {
+            Ok((grounds, visits)) => {
+                self.columns.count(9);
+                self.columns.add(10, visits as u64);
+                self.columns.add(11, relative as u64 + 1);
+                GroundLayers::Known(grounds)
+            }
+            Err(error) => {
+                self.planner.fail(error);
+                GroundLayers::Unavailable
+            }
+        }
+    }
+    fn ground_scan_fallback(&self) {
+        self.columns.count(12);
     }
 }
 impl Planner<'_> {
@@ -670,7 +779,7 @@ impl Planner<'_> {
                 .get(&(root, ax, az))
                 .ok_or("missing completed root target")?;
             let anchor = completed.anchors.len();
-            for (&(x, z), indices) in &output.columns {
+            for ((x, z), indices) in output.columns.iter() {
                 if let Some(column) = self.versions.index(x, z) {
                     completed
                         .columns
@@ -749,7 +858,7 @@ impl Planner<'_> {
                     return Ok(Output {
                         metadata: None,
                         writes: Vec::new(),
-                        columns: Map::default(),
+                        columns: output_columns::Columns::default(),
                     });
                 }
                 let view = View {
@@ -838,12 +947,10 @@ impl Planner<'_> {
                 }
                 let mut all = replay.finish_world();
                 let writes = std::mem::take(&mut all[0]);
-                let mut columns: Map<_, Vec<_>> = Map::default();
-                let mut deferred = 0;
-                for (index, block) in writes.iter().enumerate() {
-                    deferred += u64::from(block.role == DEFERRED_ORE);
-                    columns.entry((block.x, block.z)).or_default().push(index);
-                }
+                let (columns, deferred) = output_columns::Columns::from_writes(
+                    &writes, self.roots[root].uniform_blob, self.request.min_y,
+                    self.request.height as usize, &self.metrics.performance,
+                );
                 self.metrics
                     .performance
                     .add(Perf::deferred_ore_candidates, deferred);
@@ -908,7 +1015,7 @@ impl Planner<'_> {
         if starts.is_empty() {
             return Ok(Output {
                 writes: Vec::new(),
-                columns: Map::default(),
+                columns: output_columns::Columns::default(),
                 metadata: None,
             });
         }
@@ -959,7 +1066,7 @@ impl Planner<'_> {
         self.check()?;
         Ok(Output {
             writes,
-            columns,
+            columns: columns.into(),
             metadata: Some(metadata),
         })
     }
@@ -1041,7 +1148,7 @@ impl Planner<'_> {
         let result = slot.get_or_init(|| {
             built = true;
             metrics.add(Perf::column_builds, 1);
-            #[cfg(test)] dependency_work::count(Work::ColumnBuild, before.checked_sub(1)); #[cfg(test)] return self.column_trace.evaluate(before, x, z, |observation| self.build_column(before, x, z, observation)).map_err(|error| Box::new(ColumnFailure(error)));
+            #[cfg(test)] dependency_work::count(Work::ColumnBuild, before.checked_sub(1)); #[cfg(test)] return self.column_trace.evaluate(before, x, z, self.profile, |observation| self.build_column(before, x, z, observation)).map_err(|error| Box::new(ColumnFailure(error)));
             #[cfg(not(test))] self.build_column(before, x, z)
                 .map_err(|error| Box::new(ColumnFailure(error)))
         });
@@ -1082,9 +1189,6 @@ impl Planner<'_> {
                     mask: mask.clone(),
                     range,
                 },
-                self.request.height as usize,
-                self.profile,
-                self.request.min_y,
             )));
         }
         let blocks = (self.request.min_y..self.request.min_y + self.request.height as i32)
@@ -1094,11 +1198,7 @@ impl Planner<'_> {
                     .ok_or_else(|| format!("missing GPU substrate at {x},{y},{z}"))
             })
             .collect::<Result<Vec<_>, _>>()?;
-        Ok(Arc::new(ColumnState::new(
-            blocks,
-            self.profile,
-            self.request.min_y,
-        )))
+        Ok(Arc::new(ColumnState::new(blocks)))
     }
     fn prefix(
         &self,
@@ -1113,6 +1213,14 @@ impl Planner<'_> {
         let mut blocks: Option<Vec<u16>> = None;
         #[cfg(test)]
         let mut probe = column_edit_probe::Prefix::start(before - 1, limit.is_some(), prior.runs.slice().len());
+        if self.request.height as usize <= uniform_blob::MAX_HEIGHT {
+            if let Some(material) = self.roots[before - 1].uniform_blob {
+                return self.uniform_blob_prefix(
+                    before, x, z, limit, prior, material,
+                    #[cfg(test)] &mut probe,
+                );
+            }
+        }
         if let Some((root, column)) = self
             .completed
             .get(before - 1)
@@ -1180,7 +1288,7 @@ impl Planner<'_> {
             }
         }
         if let Some(blocks) = blocks {
-            let result = ColumnState::new(blocks, self.profile, self.request.min_y);
+            let result = ColumnState::new(blocks);
             #[cfg(test)]
             probe.finish(Some(self.request.height), result.runs.slice().len(), result.runs.slice() == prior.runs.slice());
             #[cfg(test)] {
@@ -1198,6 +1306,91 @@ impl Planner<'_> {
             probe.finish(None, prior.runs.slice().len(), true);
             Ok(prior)
         }
+    }
+    fn uniform_blob_prefix(
+        &self,
+        before: usize,
+        x: i32,
+        z: i32,
+        limit: Option<(i32, i32, usize)>,
+        prior: Arc<ColumnState>,
+        material: u16,
+        #[cfg(test)] probe: &mut column_edit_probe::Prefix,
+    ) -> Result<Arc<ColumnState>, String> {
+        let height = self.request.height as usize;
+        let completed = self.completed.get(before - 1).zip(self.versions.index(x, z));
+        #[cfg(test)]
+        probe.select_path(if completed.is_some() {
+            column_edit_probe::Path::CompletedInterior
+        } else if self.versions.index(x, z).is_some() {
+            column_edit_probe::Path::UnfinishedInterior
+        } else {
+            column_edit_probe::Path::Boundary
+        });
+        #[cfg(test)] dependency_work::count(if completed.is_some() {
+            Work::PrefixInterior
+        } else if self.versions.index(x, z).is_some() {
+            Work::PrefixUnfinishedInterior
+        } else { Work::PrefixBoundary }, before.checked_sub(1));
+        let compact = completed.and_then(|(root, column)| root.blob_edits(column, x, z, limit));
+        let mut edits = uniform_blob::Edits::default();
+        let mut commands = 0;
+        if let Some((combined, covered, groups)) = compact {
+            edits = combined;
+            self.metrics.performance.add(Perf::blob_index_fast_prefixes, 1);
+            self.metrics.performance.add(Perf::blob_index_covered_commands, covered);
+            self.metrics.performance.add(Perf::blob_index_mask_merges, groups);
+            #[cfg(test)]
+            probe.compact(covered, groups);
+        } else {
+            let mut apply = |b: WorldBlock| {
+                debug_assert_eq!(b.role, FEATURE);
+                debug_assert_eq!(b.material, material);
+                commands += 1;
+                let y = b.y - self.request.min_y;
+                #[cfg(test)]
+                probe.command(b.role, b.material, y, height);
+                if y >= 0 && (y as usize) < height {
+                    let _first = edits.insert(y as usize);
+                    #[cfg(test)]
+                    // Diagnostic reads must not become generation reads.
+                    probe.uniform_feature_result(
+                        _first,
+                        &prior,
+                        y as usize,
+                        material,
+                    );
+                }
+            };
+            if let Some((root, column)) = completed {
+                for (key, block) in root.writes(column, x, z) {
+                    if !limit.is_some_and(|limit| key >= limit) {
+                        apply(block);
+                    }
+                }
+            } else {
+                for (ax, az) in self.roots[before - 1].bounds.writers(x, z)? {
+                    if limit.is_some_and(|key| (az, ax) > (key.0, key.1)) {
+                        continue;
+                    }
+                    let Some(output) = self.column_writer(before - 1, ax, az, x, z)? else {
+                        continue;
+                    };
+                    for &index in output.columns.get(&(x, z)).into_iter().flatten() {
+                        if !limit.is_some_and(|limit| (az, ax, index) >= limit) {
+                            apply(output.writes[index]);
+                        }
+                    }
+                }
+            }
+        }
+        let result = edits.finish(&prior, height, material);
+        self.metrics.performance.add(Perf::uniform_blob_prefixes, 1);
+        self.metrics.performance.add(Perf::uniform_blob_commands, commands);
+        self.metrics.performance.add(Perf::uniform_blob_changed_columns, result.is_some() as u64);
+        #[cfg(test)]
+        probe.finish(None, result.as_ref().map_or(prior.runs.slice().len(), |r| r.runs.slice().len()), result.is_none());
+        Ok(result.map_or(prior, |result| Arc::new(result)))
     }
     fn apply_column_write(
         &self,
@@ -1310,6 +1503,7 @@ pub(crate) fn generate(
                 ids: Vec::new(),
                 bounds,
                 deferred_ore: None,
+                uniform_blob: None,
                 footprint: false,
             });
         root.ids.push(id as u32);
@@ -1331,6 +1525,7 @@ pub(crate) fn generate(
                 ids: Vec::new(),
                 definition: Some(id),
                 deferred_ore: None,
+                uniform_blob: None,
                 footprint: false,
                 bounds: Bounds {
                     x: [0, 15],
@@ -1341,6 +1536,7 @@ pub(crate) fn generate(
     }
     for root in groups.values_mut() {
         root.deferred_ore = deferred_ore_pair(profile, &root.ids);
+        root.uniform_blob = uniform_blob::material(profile, &root.ids);
         root.footprint = footprint::eligible(profile, &root.ids);
     }
     metrics.performance.add(
@@ -1692,7 +1888,7 @@ mod tests {
     }
     fn cached_column(material: u16) -> Arc<ColumnState> {
         Arc::new(ColumnState { runs: ColumnRuns::Owned(vec![u32::from(material)].into_boxed_slice()),
-            heights: [i32::from(material); 6], height_trace: Default::default() })
+            height_trace: Default::default() })
     }
     #[test]
     fn spatial_view_slots_cover_each_complete_window_without_collisions() {
@@ -1758,7 +1954,7 @@ mod tests {
         (0..4096).into_par_iter().for_each(|i| {
             let x: i32 = i % 257 - 128;
             let material = x.rem_euclid(127) as u16 + 1;
-            assert_eq!(cache.read(x, -1, || Ok(cached_column(material)), |c| (c.material(0), c.heights[0])).unwrap(), (material, i32::from(material)));
+            assert_eq!(cache.read(x, -1, || Ok(cached_column(material)), |c| (c.material(0), c.runs.slice().len())).unwrap(), (material, 1));
         });
         for x in -128..=128 {
             assert_eq!(cache.read(x, -1, || panic!("concurrent value lost"), |c| c.material(0)).unwrap(), x.rem_euclid(127) as u16 + 1);
@@ -2026,7 +2222,7 @@ mod tests {
                             _ => ((y / 17) % profile.materials.len()) as u16,
                         })
                         .collect();
-                    let encoded = ColumnState::new(blocks.clone(), &profile, min_y);
+                    let encoded = ColumnState::new(blocks.clone());
                     assert_eq!(encoded.expand(height), blocks);
                     for (y, &block) in blocks.iter().enumerate() {
                         assert_eq!(encoded.material(y), block);
@@ -2036,7 +2232,7 @@ mod tests {
                             .iter()
                             .rposition(|&m| profile.heightmap_masks[m as usize] & (1 << map) != 0)
                             .map_or(min_y, |y| min_y + y as i32 + 1);
-                        assert_eq!(encoded.heights[map], expected);
+                        assert_eq!(encoded.height(&profile, min_y, height, map as u8), expected);
                     }
                 }
             }
@@ -2048,7 +2244,7 @@ mod tests {
         let blocks: Vec<u16> = (0..256)
             .map(|y| ((y / 17) % profile.materials.len()) as u16)
             .collect();
-        let owned = ColumnState::new(blocks.clone(), &profile, -64);
+        let owned = ColumnState::new(blocks.clone());
         let mut words = vec![u32::MAX; 7];
         words.extend_from_slice(owned.runs.slice());
         let end = words.len();
@@ -2068,13 +2264,10 @@ mod tests {
                 mask: mask.clone(),
                 range: 7..end,
             },
-            256,
-            &profile,
-            -64,
         );
         drop(mask);
         assert_eq!(shared.expand(256), blocks);
-        assert_eq!(shared.heights, owned.heights);
+        assert_eq!(shared.heights(&profile, -64, 256), owned.heights(&profile, -64, 256));
         for (y, block) in blocks.into_iter().enumerate() {
             assert_eq!(shared.material(y), block);
         }

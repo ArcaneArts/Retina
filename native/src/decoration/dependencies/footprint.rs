@@ -304,6 +304,7 @@ mod tests {
                         ids: vec![0],
                         bounds: Bounds::recipe(recipe).unwrap(),
                         deferred_ore: None,
+                        uniform_blob: None,
                         footprint: eligible(&profile, &[0]),
                     };
                     let mask = Footprint::build(&profile, &root, request, coordinate, coordinate);
@@ -379,6 +380,7 @@ mod tests {
                 ids: vec![0],
                 bounds: Bounds::recipe(&profile.decorations[0]).unwrap(),
                 deferred_ore: None,
+                uniform_blob: None,
                 footprint: eligible(&profile, &[0]),
             };
             let mask = Footprint::build(&profile, &root, request, 0, 0);
@@ -399,6 +401,7 @@ mod tests {
                 ids: vec![0],
                 bounds: Bounds::recipe(&profile.decorations[0]).unwrap(),
                 deferred_ore: None,
+                uniform_blob: None,
                 footprint: false,
             };
             assert!(matches!(
@@ -467,6 +470,7 @@ mod tests {
                         ids: vec![0],
                         bounds: Bounds::recipe(&profile.decorations[0]).unwrap(),
                         deferred_ore: None,
+                        uniform_blob: None,
                         footprint: eligible(&profile, &[0]),
                     };
                     let mask = Footprint::build(&profile, &root, request, coordinate, coordinate);
@@ -534,6 +538,7 @@ mod tests {
                 ids: vec![0],
                 bounds: Bounds::recipe(&profile.decorations[0]).unwrap(),
                 deferred_ore: None,
+                uniform_blob: None,
                 footprint: eligible(&profile, &[0]),
             };
             let mask = Footprint::build(&profile, &root, request, 0, 0);
