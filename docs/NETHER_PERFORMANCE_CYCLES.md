@@ -3234,3 +3234,57 @@ or dedicated-server acceptance. See
 `docs/benchmarks/nether-perf-cycle146-2026-10-24.json` for full timing summaries,
 provenance, limitations and recovery instructions. Actual merged proof follows.
 The overall subsecond goal and final timing confirmation remain open.
+
+
+## Cycle 147 — continue ordered roots without worker-owned joins
+
+The caller now owns one scope for ordered dependencies. A bounded set of worker
+lanes evaluates each root; the final lane publishes its original ordered anchors
+and schedules the successor. Worker lanes never join child roots. Every callback
+releases planner read access before publication, and the caller joins all work
+before returning or propagating an error or panic. Empty roots advance iteratively.
+The ambient-pool fallback and complete generation interval remain unchanged.
+
+Validation passes 274 native tests, 20 explicit GPU fixtures, and **1,857,536**
+complete-NBT chunk-instance comparisons against both original and preceding main.
+This includes 1/2/4/8 requests, custom and tall profiles, separate work probes,
+actual portal/DH and unload/reopen fixtures, and 314 sustained regions. Repeated
+coordinates are not unique coverage; all worktrees are retained.
+
+The initial normal single-request observations are median / p95 milliseconds:
+
+| Profile | Preceding main | Candidate |
+| --- | ---: | ---: |
+| nether-custom-bounds | 573 / 620 | 483 / 565 |
+| nether-direct-stem | 557 / 627 | 495 / 551 |
+| nether-main | 730 / 895 | 692 / 877 |
+| nether-second-seed | 824 / 1005 | 731 / 971 |
+| overworld | 201 / 241 | 203 / 245 |
+
+Across eight-request Nether cases, observed throughput rises
+9.8–25.1% and p95 falls
+19.4–33.7%, while CPU rises
+20.2–30.5% and instructions rise
+4.7–8.6%. Some median latencies and peak memory also increase.
+These provisional observations are not uncontended causal speedup claims.
+
+Serial aggregate dependency work is identical. In the separate eight-request diagnostic
+run, median per-region sums of gaps after the last recorded callback fall from
+902–1,790 ms to 0.030–0.066 ms. These are callback-absence intervals, not idle CPU
+or batch-wall shares. Final scope joining and observer disposal remain inside
+whole-region time. Reduced completed-neighbor reuse increases column construction
+2.1–7.1%; this explains some additional work, not the full CPU change.
+
+The initial four-request Overworld p95 increases 23.58% despite lower CPU and
+instruction counts. A fresh ABBA repeat records pooled throughput change
++7.49%, p95 -14.58%, CPU
+-7.67% and instructions -0.52%.
+The pooled median rises 5.49% and peak RSS 3.02%.
+Substantial within-library run drift limits causal interpretation.
+Both the initial and repeat results are retained.
+
+All observed retained owners are released after engine drop and the terrain
+worker stops. Named capacity and separate VM observations are in
+`docs/benchmarks/nether-perf-cycle147-2026-10-24.json`, with full timing summaries,
+provenance, scope limits and recovery commands. Actual merged proof follows.
+Final timing confirmation and the broader subsecond objective remain open.

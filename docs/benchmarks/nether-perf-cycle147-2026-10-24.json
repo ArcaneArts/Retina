@@ -1,0 +1,1165 @@
+{
+  "cycle": 147,
+  "created_utc": "2026-10-24T14:22:57.535370+00:00",
+  "scope": "Ordered dependency roots continue from their final worker lane in one caller-owned Rayon scope. Original anchor enumeration/publication order and ambient-pool fallback are retained. No boundary-priority permutation, global request serialization, material-point shortcut, or dependency reach change.",
+  "source": {
+    "revision": "84abed128466a12b2fda70c4f1eac80cf83a1df5",
+    "native_tree": "6f916a3d18bebd4e26565eb037878c49e4c8ac75",
+    "status": "",
+    "library_sha256": "48e3f90f50e1cc657e943e426cb93a69988c71cac26b403343df0877b7d9f575",
+    "test_executable_sha256": "84cd7226ac7383f67d511846568cc884a3a24e7463a4fd436185e46beb4ed629",
+    "native_test_result": [
+      "274",
+      "0",
+      "74"
+    ]
+  },
+  "preceding_main": {
+    "revision": "625518882839dff0f11996a0866ef4d265a0d93d",
+    "native_tree": "7aaf11151fc1dba60b4a07ba19bdafd43ebaf140",
+    "status": ""
+  },
+  "reference_hashes": {
+    "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle146/merged/normal.dylib": "5b4594f78c84c3de5c5f7caf58507b39a1a8ae6d6fd3bd1e389c8e71f2fcb338",
+    "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference/libretina_worldgen.dylib": "bafc696984f3f0b66bf06163f516d5379c12283b8a65cfad57048cc70abee31c"
+  },
+  "evidence_root": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle147",
+  "timing_acceptance": false,
+  "benchmark_method": {
+    "warmups": 5,
+    "measured_regions": 20,
+    "chunks_per_region": 1024,
+    "requests": [
+      1,
+      2,
+      4,
+      8
+    ],
+    "assembly_workers": 16,
+    "request_order": "reverse",
+    "lighting": "GPU enabled, dense disabled",
+    "compression": "zlib",
+    "shader_status_before_and_after": 4,
+    "normal_diagnostics": false,
+    "profiles": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/profiles",
+    "manifest": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle147/manifest.json",
+    "support_hashes": {
+      "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle147/proof.py": "527fd11a589a1eaa006977dd3e36cf3de6712f1cd055707a3562996e21321352",
+      "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle147/manifest.json": "8088d16cb9a33202dd7ee361d27aaf5bccaabb586ad03a4c3dcd085e387932d8",
+      "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle147/harness/benchmark_support.py": "1b314925506bcac223399ed90d7bebdf5becf8b2ff1432853ca01a7f4ced729d",
+      "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle147/harness/native-region-benchmark.py": "fa99c32bd101b468874ebf21784b710a0313fc1c2d7c510f224490b75e40857a",
+      "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle147/harness/nether-performance-suite.py": "ee3d108a122ab4271ef57c85309bdf4b8c2d0afc6ca3e776e76917208fd7089e",
+      "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle147/harness/process_counters.py": "078117c2423c1843dc82d3eb2ea9c43e32e05d8087912ef628b61ae083e5bbd9",
+      "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/profiles/custom.json": "dd1437839e09a35c512cad186d60497f9ab7f12d8881edf98b5d1db56278adb8",
+      "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/profiles/direct-stem.json": "dd1437839e09a35c512cad186d60497f9ab7f12d8881edf98b5d1db56278adb8",
+      "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/profiles/manifest.json": "4d19b5ecfbed28c8af45550fa1ea851983724c0d813d6c53b8a5fb7cccf90e8e",
+      "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/profiles/nether.json": "0cf913a69f3faceb1c8719fb238dbd90961586262af4cd2cfe0c0fd62953a2ff",
+      "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/profiles/overworld.json": "72b80f1d8d799547726a1cefe1357c5c8311ed8b3736403a83c89879e4ee935b"
+    }
+  },
+  "limitations": [
+    "Timing confirmation remains deferred; observed host activity and all unfavorable samples are retained. No repeated uncontended causal speedup or final goal completion is claimed.",
+    "Root gaps describe absence of recorded callback spans, not idle CPU or pure scheduler delay. Concurrent region intervals overlap; they cannot be summed into batch wall time. Final scope join, observer and coordinate-owner disposal remain inside complete dependency/region time.",
+    "At eight requests, less completed-neighbor reuse and more dependency reconstruction coexist with higher CPU and instruction counts. The separate diagnostic run explains some additional work, not the entire ordinary-run CPU change.",
+    "Initial four-request Overworld p95 increased 23.58 percent despite lower CPU/instructions; the complete ABBA follow-up is retained rather than discarding this sample.",
+    "Portal checks use integrated creative/client QA helpers, not an unaided survival or dedicated-server acceptance run.",
+    "Retention uses a fixed corpus and named resource ownership; raw VM snapshots are separate and are not universal allocator/driver leak proof.",
+    "Repeated generated chunk instances are not unique coverage. Only MCA container timestamps and compressed representation are excluded from complete decompressed-NBT comparison."
+  ],
+  "recovery": {
+    "source": "Check out the recorded source revision in a new worktree; cargo build --release --locked --lib --manifest-path native/Cargo.toml. Retained exact libraries/test executables have the recorded hashes. Do not rebuild over retained evidence.",
+    "commands": "Exact commands, environments, sources, library/support hashes, host observations and output comparisons are in receipt.json, baseline/receipt.json, diagnostics/receipt.json, extended-receipt.json, runtime-proof-receipt.json, retention-proof-receipt.json and repeat-receipt.json. Actual tool completion and observed PID reviews are in terminal records.",
+    "corpora": "Original reference-suite and preceding cycle146/merged/normal-full are preserved separately. Tall compares cycle119/tall/original and cycle146/normal-tall. Completed C147 initial/baseline MCA files were losslessly APFS-compressed with full byte hashes retained; see compression-receipt.json and compression-files.jsonl.",
+    "merged_proof": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle147/merged",
+    "worktree": "Retained intentionally at /tmp/retina-nether-root-handoff-main"
+  },
+  "normal_metric_columns": [
+    "median_ms",
+    "p95_region_ms",
+    "maximum_region_ms",
+    "total_ms",
+    "chunks_per_second",
+    "cpu_ms_per_region",
+    "instructions_per_region",
+    "generation_peak_rss_bytes",
+    "peak_physical_footprint"
+  ],
+  "normal": [
+    {
+      "requests": 1,
+      "case": "nether-custom-bounds-run0",
+      "control": [
+        573.3870209660381,
+        620.347562758252,
+        675.5453329533339,
+        11486.303499899805,
+        1782.993110026968,
+        1969.6659,
+        20938801174.1,
+        2070102016,
+        1544161200
+      ],
+      "candidate": [
+        483.04179147817194,
+        564.9008104111999,
+        596.1094580125064,
+        9947.845541872084,
+        2058.7372324787693,
+        1991.6575499999994,
+        20876983876.7,
+        2049982464,
+        1530185600
+      ]
+    },
+    {
+      "requests": 1,
+      "case": "nether-direct-stem-run0",
+      "control": [
+        556.7528953542933,
+        627.4901994154789,
+        664.9208341259509,
+        11169.997582910582,
+        1833.482939274146,
+        1914.3232499999995,
+        20404219702.05,
+        2181169152,
+        1538836400
+      ],
+      "candidate": [
+        494.7872506454587,
+        550.5475687561558,
+        602.1671250928193,
+        9882.034791866317,
+        2072.4476720985267,
+        1956.88815,
+        20373913893.35,
+        2151743488,
+        1523287888
+      ]
+    },
+    {
+      "requests": 1,
+      "case": "nether-main-run0",
+      "control": [
+        730.3420000243932,
+        895.2054541674443,
+        980.8019590564072,
+        14920.934750000015,
+        1372.5681629966232,
+        2146.3169500000004,
+        24117928143.1,
+        2568962048,
+        1829636232
+      ],
+      "candidate": [
+        692.2888540429994,
+        876.7155730631204,
+        913.4962088428438,
+        14075.389292091131,
+        1455.021923372846,
+        2254.6485499999994,
+        24061444878.65,
+        2463170560,
+        1801422936
+      ]
+    },
+    {
+      "requests": 1,
+      "case": "nether-second-seed-run0",
+      "control": [
+        824.2071045096964,
+        1005.0189902307466,
+        1031.2063340097666,
+        15577.424708055332,
+        1314.7230934397949,
+        2202.9544,
+        24568310665.1,
+        2538766336,
+        1869924584
+      ],
+      "candidate": [
+        731.2937919050455,
+        971.4743048651144,
+        978.1760000623763,
+        14763.886749977246,
+        1387.168592310664,
+        2298.69135,
+        24523787278.6,
+        2598813696,
+        1874102456
+      ]
+    },
+    {
+      "requests": 1,
+      "case": "overworld-run0",
+      "control": [
+        200.67772862967104,
+        240.9855356789194,
+        247.74941708892584,
+        4144.326583016664,
+        4941.695493768873,
+        624.3652,
+        8410622552.45,
+        1565442048,
+        3353774528
+      ],
+      "candidate": [
+        202.9623956186697,
+        245.07667080033573,
+        292.61554195545614,
+        4176.9402080681175,
+        4903.110645548894,
+        626.8338,
+        8372599090.75,
+        1546600448,
+        3338717608
+      ]
+    },
+    {
+      "requests": 2,
+      "case": "nether-custom-bounds-run0",
+      "control": [
+        853.9202915271744,
+        1138.8651580433361,
+        1162.6925840973854,
+        9019.766625016928,
+        2270.5687243833277,
+        2255.8974500000004,
+        22985878562.9,
+        2621276160,
+        1878903568
+      ],
+      "candidate": [
+        750.2520000562072,
+        944.9853833997622,
+        968.7877909746021,
+        7754.837374901399,
+        2640.932234927802,
+        2274.9348,
+        22855732669.4,
+        2889105408,
+        1908362000
+      ]
+    },
+    {
+      "requests": 2,
+      "case": "nether-direct-stem-run0",
+      "control": [
+        843.7002080027014,
+        1023.1097590411084,
+        1209.880709182471,
+        8562.60679103434,
+        2391.7949871812425,
+        2141.11675,
+        22084410411.15,
+        2776023040,
+        1949321928
+      ],
+      "candidate": [
+        717.054228996858,
+        908.3391543477774,
+        917.9196669720113,
+        7541.790040908381,
+        2715.535687006908,
+        2214.1513,
+        22078956647.3,
+        2868510720,
+        1838353144
+      ]
+    },
+    {
+      "requests": 2,
+      "case": "nether-main-run0",
+      "control": [
+        1059.0554374502972,
+        1271.2869465583935,
+        1349.8802080284804,
+        10648.800999857485,
+        1923.221215259266,
+        2360.5009,
+        25702400481.85,
+        3433889792,
+        2109672520
+      ],
+      "candidate": [
+        892.7128959912807,
+        1183.42967024073,
+        1221.2421249132603,
+        9354.559208033606,
+        2189.3067908974235,
+        2414.76335,
+        25643486224.9,
+        3291922432,
+        2071334104
+      ]
+    },
+    {
+      "requests": 2,
+      "case": "nether-second-seed-run0",
+      "control": [
+        1071.9842918915674,
+        1527.162596222479,
+        1628.6141250748187,
+        11182.180291041732,
+        1831.485405078555,
+        2396.9269999999997,
+        26224461852.8,
+        3419308032,
+        2082688408
+      ],
+      "candidate": [
+        950.5531248869374,
+        1235.3687854949385,
+        1245.34208397381,
+        9716.145124984905,
+        2107.831834184529,
+        2500.8638,
+        26283961307.0,
+        3429941248,
+        2145995944
+      ]
+    },
+    {
+      "requests": 2,
+      "case": "overworld-run0",
+      "control": [
+        304.581000469625,
+        463.0889187450522,
+        669.3846248090267,
+        3233.32208301872,
+        6334.042657723507,
+        628.2958,
+        8412415253.15,
+        1861189632,
+        3632073176
+      ],
+      "candidate": [
+        288.7871664715931,
+        356.0629105893896,
+        463.04704202339053,
+        3057.1740411687642,
+        6698.997088229381,
+        631.04395,
+        8356920144.4,
+        1815986176,
+        3633973744
+      ]
+    },
+    {
+      "requests": 4,
+      "case": "nether-custom-bounds-run0",
+      "control": [
+        1372.9349999921396,
+        2016.0178769845522,
+        2840.152416145429,
+        7679.265958024189,
+        2666.9215667156463,
+        2357.18975,
+        23211842146.95,
+        3408642048,
+        2299694200
+      ],
+      "candidate": [
+        1295.5170000204816,
+        1884.3547902302817,
+        1996.2663329206407,
+        6914.176542079076,
+        2962.0302396620195,
+        2612.73825,
+        24368326129.8,
+        3776151552,
+        2880737000
+      ]
+    },
+    {
+      "requests": 4,
+      "case": "nether-direct-stem-run0",
+      "control": [
+        1277.5835214415565,
+        2128.6636042641476,
+        2252.04445887357,
+        7458.704458083957,
+        2745.785158145419,
+        2358.4963000000002,
+        22654326636.2,
+        3537403904,
+        2654178688
+      ],
+      "candidate": [
+        1114.6954370196909,
+        1896.6555419843646,
+        2113.8184170704335,
+        6484.984250040725,
+        3158.064724655482,
+        2615.5162499999997,
+        23458110544.5,
+        3536207872,
+        2896907648
+      ]
+    },
+    {
+      "requests": 4,
+      "case": "nether-main-run0",
+      "control": [
+        1656.791187589988,
+        2625.8336708997376,
+        2768.4105408843607,
+        9083.227250026539,
+        2254.7052315508413,
+        2504.43295,
+        26364830171.75,
+        4912807936,
+        3459190984
+      ],
+      "candidate": [
+        1383.6178749334067,
+        1825.130202434957,
+        2060.861499980092,
+        7473.89499982819,
+        2740.2044048612934,
+        2627.1551000000004,
+        26901656927.85,
+        4858773504,
+        3481932000
+      ]
+    },
+    {
+      "requests": 4,
+      "case": "nether-second-seed-run0",
+      "control": [
+        1615.713521023281,
+        2449.4954537134618,
+        2653.6028750706464,
+        9021.581875160336,
+        2270.1118588070253,
+        2529.53515,
+        26661730145.25,
+        5393727488,
+        4010513064
+      ],
+      "candidate": [
+        1362.264187540859,
+        2055.390825355426,
+        2331.634833011776,
+        7598.863541148603,
+        2695.139857308762,
+        2643.3151999999995,
+        26905680331.8,
+        5271207936,
+        4073722656
+      ]
+    },
+    {
+      "requests": 4,
+      "case": "overworld-run0",
+      "control": [
+        429.7057915246114,
+        972.8505057282749,
+        1458.5682090837508,
+        2788.9599590562284,
+        7343.2391646563265,
+        638.0381500000001,
+        8380708119.8,
+        2276950016,
+        3831253872
+      ],
+      "candidate": [
+        390.92418749351054,
+        1202.2098914836542,
+        2690.960750216618,
+        2922.6768750231713,
+        7007.27479490446,
+        626.1745,
+        8337425278.6,
+        2395602944,
+        3843263296
+      ]
+    },
+    {
+      "requests": 8,
+      "case": "nether-custom-bounds-run0",
+      "control": [
+        1972.9408544953912,
+        6539.83443187317,
+        7086.397416191176,
+        7824.338332982734,
+        2617.4737247325515,
+        2592.0054000000005,
+        24626114880.25,
+        4473995264,
+        3544043888
+      ],
+      "candidate": [
+        2674.507478601299,
+        4390.698977210559,
+        4390.788791934028,
+        7123.448583064601,
+        2875.0119778627272,
+        3382.741650000001,
+        26696639375.35,
+        5544509440,
+        4452160360
+      ]
+    },
+    {
+      "requests": 8,
+      "case": "nether-direct-stem-run0",
+      "control": [
+        2277.5128334760666,
+        5532.303983252496,
+        6346.717291045934,
+        7517.1622089110315,
+        2724.4323630162585,
+        2559.57345,
+        23932590174.05,
+        4511498240,
+        2925793672
+      ],
+      "candidate": [
+        2519.663958461024,
+        4030.7983607286587,
+        4090.578416828066,
+        6813.45474999398,
+        3005.817276473157,
+        3294.1912,
+        25995843088.9,
+        5236588544,
+        4353413992
+      ]
+    },
+    {
+      "requests": 8,
+      "case": "nether-main-run0",
+      "control": [
+        2969.5416453760117,
+        4942.18734794995,
+        7843.93808292225,
+        9420.609333086759,
+        2173.957042043003,
+        2654.4262,
+        28224852476.25,
+        6622593024,
+        5166061832
+      ],
+      "candidate": [
+        2818.5235204873607,
+        3981.049441045616,
+        4031.176666961983,
+        7528.2183340750635,
+        2720.4311951608966,
+        3191.9407499999993,
+        29543644989.3,
+        7019118592,
+        5328918504
+      ]
+    },
+    {
+      "requests": 8,
+      "case": "nether-second-seed-run0",
+      "control": [
+        2813.586500007659,
+        7209.749926975929,
+        8770.218540914357,
+        9669.531999854371,
+        2117.992887381565,
+        2722.2195,
+        27973451763.55,
+        7335477248,
+        5196225112
+      ],
+      "candidate": [
+        2932.2638544254005,
+        4779.83393932227,
+        5496.682208031416,
+        8444.094999926165,
+        2425.3635232880583,
+        3545.3611999999994,
+        30096144461.5,
+        7422558208,
+        6654401520
+      ]
+    },
+    {
+      "requests": 8,
+      "case": "overworld-run0",
+      "control": [
+        652.3970619309694,
+        2928.220564557705,
+        3026.086041936651,
+        3028.8650838192552,
+        6761.608534301466,
+        639.4182000000001,
+        8399750933.8,
+        2387951616,
+        3983576232
+      ],
+      "candidate": [
+        689.1453334828839,
+        2721.3674973580055,
+        2802.0382919348776,
+        2804.758957820013,
+        7301.875244180695,
+        624.3698,
+        8351826954.5,
+        2568372224,
+        3999550440
+      ]
+    }
+  ],
+  "overworld_repeat": {
+    "created_utc": "2026-10-24T14:22:12.766480+00:00",
+    "scope": "Two normal fresh-process repetitions per library and request count in ABBA order. Pooled40region distributions and combined throughput are descriptive; per-run results are retained. Same coordinates are repeated evidence, not new corpus coverage. No uncontended timing acceptance.",
+    "timing_acceptance": false,
+    "runs": [
+      {
+        "requests": 4,
+        "tag": "a",
+        "variant": "control",
+        "chunk_instances": 20480,
+        "median_ms": 671.7851454159245,
+        "p95_region_ms": 1399.4096788228496,
+        "maximum_region_ms": 2139.8415002040565,
+        "total_ms": 3922.034041956067,
+        "chunks_per_second": 5221.780275467942,
+        "generation_peak_rss_bytes": 2352513024,
+        "peak_physical_footprint": 4280617912,
+        "cpu_ms_per_region": 842.3819,
+        "instructions_per_region": 8416076488.9,
+        "reported_mean_stages_ms": {
+          "assembly_ms": 560.60699185,
+          "gpu_ms": 183.95437715,
+          "write_ms": 14.128366750000001
+        }
+      },
+      {
+        "requests": 4,
+        "tag": "b",
+        "variant": "candidate",
+        "chunk_instances": 20480,
+        "median_ms": 604.3672086670995,
+        "p95_region_ms": 1036.8067083298229,
+        "maximum_region_ms": 1087.1915421448648,
+        "total_ms": 3422.9364171624184,
+        "chunks_per_second": 5983.166937403332,
+        "generation_peak_rss_bytes": 2423521280,
+        "peak_physical_footprint": 3990539264,
+        "cpu_ms_per_region": 729.88125,
+        "instructions_per_region": 8351648402.9,
+        "reported_mean_stages_ms": {
+          "assembly_ms": 469.21968315000004,
+          "gpu_ms": 178.66768765,
+          "write_ms": 15.059573050000001
+        }
+      },
+      {
+        "requests": 4,
+        "tag": "c",
+        "variant": "candidate",
+        "chunk_instances": 20480,
+        "median_ms": 441.8745000148192,
+        "p95_region_ms": 1076.7099830321972,
+        "maximum_region_ms": 1764.8429579567164,
+        "total_ms": 2808.8979590684175,
+        "chunks_per_second": 7291.115696773932,
+        "generation_peak_rss_bytes": 2315010048,
+        "peak_physical_footprint": 3858533352,
+        "cpu_ms_per_region": 629.38955,
+        "instructions_per_region": 8356669945.0,
+        "reported_mean_stages_ms": {
+          "assembly_ms": 388.99534389999997,
+          "gpu_ms": 132.45189585,
+          "write_ms": 16.34814595
+        }
+      },
+      {
+        "requests": 4,
+        "tag": "d",
+        "variant": "control",
+        "chunk_instances": 20480,
+        "median_ms": 461.09729155432433,
+        "p95_region_ms": 991.0751527291724,
+        "maximum_region_ms": 1073.9687089808285,
+        "total_ms": 2776.868375018239,
+        "chunks_per_second": 7375.214534561972,
+        "generation_peak_rss_bytes": 2200436736,
+        "peak_physical_footprint": 3957672768,
+        "cpu_ms_per_region": 629.8252,
+        "instructions_per_region": 8379671346.5,
+        "reported_mean_stages_ms": {
+          "assembly_ms": 378.1613582,
+          "gpu_ms": 139.2146876,
+          "write_ms": 16.77411465
+        }
+      }
+    ],
+    "comparisons": [
+      {
+        "requests": 4,
+        "control": {
+          "median_ms": 502.6770210824907,
+          "p95_region_ms": 1220.7770743872966,
+          "maximum_region_ms": 2139.8415002040565,
+          "total_ms": 6698.902416974306,
+          "chunks_per_second": 6114.4344924642755,
+          "cpu_ms_per_region": 736.10355,
+          "instructions_per_region": 8397873917.7,
+          "generation_peak_rss_bytes": 2352513024,
+          "peak_physical_footprint": 4280617912
+        },
+        "candidate": {
+          "median_ms": 530.2531454944983,
+          "p95_region_ms": 1042.827412241604,
+          "maximum_region_ms": 1764.8429579567164,
+          "total_ms": 6231.834376230836,
+          "chunks_per_second": 6572.7035616074245,
+          "cpu_ms_per_region": 679.6354,
+          "instructions_per_region": 8354159173.95,
+          "generation_peak_rss_bytes": 2423521280,
+          "peak_physical_footprint": 3990539264
+        },
+        "change_percent": {
+          "median_ms": 5.485853392029694,
+          "p95_region_ms": -14.576753272910603,
+          "maximum_region_ms": -17.52459433147642,
+          "total_ms": -6.972306979124965,
+          "chunks_per_second": 7.494872497333027,
+          "cpu_ms_per_region": -7.671223702154406,
+          "instructions_per_region": -0.5205453687255668,
+          "generation_peak_rss_bytes": 3.018400122574616,
+          "peak_physical_footprint": -6.776560159382894
+        }
+      }
+    ]
+  },
+  "validation": {
+    "native_tests": 274,
+    "explicit_gpu_fixtures": 20,
+    "complete_nbt_chunk_instances": 1857536,
+    "candidate_chunk_instances": 1099776,
+    "control_chunk_instances": 757760,
+    "retention_regions": 314,
+    "diagnostic_root_records": 10240,
+    "diagnostic_target_callbacks": 11509920,
+    "runtime_groups": {
+      "loader-build-tests": {
+        "returncode": 0,
+        "native_mapping_confirmed": false,
+        "events": []
+      },
+      "nether-native-concurrency": {
+        "returncode": 0,
+        "native_mapping_confirmed": false,
+        "events": []
+      },
+      "fabric-portal": {
+        "returncode": 0,
+        "native_mapping_confirmed": true,
+        "events": [
+          {
+            "event": "nether_cold_portal_arrival",
+            "status": "pass",
+            "context": {
+              "generated_chunks": 4096,
+              "reopened": false,
+              "all_generated_chunks": 4096,
+              "portal_ms": 1361.181875,
+              "server_ticks": 28,
+              "maximum_tick_gap_ms": 142.739458
+            }
+          },
+          {
+            "event": "nether_lifecycle_complete",
+            "status": "pass",
+            "context": {
+              "dedicated": false,
+              "connection": 1,
+              "saved_fixtures": false
+            }
+          },
+          {
+            "event": "nether_cold_portal_arrival",
+            "status": "pass",
+            "context": {
+              "generated_chunks": 0,
+              "reopened": true,
+              "all_generated_chunks": 0,
+              "portal_ms": 154.424958,
+              "server_ticks": 3,
+              "maximum_tick_gap_ms": 59.425
+            }
+          },
+          {
+            "event": "nether_lifecycle_complete",
+            "status": "pass",
+            "context": {
+              "dedicated": false,
+              "connection": 1,
+              "saved_fixtures": true
+            }
+          }
+        ]
+      },
+      "fabric-portal-dh": {
+        "returncode": 0,
+        "native_mapping_confirmed": true,
+        "events": [
+          {
+            "event": "nether_cold_portal_arrival",
+            "status": "pass",
+            "context": {
+              "generated_chunks": 4096,
+              "reopened": false,
+              "all_generated_chunks": 4096,
+              "portal_ms": 1603.920209,
+              "server_ticks": 30,
+              "maximum_tick_gap_ms": 162.445917
+            }
+          },
+          {
+            "event": "nether_portal_dh_overlap",
+            "status": "pass",
+            "context": {
+              "reopened": false,
+              "active_at_start": 1,
+              "started_during_wait": 0,
+              "completed_during_wait": 1
+            }
+          },
+          {
+            "event": "nether_lifecycle_complete",
+            "status": "pass",
+            "context": {
+              "dedicated": false,
+              "connection": 1,
+              "saved_fixtures": false
+            }
+          },
+          {
+            "event": "nether_cold_portal_arrival",
+            "status": "pass",
+            "context": {
+              "generated_chunks": 0,
+              "reopened": true,
+              "all_generated_chunks": 0,
+              "portal_ms": 154.258917,
+              "server_ticks": 3,
+              "maximum_tick_gap_ms": 56.90725
+            }
+          },
+          {
+            "event": "nether_portal_dh_overlap",
+            "status": "pass",
+            "context": {
+              "reopened": true,
+              "active_at_start": 0,
+              "started_during_wait": 0,
+              "completed_during_wait": 0
+            }
+          },
+          {
+            "event": "nether_lifecycle_complete",
+            "status": "pass",
+            "context": {
+              "dedicated": false,
+              "connection": 1,
+              "saved_fixtures": true
+            }
+          }
+        ]
+      },
+      "neoforge-unload": {
+        "returncode": 0,
+        "native_mapping_confirmed": true,
+        "events": [
+          {
+            "event": "nether_unload_in_flight",
+            "status": "pass",
+            "context": {
+              "pass": 0,
+              "native_in_flight": 8
+            }
+          },
+          {
+            "event": "nether_unload_cleaned",
+            "status": "pass",
+            "context": {
+              "dimension": "minecraft:overworld",
+              "requests": 19,
+              "closed_results": 14,
+              "generation_failures": 0,
+              "qa_property": true
+            }
+          },
+          {
+            "event": "nether_unload_cleaned",
+            "status": "pass",
+            "context": {
+              "dimension": "minecraft:the_nether",
+              "requests": 19,
+              "closed_results": 17,
+              "generation_failures": 0,
+              "qa_property": true
+            }
+          },
+          {
+            "event": "nether_unload_complete",
+            "status": "pass",
+            "context": {
+              "pass": 0,
+              "active_at_storage_close_sum": 8
+            }
+          },
+          {
+            "event": "nether_unload_in_flight",
+            "status": "pass",
+            "context": {
+              "pass": 1,
+              "native_in_flight": 8
+            }
+          },
+          {
+            "event": "nether_unload_cleaned",
+            "status": "pass",
+            "context": {
+              "dimension": "minecraft:overworld",
+              "requests": 19,
+              "closed_results": 19,
+              "generation_failures": 0,
+              "qa_property": true
+            }
+          },
+          {
+            "event": "nether_unload_cleaned",
+            "status": "pass",
+            "context": {
+              "dimension": "minecraft:the_nether",
+              "requests": 19,
+              "closed_results": 19,
+              "generation_failures": 0,
+              "qa_property": true
+            }
+          },
+          {
+            "event": "nether_unload_complete",
+            "status": "pass",
+            "context": {
+              "pass": 1,
+              "active_at_storage_close_sum": 8
+            }
+          }
+        ]
+      }
+    }
+  },
+  "serial_dependency_work_unchanged": [
+    "nether-custom-bounds-run0",
+    "nether-direct-stem-run0",
+    "nether-main-run0",
+    "nether-second-seed-run0",
+    "overworld-run0"
+  ],
+  "root_gap_columns": [
+    "requests",
+    "case",
+    "control_median_ms",
+    "candidate_median_ms"
+  ],
+  "root_gap_after_last_task": [
+    [
+      1,
+      "nether-main",
+      2.5687885,
+      0.043398
+    ],
+    [
+      1,
+      "nether-second-seed",
+      5.7314175,
+      0.04598
+    ],
+    [
+      1,
+      "nether-custom-bounds",
+      0.986938,
+      0.019125000000000003
+    ],
+    [
+      1,
+      "nether-direct-stem",
+      1.6785610000000002,
+      0.019416500000000003
+    ],
+    [
+      8,
+      "nether-main",
+      1506.8060595000002,
+      0.0579365
+    ],
+    [
+      8,
+      "nether-second-seed",
+      1789.9482285,
+      0.0663755
+    ],
+    [
+      8,
+      "nether-custom-bounds",
+      1005.3444985000001,
+      0.0302725
+    ],
+    [
+      8,
+      "nether-direct-stem",
+      901.5307085,
+      0.0317485
+    ]
+  ],
+  "concurrent_work_change_percent": [
+    {
+      "case": "nether-main",
+      "anchor_build": 2.065197572557831,
+      "column_build": 7.11294898604502,
+      "column_reuse_boundary": -99.23323336968375,
+      "column_reuse_exterior": -93.16531747831603,
+      "prefix_boundary": 8.406259759437473
+    },
+    {
+      "case": "nether-second-seed",
+      "anchor_build": 0.6441562815762802,
+      "column_build": 2.092523562254822,
+      "column_reuse_boundary": -25.108657158494573,
+      "column_reuse_exterior": -20.817512631248547,
+      "prefix_boundary": 2.4515507453815255
+    },
+    {
+      "case": "nether-custom-bounds",
+      "anchor_build": 0.810686401442573,
+      "column_build": 2.1533260613310734,
+      "column_reuse_boundary": -30.034185599316288,
+      "column_reuse_exterior": -22.72371676500332,
+      "prefix_boundary": 2.6308700455403677
+    },
+    {
+      "case": "nether-direct-stem",
+      "anchor_build": 1.1486070787550817,
+      "column_build": 2.6495115768253807,
+      "column_reuse_boundary": -35.18037561363738,
+      "column_reuse_exterior": -27.596349115801488,
+      "prefix_boundary": 3.1684414211286205
+    }
+  ],
+  "retention": {
+    "maxima": {
+      "version_entries": 8,
+      "version_bytes": 230516736,
+      "all_named_gpu_bytes": 546312300,
+      "material_slots": 2,
+      "retained_slots": 2,
+      "retained_material_bytes": 84934656
+    },
+    "after_engine_drop": {
+      "caves": {
+        "live_mask_references": 0,
+        "observed_mask_references": 2048
+      },
+      "versions": {
+        "live_interior_run_buffers": 0,
+        "live_snapshots": 0,
+        "observed_interior_run_buffers": 8,
+        "observed_snapshots": 8
+      }
+    },
+    "terrain_worker_stopped_after_gpu_drop": true,
+    "round_end_named_gpu_bytes": [
+      516952172,
+      516952172,
+      516952172
+    ],
+    "vm_observations": [
+      {
+        "file": "after-engine-drop-vmmap.txt",
+        "footprint_lines": [
+          "Physical footprint:         426.8M",
+          "Physical footprint (peak):  5.1G"
+        ]
+      },
+      {
+        "file": "concurrent-2-vmmap.txt",
+        "footprint_lines": [
+          "Physical footprint:         4.1G",
+          "Physical footprint (peak):  4.6G"
+        ]
+      },
+      {
+        "file": "concurrent-4-vmmap.txt",
+        "footprint_lines": [
+          "Physical footprint:         3.2G",
+          "Physical footprint (peak):  4.6G"
+        ]
+      },
+      {
+        "file": "concurrent-8-vmmap.txt",
+        "footprint_lines": [
+          "Physical footprint:         4.7G",
+          "Physical footprint (peak):  5.1G"
+        ]
+      },
+      {
+        "file": "round-0-vmmap.txt",
+        "footprint_lines": [
+          "Physical footprint:         4.4G",
+          "Physical footprint (peak):  4.4G"
+        ]
+      },
+      {
+        "file": "round-1-vmmap.txt",
+        "footprint_lines": [
+          "Physical footprint:         4.2G",
+          "Physical footprint (peak):  4.4G"
+        ]
+      },
+      {
+        "file": "round-2-vmmap.txt",
+        "footprint_lines": [
+          "Physical footprint:         4.1G",
+          "Physical footprint (peak):  4.4G"
+        ]
+      },
+      {
+        "file": "warm-nether-custom-bounds-vmmap.txt",
+        "footprint_lines": [
+          "Physical footprint:         1.9G",
+          "Physical footprint (peak):  2.1G"
+        ]
+      },
+      {
+        "file": "warm-nether-direct-stem-vmmap.txt",
+        "footprint_lines": [
+          "Physical footprint:         1.9G",
+          "Physical footprint (peak):  2.1G"
+        ]
+      },
+      {
+        "file": "warm-nether-main-vmmap.txt",
+        "footprint_lines": [
+          "Physical footprint:         2.0G",
+          "Physical footprint (peak):  2.0G"
+        ]
+      },
+      {
+        "file": "warm-nether-second-seed-vmmap.txt",
+        "footprint_lines": [
+          "Physical footprint:         1.8G",
+          "Physical footprint (peak):  2.1G"
+        ]
+      },
+      {
+        "file": "warm-overworld-vmmap.txt",
+        "footprint_lines": [
+          "Physical footprint:         3.9G",
+          "Physical footprint (peak):  3.9G"
+        ]
+      }
+    ]
+  }
+}
