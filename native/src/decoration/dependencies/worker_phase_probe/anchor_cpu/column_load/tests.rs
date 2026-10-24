@@ -173,3 +173,34 @@ fn column_load_clock_outside_anchor_end_cannot_pass_by_having_short_duration() {
     let a=anchor(0,0,100);end(load(190),210);end_anchor(a,200);finish(trace,task);
     assert_eq!(cols(&read_cpu(&s,0))["valid"],false);
 }
+
+#[test]
+fn outermost_column_calls_fold_same_anchor_recursion_without_reading_clocks() {
+    let s=session(Some(0));let trace=make_trace(&s,"recursive-columns");let task=trace.task([0,0]);
+    let a=anchor(0,0,100);let first=Span::begin_outermost(||Some(110));
+    for _ in 0..3 {
+        let mut recursive=Span::begin_outermost(||panic!("recursive column clock"));
+        assert!(recursive.key.is_none());recursive.finish(||panic!("recursive finish clock"));
+    }
+    end(first,160);end(Span::begin_outermost(||Some(170)),190);
+    end_anchor(a,200);finish(trace,task);
+    let cpu=read_cpu(&s,0);let c=cols(&cpu);
+    assert_eq!(c["valid"],true);assert_eq!(c["calls"],2);assert_eq!(c["finished"],2);
+    assert_eq!(c["load_own_cpu_ns"],70);assert_eq!(c["sampled_anchor_own_cpu_ns"],100);
+}
+
+#[test]
+fn outermost_column_coalescing_resets_for_nested_selected_anchors_and_task_contexts() {
+    let s=session(Some(9));let trace=make_trace(&s,"outer-columns");let task=trace.task([0,0]);
+    let a=anchor(3,9,100);let outer=Span::begin_outermost(||Some(110));
+    let child_trace=make_trace(&s,"inner-columns");let child_task=child_trace.task([1,1]);
+    let child=anchor(1,9,120);let inner=Span::begin_outermost(||Some(125));
+    drop(Span::begin_outermost(||panic!("nested same-anchor clock")));
+    end(inner,145);end_anchor(child,150);finish(child_trace,child_task);
+    drop(Span::begin_outermost(||panic!("parent still has active column call")));
+    end(outer,170);end_anchor(a,200);finish(trace,task);
+    let child=read_cpu(&s,0);let parent=read_cpu(&s,1);
+    assert_eq!(cols(&child)["valid"],true);assert_eq!(cols(&parent)["valid"],true);
+    assert_eq!(cols(&child)["calls"],1);assert_eq!(cols(&parent)["calls"],1);
+    assert_eq!(cols(&child)["load_own_cpu_ns"],20);assert_eq!(cols(&parent)["load_own_cpu_ns"],30);
+}
