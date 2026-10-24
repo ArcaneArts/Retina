@@ -1,10 +1,10 @@
-//! Sample complete anchor initializers, then clock every cold View column load
-//! inside that sample. Subtract direct child anchor CPU, even across task roots.
+//! Sample complete anchor initializers and clock their outermost Planner.column
+//! calls. Fold recursive calls in the same anchor; subtract child anchor CPU.
 //! The ratio uses the SAME selected anchors as its denominator, not all anchors.
 use super::*;
 #[cfg(test)]
 mod tests;
-pub(super) const SCOPE: &str = "Deterministic 1/64 sample of executed (root,x,z) anchor keys. Every cold View column loader within each selected anchor is measured; cached View hits, cache publication and scalar material reads are outside these spans. Load own CPU subtracts direct child anchor intervals, including children in reentrant task contexts. Denominator is own CPU of these same selected anchors, including empty/ineligible initializers. Ratios describe the sampled anchors only, not all process CPU, all anchors or elapsed time. Observer work remains included. Different salts assess spatial sample sensitivity; no per-load event history or generation owners are retained.";
+pub(super) const SCOPE: &str = "Deterministic 1/64 sample of executed (root,x,z) anchor keys. Every outermost Planner.column call within each selected anchor is measured, including direct material-mask and earlier-height queries. Recursive column calls in the same anchor fold into that outer span without extra clocks or duplicate CPU. A nested selected anchor opens its own span; its inclusive anchor CPU is subtracted from the parent. View cache hits, cache publication and scalar/derived-mask reads after the planner call are outside these spans. The planner call can reuse a ready state; it is not necessarily a column initializer. Load own CPU subtracts direct child anchor intervals, including children in reentrant task contexts. Denominator is own CPU of these same selected anchors, including empty/ineligible initializers. Ratios describe the sampled anchors only, not all process CPU, all anchors or elapsed time. Observer work remains included. Different salts assess spatial sample sensitivity; no per-load event history or generation owners are retained.";
 
 pub(super) fn selected(root: usize, x: i32, z: i32, salt: u64) -> bool {
     fn mix(mut n: u64) -> u64 {
@@ -114,10 +114,16 @@ pub(in crate::decoration::dependencies) struct Span {
     key: Option<(Key, u64)>, _thread: PhantomData<Rc<()>>,
 }
 impl Span {
-    pub(in crate::decoration::dependencies) fn start() -> Self { Self::begin(cpu::now) }
-    fn begin(clock: impl FnOnce() -> Option<u64>) -> Self {
+    pub(in crate::decoration::dependencies) fn start() -> Self { Self::begin_outermost(cpu::now) }
+    fn begin_outermost(clock: impl FnOnce() -> Option<u64>) -> Self {
+        Self::begin_mode(true, clock)
+    }
+    #[cfg(test)]
+    fn begin(clock: impl FnOnce() -> Option<u64>) -> Self { Self::begin_mode(false, clock) }
+    fn begin_mode(outermost_only: bool, clock: impl FnOnce() -> Option<u64>) -> Self {
         let key = STACK.with(|stack| stack.borrow().frames.last()
-            .filter(|frame| frame.column_load.is_some()).map(|frame| frame.key));
+            .filter(|frame| frame.column_load.as_ref().is_some_and(|state|
+                !outermost_only || state.active.is_none())).map(|frame| frame.key));
         let key = key.and_then(|key| {
             if !joins::anchor_current(key.context) {
                 STACK.with(|stack| {

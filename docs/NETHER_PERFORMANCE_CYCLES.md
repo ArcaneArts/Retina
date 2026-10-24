@@ -2991,3 +2991,57 @@ counts, sample sizes, raw CPU sums, normal observations, observer comparisons
 and recovery commands. Actual merged rebuild/full-corpus proof follows this
 diagnostic PR. Timing confirmation remains deferred; the broader subsecond,
 concurrency, lifecycle and sustained-memory goal remains open.
+
+
+## Cycle 129 — cover direct prior-column entry paths
+
+C128 exposed a coverage limitation in C127: the held C116 material-mask path
+calls `Planner.column` directly, bypassing the measured `ViewColumns` cold
+loader. Its zero basalt/blackstone View-loader CPU therefore does **not** mean
+zero column cost. Earlier-height-prefix queries also bypass that View helper.
+C128's normal generation and 512,000 NBT comparisons remain valid; its CPU
+ratios retain their narrower scope.
+
+On main, the broader probe exposes 18,003–28,972 additional planner-call spans
+per sampled twenty-region Nether case across four fixtures and two salts.
+The deterministic selected-anchor sets and generation work counts are unchanged;
+these extra spans reflect coverage rather than added generation work.
+
+Move the test-only clock to the common `Planner.column` entry. Within each
+selected anchor, clock only the outermost column call and fold recursive calls
+into it without extra clocks or duplicate CPU. A nested selected anchor can
+open its own span; direct-child anchor inclusive CPU is still subtracted from
+the parent once, including reentrant task contexts. The 1/64 anchor-key sample
+and same-selected-anchor denominator remain unchanged.
+
+This covers direct query paths, ready planner-state lookups and reconstruction.
+View cache hits and material/derived-mask callbacks after the planner return
+remain outside the span. It is not a count or cost of only new column builds.
+Own-CPU ratios describe the selected anchors, not all anchors, process CPU or
+elapsed time. Observer work remains included. The held composition must be
+remeasured with this broader probe before interpreting its column-cost changes.
+
+Validation passes **222 native tests**, including 24 accounting fixtures, plus
+**five explicit GPU fixtures**. New fixtures prove that same-anchor recursive
+calls read no clock and add no duplicate span, while nested selected anchors
+in another task retain independent spans and exact parent subtraction. Existing
+clock, bounds, overflow, stale/non-LIFO context, panic and cleanup cases pass.
+
+The normal five-case suite and four same-executable inventories compare
+**512,000 measured chunk instances** against original and preceding actual
+merged-main decompressed NBT bytes/membership. All are complete lit, serialized,
+compressed, published, shader-ready regions. Coordinates repeat; only MCA
+container metadata and compression representation are excluded. Controls bracket
+two salts, each with five warmups and twenty regions per case. All existing work
+counters and actual initializer counts remain identical per region/dispatched
+stage. Whole-fixture instruction differences against either control range from
++0.047% to +0.263%. CPU/wall observations remain provisional under host activity.
+
+The complete ordinary release library is byte-identical to preceding main
+`117c1e1`, SHA256
+`daa63b89e1c64bf302bebcea7935621b7cec1a04153e7ad230842dad435d7b26`.
+No production optimization is included. See
+`docs/benchmarks/nether-perf-cycle129-2026-10-23.json` for coverage counts, sample
+sizes, CPU observations, exact provenance and recovery commands. Actual merged
+rebuild/full-corpus proof follows. The broader performance goal remains active;
+timing confirmation remains deferred.

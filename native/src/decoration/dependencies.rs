@@ -552,7 +552,7 @@ impl View<'_, '_> {
         z: i32,
         read: impl FnOnce(&ColumnState) -> T,
     ) -> Result<T, String> {
-        self.columns.read(x, z, || { #[cfg(test)] let _column_cpu = worker_phase_probe::ColumnLoadCpu::start(); self.planner.column(self.before, x, z) }, read)
+        self.columns.read(x, z, || self.planner.column(self.before, x, z), read)
     }
 }
 impl PriorWorld for View<'_, '_> {
@@ -964,7 +964,7 @@ impl Planner<'_> {
         })
     }
     fn column(&self, before: usize, x: i32, z: i32) -> Result<Arc<ColumnState>, String> {
-        let metrics = &self.metrics.performance;
+        #[cfg(test)] let _column_cpu = worker_phase_probe::ColumnLoadCpu::start(); let metrics = &self.metrics.performance;
         metrics.add(Perf::column_requests, 1);
         #[cfg(test)] dependency_work::count(Work::ColumnRequest, before.checked_sub(1));
         // The completed interior has all possible writers. An absent command is
