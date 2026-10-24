@@ -1,6 +1,7 @@
 //! Demand-driven source-root dependencies. Each root reads the accepted result
 //! of preceding roots; its anchor-local attempts keep their existing live overlay.
 mod footprint;
+mod root_chain;
 mod version_cache;
 mod uniform_blob;
 mod output_columns;
@@ -741,7 +742,8 @@ impl PriorWorld for View<'_, '_> {
     }
 }
 impl Planner<'_> {
-    /// Called only after the root's parallel target evaluation has joined.
+    /// Called only after every target callback has released its read access.
+    /// A chained root publishes on its final lane before the request scope returns.
     /// Recursive boundary work is synchronous, so every remaining cell is done.
     fn complete(&mut self, root: usize, targets: &[(i32, i32)]) -> Result<(), String> {
         let pending = self
@@ -1577,64 +1579,75 @@ pub(crate) fn generate(
         error: Mutex::new(None),
     };
     let mut targets = Vec::new();
-    // Find all writers of the requested volume, including anchors beyond the old
-    // fixed halo when a supported placement chain reaches farther.
-    for root in 0..planner.roots.len() {
-        #[cfg(test)]
-        let trace = worker_phase_probe::Trace::start(&planner, root);
-        // Return to the request's caller after each root. A waiting worker may
-        // steal another root, but cannot inherit that request's remaining loop.
-        let evaluated = dispatch_phase(pool, &metrics.performance, || -> Result<(), String> {
-            #[cfg(test)]
-            trace.mark("dispatch_enter");
-            let anchors = planner.roots[root].bounds.writers_area(
-                [request.chunk_x * 16, request.chunk_z * 16],
-                [
-                    (request.chunk_x + side as i32) * 16 - 1,
-                    (request.chunk_z + side as i32) * 16 - 1,
-                ],
-            )?;
-            #[cfg(test)]
-            trace.evaluation_begin(anchors.len());
-            anchors
-                .par_iter()
-                .try_for_each(|&(ax, az)| {
-                    #[cfg(test)]
-                    let task = trace.task([ax, az]);
-                    let result = planner.anchor(root, ax, az).map(|_| ());
-                    #[cfg(test)]
-                    task.finish(result.is_ok());
-                    result
-                })?;
-            #[cfg(test)]
-            trace.mark("evaluation_end");
-            planner.complete(root, &anchors)?;
-            for (ax, az) in anchors {
-                targets.push((root, ax, az));
-            }
-            #[cfg(test)]
-            trace.mark("publication_end");
-            Ok(())
-        });
-        #[cfg(test)]
-        trace.finish(evaluated.is_ok());
-        if let Err(error) = evaluated {
-            return dispatch_phase(pool, &metrics.performance, || {
+    if let Some(pool) = pool {
+        if let Err(error) = root_chain::evaluate(
+            pool, &mut planner, &mut targets, side, started, diagnostic,
+        ) {
+            return dispatch_phase(Some(pool), &metrics.performance, || {
                 drop(planner);
                 Err(error)
             });
         }
-        if diagnostic {
-            eprintln!(
-                "Retina dependency root {root}/{}: anchors={}, column_tiles={}, tiles={}, elapsed_ms={:.1}, request={},{}",
-                planner.roots.len(),
-                planner.ready.len(),
-                planner.columns.len() + planner.ready_columns.len(),
-                planner.terrain.len(),
-                started.elapsed().as_secs_f64() * 1000.,
-                request.chunk_x,
-                request.chunk_z
-            );
+    } else {
+        // Find all writers of the requested volume, including anchors beyond the old
+        // fixed halo when a supported placement chain reaches farther.
+        for root in 0..planner.roots.len() {
+            #[cfg(test)]
+            let trace = worker_phase_probe::Trace::start(&planner, root);
+            // Return to the request's caller after each root. A waiting worker may
+            // steal another root, but cannot inherit that request's remaining loop.
+            let evaluated = dispatch_phase(pool, &metrics.performance, || -> Result<(), String> {
+                #[cfg(test)]
+                trace.mark("dispatch_enter");
+                let anchors = planner.roots[root].bounds.writers_area(
+                    [request.chunk_x * 16, request.chunk_z * 16],
+                    [
+                        (request.chunk_x + side as i32) * 16 - 1,
+                        (request.chunk_z + side as i32) * 16 - 1,
+                    ],
+                )?;
+                #[cfg(test)]
+                trace.evaluation_begin(anchors.len());
+                anchors
+                    .par_iter()
+                    .try_for_each(|&(ax, az)| {
+                        #[cfg(test)]
+                        let task = trace.task([ax, az]);
+                        let result = planner.anchor(root, ax, az).map(|_| ());
+                        #[cfg(test)]
+                        task.finish(result.is_ok());
+                        result
+                    })?;
+                #[cfg(test)]
+                trace.mark("evaluation_end");
+                planner.complete(root, &anchors)?;
+                for (ax, az) in anchors {
+                    targets.push((root, ax, az));
+                }
+                #[cfg(test)]
+                trace.mark("publication_end");
+                Ok(())
+            });
+            #[cfg(test)]
+            trace.finish(evaluated.is_ok());
+            if let Err(error) = evaluated {
+                return dispatch_phase(pool, &metrics.performance, || {
+                    drop(planner);
+                    Err(error)
+                });
+            }
+            if diagnostic {
+                eprintln!(
+                    "Retina dependency root {root}/{}: anchors={}, column_tiles={}, tiles={}, elapsed_ms={:.1}, request={},{}",
+                    planner.roots.len(),
+                    planner.ready.len(),
+                    planner.columns.len() + planner.ready_columns.len(),
+                    planner.terrain.len(),
+                    started.elapsed().as_secs_f64() * 1000.,
+                    request.chunk_x,
+                    request.chunk_z
+                );
+            }
         }
     }
     metrics

@@ -201,6 +201,13 @@ impl Root {
 }
 pub(super) struct Trace(Option<Root>);
 impl Trace {
+    pub(super) fn start_continuation(planner: &Planner<'_>, index: usize) -> Self {
+        let mut trace = Self::start(planner, index);
+        if let Some(root) = &mut trace.0 {
+            root.metadata["coordination"] = json!("worker_continuation");
+        }
+        trace
+    }
     pub(super) fn start(planner: &Planner<'_>, index: usize) -> Self {
         let Some(session) = ACTIVE.lock().unwrap().clone() else {
             return Self(None);
@@ -873,6 +880,7 @@ fn worker_phase_inventory_with_column_load(aggregate: bool, anchor_cpu: bool, co
             "aggregate_scope":"When capture_mode is aggregate, all per-API timed event collection is disabled and explicitly marked unavailable. Task-local work counters merge once on task exit; detailed event buffers stay empty. Root phase and dispatched-task CPU clocks remain enabled, and include counter overhead. Work rows identify demanded earlier roots; they are not exclusive CPU attribution. Empty scratch counters may retain at most one allocation per physical thread and no generation owners.",
             "cases":cases,"timing_acceptance":false,"anchor_cpu_enabled":anchor_cpu,"column_load_salt":column_load_salt,
             "concurrent_requests":callers,"request_order":order,
+            "coordination_scope":"Roots tagged metadata.coordination=worker_continuation share one caller-owned scope. The last lane publishes and settles its root, then prepares and schedules its successor without joining child roots. Each root enumerates its own coordinates. Only the first root queue spans external dispatch; later root clocks begin on the preceding final worker. Evaluation includes lane admission and all callback spans. return_handoff ends at root settlement on that worker, not a per-root caller return. Observer summary time still remains inside dependency and region time. Final scope joining and coordinate-owner disposal remain inside whole dependency/region time and are outside per-root phases. Every callback releases read access before publication; old lane epilogues may finish after a successor is scheduled but no longer access planner state.",
             "request_scope":"Twenty requests are available at one batch start after five serial warmups. At most concurrent_requests scoped callers enter complete generation on the same engine; native assembly workers remain independently configured. Queue is batch start to callback entry; callback includes original generation, request setup and report snapshots; completion equals queue plus callback. Existing instrumented_ms retains its narrower native-generation interval. This is not Java/portal admission. Root phases and work group by actual region coordinates. Concurrent root process-CPU intervals overlap and include other requests: never sum or assign them as exclusive region CPU or wall shares. All caller threads join, including on panic, before observer/engine disposal; results retain submission order despite arbitrary completion order.",
         })).unwrap()).unwrap();
     }
