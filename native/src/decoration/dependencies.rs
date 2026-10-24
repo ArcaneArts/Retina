@@ -1218,10 +1218,15 @@ impl Planner<'_> {
         let mut probe = column_edit_probe::Prefix::start(before - 1, limit.is_some(), prior.runs.slice().len());
         if self.request.height as usize <= uniform_blob::MAX_HEIGHT {
             if let Some(material) = self.roots[before - 1].uniform_blob {
-                return self.uniform_blob_prefix(
+                #[cfg(test)] let identity_prior = Arc::downgrade(&prior);
+                let result = self.uniform_blob_prefix(
                     before, x, z, limit, prior, material,
                     #[cfg(test)] &mut probe,
                 );
+                #[cfg(test)] if let Ok(value) = &result {
+                    self.column_trace.identity(before, x, z, limit.is_some(), identity_prior.ptr_eq(&Arc::downgrade(value)));
+                }
+                return result;
             }
         }
         if let Some((root, column)) = self
@@ -1300,6 +1305,7 @@ impl Planner<'_> {
             }
             if result.runs.slice() == prior.runs.slice() {
                 #[cfg(test)] result.height_trace.discarded_identity();
+                #[cfg(test)] self.column_trace.identity(before, x, z, limit.is_some(), true);
                 Ok(prior)
             } else {
                 Ok(Arc::new(result))
@@ -1307,6 +1313,7 @@ impl Planner<'_> {
         } else {
             #[cfg(test)]
             probe.finish(None, prior.runs.slice().len(), true);
+            #[cfg(test)] self.column_trace.identity(before, x, z, limit.is_some(), true);
             Ok(prior)
         }
     }

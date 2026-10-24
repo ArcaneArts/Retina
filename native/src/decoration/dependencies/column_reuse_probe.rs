@@ -69,6 +69,8 @@ counts! {
     cross_stage_equal_any, cross_stage_equal_without_exact_other_live,
     cross_stage_equal_compact, cross_stage_equal_tile,
     prefix_cross_stage_equal_any, prefix_cross_stage_equal_without_exact_other_live,
+    identity_publications, identity_skipped_keys, identity_certified_at_demand,
+    identity_certified_without_exact_live, identity_certified_mismatches,
 }
 #[derive(Clone, Copy)]
 pub(super) enum Source {
@@ -107,6 +109,7 @@ struct Shard {
     // One stage entry per admitted exact key. No ColumnState owner is retained.
     stages: Map<Key, Vec<usize>>,
     counts: BTreeMap<(usize, bool), Counts>,
+    identities: Map<Key, ()>,
     next: u64,
     copy_bytes: usize,
 }
@@ -116,6 +119,7 @@ struct Session {
     keys_per_shard: usize,
     bytes_per_shard: usize,
     cross_stage: bool,
+    identity_intervals: bool,
 }
 impl Default for Session {
     fn default() -> Self {
@@ -130,6 +134,7 @@ impl Session {
             keys_per_shard,
             bytes_per_shard,
             cross_stage: false,
+            identity_intervals: false,
         }
     }
     fn selected(&self, before: usize, x: i32, z: i32) -> bool {
@@ -161,7 +166,10 @@ impl Session {
                     if *is_compact { compact = true; } else { tile = true; }
                 }
                 if compact || tile {
-                    candidates.push(Candidate { before, snapshot: snapshot.clone(), compact, tile });
+                    let certified = self.identity_intervals && before < key.before
+                        && (before + 1..=key.before).all(|stage|
+                            state.identities.contains_key(&Key { before: stage, ..key }));
+                    candidates.push(Candidate { before, snapshot: snapshot.clone(), compact, tile, certified });
                 }
             }
             if !state.entries.contains_key(&key) {
@@ -196,6 +204,8 @@ impl Session {
         c.historical_dead_at_demand += dead as u64;
         c.other_pending_at_demand += pending_other as u64;
         c.same_pending_at_demand += pending_same as u64;
+        c.identity_certified_at_demand += candidates.iter().any(|v| v.certified) as u64;
+        c.identity_certified_without_exact_live += (!live_other && candidates.iter().any(|v| v.certified)) as u64;
         c.cross_stage_live_earlier += candidates.iter().any(|v| v.before < key.before) as u64;
         c.cross_stage_live_later += candidates.iter().any(|v| v.before > key.before) as u64;
         Some(Build {
@@ -218,9 +228,11 @@ impl Session {
         let mut total = Counts::default();
         let mut groups = BTreeMap::<(usize, bool), Counts>::new();
         let (mut keys, mut bytes, mut pending, mut weak, mut live) = (0, 0, 0, 0, 0);
+        let mut identity_keys = 0;
         for shard in &self.shards {
             let state = shard.lock().unwrap();
             keys += state.entries.len();
+            identity_keys += state.identities.len();
             bytes += state.copy_bytes;
             for history in state.entries.values() {
                 pending += history.pending.len();
@@ -243,6 +255,9 @@ impl Session {
             "keys":keys,"snapshot_logical_bytes":bytes,"pending_builds":pending,
             "published_weak_handles":weak,"live_handles_at_wave_end":live,
             "cross_stage_mode":self.cross_stage,
+            "identity_interval_mode":self.identity_intervals,
+            "identity_keys":identity_keys,
+            "max_identity_keys":self.keys_per_shard * SHARDS,
             "sample_divisor":SAMPLE_DIVISOR,"max_keys":self.keys_per_shard*SHARDS,
             "max_snapshot_logical_bytes":self.bytes_per_shard*SHARDS})
     }
@@ -355,6 +370,7 @@ struct Candidate {
     snapshot: Arc<Snapshot>,
     compact: bool,
     tile: bool,
+    certified: bool,
 }
 pub(super) struct Build {
     session: Arc<Session>,
@@ -390,6 +406,8 @@ impl Build {
                 }
             }
         }
+        let certified_mismatch = self.candidates.iter().any(|v| v.certified &&
+            (!valid || v.snapshot.heights != heights || !v.snapshot.same_voxels(runs, height)));
         let equal = earlier || later;
         let bytes = std::mem::size_of_val(runs) + std::mem::size_of_val(&heights);
         let mut state = self.session.shards[self.shard].lock().unwrap();
@@ -425,6 +443,7 @@ impl Build {
         }
         let c = state.counts.entry(self.group).or_default();
         c.successes += 1;
+        c.identity_certified_mismatches += certified_mismatch as u64;
         c.cross_stage_compared_snapshots += if valid { self.candidates.len() as u64 } else { 0 };
         c.cross_stage_equal_earlier += earlier as u64;
         c.cross_stage_equal_later += later as u64;
@@ -489,7 +508,8 @@ impl Installed {
         let mut active = ACTIVE.lock().unwrap();
         assert!(active.is_none());
         let mut session = Session::default();
-        session.cross_stage = std::env::var("RETINA_COLUMN_REUSE_CROSS_STAGE").as_deref() == Ok("1");
+        session.identity_intervals = std::env::var("RETINA_COLUMN_IDENTITY_INTERVALS").as_deref() == Ok("1");
+        session.cross_stage = session.identity_intervals || std::env::var("RETINA_COLUMN_REUSE_CROSS_STAGE").as_deref() == Ok("1");
         let session = Arc::new(session);
         *active = Some(session.clone());
         ENABLED.store(true, Ordering::Release);
@@ -507,3 +527,7 @@ impl Drop for Installed {
 mod tests;
 #[cfg(test)]
 mod cross_stage_tests;
+
+#[cfg(test)]
+mod identity_tests;
+mod identity;
