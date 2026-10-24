@@ -731,7 +731,7 @@ impl Planner<'_> {
                 #[cfg(test)]
                 { observation = self.output_trace.begin(root, x, z); }
                 self.metrics.performance.add(Perf::anchor_builds, 1);
-                #[cfg(test)] dependency_work::count(Work::AnchorBuild, Some(root));
+                #[cfg(test)] let _anchor_cpu = { dependency_work::count(Work::AnchorBuild, Some(root)); worker_phase_probe::AnchorCpu::start(root) };
                 if let Some(definition) = self.roots[root].definition {
                     return self.structure(root, definition, x, z);
                 }
