@@ -251,6 +251,75 @@ impl Live {
             "cached_run_owner_bytes":self.packed.len()*(size_of::<Vec<u32>>()+2*size_of::<usize>())})
     }
 }
+// Joined live storage, not allocation-call counts: a Vec may have grown several
+// times, and its hash table has separate backing. Borrow only; never retain an
+// output or change the source-ordered contributor lists used by generation.
+fn contributor_storage(roots: &[CompletedRoot]) -> Value {
+    let mut lengths = BTreeMap::<usize, usize>::new();
+    let mut capacities = BTreeMap::<usize, usize>::new();
+    let mut columns = 0usize;
+    let mut groups = 0usize;
+    let mut reserved = 0usize;
+    let mut allocated = 0usize;
+    let mut per_root = Vec::with_capacity(roots.len());
+    for (root, completed) in roots.iter().enumerate() {
+        let mut root_groups = 0;
+        let mut root_reserved = 0;
+        for contributors in completed.columns.values() {
+            columns += 1;
+            groups += contributors.len();
+            reserved += contributors.capacity();
+            allocated += usize::from(contributors.capacity() != 0);
+            root_groups += contributors.len();
+            root_reserved += contributors.capacity();
+            *lengths.entry(contributors.len()).or_default() += 1;
+            *capacities.entry(contributors.capacity()).or_default() += 1;
+        }
+        per_root.push(json!({"root":root,"columns":completed.columns.len(),
+            "contributor_groups":root_groups,"reserved_indices":root_reserved}));
+    }
+    json!({"columns":columns,"contributor_groups":groups,
+        "live_allocated_vectors":allocated,"reserved_indices":reserved,
+        "used_payload_bytes":groups*size_of::<usize>(),
+        "reserved_payload_bytes":reserved*size_of::<usize>(),
+        "length_histogram":lengths,"capacity_histogram":capacities,
+        "vector_value_size_bytes":size_of::<Vec<usize>>(),
+        "inline_one_value_size_bytes":size_of::<smallvec::SmallVec<[usize;1]>>(),
+        "roots":per_root})
+}
+
+#[test]
+fn contributor_inventory_counts_capacity_without_changing_order_or_owners() {
+    let output = Arc::new(Output {
+        metadata: None,
+        writes: Vec::new(),
+        columns: Map::default().into(),
+    });
+    let weak = Arc::downgrade(&output);
+    let mut one = Vec::with_capacity(9);
+    one.push(0);
+    let mut many = Vec::with_capacity(17);
+    many.extend([2, 0, 2, 1]);
+    let expected_capacity = one.capacity() + many.capacity();
+    let roots = vec![CompletedRoot {
+        anchors: vec![((0, 0), output.clone())],
+        columns: [(0, Vec::new()), (1, one), (2, many)].into_iter().collect(),
+    }, CompletedRoot { anchors: Vec::new(), columns: Map::default() }];
+    let report = contributor_storage(&roots);
+    assert_eq!(report["columns"], 3);
+    assert_eq!(report["contributor_groups"], 5);
+    assert_eq!(report["live_allocated_vectors"], 2);
+    assert_eq!(report["reserved_indices"], expected_capacity);
+    assert_eq!(report["used_payload_bytes"], 5 * size_of::<usize>());
+    assert_eq!(report["length_histogram"], json!({"0":1,"1":1,"4":1}));
+    assert_eq!(report["roots"][1]["columns"], 0);
+    assert_eq!(roots[0].columns[&2], [2, 0, 2, 1]);
+    assert_eq!(Arc::strong_count(&output), 2);
+    drop(roots);
+    drop(output);
+    assert!(weak.upgrade().is_none(), "report must not retain outputs");
+}
+
 pub(super) fn observe(planner: &Planner<'_>) {
     if ACTIVE_ID.load(Ordering::Acquire) == 0 {
         return;
@@ -288,7 +357,7 @@ pub(super) fn observe(planner: &Planner<'_>) {
         .unwrap()
         .push(json!({"origin":planner.versions.origin,
         "ready_boundary_tiles":planner.ready_columns.len(),"pending_boundary_tiles":pending_tiles,
-        "storage":live.report()}));
+        "storage":live.report(),"completed_contributors":contributor_storage(&planner.completed)}));
 }
 
 #[test]
