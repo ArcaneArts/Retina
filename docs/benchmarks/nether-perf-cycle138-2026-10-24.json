@@ -1,0 +1,322 @@
+{
+  "cycle": 138,
+  "created_utc": "2026-10-24T08:46:21.887331+00:00",
+  "scope": "Test-only first-task and zero-task-gap attribution; existing generation and observer event capture unchanged.",
+  "source": {
+    "revision": "f42c3206bf16a4e59db9eac70625d18b8ab17731",
+    "native_tree": "f94fb710d743006e00e0747c97807c6bd161a82f",
+    "status": ""
+  },
+  "preceding_main": {
+    "revision": "e6f2e5e301337a47415787f8230b8465fe220b0c",
+    "native_tree": "bfa4957348af4f565ce94bd951e4ad7b871f29ed",
+    "status": ""
+  },
+  "provenance": {
+    "revision": "f42c3206bf16a4e59db9eac70625d18b8ab17731",
+    "native_tree": "f94fb710d743006e00e0747c97807c6bd161a82f",
+    "status": "",
+    "library_sha256": "daa63b89e1c64bf302bebcea7935621b7cec1a04153e7ad230842dad435d7b26",
+    "test_executable_sha256": "ec6f69a2d986537b927878eb636dfd7985940e45302ef2ef610bde3dd6e9dd31",
+    "native_test_result": [
+      "226",
+      "0",
+      "59"
+    ]
+  },
+  "ordinary_library_identical_to_main": true,
+  "tests": {
+    "native_passed": 226,
+    "native_failed": 0,
+    "native_ignored": 59,
+    "explicit_gpu_passed": 5,
+    "discrete_time_oracle_interval_triples": 3375
+  },
+  "complete_nbt_chunk_instances": 307200,
+  "comparisons": [
+    "Original immutable reference",
+    "Actual preceding merged C132 main"
+  ],
+  "configuration": {
+    "warmup_regions_per_case": 5,
+    "measured_regions_per_case": 20,
+    "chunks_per_region": 1024,
+    "assembly_workers": 16,
+    "normal_requests": 1,
+    "diagnostic_requests": [
+      1,
+      8
+    ],
+    "request_order": "reverse",
+    "lighting": "GPU enabled, dense disabled",
+    "compression": "zlib",
+    "measured_shader_status": 4
+  },
+  "normal_observations": [
+    {
+      "case": "nether-main-run0",
+      "median_ms": 943.6510835075751,
+      "p95_region_ms": 1306.1970825772732,
+      "maximum_region_ms": 1311.705500120297,
+      "total_ms": 19657.37474989146,
+      "chunks_per_second": 1041.8481745693475,
+      "generation_peak_rss_bytes": 2503819264
+    },
+    {
+      "case": "nether-second-seed-run0",
+      "median_ms": 1078.437437536195,
+      "p95_region_ms": 1368.239164550323,
+      "maximum_region_ms": 1420.2381670475006,
+      "total_ms": 20525.70241689682,
+      "chunks_per_second": 997.7734054616715,
+      "generation_peak_rss_bytes": 2624782336
+    },
+    {
+      "case": "nether-custom-bounds-run0",
+      "median_ms": 664.3832914996892,
+      "p95_region_ms": 759.066739177797,
+      "maximum_region_ms": 767.6410831045359,
+      "total_ms": 13260.442624799907,
+      "chunks_per_second": 1544.4431667535707,
+      "generation_peak_rss_bytes": 2225373184
+    },
+    {
+      "case": "nether-direct-stem-run0",
+      "median_ms": 636.1213959753513,
+      "p95_region_ms": 720.7708958885634,
+      "maximum_region_ms": 761.9799170643091,
+      "total_ms": 12821.749291848391,
+      "chunks_per_second": 1597.28595013322,
+      "generation_peak_rss_bytes": 2078310400
+    },
+    {
+      "case": "overworld-run0",
+      "median_ms": 230.71924992837012,
+      "p95_region_ms": 278.4484456875362,
+      "maximum_region_ms": 296.30504199303687,
+      "total_ms": 4648.306916002184,
+      "chunks_per_second": 4405.905283383051,
+      "generation_peak_rss_bytes": 1516257280
+    }
+  ],
+  "diagnostic_gaps": [
+    {
+      "case": "nether-main",
+      "requests": 1,
+      "root_records": 820,
+      "median_per_region_ms": {
+        "before_first_task": 1.7823134999999999,
+        "between_first_start_and_last_completion": 0.34525649999999997,
+        "after_last_task": 6.5774995,
+        "no_task_events": 0.0,
+        "total": 8.940310499999999,
+        "phase_queue": 0.4769825,
+        "phase_evaluation": 659.0996455,
+        "phase_publication": 39.832393499999995,
+        "phase_return_handoff": 0.44581499999999996,
+        "observer_summary": 17.2107465
+      }
+    },
+    {
+      "case": "nether-second-seed",
+      "requests": 1,
+      "root_records": 820,
+      "median_per_region_ms": {
+        "before_first_task": 1.628791,
+        "between_first_start_and_last_completion": 0.350439,
+        "after_last_task": 3.1068115,
+        "no_task_events": 0.0,
+        "total": 5.2289535,
+        "phase_queue": 0.35502,
+        "phase_evaluation": 765.464334,
+        "phase_publication": 40.547585999999995,
+        "phase_return_handoff": 0.411833,
+        "observer_summary": 17.178420000000003
+      }
+    },
+    {
+      "case": "nether-custom-bounds",
+      "requests": 1,
+      "root_records": 460,
+      "median_per_region_ms": {
+        "before_first_task": 1.0090005,
+        "between_first_start_and_last_completion": 0.219439,
+        "after_last_task": 1.056731,
+        "no_task_events": 0.0,
+        "total": 2.268482,
+        "phase_queue": 0.20439649999999998,
+        "phase_evaluation": 415.01250000000005,
+        "phase_publication": 35.649021,
+        "phase_return_handoff": 0.27171100000000004,
+        "observer_summary": 9.7758125
+      }
+    },
+    {
+      "case": "nether-direct-stem",
+      "requests": 1,
+      "root_records": 460,
+      "median_per_region_ms": {
+        "before_first_task": 0.974456,
+        "between_first_start_and_last_completion": 0.2260185,
+        "after_last_task": 1.1265200000000002,
+        "no_task_events": 0.0,
+        "total": 2.360773,
+        "phase_queue": 0.22008450000000002,
+        "phase_evaluation": 409.936814,
+        "phase_publication": 37.559250500000005,
+        "phase_return_handoff": 0.27127,
+        "observer_summary": 10.2903735
+      }
+    },
+    {
+      "case": "overworld",
+      "requests": 1,
+      "root_records": 0,
+      "median_per_region_ms": {
+        "before_first_task": null,
+        "between_first_start_and_last_completion": null,
+        "after_last_task": null,
+        "no_task_events": null,
+        "total": null,
+        "phase_queue": null,
+        "phase_evaluation": null,
+        "phase_publication": null,
+        "phase_return_handoff": null,
+        "observer_summary": null
+      }
+    },
+    {
+      "case": "nether-main",
+      "requests": 8,
+      "root_records": 820,
+      "median_per_region_ms": {
+        "before_first_task": 0.878873,
+        "between_first_start_and_last_completion": 0.41726399999999997,
+        "after_last_task": 2439.964894,
+        "no_task_events": 0.0,
+        "total": 2441.580136,
+        "phase_queue": 298.117999,
+        "phase_evaluation": 3577.3738110000004,
+        "phase_publication": 69.2725005,
+        "phase_return_handoff": 11.955604999999998,
+        "observer_summary": 27.430377
+      }
+    },
+    {
+      "case": "nether-second-seed",
+      "requests": 8,
+      "root_records": 820,
+      "median_per_region_ms": {
+        "before_first_task": 0.9864375,
+        "between_first_start_and_last_completion": 0.3899455,
+        "after_last_task": 2666.4202299999997,
+        "no_task_events": 0.0,
+        "total": 2667.7487634999998,
+        "phase_queue": 274.3655825,
+        "phase_evaluation": 4138.281582,
+        "phase_publication": 63.089707000000004,
+        "phase_return_handoff": 9.948852500000001,
+        "observer_summary": 29.050251
+      }
+    },
+    {
+      "case": "nether-custom-bounds",
+      "requests": 8,
+      "root_records": 460,
+      "median_per_region_ms": {
+        "before_first_task": 0.569708,
+        "between_first_start_and_last_completion": 0.32798499999999997,
+        "after_last_task": 1749.240083,
+        "no_task_events": 0.0,
+        "total": 1750.4197589999999,
+        "phase_queue": 242.41116549999998,
+        "phase_evaluation": 2487.624793,
+        "phase_publication": 62.59723150000001,
+        "phase_return_handoff": 9.510313,
+        "observer_summary": 17.11627
+      }
+    },
+    {
+      "case": "nether-direct-stem",
+      "requests": 8,
+      "root_records": 460,
+      "median_per_region_ms": {
+        "before_first_task": 0.5288335,
+        "between_first_start_and_last_completion": 0.2675465,
+        "after_last_task": 2055.5506475,
+        "no_task_events": 0.0,
+        "total": 2056.125636,
+        "phase_queue": 235.5376845,
+        "phase_evaluation": 2739.6862095,
+        "phase_publication": 60.763542,
+        "phase_return_handoff": 11.003461999999999,
+        "observer_summary": 17.345895
+      }
+    },
+    {
+      "case": "overworld",
+      "requests": 8,
+      "root_records": 0,
+      "median_per_region_ms": {
+        "before_first_task": null,
+        "between_first_start_and_last_completion": null,
+        "after_last_task": null,
+        "no_task_events": null,
+        "total": null,
+        "phase_queue": null,
+        "phase_evaluation": null,
+        "phase_publication": null,
+        "phase_return_handoff": null,
+        "observer_summary": null
+      }
+    }
+  ],
+  "timing_acceptance": false,
+  "limitations": [
+    "Task-gap values are absence of recorded callback spans, not CPU idle or pure scheduler delay. Registration, cleanup, joins and preemption may contribute.",
+    "Gap durations are summed across sequential roots within each region, then summarized across twenty regions. Concurrent regions overlap and their sums are not batch wall time. Medians of categories need not add to median total.",
+    "First-start/completion offsets are relative to evaluation-window start; longest-task timestamps remain relative to root origin. No-event roots have null boundaries/partitions and full-window no_task_events. Instantaneous events define boundaries without occupying time.",
+    "Normal timing differences from historical main are host-window observations for identical production bytes, not a speedup. Timing confirmation remains deferred.",
+    "Full NBT bytes and MCA membership are exact. Only container metadata and compression representation are excluded; repeated coordinates are not unique-world coverage.",
+    "Held C137 material/scheduling candidate remains unmerged and needs this split measured separately.",
+    "Actual merged rebuild and complete-corpus verification follow merge; the overall subsecond goal remains unmet."
+  ],
+  "recovery": {
+    "evidence_directory": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle138",
+    "worktree": "/tmp/retina-nether-task-gap-attribution",
+    "branch": "codex/nether-task-gap-attribution",
+    "proof_command": "python3 /Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle138/proof.py",
+    "gap_analysis_command": "python3 /Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle138/analyze-gaps.py",
+    "normal_library": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle138/normal.dylib",
+    "test_executable": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle138/native-test-executable",
+    "original_library": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference/libretina_worldgen.dylib",
+    "preceding_main_library": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle132/merged/normal.dylib",
+    "receipts": [
+      "receipt.json",
+      "terminal.json",
+      "source-review.json",
+      "normal-observations.json",
+      "gap-analysis.json",
+      "inventory-new-serial/validation.json",
+      "inventory-new-eight/validation.json"
+    ],
+    "support_sha256": {
+      "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle138/proof.py": "d9b72b0329635f74d7f49dcf4066ec912afc660944f17e325610938c6ae2a78f",
+      "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle138/inventory-validate.py": "0cdd512ec290e8625be240bd2ef725a257716b6e0d9e8d1c1aeaf086ae9128cc",
+      "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle138/manifest.json": "8088d16cb9a33202dd7ee361d27aaf5bccaabb586ad03a4c3dcd085e387932d8",
+      "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle138/harness/benchmark_support.py": "1b314925506bcac223399ed90d7bebdf5becf8b2ff1432853ca01a7f4ced729d",
+      "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle138/harness/native-region-benchmark.py": "fa99c32bd101b468874ebf21784b710a0313fc1c2d7c510f224490b75e40857a",
+      "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle138/harness/nether-performance-suite.py": "ee3d108a122ab4271ef57c85309bdf4b8c2d0afc6ca3e776e76917208fd7089e",
+      "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle138/harness/process_counters.py": "078117c2423c1843dc82d3eb2ea9c43e32e05d8087912ef628b61ae083e5bbd9",
+      "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/profiles/custom.json": "dd1437839e09a35c512cad186d60497f9ab7f12d8881edf98b5d1db56278adb8",
+      "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/profiles/direct-stem.json": "dd1437839e09a35c512cad186d60497f9ab7f12d8881edf98b5d1db56278adb8",
+      "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/profiles/manifest.json": "4d19b5ecfbed28c8af45550fa1ea851983724c0d813d6c53b8a5fb7cccf90e8e",
+      "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/profiles/nether.json": "0cf913a69f3faceb1c8719fb238dbd90961586262af4cd2cfe0c0fd62953a2ff",
+      "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/profiles/overworld.json": "72b80f1d8d799547726a1cefe1357c5c8311ed8b3736403a83c89879e4ee935b"
+    },
+    "reference_sha256": {
+      "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle132/merged/normal.dylib": "daa63b89e1c64bf302bebcea7935621b7cec1a04153e7ad230842dad435d7b26",
+      "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference/libretina_worldgen.dylib": "bafc696984f3f0b66bf06163f516d5379c12283b8a65cfad57048cc70abee31c"
+    }
+  }
+}
