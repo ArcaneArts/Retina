@@ -1,6 +1,6 @@
 use super::*;
 
-fn key() -> Key {
+pub(super) fn key() -> Key {
     Key {
         engine: 11,
         profile: 23,
@@ -19,11 +19,11 @@ fn key() -> Key {
         },
     }
 }
-fn column(runs: &[u32]) -> Arc<ColumnState> {
+pub(super) fn column(runs: &[u32]) -> Arc<ColumnState> {
     Arc::new(ColumnState::from_runs(ColumnRuns::Owned(runs.into())))
 }
 impl Build {
-    fn complete(self, column: &Arc<ColumnState>) {
+    pub(super) fn complete(self, column: &Arc<ColumnState>) {
         let (profile, _, _) = crate::decoration::replay_tests::fixture(42, 0);
         let heights = observed_heights(column, &profile, self.key.request.min_y, self.key.request.height as usize);
         self.complete_with_heights(column, heights);
@@ -229,13 +229,19 @@ fn exact_live_column_reuse_inventory() {
         .ok()
         .map(|v| v.parse::<usize>().unwrap());
     let mut cases = Vec::new();
-    for (name, file, seed) in [
+    // Preserve the default five-case suite; tall storage is explicitly selectable.
+    let definitions: &[_] = if only_case.as_deref() == Some("nether-tall") {
+        &[("nether-tall", "nether-tall.json", 123456789)]
+    } else {
+        &[
         ("nether-main", "nether.json", 123456789),
         ("nether-second-seed", "nether.json", 42),
         ("nether-custom-bounds", "custom.json", 123456789),
         ("nether-direct-stem", "direct-stem.json", 42),
         ("overworld", "overworld.json", 123456789),
-    ] {
+        ]
+    };
+    for &(name, file, seed) in definitions {
         if only_case.as_ref().is_some_and(|v| v != name) {
             continue;
         }
@@ -375,7 +381,7 @@ fn exact_live_column_reuse_inventory() {
                 "warmups":warmups,"readiness_wait_ms":readiness_wait_ms,"waves":waves}),
             );
             fs::write(output.join("report.json"),serde_json::to_vec_pretty(&json!({"timing_acceptance":false,
-                "scope":"Test-only deterministic 1/64 sampling of exact complete column initializer keys. Engine/profile object identities, full CacheKey settings, root count, before index and block X/Z isolate contexts. Limited within-root prefixes are not separately admitted. Original evaluation always supplies generation. Weak references never upgrade or pin values; strong_count is sampled under an observer shard lock and is not a guarantee a future upgrade would succeed. Complete copied material runs and six heights compare every successful repeated key; equivalent noncanonical run encodings are separately reported. No errors, waits, values or RNG are shared. Evidence resets each <=8-region joined wave, with serial pairs. Copies and keys have explicit per-shard caps; skipped evidence is reported, not extrapolated. Logical copy bytes exclude allocation/map/weak-control-block overhead. Diagnostic locks, copies and weak references perturb scheduling and memory; observed opportunities are not normal hit rates, unique saved subtrees, allocations or speedup estimates. Fresh engine and five warmups per case/request count, twenty measured full lit compressed published regions, fixed reverse order and actual shader readiness. No timing acceptance.","cases":cases})).unwrap()).unwrap();
+                "scope":"Test-only deterministic 1/64 sampling of complete column initializers. RETINA_COLUMN_REUSE_CROSS_STAGE=1 samples block X/Z consistently across before stages and additionally captures copied snapshots from other-job weak owners live at demand time. These cross-stage live/equal counters require an available diagnostic snapshot; skipped evidence is reported. Comparisons after the original build establish observational equality, not a safe lookup proof or avoided work. Earlier/later refer to stage indices, not time. Stage and compact/tile equality flags may overlap; equal_any counts their union per initializer and compared_snapshots counts snapshots. without_exact_other_live excludes availability from the same job. Compact/tile tags describe publication paths, not continued cell addressability. Only copied snapshots are retained, never upgraded ColumnState weak owners. Default mode retains exact coordinates/root sampling. Engine/profile object identities, full CacheKey settings, root count, before index and block X/Z isolate contexts. Limited within-root prefixes are not separately admitted. Original evaluation always supplies generation. Weak references never upgrade or pin values; strong_count is sampled under an observer shard lock and is not a guarantee a future upgrade would succeed. Complete copied material runs and six heights compare every successful repeated key; equivalent noncanonical run encodings are separately reported. No errors, waits, values or RNG are shared. Evidence resets each <=8-region joined wave, with serial pairs. Copies and keys have explicit per-shard caps; skipped evidence is reported, not extrapolated. Logical copy bytes exclude allocation/map/weak-control-block overhead. Diagnostic locks, copies and weak references perturb scheduling and memory; observed opportunities are not normal hit rates, unique saved subtrees, allocations or speedup estimates. Fresh engine and five warmups per case/request count, twenty measured full lit compressed published regions, fixed reverse order and actual shader readiness. No timing acceptance.","cases":cases})).unwrap()).unwrap();
             println!("live column inventory {name} callers={callers}: twenty regions complete");
         }
     }

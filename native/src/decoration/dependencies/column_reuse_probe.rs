@@ -23,6 +23,9 @@ struct Key {
     before: usize,
 }
 impl Key {
+    fn column(self) -> Self {
+        Self { before: 0, ..self }
+    }
     fn shard(&self) -> usize {
         let mut hash = super::super::spatial::SpatialHasher::default();
         self.hash(&mut hash);
@@ -61,6 +64,11 @@ counts! {
     live_other_prefix, live_other_substrate, live_other_archive,
     other_live_compact_only, other_live_tile_only, other_live_compact_and_tile,
     prefix_live_compact_only, prefix_live_tile_only, prefix_live_compact_and_tile,
+    cross_stage_live_earlier, cross_stage_live_later,
+    cross_stage_compared_snapshots, cross_stage_equal_earlier, cross_stage_equal_later,
+    cross_stage_equal_any, cross_stage_equal_without_exact_other_live,
+    cross_stage_equal_compact, cross_stage_equal_tile,
+    prefix_cross_stage_equal_any, prefix_cross_stage_equal_without_exact_other_live,
 }
 #[derive(Clone, Copy)]
 pub(super) enum Source {
@@ -91,11 +99,13 @@ impl Snapshot {
 struct History {
     pending: Vec<(u64, u64)>,
     published: Vec<(u64, Weak<ColumnState>, bool)>,
-    snapshot: Option<Snapshot>,
+    snapshot: Option<Arc<Snapshot>>,
 }
 #[derive(Default)]
 struct Shard {
     entries: Map<Key, History>,
+    // One stage entry per admitted exact key. No ColumnState owner is retained.
+    stages: Map<Key, Vec<usize>>,
     counts: BTreeMap<(usize, bool), Counts>,
     next: u64,
     copy_bytes: usize,
@@ -105,6 +115,7 @@ struct Session {
     jobs: Mutex<Vec<Value>>,
     keys_per_shard: usize,
     bytes_per_shard: usize,
+    cross_stage: bool,
 }
 impl Default for Session {
     fn default() -> Self {
@@ -118,18 +129,44 @@ impl Session {
             jobs: Mutex::new(Vec::new()),
             keys_per_shard,
             bytes_per_shard,
+            cross_stage: false,
         }
+    }
+    fn selected(&self, before: usize, x: i32, z: i32) -> bool {
+        selected(if self.cross_stage { 0 } else { before }, x, z)
     }
     fn begin(self: &Arc<Self>, key: Key, job: u64, interior: bool) -> Option<Build> {
         self.begin_with_layout(key, job, interior, false)
     }
     fn begin_with_layout(self: &Arc<Self>, key: Key, job: u64, interior: bool, compact: bool) -> Option<Build> {
-        let shard = key.shard();
+        let shard = if self.cross_stage { key.column().shard() } else { key.shard() };
         let mut state = self.shards[shard].lock().unwrap();
         let group = (key.before, interior);
         if state.entries.len() >= self.keys_per_shard && !state.entries.contains_key(&key) {
             state.counts.entry(group).or_default().skipped_keys += 1;
             return None;
+        }
+        // Capture availability before the original build starts. Keep only
+        // copied diagnostic snapshots, never upgrade the observed weak owner.
+        let mut candidates = Vec::new();
+        if self.cross_stage {
+            for &before in state.stages.get(&key.column()).into_iter().flatten() {
+                if before == key.before { continue; }
+                let previous = &state.entries[&Key { before, ..key }];
+                let Some(snapshot) = &previous.snapshot else { continue; };
+                let mut compact = false;
+                let mut tile = false;
+                for (owner, weak, is_compact) in &previous.published {
+                    if *owner == job || weak.strong_count() == 0 { continue; }
+                    if *is_compact { compact = true; } else { tile = true; }
+                }
+                if compact || tile {
+                    candidates.push(Candidate { before, snapshot: snapshot.clone(), compact, tile });
+                }
+            }
+            if !state.entries.contains_key(&key) {
+                state.stages.entry(key.column()).or_default().push(key.before);
+            }
         }
         state.next += 1;
         let token = state.next;
@@ -159,6 +196,8 @@ impl Session {
         c.historical_dead_at_demand += dead as u64;
         c.other_pending_at_demand += pending_other as u64;
         c.same_pending_at_demand += pending_same as u64;
+        c.cross_stage_live_earlier += candidates.iter().any(|v| v.before < key.before) as u64;
+        c.cross_stage_live_later += candidates.iter().any(|v| v.before > key.before) as u64;
         Some(Build {
             session: self.clone(),
             key,
@@ -170,6 +209,7 @@ impl Session {
             live_compact,
             live_tile,
             compact,
+            candidates,
             source: None,
             finished: false,
         })
@@ -202,6 +242,7 @@ impl Session {
         json!({"counts":total,"groups":groups,"jobs":*self.jobs.lock().unwrap(),
             "keys":keys,"snapshot_logical_bytes":bytes,"pending_builds":pending,
             "published_weak_handles":weak,"live_handles_at_wave_end":live,
+            "cross_stage_mode":self.cross_stage,
             "sample_divisor":SAMPLE_DIVISOR,"max_keys":self.keys_per_shard*SHARDS,
             "max_snapshot_logical_bytes":self.bytes_per_shard*SHARDS})
     }
@@ -272,7 +313,7 @@ impl Job {
     }
     pub(super) fn begin(&self, before: usize, x: i32, z: i32, compact: bool) -> Option<Build> {
         let session = self.session.as_ref()?;
-        if !selected(before, x, z) {
+        if !session.selected(before, x, z) {
             return None;
         }
         let dx = i64::from(x) - self.origin[0];
@@ -309,6 +350,12 @@ fn observed_heights(column: &ColumnState, profile: &WorldProfile, min_y: i32, he
         min_y
     })
 }
+struct Candidate {
+    before: usize,
+    snapshot: Arc<Snapshot>,
+    compact: bool,
+    tile: bool,
+}
 pub(super) struct Build {
     session: Arc<Session>,
     key: Key,
@@ -320,6 +367,7 @@ pub(super) struct Build {
     live_compact: bool,
     live_tile: bool,
     compact: bool,
+    candidates: Vec<Candidate>,
     source: Option<Source>,
     finished: bool,
 }
@@ -331,6 +379,18 @@ impl Build {
         let runs = column.runs.slice();
         let height = self.key.request.height as usize;
         let valid = Snapshot::valid(runs, height);
+        let (mut earlier, mut later, mut compact, mut tile) = (false, false, false, false);
+        if valid {
+            for candidate in &self.candidates {
+                if candidate.snapshot.heights == heights && candidate.snapshot.same_voxels(runs, height) {
+                    earlier |= candidate.before < self.key.before;
+                    later |= candidate.before > self.key.before;
+                    compact |= candidate.compact;
+                    tile |= candidate.tile;
+                }
+            }
+        }
+        let equal = earlier || later;
         let bytes = std::mem::size_of_val(runs) + std::mem::size_of_val(&heights);
         let mut state = self.session.shards[self.shard].lock().unwrap();
         let room = bytes
@@ -351,10 +411,10 @@ impl Build {
                     false,
                 )
             } else if room && valid {
-                history.snapshot = Some(Snapshot {
+                history.snapshot = Some(Arc::new(Snapshot {
                     runs: runs.to_vec(),
                     heights,
-                });
+                }));
                 (false, false, false, false, true, false)
             } else {
                 (false, false, false, false, false, true)
@@ -365,9 +425,18 @@ impl Build {
         }
         let c = state.counts.entry(self.group).or_default();
         c.successes += 1;
+        c.cross_stage_compared_snapshots += if valid { self.candidates.len() as u64 } else { 0 };
+        c.cross_stage_equal_earlier += earlier as u64;
+        c.cross_stage_equal_later += later as u64;
+        c.cross_stage_equal_any += equal as u64;
+        c.cross_stage_equal_without_exact_other_live += (equal && !self.live_other) as u64;
+        c.cross_stage_equal_compact += compact as u64;
+        c.cross_stage_equal_tile += tile as u64;
         match self.source {
             Some(Source::Prefix) => {
                 c.prefix_successes += 1;
+                c.prefix_cross_stage_equal_any += equal as u64;
+                c.prefix_cross_stage_equal_without_exact_other_live += (equal && !self.live_other) as u64;
                 c.live_other_prefix += self.live_other as u64;
                 c.prefix_live_compact_only += (self.live_compact && !self.live_tile) as u64;
                 c.prefix_live_tile_only += (self.live_tile && !self.live_compact) as u64;
@@ -419,7 +488,9 @@ impl Installed {
     fn start() -> Self {
         let mut active = ACTIVE.lock().unwrap();
         assert!(active.is_none());
-        let session = Arc::new(Session::default());
+        let mut session = Session::default();
+        session.cross_stage = std::env::var("RETINA_COLUMN_REUSE_CROSS_STAGE").as_deref() == Ok("1");
+        let session = Arc::new(session);
         *active = Some(session.clone());
         ENABLED.store(true, Ordering::Release);
         Self(session)
@@ -434,3 +505,5 @@ impl Drop for Installed {
 
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod cross_stage_tests;
