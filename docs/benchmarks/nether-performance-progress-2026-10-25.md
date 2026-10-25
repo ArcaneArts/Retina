@@ -1,6 +1,6 @@
 # Nether performance progress — 25 October 2026
 
-Status: implementation and correctness progress; overall goal remains open. Uncontended timing confirmation is deferred at the user’s request. All surviving test data and worktrees are retained.
+Status: implementation and correctness progress; overall goal remains open. Timing confirmation was attempted after functional validation; competing test workloads still prevent full acceptance. All surviving test data and worktrees are retained.
 
 ## Current merged result
 
@@ -59,6 +59,23 @@ The audit of 80 existing ABBA runs confirmed successful completion at 1/2/4/8 ca
 Current `:common:regionPreparationTest` passed actual queued admission, foreground/background fairness, configured budgets 1/3/6/32, promotion, cancellation, failure propagation and concurrent lease closure. Current `:common:netherTerrainTest` passed independent base-column checks at negative/boundary coordinates, all five biome surfaces, six custom-bound/fluid contexts, carvers and vertical biomes. The latter is a terrain-only correctness fixture; complete-region validation comes from the separate NBT comparisons above.
 
 The detailed [validation audit](nether-validation-audit-2026-10-25.json) records source, executable hashes, log paths, checkpoint observations and evidence hashes. All raw data remains under `/Users/cyberpwn/development/retina-benchmark-evidence/completion-audit/`. No performance acceptance or goal-completion claim follows from these functional tests.
+
+## Latest timing confirmation
+
+Three terminal campaigns checked another **819,200 chunk instances across control and candidate runs**, all with exact recorded full-NBT comparisons. The source and native libraries remained unchanged. Each comparable run used five warmups, twenty measured complete regions, one caller and sixteen native workers. Detailed results, evidence paths and assessment hashes are in [the timing confirmation record](nether-timing-confirmation-2026-10-25.json).
+
+The initial full ABBA campaign did not establish acceptance: candidate main and second-seed p95 exceeded one second in one pass, and several cases overlapped known smoke tests or typechecks. Direct-stem throughput appeared 12.7% slower. A focused direct-stem ABBA repeat found no identified competing test overlap and did **not** reproduce that regression: candidate medians were 512.6/511.0 ms and p95 562.7/568.7 ms. This does not establish the cause of the earlier slowdown.
+
+Further focused runs produced these candidate results:
+
+| Profile | Median ms, B / C | p95 ms, B / C | Identified test overlap |
+|---|---:|---:|---|
+| Main | 670.0 / 705.0 | 862.3 / 908.7 | Candidate C and control A |
+| Second seed | 717.0 / 723.3 | 871.2 / 872.6 | Control A only |
+| Custom bounds | 529.9 / 555.4 | 603.0 / 611.0 | Control D only |
+| Overworld | 249.3 / 312.2 | 307.1 / 409.7 | All four passes |
+
+Second-seed and custom-bounds candidate repeats met the serial target without identified test overlap. The entire corpus still lacks a repeated uncontended acceptance comparison, particularly for Overworld and concurrent throughput. Observations cover case intervals, including comparison time; they identify overlap, not a causal latency contribution. Unfavorable and contended results remain in the evidence. No process was stopped and no test data was deleted.
 
 ## Remaining verification and limits
 

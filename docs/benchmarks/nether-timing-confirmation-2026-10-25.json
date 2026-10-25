@@ -1,0 +1,317 @@
+{
+  "source_revision": "de2ff279b789f9b84f4f89289a7869f413338cd4",
+  "scope": "Terminal timing confirmation attempts; no runtime changes",
+  "goal_complete": false,
+  "exact_chunk_instances_all_variants": 819200,
+  "campaigns": [
+    {
+      "path": "/Users/cyberpwn/development/retina-benchmark-evidence/completion-audit/timing-confirmation-p1/assessment.json",
+      "sha256": "f41caa997bf1cec34e049659c1614233251531380829b8d383fd9edc446da771",
+      "assessment": {
+        "terminal": true,
+        "source_unchanged": true,
+        "libraries_unchanged": true,
+        "runs": 20,
+        "exact_chunk_instances": 409600,
+        "all_recorded_comparisons_exact": true,
+        "timing_acceptance": false,
+        "goal_complete": false,
+        "comparisons": [
+          {
+            "case": "nether-custom-bounds",
+            "control_median_drift_percent": 14.12292764531633,
+            "candidate_median_change_percent": -2.606795099683923,
+            "candidate_throughput_change_percent": 1.7531440290888156,
+            "candidate_peak_rss_change_percent": -2.201132686721874,
+            "both_candidate_p95_below_1s": true
+          },
+          {
+            "case": "nether-direct-stem",
+            "control_median_drift_percent": 9.102179690536705,
+            "candidate_median_change_percent": 12.424748187167456,
+            "candidate_throughput_change_percent": -12.745054825461832,
+            "candidate_peak_rss_change_percent": 3.115420940135527,
+            "both_candidate_p95_below_1s": true
+          },
+          {
+            "case": "nether-main",
+            "control_median_drift_percent": 2.300301938430671,
+            "candidate_median_change_percent": 11.751810791393936,
+            "candidate_throughput_change_percent": -8.757196091977216,
+            "candidate_peak_rss_change_percent": 6.917660562271455,
+            "both_candidate_p95_below_1s": false
+          },
+          {
+            "case": "nether-second-seed",
+            "control_median_drift_percent": 9.875722185278835,
+            "candidate_median_change_percent": 0.43569669044825066,
+            "candidate_throughput_change_percent": 0.6858333519388804,
+            "candidate_peak_rss_change_percent": 6.074288012283846,
+            "both_candidate_p95_below_1s": false
+          },
+          {
+            "case": "overworld",
+            "control_median_drift_percent": 40.87465364408052,
+            "candidate_median_change_percent": 10.040628429962851,
+            "candidate_throughput_change_percent": -10.016310402612982,
+            "candidate_peak_rss_change_percent": 5.3533617452304005,
+            "both_candidate_p95_below_1s": true
+          }
+        ],
+        "identified_test_overlap_cases": [
+          {
+            "pass": "candidate-b",
+            "case": "overworld-run0",
+            "pids": [
+              75846,
+              75928,
+              75929,
+              75936
+            ]
+          },
+          {
+            "pass": "candidate-c",
+            "case": "nether-main-run0",
+            "pids": [
+              77036
+            ]
+          },
+          {
+            "pass": "candidate-c",
+            "case": "nether-custom-bounds-run0",
+            "pids": [
+              78407
+            ]
+          },
+          {
+            "pass": "candidate-c",
+            "case": "nether-direct-stem-run0",
+            "pids": [
+              78407,
+              78582,
+              78583,
+              78589
+            ]
+          },
+          {
+            "pass": "control-d",
+            "case": "nether-second-seed-run0",
+            "pids": [
+              81346,
+              81493,
+              81494,
+              81500
+            ]
+          },
+          {
+            "pass": "control-d",
+            "case": "nether-direct-stem-run0",
+            "pids": [
+              82616
+            ]
+          },
+          {
+            "pass": "control-d",
+            "case": "overworld-run0",
+            "pids": [
+              82616,
+              82758,
+              82759,
+              82765
+            ]
+          }
+        ],
+        "decision": "Timing confirmation failed: competing test workloads overlap multiple cases and control drift is material. Preserve all results. Candidate direct-stem slowdown remains unresolved; no causal claim or automatic rollback from this confounded comparison. Do not keep repeating the full contended suite."
+      }
+    },
+    {
+      "path": "/Users/cyberpwn/development/retina-benchmark-evidence/completion-audit/direct-stem-confirmation-p1/assessment.json",
+      "sha256": "1ea10aa6bc621ed5c5a819c127a4a86663b65b9842beee7f78784ce19b354437",
+      "assessment": {
+        "terminal": true,
+        "source_unchanged": true,
+        "libraries_unchanged": true,
+        "chunk_instances": 81920,
+        "all_recorded_comparisons_exact": true,
+        "identified_competing_test_overlap_cases": 0,
+        "comparison": [
+          {
+            "case": "nether-direct-stem",
+            "control_median_drift_percent": -2.4374661032457112,
+            "candidate_median_change_percent": -5.644368101798025,
+            "candidate_throughput_change_percent": 7.537621663407745,
+            "candidate_peak_rss_change_percent": 5.7341849504850995,
+            "both_candidate_p95_below_1s": true
+          }
+        ],
+        "decision": "Earlier direct-stem slowdown did not reproduce in focused ABBA. Both candidate passes meet serial subsecond median/p95. No known competing test/typecheck identified by retained observer. This does not validate other profiles or concurrent throughput, and does not prove the cause of the earlier slowdown. No rollback justified by the earlier confounded run alone.",
+        "goal_complete": false
+      }
+    },
+    {
+      "path": "/Users/cyberpwn/development/retina-benchmark-evidence/completion-audit/remaining-serial-confirmation/assessment.json",
+      "sha256": "d3c4873fe5d9fa6418f80edd78d1d20e27171930ce870a6e52d1d8e14221877f",
+      "assessment": {
+        "terminal": true,
+        "cases": [
+          {
+            "case": "nether-main",
+            "terminal": true,
+            "source_unchanged": true,
+            "libraries_unchanged": true,
+            "candidate_rows": [
+              {
+                "pass": "candidate-b",
+                "median_ms": 669.9584163725376,
+                "p95_ms": 862.2665312490427,
+                "chunks_per_second": 1477.732628483476,
+                "peak_rss_bytes": 2374434816
+              },
+              {
+                "pass": "candidate-c",
+                "median_ms": 705.0464790081605,
+                "p95_ms": 908.6702815489843,
+                "chunks_per_second": 1423.9564206832208,
+                "peak_rss_bytes": 2192195584
+              }
+            ],
+            "comparison": [
+              {
+                "case": "nether-main",
+                "control_median_drift_percent": -6.116475161648038,
+                "candidate_median_change_percent": -1.7835859605217719,
+                "candidate_throughput_change_percent": 1.9169446363401788,
+                "candidate_peak_rss_change_percent": 1.8508368047942758,
+                "both_candidate_p95_below_1s": true
+              }
+            ],
+            "all_parity_exact": true,
+            "chunk_instances": 81920,
+            "test_overlap_passes": [
+              "control-a",
+              "candidate-c"
+            ]
+          },
+          {
+            "case": "nether-second-seed",
+            "terminal": true,
+            "source_unchanged": true,
+            "libraries_unchanged": true,
+            "candidate_rows": [
+              {
+                "pass": "candidate-b",
+                "median_ms": 717.0162084512413,
+                "p95_ms": 871.2200815323741,
+                "chunks_per_second": 1443.4415564678218,
+                "peak_rss_bytes": 2348924928
+              },
+              {
+                "pass": "candidate-c",
+                "median_ms": 723.3418545220047,
+                "p95_ms": 872.6064256276005,
+                "chunks_per_second": 1441.2582198638436,
+                "peak_rss_bytes": 2385707008
+              }
+            ],
+            "comparison": [
+              {
+                "case": "nether-second-seed",
+                "control_median_drift_percent": -3.818339529536907,
+                "candidate_median_change_percent": -4.492155374144069,
+                "candidate_throughput_change_percent": 2.678945329443505,
+                "candidate_peak_rss_change_percent": 3.394002712053612,
+                "both_candidate_p95_below_1s": true
+              }
+            ],
+            "all_parity_exact": true,
+            "chunk_instances": 81920,
+            "test_overlap_passes": [
+              "control-a"
+            ]
+          },
+          {
+            "case": "nether-custom-bounds",
+            "terminal": true,
+            "source_unchanged": true,
+            "libraries_unchanged": true,
+            "candidate_rows": [
+              {
+                "pass": "candidate-b",
+                "median_ms": 529.8745620530099,
+                "p95_ms": 603.0032561160624,
+                "chunks_per_second": 1905.4377441396389,
+                "peak_rss_bytes": 2033664000
+              },
+              {
+                "pass": "candidate-c",
+                "median_ms": 555.4087494965643,
+                "p95_ms": 611.0373429837637,
+                "chunks_per_second": 1843.1240241283908,
+                "peak_rss_bytes": 1929871360
+              }
+            ],
+            "comparison": [
+              {
+                "case": "nether-custom-bounds",
+                "control_median_drift_percent": 13.64227446104016,
+                "candidate_median_change_percent": -2.8709542414508515,
+                "candidate_throughput_change_percent": 3.219619687524755,
+                "candidate_peak_rss_change_percent": -0.42724312932954644,
+                "both_candidate_p95_below_1s": true
+              }
+            ],
+            "all_parity_exact": true,
+            "chunk_instances": 81920,
+            "test_overlap_passes": [
+              "control-d"
+            ]
+          },
+          {
+            "case": "overworld",
+            "terminal": true,
+            "source_unchanged": true,
+            "libraries_unchanged": true,
+            "candidate_rows": [
+              {
+                "pass": "candidate-b",
+                "median_ms": 249.34018799103796,
+                "p95_ms": 307.06861288053915,
+                "chunks_per_second": 4024.5333429362795,
+                "peak_rss_bytes": 1506967552
+              },
+              {
+                "pass": "candidate-c",
+                "median_ms": 312.2442710446194,
+                "p95_ms": 409.7182005527429,
+                "chunks_per_second": 3242.490494676418,
+                "peak_rss_bytes": 1571864576
+              }
+            ],
+            "comparison": [
+              {
+                "case": "overworld",
+                "control_median_drift_percent": 23.701100199020765,
+                "candidate_median_change_percent": -9.007054683305693,
+                "candidate_throughput_change_percent": 10.226154275209431,
+                "candidate_peak_rss_change_percent": 4.050918876418175,
+                "both_candidate_p95_below_1s": true
+              }
+            ],
+            "all_parity_exact": true,
+            "chunk_instances": 81920,
+            "test_overlap_passes": [
+              "control-a",
+              "candidate-b",
+              "candidate-c",
+              "control-d"
+            ]
+          }
+        ],
+        "total_chunk_instances": 327680,
+        "goal_complete": false,
+        "acceptance": "Focused second-seed and custom-bounds candidate passes meet serial target with no identified test overlap. Main has only one unflagged candidate in this focused comparison. All Overworld passes overlap identified tests/typechecks, preventing uncontended regression acceptance. No full-goal timing acceptance."
+      }
+    }
+  ],
+  "interpretation": "The first campaign decision is historical: its direct-stem slowdown was investigated in the subsequent focused campaign and did not reproduce. Known workload overlap prevents full acceptance; absence of identified overlap is not proof of constant machine clocks. All evidence is retained."
+}
