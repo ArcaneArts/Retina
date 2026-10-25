@@ -160,6 +160,24 @@ fn snapshot_patch_tiles(
             tiles.entry((x, z)).or_insert_with(|| mask.clone());
         }
     }
+    // Also discover exact tiles whose per-chunk entries have been displaced but
+    // which an active consumer still owns. The same job-neighborhood filter
+    // bounds these pins; preserve the existing snapshot's per-coordinate choice.
+    for ((cached_key, side), weak) in &cache.live_tiles.entries {
+        if *side != 16 || (CacheKey { x: key.x, z: key.z, ..*cached_key }) != key {
+            continue;
+        }
+        let (x, z) = (cached_key.x, cached_key.z);
+        if x.rem_euclid(16) != 0 || z.rem_euclid(16) != 0
+            || tiles.contains_key(&(x, z)) || !keep(x, z) {
+            continue;
+        }
+        let Some(mask) = weak.upgrade() else { continue };
+        let tile_request = ChunkRequest { chunk_x: x, chunk_z: z, ..request };
+        if exact_patch_halo(tile_request, 16, &mask).is_some() {
+            tiles.insert((x, z), mask);
+        }
+    }
     tiles
 }
 
@@ -329,6 +347,27 @@ mod tests {
             exact_patch_field(r, 16, cache.entries.get(&CacheKey::from(r)).unwrap()).unwrap();
         assert!(Arc::ptr_eq(field.substrate.as_ref().unwrap(), &mask));
         assert_eq!(cache.entries.len(), 256);
+    }
+    #[test]
+    fn job_snapshot_pins_live_index_only_tiles_until_job_release() {
+        let r = request(-16, 16);
+        let owner = mask(r, 16);
+        let weak = Arc::downgrade(&owner);
+        let mut cache = CaveCache::default();
+        cache.live_tiles.insert(r, 16, &owner);
+        assert!(cache.entries.is_empty());
+        assert!(snapshot_patch_tiles(&cache, r, |_, _| false).is_empty());
+        let other = ChunkRequest { seed: r.seed + 1, ..r };
+        assert!(snapshot_patch_tiles(&cache, other, |_, _| true).is_empty());
+        let pins = snapshot_patch_tiles(&cache, r, |x, z| x == -16 && z == 16);
+        assert_eq!(pins.len(), 1);
+        assert!(Arc::ptr_eq(pins.get(&(-16, 16)).unwrap(), &owner));
+        drop(owner);
+        assert!(weak.upgrade().is_some());
+        drop(pins);
+        assert!(weak.upgrade().is_none());
+        assert!(snapshot_patch_tiles(&cache, r, |_, _| true).is_empty());
+        assert!(cache.entries.is_empty());
     }
     #[test]
     fn job_snapshot_retains_only_matching_tiles_without_changing_cache_order() {
