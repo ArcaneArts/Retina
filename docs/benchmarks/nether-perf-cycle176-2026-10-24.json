@@ -1,0 +1,253 @@
+{
+  "cycle": 176,
+  "source": {
+    "revision": "a57d3a04e78d3530c0d2e24b6c839169cf074ea6",
+    "native_tree": "209bdd7580e10a71896026c146648b4ca4be0808",
+    "status": ""
+  },
+  "library_sha256": "7de53962a8252cb688ef0cbecb343797a69d7de5b1295652f0a8fd8b4e9ad201",
+  "diagnostic": {
+    "cycle": 176,
+    "requests": 221,
+    "median_count_ms": 2.792709,
+    "median_emission_ms": 0.01475,
+    "median_count_share": 0.9946710487164389,
+    "all_sums_match_existing_stage": true,
+    "limits": "Single-seed detailed root-zero replies; excludes material prefix scan. Device measurements overlap host spans. Not uncontended acceptance."
+  },
+  "native_tests": 288,
+  "explicit_gpu_tests": 2,
+  "complete_nbt_chunk_instances": 143360,
+  "ordinary_profiles": [
+    {
+      "case": "nether-main-run0",
+      "median_ms": 722.8540625656024,
+      "p95_region_ms": 897.7708203019574,
+      "maximum_region_ms": 1006.0618750285357,
+      "total_ms": 14906.181042082608,
+      "chunks_per_second": 1373.9266913625684,
+      "peak_rss_bytes": 2450980864
+    },
+    {
+      "case": "nether-second-seed-run0",
+      "median_ms": 835.1193335838616,
+      "p95_region_ms": 1108.9925248874354,
+      "maximum_region_ms": 1153.9145421702415,
+      "total_ms": 16705.90029214509,
+      "chunks_per_second": 1225.9141765397371,
+      "peak_rss_bytes": 2396946432
+    },
+    {
+      "case": "nether-custom-bounds-run0",
+      "median_ms": 517.4182705814019,
+      "p95_region_ms": 597.0762565382756,
+      "maximum_region_ms": 597.258459078148,
+      "total_ms": 10507.987834047526,
+      "chunks_per_second": 1948.9935012716319,
+      "peak_rss_bytes": 1986871296
+    },
+    {
+      "case": "nether-direct-stem-run0",
+      "median_ms": 514.6354375174269,
+      "p95_region_ms": 712.5234922859828,
+      "maximum_region_ms": 2067.209874978289,
+      "total_ms": 12003.535374999046,
+      "chunks_per_second": 1706.1640058691148,
+      "peak_rss_bytes": 2032533504
+    },
+    {
+      "case": "overworld-run0",
+      "median_ms": 226.60299995914102,
+      "p95_region_ms": 293.8430643058382,
+      "maximum_region_ms": 304.6252077911049,
+      "total_ms": 4663.857457926497,
+      "chunks_per_second": 4391.214822655665,
+      "peak_rss_bytes": 1713455104
+    },
+    {
+      "case": "nether-tall-run0",
+      "median_ms": 829.2419374920428,
+      "p95_region_ms": 1125.9256083634682,
+      "maximum_region_ms": 1164.6686668973416,
+      "total_ms": 16745.74933410622,
+      "chunks_per_second": 1222.9969284377257,
+      "peak_rss_bytes": 2597060608
+    }
+  ],
+  "production_sections": {
+    "libraries": [
+      "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle172/merged/normal.dylib",
+      "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle176/normal.dylib"
+    ],
+    "sections": [
+      {
+        "section": "__DATA,__bss",
+        "old_size": 1712,
+        "new_size": 1712,
+        "identical": true,
+        "different_bytes": 0,
+        "first_differences": []
+      },
+      {
+        "section": "__DATA,__common",
+        "old_size": 1832,
+        "new_size": 1832,
+        "identical": true,
+        "different_bytes": 0,
+        "first_differences": []
+      },
+      {
+        "section": "__DATA,__data",
+        "old_size": 2744,
+        "new_size": 2744,
+        "identical": true,
+        "different_bytes": 0,
+        "first_differences": []
+      },
+      {
+        "section": "__DATA,__la_symbol_ptr",
+        "old_size": 1328,
+        "new_size": 1328,
+        "identical": true,
+        "different_bytes": 0,
+        "first_differences": []
+      },
+      {
+        "section": "__DATA,__thread_bss",
+        "old_size": 560,
+        "new_size": 560,
+        "identical": true,
+        "different_bytes": 0,
+        "first_differences": []
+      },
+      {
+        "section": "__DATA,__thread_data",
+        "old_size": 73,
+        "new_size": 73,
+        "identical": true,
+        "different_bytes": 0,
+        "first_differences": []
+      },
+      {
+        "section": "__DATA,__thread_vars",
+        "old_size": 408,
+        "new_size": 408,
+        "identical": true,
+        "different_bytes": 0,
+        "first_differences": []
+      },
+      {
+        "section": "__DATA_CONST,__const",
+        "old_size": 203208,
+        "new_size": 203208,
+        "identical": false,
+        "different_bytes": 21,
+        "first_differences": [
+          46296,
+          46320,
+          46344,
+          46368,
+          46392,
+          46416,
+          46440,
+          46464,
+          46488,
+          46512,
+          46536,
+          46584,
+          46608,
+          46632,
+          46656,
+          46680,
+          46704,
+          46728,
+          47440,
+          47464,
+          47465
+        ]
+      },
+      {
+        "section": "__DATA_CONST,__got",
+        "old_size": 64,
+        "new_size": 64,
+        "identical": true,
+        "different_bytes": 0,
+        "first_differences": []
+      },
+      {
+        "section": "__TEXT,__const",
+        "old_size": 488416,
+        "new_size": 488416,
+        "identical": true,
+        "different_bytes": 0,
+        "first_differences": []
+      },
+      {
+        "section": "__TEXT,__cstring",
+        "old_size": 187419,
+        "new_size": 187419,
+        "identical": true,
+        "different_bytes": 0,
+        "first_differences": []
+      },
+      {
+        "section": "__TEXT,__eh_frame",
+        "old_size": 602752,
+        "new_size": 602752,
+        "identical": true,
+        "different_bytes": 0,
+        "first_differences": []
+      },
+      {
+        "section": "__TEXT,__gcc_except_tab",
+        "old_size": 234048,
+        "new_size": 234048,
+        "identical": true,
+        "different_bytes": 0,
+        "first_differences": []
+      },
+      {
+        "section": "__TEXT,__stub_helper",
+        "old_size": 2016,
+        "new_size": 2016,
+        "identical": true,
+        "different_bytes": 0,
+        "first_differences": []
+      },
+      {
+        "section": "__TEXT,__stubs",
+        "old_size": 1992,
+        "new_size": 1992,
+        "identical": true,
+        "different_bytes": 0,
+        "first_differences": []
+      },
+      {
+        "section": "__TEXT,__text",
+        "old_size": 5430984,
+        "new_size": 5430984,
+        "identical": true,
+        "different_bytes": 0,
+        "first_differences": []
+      },
+      {
+        "section": "__TEXT,__unwind_info",
+        "old_size": 101608,
+        "new_size": 101608,
+        "identical": true,
+        "different_bytes": 0,
+        "first_differences": []
+      }
+    ],
+    "observer_symbols": [],
+    "scope": "Raw section bytes; __text equality proves emitted instruction bytes equal, not whole-library byte identity."
+  },
+  "limits": "Test-only attribution, no production speedup claimed. Timing acceptance deferred; external activity captured in host logs. Prefix scans excluded from material count/emission timers. Missing pairs remain null.",
+  "evidence_root": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle176",
+  "reproduction": [
+    "python3 native-proof.py",
+    "python3 detail-proof.py",
+    "python3 ordinary-proof.py"
+  ],
+  "prior_oracle_note": "C175 found shared Cargo target variant reuse in standalone oracle builds; final C175 oracle cleaned the native package per build and verified shader identity. No standalone terrain oracle is used for this cycle."
+}

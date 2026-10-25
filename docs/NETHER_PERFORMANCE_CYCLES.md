@@ -3448,3 +3448,28 @@ sixteen workers, reverse order, GPU lighting. No speedup or quiet timing accepta
 is claimed. Worktrees and evidence remain preserved.
 
 See `docs/benchmarks/nether-perf-cycle172-2026-10-24.json` and external `cycle172/`.
+
+
+## Cycle 176 — Separate material counting and emission
+
+The test-only terrain reply report now preserves the existing material-count and
+material-emission device timestamp durations separately. Invalid or missing
+pairs remain null. No extra GPU queries, shader changes, or production timing
+ABI changes are introduced. These device spans overlap host intervals and exclude
+prefix scans; their sum equals the existing material counter when both are valid.
+
+Across 221 main-seed root-zero terrain replies, median counting takes **2.793 ms**
+and emission **0.01475 ms**. The median per-request counting share is **99.47%**.
+Every pair was available and reconciled with the existing counter. This identifies
+counting, including per-voxel surface-program evaluation, as the next GPU target.
+It does not demonstrate a production speedup.
+
+**288 native tests, two explicit GPU tests, and 143,360 complete chunk-NBT
+comparisons pass** against both original and preceding merged C172 corpora.
+The detailed run and six ordinary profiles each use five warmups and twenty
+measurements, one request, sixteen workers, reverse order and GPU lighting.
+Ordinary emitted instruction bytes match C172; 21 bytes in the constant section
+differ, so whole-library identity is not claimed. No observer symbols remain.
+Quiet timing acceptance remains deferred. All worktrees and evidence are retained.
+
+See `docs/benchmarks/nether-perf-cycle176-2026-10-24.json` and external `cycle176/`.
