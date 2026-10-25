@@ -3420,3 +3420,31 @@ This is diagnostic evidence, not a production improvement or quiet timing
 acceptance. All worktrees and raw evidence remain preserved.
 
 See `docs/benchmarks/nether-perf-cycle171-2026-10-24.json` and external `cycle171/`.
+
+
+## Cycle 172 — Host work within terrain GPU replies
+
+The test-only reply observer now carries elapsed and optional calling-thread CPU
+endpoints through terrain polling/completion and material emission/completion.
+Intervals use the job's WAIT_COPY origin and preserve whole-batch attribution.
+Missing CPU clocks and failed reply snapshots remain unavailable. Ordinary
+production code contains no observer; its machine-code section is unchanged.
+
+Across 220 main-seed basalt-stage replies, median terrain polling is **5.343 ms**,
+while material polling is **0.000334 ms**. Combined poll thread CPU is **0.047 ms**.
+Terrain completion, material emission and material completion respectively take
+**0.197 / 0.092 / 0.770 ms** elapsed, with similar CPU time. The median interval
+before first advance is **5.758 ms**, and between material submission and the
+next advance **0.939 ms**. These gaps include GPU and other-job work, not proven
+idle time. The evidence directs further investigation toward first-stage GPU
+work rather than CPU copies or material-continuation blocking.
+
+**288 native tests and one explicit real-GPU continuation test pass.** The GPU
+fixture verifies ordered intervals through both stages at submission depths one
+and two, bounded by complete-job WAIT_COPY. The detailed main-seed run plus six
+ordinary profiles compare **143,360 chunk instances** against original and actual
+C171 complete NBT. Five warmups/twenty measurements per case, one request,
+sixteen workers, reverse order, GPU lighting. No speedup or quiet timing acceptance
+is claimed. Worktrees and evidence remain preserved.
+
+See `docs/benchmarks/nether-perf-cycle172-2026-10-24.json` and external `cycle172/`.
