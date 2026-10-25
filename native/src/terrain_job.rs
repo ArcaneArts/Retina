@@ -144,12 +144,16 @@ impl<'a> TerrainJob<'a> {
                 let (field, mask) = if let Some(initial) =
                     self.initial.filter(|field| covers(field, x - 1, z - 1, 18))
                 {
+                    let crop_started = self.metrics.performance.start();
                     let mut columns = Vec::with_capacity(18 * 18 * crate::COLUMNS);
                     for dz in -1..=16 {
                         for dx in -1..=16 {
                             columns.extend_from_slice(initial.chunk(x + dx, z + dz));
                         }
                     }
+                    self.metrics.performance.elapsed(Perf::terrain_initial_crop_nanos, crop_started);
+                    self.metrics.performance.add(Perf::terrain_initial_crop_bytes,
+                        (columns.len() * std::mem::size_of::<crate::Column>()) as u64);
                     self.metrics
                         .performance
                         .add(Perf::terrain_initial_tiles_reused, 1);
