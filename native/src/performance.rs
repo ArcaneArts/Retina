@@ -47,6 +47,7 @@ counters! {
     terrain_job_lock_nanos, terrain_job_join_nanos, shared_material_columns,
     terrain_requests, terrain_cache_hits, terrain_exact_tile_cache_hits, terrain_generated_tiles,
     terrain_unique_tiles, terrain_generated_chunks,
+    terrain_live_index_hits, terrain_live_index_expired, terrain_live_index_absent,
     terrain_reuse_crop_nanos, terrain_reuse_crop_bytes, terrain_reuse_crop_hits,
     terrain_initial_crop_nanos, terrain_initial_crop_bytes,
     terrain_cache_requests_nanos, terrain_column_cache_wait_nanos, terrain_column_cache_hold_nanos,

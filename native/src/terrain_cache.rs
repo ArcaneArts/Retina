@@ -15,6 +15,11 @@ pub(crate) struct LiveTiles {
     order: std::collections::VecDeque<(CacheKey, u32)>,
     limit: usize,
 }
+pub(crate) enum LiveLookup {
+    Live(Arc<CaveMask>),
+    Expired,
+    Absent,
+}
 impl Default for LiveTiles {
     fn default() -> Self { Self::new(512) }
 }
@@ -22,8 +27,21 @@ impl LiveTiles {
     fn new(limit: usize) -> Self {
         Self { entries: HashMap::new(), order: Default::default(), limit }
     }
-    pub(crate) fn get(&self, request: ChunkRequest, side: u32) -> Option<Arc<CaveMask>> {
-        self.entries.get(&(CacheKey::from(request), side))?.upgrade()
+    pub(crate) fn lookup(&self, request: ChunkRequest, side: u32) -> LiveLookup {
+        match self.entries.get(&(CacheKey::from(request), side)) {
+            None => LiveLookup::Absent,
+            Some(entry) => match entry.upgrade() {
+                Some(mask) => LiveLookup::Live(mask),
+                None => LiveLookup::Expired,
+            },
+        }
+    }
+    #[cfg(test)]
+    fn get(&self, request: ChunkRequest, side: u32) -> Option<Arc<CaveMask>> {
+        match self.lookup(request, side) {
+            LiveLookup::Live(mask) => Some(mask),
+            _ => None,
+        }
     }
     pub(crate) fn insert(&mut self, request: ChunkRequest, side: u32, mask: &Arc<CaveMask>) {
         if self.limit == 0 || exact_patch_halo(request, side, mask).is_none() { return; }
@@ -196,6 +214,7 @@ mod tests {
         let mut live = LiveTiles::new(4);
         live.insert(r, 2, &mask);
         assert!(Arc::ptr_eq(&live.get(r, 2).unwrap(), &mask));
+        assert!(matches!(live.lookup(r, 3), LiveLookup::Absent));
         assert!(live.get(r, 3).is_none());
         for changed in [
             ChunkRequest { seed: r.seed + 1, ..r },
@@ -210,6 +229,7 @@ mod tests {
         ] { assert!(live.get(changed, 2).is_none()); }
         let columns = Arc::downgrade(&mask.columns.as_ref().unwrap().columns);
         drop(mask);
+        assert!(matches!(live.lookup(r, 2), LiveLookup::Expired));
         assert!(live.get(r, 2).is_none());
         assert!(columns.upgrade().is_none());
     }

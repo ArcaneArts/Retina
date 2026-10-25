@@ -1127,8 +1127,17 @@ impl TerrainEngine {
             }
         }
         if patch_halo && side > 1 {
-            let live = self.caves.lock().map_err(|_| "cave cache poisoned")?
-                .live_tiles.get(request, side);
+            let lookup = self.caves.lock().map_err(|_| "cave cache poisoned")?
+                .live_tiles.lookup(request, side);
+            let (live, counter) = match lookup {
+                terrain_cache::LiveLookup::Live(mask) =>
+                    (Some(mask), performance::Counter::terrain_live_index_hits),
+                terrain_cache::LiveLookup::Expired =>
+                    (None, performance::Counter::terrain_live_index_expired),
+                terrain_cache::LiveLookup::Absent =>
+                    (None, performance::Counter::terrain_live_index_absent),
+            };
+            if let Some(p) = &performance { p.performance.add(counter, 1); }
             if let Some(mask) = live {
                 if let Some(field) = self.cached_patch_field(request, side, &mask)? {
                     if let Some(p) = &performance {
