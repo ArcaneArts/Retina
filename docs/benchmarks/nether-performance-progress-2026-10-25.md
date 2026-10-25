@@ -1,0 +1,136 @@
+# Nether performance progress — 25 October 2026
+
+Status: implementation and correctness progress; overall goal remains open. Uncontended timing confirmation is deferred at the user’s request. All surviving test data and worktrees are retained.
+
+## Current merged result
+
+Revision `dbf04f0796e628e22acfda94194621a47b077229` (PR #232), native SHA-256 `80a34fb6ce7ac55303ae62134c4f473171fb13c7bbd9f624855d0f6f842b90ae`. The native library was built from `2aff4c15314f3bba2426cfe2c0d820bae0007ddc`; its native source tree is identical to the merged revision. The source and library hash remained unchanged throughout the run.
+
+Two complete five-profile passes used five warmup regions and twenty measured regions per profile, one caller, sixteen native workers, lighting enabled, zlib MCA publication, and actual shader status 4 for every measured region. The timer includes complete generation and synchronous cleanup.
+
+All 204,800 measured chunk instances matched both the original corpus and the fresh preceding native implementation. These are repeated chunk instances, not 204,800 unique coordinates. The common locate test also passed.
+
+| Profile | Pass | Median ms | p95 ms | Maximum ms | Chunks/s | Peak RSS GiB |
+|---|---:|---:|---:|---:|---:|---:|
+| nether-main | 0 | 684.8 | 875.8 | 890.6 | 1464.2 | 2.26 |
+| nether-second-seed | 0 | 727.0 | 864.1 | 876.8 | 1455.1 | 2.21 |
+| nether-custom-bounds | 0 | 522.5 | 563.4 | 581.8 | 1963.1 | 1.95 |
+| nether-direct-stem | 0 | 510.0 | 598.4 | 627.5 | 1941.1 | 1.95 |
+| overworld | 0 | 224.5 | 259.0 | 270.6 | 4555.2 | 1.70 |
+| nether-main | 1 | 684.2 | 890.8 | 910.7 | 1460.4 | 2.28 |
+| nether-second-seed | 1 | 715.2 | 871.1 | 904.5 | 1440.4 | 2.15 |
+| nether-custom-bounds | 1 | 526.5 | 588.8 | 593.3 | 1923.6 | 1.84 |
+| nether-direct-stem | 1 | 512.8 | 568.6 | 621.3 | 1977.2 | 1.92 |
+| overworld | 1 | 214.4 | 278.6 | 290.2 | 4629.5 | 1.82 |
+
+The process observations captured a search process at 1,066% CPU and unidentified Python activity. These measurements establish observed post-merge behavior, not uncontended acceptance or a causal speedup for PR #232. No other workload was stopped.
+
+## Starting measurements
+
+The original investigation reported 12,875 ms Nether median and 18,861 ms p95 with one warmup and six measured regions. That exploratory run differs from the later standard suite and must not be used as a matched speedup ratio. The standard suite’s original reference measurements are recorded below; they too retain their original contention limitations.
+
+| Original standard profile | Median ms | p95 ms |
+|---|---:|---:|
+| nether-main-run0 | 16525.4 | 24083.5 |
+| nether-second-seed-run0 | 14329.7 | 17859.7 |
+| nether-custom-bounds-run0 | 6168.2 | 7926.7 |
+| nether-direct-stem-run0 | 5990.1 | 6297.9 |
+| overworld-run0 | 222.6 | 257.0 |
+
+## Architecture and evidence
+
+- PR #171 added complete-output measurement and opt-in attribution. The original standard corpus contains all five Nether biomes, fossils, fortresses, bastions and ruined portals across two seeds, plus custom profiles and Overworld.
+- PR #172 introduced job-owned structure-start reuse and batched fossil probes. The recorded diagnostic region reduced repeated structure builds from 8,841 to zero and GPU jobs from 2,343 to 118; those are work counters, not independent wall-time savings.
+- PR #173 introduced completed ordered dependency views and column versions. Current code retains synchronous recursive boundary work and completes immutable views only after target callbacks release access.
+- PR #174 reused initial terrain and material buffers. PR #232 adds a bounded weak index for exact terrain tiles still owned by active jobs; it does not retain buffers by itself.
+- PR #175 addressed boundary-state disposal. Current final planning, distribution and retirement join before generation returns; cleanup has not been moved outside the reported interval.
+- PR #176 introduced bounded foreground preference: a waiting background request receives every fifth admission. Later cycles address native contention and ordered evaluation; caller counts remain separate from worker counts.
+
+Current complete-NBT comparison reads every decompressed chunk payload and compares bytes, including all NBT fields. MCA sector layout, padding, timestamps and compression representation are outside the payload comparison. Chunk membership is checked separately. Expected NBT is not rewritten to accommodate a mismatch.
+
+## Remaining verification and limits
+
+- Repeated uncontended timing acceptance and a final matched Overworld regression judgment remain open. The latest ordinary 1/2/4/8-caller comparisons include interference and drift; unfavorable results are retained. The initial two-caller second-seed regression was investigated and did not reproduce materially in the focused repeat, but that is not proof of a speedup.
+- The full requirement audit is still in progress. Merged PRs and historical summaries alone do not prove every invariant or every historical cycle’s benchmark requirements.
+- Historical raw suite paths for cycles 2–5 are currently absent at their recorded locations. Their committed reports survive. Do not represent those reports as independently revalidated raw evidence. The original reference corpus and recent full-NBT comparisons remain available.
+- Recent live portal tests passed with and without DH, including unloads with eight active requests. A paused-menu intervention during the DH run makes its timing unsuitable for performance acceptance.
+- Sustained retention and concurrent correctness evidence is recorded in the cycle 197 report; this does not prove an unlimited memory bound for every possible world profile.
+- No final completion claim is made by this report.
+
+## Evidence and reproduction
+
+The adjacent JSON records all per-run timings, comparisons and configuration. Full commands, terminal receipts, binaries, worlds and process observations remain outside Git:
+
+- `/Users/cyberpwn/development/retina-benchmark-evidence/cycle197/job-pins/postmerge-runs.json`
+- `/Users/cyberpwn/development/retina-benchmark-evidence/cycle197/job-pins/postmerge-regions/suite.json`
+- `/Users/cyberpwn/development/retina-benchmark-evidence/cycle197/job-pins/isolated-builds/receipt.json`
+- `/Users/cyberpwn/development/retina-benchmark-evidence/completion-audit/requirements-ledger.json`
+
+Reproduce using the exact command arrays in the terminal receipt, changing only the output directory to a fresh location. Preserve the retained original reference and preceding control directories. For a rebuilt binary, use an isolated Cargo target directory and record its actual source and hash; do not assume the shared Cargo target contains the requested revision.
+
+## Merged delivery inventory
+
+GitHub confirmed the following PRs merged when this report was prepared. Rejected experiments are not included. This inventory records delivery, not blanket performance acceptance.
+
+- [#171](https://github.com/ArcaneArts/Retina/pull/171): Measure Nether dependency costs and preserve a complete output corpus (`34645a375a0f`).
+- [#172](https://github.com/ArcaneArts/Retina/pull/172): Reuse job-owned structure starts and batch Nether fossil probes (`b4fc6d3fdd22`).
+- [#173](https://github.com/ArcaneArts/Retina/pull/173): Reuse completed ordered dependency state and column versions (`7e0721aed9a4`).
+- [#174](https://github.com/ArcaneArts/Retina/pull/174): Reuse job terrain and immutable base-material buffers (`1c12e2ec652c`).
+- [#175](https://github.com/ArcaneArts/Retina/pull/175): Reduce Nether boundary-state cleanup cost (`e20ea131ef97`).
+- [#176](https://github.com/ArcaneArts/Retina/pull/176): Prioritize portal region preparation without starving background generation (`60a7e3922938`).
+- [#177](https://github.com/ArcaneArts/Retina/pull/177): Reduce ordered dependency read allocations and column cache storage (`fbbf5455e748`).
+- [#178](https://github.com/ArcaneArts/Retina/pull/178): Reduce contention in ordered dependency cache lookups (`d66caee66cbf`).
+- [#179](https://github.com/ArcaneArts/Retina/pull/179): Avoid repeated map lookups for nearby job terrain tiles (`ca2fde8ba1b0`).
+- [#180](https://github.com/ArcaneArts/Retina/pull/180): Defer deterministic Nether ore tests to ordered replay (`7a2670a70d80`).
+- [#181](https://github.com/ArcaneArts/Retina/pull/181): Bound Nether worker tasks to one source root (`6e125da6f372`).
+- [#182](https://github.com/ArcaneArts/Retina/pull/182): Borrow cached Nether columns for scalar reads (`7dde4f1fedff`).
+- [#183](https://github.com/ArcaneArts/Retina/pull/183): Preserve height-only Nether dependency queries (`96e1603655f3`).
+- [#184](https://github.com/ArcaneArts/Retina/pull/184): Reduce retained Nether command index storage (`1abc51771eca`).
+- [#185](https://github.com/ArcaneArts/Retina/pull/185): Skip impossible Nether boundary writers using placement footprints (`38c4ff2fc516`).
+- [#186](https://github.com/ArcaneArts/Retina/pull/186): Refine boundary ore footprints to reduce dependency work (`192eeec7c943`).
+- [#187](https://github.com/ArcaneArts/Retina/pull/187): Avoid locking repeated prior-column reads in ordered generation (`26878d668d12`).
+- [#188](https://github.com/ArcaneArts/Retina/pull/188): Avoid redundant replay of live Nether feature writes (`28a87cdd330b`).
+- [#189](https://github.com/ArcaneArts/Retina/pull/189): Borrow terrain references during ordered metadata reads (`5d533eff7742`).
+- [#190](https://github.com/ArcaneArts/Retina/pull/190): Attribute terrain work and generation memory in benchmarks (`ea148fd298f4`).
+- [#191](https://github.com/ArcaneArts/Retina/pull/191): Reuse exact cached terrain tiles across Nether generation jobs (`e5adbd17ecdd`).
+- [#192](https://github.com/ArcaneArts/Retina/pull/192): Index feature-local column reads by spatial position (`74f4e1b7c48e`).
+- [#193](https://github.com/ArcaneArts/Retina/pull/193): Reuse completed Nether column states across neighboring regions (`b34d8804aca9`).
+- [#194](https://github.com/ArcaneArts/Retina/pull/194): Shrink completed Nether snapshots to region edges (`e50eddd2e97f`).
+- [#195](https://github.com/ArcaneArts/Retina/pull/195): Reuse exact completed Nether exterior prefix states (`0132a7435842`).
+- [#196](https://github.com/ArcaneArts/Retina/pull/196): Measure Nether material read reuse by feature root (`333afdc1846f`).
+- [#197](https://github.com/ArcaneArts/Retina/pull/197): Measure Nether version allocation and retirement costs (`d44156efdc5e`).
+- [#198](https://github.com/ArcaneArts/Retina/pull/198): Measure Nether material read backing and live storage (`542f41a19d0a`).
+- [#199](https://github.com/ArcaneArts/Retina/pull/199): Measure Nether root CPU phases and worker task occupancy (`60e210d1b0e4`).
+- [#200](https://github.com/ArcaneArts/Retina/pull/200): Attribute dependency joins within Nether root tasks (`c05a1b2124a9`).
+- [#201](https://github.com/ArcaneArts/Retina/pull/201): Attribute Nether task CPU and terrain service latency (`b3ab2a082163`).
+- [#202](https://github.com/ArcaneArts/Retina/pull/202): Attribute Nether cache lookup and feature GPU waits (`0370ac83fb46`).
+- [#203](https://github.com/ArcaneArts/Retina/pull/203): Record merged Nether proof and held performance experiments (`fa838f8097ef`).
+- [#204](https://github.com/ArcaneArts/Retina/pull/204): Measure Nether terrain overlap and request footprints (`1630ed05d498`).
+- [#205](https://github.com/ArcaneArts/Retina/pull/205): Measure cache ownership after completed region generation (`34a2f40ba574`).
+- [#206](https://github.com/ArcaneArts/Retina/pull/206): Attribute retained GPU buffers after region generation (`c3a9c24d6d61`).
+- [#207](https://github.com/ArcaneArts/Retina/pull/207): Measure ordered Nether column edit workload (`c7872e93f1db`).
+- [#208](https://github.com/ArcaneArts/Retina/pull/208): Measure Nether blob output reuse opportunities (`f15d3d2875ec`).
+- [#209](https://github.com/ArcaneArts/Retina/pull/209): Measure completed and fallback Nether prefix work (`f0183a1461fb`).
+- [#210](https://github.com/ArcaneArts/Retina/pull/210): Document Nether root CPU and memory attribution (`a3eea3e490cc`).
+- [#211](https://github.com/ArcaneArts/Retina/pull/211): Attribute Nether dependency work without per-lookup event capture (`cbc6867512f8`).
+- [#212](https://github.com/ArcaneArts/Retina/pull/212): Measure unused Nether dependency-column heights (`0945d3cef48b`).
+- [#213](https://github.com/ArcaneArts/Retina/pull/213): test: measure live Nether column reuse without changing release code (`86be5825a5e5`).
+- [#214](https://github.com/ArcaneArts/Retina/pull/214): test: attribute Nether initializer CPU without nested double counting (`9e5a3209ad67`).
+- [#215](https://github.com/ArcaneArts/Retina/pull/215): test: attribute sampled Nether column-loading CPU (`117c1e14ee6f`).
+- [#216](https://github.com/ArcaneArts/Retina/pull/216): test: cover direct Nether planner queries in CPU attribution (`fa63bc912e5c`).
+- [#217](https://github.com/ArcaneArts/Retina/pull/217): Profile concurrent region requests and expose evaluation join tails (`e6f2e5e30133`).
+- [#218](https://github.com/ArcaneArts/Retina/pull/218): Separate root callback admission and completion gaps (`acccb0e0e0ce`).
+- [#219](https://github.com/ArcaneArts/Retina/pull/219): Attribute sampled column CPU by lookup and initialization path (`ce3cf5aaa0cd`).
+- [#220](https://github.com/ArcaneArts/Retina/pull/220): Reuse material data across ordered generation (`625518882839`).
+- [#221](https://github.com/ArcaneArts/Retina/pull/221): Continue ordered Nether roots from their final worker lane (`5df88525fc7d`).
+- [#222](https://github.com/ArcaneArts/Retina/pull/222): Measure completed-root contributor storage in test inventory (`31c1d2957b17`).
+- [#223](https://github.com/ArcaneArts/Retina/pull/223): Measure live column reuse by provider storage layout (`61b6937c8c6c`).
+- [#224](https://github.com/ArcaneArts/Retina/pull/224): Measure live cross-stage column equality without retaining generation state (`55db5eb55403`).
+- [#225](https://github.com/ArcaneArts/Retina/pull/225): Measure demand-time availability of unchanged column proofs (`c7024009b4ef`).
+- [#226](https://github.com/ArcaneArts/Retina/pull/226): Attribute terrain GPU reply delays to per-job timings (`6e91869f9f0e`).
+- [#227](https://github.com/ArcaneArts/Retina/pull/227): Measure host processing within terrain GPU replies (`89d496b81c97`).
+- [#228](https://github.com/ArcaneArts/Retina/pull/228): Separate material counting and emission GPU diagnostics (`07a4fa4be7b4`).
+- [#229](https://github.com/ArcaneArts/Retina/pull/229): Align concurrent dependency diagnostics on a shared clock (`1a23ace02d8a`).
+- [#230](https://github.com/ArcaneArts/Retina/pull/230): Attribute terrain field copying and cache repopulation costs (`2dfddaf54167`).
+- [#231](https://github.com/ArcaneArts/Retina/pull/231): Avoid unused biome probes in unrestricted searches (`618f72088d4c`).
+- [#232](https://github.com/ArcaneArts/Retina/pull/232): Reuse live exact terrain tiles across generation jobs (`dbf04f0796e6`).
