@@ -1,0 +1,248 @@
+{
+  "cycle": 197,
+  "status": "Correctness, work-reduction, lifetime, and combined integration validated; uncontended timing confirmation deferred by user",
+  "source": "819ba00566ca993fd6ef9e934b083ce0441429d5",
+  "native_tree": "2618d10bc8fc7b3d3b3b344888ee2de49aa07100",
+  "preceding_merge": "618f72088d4c06d2d963ce8a8e9d3d56de3b7aba",
+  "change": "A bounded weak index discovers exact terrain tiles still held by active jobs after per-chunk cache eviction. Existing job snapshots may retain nearby matching tiles until the job finishes. Exact profile/seed/height/geometry keys and existing cache preference remain unchanged.",
+  "native_library_sha256": "80a34fb6ce7ac55303ae62134c4f473171fb13c7bbd9f624855d0f6f842b90ae",
+  "tests": {
+    "passed": 292,
+    "failed": 0,
+    "ignored": 74
+  },
+  "fresh_candidate_chunk_instances": 1024000,
+  "candidate_output_comparisons_exact": true,
+  "count_scope": "Repeated generated instances, not unique coordinates; each instance counted once regardless of number of reference comparisons. Includes instrumented runs separately identified.",
+  "benchmark_sets": [
+    "timing-isolated-abba-p1",
+    "timing-isolated-abba-p2",
+    "timing-isolated-abba-p4",
+    "timing-isolated-abba-p8",
+    "timing-isolated-custom-p1-repeat",
+    "diagnostic-isolated-abba-p2",
+    "timing-isolated-p2-regression-repeat"
+  ],
+  "results": {
+    "1_callers": {
+      "comparison": [
+        {
+          "case": "nether-custom-bounds",
+          "control_median_drift_percent": -5.700223424364214,
+          "candidate_median_change_percent": -2.5351533320217112,
+          "candidate_throughput_change_percent": 3.6470738828903393,
+          "candidate_peak_rss_change_percent": 9.814982522365456,
+          "both_candidate_p95_below_1s": true
+        },
+        {
+          "case": "nether-direct-stem",
+          "control_median_drift_percent": -3.859011760145936,
+          "candidate_median_change_percent": -1.940644213649656,
+          "candidate_throughput_change_percent": 3.0082949714227647,
+          "candidate_peak_rss_change_percent": 1.8648817564161924,
+          "both_candidate_p95_below_1s": true
+        },
+        {
+          "case": "nether-main",
+          "control_median_drift_percent": -6.049648208839875,
+          "candidate_median_change_percent": -2.653495806449435,
+          "candidate_throughput_change_percent": 0.694370301116165,
+          "candidate_peak_rss_change_percent": 4.416814178165462,
+          "both_candidate_p95_below_1s": true
+        },
+        {
+          "case": "nether-second-seed",
+          "control_median_drift_percent": -6.177253147174222,
+          "candidate_median_change_percent": -1.909614946816618,
+          "candidate_throughput_change_percent": 0.6018637022702,
+          "candidate_peak_rss_change_percent": 4.289894797934424,
+          "both_candidate_p95_below_1s": true
+        },
+        {
+          "case": "overworld",
+          "control_median_drift_percent": -5.738278023718346,
+          "candidate_median_change_percent": -0.8799534689413524,
+          "candidate_throughput_change_percent": 1.6435919292151713,
+          "candidate_peak_rss_change_percent": -6.287552043080447,
+          "both_candidate_p95_below_1s": true
+        }
+      ]
+    },
+    "2_callers": {
+      "comparison": [
+        {
+          "case": "nether-custom-bounds",
+          "control_median_drift_percent": -14.033987112469237,
+          "candidate_median_change_percent": 9.755818110364611,
+          "candidate_throughput_change_percent": -7.446023061729045,
+          "candidate_peak_rss_change_percent": -2.2097465433319807,
+          "both_candidate_p95_below_1s": false
+        },
+        {
+          "case": "nether-direct-stem",
+          "control_median_drift_percent": -7.699242643282811,
+          "candidate_median_change_percent": 12.272283369296932,
+          "candidate_throughput_change_percent": -8.97941606549918,
+          "candidate_peak_rss_change_percent": -3.85246845143975,
+          "both_candidate_p95_below_1s": false
+        },
+        {
+          "case": "nether-main",
+          "control_median_drift_percent": 33.400476679613014,
+          "candidate_median_change_percent": -17.565463049156506,
+          "candidate_throughput_change_percent": 15.649210545806525,
+          "candidate_peak_rss_change_percent": -4.98967923490633,
+          "both_candidate_p95_below_1s": false
+        },
+        {
+          "case": "nether-second-seed",
+          "control_median_drift_percent": 0.6267395458010805,
+          "candidate_median_change_percent": 7.15099094674343,
+          "candidate_throughput_change_percent": -5.354556567438163,
+          "candidate_peak_rss_change_percent": 0.8968909926766688,
+          "both_candidate_p95_below_1s": false
+        },
+        {
+          "case": "overworld",
+          "control_median_drift_percent": 23.929748041744237,
+          "candidate_median_change_percent": -4.65810709375557,
+          "candidate_throughput_change_percent": 5.084631357149516,
+          "candidate_peak_rss_change_percent": 5.040685205338491,
+          "both_candidate_p95_below_1s": true
+        }
+      ]
+    },
+    "4_callers": {
+      "comparison": [
+        {
+          "case": "nether-custom-bounds",
+          "control_median_drift_percent": -15.122353092016894,
+          "candidate_median_change_percent": -3.213503301862375,
+          "candidate_throughput_change_percent": 3.658556083551101,
+          "candidate_peak_rss_change_percent": 2.531583014358363,
+          "both_candidate_p95_below_1s": false
+        },
+        {
+          "case": "nether-direct-stem",
+          "control_median_drift_percent": -12.837720161104837,
+          "candidate_median_change_percent": 13.493172884174353,
+          "candidate_throughput_change_percent": -1.4179925396522242,
+          "candidate_peak_rss_change_percent": 0.09095781469958819,
+          "both_candidate_p95_below_1s": false
+        },
+        {
+          "case": "nether-main",
+          "control_median_drift_percent": -25.269596611265044,
+          "candidate_median_change_percent": -6.590560904374875,
+          "candidate_throughput_change_percent": 10.420404258650828,
+          "candidate_peak_rss_change_percent": 1.1656234835462298,
+          "both_candidate_p95_below_1s": false
+        },
+        {
+          "case": "nether-second-seed",
+          "control_median_drift_percent": -5.225763694009977,
+          "candidate_median_change_percent": -13.648714699406506,
+          "candidate_throughput_change_percent": 12.56085888884677,
+          "candidate_peak_rss_change_percent": 4.687167142431092,
+          "both_candidate_p95_below_1s": false
+        },
+        {
+          "case": "overworld",
+          "control_median_drift_percent": 2.0865119635553375,
+          "candidate_median_change_percent": 3.986959246864763,
+          "candidate_throughput_change_percent": -1.694494858912876,
+          "candidate_peak_rss_change_percent": 0.06281942078365521,
+          "both_candidate_p95_below_1s": false
+        }
+      ]
+    },
+    "8_callers": {
+      "comparison": [
+        {
+          "case": "nether-custom-bounds",
+          "control_median_drift_percent": -33.49323968063107,
+          "candidate_median_change_percent": -8.766294615868409,
+          "candidate_throughput_change_percent": 5.182688581406847,
+          "candidate_peak_rss_change_percent": -2.2361488290044806,
+          "both_candidate_p95_below_1s": false
+        },
+        {
+          "case": "nether-direct-stem",
+          "control_median_drift_percent": -24.940018808702458,
+          "candidate_median_change_percent": 15.106725405533039,
+          "candidate_throughput_change_percent": -9.244089292073198,
+          "candidate_peak_rss_change_percent": -1.1490684184478073,
+          "both_candidate_p95_below_1s": false
+        },
+        {
+          "case": "nether-main",
+          "control_median_drift_percent": 4.807495007813989,
+          "candidate_median_change_percent": -18.593745049230435,
+          "candidate_throughput_change_percent": 2.5839745187145713,
+          "candidate_peak_rss_change_percent": -7.222845478303763,
+          "both_candidate_p95_below_1s": false
+        },
+        {
+          "case": "nether-second-seed",
+          "control_median_drift_percent": -10.63811202501369,
+          "candidate_median_change_percent": -11.558493469468733,
+          "candidate_throughput_change_percent": -0.5135053514117915,
+          "candidate_peak_rss_change_percent": 1.775367217452617,
+          "both_candidate_p95_below_1s": false
+        },
+        {
+          "case": "overworld",
+          "control_median_drift_percent": 23.008922657604323,
+          "candidate_median_change_percent": -22.062963103105538,
+          "candidate_throughput_change_percent": -5.146196971995387,
+          "candidate_peak_rss_change_percent": 3.5436868065714666,
+          "both_candidate_p95_below_1s": false
+        }
+      ]
+    }
+  },
+  "limitations": [
+    "Uncontended timing confirmation remains deferred per user instruction. Known competing tests are identified in retained process observations. No causal headline speedup claim.",
+    "Initial two-request second-seed throughput fell5.4%; focused repeat differed by-0.8%. Keep both results; profiling does not substitute for ordinary timing.",
+    "Four/eight-request results vary with control drift. Lower GPU readback alone does not prove better latency or throughput.",
+    "The native caller benchmark bypasses Java admission. Actual portal/DH integration is a separate fixture.",
+    "Ownership-retention census proves release of tracked resources, not a universal driver-allocation leak bound."
+  ],
+  "evidence_root": "/Users/cyberpwn/development/retina-benchmark-evidence/cycle197/job-pins",
+  "recovery": "Keep all worktrees, corpora, libraries, reports, logs, and generated worlds. Use retained commands and separately built control/candidate Cargo targets; shared cross-worktree Cargo target produced stale artifacts and is excluded from this comparison.",
+  "integration": {
+    "terminal": true,
+    "source_unchanged": true,
+    "library_unchanged": true,
+    "timing_acceptance": false,
+    "limitation": "DH run includes confirmed pause-menu intervention; functional completion only, not timing acceptance.",
+    "events": {
+      "without_DH": 202,
+      "with_DH_surface_first": 210
+    },
+    "evidence": "combined-main-integration-summary.json"
+  },
+  "work_reduction": {
+    "two_caller_second_seed_diagnostic_mean_tiles": {
+      "control": 353,
+      "candidate": 315.5
+    },
+    "four_caller_first_pass_standard_profiles_readback_reduction_percent": [
+      18.6,
+      19.95
+    ],
+    "interpretation": "Repeated reduction in redundant terrain generation and transfers; not proof of a causal elapsed-time gain."
+  },
+  "regression_investigation": {
+    "initial_two_caller_second_seed_throughput_percent": -5.3546,
+    "focused_repeat_second_seed_throughput_percent": -0.8079,
+    "focused_repeat_direct_stem_throughput_percent": 1.8649,
+    "interpretation": "The initial material throughput drop did not reproduce in the focused repeat. Preserve all samples and defer firm timing conclusions because external tests overlapped some runs."
+  },
+  "lifetime_evidence": [
+    "retention-summary.json",
+    "retention-parity.json",
+    "tall-outcome.json"
+  ],
+  "method": "Five warmups and twenty measured complete lit/zlib MCA regions per case; ABBA repeated candidate/control, 16 shared native workers, 1/2/4/8 caller settings. Original immutable corpus plus preceding merged native control; only nondeterministic MCA container representation excluded. Full metrics, commands, hashes, and activity are retained in benchmark_sets."
+}

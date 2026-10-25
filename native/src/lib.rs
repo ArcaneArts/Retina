@@ -1126,6 +1126,27 @@ impl TerrainEngine {
                 }
             }
         }
+        if patch_halo && side > 1 {
+            let lookup = self.caves.lock().map_err(|_| "cave cache poisoned")?
+                .live_tiles.lookup(request, side);
+            let (live, counter) = match lookup {
+                terrain_cache::LiveLookup::Live(mask) =>
+                    (Some(mask), performance::Counter::terrain_live_index_hits),
+                terrain_cache::LiveLookup::Expired =>
+                    (None, performance::Counter::terrain_live_index_expired),
+                terrain_cache::LiveLookup::Absent =>
+                    (None, performance::Counter::terrain_live_index_absent),
+            };
+            if let Some(p) = &performance { p.performance.add(counter, 1); }
+            if let Some(mask) = live {
+                if let Some(field) = self.cached_patch_field(request, side, &mask)? {
+                    if let Some(p) = &performance {
+                        p.performance.add(performance::Counter::terrain_exact_tile_cache_hits, 1);
+                    }
+                    return Ok((field, Some(mask)));
+                }
+            }
+        }
         if let Some(p) = &performance {
             // Track the actual GPU tile, including its halo.
             p.performance.terrain(CacheKey::from(origin), tile_side);
@@ -1630,6 +1651,7 @@ impl From<ChunkRequest> for CacheKey {
 }
 #[derive(Default)]
 struct CaveCache {
+    live_tiles: terrain_cache::LiveTiles,
     entries: HashMap<CacheKey, Arc<geology::CaveMask>>,
     order: VecDeque<CacheKey>,
 }
@@ -1653,6 +1675,7 @@ impl CaveCache {
             })
     }
     fn insert(&mut self, request: ChunkRequest, side: u32, mask: Arc<geology::CaveMask>) {
+        self.live_tiles.insert(request, side, &mask);
         for z in 0..side {
             for x in 0..side {
                 let key = CacheKey::from(ChunkRequest {
