@@ -237,7 +237,7 @@ fn terrain_reply_snapshots_retain_all_jobs_and_missing_failure_data() {
     let mut snapshot=crate::timings::Snapshot::default();
     snapshot.flags=1;snapshot.nanos[crate::timings::QUEUE]=123;
     snapshot.nanos[crate::timings::WAIT_COPY]=456;
-    let host=crate::gpu::host_phase_probe::Phases { batch_jobs:1, events:Vec::new() };
+    let host=crate::gpu::host_phase_probe::Phases { batch_jobs:1, events:Vec::new(), material_count_ns:Some(70), material_emission_ns:Some(30) };
     for x in 0..12 {
         TerrainSpan::start(true,"gpu_reply_abandoned",x,2)
             .finish_gpu(true,Some(&snapshot),Some(&host),22,20,0);
