@@ -75,11 +75,31 @@ Further focused runs produced these candidate results:
 | Custom bounds | 529.9 / 555.4 | 603.0 / 611.0 | Control D only |
 | Overworld | 249.3 / 312.2 | 307.1 / 409.7 | All four passes |
 
-Second-seed and custom-bounds candidate repeats met the serial target without identified test overlap. The entire corpus still lacks a repeated uncontended acceptance comparison, particularly for Overworld and concurrent throughput. Observations cover case intervals, including comparison time; they identify overlap, not a causal latency contribution. Unfavorable and contended results remain in the evidence. No process was stopped and no test data was deleted.
+Second-seed and custom-bounds candidate repeats met the serial target without identified test overlap. Those campaigns did not establish full acceptance; the subsequent follow-ups below add serial main and Overworld evidence. Observations cover case intervals, including comparison time; they identify overlap, not a causal latency contribution. Unfavorable and contended results remain in the evidence. No process was stopped and no test data was deleted.
+
+## Follow-up serial and concurrent confirmation
+
+Eight additional terminal campaigns checked **1,638,400 measured chunk instances across control and candidate variants**. All recorded complete-NBT and membership comparisons passed. Source and libraries remained unchanged. These are repeated chunk instances, not unique coordinates. Every measured region reported shader status 4. The [follow-up record](nether-concurrency-confirmation-2026-10-25.json) contains timing, memory, provenance and evidence digests; complete receipts, worlds and observations remain outside Git.
+
+The focused main-profile serial ABBA had no identified competing test overlap. Candidate medians were 679.8/707.9 ms and p95 894.8/887.5 ms. The focused Overworld serial repeat also had no identified test overlap: candidate medians 225.9/217.8 ms and p95 263.4/251.4 ms. Its aggregate throughput was 1.75% below the averaged controls while control medians drifted 4.41%. Together with the earlier second-seed, custom-bounds and direct-stem candidate pairs, the representative serial Nether corpus has repeated observed sub-second medians and p95 without identified test overlap in those candidate passes. Some corresponding controls overlapped tests; this supports the absolute serial target but does not establish a causal speedup for every profile.
+
+The full concurrent campaigns remain unsuitable for performance acceptance:
+
+| Callers | Main throughput change | Second seed | Custom bounds | Direct-stem | Overworld |
+|---|---:|---:|---:|---:|---:|
+| 2 | −12.0% | −4.1% | −13.1% | +3.1% | −3.0% |
+| 4 | +15.8% | −7.5% | −1.2% | −20.9% | +15.8% |
+| 8 | −13.6% | −26.1% | −20.9% | −10.8% | −35.3% |
+
+Percentages compare averaged candidate throughput with averaged preceding-control throughput in each ABBA campaign. They describe the observations; test overlap and control drift prevent treating them as causal changes. Native worker count stayed at sixteen. At eight callers, observed candidate Nether p95 reached 6.5–13.1 seconds and throughput was roughly 1,005–1,473 chunks/s; long tails remain an explicit unresolved finding. Known tests overlapped many eight-caller cases, including both candidate main-profile passes. No competing process was stopped.
+
+Focused follow-ups investigated the material losses rather than discarding them. The main two-caller repeat had no identified test overlap, candidate throughput about 9.0% above the averaged controls, and p95 1.31–1.34 seconds; the earlier 3.48-second candidate tail did not reproduce. The custom-bounds two-caller loss did not consistently reproduce, but one candidate overlapped a known test and controls drifted 23%. The direct-stem four-caller repeat had no identified test overlap and did not reproduce the earlier loss on average; its controls still drifted 16%. These findings do not validate the whole concurrent matrix or prove why the original slowdowns occurred.
+
+The actual Java live-client logs also record admission wait separately from execution. Across 42 completed Nether regions per run, admission p95 was 5.68 seconds without DH and 6.01 seconds with DH. These runs combine cold startup, portal and unload exercises; the DH run includes a paused-menu intervention. They are functional and queueing evidence, not warmed performance or total portal latency. Cancelled/unfinished requests are outside those completed-region summaries.
 
 ## Remaining verification and limits
 
-- Repeated uncontended timing acceptance and a final matched Overworld regression judgment remain open. The latest ordinary 1/2/4/8-caller comparisons include interference and drift; unfavorable results are retained. The initial two-caller second-seed regression was investigated and did not reproduce materially in the focused repeat, but that is not proof of a speedup.
+- The repeated serial Nether target is observed as described above. Uncontended sustained concurrent throughput/tail acceptance and a final Overworld regression judgment under concurrent load remain open. All unfavorable and contended results are retained; focused follow-ups do not validate untested combinations.
 - The full requirement audit is still in progress. Merged PRs and historical summaries alone do not prove every invariant or every historical cycle’s benchmark requirements.
 - Historical raw suite paths for cycles 2–5 are currently absent at their recorded locations. Their committed reports survive. Do not represent those reports as independently revalidated raw evidence. The original reference corpus and recent full-NBT comparisons remain available.
 - Recent live portal tests passed with and without DH, including unloads with eight active requests. A paused-menu intervention during the DH run makes its timing unsuitable for performance acceptance.
@@ -163,3 +183,5 @@ GitHub confirmed the following PRs merged when this report was prepared. Rejecte
 - [#230](https://github.com/ArcaneArts/Retina/pull/230): Attribute terrain field copying and cache repopulation costs (`2dfddaf54167`).
 - [#231](https://github.com/ArcaneArts/Retina/pull/231): Avoid unused biome probes in unrestricted searches (`618f72088d4c`).
 - [#232](https://github.com/ArcaneArts/Retina/pull/232): Reuse live exact terrain tiles across generation jobs (`dbf04f0796e6`).
+
+Recent documentation deliveries: [#233](https://github.com/ArcaneArts/Retina/pull/233), [#234](https://github.com/ArcaneArts/Retina/pull/234) and [#235](https://github.com/ArcaneArts/Retina/pull/235) preserve the earlier progress, ownership/correctness audit and timing limitations.
