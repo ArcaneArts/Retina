@@ -195,11 +195,11 @@ impl TerrainSpan {
     pub(crate) fn start(pending: bool, kind: &'static str, x: i32, z: i32) -> Self {
         Self(Some(Candidate::start(pending, Key::new(kind, None, x, z))))
     }
-    pub(crate) fn finish_gpu(mut self, success: bool, snapshot: Option<&crate::timings::Snapshot>, tile_side: u32, cave_side: u32, probe_mode: u32) {
+    pub(crate) fn finish_gpu(mut self, success: bool, snapshot: Option<&crate::timings::Snapshot>, host: Option<&crate::gpu::host_phase_probe::Phases>, tile_side: u32, cave_side: u32, probe_mode: u32) {
         if let Some(candidate) = self.0.take() {
             // Capture the interval end before allocating diagnostic output.
             let Some(end) = candidate.current_time() else { return; };
-            let gpu = json!({"tile_side":tile_side,"cave_side":cave_side,"probe_mode":probe_mode,
+            let gpu = json!({"host_phases":host,"tile_side":tile_side,"cave_side":cave_side,"probe_mode":probe_mode,
                 "snapshot":snapshot.map(|s| json!({"version":s.version,"flags":s.flags,
                     "gpu_columns":s.gpu_columns,"gpu_jobs":s.gpu_jobs,"nanos":s.nanos.as_slice()}))});
             candidate.record_gpu(success, Bucket::Terrain, Some("gpu_reply"), Some(end), Some(gpu));

@@ -10,6 +10,8 @@ use std::{
 fn reply(batch: Vec<Job>, result: Result<gpu::GpuSample, String>) {
     match result {
         Ok(mut sample) => {
+            #[cfg(test)]
+            { sample.host_phases.batch_jobs = batch.len(); }
             if batch.len() == 1 {
                 let job = batch.into_iter().next().unwrap();
                 sample.timings.nanos[timings::QUEUE] = job.queue_nanos;
@@ -42,6 +44,8 @@ fn reply(batch: Vec<Job>, result: Result<gpu::GpuSample, String>) {
                     columns: sample.columns[offset..end].to_vec(),
                     mask: sample.mask.take(),
                     timings: trace,
+                    #[cfg(test)]
+                    host_phases: sample.host_phases.clone(),
                 }));
                 offset = end;
             }
@@ -304,6 +308,19 @@ mod tests {
                     .unwrap()
                     .validate_material_runs()
                     .unwrap();
+                let host=serde_json::to_value(&sample.host_phases).unwrap();
+                assert_eq!(host["batch_jobs"],1);
+                let events=host["events"].as_array().unwrap();
+                let kinds: Vec<_>=events.iter().map(|e| e["kind"].as_str().unwrap()).collect();
+                assert_eq!(kinds,["poll","complete_terrain","emit_materials","poll","complete_materials"]);
+                let mut previous=0;
+                for event in events {
+                    let start=event["start_ns"].as_u64().unwrap();
+                    let end=event["end_ns"].as_u64().unwrap();
+                    assert!(previous<=start && start<=end);
+                    assert!(end<=sample.timings.nanos[timings::WAIT_COPY]);
+                    previous=end;
+                }
             }
             assert!(
                 result

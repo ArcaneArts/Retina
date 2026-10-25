@@ -1,0 +1,141 @@
+{
+  "cycle": 172,
+  "type": "test_only_diagnostic",
+  "implementation_revision": "a99c335bfcefecf5d5f152324eec59de09067477",
+  "native_tree": "504e74ad4672ee6f2c7c7be2a442db34f703360e",
+  "provenance": {
+    "revision": "a99c335bfcefecf5d5f152324eec59de09067477",
+    "native_tree": "504e74ad4672ee6f2c7c7be2a442db34f703360e",
+    "library_sha256": "a58f7c9f70d1641bea99bff8df1ecca74042ccac237661b3a498555bf43d4766"
+  },
+  "evidence_directory": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle172",
+  "native_tests": {
+    "passed": 288,
+    "failed": 0,
+    "ignored": 74
+  },
+  "explicit_gpu_tests": 1,
+  "full_nbt_chunk_instances": 143360,
+  "reference_corpora": [
+    "original58f6496be2b456a127b68682bab3b49901ec8076",
+    "preceding merged6e91869f9f0efb66ca01c836108ab1d679dbb1e9"
+  ],
+  "host_analysis": {
+    "report_sha256": "865d29237450f1f98b39d13488b02d2ff61c0df151f2b93ddde277d41989857a",
+    "reply_count": 220,
+    "summary": {
+      "poll": {
+        "median_wall_ms": 5.3435005,
+        "maximum_wall_ms": 6.590458,
+        "median_thread_cpu_ms": 0.0468955,
+        "cpu_observations": 220
+      },
+      "complete_terrain": {
+        "median_wall_ms": 0.197104,
+        "maximum_wall_ms": 0.9385,
+        "median_thread_cpu_ms": 0.19695849999999998,
+        "cpu_observations": 220
+      },
+      "emit_materials": {
+        "median_wall_ms": 0.091833,
+        "maximum_wall_ms": 0.129334,
+        "median_thread_cpu_ms": 0.091542,
+        "cpu_observations": 220
+      },
+      "complete_materials": {
+        "median_wall_ms": 0.7695835,
+        "maximum_wall_ms": 1.181291,
+        "median_thread_cpu_ms": 0.768979,
+        "cpu_observations": 220
+      }
+    },
+    "median_uncovered_wait_copy_ms": 6.4238345,
+    "limits": "Instrumented single-seed root-zero observations, not ordinary acceptance. Host intervals are disjoint within this GPU job, but jobs overlap. Uncovered WAIT_COPY includes device work, queue scheduling, external ready polling and instrumentation gaps; it is not idle time. CPU clocks are optional; missing is not zero. No device timestamps are subtracted or added to host intervals."
+  },
+  "continuation_gaps": {
+    "samples": 220,
+    "summary": {
+      "before_first_advance_ms": {
+        "median": 5.757562500000001,
+        "max": 6.906125
+      },
+      "between_continuation_advances_ms": {
+        "median": 0.9390835,
+        "max": 6.343958
+      },
+      "terrain_poll_ms": {
+        "median": 5.343208499999999,
+        "max": 6.590041
+      },
+      "material_poll_ms": {
+        "median": 0.000334,
+        "max": 0.000875
+      }
+    },
+    "scope": "Each gap is elapsed host time between observed phases in one GPU job; includes other submitted jobs and device work, not idle or safely removable delay. Poll phases may have done little blocking when the job was already ready."
+  },
+  "ordinary_measurements": [
+    {
+      "case": "nether-main-run0",
+      "median_ms": 1024.291937588714,
+      "p95_region_ms": 1326.0409687878564,
+      "maximum_region_ms": 1441.3371251430362,
+      "total_ms": 20507.33008305542,
+      "chunks_per_second": 998.667301743097,
+      "generation_peak_rss_bytes": 2182430720
+    },
+    {
+      "case": "nether-second-seed-run0",
+      "median_ms": 1119.562583626248,
+      "p95_region_ms": 1379.5252107433046,
+      "maximum_region_ms": 1557.1024171076715,
+      "total_ms": 21819.80474991724,
+      "chunks_per_second": 938.5968497301828,
+      "generation_peak_rss_bytes": 2317795328
+    },
+    {
+      "case": "nether-custom-bounds-run0",
+      "median_ms": 625.1892710570246,
+      "p95_region_ms": 742.1971856383607,
+      "maximum_region_ms": 877.8314171358943,
+      "total_ms": 13047.676667105407,
+      "chunks_per_second": 1569.6281048742017,
+      "generation_peak_rss_bytes": 1865613312
+    },
+    {
+      "case": "nether-direct-stem-run0",
+      "median_ms": 3554.0776044363156,
+      "p95_region_ms": 4461.541225365364,
+      "maximum_region_ms": 4724.00595783256,
+      "total_ms": 71989.06112508848,
+      "chunks_per_second": 284.48766631938526,
+      "generation_peak_rss_bytes": 1743683584
+    },
+    {
+      "case": "overworld-run0",
+      "median_ms": 348.21908350568265,
+      "p95_region_ms": 387.67451271414757,
+      "maximum_region_ms": 416.7985829990357,
+      "total_ms": 7002.0635419059545,
+      "chunks_per_second": 2924.8520635997206,
+      "generation_peak_rss_bytes": 1590673408
+    },
+    {
+      "case": "nether-tall-run0",
+      "median_ms": 999.3920415872708,
+      "p95_region_ms": 1403.8274708669635,
+      "maximum_region_ms": 1579.755041981116,
+      "total_ms": 20136.833833996207,
+      "chunks_per_second": 1017.0417141459667,
+      "generation_peak_rss_bytes": 2170388480
+    }
+  ],
+  "normal_machine_code": "__TEXT,__text bytes identical; worker_phase_probe and finish_gpu symbols absent. Constant section differs, so no whole-file equality claim.",
+  "timing_acceptance": false,
+  "limitations": [
+    "Main-seed diagnostic with one request; all cases five warmups/twenty measurements,16workers.",
+    "Optional CPU endpoints are not interpolated. Shared-batch intervals retain batch_jobs, not scaled per job. Failed GPU replies have no fabricated successful snapshots.",
+    "Intervals outside observed host phases include device work and scheduling; do not call them idle. No production gain or final acceptance claimed.",
+    "Ordinary host logs show concurrent CPU-heavy activity; direct-stem timing is elevated. Preserve observations but defer uncontended timing confirmation."
+  ]
+}
