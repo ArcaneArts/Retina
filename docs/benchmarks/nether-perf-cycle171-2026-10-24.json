@@ -1,0 +1,157 @@
+{
+  "cycle": 171,
+  "type": "test_only_diagnostic",
+  "implementation_revision": "2af5e46e8fa5137d621b8b0393354133b5e0c009",
+  "native_tree": "1ff55f4e6079cbe4dbdefadcfbe78c437ae8a3e2",
+  "provenance": {
+    "revision": "2af5e46e8fa5137d621b8b0393354133b5e0c009",
+    "native_tree": "1ff55f4e6079cbe4dbdefadcfbe78c437ae8a3e2",
+    "library_sha256": "5ebca55958d2bdada068540af1bdf6624fcd0a097cee8770af0a1d8cf5486f84"
+  },
+  "evidence_directory": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/cycle171",
+  "native_tests": {
+    "passed": 287,
+    "failed": 0,
+    "ignored": 74
+  },
+  "full_nbt_chunk_instances": 143360,
+  "reference_corpora": [
+    "original 58f6496be2b456a127b68682bab3b49901ec8076",
+    "preceding merged c7024009b4ef12440f3e8b12fc656ac680e45162"
+  ],
+  "gpu_reply_analysis": {
+    "report_sha256": "1fe0dcc8e5e2c86e5f28a4f26fa7998c00de53f3d4813691e04a1983a59fc554",
+    "reply_count": 221,
+    "reply_ms": {
+      "median": 13.23225,
+      "max": 22.268125,
+      "sum": 2855.748924
+    },
+    "stage_ms": {
+      "queue": {
+        "median": 0.082042,
+        "max": 13.711292,
+        "sum": 281.056508
+      },
+      "encode": {
+        "median": 0.298375,
+        "max": 0.551458,
+        "sum": 66.257943
+      },
+      "wait_copy": {
+        "median": 12.540208,
+        "max": 14.5655,
+        "sum": 2509.941665
+      },
+      "height": {
+        "median": 0.343375,
+        "max": 0.837709,
+        "sum": 77.661303
+      },
+      "sites": {
+        "median": 0.032,
+        "max": 0.045834,
+        "sum": 7.126333
+      },
+      "columns": {
+        "median": 0.124333,
+        "max": 0.214666,
+        "sum": 27.679073
+      },
+      "cave_density": {
+        "median": 0.251542,
+        "max": 0.409,
+        "sum": 56.595006
+      },
+      "cave_mask": {
+        "median": 1.643542,
+        "max": 1.908333,
+        "sum": 364.752296
+      },
+      "materials": {
+        "median": 2.832458,
+        "max": 3.826708,
+        "sum": 624.553373
+      },
+      "aquifer_fields": {
+        "median": 0.0,
+        "max": 0.0,
+        "sum": 0.0
+      },
+      "aquifer_mask": {
+        "median": 0.253209,
+        "max": 0.400583,
+        "sum": 56.364421
+      },
+      "provider_noise": {
+        "median": 0.0,
+        "max": 0.0,
+        "sum": 0.0
+      }
+    },
+    "limitations": "Detailed observer timings, not ordinary acceptance. WAIT_COPY includes continuation and host completion. Device stages overlap host intervals; do not sum them into wall time. Median queue is small but occasional queue tails remain. Device materials and cave-mask timestamps identify work, not causal wall savings."
+  },
+  "ordinary_measurements": [
+    {
+      "case": "nether-main-run0",
+      "median_ms": 825.0808336306363,
+      "p95_region_ms": 1042.3298145411538,
+      "maximum_region_ms": 1152.208040934056,
+      "total_ms": 16865.678458008915,
+      "chunks_per_second": 1214.300394199367,
+      "generation_peak_rss_bytes": 2110554112
+    },
+    {
+      "case": "nether-second-seed-run0",
+      "median_ms": 894.4166663568467,
+      "p95_region_ms": 1109.9065167945812,
+      "maximum_region_ms": 1204.5885829720646,
+      "total_ms": 17862.6561248675,
+      "chunks_per_second": 1146.526018126093,
+      "generation_peak_rss_bytes": 2354315264
+    },
+    {
+      "case": "nether-custom-bounds-run0",
+      "median_ms": 653.4101250581443,
+      "p95_region_ms": 734.9187180749141,
+      "maximum_region_ms": 779.7264577820897,
+      "total_ms": 13188.620750093833,
+      "chunks_per_second": 1552.8538114839864,
+      "generation_peak_rss_bytes": 1817395200
+    },
+    {
+      "case": "nether-direct-stem-run0",
+      "median_ms": 1109.5346664078534,
+      "p95_region_ms": 1312.315199954901,
+      "maximum_region_ms": 1346.3955000042915,
+      "total_ms": 21829.36895894818,
+      "chunks_per_second": 938.1856176655508,
+      "generation_peak_rss_bytes": 1952563200
+    },
+    {
+      "case": "overworld-run0",
+      "median_ms": 406.58020903356373,
+      "p95_region_ms": 585.4622105252929,
+      "maximum_region_ms": 599.5333339087665,
+      "total_ms": 8899.571874877438,
+      "chunks_per_second": 2301.2342939566456,
+      "generation_peak_rss_bytes": 1718353920
+    },
+    {
+      "case": "nether-tall-run0",
+      "median_ms": 1738.4411664679646,
+      "p95_region_ms": 2251.590607955586,
+      "maximum_region_ms": 2256.861208938062,
+      "total_ms": 34975.53037502803,
+      "chunks_per_second": 585.5522355315702,
+      "generation_peak_rss_bytes": 2144501760
+    }
+  ],
+  "production_exclusion": "Ordinary __text bytes identical; observer symbols absent. Eleven changed u32 constants match unchanged lib.rs source expressions shifted by two lines. Whole library hashes differ.",
+  "timing_acceptance": false,
+  "limitations": [
+    "Single-request diagnostic main seed only; 221 root-zero replies. Each case has five warmups/twenty measurements and16workers.",
+    "WAIT_COPY contains material continuation, host work and scheduling, not just GPU execution. Do not subtract device timestamps to infer CPU cost or sum overlapping phases.",
+    "No production speedup, new concurrency acceptance or goal completion claimed. User deferred quiet timing confirmation."
+  ]
+}
