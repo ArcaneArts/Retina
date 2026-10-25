@@ -1,0 +1,61 @@
+{
+  "cycle": 195,
+  "scope": "Test-only shared monotonic epoch for concurrent dependency root diagnostics. Production generator code is unchanged.",
+  "problem": "Root-relative timestamps could not establish whether repeated exact terrain requests from different regions overlapped.",
+  "implementation": "One lazy session epoch; each root report emits session_origin_ns. Add it to existing root-relative event endpoints. No per-event work or scheduling changes.",
+  "source": {
+    "revision": "1a2fe05ac0bd24767f0b70afa07824964437f3fa",
+    "native_tree": "ffbaa015f5a4bc039aa47b4f52d13dd3d252e262",
+    "sha256": "d75fb240a64c8650d3d9c3b26ac6401285c71c165ad70a80f188e8db05656edb",
+    "binary": "/Users/cyberpwn/development/retina-benchmark-evidence/cycle195/native-tests",
+    "status": ""
+  },
+  "validation": {
+    "unit_tests": 289,
+    "ignored_tests": 74,
+    "gpu_diagnostic": "one passed; five warmup and twenty measured complete regions; eight callers; sixteen workers; second Nether seed; shader status4",
+    "full_nbt": {
+      "terminal": true,
+      "rows": [
+        {
+          "callers": 8,
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        },
+        {
+          "callers": 8,
+          "baseline": "/Users/cyberpwn/development/retina-benchmark-evidence/cycle184/ordinary",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        }
+      ]
+    }
+  },
+  "finding": {
+    "source": "/Users/cyberpwn/development/retina-benchmark-evidence/cycle195/phases-8/report.json",
+    "sha256": "963cd58e43453a83e28c7ea582f2ba694065eeda93216d0947d6d4c921f142dd",
+    "observed_requests": 387,
+    "unique_keys": 253,
+    "repeat_requests": 134,
+    "overlapping_repeat_requests": 3,
+    "nonoverlapping_repeat_requests": 131,
+    "limitations": [
+      "Only GPU reply spans observed inside dependency tasks are covered.",
+      "A reply span begins after enqueue and ends after response; overlap is a candidate opportunity, not proof that a shared producer would finish sooner.",
+      "The profile is fixed in this run. Full request float fields must be included in any production cache key.",
+      "Detailed instrumentation affects scheduling; this is not a headline speed measurement."
+    ]
+  },
+  "performance": "Diagnostic only; no production speed claim or uncontended timing acceptance. Normal production compilation excludes this module through cfg(test).",
+  "recovery": {
+    "directory": "/Users/cyberpwn/development/retina-benchmark-evidence/cycle195",
+    "commands": [
+      "run-phases.py",
+      "audit-phases.py",
+      "analyze-overlap.py"
+    ],
+    "preservation": "All worlds, binaries, reports and worktrees retained."
+  },
+  "next": "Investigate exact tile retention: CaveCache inserts per-chunk entries with first-writer-wins geometry and a 2048-entry FIFO; exact patch reuse requires matching tile geometry. Distinguish geometry masking from eviction before selecting a production change."
+}
