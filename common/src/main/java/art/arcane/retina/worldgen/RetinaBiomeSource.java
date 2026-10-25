@@ -122,18 +122,23 @@ public final class RetinaBiomeSource extends BiomeSource {
             java.util.function.Predicate<Holder<Biome>> allowed,int minY,int maxY) {
         var batch = batchQueries;
         if (batch == null) throw new IllegalStateException("Retina queries are not bound");
-        var wanted = possibleBiomes().stream().filter(allowed).collect(java.util.stream.Collectors.toUnmodifiableSet());
+        var possible = possibleBiomes();
+        var wanted = possible.stream().filter(allowed).collect(java.util.stream.Collectors.toUnmodifiableSet());
         if (wanted.isEmpty()) return null;
+        // Unrestricted callers (including DH surface queries) need only the
+        // first matching point. Keep the original traversal and batch fallback.
+        int batchSize = wanted.size() == possible.size() ? 1 : 64;
         int[] ys = net.minecraft.util.Mth.outFromOrigin(origin.getY(), minY+1, maxY+1, vertical).toArray();
         var points = new java.util.ArrayList<net.minecraft.core.BlockPos>(64);
         for (var column : net.minecraft.core.BlockPos.spiralAround(net.minecraft.core.BlockPos.ZERO, Math.floorDiv(radius,horizontal), net.minecraft.core.Direction.EAST, net.minecraft.core.Direction.SOUTH)) {
             int x = origin.getX()+column.getX()*horizontal, z=origin.getZ()+column.getZ()*horizontal;
             for (int y : ys) {
                 points.add(new net.minecraft.core.BlockPos(x,y,z));
-                if (points.size()==64) {
+                if (points.size()==batchSize) {
                     var found = firstMatch(points,batch.apply(points),wanted);
                     if (found != null) return found;
                     points.clear();
+                    batchSize = 64;
                 }
             }
         }

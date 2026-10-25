@@ -84,11 +84,34 @@ public final class NativeLocateIntegrationTest {
                             return (x,y,z) -> query.biomes(List.of(new BlockPos(x*4,y*4,z*4))).getFirst();
                         }
                     };
+                    var querySizes = new ArrayList<Integer>();
+                    source.bindQueries(batch -> { querySizes.add(batch.size()); return query.biomes(batch); });
+                    try {
+                        int acceptedPoints = 0;
+                        for (var origin : List.of(new BlockPos(-17,63,-33), new BlockPos(0,-63,0),
+                                new BlockPos(160001,318,-160001), new BlockPos(0,-100,0),
+                                new BlockPos(160001,400,-160001))) {
+                            querySizes.clear();
+                            var found = source.findClosestQuery(origin,1,1,1,b -> true,-64,319);
+                            var expected = reference.findClosestBiome3d(origin,1,1,1,b -> true,random,level);
+                            require(Objects.equals(found,expected),"unrestricted search preserves vanilla first point at "+origin);
+                            require(querySizes.equals(expected == null ? List.of() : List.of(1)),
+                                    "unrestricted search queries only its first valid point: "+querySizes);
+                            acceptedPoints += querySizes.stream().mapToInt(Integer::intValue).sum();
+                        }
+                        require(acceptedPoints == 3,"three in-height queries and two empty out-of-height searches");
+                        System.out.println("QA_EVT {\"event\":\"unrestricted_biome_query_work\",\"status\":\"pass\",\"context\":{\"composition\":"+composition+",\"valid_searches\":3,\"queried_points\":"+acceptedPoints+",\"empty_searches\":2}}");
+                    } finally { source.bindQueries(query::biomes); }
                     for (var target : actual.stream().distinct().limit(3).toList()) {
                         var origin=new BlockPos(-17,63,-33);
-                        var found=source.findClosestQuery(origin,96,32,64,target::equals,-64,319);
+                        querySizes.clear();
+                        source.bindQueries(batch -> { querySizes.add(batch.size()); return query.biomes(batch); });
+                        com.mojang.datafixers.util.Pair<BlockPos,Holder<Biome>> found;
+                        try { found=source.findClosestQuery(origin,96,32,64,target::equals,-64,319); }
+                        finally { source.bindQueries(query::biomes); }
                         var expected=reference.findClosestBiome3d(origin,96,32,64,target::equals,random,level);
                         require(Objects.equals(found,expected),"vanilla search order and coordinates for "+target);
+                        require(querySizes.getFirst()==64,"restricted searches retain full first batch");
                     }
                     jobs=terrain.timings(request.profile()).gpuJobs();
                     require(source.findClosestQuery(BlockPos.ZERO,6400,32,64,b -> false,-64,319)==null,"empty target");
