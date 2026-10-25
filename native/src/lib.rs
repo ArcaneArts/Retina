@@ -1265,7 +1265,9 @@ impl TerrainEngine {
             .recv()
             .map_err(|_| "GPU worker stopped before completing this request".to_string());
         #[cfg(test)]
-        span.finish("gpu_reply", matches!(&result, Ok(Ok(_))));
+        span.finish_gpu(matches!(&result, Ok(Ok(_))),
+            result.as_ref().ok().and_then(|r| r.as_ref().ok()).map(|s| &s.timings),
+            tile_side, cave_side, probe_mode);
         result?
     }
 

@@ -121,7 +121,7 @@ fn synthetic() -> (Vec<(String,Vec<Event>)>,BTreeMap<String,Buffer>) {
     let event = |start,end| Event { at:[0,0],start,end,success:true,cpu:[None,None] };
     let mut short = vec![event(0,10);19];short.push(event(10,16));
     let tasks = vec![("a".into(),vec![event(0,20)]),("b".into(),short)];
-    let join = |kind,start,end,success| JoinEvent { key:key(kind,0),start,end,success };
+    let join = |kind,start,end,success| JoinEvent { key:key(kind,0),start,end,success,gpu:None };
     let workers = BTreeMap::from([
         ("a".into(),Buffer { events:vec![join("column",2,7,true),join("anchor",5,10,true),join("column",14,18,true)],context_errors:0 }),
         ("b".into(),Buffer { events:vec![join("column",12,16,false)],context_errors:0 }),
@@ -164,7 +164,7 @@ fn join_probe_keeps_missing_phases_and_rejects_invalid_or_unjoined_evidence() {
     assert_eq!(reversed["outside_or_reversed_events"],1);
     assert_eq!(reversed["worker_join_union_sum_ns"],Value::Null);
     let (tasks,mut workers) = synthetic();
-    workers.insert("no-task".into(),Buffer { events:vec![JoinEvent { key:key("column",0),start:1,end:2,success:true }],context_errors:0 });
+    workers.insert("no-task".into(),Buffer { events:vec![JoinEvent { key:key("column",0),start:1,end:2,success:true,gpu:None }],context_errors:0 });
     assert_eq!(summarize(&tasks,&workers,Some([0,20]),0)["valid"],false);
 }
 
@@ -228,4 +228,31 @@ fn terrain_spans_keep_abandoned_calls_and_restore_outer_context_after_panic() {
     assert_eq!(roots[1]["terrain_attribution"]["events"],1);
     assert_eq!(roots[1]["terrain_attribution"]["failed_events"],0);
     assert_eq!(roots[1]["terrain_attribution"]["longest_joins"][0]["at"],json!([2,2]));
+}
+
+#[test]
+fn terrain_reply_snapshots_retain_all_jobs_and_missing_failure_data() {
+    let session=Arc::new(Session::default());
+    let trace=trace(&session,"gpu-details",1);let task=trace.task([1,2]);
+    let mut snapshot=crate::timings::Snapshot::default();
+    snapshot.flags=1;snapshot.nanos[crate::timings::QUEUE]=123;
+    snapshot.nanos[crate::timings::WAIT_COPY]=456;
+    for x in 0..12 {
+        TerrainSpan::start(true,"gpu_reply_abandoned",x,2)
+            .finish_gpu(true,Some(&snapshot),22,20,0);
+    }
+    TerrainSpan::start(true,"gpu_reply_abandoned",99,2).finish_gpu(false,None,22,20,0);
+    task.finish(true);finish(trace);
+    let roots=session.roots.lock().unwrap();let result=&roots[0]["terrain_attribution"];
+    assert_eq!(result["valid"],true);
+    assert_eq!(result["longest_joins"].as_array().unwrap().len(),8);
+    let replies=result["gpu_replies"].as_array().unwrap();assert_eq!(replies.len(),13);
+    for (i,reply) in replies[..12].iter().enumerate() {
+        assert_eq!(reply["at"],json!([i,2]));
+        assert_eq!(reply["gpu"]["tile_side"],22);
+        assert_eq!(reply["gpu"]["snapshot"]["nanos"][crate::timings::QUEUE],123);
+        assert_eq!(reply["gpu"]["snapshot"]["nanos"][crate::timings::WAIT_COPY],456);
+    }
+    assert_eq!(replies[12]["success"],false);
+    assert_eq!(replies[12]["gpu"]["snapshot"],Value::Null);
 }

@@ -21,6 +21,7 @@ struct JoinEvent {
     start: u64,
     end: u64,
     success: bool,
+    gpu: Option<Value>,
 }
 #[derive(Default)]
 pub(super) struct Buffer {
@@ -170,6 +171,9 @@ impl Candidate {
         })
     }
     fn record(self, success: bool, bucket: Bucket, kind: Option<&'static str>, captured_end: Option<u64>) {
+        self.record_gpu(success, bucket, kind, captured_end, None);
+    }
+    fn record_gpu(self, success: bool, bucket: Bucket, kind: Option<&'static str>, captured_end: Option<u64>, gpu: Option<Value>) {
         let Some((tag, token, start, mut key)) = self.stamp else { return; };
         if let Some(kind) = kind { key.kind = kind; }
         CURRENT.with(|current| {
@@ -179,7 +183,7 @@ impl Candidate {
             assert!(!frame.worker.closed.load(Ordering::Relaxed), "dependency join outlived its root");
             let end = captured_end.unwrap_or_else(|| frame.origin.elapsed().as_nanos() as u64);
             let buffer = match bucket { Bucket::Dependency=>&frame.worker.joins, Bucket::Terrain=>&frame.worker.terrain, Bucket::Lookup=>&frame.worker.lookup };
-            buffer.lock().unwrap().events.push(JoinEvent { key, start, end, success });
+            buffer.lock().unwrap().events.push(JoinEvent { key, start, end, success, gpu });
         });
     }
 }
@@ -190,6 +194,16 @@ pub(crate) struct TerrainSpan(Option<Candidate>);
 impl TerrainSpan {
     pub(crate) fn start(pending: bool, kind: &'static str, x: i32, z: i32) -> Self {
         Self(Some(Candidate::start(pending, Key::new(kind, None, x, z))))
+    }
+    pub(crate) fn finish_gpu(mut self, success: bool, snapshot: Option<&crate::timings::Snapshot>, tile_side: u32, cave_side: u32, probe_mode: u32) {
+        if let Some(candidate) = self.0.take() {
+            // Capture the interval end before allocating diagnostic output.
+            let Some(end) = candidate.current_time() else { return; };
+            let gpu = json!({"tile_side":tile_side,"cave_side":cave_side,"probe_mode":probe_mode,
+                "snapshot":snapshot.map(|s| json!({"version":s.version,"flags":s.flags,
+                    "gpu_columns":s.gpu_columns,"gpu_jobs":s.gpu_jobs,"nanos":s.nanos.as_slice()}))});
+            candidate.record_gpu(success, Bucket::Terrain, Some("gpu_reply"), Some(end), Some(gpu));
+        }
     }
     pub(crate) fn finish(mut self, kind: &'static str, success: bool) {
         if let Some(candidate) = self.0.take() { candidate.record(success, Bucket::Terrain, Some(kind), None); }
@@ -213,7 +227,7 @@ fn ranges(events: &[JoinEvent]) -> Vec<(u64,u64)> {
 fn event_json(worker: &str, event: &JoinEvent) -> Value {
     json!({"worker":worker,"kind":event.key.kind,"dependency_root":event.key.root,
         "at":event.key.at,"start_ns":event.start,"end_ns":event.end,
-        "duration_ns":event.end.checked_sub(event.start),"success":event.success})
+        "duration_ns":event.end.checked_sub(event.start),"success":event.success,"gpu":event.gpu})
 }
 
 pub(super) fn summarize(
@@ -228,6 +242,10 @@ pub(super) fn summarize(
     let longest: Vec<_> = longest.into_iter().take(8).map(|(id,e)| event_json(id,e)).collect();
     let mut result = json!({"valid":null,"window":window,"events":count,"failed_events":failed,
         "context_errors":context_errors,"active_contexts_at_root_end":active_contexts,"longest_joins":longest});
+    // Retain every reply, including failures, rather than only the longest eight.
+    result["gpu_replies"] = Value::Array(workers.iter().flat_map(|(id,v)| v.events.iter()
+        .filter(|e| e.key.kind == "gpu_reply" || e.key.kind == "gpu_reply_abandoned")
+        .map(move |e| event_json(id,e))).collect());
     let Some(window) = window else { return result; };
     let task_ranges: BTreeMap<_,_> = tasks.iter().map(|(id,events)|
         (id.as_str(),union(events.iter().map(|e| (e.start,e.end)).collect()))).collect();

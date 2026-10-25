@@ -3392,3 +3392,31 @@ timings are retained without an uncontended performance acceptance claim.
 See `docs/benchmarks/nether-perf-cycle166-2026-10-24.json` for commands/provenance
 locations, counters, timing observations and limitations. External raw evidence
 and every worktree remain preserved.
+
+
+## Cycle 171 — Per-request terrain GPU reply attribution
+
+The detailed test observer now retains every GPU reply with root/worker/tile
+context and its returned timing snapshot. Previously the eight longest API
+intervals could omit the terrain owner behind many waiting callbacks. Failed
+and abandoned calls retain their failure state; unavailable snapshots stay null.
+The interval end is captured before diagnostic serialization. Raw observations
+are released by the existing root lifecycle. The observer is test-only.
+
+For 221 basalt-pillar-stage replies across twenty main-seed regions, median reply
+latency is **13.232 ms**, queue time **0.082 ms**, and WAIT_COPY **12.540 ms**.
+Device material passes have median accumulated timestamps of **2.833 ms**, and
+cave-mask passes **1.643 ms**. These categories overlap. WAIT_COPY includes host
+completion, dependent material submissions and scheduling; it is not pure GPU
+time. Typical queue delay is small, but the maximum is **13.711 ms**. Investigate
+post-submission work before selecting queue-policy changes.
+
+**287 native tests pass**. The detailed main-seed run and separate ordinary
+six-profile runs compare **143,360 chunk instances** against both original and
+preceding-main complete NBT. Each case uses five warmups, twenty measurements,
+sixteen workers, one request, reverse order and GPU lighting. Ordinary machine
+code is identical to preceding main; eleven source-location constants differ.
+This is diagnostic evidence, not a production improvement or quiet timing
+acceptance. All worktrees and raw evidence remain preserved.
+
+See `docs/benchmarks/nether-perf-cycle171-2026-10-24.json` and external `cycle171/`.
