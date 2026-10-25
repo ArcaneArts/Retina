@@ -111,6 +111,7 @@ impl Local {
 thread_local! { static LOCAL: RefCell<Local> = RefCell::new(Local::default()); }
 #[derive(Default)]
 struct Session {
+    epoch: std::sync::OnceLock<Instant>,
     aggregate: bool,
     anchor_cpu: bool,
     column_load_salt: Option<u64>,
@@ -169,6 +170,7 @@ struct Root {
 }
 impl Root {
     fn new(metadata: Value, session: Arc<Session>) -> Self {
+        session.epoch.get_or_init(Instant::now);
         let origin = Instant::now();
         Self {
             token: NEXT.fetch_add(1, Ordering::Relaxed),
@@ -336,6 +338,8 @@ impl Trace {
             "context_validation":{"valid":active_contexts==0 && context_errors==0,"active":active_contexts,"errors":context_errors},
             "dependency_work":if root.session.aggregate {work.summary()} else {json!({"enabled":false,"reason":"detailed interval mode"})},
             "anchor_cpu":anchor_cpu,
+            // Add this offset to root-relative event stamps to compare concurrent roots.
+            "session_origin_ns":root.origin.duration_since(*root.session.epoch.get().unwrap()).as_nanos() as u64,
             "phase_stamps":marks,"phases":phases,"occupancy":occupied,
             "join_attribution":joined,"terrain_attribution":terrain,"lookup_attribution":lookup,"task_thread_cpu":thread_cpu,
             "observer_summary_wall_ns":analysis_start.elapsed().as_nanos() as u64}));
@@ -886,4 +890,19 @@ fn worker_phase_inventory_with_column_load(aggregate: bool, anchor_cpu: bool, co
         })).unwrap()).unwrap();
     }
     assert!(!cases.is_empty(), "no requested worker-phase case was generated");
+}
+
+#[test]
+fn session_clock_preserves_cross_root_interval_order() {
+    let session = Arc::new(Session::default());
+    let first = Root::new(json!({}), session.clone());
+    let before_second = first.stamp();
+    let second = Root::new(json!({}), session.clone());
+    let after_second = second.stamp();
+    let epoch = *session.epoch.get().unwrap();
+    let first_offset = first.origin.duration_since(epoch).as_nanos() as u64;
+    let second_offset = second.origin.duration_since(epoch).as_nanos() as u64;
+    assert!(first_offset + before_second.wall <= second_offset);
+    assert!(second_offset <= second_offset + after_second.wall);
+    assert!(first_offset + first.stamp().wall >= second_offset + after_second.wall);
 }
