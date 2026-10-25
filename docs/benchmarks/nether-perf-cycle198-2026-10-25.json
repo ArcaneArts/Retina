@@ -1,0 +1,108 @@
+{
+  "status": "diagnostic run complete",
+  "timing_acceptance": false,
+  "reason": "Opt-in attribution with substantial external system activity; counters overlap and are not wall-time shares.",
+  "runs": [
+    {
+      "label": "nether-second-seed-run0",
+      "regions": 20,
+      "comparisons": [
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/nether-second-seed-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        },
+        {
+          "baseline": "/Users/cyberpwn/development/retina-benchmark-evidence/cycle197/control-a/nether-second-seed-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        }
+      ],
+      "median_ms": 8454.388250014745,
+      "p95_ms": 12834.925352281425,
+      "counters": {
+        "terrain_cache_requests_nanos": 531032,
+        "terrain_cave_cache_hold_nanos": 20844096,
+        "terrain_cave_cache_wait_nanos": 80823,
+        "terrain_column_cache_hold_nanos": 79339907,
+        "terrain_column_cache_wait_nanos": 271216,
+        "terrain_initial_crop_bytes": 79626240,
+        "terrain_initial_crop_nanos": 6150378,
+        "terrain_reuse_crop_bytes": 20901888,
+        "terrain_reuse_crop_hits": 21,
+        "terrain_reuse_crop_nanos": 1618626
+      }
+    },
+    {
+      "label": "overworld-run0",
+      "regions": 20,
+      "comparisons": [
+        {
+          "baseline": "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite/overworld-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        },
+        {
+          "baseline": "/Users/cyberpwn/development/retina-benchmark-evidence/cycle197/control-a/overworld-run0",
+          "identical_nbt_chunks": 20480,
+          "membership_identical": true
+        }
+      ],
+      "median_ms": 736.731166485697,
+      "p95_ms": 3332.053116802126,
+      "counters": {
+        "terrain_cache_requests_nanos": 48501,
+        "terrain_cave_cache_hold_nanos": 6752832,
+        "terrain_cave_cache_wait_nanos": 3210,
+        "terrain_column_cache_hold_nanos": 9262667,
+        "terrain_column_cache_wait_nanos": 2708,
+        "terrain_initial_crop_bytes": 0,
+        "terrain_initial_crop_nanos": 0,
+        "terrain_reuse_crop_bytes": 0,
+        "terrain_reuse_crop_hits": 0,
+        "terrain_reuse_crop_nanos": 0
+      }
+    }
+  ],
+  "decision": "Do not prioritize shared column-view redesign or cache-lock removal based on this run: initial + reused copy totals 7.77 ms across 20 Nether regions; column+cave cache wait totals 0.352 ms. Cache hold totals about100ms across20regions, also too small to explain multi-second tails. Candidate197 completed-tile GPU work reduction remains a distinct pending opportunity.",
+  "cycle": 198,
+  "source": "7ee4c3d7f35aa8ca6a3de09f2fd8311719ea29b8",
+  "native_sha256": "07bc1f6a7a5fd0d979c1d7caa21773cc6c7f7d8fbe6e6d410d21e8d5457cd629",
+  "native_unit_tests": {
+    "passed": 289,
+    "failed": 0,
+    "ignored": 74
+  },
+  "implementation": "Opt-in counters distinguish exact cached-field cropping, initial-field cropping, cache request construction, and separate column/cave cache lock wait/hold intervals. Counter recording occurs after releasing locks. No cache admission, ordering, generation or storage changes.",
+  "evidence_directory": "/Users/cyberpwn/development/retina-benchmark-evidence/cycle198",
+  "reproduce": [
+    "python3",
+    "/tmp/retina-nether-terrain-reuse-costs/scripts/nether-performance-suite.py",
+    "--library",
+    "/Users/cyberpwn/development/retina-benchmark-evidence/cycle198/libretina_worldgen.dylib",
+    "--library-revision",
+    "7ee4c3d7f35aa8ca6a3de09f2fd8311719ea29b8",
+    "--profiles",
+    "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/profiles",
+    "--out",
+    "/Users/cyberpwn/development/retina-benchmark-evidence/cycle198/diagnostic",
+    "--compare",
+    "/Users/cyberpwn/.codex/retina-nether-evidence/nether-performance-goal-2026-10-20/reference-suite",
+    "--compare",
+    "/Users/cyberpwn/development/retina-benchmark-evidence/cycle197/control-a",
+    "--parallel",
+    "8",
+    "--diagnostics",
+    "--case",
+    "nether-second-seed",
+    "--case",
+    "overworld"
+  ],
+  "recovery": "Build source revision with cargo build --release --locked --lib --no-default-features --manifest-path native/Cargo.toml, retain library and hash, then rerun reproduce with the rebuilt library path and a new output directory.",
+  "limitations": [
+    "One instrumented run; no throughput or regression acceptance.",
+    "Cache counters include fresh and reused terrain population; they do not isolate reuse alone.",
+    "Durations include scheduler effects and overlap between callers; never sum them as wall-time proportions.",
+    "Prior candidate197 remains unmerged and is not included in this diagnostic change."
+  ]
+}

@@ -1181,9 +1181,18 @@ impl TerrainEngine {
         side: u32,
         mask: &Arc<geology::CaveMask>,
     ) -> Result<Option<decoration::Field<'static>>, String> {
+        let metrics = performance::enabled().then(|| self.timings(request.reserved));
+        let started = metrics.as_ref().and_then(|m| m.performance.start());
         let Some(field) = terrain_cache::exact_patch_field(request, side, mask) else {
             return Ok(None);
         };
+        if let Some(m) = &metrics {
+            m.performance.elapsed(performance::Counter::terrain_reuse_crop_nanos, started);
+            m.performance.add(performance::Counter::terrain_reuse_crop_hits, 1);
+            m.performance.add(performance::Counter::terrain_reuse_crop_bytes,
+                (field.columns.len() * std::mem::size_of::<Column>()) as u64);
+        };
+
         let halo = mask.columns.as_ref().expect("exact patch field retains its columns");
         let origin = ChunkRequest {
             chunk_x: halo.origin_x, chunk_z: halo.origin_z, ..request
@@ -1201,6 +1210,8 @@ impl TerrainEngine {
         columns: &[Column],
         mask: &Arc<geology::CaveMask>,
     ) -> Result<(), String> {
+        let metrics = performance::enabled().then(|| self.timings(request.reserved));
+        let started = metrics.as_ref().and_then(|m| m.performance.start());
         let requests: Vec<_> = (0..tile_side * tile_side)
             .map(|i| ChunkRequest {
                 chunk_x: origin.chunk_x + (i % tile_side) as i32,
@@ -1208,14 +1219,41 @@ impl TerrainEngine {
                 ..origin
             })
             .collect();
-        self.cache
-            .lock()
-            .map_err(|_| "column cache poisoned")?
-            .insert(&requests, columns);
-        self.caves
-            .lock()
-            .map_err(|_| "cave cache poisoned")?
-            .insert(request, side, mask.clone());
+        if let Some(m) = &metrics {
+            m.performance.elapsed(performance::Counter::terrain_cache_requests_nanos, started);
+        }
+        let wait = metrics.as_ref().and_then(|m| m.performance.start());
+        let mut cache = self.cache.lock().map_err(|_| "column cache poisoned")?;
+        let held = metrics.as_ref().and_then(|m| m.performance.start());
+        cache.insert(&requests, columns);
+        drop(cache);
+        let released = metrics.as_ref().and_then(|m| m.performance.start());
+        if let Some(m) = &metrics {
+            if let (Some(wait), Some(held)) = (wait, held) {
+                m.performance.add(performance::Counter::terrain_column_cache_wait_nanos,
+                    held.duration_since(wait).as_nanos() as u64);
+            }
+            if let (Some(held), Some(released)) = (held, released) {
+                m.performance.add(performance::Counter::terrain_column_cache_hold_nanos,
+                    released.duration_since(held).as_nanos() as u64);
+            }
+        }
+        let wait = metrics.as_ref().and_then(|m| m.performance.start());
+        let mut caves = self.caves.lock().map_err(|_| "cave cache poisoned")?;
+        let held = metrics.as_ref().and_then(|m| m.performance.start());
+        caves.insert(request, side, mask.clone());
+        drop(caves);
+        let released = metrics.as_ref().and_then(|m| m.performance.start());
+        if let Some(m) = &metrics {
+            if let (Some(wait), Some(held)) = (wait, held) {
+                m.performance.add(performance::Counter::terrain_cave_cache_wait_nanos,
+                    held.duration_since(wait).as_nanos() as u64);
+            }
+            if let (Some(held), Some(released)) = (held, released) {
+                m.performance.add(performance::Counter::terrain_cave_cache_hold_nanos,
+                    released.duration_since(held).as_nanos() as u64);
+            }
+        }
         Ok(())
     }
 
