@@ -1965,6 +1965,7 @@ impl Gpu {
         mut pending: MaterialReadback,
         timings: &timings::Timings,
         trace: &mut timings::Snapshot,
+        #[cfg(test)] host_phases: &mut host_phase_probe::Phases,
     ) -> Result<(Vec<Column>, Option<crate::geology::CaveMask>), String> {
         pending.mapping.check()?;
         {
@@ -1997,6 +1998,8 @@ impl Gpu {
                     * self.queue.get_timestamp_period() as f64) as u64;
                 timings.add(timings::MATERIALS, nanos);
                 trace.nanos[timings::MATERIALS] += nanos;
+                #[cfg(test)]
+                { host_phases.material_emission_ns = Some(nanos); }
                 // Another job may execute between counting and emission.
                 // Include this pass without treating that work as idle time.
                 self.pipeline.device(nanos, 0);
@@ -2091,7 +2094,10 @@ impl Gpu {
                 #[cfg(test)]
                 let host_terrain = host_phase_probe::Stamp::start(pending.wait_start);
                 let (columns, mask, materials, request) =
-                    self.complete_terrain(terrain, timings, &mut pending.timings)?;
+                    self.complete_terrain(terrain, timings, &mut pending.timings,
+                        #[cfg(test)]
+                        &mut pending.host_phases,
+                    )?;
                 #[cfg(test)]
                 host_terrain.finish(pending.wait_start, "complete_terrain", &mut pending.host_phases);
                 if let Some(materials) = materials {
@@ -2120,7 +2126,10 @@ impl Gpu {
             PendingStage::Materials(materials) => {
                 #[cfg(test)]
                 let host_materials = host_phase_probe::Stamp::start(pending.wait_start);
-                let output = self.complete_materials(materials, timings, &mut pending.timings)?;
+                let output = self.complete_materials(materials, timings, &mut pending.timings,
+                        #[cfg(test)]
+                        &mut pending.host_phases,
+                    )?;
                 #[cfg(test)]
                 host_materials.finish(pending.wait_start, "complete_materials", &mut pending.host_phases);
                 output
@@ -2147,6 +2156,7 @@ impl Gpu {
         mut pending: TerrainReadback,
         timings: &timings::Timings,
         trace: &mut timings::Snapshot,
+        #[cfg(test)] host_phases: &mut host_phase_probe::Phases,
     ) -> Result<
         (
             Vec<Column>,
@@ -2228,6 +2238,10 @@ impl Gpu {
                 let nanos = ((end - start) as f64 * period) as u64;
                 timings.add(*stage, nanos);
                 trace.nanos[*stage] += nanos;
+                #[cfg(test)]
+                if *stage == timings::MATERIALS {
+                    host_phases.material_count_ns = Some(nanos);
+                }
             }
             if last > 0 {
                 let gap = self

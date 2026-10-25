@@ -7,6 +7,10 @@ pub(crate) struct Phases {
     /// Shared intervals belong to this whole GPU batch, not a proportional per-job slice.
     pub batch_jobs: usize,
     pub events: Vec<Event>,
+    /// Device pass durations, overlapping the host intervals above. Missing
+    /// timestamp endpoints remain None; these exclude material prefix scans.
+    pub material_count_ns: Option<u64>,
+    pub material_emission_ns: Option<u64>,
 }
 #[derive(Clone, serde::Serialize)]
 pub(crate) struct Event {
@@ -38,6 +42,8 @@ fn records_ordered_intervals_and_optional_cpu_without_interpolation() {
     assert!(phases.events.iter().all(|e| e.start_ns<=e.end_ns));
     let json=serde_json::to_value(&phases).unwrap();
     assert_eq!(json["events"][1]["kind"],"terrain");
+    assert!(json["material_count_ns"].is_null());
+    assert!(json["material_emission_ns"].is_null());
     // A missing endpoint remains missing, not a fabricated zero duration.
     let missing=Event {kind:"missing",start_ns:0,end_ns:1,cpu_start_ns:None,cpu_end_ns:None};
     assert!(serde_json::to_value(missing).unwrap()["cpu_start_ns"].is_null());

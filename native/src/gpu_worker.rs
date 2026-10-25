@@ -310,6 +310,18 @@ mod tests {
                     .unwrap();
                 let host=serde_json::to_value(&sample.host_phases).unwrap();
                 assert_eq!(host["batch_jobs"],1);
+                if sample.timings.flags & 1 != 0 {
+                    let count=host["material_count_ns"].as_u64();
+                    let emission=host["material_emission_ns"].as_u64();
+                    // Metal can omit a timestamp pair. Whenever both were
+                    // measured, their sum must equal the existing stage total.
+                    if let (Some(count),Some(emission))=(count,emission) {
+                        assert_eq!(count+emission,sample.timings.nanos[timings::MATERIALS]);
+                    }
+                } else {
+                    assert!(host["material_count_ns"].is_null());
+                    assert!(host["material_emission_ns"].is_null());
+                }
                 let events=host["events"].as_array().unwrap();
                 let kinds: Vec<_>=events.iter().map(|e| e["kind"].as_str().unwrap()).collect();
                 assert_eq!(kinds,["poll","complete_terrain","emit_materials","poll","complete_materials"]);
