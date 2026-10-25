@@ -1,0 +1,681 @@
+{
+  "cycle": 200,
+  "date": "2026-10-25",
+  "status": "Test-only diagnostic; no production speedup or goal-completion claim",
+  "source": "d777df65f24d0a278e604be43bf26be27d6c95f6",
+  "native_tree": "6ed1891e8879f1b72c58a326ea9897780911662c",
+  "branch": "codex/nether-boundary-target-coverage",
+  "worktree": "/tmp/retina-nether-boundary-target-coverage",
+  "implementation": "Observe completed target-rectangle coverage for boundary prefixes through task-local aggregate work counters. No eager generation, output indexing or dynamic identity-proof state. All code is test-only. Scalar arithmetic is inspected only inside an aggregate task context. Counts distinguish completed/empty/uncovered/unfinished/unrepresentable and limited prefixes.",
+  "native_tests": {
+    "passed": 295,
+    "failed": 0,
+    "ignored": 74,
+    "new_tests": [
+      "rectangle_proof_matches_original_writer_enumeration_across_boundaries",
+      "optional_geometry_proof_rejects_unrepresentable_writers_without_wrapping",
+      "coverage_inspection_runs_only_in_an_aggregate_task_context"
+    ],
+    "log": "/Users/cyberpwn/development/retina-benchmark-evidence/completion-audit/boundary-target-coverage/native-tests.log"
+  },
+  "builds": {
+    "test_binary": "/Users/cyberpwn/development/retina-benchmark-evidence/completion-audit/boundary-target-coverage/candidate-native-tests",
+    "test_binary_sha256": "ed96ee1d2c62464432176f93e9b18a9a3beda2547850dbbded76ba586841dae8",
+    "release_library": "/Users/cyberpwn/development/retina-benchmark-evidence/completion-audit/boundary-target-coverage/candidate-libretina_worldgen.dylib",
+    "release_sha256": "17d49b636fb26a20ce18a83dba68ee637fe0dfe4d350dc13bf170bcff1391a9a",
+    "native_tests_build_note": "The freshly tested working-tree sources were committed without modification as source; release library built after that commit.",
+    "fresh_target": "/Users/cyberpwn/development/retina-benchmark-evidence/completion-audit/boundary-target-coverage/target"
+  },
+  "coverage_method": {
+    "warmups": 5,
+    "measured_regions_per_case": 20,
+    "concurrent_callers": 8,
+    "native_workers": 16,
+    "scope": "Existing-target coverage only; exact original writer rectangles, no eager generation or dynamic identity-proof scans. Covered+empty is an eligibility count, not a safe-removal percentage or predicted speedup. Earlier-root reconstruction, same-root order, index construction and memory cost remain outside this observation.",
+    "all_partitions_reconcile": true,
+    "cases": [
+      {
+        "case": "nether-main",
+        "regions": 20,
+        "actual_program_statuses": [
+          4
+        ],
+        "total_boundary_prefixes": 52699941,
+        "covered": 4067764,
+        "empty": 85281,
+        "eligible_percent": 7.8805496195906555,
+        "limited": 0,
+        "unfinished": 0,
+        "uncovered": 48546896,
+        "unrepresentable": 0,
+        "geometric_writer_positions": 12185379,
+        "top_demanded_roots": [
+          {
+            "demanded_root": 0,
+            "sources": [
+              "minecraft:basalt_pillar"
+            ],
+            "boundary_prefixes": 4115358,
+            "covered": 463747,
+            "empty": 0,
+            "writer_positions": 784372
+          },
+          {
+            "demanded_root": 4,
+            "sources": [
+              "minecraft:small_basalt_columns/choice0",
+              "minecraft:small_basalt_columns/choice1"
+            ],
+            "boundary_prefixes": 3780409,
+            "covered": 390582,
+            "empty": 0,
+            "writer_positions": 922736
+          },
+          {
+            "demanded_root": 8,
+            "sources": [
+              "minecraft:basalt_blobs"
+            ],
+            "boundary_prefixes": 3334977,
+            "covered": 316879,
+            "empty": 0,
+            "writer_positions": 1056241
+          },
+          {
+            "demanded_root": 9,
+            "sources": [
+              "minecraft:blackstone_blobs"
+            ],
+            "boundary_prefixes": 3036416,
+            "covered": 312607,
+            "empty": 0,
+            "writer_positions": 1041984
+          },
+          {
+            "demanded_root": 12,
+            "sources": [
+              "minecraft:patch_fire"
+            ],
+            "boundary_prefixes": 1920382,
+            "covered": 270109,
+            "empty": 0,
+            "writer_positions": 901164
+          },
+          {
+            "demanded_root": 3,
+            "sources": [
+              "minecraft:delta"
+            ],
+            "boundary_prefixes": 3841572,
+            "covered": 247266,
+            "empty": 0,
+            "writer_positions": 1049740
+          },
+          {
+            "demanded_root": 16,
+            "sources": [
+              "minecraft:patch_crimson_roots"
+            ],
+            "boundary_prefixes": 703819,
+            "covered": 138707,
+            "empty": 85281,
+            "writer_positions": 138707
+          },
+          {
+            "demanded_root": 13,
+            "sources": [
+              "minecraft:patch_soul_fire"
+            ],
+            "boundary_prefixes": 982577,
+            "covered": 204786,
+            "empty": 0,
+            "writer_positions": 684844
+          }
+        ]
+      },
+      {
+        "case": "nether-second-seed",
+        "regions": 20,
+        "actual_program_statuses": [
+          4
+        ],
+        "total_boundary_prefixes": 56710327,
+        "covered": 4242378,
+        "empty": 94300,
+        "eligible_percent": 7.64706928951406,
+        "limited": 0,
+        "unfinished": 0,
+        "uncovered": 52373649,
+        "unrepresentable": 0,
+        "geometric_writer_positions": 12694120,
+        "top_demanded_roots": [
+          {
+            "demanded_root": 0,
+            "sources": [
+              "minecraft:basalt_pillar"
+            ],
+            "boundary_prefixes": 4375644,
+            "covered": 470324,
+            "empty": 0,
+            "writer_positions": 794740
+          },
+          {
+            "demanded_root": 4,
+            "sources": [
+              "minecraft:small_basalt_columns/choice0",
+              "minecraft:small_basalt_columns/choice1"
+            ],
+            "boundary_prefixes": 3972522,
+            "covered": 395363,
+            "empty": 0,
+            "writer_positions": 933861
+          },
+          {
+            "demanded_root": 8,
+            "sources": [
+              "minecraft:basalt_blobs"
+            ],
+            "boundary_prefixes": 3511053,
+            "covered": 321041,
+            "empty": 0,
+            "writer_positions": 1070014
+          },
+          {
+            "demanded_root": 9,
+            "sources": [
+              "minecraft:blackstone_blobs"
+            ],
+            "boundary_prefixes": 3195068,
+            "covered": 318136,
+            "empty": 0,
+            "writer_positions": 1060325
+          },
+          {
+            "demanded_root": 12,
+            "sources": [
+              "minecraft:patch_fire"
+            ],
+            "boundary_prefixes": 2073913,
+            "covered": 276911,
+            "empty": 0,
+            "writer_positions": 924348
+          },
+          {
+            "demanded_root": 3,
+            "sources": [
+              "minecraft:delta"
+            ],
+            "boundary_prefixes": 4047696,
+            "covered": 250151,
+            "empty": 0,
+            "writer_positions": 1062140
+          },
+          {
+            "demanded_root": 16,
+            "sources": [
+              "minecraft:patch_crimson_roots"
+            ],
+            "boundary_prefixes": 776263,
+            "covered": 142861,
+            "empty": 94300,
+            "writer_positions": 142861
+          },
+          {
+            "demanded_root": 13,
+            "sources": [
+              "minecraft:patch_soul_fire"
+            ],
+            "boundary_prefixes": 1072649,
+            "covered": 212163,
+            "empty": 0,
+            "writer_positions": 711176
+          }
+        ]
+      },
+      {
+        "case": "nether-custom-bounds",
+        "regions": 20,
+        "actual_program_statuses": [
+          4
+        ],
+        "total_boundary_prefixes": 48983665,
+        "covered": 3447012,
+        "empty": 0,
+        "eligible_percent": 7.037064294801135,
+        "limited": 0,
+        "unfinished": 0,
+        "uncovered": 45536653,
+        "unrepresentable": 0,
+        "geometric_writer_positions": 10805743,
+        "top_demanded_roots": [
+          {
+            "demanded_root": 4,
+            "sources": [
+              "minecraft:patch_fire"
+            ],
+            "boundary_prefixes": 3938106,
+            "covered": 301676,
+            "empty": 0,
+            "writer_positions": 1005082
+          },
+          {
+            "demanded_root": 12,
+            "sources": [
+              "minecraft:ore_gold_nether"
+            ],
+            "boundary_prefixes": 1424917,
+            "covered": 287744,
+            "empty": 0,
+            "writer_positions": 574579
+          },
+          {
+            "demanded_root": 13,
+            "sources": [
+              "minecraft:ore_quartz_nether"
+            ],
+            "boundary_prefixes": 1424917,
+            "covered": 287744,
+            "empty": 0,
+            "writer_positions": 574579
+          },
+          {
+            "demanded_root": 5,
+            "sources": [
+              "minecraft:patch_soul_fire"
+            ],
+            "boundary_prefixes": 2356172,
+            "covered": 261955,
+            "empty": 0,
+            "writer_positions": 872496
+          },
+          {
+            "demanded_root": 6,
+            "sources": [
+              "minecraft:glowstone_extra"
+            ],
+            "boundary_prefixes": 2274081,
+            "covered": 260334,
+            "empty": 0,
+            "writer_positions": 867108
+          },
+          {
+            "demanded_root": 7,
+            "sources": [
+              "minecraft:glowstone"
+            ],
+            "boundary_prefixes": 1964217,
+            "covered": 251229,
+            "empty": 0,
+            "writer_positions": 836903
+          },
+          {
+            "demanded_root": 19,
+            "sources": [
+              "minecraft:warped_fungi"
+            ],
+            "boundary_prefixes": 882956,
+            "covered": 233493,
+            "empty": 0,
+            "writer_positions": 466123
+          },
+          {
+            "demanded_root": 8,
+            "sources": [
+              "minecraft:ore_magma"
+            ],
+            "boundary_prefixes": 1927713,
+            "covered": 221478,
+            "empty": 0,
+            "writer_positions": 885912
+          }
+        ]
+      },
+      {
+        "case": "nether-direct-stem",
+        "regions": 20,
+        "actual_program_statuses": [
+          4
+        ],
+        "total_boundary_prefixes": 51306979,
+        "covered": 3603356,
+        "empty": 0,
+        "eligible_percent": 7.023130323069694,
+        "limited": 0,
+        "unfinished": 0,
+        "uncovered": 47703623,
+        "unrepresentable": 0,
+        "geometric_writer_positions": 11294374,
+        "top_demanded_roots": [
+          {
+            "demanded_root": 4,
+            "sources": [
+              "minecraft:patch_fire"
+            ],
+            "boundary_prefixes": 4163590,
+            "covered": 317940,
+            "empty": 0,
+            "writer_positions": 1058895
+          },
+          {
+            "demanded_root": 12,
+            "sources": [
+              "minecraft:ore_gold_nether"
+            ],
+            "boundary_prefixes": 1472679,
+            "covered": 300127,
+            "empty": 0,
+            "writer_positions": 598948
+          },
+          {
+            "demanded_root": 13,
+            "sources": [
+              "minecraft:ore_quartz_nether"
+            ],
+            "boundary_prefixes": 1472679,
+            "covered": 300127,
+            "empty": 0,
+            "writer_positions": 598948
+          },
+          {
+            "demanded_root": 5,
+            "sources": [
+              "minecraft:patch_soul_fire"
+            ],
+            "boundary_prefixes": 2482211,
+            "covered": 275782,
+            "empty": 0,
+            "writer_positions": 918126
+          },
+          {
+            "demanded_root": 6,
+            "sources": [
+              "minecraft:glowstone_extra"
+            ],
+            "boundary_prefixes": 2393107,
+            "covered": 274319,
+            "empty": 0,
+            "writer_positions": 913223
+          },
+          {
+            "demanded_root": 7,
+            "sources": [
+              "minecraft:glowstone"
+            ],
+            "boundary_prefixes": 2071224,
+            "covered": 264359,
+            "empty": 0,
+            "writer_positions": 880115
+          },
+          {
+            "demanded_root": 19,
+            "sources": [
+              "minecraft:warped_fungi"
+            ],
+            "boundary_prefixes": 918975,
+            "covered": 242847,
+            "empty": 0,
+            "writer_positions": 483850
+          },
+          {
+            "demanded_root": 8,
+            "sources": [
+              "minecraft:ore_magma"
+            ],
+            "boundary_prefixes": 2030524,
+            "covered": 233103,
+            "empty": 0,
+            "writer_positions": 932412
+          }
+        ]
+      },
+      {
+        "case": "overworld",
+        "regions": 20,
+        "actual_program_statuses": [
+          4
+        ],
+        "total_boundary_prefixes": 0,
+        "covered": 0,
+        "empty": 0,
+        "eligible_percent": null,
+        "limited": 0,
+        "unfinished": 0,
+        "uncovered": 0,
+        "unrepresentable": 0,
+        "geometric_writer_positions": 0,
+        "top_demanded_roots": []
+      }
+    ]
+  },
+  "release_instruction_equivalence": {
+    "text_equal": true,
+    "preceding": {
+      "size": 5491968,
+      "sha256": "43806e9e60a426ee12c6c4dce7d1d8821ed917ed680645f3f715490b6558567d"
+    },
+    "candidate": {
+      "size": 5491968,
+      "sha256": "43806e9e60a426ee12c6c4dce7d1d8821ed917ed680645f3f715490b6558567d"
+    },
+    "scope": "Raw Mach-O __TEXT section digest comparison. Equality proves identical bytes in that section only; other data/load commands may differ. No similarity inferred when unequal."
+  },
+  "correctness": {
+    "probe_measured_instances": 102400,
+    "ordinary_measured_instances": 204800,
+    "total_measured_instances": 307200,
+    "original_and_preceding_full_nbt_exact": true,
+    "scope": "Exact complete decompressed payload and chunk membership; repeated coordinates are instances. Original reference suite and actual postmerge232 reference; compression/MCA container layout outside payload. No expected payload changes."
+  },
+  "ordinary_runs": [
+    {
+      "case": "nether-main-run0",
+      "median_ms": 747.2541875904426,
+      "p95_ms": 930.1907897461206,
+      "max_ms": 931.4233749173582,
+      "total_ms": 15222.341874847189,
+      "chunks_per_second": 1345.3908845550475,
+      "peak_rss_bytes": 1990705152,
+      "measured_chunks": 20480,
+      "actual_program_statuses": [
+        4
+      ],
+      "all_parity_exact": true,
+      "known_test_pids": [],
+      "known_test_max_cpu_percent": 0
+    },
+    {
+      "case": "nether-second-seed-run0",
+      "median_ms": 790.4029164928943,
+      "p95_ms": 966.5797065594234,
+      "max_ms": 973.3729579020292,
+      "total_ms": 15570.587041089311,
+      "chunks_per_second": 1315.3004408860893,
+      "peak_rss_bytes": 2000273408,
+      "measured_chunks": 20480,
+      "actual_program_statuses": [
+        4
+      ],
+      "all_parity_exact": true,
+      "known_test_pids": [],
+      "known_test_max_cpu_percent": 0
+    },
+    {
+      "case": "nether-custom-bounds-run0",
+      "median_ms": 646.1881045252085,
+      "p95_ms": 1027.1538589033298,
+      "max_ms": 1029.9544578883797,
+      "total_ms": 14208.72095786035,
+      "chunks_per_second": 1441.3683019561545,
+      "peak_rss_bytes": 1801535488,
+      "measured_chunks": 20480,
+      "actual_program_statuses": [
+        4
+      ],
+      "all_parity_exact": true,
+      "known_test_pids": [],
+      "known_test_max_cpu_percent": 0
+    },
+    {
+      "case": "nether-direct-stem-run0",
+      "median_ms": 1004.8655414720997,
+      "p95_ms": 1178.8135810522365,
+      "max_ms": 1577.4359160568565,
+      "total_ms": 20356.406667036936,
+      "chunks_per_second": 1006.0714710108047,
+      "peak_rss_bytes": 1767636992,
+      "measured_chunks": 20480,
+      "actual_program_statuses": [
+        4
+      ],
+      "all_parity_exact": true,
+      "known_test_pids": [],
+      "known_test_max_cpu_percent": 0
+    },
+    {
+      "case": "overworld-run0",
+      "median_ms": 402.54108398221433,
+      "p95_ms": 476.02720700670034,
+      "max_ms": 501.2662918306887,
+      "total_ms": 7846.6337909922,
+      "chunks_per_second": 2610.0364239644628,
+      "peak_rss_bytes": 1507803136,
+      "measured_chunks": 20480,
+      "actual_program_statuses": [
+        4
+      ],
+      "all_parity_exact": true,
+      "known_test_pids": [],
+      "known_test_max_cpu_percent": 0
+    },
+    {
+      "case": "nether-main-run1",
+      "median_ms": 1213.5685835964978,
+      "p95_ms": 1828.1551316147672,
+      "max_ms": 2093.1165830697864,
+      "total_ms": 25034.58920889534,
+      "chunks_per_second": 818.0681467991895,
+      "peak_rss_bytes": 2042740736,
+      "measured_chunks": 20480,
+      "actual_program_statuses": [
+        4
+      ],
+      "all_parity_exact": true,
+      "known_test_pids": [],
+      "known_test_max_cpu_percent": 0
+    },
+    {
+      "case": "nether-second-seed-run1",
+      "median_ms": 1455.9873334364966,
+      "p95_ms": 2589.355837774929,
+      "max_ms": 2973.1590829323977,
+      "total_ms": 29376.66149996221,
+      "chunks_per_second": 697.1520572555988,
+      "peak_rss_bytes": 2081177600,
+      "measured_chunks": 20480,
+      "actual_program_statuses": [
+        4
+      ],
+      "all_parity_exact": true,
+      "known_test_pids": [
+        57898
+      ],
+      "known_test_max_cpu_percent": 105.8
+    },
+    {
+      "case": "nether-custom-bounds-run1",
+      "median_ms": 816.2363125011325,
+      "p95_ms": 925.3187026712113,
+      "max_ms": 1111.5755829960108,
+      "total_ms": 16492.242833133787,
+      "chunks_per_second": 1241.7959283775883,
+      "peak_rss_bytes": 1726398464,
+      "measured_chunks": 20480,
+      "actual_program_statuses": [
+        4
+      ],
+      "all_parity_exact": true,
+      "known_test_pids": [],
+      "known_test_max_cpu_percent": 0
+    },
+    {
+      "case": "nether-direct-stem-run1",
+      "median_ms": 874.7032495448366,
+      "p95_ms": 1236.636261770036,
+      "max_ms": 1335.4428329039365,
+      "total_ms": 18235.613249940798,
+      "chunks_per_second": 1123.077119441897,
+      "peak_rss_bytes": 1782824960,
+      "measured_chunks": 20480,
+      "actual_program_statuses": [
+        4
+      ],
+      "all_parity_exact": true,
+      "known_test_pids": [],
+      "known_test_max_cpu_percent": 0
+    },
+    {
+      "case": "overworld-run1",
+      "median_ms": 337.16674987226725,
+      "p95_ms": 479.33326248312375,
+      "max_ms": 538.5660000611097,
+      "total_ms": 6962.7931248396635,
+      "chunks_per_second": 2941.348340070294,
+      "peak_rss_bytes": 1507377152,
+      "measured_chunks": 20480,
+      "actual_program_statuses": [
+        4
+      ],
+      "all_parity_exact": true,
+      "known_test_pids": [],
+      "known_test_max_cpu_percent": 0
+    }
+  ],
+  "timing_acceptance": false,
+  "goal_complete": false,
+  "decision": "Existing target coverage accounts for7.02\u20137.88%of observed boundary-prefix calls. This is a limited eligibility count, not saved work or a speedup estimate. It does not justify a broad rewrite on its own. Earlier dynamic proofs/frontiers remain held; any runtime candidate needs whole-region benefits exceeding indexing and memory costs. Ordinary observations remain variable and include a known test interval; no production change or performance acceptance follows.",
+  "prior_experiments_reviewed": [
+    {
+      "commit": "4cf5e687ac529e6840b67645fba8e46c46c1c13d",
+      "kind": "Wider nested eager target frontiers; reviewed source and retained recommendation against repeating without measured benefit."
+    },
+    {
+      "commit": "f77c867f51d3292f2b66a5a232a7b45e190817c6",
+      "kind": "Dynamic whole-chunk boundary closure proofs and interval archives; reviewed source."
+    },
+    {
+      "commit": "be371851895f6f1e2e7e5f56eea5582edeff7f10",
+      "kind": "Publication-filtered identity proof retries; retained cycle99 report holds candidate because fewer rechecks did not consistently improve whole regions. Historical observations are not current timing controls."
+    }
+  ],
+  "evidence": {
+    "validation-receipt.json": {
+      "path": "/Users/cyberpwn/development/retina-benchmark-evidence/completion-audit/boundary-target-coverage/validation-receipt.json",
+      "sha256": "8f6b710c16e71947021d768580ea2c53e7052fd569658d50eb1d6d984f3ad65d"
+    },
+    "coverage-analysis.json": {
+      "path": "/Users/cyberpwn/development/retina-benchmark-evidence/completion-audit/boundary-target-coverage/coverage-analysis.json",
+      "sha256": "27fb78079e9b609f4111f4d8bb23be63c810f61d067eadacb529c2c735e8fa43"
+    },
+    "probe-parity.json": {
+      "path": "/Users/cyberpwn/development/retina-benchmark-evidence/completion-audit/boundary-target-coverage/probe-parity.json",
+      "sha256": "e50179f9c58b85edde6809aca277ac8eda8a1dbed3233044b4c9ec9239bff9b6"
+    },
+    "normal-code-comparison.json": {
+      "path": "/Users/cyberpwn/development/retina-benchmark-evidence/completion-audit/boundary-target-coverage/normal-code-comparison.json",
+      "sha256": "ec0077d374f9b524cecc7dfdee696f0ee7396cb20081b7c9c56c817e0ed71cfb"
+    },
+    "validation-assessment.json": {
+      "path": "/Users/cyberpwn/development/retina-benchmark-evidence/completion-audit/boundary-target-coverage/validation-assessment.json",
+      "sha256": "a8b22cebf3cc7c127938e57a03f2af0cfd2af56d6841f3c302372afc51ad513e"
+    },
+    "native-tests.log": {
+      "path": "/Users/cyberpwn/development/retina-benchmark-evidence/completion-audit/boundary-target-coverage/native-tests.log",
+      "sha256": "f874483dbfbb493723aac8d8fc8f8f3ff01b74235dca905315315956844ffd72"
+    },
+    "release-build.log": {
+      "path": "/Users/cyberpwn/development/retina-benchmark-evidence/completion-audit/boundary-target-coverage/release-build.log",
+      "sha256": "c8f720f99a4eddc96b38130e70129abb519bd1f0675cb81db535a3656c0dd430"
+    }
+  },
+  "reproduce": "Use exact command arrays and probe environment in validation-receipt.json with fresh output paths. Build from source in isolated worktree/target; retain original and preceding reference worlds unchanged. All worktrees and generated data preserved."
+}

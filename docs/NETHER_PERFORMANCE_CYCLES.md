@@ -3473,3 +3473,40 @@ differ, so whole-library identity is not claimed. No observer symbols remain.
 Quiet timing acceptance remains deferred. All worktrees and evidence are retained.
 
 See `docs/benchmarks/nether-perf-cycle176-2026-10-24.json` and external `cycle176/`.
+
+## Cycle 200 — Measure existing target coverage for boundary prefixes
+
+A test-only aggregate counter now measures whether a completed root's original
+request rectangle already contains every inverse-footprint writer of a queried
+boundary column. It performs no extra generation and retains no generated state.
+Unfinished, unrepresentable, empty, covered and uncovered categories partition
+boundary-prefix calls; limited command prefixes are separately counted.
+
+| Profile | Boundary prefixes | Covered or empty | Share |
+|---|---:|---:|---:|
+| Main | 52,699,941 | 4,153,045 | 7.88% |
+| Second seed | 56,710,327 | 4,336,678 | 7.65% |
+| Custom bounds | 48,983,665 | 3,447,012 | 7.04% |
+| Direct-stem | 51,306,979 | 3,603,356 | 7.02% |
+
+These are eligibility counts, not saved-work percentages. Covered writers still
+have commands to apply and earlier state to resolve. Overworld has no ordered
+roots in this fixture. The narrow coverage share does not justify a broad
+boundary rewrite by itself. Prior eager-frontier and dynamic identity-proof
+experiments remain held; their bookkeeping reductions are not performance proof.
+
+**295 native tests pass**, including differential writer enumeration across
+negative/boundary coordinates, unrepresentable geometry, and aggregate-context
+isolation. The eight-caller probe and two ordinary one-caller corpus passes
+compare **307,200 measured chunk instances** exactly against both original and
+preceding merged complete NBT and membership. Each case uses five warmups and
+twenty measured regions, sixteen workers, lighting and zlib publication. Every
+measured shader snapshot is status 4. Source and retained binaries stayed fixed.
+
+The freshly built release instruction section is byte-identical to preceding
+main; no production algorithm changes. Ordinary timings vary substantially and
+one case overlaps an identified test. No speedup, timing acceptance or goal
+completion is claimed. All evidence and worktrees remain retained.
+
+See `docs/benchmarks/nether-perf-cycle200-2026-10-25.json` and external
+`completion-audit/boundary-target-coverage/` for receipts, hashes and commands.
