@@ -8,6 +8,42 @@ use std::sync::Arc;
 #[cfg(test)]
 mod overlap_probe;
 
+/// Bounded discovery of exact tiles still owned by active jobs or existing caches.
+/// Weak entries retain no terrain buffers and never keep an otherwise dead tile alive.
+pub(crate) struct LiveTiles {
+    entries: HashMap<(CacheKey, u32), std::sync::Weak<CaveMask>>,
+    order: std::collections::VecDeque<(CacheKey, u32)>,
+    limit: usize,
+}
+impl Default for LiveTiles {
+    fn default() -> Self { Self::new(512) }
+}
+impl LiveTiles {
+    fn new(limit: usize) -> Self {
+        Self { entries: HashMap::new(), order: Default::default(), limit }
+    }
+    pub(crate) fn get(&self, request: ChunkRequest, side: u32) -> Option<Arc<CaveMask>> {
+        self.entries.get(&(CacheKey::from(request), side))?.upgrade()
+    }
+    pub(crate) fn insert(&mut self, request: ChunkRequest, side: u32, mask: &Arc<CaveMask>) {
+        if self.limit == 0 || exact_patch_halo(request, side, mask).is_none() { return; }
+        let key = (CacheKey::from(request), side);
+        if let Some(entry) = self.entries.get_mut(&key) {
+            *entry = Arc::downgrade(mask);
+            return;
+        }
+        if self.entries.len() >= self.limit {
+            self.entries.retain(|_, value| value.strong_count() > 0);
+            self.order.retain(|key| self.entries.contains_key(key));
+            while self.entries.len() >= self.limit {
+                self.entries.remove(&self.order.pop_front().unwrap());
+            }
+        }
+        self.entries.insert(key, Arc::downgrade(mask));
+        self.order.push_back(key);
+    }
+}
+
 /// The caller must obtain `mask` through the complete request CacheKey. Exact
 /// geometry also preserves the substrate's fallback column/material coverage.
 /// This applies only to patch-halo tiles, whose producer retains all GPU columns.
@@ -152,6 +188,45 @@ mod tests {
                 ),
             }),
         })
+    }
+    #[test]
+    fn live_tiles_isolate_full_request_geometry_and_release_buffers() {
+        let r = request(-16, 32);
+        let mask = mask(r, 2);
+        let mut live = LiveTiles::new(4);
+        live.insert(r, 2, &mask);
+        assert!(Arc::ptr_eq(&live.get(r, 2).unwrap(), &mask));
+        assert!(live.get(r, 3).is_none());
+        for changed in [
+            ChunkRequest { seed: r.seed + 1, ..r },
+            ChunkRequest { reserved: r.reserved + 1, ..r },
+            ChunkRequest { chunk_x: r.chunk_x + 1, ..r },
+            ChunkRequest { chunk_z: r.chunk_z + 1, ..r },
+            ChunkRequest { min_y: r.min_y + 1, ..r },
+            ChunkRequest { height: r.height + 1, ..r },
+            ChunkRequest { base_height: r.base_height + 1., ..r },
+            ChunkRequest { amplitude: r.amplitude + 1., ..r },
+            ChunkRequest { frequency: r.frequency + 1., ..r },
+        ] { assert!(live.get(changed, 2).is_none()); }
+        let columns = Arc::downgrade(&mask.columns.as_ref().unwrap().columns);
+        drop(mask);
+        assert!(live.get(r, 2).is_none());
+        assert!(columns.upgrade().is_none());
+    }
+    #[test]
+    fn live_tiles_bound_metadata_replacements_and_reject_wrong_geometry() {
+        let mut live = LiveTiles::new(2);
+        let a = request(0, 0); let b = request(16, 0); let c = request(32, 0);
+        let ma = mask(a, 2); let mb = mask(b, 2); let mc = mask(c, 2);
+        live.insert(a, 3, &ma); assert!(live.entries.is_empty());
+        live.insert(a, 2, &ma); live.insert(a, 2, &ma);
+        live.insert(b, 2, &mb); live.insert(c, 2, &mc);
+        assert_eq!(live.entries.len(), 2); assert_eq!(live.order.len(), 2);
+        assert!(live.get(a, 2).is_none()); assert!(live.get(b, 2).is_some());
+        drop(mb);
+        live.insert(a, 2, &ma);
+        assert!(live.get(c, 2).is_some()); assert!(live.get(a, 2).is_some());
+        assert_eq!(live.entries.len(), 2); assert_eq!(live.order.len(), 2);
     }
     #[test]
     fn exact_geometry_preserves_crop_guard_extent_and_lifetime() {
