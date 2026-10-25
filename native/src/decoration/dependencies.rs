@@ -1211,6 +1211,8 @@ impl Planner<'_> {
         limit: Option<(i32, i32, usize)>,
     ) -> Result<Arc<ColumnState>, String> {
         self.metrics.performance.add(Perf::prefix_evaluations, 1);
+        #[cfg(test)]
+        dependency_work::boundary_target_coverage(self, before, x, z, limit.is_some());
         #[cfg(test)] if limit.is_some() { dependency_work::count(Work::PrefixLimited, before.checked_sub(1)); }
         let prior = self.column(before - 1, x, z)?;
         let mut blocks: Option<Vec<u16>> = None;

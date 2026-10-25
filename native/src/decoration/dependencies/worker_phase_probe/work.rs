@@ -1,6 +1,7 @@
 //! Test-only task-local work counts, indexed by the earlier root demanded.
 //! No timestamps, events, mutexes, or atomic updates occur on the count path.
 use super::*;
+mod target_coverage;
 
 #[derive(Clone, Copy)]
 #[repr(usize)]
@@ -30,8 +31,16 @@ pub(in crate::decoration::dependencies) enum Op {
     WriterRequest,
     WriterReady,
     WriterPruned,
+    BoundaryTargetPrefix,
+    BoundaryTargetLimited,
+    BoundaryTargetUnfinished,
+    BoundaryTargetUnrepresentable,
+    BoundaryTargetEmpty,
+    BoundaryTargetCovered,
+    BoundaryTargetUncovered,
+    BoundaryTargetWriterPositions,
 }
-const NAMES: [&str; 25] = [
+const NAMES: [&str; 33] = [
     "column_request",
     "column_interior",
     "column_resolved_interior",
@@ -57,6 +66,14 @@ const NAMES: [&str; 25] = [
     "writer_request",
     "writer_ready",
     "writer_pruned",
+    "boundary_target_prefix",
+    "boundary_target_limited",
+    "boundary_target_unfinished",
+    "boundary_target_unrepresentable",
+    "boundary_target_empty",
+    "boundary_target_covered",
+    "boundary_target_uncovered",
+    "boundary_target_writer_positions",
 ];
 #[derive(Default)]
 pub(super) struct Buffer {
@@ -145,7 +162,7 @@ impl Buffer {
         let totals: BTreeMap<_, _> = NAMES.iter().zip(totals).collect();
         json!({"enabled":true,"valid":self.invalid_targets==0,"invalid_targets":self.invalid_targets,
             "rows":rows,"totals":totals,"root_slots":self.rows.len().saturating_sub(1),
-            "scope":"Counts belong to the dispatched task/root, including nested work. demanded_root is the anchor/output root or the last included root of a column version (before-1); null denotes base terrain or root-independent lookups. Counts are requests/attempted builds, not exclusive CPU costs. column_versions_skipped counts version steps; other fields count calls. No per-call intervals are collected."})
+            "scope":"Counts belong to the dispatched task/root, including nested work. demanded_root is the anchor/output root or the last included root of a column version (before-1); null denotes base terrain or root-independent lookups. Counts are requests/attempted builds, not exclusive CPU costs. column_versions_skipped counts version steps; other fields count calls unless named otherwise. boundary_target fields inspect only prefixes outside the version volume: unfinished, unrepresentable, empty, covered and uncovered partition those calls. Covered means the latest root is completed and every inverse-footprint writer is in the original target rectangle; it does not prove an identity result or safe omission of earlier-root work. Writer positions is a geometric candidate count for covered prefixes, not saved checks or commands. Limited prefixes remain separately counted and retain their exact command limit. No per-call intervals are collected."})
     }
 }
 
@@ -154,6 +171,11 @@ pub(in crate::decoration::dependencies) fn count(op: Op, root: Option<usize>) {
 }
 pub(in crate::decoration::dependencies) fn add(op: Op, root: Option<usize>, amount: u64) {
     joins::count_work(op, root, amount);
+}
+pub(in crate::decoration::dependencies) fn boundary_target_coverage(
+    planner: &Planner<'_>, before: usize, x: i32, z: i32, limited: bool,
+) {
+    joins::with_work(|work| target_coverage::observe(work, planner, before, x, z, limited));
 }
 pub(super) fn lookup(key: joins::Key) {
     let (op, root) = match key.kind {
@@ -182,6 +204,30 @@ mod tests {
     fn finish(trace: Trace, success: bool) {
         trace.mark("evaluation_end");
         trace.finish(success);
+    }
+
+    #[test]
+    fn coverage_inspection_runs_only_in_an_aggregate_task_context() {
+        let observed = std::cell::Cell::new(0);
+        joins::with_work(|_| observed.set(observed.get() + 1));
+        assert_eq!(observed.get(), 0);
+        for aggregate in [false, true] {
+            let session = Arc::new(Session { aggregate, ..Session::default() });
+            let trace = trace(&session, "coverage context", 1);
+            let task = trace.task([0, 0]);
+            joins::with_work(|buffer| {
+                observed.set(observed.get() + 1);
+                buffer.add(Op::BoundaryTargetCovered, Some(2), 1);
+            });
+            task.finish(true);
+            finish(trace, true);
+            assert_eq!(observed.get(), usize::from(aggregate));
+            if aggregate {
+                assert_eq!(session.roots.lock().unwrap()[0]["dependency_work"]["totals"]["boundary_target_covered"], 1);
+            }
+        }
+        joins::with_work(|_| observed.set(observed.get() + 1));
+        assert_eq!(observed.get(), 1);
     }
 
     #[test]
