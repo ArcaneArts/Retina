@@ -113,6 +113,16 @@ pub(super) fn count_work(op: work::Op, root: Option<usize>, amount: u64) {
     });
 }
 
+// The callback only inspects immutable geometry. Skip that work outside an
+// aggregate task, and retain no planner or generated-state owner in the buffer.
+pub(super) fn with_work(inspect: impl FnOnce(&mut work::Buffer)) {
+    CURRENT.with(|current| {
+        if let Some(work) = current.borrow_mut().frames.last_mut().and_then(|frame| frame.work.as_mut()) {
+            inspect(work);
+        }
+    });
+}
+
 pub(super) fn anchor_begin(root: usize) -> Option<(anchor_cpu::ContextId, Option<u64>)> {
     CURRENT.with(|current| {
         let mut current = current.borrow_mut();
