@@ -99,8 +99,10 @@ public final class NativeLocateIntegrationTest {
                                     "unrestricted search queries only its first valid point: "+querySizes);
                             acceptedPoints += querySizes.stream().mapToInt(Integer::intValue).sum();
                         }
-                        require(acceptedPoints == 3,"three in-height queries and two empty out-of-height searches");
-                        System.out.println("QA_EVT {\"event\":\"unrestricted_biome_query_work\",\"status\":\"pass\",\"context\":{\"composition\":"+composition+",\"valid_searches\":3,\"queried_points\":"+acceptedPoints+",\"empty_searches\":2}}");
+                        // Mth.outFromOrigin clamps out-of-height origins to the
+                        // search bounds; these are valid searches, not empty ones.
+                        require(acceptedPoints == 5,"five first-point searches, including two clamped origins; actual points=" + acceptedPoints);
+                        System.out.println("QA_EVT {\"event\":\"unrestricted_biome_query_work\",\"status\":\"pass\",\"context\":{\"composition\":"+composition+",\"valid_searches\":5,\"queried_points\":"+acceptedPoints+",\"clamped_searches\":2}}");
                     } finally { source.bindQueries(query::biomes); }
                     for (var target : actual.stream().distinct().limit(3).toList()) {
                         var origin=new BlockPos(-17,63,-33);
@@ -137,6 +139,59 @@ public final class NativeLocateIntegrationTest {
                     System.out.println("QA_EVT {\"event\":\"locate_query_parity\",\"status\":\"pass\",\"context\":{\"composition\":"+composition+",\"datapack\":"+(args.length>0)+",\"points\":"+points.size()+",\"cold_ms\":"+cold/1e6+",\"warm_ms\":"+warm/1e6+",\"regions\":0}}");
                 } finally { generator.closePreviews(); }
             }
+            if (args.length == 0) netherSearches(registry);
+        }
+    }
+    private static void netherSearches(RegistryAccess registry) {
+        var settings = registry.lookupOrThrow(Registries.NOISE_SETTINGS).getOrThrow(NoiseGeneratorSettings.NETHER);
+        var biomes = MultiNoiseBiomeSource.createFromPreset(registry.lookupOrThrow(Registries.MULTI_NOISE_BIOME_SOURCE_PARAMETER_LIST)
+                .getOrThrow(MultiNoiseBiomeSourceParameterLists.NETHER));
+        var dimension = registry.lookupOrThrow(Registries.DIMENSION_TYPE)
+                .getValueOrThrow(net.minecraft.world.level.dimension.BuiltinDimensionTypes.NETHER);
+        var level = (LevelReader) Proxy.newProxyInstance(LevelReader.class.getClassLoader(), new Class[]{LevelReader.class},
+                (proxy, method, values) -> switch (method.getName()) {
+                    case "getMinY" -> dimension.minY();
+                    case "getMaxY" -> dimension.minY() + dimension.height() - 1;
+                    default -> throw new AssertionError("search accessed world: " + method.getName());
+                });
+        for (long seed : new long[]{SEED, -987654321L}) {
+            var generator = RetinaChunkGenerator.fromSource(new GenerationSource(net.minecraft.world.level.Level.NETHER,
+                    new NoiseBasedChunkGenerator(biomes, settings), dimension));
+            generator.bindWorld(registry, seed, PalettedContainerFactory.create(registry), StructureProfile.Context.NONE, false);
+            try {
+                var source = (RetinaBiomeSource) generator.getBiomeSource();
+                var query = generator.queries();
+                var terrain = NativeTerrain.instance();
+                var request = generator.request(seed, 0, 0);
+                long chunksBefore = terrain.timings(request.profile()).chunks();
+                var random = RandomState.create(registry.lookupOrThrow(Registries.NOISE), seed, settings.value());
+                var reference = new BiomeSource() {
+                    @Override protected MapCodec<? extends BiomeSource> codec() { return null; }
+                    @Override protected Stream<Holder<Biome>> collectPossibleBiomes() { return source.possibleBiomes().stream(); }
+                    @Override public BiomeResolver createResolver(Climate.Sampler sampler) {
+                        return (x,y,z) -> query.biomes(List.of(new BlockPos(x*4,y*4,z*4))).getFirst();
+                    }
+                };
+                var sizes = new ArrayList<Integer>();
+                int checked = 0;
+                for (int y : new int[]{-1, 0, 1, 63, 127, 128, 255, 256, 257}) {
+                    for (int x : new int[]{-160001, -17, 160001}) {
+                        var origin = new BlockPos(x, y, -x);
+                        sizes.clear();
+                        source.bindQueries(batch -> { sizes.add(batch.size()); return query.biomes(batch); });
+                        var found = source.findClosestQuery(origin, 1, 1, 1, b -> true, level.getMinY(), level.getMaxY());
+                        var expected = reference.findClosestBiome3d(origin, 1, 1, 1, b -> true, random, level);
+                        require(Objects.equals(found, expected), "Nether search order at " + origin + " seed=" + seed);
+                        require(sizes.equals(expected == null ? List.of() : List.of(1)),
+                                "Nether unrestricted search queries only first valid point: " + sizes);
+                        checked++;
+                    }
+                }
+                source.bindQueries(query::biomes);
+                require(generator.metrics().snapshot().previewRegions() == 0, "Nether search creates no region");
+                require(terrain.timings(request.profile()).chunks() == chunksBefore, "Nether search assembles no chunks");
+                System.out.println("QA_EVT {\"event\":\"nether_unrestricted_search\",\"status\":\"pass\",\"context\":{\"seed\":" + seed + ",\"searches\":" + checked + "}}");
+            } finally { generator.closePreviews(); }
         }
     }
     private static void savedScan(ChunkPos position) throws Exception {
