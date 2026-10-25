@@ -5,6 +5,7 @@ use serde_json::{Value, json};
 use std::{cell::RefCell, time::Instant};
 mod joins;
 mod cpu;
+pub(crate) fn thread_cpu_ns() -> Option<u64> { cpu::now() }
 mod anchor_cpu;
 mod request_batch;
 pub(super) use anchor_cpu::Span as AnchorCpu;

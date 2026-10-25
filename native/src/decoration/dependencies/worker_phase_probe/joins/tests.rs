@@ -237,11 +237,12 @@ fn terrain_reply_snapshots_retain_all_jobs_and_missing_failure_data() {
     let mut snapshot=crate::timings::Snapshot::default();
     snapshot.flags=1;snapshot.nanos[crate::timings::QUEUE]=123;
     snapshot.nanos[crate::timings::WAIT_COPY]=456;
+    let host=crate::gpu::host_phase_probe::Phases { batch_jobs:1, events:Vec::new() };
     for x in 0..12 {
         TerrainSpan::start(true,"gpu_reply_abandoned",x,2)
-            .finish_gpu(true,Some(&snapshot),22,20,0);
+            .finish_gpu(true,Some(&snapshot),Some(&host),22,20,0);
     }
-    TerrainSpan::start(true,"gpu_reply_abandoned",99,2).finish_gpu(false,None,22,20,0);
+    TerrainSpan::start(true,"gpu_reply_abandoned",99,2).finish_gpu(false,None,None,22,20,0);
     task.finish(true);finish(trace);
     let roots=session.roots.lock().unwrap();let result=&roots[0]["terrain_attribution"];
     assert_eq!(result["valid"],true);
@@ -250,6 +251,7 @@ fn terrain_reply_snapshots_retain_all_jobs_and_missing_failure_data() {
     for (i,reply) in replies[..12].iter().enumerate() {
         assert_eq!(reply["at"],json!([i,2]));
         assert_eq!(reply["gpu"]["tile_side"],22);
+        assert_eq!(reply["gpu"]["host_phases"]["batch_jobs"],1);
         assert_eq!(reply["gpu"]["snapshot"]["nanos"][crate::timings::QUEUE],123);
         assert_eq!(reply["gpu"]["snapshot"]["nanos"][crate::timings::WAIT_COPY],456);
     }

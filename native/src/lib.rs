@@ -1267,6 +1267,7 @@ impl TerrainEngine {
         #[cfg(test)]
         span.finish_gpu(matches!(&result, Ok(Ok(_))),
             result.as_ref().ok().and_then(|r| r.as_ref().ok()).map(|s| &s.timings),
+            result.as_ref().ok().and_then(|r| r.as_ref().ok()).map(|s| &s.host_phases),
             tile_side, cave_side, probe_mode);
         result?
     }

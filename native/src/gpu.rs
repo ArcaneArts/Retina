@@ -1,4 +1,6 @@
 use crate::timings;
+#[cfg(test)]
+pub(crate) mod host_phase_probe;
 use crate::{
     COLUMNS, GpuRequest, MAX_BATCH, MAX_TILES,
     profile::{Column, WorldProfile},
@@ -114,6 +116,8 @@ pub(crate) struct GpuSample {
     pub columns: Vec<Column>,
     pub mask: Option<crate::geology::CaveMask>,
     pub timings: timings::Snapshot,
+    #[cfg(test)]
+    pub host_phases: host_phase_probe::Phases,
 }
 struct Timestamps {
     queries: wgpu::QuerySet,
@@ -1795,6 +1799,8 @@ impl Gpu {
                 aquifer: aquifer.is_some(),
             }),
             wait_start,
+            #[cfg(test)]
+            host_phases: host_phase_probe::Phases::default(),
             timings: job_timings,
         })
     }
@@ -2068,6 +2074,8 @@ impl Gpu {
         mut pending: PendingSample,
         timings: &timings::Timings,
     ) -> Result<Progress, String> {
+        #[cfg(test)]
+        let host_poll = host_phase_probe::Stamp::start(pending.wait_start);
         if !pending.ready() {
             self.device
                 .poll(wgpu::PollType::Wait {
@@ -2076,15 +2084,23 @@ impl Gpu {
                 })
                 .map_err(|e| format!("GPU poll failed: {e}"))?;
         }
+        #[cfg(test)]
+        host_poll.finish(pending.wait_start, "poll", &mut pending.host_phases);
         let (columns, mask) = match pending.stage {
             PendingStage::Terrain(terrain) => {
+                #[cfg(test)]
+                let host_terrain = host_phase_probe::Stamp::start(pending.wait_start);
                 let (columns, mask, materials, request) =
                     self.complete_terrain(terrain, timings, &mut pending.timings)?;
+                #[cfg(test)]
+                host_terrain.finish(pending.wait_start, "complete_terrain", &mut pending.host_phases);
                 if let Some(materials) = materials {
                     let count = mask
                         .as_ref()
                         .and_then(|mask| mask.material_run_count())
                         .ok_or("missing GPU material run header")?;
+                    #[cfg(test)]
+                    let host_emit = host_phase_probe::Stamp::start(pending.wait_start);
                     let mut next = self.emit_materials(
                         materials,
                         request,
@@ -2092,6 +2108,8 @@ impl Gpu {
                         timings,
                         &mut pending.timings,
                     );
+                    #[cfg(test)]
+                    host_emit.finish(pending.wait_start, "emit_materials", &mut pending.host_phases);
                     next.columns = columns;
                     next.mask = mask;
                     pending.stage = PendingStage::Materials(next);
@@ -2100,7 +2118,12 @@ impl Gpu {
                 (columns, mask)
             }
             PendingStage::Materials(materials) => {
-                self.complete_materials(materials, timings, &mut pending.timings)?
+                #[cfg(test)]
+                let host_materials = host_phase_probe::Stamp::start(pending.wait_start);
+                let output = self.complete_materials(materials, timings, &mut pending.timings)?;
+                #[cfg(test)]
+                host_materials.finish(pending.wait_start, "complete_materials", &mut pending.host_phases);
+                output
             }
         };
         pending.timings.flags = u32::from(self.timestamp_support);
@@ -2115,6 +2138,8 @@ impl Gpu {
             columns,
             mask,
             timings: pending.timings,
+            #[cfg(test)]
+            host_phases: pending.host_phases,
         }))
     }
     fn complete_terrain(
@@ -2286,6 +2311,8 @@ pub(crate) struct PendingSample {
     stage: PendingStage,
     wait_start: Instant,
     timings: timings::Snapshot,
+    #[cfg(test)]
+    host_phases: host_phase_probe::Phases,
 }
 pub(crate) enum Progress {
     Complete(GpuSample),
