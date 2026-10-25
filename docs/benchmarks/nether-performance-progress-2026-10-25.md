@@ -48,13 +48,25 @@ The original investigation reported 12,875 ms Nether median and 18,861 ms p95 wi
 
 Current complete-NBT comparison reads every decompressed chunk payload and compares bytes, including all NBT fields. MCA sector layout, padding, timestamps and compression representation are outside the payload comparison. Chunk membership is checked separately. Expected NBT is not rewritten to accommodate a mismatch.
 
+## Fresh correctness and memory validation
+
+The fresh isolated native test build completed 300 serial regions across the five corpus profiles in forward, reverse and permuted order, then 14 mixed-profile regions at 2, 4 and 8 callers. All **321,536 chunk instances matched both the original corpus and the fresh preceding native control**, with complete payload and membership comparisons. The executable hash and source remained unchanged.
+
+The ownership census passed at joined checkpoints. Cave-cache keys stayed within 2,048; tracked external mask and halo references were zero. After engine drop, all 2,048 observed mask references and eight observed version snapshots/interior buffers were released, and the terrain worker stopped. Separate `vmmap` physical-footprint observations were 4.7G, 5.0G and 4.5G after successive serial rounds, peaked at 5.3G during the run and fell to 920.5M after engine drop. These observations support bounded behavior in this tested workload; logical buffer capacities exclude driver allocations and are not summed with process footprint.
+
+The audit of 80 existing ABBA runs confirmed successful completion at 1/2/4/8 callers with 16 workers, 20 measured regions and actual shader readiness 4. Every recorded NBT comparison passed, covering 819,200 candidate chunk instances. Their timing limitations remain unchanged. Independently, all ten post-merge corpus digests match the original committed cycle-1 digests, ruling out expected-output drift for this corpus.
+
+Current `:common:regionPreparationTest` passed actual queued admission, foreground/background fairness, configured budgets 1/3/6/32, promotion, cancellation, failure propagation and concurrent lease closure. Current `:common:netherTerrainTest` passed independent base-column checks at negative/boundary coordinates, all five biome surfaces, six custom-bound/fluid contexts, carvers and vertical biomes. The latter is a terrain-only correctness fixture; complete-region validation comes from the separate NBT comparisons above.
+
+The detailed [validation audit](nether-validation-audit-2026-10-25.json) records source, executable hashes, log paths, checkpoint observations and evidence hashes. All raw data remains under `/Users/cyberpwn/development/retina-benchmark-evidence/completion-audit/`. No performance acceptance or goal-completion claim follows from these functional tests.
+
 ## Remaining verification and limits
 
 - Repeated uncontended timing acceptance and a final matched Overworld regression judgment remain open. The latest ordinary 1/2/4/8-caller comparisons include interference and drift; unfavorable results are retained. The initial two-caller second-seed regression was investigated and did not reproduce materially in the focused repeat, but that is not proof of a speedup.
 - The full requirement audit is still in progress. Merged PRs and historical summaries alone do not prove every invariant or every historical cycle’s benchmark requirements.
 - Historical raw suite paths for cycles 2–5 are currently absent at their recorded locations. Their committed reports survive. Do not represent those reports as independently revalidated raw evidence. The original reference corpus and recent full-NBT comparisons remain available.
 - Recent live portal tests passed with and without DH, including unloads with eight active requests. A paused-menu intervention during the DH run makes its timing unsuitable for performance acceptance.
-- Sustained retention and concurrent correctness evidence is recorded in the cycle 197 report; this does not prove an unlimited memory bound for every possible world profile.
+- Fresh sustained retention and concurrent correctness evidence is recorded above; this does not prove an unlimited memory bound for every possible world profile.
 - No final completion claim is made by this report.
 
 ## Evidence and reproduction

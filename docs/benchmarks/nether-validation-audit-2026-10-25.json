@@ -1,0 +1,207 @@
+{
+  "source": "8b1b0550b5155db78e5a8e7e42ecc61175b64173",
+  "native_tree": "2618d10bc8fc7b3d3b3b344888ee2de49aa07100",
+  "status": "Functional and ownership validation passed; uncontended timing acceptance remains deferred. Overall goal is not complete.",
+  "fresh_retention": {
+    "receipt": "/Users/cyberpwn/development/retina-benchmark-evidence/completion-audit/fresh-retention/receipt.json",
+    "test_binary_sha256": "9d9208c64f520d2c317b706275b769414259f77b7c401f4d0a9b8ae6a5200669",
+    "source_and_binary_unchanged": true,
+    "serial_regions": 300,
+    "mixed_concurrent_regions": 14,
+    "request_orders": [
+      "forward",
+      "reverse",
+      "permutation (index*7+3)%20"
+    ],
+    "exact_chunk_instances_against_each_reference": 321536,
+    "references": [
+      "immutable original corpus",
+      "fresh preceding native control"
+    ],
+    "comparison_rows": 58,
+    "worker_stopped": true,
+    "ownership_after_engine_drop": {
+      "caves": {
+        "live_mask_references": 0,
+        "observed_mask_references": 2048
+      },
+      "versions": {
+        "live_interior_run_buffers": 0,
+        "live_snapshots": 0,
+        "observed_interior_run_buffers": 8,
+        "observed_snapshots": 8
+      }
+    },
+    "max_cave_cache_keys": 2048,
+    "max_external_mask_references": 0,
+    "max_external_halo_references": 0,
+    "vm_checkpoints": [
+      {
+        "checkpoint": "round-0",
+        "status": {
+          "exit_code": 0,
+          "stderr": ""
+        },
+        "physical_footprint_lines": [
+          "Physical footprint:         4.7G",
+          "Physical footprint (peak):  4.7G"
+        ]
+      },
+      {
+        "checkpoint": "round-1",
+        "status": {
+          "exit_code": 0,
+          "stderr": ""
+        },
+        "physical_footprint_lines": [
+          "Physical footprint:         5.0G",
+          "Physical footprint (peak):  5.0G"
+        ]
+      },
+      {
+        "checkpoint": "round-2",
+        "status": {
+          "exit_code": 0,
+          "stderr": ""
+        },
+        "physical_footprint_lines": [
+          "Physical footprint:         4.5G",
+          "Physical footprint (peak):  5.0G"
+        ]
+      },
+      {
+        "checkpoint": "concurrent-2",
+        "status": {
+          "exit_code": 0,
+          "stderr": ""
+        },
+        "physical_footprint_lines": [
+          "Physical footprint:         4.1G",
+          "Physical footprint (peak):  5.0G"
+        ]
+      },
+      {
+        "checkpoint": "concurrent-4",
+        "status": {
+          "exit_code": 0,
+          "stderr": ""
+        },
+        "physical_footprint_lines": [
+          "Physical footprint:         3.0G",
+          "Physical footprint (peak):  5.0G"
+        ]
+      },
+      {
+        "checkpoint": "concurrent-8",
+        "status": {
+          "exit_code": 0,
+          "stderr": ""
+        },
+        "physical_footprint_lines": [
+          "Physical footprint:         3.5G",
+          "Physical footprint (peak):  5.3G"
+        ]
+      },
+      {
+        "checkpoint": "after-engine-drop",
+        "status": {
+          "exit_code": 0,
+          "stderr": ""
+        },
+        "physical_footprint_lines": [
+          "Physical footprint:         920.5M",
+          "Physical footprint (peak):  5.3G"
+        ]
+      }
+    ],
+    "limitations": "When enabled, sizes are logical capacities of named owned buffer fields at joined checkpoints; excludes bind-group aliases, query sets, shaders, driver allocations, active peaks and ephemeral submissions. VM snapshots are separate process observations, not a sum with logical capacities."
+  },
+  "concurrency_audit": {
+    "run_count": 80,
+    "all_returncodes_zero": true,
+    "all_shader_ready": true,
+    "all_20_regions_16workers": true,
+    "all_recorded_comparisons_exact": true,
+    "candidate_chunks": 819200,
+    "timing_acceptance": false,
+    "reason": "Known external test overlap and control drift recorded in per-concurrency assessments; performance acceptance deferred. Completion of these requests proves tested liveness, not absence of pathological stalls under every load."
+  },
+  "original_corpus_continuity": {
+    "runs": 10,
+    "all_digests_match_original_committed_cycle1": true,
+    "evidence": "/Users/cyberpwn/development/retina-benchmark-evidence/completion-audit/original-corpus-continuity.json"
+  },
+  "scheduling_tests": {
+    "source": "8b1b0550b5155db78e5a8e7e42ecc61175b64173",
+    "command": [
+      "./gradlew",
+      "--no-build-cache",
+      "--no-configuration-cache",
+      ":common:regionPreparationTest"
+    ],
+    "exit_code": 0,
+    "log": "/Users/cyberpwn/development/retina-benchmark-evidence/completion-audit/region-preparation-current.log",
+    "sha256": "4f8b1bfe4174b99904477ae7a03779e508e43090fbe9c59359c81108bc192b88",
+    "pass_messages": [
+      "PASS: configured shared region budget 0 resolves to 32",
+      "PASS: configured shared region budget 3 resolves to 3",
+      "PASS: configured shared region budget -3 resolves to 6",
+      "PASS: configured shared region budget -32 resolves to 1",
+      "PASS: parallel region admission, ready-first reads, bounds, deduplication, cancellation, failures and shutdown",
+      "PASS: configurable ahead pump, refill, pause, failures, immediate saves and shared budget",
+      "PASS: foreground priority, bounded background progress, virtual waiters and preview promotion",
+      "PASS: region lease use, skipped await, delayed completion, failure, cancellation and concurrent close"
+    ],
+    "build_successful": true,
+    "scope": "Actual queued foreground/background requests, preview promotion, configured budgets, lease cancellation/failure/concurrent close, scheduler and ahead pump; no GPU or Minecraft integration in this task."
+  },
+  "terrain_tests": {
+    "exit_code": 0,
+    "source": "8b1b0550b5155db78e5a8e7e42ecc61175b64173",
+    "native_sha256": "80a34fb6ce7ac55303ae62134c4f473171fb13c7bbd9f624855d0f6f842b90ae",
+    "log": "/Users/cyberpwn/development/retina-benchmark-evidence/completion-audit/nether-terrain-current.log",
+    "log_sha256": "8e5b054c70dbf506d67b0801cf74e3ca221fbbcbdf20ffd86660c33cbaa70003",
+    "events": [
+      {
+        "event": "nether_gpu_terrain",
+        "status": "pass",
+        "context": {
+          "air": 75700,
+          "lava": 10878,
+          "solid": 306638,
+          "multi_surface_columns": 607,
+          "sampled_biomes": 5
+        }
+      },
+      {
+        "event": "nether_bounds_fluids",
+        "status": "pass",
+        "context": {
+          "voxels": 1540096,
+          "contexts": 6
+        }
+      },
+      {
+        "event": "nether_carvers",
+        "status": "pass",
+        "context": {
+          "carved_voxels": 2323
+        }
+      },
+      {
+        "event": "nether_vertical_biomes",
+        "status": "pass"
+      }
+    ],
+    "scope": "Terrain-only independent base-column checks across 12 chunks and 3 columns each, fixed-biome surface checks, bounds, carvers and vertical biomes; complements full-region NBT tests, never a performance acceptance benchmark."
+  },
+  "evidence_hashes": {
+    "fresh-retention/receipt.json": "d9d92c3df6686708646dfeb3474a8edbef28a0c4d28e7431f337486a982557e8",
+    "fresh-retention/parity.json": "5362f4c1c06cbd7ab84a58ad7ee0de69cf1b3477438298afd012fe6486bba68d",
+    "fresh-retention/corpus/report.json": "459486a5a59f7b4c162ee8cb178d696693540f275002c0b6d517c59cd38db7a9",
+    "concurrency-evidence-audit.json": "433833ddd30cf966bbe70f3fc75545dbcfc26d72bda096fd04b16d760e8beaa3",
+    "original-corpus-continuity.json": "8ff236107f0eae53c26749ab2704ba1f9fb822754a596f7dfa656549181ce846",
+    "region-preparation-current.json": "f8ec5785d0644be3d52e4bf482835ff1ebaff0438d36957841a39cc7dc35b18f",
+    "nether-terrain-current.json": "94d95e2fa4f48c32fbd3e058c84e8eb5dc529b657ddc9b7fadc5c6740677bec6"
+  }
+}
