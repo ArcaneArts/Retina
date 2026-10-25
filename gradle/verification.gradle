@@ -534,6 +534,15 @@ tasks.register('locateTest', JavaExec) {
     if (providers.gradleProperty('testDatapack').isPresent()) args providers.gradleProperty('testDatapack').get()
 }
 
+tasks.register('biomeSearchBenchmark', JavaExec) {
+    group = 'verification'
+    description = 'Measure new and cached unrestricted biome searches; emits per-batch timings, GPU work and result hashes.'
+    dependsOn 'gpuTestClasses', ':packageNative'
+    classpath = sourceSets.gpuTest.runtimeClasspath
+    mainClass = 'art.arcane.retina.worldgen.NativeBiomeSearchBenchmark'
+    jvmArgs '--enable-native-access=ALL-UNNAMED'
+}
+
 tasks.register('landscapeTest', JavaExec) {
     group = 'verification'
     description = 'Compare GPU landscape distribution against registered vanilla terrain and validate stage telemetry.'
