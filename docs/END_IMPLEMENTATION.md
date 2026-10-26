@@ -336,6 +336,56 @@ not a final performance or tail-latency claim. Features and cities remain absent
 All twelve new MCA files (50,429,952 bytes), including warmups, were removed after
 comparison. Reports, reference/binary hashes and disposal receipts remain.
 
+## End features
+
+### Cycle 3a: fixed placement and the arrival platform
+
+The placement interpreter now supports loaded `fixed_placement` positions. It
+filters against the current input point's signed chunk coordinates, retains list
+order and duplicates, and replaces all three coordinates including absolute Y.
+Anchored expansion and nested replay both support the modifier. Dependency bounds
+include its possible within-chunk displacement rather than assuming zero movement;
+platform reach comes from the actual two-block geometry.
+
+`EndPlatformFeature` exports actual obsidian/air palette IDs and runs through the
+existing ordered decoration pipeline. Native geometry follows the source Z/X/Y
+write order, puts the floor at originY−1, clears the three layers above it, and
+avoids writes when the desired block is already present. This feature and fixed
+placement consume no random draws. Other dimensions' random streams are unchanged.
+Runtime platform recreation during travel remains Minecraft's responsibility.
+
+```sh
+cargo build --release --locked --manifest-path native/Cargo.toml \
+  --lib --target-dir build/native-target
+./gradlew --no-daemon -PretinaHostOnly \
+  -PretinaNativePath=/absolute/path/libretina_worldgen.dylib \
+  :common:endPlatformTest :common:endProfileTest -x :packageNative -x :buildNative
+```
+
+The independent platform fixture constructs the loaded vanilla placed feature,
+actual `FeatureSorter` step/index and `WorldgenRandom` decoration/feature seeds.
+Its recording level reads vanilla base columns and uses the real seeded
+`BiomeManager` for the biome filter. Four generated chunks over two seeds match
+all 262,144 block states across the Z=0 boundary. Additional checks compare negative
+fixed positions, duplicate ordering, absolute heights, and obstructed-room clearing.
+The terrain/query regression fixture also passes. Native tests: 312 passed, zero
+failures, 75 optional fixtures ignored.
+
+A separate publication check generated exactly two region files at (0,−1)/(0,0),
+read their NBT back, and verified all 100 platform cells: 25 obsidian blocks at Y=48
+and 75 air cells at Y=49..51. Both boundary chunks retain the existing incomplete
+boundary-lighting flag; this check does not claim final chunk readiness. All 2,048
+chunk records were hashed before the two disposable MCA files (8,404,992 bytes)
+were removed. No benchmark throughput claim is made by this correctness smoke.
+
+Export coverage now reports one supported End root and four omitted feature kinds:
+islands, chorus, spikes and gateways. Random End features require an explicit
+vanilla decoration stream: 26.3 uses `WorldgenRandom` backed by Xoroshiro for
+`ChunkGenerator.applyBiomeDecoration`, not Retina's existing SplitMix stream and
+not the terrain's legacy random source. That gap remains to be implemented without
+changing Overworld/Nether seed behavior. Production End activation remains disabled;
+cities, progression, sparse execution and full performance acceptance remain open.
+
 ## Remaining delivery sequence
 
 1. End profile, exact seeded terrain, floating-island queries and biome selection.

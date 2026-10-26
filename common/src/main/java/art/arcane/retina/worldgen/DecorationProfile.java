@@ -145,7 +145,7 @@ final class DecorationProfile {
 
     private boolean hasOtherStageRecipe(Feature feature,int depth) {
         if(depth>16)throw new IllegalArgumentException("Recursive other-stage feature");
-        if(feature instanceof SimpleBlockFeature || feature instanceof MultifaceGrowthFeature || feature instanceof VinesFeature || feature instanceof DiskFeature || nativeFeature(feature))return true;
+        if(feature instanceof EndPlatformFeature || feature instanceof SimpleBlockFeature || feature instanceof MultifaceGrowthFeature || feature instanceof VinesFeature || feature instanceof DiskFeature || nativeFeature(feature))return true;
         if(feature instanceof SequenceFeature f)return f.features().stream().anyMatch(v->hasOtherStageRecipe(v.value().feature().value(),depth+1));
         if(feature instanceof OverlayFeature f)return f.features().stream().anyMatch(v->hasOtherStageRecipe(v.value().feature().value(),depth+1));
         if(feature instanceof RandomSelectorFeature f)return f.features().stream().anyMatch(v->hasOtherStageRecipe(v.feature().value().feature().value(),depth+1)) || hasOtherStageRecipe(f.defaultFeature().value().feature().value(),depth+1);
@@ -213,7 +213,7 @@ final class DecorationProfile {
                 case "cuboid" -> {
                     if(!supportedIntProvider(json.get("xz_size")) || !supportedIntProvider(json.get("y_size"))) {unsupported.add("cuboid:dimensions:"+json);return;}
                 }
-                case "in_square", "biome", "surface_water_depth_filter", "surface_relative_threshold_filter" -> { }
+                case "in_square", "biome", "surface_water_depth_filter", "surface_relative_threshold_filter", "fixed_placement" -> { }
                 default -> { unsupported.add("placement:" + type(json)); return; }
             }
             p.program.add(json.deepCopy());
@@ -256,6 +256,11 @@ final class DecorationProfile {
             platform.add(material(Blocks.COBBLESTONE.defaultBlockState()));
             data.add("platform", platform);
             emit(path, p, chance, "void_platform", data, selected);
+        } else if (feature instanceof EndPlatformFeature) {
+            var data = new JsonObject(); var platform = new JsonArray();
+            platform.add(material(Blocks.OBSIDIAN.defaultBlockState()));
+            platform.add(material(Blocks.AIR.defaultBlockState())); data.add("platform", platform); data.addProperty("reach", 2);
+            emit(path, p, chance, "end_platform", data, selected);
         } else if (nativeFeature(feature)) {
             var data=nether(feature,depth);
             if(data!=null)emit(path,p,chance,"nether_feature",data,selected);

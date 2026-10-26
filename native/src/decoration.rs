@@ -17,6 +17,7 @@ pub mod diagnostics;
 mod distribution;
 mod fallen;
 mod flat_features;
+mod end_features;
 pub(crate) mod generation;
 mod mushroom;
 pub mod pairs;
@@ -101,6 +102,8 @@ pub enum Kind {
     },
     #[serde(rename = "void_platform")]
     VoidPlatform { platform: [u16; 2] },
+    #[serde(rename = "end_platform")]
+    EndPlatform { platform: [u16; 2] },
     #[serde(rename = "disk")]
     Disk {
         #[serde(flatten)]
@@ -200,7 +203,7 @@ impl Recipe {
                 self.placement.is_some() && nether.validate(material_count)
             }
             Kind::FlatLake { lake } => self.placement.is_some() && lake.validate(material_count),
-            Kind::VoidPlatform { platform } => {
+            Kind::VoidPlatform { platform } | Kind::EndPlatform { platform } => {
                 self.placement.is_some() && platform.iter().all(|&id| valid(id))
             }
             Kind::Disk { disk } => self.placement.is_some() && disk.validate(material_count),
@@ -1713,6 +1716,7 @@ pub(crate) fn feature_sample(
         Kind::FlatLake { .. }
             | Kind::NetherFeature { .. }
             | Kind::VoidPlatform { .. }
+            | Kind::EndPlatform { .. }
             | Kind::Disk { .. }
             | Kind::Sequence { .. }
             | Kind::Overlay { .. }

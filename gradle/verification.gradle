@@ -800,3 +800,18 @@ tasks.register('endProfileTest', JavaExec) {
     }
     args rootProject.layout.buildDirectory.dir('end/native-profile').get().asFile.absolutePath
 }
+
+tasks.register('endPlatformTest', JavaExec) {
+    group = 'verification'
+    description = 'Compare native fixed End arrival platform against actual world-seeded vanilla placement across chunks.'
+    dependsOn 'gpuTestClasses'
+    classpath = sourceSets.gpuTest.runtimeClasspath
+    mainClass = 'art.arcane.retina.worldgen.EndPlatformTest'
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
+    jvmArgs '--enable-native-access=ALL-UNNAMED', '-XX:ActiveProcessorCount=2'
+    maxHeapSize = '512m'
+    if (providers.gradleProperty('retinaNativePath').isPresent())
+        systemProperty 'retina.native.path', providers.gradleProperty('retinaNativePath').get()
+    else dependsOn ':packageNative'
+    args rootProject.layout.buildDirectory.dir('end/platform-reference').get().asFile.absolutePath
+}
