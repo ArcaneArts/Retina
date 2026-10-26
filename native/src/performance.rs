@@ -2,11 +2,11 @@
 //! requests and recursive workers overlap; they are not elapsed-time shares.
 use crate::CacheKey;
 use std::collections::{BTreeMap, HashMap, HashSet};
-use std::sync::{
-    atomic::{AtomicU64, Ordering},
-    Mutex, OnceLock,
-};
+use std::sync::{Mutex, OnceLock};
 use std::time::Instant;
+
+mod counter_shards;
+use counter_shards::Counters;
 
 macro_rules! counters {
     ($($name:ident),+ $(,)?) => {
@@ -81,7 +81,7 @@ struct Seen {
     terrain: HashMap<(CacheKey, u32), u64>,
 }
 struct Enabled {
-    counts: [AtomicU64; Counter::Count as usize],
+    counts: Counters,
     seen: Mutex<Seen>,
 }
 pub(crate) struct Metrics(Option<Box<Enabled>>);
@@ -99,7 +99,7 @@ impl Metrics {
     fn new(enabled: bool) -> Self {
         Self(enabled.then(|| {
             Box::new(Enabled {
-                counts: std::array::from_fn(|_| AtomicU64::new(0)),
+                counts: Counters::default(),
                 seen: Mutex::new(Seen::default()),
             })
         }))
@@ -107,7 +107,7 @@ impl Metrics {
     #[inline]
     pub(crate) fn add(&self, counter: Counter, value: u64) {
         if let Some(inner) = &self.0 {
-            inner.counts[counter as usize].fetch_add(value, Ordering::Relaxed);
+            inner.counts.add(counter, value);
         }
     }
     #[inline]
@@ -168,7 +168,7 @@ impl Metrics {
                     *name,
                     self.0
                         .as_ref()
-                        .map_or(0, |v| v.counts[i].load(Ordering::Relaxed)),
+                        .map_or(0, |v| v.counts.load(i)),
                 )
             })
             .collect();
@@ -207,6 +207,12 @@ impl Metrics {
         serde_json::json!({
             "version": 1, "enabled": self.0.is_some(), "counters": counters,
             "scope": "profile lifetime; concurrent and recursive durations overlap",
+            "counter_storage": {
+                "shards": counter_shards::SHARDS,
+                "enabled_bytes": self.0.as_ref().map_or(0, |_| Counters::storage_bytes()),
+                "bytes_scope": "Counter backing only; excludes allocator overhead and candidate/terrain tracking.",
+                "snapshot_scope": "Shards are read sequentially. Totals are exact modulo u64 after updates join; a live snapshot is not a single instant across concurrent writers.",
+            },
             "terrain_tiles": tiles,
             "terrain_tile_scope": "Actual GPU tile origin and side, including guards; counts are profile-lifetime totals, not elapsed time",
         })
@@ -332,6 +338,7 @@ mod tests {
         let _build = m.build(key(1));
         m.terrain(key(1).0, 16);
         assert!(m.0.is_none());
+        assert_eq!(m.snapshot()["counter_storage"]["enabled_bytes"], 0);
         assert_eq!(m.snapshot()["terrain_tiles"], serde_json::json!([]));
         assert!(m.start().is_none());
         assert!(m.snapshot()["counters"]
