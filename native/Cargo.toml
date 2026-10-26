@@ -6,6 +6,8 @@ rust-version = "1.87"
 publish = false
 
 [features]
+default = ["scalable-allocator"]
+scalable-allocator = ["dep:mimalloc"]
 # Diagnostic reference encodings and standalone GPU ore benchmarks.
 ore-raster-benchmark = []
 decoration-replay-benchmark = []
@@ -34,6 +36,9 @@ libdeflater = "1"
 lz4-sys = "1.11.1"
 xxhash-rust = { version = "0.8", features = ["xxh32"] }
 smallvec = { version = "1", features = ["union"] }
+# The library is loaded dynamically by Java; do not require initial-exec TLS
+# or enable process-wide malloc interposition.
+mimalloc = { version = "=0.1.52", optional = true, default-features = false, features = ["local_dynamic_tls"] }
 
 [dev-dependencies]
 libc = "0.2"
