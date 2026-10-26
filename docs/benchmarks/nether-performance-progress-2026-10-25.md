@@ -1,5 +1,7 @@
 # Nether performance progress — 25 October 2026
 
+Latest current-source measurements and fresh portal checks are recorded in [the current evidence report](nether-current-performance-evidence-2026-10-25.md). The earlier observations below retain their original source and timing limitations.
+
 Status: implementation and correctness progress; overall goal remains open. Timing confirmation was attempted after functional validation; competing test workloads still prevent full acceptance. All surviving test data and worktrees are retained.
 
 ## Current merged result
