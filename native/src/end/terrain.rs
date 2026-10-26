@@ -23,7 +23,10 @@ impl Profile {
         Ok(())
     }
     pub fn biome(&self, islands: &IslandNoise, x: i32, z: i32) -> u16 {
-        self.biomes[match islands.biome(x, z) {
+        self.biome_id(islands.biome(x, z))
+    }
+    fn biome_id(&self, biome: Biome) -> u16 {
+        self.biomes[match biome {
             Biome::Center => 0, Biome::Highlands => 1, Biome::Midlands => 2,
             Biome::SmallIslands => 3, Biome::Barrens => 4,
         }]
@@ -58,7 +61,7 @@ impl Profile {
             let tile = density.tile(x, z, side * 16, side * 16)?;
             for cz in 0..side { for cx in 0..side {
                 let bx = x + cx as i32 * 16; let bz = z + cz as i32 * 16;
-                let biome = self.biome(&islands, bx, bz);
+                let biome = self.biome_id(tile.biome(bx, bz).unwrap());
                 for dz in 0..16 { for dx in 0..16 {
                     result.push(self.column(r, biome, &tile.column(bx + dx, bz + dz).unwrap()));
                 }}
@@ -81,7 +84,6 @@ impl Profile {
         }}
         let ox = origin.chunk_x * 16; let oz = origin.chunk_z * 16;
         let density = VanillaDensity::new(request.seed);
-        let islands = IslandNoise::new(request.seed);
         let tile = density.tile(ox, oz, tile_side as u32 * 16, tile_side as u32 * 16)?;
         let run_width = (tile_side - 2) * 16;
         let width = run_width + 2;
@@ -97,7 +99,7 @@ impl Profile {
         let mut runs = Vec::with_capacity(count * 3);
         let mut columns = vec![Column::default(); tile_side * tile_side * COLUMNS];
         let biomes: Vec<_> = (0..tile_side * tile_side).map(|i|
-            self.biome(&islands, ox + (i % tile_side) as i32 * 16, oz + (i / tile_side) as i32 * 16)).collect();
+            self.biome_id(tile.biome(ox + (i % tile_side) as i32 * 16, oz + (i / tile_side) as i32 * 16).unwrap())).collect();
         // Material runs are row-major even though the compact column cache is
         // chunk-major. Keep both layouts explicit to avoid region-edge aliasing.
         for z in 0..tile_side * 16 { for x in 0..tile_side * 16 {
