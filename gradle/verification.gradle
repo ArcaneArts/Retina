@@ -721,6 +721,18 @@ tasks.register('netherProfileTest', JavaExec) {
     workingDir rootProject.projectDir
 }
 
+tasks.register('endReferenceTest', JavaExec) {
+    group = 'verification'
+    description = 'Capture a compact independent vanilla End terrain, biome, feature and city reference without native generation.'
+    dependsOn 'gpuTestClasses'
+    classpath = sourceSets.gpuTest.runtimeClasspath
+    mainClass = 'art.arcane.retina.worldgen.EndReferenceTest'
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
+    jvmArgs '-XX:ActiveProcessorCount=2'
+    maxHeapSize = '512m'
+    args rootProject.layout.buildDirectory.dir('end/reference').get().asFile.absolutePath
+}
+
 tasks.register('flatTest', JavaExec) {
     group = 'verification'
     description = 'Check native flat presets, exact layers, deferred fills and source preservation.'
