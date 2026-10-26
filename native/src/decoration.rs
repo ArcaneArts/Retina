@@ -106,6 +106,8 @@ pub enum Kind {
     EndPlatform { platform: [u16; 2] },
     #[serde(rename = "end_island")]
     EndIsland { end_island: end_features::islands::Recipe },
+    #[serde(rename = "end_chorus")]
+    EndChorus { end_chorus: end_features::chorus::Recipe },
     #[serde(rename = "disk")]
     Disk {
         #[serde(flatten)]
@@ -209,6 +211,7 @@ impl Recipe {
                 self.placement.is_some() && platform.iter().all(|&id| valid(id))
             }
             Kind::EndIsland { end_island } => self.placement.is_some() && end_island.validate(material_count),
+            Kind::EndChorus { end_chorus } => self.placement.is_some() && end_chorus.validate(material_count),
             Kind::Disk { disk } => self.placement.is_some() && disk.validate(material_count),
             Kind::Sequence { features } | Kind::Overlay { features } => {
                 self.placement.is_some()
@@ -1729,6 +1732,7 @@ pub(crate) fn feature_sample(
             | Kind::VoidPlatform { .. }
             | Kind::EndPlatform { .. }
             | Kind::EndIsland { .. }
+            | Kind::EndChorus { .. }
             | Kind::Disk { .. }
             | Kind::Sequence { .. }
             | Kind::Overlay { .. }

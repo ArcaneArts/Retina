@@ -1,8 +1,10 @@
 //! End-specific deterministic feature geometry. Random End features get their
 //! own vanilla world-seeded stream rather than changing other dimensions' RNG.
 pub mod islands;
+pub mod chorus;
+mod placement;
 use super::*;
-use placement::Overlay;
+use super::placement::Overlay;
 
 pub(super) fn platform(
     materials: [u16; 2],

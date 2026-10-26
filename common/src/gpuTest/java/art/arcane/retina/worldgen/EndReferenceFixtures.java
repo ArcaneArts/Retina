@@ -109,17 +109,18 @@ final class EndReferenceFixtures implements AutoCloseable {
                     case "getRandom" -> random;
                     case "registryAccess" -> registry;
                     case "getMinY" -> 0;
-                    case "getMaxY" -> 255;
-                    case "getHeight" -> args == null || args.length == 0 ? 256 : floor + 1;
+                    case "getMaxY" -> 256;
+                    case "getHeight" -> args == null || args.length == 0 ? 256 : height((Heightmap.Types) args[0],(int) args[1],(int) args[2]);
                     case "getHeightmapPos" -> {
                         var pos = (BlockPos) args[1];
-                        yield new BlockPos(pos.getX(), floor + 1, pos.getZ());
+                        yield new BlockPos(pos.getX(), height((Heightmap.Types)args[0],pos.getX(),pos.getZ()), pos.getZ());
                     }
                     case "getBlockState" -> state((BlockPos) args[0]);
                     case "getFluidState" -> state((BlockPos) args[0]).getFluidState();
                     case "getBlockEntity" -> blockEntities.get((BlockPos) args[0]);
                     case "destroyBlock" -> {
                         var pos = ((BlockPos) args[0]).immutable();
+                        if (pos.getY()<0 || pos.getY()>=256) yield false;
                         boolean existed = !state(pos).isAir();
                         blocks.put(pos, Blocks.AIR.defaultBlockState());
                         blockEntities.remove(pos);
@@ -127,6 +128,7 @@ final class EndReferenceFixtures implements AutoCloseable {
                     }
                     case "setBlock", "setBlockAndUpdate" -> {
                         var pos = ((BlockPos) args[0]).immutable();
+                        if (pos.getY()<0 || pos.getY()>=256) yield false;
                         var block = (BlockState) args[1];
                         blocks.put(pos, block);
                         if (block.getBlock() instanceof EntityBlock entityBlock) {
@@ -144,7 +146,16 @@ final class EndReferenceFixtures implements AutoCloseable {
             });
         }
 
+        int height(Heightmap.Types map,int x,int z) {
+            // Old direct geometry captures deliberately use a constant floor.
+            // Terrain-backed placed roots require live reads after earlier writes.
+            if (base == null) return floor+1;
+            for (int y=255;y>=0;y--) if (map.isOpaque().test(state(new BlockPos(x,y,z)))) return y+1;
+            return 0;
+        }
+
         BlockState state(BlockPos pos) {
+            if (pos.getY()<0 || pos.getY()>=256) return Blocks.AIR.defaultBlockState();
             var written = blocks.get(pos);
             if (written != null) return written;
             return base != null ? base.apply(pos) : pos.getY() <= floor

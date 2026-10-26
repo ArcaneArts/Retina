@@ -185,6 +185,11 @@ impl WorldProfile {
                     return Err("End island recipes require a compatible End profile and biome mapping".into());
                 }
             }
+            if let crate::decoration::Kind::EndChorus { end_chorus } = &recipe.feature {
+                if profile.end.is_none() || end_chorus.biomes.iter().any(|&b| b as usize >= profile.biomes.len()) {
+                    return Err("End chorus recipes require a compatible End profile and biome mapping".into());
+                }
+            }
             if !profile.ordered_decorations
                 && matches!(
                     recipe.feature,
