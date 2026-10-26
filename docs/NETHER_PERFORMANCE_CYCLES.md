@@ -3546,3 +3546,42 @@ worktrees remain preserved.
 
 See `docs/benchmarks/nether-perf-cycle201-2026-10-25.json` and external
 `completion-audit/diagnostic-counter-shards/` for identities, timings and commands.
+
+
+## Cycle 202 — Measure CPU work across complete region batches
+
+The native benchmark now records whole-process user/system CPU around the measured
+batch, together with context-switch/fault deltas and Unix timestamps for aligning
+external observations. It adds one pre-batch `getrusage` call, reuses the existing
+post-batch RSS sample, and adds two wall-clock reads. No per-region CPU clocks or
+native generator changes. Latency still uses the original monotonic timer.
+
+CPU time includes all process threads, executor creation/join and host driver
+work, and excludes startup, warmups, readiness waits and later NBT validation.
+CPU seconds divided by elapsed seconds reports average scheduled process cores;
+it is not worker occupancy, GPU time or a wall-time share. Platform switch/fault
+counts do not measure wait duration. Additive metadata preserves existing fields.
+
+Actual eight-caller second-seed CPU costs are **3.34/5.30 seconds per region** for
+the surrounding controls and **4.03/3.36 seconds** for the current candidates.
+Current serial passes use **2.33/2.23 seconds**. Overworld is much closer across
+caller counts. CPU itself varies substantially, so the first apparent CPU
+regression does not establish a fixed code cost. Exact measured timestamps also
+identify test overlap in several candidate windows; broader activity remains.
+
+The remaining investigation is redundant CPU work under concurrent generation,
+including cache history and when completed neighbor state becomes available.
+Current reuse captures neighbors once at job start. The existing between-root
+refresh prototype `de51a97` was reviewed; it remains unselected and needs current
+whole-region evidence before adoption. This is an opportunity, not a gain claim.
+
+**368,640 measured chunk instances match both original and preceding complete NBT
+and membership**, with five warmups/twenty measurements per case, shader status 4,
+lighting/zlib and synchronous cleanup. Python compilation and 12 benchmark-helper
+tests pass (one optional test skipped). Two ordinary full-corpus passes verify
+metadata propagation and generator output. Native source and retained libraries
+stay unchanged. All data and worktrees remain preserved.
+
+See `docs/benchmarks/nether-perf-cycle202-2026-10-25.json` and external
+`completion-audit/batch-cpu-attribution/` for CPU/latency/memory observations,
+precise scopes, commands and artifact hashes. Overall acceptance remains open.
