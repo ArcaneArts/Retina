@@ -287,6 +287,55 @@ CPU/GPU island-field comparison, sparse execution, final compatibility and compl
 End performance/gameplay acceptance remain required. Custom graphs beyond this
 explicitly recognized standard shape also remain outside the current adapter.
 
+### Cycle 2e: shared island candidates and CPU/GPU selection
+
+`IslandNoise.candidate_field` tests every unique center in the required rectangle
+once, preserving the seeded f64 simplex predicate and f32 size arithmetic. The
+immutable field retains accepted centers and computes the original contribution
+only for accepted centers within each query's 25×25 neighborhood. The finite-value
+maximum is independent of traversal order; contribution arithmetic is unchanged.
+Density lattice corners and loaded biome selection share this table. This does not
+classify finished chunks or suppress any terrain, feature or structure work.
+
+The standalone `end_island_field_benchmark` compares this CPU evaluator with an
+actual-device WGSL implementation receiving the same exact center table. GPU
+measurement includes allocations, table/point uploads, dispatch, synchronization,
+readback, decoding and per-batch resource cleanup. Device startup and the shared
+candidate-table construction are recorded separately. GPU results are compared
+against independent source bits and CPU results, including negative and far
+coordinates; mismatches are reported rather than hidden by tolerance.
+
+```sh
+cargo run --release --locked --manifest-path native/Cargo.toml \
+  --target-dir build/native-target --example end_island_field_benchmark \
+  -- /absolute/path/island-reference.json
+```
+
+The first dense-table CPU implementation passed all source values, but the Metal
+WGSL candidate differed in 574 of 1,792 independent combined-field float values.
+Differences were small (up to a few f32 ULPs); this does not prove a particular
+terrain block changed, but it does not establish exact generation parity. The
+experimental shader remains outside production. The CPU evaluator is selected;
+no approximate GPU field is substituted into End terrain.
+
+On the M4 Max, the accepted-center CPU evaluator measured 0.21–0.28 ms for
+5,929 outer-field points, versus 0.51–0.54 ms for GPU upload/dispatch/readback
+(eight alternating samples per case). Shared table construction added about
+0.03 ms. The three outer cases retained 43–56 accepted centers out of 3,969 unique
+candidates, avoiding millions of repeated simplex predicates. All 1,792 independent
+combined and outer CPU field values remain exact. The native suite passes 310
+tests with zero failures (75 optional fixtures ignored), and the four-chunk public
+Java/native comparison still passes all block, column, height and biome checks.
+
+An eight-region ABBA comparison used two retained baseline regions, four measured
+samples per build, one warmup per process, one caller and sixteen workers. All
+6,144 compared chunk records matched baseline decompressed NBT exactly. Median
+lit terrain-only region time was 394.80 ms baseline versus 382.52 ms candidate;
+process-to-process variation was substantial, so this is a modest observed change,
+not a final performance or tail-latency claim. Features and cities remain absent.
+All twelve new MCA files (50,429,952 bytes), including warmups, were removed after
+comparison. Reports, reference/binary hashes and disposal receipts remain.
+
 ## Remaining delivery sequence
 
 1. End profile, exact seeded terrain, floating-island queries and biome selection.

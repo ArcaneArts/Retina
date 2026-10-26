@@ -4,6 +4,8 @@
 use crate::structures::Random;
 mod blended;
 pub use blended::{BlendedNoise, Parameters as BlendedParameters};
+mod field;
+pub use field::CandidateField;
 mod density;
 mod terrain;
 pub use terrain::Profile;

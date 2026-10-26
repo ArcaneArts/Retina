@@ -17,9 +17,11 @@ pub struct DenseTile {
     corner_origin: [i32; 2],
     corners_x: usize,
     corners: Vec<[f32; 33]>,
+    islands: super::CandidateField,
 }
 
 impl DenseTile {
+    pub fn biome(&self, x: i32, z: i32) -> Option<super::Biome> { self.islands.biome(x, z) }
     /// Returns the full 128-block base-terrain density range, or None outside
     /// the requested rectangle. Dimension storage above this range remains air.
     pub fn column_densities(&self, x: i32, z: i32) -> Option<[f32; 128]> {
@@ -93,15 +95,18 @@ impl VanillaDensity {
         let count = corners_x.checked_mul(corners_z).ok_or("End tile lattice size overflow")?;
         let mut corners = Vec::new();
         corners.try_reserve_exact(count).map_err(|e| format!("cannot allocate End tile lattice: {e}"))?;
+        let islands = self.islands.candidate_field(corner_x, corner_z,
+            (i64::from(corner_x) + (corners_x as i64 - 1) * 8) as i32,
+            (i64::from(corner_z) + (corners_z as i64 - 1) * 8) as i32)?;
         for cz in 0..corners_z {
             let block_z = (i64::from(corner_z) + cz as i64 * 8) as i32;
             for cx in 0..corners_x {
                 let block_x = (i64::from(corner_x) + cx as i64 * 8) as i32;
-                let island = self.islands.sample(block_x, block_z);
+                let island = islands.sample(block_x, block_z).unwrap();
                 corners.push(std::array::from_fn(|cy| self.raw(block_x, cy as i32 * 4, block_z, island, true)));
             }
         }
-        Ok(DenseTile { origin: [x, z], size: [width, depth], corner_origin: [corner_x, corner_z], corners_x, corners })
+        Ok(DenseTile { origin: [x, z], size: [width, depth], corner_origin: [corner_x, corner_z], corners_x, corners, islands })
     }
 
     fn raw(&self, x: i32, y: i32, z: i32, island: f32, volume: bool) -> f32 {
